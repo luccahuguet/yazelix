@@ -112,7 +112,8 @@ wrappers.
 | Runtime materialization lifecycle | Rust owners: `runtime-materialization.plan`, `runtime-materialization.materialize`, `runtime-materialization.repair`; surviving Nu bridge: `core/materialization_orchestrator.nu` | Landed full-owner cut; the remaining Nu file is startup and doctor glue, not the lifecycle owner | Keep the bridge thin or delete it later. Do not recreate a second Nu lifecycle owner. | Landed under `yazelix-ulb2.9` |
 | Yazi materialization family | Rust owner: `yazi-materialization.generate`; surviving Nu wrapper: `setup/yazi_config_merger.nu` | The real Nu owner family is gone. Only a thin compatibility wrapper remains. | Keep the wrapper thin or delete it. Do not rebuild Yazi policy ownership in Nu. Dependency gate for the landed cut: in-house logic plus existing `serde` and `toml`; no new crates. | Landed under `yazelix-ulb2.3.1` |
 | Zellij materialization family | Rust owner: `zellij-materialization.generate`; surviving Nu wrapper: `setup/zellij_config_merger.nu` | The real Nu owner family is gone. Rust owns base-config selection, semantic KDL extraction, layout rendering, plugin wasm sync, permission migration, popup-runner cleanup, and generation-state reuse. | Keep the wrapper thin or delete it. Do not rebuild Zellij policy ownership in Nu. Dependency gate for the landed cut: in-house logic plus existing `serde`, `serde_json`, `toml`, `sha2`, `thiserror`, and `lexopt`; no new crates. | Landed under `yazelix-ulb2.3.2` |
-| Terminal and Helix materialization | `utils/terminal_configs.nu`, `utils/terminal_renderers.nu`, `setup/helix_config_merger.nu` | Meaningful deletion budget remains here, but it is still spread across multiple generated-file families | Only port this as a real full-owner lane. Avoid isolated helper ports that leave the Nu writer layer intact. | Later `yazelix-ulb2.3` work |
+| Terminal materialization compatibility seam | Surviving Nu wrapper: `utils/terminal_configs.nu`; adjacent live callers: `core/launch_yazelix.nu` | Rust already owns generated terminal writes in `terminal_materialization.rs` plus Ghostty config/shader generation in `ghostty_materialization.rs`. The remaining Nu seam is wrapper routing, supported-terminal filtering, user-facing summary text, and the launch-time Ghostty reroll bridge. | Treat this as a delete-wrapper lane, not a fresh full-owner port. Delete or materially shrink `terminal_configs.nu` and stop treating it as a product-side materialization owner. Dependency gate: no new crates; keep using the existing Rust owners and in-house helper logic. | Split follow-up: `yazelix-ulb2.10.3` |
+| Helix materialization compatibility seam | Surviving Nu wrapper/path seam: `setup/helix_config_merger.nu`; adjacent helper consumers: `doctor_helix_report.nu`, `yzx/edit.nu`, `yzx/import.nu` | Rust already owns Helix template merge policy, reveal-binding enforcement, generated-file writes, and import-notice state in `helix_materialization.rs`. The remaining Nu seam is compatibility wrapper and path-helper duplication, not a second generator owner. | Treat this as a delete-wrapper lane, not a combined migration family. Delete or materially shrink `helix_config_merger.nu` and move surviving path truth off that wrapper. Dependency gate: no new crates; keep using existing `serde` and `toml` plus in-house helper extraction where needed. | Split follow-up: `yazelix-ulb2.10.2` |
 | Shell initializer generation and shellhook environment setup | `setup/initializers.nu`, `setup/environment.nu` | The deterministic runtime-env subcore already moved to Rust. What remains is external-tool init generation, shell-specific text normalization, bridge sync, startup profiling, log cleanup, executable-bit repair, and welcome-shellhook orchestration. | Keep Nushell-owned in v15.x. Reopen only if a future port can delete the surviving shellhook owner end-to-end instead of inserting one more text or bridge helper. | Decision locked by `yazelix-iwzn` |
 | Launch and startup process orchestration | `core/launch_yazelix.nu`, `core/start_yazelix.nu`, `core/start_yazelix_inner.nu`, `utils/terminal_launcher.nu`, `shells/posix/*.sh` | Shell-bound and process-heavy, not the best next Rust target | Keep Nu and POSIX in v15.x. Reopen only if a new deterministic subcore appears that deletes a real owner. | No active deletion lane; historical stop note in `launch_bootstrap_rust_migration.md` |
 | Public `yzx` root, help, completion, and palette inventory | Rust metadata owner: `command_metadata.rs`; surviving Nu command bodies: `core/yazelix.nu`, `core/yzx_*.nu`, `yzx/*.nu`; compatibility wrapper: `utils/nushell_externs.nu` | First metadata slice has landed: root help, generated externs, and menu catalog no longer probe the Nushell command tree. The old mixed `core/yazelix.nu` owner lump is now split into explicit internal families. | Keep shrinking only when the next cut deletes a real public parser or command-body owner. Do not rebuild a parallel Nu registry. | Follow-up lanes: `yazelix-2jkb.2` landed, `yazelix-2jkb.3` next |
@@ -135,12 +136,66 @@ Recent landed examples:
 - `yazelix-ulb2.3.1` deleted the real Yazi generation family
 - `yazelix-ulb2.3.2` deleted the real Zellij generation family
 
-The remaining large family in this lane is the terminal and Helix generation
-surface.
+There is no single remaining large generated-config family here anymore. After
+the Yazi, Zellij, runtime-materialization, terminal-write, and Helix-write
+cuts, the surviving work is smaller wrapper-collapse follow-up.
 
 If the end state is "Rust computes a plan, Nu still owns the same writer and
 same orchestration policy," that is still transitional code, not the target
 architecture.
+
+## 2026-04-21 Terminal And Helix Deletion-Budget Decision
+
+`yazelix-ulb2.10.1` re-audited the terminal and Helix backlog after the more
+recent Rust ownership cuts.
+
+Decision:
+
+- split terminal and Helix into separate cleanup lanes
+
+Why split:
+
+- `terminal_renderers.nu` is already gone, so the old "terminal family" framing
+  is stale
+- Rust already owns generated terminal writes and Ghostty asset generation
+- Rust already owns Helix merge policy, reveal enforcement, generated-file
+  writes, and import-notice state
+- the surviving Nushell seams are different:
+  - terminal: wrapper routing plus launch-time Ghostty reroll behavior
+  - Helix: compatibility wrapper plus path-helper duplication and doctor caller
+    dependence
+
+Exact remaining delete targets:
+
+- terminal lane:
+  - `nushell/scripts/utils/terminal_configs.nu`
+  - its launch-time dependencies in `nushell/scripts/core/launch_yazelix.nu`
+- Helix lane:
+  - `nushell/scripts/setup/helix_config_merger.nu`
+  - helper/path callers in `nushell/scripts/utils/doctor_helix_report.nu`,
+    `nushell/scripts/yzx/edit.nu`, and `nushell/scripts/yzx/import.nu`
+
+Rust dependency gate before implementation:
+
+- production crates:
+  - no new crates
+  - keep using existing `serde` and `toml` already present behind the landed
+    Helix and terminal owners
+- dev-only crates:
+  - no new crates
+- build in-house:
+  - path-helper extraction if Helix callers still need shared path truth
+  - caller reroutes for terminal launch/reroll flow
+  - any remaining user-facing summary rendering
+- rejected alternatives:
+  - new TOML merge crates for Helix
+  - terminal abstraction crates or template engines for terminal cleanup
+  - another Rust helper layer that leaves the same Nu wrappers intact
+- packaging impact:
+  - none expected beyond the already shipped `yzx_core` helper and existing
+    runtime assets
+  - no new Nix inputs or package surfaces are justified by these wrapper
+    cleanup lanes
 
 ## 2026-04-20 Generator Audit Outcome
 

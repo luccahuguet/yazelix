@@ -74,25 +74,20 @@ where that still adds product value.
 | Config, state, env, and preflight shims | `config_state.nu`, `runtime_env.nu`, `runtime_contract_checker.nu` | about `405` raw lines | Rust already owns config-state, runtime-env, and runtime-contract computation, but Nu still shapes too much request and classification logic | Rust owns request shaping and machine classification; Nu keeps only execution and user-facing rendering |
 | Doctor and install report shims | `doctor.nu`'s inline config-doctor bridge, `doctor_helix_report.nu`, `doctor_runtime_report.nu`, `install_ownership_report.nu` | smaller after the public `yzx status` Rust owner cut deleted `status_report.nu` | These surfaces still bounce structured Rust data through several Nu owners | Collapse to one report-transport seam and keep only the human rendering helpers that still add product value |
 | Runtime materialization bridge | `core/materialization_orchestrator.nu` | `129` raw lines | Rust now owns the runtime materialization lifecycle, but this bridge still shapes startup and doctor requests and renders the final Nu-side progress and error surface | Keep shrinking it until only irreducible startup and doctor glue remains |
+| Terminal materialization compatibility seam | `utils/terminal_configs.nu` plus terminal launch call sites in `core/launch_yazelix.nu` | `91` raw wrapper lines plus launch callers | Rust already owns generated terminal writes and Ghostty shader/config generation. The surviving Nu seam is terminal filtering, user-facing summary text, and the launch-time Ghostty reroll bridge. | Delete or materially shrink `terminal_configs.nu`; launch callers stop treating it as a product-side materialization owner |
+| Helix materialization compatibility seam | `setup/helix_config_merger.nu` plus helper consumers in `doctor_helix_report.nu`, `yzx/edit.nu`, and `yzx/import.nu` | `76` raw wrapper lines plus a few helper consumers | Rust already owns Helix template merge policy, reveal-binding enforcement, generated-file writes, and import-notice state. The surviving Nu seam is compatibility wrapper and path-helper duplication. | Delete or materially shrink `helix_config_merger.nu`; callers stop depending on it for generated-config ownership or canonical path truth |
 
 The point of this lane is not to move one more JSON call into Rust. The point is
 to stop keeping one Nushell owner per Rust helper command.
 
 ## Big Rust-Port Targets
 
-This is where large product-side Nushell deletion is still available.
+There is no obvious new large product-side Nushell generator family left to
+port. The recent Yazi, Zellij, runtime-materialization, terminal-write, and
+Helix-write cuts already moved the real generated-file ownership into Rust.
 
-These lanes only count if Rust becomes the full owner and deletes the Nushell
-owner end-to-end. A new Rust planner that still leaves the same Nu writer or
-orchestrator in charge is not a real cut.
-
-| Target lane | Current owners | Why it matters | What "done" means |
-| --- | --- | --- | --- |
-| Terminal and Helix materialization | `utils/terminal_configs.nu`, `utils/terminal_renderers.nu`, `setup/helix_config_merger.nu` | Meaningful deletion budget remains here, but it is spread across several file families | Only port this as a real full-owner lane; micro-ports would strand the Nu writer layer and add more bridge code |
-
-The main migration mistake to avoid is porting a planner while keeping the same
-Nu orchestrator. The right unit of progress is deleting the owner, not moving a
-subroutine.
+What survives now is smaller wrapper-collapse work, not one more honest
+full-owner Rust migration lane.
 
 Current audit outcome:
 
@@ -100,7 +95,9 @@ Current audit outcome:
 - Yazi is no longer a big-port target; `yazelix-ulb2.3.1` landed the full-owner Rust cut and deleted the real Nu owners
 - Zellij is no longer a big-port target; `yazelix-ulb2.3.2` landed the full-owner Rust cut and deleted the semantic/base/settings/plugin/generation/layout Nu owners
 - `setup/zellij_config_merger.nu` remains only as the command-surface wrapper around `zellij-materialization.generate`
-- leave the fragmented terminal and Helix family for later
+- terminal is no longer a big-port target; `terminal_renderers.nu` is already gone, generated terminal writes already live in Rust, and the remaining lane is wrapper cleanup around `terminal_configs.nu`
+- Helix is no longer a big-port target; generated merge/write/import-notice ownership already lives in Rust, and the remaining lane is wrapper/path-helper cleanup around `helix_config_merger.nu`
+- if a proposal cannot delete one of those surviving wrappers end-to-end, it is not a meaningful migration bead
 
 ## Likely Nushell Survivors
 
@@ -123,7 +120,7 @@ bridge and materialization lanes.
 
 1. Remove stale transition docs and tiny plan bridges
 2. Collapse the `yzx_core` and `yzx_control` Nu bridge owners into one minimal transport layer
-3. Choose one real full-owner materialization lane and finish it end-to-end
+3. Finish split wrapper-collapse follow-ups such as terminal and Helix before inventing a new "big Rust port" lane
 4. Continue public command ownership only where the next cut deletes a real parser or command-body owner
 
 The first public metadata cut landed under `yazelix-ulb2.7`: root help, palette
