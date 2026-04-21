@@ -165,7 +165,7 @@ This matrix is intentionally concrete. It exists to stop runtime checks from dri
   - `nushell/scripts/core/start_yazelix_inner.nu`
   - `nushell/scripts/core/launch_yazelix.nu`
   - `nushell/scripts/utils/terminal_launcher.nu`
-  - `nushell/scripts/utils/doctor.nu`
+  - `nushell/scripts/utils/doctor_fix.nu`
   - `nushell/scripts/dev/validate_installed_runtime_contract.nu`
   - `nushell/scripts/dev/validate_flake_install.nu`
 - integration tests:

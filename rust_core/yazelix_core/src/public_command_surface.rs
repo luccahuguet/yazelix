@@ -2,7 +2,6 @@ use crate::bridge::{CoreError, ErrorClass};
 use serde::Serialize;
 use serde_json::json;
 
-const CORE_DOCTOR_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "core", "yzx_doctor.nu"];
 const CORE_SESSION_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "core", "yzx_session.nu"];
 const CORE_WORKSPACE_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "core", "yzx_workspace.nu"];
 const YZX_DESKTOP_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "desktop.nu"];
@@ -253,6 +252,15 @@ const UPDATE_UPSTREAM_COMMAND: YzxCommandMetadata = metadata(
 const ENV_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[ENV_COMMAND];
 const RUN_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[RUN_COMMAND];
 const STATUS_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[STATUS_COMMAND];
+const DOCTOR_COMMAND: YzxCommandMetadata = metadata(
+    "yzx doctor",
+    "Run health checks and diagnostics",
+    YzxCommandCategory::System,
+    DOCTOR_FLAGS,
+    Some(YzxMenuCategory::System),
+    None,
+);
+const DOCTOR_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[DOCTOR_COMMAND];
 const UPDATE_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[
     UPDATE_ROOT_COMMAND,
     UPDATE_HOME_MANAGER_COMMAND,
@@ -317,6 +325,7 @@ const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
     rust_control_family("env", ENV_FAMILY_COMMANDS),
     rust_control_family("run", RUN_FAMILY_COMMANDS),
     rust_control_family("status", STATUS_FAMILY_COMMANDS),
+    rust_control_family("doctor", DOCTOR_FAMILY_COMMANDS),
     rust_control_family("home_manager", HOME_MANAGER_FAMILY_COMMANDS),
     rust_control_family("keys", KEYS_FAMILY_COMMANDS),
     rust_control_family("sponsor", SPONSOR_FAMILY_COMMANDS),
@@ -487,20 +496,6 @@ const DEV_COMMANDS: &[YzxCommandLeaf] = &[
     DEV_TEST_COMMAND,
     DEV_UPDATE_COMMAND,
 ];
-
-const DOCTOR_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx doctor",
-        "Run health checks and diagnostics",
-        YzxCommandCategory::System,
-        DOCTOR_FLAGS,
-        Some(YzxMenuCategory::System),
-        None,
-    ),
-    &[],
-    CORE_DOCTOR_RELATIVE_PATH,
-);
-const DOCTOR_COMMANDS: &[YzxCommandLeaf] = &[DOCTOR_COMMAND];
 
 const EDIT_ROOT_COMMAND: YzxCommandLeaf = leaf(
     metadata(
@@ -854,15 +849,6 @@ const INTERNAL_NU_FAMILIES: &[YzxInternalNuFamily] = &[
         true,
         true,
         YzxUnknownSubcommandBehavior::Error,
-        &[],
-    ),
-    internal_family(
-        "doctor",
-        DOCTOR_COMMANDS,
-        Some(0),
-        false,
-        false,
-        YzxUnknownSubcommandBehavior::RouteRoot,
         &[],
     ),
     internal_family(
@@ -1262,6 +1248,10 @@ mod tests {
         );
         assert_eq!(
             classify_yzx_root_route(&["run".into(), "rg".into()]).unwrap(),
+            YzxPublicRootRoute::RustControl
+        );
+        assert_eq!(
+            classify_yzx_root_route(&["doctor".into(), "--json".into()]).unwrap(),
             YzxPublicRootRoute::RustControl
         );
         assert_eq!(

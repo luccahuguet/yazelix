@@ -97,7 +97,6 @@ def validate_rust_routed_nu_modules [runtime_root: string, label: string] {
     let scripts_dir = ($runtime_root | path join "nushell" "scripts")
 
     for relative_path in [
-        ["core" "yzx_doctor.nu"]
         ["core" "yzx_session.nu"]
         ["core" "yzx_workspace.nu"]
         ["yzx" "desktop.nu"]

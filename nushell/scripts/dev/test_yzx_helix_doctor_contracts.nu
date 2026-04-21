@@ -2,7 +2,7 @@
 # Test lane: maintainer
 # Defends: docs/specs/test_suite_governance.md
 
-use ./yzx_test_helpers.nu [get_repo_root setup_managed_config_fixture]
+use ./yzx_test_helpers.nu [get_repo_root resolve_test_yzx_bin resolve_test_yzx_control_bin resolve_test_yzx_core_bin setup_managed_config_fixture]
 
 def pin_fixture_to_repo [fixture: record] {
     let repo_root = (get_repo_root)
@@ -12,14 +12,18 @@ def pin_fixture_to_repo [fixture: record] {
 }
 
 def run_doctor_command [fixture: record] {
+    let yzx_bin = (resolve_test_yzx_bin)
     with-env {
         HOME: $fixture.tmp_home
         XDG_CONFIG_HOME: ($fixture.tmp_home | path join ".config")
         YAZELIX_CONFIG_DIR: $fixture.config_dir
         YAZELIX_RUNTIME_DIR: $fixture.repo_root
         YAZELIX_STATE_DIR: ($fixture.tmp_home | path join ".local" "share" "yazelix")
+        YAZELIX_YZX_BIN: $yzx_bin
+        YAZELIX_YZX_CONTROL_BIN: (resolve_test_yzx_control_bin)
+        YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
     } {
-        ^nu -c $"use \"($fixture.yzx_script)\" *; yzx doctor --verbose" | complete
+        ^$yzx_bin doctor --verbose | complete
     }
 }
 

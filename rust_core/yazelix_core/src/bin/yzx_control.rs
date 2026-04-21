@@ -14,6 +14,7 @@ use yazelix_core::control_plane::{
     shell_command, split_run_argv,
 };
 use yazelix_core::run_yzx_config;
+use yazelix_core::run_yzx_doctor;
 use yazelix_core::run_yzx_home_manager;
 use yazelix_core::run_yzx_keys;
 use yazelix_core::run_yzx_sponsor;
@@ -25,6 +26,7 @@ fn usage() -> ! {
     eprintln!("       yzx_control run <command> [args...]");
     eprintln!("       yzx_control config [--path]");
     eprintln!("       yzx_control config reset [--yes] [--no-backup]");
+    eprintln!("       yzx_control doctor [--verbose] [--fix] [--json]");
     eprintln!("       yzx_control status [--versions] [--json]");
     eprintln!("       yzx_control home_manager [prepare] [args...]");
     eprintln!("       yzx_control keys [yzx|yazi|hx|helix|nu|nushell]");
@@ -449,6 +451,7 @@ fn main() {
             }
         }
         "config" => run_yzx_config(&argv),
+        "doctor" => run_yzx_doctor(&argv),
         "status" => run_status(&argv),
         "home_manager" => run_yzx_home_manager(&argv),
         "keys" => run_yzx_keys(&argv),

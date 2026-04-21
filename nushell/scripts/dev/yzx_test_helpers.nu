@@ -20,13 +20,31 @@ export def resolve_test_yzx_control_bin [] {
         return ($explicit | path expand)
     }
 
+    mut candidates = []
     for candidate in [
         (repo_path "rust_core" "target" "release" "yzx_control")
         (repo_path "rust_core" "target" "debug" "yzx_control")
     ] {
         if ($candidate | path exists) {
-            return $candidate
+            $candidates = ($candidates | append {
+                path: $candidate
+                modified: (ls $candidate | get 0.modified)
+            })
         }
+    }
+
+    if not ($candidates | is-empty) {
+        return (
+            $candidates
+            | reduce -f null {|candidate, best|
+                if ($best == null) or ($candidate.modified > $best.modified) {
+                    $candidate
+                } else {
+                    $best
+                }
+            }
+            | get path
+        )
     }
 
     error make {
@@ -40,13 +58,31 @@ export def resolve_test_yzx_bin [] {
         return ($explicit | path expand)
     }
 
+    mut candidates = []
     for candidate in [
         (repo_path "rust_core" "target" "debug" "yzx")
         (repo_path "rust_core" "target" "release" "yzx")
     ] {
         if ($candidate | path exists) {
-            return $candidate
+            $candidates = ($candidates | append {
+                path: $candidate
+                modified: (ls $candidate | get 0.modified)
+            })
         }
+    }
+
+    if not ($candidates | is-empty) {
+        return (
+            $candidates
+            | reduce -f null {|candidate, best|
+                if ($best == null) or ($candidate.modified > $best.modified) {
+                    $candidate
+                } else {
+                    $best
+                }
+            }
+            | get path
+        )
     }
 
     error make {

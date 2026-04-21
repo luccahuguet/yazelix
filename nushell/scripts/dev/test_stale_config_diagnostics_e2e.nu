@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Test lane: maintainer
 
-use ./yzx_test_helpers.nu [add_fixture_log log_block log_line setup_managed_config_fixture]
+use ./yzx_test_helpers.nu [add_fixture_log log_block log_line resolve_test_yzx_bin resolve_test_yzx_control_bin resolve_test_yzx_core_bin setup_managed_config_fixture]
 
 def setup_fixture [label: string, raw_toml: string] {
     let fixture = (add_fixture_log (setup_managed_config_fixture $label $raw_toml) "stale_config_diagnostics_e2e.log")
@@ -21,12 +21,16 @@ def run_startup_probe [fixture: record] {
 }
 
 def run_doctor_probe [fixture: record] {
+    let yzx_bin = (resolve_test_yzx_bin)
     with-env {
         HOME: $fixture.tmp_home
         YAZELIX_CONFIG_DIR: $fixture.config_dir
         YAZELIX_RUNTIME_DIR: $fixture.repo_root
+        YAZELIX_YZX_BIN: $yzx_bin
+        YAZELIX_YZX_CONTROL_BIN: (resolve_test_yzx_control_bin)
+        YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
     } {
-        ^nu -c $"use \"($fixture.yzx_script)\" *; yzx doctor --verbose" | complete
+        ^$yzx_bin doctor --verbose | complete
     }
 }
 

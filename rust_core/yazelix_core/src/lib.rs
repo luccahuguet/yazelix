@@ -5,6 +5,7 @@ pub mod config_commands;
 pub mod config_normalize;
 pub mod config_state;
 pub mod control_plane;
+pub mod doctor_commands;
 pub mod doctor_config_report;
 pub mod doctor_helix_report;
 pub mod doctor_runtime_report;
@@ -13,6 +14,7 @@ pub mod helix_materialization;
 pub mod home_manager_commands;
 pub mod install_ownership_env;
 pub mod install_ownership_report;
+pub mod internal_nu_runner;
 pub mod keys_commands;
 pub mod public_command_surface;
 pub mod runtime_contract;
@@ -39,6 +41,7 @@ pub use config_state::{
     ComputeConfigStateRequest, ConfigStateData, RecordConfigStateData, RecordConfigStateRequest,
     compute_config_state, record_config_state,
 };
+pub use doctor_commands::{DoctorReportData, DoctorReportSummary, run_yzx_doctor};
 pub use doctor_config_report::{
     DoctorConfigEvaluateData, DoctorConfigEvaluateRequest, evaluate_doctor_config_report,
 };

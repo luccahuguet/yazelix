@@ -2,9 +2,13 @@
 # Test lane: default
 # Defends: docs/specs/test_suite_governance.md
 
-use ../core/yazelix.nu *
-source ../utils/doctor.nu
-use ./yzx_test_helpers.nu [get_repo_config_dir resolve_test_yzx_core_bin setup_managed_config_fixture]
+use ./yzx_test_helpers.nu [
+    get_repo_config_dir
+    resolve_test_yzx_bin
+    resolve_test_yzx_control_bin
+    resolve_test_yzx_core_bin
+    setup_managed_config_fixture
+]
 
 def run_doctor_command_for_fixture [fixture: record, command: string, extra_env?: record] {
     let base_env = {
@@ -14,6 +18,8 @@ def run_doctor_command_for_fixture [fixture: record, command: string, extra_env?
         YAZELIX_CONFIG_DIR: $fixture.config_dir
         YAZELIX_RUNTIME_DIR: $fixture.repo_root
         YAZELIX_STATE_DIR: ($fixture.tmp_home | path join ".local" "share" "yazelix")
+        YAZELIX_YZX_BIN: (resolve_test_yzx_bin)
+        YAZELIX_YZX_CONTROL_BIN: (resolve_test_yzx_control_bin)
         YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
     }
     let merged_env = if ($extra_env | is-empty) {
@@ -21,9 +27,11 @@ def run_doctor_command_for_fixture [fixture: record, command: string, extra_env?
     } else {
         $base_env | merge $extra_env
     }
+    let tokens = ($command | str trim | split row " " | where {|t| ($t | str length) > 0})
+    let yzx_bin = (resolve_test_yzx_bin)
 
     with-env $merged_env {
-        ^nu -c $"use \"($fixture.yzx_script)\" *; ($command)" | complete
+        ^$yzx_bin ...($tokens | skip 1) | complete
     }
 }
 
@@ -233,7 +241,7 @@ sidebar_width_percent = 99
     $result
 }
 
-# Regression: the Rust-owned default-template finding must stay fixable through the run_doctor_checks gating path and still create yazelix.toml.
+# Regression: the Rust-owned public `yzx doctor --fix` route must still create yazelix.toml from the default template when the managed config is missing.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_doctor_fix_creates_config_from_default_template [] {
     print "🧪 Testing config doctor fixes still create yazelix.toml from the default template..."
@@ -246,44 +254,21 @@ def test_yzx_doctor_fix_creates_config_from_default_template [] {
     rm -f $fixture.config_path
 
     let result = (try {
-        let output = (with-env {
-            HOME: $fixture.tmp_home
-            XDG_CONFIG_HOME: ($fixture.tmp_home | path join ".config")
-            XDG_DATA_HOME: ($fixture.tmp_home | path join ".local" "share")
-            YAZELIX_CONFIG_DIR: $fixture.config_dir
-            YAZELIX_RUNTIME_DIR: $fixture.repo_root
-            YAZELIX_STATE_DIR: ($fixture.tmp_home | path join ".local" "share" "yazelix")
-            YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
-        } {
-            let results = [[status message details fix_available]; [
-                "info"
-                "Using default configuration (yazelix_default.toml)"
-                "Consider copying to yazelix.toml for customization"
-                true
-            ]]
-            let summary = (build_doctor_summary $results)
-            if ($summary.healthy? | default true) {
-                error make {msg: "Fixable default-template report was incorrectly treated as healthy."}
-            }
-            apply_doctor_fixes $results false
-            {
-                exit_code: 0
-                stdout: ""
-                stderr: ""
-            }
-        })
+        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --fix")
         let created = ($fixture.config_path | path exists)
         let created_body = if $created { open --raw $fixture.config_path } else { "" }
+        let stdout = ($output.stdout | str trim)
 
         if (
             ($output.exit_code == 0)
             and $created
             and ($created_body | str contains "[shell]")
+            and ($stdout | str contains "Created yazelix.toml from template")
         ) {
-            print "  ✅ The Rust-owned default-template finding is no longer treated as healthy-only noise and still drives fix_create_config"
+            print "  ✅ The Rust-owned public doctor route still drives config creation from the shipped default template"
             true
         } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) created=($created) stderr=(($output.stderr | str trim))"
+            print $"  ❌ Unexpected result: exit=($output.exit_code) created=($created) stdout=($output.stdout | str trim) stderr=(($output.stderr | str trim))"
             false
         }
     } catch {|err|

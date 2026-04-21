@@ -109,7 +109,7 @@ The current code suggests this first-pass classification:
 - `nushell/scripts/utils/environment_bootstrap.nu` shows that rebuild, refresh, and re-entry behavior are backend concerns.
 - `nushell/scripts/utils/launch_state.nu` and `nushell/scripts/utils/config_state.nu` show that reusable launch/profile semantics are part of the current backend contract.
 - `docs/specs/config_surface_and_launch_profile_contract.md` shows that the backend consumes canonical config surfaces and rebuild-relevant subsets without owning config semantics outright.
-- `rust_core/yazelix_core/src/bin/yzx_control.rs`, `rust_core/yazelix_core/src/bin/yzx_core.rs`, `nushell/scripts/yzx/launch.nu`, and the caller-local materialization uses in `nushell/scripts/core/start_yazelix_inner.nu` and `nushell/scripts/utils/doctor.nu` show that the backend currently owns activation and generated-state control-plane behavior.
+- `rust_core/yazelix_core/src/bin/yzx_control.rs`, `rust_core/yazelix_core/src/bin/yzx_core.rs`, `nushell/scripts/yzx/launch.nu`, and the caller-local materialization uses in `nushell/scripts/core/start_yazelix_inner.nu` and `nushell/scripts/utils/doctor_fix.nu` show that the backend currently owns activation and generated-state control-plane behavior.
 - `docs/specs/flake_interface_contract.md`, `docs/specs/one_command_install_ux.md`, and `shells/posix/install_yazelix.sh.in` show that install/update identity is part of the backend story too.
 
 ### Evaluation Matrix Requirement
@@ -187,7 +187,7 @@ This matrix is intentionally tentative. It exists to make the backend contract r
   - `rust_core/yazelix_core/src/bin/yzx_control.rs`
   - `nushell/scripts/yzx/launch.nu`
   - `nushell/scripts/core/start_yazelix_inner.nu`
-  - `nushell/scripts/utils/doctor.nu`
+  - `nushell/scripts/utils/doctor_fix.nu`
 - CI/spec check: `nu nushell/scripts/dev/validate_specs.nu`
 
 ## Traceability

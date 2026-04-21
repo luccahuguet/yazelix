@@ -125,7 +125,7 @@ It is not worth doing just to:
 | Root, help, version, completion, and palette inventory | Rust metadata owner plus thin Nu wrappers | Metadata/help/extern/menu ownership has started. Keep moving only if the next cut deletes a real public parser or command-body owner. |
 | `yzx env`, `yzx run`, and `yzx update*` | `yzx_control` | Use these as the first root-transition family. They already have Rust-owned parsing and execution, so the next cut can delete more of the public Nu root without dragging shell-bound launch or report-rendering work into Rust. |
 | `yzx launch`, `yzx enter`, `yzx restart` | Public Nu commands over Nu and POSIX orchestration | Possible later only if Rust would own request parsing and command-family metadata while Nu or POSIX still own the shell-heavy execution path |
-| `yzx status`, `yzx doctor` | `yzx status` is already on the Rust public path; `yzx doctor` is still a public Nu command over Rust findings plus Nu rendering, fix, and live-session checks | `yzx status` is already done. `yzx doctor` is a no-go for the next public Rust cut after `yazelix-osco.2`: keep it Nushell-owned until the surviving `core/yzx_doctor.nu`, `utils/doctor.nu`, and `doctor_report_bridge.nu` owners either disappear or split into a real machine-only family that deletes the public Nu doctor surface. |
+| `yzx status`, `yzx doctor` | `yzx status` and the public report half of `yzx doctor` are now on the Rust public path; the side-effecting `yzx doctor --fix` flow still ends in a private Nu helper | `yzx status` is already done, and `yazelix-5ewl.3` landed the honest report-only doctor owner cut by deleting the public Nu doctor surface and the shared report bridge. `yazelix-5ewl.4` then closed the Clap follow-up as a no-go because the surviving private fix helper plus the still-large internal-family rule engine are not a meaningful parser-deletion budget yet. |
 | `yzx config` | `yzx_control` | Good Rust-owned public-family cut once the config surface loader and reset semantics are both owned directly in Rust and the public Nu wrapper disappears |
 | `yzx keys` | `yzx_control` | Good Rust-owned help/discoverability cut only if the alias family and the table-style human output survive without turning into a flat wrapper or a broad formatting-crate dependency |
 | `yzx edit`, `yzx import` | Nushell | Keep Nushell-owned unless a later separate ownership argument appears |
@@ -193,7 +193,6 @@ Surviving internal Nu helper owners after the cut:
   internal families
 - `nushell/scripts/core/yzx_workspace.nu` for `yzx cwd` and `yzx reveal`
 - `nushell/scripts/core/yzx_session.nu` for `yzx restart`
-- `nushell/scripts/core/yzx_doctor.nu` for `yzx doctor`
 - `nushell/scripts/yzx/launch.nu`, `enter.nu`, `desktop.nu`, `menu.nu`,
   `popup.nu`, `edit.nu`, `tutor.nu`, `screen.nu`,
   `whats_new.nu`, `import.nu`, and `dev.nu` as explicit
@@ -207,48 +206,74 @@ Explicit no-go for the first mixed family:
   `core/start_yazelix_inner.nu`,
   `utils/runtime_env.nu`, `utils/startup_profile.nu`,
   `utils/terminal_launcher.nu`, and `shells/posix/*.sh`
-- `yzx status` is already on the public Rust control-plane path through
-  `yzx_control`, but `yzx doctor` still carries meaningful Nushell bridge,
-  rendering, and repair ownership in `core/yzx_doctor.nu`, `utils/doctor.nu`,
-  and `doctor_report_bridge.nu`
+- `yzx status` and the public report path of `yzx doctor` are now on the
+  Rust control-plane path through `yzx_control`, but `yzx doctor --fix` still
+  survives as a private Nushell helper in `utils/doctor_fix.nu`
 
-### 2026-04-21 Doctor Re-evaluation
+### 2026-04-21 Doctor Report-Owner Cut
 
-`yazelix-osco.2` is a no-go for a public Rust `yzx doctor` cut in the current
-shape.
+`yazelix-5ewl.3.1` and `yazelix-5ewl.3.2` landed the honest report-only Rust
+owner cut for `yzx doctor`.
 
-What changed first:
+What changed:
 
-- `yazelix-osco.1` deleted the old per-report shims
-- one shared bridge now lives in `utils/doctor_report_bridge.nu`
+- `yzx_control` now owns the public `yzx doctor` route, `--json`, summary
+  counts, human rendering, and live Zellij pane-orchestrator report checks
+- `core/yzx_doctor.nu` is deleted
+- `utils/doctor_report_bridge.nu` is deleted
+- `utils/doctor.nu` is deleted
+- the surviving Nushell work is a private fix helper in
+  `utils/doctor_fix.nu`
+- install-ownership request shaping lives in a focused
+  `utils/install_ownership.nu` helper instead of a mixed doctor bridge
 
-Why that is still not enough:
+Why this counts:
 
-- `core/yzx_doctor.nu` still owns the public command surface, including the
-  `--json` and `--fix` split and the fix-only env gate
-- `utils/doctor.nu` still owns the human renderer, summary logic, Zellij
-  pane-orchestrator live health checks, and all current `--fix` behavior
-- `utils/doctor_report_bridge.nu` still shapes several multi-source requests
-  before the Rust helpers run, especially install ownership, runtime preflight,
-  Helix doctor context, and config doctor inputs
+- Rust is now the single public owner for the read-only doctor/report surface
+- the deleted Nu files were the real public and bridge owners, not tiny stubs
+- the surviving Nu fix helper is private and explicitly side-effecting instead
+  of doubling as the report owner
 
-Current surviving Nushell owners after the bridge collapse:
+Surviving private Nushell owners after the cut:
 
-- `nushell/scripts/core/yzx_doctor.nu` at about `25` raw lines
-- `nushell/scripts/utils/doctor.nu` at about `339` raw lines
-- `nushell/scripts/utils/doctor_report_bridge.nu` at about `293` raw lines
+- `nushell/scripts/utils/doctor_fix.nu` for the side-effecting repair flow
+- `nushell/scripts/utils/install_ownership.nu` for focused install-ownership
+  request shaping outside the doctor report owner
 
 Decision:
 
-- do not start a public Rust or Clap-owned `yzx doctor` lane now
-- a Rust front door here would still sit above a large surviving Nushell doctor
-  tree instead of deleting it
-- reopen only if Yazelix can either:
-  - split out a real machine-only doctor family that deletes the public Nu
-    doctor surface end-to-end
-  - or delete most of `utils/doctor.nu` and `doctor_report_bridge.nu` so Rust
-    can become the single public owner without re-porting prose and fix flows
-    by habit
+- the public report-owner cut is now landed
+- do not treat this as automatic Clap approval yet
+- `yazelix-5ewl.4` is the follow-up bead that decides whether the remaining
+  private fix helper plus the broader internal-family routing surface are now
+  small enough for a meaningful Clap decision
+
+### 2026-04-21 Post-`yazelix-5ewl.4` Clap Re-evaluation
+
+`yazelix-5ewl.4` closes the current Clap-prep lane as a no-go for now.
+
+Why:
+
+- the public Rust root is already small and schema-driven
+- the surviving internal-Nu families are `cwd`, `desktop`, `dev`, `edit`,
+  `enter`, `import`, `launch`, `menu`, `popup`, `restart`, `reveal`,
+  `screen`, `tutor`, and `whats_new`
+- most of those families are still intentionally Nushell-owned because they are
+  shell-heavy, process-heavy, or mostly product UX
+- adding `clap` now would mostly replace a small amount of family
+  classification logic while keeping or re-encoding the same internal-family
+  table and family-specific fallback behavior
+
+Decision:
+
+- do not open a Clap implementation lane now
+- reopen only if a future delete-first cut removes another surviving internal
+  family owner and materially shrinks `INTERNAL_NU_FAMILIES`
+- the best remaining public-family deletion candidate is
+  `core/yzx_workspace.nu` (`yzx cwd` and `yzx reveal`), because it removes two
+  surviving root families at once and aligns with the Rust-owned
+  pane-orchestrator/session-truth direction instead of wrapping the same Nu
+  tree
 
 ### Required Deletion Budget
 
@@ -268,7 +293,7 @@ owner clusters:
 - the public `launch` / `enter` / `restart` family
 - the public `status` / `doctor` family
 - the surviving bridge and report owner cluster around `config_parser.nu`,
-  `doctor_report_bridge.nu`, and `doctor.nu`
+  `install_ownership.nu`, and `doctor_fix.nu`
 
 If a proposal keeps those surfaces and merely adds a Rust root dispatcher above
 them, reject it.

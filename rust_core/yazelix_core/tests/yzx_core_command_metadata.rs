@@ -42,6 +42,7 @@ fn command_metadata_externs_include_rust_only_leaves_once() {
     );
     assert!(extern_content.contains("--no-shell(-n)"));
     assert!(extern_content.contains("export extern \"yzx config\""));
+    assert!(extern_content.contains("export extern \"yzx doctor\""));
     assert!(extern_content.contains("export extern \"yzx keys\""));
     assert!(extern_content.contains("export extern \"yzx keys helix\""));
     assert!(extern_content.contains("export extern \"yzx sponsor\""));
@@ -68,6 +69,7 @@ fn command_metadata_help_prints_public_yzx_surface() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("Commands:"));
     assert!(stdout.contains("yzx config"));
+    assert!(stdout.contains("yzx doctor"));
     assert!(stdout.contains("yzx env"));
     assert!(stdout.contains("yzx keys"));
     assert!(stdout.contains("yzx run"));

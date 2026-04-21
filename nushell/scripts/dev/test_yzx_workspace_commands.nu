@@ -3,7 +3,7 @@
 # Defends: docs/specs/test_suite_governance.md
 # Defends: docs/workspace_session_contract.md
 
-use ./yzx_test_helpers.nu [CLEAN_ZELLIJ_ENV_PREFIX get_repo_config_dir get_repo_root repo_path resolve_test_yzx_bin setup_managed_config_fixture]
+use ./yzx_test_helpers.nu [CLEAN_ZELLIJ_ENV_PREFIX get_repo_config_dir get_repo_root repo_path resolve_test_yzx_bin resolve_test_yzx_control_bin resolve_test_yzx_core_bin setup_managed_config_fixture]
 use ../integrations/zellij.nu [retarget_workspace_for_path run_pane_orchestrator_command_raw]
 
 def run_nu_snippet [snippet: string, extra_env?: record] {
@@ -1390,8 +1390,12 @@ def test_doctor_fix_repairs_missing_managed_generated_layout [] {
     let fixture = (setup_launch_path_fixture "yazelix_doctor_fix_missing_managed_layout" false false)
 
     let result = (try {
-        let output = (with-env $fixture.env {
-            ^env -u ZELLIJ -u ZELLIJ_SESSION_NAME -u ZELLIJ_PANE_ID -u ZELLIJ_TAB_NAME -u ZELLIJ_TAB_POSITION nu -c $"cd \"($fixture.tmp_home)\"; use \"($fixture.yzx_script)\" *; yzx doctor --fix --verbose" | complete
+        let output = (with-env ($fixture.env | merge {
+            YAZELIX_YZX_BIN: (resolve_test_yzx_bin)
+            YAZELIX_YZX_CONTROL_BIN: (resolve_test_yzx_control_bin)
+            YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
+        }) {
+            ^env -u ZELLIJ -u ZELLIJ_SESSION_NAME -u ZELLIJ_PANE_ID -u ZELLIJ_TAB_NAME -u ZELLIJ_TAB_POSITION (resolve_test_yzx_bin) doctor --fix --verbose | complete
         })
         let stdout = ($output.stdout | str trim)
         let repaired_message = (
