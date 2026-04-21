@@ -1,4 +1,4 @@
-# Yazelix v15.3
+# Yazelix v15.4
 
 <div align="center">
   <img src="assets/logo.png" alt="Yazelix Logo" width="200"/>
@@ -86,14 +86,14 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 If Yazelix is useful to you, you can support its development on [GitHub Sponsors](https://github.com/sponsors/luccahuguet)
 
 <!-- BEGIN GENERATED README LATEST SERIES -->
-## Latest Tagged Release: v15.3
+## Latest Tagged Release: v15.4
 
-v15.3 Rust-owns more of the core and starts much faster
+v15.4 Rust-owns public yzx families and deletes bridge seams
 
-- Moved more of the typed core into Rust: `yzx` root metadata, `yzx env`, `yzx run`, `yzx update*`, `yzx status`, doctor findings, startup preflight, runtime-env planning, and runtime-materialization planning now route through `yzx_core` or `yzx_control`.
-- Rust now owns Yazi, Zellij, terminal, Helix, and runtime-materialization generation or write lifecycles, while the old Nushell wrapper owners were deleted or collapsed.
-- Startup got much faster on the same maintainer machine: 75.6% faster warm current-terminal, 95.6% faster cold clear-cache, 55.6% faster desktop launch, and 59.0% faster managed new-window launch.
-- Rewrote the Rust migration inventory around the real remaining Nushell seams, so follow-up work now targets bridge collapse and honest shell-bound survivors instead of stale transition docs.
+- Moved more public `yzx` command families onto Rust-owned execution paths, including `yzx config`, `yzx home_manager`, `yzx why`, `yzx sponsor`, `yzx keys`, `yzx doctor`, `yzx cwd`, and `yzx reveal`.
+- Collapsed more transitional Nushell bridge owners: the extern bridge, preflight bridge, runtime-materialization bridge, doctor report cluster, install-ownership bridge, and the surviving Yazi/Zellij compatibility wrappers are gone or demoted.
+- Centralized public command metadata and route planning around the Rust shared command-surface schema so help, menu, extern, and routing behavior stay aligned while duplicated hand-written tables shrink.
+- Updated the Rust migration and spec inventories around the real remaining seams, with the next planning track focused on canonical contracts, stronger test traceability, and a ranked delete-first Nushell budget.
 
 For exact tagged release notes, see [CHANGELOG](./CHANGELOG.md) or run `yzx whats_new` after installing that release
 For the longer project story, see [Version History](./docs/history.md)
