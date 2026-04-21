@@ -3,9 +3,8 @@
 # Defends: docs/specs/test_suite_governance.md
 
 use ./yzx_test_helpers.nu [get_repo_config_dir repo_path resolve_test_yzx_core_bin setup_managed_config_fixture]
-use ./materialization_dev_helpers.nu [generate_merged_yazi_config generate_merged_zellij_config]
+use ./materialization_dev_helpers.nu [generate_merged_yazi_config generate_merged_zellij_config regenerate_runtime_configs]
 use ../utils/config_state.nu [record_materialized_state]
-use ../core/materialization_orchestrator.nu [regenerate_runtime_configs]
 use ../core/launch_yazelix.nu [generate_all_terminal_configs]
 use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface resolve_yzx_core_helper_path run_yzx_core_request_json_command]
 use ../utils/safe_remove.nu remove_path_within_root

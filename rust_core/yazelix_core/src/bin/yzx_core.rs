@@ -1,6 +1,9 @@
 use lexopt::prelude::*;
 use serde::de::DeserializeOwned;
 use std::path::PathBuf;
+use yazelix_core::control_plane::{
+    config_override_from_env, runtime_materialization_plan_request_from_env,
+};
 use yazelix_core::{
     ComputeConfigStateRequest, CoreError, DoctorConfigEvaluateRequest,
     DoctorRuntimeEvaluateRequest, ErrorClass, GhosttyMaterializationRequest,
@@ -672,25 +675,23 @@ fn run_runtime_env_compute(mut parser: lexopt::Parser) -> Result<(), CoreError> 
 }
 
 fn run_runtime_materialization_plan(mut parser: lexopt::Parser) -> Result<(), CoreError> {
-    let request_json = take_request_json(&mut parser)?;
-    let request: RuntimeMaterializationPlanRequest =
-        deserialize_json_request(&request_json, "runtime-materialization.plan")?;
+    let request =
+        take_runtime_materialization_plan_request(&mut parser, "runtime-materialization.plan")?;
     let data = plan_runtime_materialization(&request)?;
     write_success_envelope(RUNTIME_MATERIALIZATION_PLAN_COMMAND, data)
 }
 
 fn run_runtime_materialization_materialize(mut parser: lexopt::Parser) -> Result<(), CoreError> {
-    let request_json = take_request_json(&mut parser)?;
-    let request: RuntimeMaterializationPlanRequest =
-        deserialize_json_request(&request_json, "runtime-materialization.materialize")?;
+    let request = take_runtime_materialization_plan_request(
+        &mut parser,
+        "runtime-materialization.materialize",
+    )?;
     let data = materialize_runtime_state(&request)?;
     write_success_envelope(RUNTIME_MATERIALIZATION_MATERIALIZE_COMMAND, data)
 }
 
 fn run_runtime_materialization_repair(mut parser: lexopt::Parser) -> Result<(), CoreError> {
-    let request_json = take_request_json(&mut parser)?;
-    let request: RuntimeMaterializationRepairEvaluateRequest =
-        deserialize_json_request(&request_json, "runtime-materialization.repair")?;
+    let request = take_runtime_materialization_repair_request(&mut parser)?;
     let data = repair_runtime_materialization(&request)?;
     write_success_envelope(RUNTIME_MATERIALIZATION_REPAIR_COMMAND, data)
 }
@@ -771,6 +772,81 @@ fn take_request_json(parser: &mut lexopt::Parser) -> Result<String, CoreError> {
     }
 
     request_json.ok_or_else(|| CoreError::usage("Missing --request-json payload"))
+}
+
+fn take_runtime_materialization_plan_request(
+    parser: &mut lexopt::Parser,
+    kind: &str,
+) -> Result<RuntimeMaterializationPlanRequest, CoreError> {
+    let mut request_json: Option<String> = None;
+    let mut from_env = false;
+
+    while let Some(arg) = parser
+        .next()
+        .map_err(|error| CoreError::usage(error.to_string()))?
+    {
+        match arg {
+            Long("request-json") => request_json = Some(parser_string_value(parser)?),
+            Long("from-env") => from_env = true,
+            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
+        }
+    }
+
+    match (from_env, request_json) {
+        (true, None) => {
+            runtime_materialization_plan_request_from_env(config_override_from_env().as_deref())
+        }
+        (false, Some(raw)) => deserialize_json_request(&raw, kind),
+        (true, Some(_)) => Err(CoreError::usage(
+            "Use either --from-env or --request-json for runtime materialization, not both.",
+        )),
+        (false, None) => Err(CoreError::usage(
+            "Missing --request-json payload or --from-env for runtime materialization.",
+        )),
+    }
+}
+
+fn take_runtime_materialization_repair_request(
+    parser: &mut lexopt::Parser,
+) -> Result<RuntimeMaterializationRepairEvaluateRequest, CoreError> {
+    let mut request_json: Option<String> = None;
+    let mut from_env = false;
+    let mut force = false;
+
+    while let Some(arg) = parser
+        .next()
+        .map_err(|error| CoreError::usage(error.to_string()))?
+    {
+        match arg {
+            Long("request-json") => request_json = Some(parser_string_value(parser)?),
+            Long("from-env") => from_env = true,
+            Long("force") => force = true,
+            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
+        }
+    }
+
+    match (from_env, request_json) {
+        (true, None) => Ok(RuntimeMaterializationRepairEvaluateRequest {
+            plan: runtime_materialization_plan_request_from_env(
+                config_override_from_env().as_deref(),
+            )?,
+            force,
+        }),
+        (false, Some(raw)) => {
+            if force {
+                return Err(CoreError::usage(
+                    "Use --force only with --from-env for runtime materialization repair.",
+                ));
+            }
+            deserialize_json_request(&raw, "runtime-materialization.repair")
+        }
+        (true, Some(_)) => Err(CoreError::usage(
+            "Use either --from-env or --request-json for runtime materialization repair, not both.",
+        )),
+        (false, None) => Err(CoreError::usage(
+            "Missing --request-json payload or --from-env for runtime materialization repair.",
+        )),
+    }
 }
 
 fn deserialize_json_request<T: DeserializeOwned>(raw: &str, kind: &str) -> Result<T, CoreError> {

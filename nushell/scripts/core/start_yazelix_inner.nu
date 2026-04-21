@@ -6,10 +6,12 @@ use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS, YAZELIX_LOGS_DIR]
 use ../utils/ascii_art.nu get_yazelix_colors
 use ../utils/common.nu [require_yazelix_runtime_dir resolve_zellij_default_shell]
 use ../utils/failure_classes.nu [format_failure_classification]
-use ./materialization_orchestrator.nu regenerate_runtime_configs
 use ../utils/startup_profile.nu [profile_startup_step]
 use ../utils/upgrade_summary.nu [maybe_show_first_run_upgrade_summary]
+use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
 use ../setup/welcome.nu [show_welcome build_welcome_message]
+
+const RUNTIME_MATERIALIZATION_MATERIALIZE_COMMAND = "runtime-materialization.materialize"
 
 def require_existing_directory [path_value: string, label: string] {
     let resolved = ($path_value | path expand)
@@ -38,6 +40,22 @@ def require_existing_layout [layout_path: string] {
     }
 
     $resolved
+}
+
+def regenerate_runtime_configs [runtime_dir: string, --quiet] {
+    let result = (profile_startup_step "materialization_orchestrator" "materialize_runtime_state" {
+        (run_yzx_core_json_command
+            $runtime_dir
+            (build_default_yzx_core_error_surface)
+            [$RUNTIME_MATERIALIZATION_MATERIALIZE_COMMAND "--from-env"]
+            "Yazelix Rust runtime-materialization materialize helper returned invalid JSON.")
+    })
+
+    if (not $quiet) and (($result.plan.status? | default "") != "noop") {
+        print "✅ Generated runtime state materialized."
+    }
+
+    $result.plan
 }
 
 def main [cwd_override?: string, layout_override?: string, --verbose] {

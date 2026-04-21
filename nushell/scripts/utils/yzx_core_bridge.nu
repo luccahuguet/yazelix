@@ -144,7 +144,18 @@ export def render_yzx_core_error [error_surface: record, stderr: string] {
     let details = ($error.details? | default {})
 
     if ($error_class == "config") and ($code == "unsupported_config") and (($details | describe) | str contains "record") {
-        render_startup_config_error ($details | upsert config_path ($error_surface.display_config_path? | default ""))
+        let display_config_path = (
+            $error_surface.display_config_path?
+            | default ""
+            | into string
+            | str trim
+        )
+        let report_details = if ($display_config_path | is-empty) {
+            $details
+        } else {
+            $details | upsert config_path $display_config_path
+        }
+        render_startup_config_error $report_details
     } else {
         let failure_class = if $error_class == "config" { "config" } else { "host-dependency" }
         [

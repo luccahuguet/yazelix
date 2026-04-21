@@ -109,7 +109,7 @@ wrappers.
 | Bridge transport and error shaping | `yzx_core_bridge.nu` plus the small per-command report bridges | High-leverage deletion lane with relatively low semantic risk. The generic helper transport no longer lives inside `config_parser.nu`. | Keep one minimal transport layer, not one policy-bearing Nu owner per Rust helper command. | Landed under `yazelix-057w` |
 | Config, state, env, and preflight shims | `config_parser.nu`, `config_state.nu`, `runtime_env.nu`, plus direct preflight calls in `core/start_yazelix.nu`, `core/launch_yazelix.nu`, and `yzx/launch.nu` | Rust already owns the typed computation. `runtime_contract_checker.nu` is gone, `config_parser.nu` is config-normalize specific, and the startup/launch owners now call the Rust preflight helpers directly. | Keep shrinking request shaping and machine classification where Rust can become the single typed owner. Leave only execution and final user rendering in Nu. | Landed under `yazelix-0ksx` |
 | Doctor and install report bridges | shared transport in `doctor_report_bridge.nu`; surviving human renderer and fix surface in `doctor.nu` | The old per-report shims are gone. Rust already owns the structured findings; the remaining Nu work is one shared transport seam plus the human renderer, live Zellij plugin health checks, and repair flow. | Keep the bridge collapsed to one shared report transport seam. `yazelix-osco.2` records a no-go for a public Rust doctor cut in the current shape because the surviving Nu owners still dominate the family. | `yazelix-osco.1` landed the bridge collapse; `yazelix-osco.2` recorded the no-go decision |
-| Runtime materialization lifecycle | Rust owners: `runtime-materialization.plan`, `runtime-materialization.materialize`, `runtime-materialization.repair`; surviving Nu bridge: `core/materialization_orchestrator.nu` | Landed full-owner cut; the remaining Nu file is only env/request shaping plus startup and doctor progress glue | Delete the shared Nu bridge if `q0o9.2` exposes Rust-owned env/request materialization entrypoints. Do not inline the same request builder into multiple Nu owners. | Full-owner cut landed under `yazelix-ulb2.9`; bridge deletion budget recorded under `yazelix-q0o9.1` |
+| Runtime materialization lifecycle | Rust owners: `runtime-materialization.plan`, `runtime-materialization.materialize`, `runtime-materialization.repair`, including `--from-env` request construction; caller-local Nu progress/error rendering in startup and doctor | Landed full-owner cut; the shared Nu bridge is gone and Rust now owns env-derived request construction | Keep Rust as the lifecycle and request-construction owner. Do not recreate a shared Nu materialization bridge. | Full-owner cut landed under `yazelix-ulb2.9`; shared bridge deletion landed under `yazelix-q0o9.2` |
 | Yazi materialization family | Rust owner: `yazi-materialization.generate`; remaining Nu use is dev-only direct invocation | The real Nu owner family is gone, and the surviving setup wrapper is deleted. | Keep Rust as the single Yazi materialization owner. Do not recreate a public or product-side compatibility wrapper. Dependency gate for the landed cut: in-house logic plus existing `serde` and `toml`; no new crates. | Landed under `yazelix-ulb2.3.1`; wrapper deletion landed under `yazelix-vf0u.1` |
 | Zellij materialization family | Rust owner: `zellij-materialization.generate`; remaining Nu use is direct product or dev invocation | The real Nu owner family is gone, the setup wrapper is deleted, and Rust still owns base-config selection, semantic KDL extraction, layout rendering, plugin wasm sync, permission migration, popup-runner cleanup, and generation-state reuse. | Keep Rust as the single Zellij materialization owner. Do not recreate a public or product-side compatibility wrapper. Dependency gate for the landed cut: in-house logic plus existing `serde`, `serde_json`, `toml`, `sha2`, `thiserror`, and `lexopt`; no new crates. | Landed under `yazelix-ulb2.3.2`; wrapper deletion landed under `yazelix-vf0u.2` |
 | Terminal launch-time compatibility seam | Standalone wrapper deleted; surviving Nu helpers live in `core/launch_yazelix.nu` | Rust already owns generated terminal writes in `terminal_materialization.rs` plus Ghostty config/shader generation in `ghostty_materialization.rs`. The surviving Nu seam is launch-time supported-terminal filtering, user-facing summary text, and the Ghostty reroll bridge. | Treat this as a landed delete-wrapper lane, not a fresh full-owner port. Keep only irreducible launch-time compatibility logic in `launch_yazelix.nu` and do not recreate a separate terminal materialization owner. Dependency gate: no new crates; keep using the existing Rust owners and in-house helper logic. | Landed under `yazelix-ulb2.10.3` |
@@ -161,14 +161,14 @@ became the lifecycle owner for runtime materialization.
 
 Decision:
 
-- `core/materialization_orchestrator.nu` can die, but only if `yazelix-q0o9.2`
-  moves the environment-derived materialization request construction into Rust
-  entrypoints
+- `core/materialization_orchestrator.nu` can die, and `yazelix-q0o9.2` deletes
+  it by moving environment-derived materialization request construction into
+  Rust entrypoints
 - do not delete it by copying `build_runtime_materialization_context` into
   `start_yazelix_inner.nu`, `doctor.nu`, and `doctor_report_bridge.nu`
 - keep the existing startup profile boundary name
-  `materialization_orchestrator/materialize_runtime_state` comparable even if
-  the file disappears
+  `materialization_orchestrator/materialize_runtime_state` comparable even
+  after the file disappears
 
 Why it can die:
 
@@ -350,13 +350,14 @@ What moved to Rust:
 
 What stayed in Nushell:
 
-- `core/materialization_orchestrator.nu` as a thin startup and doctor bridge
 - startup profile wrapping
-- final Nu-facing progress and remediation rendering
+- final Nu-facing progress and remediation rendering in the startup and doctor
+  callers
 
 What was deleted:
 
 - `nushell/scripts/utils/generated_runtime_state.nu`
+- `nushell/scripts/core/materialization_orchestrator.nu`
 - the old private helper split around `runtime-materialization.apply` and
   `runtime-materialization.repair-evaluate`
 

@@ -15,13 +15,13 @@ use common.nu [
 use config_parser.nu parse_yazelix_config
 use config_surfaces.nu get_main_user_config_path
 use constants.nu DEFAULT_TERMINAL
-use ../core/materialization_orchestrator.nu compute_runtime_materialization_plan
-use ./yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_request_json_command]
+use ./yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command run_yzx_core_request_json_command]
 
 const INSTALL_OWNERSHIP_EVALUATE_COMMAND = "install-ownership.evaluate"
 const DOCTOR_CONFIG_EVALUATE_COMMAND = "doctor-config.evaluate"
 const DOCTOR_HELIX_EVALUATE_COMMAND = "doctor-helix.evaluate"
 const DOCTOR_RUNTIME_EVALUATE_COMMAND = "doctor-runtime.evaluate"
+const RUNTIME_MATERIALIZATION_PLAN_COMMAND = "runtime-materialization.plan"
 
 def get_xdg_config_home [] {
     let configured = (
@@ -171,7 +171,11 @@ def collect_runtime_doctor_findings [install_report: record] {
         let terminals = ($config.terminals? | default [$DEFAULT_TERMINAL] | uniq)
 
         let layout_result = try {
-            let plan = (compute_runtime_materialization_plan $runtime_dir)
+            let plan = (run_yzx_core_json_command
+                $runtime_dir
+                (build_default_yzx_core_error_surface)
+                [$RUNTIME_MATERIALIZATION_PLAN_COMMAND "--from-env"]
+                "Yazelix Rust runtime-materialization helper returned invalid JSON.")
             let candidate = (
                 $plan.zellij_layout_path?
                 | default ""

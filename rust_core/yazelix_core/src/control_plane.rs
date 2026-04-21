@@ -91,6 +91,12 @@ pub fn runtime_dir_from_env() -> Result<PathBuf, CoreError> {
     Ok(PathBuf::from(trimmed))
 }
 
+pub fn config_override_from_env() -> Option<String> {
+    std::env::var("YAZELIX_CONFIG_OVERRIDE")
+        .ok()
+        .filter(|s| !s.trim().is_empty())
+}
+
 pub fn read_yazelix_version_from_runtime(runtime_dir: &Path) -> Result<String, CoreError> {
     let constants_path = runtime_dir
         .join("nushell")

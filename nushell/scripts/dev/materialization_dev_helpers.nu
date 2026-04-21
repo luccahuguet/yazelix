@@ -2,14 +2,29 @@
 # Direct Rust-owned materialization helpers for maintainer tooling and tests.
 
 use ../utils/common.nu get_yazelix_state_dir
-use ../utils/yzx_core_bridge.nu [build_record_yzx_core_error_surface run_yzx_core_json_command]
+use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface build_record_yzx_core_error_surface run_yzx_core_json_command]
 use ../utils/config_surfaces.nu load_active_config_surface
 
 const YAZI_MATERIALIZATION_COMMAND = "yazi-materialization.generate"
 const ZELLIJ_MATERIALIZATION_COMMAND = "zellij-materialization.generate"
+const RUNTIME_MATERIALIZATION_MATERIALIZE_COMMAND = "runtime-materialization.materialize"
 
 def build_error_surface [config_surface: record] {
     build_record_yzx_core_error_surface {config_file: $config_surface.config_file}
+}
+
+export def regenerate_runtime_configs [runtime_dir: string, --quiet] {
+    let result = (run_yzx_core_json_command
+        $runtime_dir
+        (build_default_yzx_core_error_surface)
+        [$RUNTIME_MATERIALIZATION_MATERIALIZE_COMMAND "--from-env"]
+        "Yazelix Rust runtime-materialization materialize helper returned invalid JSON.")
+
+    if (not $quiet) and (($result.plan.status? | default "") != "noop") {
+        print "✅ Generated runtime state materialized."
+    }
+
+    $result.plan
 }
 
 export def generate_merged_yazi_config [

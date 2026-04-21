@@ -7,14 +7,15 @@ use common.nu [
     get_yazelix_state_dir
     require_yazelix_runtime_dir
 ]
-use ./yzx_core_bridge.nu [build_record_yzx_core_error_surface run_yzx_core_json_command]
+use ./yzx_core_bridge.nu [build_default_yzx_core_error_surface build_record_yzx_core_error_surface run_yzx_core_json_command]
 use config_surfaces.nu [get_main_user_config_path load_active_config_surface]
 use doctor_helix.nu fix_helix_runtime_conflicts
 use doctor_report_bridge.nu collect_structured_doctor_findings
-use ../core/materialization_orchestrator.nu repair_generated_runtime_state
+use failure_classes.nu format_failure_classification
 use ../integrations/zellij.nu get_active_tab_session_state
 
 const ZELLIJ_MATERIALIZATION_COMMAND = "zellij-materialization.generate"
+const RUNTIME_MATERIALIZATION_REPAIR_COMMAND = "runtime-materialization.repair"
 
 def seed_yazelix_plugin_permissions [] {
     let runtime_dir = (require_yazelix_runtime_dir)
@@ -38,6 +39,60 @@ def seed_yazelix_plugin_permissions [] {
     ] "Yazelix Rust zellij-materialization helper returned invalid JSON." | ignore
     {
         permissions_cache_path: ($env.HOME | path join ".cache" "zellij" "permissions.kdl")
+    }
+}
+
+def repair_generated_runtime_state [
+    --force(-f)    # Force regeneration even when config/runtime inputs already match
+    --verbose(-v)  # Print concise generated-state repair progress
+] {
+    let runtime_dir = (require_yazelix_runtime_dir)
+    mut helper_args = [$RUNTIME_MATERIALIZATION_REPAIR_COMMAND "--from-env"]
+    if $force {
+        $helper_args = ($helper_args | append "--force")
+    }
+
+    let data = (run_yzx_core_json_command
+        $runtime_dir
+        (build_default_yzx_core_error_surface)
+        $helper_args
+        "Yazelix Rust runtime-materialization repair helper returned invalid JSON.")
+    let repair = ($data.repair? | default {})
+
+    if (($data.status? | default "") == "noop") {
+        for line in ($repair.lines? | default []) {
+            print $line
+        }
+        return {
+            status: "noop"
+            applied_state: ($data.plan? | default {})
+        }
+    }
+
+    if $verbose {
+        let progress_message = ($repair.progress_message? | default "")
+        if ($progress_message | is-not-empty) {
+            print $progress_message
+        }
+        let detail = ($repair.missing_artifacts_detail_line? | default "")
+        if ($detail | is-not-empty) {
+            print $detail
+        }
+    }
+
+    let materialization = ($data.materialization? | default null)
+    if $materialization == null {
+        let classification = (format_failure_classification "generated-state" "Run `yzx doctor` to inspect the generated-state contract, then rerun the repair after fixing the reported problem.")
+        error make {msg: $"Rust runtime-materialization repair returned no materialization result for a non-noop repair.\n($classification)"}
+    }
+
+    for line in ($repair.success_lines? | default []) {
+        print $line
+    }
+
+    {
+        status: ($data.status? | default "repaired")
+        applied_state: ($materialization.plan? | default {})
     }
 }
 

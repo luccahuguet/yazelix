@@ -244,11 +244,27 @@ def trim_output_tail [text: string, max_lines: int] {
 }
 
 def run_update_canary [canary: record] {
-    let helper_script = ((require_yazelix_repo_root) | path join "nushell" "scripts" "core" "materialization_orchestrator.nu")
-    let repair_command = $"use \"($helper_script)\" [repair_generated_runtime_state]; repair_generated_runtime_state --force --verbose"
+    let repo_root = require_yazelix_repo_root
+    let bridge_script = ($repo_root | path join "nushell" "scripts" "utils" "yzx_core_bridge.nu")
+    let config_parent = ($canary.config_path | path dirname)
+    let config_dir = if (($config_parent | path basename) == "user_configs") {
+        $config_parent | path dirname
+    } else {
+        $config_parent
+    }
+    let repair_command = (
+        [
+            $"use \"($bridge_script)\" [build_default_yzx_core_error_surface run_yzx_core_json_command]"
+            $"run_yzx_core_json_command \"($repo_root)\" \(build_default_yzx_core_error_surface\) ['runtime-materialization.repair' '--from-env' '--force'] 'Yazelix Rust runtime-materialization repair helper returned invalid JSON.' | ignore"
+        ] | str join "\n"
+    )
 
     let result = (do {
-        with-env {YAZELIX_CONFIG_OVERRIDE: $canary.config_path} {
+        with-env {
+            YAZELIX_CONFIG_OVERRIDE: $canary.config_path
+            YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
             ^nu -c $repair_command | complete
         }
     })

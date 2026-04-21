@@ -7,7 +7,7 @@ use yazelix_core::compute_runtime_env;
 use yazelix_core::compute_status_report;
 use yazelix_core::config_normalize::ConfigDiagnosticReport;
 use yazelix_core::control_plane::{
-    basename_shell, config_dir_from_env, default_shell_from_config,
+    basename_shell, config_dir_from_env, config_override_from_env, default_shell_from_config,
     load_normalized_config_for_control, parse_env_cli_args, parse_status_cli_args,
     read_yazelix_version_from_runtime, run_child_in_runtime_env, runtime_dir_from_env,
     runtime_env_request, runtime_materialization_plan_request_from_env, setpriv_or_sh_exec,
@@ -279,12 +279,6 @@ fn print_control_error(err: &CoreError) {
     if !remediation.is_empty() {
         eprintln!("{remediation}");
     }
-}
-
-fn config_override_from_env() -> Option<String> {
-    std::env::var("YAZELIX_CONFIG_OVERRIDE")
-        .ok()
-        .filter(|s| !s.trim().is_empty())
 }
 
 fn run_env(args: &[String]) -> Result<i32, CoreError> {

@@ -70,21 +70,21 @@ Current owner split:
 - Rust `yzx_control` owns the already migrated `env`, `run`, and `update*`
   public control-plane leaves
 - Nushell and POSIX shell still own launch, startup, terminal dispatch, startup
-  profiles, and the remaining generated-state orchestration
+  profiles, and caller-local generated-state progress or error rendering
 
 This path is no longer "Nushell owns runtime activation." It is a mixed owner
-path with a clear next delete target: the surviving Nu bridge and materialization
-owners.
+path with a clear next delete target: the surviving Nu bridge owners.
 
 ### Generated Runtime Materialization
 
-Primary current owner: Rust with a thin Nu bridge
+Primary current owner: Rust with caller-local Nu progress and error rendering
 
 - Rust now owns runtime materialization planning, generation, recorded-state
-  finalization, and repair
+  finalization, repair, and env-derived request construction
 - `generated_runtime_state.nu` is deleted
-- Nushell keeps only the thin `core/materialization_orchestrator.nu` bridge for
-  startup profiling, doctor integration, and final human-facing rendering
+- `core/materialization_orchestrator.nu` is deleted
+- Nushell keeps startup profiling, doctor integration, and final human-facing
+  rendering in the actual caller files
 
 This is no longer the biggest remaining mixed owner. The remaining product-side
 deletion budget has shifted to the broader bridge layer and the fragmented
@@ -139,8 +139,8 @@ That means:
 
 - `config_parser.nu` and the per-command bridge files should stop surviving as a
   second ownership layer
-- `core/materialization_orchestrator.nu` should stay thin and not regrow into a
-  second runtime materialization owner
+- no shared Nu runtime materialization bridge should return; startup and doctor
+  callers should stay caller-local around the Rust owner
 - the terminal and Helix generation families should be judged by deletion
   budget, not by helper count
 
