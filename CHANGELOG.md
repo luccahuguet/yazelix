@@ -4,12 +4,15 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
-Post-v15.2 work in progress
+v15.3 Rust-owns more of the core and starts much faster
 
 Upgrade impact: no user action required
 
 Highlights:
-- Reserved for post-release changes after v15.2 lands.
+- Moved more of the typed core into Rust: `yzx` root metadata, `yzx env`, `yzx run`, `yzx update*`, `yzx status`, doctor findings, startup preflight, runtime-env planning, and runtime-materialization planning now route through `yzx_core` or `yzx_control`
+- Rust now owns Yazi, Zellij, terminal, Helix, and runtime-materialization generation or write lifecycles, while the old Nushell wrapper owners were deleted or collapsed
+- Startup got much faster on the same maintainer machine: 75.6% faster warm current-terminal, 95.6% faster cold clear-cache, 55.6% faster desktop launch, and 59.0% faster managed new-window launch
+- Rewrote the Rust migration inventory around the real remaining Nushell seams, so follow-up work now targets bridge collapse and honest shell-bound survivors instead of stale transition docs
 
 ## v15.2 - 2026-04-19
 
