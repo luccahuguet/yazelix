@@ -3,7 +3,6 @@ use serde::Serialize;
 use serde_json::json;
 
 const CORE_SESSION_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "core", "yzx_session.nu"];
-const CORE_WORKSPACE_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "core", "yzx_workspace.nu"];
 const YZX_DESKTOP_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "desktop.nu"];
 const YZX_DEV_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "dev.nu"];
 const YZX_EDIT_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "edit.nu"];
@@ -322,8 +321,10 @@ const WHY_COMMAND: YzxCommandMetadata = metadata(
 const WHY_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[WHY_COMMAND];
 const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
     rust_control_family("config", CONFIG_FAMILY_COMMANDS),
+    rust_control_family("cwd", CWD_FAMILY_COMMANDS),
     rust_control_family("env", ENV_FAMILY_COMMANDS),
     rust_control_family("run", RUN_FAMILY_COMMANDS),
+    rust_control_family("reveal", REVEAL_FAMILY_COMMANDS),
     rust_control_family("status", STATUS_FAMILY_COMMANDS),
     rust_control_family("doctor", DOCTOR_FAMILY_COMMANDS),
     rust_control_family("home_manager", HOME_MANAGER_FAMILY_COMMANDS),
@@ -333,19 +334,15 @@ const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
     rust_control_family("why", WHY_FAMILY_COMMANDS),
 ];
 
-const CWD_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx cwd",
-        "Retarget the current Yazelix tab workspace directory",
-        YzxCommandCategory::Workspace,
-        CWD_ARGS,
-        None,
-        None,
-    ),
-    &[],
-    CORE_WORKSPACE_RELATIVE_PATH,
+const CWD_COMMAND: YzxCommandMetadata = metadata(
+    "yzx cwd",
+    "Retarget the current Yazelix tab workspace directory",
+    YzxCommandCategory::Workspace,
+    CWD_ARGS,
+    None,
+    None,
 );
-const CWD_COMMANDS: &[YzxCommandLeaf] = &[CWD_COMMAND];
+const CWD_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[CWD_COMMAND];
 
 const DESKTOP_INSTALL_COMMAND: YzxCommandLeaf = leaf(
     metadata(
@@ -713,19 +710,15 @@ const RESTART_COMMAND: YzxCommandLeaf = leaf(
 );
 const RESTART_COMMANDS: &[YzxCommandLeaf] = &[RESTART_COMMAND];
 
-const REVEAL_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx reveal",
-        "Reveal a file or directory in the managed Yazi sidebar",
-        YzxCommandCategory::Workspace,
-        REVEAL_ARGS,
-        Some(YzxMenuCategory::Workspace),
-        Some("Reveal a path in the managed Yazi sidebar."),
-    ),
-    &[],
-    CORE_WORKSPACE_RELATIVE_PATH,
+const REVEAL_COMMAND: YzxCommandMetadata = metadata(
+    "yzx reveal",
+    "Reveal a file or directory in the managed Yazi sidebar",
+    YzxCommandCategory::Workspace,
+    REVEAL_ARGS,
+    Some(YzxMenuCategory::Workspace),
+    Some("Reveal a path in the managed Yazi sidebar."),
 );
-const REVEAL_COMMANDS: &[YzxCommandLeaf] = &[REVEAL_COMMAND];
+const REVEAL_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[REVEAL_COMMAND];
 
 const SCREEN_COMMAND: YzxCommandLeaf = leaf(
     metadata(
@@ -825,15 +818,6 @@ const WHATS_NEW_COMMANDS: &[YzxCommandLeaf] = &[WHATS_NEW_COMMAND];
 
 const INTERNAL_NU_FAMILIES: &[YzxInternalNuFamily] = &[
     internal_family(
-        "cwd",
-        CWD_COMMANDS,
-        Some(0),
-        false,
-        false,
-        YzxUnknownSubcommandBehavior::RouteRoot,
-        &[],
-    ),
-    internal_family(
         "desktop",
         DESKTOP_COMMANDS,
         None,
@@ -908,15 +892,6 @@ const INTERNAL_NU_FAMILIES: &[YzxInternalNuFamily] = &[
     internal_family(
         "restart",
         RESTART_COMMANDS,
-        Some(0),
-        false,
-        false,
-        YzxUnknownSubcommandBehavior::RouteRoot,
-        &[],
-    ),
-    internal_family(
-        "reveal",
-        REVEAL_COMMANDS,
         Some(0),
         false,
         false,
@@ -1247,7 +1222,15 @@ mod tests {
             YzxPublicRootRoute::RustControl
         );
         assert_eq!(
+            classify_yzx_root_route(&["cwd".into(), "/tmp/project".into()]).unwrap(),
+            YzxPublicRootRoute::RustControl
+        );
+        assert_eq!(
             classify_yzx_root_route(&["run".into(), "rg".into()]).unwrap(),
+            YzxPublicRootRoute::RustControl
+        );
+        assert_eq!(
+            classify_yzx_root_route(&["reveal".into(), "/tmp/file".into()]).unwrap(),
             YzxPublicRootRoute::RustControl
         );
         assert_eq!(

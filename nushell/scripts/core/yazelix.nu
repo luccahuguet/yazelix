@@ -18,7 +18,6 @@ export use ../yzx/edit.nu *
 export use ../yzx/tutor.nu *
 export use ../yzx/whats_new.nu *
 export use ./yzx_session.nu *
-export use ./yzx_workspace.nu *
 
 # =============================================================================
 # YAZELIX COMMANDS WITH NATIVE SUBCOMMAND SUPPORT

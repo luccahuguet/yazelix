@@ -164,8 +164,8 @@ mod tests {
     #[test]
     fn renders_direct_nu_module_invocation_script() {
         let script = render_nu_command_script(
-            Path::new("/tmp/runtime/nushell/scripts/core/yzx_workspace.nu"),
-            "yzx reveal",
+            Path::new("/tmp/runtime/nushell/scripts/core/yzx_session.nu"),
+            "yzx restart",
             &[
                 "--".into(),
                 "--help".into(),
@@ -175,7 +175,7 @@ mod tests {
         );
         assert_eq!(
             script,
-            "use \"/tmp/runtime/nushell/scripts/core/yzx_workspace.nu\" [\"yzx reveal\"]; yzx reveal -- --help \"/tmp/has space\" \"quote\\\"value\""
+            "use \"/tmp/runtime/nushell/scripts/core/yzx_session.nu\" [\"yzx restart\"]; yzx restart -- --help \"/tmp/has space\" \"quote\\\"value\""
         );
     }
 }

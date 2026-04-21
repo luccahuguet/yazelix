@@ -24,6 +24,7 @@ pub mod status_report;
 pub mod support_commands;
 pub mod terminal_materialization;
 pub mod update_commands;
+pub mod workspace_commands;
 pub mod yazi_materialization;
 pub mod yazi_render_plan;
 pub mod zellij_materialization;
@@ -91,6 +92,7 @@ pub use terminal_materialization::{
     TerminalGeneratedConfig, TerminalMaterializationData, TerminalMaterializationRequest,
     generate_terminal_materialization,
 };
+pub use workspace_commands::{run_yzx_cwd, run_yzx_reveal};
 pub use yazi_materialization::{
     YaziManagedFileStatus, YaziMaterializationData, YaziMaterializationRequest,
     generate_yazi_materialization,

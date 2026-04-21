@@ -918,46 +918,105 @@ def test_yzx_edit_resolves_managed_helix_wrapper_from_canonical_launch_env [] {
     $result
 }
 
-# Regression: yzx reveal must route directly from the Rust root to the workspace Nu module instead of a shared dispatcher bridge.
+# Regression: yzx reveal must route through the Rust control helper instead of the deleted workspace Nu owner.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_yzx_cli_reveal_routes_directly_to_workspace_module [] {
-    print "🧪 Testing yzx CLI reveal routes directly to the workspace module..."
+def test_yzx_cli_reveal_routes_through_rust_control_helper [] {
+    print "🧪 Testing yzx CLI reveal routes through the Rust control helper..."
 
     let fixture = (setup_cli_probe_fixture "yazelix_posix_reveal_cli")
 
     let result = (try {
         let target_path = ($fixture.tmpdir | path join "target.txt")
+        let control_log = ($fixture.tmpdir | path join "yzx_control_args.txt")
+        let control_probe = ($fixture.tmpdir | path join "yzx_control_probe.sh")
         "" | save --force --raw $target_path
 
-        install_argument_logging_probe $fixture
+        write_probe_nu $control_probe [
+            "#!/bin/sh"
+            ": > \"$YZX_CONTROL_LOG\""
+            "for arg in \"$@\"; do"
+            "  printf '%s\\n' \"$arg\" >> \"$YZX_CONTROL_LOG\""
+            "done"
+            "exit 0"
+        ]
 
         let launcher_script = (repo_path "shells" "posix" "yzx_cli.sh")
         let output = (with-env {
             HOME: $fixture.fake_home
-            NU_LOG: $fixture.nu_log
             YAZELIX_YZX_BIN: (resolve_test_yzx_bin)
+            YAZELIX_YZX_CONTROL_BIN: $control_probe
+            YZX_CONTROL_LOG: $control_log
         } {
             ^$launcher_script reveal $target_path | complete
         })
 
-        let invocation = (read_probe_lines $fixture.nu_log)
-        let expected_workspace_module = (repo_path "nushell" "scripts" "core" "yzx_workspace.nu")
-        let invocation_mode = ($invocation | get -o 0 | default "")
-        let invocation_script = ($invocation | get -o 1 | default "")
+        let invocation = (read_probe_lines $control_log)
 
         if (
             ($output.exit_code == 0)
-            and ($invocation_mode == "-c")
-            and ($invocation_script | str contains $expected_workspace_module)
-            and ($invocation_script | str contains '["yzx reveal"]')
-            and ($invocation_script | str contains $target_path)
-            and not ($invocation_script | str contains "yzx_internal_dispatch.nu")
-            and not ($invocation_script | str contains "core/yazelix.nu")
+            and ($invocation == [
+                "reveal"
+                $target_path
+            ])
         ) {
-            print "  ✅ yzx reveal now routes straight to the workspace module without the old dispatcher bridge"
+            print "  ✅ yzx reveal now routes through the Rust control helper instead of the deleted workspace module"
             true
         } else {
             print $"  ❌ Unexpected yzx reveal invocation: exit=($output.exit_code) args=($invocation | to json -r) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmpdir
+    $result
+}
+
+# Regression: yzx cwd must route through the Rust control helper instead of the deleted workspace Nu owner.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_cli_cwd_routes_through_rust_control_helper [] {
+    print "🧪 Testing yzx CLI cwd routes through the Rust control helper..."
+
+    let fixture = (setup_cli_probe_fixture "yazelix_posix_cwd_cli")
+
+    let result = (try {
+        let control_log = ($fixture.tmpdir | path join "yzx_control_args.txt")
+        let control_probe = ($fixture.tmpdir | path join "yzx_control_probe.sh")
+
+        write_probe_nu $control_probe [
+            "#!/bin/sh"
+            ": > \"$YZX_CONTROL_LOG\""
+            "for arg in \"$@\"; do"
+            "  printf '%s\\n' \"$arg\" >> \"$YZX_CONTROL_LOG\""
+            "done"
+            "exit 0"
+        ]
+
+        let launcher_script = (repo_path "shells" "posix" "yzx_cli.sh")
+        let output = (with-env {
+            HOME: $fixture.fake_home
+            YAZELIX_YZX_BIN: (resolve_test_yzx_bin)
+            YAZELIX_YZX_CONTROL_BIN: $control_probe
+            YZX_CONTROL_LOG: $control_log
+        } {
+            ^$launcher_script cwd . | complete
+        })
+
+        let invocation = (read_probe_lines $control_log)
+
+        if (
+            ($output.exit_code == 0)
+            and ($invocation == [
+                "cwd"
+                "."
+            ])
+        ) {
+            print "  ✅ yzx cwd now routes through the Rust control helper instead of the deleted workspace module"
+            true
+        } else {
+            print $"  ❌ Unexpected yzx cwd invocation: exit=($output.exit_code) args=($invocation | to json -r) stderr=(($output.stderr | str trim))"
             false
         }
     } catch {|err|
@@ -1460,8 +1519,25 @@ def test_yzx_cwd_requires_zellij [] {
     print "🧪 Testing yzx cwd outside Zellij..."
 
     try {
-        let yzx_script = (repo_path "nushell" "scripts" "core" "yazelix.nu")
-        let output = (^env -u ZELLIJ -u ZELLIJ_SESSION_NAME -u ZELLIJ_PANE_ID -u ZELLIJ_TAB_NAME -u ZELLIJ_TAB_POSITION nu -c $"use \"($yzx_script)\" *; yzx cwd ." | complete)
+        let fixture = (setup_managed_config_fixture
+            "yazelix_workspace_cwd_requires_zellij"
+            '[core]
+skip_welcome_screen = true
+'
+        )
+        let launcher_script = (repo_path "shells" "posix" "yzx_cli.sh")
+        let output = (with-env {
+            HOME: $fixture.tmp_home
+            XDG_CONFIG_HOME: ($fixture.tmp_home | path join ".config")
+            XDG_DATA_HOME: ($fixture.tmp_home | path join ".local" "share")
+            YAZELIX_STATE_DIR: ($fixture.tmp_home | path join ".local" "share" "yazelix")
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.repo_root
+            YAZELIX_YZX_BIN: (resolve_test_yzx_bin)
+            YAZELIX_YZX_CONTROL_BIN: (resolve_test_yzx_control_bin)
+        } {
+            ^env -u ZELLIJ -u ZELLIJ_SESSION_NAME -u ZELLIJ_PANE_ID -u ZELLIJ_TAB_NAME -u ZELLIJ_TAB_POSITION sh $launcher_script cwd . | complete
+        })
         let stdout = ($output.stdout | str trim)
 
         if ($output.exit_code == 1) and ($stdout | str contains "only works inside Zellij") {
@@ -1475,6 +1551,255 @@ def test_yzx_cwd_requires_zellij [] {
         print $"  ❌ Exception: ($err.msg)"
         false
     }
+}
+
+# Regression: public yzx cwd must resolve the requested target, retarget the active tab through the pane orchestrator, and sync the plugin-owned sidebar once.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_public_yzx_cwd_retargets_workspace_and_syncs_plugin_owned_sidebar [] {
+    print "🧪 Testing public yzx cwd retargets the active tab through the pane orchestrator and syncs the plugin-owned sidebar..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_public_workspace_cwd"
+        '[core]
+skip_welcome_screen = true
+
+[editor]
+command = "hx"
+enable_sidebar = true
+
+[yazi]
+ya_command = "ya"
+'
+    )
+
+    let result = (try {
+        let fake_bin = ($fixture.tmp_home | path join "bin")
+        let target_dir = ($fixture.tmp_home | path join "workspace")
+        let zellij_commands_log = ($fixture.tmp_home | path join "zellij_commands.log")
+        let retarget_payload_log = ($fixture.tmp_home | path join "retarget_payload.json")
+        let ya_log = ($fixture.tmp_home | path join "ya.log")
+        mkdir $fake_bin
+        mkdir $target_dir
+
+        write_probe_nu ($fake_bin | path join "zoxide") [
+            "#!/bin/sh"
+            "if [ \"$1\" = \"query\" ] && [ \"$2\" = \"--\" ]; then"
+            "  printf '%s\\n' \"$WORKSPACE_TARGET\""
+            "  exit 0"
+            "fi"
+            "printf '%s\\n' \"unexpected zoxide args: $*\" >&2"
+            "exit 1"
+        ]
+
+        write_probe_nu ($fake_bin | path join "zellij") [
+            "#!/bin/sh"
+            "printf '%s\\n' \"$6\" >> \"$TMP_ZELLIJ_COMMANDS\""
+            "if [ \"$6\" = \"retarget_workspace\" ]; then"
+            "  printf '%s' \"$8\" > \"$TMP_RETARGET_PAYLOAD\""
+            "  printf '%s\\n' '{\"status\":\"ok\",\"editor_status\":\"ok\",\"sidebar_yazi_id\":\"plugin-sidebar-yazi-123\",\"sidebar_yazi_cwd\":\"/home/sidebar\"}'"
+            "  exit 0"
+            "fi"
+            "printf '%s\\n' \"unexpected zellij args: $*\" >&2"
+            "exit 1"
+        ]
+
+        write_probe_nu ($fake_bin | path join "ya") [
+            "#!/bin/sh"
+            "printf '%s\\n' \"$*\" >> \"$YAZI_TEST_LOG\""
+            "exit 0"
+        ]
+
+        let launcher_script = (repo_path "shells" "posix" "yzx_cli.sh")
+        let output = (with-env {
+            HOME: $fixture.tmp_home
+            PATH: ($env.PATH | prepend $fake_bin)
+            WORKSPACE_TARGET: $target_dir
+            TMP_ZELLIJ_COMMANDS: $zellij_commands_log
+            TMP_RETARGET_PAYLOAD: $retarget_payload_log
+            YAZI_TEST_LOG: $ya_log
+            ZELLIJ: "1"
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.repo_root
+            YAZELIX_YZX_BIN: (resolve_test_yzx_bin)
+            YAZELIX_YZX_CONTROL_BIN: (resolve_test_yzx_control_bin)
+        } {
+            ^$launcher_script cwd workspace-alias | complete
+        })
+
+        let stdout = ($output.stdout | str trim)
+        let commands = (read_probe_lines $zellij_commands_log)
+        let retarget_payload = (open --raw $retarget_payload_log | from json)
+        let ya_invocations = (read_probe_lines $ya_log)
+
+        if (
+            ($output.exit_code == 0)
+            and ($commands == ["retarget_workspace"])
+            and (($retarget_payload.workspace_root? | default "") == $target_dir)
+            and (($retarget_payload.cd_focused_pane? | default false) == true)
+            and (($retarget_payload.editor? | default "") == "helix")
+            and ($ya_invocations == [
+                $"emit-to plugin-sidebar-yazi-123 cd ($target_dir)"
+            ])
+            and ($stdout | str contains $"Updated current tab workspace directory to: ($target_dir)")
+            and ($stdout | str contains "Managed editor cwd synced to the updated directory.")
+            and ($stdout | str contains "Sidebar Yazi synced to the updated directory.")
+        ) {
+            print "  ✅ public yzx cwd now owns workspace retargeting and sidebar sync without the deleted workspace Nu owner"
+            true
+        } else {
+            print $"  ❌ Unexpected public yzx cwd result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim)) commands=($commands | to json -r) payload=($retarget_payload | to json -r) ya=($ya_invocations | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: public yzx reveal must keep the sidebar-disabled copy instead of failing through missing session integrations.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_public_yzx_reveal_prints_sidebar_disabled_copy [] {
+    print "🧪 Testing public yzx reveal keeps the sidebar-disabled copy..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_public_reveal_sidebar_disabled"
+        '[core]
+skip_welcome_screen = true
+
+[editor]
+enable_sidebar = false
+'
+    )
+
+    let result = (try {
+        let target_path = ($fixture.tmp_home | path join "target.txt")
+        "" | save --force --raw $target_path
+        let launcher_script = (repo_path "shells" "posix" "yzx_cli.sh")
+        let output = (with-env {
+            HOME: $fixture.tmp_home
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.repo_root
+            YAZELIX_YZX_BIN: (resolve_test_yzx_bin)
+            YAZELIX_YZX_CONTROL_BIN: (resolve_test_yzx_control_bin)
+        } {
+            ^$launcher_script reveal $target_path | complete
+        })
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Reveal in Yazi only works in sidebar mode")
+            and ($stdout | str contains "enable sidebar mode in yazelix.toml")
+        ) {
+            print "  ✅ public yzx reveal keeps the sidebar-disabled guidance instead of failing through missing session integrations"
+            true
+        } else {
+            print $"  ❌ Unexpected public yzx reveal sidebar-disabled result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: public yzx reveal must use the pane-orchestrator session snapshot for sidebar identity, emit a Yazi reveal command, and then focus the sidebar.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_public_yzx_reveal_uses_session_snapshot_sidebar_state_and_focuses_sidebar [] {
+    print "🧪 Testing public yzx reveal uses the session snapshot sidebar state and focuses the sidebar..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_public_reveal_focus_sidebar"
+        '[core]
+skip_welcome_screen = true
+
+[editor]
+enable_sidebar = true
+
+[yazi]
+ya_command = "ya"
+'
+    )
+
+    let result = (try {
+        let fake_bin = ($fixture.tmp_home | path join "bin")
+        let target_path = ($fixture.tmp_home | path join "target.txt")
+        let zellij_commands_log = ($fixture.tmp_home | path join "zellij_commands.log")
+        let ya_log = ($fixture.tmp_home | path join "ya.log")
+        mkdir $fake_bin
+        "" | save --force --raw $target_path
+
+        write_probe_nu ($fake_bin | path join "zellij") [
+            "#!/bin/sh"
+            "printf '%s\\n' \"$6\" >> \"$TMP_ZELLIJ_COMMANDS\""
+            "case \"$6\" in"
+            "  get_active_tab_session_state)"
+            "    printf '%s\\n' '{\"schema_version\":1,\"active_tab_position\":0,\"focus_context\":\"editor\",\"managed_panes\":{\"editor_pane_id\":\"terminal:1\",\"sidebar_pane_id\":\"terminal:2\"},\"layout\":{\"active_swap_layout_name\":null,\"sidebar_collapsed\":false},\"sidebar_yazi\":{\"yazi_id\":\"plugin-yazi-id\",\"cwd\":\"/home/plugin\"}}'"
+            "    exit 0"
+            "    ;;"
+            "  focus_sidebar)"
+            "    printf '%s\\n' 'ok'"
+            "    exit 0"
+            "    ;;"
+            "esac"
+            "printf '%s\\n' \"unexpected zellij args: $*\" >&2"
+            "exit 1"
+        ]
+
+        write_probe_nu ($fake_bin | path join "ya") [
+            "#!/bin/sh"
+            "printf '%s\\n' \"$*\" >> \"$YAZI_TEST_LOG\""
+            "exit 0"
+        ]
+
+        let launcher_script = (repo_path "shells" "posix" "yzx_cli.sh")
+        let output = (with-env {
+            HOME: $fixture.tmp_home
+            PATH: ($env.PATH | prepend $fake_bin)
+            TMP_ZELLIJ_COMMANDS: $zellij_commands_log
+            YAZI_TEST_LOG: $ya_log
+            ZELLIJ: "1"
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.repo_root
+            YAZELIX_YZX_BIN: (resolve_test_yzx_bin)
+            YAZELIX_YZX_CONTROL_BIN: (resolve_test_yzx_control_bin)
+        } {
+            ^$launcher_script reveal $target_path | complete
+        })
+
+        let commands = (read_probe_lines $zellij_commands_log)
+        let ya_invocations = (read_probe_lines $ya_log)
+
+        if (
+            ($output.exit_code == 0)
+            and (($output.stdout | str trim) == "")
+            and ($commands == [
+                "get_active_tab_session_state"
+                "focus_sidebar"
+            ])
+            and ($ya_invocations == [
+                $"emit-to plugin-yazi-id reveal ($target_path)"
+            ])
+        ) {
+            print "  ✅ public yzx reveal now uses the session snapshot sidebar identity and focuses the sidebar after revealing the target"
+            true
+        } else {
+            print $"  ❌ Unexpected public yzx reveal result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim)) commands=($commands | to json -r) ya=($ya_invocations | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
 }
 
 # Regression: workspace retarget should return plugin-owned editor/sidebar targeting truth in one response.
@@ -1616,7 +1941,8 @@ export def run_workspace_canonical_tests [] {
         (test_desktop_fast_path_uses_direct_host_terminal_during_reload_instead_of_stale_wrapper)
         (test_desktop_fast_path_rerolls_ghostty_random_cursor_config_per_window)
         (test_yzx_edit_resolves_managed_helix_wrapper_from_canonical_launch_env)
-        (test_yzx_cli_reveal_routes_directly_to_workspace_module)
+        (test_yzx_cli_cwd_routes_through_rust_control_helper)
+        (test_yzx_cli_reveal_routes_through_rust_control_helper)
         (test_yzx_cli_menu_uses_lightweight_menu_module)
         (test_yzx_cli_popup_uses_lightweight_popup_module)
         (test_yzx_cli_enter_uses_lightweight_enter_module)
@@ -1634,5 +1960,8 @@ export def run_workspace_canonical_tests [] {
         (test_run_pane_orchestrator_command_raw_targets_session_plugin_without_plugin_configuration)
         (test_retarget_workspace_for_path_returns_plugin_owned_sidebar_state_and_editor_status)
         (test_yzx_cwd_requires_zellij)
+        (test_public_yzx_cwd_retargets_workspace_and_syncs_plugin_owned_sidebar)
+        (test_public_yzx_reveal_prints_sidebar_disabled_copy)
+        (test_public_yzx_reveal_uses_session_snapshot_sidebar_state_and_focuses_sidebar)
     ]
 }

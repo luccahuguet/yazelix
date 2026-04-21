@@ -191,7 +191,6 @@ Surviving internal Nu helper owners after the cut:
 
 - `nushell/scripts/core/yazelix.nu` only for root help/version plus re-exported
   internal families
-- `nushell/scripts/core/yzx_workspace.nu` for `yzx cwd` and `yzx reveal`
 - `nushell/scripts/core/yzx_session.nu` for `yzx restart`
 - `nushell/scripts/yzx/launch.nu`, `enter.nu`, `desktop.nu`, `menu.nu`,
   `popup.nu`, `edit.nu`, `tutor.nu`, `screen.nu`,
@@ -255,9 +254,9 @@ Decision:
 Why:
 
 - the public Rust root is already small and schema-driven
-- the surviving internal-Nu families are `cwd`, `desktop`, `dev`, `edit`,
-  `enter`, `import`, `launch`, `menu`, `popup`, `restart`, `reveal`,
-  `screen`, `tutor`, and `whats_new`
+- the surviving internal-Nu families are `desktop`, `dev`, `edit`, `enter`,
+  `import`, `launch`, `menu`, `popup`, `restart`, `screen`, `tutor`, and
+  `whats_new`
 - most of those families are still intentionally Nushell-owned because they are
   shell-heavy, process-heavy, or mostly product UX
 - adding `clap` now would mostly replace a small amount of family
@@ -269,11 +268,27 @@ Decision:
 - do not open a Clap implementation lane now
 - reopen only if a future delete-first cut removes another surviving internal
   family owner and materially shrinks `INTERNAL_NU_FAMILIES`
-- the best remaining public-family deletion candidate is
-  `core/yzx_workspace.nu` (`yzx cwd` and `yzx reveal`), because it removes two
-  surviving root families at once and aligns with the Rust-owned
-  pane-orchestrator/session-truth direction instead of wrapping the same Nu
-  tree
+
+### 2026-04-21 Workspace Owner Cut
+
+`yazelix-ql71` landed the next honest public-family deletion cut after the
+Clap no-go.
+
+What changed:
+
+- `yzx_control` now owns the public `yzx cwd` and `yzx reveal` routes
+- `core/yzx_workspace.nu` is deleted
+- `cwd` and `reveal` are removed from `INTERNAL_NU_FAMILIES`
+- the public workspace commands now talk directly to the pane orchestrator and
+  the configured `ya` CLI instead of routing through a shared Nushell workspace
+  owner
+
+Why this counts:
+
+- it deletes two surviving public root families at once
+- it keeps pane-orchestrator session truth as the live workspace/sidebar source
+- it does not reintroduce Nushell-side session-state reconstruction through a
+  Rust shim over `integrations/zellij.nu` or `integrations/yazi.nu`
 
 ### Required Deletion Budget
 

@@ -1491,7 +1491,7 @@ def test_yzx_run_treats_child_verbose_flag_as_child_argv [] {
 # Regression: the public Rust yzx root must route env/run/status/update/doctor through Rust even when the remaining direct Nu route modules are unavailable.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_public_yzx_root_routes_rust_control_family_without_direct_nu_route_modules [] {
-    print "🧪 Testing the public Rust yzx root keeps env/run/status/update/doctor off the old Nu root registry..."
+    print "🧪 Testing the public Rust yzx root keeps env/run/cwd/reveal/status/update/doctor off the old Nu root registry..."
 
     let fixture = (setup_managed_config_fixture
         "yazelix_public_root_control_family"
@@ -1505,7 +1505,13 @@ welcome_style = "random"
         let update_output = (run_public_yzx_command_for_fixture $fixture "yzx update" {
             YAZELIX_YZX_NU_ROUTE_ROOT: $missing_route_root
         })
+        let cwd_help = (run_public_yzx_command_for_fixture $fixture "yzx cwd --help" {
+            YAZELIX_YZX_NU_ROUTE_ROOT: $missing_route_root
+        })
         let env_help = (run_public_yzx_command_for_fixture $fixture "yzx env --help" {
+            YAZELIX_YZX_NU_ROUTE_ROOT: $missing_route_root
+        })
+        let reveal_help = (run_public_yzx_command_for_fixture $fixture "yzx reveal --help" {
             YAZELIX_YZX_NU_ROUTE_ROOT: $missing_route_root
         })
         let run_help = (run_public_yzx_command_for_fixture $fixture "yzx run --help" {
@@ -1518,21 +1524,29 @@ welcome_style = "random"
             YAZELIX_YZX_NU_ROUTE_ROOT: $missing_route_root
         })
         let update_stdout = ($update_output.stdout | str trim)
+        let cwd_stdout = ($cwd_help.stdout | str trim)
         let env_stdout = ($env_help.stdout | str trim)
+        let reveal_stdout = ($reveal_help.stdout | str trim)
         let run_stdout = ($run_help.stdout | str trim)
         let status_stdout = ($status_output.stdout | str trim)
         let doctor_report = ($doctor_output.stdout | from json)
 
         if (
             ($update_output.exit_code == 0)
+            and ($cwd_help.exit_code == 0)
             and ($env_help.exit_code == 0)
+            and ($reveal_help.exit_code == 0)
             and ($run_help.exit_code == 0)
             and ($status_output.exit_code == 0)
             and ($doctor_output.exit_code == 0)
             and ($update_stdout | str contains "Available update commands:")
             and ($update_stdout | str contains "yzx update upstream")
+            and ($cwd_stdout | str contains "Usage:")
+            and ($cwd_stdout | str contains "yzx cwd [target]")
             and ($env_stdout | str contains "Usage:")
             and ($env_stdout | str contains "yzx env [--no-shell]")
+            and ($reveal_stdout | str contains "Usage:")
+            and ($reveal_stdout | str contains "yzx reveal <target>")
             and ($run_stdout | str contains "Usage:")
             and ($run_stdout | str contains "yzx run <command> [args...]")
             and ($status_stdout | str contains "Usage:")
@@ -1541,10 +1555,10 @@ welcome_style = "random"
             and (($doctor_report.title? | default "") == "Yazelix Health Checks")
             and (($doctor_report.results? | default [] | length) >= 1)
         ) {
-            print "  ✅ the public Rust yzx root now owns env/run/status/update/doctor routing without depending on the old Nu root registry"
+            print "  ✅ the public Rust yzx root now owns env/run/cwd/reveal/status/update/doctor routing without depending on the old Nu root registry"
             true
         } else {
-            print $"  ❌ Unexpected public-root routing result: update_exit=($update_output.exit_code) env_exit=($env_help.exit_code) run_exit=($run_help.exit_code) status_exit=($status_output.exit_code) doctor_exit=($doctor_output.exit_code) update_stdout=($update_stdout) env_stdout=($env_stdout) run_stdout=($run_stdout) status_stdout=($status_stdout) doctor_stdout=(($doctor_output.stdout | str trim)) update_stderr=(($update_output.stderr | str trim)) env_stderr=(($env_help.stderr | str trim)) run_stderr=(($run_help.stderr | str trim)) status_stderr=(($status_output.stderr | str trim)) doctor_stderr=(($doctor_output.stderr | str trim))"
+            print $"  ❌ Unexpected public-root routing result: update_exit=($update_output.exit_code) cwd_exit=($cwd_help.exit_code) env_exit=($env_help.exit_code) reveal_exit=($reveal_help.exit_code) run_exit=($run_help.exit_code) status_exit=($status_output.exit_code) doctor_exit=($doctor_output.exit_code) update_stdout=($update_stdout) cwd_stdout=($cwd_stdout) env_stdout=($env_stdout) reveal_stdout=($reveal_stdout) run_stdout=($run_stdout) status_stdout=($status_stdout) doctor_stdout=(($doctor_output.stdout | str trim)) update_stderr=(($update_output.stderr | str trim)) cwd_stderr=(($cwd_help.stderr | str trim)) env_stderr=(($env_help.stderr | str trim)) reveal_stderr=(($reveal_help.stderr | str trim)) run_stderr=(($run_help.stderr | str trim)) status_stderr=(($status_output.stderr | str trim)) doctor_stderr=(($doctor_output.stderr | str trim))"
             false
         }
     } catch {|err|
