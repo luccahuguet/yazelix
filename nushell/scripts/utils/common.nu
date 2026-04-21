@@ -184,6 +184,23 @@ export def get_yazelix_config_dir [] {
     }
 }
 
+export def get_xdg_config_home [] {
+    let configured = (
+        $env.XDG_CONFIG_HOME?
+        | default ""
+        | into string
+        | str trim
+    )
+
+    if ($configured | is-not-empty) {
+        expand_user_path_string $configured
+    } else if (($env.HOME? | default "" | into string | str trim) | is-not-empty) {
+        ($env.HOME | path join ".config")
+    } else {
+        "~/.config" | path expand
+    }
+}
+
 export def get_yazelix_user_config_dir [config_root?: string] {
     let root = if $config_root == null {
         get_yazelix_config_dir
@@ -242,6 +259,26 @@ export def get_yazelix_state_dir [] {
 
 export def get_materialized_state_path [] {
     (get_yazelix_state_dir | path join "state" "rebuild_hash")
+}
+
+export def get_managed_helix_user_config_dir [] {
+    (get_yazelix_user_config_dir) | path join "helix"
+}
+
+export def get_managed_helix_user_config_path [] {
+    (get_managed_helix_user_config_dir) | path join "config.toml"
+}
+
+export def get_native_helix_config_path [] {
+    (get_xdg_config_home) | path join "helix" "config.toml"
+}
+
+export def get_generated_helix_config_dir [] {
+    (get_yazelix_state_dir) | path join "configs" "helix"
+}
+
+export def get_generated_helix_config_path [] {
+    (get_generated_helix_config_dir) | path join "config.toml"
 }
 
 export def resolve_yazelix_nu_bin [] {

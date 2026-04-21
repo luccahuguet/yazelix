@@ -1,15 +1,22 @@
 //! Helix-focused doctor findings (runtime conflicts, runtime health, managed integration).
 //! Bead: yazelix-ulb2.4.2
 
+use crate::helix_materialization::{MANAGED_REVEAL_COMMAND, build_managed_helix_contract_json};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+fn default_reveal_binding_expected() -> String {
+    MANAGED_REVEAL_COMMAND.into()
+}
+
 #[derive(Debug, Deserialize)]
 pub struct HelixDoctorEvaluateRequest {
     pub home_dir: PathBuf,
+    pub runtime_dir: PathBuf,
+    pub config_dir: PathBuf,
     pub user_config_helix_runtime_dir: PathBuf,
     #[serde(default)]
     pub hx_exe_path: Option<PathBuf>,
@@ -24,6 +31,7 @@ pub struct HelixDoctorEvaluateRequest {
     pub expected_managed_config: Option<Value>,
     #[serde(default)]
     pub build_managed_config_error: Option<String>,
+    #[serde(default = "default_reveal_binding_expected")]
     pub reveal_binding_expected: String,
 }
 
@@ -348,6 +356,7 @@ fn evaluate_managed_integration(request: &HelixDoctorEvaluateRequest) -> Vec<Hel
 
     let managed = &request.managed_helix_user_config_path;
     let native = &request.native_helix_config_path;
+    let expected_reveal_binding = request.reveal_binding_expected.as_str();
 
     if !managed.exists() && native.exists() {
         out.push(HelixDoctorFinding {
@@ -378,22 +387,30 @@ fn evaluate_managed_integration(request: &HelixDoctorEvaluateRequest) -> Vec<Hel
         }
     }
 
-    let Some(ref expected) = request.expected_managed_config else {
-        out.push(HelixDoctorFinding {
-            status: "error".into(),
-            message: "Managed Helix config contract could not be built".into(),
-            details: Some(
-                "Expected managed Helix config JSON was missing from the doctor helper request."
-                    .into(),
-            ),
-            fix_available: false,
-            fix_commands: vec![],
-            conflicts: vec![],
-        });
-        return out;
+    let expected = if let Some(ref expected) = request.expected_managed_config {
+        expected.clone()
+    } else {
+        match build_managed_helix_contract_json(&request.runtime_dir, &request.config_dir) {
+            Ok(expected) => expected,
+            Err(error) => {
+                out.push(HelixDoctorFinding {
+                    status: "error".into(),
+                    message: "Managed Helix config contract could not be built".into(),
+                    details: Some(format!(
+                        "{}\nNext: {}",
+                        error.message(),
+                        error.remediation()
+                    )),
+                    fix_available: false,
+                    fix_commands: vec![],
+                    conflicts: vec![],
+                });
+                return out;
+            }
+        }
     };
 
-    if a_r_binding_from_json(expected).as_deref() != Some(request.reveal_binding_expected.trim()) {
+    if a_r_binding_from_json(&expected).as_deref() != Some(expected_reveal_binding.trim()) {
         out.push(HelixDoctorFinding {
             status: "error".into(),
             message: "Managed Helix config contract lost the Yazelix reveal binding".into(),
@@ -436,7 +453,7 @@ fn evaluate_managed_integration(request: &HelixDoctorEvaluateRequest) -> Vec<Hel
         }
     };
 
-    if gen_binding.trim() != request.reveal_binding_expected.trim() {
+    if gen_binding.trim() != expected_reveal_binding.trim() {
         out.push(stale_generated_config_finding(generated));
         return out;
     }
@@ -478,6 +495,8 @@ mod tests {
 
         let req = HelixDoctorEvaluateRequest {
             home_dir: home.clone(),
+            runtime_dir: tmp.path().join("runtime"),
+            config_dir: tmp.path().join("config"),
             user_config_helix_runtime_dir: ur.clone(),
             hx_exe_path: None,
             include_runtime_health: false,
@@ -517,6 +536,8 @@ mod tests {
 
         let req = HelixDoctorEvaluateRequest {
             home_dir: home,
+            runtime_dir: tmp.path().join("runtime"),
+            config_dir: tmp.path().join("config"),
             user_config_helix_runtime_dir: tmp.path().join("norun"),
             hx_exe_path: Some(fake_hx),
             include_runtime_health: true,
@@ -539,6 +560,8 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let req = HelixDoctorEvaluateRequest {
             home_dir: tmp.path().join("home"),
+            runtime_dir: tmp.path().join("runtime"),
+            config_dir: tmp.path().join("config"),
             user_config_helix_runtime_dir: tmp.path().join("ur"),
             hx_exe_path: None,
             include_runtime_health: false,
@@ -558,6 +581,8 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let req = HelixDoctorEvaluateRequest {
             home_dir: tmp.path().join("home"),
+            runtime_dir: tmp.path().join("runtime"),
+            config_dir: tmp.path().join("config"),
             user_config_helix_runtime_dir: tmp.path().join("ur"),
             hx_exe_path: None,
             include_runtime_health: false,
@@ -585,6 +610,8 @@ mod tests {
 
         let req = HelixDoctorEvaluateRequest {
             home_dir: home,
+            runtime_dir: tmp.path().join("runtime"),
+            config_dir: tmp.path().join("config"),
             user_config_helix_runtime_dir: tmp.path().join("ur"),
             hx_exe_path: Some(fake_hx),
             include_runtime_health: false,
@@ -611,6 +638,8 @@ mod tests {
 
         let req = HelixDoctorEvaluateRequest {
             home_dir: tmp.path().join("home"),
+            runtime_dir: tmp.path().join("runtime"),
+            config_dir: tmp.path().join("config"),
             user_config_helix_runtime_dir: tmp.path().join("ur"),
             hx_exe_path: None,
             include_runtime_health: false,

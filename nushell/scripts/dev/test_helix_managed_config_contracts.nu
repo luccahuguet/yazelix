@@ -3,8 +3,27 @@
 # Defends: docs/specs/test_suite_governance.md
 
 use ./yzx_test_helpers.nu [get_repo_root resolve_test_yzx_core_bin]
-use ../setup/helix_config_merger.nu [generate_managed_helix_config]
+use ../utils/common.nu [get_yazelix_config_dir get_yazelix_runtime_dir get_yazelix_state_dir]
+use ../utils/config_parser.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
 use ../utils/runtime_env.nu [get_runtime_env]
+
+const HELIX_MATERIALIZATION_GENERATE_COMMAND = "helix-materialization.generate"
+
+def materialize_managed_helix_config_for_test [] {
+    let runtime_dir = (get_yazelix_runtime_dir)
+    let result = (run_yzx_core_json_command
+        $runtime_dir
+        (build_default_yzx_core_error_surface)
+        [
+            $HELIX_MATERIALIZATION_GENERATE_COMMAND
+            "--runtime-dir" $runtime_dir
+            "--config-dir" (get_yazelix_config_dir)
+            "--state-dir" (get_yazelix_state_dir)
+        ]
+        "Yazelix Rust helix-materialization helper returned invalid JSON.")
+
+    $result.generated_path
+}
 
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 # Defends: managed Helix config preserves user overrides while enforcing the Yazelix reveal binding.
@@ -35,8 +54,9 @@ A-r = ":noop"
             YAZELIX_CONFIG_DIR: $config_dir
             YAZELIX_RUNTIME_DIR: $repo_root
             YAZELIX_STATE_DIR: ($tmp_home | path join ".local" "share" "yazelix")
+            YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
         } {
-            let output_path = (generate_managed_helix_config)
+            let output_path = (materialize_managed_helix_config_for_test)
             {
                 output_path: $output_path
                 config: (open $output_path)
@@ -217,22 +237,34 @@ def test_yazelix_hx_ignores_legacy_runtime_alias_and_uses_wrapper_runtime_root [
     let repo_root = (get_repo_root)
     let tmp_home = (^mktemp -d /tmp/yazelix_hx_runtime_root_XXXXXX | str trim)
     let fake_bin = ($tmp_home | path join "fake_bin")
-    let nu_log = ($tmp_home | path join "nu.log")
+    let yzx_core_log = ($tmp_home | path join "yzx_core.log")
     let hx_log = ($tmp_home | path join "hx.log")
     let managed_config_path = ($tmp_home | path join "managed_config.toml")
+    let helper_envelope = ({
+        schema_version: 1
+        command: "helix-materialization.generate"
+        status: "ok"
+        data: {
+            generated_path: $managed_config_path
+            template_path: ""
+            user_config_merged: false
+            reveal_binding_enforced: true
+            import_notice: null
+        }
+        warnings: []
+    } | to json -r)
     mkdir $fake_bin
     mkdir ($tmp_home | path join ".config" "yazelix" "user_configs")
     mkdir ($tmp_home | path join ".local" "share" "yazelix")
     "" | save --force --raw $managed_config_path
 
-    let fake_nu = ($fake_bin | path join "nu")
+    let fake_yzx_core = ($fake_bin | path join "yzx_core")
     [
         "#!/bin/sh"
-        $"printf '%s\\n' \"$1\" > '($nu_log)'"
-        $"printf '%s\\n' \"$2\" >> '($nu_log)'"
-        $"printf '%s\\n' '($managed_config_path)'"
-    ] | str join "\n" | save --force --raw $fake_nu
-    chmod +x $fake_nu
+        $"printf '%s\\n' \"$@\" > '($yzx_core_log)'"
+        $"printf '%s\\n' '($helper_envelope)'"
+    ] | str join "\n" | save --force --raw $fake_yzx_core
+    chmod +x $fake_yzx_core
 
     let fake_hx = ($fake_bin | path join "hx")
     [
@@ -255,24 +287,32 @@ def test_yazelix_hx_ignores_legacy_runtime_alias_and_uses_wrapper_runtime_root [
             YAZELIX_RUNTIME_DIR: null
             YAZELIX_DIR: "/hostile/legacy_runtime"
             YAZELIX_MANAGED_HELIX_BINARY: $fake_hx
-            YAZELIX_NU_BIN: $fake_nu
+            YAZELIX_YZX_CORE_BIN: $fake_yzx_core
         } {
             ^$wrapper_path "file.txt" | complete
         })
 
-        let expected_merger_script = ($repo_root | path join "nushell" "scripts" "setup" "helix_config_merger.nu")
-        let nu_lines = if ($nu_log | path exists) { open $nu_log | lines } else { [] }
+        let expected_helper_args = [
+            "helix-materialization.generate"
+            "--runtime-dir"
+            $repo_root
+            "--config-dir"
+            ($tmp_home | path join ".config" "yazelix")
+            "--state-dir"
+            ($tmp_home | path join ".local" "share" "yazelix")
+        ]
+        let yzx_core_lines = if ($yzx_core_log | path exists) { open $yzx_core_log | lines } else { [] }
         let hx_lines = if ($hx_log | path exists) { open $hx_log | lines } else { [] }
 
         if (
             ($output.exit_code == 0)
-            and ($nu_lines == [$expected_merger_script, "--print-path"])
+            and ($yzx_core_lines == $expected_helper_args)
             and ($hx_lines == ["-c", $managed_config_path, "file.txt"])
         ) {
-            print "  ✅ yazelix_hx now ignores legacy YAZELIX_DIR and resolves Helix config generation from the wrapper runtime root"
+            print "  ✅ yazelix_hx now ignores legacy YAZELIX_DIR and resolves Helix config generation directly through the Rust helper"
             true
         } else {
-            print $"  ❌ Unexpected wrapper result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim)) nu=(($nu_lines | to json -r)) hx=(($hx_lines | to json -r))"
+            print $"  ❌ Unexpected wrapper result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim)) yzx_core=(($yzx_core_lines | to json -r)) hx=(($hx_lines | to json -r))"
             false
         }
     } catch {|err|

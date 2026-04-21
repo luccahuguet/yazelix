@@ -679,6 +679,8 @@ fn doctor_helix_evaluate_prints_ok_envelope() {
 
     let request = serde_json::json!({
         "home_dir": home.to_string_lossy(),
+        "runtime_dir": tmp.path().join("runtime").to_string_lossy(),
+        "config_dir": tmp.path().join("config").to_string_lossy(),
         "user_config_helix_runtime_dir": user_rt.to_string_lossy(),
         "hx_exe_path": null,
         "include_runtime_health": false,

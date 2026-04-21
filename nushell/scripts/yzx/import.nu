@@ -1,23 +1,10 @@
 #!/usr/bin/env nu
-use ../utils/common.nu [get_yazelix_user_config_dir]
-use ../setup/helix_config_merger.nu [get_managed_helix_user_config_path get_native_helix_config_path]
-
-def get_xdg_config_home [] {
-    let configured = (
-        $env.XDG_CONFIG_HOME?
-        | default ""
-        | into string
-        | str trim
-    )
-
-    if ($configured | is-not-empty) {
-        $configured | path expand
-    } else if (($env.HOME? | default "" | into string | str trim) | is-not-empty) {
-        ($env.HOME | path join ".config")
-    } else {
-        "~/.config" | path expand
-    }
-}
+use ../utils/common.nu [
+    get_managed_helix_user_config_path
+    get_native_helix_config_path
+    get_xdg_config_home
+    get_yazelix_user_config_dir
+]
 
 def get_native_zellij_config_path [] {
     (get_xdg_config_home) | path join "zellij" "config.kdl"

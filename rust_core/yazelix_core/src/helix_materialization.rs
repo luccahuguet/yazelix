@@ -1,10 +1,11 @@
 use crate::bridge::{CoreError, ErrorClass};
 use serde::Serialize;
+use serde_json::Value as JsonValue;
 use std::fs;
 use std::path::{Path, PathBuf};
 use toml::Value as TomlValue;
 
-const MANAGED_REVEAL_COMMAND: &str = ":sh yzx reveal \"%{buffer_name}\"";
+pub(crate) const MANAGED_REVEAL_COMMAND: &str = ":sh yzx reveal \"%{buffer_name}\"";
 const REVEAL_KEY: &str = "A-r";
 
 #[derive(Debug, Clone)]
@@ -29,11 +30,85 @@ pub struct HelixMaterializationData {
     pub import_notice: Option<HelixImportNotice>,
 }
 
+struct PreparedHelixConfig {
+    template_path: PathBuf,
+    user_config_path: PathBuf,
+    config: TomlValue,
+    user_config_merged: bool,
+}
+
+pub(crate) fn build_managed_helix_contract_json(
+    runtime_dir: &Path,
+    config_dir: &Path,
+) -> Result<JsonValue, CoreError> {
+    let prepared = prepare_managed_helix_config(runtime_dir, config_dir)?;
+    serde_json::to_value(prepared.config).map_err(|source| {
+        CoreError::classified(
+            ErrorClass::Internal,
+            "serialize_helix_contract_json",
+            format!("Could not serialize the expected Helix config contract as JSON: {source}"),
+            "This is an internal error. File a bug report if it persists.",
+            serde_json::json!({
+                "runtime_dir": runtime_dir.to_string_lossy(),
+                "config_dir": config_dir.to_string_lossy(),
+            }),
+        )
+    })
+}
+
 pub fn generate_helix_materialization(
     request: &HelixMaterializationRequest,
 ) -> Result<HelixMaterializationData, CoreError> {
-    let template_path = request
-        .runtime_dir
+    let prepared = prepare_managed_helix_config(&request.runtime_dir, &request.config_dir)?;
+
+    let generated_dir = request.state_dir.join("configs").join("helix");
+    fs::create_dir_all(&generated_dir).map_err(|source| {
+        CoreError::io(
+            "create_helix_output_dir",
+            "Could not create the managed Helix output directory",
+            "Check permissions for the Yazelix state directory and retry.",
+            generated_dir.to_string_lossy(),
+            source,
+        )
+    })?;
+
+    let generated_path = generated_dir.join("config.toml");
+    let output = toml::to_string_pretty(&prepared.config).map_err(|source| {
+        CoreError::classified(
+            ErrorClass::Internal,
+            "serialize_helix_config",
+            format!("Could not serialize the merged Helix config as TOML: {source}"),
+            "This is an internal error. File a bug report if it persists.",
+            serde_json::json!({ "path": generated_path.to_string_lossy() }),
+        )
+    })?;
+
+    fs::write(&generated_path, output).map_err(|source| {
+        CoreError::io(
+            "write_helix_config",
+            "Could not write the managed Helix config",
+            "Check permissions for the Yazelix state directory and retry.",
+            generated_path.to_string_lossy(),
+            source,
+        )
+    })?;
+
+    let import_notice = build_import_notice(request, &prepared.user_config_path)?;
+
+    Ok(HelixMaterializationData {
+        generated_path: generated_path.to_string_lossy().into_owned(),
+        template_path: prepared.template_path.to_string_lossy().into_owned(),
+        user_config_merged: prepared.user_config_merged,
+        reveal_binding_enforced: true,
+        import_notice,
+    })
+}
+
+fn prepare_managed_helix_config(
+    runtime_dir: &Path,
+    config_dir: &Path,
+) -> Result<PreparedHelixConfig, CoreError> {
+    let template_path = runtime_dir
         .join("configs")
         .join("helix")
         .join("yazelix_config.toml");
@@ -70,8 +145,7 @@ pub fn generate_helix_materialization(
         )
     })?;
 
-    let user_config_path = request
-        .config_dir
+    let user_config_path = config_dir
         .join("user_configs")
         .join("helix")
         .join("config.toml");
@@ -103,46 +177,11 @@ pub fn generate_helix_materialization(
 
     enforce_reveal_binding(&mut config);
 
-    let generated_dir = request.state_dir.join("configs").join("helix");
-    fs::create_dir_all(&generated_dir).map_err(|source| {
-        CoreError::io(
-            "create_helix_output_dir",
-            "Could not create the managed Helix output directory",
-            "Check permissions for the Yazelix state directory and retry.",
-            generated_dir.to_string_lossy(),
-            source,
-        )
-    })?;
-
-    let generated_path = generated_dir.join("config.toml");
-    let output = toml::to_string_pretty(&config).map_err(|source| {
-        CoreError::classified(
-            ErrorClass::Internal,
-            "serialize_helix_config",
-            format!("Could not serialize the merged Helix config as TOML: {source}"),
-            "This is an internal error. File a bug report if it persists.",
-            serde_json::json!({ "path": generated_path.to_string_lossy() }),
-        )
-    })?;
-
-    fs::write(&generated_path, output).map_err(|source| {
-        CoreError::io(
-            "write_helix_config",
-            "Could not write the managed Helix config",
-            "Check permissions for the Yazelix state directory and retry.",
-            generated_path.to_string_lossy(),
-            source,
-        )
-    })?;
-
-    let import_notice = build_import_notice(request, &user_config_path)?;
-
-    Ok(HelixMaterializationData {
-        generated_path: generated_path.to_string_lossy().into_owned(),
-        template_path: template_path.to_string_lossy().into_owned(),
+    Ok(PreparedHelixConfig {
+        template_path,
+        user_config_path,
+        config,
         user_config_merged,
-        reveal_binding_enforced: true,
-        import_notice,
     })
 }
 

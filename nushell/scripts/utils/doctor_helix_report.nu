@@ -1,17 +1,16 @@
 #!/usr/bin/env nu
 
-use common.nu require_yazelix_runtime_dir
+use common.nu [
+    get_generated_helix_config_path
+    get_managed_helix_user_config_path
+    get_native_helix_config_path
+    get_yazelix_config_dir
+    require_yazelix_runtime_dir
+]
 use config_parser.nu [
     build_default_yzx_core_error_surface
     parse_yazelix_config
     run_yzx_core_request_json_command
-]
-use ../setup/helix_config_merger.nu [
-    build_managed_helix_config
-    get_generated_helix_config_path
-    get_managed_helix_user_config_path
-    get_managed_reveal_command
-    get_native_helix_config_path
 ]
 
 const DOCTOR_HELIX_EVALUATE_COMMAND = "doctor-helix.evaluate"
@@ -41,8 +40,6 @@ export def evaluate_helix_doctor_report [] {
     }
 
     mut editor_for_req = null
-    mut expected_json = null
-    mut expected_err = null
     if $parse_out.ok {
         let editor = (
             $parse_out.config
@@ -52,14 +49,6 @@ export def evaluate_helix_doctor_report [] {
             | str trim
         )
         $editor_for_req = $editor
-        let cfg_build = try {
-            let j = (build_managed_helix_config | to json -r | from json)
-            { err: null, json: $j }
-        } catch {|e|
-            { err: $e.msg, json: null }
-        }
-        $expected_json = $cfg_build.json
-        $expected_err = $cfg_build.err
     }
 
     let include_health = ($env.EDITOR? | default "" | str contains "hx")
@@ -67,6 +56,8 @@ export def evaluate_helix_doctor_report [] {
 
     let req = {
         home_dir: $home
+        runtime_dir: $rd
+        config_dir: (get_yazelix_config_dir)
         user_config_helix_runtime_dir: $user_rt
         hx_exe_path: $hx_path
         include_runtime_health: $include_health
@@ -74,9 +65,6 @@ export def evaluate_helix_doctor_report [] {
         managed_helix_user_config_path: (get_managed_helix_user_config_path)
         native_helix_config_path: (get_native_helix_config_path)
         generated_helix_config_path: (get_generated_helix_config_path)
-        expected_managed_config: $expected_json
-        build_managed_config_error: $expected_err
-        reveal_binding_expected: (get_managed_reveal_command)
     }
 
     run_yzx_core_request_json_command $rd (build_default_yzx_core_error_surface) $DOCTOR_HELIX_EVALUATE_COMMAND $req "Yazelix Rust doctor-helix helper returned invalid JSON."
