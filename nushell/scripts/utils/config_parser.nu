@@ -67,16 +67,37 @@ def get_explicit_yzx_core_helper_path [] {
 }
 
 def get_source_checkout_yzx_core_helper_path [runtime_dir: string] {
+    mut candidates = []
+
     for candidate in [
         ($runtime_dir | path join "rust_core" "target" "release" "yzx_core")
         ($runtime_dir | path join "rust_core" "target" "debug" "yzx_core")
     ] {
         if ($candidate | path exists) {
-            return $candidate
+            $candidates = ($candidates | append {
+                path: $candidate
+                modified: (ls $candidate | get 0.modified)
+            })
         }
     }
 
-    null
+    if ($candidates | is-empty) {
+        return null
+    }
+
+    # Prefer the freshest local helper build so a newer debug artifact wins over
+    # an older stale release binary during source-checkout work.
+    (
+        $candidates
+        | reduce -f null {|candidate, best|
+            if ($best == null) or ($candidate.modified > $best.modified) {
+                $candidate
+            } else {
+                $best
+            }
+        }
+        | get path
+    )
 }
 
 export def resolve_yzx_core_helper_path [runtime_dir: string] {

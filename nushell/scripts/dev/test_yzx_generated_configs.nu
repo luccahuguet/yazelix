@@ -8,6 +8,7 @@ use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
 use ../utils/config_state.nu [record_materialized_state]
 use ../core/materialization_orchestrator.nu [regenerate_runtime_configs]
 use ../core/launch_yazelix.nu [generate_all_terminal_configs]
+use ../utils/config_parser.nu [build_default_yzx_core_error_surface resolve_yzx_core_helper_path run_yzx_core_request_json_command]
 use ../utils/safe_remove.nu remove_path_within_root
 use ../utils/terminal_launcher.nu [build_launch_command resolve_terminal_config]
 
@@ -154,6 +155,14 @@ def install_fake_yzx_core_helper [runtime_fixture: record, helper_script: string
     $helper_script | save --force --raw $runtime_fixture.helper_path
     ^chmod +x $runtime_fixture.helper_path
     $runtime_fixture
+}
+
+def install_fake_source_checkout_yzx_core_candidate [runtime_fixture: record, profile: string, helper_script: string] {
+    let helper_path = ($runtime_fixture.runtime_root | path join "rust_core" "target" $profile "yzx_core")
+    mkdir ($helper_path | path dirname)
+    $helper_script | save --force --raw $helper_path
+    ^chmod +x $helper_path
+    $helper_path
 }
 
 # Defends: generated terminal configs do not silently take over user overrides or create backup churn in Yazelix-owned generated paths.
@@ -945,6 +954,71 @@ def test_parse_yazelix_config_source_checkout_missing_helper_does_not_fallback [
     })
 
     rm -rf $fixture.tmp_home
+    rm -rf $runtime.tmpdir
+    $result
+}
+
+# Regression: source-checkout helper fallback must prefer the freshest local yzx_core build instead of blindly taking target/release.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_run_yzx_core_request_prefers_newer_source_checkout_helper_over_stale_release [] {
+    print "🧪 Testing source checkout helper selection prefers a newer debug yzx_core over a stale release build..."
+
+    let runtime = (setup_fake_source_checkout_runtime_fixture "yazelix_source_helper_prefers_newer_debug")
+    let call_log = ($runtime.tmpdir | path join "helper_calls.log")
+    let release_helper = (install_fake_source_checkout_yzx_core_candidate $runtime "release" $'#!/bin/sh
+printf "%s\n" release >> "($call_log)"
+cat >&2 <<JSON
+{"schema_version":1,"command":"runtime-materialization.materialize","status":"error","error":{"class":"usage","code":"invalid_arguments","message":"Unsupported helper command: runtime-materialization.materialize","remediation":"Run the helper with a supported command and required flags.","details":{}}}
+JSON
+exit 64
+')
+    let debug_helper = (install_fake_source_checkout_yzx_core_candidate $runtime "debug" $'#!/bin/sh
+printf "%s\n" debug >> "($call_log)"
+cat <<JSON
+{"schema_version":1,"command":"runtime-materialization.materialize","status":"ok","data":{"plan":{"status":"noop","selected_helper":"debug"}}}
+JSON
+')
+
+    ^touch -t 202604210101 $release_helper
+    ^touch -t 202604210102 $debug_helper
+
+    let result = (try {
+        let outcome = (with-env {
+            YAZELIX_YZX_CORE_BIN: null
+        } {
+            {
+                helper_path: (resolve_yzx_core_helper_path $runtime.runtime_root)
+                data: (run_yzx_core_request_json_command
+                    $runtime.runtime_root
+                    (build_default_yzx_core_error_surface)
+                    "runtime-materialization.materialize"
+                    {}
+                    "Yazelix Rust runtime-materialization helper returned invalid JSON.")
+            }
+        })
+        let calls = if ($call_log | path exists) {
+            open --raw $call_log | lines | where {|line| ($line | str trim | is-not-empty)}
+        } else {
+            []
+        }
+
+        if (
+            ($outcome.helper_path == $debug_helper)
+            and (($outcome.data.plan.status? | default "") == "noop")
+            and (($outcome.data.plan.selected_helper? | default "") == "debug")
+            and ($calls == ["debug"])
+        ) {
+            print "  ✅ Source checkout helper fallback now picks the freshest compatible local yzx_core build instead of a stale release artifact"
+            true
+        } else {
+            print $"  ❌ Unexpected helper selection result: helper=($outcome.helper_path) data=(($outcome.data | to json -r)) calls=(($calls | to json -r))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
     rm -rf $runtime.tmpdir
     $result
 }
@@ -2144,6 +2218,7 @@ export def run_generated_config_canonical_tests [] {
             (test_parse_yazelix_config_rejects_packaged_runtime_missing_yzx_core)
             (test_parse_yazelix_config_source_checkout_uses_explicit_yzx_core_helper)
             (test_parse_yazelix_config_source_checkout_missing_helper_does_not_fallback)
+            (test_run_yzx_core_request_prefers_newer_source_checkout_helper_over_stale_release)
             (test_record_materialized_state_accepts_symlinked_managed_main_config)
             (test_user_mode_requires_real_terminal_config)
             (test_config_schema_rejects_removed_enum_values)

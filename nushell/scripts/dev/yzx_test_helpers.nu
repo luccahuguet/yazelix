@@ -60,13 +60,31 @@ export def resolve_test_yzx_core_bin [] {
         return ($explicit | path expand)
     }
 
+    mut candidates = []
     for candidate in [
         (repo_path "rust_core" "target" "release" "yzx_core")
         (repo_path "rust_core" "target" "debug" "yzx_core")
     ] {
         if ($candidate | path exists) {
-            return $candidate
+            $candidates = ($candidates | append {
+                path: $candidate
+                modified: (ls $candidate | get 0.modified)
+            })
         }
+    }
+
+    if not ($candidates | is-empty) {
+        return (
+            $candidates
+            | reduce -f null {|candidate, best|
+                if ($best == null) or ($candidate.modified > $best.modified) {
+                    $candidate
+                } else {
+                    $best
+                }
+            }
+            | get path
+        )
     }
 
     error make {
