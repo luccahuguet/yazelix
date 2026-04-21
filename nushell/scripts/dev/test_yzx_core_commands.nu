@@ -664,7 +664,44 @@ def test_yzx_desktop_uninstall_removes_manual_entry_and_icons [] {
     $result
 }
 
-# Defends: Home Manager takeover preview surfaces both blocking and cleanup-only manual artifacts.
+# Defends: the public yzx home_manager root still advertises the takeover helper entrypoints after the Rust owner cut.
+# Strength: defect=1 behavior=2 resilience=1 cost=1 uniqueness=2 total=7/10
+def test_public_yzx_home_manager_lists_takeover_helpers [] {
+    print "🧪 Testing public yzx home_manager still lists takeover helpers..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_home_manager_root"
+        '[core]
+welcome_style = "random"
+'
+    )
+
+    let result = (try {
+        let output = (run_public_yzx_command_for_fixture $fixture "yzx home_manager")
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Yazelix Home Manager helpers")
+            and ($stdout | str contains "yzx home_manager prepare")
+            and ($stdout | str contains "yzx update home_manager")
+        ) {
+            print "  ✅ public yzx home_manager still lists the takeover helper entrypoints"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Defends: Home Manager takeover preview surfaces both blocking and cleanup-only manual artifacts through the public yzx route.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_home_manager_prepare_preview_reports_manual_takeover_artifacts [] {
     print "🧪 Testing yzx home_manager prepare preview reports takeover blockers and cleanup-only manual artifacts..."
@@ -672,7 +709,7 @@ def test_yzx_home_manager_prepare_preview_reports_manual_takeover_artifacts [] {
     let fixture = (setup_manual_install_takeover_fixture "yazelix_home_manager_prepare_preview")
 
     let result = (try {
-        let output = (run_yzx_command_for_fixture $fixture "yzx home_manager prepare")
+        let output = (run_public_yzx_command_for_fixture $fixture "yzx home_manager prepare")
         let stdout = ($output.stdout | str trim)
 
         if (
@@ -702,7 +739,7 @@ def test_yzx_home_manager_prepare_preview_reports_manual_takeover_artifacts [] {
     $result
 }
 
-# Defends: Home Manager takeover apply archives the blocking manual paths and points users at home-manager switch.
+# Defends: Home Manager takeover apply archives the blocking manual paths and points users at home-manager switch through the public yzx route.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts [] {
     print "🧪 Testing yzx home_manager prepare --apply archives manual-install takeover artifacts..."
@@ -710,7 +747,7 @@ def test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts [] {
     let fixture = (setup_manual_install_takeover_fixture "yazelix_home_manager_prepare_apply")
 
     let result = (try {
-        let output = (run_yzx_command_for_fixture $fixture "yzx home_manager prepare --apply --yes")
+        let output = (run_public_yzx_command_for_fixture $fixture "yzx home_manager prepare --apply --yes")
         let stdout = ($output.stdout | str trim)
         let main_backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.home-manager-prepare-backup-')
         let desktop_backups = (ls ($fixture.desktop_path | path dirname) | where name =~ 'com\.yazelix\.Yazelix\.desktop\.home-manager-prepare-backup-')
@@ -1617,6 +1654,7 @@ export def run_core_canonical_tests [] {
         (test_yzx_desktop_install_refuses_dangling_home_manager_config)
         (test_yzx_desktop_uninstall_preserves_home_manager_cleanup_path)
         (test_yzx_desktop_uninstall_removes_manual_entry_and_icons)
+        (test_public_yzx_home_manager_lists_takeover_helpers)
         (test_yzx_home_manager_prepare_preview_reports_manual_takeover_artifacts)
         (test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts)
         (test_yzx_update_upstream_upgrades_matching_profile_entry)

@@ -128,7 +128,7 @@ It is not worth doing just to:
 | `yzx status`, `yzx doctor` | `yzx status` is already on the Rust public path; `yzx doctor` is still a public Nu command over Rust findings plus Nu rendering, fix, and live-session checks | `yzx status` is already done. `yzx doctor` is a no-go for the next public Rust cut after `yazelix-osco.2`: keep it Nushell-owned until the surviving `core/yzx_doctor.nu`, `utils/doctor.nu`, and `doctor_report_bridge.nu` owners either disappear or split into a real machine-only family that deletes the public Nu doctor surface. |
 | `yzx config`, `yzx edit`, `yzx import` | Nushell | Keep Nushell-owned unless a later separate ownership argument appears |
 | `yzx menu`, `yzx popup`, `yzx screen`, `yzx keys`, `yzx tutor`, `yzx whats_new`, info commands | Nushell | Keep Nushell-owned |
-| `yzx desktop`, `yzx home_manager`, maintainer surfaces, package and distribution commands | Nushell, Nix, POSIX | Keep Nushell, Nix, and POSIX-owned unless a separate distribution-policy rewrite justifies moving them |
+| `yzx desktop`, maintainer surfaces, package and distribution commands | Nushell, Nix, POSIX | Keep Nushell, Nix, and POSIX-owned unless a separate distribution-policy rewrite justifies moving them. `yzx home_manager` left this bucket once the install-ownership report became the real owner and the public family moved to Rust |
 | Live workspace and session state | Rust pane orchestrator | Keep separate from the public CLI rewrite; do not fold plugin and session truth into `rust_core` by default |
 
 The default v16 shape is therefore not "move every command." It is "move the
@@ -194,7 +194,7 @@ Surviving internal Nu helper owners after the cut:
 - `nushell/scripts/core/yzx_doctor.nu` for `yzx doctor`
 - `nushell/scripts/yzx/launch.nu`, `enter.nu`, `desktop.nu`, `menu.nu`,
   `popup.nu`, `config.nu`, `edit.nu`, `keys.nu`, `tutor.nu`, `screen.nu`,
-  `whats_new.nu`, `home_manager.nu`, `import.nu`, and `dev.nu` as explicit
+  `whats_new.nu`, `import.nu`, and `dev.nu` as explicit
   internal helper modules, not as the public root registry
 
 Explicit no-go for the first mixed family:

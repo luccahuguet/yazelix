@@ -19,7 +19,6 @@ export use ../yzx/edit.nu *
 export use ../yzx/keys.nu *
 export use ../yzx/tutor.nu *
 export use ../yzx/whats_new.nu *
-export use ../yzx/home_manager.nu *
 export use ./yzx_doctor.nu *
 export use ./yzx_session.nu *
 export use ./yzx_support.nu *

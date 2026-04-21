@@ -9,6 +9,8 @@ pub mod doctor_helix_report;
 pub mod doctor_runtime_report;
 pub mod ghostty_materialization;
 pub mod helix_materialization;
+pub mod home_manager_commands;
+pub mod install_ownership_env;
 pub mod install_ownership_report;
 pub mod public_command_surface;
 pub mod runtime_contract;
@@ -50,6 +52,7 @@ pub use helix_materialization::{
     HelixImportNotice, HelixMaterializationData, HelixMaterializationRequest,
     generate_helix_materialization,
 };
+pub use home_manager_commands::run_yzx_home_manager;
 pub use install_ownership_report::{
     DoctorInstallResult, HomeManagerPrepareArtifact, InstallOwnershipEvaluateData,
     InstallOwnershipEvaluateRequest, evaluate_install_ownership_report,

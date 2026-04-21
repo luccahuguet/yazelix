@@ -13,12 +13,14 @@ use yazelix_core::control_plane::{
     runtime_env_request, runtime_materialization_plan_request_from_env, setpriv_or_sh_exec,
     shell_command, split_run_argv,
 };
+use yazelix_core::run_yzx_home_manager;
 use yazelix_core::update_commands::run_yzx_update;
 
 fn usage() -> ! {
     eprintln!("Usage: yzx_control env [--no-shell|-n]");
     eprintln!("       yzx_control run <command> [args...]");
     eprintln!("       yzx_control status [--versions] [--json]");
+    eprintln!("       yzx_control home_manager [prepare] [args...]");
     eprintln!("       yzx_control update [subcommand] [args...]");
     std::process::exit(64);
 }
@@ -438,6 +440,7 @@ fn main() {
             }
         }
         "status" => run_status(&argv),
+        "home_manager" => run_yzx_home_manager(&argv),
         "update" => run_yzx_update(&argv),
         _ => {
             eprintln!("Unknown yzx_control subcommand: {sub}");

@@ -11,7 +11,6 @@ const YZX_DESKTOP_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "deskt
 const YZX_DEV_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "dev.nu"];
 const YZX_EDIT_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "edit.nu"];
 const YZX_ENTER_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "enter.nu"];
-const YZX_HOME_MANAGER_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "home_manager.nu"];
 const YZX_IMPORT_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "import.nu"];
 const YZX_KEYS_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "keys.nu"];
 const YZX_LAUNCH_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "launch.nu"];
@@ -261,10 +260,29 @@ const UPDATE_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[
     UPDATE_NIX_COMMAND,
     UPDATE_UPSTREAM_COMMAND,
 ];
+const HOME_MANAGER_ROOT_COMMAND: YzxCommandMetadata = metadata(
+    "yzx home_manager",
+    "Show Yazelix Home Manager takeover helpers",
+    YzxCommandCategory::Integration,
+    &[],
+    Some(YzxMenuCategory::System),
+    Some("Home Manager takeover helpers for Yazelix-owned paths."),
+);
+const HOME_MANAGER_PREPARE_COMMAND: YzxCommandMetadata = metadata(
+    "yzx home_manager prepare",
+    "Preview or archive manual-install artifacts before Home Manager takeover",
+    YzxCommandCategory::Integration,
+    HM_PREPARE_FLAGS,
+    Some(YzxMenuCategory::System),
+    Some("Preview or archive manual-install artifacts before Home Manager takeover."),
+);
+const HOME_MANAGER_FAMILY_COMMANDS: &[YzxCommandMetadata] =
+    &[HOME_MANAGER_ROOT_COMMAND, HOME_MANAGER_PREPARE_COMMAND];
 const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
     rust_control_family("env", ENV_FAMILY_COMMANDS),
     rust_control_family("run", RUN_FAMILY_COMMANDS),
     rust_control_family("status", STATUS_FAMILY_COMMANDS),
+    rust_control_family("home_manager", HOME_MANAGER_FAMILY_COMMANDS),
     rust_control_family("update", UPDATE_FAMILY_COMMANDS),
 ];
 
@@ -511,33 +529,6 @@ const ENTER_COMMAND: YzxCommandLeaf = leaf(
     YZX_ENTER_RELATIVE_PATH,
 );
 const ENTER_COMMANDS: &[YzxCommandLeaf] = &[ENTER_COMMAND];
-
-const HOME_MANAGER_ROOT_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx home_manager",
-        "Show Yazelix Home Manager takeover helpers",
-        YzxCommandCategory::Integration,
-        &[],
-        Some(YzxMenuCategory::System),
-        Some("Home Manager takeover helpers for Yazelix-owned paths."),
-    ),
-    &[],
-    YZX_HOME_MANAGER_RELATIVE_PATH,
-);
-const HOME_MANAGER_PREPARE_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx home_manager prepare",
-        "Preview or archive manual-install artifacts before Home Manager takeover",
-        YzxCommandCategory::Integration,
-        HM_PREPARE_FLAGS,
-        Some(YzxMenuCategory::System),
-        Some("Preview or archive manual-install artifacts before Home Manager takeover."),
-    ),
-    &["prepare"],
-    YZX_HOME_MANAGER_RELATIVE_PATH,
-);
-const HOME_MANAGER_COMMANDS: &[YzxCommandLeaf] =
-    &[HOME_MANAGER_ROOT_COMMAND, HOME_MANAGER_PREPARE_COMMAND];
 
 const IMPORT_ROOT_COMMAND: YzxCommandLeaf = leaf(
     metadata(
@@ -940,15 +931,6 @@ const INTERNAL_NU_FAMILIES: &[YzxInternalNuFamily] = &[
     internal_family(
         "enter",
         ENTER_COMMANDS,
-        Some(0),
-        false,
-        false,
-        YzxUnknownSubcommandBehavior::RouteRoot,
-        &[],
-    ),
-    internal_family(
-        "home_manager",
-        HOME_MANAGER_COMMANDS,
         Some(0),
         false,
         false,
@@ -1359,6 +1341,10 @@ mod tests {
             classify_yzx_root_route(&["update".into(), "nix".into()]).unwrap(),
             YzxPublicRootRoute::RustControl
         );
+        assert_eq!(
+            classify_yzx_root_route(&["home_manager".into(), "prepare".into()]).unwrap(),
+            YzxPublicRootRoute::RustControl
+        );
     }
 
     // Defends: the shared root classifier preserves no-arg help, help flags, and all supported version flags.
@@ -1455,13 +1441,6 @@ mod tests {
             panic!("expected internal Nu route");
         };
         assert_eq!(plan.command_name, "yzx edit config");
-
-        let home_manager_argv = [String::from("home_manager"), String::from("prepare")];
-        let route = classify_yzx_root_route(&home_manager_argv).unwrap();
-        let YzxPublicRootRoute::InternalNu(plan) = route else {
-            panic!("expected internal Nu route");
-        };
-        assert_eq!(plan.command_name, "yzx home_manager prepare");
 
         let argv = [String::from("keys"), String::from("helix")];
         let route = classify_yzx_root_route(&argv).unwrap();
