@@ -10,6 +10,7 @@ pub mod doctor_runtime_report;
 pub mod ghostty_materialization;
 pub mod helix_materialization;
 pub mod install_ownership_report;
+pub mod public_command_surface;
 pub mod runtime_contract;
 pub mod runtime_env;
 pub mod runtime_materialization;
@@ -23,10 +24,9 @@ pub mod zellij_render_plan;
 
 pub use bridge::{CoreError, ErrorClass, error_envelope, success_envelope};
 pub use command_metadata::{
-    YzxCommandCategory, YzxCommandMetadata, YzxCommandMetadataData, YzxCommandParameter,
-    YzxExternBridgeSyncData, YzxExternBridgeSyncRequest, YzxExternBridgeSyncStatus,
-    YzxParameterKind, render_yzx_externs, render_yzx_help, sync_yzx_extern_bridge,
-    yzx_command_metadata, yzx_command_metadata_data,
+    YzxCommandMetadataData, YzxExternBridgeSyncData, YzxExternBridgeSyncRequest,
+    YzxExternBridgeSyncStatus, render_yzx_externs, render_yzx_help, sync_yzx_extern_bridge,
+    yzx_command_metadata_data,
 };
 pub use config_normalize::{NormalizeConfigData, NormalizeConfigRequest, normalize_config};
 pub use config_state::{
@@ -53,6 +53,11 @@ pub use helix_materialization::{
 pub use install_ownership_report::{
     DoctorInstallResult, HomeManagerPrepareArtifact, InstallOwnershipEvaluateData,
     InstallOwnershipEvaluateRequest, evaluate_install_ownership_report,
+};
+pub use public_command_surface::{
+    YzxCommandCategory, YzxCommandMetadata, YzxCommandParameter, YzxInternalNuRoutePlan,
+    YzxMenuCategory, YzxParameterKind, YzxPublicRootRoute, classify_yzx_root_route,
+    yzx_command_metadata,
 };
 pub use runtime_contract::{
     GeneratedLayoutCheckRequest, LaunchPreflightPayload, LinuxGhosttyDesktopGraphicsRequest,

@@ -19,33 +19,6 @@ const PALETTE_CATEGORY_STYLE = {
     help: (ansi purple)
 }
 
-const PALETTE_EXCLUDED_COMMANDS = [
-    "yzx menu"
-    "yzx env"
-    "yzx run"
-    "yzx cwd"
-]
-
-const PALETTE_DESCRIPTION_OVERRIDES = {
-    "yzx config reset": "Reset managed Yazelix config surfaces back to their defaults."
-    "yzx desktop install": "Install or refresh the Yazelix desktop entry and icon assets."
-    "yzx desktop launch": "Launch Yazelix through the desktop-entry path."
-    "yzx desktop uninstall": "Remove Yazelix-managed desktop entry and icon assets."
-    "yzx edit": "Open the managed Yazelix config directory."
-    "yzx edit config": "Open the active Yazelix config file."
-    "yzx home_manager": "Home Manager takeover helpers for Yazelix-owned paths."
-    "yzx home_manager prepare": "Preview or archive manual-install artifacts before Home Manager takeover."
-    "yzx popup": "Open a floating terminal tool pane, for example `yzx popup lazygit`."
-    "yzx restart": "Restart Yazelix."
-    "yzx reveal": "Reveal a path in the managed Yazi sidebar."
-    "yzx screen": "Preview the animated welcome screen directly in the current terminal."
-    "yzx sponsor": "Show the sponsorship links and support message."
-    "yzx update home_manager": "Refresh the current Home Manager input and print the switch step."
-    "yzx update nix": "Refresh the runtime lock and print the local install step."
-    "yzx update upstream": "Upgrade the active default-profile Yazelix package."
-    "yzx whats_new": "Show the latest release notes."
-}
-
 def format_palette_item [entry: record] {
     let category = ($entry.category | into string)
     let color = ($PALETTE_CATEGORY_STYLE | get -o $category | default (ansi reset))
@@ -60,14 +33,6 @@ def format_palette_item [entry: record] {
             $"($entry.id)  ($tag)  (ansi dark_gray)- ($description)(ansi reset)"
         })
     }
-}
-
-def is_palette_eligible_command [cmd: string] {
-    let normalized = ($cmd | into string | str trim)
-    not (
-        ($normalized in $PALETTE_EXCLUDED_COMMANDS)
-        or ($normalized | str starts-with "yzx dev")
-    )
 }
 
 def fetch_yzx_command_catalog [] {
@@ -85,70 +50,26 @@ def fetch_yzx_command_catalog [] {
         error make {msg: $"Rust-owned yzx command metadata returned a non-ok envelope: (($probe.stdout | str trim))"}
     }
 
-    $envelope.data.commands
-}
-
-def palette_category_for_command [cmd: string] {
-    if $cmd == "yzx" {
-        "help"
-    } else if (
-        ($cmd | str starts-with "yzx launch")
-        or ($cmd | str starts-with "yzx enter")
-        or ($cmd | str starts-with "yzx restart")
-    ) {
-        "session"
-    } else if (
-        ($cmd | str starts-with "yzx popup")
-        or ($cmd | str starts-with "yzx reveal")
-        or ($cmd | str starts-with "yzx screen")
-    ) {
-        "workspace"
-    } else if (
-        ($cmd | str starts-with "yzx config")
-        or ($cmd | str starts-with "yzx edit")
-        or ($cmd | str starts-with "yzx import")
-    ) {
-        "config"
-    } else if (
-        ($cmd | str starts-with "yzx keys")
-        or ($cmd | str starts-with "yzx tutor")
-        or ($cmd | str starts-with "yzx why")
-        or ($cmd | str starts-with "yzx whats_new")
-        or ($cmd | str starts-with "yzx sponsor")
-    ) {
-        "help"
-    } else {
-        "system"
-    }
+    $envelope.data.commands | default []
 }
 
 def palette_description_for_command [command: record] {
-    let id = ($command.name | into string)
-    let discovered = (
-        [
-            ($command.description? | default "" | str trim)
-            ($command.extra_description? | default "" | str trim)
-        ]
-        | where {|value| $value | is-not-empty }
-        | get -o 0
-        | default ""
-    )
-    let override = ($PALETTE_DESCRIPTION_OVERRIDES | get -o $id | default "")
-
-    if ($override | is-not-empty) {
-        $override
-    } else {
-        $discovered
-    }
+    [
+        ($command.extra_description? | default "" | str trim)
+        ($command.description? | default "" | str trim)
+    ]
+    | where {|value| $value | is-not-empty }
+    | get -o 0
+    | default ""
 }
 
 def get_palette_command_entries [] {
     fetch_yzx_command_catalog
-    | where {|command| is_palette_eligible_command $command.name }
+    | where {|command| (($command.menu_category? | default "") | str trim | is-not-empty) }
     | each {|command|
         {
             id: $command.name
-            category: (palette_category_for_command $command.name)
+            category: ($command.menu_category | into string)
             description: (palette_description_for_command $command)
         }
     }

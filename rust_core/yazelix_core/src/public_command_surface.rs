@@ -1,0 +1,1515 @@
+use crate::bridge::{CoreError, ErrorClass};
+use serde::Serialize;
+use serde_json::json;
+
+const CORE_DOCTOR_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "core", "yzx_doctor.nu"];
+const CORE_SESSION_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "core", "yzx_session.nu"];
+const CORE_SUPPORT_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "core", "yzx_support.nu"];
+const CORE_WORKSPACE_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "core", "yzx_workspace.nu"];
+const YZX_CONFIG_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "config.nu"];
+const YZX_DESKTOP_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "desktop.nu"];
+const YZX_DEV_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "dev.nu"];
+const YZX_EDIT_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "edit.nu"];
+const YZX_ENTER_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "enter.nu"];
+const YZX_HOME_MANAGER_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "home_manager.nu"];
+const YZX_IMPORT_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "import.nu"];
+const YZX_KEYS_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "keys.nu"];
+const YZX_LAUNCH_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "launch.nu"];
+const YZX_MENU_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "menu.nu"];
+const YZX_POPUP_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "popup.nu"];
+const YZX_SCREEN_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "screen.nu"];
+const YZX_TUTOR_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "tutor.nu"];
+const YZX_WHATS_NEW_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "whats_new.nu"];
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum YzxCommandCategory {
+    Config,
+    Development,
+    Help,
+    Integration,
+    Session,
+    System,
+    Workspace,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum YzxMenuCategory {
+    Config,
+    Help,
+    Session,
+    System,
+    Workspace,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum YzxParameterKind {
+    Switch,
+    Named,
+    Positional,
+    Rest,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+pub struct YzxCommandParameter {
+    pub kind: YzxParameterKind,
+    pub name: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub short: Option<&'static str>,
+    pub shape: &'static str,
+    pub optional: bool,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+pub struct YzxCommandMetadata {
+    pub name: &'static str,
+    pub description: &'static str,
+    pub category: YzxCommandCategory,
+    pub parameters: &'static [YzxCommandParameter],
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub menu_category: Option<YzxMenuCategory>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub extra_description: Option<&'static str>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum YzxPublicRootRoute<'a> {
+    Help,
+    Version,
+    RustControl,
+    InternalNu(YzxInternalNuRoutePlan<'a>),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct YzxInternalNuRoutePlan<'a> {
+    pub module_relative_path: &'static [&'static str],
+    pub command_name: &'static str,
+    pub tail: &'a [String],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum YzxUnknownSubcommandBehavior {
+    RouteRoot,
+    Error,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct YzxCommandLeaf {
+    metadata: YzxCommandMetadata,
+    tokens_after_root: &'static [&'static str],
+    module_relative_path: &'static [&'static str],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct YzxRustControlFamily {
+    root_token: &'static str,
+    commands: &'static [YzxCommandMetadata],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct YzxInternalNuFamily {
+    root_token: &'static str,
+    commands: &'static [YzxCommandLeaf],
+    root_command_index: Option<usize>,
+    help_token_routes_to_root_empty_tail: bool,
+    help_flags_route_to_root_with_tail: bool,
+    unknown_subcommand_behavior: YzxUnknownSubcommandBehavior,
+    required_subcommands: &'static [&'static str],
+}
+
+const VERSION_FLAGS: &[YzxCommandParameter] = &[
+    switch("version", Some("V")),
+    switch("version-short", Some("v")),
+];
+const ENV_FLAGS: &[YzxCommandParameter] = &[switch("no-shell", Some("n"))];
+const RUN_REST: &[YzxCommandParameter] = &[rest("argv")];
+const LAUNCH_FLAGS: &[YzxCommandParameter] = &[
+    named("path", Some("p"), "string", true),
+    switch("home", None),
+    named("terminal", Some("t"), "string", true),
+    switch("verbose", None),
+];
+const ENTER_FLAGS: &[YzxCommandParameter] = &[
+    named("path", Some("p"), "string", true),
+    switch("home", None),
+    switch("verbose", None),
+];
+const UPDATE_NIX_FLAGS: &[YzxCommandParameter] = &[switch("yes", None), switch("verbose", None)];
+const CWD_ARGS: &[YzxCommandParameter] = &[positional("target", "string", true)];
+const REVEAL_ARGS: &[YzxCommandParameter] = &[positional("target", "string", false)];
+const STATUS_FLAGS: &[YzxCommandParameter] = &[switch("versions", Some("V")), switch("json", None)];
+const DOCTOR_FLAGS: &[YzxCommandParameter] = &[
+    switch("verbose", Some("v")),
+    switch("fix", Some("f")),
+    switch("json", None),
+];
+const CONFIG_RESET_FLAGS: &[YzxCommandParameter] = &[switch("force", None)];
+const IMPORT_FLAGS: &[YzxCommandParameter] = &[switch("force", None)];
+const EDIT_ARGS: &[YzxCommandParameter] = &[rest("query"), switch("print", None)];
+const EDIT_CONFIG_FLAGS: &[YzxCommandParameter] = &[switch("print", None)];
+const POPUP_ARGS: &[YzxCommandParameter] = &[rest("program")];
+const SCREEN_ARGS: &[YzxCommandParameter] = &[positional("style", "string", true)];
+const DEV_UPDATE_FLAGS: &[YzxCommandParameter] = &[
+    switch("yes", None),
+    switch("no-canary", None),
+    named("activate", None, "string", true),
+    named("home-manager-dir", None, "string", true),
+    named("home-manager-input", None, "string", true),
+    named("home-manager-attr", None, "string", true),
+    switch("canary-only", None),
+    named("canaries", None, "string", true),
+];
+const DEV_BUMP_ARGS: &[YzxCommandParameter] = &[positional("version", "string", false)];
+const DEV_SYNC_FLAGS: &[YzxCommandParameter] = &[switch("dry-run", None)];
+const DEV_BUILD_FLAGS: &[YzxCommandParameter] = &[switch("sync", None)];
+const DEV_TEST_FLAGS: &[YzxCommandParameter] = &[
+    switch("verbose", Some("v")),
+    switch("new-window", Some("n")),
+    switch("lint-only", None),
+    switch("profile", None),
+    switch("sweep", None),
+    switch("visual", None),
+    switch("all", Some("a")),
+    named("delay", None, "int", true),
+];
+const DEV_PROFILE_FLAGS: &[YzxCommandParameter] = &[
+    switch("cold", Some("c")),
+    switch("desktop", None),
+    switch("launch", None),
+    switch("clear-cache", None),
+    named("terminal", Some("t"), "string", true),
+    switch("verbose", None),
+];
+const DEV_LINT_ARGS: &[YzxCommandParameter] =
+    &[named("format", Some("f"), "string", true), rest("paths")];
+const HM_PREPARE_FLAGS: &[YzxCommandParameter] = &[switch("apply", None), switch("yes", None)];
+
+const ROOT_COMMAND: YzxCommandMetadata = metadata(
+    "yzx",
+    "Show Yazelix help or version information",
+    YzxCommandCategory::Help,
+    VERSION_FLAGS,
+    Some(YzxMenuCategory::Help),
+    None,
+);
+
+const ENV_COMMAND: YzxCommandMetadata = metadata(
+    "yzx env",
+    "Load the Yazelix environment without UI",
+    YzxCommandCategory::Session,
+    ENV_FLAGS,
+    None,
+    None,
+);
+const RUN_COMMAND: YzxCommandMetadata = metadata(
+    "yzx run",
+    "Run a command in the Yazelix environment and exit",
+    YzxCommandCategory::Session,
+    RUN_REST,
+    None,
+    None,
+);
+const STATUS_COMMAND: YzxCommandMetadata = metadata(
+    "yzx status",
+    "Canonical inspection command",
+    YzxCommandCategory::System,
+    STATUS_FLAGS,
+    Some(YzxMenuCategory::System),
+    None,
+);
+const UPDATE_ROOT_COMMAND: YzxCommandMetadata = metadata(
+    "yzx update",
+    "Show supported update owners",
+    YzxCommandCategory::System,
+    &[],
+    Some(YzxMenuCategory::System),
+    None,
+);
+const UPDATE_HOME_MANAGER_COMMAND: YzxCommandMetadata = metadata(
+    "yzx update home_manager",
+    "Refresh the current Home Manager flake input for Yazelix",
+    YzxCommandCategory::System,
+    &[],
+    Some(YzxMenuCategory::System),
+    Some("Refresh the current Home Manager input and print the switch step."),
+);
+const UPDATE_NIX_COMMAND: YzxCommandMetadata = metadata(
+    "yzx update nix",
+    "Upgrade Determinate Nix through determinate-nixd",
+    YzxCommandCategory::System,
+    UPDATE_NIX_FLAGS,
+    Some(YzxMenuCategory::System),
+    Some("Refresh the runtime lock and print the local install step."),
+);
+const UPDATE_UPSTREAM_COMMAND: YzxCommandMetadata = metadata(
+    "yzx update upstream",
+    "Upgrade the active Yazelix package in the default Nix profile",
+    YzxCommandCategory::System,
+    &[],
+    Some(YzxMenuCategory::System),
+    Some("Upgrade the active default-profile Yazelix package."),
+);
+
+const ENV_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[ENV_COMMAND];
+const RUN_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[RUN_COMMAND];
+const STATUS_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[STATUS_COMMAND];
+const UPDATE_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[
+    UPDATE_ROOT_COMMAND,
+    UPDATE_HOME_MANAGER_COMMAND,
+    UPDATE_NIX_COMMAND,
+    UPDATE_UPSTREAM_COMMAND,
+];
+const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
+    rust_control_family("env", ENV_FAMILY_COMMANDS),
+    rust_control_family("run", RUN_FAMILY_COMMANDS),
+    rust_control_family("status", STATUS_FAMILY_COMMANDS),
+    rust_control_family("update", UPDATE_FAMILY_COMMANDS),
+];
+
+const CONFIG_ROOT_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx config",
+        "Show the active Yazelix configuration",
+        YzxCommandCategory::Config,
+        &[],
+        Some(YzxMenuCategory::Config),
+        None,
+    ),
+    &[],
+    YZX_CONFIG_RELATIVE_PATH,
+);
+const CONFIG_RESET_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx config reset",
+        "Replace the main Yazelix config with a fresh shipped template",
+        YzxCommandCategory::Config,
+        CONFIG_RESET_FLAGS,
+        Some(YzxMenuCategory::Config),
+        Some("Reset managed Yazelix config surfaces back to their defaults."),
+    ),
+    &["reset"],
+    YZX_CONFIG_RELATIVE_PATH,
+);
+const CONFIG_COMMANDS: &[YzxCommandLeaf] = &[CONFIG_ROOT_COMMAND, CONFIG_RESET_COMMAND];
+
+const CWD_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx cwd",
+        "Retarget the current Yazelix tab workspace directory",
+        YzxCommandCategory::Workspace,
+        CWD_ARGS,
+        None,
+        None,
+    ),
+    &[],
+    CORE_WORKSPACE_RELATIVE_PATH,
+);
+const CWD_COMMANDS: &[YzxCommandLeaf] = &[CWD_COMMAND];
+
+const DESKTOP_INSTALL_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx desktop install",
+        "Install the user-local Yazelix desktop entry and icons",
+        YzxCommandCategory::Integration,
+        &[],
+        Some(YzxMenuCategory::System),
+        Some("Install or refresh the Yazelix desktop entry and icon assets."),
+    ),
+    &["install"],
+    YZX_DESKTOP_RELATIVE_PATH,
+);
+const DESKTOP_LAUNCH_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx desktop launch",
+        "Launch Yazelix from the desktop entry fast path",
+        YzxCommandCategory::Integration,
+        &[],
+        Some(YzxMenuCategory::System),
+        Some("Launch Yazelix through the desktop-entry path."),
+    ),
+    &["launch"],
+    YZX_DESKTOP_RELATIVE_PATH,
+);
+const DESKTOP_UNINSTALL_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx desktop uninstall",
+        "Remove the user-local Yazelix desktop entry and icons",
+        YzxCommandCategory::Integration,
+        &[],
+        Some(YzxMenuCategory::System),
+        Some("Remove Yazelix-managed desktop entry and icon assets."),
+    ),
+    &["uninstall"],
+    YZX_DESKTOP_RELATIVE_PATH,
+);
+const DESKTOP_COMMANDS: &[YzxCommandLeaf] = &[
+    DESKTOP_INSTALL_COMMAND,
+    DESKTOP_LAUNCH_COMMAND,
+    DESKTOP_UNINSTALL_COMMAND,
+];
+const DESKTOP_REQUIRED_SUBCOMMANDS: &[&str] = &["install", "launch", "uninstall"];
+
+const DEV_ROOT_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx dev",
+        "Development and maintainer commands",
+        YzxCommandCategory::Development,
+        &[],
+        None,
+        None,
+    ),
+    &[],
+    YZX_DEV_RELATIVE_PATH,
+);
+const DEV_BUILD_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx dev build_pane_orchestrator",
+        "Build the Zellij pane-orchestrator wasm",
+        YzxCommandCategory::Development,
+        DEV_BUILD_FLAGS,
+        None,
+        None,
+    ),
+    &["build_pane_orchestrator"],
+    YZX_DEV_RELATIVE_PATH,
+);
+const DEV_BUMP_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx dev bump",
+        "Bump the tracked Yazelix version and create release metadata",
+        YzxCommandCategory::Development,
+        DEV_BUMP_ARGS,
+        None,
+        None,
+    ),
+    &["bump"],
+    YZX_DEV_RELATIVE_PATH,
+);
+const DEV_LINT_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx dev lint_nu",
+        "Lint Nushell scripts with repo-tuned nu-lint config",
+        YzxCommandCategory::Development,
+        DEV_LINT_ARGS,
+        None,
+        None,
+    ),
+    &["lint_nu"],
+    YZX_DEV_RELATIVE_PATH,
+);
+const DEV_PROFILE_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx dev profile",
+        "Profile launch sequence and identify bottlenecks",
+        YzxCommandCategory::Development,
+        DEV_PROFILE_FLAGS,
+        None,
+        None,
+    ),
+    &["profile"],
+    YZX_DEV_RELATIVE_PATH,
+);
+const DEV_SYNC_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx dev sync_issues",
+        "Sync GitHub issue lifecycle into Beads locally",
+        YzxCommandCategory::Development,
+        DEV_SYNC_FLAGS,
+        None,
+        None,
+    ),
+    &["sync_issues"],
+    YZX_DEV_RELATIVE_PATH,
+);
+const DEV_TEST_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx dev test",
+        "Run Yazelix test suite",
+        YzxCommandCategory::Development,
+        DEV_TEST_FLAGS,
+        None,
+        None,
+    ),
+    &["test"],
+    YZX_DEV_RELATIVE_PATH,
+);
+const DEV_UPDATE_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx dev update",
+        "Refresh maintainer flake inputs and run update canaries",
+        YzxCommandCategory::Development,
+        DEV_UPDATE_FLAGS,
+        None,
+        None,
+    ),
+    &["update"],
+    YZX_DEV_RELATIVE_PATH,
+);
+const DEV_COMMANDS: &[YzxCommandLeaf] = &[
+    DEV_ROOT_COMMAND,
+    DEV_BUILD_COMMAND,
+    DEV_BUMP_COMMAND,
+    DEV_LINT_COMMAND,
+    DEV_PROFILE_COMMAND,
+    DEV_SYNC_COMMAND,
+    DEV_TEST_COMMAND,
+    DEV_UPDATE_COMMAND,
+];
+
+const DOCTOR_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx doctor",
+        "Run health checks and diagnostics",
+        YzxCommandCategory::System,
+        DOCTOR_FLAGS,
+        Some(YzxMenuCategory::System),
+        None,
+    ),
+    &[],
+    CORE_DOCTOR_RELATIVE_PATH,
+);
+const DOCTOR_COMMANDS: &[YzxCommandLeaf] = &[DOCTOR_COMMAND];
+
+const EDIT_ROOT_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx edit",
+        "Open a Yazelix-managed config surface in the configured editor",
+        YzxCommandCategory::Config,
+        EDIT_ARGS,
+        Some(YzxMenuCategory::Config),
+        Some("Open the managed Yazelix config directory."),
+    ),
+    &[],
+    YZX_EDIT_RELATIVE_PATH,
+);
+const EDIT_CONFIG_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx edit config",
+        "Open the main Yazelix config in the configured editor",
+        YzxCommandCategory::Config,
+        EDIT_CONFIG_FLAGS,
+        Some(YzxMenuCategory::Config),
+        Some("Open the active Yazelix config file."),
+    ),
+    &["config"],
+    YZX_EDIT_RELATIVE_PATH,
+);
+const EDIT_COMMANDS: &[YzxCommandLeaf] = &[EDIT_ROOT_COMMAND, EDIT_CONFIG_COMMAND];
+
+const ENTER_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx enter",
+        "Start Yazelix in the current terminal",
+        YzxCommandCategory::Session,
+        ENTER_FLAGS,
+        Some(YzxMenuCategory::Session),
+        None,
+    ),
+    &[],
+    YZX_ENTER_RELATIVE_PATH,
+);
+const ENTER_COMMANDS: &[YzxCommandLeaf] = &[ENTER_COMMAND];
+
+const HOME_MANAGER_ROOT_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx home_manager",
+        "Show Yazelix Home Manager takeover helpers",
+        YzxCommandCategory::Integration,
+        &[],
+        Some(YzxMenuCategory::System),
+        Some("Home Manager takeover helpers for Yazelix-owned paths."),
+    ),
+    &[],
+    YZX_HOME_MANAGER_RELATIVE_PATH,
+);
+const HOME_MANAGER_PREPARE_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx home_manager prepare",
+        "Preview or archive manual-install artifacts before Home Manager takeover",
+        YzxCommandCategory::Integration,
+        HM_PREPARE_FLAGS,
+        Some(YzxMenuCategory::System),
+        Some("Preview or archive manual-install artifacts before Home Manager takeover."),
+    ),
+    &["prepare"],
+    YZX_HOME_MANAGER_RELATIVE_PATH,
+);
+const HOME_MANAGER_COMMANDS: &[YzxCommandLeaf] =
+    &[HOME_MANAGER_ROOT_COMMAND, HOME_MANAGER_PREPARE_COMMAND];
+
+const IMPORT_ROOT_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx import",
+        "Import native config files into Yazelix-managed override paths",
+        YzxCommandCategory::Config,
+        &[],
+        Some(YzxMenuCategory::Config),
+        None,
+    ),
+    &[],
+    YZX_IMPORT_RELATIVE_PATH,
+);
+const IMPORT_HELIX_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx import helix",
+        "Import the native Helix config into Yazelix-managed overrides",
+        YzxCommandCategory::Config,
+        IMPORT_FLAGS,
+        Some(YzxMenuCategory::Config),
+        None,
+    ),
+    &["helix"],
+    YZX_IMPORT_RELATIVE_PATH,
+);
+const IMPORT_YAZI_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx import yazi",
+        "Import native Yazi config files into Yazelix-managed override paths",
+        YzxCommandCategory::Config,
+        IMPORT_FLAGS,
+        Some(YzxMenuCategory::Config),
+        None,
+    ),
+    &["yazi"],
+    YZX_IMPORT_RELATIVE_PATH,
+);
+const IMPORT_ZELLIJ_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx import zellij",
+        "Import the native Zellij config into Yazelix-managed overrides",
+        YzxCommandCategory::Config,
+        IMPORT_FLAGS,
+        Some(YzxMenuCategory::Config),
+        None,
+    ),
+    &["zellij"],
+    YZX_IMPORT_RELATIVE_PATH,
+);
+const IMPORT_COMMANDS: &[YzxCommandLeaf] = &[
+    IMPORT_ROOT_COMMAND,
+    IMPORT_HELIX_COMMAND,
+    IMPORT_YAZI_COMMAND,
+    IMPORT_ZELLIJ_COMMAND,
+];
+
+const KEYS_ROOT_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx keys",
+        "Show Yazelix-owned keybindings and remaps",
+        YzxCommandCategory::Help,
+        &[],
+        Some(YzxMenuCategory::Help),
+        None,
+    ),
+    &[],
+    YZX_KEYS_RELATIVE_PATH,
+);
+const KEYS_HELIX_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx keys helix",
+        "Alias for yzx keys hx",
+        YzxCommandCategory::Help,
+        &[],
+        Some(YzxMenuCategory::Help),
+        None,
+    ),
+    &["helix"],
+    YZX_KEYS_RELATIVE_PATH,
+);
+const KEYS_HX_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx keys hx",
+        "Explain how to discover Helix keybindings and commands",
+        YzxCommandCategory::Help,
+        &[],
+        Some(YzxMenuCategory::Help),
+        None,
+    ),
+    &["hx"],
+    YZX_KEYS_RELATIVE_PATH,
+);
+const KEYS_NU_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx keys nu",
+        "Show a small curated subset of useful Nushell keybindings",
+        YzxCommandCategory::Help,
+        &[],
+        Some(YzxMenuCategory::Help),
+        None,
+    ),
+    &["nu"],
+    YZX_KEYS_RELATIVE_PATH,
+);
+const KEYS_NUSHELL_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx keys nushell",
+        "Alias for yzx keys nu",
+        YzxCommandCategory::Help,
+        &[],
+        Some(YzxMenuCategory::Help),
+        None,
+    ),
+    &["nushell"],
+    YZX_KEYS_RELATIVE_PATH,
+);
+const KEYS_YAZI_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx keys yazi",
+        "Explain how to view Yazi's built-in keybindings",
+        YzxCommandCategory::Help,
+        &[],
+        Some(YzxMenuCategory::Help),
+        None,
+    ),
+    &["yazi"],
+    YZX_KEYS_RELATIVE_PATH,
+);
+const KEYS_YZX_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx keys yzx",
+        "Alias for the default Yazelix keybinding view",
+        YzxCommandCategory::Help,
+        &[],
+        Some(YzxMenuCategory::Help),
+        None,
+    ),
+    &["yzx"],
+    YZX_KEYS_RELATIVE_PATH,
+);
+const KEYS_COMMANDS: &[YzxCommandLeaf] = &[
+    KEYS_ROOT_COMMAND,
+    KEYS_HELIX_COMMAND,
+    KEYS_HX_COMMAND,
+    KEYS_NU_COMMAND,
+    KEYS_NUSHELL_COMMAND,
+    KEYS_YAZI_COMMAND,
+    KEYS_YZX_COMMAND,
+];
+
+const LAUNCH_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx launch",
+        "Launch Yazelix",
+        YzxCommandCategory::Session,
+        LAUNCH_FLAGS,
+        Some(YzxMenuCategory::Session),
+        None,
+    ),
+    &[],
+    YZX_LAUNCH_RELATIVE_PATH,
+);
+const LAUNCH_COMMANDS: &[YzxCommandLeaf] = &[LAUNCH_COMMAND];
+
+const MENU_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx menu",
+        "Interactive command palette for Yazelix",
+        YzxCommandCategory::Help,
+        &[],
+        None,
+        None,
+    ),
+    &[],
+    YZX_MENU_RELATIVE_PATH,
+);
+const MENU_COMMANDS: &[YzxCommandLeaf] = &[MENU_COMMAND];
+
+const POPUP_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx popup",
+        "Open or toggle the configured Yazelix popup program in Zellij",
+        YzxCommandCategory::Workspace,
+        POPUP_ARGS,
+        Some(YzxMenuCategory::Workspace),
+        Some("Open a floating terminal tool pane, for example `yzx popup lazygit`."),
+    ),
+    &[],
+    YZX_POPUP_RELATIVE_PATH,
+);
+const POPUP_COMMANDS: &[YzxCommandLeaf] = &[POPUP_COMMAND];
+
+const RESTART_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx restart",
+        "Restart Yazelix",
+        YzxCommandCategory::Session,
+        &[],
+        Some(YzxMenuCategory::Session),
+        Some("Restart Yazelix."),
+    ),
+    &[],
+    CORE_SESSION_RELATIVE_PATH,
+);
+const RESTART_COMMANDS: &[YzxCommandLeaf] = &[RESTART_COMMAND];
+
+const REVEAL_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx reveal",
+        "Reveal a file or directory in the managed Yazi sidebar",
+        YzxCommandCategory::Workspace,
+        REVEAL_ARGS,
+        Some(YzxMenuCategory::Workspace),
+        Some("Reveal a path in the managed Yazi sidebar."),
+    ),
+    &[],
+    CORE_WORKSPACE_RELATIVE_PATH,
+);
+const REVEAL_COMMANDS: &[YzxCommandLeaf] = &[REVEAL_COMMAND];
+
+const SCREEN_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx screen",
+        "Show an animated Yazelix full-terminal screen",
+        YzxCommandCategory::Workspace,
+        SCREEN_ARGS,
+        Some(YzxMenuCategory::Workspace),
+        Some("Preview the animated welcome screen directly in the current terminal."),
+    ),
+    &[],
+    YZX_SCREEN_RELATIVE_PATH,
+);
+const SCREEN_COMMANDS: &[YzxCommandLeaf] = &[SCREEN_COMMAND];
+
+const SPONSOR_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx sponsor",
+        "Open the Yazelix sponsor page or print its URL",
+        YzxCommandCategory::Help,
+        &[],
+        Some(YzxMenuCategory::Help),
+        Some("Show the sponsorship links and support message."),
+    ),
+    &[],
+    CORE_SUPPORT_RELATIVE_PATH,
+);
+const SPONSOR_COMMANDS: &[YzxCommandLeaf] = &[SPONSOR_COMMAND];
+
+const TUTOR_ROOT_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx tutor",
+        "Show the Yazelix guided overview",
+        YzxCommandCategory::Help,
+        &[],
+        Some(YzxMenuCategory::Help),
+        None,
+    ),
+    &[],
+    YZX_TUTOR_RELATIVE_PATH,
+);
+const TUTOR_HELIX_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx tutor helix",
+        "Alias for yzx tutor hx",
+        YzxCommandCategory::Help,
+        &[],
+        Some(YzxMenuCategory::Help),
+        None,
+    ),
+    &["helix"],
+    YZX_TUTOR_RELATIVE_PATH,
+);
+const TUTOR_HX_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx tutor hx",
+        "Launch Helix's built-in tutorial",
+        YzxCommandCategory::Help,
+        &[],
+        Some(YzxMenuCategory::Help),
+        None,
+    ),
+    &["hx"],
+    YZX_TUTOR_RELATIVE_PATH,
+);
+const TUTOR_NU_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx tutor nu",
+        "Launch Nushell's built-in tutorial in a fresh Nushell process",
+        YzxCommandCategory::Help,
+        &[],
+        Some(YzxMenuCategory::Help),
+        None,
+    ),
+    &["nu"],
+    YZX_TUTOR_RELATIVE_PATH,
+);
+const TUTOR_NUSHELL_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx tutor nushell",
+        "Alias for yzx tutor nu",
+        YzxCommandCategory::Help,
+        &[],
+        Some(YzxMenuCategory::Help),
+        None,
+    ),
+    &["nushell"],
+    YZX_TUTOR_RELATIVE_PATH,
+);
+const TUTOR_COMMANDS: &[YzxCommandLeaf] = &[
+    TUTOR_ROOT_COMMAND,
+    TUTOR_HELIX_COMMAND,
+    TUTOR_HX_COMMAND,
+    TUTOR_NU_COMMAND,
+    TUTOR_NUSHELL_COMMAND,
+];
+
+const WHATS_NEW_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx whats_new",
+        "Show the current Yazelix upgrade summary",
+        YzxCommandCategory::Help,
+        &[],
+        Some(YzxMenuCategory::Help),
+        Some("Show the latest release notes."),
+    ),
+    &[],
+    YZX_WHATS_NEW_RELATIVE_PATH,
+);
+const WHATS_NEW_COMMANDS: &[YzxCommandLeaf] = &[WHATS_NEW_COMMAND];
+
+const WHY_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx why",
+        "Elevator pitch: Why Yazelix",
+        YzxCommandCategory::Help,
+        &[],
+        Some(YzxMenuCategory::Help),
+        None,
+    ),
+    &[],
+    CORE_SUPPORT_RELATIVE_PATH,
+);
+const WHY_COMMANDS: &[YzxCommandLeaf] = &[WHY_COMMAND];
+
+const INTERNAL_NU_FAMILIES: &[YzxInternalNuFamily] = &[
+    internal_family(
+        "config",
+        CONFIG_COMMANDS,
+        Some(0),
+        false,
+        false,
+        YzxUnknownSubcommandBehavior::RouteRoot,
+        &[],
+    ),
+    internal_family(
+        "cwd",
+        CWD_COMMANDS,
+        Some(0),
+        false,
+        false,
+        YzxUnknownSubcommandBehavior::RouteRoot,
+        &[],
+    ),
+    internal_family(
+        "desktop",
+        DESKTOP_COMMANDS,
+        None,
+        false,
+        false,
+        YzxUnknownSubcommandBehavior::Error,
+        DESKTOP_REQUIRED_SUBCOMMANDS,
+    ),
+    internal_family(
+        "dev",
+        DEV_COMMANDS,
+        Some(0),
+        true,
+        true,
+        YzxUnknownSubcommandBehavior::Error,
+        &[],
+    ),
+    internal_family(
+        "doctor",
+        DOCTOR_COMMANDS,
+        Some(0),
+        false,
+        false,
+        YzxUnknownSubcommandBehavior::RouteRoot,
+        &[],
+    ),
+    internal_family(
+        "edit",
+        EDIT_COMMANDS,
+        Some(0),
+        false,
+        false,
+        YzxUnknownSubcommandBehavior::RouteRoot,
+        &[],
+    ),
+    internal_family(
+        "enter",
+        ENTER_COMMANDS,
+        Some(0),
+        false,
+        false,
+        YzxUnknownSubcommandBehavior::RouteRoot,
+        &[],
+    ),
+    internal_family(
+        "home_manager",
+        HOME_MANAGER_COMMANDS,
+        Some(0),
+        false,
+        false,
+        YzxUnknownSubcommandBehavior::RouteRoot,
+        &[],
+    ),
+    internal_family(
+        "import",
+        IMPORT_COMMANDS,
+        Some(0),
+        true,
+        true,
+        YzxUnknownSubcommandBehavior::Error,
+        &[],
+    ),
+    internal_family(
+        "keys",
+        KEYS_COMMANDS,
+        Some(0),
+        false,
+        false,
+        YzxUnknownSubcommandBehavior::RouteRoot,
+        &[],
+    ),
+    internal_family(
+        "launch",
+        LAUNCH_COMMANDS,
+        Some(0),
+        false,
+        false,
+        YzxUnknownSubcommandBehavior::RouteRoot,
+        &[],
+    ),
+    internal_family(
+        "menu",
+        MENU_COMMANDS,
+        Some(0),
+        false,
+        false,
+        YzxUnknownSubcommandBehavior::RouteRoot,
+        &[],
+    ),
+    internal_family(
+        "popup",
+        POPUP_COMMANDS,
+        Some(0),
+        false,
+        false,
+        YzxUnknownSubcommandBehavior::RouteRoot,
+        &[],
+    ),
+    internal_family(
+        "restart",
+        RESTART_COMMANDS,
+        Some(0),
+        false,
+        false,
+        YzxUnknownSubcommandBehavior::RouteRoot,
+        &[],
+    ),
+    internal_family(
+        "reveal",
+        REVEAL_COMMANDS,
+        Some(0),
+        false,
+        false,
+        YzxUnknownSubcommandBehavior::RouteRoot,
+        &[],
+    ),
+    internal_family(
+        "screen",
+        SCREEN_COMMANDS,
+        Some(0),
+        false,
+        false,
+        YzxUnknownSubcommandBehavior::RouteRoot,
+        &[],
+    ),
+    internal_family(
+        "sponsor",
+        SPONSOR_COMMANDS,
+        Some(0),
+        false,
+        false,
+        YzxUnknownSubcommandBehavior::RouteRoot,
+        &[],
+    ),
+    internal_family(
+        "tutor",
+        TUTOR_COMMANDS,
+        Some(0),
+        false,
+        false,
+        YzxUnknownSubcommandBehavior::RouteRoot,
+        &[],
+    ),
+    internal_family(
+        "whats_new",
+        WHATS_NEW_COMMANDS,
+        Some(0),
+        false,
+        false,
+        YzxUnknownSubcommandBehavior::RouteRoot,
+        &[],
+    ),
+    internal_family(
+        "why",
+        WHY_COMMANDS,
+        Some(0),
+        false,
+        false,
+        YzxUnknownSubcommandBehavior::RouteRoot,
+        &[],
+    ),
+];
+
+pub fn yzx_command_metadata() -> Vec<YzxCommandMetadata> {
+    let mut commands = vec![ROOT_COMMAND];
+    for family in RUST_CONTROL_FAMILIES {
+        commands.extend(family.commands.iter().copied());
+    }
+    for family in INTERNAL_NU_FAMILIES {
+        commands.extend(family.commands.iter().map(|command| command.metadata));
+    }
+    commands.sort_by(|left, right| left.name.cmp(right.name));
+    commands
+}
+
+pub fn classify_yzx_root_route(argv: &[String]) -> Result<YzxPublicRootRoute<'_>, CoreError> {
+    let Some(first) = argv.first().map(|value| value.as_str()) else {
+        return Ok(YzxPublicRootRoute::Help);
+    };
+
+    if matches!(first, "help" | "-h" | "--help") {
+        return Ok(YzxPublicRootRoute::Help);
+    }
+
+    if matches!(first, "-V" | "--version" | "-v" | "--version-short") {
+        return Ok(YzxPublicRootRoute::Version);
+    }
+
+    if RUST_CONTROL_FAMILIES
+        .iter()
+        .any(|family| family.root_token == first)
+    {
+        return Ok(YzxPublicRootRoute::RustControl);
+    }
+
+    if let Some(family) = INTERNAL_NU_FAMILIES
+        .iter()
+        .find(|family| family.root_token == first)
+    {
+        return Ok(YzxPublicRootRoute::InternalNu(plan_internal_nu_route(
+            family,
+            &argv[1..],
+        )?));
+    }
+
+    Err(CoreError::classified(
+        ErrorClass::Usage,
+        "unknown_command",
+        format!("Unknown yzx command: {first}"),
+        "Run `yzx --help` to see available commands.",
+        json!({ "command": first }),
+    ))
+}
+
+const fn metadata(
+    name: &'static str,
+    description: &'static str,
+    category: YzxCommandCategory,
+    parameters: &'static [YzxCommandParameter],
+    menu_category: Option<YzxMenuCategory>,
+    extra_description: Option<&'static str>,
+) -> YzxCommandMetadata {
+    YzxCommandMetadata {
+        name,
+        description,
+        category,
+        parameters,
+        menu_category,
+        extra_description,
+    }
+}
+
+const fn switch(name: &'static str, short: Option<&'static str>) -> YzxCommandParameter {
+    YzxCommandParameter {
+        kind: YzxParameterKind::Switch,
+        name,
+        short,
+        shape: "string",
+        optional: true,
+    }
+}
+
+const fn named(
+    name: &'static str,
+    short: Option<&'static str>,
+    shape: &'static str,
+    optional: bool,
+) -> YzxCommandParameter {
+    YzxCommandParameter {
+        kind: YzxParameterKind::Named,
+        name,
+        short,
+        shape,
+        optional,
+    }
+}
+
+const fn positional(
+    name: &'static str,
+    shape: &'static str,
+    optional: bool,
+) -> YzxCommandParameter {
+    YzxCommandParameter {
+        kind: YzxParameterKind::Positional,
+        name,
+        short: None,
+        shape,
+        optional,
+    }
+}
+
+const fn rest(name: &'static str) -> YzxCommandParameter {
+    YzxCommandParameter {
+        kind: YzxParameterKind::Rest,
+        name,
+        short: None,
+        shape: "string",
+        optional: true,
+    }
+}
+
+const fn leaf(
+    metadata: YzxCommandMetadata,
+    tokens_after_root: &'static [&'static str],
+    module_relative_path: &'static [&'static str],
+) -> YzxCommandLeaf {
+    YzxCommandLeaf {
+        metadata,
+        tokens_after_root,
+        module_relative_path,
+    }
+}
+
+const fn rust_control_family(
+    root_token: &'static str,
+    commands: &'static [YzxCommandMetadata],
+) -> YzxRustControlFamily {
+    YzxRustControlFamily {
+        root_token,
+        commands,
+    }
+}
+
+const fn internal_family(
+    root_token: &'static str,
+    commands: &'static [YzxCommandLeaf],
+    root_command_index: Option<usize>,
+    help_token_routes_to_root_empty_tail: bool,
+    help_flags_route_to_root_with_tail: bool,
+    unknown_subcommand_behavior: YzxUnknownSubcommandBehavior,
+    required_subcommands: &'static [&'static str],
+) -> YzxInternalNuFamily {
+    YzxInternalNuFamily {
+        root_token,
+        commands,
+        root_command_index,
+        help_token_routes_to_root_empty_tail,
+        help_flags_route_to_root_with_tail,
+        unknown_subcommand_behavior,
+        required_subcommands,
+    }
+}
+
+fn plan_internal_nu_route<'a>(
+    family: &'static YzxInternalNuFamily,
+    argv: &'a [String],
+) -> Result<YzxInternalNuRoutePlan<'a>, CoreError> {
+    if let Some(command) = match_subcommand(family, argv) {
+        let tail = &argv[command.tokens_after_root.len()..];
+        return Ok(plan_route(command, tail));
+    }
+
+    if argv.is_empty() {
+        if let Some(command) = root_command(family) {
+            return Ok(plan_route(command, argv));
+        }
+        return Err(required_subcommand_error(
+            family.root_token,
+            family.required_subcommands,
+        ));
+    }
+
+    if family.help_token_routes_to_root_empty_tail && matches!(first_arg(argv), Some("help")) {
+        if let Some(command) = root_command(family) {
+            return Ok(plan_route(command, &[]));
+        }
+    }
+
+    if family.help_flags_route_to_root_with_tail
+        && matches!(first_arg(argv), Some("-h") | Some("--help"))
+    {
+        if let Some(command) = root_command(family) {
+            return Ok(plan_route(command, argv));
+        }
+    }
+
+    if !family.required_subcommands.is_empty() && root_command(family).is_none() {
+        return Err(required_subcommand_error(
+            family.root_token,
+            family.required_subcommands,
+        ));
+    }
+
+    match family.unknown_subcommand_behavior {
+        YzxUnknownSubcommandBehavior::RouteRoot => {
+            let command =
+                root_command(family).expect("route-root families must define a root command");
+            Ok(plan_route(command, argv))
+        }
+        YzxUnknownSubcommandBehavior::Error => Err(unknown_subcommand_error(family.root_token)),
+    }
+}
+
+fn root_command(family: &'static YzxInternalNuFamily) -> Option<&'static YzxCommandLeaf> {
+    family
+        .root_command_index
+        .map(|index| &family.commands[index])
+}
+
+fn match_subcommand(
+    family: &'static YzxInternalNuFamily,
+    argv: &[String],
+) -> Option<&'static YzxCommandLeaf> {
+    family
+        .commands
+        .iter()
+        .filter(|command| {
+            !command.tokens_after_root.is_empty()
+                && tokens_match_prefix(command.tokens_after_root, argv)
+        })
+        .max_by_key(|command| command.tokens_after_root.len())
+}
+
+fn tokens_match_prefix(expected: &[&str], argv: &[String]) -> bool {
+    argv.len() >= expected.len()
+        && expected
+            .iter()
+            .zip(argv.iter())
+            .all(|(expected, actual)| *expected == actual.as_str())
+}
+
+fn plan_route<'a>(
+    command: &'static YzxCommandLeaf,
+    tail: &'a [String],
+) -> YzxInternalNuRoutePlan<'a> {
+    YzxInternalNuRoutePlan {
+        module_relative_path: command.module_relative_path,
+        command_name: command.metadata.name,
+        tail,
+    }
+}
+
+fn first_arg(argv: &[String]) -> Option<&str> {
+    argv.first().map(String::as_str)
+}
+
+fn unknown_subcommand_error(route: &str) -> CoreError {
+    CoreError::classified(
+        ErrorClass::Usage,
+        "unknown_subcommand",
+        format!("Unknown yzx {route} subcommand"),
+        format!("Run `yzx {route} --help` or `yzx --help` to see supported commands."),
+        json!({ "route": route }),
+    )
+}
+
+fn required_subcommand_error(route: &str, expected: &[&str]) -> CoreError {
+    CoreError::classified(
+        ErrorClass::Usage,
+        "missing_subcommand",
+        format!("yzx {route} requires one of: {}", expected.join(", ")),
+        format!("Run `yzx {route} --help` or `yzx --help` to see supported subcommands."),
+        json!({ "route": route, "expected": expected }),
+    )
+}
+
+// Test lane: default
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Defends: the public Rust root keeps the already migrated control-plane family on the Rust-owned path.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn classifies_rust_owned_control_family_at_root() {
+        assert_eq!(
+            classify_yzx_root_route(&["env".into(), "--no-shell".into()]).unwrap(),
+            YzxPublicRootRoute::RustControl
+        );
+        assert_eq!(
+            classify_yzx_root_route(&["run".into(), "rg".into()]).unwrap(),
+            YzxPublicRootRoute::RustControl
+        );
+        assert_eq!(
+            classify_yzx_root_route(&["update".into(), "nix".into()]).unwrap(),
+            YzxPublicRootRoute::RustControl
+        );
+    }
+
+    // Defends: the shared root classifier preserves no-arg help, help flags, and all supported version flags.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn classifies_root_help_and_version_behaviors() {
+        assert_eq!(
+            classify_yzx_root_route(&[]).unwrap(),
+            YzxPublicRootRoute::Help
+        );
+        assert_eq!(
+            classify_yzx_root_route(&[String::from("help")]).unwrap(),
+            YzxPublicRootRoute::Help
+        );
+        assert_eq!(
+            classify_yzx_root_route(&[String::from("-h")]).unwrap(),
+            YzxPublicRootRoute::Help
+        );
+        assert_eq!(
+            classify_yzx_root_route(&[String::from("--help")]).unwrap(),
+            YzxPublicRootRoute::Help
+        );
+        for flag in ["-V", "--version", "-v", "--version-short"] {
+            assert_eq!(
+                classify_yzx_root_route(&[flag.to_string()]).unwrap(),
+                YzxPublicRootRoute::Version
+            );
+        }
+    }
+
+    // Defends: the Rust root rejects unknown top-level commands instead of reviving the old generic Nu root fallback.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn rejects_unknown_top_level_command() {
+        let err = classify_yzx_root_route(&["not-a-command".into()]).unwrap_err();
+        assert!(matches!(err.class(), ErrorClass::Usage));
+        assert_eq!(err.code(), "unknown_command");
+    }
+
+    // Defends: grouped Nu-owned families are planned directly to their concrete module instead of a shared dispatcher bridge.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn plans_grouped_internal_family_to_direct_module() {
+        let argv = [String::from("desktop"), String::from("launch")];
+        let route = classify_yzx_root_route(&argv).unwrap();
+        let YzxPublicRootRoute::InternalNu(plan) = route else {
+            panic!("expected internal Nu route");
+        };
+
+        assert_eq!(plan.module_relative_path, YZX_DESKTOP_RELATIVE_PATH);
+        assert_eq!(plan.command_name, "yzx desktop launch");
+        assert!(plan.tail.is_empty());
+    }
+
+    // Regression: dev and import keep their explicit help shims instead of treating `help` as an unknown subcommand.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn keeps_help_alias_behavior_for_grouped_internal_families() {
+        let dev_argv = [
+            String::from("dev"),
+            String::from("help"),
+            String::from("ignored"),
+        ];
+        let route = classify_yzx_root_route(&dev_argv).unwrap();
+        let YzxPublicRootRoute::InternalNu(plan) = route else {
+            panic!("expected internal Nu route");
+        };
+        assert_eq!(plan.command_name, "yzx dev");
+        assert!(plan.tail.is_empty());
+
+        let import_argv = [String::from("import"), String::from("--help")];
+        let route = classify_yzx_root_route(&import_argv).unwrap();
+        let YzxPublicRootRoute::InternalNu(plan) = route else {
+            panic!("expected internal Nu route");
+        };
+        assert_eq!(plan.command_name, "yzx import");
+        assert_eq!(plan.tail, &[String::from("--help")]);
+    }
+
+    // Regression: the direct route planner must preserve alias leaves and the family-specific missing-subcommand contract.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn preserves_alias_and_missing_subcommand_contracts() {
+        let config_argv = [String::from("config"), String::from("reset")];
+        let route = classify_yzx_root_route(&config_argv).unwrap();
+        let YzxPublicRootRoute::InternalNu(plan) = route else {
+            panic!("expected internal Nu route");
+        };
+        assert_eq!(plan.command_name, "yzx config reset");
+
+        let edit_argv = [String::from("edit"), String::from("config")];
+        let route = classify_yzx_root_route(&edit_argv).unwrap();
+        let YzxPublicRootRoute::InternalNu(plan) = route else {
+            panic!("expected internal Nu route");
+        };
+        assert_eq!(plan.command_name, "yzx edit config");
+
+        let home_manager_argv = [String::from("home_manager"), String::from("prepare")];
+        let route = classify_yzx_root_route(&home_manager_argv).unwrap();
+        let YzxPublicRootRoute::InternalNu(plan) = route else {
+            panic!("expected internal Nu route");
+        };
+        assert_eq!(plan.command_name, "yzx home_manager prepare");
+
+        let argv = [String::from("keys"), String::from("helix")];
+        let route = classify_yzx_root_route(&argv).unwrap();
+        let YzxPublicRootRoute::InternalNu(plan) = route else {
+            panic!("expected internal Nu route");
+        };
+        assert_eq!(plan.command_name, "yzx keys helix");
+
+        let tutor_argv = [String::from("tutor"), String::from("nushell")];
+        let route = classify_yzx_root_route(&tutor_argv).unwrap();
+        let YzxPublicRootRoute::InternalNu(plan) = route else {
+            panic!("expected internal Nu route");
+        };
+        assert_eq!(plan.command_name, "yzx tutor nushell");
+
+        let err = classify_yzx_root_route(&["desktop".into()]).unwrap_err();
+        assert_eq!(err.code(), "missing_subcommand");
+        assert!(err.message().contains("install, launch, uninstall"));
+
+        let err = classify_yzx_root_route(&[String::from("dev"), String::from("not-a-subcommand")])
+            .unwrap_err();
+        assert_eq!(err.code(), "unknown_subcommand");
+    }
+
+    // Regression: menu visibility and menu categories come from the shared Rust command surface instead of a second Nushell-owned map.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn shared_surface_carries_menu_visibility_and_category() {
+        let commands = yzx_command_metadata();
+        let menu = commands
+            .iter()
+            .find(|command| command.name == "yzx menu")
+            .unwrap();
+        let update = commands
+            .iter()
+            .find(|command| command.name == "yzx update")
+            .unwrap();
+        let env = commands
+            .iter()
+            .find(|command| command.name == "yzx env")
+            .unwrap();
+
+        assert_eq!(menu.menu_category, None);
+        assert_eq!(update.menu_category, Some(YzxMenuCategory::System));
+        assert_eq!(env.menu_category, None);
+        assert_eq!(
+            update.extra_description, None,
+            "root update keeps the base description while subcommands can override palette copy"
+        );
+    }
+}
