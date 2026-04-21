@@ -101,7 +101,6 @@ def validate_rust_routed_nu_modules [runtime_root: string, label: string] {
         ["core" "yzx_session.nu"]
         ["core" "yzx_support.nu"]
         ["core" "yzx_workspace.nu"]
-        ["yzx" "config.nu"]
         ["yzx" "desktop.nu"]
         ["yzx" "dev.nu"]
         ["yzx" "edit.nu"]

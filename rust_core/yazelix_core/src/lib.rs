@@ -1,6 +1,7 @@
 pub mod active_config_surface;
 pub mod bridge;
 pub mod command_metadata;
+pub mod config_commands;
 pub mod config_normalize;
 pub mod config_state;
 pub mod control_plane;
@@ -30,6 +31,7 @@ pub use command_metadata::{
     YzxExternBridgeSyncStatus, render_yzx_externs, render_yzx_help, sync_yzx_extern_bridge,
     yzx_command_metadata_data,
 };
+pub use config_commands::run_yzx_config;
 pub use config_normalize::{NormalizeConfigData, NormalizeConfigRequest, normalize_config};
 pub use config_state::{
     ComputeConfigStateRequest, ConfigStateData, RecordConfigStateData, RecordConfigStateRequest,

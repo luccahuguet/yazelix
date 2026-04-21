@@ -198,7 +198,7 @@ Open a transient floating-pane command inside Zellij
 - Popup pane is named `yzx_popup`
 
 ### `yzx config [--path]`
-Show the active Yazelix configuration via Nushell `open`
+Show the active Yazelix configuration through the Rust-owned control path
 - Default: print the active config
 - `--path`: print the resolved config path
 

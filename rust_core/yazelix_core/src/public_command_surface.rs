@@ -6,7 +6,6 @@ const CORE_DOCTOR_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "core", "yzx_
 const CORE_SESSION_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "core", "yzx_session.nu"];
 const CORE_SUPPORT_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "core", "yzx_support.nu"];
 const CORE_WORKSPACE_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "core", "yzx_workspace.nu"];
-const YZX_CONFIG_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "config.nu"];
 const YZX_DESKTOP_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "desktop.nu"];
 const YZX_DEV_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "dev.nu"];
 const YZX_EDIT_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "edit.nu"];
@@ -144,7 +143,9 @@ const DOCTOR_FLAGS: &[YzxCommandParameter] = &[
     switch("fix", Some("f")),
     switch("json", None),
 ];
-const CONFIG_RESET_FLAGS: &[YzxCommandParameter] = &[switch("force", None)];
+const CONFIG_FLAGS: &[YzxCommandParameter] = &[switch("path", None)];
+const CONFIG_RESET_FLAGS: &[YzxCommandParameter] =
+    &[switch("yes", None), switch("no-backup", None)];
 const IMPORT_FLAGS: &[YzxCommandParameter] = &[switch("force", None)];
 const EDIT_ARGS: &[YzxCommandParameter] = &[rest("query"), switch("print", None)];
 const EDIT_CONFIG_FLAGS: &[YzxCommandParameter] = &[switch("print", None)];
@@ -260,6 +261,23 @@ const UPDATE_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[
     UPDATE_NIX_COMMAND,
     UPDATE_UPSTREAM_COMMAND,
 ];
+const CONFIG_ROOT_COMMAND: YzxCommandMetadata = metadata(
+    "yzx config",
+    "Show the active Yazelix configuration",
+    YzxCommandCategory::Config,
+    CONFIG_FLAGS,
+    Some(YzxMenuCategory::Config),
+    Some("Print the active config TOML or its resolved path."),
+);
+const CONFIG_RESET_COMMAND: YzxCommandMetadata = metadata(
+    "yzx config reset",
+    "Replace the main Yazelix config with a fresh shipped template",
+    YzxCommandCategory::Config,
+    CONFIG_RESET_FLAGS,
+    Some(YzxMenuCategory::Config),
+    Some("Reset managed Yazelix config surfaces back to their defaults."),
+);
+const CONFIG_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[CONFIG_ROOT_COMMAND, CONFIG_RESET_COMMAND];
 const HOME_MANAGER_ROOT_COMMAND: YzxCommandMetadata = metadata(
     "yzx home_manager",
     "Show Yazelix Home Manager takeover helpers",
@@ -279,38 +297,13 @@ const HOME_MANAGER_PREPARE_COMMAND: YzxCommandMetadata = metadata(
 const HOME_MANAGER_FAMILY_COMMANDS: &[YzxCommandMetadata] =
     &[HOME_MANAGER_ROOT_COMMAND, HOME_MANAGER_PREPARE_COMMAND];
 const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
+    rust_control_family("config", CONFIG_FAMILY_COMMANDS),
     rust_control_family("env", ENV_FAMILY_COMMANDS),
     rust_control_family("run", RUN_FAMILY_COMMANDS),
     rust_control_family("status", STATUS_FAMILY_COMMANDS),
     rust_control_family("home_manager", HOME_MANAGER_FAMILY_COMMANDS),
     rust_control_family("update", UPDATE_FAMILY_COMMANDS),
 ];
-
-const CONFIG_ROOT_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx config",
-        "Show the active Yazelix configuration",
-        YzxCommandCategory::Config,
-        &[],
-        Some(YzxMenuCategory::Config),
-        None,
-    ),
-    &[],
-    YZX_CONFIG_RELATIVE_PATH,
-);
-const CONFIG_RESET_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx config reset",
-        "Replace the main Yazelix config with a fresh shipped template",
-        YzxCommandCategory::Config,
-        CONFIG_RESET_FLAGS,
-        Some(YzxMenuCategory::Config),
-        Some("Reset managed Yazelix config surfaces back to their defaults."),
-    ),
-    &["reset"],
-    YZX_CONFIG_RELATIVE_PATH,
-);
-const CONFIG_COMMANDS: &[YzxCommandLeaf] = &[CONFIG_ROOT_COMMAND, CONFIG_RESET_COMMAND];
 
 const CWD_COMMAND: YzxCommandLeaf = leaf(
     metadata(
@@ -875,15 +868,6 @@ const WHY_COMMANDS: &[YzxCommandLeaf] = &[WHY_COMMAND];
 
 const INTERNAL_NU_FAMILIES: &[YzxInternalNuFamily] = &[
     internal_family(
-        "config",
-        CONFIG_COMMANDS,
-        Some(0),
-        false,
-        false,
-        YzxUnknownSubcommandBehavior::RouteRoot,
-        &[],
-    ),
-    internal_family(
         "cwd",
         CWD_COMMANDS,
         Some(0),
@@ -1334,6 +1318,14 @@ mod tests {
             YzxPublicRootRoute::RustControl
         );
         assert_eq!(
+            classify_yzx_root_route(&["config".into(), "--path".into()]).unwrap(),
+            YzxPublicRootRoute::RustControl
+        );
+        assert_eq!(
+            classify_yzx_root_route(&["config".into(), "reset".into(), "--yes".into()]).unwrap(),
+            YzxPublicRootRoute::RustControl
+        );
+        assert_eq!(
             classify_yzx_root_route(&["run".into(), "rg".into()]).unwrap(),
             YzxPublicRootRoute::RustControl
         );
@@ -1428,13 +1420,6 @@ mod tests {
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn preserves_alias_and_missing_subcommand_contracts() {
-        let config_argv = [String::from("config"), String::from("reset")];
-        let route = classify_yzx_root_route(&config_argv).unwrap();
-        let YzxPublicRootRoute::InternalNu(plan) = route else {
-            panic!("expected internal Nu route");
-        };
-        assert_eq!(plan.command_name, "yzx config reset");
-
         let edit_argv = [String::from("edit"), String::from("config")];
         let route = classify_yzx_root_route(&edit_argv).unwrap();
         let YzxPublicRootRoute::InternalNu(plan) = route else {

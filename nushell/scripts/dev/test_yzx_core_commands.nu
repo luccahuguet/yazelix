@@ -789,6 +789,180 @@ def test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts [] {
     $result
 }
 
+# Defends: the public Rust-owned `yzx config --path` route returns the resolved managed config path instead of depending on the deleted Nu owner.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+def test_public_yzx_config_prints_resolved_path [] {
+    print "🧪 Testing public yzx config --path returns the resolved managed config path..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_config_print_path"
+        '[core]
+welcome_style = "random"
+'
+    )
+
+    let result = (try {
+        let output = (run_public_yzx_command_for_fixture $fixture "yzx config --path")
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout == $fixture.config_path)
+        ) {
+            print "  ✅ public yzx config --path now returns the managed config path through the Rust owner"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Defends: the public Rust-owned `yzx config` route still bootstraps a missing managed config from the shipped default and prints the resulting TOML.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_public_yzx_config_bootstraps_missing_user_config [] {
+    print "🧪 Testing public yzx config bootstraps a missing managed config from the shipped default..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_config_bootstrap"
+        '[core]
+welcome_style = "random"
+'
+    )
+    rm $fixture.config_path
+
+    let result = (try {
+        let output = (run_public_yzx_command_for_fixture $fixture "yzx config")
+        let stdout = ($output.stdout | str trim)
+        let stderr = ($output.stderr | str trim)
+        let written_config = (open --raw $fixture.config_path)
+        let default_config = (open --raw ($fixture.repo_root | path join "yazelix_default.toml"))
+
+        if (
+            ($output.exit_code == 0)
+            and ($fixture.config_path | path exists)
+            and ($stderr | str contains "Creating yazelix.toml from yazelix_default.toml")
+            and ($stderr | str contains "yazelix.toml created")
+            and (($written_config | str trim) == ($default_config | str trim))
+            and (($stdout | str trim) == ($default_config | str trim))
+        ) {
+            print "  ✅ public yzx config still bootstraps the managed config from the shipped default through the Rust owner"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=(($stdout | str substring 0..200)) stderr=($stderr)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Defends: `yzx config reset --yes` must replace the managed config with the shipped default and keep a readable backup after the Rust owner cut.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_public_yzx_config_reset_writes_backup_and_restores_default [] {
+    print "🧪 Testing public yzx config reset --yes writes a backup and restores the shipped default..."
+
+    let custom_config = '[core]
+welcome_style = "minimal"
+'
+    let fixture = (setup_managed_config_fixture
+        "yazelix_config_reset_backup"
+        $custom_config
+    )
+
+    let result = (try {
+        let output = (run_public_yzx_command_for_fixture $fixture "yzx config reset --yes")
+        let stdout = ($output.stdout | str trim)
+        let restored_config = (open --raw $fixture.config_path)
+        let default_config = (open --raw ($fixture.repo_root | path join "yazelix_default.toml"))
+        let backups = (
+            ls $fixture.user_config_dir
+            | where name =~ 'yazelix\.toml\.backup-\d{8}_\d{6}$'
+        )
+        let backup_content = if (($backups | length) == 1) {
+            open --raw (($backups | get 0.name) | into string)
+        } else {
+            ""
+        }
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Backed up previous config to:")
+            and ($stdout | str contains "Replaced yazelix.toml with a fresh template:")
+            and (($backups | length) == 1)
+            and (($backup_content | str trim) == ($custom_config | str trim))
+            and (($restored_config | str trim) == ($default_config | str trim))
+        ) {
+            print "  ✅ public yzx config reset --yes now preserves a readable backup and restores the shipped default through the Rust owner"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) backups=(($backups | length))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Defends: `yzx config reset --yes --no-backup` must replace the managed config without leaving backup files behind after the owner cut.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_public_yzx_config_reset_without_backup_replaces_config [] {
+    print "🧪 Testing public yzx config reset --yes --no-backup replaces the managed config without backups..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_config_reset_no_backup"
+        '[core]
+welcome_style = "minimal"
+'
+    )
+
+    let result = (try {
+        let output = (run_public_yzx_command_for_fixture $fixture "yzx config reset --yes --no-backup")
+        let stdout = ($output.stdout | str trim)
+        let restored_config = (open --raw $fixture.config_path)
+        let default_config = (open --raw ($fixture.repo_root | path join "yazelix_default.toml"))
+        let backups = (
+            ls $fixture.user_config_dir
+            | where name =~ 'yazelix\.toml\.backup-\d{8}_\d{6}$'
+        )
+
+        if (
+            ($output.exit_code == 0)
+            and not ($stdout | str contains "Backed up previous config to:")
+            and ($stdout | str contains "Replaced yazelix.toml with a fresh template:")
+            and ($stdout | str contains "Previous config surface was removed without backup.")
+            and (($backups | length) == 0)
+            and (($restored_config | str trim) == ($default_config | str trim))
+        ) {
+            print "  ✅ public yzx config reset --yes --no-backup now replaces the managed config without preserving a backup"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) backups=(($backups | length))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 # Defends: yzx update upstream must resolve the active profile-owned Yazelix package and upgrade that exact entry.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_update_upstream_upgrades_matching_profile_entry [] {
@@ -1657,6 +1831,10 @@ export def run_core_canonical_tests [] {
         (test_public_yzx_home_manager_lists_takeover_helpers)
         (test_yzx_home_manager_prepare_preview_reports_manual_takeover_artifacts)
         (test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts)
+        (test_public_yzx_config_prints_resolved_path)
+        (test_public_yzx_config_bootstraps_missing_user_config)
+        (test_public_yzx_config_reset_writes_backup_and_restores_default)
+        (test_public_yzx_config_reset_without_backup_replaces_config)
         (test_yzx_update_upstream_upgrades_matching_profile_entry)
         (test_yzx_update_upstream_fails_early_for_home_manager_owned_install)
         (test_yzx_update_upstream_fails_without_matching_profile_entry)

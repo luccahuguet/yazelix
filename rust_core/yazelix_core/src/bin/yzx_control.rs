@@ -1,4 +1,4 @@
-//! Internal control-plane binary for `yzx env`, `yzx run`, `yzx status`, and `yzx update*` (invoked from `yzx_cli.sh`).
+//! Internal control-plane binary for Rust-owned `yzx` families (invoked from `yzx_cli.sh`).
 
 use serde::Serialize;
 use std::process::Command;
@@ -13,12 +13,15 @@ use yazelix_core::control_plane::{
     runtime_env_request, runtime_materialization_plan_request_from_env, setpriv_or_sh_exec,
     shell_command, split_run_argv,
 };
+use yazelix_core::run_yzx_config;
 use yazelix_core::run_yzx_home_manager;
 use yazelix_core::update_commands::run_yzx_update;
 
 fn usage() -> ! {
     eprintln!("Usage: yzx_control env [--no-shell|-n]");
     eprintln!("       yzx_control run <command> [args...]");
+    eprintln!("       yzx_control config [--path]");
+    eprintln!("       yzx_control config reset [--yes] [--no-backup]");
     eprintln!("       yzx_control status [--versions] [--json]");
     eprintln!("       yzx_control home_manager [prepare] [args...]");
     eprintln!("       yzx_control update [subcommand] [args...]");
@@ -439,6 +442,7 @@ fn main() {
                 run_run(&argv)
             }
         }
+        "config" => run_yzx_config(&argv),
         "status" => run_status(&argv),
         "home_manager" => run_yzx_home_manager(&argv),
         "update" => run_yzx_update(&argv),
