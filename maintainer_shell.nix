@@ -47,10 +47,20 @@ pkgs.mkShell {
     export YAZELIX_YZX_CORE_BIN="${rustCoreHelper}/bin/yzx_core"
     export YAZELIX_YZX_CONTROL_BIN="${rustCoreHelper}/bin/yzx_control"
 
-    runtime_env_json="$(${pkgs.nushell}/bin/nu -c 'use "${repoRoot}/nushell/scripts/utils/runtime_env.nu" [get_runtime_env]; get_runtime_env | to json -r')"
+    maintainer_runtime_dir="$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "$PWD")"
+    if [ -f "$maintainer_runtime_dir/flake.nix" ] && [ -f "$maintainer_runtime_dir/yazelix_default.toml" ]; then
+      export YAZELIX_RUNTIME_DIR="$maintainer_runtime_dir"
+    else
+      unset YAZELIX_RUNTIME_DIR
+    fi
+
+    runtime_env_json="$(${pkgs.nushell}/bin/nu --no-config-file -c 'use "${repoRoot}/nushell/scripts/utils/runtime_env.nu" [get_runtime_env]; get_runtime_env | to json -r')"
 
     export PATH="$(printf '%s' "$runtime_env_json" | ${pkgs.jq}/bin/jq -r '.PATH | join(":")')"
-    export YAZELIX_RUNTIME_DIR="$(printf '%s' "$runtime_env_json" | ${pkgs.jq}/bin/jq -r '.YAZELIX_RUNTIME_DIR')"
+    computed_runtime_dir="$(printf '%s' "$runtime_env_json" | ${pkgs.jq}/bin/jq -r '.YAZELIX_RUNTIME_DIR')"
+    if [ -z "''${YAZELIX_RUNTIME_DIR:-}" ]; then
+      export YAZELIX_RUNTIME_DIR="$computed_runtime_dir"
+    fi
     export ZELLIJ_DEFAULT_LAYOUT="$(printf '%s' "$runtime_env_json" | ${pkgs.jq}/bin/jq -r '.ZELLIJ_DEFAULT_LAYOUT')"
     export YAZI_CONFIG_HOME="$(printf '%s' "$runtime_env_json" | ${pkgs.jq}/bin/jq -r '.YAZI_CONFIG_HOME')"
     export EDITOR="$(printf '%s' "$runtime_env_json" | ${pkgs.jq}/bin/jq -r '.EDITOR')"
@@ -79,6 +89,6 @@ pkgs.mkShell {
     export OPENSSL_LIB_DIR="${pkgs.openssl.out}/lib"
     export OPENSSL_INCLUDE_DIR="${pkgs.openssl.dev}/include"
 
-    ${pkgs.nushell}/bin/nu "${repoRoot}/nushell/scripts/setup/environment.nu" --skip-welcome
+    ${pkgs.nushell}/bin/nu --no-config-file "${repoRoot}/nushell/scripts/setup/environment.nu" --skip-welcome
   '';
 }
