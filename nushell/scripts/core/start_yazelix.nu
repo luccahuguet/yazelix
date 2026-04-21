@@ -4,16 +4,38 @@
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu [require_yazelix_runtime_dir resolve_yazelix_nu_bin]
 use ../utils/runtime_env.nu get_runtime_env
-use ../utils/runtime_contract_checker.nu [
-    check_startup_working_dir
-    require_runtime_check
-    run_startup_preflight
-]
+use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_request_json_command]
+
+const STARTUP_LAUNCH_PREFLIGHT_EVALUATE_COMMAND = "startup-launch-preflight.evaluate"
+
+def run_startup_preflight [working_dir: string, runtime_dir: string] {
+    let data = (run_yzx_core_request_json_command
+        $runtime_dir
+        (build_default_yzx_core_error_surface)
+        $STARTUP_LAUNCH_PREFLIGHT_EVALUATE_COMMAND
+        {
+            startup: {
+                working_dir: ($working_dir | path expand)
+                runtime_script: {
+                    id: "startup_runtime_script"
+                    label: "startup script"
+                    owner_surface: "startup"
+                    path: ($runtime_dir | path join "nushell" "scripts" "core" "start_yazelix_inner.nu" | path expand)
+                }
+            }
+        }
+        "Yazelix Rust startup-launch-preflight helper returned invalid JSON.")
+
+    if ($data.kind? | default "") != "startup" {
+        error make {msg: "Unexpected startup-launch-preflight response \(expected startup\)."}
+    }
+
+    $data
+}
 
 def validate_startup_working_dir [working_dir: string] {
-    let check = (check_startup_working_dir $working_dir)
-    require_runtime_check $check | ignore
-    $check.path
+    let runtime_dir = (require_yazelix_runtime_dir)
+    (run_startup_preflight $working_dir $runtime_dir).working_dir
 }
 
 def run_runtime_setup [runtime_dir: string, nu_bin: string, --quiet] {
@@ -60,9 +82,9 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     } else {
         $original_dir
     }
-    let preflight = (run_startup_preflight $requested_working_dir $"($yazelix_dir)/nushell/scripts/core/start_yazelix_inner.nu" "startup script")
+    let preflight = (run_startup_preflight $requested_working_dir $yazelix_dir)
     let working_dir = $preflight.working_dir
-    let inner_script = $preflight.script_path
+    let inner_script = ($preflight.script_path? | default "")
     let base_args = ["-i", $inner_script, $working_dir]
     let inner_args = if $verbose_mode {
         $base_args | append "--verbose"

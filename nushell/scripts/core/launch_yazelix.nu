@@ -7,18 +7,13 @@ use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/config_surfaces.nu load_active_config_surface
 use ../utils/terminal_launcher.nu *
 use ../utils/constants.nu [DEFAULT_TERMINAL SUPPORTED_TERMINALS, TERMINAL_METADATA, YAZELIX_CONFIG_DIR, YAZELIX_STATE_DIR]
-use ../utils/common.nu get_yazelix_runtime_dir
-use ../utils/runtime_contract_checker.nu [
-    check_launch_terminal_support
-    check_launch_working_dir
-    require_runtime_check
-    run_launch_preflight
-]
+use ../utils/common.nu [get_yazelix_runtime_dir normalize_path_entries require_yazelix_runtime_dir]
 use ../utils/startup_profile.nu [profile_startup_step propagate_startup_profile_env]
-use ../utils/yzx_core_bridge.nu run_yzx_core_json_command
+use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command run_yzx_core_request_json_command]
 
 const TERMINAL_MATERIALIZATION_GENERATE_COMMAND = "terminal-materialization.generate"
 const GHOSTTY_MATERIALIZATION_GENERATE_COMMAND = "ghostty-materialization.generate"
+const STARTUP_LAUNCH_PREFLIGHT_EVALUATE_COMMAND = "startup-launch-preflight.evaluate"
 
 def ghostty_cursor_random_requested [config: record] {
     [
@@ -33,6 +28,10 @@ def build_terminal_helper_error_surface [config_file: string] {
         display_config_path: $config_file
         config_file: $config_file
     }
+}
+
+def get_launch_command_search_paths [] {
+    normalize_path_entries ($env.PATH? | default [])
 }
 
 def normalize_selected_terminals [selected_terminals: list<string>] {
@@ -184,19 +183,41 @@ def reroll_ghostty_random_cursor_config_for_launch [
 }
 
 def validate_launch_working_dir [working_dir: string] {
-    let check = (check_launch_working_dir $working_dir)
-    require_runtime_check $check | ignore
-    $check.path
+    (run_launch_preflight $working_dir "" [$DEFAULT_TERMINAL]).working_dir
 }
 
 def resolve_terminal_candidates [requested_terminal: string, terminals: list<string>] {
-    let check = (check_launch_terminal_support $requested_terminal $terminals)
-    require_runtime_check $check | ignore
-    $check.candidates? | default []
+    (run_launch_preflight (pwd) $requested_terminal $terminals).terminal_candidates
 }
 
 def resolve_desktop_fast_path_candidates [requested_terminal: string, terminals: list<string>] {
     resolve_terminal_candidates $requested_terminal $terminals
+}
+
+def run_launch_preflight [working_dir: string, requested_terminal: string, terminals: list<string>] {
+    let runtime_dir = (require_yazelix_runtime_dir)
+    let data = (run_yzx_core_request_json_command
+        $runtime_dir
+        (build_default_yzx_core_error_surface)
+        $STARTUP_LAUNCH_PREFLIGHT_EVALUATE_COMMAND
+        {
+            launch: {
+                working_dir: ($working_dir | path expand)
+                requested_terminal: $requested_terminal
+                terminals: $terminals
+                command_search_paths: (get_launch_command_search_paths)
+            }
+        }
+        "Yazelix Rust startup-launch-preflight helper returned invalid JSON.")
+
+    if ($data.kind? | default "") != "launch" {
+        error make {msg: "Unexpected startup-launch-preflight response \(expected launch\)."}
+    }
+
+    {
+        working_dir: $data.working_dir
+        terminal_candidates: ($data.terminal_candidates? | default [])
+    }
 }
 
 def ensure_terminal_configs_available_for_candidates [terminal_candidates: list<record>, terminal_config_mode: string, runtime_dir: string] {

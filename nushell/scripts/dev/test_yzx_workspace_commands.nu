@@ -274,6 +274,12 @@ def setup_enter_forwarding_fixture [label: string] {
     ] | str join "\n" | save --force --raw ($utils_dir | path join "runtime_env.nu")
 
     [
+        "export def format_failure_classification [failure_class: string, recovery: string] {"
+        "    $recovery"
+        "}"
+    ] | str join "\n" | save --force --raw ($utils_dir | path join "failure_classes.nu")
+
+    [
         "export def profile_startup_step [component: string, step: string, code: closure, metadata?: record] {"
         "    do $code"
         "}"
@@ -283,13 +289,13 @@ def setup_enter_forwarding_fixture [label: string] {
     ] | str join "\n" | save --force --raw ($utils_dir | path join "startup_profile.nu")
 
     [
-        "export def check_runtime_script [script_path: string, field: string, label: string, context: string] {"
-        "    {path: $script_path}"
+        "export def build_default_yzx_core_error_surface [] {"
+        "    {}"
         "}"
-        "export def require_runtime_check [check: record] {"
-        "    $check"
+        "export def run_yzx_core_request_json_command [runtime_dir: string, error_surface: record, command: string, request: any, invalid_json_message: string] {"
+        "    {checks: []}"
         "}"
-    ] | str join "\n" | save --force --raw ($utils_dir | path join "runtime_contract_checker.nu")
+    ] | str join "\n" | save --force --raw ($utils_dir | path join "yzx_core_bridge.nu")
 
     {
         tmp_home: $tmp_home

@@ -3,14 +3,71 @@
 
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu [require_yazelix_runtime_dir resolve_yazelix_nu_bin]
-use ../utils/runtime_contract_checker.nu [check_runtime_script require_runtime_check]
+use ../utils/failure_classes.nu [format_failure_classification]
 use ../utils/runtime_env.nu get_runtime_env
 use ../utils/startup_profile.nu [profile_startup_step propagate_startup_profile_env]
+use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_request_json_command]
+
+const RUNTIME_CONTRACT_EVALUATE_COMMAND = "runtime-contract.evaluate"
+
+def build_runtime_check_detail_lines [check: record] {
+    mut detail_lines = []
+
+    if (($check.details? | default "") | is-not-empty) {
+        $detail_lines = ($detail_lines | append $check.details)
+    }
+
+    let recovery = ($check.recovery? | default "" | into string | str trim)
+    let failure_class = ($check.failure_class? | default "" | into string | str trim)
+    if ($recovery | is-not-empty) and ($failure_class | is-not-empty) {
+        $detail_lines = ($detail_lines | append (format_failure_classification $failure_class $recovery))
+    } else if ($recovery | is-not-empty) {
+        $detail_lines = ($detail_lines | append $recovery)
+    }
+
+    $detail_lines
+}
+
+def runtime_check_to_error [check: record] {
+    ([ $check.message ] | append (build_runtime_check_detail_lines $check) | str join "\n")
+}
 
 def require_launch_runtime_script [script_path: string] {
-    let check = (check_runtime_script $script_path "launch_runtime_script" "launch script" "launch")
-    require_runtime_check $check | ignore
-    $check.path
+    let runtime_dir = (require_yazelix_runtime_dir)
+    let data = (run_yzx_core_request_json_command
+        $runtime_dir
+        (build_default_yzx_core_error_surface)
+        $RUNTIME_CONTRACT_EVALUATE_COMMAND
+        {
+            runtime_scripts: [
+                {
+                    id: "launch_runtime_script"
+                    label: "launch script"
+                    owner_surface: "launch"
+                    path: ($script_path | path expand)
+                }
+            ]
+        }
+        "Yazelix Rust runtime-contract helper returned invalid JSON.")
+    let check = (
+        $data.checks?
+        | default []
+        | where {|candidate| ($candidate.id? | default "") == "launch_runtime_script" }
+        | get -o 0
+    )
+    if $check == null {
+        error make {msg: "Missing runtime-contract check result for `launch_runtime_script`."}
+    }
+    if ($check.status? | default "") != "ok" {
+        error make {msg: (runtime_check_to_error $check)}
+    }
+
+    let resolved_path = ($check.path? | default "" | into string | str trim)
+    if ($resolved_path | is-empty) {
+        error make {msg: "Launch runtime-script preflight succeeded but omitted a resolved path."}
+    }
+
+    $resolved_path
 }
 
 def propagate_test_env [runtime_env: record] {

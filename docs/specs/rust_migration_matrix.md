@@ -106,10 +106,10 @@ wrappers.
 
 | Surface | Current owners | Delete-first read | Recommendation | Timing and beads |
 | --- | --- | --- | --- | --- |
-| Bridge transport and error shaping | `yzx_core_bridge.nu` plus the small per-command report bridges | High-leverage deletion lane with relatively low semantic risk. The generic helper transport no longer lives inside `config_parser.nu`. | Keep one minimal transport layer, not one policy-bearing Nu owner per Rust helper command. | Current lane: `yazelix-057w` |
-| Config, state, env, and preflight shims | `config_parser.nu`, `config_state.nu`, `runtime_env.nu`, `runtime_contract_checker.nu` | Rust already owns the typed computation. `config_parser.nu` is now config-normalize specific, while the shared transport moved into `yzx_core_bridge.nu`. | Keep shrinking request shaping and machine classification where Rust can become the single typed owner. Leave only execution and final user rendering in Nu. | Current lane: `yazelix-057w` |
+| Bridge transport and error shaping | `yzx_core_bridge.nu` plus the small per-command report bridges | High-leverage deletion lane with relatively low semantic risk. The generic helper transport no longer lives inside `config_parser.nu`. | Keep one minimal transport layer, not one policy-bearing Nu owner per Rust helper command. | Landed under `yazelix-057w` |
+| Config, state, env, and preflight shims | `config_parser.nu`, `config_state.nu`, `runtime_env.nu`, plus direct preflight calls in `core/start_yazelix.nu`, `core/launch_yazelix.nu`, and `yzx/launch.nu` | Rust already owns the typed computation. `runtime_contract_checker.nu` is gone, `config_parser.nu` is config-normalize specific, and the startup/launch owners now call the Rust preflight helpers directly. | Keep shrinking request shaping and machine classification where Rust can become the single typed owner. Leave only execution and final user rendering in Nu. | Landed under `yazelix-0ksx` |
 | Doctor and install report bridges | shared transport in `doctor_report_bridge.nu`; surviving human renderer and fix surface in `doctor.nu` | The old per-report shims are gone. Rust already owns the structured findings; the remaining Nu work is one shared transport seam plus the human renderer, live Zellij plugin health checks, and repair flow. | Keep the bridge collapsed to one shared report transport seam. `yazelix-osco.2` records a no-go for a public Rust doctor cut in the current shape because the surviving Nu owners still dominate the family. | `yazelix-osco.1` landed the bridge collapse; `yazelix-osco.2` recorded the no-go decision |
-| Runtime materialization lifecycle | Rust owners: `runtime-materialization.plan`, `runtime-materialization.materialize`, `runtime-materialization.repair`; surviving Nu bridge: `core/materialization_orchestrator.nu` | Landed full-owner cut; the remaining Nu file is startup and doctor glue, not the lifecycle owner | Keep the bridge thin or delete it later. Do not recreate a second Nu lifecycle owner. | Landed under `yazelix-ulb2.9` |
+| Runtime materialization lifecycle | Rust owners: `runtime-materialization.plan`, `runtime-materialization.materialize`, `runtime-materialization.repair`; surviving Nu bridge: `core/materialization_orchestrator.nu` | Landed full-owner cut; the remaining Nu file is only env/request shaping plus startup and doctor progress glue | Delete the shared Nu bridge if `q0o9.2` exposes Rust-owned env/request materialization entrypoints. Do not inline the same request builder into multiple Nu owners. | Full-owner cut landed under `yazelix-ulb2.9`; bridge deletion budget recorded under `yazelix-q0o9.1` |
 | Yazi materialization family | Rust owner: `yazi-materialization.generate`; remaining Nu use is dev-only direct invocation | The real Nu owner family is gone, and the surviving setup wrapper is deleted. | Keep Rust as the single Yazi materialization owner. Do not recreate a public or product-side compatibility wrapper. Dependency gate for the landed cut: in-house logic plus existing `serde` and `toml`; no new crates. | Landed under `yazelix-ulb2.3.1`; wrapper deletion landed under `yazelix-vf0u.1` |
 | Zellij materialization family | Rust owner: `zellij-materialization.generate`; remaining Nu use is direct product or dev invocation | The real Nu owner family is gone, the setup wrapper is deleted, and Rust still owns base-config selection, semantic KDL extraction, layout rendering, plugin wasm sync, permission migration, popup-runner cleanup, and generation-state reuse. | Keep Rust as the single Zellij materialization owner. Do not recreate a public or product-side compatibility wrapper. Dependency gate for the landed cut: in-house logic plus existing `serde`, `serde_json`, `toml`, `sha2`, `thiserror`, and `lexopt`; no new crates. | Landed under `yazelix-ulb2.3.2`; wrapper deletion landed under `yazelix-vf0u.2` |
 | Terminal launch-time compatibility seam | Standalone wrapper deleted; surviving Nu helpers live in `core/launch_yazelix.nu` | Rust already owns generated terminal writes in `terminal_materialization.rs` plus Ghostty config/shader generation in `ghostty_materialization.rs`. The surviving Nu seam is launch-time supported-terminal filtering, user-facing summary text, and the Ghostty reroll bridge. | Treat this as a landed delete-wrapper lane, not a fresh full-owner port. Keep only irreducible launch-time compatibility logic in `launch_yazelix.nu` and do not recreate a separate terminal materialization owner. Dependency gate: no new crates; keep using the existing Rust owners and in-house helper logic. | Landed under `yazelix-ulb2.10.3` |
@@ -119,28 +119,85 @@ wrappers.
 | Public `yzx` root, help, completion, and palette inventory | Rust metadata owner: `command_metadata.rs`; surviving Nu command bodies: `core/yazelix.nu`, `core/yzx_*.nu`, `yzx/*.nu`; compatibility wrapper: `utils/nushell_externs.nu` | First metadata slice has landed: root help, generated externs, and menu catalog no longer probe the Nushell command tree. The old mixed `core/yazelix.nu` owner lump is now split into explicit internal families. | Keep shrinking only when the next cut deletes a real public parser or command-body owner. Do not rebuild a parallel Nu registry. | Follow-up lanes: `yazelix-2jkb.2` landed, `yazelix-2jkb.3` next |
 | Workspace and session state | `rust_plugins/zellij_pane_orchestrator/`, `integrations/*.nu`, `zellij_wrappers/*.nu` | Already Rust where live session truth matters | Keep this separate from `rust_core`. Do not fold the pane-orchestrator track into the control-plane migration by habit. | Separate pane-orchestrator beads |
 
-## Current Bridge-Collapse Budget
+## 2026-04-21 Config, State, Env, And Preflight Deletion-Budget Decision
 
-`yazelix-057w` is the live delete-first lane for the remaining `yzx_core` /
-`yzx_control` bridge. The budget is:
+`yazelix-0ksx.1` and `yazelix-0ksx.2` re-audited the remaining
+config/state/env/preflight bridge cluster after the generic `yzx_core` bridge
+collapse.
 
-- collapse now:
-  - generic `yzx_core` helper transport and error shaping should live in one
-    minimal bridge owner, not inside `config_parser.nu`
-  - default `require_yazelix_runtime_dir` plus default-error-surface request
-    boilerplate should not be re-owned in each report or preflight shim
-- keep in Nushell for now:
-  - config-specific normalize/report behavior in `config_parser.nu`
-  - startup/launch and doctor-specific request assembly in
-    `runtime_contract_checker.nu` where it still feeds shell/process orchestration
-    or user-facing rendering
-- defer to other lanes:
-  - doctor/install report family collapse belongs to `yazelix-osco`; the
-    per-report shims should not return after the `doctor_report_bridge.nu` cut
-  - compatibility-wrapper deletion for `setup/yazi_config_merger.nu` and
-    `setup/zellij_config_merger.nu` landed under `yazelix-vf0u`
-  - launch/startup orchestration and materialization-orchestrator cleanup are
-    separate lanes, not success criteria for `057w`
+Decision:
+
+- delete `nushell/scripts/utils/runtime_contract_checker.nu`
+- move startup preflight ownership into `core/start_yazelix.nu`
+- move launch preflight and terminal-candidate ownership into
+  `core/launch_yazelix.nu`
+- move the one-off launch-script runtime-script check into `yzx/launch.nu`
+- keep `config_parser.nu` as the config-normalize and config-diagnostic owner
+- keep `config_state.nu` as the small active-surface and materialized-state
+  wrapper around the Rust config-state owner
+- keep `runtime_env.nu` as the shell-bound env application seam for now
+
+Why this cut:
+
+- `runtime_contract_checker.nu` no longer owned the doctor path after the
+  doctor-report bridge collapse
+- it mostly survived as a generic startup/launch veneer over
+  `runtime-contract.evaluate` and `startup-launch-preflight.evaluate`
+- deleting that file removes a whole per-helper Nu owner without forcing a fake
+  port of the shell-bound `runtime_env.nu` or state-surface glue in
+  `config_state.nu`
+
+Defer to other lanes:
+
+- doctor/install report transport belongs to `yazelix-osco`
+- materialization-orchestrator cleanup belongs to `yazelix-q0o9`
+- broader config/state/env bridge collapse beyond this file belongs to later
+  follow-up after the current direct-owner cut
+
+## 2026-04-21 Runtime Materialization Bridge Deletion-Budget Decision
+
+`yazelix-q0o9.1` re-audited `core/materialization_orchestrator.nu` after Rust
+became the lifecycle owner for runtime materialization.
+
+Decision:
+
+- `core/materialization_orchestrator.nu` can die, but only if `yazelix-q0o9.2`
+  moves the environment-derived materialization request construction into Rust
+  entrypoints
+- do not delete it by copying `build_runtime_materialization_context` into
+  `start_yazelix_inner.nu`, `doctor.nu`, and `doctor_report_bridge.nu`
+- keep the existing startup profile boundary name
+  `materialization_orchestrator/materialize_runtime_state` comparable even if
+  the file disappears
+
+Why it can die:
+
+- Rust already owns plan, materialize, repair, repair directives, artifact
+  checks, and generated-state writes
+- Rust already has env-based request construction in `control_plane.rs`; the
+  remaining Nu bridge exists mostly because the current `yzx_core`
+  materialization commands still require a full request JSON payload
+- the surviving Nu responsibilities are caller-local progress and error
+  rendering, not shared lifecycle policy
+
+Surviving Nu responsibilities after `q0o9.2`:
+
+- startup keeps the profile wrapper and user-facing failure message before
+  Zellij handoff
+- doctor keeps `--fix` progress printing and repair error reporting
+- doctor report keeps only the structured runtime-findings call and reads the
+  Rust-computed layout path from the Rust materialization plan
+- maintainer update canaries keep a stable command path to force repair, but
+  should not import a product-side shared Nu bridge
+
+Verification for `q0o9.2`:
+
+- generated config canonical tests still materialize runtime state
+- `yzx doctor --fix` still repairs missing managed generated layouts
+- maintainer startup-profile regression still sees the materialization profile
+  boundary
+- update canaries still exercise forced generated-state repair
+- syntax, spec validation, and whitespace checks pass
 | Front-door UX and command-palette surfaces | `utils/ascii_art.nu`, `yzx/menu.nu`, `yzx/popup.nu`, `yzx/screen.nu`, `yzx/keys.nu`, `yzx/tutor.nu`, `utils/upgrade_summary.nu` | Mostly text-heavy or interactive UX | Keep Nushell unless a future port deletes an owner cleanly and improves the UX story at the same time. | Not a current Rust target |
 | Distribution and host integration | `home_manager/`, `packaging/`, `shells/`, `yzx/desktop.nu`, `yzx/home_manager.nu` | Nix, POSIX, and UX-heavy by nature | Keep outside the current Rust migration. Rust may be packaged here, but it should not become the new owner by default. | Not a current Rust target |
 
