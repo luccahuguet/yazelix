@@ -64,7 +64,7 @@ pub(crate) enum FocusContext {
 }
 
 #[derive(Serialize)]
-struct DebugEditorState {
+struct MaintainerDebugEditorState {
     permissions_granted: bool,
     active_tab_position: Option<usize>,
     active_swap_layout_name: Option<String>,
@@ -440,11 +440,11 @@ impl State {
         }
     }
 
-    pub(crate) fn debug_editor_state(&self, pipe_message: &PipeMessage) {
+    pub(crate) fn maintainer_debug_editor_state(&self, pipe_message: &PipeMessage) {
         let active_tab_position = self.active_tab_position;
         let read_state = self.collect_active_tab_read_state(active_tab_position);
 
-        let state = DebugEditorState {
+        let state = MaintainerDebugEditorState {
             permissions_granted: self.permissions_granted,
             active_tab_position,
             active_swap_layout_name: read_state.active_swap_layout_name,

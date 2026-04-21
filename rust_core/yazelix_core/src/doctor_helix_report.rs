@@ -54,7 +54,9 @@ pub struct HelixDoctorEvaluateData {
     pub managed_integration: Vec<HelixDoctorFinding>,
 }
 
-pub fn evaluate_helix_doctor_report(request: &HelixDoctorEvaluateRequest) -> HelixDoctorEvaluateData {
+pub fn evaluate_helix_doctor_report(
+    request: &HelixDoctorEvaluateRequest,
+) -> HelixDoctorEvaluateData {
     let runtime_conflicts = evaluate_runtime_conflicts(request);
     let runtime_health = if request.include_runtime_health {
         Some(evaluate_runtime_health(request))
@@ -72,11 +74,7 @@ pub fn evaluate_helix_doctor_report(request: &HelixDoctorEvaluateRequest) -> Hel
 
 fn is_helix_editor_command(editor: &str) -> bool {
     let t = editor.trim();
-    t.is_empty()
-        || t.ends_with("/hx")
-        || t == "hx"
-        || t.ends_with("/helix")
-        || t == "helix"
+    t.is_empty() || t.ends_with("/hx") || t == "hx" || t.ends_with("/helix") || t == "helix"
 }
 
 fn path_to_string(path: &Path) -> String {
@@ -223,11 +221,9 @@ fn evaluate_runtime_health(request: &HelixDoctorEvaluateRequest) -> HelixDoctorF
         .iter()
         .copied()
         .filter(|&required_dir| {
-            !all_runtimes.iter().any(|runtime_path| {
-                runtime_path
-                    .join(required_dir)
-                    .exists()
-            })
+            !all_runtimes
+                .iter()
+                .any(|runtime_path| runtime_path.join(required_dir).exists())
         })
         .collect();
 
@@ -282,10 +278,7 @@ fn evaluate_runtime_health(request: &HelixDoctorEvaluateRequest) -> HelixDoctorF
     HelixDoctorFinding {
         status: "ok".into(),
         message: format!("Helix runtime healthy with {grammar_count} grammars"),
-        details: Some(format!(
-            "Primary runtime directory: {}",
-            primary.display()
-        )),
+        details: Some(format!("Primary runtime directory: {}", primary.display())),
         fix_available: false,
         fix_commands: vec![],
         conflicts: vec![],
@@ -307,8 +300,7 @@ fn read_a_r_binding_from_toml_file(path: &Path) -> Result<Option<String>, String
     let v: toml::Value =
         toml::from_str(&raw).map_err(|error| format!("failed to parse TOML: {error}"))?;
 
-    Ok(v
-        .get("keys")
+    Ok(v.get("keys")
         .and_then(|keys| keys.get("normal"))
         .and_then(|normal| normal.get("A-r"))
         .and_then(|binding| binding.as_str())
@@ -517,10 +509,7 @@ mod tests {
         }
 
         let fake_hx = tmp.path().join("hx");
-        let health_line = format!(
-            "Runtime directories: {}",
-            rt.to_string_lossy()
-        );
+        let health_line = format!("Runtime directories: {}", rt.to_string_lossy());
         write_executable(
             &fake_hx,
             &format!("#!/bin/sh\nprintf '%s\\n' '{health_line}'\n"),

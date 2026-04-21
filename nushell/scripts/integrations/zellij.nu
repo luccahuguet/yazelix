@@ -301,8 +301,9 @@ def open_file_in_managed_editor [editor_kind: string, file_path: path, log_file:
     }
 }
 
-export def debug_editor_state [] {
-    let response = (run_pane_orchestrator_command_raw "debug_editor_state")
+# Maintainer-only debug inspection payload. Do not use this as live session truth.
+export def maintainer_debug_editor_state [] {
+    let response = (run_pane_orchestrator_command_raw "maintainer_debug_editor_state")
     try {
         $response | from json
     } catch {

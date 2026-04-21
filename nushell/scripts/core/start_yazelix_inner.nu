@@ -6,7 +6,7 @@ use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS, YAZELIX_LOGS_DIR]
 use ../utils/ascii_art.nu get_yazelix_colors
 use ../utils/common.nu [require_yazelix_runtime_dir resolve_zellij_default_shell]
 use ../utils/failure_classes.nu [format_failure_classification]
-use ./materialization_orchestrator.nu [regenerate_runtime_configs record_current_materialized_state]
+use ./materialization_orchestrator.nu regenerate_runtime_configs
 use ../utils/startup_profile.nu [profile_startup_step]
 use ../utils/upgrade_summary.nu [maybe_show_first_run_upgrade_summary]
 use ../setup/welcome.nu [show_welcome build_welcome_message]
@@ -112,12 +112,6 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
         $from_plan
     }
     let layout_path = (require_existing_layout $resolved_layout_path)
-
-    # Record that the current config/runtime state has been successfully applied
-    # once generated config has been refreshed inside the prepared runtime.
-    profile_startup_step "inner" "record_runtime_state" {
-        record_current_materialized_state $applied_runtime_state
-    } | ignore
 
     cd $launch_process_cwd
 

@@ -533,6 +533,18 @@ fn asset_tree_missing_targets(source_root: &Path, target_root: &Path) -> Result<
                     source,
                 )
             })?;
+            let file_type = entry.file_type().map_err(|source| {
+                CoreError::io(
+                    "inspect_yazi_asset_source_entry",
+                    "Could not inspect a bundled Yazi asset entry",
+                    "Reinstall Yazelix so the runtime includes readable Yazi assets.",
+                    path.to_string_lossy(),
+                    source,
+                )
+            })?;
+            if path == source_root && !file_type.is_dir() {
+                continue;
+            }
             let source_path = entry.path();
             let relative = source_path.strip_prefix(source_root).map_err(|_| {
                 CoreError::classified(
@@ -550,7 +562,7 @@ fn asset_tree_missing_targets(source_root: &Path, target_root: &Path) -> Result<
             if !target_path.exists() {
                 return Ok(true);
             }
-            if entry.file_type().map(|kind| kind.is_dir()).unwrap_or(false) {
+            if file_type.is_dir() {
                 stack.push(source_path);
             }
         }

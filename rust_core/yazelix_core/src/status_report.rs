@@ -1,9 +1,11 @@
 //! Typed `yzx status` summary construction (machine-readable and human-rendered).
 
 use crate::bridge::CoreError;
-use crate::runtime_materialization::{plan_runtime_materialization, RuntimeMaterializationPlanRequest};
+use crate::runtime_materialization::{
+    RuntimeMaterializationPlanRequest, plan_runtime_materialization,
+};
 use serde::Serialize;
-use serde_json::{json, Map as JsonMap, Value as JsonValue};
+use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use std::path::Path;
 
 #[derive(Debug, Clone, Serialize)]

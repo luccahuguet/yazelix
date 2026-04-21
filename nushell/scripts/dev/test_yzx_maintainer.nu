@@ -77,6 +77,7 @@ def setup_flake_interface_fixture [] {
     mkdir ($fixture_root | path join "home_manager")
     mkdir $nushell_dev_dir
     mkdir $packaging_dir
+    mkdir ($fixture_root | path join "rust_core")
     mkdir ($fixture_root | path join "rust_plugins")
     mkdir ($fixture_root | path join "shells")
 
@@ -97,8 +98,16 @@ def setup_flake_interface_fixture [] {
         "mk_runtime_tree.nix"
         "mk_yazelix_package.nix"
         "runtime_deps.nix"
+        "rust_core_helper.nix"
     ] {
         ^cp ($repo_root | path join "packaging" $file_name) ($packaging_dir | path join $file_name)
+    }
+
+    for file_name in [
+        "Cargo.lock"
+        "Cargo.toml"
+    ] {
+        ^cp ($repo_root | path join "rust_core" $file_name) ($fixture_root | path join "rust_core" $file_name)
     }
 
     ^cp ($repo_root | path join "nushell" "scripts" "dev" "validate_flake_interface.nu") ($nushell_dev_dir | path join "validate_flake_interface.nu")
@@ -1069,11 +1078,9 @@ def test_startup_profile_materialization_reports_generated_runtime_substeps [] {
 
         if (
             ($output.exit_code == 0)
-            and ($steps | any {|step| $step.component == "generated_runtime_state" and $step.step == "compute_config_state" })
-            and ($steps | any {|step| $step.component == "generated_runtime_state" and $step.step == "generate_yazi_config" })
-            and ($steps | any {|step| $step.component == "generated_runtime_state" and $step.step == "generate_zellij_config" })
+            and ($steps | any {|step| $step.component == "materialization_orchestrator" and $step.step == "materialize_runtime_state" })
         ) {
-            print "  ✅ Startup profiling now breaks runtime materialization into generated-runtime substeps"
+            print "  ✅ Startup profiling now records the Rust-owned runtime materialization lifecycle as one explicit orchestrator step"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"

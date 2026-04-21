@@ -90,8 +90,8 @@ Helper commands track the Rust-owned slices:
 - `startup-launch-preflight.evaluate`
 - `runtime-env.compute`
 - `runtime-materialization.plan`
-- `runtime-materialization.repair-evaluate`
-- `runtime-materialization.apply`
+- `runtime-materialization.materialize`
+- `runtime-materialization.repair`
 - `status.compute`
 - `doctor-config.evaluate`
 - `doctor-helix.evaluate`
@@ -182,7 +182,7 @@ If a direct maintainer debugging mode is useful, expose it separately through a 
 
 Nushell remains the startup profile owner. Rust helper calls are wrapped inside the existing `profile_startup_step` boundaries instead of replacing the report schema.
 
-Existing profile step names and meanings should remain comparable before and after each Rust slice. For example, a future Rust implementation of config-state computation should still appear under the same high-level `generated_runtime_state` / `compute_config_state` boundary that current reports use.
+Existing profile step names and meanings should remain comparable before and after each Rust slice. For example, the landed runtime materialization cut still appears under the same high-level `materialization_orchestrator` / `materialize_runtime_state` startup boundary even though Rust now owns the lifecycle itself.
 
 Rust may return optional metrics inside the success `data`, but those metrics are additive and must not become a second startup profile format.
 
@@ -198,7 +198,7 @@ Refresh failure must be non-destructive. If a previous generated bridge exists, 
 
 ### Materialization And Writes
 
-Rust may plan generated-runtime materialization before it writes generated files. The first implementation should prefer a plan/apply split unless the target slice is small enough that the write contract is obvious.
+Rust may still expose smaller planning helpers when that is the cleanest seam, but a migration only counts once Rust owns the real writer lifecycle end-to-end. The landed runtime materialization cut proved that the bridge can collapse from a plan/apply split into one Rust-owned `plan` plus full-owner `materialize` and `repair` commands when the owner boundary becomes clear.
 
 When Rust writes files, it must preserve the existing ownership rules:
 

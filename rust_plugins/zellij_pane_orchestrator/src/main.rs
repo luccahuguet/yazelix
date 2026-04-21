@@ -208,8 +208,8 @@ impl ZellijPlugin for State {
                 self.toggle_transient_pane(&pipe_message);
                 false
             }
-            "debug_editor_state" => {
-                self.debug_editor_state(&pipe_message);
+            "maintainer_debug_editor_state" => {
+                self.maintainer_debug_editor_state(&pipe_message);
                 false
             }
             "debug_write_literal" => {

@@ -1,14 +1,22 @@
+use crate::active_config_surface::primary_config_paths;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_state::{
-    compute_config_state, record_config_state, ComputeConfigStateRequest, ConfigStateData,
-    RecordConfigStateRequest,
+    ComputeConfigStateRequest, ConfigStateData, RecordConfigStateRequest, compute_config_state,
+    record_config_state,
+};
+use crate::control_plane::config_dir_from_env;
+use crate::yazi_materialization::{
+    YaziMaterializationData, YaziMaterializationRequest, generate_yazi_materialization,
+};
+use crate::zellij_materialization::{
+    ZellijMaterializationData, ZellijMaterializationRequest, generate_zellij_materialization,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Map as JsonMap, Value as JsonValue};
+use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RuntimeMaterializationPlanRequest {
     pub config_path: PathBuf,
     pub default_config_path: PathBuf,
@@ -58,7 +66,24 @@ pub struct RuntimeMaterializationApplyData {
     pub checked_artifacts: usize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
+pub struct RuntimeMaterializationRunData {
+    pub plan: RuntimeMaterializationPlanData,
+    pub yazi: YaziMaterializationData,
+    pub zellij: ZellijMaterializationData,
+    pub apply: RuntimeMaterializationApplyData,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RuntimeMaterializationRepairRunData {
+    pub status: String,
+    pub plan: RuntimeMaterializationPlanData,
+    pub repair: RuntimeRepairDirective,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub materialization: Option<RuntimeMaterializationRunData>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RuntimeMaterializationRepairEvaluateRequest {
     pub plan: RuntimeMaterializationPlanRequest,
     pub force: bool,
@@ -193,6 +218,79 @@ pub fn evaluate_runtime_materialization_repair(
     let plan = plan_runtime_materialization(&request.plan)?;
     let repair = build_repair_directive(&plan, request.force);
     Ok(RuntimeMaterializationRepairEvaluateData { plan, repair })
+}
+
+pub fn materialize_runtime_state(
+    request: &RuntimeMaterializationPlanRequest,
+) -> Result<RuntimeMaterializationRunData, CoreError> {
+    let plan = plan_runtime_materialization(request)?;
+    materialize_runtime_state_from_plan(request, plan)
+}
+
+pub fn repair_runtime_materialization(
+    request: &RuntimeMaterializationRepairEvaluateRequest,
+) -> Result<RuntimeMaterializationRepairRunData, CoreError> {
+    let plan = plan_runtime_materialization(&request.plan)?;
+    let repair = build_repair_directive(&plan, request.force);
+
+    match &repair {
+        RuntimeRepairDirective::Noop { .. } => Ok(RuntimeMaterializationRepairRunData {
+            status: "noop".to_string(),
+            plan,
+            repair,
+            materialization: None,
+        }),
+        RuntimeRepairDirective::Regenerate { result_status, .. } => {
+            let materialization = materialize_runtime_state_from_plan(&request.plan, plan.clone())?;
+            Ok(RuntimeMaterializationRepairRunData {
+                status: result_status.clone(),
+                plan,
+                repair,
+                materialization: Some(materialization),
+            })
+        }
+    }
+}
+
+fn materialize_runtime_state_from_plan(
+    request: &RuntimeMaterializationPlanRequest,
+    plan: RuntimeMaterializationPlanData,
+) -> Result<RuntimeMaterializationRunData, CoreError> {
+    let yazi = generate_yazi_materialization(&YaziMaterializationRequest {
+        config_path: request.config_path.clone(),
+        default_config_path: request.default_config_path.clone(),
+        contract_path: request.contract_path.clone(),
+        runtime_dir: request.runtime_dir.clone(),
+        yazi_config_dir: request.yazi_config_dir.clone(),
+        sync_static_assets: plan.should_sync_static_assets,
+    })?;
+
+    let zellij = generate_zellij_materialization(&ZellijMaterializationRequest {
+        config_path: request.config_path.clone(),
+        default_config_path: request.default_config_path.clone(),
+        contract_path: request.contract_path.clone(),
+        runtime_dir: request.runtime_dir.clone(),
+        zellij_config_dir: request.zellij_config_dir.clone(),
+        seed_plugin_permissions: false,
+    })?;
+
+    let config_dir = config_dir_from_env()?;
+    let managed_config_path = primary_config_paths(&request.runtime_dir, &config_dir).user_config;
+    let apply = apply_runtime_materialization(&RuntimeMaterializationApplyRequest {
+        config_file: plan.config_state.config_file.clone(),
+        managed_config_path,
+        state_path: request.state_path.clone(),
+        config_hash: plan.config_state.config_hash.clone(),
+        runtime_hash: plan.config_state.runtime_hash.clone(),
+        expected_artifacts: plan.expected_artifacts.clone(),
+    })?;
+
+    Ok(RuntimeMaterializationRunData {
+        plan,
+        yazi,
+        zellij,
+        apply,
+    })
 }
 
 fn build_repair_directive(

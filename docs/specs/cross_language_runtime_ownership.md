@@ -32,8 +32,8 @@ The current branch is better than the old Classic-era stack, but mixed ownership
 still exists in two important places:
 
 - bridge-layer Nu files still surround Rust helper owners
-- generated runtime materialization is still split between Rust planning and Nu
-  orchestration or writing
+- the surviving generated-state bridge and the fragmented terminal or Helix
+  families still leave real product-side ownership in Nushell
 
 The delete-first answer is to make those boundaries smaller, not to add one more
 wrapper runtime.
@@ -78,15 +78,17 @@ owners.
 
 ### Generated Runtime Materialization
 
-Primary current owner: mixed
+Primary current owner: Rust with a thin Nu bridge
 
-- Rust already owns materialization planning, repair evaluation, Yazi/Zellij
-  render plans, and full-owner Yazi/Zellij generation
-- Nushell still owns the main orchestration around `generated_runtime_state.nu`
-  and the terminal or Helix or initializer generation families
+- Rust now owns runtime materialization planning, generation, recorded-state
+  finalization, and repair
+- `generated_runtime_state.nu` is deleted
+- Nushell keeps only the thin `core/materialization_orchestrator.nu` bridge for
+  startup profiling, doctor integration, and final human-facing rendering
 
-This is the highest-value remaining cross-language collapse because it still
-holds large real product ownership in Nushell.
+This is no longer the biggest remaining mixed owner. The remaining product-side
+deletion budget has shifted to the broader bridge layer and the fragmented
+terminal or Helix generation families.
 
 ### Live Workspace And Session State
 
@@ -128,7 +130,7 @@ durable business-logic owners.
 The best remaining cross-language collapse is now:
 
 1. collapse the Nu bridge layer around `yzx_core` and `yzx_control`
-2. move one generated runtime materialization family to full Rust ownership
+2. move the fragmented terminal and Helix generation family to full Rust ownership
 3. continue public command ownership only where the next cut deletes a real
    parser or command-body owner, now that metadata/help/extern ownership has
    moved
@@ -137,10 +139,10 @@ That means:
 
 - `config_parser.nu` and the per-command bridge files should stop surviving as a
   second ownership layer
-- `generated_runtime_state.nu` should either stay as an honest Nu owner or lose
-  ownership end-to-end
-- the Yazi, Zellij, and terminal generation families should be judged by
-  deletion budget, not by helper count
+- `core/materialization_orchestrator.nu` should stay thin and not regrow into a
+  second runtime materialization owner
+- the terminal and Helix generation families should be judged by deletion
+  budget, not by helper count
 
 ## What Should Stay In Nushell
 
@@ -148,6 +150,8 @@ Not everything should migrate:
 
 - remaining public CLI command-body UX for intentionally Nu-owned command families
 - startup profile schema and process orchestration
+- shell initializer generation and shellhook environment setup after the
+  `runtime-env.compute` cut
 - shell and terminal host integration
 - final human-facing remediation text and interactive UX
 - explicit integration glue around external tools when the hard part is host

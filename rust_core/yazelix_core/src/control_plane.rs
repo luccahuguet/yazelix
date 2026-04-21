@@ -1,14 +1,19 @@
 //! Shared logic for the `yzx_control` CLI (`yzx env` / `yzx run`).
 
+use crate::active_config_surface::resolve_active_config_paths;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::runtime_env::RuntimePathInput;
-use crate::{NormalizeConfigRequest, RuntimeEnvComputeRequest, normalize_config};
+use crate::{
+    NormalizeConfigRequest, RuntimeEnvComputeRequest, RuntimeMaterializationPlanRequest,
+    normalize_config,
+};
 use serde_json::{Map as JsonMap, Value as JsonValue};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 const DEFAULT_SHELL: &str = "nu";
+const VERSION_LINE_PREFIX: &str = "export const YAZELIX_VERSION = \"";
 
 /// Expand `~` / `~/…` using `home` (POSIX-style).
 pub fn expand_user_path(raw: &str, home: &Path) -> PathBuf {
@@ -86,23 +91,129 @@ pub fn runtime_dir_from_env() -> Result<PathBuf, CoreError> {
     Ok(PathBuf::from(trimmed))
 }
 
+pub fn read_yazelix_version_from_runtime(runtime_dir: &Path) -> Result<String, CoreError> {
+    let constants_path = runtime_dir
+        .join("nushell")
+        .join("scripts")
+        .join("utils")
+        .join("constants.nu");
+    let contents = std::fs::read_to_string(&constants_path).map_err(|source| {
+        CoreError::io(
+            "version",
+            format!(
+                "Failed to read Yazelix version from {}.",
+                constants_path.display()
+            ),
+            "Restore nushell/scripts/utils/constants.nu or reinstall Yazelix.",
+            ".",
+            source,
+        )
+    })?;
+
+    for line in contents.lines() {
+        let trimmed = line.trim();
+        if let Some(rest) = trimmed.strip_prefix(VERSION_LINE_PREFIX) {
+            if let Some(value) = rest.strip_suffix('"') {
+                return Ok(value.to_string());
+            }
+        }
+    }
+
+    Err(CoreError::classified(
+        ErrorClass::Runtime,
+        "missing_version_constant",
+        format!(
+            "Could not find version constant in {}.",
+            constants_path.display()
+        ),
+        "Restore nushell/scripts/utils/constants.nu or reinstall Yazelix.",
+        serde_json::json!({"path": constants_path.display().to_string()}),
+    ))
+}
+
 pub fn home_dir_from_env() -> Result<PathBuf, CoreError> {
-    std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .ok_or_else(|| {
-            CoreError::classified(
-                ErrorClass::Runtime,
-                "missing_home",
-                "HOME is not set.",
-                "Export HOME, then retry.",
-                serde_json::json!({}),
-            )
-        })
+    std::env::var_os("HOME").map(PathBuf::from).ok_or_else(|| {
+        CoreError::classified(
+            ErrorClass::Runtime,
+            "missing_home",
+            "HOME is not set.",
+            "Export HOME, then retry.",
+            serde_json::json!({}),
+        )
+    })
+}
+
+pub fn state_dir_from_env() -> Result<PathBuf, CoreError> {
+    if let Ok(raw) = std::env::var("YAZELIX_STATE_DIR") {
+        let trimmed = raw.trim();
+        if !trimmed.is_empty() {
+            return Ok(PathBuf::from(trimmed));
+        }
+    }
+    if let Ok(raw) = std::env::var("XDG_DATA_HOME") {
+        let trimmed = raw.trim();
+        if !trimmed.is_empty() {
+            return Ok(PathBuf::from(trimmed).join("yazelix"));
+        }
+    }
+    Ok(home_dir_from_env()?
+        .join(".local")
+        .join("share")
+        .join("yazelix"))
+}
+
+pub fn runtime_materialization_layout_override_from_env() -> Option<String> {
+    if let Ok(raw) = std::env::var("YAZELIX_LAYOUT_OVERRIDE") {
+        let trimmed = raw.trim();
+        if !trimmed.is_empty() {
+            return Some(trimmed.to_string());
+        }
+    }
+
+    if std::env::var_os("YAZELIX_SWEEP_TEST_ID").is_some() {
+        if let Ok(raw) = std::env::var("ZELLIJ_DEFAULT_LAYOUT") {
+            let trimmed = raw.trim();
+            if !trimmed.is_empty() {
+                return Some(trimmed.to_string());
+            }
+        }
+    }
+
+    None
+}
+
+pub fn runtime_materialization_plan_request_from_env(
+    config_override: Option<&str>,
+) -> Result<RuntimeMaterializationPlanRequest, CoreError> {
+    let runtime_dir = runtime_dir_from_env()?;
+    let config_dir = config_dir_from_env()?;
+    let paths = resolve_active_config_paths(&runtime_dir, &config_dir, config_override)?;
+    let state_dir = state_dir_from_env()?;
+    let zellij_config_dir = state_dir.join("configs").join("zellij");
+
+    Ok(RuntimeMaterializationPlanRequest {
+        config_path: paths.config_file,
+        default_config_path: paths.default_config_path,
+        contract_path: paths.contract_path,
+        runtime_dir,
+        state_path: state_dir.join("state").join("rebuild_hash"),
+        yazi_config_dir: state_dir.join("configs").join("yazi"),
+        zellij_layout_dir: zellij_config_dir.join("layouts"),
+        zellij_config_dir,
+        layout_override: runtime_materialization_layout_override_from_env(),
+    })
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct EnvCliArgs {
     pub no_shell: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct StatusCliArgs {
+    pub json: bool,
+    pub versions: bool,
+    pub help: bool,
 }
 
 /// Parse flags for `yzx_control env` (tokens after the `env` subcommand).
@@ -117,6 +228,27 @@ pub fn parse_env_cli_args(args: &[String]) -> Result<EnvCliArgs, CoreError> {
                     "unexpected_env_token",
                     format!("Unexpected argument for yzx env: {other}"),
                     "Run `yzx env` or `yzx env --no-shell`.",
+                    serde_json::json!({}),
+                ));
+            }
+        }
+    }
+    Ok(out)
+}
+
+pub fn parse_status_cli_args(args: &[String]) -> Result<StatusCliArgs, CoreError> {
+    let mut out = StatusCliArgs::default();
+    for token in args {
+        match token.as_str() {
+            "--json" => out.json = true,
+            "--versions" | "-V" => out.versions = true,
+            "--help" | "-h" | "help" => out.help = true,
+            other => {
+                return Err(CoreError::classified(
+                    ErrorClass::Usage,
+                    "unexpected_status_token",
+                    format!("Unexpected argument for yzx status: {other}"),
+                    "Run `yzx status`, `yzx status --json`, or `yzx status --versions`.",
                     serde_json::json!({}),
                 ));
             }
@@ -386,8 +518,8 @@ mod tests {
     #[test]
     fn resolve_yazelix_config_dir_prefers_explicit_and_expands_home() {
         let home = Path::new("/tmp/home");
-        let path =
-            resolve_yazelix_config_dir(Some("~/cfg/yazelix"), Some("/ignored"), Some(home)).unwrap();
+        let path = resolve_yazelix_config_dir(Some("~/cfg/yazelix"), Some("/ignored"), Some(home))
+            .unwrap();
         assert_eq!(path, home.join("cfg").join("yazelix"));
     }
 

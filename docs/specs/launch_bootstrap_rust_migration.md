@@ -43,7 +43,7 @@ The remaining launch/bootstrap logic is only worth moving to Rust where it is de
 | Public command surface | `nushell/scripts/core/yazelix.nu`, `nushell/scripts/yzx/*.nu` | Keep Nushell-owned |
 | Config parsing and state freshness | `environment_bootstrap.nu`, `config_state.nu`, `yzx_core config.normalize`, `config-state.compute` | Keep current mixed ownership |
 | Runtime dependency and launch preflight classification | `runtime_contract_checker.nu`, `yzx_core runtime-contract.evaluate` | Keep current mixed ownership |
-| Generated runtime materialization and repair | `generated_runtime_state.nu`, `yzx_core runtime-materialization.plan`, `runtime-materialization.apply` | Keep current mixed ownership |
+| Generated runtime materialization and repair | Rust: `runtime-materialization.plan`, `runtime-materialization.materialize`, `runtime-materialization.repair`; Nu bridge: `core/materialization_orchestrator.nu` | Keep the Rust owner and leave only a thin Nu bridge |
 | Canonical per-session runtime environment | `nushell/scripts/utils/runtime_env.nu` | First `kt5.4` Rust migration slice |
 | Terminal launch string construction and detached execution | `launch_yazelix.nu`, `terminal_launcher.nu`, `shells/posix/start_yazelix.sh` | Keep Nushell/POSIX-owned in v15.x |
 | In-terminal startup and Zellij handoff | `start_yazelix.nu`, `start_yazelix_inner.nu` | Keep Nushell-owned in v15.x |

@@ -77,8 +77,8 @@ Use these rules before starting any Rust lane:
 - `startup-launch-preflight.evaluate`
 - `runtime-env.compute`
 - `runtime-materialization.plan`
-- `runtime-materialization.repair-evaluate`
-- `runtime-materialization.apply`
+- `runtime-materialization.materialize`
+- `runtime-materialization.repair`
 - `status.compute`
 - `doctor-config.evaluate`
 - `doctor-helix.evaluate`
@@ -108,13 +108,14 @@ wrappers.
 | --- | --- | --- | --- | --- |
 | Bridge transport and error shaping | `config_parser.nu` plus the small per-command report bridges | High-leverage deletion lane with relatively low semantic risk | Collapse now. Keep one minimal transport layer, not one policy-bearing Nu owner per Rust helper command. | Current lane: `yazelix-ulb2.5.3` |
 | Config, state, env, and preflight shims | `config_state.nu`, `runtime_env.nu`, `runtime_contract_checker.nu` | Rust already owns the typed computation, but Nu still shapes too much request and classification logic | Move request shaping and machine classification fully into Rust where possible. Leave only execution and final user rendering in Nu. | Current lane: `yazelix-ulb2.5.3` |
-| Status, doctor, and install report bridges | `status_report.nu`, `doctor.nu`'s inline config-doctor bridge, `doctor_helix_report.nu`, `doctor_runtime_report.nu`, `install_ownership_report.nu` | Still too many Nu owners for already structured Rust outputs | Keep collapsing these toward one shared report transport seam. Keep human rendering in Nu only where it still adds product value. | Reduced under `yazelix-ulb2.5.3`; keep shrinking the surviving owners |
-| Runtime materialization orchestrator | `generated_runtime_state.nu`, `config_state.nu`, `atomic_writes.nu` | Biggest remaining mixed control-plane owner | Only port if Rust becomes the full owner of freshness, expected artifacts, managed writes, and recorded state. A plan-only port is not enough now. | Main deletion lane: `yazelix-ulb2.3` |
+| Doctor and install report bridges | `doctor.nu`'s inline config-doctor bridge, `doctor_helix_report.nu`, `doctor_runtime_report.nu`, `install_ownership_report.nu` | Still too many Nu owners for already structured Rust outputs; `yzx status` has already moved to the Rust public owner and `status_report.nu` is gone | Keep collapsing these toward one shared report transport seam. Keep human rendering in Nu only where it still adds product value. | Reduced under `yazelix-ulb2.5.3`; keep shrinking the surviving owners |
+| Runtime materialization lifecycle | Rust owners: `runtime-materialization.plan`, `runtime-materialization.materialize`, `runtime-materialization.repair`; surviving Nu bridge: `core/materialization_orchestrator.nu` | Landed full-owner cut; the remaining Nu file is startup and doctor glue, not the lifecycle owner | Keep the bridge thin or delete it later. Do not recreate a second Nu lifecycle owner. | Landed under `yazelix-ulb2.9` |
 | Yazi materialization family | Rust owner: `yazi-materialization.generate`; surviving Nu wrapper: `setup/yazi_config_merger.nu` | The real Nu owner family is gone. Only a thin compatibility wrapper remains. | Keep the wrapper thin or delete it. Do not rebuild Yazi policy ownership in Nu. Dependency gate for the landed cut: in-house logic plus existing `serde` and `toml`; no new crates. | Landed under `yazelix-ulb2.3.1` |
 | Zellij materialization family | Rust owner: `zellij-materialization.generate`; surviving Nu wrapper: `setup/zellij_config_merger.nu` | The real Nu owner family is gone. Rust owns base-config selection, semantic KDL extraction, layout rendering, plugin wasm sync, permission migration, popup-runner cleanup, and generation-state reuse. | Keep the wrapper thin or delete it. Do not rebuild Zellij policy ownership in Nu. Dependency gate for the landed cut: in-house logic plus existing `serde`, `serde_json`, `toml`, `sha2`, `thiserror`, and `lexopt`; no new crates. | Landed under `yazelix-ulb2.3.2` |
-| Terminal, Helix, and initializer materialization | `utils/terminal_configs.nu`, `utils/terminal_renderers.nu`, `setup/helix_config_merger.nu`, `setup/initializers.nu`, `setup/environment.nu` | Meaningful deletion budget, but spread across several file families | Batch this with a real full-owner materialization move. Avoid isolated helper ports that leave the Nu writer layer intact. | Later `yazelix-ulb2.3` work |
+| Terminal and Helix materialization | `utils/terminal_configs.nu`, `utils/terminal_renderers.nu`, `setup/helix_config_merger.nu` | Meaningful deletion budget remains here, but it is still spread across multiple generated-file families | Only port this as a real full-owner lane. Avoid isolated helper ports that leave the Nu writer layer intact. | Later `yazelix-ulb2.3` work |
+| Shell initializer generation and shellhook environment setup | `setup/initializers.nu`, `setup/environment.nu` | The deterministic runtime-env subcore already moved to Rust. What remains is external-tool init generation, shell-specific text normalization, bridge sync, startup profiling, log cleanup, executable-bit repair, and welcome-shellhook orchestration. | Keep Nushell-owned in v15.x. Reopen only if a future port can delete the surviving shellhook owner end-to-end instead of inserting one more text or bridge helper. | Decision locked by `yazelix-iwzn` |
 | Launch and startup process orchestration | `core/launch_yazelix.nu`, `core/start_yazelix.nu`, `core/start_yazelix_inner.nu`, `utils/terminal_launcher.nu`, `shells/posix/*.sh` | Shell-bound and process-heavy, not the best next Rust target | Keep Nu and POSIX in v15.x. Reopen only if a new deterministic subcore appears that deletes a real owner. | No active deletion lane; historical stop note in `launch_bootstrap_rust_migration.md` |
-| Public `yzx` root, help, completion, and palette inventory | Rust metadata owner: `command_metadata.rs`; surviving Nu command bodies: `core/yazelix.nu`, `yzx/*.nu`; compatibility wrapper: `utils/nushell_externs.nu` | First metadata slice has landed: root help, generated externs, and menu catalog no longer probe the Nushell command tree | Keep shrinking only when the next cut deletes a real public parser or command-body owner. Do not rebuild a parallel Nu registry. | Current lane: `yazelix-ulb2.7`; broader rewrite still gated by `yazelix-2ex.1.11` |
+| Public `yzx` root, help, completion, and palette inventory | Rust metadata owner: `command_metadata.rs`; surviving Nu command bodies: `core/yazelix.nu`, `core/yzx_*.nu`, `yzx/*.nu`; compatibility wrapper: `utils/nushell_externs.nu` | First metadata slice has landed: root help, generated externs, and menu catalog no longer probe the Nushell command tree. The old mixed `core/yazelix.nu` owner lump is now split into explicit internal families. | Keep shrinking only when the next cut deletes a real public parser or command-body owner. Do not rebuild a parallel Nu registry. | Follow-up lanes: `yazelix-2jkb.2` landed, `yazelix-2jkb.3` next |
 | Workspace and session state | `rust_plugins/zellij_pane_orchestrator/`, `integrations/*.nu`, `zellij_wrappers/*.nu` | Already Rust where live session truth matters | Keep this separate from `rust_core`. Do not fold the pane-orchestrator track into the control-plane migration by habit. | Separate pane-orchestrator beads |
 | Front-door UX and command-palette surfaces | `utils/ascii_art.nu`, `yzx/menu.nu`, `yzx/popup.nu`, `yzx/screen.nu`, `yzx/keys.nu`, `yzx/tutor.nu`, `utils/upgrade_summary.nu` | Mostly text-heavy or interactive UX | Keep Nushell unless a future port deletes an owner cleanly and improves the UX story at the same time. | Not a current Rust target |
 | Distribution and host integration | `home_manager/`, `packaging/`, `shells/`, `yzx/desktop.nu`, `yzx/home_manager.nu` | Nix, POSIX, and UX-heavy by nature | Keep outside the current Rust migration. Rust may be packaged here, but it should not become the new owner by default. | Not a current Rust target |
@@ -125,12 +126,17 @@ Generator and materialization work only counts as progress when the surviving
 Nu owner disappears.
 
 That means a Rust lane is successful only if it deletes or materially shrinks
-the owner family that currently writes and coordinates the product files:
+the owner family that currently writes and coordinates the product files.
 
-- `generated_runtime_state.nu`
-- the Yazi generation family
-- the Zellij generation family
-- the terminal, Helix, and initializer generation family
+Recent landed examples:
+
+- `yazelix-ulb2.9` deleted `generated_runtime_state.nu` and moved the runtime
+  materialization lifecycle into Rust
+- `yazelix-ulb2.3.1` deleted the real Yazi generation family
+- `yazelix-ulb2.3.2` deleted the real Zellij generation family
+
+The remaining large family in this lane is the terminal and Helix generation
+surface.
 
 If the end state is "Rust computes a plan, Nu still owns the same writer and
 same orchestration policy," that is still transitional code, not the target
@@ -185,12 +191,69 @@ What landed in `yazelix-ulb2.3.2`:
 - `zellij_config_merger.nu` is demoted to a thin compatibility wrapper over the
   Rust owner instead of a product-side policy owner
 
-Why not terminal, Helix, and initializers first:
+Why not terminal and Helix first:
 
 - the code is fragmented across several unrelated generated outputs instead of
   one clear owner family
 - a first pass there would likely recreate the exact failure mode this bead was
   meant to prevent: many small helper ports without one real owner deletion
+
+## 2026-04-21 Runtime Materialization Outcome
+
+`yazelix-ulb2.9` closed the remaining runtime materialization owner seam.
+
+What moved to Rust:
+
+- materialization planning
+- Yazi and Zellij generation sequencing
+- recorded-state finalization
+- repair flow, including noop versus regenerate decisions and missing-artifact
+  recovery
+
+What stayed in Nushell:
+
+- `core/materialization_orchestrator.nu` as a thin startup and doctor bridge
+- startup profile wrapping
+- final Nu-facing progress and remediation rendering
+
+What was deleted:
+
+- `nushell/scripts/utils/generated_runtime_state.nu`
+- the old private helper split around `runtime-materialization.apply` and
+  `runtime-materialization.repair-evaluate`
+
+## 2026-04-20 Initializer And Shellhook Audit Outcome
+
+`yazelix-iwzn` audited `setup/initializers.nu` and `setup/environment.nu` after
+the terminal materialization cut and the earlier `runtime-env.compute` move.
+
+Conclusion:
+
+- do not start a Rust initializer or shellhook port in v15.x
+- `runtime-env.compute` already took the only obvious typed decision layer:
+  canonical runtime environment planning
+- `initializers.nu` is now mostly external-tool integration and generated
+  shell-text ownership:
+  - it runs `starship`, `zoxide`, `atuin`, `mise`, and `carapace`
+  - it applies Nushell-specific text fixes such as the Starship right-prompt
+    strip and PATH-preservation footer
+  - it writes the per-shell initializer files and the aggregate
+    `yazelix_init.*` files
+- `environment.nu` is now mostly shellhook and startup orchestration:
+  - shellhook profiling metadata
+  - shell selection for initializer generation
+  - state and log directory management
+  - stale-log trimming
+  - generated extern and user-hook bridge sync
+  - executable-bit repair for runtime scripts
+  - welcome-screen gating and display
+
+Any smaller Rust insertion here would strand the same Nushell owners and create
+exactly the kind of bridge growth this roadmap is trying to prevent.
+
+The only acceptable future Rust move in this area would be a full owner cut
+that deletes either `setup/initializers.nu` or `setup/environment.nu`
+substantially end-to-end. There is no current evidence for such a cut.
 
 ## Public CLI Rule
 
@@ -268,6 +331,7 @@ them one family at a time.
 
 - Bead: `yazelix-kt5.1`
 - Bead: `yazelix-ulb2.3`
+- Bead: `yazelix-iwzn`
 - Defended by: `nu nushell/scripts/dev/validate_specs.nu`
 
 ## Open Questions
@@ -277,4 +341,4 @@ them one family at a time.
   utility inside the remaining Nu owners
 - After the Yazi and Zellij full-owner cuts, is the next better deletion lane
   the runtime materialization orchestrator itself or the fragmented
-  terminal/Helix/initializer family
+  terminal/Helix materialization family

@@ -7,6 +7,7 @@ shells/zsh/initializers
 
 # New XDG-compliant state directory (local machine state, not tracked)
 .local/
+.config/
 
 # Legacy local environment caches
 
@@ -46,6 +47,10 @@ rust_core/target/
 
 # Editor-local project settings
 .vscode/
+
+# Nix build result symlinks
+result
+result-*
 
 # Beads / Dolt files (added by bd init)
 .dolt/

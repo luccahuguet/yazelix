@@ -3,9 +3,9 @@
 
 use crate::bridge::CoreError;
 use crate::runtime_contract::{
-    evaluate_runtime_contract, GeneratedLayoutCheckRequest, LinuxGhosttyDesktopGraphicsRequest,
-    RuntimeCheckData, RuntimeContractEvaluateRequest, RuntimeScriptCheckRequest,
-    TerminalSupportCheckRequest,
+    GeneratedLayoutCheckRequest, LinuxGhosttyDesktopGraphicsRequest, RuntimeCheckData,
+    RuntimeContractEvaluateRequest, RuntimeScriptCheckRequest, TerminalSupportCheckRequest,
+    evaluate_runtime_contract,
 };
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -236,8 +236,7 @@ fn is_managed_generated_layout_path(layout_path: &str, managed_dir: &Path) -> bo
     }
     let root_s = managed_dir.to_string_lossy();
     let root_norm = root_s.trim_end_matches('/');
-    layout_path == root_norm
-        || layout_path.starts_with(&format!("{root_norm}/"))
+    layout_path == root_norm || layout_path.starts_with(&format!("{root_norm}/"))
 }
 
 fn build_contract_request(

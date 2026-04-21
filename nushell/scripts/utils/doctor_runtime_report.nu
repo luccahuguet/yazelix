@@ -7,7 +7,7 @@ use config_parser.nu [
     run_yzx_core_request_json_command
 ]
 use constants.nu DEFAULT_TERMINAL
-use generated_runtime_state.nu compute_runtime_materialization_plan
+use ../core/materialization_orchestrator.nu compute_runtime_materialization_plan
 
 const DOCTOR_RUNTIME_EVALUATE_COMMAND = "doctor-runtime.evaluate"
 

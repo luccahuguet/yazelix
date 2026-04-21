@@ -2,7 +2,7 @@
 
 use assert_cmd::Command;
 use pretty_assertions::assert_eq;
-use serde_json::Value;
+use serde_json::{Value, json};
 use std::fs;
 use std::path::PathBuf;
 use tempfile::tempdir;
@@ -40,6 +40,150 @@ fn prepare_doctor_config_runtime_fixture(
     )
     .unwrap();
     runtime_dir
+}
+
+struct RuntimeMaterializationFixture {
+    home_dir: PathBuf,
+    runtime_dir: PathBuf,
+    config_dir: PathBuf,
+    state_dir: PathBuf,
+    managed_config: PathBuf,
+    state_path: PathBuf,
+    yazi_dir: PathBuf,
+    zellij_dir: PathBuf,
+    zellij_layout_dir: PathBuf,
+}
+
+fn prepare_runtime_materialization_fixture(
+    repo: &std::path::Path,
+    tmp: &tempfile::TempDir,
+) -> RuntimeMaterializationFixture {
+    let home_dir = tmp.path().join("home");
+    let runtime_dir = tmp.path().join("runtime");
+    let config_dir = home_dir.join(".config").join("yazelix");
+    let state_dir = home_dir.join(".local").join("share").join("yazelix");
+    let managed_config = config_dir.join("user_configs").join("yazelix.toml");
+    let managed_zellij_config = config_dir
+        .join("user_configs")
+        .join("zellij")
+        .join("config.kdl");
+    let state_path = state_dir.join("state").join("rebuild_hash");
+    let yazi_dir = state_dir.join("configs").join("yazi");
+    let zellij_dir = state_dir.join("configs").join("zellij");
+    let zellij_layout_dir = zellij_dir.join("layouts");
+    let runtime_yazi_dir = runtime_dir.join("configs").join("yazi");
+    let runtime_zellij_dir = runtime_dir.join("configs").join("zellij");
+    let runtime_layout_dir = runtime_zellij_dir.join("layouts");
+    let runtime_fragment_dir = runtime_layout_dir.join("fragments");
+    let runtime_plugin_dir = runtime_zellij_dir.join("plugins");
+    let runtime_shell_dir = runtime_dir.join("shells").join("posix");
+    let runtime_contract_dir = runtime_dir.join("config_metadata");
+
+    fs::create_dir_all(managed_config.parent().unwrap()).unwrap();
+    fs::create_dir_all(managed_zellij_config.parent().unwrap()).unwrap();
+    fs::create_dir_all(&zellij_layout_dir).unwrap();
+    fs::create_dir_all(&runtime_yazi_dir).unwrap();
+    fs::create_dir_all(&runtime_fragment_dir).unwrap();
+    fs::create_dir_all(&runtime_plugin_dir).unwrap();
+    fs::create_dir_all(&runtime_shell_dir).unwrap();
+    fs::create_dir_all(&runtime_contract_dir).unwrap();
+
+    fs::copy(
+        repo.join("yazelix_default.toml"),
+        runtime_dir.join("yazelix_default.toml"),
+    )
+    .unwrap();
+    fs::copy(
+        repo.join("config_metadata/main_config_contract.toml"),
+        runtime_contract_dir.join("main_config_contract.toml"),
+    )
+    .unwrap();
+    fs::write(runtime_dir.join(".taplo.toml"), "[format]\n").unwrap();
+    fs::write(
+        runtime_shell_dir.join("yazelix_nu.sh"),
+        "#!/bin/sh\nexec nu \"$@\"\n",
+    )
+    .unwrap();
+    fs::write(
+        runtime_yazi_dir.join("yazelix_yazi.toml"),
+        "[manager]\nsort_by = \"alphabetical\"\n[opener]\nedit = []\n",
+    )
+    .unwrap();
+    fs::write(runtime_yazi_dir.join("yazelix_keymap.toml"), "").unwrap();
+    fs::write(runtime_yazi_dir.join("yazelix_theme.toml"), "").unwrap();
+    fs::write(
+        runtime_yazi_dir.join("yazelix_starship.toml"),
+        "format = \"$all\"\n",
+    )
+    .unwrap();
+    fs::write(runtime_zellij_dir.join("yazelix_overrides.kdl"), "").unwrap();
+    fs::write(runtime_layout_dir.join("yzx_side.kdl"), "layout { pane }\n").unwrap();
+    fs::write(
+        runtime_layout_dir.join("yzx_no_side.kdl"),
+        "layout { pane }\n",
+    )
+    .unwrap();
+    for fragment in [
+        "zjstatus_tab_template.kdl",
+        "keybinds_common.kdl",
+        "swap_sidebar_open.kdl",
+        "swap_sidebar_closed.kdl",
+    ] {
+        fs::write(runtime_fragment_dir.join(fragment), "").unwrap();
+    }
+    fs::write(
+        runtime_plugin_dir.join("yazelix_pane_orchestrator.wasm"),
+        b"wasm",
+    )
+    .unwrap();
+    fs::write(runtime_plugin_dir.join("zjstatus.wasm"), b"wasm").unwrap();
+
+    fs::copy(runtime_dir.join("yazelix_default.toml"), &managed_config).unwrap();
+    fs::write(&managed_zellij_config, "keybinds {}\n").unwrap();
+
+    RuntimeMaterializationFixture {
+        home_dir,
+        runtime_dir,
+        config_dir,
+        state_dir,
+        managed_config,
+        state_path,
+        yazi_dir,
+        zellij_dir,
+        zellij_layout_dir,
+    }
+}
+
+fn runtime_materialization_request(fixture: &RuntimeMaterializationFixture) -> Value {
+    json!({
+        "config_path": fixture.managed_config,
+        "default_config_path": fixture.runtime_dir.join("yazelix_default.toml"),
+        "contract_path": fixture.runtime_dir.join("config_metadata/main_config_contract.toml"),
+        "runtime_dir": fixture.runtime_dir,
+        "state_path": fixture.state_path,
+        "yazi_config_dir": fixture.yazi_dir,
+        "zellij_config_dir": fixture.zellij_dir,
+        "zellij_layout_dir": fixture.zellij_layout_dir,
+        "layout_override": Value::Null,
+    })
+}
+
+fn runtime_materialization_command(
+    fixture: &RuntimeMaterializationFixture,
+    helper_command: &str,
+) -> Command {
+    let xdg_config_home = fixture.home_dir.join(".config");
+    let xdg_data_home = fixture.home_dir.join(".local").join("share");
+    let mut command = Command::cargo_bin("yzx_core").unwrap();
+    command
+        .arg(helper_command)
+        .env("HOME", &fixture.home_dir)
+        .env("XDG_CONFIG_HOME", xdg_config_home)
+        .env("XDG_DATA_HOME", xdg_data_home)
+        .env("YAZELIX_CONFIG_DIR", &fixture.config_dir)
+        .env("YAZELIX_STATE_DIR", &fixture.state_dir)
+        .env("YAZELIX_RUNTIME_DIR", &fixture.runtime_dir);
+    command
 }
 
 // Defends: config.normalize emits a single machine-readable success envelope for valid config input.
@@ -245,25 +389,22 @@ fn runtime_materialization_plan_reports_missing_artifacts_with_current_state() {
         .unwrap();
     assert!(record_output.status.success());
 
+    let request = json!({
+        "config_path": managed_config,
+        "default_config_path": repo.join("yazelix_default.toml"),
+        "contract_path": repo.join("config_metadata/main_config_contract.toml"),
+        "runtime_dir": repo,
+        "state_path": state_path,
+        "yazi_config_dir": yazi_dir,
+        "zellij_config_dir": zellij_dir,
+        "zellij_layout_dir": zellij_layout_dir,
+        "layout_override": Value::Null,
+    });
     let output = Command::cargo_bin("yzx_core")
         .unwrap()
         .arg("runtime-materialization.plan")
-        .arg("--config")
-        .arg(&managed_config)
-        .arg("--default-config")
-        .arg(repo.join("yazelix_default.toml"))
-        .arg("--contract")
-        .arg(repo.join("config_metadata/main_config_contract.toml"))
-        .arg("--runtime-dir")
-        .arg(&repo)
-        .arg("--state-path")
-        .arg(&state_path)
-        .arg("--yazi-config-dir")
-        .arg(&yazi_dir)
-        .arg("--zellij-config-dir")
-        .arg(&zellij_dir)
-        .arg("--zellij-layout-dir")
-        .arg(&zellij_layout_dir)
+        .arg("--request-json")
+        .arg(request.to_string())
         .output()
         .unwrap();
 
@@ -281,138 +422,87 @@ fn runtime_materialization_plan_reports_missing_artifacts_with_current_state() {
     );
 }
 
-// Defends: runtime-materialization.apply rejects missing expected artifacts with a runtime error envelope.
+// Defends: runtime-materialization.materialize becomes the single Rust owner for generate-plus-record of managed runtime artifacts.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
-fn runtime_materialization_apply_rejects_missing_artifacts() {
-    let tmp = tempdir().unwrap();
-    let managed_config = tmp.path().join("config/user_configs/yazelix.toml");
-    let state_path = tmp.path().join("state/rebuild_hash");
-    let expected_artifacts = serde_json::json!([
-        {
-            "label": "generated Yazi config",
-            "path": tmp.path().join("configs/yazi/yazi.toml").to_string_lossy().to_string()
-        }
-    ]);
-
-    let output = Command::cargo_bin("yzx_core")
-        .unwrap()
-        .arg("runtime-materialization.apply")
-        .arg("--config-file")
-        .arg(&managed_config)
-        .arg("--managed-config")
-        .arg(&managed_config)
-        .arg("--state-path")
-        .arg(&state_path)
-        .arg("--config-hash")
-        .arg("cfg")
-        .arg("--runtime-hash")
-        .arg("runtime")
-        .arg("--expected-artifacts-json")
-        .arg(expected_artifacts.to_string())
-        .output()
-        .unwrap();
-
-    assert_eq!(output.status.code(), Some(70));
-    assert!(output.stdout.is_empty());
-    let envelope: Value = serde_json::from_slice(&output.stderr).unwrap();
-    assert_eq!(envelope["command"], "runtime-materialization.apply");
-    assert_eq!(envelope["error"]["class"], "runtime");
-    assert_eq!(envelope["error"]["code"], "missing_generated_artifacts");
-}
-
-// Defends: runtime-materialization.repair-evaluate nests the plan and a regenerate directive when artifacts are missing.
-// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-#[test]
-fn runtime_materialization_repair_evaluate_reports_regenerate_for_missing_artifacts() {
+fn runtime_materialization_materialize_writes_generated_artifacts_and_records_state() {
     let repo = repo_root();
     let tmp = tempdir().unwrap();
-    let managed_config = tmp.path().join("config/user_configs/yazelix.toml");
-    let state_path = tmp.path().join("state/rebuild_hash");
-    let yazi_dir = tmp.path().join("configs/yazi");
-    let zellij_dir = tmp.path().join("configs/zellij");
-    let zellij_layout_dir = zellij_dir.join("layouts");
+    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    let request = runtime_materialization_request(&fixture);
 
-    fs::create_dir_all(managed_config.parent().unwrap()).unwrap();
-    fs::create_dir_all(&zellij_layout_dir).unwrap();
-    fs::copy(repo.join("yazelix_default.toml"), &managed_config).unwrap();
-
-    let state_output = Command::cargo_bin("yzx_core")
-        .unwrap()
-        .arg("config-state.compute")
-        .arg("--config")
-        .arg(&managed_config)
-        .arg("--default-config")
-        .arg(repo.join("yazelix_default.toml"))
-        .arg("--contract")
-        .arg(repo.join("config_metadata/main_config_contract.toml"))
-        .arg("--runtime-dir")
-        .arg(&repo)
-        .arg("--state-path")
-        .arg(&state_path)
-        .output()
-        .unwrap();
-    assert!(state_output.status.success());
-    let state_envelope: Value = serde_json::from_slice(&state_output.stdout).unwrap();
-
-    let record_output = Command::cargo_bin("yzx_core")
-        .unwrap()
-        .arg("config-state.record")
-        .arg("--config-file")
-        .arg(&managed_config)
-        .arg("--managed-config")
-        .arg(&managed_config)
-        .arg("--state-path")
-        .arg(&state_path)
-        .arg("--config-hash")
-        .arg(state_envelope["data"]["config_hash"].as_str().unwrap())
-        .arg("--runtime-hash")
-        .arg(state_envelope["data"]["runtime_hash"].as_str().unwrap())
-        .output()
-        .unwrap();
-    assert!(record_output.status.success());
-
-    let output = Command::cargo_bin("yzx_core")
-        .unwrap()
-        .arg("runtime-materialization.repair-evaluate")
-        .arg("--config")
-        .arg(&managed_config)
-        .arg("--default-config")
-        .arg(repo.join("yazelix_default.toml"))
-        .arg("--contract")
-        .arg(repo.join("config_metadata/main_config_contract.toml"))
-        .arg("--runtime-dir")
-        .arg(&repo)
-        .arg("--state-path")
-        .arg(&state_path)
-        .arg("--yazi-config-dir")
-        .arg(&yazi_dir)
-        .arg("--zellij-config-dir")
-        .arg(&zellij_dir)
-        .arg("--zellij-layout-dir")
-        .arg(&zellij_layout_dir)
+    let output = runtime_materialization_command(&fixture, "runtime-materialization.materialize")
+        .arg("--request-json")
+        .arg(request.to_string())
         .output()
         .unwrap();
 
     assert!(output.status.success());
+    assert!(output.stderr.is_empty());
     let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["command"], "runtime-materialization.materialize");
+    assert_eq!(envelope["status"], "ok");
+    assert_eq!(envelope["data"]["plan"]["status"], "refresh_required");
+    assert_eq!(envelope["data"]["apply"]["recorded"], true);
+    assert!(fixture.yazi_dir.join("yazi.toml").exists());
+    assert!(fixture.yazi_dir.join("keymap.toml").exists());
+    assert!(fixture.yazi_dir.join("init.lua").exists());
+    assert!(fixture.zellij_dir.join("config.kdl").exists());
+    assert!(fixture.zellij_layout_dir.join("yzx_side.kdl").exists());
+
+    let recorded: Value =
+        serde_json::from_str(&fs::read_to_string(&fixture.state_path).unwrap()).unwrap();
     assert_eq!(
-        envelope["command"],
-        "runtime-materialization.repair-evaluate"
+        recorded["config_hash"],
+        envelope["data"]["plan"]["config_hash"]
     );
+    assert_eq!(
+        recorded["runtime_hash"],
+        envelope["data"]["plan"]["runtime_hash"]
+    );
+}
+
+// Defends: runtime-materialization.repair repairs missing managed artifacts through the Rust lifecycle owner instead of bouncing back into a Nu coordinator.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn runtime_materialization_repair_regenerates_missing_artifacts_end_to_end() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    let request = runtime_materialization_request(&fixture);
+
+    let initial_output =
+        runtime_materialization_command(&fixture, "runtime-materialization.materialize")
+            .arg("--request-json")
+            .arg(request.to_string())
+            .output()
+            .unwrap();
+    assert!(initial_output.status.success());
+    fs::remove_file(fixture.yazi_dir.join("yazi.toml")).unwrap();
+
+    let repair_request = json!({
+        "plan": request,
+        "force": false,
+    });
+    let repair_output = runtime_materialization_command(&fixture, "runtime-materialization.repair")
+        .arg("--request-json")
+        .arg(repair_request.to_string())
+        .output()
+        .unwrap();
+
+    assert!(repair_output.status.success());
+    assert!(repair_output.stderr.is_empty());
+    let envelope: Value = serde_json::from_slice(&repair_output.stdout).unwrap();
+    assert_eq!(envelope["command"], "runtime-materialization.repair");
+    assert_eq!(envelope["status"], "ok");
+    assert_eq!(envelope["data"]["status"], "repaired_missing_artifacts");
     assert_eq!(
         envelope["data"]["plan"]["status"],
         "repair_missing_artifacts"
     );
     assert_eq!(envelope["data"]["repair"]["action"], "regenerate");
-    assert_eq!(
-        envelope["data"]["repair"]["result_status"],
-        "repaired_missing_artifacts"
-    );
-    assert!(envelope["data"]["repair"]["missing_artifacts_detail_line"]
-        .as_str()
-        .unwrap()
-        .contains("generated Yazi config"));
+    assert!(envelope["data"]["materialization"].is_object());
+    assert!(fixture.yazi_dir.join("yazi.toml").exists());
 }
 
 // Defends: runtime-contract.evaluate emits one machine-readable checks envelope for batched preflight requests.
@@ -614,10 +704,12 @@ fn doctor_helix_evaluate_prints_ok_envelope() {
     assert_eq!(envelope["command"], "doctor-helix.evaluate");
     assert_eq!(envelope["status"], "ok");
     assert_eq!(envelope["data"]["runtime_conflicts"]["status"], "ok");
-    assert!(envelope["data"]["managed_integration"]
-        .as_array()
-        .unwrap()
-        .is_empty());
+    assert!(
+        envelope["data"]["managed_integration"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
 }
 
 // Defends: doctor-runtime.evaluate emits one machine-readable report envelope for a minimal request.
@@ -657,10 +749,12 @@ fn doctor_runtime_evaluate_prints_ok_envelope() {
         envelope["data"]["distribution"]["capability_mode"],
         "package_runtime"
     );
-    assert!(envelope["data"]["shared_runtime_preflight"]
-        .as_array()
-        .unwrap()
-        .is_empty());
+    assert!(
+        envelope["data"]["shared_runtime_preflight"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
 }
 
 // Defends: doctor-config.evaluate reports duplicate root/user config ownership as a config-surface error finding.
@@ -739,8 +833,7 @@ fn doctor_config_evaluate_reports_stale_schema_warning() {
         1
     );
     assert_eq!(
-        envelope["data"]["findings"][1]["config_diagnostic_report"]["doctor_diagnostics"][0]
-            ["headline"],
+        envelope["data"]["findings"][1]["config_diagnostic_report"]["doctor_diagnostics"][0]["headline"],
         "Invalid config value at editor.sidebar_width_percent"
     );
     let details = envelope["data"]["findings"][1]["details"].as_str().unwrap();
@@ -776,10 +869,12 @@ fn doctor_config_evaluate_keeps_invalid_toml_as_error() {
         "Could not validate yazelix.toml against the current schema"
     );
     assert_eq!(envelope["data"]["findings"][1]["status"], "error");
-    assert!(envelope["data"]["findings"][1]["details"]
-        .as_str()
-        .unwrap()
-        .contains("Could not parse Yazelix TOML input"));
+    assert!(
+        envelope["data"]["findings"][1]["details"]
+            .as_str()
+            .unwrap()
+            .contains("Could not parse Yazelix TOML input")
+    );
 }
 
 // Defends: doctor-config.evaluate keeps the default-template doctor row fixable instead of bootstrapping config eagerly.

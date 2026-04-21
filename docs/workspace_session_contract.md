@@ -100,8 +100,8 @@ Concretely, Nushell owns logic like:
 Concretely, the plugin owns state surfaced by the stable
 `get_active_tab_session_state` seam.
 
-`debug_editor_state` remains a debug-oriented inspection payload, not the
-primary long-term contract for active-tab session truth.
+`maintainer_debug_editor_state` remains a maintainer-only inspection payload,
+not the primary long-term contract for active-tab session truth.
 
 ### Yazi Cache Owns
 
@@ -269,7 +269,7 @@ That seam carries:
 - validated current-tab sidebar Yazi identity
 
 Nushell and later sidebar/Yazi consumers should prefer this seam over
-`debug_editor_state` when they need contract-level tab-local truth.
+`maintainer_debug_editor_state` when they need contract-level tab-local truth.
 
 ### Sidebar Cache Is Telemetry, Not Truth
 

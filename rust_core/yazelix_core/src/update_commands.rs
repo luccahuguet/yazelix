@@ -5,7 +5,7 @@ use crate::control_plane::{
     config_dir_from_env, expand_user_path, home_dir_from_env, runtime_dir_from_env,
 };
 use crate::install_ownership_report::{
-    evaluate_install_ownership_report, InstallOwnershipEvaluateRequest,
+    InstallOwnershipEvaluateRequest, evaluate_install_ownership_report,
 };
 use serde_json::Value;
 use std::io::{BufRead, Write};
@@ -162,8 +162,12 @@ fn fail_if_home_manager_owned_upstream_update() -> Result<(), CoreError> {
     if report.install_owner != "home-manager" {
         return Ok(());
     }
-    println!("❌ `yzx update upstream` is for default Nix profile installs, but this Yazelix runtime appears to be Home Manager-owned.");
-    println!("   Run `yzx update home_manager` from the Home Manager flake that owns this install.");
+    println!(
+        "❌ `yzx update upstream` is for default Nix profile installs, but this Yazelix runtime appears to be Home Manager-owned."
+    );
+    println!(
+        "   Run `yzx update home_manager` from the Home Manager flake that owns this install."
+    );
     println!("   Then run `home-manager switch` to apply the updated input.");
     println!("   Do not use both update paths for the same installed Yazelix runtime.");
     Err(CoreError::classified(
@@ -222,11 +226,7 @@ fn resolve_active_yazelix_profile_entry_name(profile_json: &Value) -> Result<Str
         let store_paths = entry
             .get("storePaths")
             .and_then(|v| v.as_array())
-            .map(|a| {
-                a.iter()
-                    .filter_map(|x| x.as_str())
-                    .collect::<Vec<_>>()
-            })
+            .map(|a| a.iter().filter_map(|x| x.as_str()).collect::<Vec<_>>())
             .unwrap_or_default();
         for store_path in store_paths {
             let expanded = normalize_path_for_compare(Path::new(store_path), &home);
@@ -243,15 +243,23 @@ fn resolve_active_yazelix_profile_entry_name(profile_json: &Value) -> Result<Str
 
     if matches.len() > 1 {
         let names = matches.join(", ");
-        println!("❌ Multiple default-profile Yazelix entries point at the active runtime: {names}");
+        println!(
+            "❌ Multiple default-profile Yazelix entries point at the active runtime: {names}"
+        );
         println!("   Keep one clear profile owner, then rerun `yzx update upstream`.");
         return Err(1);
     }
 
-    println!("❌ `yzx update upstream` could not find the active Yazelix runtime in the default Nix profile.");
+    println!(
+        "❌ `yzx update upstream` could not find the active Yazelix runtime in the default Nix profile."
+    );
     println!("   Current runtime: {}", runtime_root.display());
-    println!("   This command now updates profile-installed Yazelix packages after the legacy flake installer was removed.");
-    println!("   Recovery: Reinstall with `nix profile add github:luccahuguet/yazelix#yazelix`, or use `yzx update home_manager` if Home Manager owns this install.");
+    println!(
+        "   This command now updates profile-installed Yazelix packages after the legacy flake installer was removed."
+    );
+    println!(
+        "   Recovery: Reinstall with `nix profile add github:luccahuguet/yazelix#yazelix`, or use `yzx update home_manager` if Home Manager owns this install."
+    );
     Err(1)
 }
 
@@ -268,7 +276,9 @@ fn require_current_working_flake() -> Result<(), i32> {
     if flake_file.is_file() {
         return Ok(());
     }
-    println!("❌ yzx update home_manager must be run from the Home Manager flake directory that owns this install.");
+    println!(
+        "❌ yzx update home_manager must be run from the Home Manager flake directory that owns this install."
+    );
     println!(
         "   Missing flake.nix in the current directory: {}",
         flake_file.display()
@@ -299,8 +309,12 @@ pub fn run_yzx_update(args: &[String]) -> Result<i32, CoreError> {
         print_update_owner_warning();
         println!();
         println!("Available update commands:");
-        println!("  yzx update upstream      Upgrade the active Yazelix package in the default Nix profile");
-        println!("  yzx update home_manager  Refresh the current Home Manager flake input, then print `home-manager switch`");
+        println!(
+            "  yzx update upstream      Upgrade the active Yazelix package in the default Nix profile"
+        );
+        println!(
+            "  yzx update home_manager  Refresh the current Home Manager flake input, then print `home-manager switch`"
+        );
         println!("  yzx update nix           Upgrade Determinate Nix (if installed)");
         return Ok(0);
     }
@@ -316,7 +330,9 @@ pub fn run_yzx_update(args: &[String]) -> Result<i32, CoreError> {
 
             if !yes {
                 println!("⚠️  This upgrades Determinate Nix using determinate-nixd.");
-                println!("   If your Nix install is not based on Determinate Nix, this will not work.");
+                println!(
+                    "   If your Nix install is not based on Determinate Nix, this will not work."
+                );
                 println!("   It requires sudo and may prompt for your password.");
                 print!("Continue? [y/N]: ");
                 let _ = std::io::stdout().flush();
@@ -425,9 +441,13 @@ pub fn run_yzx_update(args: &[String]) -> Result<i32, CoreError> {
             }
             print_update_path_confirmation("home_manager")?;
             println!();
-            println!("⚠️  `yzx update home_manager` updates the `yazelix` input in the current flake directory.");
+            println!(
+                "⚠️  `yzx update home_manager` updates the `yazelix` input in the current flake directory."
+            );
             println!("   Run it only from the Home Manager flake that owns this install.");
-            println!("   If your Yazelix input uses a different name, run `nix flake update <your-input-name>` yourself.");
+            println!(
+                "   If your Yazelix input uses a different name, run `nix flake update <your-input-name>` yourself."
+            );
             println!();
             print_exact_command("nix flake update yazelix");
 

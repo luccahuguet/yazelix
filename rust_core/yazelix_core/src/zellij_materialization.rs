@@ -1,12 +1,15 @@
 use crate::bridge::{CoreError, ErrorClass};
-use crate::config_normalize::{normalize_config, NormalizeConfigRequest};
-use crate::control_plane::config_dir_from_env;
+use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
+use crate::control_plane::{
+    config_dir_from_env, home_dir_from_env as home_dir_from_control_plane,
+    state_dir_from_env as state_dir_from_control_plane,
+};
 use crate::zellij_render_plan::{
-    compute_zellij_render_plan, LayoutPlaceholderPercents, TopLevelSetting, ZellijRenderPlanData,
-    ZellijRenderPlanRequest,
+    LayoutPlaceholderPercents, TopLevelSetting, ZellijRenderPlanData, ZellijRenderPlanRequest,
+    compute_zellij_render_plan,
 };
 use serde::Serialize;
-use serde_json::{json, Map as JsonMap, Value as JsonValue};
+use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -1569,34 +1572,11 @@ fn path_basename(path: &str) -> &str {
 }
 
 fn state_dir_from_env() -> Result<PathBuf, CoreError> {
-    if let Ok(raw) = std::env::var("YAZELIX_STATE_DIR") {
-        let trimmed = raw.trim();
-        if !trimmed.is_empty() {
-            return Ok(PathBuf::from(trimmed));
-        }
-    }
-    if let Ok(raw) = std::env::var("XDG_DATA_HOME") {
-        let trimmed = raw.trim();
-        if !trimmed.is_empty() {
-            return Ok(PathBuf::from(trimmed).join("yazelix"));
-        }
-    }
-    Ok(home_dir_from_env()?
-        .join(".local")
-        .join("share")
-        .join("yazelix"))
+    state_dir_from_control_plane()
 }
 
 fn home_dir_from_env() -> Result<PathBuf, CoreError> {
-    std::env::var_os("HOME").map(PathBuf::from).ok_or_else(|| {
-        CoreError::classified(
-            ErrorClass::Runtime,
-            "missing_home",
-            "HOME is not set.",
-            "Export HOME, then retry.",
-            json!({}),
-        )
-    })
+    home_dir_from_control_plane()
 }
 
 fn permissions_cache_path() -> Result<PathBuf, CoreError> {
@@ -1634,17 +1614,23 @@ keybinds {
 ui { pane_frames { hide_session_name true } }
 "#,
         );
-        assert!(extracted
-            .config_without_semantic_blocks
-            .contains("scroll_buffer_size 123"));
-        assert!(extracted
-            .keybind_lines
-            .iter()
-            .any(|line| line.contains("Ctrl y")));
-        assert!(extracted
-            .ui_lines
-            .iter()
-            .any(|line| line.contains("hide_session_name")));
+        assert!(
+            extracted
+                .config_without_semantic_blocks
+                .contains("scroll_buffer_size 123")
+        );
+        assert!(
+            extracted
+                .keybind_lines
+                .iter()
+                .any(|line| line.contains("Ctrl y"))
+        );
+        assert!(
+            extracted
+                .ui_lines
+                .iter()
+                .any(|line| line.contains("hide_session_name"))
+        );
     }
 
     // Defends: widget tray rendering stays byte-compatible with the legacy zjstatus layout placeholders.

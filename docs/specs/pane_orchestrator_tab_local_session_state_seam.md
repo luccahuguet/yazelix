@@ -6,8 +6,8 @@ Define one narrow, versioned, plugin-owned read seam for the **active tab's**
 workspace/session truth inside Zellij.
 
 The seam should let Nushell and later sidebar/Yazi consumers ask the pane
-orchestrator for a typed snapshot instead of combining `debug_editor_state`,
-`get_active_sidebar_yazi_state`, and local derivation paths.
+orchestrator for a typed snapshot instead of combining the maintainer-only
+debug payload, the old sidebar-only read seam, and local derivation paths.
 
 This is a **read-only session-truth slice**, not a broader Rust CLI rewrite and
 not a second state store outside the plugin.
@@ -25,8 +25,10 @@ The plugin already owns most of the required truth:
 
 But the current read surface is still fragmented:
 
-- `debug_editor_state` is a debug-oriented JSON payload, not a stable contract
-- `get_active_sidebar_yazi_state` is a second read seam just for sidebar Yazi
+- `maintainer_debug_editor_state` is a maintainer-only JSON payload, not a
+  stable contract
+- the old `get_active_sidebar_yazi_state` command was a second read seam just
+  for sidebar Yazi
 - Nushell still carries some non-authoritative derivation around workspace roots
   and tab-local targeting
 
@@ -75,9 +77,9 @@ Add a new pipe command:
 
 - `get_active_tab_session_state`
 
-Do **not** promote `debug_editor_state` into the long-term stable contract just
-because it is close to the needed payload. Keep debug commands debug-shaped and
-introduce one explicit stable read seam instead.
+Do **not** promote `maintainer_debug_editor_state` into the long-term stable
+contract just because it is close to the needed payload. Keep debug commands
+debug-shaped and introduce one explicit stable read seam instead.
 
 ### Success Shape
 
@@ -168,10 +170,11 @@ Composer 2 should prepare to switch these read paths first:
 - `nushell/scripts/integrations/zellij.nu`
   - `read_current_tab_workspace_root`
   - `get_current_tab_workspace_root_including_bootstrap`
-  - any helper that currently parses `debug_editor_state`
+  - any helper that currently parses `maintainer_debug_editor_state`
 - sidebar/Yazi-facing integrations that need active-tab identity rather than a
   session-global cache view
-- diagnostics that currently read `debug_editor_state` for tab-local truth
+- diagnostics that currently read `maintainer_debug_editor_state` for tab-local
+  truth
 
 `retarget_workspace` remains the mutation seam for workspace changes in this
 bead. This slice is only about the read contract.
@@ -189,7 +192,8 @@ bead. This slice is only about the read contract.
 ## Acceptance Cases
 
 1. The pane orchestrator exposes one explicit typed command for active-tab
-   session truth instead of making consumers rely on `debug_editor_state`.
+   session truth instead of making consumers rely on
+   `maintainer_debug_editor_state`.
 2. The typed payload includes workspace root/source, managed editor/sidebar pane
    identity, focus context, and sidebar visibility/open-state information.
 3. Sidebar Yazi identity comes from current-tab plugin state validation, not
@@ -217,9 +221,11 @@ bead. This slice is only about the read contract.
 
 ## Open Questions
 
-- Should `debug_editor_state` stay unchanged as a purely debug surface, or lose
-  fields once the stable seam lands?
+- Resolved 2026-04-20: the remaining debug surface should survive only as the
+  explicitly maintainer-only command `maintainer_debug_editor_state`, not as a
+  production-facing helper name.
 - Should the first stable seam include `permissions_granted`, or should
   permission/readiness stay encoded only in the non-JSON transport tokens?
-- Should `get_active_sidebar_yazi_state` survive as a narrow compatibility call,
-  or should later consumers converge entirely on the new session snapshot?
+- Resolved 2026-04-20: `get_active_sidebar_yazi_state` should not survive as a
+  public compatibility read seam; later consumers should converge on the typed
+  session snapshot.

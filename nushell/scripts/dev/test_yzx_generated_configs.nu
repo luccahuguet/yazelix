@@ -6,7 +6,7 @@ use ./yzx_test_helpers.nu [get_repo_config_dir repo_path resolve_test_yzx_core_b
 use ../setup/yazi_config_merger.nu [generate_merged_yazi_config]
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
 use ../utils/config_state.nu [record_materialized_state]
-use ../core/materialization_orchestrator.nu [record_current_materialized_state regenerate_runtime_configs]
+use ../core/materialization_orchestrator.nu [regenerate_runtime_configs]
 use ../utils/safe_remove.nu remove_path_within_root
 use ../utils/terminal_launcher.nu [build_launch_command resolve_terminal_config]
 use ../utils/terminal_configs.nu [
@@ -1471,11 +1471,10 @@ def test_generate_merged_yazi_config_renders_runtime_placeholders_in_plugins [] 
             YAZELIX_LOGS_DIR: ($tmp_home | path join ".local" "share" "yazelix" "logs")
             YAZELIX_RUNTIME_DIR: $repo_root
         } {
-            let applied_state = (regenerate_runtime_configs $repo_root --quiet)
+            regenerate_runtime_configs $repo_root --quiet | ignore
             let merged_dir = ($tmp_home | path join ".local" "share" "yazelix" "configs" "yazi")
             let zoxide_plugin = ($merged_dir | path join "plugins" "zoxide-editor.yazi" "main.lua")
             let warm_sentinel = ($merged_dir | path join "plugins" "zoxide-editor.yazi" "warm_skip_sentinel")
-            record_current_materialized_state $applied_state | ignore
             "warm asset marker" | save --force --raw $warm_sentinel
             regenerate_runtime_configs $repo_root --quiet
             let sentinel_after_warm_skip = ($warm_sentinel | path exists)

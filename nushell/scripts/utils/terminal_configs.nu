@@ -3,6 +3,7 @@
 # The real owner is terminal-materialization.generate in yzx_core.
 
 use config_parser.nu [parse_yazelix_config run_yzx_core_json_command]
+use config_surfaces.nu load_active_config_surface
 use ./constants.nu *
 use ./common.nu [get_yazelix_config_dir get_yazelix_runtime_dir]
 
@@ -16,6 +17,7 @@ def ghostty_cursor_random_requested [config: record] {
 
 export def generate_selected_terminal_configs [selected_terminals: list<string>, runtime_dir?: string] {
     let resolved_runtime_dir = (($runtime_dir | default (get_yazelix_runtime_dir)) | path expand)
+    let config_surface = (load_active_config_surface)
     let config_dir = (get_yazelix_config_dir)
     let state_dir = ($YAZELIX_STATE_DIR | str replace "~" $env.HOME | path expand)
     let config = parse_yazelix_config
@@ -28,8 +30,8 @@ export def generate_selected_terminal_configs [selected_terminals: list<string>,
 
     run_yzx_core_json_command $resolved_runtime_dir {display_config_path: "" config_file: ""} [
         "terminal-materialization.generate"
-        "--config" ($config_dir | path join "yazelix.toml")
-        "--default-config" ($resolved_runtime_dir | path join "yazelix_default.toml")
+        "--config" $config_surface.config_file
+        "--default-config" $config_surface.default_config_path
         "--contract" ($resolved_runtime_dir | path join "config_metadata" "main_config_contract.toml")
         "--runtime-dir" $resolved_runtime_dir
         "--state-dir" $state_dir

@@ -84,8 +84,8 @@ A broader v16 Rust CLI path is worth evaluating only if all of these are true
 first:
 
 - the Nu bridge layer around `config_parser.nu`, `runtime_contract_checker.nu`,
-  `generated_runtime_state.nu`, and the per-command report bridges is already
-  much thinner or partly gone
+  `materialization_orchestrator.nu`, and the per-command report bridges is
+  already much thinner or partly gone
 - at least one real generator and materialization owner family has been deleted
   or materially reduced, so a broader Rust root would not sit above the same
   old Nu materialization core

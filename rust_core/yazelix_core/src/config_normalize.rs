@@ -1,6 +1,6 @@
 use crate::bridge::{CoreError, ErrorClass};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Map as JsonMap, Number as JsonNumber, Value as JsonValue};
+use serde_json::{Map as JsonMap, Number as JsonNumber, Value as JsonValue, json};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -861,8 +861,10 @@ mod tests {
 
         assert!(report.issue_count > 0);
         assert_eq!(missing_field.status, "missing_field");
-        assert!(missing_field
-            .headline
-            .starts_with("Missing config field at "));
+        assert!(
+            missing_field
+                .headline
+                .starts_with("Missing config field at ")
+        );
     }
 }

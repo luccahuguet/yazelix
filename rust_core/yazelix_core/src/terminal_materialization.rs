@@ -1,7 +1,8 @@
 use crate::bridge::CoreError;
-use crate::config_normalize::{normalize_config, NormalizeConfigRequest};
+use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
+use crate::control_plane::config_dir_from_env;
 use crate::ghostty_materialization::{
-    generate_ghostty_materialization, GhosttyMaterializationRequest,
+    GhosttyMaterializationRequest, generate_ghostty_materialization,
 };
 use serde::Serialize;
 use std::fs;
@@ -141,7 +142,10 @@ fn generate_kitty_config(
             )
         }
         Some(path) => {
-            format!("# Personal Yazelix Kitty overrides (optional, user-owned)\n# Create {} if you want terminal-native Kitty tweaks.", path.display())
+            format!(
+                "# Personal Yazelix Kitty overrides (optional, user-owned)\n# Create {} if you want terminal-native Kitty tweaks.",
+                path.display()
+            )
         }
         None => "# Personal Yazelix Kitty overrides (optional, user-owned)".to_string(),
     };
@@ -305,6 +309,7 @@ pub fn generate_terminal_materialization(
         .unwrap_or("none");
     let ghostty_trail_color = config.get("ghostty_trail_color").and_then(|v| v.as_str());
 
+    let config_dir = config_dir_from_env()?;
     let generated_dir = request.state_dir.join("configs").join("terminal_emulators");
 
     let mut generated = Vec::new();
@@ -315,11 +320,7 @@ pub fn generate_terminal_materialization(
             "ghostty" => {
                 let ghostty_request = GhosttyMaterializationRequest {
                     runtime_dir: request.runtime_dir.clone(),
-                    config_dir: request
-                        .config_path
-                        .parent()
-                        .map(|p| p.to_path_buf())
-                        .unwrap_or_else(|| request.runtime_dir.join("configs")),
+                    config_dir: config_dir.clone(),
                     state_dir: request.state_dir.clone(),
                     transparency: transparency.to_string(),
                     ghostty_trail_color: ghostty_trail_color.map(|s| s.to_string()),
@@ -382,10 +383,7 @@ pub fn generate_terminal_materialization(
                         source,
                     )
                 })?;
-                let override_path = get_terminal_override_path(
-                    &request.config_path.parent().unwrap_or(&request.runtime_dir),
-                    "kitty",
-                );
+                let override_path = get_terminal_override_path(&config_dir, "kitty");
                 let path = kitty_dir.join("kitty.conf");
                 fs::write(
                     &path,
@@ -432,10 +430,7 @@ pub fn generate_terminal_materialization(
                         )
                     },
                 )?;
-                let override_path = get_terminal_override_path(
-                    &request.config_path.parent().unwrap_or(&request.runtime_dir),
-                    "alacritty",
-                );
+                let override_path = get_terminal_override_path(&config_dir, "alacritty");
                 let entry_path = alacritty_dir.join("alacritty.toml");
                 fs::write(
                     &entry_path,

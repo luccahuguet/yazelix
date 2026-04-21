@@ -1,20 +1,63 @@
-//! Internal control-plane binary for `yzx env`, `yzx run`, and `yzx update*` (invoked from `yzx_cli.sh`).
+//! Internal control-plane binary for `yzx env`, `yzx run`, `yzx status`, and `yzx update*` (invoked from `yzx_cli.sh`).
 
+use serde::Serialize;
+use std::process::Command;
 use yazelix_core::bridge::{CoreError, ErrorClass};
 use yazelix_core::compute_runtime_env;
+use yazelix_core::compute_status_report;
 use yazelix_core::config_normalize::ConfigDiagnosticReport;
 use yazelix_core::control_plane::{
     basename_shell, config_dir_from_env, default_shell_from_config,
-    load_normalized_config_for_control, parse_env_cli_args, run_child_in_runtime_env,
-    runtime_dir_from_env, runtime_env_request, setpriv_or_sh_exec, shell_command, split_run_argv,
+    load_normalized_config_for_control, parse_env_cli_args, parse_status_cli_args,
+    read_yazelix_version_from_runtime, run_child_in_runtime_env, runtime_dir_from_env,
+    runtime_env_request, runtime_materialization_plan_request_from_env, setpriv_or_sh_exec,
+    shell_command, split_run_argv,
 };
 use yazelix_core::update_commands::run_yzx_update;
 
 fn usage() -> ! {
     eprintln!("Usage: yzx_control env [--no-shell|-n]");
     eprintln!("       yzx_control run <command> [args...]");
+    eprintln!("       yzx_control status [--versions] [--json]");
     eprintln!("       yzx_control update [subcommand] [args...]");
     std::process::exit(64);
+}
+
+const YAZELIX_DESCRIPTION: &str = "Yazi + Zellij + Helix integrated terminal environment";
+const STATUS_VERSION_TOOLS: &[(&str, &str)] = &[
+    ("yazi", "yazi"),
+    ("zellij", "zellij"),
+    ("helix", "hx"),
+    ("nushell", "nu"),
+    ("zoxide", "zoxide"),
+    ("starship", "starship"),
+    ("lazygit", "lazygit"),
+    ("fzf", "fzf"),
+    ("wezterm", "wezterm"),
+    ("ghostty", "ghostty"),
+    ("nix", "nix"),
+    ("kitty", "kitty"),
+    ("foot", "foot"),
+    ("alacritty", "alacritty"),
+    ("macchina", "macchina"),
+];
+
+#[derive(Debug, Clone, Serialize)]
+struct ToolVersionEntry {
+    tool: String,
+    runtime: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct VersionReportData {
+    title: String,
+    tools: Vec<ToolVersionEntry>,
+}
+
+enum CommandProbe {
+    Missing,
+    Error,
+    Output(String),
 }
 
 fn print_env_help() {
@@ -32,6 +75,171 @@ fn print_run_help() {
     println!();
     println!("Usage:");
     println!("  yzx run <command> [args...]");
+}
+
+fn print_status_help() {
+    println!("Show current Yazelix status");
+    println!();
+    println!("Usage:");
+    println!("  yzx status [--versions] [--json]");
+    println!();
+    println!("Flags:");
+    println!("  -V, --versions  Include the full tool version matrix");
+    println!("      --json      Emit machine-readable status data");
+}
+
+fn first_nonempty_line(text: &str) -> Option<String> {
+    text.lines()
+        .map(str::trim)
+        .find(|line| !line.is_empty())
+        .map(str::to_string)
+}
+
+fn nth_token(text: &str, index: usize) -> Option<String> {
+    let line = first_nonempty_line(text)?;
+    line.split_whitespace().nth(index).map(str::to_string)
+}
+
+fn semver_candidates(text: &str) -> Vec<String> {
+    let chars: Vec<char> = text.chars().collect();
+    let mut out = Vec::new();
+    let mut index = 0;
+
+    while index < chars.len() {
+        if !chars[index].is_ascii_digit() {
+            index += 1;
+            continue;
+        }
+
+        let start = index;
+        let mut end = index;
+        let mut dots = 0;
+        let mut previous_was_dot = false;
+
+        while end < chars.len() && (chars[end].is_ascii_digit() || chars[end] == '.') {
+            if chars[end] == '.' {
+                if previous_was_dot {
+                    break;
+                }
+                dots += 1;
+                previous_was_dot = true;
+            } else {
+                previous_was_dot = false;
+            }
+            end += 1;
+        }
+
+        let candidate: String = chars[start..end].iter().collect();
+        if dots >= 2 && !candidate.ends_with('.') {
+            out.push(candidate);
+        }
+        index = end;
+    }
+
+    out
+}
+
+fn first_semver(text: &str) -> Option<String> {
+    semver_candidates(text).into_iter().next()
+}
+
+fn last_semver(text: &str) -> Option<String> {
+    semver_candidates(text).into_iter().last()
+}
+
+fn probe_command_output(command: &str, args: &[&str]) -> CommandProbe {
+    match Command::new(command).args(args).output() {
+        Ok(output) if output.status.success() => {
+            let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
+            let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+            if stdout.trim().is_empty() {
+                CommandProbe::Output(stderr)
+            } else {
+                CommandProbe::Output(stdout)
+            }
+        }
+        Ok(_) => CommandProbe::Error,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => CommandProbe::Missing,
+        Err(_) => CommandProbe::Error,
+    }
+}
+
+fn probe_version_with(command: &str, args: &[&str], parser: fn(&str) -> Option<String>) -> String {
+    match probe_command_output(command, args) {
+        CommandProbe::Missing => "not installed".to_string(),
+        CommandProbe::Error => "error".to_string(),
+        CommandProbe::Output(text) => parser(&text)
+            .or_else(|| first_nonempty_line(&text))
+            .unwrap_or_else(|| "unknown".to_string()),
+    }
+}
+
+fn collect_version_info() -> VersionReportData {
+    let tools = STATUS_VERSION_TOOLS
+        .iter()
+        .map(|(tool, command)| {
+            let runtime = match *tool {
+                "wezterm" => probe_version_with(command, &["--version"], |text| nth_token(text, 1)),
+                "nix" => probe_version_with(command, &["--version"], last_semver),
+                "macchina" => probe_version_with(command, &["-v"], first_semver),
+                _ => probe_version_with(command, &["--version"], first_semver),
+            };
+
+            ToolVersionEntry {
+                tool: (*tool).to_string(),
+                runtime,
+            }
+        })
+        .collect();
+
+    VersionReportData {
+        title: "Yazelix Tool Versions".to_string(),
+        tools,
+    }
+}
+
+fn print_aligned_rows(rows: &[(String, String)]) {
+    let max_label_len = rows.iter().map(|(label, _)| label.len()).max().unwrap_or(0);
+    for (label, value) in rows {
+        println!("  {:<width$}  {}", label, value, width = max_label_len);
+    }
+}
+
+fn render_status_report(data: &yazelix_core::StatusReportData) {
+    println!("{}", data.title);
+    println!();
+
+    let rows: Vec<(String, String)> = data
+        .summary
+        .iter()
+        .map(|(key, value)| {
+            let display = match value {
+                serde_json::Value::Null => "null".to_string(),
+                serde_json::Value::Bool(b) => b.to_string(),
+                serde_json::Value::Number(n) => n.to_string(),
+                serde_json::Value::String(s) => s.clone(),
+                serde_json::Value::Array(arr) => arr
+                    .iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                serde_json::Value::Object(_) => serde_json::to_string(value).unwrap_or_default(),
+            };
+            (key.clone(), display)
+        })
+        .collect();
+
+    print_aligned_rows(&rows);
+}
+
+fn render_version_report(report: &VersionReportData) {
+    println!("{}", report.title);
+    let rows: Vec<(String, String)> = report
+        .tools
+        .iter()
+        .map(|entry| (entry.tool.clone(), entry.runtime.clone()))
+        .collect();
+    print_aligned_rows(&rows);
 }
 
 const CONFIG_RECOVERY_HINT: &str = "Update the reported config fields manually, then retry. Use `yzx config reset` only as a blunt fallback.";
@@ -168,6 +376,50 @@ fn run_run(args: &[String]) -> Result<i32, CoreError> {
     Ok(status.code().unwrap_or(1))
 }
 
+fn run_status(args: &[String]) -> Result<i32, CoreError> {
+    let parsed = parse_status_cli_args(args)?;
+    if parsed.help {
+        print_status_help();
+        return Ok(0);
+    }
+
+    let request =
+        runtime_materialization_plan_request_from_env(config_override_from_env().as_deref())?;
+    let version = read_yazelix_version_from_runtime(&request.runtime_dir)?;
+    let data = compute_status_report(&request, &version, YAZELIX_DESCRIPTION)?;
+    let versions = parsed.versions.then(collect_version_info);
+
+    if parsed.json {
+        let mut envelope = serde_json::Map::new();
+        envelope.insert(
+            "title".to_string(),
+            serde_json::Value::String(data.title.clone()),
+        );
+        envelope.insert(
+            "summary".to_string(),
+            serde_json::Value::Object(data.summary.clone()),
+        );
+        if let Some(report) = &versions {
+            envelope.insert(
+                "versions".to_string(),
+                serde_json::to_value(report).unwrap_or(serde_json::Value::Null),
+            );
+        }
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::Value::Object(envelope)).unwrap_or_default()
+        );
+    } else {
+        render_status_report(&data);
+        if let Some(report) = &versions {
+            println!();
+            render_version_report(report);
+        }
+    }
+
+    Ok(0)
+}
+
 fn main() {
     let mut argv: Vec<String> = std::env::args().skip(1).collect();
     if argv.is_empty() {
@@ -191,6 +443,7 @@ fn main() {
                 run_run(&argv)
             }
         }
+        "status" => run_status(&argv),
         "update" => run_yzx_update(&argv),
         _ => {
             eprintln!("Unknown yzx_control subcommand: {sub}");

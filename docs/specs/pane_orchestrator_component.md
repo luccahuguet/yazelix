@@ -38,14 +38,13 @@ The orchestrator accepts these pipe command names:
 - `previous_family`
 - `toggle_sidebar`
 - `register_sidebar_yazi_state`
-- `get_active_sidebar_yazi_state`
 - `get_active_tab_session_state`
 - `retarget_workspace`
 - `open_terminal_in_cwd`
 - `open_workspace_terminal`
 - `open_transient_pane`
 - `toggle_transient_pane`
-- `debug_editor_state`
+- `maintainer_debug_editor_state`
 - `debug_write_literal`
 - `debug_send_escape`
 
