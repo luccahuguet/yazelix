@@ -4,12 +4,15 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
-Post-v15.3 work in progress
+v15.4 Rust-owns public yzx families and deletes bridge seams
 
 Upgrade impact: no user action required
 
 Highlights:
-- Reserved for post-release changes after v15.3 lands.
+- Moved more public `yzx` command families onto Rust-owned execution paths, including `yzx config`, `yzx home_manager`, `yzx why`, `yzx sponsor`, `yzx keys`, `yzx doctor`, `yzx cwd`, and `yzx reveal`
+- Collapsed more transitional Nushell bridge owners: the extern bridge, preflight bridge, runtime-materialization bridge, doctor report cluster, install-ownership bridge, and the surviving Yazi/Zellij compatibility wrappers are gone or demoted
+- Centralized public command metadata and route planning around the Rust shared command-surface schema so help, menu, extern, and routing behavior stay aligned while duplicated hand-written tables shrink
+- Updated the Rust migration and spec inventories around the real remaining seams, with the next planning track focused on canonical contracts, stronger test traceability, and a ranked delete-first Nushell budget
 
 ## v15.3 - 2026-04-21
 

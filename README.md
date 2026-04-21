@@ -65,9 +65,9 @@ Want the high-level product map? See [Architecture Map](./docs/architecture_map.
 
 These percentages come from saved startup-profile baselines on the same maintainer machine
 
-- Warm current-terminal compares the current v15.3 branch against an April 18, 2026 pre-v15.2 v15 baseline
-- Cold clear-cache current-terminal compares the current v15.3 branch against an April 4, 2026 late-v13.11, pre-v13.12 baseline
-- Desktop launch and managed new-window launch compare the current v15.3 branch against April 18, 2026 pre-v15.2 v15 baselines
+- Warm current-terminal compares the v15.3 release-era branch against an April 18, 2026 pre-v15.2 v15 baseline
+- Cold clear-cache current-terminal compares the v15.3 release-era branch against an April 4, 2026 late-v13.11, pre-v13.12 baseline
+- Desktop launch and managed new-window launch compare the v15.3 release-era branch against April 18, 2026 pre-v15.2 v15 baselines
 
 A large part of the gain comes from Rust ownership cuts across config, materialization, and generated-file work, combined with delete-first removal of redundant Nushell owner seams
 
