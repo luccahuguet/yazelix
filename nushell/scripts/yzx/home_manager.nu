@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-use ../utils/install_ownership_report.nu evaluate_install_ownership_report
+use ../utils/doctor_report_bridge.nu evaluate_install_ownership_report
 
 def format_prepare_artifact [artifact: record] {
     let tag = if (($artifact.class? | default "") == "blocker") {

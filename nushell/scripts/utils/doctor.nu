@@ -7,16 +7,13 @@ use common.nu [
     get_yazelix_state_dir
     require_yazelix_runtime_dir
 ]
-use ./yzx_core_bridge.nu [build_default_yzx_core_error_surface build_record_yzx_core_error_surface run_yzx_core_request_json_command run_yzx_core_json_command]
+use ./yzx_core_bridge.nu [build_record_yzx_core_error_surface run_yzx_core_json_command]
 use config_surfaces.nu [get_main_user_config_path load_active_config_surface]
 use doctor_helix.nu fix_helix_runtime_conflicts
-use doctor_helix_report.nu collect_helix_doctor_results
-use doctor_runtime_report.nu collect_runtime_doctor_results
-use install_ownership_report.nu evaluate_install_ownership_report
+use doctor_report_bridge.nu collect_structured_doctor_findings
 use ../core/materialization_orchestrator.nu repair_generated_runtime_state
 use ../integrations/zellij.nu get_active_tab_session_state
 
-const DOCTOR_CONFIG_EVALUATE_COMMAND = "doctor-config.evaluate"
 const ZELLIJ_MATERIALIZATION_COMMAND = "zellij-materialization.generate"
 
 def seed_yazelix_plugin_permissions [] {
@@ -215,44 +212,8 @@ def fix_create_config [] {
     }
 }
 
-def collect_config_doctor_results [] {
-    let rd = require_yazelix_runtime_dir
-    let data = (run_yzx_core_request_json_command
-        $rd
-        (build_default_yzx_core_error_surface)
-        $DOCTOR_CONFIG_EVALUATE_COMMAND
-        {
-            config_dir: (get_yazelix_config_dir)
-            runtime_dir: $rd
-        }
-        "Yazelix Rust doctor-config helper returned invalid JSON.")
-
-    $data.findings
-}
-
 export def collect_doctor_report [] {
-    mut results = []
-    let install_report = (evaluate_install_ownership_report)
-    let runtime_pack = (collect_runtime_doctor_results $install_report)
-
-    $results = ($results | append $runtime_pack.distribution)
-
-    let helix_pack = (collect_helix_doctor_results)
-    $results = ($results | append $helix_pack.runtime_conflicts)
-    if $helix_pack.runtime_health != null {
-        $results = ($results | append $helix_pack.runtime_health)
-    }
-    for finding in $helix_pack.managed_integration {
-        $results = ($results | append $finding)
-    }
-    $results = ($results | append (collect_config_doctor_results))
-    for r in $runtime_pack.shared_runtime_preflight {
-        $results = ($results | append $r)
-    }
-    for w in ($install_report.wrapper_shadowing? | default []) {
-        $results = ($results | append $w)
-    }
-    $results = ($results | append $install_report.desktop_entry_freshness)
+    mut results = (collect_structured_doctor_findings)
     $results = ($results | append (check_zellij_plugin_health))
 
     {

@@ -2,7 +2,7 @@
 
 use ../utils/atomic_writes.nu write_text_atomic
 use ../utils/common.nu get_yazelix_runtime_dir
-use ../utils/install_ownership_report.nu evaluate_install_ownership_report
+use ../utils/doctor_report_bridge.nu evaluate_install_ownership_report
 use ../utils/startup_profile.nu [profile_startup_step propagate_startup_profile_env]
 
 const DESKTOP_LAUNCH_CLEARED_ENV_KEYS = [

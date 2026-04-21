@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-use install_ownership_report.nu evaluate_install_ownership_report
+use doctor_report_bridge.nu evaluate_install_ownership_report
 
 export def get_home_manager_yzx_profile_paths [] {
     (evaluate_install_ownership_report).home_manager_profile_yzx_candidates

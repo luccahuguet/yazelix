@@ -207,8 +207,7 @@ Explicit no-go for the first mixed family:
 - `yzx status` is already on the public Rust control-plane path through
   `yzx_control`, but `yzx doctor` still carries meaningful Nushell bridge,
   rendering, and repair ownership in `core/yzx_doctor.nu`, `utils/doctor.nu`,
-  `doctor_helix_report.nu`,
-  `doctor_runtime_report.nu`, and `install_ownership_report.nu`
+  and `doctor_report_bridge.nu`
 
 ### Required Deletion Budget
 
