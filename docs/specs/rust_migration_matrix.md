@@ -229,8 +229,8 @@ What `yazelix-qsb5.2` changed:
 - `shells/posix/yzx_cli.sh` is now only the stable bootstrap wrapper
 - the public root parser and dispatcher moved to `rust_core/yazelix_core/src/bin/yzx.rs`
 - `env` / `run` / `update*` no longer depend on the old Nu root path at all
-- remaining Nu-owned families moved behind one explicit internal entrypoint:
-  `nushell/scripts/core/yzx_internal_dispatch.nu`
+- remaining Nu-owned families are now routed directly from
+  `rust_core/yazelix_core/src/bin/yzx.rs` to their concrete Nu modules
 
 That deletes the old public root fallback `use ... core/yazelix.nu *; yzx ...`
 without pretending the remaining Nushell command bodies are gone. They still

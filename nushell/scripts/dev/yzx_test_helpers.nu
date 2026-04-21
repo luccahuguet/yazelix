@@ -41,8 +41,8 @@ export def resolve_test_yzx_bin [] {
     }
 
     for candidate in [
-        (repo_path "rust_core" "target" "release" "yzx")
         (repo_path "rust_core" "target" "debug" "yzx")
+        (repo_path "rust_core" "target" "release" "yzx")
     ] {
         if ($candidate | path exists) {
             return $candidate

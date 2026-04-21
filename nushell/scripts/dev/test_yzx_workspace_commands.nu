@@ -3,7 +3,7 @@
 # Defends: docs/specs/test_suite_governance.md
 # Defends: docs/workspace_session_contract.md
 
-use ./yzx_test_helpers.nu [CLEAN_ZELLIJ_ENV_PREFIX get_repo_config_dir get_repo_root repo_path setup_managed_config_fixture]
+use ./yzx_test_helpers.nu [CLEAN_ZELLIJ_ENV_PREFIX get_repo_config_dir get_repo_root repo_path resolve_test_yzx_bin setup_managed_config_fixture]
 use ../integrations/zellij.nu [retarget_workspace_for_path run_pane_orchestrator_command_raw]
 
 def run_nu_snippet [snippet: string, extra_env?: record] {
@@ -908,10 +908,10 @@ def test_yzx_edit_resolves_managed_helix_wrapper_from_canonical_launch_env [] {
     $result
 }
 
-# Regression: yzx reveal must use the lightweight reveal helper instead of bootstrapping the full command suite.
+# Regression: yzx reveal must route directly from the Rust root to the workspace Nu module instead of a shared dispatcher bridge.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_yzx_cli_reveal_uses_lightweight_reveal_helper [] {
-    print "🧪 Testing yzx CLI reveal uses the lightweight reveal helper..."
+def test_yzx_cli_reveal_routes_directly_to_workspace_module [] {
+    print "🧪 Testing yzx CLI reveal routes directly to the workspace module..."
 
     let fixture = (setup_cli_probe_fixture "yazelix_posix_reveal_cli")
 
@@ -925,21 +925,26 @@ def test_yzx_cli_reveal_uses_lightweight_reveal_helper [] {
         let output = (with-env {
             HOME: $fixture.fake_home
             NU_LOG: $fixture.nu_log
+            YAZELIX_YZX_BIN: (resolve_test_yzx_bin)
         } {
             ^$launcher_script reveal $target_path | complete
         })
 
         let invocation = (read_probe_lines $fixture.nu_log)
-        let expected_reveal_script = (repo_path "nushell" "scripts" "integrations" "reveal_in_yazi.nu")
+        let expected_workspace_module = (repo_path "nushell" "scripts" "core" "yzx_workspace.nu")
+        let invocation_mode = ($invocation | get -o 0 | default "")
+        let invocation_script = ($invocation | get -o 1 | default "")
 
         if (
             ($output.exit_code == 0)
-            and (($invocation | get -o 0 | default "") == $expected_reveal_script)
-            and (($invocation | get -o 1 | default "") == $target_path)
-            and not ($invocation | any {|arg| $arg == "-c" })
-            and not ($invocation | any {|arg| $arg | str contains "core/yazelix.nu" })
+            and ($invocation_mode == "-c")
+            and ($invocation_script | str contains $expected_workspace_module)
+            and ($invocation_script | str contains '["yzx reveal"]')
+            and ($invocation_script | str contains $target_path)
+            and not ($invocation_script | str contains "yzx_internal_dispatch.nu")
+            and not ($invocation_script | str contains "core/yazelix.nu")
         ) {
-            print "  ✅ yzx reveal now dispatches to the lightweight reveal helper instead of the full command suite"
+            print "  ✅ yzx reveal now routes straight to the workspace module without the old dispatcher bridge"
             true
         } else {
             print $"  ❌ Unexpected yzx reveal invocation: exit=($output.exit_code) args=($invocation | to json -r) stderr=(($output.stderr | str trim))"
@@ -1597,7 +1602,7 @@ export def run_workspace_canonical_tests [] {
         (test_desktop_fast_path_uses_direct_host_terminal_during_reload_instead_of_stale_wrapper)
         (test_desktop_fast_path_rerolls_ghostty_random_cursor_config_per_window)
         (test_yzx_edit_resolves_managed_helix_wrapper_from_canonical_launch_env)
-        (test_yzx_cli_reveal_uses_lightweight_reveal_helper)
+        (test_yzx_cli_reveal_routes_directly_to_workspace_module)
         (test_yzx_cli_menu_uses_lightweight_menu_module)
         (test_yzx_cli_popup_uses_lightweight_popup_module)
         (test_yzx_cli_enter_uses_lightweight_enter_module)

@@ -105,8 +105,8 @@ once:
   parsing ownership for at least one more moved command family
 - one primary public owner for any command family whose inner typed logic is
   already Rust-owned
-- deletion of the public command-registry role currently carried by
-  `core/yazelix.nu`
+- deletion of at least one more surviving internal Nu command-family owner
+  still routed directly from `rust_core/yazelix_core/src/bin/yzx.rs`
 - deletion of `nushell_externs.nu` entirely, or keeping it only as startup
   compatibility glue with no command discovery authority
 
@@ -174,8 +174,8 @@ remaining public-owner deletion is:
   dispatcher
 - `yzx env`, `yzx run`, and `yzx update*` stay on the Rust-only path through
   `yzx_control`
-- surviving Nushell-owned families now sit behind the explicit internal
-  entrypoint `nushell/scripts/core/yzx_internal_dispatch.nu`
+- surviving Nushell-owned families are now routed directly from
+  `rust_core/yazelix_core/src/bin/yzx.rs` to their concrete Nu modules
 
 That means these old public-owner roles are gone:
 
@@ -185,8 +185,12 @@ That means these old public-owner roles are gone:
 
 Surviving internal Nu helper owners after the cut:
 
-- `nushell/scripts/core/yazelix.nu` only for `why`, `sponsor`, `cwd`, `reveal`,
-  `status`, `restart`, and `doctor`
+- `nushell/scripts/core/yazelix.nu` only for root help/version plus re-exported
+  internal families
+- `nushell/scripts/core/yzx_support.nu` for `yzx why` and `yzx sponsor`
+- `nushell/scripts/core/yzx_workspace.nu` for `yzx cwd` and `yzx reveal`
+- `nushell/scripts/core/yzx_session.nu` for `yzx restart`
+- `nushell/scripts/core/yzx_doctor.nu` for `yzx doctor`
 - `nushell/scripts/yzx/launch.nu`, `enter.nu`, `desktop.nu`, `menu.nu`,
   `popup.nu`, `config.nu`, `edit.nu`, `keys.nu`, `tutor.nu`, `screen.nu`,
   `whats_new.nu`, `home_manager.nu`, `import.nu`, and `dev.nu` as explicit
@@ -195,13 +199,15 @@ Surviving internal Nu helper owners after the cut:
 Explicit no-go for the first mixed family:
 
 - `yzx launch`, `yzx enter`, and `yzx restart` still depend on
-  `yzx/launch.nu`, `yzx/enter.nu`, `core/yazelix.nu`, `core/launch_yazelix.nu`,
-  `core/start_yazelix.nu`, `core/start_yazelix_inner.nu`,
+  `yzx/launch.nu`, `yzx/enter.nu`, `core/yzx_session.nu`,
+  `core/launch_yazelix.nu`, `core/start_yazelix.nu`,
+  `core/start_yazelix_inner.nu`,
   `utils/runtime_env.nu`, `utils/startup_profile.nu`,
   `utils/terminal_launcher.nu`, and `shells/posix/*.sh`
-- `yzx status` and `yzx doctor` still carry meaningful Nushell bridge,
-  rendering, and repair ownership in `utils/status_report.nu`,
-  `utils/doctor.nu`, `doctor_helix_report.nu`,
+- `yzx status` is already on the public Rust control-plane path through
+  `yzx_control`, but `yzx doctor` still carries meaningful Nushell bridge,
+  rendering, and repair ownership in `core/yzx_doctor.nu`, `utils/doctor.nu`,
+  `doctor_helix_report.nu`,
   `doctor_runtime_report.nu`, and `install_ownership_report.nu`
 
 ### Required Deletion Budget
@@ -209,8 +215,8 @@ Explicit no-go for the first mixed family:
 A broader rewrite is not approved unless it deletes all of these public-owner
 seams:
 
-- the public command-registry role of `core/yazelix.nu` for at least one more
-  command family
+- the surviving internal Nu owner for at least one more command family still
+  routed directly from `rust_core/yazelix_core/src/bin/yzx.rs`
 - `nushell_externs.nu` entirely, or its remaining non-authoritative startup
   wrapper role if a later shell integration no longer needs it
 - public Nushell wrapper parsing for at least one remaining family beyond the

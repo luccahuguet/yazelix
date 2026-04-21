@@ -1043,10 +1043,10 @@ def test_yzx_run_treats_child_verbose_flag_as_child_argv [] {
     $result
 }
 
-# Regression: the public Rust yzx root must route env/run/update through Rust even when the internal Nu dispatcher is unavailable.
+# Regression: the public Rust yzx root must route env/run/status/update through Rust even when the remaining direct Nu route modules are unavailable.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_public_yzx_root_routes_rust_control_family_without_internal_dispatcher [] {
-    print "🧪 Testing the public Rust yzx root keeps env/run/update off the old Nu root registry..."
+def test_public_yzx_root_routes_rust_control_family_without_direct_nu_route_modules [] {
+    print "🧪 Testing the public Rust yzx root keeps env/run/status/update off the old Nu root registry..."
 
     let fixture = (setup_managed_config_fixture
         "yazelix_public_root_control_family"
@@ -1054,37 +1054,45 @@ def test_public_yzx_root_routes_rust_control_family_without_internal_dispatcher 
 welcome_style = "random"
 '
     )
-    let missing_dispatch = ($fixture.tmp_home | path join "missing_internal_dispatch.nu")
+    let missing_route_root = ($fixture.tmp_home | path join "missing_internal_nu_route_root")
 
     let result = (try {
         let update_output = (run_public_yzx_command_for_fixture $fixture "yzx update" {
-            YAZELIX_YZX_INTERNAL_DISPATCH_SCRIPT: $missing_dispatch
+            YAZELIX_YZX_NU_ROUTE_ROOT: $missing_route_root
         })
         let env_help = (run_public_yzx_command_for_fixture $fixture "yzx env --help" {
-            YAZELIX_YZX_INTERNAL_DISPATCH_SCRIPT: $missing_dispatch
+            YAZELIX_YZX_NU_ROUTE_ROOT: $missing_route_root
         })
         let run_help = (run_public_yzx_command_for_fixture $fixture "yzx run --help" {
-            YAZELIX_YZX_INTERNAL_DISPATCH_SCRIPT: $missing_dispatch
+            YAZELIX_YZX_NU_ROUTE_ROOT: $missing_route_root
+        })
+        let status_output = (run_public_yzx_command_for_fixture $fixture "yzx status --help" {
+            YAZELIX_YZX_NU_ROUTE_ROOT: $missing_route_root
         })
         let update_stdout = ($update_output.stdout | str trim)
         let env_stdout = ($env_help.stdout | str trim)
         let run_stdout = ($run_help.stdout | str trim)
+        let status_stdout = ($status_output.stdout | str trim)
 
         if (
             ($update_output.exit_code == 0)
             and ($env_help.exit_code == 0)
             and ($run_help.exit_code == 0)
+            and ($status_output.exit_code == 0)
             and ($update_stdout | str contains "Available update commands:")
             and ($update_stdout | str contains "yzx update upstream")
             and ($env_stdout | str contains "Usage:")
             and ($env_stdout | str contains "yzx env [--no-shell]")
             and ($run_stdout | str contains "Usage:")
             and ($run_stdout | str contains "yzx run <command> [args...]")
+            and ($status_stdout | str contains "Usage:")
+            and ($status_stdout | str contains "yzx status [--versions] [--json]")
+            and ($status_stdout | str contains "--versions")
         ) {
-            print "  ✅ the public Rust yzx root now owns env/run/update routing and help without depending on the old Nu root registry"
+            print "  ✅ the public Rust yzx root now owns env/run/status/update routing and status help without depending on the old Nu root registry"
             true
         } else {
-            print $"  ❌ Unexpected public-root routing result: update_exit=($update_output.exit_code) env_exit=($env_help.exit_code) run_exit=($run_help.exit_code) update_stdout=($update_stdout) env_stdout=($env_stdout) run_stdout=($run_stdout) update_stderr=(($update_output.stderr | str trim)) env_stderr=(($env_help.stderr | str trim)) run_stderr=(($run_help.stderr | str trim))"
+            print $"  ❌ Unexpected public-root routing result: update_exit=($update_output.exit_code) env_exit=($env_help.exit_code) run_exit=($run_help.exit_code) status_exit=($status_output.exit_code) update_stdout=($update_stdout) env_stdout=($env_stdout) run_stdout=($run_stdout) status_stdout=($status_stdout) update_stderr=(($update_output.stderr | str trim)) env_stderr=(($env_help.stderr | str trim)) run_stderr=(($run_help.stderr | str trim)) status_stderr=(($status_output.stderr | str trim))"
             false
         }
     } catch {|err|
@@ -1276,7 +1284,7 @@ terminals = ["ghostty"]
     )
 
     let result = (try {
-        let output = (run_yzx_command_for_fixture $fixture "yzx status")
+        let output = (run_public_yzx_command_for_fixture $fixture "yzx status")
         let stdout = ($output.stdout | str trim)
 
         if (
@@ -1320,7 +1328,7 @@ terminals = ["ghostty"]
     )
 
     let result = (try {
-        let output = (run_yzx_command_for_fixture $fixture "yzx status --json")
+        let output = (run_public_yzx_command_for_fixture $fixture "yzx status --json")
         let report = ($output.stdout | from json)
         let summary = ($report.summary? | default {})
 
@@ -1337,6 +1345,84 @@ terminals = ["ghostty"]
             and (($summary.session_name? | default null) == null)
         ) {
             print "  ✅ yzx status --json now exposes the structured runtime summary behind the human table rendering"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: yzx status --versions must keep the public Rust owner while still exposing the tool version matrix.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_status_versions_prints_tool_version_matrix [] {
+    print "🧪 Testing yzx status --versions prints the Rust-owned tool version matrix..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_status_versions"
+        '[terminal]
+terminals = ["ghostty"]
+'
+    )
+
+    let result = (try {
+        let output = (run_public_yzx_command_for_fixture $fixture "yzx status --versions")
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Yazelix status")
+            and ($stdout | str contains "Yazelix Tool Versions")
+            and ($stdout | str contains "nix")
+            and ($stdout | str contains "nushell")
+        ) {
+            print "  ✅ yzx status --versions now stays on the Rust-owned path and prints the tool matrix"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: yzx status --json --versions must attach the optional versions report promised by the machine-readable contract.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_status_json_with_versions_reports_tool_matrix [] {
+    print "🧪 Testing yzx status --json --versions includes the optional tool version matrix..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_status_json_versions"
+        '[terminal]
+terminals = ["ghostty"]
+'
+    )
+
+    let result = (try {
+        let output = (run_public_yzx_command_for_fixture $fixture "yzx status --json --versions")
+        let report = ($output.stdout | from json)
+        let versions = ($report.versions? | default null)
+        let tools = ($versions.tools? | default [])
+
+        if (
+            ($output.exit_code == 0)
+            and (($report.title? | default "") == "Yazelix status")
+            and (($versions.title? | default "") == "Yazelix Tool Versions")
+            and (($tools | where tool == "nix") | length) == 1
+            and ((($tools | where tool == "nix" | get -o 0.runtime | default "") | into string | str trim) | is-not-empty)
+        ) {
+            print "  ✅ yzx status --json --versions now includes the optional versions payload"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
@@ -1380,7 +1466,7 @@ terminals = ["ghostty"]
             record_materialized_state $st
         }
 
-        let output = (run_yzx_command_for_fixture $fixture "yzx status --json")
+        let output = (run_public_yzx_command_for_fixture $fixture "yzx status --json")
         let report = ($output.stdout | from json)
         let summary = ($report.summary? | default {})
 
@@ -1538,7 +1624,7 @@ export def run_core_canonical_tests [] {
         (test_yzx_update_upstream_fails_without_matching_profile_entry)
         (test_yzx_update_home_manager_updates_input_and_prints_manual_switch_step)
         (test_stale_store_pinned_yzx_invocation_redirects_to_profile_wrapper)
-        (test_public_yzx_root_routes_rust_control_family_without_internal_dispatcher)
+        (test_public_yzx_root_routes_rust_control_family_without_direct_nu_route_modules)
         (test_yzx_run_passes_dash_prefixed_args_through_unchanged)
         (test_yzx_run_treats_child_verbose_flag_as_child_argv)
         (test_yzx_edit_targets_print_paths)

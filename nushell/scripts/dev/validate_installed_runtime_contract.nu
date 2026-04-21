@@ -72,6 +72,54 @@ def run_completed_external [
     $result
 }
 
+def build_flake_output_path [attr: string, label: string] {
+    let result = (run_completed_external $label "nix" ["build" "--no-link" "--print-out-paths" $".#($attr)"])
+    if $result.exit_code != 0 {
+        if ($result.stdout | is-not-empty) {
+            print $result.stdout
+        }
+        if ($result.stderr | is-not-empty) {
+            print $result.stderr
+        }
+        error make { msg: $"Failed while ($label)" }
+    }
+
+    let output_path = ($result.stdout | lines | where {|line| ($line | str trim) != "" } | get -o 0 | default "" | str trim)
+    if ($output_path | is-empty) {
+        error make { msg: $"($label) did not return an output path" }
+    }
+
+    require_path_exists $output_path $"built flake output for .#($attr)"
+    $output_path
+}
+
+def validate_rust_routed_nu_modules [runtime_root: string, label: string] {
+    let scripts_dir = ($runtime_root | path join "nushell" "scripts")
+
+    for relative_path in [
+        ["core" "yzx_doctor.nu"]
+        ["core" "yzx_session.nu"]
+        ["core" "yzx_support.nu"]
+        ["core" "yzx_workspace.nu"]
+        ["yzx" "config.nu"]
+        ["yzx" "desktop.nu"]
+        ["yzx" "dev.nu"]
+        ["yzx" "edit.nu"]
+        ["yzx" "enter.nu"]
+        ["yzx" "home_manager.nu"]
+        ["yzx" "import.nu"]
+        ["yzx" "keys.nu"]
+        ["yzx" "launch.nu"]
+        ["yzx" "menu.nu"]
+        ["yzx" "popup.nu"]
+        ["yzx" "screen.nu"]
+        ["yzx" "tutor.nu"]
+        ["yzx" "whats_new.nu"]
+    ] {
+        require_path_exists ($scripts_dir | path join ...$relative_path) $"($label) Rust-routed Nu module"
+    }
+}
+
 export def main [] {
     print "🔍 Validating installed-runtime contract surfaces ..."
 
@@ -90,7 +138,8 @@ export def main [] {
 
     require_file_contains $cli_wrapper 'export YAZELIX_BOOTSTRAP_RUNTIME_DIR="$RUNTIME_DIR"' "stable POSIX CLI wrapper"
     require_file_contains $cli_wrapper 'runtime_env_script="$RUNTIME_DIR/shells/posix/runtime_env.sh"' "stable POSIX CLI wrapper"
-    require_file_contains $cli_wrapper 'exec "$YAZELIX_NU_BIN" -c "$nu_command"' "stable POSIX CLI wrapper"
+    require_file_contains $cli_wrapper 'yzx_root_bin="${YAZELIX_YZX_BIN:-$RUNTIME_DIR/libexec/yzx}"' "stable POSIX CLI wrapper"
+    require_file_contains $cli_wrapper 'exec "$yzx_root_bin" "$@"' "stable POSIX CLI wrapper"
     require_file_not_contains $runtime_env 'export YAZELIX_DIR=' "runtime env helper"
 
     require_file_not_contains $environment_setup "get_installed_yazelix_runtime_reference_dir" "environment setup script"
@@ -126,6 +175,34 @@ export def main [] {
         require_list_contains $app_keys $expected "x86_64-linux app outputs"
     }
     require_list_not_contains $app_keys "install" "x86_64-linux app outputs"
+
+    let runtime_out = (build_flake_output_path "runtime" "building runtime package for installed-runtime validation")
+    validate_rust_routed_nu_modules $runtime_out "built runtime package"
+
+    let yazelix_out = (build_flake_output_path "yazelix" "building yazelix package for installed-runtime validation")
+    validate_rust_routed_nu_modules $yazelix_out "built yazelix package"
+
+    let built_yzx = ($yazelix_out | path join "bin" "yzx")
+    require_path_exists $built_yzx "built yazelix CLI wrapper"
+
+    let smoke_result = (run_completed_external
+        "smoke-running built yazelix public CLI"
+        "env"
+        ["YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1" $built_yzx "why"]
+    )
+    if $smoke_result.exit_code != 0 {
+        if ($smoke_result.stdout | is-not-empty) {
+            print $smoke_result.stdout
+        }
+        if ($smoke_result.stderr | is-not-empty) {
+            print $smoke_result.stderr
+        }
+        error make { msg: "Built yazelix package failed the public CLI smoke check" }
+    }
+    require_file_contains $built_yzx "shells/posix/yzx_cli.sh" "built yazelix CLI wrapper"
+    if not (($smoke_result.stdout | default "") | str contains "Yazelix is a reproducible terminal IDE") {
+        error make { msg: "Built yazelix public CLI smoke check returned unexpected output for `yzx why`" }
+    }
 
     print "✅ Installed-runtime contract smoke passed"
 }

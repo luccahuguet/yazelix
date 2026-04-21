@@ -128,5 +128,6 @@ bridge and materialization lanes.
 The first public metadata cut landed under `yazelix-ulb2.7`: root help, palette
 inventory, and generated externs no longer probe the Nushell command tree. The
 next cut only counts if it deletes or demotes another real public owner, such as
-`core/yazelix.nu` for a command family, or removes the remaining
+one of the surviving `core/yzx_*.nu` families still routed directly from
+`rust_core/yazelix_core/src/bin/yzx.rs`, or removes the remaining
 `nushell_externs.nu` compatibility wrapper entirely.
