@@ -8,7 +8,7 @@ use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
 use ../utils/config_state.nu [record_materialized_state]
 use ../core/materialization_orchestrator.nu [regenerate_runtime_configs]
 use ../core/launch_yazelix.nu [generate_all_terminal_configs]
-use ../utils/config_parser.nu [build_default_yzx_core_error_surface resolve_yzx_core_helper_path run_yzx_core_request_json_command]
+use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface resolve_yzx_core_helper_path run_yzx_core_request_json_command]
 use ../utils/safe_remove.nu remove_path_within_root
 use ../utils/terminal_launcher.nu [build_launch_command resolve_terminal_config]
 

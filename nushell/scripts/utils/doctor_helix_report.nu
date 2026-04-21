@@ -7,11 +7,8 @@ use common.nu [
     get_yazelix_config_dir
     require_yazelix_runtime_dir
 ]
-use config_parser.nu [
-    build_default_yzx_core_error_surface
-    parse_yazelix_config
-    run_yzx_core_request_json_command
-]
+use config_parser.nu parse_yazelix_config
+use ./yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_request_json_command]
 
 const DOCTOR_HELIX_EVALUATE_COMMAND = "doctor-helix.evaluate"
 

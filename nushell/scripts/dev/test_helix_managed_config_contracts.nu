@@ -4,7 +4,7 @@
 
 use ./yzx_test_helpers.nu [get_repo_root resolve_test_yzx_core_bin]
 use ../utils/common.nu [get_yazelix_config_dir get_yazelix_runtime_dir get_yazelix_state_dir]
-use ../utils/config_parser.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
+use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
 use ../utils/runtime_env.nu [get_runtime_env]
 
 const HELIX_MATERIALIZATION_GENERATE_COMMAND = "helix-materialization.generate"

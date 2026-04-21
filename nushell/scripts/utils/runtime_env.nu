@@ -2,11 +2,8 @@
 # Runtime environment helpers for the trimmed Yazelix entry surface.
 
 use ./common.nu get_yazelix_runtime_dir
-use ./config_parser.nu [
-    build_record_yzx_core_error_surface
-    parse_yazelix_config
-    run_yzx_core_request_json_command
-]
+use ./config_parser.nu parse_yazelix_config
+use ./yzx_core_bridge.nu [build_record_yzx_core_error_surface run_yzx_core_request_json_command]
 
 def build_runtime_env_request [runtime_dir: string, config: record] {
     {

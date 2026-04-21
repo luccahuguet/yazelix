@@ -7,10 +7,7 @@ use common.nu [
     get_yazelix_state_dir
     require_yazelix_runtime_dir
 ]
-use config_parser.nu [
-    build_default_yzx_core_error_surface
-    run_yzx_core_request_json_command
-]
+use ./yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_request_json_command]
 use config_surfaces.nu [get_main_user_config_path load_active_config_surface]
 use doctor_helix.nu fix_helix_runtime_conflicts
 use doctor_helix_report.nu collect_helix_doctor_results

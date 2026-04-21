@@ -3,7 +3,7 @@
 
 use ../utils/constants.nu *
 use ../utils/common.nu get_yazelix_runtime_dir
-use ../utils/config_parser.nu resolve_yzx_core_helper_path
+use ../utils/yzx_core_bridge.nu resolve_yzx_core_helper_path
 
 # Import modularized commands (export use to properly re-export subcommands)
 export use ../yzx/launch.nu *

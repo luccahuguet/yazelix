@@ -1,13 +1,10 @@
 #!/usr/bin/env nu
 
 use common.nu [get_yazelix_runtime_dir get_yazelix_state_dir normalize_path_entries require_yazelix_runtime_dir get_runtime_platform_name]
-use config_parser.nu [
-    build_default_yzx_core_error_surface
-    parse_yazelix_config
-    run_yzx_core_request_json_command
-]
+use config_parser.nu parse_yazelix_config
 use constants.nu DEFAULT_TERMINAL
 use ../core/materialization_orchestrator.nu compute_runtime_materialization_plan
+use ./yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_request_json_command]
 
 const DOCTOR_RUNTIME_EVALUATE_COMMAND = "doctor-runtime.evaluate"
 

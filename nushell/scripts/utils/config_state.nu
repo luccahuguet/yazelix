@@ -1,10 +1,10 @@
 #!/usr/bin/env nu
 # Config state tracking for Yazelix
 
-use ./config_parser.nu [run_yzx_core_command run_yzx_core_json_command]
 use ./common.nu [get_materialized_state_path require_yazelix_runtime_dir]
 use ./config_contract.nu MAIN_CONFIG_CONTRACT_RELATIVE_PATH
 use ./config_surfaces.nu [load_active_config_surface get_main_user_config_path]
+use ./yzx_core_bridge.nu [run_yzx_core_command run_yzx_core_json_command]
 
 # Compute active config hash and track whether generated runtime state needs repair.
 # Only hashes rebuild-required keys (ignoring comments and runtime settings).

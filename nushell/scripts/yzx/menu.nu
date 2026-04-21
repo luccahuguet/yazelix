@@ -4,7 +4,8 @@
 use ../integrations/zellij.nu [get_current_tab_workspace_root_including_bootstrap]
 use ../integrations/zellij.nu [open_transient_pane_contract]
 use ../utils/common.nu get_yazelix_runtime_dir
-use ../utils/config_parser.nu [parse_yazelix_config resolve_yzx_core_helper_path]
+use ../utils/config_parser.nu parse_yazelix_config
+use ../utils/yzx_core_bridge.nu resolve_yzx_core_helper_path
 use ../utils/transient_pane_contract.nu [
     build_transient_pane_open_contract
     is_transient_pane_mode_active

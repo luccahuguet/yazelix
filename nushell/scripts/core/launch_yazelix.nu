@@ -3,7 +3,7 @@
 # Nushell version of the Yazelix launcher
 
 use ../utils/config_state.nu compute_config_state
-use ../utils/config_parser.nu [parse_yazelix_config run_yzx_core_json_command]
+use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/config_surfaces.nu load_active_config_surface
 use ../utils/terminal_launcher.nu *
 use ../utils/constants.nu [DEFAULT_TERMINAL SUPPORTED_TERMINALS, TERMINAL_METADATA, YAZELIX_CONFIG_DIR, YAZELIX_STATE_DIR]
@@ -15,6 +15,7 @@ use ../utils/runtime_contract_checker.nu [
     run_launch_preflight
 ]
 use ../utils/startup_profile.nu [profile_startup_step propagate_startup_profile_env]
+use ../utils/yzx_core_bridge.nu run_yzx_core_json_command
 
 const TERMINAL_MATERIALIZATION_GENERATE_COMMAND = "terminal-materialization.generate"
 const GHOSTTY_MATERIALIZATION_GENERATE_COMMAND = "ghostty-materialization.generate"

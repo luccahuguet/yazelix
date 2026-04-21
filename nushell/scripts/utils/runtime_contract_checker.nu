@@ -1,11 +1,8 @@
 #!/usr/bin/env nu
 
-use config_parser.nu [
-    build_default_yzx_core_error_surface
-    run_yzx_core_request_json_command
-]
 use common.nu [normalize_path_entries require_yazelix_runtime_dir get_runtime_platform_name]
 use failure_classes.nu [format_failure_classification]
+use ./yzx_core_bridge.nu run_yzx_core_runtime_request_json_command
 
 const RUNTIME_CONTRACT_EVALUATE_COMMAND = "runtime-contract.evaluate"
 const STARTUP_LAUNCH_PREFLIGHT_EVALUATE_COMMAND = "startup-launch-preflight.evaluate"
@@ -15,10 +12,7 @@ def get_command_search_paths [] {
 }
 
 def evaluate_runtime_contract_checks [request: record] {
-    let runtime_dir = (require_yazelix_runtime_dir)
-    let data = (run_yzx_core_request_json_command
-        $runtime_dir
-        (build_default_yzx_core_error_surface)
+    let data = (run_yzx_core_runtime_request_json_command
         $RUNTIME_CONTRACT_EVALUATE_COMMAND
         $request
         "Yazelix Rust runtime-contract helper returned invalid JSON.")
@@ -27,10 +21,7 @@ def evaluate_runtime_contract_checks [request: record] {
 }
 
 def evaluate_startup_launch_preflight_data [request: record] {
-    let runtime_dir = (require_yazelix_runtime_dir)
-    let data = (run_yzx_core_request_json_command
-        $runtime_dir
-        (build_default_yzx_core_error_surface)
+    let data = (run_yzx_core_runtime_request_json_command
         $STARTUP_LAUNCH_PREFLIGHT_EVALUATE_COMMAND
         $request
         "Yazelix Rust startup-launch-preflight helper returned invalid JSON.")

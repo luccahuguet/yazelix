@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 
 use ../utils/common.nu get_yazelix_state_dir
-use ../utils/config_parser.nu run_yzx_core_json_command
+use ../utils/yzx_core_bridge.nu run_yzx_core_json_command
 use ../utils/config_surfaces.nu load_active_config_surface
 
 const ZELLIJ_MATERIALIZATION_COMMAND = "zellij-materialization.generate"

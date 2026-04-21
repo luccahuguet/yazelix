@@ -4,7 +4,7 @@
 
 use ../utils/common.nu [get_materialized_state_path get_yazelix_state_dir require_yazelix_runtime_dir]
 use ../utils/config_contract.nu MAIN_CONFIG_CONTRACT_RELATIVE_PATH
-use ../utils/config_parser.nu [build_record_yzx_core_error_surface run_yzx_core_request_json_command]
+use ../utils/yzx_core_bridge.nu [build_record_yzx_core_error_surface run_yzx_core_request_json_command]
 use ../utils/config_surfaces.nu load_active_config_surface
 use ../utils/failure_classes.nu format_failure_classification
 use ../utils/startup_profile.nu profile_startup_step

@@ -2,7 +2,7 @@
 
 use atomic_writes.nu write_text_atomic
 use common.nu [get_yazelix_runtime_dir get_yazelix_state_dir]
-use config_parser.nu resolve_yzx_core_helper_path
+use ./yzx_core_bridge.nu resolve_yzx_core_helper_path
 
 const YZX_EXTERN_BRIDGE_STATE_SCHEMA_VERSION = 2
 const YZX_EXTERN_BRIDGE_RENDERER_VERSION = "v2-rust-metadata"

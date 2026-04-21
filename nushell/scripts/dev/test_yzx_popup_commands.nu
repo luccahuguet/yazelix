@@ -15,8 +15,9 @@ def write_executable_fixture_file [path: string, lines: list<string>] {
 
 def write_runtime_wrapper_fixture_config_parser [fixture: record, lines: list<string>] {
     let parser_path = ($fixture.utils_dir | path join "config_parser.nu")
+    let bridge_path = ($fixture.utils_dir | path join "yzx_core_bridge.nu")
     let parser_lines = ($lines | str join "\n")
-    let helper_lines = ([
+    let bridge_lines = ([
         "export def build_record_yzx_core_error_surface [config: record] {"
         "    { display_config_path: \"\", config_file: \"\" }"
         "}"
@@ -37,7 +38,8 @@ def write_runtime_wrapper_fixture_config_parser [fixture: record, lines: list<st
         "    $result.stdout | from json | get data"
         "}"
     ] | str join "\n")
-    [$parser_lines, $helper_lines] | str join "\n" | save --force --raw $parser_path
+    $parser_lines | save --force --raw $parser_path
+    $bridge_lines | save --force --raw $bridge_path
 }
 
 def setup_runtime_wrapper_fixture [label: string] {

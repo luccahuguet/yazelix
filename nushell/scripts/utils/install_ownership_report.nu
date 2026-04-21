@@ -1,10 +1,7 @@
 #!/usr/bin/env nu
 
 use common.nu [get_yazelix_state_dir require_yazelix_runtime_dir]
-use config_parser.nu [
-    build_default_yzx_core_error_surface
-    run_yzx_core_request_json_command
-]
+use ./yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_request_json_command]
 use config_surfaces.nu get_main_user_config_path
 
 const INSTALL_OWNERSHIP_EVALUATE_COMMAND = "install-ownership.evaluate"
