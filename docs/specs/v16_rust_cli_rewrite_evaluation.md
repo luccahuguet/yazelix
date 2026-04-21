@@ -107,8 +107,9 @@ once:
   already Rust-owned
 - deletion of at least one more surviving internal Nu command-family owner
   still routed directly from `rust_core/yazelix_core/src/bin/yzx.rs`
-- deletion of `nushell_externs.nu` entirely, or keeping it only as startup
-  compatibility glue with no command discovery authority
+- deletion of another real public owner now that `nushell_externs.nu` has been
+  deleted and `yzx_core yzx-command-metadata.sync-externs` owns generated
+  extern bridge lifecycle
 
 It is not worth doing just to:
 
@@ -254,8 +255,8 @@ seams:
 
 - the surviving internal Nu owner for at least one more command family still
   routed directly from `rust_core/yazelix_core/src/bin/yzx.rs`
-- `nushell_externs.nu` entirely, or its remaining non-authoritative startup
-  wrapper role if a later shell integration no longer needs it
+- no regression to a Nushell command-discovery or generated-extern lifecycle
+  wrapper after the `nushell_externs.nu` deletion
 - public Nushell wrapper parsing for at least one remaining family beyond the
   already migrated `yzx_control` leaves
 
@@ -298,8 +299,9 @@ Go only if all of these are true:
 2. At least one remaining public command family has a narrow enough internal
    boundary that Rust can own the public contract without inheriting fuzzy
    shell-bound behavior
-3. `nushell_externs.nu` stays compatibility-only or can be deleted instead of
-   returning to steady-state command discovery
+3. The deleted `nushell_externs.nu` path stays deleted, with generated extern
+   bridge sync remaining Rust-owned instead of returning to steady-state
+   command discovery
 4. A parity harness exists for help output, exit behavior, and the migrated
    command families
 5. The proposal names the exact Nu modules that stop being public owners

@@ -3,11 +3,13 @@
 # Shared by startup, installer, and maintainer-shell entrypoints
 
 use ../utils/config_parser.nu parse_yazelix_config
-use ../utils/common.nu [get_yazelix_runtime_dir resolve_yazelix_nu_bin]
+use ../utils/common.nu [get_yazelix_runtime_dir get_yazelix_state_dir resolve_yazelix_nu_bin]
 use ../utils/constants.nu DEFAULT_SHELL
-use ../utils/nushell_externs.nu [sync_generated_yzx_extern_bridge]
 use ../utils/shell_user_hooks.nu [sync_generated_nushell_user_hook_bridge]
 use ../utils/startup_profile.nu [profile_startup_step]
+use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
+
+const YZX_COMMAND_METADATA_SYNC_EXTERNS_COMMAND = "yzx-command-metadata.sync-externs"
 
 def ensure_runtime_scripts_executable [yazelix_dir: string] {
     let runtime_root = ($yazelix_dir | path expand)
@@ -21,6 +23,20 @@ def ensure_runtime_scripts_executable [yazelix_dir: string] {
     chmod +x $"($runtime_root)/shells/posix/yzx_cli.sh"
     chmod +x $"($runtime_root)/nushell/scripts/core/launch_yazelix.nu"
     chmod +x $"($runtime_root)/nushell/scripts/core/start_yazelix.nu"
+}
+
+def sync_generated_yzx_extern_bridge [runtime_root: string] {
+    try {
+        run_yzx_core_json_command $runtime_root (build_default_yzx_core_error_surface) [
+            $YZX_COMMAND_METADATA_SYNC_EXTERNS_COMMAND
+            "--runtime-dir"
+            ($runtime_root | path expand)
+            "--state-dir"
+            (get_yazelix_state_dir)
+        ] "Yazelix Rust yzx command metadata extern sync returned invalid JSON." | ignore
+    } catch {|err|
+        print $"⚠️  Failed to generate Nushell yzx extern bridge: ($err.msg)"
+    }
 }
 
 def main [--welcome-source: string = "", --skip-welcome] {

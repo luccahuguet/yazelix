@@ -12,8 +12,8 @@ use yazelix_core::{
     RuntimeEnvComputeRequest, RuntimeMaterializationPlanRequest,
     RuntimeMaterializationRepairEvaluateRequest, StartupLaunchPreflightRequest,
     TerminalMaterializationRequest, YaziMaterializationRequest, YaziRenderPlanRequest,
-    ZellijMaterializationRequest, ZellijRenderPlanRequest, compute_config_state,
-    compute_runtime_env, compute_status_report, compute_yazi_render_plan,
+    YzxExternBridgeSyncRequest, ZellijMaterializationRequest, ZellijRenderPlanRequest,
+    compute_config_state, compute_runtime_env, compute_status_report, compute_yazi_render_plan,
     compute_zellij_render_plan, error_envelope, evaluate_doctor_config_report,
     evaluate_doctor_runtime_report, evaluate_helix_doctor_report,
     evaluate_install_ownership_report, evaluate_runtime_contract,
@@ -21,7 +21,7 @@ use yazelix_core::{
     generate_helix_materialization, generate_terminal_materialization,
     generate_yazi_materialization, generate_zellij_materialization, materialize_runtime_state,
     normalize_config, plan_runtime_materialization, record_config_state, render_yzx_help,
-    repair_runtime_materialization, success_envelope, yzx_command_metadata,
+    repair_runtime_materialization, success_envelope, sync_yzx_extern_bridge, yzx_command_metadata,
     yzx_command_metadata_data,
 };
 
@@ -48,6 +48,7 @@ const GHOSTTY_MATERIALIZATION_GENERATE_COMMAND: &str = "ghostty-materialization.
 const TERMINAL_MATERIALIZATION_GENERATE_COMMAND: &str = "terminal-materialization.generate";
 const YZX_COMMAND_METADATA_LIST_COMMAND: &str = "yzx-command-metadata.list";
 const YZX_COMMAND_METADATA_EXTERNS_COMMAND: &str = "yzx-command-metadata.externs";
+const YZX_COMMAND_METADATA_SYNC_EXTERNS_COMMAND: &str = "yzx-command-metadata.sync-externs";
 const YZX_COMMAND_METADATA_HELP_COMMAND: &str = "yzx-command-metadata.help";
 const UNKNOWN_COMMAND: &str = "unknown";
 
@@ -218,6 +219,11 @@ fn run() -> Result<(), Box<CommandError>> {
             run_yzx_command_metadata_externs(parser)
                 .map_err(|error| CommandError::new(command_for_error, error))
         }
+        YZX_COMMAND_METADATA_SYNC_EXTERNS_COMMAND => {
+            let command_for_error = command.clone();
+            run_yzx_command_metadata_sync_externs(parser)
+                .map_err(|error| CommandError::new(command_for_error, error))
+        }
         YZX_COMMAND_METADATA_HELP_COMMAND => {
             let command_for_error = command.clone();
             run_yzx_command_metadata_help(parser)
@@ -244,6 +250,29 @@ fn run_yzx_command_metadata_externs(parser: lexopt::Parser) -> Result<(), CoreEr
         YZX_COMMAND_METADATA_EXTERNS_COMMAND,
         yzx_command_metadata_data(),
     )
+}
+
+fn run_yzx_command_metadata_sync_externs(mut parser: lexopt::Parser) -> Result<(), CoreError> {
+    let mut runtime_dir: Option<PathBuf> = None;
+    let mut state_dir: Option<PathBuf> = None;
+
+    while let Some(arg) = parser
+        .next()
+        .map_err(|error| CoreError::usage(error.to_string()))?
+    {
+        match arg {
+            Long("runtime-dir") => runtime_dir = Some(parser_path_value(&mut parser)?),
+            Long("state-dir") => state_dir = Some(parser_path_value(&mut parser)?),
+            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
+        }
+    }
+
+    let request = YzxExternBridgeSyncRequest {
+        runtime_dir: runtime_dir.ok_or_else(|| CoreError::usage("Missing --runtime-dir path"))?,
+        state_dir: state_dir.ok_or_else(|| CoreError::usage("Missing --state-dir path"))?,
+    };
+    let data = sync_yzx_extern_bridge(&request)?;
+    write_success_envelope(YZX_COMMAND_METADATA_SYNC_EXTERNS_COMMAND, data)
 }
 
 fn run_yzx_command_metadata_help(parser: lexopt::Parser) -> Result<(), CoreError> {

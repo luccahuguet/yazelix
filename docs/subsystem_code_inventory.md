@@ -122,7 +122,8 @@ bridge and materialization lanes.
 
 The first public metadata cut landed under `yazelix-ulb2.7`: root help, palette
 inventory, and generated externs no longer probe the Nushell command tree. The
-next cut only counts if it deletes or demotes another real public owner, such as
-one of the surviving `core/yzx_*.nu` families still routed directly from
-`rust_core/yazelix_core/src/bin/yzx.rs`, or removes the remaining
-`nushell_externs.nu` compatibility wrapper entirely.
+follow-up extern lifecycle cut deleted `nushell_externs.nu` by moving generated
+extern bridge sync into `yzx_core yzx-command-metadata.sync-externs`. The next
+public command cut only counts if it deletes or demotes another real public
+owner, such as one of the surviving `core/yzx_*.nu` families still routed
+directly from `rust_core/yazelix_core/src/bin/yzx.rs`.

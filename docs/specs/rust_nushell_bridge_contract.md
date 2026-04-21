@@ -103,6 +103,7 @@ Helper commands track the Rust-owned slices:
 - `zellij-materialization.generate`
 - `yzx-command-metadata.list`
 - `yzx-command-metadata.externs`
+- `yzx-command-metadata.sync-externs`
 - `yzx-command-metadata.help`
 
 The exact user-facing `yzx` commands do not change when these helper commands land. Nushell maps the public command flow onto helper command ids internally.
@@ -190,9 +191,9 @@ Rust may return optional metrics inside the success `data`, but those metrics ar
 
 The generated Nushell `yzx` extern bridge is startup-owned glue, not command business logic. It remains inside the existing `shellhook` / `sync_yzx_extern_bridge` profile step so startup reports stay comparable while the bridge implementation changes.
 
-Warm startup must not pay a command metadata probe when the generated extern bridge is already current. The sync path should perform only cheap generated-state checks, such as a Rust helper fingerprint and generated-file hash, before reusing the existing bridge.
+Warm startup must not pay command metadata rendering when the generated extern bridge is already current. The Rust-owned sync command should perform only cheap generated-state checks, such as a Rust helper fingerprint and generated-file hash, before reusing the existing bridge.
 
-When the command metadata is missing or stale, the sync path asks `yzx_core yzx-command-metadata.externs` for the generated extern content. It must not spawn Nushell to inspect `core/yazelix.nu` or reconstitute a second command registry. Successful regeneration updates the generated bridge and its fingerprint atomically enough that a later warm startup can skip the helper call.
+When the command metadata is missing or stale, the sync path runs `yzx_core yzx-command-metadata.sync-externs`, which renders generated extern content from Rust-owned metadata and updates the bridge plus fingerprint. It must not spawn Nushell to inspect `core/yazelix.nu` or reconstitute a second command registry. Successful regeneration updates the generated bridge and its fingerprint atomically enough that a later warm startup can skip rendering and writes.
 
 Refresh failure must be non-destructive. If a previous generated bridge exists, keep it instead of replacing it with an empty placeholder. If no bridge exists yet, create a minimal placeholder so managed Nushell config can still source the file and show the generation warning.
 

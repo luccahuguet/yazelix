@@ -2,6 +2,8 @@
 
 use assert_cmd::Command;
 use serde_json::Value;
+use std::fs;
+use tempfile::TempDir;
 
 // Defends: yzx_core owns public command metadata for migrated Rust-only leaves instead of requiring Nushell scope probing.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
@@ -60,4 +62,38 @@ fn command_metadata_help_prints_public_yzx_surface() {
     assert!(stdout.contains("yzx env"));
     assert!(stdout.contains("yzx run"));
     assert!(stdout.contains("yzx update nix"));
+}
+
+// Regression: yzx_core owns generated extern bridge sync, so startup no longer needs the Nushell compatibility wrapper.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn command_metadata_sync_externs_writes_generated_bridge() {
+    let runtime = TempDir::new().unwrap();
+    let state = TempDir::new().unwrap();
+    fs::write(runtime.path().join("yazelix_default.toml"), "").unwrap();
+
+    let first = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .arg("yzx-command-metadata.sync-externs")
+        .arg("--runtime-dir")
+        .arg(runtime.path())
+        .arg("--state-dir")
+        .arg(state.path())
+        .output()
+        .unwrap();
+
+    assert!(first.status.success());
+    assert!(first.stderr.is_empty());
+
+    let envelope: Value = serde_json::from_slice(&first.stdout).unwrap();
+    assert_eq!(envelope["command"], "yzx-command-metadata.sync-externs");
+    assert_eq!(envelope["status"], "ok");
+    assert_eq!(envelope["data"]["status"], "updated");
+
+    let extern_path = envelope["data"]["extern_path"].as_str().unwrap();
+    let fingerprint_path = envelope["data"]["fingerprint_path"].as_str().unwrap();
+    let generated = fs::read_to_string(extern_path).unwrap();
+    assert!(generated.contains("export extern \"yzx env\""));
+    assert!(generated.contains("export extern \"yzx run\""));
+    assert!(fs::metadata(fingerprint_path).unwrap().is_file());
 }

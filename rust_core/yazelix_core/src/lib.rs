@@ -24,8 +24,9 @@ pub mod zellij_render_plan;
 pub use bridge::{CoreError, ErrorClass, error_envelope, success_envelope};
 pub use command_metadata::{
     YzxCommandCategory, YzxCommandMetadata, YzxCommandMetadataData, YzxCommandParameter,
-    YzxParameterKind, render_yzx_externs, render_yzx_help, yzx_command_metadata,
-    yzx_command_metadata_data,
+    YzxExternBridgeSyncData, YzxExternBridgeSyncRequest, YzxExternBridgeSyncStatus,
+    YzxParameterKind, render_yzx_externs, render_yzx_help, sync_yzx_extern_bridge,
+    yzx_command_metadata, yzx_command_metadata_data,
 };
 pub use config_normalize::{NormalizeConfigData, NormalizeConfigRequest, normalize_config};
 pub use config_state::{

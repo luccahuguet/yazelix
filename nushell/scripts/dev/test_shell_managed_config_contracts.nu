@@ -4,12 +4,49 @@
 
 use ./yzx_test_helpers.nu [get_repo_root repo_path resolve_test_yzx_core_bin]
 use ./materialization_dev_helpers.nu [generate_merged_zellij_config]
-use ../utils/nushell_externs.nu [get_generated_yzx_extern_fingerprint_path get_generated_yzx_extern_path sync_generated_yzx_extern_bridge]
 use ../utils/shell_user_hooks.nu [get_yazelix_shell_user_hook_path sync_generated_nushell_user_hook_bridge]
+
+const YZX_COMMAND_METADATA_SYNC_EXTERNS_COMMAND = "yzx-command-metadata.sync-externs"
 
 def path_is_symlink [target: string] {
     let result = (^test -L $target | complete)
     $result.exit_code == 0
+}
+
+def get_generated_yzx_extern_path [state_root: string] {
+    ($state_root | path expand | path join "initializers" "nushell" "yazelix_extern.nu")
+}
+
+def get_generated_yzx_extern_fingerprint_path [state_root: string] {
+    ($state_root | path expand | path join "initializers" "nushell" "yazelix_extern.fingerprint.json")
+}
+
+def sync_generated_yzx_extern_bridge [runtime_root: string, state_root: string] {
+    let helper_path = (resolve_test_yzx_core_bin)
+    let args = [
+        $YZX_COMMAND_METADATA_SYNC_EXTERNS_COMMAND
+        "--runtime-dir"
+        ($runtime_root | path expand)
+        "--state-dir"
+        ($state_root | path expand)
+    ]
+    let result = (^$helper_path ...$args | complete)
+
+    if $result.exit_code != 0 {
+        error make {msg: ($result.stderr | str trim)}
+    }
+
+    let envelope = (try {
+        $result.stdout | from json
+    } catch {|err|
+        error make {msg: $"yzx_core extern bridge sync returned invalid JSON: ($err.msg)"}
+    })
+
+    if (($envelope.status? | default "") != "ok") {
+        error make {msg: $"yzx_core extern bridge sync returned a non-ok envelope: (($result.stdout | str trim))"}
+    }
+
+    $envelope.data.extern_path? | default (get_generated_yzx_extern_path $state_root)
 }
 
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
@@ -319,7 +356,9 @@ def test_yzx_extern_bridge_keeps_previous_bridge_when_refresh_fails [] {
         mkdir $missing_runtime
         "stale fingerprint" | save --force --raw $fingerprint_path
 
-        sync_generated_yzx_extern_bridge $missing_runtime $state_dir | ignore
+        try {
+            sync_generated_yzx_extern_bridge $missing_runtime $state_dir | ignore
+        } catch {}
         let after_failed_refresh = (open --raw $extern_path)
 
         if (

@@ -1,4 +1,10 @@
-use serde::Serialize;
+use crate::bridge::{CoreError, ErrorClass};
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+use sha2::{Digest, Sha256};
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -44,6 +50,54 @@ pub struct YzxCommandMetadataData {
     pub commands: Vec<YzxCommandMetadata>,
     pub extern_content: String,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct YzxExternBridgeSyncRequest {
+    pub runtime_dir: PathBuf,
+    pub state_dir: PathBuf,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct YzxExternBridgeSyncData {
+    pub extern_path: String,
+    pub fingerprint_path: String,
+    pub status: YzxExternBridgeSyncStatus,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum YzxExternBridgeSyncStatus {
+    Reused,
+    Updated,
+}
+
+#[derive(Debug, Deserialize)]
+struct YzxExternBridgeState {
+    schema_version: u8,
+    source_fingerprint: String,
+    extern_hash: String,
+}
+
+#[derive(Debug, Serialize)]
+struct YzxExternSourceFingerprint {
+    schema_version: u8,
+    renderer_version: &'static str,
+    runtime_dir: String,
+    runtime_marker: YzxExternFileFingerprint,
+    yzx_core: YzxExternFileFingerprint,
+}
+
+#[derive(Debug, Serialize)]
+struct YzxExternFileFingerprint {
+    path: String,
+    exists: bool,
+    size: Option<u64>,
+    modified: Option<String>,
+}
+
+const YZX_EXTERN_BRIDGE_STATE_SCHEMA_VERSION: u8 = 3;
+const YZX_EXTERN_BRIDGE_RENDERER_VERSION: &str = "v3-rust-sync";
+const YZX_EXTERN_BRIDGE_PLACEHOLDER: &str = "# Yazelix generated Nushell extern bridge (empty)\n";
 
 const VERSION_FLAGS: &[YzxCommandParameter] = &[
     switch("version", Some("V")),
@@ -446,6 +500,49 @@ pub fn yzx_command_metadata_data() -> YzxCommandMetadataData {
     }
 }
 
+pub fn sync_yzx_extern_bridge(
+    request: &YzxExternBridgeSyncRequest,
+) -> Result<YzxExternBridgeSyncData, CoreError> {
+    let extern_path = generated_yzx_extern_path(&request.state_dir);
+    let fingerprint_path = generated_yzx_extern_fingerprint_path(&request.state_dir);
+    let source_fingerprint = compute_yzx_extern_source_fingerprint(&request.runtime_dir)?;
+
+    if yzx_extern_bridge_is_current(&extern_path, &fingerprint_path, &source_fingerprint)? {
+        return Ok(YzxExternBridgeSyncData {
+            extern_path: path_string(&extern_path),
+            fingerprint_path: path_string(&fingerprint_path),
+            status: YzxExternBridgeSyncStatus::Reused,
+        });
+    }
+
+    let has_existing_bridge = extern_path.exists();
+    if !has_existing_bridge {
+        write_text_atomic(&extern_path, YZX_EXTERN_BRIDGE_PLACEHOLDER)?;
+    }
+
+    ensure_valid_runtime_dir(&request.runtime_dir)?;
+
+    let extern_content = yzx_command_metadata_data().extern_content;
+    if extern_content.trim().is_empty() {
+        return Err(CoreError::classified(
+            ErrorClass::Internal,
+            "empty_yzx_extern_bridge",
+            "Rust yzx command metadata produced an empty Nushell extern bridge.",
+            "Report this as a Yazelix internal error.",
+            json!({}),
+        ));
+    }
+
+    write_text_atomic(&extern_path, &extern_content)?;
+    write_yzx_extern_bridge_state(&fingerprint_path, &source_fingerprint, &extern_content)?;
+
+    Ok(YzxExternBridgeSyncData {
+        extern_path: path_string(&extern_path),
+        fingerprint_path: path_string(&fingerprint_path),
+        status: YzxExternBridgeSyncStatus::Updated,
+    })
+}
+
 pub fn render_yzx_help(commands: &[YzxCommandMetadata]) -> String {
     let width = commands
         .iter()
@@ -606,10 +703,236 @@ fn render_positional(parameter: &YzxCommandParameter) -> String {
     }
 }
 
+fn generated_yzx_extern_path(state_dir: &Path) -> PathBuf {
+    state_dir
+        .join("initializers")
+        .join("nushell")
+        .join("yazelix_extern.nu")
+}
+
+fn generated_yzx_extern_fingerprint_path(state_dir: &Path) -> PathBuf {
+    generated_yzx_extern_path(state_dir)
+        .parent()
+        .expect("generated extern path has a parent")
+        .join("yazelix_extern.fingerprint.json")
+}
+
+fn ensure_valid_runtime_dir(runtime_dir: &Path) -> Result<(), CoreError> {
+    let sentinel = runtime_dir.join("yazelix_default.toml");
+    if sentinel.is_file() {
+        return Ok(());
+    }
+
+    Err(CoreError::classified(
+        ErrorClass::Runtime,
+        "invalid_runtime_dir",
+        format!(
+            "Yazelix runtime directory is missing its default config sentinel at {}.",
+            sentinel.display()
+        ),
+        "Reinstall Yazelix or run from a valid source checkout.",
+        json!({ "runtime_dir": path_string(runtime_dir), "sentinel": path_string(&sentinel) }),
+    ))
+}
+
+fn compute_yzx_extern_source_fingerprint(runtime_dir: &Path) -> Result<String, CoreError> {
+    let runtime_marker = runtime_dir.join("yazelix_default.toml");
+    let yzx_core = std::env::current_exe().map_err(|source| {
+        CoreError::io(
+            "resolve_yzx_core_exe",
+            "Could not resolve the running yzx_core helper path",
+            "Retry the command and report this as a Yazelix internal error if it persists.",
+            "<current_exe>",
+            source,
+        )
+    })?;
+    let payload = YzxExternSourceFingerprint {
+        schema_version: YZX_EXTERN_BRIDGE_STATE_SCHEMA_VERSION,
+        renderer_version: YZX_EXTERN_BRIDGE_RENDERER_VERSION,
+        runtime_dir: path_string(runtime_dir),
+        runtime_marker: fingerprint_file(&runtime_marker),
+        yzx_core: fingerprint_file(&yzx_core),
+    };
+    let serialized = serde_json::to_vec(&payload).map_err(|source| {
+        CoreError::classified(
+            ErrorClass::Internal,
+            "serialize_yzx_extern_source_fingerprint",
+            format!("Could not serialize yzx extern bridge source fingerprint: {source}"),
+            "Report this as a Yazelix internal error.",
+            json!({}),
+        )
+    })?;
+    Ok(sha256_hex(&serialized))
+}
+
+fn fingerprint_file(path: &Path) -> YzxExternFileFingerprint {
+    let Ok(metadata) = fs::metadata(path) else {
+        return YzxExternFileFingerprint {
+            path: path_string(path),
+            exists: false,
+            size: None,
+            modified: None,
+        };
+    };
+
+    YzxExternFileFingerprint {
+        path: path_string(path),
+        exists: true,
+        size: Some(metadata.len()),
+        modified: metadata.modified().ok().and_then(system_time_string),
+    }
+}
+
+fn yzx_extern_bridge_is_current(
+    extern_path: &Path,
+    fingerprint_path: &Path,
+    source_fingerprint: &str,
+) -> Result<bool, CoreError> {
+    let Some(state) = read_yzx_extern_bridge_state(fingerprint_path)? else {
+        return Ok(false);
+    };
+    let Some(extern_hash) = hash_file_contents(extern_path)? else {
+        return Ok(false);
+    };
+
+    Ok(
+        state.schema_version == YZX_EXTERN_BRIDGE_STATE_SCHEMA_VERSION
+            && state.source_fingerprint == source_fingerprint
+            && state.extern_hash == extern_hash,
+    )
+}
+
+fn read_yzx_extern_bridge_state(path: &Path) -> Result<Option<YzxExternBridgeState>, CoreError> {
+    let raw = match fs::read_to_string(path) {
+        Ok(raw) => raw,
+        Err(source) if source.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(source) => {
+            return Err(CoreError::io(
+                "read_yzx_extern_bridge_state",
+                "Could not read the generated yzx extern bridge fingerprint",
+                "Check permissions for the Yazelix state directory and retry.",
+                path.to_string_lossy(),
+                source,
+            ));
+        }
+    };
+
+    Ok(serde_json::from_str(&raw).ok())
+}
+
+fn hash_file_contents(path: &Path) -> Result<Option<String>, CoreError> {
+    match fs::read(path) {
+        Ok(bytes) => Ok(Some(sha256_hex(&bytes))),
+        Err(source) if source.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(source) => Err(CoreError::io(
+            "read_yzx_extern_bridge",
+            "Could not read the generated yzx extern bridge",
+            "Check permissions for the Yazelix state directory and retry.",
+            path.to_string_lossy(),
+            source,
+        )),
+    }
+}
+
+fn write_yzx_extern_bridge_state(
+    fingerprint_path: &Path,
+    source_fingerprint: &str,
+    extern_content: &str,
+) -> Result<(), CoreError> {
+    let state = serde_json::json!({
+        "schema_version": YZX_EXTERN_BRIDGE_STATE_SCHEMA_VERSION,
+        "source_fingerprint": source_fingerprint,
+        "extern_hash": sha256_hex(extern_content.as_bytes()),
+    });
+    let serialized = serde_json::to_string(&state).map_err(|source| {
+        CoreError::classified(
+            ErrorClass::Internal,
+            "serialize_yzx_extern_bridge_state",
+            format!("Could not serialize yzx extern bridge fingerprint: {source}"),
+            "Report this as a Yazelix internal error.",
+            json!({}),
+        )
+    })?;
+    write_text_atomic(fingerprint_path, &format!("{serialized}\n"))
+}
+
+fn write_text_atomic(path: &Path, content: &str) -> Result<(), CoreError> {
+    let parent = path.parent().ok_or_else(|| {
+        CoreError::classified(
+            ErrorClass::Internal,
+            "invalid_yzx_extern_bridge_path",
+            "Generated yzx extern bridge path has no parent directory.",
+            "Report this as a Yazelix internal error.",
+            json!({ "path": path_string(path) }),
+        )
+    })?;
+    fs::create_dir_all(parent).map_err(|source| {
+        CoreError::io(
+            "create_yzx_extern_bridge_parent",
+            "Could not create parent directory for the generated yzx extern bridge",
+            "Check permissions for the Yazelix state directory and retry.",
+            parent.to_string_lossy(),
+            source,
+        )
+    })?;
+
+    let temporary_path = path.with_file_name(format!(
+        ".{}.yazelix-tmp-{}-{}",
+        path.file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("yazelix_extern"),
+        std::process::id(),
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or(0)
+    ));
+    fs::write(&temporary_path, content).map_err(|source| {
+        CoreError::io(
+            "write_yzx_extern_bridge_temp",
+            "Could not write temporary generated yzx extern bridge",
+            "Check permissions for the Yazelix state directory and retry.",
+            temporary_path.to_string_lossy(),
+            source,
+        )
+    })?;
+    fs::rename(&temporary_path, path).map_err(|source| {
+        CoreError::io(
+            "rename_yzx_extern_bridge_temp",
+            "Could not replace generated yzx extern bridge",
+            "Check permissions for the Yazelix state directory and retry.",
+            path.to_string_lossy(),
+            source,
+        )
+    })
+}
+
+fn sha256_hex(input: &[u8]) -> String {
+    let digest = Sha256::digest(input);
+    let mut output = String::with_capacity(digest.len() * 2);
+    for byte in digest {
+        output.push_str(&format!("{byte:02x}"));
+    }
+    output
+}
+
+fn system_time_string(value: SystemTime) -> Option<String> {
+    value
+        .duration_since(UNIX_EPOCH)
+        .ok()
+        .map(|duration| duration.as_nanos().to_string())
+}
+
+fn path_string(path: &Path) -> String {
+    path.to_string_lossy().into_owned()
+}
+
 // Test lane: maintainer
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use tempfile::TempDir;
 
     // Defends: Rust metadata is the public source for migrated control-plane leaves that no longer live in the Nushell command tree.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
@@ -644,5 +967,56 @@ mod tests {
         );
         assert!(data.extern_content.contains("--no-shell(-n)"));
         assert!(data.extern_content.contains("...argv: string"));
+    }
+
+    // Regression: the generated yzx extern bridge lifecycle is Rust-owned and reuses current fingerprints without a Nushell wrapper.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn sync_yzx_extern_bridge_writes_and_reuses_current_bridge() {
+        let runtime = TempDir::new().unwrap();
+        let state = TempDir::new().unwrap();
+        fs::write(runtime.path().join("yazelix_default.toml"), "").unwrap();
+
+        let request = YzxExternBridgeSyncRequest {
+            runtime_dir: runtime.path().to_path_buf(),
+            state_dir: state.path().to_path_buf(),
+        };
+
+        let first = sync_yzx_extern_bridge(&request).unwrap();
+        let second = sync_yzx_extern_bridge(&request).unwrap();
+        let extern_content = fs::read_to_string(first.extern_path).unwrap();
+
+        assert_eq!(first.status, YzxExternBridgeSyncStatus::Updated);
+        assert_eq!(second.status, YzxExternBridgeSyncStatus::Reused);
+        assert!(extern_content.contains("export extern \"yzx env\""));
+        assert!(Path::new(&second.fingerprint_path).is_file());
+    }
+
+    // Regression: failed generated yzx extern refreshes must not replace a previous valid bridge with the placeholder.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn sync_yzx_extern_bridge_preserves_existing_bridge_on_invalid_runtime() {
+        let runtime = TempDir::new().unwrap();
+        let invalid_runtime = TempDir::new().unwrap();
+        let state = TempDir::new().unwrap();
+        fs::write(runtime.path().join("yazelix_default.toml"), "").unwrap();
+
+        let request = YzxExternBridgeSyncRequest {
+            runtime_dir: runtime.path().to_path_buf(),
+            state_dir: state.path().to_path_buf(),
+        };
+        let data = sync_yzx_extern_bridge(&request).unwrap();
+        let generated_content = fs::read_to_string(&data.extern_path).unwrap();
+        fs::write(&data.fingerprint_path, "stale fingerprint").unwrap();
+
+        let failed = sync_yzx_extern_bridge(&YzxExternBridgeSyncRequest {
+            runtime_dir: invalid_runtime.path().to_path_buf(),
+            state_dir: state.path().to_path_buf(),
+        });
+        let after_failed_refresh = fs::read_to_string(&data.extern_path).unwrap();
+
+        assert!(failed.is_err());
+        assert_eq!(after_failed_refresh, generated_content);
+        assert!(!after_failed_refresh.contains("generated Nushell extern bridge (empty)"));
     }
 }
