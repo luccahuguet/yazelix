@@ -124,7 +124,7 @@ It is not worth doing just to:
 | Root, help, version, completion, and palette inventory | Rust metadata owner plus thin Nu wrappers | Metadata/help/extern/menu ownership has started. Keep moving only if the next cut deletes a real public parser or command-body owner. |
 | `yzx env`, `yzx run`, and `yzx update*` | `yzx_control` | Use these as the first root-transition family. They already have Rust-owned parsing and execution, so the next cut can delete more of the public Nu root without dragging shell-bound launch or report-rendering work into Rust. |
 | `yzx launch`, `yzx enter`, `yzx restart` | Public Nu commands over Nu and POSIX orchestration | Possible later only if Rust would own request parsing and command-family metadata while Nu or POSIX still own the shell-heavy execution path |
-| `yzx status`, `yzx doctor` | Public Nu commands over Rust findings plus Nu rendering | Possible later only if the remaining public wrappers disappear and the family gains one clear owner instead of one more layer |
+| `yzx status`, `yzx doctor` | `yzx status` is already on the Rust public path; `yzx doctor` is still a public Nu command over Rust findings plus Nu rendering, fix, and live-session checks | `yzx status` is already done. `yzx doctor` is a no-go for the next public Rust cut after `yazelix-osco.2`: keep it Nushell-owned until the surviving `core/yzx_doctor.nu`, `utils/doctor.nu`, and `doctor_report_bridge.nu` owners either disappear or split into a real machine-only family that deletes the public Nu doctor surface. |
 | `yzx config`, `yzx edit`, `yzx import` | Nushell | Keep Nushell-owned unless a later separate ownership argument appears |
 | `yzx menu`, `yzx popup`, `yzx screen`, `yzx keys`, `yzx tutor`, `yzx whats_new`, info commands | Nushell | Keep Nushell-owned |
 | `yzx desktop`, `yzx home_manager`, maintainer surfaces, package and distribution commands | Nushell, Nix, POSIX | Keep Nushell, Nix, and POSIX-owned unless a separate distribution-policy rewrite justifies moving them |
@@ -209,6 +209,44 @@ Explicit no-go for the first mixed family:
   rendering, and repair ownership in `core/yzx_doctor.nu`, `utils/doctor.nu`,
   and `doctor_report_bridge.nu`
 
+### 2026-04-21 Doctor Re-evaluation
+
+`yazelix-osco.2` is a no-go for a public Rust `yzx doctor` cut in the current
+shape.
+
+What changed first:
+
+- `yazelix-osco.1` deleted the old per-report shims
+- one shared bridge now lives in `utils/doctor_report_bridge.nu`
+
+Why that is still not enough:
+
+- `core/yzx_doctor.nu` still owns the public command surface, including the
+  `--json` and `--fix` split and the fix-only env gate
+- `utils/doctor.nu` still owns the human renderer, summary logic, Zellij
+  pane-orchestrator live health checks, and all current `--fix` behavior
+- `utils/doctor_report_bridge.nu` still shapes several multi-source requests
+  before the Rust helpers run, especially install ownership, runtime preflight,
+  Helix doctor context, and config doctor inputs
+
+Current surviving Nushell owners after the bridge collapse:
+
+- `nushell/scripts/core/yzx_doctor.nu` at about `25` raw lines
+- `nushell/scripts/utils/doctor.nu` at about `339` raw lines
+- `nushell/scripts/utils/doctor_report_bridge.nu` at about `293` raw lines
+
+Decision:
+
+- do not start a public Rust or Clap-owned `yzx doctor` lane now
+- a Rust front door here would still sit above a large surviving Nushell doctor
+  tree instead of deleting it
+- reopen only if Yazelix can either:
+  - split out a real machine-only doctor family that deletes the public Nu
+    doctor surface end-to-end
+  - or delete most of `utils/doctor.nu` and `doctor_report_bridge.nu` so Rust
+    can become the single public owner without re-porting prose and fix flows
+    by habit
+
 ### Required Deletion Budget
 
 A broader rewrite is not approved unless it deletes all of these public-owner
@@ -226,8 +264,8 @@ owner clusters:
 
 - the public `launch` / `enter` / `restart` family
 - the public `status` / `doctor` family
-- the surviving bridge and report owner cluster around `config_parser.nu` and
-  the report shims
+- the surviving bridge and report owner cluster around `config_parser.nu`,
+  `doctor_report_bridge.nu`, and `doctor.nu`
 
 If a proposal keeps those surfaces and merely adds a Rust root dispatcher above
 them, reject it.
