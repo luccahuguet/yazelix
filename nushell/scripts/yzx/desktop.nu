@@ -2,8 +2,8 @@
 
 use ../utils/atomic_writes.nu write_text_atomic
 use ../utils/common.nu get_yazelix_runtime_dir
-use ../utils/install_ownership.nu evaluate_install_ownership_report
 use ../utils/startup_profile.nu [profile_startup_step propagate_startup_profile_env]
+use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
 
 const DESKTOP_LAUNCH_CLEARED_ENV_KEYS = [
     "IN_YAZELIX_SHELL"
@@ -21,6 +21,7 @@ const DESKTOP_LAUNCH_CLEARED_ENV_KEYS = [
     "ZELLIJ_TAB_POSITION"
 ]
 const DESKTOP_ICON_SIZES = ["48x48", "64x64", "128x128", "256x256"]
+const INSTALL_OWNERSHIP_EVALUATE_COMMAND = "install-ownership.evaluate"
 
 def get_xdg_data_home [] {
     let data_home = (
@@ -119,6 +120,17 @@ def get_desktop_entry_path [] {
     (get_desktop_applications_dir | path join "com.yazelix.Yazelix.desktop")
 }
 
+def evaluate_install_ownership_report [runtime_dir: string] {
+    run_yzx_core_json_command $runtime_dir (
+        build_default_yzx_core_error_surface
+    ) [
+        $INSTALL_OWNERSHIP_EVALUATE_COMMAND
+        "--from-env"
+        "--runtime-dir"
+        ($runtime_dir | path expand)
+    ] "Yazelix Rust install-ownership helper returned invalid JSON."
+}
+
 def get_desktop_icon_entries [runtime_dir: string] {
     $DESKTOP_ICON_SIZES
     | each {|size|
@@ -174,7 +186,7 @@ export def "yzx desktop install" [
     if $runtime_dir == null {
         error make {msg: "Cannot resolve a Yazelix runtime root for desktop integration."}
     }
-    let install_report = (evaluate_install_ownership_report --runtime-dir $runtime_dir)
+    let install_report = (evaluate_install_ownership_report $runtime_dir)
     if $install_report.install_owner == "home-manager" {
         error make {msg: "Home Manager owns Yazelix desktop integration for this install. Reapply your Home Manager configuration for the profile desktop entry, or run `yzx desktop uninstall` only to remove a stale user-local entry."}
     }

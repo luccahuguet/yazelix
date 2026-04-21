@@ -61,6 +61,9 @@ pub use helix_materialization::{
     generate_helix_materialization,
 };
 pub use home_manager_commands::run_yzx_home_manager;
+pub use install_ownership_env::{
+    install_ownership_request_from_env, install_ownership_request_from_env_with_runtime_dir,
+};
 pub use install_ownership_report::{
     DoctorInstallResult, HomeManagerPrepareArtifact, InstallOwnershipEvaluateData,
     InstallOwnershipEvaluateRequest, evaluate_install_ownership_report,

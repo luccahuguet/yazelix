@@ -223,8 +223,8 @@ What changed:
 - `utils/doctor.nu` is deleted
 - the surviving Nushell work is a private fix helper in
   `utils/doctor_fix.nu`
-- install-ownership request shaping lives in a focused
-  `utils/install_ownership.nu` helper instead of a mixed doctor bridge
+- install-ownership request shaping moved out of the doctor bridge and later
+  became Rust-owned through `install_ownership_env.rs`
 
 Why this counts:
 
@@ -236,8 +236,8 @@ Why this counts:
 Surviving private Nushell owners after the cut:
 
 - `nushell/scripts/utils/doctor_fix.nu` for the side-effecting repair flow
-- `nushell/scripts/utils/install_ownership.nu` for focused install-ownership
-  request shaping outside the doctor report owner
+- no public or shared Nushell install-ownership bridge survives; desktop and
+  restart UX call the Rust owner directly
 
 Decision:
 
@@ -307,8 +307,8 @@ owner clusters:
 
 - the public `launch` / `enter` / `restart` family
 - the public `status` / `doctor` family
-- the surviving bridge and report owner cluster around `config_parser.nu`,
-  `install_ownership.nu`, and `doctor_fix.nu`
+- the surviving bridge and report owner cluster around `config_parser.nu` and
+  `doctor_fix.nu`
 
 If a proposal keeps those surfaces and merely adds a Rust root dispatcher above
 them, reject it.

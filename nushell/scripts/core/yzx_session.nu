@@ -2,8 +2,11 @@
 # Session and restart commands that still live in Nushell.
 
 use ../utils/atomic_writes.nu write_text_atomic
-use ../utils/launcher_resolution.nu resolve_stable_yzx_wrapper_path
+use ../utils/common.nu get_yazelix_runtime_dir
+use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
 use ../yzx/launch.nu ["yzx launch"]
+
+const INSTALL_OWNERSHIP_EVALUATE_COMMAND = "install-ownership.evaluate"
 
 def print_completed_output [result: record] {
     let stdout_text = ($result.stdout | default "")
@@ -76,6 +79,24 @@ def create_restart_sidebar_bootstrap_file [target_dir: string] {
     let bootstrap_file = (^mktemp ($state_dir | path join "sidebar_cwd_XXXXXX") | str trim)
     write_text_atomic $bootstrap_file ($target_dir | path expand) --raw | ignore
     $bootstrap_file
+}
+
+def resolve_stable_yzx_wrapper_path [] {
+    let runtime_dir = (get_yazelix_runtime_dir)
+    if $runtime_dir == null {
+        error make {msg: "Cannot resolve a Yazelix runtime root for restart wrapper resolution."}
+    }
+
+    let report = (run_yzx_core_json_command $runtime_dir (
+        build_default_yzx_core_error_surface
+    ) [
+        $INSTALL_OWNERSHIP_EVALUATE_COMMAND
+        "--from-env"
+        "--runtime-dir"
+        ($runtime_dir | path expand)
+    ] "Yazelix Rust install-ownership helper returned invalid JSON.")
+
+    $report.stable_yzx_wrapper? | default null
 }
 
 # Restart yazelix

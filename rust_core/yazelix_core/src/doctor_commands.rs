@@ -10,11 +10,11 @@ use crate::doctor_helix_report::{HelixDoctorEvaluateRequest, evaluate_helix_doct
 use crate::doctor_runtime_report::{
     DoctorRuntimeEvaluateRequest, SharedRuntimePreflightInput, evaluate_doctor_runtime_report,
 };
+use crate::install_ownership_env::install_ownership_request_from_env_with_runtime_dir;
 use crate::internal_nu_runner::run_internal_nu_module_command;
 use crate::{
-    DoctorConfigEvaluateRequest, InstallOwnershipEvaluateRequest, NormalizeConfigRequest,
-    evaluate_doctor_config_report, evaluate_install_ownership_report, normalize_config,
-    plan_runtime_materialization,
+    DoctorConfigEvaluateRequest, NormalizeConfigRequest, evaluate_doctor_config_report,
+    evaluate_install_ownership_report, normalize_config, plan_runtime_materialization,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -163,12 +163,7 @@ fn compute_doctor_report_from_env() -> Result<DoctorReportData, CoreError> {
     let config_dir = config_dir_from_env()?;
     let state_dir = state_dir_from_env()?;
     let home_dir = home_dir_from_env()?;
-    let install_request = build_install_ownership_request(
-        runtime_dir.clone(),
-        config_dir.clone(),
-        state_dir.clone(),
-        home_dir.clone(),
-    )?;
+    let install_request = install_ownership_request_from_env_with_runtime_dir(runtime_dir.clone())?;
     let install_report = evaluate_install_ownership_report(&install_request);
     let normalized_config = load_optional_doctor_normalized_config(&runtime_dir, &config_dir);
 
@@ -210,26 +205,6 @@ fn compute_doctor_report_from_env() -> Result<DoctorReportData, CoreError> {
     })
 }
 
-fn build_install_ownership_request(
-    runtime_dir: PathBuf,
-    config_dir: PathBuf,
-    state_dir: PathBuf,
-    home_dir: PathBuf,
-) -> Result<InstallOwnershipEvaluateRequest, CoreError> {
-    Ok(InstallOwnershipEvaluateRequest {
-        runtime_dir,
-        home_dir: home_dir.clone(),
-        user: env::var("USER").ok(),
-        xdg_config_home: xdg_config_home(&home_dir),
-        xdg_data_home: xdg_data_home(&home_dir),
-        yazelix_state_dir: state_dir,
-        main_config_path: config_dir.join("user_configs").join("yazelix.toml"),
-        invoked_yzx_path: env::var("YAZELIX_INVOKED_YZX_PATH").ok(),
-        redirected_from_stale_yzx_path: env::var("YAZELIX_REDIRECTED_FROM_STALE_YZX_PATH").ok(),
-        shell_resolved_yzx_path: shell_resolved_yzx_path_for_report(),
-    })
-}
-
 fn xdg_config_home(home_dir: &Path) -> PathBuf {
     env::var("XDG_CONFIG_HOME")
         .ok()
@@ -237,23 +212,6 @@ fn xdg_config_home(home_dir: &Path) -> PathBuf {
         .filter(|raw| !raw.is_empty())
         .map(PathBuf::from)
         .unwrap_or_else(|| home_dir.join(".config"))
-}
-
-fn xdg_data_home(home_dir: &Path) -> PathBuf {
-    env::var("XDG_DATA_HOME")
-        .ok()
-        .map(|raw| raw.trim().to_string())
-        .filter(|raw| !raw.is_empty())
-        .map(PathBuf::from)
-        .unwrap_or_else(|| home_dir.join(".local").join("share"))
-}
-
-fn shell_resolved_yzx_path_for_report() -> Option<String> {
-    env::var("YAZELIX_INVOKED_YZX_PATH")
-        .ok()
-        .map(|raw| raw.trim().to_string())
-        .filter(|raw| !raw.is_empty())
-        .or_else(|| find_external_command("yzx").map(path_to_string))
 }
 
 fn find_external_command(command_name: &str) -> Option<PathBuf> {
@@ -265,10 +223,6 @@ fn find_external_command(command_name: &str) -> Option<PathBuf> {
         }
     }
     None
-}
-
-fn path_to_string(path: impl AsRef<Path>) -> String {
-    path.as_ref().to_string_lossy().into_owned()
 }
 
 fn load_optional_doctor_normalized_config(

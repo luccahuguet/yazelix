@@ -490,11 +490,17 @@ def test_stable_yzx_wrapper_prefers_home_manager_profile_owner [] {
         let output = (with-env {
             HOME: $fixture.tmp_home
             XDG_CONFIG_HOME: ($fixture.tmp_home | path join ".config")
+            XDG_DATA_HOME: ($fixture.tmp_home | path join ".local" "share")
             YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.repo_root
         } {
-            ^nu -c 'use nushell/scripts/utils/launcher_resolution.nu resolve_stable_yzx_wrapper_path; resolve_stable_yzx_wrapper_path' | complete
+            ^(resolve_test_yzx_core_bin) install-ownership.evaluate --from-env --runtime-dir $fixture.repo_root | complete
         })
-        let resolved = ($output.stdout | str trim)
+        let resolved = if $output.exit_code == 0 {
+            (($output.stdout | from json).data.stable_yzx_wrapper? | default "")
+        } else {
+            ""
+        }
 
         if (
             ($output.exit_code == 0)
@@ -527,11 +533,17 @@ def test_stable_yzx_wrapper_keeps_home_manager_broken_profile_symlink [] {
         let output = (with-env {
             HOME: $fixture.tmp_home
             XDG_CONFIG_HOME: ($fixture.tmp_home | path join ".config")
+            XDG_DATA_HOME: ($fixture.tmp_home | path join ".local" "share")
             YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.repo_root
         } {
-            ^nu -c 'use nushell/scripts/utils/launcher_resolution.nu resolve_stable_yzx_wrapper_path; resolve_stable_yzx_wrapper_path' | complete
+            ^(resolve_test_yzx_core_bin) install-ownership.evaluate --from-env --runtime-dir $fixture.repo_root | complete
         })
-        let resolved = ($output.stdout | str trim)
+        let resolved = if $output.exit_code == 0 {
+            (($output.stdout | from json).data.stable_yzx_wrapper? | default "")
+        } else {
+            ""
+        }
 
         if (
             ($output.exit_code == 0)

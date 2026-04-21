@@ -8,43 +8,55 @@ use crate::install_ownership_report::InstallOwnershipEvaluateRequest;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+fn env_text(name: &str) -> Option<String> {
+    std::env::var(name)
+        .ok()
+        .map(|raw| raw.trim().to_string())
+        .filter(|raw| !raw.is_empty())
+}
+
+fn expanded_path_value(raw: &str, home: &Path) -> PathBuf {
+    let expanded = expand_user_path(raw, home);
+    if expanded.is_absolute() {
+        expanded
+    } else {
+        std::path::absolute(&expanded).unwrap_or(expanded)
+    }
+}
+
 fn xdg_config_home(home: &Path) -> PathBuf {
-    if let Ok(raw) = std::env::var("XDG_CONFIG_HOME") {
-        let trimmed = raw.trim();
-        if !trimmed.is_empty() {
-            return expand_user_path(trimmed, home);
-        }
+    if let Some(raw) = env_text("XDG_CONFIG_HOME") {
+        return expanded_path_value(&raw, home);
     }
     home.join(".config")
 }
 
 fn xdg_data_home(home: &Path) -> PathBuf {
-    if let Ok(raw) = std::env::var("XDG_DATA_HOME") {
-        let trimmed = raw.trim();
-        if !trimmed.is_empty() {
-            return expand_user_path(trimmed, home);
-        }
+    if let Some(raw) = env_text("XDG_DATA_HOME") {
+        return expanded_path_value(&raw, home);
     }
     home.join(".local").join("share")
 }
 
 fn yazelix_state_dir(home: &Path) -> PathBuf {
-    if let Ok(raw) = std::env::var("YAZELIX_STATE_DIR") {
-        let trimmed = raw.trim();
-        if !trimmed.is_empty() {
-            return expand_user_path(trimmed, home);
-        }
+    if let Some(raw) = env_text("YAZELIX_STATE_DIR") {
+        return expanded_path_value(&raw, home);
     }
-    if let Ok(raw) = std::env::var("XDG_DATA_HOME") {
-        let trimmed = raw.trim();
-        if !trimmed.is_empty() {
-            return expand_user_path(trimmed, home).join("yazelix");
-        }
+    if let Some(raw) = env_text("XDG_DATA_HOME") {
+        return expanded_path_value(&raw, home).join("yazelix");
     }
     home.join(".local").join("share").join("yazelix")
 }
 
-fn shell_resolved_yzx_path(home: &Path) -> Option<String> {
+fn path_to_string(path: impl AsRef<Path>) -> String {
+    path.as_ref().to_string_lossy().into_owned()
+}
+
+fn shell_resolved_yzx_path_for_report(home: &Path) -> Option<String> {
+    if let Some(invoked) = env_text("YAZELIX_INVOKED_YZX_PATH") {
+        return Some(path_to_string(expanded_path_value(&invoked, home)));
+    }
+
     let output = Command::new("/bin/sh")
         .arg("-c")
         .arg("command -v yzx")
@@ -57,16 +69,18 @@ fn shell_resolved_yzx_path(home: &Path) -> Option<String> {
     if resolved.is_empty() {
         None
     } else {
-        Some(
-            expand_user_path(&resolved, home)
-                .to_string_lossy()
-                .into_owned(),
-        )
+        Some(path_to_string(expanded_path_value(&resolved, home)))
     }
 }
 
 pub fn install_ownership_request_from_env() -> Result<InstallOwnershipEvaluateRequest, CoreError> {
     let runtime_dir = runtime_dir_from_env()?;
+    install_ownership_request_from_env_with_runtime_dir(runtime_dir)
+}
+
+pub fn install_ownership_request_from_env_with_runtime_dir(
+    runtime_dir: PathBuf,
+) -> Result<InstallOwnershipEvaluateRequest, CoreError> {
     let home_dir = home_dir_from_env()?;
     let config_root = config_dir_from_env()?;
     let main_config_path = config_root.join("user_configs").join("yazelix.toml");
@@ -79,12 +93,8 @@ pub fn install_ownership_request_from_env() -> Result<InstallOwnershipEvaluateRe
         xdg_data_home: xdg_data_home(&home_dir),
         yazelix_state_dir: yazelix_state_dir(&home_dir),
         main_config_path,
-        invoked_yzx_path: std::env::var("YAZELIX_INVOKED_YZX_PATH")
-            .ok()
-            .filter(|s| !s.trim().is_empty()),
-        redirected_from_stale_yzx_path: std::env::var("YAZELIX_REDIRECTED_FROM_STALE_YZX_PATH")
-            .ok()
-            .filter(|s| !s.trim().is_empty()),
-        shell_resolved_yzx_path: shell_resolved_yzx_path(&home_dir),
+        invoked_yzx_path: env_text("YAZELIX_INVOKED_YZX_PATH"),
+        redirected_from_stale_yzx_path: env_text("YAZELIX_REDIRECTED_FROM_STALE_YZX_PATH"),
+        shell_resolved_yzx_path: shell_resolved_yzx_path_for_report(&home_dir),
     })
 }

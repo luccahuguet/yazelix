@@ -19,10 +19,11 @@ use yazelix_core::{
     evaluate_install_ownership_report, evaluate_runtime_contract,
     evaluate_startup_launch_preflight, generate_ghostty_materialization,
     generate_helix_materialization, generate_terminal_materialization,
-    generate_yazi_materialization, generate_zellij_materialization, materialize_runtime_state,
-    normalize_config, plan_runtime_materialization, record_config_state, render_yzx_help,
-    repair_runtime_materialization, success_envelope, sync_yzx_extern_bridge, yzx_command_metadata,
-    yzx_command_metadata_data,
+    generate_yazi_materialization, generate_zellij_materialization,
+    install_ownership_request_from_env, install_ownership_request_from_env_with_runtime_dir,
+    materialize_runtime_state, normalize_config, plan_runtime_materialization, record_config_state,
+    render_yzx_help, repair_runtime_materialization, success_envelope, sync_yzx_extern_bridge,
+    yzx_command_metadata, yzx_command_metadata_data,
 };
 
 const CONFIG_NORMALIZE_COMMAND: &str = "config.normalize";
@@ -441,6 +442,8 @@ fn run_doctor_runtime_evaluate(mut parser: lexopt::Parser) -> Result<(), CoreErr
 
 fn run_install_ownership_evaluate(mut parser: lexopt::Parser) -> Result<(), CoreError> {
     let mut request_json: Option<String> = None;
+    let mut from_env = false;
+    let mut runtime_dir: Option<PathBuf> = None;
 
     while let Some(arg) = parser
         .next()
@@ -448,22 +451,46 @@ fn run_install_ownership_evaluate(mut parser: lexopt::Parser) -> Result<(), Core
     {
         match arg {
             Long("request-json") => request_json = Some(parser_string_value(&mut parser)?),
+            Long("from-env") => from_env = true,
+            Long("runtime-dir") => runtime_dir = Some(parser_path_value(&mut parser)?),
             _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
         }
     }
 
-    let request_json =
-        request_json.ok_or_else(|| CoreError::usage("Missing --request-json payload"))?;
-    let request: InstallOwnershipEvaluateRequest =
-        serde_json::from_str(&request_json).map_err(|error| {
-            CoreError::classified(
-                ErrorClass::Usage,
-                "invalid_request_json",
-                format!("Invalid install-ownership request JSON: {error}"),
-                "Pass one valid JSON payload via --request-json.",
-                serde_json::json!({}),
-            )
-        })?;
+    let request = match (from_env, request_json) {
+        (true, Some(_)) => {
+            return Err(CoreError::usage(
+                "Use either --from-env or --request-json for install-ownership.evaluate, not both.",
+            ));
+        }
+        (true, None) => match runtime_dir {
+            Some(runtime_dir) => install_ownership_request_from_env_with_runtime_dir(runtime_dir)?,
+            None => install_ownership_request_from_env()?,
+        },
+        (false, Some(request_json)) => {
+            if runtime_dir.is_some() {
+                return Err(CoreError::usage(
+                    "Use --runtime-dir only with --from-env for install-ownership.evaluate.",
+                ));
+            }
+            serde_json::from_str::<InstallOwnershipEvaluateRequest>(&request_json).map_err(
+                |error| {
+                    CoreError::classified(
+                        ErrorClass::Usage,
+                        "invalid_request_json",
+                        format!("Invalid install-ownership request JSON: {error}"),
+                        "Pass one valid JSON payload via --request-json.",
+                        serde_json::json!({}),
+                    )
+                },
+            )?
+        }
+        (false, None) => {
+            return Err(CoreError::usage(
+                "Missing --request-json payload or --from-env for install-ownership.evaluate.",
+            ));
+        }
+    };
     let data = evaluate_install_ownership_report(&request);
     write_success_envelope(INSTALL_OWNERSHIP_EVALUATE_COMMAND, data)
 }

@@ -668,6 +668,59 @@ fn install_ownership_evaluate_prints_ok_envelope() {
     assert!(envelope["data"]["desktop_entry_freshness"]["message"].is_string());
 }
 
+// Defends: install-ownership.evaluate can build the env-derived request in Rust without a Nushell bridge.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn install_ownership_evaluate_from_env_resolves_stable_profile_wrapper() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let config_dir = home.join(".config").join("yazelix");
+    let xdg_data = home.join(".local").join("share");
+    let state_dir = xdg_data.join("yazelix");
+    let profile_yzx = home.join(".nix-profile").join("bin").join("yzx");
+
+    fs::create_dir_all(config_dir.join("user_configs")).unwrap();
+    fs::create_dir_all(profile_yzx.parent().unwrap()).unwrap();
+    fs::write(
+        config_dir.join("user_configs").join("yazelix.toml"),
+        "[core]\n",
+    )
+    .unwrap();
+    fs::write(&profile_yzx, "#!/bin/sh\nexit 0\n").unwrap();
+
+    let output = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .arg("install-ownership.evaluate")
+        .arg("--from-env")
+        .arg("--runtime-dir")
+        .arg(&repo)
+        .env("HOME", &home)
+        .env("XDG_CONFIG_HOME", home.join(".config"))
+        .env("XDG_DATA_HOME", &xdg_data)
+        .env("YAZELIX_CONFIG_DIR", &config_dir)
+        .env("YAZELIX_STATE_DIR", &state_dir)
+        .env("USER", "alice")
+        .env_remove("YAZELIX_INVOKED_YZX_PATH")
+        .env_remove("YAZELIX_REDIRECTED_FROM_STALE_YZX_PATH")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["command"], "install-ownership.evaluate");
+    assert_eq!(envelope["status"], "ok");
+    assert_eq!(
+        envelope["data"]["stable_yzx_wrapper"],
+        profile_yzx.to_string_lossy().to_string()
+    );
+    assert_eq!(
+        envelope["data"]["desktop_launcher_path"],
+        profile_yzx.to_string_lossy().to_string()
+    );
+}
+
 // Defends: doctor-helix.evaluate emits one machine-readable report envelope for a minimal request.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
