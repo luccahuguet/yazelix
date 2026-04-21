@@ -46,17 +46,14 @@ not progress toward the current repo goal.
 
 ## Delete Now
 
-There are not many pure runtime-code deletes left with zero replacement work.
-The easiest immediate deletes are stale planning surfaces and tiny bridge veneers
-that no longer justify surviving as named owners.
+The old zero-replacement doc deletes are done. `yazelix-k0f3` verified that
+`docs/specs/yzx_env_run_rust_owner_transition.md` and
+`docs/specs/yzx_command_surface_backend_coupling.md` are already gone from the
+tracked tree, and `spec_inventory.md` keeps them out of active planning.
 
-| Surface | Approx size | Why delete now | Replacement or stop condition |
-| --- | ---: | --- | --- |
-| `docs/specs/yzx_env_run_rust_owner_transition.md` | doc only | Assumes public Nushell `yzx env` and `yzx run` owners still exist even though `yzx_control` already owns them | Delete it and point future planning at the current Rust control-plane owners |
-| `docs/specs/yzx_command_surface_backend_coupling.md` | doc only | Treats deleted `yzx env.nu`, `yzx run.nu`, and `yzx packs.nu` surfaces as live planning anchors | Delete it and stop using it as live architecture guidance |
-
-Most remaining product-side Nushell is not "delete now" code. It either bridges
-to an existing Rust owner or still owns real behavior.
+There are no remaining pure runtime-code deletes with zero replacement work.
+Most remaining product-side Nushell either bridges to an existing Rust owner or
+still owns real behavior.
 
 ## Bridge Layer To Collapse
 
@@ -115,10 +112,10 @@ bridge and materialization lanes.
 
 ## Recommended Delete Order
 
-1. Remove stale transition docs and tiny plan bridges
-2. Collapse the `yzx_core` and `yzx_control` Nu bridge owners into one minimal transport layer
-3. Finish split wrapper-collapse follow-ups such as terminal and Helix before inventing a new "big Rust port" lane
-4. Continue public command ownership only where the next cut deletes a real parser or command-body owner
+1. Collapse the remaining `yzx_core` and `yzx_control` Nu bridge owners into one minimal transport layer
+2. Keep wrapper-collapse follow-ups honest: terminal, Helix, Yazi, Zellij, runtime materialization, and extern lifecycle are already Rust-owned or wrapper-deleted lanes, not new "big Rust port" targets
+3. Continue public command ownership only where the next cut deletes a real parser or command-body owner
+4. Revisit stale specs only when a new inventory check finds a concrete removed owner still listed as live guidance
 
 The first public metadata cut landed under `yazelix-ulb2.7`: root help, palette
 inventory, and generated externs no longer probe the Nushell command tree. The

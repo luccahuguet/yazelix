@@ -36,8 +36,10 @@ guarantee by itself.
 
 ## Removed From Active Planning
 
-The following stale transition specs were removed on `2026-04-20` because they
-described deleted public Nushell owners rather than the current repo:
+The following stale transition specs were removed before the current inventory
+because they described deleted public Nushell owners rather than the current
+repo. `yazelix-k0f3` re-verified on `2026-04-21` that they are absent from the
+tracked tree and should not be recreated as live planning anchors:
 
 - `yzx_env_run_rust_owner_transition.md`
 - `yzx_command_surface_backend_coupling.md`
@@ -123,6 +125,7 @@ Status labels:
 ## Traceability
 
 - Bead: `yazelix-a3x1`
+- Follow-up cleanup: `yazelix-k0f3`
 - Defended by: `nu nushell/scripts/dev/validate_specs.nu`
 
 ## Open Questions
