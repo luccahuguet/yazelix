@@ -3,10 +3,11 @@
 # Defends: docs/specs/test_suite_governance.md
 
 use ../yzx/screen.nu [get_yzx_screen_cycle_frames resolve_yzx_screen_style]
-use ../utils/ascii_art.nu [get_logo_welcome_frame get_max_visible_width]
+use ../utils/ascii_art.nu [get_logo_welcome_frame get_max_visible_width resolve_screen_style]
 use ../utils/ascii_art.nu [get_game_of_life_screen_state render_game_of_life_screen_state step_game_of_life_screen_state]
 
 # Defends: yzx screen rejects the unsupported static style.
+# Contract: FRONT-003
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_screen_style_rejects_static [] {
     print "🧪 Testing yzx screen rejects the non-animated static style..."
@@ -27,6 +28,7 @@ def test_screen_style_rejects_static [] {
 }
 
 # Defends: the glider-swarm Game of Life screen cycle stays bounded and omits the resting logo frame.
+# Contract: FRONT-004
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_game_of_life_screen_cycle_stays_bounded_and_omits_resting_logo [] {
     print "🧪 Testing yzx screen uses the glider-swarm Game of Life cycle instead of the resting welcome frame..."
@@ -55,6 +57,7 @@ def test_game_of_life_screen_cycle_stays_bounded_and_omits_resting_logo [] {
 }
 
 # Invariant: a Game of Life screen state rolls forward between frames.
+# Contract: FRONT-004
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_game_of_life_screen_state_rolls_forward [] {
     print "🧪 Testing yzx screen keeps a live rolling Game of Life state instead of replaying a short canned cycle..."
@@ -78,7 +81,40 @@ def test_game_of_life_screen_state_rolls_forward [] {
     }
 }
 
+# Defends: random screen selection stays inside the retained Game of Life pool.
+# Contract: FRONT-002
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
+def test_random_screen_style_resolves_only_to_retained_game_of_life_pool [] {
+    print "🧪 Testing random screen selection stays inside the retained Game of Life pool..."
+
+    try {
+        let retained_pool = [
+            "game_of_life_gliders"
+            "game_of_life_oscillators"
+            "game_of_life_bloom"
+        ]
+        let picks = (
+            0..5
+            | each {|index| resolve_screen_style "random" $index }
+            | uniq
+        )
+        let picks_are_retained = ($picks | all {|style| $style in $retained_pool })
+
+        if $picks_are_retained and (($picks | length) == 3) {
+            print "  ✅ random screen selection stays inside the retained Game of Life pool"
+            true
+        } else {
+            print $"  ❌ Random screen selection escaped the retained pool: ($picks | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 # Defends: the public Game of Life styles are split into three distinct named variants.
+# Contract: FRONT-001
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_game_of_life_seed_layouts_are_distinct [] {
     print "🧪 Testing the public Game of Life styles stay distinct instead of hiding one layout behind multiple names..."
@@ -112,6 +148,7 @@ export def run_screen_canonical_tests [] {
         (test_screen_style_rejects_static)
         (test_game_of_life_screen_cycle_stays_bounded_and_omits_resting_logo)
         (test_game_of_life_screen_state_rolls_forward)
+        (test_random_screen_style_resolves_only_to_retained_game_of_life_pool)
         (test_game_of_life_seed_layouts_are_distinct)
     ]
 }
