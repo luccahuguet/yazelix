@@ -16,6 +16,7 @@ pub mod install_ownership_env;
 pub mod install_ownership_report;
 pub mod internal_nu_runner;
 pub mod keys_commands;
+pub mod launch_materialization;
 pub mod public_command_surface;
 pub mod repo_contract_validation;
 pub mod repo_validation;
@@ -73,6 +74,10 @@ pub use install_ownership_report::{
     InstallOwnershipEvaluateRequest, evaluate_install_ownership_report,
 };
 pub use keys_commands::run_yzx_keys;
+pub use launch_materialization::{
+    LaunchMaterializationData, LaunchMaterializationRequest,
+    launch_materialization_request_from_env, prepare_launch_materialization,
+};
 pub use public_command_surface::{
     YzxCommandCategory, YzxCommandMetadata, YzxCommandParameter, YzxInternalNuRoutePlan,
     YzxMenuCategory, YzxParameterKind, YzxPublicRootRoute, classify_yzx_root_route,

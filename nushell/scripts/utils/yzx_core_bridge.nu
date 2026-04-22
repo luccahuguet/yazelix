@@ -12,6 +12,7 @@ const CONFIG_STATE_RECORD_COMMAND = "config-state.record"
 const GHOSTTY_MATERIALIZATION_GENERATE_COMMAND = "ghostty-materialization.generate"
 const RUNTIME_ENV_COMPUTE_COMMAND = "runtime-env.compute"
 const TERMINAL_MATERIALIZATION_GENERATE_COMMAND = "terminal-materialization.generate"
+const LAUNCH_MATERIALIZATION_PREPARE_COMMAND = "launch-materialization.prepare"
 
 def get_runtime_yzx_core_helper_path [runtime_dir: string] {
     $YZX_CORE_HELPER_RELATIVE_PATH | prepend $runtime_dir | path join
@@ -369,6 +370,47 @@ export def generate_terminal_materialization_via_yzx_core [
             "--terminals-json"
             ($selected_terminals | to json -r)
         ] "Yazelix Rust terminal-materialization helper returned invalid JSON."
+    }
+}
+
+export def prepare_launch_materialization_via_yzx_core [
+    selected_terminals?: list<string>
+    runtime_dir?: string
+    config_file?: string
+    --desktop-fast-path
+] {
+    let resolved_runtime_dir = if $runtime_dir == null {
+        require_yazelix_runtime_dir
+    } else {
+        $runtime_dir | path expand
+    }
+    let env_block = if ($config_file | default "" | str trim | is-not-empty) {
+        {
+            YAZELIX_RUNTIME_DIR: $resolved_runtime_dir
+            YAZELIX_CONFIG_OVERRIDE: $config_file
+        }
+    } else {
+        {YAZELIX_RUNTIME_DIR: $resolved_runtime_dir}
+    }
+    let error_surface = if ($config_file | default "" | str trim | is-not-empty) {
+        build_record_yzx_core_error_surface {config_file: $config_file}
+    } else {
+        build_default_yzx_core_error_surface
+    }
+    let resolved_selected_terminals = ($selected_terminals | default [])
+    mut helper_args = [
+        $LAUNCH_MATERIALIZATION_PREPARE_COMMAND
+        "--from-env"
+        "--selected-terminals-json"
+        ($resolved_selected_terminals | to json -r)
+    ]
+    if $desktop_fast_path {
+        $helper_args = ($helper_args | append "--desktop-fast-path")
+    }
+    let resolved_helper_args = $helper_args
+
+    with-env $env_block {
+        run_yzx_core_json_command $resolved_runtime_dir $error_surface $resolved_helper_args "Yazelix Rust launch-materialization helper returned invalid JSON."
     }
 }
 

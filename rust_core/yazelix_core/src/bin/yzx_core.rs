@@ -12,21 +12,22 @@ use yazelix_core::{
     ComputeConfigStateRequest, CoreError, DoctorConfigEvaluateRequest,
     DoctorRuntimeEvaluateRequest, ErrorClass, GhosttyMaterializationRequest,
     HelixDoctorEvaluateRequest, HelixMaterializationRequest, InstallOwnershipEvaluateRequest,
-    NormalizeConfigRequest, RecordConfigStateRequest, RuntimeContractEvaluateRequest,
-    RuntimeMaterializationPlanRequest, RuntimeMaterializationRepairEvaluateRequest,
-    StartupFactsData, StartupLaunchPreflightRequest, TerminalMaterializationRequest,
-    TransientPaneFactsData, YaziMaterializationRequest, YaziRenderPlanRequest,
-    YzxExternBridgeSyncRequest, ZellijMaterializationRequest, ZellijRenderPlanRequest,
-    compute_config_state, compute_integration_facts_from_env, compute_runtime_env,
-    compute_startup_facts_from_env, compute_status_report, compute_transient_pane_facts_from_env,
-    compute_yazi_render_plan, compute_zellij_render_plan, error_envelope,
-    evaluate_doctor_config_report, evaluate_doctor_runtime_report, evaluate_helix_doctor_report,
-    evaluate_install_ownership_report, evaluate_runtime_contract,
+    LaunchMaterializationRequest, NormalizeConfigRequest, RecordConfigStateRequest,
+    RuntimeContractEvaluateRequest, RuntimeMaterializationPlanRequest,
+    RuntimeMaterializationRepairEvaluateRequest, StartupFactsData, StartupLaunchPreflightRequest,
+    TerminalMaterializationRequest, TransientPaneFactsData, YaziMaterializationRequest,
+    YaziRenderPlanRequest, YzxExternBridgeSyncRequest, ZellijMaterializationRequest,
+    ZellijRenderPlanRequest, compute_config_state, compute_integration_facts_from_env,
+    compute_runtime_env, compute_startup_facts_from_env, compute_status_report,
+    compute_transient_pane_facts_from_env, compute_yazi_render_plan, compute_zellij_render_plan,
+    error_envelope, evaluate_doctor_config_report, evaluate_doctor_runtime_report,
+    evaluate_helix_doctor_report, evaluate_install_ownership_report, evaluate_runtime_contract,
     evaluate_startup_launch_preflight, generate_ghostty_materialization,
     generate_helix_materialization, generate_terminal_materialization,
     generate_yazi_materialization, generate_zellij_materialization,
     install_ownership_request_from_env, install_ownership_request_from_env_with_runtime_dir,
-    materialize_runtime_state, normalize_config, plan_runtime_materialization, record_config_state,
+    launch_materialization_request_from_env, materialize_runtime_state, normalize_config,
+    plan_runtime_materialization, prepare_launch_materialization, record_config_state,
     render_yzx_help, repair_runtime_materialization, success_envelope, sync_yzx_extern_bridge,
     yzx_command_metadata, yzx_command_metadata_data,
 };
@@ -56,6 +57,7 @@ const ZELLIJ_MATERIALIZATION_GENERATE_COMMAND: &str = "zellij-materialization.ge
 const HELIX_MATERIALIZATION_GENERATE_COMMAND: &str = "helix-materialization.generate";
 const GHOSTTY_MATERIALIZATION_GENERATE_COMMAND: &str = "ghostty-materialization.generate";
 const TERMINAL_MATERIALIZATION_GENERATE_COMMAND: &str = "terminal-materialization.generate";
+const LAUNCH_MATERIALIZATION_PREPARE_COMMAND: &str = "launch-materialization.prepare";
 const YZX_COMMAND_METADATA_LIST_COMMAND: &str = "yzx-command-metadata.list";
 const YZX_COMMAND_METADATA_EXTERNS_COMMAND: &str = "yzx-command-metadata.externs";
 const YZX_COMMAND_METADATA_SYNC_EXTERNS_COMMAND: &str = "yzx-command-metadata.sync-externs";
@@ -237,6 +239,11 @@ fn run() -> Result<(), Box<CommandError>> {
         TERMINAL_MATERIALIZATION_GENERATE_COMMAND => {
             let command_for_error = command.clone();
             run_terminal_materialization_generate(parser)
+                .map_err(|error| CommandError::new(command_for_error, error))
+        }
+        LAUNCH_MATERIALIZATION_PREPARE_COMMAND => {
+            let command_for_error = command.clone();
+            run_launch_materialization_prepare(parser)
                 .map_err(|error| CommandError::new(command_for_error, error))
         }
         YZX_COMMAND_METADATA_LIST_COMMAND => {
@@ -834,6 +841,43 @@ fn run_terminal_materialization_generate(mut parser: lexopt::Parser) -> Result<(
     };
     let data = generate_terminal_materialization(&request)?;
     write_success_envelope(TERMINAL_MATERIALIZATION_GENERATE_COMMAND, data)
+}
+
+fn run_launch_materialization_prepare(mut parser: lexopt::Parser) -> Result<(), CoreError> {
+    let mut selected_terminals_json: Option<String> = None;
+    let mut desktop_fast_path = false;
+    let mut from_env = false;
+
+    while let Some(arg) = parser
+        .next()
+        .map_err(|error| CoreError::usage(error.to_string()))?
+    {
+        match arg {
+            Long("from-env") => from_env = true,
+            Long("desktop-fast-path") => desktop_fast_path = true,
+            Long("selected-terminals-json") => {
+                selected_terminals_json = Some(parser_string_value(&mut parser)?)
+            }
+            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
+        }
+    }
+
+    if !from_env {
+        return Err(CoreError::usage(
+            "launch-materialization.prepare currently requires --from-env.",
+        ));
+    }
+
+    let selected_terminals = match selected_terminals_json {
+        Some(raw) => serde_json::from_str::<Vec<String>>(&raw).map_err(|error| {
+            CoreError::usage(format!("Invalid --selected-terminals-json: {error}"))
+        })?,
+        None => Vec::new(),
+    };
+    let request: LaunchMaterializationRequest =
+        launch_materialization_request_from_env(selected_terminals, desktop_fast_path)?;
+    let data = prepare_launch_materialization(&request)?;
+    write_success_envelope(LAUNCH_MATERIALIZATION_PREPARE_COMMAND, data)
 }
 
 fn run_runtime_env_compute(mut parser: lexopt::Parser) -> Result<(), CoreError> {

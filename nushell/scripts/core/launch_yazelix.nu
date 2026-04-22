@@ -2,29 +2,16 @@
 # ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu
 # Nushell version of the Yazelix launcher
 
-use ../utils/startup_facts.nu [load_startup_facts]
 use ../utils/terminal_launcher.nu *
 use ../utils/constants.nu [DEFAULT_TERMINAL SUPPORTED_TERMINALS, TERMINAL_METADATA]
 use ../utils/common.nu [get_yazelix_runtime_dir normalize_path_entries require_yazelix_runtime_dir]
 use ../utils/startup_profile.nu [profile_startup_step propagate_startup_profile_env]
-use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface compute_config_state_via_yzx_core generate_ghostty_materialization_via_yzx_core generate_terminal_materialization_via_yzx_core run_yzx_core_request_json_command]
+use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface compute_config_state_via_yzx_core prepare_launch_materialization_via_yzx_core run_yzx_core_request_json_command]
 
 const STARTUP_LAUNCH_PREFLIGHT_EVALUATE_COMMAND = "startup-launch-preflight.evaluate"
 
-def ghostty_cursor_random_requested [config: record] {
-    [
-        ($config.ghostty_trail_color? | default "")
-        ($config.ghostty_trail_effect? | default "")
-        ($config.ghostty_mode_effect? | default "")
-    ] | any {|value| ($value | into string | str trim) == "random" }
-}
-
 def get_launch_command_search_paths [] {
     normalize_path_entries ($env.PATH? | default [])
-}
-
-def normalize_selected_terminals [selected_terminals: list<string>] {
-    $selected_terminals | where {|terminal| $terminal in $SUPPORTED_TERMINALS} | uniq
 }
 
 def materialize_selected_terminal_configs [
@@ -33,14 +20,12 @@ def materialize_selected_terminal_configs [
     config_file?: string
 ] {
     let resolved_runtime_dir = (($runtime_dir | default (get_yazelix_runtime_dir)) | path expand)
-    let terminals = (normalize_selected_terminals $selected_terminals)
+    print "Generating bundled terminal configurations..."
+    let materialization = (prepare_launch_materialization_via_yzx_core $selected_terminals $resolved_runtime_dir $config_file)
+    let terminals = ($materialization.selected_terminals? | default [])
     if ($terminals | is-empty) {
         return
     }
-
-    print "Generating bundled terminal configurations..."
-
-    generate_terminal_materialization_via_yzx_core $terminals $resolved_runtime_dir $config_file | ignore
 
     let generated = ($terminals | each {|t| ($TERMINAL_METADATA | get -o $t | default {} | get -o name | default $t) })
     let generated_list = ($generated | str join ", ")
@@ -54,40 +39,8 @@ export def generate_selected_terminal_configs [selected_terminals: list<string>,
 }
 
 # Compatibility wrapper used by tests and install validation.
-export def generate_all_terminal_configs [runtime_dir?: string] {
-    let startup_facts = (load_startup_facts)
-    let terminals = ($startup_facts.terminals? | default [$DEFAULT_TERMINAL])
-    if ($terminals | is-empty) {
-        error make {msg: "terminal.terminals must include at least one terminal"}
-    }
-
-    materialize_selected_terminal_configs $terminals $runtime_dir
-}
-
-def reroll_ghostty_random_cursor_config_for_launch [
-    config: record
-    runtime_dir?: string
-    config_file?: string
-    --quiet
-] {
-    if not (ghostty_cursor_random_requested $config) {
-        return false
-    }
-
-    let resolved_runtime_dir = (($runtime_dir | default (get_yazelix_runtime_dir)) | path expand)
-    let resolved_config_file = ($config_file | default "")
-
-    if not $quiet {
-        print "🎲 Rerolling Ghostty random cursor settings for this Yazelix window..."
-    }
-
-    generate_ghostty_materialization_via_yzx_core $resolved_runtime_dir $resolved_config_file | ignore
-
-    if not $quiet {
-        print "✓ Rerolled Ghostty cursor settings"
-    }
-
-    true
+export def generate_all_terminal_configs [runtime_dir?: string, config_file?: string] {
+    materialize_selected_terminal_configs [] $runtime_dir $config_file
 }
 
 def validate_launch_working_dir [working_dir: string] {
@@ -128,42 +81,21 @@ def run_launch_preflight [working_dir: string, requested_terminal: string, termi
     }
 }
 
-def ensure_terminal_configs_available_for_candidates [terminal_candidates: list<record>, terminal_config_mode: string, runtime_dir: string] {
-    if $terminal_config_mode != "yazelix" {
-        return
-    }
-
-    let candidate_terminals = ($terminal_candidates | each {|candidate| $candidate.terminal } | uniq)
-    let needs_generation = (
-        $candidate_terminals
-        | any {|terminal|
-            let config_path = (resolve_terminal_config $terminal $terminal_config_mode)
-            not ($config_path | path exists)
-        }
-    )
-
-    if $needs_generation {
-        materialize_selected_terminal_configs $candidate_terminals $runtime_dir
-    }
-}
-
-def reroll_ghostty_random_cursor_config_for_launch_candidates [
+export def reroll_ghostty_random_cursor_config_for_launch_candidates [
     terminal_candidates: list<record>
     terminal_config_mode: string
     runtime_dir: string
     config: record
     verbose_mode: bool
 ] {
-    if $terminal_config_mode != "yazelix" {
-        return false
+    let candidate_terminals = ($terminal_candidates | each {|candidate| $candidate.terminal } | uniq)
+    let materialization = (prepare_launch_materialization_via_yzx_core $candidate_terminals $runtime_dir --desktop-fast-path)
+    let rerolled = ($materialization.rerolled_ghostty_cursor? | default false)
+    if $rerolled and $verbose_mode {
+        print "🎲 Rerolling Ghostty random cursor settings for this Yazelix window..."
+        print "✓ Rerolled Ghostty cursor settings"
     }
-
-    let will_try_ghostty = ($terminal_candidates | any {|candidate| $candidate.terminal == "ghostty" })
-    if not $will_try_ghostty {
-        return false
-    }
-
-    reroll_ghostty_random_cursor_config_for_launch $config $runtime_dir --quiet=(not $verbose_mode)
+    $rerolled
 }
 
 def describe_terminal_invocation [terminal_info: record, terminal_config] {
@@ -335,7 +267,6 @@ def main [
         print $"Launch directory: ($working_dir)"
     }
 
-    let terminal_config_mode = $config.terminal_config_mode
     let terminals = ($config.terminals? | default [$DEFAULT_TERMINAL] | uniq)
     if ($terminals | is-empty) {
         let available = ($SUPPORTED_TERMINALS | where {|t| which $t | is-not-empty })
@@ -350,25 +281,23 @@ def main [
         exit 1
     }
 
+    let terminal_config_mode = $config.terminal_config_mode
     let runtime_dir = (get_yazelix_runtime_dir)
     let terminal_candidates = (profile_startup_step $component "resolve_terminals" {
         $launch_preflight.terminal_candidates
     })
     if $desktop_fast_path {
-        profile_startup_step $component "generate_terminal_configs" {
-            ensure_terminal_configs_available_for_candidates $terminal_candidates $terminal_config_mode $runtime_dir
-        } | ignore
-        profile_startup_step $component "reroll_ghostty_cursor" {
-            reroll_ghostty_random_cursor_config_for_launch_candidates $terminal_candidates $terminal_config_mode $runtime_dir $config $verbose_mode
+        profile_startup_step $component "prepare_terminal_artifacts" {
+            let candidate_terminals = ($terminal_candidates | each {|candidate| $candidate.terminal } | uniq)
+            let materialization = (prepare_launch_materialization_via_yzx_core $candidate_terminals $runtime_dir $active_config_file --desktop-fast-path)
+            if ($materialization.rerolled_ghostty_cursor? | default false) and $verbose_mode {
+                print "🎲 Rerolling Ghostty random cursor settings for this Yazelix window..."
+                print "✓ Rerolled Ghostty cursor settings"
+            }
         } | ignore
     } else {
-        # Generate all terminal configurations for safety and consistency
         profile_startup_step $component "generate_all_terminal_configs" {
-            let terminals = ($config.terminals? | default [$DEFAULT_TERMINAL])
-            if ($terminals | is-empty) {
-                error make {msg: "terminal.terminals must include at least one terminal"}
-            }
-            materialize_selected_terminal_configs $terminals $runtime_dir $active_config_file
+            generate_all_terminal_configs $runtime_dir $active_config_file
         } | ignore
     }
     profile_startup_step $component "launch_terminal" {

@@ -567,9 +567,22 @@ def test_active_config_normalize_uses_runtime_yzx_core_helper_when_present [] {
     let runtime_base = (setup_fake_packaged_runtime_fixture "yazelix_rust_config_helper_runtime")
     let runtime = (install_fake_yzx_core_helper $runtime_base $'#!/bin/sh
 printf "%s\n" "$@" > "$YAZELIX_TEST_YZX_CORE_ARGS_LOG"
-cat <<JSON
+case "$1" in
+  config-surface.resolve)
+    cat <<JSON
+{"schema_version":1,"command":"config-surface.resolve","status":"ok","data":{"config_file":"($fixture.config_path)","default_config_path":"(($runtime_base.runtime_root | path join "yazelix_default.toml"))","contract_path":"(($runtime_base.runtime_root | path join "config_metadata" "main_config_contract.toml"))"},"warnings":[]}
+JSON
+    ;;
+  config.normalize)
+    cat <<JSON
 {"schema_version":1,"command":"config.normalize","status":"ok","data":{"normalized_config":{"default_shell":"from_rust_helper","config_file":"from-helper"},"config_file":"from-helper","diagnostic_report":{}},"warnings":[]}
 JSON
+    ;;
+  *)
+    echo "unexpected command: $1" >&2
+    exit 64
+    ;;
+esac
 ')
 
     let result = (try {
@@ -618,11 +631,24 @@ def test_active_config_normalize_surfaces_yzx_core_config_errors_without_fallbac
 
     let fixture = (setup_managed_config_fixture "yazelix_rust_config_helper_error" "[shell]\ndefault_shell = \"fish\"\n")
     let runtime_base = (setup_fake_packaged_runtime_fixture "yazelix_rust_config_helper_error_runtime")
-    let runtime = (install_fake_yzx_core_helper $runtime_base '#!/bin/sh
-cat >&2 <<JSON
+    let runtime = (install_fake_yzx_core_helper $runtime_base $'#!/bin/sh
+case "$1" in
+  config-surface.resolve)
+    cat <<JSON
+{"schema_version":1,"command":"config-surface.resolve","status":"ok","data":{"config_file":"($fixture.config_path)","default_config_path":"(($runtime_base.runtime_root | path join "yazelix_default.toml"))","contract_path":"(($runtime_base.runtime_root | path join "config_metadata" "main_config_contract.toml"))"},"warnings":[]}
+JSON
+    ;;
+  config.normalize)
+    cat >&2 <<JSON
 {"schema_version":1,"command":"config.normalize","status":"error","error":{"class":"config","code":"invalid_config_value","message":"helper rejected the config","remediation":"fix the config value","details":{"field":"shell.default_shell"}}}
 JSON
-exit 65
+    exit 65
+    ;;
+  *)
+    echo "unexpected command: $1" >&2
+    exit 64
+    ;;
+esac
 ')
 
     let result = (try {
