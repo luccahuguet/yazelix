@@ -123,6 +123,28 @@ The traceability-validator port should add no new crates.
   - one maintainer-focused Rust validator binary is acceptable
   - the old Nu parser ownership must still be deleted or demoted
 
+The config and upgrade validator port should also add no new crates.
+
+- production crates reused:
+  - `serde_json`
+  - `toml`
+- in-house logic kept:
+  - Home Manager parity checks via fixed `nix eval` probes
+  - upgrade-notes and changelog contract checks
+  - generated-state fixture validation through existing Rust `config_state`
+    ownership
+- rejected alternatives:
+  - a second dedicated validator binary, because the existing
+    `yzx_repo_validator` already owns maintainer-facing deterministic repo
+    checks
+  - keeping `yzx_core_bridge.nu` or config/upgrade parsing in Nu, because that
+    would preserve redundant validator ownership after Rust already owns the
+    live config-state logic
+- packaging impact:
+  - the surviving Nu validators may remain only as thin compatibility shims
+    that invoke the Rust validator binary
+  - any remaining `git` and `nix` probe layer must stay explicit and fixed-argv
+
 ## Verification
 
 - `nu nushell/scripts/dev/validate_specs.nu`

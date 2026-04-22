@@ -30,10 +30,8 @@ def setup_repo_fixture [] {
     mkdir ($fixture_root | path join "docs")
     mkdir ($fixture_root | path join "nushell")
     mkdir ($fixture_root | path join "nushell" "scripts")
-    mkdir ($fixture_root | path join "nushell" "scripts" "dev")
     ^cp ($repo_root | path join "CHANGELOG.md") ($fixture_root | path join "CHANGELOG.md")
     ^cp ($repo_root | path join "docs" "upgrade_notes.toml") ($fixture_root | path join "docs" "upgrade_notes.toml")
-    ^cp ($repo_root | path join "nushell" "scripts" "dev" "validate_upgrade_contract.nu") ($fixture_root | path join "nushell" "scripts" "dev" "validate_upgrade_contract.nu")
     mkdir ($fixture_root | path join "nushell" "scripts" "utils")
     ^cp ($repo_root | path join "nushell" "scripts" "utils" "constants.nu") ($fixture_root | path join "nushell" "scripts" "utils" "constants.nu")
     ^git -C $fixture_root init --quiet
@@ -44,21 +42,25 @@ def setup_repo_fixture [] {
     "" | save --force --raw $log_file
 
     {
+        repo_root: $repo_root
         fixture_root: $fixture_root
         log_file: $log_file
-        validator: ($fixture_root | path join "nushell" "scripts" "dev" "validate_upgrade_contract.nu")
         changelog: ($fixture_root | path join "CHANGELOG.md")
         notes: ($fixture_root | path join "docs" "upgrade_notes.toml")
     }
 }
 
 def run_validator [fixture: record, ci: bool = false] {
-    cd $fixture.fixture_root
-
     if $ci {
-        ^nu $fixture.validator --ci --diff-base HEAD~1 | complete
+        do {
+            cd $fixture.repo_root
+            ^nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- --repo-root $fixture.fixture_root validate-upgrade-contract --ci --diff-base HEAD~1
+        } | complete
     } else {
-        ^nu $fixture.validator | complete
+        do {
+            cd $fixture.repo_root
+            ^nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- --repo-root $fixture.fixture_root validate-upgrade-contract
+        } | complete
     }
 }
 

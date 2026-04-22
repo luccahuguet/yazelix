@@ -17,6 +17,7 @@ pub mod install_ownership_report;
 pub mod internal_nu_runner;
 pub mod keys_commands;
 pub mod public_command_surface;
+pub mod repo_contract_validation;
 pub mod repo_validation;
 pub mod runtime_contract;
 pub mod runtime_env;
