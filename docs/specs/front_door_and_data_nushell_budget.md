@@ -112,6 +112,44 @@ Do not preserve dead assets or style aliases for compatibility comfort. Keep
 only the styles and payloads backed by the live contract in
 `docs/specs/welcome_screen_style_contract.md`.
 
+## `yazelix-dejl.5` Ascii-Art Engine Decision
+
+Decision after `yazelix-dejl.2`:
+
+- static style tables, welcome copy, and Game of Life seed shapes should leave
+  `ascii_art.nu`
+- the remaining `ascii_art.nu` engine does not yet have an honest Rust owner
+  cut
+
+Reason:
+
+- the surviving code is now mostly width-aware frame composition, ANSI-aware
+  rendering, and live Game of Life state evolution that is consumed directly by
+  the shell-owned `setup/welcome.nu` and `yzx/screen.nu` surfaces
+- moving that code to Rust right now would not delete the shell-owned playback,
+  interruptibility, and terminal-size boundaries
+- without a narrower retained renderer contract, a Rust port would mostly
+  recreate the same front-door engine behind another bridge
+
+Explicit stop condition:
+
+- do not start a broad Rust port of the remaining `ascii_art.nu` engine until
+  a later front-door owner cut deletes `welcome.nu` plus `ascii_art.nu`
+  materially end to end, or until the retained style surface is narrowed enough
+  that the surviving renderer becomes a clearly smaller typed owner
+
+Retained Nu floor for now:
+
+- style resolution against the canonical welcome/screen contract
+- width-aware line composition and ANSI coloring
+- live Game of Life state stepping and rendering
+
+Follow-up expectation:
+
+- keep deleting data and duplicated style policy first
+- only reopen a Rust engine lane if it deletes the remaining front-door Nu
+  owner instead of wrapping it
+
 ## Verification
 
 - `nu nushell/scripts/dev/validate_specs.nu`
