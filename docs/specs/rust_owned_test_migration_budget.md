@@ -86,6 +86,24 @@ Those deletions are not the end state. They are the first cut.
    - delete the remaining redundant Nu tests after the replacement Rust
      coverage lands
 
+## Generated-Config Split
+
+`yazelix-rdn7.4.5.6` narrows `test_yzx_generated_configs.nu` into these
+explicit buckets:
+
+| Cluster | Current Nu tests | Bucket | Why |
+| --- | --- | --- | --- |
+| active-config, helper-selection, config-state, and schema checks | `test_active_config_normalize_uses_runtime_yzx_core_helper_when_present`, `test_active_config_normalize_surfaces_yzx_core_config_errors_without_fallback`, `test_active_config_normalize_rejects_packaged_runtime_missing_yzx_core`, `test_active_config_normalize_source_checkout_uses_explicit_yzx_core_helper`, `test_active_config_normalize_source_checkout_missing_helper_does_not_fallback`, `test_run_yzx_core_request_prefers_newer_source_checkout_helper_over_stale_release`, `test_record_materialized_state_accepts_symlinked_managed_main_config`, `test_user_mode_requires_real_terminal_config`, `test_config_schema_rejects_removed_enum_values` | `strong_rust_port` | these assertions defend Rust-owned `yzx_core` config normalization, helper selection, and config-state behavior rather than an honest surviving Nu owner |
+| Yazi and Zellij materialization / render-plan contracts | `test_generate_merged_zellij_config_reuses_unchanged_state_and_invalidates_on_input_change`, `test_generate_merged_yazi_config_rejects_legacy_user_overrides`, `test_generate_merged_yazi_config_syncs_starship_plugin_config`, `test_generate_merged_yazi_config_renders_runtime_placeholders_in_plugins`, `test_generate_merged_yazi_config_skips_unchanged_managed_file_rewrites`, `test_generated_runtime_configs_prefer_active_runtime_over_installed_reference`, `test_generate_merged_zellij_config_carries_sidebar_width_to_layouts_and_plugin_config`, `test_generate_merged_zellij_config_caps_zjstatus_tab_window_with_overflow_markers`, `test_generate_merged_zellij_config_binds_ctrl_y_directly_to_pane_orchestrator_toggle`, `test_generate_merged_zellij_config_keeps_alt_m_pane_orchestrator_message_session_local`, `test_generate_merged_zellij_config_routes_popup_and_menu_through_shared_transient_pane_contract`, `test_generate_merged_zellij_config_sets_on_force_close_by_session_mode`, `test_generate_merged_zellij_config_replaces_conflicting_ui_and_serialization_settings`, `test_generate_merged_zellij_config_uses_native_user_config_without_relocating_it`, `test_generate_merged_zellij_config_prefers_managed_user_config_when_native_config_also_exists` | `strong_rust_port` | these are deterministic contracts around Rust-owned Yazi/Zellij materialization and render-plan logic and should move under `yazelix_core` nextest suites |
+| terminal launch and Ghostty wrapper behavior | `test_generate_all_terminal_configs_keeps_terminal_overrides_opt_in`, `test_terminal_override_imports_ignore_yazelix_dir_runtime_root`, `test_ghostty_linux_launch_command_keeps_linux_specific_flags`, `test_ghostty_linux_launch_command_prefers_runtime_owned_nixgl_wrapper`, `test_ghostty_wayland_wrapper_falls_back_to_simple_im_without_active_daemon`, `test_ghostty_wayland_wrapper_preserves_active_ibus_env`, `test_ghostty_macos_launch_command_omits_linux_specific_flags` | `blocked` | these still depend on the surviving terminal-launch and wrapper shell owners; port only after the `yazelix-nuj1`, `yazelix-p18h`, and `yazelix-lnk6` cuts leave an honest Rust owner or a fixed shell-floor seam |
+| bounded generated-artifact cleanup | `test_remove_path_within_root_refuses_root_and_outside_targets`, `test_remove_path_within_root_relaxes_read_only_managed_directories_before_recursive_cleanup`, `test_remove_path_within_root_recursive_cleanup_removes_managed_symlinks_without_touching_targets` | `blocked` | these still defend the Nu-owned bounded cleanup helpers and should not be copied into Rust until that owner cut is explicit |
+| wrapper argv trivia | `test_managed_wrapper_launch_command_does_not_forward_config_mode_flag` | `weak_delete` | this is internal launch-shape trivia about not leaking a private flag, not a durable user-facing contract worth preserving across the Rust migration |
+
+The next strong Rust port target inside this file is the Zellij/Yazi
+materialization and render-plan cluster because it is already fully
+deterministic, already Rust-owned, and large enough to delete a meaningful
+chunk of Nu assertions in one cut.
+
 ## What Cannot Survive
 
 These are not valid long-term steady states:
