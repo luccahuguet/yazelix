@@ -4,7 +4,6 @@
 
 use ../utils/ascii_art.nu *
 use ../utils/constants.nu [DEFAULT_TERMINAL YAZELIX_VERSION]
-use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/keypress_polling.nu poll_for_keypress_status
 use ../utils/upgrade_notes.nu get_current_major_series_entry
 use ../utils/upgrade_summary.nu get_upgrade_note_entry
@@ -52,30 +51,23 @@ def get_flake_info [yazelix_dir: string, colors: record]: nothing -> string {
     }
 }
 
-# Get persistent session info
-def get_session_info [colors: record]: nothing -> string {
-    try {
-        let config = parse_yazelix_config
-        if ($config.persistent_sessions == "true") {
-            $"($colors.green)🔗 Using persistent session: ($config.session_name)($colors.reset)"
-        } else {
-            $"($colors.yellow)🆕 Creating new Zellij session($colors.reset)"
-        }
-    } catch {
+def welcome_value_is_true [value] {
+    ($value | default false | into string | str downcase) == "true"
+}
+
+def format_session_info [facts: record, colors: record]: nothing -> string {
+    if (welcome_value_is_true ($facts.persistent_sessions? | default false)) {
+        let session_name = ($facts.session_name? | default "yazelix")
+        $"($colors.green)🔗 Using persistent session: ($session_name)($colors.reset)"
+    } else {
         $"($colors.yellow)🆕 Creating new Zellij session($colors.reset)"
     }
 }
 
-# Get terminal info
-def get_terminal_info [colors: record]: nothing -> string {
-    try {
-        let config = parse_yazelix_config
-        let terminals = ($config.terminals? | default [$DEFAULT_TERMINAL])
-        let preferred = if ($terminals | is-empty) { "unknown" } else { $terminals | first }
-        $"($colors.cyan)🖥️  Preferred host terminal: ($preferred)($colors.reset)"
-    } catch {
-        $"($colors.cyan)🖥️  Preferred host terminal: configuration not found($colors.reset)"
-    }
+def format_terminal_info [facts: record, colors: record]: nothing -> string {
+    let terminals = ($facts.terminals? | default [$DEFAULT_TERMINAL])
+    let preferred = if ($terminals | is-empty) { "unknown" } else { $terminals | first }
+    $"($colors.cyan)🖥️  Preferred host terminal: ($preferred)($colors.reset)"
 }
 
 # Build complete welcome message
@@ -114,10 +106,11 @@ def get_startup_release_headline [] {
 export def build_welcome_message [
     yazelix_dir: string
     colors: record
+    welcome_facts: record
 ]: nothing -> list<string> {
     let flake_info = get_flake_info $yazelix_dir $colors
-    let session_info = get_session_info $colors
-    let terminal_info = get_terminal_info $colors
+    let session_info = format_session_info $welcome_facts $colors
+    let terminal_info = format_terminal_info $welcome_facts $colors
     let release_headline = (get_startup_release_headline)
 
     [

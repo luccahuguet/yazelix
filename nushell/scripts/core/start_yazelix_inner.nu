@@ -71,7 +71,12 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     let log_dir = ($YAZELIX_LOGS_DIR | str replace "~" $env.HOME)
     mkdir $log_dir
     let colors = get_yazelix_colors
-    let welcome_message = build_welcome_message $yazelix_dir $colors
+    let welcome_facts = {
+        persistent_sessions: ($config.persistent_sessions? | default false)
+        session_name: ($config.session_name? | default "yazelix")
+        terminals: ($config.terminals? | default [])
+    }
+    let welcome_message = build_welcome_message $yazelix_dir $colors $welcome_facts
     profile_startup_step "inner" "show_welcome" {
         show_welcome $skip_welcome_screen $quiet_mode $config.welcome_style $config.welcome_duration_seconds $config.show_macchina_on_welcome $welcome_message $log_dir $colors
     } {

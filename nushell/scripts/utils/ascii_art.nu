@@ -1,9 +1,15 @@
 #!/usr/bin/env nu
 # Width-aware welcome art for Yazelix.
 
-export const WELCOME_STYLE_VALUES = ["static", "logo", "boids", "game_of_life_gliders", "game_of_life_oscillators", "game_of_life_bloom", "random"]
-export const ANIMATED_WELCOME_STYLE_VALUES = ["game_of_life_gliders", "game_of_life_oscillators", "game_of_life_bloom"]
-export const SCREEN_STYLE_VALUES = ["logo", "boids", "game_of_life_gliders", "game_of_life_oscillators", "game_of_life_bloom", "random"]
+const STYLE_CATALOG = [
+    { name: "static", welcome: true, screen: false, random: false }
+    { name: "logo", welcome: true, screen: true, random: false }
+    { name: "boids", welcome: true, screen: true, random: false }
+    { name: "game_of_life_gliders", welcome: true, screen: true, random: true }
+    { name: "game_of_life_oscillators", welcome: true, screen: true, random: true }
+    { name: "game_of_life_bloom", welcome: true, screen: true, random: true }
+    { name: "random", welcome: true, screen: true, random: false }
+]
 
 # Export the color scheme used in the welcome art for consistent styling.
 export def get_yazelix_colors [] {
@@ -20,8 +26,29 @@ export def get_yazelix_colors [] {
     }
 }
 
+def get_style_values_for_surface [surface: string] {
+    $STYLE_CATALOG
+    | where {|style|
+        match $surface {
+            "welcome" => $style.welcome
+            "screen" => $style.screen
+            "random" => $style.random
+            _ => false
+        }
+    }
+    | get name
+}
+
+def get_welcome_style_values [] {
+    get_style_values_for_surface "welcome"
+}
+
+def get_screen_style_values [] {
+    get_style_values_for_surface "screen"
+}
+
 def get_welcome_style_random_pool [] {
-    $ANIMATED_WELCOME_STYLE_VALUES
+    get_style_values_for_surface "random"
 }
 
 def is_game_of_life_style [style: string] {
@@ -30,6 +57,12 @@ def is_game_of_life_style [style: string] {
 
 def resolve_welcome_style [welcome_style: string, random_index?: int] {
     let normalized = ($welcome_style | into string | str downcase)
+    let allowed_styles = (get_welcome_style_values)
+
+    if not ($normalized in $allowed_styles) {
+        let allowed_text = ($allowed_styles | str join ", ")
+        error make {msg: $"Invalid welcome style '($normalized)'. Expected one of: ($allowed_text)"}
+    }
 
     if $normalized != "random" {
         return $normalized
@@ -61,9 +94,10 @@ def trim_resting_frame [frames: list<list<string>>] {
 
 export def resolve_screen_style [screen_style?: string, random_index?: int] {
     let requested = ($screen_style | default "random" | into string | str downcase)
+    let allowed_styles = (get_screen_style_values)
 
-    if not ($requested in $SCREEN_STYLE_VALUES) {
-        let allowed_text = ($SCREEN_STYLE_VALUES | str join ", ")
+    if not ($requested in $allowed_styles) {
+        let allowed_text = ($allowed_styles | str join ", ")
         error make {msg: $"Invalid screen style '($requested)'. Expected one of: ($allowed_text)"}
     }
 
@@ -995,10 +1029,6 @@ def get_welcome_ascii_art [width?: int] {
     get_logo_welcome_frame $width
 }
 
-export def get_animated_ascii_art [width?: int] {
-    get_logo_animation_frames $width
-}
-
 export def play_frames_interruptibly [frames: list<list<string>>, frame_delay: duration, poller?: closure, on_skip?: closure] {
     if ($frames | is-empty) {
         return false
@@ -1079,7 +1109,7 @@ export def render_welcome_style_interruptibly [welcome_style: string, duration_s
 
     if $resolved_style == "logo" {
         print ""
-        let frames = (get_animated_ascii_art $width)
+        let frames = (get_logo_animation_frames $width)
         return (play_frames_interruptibly $frames ($playback_duration / ($frames | length)) $poller $skip_to_resting_logo)
     }
 

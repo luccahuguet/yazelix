@@ -4,7 +4,8 @@
 
 use ../yzx/screen.nu [get_yzx_screen_cycle_frames resolve_yzx_screen_style]
 use ../utils/ascii_art.nu [get_logo_welcome_frame get_max_visible_width resolve_screen_style]
-use ../utils/ascii_art.nu [get_game_of_life_screen_state render_game_of_life_screen_state step_game_of_life_screen_state]
+use ../utils/ascii_art.nu [get_game_of_life_screen_state get_yazelix_colors render_game_of_life_screen_state step_game_of_life_screen_state]
+use ../setup/welcome.nu [build_welcome_message]
 
 # Defends: yzx screen rejects the unsupported static style.
 # Contract: FRONT-003
@@ -143,6 +144,36 @@ def test_game_of_life_seed_layouts_are_distinct [] {
     }
 }
 
+# Defends: welcome message assembly consumes explicit startup facts instead of reparsing config.
+# Contract: FRONT-005
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
+def test_welcome_message_uses_explicit_startup_facts [] {
+    print "🧪 Testing welcome message assembly uses explicit startup facts..."
+
+    try {
+        let colors = get_yazelix_colors
+        let message = (build_welcome_message (pwd) $colors {
+            persistent_sessions: true
+            session_name: "front_door_contract"
+            terminals: ["kitty"]
+        } | str join "\n")
+
+        if (
+            ($message | str contains "front_door_contract")
+            and ($message | str contains "Preferred host terminal: kitty")
+        ) {
+            print "  ✅ welcome message assembly consumes caller-provided session and terminal facts"
+            true
+        } else {
+            print $"  ❌ Welcome message ignored explicit startup facts: ($message)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 export def run_screen_canonical_tests [] {
     [
         (test_screen_style_rejects_static)
@@ -150,6 +181,7 @@ export def run_screen_canonical_tests [] {
         (test_game_of_life_screen_state_rolls_forward)
         (test_random_screen_style_resolves_only_to_retained_game_of_life_pool)
         (test_game_of_life_seed_layouts_are_distinct)
+        (test_welcome_message_uses_explicit_startup_facts)
     ]
 }
 

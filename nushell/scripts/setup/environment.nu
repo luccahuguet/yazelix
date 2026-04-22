@@ -164,7 +164,12 @@ def main [--welcome-source: string = "", --skip-welcome] {
     let colors = get_yazelix_colors
 
     # Build welcome message
-    let welcome_message = build_welcome_message $yazelix_dir $colors
+    let welcome_facts = {
+        persistent_sessions: ($config.persistent_sessions? | default false)
+        session_name: ($config.session_name? | default "yazelix")
+        terminals: ($config.terminals? | default [])
+    }
+    let welcome_message = build_welcome_message $yazelix_dir $colors $welcome_facts
 
     # Display welcome screen or log it (skip when start_yazelix handles it)
     if $welcome_source != "start" {

@@ -130,12 +130,14 @@ Out of scope:
 - Statement: Welcome playback remains a shell-owned terminal boundary that is
   width-aware, interruptible, and explicit about skip versus launch gating even
   if deterministic frame generation later moves into a smaller owner
-- Verification: manual startup review of current-shell and `yzx enter`
-  flows; unverified direct welcome-skip/message automation exit bead
-  `yazelix-7krc.2`
+- Verification: automated
+  `nushell/scripts/dev/test_yzx_screen_commands.nu`
+  (`test_welcome_message_uses_explicit_startup_facts`); manual startup review
+  of current-shell and `yzx enter` flows for terminal keypress/skip behavior
 - Source: `docs/specs/setup_shellhook_welcome_terminal_canonicalization_audit.md`
-- Notes: current automated coverage is indirect and does not directly defend
-  welcome skip/logging/message composition
+- Notes: message fact assembly is directly defended; welcome skip/logging and
+  terminal keypress behavior are still manual unless a future bug or owner cut
+  justifies more automation
 
 ## Deletion Budget For `yazelix-7krc.2`
 
@@ -190,7 +192,7 @@ Budget judgment:
 
 ## Verification Gaps To Carry Forward
 
-- there is still no direct default-lane test for welcome skip/logging/message
+- there is still no direct default-lane test for welcome skip/logging
   composition
 - `logo` and `boids` playback are live, but still lack direct executable
   defenses comparable to the Game of Life tests
