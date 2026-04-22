@@ -190,6 +190,32 @@ Candidate surviving owner:
 
 - a checked-in helper under `shells/posix/` plus caller-local Nu orchestration
 
+## `yazelix-lnk6.3` Shared Runtime-Helper Stop Conditions
+
+Landed deletions in this lane:
+
+- `utils/version_info.nu` is deleted under `yazelix-lnk6.4`
+- dead or purely layering-only common helpers such as
+  `get_materialized_state_path` and the extra Helix directory wrappers should
+  not survive in `common.nu`
+
+Retained `common.nu` responsibilities stay Nu-owned only while they are still
+directly coupled to live shell/runtime boundaries:
+
+- runtime/config/state-root resolution that still feeds shell entrypoints,
+  startup, terminal launch, and import flows
+- external command discovery and current-`nu` fallback for `resolve_yazelix_nu_bin`
+- shell-local default-shell rewriting for Zellij startup
+
+Stop conditions:
+
+- do not move runtime/config/state-root discovery into Rust while startup,
+  launch, and import still consume those paths inside Nu shell/process owners
+- do not add a Rust wrapper just to answer `which`/PATH questions or to
+  re-expose the current Nushell binary path
+- reopen a broader `common.nu` cut only after `yazelix-w6sz.3.2` or a later
+  owner cut deletes the surrounding shell entrypoints substantially end to end
+
 ## Verification
 
 - `nu nushell/scripts/dev/validate_specs.nu`

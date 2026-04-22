@@ -257,28 +257,16 @@ export def get_yazelix_state_dir [] {
     }
 }
 
-export def get_materialized_state_path [] {
-    (get_yazelix_state_dir | path join "state" "rebuild_hash")
-}
-
-export def get_managed_helix_user_config_dir [] {
-    (get_yazelix_user_config_dir) | path join "helix"
-}
-
 export def get_managed_helix_user_config_path [] {
-    (get_managed_helix_user_config_dir) | path join "config.toml"
+    (get_yazelix_user_config_dir | path join "helix" "config.toml")
 }
 
 export def get_native_helix_config_path [] {
     (get_xdg_config_home) | path join "helix" "config.toml"
 }
 
-export def get_generated_helix_config_dir [] {
-    (get_yazelix_state_dir) | path join "configs" "helix"
-}
-
 export def get_generated_helix_config_path [] {
-    (get_generated_helix_config_dir) | path join "config.toml"
+    (get_yazelix_state_dir | path join "configs" "helix" "config.toml")
 }
 
 export def resolve_yazelix_nu_bin [] {
