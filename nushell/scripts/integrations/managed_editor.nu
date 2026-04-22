@@ -243,3 +243,7 @@ export def open_file_with_editor [file_path: path] {
 
     log_to_file "open_editor.log" "open_file_with_editor function completed"
 }
+
+def main [file_path: path] {
+    open_file_with_editor $file_path
+}

@@ -40,7 +40,7 @@ ratio = [1, 4, 3]
 
 [opener]
 edit = [
-  { run = 'nu __YAZELIX_RUNTIME_DIR__/nushell/scripts/integrations/open_file.nu "$1"', desc = "Open File with configured editor (with Zellij integration)" },
+  { run = 'nu __YAZELIX_RUNTIME_DIR__/nushell/scripts/integrations/managed_editor.nu "$1"', desc = "Open File with configured editor (with Zellij integration)" },
 ]
 
 [[plugin.prepend_fetchers]]

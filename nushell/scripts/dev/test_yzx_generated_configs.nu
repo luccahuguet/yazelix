@@ -1571,7 +1571,7 @@ def test_generated_runtime_configs_prefer_active_runtime_over_installed_referenc
         })
 
         if (
-            ($generated.yazi_toml | str contains $"nu ($repo_root | path join "nushell" "scripts" "integrations" "open_file.nu")")
+            ($generated.yazi_toml | str contains $"nu ($repo_root | path join "nushell" "scripts" "integrations" "managed_editor.nu")")
             and not ($generated.yazi_toml | str contains $fake_installed_runtime)
             and ($generated.zellij_config | str contains $repo_root)
             and not ($generated.zellij_config | str contains $fake_installed_runtime)

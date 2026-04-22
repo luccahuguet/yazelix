@@ -14,9 +14,7 @@ Essential scripts that provide the main Yazelix functionality:
 Scripts that handle integration between Yazi, Zellij, and Helix:
 - `yazi.nu` - Yazi integration utilities (file opening, reveal in sidebar)
 - `zellij.nu` - Zellij integration utilities (pane management, Helix detection)
-- `helix.nu` - Helix integration utilities (binary detection, testing)
-- `open_file.nu` - Wrapper script called by Yazi to open files in Helix
-- `reveal_in_yazi.nu` - Wrapper script for revealing files in Yazi sidebar
+- `managed_editor.nu` - Direct Yazi/editor entrypoint plus managed-editor integration
 
 ### `setup/` - Setup and Configuration Scripts
 Scripts for initial setup and configuration:
@@ -75,4 +73,4 @@ nu ~/.config/yazelix/nushell/scripts/dev/record_demo_fonts.nu
 ```
 
 ## File Naming Convention
-All files use underscores (e.g., `start_yazelix.nu`, `open_file.nu`) - never hyphens
+All files use underscores (e.g., `start_yazelix.nu`, `managed_editor.nu`) - never hyphens
