@@ -145,6 +145,46 @@ The config and upgrade validator port should also add no new crates.
     that invoke the Rust validator binary
   - any remaining `git` and `nix` probe layer must stay explicit and fixed-argv
 
+## Installed-Runtime Boundary
+
+`yazelix-rdn7.4.6.5` should use this owner split for
+`validate_installed_runtime_contract.nu`.
+
+### Rust-owned validator work
+
+These checks do not justify a Nu owner:
+
+- repo-tree path existence and path absence assertions
+- file-content contract checks against tracked sources such as
+  `shells/posix/yzx_cli.sh`, `runtime_env.sh`, `setup/environment.nu`, and
+  `packaging/mk_runtime_tree.nix`
+- flake package/app surface checks from fixed `nix flake show --json`
+- built-output path inspection after fixed `nix build --no-link --print-out-paths`
+- the built-CLI smoke command itself when it is launched as fixed argv and its
+  stdout contract is checked in Rust
+
+### Explicit live probes that still remain
+
+These are still part of the validator, but they are not a reason to keep the
+owner in Nu:
+
+- `nix flake show --json`
+- `nix build --no-link --print-out-paths .#runtime`
+- `nix build --no-link --print-out-paths .#yazelix`
+- `env YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1 <built-yzx> why`
+
+The honest boundary is that these are fixed external build/runtime probes owned
+by Rust, not shell-authored logic that needs a surviving Nu seam.
+
+### Decision
+
+No surviving Nu validator owner is justified here.
+
+`yazelix-rdn7.4.6.6` should port the installed-runtime validator end-to-end to
+Rust, keep any required external command probes explicit and fixed-argv inside
+Rust, and delete or demote the Nu owner to a compatibility shim only if that
+shim still buys something real.
+
 ## Verification
 
 - `nu nushell/scripts/dev/validate_specs.nu`
