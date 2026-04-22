@@ -140,6 +140,23 @@ Helix-materialization cluster, because those assertions already sit behind
 Rust-owned deterministic owners and do not need the remaining shell-floor work
 to move honestly.
 
+## Control-Plane, Desktop, And Update Split
+
+`yazelix-rdn7.4.5.12` narrows the remaining `test_yzx_core_commands.nu`
+surface into these explicit lanes:
+
+| Cluster | Current Nu tests | Bucket | Why |
+| --- | --- | --- | --- |
+| Rust-owned control-plane leaf behavior | `test_public_yzx_config_prints_resolved_path`, `test_public_yzx_config_bootstraps_missing_user_config`, `test_public_yzx_config_reset_writes_backup_and_restores_default`, `test_public_yzx_config_reset_without_backup_replaces_config`, `test_yzx_update_upstream_upgrades_matching_profile_entry`, `test_yzx_update_upstream_fails_early_for_home_manager_owned_install`, `test_yzx_update_upstream_fails_without_matching_profile_entry`, `test_yzx_update_home_manager_updates_input_and_prints_manual_switch_step`, `test_yzx_run_passes_dash_prefixed_args_through_unchanged`, `test_yzx_run_treats_child_verbose_flag_as_child_argv`, `test_public_yzx_root_routes_rust_control_family_without_direct_nu_route_modules`, `test_yzx_edit_targets_print_paths`, `test_invalid_config_is_classified_as_config_problem`, `test_yzx_status_reports_basic_runtime_summary`, `test_yzx_status_json_reports_typed_summary`, `test_yzx_status_versions_prints_tool_version_matrix`, `test_yzx_status_json_with_versions_reports_tool_matrix`, `test_yzx_status_json_reports_materialization_repair_when_artifacts_missing` | `strong_rust_port` | these assertions already sit on Rust-owned config, update, run, status, and active-config owners and should move into `yazelix_core` nextest suites |
+| menu/front-door metadata behavior | `test_yzx_menu_catalog_tracks_live_exported_command_surface`, `test_yzx_menu_dispatches_catalog_actions_through_launcher` | `blocked` | the underlying command metadata is Rust-owned, but the surviving front-door menu surface is still a Nu owner until the `yazelix-w6sz.4.2` cut lands |
+| desktop integration, stable-wrapper, and takeover flows | `test_yzx_desktop_install_writes_entry_and_icon_assets`, `test_yzx_desktop_install_prefers_installed_wrapper`, `test_stable_yzx_wrapper_prefers_home_manager_profile_owner`, `test_stable_yzx_wrapper_keeps_home_manager_broken_profile_symlink`, `test_yzx_desktop_install_refuses_home_manager_owned_install`, `test_yzx_desktop_install_refuses_dangling_home_manager_config`, `test_yzx_desktop_uninstall_preserves_home_manager_cleanup_path`, `test_yzx_desktop_uninstall_removes_manual_entry_and_icons`, `test_yzx_home_manager_prepare_preview_reports_manual_takeover_artifacts`, `test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts`, `test_stale_store_pinned_yzx_invocation_redirects_to_profile_wrapper` | `blocked` | these are real contracts, but they still sit on desktop/launcher/install ownership seams that remain in the `yazelix-w6sz.5.2` and `yazelix-lnk6.*` lanes |
+| command-discovery and helper-listing trivia | `test_public_yzx_home_manager_lists_takeover_helpers` | `weak_delete` | this is discoverability wording, not a durable behavior contract worth porting into Rust |
+
+The next strong Rust port target is the control-plane leaf cluster around
+config, update, run, status, and active-config resolution because those tests
+already defend Rust-owned behavior and can delete a large chunk of residual Nu
+coverage without waiting on the desktop or front-door cuts.
+
 ## What Cannot Survive
 
 These are not valid long-term steady states:
