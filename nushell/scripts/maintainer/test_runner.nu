@@ -1,6 +1,5 @@
 #!/usr/bin/env nu
-# Yazelix Test Runner
-# Runs all tests in the dev/ directory and reports results
+# Yazelix maintainer test runner
 
 use ../utils/common.nu [get_yazelix_runtime_dir]
 
@@ -9,6 +8,12 @@ const TEST_RUNNER_REPO_ROOT = (
     $TEST_RUNNER_MODULE_PATH
     | path dirname
     | path join ".." ".." ".."
+    | path expand
+)
+const TEST_SUITE_INVENTORY_PATH = (
+    $TEST_RUNNER_MODULE_PATH
+    | path dirname
+    | path join "test_suite_inventory.toml"
     | path expand
 )
 
@@ -22,54 +27,27 @@ def get_test_runner_repo_root [] {
     }
 }
 
-# Run syntax validation before tests
-def run_syntax_validation [
-    verbose: bool
-    log_file: string
-] {
-    print "🔍 Phase 1: Syntax Validation"
-    print "─────────────────────────────────────"
-
-    let syntax_log = "=== Syntax Validation ===\n"
-    $syntax_log | save --append $log_file
-
-    # Run validate_syntax.nu, mirroring the caller's requested verbosity.
-    let validate_script = ((get_test_runner_repo_root) | path join "nushell" "scripts" "dev" "validate_syntax.nu")
-    let result = if $verbose {
-        do {
-            nu $validate_script --verbose
-        } | complete
-    } else {
-        do {
-            nu $validate_script --quiet
-        } | complete
-    }
-
-    if $result.exit_code == 0 {
-        print "✅ All scripts passed syntax validation"
-        "✅ Syntax validation passed\n\n" | save --append $log_file
-        true
-    } else {
-        print "❌ Syntax validation failed"
-        if not ($result.stderr | is-empty) {
-            print $result.stderr
-        }
-        if not ($result.stdout | is-empty) {
-            print $result.stdout
-        }
-        $"❌ Syntax validation failed\n($result.stdout)\n($result.stderr)\n\n" | save --append $log_file
-        false
-    }
+def load_test_suite_inventory []: nothing -> record {
+    open $TEST_SUITE_INVENTORY_PATH
 }
 
-def run_standard_test [test_file: string] {
-    if (test_profiling_enabled) {
-        with-env {YAZELIX_TEST_PROFILE: "1"} {
-            do { nu $test_file } | complete
-        }
-    } else {
-        do { nu $test_file } | complete
-    }
+export def get_default_test_file_names [] {
+    let inventory = (load_test_suite_inventory)
+    $inventory.default.transitional_nu_entrypoints? | default []
+}
+
+def get_default_nextest_suites [] {
+    let inventory = (load_test_suite_inventory)
+    $inventory.default.nextest_suites? | default []
+}
+
+def get_default_cargo_test_exceptions [] {
+    let inventory = (load_test_suite_inventory)
+    $inventory.default.default_cargo_test_exceptions? | default []
+}
+
+def build_nix_develop_cargo_args [cargo_args: list<string>] {
+    ["develop", "-c", "cargo"] | append $cargo_args
 }
 
 def test_profiling_enabled [] {
@@ -83,7 +61,7 @@ def render_profile_summary [records: list<record>, title: string] {
         $sorted
         | each {|record|
             let seconds = (($record.elapsed_ms | into float) / 1000.0 | into string | str substring 0..4)
-            $"  - ($record.test): ($seconds)s"
+            $"  - ($record.suite): ($seconds)s"
         }
     )
 
@@ -120,46 +98,280 @@ def summarize_failure_output [stdout: string, stderr: string] {
     $sections | str join "\n"
 }
 
-export def get_default_test_file_names [] {
-    [
-        "test_yzx_commands.nu"
-    ]
-}
-
-def resolve_suite_test_files [test_dir: string, file_names: list<string>] {
-    $file_names
-    | each {|name|
-        let path = ($test_dir | path join $name)
-        if not ($path | path exists) {
-            error make { msg: $"Missing test file declared in suite: ($path)" }
+def run_external_in_repo_root [repo_root: string, program: string, args: list<string>, extra_env: record = {}] {
+    if ($extra_env | is-empty) {
+        do {
+            cd $repo_root
+            ^$program ...$args
+        } | complete
+    } else {
+        with-env $extra_env {
+            do {
+                cd $repo_root
+                ^$program ...$args
+            } | complete
         }
-        $path
     }
 }
 
-# Run all tests and report results
+def append_command_output_to_log [log_file: string, suite_name: string, output: record] {
+    $"Suite: ($suite_name)\nExit code: ($output.exit_code)\nStdout:\n($output.stdout)\n" | save --append $log_file
+    if not ($output.stderr | is-empty) {
+        $"Stderr:\n($output.stderr)\n" | save --append $log_file
+    }
+    $"---\n" | save --append $log_file
+}
+
+def run_logged_suite [
+    suite_name: string
+    display_name: string
+    repo_root: string
+    program: string
+    args: list<string>
+    log_file: string
+    verbose: bool
+    extra_env: record = {}
+] {
+    let started = (date now)
+
+    if $verbose {
+        print $"📋 Running: ($display_name)"
+        print "─────────────────────────────────────"
+        print $"Running: ($program) (($args | str join ' '))"
+    } else {
+        print $"  Running ($display_name)..."
+    }
+
+    let output = (run_external_in_repo_root $repo_root $program $args $extra_env)
+
+    if $verbose {
+        if ($output.stdout | is-not-empty) {
+            print --raw $output.stdout
+        }
+        if ($output.stderr | is-not-empty) {
+            print --stderr --raw $output.stderr
+        }
+        print ""
+    }
+
+    append_command_output_to_log $log_file $suite_name $output
+
+    let result = if $output.exit_code == 0 {
+        {status: "✅ PASS", suite: $suite_name, error: null}
+    } else {
+        let failure_details = (summarize_failure_output $output.stdout $output.stderr)
+        {status: "❌ FAIL", suite: $suite_name, error: $"Exit code: ($output.exit_code)\n($failure_details)"}
+    }
+
+    let elapsed_ms = (((date now) - $started) / 1ms)
+    $result | upsert elapsed_ms $elapsed_ms
+}
+
+def run_syntax_validation [
+    verbose: bool
+    log_file: string
+    repo_root: string
+] {
+    print "🔍 Phase 1: Syntax Validation"
+    print "─────────────────────────────────────"
+    "=== Syntax Validation ===\n" | save --append $log_file
+
+    let validate_script = ($repo_root | path join "nushell" "scripts" "dev" "validate_syntax.nu")
+    let validate_args = if $verbose {
+        [$validate_script, "--verbose"]
+    } else {
+        [$validate_script, "--quiet"]
+    }
+    let result = (run_external_in_repo_root $repo_root "nu" $validate_args)
+
+    if $result.exit_code == 0 {
+        print "✅ All scripts passed syntax validation"
+        "✅ Syntax validation passed\n\n" | save --append $log_file
+        true
+    } else {
+        print "❌ Syntax validation failed"
+        if not ($result.stderr | is-empty) {
+            print --stderr --raw $result.stderr
+        }
+        if not ($result.stdout | is-empty) {
+            print --raw $result.stdout
+        }
+        $"❌ Syntax validation failed\n($result.stdout)\n($result.stderr)\n\n" | save --append $log_file
+        false
+    }
+}
+
+def run_default_functional_suites [
+    repo_root: string
+    log_file: string
+    verbose: bool
+    profiling: bool
+] {
+    print ""
+    print "🧪 Phase 2: Functional Tests"
+    print "─────────────────────────────────────"
+    "=== Functional Tests ===\n" | save --append $log_file
+
+    let nextest_results = (
+        get_default_nextest_suites
+        | each {|suite|
+            run_logged_suite $suite.name $"Rust nextest: ($suite.name)" $repo_root "nix" (build_nix_develop_cargo_args (
+                ["nextest", "run", "--profile", "ci", "--manifest-path", ($repo_root | path join $suite.manifest_path)]
+                | append ($suite.args? | default [])
+            )) $log_file $verbose
+        }
+    )
+
+    let cargo_test_results = (
+        get_default_cargo_test_exceptions
+        | each {|suite|
+            run_logged_suite $suite.name $"Rust cargo test exception: ($suite.name)" $repo_root "nix" (build_nix_develop_cargo_args (
+                ["test", "--manifest-path", ($repo_root | path join $suite.manifest_path)]
+                | append ($suite.args? | default [])
+            )) $log_file $verbose
+        }
+    )
+
+    let nu_env = if $profiling { {YAZELIX_TEST_PROFILE: "1"} } else { {} }
+    let nu_results = (
+        get_default_test_file_names
+        | each {|file_name|
+            let test_file = ($repo_root | path join "nushell" "scripts" "dev" $file_name)
+            if not ($test_file | path exists) {
+                error make { msg: $"Missing transitional Nu suite entrypoint: ($test_file)" }
+            }
+
+            run_logged_suite ($file_name | str replace ".nu" "") $"Transitional Nu suite: ($file_name)" $repo_root "nu" [$test_file] $log_file $verbose $nu_env
+        }
+    )
+
+    $nextest_results | append $cargo_test_results | append $nu_results | flatten
+}
+
+def render_suite_summary [results: list<record>, log_file: string, profiling: bool] {
+    print ""
+    print "=== Test Results Summary ==="
+
+    let passed = ($results | where status == "✅ PASS" | length)
+    let failed = ($results | where status == "❌ FAIL" | length)
+    let total = ($results | length)
+
+    $results | each { |result|
+        print $"($result.status) ($result.suite)"
+        if ($result.status == "❌ FAIL") and (not ($result.error | is-empty)) {
+            print $"   Error: ($result.error)"
+        }
+    }
+
+    print ""
+    let summary = $"Total: ($total) | Passed: ($passed) | Failed: ($failed)"
+    print $summary
+
+    $"\n=== Test Results Summary ===\n" | save --append $log_file
+    $results | each { |result|
+        $"($result.status) ($result.suite)\n" | save --append $log_file
+        if ($result.status == "❌ FAIL") and (not ($result.error | is-empty)) {
+            $"   Error: ($result.error)\n" | save --append $log_file
+        }
+    }
+    $"\n($summary)\n" | save --append $log_file
+
+    if $profiling {
+        print ""
+        let profile_report = (render_profile_summary $results "=== Default Suite Profile ===")
+        print $profile_report
+        $"($profile_report)\n" | save --append $log_file
+    }
+
+    if $failed > 0 {
+        print ""
+        print "❌ Some tests failed"
+        $"\n❌ Some tests failed\n" | save --append $log_file
+        print $"📝 Full log: ($log_file)"
+        print ""
+        error make { msg: "Test suite failed" }
+    }
+
+    print ""
+    print "✅ All tests passed!"
+    $"\n✅ All tests passed!\n" | save --append $log_file
+    print $"📝 Full log: ($log_file)"
+    print ""
+}
+
+def run_nonvisual_sweep_tests [verbose: bool] {
+    print ""
+    print "=== Running Non-Visual Configuration Sweep Tests ==="
+    print ""
+
+    let runtime_root = (get_yazelix_runtime_dir)
+    let repo_root = (get_test_runner_repo_root)
+    let sweep_script = ($runtime_root | path join "nushell" "scripts" "dev" "test_config_sweep.nu")
+    let args = if $verbose {
+        [$sweep_script, "--verbose"]
+    } else {
+        [$sweep_script]
+    }
+
+    let output = (run_external_in_repo_root $repo_root "nu" $args)
+    if ($output.stdout | is-not-empty) {
+        print --raw $output.stdout
+    }
+    if ($output.stderr | is-not-empty) {
+        print --stderr --raw $output.stderr
+    }
+    if $output.exit_code != 0 {
+        error make { msg: "Non-visual sweep tests failed" }
+    }
+}
+
+def run_visual_sweep_tests [verbose: bool, delay: int] {
+    print ""
+    print "=== Running Visual Terminal Sweep Tests ==="
+    print ""
+
+    let runtime_root = (get_yazelix_runtime_dir)
+    let repo_root = (get_test_runner_repo_root)
+    let sweep_script = ($runtime_root | path join "nushell" "scripts" "dev" "test_config_sweep.nu")
+    let args = if $verbose {
+        [$sweep_script, "--visual", "--visual-delay", ($delay | into string), "--verbose"]
+    } else {
+        [$sweep_script, "--visual", "--visual-delay", ($delay | into string)]
+    }
+
+    let output = (run_external_in_repo_root $repo_root "nu" $args)
+    if ($output.stdout | is-not-empty) {
+        print --raw $output.stdout
+    }
+    if ($output.stderr | is-not-empty) {
+        print --stderr --raw $output.stderr
+    }
+    if $output.exit_code != 0 {
+        error make { msg: "Visual sweep tests failed" }
+    }
+}
+
 export def run_all_tests [
-    --verbose(-v)  # Show detailed output
-    --new-window(-n)  # Run tests in a new Yazelix window
-    --lint-only  # Run only syntax validation
-    --profile  # Print timing summaries for the default suite
-    --sweep  # Run the non-visual configuration sweep only
-    --visual  # Run the visual terminal sweep only
-    --all(-a)  # Run the default suite plus sweep + visual lanes
-    --delay: int = 3  # Delay between visual terminal launches in seconds
+    --verbose(-v)
+    --new-window(-n)
+    --lint-only
+    --profile
+    --sweep
+    --visual
+    --all(-a)
+    --delay: int = 3
 ] {
     let profiling = ($profile or (test_profiling_enabled))
     let visual_delay = ($delay | default 3)
     let run_only_sweep = ($sweep and not $visual and not $all)
     let run_only_visual = ($visual and not $sweep and not $all)
     let run_only_both_sweeps = ($sweep and $visual and not $all)
+    let repo_root = (get_test_runner_repo_root)
 
-    # If --new-window flag is set, launch tests in a new Yazelix instance
     if $new_window {
         print "🚀 Launching new Yazelix window for testing..."
         print ""
 
-        # Build the command to run in the new window
         mut test_args = ["yzx", "dev", "test"]
         if $verbose { $test_args = ($test_args | append "--verbose") }
         if $lint_only { $test_args = ($test_args | append "--lint-only") }
@@ -171,33 +383,30 @@ export def run_all_tests [
             $test_args = ($test_args | append ["--delay", ($visual_delay | into string)])
         }
         let test_cmd = ($test_args | str join " ")
-        let logs_dir = ((get_test_runner_repo_root) | path join "logs")
+        let logs_dir = ($repo_root | path join "logs")
 
-        # Launch Yazelix with skip welcome screen
         print $"💡 In the new window, run: ($test_cmd)"
         print $"📝 Test logs will be saved to: ($logs_dir)"
         print ""
 
         with-env {YAZELIX_SHELLHOOK_SKIP_WELCOME: "true"} {
-            nu ((get_test_runner_repo_root) | path join "nushell" "scripts" "core" "launch_yazelix.nu")
+            nu ($repo_root | path join "nushell" "scripts" "core" "launch_yazelix.nu")
         }
 
         return
     }
 
-    if $lint_only {
-        let log_dir = ((get_test_runner_repo_root) | path join "logs")
-        mkdir $log_dir
-        let timestamp = (date now | into int)
-        let log_file = $"($log_dir)/test_run_($timestamp).log"
-        let header = $"=== Yazelix Test Run ===\nDate: (date now)\nVerbose: ($verbose)\nMode: lint-only\n\n"
-        $header | save $log_file
+    let log_dir = ($repo_root | path join "logs")
+    mkdir $log_dir
+    let timestamp = (date now | into int)
+    let log_file = $"($log_dir)/test_run_($timestamp).log"
+    let header = $"=== Yazelix Test Run ===\nDate: (date now)\nVerbose: ($verbose)\n\n"
+    $header | save $log_file
 
-        let syntax_passed = run_syntax_validation $verbose $log_file
-        if $syntax_passed {
-            print $"📝 Full log: ($log_file)"
-        } else {
-            print $"📝 Full log: ($log_file)"
+    if $lint_only {
+        let syntax_passed = (run_syntax_validation $verbose $log_file $repo_root)
+        print $"📝 Full log: ($log_file)"
+        if not $syntax_passed {
             error make { msg: "Syntax validation failed" }
         }
         return
@@ -219,41 +428,13 @@ export def run_all_tests [
         return
     }
 
-    let repo_root = (get_test_runner_repo_root)
-    let test_dir = ($repo_root | path join "nushell" "scripts" "dev")
-    let log_dir = ($repo_root | path join "logs")
-
-    # Create log directory if it doesn't exist
-    mkdir $log_dir
-
-    # Create timestamped log file
-    let timestamp = (date now | into int)
-    let log_file = $"($log_dir)/test_run_($timestamp).log"
-
-    # Log header
-    let header = $"=== Yazelix Test Run ===\nDate: (date now)\nVerbose: ($verbose)\n\n"
-    $header | save $log_file
-
-    let test_files = (resolve_suite_test_files $test_dir (get_default_test_file_names))
-
-    if ($test_files | is-empty) {
-        print "❌ No test files found for the selected suite"
-        return
-    }
-
-    let msg_header = "=== Yazelix Default Test Suite ==="
-    let msg_count = $"Running ($test_files | length) test file\(s\)..."
-
-    print $msg_header
-    print $msg_count
+    print "=== Yazelix Default Test Suite ==="
+    print "Running fixed Rust nextest suites plus the transitional default Nu suite..."
     print $"📝 Logging to: ($log_file)"
     print ""
+    $"=== Yazelix Default Test Suite ===\nRunning fixed Rust nextest suites plus the transitional default Nu suite...\n\n" | save --append $log_file
 
-    # Log to file
-    $"($msg_header)\n($msg_count)\n\n" | save --append $log_file
-
-    # Run syntax validation first
-    let syntax_passed = run_syntax_validation $verbose $log_file
+    let syntax_passed = (run_syntax_validation $verbose $log_file $repo_root)
     if not $syntax_passed {
         print ""
         print "❌ Test suite aborted due to syntax errors"
@@ -262,182 +443,14 @@ export def run_all_tests [
         error make { msg: "Syntax validation failed" }
     }
 
-    print ""
-    print "🧪 Phase 2: Functional Tests"
-    print "─────────────────────────────────────"
-    "=== Functional Tests ===\n" | save --append $log_file
+    let results = (run_default_functional_suites $repo_root $log_file $verbose $profiling)
+    render_suite_summary $results $log_file $profiling
 
-    let results = $test_files | each { |test_file|
-        let test_name = ($test_file | path basename | str replace ".nu" "")
-        let started = (date now)
-
-        if $verbose {
-            print $"📋 Running: ($test_name)"
-            print "─────────────────────────────────────"
-        } else {
-            print $"  Running ($test_name)..."
-        }
-
-        # Run the test and capture result
-        let result = try {
-            if $verbose {
-                print $"Running: nu ($test_file)"
-                $"Running: nu ($test_file)\n" | save --append $log_file
-
-                let output = (run_standard_test $test_file)
-                print $output.stdout
-
-                # Save to log
-                $"($output.stdout)\n" | save --append $log_file
-                if $output.exit_code != 0 {
-                    $"STDERR: ($output.stderr)\n" | save --append $log_file
-                }
-
-                if $output.exit_code == 0 {
-                    {status: "✅ PASS", test: $test_name, error: null}
-                } else {
-                    let failure_details = (summarize_failure_output $output.stdout $output.stderr)
-                    {status: "❌ FAIL", test: $test_name, error: $"Exit code: ($output.exit_code)\n($failure_details)"}
-                }
-            } else {
-                let output = (run_standard_test $test_file)
-
-                # Log output
-                $"Test: ($test_name)\nExit code: ($output.exit_code)\nStdout:\n($output.stdout)\n" | save --append $log_file
-                if not ($output.stderr | is-empty) {
-                    $"Stderr:\n($output.stderr)\n" | save --append $log_file
-                }
-                $"---\n" | save --append $log_file
-
-                if $output.exit_code == 0 {
-                    {status: "✅ PASS", test: $test_name, error: null}
-                } else {
-                    let failure_details = (summarize_failure_output $output.stdout $output.stderr)
-                    {status: "❌ FAIL", test: $test_name, error: $"Exit code: ($output.exit_code)\n($failure_details)"}
-                }
-            }
-        } catch { |err|
-            let error_msg = $"EXCEPTION: ($err.msg)"
-            $"($error_msg)\n" | save --append $log_file
-            {status: "❌ FAIL", test: $test_name, error: $"($err.msg)"}
-        }
-
-        if $verbose {
-            print ""
-        }
-
-        let elapsed_ms = (((date now) - $started) / 1ms)
-        $result | upsert elapsed_ms $elapsed_ms
+    if $sweep or $all {
+        run_nonvisual_sweep_tests $verbose
     }
 
-    # Summary
-    print ""
-    print "=== Test Results Summary ==="
-
-    let passed = ($results | where status == "✅ PASS" | length)
-    let failed = ($results | where status == "❌ FAIL" | length)
-    let total = ($results | length)
-
-    $results | each { |r|
-        if $r.status == "❌ FAIL" {
-            print $"($r.status) ($r.test)"
-            if not ($r.error | is-empty) {
-                print $"   Error: ($r.error)"
-            }
-        } else {
-            print $"($r.status) ($r.test)"
-        }
-    }
-
-    print ""
-    let summary = $"Total: ($total) | Passed: ($passed) | Failed: ($failed)"
-    print $summary
-
-    # Save summary to log
-    $"\n=== Test Results Summary ===\n" | save --append $log_file
-    $results | each { |r|
-        $"($r.status) ($r.test)\n" | save --append $log_file
-        if $r.status == "❌ FAIL" and not ($r.error | is-empty) {
-            $"   Error: ($r.error)\n" | save --append $log_file
-        }
-    }
-    $"\n($summary)\n" | save --append $log_file
-
-    if $profiling {
-        print ""
-        let profile_report = (render_profile_summary $results "=== Default Suite Profile ===")
-        print $profile_report
-        $"($profile_report)\n" | save --append $log_file
-    }
-
-    if $failed > 0 {
-        print ""
-        print "❌ Some tests failed"
-        $"\n❌ Some tests failed\n" | save --append $log_file
-        print $"📝 Full log: ($log_file)"
-        print ""
-        error make { msg: "Test suite failed" }
-    } else {
-        print ""
-        print "✅ All tests passed!"
-        $"\n✅ All tests passed!\n" | save --append $log_file
-        print $"📝 Full log: ($log_file)"
-        print ""
-
-        if $sweep or $all {
-            run_nonvisual_sweep_tests $verbose
-        }
-
-        if $visual or $all {
-            run_visual_sweep_tests $verbose $visual_delay
-        }
-    }
-}
-
-def run_nonvisual_sweep_tests [verbose: bool] {
-    print ""
-    print "=== Running Non-Visual Configuration Sweep Tests ==="
-    print ""
-
-    let sweep_script = ((get_yazelix_runtime_dir) | path join "nushell" "scripts" "dev" "test_config_sweep.nu")
-    let args = if $verbose {
-        [$sweep_script, "--verbose"]
-    } else {
-        [$sweep_script]
-    }
-
-    let output = (^nu ...$args | complete)
-    if ($output.stdout | is-not-empty) {
-        print --raw $output.stdout
-    }
-    if ($output.stderr | is-not-empty) {
-        print --stderr --raw $output.stderr
-    }
-    if $output.exit_code != 0 {
-        error make { msg: "Non-visual sweep tests failed" }
-    }
-}
-
-def run_visual_sweep_tests [verbose: bool, delay: int] {
-    print ""
-    print "=== Running Visual Terminal Sweep Tests ==="
-    print ""
-
-    let sweep_script = ((get_yazelix_runtime_dir) | path join "nushell" "scripts" "dev" "test_config_sweep.nu")
-    let args = if $verbose {
-        [$sweep_script, "--visual", "--visual-delay", ($delay | into string), "--verbose"]
-    } else {
-        [$sweep_script, "--visual", "--visual-delay", ($delay | into string)]
-    }
-
-    let output = (^nu ...$args | complete)
-    if ($output.stdout | is-not-empty) {
-        print --raw $output.stdout
-    }
-    if ($output.stderr | is-not-empty) {
-        print --stderr --raw $output.stderr
-    }
-    if $output.exit_code != 0 {
-        error make { msg: "Visual sweep tests failed" }
+    if $visual or $all {
+        run_visual_sweep_tests $verbose $visual_delay
     }
 }

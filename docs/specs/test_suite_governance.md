@@ -91,7 +91,7 @@ This spec defines:
 | Lane | Entrypoint | Purpose | Notes |
 | --- | --- | --- | --- |
 | Cheap validator lane | `nu nushell/scripts/dev/validate_syntax.nu`, `nu nushell/scripts/dev/validate_readme_version.nu`, `nu nushell/scripts/dev/validate_config_surface_contract.nu` | Very fast structural or source-of-truth checks | Good fit for `prek` and direct CI steps |
-| Default automated regression lane | `yzx dev test` | The normal non-sweep automated regression suite | Uses explicit membership |
+| Default automated regression lane | `yzx dev test` | The normal non-sweep automated regression suite | Uses fixed Rust `nextest` suites plus any explicitly-declared transitional Nu entrypoints |
 | Internal core regression bundle | `nu nushell/scripts/dev/test_yzx_commands.nu` | High-signal core launch/runtime/workspace/integration contracts | Internal organization detail |
 | Non-visual sweep lane | `yzx dev test --sweep` | Matrix coverage for config and supported shell/terminal combinations without opening windows | Environment-sensitive but still scriptable |
 | Visual sweep lane | `yzx dev test --visual` | Real terminal-window validation | Heavy, manualish, and not the default lane |
