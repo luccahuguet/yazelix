@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Terminal launcher utilities for Yazelix
 
-use constants.nu [SUPPORTED_TERMINALS, TERMINAL_CONFIG_PATHS, TERMINAL_METADATA, YAZELIX_WINDOW_CLASS, YAZELIX_X11_INSTANCE]
+use constants.nu [TERMINAL_CONFIG_PATHS, YAZELIX_WINDOW_CLASS, YAZELIX_X11_INSTANCE]
 use common.nu [get_yazelix_runtime_dir get_yazelix_state_dir get_runtime_platform_name]
 use startup_profile.nu [profile_startup_step]
 
@@ -15,8 +15,9 @@ def get_startup_script_path []: nothing -> string {
     $runtime_dir | path join "shells" "posix" "start_yazelix.sh"
 }
 
-def get_terminal_title [terminal: string] {
-    $"Yazelix - (($TERMINAL_METADATA | get -o $terminal | default {} | get -o name | default $terminal))"
+def get_terminal_title [terminal_info: record] {
+    let display_name = ($terminal_info.name? | default $terminal_info.terminal)
+    $"Yazelix - ($display_name)"
 }
 
 def get_runtime_nixgl_wrapper_candidates [] {
@@ -35,7 +36,7 @@ def get_runtime_nixgl_wrapper_candidates [] {
     ]
 }
 
-export def resolve_nixgl_launch_context [] {
+def resolve_nixgl_launch_context [] {
     for candidate in (get_runtime_nixgl_wrapper_candidates) {
         if ($candidate.path | path exists) {
             return {
@@ -99,43 +100,6 @@ export def resolve_terminal_config [terminal: string, mode: string] {
     }
 
     error make {msg: $"Unsupported terminal.config_mode '($mode)'. Expected 'yazelix' or 'user'."}
-}
-
-export def detect_terminal_candidates [preferred: any] {
-    # Build list of terminals to check: use list order if provided, otherwise preferred first
-    let ordered_terminals = if ($preferred | describe | str contains "list") {
-        $preferred | where $it in $SUPPORTED_TERMINALS
-    } else {
-        let other_terminals = $SUPPORTED_TERMINALS | where $it != $preferred
-        ([$preferred] | append $other_terminals)
-    }
-    if ($ordered_terminals | is-empty) {
-        return []
-    }
-
-    mut available = []
-    for terminal in $ordered_terminals {
-        let term_meta = ($TERMINAL_METADATA | get -o $terminal | default {})
-        if (command_exists $terminal) {
-            $available = ($available | append {
-                terminal: $terminal
-                name: $term_meta.name
-                command: $terminal
-            })
-        }
-    }
-
-    $available
-}
-
-# Detect first available terminal.
-export def detect_terminal [preferred: any] {
-    let candidates = (detect_terminal_candidates $preferred)
-    if ($candidates | is-empty) {
-        null
-    } else {
-        $candidates | first
-    }
 }
 
 # Build a detached launch prefix for new terminal windows.
@@ -231,7 +195,7 @@ export def build_launch_command [
     let working_dir_arg = (get_working_dir_arg $terminal $working_dir)
     let startup_script = (get_startup_script_path)
     let startup_shell = $"sh -c 'exec ($startup_script)'"
-    let title = (get_terminal_title $terminal)
+    let title = (get_terminal_title $terminal_info)
 
     # Prefer the generic nixGL wrapper when available. Fall back to the
     # older Intel-specific name only if the default wrapper is absent.
@@ -258,11 +222,6 @@ export def build_launch_command [
     }
 
     $"($launch_prefix)($terminal_cmd)"
-}
-
-# Get display name for terminal
-export def get_terminal_display_name [terminal_info: record]: nothing -> string {
-    $terminal_info.name
 }
 
 export def run_detached_terminal_launch [launch_cmd: string, terminal_name: string, --verbose] {

@@ -183,6 +183,10 @@ def describe_terminal_invocation [terminal_info: record, terminal_config] {
     }
 }
 
+def get_terminal_candidate_display_name [terminal_info: record] {
+    $terminal_info.name? | default $terminal_info.terminal
+}
+
 def launch_terminal_candidates [
     terminal_candidates: list<record>
     terminal_config_mode: string
@@ -196,7 +200,7 @@ def launch_terminal_candidates [
     mut index = 0
 
     for terminal_info in $terminal_candidates {
-        let display_name = (get_terminal_display_name $terminal_info)
+        let display_name = (get_terminal_candidate_display_name $terminal_info)
         let terminal_config = (resolve_terminal_config $terminal_info.terminal $terminal_config_mode)
 
         if ($terminal_config != null) and (not ($terminal_config | path exists)) {
@@ -248,7 +252,7 @@ def launch_terminal_candidates [
         if ($requested_terminal | is-empty) and ($index < ($terminal_candidates | length)) {
             let next_candidate = ($terminal_candidates | get -o $index)
             if $next_candidate != null {
-                let next_name = (get_terminal_display_name $next_candidate)
+                let next_name = (get_terminal_candidate_display_name $next_candidate)
                 print $"⚠️  ($display_name) failed to start; trying ($next_name)..."
             }
         }
