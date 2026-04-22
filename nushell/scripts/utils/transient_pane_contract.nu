@@ -38,25 +38,20 @@ export def resolve_transient_pane_cwd [
     }
 }
 
-export def resolve_transient_pane_geometry [config: record] {
-    {
-        width_percent: ($config.popup_width_percent? | default 90)
-        height_percent: ($config.popup_height_percent? | default 90)
-    }
-}
-
 export def build_transient_pane_open_contract [
     kind: string
-    config: record
     runtime_dir: string
+    width_percent: int = 90
+    height_percent: int = 90
     workspace_root?: string
     current_dir?: string
     args: list<string> = []
 ] {
     let identity = (get_transient_pane_contract $kind)
-    let geometry = (resolve_transient_pane_geometry $config)
 
-    $identity | merge $geometry | merge {
+    $identity | merge {
+        width_percent: $width_percent
+        height_percent: $height_percent
         args: $args
         cwd: (resolve_transient_pane_cwd $workspace_root $current_dir)
         runtime_dir: ($runtime_dir | path expand)

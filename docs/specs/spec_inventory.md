@@ -81,6 +81,7 @@ Status labels:
 | `first_run_upgrade_summary.md` | Live | Current `yzx whats_new` and first-run summary contract |
 | `flake_interface_contract.md` | Historical | Earlier installer-first contract, superseded by the current package/runtime shape |
 | `floating_tui_panes.md` | Live | Current popup and transient-pane behavior family |
+| `full_config_nushell_owner_cut_budget.md` | Planning | Current delete-first budget for removing the remaining product-side full-config `parse_yazelix_config` owner seam |
 | `governed_test_traceability_inventory.md` | Planning | Current governed-test inventory for `yazelix-rdn7.4`; feeds test delete/demote/quarantine work |
 | `helix_managed_config_contract.md` | Planning | Still useful future Helix ownership contract; not yet the main delete-first migration lane |
 | `integration_glue_canonicalization_audit.md` | Planning | Completed integration-glue audit that names wrapper deletion and config-read collapse lanes |
@@ -105,6 +106,7 @@ Status labels:
 | `runtime_env_config_state_shim_collapse_budget.md` | Planning | Current deletion budget for config/state/env shim collapse; useful as bridge-collapse context |
 | `runtime_ownership_reduction_matrix.md` | Historical | Pre-trim alternative analysis, not the current branch contract |
 | `runtime_root_contract.md` | Live | Current runtime-root ownership contract |
+| `rust_owned_test_migration_budget.md` | Planning | Current Nu-to-Rust migration budget for the largest deterministic governed test files |
 | `rust_migration_matrix.md` | Planning | Primary remaining roadmap for deleting product-side Nushell owners, especially the bridge layer and materialization families |
 | `rust_nushell_bridge_contract.md` | Live | Current bridge contract for `yzx_core` helper insertion behind Nushell-owned surfaces |
 | `rust_test_hardening_tools_decision.md` | Planning | Current keep/reject decision for `cargo-nextest`, `cargo-mutants`, and `cargo-fuzz`; use it before adding Rust hardening tooling |
@@ -125,6 +127,7 @@ Status labels:
 | `v15_trimmed_runtime_contract.md` | Live | Primary branch-level contract; start here for runtime, config, and update questions |
 | `v16_rust_cli_rewrite_evaluation.md` | Planning | Secondary planning note for any broader Rust public-CLI move, only after bridge and materialization deletion already shrank the remaining Nu owners |
 | `welcome_screen_style_contract.md` | Live | Current indexed welcome and screen style contract |
+| `workspace_session_contract.md` | Live | Current tab-local workspace, sidebar identity, and session-truth contract |
 | `yazelix_core_boundary.md` | Planning | Future product-boundary decision; there is no separate supported Core edition today |
 | `yzx_command_palette_categories.md` | Live | Current command-palette grouping and exclusion contract |
 

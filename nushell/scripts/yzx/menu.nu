@@ -4,7 +4,7 @@
 use ../integrations/zellij.nu [get_current_tab_workspace_root_including_bootstrap]
 use ../integrations/zellij.nu [open_transient_pane_contract]
 use ../utils/common.nu get_yazelix_runtime_dir
-use ../utils/config_parser.nu parse_yazelix_config
+use ../utils/transient_pane_facts.nu [load_transient_pane_facts]
 use ../utils/yzx_core_bridge.nu resolve_yzx_core_helper_path
 use ../utils/transient_pane_contract.nu [
     build_transient_pane_open_contract
@@ -150,12 +150,12 @@ def run_menu_action [cmd: string] {
 }
 
 def resolve_menu_popup_contract [
-    config: record
+    transient_pane_facts: record
     runtime_dir: string
     workspace_root?: string
     current_dir?: string
 ] {
-    build_transient_pane_open_contract "menu" $config $runtime_dir $workspace_root $current_dir []
+    build_transient_pane_open_contract "menu" $runtime_dir ($transient_pane_facts.popup_width_percent? | default 90) ($transient_pane_facts.popup_height_percent? | default 90) $workspace_root $current_dir []
 }
 
 # Interactive command palette for Yazelix
@@ -167,9 +167,9 @@ export def "yzx menu" [
             error make {msg: "Not in a Zellij session; run `yzx menu` directly or start Yazelix/Zellij first."}
         }
 
-        let config = (parse_yazelix_config)
+        let transient_pane_facts = (load_transient_pane_facts)
         let runtime_dir = (get_yazelix_runtime_dir | path expand)
-        let popup_contract = (resolve_menu_popup_contract $config $runtime_dir ((get_current_tab_workspace_root_including_bootstrap) | default "") (pwd))
+        let popup_contract = (resolve_menu_popup_contract $transient_pane_facts $runtime_dir ((get_current_tab_workspace_root_including_bootstrap) | default "") (pwd))
         let open_result = (open_transient_pane_contract $popup_contract)
         if $open_result.status != "ok" {
             error make {msg: $"Failed to open the Yazelix menu popup pane: ($open_result | to json -r)"}

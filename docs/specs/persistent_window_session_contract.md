@@ -22,6 +22,50 @@ Without stating that explicitly, users and future fixes will keep treating persi
 - define the intended difference between persistent-session lifecycle and default non-persistent lifecycle
 - define the session-scoped meaning of restart/update transitions in persistent mode
 
+## Contract Items
+
+#### PWS-001
+- Type: behavior
+- Status: live
+- Owner: persistent-session launch/session boundary
+- Statement: When `zellij.persistent_sessions = true`, Yazelix windows are
+  clients of one named logical session. Later launches attach to the existing
+  named session instead of creating independent live sessions
+- Verification: automated
+  `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
+
+#### PWS-002
+- Type: failure_mode
+- Status: live
+- Owner: persistent-session reuse warning path
+- Statement: Once the named persistent session already exists, fresh bootstrap
+  intent such as `--path` does not silently override it. Yazelix warns that the
+  existing session is being reused and that the new path will not take effect
+  until the session is explicitly killed and recreated
+- Verification: automated
+  `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
+
+#### PWS-003
+- Type: boundary
+- Status: live
+- Owner: persistent-session lifecycle semantics
+- Statement: In-session state, restart semantics, and update effects are
+  session-scoped in persistent mode rather than being modeled as independent
+  per-window behavior
+- Verification: automated
+  `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`; validator
+  `nu nushell/scripts/dev/validate_specs.nu`
+
+#### PWS-004
+- Type: behavior
+- Status: live
+- Owner: persistent-session lifecycle
+- Statement: Last-client lifecycle may intentionally differ from non-persistent
+  mode. A detached named persistent session may be an intended persistence
+  feature rather than a leak by default
+- Verification: manual persistent-session lifecycle review; validator
+  `nu nushell/scripts/dev/validate_specs.nu`
+
 ## Behavior
 
 - Persistent mode means one named logical Yazelix session may have multiple clients.

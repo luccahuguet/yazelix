@@ -1,21 +1,31 @@
 #!/usr/bin/env nu
 
+use ../dev/materialization_dev_helpers.nu generate_merged_zellij_config
 use repo_checkout.nu require_yazelix_repo_root
+use ../utils/common.nu get_yazelix_state_dir
 
 def get_pane_orchestrator_paths [] {
     let yazelix_dir = require_yazelix_repo_root
     let crate_dir = ($yazelix_dir | path join "rust_plugins" "zellij_pane_orchestrator")
     let build_target = "wasm32-wasip1"
     let wasm_path = ($crate_dir | path join "target" $build_target "release" "yazelix_pane_orchestrator.wasm")
-    let sync_script = ($yazelix_dir | path join "nushell" "scripts" "dev" "update_zellij_pane_orchestrator.nu")
 
     {
         yazelix_dir: $yazelix_dir
         crate_dir: $crate_dir
         build_target: $build_target
         wasm_path: $wasm_path
-        sync_script: $sync_script
     }
+}
+
+const pane_orchestrator_wasm_name = "yazelix_pane_orchestrator.wasm"
+
+def get_tracked_pane_orchestrator_wasm_path [yazelix_dir: string] {
+    $yazelix_dir | path join "configs" "zellij" "plugins" $pane_orchestrator_wasm_name
+}
+
+def get_runtime_pane_orchestrator_wasm_path [] {
+    get_yazelix_state_dir | path join "configs" "zellij" "plugins" $pane_orchestrator_wasm_name
 }
 
 def print_rust_wasi_enable_hint [] {
@@ -83,12 +93,24 @@ def run_wasm_build [paths: record, label: string] {
 }
 
 def sync_built_wasm [paths: record, label: string] {
-    if not ($paths.sync_script | path exists) {
-        print $"❌ Sync helper not found: ($paths.sync_script)"
-        exit 1
-    }
     print $"🔄 Syncing ($label) wasm into Yazelix..."
-    ^nu $paths.sync_script
+    let repo_target_path = (get_tracked_pane_orchestrator_wasm_path $paths.yazelix_dir)
+    cp --force $paths.wasm_path $repo_target_path
+    let merged_config_path = (generate_merged_zellij_config $paths.yazelix_dir)
+    let runtime_target_path = (get_runtime_pane_orchestrator_wasm_path)
+    let byte_len = (open --raw $paths.wasm_path | length)
+
+    print $"Updated pane orchestrator repo wasm: ($repo_target_path)"
+    print $"Updated pane orchestrator runtime wasm: ($runtime_target_path)"
+    print $"Updated merged Zellij config: ($merged_config_path)"
+    print $"Size: ($byte_len) bytes"
+    print ""
+    print "Safest next step:"
+    print "Restart Yazelix or open a fresh Yazelix window so Zellij loads the updated plugin cleanly."
+    print "In-place plugin reloads can leave the current session in a broken permission state."
+    print ""
+    print "If you are already stuck in a blank/permission-limbo session, recover with:"
+    print "zellij delete-all-sessions -f -y"
 }
 
 export def build_pane_orchestrator_wasm [sync: bool = false] {

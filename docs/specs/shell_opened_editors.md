@@ -31,6 +31,53 @@ This spec covers:
 - how Yazi-driven opens and cwd sync should behave relative to shell-opened editors
 - what users should expect from doctor/docs messaging
 
+## Contract Items
+
+#### SOE-001
+- Type: ownership
+- Status: live
+- Owner: pane orchestrator managed editor identity
+- Statement: Only the Yazelix-managed pane titled `editor` counts as the
+  managed editor pane. A generic shell pane running an editor process is not
+  the managed editor by default
+- Verification: automated
+  `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`; automated
+  `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib`
+
+#### SOE-002
+- Type: non_goal
+- Status: live
+- Owner: managed editor boundary
+- Statement: Shell-opened editors are ordinary panes. Yazelix does not
+  automatically adopt, retitle, or reinterpret them as the managed editor pane
+- Verification: automated
+  `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`; validator
+  `nu nushell/scripts/dev/validate_specs.nu`
+
+#### SOE-003
+- Type: behavior
+- Status: live
+- Owner: Yazi open routing plus pane orchestrator editor-open flow
+- Statement: Yazi-driven opens target the managed editor pane when it exists,
+  and otherwise create a new managed editor pane through the normal Yazelix
+  flow. Yazelix does not guess that a shell-opened editor pane should be reused
+- Verification: automated
+  `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`; automated
+  `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib`
+
+#### SOE-004
+- Type: behavior
+- Status: live
+- Owner: managed editor sync and explicit integration facts
+- Statement: Workspace retargeting and managed editor cwd sync apply only to
+  the managed editor pane and its configured managed editor kind. Doctor/docs
+  language and helper facts must distinguish "managed editor pane" from
+  "editor process exists somewhere"
+- Verification: automated
+  `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`; automated
+  `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`; automated
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_core_owned_facts`
+
 ## Behavior
 
 ### Managed Editor Definition

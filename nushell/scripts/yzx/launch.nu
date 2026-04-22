@@ -1,7 +1,6 @@
 #!/usr/bin/env nu
 # yzx launch command - Launch Yazelix in a new terminal window
 
-use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu [require_yazelix_runtime_dir resolve_yazelix_nu_bin]
 use ../utils/failure_classes.nu [format_failure_classification]
 use ../utils/startup_profile.nu [profile_startup_step propagate_startup_profile_env]
@@ -96,8 +95,8 @@ export def "yzx launch" [
         print "🔍 yzx launch: verbose mode enabled"
     }
 
-    let config = (profile_startup_step "launch" "parse_config" {
-        parse_yazelix_config
+    let runtime_env = (profile_startup_step "launch" "compute_runtime_env" {
+        compute_runtime_env_via_yzx_core
     })
     let requested_path = $path
     let requested_terminal = $terminal
@@ -124,7 +123,7 @@ export def "yzx launch" [
 
     let nu_bin = (resolve_yazelix_nu_bin)
     let final_launch_args = $launch_args
-    let env_block = (propagate_startup_profile_env (propagate_test_env (compute_runtime_env_via_yzx_core $config)))
+    let env_block = (propagate_startup_profile_env (propagate_test_env $runtime_env))
     if $verbose_mode {
         print $"⚙️ Executing launch_yazelix.nu from runtime: ($runtime_dir)"
         print $"   cwd: ($launch_cwd)"

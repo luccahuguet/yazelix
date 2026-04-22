@@ -38,10 +38,10 @@ Validator status during the audit:
 | `test_yzx_core_commands.nu` | default component | `37` | mixed `BRIDGE-*`, `ROOT-*`, and `SDR-*` markers plus regressions | keep; one weak command-discovery test was deleted and the public-root compatibility registry is gone |
 | `test_yzx_doctor_commands.nu` | default component | `16` | mixed `SDR-*` markers plus doctor regressions | keep; public status/doctor report contract now indexed |
 | `test_yzx_generated_configs.nu` | default component | `38` | top-level live spec refs plus `CRCP-*` on helper-resolution tests; many generated-config regressions | mixed: some mapped, many regression-only, keep likely 9/10 cases |
-| `test_yzx_popup_commands.nu` | default component | `14` | floating pane file marker plus regressions | mapped to live prose spec; needs item IDs |
+| `test_yzx_popup_commands.nu` | default component | `14` | `POP-*` item IDs plus regressions | keep; popup contract items now map the strongest deterministic popup checks |
 | `test_yzx_screen_commands.nu` | default component | `6` | `FRONT-*` item IDs | mapped; good model for future conversions |
-| `test_yzx_workspace_commands.nu` | default component | `29` | workspace contract file marker plus regressions | mapped to live prose spec; needs item IDs |
-| `test_yzx_yazi_commands.nu` | default component | `7` | top-level live spec refs plus integration regressions | keep; still needs the next workspace/session contract-item batch |
+| `test_yzx_workspace_commands.nu` | default component | `29` | `WSS-*`, `NWS-*`, and `PWS-*` item IDs plus regressions | keep; launch/session/workspace contracts now have indexed items for the strongest current tests |
+| `test_yzx_yazi_commands.nu` | default component | `7` | `WSS-*`, `SOE-*`, and live spec refs plus regressions | keep; integration and managed-editor boundary tests now have narrower item IDs |
 | `test_helix_managed_config_contracts.nu` | maintainer/default-adjacent | `5` | policy file marker plus Helix/config regressions | keep; needs item IDs before deletion decisions |
 | `test_shell_managed_config_contracts.nu` | maintainer/default-adjacent | `12` | policy file marker plus shell/runtime regressions | keep; only known defense for shell config and extern bridge |
 | `test_yzx_helix_doctor_contracts.nu` | maintainer | `2` | policy file marker plus Helix doctor defends | keep; move to item IDs when doctor/Helix specs are indexed |
@@ -57,10 +57,12 @@ Classification summary:
 
 - mapped to indexed items:
   - `test_yzx_screen_commands.nu`
+  - `test_yzx_popup_commands.nu`
+  - selected `test_yzx_workspace_commands.nu`
+  - selected `test_yzx_yazi_commands.nu`
   - selected `test_yzx_generated_configs.nu` helper-resolution tests
 - mapped to live prose specs but not item IDs:
-  - popup, workspace, many generated-config, doctor/status, shell config, and
-    Zellij plugin tests
+  - many generated-config, doctor/status, shell config, and Zellij plugin tests
 - regression-only or invariant-only:
   - most default component tests and maintainer release/update/profile tests
 - quarantine:
@@ -159,9 +161,12 @@ Minimum item-ID batches before aggressive pruning:
 - `yazelix-rdn7.4.3` now records the keep/reject decision for
   `cargo-mutants`, `cargo-fuzz`, and `cargo-nextest`; follow implementation
   work through `yazelix-fkgs` if the nextest pilot is worth doing.
-- `yazelix-0qxa` should convert the next workspace/session live specs to
-  indexed contract items so later test pruning can keep shrinking broad
-  regression-only traceability.
+- `yazelix-0qxa` landed the next workspace/session contract-item batch for
+  workspace/session, shell-opened editor, and persistent/non-persistent window
+  semantics. Future pruning should keep using those item IDs instead of
+  reintroducing broad file-level traceability.
+- `yazelix-rdn7.4.5.1` now records the next serious Nu-to-Rust migration budget
+  in `rust_owned_test_migration_budget.md`.
 
 ## Verification
 

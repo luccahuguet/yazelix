@@ -182,7 +182,7 @@ owners.
 ## Verification
 
 - manual review against [architecture_map.md](../architecture_map.md)
-- manual review against [workspace_session_contract.md](../workspace_session_contract.md)
+- manual review against [workspace_session_contract.md](./workspace_session_contract.md)
 - manual review against [rust_migration_matrix.md](./rust_migration_matrix.md)
 - spec validation: `nu nushell/scripts/dev/validate_specs.nu`
 

@@ -24,6 +24,7 @@ let
   maintainerDeps =
     [ pkgs.github-cli ]
     ++ [ pkgs.nu-lint ]
+    ++ [ pkgs.cargo-nextest ]
     ++ [ bdPackage ]
     ++ [ rustWasiToolchain ]
     ++ [ openssl ];

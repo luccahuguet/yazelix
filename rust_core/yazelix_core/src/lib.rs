@@ -20,9 +20,11 @@ pub mod public_command_surface;
 pub mod runtime_contract;
 pub mod runtime_env;
 pub mod runtime_materialization;
+pub mod startup_facts;
 pub mod status_report;
 pub mod support_commands;
 pub mod terminal_materialization;
+pub mod transient_pane_facts;
 pub mod update_commands;
 pub mod workspace_commands;
 pub mod yazi_materialization;
@@ -89,12 +91,14 @@ pub use runtime_materialization::{
     RuntimeMaterializationRepairRunData, RuntimeMaterializationRunData, RuntimeRepairDirective,
     materialize_runtime_state, plan_runtime_materialization, repair_runtime_materialization,
 };
+pub use startup_facts::{StartupFactsData, compute_startup_facts_from_env};
 pub use status_report::{StatusReportData, compute_status_report};
 pub use support_commands::{run_yzx_sponsor, run_yzx_why};
 pub use terminal_materialization::{
     TerminalGeneratedConfig, TerminalMaterializationData, TerminalMaterializationRequest,
     generate_terminal_materialization,
 };
+pub use transient_pane_facts::{TransientPaneFactsData, compute_transient_pane_facts_from_env};
 pub use workspace_commands::{
     IntegrationFactsData, compute_integration_facts_from_env, run_yzx_cwd, run_yzx_reveal,
 };

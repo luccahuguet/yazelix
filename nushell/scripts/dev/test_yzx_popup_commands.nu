@@ -13,10 +13,14 @@ def write_executable_fixture_file [path: string, lines: list<string>] {
     ^chmod +x $path
 }
 
-def write_runtime_wrapper_fixture_config_parser [fixture: record, lines: list<string>] {
-    let parser_path = ($fixture.utils_dir | path join "config_parser.nu")
+def write_runtime_wrapper_fixture_config [fixture: record, lines: list<string>] {
+    let config_path = ($fixture.config_dir | path join "user_configs" "yazelix.toml")
+    mkdir ($config_path | path dirname)
+    ($lines | str join "\n") | save --force --raw $config_path
+}
+
+def write_runtime_wrapper_fixture_bridge [fixture: record] {
     let bridge_path = ($fixture.utils_dir | path join "yzx_core_bridge.nu")
-    let parser_lines = ($lines | str join "\n")
     let bridge_lines = ([
         "export def build_default_yzx_core_error_surface [] {"
         "    { display_config_path: \"\", config_file: \"\" }"
@@ -54,13 +58,13 @@ def write_runtime_wrapper_fixture_config_parser [fixture: record, lines: list<st
         "    $result.stdout | from json | get data"
         "}"
     ] | str join "\n")
-    $parser_lines | save --force --raw $parser_path
     $bridge_lines | save --force --raw $bridge_path
 }
 
 def setup_runtime_wrapper_fixture [label: string] {
     let tmpdir = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
     let runtime_dir = ($tmpdir | path join "runtime")
+    let config_dir = ($tmpdir | path join ".config" "yazelix")
     let integrations_dir = ($runtime_dir | path join "nushell" "scripts" "integrations")
     let utils_dir = ($runtime_dir | path join "nushell" "scripts" "utils")
     let yzx_dir = ($runtime_dir | path join "nushell" "scripts" "yzx")
@@ -81,24 +85,23 @@ def setup_runtime_wrapper_fixture [label: string] {
     cp ($env.PWD | path join ".taplo.toml") ($runtime_dir | path join ".taplo.toml")
     ^ln -s ($env.PWD | path join "config_metadata") ($runtime_dir | path join "config_metadata")
     cp ($env.PWD | path join "nushell" "scripts" "utils" "transient_pane_contract.nu") ($utils_dir | path join "transient_pane_contract.nu")
+    cp ($env.PWD | path join "nushell" "scripts" "utils" "transient_pane_facts.nu") ($utils_dir | path join "transient_pane_facts.nu")
     cp ($env.PWD | path join "nushell" "scripts" "utils" "runtime_env.nu") ($utils_dir | path join "runtime_env.nu")
     [
         "export def get_yazelix_runtime_dir [] {"
         $"    $env.YAZELIX_RUNTIME_DIR? | default \"($runtime_dir)\""
         "}"
     ] | str join "\n" | save --force --raw ($utils_dir | path join "common.nu")
-    write_runtime_wrapper_fixture_config_parser {
-        utils_dir: $utils_dir
-        helper_bin: $helper_bin
-    } [
-        "export def parse_yazelix_config [] {"
-        "    { popup_program: [\"config-popup\"] }"
-        "}"
+    write_runtime_wrapper_fixture_bridge { utils_dir: $utils_dir helper_bin: $helper_bin }
+    write_runtime_wrapper_fixture_config { config_dir: $config_dir } [
+        "[zellij]"
+        'popup_program = ["config-popup"]'
     ]
 
     {
         tmpdir: $tmpdir
         runtime_dir: $runtime_dir
+        config_dir: $config_dir
         integrations_dir: $integrations_dir
         utils_dir: $utils_dir
         yzx_dir: $yzx_dir
@@ -112,6 +115,7 @@ def setup_runtime_wrapper_fixture [label: string] {
 }
 
 # Defends: popup command resolution prefers the configured default program.
+# Contract: POP-001
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_popup_command_prefers_configured_default [] {
     print "🧪 Testing yzx popup uses the configured popup_program by default..."
@@ -134,6 +138,7 @@ def test_popup_command_prefers_configured_default [] {
 }
 
 # Defends: popup cwd resolution prefers the workspace root.
+# Contract: POP-003
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_popup_cwd_prefers_workspace_root [] {
     print "🧪 Testing yzx popup uses the tab workspace root for cwd..."
@@ -155,6 +160,7 @@ def test_popup_cwd_prefers_workspace_root [] {
 }
 
 # Defends: popup open requests carry one explicit identity, argv, cwd, runtime, and geometry contract.
+# Contract: POP-001, POP-004
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_popup_contract_carries_explicit_identity_and_geometry [] {
     print "🧪 Testing popup contract resolves explicit identity, argv, cwd, runtime, and geometry..."
@@ -200,6 +206,7 @@ def test_popup_contract_carries_explicit_identity_and_geometry [] {
 }
 
 # Defends: popup size parsing accepts valid percentages and rejects invalid ones.
+# Contract: POP-002
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_popup_size_parser_accepts_valid_and_rejects_invalid_percentages [] {
     print "🧪 Testing popup size config accepts valid percentages and rejects invalid ones..."
@@ -320,8 +327,11 @@ def test_popup_program_wrapper_runs_resolved_argv_directly [] {
 
         let wrapper_script = ($fixture.wrapper_dir | path join "yzx_popup_program.nu")
         let output = (with-env {
+            HOME: $fixture.tmpdir
             PATH: ([$fixture.fake_bin] | append $env.PATH)
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
             ZELLIJ: "1"
+            YAZELIX_YZX_CORE_BIN: $fixture.helper_bin
             YAZELIX_TEST_POPUP_LOG: ($fixture.tmpdir | path join "popup_program.log")
             YAZELIX_TEST_ZELLIJ_LOG: ($fixture.tmpdir | path join "zellij.log")
             YAZELIX_TEST_REFRESH_LOG: $fixture.refresh_log
@@ -400,8 +410,11 @@ def test_popup_program_wrapper_falls_back_to_configured_default_when_args_are_mi
 
         let wrapper_script = ($fixture.wrapper_dir | path join "yzx_popup_program.nu")
         let output = (with-env {
+            HOME: $fixture.tmpdir
             PATH: ([$fixture.fake_bin] | append $env.PATH)
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
             ZELLIJ: "1"
+            YAZELIX_YZX_CORE_BIN: $fixture.helper_bin
             YAZELIX_TEST_POPUP_LOG: ($fixture.tmpdir | path join "popup_program.log")
             YAZELIX_TEST_ZELLIJ_LOG: ($fixture.tmpdir | path join "zellij.log")
             YAZELIX_TEST_REFRESH_LOG: $fixture.refresh_log
@@ -455,14 +468,15 @@ def test_popup_program_editor_token_uses_configured_managed_editor [] {
         mkdir ($custom_hx | path dirname)
         mkdir $custom_runtime
 
-        write_runtime_wrapper_fixture_config_parser $fixture [
-            "export def parse_yazelix_config [] {"
-            "    {"
-            "        popup_program: [\"editor\"]"
-            $"        editor_command: \"($custom_hx)\""
-            $"        helix_runtime_path: \"($custom_runtime)\""
-            "    }"
-            "}"
+        write_runtime_wrapper_fixture_config $fixture [
+            "[editor]"
+            $"command = \"($custom_hx)\""
+            ""
+            "[helix]"
+            $"runtime_path = \"($custom_runtime)\""
+            ""
+            "[zellij]"
+            'popup_program = ["editor"]'
         ]
 
         write_executable_fixture_file ($fixture.fake_bin | path join "zellij") [
@@ -502,8 +516,11 @@ def test_popup_program_editor_token_uses_configured_managed_editor [] {
 
         let wrapper_script = ($fixture.wrapper_dir | path join "yzx_popup_program.nu")
         let output = (with-env {
+            HOME: $fixture.tmpdir
             PATH: ([$fixture.fake_bin] | append $env.PATH)
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
             YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
+            YAZELIX_YZX_CORE_BIN: $fixture.helper_bin
             ZELLIJ: "1"
             YAZELIX_TEST_POPUP_LOG: ($fixture.tmpdir | path join "popup_program.log")
             YAZELIX_TEST_ZELLIJ_LOG: ($fixture.tmpdir | path join "zellij.log")
@@ -646,9 +663,12 @@ def test_popup_program_wrapper_reports_missing_command_clearly [] {
 
         let wrapper_script = ($fixture.wrapper_dir | path join "yzx_popup_program.nu")
         let output = (with-env {
+            HOME: $fixture.tmpdir
             PATH: ([$fixture.fake_bin] | append $env.PATH)
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
             ZELLIJ: "1"
             YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
+            YAZELIX_YZX_CORE_BIN: $fixture.helper_bin
             YAZELIX_TEST_ZELLIJ_LOG: ($fixture.tmpdir | path join "zellij.log")
             YAZELIX_TEST_REFRESH_LOG: $fixture.refresh_log
         } {
@@ -960,8 +980,11 @@ def test_popup_program_receives_canonical_env_with_visual [] {
 
         let wrapper_script = ($fixture.wrapper_dir | path join "yzx_popup_program.nu")
         let output = (with-env {
+            HOME: $fixture.tmpdir
             PATH: ([$fixture.fake_bin] | append $env.PATH)
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
             YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
+            YAZELIX_YZX_CORE_BIN: $fixture.helper_bin
             ZELLIJ: "1"
             YAZELIX_TEST_POPUP_LOG: ($fixture.tmpdir | path join "popup_env.log")
             YAZELIX_TEST_ZELLIJ_LOG: ($fixture.tmpdir | path join "zellij.log")

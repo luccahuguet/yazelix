@@ -3,6 +3,8 @@
 > Status: Historical transition note
 > This document captures older backend-era framing around cached launch-profile,
 > installer-runtime identity, and broader activation seams
+> References below to files such as `launch_state.nu` are historical evidence,
+> not current live planning targets
 > Current delete-first planning should start from
 > [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md),
 > [rust_nushell_bridge_contract.md](./rust_nushell_bridge_contract.md), and

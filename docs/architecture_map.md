@@ -67,7 +67,7 @@ This is where the Rust plugins matter. They are not "extra integration code"; th
 
 Related contracts:
 
-- [Workspace Session Contract](./workspace_session_contract.md)
+- [Workspace Session Contract](./specs/workspace_session_contract.md)
 - [Backend-Free Workspace Slice](./specs/backend_free_workspace_slice.md)
 - [Cross-Language Runtime Ownership](./specs/cross_language_runtime_ownership.md)
 

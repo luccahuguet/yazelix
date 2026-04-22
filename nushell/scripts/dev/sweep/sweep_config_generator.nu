@@ -27,9 +27,6 @@ def build_sweep_config [
         terminal: {
             terminals: ([$terminal "ghostty" "wezterm" "kitty" "alacritty" "foot"] | uniq)
             config_mode: "yazelix"
-            ghostty_trail_color: null
-            ghostty_trail_effect: null
-            ghostty_mode_effect: null
             transparency: "none"
         }
         zellij: {

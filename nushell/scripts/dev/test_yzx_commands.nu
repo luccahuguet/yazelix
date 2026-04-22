@@ -3,7 +3,7 @@
 # Test lane: default
 # Defends: docs/specs/test_suite_governance.md
 # Defends: docs/specs/floating_tui_panes.md
-# Defends: docs/workspace_session_contract.md
+# Defends: docs/specs/workspace_session_contract.md
 
 use ./yzx_test_helpers.nu [format_test_profile_report setup_test_home test_profiling_enabled]
 use ./test_yzx_core_commands.nu [run_core_canonical_tests]

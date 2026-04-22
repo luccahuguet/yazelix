@@ -10,6 +10,15 @@ runtime product path. The delete-first goal here is narrower: remove stale
 wrappers, keep harness logic out of product migration accounting, and harden the
 few maintainer paths that still defend release-quality behavior.
 
+`yazelix-4ucy` landed after this audit:
+
+- `dev/update_zellij_pane_orchestrator.nu` is deleted and its sync behavior now
+  lives directly in `maintainer/plugin_build.nu`
+- `dev/update_zjstatus.nu` is deleted and its vendoring logic now lives
+  directly in `maintainer/update_workflow.nu`
+- demo helpers remain, but they are documented as manual maintainer helpers
+  rather than normal runtime entrypoints
+
 ## 1. Subsystem Snapshot
 
 - subsystem name: maintainer, dev, validator, benchmark, and sweep harnesses
@@ -75,7 +84,7 @@ The top maintainer/test files by size are:
 | Sweep and visual lanes remain explicit and separate from the default suite | `docs/specs/test_suite_governance.md` | Nu `test_config_sweep.nu` and `dev/sweep/*.nu` | sweep lane manual/targeted checks | same, but dispatch should be less dynamic |
 | Version bump and release notes stay transactional and refuse dirty/invalid release states | `docs/specs/upgrade_notes_contract.md` | Nu `maintainer/version_bump.nu` | maintainer tests for bump and upgrade contracts | same |
 | Update workflow refreshes runtime pins, runs canaries, and requires explicit activation mode for real updates | `docs/specs/runtime_distribution_capability_tiers.md`; maintainer tests | Nu `maintainer/update_workflow.nu` | maintainer update tests | same |
-| Plugin build/sync keeps pane-orchestrator wasm rebuild requirements visible | AGENTS Rust plugin workflow | Nu `maintainer/plugin_build.nu` and legacy `dev/update_zellij_pane_orchestrator.nu` | maintainer tests and manual build command | `plugin_build.nu`; delete or demote wrapper |
+| Plugin build/sync keeps pane-orchestrator wasm rebuild requirements visible | AGENTS Rust plugin workflow | Nu `maintainer/plugin_build.nu` | maintainer tests and manual build command | `plugin_build.nu` |
 | Contract/test/spec validators keep the ratchet cheap and deterministic | `docs/contract_driven_development.md` | Nu validators under `nushell/scripts/dev` | validator commands | same unless a Rust validator clearly deletes Nu logic |
 | Profiling harness records the real startup boundaries and can compare cold/warm/desktop/launch scenarios | `docs/specs/startup_profile_scenarios.md` | Nu `yzx/dev.nu` plus `startup_profile.nu` | maintainer profile tests | same |
 
@@ -96,9 +105,9 @@ The top maintainer/test files by size are:
 
 ### Delete Now
 
-- No maintainer script should be deleted in this audit.
-- Obvious candidates need a wrapper/demote bead because some are still the only
-  documented command for manual workflows.
+- The thin update/plugin wrapper files named by this audit were later deleted
+  under `yazelix-4ucy`.
+- Demo recording helpers remain by design, but only as manual maintainer tools.
 
 ### Bridge Layer To Collapse
 
@@ -139,10 +148,10 @@ The top maintainer/test files by size are:
 ## 6. Quality Findings
 
 - duplicate owners:
-  - `dev/update_zellij_pane_orchestrator.nu` overlaps with
-    `maintainer/plugin_build.nu`
-  - `dev/update_zjstatus.nu` is called from update workflow and should be
-    reviewed as either canonical vendoring owner or thin wrapper
+  - resolved under `yazelix-4ucy`: pane-orchestrator wasm sync now lives only
+    in `maintainer/plugin_build.nu`
+  - resolved under `yazelix-4ucy`: vendored `zjstatus.wasm` refresh now lives
+    only in `maintainer/update_workflow.nu`
   - package validators share helper logic through `nixpkgs_package_smoke.nu`,
     which is good; keep that as a shared maintainer helper
 - missing layer problems:
@@ -151,9 +160,8 @@ The top maintainer/test files by size are:
   - no cheap dry-run check currently proves sweep dispatch without opening
     visual windows
 - extra layer problems:
-  - demo recording scripts are listed in `nushell/scripts/README.md` as if they
-    were normal runtime script surface
-  - some wrapper scripts survive only as one-command forwarders
+  - resolved under `yazelix-4ucy`: demo recording scripts are now documented as
+    manual maintainer helpers instead of normal runtime script surface
 - DRY opportunities:
   - direct runner invocation for sweep lanes
   - fold thin update/plugin wrappers into canonical maintainer modules
@@ -174,7 +182,7 @@ The top maintainer/test files by size are:
 | Bead | Retained behavior | Deletion class | Candidate surviving owner | Verification that must still pass | Explicit stop condition |
 | --- | --- | --- | --- | --- | --- |
 | `yazelix-fg51` | default, lint-only, sweep, visual, all, profile, and new-window `yzx dev test` behavior | `bridge_collapse` | one explicit Nu test runner with direct dispatch | default suite; targeted sweep dispatch; syntax validation | keep external Nu execution if isolation is needed, but avoid interpolated command program strings |
-| `yazelix-4ucy` | wasm build/sync, zjstatus vendoring, demo helpers if kept, nixpkgs smoke validation | `delete_now` / `no_go_record` | canonical maintainer modules or manual docs | maintainer tests and specific tool checks | do not delete the only documented release/package workflow entrypoint |
+| `yazelix-4ucy` | wasm build/sync, zjstatus vendoring, demo helpers if kept, nixpkgs smoke validation | landed | canonical maintainer modules plus manual docs | maintainer tests and specific tool checks | keep the canonical maintainer entrypoints documented |
 
 ## Verification
 

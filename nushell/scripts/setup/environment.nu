@@ -2,9 +2,9 @@
 # Main Yazelix environment setup script
 # Shared by startup, installer, and maintainer-shell entrypoints
 
-use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu [get_yazelix_runtime_dir get_yazelix_state_dir resolve_yazelix_nu_bin]
 use ../utils/constants.nu DEFAULT_SHELL
+use ../utils/startup_facts.nu [load_startup_facts]
 use ../utils/shell_user_hooks.nu [sync_generated_nushell_user_hook_bridge]
 use ../utils/startup_profile.nu [profile_startup_step]
 use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
@@ -41,21 +41,19 @@ def sync_generated_yzx_extern_bridge [runtime_root: string] {
 }
 
 def main [--welcome-source: string = "", --skip-welcome] {
-    # Read configuration directly from TOML - single source of truth!
-    let config = parse_yazelix_config
+    let startup_facts = (load_startup_facts)
 
-    # Extract values from config (all properly typed from TOML)
     let yazelix_dir = (get_yazelix_runtime_dir)
-    let default_shell = ($config.default_shell? | default $DEFAULT_SHELL)
-    let debug_mode = ($config.debug_mode? | default false)
+    let default_shell = ($startup_facts.default_shell? | default $DEFAULT_SHELL)
+    let debug_mode = ($startup_facts.debug_mode? | default false)
     let runtime_nu = (resolve_yazelix_nu_bin)
     let skip_welcome_screen = (
-        ($config.skip_welcome_screen? | default false)
+        ($startup_facts.skip_welcome_screen? | default false)
         or ($env.YAZELIX_STARTUP_PROFILE_SKIP_WELCOME? == "true")
     )
-    let welcome_style = ($config.welcome_style? | default "random")
-    let welcome_duration_seconds = ($config.welcome_duration_seconds? | default 1.0)
-    let show_macchina_on_welcome = ($config.show_macchina_on_welcome? | default false)
+    let welcome_style = ($startup_facts.welcome_style? | default "random")
+    let welcome_duration_seconds = ($startup_facts.welcome_duration_seconds? | default 1.0)
+    let show_macchina_on_welcome = ($startup_facts.show_macchina_on_welcome? | default false)
 
     # DEBUG: Print skip_welcome_screen value
     if $debug_mode {
@@ -165,9 +163,9 @@ def main [--welcome-source: string = "", --skip-welcome] {
 
     # Build welcome message
     let welcome_facts = {
-        persistent_sessions: ($config.persistent_sessions? | default false)
-        session_name: ($config.session_name? | default "yazelix")
-        terminals: ($config.terminals? | default [])
+        persistent_sessions: ($startup_facts.persistent_sessions? | default false)
+        session_name: ($startup_facts.session_name? | default "yazelix")
+        terminals: ($startup_facts.terminals? | default [])
     }
     let welcome_message = build_welcome_message $yazelix_dir $colors $welcome_facts
 

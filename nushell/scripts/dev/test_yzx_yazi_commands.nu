@@ -15,6 +15,7 @@ def write_executable_fixture_file [path: string, lines: list<string>] {
 }
 
 # Defends: Yazi command resolution honors defaults and user overrides.
+# Contract: WSS-005
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_yazi_command_resolvers_honor_defaults_and_overrides [] {
     print "🧪 Testing Yazi command resolvers honor defaults and explicit overrides..."
@@ -93,6 +94,7 @@ ya_command = "/opt/custom/ya"
 }
 
 # Regression: managed Helix sessions expose a wrapper path in EDITOR, so Yazi-side editor detection must still resolve Helix.
+# Contract: SOE-004
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_get_managed_editor_kind_accepts_managed_helix_wrapper_env [] {
     print "🧪 Testing managed editor detection accepts the Yazelix Helix wrapper env..."
@@ -133,6 +135,7 @@ skip_welcome_screen = true
 }
 
 # Regression: sidebar refresh must use the pane-orchestrator session snapshot instead of a separate raw sidebar-state seam or cache.
+# Contract: WSS-001, WSS-004
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_refresh_active_sidebar_yazi_emits_refresh_to_plugin_sidebar_instance [] {
     print "🧪 Testing active sidebar Yazi refresh uses the session snapshot sidebar instance and ignores stale cache state..."
@@ -211,6 +214,7 @@ ya_command = "ya"
 }
 
 # Regression: active sidebar state lookup must use the pane-orchestrator session snapshot instead of a separate raw sidebar-state seam or filesystem cache selection.
+# Contract: WSS-001, WSS-004
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_get_active_sidebar_state_uses_plugin_owned_sidebar_identity_instead_of_cache [] {
     print "🧪 Testing active sidebar Yazi lookup uses the session snapshot sidebar identity instead of stale cache files..."

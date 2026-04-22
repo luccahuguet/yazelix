@@ -4,6 +4,9 @@
 > `runtime-env.compute` already landed, and the remaining v15.x launch and
 > bootstrap Rust follow-up was explicitly stopped on `2026-04-19`
 > Keep this file as migration history only
+> Names such as `core/yazelix.nu`, `yzx/env.nu`, and `yzx/run.nu` that appear
+> below are historical references from the transition window, not current live
+> owners
 > Current delete-first planning should start from
 > [rust_migration_matrix.md](./rust_migration_matrix.md)
 

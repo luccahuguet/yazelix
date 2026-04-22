@@ -1,6 +1,5 @@
 #!/usr/bin/env nu
 
-use config_parser.nu [parse_yazelix_config]
 use common.nu [get_yazelix_runtime_dir]
 use yzx_core_bridge.nu compute_runtime_env_via_yzx_core
 
@@ -23,8 +22,7 @@ def normalize_editor_command [editor?: string, runtime_dir?: string] {
 }
 
 export def resolve_editor_launch_context [] {
-    let config = parse_yazelix_config
-    mut launch_env = (compute_runtime_env_via_yzx_core $config)
+    mut launch_env = (compute_runtime_env_via_yzx_core)
     let runtime_dir = ($launch_env.YAZELIX_RUNTIME_DIR? | default (get_yazelix_runtime_dir))
     let editor = (normalize_editor_command ($launch_env.EDITOR? | default "") $runtime_dir)
 

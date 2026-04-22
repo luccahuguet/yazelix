@@ -1,7 +1,6 @@
 #!/usr/bin/env nu
 # ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 
-use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu [require_yazelix_runtime_dir resolve_yazelix_nu_bin]
 use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface compute_runtime_env_via_yzx_core run_yzx_core_request_json_command]
 
@@ -60,11 +59,10 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     }
     let nu_bin = (resolve_yazelix_nu_bin)
 
-    let config = parse_yazelix_config
-    let runtime_env = (compute_runtime_env_via_yzx_core $config)
+    let runtime_env = (compute_runtime_env_via_yzx_core)
 
     if $verbose_mode {
-        print "🔍 Startup config parsed"
+        print "🔍 Startup runtime env computed"
     }
 
     if $setup_only {

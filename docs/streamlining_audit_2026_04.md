@@ -17,7 +17,7 @@ This pass used the repo's delete-first protocol:
 4. verify the narrower contract
 5. record the new seam
 
-Current Nushell baseline:
+Historical Nushell baseline at the time:
 
 - `tokei nushell/scripts -s code`
 - `159` files
@@ -61,28 +61,32 @@ These are large, but currently justified enough to avoid reflexive splitting:
 
 These may still shrink later, but they are not the highest-value refactor targets right now.
 
-## High-Value Remaining Seams
+## Historical Remaining-Seam List
 
-These are the worthwhile remaining refactor targets after the cheap cleanup pass:
+This earlier shortlist is now superseded and is kept only as audit history:
 
 1. `nushell/scripts/utils/devenv_backend.nu`
-   - runtime activation, refresh intent, backend-shell execution, and launch-profile reuse still live close together
+   - later deleted during the runtime trim
 2. `nushell/scripts/utils/launch_state.nu`
-   - recorded profile freshness, profile activation env, and launch-state persistence remain a dense runtime owner
+   - later deleted; do not treat it as a current target
 3. `nushell/scripts/utils/config_migrations.nu`
-   - the plan/apply engine is smaller than before, but the migration engine and transaction model are still a meaningful seam
+   - later deleted with the migration engine
 4. `nushell/scripts/utils/config_migration_transactions.nu`
-   - durable managed-write behavior and rollback rules deserve continued hardening
+   - later deleted with the migration engine
 5. `nushell/scripts/utils/terminal_launcher.nu`
-   - host terminal detection, wrapper preference, and detached launch transport are still braided together
+   - still live, but the current targeted lane is the detached-launch probe cut,
+     not the older broad shortlist framing
 6. `nushell/scripts/utils/config_surfaces.nu`
-   - canonical surface reconciliation is legitimate, but pack-sidecar merge and relocation behavior are still dense enough to deserve care
+   - later deleted as the active-config owner; surviving helper behavior moved
+     to narrower path/file surfaces
 
 ## What This Means
 
 - `yazelix-jxh` can stop as a broad delete-only lane once the current inventory is recorded.
 - `yazelix-790` can stop as an umbrella once the shortlist above is accepted and later work happens in narrower beads.
-- Future streamlining work should prefer these real seams over more micro-pruning.
+- Future streamlining work should not reuse this historical shortlist. Current
+  work should start from the delete-first inventory and ranked Nu deletion
+  budget instead.
 
 ## Traceability
 

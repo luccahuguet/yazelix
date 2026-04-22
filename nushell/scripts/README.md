@@ -34,11 +34,15 @@ Reusable utility functions and helpers:
 ### `dev/` - Development Tools
 Scripts for development, testing, and maintenance:
 - `validate_syntax.nu` - Validate syntax of all Nushell scripts using nu-check
-- `record_demo.nu` - VHS demo recording with font support
-- `record_demo_fonts.nu` - Font testing for VHS recordings
-- `update_zjstatus.nu` - Internal maintainer helper to refresh the vendored zjstatus.wasm from the pinned Nix package
-- `update_zellij_pane_orchestrator.nu` - Sync the locally built pane orchestrator wasm into the repo and runtime plugin paths
-  - Pair with `yzx dev build_pane_orchestrator` from the Yazelix maintainer shell or another Rust toolchain that has `wasm32-wasip1`
+
+### Manual Maintainer Helpers
+These are manual or exploratory helpers, not normal runtime entrypoints:
+- `record_demo.nu` - VHS demo recording helper
+- `record_demo_fonts.nu` - Font-testing helper for demo recording
+
+Canonical maintainer entrypoints:
+- `yzx dev build_pane_orchestrator --sync` - Build and sync the pane orchestrator wasm
+- `yzx dev update` - Refresh runtime pins, vendored zjstatus, vendored Yazi plugins, and update canaries
 
 ## Usage
 
@@ -72,4 +76,4 @@ nu ~/.config/yazelix/nushell/scripts/dev/record_demo_fonts.nu
 ```
 
 ## File Naming Convention
-All files use underscores (e.g., `start_yazelix.nu`, `open_file.nu`) - never hyphens. 
+All files use underscores (e.g., `start_yazelix.nu`, `open_file.nu`) - never hyphens

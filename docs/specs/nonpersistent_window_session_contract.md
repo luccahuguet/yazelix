@@ -22,6 +22,49 @@ Without a written contract, future fixes will keep rediscovering the same questi
 - define how generated-state repair, external runtime replacement, and `yzx restart` should behave for already-open non-persistent windows
 - define the expected lifecycle of the last client in a non-persistent Yazelix session
 
+## Contract Items
+
+#### NWS-001
+- Type: behavior
+- Status: live
+- Owner: non-persistent launch/session boundary
+- Statement: When `zellij.persistent_sessions = false`, each Yazelix launch
+  creates an independent live session. That includes current-terminal startup,
+  `yzx launch`, and desktop launch flows
+- Verification: automated
+  `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
+
+#### NWS-002
+- Type: boundary
+- Status: live
+- Owner: durable-state versus live-session boundary
+- Statement: Non-persistent windows share durable state such as config,
+  runtime, and generated artifacts, but they do not share one live session and
+  must not be silently hot-swapped in place by repair or runtime replacement
+- Verification: automated
+  `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`; validator
+  `nu nushell/scripts/dev/validate_specs.nu`
+
+#### NWS-003
+- Type: behavior
+- Status: live
+- Owner: non-persistent restart boundary
+- Statement: `yzx restart` is the explicit live-session transition for one
+  non-persistent window. Restarting one window does not implicitly transition
+  other already-open non-persistent windows
+- Verification: automated
+  `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
+
+#### NWS-004
+- Type: failure_mode
+- Status: live
+- Owner: non-persistent last-client lifecycle
+- Statement: Leaving behind a detached zero-client Zellij session after the
+  last client closes in default non-persistent mode is a bug, not an intentional
+  persistence feature
+- Verification: manual non-persistent lifecycle review; automated
+  `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
+
 ## Behavior
 
 - The shipped default is non-persistent mode.

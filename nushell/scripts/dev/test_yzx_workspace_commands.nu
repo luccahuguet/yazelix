@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Test lane: default
 # Defends: docs/specs/test_suite_governance.md
-# Defends: docs/workspace_session_contract.md
+# Defends: docs/specs/workspace_session_contract.md
 
 use ./yzx_test_helpers.nu [CLEAN_ZELLIJ_ENV_PREFIX get_repo_config_dir get_repo_root repo_path resolve_test_yzx_bin resolve_test_yzx_control_bin resolve_test_yzx_core_bin setup_managed_config_fixture]
 use ../integrations/zellij.nu [retarget_workspace_for_path run_pane_orchestrator_command_raw]
@@ -1158,6 +1158,7 @@ def test_yzx_cli_enter_uses_lightweight_enter_module [] {
 }
 
 # Defends: current-terminal startup uses the requested directory for nonpersistent sessions.
+# Contract: NWS-001, NWS-002
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_launch_here_path_uses_requested_directory_for_nonpersistent_sessions [] {
     print "🧪 Testing non-persistent current-terminal startup keeps the requested directory for both launch and restart..."
@@ -1251,6 +1252,7 @@ def test_yzx_launch_rejects_removed_here_flag [] {
 }
 
 # Defends: persistent-session reuse warns when current-terminal startup ignores the requested directory.
+# Contract: PWS-001, PWS-002
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_launch_here_path_warns_when_existing_persistent_session_ignores_it [] {
     print "🧪 Testing current-terminal startup warns when an existing persistent session ignores the requested directory..."
@@ -1324,6 +1326,26 @@ def test_launch_falls_through_after_immediate_terminal_failure [] {
             "sleep 2"
         ] | str join "\n" | save --force --raw ($fake_bin | path join "alacritty")
         ^chmod +x ($fake_bin | path join "alacritty")
+
+        [
+            "#!/bin/sh"
+            "log_path=\"$1\""
+            "launch_cmd=\"$2\""
+            "sh -lc \"$launch_cmd\" >\"$log_path\" 2>&1 &"
+            "child_pid=$!"
+            "sleep 0.2"
+            "if kill -0 \"$child_pid\" 2>/dev/null; then"
+            "  kill \"$child_pid\" 2>/dev/null || true"
+            "  wait \"$child_pid\" 2>/dev/null || true"
+            "  printf '%s\\n' \"$log_path\""
+            "  exit 0"
+            "fi"
+            "wait \"$child_pid\""
+            "status=$?"
+            "printf '%s\\n' \"$log_path\""
+            "exit \"$status\""
+        ] | str join "\n" | save --force --raw ($fake_shells | path join "detached_launch_probe.sh")
+        ^chmod +x ($fake_shells | path join "detached_launch_probe.sh")
 
         let launch_script = (repo_path "nushell" "scripts" "core" "launch_yazelix.nu")
         let snippet = ([
@@ -1552,6 +1574,7 @@ skip_welcome_screen = true
 }
 
 # Regression: public yzx cwd must resolve the requested target, retarget the active tab through the pane orchestrator, and sync the plugin-owned sidebar once.
+# Contract: WSS-003, WSS-004
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_public_yzx_cwd_retargets_workspace_and_syncs_plugin_owned_sidebar [] {
     print "🧪 Testing public yzx cwd retargets the active tab through the pane orchestrator and syncs the plugin-owned sidebar..."
@@ -1708,6 +1731,7 @@ enable_sidebar = false
 }
 
 # Regression: public yzx reveal must use the pane-orchestrator session snapshot for sidebar identity, emit a Yazi reveal command, and then focus the sidebar.
+# Contract: WSS-004
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_public_yzx_reveal_uses_session_snapshot_sidebar_state_and_focuses_sidebar [] {
     print "🧪 Testing public yzx reveal uses the session snapshot sidebar state and focuses the sidebar..."
@@ -1801,6 +1825,7 @@ ya_command = "ya"
 }
 
 # Regression: workspace retarget should return plugin-owned editor/sidebar targeting truth in one response.
+# Contract: WSS-003
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_retarget_workspace_for_path_returns_plugin_owned_sidebar_state_and_editor_status [] {
     print "🧪 Testing workspace retarget returns plugin-owned editor/sidebar targeting truth in one response..."

@@ -95,7 +95,7 @@ Next ranked batch after `yazelix-7upo`:
 
 | Spec | Why it is next |
 | --- | --- |
-| `docs/workspace_session_contract.md` | still gates the strongest workspace/sidebar/Yazi default tests |
+| `docs/specs/workspace_session_contract.md` | still gates the strongest workspace/sidebar/Yazi default tests |
 | `shell_opened_editors.md` | still carries live editor-wrapper behavior without item IDs |
 | `persistent_window_session_contract.md` | restart/session semantics still lean on broad file references |
 | `nonpersistent_window_session_contract.md` | launch-here and session-scope behavior still needs narrower IDs |

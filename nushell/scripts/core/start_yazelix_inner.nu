@@ -1,11 +1,11 @@
 #!/usr/bin/env nu
 # Interactive launch sequence for the active Yazelix runtime
 
-use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS, YAZELIX_LOGS_DIR]
 use ../utils/ascii_art.nu get_yazelix_colors
 use ../utils/common.nu [require_yazelix_runtime_dir resolve_zellij_default_shell]
 use ../utils/failure_classes.nu [format_failure_classification]
+use ../utils/startup_facts.nu [load_startup_facts]
 use ../utils/startup_profile.nu [profile_startup_step]
 use ../utils/upgrade_summary.nu [maybe_show_first_run_upgrade_summary]
 use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
@@ -59,12 +59,12 @@ def regenerate_runtime_configs [runtime_dir: string, --quiet] {
 }
 
 def main [cwd_override?: string, layout_override?: string, --verbose] {
-    let config = parse_yazelix_config
+    let startup_facts = (load_startup_facts)
     let yazelix_dir = (require_existing_directory (require_yazelix_runtime_dir) "Yazelix runtime directory")
     let quiet_mode = ($env.YAZELIX_ENV_ONLY? == "true")
     let profile_exit_before_zellij = ($env.YAZELIX_STARTUP_PROFILE_EXIT_BEFORE_ZELLIJ? == "true")
     let skip_welcome_screen = (
-        ($config.skip_welcome_screen? | default false)
+        ($startup_facts.skip_welcome_screen? | default false)
         or ($env.YAZELIX_STARTUP_PROFILE_SKIP_WELCOME? == "true")
     )
 
@@ -72,13 +72,13 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     mkdir $log_dir
     let colors = get_yazelix_colors
     let welcome_facts = {
-        persistent_sessions: ($config.persistent_sessions? | default false)
-        session_name: ($config.session_name? | default "yazelix")
-        terminals: ($config.terminals? | default [])
+        persistent_sessions: ($startup_facts.persistent_sessions? | default false)
+        session_name: ($startup_facts.session_name? | default "yazelix")
+        terminals: ($startup_facts.terminals? | default [])
     }
     let welcome_message = build_welcome_message $yazelix_dir $colors $welcome_facts
     profile_startup_step "inner" "show_welcome" {
-        show_welcome $skip_welcome_screen $quiet_mode $config.welcome_style $config.welcome_duration_seconds $config.show_macchina_on_welcome $welcome_message $log_dir $colors
+        show_welcome $skip_welcome_screen $quiet_mode $startup_facts.welcome_style $startup_facts.welcome_duration_seconds $startup_facts.show_macchina_on_welcome $welcome_message $log_dir $colors
     } {
         skipped: ($skip_welcome_screen or $quiet_mode)
     }
@@ -113,7 +113,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     }
     let session_default_cwd = $working_dir
     let launch_process_cwd = $working_dir
-    let zellij_default_shell = (resolve_zellij_default_shell $yazelix_dir $config.default_shell)
+    let zellij_default_shell = (resolve_zellij_default_shell $yazelix_dir $startup_facts.default_shell)
 
     let resolved_layout_path = if ($layout_override | is-not-empty) {
         $layout_override
@@ -144,12 +144,12 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
         } {
             layout_path: $layout_path
             default_shell: $zellij_default_shell
-            persistent_sessions: ($config.persistent_sessions? | default "false")
+            persistent_sessions: ($startup_facts.persistent_sessions? | default false)
         } | ignore
         return
     }
 
-    if ($config.persistent_sessions == "true") {
+    if ($startup_facts.persistent_sessions? | default false) {
         # Check if session already exists
         let existing_sessions = (do { ^zellij list-sessions } | complete)
         let session_exists = if $existing_sessions.exit_code == 0 {
@@ -174,7 +174,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
                 }
                 | where ($it | is-not-empty)
             )
-            ($sessions | any {|name| $name == $config.session_name})
+            ($sessions | any {|name| $name == $startup_facts.session_name})
         } else {
             false
         }
@@ -182,14 +182,14 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
         if $session_exists {
             # Warn if --path is used with an existing persistent session
             if ($cwd_override | is-not-empty) {
-                print $"⚠️  Session '($config.session_name)' already exists - --path ignored."
-                print $"   To start in a new directory, first run: zellij kill-session ($config.session_name)"
+                print $"⚠️  Session '($startup_facts.session_name)' already exists - --path ignored."
+                print $"   To start in a new directory, first run: zellij kill-session ($startup_facts.session_name)"
             }
             # Attach to existing session without options to avoid inconsistent state
-            ^zellij --config-dir $merged_zellij_dir attach $config.session_name
+            ^zellij --config-dir $merged_zellij_dir attach $startup_facts.session_name
         } else {
             # Create new session with all options
-            ^zellij --config-dir $merged_zellij_dir attach -c $config.session_name options --default-cwd $session_default_cwd --default-layout $layout_path --default-shell $zellij_default_shell
+            ^zellij --config-dir $merged_zellij_dir attach -c $startup_facts.session_name options --default-cwd $session_default_cwd --default-layout $layout_path --default-shell $zellij_default_shell
         }
     } else {
         ^zellij --config-dir $merged_zellij_dir options --default-cwd $session_default_cwd --default-layout $layout_path --default-shell $zellij_default_shell

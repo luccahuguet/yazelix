@@ -2,7 +2,7 @@
 # ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu
 # Nushell version of the Yazelix launcher
 
-use ../utils/config_parser.nu parse_yazelix_config
+use ../utils/startup_facts.nu [load_startup_facts]
 use ../utils/terminal_launcher.nu *
 use ../utils/constants.nu [DEFAULT_TERMINAL SUPPORTED_TERMINALS, TERMINAL_METADATA]
 use ../utils/common.nu [get_yazelix_runtime_dir normalize_path_entries require_yazelix_runtime_dir]
@@ -55,8 +55,8 @@ export def generate_selected_terminal_configs [selected_terminals: list<string>,
 
 # Compatibility wrapper used by tests and install validation.
 export def generate_all_terminal_configs [runtime_dir?: string] {
-    let config = parse_yazelix_config
-    let terminals = ($config.terminals? | default [$DEFAULT_TERMINAL])
+    let startup_facts = (load_startup_facts)
+    let terminals = ($startup_facts.terminals? | default [$DEFAULT_TERMINAL])
     if ($terminals | is-empty) {
         error make {msg: "terminal.terminals must include at least one terminal"}
     }

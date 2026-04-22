@@ -84,20 +84,95 @@ def sync_runtime_pins [] {
     print $"✅ Updated runtime pins: nix ($runtime_pins.nix_version), nushell ($runtime_pins.nushell_version)"
 }
 
-def sync_vendored_zjstatus [] {
-    let update_script = ((require_yazelix_repo_root) | path join "nushell" "scripts" "dev" "update_zjstatus.nu")
-    if not ($update_script | path exists) {
-        print $"❌ zjstatus refresh helper not found: ($update_script)"
+def copy_zjstatus_from_store [store_root: string, target_dir: string] {
+    let store_path = ($store_root | path join "bin" "zjstatus.wasm")
+    if not ($store_path | path exists) {
+        print $"❌ zjstatus wasm not found at: ($store_path)"
         exit 1
     }
 
-    print "🔄 Refreshing vendored zjstatus.wasm..."
-    try {
-        ^nu $update_script
-    } catch {|err|
-        print $"❌ Failed to refresh vendored zjstatus.wasm: ($err.msg)"
+    let byte_len = (open --raw $store_path | length)
+    if $byte_len < 1024 {
+        print $"❌ Nix-provided zjstatus wasm is too small to be valid \(size=($byte_len) bytes\)"
         exit 1
     }
+
+    let target_path = ($target_dir | path join "zjstatus.wasm")
+    let tmp_path = $"($target_path).tmp"
+    try { cp --force $store_path $tmp_path } catch {|err|
+        print $"❌ Failed to write temporary zjstatus file: ($err.msg)"
+        exit 1
+    }
+    mv --force $tmp_path $target_path
+
+    {
+        target_path: $target_path
+        byte_len: $byte_len
+    }
+}
+
+def resolve_current_system [] {
+    let system_result = (^nix eval --impure --raw --expr "builtins.currentSystem" | complete)
+    if $system_result.exit_code != 0 {
+        print "❌ Failed to resolve current Nix system"
+        let stderr = ($system_result.stderr | str trim)
+        if ($stderr | is-not-empty) {
+            print $stderr
+        }
+        exit 1
+    }
+
+    let system = ($system_result.stdout | str trim)
+    if ($system | is-empty) {
+        print "❌ Failed to resolve current Nix system"
+        exit 1
+    }
+
+    $system
+}
+
+def resolve_locked_zjstatus_store_root [repo_root: string] {
+    let lock_path = ($repo_root | path join "flake.lock")
+    if not ($lock_path | path exists) {
+        print $"❌ flake.lock not found at: ($lock_path)"
+        exit 1
+    }
+
+    let lock = (open --raw $lock_path | from json)
+    let locked_zjstatus = ($lock | get nodes.zjstatus.locked)
+    let owner = ($locked_zjstatus | get owner)
+    let repo = ($locked_zjstatus | get repo)
+    let rev = ($locked_zjstatus | get rev)
+    let system = (resolve_current_system)
+    let flake_ref = $"github:($owner)/($repo)/($rev)#packages.($system).default"
+    let build_result = (^nix build --no-link --print-out-paths $flake_ref | complete)
+    if $build_result.exit_code != 0 {
+        print $"❌ Failed to build zjstatus flake ref: ($flake_ref)"
+        let stderr = ($build_result.stderr | str trim)
+        if ($stderr | is-not-empty) {
+            print $stderr
+        }
+        exit 1
+    }
+
+    {
+        flake_ref: $flake_ref
+        store_root: ($build_result.stdout | str trim)
+    }
+}
+
+def sync_vendored_zjstatus [] {
+    ensure_nix_available
+    let repo_root = require_yazelix_repo_root
+    let target_dir = ($repo_root | path join "configs" "zellij" "plugins")
+    if not ($target_dir | path exists) {
+        mkdir $target_dir
+    }
+
+    print "🔄 Refreshing vendored zjstatus.wasm..."
+    let package = (resolve_locked_zjstatus_store_root $repo_root)
+    let zjstatus = (copy_zjstatus_from_store $package.store_root $target_dir)
+    print $"✅ Updated vendored zjstatus at: ($zjstatus.target_path) \(size=($zjstatus.byte_len) bytes, source=($package.flake_ref)\)"
 }
 
 def sync_vendored_yazi_plugins [] {

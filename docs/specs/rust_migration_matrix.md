@@ -39,8 +39,9 @@ The remaining product-side Nushell cost is concentrated in two places:
 
 - Nu bridge owners that still shape requests, translate errors, and assemble
   per-command report shims around those Rust owners
-- full generator and materialization families that still own real writes,
-  orchestration, and template policy in Nushell
+- the remaining shell/process-heavy surfaces and deterministic test buckets that
+  still need explicit deletion budgets after the larger generator/materialization
+  cuts landed
 
 The migration mistake to avoid now is adding more Rust while keeping the same Nu
 owner. A migration only counts if the Nu owner disappears or becomes clearly
@@ -110,6 +111,7 @@ wrappers.
 | Bridge transport and error shaping | `yzx_core_bridge.nu` plus the small per-command report bridges | High-leverage deletion lane with relatively low semantic risk. The generic helper transport no longer lives inside `config_parser.nu`. | Keep one minimal transport layer, not one policy-bearing Nu owner per Rust helper command. | Landed under `yazelix-057w` |
 | Config, state, env, and preflight shims | `config_parser.nu`, `runtime_env.nu`, plus direct preflight calls in `core/start_yazelix.nu`, `core/launch_yazelix.nu`, and `yzx/launch.nu` | Rust already owns the typed computation. `runtime_contract_checker.nu` and `config_state.nu` are gone, `config_parser.nu` is config-normalize specific, `runtime_env.nu` is now the explicit shell-exec seam, and the startup/launch owners now call the Rust preflight helpers directly. | Keep shrinking request shaping and machine classification where Rust can become the single typed owner. Leave only execution and final user rendering in Nu. | Landed under `yazelix-0ksx` and `yazelix-ekfc` |
 | Doctor and install report bridges | public report owner in `yzx_control`; private Nu repair helper in `doctor_fix.nu`; caller-local desktop/restart UX | The public doctor owner, shared report bridge, and install-ownership Nu bridge are gone. Rust now owns report aggregation, summary/rendering, JSON, live Zellij plugin-health checks, install-ownership evaluation, and env-derived install-ownership request construction. | Keep the private fix helper narrow. Do not recreate a shared doctor-report bridge, install-ownership bridge, or public Nu doctor owner. | Public doctor cut landed under `yazelix-5ewl.3`; install-ownership bridge collapse landed under `yazelix-87zd` |
+| Product-side full-config owner seam | `config_parser.nu` plus the former product callers now using `integration-facts.compute`, `transient-pane-facts.compute`, `startup-facts.compute`, and `runtime-env.compute` | The real product-side `parse_yazelix_config` reads are gone from popup/menu, popup/editor wrappers, and startup/launch/setup callers. The remaining question is whether `config_parser.nu` can now be deleted or demoted after non-product callers are classified. | Keep the narrower Rust-owned fact helpers as the only retained product-side config facts. Do not recreate a second generic full-config bridge. | Budget defined under `yazelix-sq0g.1`; product-side cuts landed under `yazelix-jkk3`, `yazelix-sq0g.2`, and `yazelix-sq0g.3`; follow-up `yazelix-sq0g.4` |
 | Runtime materialization lifecycle | Rust owners: `runtime-materialization.plan`, `runtime-materialization.materialize`, `runtime-materialization.repair`, including `--from-env` request construction; caller-local Nu progress/error rendering in startup and doctor | Landed full-owner cut; the shared Nu bridge is gone and Rust now owns env-derived request construction | Keep Rust as the lifecycle and request-construction owner. Do not recreate a shared Nu materialization bridge. | Full-owner cut landed under `yazelix-ulb2.9`; shared bridge deletion landed under `yazelix-q0o9.2` |
 | Yazi materialization family | Rust owner: `yazi-materialization.generate`; remaining Nu use is dev-only direct invocation | The real Nu owner family is gone, and the surviving setup wrapper is deleted. | Keep Rust as the single Yazi materialization owner. Do not recreate a public or product-side compatibility wrapper. Dependency gate for the landed cut: in-house logic plus existing `serde` and `toml`; no new crates. | Landed under `yazelix-ulb2.3.1`; wrapper deletion landed under `yazelix-vf0u.1` |
 | Zellij materialization family | Rust owner: `zellij-materialization.generate`; remaining Nu use is direct product or dev invocation | The real Nu owner family is gone, the setup wrapper is deleted, and Rust still owns base-config selection, semantic KDL extraction, layout rendering, plugin wasm sync, permission migration, popup-runner cleanup, and generation-state reuse. | Keep Rust as the single Zellij materialization owner. Do not recreate a public or product-side compatibility wrapper. Dependency gate for the landed cut: in-house logic plus existing `serde`, `serde_json`, `toml`, `sha2`, `thiserror`, and `lexopt`; no new crates. | Landed under `yazelix-ulb2.3.2`; wrapper deletion landed under `yazelix-vf0u.2` |
@@ -199,6 +201,39 @@ Verification for `q0o9.2`:
   boundary
 - update canaries still exercise forced generated-state repair
 - syntax, spec validation, and whitespace checks pass
+## 2026-04-22 Full-Config Product Owner Decision
+
+`yazelix-sq0g.1` re-audited the remaining product-side
+`parse_yazelix_config` seam after the earlier bridge-collapse work.
+
+Decision:
+
+- stop treating `config_parser.nu` as a product-side owner when callers only
+  need popup geometry, popup argv, managed editor kind, sidebar enablement,
+  Yazi command facts, or startup/session toggles
+- route popup/menu callers through `transient-pane-facts.compute`
+- route popup/editor wrappers through the narrower `runtime-env.compute` and
+  `transient-pane-facts.compute` surfaces
+- route startup/launch/setup callers through `runtime-env.compute` and
+  `startup-facts.compute`
+- leave shell/process execution, Zellij/editor/Yazi orchestration, and startup
+  handoff in Nu and POSIX
+- treat dev/test parser callers as out of scope for the product-side cut
+
+Why this cut:
+
+- product callers were reparsing the full managed config even when they only
+  needed a small retained fact surface
+- Rust already owned the canonical normalized config and the deterministic fact
+  extraction was a better fit than duplicating smaller Nu helper layers
+- the surviving Nu responsibilities are still UX, shell, process, and tool
+  orchestration, not config ownership
+
+Surviving follow-up:
+
+- `yazelix-sq0g.4` decides whether `config_parser.nu` can now die outright or
+  become a narrow dev/test-only config-normalize seam
+
 | Front-door UX and command-palette surfaces | `utils/ascii_art.nu`, `yzx/menu.nu`, `yzx/popup.nu`, `yzx/screen.nu`, `yzx/keys.nu`, `yzx/tutor.nu`, `utils/upgrade_summary.nu` | Mostly text-heavy or interactive UX | Keep Nushell unless a future port deletes an owner cleanly and improves the UX story at the same time. | Not a current Rust target |
 | Distribution and host integration | `home_manager/`, `packaging/`, `shells/`, `yzx/desktop.nu` | Nix, POSIX, and UX-heavy by nature | Keep outside the current Rust migration by default, but allow targeted Rust ownership when a public family is already mostly backed by Rust-owned reports or control helpers. `yzx home_manager` has now crossed that threshold and is no longer a Nushell owner. | Partially migrated: `yzx home_manager` is Rust-owned; broader distribution and desktop paths stay outside the current Rust target |
 

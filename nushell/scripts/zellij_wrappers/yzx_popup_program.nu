@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 
 use ../integrations/yazi.nu [refresh_active_sidebar_yazi]
-use ../utils/config_parser.nu [parse_yazelix_config]
+use ../utils/transient_pane_facts.nu [load_transient_pane_facts]
 use ../utils/runtime_env.nu [run_runtime_argv]
 use ../utils/transient_pane_contract.nu [
     close_current_transient_pane
@@ -10,12 +10,12 @@ use ../utils/transient_pane_contract.nu [
 ]
 use ../utils/yzx_core_bridge.nu [compute_runtime_env_via_yzx_core]
 
-def resolve_popup_program [popup_args: list<string>, config: record] {
+def resolve_popup_program [popup_args: list<string>, transient_pane_facts: record] {
     if ($popup_args | is-not-empty) {
         return $popup_args
     }
 
-    $config.popup_program? | default ["lazygit"]
+    $transient_pane_facts.popup_program? | default ["lazygit"]
 }
 
 def require_popup_command_available [command: string, runtime_env: record] {
@@ -63,16 +63,15 @@ def resolve_popup_argv [popup_program: list<string>, runtime_env: record] {
 }
 
 def resolve_popup_launch_context [popup_args: list<string>] {
-    let config = (parse_yazelix_config)
-    let runtime_env = (compute_runtime_env_via_yzx_core $config)
-    let popup_program = (resolve_popup_program $popup_args $config)
+    let transient_pane_facts = (load_transient_pane_facts)
+    let runtime_env = (compute_runtime_env_via_yzx_core)
+    let popup_program = (resolve_popup_program $popup_args $transient_pane_facts)
     let argv = (resolve_popup_argv $popup_program $runtime_env)
     let command = ($argv | first | default "")
 
     require_popup_command_available $command $runtime_env
 
     {
-        config: $config
         runtime_env: $runtime_env
         argv: $argv
     }
