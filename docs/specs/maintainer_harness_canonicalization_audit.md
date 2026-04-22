@@ -10,6 +10,13 @@ runtime product path. The delete-first goal here is narrower: remove stale
 wrappers, keep harness logic out of product migration accounting, and harden the
 few maintainer paths that still defend release-quality behavior.
 
+The current state is already materially slimmer than the original audit pass:
+
+- the governed Nu test omnibus files are deleted
+- `yzx dev test` now dispatches fixed Rust `nextest` suites by inventory
+- the remaining Nu test-related files are shell-heavy runners and validators,
+  not canonical governed test owners
+
 `yazelix-4ucy` landed after this audit:
 
 - `dev/update_zellij_pane_orchestrator.nu` is deleted and its sync behavior now
@@ -57,31 +64,27 @@ deletion score.
 | Bucket | Approx lines | Current role | Product deletion impact |
 | --- | ---: | --- | --- |
 | Product/runtime Nushell | about `11.8k` lines from the delete-first inventory | startup, launch, setup, public command bodies, integration glue | high |
-| Dev/test Nushell | about `17.2k` lines under `nushell/scripts/dev` | tests, validators, sweeps, fixtures, demo helpers, package smoke checks | indirect |
+| Dev/test Nushell | about `14.4k` lines under `nushell/scripts` after the governed test deletions | validators, sweep/E2E runners, fixtures, demo helpers, package smoke checks | indirect |
 | Maintainer Nushell | about `2.1k` lines under `nushell/scripts/maintainer` | issue sync, version bump, update workflow, readme sync, plugin build, test runner | indirect but release-critical |
-| Sweep helpers | about `450` lines under `nushell/scripts/dev/sweep` plus `test_config_sweep.nu` | matrix and visual sweep orchestration | release-confidence lane |
+| Sweep helpers | about `450` lines under `nushell/scripts/dev/sweep` plus `config_sweep_runner.nu` | matrix and visual sweep orchestration | release-confidence lane |
 
 The top maintainer/test files by size are:
 
 | File | Approx lines | Audit role |
 | --- | ---: | --- |
-| `test_yzx_generated_configs.nu` | `2246` | default-suite component; real generated-config contract coverage |
-| `test_yzx_core_commands.nu` | `2129` | default-suite component; public command and control-plane coverage |
-| `test_yzx_workspace_commands.nu` | `1966` | default-suite component; launch/session/workspace coverage |
-| `test_yzx_maintainer.nu` | `1880` | maintainer lane; release/update/profile regressions |
-| `test_yzx_popup_commands.nu` | `1048` | default-suite component; transient/popup behavior |
-| `test_yzx_doctor_commands.nu` | `919` | default-suite component; public doctor/status behavior |
-| `test_shell_managed_config_contracts.nu` | `738` | maintainer/default-adjacent shell config behavior |
 | `maintainer/update_workflow.nu` | `649` | release/update workflow owner |
+| `yzx/dev.nu` | `561` | public maintainer/dev command router |
 | `validate_default_test_traceability.nu` | `520` | governance validator owner |
-| `maintainer/test_runner.nu` | `413` | public `yzx dev test` harness owner |
+| `maintainer/test_runner.nu` | `413` | `yzx dev test` harness owner |
+| `dev/config_normalize_test_helpers.nu` | `356` | temporary helper debt to delete after stronger Rust coverage absorbs it |
+| `config_sweep_runner.nu` | about `290` | non-visual and visual sweep runner |
 
 ## 3. Must-Not-Lose Behavior
 
 | Behavior | Current contract or source | Current owner | Current verification | Candidate surviving owner |
 | --- | --- | --- | --- | --- |
-| Default suite runs explicit high-signal membership instead of globbing every `test_*.nu` | `docs/specs/test_suite_governance.md` | Nu `maintainer/test_runner.nu` plus `test_yzx_commands.nu` | `yzx dev test`; `validate_default_test_count_budget.nu`; `validate_default_test_traceability.nu` | same or smaller runner |
-| Sweep and visual lanes remain explicit and separate from the default suite | `docs/specs/test_suite_governance.md` | Nu `test_config_sweep.nu` and `dev/sweep/*.nu` | sweep lane manual/targeted checks | same, but dispatch should be less dynamic |
+| Default suite runs explicit high-signal Rust suite membership instead of globbing every `test_*.nu` | `docs/specs/test_suite_governance.md` | Nu `maintainer/test_runner.nu` plus Rust suite inventory | `yzx dev test`; `validate_default_test_count_budget.nu`; `validate_default_test_traceability.nu` | same or smaller runner |
+| Sweep and visual lanes remain explicit and separate from the default suite | `docs/specs/test_suite_governance.md` | Nu `config_sweep_runner.nu` and `dev/sweep/*.nu` | sweep lane manual/targeted checks | same, but dispatch should stay fixed and direct |
 | Version bump and release notes stay transactional and refuse dirty/invalid release states | `docs/specs/upgrade_notes_contract.md` | Nu `maintainer/version_bump.nu` | maintainer tests for bump and upgrade contracts | same |
 | Update workflow refreshes runtime pins, runs canaries, and requires explicit activation mode for real updates | `docs/specs/runtime_distribution_capability_tiers.md`; maintainer tests | Nu `maintainer/update_workflow.nu` | maintainer update tests | same |
 | Plugin build/sync keeps pane-orchestrator wasm rebuild requirements visible | AGENTS Rust plugin workflow | Nu `maintainer/plugin_build.nu` | maintainer tests and manual build command | `plugin_build.nu` |
@@ -92,9 +95,9 @@ The top maintainer/test files by size are:
 
 | Concern | Current owner or split boundary | Split kind | Audit judgment |
 | --- | --- | --- | --- |
-| Public `yzx dev` command surface | Nu `yzx/dev.nu` plus Rust metadata | intentional | Keep Nu command bodies; Rust already owns metadata |
-| Test runner selection and logging | Nu `maintainer/test_runner.nu` | intentional with bridge debt | Keep but simplify sweep dispatch |
-| Default suite test logic | Nu test files and Rust tests | intentional | Governed by test inventory, not this harness audit |
+| Public `yzx dev` command surface | Nu `yzx/dev.nu` plus Rust metadata | intentional | Keep only thin shell/public routing in Nu; move deterministic policy down |
+| Test runner selection and logging | Nu `maintainer/test_runner.nu` | intentional with bridge debt | Keep but shrink to fixed inventory dispatch and logging |
+| Default suite test logic | Rust tests plus Nu shell runner | intentional | Governed tests live in Rust; Nu should not own test logic again |
 | Contract/spec/test validators | Nu validator scripts | intentional | Good Nu fit unless a Rust port deletes a whole validator |
 | Issue/GitHub sync | Nu `maintainer/issue_sync.nu` and `issue_bead_contract.nu` | external_tool_adapter | Keep; `bd` and `gh` are shell tools |
 | Version bump/update workflow | Nu maintainer modules | external_tool_adapter | Keep; Nix/git-heavy |
@@ -111,13 +114,13 @@ The top maintainer/test files by size are:
 
 ### Bridge Layer To Collapse
 
-- `maintainer/test_runner.nu` uses dynamic `nu -c` module strings for sweep and
-  visual dispatch. That is a shell-boundary smell and should be replaced with a
-  direct script/module boundary if possible.
-- The sweep dispatch path uses runtime-root assumptions that deserve a focused
-  check. The audit did not find a local import for `get_yazelix_runtime_dir` in
-  `maintainer/test_runner.nu`, so the bead should verify whether sweep-only and
-  visual modes are currently healthy before editing.
+- `maintainer/test_runner.nu` no longer builds dynamic `nu -c` program strings,
+  but it still owns too much policy for default-vs-sweep selection, profiling,
+  and log shaping
+- `yzx/dev.nu` still centralizes a broad set of maintainer and profiling entry
+  surfaces that should keep shrinking toward thin shell routing
+- the temporary shell-heavy runner scripts should not become a permanent second
+  test layer just because the governed Nu suite is gone
 
 ### Full-Owner Migration
 
@@ -152,6 +155,8 @@ The top maintainer/test files by size are:
     in `maintainer/plugin_build.nu`
   - resolved under `yazelix-4ucy`: vendored `zjstatus.wasm` refresh now lives
     only in `maintainer/update_workflow.nu`
+  - resolved under `yazelix-rdn7.4.5.4`: governed Nu test ownership no longer
+    duplicates Rust-owned deterministic command/materialization/workspace tests
   - package validators share helper logic through `nixpkgs_package_smoke.nu`,
     which is good; keep that as a shared maintainer helper
 - missing layer problems:
@@ -163,8 +168,9 @@ The top maintainer/test files by size are:
   - resolved under `yazelix-4ucy`: demo recording scripts are now documented as
     manual maintainer helpers instead of normal runtime script surface
 - DRY opportunities:
-  - direct runner invocation for sweep lanes
-  - fold thin update/plugin wrappers into canonical maintainer modules
+  - keep direct runner invocation for sweep lanes
+  - fold any remaining thin `yzx dev` forwarding policy into canonical
+    maintainer modules
 - weak or orphan tests:
   - this audit does not adjudicate per-test quality; that belongs to
     `yazelix-rdn7.4`
@@ -181,7 +187,7 @@ The top maintainer/test files by size are:
 
 | Bead | Retained behavior | Deletion class | Candidate surviving owner | Verification that must still pass | Explicit stop condition |
 | --- | --- | --- | --- | --- | --- |
-| `yazelix-fg51` | default, lint-only, sweep, visual, all, profile, and new-window `yzx dev test` behavior | `bridge_collapse` | one explicit Nu test runner with direct dispatch | default suite; targeted sweep dispatch; syntax validation | keep external Nu execution if isolation is needed, but avoid interpolated command program strings |
+| `yazelix-fg51` | default, lint-only, sweep, visual, all, profile, and new-window `yzx dev test` behavior | `bridge_collapse` | one explicit Nu test runner with fixed inventory dispatch | default suite; targeted sweep dispatch; syntax validation | keep external Nu execution if isolation is needed, but avoid broad routing policy drift |
 | `yazelix-4ucy` | wasm build/sync, zjstatus vendoring, demo helpers if kept, nixpkgs smoke validation | landed | canonical maintainer modules plus manual docs | maintainer tests and specific tool checks | keep the canonical maintainer entrypoints documented |
 
 ## Verification

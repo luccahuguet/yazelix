@@ -2,7 +2,18 @@
 
 ## Summary
 
-Yazelix should keep a small number of clear testing lanes, and every test should defend a real contract, regression, integration boundary, or maintained source-of-truth invariant. Cheap structural validators belong in cheap validator lanes, heavier cross-environment checks belong in sweep lanes, and the default maintainer suite should stay focused on a small high-signal set of meaningful runtime and workflow behavior. The runner should use explicit suite membership, not an implicit `test_*.nu` glob that hides dead or library-like files. As immediate cleanup, the README version check is no longer duplicated inside the default `yzx` command test bundle because that invariant already has dedicated CI and `prek` ownership.
+Yazelix should keep a small number of clear testing lanes, and every governed
+test should defend a real contract, regression, integration boundary, or
+maintained source-of-truth invariant. Cheap structural validators belong in
+cheap validator lanes, heavier cross-environment checks belong in sweep lanes,
+and the default automated suite should stay focused on a small high-signal set
+of Rust-owned behavior tests.
+
+The old governed Nushell omnibus files are deleted. The default lane now uses
+explicit Rust `cargo nextest` suite membership, not an implicit `test_*.nu`
+glob and not a transitional Nu aggregator. The remaining `.nu` files under
+`nushell/scripts/dev/` are shell-heavy runners or validators, not governed test
+owners.
 
 ## Why
 
@@ -24,7 +35,9 @@ This spec defines:
 - retention and pruning rules for existing tests
 - when a check belongs in the default automated suite versus an optional or dedicated lane
 - a lightweight inventory of the current suite surfaces
-- two concrete cleanups: use explicit suite membership instead of implicit globbing, and demote README version validation out of the default `yzx` command bundle
+- two concrete cleanups: use explicit Rust suite membership instead of implicit
+  globbing, and demote README version validation out of the default regression
+  lane
 
 ## Contract Items
 
@@ -56,11 +69,12 @@ This spec defines:
 - Status: live
 - Owner: default suite membership definition
 - Statement: The default automated suite uses explicit suite membership instead
-  of an implicit `test_*.nu` glob, and default component files must stay small,
-  canonical, and traceable
+  of an implicit `test_*.nu` glob, and its governed ownership lives in fixed
+  Rust `nextest` suites plus explicit `cargo test` exceptions only where
+  `nextest` is not the honest fit
 - Verification: automated
   `nu nushell/scripts/dev/validate_default_test_traceability.nu`; automated
-  `nu nushell/scripts/dev/test_yzx_commands.nu`
+  `yzx dev test`
 
 #### TEST-004
 - Type: invariant
@@ -91,8 +105,7 @@ This spec defines:
 | Lane | Entrypoint | Purpose | Notes |
 | --- | --- | --- | --- |
 | Cheap validator lane | `nu nushell/scripts/dev/validate_syntax.nu`, `nu nushell/scripts/dev/validate_readme_version.nu`, `nu nushell/scripts/dev/validate_config_surface_contract.nu` | Very fast structural or source-of-truth checks | Good fit for `prek` and direct CI steps |
-| Default automated regression lane | `yzx dev test` | The normal non-sweep automated regression suite | Uses fixed Rust `nextest` suites plus any explicitly-declared transitional Nu entrypoints |
-| Internal core regression bundle | `nu nushell/scripts/dev/test_yzx_commands.nu` | High-signal core launch/runtime/workspace/integration contracts | Internal organization detail |
+| Default automated regression lane | `yzx dev test` | The normal non-sweep automated regression suite | Uses fixed Rust `nextest` suites plus explicit `cargo test` exceptions only where required |
 | Non-visual sweep lane | `yzx dev test --sweep` | Matrix coverage for config and supported shell/terminal combinations without opening windows | Environment-sensitive but still scriptable |
 | Visual sweep lane | `yzx dev test --visual` | Real terminal-window validation | Heavy, manualish, and not the default lane |
 | Full lane | `yzx dev test --all` | Default automated suite + non-visual sweep + visual sweep | For broader release confidence |
@@ -111,13 +124,17 @@ The current repo surface should be understood roughly as:
   - `validate_rust_test_traceability.nu`
   - `validate_specs.nu`
 - Default automated lane:
-  - `test_yzx_commands.nu` as the spec-backed core bundle
-- Direct maintainer-only or exploratory scripts that are no longer part of the normal default lane:
-  - `test_yzx_maintainer.nu`
+  - `rust_core/Cargo.toml` `nextest` suite `yazelix_core`
+  - `rust_plugins/zellij_pane_orchestrator/Cargo.toml` `nextest` suite `zellij_pane_orchestrator`
 - Optional sweep coverage:
-  - `test_config_sweep.nu`
+  - `config_sweep_runner.nu`
   - `sweep_verify.nu`
   - helper files under `nushell/scripts/dev/sweep/`
+- Shell-heavy non-governed runners:
+  - `historical_upgrade_notes_e2e_runner.nu`
+  - `stale_config_diagnostics_e2e_runner.nu`
+  - `upgrade_contract_e2e_runner.nu`
+  - `upgrade_summary_e2e_runner.nu`
 - Manual / exploratory scripts:
   - `record_demo_fonts.nu`
   - benchmark and demo helpers
@@ -165,17 +182,19 @@ A test is a strong demotion candidate when it is:
 
 ### Default-suite traceability model
 
-- `test_yzx_commands.nu` should stay tied to one or more real spec `Defended by:` lines.
-- The default automated suite should contain only spec-backed entrypoints.
-- If a regression matters enough for the default lane, it should be promoted into a spec-backed bundle or accompanied by a dedicated spec instead of living as a policy exception.
+- The default automated suite should contain only spec-backed Rust entrypoints
+  declared in `nushell/scripts/maintainer/test_suite_inventory.toml`
+- If a regression matters enough for the default lane, it should land as a
+  strong Rust test in one of those owned suites instead of reviving a governed
+  Nu omnibus file
 - The default lane should also enforce mechanical anti-creep guardrails:
-  - no dead noncanonical `def test_...` helpers inside default-lane component files
   - a default-suite test-count budget
   - a default-suite runtime budget
-  - explicit `# Test lane:` declarations on all `test_*.nu` files
-  - explicit `// Test lane:` declarations on all first-party Rust files that contain `#[test]`
+  - explicit `// Test lane:` declarations on all first-party Rust files that
+    contain `#[test]`
   - universal per-test justification and strength scoring across governed lanes
   - no new generic `_extended` overflow files
+  - no new governed Nu `test_*.nu` surface without an explicit policy reversal
 
 ### Lane placement rules
 
@@ -284,18 +303,26 @@ The validator enforces these minimums mechanically. It still cannot prove a test
 
 ### Concrete cleanup in this change
 
-The default lane now uses explicit suite membership instead of implicitly globbing `test_*.nu`. This avoids treating library-like test bundles with no `main` entrypoint as if they were real runnable tests.
+The default lane now uses explicit Rust suite membership instead of implicitly
+globbing `test_*.nu`. This avoids treating library-like Nu bundles as runnable
+tests and avoids preserving a second governed test language after the Rust-owned
+command surfaces landed.
 
-The normal non-sweep automated suite was then pruned aggressively: regression-only sidecar entrypoints were removed from the default lane, and low-signal parser, formatting, metadata, and animation-detail assertions were deleted or demoted so the maintained contract stays centered on supported user behavior.
+The normal non-sweep automated suite was then pruned aggressively: the governed
+Nu omnibus files were deleted, their strongest deterministic contracts moved
+into Rust `nextest` suites, and the remaining shell-heavy `.nu` files were
+renamed as runners instead of pretending to be governed tests.
 
-The README version invariant also belongs to the cheap validator lane, not the default `yzx` command regression bundle.
+The README version invariant also belongs to the cheap validator lane, not the
+default regression lane.
 
 That invariant is already defended by:
 
 - `.github/workflows/ci.yml` via `nu nushell/scripts/dev/validate_readme_version.nu`
 - `.pre-commit-config.yaml` via the `yazelix-validate-readme-version` hook
 
-So the duplicate README-version assertion is removed from `nushell/scripts/dev/test_yzx_dev_commands.nu` instead of being run in yet another lane.
+So the duplicate README-version assertion is removed from the governed
+regression suite instead of being run in yet another lane.
 
 ## Non-goals
 
@@ -317,7 +344,8 @@ So the duplicate README-version assertion is removed from `nushell/scripts/dev/t
 
 - unit tests: n/a
 - integration tests: `nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev test'`
-- integration tests: `nu nushell/scripts/dev/test_yzx_commands.nu`
+- integration tests: `nix develop -c cargo nextest run --profile ci --manifest-path rust_core/Cargo.toml -p yazelix_core`
+- integration tests: `nix develop -c cargo nextest run --profile ci --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib`
 - CI checks: `nu nushell/scripts/dev/validate_default_test_traceability.nu`
 - CI checks: `nu nushell/scripts/dev/validate_rust_test_traceability.nu`
 - CI checks: `nu nushell/scripts/dev/validate_readme_version.nu`
@@ -328,14 +356,17 @@ So the duplicate README-version assertion is removed from `nushell/scripts/dev/t
 ## Traceability
 
 - Bead: `yazelix-leq`
-- Defended by: `nu nushell/scripts/dev/test_yzx_commands.nu`
+- Bead: `yazelix-rdn7.4.5.4`
 - Defended by: `nu nushell/scripts/dev/validate_default_test_traceability.nu`
 - Defended by: `nu nushell/scripts/dev/validate_rust_test_traceability.nu`
 - Defended by: `nu nushell/scripts/dev/validate_readme_version.nu`
 - Defended by: `nu nushell/scripts/dev/validate_config_surface_contract.nu`
+- Defended by: `nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev test'`
 - Defended by: `nu nushell/scripts/dev/validate_specs.nu`
 
 ## Open Questions
 
-- Should `validate_specs.nu` eventually get its own direct CI step instead of being exercised indirectly through the `yzx` command suite?
-- Should the tiny internal split between core contracts and extra regressions remain, or should those files eventually collapse into one default-suite entrypoint?
+- Should `validate_specs.nu` eventually get its own direct CI step instead of
+  being exercised indirectly through `yzx dev test` and other maintainer lanes?
+- Should the surviving Rust default suites collapse further once more plugin and
+  control-plane coverage merges land?

@@ -1,41 +1,28 @@
 [contract]
-current_total_loc_max = 26678
-current_total_file_count_max = 112
+current_total_loc_max = 14447
+current_total_file_count_max = 99
 hard_target_loc = 4200
 
 [[families]]
-id = "governed_tests"
+id = "manual_e2e_and_sweep_runners"
 status = "transitional_exception"
-owner_bead = "yazelix-rdn7.4.5"
-max_loc = 13115
+owner_bead = "yazelix-8ih0"
+max_loc = 881
 target_loc = 0
-max_files = 18
+max_files = 5
 allowed_paths = [
-  "nushell/scripts/dev/test_config_sweep.nu",
-  "nushell/scripts/dev/test_helix_managed_config_contracts.nu",
-  "nushell/scripts/dev/test_historical_upgrade_notes_e2e.nu",
-  "nushell/scripts/dev/test_shell_managed_config_contracts.nu",
-  "nushell/scripts/dev/test_stale_config_diagnostics_e2e.nu",
-  "nushell/scripts/dev/test_upgrade_contract_e2e.nu",
-  "nushell/scripts/dev/test_upgrade_summary_e2e.nu",
-  "nushell/scripts/dev/test_yzx_commands.nu",
-  "nushell/scripts/dev/test_yzx_core_commands.nu",
-  "nushell/scripts/dev/test_yzx_doctor_commands.nu",
-  "nushell/scripts/dev/test_yzx_generated_configs.nu",
-  "nushell/scripts/dev/test_yzx_helix_doctor_contracts.nu",
-  "nushell/scripts/dev/test_yzx_maintainer.nu",
-  "nushell/scripts/dev/test_yzx_popup_commands.nu",
-  "nushell/scripts/dev/test_yzx_screen_commands.nu",
-  "nushell/scripts/dev/test_yzx_workspace_commands.nu",
-  "nushell/scripts/dev/test_yzx_yazi_commands.nu",
-  "nushell/scripts/dev/test_zellij_plugin_contracts.nu",
+  "nushell/scripts/dev/config_sweep_runner.nu",
+  "nushell/scripts/dev/historical_upgrade_notes_e2e_runner.nu",
+  "nushell/scripts/dev/stale_config_diagnostics_e2e_runner.nu",
+  "nushell/scripts/dev/upgrade_contract_e2e_runner.nu",
+  "nushell/scripts/dev/upgrade_summary_e2e_runner.nu",
 ]
 
 [[families]]
 id = "deterministic_validators"
 status = "transitional_exception"
 owner_bead = "yazelix-rdn7.4.6"
-max_loc = 1088
+max_loc = 1091
 target_loc = 0
 max_files = 13
 allowed_paths = [

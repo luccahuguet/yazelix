@@ -115,3 +115,60 @@ fn command_metadata_sync_externs_writes_generated_bridge() {
     assert!(generated.contains("export extern \"yzx run\""));
     assert!(fs::metadata(fingerprint_path).unwrap().is_file());
 }
+
+// Regression: Rust-owned extern bridge sync ignores host Nushell config so migrated leaves do not get rendered twice on startup.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn command_metadata_sync_externs_ignores_host_nushell_config() {
+    let runtime = TempDir::new().unwrap();
+    let state = TempDir::new().unwrap();
+    let home = TempDir::new().unwrap();
+    let xdg_config_home = home.path().join(".config");
+    let nushell_config_dir = xdg_config_home.join("nushell");
+    let initializers_dir = state.path().join("initializers").join("nushell");
+    fs::create_dir_all(&nushell_config_dir).unwrap();
+    fs::create_dir_all(&initializers_dir).unwrap();
+    fs::write(runtime.path().join("yazelix_default.toml"), "").unwrap();
+    fs::write(initializers_dir.join("yazelix_init.nu"), "").unwrap();
+    fs::write(initializers_dir.join("yazelix_user_hook.nu"), "").unwrap();
+
+    let sync_output = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .arg("yzx-command-metadata.sync-externs")
+        .arg("--runtime-dir")
+        .arg(runtime.path())
+        .arg("--state-dir")
+        .arg(state.path())
+        .output()
+        .unwrap();
+
+    assert!(sync_output.status.success());
+    let envelope: Value = serde_json::from_slice(&sync_output.stdout).unwrap();
+    let extern_path = envelope["data"]["extern_path"].as_str().unwrap();
+    fs::write(
+        nushell_config_dir.join("config.nu"),
+        format!("source \"{extern_path}\"\n"),
+    )
+    .unwrap();
+
+    let second_sync = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .env("HOME", home.path())
+        .env("XDG_CONFIG_HOME", &xdg_config_home)
+        .arg("yzx-command-metadata.sync-externs")
+        .arg("--runtime-dir")
+        .arg(runtime.path())
+        .arg("--state-dir")
+        .arg(state.path())
+        .output()
+        .unwrap();
+
+    assert!(
+        second_sync.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&second_sync.stderr)
+    );
+    let generated = fs::read_to_string(extern_path).unwrap();
+    assert_eq!(generated.matches("export extern \"yzx env\"").count(), 1);
+    assert_eq!(generated.matches("export extern \"yzx run\"").count(), 1);
+}

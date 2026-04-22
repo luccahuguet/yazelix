@@ -5,6 +5,9 @@ const DEFAULT_SUITE_MAX_TESTS = 91
 
 def load_default_suite_component_files [] {
     let suite_runner = ($REPO_ROOT | path join "nushell" "scripts" "dev" "test_yzx_commands.nu")
+    if not ($suite_runner | path exists) {
+        return []
+    }
     let content = (open --raw $suite_runner)
 
     $content

@@ -1,5 +1,5 @@
 #!/usr/bin/env nu
-# Test lane: maintainer
+# Stale-config diagnostics E2E runner
 
 use ./yzx_test_helpers.nu [add_fixture_log log_block log_line resolve_test_yzx_bin resolve_test_yzx_control_bin resolve_test_yzx_core_bin setup_managed_config_fixture]
 

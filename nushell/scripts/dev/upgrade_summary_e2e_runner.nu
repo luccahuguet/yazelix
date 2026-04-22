@@ -1,5 +1,5 @@
 #!/usr/bin/env nu
-# Test lane: maintainer
+# Upgrade-summary E2E runner
 
 use ./yzx_test_helpers.nu [get_repo_root log_block log_line repo_path resolve_test_yzx_bin]
 use ../utils/constants.nu [YAZELIX_VERSION]

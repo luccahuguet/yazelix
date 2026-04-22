@@ -1,5 +1,4 @@
 [default]
-transitional_nu_entrypoints = ["test_yzx_commands.nu"]
 default_cargo_test_exceptions = []
 
 [[default.nextest_suites]]

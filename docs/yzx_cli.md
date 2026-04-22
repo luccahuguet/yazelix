@@ -18,7 +18,7 @@ Run Yazelix test suite
 - `--verbose`: Show detailed test output
 - `--new-window`: Launch tests in a new Yazelix window (useful for debugging crashes)
 - `--lint-only`: Run only syntax validation
-- `--profile`: Print timing summaries for the default suite and the internal `test_yzx_commands.nu` sub-suites
+- `--profile`: Print timing summaries for the default Rust suite inventory and any explicit shell-heavy runner lanes that still execute
 - `--sweep`: Run only the non-visual configuration sweep
 - `--visual`: Run only the visual terminal sweep (launches actual terminal windows)
 - `--all`: Run the default suite plus non-visual sweep + visual sweep

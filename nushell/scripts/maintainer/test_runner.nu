@@ -19,8 +19,8 @@ const TEST_SUITE_INVENTORY_PATH = (
 
 def get_test_runner_repo_root [] {
     let cwd = (pwd | path expand)
-    let cwd_test_file = ($cwd | path join "nushell" "scripts" "dev" "test_yzx_commands.nu")
-    if ($cwd_test_file | path exists) {
+    let cwd_inventory = ($cwd | path join "nushell" "scripts" "maintainer" "test_suite_inventory.toml")
+    if ($cwd_inventory | path exists) {
         $cwd
     } else {
         $TEST_RUNNER_REPO_ROOT
@@ -306,7 +306,7 @@ def run_nonvisual_sweep_tests [verbose: bool] {
 
     let runtime_root = (get_yazelix_runtime_dir)
     let repo_root = (get_test_runner_repo_root)
-    let sweep_script = ($runtime_root | path join "nushell" "scripts" "dev" "test_config_sweep.nu")
+    let sweep_script = ($runtime_root | path join "nushell" "scripts" "dev" "config_sweep_runner.nu")
     let args = if $verbose {
         [$sweep_script, "--verbose"]
     } else {
@@ -332,7 +332,7 @@ def run_visual_sweep_tests [verbose: bool, delay: int] {
 
     let runtime_root = (get_yazelix_runtime_dir)
     let repo_root = (get_test_runner_repo_root)
-    let sweep_script = ($runtime_root | path join "nushell" "scripts" "dev" "test_config_sweep.nu")
+    let sweep_script = ($runtime_root | path join "nushell" "scripts" "dev" "config_sweep_runner.nu")
     let args = if $verbose {
         [$sweep_script, "--visual", "--visual-delay", ($delay | into string), "--verbose"]
     } else {

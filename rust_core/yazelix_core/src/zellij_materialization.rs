@@ -1659,4 +1659,75 @@ ui { pane_frames { hide_session_name true } }
         ));
         assert!(!plugin_name_matches_prefix("not_zjstatus.wasm", "zjstatus"));
     }
+
+    // Regression: the shipped override keybinds keep popup/menu and sidebar-focus actions on the pane orchestrator instead of reviving helper panes.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn override_keybinds_keep_pane_orchestrator_contract() {
+        let temp = tempfile::tempdir().unwrap();
+        let overrides_path = temp.path().join("yazelix_overrides.kdl");
+        std::fs::write(
+            &overrides_path,
+            r#"
+keybinds {
+    normal {
+        bind "Alt t" {
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                name "toggle_transient_pane"
+                payload "popup"
+            }
+        }
+        bind "Alt Shift M" {
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                name "toggle_transient_pane"
+                payload "menu"
+            }
+        }
+        bind "Ctrl y" {
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                name "toggle_editor_sidebar_focus"
+                payload "__YAZELIX_RUNTIME_DIR__"
+            }
+        }
+    }
+}
+"#,
+        )
+        .unwrap();
+        let override_lines = read_yazelix_override_keybinds(
+            &overrides_path,
+            std::path::Path::new("/opt/yazelix"),
+        )
+        .unwrap();
+        let merged = override_lines.join("\n");
+
+        assert!(merged.contains("toggle_transient_pane"));
+        assert!(merged.contains("payload \"popup\""));
+        assert!(merged.contains("payload \"menu\""));
+        assert!(merged.contains("toggle_editor_sidebar_focus"));
+        assert!(!merged.contains("yazelix_popup_runner.wasm"));
+    }
+
+    // Regression: pane-orchestrator plugin config must carry one shared sidebar/popup/runtime contract without duplicate alias injection.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn plugin_block_carries_sidebar_and_popup_contract_once() {
+        let block = build_yazelix_plugins_block(
+            &[],
+            std::path::Path::new("/opt/yazelix/plugins/yazelix_pane_orchestrator.wasm"),
+            "[editor: {command_editor}]",
+            "",
+            25,
+            std::path::Path::new("/opt/yazelix"),
+            82,
+            76,
+        );
+
+        assert!(block.contains("yazelix_pane_orchestrator location=\"file:/opt/yazelix/plugins/yazelix_pane_orchestrator.wasm\""));
+        assert!(block.contains("sidebar_width_percent \"25\""));
+        assert!(block.contains("runtime_dir \"/opt/yazelix\""));
+        assert!(block.contains("popup_width_percent \"82\""));
+        assert!(block.contains("popup_height_percent \"76\""));
+        assert_eq!(block.matches("yazelix_pane_orchestrator location=").count(), 1);
+    }
 }

@@ -80,6 +80,22 @@ The first intended consumers are:
 - the next migration lanes for generated-config, workspace/session/doctor, and
   managed-config contract assertions
 
+## Landed Initial Support
+
+The first implementation cut already landed the minimal shared helpers needed by
+the migration wave:
+
+- temp HOME/config/state fixture setup
+- repo-root and managed-config fixture shaping
+- typed `yzx_control` command launching
+- small executable-fixture helpers for PATH and fake tool injection
+
+That support now backs the Rust-owned replacements added in:
+
+- `yzx_control_runtime_surface.rs`
+- `yzx_control_workspace_surface.rs`
+- `yzx_core_command_metadata.rs`
+
 ## Nextest Compatibility Rules
 
 The harness must remain nextest-friendly by construction:

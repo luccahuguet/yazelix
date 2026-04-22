@@ -10,6 +10,10 @@ under-`5k` Nu floor. The rule here is the same as everywhere else: Nu may stay
 only where it is the honest shell/process owner. Deterministic validation,
 policy, routing, and test-helper logic must move to Rust or be deleted.
 
+The old governed Nu test files are already gone. What remains here is the shell
+orchestration around `yzx dev`, sweep/E2E runners, maintainer tooling, and
+deterministic validators that have not been ported yet.
+
 ## Scope
 
 In scope:
@@ -32,7 +36,7 @@ Measured on `2026-04-22`:
 | Family | Current LOC | Hard target LOC | Main follow-up |
 | --- | ---: | ---: | --- |
 | Maintainer and `yzx dev` shell orchestration | `4,077` | `1,200` | `yazelix-8ih0` |
-| Deterministic validators and contract linters | `1,088` | `0` | `yazelix-rdn7.4.6` |
+| Deterministic validators and contract linters | `1,091` | `0` | `yazelix-rdn7.4.6` |
 
 ## Maintainer And `yzx dev` Budget
 
@@ -50,6 +54,8 @@ These are allowed to survive only as fixed argv or shell/process orchestration:
 - `maintainer/plugin_build.nu`
 - a much smaller `maintainer/test_runner.nu`
 - a much smaller `yzx/dev.nu`
+- only the temporary shell-heavy runner scripts named in
+  `config_metadata/nushell_budget.toml`
 
 ### Forced deletion or migration targets
 
@@ -76,6 +82,20 @@ These should not survive as broad owned Nu surfaces:
 3. Route first-party Rust tests through `cargo nextest run` by default
 4. Shrink `yzx dev` to a thin public shell router above canonical owners
 5. Shrink `test_runner.nu` to fixed suite orchestration and logging only
+6. Do not recreate governed Nu test entrypoints inside maintainer tooling after
+   the governed Nu suite has been deleted
+
+### `yzx dev` Shell-Floor Split
+
+`yazelix-8ih0.7` should treat the public `yzx dev` surface like this:
+
+| Subsurface | Keep vs cut | Why |
+| --- | --- | --- |
+| `yzx dev test` public argv parsing and handoff | keep as thin Nu router | it still shells into Nix, Nu, and external tools, but policy should live in the owned runner inventory |
+| `yzx dev profile` startup harness entry | keep temporarily | it still executes the real startup shell boundary and records shell-local profile steps |
+| `yzx dev update`, `sync_issues`, `build_pane_orchestrator`, `bump` | keep as thin Nu router | these are external-tool-heavy maintainer commands and should not gain extra policy in `yzx/dev.nu` |
+| hidden suite membership, lane policy, or test selection logic | cut | this belongs in fixed inventory files or canonical owner modules, not in the public entry router |
+| helper logic that only exists to support deleted governed Nu tests | cut | the governed Nu suite is gone, so this helper debt no longer has a justification |
 
 ## Validator Budget
 
@@ -83,8 +103,8 @@ These should not survive as broad owned Nu surfaces:
 
 ### Target
 
-All `2,713` lines of deterministic validators should leave Nu. The target is
-`0` long-term governed Nu validator LOC.
+All `1,091` current lines of deterministic validators should leave Nu. The
+target is `0` long-term governed Nu validator LOC.
 
 ### Split
 

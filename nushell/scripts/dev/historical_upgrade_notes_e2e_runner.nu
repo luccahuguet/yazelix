@@ -1,5 +1,5 @@
 #!/usr/bin/env nu
-# Test lane: maintainer
+# Historical upgrade-notes E2E runner
 
 use ./yzx_test_helpers.nu [get_repo_root]
 use ../utils/upgrade_summary.nu [build_upgrade_summary_report]

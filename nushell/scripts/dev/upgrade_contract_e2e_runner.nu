@@ -1,5 +1,5 @@
 #!/usr/bin/env nu
-# Test lane: maintainer
+# Upgrade-contract E2E runner
 
 use ./yzx_test_helpers.nu [get_repo_root]
 

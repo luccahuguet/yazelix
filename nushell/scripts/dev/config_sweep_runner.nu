@@ -1,7 +1,5 @@
 #!/usr/bin/env nu
-# Configuration Sweep Testing Framework (Refactored)
-# Tests shell/terminal combinations and configuration variations
-# Test lane: sweep
+# Configuration sweep runner for maintainer shell and visual checks
 
 use ./config_normalize_test_helpers.nu [load_normalized_active_config]
 use sweep/sweep_config_generator.nu *

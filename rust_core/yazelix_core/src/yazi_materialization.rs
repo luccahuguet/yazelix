@@ -1188,4 +1188,34 @@ append_keymap = [{ run = "ignored-top-level" }]
             .unwrap()
         );
     }
+
+    // Regression: bundled Yazi plugin templates must render the active runtime root instead of leaking the placeholder into generated assets.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn renders_runtime_root_placeholders_in_bundled_assets() {
+        let rendered = render_runtime_root_placeholders(
+            "nu __YAZELIX_RUNTIME_DIR__/nushell/scripts/integrations/managed_editor.nu \"$1\"",
+            std::path::Path::new("/opt/yazelix"),
+        );
+
+        assert!(rendered.contains("/opt/yazelix/nushell/scripts/integrations/managed_editor.nu"));
+        assert!(!rendered.contains("__YAZELIX_RUNTIME_DIR__"));
+    }
+
+    // Regression: the bundled Yazi Starship config must copy into the generated surface without becoming read-only or drift-prone.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn syncs_starship_config_into_generated_surface() {
+        let tmp = tempdir().unwrap();
+        let source = tmp.path().join("yazelix_starship.toml");
+        let target = tmp.path().join("generated").join("yazelix_starship.toml");
+        fs::create_dir_all(target.parent().unwrap()).unwrap();
+        fs::write(&source, "# YAZELIX STARSHIP CONFIG FOR YAZI SIDEBAR\n").unwrap();
+
+        sync_starship_config(&source, &target).unwrap();
+
+        let copied = fs::read_to_string(&target).unwrap();
+        assert!(copied.contains("YAZELIX STARSHIP CONFIG FOR YAZI SIDEBAR"));
+        assert!(!fs::metadata(target).unwrap().permissions().readonly());
+    }
 }

@@ -671,6 +671,9 @@ fn load_default_suite_component_files(repo_root: &Path) -> Result<Vec<String>, S
         .join("scripts")
         .join("dev")
         .join("test_yzx_commands.nu");
+    if !suite_runner.exists() {
+        return Ok(Vec::new());
+    }
     let content = fs::read_to_string(&suite_runner)
         .map_err(|error| format!("Failed to read {}: {}", suite_runner.display(), error))?;
     let mut files = Vec::new();

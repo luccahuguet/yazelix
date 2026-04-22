@@ -2,6 +2,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+
 pub struct ManagedConfigFixture {
     pub _temp: TempDir,
     pub home_dir: PathBuf,
@@ -51,6 +54,27 @@ pub fn write_runtime_contract_assets(repo: &Path, runtime_dir: &Path) {
     )
     .unwrap();
     fs::write(runtime_dir.join(".taplo.toml"), "[format]\n").unwrap();
+}
+
+pub fn write_executable_script(path: &Path, body: &str) {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).unwrap();
+    }
+    fs::write(path, body).unwrap();
+    #[cfg(unix)]
+    {
+        let permissions = fs::Permissions::from_mode(0o755);
+        fs::set_permissions(path, permissions).unwrap();
+    }
+}
+
+pub fn prepend_path(dir: &Path) -> String {
+    let current = std::env::var("PATH").unwrap_or_default();
+    if current.is_empty() {
+        dir.to_string_lossy().to_string()
+    } else {
+        format!("{}:{current}", dir.to_string_lossy())
+    }
 }
 
 pub fn managed_config_fixture(raw_config: &str) -> ManagedConfigFixture {
