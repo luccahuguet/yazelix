@@ -98,10 +98,10 @@ def validate_rust_routed_nu_modules [runtime_root: string, label: string] {
 
     for relative_path in [
         ["core" "yzx_session.nu"]
+        ["core" "start_yazelix.nu"]
         ["yzx" "desktop.nu"]
         ["yzx" "dev.nu"]
         ["yzx" "edit.nu"]
-        ["yzx" "enter.nu"]
         ["yzx" "import.nu"]
         ["yzx" "launch.nu"]
         ["yzx" "menu.nu"]

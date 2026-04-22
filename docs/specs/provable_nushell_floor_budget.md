@@ -34,7 +34,7 @@ Measured on `2026-04-22` from the tracked tree after deleting
 | Setup and bootstrap shell entry | `nushell/scripts/setup/environment.nu`, `nushell/scripts/setup/initializers.nu`, `nushell/scripts/core/start_yazelix.nu`, `nushell/scripts/core/start_yazelix_inner.nu`, `nushell/scripts/core/launch_yazelix.nu` | `1,110` | `500` | `yazelix-w6sz.3`, `yazelix-nuj1`, `yazelix-p18h` |
 | Front-door UX and public shell presentation | `nushell/scripts/setup/welcome.nu`, `nushell/scripts/utils/ascii_art.nu`, `nushell/scripts/utils/upgrade_summary.nu`, `nushell/scripts/yzx/menu.nu`, `nushell/scripts/yzx/screen.nu`, `nushell/scripts/yzx/tutor.nu`, `nushell/scripts/yzx/whats_new.nu`, `nushell/scripts/yzx/popup.nu`, `nushell/scripts/yzx/edit.nu`, `nushell/scripts/yzx/import.nu` | `2,442` | `950` | `yazelix-w6sz.4`, `yazelix-dejl` |
 | Runtime helpers, bridges, and shared utilities | `nushell/scripts/utils/*.nu` except `ascii_art.nu` and `upgrade_summary.nu` | `3,326` | `1,050` | `yazelix-lnk6`, `yazelix-dejl`, `yazelix-nuj1`, `yazelix-p18h` |
-| Session and desktop host integration | `nushell/scripts/core/yzx_session.nu`, `nushell/scripts/yzx/desktop.nu`, `nushell/scripts/yzx/launch.nu`, `nushell/scripts/yzx/enter.nu` | `605` | `200` | `yazelix-w6sz.5` |
+| Session and desktop host integration | `nushell/scripts/core/yzx_session.nu`, `nushell/scripts/yzx/desktop.nu`, `nushell/scripts/yzx/launch.nu` | `605` | `200` | `yazelix-w6sz.5` |
 
 Combined hard target: `4,200` Nu LOC
 

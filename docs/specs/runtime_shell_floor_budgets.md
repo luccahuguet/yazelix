@@ -36,7 +36,7 @@ Measured on `2026-04-22` after deleting `version_info.nu`:
 | --- | --- | ---: | ---: |
 | Integration orchestration | `nushell/scripts/integrations/*.nu`, `nushell/scripts/zellij_wrappers/*.nu` | `1,340` | `300` |
 | Setup/bootstrap shell entry | `setup/environment.nu`, `setup/initializers.nu`, `core/start_yazelix.nu`, `core/start_yazelix_inner.nu`, `core/launch_yazelix.nu` | `1,110` | `500` |
-| Session and desktop host integration | `core/yzx_session.nu`, `yzx/desktop.nu`, `yzx/launch.nu`, `yzx/enter.nu` | `605` | `200` |
+| Session and desktop host integration | `core/yzx_session.nu`, `yzx/desktop.nu`, `yzx/launch.nu` | `605` | `200` |
 | Runtime helpers and shared utility seams | `utils/*.nu` except `ascii_art.nu` and `upgrade_summary.nu` | `3,326` | `1,050` |
 
 ## `yazelix-w6sz.2.1` Integration Orchestration Budget
@@ -115,7 +115,7 @@ Candidate surviving owners:
 - smaller `core/yzx_session.nu`
 - smaller `yzx/desktop.nu`
 - smaller `yzx/launch.nu`
-- smaller `yzx/enter.nu`
+- `yzx enter` routed through the existing startup owner in `core/start_yazelix.nu`
 
 Stop condition:
 

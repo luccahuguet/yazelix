@@ -1111,10 +1111,10 @@ def test_yzx_cli_popup_uses_lightweight_popup_module [] {
     $result
 }
 
-# Regression: yzx enter must use the lightweight enter module instead of bootstrapping the full command suite.
+# Regression: yzx enter must route directly to the startup owner instead of reviving a separate wrapper module or the old full command suite.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_cli_enter_uses_lightweight_enter_module [] {
-    print "🧪 Testing yzx CLI enter uses the lightweight enter module..."
+    print "🧪 Testing yzx CLI enter routes directly to the startup owner..."
 
     let fixture = (setup_cli_probe_fixture "yazelix_posix_enter_cli")
 
@@ -1133,7 +1133,7 @@ def test_yzx_cli_enter_uses_lightweight_enter_module [] {
         })
 
         let invocation = (read_probe_lines $fixture.nu_log)
-        let expected_enter_script = (repo_path "nushell" "scripts" "yzx" "enter.nu")
+        let expected_enter_script = (repo_path "nushell" "scripts" "core" "start_yazelix.nu")
 
         if (
             ($output.exit_code == 0)
@@ -1142,7 +1142,7 @@ def test_yzx_cli_enter_uses_lightweight_enter_module [] {
             and (($invocation | get -o 1 | default "") | str contains "yzx enter --path")
             and not (($invocation | get -o 1 | default "") | str contains "core/yazelix.nu")
         ) {
-            print "  ✅ yzx enter now dispatches through the lightweight enter module instead of the full command suite"
+            print "  ✅ yzx enter now dispatches through the startup owner instead of a separate wrapper or the full command suite"
             true
         } else {
             print $"  ❌ Unexpected yzx enter invocation: exit=($output.exit_code) args=($invocation | to json -r) stderr=(($output.stderr | str trim))"

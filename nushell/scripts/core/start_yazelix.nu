@@ -95,12 +95,43 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     }
 }
 
+def run_yzx_enter_command [path: string, home: bool, verbose: bool] {
+    let verbose_mode = $verbose
+    if $verbose_mode {
+        print "🔍 yzx enter: verbose mode enabled"
+    }
+
+    $env.YAZELIX_ENV_ONLY = "false"
+
+    let cwd_override = if $home {
+        $env.HOME
+    } else if ($path | is-not-empty) {
+        $path
+    } else {
+        null
+    }
+
+    if ($cwd_override != null) {
+        start_yazelix_session $cwd_override --verbose=$verbose_mode
+    } else {
+        start_yazelix_session --verbose=$verbose_mode
+    }
+}
+
 export def start_yazelix_session [cwd_override?: string, --verbose, --setup-only] {
     if ($cwd_override | is-not-empty) {
         _start_yazelix_impl $cwd_override --verbose=$verbose --setup-only=$setup_only
     } else {
         _start_yazelix_impl --verbose=$verbose --setup-only=$setup_only
     }
+}
+
+export def "yzx enter" [
+    --path(-p): string = "" # Start in specific directory
+    --home             # Start in home directory
+    --verbose          # Enable verbose logging
+] {
+    run_yzx_enter_command $path $home $verbose
 }
 
 export def main [cwd_override?: string, --verbose, --setup-only] {

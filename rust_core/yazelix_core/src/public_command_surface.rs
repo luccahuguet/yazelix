@@ -3,10 +3,10 @@ use serde::Serialize;
 use serde_json::json;
 
 const CORE_SESSION_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "core", "yzx_session.nu"];
+const START_YAZELIX_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "core", "start_yazelix.nu"];
 const YZX_DESKTOP_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "desktop.nu"];
 const YZX_DEV_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "dev.nu"];
 const YZX_EDIT_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "edit.nu"];
-const YZX_ENTER_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "enter.nu"];
 const YZX_IMPORT_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "import.nu"];
 const YZX_LAUNCH_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "launch.nu"];
 const YZX_MENU_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "menu.nu"];
@@ -530,7 +530,7 @@ const ENTER_COMMAND: YzxCommandLeaf = leaf(
         None,
     ),
     &[],
-    YZX_ENTER_RELATIVE_PATH,
+    START_YAZELIX_RELATIVE_PATH,
 );
 const ENTER_COMMANDS: &[YzxCommandLeaf] = &[ENTER_COMMAND];
 
