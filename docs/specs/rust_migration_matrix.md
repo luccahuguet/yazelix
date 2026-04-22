@@ -108,7 +108,7 @@ wrappers.
 | Surface | Current owners | Delete-first read | Recommendation | Timing and beads |
 | --- | --- | --- | --- | --- |
 | Bridge transport and error shaping | `yzx_core_bridge.nu` plus the small per-command report bridges | High-leverage deletion lane with relatively low semantic risk. The generic helper transport no longer lives inside `config_parser.nu`. | Keep one minimal transport layer, not one policy-bearing Nu owner per Rust helper command. | Landed under `yazelix-057w` |
-| Config, state, env, and preflight shims | `config_parser.nu`, `config_state.nu`, `runtime_env.nu`, plus direct preflight calls in `core/start_yazelix.nu`, `core/launch_yazelix.nu`, and `yzx/launch.nu` | Rust already owns the typed computation. `runtime_contract_checker.nu` is gone, `config_parser.nu` is config-normalize specific, and the startup/launch owners now call the Rust preflight helpers directly. | Keep shrinking request shaping and machine classification where Rust can become the single typed owner. Leave only execution and final user rendering in Nu. | Landed under `yazelix-0ksx` |
+| Config, state, env, and preflight shims | `config_parser.nu`, `runtime_env.nu`, plus direct preflight calls in `core/start_yazelix.nu`, `core/launch_yazelix.nu`, and `yzx/launch.nu` | Rust already owns the typed computation. `runtime_contract_checker.nu` and `config_state.nu` are gone, `config_parser.nu` is config-normalize specific, `runtime_env.nu` is now the explicit shell-exec seam, and the startup/launch owners now call the Rust preflight helpers directly. | Keep shrinking request shaping and machine classification where Rust can become the single typed owner. Leave only execution and final user rendering in Nu. | Landed under `yazelix-0ksx` and `yazelix-ekfc` |
 | Doctor and install report bridges | public report owner in `yzx_control`; private Nu repair helper in `doctor_fix.nu`; caller-local desktop/restart UX | The public doctor owner, shared report bridge, and install-ownership Nu bridge are gone. Rust now owns report aggregation, summary/rendering, JSON, live Zellij plugin-health checks, install-ownership evaluation, and env-derived install-ownership request construction. | Keep the private fix helper narrow. Do not recreate a shared doctor-report bridge, install-ownership bridge, or public Nu doctor owner. | Public doctor cut landed under `yazelix-5ewl.3`; install-ownership bridge collapse landed under `yazelix-87zd` |
 | Runtime materialization lifecycle | Rust owners: `runtime-materialization.plan`, `runtime-materialization.materialize`, `runtime-materialization.repair`, including `--from-env` request construction; caller-local Nu progress/error rendering in startup and doctor | Landed full-owner cut; the shared Nu bridge is gone and Rust now owns env-derived request construction | Keep Rust as the lifecycle and request-construction owner. Do not recreate a shared Nu materialization bridge. | Full-owner cut landed under `yazelix-ulb2.9`; shared bridge deletion landed under `yazelix-q0o9.2` |
 | Yazi materialization family | Rust owner: `yazi-materialization.generate`; remaining Nu use is dev-only direct invocation | The real Nu owner family is gone, and the surviving setup wrapper is deleted. | Keep Rust as the single Yazi materialization owner. Do not recreate a public or product-side compatibility wrapper. Dependency gate for the landed cut: in-house logic plus existing `serde` and `toml`; no new crates. | Landed under `yazelix-ulb2.3.1`; wrapper deletion landed under `yazelix-vf0u.1` |
@@ -134,9 +134,10 @@ Decision:
   `core/launch_yazelix.nu`
 - move the one-off launch-script runtime-script check into `yzx/launch.nu`
 - keep `config_parser.nu` as the config-normalize and config-diagnostic owner
-- keep `config_state.nu` as the small active-surface and materialized-state
-  wrapper around the Rust config-state owner
-- keep `runtime_env.nu` as the shell-bound env application seam for now
+- delete `config_state.nu` by moving the active-surface and materialized-state
+  request construction into Rust
+- keep `runtime_env.nu` only as the shell-bound env application and argv exec
+  seam
 
 Why this cut:
 
@@ -144,9 +145,8 @@ Why this cut:
   doctor-report bridge collapse
 - it mostly survived as a generic startup/launch veneer over
   `runtime-contract.evaluate` and `startup-launch-preflight.evaluate`
-- deleting that file removes a whole per-helper Nu owner without forcing a fake
-  port of the shell-bound `runtime_env.nu` or state-surface glue in
-  `config_state.nu`
+- deleting that file removed a whole per-helper Nu owner without forcing a fake
+  port of the shell-bound `runtime_env.nu` seam
 
 Defer to other lanes:
 

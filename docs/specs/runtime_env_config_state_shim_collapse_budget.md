@@ -1,5 +1,11 @@
 # Runtime Env And Config-State Shim Collapse Budget
 
+> Status: Historical transition note
+> Both implementation lanes landed on `2026-04-22` under `yazelix-ekfc.2` and
+> `yazelix-ekfc.3`
+> Keep this file as the decision record for why `config_state.nu` was deleted
+> and `runtime_env.nu` stopped at the explicit shell-exec seam
+
 ## Summary
 
 This document defines the delete-first budget for the remaining Nushell request

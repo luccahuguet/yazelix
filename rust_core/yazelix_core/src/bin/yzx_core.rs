@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use yazelix_core::active_config_surface::resolve_active_config_paths;
 use yazelix_core::control_plane::{
     config_dir_from_env, config_override_from_env, config_state_compute_request_from_env,
-    config_state_record_request_from_env, runtime_dir_from_env,
+    config_state_record_request_from_env, runtime_dir_from_env, runtime_env_request_from_env,
     runtime_materialization_plan_request_from_env,
 };
 use yazelix_core::{
@@ -12,13 +12,12 @@ use yazelix_core::{
     DoctorRuntimeEvaluateRequest, ErrorClass, GhosttyMaterializationRequest,
     HelixDoctorEvaluateRequest, HelixMaterializationRequest, InstallOwnershipEvaluateRequest,
     NormalizeConfigRequest, RecordConfigStateRequest, RuntimeContractEvaluateRequest,
-    RuntimeEnvComputeRequest, RuntimeMaterializationPlanRequest,
-    RuntimeMaterializationRepairEvaluateRequest, StartupLaunchPreflightRequest,
-    TerminalMaterializationRequest, YaziMaterializationRequest, YaziRenderPlanRequest,
-    YzxExternBridgeSyncRequest, ZellijMaterializationRequest, ZellijRenderPlanRequest,
-    compute_config_state, compute_runtime_env, compute_status_report, compute_yazi_render_plan,
-    compute_zellij_render_plan, error_envelope, evaluate_doctor_config_report,
-    evaluate_doctor_runtime_report, evaluate_helix_doctor_report,
+    RuntimeMaterializationPlanRequest, RuntimeMaterializationRepairEvaluateRequest,
+    StartupLaunchPreflightRequest, TerminalMaterializationRequest, YaziMaterializationRequest,
+    YaziRenderPlanRequest, YzxExternBridgeSyncRequest, ZellijMaterializationRequest,
+    ZellijRenderPlanRequest, compute_config_state, compute_runtime_env, compute_status_report,
+    compute_yazi_render_plan, compute_zellij_render_plan, error_envelope,
+    evaluate_doctor_config_report, evaluate_doctor_runtime_report, evaluate_helix_doctor_report,
     evaluate_install_ownership_report, evaluate_runtime_contract,
     evaluate_startup_launch_preflight, generate_ghostty_materialization,
     generate_helix_materialization, generate_terminal_materialization,
@@ -778,6 +777,8 @@ fn run_terminal_materialization_generate(mut parser: lexopt::Parser) -> Result<(
 
 fn run_runtime_env_compute(mut parser: lexopt::Parser) -> Result<(), CoreError> {
     let mut request_json: Option<String> = None;
+    let mut config_json: Option<String> = None;
+    let mut from_env = false;
 
     while let Some(arg) = parser
         .next()
@@ -785,13 +786,30 @@ fn run_runtime_env_compute(mut parser: lexopt::Parser) -> Result<(), CoreError> 
     {
         match arg {
             Long("request-json") => request_json = Some(parser_string_value(&mut parser)?),
+            Long("config-json") => config_json = Some(parser_string_value(&mut parser)?),
+            Long("from-env") => from_env = true,
             _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
         }
     }
 
-    let request_json =
-        request_json.ok_or_else(|| CoreError::usage("Missing --request-json payload"))?;
-    let request: RuntimeEnvComputeRequest =
+    let request = if from_env {
+        if request_json.is_some() {
+            return Err(CoreError::usage(
+                "Use either --from-env or --request-json for runtime-env.compute, not both.",
+            ));
+        }
+        runtime_env_request_from_env(
+            config_json.as_deref(),
+            config_override_from_env().as_deref(),
+        )?
+    } else {
+        if config_json.is_some() {
+            return Err(CoreError::usage(
+                "runtime-env.compute only accepts --config-json together with --from-env.",
+            ));
+        }
+        let request_json =
+            request_json.ok_or_else(|| CoreError::usage("Missing --request-json payload"))?;
         serde_json::from_str(&request_json).map_err(|error| {
             CoreError::classified(
                 ErrorClass::Usage,
@@ -800,7 +818,8 @@ fn run_runtime_env_compute(mut parser: lexopt::Parser) -> Result<(), CoreError> 
                 "Pass one valid JSON payload via --request-json.",
                 serde_json::json!({}),
             )
-        })?;
+        })?
+    };
     let data = compute_runtime_env(&request)?;
     write_success_envelope(RUNTIME_ENV_COMPUTE_COMMAND, data)
 }

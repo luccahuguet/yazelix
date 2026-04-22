@@ -246,6 +246,30 @@ pub fn config_state_record_request_from_env(
     })
 }
 
+pub fn runtime_env_request_from_env(
+    config_json: Option<&str>,
+    config_override: Option<&str>,
+) -> Result<RuntimeEnvComputeRequest, CoreError> {
+    let runtime_dir = runtime_dir_from_env()?;
+    let normalized = match config_json {
+        Some(raw) => serde_json::from_str::<JsonMap<String, JsonValue>>(raw).map_err(|error| {
+            CoreError::classified(
+                ErrorClass::Usage,
+                "invalid_config_json",
+                format!("Invalid runtime-env config JSON: {error}"),
+                "Pass one valid JSON object via --config-json or omit it to load the canonical config.",
+                serde_json::json!({}),
+            )
+        })?,
+        None => {
+            let config_dir = config_dir_from_env()?;
+            load_normalized_config_for_control(&runtime_dir, &config_dir, config_override)?
+        }
+    };
+
+    runtime_env_request(runtime_dir, &normalized)
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct EnvCliArgs {
     pub no_shell: bool,

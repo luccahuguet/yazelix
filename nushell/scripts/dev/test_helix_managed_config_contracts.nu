@@ -4,8 +4,7 @@
 
 use ./yzx_test_helpers.nu [get_repo_root resolve_test_yzx_core_bin]
 use ../utils/common.nu [get_yazelix_config_dir get_yazelix_runtime_dir get_yazelix_state_dir]
-use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
-use ../utils/runtime_env.nu [get_runtime_env]
+use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface compute_runtime_env_via_yzx_core run_yzx_core_json_command]
 
 const HELIX_MATERIALIZATION_GENERATE_COMMAND = "helix-materialization.generate"
 
@@ -102,7 +101,7 @@ def test_get_runtime_env_wraps_helix_with_managed_wrapper [] {
             YAZELIX_STATE_DIR: ($tmp_home | path join ".local" "share" "yazelix")
             YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
         } {
-            get_runtime_env {
+            compute_runtime_env_via_yzx_core {
                 editor_command: "hx"
                 enable_sidebar: true
                 helix_runtime_path: null
@@ -190,7 +189,7 @@ def test_get_runtime_env_exports_curated_toolbin_and_keeps_runtime_local_yzx [] 
             YAZELIX_STATE_DIR: ($tmp_home | path join ".local" "share" "yazelix")
             YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
         } {
-            get_runtime_env {
+            compute_runtime_env_via_yzx_core {
                 editor_command: "hx"
                 enable_sidebar: true
                 helix_runtime_path: null

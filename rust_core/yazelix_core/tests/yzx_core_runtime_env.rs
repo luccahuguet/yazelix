@@ -125,3 +125,72 @@ fn runtime_env_compute_rejects_invalid_request_json() {
     assert_eq!(envelope["error"]["class"], "usage");
     assert_eq!(envelope["error"]["code"], "invalid_request_json");
 }
+
+// Defends: runtime-env.compute can build the canonical runtime env from process env plus optional config JSON without Nu request assembly.
+// Contract: CRCP-002
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn runtime_env_compute_from_env_accepts_config_json() {
+    let tmp = tempdir().unwrap();
+    let runtime_dir = tmp.path().join("runtime");
+    let home_dir = tmp.path().join("home");
+
+    fs::create_dir_all(runtime_dir.join("toolbin")).unwrap();
+    fs::create_dir_all(runtime_dir.join("bin")).unwrap();
+    fs::create_dir_all(&home_dir).unwrap();
+
+    let runtime_toolbin = runtime_dir.join("toolbin");
+    let runtime_bin = runtime_dir.join("bin");
+    let config_json = json!({
+        "enable_sidebar": true,
+        "editor_command": "hx",
+        "helix_runtime_path": "/tmp/managed-helix-runtime",
+    });
+
+    let output = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .env_clear()
+        .env("HOME", &home_dir)
+        .env(
+            "PATH",
+            format!("{}:{}", runtime_toolbin.display(), runtime_bin.display()),
+        )
+        .env("YAZELIX_RUNTIME_DIR", &runtime_dir)
+        .arg("runtime-env.compute")
+        .arg("--from-env")
+        .arg("--config-json")
+        .arg(config_json.to_string())
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let expected_wrapper = runtime_dir
+        .join("shells")
+        .join("posix")
+        .join("yazelix_hx.sh")
+        .to_string_lossy()
+        .to_string();
+
+    assert_eq!(envelope["status"], "ok");
+    assert_eq!(envelope["command"], "runtime-env.compute");
+    assert_eq!(
+        envelope["data"]["runtime_env"]["PATH"],
+        json!([
+            runtime_toolbin.to_string_lossy().to_string(),
+            runtime_bin.to_string_lossy().to_string(),
+        ])
+    );
+    assert_eq!(envelope["data"]["runtime_env"]["EDITOR"], expected_wrapper);
+    assert_eq!(envelope["data"]["runtime_env"]["VISUAL"], expected_wrapper);
+    assert_eq!(
+        envelope["data"]["runtime_env"]["ZELLIJ_DEFAULT_LAYOUT"],
+        "yzx_side"
+    );
+    assert_eq!(
+        envelope["data"]["runtime_env"]["HELIX_RUNTIME"],
+        "/tmp/managed-helix-runtime"
+    );
+}

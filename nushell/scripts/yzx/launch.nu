@@ -4,9 +4,8 @@
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu [require_yazelix_runtime_dir resolve_yazelix_nu_bin]
 use ../utils/failure_classes.nu [format_failure_classification]
-use ../utils/runtime_env.nu get_runtime_env
 use ../utils/startup_profile.nu [profile_startup_step propagate_startup_profile_env]
-use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_request_json_command]
+use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface compute_runtime_env_via_yzx_core run_yzx_core_request_json_command]
 
 const RUNTIME_CONTRACT_EVALUATE_COMMAND = "runtime-contract.evaluate"
 
@@ -125,7 +124,7 @@ export def "yzx launch" [
 
     let nu_bin = (resolve_yazelix_nu_bin)
     let final_launch_args = $launch_args
-    let env_block = (propagate_startup_profile_env (propagate_test_env (get_runtime_env $config)))
+    let env_block = (propagate_startup_profile_env (propagate_test_env (compute_runtime_env_via_yzx_core $config)))
     if $verbose_mode {
         print $"⚙️ Executing launch_yazelix.nu from runtime: ($runtime_dir)"
         print $"   cwd: ($launch_cwd)"

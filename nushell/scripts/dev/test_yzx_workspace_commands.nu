@@ -268,12 +268,6 @@ def setup_enter_forwarding_fixture [label: string] {
     ] | str join "\n" | save --force --raw ($utils_dir | path join "common.nu")
 
     [
-        "export def get_runtime_env [config?: record] {"
-        "    {}"
-        "}"
-    ] | str join "\n" | save --force --raw ($utils_dir | path join "runtime_env.nu")
-
-    [
         "export def format_failure_classification [failure_class: string, recovery: string] {"
         "    $recovery"
         "}"
@@ -290,6 +284,9 @@ def setup_enter_forwarding_fixture [label: string] {
 
     [
         "export def build_default_yzx_core_error_surface [] {"
+        "    {}"
+        "}"
+        "export def compute_runtime_env_via_yzx_core [config?: record, runtime_dir?: string] {"
         "    {}"
         "}"
         "export def run_yzx_core_request_json_command [runtime_dir: string, error_surface: record, command: string, request: any, invalid_json_message: string] {"

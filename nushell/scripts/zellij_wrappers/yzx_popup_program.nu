@@ -2,12 +2,13 @@
 
 use ../integrations/yazi.nu [refresh_active_sidebar_yazi]
 use ../utils/config_parser.nu [parse_yazelix_config]
-use ../utils/runtime_env.nu [get_runtime_env run_runtime_argv]
+use ../utils/runtime_env.nu [run_runtime_argv]
 use ../utils/transient_pane_contract.nu [
     close_current_transient_pane
     get_transient_pane_mode_env
     rename_current_transient_pane
 ]
+use ../utils/yzx_core_bridge.nu [compute_runtime_env_via_yzx_core]
 
 def resolve_popup_program [popup_args: list<string>, config: record] {
     if ($popup_args | is-not-empty) {
@@ -63,7 +64,7 @@ def resolve_popup_argv [popup_program: list<string>, runtime_env: record] {
 
 def resolve_popup_launch_context [popup_args: list<string>] {
     let config = (parse_yazelix_config)
-    let runtime_env = (get_runtime_env $config)
+    let runtime_env = (compute_runtime_env_via_yzx_core $config)
     let popup_program = (resolve_popup_program $popup_args $config)
     let argv = (resolve_popup_argv $popup_program $runtime_env)
     let command = ($argv | first | default "")
@@ -79,7 +80,7 @@ def resolve_popup_launch_context [popup_args: list<string>] {
 
 def run_popup_program [popup_args: list<string>] {
     let launch_context = (resolve_popup_launch_context $popup_args)
-    run_runtime_argv $launch_context.argv --config $launch_context.config
+    run_runtime_argv $launch_context.argv --runtime-env $launch_context.runtime_env
 }
 
 def --wrapped main [...popup_args: string] {

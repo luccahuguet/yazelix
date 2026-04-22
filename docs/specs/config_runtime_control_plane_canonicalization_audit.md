@@ -48,9 +48,9 @@ the remaining serious Nu cuts.
 | --- | --- | --- | --- | --- |
 | Canonical managed config surface lives under `user_configs/`, rejects legacy-root conflicts, bootstraps missing `yazelix.toml`, and keeps managed Taplo support current | `docs/specs/config_surface_and_launch_profile_contract.md`; `CRCP-004` | Nu `config_surfaces.nu` and Rust `active_config_surface.rs` both implement this | `nu nushell/scripts/dev/validate_config_surface_contract.nu`; `nu nushell/scripts/dev/test_yzx_core_commands.nu`; no dedicated Rust unit tests yet | Rust `active_config_surface.rs` with only caller-local Nu shell orchestration where file writes or editor launch UX still require it |
 | Typed main-config normalization and diagnostic classification stay Rust-owned | `CRCP-001`; `docs/specs/rust_nushell_bridge_contract.md` | Rust `normalize_config`; Nu `config_parser.nu` is a bridge wrapper | `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`; `nu nushell/scripts/dev/test_yzx_generated_configs.nu` | same |
-| Canonical runtime env policy stays in Rust and does not drift back into Nu | `CRCP-002`; `docs/specs/launch_bootstrap_rust_migration.md` | Rust `runtime_env.rs` plus Nu request assembly in `runtime_env.nu` | `rust_core/yazelix_core/tests/yzx_core_runtime_env.rs`; `nu nushell/scripts/dev/test_helix_managed_config_contracts.nu`; `nu nushell/scripts/dev/test_yzx_popup_commands.nu` | Rust `runtime_env.rs` / `yzx_control` with a smaller Nu shell-exec boundary only |
+| Canonical runtime env policy stays in Rust and does not drift back into Nu | `CRCP-002`; `docs/specs/launch_bootstrap_rust_migration.md` | Rust `runtime_env.rs` plus the explicit Nu shell-exec seam in `runtime_env.nu` | `rust_core/yazelix_core/tests/yzx_core_runtime_env.rs`; `nu nushell/scripts/dev/test_helix_managed_config_contracts.nu`; `nu nushell/scripts/dev/test_yzx_popup_commands.nu` | Rust `runtime_env.rs` / `control_plane.rs` with Nu limited to shell env application and argv execution |
 | Packaged helper resolution and source-checkout helper fallback fail fast without reviving deleted Nu semantics | `CRCP-003`; `docs/specs/runtime_root_contract.md` | Nu `yzx_core_bridge.nu` plus POSIX/runtime launcher wiring | `nu nushell/scripts/dev/test_yzx_generated_configs.nu`; `nu nushell/scripts/dev/validate_installed_runtime_contract.nu` | smaller helper bridge or later public Rust command owner, but not a wider Nu bridge |
-| Generated-state refresh uses config/runtime hashes for the default managed surface and records state only for the canonical managed config | `docs/specs/config_surface_and_launch_profile_contract.md`; `docs/specs/runtime_activation_state_contract.md` | Rust `config_state.rs` with Nu shim in `config_state.nu` | `rust_core/yazelix_core/src/config_state.rs`; `nu nushell/scripts/dev/test_yzx_generated_configs.nu`; `nu nushell/scripts/dev/validate_config_surface_contract.nu` | Rust `config_state.rs` with Nu startup/launch consuming structured results |
+| Generated-state refresh uses config/runtime hashes for the default managed surface and records state only for the canonical managed config | `docs/specs/config_surface_and_launch_profile_contract.md`; `docs/specs/runtime_activation_state_contract.md` | Rust `config_state.rs` and `control_plane.rs`, with Nu startup/launch consuming structured results | `rust_core/yazelix_core/src/config_state.rs`; `nu nushell/scripts/dev/test_yzx_generated_configs.nu`; `nu nushell/scripts/dev/validate_config_surface_contract.nu` | same |
 | Home Manager defaults and shipped config defaults stay synchronized through maintained metadata, not duplicate owners or fallback behavior | `CRCP-004`; `docs/specs/config_metadata_centralization_plan.md` | config metadata plus validators, with both Nu and Rust reading the same runtime contract | `nu nushell/scripts/dev/validate_config_surface_contract.nu`; `nu nushell/scripts/dev/validate_upgrade_contract.nu` | same |
 
 ## 3. Canonical Owner Map
@@ -60,8 +60,8 @@ the remaining serious Nu cuts.
 | User-visible config/runtime behavior | Nu `yzx` commands and startup/launch frontends calling Rust helpers | intentional | The public surface is still Nu-first in v15.4, but typed decisions should keep shrinking out of Nu |
 | Typed or deterministic logic | Rust `active_config_surface.rs`, `runtime_env.rs`, `config_state.rs`, `config_commands.rs` | intentional | This is already the canonical owner set |
 | Active config-surface resolution and Taplo synchronization | Nu `config_surfaces.nu` and Rust `active_config_surface.rs` | accidental duplication | Rust already owns the same rules for Rust callers; Nu duplicate ownership remains for legacy callers |
-| Runtime-env request construction | Nu `runtime_env.nu` request builder feeding Rust `runtime-env.compute` | temporary bridge debt | Acceptable only while Nu stays a dumb request boundary |
-| Generated-state request construction and recording gate | Nu `config_state.nu` building request args for Rust `config-state.compute` / `config-state.record` | temporary bridge debt | The state hash logic is Rust-owned, but Nu still owns too much request assembly |
+| Runtime-env request construction | Rust `control_plane.rs` feeding `runtime-env.compute`; Nu callers use `compute_runtime_env_via_yzx_core` | landed owner cut | Request assembly no longer belongs to Nu; the surviving Nu seam is env application and argv execution only |
+| Generated-state request construction and recording gate | Rust `control_plane.rs` feeding `config-state.compute` / `config-state.record` | landed owner cut | `config_state.nu` is deleted and the state hash logic plus request construction are Rust-owned |
 | Shell or process orchestration | Nu `start_yazelix.nu`, `launch_yazelix.nu`, popup wrappers, `runtime_env.nu::run_runtime_argv`, POSIX wrappers | intentional | This is a real shell boundary until the launch/startup audit proves otherwise |
 | Root/config/state dir resolution and home expansion | Nu `common.nu` and Rust `control_plane.rs` | accidental duplication | This seam is real, but it is blocked on the launch/startup audit because Nu still needs some runtime-root and shell-path discovery |
 | Helper discovery, JSON envelope parsing, and final helper error rendering | Nu `yzx_core_bridge.nu` | temporary bridge debt | Still needed today, but too central to count as a purely transport-only seam |
@@ -78,8 +78,7 @@ the remaining serious Nu cuts.
 - Nu `runtime_env.nu::run_runtime_argv`: `irreducible_shell_boundary`
 - Nu `config_surfaces.nu`: `temporary_bridge_debt`
 - Nu `config_parser.nu`: `historical_debt`
-- Nu `runtime_env.nu` request-building half: `temporary_bridge_debt`
-- Nu `config_state.nu`: `temporary_bridge_debt`
+- Nu `runtime_env.nu`: `irreducible_shell_boundary`
 - Nu `yzx_core_bridge.nu`: `temporary_bridge_debt`
 - Nu `common.nu` path/root helpers:
   - `resolve_yazelix_nu_bin` and shell-wrapper helpers: `irreducible_shell_boundary`
@@ -104,10 +103,11 @@ should be deleted or narrowed.
 - `config_surfaces.nu` should stop being a second active-config-surface owner
   now that `active_config_surface.rs` already owns the same rules for Rust
   callers
-- `runtime_env.nu` should stop owning request construction once Nu callers can
-  target a Rust-owned request boundary directly
-- `config_state.nu` should stop owning request assembly and canonical managed
-  surface resolution for state hashing and recording
+- `runtime_env.nu` request construction is already gone; the remaining question
+  is whether the explicit shell-exec seam can shrink further without hiding
+  real process ownership
+- `config_state.nu` is deleted; do not recreate a second Nu owner for
+  config-state request assembly or canonical managed-surface resolution
 - `yzx_core_bridge.nu` is still oversized bridge debt, but this audit records it
   as a later lane because its helper-resolution and error-surface contract still
   spans more than the local config/runtime callers
