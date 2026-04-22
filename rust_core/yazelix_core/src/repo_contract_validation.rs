@@ -4,7 +4,9 @@ use crate::config_state::{
 };
 use crate::control_plane::read_yazelix_version_from_runtime;
 use crate::repo_validation::ValidationReport;
+use serde::Deserialize;
 use serde_json::{Map as JsonMap, Number as JsonNumber, Value as JsonValue};
+use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -15,6 +17,7 @@ use toml::{Table as TomlTable, Value as TomlValue};
 const MAIN_TEMPLATE_RELATIVE_PATH: &str = "yazelix_default.toml";
 const MODULE_RELATIVE_PATH: &str = "home_manager/module.nix";
 const MAIN_CONTRACT_RELATIVE_PATH: &str = "config_metadata/main_config_contract.toml";
+const NUSHELL_BUDGET_RELATIVE_PATH: &str = "config_metadata/nushell_budget.toml";
 const TAPLO_RELATIVE_PATH: &str = ".taplo.toml";
 const GUARDED_FILES: &[&str] = &[
     "nushell/scripts/utils/constants.nu",
@@ -34,11 +37,36 @@ const IMPACT_VALUES: &[&str] = &[
     "migration_available",
     "manual_action_required",
 ];
+const ALLOWED_NUSHELL_BUDGET_STATUSES: &[&str] = &["allowlisted_floor", "transitional_exception"];
 
 #[derive(Debug, Clone, Default)]
 pub struct UpgradeContractOptions {
     pub ci: bool,
     pub diff_base: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct NushellBudgetManifest {
+    contract: NushellBudgetContract,
+    families: Vec<NushellBudgetFamily>,
+}
+
+#[derive(Debug, Deserialize)]
+struct NushellBudgetContract {
+    current_total_loc_max: usize,
+    current_total_file_count_max: usize,
+    hard_target_loc: usize,
+}
+
+#[derive(Debug, Deserialize)]
+struct NushellBudgetFamily {
+    id: String,
+    status: String,
+    owner_bead: String,
+    max_loc: usize,
+    target_loc: usize,
+    max_files: usize,
+    allowed_paths: Vec<String>,
 }
 
 pub fn validate_config_surface_contract(repo_root: &Path) -> Result<ValidationReport, String> {
@@ -130,6 +158,159 @@ pub fn validate_upgrade_contract(
             validate_upgrade_ci_rules(repo_root, entries, &current_version, &diff_base)?;
         report.warnings.extend(warnings);
         report.errors.extend(errors);
+    }
+
+    Ok(report)
+}
+
+pub fn validate_nushell_budget(repo_root: &Path) -> Result<ValidationReport, String> {
+    let manifest = load_nushell_budget_manifest(repo_root)?;
+    let actual_paths = load_nushell_script_paths(repo_root)?;
+    let mut report = ValidationReport::default();
+    let mut family_index_by_id = HashMap::new();
+    let mut family_index_by_path = HashMap::new();
+    let mut family_loc_totals = vec![0usize; manifest.families.len()];
+    let mut family_file_totals = vec![0usize; manifest.families.len()];
+
+    for (index, family) in manifest.families.iter().enumerate() {
+        if !ALLOWED_NUSHELL_BUDGET_STATUSES.contains(&family.status.as_str()) {
+            report.errors.push(format!(
+                "Nushell budget family `{}` declares unsupported status `{}` in {}",
+                family.id, family.status, NUSHELL_BUDGET_RELATIVE_PATH
+            ));
+        }
+
+        if family.owner_bead.trim().is_empty() {
+            report.errors.push(format!(
+                "Nushell budget family `{}` is missing an owner_bead in {}",
+                family.id, NUSHELL_BUDGET_RELATIVE_PATH
+            ));
+        }
+
+        if family.target_loc > family.max_loc {
+            report.errors.push(format!(
+                "Nushell budget family `{}` has target_loc {} above max_loc {} in {}",
+                family.id, family.target_loc, family.max_loc, NUSHELL_BUDGET_RELATIVE_PATH
+            ));
+        }
+
+        if family.allowed_paths.is_empty() {
+            report.errors.push(format!(
+                "Nushell budget family `{}` has no allowed_paths in {}",
+                family.id, NUSHELL_BUDGET_RELATIVE_PATH
+            ));
+        }
+
+        if let Some(existing_index) = family_index_by_id.insert(family.id.clone(), index) {
+            let existing_id = &manifest.families[existing_index].id;
+            report.errors.push(format!(
+                "Nushell budget family id `{}` is duplicated in {}",
+                existing_id, NUSHELL_BUDGET_RELATIVE_PATH
+            ));
+        }
+
+        for relative_path in &family.allowed_paths {
+            if !relative_path.starts_with("nushell/scripts/") || !relative_path.ends_with(".nu") {
+                report.errors.push(format!(
+                    "Nushell budget family `{}` lists a non-Nushell path `{}` in {}",
+                    family.id, relative_path, NUSHELL_BUDGET_RELATIVE_PATH
+                ));
+                continue;
+            }
+
+            if let Some(previous_family_index) = family_index_by_path.insert(relative_path.clone(), index)
+            {
+                let previous_family = &manifest.families[previous_family_index].id;
+                report.errors.push(format!(
+                    "Nushell budget path `{}` is assigned to both `{}` and `{}` in {}",
+                    relative_path, previous_family, family.id, NUSHELL_BUDGET_RELATIVE_PATH
+                ));
+            }
+
+            if !repo_root.join(relative_path).is_file() {
+                report.errors.push(format!(
+                    "Nushell budget path `{}` is listed under `{}` but does not exist in the repo",
+                    relative_path, family.id
+                ));
+            }
+        }
+    }
+
+    let mut total_loc = 0usize;
+    let total_files = actual_paths.len();
+
+    for relative_path in actual_paths {
+        let Some(&family_index) = family_index_by_path.get(&relative_path) else {
+            report.errors.push(format!(
+                "Unexpected Nushell file outside the canonical budget allowlist: {}",
+                relative_path
+            ));
+            continue;
+        };
+
+        let line_count = count_tracked_lines(&repo_root.join(&relative_path))?;
+        family_loc_totals[family_index] += line_count;
+        family_file_totals[family_index] += 1;
+        total_loc += line_count;
+    }
+
+    let expected_total_loc: usize = manifest.families.iter().map(|family| family.max_loc).sum();
+    let expected_total_files: usize = manifest.families.iter().map(|family| family.max_files).sum();
+
+    if expected_total_loc != manifest.contract.current_total_loc_max {
+        report.errors.push(format!(
+            "Nushell budget manifest total LOC mismatch in {}: contract={}, family_sum={}",
+            NUSHELL_BUDGET_RELATIVE_PATH, manifest.contract.current_total_loc_max, expected_total_loc
+        ));
+    }
+
+    if expected_total_files != manifest.contract.current_total_file_count_max {
+        report.errors.push(format!(
+            "Nushell budget manifest total file-count mismatch in {}: contract={}, family_sum={}",
+            NUSHELL_BUDGET_RELATIVE_PATH,
+            manifest.contract.current_total_file_count_max,
+            expected_total_files
+        ));
+    }
+
+    if total_loc > manifest.contract.current_total_loc_max {
+        report.errors.push(format!(
+            "Nushell budget grew above the tracked ceiling: measured {} LOC > allowed {} LOC",
+            total_loc, manifest.contract.current_total_loc_max
+        ));
+    }
+
+    if total_files > manifest.contract.current_total_file_count_max {
+        report.errors.push(format!(
+            "Nushell file count grew above the tracked ceiling: measured {} files > allowed {} files",
+            total_files, manifest.contract.current_total_file_count_max
+        ));
+    }
+
+    for (index, family) in manifest.families.iter().enumerate() {
+        let measured_loc = family_loc_totals[index];
+        let measured_files = family_file_totals[index];
+
+        if measured_loc > family.max_loc {
+            report.errors.push(format!(
+                "Nushell budget family `{}` grew above its LOC ceiling: measured {} LOC > allowed {} LOC",
+                family.id, measured_loc, family.max_loc
+            ));
+        }
+
+        if measured_files > family.max_files {
+            report.errors.push(format!(
+                "Nushell budget family `{}` grew above its file-count ceiling: measured {} files > allowed {} files",
+                family.id, measured_files, family.max_files
+            ));
+        }
+    }
+
+    if total_loc > manifest.contract.hard_target_loc {
+        report.warnings.push(format!(
+            "Current tracked Nushell surface is {} LOC, still above the long-term hard target of {} LOC. Keep deleting until the tracked ceilings fall again.",
+            total_loc, manifest.contract.hard_target_loc
+        ));
     }
 
     Ok(report)
@@ -252,6 +433,64 @@ fn validate_main_contract_parity(repo_root: &Path) -> Result<Vec<String>, String
     }
 
     Ok(errors)
+}
+
+fn load_nushell_budget_manifest(repo_root: &Path) -> Result<NushellBudgetManifest, String> {
+    let manifest_path = repo_root.join(NUSHELL_BUDGET_RELATIVE_PATH);
+    let content = fs::read_to_string(&manifest_path).map_err(|error| {
+        format!(
+            "Failed to read {}: {}",
+            manifest_path.display(),
+            error
+        )
+    })?;
+    toml::from_str(&content)
+        .map_err(|error| format!("Invalid TOML in {}: {}", manifest_path.display(), error))
+}
+
+fn load_nushell_script_paths(repo_root: &Path) -> Result<Vec<String>, String> {
+    let mut paths = Vec::new();
+    collect_nushell_script_paths(&repo_root.join("nushell").join("scripts"), &mut paths)?;
+    paths.sort();
+    Ok(paths)
+}
+
+fn collect_nushell_script_paths(dir: &Path, paths: &mut Vec<String>) -> Result<(), String> {
+    if !dir.exists() {
+        return Ok(());
+    }
+
+    for entry in fs::read_dir(dir)
+        .map_err(|error| format!("Failed to read {}: {}", dir.display(), error))?
+    {
+        let path = entry.map_err(|error| error.to_string())?.path();
+        if path.is_dir() {
+            collect_nushell_script_paths(&path, paths)?;
+            continue;
+        }
+
+        if path.extension().and_then(|ext| ext.to_str()) != Some("nu") {
+            continue;
+        }
+
+        let relative = path
+            .components()
+            .skip_while(|component| component.as_os_str() != "nushell")
+            .map(|component| component.as_os_str().to_string_lossy().to_string())
+            .collect::<Vec<_>>()
+            .join("/");
+        paths.push(relative);
+    }
+
+    Ok(())
+}
+
+fn count_tracked_lines(path: &Path) -> Result<usize, String> {
+    Ok(fs::read_to_string(path)
+        .map_err(|error| format!("Failed to read {}: {}", path.display(), error))?
+        .bytes()
+        .filter(|byte| *byte == b'\n')
+        .count())
 }
 
 fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<String>, String> {

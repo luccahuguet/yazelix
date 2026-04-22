@@ -31,8 +31,8 @@ Measured on `2026-04-22`:
 
 | Family | Current LOC | Hard target LOC | Main follow-up |
 | --- | ---: | ---: | --- |
-| Maintainer and `yzx dev` shell orchestration | `4,224` | `1,200` | `yazelix-8ih0` |
-| Deterministic validators and contract linters | `2,713` | `0` | `yazelix-rdn7.4.6` |
+| Maintainer and `yzx dev` shell orchestration | `4,077` | `1,200` | `yazelix-8ih0` |
+| Deterministic validators and contract linters | `1,088` | `0` | `yazelix-rdn7.4.6` |
 
 ## Maintainer And `yzx dev` Budget
 

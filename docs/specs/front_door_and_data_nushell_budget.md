@@ -39,8 +39,8 @@ Measured on `2026-04-22`:
 
 | Surface | Current LOC | Hard target LOC | Notes |
 | --- | ---: | ---: | --- |
-| Front-door UX family | `2,442` | `950` | full front-door renderer and public shell presentation family |
-| Data-heavy subset | `1,938` | `350` | subset only; counts are not additive because these files overlap the front-door and runtime-helper families |
+| Front-door UX family | `2,299` | `950` | full front-door renderer and public shell presentation family |
+| Data-heavy subset | `1,604` | `350` | subset only; counts are not additive because these files overlap the front-door and runtime-helper families |
 
 The data-heavy subset is:
 

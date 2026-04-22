@@ -7,8 +7,8 @@ harder rule: every surviving Nu line is dangerous by default and must justify
 itself against deletion, Rust ownership, asset ownership, or fixed POSIX
 helpers.
 
-The current measured surface is `28,839` lines of Nushell across
-`nushell/scripts/`.
+The current measured surface is `26,678` tracked lines of Nushell across
+`112` `.nu` files under `nushell/scripts/`.
 
 The canonical hard target for the current backlog is `4,200` Nu lines. That is
 intentionally aggressive and it assumes:
@@ -24,17 +24,18 @@ This is the current top-level budget document for the under-`5k` push.
 ## Current Measured Surface
 
 Measured on `2026-04-22` from the tracked tree after deleting
-`nushell/scripts/utils/version_info.nu` under `yazelix-lnk6.4`.
+`nushell/scripts/yzx/enter.nu` under `yazelix-w6sz.5.2`.
 
 | Family | Current included surface | Current LOC | Hard target LOC | Main beads |
 | --- | --- | ---: | ---: | --- |
-| Governed tests and deterministic validators | `nushell/scripts/dev/test_*.nu`, `nushell/scripts/dev/validate*.nu` | `15,792` | `0` | `yazelix-rdn7.4.5`, `yazelix-rdn7.4.6`, `yazelix-rdn7.4.7` |
-| Maintainer and `yzx dev` shell orchestration | `nushell/scripts/maintainer/*.nu`, `nushell/scripts/yzx/dev.nu`, residual non-test dev orchestration | `4,224` | `1,200` | `yazelix-8ih0`, `yazelix-8ih0.7`, `yazelix-8ih0.8` |
-| Integration and popup wrapper glue | `nushell/scripts/integrations/*.nu`, `nushell/scripts/zellij_wrappers/*.nu` | `1,340` | `300` | `yazelix-w6sz.2` |
-| Setup and bootstrap shell entry | `nushell/scripts/setup/environment.nu`, `nushell/scripts/setup/initializers.nu`, `nushell/scripts/core/start_yazelix.nu`, `nushell/scripts/core/start_yazelix_inner.nu`, `nushell/scripts/core/launch_yazelix.nu` | `1,110` | `500` | `yazelix-w6sz.3`, `yazelix-nuj1`, `yazelix-p18h` |
-| Front-door UX and public shell presentation | `nushell/scripts/setup/welcome.nu`, `nushell/scripts/utils/ascii_art.nu`, `nushell/scripts/utils/upgrade_summary.nu`, `nushell/scripts/yzx/menu.nu`, `nushell/scripts/yzx/screen.nu`, `nushell/scripts/yzx/tutor.nu`, `nushell/scripts/yzx/whats_new.nu`, `nushell/scripts/yzx/popup.nu`, `nushell/scripts/yzx/edit.nu`, `nushell/scripts/yzx/import.nu` | `2,442` | `950` | `yazelix-w6sz.4`, `yazelix-dejl` |
-| Runtime helpers, bridges, and shared utilities | `nushell/scripts/utils/*.nu` except `ascii_art.nu` and `upgrade_summary.nu` | `3,326` | `1,050` | `yazelix-lnk6`, `yazelix-dejl`, `yazelix-nuj1`, `yazelix-p18h` |
-| Session and desktop host integration | `nushell/scripts/core/yzx_session.nu`, `nushell/scripts/yzx/desktop.nu`, `nushell/scripts/yzx/launch.nu` | `605` | `200` | `yazelix-w6sz.5` |
+| Governed Nu tests | `nushell/scripts/dev/test_*.nu` | `13,115` | `0` | `yazelix-rdn7.4.5`, `yazelix-rdn7.4.7` |
+| Deterministic Nu validators | `nushell/scripts/dev/validate*.nu` | `1,088` | `0` | `yazelix-rdn7.4.6`, `yazelix-rdn7.4.7` |
+| Maintainer and `yzx dev` shell orchestration | `nushell/scripts/maintainer/*.nu`, `nushell/scripts/yzx/dev.nu`, residual non-test dev orchestration | `4,077` | `1,200` | `yazelix-8ih0`, `yazelix-8ih0.7`, `yazelix-8ih0.8` |
+| Integration and popup wrapper glue | `nushell/scripts/integrations/*.nu`, `nushell/scripts/zellij_wrappers/*.nu` | `1,328` | `300` | `yazelix-w6sz.2` |
+| Setup and bootstrap shell entry | `setup/environment.nu`, `setup/initializers.nu`, `core/start_yazelix.nu`, `core/start_yazelix_inner.nu`, `core/launch_yazelix.nu` | `1,073` | `500` | `yazelix-w6sz.3`, `yazelix-nuj1`, `yazelix-p18h` |
+| Front-door UX and public shell presentation | `setup/welcome.nu`, `utils/ascii_art.nu`, `utils/upgrade_summary.nu`, `yzx/menu.nu`, `yzx/screen.nu`, `yzx/tutor.nu`, `yzx/whats_new.nu`, `yzx/popup.nu`, `yzx/edit.nu`, `yzx/import.nu` | `2,299` | `950` | `yazelix-w6sz.4`, `yazelix-dejl` |
+| Runtime helpers, bridges, and shared utilities | `utils/*.nu` except `ascii_art.nu` and `upgrade_summary.nu` | `3,126` | `1,050` | `yazelix-lnk6`, `yazelix-dejl`, `yazelix-nuj1`, `yazelix-p18h` |
+| Session and desktop host integration | `core/yzx_session.nu`, `yzx/desktop.nu`, `yzx/launch.nu` | `572` | `200` | `yazelix-w6sz.5` |
 
 Combined hard target: `4,200` Nu LOC
 
@@ -85,6 +86,25 @@ Only these survivor classes are allowlisted by default:
 
 Anything outside this allowlist must move to Rust, assets, or checked-in POSIX
 helpers, or it must be deleted.
+
+## Mechanical Gate
+
+The live no-growth gate is now tracked in `config_metadata/nushell_budget.toml`
+and enforced by the Rust-owned validator command:
+
+- `yzx_repo_validator validate-nushell-budget`
+
+That manifest is intentionally stricter than the prose budget alone:
+
+- every currently tolerated Nu file must be listed explicitly
+- each family has an exact file-count ceiling and LOC ceiling
+- any new Nu file, missing manifest update, or family growth is out of contract
+- transitional exceptions must name the owning deletion bead directly in the
+  manifest
+
+Until the repo reaches the `4,200`-LOC hard floor, this gate enforces
+no-growth against the current tracked ceilings rather than pretending the final
+floor already landed.
 
 ## Exception Policy
 
@@ -173,14 +193,14 @@ those remainders movable, the floor should fall again.
 ## Verification
 
 - `nu nushell/scripts/dev/validate_specs.nu`
-- manual LOC measurement with `find`, `wc`, and the family-specific file lists
-  named above
+- `nix develop -c cargo run --manifest-path rust_core/Cargo.toml --bin yzx_repo_validator -- validate-nushell-budget`
 
 ## Traceability
 
 - Bead: `yazelix-w6sz.6`
 - Bead: `yazelix-w6sz.1`
 - Bead: `yazelix-w6sz.7.1`
+- Bead: `yazelix-w6sz.7.2`
 - Defended by: `nu nushell/scripts/dev/validate_specs.nu`
 - Informed by: `docs/specs/ranked_nu_deletion_budget.md`
 - Informed by: `docs/specs/likely_nushell_survivor_owner_cut_decisions.md`

@@ -1,0 +1,196 @@
+[contract]
+current_total_loc_max = 26678
+current_total_file_count_max = 112
+hard_target_loc = 4200
+
+[[families]]
+id = "governed_tests"
+status = "transitional_exception"
+owner_bead = "yazelix-rdn7.4.5"
+max_loc = 13115
+target_loc = 0
+max_files = 18
+allowed_paths = [
+  "nushell/scripts/dev/test_config_sweep.nu",
+  "nushell/scripts/dev/test_helix_managed_config_contracts.nu",
+  "nushell/scripts/dev/test_historical_upgrade_notes_e2e.nu",
+  "nushell/scripts/dev/test_shell_managed_config_contracts.nu",
+  "nushell/scripts/dev/test_stale_config_diagnostics_e2e.nu",
+  "nushell/scripts/dev/test_upgrade_contract_e2e.nu",
+  "nushell/scripts/dev/test_upgrade_summary_e2e.nu",
+  "nushell/scripts/dev/test_yzx_commands.nu",
+  "nushell/scripts/dev/test_yzx_core_commands.nu",
+  "nushell/scripts/dev/test_yzx_doctor_commands.nu",
+  "nushell/scripts/dev/test_yzx_generated_configs.nu",
+  "nushell/scripts/dev/test_yzx_helix_doctor_contracts.nu",
+  "nushell/scripts/dev/test_yzx_maintainer.nu",
+  "nushell/scripts/dev/test_yzx_popup_commands.nu",
+  "nushell/scripts/dev/test_yzx_screen_commands.nu",
+  "nushell/scripts/dev/test_yzx_workspace_commands.nu",
+  "nushell/scripts/dev/test_yzx_yazi_commands.nu",
+  "nushell/scripts/dev/test_zellij_plugin_contracts.nu",
+]
+
+[[families]]
+id = "deterministic_validators"
+status = "transitional_exception"
+owner_bead = "yazelix-rdn7.4.6"
+max_loc = 1088
+target_loc = 0
+max_files = 13
+allowed_paths = [
+  "nushell/scripts/dev/validate_config_surface_contract.nu",
+  "nushell/scripts/dev/validate_default_test_count_budget.nu",
+  "nushell/scripts/dev/validate_default_test_traceability.nu",
+  "nushell/scripts/dev/validate_flake_install.nu",
+  "nushell/scripts/dev/validate_flake_interface.nu",
+  "nushell/scripts/dev/validate_installed_runtime_contract.nu",
+  "nushell/scripts/dev/validate_nixpkgs_package.nu",
+  "nushell/scripts/dev/validate_nixpkgs_submission.nu",
+  "nushell/scripts/dev/validate_readme_version.nu",
+  "nushell/scripts/dev/validate_rust_test_traceability.nu",
+  "nushell/scripts/dev/validate_specs.nu",
+  "nushell/scripts/dev/validate_syntax.nu",
+  "nushell/scripts/dev/validate_upgrade_contract.nu",
+]
+
+[[families]]
+id = "maintainer_and_dev_orchestration"
+status = "transitional_exception"
+owner_bead = "yazelix-8ih0"
+max_loc = 4077
+target_loc = 1200
+max_files = 21
+allowed_paths = [
+  "nushell/scripts/dev/config_normalize_test_helpers.nu",
+  "nushell/scripts/dev/materialization_dev_helpers.nu",
+  "nushell/scripts/dev/nixpkgs_package_smoke.nu",
+  "nushell/scripts/dev/record_demo.nu",
+  "nushell/scripts/dev/record_demo_fonts.nu",
+  "nushell/scripts/dev/sweep/sweep_config_generator.nu",
+  "nushell/scripts/dev/sweep/sweep_process_manager.nu",
+  "nushell/scripts/dev/sweep/sweep_test_combinations.nu",
+  "nushell/scripts/dev/sweep/sweep_test_executor.nu",
+  "nushell/scripts/dev/sweep_verify.nu",
+  "nushell/scripts/dev/update_yazi_plugins.nu",
+  "nushell/scripts/dev/yzx_test_helpers.nu",
+  "nushell/scripts/maintainer/issue_bead_contract.nu",
+  "nushell/scripts/maintainer/issue_sync.nu",
+  "nushell/scripts/maintainer/plugin_build.nu",
+  "nushell/scripts/maintainer/readme_surface.nu",
+  "nushell/scripts/maintainer/repo_checkout.nu",
+  "nushell/scripts/maintainer/test_runner.nu",
+  "nushell/scripts/maintainer/update_workflow.nu",
+  "nushell/scripts/maintainer/version_bump.nu",
+  "nushell/scripts/yzx/dev.nu",
+]
+
+[[families]]
+id = "integration_and_wrappers"
+status = "transitional_exception"
+owner_bead = "yazelix-w6sz.2"
+max_loc = 1328
+target_loc = 300
+max_files = 11
+allowed_paths = [
+  "nushell/scripts/integrations/helix.nu",
+  "nushell/scripts/integrations/managed_editor.nu",
+  "nushell/scripts/integrations/open_dir_in_pane.nu",
+  "nushell/scripts/integrations/yazi.nu",
+  "nushell/scripts/integrations/zellij.nu",
+  "nushell/scripts/integrations/zellij_runtime_wrappers.nu",
+  "nushell/scripts/integrations/zoxide_open_in_editor.nu",
+  "nushell/scripts/zellij_wrappers/launch_sidebar_yazi.nu",
+  "nushell/scripts/zellij_wrappers/refresh_yazi_sidebar.nu",
+  "nushell/scripts/zellij_wrappers/yzx_menu_popup.nu",
+  "nushell/scripts/zellij_wrappers/yzx_popup_program.nu",
+]
+
+[[families]]
+id = "setup_and_bootstrap"
+status = "transitional_exception"
+owner_bead = "yazelix-w6sz.3"
+max_loc = 1073
+target_loc = 500
+max_files = 5
+allowed_paths = [
+  "nushell/scripts/core/launch_yazelix.nu",
+  "nushell/scripts/core/start_yazelix.nu",
+  "nushell/scripts/core/start_yazelix_inner.nu",
+  "nushell/scripts/setup/environment.nu",
+  "nushell/scripts/setup/initializers.nu",
+]
+
+[[families]]
+id = "front_door_presentation"
+status = "transitional_exception"
+owner_bead = "yazelix-w6sz.4"
+max_loc = 2299
+target_loc = 950
+max_files = 10
+allowed_paths = [
+  "nushell/scripts/setup/welcome.nu",
+  "nushell/scripts/utils/ascii_art.nu",
+  "nushell/scripts/utils/upgrade_summary.nu",
+  "nushell/scripts/yzx/edit.nu",
+  "nushell/scripts/yzx/import.nu",
+  "nushell/scripts/yzx/menu.nu",
+  "nushell/scripts/yzx/popup.nu",
+  "nushell/scripts/yzx/screen.nu",
+  "nushell/scripts/yzx/tutor.nu",
+  "nushell/scripts/yzx/whats_new.nu",
+]
+
+[[families]]
+id = "runtime_helpers"
+status = "transitional_exception"
+owner_bead = "yazelix-lnk6"
+max_loc = 3126
+target_loc = 1050
+max_files = 31
+allowed_paths = [
+  "nushell/scripts/utils/atomic_writes.nu",
+  "nushell/scripts/utils/build_policy.nu",
+  "nushell/scripts/utils/common.nu",
+  "nushell/scripts/utils/config_contract.nu",
+  "nushell/scripts/utils/config_files.nu",
+  "nushell/scripts/utils/config_paths.nu",
+  "nushell/scripts/utils/config_report_rendering.nu",
+  "nushell/scripts/utils/config_schema.nu",
+  "nushell/scripts/utils/constants.nu",
+  "nushell/scripts/utils/cursor_trail_helpers.nu",
+  "nushell/scripts/utils/doctor_fix.nu",
+  "nushell/scripts/utils/doctor_helix.nu",
+  "nushell/scripts/utils/editor_launch_context.nu",
+  "nushell/scripts/utils/environment_bootstrap.nu",
+  "nushell/scripts/utils/failure_classes.nu",
+  "nushell/scripts/utils/helix_mode.nu",
+  "nushell/scripts/utils/integration_facts.nu",
+  "nushell/scripts/utils/keypress_polling.nu",
+  "nushell/scripts/utils/logging.nu",
+  "nushell/scripts/utils/nix_detector.nu",
+  "nushell/scripts/utils/runtime_env.nu",
+  "nushell/scripts/utils/safe_remove.nu",
+  "nushell/scripts/utils/shell_user_hooks.nu",
+  "nushell/scripts/utils/startup_facts.nu",
+  "nushell/scripts/utils/startup_profile.nu",
+  "nushell/scripts/utils/terminal_launcher.nu",
+  "nushell/scripts/utils/transient_pane_contract.nu",
+  "nushell/scripts/utils/transient_pane_facts.nu",
+  "nushell/scripts/utils/upgrade_notes.nu",
+  "nushell/scripts/utils/yzx_core_bridge.nu",
+  "nushell/scripts/utils/zjstatus_widget.nu",
+]
+
+[[families]]
+id = "session_and_desktop_host_integration"
+status = "transitional_exception"
+owner_bead = "yazelix-w6sz.5"
+max_loc = 572
+target_loc = 200
+max_files = 3
+allowed_paths = [
+  "nushell/scripts/core/yzx_session.nu",
+  "nushell/scripts/yzx/desktop.nu",
+  "nushell/scripts/yzx/launch.nu",
+]

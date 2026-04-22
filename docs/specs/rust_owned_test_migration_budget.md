@@ -30,7 +30,7 @@ Out of scope:
 - mass one-to-one rewrites that preserve old fixture noise without improving the
   owner boundary
 
-Current measured governed Nu test surface: `13,079` LOC.
+Current measured governed Nu test surface: `13,115` LOC.
 
 ## Bucket Classification
 

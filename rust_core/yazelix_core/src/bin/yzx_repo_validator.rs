@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use yazelix_core::repo_contract_validation::{
-    UpgradeContractOptions, validate_config_surface_contract, validate_upgrade_contract,
+    UpgradeContractOptions, validate_config_surface_contract, validate_nushell_budget,
+    validate_upgrade_contract,
 };
 use yazelix_core::repo_validation::{
     repo_root, validate_default_test_traceability, validate_rust_test_traceability, validate_specs,
@@ -11,7 +12,7 @@ fn main() {
     let mut resolved_repo_root = repo_root();
     let Some(first_arg) = args.next() else {
         eprintln!(
-            "Usage: yzx_repo_validator [--repo-root PATH] <validate-specs|validate-default-test-traceability|validate-rust-test-traceability|validate-config-surface-contract|validate-upgrade-contract>"
+            "Usage: yzx_repo_validator [--repo-root PATH] <validate-specs|validate-default-test-traceability|validate-rust-test-traceability|validate-config-surface-contract|validate-nushell-budget|validate-upgrade-contract>"
         );
         std::process::exit(2);
     };
@@ -24,7 +25,7 @@ fn main() {
         resolved_repo_root = PathBuf::from(path);
         let Some(command) = args.next() else {
             eprintln!(
-                "Usage: yzx_repo_validator [--repo-root PATH] <validate-specs|validate-default-test-traceability|validate-rust-test-traceability|validate-config-surface-contract|validate-upgrade-contract>"
+                "Usage: yzx_repo_validator [--repo-root PATH] <validate-specs|validate-default-test-traceability|validate-rust-test-traceability|validate-config-surface-contract|validate-nushell-budget|validate-upgrade-contract>"
             );
             std::process::exit(2);
         };
@@ -47,6 +48,10 @@ fn main() {
                 "✅ Main config surface, Home Manager desktop entry, and generated-state contract is valid"
                     .to_string(),
             ),
+        ),
+        "validate-nushell-budget" => (
+            validate_nushell_budget(&resolved_repo_root),
+            Some("✅ Nushell budget allowlist and no-growth ceilings are valid".to_string()),
         ),
         "validate-upgrade-contract" => {
             let mut options = UpgradeContractOptions::default();
@@ -79,7 +84,7 @@ fn main() {
         }
         _ => {
             eprintln!(
-                "Unknown validator command `{}`. Expected validate-specs, validate-default-test-traceability, validate-rust-test-traceability, validate-config-surface-contract, or validate-upgrade-contract.",
+                "Unknown validator command `{}`. Expected validate-specs, validate-default-test-traceability, validate-rust-test-traceability, validate-config-surface-contract, validate-nushell-budget, or validate-upgrade-contract.",
                 command
             );
             std::process::exit(2);
@@ -104,6 +109,7 @@ fn main() {
                     "validate-config-surface-contract" => {
                         "Main config surface, Home Manager desktop entry, and generated-state contract validation failed"
                     }
+                    "validate-nushell-budget" => "Nushell budget validation failed",
                     "validate-upgrade-contract" => "Upgrade contract validation failed",
                     _ => unreachable!(),
                 };
