@@ -54,7 +54,7 @@ def main [--welcome-source: string = "", --skip-welcome] {
         or ($env.YAZELIX_STARTUP_PROFILE_SKIP_WELCOME? == "true")
     )
     let welcome_style = ($config.welcome_style? | default "random")
-    let welcome_duration_seconds = ($config.welcome_duration_seconds? | default 2.0)
+    let welcome_duration_seconds = ($config.welcome_duration_seconds? | default 1.0)
     let show_macchina_on_welcome = ($config.show_macchina_on_welcome? | default false)
 
     # DEBUG: Print skip_welcome_screen value

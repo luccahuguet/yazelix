@@ -1,9 +1,9 @@
 #!/usr/bin/env nu
 # Width-aware welcome art for Yazelix.
 
-export const WELCOME_STYLE_VALUES = ["static", "logo", "boids", "game_of_life", "random"]
-export const ANIMATED_WELCOME_STYLE_VALUES = ["game_of_life"]
-export const SCREEN_STYLE_VALUES = ["logo", "boids", "game_of_life", "random"]
+export const WELCOME_STYLE_VALUES = ["static", "logo", "boids", "game_of_life_gliders", "game_of_life_oscillators", "game_of_life_bloom", "random"]
+export const ANIMATED_WELCOME_STYLE_VALUES = ["game_of_life_gliders", "game_of_life_oscillators", "game_of_life_bloom"]
+export const SCREEN_STYLE_VALUES = ["logo", "boids", "game_of_life_gliders", "game_of_life_oscillators", "game_of_life_bloom", "random"]
 
 # Export the color scheme used in the welcome art for consistent styling.
 export def get_yazelix_colors [] {
@@ -22,6 +22,10 @@ export def get_yazelix_colors [] {
 
 def get_welcome_style_random_pool [] {
     $ANIMATED_WELCOME_STYLE_VALUES
+}
+
+def is_game_of_life_style [style: string] {
+    ($style | str starts-with "game_of_life_")
 }
 
 def resolve_welcome_style [welcome_style: string, random_index?: int] {
@@ -73,10 +77,13 @@ export def resolve_screen_style [screen_style?: string, random_index?: int] {
 export def get_screen_cycle_frames [screen_style: string, width?: int] {
     let resolved_style = (resolve_screen_style $screen_style)
 
+    if (is_game_of_life_style $resolved_style) {
+        return (get_game_of_life_screen_cycle_frames $resolved_style $width)
+    }
+
     match $resolved_style {
         "logo" => (trim_resting_frame (get_logo_animation_frames $width))
         "boids" => (trim_resting_frame (get_boids_animation_frames $width))
-        "game_of_life" => (get_game_of_life_screen_cycle_frames $width)
         _ => {
             error make {msg: $"Unsupported screen style: ($resolved_style)"}
         }
@@ -86,8 +93,11 @@ export def get_screen_cycle_frames [screen_style: string, width?: int] {
 export def get_screen_frame_delay [screen_style: string] {
     let resolved_style = (resolve_screen_style $screen_style)
 
+    if (is_game_of_life_style $resolved_style) {
+        return 160ms
+    }
+
     match $resolved_style {
-        "game_of_life" => 160ms
         "logo" => 120ms
         "boids" => 120ms
         _ => 140ms
@@ -621,6 +631,51 @@ def get_right_glider_shape [] {
     [[1 0] [2 1] [0 2] [1 2] [2 2]]
 }
 
+def get_blinker_shape [] {
+    [[0 0] [1 0] [2 0]]
+}
+
+def get_toad_shape [] {
+    [[1 0] [2 0] [3 0] [0 1] [1 1] [2 1]]
+}
+
+def get_beacon_shape [] {
+    [[0 0] [1 0] [0 1] [1 1] [2 2] [3 2] [2 3] [3 3]]
+}
+
+def get_r_pentomino_shape [] {
+    [[1 0] [2 0] [0 1] [1 1] [1 2]]
+}
+
+def get_acorn_shape [] {
+    [[1 0] [3 1] [0 2] [1 2] [4 2] [5 2] [6 2]]
+}
+
+def get_game_of_life_shape_size [shape: list<list<int>>] {
+    let max_x = ($shape | each {|pair| $pair | get -o 0 } | math max | into int)
+    let max_y = ($shape | each {|pair| $pair | get -o 1 } | math max | into int)
+
+    { width: ($max_x + 1), height: ($max_y + 1) }
+}
+
+def clamp_game_of_life_shape_origin [shape: list<list<int>>, width: int, height: int, origin: record] {
+    let shape_size = (get_game_of_life_shape_size $shape)
+    let max_x = if ($width - $shape_size.width) < 0 { 0 } else { $width - $shape_size.width }
+    let max_y = if ($height - $shape_size.height) < 0 { 0 } else { $height - $shape_size.height }
+    let requested_x = ($origin.x | into int)
+    let requested_y = ($origin.y | into int)
+
+    {
+        x: (if $requested_x < 0 { 0 } else if $requested_x > $max_x { $max_x } else { $requested_x })
+        y: (if $requested_y < 0 { 0 } else if $requested_y > $max_y { $max_y } else { $requested_y })
+    }
+}
+
+def place_game_of_life_shape [shape: list<list<int>>, width: int, height: int, origin: record] {
+    let clamped_origin = (clamp_game_of_life_shape_origin $shape $width $height $origin)
+    offset_game_of_life_shape $shape $clamped_origin.x $clamped_origin.y
+}
+
 def build_record_cell_map [cells: list<record>] {
     mut cell_map = {}
 
@@ -686,9 +741,7 @@ def step_game_of_life_cells_fast [cells: list<record>, width: int, height: int] 
     unique_game_of_life_cells $next_cells
 }
 
-def build_live_game_of_life_seed [spec: record] {
-    let width = (get_game_of_life_grid_width ($spec.inner_width | into int))
-    let height = ($spec.body_height | into int)
+def build_game_of_life_gliders_seed [width: int, height: int] {
     let glider_count = if $width >= 36 {
         6
     } else if $width >= 22 {
@@ -696,7 +749,6 @@ def build_live_game_of_life_seed [spec: record] {
     } else {
         2
     }
-    let max_start_y = if ($height - 3) < 0 { 0 } else { $height - 3 }
     let right_glider = (get_right_glider_shape)
     let right_edge_x = if ($width - 5) < 0 { 0 } else { $width - 5 }
     let inner_right_x = if ($width - 9) < 0 { 0 } else { $width - 9 }
@@ -724,26 +776,69 @@ def build_live_game_of_life_seed [spec: record] {
             { x: $right_edge_x, y: ($height - 4) }
         ]
     }
-    let placements = (
-        $raw_placements
-        | each {|placement|
-            let row_int = ($placement.y | into int)
-            let clamped_y = if $row_int > $max_start_y { $max_start_y } else if $row_int < 0 { 0 } else { $row_int }
-            let col_int = ($placement.x | into int)
-            let clamped_x = if $col_int < 0 { 0 } else if $col_int > ($width - 3) { ($width - 3) } else { $col_int }
-            { x: $clamped_x, y: $clamped_y }
-        }
-    )
 
     let glider_cells = (
-        $placements
+        $raw_placements
         | each {|placement|
-            offset_game_of_life_shape $right_glider $placement.x $placement.y
+            place_game_of_life_shape $right_glider $width $height $placement
         }
         | flatten
     )
 
     unique_game_of_life_cells $glider_cells
+}
+
+def build_game_of_life_oscillators_seed [width: int, height: int] {
+    let raw_shapes = [
+        { shape: (get_beacon_shape), origin: { x: 1, y: 1 } }
+        { shape: (get_blinker_shape), origin: { x: (((($width / 2) | math floor) - 1)), y: 1 } }
+        { shape: (get_toad_shape), origin: { x: (((($width / 2) | math floor) - 2)), y: (((($height / 2) | math floor) - 1)) } }
+        { shape: (get_blinker_shape), origin: { x: 2, y: (($height - 2)) } }
+        { shape: (get_beacon_shape), origin: { x: (($width - 5)), y: (($height - 5)) } }
+    ]
+
+    let cells = (
+        $raw_shapes
+        | each {|item|
+            place_game_of_life_shape $item.shape $width $height $item.origin
+        }
+        | flatten
+    )
+
+    unique_game_of_life_cells $cells
+}
+
+def build_game_of_life_bloom_seed [width: int, height: int] {
+    let raw_shapes = [
+        { shape: (get_r_pentomino_shape), origin: { x: 1, y: 1 } }
+        { shape: (get_acorn_shape), origin: { x: (((($width / 2) | math floor) - 3)), y: (((($height / 3) | math floor) - 1)) } }
+        { shape: (get_r_pentomino_shape), origin: { x: (($width - 4)), y: (($height - 4)) } }
+        { shape: (get_r_pentomino_shape), origin: { x: (((($width / 2) | math floor) - 1)), y: ((((($height * 2) / 3) | math floor) - 1)) } }
+    ]
+
+    let cells = (
+        $raw_shapes
+        | each {|item|
+            place_game_of_life_shape $item.shape $width $height $item.origin
+        }
+        | flatten
+    )
+
+    unique_game_of_life_cells $cells
+}
+
+def build_live_game_of_life_seed [spec: record, game_of_life_style: string] {
+    let width = (get_game_of_life_grid_width ($spec.inner_width | into int))
+    let height = ($spec.body_height | into int)
+
+    match $game_of_life_style {
+        "game_of_life_gliders" => (build_game_of_life_gliders_seed $width $height)
+        "game_of_life_oscillators" => (build_game_of_life_oscillators_seed $width $height)
+        "game_of_life_bloom" => (build_game_of_life_bloom_seed $width $height)
+        _ => {
+            error make {msg: $"Unsupported game_of_life style: ($game_of_life_style)"}
+        }
+    }
 }
 
 def build_game_of_life_cell_keys [cells: list<record>] {
@@ -825,7 +920,7 @@ export def get_game_of_life_welcome_frame_delay [] {
     220ms
 }
 
-def get_game_of_life_animation_frames [width?: int, duration_seconds: float = 2.0] {
+def get_game_of_life_animation_frames [game_of_life_style: string, width?: int, duration_seconds: float = 1.0] {
     let resolved_width = ($width | default (get_terminal_width) | into int)
     let resolved_height = (get_terminal_height)
     let variant = (get_logo_welcome_variant $resolved_width)
@@ -835,7 +930,7 @@ def get_game_of_life_animation_frames [width?: int, duration_seconds: float = 2.
     let fixed_frame_delay = (get_game_of_life_welcome_frame_delay)
     let computed_frame_count = ((($duration_seconds * 1sec) / $fixed_frame_delay) | math ceil | into int)
     let simulation_frame_count = if $computed_frame_count < 2 { 2 } else { $computed_frame_count }
-    mut current_cells = (build_live_game_of_life_seed $spec)
+    mut current_cells = (build_live_game_of_life_seed $spec $game_of_life_style)
     mut simulation_frames = [(build_game_of_life_screen_lines $spec $current_cells $resolved_width)]
 
     for _ in 1..($simulation_frame_count - 1) {
@@ -849,7 +944,7 @@ def get_game_of_life_animation_frames [width?: int, duration_seconds: float = 2.
     ]
 }
 
-def get_game_of_life_screen_cycle_frames [width?: int, height?: int, duration_seconds: float = 2.0] {
+def get_game_of_life_screen_cycle_frames [game_of_life_style: string, width?: int, height?: int, duration_seconds: float = 1.0] {
     let resolved_width = ($width | default (get_terminal_width) | into int)
     let resolved_height = ($height | default (get_terminal_height) | into int)
     let variant = (get_logo_welcome_variant $resolved_width)
@@ -859,7 +954,7 @@ def get_game_of_life_screen_cycle_frames [width?: int, height?: int, duration_se
     let fixed_frame_delay = (get_game_of_life_welcome_frame_delay)
     let computed_frame_count = ((($duration_seconds * 1sec) / $fixed_frame_delay) | math ceil | into int)
     let simulation_frame_count = if $computed_frame_count < 2 { 2 } else { $computed_frame_count }
-    mut current_cells = (build_live_game_of_life_seed $spec)
+    mut current_cells = (build_live_game_of_life_seed $spec $game_of_life_style)
     mut simulation_frames = [(build_game_of_life_screen_lines $spec $current_cells $resolved_width)]
 
     for _ in 1..($simulation_frame_count - 1) {
@@ -870,7 +965,7 @@ def get_game_of_life_screen_cycle_frames [width?: int, height?: int, duration_se
     $simulation_frames
 }
 
-export def get_game_of_life_screen_state [width?: int, height?: int] {
+export def get_game_of_life_screen_state [game_of_life_style: string, width?: int, height?: int] {
     let resolved_width = ($width | default (get_terminal_width) | into int)
     let resolved_height = ($height | default (get_terminal_height) | into int)
     let variant = (get_logo_welcome_variant $resolved_width)
@@ -880,7 +975,7 @@ export def get_game_of_life_screen_state [width?: int, height?: int] {
         resolved_width: $resolved_width
         resolved_height: $resolved_height
         spec: $spec
-        cells: (build_live_game_of_life_seed $spec)
+        cells: (build_live_game_of_life_seed $spec $game_of_life_style)
     }
 }
 
@@ -968,7 +1063,7 @@ def get_welcome_playback_duration [welcome_style: string, duration_seconds: floa
     }
 }
 
-export def render_welcome_style_interruptibly [welcome_style: string, duration_seconds: float = 2.0, width?, poller?: closure] {
+export def render_welcome_style_interruptibly [welcome_style: string, duration_seconds: float = 1.0, width?, poller?: closure] {
     let resolved_style = (resolve_welcome_style $welcome_style)
     let playback_duration = (get_welcome_playback_duration $resolved_style $duration_seconds)
     let skip_to_resting_logo = {|_frame_delay| repaint_resting_logo_after_skip $width }
@@ -994,9 +1089,9 @@ export def render_welcome_style_interruptibly [welcome_style: string, duration_s
         return (play_frames_interruptibly $frames ($playback_duration / ($frames | length)) $poller $skip_to_resting_logo)
     }
 
-    if $resolved_style == "game_of_life" {
+    if (is_game_of_life_style $resolved_style) {
         print ""
-        let frames = (get_game_of_life_animation_frames $width $duration_seconds)
+        let frames = (get_game_of_life_animation_frames $resolved_style $width $duration_seconds)
         return (play_frames_interruptibly $frames (get_game_of_life_welcome_frame_delay) $poller $skip_to_resting_logo)
     }
 

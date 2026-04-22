@@ -353,8 +353,10 @@ in
         - "static": show the resting Yazelix logo frame only
         - "logo": show the branded animated logo reveal
         - "boids": show the animated flocking style
-        - "game_of_life": show the Game of Life style
-        - "random": choose one animated style at random (never "static")
+        - "game_of_life_gliders": show the glider-swarm Game of Life style
+        - "game_of_life_oscillators": show the oscillator-garden Game of Life style
+        - "game_of_life_bloom": show the bloom-field Game of Life style
+        - "random": choose one Game of Life variant at random (never "static")
       '';
     };
 
@@ -362,6 +364,7 @@ in
       description = ''
         Welcome animation duration in seconds for animated styles.
         The logo style keeps its fixed timing and ignores this value.
+        Default: 1.0.
         Valid range: 0.2 to 8.0.
       '';
     };

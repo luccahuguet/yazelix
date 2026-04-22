@@ -48,16 +48,17 @@ export def get_yzx_screen_cycle_frames [screen_style?: string, width?: int] {
 
 # Show an animated Yazelix full-terminal screen
 export def "yzx screen" [
-    style?: string  # Animated screen style: logo, boids, game_of_life, or random
+    style?: string  # Animated screen style: logo, boids, one of the game_of_life variants, or random
 ] {
     let resolved_style = (resolve_screen_style $style)
     let frame_delay = (get_screen_frame_delay $resolved_style)
+    let is_game_of_life = ($resolved_style | str starts-with "game_of_life_")
     mut width = (get_terminal_width)
     mut height = (get_terminal_height)
-    mut frames = if $resolved_style == "game_of_life" { [] } else { get_screen_cycle_frames $resolved_style $width }
+    mut frames = if $is_game_of_life { [] } else { get_screen_cycle_frames $resolved_style $width }
     mut frame_index = 0
-    mut game_of_life_state = if $resolved_style == "game_of_life" {
-        (get_game_of_life_screen_state $width $height)
+    mut game_of_life_state = if $is_game_of_life {
+        (get_game_of_life_screen_state $resolved_style $width $height)
     } else {
         null
     }
@@ -66,7 +67,7 @@ export def "yzx screen" [
 
     let screen_error = (try {
         loop {
-            if $resolved_style == "game_of_life" {
+            if $is_game_of_life {
                 render_screen_frame (render_game_of_life_screen_state $game_of_life_state)
             } else {
                 if ($frames | is-empty) {
@@ -86,8 +87,8 @@ export def "yzx screen" [
                 $width = $current_width
                 $height = $current_height
 
-                if $resolved_style == "game_of_life" {
-                    $game_of_life_state = (get_game_of_life_screen_state $width $height)
+                if $is_game_of_life {
+                    $game_of_life_state = (get_game_of_life_screen_state $resolved_style $width $height)
                 } else {
                     $frames = (get_screen_cycle_frames $resolved_style $width)
                     $frame_index = 0
@@ -96,7 +97,7 @@ export def "yzx screen" [
                 continue
             }
 
-            if $resolved_style == "game_of_life" {
+            if $is_game_of_life {
                 $game_of_life_state = (step_game_of_life_screen_state $game_of_life_state)
             } else {
                 $frame_index = ($frame_index + 1)

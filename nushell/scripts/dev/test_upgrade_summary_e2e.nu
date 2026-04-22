@@ -27,7 +27,7 @@ def setup_fixture [] {
 
     ^cp -R (repo_path "docs") ($runtime_dir | path join "docs")
     '[core]
-welcome_style = "game_of_life"
+welcome_style = "game_of_life_gliders"
 ' | save --force --raw $config_path
 
     let notes_path = ($runtime_dir | path join "docs" "upgrade_notes.toml")

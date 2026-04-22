@@ -182,7 +182,8 @@ Interactive command palette (fuzzy search)
 
 ### `yzx screen [STYLE]`
 Preview the animated welcome screen directly in the current terminal
-- `STYLE`: one of `logo`, `boids`, `game_of_life`, or `random`
+- `STYLE`: one of `logo`, `boids`, `game_of_life_gliders`, `game_of_life_oscillators`, `game_of_life_bloom`, or `random`
+- `random`: picks one of the three Game of Life variants
 - Runs until a key is pressed
 - Requires an interactive terminal that supports timed keypress reads via bash
 - Useful for previewing welcome styles without launching the full Yazelix UI
@@ -294,7 +295,7 @@ yzx dev update --yes --activate home_manager --home-manager-attr 'you@host'  # R
 yzx dev update --canary-only --canaries [default]  # Run only the default canary
 yzx dev update --canary-only --canaries [shell_layout]  # Run the alternate shell/layout canary
 yzx dev build_pane_orchestrator --sync  # Build and sync the pane orchestrator wasm
-yzx screen game_of_life       # Preview the live game_of_life welcome animation in the terminal
+yzx screen game_of_life_gliders  # Preview the glider-swarm Game of Life welcome animation in the terminal
 
 # Development verification
 yzx dev test                  # Run the default non-sweep regression suite

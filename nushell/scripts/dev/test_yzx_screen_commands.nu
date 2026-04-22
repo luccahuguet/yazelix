@@ -26,13 +26,13 @@ def test_screen_style_rejects_static [] {
     }
 }
 
-# Defends: game_of_life screen cycle stays bounded and omits the resting logo frame.
+# Defends: the glider-swarm Game of Life screen cycle stays bounded and omits the resting logo frame.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_game_of_life_screen_cycle_stays_bounded_and_omits_resting_logo [] {
-    print "🧪 Testing yzx screen uses an animated game_of_life cycle instead of the resting welcome frame..."
+    print "🧪 Testing yzx screen uses the glider-swarm Game of Life cycle instead of the resting welcome frame..."
 
     try {
-        let frames = (get_yzx_screen_cycle_frames "game_of_life" 100)
+        let frames = (get_yzx_screen_cycle_frames "game_of_life_gliders" 100)
         let static_logo = (get_logo_welcome_frame 100)
         let final_frame = ($frames | last)
         let max_width = ($frames | each {|frame| get_max_visible_width $frame } | math max)
@@ -42,7 +42,7 @@ def test_game_of_life_screen_cycle_stays_bounded_and_omits_resting_logo [] {
             and ($max_width <= 100)
             and ($final_frame != $static_logo)
         ) {
-            print "  ✅ yzx screen keeps game_of_life animated and width-aware"
+            print "  ✅ yzx screen keeps the glider-swarm Game of Life animated and width-aware"
             true
         } else {
             print $"  ❌ Unexpected screen cycle result: frames=(($frames | length)) max_width=($max_width) final_is_logo=(($final_frame == $static_logo))"
@@ -54,22 +54,51 @@ def test_game_of_life_screen_cycle_stays_bounded_and_omits_resting_logo [] {
     }
 }
 
-# Invariant: game_of_life state rolls forward between frames.
+# Invariant: a Game of Life screen state rolls forward between frames.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_game_of_life_screen_state_rolls_forward [] {
-    print "🧪 Testing yzx screen keeps a live rolling game_of_life state instead of replaying a short canned cycle..."
+    print "🧪 Testing yzx screen keeps a live rolling Game of Life state instead of replaying a short canned cycle..."
 
     try {
-        let initial_state = (get_game_of_life_screen_state 100 24)
+        let initial_state = (get_game_of_life_screen_state "game_of_life_gliders" 100 24)
         let next_state = (step_game_of_life_screen_state $initial_state)
         let initial_frame = (render_game_of_life_screen_state $initial_state)
         let next_frame = (render_game_of_life_screen_state $next_state)
 
         if ($initial_frame != $next_frame) {
-            print "  ✅ yzx screen advances the live game_of_life state each frame"
+            print "  ✅ yzx screen advances the live Game of Life state each frame"
             true
         } else {
-            print "  ❌ yzx screen game_of_life state did not advance"
+            print "  ❌ yzx screen Game of Life state did not advance"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+# Defends: the public Game of Life styles are split into three distinct named variants.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
+def test_game_of_life_seed_layouts_are_distinct [] {
+    print "🧪 Testing the public Game of Life styles stay distinct instead of hiding one layout behind multiple names..."
+
+    try {
+        let rendered_layouts = ([
+            "game_of_life_gliders"
+            "game_of_life_oscillators"
+            "game_of_life_bloom"
+        ] | each {|style|
+            render_game_of_life_screen_state (get_game_of_life_screen_state $style 100 24)
+            | str join "\n"
+        })
+        let unique_layout_count = ($rendered_layouts | uniq | length)
+
+        if $unique_layout_count == 3 {
+            print "  ✅ the three public Game of Life styles render distinct opening states"
+            true
+        } else {
+            print $"  ❌ Expected 3 distinct public Game of Life styles but saw ($unique_layout_count)"
             false
         }
     } catch {|err|
@@ -83,6 +112,7 @@ export def run_screen_canonical_tests [] {
         (test_screen_style_rejects_static)
         (test_game_of_life_screen_cycle_stays_bounded_and_omits_resting_logo)
         (test_game_of_life_screen_state_rolls_forward)
+        (test_game_of_life_seed_layouts_are_distinct)
     ]
 }
 
