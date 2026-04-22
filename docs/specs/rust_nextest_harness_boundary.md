@@ -61,7 +61,7 @@ reused by at least two strong migration lanes.
 | `nushell/scripts/dev/yzx_test_helpers.nu` | repo-root lookup, temp HOME/config fixtures, helper-bin resolution, ad hoc logging/profile formatting | `split_port_and_delete` | fixture setup and command resolution should move to Rust support; log formatting and broad convenience helpers should not survive by default |
 | `nushell/scripts/dev/config_normalize_test_helpers.nu` | active-config and normalize helper wrapper | `delete_after_port` | strong replacements should call `yzx_core` directly through typed Rust wrappers instead of preserving a second helper layer |
 | `nushell/scripts/dev/materialization_dev_helpers.nu` | yazi/zellij/runtime materialization wrapper calls | `delete_after_port` | the Rust migration lanes should call the helper binaries directly and keep file-local fixture shaping where needed |
-| `nushell/scripts/dev/contract_traceability_helpers.nu` | spec and contract-item parsing for validators | `port_to_rust_validator` | deterministic source parsing belongs to the Rust validator lane, not the shared test harness |
+| deleted `contract_traceability_helpers.nu` surface | spec and contract-item parsing for validators | `ported_to_rust_validator` | deterministic source parsing now belongs to the Rust validator lane, not the shared test harness |
 
 ## Concrete Rust Support Targets
 

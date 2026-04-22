@@ -61,7 +61,6 @@ These should not survive as broad owned Nu surfaces:
   validators:
   - `dev/config_normalize_test_helpers.nu`
   - `dev/materialization_dev_helpers.nu`
-  - `dev/contract_traceability_helpers.nu`
   - `dev/yzx_test_helpers.nu`
 - manual/demo helpers that do not justify permanent governed ownership:
   - `dev/record_demo.nu`
@@ -102,6 +101,27 @@ All `2,713` lines of deterministic validators should leave Nu. The target is
 2. If a validator still needs to execute a real runtime shell boundary, isolate
    that shell probe and port the rest
 3. Delete duplicated validator helper logic after the Rust owners land
+
+### Validator Dependency Decision
+
+The traceability-validator port should add no new crates.
+
+- production crates reused:
+  - `serde`
+  - `serde_json`
+  - `toml`
+- in-house logic kept:
+  - markdown heading and traceability parsing
+  - governed-test metadata scanning
+  - repo-relative file discovery
+- rejected alternatives:
+  - `regex`, because the current validator grammar is narrow enough for direct
+    string parsing
+  - `walkdir`, because the repo file sets are small and std recursion is
+    adequate
+- packaging impact:
+  - one maintainer-focused Rust validator binary is acceptable
+  - the old Nu parser ownership must still be deleted or demoted
 
 ## Verification
 

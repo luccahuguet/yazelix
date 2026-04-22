@@ -28,7 +28,7 @@ when they are clearly historical and not active planning.
   - `docs/*.md`
   - `README.md`
   - `nushell/scripts/dev/validate_specs.nu`
-  - `nushell/scripts/dev/contract_traceability_helpers.nu`
+  - the former `contract_traceability_helpers.nu` parsing logic, now expected to live in the Rust validator owner
 - external references:
   - NASA traceability/verification-matrix guidance
   - Google Testing Blog test-size and E2E guidance
