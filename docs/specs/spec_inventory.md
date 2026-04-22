@@ -112,6 +112,7 @@ Status labels:
 | `runtime_env_config_state_shim_collapse_budget.md` | Planning | Current deletion budget for config/state/env shim collapse; useful as bridge-collapse context |
 | `runtime_ownership_reduction_matrix.md` | Historical | Pre-trim alternative analysis, not the current branch contract |
 | `runtime_root_contract.md` | Live | Current runtime-root ownership contract |
+| `rust_nextest_harness_boundary.md` | Planning | Current minimum shared Rust harness boundary for retiring strong governed Nu tests under nextest |
 | `rust_owned_test_migration_budget.md` | Planning | Current strong-only Nu-to-Rust governed-test migration budget with a zero-surviving-Nu end state |
 | `rust_migration_matrix.md` | Planning | Primary remaining roadmap for deleting product-side Nushell owners, especially the bridge layer and materialization families |
 | `rust_nushell_bridge_contract.md` | Live | Current bridge contract for `yzx_core` helper insertion behind Nushell-owned surfaces |

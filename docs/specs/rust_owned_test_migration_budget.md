@@ -118,5 +118,6 @@ defend the real contract honestly.
 - Bead: `yazelix-rdn7.4.5.1`
 - Bead: `yazelix-rdn7.4.5.5`
 - Informed by: `docs/specs/governed_test_traceability_inventory.md`
+- Informed by: `docs/specs/rust_nextest_harness_boundary.md`
 - Informed by: `docs/specs/rust_test_hardening_tools_decision.md`
 - Defended by: `nu nushell/scripts/dev/validate_specs.nu`
