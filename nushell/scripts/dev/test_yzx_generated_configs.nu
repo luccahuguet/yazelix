@@ -303,7 +303,7 @@ def test_managed_wrapper_launch_command_does_not_forward_config_mode_flag [] {
         if (
             ($launch_cmd | str contains 'ghostty')
             and not ($launch_cmd | str contains '--config-mode')
-            and ($launch_cmd | str contains '--working-directory="/tmp"')
+            and ($launch_cmd | str contains '--working-directory=/tmp')
             and not ($launch_cmd | str contains 'yazelix-ghostty')
         ) {
             print "  ✅ Direct terminal launch command now keeps config-mode internal to Yazelix"
@@ -336,8 +336,8 @@ def test_ghostty_linux_launch_command_keeps_linux_specific_flags [] {
             ($launch_cmd | str contains 'shells/posix/yazelix_ghostty.sh')
             and
             ($launch_cmd | str contains '--gtk-single-instance=false')
-            and ($launch_cmd | str contains '--class="com.yazelix.Yazelix"')
-            and ($launch_cmd | str contains '--x11-instance-name="yazelix"')
+            and ($launch_cmd | str contains '--class=com.yazelix.Yazelix')
+            and ($launch_cmd | str contains '--x11-instance-name=yazelix')
         ) {
             print "  ✅ Linux Ghostty launch now routes through the runtime Ghostty env wrapper and keeps the GTK/X11 flags Yazelix expects there"
             true
@@ -384,7 +384,7 @@ exit 0
             and ($launch_cmd | str contains $fake_wrapper)
             and ($launch_cmd | str contains ' ghostty --config-default-files=false')
             and ($launch_cmd | str contains '--gtk-single-instance=false')
-            and ($launch_cmd | str contains '--x11-instance-name="yazelix"')
+            and ($launch_cmd | str contains '--x11-instance-name=yazelix')
         ) {
             print "  ✅ Linux Ghostty launch now prefers the runtime-owned nixGL wrapper when Yazelix ships one"
             true
@@ -539,11 +539,11 @@ def test_ghostty_macos_launch_command_omits_linux_specific_flags [] {
         if (
             ($launch_cmd | str contains '--config-default-files=false')
             and ($launch_cmd | str contains '--config-file=/tmp/ghostty-config')
-            and ($launch_cmd | str contains '--title="Yazelix - Ghostty"')
-            and ($launch_cmd | str contains '--working-directory="/tmp"')
+            and ($launch_cmd | str contains '--title=Yazelix - Ghostty')
+            and ($launch_cmd | str contains '--working-directory=/tmp')
             and not ($launch_cmd | str contains '--gtk-single-instance=false')
-            and not ($launch_cmd | str contains '--class="com.yazelix.Yazelix"')
-            and not ($launch_cmd | str contains '--x11-instance-name="yazelix"')
+            and not ($launch_cmd | str contains '--class=com.yazelix.Yazelix')
+            and not ($launch_cmd | str contains '--x11-instance-name=yazelix')
         ) {
             print "  ✅ macOS Ghostty launch now avoids the Linux-only GTK/X11 flags"
             true

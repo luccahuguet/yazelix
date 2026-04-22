@@ -67,10 +67,6 @@ def resolve_nixgl_launch_context [] {
     }
 }
 
-def resolve_nixgl_launch_prefix [] {
-    (resolve_nixgl_launch_context).prefix
-}
-
 # Resolve config path for a terminal based on mode
 export def resolve_terminal_config [terminal: string, mode: string] {
     let home = $env.HOME
@@ -102,27 +98,24 @@ export def resolve_terminal_config [terminal: string, mode: string] {
     error make {msg: $"Unsupported terminal.config_mode '($mode)'. Expected 'yazelix' or 'user'."}
 }
 
-# Build a detached launch prefix for new terminal windows.
-# This avoids inheriting the current Zellij client context during restart flows.
-def build_detached_launch_prefix [needs_reload: bool]: nothing -> string {
-    mut unset_vars = [
-        "ZELLIJ"
-        "ZELLIJ_SESSION_NAME"
-        "ZELLIJ_PANE_ID"
-        "ZELLIJ_TAB_NAME"
-        "ZELLIJ_TAB_POSITION"
-    ]
-    if $needs_reload {
-        $unset_vars = ($unset_vars | append "IN_YAZELIX_SHELL" | append "IN_NIX_SHELL")
+def render_shell_arg [value: string] {
+    if ($value | is-empty) {
+        return "''"
     }
 
-    let unset_flags = ($unset_vars | each {|name| $"-u ($name)"} | str join " ")
-    let setsid_prefix = if (which setsid | is-not-empty) { "setsid " } else { "" }
-    $"env ($unset_flags) ($setsid_prefix)"
+    if (($value | str replace -ra '[A-Za-z0-9_./:=,@+-]' '') | is-empty) {
+        return $value
+    }
+
+    if ($value | str contains "'") {
+        '"' + ($value | str replace -a '"' '\"') + '"'
+    } else {
+        "'" + $value + "'"
+    }
 }
 
-def quote_for_bash_single_string [value: string] {
-    "'" + ($value | str replace -a "'" "'\"'\"'") + "'"
+export def render_launch_command_argv [launch_argv: list<string>] {
+    $launch_argv | each {|arg| render_shell_arg $arg } | str join " "
 }
 
 def get_launch_probe_log_path [terminal_name: string] {
@@ -138,18 +131,18 @@ def get_launch_probe_log_path [terminal_name: string] {
     ($log_dir | path join $"($sanitized_terminal)_($timestamp).log")
 }
 
-def get_working_dir_arg [terminal: string, working_dir: string]: nothing -> string {
+def get_working_dir_args [terminal: string, working_dir: string]: nothing -> list<string> {
     if ($working_dir | is-empty) {
-        return ""
+        return []
     }
 
     match $terminal {
-        "ghostty" => $" --working-directory=\"($working_dir)\"",
-        "wezterm" => $" --cwd \"($working_dir)\"",
-        "kitty" => $" --directory=\"($working_dir)\"",
-        "alacritty" => $" --working-directory \"($working_dir)\"",
-        "foot" => $" --working-directory=\"($working_dir)\"",
-        _ => ""
+        "ghostty" => [$"--working-directory=($working_dir)"],
+        "wezterm" => ["--cwd", $working_dir],
+        "kitty" => [$"--directory=($working_dir)"],
+        "alacritty" => ["--working-directory", $working_dir],
+        "foot" => [$"--working-directory=($working_dir)"],
+        _ => []
     }
 }
 
@@ -163,80 +156,126 @@ def get_detached_launch_probe_helper_path []: nothing -> string {
     $runtime_dir | path join "shells" "posix" "detached_launch_probe.sh"
 }
 
-def build_ghostty_launch_command [
+def get_startup_command_argv []: nothing -> list<string> {
+    let startup_script = (get_startup_script_path)
+    ["sh", "-c", $"exec ($startup_script)"]
+}
+
+def prepend_launch_wrapper [argv: list<string>, wrapper: string] {
+    if ($wrapper | str trim | is-empty) {
+        $argv
+    } else {
+        [$wrapper] | append $argv
+    }
+}
+
+def build_ghostty_launch_argv [
     command: string
     config_path: string
     title: string
-    working_dir_arg: string
-    startup_shell: string
-]: nothing -> string {
+    working_dir_args: list<string>
+    startup_argv: list<string>
+]: nothing -> list<string> {
     let platform_name = (get_runtime_platform_name)
 
     if $platform_name == "macos" {
-        return $"($command) --config-default-files=false --config-file=($config_path) --title=\"($title)\"($working_dir_arg) -e ($startup_shell)"
+        return (
+            [$command, "--config-default-files=false", $"--config-file=($config_path)", $"--title=($title)"]
+            | append $working_dir_args
+            | append ["-e"]
+            | append $startup_argv
+        )
     }
 
-    let nixgl_prefix = (resolve_nixgl_launch_prefix)
-    let ghostty_env_wrapper = (quote_for_bash_single_string (get_ghostty_env_wrapper_path))
-    $"($ghostty_env_wrapper) ($nixgl_prefix)($command) --config-default-files=false --config-file=($config_path) --gtk-single-instance=false --class=\"($YAZELIX_WINDOW_CLASS)\" --x11-instance-name=\"($YAZELIX_X11_INSTANCE)\" --title=\"($title)\"($working_dir_arg) -e ($startup_shell)"
+    let ghostty_argv = (
+        [$command, "--config-default-files=false", $"--config-file=($config_path)", "--gtk-single-instance=false", $"--class=($YAZELIX_WINDOW_CLASS)", $"--x11-instance-name=($YAZELIX_X11_INSTANCE)", $"--title=($title)"]
+        | append $working_dir_args
+        | append ["-e"]
+        | append $startup_argv
+    )
+    let nixgl_wrapper = ((resolve_nixgl_launch_context).path? | default "")
+    prepend_launch_wrapper (prepend_launch_wrapper $ghostty_argv $nixgl_wrapper) (get_ghostty_env_wrapper_path)
 }
 
-# Build launch command for a terminal. The returned command is a foreground
-# terminal exec; detached/background handling is applied by run_detached_terminal_launch.
-export def build_launch_command [
+export def build_launch_command_argv [
     terminal_info: record
     config_path
     working_dir: string
     needs_reload: bool = true  # Whether to force environment reload
-]: nothing -> string {
+]: nothing -> list<string> {
     let terminal = $terminal_info.terminal
     let command = $terminal_info.command
-    let launch_prefix = build_detached_launch_prefix $needs_reload
-    let working_dir_arg = (get_working_dir_arg $terminal $working_dir)
-    let startup_script = (get_startup_script_path)
-    let startup_shell = $"sh -c 'exec ($startup_script)'"
+    let working_dir_args = (get_working_dir_args $terminal $working_dir)
+    let startup_argv = (get_startup_command_argv)
     let title = (get_terminal_title $terminal_info)
 
-    # Prefer the generic nixGL wrapper when available. Fall back to the
-    # older Intel-specific name only if the default wrapper is absent.
-    let nixgl_prefix = (resolve_nixgl_launch_prefix)
-    let terminal_cmd = match $terminal {
+    let nixgl_wrapper = ((resolve_nixgl_launch_context).path? | default "")
+    let terminal_argv = match $terminal {
         "ghostty" => {
-            build_ghostty_launch_command $command $config_path $title $working_dir_arg $startup_shell
+            build_ghostty_launch_argv $command $config_path $title $working_dir_args $startup_argv
         },
         "wezterm" => {
-            $"($nixgl_prefix)($command) --config-file ($config_path) start --class=($YAZELIX_WINDOW_CLASS)($working_dir_arg) -- ($startup_shell)"
+            prepend_launch_wrapper (
+                [$command, "--config-file", $config_path, "start", $"--class=($YAZELIX_WINDOW_CLASS)"]
+                | append $working_dir_args
+                | append ["--"]
+                | append $startup_argv
+            ) $nixgl_wrapper
         },
         "kitty" => {
-            $"($nixgl_prefix)($command) --config=($config_path) --class=($YAZELIX_WINDOW_CLASS) --title=\"($title)\"($working_dir_arg) ($startup_shell)"
+            prepend_launch_wrapper (
+                [$command, $"--config=($config_path)", $"--class=($YAZELIX_WINDOW_CLASS)", $"--title=($title)"]
+                | append $working_dir_args
+                | append $startup_argv
+            ) $nixgl_wrapper
         },
         "alacritty" => {
-            $"($nixgl_prefix)($command) --config-file ($config_path) --class \"($YAZELIX_WINDOW_CLASS)\" --title \"($title)\"($working_dir_arg) -e ($startup_shell)"
+            prepend_launch_wrapper (
+                [$command, "--config-file", $config_path, "--class", $YAZELIX_WINDOW_CLASS, "--title", $title]
+                | append $working_dir_args
+                | append ["-e"]
+                | append $startup_argv
+            ) $nixgl_wrapper
         },
         "foot" => {
-            $"($nixgl_prefix)($command) --config ($config_path) --app-id ($YAZELIX_WINDOW_CLASS)($working_dir_arg) ($startup_shell)"
+            prepend_launch_wrapper (
+                [$command, "--config", $config_path, "--app-id", $YAZELIX_WINDOW_CLASS]
+                | append $working_dir_args
+                | append $startup_argv
+            ) $nixgl_wrapper
         },
         _ => {
             error make {msg: $"Unknown terminal: ($terminal)"}
         }
     }
 
-    $"($launch_prefix)($terminal_cmd)"
+    $terminal_argv
 }
 
-export def run_detached_terminal_launch [launch_cmd: string, terminal_name: string, --verbose] {
-    if (which bash | is-empty) {
-        error make {msg: $"Cannot launch ($terminal_name): bash is not available in PATH.\nYazelix uses bash to detach new terminal windows."}
-    }
+# Build launch command for display and tests. Detached/background handling is applied by run_detached_terminal_launch.
+export def build_launch_command [
+    terminal_info: record
+    config_path
+    working_dir: string
+    needs_reload: bool = true
+]: nothing -> string {
+    render_launch_command_argv (build_launch_command_argv $terminal_info $config_path $working_dir $needs_reload)
+}
 
+export def run_detached_terminal_launch [launch_argv: list<string>, terminal_name: string, needs_reload: bool = true, --verbose] {
     let probe_helper = (get_detached_launch_probe_helper_path)
     if not ($probe_helper | path exists) {
         error make {msg: $"Cannot launch ($terminal_name): detached launch helper is missing at ($probe_helper).\nRestore shells/posix/detached_launch_probe.sh or reinstall Yazelix."}
     }
 
     let launch_log = (get_launch_probe_log_path $terminal_name)
+    let helper_args = if $needs_reload {
+        [$launch_log, "--reload", "--"] | append $launch_argv
+    } else {
+        [$launch_log, "--"] | append $launch_argv
+    }
     let output = (profile_startup_step "terminal_launcher" "detached_launch_probe" {
-        ^$probe_helper $launch_log $launch_cmd | complete
+        ^$probe_helper ...$helper_args | complete
     } {
         terminal: $terminal_name
     })

@@ -142,6 +142,7 @@ def launch_terminal_candidates [
         }
 
         let launch_cmd = (build_launch_command $terminal_info $terminal_config $working_dir $needs_reload)
+        let launch_argv = (build_launch_command_argv $terminal_info $terminal_config $working_dir $needs_reload)
 
         if $verbose_mode {
             print $"Using terminal: ($display_name)"
@@ -166,7 +167,7 @@ def launch_terminal_candidates [
 
         let launch_attempt = (try {
             with-env $env_block {
-                run_detached_terminal_launch $launch_cmd $display_name --verbose=$verbose_mode
+                run_detached_terminal_launch $launch_argv $display_name $needs_reload --verbose=$verbose_mode
             }
             {ok: true}
         } catch {|err|
