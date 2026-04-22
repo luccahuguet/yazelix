@@ -6,6 +6,7 @@ use failure_classes.nu [format_failure_classification]
 use common.nu [require_yazelix_runtime_dir]
 
 const YZX_CORE_HELPER_RELATIVE_PATH = ["libexec" "yzx_core"]
+const CONFIG_SURFACE_RESOLVE_COMMAND = "config-surface.resolve"
 
 def get_runtime_yzx_core_helper_path [runtime_dir: string] {
     $YZX_CORE_HELPER_RELATIVE_PATH | prepend $runtime_dir | path join
@@ -245,6 +246,20 @@ export def run_yzx_core_runtime_request_json_command [
 ] {
     let runtime_dir = (require_yazelix_runtime_dir)
     run_yzx_core_request_json_command $runtime_dir (build_default_yzx_core_error_surface) $command $request $invalid_json_message
+}
+
+export def resolve_active_config_surface_via_yzx_core [runtime_dir?: string] {
+    let resolved_runtime_dir = if $runtime_dir == null {
+        require_yazelix_runtime_dir
+    } else {
+        $runtime_dir | path expand
+    }
+
+    run_yzx_core_json_command $resolved_runtime_dir (build_default_yzx_core_error_surface) [
+        $CONFIG_SURFACE_RESOLVE_COMMAND
+        "--runtime-dir"
+        $resolved_runtime_dir
+    ] "Yazelix Rust active-config-surface helper returned invalid JSON."
 }
 
 export def run_yzx_core_command [

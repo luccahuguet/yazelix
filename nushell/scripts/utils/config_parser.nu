@@ -1,12 +1,12 @@
 #!/usr/bin/env nu
 # Configuration parser for yazelix TOML files
 
-use config_surfaces.nu load_active_config_surface
 use common.nu [require_yazelix_runtime_dir]
 use ./yzx_core_bridge.nu [
     execute_yzx_core_command
     parse_yzx_core_envelope
     render_yzx_core_error
+    resolve_active_config_surface_via_yzx_core
     run_yzx_core_json_command
 ]
 
@@ -123,7 +123,7 @@ def parse_yazelix_config_with_rust [
 
 # Parse yazelix configuration file and extract settings
 export def parse_yazelix_config [] {
-    let config_surface = load_active_config_surface
     let runtime_dir = require_yazelix_runtime_dir
+    let config_surface = (resolve_active_config_surface_via_yzx_core $runtime_dir)
     parse_yazelix_config_with_rust $runtime_dir $config_surface
 }

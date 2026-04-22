@@ -1,7 +1,8 @@
 #!/usr/bin/env nu
 
 use repo_checkout.nu require_yazelix_repo_root
-use ../utils/config_surfaces.nu [copy_default_config_surfaces load_config_surface_from_main get_main_user_config_path]
+use ../utils/config_files.nu [copy_default_config_surfaces load_config_surface_from_main]
+use ../utils/config_paths.nu get_main_user_config_path
 use readme_surface.nu sync_readme_surface
 use ../utils/nix_detector.nu ensure_nix_available
 

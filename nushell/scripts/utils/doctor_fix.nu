@@ -6,17 +6,18 @@ use common.nu [
     get_yazelix_state_dir
     require_yazelix_runtime_dir
 ]
-use ./config_surfaces.nu [copy_default_config_surfaces get_main_user_config_path load_active_config_surface]
+use ./config_files.nu copy_default_config_surfaces
+use ./config_paths.nu get_main_user_config_path
 use ./doctor_helix.nu fix_helix_runtime_conflicts
 use ./failure_classes.nu format_failure_classification
-use ./yzx_core_bridge.nu [build_default_yzx_core_error_surface build_record_yzx_core_error_surface run_yzx_core_json_command]
+use ./yzx_core_bridge.nu [build_default_yzx_core_error_surface build_record_yzx_core_error_surface resolve_active_config_surface_via_yzx_core run_yzx_core_json_command]
 
 const ZELLIJ_MATERIALIZATION_COMMAND = "zellij-materialization.generate"
 const RUNTIME_MATERIALIZATION_REPAIR_COMMAND = "runtime-materialization.repair"
 
 def seed_yazelix_plugin_permissions [] {
     let runtime_dir = (require_yazelix_runtime_dir)
-    let config_surface = (load_active_config_surface)
+    let config_surface = (resolve_active_config_surface_via_yzx_core $runtime_dir)
     let zellij_config_dir = (get_yazelix_state_dir | path join "configs" "zellij")
     run_yzx_core_json_command $runtime_dir (
         build_record_yzx_core_error_surface {config_file: $config_surface.config_file}

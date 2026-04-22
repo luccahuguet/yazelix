@@ -1,12 +1,18 @@
 //! Resolve active Yazelix config paths for control-plane commands (Rust-only path).
 
 use crate::bridge::{CoreError, ErrorClass};
+use serde::Serialize;
 use serde_json::json;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
+#[derive(Debug, Clone, Serialize)]
 pub struct ActiveConfigPaths {
+    pub user_config_dir: PathBuf,
+    pub user_config: PathBuf,
+    pub legacy_user_config: PathBuf,
+    pub managed_taplo: PathBuf,
     pub config_file: PathBuf,
     pub default_config_path: PathBuf,
     pub contract_path: PathBuf,
@@ -85,7 +91,7 @@ pub fn validate_primary_config_surface(paths: &PrimaryConfigPaths) -> Result<(),
     Ok(())
 }
 
-/// Match `nushell/scripts/utils/config_surfaces.nu` `resolve_active_config_paths` + reconciliation.
+/// Canonical Rust owner for active managed-config surface resolution.
 pub fn resolve_active_config_paths(
     runtime_dir: &Path,
     config_dir: &Path,
@@ -139,6 +145,10 @@ pub fn resolve_active_config_paths(
     }
 
     Ok(ActiveConfigPaths {
+        user_config_dir: paths.user_config_dir,
+        user_config: paths.user_config,
+        legacy_user_config: paths.legacy_user_config,
+        managed_taplo: paths.managed_taplo,
         config_file,
         default_config_path: paths.default_config_path,
         contract_path: paths.contract_path,
@@ -183,4 +193,84 @@ pub fn ensure_managed_taplo(runtime_src: &Path, managed: &Path) -> Result<(), Co
     }
 
     Ok(())
+}
+
+// Test lane: default
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+    use std::fs;
+    use tempfile::tempdir;
+
+    fn write_runtime_layout(runtime_dir: &Path) {
+        fs::write(
+            runtime_dir.join("yazelix_default.toml"),
+            "[core]\nwelcome_style = \"minimal\"\n",
+        )
+        .expect("write default config");
+        fs::create_dir_all(runtime_dir.join("config_metadata")).expect("contract dir");
+        fs::write(
+            runtime_dir
+                .join("config_metadata")
+                .join("main_config_contract.toml"),
+            "[fields]\n",
+        )
+        .expect("write contract");
+        fs::write(
+            runtime_dir.join(".taplo.toml"),
+            "array_auto_expand = true\n",
+        )
+        .expect("write taplo");
+    }
+
+    // Defends: Rust active-config-surface resolution bootstraps the managed main config and Taplo support when the canonical surface is missing.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn bootstraps_missing_managed_config_and_taplo_support() {
+        let runtime = tempdir().expect("runtime dir");
+        let config = tempdir().expect("config dir");
+        write_runtime_layout(runtime.path());
+
+        let resolved = resolve_active_config_paths(runtime.path(), config.path(), None).unwrap();
+
+        assert_eq!(
+            resolved.user_config,
+            config.path().join("user_configs").join("yazelix.toml")
+        );
+        assert_eq!(resolved.config_file, resolved.user_config);
+        assert_eq!(
+            fs::read_to_string(&resolved.config_file).unwrap(),
+            fs::read_to_string(runtime.path().join("yazelix_default.toml")).unwrap()
+        );
+        assert_eq!(
+            fs::read_to_string(&resolved.managed_taplo).unwrap(),
+            fs::read_to_string(runtime.path().join(".taplo.toml")).unwrap()
+        );
+    }
+
+    // Defends: Rust active-config-surface resolution rejects duplicate canonical and legacy managed config surfaces instead of guessing.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn rejects_duplicate_canonical_and_legacy_surfaces() {
+        let runtime = tempdir().expect("runtime dir");
+        let config = tempdir().expect("config dir");
+        write_runtime_layout(runtime.path());
+
+        let user_config_dir = config.path().join("user_configs");
+        fs::create_dir_all(&user_config_dir).expect("user config dir");
+        fs::write(
+            user_config_dir.join("yazelix.toml"),
+            "[core]\nwelcome_style = \"minimal\"\n",
+        )
+        .expect("write canonical config");
+        fs::write(
+            config.path().join("yazelix.toml"),
+            "[core]\nwelcome_style = \"random\"\n",
+        )
+        .expect("write legacy config");
+
+        let error = resolve_active_config_paths(runtime.path(), config.path(), None).unwrap_err();
+        assert_eq!(error.code(), "duplicate_config_surfaces");
+    }
 }

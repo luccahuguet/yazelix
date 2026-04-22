@@ -1,8 +1,10 @@
 use lexopt::prelude::*;
 use serde::de::DeserializeOwned;
 use std::path::PathBuf;
+use yazelix_core::active_config_surface::resolve_active_config_paths;
 use yazelix_core::control_plane::{
-    config_override_from_env, runtime_materialization_plan_request_from_env,
+    config_dir_from_env, config_override_from_env, runtime_dir_from_env,
+    runtime_materialization_plan_request_from_env,
 };
 use yazelix_core::{
     ComputeConfigStateRequest, CoreError, DoctorConfigEvaluateRequest,
@@ -27,6 +29,7 @@ use yazelix_core::{
 };
 
 const CONFIG_NORMALIZE_COMMAND: &str = "config.normalize";
+const CONFIG_SURFACE_RESOLVE_COMMAND: &str = "config-surface.resolve";
 const CONFIG_STATE_COMPUTE_COMMAND: &str = "config-state.compute";
 const CONFIG_STATE_RECORD_COMMAND: &str = "config-state.record";
 const RUNTIME_CONTRACT_EVALUATE_COMMAND: &str = "runtime-contract.evaluate";
@@ -109,6 +112,11 @@ fn run() -> Result<(), Box<CommandError>> {
         CONFIG_NORMALIZE_COMMAND => {
             let command_for_error = command.clone();
             run_config_normalize(parser)
+                .map_err(|error| CommandError::new(command_for_error, error))
+        }
+        CONFIG_SURFACE_RESOLVE_COMMAND => {
+            let command_for_error = command.clone();
+            run_config_surface_resolve(parser)
                 .map_err(|error| CommandError::new(command_for_error, error))
         }
         CONFIG_STATE_COMPUTE_COMMAND => {
@@ -310,6 +318,36 @@ fn run_config_normalize(mut parser: lexopt::Parser) -> Result<(), CoreError> {
     };
     let data = normalize_config(&request)?;
     write_success_envelope(CONFIG_NORMALIZE_COMMAND, data)
+}
+
+fn run_config_surface_resolve(mut parser: lexopt::Parser) -> Result<(), CoreError> {
+    let mut runtime_dir: Option<PathBuf> = None;
+    let mut config_dir: Option<PathBuf> = None;
+    let mut config_override: Option<String> = None;
+
+    while let Some(arg) = parser
+        .next()
+        .map_err(|error| CoreError::usage(error.to_string()))?
+    {
+        match arg {
+            Long("runtime-dir") => runtime_dir = Some(parser_path_value(&mut parser)?),
+            Long("config-dir") => config_dir = Some(parser_path_value(&mut parser)?),
+            Long("config-override") => config_override = Some(parser_string_value(&mut parser)?),
+            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
+        }
+    }
+
+    let runtime_dir = match runtime_dir {
+        Some(path) => path,
+        None => runtime_dir_from_env()?,
+    };
+    let config_dir = match config_dir {
+        Some(path) => path,
+        None => config_dir_from_env()?,
+    };
+    let config_override = config_override.or_else(config_override_from_env);
+    let data = resolve_active_config_paths(&runtime_dir, &config_dir, config_override.as_deref())?;
+    write_success_envelope(CONFIG_SURFACE_RESOLVE_COMMAND, data)
 }
 
 fn run_config_state_compute(mut parser: lexopt::Parser) -> Result<(), CoreError> {

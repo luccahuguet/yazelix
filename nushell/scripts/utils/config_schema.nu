@@ -4,7 +4,8 @@
 # reference for validation.
 
 use config_contract.nu [load_main_config_contract]
-use config_surfaces.nu [load_config_surface_from_main get_main_user_config_path]
+use config_files.nu load_config_surface_from_main
+use config_paths.nu get_main_user_config_path
 
 const OPEN_RECORD_PATHS = []
 

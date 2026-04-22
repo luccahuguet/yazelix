@@ -2,8 +2,7 @@
 # Direct Rust-owned materialization helpers for maintainer tooling and tests.
 
 use ../utils/common.nu get_yazelix_state_dir
-use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface build_record_yzx_core_error_surface run_yzx_core_json_command]
-use ../utils/config_surfaces.nu load_active_config_surface
+use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface build_record_yzx_core_error_surface resolve_active_config_surface_via_yzx_core run_yzx_core_json_command]
 
 const YAZI_MATERIALIZATION_COMMAND = "yazi-materialization.generate"
 const ZELLIJ_MATERIALIZATION_COMMAND = "zellij-materialization.generate"
@@ -32,7 +31,7 @@ export def generate_merged_yazi_config [
     --quiet,
     --sync-static-assets = true
 ] {
-    let config_surface = (load_active_config_surface)
+    let config_surface = (resolve_active_config_surface_via_yzx_core $yazelix_dir)
     let merged_config_dir = ((get_yazelix_state_dir) | path join "configs" "yazi")
     mut helper_args = [
         $YAZI_MATERIALIZATION_COMMAND
@@ -67,7 +66,7 @@ export def generate_merged_zellij_config [
     --quiet
     --seed-plugin-permissions
 ] {
-    let config_surface = (load_active_config_surface)
+    let config_surface = (resolve_active_config_surface_via_yzx_core $yazelix_dir)
     let merged_config_dir = if ($merged_config_dir_override | is-not-empty) {
         $merged_config_dir_override | path expand
     } else {

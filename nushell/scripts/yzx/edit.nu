@@ -3,7 +3,7 @@
 
 use ../utils/common.nu [get_managed_helix_user_config_path get_yazelix_user_config_dir]
 use ../utils/editor_launch_context.nu [resolve_editor_launch_context]
-use ../utils/config_surfaces.nu reconcile_primary_config_surfaces
+use ../utils/yzx_core_bridge.nu resolve_active_config_surface_via_yzx_core
 
 def open_config_surface_in_editor [config_path: string, --print] {
     if $print {
@@ -23,7 +23,7 @@ def open_config_surface_in_editor [config_path: string, --print] {
 }
 
 def get_edit_targets [] {
-    let paths = reconcile_primary_config_surfaces
+    let paths = (resolve_active_config_surface_via_yzx_core)
     let user_root = (get_yazelix_user_config_dir)
     let helix_path = (get_managed_helix_user_config_path)
     let zellij_path = ($user_root | path join "zellij" "config.kdl")

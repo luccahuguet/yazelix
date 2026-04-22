@@ -3,8 +3,8 @@
 
 use ./common.nu [get_materialized_state_path require_yazelix_runtime_dir]
 use ./config_contract.nu MAIN_CONFIG_CONTRACT_RELATIVE_PATH
-use ./config_surfaces.nu [load_active_config_surface get_main_user_config_path]
-use ./yzx_core_bridge.nu [run_yzx_core_command run_yzx_core_json_command]
+use ./config_paths.nu get_main_user_config_path
+use ./yzx_core_bridge.nu [resolve_active_config_surface_via_yzx_core run_yzx_core_command run_yzx_core_json_command]
 
 # Compute active config hash and track whether generated runtime state needs repair.
 # Only hashes rebuild-required keys (ignoring comments and runtime settings).
@@ -16,13 +16,13 @@ use ./yzx_core_bridge.nu [run_yzx_core_command run_yzx_core_json_command]
 #   runtime_hash: sha256 of the active runtime identity
 #   combined_hash: sha256 of config_hash + runtime_hash
 export def compute_config_state [] {
-    let config_surface = (load_active_config_surface)
+    let runtime_dir = require_yazelix_runtime_dir
+    let config_surface = (resolve_active_config_surface_via_yzx_core $runtime_dir)
     let materialized_state_path = (get_materialized_state_path)
     let materialized_state_dir = ($materialized_state_path | path dirname)
     if not ($materialized_state_dir | path exists) {
         mkdir $materialized_state_dir
     }
-    let runtime_dir = require_yazelix_runtime_dir
     let config_path = $config_surface.config_file
     let default_config_path = $config_surface.default_config_path
     let contract_path = ($runtime_dir | path join $MAIN_CONFIG_CONTRACT_RELATIVE_PATH)

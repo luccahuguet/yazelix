@@ -4,12 +4,11 @@
 
 use ../utils/config_state.nu compute_config_state
 use ../utils/config_parser.nu parse_yazelix_config
-use ../utils/config_surfaces.nu load_active_config_surface
 use ../utils/terminal_launcher.nu *
 use ../utils/constants.nu [DEFAULT_TERMINAL SUPPORTED_TERMINALS, TERMINAL_METADATA, YAZELIX_CONFIG_DIR, YAZELIX_STATE_DIR]
 use ../utils/common.nu [get_yazelix_runtime_dir normalize_path_entries require_yazelix_runtime_dir]
 use ../utils/startup_profile.nu [profile_startup_step propagate_startup_profile_env]
-use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command run_yzx_core_request_json_command]
+use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface resolve_active_config_surface_via_yzx_core run_yzx_core_json_command run_yzx_core_request_json_command]
 
 const TERMINAL_MATERIALIZATION_GENERATE_COMMAND = "terminal-materialization.generate"
 const GHOSTTY_MATERIALIZATION_GENERATE_COMMAND = "ghostty-materialization.generate"
@@ -97,7 +96,7 @@ def materialize_selected_terminal_configs [
             default_config_path: $default_config_path
         }
     } else {
-        let loaded = (load_active_config_surface)
+        let loaded = (resolve_active_config_surface_via_yzx_core $resolved_runtime_dir)
         {
             config_file: $loaded.config_file
             default_config_path: $loaded.default_config_path
@@ -156,7 +155,7 @@ def reroll_ghostty_random_cursor_config_for_launch [
     let resolved_config_file = if ($config_file | is-not-empty) {
         $config_file
     } else {
-        (load_active_config_surface).config_file
+        (resolve_active_config_surface_via_yzx_core $resolved_runtime_dir).config_file
     }
 
     if not $quiet {
