@@ -123,6 +123,23 @@ cluster plus the Zellij plugin-path contract cluster. Those assertions already
 depend on typed Rust or pane-orchestrator owners and give `yazelix-rdn7.4.5.9`
 the cleanest delete-first starting point.
 
+## Managed-Config Split
+
+`yazelix-rdn7.4.5.10` narrows the managed-config Nu tests into these explicit
+lanes:
+
+| Cluster | Current Nu tests | Bucket | Why |
+| --- | --- | --- | --- |
+| Helix materialization and runtime-env contracts | `test_generate_managed_helix_config_merges_user_config_and_enforces_reveal`, `test_get_runtime_env_wraps_helix_with_managed_wrapper`, `test_get_runtime_env_exports_curated_toolbin_and_keeps_runtime_local_yzx` | `strong_rust_port` | these defend deterministic Helix materialization and runtime-env behavior that already belongs to Rust-owned owners |
+| extern bridge rendering and refresh semantics | `test_yzx_extern_bridge_reuses_current_fingerprint`, `test_yzx_extern_bridge_probe_ignores_host_nushell_config`, `test_yzx_extern_bridge_keeps_previous_bridge_when_refresh_fails` | `strong_rust_port` | these are deterministic Rust-owned command-metadata and extern-bridge contracts and should move into `yazelix_core` tests instead of staying in Nu |
+| shell initializer, runtime resolution, and runtime setup behavior | `test_generate_merged_zellij_config_wraps_nu_default_shell`, `test_managed_nushell_config_sources_optional_user_hook`, `test_managed_nushell_config_loads_in_repo_shell_without_runtime_env`, `test_managed_bash_config_sources_optional_user_hook`, `test_managed_fish_config_does_not_export_helix_mode_env`, `test_source_checkout_runtime_resolution_beats_installed_runtime`, `test_runtime_resolution_fails_fast_without_valid_runtime_root`, `test_runtime_setup_leaves_existing_host_shell_surfaces_untouched`, `test_runtime_setup_ignores_read_only_host_shell_surfaces`, `test_yazelix_hx_ignores_legacy_runtime_alias_and_uses_wrapper_runtime_root`, `test_yzx_import_helix_copies_personal_config_with_force_backups` | `blocked` | these still depend on surviving shell initializer, wrapper, runtime-resolution, or import owners and should wait for the setup/bootstrap and runtime-helper cuts rather than pretending there is already a clean Rust owner |
+| weak-delete bucket | none currently | `weak_delete` | this slice does not need fake parity deletions; the remaining non-portable assertions are blocked on real owner cuts instead of being worthlessly preserved in Nu |
+
+The next strong Rust port target is the extern-bridge plus runtime-env /
+Helix-materialization cluster, because those assertions already sit behind
+Rust-owned deterministic owners and do not need the remaining shell-floor work
+to move honestly.
+
 ## What Cannot Survive
 
 These are not valid long-term steady states:
