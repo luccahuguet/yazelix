@@ -5,6 +5,12 @@
 This document turns the completed subsystem audits into the current ranked
 budget for remaining Nushell deletion work.
 
+It is still useful as a near-term ranked queue, but it is no longer the
+top-level floor document.
+
+Use `provable_nushell_floor_budget.md` first for the current hard under-`5k`
+family budget and the stricter Rust-first irreducibility proof standard.
+
 It is not another LOC leaderboard. The question is not "which directory is
 large?" The question is "which surviving Nushell owners can still disappear
 without losing functionality, and what has to stay because it is still the

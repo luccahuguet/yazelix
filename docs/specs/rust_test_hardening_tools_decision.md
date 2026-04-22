@@ -2,17 +2,20 @@
 
 ## Summary
 
-Yazelix should keep `cargo test` as the canonical baseline and adopt only one
-additional Rust hardening tool now: `cargo-nextest`, as an optional maintainer
-lane for deterministic Rust-owned suites.
+Yazelix should use `cargo-nextest` as the default runner for first-party Rust
+tests.
 
-`cargo-mutants` and `cargo-fuzz` are rejected for now. They are useful tools in
-the right codebase, but they would add more process weight than signal to the
-current Yazelix tree.
+`cargo test` remains required, but only for doctests and any explicit
+nextest-unsupported exception surfaces.
+
+`cargo-mutants` and `cargo-fuzz` are still rejected for now. They are useful
+tools in the right codebase, but they would add more process weight than signal
+to the current Yazelix tree.
 
 ## Scope
 
-This decision covers only test-hardening tools for first-party Rust-owned logic:
+This decision covers only test-hardening tools for first-party Rust-owned
+logic:
 
 - `rust_core/yazelix_core`
 - `rust_plugins/zellij_pane_orchestrator`
@@ -23,7 +26,9 @@ contract by itself.
 ## External References
 
 - Cargo Book `cargo test`: <https://doc.rust-lang.org/cargo/commands/cargo-test.html>
-- cargo-nextest docs: <https://nexte.st/>
+- cargo-nextest home: <https://nexte.st/>
+- cargo-nextest running tests: <https://nexte.st/docs/running/>
+- cargo-nextest coverage note on doctests: <https://nexte.st/docs/integrations/test-coverage/>
 - cargo-mutants docs: <https://mutants.rs/>
 - cargo-mutants limitations: <https://mutants.rs/limitations.html>
 - cargo-mutants with nextest: <https://mutants.rs/nextest.html>
@@ -40,40 +45,44 @@ Decision recorded per `AGENTS.md`:
 - external maintainer tools considered: `cargo-nextest`, `cargo-mutants`,
   `cargo-fuzz`
 - built in-house: continue using existing Rust tests plus repo validators as
-  the default baseline
+  the canonical ownership model
 - rejected alternatives:
   - adding a Cargo crate dependency just to route test execution
   - blanket mutation or fuzz infrastructure before the target buckets are
     hermetic and narrow enough
 - packaging impact:
-  - no runtime/package dependency changes
-  - if `cargo-nextest` is implemented, it should stay a maintainer-shell or CI
-    tool only
+  - no runtime or package dependency changes
+  - `cargo-nextest` remains a maintainer-shell and CI tool, but it is now the
+    default runner for first-party Rust tests rather than an optional pilot
 
-## Current Baseline
+## Runner Policy
 
-`cargo test` stays the canonical baseline because it is the standard Cargo test
-surface, it already executes unit, integration, and doc tests, and the current
-Rust tests and maintainer workflows are written around it.
+The official nextest docs say to run doctests separately with
+`cargo test --doc`. The Cargo Book continues to make `cargo test` the standard
+Cargo surface that covers unit, integration, and doc tests.
 
-That means:
+The resulting Yazelix policy is:
 
-- all Rust-owned logic must keep passing under `cargo test`
-- doctest coverage remains on `cargo test`
-- any extra tool is additive and optional until it proves stable
+- default first-party Rust test runner: `cargo nextest run`
+- required exception runner: `cargo test --doc`
+- any other `cargo test` usage must be explicitly allowlisted as a real
+  nextest limitation, not habit
+
+This keeps one clear default for owned Rust test buckets while preserving the
+official doctest path that nextest does not currently handle.
 
 ## Decision Table
 
 | Tool | Decision | Why | Eligible scope | Lane placement | Stop condition |
 | --- | --- | --- | --- | --- | --- |
-| `cargo-nextest` | adopt narrowly | official docs emphasize per-test isolation, parallel execution, retries, and CI-focused reporting; this matches Yazelix’s deterministic Rust-owned suites without changing runtime packaging | deterministic Rust-owned tests in `yazelix_core` and pane-orchestrator crates, especially route planning, metadata, config normalization, report shaping, render plans, and plugin contract tests | optional maintainer/CI lane only; do not replace `cargo test` baseline and keep doctests on `cargo test` | stop or narrow if the pilot is slower, flakes, or creates command-surface duplication instead of a clear optional lane |
+| `cargo-nextest` | adopt as the default Rust test runner | official docs emphasize per-test isolation, parallel execution, retries, and CI-focused reporting, and nextest supports the normal Rust test-binary path while still leaving doctests to Cargo | first-party Rust test buckets in `yazelix_core` and pane-orchestrator crates, especially route planning, metadata, config normalization, report shaping, render plans, and plugin contract tests | default maintainer and CI runner for first-party Rust tests; keep doctests on `cargo test --doc` | stop or narrow only for explicit unsupported surfaces; do not let broad cargo-test-by-habit usage return |
 | `cargo-mutants` | reject for now | official docs require hermetic tests and note Cargo-only execution assumptions; mutation runs work on copied or in-place trees and are best when the target suite is already stable and narrow | none for now | none | reopen only after a very small Rust-only bucket is demonstrably hermetic, stable under repeated runs, and worth mutation cost |
-| `cargo-fuzz` | reject for now | official docs recommend `cargo-fuzz` for fuzz targets and CI smoke runs, but that implies nightly toolchains, fuzz targets, corpora, and ongoing triage; current Yazelix Rust code is dominated by deterministic config/report/materialization logic rather than parser- or byte-input-heavy bug classes | none for now | none | reopen only when a concrete Rust parser/decoder/state-machine seam exists that benefits from randomized structured inputs more than from stronger unit/property-style tests |
+| `cargo-fuzz` | reject for now | official docs recommend `cargo-fuzz` for fuzz targets and CI smoke runs, but that implies nightly toolchains, fuzz targets, corpora, and ongoing triage; current Yazelix Rust code is dominated by deterministic config/report/materialization logic rather than parser- or byte-input-heavy bug classes | none for now | none | reopen only when a concrete Rust parser, decoder, or state-machine seam exists that benefits from randomized structured inputs more than from stronger unit or regression tests |
 
-## Why `cargo-nextest` Makes Sense
+## Why `cargo-nextest` Should Be The Default
 
-The current Rust buckets that are most likely to benefit are already
-deterministic and self-owned:
+The current Rust buckets that benefit most are already deterministic and
+self-owned:
 
 - config normalization and runtime/env/control-plane logic
 - public route planning and command metadata
@@ -85,13 +94,13 @@ deterministic and self-owned:
 isolation and feedback without requiring new harness code, new corpora, or tree
 mutation.
 
-It is still not the default truth source:
+It should now be the default runner for first-party Rust test buckets:
 
-- nextest currently does not run doctests, so doctests must stay on
-  `cargo test`
-- the pilot should stay optional until it proves stable on the chosen buckets
-- the tool should not be used as an excuse to broaden the test surface with
-  weaker tests
+- nextest does not currently run doctests, so doctests stay on
+  `cargo test --doc`
+- the earlier pilot already proved useful enough to stop treating nextest as an
+  optional side lane
+- the runner change does not justify broader or weaker Rust tests
 
 ## Why `cargo-mutants` Is Too Early
 
@@ -103,15 +112,15 @@ The official docs are explicit about the main constraints:
 - it mutates a copied tree by default, and can mutate the live tree with
   `--in-place`
 
-That does not fit current Yazelix priorities well enough:
+That still does not fit current Yazelix priorities well enough:
 
 - the strongest current Rust defenses are already a mix of unit tests and
   cross-crate contract tests, but the repo still depends heavily on Nu and
   process-driven integration coverage
-- the immediate quality win is better routeable execution and deterministic
-  Rust-suite feedback, not mutation triage across a mixed ownership tree
+- the immediate quality win is a clear nextest-first runner policy, not
+  mutation triage across a mixed ownership tree
 - a premature mutation lane would spend time on filters, skips, and runtime
-  cost before the narrow Rust-only pilot buckets are settled
+  cost before the narrow Rust-only buckets are settled
 
 ## Why `cargo-fuzz` Is Too Early
 
@@ -128,25 +137,31 @@ That investment is justified when Yazelix has a concrete seam such as:
 
 The current high-value Rust surfaces are mostly configuration shaping, command
 routing, and render-plan logic. Those are better served right now by strong
-deterministic tests and a narrower nextest pilot.
+deterministic tests and a stricter nextest-first runner policy.
 
 ## Command Ownership
 
-If `cargo-nextest` is implemented, the commands should stay explicit:
+The commands should stay explicit:
 
-- canonical baseline:
-  - `cargo test --manifest-path rust_core/Cargo.toml`
-  - `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml`
-- optional pilot lane:
+- default first-party Rust lane:
   - `cargo nextest run --manifest-path rust_core/Cargo.toml`
   - `cargo nextest run --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml`
+- required doctest lane:
+  - `cargo test --manifest-path rust_core/Cargo.toml --doc`
+  - `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --doc`
+- explicit exception lane:
+  - any non-doctest `cargo test` path must be named and justified by a concrete
+    nextest limitation in the bead or linked decision doc
 
-Do not hide nextest behind a misleading replacement for `cargo test` until the
-pilot proves the exact owner buckets, runtime cost, and CI value.
+Do not reintroduce a broad cargo-test baseline for first-party Rust tests by
+habit. Keep Cargo as the explicit doctest and exception path.
 
 ## Follow-Up Beads
 
-- `yazelix-fkgs` pilots `cargo-nextest` on deterministic Rust-owned buckets
+- `yazelix-fkgs` is the historical pilot that proved nextest was worth keeping
+- `yazelix-rdn7.4.7` defines the current nextest-first runner policy
+- `yazelix-rdn7.4.5.15` and `yazelix-8ih0.3` must implement that policy in the
+  shared Rust harness and maintainer runner
 - no implementation bead is created for `cargo-mutants`
 - no implementation bead is created for `cargo-fuzz`
 
@@ -157,5 +172,5 @@ pilot proves the exact owner buckets, runtime cost, and CI value.
 ## Traceability
 
 - Bead: `yazelix-rdn7.4.3`
+- Bead: `yazelix-rdn7.4.7`
 - Defended by: `nu nushell/scripts/dev/validate_specs.nu`
-

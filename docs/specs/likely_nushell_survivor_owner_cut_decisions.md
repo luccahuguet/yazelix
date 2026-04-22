@@ -6,6 +6,13 @@ This decision record re-evaluates the remaining likely Nushell survivors after
 the product-side full-config owner cut, the public Rust command-family cuts,
 and the recent bridge-collapse work.
 
+It is now background from the earlier, softer survivor pass.
+
+Use `provable_nushell_floor_budget.md` first for the current Rust-first proof
+standard and under-`5k` family budget. This file is still useful as design
+history for why the earlier pass rejected fake broad Rust rewrites, but it is
+no longer the top-level stopping rule for retained Nu.
+
 The result is intentionally strict:
 
 - do not promise a broad Rust rewrite where the surviving value is still shell,

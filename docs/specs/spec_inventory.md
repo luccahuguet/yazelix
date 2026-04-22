@@ -17,10 +17,13 @@ Start from these files first when planning current work:
 
 - `v15_trimmed_runtime_contract.md`
   - the primary live runtime and command-surface contract
+- `provable_nushell_floor_budget.md`
+  - the primary hard-budget and proof-standard doc for the under-`5k` Nu push
 - `rust_migration_matrix.md`
   - the primary delete-first roadmap for remaining product-side Nushell removal
 - `ranked_nu_deletion_budget.md`
-  - the ranked execution budget for the remaining honest Nushell deletion lanes
+  - the near-term ranked execution queue; use the provable floor budget for the
+    harder top-level Nu target
 - `rust_nushell_bridge_contract.md`
   - the current bridge boundary between Nushell and `yzx_core`
 - `cross_language_runtime_ownership.md`
@@ -87,7 +90,7 @@ Status labels:
 | `integration_glue_canonicalization_audit.md` | Planning | Completed integration-glue audit that names wrapper deletion and config-read collapse lanes |
 | `launch_bootstrap_rust_migration.md` | Historical | Transition record for the landed `runtime-env.compute` slice and the explicit stop condition for further v15.x launch/bootstrap Rust work |
 | `launch_startup_session_canonicalization_audit.md` | Planning | Completed launch/startup/session audit that documents shell-process no-go boundaries and smaller bridge cuts |
-| `likely_nushell_survivor_owner_cut_decisions.md` | Planning | Current family-by-family no-go and follow-up decision record for the remaining likely Nushell survivors |
+| `likely_nushell_survivor_owner_cut_decisions.md` | Historical | Earlier family-by-family no-go record from the softer survivor pass; keep as background only after `provable_nushell_floor_budget.md` |
 | `macos_support_floor.md` | Live | Current first-party macOS support floor |
 | `maintainer_harness_canonicalization_audit.md` | Planning | Completed maintainer/dev/validator harness audit; separates product Nu deletion from harness cleanup |
 | `managed_config_migration_transaction_contract.md` | Historical | Superseded with the removed migration and relocation engine |
@@ -99,8 +102,9 @@ Status labels:
 | `pane_orchestrator_component.md` | Live | Current internal pane-orchestrator component boundary |
 | `pane_orchestrator_tab_local_session_state_seam.md` | Planning | Current pane-orchestrator seam proposal; not a shipped contract yet |
 | `persistent_window_session_contract.md` | Live | Current persistent-session behavior contract |
+| `provable_nushell_floor_budget.md` | Planning | Current hard-budget and proof-standard doc for the under-`5k` Nu push; use it before relying on older survivor/no-go assumptions |
 | `public_yzx_command_surface_canonicalization_audit.md` | Planning | Completed public command-surface audit; records Clap no-go and the core registry deletion lane |
-| `ranked_nu_deletion_budget.md` | Planning | Current ranked deletion queue synthesized from the subsystem audits; use it to choose the next honest Nushell cuts |
+| `ranked_nu_deletion_budget.md` | Planning | Near-term ranked deletion queue from the earlier audit pass; use `provable_nushell_floor_budget.md` for the current hard floor and proof standard |
 | `runtime_activation_state_contract.md` | Historical | Earlier activation model centered on recorded launch profiles and backend-era reuse |
 | `runtime_dependency_preflight_contract.md` | Live | Current launch-preflight versus doctor/install-smoke boundary |
 | `runtime_distribution_capability_tiers.md` | Live | Current distribution-tier and update-owner model |
@@ -110,7 +114,7 @@ Status labels:
 | `rust_owned_test_migration_budget.md` | Planning | Current Nu-to-Rust migration budget for the largest deterministic governed test files |
 | `rust_migration_matrix.md` | Planning | Primary remaining roadmap for deleting product-side Nushell owners, especially the bridge layer and materialization families |
 | `rust_nushell_bridge_contract.md` | Live | Current bridge contract for `yzx_core` helper insertion behind Nushell-owned surfaces |
-| `rust_test_hardening_tools_decision.md` | Planning | Current keep/reject decision for `cargo-nextest`, `cargo-mutants`, and `cargo-fuzz`; use it before adding Rust hardening tooling |
+| `rust_test_hardening_tools_decision.md` | Planning | Current nextest-first Rust runner policy plus continued `cargo-mutants` and `cargo-fuzz` rejection |
 | `setup_shellhook_welcome_terminal_canonicalization_audit.md` | Planning | Completed setup/shellhook/welcome/terminal audit; spawned the front-door and terminal-launch deletion lanes |
 | `shell_opened_editors.md` | Live | Current managed-editor versus shell-opened editor boundary |
 | `spec_docs_contract_alignment_audit.md` | Planning | Current docs/spec alignment audit; feeds contract-item migration and historical-doc cleanup |

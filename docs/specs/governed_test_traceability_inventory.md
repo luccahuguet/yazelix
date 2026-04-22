@@ -158,9 +158,10 @@ Minimum item-ID batches before aggressive pruning:
 
 - `yazelix-rdn7.4.2` should use this inventory to delete, demote, or quarantine
   weak and orphan tests without mass purging the only executable defenses.
-- `yazelix-rdn7.4.3` now records the keep/reject decision for
-  `cargo-mutants`, `cargo-fuzz`, and `cargo-nextest`; follow implementation
-  work through `yazelix-fkgs` if the nextest pilot is worth doing.
+- `yazelix-rdn7.4.3` and `yazelix-rdn7.4.7` now record the current Rust test
+  runner policy and the keep/reject decision for `cargo-mutants` and
+  `cargo-fuzz`. First-party Rust tests should target `cargo nextest run` by
+  default and keep `cargo test` only for doctests and explicit exceptions.
 - `yazelix-0qxa` landed the next workspace/session contract-item batch for
   workspace/session, shell-opened editor, and persistent/non-persistent window
   semantics. Future pruning should keep using those item IDs instead of
