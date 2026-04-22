@@ -20,6 +20,10 @@ path = "src/bin/yzx.rs"
 name = "yzx_repo_validator"
 path = "src/bin/yzx_repo_validator.rs"
 
+[[bin]]
+name = "yzx_repo_maintainer"
+path = "src/bin/yzx_repo_maintainer.rs"
+
 [dependencies]
 lexopt = "0.3"
 serde = { version = "1.0", features = ["derive"] }

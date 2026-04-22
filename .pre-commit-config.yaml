@@ -9,7 +9,7 @@ repos:
         always_run: true
       - id: yazelix-validate-readme-version
         name: validate generated README surface
-        entry: nu nushell/scripts/dev/validate_readme_version.nu
+        entry: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-readme-version
         language: system
         pass_filenames: false
         always_run: true

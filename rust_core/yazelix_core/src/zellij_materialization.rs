@@ -1694,11 +1694,9 @@ keybinds {
 "#,
         )
         .unwrap();
-        let override_lines = read_yazelix_override_keybinds(
-            &overrides_path,
-            std::path::Path::new("/opt/yazelix"),
-        )
-        .unwrap();
+        let override_lines =
+            read_yazelix_override_keybinds(&overrides_path, std::path::Path::new("/opt/yazelix"))
+                .unwrap();
         let merged = override_lines.join("\n");
 
         assert!(merged.contains("toggle_transient_pane"));
@@ -1728,6 +1726,9 @@ keybinds {
         assert!(block.contains("runtime_dir \"/opt/yazelix\""));
         assert!(block.contains("popup_width_percent \"82\""));
         assert!(block.contains("popup_height_percent \"76\""));
-        assert_eq!(block.matches("yazelix_pane_orchestrator location=").count(), 1);
+        assert_eq!(
+            block.matches("yazelix_pane_orchestrator location=").count(),
+            1
+        );
     }
 }

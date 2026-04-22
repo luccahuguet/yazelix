@@ -122,7 +122,7 @@ def run_ci_ack_only_notes_case [] {
     log_line $log_file "Case: CI accepts ack-only structured note updates without a changelog edit"
     let updated_notes = (
         open $fixture.notes
-        | upsert releases.unreleased.acknowledged_guarded_changes ["nushell/scripts/utils/config_schema.nu"]
+        | upsert releases.unreleased.acknowledged_guarded_changes ["home_manager/module.nix"]
     )
     $updated_notes | to toml | save --force $fixture.notes
     commit_fixture_change $fixture "Ack guarded change in upgrade notes only"

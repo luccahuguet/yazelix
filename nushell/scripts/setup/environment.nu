@@ -84,9 +84,6 @@ def main [--welcome-source: string = "", --skip-welcome] {
         )
     }
 
-    # Validate user config against schema
-    use ../utils/config_schema.nu validate_config_against_default
-
     # Keep shell entry narrow: always configure the runtime baseline plus the selected default shell.
     let shells_to_configure = ([$DEFAULT_SHELL, "bash", $default_shell] | uniq)
 

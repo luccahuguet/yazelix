@@ -104,7 +104,7 @@ This spec defines:
 
 | Lane | Entrypoint | Purpose | Notes |
 | --- | --- | --- | --- |
-| Cheap validator lane | `nu nushell/scripts/dev/validate_syntax.nu`, `nu nushell/scripts/dev/validate_readme_version.nu`, `nu nushell/scripts/dev/validate_config_surface_contract.nu` | Very fast structural or source-of-truth checks | Good fit for `prek` and direct CI steps |
+| Cheap validator lane | `nu nushell/scripts/dev/validate_syntax.nu`, `yzx_repo_validator validate-readme-version`, `nu nushell/scripts/dev/validate_config_surface_contract.nu` | Very fast structural or source-of-truth checks | Good fit for `prek` and direct CI steps |
 | Default automated regression lane | `yzx dev test` | The normal non-sweep automated regression suite | Uses fixed Rust `nextest` suites plus explicit `cargo test` exceptions only where required |
 | Non-visual sweep lane | `yzx dev test --sweep` | Matrix coverage for config and supported shell/terminal combinations without opening windows | Environment-sensitive but still scriptable |
 | Visual sweep lane | `yzx dev test --visual` | Real terminal-window validation | Heavy, manualish, and not the default lane |
@@ -119,7 +119,7 @@ The current repo surface should be understood roughly as:
 
 - Cheap validators:
   - `validate_syntax.nu`
-  - `validate_readme_version.nu`
+  - `yzx_repo_validator validate-readme-version`
   - `validate_config_surface_contract.nu`
   - `validate_rust_test_traceability.nu`
   - `validate_specs.nu`
@@ -318,7 +318,7 @@ default regression lane.
 
 That invariant is already defended by:
 
-- `.github/workflows/ci.yml` via `nu nushell/scripts/dev/validate_readme_version.nu`
+- `.github/workflows/ci.yml` via `yzx_repo_validator validate-readme-version`
 - `.pre-commit-config.yaml` via the `yazelix-validate-readme-version` hook
 
 So the duplicate README-version assertion is removed from the governed
@@ -348,7 +348,7 @@ regression suite instead of being run in yet another lane.
 - integration tests: `nix develop -c cargo nextest run --profile ci --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib`
 - CI checks: `nu nushell/scripts/dev/validate_default_test_traceability.nu`
 - CI checks: `nu nushell/scripts/dev/validate_rust_test_traceability.nu`
-- CI checks: `nu nushell/scripts/dev/validate_readme_version.nu`
+- CI checks: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-readme-version`
 - CI checks: `nu nushell/scripts/dev/validate_config_surface_contract.nu`
 - CI checks: `nu nushell/scripts/dev/validate_specs.nu`
 - manual verification: review `.github/workflows/ci.yml` and `.pre-commit-config.yaml` against the lane definitions in this spec
@@ -359,7 +359,7 @@ regression suite instead of being run in yet another lane.
 - Bead: `yazelix-rdn7.4.5.4`
 - Defended by: `nu nushell/scripts/dev/validate_default_test_traceability.nu`
 - Defended by: `nu nushell/scripts/dev/validate_rust_test_traceability.nu`
-- Defended by: `nu nushell/scripts/dev/validate_readme_version.nu`
+- Defended by: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-readme-version`
 - Defended by: `nu nushell/scripts/dev/validate_config_surface_contract.nu`
 - Defended by: `nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev test'`
 - Defended by: `nu nushell/scripts/dev/validate_specs.nu`

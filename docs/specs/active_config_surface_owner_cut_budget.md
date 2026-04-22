@@ -53,7 +53,7 @@ Out of scope:
 | Caller | Current helper use | Budget judgment |
 | --- | --- | --- |
 | `utils/zjstatus_widget.nu` | `get_main_user_config_path` | path join helper should move out of `config_surfaces.nu` |
-| `utils/config_schema.nu` | `get_main_user_config_path`, `load_config_surface_from_main` | pure path/file helper; should move out of `config_surfaces.nu` |
+| deleted `utils/config_schema.nu` | retained schema diagnostics now live in Rust `config_normalize.rs` and `doctor_config_report.rs` | no Nu bridge remains |
 | `maintainer/update_workflow.nu` | `copy_default_config_surfaces`, `load_config_surface_from_main`, `get_main_user_config_path` | maintainer file/template helpers can survive, but not in an active-surface owner file |
 
 ## Rust callers already on the canonical owner

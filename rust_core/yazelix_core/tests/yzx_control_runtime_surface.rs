@@ -6,7 +6,7 @@ use std::fs;
 mod support;
 
 use support::commands::{apply_managed_config_env, yzx_control_command};
-use support::fixtures::{managed_config_fixture, prepend_path, repo_root, write_executable_script};
+use support::fixtures::{managed_config_fixture, prepend_path, write_executable_script};
 
 fn yzx_control_command_in_fixture(
     fixture: &support::fixtures::ManagedConfigFixture,
@@ -53,10 +53,7 @@ default_shell = "nu"
 terminals = ["ghostty"]
 "#,
     );
-    let repo = repo_root();
-
     let output = yzx_control_command_in_fixture(&fixture)
-        .env("YAZELIX_RUNTIME_DIR", &repo)
         .arg("status")
         .arg("--json")
         .output()
@@ -89,20 +86,15 @@ fn yzx_control_status_json_versions_includes_tool_matrix() {
 terminals = ["ghostty"]
 "#,
     );
-    let repo = repo_root();
     let fake_bin = fixture.home_dir.join("fake-bin");
     fs::create_dir_all(&fake_bin).unwrap();
     write_executable_script(
         &fake_bin.join("nix"),
         "#!/bin/sh\nprintf 'nix (Nix) 2.28.3\\n'\n",
     );
-    write_executable_script(
-        &fake_bin.join("nu"),
-        "#!/bin/sh\nprintf '0.105.1\\n'\n",
-    );
+    write_executable_script(&fake_bin.join("nu"), "#!/bin/sh\nprintf '0.105.1\\n'\n");
 
     let output = yzx_control_command_in_fixture(&fixture)
-        .env("YAZELIX_RUNTIME_DIR", &repo)
         .env("PATH", prepend_path(&fake_bin))
         .arg("status")
         .arg("--json")
@@ -131,6 +123,10 @@ terminals = ["ghostty"]
 #[test]
 fn yzx_control_update_upstream_rejects_home_manager_owned_install() {
     let fixture = managed_config_fixture("");
+    let fake_bin = fixture.home_dir.join("fake-bin");
+    fs::create_dir_all(&fake_bin).unwrap();
+    write_executable_script(&fake_bin.join("nix"), "#!/bin/sh\nexit 0\n");
+
     let hm_store_config = fixture
         .home_dir
         .join("hm-store")
@@ -142,6 +138,7 @@ fn yzx_control_update_upstream_rejects_home_manager_owned_install() {
     std::os::unix::fs::symlink(&hm_store_config, &fixture.managed_config).unwrap();
 
     let output = yzx_control_command_in_fixture(&fixture)
+        .env("PATH", prepend_path(&fake_bin))
         .arg("update")
         .arg("upstream")
         .output()

@@ -23,18 +23,21 @@ This is the current top-level budget document for the under-`5k` push.
 
 ## Current Measured Surface
 
-Measured on `2026-04-22` from the tracked tree after deleting
-`nushell/scripts/yzx/enter.nu` under `yazelix-w6sz.5.2`.
+Measured on `2026-04-22` from the tracked tree after the first hard-budget
+cuts deleted the remaining governed Nu tests, the stale config schema helper,
+the interactive Nix detector, README surface Nu, and the installed-runtime Nu
+validator.
 
 | Family | Current included surface | Current LOC | Hard target LOC | Main beads |
 | --- | --- | ---: | ---: | --- |
-| Governed Nu tests | `nushell/scripts/dev/test_*.nu` | `13,115` | `0` | `yazelix-rdn7.4.5`, `yazelix-rdn7.4.7` |
-| Deterministic Nu validators | `nushell/scripts/dev/validate*.nu` | `1,088` | `0` | `yazelix-rdn7.4.6`, `yazelix-rdn7.4.7` |
-| Maintainer and `yzx dev` shell orchestration | `nushell/scripts/maintainer/*.nu`, `nushell/scripts/yzx/dev.nu`, residual non-test dev orchestration | `4,077` | `1,200` | `yazelix-8ih0`, `yazelix-8ih0.7`, `yazelix-8ih0.8` |
+| Governed Nu tests | `nushell/scripts/dev/test_*.nu` | `0` | `0` | `yazelix-rdn7.4.5`, `yazelix-rdn7.4.7` |
+| Shell-heavy E2E and sweep runners | retained `*_runner.nu` files under `nushell/scripts/dev/` | `881` | `0` | `yazelix-8ih0`, `yazelix-rdn7.4.5` |
+| Deterministic Nu validators | `nushell/scripts/dev/validate*.nu` | `837` | `0` | `yazelix-rdn7.4.6`, `yazelix-rdn7.4.7` |
+| Maintainer and `yzx dev` shell orchestration | `nushell/scripts/maintainer/*.nu`, `nushell/scripts/yzx/dev.nu`, residual non-test dev orchestration | `3,996` | `1,200` | `yazelix-8ih0`, `yazelix-8ih0.7`, `yazelix-8ih0.8` |
 | Integration and popup wrapper glue | `nushell/scripts/integrations/*.nu`, `nushell/scripts/zellij_wrappers/*.nu` | `1,328` | `300` | `yazelix-w6sz.2` |
-| Setup and bootstrap shell entry | `setup/environment.nu`, `setup/initializers.nu`, `core/start_yazelix.nu`, `core/start_yazelix_inner.nu`, `core/launch_yazelix.nu` | `1,073` | `500` | `yazelix-w6sz.3`, `yazelix-nuj1`, `yazelix-p18h` |
-| Front-door UX and public shell presentation | `setup/welcome.nu`, `utils/ascii_art.nu`, `utils/upgrade_summary.nu`, `yzx/menu.nu`, `yzx/screen.nu`, `yzx/tutor.nu`, `yzx/whats_new.nu`, `yzx/popup.nu`, `yzx/edit.nu`, `yzx/import.nu` | `2,299` | `950` | `yazelix-w6sz.4`, `yazelix-dejl` |
-| Runtime helpers, bridges, and shared utilities | `utils/*.nu` except `ascii_art.nu` and `upgrade_summary.nu` | `3,126` | `1,050` | `yazelix-lnk6`, `yazelix-dejl`, `yazelix-nuj1`, `yazelix-p18h` |
+| Setup and bootstrap shell entry | `setup/environment.nu`, `setup/initializers.nu`, `core/start_yazelix.nu`, `core/start_yazelix_inner.nu`, `core/launch_yazelix.nu` | `1,070` | `500` | `yazelix-w6sz.3`, `yazelix-nuj1`, `yazelix-p18h` |
+| Front-door UX and public shell presentation | `setup/welcome.nu`, `utils/ascii_art.nu`, `utils/upgrade_summary.nu`, `yzx/menu.nu`, `yzx/screen.nu`, `yzx/tutor.nu`, `yzx/whats_new.nu`, `yzx/popup.nu`, `yzx/edit.nu`, `yzx/import.nu` | `2,281` | `950` | `yazelix-w6sz.4`, `yazelix-dejl` |
+| Runtime helpers, bridges, and shared utilities | `utils/*.nu` except `ascii_art.nu` and `upgrade_summary.nu` | `2,483` | `1,050` | `yazelix-lnk6`, `yazelix-dejl`, `yazelix-nuj1`, `yazelix-p18h` |
 | Session and desktop host integration | `core/yzx_session.nu`, `yzx/desktop.nu`, `yzx/launch.nu` | `572` | `200` | `yazelix-w6sz.5` |
 
 Combined hard target: `4,200` Nu LOC

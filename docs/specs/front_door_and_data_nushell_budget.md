@@ -25,7 +25,7 @@ In scope:
 - `yzx/edit.nu`
 - `yzx/import.nu`
 - the large data-bearing subsets inside `utils/constants.nu` and
-  `utils/config_schema.nu`
+  the surviving front-door/runtime presentation helpers
 
 Out of scope:
 
@@ -39,14 +39,13 @@ Measured on `2026-04-22`:
 
 | Surface | Current LOC | Hard target LOC | Notes |
 | --- | ---: | ---: | --- |
-| Front-door UX family | `2,299` | `950` | full front-door renderer and public shell presentation family |
-| Data-heavy subset | `1,604` | `350` | subset only; counts are not additive because these files overlap the front-door and runtime-helper families |
+| Front-door UX family | `2,281` | `950` | full front-door renderer and public shell presentation family |
+| Data-heavy subset | `1,262` | `350` | subset only; counts are not additive because these files overlap the front-door and runtime-helper families |
 
 The data-heavy subset is:
 
 - `utils/ascii_art.nu`
 - `utils/constants.nu`
-- `utils/config_schema.nu`
 - `utils/upgrade_summary.nu`
 
 ## `yazelix-w6sz.4.1` Front-Door UX Budget
@@ -94,12 +93,20 @@ Target outcomes:
 - `utils/constants.nu`
   - keep only small irreducible runtime constants
   - move large static tables or policy maps out of Nu
-- `utils/config_schema.nu`
-  - keep only the smallest live contract bridge if one still exists
-  - move schema/data shaping to Rust or data files
 - `utils/upgrade_summary.nu`
   - keep only small render glue if needed
   - move static copy/data shaping out of Nu
+
+Completed cuts:
+
+- `yazelix-w6sz.3.2` removed the dead `setup/environment.nu` import of
+  `utils/config_schema.nu`
+- `yazelix-dejl.4` deleted `utils/config_schema.nu`; Rust
+  `config_normalize.rs` and `doctor_config_report.rs` own the retained schema
+  diagnostics
+- `yazelix-w6sz.4.2` removed the separate `utils/upgrade_notes.nu` series
+  lookup and kept welcome release copy on the existing `upgrade_summary.nu`
+  path
 
 Hard rule:
 
@@ -159,7 +166,9 @@ Follow-up expectation:
 ## Traceability
 
 - Bead: `yazelix-w6sz.4.1`
+- Bead: `yazelix-w6sz.4.2`
 - Bead: `yazelix-dejl.1`
+- Bead: `yazelix-dejl.4`
 - Defended by: `nu nushell/scripts/dev/validate_specs.nu`
 - Informed by: `docs/specs/setup_shellhook_welcome_terminal_canonicalization_audit.md`
 - Informed by: `docs/specs/welcome_screen_style_contract.md`

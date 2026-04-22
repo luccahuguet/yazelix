@@ -5,7 +5,6 @@
 use ../utils/ascii_art.nu *
 use ../utils/constants.nu [DEFAULT_TERMINAL YAZELIX_VERSION]
 use ../utils/keypress_polling.nu poll_for_keypress_status
-use ../utils/upgrade_notes.nu get_current_major_series_entry
 use ../utils/upgrade_summary.nu get_upgrade_note_entry
 
 def poll_for_welcome_keypress [timeout: duration] {
@@ -72,18 +71,7 @@ def format_terminal_info [facts: record, colors: record]: nothing -> string {
 
 # Build complete welcome message
 def get_startup_release_headline [] {
-    let series_headline = (try {
-        let entry = (get_current_major_series_entry)
-        ($entry.headline? | default "" | into string | str trim)
-    } catch {
-        ""
-    })
-
-    if ($series_headline | is-not-empty) {
-        return $series_headline
-    }
-
-    let release_headline = (try {
+    let raw_headline = (try {
         let entry = (get_upgrade_note_entry)
         if $entry == null {
             ""
@@ -93,12 +81,6 @@ def get_startup_release_headline [] {
     } catch {
         ""
     })
-
-    let raw_headline = if ($series_headline | is-not-empty) {
-        $series_headline
-    } else {
-        $release_headline
-    }
 
     $raw_headline | str replace -r '\.+$' ""
 }

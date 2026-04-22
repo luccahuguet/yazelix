@@ -54,7 +54,10 @@ ya_command = "ya"
     );
     write_executable_script(
         &fake_bin.join("ya"),
-        &format!("#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\n", ya_log.display()),
+        &format!(
+            "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\n",
+            ya_log.display()
+        ),
     );
 
     let output = yzx_control_command_in_fixture(&fixture)
@@ -69,13 +72,22 @@ ya_command = "ya"
     assert!(output.stderr.is_empty());
     let stdout = String::from_utf8(output.stdout).unwrap();
     let payload: Value = serde_json::from_slice(&fs::read(retarget_payload_log).unwrap()).unwrap();
-    assert_eq!(fs::read_to_string(zellij_commands_log).unwrap().trim(), "retarget_workspace");
-    assert_eq!(payload["workspace_root"], target_dir.to_string_lossy().to_string());
+    assert_eq!(
+        fs::read_to_string(zellij_commands_log).unwrap().trim(),
+        "retarget_workspace"
+    );
+    assert_eq!(
+        payload["workspace_root"],
+        target_dir.to_string_lossy().to_string()
+    );
     assert_eq!(payload["cd_focused_pane"], true);
     assert_eq!(payload["editor"], "helix");
     assert_eq!(
         fs::read_to_string(ya_log).unwrap().trim(),
-        format!("emit-to plugin-sidebar-yazi-123 cd {}", target_dir.display())
+        format!(
+            "emit-to plugin-sidebar-yazi-123 cd {}",
+            target_dir.display()
+        )
     );
     assert!(stdout.contains("Updated current tab workspace directory to"));
     assert!(stdout.contains("Managed editor cwd synced"));
@@ -135,7 +147,10 @@ ya_command = "ya"
     );
     write_executable_script(
         &fake_bin.join("ya"),
-        &format!("#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\n", ya_log.display()),
+        &format!(
+            "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\n",
+            ya_log.display()
+        ),
     );
 
     let output = yzx_control_command_in_fixture(&fixture)

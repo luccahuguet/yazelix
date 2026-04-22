@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use yazelix_core::repo_contract_validation::{
-    UpgradeContractOptions, validate_config_surface_contract, validate_nushell_budget,
-    validate_upgrade_contract,
+    UpgradeContractOptions, validate_config_surface_contract, validate_installed_runtime_contract,
+    validate_nushell_budget, validate_readme_version, validate_upgrade_contract,
 };
 use yazelix_core::repo_validation::{
     repo_root, validate_default_test_traceability, validate_rust_test_traceability, validate_specs,
@@ -12,7 +12,7 @@ fn main() {
     let mut resolved_repo_root = repo_root();
     let Some(first_arg) = args.next() else {
         eprintln!(
-            "Usage: yzx_repo_validator [--repo-root PATH] <validate-specs|validate-default-test-traceability|validate-rust-test-traceability|validate-config-surface-contract|validate-nushell-budget|validate-upgrade-contract>"
+            "Usage: yzx_repo_validator [--repo-root PATH] <validate-specs|validate-default-test-traceability|validate-rust-test-traceability|validate-config-surface-contract|validate-nushell-budget|validate-upgrade-contract|validate-installed-runtime-contract|validate-readme-version>"
         );
         std::process::exit(2);
     };
@@ -25,7 +25,7 @@ fn main() {
         resolved_repo_root = PathBuf::from(path);
         let Some(command) = args.next() else {
             eprintln!(
-                "Usage: yzx_repo_validator [--repo-root PATH] <validate-specs|validate-default-test-traceability|validate-rust-test-traceability|validate-config-surface-contract|validate-nushell-budget|validate-upgrade-contract>"
+                "Usage: yzx_repo_validator [--repo-root PATH] <validate-specs|validate-default-test-traceability|validate-rust-test-traceability|validate-config-surface-contract|validate-nushell-budget|validate-upgrade-contract|validate-installed-runtime-contract|validate-readme-version>"
             );
             std::process::exit(2);
         };
@@ -52,6 +52,14 @@ fn main() {
         "validate-nushell-budget" => (
             validate_nushell_budget(&resolved_repo_root),
             Some("✅ Nushell budget allowlist and no-growth ceilings are valid".to_string()),
+        ),
+        "validate-installed-runtime-contract" => (
+            validate_installed_runtime_contract(&resolved_repo_root),
+            Some("✅ Installed-runtime contract smoke passed".to_string()),
+        ),
+        "validate-readme-version" => (
+            validate_readme_version(&resolved_repo_root),
+            Some("✅ README version and latest-series block are valid".to_string()),
         ),
         "validate-upgrade-contract" => {
             let mut options = UpgradeContractOptions::default();
@@ -84,7 +92,7 @@ fn main() {
         }
         _ => {
             eprintln!(
-                "Unknown validator command `{}`. Expected validate-specs, validate-default-test-traceability, validate-rust-test-traceability, validate-config-surface-contract, validate-nushell-budget, or validate-upgrade-contract.",
+                "Unknown validator command `{}`. Expected validate-specs, validate-default-test-traceability, validate-rust-test-traceability, validate-config-surface-contract, validate-nushell-budget, validate-upgrade-contract, validate-installed-runtime-contract, or validate-readme-version.",
                 command
             );
             std::process::exit(2);
@@ -111,6 +119,10 @@ fn main() {
                     }
                     "validate-nushell-budget" => "Nushell budget validation failed",
                     "validate-upgrade-contract" => "Upgrade contract validation failed",
+                    "validate-installed-runtime-contract" => {
+                        "Installed-runtime contract validation failed"
+                    }
+                    "validate-readme-version" => "README version validation failed",
                     _ => unreachable!(),
                 };
                 eprintln!("{}", failure_label);

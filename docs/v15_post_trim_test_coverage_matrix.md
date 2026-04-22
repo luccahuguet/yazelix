@@ -24,10 +24,10 @@ The point is not to defend every old test file. The point is to make it obvious 
   - v15 no longer treats Yazelix as a broad `devenv` owner. The old tests were mostly defending profile reuse, build-shell command construction, or lock/runtime indirection that no longer belongs to the retained contract.
   - Generated-state repair now lives under startup preflight, doctor guidance, and internal helper paths rather than under a public refresh command.
 - Current defenses:
-  - Removed runtime-manager and lock ownership is defended by [`nushell/scripts/dev/validate_installed_runtime_contract.nu`](../nushell/scripts/dev/validate_installed_runtime_contract.nu).
-  - Removed `core.refresh_output` is rejected as an unsupported config surface by `test_invalid_config_is_classified_as_config_problem` in [`nushell/scripts/dev/test_yzx_core_commands.nu`](../nushell/scripts/dev/test_yzx_core_commands.nu).
-  - Startup preflight still points missing generated state at `yzx doctor` through [`nushell/scripts/dev/test_yzx_workspace_commands.nu`](../nushell/scripts/dev/test_yzx_workspace_commands.nu).
-  - No-migration diagnostics still cover startup plus doctor via [`nushell/scripts/dev/test_stale_config_diagnostics_e2e.nu`](../nushell/scripts/dev/test_stale_config_diagnostics_e2e.nu).
+  - Removed runtime-manager and lock ownership is defended by the Rust `yzx_repo_validator validate-installed-runtime-contract` command.
+  - Removed `core.refresh_output` is rejected as an unsupported config surface by Rust config-normalization coverage in [`rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`](../rust_core/yazelix_core/tests/yzx_core_config_normalize.rs).
+  - Startup preflight still points missing generated state at `yzx doctor` through Rust workspace/runtime surface coverage in [`rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs`](../rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs).
+  - No-migration diagnostics still cover startup plus doctor via [`nushell/scripts/dev/stale_config_diagnostics_e2e_runner.nu`](../nushell/scripts/dev/stale_config_diagnostics_e2e_runner.nu).
 
 ## 2. Pack sidecar and pack config surface
 
@@ -41,7 +41,7 @@ The point is not to defend every old test file. The point is to make it obvious 
   - Rust `config-surface.resolve` bootstrap coverage keeps first-run managed config creation from reviving `yazelix_packs.toml` in [`rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`](../rust_core/yazelix_core/tests/yzx_core_config_normalize.rs).
   - Legacy `[packs]` config is rejected by the Rust-owned `config_normalize_rejects_removed_surfaces_without_rewriting` coverage in [`rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`](../rust_core/yazelix_core/tests/yzx_core_config_normalize.rs).
   - Installed runtime and installer no longer ship or seed pack files in [`nushell/scripts/dev/validate_flake_install.nu`](../nushell/scripts/dev/validate_flake_install.nu).
-  - Source-level installed-runtime contract checks also forbid the old pack surfaces in [`nushell/scripts/dev/validate_installed_runtime_contract.nu`](../nushell/scripts/dev/validate_installed_runtime_contract.nu).
+  - Source-level installed-runtime contract checks also forbid the old pack surfaces through the Rust `yzx_repo_validator validate-installed-runtime-contract` command.
 - Remaining gap:
   - None. The contract is intentionally gone and the absence is defended directly.
 
@@ -88,9 +88,9 @@ The point is not to defend every old test file. The point is to make it obvious 
   - The monolithic managed-config file was intentionally split so Helix, runtime-setup, and runtime-resolution behavior each live with the subsystem they actually defend.
   - The old Nix scenario files were lightweight environment probes rather than strong product-contract tests.
 - Current defenses:
-  - Runtime-setup and runtime-resolution contracts are covered in [`nushell/scripts/dev/test_shell_managed_config_contracts.nu`](../nushell/scripts/dev/test_shell_managed_config_contracts.nu).
-  - Helix-specific managed-config behavior is covered in [`nushell/scripts/dev/test_helix_managed_config_contracts.nu`](../nushell/scripts/dev/test_helix_managed_config_contracts.nu).
-  - Real install/runtime/Nix-path coverage now comes from installed-runtime validators such as [`nushell/scripts/dev/validate_flake_install.nu`](../nushell/scripts/dev/validate_flake_install.nu) and [`nushell/scripts/dev/validate_installed_runtime_contract.nu`](../nushell/scripts/dev/validate_installed_runtime_contract.nu) rather than synthetic PATH-only scenario probes.
+  - Runtime-setup and runtime-resolution contracts are covered by Rust runtime-env and control-plane coverage under [`rust_core/yazelix_core/tests/`](../rust_core/yazelix_core/tests/).
+  - Helix-specific managed-config behavior is covered by Rust Helix materialization coverage under [`rust_core/yazelix_core/tests/`](../rust_core/yazelix_core/tests/).
+  - Real install/runtime/Nix-path coverage now comes from installed-runtime validators such as [`nushell/scripts/dev/validate_flake_install.nu`](../nushell/scripts/dev/validate_flake_install.nu) and the Rust `yzx_repo_validator validate-installed-runtime-contract` command rather than synthetic PATH-only scenario probes.
 - Remaining gap:
   - None. This is a real strengthening, not just a rename.
 

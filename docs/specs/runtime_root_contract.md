@@ -56,8 +56,8 @@ This contract keeps those boundaries explicit.
   templates, plugins, and helper binaries through that root instead of assuming
   a repo clone under `~/.config/yazelix`
 - Verification: automated
-  `nushell/scripts/dev/test_yzx_workspace_commands.nu`; validator
-  `nu nushell/scripts/dev/validate_installed_runtime_contract.nu`
+  `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs`; validator
+  `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-installed-runtime-contract`
 
 #### ROOT-003
 - Type: ownership
@@ -151,18 +151,18 @@ This contract keeps those boundaries explicit.
 
 ## Verification
 
-- config/runtime path checks in `nushell/scripts/dev/test_yzx_generated_configs.nu`
-- workspace/runtime launch checks in `nushell/scripts/dev/test_yzx_workspace_commands.nu`
+- config/runtime path checks in `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`
+- workspace/runtime launch checks in `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs`
 - maintainer-shell runtime-boundary checks in `nushell/scripts/dev/test_yzx_maintainer.nu`
-- installed-runtime validation in `nushell/scripts/dev/validate_installed_runtime_contract.nu`
+- installed-runtime validation through `yzx_repo_validator validate-installed-runtime-contract`
 
 ## Traceability
 
 - Bead: `yazelix-qgj7.2.4.3`
-- Defended by: `nu nushell/scripts/dev/test_yzx_generated_configs.nu`
-- Defended by: `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
+- Defended by: `cargo nextest run --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_core_config_normalize`
+- Defended by: `cargo nextest run --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
 - Defended by: `nu nushell/scripts/dev/test_yzx_maintainer.nu`
-- Defended by: `nu nushell/scripts/dev/validate_installed_runtime_contract.nu`
+- Defended by: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-installed-runtime-contract`
 
 ## Open Questions
 

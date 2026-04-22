@@ -98,7 +98,7 @@ This file exists so current docs and current specs can point at one authoritativ
 
 ## Verification
 
-- `nu nushell/scripts/dev/validate_installed_runtime_contract.nu`
+- `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-installed-runtime-contract`
 - `nu nushell/scripts/dev/validate_flake_install.nu all`
 - `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
 - `nu nushell/scripts/dev/test_yzx_generated_configs.nu`
@@ -108,7 +108,7 @@ This file exists so current docs and current specs can point at one authoritativ
 ## Traceability
 
 - Bead: `yazelix-qgj7.2.4.3`
-- Defended by: `nu nushell/scripts/dev/validate_installed_runtime_contract.nu`
+- Defended by: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-installed-runtime-contract`
 - Defended by: `nu nushell/scripts/dev/validate_flake_install.nu all`
 - Defended by: `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
 - Defended by: `nu nushell/scripts/dev/test_yzx_generated_configs.nu`

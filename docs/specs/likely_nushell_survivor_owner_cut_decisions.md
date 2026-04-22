@@ -144,7 +144,7 @@ commands in Rust.
 ### Reviewed files
 
 - `nushell/scripts/utils/terminal_launcher.nu`
-- `nushell/scripts/utils/nix_detector.nu`
+- deleted `nushell/scripts/utils/nix_detector.nu`
 - `nushell/scripts/utils/common.nu`
 - adjacent launch/runtime callers in `start_yazelix.nu`, `launch_yazelix.nu`,
   and POSIX launchers
@@ -169,7 +169,7 @@ delete-first follow-ups already tracked:
     helper and delete the inline Nushell shell-program assembly
 
 Outside those two cuts, the remaining launcher/runtime helper code is still
-mostly shell and process ownership. `nix_detector.nu` is maintainer-only and
+mostly shell and process ownership. `nix_detector.nu` was maintainer-only and
 interactive; moving it to Rust would not delete the real operator-facing logic.
 `common.nu` still carries shell-facing path/root helpers that remain coupled to
 Nu/POSIX launch code.

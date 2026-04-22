@@ -43,6 +43,7 @@ pub fn repo_root() -> PathBuf {
 
 pub fn write_runtime_contract_assets(repo: &Path, runtime_dir: &Path) {
     fs::create_dir_all(runtime_dir.join("config_metadata")).unwrap();
+    fs::create_dir_all(runtime_dir.join("nushell/scripts/utils")).unwrap();
     fs::copy(
         repo.join("yazelix_default.toml"),
         runtime_dir.join("yazelix_default.toml"),
@@ -54,6 +55,11 @@ pub fn write_runtime_contract_assets(repo: &Path, runtime_dir: &Path) {
     )
     .unwrap();
     fs::write(runtime_dir.join(".taplo.toml"), "[format]\n").unwrap();
+    fs::write(
+        runtime_dir.join("nushell/scripts/utils/constants.nu"),
+        "export const YAZELIX_VERSION = \"v-test\"\n",
+    )
+    .unwrap();
 }
 
 pub fn write_executable_script(path: &Path, body: &str) {

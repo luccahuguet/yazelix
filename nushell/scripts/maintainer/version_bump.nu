@@ -1,7 +1,5 @@
 #!/usr/bin/env nu
 
-use ./readme_surface.nu [sync_readme_surface]
-
 def fail [message: string] {
     error make {msg: $message}
 }
@@ -204,8 +202,19 @@ def sync_readme_version [repo_root: string, target_version: string] {
     if not ($readme_path | path exists) {
         fail $"README.md not found under ($repo_root)"
     }
-    with-env {YAZELIX_RUNTIME_DIR: $repo_root} {
-        sync_readme_surface $readme_path $target_version | ignore
+    let result = (
+        ^nix develop -c cargo run --quiet --manifest-path ($repo_root | path join "rust_core" "Cargo.toml")
+            -p yazelix_core
+            --bin yzx_repo_maintainer
+            --
+            --repo-root $repo_root
+            sync-readme-surface
+            --readme-path $readme_path
+            --version $target_version
+        | complete
+    )
+    if $result.exit_code != 0 {
+        fail $"Failed to sync README surface through Rust maintainer owner.\n($result.stderr | str trim)"
     }
 }
 

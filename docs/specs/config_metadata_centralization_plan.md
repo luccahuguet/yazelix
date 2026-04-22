@@ -11,7 +11,7 @@ The current system repeats the same meaning in too many places:
 - `yazelix_default.toml` defines user-facing keys and defaults
 - `home_manager/module.nix` defines Nix-side defaults, types, and emits TOML again
 - `nushell/scripts/utils/config_parser.nu` repeats defaults and validation rules
-- `nushell/scripts/utils/config_schema.nu` repeats enum and schema rules
+- deleted `nushell/scripts/utils/config_schema.nu` no longer repeats enum and schema rules
 - `config_metadata/main_config_contract.toml` is now the canonical artifact, but not every consumer has been migrated to it yet
 
 That repetition already drifts. One concrete example today is `yazi.plugins`:
@@ -92,13 +92,13 @@ This is the exact kind of subtle mismatch that a centralized contract should pre
 
 ## Verification
 
-- manual review: compare `yazelix_default.toml`, `home_manager/module.nix`, `config_metadata/main_config_contract.toml`, `nushell/scripts/utils/config_parser.nu`, and `nushell/scripts/utils/config_schema.nu`
+- manual review: compare `yazelix_default.toml`, `home_manager/module.nix`, `config_metadata/main_config_contract.toml`, and the Rust `config_normalize.rs` consumers
 - manual review: confirm the `yazi.plugins` default drift example in the current tree
 
 ## Traceability
 
 - Bead: `yazelix-0oj1`
-- Defended by: `manual comparison of current config metadata duplication sites in yazelix_default.toml, home_manager/module.nix, main_config_contract.toml, config_parser.nu, and config_schema.nu`
+- Defended by: `manual comparison of current config metadata duplication sites in yazelix_default.toml, home_manager/module.nix, main_config_contract.toml, and Rust config normalization consumers`
 
 ## Open Questions
 

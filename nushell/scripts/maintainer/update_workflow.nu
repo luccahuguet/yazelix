@@ -3,8 +3,31 @@
 use repo_checkout.nu require_yazelix_repo_root
 use ../utils/config_files.nu [copy_default_config_surfaces load_config_surface_from_main]
 use ../utils/config_paths.nu get_main_user_config_path
-use readme_surface.nu sync_readme_surface
-use ../utils/nix_detector.nu ensure_nix_available
+
+def ensure_nix_available [] {
+    if (which nix | where type == "external" | is-empty) {
+        print "❌ nix not found in PATH."
+        print "   Install Nix, restart the shell, or enter an environment where `nix --version` works before running the maintainer update workflow."
+        exit 1
+    }
+
+    let version_result = (^nix --version | complete)
+    if $version_result.exit_code != 0 {
+        print "❌ nix exists in PATH, but `nix --version` failed."
+        let stderr = ($version_result.stderr | str trim)
+        if ($stderr | is-not-empty) {
+            print $stderr
+        }
+        exit 1
+    }
+
+    let flake_result = (^nix flake --help | complete)
+    if $flake_result.exit_code != 0 {
+        print "❌ nix flakes are not available in this shell."
+        print "   Enable `nix-command flakes` or use the Yazelix maintainer shell before running this workflow."
+        exit 1
+    }
+}
 
 def update_constant_value [contents: string, key: string, new_value: string] {
     let pattern = $"export const ($key) = \"[^\"]+\""
@@ -211,14 +234,35 @@ def get_declared_yazelix_version [] {
 }
 
 def sync_readme_version_marker [] {
-    let readme_path = ((require_yazelix_repo_root) | path join "README.md")
+    let repo_root = require_yazelix_repo_root
+    let readme_path = ($repo_root | path join "README.md")
     if not ($readme_path | path exists) {
         print $"❌ README not found: ($readme_path)"
         exit 1
     }
 
     let declared_version = get_declared_yazelix_version
-    let sync_result = (sync_readme_surface $readme_path $declared_version)
+    let result = (
+        ^nix develop -c cargo run --quiet --manifest-path ($repo_root | path join "rust_core" "Cargo.toml")
+            -p yazelix_core
+            --bin yzx_repo_maintainer
+            --
+            --repo-root $repo_root
+            sync-readme-surface
+            --readme-path $readme_path
+            --version $declared_version
+        | complete
+    )
+    if $result.exit_code != 0 {
+        print "❌ Failed to sync README surface through Rust maintainer owner."
+        let stderr = ($result.stderr | str trim)
+        if ($stderr | is-not-empty) {
+            print $stderr
+        }
+        exit 1
+    }
+
+    let sync_result = ($result.stdout | from json)
     let title_changed = $sync_result.title_changed
     let series_changed = $sync_result.series_changed
 

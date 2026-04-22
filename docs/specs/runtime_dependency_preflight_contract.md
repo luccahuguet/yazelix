@@ -70,8 +70,8 @@ Without a written contract:
   Helix runtime conflicts, and broader install integrity remain doctor or
   install-smoke work rather than universal launch blockers
 - Verification: automated
-  `nushell/scripts/dev/test_yzx_doctor_commands.nu`; automated
-  `nu nushell/scripts/dev/validate_installed_runtime_contract.nu`
+  `rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs`; automated
+  `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-installed-runtime-contract`
 
 #### PRE-005
 - Type: boundary
@@ -222,7 +222,7 @@ This matrix is intentionally concrete. It exists to stop runtime checks from dri
   - `nushell/scripts/core/launch_yazelix.nu`
   - `nushell/scripts/utils/terminal_launcher.nu`
   - `nushell/scripts/utils/doctor_fix.nu`
-  - `nushell/scripts/dev/validate_installed_runtime_contract.nu`
+  - `yzx_repo_validator validate-installed-runtime-contract`
   - `nushell/scripts/dev/validate_flake_install.nu`
 - integration tests:
   - `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`

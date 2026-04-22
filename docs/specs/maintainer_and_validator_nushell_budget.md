@@ -35,8 +35,8 @@ Measured on `2026-04-22`:
 
 | Family | Current LOC | Hard target LOC | Main follow-up |
 | --- | ---: | ---: | --- |
-| Maintainer and `yzx dev` shell orchestration | `4,077` | `1,200` | `yazelix-8ih0` |
-| Deterministic validators and contract linters | `1,091` | `0` | `yazelix-rdn7.4.6` |
+| Maintainer and `yzx dev` shell orchestration | `3,996` | `1,200` | `yazelix-8ih0` |
+| Deterministic validators and contract linters | `837` | `0` | `yazelix-rdn7.4.6` |
 
 ## Maintainer And `yzx dev` Budget
 
@@ -103,7 +103,7 @@ These should not survive as broad owned Nu surfaces:
 
 ### Target
 
-All `1,091` current lines of deterministic validators should leave Nu. The
+All `837` current lines of deterministic validators should leave Nu. The
 target is `0` long-term governed Nu validator LOC.
 
 ### Split
@@ -111,8 +111,9 @@ target is `0` long-term governed Nu validator LOC.
 | Validator cluster | Current examples | Budget judgment | Owning follow-up |
 | --- | --- | --- | --- |
 | Spec and test traceability validators | `validate_specs.nu`, `validate_default_test_traceability.nu`, `validate_rust_test_traceability.nu`, `validate_default_test_count_budget.nu` | Rust-port first | `yazelix-rdn7.4.6.2` |
-| Config, upgrade, and package validators | `validate_config_surface_contract.nu`, `validate_upgrade_contract.nu`, `validate_flake_interface.nu`, `validate_nixpkgs_package.nu`, `validate_nixpkgs_submission.nu`, `validate_flake_install.nu`, `validate_readme_version.nu` | Rust-port first | `yazelix-rdn7.4.6.3` |
-| Installed-runtime validator | `validate_installed_runtime_contract.nu` | split decision; do not fake a pure Rust port if the real contract still executes runtime shell paths | `yazelix-rdn7.4.6.5`, `yazelix-rdn7.4.6.6` |
+| Config, upgrade, and package validators | `validate_config_surface_contract.nu`, `validate_upgrade_contract.nu`, `validate_flake_interface.nu`, `validate_nixpkgs_package.nu`, `validate_nixpkgs_submission.nu`, `validate_flake_install.nu` | Rust-port first | `yazelix-rdn7.4.6.3` |
+| Installed-runtime validator | Rust `yzx_repo_validator validate-installed-runtime-contract`; deleted `validate_installed_runtime_contract.nu` | completed Rust owner cut; fixed external probes remain inside Rust | `yazelix-rdn7.4.6.6` |
+| README surface/version validator | Rust `yzx_repo_validator validate-readme-version`; Rust `yzx_repo_maintainer sync-readme-surface`; deleted `validate_readme_version.nu` and `readme_surface.nu` | completed Rust owner cut | `yazelix-8ih0.2` |
 
 ### Validator floor rules
 
@@ -165,6 +166,27 @@ The config and upgrade validator port should also add no new crates.
     that invoke the Rust validator binary
   - any remaining `git` and `nix` probe layer must stay explicit and fixed-argv
 
+The installed-runtime and README surface cuts also add no new crates.
+
+- production crates reused:
+  - `serde`
+  - `serde_json`
+  - `toml`
+- in-house logic kept:
+  - fixed external command execution for `nix flake show`, `nix build`, and the
+    built `yzx why` smoke
+  - README title and generated latest-series block rendering
+- rejected alternatives:
+  - keeping Nu compatibility shims for deleted validator commands, because CI
+    and pre-commit can call the Rust binary directly
+  - adding a broad command framework, because these are private maintainer
+    binaries with small fixed command surfaces
+- packaging impact:
+  - `yzx_repo_validator` now owns the deterministic installed-runtime and
+    README validation surfaces
+  - `yzx_repo_maintainer` owns the README surface mutation path used by
+    release/update workflows
+
 ## Installed-Runtime Boundary
 
 `yazelix-rdn7.4.6.5` should use this owner split for
@@ -200,21 +222,50 @@ by Rust, not shell-authored logic that needs a surviving Nu seam.
 
 No surviving Nu validator owner is justified here.
 
-`yazelix-rdn7.4.6.6` should port the installed-runtime validator end-to-end to
-Rust, keep any required external command probes explicit and fixed-argv inside
-Rust, and delete or demote the Nu owner to a compatibility shim only if that
-shim still buys something real.
+`yazelix-rdn7.4.6.6` ports the installed-runtime validator end-to-end to Rust,
+keeps required external command probes explicit and fixed-argv inside Rust, and
+deletes the Nu owner. No compatibility shim is retained.
+
+## Maintainer Decision Cuts From `yazelix-8ih0`
+
+`yazelix-8ih0.2` moved deterministic README mutation and validation to Rust and
+deleted `maintainer/readme_surface.nu` plus `dev/validate_readme_version.nu`.
+
+`yazelix-8ih0.4` records a no-go for broad Rust ownership of issue sync and
+repo checkout today: they remain external-tool-heavy `gh`, `bd`, `git`, and
+repo-shell orchestration. Future cuts should extract deterministic mapping or
+selection logic only when it deletes Nu policy, not when it merely hides the
+same tools behind Rust.
+
+`yazelix-8ih0.5` records a no-go for broad Rust ownership of plugin build and
+update workflow today. These paths are cargo/Nix/git/build orchestration; Rust
+should own deterministic request construction and validation, while Nu may
+temporarily retain fixed process orchestration until a deletion lane is named.
+
+`yazelix-8ih0.6` deletes `utils/nix_detector.nu`. The retained maintainer Nix
+check is a small fixed fail-fast function in `update_workflow.nu`; interactive
+repair prompts and broad detector policy are not part of the canonical
+maintainer floor.
 
 ## Verification
 
 - `nu nushell/scripts/dev/validate_specs.nu`
+- `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-readme-version`
+- `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-installed-runtime-contract`
 - later Rust validator/test-harness verification should be nextest-first under
   `docs/specs/rust_test_hardening_tools_decision.md`
 
 ## Traceability
 
 - Bead: `yazelix-8ih0.1`
+- Bead: `yazelix-8ih0.2`
+- Bead: `yazelix-8ih0.4`
+- Bead: `yazelix-8ih0.5`
+- Bead: `yazelix-8ih0.6`
 - Bead: `yazelix-rdn7.4.6.1`
+- Bead: `yazelix-rdn7.4.6.6`
 - Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-readme-version`
+- Defended by: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-installed-runtime-contract`
 - Informed by: `docs/specs/maintainer_harness_canonicalization_audit.md`
 - Informed by: `docs/specs/provable_nushell_floor_budget.md`

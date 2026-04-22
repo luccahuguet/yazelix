@@ -46,7 +46,7 @@ jobs:
 
           base="$BASE_SHA"
           head="$HEAD_SHA"
-          integration_paths_regex='^(flake\.nix|flake\.lock|maintainer_shell\.nix|\.github/workflows/ci\.yml|shells/|configs/|home_manager/|packaging/mk_runtime_tree\.nix|yazelix_package\.nix|yazelix_runtime_package\.nix|yazelix_default\.toml|nushell/scripts/core/|nushell/scripts/setup/|nushell/scripts/utils/|nushell/scripts/dev/validate_flake_install\.nu|nushell/scripts/dev/validate_installed_runtime_contract\.nu)'
+          integration_paths_regex='^(flake\.nix|flake\.lock|maintainer_shell\.nix|\.github/workflows/ci\.yml|shells/|configs/|home_manager/|packaging/mk_runtime_tree\.nix|yazelix_package\.nix|yazelix_runtime_package\.nix|yazelix_default\.toml|nushell/scripts/core/|nushell/scripts/setup/|nushell/scripts/utils/|nushell/scripts/dev/validate_flake_install\.nu|rust_core/)'
 
           if [ -z "${base:-}" ] || [ "$base" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
             base="$(git rev-parse "$head^" 2>/dev/null || git rev-list --max-parents=0 "$head" | tail -n1)"
@@ -110,7 +110,8 @@ jobs:
         run: nu nushell/scripts/dev/validate_syntax.nu
 
       - name: Validate generated README surface
-        run: nu nushell/scripts/dev/validate_readme_version.nu
+        shell: bash
+        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-readme-version
 
       - name: Validate upgrade contract
         run: nu nushell/scripts/dev/validate_upgrade_contract.nu --ci
@@ -190,7 +191,8 @@ jobs:
 
       - name: Validate installed-runtime contract smoke
         if: ${{ needs.detect_integration_changes.outputs.run_runtime_contract == 'true' }}
-        run: nu nushell/scripts/dev/validate_installed_runtime_contract.nu
+        shell: bash
+        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-installed-runtime-contract
 
   cold_install:
     # Full cold profile-install/rebuild smoke. Keep this on weekly/manual validation

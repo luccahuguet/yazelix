@@ -1,6 +1,6 @@
 [contract]
-current_total_loc_max = 14447
-current_total_file_count_max = 99
+current_total_loc_max = 13448
+current_total_file_count_max = 93
 hard_target_loc = 4200
 
 [[families]]
@@ -22,19 +22,17 @@ allowed_paths = [
 id = "deterministic_validators"
 status = "transitional_exception"
 owner_bead = "yazelix-rdn7.4.6"
-max_loc = 1091
+max_loc = 837
 target_loc = 0
-max_files = 13
+max_files = 11
 allowed_paths = [
   "nushell/scripts/dev/validate_config_surface_contract.nu",
   "nushell/scripts/dev/validate_default_test_count_budget.nu",
   "nushell/scripts/dev/validate_default_test_traceability.nu",
   "nushell/scripts/dev/validate_flake_install.nu",
   "nushell/scripts/dev/validate_flake_interface.nu",
-  "nushell/scripts/dev/validate_installed_runtime_contract.nu",
   "nushell/scripts/dev/validate_nixpkgs_package.nu",
   "nushell/scripts/dev/validate_nixpkgs_submission.nu",
-  "nushell/scripts/dev/validate_readme_version.nu",
   "nushell/scripts/dev/validate_rust_test_traceability.nu",
   "nushell/scripts/dev/validate_specs.nu",
   "nushell/scripts/dev/validate_syntax.nu",
@@ -45,9 +43,9 @@ allowed_paths = [
 id = "maintainer_and_dev_orchestration"
 status = "transitional_exception"
 owner_bead = "yazelix-8ih0"
-max_loc = 4077
+max_loc = 3996
 target_loc = 1200
-max_files = 21
+max_files = 20
 allowed_paths = [
   "nushell/scripts/dev/config_normalize_test_helpers.nu",
   "nushell/scripts/dev/materialization_dev_helpers.nu",
@@ -64,7 +62,6 @@ allowed_paths = [
   "nushell/scripts/maintainer/issue_bead_contract.nu",
   "nushell/scripts/maintainer/issue_sync.nu",
   "nushell/scripts/maintainer/plugin_build.nu",
-  "nushell/scripts/maintainer/readme_surface.nu",
   "nushell/scripts/maintainer/repo_checkout.nu",
   "nushell/scripts/maintainer/test_runner.nu",
   "nushell/scripts/maintainer/update_workflow.nu",
@@ -97,7 +94,7 @@ allowed_paths = [
 id = "setup_and_bootstrap"
 status = "transitional_exception"
 owner_bead = "yazelix-w6sz.3"
-max_loc = 1073
+max_loc = 1070
 target_loc = 500
 max_files = 5
 allowed_paths = [
@@ -112,7 +109,7 @@ allowed_paths = [
 id = "front_door_presentation"
 status = "transitional_exception"
 owner_bead = "yazelix-w6sz.4"
-max_loc = 2299
+max_loc = 2281
 target_loc = 950
 max_files = 10
 allowed_paths = [
@@ -132,9 +129,9 @@ allowed_paths = [
 id = "runtime_helpers"
 status = "transitional_exception"
 owner_bead = "yazelix-lnk6"
-max_loc = 3126
+max_loc = 2483
 target_loc = 1050
-max_files = 31
+max_files = 28
 allowed_paths = [
   "nushell/scripts/utils/atomic_writes.nu",
   "nushell/scripts/utils/build_policy.nu",
@@ -143,7 +140,6 @@ allowed_paths = [
   "nushell/scripts/utils/config_files.nu",
   "nushell/scripts/utils/config_paths.nu",
   "nushell/scripts/utils/config_report_rendering.nu",
-  "nushell/scripts/utils/config_schema.nu",
   "nushell/scripts/utils/constants.nu",
   "nushell/scripts/utils/cursor_trail_helpers.nu",
   "nushell/scripts/utils/doctor_fix.nu",
@@ -155,7 +151,6 @@ allowed_paths = [
   "nushell/scripts/utils/integration_facts.nu",
   "nushell/scripts/utils/keypress_polling.nu",
   "nushell/scripts/utils/logging.nu",
-  "nushell/scripts/utils/nix_detector.nu",
   "nushell/scripts/utils/runtime_env.nu",
   "nushell/scripts/utils/safe_remove.nu",
   "nushell/scripts/utils/shell_user_hooks.nu",
@@ -164,7 +159,6 @@ allowed_paths = [
   "nushell/scripts/utils/terminal_launcher.nu",
   "nushell/scripts/utils/transient_pane_contract.nu",
   "nushell/scripts/utils/transient_pane_facts.nu",
-  "nushell/scripts/utils/upgrade_notes.nu",
   "nushell/scripts/utils/yzx_core_bridge.nu",
   "nushell/scripts/utils/zjstatus_widget.nu",
 ]

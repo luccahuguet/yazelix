@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{self, Command};
+use std::process::{self, Command, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
 use toml::{Table as TomlTable, Value as TomlValue};
 
@@ -19,19 +19,16 @@ const MODULE_RELATIVE_PATH: &str = "home_manager/module.nix";
 const MAIN_CONTRACT_RELATIVE_PATH: &str = "config_metadata/main_config_contract.toml";
 const NUSHELL_BUDGET_RELATIVE_PATH: &str = "config_metadata/nushell_budget.toml";
 const TAPLO_RELATIVE_PATH: &str = ".taplo.toml";
+const README_LATEST_SERIES_BEGIN: &str = "<!-- BEGIN GENERATED README LATEST SERIES -->";
+const README_LATEST_SERIES_END: &str = "<!-- END GENERATED README LATEST SERIES -->";
 const GUARDED_FILES: &[&str] = &[
     "nushell/scripts/utils/constants.nu",
     "yazelix_default.toml",
     "home_manager/module.nix",
-    "nushell/scripts/utils/config_schema.nu",
     "docs/upgrade_notes.toml",
     "CHANGELOG.md",
 ];
-const ACK_REQUIRED_FILES: &[&str] = &[
-    "yazelix_default.toml",
-    "home_manager/module.nix",
-    "nushell/scripts/utils/config_schema.nu",
-];
+const ACK_REQUIRED_FILES: &[&str] = &["yazelix_default.toml", "home_manager/module.nix"];
 const IMPACT_VALUES: &[&str] = &[
     "no_user_action",
     "migration_available",
@@ -67,6 +64,13 @@ struct NushellBudgetFamily {
     target_loc: usize,
     max_files: usize,
     allowed_paths: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReadmeSyncResult {
+    pub readme_path: PathBuf,
+    pub title_changed: bool,
+    pub series_changed: bool,
 }
 
 pub fn validate_config_surface_contract(repo_root: &Path) -> Result<ValidationReport, String> {
@@ -163,6 +167,95 @@ pub fn validate_upgrade_contract(
     Ok(report)
 }
 
+pub fn validate_readme_version(repo_root: &Path) -> Result<ValidationReport, String> {
+    let mut report = ValidationReport::default();
+    let version = read_yazelix_version_from_runtime(repo_root).map_err(|error| error.message())?;
+    let readme_path = repo_root.join("README.md");
+    let readme = fs::read_to_string(&readme_path)
+        .map_err(|error| format!("Failed to read {}: {}", readme_path.display(), error))?;
+    let first_line = readme.lines().next().unwrap_or_default().trim();
+    let expected_title = format!("# Yazelix {version}");
+    if first_line != expected_title {
+        report.errors.push(format!(
+            "README title/version drift detected. Expected '{}' but found '{}'.",
+            expected_title, first_line
+        ));
+    }
+
+    let expected_block = render_readme_latest_series_section(repo_root, &version)?;
+    let actual_block = extract_readme_latest_series_section(&readme)?;
+    if actual_block != expected_block {
+        report.errors.push(
+            "README generated latest-series block drift detected. Regenerate the managed block from docs/upgrade_notes.toml."
+                .to_string(),
+        );
+    }
+
+    let release_heading = actual_block
+        .lines()
+        .nth(1)
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+    let expected_release_heading = format!("## Latest Tagged Release: {version}");
+    if release_heading != expected_release_heading {
+        report.errors.push(format!(
+            "README latest tagged release drift detected. Expected '{}' but found '{}'.",
+            expected_release_heading, release_heading
+        ));
+    }
+
+    Ok(report)
+}
+
+pub fn sync_readme_surface(
+    repo_root: &Path,
+    readme_path: Option<&Path>,
+    version: Option<&str>,
+) -> Result<ReadmeSyncResult, String> {
+    let resolved_version = match version.map(str::trim).filter(|value| !value.is_empty()) {
+        Some(value) => value.to_string(),
+        None => read_yazelix_version_from_runtime(repo_root).map_err(|error| error.message())?,
+    };
+    let target_readme_path = readme_path
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| repo_root.join("README.md"));
+    let contents = fs::read_to_string(&target_readme_path).map_err(|error| {
+        format!(
+            "Failed to read README surface {}: {}",
+            target_readme_path.display(),
+            error
+        )
+    })?;
+    let normalized = contents.replace("\r\n", "\n");
+    let expected_title = format!("# Yazelix {resolved_version}");
+    let (title_updated, title_changed) = replace_readme_title(&normalized, &expected_title);
+    let rendered = render_readme_latest_series_section(repo_root, &resolved_version)?;
+    let current_block = extract_readme_latest_series_section(&title_updated)?;
+    let series_changed = current_block != rendered;
+    let updated = if series_changed {
+        title_updated.replacen(&current_block, &rendered, 1)
+    } else {
+        title_updated
+    };
+
+    if title_changed || series_changed {
+        fs::write(&target_readme_path, updated).map_err(|error| {
+            format!(
+                "Failed to write README surface {}: {}",
+                target_readme_path.display(),
+                error
+            )
+        })?;
+    }
+
+    Ok(ReadmeSyncResult {
+        readme_path: target_readme_path,
+        title_changed,
+        series_changed,
+    })
+}
+
 pub fn validate_nushell_budget(repo_root: &Path) -> Result<ValidationReport, String> {
     let manifest = load_nushell_budget_manifest(repo_root)?;
     let actual_paths = load_nushell_script_paths(repo_root)?;
@@ -218,7 +311,8 @@ pub fn validate_nushell_budget(repo_root: &Path) -> Result<ValidationReport, Str
                 continue;
             }
 
-            if let Some(previous_family_index) = family_index_by_path.insert(relative_path.clone(), index)
+            if let Some(previous_family_index) =
+                family_index_by_path.insert(relative_path.clone(), index)
             {
                 let previous_family = &manifest.families[previous_family_index].id;
                 report.errors.push(format!(
@@ -255,12 +349,18 @@ pub fn validate_nushell_budget(repo_root: &Path) -> Result<ValidationReport, Str
     }
 
     let expected_total_loc: usize = manifest.families.iter().map(|family| family.max_loc).sum();
-    let expected_total_files: usize = manifest.families.iter().map(|family| family.max_files).sum();
+    let expected_total_files: usize = manifest
+        .families
+        .iter()
+        .map(|family| family.max_files)
+        .sum();
 
     if expected_total_loc != manifest.contract.current_total_loc_max {
         report.errors.push(format!(
             "Nushell budget manifest total LOC mismatch in {}: contract={}, family_sum={}",
-            NUSHELL_BUDGET_RELATIVE_PATH, manifest.contract.current_total_loc_max, expected_total_loc
+            NUSHELL_BUDGET_RELATIVE_PATH,
+            manifest.contract.current_total_loc_max,
+            expected_total_loc
         ));
     }
 
@@ -314,6 +414,576 @@ pub fn validate_nushell_budget(repo_root: &Path) -> Result<ValidationReport, Str
     }
 
     Ok(report)
+}
+
+pub fn validate_installed_runtime_contract(repo_root: &Path) -> Result<ValidationReport, String> {
+    let mut report = ValidationReport::default();
+    report
+        .errors
+        .extend(validate_installed_runtime_contract_inner(repo_root)?);
+    Ok(report)
+}
+
+fn validate_installed_runtime_contract_inner(repo_root: &Path) -> Result<Vec<String>, String> {
+    let mut errors = Vec::new();
+    let cli_wrapper = "shells/posix/yzx_cli.sh";
+    let detached_launch_probe = "shells/posix/detached_launch_probe.sh";
+    let runtime_env = "shells/posix/runtime_env.sh";
+    let environment_setup = "nushell/scripts/setup/environment.nu";
+    let runtime_tree = "packaging/mk_runtime_tree.nix";
+    let flake_path = "flake.nix";
+
+    require_path_exists(repo_root, flake_path, "flake definition", &mut errors);
+    require_path_missing(
+        repo_root,
+        "shells/posix/install_yazelix.sh.in",
+        "legacy flake installer template",
+        &mut errors,
+    );
+    require_path_exists(
+        repo_root,
+        cli_wrapper,
+        "stable POSIX CLI wrapper",
+        &mut errors,
+    );
+    require_path_exists(
+        repo_root,
+        detached_launch_probe,
+        "detached launch probe helper",
+        &mut errors,
+    );
+    require_path_exists(repo_root, runtime_env, "runtime env helper", &mut errors);
+    require_path_exists(
+        repo_root,
+        environment_setup,
+        "environment setup script",
+        &mut errors,
+    );
+    require_path_exists(repo_root, runtime_tree, "runtime tree builder", &mut errors);
+
+    require_file_contains(
+        repo_root,
+        cli_wrapper,
+        r#"export YAZELIX_BOOTSTRAP_RUNTIME_DIR="$RUNTIME_DIR""#,
+        "stable POSIX CLI wrapper",
+        &mut errors,
+    )?;
+    require_file_contains(
+        repo_root,
+        cli_wrapper,
+        r#"runtime_env_script="$RUNTIME_DIR/shells/posix/runtime_env.sh""#,
+        "stable POSIX CLI wrapper",
+        &mut errors,
+    )?;
+    require_file_contains(
+        repo_root,
+        cli_wrapper,
+        r#"yzx_root_bin="${YAZELIX_YZX_BIN:-$RUNTIME_DIR/libexec/yzx}""#,
+        "stable POSIX CLI wrapper",
+        &mut errors,
+    )?;
+    require_file_contains(
+        repo_root,
+        cli_wrapper,
+        r#"exec "$yzx_root_bin" "$@""#,
+        "stable POSIX CLI wrapper",
+        &mut errors,
+    )?;
+    require_file_not_contains(
+        repo_root,
+        runtime_env,
+        "export YAZELIX_DIR=",
+        "runtime env helper",
+        &mut errors,
+    )?;
+    require_file_not_contains(
+        repo_root,
+        environment_setup,
+        "get_installed_yazelix_runtime_reference_dir",
+        "environment setup script",
+        &mut errors,
+    )?;
+    require_file_not_contains(
+        repo_root,
+        environment_setup,
+        "ensure_user_cli_wrapper",
+        "environment setup script",
+        &mut errors,
+    )?;
+    require_file_contains(
+        repo_root,
+        runtime_tree,
+        "import ./runtime_deps.nix",
+        "runtime tree builder",
+        &mut errors,
+    )?;
+    require_file_contains(
+        repo_root,
+        runtime_tree,
+        r#"ln -s ${src}/yazelix_default.toml "$out/yazelix_default.toml""#,
+        "runtime tree builder",
+        &mut errors,
+    )?;
+    require_file_contains(
+        repo_root,
+        runtime_tree,
+        "for bin_dir in ${escapedRuntimeBinDirs}; do",
+        "runtime tree builder",
+        &mut errors,
+    )?;
+    require_file_contains(
+        repo_root,
+        runtime_tree,
+        r#"cat > "$out/bin/yzx" <<EOF"#,
+        "runtime tree builder",
+        &mut errors,
+    )?;
+    require_file_not_contains(
+        repo_root,
+        runtime_tree,
+        "yazelix_packs_default.toml",
+        "runtime tree builder",
+        &mut errors,
+    )?;
+
+    if !errors.is_empty() {
+        return Ok(errors);
+    }
+
+    let flake_show = run_repo_command(repo_root, "nix", &["flake", "show", "--json"])?;
+    if !flake_show.status.success() {
+        errors.push(format!(
+            "Failed to evaluate flake outputs during installed-runtime contract validation\n{}",
+            command_stderr(&flake_show)
+        ));
+        return Ok(errors);
+    }
+    let flake: JsonValue = serde_json::from_slice(&flake_show.stdout)
+        .map_err(|error| format!("Failed to parse `nix flake show --json`: {}", error))?;
+    let package_keys = json_object_keys(
+        flake
+            .pointer("/packages/x86_64-linux")
+            .ok_or("Missing packages.x86_64-linux in flake output")?,
+    );
+    for expected in ["default", "runtime", "yazelix"] {
+        require_list_contains(
+            &package_keys,
+            expected,
+            "x86_64-linux package outputs",
+            &mut errors,
+        );
+    }
+    for forbidden in ["install", "locked_devenv"] {
+        require_list_not_contains(
+            &package_keys,
+            forbidden,
+            "x86_64-linux package outputs",
+            &mut errors,
+        );
+    }
+    let app_keys = json_object_keys(
+        flake
+            .pointer("/apps/x86_64-linux")
+            .ok_or("Missing apps.x86_64-linux in flake output")?,
+    );
+    for expected in ["default", "yazelix"] {
+        require_list_contains(&app_keys, expected, "x86_64-linux app outputs", &mut errors);
+    }
+    require_list_not_contains(
+        &app_keys,
+        "install",
+        "x86_64-linux app outputs",
+        &mut errors,
+    );
+
+    if !errors.is_empty() {
+        return Ok(errors);
+    }
+
+    let runtime_out = build_flake_output_path(
+        repo_root,
+        "runtime",
+        "building runtime package for installed-runtime validation",
+    )?;
+    validate_rust_routed_nu_modules(&runtime_out, "built runtime package", &mut errors);
+    require_path_exists_abs(
+        &runtime_out.join(detached_launch_probe),
+        "built runtime detached launch probe helper",
+        &mut errors,
+    );
+
+    let yazelix_out = build_flake_output_path(
+        repo_root,
+        "yazelix",
+        "building yazelix package for installed-runtime validation",
+    )?;
+    validate_rust_routed_nu_modules(&yazelix_out, "built yazelix package", &mut errors);
+    require_path_exists_abs(
+        &yazelix_out.join(detached_launch_probe),
+        "built yazelix detached launch probe helper",
+        &mut errors,
+    );
+
+    let built_yzx = yazelix_out.join("bin").join("yzx");
+    require_path_exists_abs(&built_yzx, "built yazelix CLI wrapper", &mut errors);
+    if !errors.is_empty() {
+        return Ok(errors);
+    }
+
+    let built_yzx_string = built_yzx.display().to_string();
+    let smoke_result = Command::new("env")
+        .args([
+            "YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1",
+            built_yzx_string.as_str(),
+            "why",
+        ])
+        .current_dir(repo_root)
+        .output()
+        .map_err(|error| format!("Failed to smoke-run built yazelix public CLI: {}", error))?;
+    if !smoke_result.status.success() {
+        errors.push(format!(
+            "Built yazelix package failed the public CLI smoke check\n{}",
+            command_output_summary(&smoke_result)
+        ));
+        return Ok(errors);
+    }
+    require_file_contains_abs(
+        &built_yzx,
+        "shells/posix/yzx_cli.sh",
+        "built yazelix CLI wrapper",
+        &mut errors,
+    )?;
+    let smoke_stdout = String::from_utf8_lossy(&smoke_result.stdout);
+    if !smoke_stdout.contains("Yazelix is a reproducible terminal IDE") {
+        errors.push(
+            "Built yazelix public CLI smoke check returned unexpected output for `yzx why`"
+                .to_string(),
+        );
+    }
+
+    Ok(errors)
+}
+
+fn require_path_exists(
+    repo_root: &Path,
+    relative_path: &str,
+    label: &str,
+    errors: &mut Vec<String>,
+) {
+    if !repo_root.join(relative_path).exists() {
+        errors.push(format!("Missing {}: {}", label, relative_path));
+    }
+}
+
+fn require_path_missing(
+    repo_root: &Path,
+    relative_path: &str,
+    label: &str,
+    errors: &mut Vec<String>,
+) {
+    if repo_root.join(relative_path).exists() {
+        errors.push(format!("Unexpected {}: {}", label, relative_path));
+    }
+}
+
+fn require_path_exists_abs(path: &Path, label: &str, errors: &mut Vec<String>) {
+    if !path.exists() {
+        errors.push(format!("Missing {}: {}", label, path.display()));
+    }
+}
+
+fn require_file_contains(
+    repo_root: &Path,
+    relative_path: &str,
+    needle: &str,
+    label: &str,
+    errors: &mut Vec<String>,
+) -> Result<(), String> {
+    require_file_contains_abs(&repo_root.join(relative_path), needle, label, errors)
+}
+
+fn require_file_contains_abs(
+    path: &Path,
+    needle: &str,
+    label: &str,
+    errors: &mut Vec<String>,
+) -> Result<(), String> {
+    let content = fs::read_to_string(path)
+        .map_err(|error| format!("Failed to read {}: {}", path.display(), error))?;
+    if !content.contains(needle) {
+        errors.push(format!(
+            "{} does not contain expected text `{}`: {}",
+            label,
+            needle,
+            path.display()
+        ));
+    }
+    Ok(())
+}
+
+fn require_file_not_contains(
+    repo_root: &Path,
+    relative_path: &str,
+    needle: &str,
+    label: &str,
+    errors: &mut Vec<String>,
+) -> Result<(), String> {
+    let path = repo_root.join(relative_path);
+    let content = fs::read_to_string(&path)
+        .map_err(|error| format!("Failed to read {}: {}", path.display(), error))?;
+    if content.contains(needle) {
+        errors.push(format!(
+            "{} still contains forbidden text `{}`: {}",
+            label, needle, relative_path
+        ));
+    }
+    Ok(())
+}
+
+fn require_list_contains(items: &[String], expected: &str, label: &str, errors: &mut Vec<String>) {
+    if !items.iter().any(|item| item == expected) {
+        errors.push(format!(
+            "{} is missing expected entry `{}`. Found: {}",
+            label,
+            expected,
+            items.join(", ")
+        ));
+    }
+}
+
+fn require_list_not_contains(
+    items: &[String],
+    forbidden: &str,
+    label: &str,
+    errors: &mut Vec<String>,
+) {
+    if items.iter().any(|item| item == forbidden) {
+        errors.push(format!(
+            "{} unexpectedly contains forbidden entry `{}`. Found: {}",
+            label,
+            forbidden,
+            items.join(", ")
+        ));
+    }
+}
+
+fn run_repo_command(repo_root: &Path, program: &str, args: &[&str]) -> Result<Output, String> {
+    Command::new(program)
+        .args(args)
+        .current_dir(repo_root)
+        .output()
+        .map_err(|error| {
+            format!(
+                "Failed to run `{}` for installed-runtime validation: {}",
+                format_command(program, args),
+                error
+            )
+        })
+}
+
+fn build_flake_output_path(repo_root: &Path, attr: &str, label: &str) -> Result<PathBuf, String> {
+    let output = run_repo_command(
+        repo_root,
+        "nix",
+        &[
+            "build",
+            "--no-link",
+            "--print-out-paths",
+            &format!(".#{attr}"),
+        ],
+    )?;
+    if !output.status.success() {
+        return Err(format!(
+            "Failed while {}\n{}",
+            label,
+            command_output_summary(&output)
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let Some(path) = stdout
+        .lines()
+        .map(str::trim)
+        .find(|line| !line.is_empty())
+        .map(PathBuf::from)
+    else {
+        return Err(format!("{} did not return an output path", label));
+    };
+    if !path.exists() {
+        return Err(format!(
+            "{} returned missing output path {}",
+            label,
+            path.display()
+        ));
+    }
+    Ok(path)
+}
+
+fn validate_rust_routed_nu_modules(runtime_root: &Path, label: &str, errors: &mut Vec<String>) {
+    let scripts_dir = runtime_root.join("nushell").join("scripts");
+    for relative_path in [
+        ["core", "yzx_session.nu"],
+        ["core", "start_yazelix.nu"],
+        ["yzx", "desktop.nu"],
+        ["yzx", "dev.nu"],
+        ["yzx", "edit.nu"],
+        ["yzx", "import.nu"],
+        ["yzx", "launch.nu"],
+        ["yzx", "menu.nu"],
+        ["yzx", "popup.nu"],
+        ["yzx", "screen.nu"],
+        ["yzx", "tutor.nu"],
+        ["yzx", "whats_new.nu"],
+    ] {
+        let path = scripts_dir.join(relative_path.iter().collect::<PathBuf>());
+        if !path.exists() {
+            errors.push(format!(
+                "Missing {} Rust-routed Nu module: {}",
+                label,
+                path.display()
+            ));
+        }
+    }
+}
+
+fn json_object_keys(value: &JsonValue) -> Vec<String> {
+    let mut keys = value
+        .as_object()
+        .map(|object| object.keys().cloned().collect::<Vec<_>>())
+        .unwrap_or_default();
+    keys.sort();
+    keys
+}
+
+fn command_stderr(output: &Output) -> String {
+    String::from_utf8_lossy(&output.stderr).trim().to_string()
+}
+
+fn command_output_summary(output: &Output) -> String {
+    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    let stderr = command_stderr(output);
+    match (stdout.is_empty(), stderr.is_empty()) {
+        (true, true) => "No subprocess output captured".to_string(),
+        (false, true) => stdout,
+        (true, false) => stderr,
+        (false, false) => format!("Stdout:\n{}\nStderr:\n{}", stdout, stderr),
+    }
+}
+
+fn format_command(program: &str, args: &[&str]) -> String {
+    std::iter::once(program)
+        .chain(args.iter().copied())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn replace_readme_title(contents: &str, expected_title: &str) -> (String, bool) {
+    let mut lines = contents.lines().map(str::to_string).collect::<Vec<_>>();
+    let had_trailing_newline = contents.ends_with('\n');
+    if lines.is_empty() {
+        return (format!("{expected_title}\n"), true);
+    }
+    if lines[0] == expected_title {
+        return (contents.to_string(), false);
+    }
+    if lines[0].starts_with("# Yazelix v") {
+        lines[0] = expected_title.to_string();
+        let mut updated = lines.join("\n");
+        if had_trailing_newline {
+            updated.push('\n');
+        }
+        return (updated, true);
+    }
+    (contents.to_string(), false)
+}
+
+fn extract_readme_latest_series_section(contents: &str) -> Result<String, String> {
+    let normalized = contents.replace("\r\n", "\n");
+    let Some(start_index) = normalized.find(README_LATEST_SERIES_BEGIN) else {
+        return Err("README is missing the generated latest-series start marker".to_string());
+    };
+    let after_start = start_index + README_LATEST_SERIES_BEGIN.len();
+    let Some(relative_end_index) = normalized[after_start..].find(README_LATEST_SERIES_END) else {
+        return Err("README is missing the generated latest-series end marker".to_string());
+    };
+    let end_index = after_start + relative_end_index + README_LATEST_SERIES_END.len();
+    Ok(normalized[start_index..end_index].to_string())
+}
+
+fn render_readme_latest_series_section(repo_root: &Path, version: &str) -> Result<String, String> {
+    let (entry_key, entry) = resolve_readme_latest_release_entry(repo_root, version)?;
+    let headline = entry
+        .get("headline")
+        .and_then(TomlValue::as_str)
+        .unwrap_or_default()
+        .trim();
+    let summary_items = as_string_list(entry.get("summary"));
+    let mut lines = vec![
+        README_LATEST_SERIES_BEGIN.to_string(),
+        format!("## Latest Tagged Release: {entry_key}"),
+        String::new(),
+    ];
+
+    if !headline.is_empty() {
+        lines.push(headline.to_string());
+        lines.push(String::new());
+    }
+    for item in summary_items {
+        lines.push(format!("- {item}"));
+    }
+    lines.extend([
+        String::new(),
+        "For exact tagged release notes, see [CHANGELOG](./CHANGELOG.md) or run `yzx whats_new` after installing that release".to_string(),
+        "For the longer project story, see [Version History](./docs/history.md)".to_string(),
+        README_LATEST_SERIES_END.to_string(),
+    ]);
+
+    Ok(lines.join("\n"))
+}
+
+fn resolve_readme_latest_release_entry(
+    repo_root: &Path,
+    version: &str,
+) -> Result<(String, TomlTable), String> {
+    let notes = read_toml_file(&repo_root.join("docs").join("upgrade_notes.toml"))?;
+    let releases = notes
+        .get("releases")
+        .and_then(TomlValue::as_table)
+        .ok_or("upgrade notes are missing the `releases` table")?;
+    if let Some(entry) = releases.get(version).and_then(TomlValue::as_table) {
+        return Ok((version.to_string(), entry.clone()));
+    }
+
+    let series_key = major_series_key(version)?;
+    let series = notes
+        .get("series")
+        .and_then(TomlValue::as_table)
+        .ok_or("upgrade notes are missing the `series` table")?;
+    let entry = series
+        .get(&series_key)
+        .and_then(TomlValue::as_table)
+        .ok_or_else(|| {
+            format!("upgrade notes are missing the current major series entry `{series_key}`")
+        })?;
+    Ok((series_key, entry.clone()))
+}
+
+fn major_series_key(version: &str) -> Result<String, String> {
+    let trimmed = version.trim();
+    let Some(rest) = trimmed.strip_prefix('v') else {
+        return Err(format!(
+            "failed to derive a major series key from version `{version}`"
+        ));
+    };
+    let digits = rest
+        .chars()
+        .take_while(|ch| ch.is_ascii_digit())
+        .collect::<String>();
+    if digits.is_empty() {
+        return Err(format!(
+            "failed to derive a major series key from version `{version}`"
+        ));
+    }
+    Ok(format!("v{digits}"))
 }
 
 fn validate_main_contract_parity(repo_root: &Path) -> Result<Vec<String>, String> {
@@ -437,13 +1107,8 @@ fn validate_main_contract_parity(repo_root: &Path) -> Result<Vec<String>, String
 
 fn load_nushell_budget_manifest(repo_root: &Path) -> Result<NushellBudgetManifest, String> {
     let manifest_path = repo_root.join(NUSHELL_BUDGET_RELATIVE_PATH);
-    let content = fs::read_to_string(&manifest_path).map_err(|error| {
-        format!(
-            "Failed to read {}: {}",
-            manifest_path.display(),
-            error
-        )
-    })?;
+    let content = fs::read_to_string(&manifest_path)
+        .map_err(|error| format!("Failed to read {}: {}", manifest_path.display(), error))?;
     toml::from_str(&content)
         .map_err(|error| format!("Invalid TOML in {}: {}", manifest_path.display(), error))
 }
@@ -460,8 +1125,8 @@ fn collect_nushell_script_paths(dir: &Path, paths: &mut Vec<String>) -> Result<(
         return Ok(());
     }
 
-    for entry in fs::read_dir(dir)
-        .map_err(|error| format!("Failed to read {}: {}", dir.display(), error))?
+    for entry in
+        fs::read_dir(dir).map_err(|error| format!("Failed to read {}: {}", dir.display(), error))?
     {
         let path = entry.map_err(|error| error.to_string())?.path();
         if path.is_dir() {
