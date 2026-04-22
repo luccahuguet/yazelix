@@ -1,0 +1,118 @@
+# Maintainer And Validator Nushell Budget
+
+## Summary
+
+This document defines the delete-first budget for the maintainer, `yzx dev`,
+and deterministic validator Nushell families.
+
+These surfaces are not product runtime, but they still count toward the hard
+under-`5k` Nu floor. The rule here is the same as everywhere else: Nu may stay
+only where it is the honest shell/process owner. Deterministic validation,
+policy, routing, and test-helper logic must move to Rust or be deleted.
+
+## Scope
+
+In scope:
+
+- `nushell/scripts/maintainer/*.nu`
+- `nushell/scripts/yzx/dev.nu`
+- non-test, non-validator helpers under `nushell/scripts/dev/`
+- deterministic validators under `nushell/scripts/dev/validate*.nu`
+
+Out of scope:
+
+- governed Nu tests, which are budgeted in
+  `docs/specs/rust_owned_test_migration_budget.md`
+- product/runtime launch, setup, front-door, and integration owners
+
+## Current Measured Surface
+
+Measured on `2026-04-22`:
+
+| Family | Current LOC | Hard target LOC | Main follow-up |
+| --- | ---: | ---: | --- |
+| Maintainer and `yzx dev` shell orchestration | `4,224` | `1,200` | `yazelix-8ih0` |
+| Deterministic validators and contract linters | `2,713` | `0` | `yazelix-rdn7.4.6` |
+
+## Maintainer And `yzx dev` Budget
+
+`yazelix-8ih0.1` should use this keep-vs-cut table.
+
+### Allowlisted survivors
+
+These are allowed to survive only as fixed argv or shell/process orchestration:
+
+- `maintainer/issue_sync.nu`
+- `maintainer/issue_bead_contract.nu`
+- `maintainer/version_bump.nu`
+- `maintainer/update_workflow.nu`
+- `maintainer/repo_checkout.nu`
+- `maintainer/plugin_build.nu`
+- a much smaller `maintainer/test_runner.nu`
+- a much smaller `yzx/dev.nu`
+
+### Forced deletion or migration targets
+
+These should not survive as broad owned Nu surfaces:
+
+- dynamic dispatch and suite-selection policy inside `maintainer/test_runner.nu`
+- broad route planning and policy in `yzx/dev.nu`
+- deterministic helper libraries that mainly support governed Nu tests or
+  validators:
+  - `dev/config_normalize_test_helpers.nu`
+  - `dev/materialization_dev_helpers.nu`
+  - `dev/contract_traceability_helpers.nu`
+  - `dev/yzx_test_helpers.nu`
+- manual/demo helpers that do not justify permanent governed ownership:
+  - `dev/record_demo.nu`
+  - `dev/record_demo_fonts.nu`
+- thin update helpers that can fold into one canonical maintainer owner:
+  - `dev/update_yazi_plugins.nu`
+
+### Maintainer floor rules
+
+1. Keep only shell-, repo-, or external-tool-heavy logic in Nu
+2. Do not keep deterministic routing or policy in Nu just because the command
+   touches `git`, `gh`, `bd`, or Nix later
+3. Route first-party Rust tests through `cargo nextest run` by default
+4. Shrink `yzx dev` to a thin public shell router above canonical owners
+5. Shrink `test_runner.nu` to fixed suite orchestration and logging only
+
+## Validator Budget
+
+`yazelix-rdn7.4.6.1` should use this deletion budget:
+
+### Target
+
+All `2,713` lines of deterministic validators should leave Nu. The target is
+`0` long-term governed Nu validator LOC.
+
+### Split
+
+| Validator cluster | Current examples | Budget judgment | Owning follow-up |
+| --- | --- | --- | --- |
+| Spec and test traceability validators | `validate_specs.nu`, `validate_default_test_traceability.nu`, `validate_rust_test_traceability.nu`, `validate_default_test_count_budget.nu` | Rust-port first | `yazelix-rdn7.4.6.2` |
+| Config, upgrade, and package validators | `validate_config_surface_contract.nu`, `validate_upgrade_contract.nu`, `validate_flake_interface.nu`, `validate_nixpkgs_package.nu`, `validate_nixpkgs_submission.nu`, `validate_flake_install.nu`, `validate_readme_version.nu` | Rust-port first | `yazelix-rdn7.4.6.3` |
+| Installed-runtime validator | `validate_installed_runtime_contract.nu` | split decision; do not fake a pure Rust port if the real contract still executes runtime shell paths | `yazelix-rdn7.4.6.5`, `yazelix-rdn7.4.6.6` |
+
+### Validator floor rules
+
+1. Deterministic source scanning, spec parsing, and contract linting do not get
+   to stay in Nu
+2. If a validator still needs to execute a real runtime shell boundary, isolate
+   that shell probe and port the rest
+3. Delete duplicated validator helper logic after the Rust owners land
+
+## Verification
+
+- `nu nushell/scripts/dev/validate_specs.nu`
+- later Rust validator/test-harness verification should be nextest-first under
+  `docs/specs/rust_test_hardening_tools_decision.md`
+
+## Traceability
+
+- Bead: `yazelix-8ih0.1`
+- Bead: `yazelix-rdn7.4.6.1`
+- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Informed by: `docs/specs/maintainer_harness_canonicalization_audit.md`
+- Informed by: `docs/specs/provable_nushell_floor_budget.md`

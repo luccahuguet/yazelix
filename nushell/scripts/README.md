@@ -26,7 +26,6 @@ Scripts for initial setup and configuration:
 ### `utils/` - Utility Functions
 Reusable utility functions and helpers:
 - `constants.nu` - Project constants and configuration
-- `version_info.nu` - Version information utilities
 - `helix_mode.nu` - Helix binary resolution helpers
 - `common.nu` - Common utility functions
 - `logging.nu` - Logging utilities

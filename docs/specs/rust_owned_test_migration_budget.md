@@ -6,12 +6,14 @@ This document defines the next delete-first budget for moving large deterministi
 Nushell test surfaces onto Rust-owned tests without losing the product
 contracts those tests currently defend.
 
-The immediate goal is not "rewrite every test in Rust." The goal is narrower:
+The final governed-test end state is `0` surviving Nu test LOC. The migration
+rule is selective:
 
-- move deterministic tests that now defend Rust-owned logic onto Rust
-- keep mixed shell/process behavior in Nu until a Rust port would still defend
-  the real contract honestly
-- delete or demote redundant Nu tests only after replacement coverage lands
+- port strong tests that defend real contracts, regressions, or invariants onto
+  Rust-owned nextest suites
+- delete weak, duplicated, or trivia-heavy tests instead of porting them
+- treat shell-heavy but strong Nu tests as temporary blockers on Rust harness
+  work, not as allowed long-term survivors
 
 ## Scope
 
@@ -19,113 +21,102 @@ The immediate goal is not "rewrite every test in Rust." The goal is narrower:
 - Rust-owned logic in `rust_core/yazelix_core`
 - adjacent helper-heavy files where the core assertions are now deterministic
   and Rust-owned
+- the Rust test-harness work needed to retire strong Nu tests cleanly
 
 Out of scope:
 
-- sweep or visual harnesses
 - maintainer update/release/issue-sync behavior
 - shell/process-heavy integration flows that still need real command execution
 - mass one-to-one rewrites that preserve old fixture noise without improving the
   owner boundary
 
+Current measured governed Nu test surface: `13,079` LOC.
+
 ## Bucket Classification
 
 | File or bucket | Current role | Migration bucket | Why |
 | --- | --- | --- | --- |
-| `test_yzx_generated_configs.nu` generated-config parser/materialization assertions | default deterministic config/runtime checks | `rust_port_first` | many assertions now defend Rust-owned config normalize, materialization, render-plan, and stale/repair logic |
-| `test_yzx_core_commands.nu` public command/report/control-plane assertions | default control-plane coverage | `rust_port_first` | many checks now defend Rust-owned metadata, config, doctor/status, install-ownership, and public control families |
-| `test_yzx_workspace_commands.nu` launch/session/workspace coverage | mixed default integration suite | `mixed_keep_nu` | many strongest assertions still defend shell/bootstrap, Zellij handoff, session-local behavior, and CLI entrypoint orchestration |
-| `test_yzx_popup_commands.nu` popup/front-door and wrapper behavior | mixed default integration suite | `mixed_keep_nu` | the deterministic popup fact helpers can move, but wrapper/process execution and Zellij interaction still belong in Nu |
-| `test_yzx_yazi_commands.nu` sidebar/editor/Yazi integration | mixed default integration suite | `mixed_keep_nu` | still defends pane-orchestrator state and external Yazi adapter behavior |
-| `test_yzx_doctor_commands.nu` public report surface | `rust_port_candidate` | public report computation is Rust-owned, but some CLI/prose/fix behavior still stays in Nu |
-| `test_shell_managed_config_contracts.nu` shell setup/extern bridge behavior | maintainer/default-adjacent | `keep_in_nu` | still defends shell init, host-surface non-takeover, and extern bridge behavior |
-| `test_yzx_maintainer.nu` release/update/profile harness | maintainer suite | `keep_in_nu` | shell, git, Nix, and repo workflow heavy |
-| Rust `yzx_core_*` integration tests and `yazelix_core` unit tests | Rust-owned deterministic logic | `already_rust` | these are the surviving owner and should grow where they delete redundant Nu tests |
+| `test_yzx_generated_configs.nu` | deterministic config/materialization coverage | `rust_port_landed_then_split_more` | the strongest generated-config and materialization assertions now defend Rust-owned logic; keep deleting the residual Nu duplicates |
+| `test_yzx_core_commands.nu` | deterministic public command/control-plane coverage | `rust_port_landed_then_split_more` | the strongest public command and report assertions now belong under Rust-owned nextest suites |
+| `test_yzx_workspace_commands.nu`, `test_zellij_plugin_contracts.nu` | workspace/session/plugin contracts | `rust_port_after_harness` | strong assertions remain, but they need shared fixture/process helpers before they can leave Nu honestly |
+| `test_yzx_popup_commands.nu`, `test_yzx_yazi_commands.nu`, `test_yzx_doctor_commands.nu`, `test_yzx_helix_doctor_contracts.nu` | mixed popup/Yazi/doctor/editor flows | `rust_port_after_harness` | the good assertions are real contracts, but the current Nu files still mix them with wrapper-heavy execution noise |
+| `test_shell_managed_config_contracts.nu` | shell-managed config and extern-bridge contracts | `rust_port_after_harness` | the strong assertions should move once the Rust harness can execute the real shell boundary; they are not allowlisted as permanent Nu tests |
+| `test_yzx_maintainer.nu`, `test_config_sweep.nu`, upgrade-summary and stale-config e2e files | maintainer/sweep/e2e coverage | `delete_if_weak_or_replace_elsewhere` | keep only the strong contracts; do not preserve broad Nu omnibus files by default |
+| `test_yzx_commands.nu` | command-surface/trivial routing inventory | `delete_if_weak` | this class is the easiest place to delete low-value command-discovery checks instead of porting them |
+| Rust `yazelix_core` and plugin tests | Rust-owned deterministic logic | `already_rust_and_should_grow` | these are the canonical surviving owners and should absorb strong replacement coverage |
 
-## First Migration Targets
+## Strong-Only Migration Rules
 
-### `yazelix-rdn7.4.5.2`
+1. Port only tests that defend explicit contracts, regressions, or invariants
+2. Delete help-output trivia, command-discovery noise, and redundant fixture
+   churn instead of porting it
+3. When a strong test still needs a real shell/process boundary, block it on
+   the Rust harness work rather than allowing it to survive in Nu indefinitely
+4. New Rust-owned test coverage should be nextest-first by default under
+   `docs/specs/rust_test_hardening_tools_decision.md`
 
-Move deterministic generated-config and materialization coverage first:
+## Landed First Wave
 
-- parser failure/removed-surface normalization
-- default bootstrap and Taplo-support behavior
+The first landed wave already moved these clusters into Rust-owned tests:
+
+- generated-config normalization
 - runtime materialization lifecycle and missing-artifact repair
-- Yazi/Zellij/terminal/Helix render-plan and generated-file assertions
+- deterministic public command-surface and report-shaping assertions
 
-Preferred surviving owner:
+Those deletions are not the end state. They are the first cut.
 
-- Rust unit/integration tests under `rust_core/yazelix_core`
+## Next Migration Wave
 
-Nu assertions that should stay after the first cut:
+`yazelix-rdn7.4.5.5` chooses this next wave:
 
-- shell/bootstrap entrypoint behavior
-- current-terminal and desktop launch orchestration
-- fixture-heavy cases that still depend on real external command wiring
+1. `yazelix-rdn7.4.5.15`
+   - define the shared Rust nextest harness and fixture boundary needed to
+     retire strong Nu tests cleanly
+2. `yazelix-rdn7.4.5.16`
+   - implement the shared Rust helpers and delete redundant Nu test helpers
+3. `yazelix-rdn7.4.5.7`
+   - finish the next generated-config/render-plan residuals
+4. `yazelix-rdn7.4.5.9`
+   - port deterministic workspace/session/doctor assertions
+5. `yazelix-rdn7.4.5.11`
+   - port deterministic managed-config contract assertions
+6. `yazelix-rdn7.4.5.13`
+   - port the remaining strong `test_yzx_core_commands.nu` command-family cuts
+7. `yazelix-rdn7.4.5.4`
+   - delete the remaining redundant Nu tests after the replacement Rust
+     coverage lands
 
-### `yazelix-rdn7.4.5.3`
+## What Cannot Survive
 
-Move deterministic public command-surface coverage next:
+These are not valid long-term steady states:
 
-- root help/version/extern metadata parity
-- Rust-owned command families such as config, doctor/status JSON/report
-  shaping, install ownership, keys, why/sponsor, and control helpers
-- error-envelope behavior for Rust-owned `yzx_core` / `yzx_control` surfaces
+- "keep this strong test in Nu because it talks to a shell"
+- "port every current assertion one-to-one even if the Rust copy is still weak"
+- "leave a large omnibus file in Nu because only part of it is ready"
+- "keep help-output or route-listing checks because they are cheap"
 
-Preferred surviving owner:
-
-- Rust integration tests in `rust_core/yazelix_core/tests`
-
-Nu assertions that should stay after the first cut:
-
-- shell wrapper entrypoint behavior
-- module bootstrap behavior
-- mixed `yzx launch`, `yzx enter`, and current-terminal session UX
-
-## Keep-In-Nu Rules
-
-Keep a Nu test or cluster in Nu when at least one of these is still true:
-
-- it defends shell/process execution rather than deterministic typed logic
-- it depends on real Zellij/Yazi/editor interaction or wrapper-mode env wiring
-- it verifies public CLI entrypoint behavior that still belongs to Nushell
-- the Rust replacement would need to fake the real shell boundary more than the
-  current Nu test already does
-
-## Delete Or Demote Rules
-
-After Rust replacement coverage lands:
-
-- delete deterministic Nu tests that only duplicate stronger Rust assertions
-- demote expensive but still useful integration checks to maintainer or sweep
-  only when the default-lane contract stays defended elsewhere
-- keep only the Nu tests that still defend shell/process/session/product UX
-
-Do not delete:
-
-- the only executable defense of a startup/session contract
-- the last check that proves shell ownership boundaries remain intact
-- the only public-entrypoint test for a still-Nu-owned family
+If a test is weak, delete it. If it is strong, port it once the harness can
+defend the real contract honestly.
 
 ## Verification Gate
 
-Before a later deletion bead removes Nu tests from one of these files, it
-should keep all of the relevant surviving verification green:
-
 - `nu nushell/scripts/dev/validate_default_test_traceability.nu`
 - `nu nushell/scripts/dev/validate_rust_test_traceability.nu`
-- `nix develop -c cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core`
-- any surviving Nu component suites that still defend shell/process behavior
+- `nix develop -c cargo nextest run --profile ci --manifest-path rust_core/Cargo.toml -p yazelix_core`
+- later plugin-owned Rust ports should use the same nextest-first policy
 
 ## Acceptance
 
-1. The large governed Nu files are grouped into Rust-port, mixed, and keep-in-Nu buckets
-2. The next Rust-port clusters are named concretely instead of as a blanket rewrite
-3. The keep-in-Nu rules make shell/process stop conditions explicit
-4. Later test-deletion beads can point here before removing redundant Nu coverage
+1. The governed Nu end state is explicit: no surviving Nu tests
+2. The next strong migration wave is named concretely instead of as a blanket rewrite
+3. Weak tests are explicitly deleted instead of quietly preserved
+4. Strong shell-heavy tests are explicitly blocked on Rust harness work rather
+   than marked as permanent Nu survivors
 
 ## Traceability
 
 - Bead: `yazelix-rdn7.4.5.1`
+- Bead: `yazelix-rdn7.4.5.5`
 - Informed by: `docs/specs/governed_test_traceability_inventory.md`
+- Informed by: `docs/specs/rust_test_hardening_tools_decision.md`
 - Defended by: `nu nushell/scripts/dev/validate_specs.nu`

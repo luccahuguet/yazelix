@@ -93,6 +93,7 @@ Status labels:
 | `likely_nushell_survivor_owner_cut_decisions.md` | Historical | Earlier family-by-family no-go record from the softer survivor pass; keep as background only after `provable_nushell_floor_budget.md` |
 | `macos_support_floor.md` | Live | Current first-party macOS support floor |
 | `maintainer_harness_canonicalization_audit.md` | Planning | Completed maintainer/dev/validator harness audit; separates product Nu deletion from harness cleanup |
+| `maintainer_and_validator_nushell_budget.md` | Planning | Current hard budget for maintainer, `yzx dev`, and deterministic validator Nu reduction |
 | `managed_config_migration_transaction_contract.md` | Historical | Superseded with the removed migration and relocation engine |
 | `nixpkgs_package_contract.md` | Live | Current package-shape target |
 | `nonpersistent_window_session_contract.md` | Live | Current default window and session behavior contract |
@@ -102,7 +103,7 @@ Status labels:
 | `pane_orchestrator_component.md` | Live | Current internal pane-orchestrator component boundary |
 | `pane_orchestrator_tab_local_session_state_seam.md` | Planning | Current pane-orchestrator seam proposal; not a shipped contract yet |
 | `persistent_window_session_contract.md` | Live | Current persistent-session behavior contract |
-| `provable_nushell_floor_budget.md` | Planning | Current hard-budget and proof-standard doc for the under-`5k` Nu push; use it before relying on older survivor/no-go assumptions |
+| `provable_nushell_floor_budget.md` | Planning | Current hard-budget, allowlist, and exception-policy doc for the under-`5k` Nu push; use it before relying on older survivor/no-go assumptions |
 | `public_yzx_command_surface_canonicalization_audit.md` | Planning | Completed public command-surface audit; records Clap no-go and the core registry deletion lane |
 | `ranked_nu_deletion_budget.md` | Planning | Near-term ranked deletion queue from the earlier audit pass; use `provable_nushell_floor_budget.md` for the current hard floor and proof standard |
 | `runtime_activation_state_contract.md` | Historical | Earlier activation model centered on recorded launch profiles and backend-era reuse |
@@ -111,10 +112,11 @@ Status labels:
 | `runtime_env_config_state_shim_collapse_budget.md` | Planning | Current deletion budget for config/state/env shim collapse; useful as bridge-collapse context |
 | `runtime_ownership_reduction_matrix.md` | Historical | Pre-trim alternative analysis, not the current branch contract |
 | `runtime_root_contract.md` | Live | Current runtime-root ownership contract |
-| `rust_owned_test_migration_budget.md` | Planning | Current Nu-to-Rust migration budget for the largest deterministic governed test files |
+| `rust_owned_test_migration_budget.md` | Planning | Current strong-only Nu-to-Rust governed-test migration budget with a zero-surviving-Nu end state |
 | `rust_migration_matrix.md` | Planning | Primary remaining roadmap for deleting product-side Nushell owners, especially the bridge layer and materialization families |
 | `rust_nushell_bridge_contract.md` | Live | Current bridge contract for `yzx_core` helper insertion behind Nushell-owned surfaces |
 | `rust_test_hardening_tools_decision.md` | Planning | Current nextest-first Rust runner policy plus continued `cargo-mutants` and `cargo-fuzz` rejection |
+| `runtime_shell_floor_budgets.md` | Planning | Current hard shell-floor budget for integration, setup/bootstrap, session/desktop, runtime-helper, and detached-launch product Nu lanes |
 | `setup_shellhook_welcome_terminal_canonicalization_audit.md` | Planning | Completed setup/shellhook/welcome/terminal audit; spawned the front-door and terminal-launch deletion lanes |
 | `shell_opened_editors.md` | Live | Current managed-editor versus shell-opened editor boundary |
 | `spec_docs_contract_alignment_audit.md` | Planning | Current docs/spec alignment audit; feeds contract-item migration and historical-doc cleanup |
@@ -135,6 +137,7 @@ Status labels:
 | `workspace_session_contract.md` | Live | Current tab-local workspace, sidebar identity, and session-truth contract |
 | `yazelix_core_boundary.md` | Planning | Future product-boundary decision; there is no separate supported Core edition today |
 | `yzx_command_palette_categories.md` | Live | Current command-palette grouping and exclusion contract |
+| `front_door_and_data_nushell_budget.md` | Planning | Current hard budget for front-door UX reduction and the overlapping data-heavy Nu deletion subset |
 
 ## Non-goals
 
