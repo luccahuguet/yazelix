@@ -1,11 +1,11 @@
 #!/usr/bin/env nu
 # Test lane: maintainer
 
-use ./yzx_test_helpers.nu [get_repo_config_dir log_block log_line repo_path resolve_test_yzx_bin]
+use ./yzx_test_helpers.nu [get_repo_root log_block log_line repo_path resolve_test_yzx_bin]
 use ../utils/constants.nu [YAZELIX_VERSION]
 
 def setup_fixture [] {
-    let repo_root = (get_repo_config_dir)
+    let repo_root = (get_repo_root)
     let tmp_home = (^mktemp -d /tmp/yazelix_upgrade_summary_e2e_XXXXXX | str trim)
     let runtime_dir = ($tmp_home | path join "runtime")
     let config_dir = ($tmp_home | path join ".config" "yazelix")

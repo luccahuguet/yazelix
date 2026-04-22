@@ -7,12 +7,11 @@ use std::fs;
 use std::path::PathBuf;
 use tempfile::tempdir;
 
-fn repo_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../..")
-        .canonicalize()
-        .expect("repo root")
-}
+mod support;
+
+use support::commands::yzx_core_command;
+use support::envelopes::{error_envelope, ok_envelope};
+use support::fixtures::{repo_root, write_runtime_contract_assets};
 
 fn doctor_config_request(config_dir: &std::path::Path, runtime_dir: &std::path::Path) -> String {
     serde_json::json!({
@@ -27,18 +26,7 @@ fn prepare_doctor_config_runtime_fixture(
     tmp: &tempfile::TempDir,
 ) -> PathBuf {
     let runtime_dir = tmp.path().join("runtime");
-    fs::create_dir_all(runtime_dir.join("config_metadata")).unwrap();
-    fs::write(runtime_dir.join(".taplo.toml"), "[format]\n").unwrap();
-    fs::copy(
-        repo.join("yazelix_default.toml"),
-        runtime_dir.join("yazelix_default.toml"),
-    )
-    .unwrap();
-    fs::copy(
-        repo.join("config_metadata/main_config_contract.toml"),
-        runtime_dir.join("config_metadata/main_config_contract.toml"),
-    )
-    .unwrap();
+    write_runtime_contract_assets(repo, &runtime_dir);
     runtime_dir
 }
 
@@ -94,17 +82,7 @@ fn prepare_runtime_materialization_fixture(
     fs::create_dir_all(&runtime_contract_dir).unwrap();
     fs::create_dir_all(&runtime_ghostty_shader_dir).unwrap();
 
-    fs::copy(
-        repo.join("yazelix_default.toml"),
-        runtime_dir.join("yazelix_default.toml"),
-    )
-    .unwrap();
-    fs::copy(
-        repo.join("config_metadata/main_config_contract.toml"),
-        runtime_contract_dir.join("main_config_contract.toml"),
-    )
-    .unwrap();
-    fs::write(runtime_dir.join(".taplo.toml"), "[format]\n").unwrap();
+    write_runtime_contract_assets(repo, &runtime_dir);
     fs::write(
         runtime_shell_dir.join("yazelix_nu.sh"),
         "#!/bin/sh\nexec nu \"$@\"\n",
@@ -185,7 +163,7 @@ fn runtime_materialization_command(
 ) -> Command {
     let xdg_config_home = fixture.home_dir.join(".config");
     let xdg_data_home = fixture.home_dir.join(".local").join("share");
-    let mut command = Command::cargo_bin("yzx_core").unwrap();
+    let mut command = yzx_core_command();
     command
         .arg(helper_command)
         .env("HOME", &fixture.home_dir)
@@ -203,8 +181,7 @@ fn runtime_materialization_command(
 #[test]
 fn config_normalize_prints_one_success_json_envelope() {
     let repo = repo_root();
-    let output = Command::cargo_bin("yzx_core")
-        .unwrap()
+    let output = yzx_core_command()
         .arg("config.normalize")
         .arg("--config")
         .arg(repo.join("yazelix_default.toml"))
@@ -215,12 +192,8 @@ fn config_normalize_prints_one_success_json_envelope() {
         .output()
         .unwrap();
 
-    assert!(output.status.success());
-    assert!(output.stderr.is_empty());
-    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(envelope["schema_version"], 1);
+    let envelope: Value = ok_envelope(&output);
     assert_eq!(envelope["command"], "config.normalize");
-    assert_eq!(envelope["status"], "ok");
     assert_eq!(
         envelope["data"]["normalized_config"]["terminal_config_mode"],
         "yazelix"
@@ -237,8 +210,7 @@ fn config_normalize_prints_one_error_json_envelope() {
     let config_path = tmp.path().join("yazelix.toml");
     fs::write(&config_path, "[shell]\ndefault_shell = \"powershell\"\n").unwrap();
 
-    let output = Command::cargo_bin("yzx_core")
-        .unwrap()
+    let output = yzx_core_command()
         .arg("config.normalize")
         .arg("--config")
         .arg(&config_path)
@@ -249,12 +221,8 @@ fn config_normalize_prints_one_error_json_envelope() {
         .output()
         .unwrap();
 
-    assert_eq!(output.status.code(), Some(65));
-    assert!(output.stdout.is_empty());
-    let envelope: Value = serde_json::from_slice(&output.stderr).unwrap();
-    assert_eq!(envelope["schema_version"], 1);
+    let envelope: Value = error_envelope(&output, 65);
     assert_eq!(envelope["command"], "config.normalize");
-    assert_eq!(envelope["status"], "error");
     assert_eq!(envelope["error"]["class"], "config");
     assert_eq!(envelope["error"]["code"], "unsupported_config");
 }

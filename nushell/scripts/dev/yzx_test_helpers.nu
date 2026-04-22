@@ -6,10 +6,6 @@ export def get_repo_root [] {
     pwd
 }
 
-export def get_repo_config_dir [] {
-    get_repo_root
-}
-
 export def repo_path [...parts: string] {
     $parts | reduce -f (get_repo_root) {|part, acc| $acc | path join $part }
 }
@@ -189,7 +185,7 @@ export def setup_managed_config_fixture [
     label: string
     raw_toml: string
 ] {
-    let repo_root = (get_repo_config_dir)
+    let repo_root = (get_repo_root)
     let tmp_home = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
     let config_dir = ($tmp_home | path join ".config" "yazelix")
     let user_config_dir = ($config_dir | path join "user_configs")

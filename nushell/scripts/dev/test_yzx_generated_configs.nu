@@ -4,7 +4,7 @@
 # Defends: docs/specs/runtime_dependency_preflight_contract.md
 # Defends: docs/specs/terminal_launch_contract.md
 
-use ./yzx_test_helpers.nu [get_repo_config_dir repo_path resolve_test_yzx_core_bin setup_managed_config_fixture]
+use ./yzx_test_helpers.nu [get_repo_root repo_path resolve_test_yzx_core_bin setup_managed_config_fixture]
 use ./config_normalize_test_helpers.nu [load_normalized_active_config]
 use ./materialization_dev_helpers.nu [generate_merged_yazi_config generate_merged_zellij_config regenerate_runtime_configs]
 use ../utils/yzx_core_bridge.nu [record_materialized_state_via_yzx_core]
@@ -47,7 +47,7 @@ def check_schema_rejects_removed_enum_value [case: record] {
 }
 
 def setup_home_manager_symlinked_main_config_fixture [label: string] {
-    let repo_root = (get_repo_config_dir)
+    let repo_root = (get_repo_root)
     let tmpdir = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
     let fake_home = ($tmpdir | path join "home")
     let config_dir = ($fake_home | path join ".config" "yazelix")
@@ -78,7 +78,7 @@ def setup_home_manager_symlinked_main_config_fixture [label: string] {
 }
 
 def setup_fake_packaged_runtime_fixture [label: string] {
-    let repo_root = (get_repo_config_dir)
+    let repo_root = (get_repo_root)
     let tmpdir = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
     let runtime_root = ($tmpdir | path join "runtime")
     let metadata_dir = ($runtime_root | path join "config_metadata")
@@ -1008,7 +1008,7 @@ def run_merged_zellij_config_in_fake_home [tmpdir: string, extra_env: record = {
         YAZELIX_CONFIG_DIR: $fake_config_dir
         YAZELIX_TEST_OUT_DIR: $out_dir
     } | merge $extra_env) {
-        let root = (get_repo_config_dir)
+        let root = (get_repo_root)
         generate_merged_zellij_config $root $env.YAZELIX_TEST_OUT_DIR | ignore
         {
             config: (open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "config.kdl"))
@@ -1046,7 +1046,7 @@ sidebar_width_percent = 25
             YAZELIX_CONFIG_DIR: $fake_config_dir
             YAZELIX_TEST_OUT_DIR: $out_dir
         } {
-            let root = (get_repo_config_dir)
+            let root = (get_repo_root)
             generate_merged_zellij_config $root $env.YAZELIX_TEST_OUT_DIR | ignore
             {
                 config: (open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "config.kdl"))
@@ -1063,7 +1063,7 @@ sidebar_width_percent = 25
             YAZELIX_CONFIG_DIR: $fake_config_dir
             YAZELIX_TEST_OUT_DIR: $out_dir
         } {
-            let root = (get_repo_config_dir)
+            let root = (get_repo_root)
             generate_merged_zellij_config $root $env.YAZELIX_TEST_OUT_DIR | ignore
             {
                 config: (open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "config.kdl"))
@@ -1083,7 +1083,7 @@ sidebar_width_percent = 35
             YAZELIX_CONFIG_DIR: $fake_config_dir
             YAZELIX_TEST_OUT_DIR: $out_dir
         } {
-            let root = (get_repo_config_dir)
+            let root = (get_repo_root)
             generate_merged_zellij_config $root $env.YAZELIX_TEST_OUT_DIR | ignore
             {
                 config: (open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "config.kdl"))
@@ -1250,7 +1250,7 @@ def test_remove_path_within_root_relaxes_read_only_managed_directories_before_re
 def test_generate_merged_yazi_config_rejects_legacy_user_overrides [] {
     print "🧪 Testing merged Yazi config rejects legacy user overrides and points to the import flow..."
 
-    let repo_root = (get_repo_config_dir)
+    let repo_root = (get_repo_root)
     let tmp_home = (^mktemp -d /tmp/yazelix_yazi_user_configs_XXXXXX | str trim)
     let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
     let legacy_user_dir = ($temp_config_dir | path join "configs" "yazi" "user")
@@ -1304,7 +1304,7 @@ return "yazi-user-marker"
 def test_generate_merged_yazi_config_syncs_starship_plugin_config [] {
     print "🧪 Testing merged Yazi config syncs the bundled Starship plugin config into the managed Yazi surface across repeated regenerations..."
 
-    let repo_root = (get_repo_config_dir)
+    let repo_root = (get_repo_root)
     let tmp_home = (^mktemp -d /tmp/yazelix_yazi_starship_config_XXXXXX | str trim)
     let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
     mkdir ($tmp_home | path join ".config")
@@ -1365,7 +1365,7 @@ def test_generate_merged_yazi_config_syncs_starship_plugin_config [] {
 def test_generate_merged_yazi_config_renders_runtime_placeholders_in_plugins [] {
     print "🧪 Testing merged Yazi config renders runtime placeholders inside bundled plugins..."
 
-    let repo_root = (get_repo_config_dir)
+    let repo_root = (get_repo_root)
     let tmp_home = (^mktemp -d /tmp/yazelix_yazi_plugin_runtime_XXXXXX | str trim)
     let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
     mkdir ($tmp_home | path join ".config")
@@ -1420,7 +1420,7 @@ def test_generate_merged_yazi_config_renders_runtime_placeholders_in_plugins [] 
 def test_generate_merged_yazi_config_skips_unchanged_managed_file_rewrites [] {
     print "🧪 Testing merged Yazi config skips rewriting unchanged managed files on warm runs..."
 
-    let repo_root = (get_repo_config_dir)
+    let repo_root = (get_repo_root)
     let tmp_home = (^mktemp -d /tmp/yazelix_yazi_unchanged_reuse_XXXXXX | str trim)
     let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
     let user_config_dir = ($temp_config_dir | path join "user_configs")
@@ -1513,7 +1513,7 @@ plugins = ["git"]
 def test_generated_runtime_configs_prefer_active_runtime_over_installed_reference [] {
     print "🧪 Testing generated Yazi and Zellij runtime configs prefer the active runtime over a stale installed-runtime reference..."
 
-    let repo_root = (get_repo_config_dir)
+    let repo_root = (get_repo_root)
     let tmpdir = (^mktemp -d /tmp/yazelix_runtime_identity_split_XXXXXX | str trim)
     let fake_home = ($tmpdir | path join "home")
     let fake_state_dir = ($tmpdir | path join "state")
@@ -1639,7 +1639,7 @@ sidebar_width_percent = 25
             YAZELIX_CONFIG_OVERRIDE: $config_path
             YAZELIX_TEST_OUT_DIR: $out_dir
         } {
-            let root = (get_repo_config_dir)
+            let root = (get_repo_root)
             generate_merged_zellij_config $root $env.YAZELIX_TEST_OUT_DIR | ignore
             {
                 config: (open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "config.kdl"))
@@ -1807,7 +1807,7 @@ popup_height_percent = 76
             YAZELIX_CONFIG_OVERRIDE: $config_path
         })
         let generated_config = ($output.config | str trim)
-        let repo_root = (get_repo_config_dir)
+        let repo_root = (get_repo_root)
         let runtime_dir_lines = (
             $generated_config
             | lines
@@ -2030,7 +2030,7 @@ def test_generate_merged_zellij_config_prefers_managed_user_config_when_native_c
 
 export def run_generated_config_canonical_tests [] {
     with-env {
-        YAZELIX_RUNTIME_DIR: (get_repo_config_dir)
+        YAZELIX_RUNTIME_DIR: (get_repo_root)
         YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
     } {
         [

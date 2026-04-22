@@ -93,6 +93,27 @@ The harness must remain nextest-friendly by construction:
 `cargo test` remains reserved only for doctests and explicit nextest-unsupported
 exceptions.
 
+## Dependency Decision
+
+This harness lane does not add new crates.
+
+- dev-only crates reused:
+  - `assert_cmd`
+  - `tempfile`
+  - `serde_json`
+- in-house logic kept:
+  - repo/runtime fixture shaping
+  - typed `yzx` / `yzx_control` / `yzx_core` command builders
+  - JSON envelope parsing helpers
+- rejected alternatives:
+  - `duct` or other subprocess wrapper crates, because `assert_cmd` already owns
+    the child-process contract we need
+  - snapshot-heavy crates such as `insta`, because this lane is about narrow
+    contract assertions, not broad output snapshots
+- packaging impact:
+  - none, because the lane only reuses existing dev-dependencies in
+    `rust_core/yazelix_core/Cargo.toml`
+
 ## Explicit Non-Goals
 
 - rebuilding the current Nu omnibus runners in Rust

@@ -1,10 +1,14 @@
 // Test lane: maintainer
 
-use assert_cmd::Command;
 use pretty_assertions::assert_eq;
 use serde_json::{Value, json};
 use std::fs;
 use tempfile::tempdir;
+
+mod support;
+
+use support::commands::yzx_core_command;
+use support::envelopes::{error_envelope, ok_envelope};
 
 // Defends: runtime-env.compute returns one machine-readable env envelope with filtered PATH entries and managed Helix wrapping.
 // Contract: CRCP-002
@@ -37,18 +41,14 @@ fn runtime_env_compute_prints_machine_readable_env_envelope() {
         "helix_runtime_path": "/tmp/helix-runtime",
     });
 
-    let output = Command::cargo_bin("yzx_core")
-        .unwrap()
+    let output = yzx_core_command()
         .arg("runtime-env.compute")
         .arg("--request-json")
         .arg(request.to_string())
         .output()
         .unwrap();
 
-    assert!(output.status.success());
-    assert!(output.stderr.is_empty());
-
-    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let envelope: Value = ok_envelope(&output);
     let expected_wrapper = runtime_dir
         .join("shells")
         .join("posix")
@@ -108,20 +108,15 @@ fn runtime_env_compute_prints_machine_readable_env_envelope() {
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
 #[test]
 fn runtime_env_compute_rejects_invalid_request_json() {
-    let output = Command::cargo_bin("yzx_core")
-        .unwrap()
+    let output = yzx_core_command()
         .arg("runtime-env.compute")
         .arg("--request-json")
         .arg("{")
         .output()
         .unwrap();
 
-    assert_eq!(output.status.code(), Some(64));
-    assert!(output.stdout.is_empty());
-
-    let envelope: Value = serde_json::from_slice(&output.stderr).unwrap();
+    let envelope: Value = error_envelope(&output, 64);
     assert_eq!(envelope["command"], "runtime-env.compute");
-    assert_eq!(envelope["status"], "error");
     assert_eq!(envelope["error"]["class"], "usage");
     assert_eq!(envelope["error"]["code"], "invalid_request_json");
 }
@@ -147,8 +142,7 @@ fn runtime_env_compute_from_env_accepts_config_json() {
         "helix_runtime_path": "/tmp/managed-helix-runtime",
     });
 
-    let output = Command::cargo_bin("yzx_core")
-        .unwrap()
+    let output = yzx_core_command()
         .env_clear()
         .env("HOME", &home_dir)
         .env(
@@ -163,10 +157,7 @@ fn runtime_env_compute_from_env_accepts_config_json() {
         .output()
         .unwrap();
 
-    assert!(output.status.success());
-    assert!(output.stderr.is_empty());
-
-    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let envelope: Value = ok_envelope(&output);
     let expected_wrapper = runtime_dir
         .join("shells")
         .join("posix")

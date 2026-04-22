@@ -4,7 +4,7 @@
 # Defends: docs/specs/status_doctor_machine_readable_reports.md
 
 use ./yzx_test_helpers.nu [
-    get_repo_config_dir
+    get_repo_root
     resolve_test_yzx_bin
     resolve_test_yzx_control_bin
     resolve_test_yzx_core_bin

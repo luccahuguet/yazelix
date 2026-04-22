@@ -7,7 +7,7 @@
 
 use ../utils/yzx_core_bridge.nu [compute_config_state_via_yzx_core record_materialized_state_via_yzx_core]
 use ./config_normalize_test_helpers.nu [load_normalized_active_config]
-use ./yzx_test_helpers.nu [get_repo_config_dir repo_path resolve_test_yzx_bin resolve_test_yzx_control_bin resolve_test_yzx_core_bin setup_managed_config_fixture]
+use ./yzx_test_helpers.nu [get_repo_root repo_path resolve_test_yzx_bin resolve_test_yzx_control_bin resolve_test_yzx_core_bin setup_managed_config_fixture]
 
 const DESKTOP_ICON_SIZES = ["48x48", "64x64", "128x128", "256x256"]
 
@@ -1434,7 +1434,7 @@ def test_yzx_edit_targets_print_paths [] {
 def test_invalid_config_is_classified_as_config_problem [] {
     print "🧪 Testing invalid config values are classified as config problems..."
 
-    let repo_root = (get_repo_config_dir)
+    let repo_root = (get_repo_root)
     let tmp_home = (^mktemp -d /tmp/yazelix_invalid_config_XXXXXX | str trim)
     let temp_yazelix_dir = ($tmp_home | path join ".config" "yazelix")
     let xdg_config_home = ($tmp_home | path join ".config")

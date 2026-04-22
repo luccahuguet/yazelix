@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Test lane: maintainer
 
-use ./yzx_test_helpers.nu [get_repo_config_dir]
+use ./yzx_test_helpers.nu [get_repo_root]
 use ../utils/upgrade_summary.nu [build_upgrade_summary_report]
 
 def log_line [log_file: string, line: string] {
@@ -22,7 +22,7 @@ def log_block [log_file: string, title: string, content: string] {
 }
 
 export def main [] {
-    let repo_root = (get_repo_config_dir)
+    let repo_root = (get_repo_root)
     let tmp_home = (^mktemp -d /tmp/yazelix_historical_notes_e2e_XXXXXX | str trim)
     let state_dir = ($tmp_home | path join ".local" "share" "yazelix")
     let log_file = ($tmp_home | path join "historical_upgrade_notes_e2e.log")

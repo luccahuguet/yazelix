@@ -3,7 +3,7 @@
 # Defends: docs/specs/test_suite_governance.md
 # Defends: docs/specs/workspace_session_contract.md
 
-use ./yzx_test_helpers.nu [CLEAN_ZELLIJ_ENV_PREFIX get_repo_config_dir get_repo_root repo_path resolve_test_yzx_bin resolve_test_yzx_control_bin resolve_test_yzx_core_bin setup_managed_config_fixture]
+use ./yzx_test_helpers.nu [CLEAN_ZELLIJ_ENV_PREFIX get_repo_root repo_path resolve_test_yzx_bin resolve_test_yzx_control_bin resolve_test_yzx_core_bin setup_managed_config_fixture]
 use ../integrations/zellij.nu [retarget_workspace_for_path run_pane_orchestrator_command_raw]
 
 def run_nu_snippet [snippet: string, extra_env?: record] {

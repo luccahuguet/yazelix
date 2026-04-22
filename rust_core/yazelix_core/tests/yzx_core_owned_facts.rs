@@ -1,84 +1,18 @@
 // Test lane: default
 
-use assert_cmd::Command;
 use serde_json::Value;
-use std::fs;
-use std::path::PathBuf;
-use tempfile::TempDir;
+mod support;
 
-fn repo_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../..")
-        .canonicalize()
-        .expect("repo root")
-}
-
-struct OwnedFactsFixture {
-    _tmp: TempDir,
-    home_dir: PathBuf,
-    runtime_dir: PathBuf,
-    config_dir: PathBuf,
-}
-
-fn prepare_owned_facts_fixture(raw_config: &str) -> OwnedFactsFixture {
-    let repo = repo_root();
-    let tmp = TempDir::new().unwrap();
-    let home_dir = tmp.path().join("home");
-    let runtime_dir = tmp.path().join("runtime");
-    let config_dir = home_dir.join(".config").join("yazelix");
-    let managed_config = config_dir.join("user_configs").join("yazelix.toml");
-
-    fs::create_dir_all(runtime_dir.join("config_metadata")).unwrap();
-    fs::create_dir_all(managed_config.parent().unwrap()).unwrap();
-    fs::create_dir_all(&home_dir).unwrap();
-
-    fs::copy(
-        repo.join("yazelix_default.toml"),
-        runtime_dir.join("yazelix_default.toml"),
-    )
-    .unwrap();
-    fs::copy(
-        repo.join("config_metadata/main_config_contract.toml"),
-        runtime_dir.join("config_metadata/main_config_contract.toml"),
-    )
-    .unwrap();
-    fs::write(runtime_dir.join(".taplo.toml"), "[format]\n").unwrap();
-    fs::write(&managed_config, raw_config).unwrap();
-
-    OwnedFactsFixture {
-        _tmp: tmp,
-        home_dir,
-        runtime_dir,
-        config_dir,
-    }
-}
-
-fn owned_facts_command(fixture: &OwnedFactsFixture, helper_command: &str) -> Command {
-    let mut command = Command::cargo_bin("yzx_core").unwrap();
-    command
-        .arg(helper_command)
-        .env_clear()
-        .env("HOME", &fixture.home_dir)
-        .env("PATH", std::env::var("PATH").unwrap_or_default())
-        .env("YAZELIX_RUNTIME_DIR", &fixture.runtime_dir)
-        .env("YAZELIX_CONFIG_DIR", &fixture.config_dir);
-    command
-}
-
-fn envelope_data(output: &std::process::Output) -> Value {
-    assert!(output.status.success());
-    assert!(output.stderr.is_empty());
-    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(envelope["status"], "ok");
-    envelope
-}
+use support::commands::yzx_core_command_in_fixture;
+use support::envelopes::ok_envelope;
+use support::fixtures::managed_config_fixture;
 
 // Defends: integration-facts.compute returns the Rust-owned sidebar, editor-kind, and Yazi command payload directly.
 // Contract: WSS-005, SOE-004
 // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 #[test]
 fn integration_facts_compute_reports_sidebar_editor_and_yazi_payload() {
-    let fixture = prepare_owned_facts_fixture(
+    let fixture = managed_config_fixture(
         r#"[editor]
 command = "nvim"
 enable_sidebar = false
@@ -89,10 +23,10 @@ ya_command = "ya-test"
 "#,
     );
 
-    let output = owned_facts_command(&fixture, "integration-facts.compute")
+    let output = yzx_core_command_in_fixture(&fixture, "integration-facts.compute")
         .output()
         .unwrap();
-    let envelope = envelope_data(&output);
+    let envelope: Value = ok_envelope(&output);
 
     assert_eq!(envelope["command"], "integration-facts.compute");
     assert_eq!(envelope["data"]["enable_sidebar"], false);
@@ -106,7 +40,7 @@ ya_command = "ya-test"
 // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 #[test]
 fn transient_pane_facts_compute_reports_popup_program_and_geometry() {
-    let fixture = prepare_owned_facts_fixture(
+    let fixture = managed_config_fixture(
         r#"[zellij]
 popup_program = ["gitui", "--theme", "cyan"]
 popup_width_percent = 82
@@ -114,10 +48,10 @@ popup_height_percent = 76
 "#,
     );
 
-    let output = owned_facts_command(&fixture, "transient-pane-facts.compute")
+    let output = yzx_core_command_in_fixture(&fixture, "transient-pane-facts.compute")
         .output()
         .unwrap();
-    let envelope = envelope_data(&output);
+    let envelope: Value = ok_envelope(&output);
 
     assert_eq!(envelope["command"], "transient-pane-facts.compute");
     assert_eq!(
@@ -132,7 +66,7 @@ popup_height_percent = 76
 // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 #[test]
 fn startup_facts_compute_reports_retained_startup_and_session_fields() {
-    let fixture = prepare_owned_facts_fixture(
+    let fixture = managed_config_fixture(
         r#"[core]
 debug_mode = true
 skip_welcome_screen = true
@@ -153,10 +87,10 @@ session_name = "demo-session"
 "#,
     );
 
-    let output = owned_facts_command(&fixture, "startup-facts.compute")
+    let output = yzx_core_command_in_fixture(&fixture, "startup-facts.compute")
         .output()
         .unwrap();
-    let envelope = envelope_data(&output);
+    let envelope: Value = ok_envelope(&output);
 
     assert_eq!(envelope["command"], "startup-facts.compute");
     assert_eq!(envelope["data"]["default_shell"], "bash");
