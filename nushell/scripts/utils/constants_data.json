@@ -1,0 +1,62 @@
+{
+  "terminal_config_paths": {
+    "ghostty": {
+      "yazelix": "~/.local/share/yazelix/configs/terminal_emulators/ghostty/config",
+      "user": "~/.config/ghostty/config"
+    },
+    "kitty": {
+      "yazelix": "~/.local/share/yazelix/configs/terminal_emulators/kitty/kitty.conf",
+      "user": "~/.config/kitty/kitty.conf"
+    },
+    "wezterm": {
+      "yazelix": "~/.local/share/yazelix/configs/terminal_emulators/wezterm/.wezterm.lua",
+      "user_main": "~/.wezterm.lua",
+      "user_alt": "~/.config/wezterm/wezterm.lua"
+    },
+    "alacritty": {
+      "yazelix": "~/.local/share/yazelix/configs/terminal_emulators/alacritty/alacritty.toml",
+      "user": "~/.config/alacritty/alacritty.toml"
+    },
+    "foot": {
+      "yazelix": "~/.local/share/yazelix/configs/terminal_emulators/foot/foot.ini",
+      "user": "~/.config/foot/foot.ini"
+    }
+  },
+  "terminal_metadata": {
+    "ghostty": { "name": "Ghostty" },
+    "kitty": { "name": "Kitty" },
+    "wezterm": { "name": "WezTerm" },
+    "alacritty": { "name": "Alacritty" },
+    "foot": { "name": "Foot" }
+  },
+  "cursor_trail_shaders": {
+    "blaze": "./shaders/cursor_trail_blaze.glsl",
+    "snow": "./shaders/cursor_trail_white.glsl",
+    "cosmic": "./shaders/cursor_trail_cosmic.glsl",
+    "ocean": "./shaders/cursor_trail_ocean.glsl",
+    "forest": "./shaders/cursor_trail_forest.glsl",
+    "sunset": "./shaders/cursor_trail_sunset.glsl",
+    "neon": "./shaders/cursor_trail_neon.glsl",
+    "party": "./shaders/cursor_trail_party.glsl",
+    "eclipse": "./shaders/cursor_trail_eclipse.glsl",
+    "dusk": "./shaders/cursor_trail_dusk.glsl",
+    "orchid": "./shaders/cursor_trail_orchid.glsl",
+    "reef": "./shaders/cursor_trail_reef.glsl",
+    "inferno": "./shaders/cursor_trail_inferno.glsl",
+    "none": ""
+  },
+  "ghostty_trail_effects": ["tail", "warp", "sweep"],
+  "ghostty_mode_effects": ["ripple", "sonic_boom", "rectangle_boom", "ripple_rectangle"],
+  "zellij_config_paths": {
+    "yazelix_overrides": "configs/zellij/yazelix_overrides.kdl",
+    "layouts_dir": "configs/zellij/layouts",
+    "merged_config_dir": "~/.local/share/yazelix/configs/zellij",
+    "merged_config": "~/.local/share/yazelix/configs/zellij/config.kdl"
+  },
+  "shell_initializer_dirs": {
+    "bash": "~/.local/share/yazelix/initializers/bash",
+    "nushell": "~/.local/share/yazelix/initializers/nushell",
+    "fish": "~/.local/share/yazelix/initializers/fish",
+    "zsh": "~/.local/share/yazelix/initializers/zsh"
+  }
+}

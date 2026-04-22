@@ -82,7 +82,7 @@ def make_initializer_result [
 
 def main [yazelix_dir: string, shells_to_configure_str: string] {
     # Import constants for XDG paths
-    use ../utils/constants.nu *
+use ../utils/constants.nu [get_shell_initializer_dirs]
 
     if not ($yazelix_dir | path exists) {
         error make {msg: $"Yazelix directory does not exist: ($yazelix_dir)"}
@@ -105,12 +105,13 @@ def main [yazelix_dir: string, shells_to_configure_str: string] {
     ]
 
     # Use XDG-compliant state directories for initializers
+    let shell_initializer_dirs = (get_shell_initializer_dirs)
     let all_shells = [
         [name dir ext tool_overrides];
-        ["nu" ($SHELL_INITIALIZER_DIRS.nushell | str replace "~" $env.HOME) "nu" { zoxide: "nushell" }]
-        ["bash" ($SHELL_INITIALIZER_DIRS.bash | str replace "~" $env.HOME) "sh" {}]
-        ["fish" ($SHELL_INITIALIZER_DIRS.fish | str replace "~" $env.HOME) "fish" {}]
-        ["zsh" ($SHELL_INITIALIZER_DIRS.zsh | str replace "~" $env.HOME) "zsh" {}]
+        ["nu" ($shell_initializer_dirs.nushell | str replace "~" $env.HOME) "nu" { zoxide: "nushell" }]
+        ["bash" ($shell_initializer_dirs.bash | str replace "~" $env.HOME) "sh" {}]
+        ["fish" ($shell_initializer_dirs.fish | str replace "~" $env.HOME) "fish" {}]
+        ["zsh" ($shell_initializer_dirs.zsh | str replace "~" $env.HOME) "zsh" {}]
     ]
 
     # Filter shells to only include those we want to configure

@@ -2,7 +2,7 @@
 # Sweep Testing - Test Execution Utilities
 # Handles individual test execution and validation
 
-use ../../utils/constants.nu TERMINAL_METADATA
+use ../../utils/constants.nu get_terminal_metadata
 use ../../utils/terminal_launcher.nu command_exists
 use ../../utils/common.nu [get_yazelix_runtime_dir]
 
@@ -119,7 +119,7 @@ export def run_demo_command [
 }
 
 def terminal_available [terminal: string]: nothing -> bool {
-    let term_meta = ($TERMINAL_METADATA | get -o $terminal | default {})
+    let term_meta = ((get_terminal_metadata) | get -o $terminal | default {})
     let wrapper_cmd = $term_meta.wrapper
     (command_exists $wrapper_cmd) or (command_exists $terminal)
 }

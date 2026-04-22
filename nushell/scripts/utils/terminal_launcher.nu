@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Terminal launcher utilities for Yazelix
 
-use constants.nu [TERMINAL_CONFIG_PATHS, YAZELIX_WINDOW_CLASS, YAZELIX_X11_INSTANCE]
+use constants.nu [get_terminal_config_paths YAZELIX_WINDOW_CLASS YAZELIX_X11_INSTANCE]
 use common.nu [get_yazelix_runtime_dir get_yazelix_state_dir get_runtime_platform_name]
 use startup_profile.nu [profile_startup_step]
 
@@ -70,7 +70,7 @@ def resolve_nixgl_launch_context [] {
 # Resolve config path for a terminal based on mode
 export def resolve_terminal_config [terminal: string, mode: string] {
     let home = $env.HOME
-    let config_paths = ($TERMINAL_CONFIG_PATHS | get -o $terminal)
+    let config_paths = ((get_terminal_config_paths) | get -o $terminal)
     if $config_paths == null {
         error make {msg: $"Unsupported terminal config lookup: ($terminal)"}
     }

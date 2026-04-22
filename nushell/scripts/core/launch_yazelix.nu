@@ -3,7 +3,7 @@
 # Nushell version of the Yazelix launcher
 
 use ../utils/terminal_launcher.nu *
-use ../utils/constants.nu [DEFAULT_TERMINAL SUPPORTED_TERMINALS, TERMINAL_METADATA]
+use ../utils/constants.nu [DEFAULT_TERMINAL SUPPORTED_TERMINALS, get_terminal_metadata]
 use ../utils/common.nu [get_yazelix_runtime_dir normalize_path_entries require_yazelix_runtime_dir]
 use ../utils/startup_profile.nu [profile_startup_step propagate_startup_profile_env]
 use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface compute_config_state_via_yzx_core prepare_launch_materialization_via_yzx_core run_yzx_core_request_json_command]
@@ -27,7 +27,8 @@ def materialize_selected_terminal_configs [
         return
     }
 
-    let generated = ($terminals | each {|t| ($TERMINAL_METADATA | get -o $t | default {} | get -o name | default $t) })
+    let terminal_metadata = (get_terminal_metadata)
+    let generated = ($terminals | each {|t| ($terminal_metadata | get -o $t | default {} | get -o name | default $t) })
     let generated_list = ($generated | str join ", ")
     print $"✓ Generated terminal configurations ($generated_list)"
     print "📋 Static example configs for other terminals in configs/terminal_emulators/"

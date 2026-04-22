@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Interactive launch sequence for the active Yazelix runtime
 
-use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS, YAZELIX_LOGS_DIR]
+use ../utils/constants.nu [get_zellij_config_paths YAZELIX_LOGS_DIR]
 use ../utils/ascii_art.nu get_yazelix_colors
 use ../utils/common.nu [require_yazelix_runtime_dir resolve_zellij_default_shell]
 use ../utils/failure_classes.nu [format_failure_classification]
@@ -105,7 +105,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
             error make {msg: $"Failed to prepare Yazelix generated runtime state: ($err.msg)\nRun `yzx doctor` to inspect the runtime and generated-state contract, then restart Yazelix after fixing the reported problem."}
     })
 
-    let merged_zellij_dir = ($ZELLIJ_CONFIG_PATHS.merged_config_dir | str replace "~" $env.HOME)
+    let merged_zellij_dir = ((get_zellij_config_paths).merged_config_dir | str replace "~" $env.HOME)
     let working_dir = if ($cwd_override | is-not-empty) {
         $cwd_override
     } else {
