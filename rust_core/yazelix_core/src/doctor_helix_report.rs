@@ -485,6 +485,7 @@ mod tests {
         fs::set_permissions(path, perms).unwrap();
     }
 
+    // Defends: Helix doctor flags runtime conflicts when a user config runtime shadows the managed runtime.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn runtime_conflicts_flag_user_config_runtime() {
@@ -513,6 +514,7 @@ mod tests {
         assert!(!f.conflicts.is_empty());
     }
 
+    // Defends: Helix runtime health reports `ok` when `hx --health` exposes a complete runtime tree.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn runtime_health_ok_from_fake_hx_health_output() {
@@ -554,6 +556,7 @@ mod tests {
         assert_eq!(h.status, "ok");
     }
 
+    // Defends: managed Helix integration skips non-Helix editor commands instead of fabricating findings.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn managed_integration_skips_non_helix_editor() {
@@ -576,6 +579,8 @@ mod tests {
         assert!(evaluate_managed_integration(&req).is_empty());
     }
 
+    // Defends: managed Helix integration skips checks when no editor command is configured.
+    // Strength: defect=1 behavior=2 resilience=2 cost=2 uniqueness=1 total=8/10
     #[test]
     fn managed_integration_skips_when_editor_command_absent() {
         let tmp = TempDir::new().unwrap();
@@ -597,6 +602,8 @@ mod tests {
         assert!(evaluate_managed_integration(&req).is_empty());
     }
 
+    // Defends: runtime conflict detection still warns on an executable sibling runtime even without `hx --health` output.
+    // Strength: defect=2 behavior=2 resilience=2 cost=2 uniqueness=1 total=9/10
     #[test]
     fn runtime_conflicts_warn_on_sibling_runtime_even_without_health_output() {
         let tmp = TempDir::new().unwrap();
@@ -630,6 +637,8 @@ mod tests {
         assert_eq!(finding.conflicts[0].name, "Executable sibling runtime");
     }
 
+    // Defends: missing managed Helix reveal bindings are classified as stale generated config.
+    // Strength: defect=2 behavior=2 resilience=2 cost=2 uniqueness=1 total=9/10
     #[test]
     fn managed_integration_treats_missing_generated_binding_as_stale() {
         let tmp = TempDir::new().unwrap();

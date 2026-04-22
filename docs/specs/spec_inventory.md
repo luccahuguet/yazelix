@@ -24,6 +24,12 @@ Start from these files first when planning current work:
 - `cross_language_runtime_ownership.md`
   - the current owner map across Nushell, Rust core, Rust plugins, Lua, and
     POSIX shell
+- `canonical_contract_item_schema.md`
+  - the contract-item ID, status, owner, and verification schema for the
+    `yazelix-rdn7` protocol work
+- `config_runtime_control_plane_contract_item_pilot.md`
+  - the schema pilot that maps one mixed subsystem before protocol docs,
+    validators, and broad audits harden around it
 
 ## Scope
 
@@ -58,6 +64,8 @@ Status labels:
 | --- | --- | --- |
 | `backend_capability_contract.md` | Historical | Older backend-era framing kept only as design history; current delete-first work should start from the v15 runtime and Rust migration docs instead |
 | `backend_free_workspace_slice.md` | Planning | Still useful as a proof-mode boundary for backend-free workspace behavior; not a separately supported product edition |
+| `canonical_contract_item_schema.md` | Planning | Current schema decision for indexed contract items, test traceability, and delete-first feature-preservation rules; use it for `yazelix-rdn7` pilot/docs/validator work |
+| `config_runtime_control_plane_contract_item_pilot.md` | Planning | Pilot mapping for config/runtime/control-plane ownership, bridge debt, and test traceability; use it before broad `yazelix-rdn7` protocol docs or validators harden |
 | `config_metadata_centralization_plan.md` | Planning | Still useful for deleting duplicated config metadata across default config, Home Manager, and parser consumers |
 | `config_migration_engine.md` | Historical | Superseded; the automatic config migration engine is gone |
 | `config_surface_and_launch_profile_contract.md` | Historical | Pre-trim launch-profile and backend-era contract |

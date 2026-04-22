@@ -632,6 +632,7 @@ mod tests {
     use std::io::Write;
     use tempfile::TempDir;
 
+    // Defends: Home Manager ownership detection still recognizes the store-symlink marker path.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn home_manager_ownership_detects_store_symlink_marker() {
@@ -721,6 +722,7 @@ mod tests {
         );
     }
 
+    // Defends: desktop freshness still warns when a user-local desktop entry shadows the profile-owned entry.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn desktop_freshness_warns_on_shadowing_local_desktop() {

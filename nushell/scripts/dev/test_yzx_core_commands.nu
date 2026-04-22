@@ -2119,6 +2119,8 @@ export def run_core_canonical_tests [] {
         (test_invalid_config_is_classified_as_config_problem)
         (test_yzx_status_reports_basic_runtime_summary)
         (test_yzx_status_json_reports_typed_summary)
+        (test_yzx_status_versions_prints_tool_version_matrix)
+        (test_yzx_status_json_with_versions_reports_tool_matrix)
         (test_yzx_status_json_reports_materialization_repair_when_artifacts_missing)
         (test_yzx_menu_catalog_tracks_live_exported_command_surface)
         (test_yzx_menu_dispatches_catalog_actions_through_launcher)

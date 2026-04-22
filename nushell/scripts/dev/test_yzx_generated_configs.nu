@@ -723,6 +723,7 @@ def test_parse_yazelix_config_bootstraps_taplo_formatter_support [] {
 }
 
 # Defends: installed runtimes use the packaged Rust config helper instead of the legacy Nushell normalizer.
+# Contract: CRCP-001, CRCP-003
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_parse_yazelix_config_uses_runtime_yzx_core_helper_when_present [] {
     print "🧪 Testing parse_yazelix_config uses runtime-local yzx_core when present..."
@@ -828,6 +829,7 @@ exit 65
 }
 
 # Defends: packaged runtimes must include yzx_core; missing helper is not masked by legacy parsing.
+# Contract: CRCP-003
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_parse_yazelix_config_rejects_packaged_runtime_missing_yzx_core [] {
     print "🧪 Testing packaged runtimes missing yzx_core fail clearly..."
@@ -957,6 +959,7 @@ def test_parse_yazelix_config_source_checkout_missing_helper_does_not_fallback [
 }
 
 # Regression: source-checkout helper fallback must prefer the freshest local yzx_core build instead of blindly taking target/release.
+# Contract: CRCP-003
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_run_yzx_core_request_prefers_newer_source_checkout_helper_over_stale_release [] {
     print "🧪 Testing source checkout helper selection prefers a newer debug yzx_core over a stale release build..."

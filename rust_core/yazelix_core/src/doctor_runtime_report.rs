@@ -295,13 +295,15 @@ fn build_shared_preflight_findings(
         .collect())
 }
 
-// Test lane: default
+    // Test lane: default
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use tempfile::TempDir;
 
+    // Defends: doctor runtime distribution reporting still prefers Home Manager ownership over generic package shape.
+    // Strength: defect=1 behavior=2 resilience=2 cost=2 uniqueness=1 total=8/10
     #[test]
     fn distribution_prefers_home_manager_over_package_shape() {
         let tmp = TempDir::new().unwrap();
@@ -315,6 +317,8 @@ mod tests {
         assert_eq!(f.capability_mode.as_deref(), Some("home_manager_managed"));
     }
 
+    // Defends: missing managed layouts still surface the repair action in the doctor runtime report.
+    // Strength: defect=2 behavior=2 resilience=2 cost=2 uniqueness=1 total=9/10
     #[test]
     fn managed_layout_sets_repair_fix_action() {
         let tmp = TempDir::new().unwrap();

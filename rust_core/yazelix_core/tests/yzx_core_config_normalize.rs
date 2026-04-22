@@ -187,6 +187,7 @@ fn runtime_materialization_command(
 }
 
 // Defends: config.normalize emits a single machine-readable success envelope for valid config input.
+// Contract: CRCP-001
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
 #[test]
 fn config_normalize_prints_one_success_json_envelope() {
@@ -216,6 +217,7 @@ fn config_normalize_prints_one_success_json_envelope() {
 }
 
 // Defends: config.normalize emits a single machine-readable config error envelope for invalid input.
+// Contract: CRCP-001
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
 #[test]
 fn config_normalize_prints_one_error_json_envelope() {

@@ -1,15 +1,29 @@
 #!/usr/bin/env nu
 
+use ./contract_traceability_helpers.nu [load_bead_ids load_contract_items]
+
 const REPO_ROOT = (path self | path dirname | path dirname | path dirname | path dirname)
-
-def load_bead_ids [] {
-    let issues_path = ($REPO_ROOT | path join ".beads" "issues.jsonl")
-
-    open --raw $issues_path
-    | lines
-    | where { |line| ($line | str trim) != "" }
-    | each { |line| $line | from json | get id }
-}
+const ALLOWED_CONTRACT_TYPES = [
+    "behavior"
+    "invariant"
+    "boundary"
+    "ownership"
+    "failure_mode"
+    "non_goal"
+]
+const ALLOWED_CONTRACT_STATUSES = [
+    "live"
+    "planning"
+    "deprecated"
+    "historical"
+    "quarantine"
+]
+const ALLOWED_VERIFICATION_MODES = [
+    "automated"
+    "validator"
+    "manual"
+    "unverified"
+]
 
 def get_traceability_section [content: string] {
     let sections = (
@@ -72,22 +86,85 @@ def validate_spec_file [spec_path: string, bead_ids: list<string>] {
     $errors
 }
 
+def has_allowed_verification_mode [verification: string] {
+    $ALLOWED_VERIFICATION_MODES
+    | any { |mode| $verification | str contains $mode }
+}
+
+def validate_contract_item [item: record] {
+    mut errors = []
+
+    if $item.type == null {
+        $errors = ($errors | append $"($item.spec): contract item `($item.id)` is missing `- Type:`")
+    } else if not ($ALLOWED_CONTRACT_TYPES | any { |allowed| $allowed == $item.type }) {
+        $errors = ($errors | append $"($item.spec): contract item `($item.id)` declares unsupported type `($item.type)`")
+    }
+
+    if $item.status == null {
+        $errors = ($errors | append $"($item.spec): contract item `($item.id)` is missing `- Status:`")
+        return $errors
+    }
+
+    if not ($ALLOWED_CONTRACT_STATUSES | any { |allowed| $allowed == $item.status }) {
+        $errors = ($errors | append $"($item.spec): contract item `($item.id)` declares unsupported status `($item.status)`")
+        return $errors
+    }
+
+    if $item.status != "historical" {
+        for field_name in ["owner" "statement" "verification"] {
+            if (($item | get -o $field_name) == null) {
+                let field_label = if $field_name == "owner" {
+                    "Owner"
+                } else if $field_name == "statement" {
+                    "Statement"
+                } else {
+                    "Verification"
+                }
+                $errors = ($errors | append $"($item.spec): contract item `($item.id)` is missing `- ($field_label):`")
+            }
+        }
+    }
+
+    if ($item.verification != null) and not (has_allowed_verification_mode $item.verification) {
+        $errors = ($errors | append $"($item.spec): contract item `($item.id)` has `- Verification:` but no allowed verification mode keyword")
+    }
+
+    if ($item.status == "live") and ($item.verification == null) {
+        $errors = ($errors | append $"($item.spec): live contract item `($item.id)` must name a verification path or explicit manual/unverified reason")
+    }
+
+    $errors
+}
+
 export def main [] {
     let spec_files = (
         glob (($REPO_ROOT | path join "docs" "specs" "*.md"))
         | where { |path| ($path | path basename) != "template.md" }
     )
     let bead_ids = (load_bead_ids)
+    let contract_items = (load_contract_items)
 
     if ($spec_files | is-empty) {
         return
     }
 
-    let errors = (
+    mut errors = (
         $spec_files
         | each { |spec_path| validate_spec_file $spec_path $bead_ids }
         | flatten
     )
+
+    mut seen_ids = {}
+    for item in $contract_items {
+        if ($seen_ids | columns | any { |column| $column == $item.id }) {
+            let existing_spec = ($seen_ids | get $item.id)
+            $errors = ($errors | append $"Duplicate contract item id `($item.id)` appears in both ($existing_spec) and ($item.spec)")
+        } else {
+            $seen_ids = ($seen_ids | upsert $item.id $item.spec)
+        }
+
+        $errors = ($errors | append (validate_contract_item $item))
+    }
 
     if not ($errors | is-empty) {
         $errors | each { |line| print $"❌ ($line)" }

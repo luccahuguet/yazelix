@@ -473,6 +473,9 @@ pub fn setpriv_or_sh_exec(
 mod tests {
     use super::*;
 
+    // Test lane: default
+    // Defends: `yzx run` must preserve child flags after the public control-plane owner cut.
+    // Strength: defect=2 behavior=2 resilience=2 cost=2 uniqueness=1 total=9/10
     #[test]
     fn run_argv_preserves_child_flags() {
         let argv = vec!["cargo".into(), "--verbose".into(), "check".into()];
@@ -481,12 +484,16 @@ mod tests {
         assert_eq!(rest, &["--verbose", "check"]);
     }
 
+    // Defends: `yzx run` must reject an empty child argv instead of launching an unspecified command.
+    // Strength: defect=2 behavior=2 resilience=2 cost=2 uniqueness=1 total=9/10
     #[test]
     fn run_argv_rejects_empty() {
         let argv: Vec<String> = vec![];
         assert!(split_run_argv(&argv).is_err());
     }
 
+    // Defends: `yzx env` keeps the documented `--no-shell` alias family after the Rust control-plane owner cut.
+    // Strength: defect=1 behavior=2 resilience=2 cost=2 uniqueness=1 total=8/10
     #[test]
     fn env_cli_accepts_no_shell_aliases() {
         let a = parse_env_cli_args(&["--no-shell".into()]).unwrap();
@@ -521,6 +528,8 @@ mod tests {
         assert_eq!(argv, vec!["nu".to_string()]);
     }
 
+    // Defends: explicit `YAZELIX_CONFIG_DIR` still expands `~` before path use.
+    // Strength: defect=1 behavior=2 resilience=2 cost=2 uniqueness=1 total=8/10
     #[test]
     fn resolve_yazelix_config_dir_prefers_explicit_and_expands_home() {
         let home = Path::new("/tmp/home");
@@ -529,6 +538,8 @@ mod tests {
         assert_eq!(path, home.join("cfg").join("yazelix"));
     }
 
+    // Defends: config-dir resolution still prefers `XDG_CONFIG_HOME` before the home-default fallback.
+    // Strength: defect=1 behavior=2 resilience=2 cost=2 uniqueness=1 total=8/10
     #[test]
     fn resolve_yazelix_config_dir_uses_xdg_before_home_default() {
         let home = Path::new("/tmp/home");

@@ -1,5 +1,15 @@
 #!/usr/bin/env nu
 
+use ./contract_traceability_helpers.nu [
+    find_contract_item
+    is_policy_only_spec_path
+    load_bead_ids
+    load_contract_items
+    load_contract_traceability_quarantine_entries
+    parse_contract_marker_ids
+    spec_has_contract_items
+]
+
 const REPO_ROOT = (path self | path dirname | path dirname | path dirname | path dirname)
 const MIN_STRENGTH_BY_LANE = {
     default: 7
@@ -129,14 +139,47 @@ def load_file_defends_lines [relative_path: string] {
     | where { |line| $line | str starts-with "# Defends:" }
 }
 
+def parse_defends_spec_path [line: string] {
+    let candidate = (
+        $line
+        | str trim
+        | str replace "# Defends:" ""
+        | str trim
+    )
+
+    if not ($candidate | str starts-with "docs/") {
+        return null
+    }
+
+    if not (($REPO_ROOT | path join $candidate) | path exists) {
+        return null
+    }
+
+    $candidate
+}
+
 def has_existing_spec_reference [relative_path: string] {
     let defends_lines = (load_file_defends_lines $relative_path)
 
     $defends_lines
     | any { |line|
-        let spec_path = ($line | str replace "# Defends:" "" | str trim)
-        ($spec_path | str starts-with "docs/") and (($REPO_ROOT | path join $spec_path) | path exists)
+        (parse_defends_spec_path $line) != null
     }
+}
+
+def has_non_policy_spec_reference [relative_path: string] {
+    load_file_defends_lines $relative_path
+    | each { |line| parse_defends_spec_path $line }
+    | where { |spec_path| $spec_path != null }
+    | any { |spec_path| not (is_policy_only_spec_path $spec_path) }
+}
+
+def find_traceability_quarantine_entry [entries: list<record>, kind: string, path: string] {
+    $entries
+    | where kind == $kind
+    | where path == $path
+    | get -o 0
+    | default null
 }
 
 def load_canonical_test_names [relative_path: string] {
@@ -220,6 +263,92 @@ def get_prior_nonempty_lines_before_index [relative_path: string, line_index: in
     | each { |line| $line | str trim }
 }
 
+def load_definition_traceability_lines [relative_path: string, test_name: string] {
+    let line_index = (get_test_definition_line_index $relative_path $test_name)
+    let prior_nonempty_lines = (get_prior_nonempty_lines_before_index $relative_path $line_index)
+
+    $prior_nonempty_lines
+    | where { |line|
+        ["# Defends:", "# Regression:", "# Invariant:", "# Contract:"]
+        | any { |prefix| $line | str starts-with $prefix }
+    }
+}
+
+def load_definition_contract_ids [relative_path: string, test_name: string] {
+    load_definition_traceability_lines $relative_path $test_name
+    | where { |line| $line | str starts-with "# Contract:" }
+    | each { |line| parse_contract_marker_ids $line }
+    | flatten
+    | uniq
+}
+
+def load_definition_defends_spec_paths [relative_path: string, test_name: string] {
+    load_definition_traceability_lines $relative_path $test_name
+    | where { |line| $line | str starts-with "# Defends:" }
+    | each { |line| parse_defends_spec_path $line }
+    | where { |spec_path| $spec_path != null }
+    | uniq
+}
+
+def has_definition_regression_or_invariant [relative_path: string, test_name: string] {
+    load_definition_traceability_lines $relative_path $test_name
+    | any { |line| ($line | str starts-with "# Regression:") or ($line | str starts-with "# Invariant:") }
+}
+
+def definition_has_policy_only_traceability [relative_path: string, test_name: string] {
+    let spec_paths = (load_definition_defends_spec_paths $relative_path $test_name)
+
+    if ($spec_paths | is-empty) {
+        return false
+    }
+
+    if (has_definition_regression_or_invariant $relative_path $test_name) {
+        return false
+    }
+
+    $spec_paths | all { |spec_path| is_policy_only_spec_path $spec_path }
+}
+
+def collect_definition_contract_traceability_errors [
+    relative_path: string
+    test_name: string
+    lane: string
+    contract_items: list<record>
+] {
+    mut errors = []
+    let contract_ids = (load_definition_contract_ids $relative_path $test_name)
+    let defends_spec_paths = (load_definition_defends_spec_paths $relative_path $test_name)
+    let has_regression_or_invariant = (has_definition_regression_or_invariant $relative_path $test_name)
+
+    if (($contract_ids | is-empty) and (definition_has_policy_only_traceability $relative_path $test_name)) {
+        $errors = ($errors | append $"Governed test cannot rely only on `docs/specs/test_suite_governance.md` as nearby traceability: ($relative_path) :: ($test_name)")
+    }
+
+    if (
+        ($lane == "default")
+        and ($contract_ids | is-empty)
+        and (not $has_regression_or_invariant)
+        and ($defends_spec_paths | any { |spec_path| spec_has_contract_items $contract_items $spec_path })
+    ) {
+        $errors = ($errors | append $"Default-lane governed test defends a spec with indexed contract items but is missing a nearby '# Contract:' marker: ($relative_path) :: ($test_name)")
+    }
+
+    for contract_id in $contract_ids {
+        let item = (find_contract_item $contract_items $contract_id)
+
+        if $item == null {
+            $errors = ($errors | append $"Governed test references unknown contract id `($contract_id)`: ($relative_path) :: ($test_name)")
+            continue
+        }
+
+        if not (["live" "deprecated" "quarantine"] | any { |allowed| $allowed == $item.status }) {
+            $errors = ($errors | append $"Governed test references contract id `($contract_id)` with unsupported status `($item.status)`: ($relative_path) :: ($test_name)")
+        }
+    }
+
+    $errors
+}
+
 def has_valid_definition_test_justification [relative_path: string, test_name: string] {
     let line_index = (get_test_definition_line_index $relative_path $test_name)
     let prior_nonempty_lines = (get_prior_nonempty_lines_before_index $relative_path $line_index)
@@ -274,7 +403,11 @@ export def main [] {
     let entrypoints = (load_default_suite_entrypoints)
     let component_files = (load_default_suite_component_files)
     let defended_by_lines = (load_spec_defended_by_lines)
+    let bead_ids = (load_bead_ids)
+    let contract_items = (load_contract_items)
+    let quarantine_entries = (load_contract_traceability_quarantine_entries)
     mut errors = []
+    mut warnings = []
 
     for test_path in (load_all_test_file_paths) {
         let relative_path = ($test_path | path relative-to $REPO_ROOT)
@@ -304,6 +437,18 @@ export def main [] {
             $errors = ($errors | append $"Default-suite component file is missing a valid '# Defends:' spec reference: ($dev_relative_path)")
         }
 
+        if not (has_non_policy_spec_reference $dev_relative_path) {
+            let quarantine_entry = (find_traceability_quarantine_entry $quarantine_entries "default_suite_component_file" $dev_relative_path)
+
+            if $quarantine_entry == null {
+                $errors = ($errors | append $"Default-suite component file cannot rely only on governance-level file traceability without a quarantine entry: ($dev_relative_path)")
+            } else if not (($quarantine_entry.bead? | default "") in $bead_ids) {
+                $errors = ($errors | append $"Traceability quarantine entry points at a missing bead `($quarantine_entry.bead? | default "")`: ($dev_relative_path)")
+            } else {
+                $warnings = ($warnings | append $"Quarantined file-level traceability debt: ($dev_relative_path) -> ($quarantine_entry.bead)")
+            }
+        }
+
         let lane = (parse_test_lane $dev_relative_path)
         if $lane != "default" {
             $errors = ($errors | append $"Default-suite component file must declare '# Test lane: default': ($dev_relative_path)")
@@ -324,6 +469,8 @@ export def main [] {
             if not (has_valid_definition_test_justification $dev_relative_path $canonical_test) {
                 $errors = ($errors | append $"Default-suite canonical test is missing a nearby '# Defends:', '# Regression:', or '# Invariant:' marker at the test definition: ($dev_relative_path) :: ($canonical_test)")
             }
+
+            $errors = ($errors | append (collect_definition_contract_traceability_errors $dev_relative_path $canonical_test "default" $contract_items))
 
             let strength = (get_definition_test_strength $dev_relative_path $canonical_test)
             let minimum_strength = ($MIN_STRENGTH_BY_LANE.default)
@@ -353,11 +500,17 @@ export def main [] {
                 $errors = ($errors | append $"Governed test is missing a nearby '# Defends:', '# Regression:', or '# Invariant:' marker: ($relative_path) :: ($test_name)")
             }
 
+            $errors = ($errors | append (collect_definition_contract_traceability_errors $relative_path $test_name $lane $contract_items))
+
             let strength = (get_definition_test_strength $relative_path $test_name)
             if $strength < $minimum_strength {
                 $errors = ($errors | append $"Governed test is below the minimum strength bar of ($minimum_strength)/10 for lane '($lane)': ($relative_path) :: ($test_name) :: ($strength)/10")
             }
         }
+    }
+
+    if not ($warnings | is-empty) {
+        $warnings | each { |line| print $"⚠️ ($line)" }
     }
 
     if not ($errors | is-empty) {

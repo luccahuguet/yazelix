@@ -4,6 +4,10 @@ Yazelix should be spec-driven for changes that alter user-visible behavior or su
 
 This does not mean every tiny edit needs a design memo. It means that when a change affects how Yazelix behaves, there should be a short written contract before or during implementation.
 
+For the broader public protocol around contract items, test traceability,
+quarantine or delete outcomes, and delete-first subsystem audits, start with
+[`docs/contract_driven_development.md`](./contract_driven_development.md).
+
 ## Why
 
 Specs exist to reduce drift between:
@@ -92,6 +96,11 @@ Each real spec should also include a small `Traceability` section so the links s
 - one or more `Defended by` lines pointing to concrete tests or validator commands
 
 Later traceability automation can tighten this further, but this is the current convention.
+
+If the spec defines live normative behavior, use the contract-item schema from
+[`docs/specs/canonical_contract_item_schema.md`](./specs/canonical_contract_item_schema.md)
+for the live items touched by the change instead of treating the whole file as
+one undifferentiated contract.
 
 ## Required Sections
 

@@ -7,6 +7,7 @@ use std::fs;
 use tempfile::tempdir;
 
 // Defends: runtime-env.compute returns one machine-readable env envelope with filtered PATH entries and managed Helix wrapping.
+// Contract: CRCP-002
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn runtime_env_compute_prints_machine_readable_env_envelope() {
@@ -103,6 +104,7 @@ fn runtime_env_compute_prints_machine_readable_env_envelope() {
 }
 
 // Defends: runtime-env.compute rejects malformed JSON request payloads with one usage envelope.
+// Contract: CRCP-002
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
 #[test]
 fn runtime_env_compute_rejects_invalid_request_json() {

@@ -486,6 +486,9 @@ mod tests {
     use yazelix_core::config_normalize::ConfigDiagnostic;
     use yazelix_core::control_plane::resolve_yazelix_config_dir;
 
+    // Test lane: default
+    // Defends: public control-plane config-dir resolution still honors explicit `YAZELIX_CONFIG_DIR` with home expansion.
+    // Strength: defect=1 behavior=2 resilience=2 cost=2 uniqueness=1 total=8/10
     #[test]
     fn resolve_config_dir_prefers_explicit_and_expands_home() {
         let home = Path::new("/tmp/home");
@@ -494,6 +497,8 @@ mod tests {
         assert_eq!(path, home.join("cfg").join("yazelix"));
     }
 
+    // Defends: public control-plane config-dir resolution still prefers `XDG_CONFIG_HOME` before the home-default fallback.
+    // Strength: defect=1 behavior=2 resilience=2 cost=2 uniqueness=1 total=8/10
     #[test]
     fn resolve_config_dir_uses_xdg_before_home_default() {
         let home = Path::new("/tmp/home");
@@ -501,6 +506,8 @@ mod tests {
         assert_eq!(path, home.join("xdg").join("yazelix"));
     }
 
+    // Defends: startup config rendering still includes the blocking diagnostic details promised by the public control-plane surface.
+    // Strength: defect=2 behavior=2 resilience=2 cost=2 uniqueness=1 total=9/10
     #[test]
     fn render_startup_config_error_includes_blocking_details() {
         let report = ConfigDiagnosticReport {
