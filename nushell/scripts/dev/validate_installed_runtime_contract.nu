@@ -118,6 +118,7 @@ export def main [] {
     print "🔍 Validating installed-runtime contract surfaces ..."
 
     let cli_wrapper = "shells/posix/yzx_cli.sh"
+    let detached_launch_probe = "shells/posix/detached_launch_probe.sh"
     let runtime_env = "shells/posix/runtime_env.sh"
     let environment_setup = "nushell/scripts/setup/environment.nu"
     let runtime_tree = "packaging/mk_runtime_tree.nix"
@@ -126,6 +127,7 @@ export def main [] {
     require_path_exists $flake_path "flake definition"
     require_path_missing "shells/posix/install_yazelix.sh.in" "legacy flake installer template"
     require_path_exists $cli_wrapper "stable POSIX CLI wrapper"
+    require_path_exists $detached_launch_probe "detached launch probe helper"
     require_path_exists $runtime_env "runtime env helper"
     require_path_exists $environment_setup "environment setup script"
     require_path_exists $runtime_tree "runtime tree builder"
@@ -172,9 +174,11 @@ export def main [] {
 
     let runtime_out = (build_flake_output_path "runtime" "building runtime package for installed-runtime validation")
     validate_rust_routed_nu_modules $runtime_out "built runtime package"
+    require_path_exists ($runtime_out | path join $detached_launch_probe) "built runtime detached launch probe helper"
 
     let yazelix_out = (build_flake_output_path "yazelix" "building yazelix package for installed-runtime validation")
     validate_rust_routed_nu_modules $yazelix_out "built yazelix package"
+    require_path_exists ($yazelix_out | path join $detached_launch_probe) "built yazelix detached launch probe helper"
 
     let built_yzx = ($yazelix_out | path join "bin" "yzx")
     require_path_exists $built_yzx "built yazelix CLI wrapper"

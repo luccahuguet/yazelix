@@ -18,6 +18,7 @@ def ensure_runtime_scripts_executable [yazelix_dir: string] {
     }
 
     chmod +x $"($runtime_root)/shells/bash/start_yazelix.sh"
+    chmod +x $"($runtime_root)/shells/posix/detached_launch_probe.sh"
     chmod +x $"($runtime_root)/shells/posix/start_yazelix.sh"
     chmod +x $"($runtime_root)/shells/posix/yazelix_hx.sh"
     chmod +x $"($runtime_root)/shells/posix/yzx_cli.sh"

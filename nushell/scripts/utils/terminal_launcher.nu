@@ -194,6 +194,11 @@ def get_ghostty_env_wrapper_path []: nothing -> string {
     $runtime_dir | path join "shells" "posix" "yazelix_ghostty.sh"
 }
 
+def get_detached_launch_probe_helper_path []: nothing -> string {
+    let runtime_dir = (get_yazelix_runtime_dir)
+    $runtime_dir | path join "shells" "posix" "detached_launch_probe.sh"
+}
+
 def build_ghostty_launch_command [
     command: string
     config_path: string
@@ -265,31 +270,14 @@ export def run_detached_terminal_launch [launch_cmd: string, terminal_name: stri
         error make {msg: $"Cannot launch ($terminal_name): bash is not available in PATH.\nYazelix uses bash to detach new terminal windows."}
     }
 
+    let probe_helper = (get_detached_launch_probe_helper_path)
+    if not ($probe_helper | path exists) {
+        error make {msg: $"Cannot launch ($terminal_name): detached launch helper is missing at ($probe_helper).\nRestore shells/posix/detached_launch_probe.sh or reinstall Yazelix."}
+    }
+
     let launch_log = (get_launch_probe_log_path $terminal_name)
-    let probe_script = '
-launch_log="$1"
-launch_cmd="$2"
-
-: > "$launch_log"
-nohup bash -lc "$launch_cmd" >"$launch_log" 2>&1 < /dev/null &
-pid=$!
-
-for i in 1 2 3 4 5 6; do
-  sleep 0.05
-  if ! kill -0 "$pid" 2>/dev/null; then
-    wait "$pid"
-    status=$?
-    echo "$launch_log"
-    exit "$status"
-  fi
-done
-
-rm -f "$launch_log"
-exit 0
-'
-
     let output = (profile_startup_step "terminal_launcher" "detached_launch_probe" {
-        ^bash -c $probe_script bash $launch_log $launch_cmd | complete
+        ^$probe_helper $launch_log $launch_cmd | complete
     } {
         terminal: $terminal_name
     })
