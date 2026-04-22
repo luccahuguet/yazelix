@@ -1,0 +1,83 @@
+{
+  "style_catalog": [
+    { "name": "static", "welcome": true, "screen": false, "random": false },
+    { "name": "logo", "welcome": true, "screen": true, "random": false },
+    { "name": "boids", "welcome": true, "screen": true, "random": false },
+    { "name": "game_of_life_gliders", "welcome": true, "screen": true, "random": true },
+    { "name": "game_of_life_oscillators", "welcome": true, "screen": true, "random": true },
+    { "name": "game_of_life_bloom", "welcome": true, "screen": true, "random": true },
+    { "name": "random", "welcome": true, "screen": true, "random": false }
+  ],
+  "logo_welcome_specs": {
+    "narrow": {
+      "minimum_inner_width": 22,
+      "title_text": "YAZELIX",
+      "title_hint_text": "YZX",
+      "body_alignment": "left",
+      "body_lines": [
+        "yazi zellij helix",
+        "one shell. one flow."
+      ],
+      "footer": "welcome to yazelix"
+    },
+    "medium": {
+      "minimum_inner_width": 34,
+      "title_text": "YAZELIX",
+      "title_hint_text": "YZX",
+      "body_alignment": "left",
+      "body_lines": [
+        "your reproducible terminal IDE",
+        "zero-conflict helix/zellij keys",
+        "top terminals, shells, and packs"
+      ],
+      "footer": "welcome to yazelix"
+    },
+    "wide": {
+      "minimum_inner_width": 58,
+      "title_text": "YAZELIX",
+      "title_hint_text": "YZX",
+      "body_alignment": "center",
+      "body_lines": [
+        "your reproducible, declarative terminal IDE",
+        "zero-conflict keybindings between helix and zellij",
+        "supports all top terminals and shells",
+        "curated program packs (all configurable)"
+      ],
+      "footer": "welcome to yazelix"
+    },
+    "hero": {
+      "minimum_inner_width": 76,
+      "title_text": "YAZELIX",
+      "title_hint_text": "YZX",
+      "body_alignment": "center",
+      "body_lines": [
+        "your reproducible, declarative terminal IDE",
+        "zero-conflict keybindings between helix and zellij",
+        "supports all top terminals and shells",
+        "curated program packs (all configurable)",
+        "shines over SSH"
+      ],
+      "footer": "welcome to yazelix"
+    }
+  },
+  "boids_welcome_specs": {
+    "narrow": { "minimum_inner_width": 22, "body_height": 4, "caption": "flocking..." },
+    "medium": { "minimum_inner_width": 34, "body_height": 5, "caption": "flocking..." },
+    "wide": { "minimum_inner_width": 58, "body_height": 5, "caption": "flocking..." },
+    "hero": { "minimum_inner_width": 76, "body_height": 7, "caption": "flocking..." }
+  },
+  "game_of_life_specs": {
+    "narrow": { "minimum_inner_width": 22, "welcome_minimum_body_height": 8, "screen_minimum_body_height": 8 },
+    "medium": { "minimum_inner_width": 34, "welcome_minimum_body_height": 12, "screen_minimum_body_height": 12 },
+    "wide": { "minimum_inner_width": 58, "welcome_minimum_body_height": 14, "screen_minimum_body_height": 14 },
+    "hero": { "minimum_inner_width": 76, "welcome_minimum_body_height": 16, "screen_minimum_body_height": 16 }
+  },
+  "game_of_life_shapes": {
+    "right_glider": [[1, 0], [2, 1], [0, 2], [1, 2], [2, 2]],
+    "blinker": [[0, 0], [1, 0], [2, 0]],
+    "toad": [[1, 0], [2, 0], [3, 0], [0, 1], [1, 1], [2, 1]],
+    "beacon": [[0, 0], [1, 0], [0, 1], [1, 1], [2, 2], [3, 2], [2, 3], [3, 3]],
+    "r_pentomino": [[1, 0], [2, 0], [0, 1], [1, 1], [1, 2]],
+    "acorn": [[1, 0], [3, 1], [0, 2], [1, 2], [4, 2], [5, 2], [6, 2]]
+  }
+}

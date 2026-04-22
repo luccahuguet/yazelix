@@ -1,15 +1,11 @@
 #!/usr/bin/env nu
 # Width-aware welcome art for Yazelix.
 
-const STYLE_CATALOG = [
-    { name: "static", welcome: true, screen: false, random: false }
-    { name: "logo", welcome: true, screen: true, random: false }
-    { name: "boids", welcome: true, screen: true, random: false }
-    { name: "game_of_life_gliders", welcome: true, screen: true, random: true }
-    { name: "game_of_life_oscillators", welcome: true, screen: true, random: true }
-    { name: "game_of_life_bloom", welcome: true, screen: true, random: true }
-    { name: "random", welcome: true, screen: true, random: false }
-]
+const ASCII_ART_DATA_PATH = ((path self | path dirname) | path join "ascii_art_data.json")
+
+def load_ascii_art_data [] {
+    open $ASCII_ART_DATA_PATH
+}
 
 # Export the color scheme used in the welcome art for consistent styling.
 export def get_yazelix_colors [] {
@@ -27,7 +23,7 @@ export def get_yazelix_colors [] {
 }
 
 def get_style_values_for_surface [surface: string] {
-    $STYLE_CATALOG
+    (load_ascii_art_data).style_catalog
     | where {|style|
         match $surface {
             "welcome" => $style.welcome
@@ -354,105 +350,21 @@ def center_frame_lines [lines: list<string>, target_width: int] {
 }
 
 def get_logo_welcome_spec [variant: string, resolved_width: int] {
-    match $variant {
-        "narrow" => {
-            {
-                inner_width: (fit_inner_width $resolved_width 22)
-                title_text: "YAZELIX"
-                title_hint_text: "YZX"
-                body_alignment: "left"
-                body_lines: [
-                    "yazi zellij helix"
-                    "one shell. one flow."
-                ]
-                footer: "welcome to yazelix"
-            }
-        }
-        "medium" => {
-            {
-                inner_width: (fit_inner_width $resolved_width 34)
-                title_text: "YAZELIX"
-                title_hint_text: "YZX"
-                body_alignment: "left"
-                body_lines: [
-                    "your reproducible terminal IDE"
-                    "zero-conflict helix/zellij keys"
-                    "top terminals, shells, and packs"
-                ]
-                footer: "welcome to yazelix"
-            }
-        }
-        "wide" => {
-            {
-                inner_width: (fit_inner_width $resolved_width 58)
-                title_text: "YAZELIX"
-                title_hint_text: "YZX"
-                body_alignment: "center"
-                body_lines: [
-                    "your reproducible, declarative terminal IDE"
-                    "zero-conflict keybindings between helix and zellij"
-                    "supports all top terminals and shells"
-                    "curated program packs \(all configurable\)"
-                ]
-                footer: "welcome to yazelix"
-            }
-        }
-        "hero" => {
-            {
-                inner_width: (fit_inner_width $resolved_width 76)
-                title_text: "YAZELIX"
-                title_hint_text: "YZX"
-                body_alignment: "center"
-                body_lines: [
-                    "your reproducible, declarative terminal IDE"
-                    "zero-conflict keybindings between helix and zellij"
-                    "supports all top terminals and shells"
-                    "curated program packs \(all configurable\)"
-                    "shines over SSH"
-                ]
-                footer: "welcome to yazelix"
-            }
-        }
-        _ => {
-            error make {msg: $"Unsupported logo welcome variant: ($variant)"}
-        }
+    let spec = ((load_ascii_art_data).logo_welcome_specs | get -o $variant)
+    if $spec == null {
+        error make {msg: $"Unsupported logo welcome variant: ($variant)"}
     }
+
+    $spec | upsert inner_width (fit_inner_width $resolved_width ($spec.minimum_inner_width | into int))
 }
 
 def get_boids_welcome_spec [variant: string, resolved_width: int] {
-    match $variant {
-        "narrow" => {
-            {
-                inner_width: (fit_inner_width $resolved_width 22)
-                body_height: 4
-                caption: "flocking..."
-            }
-        }
-        "medium" => {
-            {
-                inner_width: (fit_inner_width $resolved_width 34)
-                body_height: 5
-                caption: "flocking..."
-            }
-        }
-        "wide" => {
-            {
-                inner_width: (fit_inner_width $resolved_width 58)
-                body_height: 5
-                caption: "flocking..."
-            }
-        }
-        "hero" => {
-            {
-                inner_width: (fit_inner_width $resolved_width 76)
-                body_height: 7
-                caption: "flocking..."
-            }
-        }
-        _ => {
-            error make {msg: $"Unsupported boids welcome variant: ($variant)"}
-        }
+    let spec = ((load_ascii_art_data).boids_welcome_specs | get -o $variant)
+    if $spec == null {
+        error make {msg: $"Unsupported boids welcome variant: ($variant)"}
     }
+
+    $spec | upsert inner_width (fit_inner_width $resolved_width ($spec.minimum_inner_width | into int))
 }
 
 def resolve_game_of_life_body_height [minimum_height: int, resolved_height: int] {
@@ -473,66 +385,26 @@ def resolve_game_of_life_screen_body_height [minimum_height: int, resolved_heigh
 }
 
 def get_game_of_life_welcome_spec [variant: string, resolved_width: int, resolved_height: int] {
-    match $variant {
-        "narrow" => {
-            {
-                inner_width: (fit_inner_width $resolved_width 22)
-                body_height: (resolve_game_of_life_body_height 8 $resolved_height)
-            }
-        }
-        "medium" => {
-            {
-                inner_width: (fit_inner_width $resolved_width 34)
-                body_height: (resolve_game_of_life_body_height 12 $resolved_height)
-            }
-        }
-        "wide" => {
-            {
-                inner_width: (fit_inner_width $resolved_width 58)
-                body_height: (resolve_game_of_life_body_height 14 $resolved_height)
-            }
-        }
-        "hero" => {
-            {
-                inner_width: (fit_inner_width $resolved_width 76)
-                body_height: (resolve_game_of_life_body_height 16 $resolved_height)
-            }
-        }
-        _ => {
-            error make {msg: $"Unsupported game_of_life welcome variant: ($variant)"}
-        }
+    let spec = ((load_ascii_art_data).game_of_life_specs | get -o $variant)
+    if $spec == null {
+        error make {msg: $"Unsupported game_of_life welcome variant: ($variant)"}
+    }
+
+    {
+        inner_width: (fit_inner_width $resolved_width ($spec.minimum_inner_width | into int))
+        body_height: (resolve_game_of_life_body_height ($spec.welcome_minimum_body_height | into int) $resolved_height)
     }
 }
 
 def get_game_of_life_screen_spec [variant: string, resolved_width: int, resolved_height: int] {
-    match $variant {
-        "narrow" => {
-            {
-                inner_width: (fit_inner_width $resolved_width 22)
-                body_height: (resolve_game_of_life_screen_body_height 8 $resolved_height)
-            }
-        }
-        "medium" => {
-            {
-                inner_width: (fit_inner_width $resolved_width 34)
-                body_height: (resolve_game_of_life_screen_body_height 12 $resolved_height)
-            }
-        }
-        "wide" => {
-            {
-                inner_width: (fit_inner_width $resolved_width 58)
-                body_height: (resolve_game_of_life_screen_body_height 14 $resolved_height)
-            }
-        }
-        "hero" => {
-            {
-                inner_width: (fit_inner_width $resolved_width 76)
-                body_height: (resolve_game_of_life_screen_body_height 16 $resolved_height)
-            }
-        }
-        _ => {
-            error make {msg: $"Unsupported game_of_life screen variant: ($variant)"}
-        }
+    let spec = ((load_ascii_art_data).game_of_life_specs | get -o $variant)
+    if $spec == null {
+        error make {msg: $"Unsupported game_of_life screen variant: ($variant)"}
+    }
+
+    {
+        inner_width: (fit_inner_width $resolved_width ($spec.minimum_inner_width | into int))
+        body_height: (resolve_game_of_life_screen_body_height ($spec.screen_minimum_body_height | into int) $resolved_height)
     }
 }
 
@@ -661,28 +533,13 @@ def offset_game_of_life_shape [shape: list<list<int>>, offset_x: int, offset_y: 
     }
 }
 
-def get_right_glider_shape [] {
-    [[1 0] [2 1] [0 2] [1 2] [2 2]]
-}
+def get_game_of_life_shape [shape_name: string] {
+    let shape = ((load_ascii_art_data).game_of_life_shapes | get -o $shape_name)
+    if $shape == null {
+        error make {msg: $"Unsupported game-of-life shape: ($shape_name)"}
+    }
 
-def get_blinker_shape [] {
-    [[0 0] [1 0] [2 0]]
-}
-
-def get_toad_shape [] {
-    [[1 0] [2 0] [3 0] [0 1] [1 1] [2 1]]
-}
-
-def get_beacon_shape [] {
-    [[0 0] [1 0] [0 1] [1 1] [2 2] [3 2] [2 3] [3 3]]
-}
-
-def get_r_pentomino_shape [] {
-    [[1 0] [2 0] [0 1] [1 1] [1 2]]
-}
-
-def get_acorn_shape [] {
-    [[1 0] [3 1] [0 2] [1 2] [4 2] [5 2] [6 2]]
+    $shape
 }
 
 def get_game_of_life_shape_size [shape: list<list<int>>] {
@@ -783,7 +640,7 @@ def build_game_of_life_gliders_seed [width: int, height: int] {
     } else {
         2
     }
-    let right_glider = (get_right_glider_shape)
+    let right_glider = (get_game_of_life_shape "right_glider")
     let right_edge_x = if ($width - 5) < 0 { 0 } else { $width - 5 }
     let inner_right_x = if ($width - 9) < 0 { 0 } else { $width - 9 }
     let middle_upper_y = (($height / 2) | math floor) - 3
@@ -824,11 +681,11 @@ def build_game_of_life_gliders_seed [width: int, height: int] {
 
 def build_game_of_life_oscillators_seed [width: int, height: int] {
     let raw_shapes = [
-        { shape: (get_beacon_shape), origin: { x: 1, y: 1 } }
-        { shape: (get_blinker_shape), origin: { x: (((($width / 2) | math floor) - 1)), y: 1 } }
-        { shape: (get_toad_shape), origin: { x: (((($width / 2) | math floor) - 2)), y: (((($height / 2) | math floor) - 1)) } }
-        { shape: (get_blinker_shape), origin: { x: 2, y: (($height - 2)) } }
-        { shape: (get_beacon_shape), origin: { x: (($width - 5)), y: (($height - 5)) } }
+        { shape: (get_game_of_life_shape "beacon"), origin: { x: 1, y: 1 } }
+        { shape: (get_game_of_life_shape "blinker"), origin: { x: (((($width / 2) | math floor) - 1)), y: 1 } }
+        { shape: (get_game_of_life_shape "toad"), origin: { x: (((($width / 2) | math floor) - 2)), y: (((($height / 2) | math floor) - 1)) } }
+        { shape: (get_game_of_life_shape "blinker"), origin: { x: 2, y: (($height - 2)) } }
+        { shape: (get_game_of_life_shape "beacon"), origin: { x: (($width - 5)), y: (($height - 5)) } }
     ]
 
     let cells = (
@@ -844,10 +701,10 @@ def build_game_of_life_oscillators_seed [width: int, height: int] {
 
 def build_game_of_life_bloom_seed [width: int, height: int] {
     let raw_shapes = [
-        { shape: (get_r_pentomino_shape), origin: { x: 1, y: 1 } }
-        { shape: (get_acorn_shape), origin: { x: (((($width / 2) | math floor) - 3)), y: (((($height / 3) | math floor) - 1)) } }
-        { shape: (get_r_pentomino_shape), origin: { x: (($width - 4)), y: (($height - 4)) } }
-        { shape: (get_r_pentomino_shape), origin: { x: (((($width / 2) | math floor) - 1)), y: ((((($height * 2) / 3) | math floor) - 1)) } }
+        { shape: (get_game_of_life_shape "r_pentomino"), origin: { x: 1, y: 1 } }
+        { shape: (get_game_of_life_shape "acorn"), origin: { x: (((($width / 2) | math floor) - 3)), y: (((($height / 3) | math floor) - 1)) } }
+        { shape: (get_game_of_life_shape "r_pentomino"), origin: { x: (($width - 4)), y: (($height - 4)) } }
+        { shape: (get_game_of_life_shape "r_pentomino"), origin: { x: (((($width / 2) | math floor) - 1)), y: ((((($height * 2) / 3) | math floor) - 1)) } }
     ]
 
     let cells = (
