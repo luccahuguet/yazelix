@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 # Test lane: default
 # Defends: docs/specs/test_suite_governance.md
+# Defends: docs/specs/welcome_screen_style_contract.md
 
 use ../yzx/screen.nu [get_yzx_screen_cycle_frames resolve_yzx_screen_style]
 use ../utils/ascii_art.nu [get_logo_welcome_frame get_max_visible_width resolve_screen_style]

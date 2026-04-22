@@ -1,6 +1,8 @@
 #!/usr/bin/env nu
 # Test lane: default
 # Defends: docs/specs/test_suite_governance.md
+# Defends: docs/specs/runtime_dependency_preflight_contract.md
+# Defends: docs/specs/terminal_launch_contract.md
 
 use ./yzx_test_helpers.nu [get_repo_config_dir repo_path resolve_test_yzx_core_bin setup_managed_config_fixture]
 use ./materialization_dev_helpers.nu [generate_merged_yazi_config generate_merged_zellij_config regenerate_runtime_configs]

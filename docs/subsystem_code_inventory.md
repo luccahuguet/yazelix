@@ -10,6 +10,10 @@ no longer "which subsystem is largest?" The useful question is "which surviving
 Nushell owners can disappear next, and which ones are still honest Nushell
 fits?"
 
+The current ranked answer now lives in
+`docs/specs/ranked_nu_deletion_budget.md`. This inventory stays as the public
+delete-first map; the ranked budget is the execution queue.
+
 The previous inventory was stale in two important ways:
 
 - it treated all subsystem LOC as equally actionable
@@ -29,9 +33,11 @@ snapshot game:
   `zellij_wrappers`
 - maintainer Nushell is still larger overall at about `14,939` code LOC across
   `51` files, but that is a separate trim lane from product-side Nushell
-- the current Nu bridge layer around `yzx_core` and `yzx_control` is only about
-  `1.5k` raw lines, but it is the highest-leverage product-side deletion lane
-  because Rust already owns the typed work behind it
+- the old compatibility registry and the tiny Zellij wrapper layer are already
+  gone in the current pass, so the remaining bridge work is narrower than this
+  inventory’s first version
+- the current top-value remaining runtime cuts are launch-time bridge collapse,
+  popup/editor wrapper fact collapse, and stale maintainer/doc wrappers
 
 If a change does not delete or materially shrink one of the owners below, it is
 not progress toward the current repo goal.
@@ -100,7 +106,7 @@ Nushell today because they are shell-bound, process-bound, or mostly human UX.
 
 | Surface family | Current owners | Why it is still a good Nushell fit today |
 | --- | --- | --- |
-| Public CLI UX for intentionally Nu-owned commands | `core/yazelix.nu`, `core/yzx_session.nu`, `yzx/edit.nu`, `yzx/import.nu`, `yzx/menu.nu`, `yzx/popup.nu`, `yzx/screen.nu`, `yzx/tutor.nu`, `yzx/whats_new.nu`, `yzx/desktop.nu` | Root help, palette inventory, and extern metadata now come from Rust. `yzx home_manager`, `yzx config`, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx why`, `yzx sponsor`, and `yzx keys` are now Rust-owned too. The remaining Nu command bodies should stay in Nu unless Rust becomes the single public owner for a whole relevant family |
+| Public CLI UX for intentionally Nu-owned commands | `core/yzx_session.nu`, `yzx/edit.nu`, `yzx/import.nu`, `yzx/menu.nu`, `yzx/popup.nu`, `yzx/screen.nu`, `yzx/tutor.nu`, `yzx/whats_new.nu`, `yzx/desktop.nu` | The compatibility registry `core/yazelix.nu` is deleted. Root help, palette inventory, and extern metadata now come from Rust, and `yzx home_manager`, `yzx config`, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx why`, `yzx sponsor`, and `yzx keys` are already Rust-owned. The remaining Nu command bodies should stay in Nu unless Rust becomes the single public owner for a whole relevant family |
 | Launch and startup process orchestration | `core/launch_yazelix.nu`, `core/start_yazelix.nu`, `core/start_yazelix_inner.nu`, `utils/terminal_launcher.nu`, `shells/posix/*.sh` | This path is shell and process heavy. It is not a good Rust target unless a new deterministic subcore appears that deletes a real owner |
 | Shell initializer generation and shellhook setup | `setup/initializers.nu`, `setup/environment.nu` | The typed runtime-env layer already moved to Rust. What remains is external-tool init generation, shell-specific text shaping, bridge sync, logging, and welcome-shellhook orchestration, so a smaller Rust insertion would only add bridge code without deleting the owner |
 | Human rendering and front-door UX | `utils/config_report_rendering.nu`, `utils/ascii_art.nu`, `utils/upgrade_summary.nu` | The hard part here is user-facing prose and presentation, not typed decision logic |
@@ -112,15 +118,15 @@ bridge and materialization lanes.
 
 ## Recommended Delete Order
 
-1. Collapse the remaining `yzx_core` and `yzx_control` Nu bridge owners into one minimal transport layer
-2. Keep wrapper-collapse follow-ups honest: terminal, Helix, Yazi, Zellij, runtime materialization, and extern lifecycle are already Rust-owned or wrapper-deleted lanes, not new "big Rust port" targets
-3. Continue public command ownership only where the next cut deletes a real parser or command-body owner
-4. Revisit stale specs only when a new inventory check finds a concrete removed owner still listed as live guidance
+1. Collapse launch-time request assembly that still survives beside Rust-owned terminal and Ghostty materialization
+2. Move the detached terminal probe shell body out of Nushell and into one fixed POSIX helper
+3. Finish collapsing the remaining popup/editor wrapper config reads after the first integration-facts cut
+4. Delete or demote stale maintainer/doc wrappers and inventories that still describe deleted owners as live seams
 
 The first public metadata cut landed under `yazelix-ulb2.7`: root help, palette
 inventory, and generated externs no longer probe the Nushell command tree. The
 follow-up extern lifecycle cut deleted `nushell_externs.nu` by moving generated
-extern bridge sync into `yzx_core yzx-command-metadata.sync-externs`. The next
-public command cut only counts if it deletes or demotes another real public
-owner, such as one of the surviving `core/yzx_*.nu` families still routed
-directly from `rust_core/yazelix_core/src/bin/yzx.rs`.
+extern bridge sync into `yzx_core yzx-command-metadata.sync-externs`. The
+follow-up compatibility-registry cut landed under `yazelix-f7hz`, deleting
+`core/yazelix.nu` and leaving direct Nu family modules as the only surviving
+internal helper path under the Rust root.

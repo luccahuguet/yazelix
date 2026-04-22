@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Test lane: maintainer
 
-use ./yzx_test_helpers.nu [get_repo_config_dir log_block log_line repo_path]
+use ./yzx_test_helpers.nu [get_repo_config_dir log_block log_line repo_path resolve_test_yzx_bin]
 use ../utils/constants.nu [YAZELIX_VERSION]
 
 def setup_fixture [] {
@@ -58,7 +58,6 @@ welcome_style = "game_of_life_gliders"
         config_path: $config_path
         state_dir: $state_dir
         upgrade_summary_script: ($runtime_dir | path join "nushell" "scripts" "utils" "upgrade_summary.nu")
-        yzx_script: ($runtime_dir | path join "nushell" "scripts" "core" "yazelix.nu")
         state_file: ($state_dir | path join "state" "upgrade_summary" "last_seen_version.txt")
         log_file: $log_file
     }
@@ -83,13 +82,15 @@ def run_first_run_probe [fixture: record] {
 }
 
 def run_whats_new [fixture: record] {
+    let yzx_bin = (resolve_test_yzx_bin)
     with-env {
         HOME: $fixture.tmp_home
         YAZELIX_CONFIG_DIR: $fixture.config_dir
         YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
         YAZELIX_STATE_DIR: $fixture.state_dir
+        YAZELIX_YZX_BIN: $yzx_bin
     } {
-        ^nu -c $"use \"($fixture.yzx_script)\" *; yzx whats_new" | complete
+        ^$yzx_bin whats_new | complete
     }
 }
 

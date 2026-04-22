@@ -65,7 +65,8 @@ This audit also adds these new planning inventories:
 
 ## 3. Contract Item Coverage
 
-Indexed contract items currently exist in only a few specs:
+Indexed contract items now exist in the first high-value default-lane and
+bridge-collapse batch:
 
 | Spec | Current item prefixes | Audit judgment |
 | --- | --- | --- |
@@ -81,14 +82,23 @@ Priority live specs to convert next:
 
 | Spec | Why it is high value |
 | --- | --- |
-| `runtime_root_contract.md` | many runtime/root tests still rely on broad file-level traceability |
-| `runtime_dependency_preflight_contract.md` | startup/launch/doctor preflight behavior is central to deletion safety |
-| `floating_tui_panes.md` | popup/menu/transient tests are default-lane behavior |
-| `status_doctor_machine_readable_reports.md` | public status/doctor Rust cuts need exact JSON/report contracts |
-| `startup_profile_scenarios.md` | profiling tests are high-signal and maintainer-critical |
-| `rust_nushell_bridge_contract.md` | remaining bridge-collapse work needs item-level stop conditions |
-| `pane_orchestrator_component.md` | plugin/live-session tests need contract IDs before wrapper deletion |
-| `test_suite_governance.md` | validators currently defend policy, but per-test deletion needs item IDs |
+| `runtime_root_contract.md` | now indexed |
+| `runtime_dependency_preflight_contract.md` | now indexed |
+| `floating_tui_panes.md` | now indexed |
+| `status_doctor_machine_readable_reports.md` | now indexed |
+| `startup_profile_scenarios.md` | now indexed |
+| `rust_nushell_bridge_contract.md` | now indexed |
+| `pane_orchestrator_component.md` | now indexed |
+| `test_suite_governance.md` | now indexed |
+
+Next ranked batch after `yazelix-7upo`:
+
+| Spec | Why it is next |
+| --- | --- |
+| `docs/workspace_session_contract.md` | still gates the strongest workspace/sidebar/Yazi default tests |
+| `shell_opened_editors.md` | still carries live editor-wrapper behavior without item IDs |
+| `persistent_window_session_contract.md` | restart/session semantics still lean on broad file references |
+| `nonpersistent_window_session_contract.md` | launch-here and session-scope behavior still needs narrower IDs |
 
 ## 4. Stale Deleted-Owner References
 

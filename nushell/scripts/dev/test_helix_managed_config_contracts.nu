@@ -2,7 +2,7 @@
 # Test lane: maintainer
 # Defends: docs/specs/test_suite_governance.md
 
-use ./yzx_test_helpers.nu [get_repo_root resolve_test_yzx_core_bin]
+use ./yzx_test_helpers.nu [get_repo_root resolve_test_yzx_bin resolve_test_yzx_core_bin]
 use ../utils/common.nu [get_yazelix_config_dir get_yazelix_runtime_dir get_yazelix_state_dir]
 use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface compute_runtime_env_via_yzx_core run_yzx_core_json_command]
 
@@ -343,15 +343,16 @@ def test_yzx_import_helix_copies_personal_config_with_force_backups [] {
 cursorline = true
 ' | save --force --raw ($native_helix_dir | path join "config.toml")
 
-        let import_script = ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
+        let yzx_bin = (resolve_test_yzx_bin)
         let first_import = (with-env {
             HOME: $tmp_home
             XDG_CONFIG_HOME: $xdg_config_home
             YAZELIX_CONFIG_DIR: $yazelix_config_dir
             YAZELIX_RUNTIME_DIR: $repo_root
             YAZELIX_STATE_DIR: ($tmp_home | path join ".local" "share" "yazelix")
+            YAZELIX_YZX_BIN: $yzx_bin
         } {
-            ^nu -c $"use \"($import_script)\" *; yzx import helix" | complete
+            ^$yzx_bin import helix | complete
         })
 
         '[editor]
@@ -367,8 +368,9 @@ line-number = "relative"
             YAZELIX_CONFIG_DIR: $yazelix_config_dir
             YAZELIX_RUNTIME_DIR: $repo_root
             YAZELIX_STATE_DIR: ($tmp_home | path join ".local" "share" "yazelix")
+            YAZELIX_YZX_BIN: $yzx_bin
         } {
-            ^nu -c $"use \"($import_script)\" *; yzx import helix --force" | complete
+            ^$yzx_bin import helix --force | complete
         })
 
         let managed_config_path = ($managed_helix_dir | path join "config.toml")

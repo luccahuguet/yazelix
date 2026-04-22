@@ -22,6 +22,66 @@ The bridge also limits new Nushell rewrite debt. Complex deterministic work can 
 - build and distribution expectations for the packaged runtime
 - profile/report preservation while Rust replaces inner work
 
+## Contract Items
+
+#### BRIDGE-001
+- Type: boundary
+- Status: live
+- Owner: Nushell public surfaces plus private `yzx_core`
+- Statement: Rust lands behind private helper commands while Nushell remains the
+  user-facing owner for surviving Nu command bodies, shell/process
+  orchestration, and prose rendering. A migration only counts when Rust becomes
+  the single owner for the moved slice instead of creating a second public CLI
+  registry
+- Verification: automated `nu nushell/scripts/dev/test_yzx_core_commands.nu`;
+  validator `nu nushell/scripts/dev/validate_specs.nu`
+
+#### BRIDGE-002
+- Type: boundary
+- Status: live
+- Owner: wrapper-to-helper invocation seam
+- Statement: Wrappers call `yzx_core` by absolute runtime-root path with
+  structured argv. The bridge must not assemble inline shell program bodies or
+  route helper calls through `bash -lc` or `sh -c`
+- Verification: automated
+  `nushell/scripts/dev/test_shell_managed_config_contracts.nu`; automated
+  `nushell/scripts/dev/test_yzx_workspace_commands.nu`
+
+#### BRIDGE-003
+- Type: behavior
+- Status: live
+- Owner: `yzx_core` machine-mode transport
+- Statement: A successful helper call writes exactly one JSON success envelope
+  to stdout and no prose. A failed helper call writes exactly one structured
+  JSON error envelope to stderr with stable error classes and exit codes
+- Verification: automated
+  `nushell/scripts/dev/test_yzx_generated_configs.nu`; automated
+  `nushell/scripts/dev/test_shell_managed_config_contracts.nu`
+
+#### BRIDGE-004
+- Type: ownership
+- Status: live
+- Owner: Rust metadata/extern lifecycle plus shellhook sync boundary
+- Statement: Warm startup reuses a current generated `yzx` extern bridge without
+  rerendering metadata. When stale, refresh runs
+  `yzx_core yzx-command-metadata.sync-externs` and must not probe a second
+  Nushell command registry
+- Verification: automated
+  `nushell/scripts/dev/test_shell_managed_config_contracts.nu`; validator
+  `nu nushell/scripts/dev/validate_specs.nu`
+
+#### BRIDGE-005
+- Type: ownership
+- Status: live
+- Owner: Rust-written generated-state owners
+- Statement: When Rust writes generated state, it may write only explicit
+  Yazelix-managed paths passed by the wrapper, keep writes deterministic for
+  identical inputs, and fail loudly instead of silently taking ownership of
+  user-managed config
+- Verification: automated
+  `nushell/scripts/dev/test_yzx_generated_configs.nu`; automated
+  `cargo test --manifest-path rust_core/Cargo.toml`
+
 ## Behavior
 
 ### Ownership Boundary

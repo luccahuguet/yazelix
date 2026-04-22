@@ -20,6 +20,60 @@ This spec defines the component boundary without extracting it to a separate rep
 - Transient-pane wrapper scripts under `nushell/scripts/zellij_wrappers/`
 - Focused tests in `nushell/scripts/dev/test_zellij_plugin_contracts.nu`, `nushell/scripts/dev/test_yzx_generated_configs.nu`, `nushell/scripts/dev/test_yzx_workspace_commands.nu`, `nushell/scripts/dev/test_yzx_popup_commands.nu`, and Rust unit tests in the orchestrator crate
 
+## Contract Items
+
+#### POC-001
+- Type: boundary
+- Status: live
+- Owner: pane orchestrator pipe-command seam
+- Statement: The pane orchestrator is an internal component reached through one
+  explicit pipe-command seam. Nushell resolves user intent first; the plugin is
+  not a second CLI/parser surface
+- Verification: automated
+  `nu nushell/scripts/dev/test_zellij_plugin_contracts.nu`; automated
+  `nu nushell/scripts/dev/test_yzx_commands.nu`
+
+#### POC-002
+- Type: ownership
+- Status: live
+- Owner: generated Zellij config plus loaded plugin instance
+- Statement: The generated Zellij config sets `runtime_dir` on the loaded
+  plugin instance, and direct keybind messages or `zellij action pipe` calls
+  target that alias instead of re-supplying runtime identity on each message
+- Verification: automated
+  `nu nushell/scripts/dev/test_yzx_generated_configs.nu`
+
+#### POC-003
+- Type: invariant
+- Status: live
+- Owner: plugin pane-state model
+- Statement: Managed editor/sidebar/transient pane identity is plugin-owned.
+  Plugin panes, exited panes, and unrelated user panes must not count as
+  managed panes
+- Verification: automated
+  `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib`;
+  automated `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
+
+#### POC-004
+- Type: ownership
+- Status: live
+- Owner: workspace mutation and sidebar snapshot contract
+- Statement: `retarget_workspace` is the single live pipe command for workspace
+  mutation, and any returned sidebar Yazi identity is active-tab state rather
+  than a cache scan or session-global guess
+- Verification: automated
+  `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`; automated
+  `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
+
+#### POC-005
+- Type: boundary
+- Status: live
+- Owner: plugin build/sync workflow
+- Statement: Rust source edits are not live until the pane orchestrator wasm is
+  rebuilt and synced. `cargo test` alone does not prove live plugin behavior
+- Verification: manual `yzx dev build_pane_orchestrator --sync`; automated
+  `nu nushell/scripts/dev/validate_specs.nu`
+
 ## Behavior
 
 ### Command Surface

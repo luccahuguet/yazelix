@@ -1,6 +1,8 @@
 #!/usr/bin/env nu
 # Test lane: default
 # Defends: docs/specs/test_suite_governance.md
+# Defends: docs/specs/pane_orchestrator_component.md
+# Defends: docs/specs/shell_opened_editors.md
 
 use ./yzx_test_helpers.nu [setup_managed_config_fixture]
 use ../integrations/managed_editor.nu [get_managed_editor_kind, sync_post_retarget_workspace_state]

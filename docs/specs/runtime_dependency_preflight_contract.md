@@ -28,6 +28,62 @@ Without a written contract:
 - define which checks belong only in install/package validation
 - define how config-conditioned requirements should be expressed
 
+## Contract Items
+
+#### PRE-001
+- Type: boundary
+- Status: live
+- Owner: shared runtime-preflight evaluation plus entrypoint-specific rendering
+- Statement: Launch preflight is a fast, bounded dependency check for the
+  selected entrypoint. It must not silently expand into full doctor or
+  install-smoke behavior
+- Verification: automated
+  `nushell/scripts/dev/test_yzx_workspace_commands.nu`; automated
+  `nushell/scripts/dev/test_yzx_doctor_commands.nu`
+
+#### PRE-002
+- Type: failure_mode
+- Status: live
+- Owner: launch/startup preflight owners
+- Statement: Missing or invalid working directories, missing runtime entrypoint
+  scripts, and unavailable configured terminals for new-window launch are
+  immediate preflight blockers with direct recovery guidance
+- Verification: automated
+  `nushell/scripts/dev/test_yzx_workspace_commands.nu`; automated
+  `nushell/scripts/dev/test_yzx_generated_configs.nu`
+
+#### PRE-003
+- Type: behavior
+- Status: live
+- Owner: startup materialization plus bounded preflight
+- Statement: When startup depends on managed generated layouts, Yazelix
+  materializes the missing managed layout before handoff. Unresolved custom
+  layout overrides still fail clearly instead of being silently replaced
+- Verification: automated
+  `nushell/scripts/dev/test_yzx_workspace_commands.nu`
+
+#### PRE-004
+- Type: ownership
+- Status: live
+- Owner: `yzx doctor` and install/package validation
+- Statement: Desktop-entry freshness, install-artifact staleness, version drift,
+  Helix runtime conflicts, and broader install integrity remain doctor or
+  install-smoke work rather than universal launch blockers
+- Verification: automated
+  `nushell/scripts/dev/test_yzx_doctor_commands.nu`; automated
+  `nu nushell/scripts/dev/validate_installed_runtime_contract.nu`
+
+#### PRE-005
+- Type: boundary
+- Status: live
+- Owner: config-conditioned preflight selection
+- Statement: Terminal availability is a preflight requirement only for entry
+  paths that launch a new terminal window. Current-terminal entrypoints do not
+  inherit detached-terminal requirements they do not use
+- Verification: automated
+  `nushell/scripts/dev/test_yzx_workspace_commands.nu`; automated
+  `nushell/scripts/dev/test_yzx_generated_configs.nu`
+
 ## Behavior
 
 - The runtime dependency contract is about what must be present or resolvable

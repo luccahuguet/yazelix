@@ -8,7 +8,6 @@ def pin_fixture_to_repo [fixture: record] {
     let repo_root = (get_repo_root)
     $fixture
     | upsert repo_root $repo_root
-    | upsert yzx_script ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
 }
 
 def run_doctor_command [fixture: record] {

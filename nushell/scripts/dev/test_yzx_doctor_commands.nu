@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 # Test lane: default
 # Defends: docs/specs/test_suite_governance.md
+# Defends: docs/specs/status_doctor_machine_readable_reports.md
 
 use ./yzx_test_helpers.nu [
     get_repo_config_dir

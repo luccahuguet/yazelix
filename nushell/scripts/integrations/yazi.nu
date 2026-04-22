@@ -2,7 +2,7 @@
 # Yazi integration utilities for Yazelix
 
 use ../utils/logging.nu log_to_file
-use ../utils/config_parser.nu parse_yazelix_config
+use ../utils/integration_facts.nu [load_integration_facts]
 use zellij.nu [focus_managed_pane get_active_tab_session_state]
 
 def resolve_optional_command [configured: any, fallback: string] {
@@ -26,13 +26,13 @@ def command_is_available [command: string] {
 }
 
 export def get_yazi_command [] {
-    let config = parse_yazelix_config
-    resolve_optional_command ($config.yazi_command? | default null) "yazi"
+    let facts = (load_integration_facts)
+    resolve_optional_command ($facts.yazi_command? | default null) "yazi"
 }
 
 export def get_ya_command [] {
-    let config = parse_yazelix_config
-    resolve_optional_command ($config.yazi_ya_command? | default null) "ya"
+    let facts = (load_integration_facts)
+    resolve_optional_command ($facts.ya_command? | default null) "ya"
 }
 
 def has_ya_command [] {
@@ -57,8 +57,8 @@ def run_ya_emit_to [yazi_id: string, action: string, ...args: string] {
 }
 
 export def is_sidebar_enabled [] {
-    let config = parse_yazelix_config
-    ($config.enable_sidebar? | default true)
+    let facts = (load_integration_facts)
+    ($facts.enable_sidebar? | default true)
 }
 
 export def consume_bootstrap_sidebar_cwd [] {

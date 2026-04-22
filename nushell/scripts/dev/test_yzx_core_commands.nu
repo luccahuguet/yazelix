@@ -1,8 +1,10 @@
 #!/usr/bin/env nu
 # Test lane: default
 # Defends: docs/specs/test_suite_governance.md
+# Defends: docs/specs/rust_nushell_bridge_contract.md
+# Defends: docs/specs/status_doctor_machine_readable_reports.md
+# Defends: docs/specs/runtime_root_contract.md
 
-use ../core/yazelix.nu *
 use ../utils/yzx_core_bridge.nu [compute_config_state_via_yzx_core record_materialized_state_via_yzx_core]
 use ./yzx_test_helpers.nu [get_repo_config_dir repo_path resolve_test_yzx_bin resolve_test_yzx_control_bin resolve_test_yzx_core_bin setup_managed_config_fixture]
 
@@ -16,34 +18,26 @@ def run_yzx_command_for_fixture [fixture: record, command: string, extra_env?: r
         YAZELIX_STATE_DIR: ($fixture.tmp_home | path join ".local" "share" "yazelix")
         YAZELIX_CONFIG_DIR: $fixture.config_dir
         YAZELIX_RUNTIME_DIR: $fixture.repo_root
+        YAZELIX_YZX_BIN: (resolve_test_yzx_bin)
+        YAZELIX_YZX_CONTROL_BIN: (resolve_test_yzx_control_bin)
+        YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
     }
     let merged_env = if ($extra_env | is-empty) {
         $base_env
     } else {
         $base_env | merge $extra_env
     }
-
     let tokens = ($command | str trim | split row " " | where {|t| ($t | str length) > 0})
-    let is_yzx_update = (
-        ($tokens | length) >= 2
-            and ($tokens | get 0) == "yzx"
-            and ($tokens | get 1) == "update"
-    )
-
-    if $is_yzx_update {
-        let yzx_cli = ($fixture.repo_root | path join "shells" "posix" "yzx_cli.sh")
-        let cli_env = ($merged_env | merge {
-            YAZELIX_YZX_BIN: (resolve_test_yzx_bin)
-            YAZELIX_YZX_CONTROL_BIN: (resolve_test_yzx_control_bin)
-            YAZELIX_TEST_PATH_PREPEND: $fixture.bin_dir
-        })
-        with-env $cli_env {
-            ^sh $yzx_cli ...($tokens | skip 1) | complete
-        }
+    let yzx_cli = ($fixture.repo_root | path join "shells" "posix" "yzx_cli.sh")
+    let fixture_bin_dir = ($fixture.bin_dir? | default "" | into string | str trim)
+    let cli_env = if ($fixture_bin_dir | is-not-empty) {
+        $merged_env | merge {YAZELIX_TEST_PATH_PREPEND: $fixture_bin_dir}
     } else {
-        with-env $merged_env {
-            ^nu -c $"use \"($fixture.yzx_script)\" *; ($command)" | complete
-        }
+        $merged_env
+    }
+
+    with-env $cli_env {
+        ^sh $yzx_cli ...($tokens | skip 1) | complete
     }
 }
 
@@ -55,39 +49,28 @@ def run_yzx_command_for_fixture_in_dir [fixture: record, working_dir: string, co
         YAZELIX_STATE_DIR: ($fixture.tmp_home | path join ".local" "share" "yazelix")
         YAZELIX_CONFIG_DIR: $fixture.config_dir
         YAZELIX_RUNTIME_DIR: $fixture.repo_root
+        YAZELIX_YZX_BIN: (resolve_test_yzx_bin)
+        YAZELIX_YZX_CONTROL_BIN: (resolve_test_yzx_control_bin)
+        YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
     }
     let merged_env = if ($extra_env | is-empty) {
         $base_env
     } else {
         $base_env | merge $extra_env
     }
-
     let tokens = ($command | str trim | split row " " | where {|t| ($t | str length) > 0})
-    let is_yzx_update = (
-        ($tokens | length) >= 2
-            and ($tokens | get 0) == "yzx"
-            and ($tokens | get 1) == "update"
-    )
-
-    if $is_yzx_update {
-        let yzx_cli = ($fixture.repo_root | path join "shells" "posix" "yzx_cli.sh")
-        let cli_env = ($merged_env | merge {
-            YAZELIX_YZX_BIN: (resolve_test_yzx_bin)
-            YAZELIX_YZX_CONTROL_BIN: (resolve_test_yzx_control_bin)
-            YAZELIX_TEST_PATH_PREPEND: $fixture.bin_dir
-        })
-        with-env $cli_env {
-            do {
-                cd $working_dir
-                ^sh $yzx_cli ...($tokens | skip 1) | complete
-            }
-        }
+    let yzx_cli = ($fixture.repo_root | path join "shells" "posix" "yzx_cli.sh")
+    let fixture_bin_dir = ($fixture.bin_dir? | default "" | into string | str trim)
+    let cli_env = if ($fixture_bin_dir | is-not-empty) {
+        $merged_env | merge {YAZELIX_TEST_PATH_PREPEND: $fixture_bin_dir}
     } else {
-        with-env $merged_env {
-            do {
-                cd $working_dir
-                ^nu -c $"use \"($fixture.yzx_script)\" *; ($command)" | complete
-            }
+        $merged_env
+    }
+
+    with-env $cli_env {
+        do {
+            cd $working_dir
+            ^sh $yzx_cli ...($tokens | skip 1) | complete
         }
     }
 }
@@ -102,6 +85,7 @@ def run_public_yzx_command_for_fixture [fixture: record, command: string, extra_
         YAZELIX_RUNTIME_DIR: $fixture.repo_root
         YAZELIX_YZX_BIN: (resolve_test_yzx_bin)
         YAZELIX_YZX_CONTROL_BIN: (resolve_test_yzx_control_bin)
+        YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
     }
     let merged_env = if ($extra_env | is-empty) {
         $base_env
@@ -127,6 +111,7 @@ def run_direct_public_yzx_command_for_fixture [fixture: record, command: string,
         YAZELIX_RUNTIME_DIR: $fixture.repo_root
         YAZELIX_YZX_BIN: (resolve_test_yzx_bin)
         YAZELIX_YZX_CONTROL_BIN: (resolve_test_yzx_control_bin)
+        YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
     }
     let merged_env = if ($extra_env | is-empty) {
         $base_env
@@ -1501,6 +1486,7 @@ def test_yzx_run_treats_child_verbose_flag_as_child_argv [] {
 }
 
 # Regression: the public Rust yzx root must route env/run/status/update/doctor through Rust even when the remaining direct Nu route modules are unavailable.
+# Contract: BRIDGE-001, BRIDGE-004
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_public_yzx_root_routes_rust_control_family_without_direct_nu_route_modules [] {
     print "🧪 Testing the public Rust yzx root keeps env/run/cwd/reveal/status/update/doctor off the old Nu root registry..."
@@ -1587,82 +1573,45 @@ welcome_style = "random"
 def test_yzx_edit_targets_print_paths [] {
     print "🧪 Testing yzx edit resolves the supported managed config targets and rejects noninteractive ambiguity..."
 
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d /tmp/yazelix_config_open_targets_XXXXXX | str trim)
-    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
-    mkdir ($tmp_home | path join ".config")
-    mkdir $temp_config_dir
+    let fixture = (setup_managed_config_fixture
+        "yazelix_config_open_targets"
+        ""
+    )
 
     let result = (try {
-        let yzx_script = ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
-        let main_stdout = with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            yzx edit config --print
-        }
-        let helix_stdout = with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            yzx edit hel --print
-        }
-        let zellij_stdout = with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            yzx edit zell --print
-        }
-        let yazi_stdout = with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            yzx edit yazi --print
-        }
-        let yazi_keymap_stdout = with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            yzx edit keymap --print
-        }
-        let yazi_init_stdout = with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            yzx edit init --print
-        }
-        let missing_subcommand_output = with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            ^nu -c $"use \"($yzx_script)\" *; yzx edit --print" | complete
-        }
-        let invalid_output = with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            ^nu -c $"use \"($yzx_script)\" *; yzx edit weird --print" | complete
-        }
+        let main_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx edit config --print")
+        let helix_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx edit hel --print")
+        let zellij_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx edit zell --print")
+        let yazi_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx edit yazi --print")
+        let yazi_keymap_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx edit keymap --print")
+        let yazi_init_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx edit init --print")
+        let missing_subcommand_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx edit --print")
+        let invalid_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx edit weird --print")
 
-        let expected_main = ($temp_config_dir | path join "user_configs" "yazelix.toml")
-        let expected_helix = ($temp_config_dir | path join "user_configs" "helix" "config.toml")
-        let expected_zellij = ($temp_config_dir | path join "user_configs" "zellij" "config.kdl")
-        let expected_yazi = ($temp_config_dir | path join "user_configs" "yazi" "yazi.toml")
-        let expected_yazi_keymap = ($temp_config_dir | path join "user_configs" "yazi" "keymap.toml")
-        let expected_yazi_init = ($temp_config_dir | path join "user_configs" "yazi" "init.lua")
+        let main_stdout = ($main_output.stdout | str trim)
+        let helix_stdout = ($helix_output.stdout | str trim)
+        let zellij_stdout = ($zellij_output.stdout | str trim)
+        let yazi_stdout = ($yazi_output.stdout | str trim)
+        let yazi_keymap_stdout = ($yazi_keymap_output.stdout | str trim)
+        let yazi_init_stdout = ($yazi_init_output.stdout | str trim)
+
+        let expected_main = ($fixture.config_dir | path join "user_configs" "yazelix.toml")
+        let expected_helix = ($fixture.config_dir | path join "user_configs" "helix" "config.toml")
+        let expected_zellij = ($fixture.config_dir | path join "user_configs" "zellij" "config.kdl")
+        let expected_yazi = ($fixture.config_dir | path join "user_configs" "yazi" "yazi.toml")
+        let expected_yazi_keymap = ($fixture.config_dir | path join "user_configs" "yazi" "keymap.toml")
+        let expected_yazi_init = ($fixture.config_dir | path join "user_configs" "yazi" "init.lua")
         let missing_subcommand_stderr = ($missing_subcommand_output.stderr | str trim)
         let invalid_stderr = ($invalid_output.stderr | str trim)
 
         if (
-            ($missing_subcommand_output.exit_code != 0)
+            ($main_output.exit_code == 0)
+            and ($helix_output.exit_code == 0)
+            and ($zellij_output.exit_code == 0)
+            and ($yazi_output.exit_code == 0)
+            and ($yazi_keymap_output.exit_code == 0)
+            and ($yazi_init_output.exit_code == 0)
+            and ($missing_subcommand_output.exit_code != 0)
             and ($invalid_output.exit_code != 0)
             and ($main_stdout == $expected_main)
             and ($helix_stdout == $expected_helix)
@@ -1684,7 +1633,7 @@ def test_yzx_edit_targets_print_paths [] {
         false
     })
 
-    rm -rf $tmp_home
+    rm -rf $fixture.tmp_home
     $result
 }
 
@@ -1744,6 +1693,7 @@ def test_invalid_config_is_classified_as_config_problem [] {
 }
 
 # Regression: yzx status must reach the Rust status helper and render the live summary.
+# Contract: SDR-001
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_status_reports_basic_runtime_summary [] {
     print "🧪 Testing yzx status reports the basic runtime summary from yzx_core..."
@@ -1791,6 +1741,7 @@ terminals = ["ghostty"]
 }
 
 # Regression: yzx status should expose the same runtime summary as machine-readable structured data.
+# Contract: SDR-001
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_status_json_reports_typed_summary [] {
     print "🧪 Testing yzx status --json reports a typed runtime summary..."
@@ -1838,6 +1789,7 @@ terminals = ["ghostty"]
 }
 
 # Regression: yzx status --versions must keep the public Rust owner while still exposing the tool version matrix.
+# Contract: SDR-001
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_status_versions_prints_tool_version_matrix [] {
     print "🧪 Testing yzx status --versions prints the Rust-owned tool version matrix..."
@@ -1876,6 +1828,7 @@ terminals = ["ghostty"]
 }
 
 # Regression: yzx status --json --versions must attach the optional versions report promised by the machine-readable contract.
+# Contract: SDR-001
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_status_json_with_versions_reports_tool_matrix [] {
     print "🧪 Testing yzx status --json --versions includes the optional tool version matrix..."
@@ -1916,6 +1869,7 @@ terminals = ["ghostty"]
 }
 
 # Regression: yzx status must surface Rust-owned materialization classification, not only config-state.needs_refresh.
+# Contract: SDR-001
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_status_json_reports_materialization_repair_when_artifacts_missing [] {
     print "🧪 Testing yzx status --json reports Rust materialization repair when managed artifacts are missing..."
@@ -1970,6 +1924,7 @@ terminals = ["ghostty"]
 }
 
 # Regression: yzx menu should derive its catalog from Rust-owned public command metadata instead of a handwritten list or Nushell scope probe.
+# Contract: BRIDGE-004
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_menu_catalog_tracks_live_exported_command_surface [] {
     print "🧪 Testing yzx menu catalog tracks Rust-owned command metadata..."
@@ -2064,27 +2019,6 @@ def test_yzx_menu_dispatches_catalog_actions_through_launcher [] {
     $result
 }
 
-# Defends: exported yzx commands carry concise help descriptions without maintaining a second command tree.
-# Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=2 total=8/10
-def test_yzx_exported_commands_have_help_descriptions [] {
-    print "🧪 Testing exported yzx commands have help descriptions..."
-
-    let blank_descriptions = (
-        help commands
-        | where name =~ "^yzx( |$)"
-        | where {|command| (($command.description? | default "" | into string | str trim) | is-empty)}
-        | get name
-    )
-
-    if ($blank_descriptions | is-empty) {
-        print "  ✅ Every exported yzx command now carries a nonblank Nushell help description"
-        true
-    } else {
-        print $"  ❌ Exported yzx commands with blank descriptions: ($blank_descriptions | str join ', ')"
-        false
-    }
-}
-
 export def run_core_canonical_tests [] {
     [
         (test_yzx_desktop_install_writes_entry_and_icon_assets)
@@ -2124,6 +2058,5 @@ export def run_core_canonical_tests [] {
         (test_yzx_status_json_reports_materialization_repair_when_artifacts_missing)
         (test_yzx_menu_catalog_tracks_live_exported_command_surface)
         (test_yzx_menu_dispatches_catalog_actions_through_launcher)
-        (test_yzx_exported_commands_have_help_descriptions)
     ]
 }

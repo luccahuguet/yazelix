@@ -95,7 +95,9 @@ pub use terminal_materialization::{
     TerminalGeneratedConfig, TerminalMaterializationData, TerminalMaterializationRequest,
     generate_terminal_materialization,
 };
-pub use workspace_commands::{run_yzx_cwd, run_yzx_reveal};
+pub use workspace_commands::{
+    IntegrationFactsData, compute_integration_facts_from_env, run_yzx_cwd, run_yzx_reveal,
+};
 pub use yazi_materialization::{
     YaziManagedFileStatus, YaziMaterializationData, YaziMaterializationRequest,
     generate_yazi_materialization,

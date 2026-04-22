@@ -34,6 +34,65 @@ This contract keeps those boundaries explicit.
 - define the intended role of `YAZELIX_DIR` during the transition
 - define which surfaces may still assume a live source checkout
 
+## Contract Items
+
+#### ROOT-001
+- Type: ownership
+- Status: live
+- Owner: config-root resolution in Nushell and Rust control-plane helpers
+- Statement: The config root is the user-owned configuration surface under
+  `YAZELIX_CONFIG_DIR`, with managed Yazelix config living under
+  `user_configs/` rather than under the runtime tree
+- Verification: automated
+  `nushell/scripts/dev/test_yzx_generated_configs.nu`; validator
+  `nu nushell/scripts/dev/validate_specs.nu`
+
+#### ROOT-002
+- Type: ownership
+- Status: live
+- Owner: runtime-root resolution in entrypoints and helper wrappers
+- Statement: The runtime root is the shipped Yazelix asset tree under
+  `YAZELIX_RUNTIME_DIR`. User-facing entrypoints must resolve shipped scripts,
+  templates, plugins, and helper binaries through that root instead of assuming
+  a repo clone under `~/.config/yazelix`
+- Verification: automated
+  `nushell/scripts/dev/test_yzx_workspace_commands.nu`; validator
+  `nu nushell/scripts/dev/validate_installed_runtime_contract.nu`
+
+#### ROOT-003
+- Type: ownership
+- Status: live
+- Owner: state-root resolution and materialization/report owners
+- Statement: The state root is generated and cached Yazelix data under
+  `YAZELIX_STATE_DIR`. Generated configs, logs, rebuild hashes, and repair
+  artifacts remain derived state and must not be treated as user-owned config
+- Verification: automated
+  `nushell/scripts/dev/test_yzx_generated_configs.nu`; automated
+  `nushell/scripts/dev/test_yzx_core_commands.nu`
+
+#### ROOT-004
+- Type: boundary
+- Status: live
+- Owner: session/runtime activation logic across startup and CLI entrypoints
+- Statement: Live session activation markers such as `IN_YAZELIX_SHELL`,
+  `YAZELIX_TERMINAL`, and `ZELLIJ_*` are process-local activation state, not a
+  persisted runtime root and not a substitute for the explicit runtime/config
+  roots
+- Verification: automated
+  `nushell/scripts/dev/test_yzx_workspace_commands.nu`; automated
+  `nushell/scripts/dev/test_yzx_maintainer.nu`
+
+#### ROOT-005
+- Type: ownership
+- Status: deprecated
+- Owner: compatibility handling in surviving entrypoints
+- Statement: `YAZELIX_DIR` is a legacy compatibility alias only. New code must
+  prefer explicit runtime/config roots, and entrypoints should clear or ignore
+  inherited `YAZELIX_DIR` instead of trusting it as canonical runtime identity
+- Verification: automated
+  `nushell/scripts/dev/test_helix_managed_config_contracts.nu`; automated
+  `nushell/scripts/dev/test_yzx_workspace_commands.nu`
+
 ## Behavior
 
 - The config root is the user-owned configuration surface.

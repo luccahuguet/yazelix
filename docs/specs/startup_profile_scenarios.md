@@ -22,6 +22,43 @@ The Rust rewrite needs this baseline to preserve or improve startup behavior ins
 - Startup profile JSONL report records under the Yazelix state directory
 - Detached terminal spawn/probe timing before the interactive session
 
+## Contract Items
+
+#### PROF-001
+- Type: behavior
+- Status: live
+- Owner: `yzx dev profile` and startup-profile report writers
+- Statement: All supported startup scenarios write the same JSONL report schema
+  with one run header plus step records. Scenario support must not fork into a
+  second profiler or schema
+- Verification: automated `nu nushell/scripts/dev/test_yzx_maintainer.nu`
+
+#### PROF-002
+- Type: ownership
+- Status: live
+- Owner: desktop and launch profile dispatch
+- Statement: Desktop profiling invokes the real `yzx desktop launch` leaf
+  command, and managed-launch profiling invokes the real `yzx launch` leaf
+  command instead of a parallel profiling-only launcher
+- Verification: automated `nu nushell/scripts/dev/test_yzx_maintainer.nu`
+
+#### PROF-003
+- Type: invariant
+- Status: live
+- Owner: detached-scenario summary boundary
+- Statement: Desktop and managed-launch profiling wait for
+  `inner.zellij_handoff_ready` before summarizing so detached startup work is
+  not reported early
+- Verification: automated `nu nushell/scripts/dev/test_yzx_maintainer.nu`
+
+#### PROF-004
+- Type: invariant
+- Status: live
+- Owner: detached-launch profiler instrumentation
+- Statement: Detached terminal spawn/probe timing appears as the first-class
+  step `terminal_launcher.detached_launch_probe`
+- Verification: automated `nu nushell/scripts/dev/test_yzx_maintainer.nu`
+
 ## Behavior
 
 - `yzx dev profile` with no scenario flag profiles the current-terminal startup path.

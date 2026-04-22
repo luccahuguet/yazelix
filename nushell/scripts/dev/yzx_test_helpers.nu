@@ -208,7 +208,6 @@ export def setup_managed_config_fixture [
         config_dir: $config_dir
         user_config_dir: $user_config_dir
         config_path: $config_path
-        yzx_script: ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
     }
 }
 

@@ -6,7 +6,7 @@ use crate::control_plane::{
     config_dir_from_env, config_override_from_env, home_dir_from_env,
     load_normalized_config_for_control, runtime_dir_from_env,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::env;
 use std::path::{Path, PathBuf};
@@ -30,8 +30,17 @@ struct RevealArgs {
 struct WorkspaceCommandConfig {
     enable_sidebar: bool,
     editor_kind: String,
+    yazi_command: String,
     ya_command: String,
     home_dir: PathBuf,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct IntegrationFactsData {
+    pub enable_sidebar: bool,
+    pub managed_editor_kind: String,
+    pub yazi_command: String,
+    pub ya_command: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -311,6 +320,13 @@ fn load_workspace_command_config() -> Result<WorkspaceCommandConfig, CoreError> 
         .get("enable_sidebar")
         .and_then(Value::as_bool)
         .unwrap_or(true);
+    let yazi_command = normalized
+        .get("yazi_command")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("yazi")
+        .to_string();
     let ya_command = normalized
         .get("yazi_ya_command")
         .and_then(Value::as_str)
@@ -339,8 +355,19 @@ fn load_workspace_command_config() -> Result<WorkspaceCommandConfig, CoreError> 
             editor_command,
             env_editor.as_deref(),
         ),
+        yazi_command,
         ya_command,
         home_dir,
+    })
+}
+
+pub fn compute_integration_facts_from_env() -> Result<IntegrationFactsData, CoreError> {
+    let config = load_workspace_command_config()?;
+    Ok(IntegrationFactsData {
+        enable_sidebar: config.enable_sidebar,
+        managed_editor_kind: config.editor_kind,
+        yazi_command: config.yazi_command,
+        ya_command: config.ya_command,
     })
 }
 

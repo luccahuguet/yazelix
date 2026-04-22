@@ -4,6 +4,7 @@
 
 use ../utils/common.nu [get_yazelix_state_dir]
 use ../maintainer/repo_checkout.nu [require_yazelix_repo_root]
+use ./yzx_test_helpers.nu [resolve_test_yzx_bin]
 
 def profile_suite_runner [runner: closure] {
     let started = (date now)
@@ -1546,19 +1547,21 @@ def test_home_manager_profile_restart_uses_owner_wrapper_without_manual_surfaces
     ] | str join "\n" | save --force --raw $profile_desktop
 
     let result = (try {
+        let yzx_bin = (resolve_test_yzx_bin)
         let output = (with-env {
             HOME: $temp_home
             XDG_CONFIG_HOME: ($temp_home | path join ".config")
             XDG_DATA_HOME: ($temp_home | path join ".local" "share")
             YAZELIX_CONFIG_DIR: $config_dir
             YAZELIX_RUNTIME_DIR: $repo_root
+            YAZELIX_YZX_BIN: $yzx_bin
             PATH: ([$fake_bin] | append $env.PATH)
             ZELLIJ_SESSION_NAME: "old-yazelix"
             YAZELIX_TERMINAL: "ghostty"
             YZX_TEST_PROFILE_YZX_LOG: $yzx_log
             YZX_TEST_ZELLIJ_LOG: $zellij_log
         } {
-            ^nu -c $"use \"($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")\" *; yzx restart" | complete
+            ^$yzx_bin restart | complete
         })
         let yzx_lines = if ($yzx_log | path exists) { open --raw $yzx_log | lines } else { [] }
         let zellij_lines = if ($zellij_log | path exists) { open --raw $zellij_log | lines } else { [] }

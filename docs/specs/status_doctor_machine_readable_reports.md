@@ -25,6 +25,47 @@ That shape made future deletion harder because the data and the prose were bundl
 - define the default human-rendered behavior
 - define the current `--json` versus `--fix` boundary for doctor
 
+## Contract Items
+
+#### SDR-001
+- Type: behavior
+- Status: live
+- Owner: Rust `status.compute` plus Nushell human renderer
+- Statement: `yzx status --json` emits one typed JSON report whose `summary`
+  contains the same runtime summary that the human table renders
+- Verification: automated
+  `nushell/scripts/dev/test_yzx_core_commands.nu`
+
+#### SDR-002
+- Type: behavior
+- Status: live
+- Owner: public doctor report owner plus human renderer
+- Statement: `yzx doctor --json` emits one JSON report with `results` and a
+  typed `summary`, and the default human doctor output renders from that report
+  instead of recomputing result groups separately
+- Verification: automated
+  `nushell/scripts/dev/test_yzx_doctor_commands.nu`
+
+#### SDR-003
+- Type: failure_mode
+- Status: live
+- Owner: doctor CLI boundary
+- Statement: `yzx doctor --json` is read-only. `yzx doctor --json --fix` is
+  rejected clearly instead of mixing machine-readable reporting with repairs
+- Verification: automated
+  `nushell/scripts/dev/test_yzx_doctor_commands.nu`
+
+#### SDR-004
+- Type: boundary
+- Status: live
+- Owner: status/doctor default command surfaces
+- Statement: Default `yzx status` and `yzx doctor` behavior remains
+  human-oriented. The JSON surface narrows report ownership without pretending
+  that the whole family is already pure Rust or pure machine mode
+- Verification: automated
+  `nushell/scripts/dev/test_yzx_core_commands.nu`; automated
+  `nushell/scripts/dev/test_yzx_doctor_commands.nu`
+
 ## Behavior
 
 ### `yzx status`

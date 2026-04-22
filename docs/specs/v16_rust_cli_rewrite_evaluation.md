@@ -161,7 +161,7 @@ Why this family wins:
 
 That means `yazelix-qsb5.2` should start by making Rust the single public
 root/help/completion owner for this migrated control-plane surface. The exact
-remaining public-owner deletion is:
+remaining public-owner deletion at the time was:
 
 - delete the public command-registry role of `nushell/scripts/core/yazelix.nu`
   for the `env` / `run` / `update*` surface
@@ -169,6 +169,9 @@ remaining public-owner deletion is:
   those commands
 - keep remaining Nushell command families reachable only through explicit
   internal helper entrypoints until they have their own deletion story
+
+That follow-up deletion budget has since landed under `yazelix-f7hz`, which
+deleted `nushell/scripts/core/yazelix.nu` entirely.
 
 `yazelix-qsb5.2` landed that first root cut with this owner shape:
 
@@ -189,8 +192,6 @@ That means these old public-owner roles are gone:
 
 Surviving internal Nu helper owners after the cut:
 
-- `nushell/scripts/core/yazelix.nu` only for root help/version plus re-exported
-  internal families
 - `nushell/scripts/core/yzx_session.nu` for `yzx restart`
 - `nushell/scripts/yzx/launch.nu`, `enter.nu`, `desktop.nu`, `menu.nu`,
   `popup.nu`, `edit.nu`, `tutor.nu`, `screen.nu`,

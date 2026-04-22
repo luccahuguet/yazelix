@@ -8,7 +8,7 @@ This directory contains all Nushell scripts for the Yazelix project, organized b
 Essential scripts that provide the main Yazelix functionality:
 - `start_yazelix.nu` - Main launcher that starts Zellij with Yazelix layout
 - `launch_yazelix.nu` - Terminal launcher that opens your preferred terminal emulator
-- `yazelix.nu` - Command suite with subcommands (`yzx help`, `yzx status`, etc.)
+- `yzx_session.nu` - Restart/session entrypoints that still own shell-heavy session behavior
 
 ### `integrations/` - Tool Integration Scripts
 Scripts that handle integration between Yazi, Zellij, and Helix:
@@ -50,8 +50,8 @@ nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 # Launch terminal (source-checkout / maintainer path)
 nu ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu
 
-# Use command suite (source-checkout / maintainer path)
-nu ~/.config/yazelix/nushell/scripts/core/yazelix.nu help
+# Use the stable CLI wrapper (source-checkout / maintainer path)
+~/.config/yazelix/shells/posix/yzx_cli.sh help
 ```
 
 For normal installed usage, prefer `yzx launch`, `yzx run`, and the shipped runtime entrypoints rather than calling repo paths directly.

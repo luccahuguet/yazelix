@@ -27,7 +27,6 @@ framework above intentionally Nu-owned command bodies.
   - `rust_core/yazelix_core/src/bin/yzx_control.rs`
   - `rust_core/yazelix_core/src/public_command_surface.rs`
   - `rust_core/yazelix_core/src/command_metadata.rs`
-  - `nushell/scripts/core/yazelix.nu`
   - `nushell/scripts/core/yzx_session.nu`
   - `nushell/scripts/yzx/*.nu`
   - `nushell/scripts/dev/test_yzx_core_commands.nu`
@@ -56,7 +55,7 @@ framework above intentionally Nu-owned command bodies.
 | Public command metadata, menu categories, extern rendering | Rust `command_metadata.rs` over `public_command_surface.rs` | intentional | Canonical owner |
 | Rust control families | Rust `yzx_control.rs` and command modules | intentional | Canonical owner |
 | Internal Nu family table | Rust `INTERNAL_NU_FAMILIES` maps families to concrete modules | temporary bridge debt | Acceptable until each family gets its own owner decision |
-| Compatibility Nu registry | `nushell/scripts/core/yazelix.nu` re-exports internal families and proxies help | historical debt | No longer public-root authority; best next delete-first target |
+| Compatibility Nu registry | deleted under `yazelix-f7hz` | landed debt removal | The fake public Nu root is gone; direct Nu family modules are now the only internal helper path |
 | Shell/process-heavy command bodies | `yzx/launch.nu`, `yzx/enter.nu`, `yzx/desktop.nu`, `core/yzx_session.nu` | intentional | Likely Nu/POSIX survivors for now |
 | UX/demo/info command bodies | `yzx/menu.nu`, `popup.nu`, `screen.nu`, `tutor.nu`, `whats_new.nu`, `edit.nu`, `import.nu`, `dev.nu` | mixed | Keep until a family-level deletion budget exists |
 
@@ -74,25 +73,21 @@ framework above intentionally Nu-owned command bodies.
 - Nu `yzx/menu.nu`, `yzx/popup.nu`, `yzx/screen.nu`, `yzx/tutor.nu`,
   and `yzx/whats_new.nu`: `canonical_owner` for product UX until a narrower
   deletion lane proves otherwise
-- Nu `core/yazelix.nu`: `historical_debt`
 
 ## 5. Delete-First Findings
 
 ### Delete Now
 
-- No product command body should be deleted inside this audit.
-- `core/yazelix.nu` is the clearest next deletion candidate, but it needs a
-  separate bead because tests, sweeps, and legacy module invocations still use
-  it as a source-able compatibility registry.
+- `yazelix-f7hz` landed the obvious delete-now cut:
+  `nushell/scripts/core/yazelix.nu` is gone.
+- No additional product command body should be deleted inside this audit.
 
 ### Bridge Layer To Collapse
 
-- `core/yazelix.nu` no longer owns the public root, metadata, externs, or the
-  main command-family route plan.
-- Test helpers and sweep harnesses still source `core/yazelix.nu` instead of
-  using the Rust `yzx` binary or direct modules.
-- `INTERNAL_NU_FAMILIES` is now the real split boundary. It should shrink only
-  when a family deletion removes or demotes a Nu owner end to end.
+- `INTERNAL_NU_FAMILIES` is now the real split boundary.
+- The public root no longer has a generic fallback Nu registry; future public
+  deletion work now has to remove a concrete surviving Nu family owner end to
+  end.
 
 ### Full-Owner Migration
 
@@ -111,7 +106,7 @@ framework above intentionally Nu-owned command bodies.
 
 - Broad Clap rewrite
   - stop condition: reopen only after a new family-level cut materially shrinks
-    `INTERNAL_NU_FAMILIES` or deletes `core/yazelix.nu`
+    `INTERNAL_NU_FAMILIES`
 - Moving launch/enter/restart execution to Rust
   - stop condition: only valid if a new deterministic subcore deletes a whole
     Nu owner instead of wrapping terminal, Zellij, or shell handoff logic
@@ -122,20 +117,18 @@ framework above intentionally Nu-owned command bodies.
 ## 6. Quality Findings
 
 - duplicate owners:
-  - root help/version exists in Rust and in `core/yazelix.nu`, though the Nu
-    version is now compatibility-only
-  - tests still use both the public Rust binary path and direct
-    `core/yazelix.nu` sourcing
+  - no remaining public-root registry duplicate survives after `yazelix-f7hz`
+  - some tests still mix direct helper/module invocation with public Rust entry
+    paths, but they no longer source a generic Nu root
 - missing layer problems:
-  - no focused contract item currently names the split between public Rust root
-    routing and direct internal Nu family execution
-  - no explicit parity harness says when `core/yazelix.nu` may be deleted
+  - the owner split is now named by `BRIDGE-001`, but more family-specific
+    public command item IDs would still make later deletions safer
 - extra layer problems:
-  - `core/yazelix.nu` re-export registry remains after Rust took over public
-    route planning
+  - no generic re-export registry remains, which is the correct end state for
+    the landed public-root cut
 - DRY opportunities:
-  - tests and sweeps should stop rebuilding the old source-able command tree
-    and use the same public root that users run
+  - remaining tests should prefer the same public root or direct concrete
+    modules that the product now uses, without reintroducing a shared fake root
 - weak or orphan tests:
   - command existence and help-shape tests should remain under suspicion unless
     they defend route ownership or a user-visible behavior
@@ -145,13 +138,14 @@ framework above intentionally Nu-owned command bodies.
   - public root routing checks in `test_yzx_core_commands.nu`
   - menu catalog parity tests
 - spec gaps:
-  - no indexed contract item for the Rust root plus internal Nu helper split
+  - there is still no family-specific indexed contract item set for the
+    surviving direct Nu helper modules under the Rust root
 
 ## 7. Deletion Classes And Follow-Up Beads
 
 | Bead | Retained behavior | Deletion class | Candidate surviving owner | Verification that must still pass | Explicit stop condition |
 | --- | --- | --- | --- | --- | --- |
-| `yazelix-f7hz` | public root routing, help/version, metadata, externs, and all intentionally Nu-owned families | `bridge_collapse` | Rust `yzx.rs` plus direct Nu modules | Rust route tests; command metadata tests; default suite; sweep path if touched | stop if any supported runtime path still needs source-able re-export semantics |
+| `yazelix-f7hz` | public root routing, help/version, metadata, externs, and all intentionally Nu-owned families | `bridge_collapse` | Rust `yzx.rs` plus direct Nu modules | Rust route tests; command metadata tests; default suite; sweep path if touched | landed |
 
 Follow-up intentionally not created:
 
@@ -166,7 +160,6 @@ Follow-up intentionally not created:
   - `rust_core/yazelix_core/src/bin/yzx_control.rs`
   - `rust_core/yazelix_core/src/public_command_surface.rs`
   - `rust_core/yazelix_core/src/command_metadata.rs`
-  - `nushell/scripts/core/yazelix.nu`
   - `nushell/scripts/yzx/*.nu`
 - `nu nushell/scripts/dev/validate_specs.nu`
 

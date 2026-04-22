@@ -26,6 +26,64 @@ This spec defines:
 - a lightweight inventory of the current suite surfaces
 - two concrete cleanups: use explicit suite membership instead of implicit globbing, and demote README version validation out of the default `yzx` command bundle
 
+## Contract Items
+
+#### TEST-001
+- Type: ownership
+- Status: live
+- Owner: maintainer test runner and validator lane entrypoints
+- Statement: Yazelix keeps a small set of named test lanes with explicit
+  entrypoints. Cheap validators, default regressions, sweep coverage, visual
+  sweeps, CI-only checks, and manual/exploratory checks stay distinct instead of
+  being treated as one undifferentiated test pile
+- Verification: automated
+  `nu nushell/scripts/dev/validate_default_test_traceability.nu`; automated
+  `nu nushell/scripts/dev/validate_specs.nu`
+
+#### TEST-002
+- Type: boundary
+- Status: live
+- Owner: default-lane admission policy
+- Statement: A default-lane test must defend a real contract, regression,
+  integration boundary, or maintained invariant. Command-discovery noise,
+  wording trivia, and checks already better owned by cheap validators do not
+  belong in the default suite
+- Verification: automated
+  `nu nushell/scripts/dev/validate_default_test_traceability.nu`
+
+#### TEST-003
+- Type: invariant
+- Status: live
+- Owner: default suite membership definition
+- Statement: The default automated suite uses explicit suite membership instead
+  of an implicit `test_*.nu` glob, and default component files must stay small,
+  canonical, and traceable
+- Verification: automated
+  `nu nushell/scripts/dev/validate_default_test_traceability.nu`; automated
+  `nu nushell/scripts/dev/test_yzx_commands.nu`
+
+#### TEST-004
+- Type: invariant
+- Status: live
+- Owner: governed test metadata validators
+- Statement: Governed Nu and first-party Rust tests must declare a lane, a
+  nearby justification marker, and a structured strength score, and they must
+  clear the lane minimum mechanically
+- Verification: automated
+  `nu nushell/scripts/dev/validate_default_test_traceability.nu`; automated
+  `nu nushell/scripts/dev/validate_rust_test_traceability.nu`
+
+#### TEST-005
+- Type: non_goal
+- Status: live
+- Owner: test-suite cleanup policy
+- Statement: Yazelix does not preserve weak tests by inertia and does not create
+  generic `_extended` overflow files. Weak/orphan tests are deleted, demoted, or
+  quarantined with an explicit exit path
+- Verification: automated
+  `nu nushell/scripts/dev/validate_default_test_traceability.nu`; automated
+  `nu nushell/scripts/dev/validate_rust_test_traceability.nu`
+
 ## Behavior
 
 ### Test lanes and ownership

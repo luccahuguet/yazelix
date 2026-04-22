@@ -210,7 +210,6 @@ def setup_launch_path_fixture [label: string, persistent_sessions: bool, existin
         zellij_log: $zellij_log
         start_script: ($runtime_dir | path join "nushell" "scripts" "core" "start_yazelix.nu")
         start_inner: ($runtime_dir | path join "nushell" "scripts" "core" "start_yazelix_inner.nu")
-        yzx_script: ($runtime_dir | path join "nushell" "scripts" "core" "yazelix.nu")
         layout_path: ($state_dir | path join "configs" "zellij" "layouts" "yzx_side.kdl")
         env: {
             HOME: $tmp_home

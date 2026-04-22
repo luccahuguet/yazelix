@@ -16,6 +16,44 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - Keep the command-palette popup as a separate flow
 - Reuse one shared floating-pane launch model for both popup surfaces
 
+## Contract Items
+
+#### POP-001
+- Type: behavior
+- Status: live
+- Owner: `yzx popup` plus transient-pane launch contract
+- Statement: `yzx popup` resolves one argv list, not a shell string. The
+  default popup program is `["lazygit"]`, and a per-invocation command override
+  replaces that argv list for only the current popup
+- Verification: automated `nu nushell/scripts/dev/test_yzx_popup_commands.nu`
+
+#### POP-002
+- Type: failure_mode
+- Status: live
+- Owner: popup config validation and render-plan owners
+- Statement: `zellij.popup_width_percent` and
+  `zellij.popup_height_percent` must be integers in the range `1..100`.
+  Invalid values fail fast as config errors instead of being coerced silently
+- Verification: automated `nu nushell/scripts/dev/test_yzx_popup_commands.nu`;
+  validator `nu nushell/scripts/dev/validate_specs.nu`
+
+#### POP-003
+- Type: behavior
+- Status: live
+- Owner: popup cwd resolution plus pane orchestrator contract
+- Statement: Popup panes launch in the current tab workspace root when one is
+  known, otherwise they fall back to the current shell directory
+- Verification: automated `nu nushell/scripts/dev/test_yzx_popup_commands.nu`
+
+#### POP-004
+- Type: ownership
+- Status: live
+- Owner: pane orchestrator transient-pane lifecycle
+- Statement: `Alt+t` toggles one managed popup pane instead of spawning
+  duplicates forever, while `Alt+Shift+M` stays a separate command-palette flow
+- Verification: automated `nu nushell/scripts/dev/test_yzx_popup_commands.nu`;
+  automated `nu nushell/scripts/dev/test_zellij_plugin_contracts.nu`
+
 ## Behavior
 
 - `yzx popup` opens a floating Zellij pane using the configured `zellij.popup_program`.

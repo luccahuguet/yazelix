@@ -117,7 +117,7 @@ wrappers.
 | Helix shared path and launch compatibility seam | Standalone wrapper deleted; shared Helix path truth now lives in `utils/common.nu`; adjacent consumers are `yzx/edit.nu`, `yzx/import.nu`, and `shells/posix/yazelix_hx.sh` | Rust already owns Helix template merge policy, reveal-binding enforcement, generated-file writes, import-notice state, and now the doctor-side expected contract build in `helix_materialization.rs`. The surviving Nu/POSIX seam is path truth and launch/editor/import orchestration, not a second generator owner. | Treat this as a landed wrapper-deletion lane. Keep Helix path truth shared and non-owning, and keep the POSIX launcher talking to the Rust helper directly. Dependency gate: no new crates; keep using existing `serde` and `toml` plus in-house helper extraction where needed. | Landed under `yazelix-ulb2.10.2` |
 | Shell initializer generation and shellhook environment setup | `setup/initializers.nu`, `setup/environment.nu` | The deterministic runtime-env subcore already moved to Rust. What remains is external-tool init generation, shell-specific text normalization, bridge sync, startup profiling, log cleanup, executable-bit repair, and welcome-shellhook orchestration. | Keep Nushell-owned in v15.x. Reopen only if a future port can delete the surviving shellhook owner end-to-end instead of inserting one more text or bridge helper. | Decision locked by `yazelix-iwzn` |
 | Launch and startup process orchestration | `core/launch_yazelix.nu`, `core/start_yazelix.nu`, `core/start_yazelix_inner.nu`, `utils/terminal_launcher.nu`, `shells/posix/*.sh` | Shell-bound and process-heavy, not the best next Rust target | Keep Nu and POSIX in v15.x. Reopen only if a new deterministic subcore appears that deletes a real owner. | No active deletion lane; historical stop note in `launch_bootstrap_rust_migration.md` |
-| Public `yzx` root, help, completion, and palette inventory | Rust metadata owner: `command_metadata.rs`; generated extern lifecycle owner: `yzx_core yzx-command-metadata.sync-externs`; surviving Nu command bodies: `core/yazelix.nu`, `core/yzx_*.nu`, `yzx/*.nu` | Metadata/help/menu ownership has landed, and `nushell_externs.nu` is deleted. Generated extern sync is now a Rust-owned cache lifecycle, with `setup/environment.nu` only keeping the shellhook profile boundary. | Keep shrinking only when the next cut deletes a real public parser or command-body owner. Do not rebuild a parallel Nu registry or generated-extern wrapper. | Follow-up lanes: `yazelix-2jkb.2` and `yazelix-oh0y` landed, `yazelix-2jkb.3` remains the next public-family decision |
+| Public `yzx` root, help, completion, and palette inventory | Rust metadata owner: `command_metadata.rs`; generated extern lifecycle owner: `yzx_core yzx-command-metadata.sync-externs`; surviving Nu command bodies: `core/yzx_*.nu`, `yzx/*.nu` | Metadata/help/menu ownership has landed, `nushell_externs.nu` is deleted, and `yazelix-f7hz` deleted `core/yazelix.nu`. Generated extern sync is now a Rust-owned cache lifecycle, with `setup/environment.nu` only keeping the shellhook profile boundary. | Keep shrinking only when the next cut deletes a real public parser or command-body owner. Do not rebuild a parallel Nu registry or generated-extern wrapper. | Follow-up lane: `yazelix-2jkb.3` remains the next public-family decision |
 | Workspace and session state | `rust_plugins/zellij_pane_orchestrator/`, `integrations/*.nu`, `zellij_wrappers/*.nu` | Already Rust where live session truth matters | Keep this separate from `rust_core`. Do not fold the pane-orchestrator track into the control-plane migration by habit. | Separate pane-orchestrator beads |
 
 ## 2026-04-21 Config, State, Env, And Preflight Deletion-Budget Decision
@@ -403,8 +403,8 @@ first command-metadata owner slice has landed.
 It becomes worth evaluating only after the bridge and materialization owners are
 already much smaller. If revisited later, the required deletion budget is:
 
-- delete or demote `core/yazelix.nu` as a public command-registry owner for at
-  least one more command family
+- delete or demote at least one more surviving concrete Nu command family under
+  the Rust root, now that `core/yazelix.nu` is already gone
 - keep `nushell_externs.nu` deleted by preserving the Rust-owned generated
   extern bridge lifecycle
 - delete public Nushell wrapper parsing for at least one remaining command
@@ -423,8 +423,8 @@ reject it.
   `doctor` into Rust, because those families still have larger surviving Nu
   owner clusters than the control-plane family does
 
-The point of the first root cut is to delete the public registry role of
-`core/yazelix.nu` for a surface that is already Rust-owned internally, not to
+The point of the first root cut was to delete the public registry role of
+`core/yazelix.nu` for a surface that was already Rust-owned internally, not to
 port more shell orchestration or doctor rendering into Rust by habit.
 
 What `yazelix-qsb5.2` changed:

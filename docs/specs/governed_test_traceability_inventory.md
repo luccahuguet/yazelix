@@ -5,13 +5,11 @@
 This inventory maps the governed Nu and Rust test surface to the current
 contract-driven-development protocol.
 
-The suite is strong enough to protect current deletion work, but it is not yet
-canonical. Most tests have meaningful `Defends`, `Regression`, or `Invariant`
-markers and pass the mechanical strength ratchet. Only a small subset has
-concrete `Contract:` item IDs because most live specs still have prose
-contracts. The next test-cleanup bead should delete or demote weak tests only
-after the remaining broad file-level traceability debt is drained or explicitly
-quarantined.
+The suite is strong enough to protect current deletion work, and the first
+contract-item migration batch has already drained the old default-suite file
+quarantine. Most tests still carry a mix of `Defends`, `Regression`, and
+`Invariant` markers rather than full per-test contract IDs, but the broad
+file-level debt is now smaller and more explicit.
 
 ## Current Counts
 
@@ -21,16 +19,15 @@ Counts from the audit pass:
 | --- | ---: |
 | governed Nu `test_*.nu` files under `nushell/scripts/dev` | `18` |
 | governed Nu `def test_*` functions | `198` |
-| Nu tests with nearby `# Contract:` markers | `9` |
+| Nu tests with nearby `# Contract:` markers | `16` |
 | first-party Rust files containing `#[test]` outside `target/` | `38` |
 | first-party Rust `#[test]` functions outside `target/` | `146` |
 | Rust tests with nearby `// Contract:` markers | `5` |
-| quarantined default-suite component files | `5` |
+| quarantined default-suite component files | `0` |
 
 Validator status during the audit:
 
-- `nu nushell/scripts/dev/validate_default_test_traceability.nu` passes with
-  five quarantined file-level traceability warnings
+- `nu nushell/scripts/dev/validate_default_test_traceability.nu` passes cleanly
 - `nu nushell/scripts/dev/validate_rust_test_traceability.nu` passes cleanly
 
 ## Nu Test Inventory
@@ -38,13 +35,13 @@ Validator status during the audit:
 | File | Lane | Tests | Current mapping | Audit classification |
 | --- | --- | ---: | --- | --- |
 | `test_yzx_commands.nu` | default | runner | broad file-level specs plus component bundle | keep; default-suite aggregator, not per-test owner |
-| `test_yzx_core_commands.nu` | default component | `38` | policy-only file marker plus per-test regressions/defends | quarantine until public command/config/status/update contracts get IDs |
-| `test_yzx_doctor_commands.nu` | default component | `16` | policy-only file marker plus doctor regressions | quarantine until status/doctor contract items exist |
-| `test_yzx_generated_configs.nu` | default component | `38` | `CRCP-*` on helper-resolution tests; many generated-config regressions | mixed: some mapped, many regression-only, keep likely 9/10 cases |
+| `test_yzx_core_commands.nu` | default component | `37` | mixed `BRIDGE-*`, `ROOT-*`, and `SDR-*` markers plus regressions | keep; one weak command-discovery test was deleted and the public-root compatibility registry is gone |
+| `test_yzx_doctor_commands.nu` | default component | `16` | mixed `SDR-*` markers plus doctor regressions | keep; public status/doctor report contract now indexed |
+| `test_yzx_generated_configs.nu` | default component | `38` | top-level live spec refs plus `CRCP-*` on helper-resolution tests; many generated-config regressions | mixed: some mapped, many regression-only, keep likely 9/10 cases |
 | `test_yzx_popup_commands.nu` | default component | `14` | floating pane file marker plus regressions | mapped to live prose spec; needs item IDs |
 | `test_yzx_screen_commands.nu` | default component | `6` | `FRONT-*` item IDs | mapped; good model for future conversions |
 | `test_yzx_workspace_commands.nu` | default component | `29` | workspace contract file marker plus regressions | mapped to live prose spec; needs item IDs |
-| `test_yzx_yazi_commands.nu` | default component | `7` | policy-only file marker plus integration regressions | quarantine until integration/workspace/sidebar items exist |
+| `test_yzx_yazi_commands.nu` | default component | `7` | top-level live spec refs plus integration regressions | keep; still needs the next workspace/session contract-item batch |
 | `test_helix_managed_config_contracts.nu` | maintainer/default-adjacent | `5` | policy file marker plus Helix/config regressions | keep; needs item IDs before deletion decisions |
 | `test_shell_managed_config_contracts.nu` | maintainer/default-adjacent | `12` | policy file marker plus shell/runtime regressions | keep; only known defense for shell config and extern bridge |
 | `test_yzx_helix_doctor_contracts.nu` | maintainer | `2` | policy file marker plus Helix doctor defends | keep; move to item IDs when doctor/Helix specs are indexed |
@@ -67,15 +64,11 @@ Classification summary:
 - regression-only or invariant-only:
   - most default component tests and maintainer release/update/profile tests
 - quarantine:
-  - file-level policy-only debt in
-    `test_yzx_core_commands.nu`,
-    `test_yzx_doctor_commands.nu`,
-    `test_yzx_generated_configs.nu`,
-    `test_yzx_screen_commands.nu`, and
-    `test_yzx_yazi_commands.nu`
+  - no default-suite component files remain quarantined after the first indexed
+    contract-item batch
 - likely delete/demote candidates:
-  - tests whose only value is command discovery or help existence after the
-    relevant public command surface gets item IDs
+  - remaining tests whose only value is command discovery or help existence
+    after the relevant public command surface and session specs get item IDs
   - repeated generated-config assertions that duplicate stronger Rust
     materialization tests
   - expensive default-lane checks that can move to maintainer or sweep once
@@ -134,8 +127,9 @@ exists:
 
 ## Weak Or Orphan Findings
 
-The audit did not find a test that is safe to delete immediately without
-contract migration. The risky areas for `yazelix-rdn7.4.2` are:
+The first cleanup pass already deleted one weak default-lane command-discovery
+test from `test_yzx_core_commands.nu`. The remaining risky areas for
+`yazelix-rdn7.4.2` are:
 
 - default-lane command-discovery tests after `core/yazelix.nu` compatibility
   registry deletion is planned
@@ -162,11 +156,12 @@ Minimum item-ID batches before aggressive pruning:
 
 - `yazelix-rdn7.4.2` should use this inventory to delete, demote, or quarantine
   weak and orphan tests without mass purging the only executable defenses.
-- `yazelix-rdn7.4.3` can evaluate cargo-mutants, cargo-fuzz, and cargo-nextest
-  against the Rust buckets above, especially deterministic materialization,
-  route planning, config normalization, and plugin contract logic.
-- `yazelix-7upo` should create the missing contract IDs that let the
-  quarantine drain cleanly.
+- `yazelix-rdn7.4.3` now records the keep/reject decision for
+  `cargo-mutants`, `cargo-fuzz`, and `cargo-nextest`; follow implementation
+  work through `yazelix-fkgs` if the nextest pilot is worth doing.
+- `yazelix-0qxa` should convert the next workspace/session live specs to
+  indexed contract items so later test pruning can keep shrinking broad
+  regression-only traceability.
 
 ## Verification
 

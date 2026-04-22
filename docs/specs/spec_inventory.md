@@ -19,6 +19,8 @@ Start from these files first when planning current work:
   - the primary live runtime and command-surface contract
 - `rust_migration_matrix.md`
   - the primary delete-first roadmap for remaining product-side Nushell removal
+- `ranked_nu_deletion_budget.md`
+  - the ranked execution budget for the remaining honest Nushell deletion lanes
 - `rust_nushell_bridge_contract.md`
   - the current bridge boundary between Nushell and `yzx_core`
 - `cross_language_runtime_ownership.md`
@@ -96,6 +98,7 @@ Status labels:
 | `pane_orchestrator_tab_local_session_state_seam.md` | Planning | Current pane-orchestrator seam proposal; not a shipped contract yet |
 | `persistent_window_session_contract.md` | Live | Current persistent-session behavior contract |
 | `public_yzx_command_surface_canonicalization_audit.md` | Planning | Completed public command-surface audit; records Clap no-go and the core registry deletion lane |
+| `ranked_nu_deletion_budget.md` | Planning | Current ranked deletion queue synthesized from the subsystem audits; use it to choose the next honest Nushell cuts |
 | `runtime_activation_state_contract.md` | Historical | Earlier activation model centered on recorded launch profiles and backend-era reuse |
 | `runtime_dependency_preflight_contract.md` | Live | Current launch-preflight versus doctor/install-smoke boundary |
 | `runtime_distribution_capability_tiers.md` | Live | Current distribution-tier and update-owner model |
@@ -104,6 +107,7 @@ Status labels:
 | `runtime_root_contract.md` | Live | Current runtime-root ownership contract |
 | `rust_migration_matrix.md` | Planning | Primary remaining roadmap for deleting product-side Nushell owners, especially the bridge layer and materialization families |
 | `rust_nushell_bridge_contract.md` | Live | Current bridge contract for `yzx_core` helper insertion behind Nushell-owned surfaces |
+| `rust_test_hardening_tools_decision.md` | Planning | Current keep/reject decision for `cargo-nextest`, `cargo-mutants`, and `cargo-fuzz`; use it before adding Rust hardening tooling |
 | `setup_shellhook_welcome_terminal_canonicalization_audit.md` | Planning | Completed setup/shellhook/welcome/terminal audit; spawned the front-door and terminal-launch deletion lanes |
 | `shell_opened_editors.md` | Live | Current managed-editor versus shell-opened editor boundary |
 | `spec_docs_contract_alignment_audit.md` | Planning | Current docs/spec alignment audit; feeds contract-item migration and historical-doc cleanup |

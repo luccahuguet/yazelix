@@ -2,6 +2,8 @@
 # Yazelix Test Runner
 # Runs all tests in the dev/ directory and reports results
 
+use ../utils/common.nu [get_yazelix_runtime_dir]
+
 const TEST_RUNNER_MODULE_PATH = (path self)
 const TEST_RUNNER_REPO_ROOT = (
     $TEST_RUNNER_MODULE_PATH
@@ -397,9 +399,23 @@ def run_nonvisual_sweep_tests [verbose: bool] {
     print "=== Running Non-Visual Configuration Sweep Tests ==="
     print ""
 
-    let verbose_arg = if $verbose { " --verbose" } else { "" }
     let sweep_script = ((get_yazelix_runtime_dir) | path join "nushell" "scripts" "dev" "test_config_sweep.nu")
-    nu -c $"use \"($sweep_script)\" run_all_sweep_tests; run_all_sweep_tests($verbose_arg)"
+    let args = if $verbose {
+        [$sweep_script, "--verbose"]
+    } else {
+        [$sweep_script]
+    }
+
+    let output = (^nu ...$args | complete)
+    if ($output.stdout | is-not-empty) {
+        print --raw $output.stdout
+    }
+    if ($output.stderr | is-not-empty) {
+        print --stderr --raw $output.stderr
+    }
+    if $output.exit_code != 0 {
+        error make { msg: "Non-visual sweep tests failed" }
+    }
 }
 
 def run_visual_sweep_tests [verbose: bool, delay: int] {
@@ -407,7 +423,21 @@ def run_visual_sweep_tests [verbose: bool, delay: int] {
     print "=== Running Visual Terminal Sweep Tests ==="
     print ""
 
-    let verbose_arg = if $verbose { " --verbose" } else { "" }
     let sweep_script = ((get_yazelix_runtime_dir) | path join "nushell" "scripts" "dev" "test_config_sweep.nu")
-    nu -c $"use \"($sweep_script)\" run_all_sweep_tests; run_all_sweep_tests --visual --visual-delay ($delay)($verbose_arg)"
+    let args = if $verbose {
+        [$sweep_script, "--visual", "--visual-delay", ($delay | into string), "--verbose"]
+    } else {
+        [$sweep_script, "--visual", "--visual-delay", ($delay | into string)]
+    }
+
+    let output = (^nu ...$args | complete)
+    if ($output.stdout | is-not-empty) {
+        print --raw $output.stdout
+    }
+    if ($output.stderr | is-not-empty) {
+        print --stderr --raw $output.stderr
+    }
+    if $output.exit_code != 0 {
+        error make { msg: "Visual sweep tests failed" }
+    }
 }

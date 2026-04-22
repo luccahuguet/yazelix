@@ -1,46 +1,15 @@
 #!/usr/bin/env nu
 
 use ../utils/logging.nu log_to_file
-use ../utils/config_parser.nu parse_yazelix_config
+use ../utils/integration_facts.nu [load_integration_facts]
 use ../utils/editor_launch_context.nu [resolve_editor_launch_context]
 use ./zellij.nu [open_in_existing_helix, open_in_existing_neovim, open_new_helix_pane, open_new_neovim_pane, get_workspace_root, retarget_workspace_for_path, set_managed_editor_cwd]
 use ./yazi.nu [get_ya_command, is_sidebar_enabled, sync_sidebar_yazi_state_to_directory]
 
-# Check if the editor command is Helix (supports both simple names and full paths)
-# This allows yazelix to work with "hx", "helix", "/nix/store/.../bin/hx", "/usr/bin/hx", etc.
-def is_helix_editor [editor: string] {
-    let normalized = ($editor | str trim)
-    let basename = if ($normalized | is-empty) { "" } else { $normalized | path basename }
-    ($normalized | str ends-with "/hx")
-        or ($normalized == "hx")
-        or ($normalized | str ends-with "/helix")
-        or ($normalized == "helix")
-        or ($basename == "yazelix_hx.sh")
-}
-
-# Check if the editor command is Neovim (supports both simple names and full paths)
-# This allows yazelix to work with "nvim", "neovim", "/nix/store/.../bin/nvim", "/usr/bin/nvim", etc.
-def is_neovim_editor [editor: string] {
-    ($editor | str ends-with "/nvim") or ($editor == "nvim") or ($editor | str ends-with "/neovim") or ($editor == "neovim")
-}
-
 export def get_managed_editor_kind [] {
-    let config = parse_yazelix_config
-    let configured_editor = ($config.editor_command? | default null)
-    let editor = if ($configured_editor != null) and (($configured_editor | into string | str trim) | is-not-empty) {
-        $configured_editor | into string
-    } else {
-        $env.EDITOR? | default ""
-    }
-    let managed_helix_binary = ($env.YAZELIX_MANAGED_HELIX_BINARY? | default "" | into string | str trim)
-
-    if ($managed_helix_binary | is-not-empty) or (is_helix_editor $editor) {
-        "helix"
-    } else if (is_neovim_editor $editor) {
-        "neovim"
-    } else {
-        null
-    }
+    let facts = (load_integration_facts)
+    let editor_kind = ($facts.managed_editor_kind? | default "" | into string | str trim)
+    if ($editor_kind | is-empty) { null } else { $editor_kind }
 }
 
 export def sync_managed_editor_cwd [target_path: path, log_file: string = "editor_sync.log"] {

@@ -2,7 +2,6 @@
 # Sweep Testing - Test Execution Utilities
 # Handles individual test execution and validation
 
-use ../../utils/config_parser.nu parse_yazelix_config
 use ../../utils/constants.nu TERMINAL_METADATA
 use ../../utils/terminal_launcher.nu command_exists
 use ../../utils/common.nu [get_yazelix_runtime_dir]
@@ -10,12 +9,12 @@ use ../../utils/common.nu [get_yazelix_runtime_dir]
 # Validate that environment setup works for a given config
 export def validate_environment [config_path: string]: nothing -> record {
     try {
-        # Run one Yazelix command per config to keep the sweep cheap.
-        let validation_cmd = "echo \"TOOLS_START\" && which zellij && which yazi && which hx && echo \"TOOLS_END\" && echo \"VERSION_START\" && zellij --version && yazi --version && hx --version && echo \"VERSION_END\""
+        let runtime_dir = (get_yazelix_runtime_dir)
+        let yzx_cli = ($runtime_dir | path join "shells" "posix" "yzx_cli.sh")
+        let validation_helper = ($runtime_dir | path join "shells" "posix" "sweep_validate_runtime_tools.sh")
         let validation_output = (do {
             with-env {YAZELIX_CONFIG_OVERRIDE: $config_path} {
-                let runtime_dir = (get_yazelix_runtime_dir)
-                nu -c $"use \"($runtime_dir)/nushell/scripts/core/yazelix.nu\" *; yzx run bash \"-lc\" '($validation_cmd)'"
+                ^sh $yzx_cli run sh $validation_helper
             }
         } | complete)
 
@@ -142,9 +141,9 @@ export def launch_visual_test [config_path: string, test_id: string, terminal: s
             YAZELIX_LAYOUT_OVERRIDE: "yzx_sweep_test",
             YAZELIX_SWEEP_TEST_ID: $test_id
         } {
-            # Use --terminal flag to force specific terminal (prevents fallback to first available)
             let runtime_dir = (get_yazelix_runtime_dir)
-            nu -c $"use \"($runtime_dir)/nushell/scripts/core/yazelix.nu\" *; yzx launch --terminal ($terminal)"
+            let yzx_cli = ($runtime_dir | path join "shells" "posix" "yzx_cli.sh")
+            ^sh $yzx_cli launch --terminal $terminal
         }
     } | complete)
 
