@@ -38,8 +38,8 @@ The point is not to defend every old test file. The point is to make it obvious 
 - Why:
   - v15 removed the pack sidecar as a maintained user/runtime surface. The right defense is not "old pack tests kept passing"; it is "the runtime and config parser now reject or omit that surface entirely."
 - Current defenses:
-  - First-run bootstrap no longer materializes `yazelix_packs.toml` in `test_parse_yazelix_config_bootstraps_main_default_surface` in [`nushell/scripts/dev/test_yzx_generated_configs.nu`](../nushell/scripts/dev/test_yzx_generated_configs.nu).
-  - Legacy `[packs]` config is rejected by the consolidated `test_parse_yazelix_config_rejects_removed_surfaces_without_rewriting` test in [`nushell/scripts/dev/test_yzx_generated_configs.nu`](../nushell/scripts/dev/test_yzx_generated_configs.nu).
+  - Rust `config-surface.resolve` bootstrap coverage keeps first-run managed config creation from reviving `yazelix_packs.toml` in [`rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`](../rust_core/yazelix_core/tests/yzx_core_config_normalize.rs).
+  - Legacy `[packs]` config is rejected by the Rust-owned `config_normalize_rejects_removed_surfaces_without_rewriting` coverage in [`rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`](../rust_core/yazelix_core/tests/yzx_core_config_normalize.rs).
   - Installed runtime and installer no longer ship or seed pack files in [`nushell/scripts/dev/validate_flake_install.nu`](../nushell/scripts/dev/validate_flake_install.nu).
   - Source-level installed-runtime contract checks also forbid the old pack surfaces in [`nushell/scripts/dev/validate_installed_runtime_contract.nu`](../nushell/scripts/dev/validate_installed_runtime_contract.nu).
 - Remaining gap:
@@ -71,7 +71,7 @@ The point is not to defend every old test file. The point is to make it obvious 
   - The old parser test mostly asserted that a config file existed, parsed, and had plausible-looking fields. That was breadth without much regression power.
   - The current suite focuses on migration, bootstrap, rejection, and narrowed-surface behavior.
 - Current defenses:
-  - Managed config bootstrap and removed-surface rejection are covered by `test_parse_yazelix_config_rejects_removed_surfaces_without_rewriting`, `test_parse_yazelix_config_bootstraps_main_default_surface`, and `test_config_schema_rejects_removed_enum_values` in [`nushell/scripts/dev/test_yzx_generated_configs.nu`](../nushell/scripts/dev/test_yzx_generated_configs.nu).
+  - Managed config bootstrap and removed-surface rejection are now covered directly in Rust by [`rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`](../rust_core/yazelix_core/tests/yzx_core_config_normalize.rs), with Nu keeping only the helper-resolution edge cases in [`nushell/scripts/dev/test_yzx_generated_configs.nu`](../nushell/scripts/dev/test_yzx_generated_configs.nu).
   - Removed-field rejection through the public command path is covered by `test_invalid_config_is_classified_as_config_problem` in [`nushell/scripts/dev/test_yzx_core_commands.nu`](../nushell/scripts/dev/test_yzx_core_commands.nu).
 - Remaining gap:
   - None. The surviving tests defend user-visible parser behavior better than the old broad smoke checks did.
@@ -118,7 +118,7 @@ This pass re-audited the largest surviving default-suite component files after t
 
 | Area | Classification | Decision |
 | --- | --- | --- |
-| Generated config removed-surface parser checks | `Replaced by stronger surviving coverage` | Three separate parser tests for removed v14 surfaces were merged into one table-driven `test_parse_yazelix_config_rejects_removed_surfaces_without_rewriting` check. It still covers legacy `[ascii]`, removed `shell.enable_atuin`, and legacy `[packs]`, and it now uniformly asserts no config rewrites or backup churn. |
+| Generated config removed-surface parser checks | `Replaced by stronger surviving coverage` | The removed-v14-surface assertions now live in Rust-owned `config_normalize_rejects_removed_surfaces_without_rewriting` coverage, which still covers legacy `[ascii]`, removed `shell.enable_atuin`, and legacy `[packs]` while asserting no config-file mutation or backup churn. |
 | Generated config removed enum checks | `Replaced by stronger surviving coverage` | The separate removed-enum tests for `terminal.config_mode = "auto"` and `zellij.widget_tray = ["layout"]` were merged into one table-driven `test_config_schema_rejects_removed_enum_values` check. |
 | Generated config terminal, Yazi, Zellij, safe-remove, and transient-pane checks | `Keep` | These still defend distinct launch/platform seams, generated artifact safety, native-versus-managed config ownership, and popup/menu helperless routing. They are heavy but not duplicates. |
 | Workspace and Yazi pane-orchestrator fixtures | `Keep, fixture hardened` | The behavior remains distinct and live. The fake `zellij` test fixtures were changed to match pipe command names by argv value instead of brittle positional `$6` assumptions. |

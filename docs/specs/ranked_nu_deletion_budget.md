@@ -25,10 +25,16 @@ meaningful seams:
 - `yazelix-jkk3`, `yazelix-sq0g.2`, and `yazelix-sq0g.3` remove the remaining
   product-side full-config reads from popup/menu, popup/editor wrappers, and
   startup/launch/setup callers by introducing narrower Rust-owned facts
+- `yazelix-sq0g.4` deletes `nushell/scripts/utils/config_parser.nu` and leaves
+  only a dev-only normalize probe for the remaining helper-resolution tests
+- `yazelix-rdn7.4.5.2` and `yazelix-rdn7.4.5.3` move the first deterministic
+  generated-config and public-command coverage clusters onto Rust-owned tests
+  and delete the redundant Nu assertions they replaced
 
-The remaining budget is therefore smaller and more honest: bridge collapse,
-wrapper deletion, and contract cleanup, not one more imaginary "big Rust port"
-for product code that is already Rust-owned internally.
+The remaining budget is therefore smaller and more honest: launch-time bridge
+collapse, the next deterministic Nu test cleanup pass, and explicit no-go
+boundaries for likely Nushell survivors, not one more imaginary "big Rust
+port" for product code that is already Rust-owned internally.
 
 ## Public-Facing Read
 
@@ -66,9 +72,7 @@ Lower ranks mean:
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `1` | product/runtime bridge collapse | `yazelix-nuj1` | delete roughly `120-220` lines of terminal-materialization and Ghostty request assembly from `nushell/scripts/core/launch_yazelix.nu`; no new wrapper files | launch still filters supported terminals, materializes managed terminal assets, rerolls Ghostty state, and launches the chosen terminal cleanly | Rust `terminal_materialization.rs`, `ghostty_materialization.rs`, and `control_plane.rs` stay the typed owners; Nu keeps terminal selection, prose, and execution | ready now; use `TLAUNCH-*`, `PRE-*`, and the launch/session audit; no new contract batch required before implementation | `test_yzx_generated_configs.nu`, `test_yzx_workspace_commands.nu`, `validate_flake_install.nu`; stop if the only alternative is a fake Rust launch wrapper that still shells out to the same terminal commands |
 | `2` | launch/session bridge collapse | `yazelix-p18h` | delete roughly `40-80` lines of embedded shell-body assembly from `nushell/scripts/utils/terminal_launcher.nu` by moving the fixed detached-launch probe into one checked-in POSIX helper | detached launch probing stays measurable, fast on success, and explicit on early terminal death | POSIX helper under `shells/posix/` plus existing Nu launch orchestration | ready now; `PROF-*` item IDs already exist, and maintainer profile tests are the live executable defense | `test_startup_profile_records_detached_terminal_probe`, `test_detached_launch_probe_success_path_is_fast`, `test_detached_launch_probe_early_failure_is_visible`; stop if terminal-specific argv shapes still require caller-local Nu assembly and only the fixed probe body can move |
-| `3` | remaining full-config seam cleanup | `yazelix-sq0g.4` | delete or demote `nushell/scripts/utils/config_parser.nu` once product callers no longer depend on `parse_yazelix_config`; expected deletion is one owner file or a clear demotion to dev/test-only use | config normalization and diagnostics still behave the same, while popup/menu and startup/launch/setup keep the narrower Rust-owned fact seams | Rust `config.normalize`, `transient-pane-facts.compute`, `startup-facts.compute`, and `runtime-env.compute`; any surviving Nu parser use is explicitly non-product | ready now after the landed product-side cuts; the remaining work is classification of non-product callers, not another product bridge insertion | generated-config tests, config validators, and `validate_specs.nu`; stop if the only surviving reason is a shell/process boundary rather than config-normalize ownership |
-| `4` | deterministic Nu test deletion | `yazelix-rdn7.4.5.2` | delete or demote the first cluster of deterministic Nu generated-config/materialization assertions after equivalent Rust coverage lands | config/materialization contracts remain defended, but the strongest deterministic assertions move onto the Rust owner | Rust tests in `rust_core/yazelix_core` | gated by `rust_owned_test_migration_budget.md`; stop if a replacement would lose shell/bootstrap coverage instead of deleting deterministic duplication |
-| `5` | deterministic public-command Nu test deletion | `yazelix-rdn7.4.5.3` | delete or demote the first cluster of deterministic Nu public-command assertions after equivalent Rust coverage lands | public command/report/control-plane contracts remain defended with fewer mixed-owner tests | Rust tests in `rust_core/yazelix_core` | gated by the same migration budget and the indexed command-surface/session contracts; stop if the remaining behavior is still Nu-owned CLI bootstrap rather than Rust-owned command logic |
+| `3` | deterministic Nu test cleanup after replacement coverage | `yazelix-rdn7.4.5.4` | delete or demote the next redundant Nu test clusters now that the first Rust replacements landed | Rust-owned config/materialization and public-command contracts remain defended while the default Nu lane keeps only shell/process behavior | Rust tests in `rust_core/yazelix_core` plus the surviving Nu integration suites | unblocked after the first Rust migration cuts; stop if a candidate deletion would remove the last executable defense of a shell/process boundary |
 
 ## Buckets With No Honest Large Port Left
 
@@ -100,16 +104,18 @@ cuts above:
 
 The stop condition is consistent across all of them: do not move them to Rust
 unless Rust becomes the single honest owner of the retained behavior rather than
-just a new layer above the same shell/process code.
+just a new layer above the same shell/process code. The current family-by-family
+decision record now lives in
+`docs/specs/likely_nushell_survivor_owner_cut_decisions.md`.
 
 ## Follow-Up Queue Created From This Budget
 
 - `yazelix-nuj1` and `yazelix-p18h` as the highest-value remaining product-side
   Nu deletion lanes
-- `yazelix-sq0g.4` for the remaining `config_parser.nu` demotion/deletion
-  decision after the landed product-side fact cuts
-- `yazelix-rdn7.4.5.2` and `yazelix-rdn7.4.5.3` for the first serious
-  deterministic Nu test migration cuts
+- `yazelix-rdn7.4.5.4` for the next redundant deterministic Nu test cleanup
+- `docs/specs/likely_nushell_survivor_owner_cut_decisions.md` to lock the
+  no-go boundaries for setup, front-door UX, session/restart/desktop, and the
+  remaining launcher/runtime helper family
 
 ## Verification
 

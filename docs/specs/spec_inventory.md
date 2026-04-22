@@ -81,12 +81,13 @@ Status labels:
 | `first_run_upgrade_summary.md` | Live | Current `yzx whats_new` and first-run summary contract |
 | `flake_interface_contract.md` | Historical | Earlier installer-first contract, superseded by the current package/runtime shape |
 | `floating_tui_panes.md` | Live | Current popup and transient-pane behavior family |
-| `full_config_nushell_owner_cut_budget.md` | Planning | Current delete-first budget for removing the remaining product-side full-config `parse_yazelix_config` owner seam |
+| `full_config_nushell_owner_cut_budget.md` | Historical | Delete-first budget for the now-landed product-side full-config owner cut; keep as decision history rather than active planning |
 | `governed_test_traceability_inventory.md` | Planning | Current governed-test inventory for `yazelix-rdn7.4`; feeds test delete/demote/quarantine work |
 | `helix_managed_config_contract.md` | Planning | Still useful future Helix ownership contract; not yet the main delete-first migration lane |
 | `integration_glue_canonicalization_audit.md` | Planning | Completed integration-glue audit that names wrapper deletion and config-read collapse lanes |
 | `launch_bootstrap_rust_migration.md` | Historical | Transition record for the landed `runtime-env.compute` slice and the explicit stop condition for further v15.x launch/bootstrap Rust work |
 | `launch_startup_session_canonicalization_audit.md` | Planning | Completed launch/startup/session audit that documents shell-process no-go boundaries and smaller bridge cuts |
+| `likely_nushell_survivor_owner_cut_decisions.md` | Planning | Current family-by-family no-go and follow-up decision record for the remaining likely Nushell survivors |
 | `macos_support_floor.md` | Live | Current first-party macOS support floor |
 | `maintainer_harness_canonicalization_audit.md` | Planning | Completed maintainer/dev/validator harness audit; separates product Nu deletion from harness cleanup |
 | `managed_config_migration_transaction_contract.md` | Historical | Superseded with the removed migration and relocation engine |

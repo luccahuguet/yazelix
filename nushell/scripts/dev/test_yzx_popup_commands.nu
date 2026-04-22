@@ -4,9 +4,9 @@
 # Defends: docs/specs/floating_tui_panes.md
 
 use ./yzx_test_helpers.nu resolve_test_yzx_core_bin
+use ./config_normalize_test_helpers.nu [load_normalized_active_config]
 use ../yzx/popup.nu [resolve_yzx_popup_command resolve_yzx_popup_contract resolve_yzx_popup_cwd]
 use ../integrations/zellij_runtime_wrappers.nu [build_floating_wrapper_env_args get_floating_wrapper_env get_new_editor_pane_launch_env open_floating_runtime_script]
-use ../utils/config_parser.nu [parse_yazelix_config]
 
 def write_executable_fixture_file [path: string, lines: list<string>] {
     $lines | str join "\n" | save --force --raw $path
@@ -246,7 +246,7 @@ def test_popup_size_parser_accepts_valid_and_rejects_invalid_percentages [] {
 
                     let parse_result = (with-env { YAZELIX_CONFIG_OVERRIDE: $config_path } {
                         try {
-                            let parsed = (parse_yazelix_config)
+                            let parsed = (load_normalized_active_config)
                             { ok: true, parsed: $parsed }
                         } catch {|err|
                             { ok: false, msg: $err.msg }

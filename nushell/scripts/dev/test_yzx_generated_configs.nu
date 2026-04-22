@@ -5,58 +5,13 @@
 # Defends: docs/specs/terminal_launch_contract.md
 
 use ./yzx_test_helpers.nu [get_repo_config_dir repo_path resolve_test_yzx_core_bin setup_managed_config_fixture]
+use ./config_normalize_test_helpers.nu [load_normalized_active_config]
 use ./materialization_dev_helpers.nu [generate_merged_yazi_config generate_merged_zellij_config regenerate_runtime_configs]
 use ../utils/yzx_core_bridge.nu [record_materialized_state_via_yzx_core]
 use ../core/launch_yazelix.nu [generate_all_terminal_configs]
 use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface resolve_yzx_core_helper_path run_yzx_core_request_json_command]
 use ../utils/safe_remove.nu remove_path_within_root
 use ../utils/terminal_launcher.nu [build_launch_command resolve_terminal_config]
-
-def run_parse_yazelix_config_probe [fixture: record, extra_env: record = {}] {
-    with-env ({
-        HOME: $fixture.tmp_home
-        YAZELIX_CONFIG_DIR: $fixture.config_dir
-        YAZELIX_RUNTIME_DIR: $fixture.repo_root
-        YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
-    } | merge $extra_env) {
-        ^nu -c $"use \"($fixture.repo_root | path join "nushell" "scripts" "utils" "config_parser.nu")\" [parse_yazelix_config]; parse_yazelix_config" | complete
-    }
-}
-
-def check_parse_rejects_removed_config_surface [case: record] {
-    let fixture = (setup_managed_config_fixture $case.label $case.config)
-
-    let result = (try {
-        let original = (open --raw $fixture.config_path)
-        let parser_result = (run_parse_yazelix_config_probe $fixture)
-        let stderr = ($parser_result.stderr | str trim)
-        let updated = (open --raw $fixture.config_path)
-        let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
-
-        if (
-            ($parser_result.exit_code != 0)
-            and ($stderr | str contains $case.expected_error)
-            and ($stderr | str contains "Failure class: config problem.")
-            and ($stderr | str contains "yzx config reset")
-            and not ($stderr | str contains "Known migration")
-            and not ($stderr | str contains "yzx doctor --fix")
-            and ($updated == $original)
-            and (($backups | length) == 0)
-        ) {
-            print $"  ✅ ($case.name)"
-            true
-        } else {
-            print $"  ❌ ($case.name): exit=($parser_result.exit_code) stderr=($stderr) unchanged=(($updated == $original)) backups=(($backups | length))"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ ($case.name): ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
 
 def check_schema_rejects_removed_enum_value [case: record] {
     let tmpdir = (^mktemp -d $"/tmp/($case.label)_XXXXXX" | str trim)
@@ -602,133 +557,11 @@ def test_ghostty_macos_launch_command_omits_linux_specific_flags [] {
     }
 }
 
-# Defends: removed v14 config surfaces fail clearly without mutation.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_parse_yazelix_config_rejects_removed_surfaces_without_rewriting [] {
-    print "🧪 Testing parse_yazelix_config rejects removed config surfaces without rewriting..."
-
-    let cases = [
-        {
-            name: "legacy [ascii].mode is unsupported"
-            label: "yazelix_welcome_style_legacy"
-            config: "[ascii]\nmode = \"animated\"\n"
-            expected_error: "Unknown config field at ascii"
-        }
-        {
-            name: "removed shell.enable_atuin is unsupported"
-            label: "yazelix_parser_no_auto_apply"
-            config: "[shell]\nenable_atuin = true\n"
-            expected_error: "Unknown config field at shell.enable_atuin"
-        }
-        {
-            name: "legacy [packs] is unsupported"
-            label: "yazelix_pack_legacy_main"
-            config: "[packs]\nenabled = [\"git\"]\nuser_packages = [\"docker\"]\n\n[packs.declarations]\ngit = [\"gh\", \"prek\"]\n"
-            expected_error: "Unknown config field at packs"
-        }
-    ]
-
-    let results = ($cases | each {|case| check_parse_rejects_removed_config_surface $case })
-    ($results | all {|result| $result })
-}
-
-# Invariant: split default config surfaces are bootstrapped when missing.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-def test_parse_yazelix_config_bootstraps_main_default_surface [] {
-    print "🧪 Testing parse_yazelix_config bootstraps the managed main config surface on first run..."
-
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d /tmp/yazelix_pack_bootstrap_XXXXXX | str trim)
-    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
-    mkdir ($tmp_home | path join ".config")
-
-    let result = (try {
-        let parsed = (with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            use ../utils/config_parser.nu [parse_yazelix_config]
-            parse_yazelix_config
-        })
-
-        let user_config_dir = ($temp_config_dir | path join "user_configs")
-        let main_exists = (($user_config_dir | path join "yazelix.toml") | path exists)
-        let generated_main = (if $main_exists { open --raw ($user_config_dir | path join "yazelix.toml") } else { "" })
-
-        if (
-            $main_exists
-            and not (($user_config_dir | path join "yazelix_packs.toml") | path exists)
-            and ($generated_main | str contains '[shell]')
-            and (($parsed.default_shell? | default "") == "nu")
-        ) {
-            print "  ✅ First-run bootstrap now materializes the managed main config without reviving the removed pack sidecar"
-            true
-        } else {
-            print $"  ❌ Unexpected result: main_exists=($main_exists) parsed=($parsed | to json -r)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_home
-    $result
-}
-
-# Regression: managed config bootstrap must materialize Taplo support so formatting yazelix.toml keeps Yazelix array layout.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_parse_yazelix_config_bootstraps_taplo_formatter_support [] {
-    print "🧪 Testing parse_yazelix_config bootstraps Taplo formatter support for managed Yazelix TOML..."
-
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d /tmp/yazelix_taplo_support_XXXXXX | str trim)
-    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
-    mkdir ($tmp_home | path join ".config")
-
-    let result = (try {
-        with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            use ../utils/config_parser.nu [parse_yazelix_config]
-            parse_yazelix_config | ignore
-        }
-
-        let taplo_support_path = ($temp_config_dir | path join ".taplo.toml")
-        let expected_taplo_support = (open --raw (repo_path ".taplo.toml"))
-        let user_config_dir = ($temp_config_dir | path join "user_configs")
-        let user_config_path = ($user_config_dir | path join "yazelix.toml")
-        let bootstrapped_config = (open --raw $user_config_path)
-
-        if (
-            ($taplo_support_path | path exists)
-            and ((open --raw $taplo_support_path) == $expected_taplo_support)
-            and ($expected_taplo_support | str contains "array_auto_expand = true")
-            and ($bootstrapped_config | is-not-empty)
-        ) {
-            print "  ✅ Managed config bootstrap now materializes the Taplo support file that preserves Yazelix multiline-array formatting"
-            true
-        } else {
-            print $"  ❌ Unexpected Taplo bootstrap result: support_exists=((($taplo_support_path | path exists))) config_path=($user_config_path)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_home
-    $result
-}
-
-# Defends: installed runtimes use the packaged Rust config helper instead of the legacy Nushell normalizer.
+# Defends: installed runtimes use the packaged Rust config helper instead of a deleted product-side parser shim.
 # Contract: CRCP-001, CRCP-003
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_parse_yazelix_config_uses_runtime_yzx_core_helper_when_present [] {
-    print "🧪 Testing parse_yazelix_config uses runtime-local yzx_core when present..."
+def test_active_config_normalize_uses_runtime_yzx_core_helper_when_present [] {
+    print "🧪 Testing the active-config normalize probe uses runtime-local yzx_core when present..."
 
     let fixture = (setup_managed_config_fixture "yazelix_rust_config_helper_success" "[shell]\ndefault_shell = \"fish\"\n")
     let runtime_base = (setup_fake_packaged_runtime_fixture "yazelix_rust_config_helper_runtime")
@@ -745,9 +578,9 @@ JSON
             YAZELIX_CONFIG_DIR: $fixture.config_dir
             YAZELIX_RUNTIME_DIR: $runtime.runtime_root
             YAZELIX_TEST_YZX_CORE_ARGS_LOG: $runtime.args_log
+            YAZELIX_YZX_CORE_BIN: null
         } {
-            use ../utils/config_parser.nu [parse_yazelix_config]
-            parse_yazelix_config
+            load_normalized_active_config
         })
         let helper_args = (open --raw $runtime.args_log)
 
@@ -762,7 +595,7 @@ JSON
             and ($helper_args | str contains "--contract")
             and ($helper_args | str contains ($runtime.runtime_root | path join "config_metadata" "main_config_contract.toml"))
         ) {
-            print "  ✅ Installed runtime config parsing routes through the runtime-local Rust helper"
+            print "  ✅ Installed runtime config normalization routes through the runtime-local Rust helper"
             true
         } else {
             print $"  ❌ Unexpected helper routing result: parsed=($parsed | to json -r) args=($helper_args)"
@@ -778,9 +611,9 @@ JSON
     $result
 }
 
-# Regression: packaged helper failures must be visible and must not silently fall back to Nushell parsing.
+# Regression: packaged helper failures must be visible and must not silently fall back through a deleted Nu parser seam.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_parse_yazelix_config_surfaces_yzx_core_config_errors_without_fallback [] {
+def test_active_config_normalize_surfaces_yzx_core_config_errors_without_fallback [] {
     print "🧪 Testing yzx_core config errors stay visible without fallback..."
 
     let fixture = (setup_managed_config_fixture "yazelix_rust_config_helper_error" "[shell]\ndefault_shell = \"fish\"\n")
@@ -799,9 +632,8 @@ exit 65
             YAZELIX_RUNTIME_DIR: $runtime.runtime_root
             YAZELIX_YZX_CORE_BIN: null
         } {
-            use ../utils/config_parser.nu [parse_yazelix_config]
             try {
-                parse_yazelix_config | ignore
+                load_normalized_active_config | ignore
                 ""
             } catch {|err|
                 $err.msg
@@ -830,10 +662,10 @@ exit 65
     $result
 }
 
-# Defends: packaged runtimes must include yzx_core; missing helper is not masked by legacy parsing.
+# Defends: packaged runtimes must include yzx_core; missing helper is not masked by a deleted Nu parser seam.
 # Contract: CRCP-003
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_parse_yazelix_config_rejects_packaged_runtime_missing_yzx_core [] {
+def test_active_config_normalize_rejects_packaged_runtime_missing_yzx_core [] {
     print "🧪 Testing packaged runtimes missing yzx_core fail clearly..."
 
     let fixture = (setup_managed_config_fixture "yazelix_rust_config_helper_missing" "[shell]\ndefault_shell = \"fish\"\n")
@@ -846,9 +678,8 @@ def test_parse_yazelix_config_rejects_packaged_runtime_missing_yzx_core [] {
             YAZELIX_RUNTIME_DIR: $runtime.runtime_root
             YAZELIX_YZX_CORE_BIN: null
         } {
-            use ../utils/config_parser.nu [parse_yazelix_config]
             try {
-                parse_yazelix_config | ignore
+                load_normalized_active_config | ignore
                 ""
             } catch {|err|
                 $err.msg
@@ -876,10 +707,10 @@ def test_parse_yazelix_config_rejects_packaged_runtime_missing_yzx_core [] {
     $result
 }
 
-# Defends: source checkouts can use an explicit yzx_core helper without keeping the legacy Nushell parser.
+# Defends: source checkouts can use an explicit yzx_core helper without reviving a deleted Nu parser owner.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_parse_yazelix_config_source_checkout_uses_explicit_yzx_core_helper [] {
-    print "🧪 Testing source checkout config parsing uses an explicit yzx_core helper..."
+def test_active_config_normalize_source_checkout_uses_explicit_yzx_core_helper [] {
+    print "🧪 Testing source checkout config normalization uses an explicit yzx_core helper..."
 
     let fixture = (setup_managed_config_fixture "yazelix_source_config_explicit_helper" "[shell]\ndefault_shell = \"fish\"\n")
     let helper_path = (resolve_test_yzx_core_bin)
@@ -891,8 +722,7 @@ def test_parse_yazelix_config_source_checkout_uses_explicit_yzx_core_helper [] {
             YAZELIX_RUNTIME_DIR: $fixture.repo_root
             YAZELIX_YZX_CORE_BIN: $helper_path
         } {
-            use ../utils/config_parser.nu [parse_yazelix_config]
-            parse_yazelix_config
+            load_normalized_active_config
         })
 
         if (
@@ -914,10 +744,10 @@ def test_parse_yazelix_config_source_checkout_uses_explicit_yzx_core_helper [] {
     $result
 }
 
-# Regression: source checkouts without yzx_core must fail clearly instead of silently reviving the deleted Nushell parser.
+# Regression: source checkouts without yzx_core must fail clearly instead of silently reviving the deleted Nu parser seam.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_parse_yazelix_config_source_checkout_missing_helper_does_not_fallback [] {
-    print "🧪 Testing source checkout config parsing fails clearly without yzx_core..."
+def test_active_config_normalize_source_checkout_missing_helper_does_not_fallback [] {
+    print "🧪 Testing source checkout config normalization fails clearly without yzx_core..."
 
     let fixture = (setup_managed_config_fixture "yazelix_source_config_no_helper" "[zellij]\ncustom_text = \"  [hello]  world demo  \"\n")
     let runtime = (setup_fake_source_checkout_runtime_fixture "yazelix_source_config_no_helper_runtime")
@@ -929,9 +759,8 @@ def test_parse_yazelix_config_source_checkout_missing_helper_does_not_fallback [
             YAZELIX_RUNTIME_DIR: $runtime.runtime_root
             YAZELIX_YZX_CORE_BIN: null
         } {
-            use ../utils/config_parser.nu [parse_yazelix_config]
             try {
-                parse_yazelix_config | ignore
+                load_normalized_active_config | ignore
                 ""
             } catch {|err|
                 $err.msg
@@ -2213,14 +2042,11 @@ export def run_generated_config_canonical_tests [] {
             (test_ghostty_wayland_wrapper_falls_back_to_simple_im_without_active_daemon)
             (test_ghostty_wayland_wrapper_preserves_active_ibus_env)
             (test_ghostty_macos_launch_command_omits_linux_specific_flags)
-            (test_parse_yazelix_config_rejects_removed_surfaces_without_rewriting)
-            (test_parse_yazelix_config_bootstraps_main_default_surface)
-            (test_parse_yazelix_config_bootstraps_taplo_formatter_support)
-            (test_parse_yazelix_config_uses_runtime_yzx_core_helper_when_present)
-            (test_parse_yazelix_config_surfaces_yzx_core_config_errors_without_fallback)
-            (test_parse_yazelix_config_rejects_packaged_runtime_missing_yzx_core)
-            (test_parse_yazelix_config_source_checkout_uses_explicit_yzx_core_helper)
-            (test_parse_yazelix_config_source_checkout_missing_helper_does_not_fallback)
+            (test_active_config_normalize_uses_runtime_yzx_core_helper_when_present)
+            (test_active_config_normalize_surfaces_yzx_core_config_errors_without_fallback)
+            (test_active_config_normalize_rejects_packaged_runtime_missing_yzx_core)
+            (test_active_config_normalize_source_checkout_uses_explicit_yzx_core_helper)
+            (test_active_config_normalize_source_checkout_missing_helper_does_not_fallback)
             (test_run_yzx_core_request_prefers_newer_source_checkout_helper_over_stale_release)
             (test_record_materialized_state_accepts_symlinked_managed_main_config)
             (test_user_mode_requires_real_terminal_config)

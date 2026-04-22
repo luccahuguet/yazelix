@@ -6,6 +6,7 @@
 # Defends: docs/specs/runtime_root_contract.md
 
 use ../utils/yzx_core_bridge.nu [compute_config_state_via_yzx_core record_materialized_state_via_yzx_core]
+use ./config_normalize_test_helpers.nu [load_normalized_active_config]
 use ./yzx_test_helpers.nu [get_repo_config_dir repo_path resolve_test_yzx_bin resolve_test_yzx_control_bin resolve_test_yzx_core_bin setup_managed_config_fixture]
 
 const DESKTOP_ICON_SIZES = ["48x48", "64x64", "128x128", "256x256"]
@@ -712,215 +713,6 @@ welcome_style = "random"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-# Defends: the public Rust-owned `yzx why` route must keep the existing elevator-pitch copy after deleting the Nushell support owner.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_public_yzx_why_prints_elevator_pitch [] {
-    print "🧪 Testing public yzx why still prints the Yazelix elevator pitch..."
-
-    let fixture = (setup_managed_config_fixture
-        "yazelix_why_pitch"
-        '[core]
-welcome_style = "random"
-'
-    )
-
-    let result = (try {
-        let output = (run_direct_public_yzx_command_for_fixture $fixture "yzx why")
-        let stdout = ($output.stdout | str trim)
-
-        if (
-            ($output.exit_code == 0)
-            and ($stdout | str contains "Yazelix is a reproducible terminal IDE")
-            and ($stdout | str contains "Zero")
-            and ($stdout | str contains "Install once, get the same environment everywhere.")
-        ) {
-            print "  ✅ public yzx why keeps the existing pitch copy through the Rust owner"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-# Defends: the public Rust-owned `yzx sponsor` route must still fall back to printing the sponsor URL when no opener is available.
-# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_public_yzx_sponsor_falls_back_to_printed_url_without_openers [] {
-    print "🧪 Testing public yzx sponsor falls back to printing the URL when no opener is available..."
-
-    let fixture = (setup_managed_config_fixture
-        "yazelix_sponsor_fallback"
-        '[core]
-welcome_style = "random"
-'
-    )
-    let bin_dir = ($fixture.tmp_home | path join "bin")
-    mkdir $bin_dir
-
-    let result = (try {
-        let output = (run_direct_public_yzx_command_for_fixture $fixture "yzx sponsor" {
-            PATH: $bin_dir
-        })
-        let stdout = ($output.stdout | str trim)
-
-        if (
-            ($output.exit_code == 0)
-            and ($stdout | str contains "Support Yazelix:")
-            and ($stdout | str contains "https://github.com/sponsors/luccahuguet")
-            and not ($stdout | str contains "Opened sponsor page.")
-        ) {
-            print "  ✅ public yzx sponsor still prints the sponsor URL when no opener is available"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-# Defends: the public Rust-owned `yzx keys` root keeps the sectioned keybinding discoverability surface instead of collapsing into a flat text dump.
-# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_public_yzx_keys_root_preserves_discoverability_sections [] {
-    print "🧪 Testing public yzx keys keeps the sectioned discoverability surface..."
-
-    let fixture = (setup_managed_config_fixture
-        "yazelix_keys_root"
-        '[core]
-welcome_style = "random"
-'
-    )
-
-    let result = (try {
-        let output = (run_direct_public_yzx_command_for_fixture $fixture "yzx keys")
-        let stdout = ($output.stdout | str trim)
-
-        if (
-            ($output.exit_code == 0)
-            and ($stdout | str contains "Yazelix keybindings")
-            and ($stdout | str contains "Workspace actions")
-            and ($stdout | str contains "Command access")
-            and ($stdout | str contains "Tab and pane movement")
-            and ($stdout | str contains "Alt+Shift+M")
-            and ($stdout | str contains "yzx keys yazi")
-            and ($stdout | str contains "yzx keys hx")
-            and ($stdout | str contains "yzx keys nu")
-        ) {
-            print "  ✅ public yzx keys keeps the sectioned keybinding discoverability surface through the Rust owner"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-# Defends: the Rust keys owner cut must preserve the public alias family exactly so users can keep using yzx/yazi/hx/helix/nu/nushell views.
-# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_public_yzx_keys_aliases_preserve_views [] {
-    print "🧪 Testing public yzx keys aliases preserve the expected view outputs..."
-
-    let fixture = (setup_managed_config_fixture
-        "yazelix_keys_aliases"
-        '[core]
-welcome_style = "random"
-'
-    )
-
-    let result = (try {
-        let root_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx keys")
-        let yzx_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx keys yzx")
-        let hx_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx keys hx")
-        let helix_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx keys helix")
-        let nu_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx keys nu")
-        let nushell_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx keys nushell")
-
-        if (
-            ($root_output.exit_code == 0)
-            and ($yzx_output.exit_code == 0)
-            and ($hx_output.exit_code == 0)
-            and ($helix_output.exit_code == 0)
-            and ($nu_output.exit_code == 0)
-            and ($nushell_output.exit_code == 0)
-            and ($root_output.stdout == $yzx_output.stdout)
-            and ($hx_output.stdout == $helix_output.stdout)
-            and ($nu_output.stdout == $nushell_output.stdout)
-        ) {
-            print "  ✅ public yzx keys aliases still resolve to the same keybinding views after the Rust owner cut"
-            true
-        } else {
-            print $"  ❌ Unexpected alias result: root_exit=($root_output.exit_code) yzx_exit=($yzx_output.exit_code) hx_exit=($hx_output.exit_code) helix_exit=($helix_output.exit_code) nu_exit=($nu_output.exit_code) nushell_exit=($nushell_output.exit_code)"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-# Defends: the Rust-owned yzx keys leaf views must still carry the tool-specific guidance instead of regressing to the root summary for every subcommand.
-# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_public_yzx_keys_tool_specific_views_keep_guidance [] {
-    print "🧪 Testing public yzx keys tool-specific views keep their tool guidance..."
-
-    let fixture = (setup_managed_config_fixture
-        "yazelix_keys_leaf_views"
-        '[core]
-welcome_style = "random"
-'
-    )
-
-    let result = (try {
-        let yazi_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx keys yazi")
-        let helix_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx keys hx")
-        let nu_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx keys nu")
-
-        if (
-            ($yazi_output.exit_code == 0)
-            and ($helix_output.exit_code == 0)
-            and ($nu_output.exit_code == 0)
-            and (($yazi_output.stdout | str contains "Yazi keybindings"))
-            and (($yazi_output.stdout | str contains "Focus the Yazi pane and press `~`"))
-            and (($helix_output.stdout | str contains "Helix keybindings"))
-            and (($helix_output.stdout | str contains "https://docs.helix-editor.com/master/keymap.html"))
-            and (($nu_output.stdout | str contains "Nushell keybindings"))
-            and (($nu_output.stdout | str contains "https://www.nushell.sh/book/line_editor.html"))
-        ) {
-            print "  ✅ public yzx keys leaf views keep their tool-specific discoverability guidance through the Rust owner"
-            true
-        } else {
-            print $"  ❌ Unexpected result: yazi_exit=($yazi_output.exit_code) helix_exit=($helix_output.exit_code) nu_exit=($nu_output.exit_code)"
             false
         }
     } catch {|err|
@@ -1649,8 +1441,6 @@ def test_invalid_config_is_classified_as_config_problem [] {
     mkdir $temp_yazelix_dir
 
     let result = (try {
-        ^ln -s ($repo_root | path join "nushell") ($temp_yazelix_dir | path join "nushell")
-        cp ($repo_root | path join "yazelix_default.toml") ($temp_yazelix_dir | path join "yazelix_default.toml")
         let user_config_dir = ($temp_yazelix_dir | path join "user_configs")
         mkdir $user_config_dir
 
@@ -1660,14 +1450,14 @@ def test_invalid_config_is_classified_as_config_problem [] {
         )
         $invalid_config | to toml | save ($user_config_dir | path join "yazelix.toml")
 
-        let parser_script = ($temp_yazelix_dir | path join "nushell" "scripts" "utils" "config_parser.nu")
         let output = with-env {
             HOME: $tmp_home
             XDG_CONFIG_HOME: $xdg_config_home
             YAZELIX_CONFIG_DIR: $temp_yazelix_dir
             YAZELIX_RUNTIME_DIR: $repo_root
+            YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
         } {
-            ^nu -c $"source \"($parser_script)\"; try { parse_yazelix_config | ignore } catch {|err| print $err.msg }" | complete
+            ^nu -c $"use \"($repo_root | path join "nushell" "scripts" "dev" "config_normalize_test_helpers.nu")\" [load_normalized_active_config]; try { load_normalized_active_config | ignore } catch {|err| print $err.msg }" | complete
         }
         let stdout = ($output.stdout | str trim)
 
@@ -2030,11 +1820,6 @@ export def run_core_canonical_tests [] {
         (test_yzx_desktop_uninstall_preserves_home_manager_cleanup_path)
         (test_yzx_desktop_uninstall_removes_manual_entry_and_icons)
         (test_public_yzx_home_manager_lists_takeover_helpers)
-        (test_public_yzx_why_prints_elevator_pitch)
-        (test_public_yzx_sponsor_falls_back_to_printed_url_without_openers)
-        (test_public_yzx_keys_root_preserves_discoverability_sections)
-        (test_public_yzx_keys_aliases_preserve_views)
-        (test_public_yzx_keys_tool_specific_views_keep_guidance)
         (test_yzx_home_manager_prepare_preview_reports_manual_takeover_artifacts)
         (test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts)
         (test_public_yzx_config_prints_resolved_path)

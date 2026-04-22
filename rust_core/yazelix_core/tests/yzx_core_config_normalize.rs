@@ -277,6 +277,111 @@ fn unsupported_command_reports_requested_command_in_error_envelope() {
     assert_eq!(envelope["error"]["code"], "invalid_arguments");
 }
 
+// Defends: config-surface.resolve bootstraps the canonical managed config and Taplo support through the Rust active-config owner.
+// Contract: CRCP-004
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn config_surface_resolve_bootstraps_managed_config_and_taplo_support() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let runtime_dir = prepare_doctor_config_runtime_fixture(&repo, &tmp);
+    let config_dir = tmp.path().join("config");
+
+    let output = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .arg("config-surface.resolve")
+        .arg("--runtime-dir")
+        .arg(&runtime_dir)
+        .arg("--config-dir")
+        .arg(&config_dir)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["command"], "config-surface.resolve");
+    assert_eq!(envelope["status"], "ok");
+
+    let managed_config = config_dir.join("user_configs").join("yazelix.toml");
+    let managed_taplo = config_dir.join(".taplo.toml");
+    assert_eq!(
+        envelope["data"]["config_file"],
+        managed_config.to_string_lossy().to_string()
+    );
+    assert_eq!(
+        fs::read_to_string(&managed_config).unwrap(),
+        fs::read_to_string(runtime_dir.join("yazelix_default.toml")).unwrap()
+    );
+    assert_eq!(
+        fs::read_to_string(&managed_taplo).unwrap(),
+        fs::read_to_string(runtime_dir.join(".taplo.toml")).unwrap()
+    );
+}
+
+// Defends: config.normalize rejects removed config surfaces without mutating the active config file or creating backup churn.
+// Contract: CRCP-001
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn config_normalize_rejects_removed_surfaces_without_rewriting() {
+    let repo = repo_root();
+
+    for (label, raw_config, expected_field) in [
+        ("legacy_ascii", "[ascii]\nmode = \"animated\"\n", "ascii"),
+        (
+            "removed_enable_atuin",
+            "[shell]\nenable_atuin = true\n",
+            "shell.enable_atuin",
+        ),
+        (
+            "legacy_packs",
+            "[packs]\nenabled = [\"git\"]\nuser_packages = [\"docker\"]\n\n[packs.declarations]\ngit = [\"gh\", \"prek\"]\n",
+            "packs",
+        ),
+    ] {
+        let tmp = tempdir().unwrap();
+        let config_dir = tmp.path().join("config").join("user_configs");
+        fs::create_dir_all(&config_dir).unwrap();
+        let config_path = config_dir.join("yazelix.toml");
+        fs::write(&config_path, raw_config).unwrap();
+        let original = fs::read_to_string(&config_path).unwrap();
+
+        let output = Command::cargo_bin("yzx_core")
+            .unwrap()
+            .arg("config.normalize")
+            .arg("--config")
+            .arg(&config_path)
+            .arg("--default-config")
+            .arg(repo.join("yazelix_default.toml"))
+            .arg("--contract")
+            .arg(repo.join("config_metadata/main_config_contract.toml"))
+            .output()
+            .unwrap();
+
+        assert_eq!(output.status.code(), Some(65), "{label}");
+        assert!(output.stdout.is_empty(), "{label}");
+        let envelope: Value = serde_json::from_slice(&output.stderr).unwrap();
+        assert_eq!(envelope["command"], "config.normalize", "{label}");
+        assert_eq!(envelope["status"], "error", "{label}");
+        assert_eq!(envelope["error"]["class"], "config", "{label}");
+        assert_eq!(envelope["error"]["code"], "unsupported_config", "{label}");
+        let reported_field = envelope["error"]["details"]["field"]
+            .as_str()
+            .map(str::to_string)
+            .or_else(|| {
+                envelope["error"]["details"]["blocking_diagnostics"][0]["path"]
+                    .as_str()
+                    .map(str::to_string)
+            });
+        assert_eq!(reported_field.as_deref(), Some(expected_field), "{label}");
+        assert_eq!(
+            fs::read_to_string(&config_path).unwrap(),
+            original,
+            "{label}"
+        );
+        assert!(fs::read_dir(&config_dir).unwrap().count() == 1, "{label}");
+    }
+}
+
 // Defends: config-state.compute returns a machine-readable state envelope with stable hash fields.
 // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 #[test]

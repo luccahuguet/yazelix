@@ -3,7 +3,7 @@
 # Tests shell/terminal combinations and configuration variations
 # Test lane: sweep
 
-use ../utils/config_parser.nu parse_yazelix_config
+use ./config_normalize_test_helpers.nu [load_normalized_active_config]
 use sweep/sweep_config_generator.nu *
 use sweep/sweep_process_manager.nu *
 use sweep/sweep_test_executor.nu *
@@ -147,7 +147,7 @@ def run_sweep_test [
         let config_test = try {
             let parsed = (do {
                 with-env {YAZELIX_CONFIG_OVERRIDE: $config_path} {
-                    parse_yazelix_config
+                    load_normalized_active_config
                 }
             })
 

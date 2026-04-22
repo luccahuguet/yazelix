@@ -37,8 +37,8 @@ snapshot game:
   gone in the current pass, so the remaining bridge work is narrower than this
   inventory’s first version
 - the current top-value remaining runtime cuts are launch-time bridge collapse,
-  detached-launch probe extraction, `config_parser.nu` demotion/deletion after
-  the product-side full-config cuts, and deterministic Nu test migration
+  detached-launch probe extraction, deterministic Nu test migration, and the
+  family-by-family re-evaluation of likely Nushell survivors
 
 If a change does not delete or materially shrink one of the owners below, it is
 not progress toward the current repo goal.
@@ -73,7 +73,7 @@ where that still adds product value.
 | Bridge cluster | Current Nu owners | Approx size | Why it should collapse | Success metric |
 | --- | --- | ---: | --- | --- |
 | Helper transport and error surfaces | `nushell/scripts/utils/yzx_core_bridge.nu` | smaller than the old `config_parser.nu` bridge owner | The generic argv/JSON/error bridge no longer belongs to `config_parser.nu`. One shared transport layer is enough. | One minimal helper transport remains, but per-domain policy and duplicate error shaping disappear |
-| Config, state, env, and preflight shims | `config_parser.nu`, `runtime_env.nu`, direct preflight calls, and the new fact helpers consumed by `menu.nu`, `popup.nu`, startup, launch, and setup | smaller after `config_state.nu` deletion, the runtime-env request cut, and the full-config product owner cut | Rust already owns config-state, runtime-env, transient-pane facts, startup facts, and runtime-contract computation. Product callers no longer need `parse_yazelix_config` for popup/menu or startup/launch/setup retained facts. | Keep shrinking machine-owned request shaping where Rust can be the single owner; the next honest cut is deleting or demoting `config_parser.nu` after remaining non-product callers are classified |
+| Config, state, env, and preflight shims | dev-only `config_normalize_test_helpers.nu`, `runtime_env.nu`, direct preflight calls, and the fact helpers consumed by `menu.nu`, `popup.nu`, startup, launch, and setup | smaller after `config_state.nu` deletion, the runtime-env request cut, the full-config product owner cut, and the `config_parser.nu` deletion | Rust already owns config-state, runtime-env, transient-pane facts, startup facts, active-surface bootstrap, and config normalization. The old product parser bridge is gone; the surviving Nu normalize shim is dev-only test support. | Keep shrinking machine-owned request shaping where Rust can be the single owner. Do not recreate a generic product-side full-config bridge. |
 | Doctor and install report shims | private `doctor_fix.nu` plus caller-local install-ownership helper invocations | much smaller after the public Rust `yzx doctor` cut and the install-ownership bridge collapse | Rust now owns the public doctor report path, summary/rendering, JSON emission, live Zellij plugin-health reporting, and env-derived install-ownership request construction. The surviving Nu work is a private fix helper plus desktop/restart UX that calls the Rust owner directly. | Keep the private fix helper narrow and do not recreate a shared doctor-report bridge, install-ownership bridge, or public Nu doctor owner |
 | Runtime materialization bridge | deleted `core/materialization_orchestrator.nu`; caller-local startup and doctor glue remains | `0` live bridge-owner lines | Rust now owns the runtime materialization lifecycle and env-derived request construction through `runtime-materialization.* --from-env` | Do not recreate a shared Nu materialization bridge; keep only caller-local startup profile/failure rendering and doctor repair progress |
 | Terminal launch-time compatibility seam | terminal materialization and Ghostty reroll helpers inside `core/launch_yazelix.nu` | smaller than the deleted standalone wrapper; now only launch-adjacent helpers remain | Rust already owns generated terminal writes and Ghostty shader/config generation. The standalone `terminal_configs.nu` wrapper is gone. The surviving Nu seam is terminal filtering, user-facing summary text, and the launch-time Ghostty reroll bridge. | Keep narrowing `launch_yazelix.nu` until only irreducible launch-time compatibility logic remains. Do not recreate a standalone terminal materialization owner |
@@ -121,8 +121,8 @@ bridge and materialization lanes.
 
 1. Collapse launch-time request assembly that still survives beside Rust-owned terminal and Ghostty materialization
 2. Move the detached terminal probe shell body out of Nushell and into one fixed POSIX helper
-3. Delete or demote `config_parser.nu` once the remaining non-product callers are classified
-4. Port deterministic Nu tests that now defend Rust-owned logic into Rust-owned test buckets
+3. Port deterministic Nu tests that now defend Rust-owned logic into Rust-owned test buckets
+4. Re-evaluate likely Nushell survivors family by family and record explicit no-go boundaries before reopening any broad Rust-port idea
 
 The first public metadata cut landed under `yazelix-ulb2.7`: root help, palette
 inventory, and generated externs no longer probe the Nushell command tree. The
