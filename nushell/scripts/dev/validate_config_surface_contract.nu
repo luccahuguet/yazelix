@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 
 use ../utils/config_contract.nu load_main_config_contract
-use ../utils/config_state.nu [compute_config_state record_materialized_state]
+use ../utils/yzx_core_bridge.nu [compute_config_state_via_yzx_core record_materialized_state_via_yzx_core]
 use ./yzx_test_helpers.nu resolve_test_yzx_core_bin
 
 const REPO_ROOT = (path self | path dirname | path dirname | path dirname | path dirname)
@@ -252,7 +252,7 @@ def compute_fixture_state [fixture: record, runtime_root: string] {
         HOME: $fixture.home_root
         YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
     } {
-        compute_config_state
+        compute_config_state_via_yzx_core
     }
 }
 
@@ -263,7 +263,7 @@ def record_fixture_state [fixture: record, state: record, runtime_root: string] 
         HOME: $fixture.home_root
         YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
     } {
-        record_materialized_state $state
+        record_materialized_state_via_yzx_core $state
     }
 }
 

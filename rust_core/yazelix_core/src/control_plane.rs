@@ -1,11 +1,11 @@
 //! Shared logic for the `yzx_control` CLI (`yzx env` / `yzx run`).
 
-use crate::active_config_surface::resolve_active_config_paths;
+use crate::active_config_surface::{primary_config_paths, resolve_active_config_paths};
 use crate::bridge::{CoreError, ErrorClass};
 use crate::runtime_env::RuntimePathInput;
 use crate::{
-    NormalizeConfigRequest, RuntimeEnvComputeRequest, RuntimeMaterializationPlanRequest,
-    normalize_config,
+    ComputeConfigStateRequest, NormalizeConfigRequest, RecordConfigStateRequest,
+    RuntimeEnvComputeRequest, RuntimeMaterializationPlanRequest, normalize_config,
 };
 use serde_json::{Map as JsonMap, Value as JsonValue};
 use std::ffi::OsString;
@@ -207,6 +207,42 @@ pub fn runtime_materialization_plan_request_from_env(
         zellij_layout_dir: zellij_config_dir.join("layouts"),
         zellij_config_dir,
         layout_override: runtime_materialization_layout_override_from_env(),
+    })
+}
+
+pub fn config_state_compute_request_from_env(
+    config_override: Option<&str>,
+) -> Result<ComputeConfigStateRequest, CoreError> {
+    let runtime_dir = runtime_dir_from_env()?;
+    let config_dir = config_dir_from_env()?;
+    let paths = resolve_active_config_paths(&runtime_dir, &config_dir, config_override)?;
+    let state_dir = state_dir_from_env()?;
+
+    Ok(ComputeConfigStateRequest {
+        config_path: paths.config_file,
+        default_config_path: paths.default_config_path,
+        contract_path: paths.contract_path,
+        runtime_dir,
+        state_path: state_dir.join("state").join("rebuild_hash"),
+    })
+}
+
+pub fn config_state_record_request_from_env(
+    config_file: String,
+    config_hash: String,
+    runtime_hash: String,
+) -> Result<RecordConfigStateRequest, CoreError> {
+    let runtime_dir = runtime_dir_from_env()?;
+    let config_dir = config_dir_from_env()?;
+    let managed_config_path = primary_config_paths(&runtime_dir, &config_dir).user_config;
+    let state_dir = state_dir_from_env()?;
+
+    Ok(RecordConfigStateRequest {
+        config_file,
+        managed_config_path,
+        state_path: state_dir.join("state").join("rebuild_hash"),
+        config_hash,
+        runtime_hash,
     })
 }
 

@@ -4,7 +4,7 @@
 
 use ./yzx_test_helpers.nu [get_repo_config_dir repo_path resolve_test_yzx_core_bin setup_managed_config_fixture]
 use ./materialization_dev_helpers.nu [generate_merged_yazi_config generate_merged_zellij_config regenerate_runtime_configs]
-use ../utils/config_state.nu [record_materialized_state]
+use ../utils/yzx_core_bridge.nu [record_materialized_state_via_yzx_core]
 use ../core/launch_yazelix.nu [generate_all_terminal_configs]
 use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface resolve_yzx_core_helper_path run_yzx_core_request_json_command]
 use ../utils/safe_remove.nu remove_path_within_root
@@ -1039,7 +1039,7 @@ def test_record_materialized_state_accepts_symlinked_managed_main_config [] {
             YAZELIX_RUNTIME_DIR: $fixture.repo_root
             YAZELIX_STATE_DIR: ($fixture.fake_home | path join ".local" "share" "yazelix")
         } {
-            record_materialized_state {
+            record_materialized_state_via_yzx_core {
                 config_file: $fixture.symlinked_main
                 config_hash: "cfg"
                 runtime_hash: "runtime"

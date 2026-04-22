@@ -2,13 +2,12 @@
 # ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu
 # Nushell version of the Yazelix launcher
 
-use ../utils/config_state.nu compute_config_state
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/terminal_launcher.nu *
 use ../utils/constants.nu [DEFAULT_TERMINAL SUPPORTED_TERMINALS, TERMINAL_METADATA, YAZELIX_CONFIG_DIR, YAZELIX_STATE_DIR]
 use ../utils/common.nu [get_yazelix_runtime_dir normalize_path_entries require_yazelix_runtime_dir]
 use ../utils/startup_profile.nu [profile_startup_step propagate_startup_profile_env]
-use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface resolve_active_config_surface_via_yzx_core run_yzx_core_json_command run_yzx_core_request_json_command]
+use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface compute_config_state_via_yzx_core resolve_active_config_surface_via_yzx_core run_yzx_core_json_command run_yzx_core_request_json_command]
 
 const TERMINAL_MATERIALIZATION_GENERATE_COMMAND = "terminal-materialization.generate"
 const GHOSTTY_MATERIALIZATION_GENERATE_COMMAND = "ghostty-materialization.generate"
@@ -391,7 +390,7 @@ def main [
 
     # Compute config state (auto-creates yazelix.toml if missing)
     let config_state = (profile_startup_step $component "compute_config_state" {
-        compute_config_state
+        compute_config_state_via_yzx_core
     })
     let config = $config_state.config
     let active_config_file = $config_state.config_file

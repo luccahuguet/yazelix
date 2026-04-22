@@ -7,6 +7,8 @@ use common.nu [require_yazelix_runtime_dir]
 
 const YZX_CORE_HELPER_RELATIVE_PATH = ["libexec" "yzx_core"]
 const CONFIG_SURFACE_RESOLVE_COMMAND = "config-surface.resolve"
+const CONFIG_STATE_COMPUTE_COMMAND = "config-state.compute"
+const CONFIG_STATE_RECORD_COMMAND = "config-state.record"
 
 def get_runtime_yzx_core_helper_path [runtime_dir: string] {
     $YZX_CORE_HELPER_RELATIVE_PATH | prepend $runtime_dir | path join
@@ -260,6 +262,39 @@ export def resolve_active_config_surface_via_yzx_core [runtime_dir?: string] {
         "--runtime-dir"
         $resolved_runtime_dir
     ] "Yazelix Rust active-config-surface helper returned invalid JSON."
+}
+
+export def compute_config_state_via_yzx_core [runtime_dir?: string] {
+    let resolved_runtime_dir = if $runtime_dir == null {
+        require_yazelix_runtime_dir
+    } else {
+        $runtime_dir | path expand
+    }
+
+    run_yzx_core_json_command $resolved_runtime_dir (build_default_yzx_core_error_surface) [
+        $CONFIG_STATE_COMPUTE_COMMAND
+        "--from-env"
+    ] "Yazelix Rust config-state helper returned invalid JSON."
+}
+
+export def record_materialized_state_via_yzx_core [state: record, runtime_dir?: string] {
+    let resolved_runtime_dir = if $runtime_dir == null {
+        require_yazelix_runtime_dir
+    } else {
+        $runtime_dir | path expand
+    }
+    let config_file = ($state.config_file? | default "")
+
+    run_yzx_core_command $resolved_runtime_dir {display_config_path: $config_file} [
+        $CONFIG_STATE_RECORD_COMMAND
+        "--from-env"
+        "--config-file"
+        $config_file
+        "--config-hash"
+        ($state.config_hash? | default "")
+        "--runtime-hash"
+        ($state.runtime_hash? | default "")
+    ] | ignore
 }
 
 export def run_yzx_core_command [

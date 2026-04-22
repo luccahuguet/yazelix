@@ -810,7 +810,7 @@ ghostty_mode_effect = "ripple"
         let launch_script = (repo_path "nushell" "scripts" "core" "launch_yazelix.nu")
         let snippet = ([
             $"source \"($launch_script)\""
-            "let config = (compute_config_state).config"
+            "let config = (compute_config_state_via_yzx_core).config"
             "let candidates = [{terminal: \"ghostty\" name: \"Ghostty\" command: \"ghostty\"}]"
             "reroll_ghostty_random_cursor_config_for_launch_candidates $candidates \"yazelix\" $env.YAZELIX_RUNTIME_DIR $config false | ignore"
         ] | str join "\n")

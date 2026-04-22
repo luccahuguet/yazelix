@@ -3,7 +3,8 @@ use serde::de::DeserializeOwned;
 use std::path::PathBuf;
 use yazelix_core::active_config_surface::resolve_active_config_paths;
 use yazelix_core::control_plane::{
-    config_dir_from_env, config_override_from_env, runtime_dir_from_env,
+    config_dir_from_env, config_override_from_env, config_state_compute_request_from_env,
+    config_state_record_request_from_env, runtime_dir_from_env,
     runtime_materialization_plan_request_from_env,
 };
 use yazelix_core::{
@@ -356,6 +357,7 @@ fn run_config_state_compute(mut parser: lexopt::Parser) -> Result<(), CoreError>
     let mut contract_path: Option<PathBuf> = None;
     let mut runtime_dir: Option<PathBuf> = None;
     let mut state_path: Option<PathBuf> = None;
+    let mut from_env = false;
 
     while let Some(arg) = parser
         .next()
@@ -367,17 +369,35 @@ fn run_config_state_compute(mut parser: lexopt::Parser) -> Result<(), CoreError>
             Long("contract") => contract_path = Some(parser_path_value(&mut parser)?),
             Long("runtime-dir") => runtime_dir = Some(parser_path_value(&mut parser)?),
             Long("state-path") => state_path = Some(parser_path_value(&mut parser)?),
+            Long("from-env") => from_env = true,
             _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
         }
     }
 
-    let request = ComputeConfigStateRequest {
-        config_path: config_path.ok_or_else(|| CoreError::usage("Missing --config path"))?,
-        default_config_path: default_config_path
-            .ok_or_else(|| CoreError::usage("Missing --default-config path"))?,
-        contract_path: contract_path.ok_or_else(|| CoreError::usage("Missing --contract path"))?,
-        runtime_dir: runtime_dir.ok_or_else(|| CoreError::usage("Missing --runtime-dir path"))?,
-        state_path: state_path.ok_or_else(|| CoreError::usage("Missing --state-path path"))?,
+    let explicit_args_present = config_path.is_some()
+        || default_config_path.is_some()
+        || contract_path.is_some()
+        || runtime_dir.is_some()
+        || state_path.is_some();
+
+    let request = if from_env {
+        if explicit_args_present {
+            return Err(CoreError::usage(
+                "Use either --from-env or explicit config-state.compute paths, not both.",
+            ));
+        }
+        config_state_compute_request_from_env(config_override_from_env().as_deref())?
+    } else {
+        ComputeConfigStateRequest {
+            config_path: config_path.ok_or_else(|| CoreError::usage("Missing --config path"))?,
+            default_config_path: default_config_path
+                .ok_or_else(|| CoreError::usage("Missing --default-config path"))?,
+            contract_path: contract_path
+                .ok_or_else(|| CoreError::usage("Missing --contract path"))?,
+            runtime_dir: runtime_dir
+                .ok_or_else(|| CoreError::usage("Missing --runtime-dir path"))?,
+            state_path: state_path.ok_or_else(|| CoreError::usage("Missing --state-path path"))?,
+        }
     };
     let data = compute_config_state(&request)?;
     write_success_envelope(CONFIG_STATE_COMPUTE_COMMAND, data)
@@ -389,6 +409,7 @@ fn run_config_state_record(mut parser: lexopt::Parser) -> Result<(), CoreError> 
     let mut state_path: Option<PathBuf> = None;
     let mut config_hash: Option<String> = None;
     let mut runtime_hash: Option<String> = None;
+    let mut from_env = false;
 
     while let Some(arg) = parser
         .next()
@@ -400,18 +421,34 @@ fn run_config_state_record(mut parser: lexopt::Parser) -> Result<(), CoreError> 
             Long("state-path") => state_path = Some(parser_path_value(&mut parser)?),
             Long("config-hash") => config_hash = Some(parser_string_value(&mut parser)?),
             Long("runtime-hash") => runtime_hash = Some(parser_string_value(&mut parser)?),
+            Long("from-env") => from_env = true,
             _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
         }
     }
 
-    let request = RecordConfigStateRequest {
-        config_file: config_file.ok_or_else(|| CoreError::usage("Missing --config-file path"))?,
-        managed_config_path: managed_config_path
-            .ok_or_else(|| CoreError::usage("Missing --managed-config path"))?,
-        state_path: state_path.ok_or_else(|| CoreError::usage("Missing --state-path path"))?,
-        config_hash: config_hash.ok_or_else(|| CoreError::usage("Missing --config-hash value"))?,
-        runtime_hash: runtime_hash
-            .ok_or_else(|| CoreError::usage("Missing --runtime-hash value"))?,
+    let explicit_args_present = managed_config_path.is_some() || state_path.is_some();
+
+    let config_file = config_file.ok_or_else(|| CoreError::usage("Missing --config-file path"))?;
+    let config_hash = config_hash.ok_or_else(|| CoreError::usage("Missing --config-hash value"))?;
+    let runtime_hash =
+        runtime_hash.ok_or_else(|| CoreError::usage("Missing --runtime-hash value"))?;
+
+    let request = if from_env {
+        if explicit_args_present {
+            return Err(CoreError::usage(
+                "Use either --from-env or explicit config-state.record paths, not both.",
+            ));
+        }
+        config_state_record_request_from_env(config_file, config_hash, runtime_hash)?
+    } else {
+        RecordConfigStateRequest {
+            config_file,
+            managed_config_path: managed_config_path
+                .ok_or_else(|| CoreError::usage("Missing --managed-config path"))?,
+            state_path: state_path.ok_or_else(|| CoreError::usage("Missing --state-path path"))?,
+            config_hash,
+            runtime_hash,
+        }
     };
     let data = record_config_state(&request)?;
     write_success_envelope(CONFIG_STATE_RECORD_COMMAND, data)

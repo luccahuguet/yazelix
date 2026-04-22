@@ -3,7 +3,7 @@
 # Defends: docs/specs/test_suite_governance.md
 
 use ../core/yazelix.nu *
-use ../utils/config_state.nu [compute_config_state record_materialized_state]
+use ../utils/yzx_core_bridge.nu [compute_config_state_via_yzx_core record_materialized_state_via_yzx_core]
 use ./yzx_test_helpers.nu [get_repo_config_dir repo_path resolve_test_yzx_bin resolve_test_yzx_control_bin resolve_test_yzx_core_bin setup_managed_config_fixture]
 
 const DESKTOP_ICON_SIZES = ["48x48", "64x64", "128x128", "256x256"]
@@ -1940,8 +1940,8 @@ terminals = ["ghostty"]
             YAZELIX_RUNTIME_DIR: $fixture.repo_root
         }
         with-env $base_env {
-            let st = (compute_config_state)
-            record_materialized_state $st
+            let st = (compute_config_state_via_yzx_core)
+            record_materialized_state_via_yzx_core $st
         }
 
         let output = (run_public_yzx_command_for_fixture $fixture "yzx status --json")
