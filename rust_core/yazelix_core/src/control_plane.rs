@@ -4,8 +4,9 @@ use crate::active_config_surface::{primary_config_paths, resolve_active_config_p
 use crate::bridge::{CoreError, ErrorClass};
 use crate::runtime_env::RuntimePathInput;
 use crate::{
-    ComputeConfigStateRequest, NormalizeConfigRequest, RecordConfigStateRequest,
-    RuntimeEnvComputeRequest, RuntimeMaterializationPlanRequest, normalize_config,
+    ComputeConfigStateRequest, GhosttyMaterializationRequest, NormalizeConfigRequest,
+    RecordConfigStateRequest, RuntimeEnvComputeRequest, RuntimeMaterializationPlanRequest,
+    TerminalMaterializationRequest, normalize_config,
 };
 use serde_json::{Map as JsonMap, Value as JsonValue};
 use std::ffi::OsString;
@@ -268,6 +269,63 @@ pub fn runtime_env_request_from_env(
     };
 
     runtime_env_request(runtime_dir, &normalized)
+}
+
+pub fn terminal_materialization_request_from_env(
+    terminals: Vec<String>,
+    config_override: Option<&str>,
+) -> Result<TerminalMaterializationRequest, CoreError> {
+    let runtime_dir = runtime_dir_from_env()?;
+    let config_dir = config_dir_from_env()?;
+    let paths = resolve_active_config_paths(&runtime_dir, &config_dir, config_override)?;
+    let state_dir = state_dir_from_env()?;
+
+    Ok(TerminalMaterializationRequest {
+        config_path: paths.config_file,
+        default_config_path: paths.default_config_path,
+        contract_path: paths.contract_path,
+        runtime_dir,
+        state_dir,
+        terminals,
+    })
+}
+
+pub fn ghostty_materialization_request_from_env(
+    config_override: Option<&str>,
+) -> Result<GhosttyMaterializationRequest, CoreError> {
+    let runtime_dir = runtime_dir_from_env()?;
+    let config_dir = config_dir_from_env()?;
+    let state_dir = state_dir_from_env()?;
+    let normalized =
+        load_normalized_config_for_control(&runtime_dir, &config_dir, config_override)?;
+
+    Ok(GhosttyMaterializationRequest {
+        runtime_dir,
+        config_dir,
+        state_dir,
+        transparency: normalized
+            .get("transparency")
+            .and_then(|value| value.as_str())
+            .unwrap_or("none")
+            .to_string(),
+        ghostty_trail_color: normalized
+            .get("ghostty_trail_color")
+            .and_then(|value| value.as_str())
+            .map(ToOwned::to_owned),
+        ghostty_trail_effect: normalized
+            .get("ghostty_trail_effect")
+            .and_then(|value| value.as_str())
+            .map(ToOwned::to_owned),
+        ghostty_mode_effect: normalized
+            .get("ghostty_mode_effect")
+            .and_then(|value| value.as_str())
+            .map(ToOwned::to_owned),
+        ghostty_trail_glow: normalized
+            .get("ghostty_trail_glow")
+            .and_then(|value| value.as_str())
+            .unwrap_or("medium")
+            .to_string(),
+    })
 }
 
 #[derive(Debug, Clone, Default)]

@@ -4,13 +4,11 @@
 
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/terminal_launcher.nu *
-use ../utils/constants.nu [DEFAULT_TERMINAL SUPPORTED_TERMINALS, TERMINAL_METADATA, YAZELIX_CONFIG_DIR, YAZELIX_STATE_DIR]
+use ../utils/constants.nu [DEFAULT_TERMINAL SUPPORTED_TERMINALS, TERMINAL_METADATA]
 use ../utils/common.nu [get_yazelix_runtime_dir normalize_path_entries require_yazelix_runtime_dir]
 use ../utils/startup_profile.nu [profile_startup_step propagate_startup_profile_env]
-use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface compute_config_state_via_yzx_core resolve_active_config_surface_via_yzx_core run_yzx_core_json_command run_yzx_core_request_json_command]
+use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface compute_config_state_via_yzx_core generate_ghostty_materialization_via_yzx_core generate_terminal_materialization_via_yzx_core run_yzx_core_request_json_command]
 
-const TERMINAL_MATERIALIZATION_GENERATE_COMMAND = "terminal-materialization.generate"
-const GHOSTTY_MATERIALIZATION_GENERATE_COMMAND = "ghostty-materialization.generate"
 const STARTUP_LAUNCH_PREFLIGHT_EVALUATE_COMMAND = "startup-launch-preflight.evaluate"
 
 def ghostty_cursor_random_requested [config: record] {
@@ -21,13 +19,6 @@ def ghostty_cursor_random_requested [config: record] {
     ] | any {|value| ($value | into string | str trim) == "random" }
 }
 
-def build_terminal_helper_error_surface [config_file: string] {
-    {
-        display_config_path: $config_file
-        config_file: $config_file
-    }
-}
-
 def get_launch_command_search_paths [] {
     normalize_path_entries ($env.PATH? | default [])
 }
@@ -36,71 +27,12 @@ def normalize_selected_terminals [selected_terminals: list<string>] {
     $selected_terminals | where {|terminal| $terminal in $SUPPORTED_TERMINALS} | uniq
 }
 
-def expand_managed_dir_surface [raw_path: string] {
-    let home_dir = (
-        $env.HOME?
-        | default ""
-        | into string
-        | str trim
-    )
-    if ($home_dir | is-not-empty) {
-        $raw_path | str replace "~" $home_dir | path expand
-    } else {
-        $raw_path | path expand
-    }
-}
-
-def resolve_terminal_materialization_config_dir [] {
-    let configured = (
-        $env.YAZELIX_CONFIG_DIR?
-        | default ""
-        | into string
-        | str trim
-    )
-    if ($configured | is-not-empty) {
-        expand_managed_dir_surface $configured
-    } else if (($env.XDG_CONFIG_HOME? | default "" | into string | str trim) | is-not-empty) {
-        ($env.XDG_CONFIG_HOME | path join "yazelix")
-    } else {
-        expand_managed_dir_surface $YAZELIX_CONFIG_DIR
-    }
-}
-
-def resolve_terminal_materialization_state_dir [] {
-    let configured = (
-        $env.YAZELIX_STATE_DIR?
-        | default ""
-        | into string
-        | str trim
-    )
-    if ($configured | is-not-empty) {
-        expand_managed_dir_surface $configured
-    } else if (($env.XDG_DATA_HOME? | default "" | into string | str trim) | is-not-empty) {
-        ($env.XDG_DATA_HOME | path join "yazelix")
-    } else {
-        expand_managed_dir_surface $YAZELIX_STATE_DIR
-    }
-}
-
 def materialize_selected_terminal_configs [
     selected_terminals: list<string>
     runtime_dir?: string
     config_file?: string
-    default_config_path?: string
 ] {
     let resolved_runtime_dir = (($runtime_dir | default (get_yazelix_runtime_dir)) | path expand)
-    let config_surface = if ($config_file | is-not-empty) and ($default_config_path | is-not-empty) {
-        {
-            config_file: $config_file
-            default_config_path: $default_config_path
-        }
-    } else {
-        let loaded = (resolve_active_config_surface_via_yzx_core $resolved_runtime_dir)
-        {
-            config_file: $loaded.config_file
-            default_config_path: $loaded.default_config_path
-        }
-    }
     let terminals = (normalize_selected_terminals $selected_terminals)
     if ($terminals | is-empty) {
         return
@@ -108,15 +40,7 @@ def materialize_selected_terminal_configs [
 
     print "Generating bundled terminal configurations..."
 
-    run_yzx_core_json_command $resolved_runtime_dir (build_terminal_helper_error_surface $config_surface.config_file) [
-        $TERMINAL_MATERIALIZATION_GENERATE_COMMAND
-        "--config" $config_surface.config_file
-        "--default-config" $config_surface.default_config_path
-        "--contract" ($resolved_runtime_dir | path join "config_metadata" "main_config_contract.toml")
-        "--runtime-dir" $resolved_runtime_dir
-        "--state-dir" (resolve_terminal_materialization_state_dir)
-        "--terminals-json" ($terminals | to json -r)
-    ] "Yazelix Rust terminal-materialization helper returned invalid JSON." | ignore
+    generate_terminal_materialization_via_yzx_core $terminals $resolved_runtime_dir $config_file | ignore
 
     let generated = ($terminals | each {|t| ($TERMINAL_METADATA | get -o $t | default {} | get -o name | default $t) })
     let generated_list = ($generated | str join ", ")
@@ -151,27 +75,13 @@ def reroll_ghostty_random_cursor_config_for_launch [
     }
 
     let resolved_runtime_dir = (($runtime_dir | default (get_yazelix_runtime_dir)) | path expand)
-    let resolved_config_file = if ($config_file | is-not-empty) {
-        $config_file
-    } else {
-        (resolve_active_config_surface_via_yzx_core $resolved_runtime_dir).config_file
-    }
+    let resolved_config_file = ($config_file | default "")
 
     if not $quiet {
         print "🎲 Rerolling Ghostty random cursor settings for this Yazelix window..."
     }
 
-    run_yzx_core_json_command $resolved_runtime_dir (build_terminal_helper_error_surface $resolved_config_file) [
-        $GHOSTTY_MATERIALIZATION_GENERATE_COMMAND
-        "--runtime-dir" $resolved_runtime_dir
-        "--config-dir" (resolve_terminal_materialization_config_dir)
-        "--state-dir" (resolve_terminal_materialization_state_dir)
-        "--transparency" ($config.transparency? | default "none")
-        "--ghostty-trail-glow" ($config.ghostty_trail_glow? | default "medium")
-        "--ghostty-trail-color" ($config.ghostty_trail_color? | default "")
-        "--ghostty-trail-effect" ($config.ghostty_trail_effect? | default "")
-        "--ghostty-mode-effect" ($config.ghostty_mode_effect? | default "")
-    ] "Yazelix Rust ghostty-materialization helper returned invalid JSON." | ignore
+    generate_ghostty_materialization_via_yzx_core $resolved_runtime_dir $resolved_config_file | ignore
 
     if not $quiet {
         print "✓ Rerolled Ghostty cursor settings"
@@ -454,7 +364,7 @@ def main [
             if ($terminals | is-empty) {
                 error make {msg: "terminal.terminals must include at least one terminal"}
             }
-            materialize_selected_terminal_configs $terminals $runtime_dir $active_config_file ($runtime_dir | path join "yazelix_default.toml")
+            materialize_selected_terminal_configs $terminals $runtime_dir $active_config_file
         } | ignore
     }
     profile_startup_step $component "launch_terminal" {

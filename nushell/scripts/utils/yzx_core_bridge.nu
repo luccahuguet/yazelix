@@ -9,7 +9,9 @@ const YZX_CORE_HELPER_RELATIVE_PATH = ["libexec" "yzx_core"]
 const CONFIG_SURFACE_RESOLVE_COMMAND = "config-surface.resolve"
 const CONFIG_STATE_COMPUTE_COMMAND = "config-state.compute"
 const CONFIG_STATE_RECORD_COMMAND = "config-state.record"
+const GHOSTTY_MATERIALIZATION_GENERATE_COMMAND = "ghostty-materialization.generate"
 const RUNTIME_ENV_COMPUTE_COMMAND = "runtime-env.compute"
+const TERMINAL_MATERIALIZATION_GENERATE_COMMAND = "terminal-materialization.generate"
 
 def get_runtime_yzx_core_helper_path [runtime_dir: string] {
     $YZX_CORE_HELPER_RELATIVE_PATH | prepend $runtime_dir | path join
@@ -306,6 +308,68 @@ export def compute_runtime_env_via_yzx_core [config?: record, runtime_dir?: stri
 
     run_yzx_core_json_command $resolved_runtime_dir $error_surface $helper_args "Yazelix Rust runtime-env helper returned invalid JSON."
     | get runtime_env
+}
+
+export def generate_ghostty_materialization_via_yzx_core [runtime_dir?: string, config_file?: string] {
+    let resolved_runtime_dir = if $runtime_dir == null {
+        require_yazelix_runtime_dir
+    } else {
+        $runtime_dir | path expand
+    }
+    let env_block = if ($config_file | default "" | str trim | is-not-empty) {
+        {
+            YAZELIX_RUNTIME_DIR: $resolved_runtime_dir
+            YAZELIX_CONFIG_OVERRIDE: $config_file
+        }
+    } else {
+        {YAZELIX_RUNTIME_DIR: $resolved_runtime_dir}
+    }
+    let error_surface = if ($config_file | default "" | str trim | is-not-empty) {
+        build_record_yzx_core_error_surface {config_file: $config_file}
+    } else {
+        build_default_yzx_core_error_surface
+    }
+
+    with-env $env_block {
+        run_yzx_core_json_command $resolved_runtime_dir $error_surface [
+            $GHOSTTY_MATERIALIZATION_GENERATE_COMMAND
+            "--from-env"
+        ] "Yazelix Rust ghostty-materialization helper returned invalid JSON."
+    }
+}
+
+export def generate_terminal_materialization_via_yzx_core [
+    selected_terminals: list<string>
+    runtime_dir?: string
+    config_file?: string
+] {
+    let resolved_runtime_dir = if $runtime_dir == null {
+        require_yazelix_runtime_dir
+    } else {
+        $runtime_dir | path expand
+    }
+    let env_block = if ($config_file | default "" | str trim | is-not-empty) {
+        {
+            YAZELIX_RUNTIME_DIR: $resolved_runtime_dir
+            YAZELIX_CONFIG_OVERRIDE: $config_file
+        }
+    } else {
+        {YAZELIX_RUNTIME_DIR: $resolved_runtime_dir}
+    }
+    let error_surface = if ($config_file | default "" | str trim | is-not-empty) {
+        build_record_yzx_core_error_surface {config_file: $config_file}
+    } else {
+        build_default_yzx_core_error_surface
+    }
+
+    with-env $env_block {
+        run_yzx_core_json_command $resolved_runtime_dir $error_surface [
+            $TERMINAL_MATERIALIZATION_GENERATE_COMMAND
+            "--from-env"
+            "--terminals-json"
+            ($selected_terminals | to json -r)
+        ] "Yazelix Rust terminal-materialization helper returned invalid JSON."
+    }
 }
 
 export def record_materialized_state_via_yzx_core [state: record, runtime_dir?: string] {

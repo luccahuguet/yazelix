@@ -4,8 +4,9 @@ use std::path::PathBuf;
 use yazelix_core::active_config_surface::resolve_active_config_paths;
 use yazelix_core::control_plane::{
     config_dir_from_env, config_override_from_env, config_state_compute_request_from_env,
-    config_state_record_request_from_env, runtime_dir_from_env, runtime_env_request_from_env,
-    runtime_materialization_plan_request_from_env,
+    config_state_record_request_from_env, ghostty_materialization_request_from_env,
+    runtime_dir_from_env, runtime_env_request_from_env,
+    runtime_materialization_plan_request_from_env, terminal_materialization_request_from_env,
 };
 use yazelix_core::{
     ComputeConfigStateRequest, CoreError, DoctorConfigEvaluateRequest,
@@ -694,12 +695,14 @@ fn run_ghostty_materialization_generate(mut parser: lexopt::Parser) -> Result<()
     let mut ghostty_trail_effect: Option<String> = None;
     let mut ghostty_mode_effect: Option<String> = None;
     let mut ghostty_trail_glow: Option<String> = None;
+    let mut from_env = false;
 
     while let Some(arg) = parser
         .next()
         .map_err(|error| CoreError::usage(error.to_string()))?
     {
         match arg {
+            Long("from-env") => from_env = true,
             Long("runtime-dir") => runtime_dir = Some(parser_path_value(&mut parser)?),
             Long("config-dir") => config_dir = Some(parser_path_value(&mut parser)?),
             Long("state-dir") => state_dir = Some(parser_path_value(&mut parser)?),
@@ -720,15 +723,34 @@ fn run_ghostty_materialization_generate(mut parser: lexopt::Parser) -> Result<()
         }
     }
 
-    let request = GhosttyMaterializationRequest {
-        runtime_dir: runtime_dir.ok_or_else(|| CoreError::usage("Missing --runtime-dir path"))?,
-        config_dir: config_dir.ok_or_else(|| CoreError::usage("Missing --config-dir path"))?,
-        state_dir: state_dir.ok_or_else(|| CoreError::usage("Missing --state-dir path"))?,
-        transparency: transparency.ok_or_else(|| CoreError::usage("Missing --transparency"))?,
-        ghostty_trail_color,
-        ghostty_trail_effect,
-        ghostty_mode_effect,
-        ghostty_trail_glow: ghostty_trail_glow.unwrap_or_else(|| "medium".to_string()),
+    let explicit_args_present = runtime_dir.is_some()
+        || config_dir.is_some()
+        || state_dir.is_some()
+        || transparency.is_some()
+        || ghostty_trail_color.is_some()
+        || ghostty_trail_effect.is_some()
+        || ghostty_mode_effect.is_some()
+        || ghostty_trail_glow.is_some();
+
+    let request = if from_env {
+        if explicit_args_present {
+            return Err(CoreError::usage(
+                "Use either --from-env or explicit ghostty-materialization.generate flags, not both.",
+            ));
+        }
+        ghostty_materialization_request_from_env(config_override_from_env().as_deref())?
+    } else {
+        GhosttyMaterializationRequest {
+            runtime_dir: runtime_dir
+                .ok_or_else(|| CoreError::usage("Missing --runtime-dir path"))?,
+            config_dir: config_dir.ok_or_else(|| CoreError::usage("Missing --config-dir path"))?,
+            state_dir: state_dir.ok_or_else(|| CoreError::usage("Missing --state-dir path"))?,
+            transparency: transparency.ok_or_else(|| CoreError::usage("Missing --transparency"))?,
+            ghostty_trail_color,
+            ghostty_trail_effect,
+            ghostty_mode_effect,
+            ghostty_trail_glow: ghostty_trail_glow.unwrap_or_else(|| "medium".to_string()),
+        }
     };
     let data = generate_ghostty_materialization(&request)?;
     write_success_envelope(GHOSTTY_MATERIALIZATION_GENERATE_COMMAND, data)
@@ -741,12 +763,14 @@ fn run_terminal_materialization_generate(mut parser: lexopt::Parser) -> Result<(
     let mut runtime_dir: Option<PathBuf> = None;
     let mut state_dir: Option<PathBuf> = None;
     let mut terminals_json: Option<String> = None;
+    let mut from_env = false;
 
     while let Some(arg) = parser
         .next()
         .map_err(|error| CoreError::usage(error.to_string()))?
     {
         match arg {
+            Long("from-env") => from_env = true,
             Long("config") => config_path = Some(parser_path_value(&mut parser)?),
             Long("default-config") => default_config_path = Some(parser_path_value(&mut parser)?),
             Long("contract") => contract_path = Some(parser_path_value(&mut parser)?),
@@ -762,14 +786,31 @@ fn run_terminal_materialization_generate(mut parser: lexopt::Parser) -> Result<(
     )
     .map_err(|error| CoreError::usage(format!("Invalid --terminals-json: {error}")))?;
 
-    let request = TerminalMaterializationRequest {
-        config_path: config_path.ok_or_else(|| CoreError::usage("Missing --config path"))?,
-        default_config_path: default_config_path
-            .ok_or_else(|| CoreError::usage("Missing --default-config path"))?,
-        contract_path: contract_path.ok_or_else(|| CoreError::usage("Missing --contract path"))?,
-        runtime_dir: runtime_dir.ok_or_else(|| CoreError::usage("Missing --runtime-dir path"))?,
-        state_dir: state_dir.ok_or_else(|| CoreError::usage("Missing --state-dir path"))?,
-        terminals,
+    let explicit_args_present = config_path.is_some()
+        || default_config_path.is_some()
+        || contract_path.is_some()
+        || runtime_dir.is_some()
+        || state_dir.is_some();
+
+    let request = if from_env {
+        if explicit_args_present {
+            return Err(CoreError::usage(
+                "Use either --from-env or explicit terminal-materialization.generate paths, not both.",
+            ));
+        }
+        terminal_materialization_request_from_env(terminals, config_override_from_env().as_deref())?
+    } else {
+        TerminalMaterializationRequest {
+            config_path: config_path.ok_or_else(|| CoreError::usage("Missing --config path"))?,
+            default_config_path: default_config_path
+                .ok_or_else(|| CoreError::usage("Missing --default-config path"))?,
+            contract_path: contract_path
+                .ok_or_else(|| CoreError::usage("Missing --contract path"))?,
+            runtime_dir: runtime_dir
+                .ok_or_else(|| CoreError::usage("Missing --runtime-dir path"))?,
+            state_dir: state_dir.ok_or_else(|| CoreError::usage("Missing --state-dir path"))?,
+            terminals,
+        }
     };
     let data = generate_terminal_materialization(&request)?;
     write_success_envelope(TERMINAL_MATERIALIZATION_GENERATE_COMMAND, data)

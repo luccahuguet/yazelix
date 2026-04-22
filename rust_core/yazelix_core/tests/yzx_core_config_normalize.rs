@@ -78,6 +78,11 @@ fn prepare_runtime_materialization_fixture(
     let runtime_plugin_dir = runtime_zellij_dir.join("plugins");
     let runtime_shell_dir = runtime_dir.join("shells").join("posix");
     let runtime_contract_dir = runtime_dir.join("config_metadata");
+    let runtime_ghostty_shader_dir = runtime_dir
+        .join("configs")
+        .join("terminal_emulators")
+        .join("ghostty")
+        .join("shaders");
 
     fs::create_dir_all(managed_config.parent().unwrap()).unwrap();
     fs::create_dir_all(managed_zellij_config.parent().unwrap()).unwrap();
@@ -87,6 +92,7 @@ fn prepare_runtime_materialization_fixture(
     fs::create_dir_all(&runtime_plugin_dir).unwrap();
     fs::create_dir_all(&runtime_shell_dir).unwrap();
     fs::create_dir_all(&runtime_contract_dir).unwrap();
+    fs::create_dir_all(&runtime_ghostty_shader_dir).unwrap();
 
     fs::copy(
         repo.join("yazelix_default.toml"),
@@ -137,6 +143,11 @@ fn prepare_runtime_materialization_fixture(
     )
     .unwrap();
     fs::write(runtime_plugin_dir.join("zjstatus.wasm"), b"wasm").unwrap();
+    fs::write(
+        runtime_ghostty_shader_dir.join("README.md"),
+        "fixture shaders\n",
+    )
+    .unwrap();
 
     fs::copy(runtime_dir.join("yazelix_default.toml"), &managed_config).unwrap();
     fs::write(&managed_zellij_config, "keybinds {}\n").unwrap();
@@ -720,6 +731,122 @@ fn install_ownership_evaluate_from_env_resolves_stable_profile_wrapper() {
     assert_eq!(
         envelope["data"]["desktop_launcher_path"],
         profile_yzx.to_string_lossy().to_string()
+    );
+}
+
+// Defends: terminal-materialization.generate can resolve config/runtime/state request roots from process env without Nu path assembly.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn terminal_materialization_generate_from_env_writes_generated_configs() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+
+    fs::write(
+        &fixture.managed_config,
+        [
+            "[terminal]",
+            "terminals = [\"ghostty\", \"kitty\"]",
+            "transparency = \"low\"",
+            "ghostty_trail_color = \"forest\"",
+        ]
+        .join("\n"),
+    )
+    .unwrap();
+
+    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
+        .arg("--from-env")
+        .arg("--terminals-json")
+        .arg(json!(["ghostty", "kitty"]).to_string())
+        .output()
+        .unwrap();
+
+    if !output.status.success() {
+        panic!(
+            "stdout={}\nstderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    assert!(output.stderr.is_empty());
+
+    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["command"], "terminal-materialization.generate");
+    assert_eq!(envelope["status"], "ok");
+    assert!(
+        fixture
+            .state_dir
+            .join("configs")
+            .join("terminal_emulators")
+            .join("ghostty")
+            .exists()
+    );
+    assert!(
+        fixture
+            .state_dir
+            .join("configs")
+            .join("terminal_emulators")
+            .join("kitty")
+            .join("kitty.conf")
+            .exists()
+    );
+}
+
+// Defends: ghostty-materialization.generate can resolve config/runtime/state request roots from process env without Nu path assembly.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn ghostty_materialization_generate_from_env_uses_normalized_config() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+
+    fs::write(
+        &fixture.managed_config,
+        [
+            "[terminal]",
+            "transparency = \"high\"",
+            "ghostty_trail_color = \"forest\"",
+            "ghostty_trail_effect = \"tail\"",
+            "ghostty_mode_effect = \"ripple\"",
+            "ghostty_trail_glow = \"high\"",
+        ]
+        .join("\n"),
+    )
+    .unwrap();
+
+    let output = runtime_materialization_command(&fixture, "ghostty-materialization.generate")
+        .arg("--from-env")
+        .output()
+        .unwrap();
+
+    if !output.status.success() {
+        panic!(
+            "stdout={}\nstderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    assert!(output.stderr.is_empty());
+
+    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["command"], "ghostty-materialization.generate");
+    assert_eq!(envelope["status"], "ok");
+    assert_eq!(envelope["data"]["cursor_state"]["selected_color"], "forest");
+    assert_eq!(
+        envelope["data"]["cursor_state"]["selected_trail_effect"],
+        "tail"
+    );
+    assert_eq!(
+        envelope["data"]["cursor_state"]["selected_mode_effect"],
+        "ripple"
+    );
+    assert!(
+        fixture
+            .state_dir
+            .join("configs")
+            .join("terminal_emulators")
+            .join("ghostty")
+            .exists()
     );
 }
 
