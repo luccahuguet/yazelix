@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 
-use ../../../nushell/scripts/utils/common.nu [get_yazelix_runtime_dir resolve_yazelix_nu_bin]
+use ../../../nushell/scripts/utils/runtime_paths.nu [get_yazelix_runtime_dir]
+use ../../../nushell/scripts/utils/runtime_commands.nu [resolve_yazelix_nu_bin]
 
 export def get_runtime_dir [] {
     let expanded_runtime_dir = (get_yazelix_runtime_dir | path expand)
