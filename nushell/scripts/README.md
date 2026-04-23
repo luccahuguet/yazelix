@@ -20,15 +20,12 @@ Live Zellij, Yazi, and managed-editor shell glue that has not been fully deleted
 Shell bootstrap and initializer generation
 
 - `environment.nu` - Runtime environment file generation and setup orchestration
-- `initializers.nu` - Shell initializer generation
 
 ### `utils/`
 Small surviving helpers plus runtime shell adapters
 
 - `constants.nu` - Version constants and static metadata accessors
-- `constants.nu` - Version constants only
 - `logging.nu` - Logging helpers
-- `startup_profile.nu` - Startup profiling helpers
 - `yzx_core_bridge.nu` - Narrow Rust helper transport seam
 
 ### `dev/`
@@ -59,9 +56,6 @@ The public launch, desktop, restart, enter, and popup families are no longer own
 ## Manual Maintainer Helpers
 
 These are manual or exploratory helpers, not normal runtime entrypoints
-
-- `record_demo.nu` - VHS demo recording helper
-- `record_demo_fonts.nu` - Font-testing helper for demo recording
 
 ## File Naming Convention
 

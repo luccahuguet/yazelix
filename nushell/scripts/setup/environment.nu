@@ -5,7 +5,7 @@
 use ../utils/runtime_paths.nu [get_yazelix_runtime_dir get_yazelix_state_dir]
 use ../utils/runtime_commands.nu [resolve_yazelix_nu_bin]
 use ../utils/runtime_defaults.nu DEFAULT_SHELL
-use ../utils/startup_profile.nu [profile_startup_step]
+use ../utils/yzx_core_bridge.nu [profile_startup_step]
 use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
 
 const YZX_COMMAND_METADATA_SYNC_EXTERNS_COMMAND = "yzx-command-metadata.sync-externs"

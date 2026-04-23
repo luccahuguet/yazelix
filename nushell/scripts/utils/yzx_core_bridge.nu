@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Shared yzx_core helper transport and error-surface glue.
 
-use runtime_paths.nu [require_yazelix_runtime_dir]
+use runtime_paths.nu [get_yazelix_runtime_dir require_yazelix_runtime_dir]
 
 def format_failure_classification [failure_class: string, recovery_hint: string] {
     let label = if ($failure_class | str downcase | str trim) == "config" {
@@ -342,4 +342,96 @@ export def compute_runtime_env_via_yzx_core [config?: record, runtime_dir?: stri
         $error_surface | default (build_default_yzx_core_error_surface)
     ) $resolved_helper_args "Yazelix Rust runtime-env helper returned invalid JSON."
     | get runtime_env
+}
+
+export def resolve_yzx_control_path [runtime_dir?: string] {
+    let resolved = if $runtime_dir != null {
+        $runtime_dir | path expand
+    } else {
+        get_yazelix_runtime_dir
+    }
+
+    let explicit = ($env.YAZELIX_YZX_CONTROL_BIN? | default "" | into string | str trim)
+    if ($explicit | is-not-empty) {
+        let expanded = ($explicit | path expand)
+        if ($expanded | path exists) {
+            return $expanded
+        }
+    }
+
+    let libexec = ($resolved | path join "libexec" "yzx_control")
+    if ($libexec | path exists) {
+        return $libexec
+    }
+
+    let release = ($resolved | path join "rust_core" "target" "release" "yzx_control")
+    let debug = ($resolved | path join "rust_core" "target" "debug" "yzx_control")
+    mut candidates = []
+    if ($release | path exists) {
+        $candidates = ($candidates | append {
+            path: $release
+            modified: (ls $release | get 0.modified)
+        })
+    }
+    if ($debug | path exists) {
+        $candidates = ($candidates | append {
+            path: $debug
+            modified: (ls $debug | get 0.modified)
+        })
+    }
+
+    if ($candidates | is-empty) {
+        error make {
+            msg: (
+                [
+                    "Yazelix runtime is missing the Rust control helper."
+                    ""
+                    "Tried:"
+                    $"  - explicit: ($explicit)"
+                    $"  - libexec:  ($libexec)"
+                    $"  - release:  ($release)"
+                    $"  - debug:    ($debug)"
+                    ""
+                    (format_failure_classification "host-dependency" "Reinstall Yazelix so the runtime includes a compatible yzx_control helper, then retry.")
+                ] | str join "\n"
+            )
+        }
+    }
+
+    (
+        $candidates
+        | reduce -f null {|candidate, best|
+            if ($best == null) or ($candidate.modified > $best.modified) {
+                $candidate
+            } else {
+                $best
+            }
+        }
+        | get path
+    )
+}
+
+export def profile_startup_step [component: string, step: string, code: closure, metadata?: record] {
+    if not ($env.YAZELIX_STARTUP_PROFILE? == "true") {
+        return (do $code)
+    }
+
+    let started_ns = (date now | into int)
+    let result = (do $code)
+    let ended_ns = (date now | into int)
+
+    let report_path = ($env.YAZELIX_STARTUP_PROFILE_REPORT? | default "" | into string | str trim)
+    if ($report_path | is-empty) {
+        return $result
+    }
+
+    let meta = ($metadata | default {} | to json -r)
+    let yzx_control_bin = (resolve_yzx_control_path)
+    try {
+        ^$yzx_control_bin profile record-step $component $step $started_ns $ended_ns --metadata $meta | ignore
+    } catch {
+        # Silently ignore recording failures so profiling never breaks startup
+    }
+
+    $result
 }

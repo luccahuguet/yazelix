@@ -23,6 +23,7 @@ pub mod install_ownership_report;
 pub mod internal_nu_runner;
 pub mod keys_commands;
 pub mod launch_materialization;
+pub mod profile_commands;
 pub mod public_command_surface;
 pub mod repo_contract_validation;
 pub mod repo_issue_sync;
@@ -138,6 +139,10 @@ pub use yazi_materialization::{
 pub use yazi_render_plan::{YaziRenderPlanData, YaziRenderPlanRequest, compute_yazi_render_plan};
 pub use zellij_materialization::{
     ZellijMaterializationData, ZellijMaterializationRequest, generate_zellij_materialization,
+};
+pub use profile_commands::{
+    run_profile_create_run, run_profile_load_report, run_profile_print_report,
+    run_profile_record_step, run_profile_wait_step,
 };
 pub use zellij_render_plan::{
     ZellijRenderPlanData, ZellijRenderPlanRequest, compute_zellij_render_plan,

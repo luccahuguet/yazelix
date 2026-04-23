@@ -26,6 +26,11 @@ use yazelix_core::run_yzx_import;
 use yazelix_core::run_yzx_keys;
 use yazelix_core::run_yzx_launch;
 use yazelix_core::run_yzx_popup;
+use yazelix_core::run_profile_create_run;
+use yazelix_core::run_profile_load_report;
+use yazelix_core::run_profile_print_report;
+use yazelix_core::run_profile_record_step;
+use yazelix_core::run_profile_wait_step;
 use yazelix_core::run_yzx_reveal;
 use yazelix_core::run_yzx_restart;
 use yazelix_core::run_yzx_screen;
@@ -53,6 +58,11 @@ fn usage() -> ! {
     eprintln!("       yzx_control home_manager [prepare] [args...]");
     eprintln!("       yzx_control keys [yzx|yazi|hx|helix|nu|nushell]");
     eprintln!("       yzx_control popup [program...]");
+    eprintln!("       yzx_control profile create-run <scenario> [--metadata <json>]");
+    eprintln!("       yzx_control profile record-step <component> <step> <started_ns> <ended_ns> [--metadata <json>]");
+    eprintln!("       yzx_control profile load-report <report_path>");
+    eprintln!("       yzx_control profile wait-step <report_path> <component> <step> [--timeout-ms <n>]");
+    eprintln!("       yzx_control profile print-report <report_path>");
     eprintln!("       yzx_control reveal <path>");
     eprintln!("       yzx_control restart");
     eprintln!("       yzx_control screen [style]");
@@ -455,6 +465,27 @@ fn run_status(args: &[String]) -> Result<i32, CoreError> {
     Ok(0)
 }
 
+fn run_profile(args: &[String]) -> Result<i32, CoreError> {
+    if args.is_empty() {
+        eprintln!("Usage: yzx_control profile <create-run|record-step|load-report|wait-step|print-report> [args...]");
+        return Ok(64);
+    }
+    let mut argv = args.to_vec();
+    let sub = argv.remove(0);
+    match sub.as_str() {
+        "create-run" => run_profile_create_run(&argv),
+        "record-step" => run_profile_record_step(&argv),
+        "load-report" => run_profile_load_report(&argv),
+        "wait-step" => run_profile_wait_step(&argv),
+        "print-report" => run_profile_print_report(&argv),
+        _ => {
+            eprintln!("Unknown profile subcommand: {sub}");
+            eprintln!("Usage: yzx_control profile <create-run|record-step|load-report|wait-step|print-report> [args...]");
+            Ok(64)
+        }
+    }
+}
+
 fn main() {
     let mut argv: Vec<String> = std::env::args().skip(1).collect();
     if argv.is_empty() {
@@ -497,6 +528,7 @@ fn main() {
         "import" => run_yzx_import(&argv),
         "keys" => run_yzx_keys(&argv),
         "popup" => run_yzx_popup(&argv),
+        "profile" => run_profile(&argv),
         "reveal" => run_yzx_reveal(&argv),
         "restart" => run_yzx_restart(&argv),
         "screen" => run_yzx_screen(&argv),

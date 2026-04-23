@@ -3,7 +3,7 @@
 
 use ../utils/runtime_paths.nu [get_yazelix_state_dir require_yazelix_runtime_dir]
 use ../utils/runtime_commands.nu [resolve_zellij_default_shell]
-use ../utils/startup_profile.nu [profile_startup_step]
+use ../utils/yzx_core_bridge.nu [profile_startup_step]
 use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
 use ../setup/welcome.nu [show_welcome build_welcome_message get_yazelix_colors]
 

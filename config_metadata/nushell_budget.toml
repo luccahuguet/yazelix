@@ -1,6 +1,6 @@
 [contract]
-current_total_loc_max = 6116
-current_total_file_count_max = 34
+current_total_loc_max = 5850
+current_total_file_count_max = 33
 hard_target_loc = 4200
 
 [[families]]
@@ -80,9 +80,9 @@ allowed_paths = [
 id = "runtime_helpers"
 status = "transitional_exception"
 owner_bead = "yazelix-lj7z.5"
-max_loc = 1210
+max_loc = 1000
 target_loc = 800
-max_files = 11
+max_files = 10
 allowed_paths = [
   "nushell/scripts/utils/config_files.nu",
   "nushell/scripts/utils/constants.nu",
@@ -91,7 +91,6 @@ allowed_paths = [
   "nushell/scripts/utils/runtime_commands.nu",
   "nushell/scripts/utils/runtime_defaults.nu",
   "nushell/scripts/utils/runtime_paths.nu",
-  "nushell/scripts/utils/startup_profile.nu",
   "nushell/scripts/utils/terminal_assets.nu",
   "nushell/scripts/utils/transient_pane_contract.nu",
   "nushell/scripts/utils/yzx_core_bridge.nu",

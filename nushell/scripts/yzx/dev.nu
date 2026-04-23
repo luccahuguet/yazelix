@@ -7,12 +7,7 @@ use ../utils/runtime_paths.nu [
 ]
 use ../maintainer/plugin_build.nu build_pane_orchestrator_wasm
 use ../maintainer/update_workflow.nu run_dev_update_workflow
-use ../utils/startup_profile.nu [
-    create_startup_profile_run
-    load_startup_profile_report
-    render_startup_profile_summary
-    wait_for_startup_profile_step
-]
+use ../utils/yzx_core_bridge.nu [resolve_yzx_control_path]
 
 # Development and maintainer commands
 export def "yzx dev" [] {
@@ -230,28 +225,20 @@ def build_profile_metadata [scenario: string, clear_cache: bool, source_info: re
     }
 }
 
-def print_startup_profile_summary [summary: record] {
-    print ""
-    print "📊 Startup Profile Report"
-    print $"   scenario: ($summary.run.scenario)"
-    print $"   report: ($summary.report_path)"
-    print $"   total: ($summary.total_duration_ms)ms"
-    print ""
-    print (render_startup_profile_summary $summary)
-}
-
 def get_profile_cli_path [source_root: string] {
     $source_root | path join "shells" "posix" "yzx_cli.sh"
 }
 
 def wait_for_profile_handoff [profile_run: record, scenario_label: string] {
+    let yzx_control_bin = (resolve_yzx_control_path $profile_run.env.YAZELIX_RUNTIME_DIR?)
     let completed = (
-        wait_for_startup_profile_step
+        ^$yzx_control_bin profile wait-step
             $profile_run.report_path
             "inner"
             "zellij_handoff_ready"
-            --timeout-ms=15000
-    )
+            --timeout-ms 15000
+        | str trim
+    ) == "true"
 
     if not $completed {
         error make {
@@ -268,7 +255,9 @@ def run_dev_profile_harness [
     let clear_cache_enabled = $clear_cache
     let source_info = (resolve_profile_source_root)
     let yzx_cli = (get_profile_cli_path $source_info.root)
-    let profile_run = (create_startup_profile_run $scenario (build_profile_metadata $scenario $clear_cache_enabled $source_info))
+    let yzx_control_bin = (resolve_yzx_control_path $source_info.root)
+    let meta_json = (build_profile_metadata $scenario $clear_cache_enabled $source_info | to json -r)
+    let profile_run = (^$yzx_control_bin profile create-run $scenario --metadata $meta_json | from json)
 
     if $clear_cache_enabled {
         clear_startup_profile_caches
@@ -295,9 +284,7 @@ def run_dev_profile_harness [
         }
     }
 
-    let summary = (load_startup_profile_report $profile_run.report_path)
-    print_startup_profile_summary $summary
-    $summary
+    ^$yzx_control_bin profile print-report $profile_run.report_path
 }
 
 def run_cold_profile_command [clear_cache: bool] {
@@ -389,7 +376,9 @@ def run_desktop_profile_command [] {
     print "🚀 Profiling desktop launch startup..."
     let source_info = (resolve_profile_source_root)
     let yzx_cli = (get_profile_cli_path $source_info.root)
-    let profile_run = (create_startup_profile_run "desktop_launch" (build_profile_metadata "desktop_launch" false $source_info))
+    let yzx_control_bin = (resolve_yzx_control_path $source_info.root)
+    let meta_json = (build_profile_metadata "desktop_launch" false $source_info | to json -r)
+    let profile_run = (^$yzx_control_bin profile create-run "desktop_launch" --metadata $meta_json | from json)
 
     let profile_env = (
         $profile_run.env
@@ -411,9 +400,7 @@ def run_desktop_profile_command [] {
 
     wait_for_profile_handoff $profile_run "Desktop launch"
 
-    let summary = (load_startup_profile_report $profile_run.report_path)
-    print_startup_profile_summary $summary
-    $summary
+    ^$yzx_control_bin profile print-report $profile_run.report_path
 }
 
 def run_launch_profile_command [
@@ -431,7 +418,9 @@ def run_launch_profile_command [
     print "🚀 Profiling managed new-window launch..."
     let source_info = (resolve_profile_source_root)
     let yzx_cli = (get_profile_cli_path $source_info.root)
-    let profile_run = (create_startup_profile_run "managed_launch" (build_profile_metadata "managed_launch" ($clear_cache | default false) $source_info))
+    let yzx_control_bin = (resolve_yzx_control_path $source_info.root)
+    let meta_json = (build_profile_metadata "managed_launch" ($clear_cache | default false) $source_info | to json -r)
+    let profile_run = (^$yzx_control_bin profile create-run "managed_launch" --metadata $meta_json | from json)
 
     if $clear_cache {
         clear_startup_profile_caches
@@ -466,9 +455,7 @@ def run_launch_profile_command [
 
     wait_for_profile_handoff $profile_run "Managed launch"
 
-    let summary = (load_startup_profile_report $profile_run.report_path)
-    print_startup_profile_summary $summary
-    $summary
+    ^$yzx_control_bin profile print-report $profile_run.report_path
 }
 
 # Profile launch sequence and identify bottlenecks
