@@ -2,7 +2,7 @@
 # Shared environment preparation utilities for Yazelix.
 
 use startup_profile.nu [profile_startup_step]
-use common.nu require_yazelix_runtime_dir
+use runtime_paths.nu require_yazelix_runtime_dir
 use yzx_core_bridge.nu compute_config_state_via_yzx_core
 
 export def ensure_environment_available [] {

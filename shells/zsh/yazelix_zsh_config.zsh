@@ -34,7 +34,7 @@ else
 fi
 
 # Yazelix Aliases for Zsh
-alias yazelix="nu $YAZELIX_RUNTIME_DIR/nushell/scripts/core/launch_yazelix.nu"
+alias yazelix="sh $YAZELIX_RUNTIME_DIR/shells/posix/yzx_cli.sh launch"
 alias lg='lazygit'
 
 # Note: yzx command is defined in ~/.zshrc (via v3 hooks) and is always available

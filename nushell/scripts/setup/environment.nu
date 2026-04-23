@@ -2,8 +2,9 @@
 # Main Yazelix environment setup script
 # Shared by startup, installer, and maintainer-shell entrypoints
 
-use ../utils/common.nu [get_yazelix_runtime_dir get_yazelix_state_dir resolve_yazelix_nu_bin]
-use ../utils/constants.nu DEFAULT_SHELL
+use ../utils/runtime_paths.nu [get_yazelix_runtime_dir get_yazelix_state_dir]
+use ../utils/runtime_commands.nu [resolve_yazelix_nu_bin]
+use ../utils/runtime_defaults.nu DEFAULT_SHELL
 use ../utils/startup_facts.nu [load_startup_facts]
 use ../utils/shell_user_hooks.nu [sync_generated_nushell_user_hook_bridge]
 use ../utils/startup_profile.nu [profile_startup_step]
@@ -22,8 +23,6 @@ def ensure_runtime_scripts_executable [yazelix_dir: string] {
     chmod +x $"($runtime_root)/shells/posix/start_yazelix.sh"
     chmod +x $"($runtime_root)/shells/posix/yazelix_hx.sh"
     chmod +x $"($runtime_root)/shells/posix/yzx_cli.sh"
-    chmod +x $"($runtime_root)/nushell/scripts/core/launch_yazelix.nu"
-    chmod +x $"($runtime_root)/nushell/scripts/core/start_yazelix.nu"
 }
 
 def sync_generated_yzx_extern_bridge [runtime_root: string] {

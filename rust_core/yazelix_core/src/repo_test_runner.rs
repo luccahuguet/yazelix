@@ -174,14 +174,13 @@ fn run_new_window(repo_root: &Path, options: &RepoTestOptions) -> Result<(), Str
     );
     println!();
 
-    let status = Command::new("nu")
-        .arg(
-            repo_root
-                .join("nushell")
-                .join("scripts")
-                .join("core")
-                .join("launch_yazelix.nu"),
-        )
+    let status = Command::new(
+        repo_root
+            .join("shells")
+            .join("posix")
+            .join("yzx_cli.sh"),
+    )
+        .arg("launch")
         .current_dir(repo_root)
         .env("YAZELIX_SHELLHOOK_SKIP_WELCOME", "true")
         .status()

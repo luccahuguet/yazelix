@@ -1727,15 +1727,10 @@ fn build_nix_file_output_path(
 fn validate_rust_routed_nu_modules(runtime_root: &Path, label: &str, errors: &mut Vec<String>) {
     let scripts_dir = runtime_root.join("nushell").join("scripts");
     for relative_path in [
-        ["core", "yzx_session.nu"],
-        ["core", "start_yazelix.nu"],
-        ["yzx", "desktop.nu"],
         ["yzx", "dev.nu"],
         ["yzx", "edit.nu"],
         ["yzx", "import.nu"],
-        ["yzx", "launch.nu"],
         ["yzx", "menu.nu"],
-        ["yzx", "popup.nu"],
         ["yzx", "screen.nu"],
         ["yzx", "tutor.nu"],
         ["yzx", "whats_new.nu"],

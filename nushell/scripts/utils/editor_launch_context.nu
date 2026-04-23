@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-use common.nu [get_yazelix_runtime_dir]
+use runtime_paths.nu [get_yazelix_runtime_dir]
 use yzx_core_bridge.nu compute_runtime_env_via_yzx_core
 
 def normalize_editor_command [editor?: string, runtime_dir?: string] {

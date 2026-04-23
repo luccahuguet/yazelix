@@ -2,7 +2,7 @@
 # Shared upgrade-note loading, rendering, and first-run suppression state.
 
 use atomic_writes.nu write_text_atomic
-use common.nu [get_yazelix_runtime_dir get_yazelix_state_dir]
+use runtime_paths.nu [get_yazelix_runtime_dir get_yazelix_state_dir]
 use constants.nu [YAZELIX_VERSION]
 
 def normalize_string_list [values: any] {

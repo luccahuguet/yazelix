@@ -2,7 +2,7 @@
 # Cursor Trail Helper Functions
 # Helper functions for Ghostty cursor trail management
 
-use constants.nu [get_cursor_trail_shaders get_ghostty_trail_effects get_ghostty_mode_effects]
+use terminal_assets.nu [get_cursor_trail_shaders get_ghostty_trail_effects get_ghostty_mode_effects]
 
 # Get the random cursor trail pool (derived from CURSOR_TRAIL_SHADERS)
 # Excludes "none" and "party" from random selection

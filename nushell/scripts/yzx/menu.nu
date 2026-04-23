@@ -3,11 +3,12 @@
 
 use ../integrations/zellij.nu [get_current_tab_workspace_root_including_bootstrap]
 use ../integrations/zellij.nu [open_transient_pane_contract]
-use ../utils/common.nu get_yazelix_runtime_dir
+use ../utils/runtime_paths.nu get_yazelix_runtime_dir
 use ../utils/transient_pane_facts.nu [load_transient_pane_facts]
 use ../utils/yzx_core_bridge.nu resolve_yzx_core_helper_path
 use ../utils/transient_pane_contract.nu [
     build_transient_pane_open_contract
+    close_current_transient_pane
     is_transient_pane_mode_active
 ]
 
@@ -143,6 +144,25 @@ def popup_post_action_decision [] {
     }
 }
 
+def run_popup_palette [items: list<record>] {
+    loop {
+        let entry = (select_with_fzf $items)
+        if $entry == null {
+            return
+        }
+
+        run_menu_action $entry.id
+
+        if (should_pause_in_popup $entry.id) {
+            if (popup_post_action_decision) == "menu" {
+                continue
+            }
+        }
+
+        return
+    }
+}
+
 def run_menu_action [cmd: string] {
     let yzx_cli = ((get_yazelix_runtime_dir) | path join "shells" "posix" "yzx_cli.sh")
     let args = ($cmd | str trim | split row " " | skip 1)
@@ -181,22 +201,17 @@ export def "yzx menu" [
     let items = get_palette_menu_items
 
     if $in_popup {
-        loop {
-            let entry = (select_with_fzf $items)
-            if $entry == null {
-                return
-            }
-
-            run_menu_action $entry.id
-
-            if (should_pause_in_popup $entry.id) {
-                if (popup_post_action_decision) == "menu" {
-                    continue
-                }
-            }
-
-            return
+        let result = (try {
+            run_popup_palette $items
+            {ok: true}
+        } catch {|err|
+            {ok: false, msg: $err.msg}
+        })
+        try { close_current_transient_pane }
+        if not $result.ok {
+            error make {msg: $result.msg}
         }
+        return
     } else {
         let entry = (select_with_fzf $items)
         if $entry == null {

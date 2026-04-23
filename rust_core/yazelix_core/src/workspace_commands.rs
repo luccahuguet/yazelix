@@ -1,11 +1,14 @@
 // Test lane: default
-//! Public `yzx cwd` and `yzx reveal` owners for `yzx_control`.
+//! Public `yzx cwd`, `yzx reveal`, and `yzx popup` owners for `yzx_control`.
 
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{
     config_dir_from_env, config_override_from_env, home_dir_from_env,
-    load_normalized_config_for_control, runtime_dir_from_env,
+    load_normalized_config_for_control, run_child_in_runtime_env, runtime_dir_from_env,
+    runtime_env_request,
 };
+use crate::compute_runtime_env;
+use crate::transient_pane_facts::compute_transient_pane_facts_from_env;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::env;
@@ -24,6 +27,13 @@ struct CwdArgs {
 struct RevealArgs {
     target: Option<String>,
     help: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct PopupArgs {
+    program: Vec<String>,
+    help: bool,
+    refresh_sidebar_only: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -239,6 +249,206 @@ pub fn run_yzx_reveal(args: &[String]) -> Result<i32, CoreError> {
     Ok(0)
 }
 
+pub fn run_yzx_popup(args: &[String]) -> Result<i32, CoreError> {
+    let parsed = parse_popup_args(args)?;
+    if parsed.help {
+        print_popup_help();
+        return Ok(0);
+    }
+
+    if env::var_os("ZELLIJ").is_none() {
+        return Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "popup_outside_zellij",
+            "yzx popup only works inside Zellij. Start Yazelix first, then run it from the tab where you want the popup.",
+            "Run this command from inside an active Yazelix/Zellij session.",
+            json!({}),
+        ));
+    }
+
+    if parsed.refresh_sidebar_only {
+        refresh_sidebar_after_popup().ok();
+        return Ok(0);
+    }
+
+    if popup_mode_active() {
+        return run_popup_program_in_current_pane(parsed.program);
+    }
+
+    let runtime_dir = runtime_dir_from_env()?;
+    let facts = compute_transient_pane_facts_from_env()?;
+    let popup_program = if parsed.program.is_empty() {
+        facts.popup_program
+    } else {
+        parsed.program
+    };
+    let popup_cwd = current_tab_workspace_root(true)
+        .unwrap_or_else(|| {
+            env::current_dir()
+                .unwrap_or_else(|_| PathBuf::from("."))
+                .to_string_lossy()
+                .to_string()
+        });
+
+    let payload = json!({
+        "kind": "popup",
+        "args": popup_program,
+        "cwd": popup_cwd,
+        "runtime_dir": runtime_dir.to_string_lossy().to_string(),
+    })
+    .to_string();
+
+    let response = run_pane_orchestrator_command("open_transient_pane", &payload)?;
+    if matches!(response.trim(), "ok" | "opened" | "focused") {
+        return Ok(0);
+    }
+
+    Err(CoreError::classified(
+        ErrorClass::Runtime,
+        "popup_open_failed",
+        format!("Failed to open the Yazelix popup pane: {response}"),
+        "Ensure the pane orchestrator plugin is loaded and the current tab is ready, then retry.",
+        json!({ "response": response }),
+    ))
+}
+
+fn popup_mode_active() -> bool {
+    matches!(env::var("YAZELIX_POPUP_PANE").as_deref(), Ok("true"))
+}
+
+fn run_popup_program_in_current_pane(program_override: Vec<String>) -> Result<i32, CoreError> {
+    rename_current_pane("yzx_popup");
+
+    let runtime_dir = runtime_dir_from_env()?;
+    let config_dir = config_dir_from_env()?;
+    let config_override = config_override_from_env();
+    let normalized =
+        load_normalized_config_for_control(&runtime_dir, &config_dir, config_override.as_deref())?;
+    let runtime_env = compute_runtime_env(&runtime_env_request(runtime_dir, &normalized)?)?
+        .runtime_env;
+    let popup_program = if program_override.is_empty() {
+        compute_transient_pane_facts_from_env()?.popup_program
+    } else {
+        program_override
+    };
+    let popup_argv = resolve_popup_runtime_argv(&popup_program, &runtime_env)?;
+    let cwd = env::current_dir().map_err(|source| {
+        CoreError::io(
+            "popup_current_dir",
+            "Could not read the current popup working directory.",
+            "Reopen the popup from a valid directory, then retry.",
+            ".",
+            source,
+        )
+    })?;
+    let status = run_child_in_runtime_env(&popup_argv, &runtime_env, &cwd)?;
+    if status.success() {
+        refresh_sidebar_after_popup().ok();
+        close_current_pane();
+    }
+    Ok(status.code().unwrap_or(1))
+}
+
+fn resolve_popup_runtime_argv(
+    popup_program: &[String],
+    runtime_env: &serde_json::Map<String, serde_json::Value>,
+) -> Result<Vec<String>, CoreError> {
+    if popup_program.is_empty() {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "popup_program_empty",
+            "No popup program was configured for Yazelix.",
+            "Set popup_program in yazelix.toml or pass an explicit program to `yzx popup`.",
+            json!({}),
+        ));
+    }
+
+    let command = popup_program[0].trim();
+    let tail = popup_program[1..].to_vec();
+    if command.is_empty() {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "popup_command_empty",
+            "Popup program command cannot be empty.",
+            "Set popup_program to a real executable or pass an explicit program to `yzx popup`.",
+            json!({}),
+        ));
+    }
+
+    let resolved_command = if command == "editor" {
+        runtime_env
+            .get("EDITOR")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| {
+                CoreError::classified(
+                    ErrorClass::Config,
+                    "popup_editor_unresolved",
+                    "The configured Yazelix editor could not be resolved for popup_program = [\"editor\"].",
+                    "Set editor.command in yazelix.toml or set EDITOR inside the Yazelix runtime.",
+                    json!({}),
+                )
+            })?
+            .to_string()
+    } else {
+        command.to_string()
+    };
+
+    Ok(std::iter::once(resolved_command).chain(tail).collect())
+}
+
+fn refresh_sidebar_after_popup() -> Result<(), CoreError> {
+    let config = load_workspace_command_config()?;
+    let Some(sidebar_state) = active_sidebar_state() else {
+        return Ok(());
+    };
+    if !command_is_available(&config.ya_command, &config.home_dir) {
+        return Ok(());
+    }
+
+    run_ya_emit_to(
+        &config.ya_command,
+        &config.home_dir,
+        &sidebar_state.yazi_id,
+        "refresh",
+        &[],
+    )
+    .map_err(|reason| popup_refresh_error("popup_sidebar_refresh", &reason))?;
+    run_ya_emit_to(
+        &config.ya_command,
+        &config.home_dir,
+        &sidebar_state.yazi_id,
+        "plugin",
+        &["git", "refresh-sidebar"],
+    )
+    .map_err(|reason| popup_refresh_error("popup_sidebar_git_refresh", &reason))?;
+
+    let sidebar_cwd = sidebar_state.cwd.trim();
+    if !sidebar_cwd.is_empty() {
+        run_ya_emit_to(
+            &config.ya_command,
+            &config.home_dir,
+            &sidebar_state.yazi_id,
+            "plugin",
+            &["starship", sidebar_cwd],
+        )
+        .map_err(|reason| popup_refresh_error("popup_sidebar_starship_refresh", &reason))?;
+    }
+
+    Ok(())
+}
+
+fn popup_refresh_error(code: &'static str, reason: &str) -> CoreError {
+    CoreError::classified(
+        ErrorClass::Runtime,
+        code,
+        format!("Failed to refresh the managed Yazi sidebar after popup exit: {reason}"),
+        "Ensure the managed sidebar Yazi pane is still available, then retry.",
+        json!({ "reason": reason }),
+    )
+}
+
 fn parse_cwd_args(args: &[String]) -> Result<CwdArgs, CoreError> {
     let mut parsed = CwdArgs::default();
     for arg in args {
@@ -292,6 +502,23 @@ fn parse_reveal_args(args: &[String]) -> Result<RevealArgs, CoreError> {
     Ok(parsed)
 }
 
+fn parse_popup_args(args: &[String]) -> Result<PopupArgs, CoreError> {
+    let mut parsed = PopupArgs::default();
+    for arg in args {
+        match arg.as_str() {
+            "-h" | "--help" | "help" => parsed.help = true,
+            "--refresh-sidebar-only" => parsed.refresh_sidebar_only = true,
+            other if other.starts_with('-') => {
+                return Err(CoreError::usage(format!(
+                    "Unknown argument for yzx popup: {other}. Try `yzx popup --help`."
+                )));
+            }
+            other => parsed.program.push(other.to_string()),
+        }
+    }
+    Ok(parsed)
+}
+
 fn print_cwd_help() {
     println!("Retarget the current Yazelix tab workspace directory");
     println!();
@@ -307,6 +534,23 @@ fn print_reveal_help() {
     println!();
     println!("Usage:");
     println!("  yzx reveal <target>");
+}
+
+fn print_popup_help() {
+    println!("Open or toggle the configured Yazelix popup program in Zellij");
+    println!();
+    println!("Usage:");
+    println!("  yzx popup [program...]");
+}
+
+fn rename_current_pane(title: &str) {
+    let _ = Command::new("zellij")
+        .args(["action", "rename-pane", title])
+        .output();
+}
+
+fn close_current_pane() {
+    let _ = Command::new("zellij").args(["action", "close-pane"]).output();
 }
 
 fn load_workspace_command_config() -> Result<WorkspaceCommandConfig, CoreError> {
@@ -619,6 +863,29 @@ fn active_sidebar_state() -> Option<SidebarState> {
     parse_active_sidebar_state(&response)
 }
 
+fn current_tab_workspace_root(include_bootstrap: bool) -> Option<String> {
+    let response = run_pane_orchestrator_command("get_active_tab_session_state", "").ok()?;
+    current_tab_workspace_root_from_json(&response, include_bootstrap)
+}
+
+fn current_tab_workspace_root_from_json(raw: &str, include_bootstrap: bool) -> Option<String> {
+    let parsed = serde_json::from_str::<serde_json::Value>(raw).ok()?;
+    let workspace = parsed.get("workspace")?;
+    let root = workspace.get("root")?.as_str()?.trim();
+    if root.is_empty() {
+        return None;
+    }
+    let source = workspace
+        .get("source")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .unwrap_or("");
+    if !include_bootstrap && source == "bootstrap" {
+        return None;
+    }
+    Some(root.to_string())
+}
+
 fn parse_active_sidebar_state(raw: &str) -> Option<SidebarState> {
     let parsed = serde_json::from_str::<ActiveTabSessionStateV1>(raw).ok()?;
     let sidebar = parsed.sidebar_yazi?;
@@ -787,6 +1054,39 @@ mod tests {
                 yazi_id: "plugin-yazi-id".into(),
                 cwd: "/home/plugin".into(),
             })
+        );
+    }
+
+    // Defends: popup routing keeps using the pane-orchestrator workspace snapshot instead of reviving a second Nu-owned workspace cache.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn parses_workspace_root_from_session_snapshot() {
+        let root = current_tab_workspace_root_from_json(
+            r#"{"workspace":{"root":"/tmp/demo","source":"plugin"}}"#,
+            false,
+        );
+        assert_eq!(root.as_deref(), Some("/tmp/demo"));
+    }
+
+    // Regression: popup pane execution resolves the editor alias from the Rust-owned runtime env instead of reviving a Nu popup wrapper.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn popup_runtime_argv_resolves_editor_alias_from_runtime_env() {
+        let runtime_env = serde_json::Map::from_iter([(
+            "EDITOR".to_string(),
+            Value::String("/tmp/yazelix_hx.sh".to_string()),
+        )]);
+
+        let argv =
+            resolve_popup_runtime_argv(&["editor".to_string(), "README.md".to_string()], &runtime_env)
+                .expect("popup argv");
+
+        assert_eq!(
+            argv,
+            vec![
+                "/tmp/yazelix_hx.sh".to_string(),
+                "README.md".to_string()
+            ]
         );
     }
 }

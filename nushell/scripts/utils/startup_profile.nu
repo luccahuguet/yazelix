@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-use common.nu [get_yazelix_state_dir]
+use runtime_paths.nu [get_yazelix_state_dir]
 
 export const STARTUP_PROFILE_SCHEMA_VERSION = 1
 export const STARTUP_PROFILE_PROPAGATED_ENV_KEYS = [

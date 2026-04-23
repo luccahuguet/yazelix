@@ -2,9 +2,12 @@
 # Sweep Testing - Test Execution Utilities
 # Handles individual test execution and validation
 
-use ../../utils/constants.nu get_terminal_metadata
-use ../../utils/terminal_launcher.nu command_exists
-use ../../utils/common.nu [get_yazelix_runtime_dir]
+use ../../utils/terminal_assets.nu get_terminal_metadata
+use ../../utils/runtime_paths.nu [get_yazelix_runtime_dir]
+
+def command_exists [cmd: string]: nothing -> bool {
+    (which $cmd | length) > 0
+}
 
 # Validate that environment setup works for a given config
 export def validate_environment [config_path: string]: nothing -> record {

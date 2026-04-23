@@ -92,15 +92,7 @@ impl TransientPaneConfig {
         if trimmed_runtime_dir.is_empty() {
             return None;
         }
-        Some(PathBuf::from(trimmed_runtime_dir).join("shells/posix/yazelix_nu.sh"))
-    }
-
-    fn wrapper_path(&self, kind: TransientPaneKind) -> Option<PathBuf> {
-        let trimmed_runtime_dir = self.runtime_dir.trim();
-        if trimmed_runtime_dir.is_empty() {
-            return None;
-        }
-        Some(PathBuf::from(trimmed_runtime_dir).join(kind.wrapper_relative_path()))
+        Some(PathBuf::from(trimmed_runtime_dir).join("shells/posix/yzx_cli.sh"))
     }
 
     fn with_runtime_dir(&self, runtime_dir: Option<&str>) -> Self {
@@ -130,12 +122,11 @@ impl TransientPaneConfig {
 #[cfg(test)]
 mod tests {
     use super::TransientPaneConfig;
-    use yazelix_pane_orchestrator::transient_pane_contract::TransientPaneKind;
 
-    // Defends: transient launcher and wrapper paths derive strictly from the configured runtime root.
+    // Defends: transient launcher paths derive strictly from the configured runtime root instead of plugin-local wrapper probes.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
-    fn transient_runtime_paths_do_not_depend_on_plugin_local_fs_probes() {
+    fn transient_runtime_launcher_path_is_runtime_relative() {
         let config = TransientPaneConfig {
             runtime_dir: "/runtime/root".to_owned(),
             width_percent: 90,
@@ -144,19 +135,7 @@ mod tests {
 
         assert_eq!(
             config.launcher_path().unwrap(),
-            std::path::PathBuf::from("/runtime/root/shells/posix/yazelix_nu.sh")
-        );
-        assert_eq!(
-            config.wrapper_path(TransientPaneKind::Popup).unwrap(),
-            std::path::PathBuf::from(
-                "/runtime/root/nushell/scripts/zellij_wrappers/yzx_popup_program.nu"
-            )
-        );
-        assert_eq!(
-            config.wrapper_path(TransientPaneKind::Menu).unwrap(),
-            std::path::PathBuf::from(
-                "/runtime/root/nushell/scripts/zellij_wrappers/yzx_menu_popup.nu"
-            )
+            std::path::PathBuf::from("/runtime/root/shells/posix/yzx_cli.sh")
         );
     }
 }
@@ -246,10 +225,6 @@ impl State {
             self.respond(pipe_message, RESULT_RUNTIME_NOT_CONFIGURED);
             return;
         };
-        let Some(wrapper_path) = transient_pane_config.wrapper_path(request.kind) else {
-            self.respond(pipe_message, RESULT_RUNTIME_NOT_CONFIGURED);
-            return;
-        };
 
         let workspace_root = self
             .workspace_state_by_tab
@@ -263,8 +238,13 @@ impl State {
             .map(str::to_string)
             .unwrap_or_else(|| transient_pane_config.default_cwd(workspace_root));
 
-        let mut args = vec![wrapper_path.display().to_string()];
+        let mut args = vec![request.kind.root_subcommand().to_string()];
         args.extend(request.args);
+        let mut pane_env = BTreeMap::new();
+        pane_env.insert(
+            request.kind.mode_env_key().to_string(),
+            request.kind.mode_env_value().to_string(),
+        );
 
         let command_to_run = CommandToRun {
             path: launcher_path,
@@ -277,7 +257,7 @@ impl State {
         let pane_id = open_command_pane_floating(
             command_to_run,
             transient_pane_config.floating_coordinates(),
-            BTreeMap::new(),
+            pane_env,
         );
 
         if pane_id.is_some() {
@@ -295,11 +275,8 @@ impl State {
         };
 
         let runtime_dir = self.transient_pane_config.default_cwd(None);
-        let refresh_wrapper_path = PathBuf::from(&runtime_dir)
-            .join("nushell/scripts/zellij_wrappers/refresh_yazi_sidebar.nu");
         let launcher = launcher_path.display().to_string();
-        let refresh_wrapper = refresh_wrapper_path.display().to_string();
-        let command = [launcher.as_str(), refresh_wrapper.as_str()];
+        let command = [launcher.as_str(), "popup", "--refresh-sidebar-only"];
 
         run_command_with_env_variables_and_cwd(
             &command,

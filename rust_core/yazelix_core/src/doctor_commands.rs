@@ -276,10 +276,9 @@ fn collect_runtime_doctor_findings(
                             .join("core")
                             .join("start_yazelix_inner.nu"),
                         launch_script_path: runtime_dir
-                            .join("nushell")
-                            .join("scripts")
-                            .join("core")
-                            .join("launch_yazelix.nu"),
+                            .join("shells")
+                            .join("posix")
+                            .join("start_yazelix.sh"),
                         command_search_paths: env::var_os("PATH")
                             .map(|raw| env::split_paths(&raw).collect())
                             .unwrap_or_default(),

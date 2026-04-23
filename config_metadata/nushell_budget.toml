@@ -1,6 +1,6 @@
 [contract]
-current_total_loc_max = 12101
-current_total_file_count_max = 80
+current_total_loc_max = 10473
+current_total_file_count_max = 75
 hard_target_loc = 4200
 
 [[families]]
@@ -22,7 +22,7 @@ allowed_paths = [
 id = "maintainer_and_dev_orchestration"
 status = "transitional_exception"
 owner_bead = "yazelix-lj7z.4"
-max_loc = 3486
+max_loc = 3473
 target_loc = 1200
 max_files = 18
 allowed_paths = [
@@ -50,9 +50,9 @@ allowed_paths = [
 id = "integration_and_wrappers"
 status = "transitional_exception"
 owner_bead = "yazelix-lj7z.7"
-max_loc = 1328
+max_loc = 1198
 target_loc = 300
-max_files = 11
+max_files = 8
 allowed_paths = [
   "nushell/scripts/integrations/helix.nu",
   "nushell/scripts/integrations/managed_editor.nu",
@@ -62,21 +62,16 @@ allowed_paths = [
   "nushell/scripts/integrations/zellij_runtime_wrappers.nu",
   "nushell/scripts/integrations/zoxide_open_in_editor.nu",
   "nushell/scripts/zellij_wrappers/launch_sidebar_yazi.nu",
-  "nushell/scripts/zellij_wrappers/refresh_yazi_sidebar.nu",
-  "nushell/scripts/zellij_wrappers/yzx_menu_popup.nu",
-  "nushell/scripts/zellij_wrappers/yzx_popup_program.nu",
 ]
 
 [[families]]
 id = "setup_and_bootstrap"
 status = "transitional_exception"
 owner_bead = "yazelix-lj7z.6"
-max_loc = 1070
+max_loc = 619
 target_loc = 500
-max_files = 5
+max_files = 3
 allowed_paths = [
-  "nushell/scripts/core/launch_yazelix.nu",
-  "nushell/scripts/core/start_yazelix.nu",
   "nushell/scripts/core/start_yazelix_inner.nu",
   "nushell/scripts/setup/environment.nu",
   "nushell/scripts/setup/initializers.nu",
@@ -86,9 +81,9 @@ allowed_paths = [
 id = "front_door_presentation"
 status = "transitional_exception"
 owner_bead = "yazelix-lj7z.8"
-max_loc = 2281
+max_loc = 2233
 target_loc = 950
-max_files = 10
+max_files = 9
 allowed_paths = [
   "nushell/scripts/setup/welcome.nu",
   "nushell/scripts/utils/ascii_art.nu",
@@ -96,7 +91,6 @@ allowed_paths = [
   "nushell/scripts/yzx/edit.nu",
   "nushell/scripts/yzx/import.nu",
   "nushell/scripts/yzx/menu.nu",
-  "nushell/scripts/yzx/popup.nu",
   "nushell/scripts/yzx/screen.nu",
   "nushell/scripts/yzx/tutor.nu",
   "nushell/scripts/yzx/whats_new.nu",
@@ -106,13 +100,12 @@ allowed_paths = [
 id = "runtime_helpers"
 status = "transitional_exception"
 owner_bead = "yazelix-lj7z.5"
-max_loc = 2483
+max_loc = 2069
 target_loc = 1050
-max_files = 28
+max_files = 32
 allowed_paths = [
   "nushell/scripts/utils/atomic_writes.nu",
   "nushell/scripts/utils/build_policy.nu",
-  "nushell/scripts/utils/common.nu",
   "nushell/scripts/utils/config_contract.nu",
   "nushell/scripts/utils/config_files.nu",
   "nushell/scripts/utils/config_paths.nu",
@@ -128,27 +121,19 @@ allowed_paths = [
   "nushell/scripts/utils/integration_facts.nu",
   "nushell/scripts/utils/keypress_polling.nu",
   "nushell/scripts/utils/logging.nu",
+  "nushell/scripts/utils/runtime_commands.nu",
+  "nushell/scripts/utils/runtime_defaults.nu",
   "nushell/scripts/utils/runtime_env.nu",
+  "nushell/scripts/utils/runtime_paths.nu",
   "nushell/scripts/utils/safe_remove.nu",
+  "nushell/scripts/utils/shell_initializer_paths.nu",
   "nushell/scripts/utils/shell_user_hooks.nu",
   "nushell/scripts/utils/startup_facts.nu",
   "nushell/scripts/utils/startup_profile.nu",
-  "nushell/scripts/utils/terminal_launcher.nu",
+  "nushell/scripts/utils/terminal_assets.nu",
   "nushell/scripts/utils/transient_pane_contract.nu",
   "nushell/scripts/utils/transient_pane_facts.nu",
   "nushell/scripts/utils/yzx_core_bridge.nu",
+  "nushell/scripts/utils/zellij_paths.nu",
   "nushell/scripts/utils/zjstatus_widget.nu",
-]
-
-[[families]]
-id = "session_and_desktop_host_integration"
-status = "transitional_exception"
-owner_bead = "yazelix-lj7z.6"
-max_loc = 572
-target_loc = 200
-max_files = 3
-allowed_paths = [
-  "nushell/scripts/core/yzx_session.nu",
-  "nushell/scripts/yzx/desktop.nu",
-  "nushell/scripts/yzx/launch.nu",
 ]

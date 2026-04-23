@@ -9,6 +9,7 @@ pub mod doctor_commands;
 pub mod doctor_config_report;
 pub mod doctor_helix_report;
 pub mod doctor_runtime_report;
+pub mod launch_commands;
 pub mod ghostty_materialization;
 pub mod helix_materialization;
 pub mod home_manager_commands;
@@ -75,6 +76,9 @@ pub use install_ownership_report::{
     InstallOwnershipEvaluateRequest, evaluate_install_ownership_report,
 };
 pub use keys_commands::run_yzx_keys;
+pub use launch_commands::{
+    run_yzx_desktop, run_yzx_enter, run_yzx_launch, run_yzx_restart,
+};
 pub use launch_materialization::{
     LaunchMaterializationData, LaunchMaterializationRequest,
     launch_materialization_request_from_env, prepare_launch_materialization,
@@ -108,7 +112,8 @@ pub use terminal_materialization::{
 };
 pub use transient_pane_facts::{TransientPaneFactsData, compute_transient_pane_facts_from_env};
 pub use workspace_commands::{
-    IntegrationFactsData, compute_integration_facts_from_env, run_yzx_cwd, run_yzx_reveal,
+    IntegrationFactsData, compute_integration_facts_from_env, run_yzx_cwd, run_yzx_popup,
+    run_yzx_reveal,
 };
 pub use yazi_materialization::{
     YaziManagedFileStatus, YaziMaterializationData, YaziMaterializationRequest,

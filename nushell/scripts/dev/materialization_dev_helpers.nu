@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Direct Rust-owned materialization helpers for maintainer tooling and tests.
 
-use ../utils/common.nu get_yazelix_state_dir
+use ../utils/runtime_paths.nu get_yazelix_state_dir
 use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface build_record_yzx_core_error_surface resolve_active_config_surface_via_yzx_core run_yzx_core_json_command]
 
 const YAZI_MATERIALIZATION_COMMAND = "yazi-materialization.generate"

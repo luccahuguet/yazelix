@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 
-use ../utils/common.nu [get_yazelix_runtime_dir resolve_yazelix_nu_bin]
+use ../utils/runtime_paths.nu [get_yazelix_runtime_dir]
+use ../utils/runtime_commands.nu [resolve_yazelix_nu_bin]
 use ../utils/yzx_core_bridge.nu compute_runtime_env_via_yzx_core
 
 const FLOATING_WRAPPER_ENV_KEYS = [

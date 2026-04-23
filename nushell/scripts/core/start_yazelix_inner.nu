@@ -1,9 +1,10 @@
 #!/usr/bin/env nu
 # Interactive launch sequence for the active Yazelix runtime
 
-use ../utils/constants.nu [get_zellij_config_paths YAZELIX_LOGS_DIR]
+use ../utils/runtime_paths.nu [get_yazelix_state_dir require_yazelix_runtime_dir]
+use ../utils/zellij_paths.nu [get_zellij_config_paths]
 use ../utils/ascii_art.nu get_yazelix_colors
-use ../utils/common.nu [require_yazelix_runtime_dir resolve_zellij_default_shell]
+use ../utils/runtime_commands.nu [resolve_zellij_default_shell]
 use ../utils/failure_classes.nu [format_failure_classification]
 use ../utils/startup_facts.nu [load_startup_facts]
 use ../utils/startup_profile.nu [profile_startup_step]
@@ -68,7 +69,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
         or ($env.YAZELIX_STARTUP_PROFILE_SKIP_WELCOME? == "true")
     )
 
-    let log_dir = ($YAZELIX_LOGS_DIR | str replace "~" $env.HOME)
+    let log_dir = (get_yazelix_state_dir | path join "logs")
     mkdir $log_dir
     let colors = get_yazelix_colors
     let welcome_facts = {

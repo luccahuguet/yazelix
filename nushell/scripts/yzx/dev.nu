@@ -1,10 +1,9 @@
 #!/usr/bin/env nu
 # Development helper commands for maintainers
 
-use ../utils/common.nu [
+use ../utils/runtime_paths.nu [
     get_yazelix_state_dir
     get_yazelix_runtime_dir
-    resolve_yazelix_nu_bin
 ]
 use ../maintainer/repo_checkout.nu [require_yazelix_repo_root]
 use ../maintainer/issue_sync.nu run_dev_issue_sync
@@ -117,27 +116,8 @@ def print_startup_profile_summary [summary: record] {
     print (render_startup_profile_summary $summary)
 }
 
-def build_desktop_profile_command [desktop_module: string] {
-    let module_literal = ($desktop_module | to nuon)
-    $"use ($module_literal) *; yzx desktop launch"
-}
-
-def build_launch_profile_command [
-    launch_module: string
-    --terminal(-t): string = ""
-    --verbose
-] {
-    let module_literal = ($launch_module | to nuon)
-    mut command = $"use ($module_literal) *; yzx launch"
-    if ($terminal | is-not-empty) {
-        let terminal_literal = ($terminal | to nuon)
-        $command = $"($command) --terminal ($terminal_literal)"
-    }
-    if $verbose {
-        $command = $"($command) --verbose"
-    }
-
-    $command
+def get_profile_cli_path [source_root: string] {
+    $source_root | path join "shells" "posix" "yzx_cli.sh"
 }
 
 def wait_for_profile_handoff [profile_run: record, scenario_label: string] {
@@ -163,8 +143,7 @@ def run_dev_profile_harness [
 ] {
     let clear_cache_enabled = $clear_cache
     let source_info = (resolve_profile_source_root)
-    let nu_bin = (resolve_yazelix_nu_bin)
-    let start_script = ($source_info.root | path join "nushell" "scripts" "core" "start_yazelix.nu")
+    let yzx_cli = (get_profile_cli_path $source_info.root)
     let profile_run = (create_startup_profile_run $scenario (build_profile_metadata $scenario $clear_cache_enabled $source_info))
 
     if $clear_cache_enabled {
@@ -179,7 +158,7 @@ def run_dev_profile_harness [
         | upsert YAZELIX_SHELLHOOK_SKIP_WELCOME "true"
     )
     let result = (with-env $profile_env {
-        do { ^$nu_bin $start_script ...$startup_args } | complete
+        do { ^sh $yzx_cli enter ...$startup_args } | complete
     })
 
     if $result.exit_code != 0 {
@@ -187,7 +166,7 @@ def run_dev_profile_harness [
             msg: "Startup profiling failed"
             label: {
                 text: ($result.stderr | default $result.stdout | default "profiled startup exited unsuccessfully")
-                span: (metadata $start_script).span
+                span: (metadata $yzx_cli).span
             }
         }
     }
@@ -285,8 +264,7 @@ def run_desktop_profile_command [] {
 
     print "🚀 Profiling desktop launch startup..."
     let source_info = (resolve_profile_source_root)
-    let nu_bin = (resolve_yazelix_nu_bin)
-    let desktop_module = ($source_info.root | path join "nushell" "scripts" "yzx" "desktop.nu")
+    let yzx_cli = (get_profile_cli_path $source_info.root)
     let profile_run = (create_startup_profile_run "desktop_launch" (build_profile_metadata "desktop_launch" false $source_info))
 
     let profile_env = (
@@ -297,7 +275,7 @@ def run_desktop_profile_command [] {
         | upsert YAZELIX_SHELLHOOK_SKIP_WELCOME "true"
     )
     let result = (with-env $profile_env {
-        do { ^$nu_bin -c (build_desktop_profile_command $desktop_module) } | complete
+        do { ^sh $yzx_cli desktop launch } | complete
     })
 
     if $result.exit_code != 0 {
@@ -328,8 +306,7 @@ def run_launch_profile_command [
 
     print "🚀 Profiling managed new-window launch..."
     let source_info = (resolve_profile_source_root)
-    let nu_bin = (resolve_yazelix_nu_bin)
-    let launch_module = ($source_info.root | path join "nushell" "scripts" "yzx" "launch.nu")
+    let yzx_cli = (get_profile_cli_path $source_info.root)
     let profile_run = (create_startup_profile_run "managed_launch" (build_profile_metadata "managed_launch" ($clear_cache | default false) $source_info))
 
     if $clear_cache {
@@ -343,10 +320,17 @@ def run_launch_profile_command [
         | upsert YAZELIX_STARTUP_PROFILE_EXIT_BEFORE_ZELLIJ "true"
         | upsert YAZELIX_SHELLHOOK_SKIP_WELCOME "true"
     )
-    let launch_command = (build_launch_profile_command $launch_module --terminal=$terminal --verbose=$verbose)
+    mut launch_args = [$yzx_cli, "launch"]
+    if ($terminal | is-not-empty) {
+        $launch_args = ($launch_args | append "--terminal" | append $terminal)
+    }
+    if $verbose {
+        $launch_args = ($launch_args | append "--verbose")
+    }
+    let resolved_launch_args = $launch_args
 
     let result = (with-env $profile_env {
-        do { ^$nu_bin -c $launch_command } | complete
+        do { ^sh ...$resolved_launch_args } | complete
     })
 
     if $result.exit_code != 0 {

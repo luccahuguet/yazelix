@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-use common.nu [get_yazelix_runtime_dir]
+use runtime_paths.nu [get_yazelix_runtime_dir]
 use yzx_core_bridge.nu [
     build_default_yzx_core_error_surface
     run_yzx_core_json_command

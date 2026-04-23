@@ -1,5 +1,5 @@
 #!/usr/bin/env nu
-use ../utils/common.nu [
+use ../utils/runtime_paths.nu [
     get_managed_helix_user_config_path
     get_native_helix_config_path
     get_xdg_config_home

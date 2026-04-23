@@ -5,16 +5,12 @@ export def get_transient_pane_contract [kind: string] {
         "popup" => {
             kind: "popup"
             pane_title: "yzx_popup"
-            wrapper_marker: "yzx_popup_program.nu"
-            wrapper_relative_path: "nushell/scripts/zellij_wrappers/yzx_popup_program.nu"
             mode_env_key: "YAZELIX_POPUP_PANE"
             mode_env_value: "true"
         }
         "menu" => {
             kind: "menu"
             pane_title: "yzx_menu"
-            wrapper_marker: "yzx_menu_popup.nu"
-            wrapper_relative_path: "nushell/scripts/zellij_wrappers/yzx_menu_popup.nu"
             mode_env_key: "YAZELIX_MENU_POPUP"
             mode_env_value: "true"
         }

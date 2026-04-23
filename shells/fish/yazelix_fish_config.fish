@@ -20,7 +20,7 @@ else
 end
 
 # Yazelix aliases
-alias yazelix="nu $YAZELIX_RUNTIME_DIR/nushell/scripts/core/launch_yazelix.nu"
+alias yazelix="sh $YAZELIX_RUNTIME_DIR/shells/posix/yzx_cli.sh launch"
 alias lg='lazygit'
 
 # Note: yzx command is defined in ~/.config/fish/config.fish (via v3 hooks) and is always available

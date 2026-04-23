@@ -82,7 +82,7 @@ def make_initializer_result [
 
 def main [yazelix_dir: string, shells_to_configure_str: string] {
     # Import constants for XDG paths
-use ../utils/constants.nu [get_shell_initializer_dirs]
+use ../utils/shell_initializer_paths.nu [get_shell_initializer_dirs]
 
     if not ($yazelix_dir | path exists) {
         error make {msg: $"Yazelix directory does not exist: ($yazelix_dir)"}

@@ -3,7 +3,8 @@
 # Handles ASCII art display and welcome message generation
 
 use ../utils/ascii_art.nu *
-use ../utils/constants.nu [DEFAULT_TERMINAL YAZELIX_VERSION]
+use ../utils/runtime_defaults.nu [DEFAULT_TERMINAL]
+use ../utils/constants.nu [YAZELIX_VERSION]
 use ../utils/keypress_polling.nu poll_for_keypress_status
 use ../utils/upgrade_summary.nu get_upgrade_note_entry
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Canonical config-contract loader helpers.
 
-use ./common.nu [get_yazelix_runtime_dir]
+use ./runtime_paths.nu [get_yazelix_runtime_dir]
 
 export const MAIN_CONFIG_CONTRACT_RELATIVE_PATH = "config_metadata/main_config_contract.toml"
 

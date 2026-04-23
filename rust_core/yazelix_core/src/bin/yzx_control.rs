@@ -15,10 +15,15 @@ use yazelix_core::control_plane::{
 };
 use yazelix_core::run_yzx_config;
 use yazelix_core::run_yzx_cwd;
+use yazelix_core::run_yzx_desktop;
 use yazelix_core::run_yzx_doctor;
+use yazelix_core::run_yzx_enter;
 use yazelix_core::run_yzx_home_manager;
 use yazelix_core::run_yzx_keys;
+use yazelix_core::run_yzx_launch;
+use yazelix_core::run_yzx_popup;
 use yazelix_core::run_yzx_reveal;
+use yazelix_core::run_yzx_restart;
 use yazelix_core::run_yzx_sponsor;
 use yazelix_core::run_yzx_why;
 use yazelix_core::update_commands::run_yzx_update;
@@ -29,11 +34,16 @@ fn usage() -> ! {
     eprintln!("       yzx_control config [--path]");
     eprintln!("       yzx_control config reset [--yes] [--no-backup]");
     eprintln!("       yzx_control cwd [target]");
+    eprintln!("       yzx_control desktop <install|launch|uninstall> [args...]");
     eprintln!("       yzx_control doctor [--verbose] [--fix] [--json]");
+    eprintln!("       yzx_control enter [--path <dir> | --home] [--verbose]");
     eprintln!("       yzx_control status [--versions] [--json]");
+    eprintln!("       yzx_control launch [--path <dir> | --home] [--terminal <name>] [--verbose]");
     eprintln!("       yzx_control home_manager [prepare] [args...]");
     eprintln!("       yzx_control keys [yzx|yazi|hx|helix|nu|nushell]");
+    eprintln!("       yzx_control popup [program...]");
     eprintln!("       yzx_control reveal <path>");
+    eprintln!("       yzx_control restart");
     eprintln!("       yzx_control why");
     eprintln!("       yzx_control sponsor");
     eprintln!("       yzx_control update [subcommand] [args...]");
@@ -456,11 +466,16 @@ fn main() {
         }
         "config" => run_yzx_config(&argv),
         "cwd" => run_yzx_cwd(&argv),
+        "desktop" => run_yzx_desktop(&argv),
         "doctor" => run_yzx_doctor(&argv),
+        "enter" => run_yzx_enter(&argv),
         "status" => run_status(&argv),
+        "launch" => run_yzx_launch(&argv),
         "home_manager" => run_yzx_home_manager(&argv),
         "keys" => run_yzx_keys(&argv),
+        "popup" => run_yzx_popup(&argv),
         "reveal" => run_yzx_reveal(&argv),
+        "restart" => run_yzx_restart(&argv),
         "why" => run_yzx_why(&argv),
         "sponsor" => run_yzx_sponsor(&argv),
         "update" => run_yzx_update(&argv),

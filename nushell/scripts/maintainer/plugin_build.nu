@@ -2,7 +2,7 @@
 
 use ../dev/materialization_dev_helpers.nu generate_merged_zellij_config
 use repo_checkout.nu require_yazelix_repo_root
-use ../utils/common.nu get_yazelix_state_dir
+use ../utils/runtime_paths.nu get_yazelix_state_dir
 
 def get_pane_orchestrator_paths [] {
     let yazelix_dir = require_yazelix_repo_root

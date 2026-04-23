@@ -3,14 +3,12 @@
 
 use config_report_rendering.nu render_startup_config_error
 use failure_classes.nu [format_failure_classification]
-use common.nu [require_yazelix_runtime_dir]
+use runtime_paths.nu [require_yazelix_runtime_dir]
 
 const YZX_CORE_HELPER_RELATIVE_PATH = ["libexec" "yzx_core"]
 const CONFIG_SURFACE_RESOLVE_COMMAND = "config-surface.resolve"
 const CONFIG_STATE_COMPUTE_COMMAND = "config-state.compute"
-const CONFIG_STATE_RECORD_COMMAND = "config-state.record"
 const RUNTIME_ENV_COMPUTE_COMMAND = "runtime-env.compute"
-const LAUNCH_MATERIALIZATION_PREPARE_COMMAND = "launch-materialization.prepare"
 
 def get_runtime_yzx_core_helper_path [runtime_dir: string] {
     $YZX_CORE_HELPER_RELATIVE_PATH | prepend $runtime_dir | path join
@@ -229,20 +227,6 @@ export def run_yzx_core_json_command [
     $envelope | get data
 }
 
-export def run_yzx_core_request_json_command [
-    runtime_dir: string
-    error_surface: record
-    command: string
-    request: any
-    invalid_json_message: string
-] {
-    run_yzx_core_json_command $runtime_dir $error_surface [
-        $command
-        "--request-json"
-        ($request | to json -r)
-    ] $invalid_json_message
-}
-
 def resolve_bridge_runtime_dir [runtime_dir?: string] {
     if $runtime_dir == null {
         require_yazelix_runtime_dir
@@ -316,56 +300,4 @@ export def compute_runtime_env_via_yzx_core [config?: record, runtime_dir?: stri
         $error_surface | default (build_default_yzx_core_error_surface)
     ) $resolved_helper_args "Yazelix Rust runtime-env helper returned invalid JSON."
     | get runtime_env
-}
-
-export def prepare_launch_materialization_via_yzx_core [
-    selected_terminals?: list<string>
-    runtime_dir?: string
-    config_file?: string
-    --desktop-fast-path
-] {
-    let resolved_selected_terminals = ($selected_terminals | default [])
-    mut helper_args = [
-        "--selected-terminals-json"
-        ($resolved_selected_terminals | to json -r)
-    ]
-    if $desktop_fast_path {
-        $helper_args = ($helper_args | append "--desktop-fast-path")
-    }
-
-    run_yzx_core_from_env_json_command $LAUNCH_MATERIALIZATION_PREPARE_COMMAND $helper_args "Yazelix Rust launch-materialization helper returned invalid JSON." $runtime_dir $config_file
-}
-
-export def record_materialized_state_via_yzx_core [state: record, runtime_dir?: string] {
-    let resolved_runtime_dir = if $runtime_dir == null {
-        require_yazelix_runtime_dir
-    } else {
-        $runtime_dir | path expand
-    }
-    let config_file = ($state.config_file? | default "")
-
-    run_yzx_core_command $resolved_runtime_dir {display_config_path: $config_file} [
-        $CONFIG_STATE_RECORD_COMMAND
-        "--from-env"
-        "--config-file"
-        $config_file
-        "--config-hash"
-        ($state.config_hash? | default "")
-        "--runtime-hash"
-        ($state.runtime_hash? | default "")
-    ] | ignore
-}
-
-export def run_yzx_core_command [
-    runtime_dir: string
-    error_surface: record
-    helper_args
-] {
-    let result = (execute_yzx_core_command $runtime_dir $helper_args)
-
-    if $result.exit_code != 0 {
-        error make {msg: (render_yzx_core_error $error_surface $result.stderr)}
-    }
-
-    $result
 }

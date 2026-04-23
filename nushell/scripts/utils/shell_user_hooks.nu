@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-use common.nu [get_yazelix_user_config_dir get_yazelix_state_dir]
+use runtime_paths.nu [get_yazelix_user_config_dir get_yazelix_state_dir]
 use atomic_writes.nu write_text_atomic
 
 export const USER_SHELL_HOOK_FILENAMES = {

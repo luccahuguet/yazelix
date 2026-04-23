@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # yzx edit - Open managed Yazelix config surfaces in the configured editor
 
-use ../utils/common.nu [get_managed_helix_user_config_path get_yazelix_user_config_dir]
+use ../utils/runtime_paths.nu [get_managed_helix_user_config_path get_yazelix_user_config_dir]
 use ../utils/editor_launch_context.nu [resolve_editor_launch_context]
 use ../utils/yzx_core_bridge.nu resolve_active_config_surface_via_yzx_core
 

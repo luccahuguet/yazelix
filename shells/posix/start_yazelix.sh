@@ -12,7 +12,6 @@ for nix_profile in "$HOME/.nix-profile/etc/profile.d/nix.sh" "/nix/var/nix/profi
 done
 
 RUNTIME_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
-startup_script="$RUNTIME_DIR/nushell/scripts/core/start_yazelix.nu"
 runtime_env_script="$RUNTIME_DIR/shells/posix/runtime_env.sh"
 
 if [ ! -f "$runtime_env_script" ]; then
@@ -24,12 +23,27 @@ export YAZELIX_BOOTSTRAP_RUNTIME_DIR="$RUNTIME_DIR"
 . "$runtime_env_script" || exit 1
 unset YAZELIX_BOOTSTRAP_RUNTIME_DIR
 
-if [ ! -f "$startup_script" ]; then
-  echo "Error: Missing Yazelix startup script: $startup_script" >&2
+yzx_control_bin="${YAZELIX_YZX_CONTROL_BIN:-$RUNTIME_DIR/libexec/yzx_control}"
+if [ ! -x "$yzx_control_bin" ]; then
+  release_candidate="$RUNTIME_DIR/rust_core/target/release/yzx_control"
+  debug_candidate="$RUNTIME_DIR/rust_core/target/debug/yzx_control"
+  if [ -x "$release_candidate" ] && [ -x "$debug_candidate" ]; then
+    if [ "$debug_candidate" -nt "$release_candidate" ]; then
+      yzx_control_bin="$debug_candidate"
+    else
+      yzx_control_bin="$release_candidate"
+    fi
+  elif [ -x "$release_candidate" ]; then
+    yzx_control_bin="$release_candidate"
+  elif [ -x "$debug_candidate" ]; then
+    yzx_control_bin="$debug_candidate"
+  fi
+fi
+
+if [ ! -x "$yzx_control_bin" ]; then
+  echo "Error: Missing Yazelix Rust control helper: $yzx_control_bin" >&2
   echo "Your runtime looks incomplete. Reinstall/regenerate Yazelix and try again." >&2
-  echo "Failure class: generated-state problem." >&2
-  echo "Recovery: Restore the missing startup script, or reinstall/regenerate Yazelix and try again." >&2
   exit 1
 fi
 
-exec "$YAZELIX_NU_BIN" "$startup_script"
+exec "$yzx_control_bin" enter

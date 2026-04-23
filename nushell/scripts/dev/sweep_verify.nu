@@ -39,7 +39,7 @@ def check_tool [tool_name: string, version_flag: string] {
 
 # Detect which terminal emulator we're running in
 def detect_terminal [] {
-    # Read from YAZELIX_TERMINAL env var set by launch_yazelix.nu
+    # Read from YAZELIX_TERMINAL env var set by the Rust-owned launch path
     let term = ($env.YAZELIX_TERMINAL? | default "unknown")
     print $"✓ Terminal: ($term)"
     $term

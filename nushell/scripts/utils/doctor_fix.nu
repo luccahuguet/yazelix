@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-use common.nu [
+use runtime_paths.nu [
     get_yazelix_config_dir
     get_yazelix_runtime_dir
     get_yazelix_state_dir

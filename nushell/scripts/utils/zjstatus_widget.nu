@@ -1,8 +1,8 @@
 #!/usr/bin/env nu
 
-use ./common.nu get_yazelix_runtime_dir
+use ./runtime_paths.nu get_yazelix_runtime_dir
 use ./config_paths.nu get_main_user_config_path
-use ./constants.nu DEFAULT_SHELL
+use ./runtime_defaults.nu DEFAULT_SHELL
 
 def detect_terminal_name [] {
     if ($env.YAZELIX_TERMINAL? | is-not-empty) {

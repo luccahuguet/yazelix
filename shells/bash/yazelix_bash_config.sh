@@ -32,7 +32,7 @@ fi
 fi
 
 # Yazelix Aliases for Bash
-alias yazelix="nu $YAZELIX_RUNTIME_DIR/nushell/scripts/core/launch_yazelix.nu"
+alias yazelix="sh $YAZELIX_RUNTIME_DIR/shells/posix/yzx_cli.sh launch"
 alias lg='lazygit'
 
 # Note: yzx command is defined in ~/.bashrc (via v3 hooks) and is always available

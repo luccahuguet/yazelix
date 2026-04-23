@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Dev-only helpers for probing the Rust-owned active-config and normalize path.
 
-use ../utils/common.nu [require_yazelix_runtime_dir]
+use ../utils/runtime_paths.nu [require_yazelix_runtime_dir]
 use ../utils/yzx_core_bridge.nu [
     resolve_active_config_surface_via_yzx_core
     run_yzx_core_json_command

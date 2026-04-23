@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Non-owning managed config path helpers.
 
-use common.nu get_yazelix_user_config_dir
+use runtime_paths.nu get_yazelix_user_config_dir
 
 export const MAIN_CONFIG_FILENAME = "yazelix.toml"
 
