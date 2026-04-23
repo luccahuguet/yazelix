@@ -7,7 +7,7 @@ use ../utils/startup_profile.nu [profile_startup_step]
 use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
 use ../setup/welcome.nu [show_welcome build_welcome_message get_yazelix_colors]
 
-const CONSTANTS_DATA_PATH = ((path self | path dirname) | path join ".." ".." "utils" "constants_data.json")
+const CONSTANTS_DATA_PATH = ((path self | path dirname) | path join ".." "utils" "constants_data.json")
 
 def get_zellij_config_paths [] {
     (open $CONSTANTS_DATA_PATH).zellij_config_paths

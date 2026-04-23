@@ -14,7 +14,7 @@ struct ShellConfig {
     name: &'static str,
     dir: PathBuf,
     ext: &'static str,
-    tool_override: Option<(&'static str, &'static str)>,
+    tool_overrides: &'static [(&'static str, &'static str)],
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -46,25 +46,25 @@ fn shell_initializer_dirs(home: &Path) -> Vec<ShellConfig> {
             name: "nu",
             dir: base.join("nushell"),
             ext: "nu",
-            tool_override: Some(("carapace", "nushell")),
+            tool_overrides: &[("carapace", "nushell"), ("zoxide", "nushell")],
         },
         ShellConfig {
             name: "bash",
             dir: base.join("bash"),
             ext: "sh",
-            tool_override: None,
+            tool_overrides: &[],
         },
         ShellConfig {
             name: "fish",
             dir: base.join("fish"),
             ext: "fish",
-            tool_override: None,
+            tool_overrides: &[],
         },
         ShellConfig {
             name: "zsh",
             dir: base.join("zsh"),
             ext: "zsh",
-            tool_override: None,
+            tool_overrides: &[],
         },
     ]
 }
@@ -253,9 +253,10 @@ fn generate_initializers(
         for tool in &tools {
             let output_file = shell.dir.join(format!("{}_init.{}", tool.name, shell.ext));
             let effective_shell = shell
-                .tool_override
-                .filter(|(t, _)| *t == tool.name)
-                .map(|(_, s)| s)
+                .tool_overrides
+                .iter()
+                .find(|(t, _)| *t == tool.name)
+                .map(|(_, s)| *s)
                 .or(tool.shell_override)
                 .unwrap_or(shell.name);
 
@@ -336,11 +337,10 @@ fn generate_initializers(
         // Add warnings for required issues
         for r in &shell_results {
             if matches!(r.status.as_str(), "required-missing" | "required-failed") {
-                aggregate.push_str(&format!(
-                    "# WARNING: required initializer not generated for {}: {}\n",
-                    r.tool,
-                    r.reason.as_deref().or(r.error.as_deref()).unwrap_or("unknown failure")
-                ));
+                let message = r.reason.as_deref().or(r.error.as_deref()).unwrap_or("unknown failure");
+                for line in message.lines() {
+                    aggregate.push_str(&format!("# WARNING: required initializer not generated for {}: {}\n", r.tool, line));
+                }
             }
         }
 

@@ -1,6 +1,6 @@
 [contract]
-current_total_loc_max = 6077
-current_total_file_count_max = 33
+current_total_loc_max = 6116
+current_total_file_count_max = 34
 hard_target_loc = 4200
 
 [[families]]
@@ -39,15 +39,16 @@ allowed_paths = [
 id = "integration_and_wrappers"
 status = "transitional_exception"
 owner_bead = "yazelix-lj7z.7"
-max_loc = 1208
+max_loc = 1247
 target_loc = 300
-max_files = 6
+max_files = 7
 allowed_paths = [
   "nushell/scripts/integrations/managed_editor.nu",
   "nushell/scripts/integrations/open_dir_in_pane.nu",
   "nushell/scripts/integrations/yazi.nu",
   "nushell/scripts/integrations/zellij.nu",
   "nushell/scripts/integrations/zellij_runtime_wrappers.nu",
+  "nushell/scripts/integrations/zoxide_open_in_editor.nu",
   "nushell/scripts/zellij_wrappers/launch_sidebar_yazi.nu",
 ]
 
