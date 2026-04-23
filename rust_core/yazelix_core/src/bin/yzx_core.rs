@@ -5,7 +5,7 @@ use yazelix_core::active_config_surface::resolve_active_config_paths;
 use yazelix_core::control_plane::{
     config_dir_from_env, config_override_from_env, config_state_compute_request_from_env,
     config_state_record_request_from_env, ghostty_materialization_request_from_env,
-    runtime_dir_from_env, runtime_env_request_from_env,
+    read_yazelix_version_from_runtime, runtime_dir_from_env, runtime_env_request_from_env, state_dir_from_env,
     runtime_materialization_plan_request_from_env, terminal_materialization_request_from_env,
 };
 use yazelix_core::{
@@ -20,6 +20,7 @@ use yazelix_core::{
     ZellijRenderPlanRequest, compute_config_state, compute_integration_facts_from_env,
     compute_runtime_env, compute_startup_facts_from_env, compute_status_report,
     compute_transient_pane_facts_from_env, compute_yazi_render_plan, compute_zellij_render_plan,
+    current_release_headline,
     error_envelope, evaluate_doctor_config_report, evaluate_doctor_runtime_report,
     evaluate_helix_doctor_report, evaluate_install_ownership_report, evaluate_runtime_contract,
     evaluate_startup_launch_preflight, generate_ghostty_materialization,
@@ -27,7 +28,8 @@ use yazelix_core::{
     generate_yazi_materialization, generate_zellij_materialization,
     install_ownership_request_from_env, install_ownership_request_from_env_with_runtime_dir,
     launch_materialization_request_from_env, materialize_runtime_state, normalize_config,
-    plan_runtime_materialization, prepare_launch_materialization, record_config_state,
+    maybe_show_first_run_upgrade_summary, plan_runtime_materialization,
+    prepare_launch_materialization, record_config_state,
     render_yzx_help, repair_runtime_materialization, success_envelope, sync_yzx_extern_bridge,
     yzx_command_metadata, yzx_command_metadata_data,
 };
@@ -62,6 +64,8 @@ const YZX_COMMAND_METADATA_LIST_COMMAND: &str = "yzx-command-metadata.list";
 const YZX_COMMAND_METADATA_EXTERNS_COMMAND: &str = "yzx-command-metadata.externs";
 const YZX_COMMAND_METADATA_SYNC_EXTERNS_COMMAND: &str = "yzx-command-metadata.sync-externs";
 const YZX_COMMAND_METADATA_HELP_COMMAND: &str = "yzx-command-metadata.help";
+const UPGRADE_SUMMARY_HEADLINE_COMMAND: &str = "upgrade-summary.headline";
+const UPGRADE_SUMMARY_FIRST_RUN_COMMAND: &str = "upgrade-summary.first-run";
 const UNKNOWN_COMMAND: &str = "unknown";
 
 struct CommandError {
@@ -266,11 +270,44 @@ fn run() -> Result<(), Box<CommandError>> {
             run_yzx_command_metadata_help(parser)
                 .map_err(|error| CommandError::new(command_for_error, error))
         }
+        UPGRADE_SUMMARY_HEADLINE_COMMAND => {
+            let command_for_error = command.clone();
+            run_upgrade_summary_headline(parser)
+                .map_err(|error| CommandError::new(command_for_error, error))
+        }
+        UPGRADE_SUMMARY_FIRST_RUN_COMMAND => {
+            let command_for_error = command.clone();
+            run_upgrade_summary_first_run(parser)
+                .map_err(|error| CommandError::new(command_for_error, error))
+        }
         _ => Err(CommandError::new(
             command.clone(),
             CoreError::usage(format!("Unsupported helper command: {command}")),
         )),
     }
+}
+
+fn run_upgrade_summary_headline(parser: lexopt::Parser) -> Result<(), CoreError> {
+    ensure_no_args(parser)?;
+    let runtime_dir = runtime_dir_from_env()?;
+    let version = read_yazelix_version_from_runtime(&runtime_dir)?;
+    let headline = current_release_headline(&runtime_dir, &version)?;
+    write_success_envelope(
+        UPGRADE_SUMMARY_HEADLINE_COMMAND,
+        serde_json::json!({
+            "version": version,
+            "headline": headline,
+        }),
+    )
+}
+
+fn run_upgrade_summary_first_run(parser: lexopt::Parser) -> Result<(), CoreError> {
+    ensure_no_args(parser)?;
+    let runtime_dir = runtime_dir_from_env()?;
+    let state_dir = state_dir_from_env()?;
+    let version = read_yazelix_version_from_runtime(&runtime_dir)?;
+    let data = maybe_show_first_run_upgrade_summary(&runtime_dir, &state_dir, &version)?;
+    write_success_envelope(UPGRADE_SUMMARY_FIRST_RUN_COMMAND, data)
 }
 
 fn run_yzx_command_metadata_list(parser: lexopt::Parser) -> Result<(), CoreError> {

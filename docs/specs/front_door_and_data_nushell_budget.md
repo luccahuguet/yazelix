@@ -2,36 +2,38 @@
 
 ## Summary
 
-This document defines the delete-first budget for the remaining front-door UX
-and data-heavy Nushell surfaces.
+This document is the live delete-first budget for the surviving front-door Nu
+surface after `yazelix-lj7z.8`.
 
-The retained value here is the actual interactive shell presentation, not large
-data tables, random pools, duplicated style policy, or copied prose assembly.
-Those oversized deterministic owners should move to assets, Rust-owned
-metadata, or much smaller retained render glue.
+The oversized data-heavy Nu owners are gone:
+
+- `utils/ascii_art.nu`
+- `utils/upgrade_summary.nu`
+- `yzx/screen.nu`
+- `yzx/tutor.nu`
+- `yzx/whats_new.nu`
+
+Rust now owns the retained renderer, Game of Life logic, upgrade-summary copy,
+and those three public command bodies. The remaining Nu front-door floor is
+`841` LOC across `5` files.
 
 ## Scope
 
 In scope:
 
 - `setup/welcome.nu`
-- `utils/ascii_art.nu`
-- `utils/upgrade_summary.nu`
+- `utils/front_door_runtime.nu`
 - `yzx/menu.nu`
-- `yzx/screen.nu`
-- `yzx/tutor.nu`
-- `yzx/whats_new.nu`
-- `yzx/popup.nu`
 - `yzx/edit.nu`
 - `yzx/import.nu`
-- the large data-bearing subsets inside `utils/constants.nu` and
-  the surviving front-door/runtime presentation helpers
 
 Out of scope:
 
-- launch/bootstrap transport
-- maintainer/dev shells
-- deterministic validators and governed tests
+- launch/bootstrap transport outside front-door presentation
+- maintainer and sweep shells
+- the already-landed Rust front-door owners in
+  `front_door_render.rs`, `front_door_commands.rs`, and
+  `upgrade_summary.rs`
 
 ## Current Measured Surface
 
@@ -39,139 +41,62 @@ Measured on `2026-04-23`:
 
 | Surface | Current LOC | Hard target LOC | Notes |
 | --- | ---: | ---: | --- |
-| Front-door UX family | `2,281` | `950` | full front-door renderer and public shell presentation family |
-| Data-heavy subset | `1,262` | `350` | subset only; counts are not additive because these files overlap the front-door and runtime-helper families |
+| Front-door Nu floor | `841` | `500` | surviving shell presentation and process-handoff surface |
+| Large front-door data owners in Nu | `0` | `0` | static art/spec tables and upgrade-summary shaping already moved out |
 
-The data-heavy subset is:
+## Current Owner Split
 
-- `utils/ascii_art.nu`
-- `utils/constants.nu`
-- `utils/upgrade_summary.nu`
+### Rust-owned now
 
-## `yazelix-lj7z.8` Front-Door UX Budget
+- welcome and `yzx screen` style resolution
+- the retained random Game of Life pool
+- Game of Life evolution and width-aware frame rendering
+- `yzx screen`, `yzx tutor`, and `yzx whats_new`
+- upgrade-summary loading, rendering, and last-seen state
 
-Retain only the honest shell presentation seams:
+### Nu-owned now
 
-- keypress waiting and width-aware playback
-- `fzf` interaction in `yzx/menu.nu`
-- minimal screen-entry and popup-entry transport
-- the smallest copy/render logic that is still inseparable from the live shell
-  UX
+- startup-shell welcome sequencing and prompt gating in `setup/welcome.nu`
+- tiny runtime handoff helpers in `utils/front_door_runtime.nu`
+- `fzf`/popup/editor/process-heavy surfaces in `yzx/menu.nu`,
+  `yzx/edit.nu`, and `yzx/import.nu`
 
-Delete or move:
+## Remaining Deletion Budget
 
-- stale or weakly-defended styles
-- random-pool policy outside the canonical style contract
-- duplicated welcome-message assembly
-- parallel renderer stacks
-- large static frame data or tables
+`yazelix-lj7z.8` is complete, but the family is not exempt from further cuts.
+The next valid front-door deletions must focus on these seams:
 
-Candidate surviving owners:
+1. `setup/welcome.nu`
+   - keep only startup-shell sequencing, skip/logging behavior, and the final
+     prompt-to-launch boundary
+   - do not let it regain renderer, data, or summary ownership
+2. `utils/front_door_runtime.nu`
+   - keep only the smallest runtime bridge needed by welcome/startup callers
+   - fold it away if a direct Rust command call deletes the file cleanly
+3. `yzx/menu.nu`, `yzx/edit.nu`, `yzx/import.nu`
+   - move deterministic planning and report shaping to Rust if that deletes the
+     Nu owner end to end
+   - keep Nu only where the surface is honestly `fzf`, popup, editor, or shell
+     process orchestration
 
-- smaller `setup/welcome.nu`
-- smaller `yzx/menu.nu`
-- smaller `yzx/screen.nu`
-- tiny retained presentation wrappers for `tutor`, `whats_new`, `popup`,
-  `edit`, and `import`
+## Hard Rules
 
-Stop condition:
-
-Do not build a parallel Rust renderer unless it deletes the oversized Nu owner
-end to end. Delete stale styles and data first.
-
-## Data-Heavy Subset Under `yazelix-lj7z.8` And `yazelix-lj7z.10`
-
-The data-heavy lane is a subset deletion budget inside the front-door and
-runtime-helper families.
-
-Target outcomes:
-
-- `utils/ascii_art.nu`
-  - delete stale style/data branches
-  - move large frame or deterministic pattern payloads out of broad Nu owner
-    code
-- `utils/constants.nu`
-  - keep only small irreducible runtime constants
-  - move large static tables or policy maps out of Nu
-- `utils/upgrade_summary.nu`
-  - keep only small render glue if needed
-  - move static copy/data shaping out of Nu
-
-Completed cuts:
-
-- `yazelix-w6sz.3.2` removed the dead `setup/environment.nu` import of
-  `utils/config_schema.nu`
-- `yazelix-dejl.4` deleted `utils/config_schema.nu`; Rust
-  `config_normalize.rs` and `doctor_config_report.rs` own the retained schema
-  diagnostics
-- `yazelix-w6sz.4.2` removed the separate `utils/upgrade_notes.nu` series
-  lookup and kept welcome release copy on the existing `upgrade_summary.nu`
-  path
-
-Hard rule:
-
-Data tables do not get to survive in Nu just because the surrounding file still
-has some shell-owned rendering behavior.
-
-Stop condition:
-
-Do not preserve dead assets or style aliases for compatibility comfort. Keep
-only the styles and payloads backed by the live contract in
-`docs/specs/welcome_screen_style_contract.md`.
-
-## Superseded Ascii-Art Engine Stop Condition
-
-Earlier decision after `yazelix-dejl.2`:
-
-- static style tables, welcome copy, and Game of Life seed shapes should leave
-  `ascii_art.nu`
-- the remaining `ascii_art.nu` engine now has an honest Rust owner cut under
-  `yazelix-lj7z.8`, provided it deletes `ascii_art.nu` and `welcome.nu`
-  renderer ownership rather than adding a wrapper
-
-Reason:
-
-- the surviving code is now mostly width-aware frame composition, ANSI-aware
-  rendering, and live Game of Life state evolution that is consumed directly by
-  the shell-owned `setup/welcome.nu` and `yzx/screen.nu` surfaces
-- moving that code to Rust right now would not delete the shell-owned playback,
-  interruptibility, and terminal-size boundaries
-- the second-wave cut narrows the retained renderer contract first, then ports
-  frame generation, Game of Life simulation, and welcome message assembly to
-  Rust
-
-Explicit stop condition:
-
-- do not keep a broad Nu renderer after `yazelix-lj7z.8`; either Rust owns the
-  renderer end to end or the remaining Nu surface must be tiny terminal I/O
-  only
-
-Retained Nu floor for now:
-
-- direct terminal playback only if the Rust terminal dependency decision rejects
-  a Rust TTY owner
-
-Follow-up expectation:
-
-- keep deleting data and duplicated style policy first
-- only reopen a Rust engine lane if it deletes the remaining front-door Nu
-  owner instead of wrapping it
+- Do not recreate a second renderer stack in Nu
+- Do not move large static art or prose tables back into shell files
+- Do not port shell-heavy popup/editor transport into Rust unless the result
+  deletes the surviving Nu owner instead of wrapping it
+- Keep the retained style contract in
+  `docs/specs/welcome_screen_style_contract.md` authoritative
 
 ## Verification
 
 - `yzx_repo_validator validate-specs`
-- later implementation beads must keep the governed front-door contracts and
-  style validations green
+- `yzx_repo_validator validate-nushell-budget`
+- `cargo test -p yazelix_core --manifest-path rust_core/Cargo.toml`
 
 ## Traceability
 
-- Bead: `yazelix-w6sz.4.1`
-- Bead: `yazelix-w6sz.4.2`
-- Bead: `yazelix-dejl.1`
-- Bead: `yazelix-dejl.4`
 - Bead: `yazelix-lj7z.8`
-- Bead: `yazelix-lj7z.10`
 - Defended by: `yzx_repo_validator validate-specs`
-- Informed by: `docs/specs/setup_shellhook_welcome_terminal_canonicalization_audit.md`
-- Informed by: `docs/specs/welcome_screen_style_contract.md`
-- Informed by: `docs/specs/provable_nushell_floor_budget.md`
+- Defended by: `yzx_repo_validator validate-nushell-budget`
+- Defended by: `cargo test -p yazelix_core --manifest-path rust_core/Cargo.toml`

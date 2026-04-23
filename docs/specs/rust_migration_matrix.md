@@ -234,7 +234,7 @@ Landed follow-up:
   dev-only `config_normalize_test_helpers.nu` probe for helper-resolution and
   fail-fast test cases
 
-| Front-door UX and command-palette surfaces | `utils/ascii_art.nu`, `yzx/menu.nu`, `yzx/popup.nu`, `yzx/screen.nu`, `yzx/keys.nu`, `yzx/tutor.nu`, `utils/upgrade_summary.nu` | Mostly text-heavy or interactive UX | Keep Nushell unless a future port deletes an owner cleanly and improves the UX story at the same time. | Not a current Rust target |
+| Front-door UX and command-palette surfaces | `setup/welcome.nu`, `utils/front_door_runtime.nu`, `yzx/menu.nu`, `yzx/edit.nu`, `yzx/import.nu` | Mostly shell presentation, popup, editor, or interactive UX after the renderer and info commands moved | Rust already owns `yzx screen`, `yzx tutor`, `yzx whats_new`, the renderer, and upgrade-summary shaping. Keep the surviving Nu floor only while it remains the honest shell/process boundary. | Narrow follow-on target, not a broad migration bucket |
 | Distribution and host integration | `home_manager/`, `packaging/`, `shells/`, `yzx/desktop.nu` | Nix, POSIX, and UX-heavy by nature | Keep outside the current Rust migration by default, but allow targeted Rust ownership when a public family is already mostly backed by Rust-owned reports or control helpers. `yzx home_manager` has now crossed that threshold and is no longer a Nushell owner. | Partially migrated: `yzx home_manager` is Rust-owned; broader distribution and desktop paths stay outside the current Rust target |
 
 ## Full-Owner Materialization Rule

@@ -84,10 +84,10 @@ cuts are:
 | --- | --- | --- | --- | --- |
 | Default suite runs explicit high-signal Rust suite membership instead of globbing every `test_*.nu` | `docs/specs/test_suite_governance.md` | Rust `yzx_repo_maintainer run-tests` plus Rust suite inventory | `yzx dev test`; `yzx_repo_validator validate-default-test-traceability` | Rust runner |
 | Sweep and visual lanes remain explicit and separate from the default suite | `docs/specs/test_suite_governance.md` | Nu `config_sweep_runner.nu` and `dev/sweep/*.nu` | sweep lane manual/targeted checks | same, but dispatch should stay fixed and direct |
-| Version bump and release notes stay transactional and refuse dirty/invalid release states | `docs/specs/upgrade_notes_contract.md` | Nu `maintainer/version_bump.nu` | maintainer tests for bump and upgrade contracts | same |
+| Version bump and release notes stay transactional and refuse dirty/invalid release states | `docs/specs/upgrade_notes_contract.md` | Rust `repo_version_bump.rs` via `yzx_repo_maintainer version-bump` | maintainer tests for bump and upgrade contracts | Rust owner plus thin `yzx dev` handoff |
 | Update workflow refreshes runtime pins, runs canaries, and requires explicit activation mode for real updates | `docs/specs/runtime_distribution_capability_tiers.md`; maintainer tests | Nu `maintainer/update_workflow.nu` | maintainer update tests | same |
 | Plugin build/sync keeps pane-orchestrator wasm rebuild requirements visible | AGENTS Rust plugin workflow | Nu `maintainer/plugin_build.nu` | maintainer tests and manual build command | `plugin_build.nu` |
-| Contract/test/spec validators keep the ratchet cheap and deterministic | `docs/contract_driven_development.md` | Nu validators under `nushell/scripts/dev` | validator commands | same unless a Rust validator clearly deletes Nu logic |
+| Contract/test/spec validators keep the ratchet cheap and deterministic | `docs/contract_driven_development.md` | Rust `yzx_repo_validator` | validator commands | Rust owner |
 | Profiling harness records the real startup boundaries and can compare cold/warm/desktop/launch scenarios | `docs/specs/startup_profile_scenarios.md` | Nu `yzx/dev.nu` plus `startup_profile.nu` | maintainer profile tests | same |
 
 ## 4. Canonical Owner Map
@@ -98,8 +98,8 @@ cuts are:
 | Test runner selection and logging | Rust `yzx_repo_maintainer run-tests` | completed owner cut | Keep Nu only as public `yzx dev test` handoff |
 | Default suite test logic | Rust tests plus Nu shell runner | intentional | Governed tests live in Rust; Nu should not own test logic again |
 | Contract/spec/test validators | Nu validator scripts | intentional | Good Nu fit unless a Rust port deletes a whole validator |
-| Issue/GitHub sync | Nu `maintainer/issue_sync.nu` and `issue_bead_contract.nu` | external_tool_adapter | Keep; `bd` and `gh` are shell tools |
-| Version bump/update workflow | Nu maintainer modules | external_tool_adapter | Keep; Nix/git-heavy |
+| Issue/GitHub sync | Rust `repo_issue_sync.rs` via `yzx_repo_maintainer sync-issues` plus thin shell handoff | mixed | Keep Rust as the deterministic owner; Nu may retain only public argv or fixed tool execution |
+| Version bump/update workflow | Rust `repo_version_bump.rs` for bump policy plus Nu `maintainer/update_workflow.nu` for the retained update flow | mixed | Keep version policy in Rust and keep only real Nix/git orchestration in Nu |
 | Plugin wasm build/sync | Nu `plugin_build.nu` plus legacy wrapper | mixed | Keep canonical module; delete/demote thin wrapper |
 | Demo recording/font helpers | Nu dev scripts | manual | Should not be counted as product runtime contract |
 
@@ -130,8 +130,7 @@ cuts are:
 
 ### Likely Survivors
 
-- `issue_sync.nu`, `issue_bead_contract.nu`, `version_bump.nu`,
-  `update_workflow.nu`, `repo_checkout.nu`, and `plugin_build.nu`
+- `update_workflow.nu`, `plugin_build.nu`, `yzx/dev.nu`, and sweep helpers
 - Rust validators and maintainer runners that scan source files and docs cheaply
 - startup/profile harnesses that execute the real startup paths
 - sweep helpers that launch matrix cases
@@ -141,8 +140,8 @@ cuts are:
 - Deleting update/release automation
   - stop condition: these scripts are release-critical and have high-signal
     maintainer regressions
-- Deleting issue sync
-  - stop condition: GitHub/Beads contract still requires a local owner
+- Deleting issue sync policy from Rust
+  - stop condition: there is no honest reason to move deterministic GitHub/Beads reconciliation back into Nu
 - Moving sweep visual execution to Rust
   - stop condition: the hard part is external terminal/process orchestration
 

@@ -2,12 +2,14 @@
 
 ## Summary
 
-This spec defines the retained front-door style surface for the Yazelix
-welcome screen and `yzx screen`. It exists so `yazelix-7krc.2` can delete
-real renderer ownership without silently dropping styles, reviving soft
-compatibility aliases, or leaving `random` ambiguous again.
+This spec defines the retained front-door style surface for the Yazelix welcome
+screen and `yzx screen` after the Rust owner cut in `yazelix-lj7z.8`.
 
-The current retained shape is:
+The renderer, style resolution, and Game of Life engine are now Rust-owned.
+Nu keeps only the startup-shell sequencing and the tiny runtime handoff used by
+welcome/startup callers.
+
+The retained public shape is:
 
 - welcome keeps `static`, `logo`, `boids`,
   `game_of_life_gliders`, `game_of_life_oscillators`,
@@ -16,11 +18,7 @@ The current retained shape is:
 - `random` means one of the three explicit Game of Life variants, not any
   animated style
 - `logo` and `boids` remain live as explicit opt-in styles, but not part of
-  the default `random` pool
-
-This bead is planning-first. It does not shrink the renderer yet. It defines
-the retained product contract and the deletion budget that `yazelix-7krc.2`
-must satisfy before the lane counts as honest.
+  the `random` pool
 
 ## Scope
 
@@ -28,16 +26,17 @@ must satisfy before the lane counts as honest.
 - `config_metadata/main_config_contract.toml`
 - `home_manager/module.nix`
 - `docs/yzx_cli.md`
-- `nushell/scripts/utils/ascii_art.nu`
+- `rust_core/yazelix_core/src/front_door_render.rs`
+- `rust_core/yazelix_core/src/front_door_commands.rs`
+- `rust_core/yazelix_core/src/upgrade_summary.rs`
 - `nushell/scripts/setup/welcome.nu`
-- `nushell/scripts/yzx/screen.nu`
-- `nushell/scripts/dev/test_yzx_screen_commands.nu`
+- `nushell/scripts/utils/front_door_runtime.nu`
+- Rust front-door tests under `rust_core/yazelix_core`
 
 Out of scope:
 
-- terminal-launch ownership
-- startup shellhook ownership outside welcome display/gating
-- a full Rust port of the renderer
+- terminal-launch ownership outside welcome playback/gating
+- popup/menu/editor command families
 
 ## Retained Surface
 
@@ -50,170 +49,85 @@ Out of scope:
 | `game_of_life_oscillators` | yes | yes | live | retained default-family live simulation variant |
 | `game_of_life_bloom` | yes | yes | live | retained default-family live simulation variant |
 | `random` | yes | yes | live | picks one retained Game of Life variant and never `static`, `logo`, or `boids` |
-| `game_of_life` | no | no | live non-goal | deleted compatibility alias; do not revive without an explicit contract change |
+| `game_of_life` | no | no | deleted compatibility alias | do not revive without an explicit contract change |
 
 ## Contract Items
 
 #### FRONT-001
 - Type: behavior
 - Status: live
-- Owner: config metadata in `yazelix_default.toml`,
-  `config_metadata/main_config_contract.toml`, and
-  `home_manager/module.nix`, plus runtime style resolution in
-  `nushell/scripts/utils/ascii_art.nu` and `nushell/scripts/yzx/screen.nu`
+- Owner: config metadata plus Rust style resolution in
+  `front_door_render.rs` and `front_door_commands.rs`
 - Statement: The retained public style surface is exactly `static`, `logo`,
   `boids`, `game_of_life_gliders`, `game_of_life_oscillators`,
   `game_of_life_bloom`, and `random` for welcome, and the same minus `static`
   for `yzx screen`
-- Verification: validator
-  `yzx_repo_validator validate-config-surface-contract`; automated
-  `nushell/scripts/dev/test_yzx_screen_commands.nu`
-  (`test_game_of_life_seed_layouts_are_distinct`,
-  `test_screen_style_rejects_static`); validator
+- Verification: `yzx_repo_validator validate-config-surface-contract`;
+  Rust `front_door_render` and `front_door_commands` tests;
   `yzx_repo_validator validate-specs`
-- Source: `docs/yzx_cli.md`;
-  `docs/specs/setup_shellhook_welcome_terminal_canonicalization_audit.md`
-- Deletion note: `yazelix-7krc.2` may delete renderer code, but it must not
-  silently delete one of these retained styles without first changing this
-  contract
 
 #### FRONT-002
 - Type: behavior
 - Status: live
-- Owner: `nushell/scripts/utils/ascii_art.nu`
+- Owner: Rust random-pool policy in `front_door_render.rs`
 - Statement: `random` means one of the three explicit Game of Life variants:
   `game_of_life_gliders`, `game_of_life_oscillators`, or
   `game_of_life_bloom`. It is not a bucket over `logo`, `boids`, or `static`
-- Verification: automated
-  `nushell/scripts/dev/test_yzx_screen_commands.nu`
-  (`test_random_screen_style_resolves_only_to_retained_game_of_life_pool`);
+- Verification: automated Rust `front_door_render` tests;
   validator `yzx_repo_validator validate-specs`
-- Source: `docs/yzx_cli.md`; `yazelix_default.toml`
-- Deletion note: if a future contract wants a broader random pool, it must
-  change the retained surface explicitly instead of smuggling the change in as
-  renderer cleanup
 
 #### FRONT-003
 - Type: failure_mode
 - Status: live
-- Owner: `nushell/scripts/yzx/screen.nu` plus
-  `nushell/scripts/utils/ascii_art.nu`
+- Owner: Rust `yzx screen` parsing and routing in `front_door_commands.rs`
 - Statement: `yzx screen` rejects `static` and only accepts animated screen
   styles
-- Verification: automated
-  `nushell/scripts/dev/test_yzx_screen_commands.nu`
-  (`test_screen_style_rejects_static`); validator
-  `yzx_repo_validator validate-specs`
-- Source: `docs/yzx_cli.md`
+- Verification: automated Rust `front_door_render` and
+  `front_door_commands` tests; validator `yzx_repo_validator validate-specs`
 
 #### FRONT-004
 - Type: behavior
 - Status: live
-- Owner: `nushell/scripts/utils/ascii_art.nu` Game of Life state helpers plus
-  `nushell/scripts/yzx/screen.nu`
+- Owner: Rust Game of Life engine in `front_door_render.rs`
 - Statement: The retained Game of Life screen styles stay live and width-aware:
-  they render a rolling state instead of replaying a short canned logo loop,
-  and the screen cycle omits the resting logo frame
-- Verification: automated
-  `nushell/scripts/dev/test_yzx_screen_commands.nu`
-  (`test_game_of_life_screen_cycle_stays_bounded_and_omits_resting_logo`,
-  `test_game_of_life_screen_state_rolls_forward`); validator
-  `yzx_repo_validator validate-specs`
-- Source: `docs/specs/setup_shellhook_welcome_terminal_canonicalization_audit.md`
+  they render a rolling state instead of replaying a canned resting frame
+- Verification: automated Rust `front_door_render` tests;
+  validator `yzx_repo_validator validate-specs`
 
 #### FRONT-005
 - Type: boundary
 - Status: live
-- Owner: shell-local playback and waiting in
-  `nushell/scripts/setup/welcome.nu` and
-  `nushell/scripts/utils/ascii_art.nu`
-- Statement: Welcome playback remains a shell-owned terminal boundary that is
-  width-aware, interruptible, and explicit about skip versus launch gating even
-  if deterministic frame generation later moves into a smaller owner
-- Verification: automated
-  `nushell/scripts/dev/test_yzx_screen_commands.nu`
-  (`test_welcome_message_uses_explicit_startup_facts`); manual startup review
-  of current-shell and `yzx enter` flows for terminal keypress/skip behavior
-- Source: `docs/specs/setup_shellhook_welcome_terminal_canonicalization_audit.md`
-- Notes: message fact assembly is directly defended; welcome skip/logging and
-  terminal keypress behavior are still manual unless a future bug or owner cut
-  justifies more automation
+- Owner: Nu startup-shell gating in `setup/welcome.nu` plus the tiny runtime
+  handoff in `front_door_runtime.nu`
+- Statement: Welcome playback remains explicit about skip versus launch gating,
+  and the startup shell still owns the final prompt/logging boundary even
+  though rendering moved to Rust
+- Verification: automated Rust `yzx_control_front_door.rs`;
+  manual startup review for current-shell and `yzx enter` flows
 
-## Deletion Budget For `yazelix-7krc.2`
+## Remaining Nu Floor
 
-`yazelix-7krc.2` counts as success only if the following owner seams disappear
-or collapse materially.
+The front-door cut is already landed. The only surviving Nu boundary here is:
 
-### `setup/welcome.nu` seams that must disappear
+- startup-shell sequencing and skip/logging behavior
+- the handoff from startup shell code into the Rust renderer
 
-- the `parse_yazelix_config` dependency
-- `get_session_info`
-- `get_terminal_info`
-- config rediscovery inside `build_welcome_message`
+The renderer/data owner does not get to come back. Any future front-door work
+should either:
 
-Budget judgment:
-
-- `build_welcome_message` may survive only if it consumes explicit startup
-  facts passed by the caller instead of reparsing config
-- `poll_for_welcome_keypress`, `show_welcome_art`, and `show_welcome` are the
-  honest shell-bound seams and may survive
-
-### `ascii_art.nu` seams that must disappear or collapse
-
-- independent style-policy ownership spread across:
-  - `WELCOME_STYLE_VALUES`
-  - `ANIMATED_WELCOME_STYLE_VALUES`
-  - `SCREEN_STYLE_VALUES`
-  - `get_welcome_style_random_pool`
-  - `resolve_welcome_style`
-  - `resolve_screen_style`
-- the stale public `get_animated_ascii_art` export
-
-Budget judgment:
-
-- those style-policy symbols may survive only as views over one canonical style
-  table or equivalent single owner
-- `yazelix-7krc.2` must not leave welcome and screen with separate policy
-  owners after the cut
-- live renderer helpers for retained styles may survive, but only after the
-  style-policy owner cluster above stops being duplicated and ad hoc
-
-### Success metric
-
-`yazelix-7krc.2` is honest only if all of these are true:
-
-1. `welcome.nu` no longer reparses config or rediscovers terminal/session facts
-2. style-policy ownership is singular instead of split across multiple lists
-   and resolvers
-3. the retained public surface from `FRONT-001` and `FRONT-002` still holds
-4. no plain `game_of_life` compatibility alias is revived
-5. the surviving owner is materially smaller than the current
-   `welcome.nu` plus `ascii_art.nu` stack
-
-## Verification Gaps To Carry Forward
-
-- there is still no direct default-lane test for welcome skip/logging
-  composition
-- `logo` and `boids` playback are live, but still lack direct executable
-  defenses comparable to the Game of Life tests
-- `FRONT-005` is still only manually defended until `yazelix-7krc.2` closes
-  the welcome-specific regression gap or records a narrower stop condition
+1. delete more of `setup/welcome.nu` and `front_door_runtime.nu`, or
+2. leave them as the tiny irreducible shell boundary
 
 ## Stop Conditions
 
-`yazelix-7krc.2` must stop and record a no-go if any of these turn out to be
-true:
-
-- deleting the duplicated style-policy seam requires reviving a compatibility
-  alias such as plain `game_of_life`
-- the only way to shrink `welcome.nu` is to move shell-local waiting, keypress,
-  and skip gating behind a fake Rust wrapper
-- the renderer can shrink only by silently deleting one of the retained styles
-  instead of changing this contract explicitly
+- Do not revive the plain `game_of_life` alias
+- Do not reintroduce a second renderer or style-policy owner in Nu
+- Do not move shell-local prompt/keypress gating into a fake Rust wrapper just
+  to say the file moved
 
 ## Traceability
 
 - Bead: `yazelix-7krc.1`
-- Informed by: `docs/specs/setup_shellhook_welcome_terminal_canonicalization_audit.md`
+- Bead: `yazelix-lj7z.8`
 - Defended by: `yzx_repo_validator validate-specs`
-- Defended by: `nu nushell/scripts/dev/test_yzx_screen_commands.nu`
+- Defended by: `cargo test -p yazelix_core --manifest-path rust_core/Cargo.toml`

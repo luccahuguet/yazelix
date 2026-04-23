@@ -45,6 +45,7 @@ rustPlatform.buildRustPackage {
   buildAndTestSubdir = "rust_core";
 
   doCheck = true;
+  nativeCheckInputs = [ pkgs.git ];
 
   meta = {
     description = "Private Yazelix Rust core helper";

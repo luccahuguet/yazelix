@@ -9,6 +9,8 @@ pub mod doctor_commands;
 pub mod doctor_config_report;
 pub mod doctor_helix_report;
 pub mod doctor_runtime_report;
+pub mod front_door_commands;
+pub mod front_door_render;
 pub mod launch_commands;
 pub mod ghostty_materialization;
 pub mod helix_materialization;
@@ -20,7 +22,9 @@ pub mod keys_commands;
 pub mod launch_materialization;
 pub mod public_command_surface;
 pub mod repo_contract_validation;
+pub mod repo_issue_sync;
 pub mod repo_test_runner;
+pub mod repo_version_bump;
 pub mod repo_validation;
 pub mod runtime_contract;
 pub mod runtime_env;
@@ -30,6 +34,7 @@ pub mod status_report;
 pub mod support_commands;
 pub mod terminal_materialization;
 pub mod transient_pane_facts;
+pub mod upgrade_summary;
 pub mod update_commands;
 pub mod workspace_commands;
 pub mod yazi_materialization;
@@ -59,6 +64,7 @@ pub use doctor_helix_report::{
 pub use doctor_runtime_report::{
     DoctorRuntimeEvaluateData, DoctorRuntimeEvaluateRequest, evaluate_doctor_runtime_report,
 };
+pub use front_door_commands::{run_internal_welcome_screen, run_yzx_screen, run_yzx_tutor, run_yzx_whats_new};
 pub use ghostty_materialization::{
     GhosttyCursorState, GhosttyMaterializationData, GhosttyMaterializationRequest,
     generate_ghostty_materialization,
@@ -111,6 +117,10 @@ pub use terminal_materialization::{
     generate_terminal_materialization,
 };
 pub use transient_pane_facts::{TransientPaneFactsData, compute_transient_pane_facts_from_env};
+pub use upgrade_summary::{
+    UpgradeSummaryDisplayResult, UpgradeSummaryReport, build_upgrade_summary_report,
+    current_release_headline, maybe_show_first_run_upgrade_summary, show_current_upgrade_summary,
+};
 pub use workspace_commands::{
     IntegrationFactsData, compute_integration_facts_from_env, run_yzx_cwd, run_yzx_popup,
     run_yzx_reveal,

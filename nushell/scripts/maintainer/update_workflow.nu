@@ -1,8 +1,15 @@
 #!/usr/bin/env nu
 
-use repo_checkout.nu require_yazelix_repo_root
 use ../utils/config_files.nu [copy_default_config_surfaces load_config_surface_from_main]
 use ../utils/config_paths.nu get_main_user_config_path
+
+def require_yazelix_repo_root [] {
+    let repo_root = ($env.YAZELIX_REPO_ROOT? | default "" | path expand)
+    if ($repo_root | is-empty) or (not ($repo_root | path exists)) {
+        error make {msg: "This maintainer workflow requires YAZELIX_REPO_ROOT to point at a writable Yazelix repo checkout."}
+    }
+    $repo_root
+}
 
 def ensure_nix_available [] {
     if (which nix | where type == "external" | is-empty) {

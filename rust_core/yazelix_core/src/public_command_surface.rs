@@ -6,9 +6,6 @@ const YZX_DEV_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "dev.nu"];
 const YZX_EDIT_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "edit.nu"];
 const YZX_IMPORT_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "import.nu"];
 const YZX_MENU_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "menu.nu"];
-const YZX_SCREEN_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "screen.nu"];
-const YZX_TUTOR_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "tutor.nu"];
-const YZX_WHATS_NEW_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "whats_new.nu"];
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -314,6 +311,71 @@ const WHY_COMMAND: YzxCommandMetadata = metadata(
     None,
 );
 const WHY_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[WHY_COMMAND];
+const SCREEN_COMMAND: YzxCommandMetadata = metadata(
+    "yzx screen",
+    "Show an animated Yazelix full-terminal screen",
+    YzxCommandCategory::Workspace,
+    SCREEN_ARGS,
+    Some(YzxMenuCategory::Workspace),
+    Some("Preview the animated welcome screen directly in the current terminal."),
+);
+const SCREEN_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[SCREEN_COMMAND];
+const TUTOR_ROOT_COMMAND: YzxCommandMetadata = metadata(
+    "yzx tutor",
+    "Show the Yazelix guided overview",
+    YzxCommandCategory::Help,
+    &[],
+    Some(YzxMenuCategory::Help),
+    None,
+);
+const TUTOR_HELIX_COMMAND: YzxCommandMetadata = metadata(
+    "yzx tutor helix",
+    "Alias for yzx tutor hx",
+    YzxCommandCategory::Help,
+    &[],
+    Some(YzxMenuCategory::Help),
+    None,
+);
+const TUTOR_HX_COMMAND: YzxCommandMetadata = metadata(
+    "yzx tutor hx",
+    "Launch Helix's built-in tutorial",
+    YzxCommandCategory::Help,
+    &[],
+    Some(YzxMenuCategory::Help),
+    None,
+);
+const TUTOR_NU_COMMAND: YzxCommandMetadata = metadata(
+    "yzx tutor nu",
+    "Launch Nushell's built-in tutorial in a fresh Nushell process",
+    YzxCommandCategory::Help,
+    &[],
+    Some(YzxMenuCategory::Help),
+    None,
+);
+const TUTOR_NUSHELL_COMMAND: YzxCommandMetadata = metadata(
+    "yzx tutor nushell",
+    "Alias for yzx tutor nu",
+    YzxCommandCategory::Help,
+    &[],
+    Some(YzxMenuCategory::Help),
+    None,
+);
+const TUTOR_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[
+    TUTOR_ROOT_COMMAND,
+    TUTOR_HELIX_COMMAND,
+    TUTOR_HX_COMMAND,
+    TUTOR_NU_COMMAND,
+    TUTOR_NUSHELL_COMMAND,
+];
+const WHATS_NEW_COMMAND: YzxCommandMetadata = metadata(
+    "yzx whats_new",
+    "Show the current Yazelix upgrade summary",
+    YzxCommandCategory::Help,
+    &[],
+    Some(YzxMenuCategory::Help),
+    Some("Show the latest release notes."),
+);
+const WHATS_NEW_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[WHATS_NEW_COMMAND];
 const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
     rust_control_family("config", CONFIG_FAMILY_COMMANDS),
     rust_control_family("cwd", CWD_FAMILY_COMMANDS),
@@ -325,12 +387,15 @@ const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
     rust_control_family("popup", POPUP_FAMILY_COMMANDS),
     rust_control_family("reveal", REVEAL_FAMILY_COMMANDS),
     rust_control_family("restart", RESTART_FAMILY_COMMANDS),
+    rust_control_family("screen", SCREEN_FAMILY_COMMANDS),
     rust_control_family("status", STATUS_FAMILY_COMMANDS),
+    rust_control_family("tutor", TUTOR_FAMILY_COMMANDS),
     rust_control_family("doctor", DOCTOR_FAMILY_COMMANDS),
     rust_control_family("home_manager", HOME_MANAGER_FAMILY_COMMANDS),
     rust_control_family("keys", KEYS_FAMILY_COMMANDS),
     rust_control_family("sponsor", SPONSOR_FAMILY_COMMANDS),
     rust_control_family("update", UPDATE_FAMILY_COMMANDS),
+    rust_control_family("whats_new", WHATS_NEW_FAMILY_COMMANDS),
     rust_control_family("why", WHY_FAMILY_COMMANDS),
 ];
 
@@ -700,102 +765,6 @@ const REVEAL_COMMAND: YzxCommandMetadata = metadata(
 );
 const REVEAL_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[REVEAL_COMMAND];
 
-const SCREEN_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx screen",
-        "Show an animated Yazelix full-terminal screen",
-        YzxCommandCategory::Workspace,
-        SCREEN_ARGS,
-        Some(YzxMenuCategory::Workspace),
-        Some("Preview the animated welcome screen directly in the current terminal."),
-    ),
-    &[],
-    YZX_SCREEN_RELATIVE_PATH,
-);
-const SCREEN_COMMANDS: &[YzxCommandLeaf] = &[SCREEN_COMMAND];
-
-const TUTOR_ROOT_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx tutor",
-        "Show the Yazelix guided overview",
-        YzxCommandCategory::Help,
-        &[],
-        Some(YzxMenuCategory::Help),
-        None,
-    ),
-    &[],
-    YZX_TUTOR_RELATIVE_PATH,
-);
-const TUTOR_HELIX_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx tutor helix",
-        "Alias for yzx tutor hx",
-        YzxCommandCategory::Help,
-        &[],
-        Some(YzxMenuCategory::Help),
-        None,
-    ),
-    &["helix"],
-    YZX_TUTOR_RELATIVE_PATH,
-);
-const TUTOR_HX_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx tutor hx",
-        "Launch Helix's built-in tutorial",
-        YzxCommandCategory::Help,
-        &[],
-        Some(YzxMenuCategory::Help),
-        None,
-    ),
-    &["hx"],
-    YZX_TUTOR_RELATIVE_PATH,
-);
-const TUTOR_NU_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx tutor nu",
-        "Launch Nushell's built-in tutorial in a fresh Nushell process",
-        YzxCommandCategory::Help,
-        &[],
-        Some(YzxMenuCategory::Help),
-        None,
-    ),
-    &["nu"],
-    YZX_TUTOR_RELATIVE_PATH,
-);
-const TUTOR_NUSHELL_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx tutor nushell",
-        "Alias for yzx tutor nu",
-        YzxCommandCategory::Help,
-        &[],
-        Some(YzxMenuCategory::Help),
-        None,
-    ),
-    &["nushell"],
-    YZX_TUTOR_RELATIVE_PATH,
-);
-const TUTOR_COMMANDS: &[YzxCommandLeaf] = &[
-    TUTOR_ROOT_COMMAND,
-    TUTOR_HELIX_COMMAND,
-    TUTOR_HX_COMMAND,
-    TUTOR_NU_COMMAND,
-    TUTOR_NUSHELL_COMMAND,
-];
-
-const WHATS_NEW_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx whats_new",
-        "Show the current Yazelix upgrade summary",
-        YzxCommandCategory::Help,
-        &[],
-        Some(YzxMenuCategory::Help),
-        Some("Show the latest release notes."),
-    ),
-    &[],
-    YZX_WHATS_NEW_RELATIVE_PATH,
-);
-const WHATS_NEW_COMMANDS: &[YzxCommandLeaf] = &[WHATS_NEW_COMMAND];
-
 const INTERNAL_NU_FAMILIES: &[YzxInternalNuFamily] = &[
     internal_family(
         "dev",
@@ -827,33 +796,6 @@ const INTERNAL_NU_FAMILIES: &[YzxInternalNuFamily] = &[
     internal_family(
         "menu",
         MENU_COMMANDS,
-        Some(0),
-        false,
-        false,
-        YzxUnknownSubcommandBehavior::RouteRoot,
-        &[],
-    ),
-    internal_family(
-        "screen",
-        SCREEN_COMMANDS,
-        Some(0),
-        false,
-        false,
-        YzxUnknownSubcommandBehavior::RouteRoot,
-        &[],
-    ),
-    internal_family(
-        "tutor",
-        TUTOR_COMMANDS,
-        Some(0),
-        false,
-        false,
-        YzxUnknownSubcommandBehavior::RouteRoot,
-        &[],
-    ),
-    internal_family(
-        "whats_new",
-        WHATS_NEW_COMMANDS,
         Some(0),
         false,
         false,
@@ -1282,10 +1224,11 @@ mod tests {
 
         let tutor_argv = [String::from("tutor"), String::from("nushell")];
         let route = classify_yzx_root_route(&tutor_argv).unwrap();
-        let YzxPublicRootRoute::InternalNu(plan) = route else {
-            panic!("expected internal Nu route");
-        };
-        assert_eq!(plan.command_name, "yzx tutor nushell");
+        assert!(matches!(route, YzxPublicRootRoute::RustControl));
+
+        let screen_argv = [String::from("screen"), String::from("logo")];
+        let route = classify_yzx_root_route(&screen_argv).unwrap();
+        assert!(matches!(route, YzxPublicRootRoute::RustControl));
 
         let desktop_argv = [String::from("desktop")];
         let desktop_route = classify_yzx_root_route(&desktop_argv).unwrap();

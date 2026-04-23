@@ -152,7 +152,6 @@ def main [--welcome-source: string = "", --skip-welcome] {
 
     # Import welcome module
     use ./welcome.nu *
-    use ../utils/ascii_art.nu get_yazelix_colors
 
     # Get color scheme for consistent styling
     let colors = get_yazelix_colors

@@ -1,8 +1,15 @@
 #!/usr/bin/env nu
 
 use ../dev/materialization_dev_helpers.nu generate_merged_zellij_config
-use repo_checkout.nu require_yazelix_repo_root
 use ../utils/runtime_paths.nu get_yazelix_state_dir
+
+def require_yazelix_repo_root [] {
+    let repo_root = ($env.YAZELIX_REPO_ROOT? | default "" | path expand)
+    if ($repo_root | is-empty) or (not ($repo_root | path exists)) {
+        error make {msg: "This maintainer command requires YAZELIX_REPO_ROOT to point at a writable Yazelix repo checkout."}
+    }
+    $repo_root
+}
 
 def get_pane_orchestrator_paths [] {
     let yazelix_dir = require_yazelix_repo_root

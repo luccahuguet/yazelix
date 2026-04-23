@@ -5,10 +5,7 @@ use ../utils/runtime_paths.nu [
     get_yazelix_state_dir
     get_yazelix_runtime_dir
 ]
-use ../maintainer/repo_checkout.nu [require_yazelix_repo_root]
-use ../maintainer/issue_sync.nu run_dev_issue_sync
 use ../maintainer/plugin_build.nu build_pane_orchestrator_wasm
-use ../maintainer/version_bump.nu perform_version_bump
 use ../maintainer/update_workflow.nu run_dev_update_workflow
 use ../utils/startup_profile.nu [
     create_startup_profile_run
@@ -22,6 +19,112 @@ export def "yzx dev" [] {
     print "Run 'yzx dev --help' to see available maintainer subcommands"
 }
 
+def resolve_existing_path [candidate?: string] {
+    if $candidate == null {
+        return null
+    }
+
+    let expanded = ($candidate | path expand)
+    if not ($expanded | path exists) {
+        return null
+    }
+
+    try {
+        let result = (^readlink -f $expanded | complete)
+        if $result.exit_code == 0 {
+            let resolved = ($result.stdout | str trim)
+            if ($resolved | is-not-empty) and ($resolved | path exists) {
+                return $resolved
+            }
+        }
+    } catch {}
+
+    $expanded
+}
+
+def is_valid_repo_root [candidate?: string] {
+    if $candidate == null {
+        return false
+    }
+
+    let candidate_path = (resolve_existing_path $candidate)
+    if $candidate_path == null {
+        return false
+    }
+
+    let git_marker = ($candidate_path | path join ".git")
+    let flake_nix = ($candidate_path | path join "flake.nix")
+    let default_config = ($candidate_path | path join "yazelix_default.toml")
+
+    ($git_marker | path exists) and ($flake_nix | path exists) and ($default_config | path exists)
+}
+
+def resolve_git_repo_root_from_pwd [] {
+    let pwd = ($env.PWD? | default "" | into string | str trim)
+    if ($pwd | is-empty) {
+        return null
+    }
+
+    try {
+        let result = (^git -C $pwd rev-parse --show-toplevel | complete)
+        if $result.exit_code != 0 {
+            return null
+        }
+
+        let candidate = ($result.stdout | str trim)
+        if (is_valid_repo_root $candidate) {
+            resolve_existing_path $candidate
+        } else {
+            null
+        }
+    } catch {
+        null
+    }
+}
+
+def require_yazelix_repo_root [] {
+    let repo_root = (resolve_git_repo_root_from_pwd)
+    if $repo_root == null {
+        error make {msg: "This maintainer command requires a writable Yazelix repo checkout. Run it from the repo root or another directory inside the same checkout."}
+    }
+
+    $repo_root
+}
+
+def run_repo_maintainer_command [repo_root: string, ...maintainer_args: string] {
+    let command = ([
+        "develop"
+        "-c"
+        "cargo"
+        "run"
+        "--quiet"
+        "--manifest-path"
+        ($repo_root | path join "rust_core" "Cargo.toml")
+        "-p"
+        "yazelix_core"
+        "--bin"
+        "yzx_repo_maintainer"
+        "--"
+        "--repo-root"
+        $repo_root
+        ...$maintainer_args
+    ])
+    do { cd $repo_root; ^nix ...$command } | complete
+}
+
+def run_repo_maintainer_json_command [repo_root: string, ...maintainer_args: string] {
+    let result = (run_repo_maintainer_command $repo_root ...$maintainer_args)
+    if $result.exit_code != 0 {
+        let stderr = ($result.stderr | default "" | str trim)
+        error make {msg: $"Yazelix Rust maintainer command failed: ($stderr)"}
+    }
+    if ($result.stdout | is-empty) {
+        {}
+    } else {
+        $result.stdout | from json
+    }
+}
+
 # Refresh maintainer flake inputs and run update canaries
 export def "yzx dev update" [
     --yes      # Skip confirmation prompt
@@ -33,14 +136,18 @@ export def "yzx dev update" [
     --canary-only  # Run canary checks without updating flake.lock or syncing pins
     --canaries: list<string> = []  # Canary subset: default, shell_layout
 ] {
-    run_dev_update_workflow $yes $no_canary $activate $home_manager_dir $home_manager_input $home_manager_attr $canary_only $canaries
+    let repo_root = (require_yazelix_repo_root)
+    with-env {YAZELIX_REPO_ROOT: $repo_root} {
+        run_dev_update_workflow $yes $no_canary $activate $home_manager_dir $home_manager_input $home_manager_attr $canary_only $canaries
+    }
 }
 
 # Bump the tracked Yazelix version and create release metadata
 export def "yzx dev bump" [
     version: string  # Version tag to release, for example v14
 ] {
-    let result = (perform_version_bump (require_yazelix_repo_root) $version)
+    let repo_root = (require_yazelix_repo_root)
+    let result = (run_repo_maintainer_json_command $repo_root "version-bump" $version)
     print $"✅ Bumped Yazelix from ($result.previous_version) to ($result.target_version)"
     print $"   commit: ($result.commit_sha)"
     print $"   tag: ($result.tag)"
@@ -50,14 +157,31 @@ export def "yzx dev bump" [
 export def "yzx dev sync_issues" [
     --dry-run  # Show the local GitHub→Beads reconciliation plan without mutating Beads
 ] {
-    run_dev_issue_sync $dry_run
+    let repo_root = (require_yazelix_repo_root)
+    mut args = ["sync-issues"]
+    if $dry_run {
+        $args = ($args | append "--dry-run")
+    }
+    let result = (run_repo_maintainer_command $repo_root ...$args)
+    if ($result.stdout | is-not-empty) {
+        print --raw $result.stdout
+    }
+    if ($result.stderr | is-not-empty) {
+        print --stderr --raw $result.stderr
+    }
+    if $result.exit_code != 0 {
+        error make {msg: "Yazelix Rust issue sync failed"}
+    }
 }
 
 # Build the Zellij pane-orchestrator wasm
 export def "yzx dev build_pane_orchestrator" [
     --sync  # Sync the built wasm into the repo/runtime paths after a successful build
 ] {
-    build_pane_orchestrator_wasm $sync
+    let repo_root = (require_yazelix_repo_root)
+    with-env {YAZELIX_REPO_ROOT: $repo_root} {
+        build_pane_orchestrator_wasm $sync
+    }
 }
 
 def clear_startup_profile_caches [] {

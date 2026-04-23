@@ -24,8 +24,11 @@ use yazelix_core::run_yzx_launch;
 use yazelix_core::run_yzx_popup;
 use yazelix_core::run_yzx_reveal;
 use yazelix_core::run_yzx_restart;
+use yazelix_core::run_yzx_screen;
 use yazelix_core::run_yzx_sponsor;
+use yazelix_core::run_yzx_tutor;
 use yazelix_core::run_yzx_why;
+use yazelix_core::run_yzx_whats_new;
 use yazelix_core::update_commands::run_yzx_update;
 
 fn usage() -> ! {
@@ -44,9 +47,12 @@ fn usage() -> ! {
     eprintln!("       yzx_control popup [program...]");
     eprintln!("       yzx_control reveal <path>");
     eprintln!("       yzx_control restart");
+    eprintln!("       yzx_control screen [style]");
     eprintln!("       yzx_control why");
     eprintln!("       yzx_control sponsor");
+    eprintln!("       yzx_control tutor [hx|helix|nu|nushell]");
     eprintln!("       yzx_control update [subcommand] [args...]");
+    eprintln!("       yzx_control whats_new");
     std::process::exit(64);
 }
 
@@ -476,9 +482,12 @@ fn main() {
         "popup" => run_yzx_popup(&argv),
         "reveal" => run_yzx_reveal(&argv),
         "restart" => run_yzx_restart(&argv),
+        "screen" => run_yzx_screen(&argv),
         "why" => run_yzx_why(&argv),
         "sponsor" => run_yzx_sponsor(&argv),
+        "tutor" => run_yzx_tutor(&argv),
         "update" => run_yzx_update(&argv),
+        "whats_new" => run_yzx_whats_new(&argv),
         _ => {
             eprintln!("Unknown yzx_control subcommand: {sub}");
             usage();
@@ -553,5 +562,7 @@ mod tests {
         assert!(rendered.contains("Invalid config value at shell.default_shell"));
         assert!(rendered.contains("Expected one of: nu, bash, fish, zsh"));
         assert!(rendered.contains("Failure class: config problem."));
+        assert!(!rendered.contains("Known migration"));
+        assert!(!rendered.contains("yzx doctor --fix"));
     }
 }

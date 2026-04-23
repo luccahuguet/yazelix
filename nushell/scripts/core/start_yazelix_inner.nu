@@ -3,14 +3,13 @@
 
 use ../utils/runtime_paths.nu [get_yazelix_state_dir require_yazelix_runtime_dir]
 use ../utils/zellij_paths.nu [get_zellij_config_paths]
-use ../utils/ascii_art.nu get_yazelix_colors
+use ../utils/front_door_runtime.nu [maybe_show_first_run_upgrade_summary]
 use ../utils/runtime_commands.nu [resolve_zellij_default_shell]
 use ../utils/failure_classes.nu [format_failure_classification]
 use ../utils/startup_facts.nu [load_startup_facts]
 use ../utils/startup_profile.nu [profile_startup_step]
-use ../utils/upgrade_summary.nu [maybe_show_first_run_upgrade_summary]
 use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
-use ../setup/welcome.nu [show_welcome build_welcome_message]
+use ../setup/welcome.nu [show_welcome build_welcome_message get_yazelix_colors]
 
 const RUNTIME_MATERIALIZATION_MATERIALIZE_COMMAND = "runtime-materialization.materialize"
 
@@ -92,6 +91,10 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
         null
     })
     if ($upgrade_summary != null) and ($upgrade_summary.shown? | default false) {
+        let output = ($upgrade_summary.report.output? | default "" | into string)
+        if ($output | is-not-empty) {
+            print $output
+        }
         print ""
     }
 

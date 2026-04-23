@@ -1,30 +1,26 @@
 [contract]
-current_total_loc_max = 10473
-current_total_file_count_max = 75
+current_total_loc_max = 7781
+current_total_file_count_max = 62
 hard_target_loc = 4200
 
 [[families]]
 id = "manual_e2e_and_sweep_runners"
 status = "transitional_exception"
 owner_bead = "yazelix-lj7z.9"
-max_loc = 881
+max_loc = 325
 target_loc = 0
-max_files = 5
+max_files = 1
 allowed_paths = [
   "nushell/scripts/dev/config_sweep_runner.nu",
-  "nushell/scripts/dev/historical_upgrade_notes_e2e_runner.nu",
-  "nushell/scripts/dev/stale_config_diagnostics_e2e_runner.nu",
-  "nushell/scripts/dev/upgrade_contract_e2e_runner.nu",
-  "nushell/scripts/dev/upgrade_summary_e2e_runner.nu",
 ]
 
 [[families]]
 id = "maintainer_and_dev_orchestration"
 status = "transitional_exception"
 owner_bead = "yazelix-lj7z.4"
-max_loc = 3473
-target_loc = 1200
-max_files = 18
+max_loc = 2760
+target_loc = 900
+max_files = 14
 allowed_paths = [
   "nushell/scripts/dev/config_normalize_test_helpers.nu",
   "nushell/scripts/dev/materialization_dev_helpers.nu",
@@ -37,12 +33,8 @@ allowed_paths = [
   "nushell/scripts/dev/sweep_verify.nu",
   "nushell/scripts/dev/update_yazi_plugins.nu",
   "nushell/scripts/dev/yzx_test_helpers.nu",
-  "nushell/scripts/maintainer/issue_bead_contract.nu",
-  "nushell/scripts/maintainer/issue_sync.nu",
   "nushell/scripts/maintainer/plugin_build.nu",
-  "nushell/scripts/maintainer/repo_checkout.nu",
   "nushell/scripts/maintainer/update_workflow.nu",
-  "nushell/scripts/maintainer/version_bump.nu",
   "nushell/scripts/yzx/dev.nu",
 ]
 
@@ -68,7 +60,7 @@ allowed_paths = [
 id = "setup_and_bootstrap"
 status = "transitional_exception"
 owner_bead = "yazelix-lj7z.6"
-max_loc = 619
+max_loc = 621
 target_loc = 500
 max_files = 3
 allowed_paths = [
@@ -81,28 +73,24 @@ allowed_paths = [
 id = "front_door_presentation"
 status = "transitional_exception"
 owner_bead = "yazelix-lj7z.8"
-max_loc = 2233
-target_loc = 950
-max_files = 9
+max_loc = 841
+target_loc = 500
+max_files = 5
 allowed_paths = [
   "nushell/scripts/setup/welcome.nu",
-  "nushell/scripts/utils/ascii_art.nu",
-  "nushell/scripts/utils/upgrade_summary.nu",
+  "nushell/scripts/utils/front_door_runtime.nu",
   "nushell/scripts/yzx/edit.nu",
   "nushell/scripts/yzx/import.nu",
   "nushell/scripts/yzx/menu.nu",
-  "nushell/scripts/yzx/screen.nu",
-  "nushell/scripts/yzx/tutor.nu",
-  "nushell/scripts/yzx/whats_new.nu",
 ]
 
 [[families]]
 id = "runtime_helpers"
 status = "transitional_exception"
 owner_bead = "yazelix-lj7z.5"
-max_loc = 2069
+max_loc = 2036
 target_loc = 1050
-max_files = 32
+max_files = 31
 allowed_paths = [
   "nushell/scripts/utils/atomic_writes.nu",
   "nushell/scripts/utils/build_policy.nu",
@@ -119,7 +107,6 @@ allowed_paths = [
   "nushell/scripts/utils/failure_classes.nu",
   "nushell/scripts/utils/helix_mode.nu",
   "nushell/scripts/utils/integration_facts.nu",
-  "nushell/scripts/utils/keypress_polling.nu",
   "nushell/scripts/utils/logging.nu",
   "nushell/scripts/utils/runtime_commands.nu",
   "nushell/scripts/utils/runtime_defaults.nu",

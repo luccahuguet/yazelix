@@ -1,15 +1,23 @@
 #!/usr/bin/env nu
 # Welcome Message Module
-# Handles ASCII art display and welcome message generation
+# Handles front-door welcome display and message generation
 
-use ../utils/ascii_art.nu *
+use ../utils/front_door_runtime.nu [get_current_release_headline play_welcome_style_runtime]
 use ../utils/runtime_defaults.nu [DEFAULT_TERMINAL]
 use ../utils/constants.nu [YAZELIX_VERSION]
-use ../utils/keypress_polling.nu poll_for_keypress_status
-use ../utils/upgrade_summary.nu get_upgrade_note_entry
 
-def poll_for_welcome_keypress [timeout: duration] {
-    ((poll_for_keypress_status $timeout).status == "key")
+export def get_yazelix_colors [] {
+    {
+        red: (ansi red)
+        purple: (ansi purple)
+        cyan: (ansi cyan)
+        blue: (ansi blue)
+        green: (ansi green)
+        yellow: (ansi yellow)
+        reset: (ansi reset)
+        faint: "\u{1b}[2m"
+        bold: "\u{1b}[1m"
+    }
 }
 
 def show_welcome_art [
@@ -17,14 +25,14 @@ def show_welcome_art [
     welcome_duration_seconds: float
     show_macchina_on_welcome: bool
 ]: nothing -> bool {
-    let skipped = (render_welcome_style_interruptibly $welcome_style $welcome_duration_seconds null {|timeout| poll_for_welcome_keypress $timeout })
+    play_welcome_style_runtime $welcome_style $welcome_duration_seconds
 
     # Show macchina if enabled and available
     if $show_macchina_on_welcome {
         macchina -o machine -o distribution -o desktop-environment -o processor -o gpu -o terminal
     }
 
-    $skipped
+    false
 }
 
 # Get flake last updated info
@@ -72,18 +80,11 @@ def format_terminal_info [facts: record, colors: record]: nothing -> string {
 
 # Build complete welcome message
 def get_startup_release_headline [] {
-    let raw_headline = (try {
-        let entry = (get_upgrade_note_entry)
-        if $entry == null {
-            ""
-        } else {
-            ($entry.headline? | default "" | into string | str trim)
-        }
+    try {
+        get_current_release_headline
     } catch {
         ""
-    })
-
-    $raw_headline | str replace -r '\.+$' ""
+    }
 }
 
 export def build_welcome_message [

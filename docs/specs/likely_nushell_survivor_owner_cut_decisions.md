@@ -69,18 +69,17 @@ another helper layer.
 ### Reviewed files
 
 - `nushell/scripts/yzx/menu.nu`
-- `nushell/scripts/yzx/screen.nu`
-- `nushell/scripts/yzx/tutor.nu`
-- `nushell/scripts/yzx/whats_new.nu`
-- `nushell/scripts/utils/ascii_art.nu`
-- `nushell/scripts/utils/upgrade_summary.nu`
+- `nushell/scripts/yzx/edit.nu`
+- `nushell/scripts/yzx/import.nu`
+- `nushell/scripts/setup/welcome.nu`
+- `nushell/scripts/utils/front_door_runtime.nu`
 
 ### Retained behavior
 
 - command-palette rendering and `fzf` interaction
 - popup/menu workflow and post-action behavior
-- animated screen rendering and welcome-style playback
-- tutorial and release-copy presentation
+- startup-shell welcome gating and logging
+- editor/import process handoff after the Rust front-door owner cut
 
 ### Decision
 

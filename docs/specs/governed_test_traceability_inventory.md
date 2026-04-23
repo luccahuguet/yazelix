@@ -42,11 +42,9 @@ classes:
 
 1. non-governed shell-heavy runners
    - `config_sweep_runner.nu`
-   - `historical_upgrade_notes_e2e_runner.nu`
-   - `stale_config_diagnostics_e2e_runner.nu`
-   - `upgrade_contract_e2e_runner.nu`
-   - `upgrade_summary_e2e_runner.nu`
-2. deterministic validators that still need Rust owner cuts
+2. shell-heavy helpers and manual tooling
+   - sweep helpers under `dev/sweep/`
+   - demo and maintainer-support helpers
 
 Those files still count toward the Nushell budget, but they are no longer part
 of the governed test surface.

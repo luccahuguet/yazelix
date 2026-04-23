@@ -46,15 +46,11 @@ Measured on `2026-04-22`:
 | --- | ---: |
 | governed Nu `test_*.nu` files | `0` files |
 | governed Nu `def test_*` functions | `0` |
-| transitional shell-heavy runners | `881` LOC across `5` files |
+| transitional shell-heavy runners | `325` LOC across `1` file |
 
-The five surviving runner files are:
+The remaining tracked runner file is:
 
 - `config_sweep_runner.nu`
-- `historical_upgrade_notes_e2e_runner.nu`
-- `stale_config_diagnostics_e2e_runner.nu`
-- `upgrade_contract_e2e_runner.nu`
-- `upgrade_summary_e2e_runner.nu`
 
 Those runners are not governed tests and are budgeted separately under
 `config_metadata/nushell_budget.toml`.

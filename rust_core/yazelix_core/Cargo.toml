@@ -25,6 +25,7 @@ name = "yzx_repo_maintainer"
 path = "src/bin/yzx_repo_maintainer.rs"
 
 [dependencies]
+crossterm = "0.29"
 lexopt = "0.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

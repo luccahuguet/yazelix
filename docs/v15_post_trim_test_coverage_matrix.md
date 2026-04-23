@@ -27,7 +27,7 @@ The point is not to defend every old test file. The point is to make it obvious 
   - Removed runtime-manager and lock ownership is defended by the Rust `yzx_repo_validator validate-installed-runtime-contract` command.
   - Removed `core.refresh_output` is rejected as an unsupported config surface by Rust config-normalization coverage in [`rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`](../rust_core/yazelix_core/tests/yzx_core_config_normalize.rs).
   - Startup preflight still points missing generated state at `yzx doctor` through Rust workspace/runtime surface coverage in [`rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs`](../rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs).
-  - No-migration diagnostics still cover startup plus doctor via [`nushell/scripts/dev/stale_config_diagnostics_e2e_runner.nu`](../nushell/scripts/dev/stale_config_diagnostics_e2e_runner.nu).
+  - No-migration diagnostics still cover startup plus doctor through the Rust startup/runtime surface tests in [`rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs`](../rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs) and the retained `yzx_control` startup-config regression.
 
 ## 2. Pack sidecar and pack config surface
 

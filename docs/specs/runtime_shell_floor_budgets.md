@@ -34,10 +34,9 @@ Measured on `2026-04-23` after the first hard-budget helper deletions:
 
 | Family | Current included surface | Current LOC | Hard target LOC |
 | --- | --- | ---: | ---: |
-| Integration orchestration | `nushell/scripts/integrations/*.nu`, `nushell/scripts/zellij_wrappers/*.nu` | `1,328` | `300` |
-| Setup/bootstrap shell entry | `setup/environment.nu`, `setup/initializers.nu`, `core/start_yazelix.nu`, `core/start_yazelix_inner.nu`, `core/launch_yazelix.nu` | `1,070` | `500` |
-| Session and desktop host integration | `core/yzx_session.nu`, `yzx/desktop.nu`, `yzx/launch.nu` | `572` | `200` |
-| Runtime helpers and shared utility seams | `utils/*.nu` except `ascii_art.nu` and `upgrade_summary.nu` | `2,483` | `1,050` |
+| Integration orchestration | `nushell/scripts/integrations/*.nu`, `nushell/scripts/zellij_wrappers/*.nu` | `1,198` | `300` |
+| Setup/bootstrap shell entry | `setup/environment.nu`, `setup/initializers.nu`, `core/start_yazelix_inner.nu` | `621` | `500` |
+| Runtime helpers and shared utility seams | `utils/*.nu` except `front_door_runtime.nu` | `2,036` | `1,050` |
 
 ## `yazelix-lj7z.7` Integration Orchestration Budget
 

@@ -57,7 +57,7 @@ framework above intentionally Nu-owned command bodies.
 | Internal Nu family table | Rust `INTERNAL_NU_FAMILIES` maps families to concrete modules | temporary bridge debt | Acceptable until each family gets its own owner decision |
 | Compatibility Nu registry | deleted under `yazelix-f7hz` | landed debt removal | The fake public Nu root is gone; direct Nu family modules are now the only internal helper path |
 | Shell/process-heavy command bodies | `yzx/launch.nu`, `yzx/enter.nu`, `yzx/desktop.nu`, `core/yzx_session.nu` | intentional | Likely Nu/POSIX survivors for now |
-| UX/demo/info command bodies | `yzx/menu.nu`, `popup.nu`, `screen.nu`, `tutor.nu`, `whats_new.nu`, `edit.nu`, `import.nu`, `dev.nu` | mixed | Keep until a family-level deletion budget exists |
+| UX/demo/info command bodies | `yzx/menu.nu`, `edit.nu`, `import.nu`, `dev.nu` | mixed | `yzx screen`, `yzx tutor`, and `yzx whats_new` are now Rust-owned. Keep the surviving Nu surfaces only while they remain honest process/UX boundaries |
 
 ## 4. Survivor Reasons
 
@@ -70,9 +70,10 @@ framework above intentionally Nu-owned command bodies.
 - Nu `yzx/desktop.nu`: `external_tool_adapter`
 - Nu `yzx/dev.nu`: `external_tool_adapter`
 - Nu `yzx/edit.nu` and `yzx/import.nu`: `external_tool_adapter`
-- Nu `yzx/menu.nu`, `yzx/popup.nu`, `yzx/screen.nu`, `yzx/tutor.nu`,
-  and `yzx/whats_new.nu`: `canonical_owner` for product UX until a narrower
-  deletion lane proves otherwise
+- Nu `yzx/menu.nu`, `yzx/edit.nu`, and `yzx/import.nu`:
+  `external_tool_adapter` for the surviving product UX shell/process seams
+- Rust `front_door_commands.rs` and `yzx_control.rs`: `canonical_owner` for
+  `yzx screen`, `yzx tutor`, and `yzx whats_new`
 
 ## 5. Delete-First Findings
 

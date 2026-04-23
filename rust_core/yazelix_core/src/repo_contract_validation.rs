@@ -1731,9 +1731,6 @@ fn validate_rust_routed_nu_modules(runtime_root: &Path, label: &str, errors: &mu
         ["yzx", "edit.nu"],
         ["yzx", "import.nu"],
         ["yzx", "menu.nu"],
-        ["yzx", "screen.nu"],
-        ["yzx", "tutor.nu"],
-        ["yzx", "whats_new.nu"],
     ] {
         let path = scripts_dir.join(relative_path.iter().collect::<PathBuf>());
         if !path.exists() {

@@ -1,5 +1,7 @@
 use std::path::PathBuf;
+use yazelix_core::repo_issue_sync::run_issue_sync;
 use yazelix_core::repo_contract_validation::sync_readme_surface;
+use yazelix_core::repo_version_bump::perform_version_bump;
 use yazelix_core::repo_test_runner::{RepoTestOptions, run_repo_tests};
 use yazelix_core::repo_validation::repo_root;
 
@@ -70,6 +72,39 @@ fn main() {
             let options = parse_run_tests_options(args.collect());
             run_repo_tests(&resolved_repo_root, &options)
         }
+        "version-bump" => {
+            let target_version = parse_version_bump_args(args.collect());
+            perform_version_bump(&resolved_repo_root, &target_version).map(|result| {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "previous_version": result.previous_version,
+                        "target_version": result.target_version,
+                        "release_date": result.release_date,
+                        "commit_message": result.commit_message,
+                        "commit_sha": result.commit_sha,
+                        "tag": result.tag,
+                    })
+                );
+            })
+        }
+        "sync-issues" => {
+            let dry_run = parse_sync_issues_args(args.collect());
+            run_issue_sync(&resolved_repo_root, dry_run).map(|summary| {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "created": summary.created,
+                        "reopened": summary.reopened,
+                        "closed": summary.closed,
+                        "unchanged": summary.unchanged,
+                        "comments_created": summary.comments_created,
+                        "comments_updated": summary.comments_updated,
+                        "comments_unchanged": summary.comments_unchanged,
+                    })
+                );
+            })
+        }
         _ => {
             eprintln!("Unknown maintainer command `{command}`");
             print_usage_and_exit();
@@ -84,7 +119,7 @@ fn main() {
 
 fn print_usage_and_exit() -> ! {
     eprintln!(
-        "Usage: yzx_repo_maintainer [--repo-root PATH] <sync-readme-surface|run-tests> [options]"
+        "Usage: yzx_repo_maintainer [--repo-root PATH] <sync-readme-surface|run-tests|version-bump|sync-issues> [options]"
     );
     std::process::exit(2);
 }
@@ -118,4 +153,31 @@ fn parse_run_tests_options(args: Vec<String>) -> RepoTestOptions {
         }
     }
     options
+}
+
+fn parse_version_bump_args(args: Vec<String>) -> String {
+    let mut iter = args.into_iter();
+    let Some(version) = iter.next() else {
+        eprintln!("Missing VERSION for version-bump");
+        std::process::exit(2);
+    };
+    if let Some(extra) = iter.next() {
+        eprintln!("Unexpected version-bump argument `{extra}`");
+        std::process::exit(2);
+    }
+    version
+}
+
+fn parse_sync_issues_args(args: Vec<String>) -> bool {
+    let mut dry_run = false;
+    for arg in args {
+        match arg.as_str() {
+            "--dry-run" => dry_run = true,
+            _ => {
+                eprintln!("Unknown sync-issues option `{arg}`");
+                std::process::exit(2);
+            }
+        }
+    }
+    dry_run
 }

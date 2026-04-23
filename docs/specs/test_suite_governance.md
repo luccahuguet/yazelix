@@ -132,10 +132,7 @@ The current repo surface should be understood roughly as:
   - `sweep_verify.nu`
   - helper files under `nushell/scripts/dev/sweep/`
 - Shell-heavy non-governed runners:
-  - `historical_upgrade_notes_e2e_runner.nu`
-  - `stale_config_diagnostics_e2e_runner.nu`
-  - `upgrade_contract_e2e_runner.nu`
-  - `upgrade_summary_e2e_runner.nu`
+  - only `config_sweep_runner.nu` remains as a tracked shell-heavy runner
 - Manual / exploratory scripts:
   - `record_demo_fonts.nu`
   - benchmark and demo helpers
