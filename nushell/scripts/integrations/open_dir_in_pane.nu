@@ -3,7 +3,7 @@
 # Takes the file/directory path as argument
 
 use ../utils/logging.nu log_to_file
-use ./zellij.nu [run_pane_orchestrator_command_raw, retarget_workspace_for_path]
+use ../utils/yzx_core_bridge.nu [run_zellij_pipe run_zellij_retarget]
 
 export def main [file_path: string] {
     log_to_file "open_dir_in_pane.log" $"open_dir_in_pane called with file_path: '($file_path)'"
@@ -30,14 +30,14 @@ export def main [file_path: string] {
 
     try {
         let payload = ({cwd: $target_dir} | to json -r)
-        let response = (run_pane_orchestrator_command_raw "open_terminal_in_cwd" $payload "open_dir_in_pane.log")
+        let response = (run_zellij_pipe "open_terminal_in_cwd" $payload)
         if (($response | str trim) != "ok") {
             error make {msg: $"Pane orchestrator failed to open directory pane in '($target_dir)': ($response)"}
         }
 
         log_to_file "open_dir_in_pane.log" $"Successfully opened new pane in directory: ($target_dir)"
 
-        let workspace_result = (retarget_workspace_for_path $target_dir "" "open_dir_in_pane.log")
+        let workspace_result = (run_zellij_retarget $target_dir)
         if $workspace_result.status == "ok" {
             log_to_file "open_dir_in_pane.log" $"Updated workspace root to: ($workspace_result.workspace_root)"
         } else {

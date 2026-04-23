@@ -43,6 +43,7 @@ pub mod update_commands;
 pub mod workspace_commands;
 pub mod yazi_materialization;
 pub mod yazi_render_plan;
+pub mod zellij_commands;
 pub mod zellij_materialization;
 pub mod zellij_render_plan;
 
@@ -143,6 +144,9 @@ pub use zellij_materialization::{
 pub use profile_commands::{
     run_profile_create_run, run_profile_load_report, run_profile_print_report,
     run_profile_record_step, run_profile_wait_step,
+};
+pub use zellij_commands::{
+    run_zellij_get_workspace_root, run_zellij_pipe, run_zellij_retarget,
 };
 pub use zellij_render_plan::{
     ZellijRenderPlanData, ZellijRenderPlanRequest, compute_zellij_render_plan,

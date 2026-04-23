@@ -3,8 +3,7 @@
 
 use ../utils/logging.nu log_to_file
 use ../utils/runtime_paths.nu [get_yazelix_runtime_dir]
-use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
-use zellij.nu [focus_managed_pane get_active_tab_session_state]
+use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command run_zellij_pipe]
 
 def resolve_optional_command [configured: any, fallback: string] {
     let raw = ($configured | default "" | into string | str trim)
@@ -131,7 +130,8 @@ export def get_active_sidebar_state [] {
     }
 
     let state = (try {
-        get_active_tab_session_state
+        let raw = (run_zellij_pipe "get_active_tab_session_state")
+        $raw | from json
     } catch {
         null
     })
@@ -281,11 +281,15 @@ export def reveal_in_yazi [buffer_name: string] {
         run_ya_emit_to $sidebar_yazi_id "reveal" $full_path
         log_to_file "reveal_in_yazi.log" $"Successfully sent 'reveal ($full_path)' command to managed sidebar yazi instance ($sidebar_yazi_id)"
 
-        let focus_result = (focus_managed_pane "sidebar" "reveal_in_yazi.log")
-        if $focus_result.status == "ok" {
+        let focus_response = (run_zellij_pipe "focus_sidebar")
+        let focus_ok = (match ($focus_response | str trim) {
+            "ok" | "focused" | "focused_sidebar" | "opened_sidebar" => true
+            _ => false
+        })
+        if $focus_ok {
             log_to_file "reveal_in_yazi.log" "Successfully focused managed sidebar pane"
         } else {
-            let error_msg = $"Managed sidebar pane focus failed \(status=($focus_result.status)\). Ensure the Yazelix pane orchestrator plugin is loaded and the sidebar pane title is 'sidebar'."
+            let error_msg = $"Managed sidebar pane focus failed \(status=($focus_response)\). Ensure the Yazelix pane orchestrator plugin is loaded and the sidebar pane title is 'sidebar'."
             log_to_file "reveal_in_yazi.log" $"ERROR: ($error_msg)"
             print $"Error: ($error_msg)"
         }

@@ -2,115 +2,67 @@
 # Zellij integration utilities for Yazelix
 
 use ../utils/logging.nu *
-use ./zellij_runtime_wrappers.nu [build_floating_wrapper_env_args get_new_editor_pane_launch_env]
+use ../utils/runtime_paths.nu [get_yazelix_runtime_dir]
+use ../utils/yzx_core_bridge.nu [compute_runtime_env_via_yzx_core]
 
-const PANE_ORCHESTRATOR_PLUGIN_ALIAS = "yazelix_pane_orchestrator"
+const FLOATING_WRAPPER_ENV_KEYS = [
+    "PATH"
+    "YAZELIX_RUNTIME_DIR"
+    "IN_YAZELIX_SHELL"
+    "NIX_CONFIG"
+    "ZELLIJ_DEFAULT_LAYOUT"
+    "YAZI_CONFIG_HOME"
+    "YAZELIX_MANAGED_HELIX_BINARY"
+    "EDITOR"
+    "VISUAL"
+    "HELIX_RUNTIME"
+]
 
-def get_pane_orchestrator_plugin_target [] {
-    $PANE_ORCHESTRATOR_PLUGIN_ALIAS
-}
+def get_current_shell_wrapper_env [] {
+    mut wrapper_env = {}
 
-def run_pane_orchestrator_command [command_name: string, log_file: string, payload: string = ""] {
-    let plugin_target = (get_pane_orchestrator_plugin_target)
-    let pipe_result = (
-        ^zellij action pipe --plugin $plugin_target --name $command_name -- $payload
-        | complete
-    )
-
-    if $pipe_result.exit_code != 0 {
-        let stderr = ($pipe_result.stderr | str trim)
-        log_to_file $log_file $"Pane orchestrator pipe failed for '($command_name)': ($stderr)"
-        error make {msg: $"Pane orchestrator pipe failed for '($command_name)': ($stderr)"}
-    }
-
-    let response = ($pipe_result.stdout | str trim)
-    log_to_file $log_file $"Pane orchestrator response for '($command_name)': ($response)"
-    $response
-}
-
-export def run_pane_orchestrator_command_raw [command_name: string, payload: string = "", log_file: string = "zellij_plugin_debug.log"] {
-    run_pane_orchestrator_command $command_name $log_file $payload
-}
-
-export def focus_managed_pane [pane_name: string, log_file: string = "zellij_plugin.log"] {
-    let command_name = match $pane_name {
-        "editor" => "focus_editor"
-        "sidebar" => "focus_sidebar"
-        _ => {
-            error make {msg: $"Unsupported managed pane name: ($pane_name)"}
+    for key in $FLOATING_WRAPPER_ENV_KEYS {
+        let value = ($env | get -o $key | default null)
+        if $value != null {
+            let text = ($value | into string)
+            if ($text | is-not-empty) {
+                $wrapper_env = ($wrapper_env | upsert $key $text)
+            }
         }
     }
 
-    try {
-        let response = (run_pane_orchestrator_command $command_name $log_file)
-        parse_pane_orchestrator_response $response
-    } catch {|err|
-        {status: "error", reason: $err.msg}
+    $wrapper_env
+}
+
+def serialize_wrapper_env_value [value: any] {
+    let described = ($value | describe)
+
+    if ($described | str starts-with "list") {
+        $value | each {|entry| $entry | into string } | str join (char esep)
+    } else {
+        $value | into string
     }
 }
 
-export def toggle_editor_sidebar_focus [log_file: string = "zellij_plugin.log"] {
-    try {
-        let response = (run_pane_orchestrator_command "toggle_editor_sidebar_focus" $log_file)
-        parse_pane_orchestrator_response $response
-    } catch {|err|
-        {status: "error", reason: $err.msg}
-    }
+def build_floating_wrapper_env_args [wrapper_env: record] {
+    $wrapper_env
+    | transpose key value
+    | each {|row| $"($row.key)=(serialize_wrapper_env_value $row.value)" }
 }
 
-def parse_pane_orchestrator_response [response: string] {
-    match $response {
-        "ok" => {status: "ok"}
-        "opened" => {status: "ok", action: "opened"}
-        "focused" => {status: "ok", action: "focused"}
-        "closed" => {status: "ok", action: "closed"}
-        "focused_editor" => {status: "ok", target: "editor"}
-        "focused_sidebar" => {status: "ok", target: "sidebar"}
-        "opened_sidebar" => {status: "ok", target: "sidebar", opened: true}
-        "missing" => {status: "missing"}
-        "missing_workspace" => {status: "missing_workspace"}
-        "not_ready" => {status: "not_ready"}
-        "permissions_denied" => {status: "permissions_denied"}
-        "invalid_payload" => {status: "invalid_payload"}
-        "runtime_not_configured" => {status: "runtime_not_configured"}
-        "unknown_layout" => {status: "unknown_layout"}
-        "unsupported_editor" => {status: "unsupported_editor"}
-        _ => {status: "error", reason: $response}
-    }
+def get_floating_wrapper_env [] {
+    let current_shell_env = (get_current_shell_wrapper_env)
+    (compute_runtime_env_via_yzx_core) | merge $current_shell_env
 }
 
-export def open_transient_pane [
-    kind: string
-    args: list<string> = []
-    cwd?: string
-    runtime_dir?: string
-    log_file: string = "zellij_plugin.log"
-] {
-    open_transient_pane_contract {
-        kind: $kind
-        args: $args
-        cwd: ($cwd | default "")
-        runtime_dir: ($runtime_dir | default "")
-    } $log_file
-}
+export def get_new_editor_pane_launch_env [yazi_id: string = ""] {
+    mut pane_env = (get_floating_wrapper_env)
 
-export def open_transient_pane_contract [
-    contract: record
-    log_file: string = "zellij_plugin.log"
-] {
-    let payload = ({
-        kind: ($contract.kind? | default "" | into string | str trim)
-        args: ($contract.args? | default [])
-        cwd: ($contract.cwd? | default "" | into string)
-        runtime_dir: ($contract.runtime_dir? | default "" | into string)
-    } | to json -r)
-
-    try {
-        let response = (run_pane_orchestrator_command "open_transient_pane" $log_file $payload)
-        parse_pane_orchestrator_response $response
-    } catch {|err|
-        {status: "error", reason: $err.msg}
+    if ($yazi_id | str trim | is-not-empty) {
+        $pane_env = ($pane_env | upsert YAZI_ID $yazi_id)
     }
+
+    $pane_env
 }
 
 # Get the stable workspace root for a target path.
@@ -158,235 +110,6 @@ def get_workspace_context [target_path: path, log_file: string] {
         workspace_root: $workspace_root
         tab_name: $tab_name
     }
-}
-
-export def resolve_tab_cwd_target [
-    target?: string  # Directory path or zoxide query for the current tab (defaults to the current directory)
-] {
-    let requested_target = if ($target | is-not-empty) {
-        $target
-    } else {
-        pwd
-    }
-
-    if ($requested_target == (pwd)) {
-        return $requested_target
-    }
-
-    if (which zoxide | is-not-empty) {
-        let zoxide_result = (^zoxide query -- $requested_target | complete)
-        if $zoxide_result.exit_code == 0 {
-            return ($zoxide_result.stdout | str trim)
-        }
-    }
-
-    if ($requested_target | path exists) {
-        return $requested_target
-    }
-
-    if (which zoxide | is-not-empty) {
-        error make {msg: $"Could not resolve '($requested_target)' with zoxide or as an existing path."}
-    } else {
-        error make {msg: $"zoxide is not available and '($requested_target)' is not an existing path."}
-    }
-}
-
-def parse_workspace_retarget_response [response: string] {
-    let trimmed = ($response | str trim)
-    if $trimmed == "missing" {
-        return {status: "missing"}
-    }
-    if $trimmed == "not_ready" {
-        return {status: "not_ready"}
-    }
-    if $trimmed == "permissions_denied" {
-        return {status: "permissions_denied"}
-    }
-    if $trimmed == "invalid_payload" {
-        return {status: "invalid_payload"}
-    }
-
-    try {
-        let parsed = ($trimmed | from json)
-        let sidebar_yazi_id = ($parsed.sidebar_yazi_id? | default "" | into string | str trim)
-        let sidebar_yazi_cwd = ($parsed.sidebar_yazi_cwd? | default "" | into string | str trim)
-        let sidebar_state = if ($sidebar_yazi_id | is-empty) {
-            null
-        } else {
-            {
-                yazi_id: $sidebar_yazi_id
-                cwd: $sidebar_yazi_cwd
-            }
-        }
-
-        ($parsed | reject sidebar_yazi_id sidebar_yazi_cwd) | upsert sidebar_state $sidebar_state
-    } catch {
-        {status: "error", reason: $trimmed}
-    }
-}
-
-def retarget_workspace_internal [
-    workspace_root: path
-    tab_name: string
-    log_file: string
-    cd_focused_pane: bool
-    editor_kind: string = ""
-] {
-    let expanded_workspace_root = ($workspace_root | path expand)
-    let normalized_editor_kind = ($editor_kind | default "" | into string | str trim)
-    let payload = {
-        workspace_root: $expanded_workspace_root
-        cd_focused_pane: $cd_focused_pane
-        editor: (if ($normalized_editor_kind | is-empty) { null } else { $normalized_editor_kind })
-    } | to json -r
-
-    try {
-        let response = (run_pane_orchestrator_command "retarget_workspace" $log_file $payload)
-        {
-            workspace_root: $expanded_workspace_root
-            tab_name: $tab_name
-        } | merge (parse_workspace_retarget_response $response)
-    } catch {|err|
-        {
-            workspace_root: $expanded_workspace_root
-            tab_name: $tab_name
-            status: "error"
-            reason: $err.msg
-        }
-    }
-}
-
-export def retarget_tab_cwd [
-    target_path: path
-    editor_kind: string = ""
-    log_file: string = "zellij_plugin.log"
-] {
-    let expanded_target_path = ($target_path | path expand)
-    if not ($expanded_target_path | path exists) {
-        error make {msg: $"Path does not exist: ($expanded_target_path)"}
-    }
-
-    let target_dir = if (($expanded_target_path | path type) == "dir") {
-        $expanded_target_path
-    } else {
-        $expanded_target_path | path dirname
-    }
-
-    retarget_workspace_internal $target_dir (get_tab_name $target_dir) $log_file true $editor_kind
-}
-
-export def retarget_workspace_for_path [
-    target_path: path
-    editor_kind: string = ""
-    log_file: string = "zellij_plugin.log"
-] {
-    let workspace = (get_workspace_context $target_path $log_file)
-    retarget_workspace_internal $workspace.workspace_root $workspace.tab_name $log_file false $editor_kind
-}
-
-def open_file_in_managed_editor [editor_kind: string, file_path: path, log_file: string] {
-    let expanded_file_path = ($file_path | path expand)
-    let workspace = (get_workspace_context $expanded_file_path $log_file)
-    let payload = {
-        editor: $editor_kind
-        file_path: $expanded_file_path
-        working_dir: $workspace.workspace_root
-    } | to json -r
-
-    try {
-        let response = (run_pane_orchestrator_command "open_file" $log_file $payload)
-        parse_pane_orchestrator_response $response
-    } catch {|err|
-        {status: "error", reason: $err.msg}
-    }
-}
-
-# Maintainer-only debug inspection payload. Do not use this as live session truth.
-export def maintainer_debug_editor_state [] {
-    let response = (run_pane_orchestrator_command_raw "maintainer_debug_editor_state")
-    try {
-        $response | from json
-    } catch {
-        {raw: $response}
-    }
-}
-
-export def get_active_tab_session_state [] {
-    let response = (run_pane_orchestrator_command_raw "get_active_tab_session_state")
-    try {
-        $response | from json
-    } catch {
-        {raw: $response}
-    }
-}
-
-def read_current_tab_workspace_root [--include-bootstrap] {
-    let state = try {
-        get_active_tab_session_state
-    } catch {
-        null
-    }
-
-    if ($state | is-empty) or ($state.raw? | is-not-empty) {
-        null
-    } else {
-        let ws = ($state.workspace? | default null)
-        if $ws == null {
-            return null
-        }
-        let workspace_root_source = ($ws.source? | default "" | into string | str trim)
-        if ((not $include_bootstrap) and ($workspace_root_source == "bootstrap")) {
-            return null
-        }
-
-        let workspace_root = ($ws.root? | default "" | into string | str trim)
-        if ($workspace_root | is-empty) {
-            null
-        } else {
-            $workspace_root
-        }
-    }
-}
-
-export def get_current_tab_workspace_root_including_bootstrap [] {
-    read_current_tab_workspace_root --include-bootstrap
-}
-
-export def set_managed_editor_cwd [editor_kind: string, target_path: path, log_file: string = "zellij_plugin.log"] {
-    let expanded_target_path = ($target_path | path expand)
-    if not ($expanded_target_path | path exists) {
-        error make {msg: $"Path does not exist: ($expanded_target_path)"}
-    }
-
-    let target_dir = if (($expanded_target_path | path type) == "dir") {
-        $expanded_target_path
-    } else {
-        $expanded_target_path | path dirname
-    }
-    let payload = {
-        editor: $editor_kind
-        working_dir: $target_dir
-    } | to json -r
-
-    try {
-        let response = (run_pane_orchestrator_command "set_managed_editor_cwd" $log_file $payload)
-        {
-            working_dir: $target_dir
-            editor: $editor_kind
-        } | merge (parse_pane_orchestrator_response $response)
-    } catch {|err|
-        {
-            working_dir: $target_dir
-            editor: $editor_kind
-            status: "error"
-            reason: $err.msg
-        }
-    }
-}
-
-# Open a file in an existing managed Helix pane through the pane orchestrator
-export def open_in_existing_helix [file_path: path] {
-    open_file_in_managed_editor "helix" $file_path "open_helix.log"
 }
 
 # Generic function to open a new editor pane with Yazi integration
@@ -446,11 +169,6 @@ export def open_new_managed_editor_in_cwd [
 # Open a new pane and set up Helix with Yazi integration
 export def open_new_helix_pane [file_path: path, yazi_id: string] {
     open_new_editor_pane $file_path $yazi_id "open_helix.log"
-}
-
-# Open a file in an existing managed Neovim pane through the pane orchestrator
-export def open_in_existing_neovim [file_path: path] {
-    open_file_in_managed_editor "neovim" $file_path "open_neovim.log"
 }
 
 # Open a new pane and set up Neovim with Yazi integration

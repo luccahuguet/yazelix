@@ -3,7 +3,8 @@
 # Called from the zoxide-editor Yazi plugin with the selected path
 
 use ../utils/logging.nu log_to_file
-use ./zellij.nu [retarget_workspace_for_path, open_new_managed_editor_in_cwd]
+use ../utils/yzx_core_bridge.nu [run_zellij_retarget]
+use ./zellij.nu [open_new_managed_editor_in_cwd]
 use ./managed_editor.nu [get_managed_editor_kind, sync_post_retarget_workspace_state]
 
 const LOG = "zoxide_open_in_editor.log"
@@ -22,7 +23,7 @@ export def main [target_dir: string] {
         error make {msg: "No managed editor detected"}
     }
 
-    let retarget_result = (retarget_workspace_for_path $target_dir $editor_kind $LOG)
+    let retarget_result = (run_zellij_retarget $target_dir $editor_kind)
     match ($retarget_result.status? | default "error") {
         "ok" => {
             let yazi_id = ($env.YAZI_ID? | default "" | into string | str trim)

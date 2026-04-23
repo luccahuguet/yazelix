@@ -1,10 +1,8 @@
 #!/usr/bin/env nu
 # yzx menu - Interactive command palette and config opener
 
-use ../integrations/zellij.nu [get_current_tab_workspace_root_including_bootstrap]
-use ../integrations/zellij.nu [open_transient_pane_contract]
 use ../utils/runtime_paths.nu get_yazelix_runtime_dir
-use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface resolve_yzx_core_helper_path run_yzx_core_json_command]
+use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface resolve_yzx_core_helper_path run_yzx_core_json_command get_current_tab_workspace_root run_zellij_pipe]
 use ../utils/transient_pane_contract.nu [
     build_transient_pane_open_contract
     close_current_transient_pane
@@ -190,10 +188,20 @@ export def "yzx menu" [
         let transient_pane_facts = (run_yzx_core_json_command $runtime_dir (build_default_yzx_core_error_surface) [
             "transient-pane-facts.compute"
         ] "Yazelix Rust transient-pane-facts helper returned invalid JSON.")
-        let popup_contract = (resolve_menu_popup_contract $transient_pane_facts $runtime_dir ((get_current_tab_workspace_root_including_bootstrap) | default "") (pwd))
-        let open_result = (open_transient_pane_contract $popup_contract)
-        if $open_result.status != "ok" {
-            error make {msg: $"Failed to open the Yazelix menu popup pane: ($open_result | to json -r)"}
+        let popup_contract = (resolve_menu_popup_contract $transient_pane_facts $runtime_dir ((get_current_tab_workspace_root --include-bootstrap) | default "") (pwd))
+        let payload = ({
+            kind: ($popup_contract.kind? | default "" | into string | str trim)
+            args: ($popup_contract.args? | default [])
+            cwd: ($popup_contract.cwd? | default "" | into string)
+            runtime_dir: ($popup_contract.runtime_dir? | default "" | into string)
+        } | to json -r)
+        let open_response = (run_zellij_pipe "open_transient_pane" $payload)
+        let open_ok = (match ($open_response | str trim) {
+            "ok" | "opened" => true
+            _ => false
+        })
+        if not $open_ok {
+            error make {msg: $"Failed to open the Yazelix menu popup pane: ($open_response)"}
         }
         return
     }

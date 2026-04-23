@@ -31,6 +31,9 @@ use yazelix_core::run_profile_load_report;
 use yazelix_core::run_profile_print_report;
 use yazelix_core::run_profile_record_step;
 use yazelix_core::run_profile_wait_step;
+use yazelix_core::run_zellij_get_workspace_root;
+use yazelix_core::run_zellij_pipe;
+use yazelix_core::run_zellij_retarget;
 use yazelix_core::run_yzx_reveal;
 use yazelix_core::run_yzx_restart;
 use yazelix_core::run_yzx_screen;
@@ -63,6 +66,9 @@ fn usage() -> ! {
     eprintln!("       yzx_control profile load-report <report_path>");
     eprintln!("       yzx_control profile wait-step <report_path> <component> <step> [--timeout-ms <n>]");
     eprintln!("       yzx_control profile print-report <report_path>");
+    eprintln!("       yzx_control zellij pipe <command> [--payload <json>]");
+    eprintln!("       yzx_control zellij get-workspace-root [--include-bootstrap]");
+    eprintln!("       yzx_control zellij retarget <path> [--editor <kind>]");
     eprintln!("       yzx_control reveal <path>");
     eprintln!("       yzx_control restart");
     eprintln!("       yzx_control screen [style]");
@@ -486,6 +492,25 @@ fn run_profile(args: &[String]) -> Result<i32, CoreError> {
     }
 }
 
+fn run_zellij(args: &[String]) -> Result<i32, CoreError> {
+    if args.is_empty() {
+        eprintln!("Usage: yzx_control zellij <pipe|get-workspace-root|retarget> [args...]");
+        return Ok(64);
+    }
+    let mut argv = args.to_vec();
+    let sub = argv.remove(0);
+    match sub.as_str() {
+        "pipe" => run_zellij_pipe(&argv),
+        "get-workspace-root" => run_zellij_get_workspace_root(&argv),
+        "retarget" => run_zellij_retarget(&argv),
+        _ => {
+            eprintln!("Unknown zellij subcommand: {sub}");
+            eprintln!("Usage: yzx_control zellij <pipe|get-workspace-root|retarget> [args...]");
+            Ok(64)
+        }
+    }
+}
+
 fn main() {
     let mut argv: Vec<String> = std::env::args().skip(1).collect();
     if argv.is_empty() {
@@ -529,6 +554,7 @@ fn main() {
         "keys" => run_yzx_keys(&argv),
         "popup" => run_yzx_popup(&argv),
         "profile" => run_profile(&argv),
+        "zellij" => run_zellij(&argv),
         "reveal" => run_yzx_reveal(&argv),
         "restart" => run_yzx_restart(&argv),
         "screen" => run_yzx_screen(&argv),

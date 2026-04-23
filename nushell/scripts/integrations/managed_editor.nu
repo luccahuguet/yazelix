@@ -2,9 +2,9 @@
 
 use ../utils/logging.nu log_to_file
 use ../utils/runtime_paths.nu [get_yazelix_runtime_dir]
-use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
+use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command run_zellij_pipe run_zellij_retarget]
 use ../utils/editor_launch_context.nu [resolve_editor_launch_context]
-use ./zellij.nu [open_in_existing_helix, open_in_existing_neovim, open_new_helix_pane, open_new_neovim_pane, get_workspace_root, retarget_workspace_for_path, set_managed_editor_cwd]
+use ./zellij.nu [open_new_helix_pane, open_new_neovim_pane, get_workspace_root]
 use ./yazi.nu [get_ya_command, is_sidebar_enabled, sync_sidebar_yazi_state_to_directory]
 
 export def get_managed_editor_kind [] {
@@ -26,7 +26,32 @@ export def sync_managed_editor_cwd [target_path: path, log_file: string = "edito
         return {status: "skipped", reason: "unsupported_editor"}
     }
 
-    let result = (set_managed_editor_cwd $editor_kind $target_path $log_file)
+    let expanded_target_path = ($target_path | path expand)
+    if not ($expanded_target_path | path exists) {
+        return {status: "error", reason: $"Path does not exist: ($expanded_target_path)"}
+    }
+
+    let target_dir = if (($expanded_target_path | path type) == "dir") {
+        $expanded_target_path
+    } else {
+        $expanded_target_path | path dirname
+    }
+
+    let payload = {editor: $editor_kind, working_dir: $target_dir} | to json -r
+    let result = (try {
+        let response = (run_zellij_pipe "set_managed_editor_cwd" $payload)
+        match ($response | str trim) {
+            "ok" => {status: "ok"}
+            "missing" => {status: "missing"}
+            "unsupported_editor" => {status: "unsupported_editor"}
+            _ => {status: "error", reason: $response}
+        }
+    } catch {|err|
+        {status: "error", reason: $err.msg}
+    })
+
+    let result = {working_dir: $target_dir, editor: $editor_kind} | merge $result
+
     match $result.status {
         "ok" => {
             log_to_file $log_file $"Synced managed editor cwd to: ($result.working_dir)"
@@ -127,6 +152,22 @@ export def sync_post_retarget_workspace_state [
     $retarget_result | upsert sidebar_sync_result $sidebar_sync_result
 }
 
+def open_file_in_managed_editor [editor_kind: string, file_path: path] {
+    let expanded_file_path = ($file_path | path expand)
+    let workspace_root = (get_workspace_root $expanded_file_path)
+    let payload = {
+        editor: $editor_kind
+        file_path: $expanded_file_path
+        working_dir: $workspace_root
+    } | to json -r
+    let response = (run_zellij_pipe "open_file" $payload)
+    match ($response | str trim) {
+        "ok" | "opened" | "focused" => {status: "ok"}
+        "missing" => {status: "missing"}
+        _ => {status: "error", reason: $response}
+    }
+}
+
 def open_with_editor_integration [
     file_path: path
     yazi_id: string
@@ -154,7 +195,7 @@ def open_with_editor_integration [
         return
     }
 
-    let retarget_result = (retarget_workspace_for_path $file_path "" $log_file)
+    let retarget_result = (run_zellij_retarget $file_path)
     if $retarget_result.status != "ok" {
         log_to_file $log_file $"WARNING: Failed to update workspace root \(status=($retarget_result.status)\)"
     } else {
@@ -165,11 +206,11 @@ def open_with_editor_integration [
 }
 
 def open_with_helix [file_path: path, yazi_id: string] {
-    open_with_editor_integration $file_path $yazi_id "Helix" "open_helix.log" {|path| open_in_existing_helix $path} {|path, id| open_new_helix_pane $path $id}
+    open_with_editor_integration $file_path $yazi_id "Helix" "open_helix.log" {|path| open_file_in_managed_editor "helix" $path} {|path, id| open_new_helix_pane $path $id}
 }
 
 def open_with_neovim [file_path: path, yazi_id: string] {
-    open_with_editor_integration $file_path $yazi_id "Neovim" "open_neovim.log" {|path| open_in_existing_neovim $path} {|path, id| open_new_neovim_pane $path $id}
+    open_with_editor_integration $file_path $yazi_id "Neovim" "open_neovim.log" {|path| open_file_in_managed_editor "neovim" $path} {|path, id| open_new_neovim_pane $path $id}
 }
 
 def open_with_generic_editor [file_path: path, editor: string, yazi_id: string] {
@@ -183,7 +224,7 @@ def open_with_generic_editor [file_path: path, editor: string, yazi_id: string] 
         log_to_file "open_generic.log" $"Successfully opened ($file_path) with ($editor) in new pane"
         print $"Opened ($file_path) with ($editor) in new pane"
 
-        let retarget_result = (retarget_workspace_for_path $file_path "" "open_generic.log")
+        let retarget_result = (run_zellij_retarget $file_path)
         if $retarget_result.status != "ok" {
             log_to_file "open_generic.log" $"WARNING: Failed to update workspace root \(status=($retarget_result.status)\)"
         } else {

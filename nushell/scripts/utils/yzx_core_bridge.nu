@@ -435,3 +435,47 @@ export def profile_startup_step [component: string, step: string, code: closure,
 
     $result
 }
+
+export def run_zellij_pipe [command: string, payload: string = ""] {
+    let yzx_control = (resolve_yzx_control_path)
+    mut args = [zellij pipe $command]
+    if ($payload | is-not-empty) {
+        $args = ($args | append [--payload $payload])
+    }
+    let result = (^$yzx_control ...$args | complete)
+    if $result.exit_code != 0 {
+        error make {msg: ($result.stderr | default "" | str trim)}
+    }
+    $result.stdout | default "" | str trim
+}
+
+export def get_current_tab_workspace_root [--include-bootstrap] {
+    let yzx_control = (resolve_yzx_control_path)
+    mut args = [zellij get-workspace-root]
+    if $include_bootstrap {
+        $args = ($args | append "--include-bootstrap")
+    }
+    let result = (^$yzx_control ...$args | complete)
+    if $result.exit_code != 0 {
+        return null
+    }
+    $result.stdout | default "" | str trim
+}
+
+export def run_zellij_retarget [target_path: path, editor_kind: string = ""] {
+    let yzx_control = (resolve_yzx_control_path)
+    mut args = [zellij retarget $target_path]
+    if ($editor_kind | is-not-empty) {
+        $args = ($args | append [--editor $editor_kind])
+    }
+    let result = (^$yzx_control ...$args | complete)
+    if ($result.stdout | is-not-empty) {
+        try {
+            $result.stdout | from json
+        } catch {
+            {status: "error", reason: ($result.stdout | str trim)}
+        }
+    } else {
+        {status: "error", reason: ($result.stderr | default "" | str trim)}
+    }
+}
