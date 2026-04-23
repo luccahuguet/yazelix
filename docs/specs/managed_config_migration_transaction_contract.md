@@ -308,12 +308,12 @@ Yazelix does not need to import those systems wholesale. It should copy the smal
 
 This is now a historical contract. It is no longer defended by live migration transaction code because v15 removed the migration and legacy relocation layer. Current v15 config behavior is defended by [stale_config_diagnostics.md](./stale_config_diagnostics.md) and [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md).
 
-- historical spec validation: `nu nushell/scripts/dev/validate_specs.nu`
+- historical spec validation: `yzx_repo_validator validate-specs`
 
 ## Traceability
 
 - Bead: `yazelix-53zx.1`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 
 ## Open Questions
 

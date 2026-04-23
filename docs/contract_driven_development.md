@@ -103,12 +103,12 @@ notes.
 
 The current ratchet is enforced by these validators:
 
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-specs`
   - validates spec traceability plus indexed contract-item structure
-- `nu nushell/scripts/dev/validate_default_test_traceability.nu`
+- `yzx_repo_validator validate-default-test-traceability`
   - validates governed Nu test metadata, nearby `Contract:` markers, and the
     default-suite file-level ratchet
-- `nu nushell/scripts/dev/validate_rust_test_traceability.nu`
+- `yzx_repo_validator validate-rust-test-traceability`
   - validates governed Rust test metadata and nearby `Contract:` markers
 
 Current migration-safe debt that is allowed but must shrink is tracked in

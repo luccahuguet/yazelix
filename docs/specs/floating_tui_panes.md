@@ -35,7 +35,7 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
   `zellij.popup_height_percent` must be integers in the range `1..100`.
   Invalid values fail fast as config errors instead of being coerced silently
 - Verification: automated `nu nushell/scripts/dev/test_yzx_popup_commands.nu`;
-  validator `nu nushell/scripts/dev/validate_specs.nu`
+  validator `yzx_repo_validator validate-specs`
 
 #### POP-003
 - Type: behavior

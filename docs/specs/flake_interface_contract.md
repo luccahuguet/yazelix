@@ -97,4 +97,4 @@ Home Manager remains a supported first-class integration path through the same t
 ## Traceability
 
 - Bead: `yazelix-4buc.2`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu` (structure and required fields check)
+- Defended by: `yzx_repo_validator validate-specs` (structure and required fields check)

@@ -95,7 +95,7 @@ The Rust rewrite needs this baseline to preserve or improve startup behavior ins
 - `nu -c 'source nushell/scripts/dev/test_yzx_maintainer.nu; test_dev_profile_launch_invokes_leaf_command_with_flags'`
 - `nu -c 'source nushell/scripts/dev/test_yzx_maintainer.nu; test_startup_profile_records_detached_terminal_probe'`
 - `nu -c 'source nushell/scripts/dev/test_yzx_maintainer.nu; test_startup_profile_harness_records_real_startup_boundaries'`
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-specs`
 
 ## Traceability
 
@@ -104,7 +104,7 @@ The Rust rewrite needs this baseline to preserve or improve startup behavior ins
 - Defended by: `nushell/scripts/dev/test_yzx_maintainer.nu::test_dev_profile_launch_invokes_leaf_command_with_flags`
 - Defended by: `nushell/scripts/dev/test_yzx_maintainer.nu::test_startup_profile_records_detached_terminal_probe`
 - Defended by: `nushell/scripts/dev/test_yzx_maintainer.nu::test_startup_profile_harness_records_real_startup_boundaries`
-- Defended by: `nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 
 ## Open Questions
 

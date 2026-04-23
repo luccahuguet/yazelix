@@ -125,7 +125,7 @@ decision record now lives in
 
 ## Verification
 
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-specs`
 - manual audit review of:
   - `docs/specs/config_runtime_control_plane_canonicalization_audit.md`
   - `docs/specs/public_yzx_command_surface_canonicalization_audit.md`
@@ -138,5 +138,5 @@ decision record now lives in
 ## Traceability
 
 - Bead: `yazelix-rdn7.6`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 - Informed by: `docs/specs/governed_test_traceability_inventory.md`

@@ -381,7 +381,7 @@ No-go signals:
 
 ## Verification
 
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-specs`
 - manual review against:
   - `docs/specs/rust_migration_matrix.md`
   - `docs/specs/rust_nushell_bridge_contract.md`
@@ -391,4 +391,4 @@ No-go signals:
 ## Traceability
 
 - Bead: `yazelix-2ex.1.11`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`

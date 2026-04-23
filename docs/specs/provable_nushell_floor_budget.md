@@ -32,7 +32,7 @@ validator.
 | --- | --- | ---: | ---: | --- |
 | Governed Nu tests | `nushell/scripts/dev/test_*.nu` | `0` | `0` | `yazelix-rdn7.4.5`, `yazelix-rdn7.4.7` |
 | Shell-heavy E2E and sweep runners | retained `*_runner.nu` files under `nushell/scripts/dev/` | `881` | `0` | `yazelix-8ih0`, `yazelix-rdn7.4.5` |
-| Deterministic Nu validators | `nushell/scripts/dev/validate*.nu` | `837` | `0` | `yazelix-rdn7.4.6`, `yazelix-rdn7.4.7` |
+| Deterministic Nu validators | surviving Nix/package/syntax probes under `nushell/scripts/dev/validate*.nu` | `639` | `0` | `yazelix-rdn7.4.6`, `yazelix-rdn7.4.7` |
 | Maintainer and `yzx dev` shell orchestration | `nushell/scripts/maintainer/*.nu`, `nushell/scripts/yzx/dev.nu`, residual non-test dev orchestration | `3,996` | `1,200` | `yazelix-8ih0`, `yazelix-8ih0.7`, `yazelix-8ih0.8` |
 | Integration and popup wrapper glue | `nushell/scripts/integrations/*.nu`, `nushell/scripts/zellij_wrappers/*.nu` | `1,328` | `300` | `yazelix-w6sz.2` |
 | Setup and bootstrap shell entry | `setup/environment.nu`, `setup/initializers.nu`, `core/start_yazelix.nu`, `core/start_yazelix_inner.nu`, `core/launch_yazelix.nu` | `1,070` | `500` | `yazelix-w6sz.3`, `yazelix-nuj1`, `yazelix-p18h` |
@@ -195,7 +195,7 @@ those remainders movable, the floor should fall again.
 
 ## Verification
 
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-specs`
 - `nix develop -c cargo run --manifest-path rust_core/Cargo.toml --bin yzx_repo_validator -- validate-nushell-budget`
 
 ## Traceability
@@ -204,6 +204,6 @@ those remainders movable, the floor should fall again.
 - Bead: `yazelix-w6sz.1`
 - Bead: `yazelix-w6sz.7.1`
 - Bead: `yazelix-w6sz.7.2`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 - Informed by: `docs/specs/ranked_nu_deletion_budget.md`
 - Informed by: `docs/specs/likely_nushell_survivor_owner_cut_decisions.md`

@@ -42,7 +42,7 @@ Additionally, Ghostty on macOS launches login shells by default. This is a Ghost
 Automated:
 - `nu nushell/scripts/dev/validate_flake_interface.nu` — checks that all exported flake systems are available according to `meta.platforms`
 - `nu nushell/scripts/dev/test_yzx_generated_configs.nu` — includes `test_ghostty_macos_launch_command_omits_linux_specific_flags` defending the macOS Ghostty command shape
-- `nu nushell/scripts/dev/validate_specs.nu` — validates this spec is listed in the inventory
+- `yzx_repo_validator validate-specs` — validates this spec is listed in the inventory
 
 Manual smoke gate (maintainer on macOS hardware):
 1. Install the package: `nix profile add github:luccahuguet/yazelix#yazelix` on macOS

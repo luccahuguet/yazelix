@@ -114,7 +114,8 @@ jobs:
         run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-readme-version
 
       - name: Validate upgrade contract
-        run: nu nushell/scripts/dev/validate_upgrade_contract.nu --ci
+        shell: bash
+        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-upgrade-contract --ci
 
       - name: Build yzx_core helper for source-checkout validators
         shell: bash
@@ -124,16 +125,20 @@ jobs:
           echo "YAZELIX_YZX_CORE_BIN=$GITHUB_WORKSPACE/rust_core/target/debug/yzx_core" >> "$GITHUB_ENV"
 
       - name: Validate config surface and launch-profile contract
-        run: nu nushell/scripts/dev/validate_config_surface_contract.nu
+        shell: bash
+        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-config-surface-contract
 
       - name: Validate spec traceability
-        run: nu nushell/scripts/dev/validate_specs.nu
+        shell: bash
+        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-specs
 
       - name: Validate default-suite shape and traceability
-        run: nu nushell/scripts/dev/validate_default_test_traceability.nu
+        shell: bash
+        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-default-test-traceability
 
       - name: Validate Rust test traceability
-        run: nu nushell/scripts/dev/validate_rust_test_traceability.nu
+        shell: bash
+        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-rust-test-traceability
 
       - name: Validate top-level flake interface
         run: nu nushell/scripts/dev/validate_flake_interface.nu

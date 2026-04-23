@@ -51,7 +51,7 @@ Out of scope:
   `nushell/scripts/dev/test_yzx_maintainer.nu`
   (`test_detached_launch_probe_success_path_is_fast`,
   `test_detached_launch_probe_early_failure_is_visible`); validator
-  `nu nushell/scripts/dev/validate_specs.nu`
+  `yzx_repo_validator validate-specs`
 - Source: `docs/specs/setup_shellhook_welcome_terminal_canonicalization_audit.md`;
   `docs/specs/launch_startup_session_canonicalization_audit.md`
 
@@ -66,7 +66,7 @@ Out of scope:
   `nushell/scripts/dev/test_yzx_generated_configs.nu`
   (`test_terminal_config_mode_user_requires_real_user_config`,
   `test_generate_all_terminal_configs_keeps_terminal_overrides_opt_in`);
-  validator `nu nushell/scripts/dev/validate_config_surface_contract.nu`
+  validator `yzx_repo_validator validate-config-surface-contract`
 - Source: `docs/specs/terminal_override_layers.md`;
   `docs/specs/runtime_dependency_preflight_contract.md`
 
@@ -164,4 +164,4 @@ in the bead notes.
 - Bead: `yazelix-zlt2.1`
 - Informed by: `docs/specs/setup_shellhook_welcome_terminal_canonicalization_audit.md`
 - Informed by: `docs/specs/launch_startup_session_canonicalization_audit.md`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`

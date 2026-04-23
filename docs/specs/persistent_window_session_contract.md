@@ -54,7 +54,7 @@ Without stating that explicitly, users and future fixes will keep treating persi
   per-window behavior
 - Verification: automated
   `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`; validator
-  `nu nushell/scripts/dev/validate_specs.nu`
+  `yzx_repo_validator validate-specs`
 
 #### PWS-004
 - Type: behavior
@@ -64,7 +64,7 @@ Without stating that explicitly, users and future fixes will keep treating persi
   mode. A detached named persistent session may be an intended persistence
   feature rather than a leak by default
 - Verification: manual persistent-session lifecycle review; validator
-  `nu nushell/scripts/dev/validate_specs.nu`
+  `yzx_repo_validator validate-specs`
 
 ## Behavior
 
@@ -106,7 +106,7 @@ Without stating that explicitly, users and future fixes will keep treating persi
 ## Verification
 
 - integration tests: `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
-- CI checks: `nu nushell/scripts/dev/validate_specs.nu`
+- CI checks: `yzx_repo_validator validate-specs`
 - manual verification:
   - launch a persistent Yazelix session, then open another window and confirm it reattaches
   - invoke `yzx enter --path ...` or similar fresh-start intent against an existing persistent session and confirm the warning path
@@ -115,7 +115,7 @@ Without stating that explicitly, users and future fixes will keep treating persi
 
 - Bead: `yazelix-vxrb`
 - Defended by: `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 
 ## Open Questions
 

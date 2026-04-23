@@ -1,4 +1,3 @@
-use serde::Deserialize;
 use serde_json::Value as JsonValue;
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -33,28 +32,6 @@ pub struct ContractItem {
     pub owner: Option<String>,
     pub statement: Option<String>,
     pub verification: Option<String>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct QuarantineManifest {
-    entries: Option<Vec<QuarantineEntry>>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct QuarantineEntry {
-    kind: String,
-    path: String,
-    bead: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct TestSuiteInventory {
-    default: DefaultSuiteInventory,
-}
-
-#[derive(Debug, Deserialize)]
-struct DefaultSuiteInventory {
-    transitional_nu_entrypoints: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone)]
@@ -104,188 +81,14 @@ pub fn validate_specs(repo_root: &Path) -> Result<ValidationReport, String> {
 }
 
 pub fn validate_default_test_traceability(repo_root: &Path) -> Result<ValidationReport, String> {
-    let entrypoints = load_default_suite_entrypoints(repo_root)?;
-    let component_files = load_default_suite_component_files(repo_root)?;
-    let defended_by_lines = load_spec_defended_by_lines(repo_root)?;
-    let bead_ids = load_bead_ids(repo_root)?;
-    let contract_items = load_contract_items(repo_root)?;
-    let quarantine_entries = load_contract_traceability_quarantine_entries(repo_root)?;
     let mut report = ValidationReport::default();
 
     for test_path in load_all_nu_test_file_paths(repo_root)? {
         let relative_path = relative_to_repo(repo_root, &test_path)?;
-        let lane = parse_nu_test_lane(repo_root, &relative_path)?;
-
-        match lane {
-            None => report.errors.push(format!(
-                "Missing '# Test lane:' declaration in: {relative_path}"
-            )),
-            Some(ref lane_name) if !ALLOWED_TEST_LANES.contains(&lane_name.as_str()) => {
-                report.errors.push(format!(
-                    "Test file declares unsupported lane '{}': {}",
-                    lane_name, relative_path
-                ))
-            }
-            _ => {}
-        }
-
-        if relative_path.ends_with("_extended.nu")
-            && !has_grandfathered_extended_filename_marker(repo_root, &relative_path)?
-        {
-            report.errors.push(format!(
-                "Generic '_extended' test filenames are no longer allowed without an explicit grandfather marker: {}",
-                relative_path
-            ));
-        }
-    }
-
-    for entrypoint in &entrypoints {
-        if !is_spec_backed(entrypoint, &defended_by_lines) {
-            report.errors.push(format!(
-                "Default-suite entrypoint is not tied to any spec traceability line: {}",
-                entrypoint
-            ));
-        }
-    }
-
-    for relative_path in &component_files {
-        let dev_relative_path = to_dev_relative_path(relative_path);
-
-        if !has_existing_spec_reference(repo_root, &dev_relative_path)? {
-            report.errors.push(format!(
-                "Default-suite component file is missing a valid '# Defends:' spec reference: {}",
-                dev_relative_path
-            ));
-        }
-
-        if !has_non_policy_spec_reference(repo_root, &dev_relative_path)? {
-            let quarantine_entry = find_traceability_quarantine_entry(
-                &quarantine_entries,
-                "default_suite_component_file",
-                &dev_relative_path,
-            );
-
-            match quarantine_entry {
-                None => report.errors.push(format!(
-                    "Default-suite component file cannot rely only on governance-level file traceability without a quarantine entry: {}",
-                    dev_relative_path
-                )),
-                Some(entry) => {
-                    let bead = entry.bead.clone().unwrap_or_default();
-                    if !bead_ids.contains(&bead) {
-                        report.errors.push(format!(
-                            "Traceability quarantine entry points at a missing bead `{}`: {}",
-                            bead, dev_relative_path
-                        ));
-                    } else {
-                        report.warnings.push(format!(
-                            "Quarantined file-level traceability debt: {} -> {}",
-                            dev_relative_path, bead
-                        ));
-                    }
-                }
-            }
-        }
-
-        if parse_nu_test_lane(repo_root, &dev_relative_path)?.as_deref() != Some("default") {
-            report.errors.push(format!(
-                "Default-suite component file must declare '# Test lane: default': {}",
-                dev_relative_path
-            ));
-        }
-
-        let canonical_tests = load_canonical_test_names(repo_root, &dev_relative_path)?;
-        let defined_tests = load_defined_nu_test_names(repo_root, &dev_relative_path)?;
-        for dead_test in defined_tests
-            .into_iter()
-            .filter(|name| !canonical_tests.contains(name))
-        {
-            report.errors.push(format!(
-                "Default-suite component file contains a noncanonical dead test: {} :: {}",
-                dev_relative_path, dead_test
-            ));
-        }
-
-        for canonical_test in &canonical_tests {
-            if !has_valid_nu_definition_test_justification(
-                repo_root,
-                &dev_relative_path,
-                canonical_test,
-            )? {
-                report.errors.push(format!(
-                    "Default-suite canonical test is missing a nearby '# Defends:', '# Regression:', or '# Invariant:' marker at the test definition: {} :: {}",
-                    dev_relative_path, canonical_test
-                ));
-            }
-
-            report
-                .errors
-                .extend(collect_nu_definition_contract_traceability_errors(
-                    repo_root,
-                    &dev_relative_path,
-                    canonical_test,
-                    "default",
-                    &contract_items,
-                )?);
-
-            let strength =
-                get_nu_definition_test_strength(repo_root, &dev_relative_path, canonical_test)?;
-            let minimum_strength = minimum_strength_for_lane("default")
-                .ok_or("Missing default lane strength threshold")?;
-            if strength < minimum_strength {
-                report.errors.push(format!(
-                    "Default-suite canonical test is below the minimum strength bar of {}/10: {} :: {} :: {}/10",
-                    minimum_strength, dev_relative_path, canonical_test, strength
-                ));
-            }
-        }
-    }
-
-    let default_component_paths: HashSet<String> = component_files
-        .iter()
-        .map(|file| to_dev_relative_path(file))
-        .collect();
-
-    for test_path in load_all_nu_test_file_paths(repo_root)? {
-        let relative_path = relative_to_repo(repo_root, &test_path)?;
-        let Some(lane) = parse_nu_test_lane(repo_root, &relative_path)? else {
-            continue;
-        };
-
-        if default_component_paths.contains(&relative_path) {
-            continue;
-        }
-
-        let Some(minimum_strength) = minimum_strength_for_lane(&lane) else {
-            continue;
-        };
-
-        for test_name in load_defined_nu_test_names(repo_root, &relative_path)? {
-            if !has_valid_nu_definition_test_justification(repo_root, &relative_path, &test_name)? {
-                report.errors.push(format!(
-                    "Governed test is missing a nearby '# Defends:', '# Regression:', or '# Invariant:' marker: {} :: {}",
-                    relative_path, test_name
-                ));
-            }
-
-            report
-                .errors
-                .extend(collect_nu_definition_contract_traceability_errors(
-                    repo_root,
-                    &relative_path,
-                    &test_name,
-                    &lane,
-                    &contract_items,
-                )?);
-
-            let strength = get_nu_definition_test_strength(repo_root, &relative_path, &test_name)?;
-            if strength < minimum_strength {
-                report.errors.push(format!(
-                    "Governed test is below the minimum strength bar of {}/10 for lane '{}': {} :: {} :: {}/10",
-                    minimum_strength, lane, relative_path, test_name, strength
-                ));
-            }
-        }
+        report.errors.push(format!(
+            "Governed Nushell test files are no longer part of the canonical suite; port strong tests to Rust nextest or demote shell-heavy probes out of the test_*.nu namespace: {}",
+            relative_path
+        ));
     }
 
     Ok(report)
@@ -644,103 +447,6 @@ fn collect_rust_rs_files(dir: &Path, files: &mut Vec<PathBuf>) -> Result<(), Str
     Ok(())
 }
 
-fn load_default_suite_entrypoints(repo_root: &Path) -> Result<Vec<String>, String> {
-    let inventory_path = repo_root
-        .join("nushell")
-        .join("scripts")
-        .join("maintainer")
-        .join("test_suite_inventory.toml");
-    let content = fs::read_to_string(&inventory_path).map_err(|error| {
-        format!(
-            "Failed to read test suite inventory {}: {}",
-            inventory_path.display(),
-            error
-        )
-    })?;
-    let inventory: TestSuiteInventory = toml::from_str(&content)
-        .map_err(|error| format!("Invalid TOML in {}: {}", inventory_path.display(), error))?;
-    Ok(inventory
-        .default
-        .transitional_nu_entrypoints
-        .unwrap_or_default())
-}
-
-fn load_default_suite_component_files(repo_root: &Path) -> Result<Vec<String>, String> {
-    let suite_runner = repo_root
-        .join("nushell")
-        .join("scripts")
-        .join("dev")
-        .join("test_yzx_commands.nu");
-    if !suite_runner.exists() {
-        return Ok(Vec::new());
-    }
-    let content = fs::read_to_string(&suite_runner)
-        .map_err(|error| format!("Failed to read {}: {}", suite_runner.display(), error))?;
-    let mut files = Vec::new();
-
-    for trimmed in content.lines().map(str::trim) {
-        if trimmed.starts_with("use ./test_")
-            && trimmed.contains("[run_")
-            && trimmed.contains("canonical_tests]")
-        {
-            if let Some(after_prefix) = trimmed.strip_prefix("use ./") {
-                if let Some((file_name, _)) = after_prefix.split_once(' ') {
-                    push_unique(&mut files, file_name.to_string());
-                }
-            }
-        }
-    }
-
-    Ok(files)
-}
-
-fn load_spec_defended_by_lines(repo_root: &Path) -> Result<Vec<(String, String)>, String> {
-    let mut lines = Vec::new();
-    for spec_path in load_spec_files(repo_root)? {
-        let relative_path = relative_to_repo(repo_root, &spec_path)?;
-        let traceability = get_traceability_section(
-            &fs::read_to_string(&spec_path)
-                .map_err(|error| format!("Failed to read {}: {}", spec_path.display(), error))?,
-        );
-        for line in traceability
-            .lines()
-            .map(str::trim)
-            .filter(|line| line.starts_with("- Defended by:"))
-        {
-            lines.push((relative_path.clone(), line.to_string()));
-        }
-    }
-    Ok(lines)
-}
-
-fn load_contract_traceability_quarantine_entries(
-    repo_root: &Path,
-) -> Result<Vec<QuarantineEntry>, String> {
-    let manifest_path = repo_root
-        .join("docs")
-        .join("contract_traceability_quarantine.toml");
-    if !manifest_path.exists() {
-        return Ok(Vec::new());
-    }
-    let content = fs::read_to_string(&manifest_path)
-        .map_err(|error| format!("Failed to read {}: {}", manifest_path.display(), error))?;
-    let manifest: QuarantineManifest = toml::from_str(&content)
-        .map_err(|error| format!("Invalid TOML in {}: {}", manifest_path.display(), error))?;
-    Ok(manifest.entries.unwrap_or_default())
-}
-
-fn parse_nu_test_lane(repo_root: &Path, relative_path: &str) -> Result<Option<String>, String> {
-    let full_path = repo_root.join(relative_path);
-    let lines = read_lines(&full_path)?;
-    Ok(lines
-        .into_iter()
-        .map(|line| line.trim().to_string())
-        .find_map(|line| {
-            line.strip_prefix("# Test lane:")
-                .map(|lane| lane.trim().to_string())
-        }))
-}
-
 fn parse_rust_test_lane(repo_root: &Path, relative_path: &str) -> Result<Option<String>, String> {
     let full_path = repo_root.join(relative_path);
     let lines = read_lines(&full_path)?;
@@ -751,127 +457,6 @@ fn parse_rust_test_lane(repo_root: &Path, relative_path: &str) -> Result<Option<
             line.strip_prefix("// Test lane:")
                 .map(|lane| lane.trim().to_string())
         }))
-}
-
-fn has_grandfathered_extended_filename_marker(
-    repo_root: &Path,
-    relative_path: &str,
-) -> Result<bool, String> {
-    let lines = read_lines(&repo_root.join(relative_path))?;
-    Ok(lines
-        .iter()
-        .map(|line| line.trim())
-        .any(|line| line.starts_with("# Grandfathered filename:")))
-}
-
-fn is_spec_backed(entrypoint: &str, defended_by_lines: &[(String, String)]) -> bool {
-    let full_path = format!("nushell/scripts/dev/{entrypoint}");
-    defended_by_lines
-        .iter()
-        .any(|(_, line)| line.contains(entrypoint) || line.contains(&full_path))
-}
-
-fn has_existing_spec_reference(repo_root: &Path, relative_path: &str) -> Result<bool, String> {
-    Ok(load_file_defends_lines(repo_root, relative_path)?
-        .into_iter()
-        .any(|line| parse_nu_defends_spec_path(repo_root, &line).is_some()))
-}
-
-fn has_non_policy_spec_reference(repo_root: &Path, relative_path: &str) -> Result<bool, String> {
-    Ok(load_file_defends_lines(repo_root, relative_path)?
-        .into_iter()
-        .filter_map(|line| parse_nu_defends_spec_path(repo_root, &line))
-        .any(|spec_path| !is_policy_only_spec_path(&spec_path)))
-}
-
-fn load_file_defends_lines(repo_root: &Path, relative_path: &str) -> Result<Vec<String>, String> {
-    Ok(read_lines(&repo_root.join(relative_path))?
-        .into_iter()
-        .map(|line| line.trim().to_string())
-        .filter(|line| line.starts_with("# Defends:"))
-        .collect())
-}
-
-fn find_traceability_quarantine_entry<'a>(
-    entries: &'a [QuarantineEntry],
-    kind: &str,
-    path: &str,
-) -> Option<&'a QuarantineEntry> {
-    entries
-        .iter()
-        .find(|entry| entry.kind == kind && entry.path == path)
-}
-
-fn load_canonical_test_names(repo_root: &Path, relative_path: &str) -> Result<Vec<String>, String> {
-    let lines = read_lines(&repo_root.join(relative_path))?;
-    let start_index = lines
-        .iter()
-        .position(|line| {
-            let trimmed = line.trim();
-            trimmed.starts_with("export def run_") && trimmed.contains("canonical_tests [] {")
-        })
-        .ok_or_else(|| format!("Could not find canonical test runner in: {relative_path}"))?;
-
-    let mut brace_depth = 1i32;
-    let mut body_lines = Vec::new();
-    for line in lines.iter().skip(start_index + 1) {
-        let opens = line.chars().filter(|char| *char == '{').count() as i32;
-        let closes = line.chars().filter(|char| *char == '}').count() as i32;
-        let next_depth = brace_depth + opens - closes;
-        if next_depth < 0 {
-            return Err(format!(
-                "Canonical test runner braces became unbalanced in: {relative_path}"
-            ));
-        }
-        if next_depth == 0 {
-            break;
-        }
-        body_lines.push(line.clone());
-        brace_depth = next_depth;
-    }
-
-    if body_lines.is_empty() {
-        return Err(format!(
-            "Could not extract canonical test runner body from: {relative_path}"
-        ));
-    }
-
-    let mut names = Vec::new();
-    for line in body_lines {
-        let mut remainder = line.as_str();
-        while let Some(index) = remainder.find("(test_") {
-            let candidate = &remainder[index + 1..];
-            let name: String = candidate
-                .chars()
-                .take_while(|char| char.is_ascii_alphanumeric() || *char == '_')
-                .collect();
-            if name.starts_with("test_") {
-                push_unique(&mut names, name);
-            }
-            remainder = &candidate[1..];
-        }
-    }
-
-    Ok(names)
-}
-
-fn load_defined_nu_test_names(
-    repo_root: &Path,
-    relative_path: &str,
-) -> Result<Vec<String>, String> {
-    let mut names = Vec::new();
-    for line in read_lines(&repo_root.join(relative_path))? {
-        let trimmed = line.trim();
-        if let Some(rest) = trimmed.strip_prefix("def test_") {
-            let suffix: String = rest
-                .chars()
-                .take_while(|char| char.is_ascii_alphanumeric() || *char == '_')
-                .collect();
-            let name = format!("test_{suffix}");
-            push_unique(&mut names, name);
-        }
-    }
-    Ok(names)
 }
 
 fn load_defined_rust_tests(
@@ -894,24 +479,6 @@ fn load_defined_rust_tests(
     Ok(tests)
 }
 
-fn load_nu_definition_traceability_lines(
-    repo_root: &Path,
-    relative_path: &str,
-    test_name: &str,
-) -> Result<Vec<String>, String> {
-    let line_index = get_nu_test_definition_line_index(repo_root, relative_path, test_name)?;
-    Ok(
-        get_prior_nonempty_lines_before_index(repo_root, relative_path, line_index)?
-            .into_iter()
-            .filter(|line| {
-                ["# Defends:", "# Regression:", "# Invariant:", "# Contract:"]
-                    .iter()
-                    .any(|prefix| line.starts_with(prefix))
-            })
-            .collect(),
-    )
-}
-
 fn load_rust_definition_traceability_lines(
     repo_root: &Path,
     relative_path: &str,
@@ -932,69 +499,6 @@ fn load_rust_definition_traceability_lines(
             })
             .collect(),
     )
-}
-
-fn collect_nu_definition_contract_traceability_errors(
-    repo_root: &Path,
-    relative_path: &str,
-    test_name: &str,
-    lane: &str,
-    contract_items: &[ContractItem],
-) -> Result<Vec<String>, String> {
-    let mut errors = Vec::new();
-    let contract_ids = load_nu_definition_contract_ids(repo_root, relative_path, test_name)?;
-    let defends_spec_paths =
-        load_nu_definition_defends_spec_paths(repo_root, relative_path, test_name)?;
-    let has_regression_or_invariant =
-        has_nu_definition_regression_or_invariant(repo_root, relative_path, test_name)?;
-
-    if contract_ids.is_empty()
-        && nu_definition_has_policy_only_traceability(repo_root, relative_path, test_name)?
-    {
-        errors.push(format!(
-            "Governed test cannot rely only on `docs/specs/test_suite_governance.md` as nearby traceability: {} :: {}",
-            relative_path, test_name
-        ));
-    }
-
-    if lane == "default"
-        && contract_ids.is_empty()
-        && !has_regression_or_invariant
-        && defends_spec_paths
-            .iter()
-            .any(|spec_path| spec_has_contract_items(contract_items, spec_path))
-    {
-        errors.push(format!(
-            "Default-lane governed test defends a spec with indexed contract items but is missing a nearby '# Contract:' marker: {} :: {}",
-            relative_path, test_name
-        ));
-    }
-
-    for contract_id in contract_ids {
-        match find_contract_item(contract_items, &contract_id) {
-            None => errors.push(format!(
-                "Governed test references unknown contract id `{}`: {} :: {}",
-                contract_id, relative_path, test_name
-            )),
-            Some(item)
-                if !matches!(
-                    item.status.as_deref(),
-                    Some("live" | "deprecated" | "quarantine")
-                ) =>
-            {
-                errors.push(format!(
-                    "Governed test references contract id `{}` with unsupported status `{}`: {} :: {}",
-                    contract_id,
-                    item.status.as_deref().unwrap_or(""),
-                    relative_path,
-                    test_name
-                ))
-            }
-            Some(_) => {}
-        }
-    }
-
-    Ok(errors)
 }
 
 fn collect_rust_definition_contract_traceability_errors(
@@ -1071,22 +575,6 @@ fn collect_rust_definition_contract_traceability_errors(
     Ok(errors)
 }
 
-fn has_valid_nu_definition_test_justification(
-    repo_root: &Path,
-    relative_path: &str,
-    test_name: &str,
-) -> Result<bool, String> {
-    Ok(
-        load_nu_definition_traceability_lines(repo_root, relative_path, test_name)?
-            .iter()
-            .any(|line| {
-                ["# Defends:", "# Regression:", "# Invariant:"]
-                    .iter()
-                    .any(|prefix| line.starts_with(prefix))
-            }),
-    )
-}
-
 fn has_valid_rust_definition_test_justification(
     repo_root: &Path,
     relative_path: &str,
@@ -1101,26 +589,6 @@ fn has_valid_rust_definition_test_justification(
                     .any(|prefix| line.starts_with(prefix))
             }),
     )
-}
-
-fn get_nu_definition_test_strength(
-    repo_root: &Path,
-    relative_path: &str,
-    test_name: &str,
-) -> Result<u32, String> {
-    let line_index = get_nu_test_definition_line_index(repo_root, relative_path, test_name)?;
-    let strength_line =
-        get_prior_nonempty_lines_before_index(repo_root, relative_path, line_index)?
-            .into_iter()
-            .find(|line| line.starts_with("# Strength:"))
-            .ok_or_else(|| {
-                format!(
-                    "Governed test is missing a nearby structured '# Strength:' marker: {} :: {}",
-                    relative_path, test_name
-                )
-            })?;
-
-    parse_structured_strength_line(relative_path, test_name, &strength_line, "# Strength:")
 }
 
 fn get_rust_definition_test_strength(
@@ -1146,23 +614,6 @@ fn get_rust_definition_test_strength(
     parse_structured_strength_line(relative_path, test_name, &strength_line, "// Strength:")
 }
 
-fn nu_definition_has_policy_only_traceability(
-    repo_root: &Path,
-    relative_path: &str,
-    test_name: &str,
-) -> Result<bool, String> {
-    let spec_paths = load_nu_definition_defends_spec_paths(repo_root, relative_path, test_name)?;
-    if spec_paths.is_empty() {
-        return Ok(false);
-    }
-    if has_nu_definition_regression_or_invariant(repo_root, relative_path, test_name)? {
-        return Ok(false);
-    }
-    Ok(spec_paths
-        .iter()
-        .all(|spec_path| is_policy_only_spec_path(spec_path)))
-}
-
 fn rust_definition_has_policy_only_traceability(
     repo_root: &Path,
     relative_path: &str,
@@ -1181,18 +632,6 @@ fn rust_definition_has_policy_only_traceability(
         .all(|spec_path| is_policy_only_spec_path(spec_path)))
 }
 
-fn has_nu_definition_regression_or_invariant(
-    repo_root: &Path,
-    relative_path: &str,
-    test_name: &str,
-) -> Result<bool, String> {
-    Ok(
-        load_nu_definition_traceability_lines(repo_root, relative_path, test_name)?
-            .iter()
-            .any(|line| line.starts_with("# Regression:") || line.starts_with("# Invariant:")),
-    )
-}
-
 fn has_rust_definition_regression_or_invariant(
     repo_root: &Path,
     relative_path: &str,
@@ -1203,22 +642,6 @@ fn has_rust_definition_regression_or_invariant(
             .iter()
             .any(|line| line.starts_with("// Regression:") || line.starts_with("// Invariant:")),
     )
-}
-
-fn load_nu_definition_contract_ids(
-    repo_root: &Path,
-    relative_path: &str,
-    test_name: &str,
-) -> Result<Vec<String>, String> {
-    let mut ids = Vec::new();
-    for line in load_nu_definition_traceability_lines(repo_root, relative_path, test_name)? {
-        if line.starts_with("# Contract:") {
-            for id in parse_contract_marker_ids(&line, "# Contract:") {
-                push_unique(&mut ids, id);
-            }
-        }
-    }
-    Ok(ids)
 }
 
 fn load_rust_definition_contract_ids(
@@ -1236,20 +659,6 @@ fn load_rust_definition_contract_ids(
         }
     }
     Ok(ids)
-}
-
-fn load_nu_definition_defends_spec_paths(
-    repo_root: &Path,
-    relative_path: &str,
-    test_name: &str,
-) -> Result<Vec<String>, String> {
-    let mut paths = Vec::new();
-    for line in load_nu_definition_traceability_lines(repo_root, relative_path, test_name)? {
-        if let Some(spec_path) = parse_nu_defends_spec_path(repo_root, &line) {
-            push_unique(&mut paths, spec_path);
-        }
-    }
-    Ok(paths)
 }
 
 fn load_rust_definition_defends_spec_paths(
@@ -1326,24 +735,6 @@ fn parse_rust_test_name_after_index(
         ));
     }
     Ok(name)
-}
-
-fn get_nu_test_definition_line_index(
-    repo_root: &Path,
-    relative_path: &str,
-    test_name: &str,
-) -> Result<usize, String> {
-    let lines = read_lines(&repo_root.join(relative_path))?;
-    let definition_line = format!("def {} [] {{", test_name);
-    lines
-        .iter()
-        .position(|line| line.trim() == definition_line)
-        .ok_or_else(|| {
-            format!(
-                "Could not find definition for {} in: {}",
-                test_name, relative_path
-            )
-        })
 }
 
 fn get_prior_nonempty_lines_before_index(
@@ -1434,10 +825,6 @@ fn parse_contract_field(line: &str) -> Option<(String, String)> {
 
 fn normalize_contract_field_name(field_name: &str) -> String {
     field_name.to_lowercase().replace(' ', "_")
-}
-
-fn parse_nu_defends_spec_path(repo_root: &Path, line: &str) -> Option<String> {
-    parse_defends_spec_path(repo_root, line, "# Defends:")
 }
 
 fn parse_rust_defends_spec_path(repo_root: &Path, line: &str) -> Option<String> {
@@ -1587,10 +974,6 @@ fn spec_has_contract_items(contract_items: &[ContractItem], spec_path: &str) -> 
 
 fn is_policy_only_spec_path(spec_path: &str) -> bool {
     POLICY_ONLY_SPEC_PATHS.contains(&spec_path)
-}
-
-fn to_dev_relative_path(file_name: &str) -> String {
-    format!("nushell/scripts/dev/{file_name}")
 }
 
 fn read_lines(path: &Path) -> Result<Vec<String>, String> {

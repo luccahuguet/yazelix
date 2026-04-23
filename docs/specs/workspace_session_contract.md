@@ -359,7 +359,7 @@ If the answer is unclear, the feature is probably crossing the boundary incorrec
 - `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
 - `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
 - `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib`
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-specs`
 
 ## Traceability
 

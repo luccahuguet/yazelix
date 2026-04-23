@@ -106,12 +106,12 @@ See [Managed Config Migration Transaction Contract](./managed_config_migration_t
 
 This is now a historical contract. It is no longer defended by live migration-engine tests or the deleted migration-rule validator. Current v15 config behavior is defended by [stale_config_diagnostics.md](./stale_config_diagnostics.md) and [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md).
 
-- historical spec validation: `nu nushell/scripts/dev/validate_specs.nu`
+- historical spec validation: `yzx_repo_validator validate-specs`
 
 ## Traceability
 
 - Bead: `yazelix-cr3`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 
 ## Open Questions
 

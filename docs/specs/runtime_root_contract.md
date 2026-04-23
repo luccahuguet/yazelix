@@ -45,7 +45,7 @@ This contract keeps those boundaries explicit.
   `user_configs/` rather than under the runtime tree
 - Verification: automated
   `nushell/scripts/dev/test_yzx_generated_configs.nu`; validator
-  `nu nushell/scripts/dev/validate_specs.nu`
+  `yzx_repo_validator validate-specs`
 
 #### ROOT-002
 - Type: ownership

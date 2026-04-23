@@ -170,7 +170,7 @@ matrix behind a fake Rust wrapper.
   - retained behavior: width-aware welcome and `yzx screen`, interactive skip, and no silent feature loss
   - deletion class: `full_owner_migration`
   - candidate surviving owner: smaller front-door renderer stack with explicit retained styles, likely static data plus a smaller runtime renderer
-  - verification that must still pass: `test_yzx_screen_commands.nu`, new direct welcome contract tests, `validate_specs.nu`
+  - verification that must still pass: `test_yzx_screen_commands.nu`, new direct welcome contract tests, `yzx_repo_validator validate-specs`
   - stop condition: do not port the entire current Nu renderer into Rust unless the Nu owner actually shrinks materially
 - `yazelix-7krc.1`
   - retained behavior: style surface, random semantics, width-aware rendering, skip behavior
@@ -182,7 +182,7 @@ matrix behind a fake Rust wrapper.
   - retained behavior: the post-decision surviving front-door renderer
   - deletion class: `full_owner_migration`
   - candidate surviving owner: smaller renderer/data owner than the current `ascii_art.nu` plus `welcome.nu`
-  - verification that must still pass: direct welcome/screen tests plus `validate_specs.nu`
+  - verification that must still pass: direct welcome/screen tests plus `yzx_repo_validator validate-specs`
   - stop condition: no parallel renderer stacks
 - `yazelix-zlt2`
   - retained behavior: explicit host terminal launch behavior, detached-launch visibility, `config_mode=user` non-takeover rule
@@ -218,12 +218,12 @@ matrix behind a fake Rust wrapper.
   - `docs/specs/runtime_root_contract.md`
   - `docs/specs/runtime_dependency_preflight_contract.md`
   - `docs/specs/rust_migration_matrix.md`
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-specs`
 
 ## Traceability
 
 - Bead: `yazelix-rdn7.5.5`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 - Informed by: `docs/specs/runtime_root_contract.md`
 - Informed by: `docs/specs/runtime_dependency_preflight_contract.md`
 - Informed by: `docs/specs/startup_profile_scenarios.md`

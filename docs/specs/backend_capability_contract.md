@@ -190,12 +190,12 @@ This matrix is intentionally tentative. It exists to make the backend contract r
   - `nushell/scripts/yzx/launch.nu`
   - `nushell/scripts/core/start_yazelix_inner.nu`
   - `nushell/scripts/utils/doctor_fix.nu`
-- CI/spec check: `nu nushell/scripts/dev/validate_specs.nu`
+- CI/spec check: `yzx_repo_validator validate-specs`
 
 ## Traceability
 
 - Bead: `yazelix-6lkw`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 
 ## Open Questions
 

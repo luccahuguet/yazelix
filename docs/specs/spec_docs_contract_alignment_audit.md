@@ -27,7 +27,7 @@ when they are clearly historical and not active planning.
   - `docs/specs/*.md`
   - `docs/*.md`
   - `README.md`
-  - `nushell/scripts/dev/validate_specs.nu`
+  - `yzx_repo_validator validate-specs`
   - the former `contract_traceability_helpers.nu` parsing logic, now expected to live in the Rust validator owner
 - external references:
   - NASA traceability/verification-matrix guidance
@@ -120,11 +120,11 @@ the text looks like live planning or a current contract.
 
 | Behavior | Current contract or source | Current owner | Current verification | Candidate surviving owner |
 | --- | --- | --- | --- | --- |
-| Maintainers can tell live contracts from planning and history | `spec_inventory.md`; `contract_driven_development.md` | Docs plus `validate_specs.nu` | `nu nushell/scripts/dev/validate_specs.nu` | same |
-| New specs carry traceability to Beads and verification | `docs/spec_driven_workflow.md`; `validate_specs.nu` | docs and validator | `validate_specs.nu` | same |
-| Contract items have stable IDs, owner, status, statement, and verification | `canonical_contract_item_schema.md` | docs and validator | `validate_specs.nu` | same |
-| Tests can migrate from broad spec references to item IDs without deleting real behavior | `test_suite_governance.md`; quarantine file | docs and validators | `validate_default_test_traceability.nu`; `validate_rust_test_traceability.nu` | same |
-| Historical docs can remain useful without driving current implementation | `spec_inventory.md` | docs inventory | manual review plus `validate_specs.nu` | same |
+| Maintainers can tell live contracts from planning and history | `spec_inventory.md`; `contract_driven_development.md` | Docs plus `yzx_repo_validator validate-specs` | `yzx_repo_validator validate-specs` | same |
+| New specs carry traceability to Beads and verification | `docs/spec_driven_workflow.md`; `yzx_repo_validator validate-specs` | docs and validator | `yzx_repo_validator validate-specs` | same |
+| Contract items have stable IDs, owner, status, statement, and verification | `canonical_contract_item_schema.md` | docs and validator | `yzx_repo_validator validate-specs` | same |
+| Tests can migrate from broad spec references to item IDs without deleting real behavior | `test_suite_governance.md`; quarantine file | docs and validators | `yzx_repo_validator validate-default-test-traceability`; `yzx_repo_validator validate-rust-test-traceability` | same |
+| Historical docs can remain useful without driving current implementation | `spec_inventory.md` | docs inventory | manual review plus `yzx_repo_validator validate-specs` | same |
 
 ## 6. Delete-First Findings
 
@@ -174,12 +174,12 @@ the text looks like live planning or a current contract.
 - manual review of `docs/specs/*.md`
 - manual stale-reference search across `docs/`, `README.md`, `nushell/scripts`,
   and `rust_core`
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-specs`
 
 ## Traceability
 
 - Bead: `yazelix-rdn7.5.7`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 - Informed by: `docs/contract_driven_development.md`
 - Informed by: `docs/specs/spec_inventory.md`
 - Informed by: `docs/specs/canonical_contract_item_schema.md`

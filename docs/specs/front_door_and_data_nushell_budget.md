@@ -159,7 +159,7 @@ Follow-up expectation:
 
 ## Verification
 
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-specs`
 - later implementation beads must keep the governed front-door contracts and
   style validations green
 
@@ -169,7 +169,7 @@ Follow-up expectation:
 - Bead: `yazelix-w6sz.4.2`
 - Bead: `yazelix-dejl.1`
 - Bead: `yazelix-dejl.4`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 - Informed by: `docs/specs/setup_shellhook_welcome_terminal_canonicalization_audit.md`
 - Informed by: `docs/specs/welcome_screen_style_contract.md`
 - Informed by: `docs/specs/provable_nushell_floor_budget.md`

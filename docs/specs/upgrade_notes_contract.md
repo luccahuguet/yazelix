@@ -51,15 +51,15 @@ CI should additionally inspect the diff. Version bumps must update both release-
 ## Verification
 
 - unit tests: validator coverage for required fields, version alignment, no-live-migration enforcement, and diff-aware guarded-file enforcement
-- integration tests: `nu nushell/scripts/dev/validate_upgrade_contract.nu`
+- integration tests: `yzx_repo_validator validate-upgrade-contract`
 - e2e scripts: `nu nushell/scripts/dev/test_upgrade_contract_e2e.nu`
-- CI checks: `nu nushell/scripts/dev/validate_upgrade_contract.nu --ci`
+- CI checks: `yzx_repo_validator validate-upgrade-contract --ci`
 - manual verification: edit guarded files or note files in a temp repo copy and confirm the validator output
 
 ## Traceability
 
 - Bead: `yazelix-27q.2`
-- Defended by: `nu nushell/scripts/dev/validate_upgrade_contract.nu`
+- Defended by: `yzx_repo_validator validate-upgrade-contract`
 - Defended by: `nu nushell/scripts/dev/test_upgrade_contract_e2e.nu`
 
 ## Open Questions

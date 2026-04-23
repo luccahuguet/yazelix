@@ -175,12 +175,12 @@ that keep `config_parser.nu` in live integration paths.
   - `rust_plugins/zellij_pane_orchestrator/src/*.rs`
   - `rust_core/yazelix_core/src/workspace_commands.rs`
   - generated Yazi/Zellij materialization tests
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-specs`
 
 ## Traceability
 
 - Bead: `yazelix-rdn7.5.4`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 - Informed by: `docs/specs/workspace_session_contract.md`
 - Informed by: `docs/specs/pane_orchestrator_component.md`
 - Informed by: `docs/specs/floating_tui_panes.md`

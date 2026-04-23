@@ -188,9 +188,9 @@ The package contract should not depend on any separate installer as the update m
   - `yzx --version-short`
   - `yzx doctor`
   - `yzx env --no-shell`
-- CI/spec check: `nu nushell/scripts/dev/validate_specs.nu`
+- CI/spec check: `yzx_repo_validator validate-specs`
 
 ## Traceability
 
 - Bead: `yazelix-2ex.1.4.3.1`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`

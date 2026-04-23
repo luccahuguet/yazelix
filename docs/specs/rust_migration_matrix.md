@@ -496,7 +496,7 @@ them one family at a time.
 
 ## Verification
 
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-specs`
 - manual review against `docs/specs/rust_nushell_bridge_contract.md`
 - manual review against `docs/specs/cross_language_runtime_ownership.md`
 - manual review against `docs/specs/v15_trimmed_runtime_contract.md`
@@ -507,7 +507,7 @@ them one family at a time.
 - Bead: `yazelix-kt5.1`
 - Bead: `yazelix-ulb2.3`
 - Bead: `yazelix-iwzn`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 
 ## Open Questions
 

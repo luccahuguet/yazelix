@@ -158,14 +158,14 @@ Status labels:
 
 ## Verification
 
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-specs`
 - manual review of all files listed under `docs/specs/`
 
 ## Traceability
 
 - Bead: `yazelix-a3x1`
 - Follow-up cleanup: `yazelix-k0f3`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 
 ## Open Questions
 

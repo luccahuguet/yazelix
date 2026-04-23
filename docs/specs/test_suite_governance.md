@@ -50,8 +50,8 @@ This spec defines:
   sweeps, CI-only checks, and manual/exploratory checks stay distinct instead of
   being treated as one undifferentiated test pile
 - Verification: automated
-  `nu nushell/scripts/dev/validate_default_test_traceability.nu`; automated
-  `nu nushell/scripts/dev/validate_specs.nu`
+  `yzx_repo_validator validate-default-test-traceability`; automated
+  `yzx_repo_validator validate-specs`
 
 #### TEST-002
 - Type: boundary
@@ -62,7 +62,7 @@ This spec defines:
   wording trivia, and checks already better owned by cheap validators do not
   belong in the default suite
 - Verification: automated
-  `nu nushell/scripts/dev/validate_default_test_traceability.nu`
+  `yzx_repo_validator validate-default-test-traceability`
 
 #### TEST-003
 - Type: invariant
@@ -73,7 +73,7 @@ This spec defines:
   Rust `nextest` suites plus explicit `cargo test` exceptions only where
   `nextest` is not the honest fit
 - Verification: automated
-  `nu nushell/scripts/dev/validate_default_test_traceability.nu`; automated
+  `yzx_repo_validator validate-default-test-traceability`; automated
   `yzx dev test`
 
 #### TEST-004
@@ -84,8 +84,8 @@ This spec defines:
   nearby justification marker, and a structured strength score, and they must
   clear the lane minimum mechanically
 - Verification: automated
-  `nu nushell/scripts/dev/validate_default_test_traceability.nu`; automated
-  `nu nushell/scripts/dev/validate_rust_test_traceability.nu`
+  `yzx_repo_validator validate-default-test-traceability`; automated
+  `yzx_repo_validator validate-rust-test-traceability`
 
 #### TEST-005
 - Type: non_goal
@@ -95,8 +95,8 @@ This spec defines:
   generic `_extended` overflow files. Weak/orphan tests are deleted, demoted, or
   quarantined with an explicit exit path
 - Verification: automated
-  `nu nushell/scripts/dev/validate_default_test_traceability.nu`; automated
-  `nu nushell/scripts/dev/validate_rust_test_traceability.nu`
+  `yzx_repo_validator validate-default-test-traceability`; automated
+  `yzx_repo_validator validate-rust-test-traceability`
 
 ## Behavior
 
@@ -104,7 +104,7 @@ This spec defines:
 
 | Lane | Entrypoint | Purpose | Notes |
 | --- | --- | --- | --- |
-| Cheap validator lane | `nu nushell/scripts/dev/validate_syntax.nu`, `yzx_repo_validator validate-readme-version`, `nu nushell/scripts/dev/validate_config_surface_contract.nu` | Very fast structural or source-of-truth checks | Good fit for `prek` and direct CI steps |
+| Cheap validator lane | `nu nushell/scripts/dev/validate_syntax.nu`, `yzx_repo_validator validate-readme-version`, `yzx_repo_validator validate-config-surface-contract` | Very fast structural or source-of-truth checks | Good fit for `prek` and direct CI steps |
 | Default automated regression lane | `yzx dev test` | The normal non-sweep automated regression suite | Uses fixed Rust `nextest` suites plus explicit `cargo test` exceptions only where required |
 | Non-visual sweep lane | `yzx dev test --sweep` | Matrix coverage for config and supported shell/terminal combinations without opening windows | Environment-sensitive but still scriptable |
 | Visual sweep lane | `yzx dev test --visual` | Real terminal-window validation | Heavy, manualish, and not the default lane |
@@ -120,9 +120,10 @@ The current repo surface should be understood roughly as:
 - Cheap validators:
   - `validate_syntax.nu`
   - `yzx_repo_validator validate-readme-version`
-  - `validate_config_surface_contract.nu`
-  - `validate_rust_test_traceability.nu`
-  - `validate_specs.nu`
+  - `yzx_repo_validator validate-config-surface-contract`
+  - `yzx_repo_validator validate-default-test-traceability`
+  - `yzx_repo_validator validate-rust-test-traceability`
+  - `yzx_repo_validator validate-specs`
 - Default automated lane:
   - `rust_core/Cargo.toml` `nextest` suite `yazelix_core`
   - `rust_plugins/zellij_pane_orchestrator/Cargo.toml` `nextest` suite `zellij_pane_orchestrator`
@@ -188,7 +189,7 @@ A test is a strong demotion candidate when it is:
   strong Rust test in one of those owned suites instead of reviving a governed
   Nu omnibus file
 - The default lane should also enforce mechanical anti-creep guardrails:
-  - a default-suite test-count budget
+  - a zero-governed-Nu-test guard for `nushell/scripts/dev/test_*.nu`
   - a default-suite runtime budget
   - explicit `// Test lane:` declarations on all first-party Rust files that
     contain `#[test]`
@@ -346,27 +347,25 @@ regression suite instead of being run in yet another lane.
 - integration tests: `nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev test'`
 - integration tests: `nix develop -c cargo nextest run --profile ci --manifest-path rust_core/Cargo.toml -p yazelix_core`
 - integration tests: `nix develop -c cargo nextest run --profile ci --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib`
-- CI checks: `nu nushell/scripts/dev/validate_default_test_traceability.nu`
-- CI checks: `nu nushell/scripts/dev/validate_rust_test_traceability.nu`
+- CI checks: `yzx_repo_validator validate-default-test-traceability`
+- CI checks: `yzx_repo_validator validate-rust-test-traceability`
 - CI checks: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-readme-version`
-- CI checks: `nu nushell/scripts/dev/validate_config_surface_contract.nu`
-- CI checks: `nu nushell/scripts/dev/validate_specs.nu`
+- CI checks: `yzx_repo_validator validate-config-surface-contract`
+- CI checks: `yzx_repo_validator validate-specs`
 - manual verification: review `.github/workflows/ci.yml` and `.pre-commit-config.yaml` against the lane definitions in this spec
 
 ## Traceability
 
 - Bead: `yazelix-leq`
 - Bead: `yazelix-rdn7.4.5.4`
-- Defended by: `nu nushell/scripts/dev/validate_default_test_traceability.nu`
-- Defended by: `nu nushell/scripts/dev/validate_rust_test_traceability.nu`
+- Defended by: `yzx_repo_validator validate-default-test-traceability`
+- Defended by: `yzx_repo_validator validate-rust-test-traceability`
 - Defended by: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-readme-version`
-- Defended by: `nu nushell/scripts/dev/validate_config_surface_contract.nu`
+- Defended by: `yzx_repo_validator validate-config-surface-contract`
 - Defended by: `nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev test'`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 
 ## Open Questions
 
-- Should `validate_specs.nu` eventually get its own direct CI step instead of
-  being exercised indirectly through `yzx dev test` and other maintainer lanes?
 - Should the surviving Rust default suites collapse further once more plugin and
   control-plane coverage merges land?

@@ -161,11 +161,11 @@ Follow-up intentionally not created:
   - `rust_core/yazelix_core/src/public_command_surface.rs`
   - `rust_core/yazelix_core/src/command_metadata.rs`
   - `nushell/scripts/yzx/*.nu`
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-specs`
 
 ## Traceability
 
 - Bead: `yazelix-rdn7.5.2`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 - Informed by: `docs/specs/v16_rust_cli_rewrite_evaluation.md`
 - Informed by: `docs/specs/rust_migration_matrix.md`

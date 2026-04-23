@@ -191,7 +191,7 @@ same shell behavior.
 ## Verification
 
 - manual review of the listed Nushell and POSIX files
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-specs`
 
 ## Traceability
 
@@ -199,7 +199,7 @@ same shell behavior.
 - Bead: `yazelix-qd6b.2`
 - Bead: `yazelix-qd6b.3`
 - Bead: `yazelix-qd6b.4`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 - Informed by: `docs/specs/setup_shellhook_welcome_terminal_canonicalization_audit.md`
 - Informed by: `docs/specs/launch_startup_session_canonicalization_audit.md`
 - Informed by: `docs/specs/ranked_nu_deletion_budget.md`

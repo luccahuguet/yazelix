@@ -47,7 +47,7 @@ The owner cut must preserve all of these:
 | Behavior | Current contract or source | Current owner | Current verification | Candidate surviving owner |
 | --- | --- | --- | --- | --- |
 | Canonical runtime-env policy stays Rust-owned and does not drift back into Nu | `CRCP-002`; `docs/specs/launch_bootstrap_rust_migration.md` | Rust `runtime_env.rs`; Nu `runtime_env.nu` request bridge | `rust_core/yazelix_core/tests/yzx_core_runtime_env.rs`; `nu nushell/scripts/dev/test_helix_managed_config_contracts.nu`; `nu nushell/scripts/dev/test_yzx_popup_commands.nu`; `nu nushell/scripts/dev/test_yzx_core_commands.nu` | Rust `runtime_env.rs` / `control_plane.rs` plus a smaller Nu shell-exec seam only |
-| Generated-state freshness stays Rust-owned and uses the canonical managed main-config path for record decisions | `docs/specs/rust_nushell_bridge_contract.md`; `docs/specs/config_runtime_control_plane_canonicalization_audit.md` | Rust `config_state.rs`; Nu `config_state.nu` argv shim | `rust_core/yazelix_core/src/config_state.rs`; `nu nushell/scripts/dev/validate_config_surface_contract.nu`; `nu nushell/scripts/dev/test_yzx_generated_configs.nu`; `nu nushell/scripts/dev/test_yzx_core_commands.nu` | Rust `config_state.rs` and `control_plane.rs` only |
+| Generated-state freshness stays Rust-owned and uses the canonical managed main-config path for record decisions | `docs/specs/rust_nushell_bridge_contract.md`; `docs/specs/config_runtime_control_plane_canonicalization_audit.md` | Rust `config_state.rs`; Nu `config_state.nu` argv shim | `rust_core/yazelix_core/src/config_state.rs`; `yzx_repo_validator validate-config-surface-contract`; `nu nushell/scripts/dev/test_yzx_generated_configs.nu`; `nu nushell/scripts/dev/test_yzx_core_commands.nu` | Rust `config_state.rs` and `control_plane.rs` only |
 | No ambient host inference is reintroduced while building runtime-env inputs or config-state inputs | `CRCP-002`; `docs/specs/cross_language_runtime_ownership.md` | mixed Nu/Rust today | same tests as above | Rust explicit request construction |
 | Popup/editor/startup callers can still stage the canonical runtime env before they spawn a process | `docs/specs/launch_bootstrap_rust_migration.md` | Nu callers plus `runtime_env.nu::run_runtime_argv` | `nu nushell/scripts/dev/test_yzx_popup_commands.nu`; `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`; `nu nushell/scripts/dev/test_helix_managed_config_contracts.nu` | Nu shell-exec boundary only |
 
@@ -70,7 +70,7 @@ The owner cut must preserve all of these:
 | --- | --- | --- | --- |
 | `utils/environment_bootstrap.nu` | structured config state with `needs_refresh` and normalized config | no | switch to a Rust-owned from-env or control-plane request path |
 | `core/launch_yazelix.nu` | structured config state during launch profiling/materialization decisions | no | switch to a Rust-owned from-env or control-plane request path |
-| `validate_config_surface_contract.nu` | compute and record state for invariant checks | no | switch validator to Rust-owned path |
+| `yzx_repo_validator validate-config-surface-contract` | compute and record state for invariant checks | no | switch validator to Rust-owned path |
 | `test_yzx_core_commands.nu` | direct compute/record helper coverage | no | update tests to the surviving owner |
 | `test_yzx_generated_configs.nu` | direct record helper coverage for symlinked managed config | no | update tests to the surviving owner |
 
@@ -164,7 +164,7 @@ Result goal:
 Config-state cut must still pass:
 
 - `rust_core/yazelix_core/src/config_state.rs`
-- `nu nushell/scripts/dev/validate_config_surface_contract.nu`
+- `yzx_repo_validator validate-config-surface-contract`
 - `nu -c 'source nushell/scripts/dev/test_yzx_generated_configs.nu; [(test_record_materialized_state_accepts_symlinked_managed_main_config)]'`
 - `nu -c 'source nushell/scripts/dev/test_yzx_core_commands.nu; let st = (compute_config_state); record_materialized_state $st'` equivalent surviving-path coverage
 
@@ -179,7 +179,7 @@ Runtime-env cut must still pass:
 Shared validation:
 
 - `nu nushell/scripts/dev/validate_syntax.nu`
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-specs`
 
 ## Stop Conditions
 
@@ -226,5 +226,5 @@ Bead changes required:
 - Bead: `yazelix-ekfc.1`
 - Informed by: `docs/specs/config_runtime_control_plane_canonicalization_audit.md`
 - Informed by: `docs/specs/launch_bootstrap_rust_migration.md`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 - Defended by: manual review of the cited callers and Rust owners

@@ -149,4 +149,4 @@ Do not recreate the old full-config owner by default.
 - Informed by: `docs/specs/rust_migration_matrix.md`
 - Informed by: `docs/specs/integration_glue_canonicalization_audit.md`
 - Informed by: `docs/specs/launch_startup_session_canonicalization_audit.md`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`

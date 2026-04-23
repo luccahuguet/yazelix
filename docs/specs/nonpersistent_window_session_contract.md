@@ -43,7 +43,7 @@ Without a written contract, future fixes will keep rediscovering the same questi
   must not be silently hot-swapped in place by repair or runtime replacement
 - Verification: automated
   `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`; validator
-  `nu nushell/scripts/dev/validate_specs.nu`
+  `yzx_repo_validator validate-specs`
 
 #### NWS-003
 - Type: behavior
@@ -111,7 +111,7 @@ Without a written contract, future fixes will keep rediscovering the same questi
 ## Verification
 
 - integration tests: `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
-- CI checks: `nu nushell/scripts/dev/validate_specs.nu`
+- CI checks: `yzx_repo_validator validate-specs`
 - manual verification:
   - open two non-persistent Yazelix windows, confirm they do not reattach to one shared session
   - run generated-state repair through startup/doctor or replace the runtime from a package-manager or compatibility-installer context and verify the other open window is not silently replaced
@@ -121,7 +121,7 @@ Without a written contract, future fixes will keep rediscovering the same questi
 
 - Bead: `yazelix-1zti`
 - Defended by: `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 
 ## Open Questions
 

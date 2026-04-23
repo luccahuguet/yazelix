@@ -214,7 +214,7 @@ Reopen this track only if a later bug or contract change exposes one more shared
 
 ## Verification
 
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-specs`
 - manual review against `docs/specs/v15_trimmed_runtime_contract.md`
 - manual review against `docs/specs/rust_migration_matrix.md`
 - manual review against `docs/specs/rust_nushell_bridge_contract.md`
@@ -230,7 +230,7 @@ Reopen this track only if a later bug or contract change exposes one more shared
 ## Traceability
 
 - Bead: `yazelix-kt5.4`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 
 ## Open Questions
 

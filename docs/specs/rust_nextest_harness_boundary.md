@@ -139,13 +139,13 @@ This harness lane does not add new crates.
 
 ## Verification
 
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-specs`
 - later implementation lanes:
   - `nix develop -c cargo nextest run --profile ci --manifest-path rust_core/Cargo.toml -p yazelix_core`
 
 ## Traceability
 
 - Bead: `yazelix-rdn7.4.5.15`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 - Informed by: `docs/specs/rust_owned_test_migration_budget.md`
 - Informed by: `docs/specs/rust_test_hardening_tools_decision.md`

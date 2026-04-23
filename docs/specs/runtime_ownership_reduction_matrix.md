@@ -189,9 +189,9 @@ Only the second statement puts packs and backend-driven config meaning at risk.
   - [backend_free_workspace_slice.md](./backend_free_workspace_slice.md)
   - [yazelix_core_boundary.md](./yazelix_core_boundary.md)
 - spec validation:
-  - `nu nushell/scripts/dev/validate_specs.nu`
+  - `yzx_repo_validator validate-specs`
 
 ## Traceability
 
 - Bead: `yazelix-sxhc`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`

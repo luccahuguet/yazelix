@@ -51,7 +51,7 @@ of the protocol pressure points at once:
   `nushell/scripts/dev/test_yzx_generated_configs.nu`
   (`installed runtimes use the packaged Rust config helper`, `packaged helper
   failures must be visible`, `packaged runtimes must include yzx_core`);
-  validator `nu nushell/scripts/dev/validate_specs.nu`
+  validator `yzx_repo_validator validate-specs`
 - Source: `docs/specs/rust_nushell_bridge_contract.md`;
   `docs/specs/v15_trimmed_runtime_contract.md`
 - Deletion note: a future bridge collapse should delete or demote
@@ -72,7 +72,7 @@ of the protocol pressure points at once:
   `nushell/scripts/dev/test_yzx_core_commands.nu`
   (`yzx run must forward dash-prefixed child args`, `yzx run must not consume
   child --verbose flags`); validator
-  `nu nushell/scripts/dev/validate_specs.nu`
+  `yzx_repo_validator validate-specs`
 - Source: `docs/specs/rust_nushell_bridge_contract.md`;
   `docs/specs/cross_language_runtime_ownership.md`
 - Deletion note: future owner cuts may move request construction or the caller
@@ -111,8 +111,8 @@ of the protocol pressure points at once:
   through maintained config metadata and validation, not through ad hoc
   fallbacks or divergent duplicate defaults.
 - Verification: validator
-  `nu nushell/scripts/dev/validate_config_surface_contract.nu`; validator
-  `nu nushell/scripts/dev/validate_upgrade_contract.nu`
+  `yzx_repo_validator validate-config-surface-contract`; validator
+  `yzx_repo_validator validate-upgrade-contract`
 - Source: `docs/specs/v15_trimmed_runtime_contract.md`;
   `docs/specs/config_metadata_centralization_plan.md`
 - Deletion note: delete duplicate config-default owners only after this parity
@@ -193,7 +193,7 @@ of the protocol pressure points at once:
 
 ## Verification
 
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-specs`
 - manual review against `docs/specs/canonical_contract_item_schema.md`
 - manual review against `docs/specs/rust_nushell_bridge_contract.md`
 - manual review against `docs/specs/cross_language_runtime_ownership.md`
@@ -206,4 +206,4 @@ of the protocol pressure points at once:
 - Informs: `yazelix-rdn7.2`
 - Informs: `yazelix-rdn7.3`
 - Informs: `yazelix-rdn7.5.8`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`

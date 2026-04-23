@@ -15,31 +15,25 @@ repos:
         always_run: true
       - id: yazelix-validate-upgrade-contract
         name: validate upgrade contract
-        entry: nu nushell/scripts/dev/validate_upgrade_contract.nu
+        entry: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-upgrade-contract
         language: system
         pass_filenames: false
         always_run: true
       - id: yazelix-validate-config-surface-contract
         name: validate config surface and launch-profile contract
-        entry: nu nushell/scripts/dev/validate_config_surface_contract.nu
+        entry: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-config-surface-contract
         language: system
         pass_filenames: false
         always_run: true
       - id: yazelix-validate-specs
         name: validate spec traceability
-        entry: nu nushell/scripts/dev/validate_specs.nu
+        entry: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-specs
         language: system
         pass_filenames: false
         always_run: true
       - id: yazelix-validate-default-test-traceability
         name: validate default-suite traceability
-        entry: nu nushell/scripts/dev/validate_default_test_traceability.nu
-        language: system
-        pass_filenames: false
-        always_run: true
-      - id: yazelix-validate-default-test-count-budget
-        name: validate default-suite test-count budget
-        entry: nu nushell/scripts/dev/validate_default_test_count_budget.nu
+        entry: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-default-test-traceability
         language: system
         pass_filenames: false
         always_run: true

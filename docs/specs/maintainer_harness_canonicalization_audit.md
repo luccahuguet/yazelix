@@ -68,22 +68,22 @@ deletion score.
 | Maintainer Nushell | about `2.1k` lines under `nushell/scripts/maintainer` | issue sync, version bump, update workflow, readme sync, plugin build, test runner | indirect but release-critical |
 | Sweep helpers | about `450` lines under `nushell/scripts/dev/sweep` plus `config_sweep_runner.nu` | matrix and visual sweep orchestration | release-confidence lane |
 
-The top maintainer/test files by size are:
+The top maintainer/test files by size after the governed Nu-test and validator
+cuts are:
 
 | File | Approx lines | Audit role |
 | --- | ---: | --- |
-| `maintainer/update_workflow.nu` | `649` | release/update workflow owner |
-| `yzx/dev.nu` | `561` | public maintainer/dev command router |
-| `validate_default_test_traceability.nu` | `520` | governance validator owner |
-| `maintainer/test_runner.nu` | `413` | `yzx dev test` harness owner |
+| `maintainer/update_workflow.nu` | `768` | release/update workflow owner |
+| `maintainer/test_runner.nu` | `438` | `yzx dev test` harness owner |
+| `yzx/dev.nu` | `375` | public maintainer/dev command router |
 | `dev/config_normalize_test_helpers.nu` | `356` | temporary helper debt to delete after stronger Rust coverage absorbs it |
-| `config_sweep_runner.nu` | about `290` | non-visual and visual sweep runner |
+| `config_sweep_runner.nu` | `325` | non-visual and visual sweep runner |
 
 ## 3. Must-Not-Lose Behavior
 
 | Behavior | Current contract or source | Current owner | Current verification | Candidate surviving owner |
 | --- | --- | --- | --- | --- |
-| Default suite runs explicit high-signal Rust suite membership instead of globbing every `test_*.nu` | `docs/specs/test_suite_governance.md` | Nu `maintainer/test_runner.nu` plus Rust suite inventory | `yzx dev test`; `validate_default_test_count_budget.nu`; `validate_default_test_traceability.nu` | same or smaller runner |
+| Default suite runs explicit high-signal Rust suite membership instead of globbing every `test_*.nu` | `docs/specs/test_suite_governance.md` | Nu `maintainer/test_runner.nu` plus Rust suite inventory | `yzx dev test`; `yzx_repo_validator validate-default-test-traceability` | same or smaller runner |
 | Sweep and visual lanes remain explicit and separate from the default suite | `docs/specs/test_suite_governance.md` | Nu `config_sweep_runner.nu` and `dev/sweep/*.nu` | sweep lane manual/targeted checks | same, but dispatch should stay fixed and direct |
 | Version bump and release notes stay transactional and refuse dirty/invalid release states | `docs/specs/upgrade_notes_contract.md` | Nu `maintainer/version_bump.nu` | maintainer tests for bump and upgrade contracts | same |
 | Update workflow refreshes runtime pins, runs canaries, and requires explicit activation mode for real updates | `docs/specs/runtime_distribution_capability_tiers.md`; maintainer tests | Nu `maintainer/update_workflow.nu` | maintainer update tests | same |
@@ -197,12 +197,12 @@ The top maintainer/test files by size are:
   - `nushell/scripts/maintainer/*.nu`
   - `nushell/scripts/dev/*.nu`
   - `nushell/scripts/dev/sweep/*.nu`
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-specs`
 
 ## Traceability
 
 - Bead: `yazelix-rdn7.5.6`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 - Informed by: `docs/specs/test_suite_governance.md`
 - Informed by: `docs/specs/startup_profile_scenarios.md`
 - Informed by: `docs/specs/upgrade_notes_contract.md`

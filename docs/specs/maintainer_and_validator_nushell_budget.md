@@ -36,7 +36,7 @@ Measured on `2026-04-22`:
 | Family | Current LOC | Hard target LOC | Main follow-up |
 | --- | ---: | ---: | --- |
 | Maintainer and `yzx dev` shell orchestration | `3,996` | `1,200` | `yazelix-8ih0` |
-| Deterministic validators and contract linters | `837` | `0` | `yazelix-rdn7.4.6` |
+| Deterministic validators and contract linters | `639` | `0` | `yazelix-rdn7.4.6` |
 
 ## Maintainer And `yzx dev` Budget
 
@@ -103,15 +103,15 @@ These should not survive as broad owned Nu surfaces:
 
 ### Target
 
-All `837` current lines of deterministic validators should leave Nu. The
-target is `0` long-term governed Nu validator LOC.
+After `yazelix-rdn7.4.6.4`, `639` lines of deterministic validators remain in
+Nu. The target is still `0` long-term governed Nu validator LOC.
 
 ### Split
 
 | Validator cluster | Current examples | Budget judgment | Owning follow-up |
 | --- | --- | --- | --- |
-| Spec and test traceability validators | `validate_specs.nu`, `validate_default_test_traceability.nu`, `validate_rust_test_traceability.nu`, `validate_default_test_count_budget.nu` | Rust-port first | `yazelix-rdn7.4.6.2` |
-| Config, upgrade, and package validators | `validate_config_surface_contract.nu`, `validate_upgrade_contract.nu`, `validate_flake_interface.nu`, `validate_nixpkgs_package.nu`, `validate_nixpkgs_submission.nu`, `validate_flake_install.nu` | Rust-port first | `yazelix-rdn7.4.6.3` |
+| Spec and test traceability validators | Rust `yzx_repo_validator validate-specs`, `validate-default-test-traceability`, and `validate-rust-test-traceability`; deleted count-budget wrapper | completed Rust owner cut | `yazelix-rdn7.4.6.2`; `yazelix-rdn7.4.6.4` |
+| Config, upgrade, and package validators | Rust `yzx_repo_validator validate-config-surface-contract` and `validate-upgrade-contract`; Nu `validate_flake_interface.nu`, `validate_nixpkgs_package.nu`, `validate_nixpkgs_submission.nu`, `validate_flake_install.nu` | Rust-port remaining Nix/package shell probes only when it deletes real Nu owners | `yazelix-rdn7.4.6.3`; `yazelix-rdn7.4.6.4` |
 | Installed-runtime validator | Rust `yzx_repo_validator validate-installed-runtime-contract`; deleted `validate_installed_runtime_contract.nu` | completed Rust owner cut; fixed external probes remain inside Rust | `yazelix-rdn7.4.6.6` |
 | README surface/version validator | Rust `yzx_repo_validator validate-readme-version`; Rust `yzx_repo_maintainer sync-readme-surface`; deleted `validate_readme_version.nu` and `readme_surface.nu` | completed Rust owner cut | `yazelix-8ih0.2` |
 
@@ -249,7 +249,7 @@ maintainer floor.
 
 ## Verification
 
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-specs`
 - `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-readme-version`
 - `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-installed-runtime-contract`
 - later Rust validator/test-harness verification should be nextest-first under
@@ -264,7 +264,7 @@ maintainer floor.
 - Bead: `yazelix-8ih0.6`
 - Bead: `yazelix-rdn7.4.6.1`
 - Bead: `yazelix-rdn7.4.6.6`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 - Defended by: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-readme-version`
 - Defended by: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-installed-runtime-contract`
 - Informed by: `docs/specs/maintainer_harness_canonicalization_audit.md`

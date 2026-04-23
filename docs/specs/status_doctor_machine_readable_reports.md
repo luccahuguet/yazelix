@@ -147,7 +147,7 @@ The default human doctor output renders from that report instead of recomputing 
 
 - `nu -c 'source nushell/scripts/dev/test_yzx_core_commands.nu; let results = [(test_yzx_status_reports_basic_runtime_summary) (test_yzx_status_json_reports_typed_summary)]; if ($results | all {|result| $result}) { print "ok" } else { error make {msg: "status command tests failed"} }'`
 - `nu -c 'source nushell/scripts/dev/test_yzx_doctor_commands.nu; if ((run_doctor_canonical_tests) | all {|result| $result}) { print "ok" } else { error make {msg: "doctor canonical tests failed"} }'`
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-specs`
 
 ## Traceability
 

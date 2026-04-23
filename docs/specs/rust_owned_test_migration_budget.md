@@ -175,8 +175,8 @@ Those follow-ups should land directly into Rust once their owner cuts exist.
 
 ## Verification Gate
 
-- `nu nushell/scripts/dev/validate_default_test_traceability.nu`
-- `nu nushell/scripts/dev/validate_rust_test_traceability.nu`
+- `yzx_repo_validator validate-default-test-traceability`
+- `yzx_repo_validator validate-rust-test-traceability`
 - `nix develop -c cargo nextest run --profile ci --manifest-path rust_core/Cargo.toml -p yazelix_core`
 - later plugin-owned Rust ports should use the same nextest-first policy
 
@@ -197,4 +197,4 @@ Those follow-ups should land directly into Rust once their owner cuts exist.
 - Informed by: `docs/specs/governed_test_traceability_inventory.md`
 - Informed by: `docs/specs/rust_nextest_harness_boundary.md`
 - Informed by: `docs/specs/rust_test_hardening_tools_decision.md`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`

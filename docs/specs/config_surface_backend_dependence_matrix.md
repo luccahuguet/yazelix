@@ -165,11 +165,11 @@ So this field should be read as:
   - [runtime_ownership_reduction_matrix.md](./runtime_ownership_reduction_matrix.md)
   - [backend_free_workspace_slice.md](./backend_free_workspace_slice.md)
 - validation:
-  - `nu nushell/scripts/dev/validate_specs.nu`
-  - `nu nushell/scripts/dev/validate_config_surface_contract.nu`
+  - `yzx_repo_validator validate-specs`
+  - `yzx_repo_validator validate-config-surface-contract`
 
 ## Traceability
 
 - Bead: `yazelix-4buc.6`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
-- Defended by: `nu nushell/scripts/dev/validate_config_surface_contract.nu`
+- Defended by: `yzx_repo_validator validate-specs`
+- Defended by: `yzx_repo_validator validate-config-surface-contract`

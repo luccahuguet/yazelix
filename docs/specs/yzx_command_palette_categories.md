@@ -212,9 +212,9 @@ The two models should agree on inventory, but they intentionally optimize for di
 - command-surface sanity check:
   - `rust_core/target/debug/yzx_core yzx-command-metadata.list`
 - spec validation:
-  - `nu nushell/scripts/dev/validate_specs.nu`
+  - `yzx_repo_validator validate-specs`
 
 ## Traceability
 
 - Bead: `yazelix-qrnq.1`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`

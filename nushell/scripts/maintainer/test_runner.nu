@@ -31,11 +31,6 @@ def load_test_suite_inventory []: nothing -> record {
     open $TEST_SUITE_INVENTORY_PATH
 }
 
-export def get_default_test_file_names [] {
-    let inventory = (load_test_suite_inventory)
-    $inventory.default.transitional_nu_entrypoints? | default []
-}
-
 def get_default_nextest_suites [] {
     let inventory = (load_test_suite_inventory)
     $inventory.default.nextest_suites? | default []
@@ -232,20 +227,7 @@ def run_default_functional_suites [
         }
     )
 
-    let nu_env = if $profiling { {YAZELIX_TEST_PROFILE: "1"} } else { {} }
-    let nu_results = (
-        get_default_test_file_names
-        | each {|file_name|
-            let test_file = ($repo_root | path join "nushell" "scripts" "dev" $file_name)
-            if not ($test_file | path exists) {
-                error make { msg: $"Missing transitional Nu suite entrypoint: ($test_file)" }
-            }
-
-            run_logged_suite ($file_name | str replace ".nu" "") $"Transitional Nu suite: ($file_name)" $repo_root "nu" [$test_file] $log_file $verbose $nu_env
-        }
-    )
-
-    $nextest_results | append $cargo_test_results | append $nu_results | flatten
+    $nextest_results | append $cargo_test_results | flatten
 }
 
 def render_suite_summary [results: list<record>, log_file: string, profiling: bool] {
@@ -429,10 +411,10 @@ export def run_all_tests [
     }
 
     print "=== Yazelix Default Test Suite ==="
-    print "Running fixed Rust nextest suites plus the transitional default Nu suite..."
+    print "Running fixed Rust nextest suites..."
     print $"📝 Logging to: ($log_file)"
     print ""
-    $"=== Yazelix Default Test Suite ===\nRunning fixed Rust nextest suites plus the transitional default Nu suite...\n\n" | save --append $log_file
+    $"=== Yazelix Default Test Suite ===\nRunning fixed Rust nextest suites...\n\n" | save --append $log_file
 
     let syntax_passed = (run_syntax_validation $verbose $log_file $repo_root)
     if not $syntax_passed {

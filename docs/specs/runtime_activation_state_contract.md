@@ -99,14 +99,14 @@ Without naming that split explicitly, helpers keep making the wrong leap:
 
 ## Verification
 
-- spec validation: `nu nushell/scripts/dev/validate_specs.nu`
+- spec validation: `yzx_repo_validator validate-specs`
 - regression coverage: `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
 - regression coverage: `nu nushell/scripts/dev/test_yzx_popup_commands.nu`
 
 ## Traceability
 
 - Bead: `yazelix-le0s.1`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 - Defended by: `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
 - Defended by: `nu nushell/scripts/dev/test_yzx_popup_commands.nu`
 

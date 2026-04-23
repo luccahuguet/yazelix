@@ -217,7 +217,7 @@ Stop conditions:
 
 ## Verification
 
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-specs`
 - later implementation beads must keep the existing launch/session/integration
   regressions green
 
@@ -230,7 +230,7 @@ Stop conditions:
 - Bead: `yazelix-nuj1.1`
 - Bead: `yazelix-p18h.1`
 - Bead: `yazelix-lnk6.4`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 - Informed by: `docs/specs/integration_glue_canonicalization_audit.md`
 - Informed by: `docs/specs/launch_startup_session_canonicalization_audit.md`
 - Informed by: `docs/specs/provable_nushell_floor_budget.md`

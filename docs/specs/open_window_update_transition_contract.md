@@ -64,7 +64,7 @@ Without an explicit contract, future fixes will keep rediscovering whether a giv
 
 ## Verification
 
-- CI checks: `nu nushell/scripts/dev/validate_specs.nu`
+- CI checks: `yzx_repo_validator validate-specs`
 - integration tests: `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
 - manual verification:
   - run `yzx refresh` with one window open and confirm the window is not silently replaced
@@ -74,7 +74,7 @@ Without an explicit contract, future fixes will keep rediscovering whether a giv
 ## Traceability
 
 - Bead: `yazelix-jehj`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 - Defended by: `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
 
 ## Open Questions

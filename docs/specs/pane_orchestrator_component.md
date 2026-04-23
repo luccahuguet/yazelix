@@ -72,7 +72,7 @@ This spec defines the component boundary without extracting it to a separate rep
 - Statement: Rust source edits are not live until the pane orchestrator wasm is
   rebuilt and synced. `cargo test` alone does not prove live plugin behavior
 - Verification: manual `yzx dev build_pane_orchestrator --sync`; automated
-  `nu nushell/scripts/dev/validate_specs.nu`
+  `yzx_repo_validator validate-specs`
 
 ## Behavior
 
@@ -173,7 +173,7 @@ The sync step updates the tracked wasm, the stable runtime wasm path, and the ge
 - `nu nushell/scripts/dev/test_zellij_plugin_contracts.nu`
 - `nu nushell/scripts/dev/test_yzx_generated_configs.nu`
 - `nu nushell/scripts/dev/test_yzx_commands.nu`
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-specs`
 
 ## Traceability
 

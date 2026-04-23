@@ -28,9 +28,9 @@ Counts from the post-cut audit on `2026-04-22`:
 
 Validator status during the audit:
 
-- `nu nushell/scripts/dev/validate_default_test_traceability.nu` should pass
+- `yzx_repo_validator validate-default-test-traceability` should pass
   with an empty governed Nu inventory
-- `nu nushell/scripts/dev/validate_rust_test_traceability.nu` remains the live
+- `yzx_repo_validator validate-rust-test-traceability` remains the live
   governed-test ratchet
 
 ## Nu Surface Status
@@ -115,8 +115,8 @@ rebuilding omnibus files.
 
 ## Verification
 
-- `nu nushell/scripts/dev/validate_default_test_traceability.nu`
-- `nu nushell/scripts/dev/validate_rust_test_traceability.nu`
+- `yzx_repo_validator validate-default-test-traceability`
+- `yzx_repo_validator validate-rust-test-traceability`
 - manual count and marker review with `rg` across `nushell/scripts/dev`,
   `rust_core`, and `rust_plugins` excluding `target/`
 
@@ -124,5 +124,5 @@ rebuilding omnibus files.
 
 - Bead: `yazelix-rdn7.4.1`
 - Bead: `yazelix-rdn7.4.5.4`
-- Defended by: `nu nushell/scripts/dev/validate_default_test_traceability.nu`
-- Defended by: `nu nushell/scripts/dev/validate_rust_test_traceability.nu`
+- Defended by: `yzx_repo_validator validate-default-test-traceability`
+- Defended by: `yzx_repo_validator validate-rust-test-traceability`

@@ -96,9 +96,9 @@ If `Core` is ever revisited:
 - manual review against [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md)
 - manual review against [rust_migration_matrix.md](./rust_migration_matrix.md)
 - manual review against [cross_language_runtime_ownership.md](./cross_language_runtime_ownership.md)
-- spec validation: `nu nushell/scripts/dev/validate_specs.nu`
+- spec validation: `yzx_repo_validator validate-specs`
 
 ## Traceability
 
 - Bead: `yazelix-qv8c`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`

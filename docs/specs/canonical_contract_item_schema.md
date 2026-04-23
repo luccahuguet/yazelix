@@ -161,7 +161,7 @@ Suggested Markdown shape:
 - Status: live
 - Owner: Rust `config_normalize`
 - Statement: The managed main Yazelix config surface is `user_configs/yazelix.toml`
-- Verification: automated `nushell/scripts/dev/test_yzx_core_commands.nu`; validator `nu nushell/scripts/dev/validate_specs.nu`
+- Verification: automated `nushell/scripts/dev/test_yzx_core_commands.nu`; validator `yzx_repo_validator validate-specs`
 - Notes: Home Manager must render the same option/default contract
 ```
 
@@ -294,7 +294,7 @@ Additional rules:
 
 - unit tests: n/a
 - integration tests: n/a
-- CI checks: `nu nushell/scripts/dev/validate_specs.nu`
+- CI checks: `yzx_repo_validator validate-specs`
 - manual verification:
   - review this schema against `docs/spec_driven_workflow.md`
   - review this schema against `docs/specs/test_suite_governance.md`
@@ -305,7 +305,7 @@ Additional rules:
 
 - Bead: `yazelix-rdn7.1`
 - Follow-up bead: `yazelix-rdn7.7`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 
 ## Open Questions
 

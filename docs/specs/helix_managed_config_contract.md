@@ -144,9 +144,9 @@ Neovim should remain user-owned:
 - manual review against [editor_configuration.md](../editor_configuration.md)
 - manual review against [helix_keybindings.md](../helix_keybindings.md)
 - future behavior checks for managed Helix launch and reveal
-- CI/spec check: `nu nushell/scripts/dev/validate_specs.nu`
+- CI/spec check: `yzx_repo_validator validate-specs`
 
 ## Traceability
 
 - Bead: `yazelix-otjs.1`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`

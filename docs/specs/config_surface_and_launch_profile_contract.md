@@ -134,7 +134,7 @@ Without a written contract, later cleanup work risks centralizing the wrong thin
 
 ## Verification
 
-- CI checks: `nu nushell/scripts/dev/validate_config_surface_contract.nu`
+- CI checks: `yzx_repo_validator validate-config-surface-contract`
 - unit tests: `nushell/scripts/utils/config_surfaces.nu`
 - unit tests: `nushell/scripts/utils/config_state.nu`
 - integration tests: `nu nushell/scripts/dev/test_yzx_generated_configs.nu`
@@ -145,7 +145,7 @@ Without a written contract, later cleanup work risks centralizing the wrong thin
 ## Traceability
 
 - Bead: `yazelix-b16x`
-- Defended by: `nu nushell/scripts/dev/validate_config_surface_contract.nu`
+- Defended by: `yzx_repo_validator validate-config-surface-contract`
 - Defended by: `nu nushell/scripts/dev/test_yzx_generated_configs.nu`
 - Defended by: `nu nushell/scripts/dev/test_yzx_core_commands.nu`
 - Defended by: `nu nushell/scripts/dev/test_yzx_maintainer.nu`

@@ -1,6 +1,6 @@
 [contract]
-current_total_loc_max = 13448
-current_total_file_count_max = 93
+current_total_loc_max = 13232
+current_total_file_count_max = 87
 hard_target_loc = 4200
 
 [[families]]
@@ -22,28 +22,22 @@ allowed_paths = [
 id = "deterministic_validators"
 status = "transitional_exception"
 owner_bead = "yazelix-rdn7.4.6"
-max_loc = 837
+max_loc = 639
 target_loc = 0
-max_files = 11
+max_files = 5
 allowed_paths = [
-  "nushell/scripts/dev/validate_config_surface_contract.nu",
-  "nushell/scripts/dev/validate_default_test_count_budget.nu",
-  "nushell/scripts/dev/validate_default_test_traceability.nu",
   "nushell/scripts/dev/validate_flake_install.nu",
   "nushell/scripts/dev/validate_flake_interface.nu",
   "nushell/scripts/dev/validate_nixpkgs_package.nu",
   "nushell/scripts/dev/validate_nixpkgs_submission.nu",
-  "nushell/scripts/dev/validate_rust_test_traceability.nu",
-  "nushell/scripts/dev/validate_specs.nu",
   "nushell/scripts/dev/validate_syntax.nu",
-  "nushell/scripts/dev/validate_upgrade_contract.nu",
 ]
 
 [[families]]
 id = "maintainer_and_dev_orchestration"
 status = "transitional_exception"
 owner_bead = "yazelix-8ih0"
-max_loc = 3996
+max_loc = 3978
 target_loc = 1200
 max_files = 20
 allowed_paths = [

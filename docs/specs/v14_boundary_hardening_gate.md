@@ -121,10 +121,10 @@ Only after this gate is satisfied should Yazelix treat these as on the critical 
   - [backend_free_workspace_slice.md](./backend_free_workspace_slice.md)
   - [workspace_session_contract.md](../workspace_session_contract.md)
 - spec validation:
-  - `nu nushell/scripts/dev/validate_specs.nu`
+  - `yzx_repo_validator validate-specs`
 
 ## Traceability
 
 - Bead: `yazelix-wg3z`
 - Defended by:
-  - `nu nushell/scripts/dev/validate_specs.nu`
+  - `yzx_repo_validator validate-specs`

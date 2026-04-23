@@ -231,9 +231,9 @@ Only a stronger later backend-free reduction would force the product to narrow o
   - [flake_interface_contract.md](./flake_interface_contract.md)
   - [config_surface_and_launch_profile_contract.md](./config_surface_and_launch_profile_contract.md)
 - spec validation:
-  - `nu nushell/scripts/dev/validate_specs.nu`
+  - `yzx_repo_validator validate-specs`
 
 ## Traceability
 
 - Bead: `yazelix-4buc.1`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`

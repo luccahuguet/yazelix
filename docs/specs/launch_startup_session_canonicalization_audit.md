@@ -190,7 +190,7 @@ checked-in POSIX helper instead of keeping it embedded inside Nushell.
 
 ## Verification
 
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-specs`
 - manual review of:
   - `nushell/scripts/core/start_yazelix.nu`
   - `nushell/scripts/core/start_yazelix_inner.nu`
@@ -205,7 +205,7 @@ checked-in POSIX helper instead of keeping it embedded inside Nushell.
 ## Traceability
 
 - Bead: `yazelix-rdn7.5.3`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 - Informed by: `docs/specs/runtime_dependency_preflight_contract.md`
 - Informed by: `docs/specs/persistent_window_session_contract.md`
 - Informed by: `docs/specs/nonpersistent_window_session_contract.md`

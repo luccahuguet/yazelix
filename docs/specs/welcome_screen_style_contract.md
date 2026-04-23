@@ -66,11 +66,11 @@ Out of scope:
   `game_of_life_bloom`, and `random` for welcome, and the same minus `static`
   for `yzx screen`
 - Verification: validator
-  `nu nushell/scripts/dev/validate_config_surface_contract.nu`; automated
+  `yzx_repo_validator validate-config-surface-contract`; automated
   `nushell/scripts/dev/test_yzx_screen_commands.nu`
   (`test_game_of_life_seed_layouts_are_distinct`,
   `test_screen_style_rejects_static`); validator
-  `nu nushell/scripts/dev/validate_specs.nu`
+  `yzx_repo_validator validate-specs`
 - Source: `docs/yzx_cli.md`;
   `docs/specs/setup_shellhook_welcome_terminal_canonicalization_audit.md`
 - Deletion note: `yazelix-7krc.2` may delete renderer code, but it must not
@@ -87,7 +87,7 @@ Out of scope:
 - Verification: automated
   `nushell/scripts/dev/test_yzx_screen_commands.nu`
   (`test_random_screen_style_resolves_only_to_retained_game_of_life_pool`);
-  validator `nu nushell/scripts/dev/validate_specs.nu`
+  validator `yzx_repo_validator validate-specs`
 - Source: `docs/yzx_cli.md`; `yazelix_default.toml`
 - Deletion note: if a future contract wants a broader random pool, it must
   change the retained surface explicitly instead of smuggling the change in as
@@ -103,7 +103,7 @@ Out of scope:
 - Verification: automated
   `nushell/scripts/dev/test_yzx_screen_commands.nu`
   (`test_screen_style_rejects_static`); validator
-  `nu nushell/scripts/dev/validate_specs.nu`
+  `yzx_repo_validator validate-specs`
 - Source: `docs/yzx_cli.md`
 
 #### FRONT-004
@@ -118,7 +118,7 @@ Out of scope:
   `nushell/scripts/dev/test_yzx_screen_commands.nu`
   (`test_game_of_life_screen_cycle_stays_bounded_and_omits_resting_logo`,
   `test_game_of_life_screen_state_rolls_forward`); validator
-  `nu nushell/scripts/dev/validate_specs.nu`
+  `yzx_repo_validator validate-specs`
 - Source: `docs/specs/setup_shellhook_welcome_terminal_canonicalization_audit.md`
 
 #### FRONT-005
@@ -215,5 +215,5 @@ true:
 
 - Bead: `yazelix-7krc.1`
 - Informed by: `docs/specs/setup_shellhook_welcome_terminal_canonicalization_audit.md`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 - Defended by: `nu nushell/scripts/dev/test_yzx_screen_commands.nu`

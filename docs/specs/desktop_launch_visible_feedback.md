@@ -49,8 +49,8 @@ The supported contract is that desktop launch is allowed to use a short-lived bo
 - `nu -c 'source nushell/scripts/dev/test_yzx_workspace_commands.nu; test_yzx_desktop_launch_propagates_fast_path_failures_without_fallback'`
 - `nu -c 'source nushell/scripts/dev/test_yzx_doctor_commands.nu; test_yzx_doctor_reports_non_terminal_desktop_entry'`
 - `nu -c 'source nushell/scripts/dev/test_yzx_doctor_commands.nu; test_yzx_doctor_accepts_home_manager_install_artifacts'`
-- `nu nushell/scripts/dev/validate_config_surface_contract.nu`
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-config-surface-contract`
+- `yzx_repo_validator validate-specs`
 
 ## Traceability
 
@@ -59,7 +59,7 @@ The supported contract is that desktop launch is allowed to use a short-lived bo
 - Defended by: `nushell/scripts/dev/test_yzx_workspace_commands.nu::test_yzx_desktop_launch_propagates_fast_path_failures_without_fallback`
 - Defended by: `nushell/scripts/dev/test_yzx_doctor_commands.nu::test_yzx_doctor_reports_non_terminal_desktop_entry`
 - Defended by: `nushell/scripts/dev/test_yzx_doctor_commands.nu::test_yzx_doctor_accepts_home_manager_install_artifacts`
-- Defended by: `nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 
 ## Open Questions
 

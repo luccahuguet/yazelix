@@ -148,7 +148,7 @@ still implementation work, but the budget is:
 
 The owner cut is only honest if all of these still hold afterward:
 
-- `nu nushell/scripts/dev/validate_config_surface_contract.nu`
+- `yzx_repo_validator validate-config-surface-contract`
 - `nu nushell/scripts/dev/test_yzx_core_commands.nu`
   - especially the `yzx config --path` and `yzx config reset` cases
 - `nu nushell/scripts/dev/test_yzx_generated_configs.nu`
@@ -185,5 +185,5 @@ is to record the smallest remaining non-owning shell seam explicitly.
 
 - Bead: `yazelix-izwm.1`
 - Informed by: `docs/specs/config_runtime_control_plane_canonicalization_audit.md`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 - Defended by: manual review of the cited Nu and Rust caller inventory

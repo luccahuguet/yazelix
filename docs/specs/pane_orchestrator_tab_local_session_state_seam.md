@@ -206,7 +206,7 @@ bead. This slice is only about the read contract.
 ## Verification
 
 - spec validation:
-  - `nu nushell/scripts/dev/validate_specs.nu`
+  - `yzx_repo_validator validate-specs`
 - Rust/plugin verification after implementation:
   - `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib`
   - `yzx dev build_pane_orchestrator --sync`
@@ -216,7 +216,7 @@ bead. This slice is only about the read contract.
 ## Traceability
 
 - Bead: `yazelix-0w1u.1`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 - Defended by: `nu -c 'source nushell/scripts/dev/test_yzx_workspace_commands.nu; [(test_run_pane_orchestrator_command_raw_targets_session_plugin_without_plugin_configuration) (test_retarget_workspace_for_path_returns_plugin_owned_sidebar_state_and_editor_status)]'`
 
 ## Open Questions

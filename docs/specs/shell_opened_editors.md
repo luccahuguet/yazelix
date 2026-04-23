@@ -52,7 +52,7 @@ This spec covers:
   automatically adopt, retitle, or reinterpret them as the managed editor pane
 - Verification: automated
   `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`; validator
-  `nu nushell/scripts/dev/validate_specs.nu`
+  `yzx_repo_validator validate-specs`
 
 #### SOE-003
 - Type: behavior

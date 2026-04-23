@@ -34,7 +34,7 @@ The bridge also limits new Nushell rewrite debt. Complex deterministic work can 
   the single owner for the moved slice instead of creating a second public CLI
   registry
 - Verification: automated `nu nushell/scripts/dev/test_yzx_core_commands.nu`;
-  validator `nu nushell/scripts/dev/validate_specs.nu`
+  validator `yzx_repo_validator validate-specs`
 
 #### BRIDGE-002
 - Type: boundary
@@ -68,7 +68,7 @@ The bridge also limits new Nushell rewrite debt. Complex deterministic work can 
   Nushell command registry
 - Verification: automated
   `nushell/scripts/dev/test_shell_managed_config_contracts.nu`; validator
-  `nu nushell/scripts/dev/validate_specs.nu`
+  `yzx_repo_validator validate-specs`
 
 #### BRIDGE-005
 - Type: ownership
@@ -298,7 +298,7 @@ Source-checkout development may invoke a locally built helper, but installed run
 
 ## Verification
 
-- `nu nushell/scripts/dev/validate_specs.nu`
+- `yzx_repo_validator validate-specs`
 - manual review against `docs/specs/cross_language_runtime_ownership.md`
 - manual review against `docs/specs/runtime_root_contract.md`
 - manual review against `docs/specs/startup_profile_scenarios.md`
@@ -309,7 +309,7 @@ Source-checkout development may invoke a locally built helper, but installed run
 
 - Bead: `yazelix-kt5.1.1`
 - Bead: `yazelix-4xp1.3`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `yzx_repo_validator validate-specs`
 - Defended by: `nu nushell/scripts/dev/test_shell_managed_config_contracts.nu`
 
 ## Open Questions

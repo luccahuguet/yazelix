@@ -230,13 +230,13 @@ This matrix is intentionally concrete. It exists to stop runtime checks from dri
   - `nu nushell/scripts/dev/test_yzx_core_commands.nu`
 - helper tests:
   - `cargo test --manifest-path rust_core/Cargo.toml`
-- CI/spec check: `nu nushell/scripts/dev/validate_specs.nu`
+- CI/spec check: `yzx_repo_validator validate-specs`
 
 ## Traceability
 
 - Bead: `yazelix-kt5.3`
 - Defended by:
-  - `nu nushell/scripts/dev/validate_specs.nu`
+  - `yzx_repo_validator validate-specs`
   - `cargo test --manifest-path rust_core/Cargo.toml`
 
 ## Open Questions
