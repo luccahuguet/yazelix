@@ -178,7 +178,7 @@ Runtime-env cut must still pass:
 
 Shared validation:
 
-- `nu nushell/scripts/dev/validate_syntax.nu`
+- `yzx_repo_validator validate-nushell-syntax`
 - `yzx_repo_validator validate-specs`
 
 ## Stop Conditions

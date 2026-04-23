@@ -19,6 +19,9 @@ Start from these files first when planning current work:
   - the primary live runtime and command-surface contract
 - `provable_nushell_floor_budget.md`
   - the primary hard-budget and proof-standard doc for the under-`5k` Nu push
+- `second_wave_nushell_deletion_map.md`
+  - the current file-level map from the `13.2k` tracked Nu surface toward the
+    `4.2k` hard floor
 - `rust_migration_matrix.md`
   - the primary delete-first roadmap for remaining product-side Nushell removal
 - `ranked_nu_deletion_budget.md`
@@ -120,6 +123,7 @@ Status labels:
 | `runtime_shell_floor_budgets.md` | Planning | Current hard shell-floor budget for integration, setup/bootstrap, session/desktop, runtime-helper, and detached-launch product Nu lanes |
 | `setup_shellhook_welcome_terminal_canonicalization_audit.md` | Planning | Completed setup/shellhook/welcome/terminal audit; spawned the front-door and terminal-launch deletion lanes |
 | `shell_opened_editors.md` | Live | Current managed-editor versus shell-opened editor boundary |
+| `second_wave_nushell_deletion_map.md` | Planning | Current file-level second-wave deletion map from `13.2k` Nu LOC toward the `4.2k` hard floor |
 | `spec_docs_contract_alignment_audit.md` | Planning | Current docs/spec alignment audit; feeds contract-item migration and historical-doc cleanup |
 | `spec_inventory.md` | Live | Maintained inventory of specs by current planning status |
 | `status_doctor_machine_readable_reports.md` | Live | Current structured-report contract for `yzx status` and `yzx doctor` |

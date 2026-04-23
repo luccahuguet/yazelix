@@ -40,7 +40,7 @@ Additionally, Ghostty on macOS launches login shells by default. This is a Ghost
 ## Validation
 
 Automated:
-- `nu nushell/scripts/dev/validate_flake_interface.nu` — checks that all exported flake systems are available according to `meta.platforms`
+- `yzx_repo_validator validate-flake-interface` — checks that all exported flake systems are available according to `meta.platforms`
 - `nu nushell/scripts/dev/test_yzx_generated_configs.nu` — includes `test_ghostty_macos_launch_command_omits_linux_specific_flags` defending the macOS Ghostty command shape
 - `yzx_repo_validator validate-specs` — validates this spec is listed in the inventory
 
@@ -66,5 +66,5 @@ Manual smoke gate (maintainer on macOS hardware):
 - Bead: `yazelix-0nvb`
 - Depends on: `yazelix-z5vf` (first-party flake package must report as available on darwin)
 - Follow-up: package-first macOS launcher bead if Spotlight/Launchpad/Dock integration becomes an owned surface
-- Defended by: `nushell/scripts/dev/validate_flake_interface.nu`
+- Defended by: `yzx_repo_validator validate-flake-interface`
 - Defended by: `nushell/scripts/dev/test_yzx_generated_configs.nu::test_ghostty_macos_launch_command_omits_linux_specific_flags`

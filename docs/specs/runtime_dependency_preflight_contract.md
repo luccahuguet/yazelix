@@ -223,7 +223,7 @@ This matrix is intentionally concrete. It exists to stop runtime checks from dri
   - `nushell/scripts/utils/terminal_launcher.nu`
   - `nushell/scripts/utils/doctor_fix.nu`
   - `yzx_repo_validator validate-installed-runtime-contract`
-  - `nushell/scripts/dev/validate_flake_install.nu`
+  - `yzx_repo_validator validate-flake-profile-install`
 - integration tests:
   - `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
   - `nu nushell/scripts/dev/test_yzx_doctor_commands.nu`

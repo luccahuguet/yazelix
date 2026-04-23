@@ -44,8 +44,8 @@ The package body is intentionally parameterized by `src` in this repo-local draf
 Current local validation for the draft submission path:
 
 ```bash
-nu nushell/scripts/dev/validate_nixpkgs_package.nu
-nu nushell/scripts/dev/validate_nixpkgs_submission.nu
+cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-nixpkgs-package
+cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-nixpkgs-submission
 ```
 
 The first validator defends the direct repo-local package surface. The second validator defends the upstream-facing draft package body in this directory.

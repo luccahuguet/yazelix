@@ -235,8 +235,44 @@ export def "yzx dev test" [
     --all(-a)  # Run the default suite plus sweep + visual lanes
     --delay: int = 3  # Delay between visual terminal launches in seconds
 ] {
-    use ../maintainer/test_runner.nu run_all_tests
-    run_all_tests --verbose=$verbose --new-window=$new_window --lint-only=$lint_only --profile=$profile --sweep=$sweep --visual=$visual --all=$all --delay $delay
+    let repo_root = (require_yazelix_repo_root)
+    mut args = [
+        "develop"
+        "-c"
+        "cargo"
+        "run"
+        "--quiet"
+        "--manifest-path"
+        ($repo_root | path join "rust_core" "Cargo.toml")
+        "-p"
+        "yazelix_core"
+        "--bin"
+        "yzx_repo_maintainer"
+        "--"
+        "--repo-root"
+        $repo_root
+        "run-tests"
+    ]
+    if $verbose { $args = ($args | append "--verbose") }
+    if $new_window { $args = ($args | append "--new-window") }
+    if $lint_only { $args = ($args | append "--lint-only") }
+    if $profile { $args = ($args | append "--profile") }
+    if $sweep { $args = ($args | append "--sweep") }
+    if $visual { $args = ($args | append "--visual") }
+    if $all { $args = ($args | append "--all") }
+    $args = ($args | append ["--delay", ($delay | into string)])
+
+    let runner_args = $args
+    let result = (do { cd $repo_root; ^nix ...$runner_args } | complete)
+    if ($result.stdout | is-not-empty) {
+        print --raw $result.stdout
+    }
+    if ($result.stderr | is-not-empty) {
+        print --stderr --raw $result.stderr
+    }
+    if $result.exit_code != 0 {
+        error make { msg: "Yazelix Rust test runner failed" }
+    }
 }
 
 def run_desktop_profile_command [] {

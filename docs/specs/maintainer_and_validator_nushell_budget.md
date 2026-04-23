@@ -10,9 +10,9 @@ under-`5k` Nu floor. The rule here is the same as everywhere else: Nu may stay
 only where it is the honest shell/process owner. Deterministic validation,
 policy, routing, and test-helper logic must move to Rust or be deleted.
 
-The old governed Nu test files are already gone. What remains here is the shell
-orchestration around `yzx dev`, sweep/E2E runners, maintainer tooling, and
-deterministic validators that have not been ported yet.
+The old governed Nu test files and deterministic validator Nu files are already
+gone. What remains here is the shell orchestration around `yzx dev`, sweep/E2E
+runners, and maintainer tooling.
 
 ## Scope
 
@@ -21,7 +21,7 @@ In scope:
 - `nushell/scripts/maintainer/*.nu`
 - `nushell/scripts/yzx/dev.nu`
 - non-test, non-validator helpers under `nushell/scripts/dev/`
-- deterministic validators under `nushell/scripts/dev/validate*.nu`
+- the completed Rust-owned deterministic validator surface in `yzx_repo_validator`
 
 Out of scope:
 
@@ -31,16 +31,17 @@ Out of scope:
 
 ## Current Measured Surface
 
-Measured on `2026-04-22`:
+Measured on `2026-04-23` after `yazelix-lj7z.2`:
 
 | Family | Current LOC | Hard target LOC | Main follow-up |
 | --- | ---: | ---: | --- |
-| Maintainer and `yzx dev` shell orchestration | `3,996` | `1,200` | `yazelix-8ih0` |
-| Deterministic validators and contract linters | `639` | `0` | `yazelix-rdn7.4.6` |
+| Maintainer and `yzx dev` shell orchestration | `3,486` | `1,200` | `yazelix-lj7z.3`, `yazelix-lj7z.4` |
+| Deterministic validators and contract linters | `0` | `0` | `yazelix-lj7z.2` |
 
 ## Maintainer And `yzx dev` Budget
 
-`yazelix-8ih0.1` should use this keep-vs-cut table.
+`yazelix-lj7z.1` supersedes the earlier `yazelix-8ih0.1` table with the
+file-level second-wave map in `second_wave_nushell_deletion_map.md`.
 
 ### Allowlisted survivors
 
@@ -52,7 +53,6 @@ These are allowed to survive only as fixed argv or shell/process orchestration:
 - `maintainer/update_workflow.nu`
 - `maintainer/repo_checkout.nu`
 - `maintainer/plugin_build.nu`
-- a much smaller `maintainer/test_runner.nu`
 - a much smaller `yzx/dev.nu`
 - only the temporary shell-heavy runner scripts named in
   `config_metadata/nushell_budget.toml`
@@ -61,7 +61,8 @@ These are allowed to survive only as fixed argv or shell/process orchestration:
 
 These should not survive as broad owned Nu surfaces:
 
-- dynamic dispatch and suite-selection policy inside `maintainer/test_runner.nu`
+- dynamic dispatch and suite-selection policy, now Rust-owned by
+  `yzx_repo_maintainer run-tests`
 - broad route planning and policy in `yzx/dev.nu`
 - deterministic helper libraries that mainly support governed Nu tests or
   validators:
@@ -81,13 +82,14 @@ These should not survive as broad owned Nu surfaces:
    touches `git`, `gh`, `bd`, or Nix later
 3. Route first-party Rust tests through `cargo nextest run` by default
 4. Shrink `yzx dev` to a thin public shell router above canonical owners
-5. Shrink `test_runner.nu` to fixed suite orchestration and logging only
+5. Keep test-runner orchestration in Rust and do not recreate a Nu runner owner
 6. Do not recreate governed Nu test entrypoints inside maintainer tooling after
    the governed Nu suite has been deleted
 
 ### `yzx dev` Shell-Floor Split
 
-`yazelix-8ih0.7` should treat the public `yzx dev` surface like this:
+`yazelix-lj7z.3` and `yazelix-lj7z.4` should treat the public `yzx dev`
+surface like this:
 
 | Subsurface | Keep vs cut | Why |
 | --- | --- | --- |
@@ -99,19 +101,19 @@ These should not survive as broad owned Nu surfaces:
 
 ## Validator Budget
 
-`yazelix-rdn7.4.6.1` should use this deletion budget:
+`yazelix-lj7z.2` should use this deletion budget:
 
 ### Target
 
-After `yazelix-rdn7.4.6.4`, `639` lines of deterministic validators remain in
-Nu. The target is still `0` long-term governed Nu validator LOC.
+After `yazelix-lj7z.2`, the deterministic validator and package-smoke Nu
+owners are deleted. The target remains `0` governed Nu validator LOC.
 
 ### Split
 
 | Validator cluster | Current examples | Budget judgment | Owning follow-up |
 | --- | --- | --- | --- |
 | Spec and test traceability validators | Rust `yzx_repo_validator validate-specs`, `validate-default-test-traceability`, and `validate-rust-test-traceability`; deleted count-budget wrapper | completed Rust owner cut | `yazelix-rdn7.4.6.2`; `yazelix-rdn7.4.6.4` |
-| Config, upgrade, and package validators | Rust `yzx_repo_validator validate-config-surface-contract` and `validate-upgrade-contract`; Nu `validate_flake_interface.nu`, `validate_nixpkgs_package.nu`, `validate_nixpkgs_submission.nu`, `validate_flake_install.nu` | Rust-port remaining Nix/package shell probes only when it deletes real Nu owners | `yazelix-rdn7.4.6.3`; `yazelix-rdn7.4.6.4` |
+| Config, upgrade, and package validators | Rust `yzx_repo_validator validate-config-surface-contract`, `validate-upgrade-contract`, `validate-flake-interface`, `validate-flake-profile-install`, `validate-nixpkgs-package`, and `validate-nixpkgs-submission` | completed Rust owner cut; fixed external probes remain inside Rust | `yazelix-lj7z.2` |
 | Installed-runtime validator | Rust `yzx_repo_validator validate-installed-runtime-contract`; deleted `validate_installed_runtime_contract.nu` | completed Rust owner cut; fixed external probes remain inside Rust | `yazelix-rdn7.4.6.6` |
 | README surface/version validator | Rust `yzx_repo_validator validate-readme-version`; Rust `yzx_repo_maintainer sync-readme-surface`; deleted `validate_readme_version.nu` and `readme_surface.nu` | completed Rust owner cut | `yazelix-8ih0.2` |
 
@@ -162,8 +164,7 @@ The config and upgrade validator port should also add no new crates.
     would preserve redundant validator ownership after Rust already owns the
     live config-state logic
 - packaging impact:
-  - the surviving Nu validators may remain only as thin compatibility shims
-    that invoke the Rust validator binary
+  - no Nu validator compatibility shims survive
   - any remaining `git` and `nix` probe layer must stay explicit and fixed-argv
 
 The installed-runtime and README surface cuts also add no new crates.
@@ -264,6 +265,10 @@ maintainer floor.
 - Bead: `yazelix-8ih0.6`
 - Bead: `yazelix-rdn7.4.6.1`
 - Bead: `yazelix-rdn7.4.6.6`
+- Bead: `yazelix-lj7z.1`
+- Bead: `yazelix-lj7z.2`
+- Bead: `yazelix-lj7z.3`
+- Bead: `yazelix-lj7z.4`
 - Defended by: `yzx_repo_validator validate-specs`
 - Defended by: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-readme-version`
 - Defended by: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-installed-runtime-contract`

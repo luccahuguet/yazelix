@@ -173,7 +173,7 @@ checked-in POSIX helper instead of keeping it embedded inside Nushell.
   - candidate surviving owner: Rust `terminal_materialization.rs`,
     `ghostty_materialization.rs`, and `control_plane.rs`
   - verification: `test_yzx_generated_configs.nu`,
-    `test_yzx_workspace_commands.nu`, `validate_flake_install.nu`
+    `test_yzx_workspace_commands.nu`, `yzx_repo_validator validate-flake-profile-install`
   - stop condition: keep caller-local terminal selection and execution in Nu if
     the only alternative is a fake Rust launch wrapper
 - `yazelix-p18h`

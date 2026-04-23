@@ -3,7 +3,7 @@ repos:
     hooks:
       - id: yazelix-validate-syntax
         name: validate Nushell syntax
-        entry: nu nushell/scripts/dev/validate_syntax.nu --quiet
+        entry: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-nushell-syntax --quiet
         language: system
         pass_filenames: false
         always_run: true

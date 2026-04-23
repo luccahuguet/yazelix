@@ -91,7 +91,7 @@ Home Manager remains a supported first-class integration path through the same t
 ## Verification
 
 - manual review against [package_runtime_first_user_and_maintainer_ux.md](./package_runtime_first_user_and_maintainer_ux.md)
-- CI check: `nu nushell/scripts/dev/validate_flake_interface.nu`
+- CI check: `yzx_repo_validator validate-flake-interface`
 - package-surface probe: `nix run .#yazelix -- --version-short`
 
 ## Traceability

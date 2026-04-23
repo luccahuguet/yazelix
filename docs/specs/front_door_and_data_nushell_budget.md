@@ -35,7 +35,7 @@ Out of scope:
 
 ## Current Measured Surface
 
-Measured on `2026-04-22`:
+Measured on `2026-04-23`:
 
 | Surface | Current LOC | Hard target LOC | Notes |
 | --- | ---: | ---: | --- |
@@ -48,7 +48,7 @@ The data-heavy subset is:
 - `utils/constants.nu`
 - `utils/upgrade_summary.nu`
 
-## `yazelix-w6sz.4.1` Front-Door UX Budget
+## `yazelix-lj7z.8` Front-Door UX Budget
 
 Retain only the honest shell presentation seams:
 
@@ -79,7 +79,7 @@ Stop condition:
 Do not build a parallel Rust renderer unless it deletes the oversized Nu owner
 end to end. Delete stale styles and data first.
 
-## `yazelix-dejl.1` Data-Heavy Budget
+## Data-Heavy Subset Under `yazelix-lj7z.8` And `yazelix-lj7z.10`
 
 The data-heavy lane is a subset deletion budget inside the front-door and
 runtime-helper families.
@@ -119,14 +119,15 @@ Do not preserve dead assets or style aliases for compatibility comfort. Keep
 only the styles and payloads backed by the live contract in
 `docs/specs/welcome_screen_style_contract.md`.
 
-## `yazelix-dejl.5` Ascii-Art Engine Decision
+## Superseded Ascii-Art Engine Stop Condition
 
-Decision after `yazelix-dejl.2`:
+Earlier decision after `yazelix-dejl.2`:
 
 - static style tables, welcome copy, and Game of Life seed shapes should leave
   `ascii_art.nu`
-- the remaining `ascii_art.nu` engine does not yet have an honest Rust owner
-  cut
+- the remaining `ascii_art.nu` engine now has an honest Rust owner cut under
+  `yazelix-lj7z.8`, provided it deletes `ascii_art.nu` and `welcome.nu`
+  renderer ownership rather than adding a wrapper
 
 Reason:
 
@@ -135,21 +136,20 @@ Reason:
   the shell-owned `setup/welcome.nu` and `yzx/screen.nu` surfaces
 - moving that code to Rust right now would not delete the shell-owned playback,
   interruptibility, and terminal-size boundaries
-- without a narrower retained renderer contract, a Rust port would mostly
-  recreate the same front-door engine behind another bridge
+- the second-wave cut narrows the retained renderer contract first, then ports
+  frame generation, Game of Life simulation, and welcome message assembly to
+  Rust
 
 Explicit stop condition:
 
-- do not start a broad Rust port of the remaining `ascii_art.nu` engine until
-  a later front-door owner cut deletes `welcome.nu` plus `ascii_art.nu`
-  materially end to end, or until the retained style surface is narrowed enough
-  that the surviving renderer becomes a clearly smaller typed owner
+- do not keep a broad Nu renderer after `yazelix-lj7z.8`; either Rust owns the
+  renderer end to end or the remaining Nu surface must be tiny terminal I/O
+  only
 
 Retained Nu floor for now:
 
-- style resolution against the canonical welcome/screen contract
-- width-aware line composition and ANSI coloring
-- live Game of Life state stepping and rendering
+- direct terminal playback only if the Rust terminal dependency decision rejects
+  a Rust TTY owner
 
 Follow-up expectation:
 
@@ -169,6 +169,8 @@ Follow-up expectation:
 - Bead: `yazelix-w6sz.4.2`
 - Bead: `yazelix-dejl.1`
 - Bead: `yazelix-dejl.4`
+- Bead: `yazelix-lj7z.8`
+- Bead: `yazelix-lj7z.10`
 - Defended by: `yzx_repo_validator validate-specs`
 - Informed by: `docs/specs/setup_shellhook_welcome_terminal_canonicalization_audit.md`
 - Informed by: `docs/specs/welcome_screen_style_contract.md`

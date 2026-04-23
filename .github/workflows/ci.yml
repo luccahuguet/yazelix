@@ -46,7 +46,7 @@ jobs:
 
           base="$BASE_SHA"
           head="$HEAD_SHA"
-          integration_paths_regex='^(flake\.nix|flake\.lock|maintainer_shell\.nix|\.github/workflows/ci\.yml|shells/|configs/|home_manager/|packaging/mk_runtime_tree\.nix|yazelix_package\.nix|yazelix_runtime_package\.nix|yazelix_default\.toml|nushell/scripts/core/|nushell/scripts/setup/|nushell/scripts/utils/|nushell/scripts/dev/validate_flake_install\.nu|rust_core/)'
+          integration_paths_regex='^(flake\.nix|flake\.lock|maintainer_shell\.nix|\.github/workflows/ci\.yml|shells/|configs/|home_manager/|packaging/mk_runtime_tree\.nix|yazelix_package\.nix|yazelix_runtime_package\.nix|yazelix_default\.toml|nushell/scripts/core/|nushell/scripts/setup/|nushell/scripts/utils/|rust_core/)'
 
           if [ -z "${base:-}" ] || [ "$base" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
             base="$(git rev-parse "$head^" 2>/dev/null || git rev-list --max-parents=0 "$head" | tail -n1)"
@@ -83,7 +83,7 @@ jobs:
       YAZELIX_DIR: ${{ github.workspace }}
     defaults:
       run:
-        shell: nu {0}
+        shell: bash
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -101,13 +101,8 @@ jobs:
           use-gha-cache: true
           use-flakehub: false
 
-      - name: Set up Nushell
-        uses: hustcer/setup-nu@v3
-        with:
-          version: "0.111.0"
-
       - name: Validate Nushell syntax
-        run: nu nushell/scripts/dev/validate_syntax.nu
+        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-nushell-syntax
 
       - name: Validate generated README surface
         shell: bash
@@ -141,7 +136,7 @@ jobs:
         run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-rust-test-traceability
 
       - name: Validate top-level flake interface
-        run: nu nushell/scripts/dev/validate_flake_interface.nu
+        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-flake-interface
 
   integration:
     # Medium-cost installed-runtime contract lane. Keep this path-gated so
@@ -155,7 +150,7 @@ jobs:
       YAZELIX_DIR: ${{ github.workspace }}
     defaults:
       run:
-        shell: nu {0}
+        shell: bash
     steps:
       - name: Skip installed-runtime contract smoke
         if: ${{ needs.detect_integration_changes.outputs.run_runtime_contract != 'true' }}
@@ -188,12 +183,6 @@ jobs:
           use-gha-cache: true
           use-flakehub: false
 
-      - name: Set up Nushell
-        if: ${{ needs.detect_integration_changes.outputs.run_runtime_contract == 'true' }}
-        uses: hustcer/setup-nu@v3
-        with:
-          version: "0.111.0"
-
       - name: Validate installed-runtime contract smoke
         if: ${{ needs.detect_integration_changes.outputs.run_runtime_contract == 'true' }}
         shell: bash
@@ -212,7 +201,7 @@ jobs:
       YAZELIX_DIR: ${{ github.workspace }}
     defaults:
       run:
-        shell: nu {0}
+        shell: bash
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -230,13 +219,8 @@ jobs:
           use-gha-cache: true
           use-flakehub: false
 
-      - name: Set up Nushell
-        uses: hustcer/setup-nu@v3
-        with:
-          version: "0.111.0"
-
       - name: Run cold profile install build
-        run: nu nushell/scripts/dev/validate_flake_install.nu install "${{ runner.temp }}/yazelix_flake_install_smoke"
+        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-flake-profile-install install "${{ runner.temp }}/yazelix_flake_install_smoke"
 
       - name: Verify cold profile-installed runtime
-        run: nu nushell/scripts/dev/validate_flake_install.nu verify "${{ runner.temp }}/yazelix_flake_install_smoke"
+        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-flake-profile-install verify "${{ runner.temp }}/yazelix_flake_install_smoke"

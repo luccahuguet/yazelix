@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 use yazelix_core::repo_contract_validation::{
-    UpgradeContractOptions, validate_config_surface_contract, validate_installed_runtime_contract,
-    validate_nushell_budget, validate_readme_version, validate_upgrade_contract,
+    ColdProfileInstallOptions, UpgradeContractOptions, validate_config_surface_contract,
+    validate_flake_interface, validate_flake_profile_install, validate_installed_runtime_contract,
+    validate_nixpkgs_package, validate_nixpkgs_submission, validate_nushell_budget,
+    validate_nushell_syntax, validate_readme_version, validate_upgrade_contract,
 };
 use yazelix_core::repo_validation::{
     repo_root, validate_default_test_traceability, validate_rust_test_traceability, validate_specs,
@@ -12,7 +14,7 @@ fn main() {
     let mut resolved_repo_root = repo_root();
     let Some(first_arg) = args.next() else {
         eprintln!(
-            "Usage: yzx_repo_validator [--repo-root PATH] <validate-specs|validate-default-test-traceability|validate-rust-test-traceability|validate-config-surface-contract|validate-nushell-budget|validate-upgrade-contract|validate-installed-runtime-contract|validate-readme-version>"
+            "Usage: yzx_repo_validator [--repo-root PATH] <validate-specs|validate-default-test-traceability|validate-rust-test-traceability|validate-config-surface-contract|validate-nushell-budget|validate-upgrade-contract|validate-installed-runtime-contract|validate-flake-interface|validate-flake-profile-install|validate-nixpkgs-package|validate-nixpkgs-submission|validate-nushell-syntax|validate-readme-version>"
         );
         std::process::exit(2);
     };
@@ -25,7 +27,7 @@ fn main() {
         resolved_repo_root = PathBuf::from(path);
         let Some(command) = args.next() else {
             eprintln!(
-                "Usage: yzx_repo_validator [--repo-root PATH] <validate-specs|validate-default-test-traceability|validate-rust-test-traceability|validate-config-surface-contract|validate-nushell-budget|validate-upgrade-contract|validate-installed-runtime-contract|validate-readme-version>"
+                "Usage: yzx_repo_validator [--repo-root PATH] <validate-specs|validate-default-test-traceability|validate-rust-test-traceability|validate-config-surface-contract|validate-nushell-budget|validate-upgrade-contract|validate-installed-runtime-contract|validate-flake-interface|validate-flake-profile-install|validate-nixpkgs-package|validate-nixpkgs-submission|validate-nushell-syntax|validate-readme-version>"
             );
             std::process::exit(2);
         };
@@ -57,6 +59,36 @@ fn main() {
             validate_installed_runtime_contract(&resolved_repo_root),
             Some("✅ Installed-runtime contract smoke passed".to_string()),
         ),
+        "validate-flake-interface" => (
+            validate_flake_interface(&resolved_repo_root),
+            Some("✅ Top-level flake interface is valid".to_string()),
+        ),
+        "validate-flake-profile-install" => {
+            let options = parse_cold_profile_install_options(command.as_str(), remaining_args);
+            (
+                validate_flake_profile_install(&resolved_repo_root, &options),
+                Some(match options.phase.as_str() {
+                    "install" => "✅ Cold profile-install build phase passed".to_string(),
+                    "verify" => "✅ Cold profile-install verification phase passed".to_string(),
+                    _ => "✅ Cold profile-install check passed".to_string(),
+                }),
+            )
+        }
+        "validate-nixpkgs-package" => (
+            validate_nixpkgs_package(&resolved_repo_root),
+            Some("✅ Nixpkgs-style Yazelix package smoke check passed".to_string()),
+        ),
+        "validate-nixpkgs-submission" => (
+            validate_nixpkgs_submission(&resolved_repo_root),
+            Some("✅ Nixpkgs submission draft smoke check passed".to_string()),
+        ),
+        "validate-nushell-syntax" => {
+            let verbose = parse_nushell_syntax_options(command.as_str(), remaining_args);
+            (
+                validate_nushell_syntax(&resolved_repo_root, verbose),
+                Some("✅ Nushell syntax validation passed".to_string()),
+            )
+        }
         "validate-readme-version" => (
             validate_readme_version(&resolved_repo_root),
             Some("✅ README version and latest-series block are valid".to_string()),
@@ -92,7 +124,7 @@ fn main() {
         }
         _ => {
             eprintln!(
-                "Unknown validator command `{}`. Expected validate-specs, validate-default-test-traceability, validate-rust-test-traceability, validate-config-surface-contract, validate-nushell-budget, validate-upgrade-contract, validate-installed-runtime-contract, or validate-readme-version.",
+                "Unknown validator command `{}`. Expected validate-specs, validate-default-test-traceability, validate-rust-test-traceability, validate-config-surface-contract, validate-nushell-budget, validate-upgrade-contract, validate-installed-runtime-contract, validate-flake-interface, validate-flake-profile-install, validate-nixpkgs-package, validate-nixpkgs-submission, validate-nushell-syntax, or validate-readme-version.",
                 command
             );
             std::process::exit(2);
@@ -122,6 +154,11 @@ fn main() {
                     "validate-installed-runtime-contract" => {
                         "Installed-runtime contract validation failed"
                     }
+                    "validate-flake-interface" => "Top-level flake interface validation failed",
+                    "validate-flake-profile-install" => "Cold profile-install validation failed",
+                    "validate-nixpkgs-package" => "Nixpkgs package validation failed",
+                    "validate-nixpkgs-submission" => "Nixpkgs submission validation failed",
+                    "validate-nushell-syntax" => "Nushell syntax validation failed",
                     "validate-readme-version" => "README version validation failed",
                     _ => unreachable!(),
                 };
@@ -137,4 +174,41 @@ fn main() {
             std::process::exit(1);
         }
     }
+}
+
+fn parse_cold_profile_install_options(
+    command: &str,
+    remaining_args: Vec<String>,
+) -> ColdProfileInstallOptions {
+    let mut options = ColdProfileInstallOptions::default();
+    let mut args = remaining_args.into_iter();
+    if let Some(phase) = args.next() {
+        options.phase = phase;
+    }
+    if let Some(temp_home) = args.next() {
+        options.temp_home = Some(PathBuf::from(temp_home));
+    }
+    if let Some(extra) = args.next() {
+        eprintln!(
+            "Unknown validator command `{}` extra argument `{}`.",
+            command, extra
+        );
+        std::process::exit(2);
+    }
+    options
+}
+
+fn parse_nushell_syntax_options(command: &str, remaining_args: Vec<String>) -> bool {
+    let mut verbose = false;
+    for arg in remaining_args {
+        match arg.as_str() {
+            "--verbose" | "-v" => verbose = true,
+            "--quiet" | "-q" => {}
+            _ => {
+                eprintln!("Unknown validator command `{}` option `{}`.", command, arg);
+                std::process::exit(2);
+            }
+        }
+    }
+    verbose
 }

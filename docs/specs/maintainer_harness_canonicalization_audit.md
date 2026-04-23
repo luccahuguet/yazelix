@@ -74,8 +74,7 @@ cuts are:
 | File | Approx lines | Audit role |
 | --- | ---: | --- |
 | `maintainer/update_workflow.nu` | `768` | release/update workflow owner |
-| `maintainer/test_runner.nu` | `438` | `yzx dev test` harness owner |
-| `yzx/dev.nu` | `375` | public maintainer/dev command router |
+| `yzx/dev.nu` | `410` | public maintainer/dev command router |
 | `dev/config_normalize_test_helpers.nu` | `356` | temporary helper debt to delete after stronger Rust coverage absorbs it |
 | `config_sweep_runner.nu` | `325` | non-visual and visual sweep runner |
 
@@ -83,7 +82,7 @@ cuts are:
 
 | Behavior | Current contract or source | Current owner | Current verification | Candidate surviving owner |
 | --- | --- | --- | --- | --- |
-| Default suite runs explicit high-signal Rust suite membership instead of globbing every `test_*.nu` | `docs/specs/test_suite_governance.md` | Nu `maintainer/test_runner.nu` plus Rust suite inventory | `yzx dev test`; `yzx_repo_validator validate-default-test-traceability` | same or smaller runner |
+| Default suite runs explicit high-signal Rust suite membership instead of globbing every `test_*.nu` | `docs/specs/test_suite_governance.md` | Rust `yzx_repo_maintainer run-tests` plus Rust suite inventory | `yzx dev test`; `yzx_repo_validator validate-default-test-traceability` | Rust runner |
 | Sweep and visual lanes remain explicit and separate from the default suite | `docs/specs/test_suite_governance.md` | Nu `config_sweep_runner.nu` and `dev/sweep/*.nu` | sweep lane manual/targeted checks | same, but dispatch should stay fixed and direct |
 | Version bump and release notes stay transactional and refuse dirty/invalid release states | `docs/specs/upgrade_notes_contract.md` | Nu `maintainer/version_bump.nu` | maintainer tests for bump and upgrade contracts | same |
 | Update workflow refreshes runtime pins, runs canaries, and requires explicit activation mode for real updates | `docs/specs/runtime_distribution_capability_tiers.md`; maintainer tests | Nu `maintainer/update_workflow.nu` | maintainer update tests | same |
@@ -96,7 +95,7 @@ cuts are:
 | Concern | Current owner or split boundary | Split kind | Audit judgment |
 | --- | --- | --- | --- |
 | Public `yzx dev` command surface | Nu `yzx/dev.nu` plus Rust metadata | intentional | Keep only thin shell/public routing in Nu; move deterministic policy down |
-| Test runner selection and logging | Nu `maintainer/test_runner.nu` | intentional with bridge debt | Keep but shrink to fixed inventory dispatch and logging |
+| Test runner selection and logging | Rust `yzx_repo_maintainer run-tests` | completed owner cut | Keep Nu only as public `yzx dev test` handoff |
 | Default suite test logic | Rust tests plus Nu shell runner | intentional | Governed tests live in Rust; Nu should not own test logic again |
 | Contract/spec/test validators | Nu validator scripts | intentional | Good Nu fit unless a Rust port deletes a whole validator |
 | Issue/GitHub sync | Nu `maintainer/issue_sync.nu` and `issue_bead_contract.nu` | external_tool_adapter | Keep; `bd` and `gh` are shell tools |
@@ -114,9 +113,9 @@ cuts are:
 
 ### Bridge Layer To Collapse
 
-- `maintainer/test_runner.nu` no longer builds dynamic `nu -c` program strings,
-  but it still owns too much policy for default-vs-sweep selection, profiling,
-  and log shaping
+- `maintainer/test_runner.nu` was deleted under `yazelix-lj7z.3`; the Rust
+  maintainer runner now owns default-vs-sweep selection, profiling, and log
+  shaping
 - `yzx/dev.nu` still centralizes a broad set of maintainer and profiling entry
   surfaces that should keep shrinking toward thin shell routing
 - the temporary shell-heavy runner scripts should not become a permanent second
@@ -132,9 +131,8 @@ cuts are:
 ### Likely Survivors
 
 - `issue_sync.nu`, `issue_bead_contract.nu`, `version_bump.nu`,
-  `update_workflow.nu`, `repo_checkout.nu`, `test_runner.nu`, and
-  `plugin_build.nu`
-- validators that scan source files and docs cheaply
+  `update_workflow.nu`, `repo_checkout.nu`, and `plugin_build.nu`
+- Rust validators and maintainer runners that scan source files and docs cheaply
 - startup/profile harnesses that execute the real startup paths
 - sweep helpers that launch matrix cases
 
@@ -157,8 +155,8 @@ cuts are:
     only in `maintainer/update_workflow.nu`
   - resolved under `yazelix-rdn7.4.5.4`: governed Nu test ownership no longer
     duplicates Rust-owned deterministic command/materialization/workspace tests
-  - package validators share helper logic through `nixpkgs_package_smoke.nu`,
-    which is good; keep that as a shared maintainer helper
+  - resolved under `yazelix-lj7z.2`: package validators now share Rust
+    helper logic inside `yzx_repo_validator`
 - missing layer problems:
   - no single maintainer-harness contract says which scripts are shipped
     runtime commands versus manual-only repo helpers

@@ -1,12 +1,12 @@
 [contract]
-current_total_loc_max = 13232
-current_total_file_count_max = 87
+current_total_loc_max = 12101
+current_total_file_count_max = 80
 hard_target_loc = 4200
 
 [[families]]
 id = "manual_e2e_and_sweep_runners"
 status = "transitional_exception"
-owner_bead = "yazelix-8ih0"
+owner_bead = "yazelix-lj7z.9"
 max_loc = 881
 target_loc = 0
 max_files = 5
@@ -19,31 +19,15 @@ allowed_paths = [
 ]
 
 [[families]]
-id = "deterministic_validators"
-status = "transitional_exception"
-owner_bead = "yazelix-rdn7.4.6"
-max_loc = 639
-target_loc = 0
-max_files = 5
-allowed_paths = [
-  "nushell/scripts/dev/validate_flake_install.nu",
-  "nushell/scripts/dev/validate_flake_interface.nu",
-  "nushell/scripts/dev/validate_nixpkgs_package.nu",
-  "nushell/scripts/dev/validate_nixpkgs_submission.nu",
-  "nushell/scripts/dev/validate_syntax.nu",
-]
-
-[[families]]
 id = "maintainer_and_dev_orchestration"
 status = "transitional_exception"
-owner_bead = "yazelix-8ih0"
-max_loc = 3978
+owner_bead = "yazelix-lj7z.4"
+max_loc = 3486
 target_loc = 1200
-max_files = 20
+max_files = 18
 allowed_paths = [
   "nushell/scripts/dev/config_normalize_test_helpers.nu",
   "nushell/scripts/dev/materialization_dev_helpers.nu",
-  "nushell/scripts/dev/nixpkgs_package_smoke.nu",
   "nushell/scripts/dev/record_demo.nu",
   "nushell/scripts/dev/record_demo_fonts.nu",
   "nushell/scripts/dev/sweep/sweep_config_generator.nu",
@@ -57,7 +41,6 @@ allowed_paths = [
   "nushell/scripts/maintainer/issue_sync.nu",
   "nushell/scripts/maintainer/plugin_build.nu",
   "nushell/scripts/maintainer/repo_checkout.nu",
-  "nushell/scripts/maintainer/test_runner.nu",
   "nushell/scripts/maintainer/update_workflow.nu",
   "nushell/scripts/maintainer/version_bump.nu",
   "nushell/scripts/yzx/dev.nu",
@@ -66,7 +49,7 @@ allowed_paths = [
 [[families]]
 id = "integration_and_wrappers"
 status = "transitional_exception"
-owner_bead = "yazelix-w6sz.2"
+owner_bead = "yazelix-lj7z.7"
 max_loc = 1328
 target_loc = 300
 max_files = 11
@@ -87,7 +70,7 @@ allowed_paths = [
 [[families]]
 id = "setup_and_bootstrap"
 status = "transitional_exception"
-owner_bead = "yazelix-w6sz.3"
+owner_bead = "yazelix-lj7z.6"
 max_loc = 1070
 target_loc = 500
 max_files = 5
@@ -102,7 +85,7 @@ allowed_paths = [
 [[families]]
 id = "front_door_presentation"
 status = "transitional_exception"
-owner_bead = "yazelix-w6sz.4"
+owner_bead = "yazelix-lj7z.8"
 max_loc = 2281
 target_loc = 950
 max_files = 10
@@ -122,7 +105,7 @@ allowed_paths = [
 [[families]]
 id = "runtime_helpers"
 status = "transitional_exception"
-owner_bead = "yazelix-lnk6"
+owner_bead = "yazelix-lj7z.5"
 max_loc = 2483
 target_loc = 1050
 max_files = 28
@@ -160,7 +143,7 @@ allowed_paths = [
 [[families]]
 id = "session_and_desktop_host_integration"
 status = "transitional_exception"
-owner_bead = "yazelix-w6sz.5"
+owner_bead = "yazelix-lj7z.6"
 max_loc = 572
 target_loc = 200
 max_files = 3

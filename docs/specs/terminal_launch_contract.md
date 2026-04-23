@@ -149,7 +149,7 @@ Rust wrapper.
 
 Before `yazelix-zlt2.2` closes, run:
 
-- `nu nushell/scripts/dev/validate_syntax.nu`
+- `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-nushell-syntax`
 - `cargo nextest run --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_core_config_normalize`
 - targeted detached-launch tests from
   `nushell/scripts/dev/test_yzx_maintainer.nu`

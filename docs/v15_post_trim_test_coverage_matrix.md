@@ -40,7 +40,7 @@ The point is not to defend every old test file. The point is to make it obvious 
 - Current defenses:
   - Rust `config-surface.resolve` bootstrap coverage keeps first-run managed config creation from reviving `yazelix_packs.toml` in [`rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`](../rust_core/yazelix_core/tests/yzx_core_config_normalize.rs).
   - Legacy `[packs]` config is rejected by the Rust-owned `config_normalize_rejects_removed_surfaces_without_rewriting` coverage in [`rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`](../rust_core/yazelix_core/tests/yzx_core_config_normalize.rs).
-  - Installed runtime and installer no longer ship or seed pack files in [`nushell/scripts/dev/validate_flake_install.nu`](../nushell/scripts/dev/validate_flake_install.nu).
+  - Installed runtime and installer no longer ship or seed pack files in the Rust `yzx_repo_validator validate-flake-profile-install` check.
   - Source-level installed-runtime contract checks also forbid the old pack surfaces through the Rust `yzx_repo_validator validate-installed-runtime-contract` command.
 - Remaining gap:
   - None. The contract is intentionally gone and the absence is defended directly.
@@ -90,7 +90,7 @@ The point is not to defend every old test file. The point is to make it obvious 
 - Current defenses:
   - Runtime-setup and runtime-resolution contracts are covered by Rust runtime-env and control-plane coverage under [`rust_core/yazelix_core/tests/`](../rust_core/yazelix_core/tests/).
   - Helix-specific managed-config behavior is covered by Rust Helix materialization coverage under [`rust_core/yazelix_core/tests/`](../rust_core/yazelix_core/tests/).
-  - Real install/runtime/Nix-path coverage now comes from installed-runtime validators such as [`nushell/scripts/dev/validate_flake_install.nu`](../nushell/scripts/dev/validate_flake_install.nu) and the Rust `yzx_repo_validator validate-installed-runtime-contract` command rather than synthetic PATH-only scenario probes.
+  - Real install/runtime/Nix-path coverage now comes from Rust installed-runtime validators such as `yzx_repo_validator validate-flake-profile-install` and `yzx_repo_validator validate-installed-runtime-contract` rather than synthetic PATH-only scenario probes.
 - Remaining gap:
   - None. This is a real strengthening, not just a rename.
 

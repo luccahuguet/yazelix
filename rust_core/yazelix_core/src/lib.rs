@@ -19,6 +19,7 @@ pub mod keys_commands;
 pub mod launch_materialization;
 pub mod public_command_surface;
 pub mod repo_contract_validation;
+pub mod repo_test_runner;
 pub mod repo_validation;
 pub mod runtime_contract;
 pub mod runtime_env;

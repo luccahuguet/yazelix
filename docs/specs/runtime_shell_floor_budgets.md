@@ -30,7 +30,7 @@ Out of scope:
 
 ## Current Measured Surface
 
-Measured on `2026-04-22` after the first hard-budget helper deletions:
+Measured on `2026-04-23` after the first hard-budget helper deletions:
 
 | Family | Current included surface | Current LOC | Hard target LOC |
 | --- | --- | ---: | ---: |
@@ -39,7 +39,7 @@ Measured on `2026-04-22` after the first hard-budget helper deletions:
 | Session and desktop host integration | `core/yzx_session.nu`, `yzx/desktop.nu`, `yzx/launch.nu` | `572` | `200` |
 | Runtime helpers and shared utility seams | `utils/*.nu` except `ascii_art.nu` and `upgrade_summary.nu` | `2,483` | `1,050` |
 
-## `yazelix-w6sz.2.1` Integration Orchestration Budget
+## `yazelix-lj7z.7` Integration Orchestration Budget
 
 Retain only the honest external adapter seams:
 
@@ -68,7 +68,7 @@ Stop condition:
 Do not move `ya`, `zellij`, or editor process execution into Rust just to keep
 the same adapter behavior behind another wrapper.
 
-## `yazelix-w6sz.3.1` Setup And Bootstrap Budget
+## `yazelix-lj7z.6` Setup And Bootstrap Budget
 
 Retain only the honest shell/bootstrap owners:
 
@@ -95,7 +95,7 @@ Stop condition:
 Do not port these files to Rust unless the cut deletes the Nu owner end to end
 rather than hiding shell/bootstrap behavior behind Rust wrappers.
 
-## `yazelix-w6sz.5.1` Session And Desktop Budget
+## `yazelix-lj7z.6` Session And Desktop Budget
 
 Retain only the honest host/session boundaries:
 
@@ -122,7 +122,7 @@ Stop condition:
 Do not add a new Rust restart or desktop wrapper unless it deletes a real Nu
 owner instead of rewrapping XDG or Zellij shell behavior.
 
-## `yazelix-lnk6.1` Runtime Helper Boundary
+## `yazelix-lj7z.5` Runtime Helper Boundary
 
 The minimum surviving helper floor should be:
 
@@ -148,7 +148,7 @@ Stop condition:
 If a helper is only formatting requests, rendering duplicated reports, or
 holding tables, it should not survive in the runtime helper floor.
 
-## `yazelix-nuj1.1` Launch-Time Request-Assembly Cut
+## Launch-Time Request-Assembly Cut Under `yazelix-lj7z.6`
 
 Retained behavior:
 
@@ -171,7 +171,7 @@ Stop condition:
 Keep terminal selection and launch execution in Nu if the only alternative is a
 fake Rust launch wrapper.
 
-## `yazelix-p18h.1` Detached Launch Probe Contract
+## Detached Launch Probe Contract Under `yazelix-lj7z.6`
 
 Retained behavior:
 
@@ -189,7 +189,7 @@ Candidate surviving owner:
 
 - a checked-in helper under `shells/posix/` plus caller-local Nu orchestration
 
-## `yazelix-lnk6.3` Shared Runtime-Helper Stop Conditions
+## Shared Runtime-Helper Stop Conditions Under `yazelix-lj7z.5`
 
 Landed deletions in this lane:
 
@@ -230,6 +230,10 @@ Stop conditions:
 - Bead: `yazelix-nuj1.1`
 - Bead: `yazelix-p18h.1`
 - Bead: `yazelix-lnk6.4`
+- Bead: `yazelix-lj7z.5`
+- Bead: `yazelix-lj7z.6`
+- Bead: `yazelix-lj7z.7`
+- Bead: `yazelix-lj7z.10`
 - Defended by: `yzx_repo_validator validate-specs`
 - Informed by: `docs/specs/integration_glue_canonicalization_audit.md`
 - Informed by: `docs/specs/launch_startup_session_canonicalization_audit.md`

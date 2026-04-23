@@ -30,7 +30,7 @@ Reusable utility functions and helpers:
 
 ### `dev/` - Development Tools
 Scripts for development, testing, and maintenance:
-- `validate_syntax.nu` - Validate syntax of all Nushell scripts using nu-check
+- syntax validation is Rust-owned by `yzx_repo_validator validate-nushell-syntax`
 
 ### Manual Maintainer Helpers
 These are manual or exploratory helpers, not normal runtime entrypoints:

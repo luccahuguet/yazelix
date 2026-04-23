@@ -104,7 +104,7 @@ This spec defines:
 
 | Lane | Entrypoint | Purpose | Notes |
 | --- | --- | --- | --- |
-| Cheap validator lane | `nu nushell/scripts/dev/validate_syntax.nu`, `yzx_repo_validator validate-readme-version`, `yzx_repo_validator validate-config-surface-contract` | Very fast structural or source-of-truth checks | Good fit for `prek` and direct CI steps |
+| Cheap validator lane | `yzx_repo_validator validate-nushell-syntax`, `yzx_repo_validator validate-readme-version`, `yzx_repo_validator validate-config-surface-contract` | Very fast structural or source-of-truth checks | Good fit for `prek` and direct CI steps |
 | Default automated regression lane | `yzx dev test` | The normal non-sweep automated regression suite | Uses fixed Rust `nextest` suites plus explicit `cargo test` exceptions only where required |
 | Non-visual sweep lane | `yzx dev test --sweep` | Matrix coverage for config and supported shell/terminal combinations without opening windows | Environment-sensitive but still scriptable |
 | Visual sweep lane | `yzx dev test --visual` | Real terminal-window validation | Heavy, manualish, and not the default lane |
@@ -118,7 +118,7 @@ This spec defines:
 The current repo surface should be understood roughly as:
 
 - Cheap validators:
-  - `validate_syntax.nu`
+  - `yzx_repo_validator validate-nushell-syntax`
   - `yzx_repo_validator validate-readme-version`
   - `yzx_repo_validator validate-config-surface-contract`
   - `yzx_repo_validator validate-default-test-traceability`

@@ -7,8 +7,8 @@ harder rule: every surviving Nu line is dangerous by default and must justify
 itself against deletion, Rust ownership, asset ownership, or fixed POSIX
 helpers.
 
-The current measured surface is `26,678` tracked lines of Nushell across
-`112` `.nu` files under `nushell/scripts/`.
+The current measured surface is `12,101` tracked lines of Nushell across `80`
+`.nu` files under `nushell/scripts/`.
 
 The canonical hard target for the current backlog is `4,200` Nu lines. That is
 intentionally aggressive and it assumes:
@@ -23,27 +23,28 @@ This is the current top-level budget document for the under-`5k` push.
 
 ## Current Measured Surface
 
-Measured on `2026-04-22` from the tracked tree after the first hard-budget
-cuts deleted the remaining governed Nu tests, the stale config schema helper,
-the interactive Nix detector, README surface Nu, and the installed-runtime Nu
-validator.
+Measured on `2026-04-23` from the tracked tree after the first hard-budget cuts
+deleted the remaining governed Nu tests, redundant Nu validator wrappers, stale
+config schema helper, interactive Nix detector, README surface Nu, and
+installed-runtime Nu validator.
 
 | Family | Current included surface | Current LOC | Hard target LOC | Main beads |
 | --- | --- | ---: | ---: | --- |
-| Governed Nu tests | `nushell/scripts/dev/test_*.nu` | `0` | `0` | `yazelix-rdn7.4.5`, `yazelix-rdn7.4.7` |
-| Shell-heavy E2E and sweep runners | retained `*_runner.nu` files under `nushell/scripts/dev/` | `881` | `0` | `yazelix-8ih0`, `yazelix-rdn7.4.5` |
-| Deterministic Nu validators | surviving Nix/package/syntax probes under `nushell/scripts/dev/validate*.nu` | `639` | `0` | `yazelix-rdn7.4.6`, `yazelix-rdn7.4.7` |
-| Maintainer and `yzx dev` shell orchestration | `nushell/scripts/maintainer/*.nu`, `nushell/scripts/yzx/dev.nu`, residual non-test dev orchestration | `3,996` | `1,200` | `yazelix-8ih0`, `yazelix-8ih0.7`, `yazelix-8ih0.8` |
-| Integration and popup wrapper glue | `nushell/scripts/integrations/*.nu`, `nushell/scripts/zellij_wrappers/*.nu` | `1,328` | `300` | `yazelix-w6sz.2` |
-| Setup and bootstrap shell entry | `setup/environment.nu`, `setup/initializers.nu`, `core/start_yazelix.nu`, `core/start_yazelix_inner.nu`, `core/launch_yazelix.nu` | `1,070` | `500` | `yazelix-w6sz.3`, `yazelix-nuj1`, `yazelix-p18h` |
-| Front-door UX and public shell presentation | `setup/welcome.nu`, `utils/ascii_art.nu`, `utils/upgrade_summary.nu`, `yzx/menu.nu`, `yzx/screen.nu`, `yzx/tutor.nu`, `yzx/whats_new.nu`, `yzx/popup.nu`, `yzx/edit.nu`, `yzx/import.nu` | `2,281` | `950` | `yazelix-w6sz.4`, `yazelix-dejl` |
-| Runtime helpers, bridges, and shared utilities | `utils/*.nu` except `ascii_art.nu` and `upgrade_summary.nu` | `2,483` | `1,050` | `yazelix-lnk6`, `yazelix-dejl`, `yazelix-nuj1`, `yazelix-p18h` |
-| Session and desktop host integration | `core/yzx_session.nu`, `yzx/desktop.nu`, `yzx/launch.nu` | `572` | `200` | `yazelix-w6sz.5` |
+| Governed Nu tests | `nushell/scripts/dev/test_*.nu` | `0` | `0` | completed by `yazelix-rdn7.4.5` and guarded by `yazelix-rdn7.4.7` |
+| Shell-heavy E2E and sweep runners | retained `*_runner.nu` files under `nushell/scripts/dev/` | `881` | `0` | `yazelix-lj7z.9` |
+| Deterministic Nu validators | completed Rust owner cut under `yzx_repo_validator`; no surviving Nu files | `0` | `0` | `yazelix-lj7z.2` |
+| Maintainer and `yzx dev` shell orchestration | `nushell/scripts/maintainer/*.nu`, `nushell/scripts/yzx/dev.nu`, residual non-test dev orchestration | `3,486` | `1,200` | `yazelix-lj7z.3`, `yazelix-lj7z.4` |
+| Integration and popup wrapper glue | `nushell/scripts/integrations/*.nu`, `nushell/scripts/zellij_wrappers/*.nu` | `1,328` | `300` | `yazelix-lj7z.7` |
+| Setup and bootstrap shell entry | `setup/environment.nu`, `setup/initializers.nu`, `core/start_yazelix.nu`, `core/start_yazelix_inner.nu`, `core/launch_yazelix.nu` | `1,070` | `500` | `yazelix-lj7z.6` |
+| Front-door UX and public shell presentation | `setup/welcome.nu`, `utils/ascii_art.nu`, `utils/upgrade_summary.nu`, `yzx/menu.nu`, `yzx/screen.nu`, `yzx/tutor.nu`, `yzx/whats_new.nu`, `yzx/popup.nu`, `yzx/edit.nu`, `yzx/import.nu` | `2,281` | `950` | `yazelix-lj7z.8` |
+| Runtime helpers, bridges, and shared utilities | `utils/*.nu` except `ascii_art.nu` and `upgrade_summary.nu` | `2,483` | `1,050` | `yazelix-lj7z.5`, `yazelix-lj7z.10` |
+| Session and desktop host integration | `core/yzx_session.nu`, `yzx/desktop.nu`, `yzx/launch.nu` | `572` | `200` | `yazelix-lj7z.6` |
 
 Combined hard target: `4,200` Nu LOC
 
-This table now partitions the full tracked Nushell tree. There is no unnamed
-"misc" budget left to hide unexpected Nu growth.
+This table now partitions the full tracked Nushell tree. The file-level
+second-wave map lives in `second_wave_nushell_deletion_map.md`; there is no
+unnamed "misc" budget left to hide unexpected Nu growth.
 
 ## Rust-First Proof Standard
 
@@ -134,11 +135,11 @@ These earlier assumptions are no longer sufficient on their own:
 
 | Earlier assumption | Status now | Current rule | Follow-up lane |
 | --- | --- | --- | --- |
-| setup, welcome, and bootstrap did not have an honest broad Rust owner cut | superseded as a stopping rule | lack of a broad Rust port does not excuse large surviving Nu; the family still has to collapse to the smallest provable shell floor | `yazelix-w6sz.3` |
-| front-door UX did not have an honest broad Rust owner cut | superseded as a stopping rule | lack of a broad Rust port does not excuse large renderer Nu; branches, copy, and data still have to collapse aggressively | `yazelix-w6sz.4`, `yazelix-dejl` |
-| session and desktop command bodies were still shell-heavy | superseded as a stopping rule | shell- and host-heavy code still must collapse to the smallest provable host-integration floor | `yazelix-w6sz.5` |
-| maintainer and dev paths were allowed to remain broadly Nu because they are operational | superseded | only direct shell orchestration may survive; metadata, policy, routing, and deterministic surfaces must leave Nu | `yazelix-8ih0` |
-| launch/runtime helpers needed only smaller cuts | reaffirmed but hardened | the smaller cuts still stand, but the surviving helper floor now needs proof, not just a softer "honest survivor" note | `yazelix-lnk6`, `yazelix-nuj1`, `yazelix-p18h` |
+| setup, welcome, and bootstrap did not have an honest broad Rust owner cut | superseded as a stopping rule | lack of a broad Rust port does not excuse large surviving Nu; the family still has to collapse to the smallest provable shell floor | `yazelix-lj7z.6`, `yazelix-lj7z.8` |
+| front-door UX did not have an honest broad Rust owner cut | superseded as a stopping rule | lack of a broad Rust port does not excuse large renderer Nu; branches, copy, and data still have to collapse aggressively | `yazelix-lj7z.8` |
+| session and desktop command bodies were still shell-heavy | superseded as a stopping rule | shell- and host-heavy code still must collapse to the smallest provable host-integration floor | `yazelix-lj7z.6` |
+| maintainer and dev paths were allowed to remain broadly Nu because they are operational | superseded | only direct shell orchestration may survive; metadata, policy, routing, and deterministic surfaces must leave Nu | `yazelix-lj7z.3`, `yazelix-lj7z.4` |
+| launch/runtime helpers needed only smaller cuts | reaffirmed but hardened | the smaller cuts still stand, but the surviving helper floor now needs proof, not just a softer "honest survivor" note | `yazelix-lj7z.5`, `yazelix-lj7z.6`, `yazelix-lj7z.10` |
 
 ## Hard Budget Rules
 
@@ -155,33 +156,27 @@ These earlier assumptions are no longer sufficient on their own:
 
 ## Cut Order
 
-The current aggressive order is:
+The current aggressive second-wave order is:
 
-1. lock the proof standard and hard family budgets
-   - `yazelix-w6sz.6`
-   - `yazelix-w6sz.1`
-2. lock the Rust test runner default so Nu tests and mixed harness debt do not
-   leak back in
-   - `yazelix-rdn7.4.7`
-3. remove governed tests and deterministic validators from Nu
-   - `yazelix-rdn7.4.5`
-   - `yazelix-rdn7.4.6`
-4. shrink maintainer and `yzx dev` to shell orchestration only
-   - `yazelix-8ih0`
-5. collapse integration glue and wrapper owners
-   - `yazelix-w6sz.2`
-6. collapse setup/bootstrap and the launch/runtime helper floor together
-   - `yazelix-w6sz.3`
-   - `yazelix-lnk6`
-   - `yazelix-nuj1`
-   - `yazelix-p18h`
-7. collapse front-door UX and delete data-heavy Nu
-   - `yazelix-w6sz.4`
-   - `yazelix-dejl`
-8. collapse session and desktop host integration
-   - `yazelix-w6sz.5`
-9. enforce the floor mechanically
-   - `yazelix-w6sz.7`
+1. reset the file-level deletion map and closed owner beads
+   - `yazelix-lj7z.1`
+2. finish validators so CI and pre-commit stop depending on Nu wrappers
+   - `yazelix-lj7z.2`
+3. replace the Nu maintainer test runner with Rust nextest orchestration
+   - `yazelix-lj7z.3`
+4. collapse the general bridge/helper floor before editing many callers
+   - `yazelix-lj7z.5`
+   - `yazelix-lj7z.10`
+5. cut launch, startup-profile, desktop, and session request assembly
+   - `yazelix-lj7z.6`
+6. collapse Zellij, Yazi, and managed-editor integration owners
+   - `yazelix-lj7z.7`
+7. port or extract front-door presentation renderers and data
+   - `yazelix-lj7z.8`
+8. port or delete shell-heavy E2E and sweep runners
+   - `yazelix-lj7z.9`
+9. collapse remaining maintainer release/update/issue policy
+   - `yazelix-lj7z.4`
 
 ## Why The Floor Is Not Zero
 
@@ -204,6 +199,10 @@ those remainders movable, the floor should fall again.
 - Bead: `yazelix-w6sz.1`
 - Bead: `yazelix-w6sz.7.1`
 - Bead: `yazelix-w6sz.7.2`
+- Bead: `yazelix-lj7z`
+- Bead: `yazelix-lj7z.1`
 - Defended by: `yzx_repo_validator validate-specs`
+- Defended by: `yzx_repo_validator validate-nushell-budget`
 - Informed by: `docs/specs/ranked_nu_deletion_budget.md`
 - Informed by: `docs/specs/likely_nushell_survivor_owner_cut_decisions.md`
+- Informed by: `docs/specs/second_wave_nushell_deletion_map.md`
