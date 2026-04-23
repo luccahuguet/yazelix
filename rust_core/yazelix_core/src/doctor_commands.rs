@@ -1,6 +1,6 @@
 //! Public `yzx doctor` owner for report collection, JSON output, and human rendering.
 
-use crate::active_config_surface::resolve_active_config_paths;
+use crate::active_config_surface::{primary_config_paths, resolve_active_config_paths};
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{
     config_dir_from_env, config_override_from_env, home_dir_from_env, runtime_dir_from_env,
@@ -11,7 +11,10 @@ use crate::doctor_runtime_report::{
     DoctorRuntimeEvaluateRequest, SharedRuntimePreflightInput, evaluate_doctor_runtime_report,
 };
 use crate::install_ownership_env::install_ownership_request_from_env_with_runtime_dir;
-use crate::internal_nu_runner::run_internal_nu_module_command;
+use crate::runtime_materialization::{
+    RuntimeMaterializationRepairEvaluateRequest, repair_runtime_materialization,
+};
+use crate::zellij_materialization::{ZellijMaterializationRequest, generate_zellij_materialization};
 use crate::{
     DoctorConfigEvaluateRequest, NormalizeConfigRequest, evaluate_doctor_config_report,
     evaluate_install_ownership_report, normalize_config, plan_runtime_materialization,
@@ -19,10 +22,9 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::env;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-
-const DOCTOR_FIX_MODULE_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "utils", "doctor_fix.nu"];
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct DoctorCliArgs {
@@ -521,31 +523,160 @@ fn print_runtime_conflict_fix_commands(results: &[Value]) {
 }
 
 fn run_doctor_fix_flow(verbose: bool, results: &[Value]) -> Result<i32, CoreError> {
-    let runtime_dir = runtime_dir_from_env()?;
-    let results_json = serde_json::to_string(results).map_err(|error| {
-        CoreError::classified(
-            ErrorClass::Internal,
-            "invalid_doctor_fix_payload",
-            format!("Failed to serialize doctor fix payload: {error}"),
-            "Rebuild or reinstall Yazelix so the Rust doctor owner and fix helper agree on the fix payload.",
-            json!({}),
-        )
-    })?;
-    let mut args = Vec::new();
-    if verbose {
-        args.push("--verbose".to_string());
+    println!("\n🔧 Attempting to auto-fix issues...\n");
+
+    let mut any_failed = false;
+
+    // 1. Helix runtime conflicts
+    for result in results {
+        let status = result.get("status").and_then(Value::as_str).unwrap_or("");
+        let message = result.get("message").and_then(Value::as_str).unwrap_or("");
+        let fix_available = result.get("fix_available").and_then(Value::as_bool).unwrap_or(false);
+        let conflicts = result.get("conflicts").and_then(Value::as_array);
+
+        if !matches!(status, "error" | "warning") || !message.contains("runtime") || !fix_available {
+            continue;
+        }
+        let Some(conflicts) = conflicts else { continue };
+
+        for conflict in conflicts {
+            let severity = conflict.get("severity").and_then(Value::as_str).unwrap_or("");
+            let path = conflict.get("path").and_then(Value::as_str).unwrap_or("");
+            let name = conflict.get("name").and_then(Value::as_str).unwrap_or("");
+            if severity != "error" || path.is_empty() {
+                continue;
+            }
+            let backup = format!("{path}.backup");
+            match fs::rename(path, &backup) {
+                Ok(()) => println!("✅ Moved {name} from {path} to {backup}"),
+                Err(err) => {
+                    println!("❌ Failed to move {name} from {path}: {err}");
+                    any_failed = true;
+                }
+            }
+        }
     }
 
-    run_internal_nu_module_command(
-        &runtime_dir,
-        DOCTOR_FIX_MODULE_RELATIVE_PATH,
-        "apply_doctor_fixes_internal",
-        &args,
-        &[
-            ("YAZELIX_ACCEPT_USER_CONFIG_RELOCATION", "true"),
-            ("YAZELIX_DOCTOR_RESULTS_JSON", &results_json),
-        ],
-    )
+    // 2. Config creation from template
+    for result in results {
+        let status = result.get("status").and_then(Value::as_str).unwrap_or("");
+        let message = result.get("message").and_then(Value::as_str).unwrap_or("");
+        if status != "info" || !message.contains("default") {
+            continue;
+        }
+        let runtime_dir = runtime_dir_from_env()?;
+        let config_dir = config_dir_from_env()?;
+        let paths = primary_config_paths(&runtime_dir, &config_dir);
+        if let Some(parent) = paths.user_config.parent() {
+            if let Err(err) = fs::create_dir_all(parent) {
+                println!("❌ Failed to create config parent directory: {err}");
+                any_failed = true;
+                continue;
+            }
+        }
+        match fs::copy(&paths.default_config_path, &paths.user_config) {
+            Ok(_) => {
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    if let Err(err) = fs::set_permissions(&paths.user_config, fs::Permissions::from_mode(0o644)) {
+                        println!("⚠️  Could not set permissions on created config: {err}");
+                    }
+                }
+                println!("✅ Created yazelix.toml from template");
+            }
+            Err(err) => {
+                println!("❌ Failed to create yazelix.toml: {err}");
+                any_failed = true;
+            }
+        }
+    }
+
+    // 3. Generated runtime state repair
+    let needs_runtime_repair = results.iter().any(|r| {
+        r.get("fix_action")
+            .and_then(Value::as_str)
+            .map(|a| a == "repair_generated_runtime_state")
+            .unwrap_or(false)
+    });
+    if needs_runtime_repair {
+        let plan_request = runtime_materialization_plan_request_from_env(config_override_from_env().as_deref())?;
+        let repair_req = RuntimeMaterializationRepairEvaluateRequest {
+            plan: plan_request,
+            force: false,
+        };
+        match repair_runtime_materialization(&repair_req) {
+            Ok(data) => {
+                match &data.repair {
+                    crate::runtime_materialization::RuntimeRepairDirective::Noop { lines } => {
+                        if verbose {
+                            for line in lines {
+                                println!("{line}");
+                            }
+                        }
+                    }
+                    crate::runtime_materialization::RuntimeRepairDirective::Regenerate {
+                        progress_message,
+                        missing_artifacts_detail_line,
+                        success_lines,
+                        ..
+                    } => {
+                        if verbose {
+                            if !progress_message.is_empty() {
+                                println!("{progress_message}");
+                            }
+                            if let Some(detail) = missing_artifacts_detail_line {
+                                println!("{detail}");
+                            }
+                        }
+                        for line in success_lines {
+                            println!("{line}");
+                        }
+                    }
+                }
+            }
+            Err(err) => {
+                println!("❌ Failed to repair generated runtime state: {}", err.message());
+                any_failed = true;
+            }
+        }
+    }
+
+    // 4. Zellij plugin permission seeding
+    let needs_plugin_seed = results.iter().any(|r| {
+        r.get("fix_action")
+            .and_then(Value::as_str)
+            .map(|a| a == "seed_zellij_plugin_permissions")
+            .unwrap_or(false)
+    });
+    if needs_plugin_seed {
+        let runtime_dir = runtime_dir_from_env()?;
+        let config_dir = config_dir_from_env()?;
+        let state_dir = state_dir_from_env()?;
+        let paths = resolve_active_config_paths(&runtime_dir, &config_dir, config_override_from_env().as_deref())?;
+        let zellij_config_dir = state_dir.join("configs").join("zellij");
+        let req = ZellijMaterializationRequest {
+            config_path: paths.config_file,
+            default_config_path: paths.default_config_path,
+            contract_path: paths.contract_path,
+            runtime_dir: runtime_dir.clone(),
+            zellij_config_dir,
+            seed_plugin_permissions: true,
+        };
+        match generate_zellij_materialization(&req) {
+            Ok(_) => {
+                let cache_path = home_dir_from_env()?.join(".cache").join("zellij").join("permissions.kdl");
+                println!("✅ Seeded Yazelix plugin permissions in: {}", cache_path.display());
+            }
+            Err(err) => {
+                println!("❌ Failed to seed Yazelix plugin permissions: {}", err.message());
+                any_failed = true;
+            }
+        }
+    }
+
+    println!("\n✅ Auto-fix completed. Run 'yzx doctor' again to verify.");
+    Ok(if any_failed { 1 } else { 0 })
 }
 
 fn collect_zellij_plugin_health_findings(

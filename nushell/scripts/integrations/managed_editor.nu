@@ -1,13 +1,17 @@
 #!/usr/bin/env nu
 
 use ../utils/logging.nu log_to_file
-use ../utils/integration_facts.nu [load_integration_facts]
+use ../utils/runtime_paths.nu [get_yazelix_runtime_dir]
+use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
 use ../utils/editor_launch_context.nu [resolve_editor_launch_context]
 use ./zellij.nu [open_in_existing_helix, open_in_existing_neovim, open_new_helix_pane, open_new_neovim_pane, get_workspace_root, retarget_workspace_for_path, set_managed_editor_cwd]
 use ./yazi.nu [get_ya_command, is_sidebar_enabled, sync_sidebar_yazi_state_to_directory]
 
 export def get_managed_editor_kind [] {
-    let facts = (load_integration_facts)
+    let runtime_dir = (get_yazelix_runtime_dir)
+    let facts = (run_yzx_core_json_command $runtime_dir (build_default_yzx_core_error_surface) [
+        "integration-facts.compute"
+    ] "Yazelix Rust integration-facts helper returned invalid JSON.")
     let editor_kind = ($facts.managed_editor_kind? | default "" | into string | str trim)
     if ($editor_kind | is-empty) { null } else { $editor_kind }
 }

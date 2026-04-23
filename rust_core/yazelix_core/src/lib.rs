@@ -12,9 +12,12 @@ pub mod doctor_runtime_report;
 pub mod front_door_commands;
 pub mod front_door_render;
 pub mod launch_commands;
+pub mod edit_commands;
 pub mod ghostty_materialization;
 pub mod helix_materialization;
 pub mod home_manager_commands;
+pub mod import_commands;
+pub mod initializer_commands;
 pub mod install_ownership_env;
 pub mod install_ownership_report;
 pub mod internal_nu_runner;
@@ -73,7 +76,10 @@ pub use helix_materialization::{
     HelixImportNotice, HelixMaterializationData, HelixMaterializationRequest,
     generate_helix_materialization,
 };
+pub use edit_commands::{run_yzx_edit, run_yzx_edit_config};
 pub use home_manager_commands::run_yzx_home_manager;
+pub use import_commands::run_yzx_import;
+pub use initializer_commands::run_generate_shell_initializers;
 pub use install_ownership_env::{
     install_ownership_request_from_env, install_ownership_request_from_env_with_runtime_dir,
 };

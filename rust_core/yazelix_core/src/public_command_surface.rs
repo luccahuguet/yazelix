@@ -3,8 +3,6 @@ use serde::Serialize;
 use serde_json::json;
 
 const YZX_DEV_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "dev.nu"];
-const YZX_EDIT_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "edit.nu"];
-const YZX_IMPORT_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "import.nu"];
 const YZX_MENU_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "menu.nu"];
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
@@ -134,9 +132,7 @@ const DOCTOR_FLAGS: &[YzxCommandParameter] = &[
 const CONFIG_FLAGS: &[YzxCommandParameter] = &[switch("path", None)];
 const CONFIG_RESET_FLAGS: &[YzxCommandParameter] =
     &[switch("yes", None), switch("no-backup", None)];
-const IMPORT_FLAGS: &[YzxCommandParameter] = &[switch("force", None)];
-const EDIT_ARGS: &[YzxCommandParameter] = &[rest("query"), switch("print", None)];
-const EDIT_CONFIG_FLAGS: &[YzxCommandParameter] = &[switch("print", None)];
+
 const POPUP_ARGS: &[YzxCommandParameter] = &[rest("program")];
 const SCREEN_ARGS: &[YzxCommandParameter] = &[positional("style", "string", true)];
 const DEV_UPDATE_FLAGS: &[YzxCommandParameter] = &[
@@ -376,12 +372,70 @@ const WHATS_NEW_COMMAND: YzxCommandMetadata = metadata(
     Some("Show the latest release notes."),
 );
 const WHATS_NEW_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[WHATS_NEW_COMMAND];
+const IMPORT_ROOT_COMMAND: YzxCommandMetadata = metadata(
+    "yzx import",
+    "Import native config files into Yazelix-managed override paths",
+    YzxCommandCategory::Config,
+    &[],
+    Some(YzxMenuCategory::Config),
+    None,
+);
+const IMPORT_HELIX_COMMAND: YzxCommandMetadata = metadata(
+    "yzx import helix",
+    "Import the native Helix config into Yazelix-managed overrides",
+    YzxCommandCategory::Config,
+    &[switch("force", None)],
+    Some(YzxMenuCategory::Config),
+    None,
+);
+const IMPORT_YAZI_COMMAND: YzxCommandMetadata = metadata(
+    "yzx import yazi",
+    "Import native Yazi config files into Yazelix-managed override paths",
+    YzxCommandCategory::Config,
+    &[switch("force", None)],
+    Some(YzxMenuCategory::Config),
+    None,
+);
+const IMPORT_ZELLIJ_COMMAND: YzxCommandMetadata = metadata(
+    "yzx import zellij",
+    "Import the native Zellij config into Yazelix-managed overrides",
+    YzxCommandCategory::Config,
+    &[switch("force", None)],
+    Some(YzxMenuCategory::Config),
+    None,
+);
+const IMPORT_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[
+    IMPORT_ROOT_COMMAND,
+    IMPORT_HELIX_COMMAND,
+    IMPORT_YAZI_COMMAND,
+    IMPORT_ZELLIJ_COMMAND,
+];
+const EDIT_ROOT_COMMAND: YzxCommandMetadata = metadata(
+    "yzx edit",
+    "Open a Yazelix-managed config surface in the configured editor",
+    YzxCommandCategory::Config,
+    &[rest("query"), switch("print", None)],
+    Some(YzxMenuCategory::Config),
+    Some("Open the managed Yazelix config directory."),
+);
+const EDIT_CONFIG_COMMAND: YzxCommandMetadata = metadata(
+    "yzx edit config",
+    "Open the main Yazelix config in the configured editor",
+    YzxCommandCategory::Config,
+    &[switch("print", None)],
+    Some(YzxMenuCategory::Config),
+    Some("Open the active Yazelix config file."),
+);
+const EDIT_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[EDIT_ROOT_COMMAND, EDIT_CONFIG_COMMAND];
+
 const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
     rust_control_family("config", CONFIG_FAMILY_COMMANDS),
     rust_control_family("cwd", CWD_FAMILY_COMMANDS),
     rust_control_family("desktop", DESKTOP_FAMILY_COMMANDS),
+    rust_control_family("edit", EDIT_FAMILY_COMMANDS),
     rust_control_family("enter", ENTER_FAMILY_COMMANDS),
     rust_control_family("env", ENV_FAMILY_COMMANDS),
+    rust_control_family("import", IMPORT_FAMILY_COMMANDS),
     rust_control_family("launch", LAUNCH_FAMILY_COMMANDS),
     rust_control_family("run", RUN_FAMILY_COMMANDS),
     rust_control_family("popup", POPUP_FAMILY_COMMANDS),
@@ -555,32 +609,6 @@ const DEV_COMMANDS: &[YzxCommandLeaf] = &[
     DEV_UPDATE_COMMAND,
 ];
 
-const EDIT_ROOT_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx edit",
-        "Open a Yazelix-managed config surface in the configured editor",
-        YzxCommandCategory::Config,
-        EDIT_ARGS,
-        Some(YzxMenuCategory::Config),
-        Some("Open the managed Yazelix config directory."),
-    ),
-    &[],
-    YZX_EDIT_RELATIVE_PATH,
-);
-const EDIT_CONFIG_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx edit config",
-        "Open the main Yazelix config in the configured editor",
-        YzxCommandCategory::Config,
-        EDIT_CONFIG_FLAGS,
-        Some(YzxMenuCategory::Config),
-        Some("Open the active Yazelix config file."),
-    ),
-    &["config"],
-    YZX_EDIT_RELATIVE_PATH,
-);
-const EDIT_COMMANDS: &[YzxCommandLeaf] = &[EDIT_ROOT_COMMAND, EDIT_CONFIG_COMMAND];
-
 const ENTER_COMMAND: YzxCommandMetadata = metadata(
     "yzx enter",
     "Start Yazelix in the current terminal",
@@ -591,60 +619,6 @@ const ENTER_COMMAND: YzxCommandMetadata = metadata(
 );
 const ENTER_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[ENTER_COMMAND];
 
-const IMPORT_ROOT_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx import",
-        "Import native config files into Yazelix-managed override paths",
-        YzxCommandCategory::Config,
-        &[],
-        Some(YzxMenuCategory::Config),
-        None,
-    ),
-    &[],
-    YZX_IMPORT_RELATIVE_PATH,
-);
-const IMPORT_HELIX_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx import helix",
-        "Import the native Helix config into Yazelix-managed overrides",
-        YzxCommandCategory::Config,
-        IMPORT_FLAGS,
-        Some(YzxMenuCategory::Config),
-        None,
-    ),
-    &["helix"],
-    YZX_IMPORT_RELATIVE_PATH,
-);
-const IMPORT_YAZI_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx import yazi",
-        "Import native Yazi config files into Yazelix-managed override paths",
-        YzxCommandCategory::Config,
-        IMPORT_FLAGS,
-        Some(YzxMenuCategory::Config),
-        None,
-    ),
-    &["yazi"],
-    YZX_IMPORT_RELATIVE_PATH,
-);
-const IMPORT_ZELLIJ_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx import zellij",
-        "Import the native Zellij config into Yazelix-managed overrides",
-        YzxCommandCategory::Config,
-        IMPORT_FLAGS,
-        Some(YzxMenuCategory::Config),
-        None,
-    ),
-    &["zellij"],
-    YZX_IMPORT_RELATIVE_PATH,
-);
-const IMPORT_COMMANDS: &[YzxCommandLeaf] = &[
-    IMPORT_ROOT_COMMAND,
-    IMPORT_HELIX_COMMAND,
-    IMPORT_YAZI_COMMAND,
-    IMPORT_ZELLIJ_COMMAND,
-];
 const KEYS_ROOT_COMMAND: YzxCommandMetadata = metadata(
     "yzx keys",
     "Show Yazelix-owned keybindings and remaps",
@@ -769,24 +743,6 @@ const INTERNAL_NU_FAMILIES: &[YzxInternalNuFamily] = &[
     internal_family(
         "dev",
         DEV_COMMANDS,
-        Some(0),
-        true,
-        true,
-        YzxUnknownSubcommandBehavior::Error,
-        &[],
-    ),
-    internal_family(
-        "edit",
-        EDIT_COMMANDS,
-        Some(0),
-        false,
-        false,
-        YzxUnknownSubcommandBehavior::RouteRoot,
-        &[],
-    ),
-    internal_family(
-        "import",
-        IMPORT_COMMANDS,
         Some(0),
         true,
         true,
@@ -1204,11 +1160,7 @@ mod tests {
 
         let import_argv = [String::from("import"), String::from("--help")];
         let route = classify_yzx_root_route(&import_argv).unwrap();
-        let YzxPublicRootRoute::InternalNu(plan) = route else {
-            panic!("expected internal Nu route");
-        };
-        assert_eq!(plan.command_name, "yzx import");
-        assert_eq!(plan.tail, &[String::from("--help")]);
+        assert!(matches!(route, YzxPublicRootRoute::RustControl));
     }
 
     // Regression: the direct route planner must preserve alias leaves and the family-specific missing-subcommand contract.
@@ -1217,10 +1169,7 @@ mod tests {
     fn preserves_alias_and_missing_subcommand_contracts() {
         let edit_argv = [String::from("edit"), String::from("config")];
         let route = classify_yzx_root_route(&edit_argv).unwrap();
-        let YzxPublicRootRoute::InternalNu(plan) = route else {
-            panic!("expected internal Nu route");
-        };
-        assert_eq!(plan.command_name, "yzx edit config");
+        assert!(matches!(route, YzxPublicRootRoute::RustControl));
 
         let tutor_argv = [String::from("tutor"), String::from("nushell")];
         let route = classify_yzx_root_route(&tutor_argv).unwrap();

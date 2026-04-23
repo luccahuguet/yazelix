@@ -1,9 +1,51 @@
 #!/usr/bin/env nu
 # Shared yzx_core helper transport and error-surface glue.
 
-use config_report_rendering.nu render_startup_config_error
-use failure_classes.nu [format_failure_classification]
 use runtime_paths.nu [require_yazelix_runtime_dir]
+
+def format_failure_classification [failure_class: string, recovery_hint: string] {
+    let label = if ($failure_class | str downcase | str trim) == "config" {
+        "config problem"
+    } else if ($failure_class | str downcase | str trim) == "generated-state" {
+        "generated-state problem"
+    } else if ($failure_class | str downcase | str trim) == "host-dependency" {
+        "host-dependency problem"
+    } else {
+        error make {msg: $"Unsupported failure class: ($failure_class)"}
+    }
+    [
+        $"Failure class: ($label)."
+        $"Recovery: ($recovery_hint)"
+    ] | str join "\n"
+}
+
+def format_diagnostic_lines [diagnostics: list<record>] {
+    mut lines = []
+
+    for diagnostic in $diagnostics {
+        $lines = ($lines | append ["", $diagnostic.headline])
+        for detail in ($diagnostic.detail_lines? | default []) {
+            $lines = ($lines | append [$"  ($detail)"])
+        }
+    }
+
+    $lines
+}
+
+def render_startup_config_error [report: record] {
+    let detail_lines = (format_diagnostic_lines ($report.blocking_diagnostics? | default []))
+    let recovery_hint = "Update the reported config fields manually, then retry. Use `yzx config reset` only as a blunt fallback."
+
+    (
+        [
+            $"Yazelix found stale or unsupported config entries in ($report.config_path)."
+            $"Blocking issues: ($report.blocking_count? | default 0)"
+            ...$detail_lines
+            ""
+            (format_failure_classification "config" $recovery_hint)
+        ] | str join "\n"
+    )
+}
 
 const YZX_CORE_HELPER_RELATIVE_PATH = ["libexec" "yzx_core"]
 const CONFIG_SURFACE_RESOLVE_COMMAND = "config-surface.resolve"

@@ -5,8 +5,6 @@
 use ../utils/runtime_paths.nu [get_yazelix_runtime_dir get_yazelix_state_dir]
 use ../utils/runtime_commands.nu [resolve_yazelix_nu_bin]
 use ../utils/runtime_defaults.nu DEFAULT_SHELL
-use ../utils/startup_facts.nu [load_startup_facts]
-use ../utils/shell_user_hooks.nu [sync_generated_nushell_user_hook_bridge]
 use ../utils/startup_profile.nu [profile_startup_step]
 use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
 
@@ -40,9 +38,12 @@ def sync_generated_yzx_extern_bridge [runtime_root: string] {
 }
 
 def main [--welcome-source: string = "", --skip-welcome] {
-    let startup_facts = (load_startup_facts)
-
     let yazelix_dir = (get_yazelix_runtime_dir)
+    let startup_facts = (run_yzx_core_json_command
+        $yazelix_dir
+        (build_default_yzx_core_error_surface)
+        ["startup-facts.compute"]
+        "Yazelix Rust startup-facts helper returned invalid JSON.")
     let default_shell = ($startup_facts.default_shell? | default $DEFAULT_SHELL)
     let debug_mode = ($startup_facts.debug_mode? | default false)
     let runtime_nu = (resolve_yazelix_nu_bin)
@@ -122,7 +123,7 @@ def main [--welcome-source: string = "", --skip-welcome] {
     # Generate shell initializers for configured shells only
     profile_shellhook_step "generate_initializers" {
         with-env {YAZELIX_QUIET_MODE: (if $quiet_mode { "true" } else { "false" })} {
-            ^$runtime_nu $"($yazelix_dir)/nushell/scripts/setup/initializers.nu" $yazelix_dir ($shells_to_configure | str join ",")
+            ^($yazelix_dir | path join "libexec" "yzx_control") generate_shell_initializers ($shells_to_configure | str join ",")
         }
     } {
         shells: $shells_to_configure
@@ -130,10 +131,6 @@ def main [--welcome-source: string = "", --skip-welcome] {
     profile_shellhook_step "sync_yzx_extern_bridge" {
         sync_generated_yzx_extern_bridge $yazelix_dir
     }
-    profile_shellhook_step "sync_nushell_user_hook_bridge" {
-        sync_generated_nushell_user_hook_bridge
-    }
-
     # Editor setup is now handled in the shellHook
 
     profile_shellhook_step "ensure_runtime_scripts_executable" {

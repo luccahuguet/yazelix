@@ -1,7 +1,15 @@
 #!/usr/bin/env nu
 
 use ../utils/config_files.nu [copy_default_config_surfaces load_config_surface_from_main]
-use ../utils/config_paths.nu get_main_user_config_path
+
+def get_main_user_config_path [config_root?: string] {
+    let user_config_dir = if ($config_root | is-not-empty) {
+        $config_root | path expand
+    } else {
+        ($env.HOME | path join ".config" "yazelix" "user_configs")
+    }
+    $user_config_dir | path join "yazelix.toml"
+}
 
 def require_yazelix_repo_root [] {
     let repo_root = ($env.YAZELIX_REPO_ROOT? | default "" | path expand)

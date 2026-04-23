@@ -2,14 +2,32 @@
 # Interactive launch sequence for the active Yazelix runtime
 
 use ../utils/runtime_paths.nu [get_yazelix_state_dir require_yazelix_runtime_dir]
-use ../utils/zellij_paths.nu [get_zellij_config_paths]
-use ../utils/front_door_runtime.nu [maybe_show_first_run_upgrade_summary]
 use ../utils/runtime_commands.nu [resolve_zellij_default_shell]
-use ../utils/failure_classes.nu [format_failure_classification]
-use ../utils/startup_facts.nu [load_startup_facts]
 use ../utils/startup_profile.nu [profile_startup_step]
 use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
 use ../setup/welcome.nu [show_welcome build_welcome_message get_yazelix_colors]
+
+const CONSTANTS_DATA_PATH = ((path self | path dirname) | path join ".." ".." "utils" "constants_data.json")
+
+def get_zellij_config_paths [] {
+    (open $CONSTANTS_DATA_PATH).zellij_config_paths
+}
+
+def format_failure_classification [failure_class: string, recovery_hint: string] {
+    let label = if ($failure_class | str downcase | str trim) == "config" {
+        "config problem"
+    } else if ($failure_class | str downcase | str trim) == "generated-state" {
+        "generated-state problem"
+    } else if ($failure_class | str downcase | str trim) == "host-dependency" {
+        "host-dependency problem"
+    } else {
+        error make {msg: $"Unsupported failure class: ($failure_class)"}
+    }
+    [
+        $"Failure class: ($label)."
+        $"Recovery: ($recovery_hint)"
+    ] | str join "\n"
+}
 
 const RUNTIME_MATERIALIZATION_MATERIALIZE_COMMAND = "runtime-materialization.materialize"
 
@@ -59,8 +77,12 @@ def regenerate_runtime_configs [runtime_dir: string, --quiet] {
 }
 
 def main [cwd_override?: string, layout_override?: string, --verbose] {
-    let startup_facts = (load_startup_facts)
     let yazelix_dir = (require_existing_directory (require_yazelix_runtime_dir) "Yazelix runtime directory")
+    let startup_facts = (run_yzx_core_json_command
+        $yazelix_dir
+        (build_default_yzx_core_error_surface)
+        ["startup-facts.compute"]
+        "Yazelix Rust startup-facts helper returned invalid JSON.")
     let quiet_mode = ($env.YAZELIX_ENV_ONLY? == "true")
     let profile_exit_before_zellij = ($env.YAZELIX_STARTUP_PROFILE_EXIT_BEFORE_ZELLIJ? == "true")
     let skip_welcome_screen = (
@@ -83,7 +105,11 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
         skipped: ($skip_welcome_screen or $quiet_mode)
     }
     let upgrade_summary = (try { profile_startup_step "inner" "show_upgrade_summary" {
-        maybe_show_first_run_upgrade_summary
+        (run_yzx_core_json_command
+            $yazelix_dir
+            (build_default_yzx_core_error_surface)
+            ["upgrade-summary.first-run"]
+            "Yazelix Rust first-run upgrade-summary helper returned invalid JSON.")
     } } catch {|err|
         if $verbose {
             print $"⚠️ Failed to render upgrade summary: ($err.msg)"

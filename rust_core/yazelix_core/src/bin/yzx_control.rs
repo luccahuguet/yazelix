@@ -17,8 +17,12 @@ use yazelix_core::run_yzx_config;
 use yazelix_core::run_yzx_cwd;
 use yazelix_core::run_yzx_desktop;
 use yazelix_core::run_yzx_doctor;
+use yazelix_core::run_yzx_edit;
+use yazelix_core::run_yzx_edit_config;
 use yazelix_core::run_yzx_enter;
+use yazelix_core::run_generate_shell_initializers;
 use yazelix_core::run_yzx_home_manager;
+use yazelix_core::run_yzx_import;
 use yazelix_core::run_yzx_keys;
 use yazelix_core::run_yzx_launch;
 use yazelix_core::run_yzx_popup;
@@ -39,6 +43,10 @@ fn usage() -> ! {
     eprintln!("       yzx_control cwd [target]");
     eprintln!("       yzx_control desktop <install|launch|uninstall> [args...]");
     eprintln!("       yzx_control doctor [--verbose] [--fix] [--json]");
+    eprintln!("       yzx_control edit [query...] [--print]");
+    eprintln!("       yzx_control edit config [--print]");
+    eprintln!("       yzx_control generate_shell_initializers [shells...]");
+    eprintln!("       yzx_control import <zellij|yazi|helix> [--force]");
     eprintln!("       yzx_control enter [--path <dir> | --home] [--verbose]");
     eprintln!("       yzx_control status [--versions] [--json]");
     eprintln!("       yzx_control launch [--path <dir> | --home] [--terminal <name>] [--verbose]");
@@ -474,10 +482,19 @@ fn main() {
         "cwd" => run_yzx_cwd(&argv),
         "desktop" => run_yzx_desktop(&argv),
         "doctor" => run_yzx_doctor(&argv),
+        "edit" => {
+            if argv.first().map(String::as_str) == Some("config") {
+                run_yzx_edit_config(&argv[1..])
+            } else {
+                run_yzx_edit(&argv)
+            }
+        }
         "enter" => run_yzx_enter(&argv),
+        "generate_shell_initializers" => run_generate_shell_initializers(&argv),
         "status" => run_status(&argv),
         "launch" => run_yzx_launch(&argv),
         "home_manager" => run_yzx_home_manager(&argv),
+        "import" => run_yzx_import(&argv),
         "keys" => run_yzx_keys(&argv),
         "popup" => run_yzx_popup(&argv),
         "reveal" => run_yzx_reveal(&argv),

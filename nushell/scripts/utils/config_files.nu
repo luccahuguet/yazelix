@@ -1,7 +1,21 @@
 #!/usr/bin/env nu
 # Non-owning file helpers for explicit Yazelix config paths.
 
-use failure_classes.nu format_failure_classification
+def format_failure_classification [failure_class: string, recovery_hint: string] {
+    let label = if ($failure_class | str downcase | str trim) == "config" {
+        "config problem"
+    } else if ($failure_class | str downcase | str trim) == "generated-state" {
+        "generated-state problem"
+    } else if ($failure_class | str downcase | str trim) == "host-dependency" {
+        "host-dependency problem"
+    } else {
+        error make {msg: $"Unsupported failure class: ($failure_class)"}
+    }
+    [
+        $"Failure class: ($label)."
+        $"Recovery: ($recovery_hint)"
+    ] | str join "\n"
+}
 
 def make_surface_error [headline: string, details: list<string>, recovery_hint: string] {
     error make {

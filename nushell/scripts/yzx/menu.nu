@@ -4,8 +4,7 @@
 use ../integrations/zellij.nu [get_current_tab_workspace_root_including_bootstrap]
 use ../integrations/zellij.nu [open_transient_pane_contract]
 use ../utils/runtime_paths.nu get_yazelix_runtime_dir
-use ../utils/transient_pane_facts.nu [load_transient_pane_facts]
-use ../utils/yzx_core_bridge.nu resolve_yzx_core_helper_path
+use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface resolve_yzx_core_helper_path run_yzx_core_json_command]
 use ../utils/transient_pane_contract.nu [
     build_transient_pane_open_contract
     close_current_transient_pane
@@ -187,8 +186,10 @@ export def "yzx menu" [
             error make {msg: "Not in a Zellij session; run `yzx menu` directly or start Yazelix/Zellij first."}
         }
 
-        let transient_pane_facts = (load_transient_pane_facts)
         let runtime_dir = (get_yazelix_runtime_dir | path expand)
+        let transient_pane_facts = (run_yzx_core_json_command $runtime_dir (build_default_yzx_core_error_surface) [
+            "transient-pane-facts.compute"
+        ] "Yazelix Rust transient-pane-facts helper returned invalid JSON.")
         let popup_contract = (resolve_menu_popup_contract $transient_pane_facts $runtime_dir ((get_current_tab_workspace_root_including_bootstrap) | default "") (pwd))
         let open_result = (open_transient_pane_contract $popup_contract)
         if $open_result.status != "ok" {

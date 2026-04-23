@@ -2,7 +2,8 @@
 # Welcome Message Module
 # Handles front-door welcome display and message generation
 
-use ../utils/front_door_runtime.nu [get_current_release_headline play_welcome_style_runtime]
+use ../utils/runtime_paths.nu [require_yazelix_runtime_dir]
+use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
 use ../utils/runtime_defaults.nu [DEFAULT_TERMINAL]
 use ../utils/constants.nu [YAZELIX_VERSION]
 
@@ -25,7 +26,16 @@ def show_welcome_art [
     welcome_duration_seconds: float
     show_macchina_on_welcome: bool
 ]: nothing -> bool {
-    play_welcome_style_runtime $welcome_style $welcome_duration_seconds
+    let runtime_dir = (require_yazelix_runtime_dir)
+    let yzx_cli = ($runtime_dir | path join "shells" "posix" "yzx_cli.sh")
+    let duration_ms = (($welcome_duration_seconds * 1000.0) | math round | into int)
+    do {
+        ^sh $yzx_cli screen --internal-welcome --duration-ms ($duration_ms | into string) $welcome_style
+    }
+    let exit_code = ($env.LAST_EXIT_CODE? | default 0)
+    if $exit_code != 0 {
+        error make {msg: $"Rust-owned welcome renderer failed for style `($welcome_style)` with exit code ($exit_code)."}
+    }
 
     # Show macchina if enabled and available
     if $show_macchina_on_welcome {
@@ -78,10 +88,15 @@ def format_terminal_info [facts: record, colors: record]: nothing -> string {
     $"($colors.cyan)🖥️  Preferred host terminal: ($preferred)($colors.reset)"
 }
 
-# Build complete welcome message
 def get_startup_release_headline [] {
     try {
-        get_current_release_headline
+        let runtime_dir = (require_yazelix_runtime_dir)
+        let data = (run_yzx_core_json_command
+            $runtime_dir
+            (build_default_yzx_core_error_surface)
+            ["upgrade-summary.headline"]
+            "Yazelix Rust upgrade-summary headline helper returned invalid JSON.")
+        ($data.headline? | default "" | into string | str trim)
     } catch {
         ""
     }

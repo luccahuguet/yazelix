@@ -46,5 +46,3 @@ export def clp [ ] { clip copy }
 # bridge restores Nushell completion/signature knowledge without loading the
 # heavy command implementation path here.
 source ~/.local/share/yazelix/initializers/nushell/yazelix_extern.nu
-
-source ~/.local/share/yazelix/initializers/nushell/yazelix_user_hook.nu

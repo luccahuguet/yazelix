@@ -2,7 +2,8 @@
 # Yazi integration utilities for Yazelix
 
 use ../utils/logging.nu log_to_file
-use ../utils/integration_facts.nu [load_integration_facts]
+use ../utils/runtime_paths.nu [get_yazelix_runtime_dir]
+use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
 use zellij.nu [focus_managed_pane get_active_tab_session_state]
 
 def resolve_optional_command [configured: any, fallback: string] {
@@ -26,17 +27,31 @@ def command_is_available [command: string] {
 }
 
 export def get_yazi_command [] {
-    let facts = (load_integration_facts)
+    let runtime_dir = (get_yazelix_runtime_dir)
+    let facts = (run_yzx_core_json_command $runtime_dir (build_default_yzx_core_error_surface) [
+        "integration-facts.compute"
+    ] "Yazelix Rust integration-facts helper returned invalid JSON.")
     resolve_optional_command ($facts.yazi_command? | default null) "yazi"
 }
 
 export def get_ya_command [] {
-    let facts = (load_integration_facts)
+    let runtime_dir = (get_yazelix_runtime_dir)
+    let facts = (run_yzx_core_json_command $runtime_dir (build_default_yzx_core_error_surface) [
+        "integration-facts.compute"
+    ] "Yazelix Rust integration-facts helper returned invalid JSON.")
     resolve_optional_command ($facts.ya_command? | default null) "ya"
 }
 
 def has_ya_command [] {
     command_is_available (get_ya_command)
+}
+
+export def is_sidebar_enabled [] {
+    let runtime_dir = (get_yazelix_runtime_dir)
+    let facts = (run_yzx_core_json_command $runtime_dir (build_default_yzx_core_error_surface) [
+        "integration-facts.compute"
+    ] "Yazelix Rust integration-facts helper returned invalid JSON.")
+    ($facts.enable_sidebar? | default true)
 }
 
 def run_ya_emit_to [yazi_id: string, action: string, ...args: string] {
@@ -54,11 +69,6 @@ def run_ya_emit_to [yazi_id: string, action: string, ...args: string] {
         }
         error make {msg: $"Failed to emit Yazi action `($action)` to instance `($yazi_id)`: ($details)"}
     }
-}
-
-export def is_sidebar_enabled [] {
-    let facts = (load_integration_facts)
-    ($facts.enable_sidebar? | default true)
 }
 
 export def consume_bootstrap_sidebar_cwd [] {
