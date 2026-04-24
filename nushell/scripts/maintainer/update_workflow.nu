@@ -229,25 +229,6 @@ def sync_vendored_yazi_plugins [] {
     }
 }
 
-def get_declared_yazelix_version [] {
-    let constants_path = ((require_yazelix_repo_root) | path join "nushell" "scripts" "utils" "constants.nu")
-    let constants = (open --raw $constants_path)
-    let version_match = (
-        $constants
-        | parse --regex 'export const YAZELIX_VERSION = "(v[^"]+)"'
-        | get -o capture0
-        | first
-        | default ""
-    )
-
-    if ($version_match | is-empty) {
-        print $"❌ Failed to read YAZELIX_VERSION from: ($constants_path)"
-        exit 1
-    }
-
-    $version_match
-}
-
 def sync_readme_version_marker [] {
     let repo_root = require_yazelix_repo_root
     let readme_path = ($repo_root | path join "README.md")
@@ -256,7 +237,6 @@ def sync_readme_version_marker [] {
         exit 1
     }
 
-    let declared_version = get_declared_yazelix_version
     let result = (
         ^nix develop -c cargo run --quiet --manifest-path ($repo_root | path join "rust_core" "Cargo.toml")
             -p yazelix_core
@@ -265,7 +245,6 @@ def sync_readme_version_marker [] {
             --repo-root $repo_root
             sync-readme-surface
             --readme-path $readme_path
-            --version $declared_version
         | complete
     )
     if $result.exit_code != 0 {
@@ -282,11 +261,11 @@ def sync_readme_version_marker [] {
     let series_changed = $sync_result.series_changed
 
     if (not $title_changed) and (not $series_changed) {
-        print $"✅ README version marker and generated latest-series block already match ($declared_version)"
+        print "✅ README version marker and generated latest-series block already up to date"
         return
     }
 
-    print $"✅ Synced README title/version marker and generated latest-series block for ($declared_version)"
+    print "✅ Synced README title/version marker and generated latest-series block"
 }
 
 def resolve_update_canary_selection [requested: list<string>] {
