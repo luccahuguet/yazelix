@@ -485,21 +485,13 @@ fn tone_text(text: &str, tone: StatusTone, color: bool) -> String {
         StatusTone::Default => text.to_string(),
         StatusTone::Good => format!("{}", text.green().bold()),
         StatusTone::Warning => format!("{}", text.yellow().bold()),
-        StatusTone::Muted => format!("{}", text.blue()),
-    }
-}
-
-fn style_title(text: &str, color: bool) -> String {
-    if color {
-        format!("{}", text.bold())
-    } else {
-        text.to_string()
+        StatusTone::Muted => format!("{}", text.cyan()),
     }
 }
 
 fn style_section_title(text: &str, color: bool) -> String {
     if color {
-        format!("{}", text.cyan().bold())
+        format!("{}", text.yellow().bold())
     } else {
         text.to_string()
     }
@@ -507,7 +499,7 @@ fn style_section_title(text: &str, color: bool) -> String {
 
 fn style_label(text: &str, color: bool) -> String {
     if color {
-        format!("{}", text.dark_cyan())
+        format!("{}", text.dark_yellow())
     } else {
         text.to_string()
     }
@@ -609,9 +601,6 @@ fn render_status_section(section: &StatusSection, width: usize, color: bool) {
 fn render_status_report(data: &yazelix_core::StatusReportData) {
     let color = colors_enabled();
     let width = render_width();
-
-    println!("{}", style_title(&data.title, color));
-    println!();
 
     for (index, section) in build_status_sections(data).iter().enumerate() {
         if index > 0 {

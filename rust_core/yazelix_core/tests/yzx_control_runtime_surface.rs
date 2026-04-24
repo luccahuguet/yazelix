@@ -98,14 +98,14 @@ terminals = ["ghostty"]
     assert!(output.stderr.is_empty());
 
     let stdout = String::from_utf8(output.stdout).unwrap();
-    assert!(stdout.contains("Yazelix status"));
-    assert!(stdout.contains("\nRuntime\n"));
+    assert!(stdout.starts_with("Runtime\n"));
     assert!(stdout.contains("\nGenerated State\n"));
     assert!(stdout.contains("\nWorkspace\n"));
     assert!(stdout.contains("Config file"));
     assert!(stdout.contains("Default shell"));
     assert!(stdout.contains("Repair needed"));
     assert!(stdout.contains("Persistent sessions"));
+    assert!(!stdout.contains("Yazelix status"));
     assert!(!stdout.contains("generated_state_materialization_status"));
     assert!(!stdout.contains("generated_state_materialization_reason"));
     assert!(!stdout.contains("default_shell"));
