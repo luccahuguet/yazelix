@@ -6,11 +6,11 @@ The product/runtime Nushell floor is now the measured allowlist below:
 
 | Family | Files | LOC |
 | --- | ---: | ---: |
-| Integration wrapper floor | `1` | `54` |
+| Integration wrapper floor | `3` | `90` |
 | Setup/bootstrap shell entry | `2` | `345` |
 | Runtime helper seam | `6` | `611` |
 
-Total product/runtime Nu outside `yzx/dev.nu`: `1,010` LOC across `9` files.
+Total product/runtime Nu outside `yzx/dev.nu`: `1,046` LOC across `11` files.
 
 ## Scope
 
@@ -28,12 +28,15 @@ Out of scope:
 
 ### Integration wrapper floor
 
-Only one wrapper remains:
+Three wrappers remain:
 
 - `nushell/scripts/zellij_wrappers/launch_sidebar_yazi.nu`
+- `nushell/scripts/zellij_wrappers/yzx_popup_program.nu`
+- `nushell/scripts/zellij_wrappers/yzx_menu_popup.nu`
 
-Popup and menu launch trampolines are no longer Nu-owned. They now live in
-checked-in POSIX helpers.
+Popup and menu launch trampolines remain Nu-owned as tiny wrapper seams because
+Yazelix already depends on Nushell at that boundary and the Nu versions are the
+clearer shipped owner.
 
 ### Setup and bootstrap floor
 
@@ -69,11 +72,11 @@ the runtime shell owners above.
 
 - broad Rust wrapper insertions that leave the same startup/process boundary in
   place
-- reviving deleted popup/menu/config/logging helper files in Nushell
+- reviving deleted config/logging helper files in Nushell
 
 ## Acceptance Cases
 
-1. The runtime-side wrapper floor is only the sidebar Yazi launcher in Nu
+1. The runtime-side wrapper floor is only the sidebar, popup, and menu wrappers in Nu
 2. `environment.nu` reads as shellhook/env setup instead of a second welcome
    owner
 3. The runtime helper allowlist matches the canonical budget exactly
@@ -89,6 +92,7 @@ the runtime shell owners above.
 - Bead: `yazelix-pw9j.3`
 - Bead: `yazelix-pw9j.5`
 - Bead: `yazelix-pw9j.6.2`
+- Bead: `yazelix-uz6m`
 - Defended by: `yzx_repo_validator validate-specs`
 - Defended by: `yzx_repo_validator validate-nushell-budget`
 - Defended by: `yzx_repo_validator validate-nushell-syntax`

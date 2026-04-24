@@ -36,9 +36,11 @@ The remaining public shell-owned surfaces
 - Syntax validation is Rust-owned by `yzx_repo_validator validate-nushell-syntax`
 
 ### `zellij_wrappers/`
-One surviving runtime wrapper
+Three surviving runtime wrappers
 
 - `launch_sidebar_yazi.nu` - Sidebar Yazi launcher that still needs the shell-facing Yazi handoff
+- `yzx_popup_program.nu` - Popup launcher trampoline that sets popup mode and execs the real `yzx popup` command
+- `yzx_menu_popup.nu` - Menu launcher trampoline that sets menu mode and execs the real `yzx menu` command
 
 ## Canonical Entry Points
 
@@ -62,4 +64,4 @@ The public launch, desktop, restart, enter, popup, update, sweep, plugin-build, 
 
 ## File Naming Convention
 
-All files use underscores, for example `start_yazelix_inner.nu` and `launch_sidebar_yazi.nu`
+All files use underscores, for example `start_yazelix_inner.nu` and `yzx_popup_program.nu`

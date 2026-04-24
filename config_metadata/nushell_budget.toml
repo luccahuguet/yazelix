@@ -1,7 +1,7 @@
 [contract]
-current_total_loc_max = 1844
-current_total_file_count_max = 12
-hard_target_loc = 1844
+current_total_loc_max = 1880
+current_total_file_count_max = 14
+hard_target_loc = 1880
 
 [[families]]
 id = "maintainer_and_dev_orchestration"
@@ -17,12 +17,14 @@ allowed_paths = [
 [[families]]
 id = "integration_and_wrappers"
 status = "allowlisted_floor"
-owner_bead = "yazelix-pw9j.6.2"
-max_loc = 54
-target_loc = 54
-max_files = 1
+owner_bead = "yazelix-uz6m"
+max_loc = 90
+target_loc = 90
+max_files = 3
 allowed_paths = [
   "nushell/scripts/zellij_wrappers/launch_sidebar_yazi.nu",
+  "nushell/scripts/zellij_wrappers/yzx_popup_program.nu",
+  "nushell/scripts/zellij_wrappers/yzx_menu_popup.nu",
 ]
 
 [[families]]

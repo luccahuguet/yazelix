@@ -151,7 +151,9 @@ mod tests {
             config
                 .wrapper_path(super::TransientPaneKind::Popup)
                 .unwrap(),
-            std::path::PathBuf::from("/runtime/root/shells/posix/yzx_popup_program.sh")
+            std::path::PathBuf::from(
+                "/runtime/root/nushell/scripts/zellij_wrappers/yzx_popup_program.nu"
+            )
         );
     }
 }

@@ -5,7 +5,7 @@
 `yazelix-pw9j` finishes the old under-`5k` push and replaces it with a literal
 measured allowlist.
 
-The tracked Nushell floor is now `1,844` LOC across `12` files under
+The tracked Nushell floor is now `1,880` LOC across `14` files under
 `nushell/scripts/`.
 
 This is no longer a transitional ceiling. It is the current irreducible core:
@@ -22,7 +22,8 @@ The repo now needs a harder stop condition:
 
 - deterministic maintainer/update/sweep/plugin-build ownership is Rust-owned
 - dead helper files are deleted instead of grandfathered
-- popup and menu wrappers are POSIX-owned
+- popup and menu wrappers remain Nu-owned for consistency with the shipped shell
+  boundary
 - the remaining Nu files must justify themselves as the real shell/TTY/process
   boundary
 
@@ -48,7 +49,7 @@ The surviving Nu floor is exactly these families:
 | Family | Files | LOC | Why it still qualifies |
 | --- | ---: | ---: | --- |
 | Maintainer and `yzx dev` shell surface | `1` | `425` | public maintainer routing plus the startup-profile shell harness |
-| Integration wrapper floor | `1` | `54` | the remaining sidebar launcher still needs the shell-facing Yazi handoff |
+| Integration wrapper floor | `3` | `90` | sidebar, popup, and menu wrappers stay as tiny Nu trampolines at the live shell boundary |
 | Setup and bootstrap | `2` | `345` | shellhook env mutation, initializer generation, welcome/startup sequencing, and the final `zellij` exec |
 | Front-door presentation | `2` | `409` | direct TTY/UI control for welcome and the interactive command palette |
 | Runtime helper seam | `6` | `611` | the narrow remaining path/env/bridge helpers consumed by those shell surfaces |
@@ -67,6 +68,8 @@ Exact allowlisted files:
 - `nushell/scripts/yzx/dev.nu`
 - `nushell/scripts/yzx/menu.nu`
 - `nushell/scripts/zellij_wrappers/launch_sidebar_yazi.nu`
+- `nushell/scripts/zellij_wrappers/yzx_popup_program.nu`
+- `nushell/scripts/zellij_wrappers/yzx_menu_popup.nu`
 
 Allowed survivor classes are now literal:
 
@@ -83,7 +86,7 @@ These classes are explicitly disallowed from surviving in Nushell now:
 - deterministic config/state/report planning
 - maintainer update/build/sweep policy
 - dead helpers with no callers
-- fixed popup/menu launch trampolines that POSIX can own directly
+- duplicated popup/menu wrapper logic outside the shipped Nu shell boundary
 
 ## Non-goals
 
@@ -110,6 +113,7 @@ These classes are explicitly disallowed from surviving in Nushell now:
 
 - Bead: `yazelix-pw9j.1`
 - Bead: `yazelix-pw9j.7`
+- Bead: `yazelix-uz6m`
 - Defended by: `yzx_repo_validator validate-specs`
 - Defended by: `yzx_repo_validator validate-nushell-budget`
 - Defended by: `yzx_repo_validator validate-nushell-syntax`
