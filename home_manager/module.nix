@@ -23,7 +23,7 @@ let
     "zellij"
     "yazi"
   ];
-  runtimeNu = "${yazelixPackage}/libexec/nu";
+  runtimeYzxCore = "${yazelixPackage}/libexec/yzx_core";
   stateRoot = "${config.xdg.dataHome}/yazelix";
   logsPath = "${stateRoot}/logs";
   managedConfigRoot = "${config.xdg.configHome}/yazelix";
@@ -424,8 +424,7 @@ in
       export YAZELIX_STATE_DIR="${stateRoot}"
       export YAZELIX_LOGS_DIR="${logsPath}"
 
-      $DRY_RUN_CMD ${runtimeNu} "${yazelixPackage}/nushell/scripts/setup/yazi_config_merger.nu" "${yazelixPackage}" --quiet
-      $DRY_RUN_CMD ${runtimeNu} "${yazelixPackage}/nushell/scripts/setup/zellij_config_merger.nu" "${yazelixPackage}"
+      $DRY_RUN_CMD ${runtimeYzxCore} runtime-materialization.repair --from-env --force
     '';
 
     # Generate yazelix.toml configuration file
