@@ -212,11 +212,26 @@ pub fn validate_readme_version(repo_root: &Path) -> Result<ValidationReport, Str
         .unwrap_or_default()
         .trim()
         .to_string();
-    let expected_release_heading = format!("## Latest Tagged Release: {version}");
+    let expected_release_heading = "## Latest Tagged Releases".to_string();
     if release_heading != expected_release_heading {
         report.errors.push(format!(
             "README latest tagged release drift detected. Expected '{}' but found '{}'.",
             expected_release_heading, release_heading
+        ));
+    }
+
+    let expected_first_release_heading = format!("### {version}");
+    let first_release_heading = actual_block
+        .lines()
+        .skip(3)
+        .find(|line| line.trim_start().starts_with("### "))
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+    if first_release_heading != expected_first_release_heading {
+        report.errors.push(format!(
+            "README first latest release drift detected. Expected '{}' but found '{}'.",
+            expected_first_release_heading, first_release_heading
         ));
     }
 
@@ -1806,25 +1821,33 @@ fn extract_readme_latest_series_section(contents: &str) -> Result<String, String
 }
 
 fn render_readme_latest_series_section(repo_root: &Path, version: &str) -> Result<String, String> {
-    let (entry_key, entry) = resolve_readme_latest_release_entry(repo_root, version)?;
-    let headline = entry
-        .get("headline")
-        .and_then(TomlValue::as_str)
-        .unwrap_or_default()
-        .trim();
-    let summary_items = as_string_list(entry.get("summary"));
+    let entries = resolve_readme_latest_release_entries(repo_root, version)?;
     let mut lines = vec![
         README_LATEST_SERIES_BEGIN.to_string(),
-        format!("## Latest Tagged Release: {entry_key}"),
+        "## Latest Tagged Releases".to_string(),
         String::new(),
     ];
 
-    if !headline.is_empty() {
-        lines.push(headline.to_string());
+    for (index, (entry_key, entry)) in entries.iter().enumerate() {
+        if index > 0 {
+            lines.push(String::new());
+        }
+        lines.push(format!("### {entry_key}"));
         lines.push(String::new());
-    }
-    for item in summary_items {
-        lines.push(format!("- {item}"));
+
+        let headline = entry
+            .get("headline")
+            .and_then(TomlValue::as_str)
+            .unwrap_or_default()
+            .trim();
+        if !headline.is_empty() {
+            lines.push(headline.to_string());
+            lines.push(String::new());
+        }
+
+        for item in as_string_list(entry.get("summary")) {
+            lines.push(format!("- {item}"));
+        }
     }
     lines.extend([
         String::new(),
@@ -1836,17 +1859,55 @@ fn render_readme_latest_series_section(repo_root: &Path, version: &str) -> Resul
     Ok(lines.join("\n"))
 }
 
-fn resolve_readme_latest_release_entry(
+fn resolve_readme_latest_release_entries(
     repo_root: &Path,
     version: &str,
-) -> Result<(String, TomlTable), String> {
+) -> Result<Vec<(String, TomlTable)>, String> {
+    resolve_readme_latest_release_entries_with_limit(repo_root, version, 2)
+}
+
+fn resolve_readme_latest_release_entries_with_limit(
+    repo_root: &Path,
+    version: &str,
+    limit: usize,
+) -> Result<Vec<(String, TomlTable)>, String> {
     let notes = read_toml_file(&repo_root.join("docs").join("upgrade_notes.toml"))?;
     let releases = notes
         .get("releases")
         .and_then(TomlValue::as_table)
         .ok_or("upgrade notes are missing the `releases` table")?;
-    if let Some(entry) = releases.get(version).and_then(TomlValue::as_table) {
-        return Ok((version.to_string(), entry.clone()));
+
+    let mut release_entries = releases
+        .iter()
+        .filter_map(|(key, value)| {
+            if key == "unreleased" {
+                return None;
+            }
+            value.as_table().map(|entry| (key.to_string(), entry.clone()))
+        })
+        .collect::<Vec<_>>();
+    release_entries.sort_by(|(left, _), (right, _)| compare_release_versions_desc(left, right));
+
+    if release_entries.is_empty() {
+        return Err("upgrade notes are missing tagged release entries".to_string());
+    }
+
+    if release_entries.iter().any(|(key, _)| key == version) {
+        let mut selected = vec![release_entries
+            .iter()
+            .find(|(key, _)| key == version)
+            .cloned()
+            .expect("version presence already checked")];
+        for (key, entry) in release_entries {
+            if key == version {
+                continue;
+            }
+            selected.push((key, entry));
+            if selected.len() == limit {
+                break;
+            }
+        }
+        return Ok(selected);
     }
 
     let series_key = major_series_key(version)?;
@@ -1860,7 +1921,36 @@ fn resolve_readme_latest_release_entry(
         .ok_or_else(|| {
             format!("upgrade notes are missing the current major series entry `{series_key}`")
         })?;
-    Ok((series_key, entry.clone()))
+    Ok(vec![(series_key, entry.clone())])
+}
+
+fn compare_release_versions_desc(left: &str, right: &str) -> std::cmp::Ordering {
+    use std::cmp::Ordering;
+
+    let left_parts = parse_release_version_parts(left);
+    let right_parts = parse_release_version_parts(right);
+    let max_len = left_parts.len().max(right_parts.len());
+
+    for index in 0..max_len {
+        let left_part = *left_parts.get(index).unwrap_or(&0);
+        let right_part = *right_parts.get(index).unwrap_or(&0);
+        match left_part.cmp(&right_part) {
+            Ordering::Equal => continue,
+            ordering => return ordering.reverse(),
+        }
+    }
+
+    Ordering::Equal
+}
+
+fn parse_release_version_parts(version: &str) -> Vec<u32> {
+    version
+        .trim()
+        .strip_prefix('v')
+        .unwrap_or(version.trim())
+        .split('.')
+        .filter_map(|part| part.parse::<u32>().ok())
+        .collect()
 }
 
 fn major_series_key(version: &str) -> Result<String, String> {
