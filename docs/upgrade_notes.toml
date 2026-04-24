@@ -1,8 +1,13 @@
 [releases.unreleased]
 version = "unreleased"
 date = ""
-headline = "Post-v15.4 work in progress"
-summary = ["Reserved for post-release changes after v15.4 lands."]
+headline = "v16 Rust-forward control plane with an irreducible Nushell core"
+summary = [
+    "Finished the Rust owner cuts across the remaining deterministic control-plane and editor/Yazi integration surfaces, so the public `yzx` story is now much more clearly Rust-owned",
+    "Reduced Nushell to the explicit shell and UI core, documented the surviving floor, and kept popup/menu wrappers on Nushell where that boundary is the clearest fit",
+    "Moved maintainer, update, and sweep ownership further out of Nushell, including repo-maintainer flows and pane-orchestrator sync semantics, so the remaining Nu surface is much smaller and more intentional",
+    "Unified the human CLI rendering for `yzx status`, `yzx status --versions`, and `yzx keys` around one shared Rust styling layer with cleaner grouped output and better contrast",
+]
 upgrade_impact = "no_user_action"
 acknowledged_guarded_changes = []
 migration_ids = []

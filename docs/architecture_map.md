@@ -31,7 +31,7 @@ The current repo shape is best read in this order:
 4. Distribution and host integration expose that runtime/workspace behavior through package, install, shell, terminal, and Home Manager entrypoints.
 5. The maintainer workflow guards the contracts of the other four so they do not drift.
 
-That means Yazelix is no longer best described as just "workspace plus runtime." The current v15 repo has a real data/config payload, a real maintainer/validation payload, and a small but important distribution layer.
+That means Yazelix is no longer best described as just "workspace plus runtime." The current v16 repo has a real data/config payload, a real maintainer/validation payload, and a small but important distribution layer.
 
 ## Subsystem Notes
 
@@ -48,7 +48,7 @@ This is still the single largest shipped logic surface in the repo. If Yazelix i
 
 Related contracts:
 
-- [v15 Trimmed Runtime Contract](./specs/v15_trimmed_runtime_contract.md)
+- [Current Trimmed Runtime Contract](./specs/v15_trimmed_runtime_contract.md)
 - [Runtime Root Contract](./specs/runtime_root_contract.md)
 - [Rust/Nushell Bridge Contract](./specs/rust_nushell_bridge_contract.md)
 - [Rust Migration Matrix](./specs/rust_migration_matrix.md)
@@ -127,7 +127,7 @@ It does not mean:
 
 ## Current Working Model
 
-For current v15 work, the right mental model is:
+For current v16 work, the right mental model is:
 
 1. Runtime control plane owns command/runtime semantics.
 2. Workspace session orchestration owns live pane/tab/sidebar behavior.

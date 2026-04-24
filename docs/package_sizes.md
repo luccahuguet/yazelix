@@ -1,6 +1,6 @@
 # Package Sizes & Runtime Surface
 
-The trimmed v15 line no longer exposes dependency-group toggles like `recommended_deps`, `yazi_extensions`, or `yazi_media`. The packaged runtime ships a fixed tool stack instead of a user-managed package graph.
+The current trimmed line no longer exposes dependency-group toggles like `recommended_deps`, `yazi_extensions`, or `yazi_media`. The packaged runtime ships a fixed tool stack instead of a user-managed package graph.
 
 ## What The Runtime Ships
 

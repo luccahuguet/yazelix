@@ -1,10 +1,10 @@
-# v15 Trimmed Runtime Contract
+# Current Trimmed Runtime Contract
 
 ## Summary
 
-This spec is the current branch-level contract for the trimmed v15 line.
+This spec started as the v15 trim contract and remains the current branch-level runtime contract for the v16 line.
 
-v15.0 is the slimmed-down reboot with a narrower Rust scope, not a Rust-free release. The Rust pane orchestrator still owns live workspace and session state. Selective Rust may land later in v15.x when it clearly pays for itself; v16 is the Rust-forward release target.
+v16 keeps the v15 slimmed-down reboot product boundary, but the branch is now Rust-forward in its control plane. The Rust pane orchestrator still owns live workspace and session state, Rust owns most deterministic control-plane and integration logic, and the remaining Nushell surface is the shell/UI core that still benefits from Nushell.
 
 The product surface is now centered on:
 
@@ -32,7 +32,7 @@ This file exists so current docs and current specs can point at one authoritativ
 
 ## Scope
 
-- define the current v15 user-facing runtime/config/update boundary
+- define the current user-facing runtime/config/update boundary
 - define what still belongs to the normal product surface
 - define what moved to maintainer-only or historical territory
 - give other docs a safe current contract to point at
@@ -53,9 +53,9 @@ This file exists so current docs and current specs can point at one authoritativ
 - The canonical user config surface is `~/.config/yazelix/user_configs/`.
 - The main config is `user_configs/yazelix.toml`.
 - Managed override directories such as Zellij, Yazi, Helix, and shell user hooks remain part of that user-owned config surface.
-- The trimmed v15 branch does not have a `yazelix_packs.toml` sidecar and does not expose a first-class pack graph.
+- The current trimmed branch does not have a `yazelix_packs.toml` sidecar and does not expose a first-class pack graph.
 - Legacy or removed config fields fail fast instead of degrading silently.
-- v15 does not ship a config-migration engine. Users moving from very old config shapes should compare with the current template manually or use `yzx config reset` as a blunt fresh-start path.
+- The current trimmed line does not ship a config-migration engine. Users moving from very old config shapes should compare with the current template manually or use `yzx config reset` as a blunt fresh-start path.
 
 ### Generated State
 
@@ -81,20 +81,20 @@ This file exists so current docs and current specs can point at one authoritativ
 
 ## Non-goals
 
-- reintroducing dynamic pack management on the trimmed v15 branch
+- reintroducing dynamic pack management on the current trimmed branch
 - treating cached launch-profile reuse as a current product guarantee
 - restoring the old runtime-local `devenv` layer as part of the normal shipped runtime
-- restoring automatic config migrations as a normal v15 product surface
+- restoring automatic config migrations as a normal trimmed-line product surface
 - pretending the compatibility installer is the canonical everyday product flow
-- treating v15.0 as the Rust release
+- treating v15.0 as the Rust-forward release
 
 ## Acceptance Cases
 
-1. A current v15 user can understand the product without learning about `yazelix_packs.toml`, launch-profile reuse, runtime-local `devenv`, or automatic config migrations.
+1. A current user can understand the product without learning about `yazelix_packs.toml`, launch-profile reuse, runtime-local `devenv`, or automatic config migrations.
 2. Current docs explain generated-state repair through startup and `yzx doctor` rather than through a public refresh command.
 3. Current docs explain update ownership through explicit owner commands rather than a generic runtime updater.
 4. Current docs distinguish the normal packaged runtime from maintainer-only `nix develop` workflows.
-5. Current roadmap docs describe v15.0 as the trimmed reboot with narrower Rust scope rather than a Rust-free release, and describe v16 as the Rust-forward release.
+5. Current roadmap docs describe v15.0 as the trimmed reboot that set the narrower boundary, and describe v16 as the Rust-forward release that carries that trimmed contract forward.
 
 ## Verification
 

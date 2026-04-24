@@ -126,7 +126,7 @@ That later slice is optional in v15.x. It should happen only if it deletes a rea
 
 ### Parity And Regression Strategy
 
-`kt5.4` must preserve the current v15 behavior surface while changing inner ownership.
+`kt5.4` must preserve the current launch behavior surface while changing inner ownership.
 
 `yzx env` and `yzx run` parity:
 
@@ -145,7 +145,7 @@ Generated-state refresh parity:
 
 - do not reintroduce public refresh semantics
 - keep `needs_refresh`, materialization planning, and repair behavior owned by the existing config-state and materialization path
-- verify with `nushell/scripts/dev/test_yzx_generated_configs.nu` and the current doctor/generated-state checks that defend the live v15 contract
+- verify with `nushell/scripts/dev/test_yzx_generated_configs.nu` and the current doctor/generated-state checks that defend the live trimmed contract
 
 Launch/startup parity:
 

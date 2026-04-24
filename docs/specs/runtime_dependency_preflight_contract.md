@@ -138,7 +138,7 @@ This matrix is intentionally concrete. It exists to stop runtime checks from dri
 ### Shared Evaluation Boundary
 
 - The shared runtime-preflight reasoning should live behind one structured evaluation boundary instead of being recomputed independently in every Nushell surface.
-- In the current v15.x bridge, that boundary is the packaged/helper command `yzx_core runtime-contract.evaluate`.
+- In the current bridge, that boundary is the packaged/helper command `yzx_core runtime-contract.evaluate`.
 - Startup, new-window launch, and the shared doctor-preflight surface should submit one batch request per surface and receive a machine-readable list of findings.
 - Nushell still owns:
   - surface-specific rendering and prose

@@ -11,6 +11,7 @@ See the origin story in `docs/the_start.md`.
 
 ## Major Version Descriptions
 
+- **v16**: Rust-forward control plane, irreducible Nushell core, and cleaner CLI surfaces
 - **v15**: The live trimmed workspace release with first-party Ghostty, fast popup/menu panes, and the Classic runtime-manager surface removed from scope
 - **v14**: Boundary hardening, honest update ownership, and package-runtime cleanup before the v15 trim-first transition
 - **v13.1**: Safer multi-tab cwd routing, stronger `yzx cwd` workspace sync, and better Zellij diagnostics
@@ -28,6 +29,15 @@ See the origin story in `docs/the_start.md`.
 - **v2**: Yazi-Helix File Tree v2, now with a Closeable Sidebar! (the name 'Yazelix' did not exist yet; [announcement](https://www.reddit.com/r/HelixEditor/comments/1d6nkxs/yazihelix_file_tree_v2_now_with_a_closeable/))
 - **v1**: My first Zellij/Yazi/Helix/Nushell setup, inspired by a Reddit interaction, with no integration and a lot of hacks ([announcement](https://www.reddit.com/r/HelixEditor/comments/1d59br3/file_tree_setup_using_yazi_zellij_helix_and/))
 
+## v16: Rust-forward control plane, irreducible Nushell core, and cleaner CLI surfaces
+
+- **Rust Became The Clear Public Owner** – v16 turns the old "selective Rust" story into the main product story. The public `yzx` control plane, typed runtime/config logic, and more of the editor/Yazi integration flow now live in Rust instead of behind transitional Nu bridges.
+- **Nushell Was Reduced To An Honest Core** – The surviving Nushell surface is now mostly startup/bootstrap, direct TTY/UI, and tiny live shell wrappers. The broad "Nu because it used to live there" middle layer is gone.
+- **The Trim Held** – v16 does not reopen Classic scope. The fixed packaged runtime, explicit update owners, managed `user_configs/`, and workspace-first product boundary from v15 remain intact.
+- **Popup/Menu And Workspace Orchestration Stayed Intentional** – Popup and command-menu panes still follow the managed floating-pane model, but the remaining shell seams now sit where they are architecturally honest: Rust owns the deterministic contracts and Nushell owns the direct shell/UI handoff.
+- **CLI Surfaces Feel More Deliberate** – `yzx status`, `yzx status --versions`, and `yzx keys` now share a clearer visual language and stronger default human rendering without giving up the typed `--json` surfaces underneath.
+- **v15 Becomes The Reboot Foundation** – The trimmed v15 release is no longer just the live product line; it is the reboot that made the v16 Rust-forward line possible.
+
 ## v15: The live trimmed workspace release
 
 - **One Supported Line Again** – v15 is the only supported Yazelix line now. The two-products-in-one problem from late Classic is resolved by trimming the product boundary instead of trying to maintain both shapes in parallel. v14 remains available only as the final historical Classic snapshot for users who specifically need it.
@@ -36,7 +46,7 @@ See the origin story in `docs/the_start.md`.
 - **Ghostty Became First-Party** – Yazelix now bundles Ghostty as the first-party terminal on Linux and macOS. Other terminals still work when you provide them on the host `PATH`, but the first-party launch story is finally honest and packaged.
 - **Popup And Menu Became Real Peers** – The popup pane and popup command menu now share the same floating-pane control model, explicit pane identity, and toggle-oriented behavior. That seam is smaller, faster, and closer to the actual product than the old helper-pane detour.
 - **The Workspace Core Stayed Intact** – Layout families, managed editor/sidebar orchestration, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners remain the backbone of the product. v15 is not a feature wipe; it is the point where the surviving workspace core became the product.
-- **Rust Scope Narrowed; It Did Not Disappear** – v15 is the trimmed reboot with narrower Rust scope, not a Rust-free release. The pane orchestrator still owns live workspace and session state. Selective Rust can still land in v15.x where it clearly pays for itself, while v16 remains the Rust-forward release target.
+- **Rust Scope Narrowed; It Did Not Disappear** – v15 is the trimmed reboot with narrower Rust scope, not a Rust-free release. The pane orchestrator still owns live workspace and session state, and the trim is what made the later v16 Rust-forward control plane possible.
 
 ## v14: Boundary hardening, honest update ownership, and package-runtime cleanup
 

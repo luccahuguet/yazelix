@@ -101,7 +101,7 @@ This contract keeps those boundaries explicit.
   - Contents include:
     - `user_configs/yazelix.toml`
     - user-managed overrides such as `user_configs/zellij/`, `user_configs/yazi/`, `user_configs/helix/`, and `user_configs/shells/`
-  - The trimmed v15 line does not treat `yazelix_packs.toml` as part of the current config contract.
+  - The current trimmed line does not treat `yazelix_packs.toml` as part of the current config contract.
 - The runtime root is the shipped Yazelix asset tree used at runtime.
   - Canonical environment variable: `YAZELIX_RUNTIME_DIR`
   - It may be:

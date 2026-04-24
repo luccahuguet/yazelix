@@ -12,20 +12,20 @@ The repo keeps one maintained static preview
 ## Overview
 Yazelix is a workspace-focused terminal environment built around [Yazi](https://github.com/sxyazi/yazi), [Zellij](https://github.com/zellij-org/zellij), and [Helix](https://helix-editor.com), with first-class [Neovim](https://neovim.io) support too
 
-The supported product in this branch is the trimmed v15 Yazelix
+The supported product in this branch is the Rust-forward v16 Yazelix line
 
 Yazelix now uses the managed `yazelix.toml` config surface, with the normal flake surface provided by the packaged `yazelix` runtime plus the top-level Home Manager module, while repo work uses the flake maintainer shell defined in `maintainer_shell.nix`
 
-## What v15 Is
+## What v16 Is
 
 - A narrower workspace product instead of a package-and-environment manager glued onto one
-- One supported line again: `v15` is live, `v14` is historical and unsupported
+- One supported line again: `v16` is live, `v15` is the trimmed reboot that set the current boundary, and `v14` is historical and unsupported
 - First-party Ghostty on Linux and macOS, with WezTerm, Kitty, Alacritty, and Foot still supported when you provide them on `PATH`
 - Fast popup and popup-menu panes with explicit managed identity
 - Three built-in sidebar-aware workspace shapes, managed sidebar/editor routing, and a fixed packaged runtime toolset
 - No runtime-local `devenv`, no `yazelix_packs.toml`, no `yazelix packs` or `yzx packs`, no automatic config migrations, and no `yzx refresh`
 
-v15.0 is the trimmed reboot with a narrower Rust scope: 15.5% fewer code lines than the historical peak, a much clearer product boundary, a slimmer runtime and command surface, notably faster popup/menu panes, the Rust pane orchestrator still owning live workspace state, and room for selective Rust in v15.x where it clearly pays for itself, while v16 remains the Rust-forward release target
+v16 keeps the trimmed reboot's narrower product boundary: 15.5% fewer code lines than the historical peak, a much clearer product boundary, a slimmer runtime and command surface, notably faster popup/menu panes, the Rust pane orchestrator still owning live workspace state, a much broader Rust-owned control plane, and Nushell reduced to the shell/UI seams where it still pays for itself
 
 ## Daily Workflow
 
@@ -59,7 +59,7 @@ Get everything running in less than 10 minutes with no extra dependencies beyond
 
 Install once, get the same environment everywhere
 
-Want the high-level product map? See [Architecture Map](./docs/architecture_map.md); want the current runtime boundary? See [v15 Trimmed Runtime Contract](./docs/specs/v15_trimmed_runtime_contract.md)
+Want the high-level product map? See [Architecture Map](./docs/architecture_map.md); want the current runtime boundary? See [Current Trimmed Runtime Contract](./docs/specs/v15_trimmed_runtime_contract.md)
 
 ## Startup Performance
 
@@ -107,7 +107,9 @@ Classic is not the active product line in this branch, and the `v14` tag remains
 
 v15.0 is the trimmed reboot with a narrower Rust scope, not a broad package-and-environment manager: it drops the old runtime-local `devenv` layer, trims the command and config surface, keeps the Rust pane orchestrator where it still pays for itself, and keeps a clearer core around fast workspace entry, layouts, managed workspace actions, explicit update ownership, and the popup/menu-centered workspace UX
 
-On the current `v15` branch, the trimmed contract is already narrower: no `yazelix_packs.toml`, no runtime-local `devenv`, no launch-profile reuse semantics, no automatic config migrations, a fixed packaged runtime toolset, built-in Ghostty on Linux and macOS, and explicit update owners through `yzx update upstream` or `yzx update home_manager`
+v16 carries that trimmed contract forward, expands Rust ownership across the public control plane and deterministic integrations, and keeps Nushell at the shell/UI core instead of as the default owner of general product logic
+
+On the current branch, the trimmed contract is already narrower: no `yazelix_packs.toml`, no runtime-local `devenv`, no launch-profile reuse semantics, no automatic config migrations, a fixed packaged runtime toolset, built-in Ghostty on Linux and macOS, and explicit update owners through `yzx update upstream` or `yzx update home_manager`
 
 The important split is this: Yazelix Classic was both a terminal workspace and a runtime/package-environment manager, while v15 is the narrower workspace product because dynamic runtime management was not a good long-term fit for Yazelix scope
 

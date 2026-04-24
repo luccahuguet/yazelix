@@ -122,7 +122,7 @@ The default human doctor output renders from that report instead of recomputing 
 
 ### Fix Boundary
 
-`yzx doctor --json` is read-only in the current v15 contract.
+`yzx doctor --json` is read-only in the current trimmed contract.
 
 `yzx doctor --json --fix` is rejected with a clear error instead of mixing the machine-readable report surface with the side-effecting repair flow.
 

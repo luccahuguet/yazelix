@@ -37,7 +37,7 @@ In scope:
 
 Out of scope:
 
-- broader public-CLI Rust migration beyond the current v15 shell boundary
+- broader public-CLI Rust migration beyond the current trimmed shell boundary
 - deleting welcome/menu/startup shells by hiding the same process control behind
   a fake Rust wrapper
 - non-Nushell runtime code

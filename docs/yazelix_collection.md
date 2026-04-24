@@ -66,11 +66,11 @@ Plugin catalog: https://github.com/yazi-rs/plugins
 
 ## Runtime Surface
 
-The trimmed v15 branch no longer treats Yazelix as a user-extensible pack graph or package manager. The packaged runtime ships a fixed tool stack, and user configuration focuses on workspace/layout/editor/shell/terminal behavior rather than package composition.
+The current trimmed branch no longer treats Yazelix as a user-extensible pack graph or package manager. The packaged runtime ships a fixed tool stack, and user configuration focuses on workspace/layout/editor/shell/terminal behavior rather than package composition.
 
 That means:
-- there is no `yazelix_packs.toml` sidecar in the current v15 line
-- there is no public `yzx packs` / `yazelix packs` workflow in the current v15 line
+- there is no `yazelix_packs.toml` sidecar in the current trimmed line
+- there is no public `yzx packs` / `yazelix packs` workflow in the current trimmed line
 - the runtime helper tools listed above are part of the shipped runtime surface
 
 ## Maintainer Tooling
