@@ -49,7 +49,6 @@ def render_startup_config_error [report: record] {
 
 const YZX_CORE_HELPER_RELATIVE_PATH = ["libexec" "yzx_core"]
 const CONFIG_SURFACE_RESOLVE_COMMAND = "config-surface.resolve"
-const CONFIG_STATE_COMPUTE_COMMAND = "config-state.compute"
 const RUNTIME_ENV_COMPUTE_COMMAND = "runtime-env.compute"
 
 def get_runtime_yzx_core_helper_path [runtime_dir: string] {
@@ -277,42 +276,6 @@ def resolve_bridge_runtime_dir [runtime_dir?: string] {
     }
 }
 
-def build_runtime_command_env [runtime_dir: string, config_file?: string] {
-    if ($config_file | default "" | str trim | is-not-empty) {
-        {
-            YAZELIX_RUNTIME_DIR: $runtime_dir
-            YAZELIX_CONFIG_OVERRIDE: $config_file
-        }
-    } else {
-        {YAZELIX_RUNTIME_DIR: $runtime_dir}
-    }
-}
-
-def build_runtime_command_error_surface [config_file?: string] {
-    if ($config_file | default "" | str trim | is-not-empty) {
-        build_record_yzx_core_error_surface {config_file: $config_file}
-    } else {
-        build_default_yzx_core_error_surface
-    }
-}
-
-def run_yzx_core_from_env_json_command [
-    command: string
-    helper_args: list<string>
-    invalid_json_message: string
-    runtime_dir?: string
-    config_file?: string
-] {
-    let resolved_runtime_dir = (resolve_bridge_runtime_dir $runtime_dir)
-    let resolved_helper_args = [$command, "--from-env"] | append $helper_args
-
-    with-env (build_runtime_command_env $resolved_runtime_dir $config_file) {
-        run_yzx_core_json_command $resolved_runtime_dir (
-            build_runtime_command_error_surface $config_file
-        ) $resolved_helper_args $invalid_json_message
-    }
-}
-
 export def resolve_active_config_surface_via_yzx_core [runtime_dir?: string] {
     let resolved_runtime_dir = (resolve_bridge_runtime_dir $runtime_dir)
 
@@ -321,10 +284,6 @@ export def resolve_active_config_surface_via_yzx_core [runtime_dir?: string] {
         "--runtime-dir"
         $resolved_runtime_dir
     ] "Yazelix Rust active-config-surface helper returned invalid JSON."
-}
-
-export def compute_config_state_via_yzx_core [runtime_dir?: string] {
-    run_yzx_core_from_env_json_command $CONFIG_STATE_COMPUTE_COMMAND [] "Yazelix Rust config-state helper returned invalid JSON." $runtime_dir
 }
 
 export def compute_runtime_env_via_yzx_core [config?: record, runtime_dir?: string] {
