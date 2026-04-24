@@ -44,6 +44,7 @@ allowed_paths = [
   "nushell/scripts/integrations/managed_editor.nu",
   "nushell/scripts/integrations/yazi.nu",
   "nushell/scripts/integrations/zellij.nu",
+  "nushell/scripts/integrations/zoxide_open_in_editor.nu",
   "nushell/scripts/zellij_wrappers/launch_sidebar_yazi.nu",
 ]
 
