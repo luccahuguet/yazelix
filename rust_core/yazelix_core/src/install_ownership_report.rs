@@ -198,7 +198,7 @@ fn detect_install_owner(
         return "home-manager".into();
     }
     if existing_profile.is_some() {
-        return "home-manager".into();
+        return "profile".into();
     }
     let profile_desktop = home_dir
         .join(".nix-profile")
@@ -206,10 +206,9 @@ fn detect_install_owner(
         .join("applications")
         .join("yazelix.desktop");
     if profile_desktop.exists() {
-        "home-manager".into()
-    } else {
-        "manual".into()
+        return "profile".into();
     }
+    "manual".into()
 }
 
 fn is_manual_runtime_reference_path(candidate: &Path) -> bool {
@@ -719,6 +718,46 @@ mod tests {
                 home.join(".nix-profile").join("bin").join("yzx"),
                 PathBuf::from("/etc/profiles/per-user/alice/bin/yzx"),
             ]
+        );
+    }
+
+    // Regression: a plain profile-owned yzx path must not be misclassified as Home Manager ownership.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn evaluate_install_ownership_classifies_plain_profile_install_as_profile() {
+        let tmp = TempDir::new().unwrap();
+        let home = tmp.path().join("home");
+        let xdg_data = home.join(".local/share");
+        let main_config = home.join(".config/yazelix/yazelix.toml");
+        let profile_yzx = home.join(".nix-profile/bin/yzx");
+
+        std::fs::create_dir_all(main_config.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(profile_yzx.parent().unwrap()).unwrap();
+        std::fs::write(&main_config, "[core]\n").unwrap();
+        std::fs::write(&profile_yzx, "#!/bin/sh\n").unwrap();
+
+        let report = evaluate_install_ownership_report(&InstallOwnershipEvaluateRequest {
+            runtime_dir: tmp.path().join("runtime"),
+            home_dir: home.clone(),
+            user: Some("test-user".into()),
+            xdg_config_home: home.join(".config"),
+            xdg_data_home: xdg_data.clone(),
+            yazelix_state_dir: xdg_data.join("yazelix"),
+            main_config_path: main_config,
+            invoked_yzx_path: None,
+            redirected_from_stale_yzx_path: None,
+            shell_resolved_yzx_path: None,
+        });
+
+        assert!(!report.has_home_manager_managed_install);
+        assert_eq!(report.install_owner, "profile");
+        assert_eq!(
+            report.existing_home_manager_profile_yzx,
+            Some(path_to_string(&profile_yzx))
+        );
+        assert_eq!(
+            report.stable_yzx_wrapper,
+            Some(path_to_string(&profile_yzx))
         );
     }
 

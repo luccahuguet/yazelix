@@ -221,6 +221,60 @@ fn yzx_control_update_upstream_rejects_home_manager_owned_install() {
     assert!(stdout.contains("home-manager switch"));
 }
 
+// Regression: `yzx update upstream` must allow a plain profile-owned install instead of misclassifying ~/.nix-profile as Home Manager ownership.
+// Strength: defect=2 behavior=2 resilience=2 cost=2 uniqueness=2 total=10/10
+#[test]
+fn yzx_control_update_upstream_accepts_profile_owned_install() {
+    let fixture = managed_config_fixture("");
+    let fake_bin = fixture.home_dir.join("fake-bin");
+    let profile_yzx = fixture.home_dir.join(".nix-profile").join("bin").join("yzx");
+    let upgrade_log = fixture.home_dir.join("nix-upgrade.log");
+    fs::create_dir_all(&fake_bin).unwrap();
+    fs::create_dir_all(profile_yzx.parent().unwrap()).unwrap();
+    fs::write(&profile_yzx, "#!/bin/sh\nexit 0\n").unwrap();
+
+    write_executable_script(
+        &fake_bin.join("nix"),
+        &format!(
+            "#!/bin/sh
+if [ \"$1\" = profile ] && [ \"$2\" = list ] && [ \"$3\" = --json ]; then
+  cat <<'EOF'
+{{\"elements\":{{\"yazelix\":{{\"storePaths\":[\"{}\"]}}}}}}
+EOF
+  exit 0
+fi
+if [ \"$1\" = profile ] && [ \"$2\" = upgrade ] && [ \"$3\" = --refresh ] && [ \"$4\" = yazelix ]; then
+  printf '%s\\n' \"$*\" > \"{}\"
+  exit 0
+fi
+echo unexpected nix invocation: \"$*\" >&2
+exit 99
+",
+            fixture.runtime_dir.display(),
+            upgrade_log.display()
+        ),
+    );
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .env("PATH", prepend_path(&fake_bin))
+        .arg("update")
+        .arg("upstream")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stderr.is_empty());
+
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("Requested update path: default Nix profile."));
+    assert!(stdout.contains("nix profile upgrade --refresh yazelix"));
+    assert!(!stdout.contains("appears to be Home Manager-owned"));
+    assert_eq!(
+        fs::read_to_string(upgrade_log).unwrap(),
+        "profile upgrade --refresh yazelix\n"
+    );
+}
+
 // Defends: the public Rust-owned `yzx run` route preserves child dash flags end to end instead of stealing them as wrapper options.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]

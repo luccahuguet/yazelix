@@ -797,6 +797,7 @@ fn install_ownership_evaluate_from_env_resolves_stable_profile_wrapper() {
     let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(envelope["command"], "install-ownership.evaluate");
     assert_eq!(envelope["status"], "ok");
+    assert_eq!(envelope["data"]["install_owner"], "profile");
     assert_eq!(
         envelope["data"]["stable_yzx_wrapper"],
         profile_yzx.to_string_lossy().to_string()
