@@ -112,50 +112,6 @@ export def expand_user_path_string [value: string] {
     $expanded_home | path expand
 }
 
-export def get_yazelix_config_dir [] {
-    let configured = (
-        $env.YAZELIX_CONFIG_DIR?
-        | default ""
-        | into string
-        | str trim
-    )
-    if ($configured | is-not-empty) {
-        expand_user_path_string $configured
-    } else if (($env.XDG_CONFIG_HOME? | default "" | into string | str trim) | is-not-empty) {
-        ($env.XDG_CONFIG_HOME | path join "yazelix")
-    } else if (($env.HOME? | default "" | into string | str trim) | is-not-empty) {
-        ($env.HOME | path join ".config" "yazelix")
-    } else {
-        "~/.config/yazelix" | path expand
-    }
-}
-
-export def get_xdg_config_home [] {
-    let configured = (
-        $env.XDG_CONFIG_HOME?
-        | default ""
-        | into string
-        | str trim
-    )
-
-    if ($configured | is-not-empty) {
-        expand_user_path_string $configured
-    } else if (($env.HOME? | default "" | into string | str trim) | is-not-empty) {
-        ($env.HOME | path join ".config")
-    } else {
-        "~/.config" | path expand
-    }
-}
-
-export def get_yazelix_user_config_dir [config_root?: string] {
-    let root = if $config_root == null {
-        get_yazelix_config_dir
-    } else {
-        $config_root | path expand
-    }
-    ($root | path join "user_configs")
-}
-
 export def get_yazelix_runtime_dir [] {
     let configured = (
         $env.YAZELIX_RUNTIME_DIR?
@@ -201,18 +157,6 @@ export def get_yazelix_state_dir [] {
     } else {
         "~/.local/share/yazelix" | path expand
     }
-}
-
-export def get_managed_helix_user_config_path [] {
-    (get_yazelix_user_config_dir | path join "helix" "config.toml")
-}
-
-export def get_native_helix_config_path [] {
-    (get_xdg_config_home) | path join "helix" "config.toml"
-}
-
-export def get_generated_helix_config_path [] {
-    (get_yazelix_state_dir | path join "configs" "helix" "config.toml")
 }
 
 export def require_yazelix_runtime_dir [] {

@@ -16,57 +16,6 @@ export def get_managed_editor_kind [] {
     if ($editor_kind | is-empty) { null } else { $editor_kind }
 }
 
-export def sync_managed_editor_cwd [target_path: path, log_file: string = "editor_sync.log"] {
-    if ($env.ZELLIJ? | is-empty) {
-        return {status: "skipped", reason: "outside_zellij"}
-    }
-
-    let editor_kind = (get_managed_editor_kind)
-    if ($editor_kind | is-empty) {
-        return {status: "skipped", reason: "unsupported_editor"}
-    }
-
-    let expanded_target_path = ($target_path | path expand)
-    if not ($expanded_target_path | path exists) {
-        return {status: "error", reason: $"Path does not exist: ($expanded_target_path)"}
-    }
-
-    let target_dir = if (($expanded_target_path | path type) == "dir") {
-        $expanded_target_path
-    } else {
-        $expanded_target_path | path dirname
-    }
-
-    let payload = {editor: $editor_kind, working_dir: $target_dir} | to json -r
-    let result = (try {
-        let response = (run_zellij_pipe "set_managed_editor_cwd" $payload)
-        match ($response | str trim) {
-            "ok" => {status: "ok"}
-            "missing" => {status: "missing"}
-            "unsupported_editor" => {status: "unsupported_editor"}
-            _ => {status: "error", reason: $response}
-        }
-    } catch {|err|
-        {status: "error", reason: $err.msg}
-    })
-
-    let result = {working_dir: $target_dir, editor: $editor_kind} | merge $result
-
-    match $result.status {
-        "ok" => {
-            log_to_file $log_file $"Synced managed editor cwd to: ($result.working_dir)"
-            $result
-        }
-        "missing" => {
-            {status: "skipped", reason: "editor_missing", editor: $editor_kind}
-        }
-        "unsupported_editor" => {
-            {status: "skipped", reason: "unsupported_editor", editor: $editor_kind}
-        }
-        _ => $result
-    }
-}
-
 def resolve_managed_editor_open_strategy [status: string] {
     match $status {
         "ok" => {action: "reuse_managed"}
