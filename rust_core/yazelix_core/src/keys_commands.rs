@@ -160,35 +160,19 @@ fn pad(text: &str, width: usize) -> String {
     format!("{text}{}", " ".repeat(pad_len))
 }
 
-fn border(left: char, fill: char, join: char, right: char, widths: &[usize]) -> String {
-    let mut out = String::new();
-    out.push(left);
-    for (index, width) in widths.iter().enumerate() {
-        out.push_str(&fill.to_string().repeat(width + 2));
-        if index + 1 == widths.len() {
-            out.push(right);
-        } else {
-            out.push(join);
-        }
-    }
-    out
-}
-
-fn render_table(columns: &[Column<'_>], rows: &[TableRow]) -> String {
-    let mut widths = Vec::with_capacity(columns.len() + 1);
-    widths.push(3);
-    widths.extend(columns.iter().map(|column| column.width));
-
+fn render_table(columns: &[Column<'_>], rows: &[TableRow], color: bool) -> String {
+    let widths = columns.iter().map(|column| column.width).collect::<Vec<_>>();
+    let gap = "  ";
     let mut lines = Vec::new();
-    lines.push(border('╭', '─', '┬', '╮', &widths));
-    let mut header_cells = vec![pad("#", widths[0])];
-    for (column, width) in columns.iter().zip(widths.iter().skip(1)) {
-        header_cells.push(pad(column.heading, *width));
-    }
-    lines.push(format!("│ {} │", header_cells.join(" │ ")));
-    lines.push(border('├', '─', '┼', '┤', &widths));
 
-    for (index, row) in rows.iter().enumerate() {
+    let header_cells = columns
+        .iter()
+        .zip(widths.iter())
+        .map(|(column, width)| label(&pad(column.heading, *width), color))
+        .collect::<Vec<_>>();
+    lines.push(format!("  {}", header_cells.join(gap)));
+
+    for row in rows {
         let wrapped_cells: Vec<Vec<String>> = row
             .cells
             .iter()
@@ -198,22 +182,18 @@ fn render_table(columns: &[Column<'_>], rows: &[TableRow]) -> String {
         let line_count = wrapped_cells.iter().map(Vec::len).max().unwrap_or(1);
 
         for line_index in 0..line_count {
-            let mut cells = Vec::with_capacity(columns.len() + 1);
-            let index_text = if line_index == 0 {
-                index.to_string()
-            } else {
-                String::new()
-            };
-            cells.push(pad(&index_text, widths[0]));
-            for (wrapped, width) in wrapped_cells.iter().zip(widths.iter().skip(1)) {
-                let text = wrapped.get(line_index).map(String::as_str).unwrap_or("");
-                cells.push(pad(text, *width));
-            }
-            lines.push(format!("│ {} │", cells.join(" │ ")));
+            let cells = wrapped_cells
+                .iter()
+                .zip(widths.iter())
+                .map(|(wrapped, width)| {
+                    let text = wrapped.get(line_index).map(String::as_str).unwrap_or("");
+                    pad(text, *width)
+                })
+                .collect::<Vec<_>>();
+            lines.push(format!("  {}", cells.join(gap)));
         }
     }
 
-    lines.push(border('╰', '─', '┴', '╯', &widths));
     lines.join("\n")
 }
 
@@ -270,46 +250,47 @@ fn render_yazelix_keys(color: bool) -> String {
     let workspace = render_table(
         &[
             Column {
-                heading: "keybinding",
+                heading: "Keybinding",
                 width: 29,
             },
             Column {
-                heading: "action",
+                heading: "Action",
                 width: 56,
             },
         ],
         &root_workspace_rows(),
+        color,
     );
     let command_access = render_table(
         &[
             Column {
-                heading: "keybinding",
+                heading: "Keybinding",
                 width: 12,
             },
             Column {
-                heading: "action",
+                heading: "Action",
                 width: 43,
             },
         ],
         &root_command_rows(),
+        color,
     );
     let tabs = render_table(
         &[
             Column {
-                heading: "keybinding",
+                heading: "Keybinding",
                 width: 27,
             },
             Column {
-                heading: "action",
+                heading: "Action",
                 width: 46,
             },
         ],
         &root_tab_rows(),
+        color,
     );
 
     [
-        heading("Yazelix keybindings", color),
-        String::new(),
         heading("Workspace actions", color),
         workspace,
         String::new(),
@@ -385,19 +366,20 @@ fn render_yazi_keys(color: bool) -> String {
     let table = render_table(
         &[
             Column {
-                heading: "step",
+                heading: "Step",
                 width: 25,
             },
             Column {
-                heading: "action",
+                heading: "Action",
                 width: 35,
             },
             Column {
-                heading: "notes",
+                heading: "Notes",
                 width: 18,
             },
         ],
         &yazi_rows(),
+        color,
     );
 
     [
@@ -436,28 +418,30 @@ fn render_helix_keys(color: bool) -> String {
     let topics = render_table(
         &[
             Column {
-                heading: "topic",
+                heading: "Topic",
                 width: 16,
             },
             Column {
-                heading: "how",
+                heading: "How",
                 width: 48,
             },
         ],
         &helix_topic_rows(),
+        color,
     );
     let caveat = render_table(
         &[
             Column {
-                heading: "caveat",
+                heading: "Caveat",
                 width: 48,
             },
             Column {
-                heading: "details",
+                heading: "Details",
                 width: 25,
             },
         ],
         &helix_caveat_rows(),
+        color,
     );
 
     [
@@ -494,19 +478,20 @@ fn render_nushell_keys(color: bool) -> String {
     let table = render_table(
         &[
             Column {
-                heading: "keybinding",
+                heading: "Keybinding",
                 width: 10,
             },
             Column {
-                heading: "action",
+                heading: "Action",
                 width: 39,
             },
             Column {
-                heading: "notes",
+                heading: "Notes",
                 width: 19,
             },
         ],
         &nushell_rows(),
+        color,
     );
 
     [
@@ -600,12 +585,14 @@ mod tests {
     fn renders_table_style_root_discoverability_surface() {
         let rendered = render_yazelix_keys(false);
 
-        assert!(rendered.contains("Yazelix keybindings"));
         assert!(rendered.contains("Workspace actions"));
         assert!(rendered.contains("Command access"));
         assert!(rendered.contains("Tab and pane movement"));
-        assert!(rendered.contains("╭"));
+        assert!(rendered.contains("Keybinding"));
         assert!(rendered.contains("Alt+Shift+M"));
         assert!(rendered.contains("yzx keys yazi"));
+        assert!(!rendered.contains("╭"));
+        assert!(!rendered.contains("│"));
+        assert!(!rendered.contains("#"));
     }
 }

@@ -41,13 +41,17 @@ fn yzx_control_sponsor_falls_back_to_printed_url_without_openers() {
 fn yzx_control_keys_root_preserves_discoverability_sections() {
     let output = yzx_control_command().arg("keys").output().unwrap();
     let stdout = stdout_text(output);
-    assert!(stdout.contains("Yazelix keybindings"));
+    assert!(stdout.starts_with("Workspace actions\n"));
     assert!(stdout.contains("Workspace actions"));
     assert!(stdout.contains("Command access"));
+    assert!(stdout.contains("Keybinding"));
     assert!(stdout.contains("yzx keys yazi"));
     assert!(stdout.contains("yzx keys hx"));
     assert!(stdout.contains("yzx keys nu"));
     assert!(!stdout.contains('\u{1b}'));
+    assert!(!stdout.contains("Yazelix keybindings"));
+    assert!(!stdout.contains("╭"));
+    assert!(!stdout.contains("│"));
 }
 
 // Defends: the Rust-owned `yzx keys` leaves preserve alias parity and tool-specific guidance instead of routing every leaf to the same generic output.
