@@ -10,7 +10,7 @@ maintainer cut also deleted the old Nu owners for issue sync, issue-bead
 contract validation, repo-checkout helper selection, and version bump policy.
 
 What remains is still large, but it is more honestly shell- and workflow-heavy:
-`2,760` LOC across `14` tracked files.
+`2,008` LOC across `8` tracked files.
 
 ## Scope
 
@@ -29,11 +29,11 @@ Out of scope:
 
 ## Current Measured Surface
 
-Measured on `2026-04-23`:
+Measured on `2026-04-24`:
 
 | Family | Current LOC | Hard target LOC | Main follow-up |
 | --- | ---: | ---: | --- |
-| Maintainer and `yzx dev` shell orchestration | `2,760` | `900` | keep shrinking `yzx/dev.nu`, update flow, plugin build, and helper debt |
+| Maintainer and `yzx dev` shell orchestration | `2,008` | `900` | keep shrinking `yzx/dev.nu`, update flow, plugin build, and helper debt |
 | Deterministic validators and contract linters | `0` | `0` | already Rust-owned |
 
 ## Landed Rust Owners

@@ -7,10 +7,10 @@ harder rule: every surviving Nu line is dangerous by default and must justify
 itself against deletion, Rust ownership, asset ownership, or fixed POSIX
 helpers.
 
-The current measured surface is `12,101` tracked lines of Nushell across `80`
+The current measured surface is `4,143` tracked lines of Nushell across `25`
 `.nu` files under `nushell/scripts/`.
 
-The canonical hard target for the current backlog is `4,200` Nu lines. That is
+The canonical hard target for the current backlog is `4,150` Nu lines. That is
 intentionally aggressive and it assumes:
 
 - `0` governed Nu tests survive
@@ -23,23 +23,22 @@ This is the current top-level budget document for the under-`5k` push.
 
 ## Current Measured Surface
 
-Measured on `2026-04-23` from the tracked tree after the first hard-budget cuts
-deleted the remaining governed Nu tests, redundant Nu validator wrappers, stale
-config schema helper, interactive Nix detector, README surface Nu, and
-installed-runtime Nu validator.
+Measured on `2026-04-24` from the tracked tree after the Rust-owned Yazi/editor
+integration cut deleted the remaining `integrations/*.nu` owners and the stale
+`editor_launch_context.nu` helper.
 
 | Family | Current included surface | Current LOC | Hard target LOC | Main beads |
 | --- | --- | ---: | ---: | --- |
 | Governed Nu tests | `nushell/scripts/dev/test_*.nu` | `0` | `0` | completed by `yazelix-rdn7.4.5` and guarded by `yazelix-rdn7.4.7` |
-| Shell-heavy E2E and sweep runners | retained `config_sweep_runner.nu` under `nushell/scripts/dev/` | `325` | `0` | `yazelix-lj7z.9` |
+| Shell-heavy E2E and sweep runners | retained `config_sweep_runner.nu` under `nushell/scripts/dev/` | `355` | `0` | `yazelix-xc82.9.4` |
 | Deterministic Nu validators | completed Rust owner cut under `yzx_repo_validator`; no surviving Nu files | `0` | `0` | `yazelix-lj7z.2` |
-| Maintainer and `yzx dev` shell orchestration | `nushell/scripts/maintainer/*.nu`, `nushell/scripts/yzx/dev.nu`, residual non-test dev orchestration | `2,760` | `900` | `yazelix-lj7z.4` |
-| Integration and popup wrapper glue | `nushell/scripts/integrations/*.nu`, `nushell/scripts/zellij_wrappers/*.nu` | `1,328` | `300` | `yazelix-lj7z.7` |
-| Setup and bootstrap shell entry | `setup/environment.nu`, `setup/initializers.nu`, `core/start_yazelix_inner.nu` | `621` | `500` | `yazelix-lj7z.6` |
-| Front-door UX and public shell presentation | `setup/welcome.nu`, `utils/front_door_runtime.nu`, `yzx/menu.nu`, `yzx/edit.nu`, `yzx/import.nu` | `841` | `500` | `yazelix-lj7z.8` |
-| Runtime helpers, bridges, and shared utilities | `utils/*.nu` except `front_door_runtime.nu` | `2,036` | `1,050` | `yazelix-lj7z.5`, `yazelix-lj7z.10` |
+| Maintainer and `yzx dev` shell orchestration | `nushell/scripts/maintainer/*.nu`, `nushell/scripts/yzx/dev.nu`, residual non-test dev orchestration | `2,008` | `900` | `yazelix-xc82.9` |
+| Integration and popup wrapper glue | surviving `nushell/scripts/zellij_wrappers/*.nu` only | `90` | `90` | `yazelix-xc82.2` |
+| Setup and bootstrap shell entry | `setup/environment.nu`, `core/start_yazelix_inner.nu` | `395` | `300` | `yazelix-xc82.6` |
+| Front-door UX and public shell presentation | `setup/welcome.nu`, `yzx/menu.nu` | `409` | `300` | `yazelix-xc82.8` |
+| Runtime helpers, bridges, and shared utilities | surviving `utils/*.nu` except `front_door_runtime.nu` | `886` | `800` | `yazelix-xc82.9.1` |
 
-Combined hard target: `4,200` Nu LOC
+Combined hard target: `4,150` Nu LOC
 
 This table now partitions the full tracked Nushell tree. The file-level
 second-wave map lives in `second_wave_nushell_deletion_map.md`; there is no

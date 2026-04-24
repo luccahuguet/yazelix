@@ -120,7 +120,7 @@ layout {
          // Single pane that runs verification script then exits
         pane {
             command "bash"
-            args "-c" "nu __YAZELIX_RUNTIME_DIR__/nushell/scripts/dev/sweep_verify.nu && sleep 3"
+            args "-c" "sh __YAZELIX_RUNTIME_DIR__/shells/posix/sweep_verify.sh && sleep 3"
             close_on_exit true
             start_suspended false
         }

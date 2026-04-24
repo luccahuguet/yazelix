@@ -14,72 +14,21 @@ export def "yzx dev" [] {
     print "Run 'yzx dev --help' to see available maintainer subcommands"
 }
 
-def resolve_existing_path [candidate?: string] {
-    if $candidate == null {
-        return null
-    }
-
-    let expanded = ($candidate | path expand)
-    if not ($expanded | path exists) {
-        return null
-    }
-
-    try {
-        let result = (^readlink -f $expanded | complete)
-        if $result.exit_code == 0 {
-            let resolved = ($result.stdout | str trim)
-            if ($resolved | is-not-empty) and ($resolved | path exists) {
-                return $resolved
-            }
-        }
-    } catch {}
-
-    $expanded
-}
-
-def is_valid_repo_root [candidate?: string] {
-    if $candidate == null {
-        return false
-    }
-
-    let candidate_path = (resolve_existing_path $candidate)
-    if $candidate_path == null {
-        return false
-    }
-
-    let git_marker = ($candidate_path | path join ".git")
-    let flake_nix = ($candidate_path | path join "flake.nix")
-    let default_config = ($candidate_path | path join "yazelix_default.toml")
-
-    ($git_marker | path exists) and ($flake_nix | path exists) and ($default_config | path exists)
-}
-
-def resolve_git_repo_root_from_pwd [] {
-    let pwd = ($env.PWD? | default "" | into string | str trim)
-    if ($pwd | is-empty) {
-        return null
-    }
-
-    try {
-        let result = (^git -C $pwd rev-parse --show-toplevel | complete)
-        if $result.exit_code != 0 {
-            return null
-        }
-
-        let candidate = ($result.stdout | str trim)
-        if (is_valid_repo_root $candidate) {
-            resolve_existing_path $candidate
-        } else {
-            null
-        }
-    } catch {
-        null
-    }
-}
-
 def require_yazelix_repo_root [] {
-    let repo_root = (resolve_git_repo_root_from_pwd)
-    if $repo_root == null {
+    let pwd = ($env.PWD? | default "" | into string | str trim)
+    let result = (if ($pwd | is-empty) {
+        {exit_code: 1, stdout: "", stderr: ""}
+    } else {
+        ^git -C $pwd rev-parse --show-toplevel | complete
+    })
+    let repo_root = ($result.stdout | str trim | path expand)
+    let repo_contract_ok = (
+        ($result.exit_code == 0)
+        and ($repo_root | path exists)
+        and (($repo_root | path join "flake.nix") | path exists)
+        and (($repo_root | path join "yazelix_default.toml") | path exists)
+    )
+    if not $repo_contract_ok {
         error make {msg: "This maintainer command requires a writable Yazelix repo checkout. Run it from the repo root or another directory inside the same checkout."}
     }
 
@@ -229,6 +178,14 @@ def get_profile_cli_path [source_root: string] {
     $source_root | path join "shells" "posix" "yzx_cli.sh"
 }
 
+def build_profile_env [profile_run: record, source_root: string] {
+    $profile_run.env
+    | upsert YAZELIX_RUNTIME_DIR $source_root
+    | upsert YAZELIX_STARTUP_PROFILE_SKIP_WELCOME "true"
+    | upsert YAZELIX_STARTUP_PROFILE_EXIT_BEFORE_ZELLIJ "true"
+    | upsert YAZELIX_SHELLHOOK_SKIP_WELCOME "true"
+}
+
 def wait_for_profile_handoff [profile_run: record, scenario_label: string] {
     let yzx_control_bin = (resolve_yzx_control_path $profile_run.env.YAZELIX_RUNTIME_DIR?)
     let completed = (
@@ -263,13 +220,7 @@ def run_dev_profile_harness [
         clear_startup_profile_caches
     }
 
-    let profile_env = (
-        $profile_run.env
-        | upsert YAZELIX_RUNTIME_DIR $source_info.root
-        | upsert YAZELIX_STARTUP_PROFILE_SKIP_WELCOME "true"
-        | upsert YAZELIX_STARTUP_PROFILE_EXIT_BEFORE_ZELLIJ "true"
-        | upsert YAZELIX_SHELLHOOK_SKIP_WELCOME "true"
-    )
+    let profile_env = (build_profile_env $profile_run $source_info.root)
     let result = (with-env $profile_env {
         do { ^sh $yzx_cli enter ...$startup_args } | complete
     })
@@ -380,13 +331,7 @@ def run_desktop_profile_command [] {
     let meta_json = (build_profile_metadata "desktop_launch" false $source_info | to json -r)
     let profile_run = (^$yzx_control_bin profile create-run "desktop_launch" --metadata $meta_json | from json)
 
-    let profile_env = (
-        $profile_run.env
-        | upsert YAZELIX_RUNTIME_DIR $source_info.root
-        | upsert YAZELIX_STARTUP_PROFILE_SKIP_WELCOME "true"
-        | upsert YAZELIX_STARTUP_PROFILE_EXIT_BEFORE_ZELLIJ "true"
-        | upsert YAZELIX_SHELLHOOK_SKIP_WELCOME "true"
-    )
+    let profile_env = (build_profile_env $profile_run $source_info.root)
     let result = (with-env $profile_env {
         do { ^sh $yzx_cli desktop launch } | complete
     })
@@ -426,13 +371,7 @@ def run_launch_profile_command [
         clear_startup_profile_caches
     }
 
-    let profile_env = (
-        $profile_run.env
-        | upsert YAZELIX_RUNTIME_DIR $source_info.root
-        | upsert YAZELIX_STARTUP_PROFILE_SKIP_WELCOME "true"
-        | upsert YAZELIX_STARTUP_PROFILE_EXIT_BEFORE_ZELLIJ "true"
-        | upsert YAZELIX_SHELLHOOK_SKIP_WELCOME "true"
-    )
+    let profile_env = (build_profile_env $profile_run $source_info.root)
     mut launch_args = [$yzx_cli, "launch"]
     if ($terminal | is-not-empty) {
         $launch_args = ($launch_args | append "--terminal" | append $terminal)

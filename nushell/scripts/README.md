@@ -10,11 +10,9 @@ Narrow runtime entrypoints that still own shell or Zellij handoff
 - `start_yazelix_inner.nu` - Interactive startup handoff into Zellij after Rust-owned env, preflight, and materialization decisions
 
 ### `integrations/`
-Live Zellij, Yazi, and managed-editor shell glue that has not been fully deleted yet
-
-- `yazi.nu` - Sidebar Yazi actions and sync helpers
-- `zellij.nu` - Pane-orchestrator actions and managed-pane shell integration
-- `managed_editor.nu` - Direct Yazi/editor entrypoint plus managed-editor integration
+No tracked integration owner files remain here after the Rust `yzx_control zellij`
+entrypoint cut. The surviving shell boundary is the sidebar Yazi launcher wrapper
+under `zellij_wrappers/`
 
 ### `setup/`
 Shell bootstrap and initializer generation
@@ -59,4 +57,4 @@ These are manual or exploratory helpers, not normal runtime entrypoints
 
 ## File Naming Convention
 
-All files use underscores, for example `start_yazelix_inner.nu` and `managed_editor.nu`
+All files use underscores, for example `start_yazelix_inner.nu` and `launch_sidebar_yazi.nu`

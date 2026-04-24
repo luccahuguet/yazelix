@@ -5,12 +5,35 @@
 //! that replace the Nushell `zellij.nu` pipe functions.
 
 use crate::bridge::{CoreError, ErrorClass};
-use serde_json::json;
+use crate::compute_runtime_env;
+use crate::control_plane::{
+    config_dir_from_env, config_override_from_env, home_dir_from_env, json_map_to_child_env,
+    load_normalized_config_for_control, runtime_dir_from_env, runtime_env_request,
+};
+use crate::workspace_commands::{
+    command_is_available, compute_integration_facts_from_env, run_ya_emit_to,
+    sync_sidebar_to_directory,
+};
+use serde_json::{Value, json};
 use std::env;
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 const PANE_ORCHESTRATOR_PLUGIN_ALIAS: &str = "yazelix_pane_orchestrator";
+const EDITOR_PANE_NAME: &str = "editor";
+const EDITOR_PANE_ENV_OVERRIDE_KEYS: &[&str] = &[
+    "PATH",
+    "YAZELIX_RUNTIME_DIR",
+    "IN_YAZELIX_SHELL",
+    "NIX_CONFIG",
+    "ZELLIJ_DEFAULT_LAYOUT",
+    "YAZI_CONFIG_HOME",
+    "YAZELIX_MANAGED_HELIX_BINARY",
+    "EDITOR",
+    "VISUAL",
+    "HELIX_RUNTIME",
+];
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ZellijPipeArgs {
@@ -23,6 +46,24 @@ struct ZellijPipeArgs {
 struct ZellijGetWorkspaceRootArgs {
     include_bootstrap: bool,
     help: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct ZellijOpenEditorArgs {
+    target: Option<String>,
+    help: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct ZellijOpenEditorCwdArgs {
+    target: Option<String>,
+    help: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ManagedEditorOpenStatus {
+    Ok,
+    Missing,
 }
 
 fn run_pane_orchestrator_command(command_name: &str, payload: &str) -> Result<String, CoreError> {
@@ -77,8 +118,7 @@ fn parse_zellij_pipe_args(args: &[String]) -> Result<ZellijPipeArgs, CoreError> 
         match arg.as_str() {
             "--payload" => {
                 parsed.payload = Some(
-                    iter
-                        .next()
+                    iter.next()
                         .ok_or_else(|| CoreError::usage("--payload requires a value".to_string()))?
                         .to_string(),
                 );
@@ -123,7 +163,10 @@ pub fn run_zellij_pipe(args: &[String]) -> Result<i32, CoreError> {
     }
 
     let command = parsed.command.ok_or_else(|| {
-        CoreError::usage("zellij pipe requires a command name. Try `yzx_control zellij pipe --help`.".to_string())
+        CoreError::usage(
+            "zellij pipe requires a command name. Try `yzx_control zellij pipe --help`."
+                .to_string(),
+        )
     })?;
 
     let payload = parsed.payload.as_deref().unwrap_or("");
@@ -132,7 +175,9 @@ pub fn run_zellij_pipe(args: &[String]) -> Result<i32, CoreError> {
     Ok(0)
 }
 
-fn parse_zellij_get_workspace_root_args(args: &[String]) -> Result<ZellijGetWorkspaceRootArgs, CoreError> {
+fn parse_zellij_get_workspace_root_args(
+    args: &[String],
+) -> Result<ZellijGetWorkspaceRootArgs, CoreError> {
     let mut parsed = ZellijGetWorkspaceRootArgs::default();
     for arg in args {
         match arg.as_str() {
@@ -158,6 +203,68 @@ fn print_zellij_get_workspace_root_help() {
     println!();
     println!("Usage:");
     println!("  yzx_control zellij get-workspace-root [--include-bootstrap]");
+}
+
+fn parse_zellij_open_editor_args(args: &[String]) -> Result<ZellijOpenEditorArgs, CoreError> {
+    let mut parsed = ZellijOpenEditorArgs::default();
+    for arg in args {
+        match arg.as_str() {
+            "-h" | "--help" | "help" => parsed.help = true,
+            other if other.starts_with('-') => {
+                return Err(CoreError::usage(format!(
+                    "Unknown argument for zellij open-editor: {other}"
+                )));
+            }
+            other => {
+                if parsed.target.is_some() {
+                    return Err(CoreError::usage(
+                        "zellij open-editor accepts only one target path".to_string(),
+                    ));
+                }
+                parsed.target = Some(other.to_string());
+            }
+        }
+    }
+    Ok(parsed)
+}
+
+fn parse_zellij_open_editor_cwd_args(
+    args: &[String],
+) -> Result<ZellijOpenEditorCwdArgs, CoreError> {
+    let mut parsed = ZellijOpenEditorCwdArgs::default();
+    for arg in args {
+        match arg.as_str() {
+            "-h" | "--help" | "help" => parsed.help = true,
+            other if other.starts_with('-') => {
+                return Err(CoreError::usage(format!(
+                    "Unknown argument for zellij open-editor-cwd: {other}"
+                )));
+            }
+            other => {
+                if parsed.target.is_some() {
+                    return Err(CoreError::usage(
+                        "zellij open-editor-cwd accepts only one target path".to_string(),
+                    ));
+                }
+                parsed.target = Some(other.to_string());
+            }
+        }
+    }
+    Ok(parsed)
+}
+
+fn print_zellij_open_editor_help() {
+    println!("Open a file in the configured editor from a Yazi-managed flow");
+    println!();
+    println!("Usage:");
+    println!("  yzx_control zellij open-editor <path>");
+}
+
+fn print_zellij_open_editor_cwd_help() {
+    println!("Open a directory in the managed editor pane from the Yazi zoxide flow");
+    println!();
+    println!("Usage:");
+    println!("  yzx_control zellij open-editor-cwd <path>");
 }
 
 fn current_tab_workspace_root_from_json(raw: &str, include_bootstrap: bool) -> Option<String> {
@@ -213,8 +320,7 @@ fn parse_zellij_retarget_args(args: &[String]) -> Result<ZellijRetargetArgs, Cor
         match arg.as_str() {
             "--editor" => {
                 parsed.editor = Some(
-                    iter
-                        .next()
+                    iter.next()
                         .ok_or_else(|| CoreError::usage("--editor requires a value".to_string()))?
                         .to_string(),
                 );
@@ -288,6 +394,66 @@ fn resolve_target_dir(target_path: &str) -> Result<PathBuf, CoreError> {
     }
 }
 
+fn resolve_existing_target_path(target_path: &str) -> Result<PathBuf, CoreError> {
+    let path = PathBuf::from(target_path);
+    let expanded = if path.is_absolute() {
+        path
+    } else {
+        env::current_dir()
+            .map_err(|source| {
+                CoreError::io(
+                    "editor_target_cwd",
+                    "Could not read the current working directory.",
+                    "cd into a valid directory, then retry.",
+                    ".",
+                    source,
+                )
+            })?
+            .join(path)
+    };
+
+    let canonical = std::fs::canonicalize(&expanded).unwrap_or(expanded);
+    if !canonical.exists() {
+        return Err(CoreError::classified(
+            ErrorClass::Usage,
+            "missing_editor_target",
+            format!("Path does not exist: {}", canonical.display()),
+            "Choose an existing file or directory path, then retry.",
+            json!({ "path": canonical.display().to_string() }),
+        ));
+    }
+
+    Ok(canonical)
+}
+
+fn resolve_editor_working_dir(target_path: &Path) -> PathBuf {
+    let target_dir = if target_path.is_dir() {
+        target_path.to_path_buf()
+    } else {
+        target_path
+            .parent()
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|| target_path.to_path_buf())
+    };
+
+    let git_output = Command::new("git")
+        .arg("-C")
+        .arg(&target_dir)
+        .args(["rev-parse", "--show-toplevel"])
+        .output();
+    match git_output {
+        Ok(output) if output.status.success() => {
+            let root = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if root.is_empty() {
+                target_dir
+            } else {
+                PathBuf::from(root)
+            }
+        }
+        _ => target_dir,
+    }
+}
+
 fn workspace_tab_name(workspace_root: &std::path::Path) -> String {
     workspace_root
         .file_name()
@@ -304,39 +470,255 @@ fn parse_workspace_retarget_response(raw: &str) -> serde_json::Value {
         "missing" | "not_ready" | "permissions_denied" | "invalid_payload" => {
             json!({"status": trimmed})
         }
-        _ => {
-            match serde_json::from_str::<serde_json::Value>(trimmed) {
-                Ok(mut result) => {
-                    let sidebar_yazi_id = result
-                        .get("sidebar_yazi_id")
-                        .and_then(|v| v.as_str())
-                        .map(|s| s.trim().to_string());
-                    let sidebar_yazi_cwd = result
-                        .get("sidebar_yazi_cwd")
-                        .and_then(|v| v.as_str())
-                        .map(|s| s.to_string())
-                        .unwrap_or_default();
-                    if let Some(id) = sidebar_yazi_id.as_ref() {
-                        if !id.is_empty() {
-                            if let Some(obj) = result.as_object_mut() {
-                                obj.insert(
-                                    "sidebar_state".to_string(),
-                                    json!({
-                                        "yazi_id": id,
-                                        "cwd": sidebar_yazi_cwd,
-                                    }),
-                                );
-                                obj.remove("sidebar_yazi_id");
-                                obj.remove("sidebar_yazi_cwd");
-                            }
+        _ => match serde_json::from_str::<serde_json::Value>(trimmed) {
+            Ok(mut result) => {
+                let sidebar_yazi_id = result
+                    .get("sidebar_yazi_id")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.trim().to_string());
+                let sidebar_yazi_cwd = result
+                    .get("sidebar_yazi_cwd")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
+                if let Some(id) = sidebar_yazi_id.as_ref() {
+                    if !id.is_empty() {
+                        if let Some(obj) = result.as_object_mut() {
+                            obj.insert(
+                                "sidebar_state".to_string(),
+                                json!({
+                                    "yazi_id": id,
+                                    "cwd": sidebar_yazi_cwd,
+                                }),
+                            );
+                            obj.remove("sidebar_yazi_id");
+                            obj.remove("sidebar_yazi_cwd");
                         }
                     }
-                    result
                 }
-                Err(_) => json!({"status": "error", "reason": trimmed}),
+                result
+            }
+            Err(_) => json!({"status": "error", "reason": trimmed}),
+        },
+    }
+}
+
+fn workspace_retarget_status(result: &Value) -> &str {
+    result
+        .get("status")
+        .and_then(Value::as_str)
+        .unwrap_or("error")
+}
+
+fn sidebar_state_from_retarget_response(
+    result: &Value,
+) -> Option<crate::workspace_commands::SidebarState> {
+    let sidebar = result.get("sidebar_state")?;
+    let yazi_id = sidebar.get("yazi_id")?.as_str()?.trim();
+    if yazi_id.is_empty() {
+        return None;
+    }
+    let cwd = sidebar
+        .get("cwd")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .unwrap_or("");
+
+    Some(crate::workspace_commands::SidebarState {
+        yazi_id: yazi_id.to_string(),
+        cwd: cwd.to_string(),
+    })
+}
+
+fn retarget_workspace_without_focused_cd(
+    target_path: &Path,
+    editor_kind: Option<&str>,
+) -> Result<Value, CoreError> {
+    let target_dir = if target_path.is_dir() {
+        target_path.to_path_buf()
+    } else {
+        target_path
+            .parent()
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|| target_path.to_path_buf())
+    };
+    let payload = json!({
+        "workspace_root": target_dir.display().to_string(),
+        "cd_focused_pane": false,
+        "editor": editor_kind
+            .map(str::trim)
+            .filter(|editor| !editor.is_empty())
+            .map(|editor| Value::String(editor.to_string()))
+            .unwrap_or(Value::Null),
+    })
+    .to_string();
+    let response = run_pane_orchestrator_command("retarget_workspace", &payload)?;
+    Ok(parse_workspace_retarget_response(&response))
+}
+
+fn resolve_runtime_editor_launch() -> Result<(serde_json::Map<String, Value>, String), CoreError> {
+    let runtime_dir = runtime_dir_from_env()?;
+    let config_dir = config_dir_from_env()?;
+    let config_override = config_override_from_env();
+    let normalized =
+        load_normalized_config_for_control(&runtime_dir, &config_dir, config_override.as_deref())?;
+    let runtime_env =
+        compute_runtime_env(&runtime_env_request(runtime_dir, &normalized)?)?.runtime_env;
+    let editor = runtime_env
+        .get("EDITOR")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|editor| !editor.is_empty())
+        .ok_or_else(|| {
+            CoreError::classified(
+                ErrorClass::Config,
+                "editor_command_missing",
+                "EDITOR is not configured for the Yazelix runtime.",
+                "Set [editor].command in yazelix.toml or export EDITOR before running this command.",
+                json!({}),
+            )
+        })?
+        .to_string();
+    Ok((runtime_env, editor))
+}
+
+fn pane_env_assignment(value: OsString) -> String {
+    value.to_string_lossy().to_string()
+}
+
+fn build_editor_pane_env_assignments(
+    runtime_env: &serde_json::Map<String, Value>,
+    yazi_id: Option<&str>,
+) -> Vec<String> {
+    let mut env_assignments = json_map_to_child_env(runtime_env)
+        .into_iter()
+        .map(|(key, value)| {
+            (
+                key.to_string_lossy().to_string(),
+                pane_env_assignment(value),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    for key in EDITOR_PANE_ENV_OVERRIDE_KEYS {
+        if let Ok(value) = env::var(key) {
+            let trimmed = value.trim();
+            if !trimmed.is_empty() {
+                if let Some(existing) = env_assignments.iter_mut().find(|(name, _)| name == key) {
+                    existing.1 = trimmed.to_string();
+                } else {
+                    env_assignments.push(((*key).to_string(), trimmed.to_string()));
+                }
             }
         }
     }
+
+    if let Some(yazi_id) = yazi_id.map(str::trim).filter(|id| !id.is_empty()) {
+        if let Some(existing) = env_assignments
+            .iter_mut()
+            .find(|(name, _)| name == "YAZI_ID")
+        {
+            existing.1 = yazi_id.to_string();
+        } else {
+            env_assignments.push(("YAZI_ID".to_string(), yazi_id.to_string()));
+        }
+    }
+
+    env_assignments
+        .into_iter()
+        .map(|(key, value)| format!("{key}={value}"))
+        .collect()
+}
+
+fn run_zellij_editor_pane(
+    working_dir: &Path,
+    runtime_env: &serde_json::Map<String, Value>,
+    yazi_id: Option<&str>,
+    editor_argv: &[String],
+) -> Result<(), CoreError> {
+    let env_args = build_editor_pane_env_assignments(runtime_env, yazi_id);
+    let output = Command::new("zellij")
+        .arg("run")
+        .arg("--name")
+        .arg(EDITOR_PANE_NAME)
+        .arg("--cwd")
+        .arg(working_dir)
+        .arg("--")
+        .arg("env")
+        .args(env_args)
+        .args(editor_argv)
+        .output()
+        .map_err(|source| {
+            CoreError::io(
+                "zellij_run_failed",
+                "Failed to open a new editor pane through Zellij.",
+                "Run this command inside an active Yazelix/Zellij session, then retry.",
+                "zellij",
+                source,
+            )
+        })?;
+
+    if output.status.success() {
+        return Ok(());
+    }
+
+    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+    let details = if stderr.is_empty() {
+        format!("exit code {}", output.status.code().unwrap_or(1))
+    } else {
+        stderr
+    };
+    Err(CoreError::classified(
+        ErrorClass::Runtime,
+        "open_editor_pane_failed",
+        format!("Failed to open a new editor pane: {details}"),
+        "Ensure Zellij is available in the current Yazelix session, then retry.",
+        json!({ "cwd": working_dir.display().to_string() }),
+    ))
+}
+
+fn open_file_in_managed_editor(
+    editor_kind: &str,
+    file_path: &Path,
+    working_dir: &Path,
+) -> Result<ManagedEditorOpenStatus, CoreError> {
+    let payload = json!({
+        "editor": editor_kind,
+        "file_path": file_path.display().to_string(),
+        "working_dir": working_dir.display().to_string(),
+    })
+    .to_string();
+    let response = run_pane_orchestrator_command("open_file", &payload)?;
+    match response.trim() {
+        "ok" | "opened" | "focused" => Ok(ManagedEditorOpenStatus::Ok),
+        "missing" => Ok(ManagedEditorOpenStatus::Missing),
+        other => Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "managed_editor_open_failed",
+            format!("Managed editor open failed: {other}"),
+            "Ensure the Yazelix pane orchestrator is loaded and the managed editor pane title is `editor`, then retry.",
+            json!({ "response": response }),
+        )),
+    }
+}
+
+fn sync_current_yazi_to_directory(
+    ya_command: &str,
+    home_dir: &Path,
+    yazi_id: &str,
+    target_path: &Path,
+) {
+    if !command_is_available(ya_command, home_dir) {
+        return;
+    }
+
+    let target_dir = if target_path.is_dir() {
+        target_path
+    } else {
+        target_path.parent().unwrap_or(target_path)
+    };
+    let target = target_dir.to_string_lossy().to_string();
+    let _ = run_ya_emit_to(ya_command, home_dir, yazi_id, "cd", &[target.as_str()]);
 }
 
 pub fn run_zellij_retarget(args: &[String]) -> Result<i32, CoreError> {
@@ -347,7 +729,10 @@ pub fn run_zellij_retarget(args: &[String]) -> Result<i32, CoreError> {
     }
 
     let target = parsed.target.ok_or_else(|| {
-        CoreError::usage("zellij retarget requires a target path. Try `yzx_control zellij retarget --help`.".to_string())
+        CoreError::usage(
+            "zellij retarget requires a target path. Try `yzx_control zellij retarget --help`."
+                .to_string(),
+        )
     })?;
 
     let target_dir = resolve_target_dir(&target)?;
@@ -363,7 +748,10 @@ pub fn run_zellij_retarget(args: &[String]) -> Result<i32, CoreError> {
     let response = run_pane_orchestrator_command("retarget_workspace", &payload)?;
     let result = parse_workspace_retarget_response(&response);
 
-    let status = result.get("status").and_then(|v| v.as_str()).unwrap_or("error");
+    let status = result
+        .get("status")
+        .and_then(|v| v.as_str())
+        .unwrap_or("error");
     match status {
         "ok" => {
             println!(
@@ -380,11 +768,15 @@ pub fn run_zellij_retarget(args: &[String]) -> Result<i32, CoreError> {
         }
         "not_ready" => {
             eprintln!("❌ Yazelix tab state is not ready yet.");
-            eprintln!("   Wait a moment for the pane orchestrator plugin to finish loading, then try again.");
+            eprintln!(
+                "   Wait a moment for the pane orchestrator plugin to finish loading, then try again."
+            );
             Ok(1)
         }
         "permissions_denied" => {
-            eprintln!("❌ The Yazelix pane orchestrator plugin is missing required Zellij permissions.");
+            eprintln!(
+                "❌ The Yazelix pane orchestrator plugin is missing required Zellij permissions."
+            );
             eprintln!("   Run `yzx doctor --fix`, then restart Yazelix.");
             Ok(1)
         }
@@ -435,6 +827,163 @@ fn print_zellij_open_terminal_help() {
     println!("  yzx_control zellij open-terminal <path>");
 }
 
+pub fn run_zellij_open_editor(args: &[String]) -> Result<i32, CoreError> {
+    let parsed = parse_zellij_open_editor_args(args)?;
+    if parsed.help {
+        print_zellij_open_editor_help();
+        return Ok(0);
+    }
+
+    let target = parsed.target.ok_or_else(|| {
+        CoreError::usage(
+            "zellij open-editor requires a target path. Try `yzx_control zellij open-editor --help`."
+                .to_string(),
+        )
+    })?;
+    let target_path = resolve_existing_target_path(&target)?;
+    let integration_facts = compute_integration_facts_from_env()?;
+    let (runtime_env, editor_command) = resolve_runtime_editor_launch()?;
+    let editor_kind = integration_facts.managed_editor_kind.trim().to_string();
+    let yazi_id = env::var("YAZI_ID").unwrap_or_default();
+    let editor_working_dir = resolve_editor_working_dir(&target_path);
+
+    if editor_kind == "helix" || editor_kind == "neovim" {
+        let open_status =
+            open_file_in_managed_editor(&editor_kind, &target_path, &editor_working_dir)?;
+        if open_status == ManagedEditorOpenStatus::Missing {
+            run_zellij_editor_pane(
+                &editor_working_dir,
+                &runtime_env,
+                Some(yazi_id.as_str()),
+                &[editor_command.clone(), target_path.display().to_string()],
+            )?;
+        }
+    } else {
+        run_zellij_editor_pane(
+            &editor_working_dir,
+            &runtime_env,
+            Some(yazi_id.as_str()),
+            &[editor_command, target_path.display().to_string()],
+        )?;
+    }
+
+    if let Ok(retarget_result) = retarget_workspace_without_focused_cd(&target_path, None) {
+        if workspace_retarget_status(&retarget_result) == "ok" {
+            if integration_facts.enable_sidebar {
+                if let Some(sidebar_state) = sidebar_state_from_retarget_response(&retarget_result)
+                {
+                    let _ = sync_sidebar_to_directory(
+                        &integration_facts.ya_command,
+                        &home_dir_from_env()?,
+                        &sidebar_state,
+                        &target_path,
+                    );
+                }
+            } else if !yazi_id.trim().is_empty() {
+                sync_current_yazi_to_directory(
+                    &integration_facts.ya_command,
+                    &home_dir_from_env()?,
+                    yazi_id.as_str(),
+                    &target_path,
+                );
+            }
+        }
+    }
+
+    Ok(0)
+}
+
+pub fn run_zellij_open_editor_cwd(args: &[String]) -> Result<i32, CoreError> {
+    let parsed = parse_zellij_open_editor_cwd_args(args)?;
+    if parsed.help {
+        print_zellij_open_editor_cwd_help();
+        return Ok(0);
+    }
+
+    let target = parsed.target.ok_or_else(|| {
+        CoreError::usage(
+            "zellij open-editor-cwd requires a target path. Try `yzx_control zellij open-editor-cwd --help`."
+                .to_string(),
+        )
+    })?;
+    let target_dir = resolve_target_dir(&target)?;
+    let integration_facts = compute_integration_facts_from_env()?;
+    let editor_kind = integration_facts.managed_editor_kind.trim().to_string();
+    if editor_kind.is_empty() {
+        return Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "managed_editor_missing",
+            "No managed editor is configured for the current Yazelix runtime.",
+            "Set the configured editor to Helix or Neovim before using the Yazi zoxide editor flow.",
+            json!({}),
+        ));
+    }
+
+    let retarget_result =
+        retarget_workspace_without_focused_cd(&target_dir, Some(editor_kind.as_str()))?;
+    let status = workspace_retarget_status(&retarget_result);
+    if status != "ok" {
+        let reason = retarget_result
+            .get("reason")
+            .and_then(Value::as_str)
+            .unwrap_or(status);
+        return Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "retarget_workspace_failed",
+            format!("Failed to retarget the current workspace: {reason}"),
+            "Ensure the pane orchestrator plugin is loaded and the current tab is ready, then retry.",
+            json!({ "status": status }),
+        ));
+    }
+
+    match retarget_result
+        .get("editor_status")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+    {
+        "missing" => {
+            let (runtime_env, editor_command) = resolve_runtime_editor_launch()?;
+            let yazi_id = env::var("YAZI_ID").unwrap_or_default();
+            let mut editor_argv = vec![editor_command];
+            if editor_kind == "helix" {
+                editor_argv.push(target_dir.display().to_string());
+            }
+            run_zellij_editor_pane(
+                &target_dir,
+                &runtime_env,
+                Some(yazi_id.as_str()),
+                &editor_argv,
+            )?;
+        }
+        "unsupported_editor" => {
+            return Err(CoreError::classified(
+                ErrorClass::Runtime,
+                "unsupported_managed_editor",
+                format!(
+                    "Unsupported managed editor kind for workspace retarget: {}",
+                    editor_kind
+                ),
+                "Configure Helix or Neovim as the managed editor, then retry.",
+                json!({ "editor_kind": editor_kind }),
+            ));
+        }
+        _ => {}
+    }
+
+    if integration_facts.enable_sidebar {
+        if let Some(sidebar_state) = sidebar_state_from_retarget_response(&retarget_result) {
+            let _ = sync_sidebar_to_directory(
+                &integration_facts.ya_command,
+                &home_dir_from_env()?,
+                &sidebar_state,
+                &target_dir,
+            );
+        }
+    }
+
+    Ok(0)
+}
+
 pub fn run_zellij_open_terminal(args: &[String]) -> Result<i32, CoreError> {
     let parsed = parse_zellij_open_terminal_args(args)?;
     if parsed.help {
@@ -461,7 +1010,11 @@ pub fn run_zellij_open_terminal(args: &[String]) -> Result<i32, CoreError> {
         return Err(CoreError::classified(
             ErrorClass::Runtime,
             "open_terminal_failed",
-            format!("Pane orchestrator failed to open directory pane in '{}': {}", target_dir.display(), response),
+            format!(
+                "Pane orchestrator failed to open directory pane in '{}': {}",
+                target_dir.display(),
+                response
+            ),
             "Ensure the pane orchestrator plugin is loaded and the current tab is ready, then retry.",
             json!({ "path": target_dir.display().to_string(), "response": response }),
         ));
@@ -493,7 +1046,10 @@ pub fn run_zellij_open_terminal(args: &[String]) -> Result<i32, CoreError> {
             Ok(0)
         }
         _ => {
-            eprintln!("⚠️  Terminal pane opened, but workspace retarget failed: {}", retarget_response);
+            eprintln!(
+                "⚠️  Terminal pane opened, but workspace retarget failed: {}",
+                retarget_response
+            );
             Ok(1)
         }
     }
@@ -534,8 +1090,14 @@ mod tests {
         let parsed = parse_workspace_retarget_response(raw);
         assert_eq!(parsed.get("status").and_then(|v| v.as_str()), Some("ok"));
         let sidebar = parsed.get("sidebar_state").unwrap();
-        assert_eq!(sidebar.get("yazi_id").and_then(|v| v.as_str()), Some("yazi-123"));
-        assert_eq!(sidebar.get("cwd").and_then(|v| v.as_str()), Some("/home/sidebar"));
+        assert_eq!(
+            sidebar.get("yazi_id").and_then(|v| v.as_str()),
+            Some("yazi-123")
+        );
+        assert_eq!(
+            sidebar.get("cwd").and_then(|v| v.as_str()),
+            Some("/home/sidebar")
+        );
     }
 
     // Defends: retarget response parsing handles simple error strings.

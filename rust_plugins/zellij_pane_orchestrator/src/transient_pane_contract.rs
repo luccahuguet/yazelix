@@ -11,9 +11,7 @@ pub enum TransientPaneKind {
 pub struct TransientPaneIdentityContract {
     pub pane_title: &'static str,
     pub command_marker: &'static str,
-    pub root_subcommand: &'static str,
-    pub mode_env_key: &'static str,
-    pub mode_env_value: &'static str,
+    pub wrapper_relative_path: &'static str,
 }
 
 impl TransientPaneKind {
@@ -29,17 +27,13 @@ impl TransientPaneKind {
         match self {
             Self::Popup => TransientPaneIdentityContract {
                 pane_title: "yzx_popup",
-                command_marker: "yzx_cli.sh popup",
-                root_subcommand: "popup",
-                mode_env_key: "YAZELIX_POPUP_PANE",
-                mode_env_value: "true",
+                command_marker: "zellij_wrappers/yzx_popup_program.nu",
+                wrapper_relative_path: "nushell/scripts/zellij_wrappers/yzx_popup_program.nu",
             },
             Self::Menu => TransientPaneIdentityContract {
                 pane_title: "yzx_menu",
-                command_marker: "yzx_cli.sh menu",
-                root_subcommand: "menu",
-                mode_env_key: "YAZELIX_MENU_POPUP",
-                mode_env_value: "true",
+                command_marker: "zellij_wrappers/yzx_menu_popup.nu",
+                wrapper_relative_path: "nushell/scripts/zellij_wrappers/yzx_menu_popup.nu",
             },
         }
     }
@@ -52,16 +46,8 @@ impl TransientPaneKind {
         self.identity().command_marker
     }
 
-    pub fn root_subcommand(&self) -> &'static str {
-        self.identity().root_subcommand
-    }
-
-    pub fn mode_env_key(&self) -> &'static str {
-        self.identity().mode_env_key
-    }
-
-    pub fn mode_env_value(&self) -> &'static str {
-        self.identity().mode_env_value
+    pub fn wrapper_relative_path(&self) -> &'static str {
+        self.identity().wrapper_relative_path
     }
 }
 
@@ -128,8 +114,7 @@ pub fn resolve_transient_toggle_plan<Id: Copy>(
 mod tests {
     use super::{
         resolve_transient_toggle_plan, select_transient_pane, TransientPaneIdentityContract,
-        TransientPaneKind,
-        TransientPaneSnapshot, TransientPaneState, TransientTogglePlan,
+        TransientPaneKind, TransientPaneSnapshot, TransientPaneState, TransientTogglePlan,
     };
 
     fn transient_pane<'a>(
@@ -149,7 +134,7 @@ mod tests {
         }
     }
 
-    // Defends: popup transient panes are discoverable by either pane title or the canonical yzx CLI marker.
+    // Defends: popup transient panes are discoverable by either pane title or the canonical runtime wrapper marker.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn selects_popup_by_title_or_command_marker() {
@@ -165,7 +150,7 @@ mod tests {
         let popup_by_command = [transient_pane(
             8,
             "misc",
-            Some("/tmp/runtime/shells/posix/yzx_cli.sh popup lazygit"),
+            Some("/tmp/runtime/shells/posix/yazelix_nu.sh /tmp/runtime/nushell/scripts/zellij_wrappers/yzx_popup_program.nu lazygit"),
             false,
         )];
         assert_eq!(
@@ -177,7 +162,7 @@ mod tests {
         );
     }
 
-    // Defends: popup and menu transient panes expose an explicit yzx CLI identity contract for launcher code.
+    // Defends: popup and menu transient panes expose an explicit runtime wrapper identity contract for launcher code.
     // Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=1 total=7/10
     #[test]
     fn exposes_explicit_identity_contract_for_popup_and_menu() {
@@ -185,10 +170,8 @@ mod tests {
             TransientPaneKind::Popup.identity(),
             TransientPaneIdentityContract {
                 pane_title: "yzx_popup",
-                command_marker: "yzx_cli.sh popup",
-                root_subcommand: "popup",
-                mode_env_key: "YAZELIX_POPUP_PANE",
-                mode_env_value: "true",
+                command_marker: "zellij_wrappers/yzx_popup_program.nu",
+                wrapper_relative_path: "nushell/scripts/zellij_wrappers/yzx_popup_program.nu",
             }
         );
 
@@ -196,15 +179,13 @@ mod tests {
             TransientPaneKind::Menu.identity(),
             TransientPaneIdentityContract {
                 pane_title: "yzx_menu",
-                command_marker: "yzx_cli.sh menu",
-                root_subcommand: "menu",
-                mode_env_key: "YAZELIX_MENU_POPUP",
-                mode_env_value: "true",
+                command_marker: "zellij_wrappers/yzx_menu_popup.nu",
+                wrapper_relative_path: "nushell/scripts/zellij_wrappers/yzx_menu_popup.nu",
             }
         );
     }
 
-    // Defends: menu transient panes are discoverable by either pane title or the canonical yzx CLI marker.
+    // Defends: menu transient panes are discoverable by either pane title or the canonical runtime wrapper marker.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn selects_menu_by_title_or_command_marker() {
@@ -220,7 +201,7 @@ mod tests {
         let menu_by_command = [transient_pane(
             4,
             "other",
-            Some("/tmp/runtime/shells/posix/yzx_cli.sh menu"),
+            Some("/tmp/runtime/shells/posix/yazelix_nu.sh /tmp/runtime/nushell/scripts/zellij_wrappers/yzx_menu_popup.nu"),
             false,
         )];
         assert_eq!(
@@ -237,8 +218,8 @@ mod tests {
     #[test]
     fn prefers_focused_transient_pane_when_duplicates_exist() {
         let panes = [
-            transient_pane(1, "yzx_menu", Some("yzx_cli.sh menu"), false),
-            transient_pane(2, "yzx_menu", Some("yzx_cli.sh menu"), true),
+            transient_pane(1, "yzx_menu", Some("yzx_menu_popup.nu"), false),
+            transient_pane(2, "yzx_menu", Some("yzx_menu_popup.nu"), true),
         ];
 
         assert_eq!(
@@ -258,7 +239,7 @@ mod tests {
             TransientPaneSnapshot {
                 pane_id: 1,
                 title: "yzx_popup",
-                terminal_command: Some("yzx_cli.sh popup"),
+                terminal_command: Some("yzx_popup_program.nu"),
                 is_plugin: false,
                 exited: false,
                 is_floating: false,
@@ -286,7 +267,7 @@ mod tests {
         let present = [transient_pane(
             5,
             "yzx_popup",
-            Some("yzx_cli.sh popup"),
+            Some("yzx_popup_program.nu"),
             false,
         )];
         assert_eq!(
@@ -297,7 +278,7 @@ mod tests {
         let focused = [transient_pane(
             6,
             "yzx_popup",
-            Some("yzx_cli.sh popup"),
+            Some("yzx_popup_program.nu"),
             true,
         )];
         assert_eq!(

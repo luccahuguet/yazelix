@@ -129,7 +129,7 @@ The current repo surface should be understood roughly as:
   - `rust_plugins/zellij_pane_orchestrator/Cargo.toml` `nextest` suite `zellij_pane_orchestrator`
 - Optional sweep coverage:
   - `config_sweep_runner.nu`
-  - `sweep_verify.nu`
+  - `shells/posix/sweep_verify.sh`
   - helper files under `nushell/scripts/dev/sweep/`
 - Shell-heavy non-governed runners:
   - only `config_sweep_runner.nu` remains as a tracked shell-heavy runner

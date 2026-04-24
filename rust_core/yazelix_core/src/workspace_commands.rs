@@ -2,12 +2,12 @@
 //! Public `yzx cwd`, `yzx reveal`, and `yzx popup` owners for `yzx_control`.
 
 use crate::bridge::{CoreError, ErrorClass};
+use crate::compute_runtime_env;
 use crate::control_plane::{
     config_dir_from_env, config_override_from_env, home_dir_from_env,
     load_normalized_config_for_control, run_child_in_runtime_env, runtime_dir_from_env,
     runtime_env_request,
 };
-use crate::compute_runtime_env;
 use crate::transient_pane_facts::compute_transient_pane_facts_from_env;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -37,12 +37,12 @@ struct PopupArgs {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct WorkspaceCommandConfig {
-    enable_sidebar: bool,
-    editor_kind: String,
-    yazi_command: String,
-    ya_command: String,
-    home_dir: PathBuf,
+pub(crate) struct WorkspaceCommandConfig {
+    pub(crate) enable_sidebar: bool,
+    pub(crate) editor_kind: String,
+    pub(crate) yazi_command: String,
+    pub(crate) ya_command: String,
+    pub(crate) home_dir: PathBuf,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -54,9 +54,9 @@ pub struct IntegrationFactsData {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct SidebarState {
-    yazi_id: String,
-    cwd: String,
+pub(crate) struct SidebarState {
+    pub(crate) yazi_id: String,
+    pub(crate) cwd: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -275,20 +275,29 @@ pub fn run_yzx_popup(args: &[String]) -> Result<i32, CoreError> {
         return run_popup_program_in_current_pane(parsed.program);
     }
 
+    if parsed.program.is_empty() {
+        let response = run_pane_orchestrator_command("toggle_transient_pane", "popup")?;
+        if matches!(response.trim(), "opened" | "focused" | "closed") {
+            return Ok(0);
+        }
+
+        return Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "popup_toggle_failed",
+            format!("Failed to toggle the Yazelix popup pane: {response}"),
+            "Ensure the pane orchestrator plugin is loaded and the current tab is ready, then retry.",
+            json!({ "response": response }),
+        ));
+    }
+
     let runtime_dir = runtime_dir_from_env()?;
-    let facts = compute_transient_pane_facts_from_env()?;
-    let popup_program = if parsed.program.is_empty() {
-        facts.popup_program
-    } else {
-        parsed.program
-    };
-    let popup_cwd = current_tab_workspace_root(true)
-        .unwrap_or_else(|| {
-            env::current_dir()
-                .unwrap_or_else(|_| PathBuf::from("."))
-                .to_string_lossy()
-                .to_string()
-        });
+    let popup_program = parsed.program;
+    let popup_cwd = current_tab_workspace_root(true).unwrap_or_else(|| {
+        env::current_dir()
+            .unwrap_or_else(|_| PathBuf::from("."))
+            .to_string_lossy()
+            .to_string()
+    });
 
     let payload = json!({
         "kind": "popup",
@@ -324,8 +333,8 @@ fn run_popup_program_in_current_pane(program_override: Vec<String>) -> Result<i3
     let config_override = config_override_from_env();
     let normalized =
         load_normalized_config_for_control(&runtime_dir, &config_dir, config_override.as_deref())?;
-    let runtime_env = compute_runtime_env(&runtime_env_request(runtime_dir, &normalized)?)?
-        .runtime_env;
+    let runtime_env =
+        compute_runtime_env(&runtime_env_request(runtime_dir, &normalized)?)?.runtime_env;
     let popup_program = if program_override.is_empty() {
         compute_transient_pane_facts_from_env()?.popup_program
     } else {
@@ -550,10 +559,12 @@ fn rename_current_pane(title: &str) {
 }
 
 fn close_current_pane() {
-    let _ = Command::new("zellij").args(["action", "close-pane"]).output();
+    let _ = Command::new("zellij")
+        .args(["action", "close-pane"])
+        .output();
 }
 
-fn load_workspace_command_config() -> Result<WorkspaceCommandConfig, CoreError> {
+pub(crate) fn load_workspace_command_config() -> Result<WorkspaceCommandConfig, CoreError> {
     let runtime_dir = runtime_dir_from_env()?;
     let config_dir = config_dir_from_env()?;
     let config_override = config_override_from_env();
@@ -858,7 +869,7 @@ fn retarget_workspace(
     Ok(parse_workspace_retarget_response(&response))
 }
 
-fn active_sidebar_state() -> Option<SidebarState> {
+pub(crate) fn active_sidebar_state() -> Option<SidebarState> {
     let response = run_pane_orchestrator_command("get_active_tab_session_state", "").ok()?;
     parse_active_sidebar_state(&response)
 }
@@ -909,7 +920,7 @@ fn focus_sidebar() -> Result<String, CoreError> {
     })
 }
 
-fn sync_sidebar_to_directory(
+pub(crate) fn sync_sidebar_to_directory(
     ya_command: &str,
     home_dir: &Path,
     sidebar_state: &SidebarState,
@@ -936,7 +947,7 @@ fn sync_sidebar_to_directory(
     }
 }
 
-fn run_ya_emit_to(
+pub(crate) fn run_ya_emit_to(
     ya_command: &str,
     home_dir: &Path,
     yazi_id: &str,
@@ -967,7 +978,7 @@ fn run_ya_emit_to(
     }
 }
 
-fn command_is_available(command: &str, home_dir: &Path) -> bool {
+pub(crate) fn command_is_available(command: &str, home_dir: &Path) -> bool {
     let trimmed = command.trim();
     if trimmed.is_empty() {
         return false;
@@ -1077,16 +1088,15 @@ mod tests {
             Value::String("/tmp/yazelix_hx.sh".to_string()),
         )]);
 
-        let argv =
-            resolve_popup_runtime_argv(&["editor".to_string(), "README.md".to_string()], &runtime_env)
-                .expect("popup argv");
+        let argv = resolve_popup_runtime_argv(
+            &["editor".to_string(), "README.md".to_string()],
+            &runtime_env,
+        )
+        .expect("popup argv");
 
         assert_eq!(
             argv,
-            vec![
-                "/tmp/yazelix_hx.sh".to_string(),
-                "README.md".to_string()
-            ]
+            vec!["/tmp/yazelix_hx.sh".to_string(), "README.md".to_string()]
         );
     }
 }

@@ -30,13 +30,13 @@ Out of scope:
 
 ## Current Measured Surface
 
-Measured on `2026-04-23` after the first hard-budget helper deletions:
+Measured on `2026-04-24` after the Rust `yzx_control zellij` integration cut:
 
 | Family | Current included surface | Current LOC | Hard target LOC |
 | --- | --- | ---: | ---: |
-| Integration orchestration | `nushell/scripts/integrations/*.nu`, `nushell/scripts/zellij_wrappers/*.nu` | `1,198` | `300` |
-| Setup/bootstrap shell entry | `setup/environment.nu`, `setup/initializers.nu`, `core/start_yazelix_inner.nu` | `621` | `500` |
-| Runtime helpers and shared utility seams | `utils/*.nu` except `front_door_runtime.nu` | `2,036` | `1,050` |
+| Integration orchestration | surviving `nushell/scripts/zellij_wrappers/*.nu` only | `90` | `90` |
+| Setup/bootstrap shell entry | `setup/environment.nu`, `core/start_yazelix_inner.nu` | `395` | `300` |
+| Runtime helpers and shared utility seams | surviving `utils/*.nu` except `front_door_runtime.nu` | `886` | `800` |
 
 ## `yazelix-lj7z.7` Integration Orchestration Budget
 
@@ -56,16 +56,15 @@ Delete or move:
 
 Candidate surviving owners:
 
-- `integrations/zellij.nu`
-- smaller `integrations/yazi.nu`
-- smaller `integrations/managed_editor.nu`
-- smaller `integrations/zellij_runtime_wrappers.nu`
-- only the popup wrappers that still carry real env/process ownership
+- `zellij_wrappers/launch_sidebar_yazi.nu`
+- `zellij_wrappers/yzx_menu_popup.nu`
+- `zellij_wrappers/yzx_popup_program.nu`
 
 Stop condition:
 
-Do not move `ya`, `zellij`, or editor process execution into Rust just to keep
-the same adapter behavior behind another wrapper.
+Do not reintroduce a second Nu integration owner after the Rust `yzx_control
+zellij` cut. The remaining wrappers survive only while they still own direct
+Yazi or popup shell execution.
 
 ## `yazelix-lj7z.6` Setup And Bootstrap Budget
 

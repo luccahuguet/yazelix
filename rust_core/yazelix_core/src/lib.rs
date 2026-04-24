@@ -9,10 +9,9 @@ pub mod doctor_commands;
 pub mod doctor_config_report;
 pub mod doctor_helix_report;
 pub mod doctor_runtime_report;
+pub mod edit_commands;
 pub mod front_door_commands;
 pub mod front_door_render;
-pub mod launch_commands;
-pub mod edit_commands;
 pub mod ghostty_materialization;
 pub mod helix_materialization;
 pub mod home_manager_commands;
@@ -22,14 +21,15 @@ pub mod install_ownership_env;
 pub mod install_ownership_report;
 pub mod internal_nu_runner;
 pub mod keys_commands;
+pub mod launch_commands;
 pub mod launch_materialization;
 pub mod profile_commands;
 pub mod public_command_surface;
 pub mod repo_contract_validation;
 pub mod repo_issue_sync;
 pub mod repo_test_runner;
-pub mod repo_version_bump;
 pub mod repo_validation;
+pub mod repo_version_bump;
 pub mod runtime_contract;
 pub mod runtime_env;
 pub mod runtime_materialization;
@@ -38,8 +38,8 @@ pub mod status_report;
 pub mod support_commands;
 pub mod terminal_materialization;
 pub mod transient_pane_facts;
-pub mod upgrade_summary;
 pub mod update_commands;
+pub mod upgrade_summary;
 pub mod workspace_commands;
 pub mod yazi_materialization;
 pub mod yazi_render_plan;
@@ -69,7 +69,10 @@ pub use doctor_helix_report::{
 pub use doctor_runtime_report::{
     DoctorRuntimeEvaluateData, DoctorRuntimeEvaluateRequest, evaluate_doctor_runtime_report,
 };
-pub use front_door_commands::{run_internal_welcome_screen, run_yzx_screen, run_yzx_tutor, run_yzx_whats_new};
+pub use edit_commands::{run_yzx_edit, run_yzx_edit_config};
+pub use front_door_commands::{
+    run_internal_welcome_screen, run_yzx_screen, run_yzx_tutor, run_yzx_whats_new,
+};
 pub use ghostty_materialization::{
     GhosttyCursorState, GhosttyMaterializationData, GhosttyMaterializationRequest,
     generate_ghostty_materialization,
@@ -78,7 +81,6 @@ pub use helix_materialization::{
     HelixImportNotice, HelixMaterializationData, HelixMaterializationRequest,
     generate_helix_materialization,
 };
-pub use edit_commands::{run_yzx_edit, run_yzx_edit_config};
 pub use home_manager_commands::run_yzx_home_manager;
 pub use import_commands::run_yzx_import;
 pub use initializer_commands::run_generate_shell_initializers;
@@ -90,12 +92,14 @@ pub use install_ownership_report::{
     InstallOwnershipEvaluateRequest, evaluate_install_ownership_report,
 };
 pub use keys_commands::run_yzx_keys;
-pub use launch_commands::{
-    run_yzx_desktop, run_yzx_enter, run_yzx_launch, run_yzx_restart,
-};
+pub use launch_commands::{run_yzx_desktop, run_yzx_enter, run_yzx_launch, run_yzx_restart};
 pub use launch_materialization::{
     LaunchMaterializationData, LaunchMaterializationRequest,
     launch_materialization_request_from_env, prepare_launch_materialization,
+};
+pub use profile_commands::{
+    run_profile_create_run, run_profile_load_report, run_profile_print_report,
+    run_profile_record_step, run_profile_wait_step,
 };
 pub use public_command_surface::{
     YzxCommandCategory, YzxCommandMetadata, YzxCommandParameter, YzxInternalNuRoutePlan,
@@ -138,16 +142,12 @@ pub use yazi_materialization::{
     generate_yazi_materialization,
 };
 pub use yazi_render_plan::{YaziRenderPlanData, YaziRenderPlanRequest, compute_yazi_render_plan};
+pub use zellij_commands::{
+    run_zellij_get_workspace_root, run_zellij_open_editor, run_zellij_open_editor_cwd,
+    run_zellij_open_terminal, run_zellij_pipe, run_zellij_retarget,
+};
 pub use zellij_materialization::{
     ZellijMaterializationData, ZellijMaterializationRequest, generate_zellij_materialization,
-};
-pub use profile_commands::{
-    run_profile_create_run, run_profile_load_report, run_profile_print_report,
-    run_profile_record_step, run_profile_wait_step,
-};
-pub use zellij_commands::{
-    run_zellij_get_workspace_root, run_zellij_open_terminal,
-    run_zellij_pipe, run_zellij_retarget,
 };
 pub use zellij_render_plan::{
     ZellijRenderPlanData, ZellijRenderPlanRequest, compute_zellij_render_plan,

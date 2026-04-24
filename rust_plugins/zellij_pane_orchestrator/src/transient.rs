@@ -45,6 +45,14 @@ impl Default for TransientPaneConfig {
 }
 
 impl TransientPaneConfig {
+    fn runtime_root(&self) -> Option<PathBuf> {
+        let trimmed_runtime_dir = self.runtime_dir.trim();
+        if trimmed_runtime_dir.is_empty() {
+            return None;
+        }
+        Some(PathBuf::from(trimmed_runtime_dir))
+    }
+
     pub(crate) fn from_plugin_configuration(
         configuration: &BTreeMap<String, String>,
         initial_cwd: &Path,
@@ -87,12 +95,19 @@ impl TransientPaneConfig {
         )
     }
 
-    fn launcher_path(&self) -> Option<PathBuf> {
-        let trimmed_runtime_dir = self.runtime_dir.trim();
-        if trimmed_runtime_dir.is_empty() {
-            return None;
-        }
-        Some(PathBuf::from(trimmed_runtime_dir).join("shells/posix/yzx_cli.sh"))
+    fn nu_launcher_path(&self) -> Option<PathBuf> {
+        self.runtime_root()
+            .map(|root| root.join("shells/posix/yazelix_nu.sh"))
+    }
+
+    fn yzx_cli_path(&self) -> Option<PathBuf> {
+        self.runtime_root()
+            .map(|root| root.join("shells/posix/yzx_cli.sh"))
+    }
+
+    fn wrapper_path(&self, kind: TransientPaneKind) -> Option<PathBuf> {
+        self.runtime_root()
+            .map(|root| root.join(kind.wrapper_relative_path()))
     }
 
     fn with_runtime_dir(&self, runtime_dir: Option<&str>) -> Self {
@@ -123,10 +138,10 @@ impl TransientPaneConfig {
 mod tests {
     use super::TransientPaneConfig;
 
-    // Defends: transient launcher paths derive strictly from the configured runtime root instead of plugin-local wrapper probes.
+    // Defends: transient popup launch paths derive strictly from the configured runtime root instead of plugin-local wrapper probes.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
-    fn transient_runtime_launcher_path_is_runtime_relative() {
+    fn transient_runtime_launcher_and_wrapper_paths_are_runtime_relative() {
         let config = TransientPaneConfig {
             runtime_dir: "/runtime/root".to_owned(),
             width_percent: 90,
@@ -134,8 +149,20 @@ mod tests {
         };
 
         assert_eq!(
-            config.launcher_path().unwrap(),
+            config.nu_launcher_path().unwrap(),
+            std::path::PathBuf::from("/runtime/root/shells/posix/yazelix_nu.sh")
+        );
+        assert_eq!(
+            config.yzx_cli_path().unwrap(),
             std::path::PathBuf::from("/runtime/root/shells/posix/yzx_cli.sh")
+        );
+        assert_eq!(
+            config
+                .wrapper_path(super::TransientPaneKind::Popup)
+                .unwrap(),
+            std::path::PathBuf::from(
+                "/runtime/root/nushell/scripts/zellij_wrappers/yzx_popup_program.nu"
+            )
         );
     }
 }
@@ -221,7 +248,11 @@ impl State {
             .transient_pane_config
             .with_runtime_dir(request.runtime_dir.as_deref());
 
-        let Some(launcher_path) = transient_pane_config.launcher_path() else {
+        let Some(launcher_path) = transient_pane_config.nu_launcher_path() else {
+            self.respond(pipe_message, RESULT_RUNTIME_NOT_CONFIGURED);
+            return;
+        };
+        let Some(wrapper_path) = transient_pane_config.wrapper_path(request.kind) else {
             self.respond(pipe_message, RESULT_RUNTIME_NOT_CONFIGURED);
             return;
         };
@@ -238,13 +269,8 @@ impl State {
             .map(str::to_string)
             .unwrap_or_else(|| transient_pane_config.default_cwd(workspace_root));
 
-        let mut args = vec![request.kind.root_subcommand().to_string()];
+        let mut args = vec![wrapper_path.display().to_string()];
         args.extend(request.args);
-        let mut pane_env = BTreeMap::new();
-        pane_env.insert(
-            request.kind.mode_env_key().to_string(),
-            request.kind.mode_env_value().to_string(),
-        );
 
         let command_to_run = CommandToRun {
             path: launcher_path,
@@ -257,7 +283,7 @@ impl State {
         let pane_id = open_command_pane_floating(
             command_to_run,
             transient_pane_config.floating_coordinates(),
-            pane_env,
+            BTreeMap::new(),
         );
 
         if pane_id.is_some() {
@@ -270,7 +296,7 @@ impl State {
     // Trigger the same sidebar refresh contract the popup wrapper uses, but in
     // the background so toggle-close does not depend on a visible helper pane.
     fn refresh_sidebar_yazi_for_transient_close(&self) {
-        let Some(launcher_path) = self.transient_pane_config.launcher_path() else {
+        let Some(launcher_path) = self.transient_pane_config.yzx_cli_path() else {
             return;
         };
 

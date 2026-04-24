@@ -13,6 +13,12 @@ use yazelix_core::control_plane::{
     runtime_env_request, runtime_materialization_plan_request_from_env, setpriv_or_sh_exec,
     shell_command, split_run_argv,
 };
+use yazelix_core::run_generate_shell_initializers;
+use yazelix_core::run_profile_create_run;
+use yazelix_core::run_profile_load_report;
+use yazelix_core::run_profile_print_report;
+use yazelix_core::run_profile_record_step;
+use yazelix_core::run_profile_wait_step;
 use yazelix_core::run_yzx_config;
 use yazelix_core::run_yzx_cwd;
 use yazelix_core::run_yzx_desktop;
@@ -20,28 +26,24 @@ use yazelix_core::run_yzx_doctor;
 use yazelix_core::run_yzx_edit;
 use yazelix_core::run_yzx_edit_config;
 use yazelix_core::run_yzx_enter;
-use yazelix_core::run_generate_shell_initializers;
 use yazelix_core::run_yzx_home_manager;
 use yazelix_core::run_yzx_import;
 use yazelix_core::run_yzx_keys;
 use yazelix_core::run_yzx_launch;
 use yazelix_core::run_yzx_popup;
-use yazelix_core::run_profile_create_run;
-use yazelix_core::run_profile_load_report;
-use yazelix_core::run_profile_print_report;
-use yazelix_core::run_profile_record_step;
-use yazelix_core::run_profile_wait_step;
-use yazelix_core::run_zellij_get_workspace_root;
-use yazelix_core::run_zellij_open_terminal;
-use yazelix_core::run_zellij_pipe;
-use yazelix_core::run_zellij_retarget;
-use yazelix_core::run_yzx_reveal;
 use yazelix_core::run_yzx_restart;
+use yazelix_core::run_yzx_reveal;
 use yazelix_core::run_yzx_screen;
 use yazelix_core::run_yzx_sponsor;
 use yazelix_core::run_yzx_tutor;
-use yazelix_core::run_yzx_why;
 use yazelix_core::run_yzx_whats_new;
+use yazelix_core::run_yzx_why;
+use yazelix_core::run_zellij_get_workspace_root;
+use yazelix_core::run_zellij_open_editor;
+use yazelix_core::run_zellij_open_editor_cwd;
+use yazelix_core::run_zellij_open_terminal;
+use yazelix_core::run_zellij_pipe;
+use yazelix_core::run_zellij_retarget;
 use yazelix_core::update_commands::run_yzx_update;
 
 fn usage() -> ! {
@@ -63,13 +65,19 @@ fn usage() -> ! {
     eprintln!("       yzx_control keys [yzx|yazi|hx|helix|nu|nushell]");
     eprintln!("       yzx_control popup [program...]");
     eprintln!("       yzx_control profile create-run <scenario> [--metadata <json>]");
-    eprintln!("       yzx_control profile record-step <component> <step> <started_ns> <ended_ns> [--metadata <json>]");
+    eprintln!(
+        "       yzx_control profile record-step <component> <step> <started_ns> <ended_ns> [--metadata <json>]"
+    );
     eprintln!("       yzx_control profile load-report <report_path>");
-    eprintln!("       yzx_control profile wait-step <report_path> <component> <step> [--timeout-ms <n>]");
+    eprintln!(
+        "       yzx_control profile wait-step <report_path> <component> <step> [--timeout-ms <n>]"
+    );
     eprintln!("       yzx_control profile print-report <report_path>");
     eprintln!("       yzx_control zellij pipe <command> [--payload <json>]");
     eprintln!("       yzx_control zellij get-workspace-root [--include-bootstrap]");
     eprintln!("       yzx_control zellij retarget <path> [--editor <kind>]");
+    eprintln!("       yzx_control zellij open-editor <path>");
+    eprintln!("       yzx_control zellij open-editor-cwd <path>");
     eprintln!("       yzx_control zellij open-terminal <path>");
     eprintln!("       yzx_control reveal <path>");
     eprintln!("       yzx_control restart");
@@ -475,7 +483,9 @@ fn run_status(args: &[String]) -> Result<i32, CoreError> {
 
 fn run_profile(args: &[String]) -> Result<i32, CoreError> {
     if args.is_empty() {
-        eprintln!("Usage: yzx_control profile <create-run|record-step|load-report|wait-step|print-report> [args...]");
+        eprintln!(
+            "Usage: yzx_control profile <create-run|record-step|load-report|wait-step|print-report> [args...]"
+        );
         return Ok(64);
     }
     let mut argv = args.to_vec();
@@ -488,7 +498,9 @@ fn run_profile(args: &[String]) -> Result<i32, CoreError> {
         "print-report" => run_profile_print_report(&argv),
         _ => {
             eprintln!("Unknown profile subcommand: {sub}");
-            eprintln!("Usage: yzx_control profile <create-run|record-step|load-report|wait-step|print-report> [args...]");
+            eprintln!(
+                "Usage: yzx_control profile <create-run|record-step|load-report|wait-step|print-report> [args...]"
+            );
             Ok(64)
         }
     }
@@ -496,7 +508,9 @@ fn run_profile(args: &[String]) -> Result<i32, CoreError> {
 
 fn run_zellij(args: &[String]) -> Result<i32, CoreError> {
     if args.is_empty() {
-            eprintln!("Usage: yzx_control zellij <pipe|get-workspace-root|retarget|open-terminal> [args...]");
+        eprintln!(
+            "Usage: yzx_control zellij <pipe|get-workspace-root|retarget|open-editor|open-editor-cwd|open-terminal> [args...]"
+        );
         return Ok(64);
     }
     let mut argv = args.to_vec();
@@ -505,10 +519,14 @@ fn run_zellij(args: &[String]) -> Result<i32, CoreError> {
         "pipe" => run_zellij_pipe(&argv),
         "get-workspace-root" => run_zellij_get_workspace_root(&argv),
         "retarget" => run_zellij_retarget(&argv),
+        "open-editor" => run_zellij_open_editor(&argv),
+        "open-editor-cwd" => run_zellij_open_editor_cwd(&argv),
         "open-terminal" => run_zellij_open_terminal(&argv),
         _ => {
             eprintln!("Unknown zellij subcommand: {sub}");
-        eprintln!("Usage: yzx_control zellij <pipe|get-workspace-root|retarget|open-terminal> [args...]");
+            eprintln!(
+                "Usage: yzx_control zellij <pipe|get-workspace-root|retarget|open-editor|open-editor-cwd|open-terminal> [args...]"
+            );
             Ok(64)
         }
     }

@@ -420,21 +420,3 @@ export def get_current_tab_workspace_root [--include-bootstrap] {
     }
     $result.stdout | default "" | str trim
 }
-
-export def run_zellij_retarget [target_path: path, editor_kind: string = ""] {
-    let yzx_control = (resolve_yzx_control_path)
-    mut args = [zellij retarget $target_path]
-    if ($editor_kind | is-not-empty) {
-        $args = ($args | append [--editor $editor_kind])
-    }
-    let result = (^$yzx_control ...$args | complete)
-    if ($result.stdout | is-not-empty) {
-        try {
-            $result.stdout | from json
-        } catch {
-            {status: "error", reason: ($result.stdout | str trim)}
-        }
-    } else {
-        {status: "error", reason: ($result.stderr | default "" | str trim)}
-    }
-}

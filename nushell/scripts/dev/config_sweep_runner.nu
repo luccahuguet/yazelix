@@ -134,7 +134,7 @@ export def run_visual_sweep_test [
         } else {
             print $"✅ Launched ($shell) + ($terminal) successfully"
 
-            # Wait for verification from sweep_verify.nu script in launched session
+            # Wait for verification from the sweep verification helper in the launched session
             let demo_result = run_demo_command $test_id
 
             # Clean up after demo period

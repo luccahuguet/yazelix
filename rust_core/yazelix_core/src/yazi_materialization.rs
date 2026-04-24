@@ -1194,11 +1194,11 @@ append_keymap = [{ run = "ignored-top-level" }]
     #[test]
     fn renders_runtime_root_placeholders_in_bundled_assets() {
         let rendered = render_runtime_root_placeholders(
-            "nu __YAZELIX_RUNTIME_DIR__/nushell/scripts/integrations/managed_editor.nu \"$1\"",
+            "__YAZELIX_RUNTIME_DIR__/libexec/yzx_control zellij open-editor \"$1\"",
             std::path::Path::new("/opt/yazelix"),
         );
 
-        assert!(rendered.contains("/opt/yazelix/nushell/scripts/integrations/managed_editor.nu"));
+        assert!(rendered.contains("/opt/yazelix/libexec/yzx_control zellij open-editor"));
         assert!(!rendered.contains("__YAZELIX_RUNTIME_DIR__"));
     }
 

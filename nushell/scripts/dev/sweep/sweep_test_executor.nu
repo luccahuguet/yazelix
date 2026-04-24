@@ -46,7 +46,7 @@ export def validate_environment [config_path: string]: nothing -> record {
     }
 }
 
-# Wait for verification file from sweep_verify.nu script running in launched session
+# Wait for verification file from the sweep verification helper running in the launched session
 export def run_demo_command [
     test_id: string
 ]: nothing -> record {

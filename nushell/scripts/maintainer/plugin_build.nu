@@ -53,8 +53,7 @@ def ensure_build_tools_available [] {
         | where { |tool| (which $tool | is-empty) }
     )
     if ($missing_tools | is-not-empty) {
-        let comma_sep = ([(char comma) " "] | str join "")
-        print $"❌ Missing Rust tool(s): ($missing_tools | str join $comma_sep)"
+        print $"❌ Missing Rust tool(s): ($missing_tools | str join ', ')"
         print_rust_wasi_enable_hint
         exit 1
     }
@@ -138,6 +137,11 @@ def sync_built_wasm [paths: record, label: string] {
     cp --force $paths.wasm_path $repo_target_path
     let merged_config_path = (generate_merged_zellij_config $paths.yazelix_dir)
     let runtime_target_path = (get_runtime_pane_orchestrator_wasm_path)
+    let runtime_target_dir = ($runtime_target_path | path dirname)
+    if not ($runtime_target_dir | path exists) {
+        mkdir $runtime_target_dir
+    }
+    cp --force $paths.wasm_path $runtime_target_path
     let byte_len = (open --raw $paths.wasm_path | length)
 
     print $"Updated pane orchestrator repo wasm: ($repo_target_path)"

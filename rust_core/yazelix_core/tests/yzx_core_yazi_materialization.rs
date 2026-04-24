@@ -40,7 +40,7 @@ ratio = [1, 4, 3]
 
 [opener]
 edit = [
-  { run = 'nu __YAZELIX_RUNTIME_DIR__/nushell/scripts/integrations/managed_editor.nu "$1"', desc = "Open File with configured editor (with Zellij integration)" },
+  { run = '__YAZELIX_RUNTIME_DIR__/libexec/yzx_control zellij open-editor "$1"', desc = "Open File with configured editor (with Zellij integration)" },
 ]
 
 [[plugin.prepend_fetchers]]
@@ -79,7 +79,7 @@ on = ["<A-p>"]
         let plugin_dir = yazi_dir.join("plugins").join(format!("{plugin}.yazi"));
         fs::create_dir_all(&plugin_dir).unwrap();
         let body = if plugin == "auto-layout" {
-            "return '__YAZELIX_RUNTIME_DIR__/nushell/scripts/integrations/zoxide_open_in_editor.nu'\n"
+            "return '__YAZELIX_RUNTIME_DIR__/libexec/yzx_control zellij open-editor-cwd'\n"
         } else {
             "return 'ok'\n"
         };

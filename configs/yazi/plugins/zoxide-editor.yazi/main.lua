@@ -40,9 +40,8 @@ function M:entry()
 end
 
 function M.open_in_editor(target_dir)
-	local script = "__YAZELIX_RUNTIME_DIR__/nushell/scripts/integrations/zoxide_open_in_editor.nu"
-	local child, err = Command("nu")
-		:arg({ script, target_dir })
+	local child, err = Command("__YAZELIX_RUNTIME_DIR__/libexec/yzx_control")
+		:arg({ "zellij", "open-editor-cwd", target_dir })
 		:stdout(Command.PIPED)
 		:stderr(Command.PIPED)
 		:spawn()

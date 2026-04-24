@@ -1,13 +1,13 @@
 [contract]
-current_total_loc_max = 4900
-current_total_file_count_max = 33
-hard_target_loc = 4200
+current_total_loc_max = 4143
+current_total_file_count_max = 25
+hard_target_loc = 4150
 
 [[families]]
 id = "manual_e2e_and_sweep_runners"
 status = "transitional_exception"
-owner_bead = "yazelix-lj7z.9"
-max_loc = 325
+owner_bead = "yazelix-xc82.9.4"
+max_loc = 355
 target_loc = 0
 max_files = 1
 allowed_paths = [
@@ -17,16 +17,15 @@ allowed_paths = [
 [[families]]
 id = "maintainer_and_dev_orchestration"
 status = "transitional_exception"
-owner_bead = "yazelix-lj7z.4"
-max_loc = 1900
+owner_bead = "yazelix-xc82.9"
+max_loc = 2008
 target_loc = 900
-max_files = 9
+max_files = 8
 allowed_paths = [
   "nushell/scripts/dev/sweep/sweep_config_generator.nu",
   "nushell/scripts/dev/sweep/sweep_process_manager.nu",
   "nushell/scripts/dev/sweep/sweep_test_combinations.nu",
   "nushell/scripts/dev/sweep/sweep_test_executor.nu",
-  "nushell/scripts/dev/sweep_verify.nu",
   "nushell/scripts/dev/update_yazi_plugins.nu",
   "nushell/scripts/maintainer/plugin_build.nu",
   "nushell/scripts/maintainer/update_workflow.nu",
@@ -36,23 +35,21 @@ allowed_paths = [
 [[families]]
 id = "integration_and_wrappers"
 status = "transitional_exception"
-owner_bead = "yazelix-lj7z.7"
-max_loc = 600
-target_loc = 300
-max_files = 4
+owner_bead = "yazelix-xc82.2"
+max_loc = 90
+target_loc = 90
+max_files = 3
 allowed_paths = [
-  "nushell/scripts/integrations/managed_editor.nu",
-  "nushell/scripts/integrations/yazi.nu",
-  "nushell/scripts/integrations/zellij.nu",
-  "nushell/scripts/integrations/zoxide_open_in_editor.nu",
   "nushell/scripts/zellij_wrappers/launch_sidebar_yazi.nu",
+  "nushell/scripts/zellij_wrappers/yzx_menu_popup.nu",
+  "nushell/scripts/zellij_wrappers/yzx_popup_program.nu",
 ]
 
 [[families]]
 id = "setup_and_bootstrap"
 status = "transitional_exception"
-owner_bead = "yazelix-lj7z.6"
-max_loc = 396
+owner_bead = "yazelix-xc82.6"
+max_loc = 395
 target_loc = 300
 max_files = 2
 allowed_paths = [
@@ -63,8 +60,8 @@ allowed_paths = [
 [[families]]
 id = "front_door_presentation"
 status = "transitional_exception"
-owner_bead = "yazelix-lj7z.8"
-max_loc = 401
+owner_bead = "yazelix-xc82.8"
+max_loc = 409
 target_loc = 300
 max_files = 2
 allowed_paths = [
@@ -75,14 +72,13 @@ allowed_paths = [
 [[families]]
 id = "runtime_helpers"
 status = "transitional_exception"
-owner_bead = "yazelix-lj7z.5"
-max_loc = 900
+owner_bead = "yazelix-xc82.9.1"
+max_loc = 886
 target_loc = 800
-max_files = 10
+max_files = 9
 allowed_paths = [
   "nushell/scripts/utils/config_files.nu",
   "nushell/scripts/utils/constants.nu",
-  "nushell/scripts/utils/editor_launch_context.nu",
   "nushell/scripts/utils/logging.nu",
   "nushell/scripts/utils/runtime_commands.nu",
   "nushell/scripts/utils/runtime_defaults.nu",
