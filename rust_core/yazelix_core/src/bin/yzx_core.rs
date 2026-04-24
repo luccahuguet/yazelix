@@ -1,37 +1,39 @@
 use lexopt::prelude::*;
 use serde::de::DeserializeOwned;
+use std::io::Write;
 use std::path::PathBuf;
 use yazelix_core::active_config_surface::resolve_active_config_paths;
 use yazelix_core::control_plane::{
     config_dir_from_env, config_override_from_env, config_state_compute_request_from_env,
     config_state_record_request_from_env, ghostty_materialization_request_from_env,
-    read_yazelix_version_from_runtime, runtime_dir_from_env, runtime_env_request_from_env, state_dir_from_env,
-    runtime_materialization_plan_request_from_env, terminal_materialization_request_from_env,
+    read_yazelix_version_from_runtime, runtime_dir_from_env, runtime_env_request_from_env,
+    runtime_materialization_plan_request_from_env, state_dir_from_env,
+    terminal_materialization_request_from_env,
 };
 use yazelix_core::{
-    ComputeConfigStateRequest, CoreError, DoctorConfigEvaluateRequest,
-    DoctorRuntimeEvaluateRequest, ErrorClass, GhosttyMaterializationRequest,
-    HelixDoctorEvaluateRequest, HelixMaterializationRequest, InstallOwnershipEvaluateRequest,
-    LaunchMaterializationRequest, NormalizeConfigRequest, RecordConfigStateRequest,
-    RuntimeContractEvaluateRequest, RuntimeMaterializationPlanRequest,
-    RuntimeMaterializationRepairEvaluateRequest, StartupFactsData, StartupLaunchPreflightRequest,
-    TerminalMaterializationRequest, TransientPaneFactsData, YaziMaterializationRequest,
-    YaziRenderPlanRequest, YzxExternBridgeSyncRequest, ZellijMaterializationRequest,
-    ZellijRenderPlanRequest, compute_config_state, compute_integration_facts_from_env,
-    compute_runtime_env, compute_startup_facts_from_env, compute_status_report,
-    compute_transient_pane_facts_from_env, compute_yazi_render_plan, compute_zellij_render_plan,
-    current_release_headline,
-    error_envelope, evaluate_doctor_config_report, evaluate_doctor_runtime_report,
-    evaluate_helix_doctor_report, evaluate_install_ownership_report, evaluate_runtime_contract,
+    compute_config_state, compute_integration_facts_from_env, compute_runtime_env,
+    compute_startup_facts_from_env, compute_status_report, compute_transient_pane_facts_from_env,
+    compute_yazi_render_plan, compute_zellij_render_plan, current_release_headline, error_envelope,
+    evaluate_doctor_config_report, evaluate_doctor_runtime_report, evaluate_helix_doctor_report,
+    evaluate_install_ownership_report, evaluate_runtime_contract,
     evaluate_startup_launch_preflight, generate_ghostty_materialization,
     generate_helix_materialization, generate_terminal_materialization,
     generate_yazi_materialization, generate_zellij_materialization,
     install_ownership_request_from_env, install_ownership_request_from_env_with_runtime_dir,
-    launch_materialization_request_from_env, materialize_runtime_state, normalize_config,
-    maybe_show_first_run_upgrade_summary, plan_runtime_materialization,
-    prepare_launch_materialization, record_config_state,
-    render_yzx_help, repair_runtime_materialization, success_envelope, sync_yzx_extern_bridge,
-    yzx_command_metadata, yzx_command_metadata_data,
+    launch_materialization_request_from_env, materialize_runtime_state,
+    maybe_show_first_run_upgrade_summary, normalize_config, plan_runtime_materialization,
+    prepare_launch_materialization, record_config_state, render_yzx_help,
+    repair_runtime_materialization, success_envelope, sync_yzx_extern_bridge, yzx_command_metadata,
+    yzx_command_metadata_data, ComputeConfigStateRequest, CoreError, DoctorConfigEvaluateRequest,
+    DoctorRuntimeEvaluateRequest, ErrorClass, GhosttyMaterializationRequest,
+    HelixDoctorEvaluateRequest, HelixMaterializationRequest, InstallOwnershipEvaluateRequest,
+    LaunchMaterializationRequest, NormalizeConfigRequest, RecordConfigStateRequest,
+    RuntimeContractEvaluateRequest, RuntimeMaterializationPlanRequest,
+    RuntimeMaterializationRepairEvaluateRequest, RuntimeMaterializationRepairRunData,
+    RuntimeRepairDirective, StartupFactsData, StartupLaunchPreflightRequest,
+    TerminalMaterializationRequest, TransientPaneFactsData, YaziMaterializationRequest,
+    YaziRenderPlanRequest, YzxExternBridgeSyncRequest, ZellijMaterializationRequest,
+    ZellijRenderPlanRequest,
 };
 
 const CONFIG_NORMALIZE_COMMAND: &str = "config.normalize";
@@ -67,6 +69,11 @@ const YZX_COMMAND_METADATA_HELP_COMMAND: &str = "yzx-command-metadata.help";
 const UPGRADE_SUMMARY_HEADLINE_COMMAND: &str = "upgrade-summary.headline";
 const UPGRADE_SUMMARY_FIRST_RUN_COMMAND: &str = "upgrade-summary.first-run";
 const UNKNOWN_COMMAND: &str = "unknown";
+
+struct RuntimeMaterializationRepairCommand {
+    request: RuntimeMaterializationRepairEvaluateRequest,
+    summary: bool,
+}
 
 struct CommandError {
     command: String,
@@ -1001,9 +1008,13 @@ fn run_runtime_materialization_materialize(mut parser: lexopt::Parser) -> Result
 }
 
 fn run_runtime_materialization_repair(mut parser: lexopt::Parser) -> Result<(), CoreError> {
-    let request = take_runtime_materialization_repair_request(&mut parser)?;
-    let data = repair_runtime_materialization(&request)?;
-    write_success_envelope(RUNTIME_MATERIALIZATION_REPAIR_COMMAND, data)
+    let command = take_runtime_materialization_repair_command(&mut parser)?;
+    let data = repair_runtime_materialization(&command.request)?;
+    if command.summary {
+        write_runtime_materialization_repair_summary(&data)
+    } else {
+        write_success_envelope(RUNTIME_MATERIALIZATION_REPAIR_COMMAND, data)
+    }
 }
 
 fn run_status_compute(mut parser: lexopt::Parser) -> Result<(), CoreError> {
@@ -1116,12 +1127,13 @@ fn take_runtime_materialization_plan_request(
     }
 }
 
-fn take_runtime_materialization_repair_request(
+fn take_runtime_materialization_repair_command(
     parser: &mut lexopt::Parser,
-) -> Result<RuntimeMaterializationRepairEvaluateRequest, CoreError> {
+) -> Result<RuntimeMaterializationRepairCommand, CoreError> {
     let mut request_json: Option<String> = None;
     let mut from_env = false;
     let mut force = false;
+    let mut summary = false;
 
     while let Some(arg) = parser
         .next()
@@ -1131,11 +1143,12 @@ fn take_runtime_materialization_repair_request(
             Long("request-json") => request_json = Some(parser_string_value(parser)?),
             Long("from-env") => from_env = true,
             Long("force") => force = true,
+            Long("summary") => summary = true,
             _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
         }
     }
 
-    match (from_env, request_json) {
+    let request = match (from_env, request_json) {
         (true, None) => Ok(RuntimeMaterializationRepairEvaluateRequest {
             plan: runtime_materialization_plan_request_from_env(
                 config_override_from_env().as_deref(),
@@ -1156,7 +1169,9 @@ fn take_runtime_materialization_repair_request(
         (false, None) => Err(CoreError::usage(
             "Missing --request-json payload or --from-env for runtime materialization repair.",
         )),
-    }
+    }?;
+
+    Ok(RuntimeMaterializationRepairCommand { request, summary })
 }
 
 fn deserialize_json_request<T: DeserializeOwned>(raw: &str, kind: &str) -> Result<T, CoreError> {
@@ -1208,5 +1223,31 @@ fn write_success_envelope<T: serde::Serialize>(command: &str, data: T) -> Result
         )
     })?;
     println!();
+    Ok(())
+}
+
+fn write_runtime_materialization_repair_summary(
+    data: &RuntimeMaterializationRepairRunData,
+) -> Result<(), CoreError> {
+    let summary = match &data.repair {
+        RuntimeRepairDirective::Noop { lines } => lines
+            .first()
+            .map(String::as_str)
+            .unwrap_or("✅ Yazelix generated state is already up to date."),
+        RuntimeRepairDirective::Regenerate { success_lines, .. } => success_lines
+            .first()
+            .map(String::as_str)
+            .unwrap_or("✅ Generated runtime state repaired."),
+    };
+
+    writeln!(std::io::stdout(), "{summary}").map_err(|source| {
+        CoreError::io(
+            "write_stdout",
+            "Could not write helper summary output",
+            "Retry the command and report this as a Yazelix internal error if it persists.",
+            "<stdout>",
+            source.into(),
+        )
+    })?;
     Ok(())
 }

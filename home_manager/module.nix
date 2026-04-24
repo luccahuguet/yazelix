@@ -424,7 +424,7 @@ in
       export YAZELIX_STATE_DIR="${stateRoot}"
       export YAZELIX_LOGS_DIR="${logsPath}"
 
-      $DRY_RUN_CMD ${runtimeYzxCore} runtime-materialization.repair --from-env --force
+      $DRY_RUN_CMD ${runtimeYzxCore} runtime-materialization.repair --from-env --force --summary
     '';
 
     # Generate yazelix.toml configuration file

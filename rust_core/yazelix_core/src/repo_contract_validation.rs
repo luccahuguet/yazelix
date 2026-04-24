@@ -2340,9 +2340,9 @@ fn validate_home_manager_activation_hook_static_contract(
             ));
         }
     }
-    if !content.contains("runtime-materialization.repair --from-env --force") {
+    if !content.contains("runtime-materialization.repair --from-env --force --summary") {
         errors.push(format!(
-            "{} no longer routes Home Manager generated runtime repair through `runtime-materialization.repair --from-env --force`",
+            "{} no longer routes Home Manager generated runtime repair through `runtime-materialization.repair --from-env --force --summary`",
             module_path.display()
         ));
     }
