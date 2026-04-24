@@ -1,5 +1,5 @@
 [contract]
-current_total_loc_max = 5850
+current_total_loc_max = 4900
 current_total_file_count_max = 33
 hard_target_loc = 4200
 
@@ -18,7 +18,7 @@ allowed_paths = [
 id = "maintainer_and_dev_orchestration"
 status = "transitional_exception"
 owner_bead = "yazelix-lj7z.4"
-max_loc = 2200
+max_loc = 1900
 target_loc = 900
 max_files = 9
 allowed_paths = [
