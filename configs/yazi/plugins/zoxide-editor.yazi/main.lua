@@ -40,23 +40,23 @@ function M:entry()
 end
 
 function M.open_in_editor(target_dir)
-	local script = "__YAZELIX_RUNTIME_DIR__/nushell/scripts/integrations/zoxide_open_in_editor.nu"
-	local child, err = Command("nu")
-		:arg({ script, target_dir })
+	local control = "__YAZELIX_RUNTIME_DIR__/libexec/yzx_control"
+	local child, err = Command("sh")
+		:arg({ "-c", control .. " zellij open-editor '" .. target_dir:gsub("'", "'\"'\"'") .. "'" })
 		:stdout(Command.PIPED)
 		:stderr(Command.PIPED)
 		:spawn()
 
 	if not child then
-		ya.notify { title = "Zoxide Editor", content = "Failed to run script: " .. tostring(err), timeout = 5, level = "error" }
+		ya.notify { title = "Zoxide Editor", content = "Failed to run control command: " .. tostring(err), timeout = 5, level = "error" }
 		return
 	end
 
 	local output, err = child:wait_with_output()
 	if not output then
-		ya.notify { title = "Zoxide Editor", content = "Script error: " .. tostring(err), timeout = 5, level = "error" }
+		ya.notify { title = "Zoxide Editor", content = "Control command error: " .. tostring(err), timeout = 5, level = "error" }
 	elseif not output.status.success then
-		ya.notify { title = "Zoxide Editor", content = "Script failed: " .. output.stderr, timeout = 5, level = "error" }
+		ya.notify { title = "Zoxide Editor", content = "Control command failed: " .. output.stderr, timeout = 5, level = "error" }
 	end
 end
 

@@ -37,14 +37,13 @@ allowed_paths = [
 id = "integration_and_wrappers"
 status = "transitional_exception"
 owner_bead = "yazelix-lj7z.7"
-max_loc = 650
+max_loc = 600
 target_loc = 300
-max_files = 5
+max_files = 4
 allowed_paths = [
   "nushell/scripts/integrations/managed_editor.nu",
   "nushell/scripts/integrations/yazi.nu",
   "nushell/scripts/integrations/zellij.nu",
-  "nushell/scripts/integrations/zoxide_open_in_editor.nu",
   "nushell/scripts/zellij_wrappers/launch_sidebar_yazi.nu",
 ]
 

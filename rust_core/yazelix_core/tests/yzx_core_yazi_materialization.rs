@@ -79,7 +79,7 @@ on = ["<A-p>"]
         let plugin_dir = yazi_dir.join("plugins").join(format!("{plugin}.yazi"));
         fs::create_dir_all(&plugin_dir).unwrap();
         let body = if plugin == "auto-layout" {
-            "return '__YAZELIX_RUNTIME_DIR__/nushell/scripts/integrations/zoxide_open_in_editor.nu'\n"
+            "return '__YAZELIX_RUNTIME_DIR__/libexec/yzx_control'\n"
         } else {
             "return 'ok'\n"
         };
