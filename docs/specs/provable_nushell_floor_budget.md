@@ -2,205 +2,120 @@
 
 ## Summary
 
-This document replaces the softer "likely Nushell survivor" framing with a
-harder rule: every surviving Nu line is dangerous by default and must justify
-itself against deletion, Rust ownership, asset ownership, or fixed POSIX
-helpers.
+`yazelix-pw9j` finishes the old under-`5k` push and replaces it with a literal
+measured allowlist.
 
-The current measured surface is `4,143` tracked lines of Nushell across `25`
-`.nu` files under `nushell/scripts/`.
+The tracked Nushell floor is now `1,844` LOC across `12` files under
+`nushell/scripts/`.
 
-The canonical hard target for the current backlog is `4,150` Nu lines. That is
-intentionally aggressive and it assumes:
+This is no longer a transitional ceiling. It is the current irreducible core:
+every surviving file is named explicitly, every family has an exact budget, and
+anything outside that allowlist is out of contract by default.
 
-- `0` governed Nu tests survive
-- `0` deterministic Nu validators survive
-- maintainer and `yzx dev` Nu collapses to shell-only orchestration
-- the remaining product/runtime Nu is forced down to a narrow shell, host, TTY,
-  and presentation floor
+## Why
 
-This is the current top-level budget document for the under-`5k` push.
+The old `4.1k` budget still mixed real shell boundaries with transitional debt.
+That made it too easy to talk about an "irreducible floor" while still carrying
+files that were only surviving because nobody had deleted them yet.
 
-## Current Measured Surface
+The repo now needs a harder stop condition:
 
-Measured on `2026-04-24` from the tracked tree after the Rust-owned Yazi/editor
-integration cut deleted the remaining `integrations/*.nu` owners and the stale
-`editor_launch_context.nu` helper.
+- deterministic maintainer/update/sweep/plugin-build ownership is Rust-owned
+- dead helper files are deleted instead of grandfathered
+- popup and menu wrappers are POSIX-owned
+- the remaining Nu files must justify themselves as the real shell/TTY/process
+  boundary
 
-| Family | Current included surface | Current LOC | Hard target LOC | Main beads |
-| --- | --- | ---: | ---: | --- |
-| Governed Nu tests | `nushell/scripts/dev/test_*.nu` | `0` | `0` | completed by `yazelix-rdn7.4.5` and guarded by `yazelix-rdn7.4.7` |
-| Shell-heavy E2E and sweep runners | retained `config_sweep_runner.nu` under `nushell/scripts/dev/` | `355` | `0` | `yazelix-xc82.9.4` |
-| Deterministic Nu validators | completed Rust owner cut under `yzx_repo_validator`; no surviving Nu files | `0` | `0` | `yazelix-lj7z.2` |
-| Maintainer and `yzx dev` shell orchestration | `nushell/scripts/maintainer/*.nu`, `nushell/scripts/yzx/dev.nu`, residual non-test dev orchestration | `2,008` | `900` | `yazelix-xc82.9` |
-| Integration and popup wrapper glue | surviving `nushell/scripts/zellij_wrappers/*.nu` only | `90` | `90` | `yazelix-xc82.2` |
-| Setup and bootstrap shell entry | `setup/environment.nu`, `core/start_yazelix_inner.nu` | `395` | `300` | `yazelix-xc82.6` |
-| Front-door UX and public shell presentation | `setup/welcome.nu`, `yzx/menu.nu` | `409` | `300` | `yazelix-xc82.8` |
-| Runtime helpers, bridges, and shared utilities | surviving `utils/*.nu` except `front_door_runtime.nu` | `886` | `800` | `yazelix-xc82.9.1` |
+## Scope
 
-Combined hard target: `4,150` Nu LOC
+In scope:
 
-This table now partitions the full tracked Nushell tree. The file-level
-second-wave map lives in `second_wave_nushell_deletion_map.md`; there is no
-unnamed "misc" budget left to hide unexpected Nu growth.
+- the canonical Nushell budget manifest in `config_metadata/nushell_budget.toml`
+- the surviving Nu owner families under `nushell/scripts/`
+- the literal survivor classes that may still live in Nushell
 
-## Rust-First Proof Standard
+Out of scope:
 
-Use this decision order for every remaining Nu surface:
+- broader public-CLI Rust migration beyond the current v15 shell boundary
+- deleting welcome/menu/startup shells by hiding the same process control behind
+  a fake Rust wrapper
+- non-Nushell runtime code
 
-1. Delete it outright
-2. Move the retained logic to Rust
-3. Move static payloads or tables to assets or data files
-4. Move fixed shell bodies to checked-in POSIX helpers
-5. Keep a narrow Nu remainder only if the file, export, or branch has a
-   concrete irreducibility proof
+## Behavior
 
-Accepted irreducibility proofs are narrow:
+The surviving Nu floor is exactly these families:
 
-- direct shell initialization or shell startup integration
-- direct TTY or external command interaction that would only be re-wrapped
-- direct host integration such as XDG desktop entry side effects
-- direct presentation logic whose retained value is still the renderer itself,
-  not the data it renders
+| Family | Files | LOC | Why it still qualifies |
+| --- | ---: | ---: | --- |
+| Maintainer and `yzx dev` shell surface | `1` | `425` | public maintainer routing plus the startup-profile shell harness |
+| Integration wrapper floor | `1` | `54` | the remaining sidebar launcher still needs the shell-facing Yazi handoff |
+| Setup and bootstrap | `2` | `345` | shellhook env mutation, initializer generation, welcome/startup sequencing, and the final `zellij` exec |
+| Front-door presentation | `2` | `409` | direct TTY/UI control for welcome and the interactive command palette |
+| Runtime helper seam | `6` | `611` | the narrow remaining path/env/bridge helpers consumed by those shell surfaces |
 
-Rejected "proofs" are broad or lazy:
+Exact allowlisted files:
 
-- "this area is UX-heavy"
-- "this area is shell-heavy"
-- "a broad Rust rewrite is not honest"
-- "the file is smaller now"
-- "the current Nu path already works"
+- `nushell/scripts/core/start_yazelix_inner.nu`
+- `nushell/scripts/setup/environment.nu`
+- `nushell/scripts/setup/welcome.nu`
+- `nushell/scripts/utils/constants.nu`
+- `nushell/scripts/utils/runtime_commands.nu`
+- `nushell/scripts/utils/runtime_defaults.nu`
+- `nushell/scripts/utils/runtime_paths.nu`
+- `nushell/scripts/utils/transient_pane_contract.nu`
+- `nushell/scripts/utils/yzx_core_bridge.nu`
+- `nushell/scripts/yzx/dev.nu`
+- `nushell/scripts/yzx/menu.nu`
+- `nushell/scripts/zellij_wrappers/launch_sidebar_yazi.nu`
 
-Those arguments can justify not doing a fake wrapper rewrite. They cannot
-justify leaving large mixed Nu owners unchallenged.
+Allowed survivor classes are now literal:
 
-## Hard Nu Allowlist
+- shellhook env mutation and shell initializer generation
+- final shell/process/TTY handoff into `zellij`, `fzf`, or the configured tools
+- direct interactive presentation logic whose value is the live terminal
+  interaction itself
+- tiny shell-bound helper seams that still pass env/path facts to those owners
 
-Only these survivor classes are allowlisted by default:
+These classes are explicitly disallowed from surviving in Nushell now:
 
-| Allowlisted class | What may stay in Nu | What is not allowlisted |
-| --- | --- | --- |
-| Shell/bootstrap entrypoints | startup env export, shell initializer generation, `with-env` execution, checked-in POSIX handoff | typed request construction, config normalization, generated-state decisions, reusable metadata tables |
-| External tool adapters | direct `zellij`, `ya`, terminal, `gh`, `bd`, `git`, Nix, or XDG argv execution plus nearby human-facing error rendering | duplicated live state, duplicated config parsing, bridge-local policy that Rust or data files can own |
-| Interactive presentation control | minimal playback, keypress waiting, TTY sizing, `fzf` interaction, and shell-owned screen refresh logic | large data tables, random pools, style policy, duplicated copy assembly, renderer stacks in parallel |
-| Maintainer repo orchestration | fixed argv routing for release/update/build/sync operations | dynamic `nu -c` dispatch, deterministic validation logic, test helper libraries, broad helper registries |
-| Tiny transport seams | small env/fact marshalling at an actual shell boundary | cross-surface typed logic, reusable command metadata, large report rendering helpers |
+- path or helper discovery that can move below the shell boundary
+- JSON envelope parsing and broad error/report shaping
+- deterministic config/state/report planning
+- maintainer update/build/sweep policy
+- dead helpers with no callers
+- fixed popup/menu launch trampolines that POSIX can own directly
 
-Anything outside this allowlist must move to Rust, assets, or checked-in POSIX
-helpers, or it must be deleted.
+## Non-goals
 
-## Mechanical Gate
+- claiming the floor is philosophically minimal for all future Yazelix versions
+- porting the remaining startup/welcome/menu/profile shells just to move the LOC
+  number without deleting the real shell owner
+- keeping any unnamed "miscellaneous" Nushell budget
 
-The live no-growth gate is now tracked in `config_metadata/nushell_budget.toml`
-and enforced by the Rust-owned validator command:
+## Acceptance Cases
 
-- `yzx_repo_validator validate-nushell-budget`
-
-That manifest is intentionally stricter than the prose budget alone:
-
-- every currently tolerated Nu file must be listed explicitly
-- each family has an exact file-count ceiling and LOC ceiling
-- any new Nu file, missing manifest update, or family growth is out of contract
-- transitional exceptions must name the owning deletion bead directly in the
-  manifest
-
-Until the repo reaches the `4,200`-LOC hard floor, this gate enforces
-no-growth against the current tracked ceilings rather than pretending the final
-floor already landed.
-
-## Exception Policy
-
-Exceptions are intentionally hostile to new Nu growth:
-
-1. A retained or new Nu surface must name its allowlisted class and its
-   irreducibility proof
-2. The owning bead or spec must explain why Rust, assets, or fixed POSIX
-   helpers would be worse
-3. The exception must declare the exact family budget it consumes and the LOC
-   it keeps alive
-4. Temporary bridge exceptions must name the follow-up deletion bead before the
-   code lands
-5. Governed tests and deterministic validators do not get exceptions; their
-   target remains `0`
-6. Inline quoted shell-program assembly does not get exceptions; use checked-in
-   POSIX helpers or structured argv execution instead
-7. Once `yazelix-w6sz.7.2` lands, anything outside the allowlist or over the
-   family budget is out of contract by default
-
-## Superseded Assumptions
-
-These earlier assumptions are no longer sufficient on their own:
-
-| Earlier assumption | Status now | Current rule | Follow-up lane |
-| --- | --- | --- | --- |
-| setup, welcome, and bootstrap did not have an honest broad Rust owner cut | superseded as a stopping rule | lack of a broad Rust port does not excuse large surviving Nu; the family still has to collapse to the smallest provable shell floor | `yazelix-lj7z.6`, `yazelix-lj7z.8` |
-| front-door UX did not have an honest broad Rust owner cut | superseded as a stopping rule | lack of a broad Rust port does not excuse large renderer Nu; branches, copy, and data still have to collapse aggressively | `yazelix-lj7z.8` |
-| session and desktop command bodies were still shell-heavy | superseded as a stopping rule | shell- and host-heavy code still must collapse to the smallest provable host-integration floor | `yazelix-lj7z.6` |
-| maintainer and dev paths were allowed to remain broadly Nu because they are operational | superseded | only direct shell orchestration may survive; metadata, policy, routing, and deterministic surfaces must leave Nu | `yazelix-lj7z.3`, `yazelix-lj7z.4` |
-| launch/runtime helpers needed only smaller cuts | reaffirmed but hardened | the smaller cuts still stand, but the surviving helper floor now needs proof, not just a softer "honest survivor" note | `yazelix-lj7z.5`, `yazelix-lj7z.6`, `yazelix-lj7z.10` |
-
-## Hard Budget Rules
-
-- `0` governed Nu tests survive
-- `0` deterministic Nu validators survive as a long-term owned surface
-- every family budget above should bias toward deleting whole files rather than
-  trimming the same ownership across more files
-- every retained family surface must fit one of the allowlisted survivor
-  classes above
-- any bead that cannot meet its family target must explain why in terms of a
-  retained irreducibility proof, not in terms of comfort or historical habit
-- new Nu growth is out of contract once `yazelix-w6sz.7` lands unless it has an
-  explicit allowlisted exception
-
-## Cut Order
-
-The current aggressive second-wave order is:
-
-1. reset the file-level deletion map and closed owner beads
-   - `yazelix-lj7z.1`
-2. finish validators so CI and pre-commit stop depending on Nu wrappers
-   - `yazelix-lj7z.2`
-3. replace the Nu maintainer test runner with Rust nextest orchestration
-   - `yazelix-lj7z.3`
-4. collapse the general bridge/helper floor before editing many callers
-   - `yazelix-lj7z.5`
-   - `yazelix-lj7z.10`
-5. cut launch, startup-profile, desktop, and session request assembly
-   - `yazelix-lj7z.6`
-6. collapse Zellij, Yazi, and managed-editor integration owners
-   - `yazelix-lj7z.7`
-7. port or extract front-door presentation renderers and data
-   - `yazelix-lj7z.8`
-8. port or delete shell-heavy E2E and sweep runners
-   - `yazelix-lj7z.9`
-9. collapse remaining maintainer release/update/issue policy
-   - `yazelix-lj7z.4`
-
-## Why The Floor Is Not Zero
-
-The current backlog does not yet prove that every last surviving Nu surface can
-leave the repo without worse complexity.
-
-The under-`5k` target is therefore the current provable floor, not the
-philosophical lower bound. It is intentionally small enough that any remaining
-Nu must be narrow, obvious, and hard to challenge. If later beads prove even
-those remainders movable, the floor should fall again.
+1. `config_metadata/nushell_budget.toml` matches the measured tracked Nu floor
+   exactly
+2. Every surviving Nu file fits one of the explicit survivor classes above
+3. Any new Nu file or family growth is out of contract unless the allowlist and
+   this decision are updated deliberately
 
 ## Verification
 
 - `yzx_repo_validator validate-specs`
-- `nix develop -c cargo run --manifest-path rust_core/Cargo.toml --bin yzx_repo_validator -- validate-nushell-budget`
+- `yzx_repo_validator validate-nushell-budget`
+- `yzx_repo_validator validate-nushell-syntax`
 
 ## Traceability
 
-- Bead: `yazelix-w6sz.6`
-- Bead: `yazelix-w6sz.1`
-- Bead: `yazelix-w6sz.7.1`
-- Bead: `yazelix-w6sz.7.2`
-- Bead: `yazelix-lj7z`
-- Bead: `yazelix-lj7z.1`
+- Bead: `yazelix-pw9j.1`
+- Bead: `yazelix-pw9j.7`
 - Defended by: `yzx_repo_validator validate-specs`
 - Defended by: `yzx_repo_validator validate-nushell-budget`
-- Informed by: `docs/specs/ranked_nu_deletion_budget.md`
-- Informed by: `docs/specs/likely_nushell_survivor_owner_cut_decisions.md`
-- Informed by: `docs/specs/second_wave_nushell_deletion_map.md`
+- Defended by: `yzx_repo_validator validate-nushell-syntax`
+
+## Open Questions
+
+- If a later change can delete one of the remaining startup/profile/menu shells
+  end-to-end instead of wrapping it, the floor should ratchet again from the
+  new measured tree rather than by reopening the old `4.1k` planning budget

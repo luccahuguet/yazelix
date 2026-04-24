@@ -57,43 +57,6 @@ def get_inferred_runtime_dir [] {
     }
 }
 
-def is_valid_repo_root [candidate?: string] {
-    if $candidate == null {
-        return false
-    }
-
-    let candidate_path = (resolve_existing_path $candidate)
-    if $candidate_path == null {
-        return false
-    }
-
-    let git_marker = ($candidate_path | path join ".git")
-    let flake_nix = ($candidate_path | path join "flake.nix")
-    let default_config = ($candidate_path | path join "yazelix_default.toml")
-
-    ($git_marker | path exists) and ($flake_nix | path exists) and ($default_config | path exists)
-}
-
-def looks_like_installed_runtime_pointer [configured?: string, resolved?: string] {
-    let configured_text = ($configured | default "" | into string | str trim)
-    let home_dir = ($env.HOME? | default "" | into string | str trim)
-
-    let configured_points_at_state_runtime = (
-        ($configured_text | is-not-empty)
-        and ($home_dir | is-not-empty)
-        and ($configured_text | str starts-with ($home_dir | path join ".local" "share" "yazelix" "runtime"))
-    )
-
-    let resolved_text = ($resolved | default "" | into string | str trim)
-    let resolved_points_at_nix_store_runtime = (
-        ($resolved_text | is-not-empty)
-        and ($resolved_text | str starts-with "/nix/store/")
-        and ($resolved_text | str ends-with "-yazelix")
-    )
-
-    $configured_points_at_state_runtime or $resolved_points_at_nix_store_runtime
-}
-
 export def expand_user_path_string [value: string] {
     let trimmed = ($value | str trim)
     if ($trimmed | is-empty) {
@@ -119,26 +82,19 @@ export def get_yazelix_runtime_dir [] {
         | into string
         | str trim
     )
-    let inferred_runtime = (get_inferred_runtime_dir)
-    let configured_path = if ($configured | is-not-empty) {
-        resolve_existing_path $configured
-    } else {
-        null
+    if ($configured | is-not-empty) {
+        let configured_path = (resolve_existing_path $configured)
+        if (is_valid_runtime_dir $configured_path) {
+            return $configured_path
+        }
     }
 
-    if (
-        ($inferred_runtime != null)
-        and (is_valid_repo_root $inferred_runtime)
-        and (looks_like_installed_runtime_pointer $configured $configured_path)
-    ) {
-        $inferred_runtime
-    } else if ($configured | is-not-empty) and ($configured_path != null) and (is_valid_runtime_dir $configured_path) {
-        $configured_path
-    } else if $inferred_runtime != null {
-        $inferred_runtime
-    } else {
-        null
+    let inferred_runtime = (get_inferred_runtime_dir)
+    if $inferred_runtime != null {
+        return $inferred_runtime
     }
+
+    null
 }
 
 export def get_yazelix_state_dir [] {

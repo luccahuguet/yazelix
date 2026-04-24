@@ -3,9 +3,8 @@
 # Shared by startup, installer, and maintainer-shell entrypoints
 
 use ../utils/runtime_paths.nu [get_yazelix_runtime_dir get_yazelix_state_dir]
-use ../utils/runtime_commands.nu [resolve_yazelix_nu_bin]
 use ../utils/runtime_defaults.nu DEFAULT_SHELL
-use ../utils/yzx_core_bridge.nu [profile_startup_step]
+use ../utils/yzx_core_bridge.nu [profile_startup_step resolve_yzx_control_path]
 use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
 
 const YZX_COMMAND_METADATA_SYNC_EXTERNS_COMMAND = "yzx-command-metadata.sync-externs"
@@ -37,7 +36,7 @@ def sync_generated_yzx_extern_bridge [runtime_root: string] {
     }
 }
 
-def main [--welcome-source: string = "", --skip-welcome] {
+def main [--skip-welcome] {
     let yazelix_dir = (get_yazelix_runtime_dir)
     let startup_facts = (run_yzx_core_json_command
         $yazelix_dir
@@ -45,20 +44,6 @@ def main [--welcome-source: string = "", --skip-welcome] {
         ["startup-facts.compute"]
         "Yazelix Rust startup-facts helper returned invalid JSON.")
     let default_shell = ($startup_facts.default_shell? | default $DEFAULT_SHELL)
-    let debug_mode = ($startup_facts.debug_mode? | default false)
-    let runtime_nu = (resolve_yazelix_nu_bin)
-    let skip_welcome_screen = (
-        ($startup_facts.skip_welcome_screen? | default false)
-        or ($env.YAZELIX_STARTUP_PROFILE_SKIP_WELCOME? == "true")
-    )
-    let welcome_style = ($startup_facts.welcome_style? | default "random")
-    let welcome_duration_seconds = ($startup_facts.welcome_duration_seconds? | default 1.0)
-    let show_macchina_on_welcome = ($startup_facts.show_macchina_on_welcome? | default false)
-
-    # DEBUG: Print skip_welcome_screen value
-    if $debug_mode {
-        print $"🔍 DEBUG: skip_welcome_screen from config = ($skip_welcome_screen)"
-    }
 
     # Noninteractive shellHook entry should stay quiet even when only the
     # welcome UI is skipped, so launch/refresh rebuilds don't replay routine
@@ -122,8 +107,9 @@ def main [--welcome-source: string = "", --skip-welcome] {
 
     # Generate shell initializers for configured shells only
     profile_shellhook_step "generate_initializers" {
+        let yzx_control_bin = (resolve_yzx_control_path $yazelix_dir)
         with-env {YAZELIX_QUIET_MODE: (if $quiet_mode { "true" } else { "false" })} {
-            ^($yazelix_dir | path join "libexec" "yzx_control") generate_shell_initializers ($shells_to_configure | str join ",")
+            ^$yzx_control_bin generate_shell_initializers ($shells_to_configure | str join ",")
         }
     } {
         shells: $shells_to_configure
@@ -145,24 +131,5 @@ def main [--welcome-source: string = "", --skip-welcome] {
 
     if not $quiet_mode {
         print "✅ Yazelix environment setup complete!"
-    }
-
-    # Import welcome module
-    use ./welcome.nu *
-
-    # Get color scheme for consistent styling
-    let colors = get_yazelix_colors
-
-    # Build welcome message
-    let welcome_facts = {
-        persistent_sessions: ($startup_facts.persistent_sessions? | default false)
-        session_name: ($startup_facts.session_name? | default "yazelix")
-        terminals: ($startup_facts.terminals? | default [])
-    }
-    let welcome_message = build_welcome_message $yazelix_dir $colors $welcome_facts
-
-    # Display welcome screen or log it (skip when start_yazelix handles it)
-    if $welcome_source != "start" {
-        show_welcome $skip_welcome_screen $quiet_mode $welcome_style $welcome_duration_seconds $show_macchina_on_welcome $welcome_message $log_dir $colors $skip_welcome
     }
 }

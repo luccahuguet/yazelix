@@ -2,100 +2,81 @@
 
 ## Summary
 
-This document is the live delete-first budget for maintainer, `yzx dev`, and
-validator Nu after `yazelix-lj7z.4`.
+The maintainer Nushell floor is now `425` LOC in one file:
+`nushell/scripts/yzx/dev.nu`.
 
-The deterministic validator surface is already fully Rust-owned. The new
-maintainer cut also deleted the old Nu owners for issue sync, issue-bead
-contract validation, repo-checkout helper selection, and version bump policy.
+This is no longer the old mixed maintainer/update/sweep surface. The Rust-owned
+maintainer binary now owns:
 
-What remains is still large, but it is more honestly shell- and workflow-heavy:
-`2,008` LOC across `8` tracked files.
+- update workflow policy and vendored asset refresh
+- pane-orchestrator build and sync
+- sweep planning
+- `nu-lint` execution
+- deterministic validators, issue sync, and version bump policy
 
 ## Scope
 
 In scope:
 
-- `nushell/scripts/maintainer/*.nu`
 - `nushell/scripts/yzx/dev.nu`
-- non-governed shell helpers under `nushell/scripts/dev/`
-- the Rust-owned maintainer and validator binaries that replaced deleted Nu
-  policy owners
+- the Rust-owned `yzx_repo_maintainer` command surface it routes to
 
 Out of scope:
 
-- product/runtime launch and front-door owners
-- the remaining shell-heavy sweep runner budget
+- startup/profile product surfaces outside `yzx dev`
+- runtime/front-door Nushell owners
 
 ## Current Measured Surface
 
 Measured on `2026-04-24`:
 
-| Family | Current LOC | Hard target LOC | Main follow-up |
+| Surface | Current LOC | Hard target LOC | Status |
 | --- | ---: | ---: | --- |
-| Maintainer and `yzx dev` shell orchestration | `2,008` | `900` | keep shrinking `yzx/dev.nu`, update flow, plugin build, and helper debt |
-| Deterministic validators and contract linters | `0` | `0` | already Rust-owned |
+| Maintainer and `yzx dev` Nu floor | `425` | `425` | allowlisted floor |
+| Deterministic validator Nu | `0` | `0` | fully Rust-owned |
 
-## Landed Rust Owners
+## Behavior
 
-Rust now owns these deterministic maintainer/validator paths:
+Retained Nu ownership is now narrow:
 
-- version bump validation, changelog rotation, and README sync support
-- GitHub issue type inference and lifecycle reconciliation
-- canonical Beads comment reconciliation
-- deterministic validator and package-smoke checks through
-  `yzx_repo_validator`
+- public `yzx dev` routing
+- the startup-profile shell harness that still launches the real `yzx enter`,
+  `yzx desktop launch`, and `yzx launch` paths
 
-Deleted Nu owners:
+Everything else in the maintainer surface is out of Nushell now.
 
-- `maintainer/issue_bead_contract.nu`
-- `maintainer/issue_sync.nu`
-- `maintainer/repo_checkout.nu`
-- `maintainer/version_bump.nu`
+## Non-goals
 
-## Retained Nu Floor
+- moving the startup-profile shell harness to Rust unless that deletes the real
+  shell owner end-to-end
+- recreating maintainer policy in helper `.nu` files after it moved to Rust
 
-These paths are still allowed only because they remain external-tool or
-workflow heavy:
+## Acceptance Cases
 
-- `maintainer/update_workflow.nu`
-- `maintainer/plugin_build.nu`
-- `yzx/dev.nu`
-- `dev/update_yazi_plugins.nu`
-- `dev/materialization_dev_helpers.nu`
-- `dev/config_normalize_test_helpers.nu`
-- demo helpers
-- sweep helpers under `dev/sweep/`
-- `dev/yzx_test_helpers.nu`
-
-## Floor Rules
-
-1. Keep only real shell/process/tool orchestration in Nu
-2. Do not move deterministic routing or policy back into `yzx/dev.nu`
-3. Route first-party Rust tests through `cargo nextest run` by default
-4. Keep version-bump and issue-sync policy in Rust
-5. Delete helper files once the only things they support are deleted or
-   Rust-owned
-
-## Next Honest Cuts
-
-1. shrink `yzx/dev.nu` from a broad maintainer router toward a thin public
-   argv handoff
-2. collapse `update_workflow.nu` once retained Nix/git policy can move without
-   adding a second orchestration layer
-3. re-evaluate `plugin_build.nu` after the pane-orchestrator sync path narrows
-4. keep deleting helper files that now exist only to support shell-heavy sweep
-   or legacy maintainer flows
+1. `yzx dev update` routes to the Rust maintainer owner without any retained
+   `update_workflow.nu` helper
+2. `yzx dev lint_nu` routes to the Rust maintainer owner without a retained
+   Nu `nu-lint` wrapper
+3. The maintainer Nu floor is only `yzx/dev.nu`
 
 ## Verification
 
 - `yzx_repo_validator validate-specs`
 - `yzx_repo_validator validate-nushell-budget`
-- `cargo test -p yazelix_core --manifest-path rust_core/Cargo.toml`
+- `yzx_repo_validator validate-nushell-syntax`
 
 ## Traceability
 
-- Bead: `yazelix-lj7z.2`
-- Bead: `yazelix-lj7z.4`
+- Bead: `yazelix-pw9j.4`
+- Bead: `yazelix-pw9j.4.1`
+- Bead: `yazelix-pw9j.4.2`
+- Bead: `yazelix-pw9j.4.3`
 - Defended by: `yzx_repo_validator validate-specs`
 - Defended by: `yzx_repo_validator validate-nushell-budget`
+- Defended by: `yzx_repo_validator validate-nushell-syntax`
+
+## Open Questions
+
+- If the startup-profile harness ever gains a fully packaged Rust owner that
+  still launches the real shell paths, ratchet the floor again from the new
+  measured tree

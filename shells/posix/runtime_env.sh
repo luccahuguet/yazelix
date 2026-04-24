@@ -90,3 +90,13 @@ else
   echo "Error: nu not found in Yazelix runtime or PATH after loading Nix profile." >&2
   return 1 2>/dev/null || exit 1
 fi
+
+runtime_yzx_core="$runtime_dir/libexec/yzx_core"
+if [ -x "$runtime_yzx_core" ]; then
+  export YAZELIX_YZX_CORE_BIN="$runtime_yzx_core"
+fi
+
+runtime_yzx_control="$runtime_dir/libexec/yzx_control"
+if [ -x "$runtime_yzx_control" ]; then
+  export YAZELIX_YZX_CONTROL_BIN="$runtime_yzx_control"
+fi

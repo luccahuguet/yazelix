@@ -55,7 +55,7 @@ pkgs.mkShell {
       unset YAZELIX_RUNTIME_DIR
     fi
 
-    runtime_env_json="$(${pkgs.nushell}/bin/nu --no-config-file -c 'use "${repoRoot}/nushell/scripts/utils/yzx_core_bridge.nu" [compute_runtime_env_via_yzx_core]; compute_runtime_env_via_yzx_core | to json -r')"
+    runtime_env_json="$("${rustCoreHelper}/bin/yzx_core" runtime-env.compute --from-env | ${pkgs.jq}/bin/jq -rc '.data.runtime_env')"
 
     export PATH="$(printf '%s' "$runtime_env_json" | ${pkgs.jq}/bin/jq -r '.PATH | join(":")')"
     computed_runtime_dir="$(printf '%s' "$runtime_env_json" | ${pkgs.jq}/bin/jq -r '.YAZELIX_RUNTIME_DIR')"

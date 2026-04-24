@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Shared yzx_core helper transport and error-surface glue.
 
-use runtime_paths.nu [get_yazelix_runtime_dir require_yazelix_runtime_dir]
+use runtime_paths.nu [get_yazelix_runtime_dir]
 
 def format_failure_classification [failure_class: string, recovery_hint: string] {
     let label = if ($failure_class | str downcase | str trim) == "config" {
@@ -48,8 +48,6 @@ def render_startup_config_error [report: record] {
 }
 
 const YZX_CORE_HELPER_RELATIVE_PATH = ["libexec" "yzx_core"]
-const CONFIG_SURFACE_RESOLVE_COMMAND = "config-surface.resolve"
-const RUNTIME_ENV_COMPUTE_COMMAND = "runtime-env.compute"
 
 def get_runtime_yzx_core_helper_path [runtime_dir: string] {
     $YZX_CORE_HELPER_RELATIVE_PATH | prepend $runtime_dir | path join
@@ -69,68 +67,21 @@ def get_explicit_yzx_core_helper_path [] {
 
     let expanded = ($explicit | path expand)
     if not ($expanded | path exists) {
-        error make {
-            msg: (
-                [
-                    $"YAZELIX_YZX_CORE_BIN points to a missing helper: ($expanded)"
-                    ""
-                    (format_failure_classification "host-dependency" "Enter the Yazelix maintainer shell, rebuild the local yzx_core helper, or unset YAZELIX_YZX_CORE_BIN.")
-                ] | str join "\n"
-            )
-        }
+        error make {msg: $"YAZELIX_YZX_CORE_BIN points to a missing helper: ($expanded)"}
     }
 
     $expanded
 }
 
-def get_source_checkout_yzx_core_helper_path [runtime_dir: string] {
-    mut candidates = []
-
-    for candidate in [
-        ($runtime_dir | path join "rust_core" "target" "release" "yzx_core")
-        ($runtime_dir | path join "rust_core" "target" "debug" "yzx_core")
-    ] {
-        if ($candidate | path exists) {
-            $candidates = ($candidates | append {
-                path: $candidate
-                modified: (ls $candidate | get 0.modified)
-            })
-        }
-    }
-
-    if ($candidates | is-empty) {
-        return null
-    }
-
-    # Prefer the freshest local helper build so a newer debug artifact wins over
-    # an older stale release binary during source-checkout work.
-    (
-        $candidates
-        | reduce -f null {|candidate, best|
-            if ($best == null) or ($candidate.modified > $best.modified) {
-                $candidate
-            } else {
-                $best
-            }
-        }
-        | get path
-    )
-}
-
 export def resolve_yzx_core_helper_path [runtime_dir: string] {
-    let runtime_helper_path = (get_runtime_yzx_core_helper_path $runtime_dir)
-    if ($runtime_helper_path | path exists) {
-        return $runtime_helper_path
-    }
-
     let explicit_helper_path = (get_explicit_yzx_core_helper_path)
     if $explicit_helper_path != null {
         return $explicit_helper_path
     }
 
-    let source_helper_path = (get_source_checkout_yzx_core_helper_path $runtime_dir)
-    if $source_helper_path != null {
-        return $source_helper_path
+    let runtime_helper_path = (get_runtime_yzx_core_helper_path $runtime_dir)
+    if ($runtime_helper_path | path exists) {
+        return $runtime_helper_path
     }
 
     error make {
@@ -138,7 +89,7 @@ export def resolve_yzx_core_helper_path [runtime_dir: string] {
             [
                 $"Yazelix runtime is missing the Rust config helper at ($runtime_helper_path)."
                 ""
-                (format_failure_classification "host-dependency" "Reinstall Yazelix so packaged runtimes include libexec/yzx_core. For source checkouts, enter the maintainer shell or set YAZELIX_YZX_CORE_BIN to a built yzx_core helper.")
+                (format_failure_classification "host-dependency" "Reinstall Yazelix so packaged runtimes include libexec/yzx_core, or export YAZELIX_YZX_CORE_BIN before running the helper from a source checkout.")
             ] | str join "\n"
         )
     }
@@ -148,14 +99,6 @@ export def build_default_yzx_core_error_surface [] {
     {
         display_config_path: ""
         config_file: ""
-    }
-}
-
-export def build_record_yzx_core_error_surface [config: record] {
-    let config_file = ($config.config_file? | default "")
-    {
-        display_config_path: $config_file
-        config_file: $config_file
     }
 }
 
@@ -268,41 +211,6 @@ export def run_yzx_core_json_command [
     $envelope | get data
 }
 
-def resolve_bridge_runtime_dir [runtime_dir?: string] {
-    if $runtime_dir == null {
-        require_yazelix_runtime_dir
-    } else {
-        $runtime_dir | path expand
-    }
-}
-
-export def resolve_active_config_surface_via_yzx_core [runtime_dir?: string] {
-    let resolved_runtime_dir = (resolve_bridge_runtime_dir $runtime_dir)
-
-    run_yzx_core_json_command $resolved_runtime_dir (build_default_yzx_core_error_surface) [
-        $CONFIG_SURFACE_RESOLVE_COMMAND
-        "--runtime-dir"
-        $resolved_runtime_dir
-    ] "Yazelix Rust active-config-surface helper returned invalid JSON."
-}
-
-export def compute_runtime_env_via_yzx_core [config?: record, runtime_dir?: string] {
-    let helper_args = if $config == null {
-        []
-    } else {
-        ["--config-json", ($config | to json -r)]
-    }
-
-    let error_surface = if $config == null { null } else { build_record_yzx_core_error_surface $config }
-    let resolved_runtime_dir = (resolve_bridge_runtime_dir $runtime_dir)
-    let resolved_helper_args = [$RUNTIME_ENV_COMPUTE_COMMAND, "--from-env"] | append $helper_args
-
-    run_yzx_core_json_command $resolved_runtime_dir (
-        $error_surface | default (build_default_yzx_core_error_surface)
-    ) $resolved_helper_args "Yazelix Rust runtime-env helper returned invalid JSON."
-    | get runtime_env
-}
-
 export def resolve_yzx_control_path [runtime_dir?: string] {
     let resolved = if $runtime_dir != null {
         $runtime_dir | path expand
@@ -323,51 +231,19 @@ export def resolve_yzx_control_path [runtime_dir?: string] {
         return $libexec
     }
 
-    let release = ($resolved | path join "rust_core" "target" "release" "yzx_control")
-    let debug = ($resolved | path join "rust_core" "target" "debug" "yzx_control")
-    mut candidates = []
-    if ($release | path exists) {
-        $candidates = ($candidates | append {
-            path: $release
-            modified: (ls $release | get 0.modified)
-        })
+    error make {
+        msg: (
+            [
+                "Yazelix runtime is missing the Rust control helper."
+                ""
+                "Tried:"
+                $"  - explicit: ($explicit)"
+                $"  - libexec:  ($libexec)"
+                ""
+                (format_failure_classification "host-dependency" "Reinstall Yazelix so the runtime includes a compatible yzx_control helper, or export YAZELIX_YZX_CONTROL_BIN before running from a source checkout.")
+            ] | str join "\n"
+        )
     }
-    if ($debug | path exists) {
-        $candidates = ($candidates | append {
-            path: $debug
-            modified: (ls $debug | get 0.modified)
-        })
-    }
-
-    if ($candidates | is-empty) {
-        error make {
-            msg: (
-                [
-                    "Yazelix runtime is missing the Rust control helper."
-                    ""
-                    "Tried:"
-                    $"  - explicit: ($explicit)"
-                    $"  - libexec:  ($libexec)"
-                    $"  - release:  ($release)"
-                    $"  - debug:    ($debug)"
-                    ""
-                    (format_failure_classification "host-dependency" "Reinstall Yazelix so the runtime includes a compatible yzx_control helper, then retry.")
-                ] | str join "\n"
-            )
-        }
-    }
-
-    (
-        $candidates
-        | reduce -f null {|candidate, best|
-            if ($best == null) or ($candidate.modified > $best.modified) {
-                $candidate
-            } else {
-                $best
-            }
-        }
-        | get path
-    )
 }
 
 export def profile_startup_step [component: string, step: string, code: closure, metadata?: record] {

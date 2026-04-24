@@ -13,22 +13,6 @@ def get_zellij_config_paths [] {
     (open $CONSTANTS_DATA_PATH).zellij_config_paths
 }
 
-def format_failure_classification [failure_class: string, recovery_hint: string] {
-    let label = if ($failure_class | str downcase | str trim) == "config" {
-        "config problem"
-    } else if ($failure_class | str downcase | str trim) == "generated-state" {
-        "generated-state problem"
-    } else if ($failure_class | str downcase | str trim) == "host-dependency" {
-        "host-dependency problem"
-    } else {
-        error make {msg: $"Unsupported failure class: ($failure_class)"}
-    }
-    [
-        $"Failure class: ($label)."
-        $"Recovery: ($recovery_hint)"
-    ] | str join "\n"
-}
-
 const RUNTIME_MATERIALIZATION_MATERIALIZE_COMMAND = "runtime-materialization.materialize"
 
 def require_existing_directory [path_value: string, label: string] {
@@ -49,8 +33,7 @@ def require_existing_layout [layout_path: string] {
     let resolved = ($layout_path | path expand)
 
     if not ($resolved | path exists) {
-        let classification = (format_failure_classification "generated-state" "Run `yzx doctor` to inspect generated-state issues, or fix the configured layout name if it points at a missing file.")
-        error make {msg: $"Zellij layout not found: ($resolved)\nRun `yzx doctor` to inspect the generated-state contract, or check the configured layout name.\n($classification)"}
+        error make {msg: $"Zellij layout not found: ($resolved)\nRun `yzx doctor` to inspect the generated-state contract, or check the configured layout name."}
     }
 
     if (($resolved | path type) != "file") {

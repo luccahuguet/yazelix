@@ -2,101 +2,66 @@
 
 ## Summary
 
-This document is the live delete-first budget for the surviving front-door Nu
-surface after `yazelix-lj7z.8`.
+The front-door Nushell floor is now `409` LOC across two files:
 
-The oversized data-heavy Nu owners are gone:
+- `nushell/scripts/setup/welcome.nu`
+- `nushell/scripts/yzx/menu.nu`
 
-- `utils/ascii_art.nu`
-- `utils/upgrade_summary.nu`
-- `yzx/screen.nu`
-- `yzx/tutor.nu`
-- `yzx/whats_new.nu`
-
-Rust now owns the retained renderer, Game of Life logic, upgrade-summary copy,
-and those three public command bodies. The remaining Nu front-door floor is
-`841` LOC across `5` files.
+The old data-heavy front-door owners are already gone. What remains is the live
+TTY/UI control that still belongs beside the welcome flow and command palette.
 
 ## Scope
 
 In scope:
 
 - `setup/welcome.nu`
-- `utils/front_door_runtime.nu`
 - `yzx/menu.nu`
-- `yzx/edit.nu`
-- `yzx/import.nu`
 
 Out of scope:
 
-- launch/bootstrap transport outside front-door presentation
-- maintainer and sweep shells
-- the already-landed Rust front-door owners in
-  `front_door_render.rs`, `front_door_commands.rs`, and
-  `upgrade_summary.rs`
+- Rust-owned front-door rendering/data surfaces
+- startup/bootstrap shellhook logic outside the front-door UX
 
-## Current Measured Surface
+## Behavior
 
-Measured on `2026-04-23`:
+Retained Nu ownership is limited to:
 
-| Surface | Current LOC | Hard target LOC | Notes |
-| --- | ---: | ---: | --- |
-| Front-door Nu floor | `841` | `500` | surviving shell presentation and process-handoff surface |
-| Large front-door data owners in Nu | `0` | `0` | static art/spec tables and upgrade-summary shaping already moved out |
+- interactive welcome display, logging, and prompt gating
+- the `fzf`-driven command palette and popup interaction loop
 
-## Current Owner Split
+The following things are no longer allowed back into these files:
 
-### Rust-owned now
+- large static art/data tables
+- upgrade-summary shaping
+- deterministic command metadata ownership
+- broad report formatting that Rust already owns
 
-- welcome and `yzx screen` style resolution
-- the retained random Game of Life pool
-- Game of Life evolution and width-aware frame rendering
-- `yzx screen`, `yzx tutor`, and `yzx whats_new`
-- upgrade-summary loading, rendering, and last-seen state
+## Non-goals
 
-### Nu-owned now
+- porting the live `fzf`/keypress/TTY flow into Rust unless that deletes the Nu
+  owner cleanly
+- reintroducing deleted front-door data files in shell code
 
-- startup-shell welcome sequencing and prompt gating in `setup/welcome.nu`
-- tiny runtime handoff helpers in `utils/front_door_runtime.nu`
-- `fzf`/popup/editor/process-heavy surfaces in `yzx/menu.nu`,
-  `yzx/edit.nu`, and `yzx/import.nu`
+## Acceptance Cases
 
-## Remaining Deletion Budget
-
-`yazelix-lj7z.8` is complete, but the family is not exempt from further cuts.
-The next valid front-door deletions must focus on these seams:
-
-1. `setup/welcome.nu`
-   - keep only startup-shell sequencing, skip/logging behavior, and the final
-     prompt-to-launch boundary
-   - do not let it regain renderer, data, or summary ownership
-2. `utils/front_door_runtime.nu`
-   - keep only the smallest runtime bridge needed by welcome/startup callers
-   - fold it away if a direct Rust command call deletes the file cleanly
-3. `yzx/menu.nu`, `yzx/edit.nu`, `yzx/import.nu`
-   - move deterministic planning and report shaping to Rust if that deletes the
-     Nu owner end to end
-   - keep Nu only where the surface is honestly `fzf`, popup, editor, or shell
-     process orchestration
-
-## Hard Rules
-
-- Do not recreate a second renderer stack in Nu
-- Do not move large static art or prose tables back into shell files
-- Do not port shell-heavy popup/editor transport into Rust unless the result
-  deletes the surviving Nu owner instead of wrapping it
-- Keep the retained style contract in
-  `docs/specs/welcome_screen_style_contract.md` authoritative
+1. The front-door Nu floor is only `welcome.nu` and `menu.nu`
+2. Those files still own direct TTY/UI interaction rather than deterministic
+   metadata/data surfaces
+3. The family stays at `409` LOC / `2` files in the canonical budget
 
 ## Verification
 
 - `yzx_repo_validator validate-specs`
 - `yzx_repo_validator validate-nushell-budget`
-- `cargo test -p yazelix_core --manifest-path rust_core/Cargo.toml`
 
 ## Traceability
 
-- Bead: `yazelix-lj7z.8`
+- Bead: `yazelix-pw9j.6`
+- Bead: `yazelix-pw9j.6.1`
 - Defended by: `yzx_repo_validator validate-specs`
 - Defended by: `yzx_repo_validator validate-nushell-budget`
-- Defended by: `cargo test -p yazelix_core --manifest-path rust_core/Cargo.toml`
+
+## Open Questions
+
+- If a later cut can delete one of these files without rebuilding the same live
+  terminal interaction in another shell wrapper, ratchet the family again

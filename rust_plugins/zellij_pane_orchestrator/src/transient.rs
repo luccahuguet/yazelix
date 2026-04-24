@@ -95,11 +95,6 @@ impl TransientPaneConfig {
         )
     }
 
-    fn nu_launcher_path(&self) -> Option<PathBuf> {
-        self.runtime_root()
-            .map(|root| root.join("shells/posix/yazelix_nu.sh"))
-    }
-
     fn yzx_cli_path(&self) -> Option<PathBuf> {
         self.runtime_root()
             .map(|root| root.join("shells/posix/yzx_cli.sh"))
@@ -141,17 +136,13 @@ mod tests {
     // Defends: transient popup launch paths derive strictly from the configured runtime root instead of plugin-local wrapper probes.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
-    fn transient_runtime_launcher_and_wrapper_paths_are_runtime_relative() {
+    fn transient_runtime_wrapper_paths_are_runtime_relative() {
         let config = TransientPaneConfig {
             runtime_dir: "/runtime/root".to_owned(),
             width_percent: 90,
             height_percent: 90,
         };
 
-        assert_eq!(
-            config.nu_launcher_path().unwrap(),
-            std::path::PathBuf::from("/runtime/root/shells/posix/yazelix_nu.sh")
-        );
         assert_eq!(
             config.yzx_cli_path().unwrap(),
             std::path::PathBuf::from("/runtime/root/shells/posix/yzx_cli.sh")
@@ -160,9 +151,7 @@ mod tests {
             config
                 .wrapper_path(super::TransientPaneKind::Popup)
                 .unwrap(),
-            std::path::PathBuf::from(
-                "/runtime/root/nushell/scripts/zellij_wrappers/yzx_popup_program.nu"
-            )
+            std::path::PathBuf::from("/runtime/root/shells/posix/yzx_popup_program.sh")
         );
     }
 }
@@ -248,10 +237,6 @@ impl State {
             .transient_pane_config
             .with_runtime_dir(request.runtime_dir.as_deref());
 
-        let Some(launcher_path) = transient_pane_config.nu_launcher_path() else {
-            self.respond(pipe_message, RESULT_RUNTIME_NOT_CONFIGURED);
-            return;
-        };
         let Some(wrapper_path) = transient_pane_config.wrapper_path(request.kind) else {
             self.respond(pipe_message, RESULT_RUNTIME_NOT_CONFIGURED);
             return;
@@ -269,12 +254,9 @@ impl State {
             .map(str::to_string)
             .unwrap_or_else(|| transient_pane_config.default_cwd(workspace_root));
 
-        let mut args = vec![wrapper_path.display().to_string()];
-        args.extend(request.args);
-
         let command_to_run = CommandToRun {
-            path: launcher_path,
-            args,
+            path: wrapper_path,
+            args: request.args,
             cwd: Some(PathBuf::from(requested_cwd)),
         };
 

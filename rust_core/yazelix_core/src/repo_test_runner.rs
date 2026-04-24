@@ -1,3 +1,4 @@
+use crate::repo_sweep_runner::run_sweep_tests;
 use crate::repo_contract_validation::validate_nushell_syntax;
 use serde::Deserialize;
 use std::fs;
@@ -460,55 +461,14 @@ fn run_nonvisual_sweep_tests(repo_root: &Path, verbose: bool) -> Result<(), Stri
     println!();
     println!("=== Running Non-Visual Configuration Sweep Tests ===");
     println!();
-    run_sweep(repo_root, verbose, false, 0)
+    run_sweep_tests(repo_root, verbose, false, 0)
 }
 
 fn run_visual_sweep_tests(repo_root: &Path, verbose: bool, delay: u64) -> Result<(), String> {
     println!();
     println!("=== Running Visual Terminal Sweep Tests ===");
     println!();
-    run_sweep(repo_root, verbose, true, delay)
-}
-
-fn run_sweep(repo_root: &Path, verbose: bool, visual: bool, delay: u64) -> Result<(), String> {
-    let runtime_root = runtime_root(repo_root);
-    let sweep_script = runtime_root
-        .join("nushell")
-        .join("scripts")
-        .join("dev")
-        .join("config_sweep_runner.nu");
-    let mut args = vec![sweep_script.display().to_string()];
-    if visual {
-        args.push("--visual".to_string());
-        args.push("--visual-delay".to_string());
-        args.push(delay.to_string());
-    }
-    if verbose {
-        args.push("--verbose".to_string());
-    }
-
-    let output = Command::new("nu")
-        .args(&args)
-        .current_dir(repo_root)
-        .output()
-        .map_err(|error| format!("Failed to run sweep tests: {error}"))?;
-    print_command_output(&output);
-    if !output.status.success() {
-        let label = if visual {
-            "Visual sweep tests failed"
-        } else {
-            "Non-visual sweep tests failed"
-        };
-        return Err(format!("{label}\n{}", summarize_failure_output(&output)));
-    }
-    Ok(())
-}
-
-fn runtime_root(repo_root: &Path) -> PathBuf {
-    std::env::var_os("YAZELIX_RUNTIME_DIR")
-        .map(PathBuf::from)
-        .filter(|path| path.exists())
-        .unwrap_or_else(|| repo_root.to_path_buf())
+    run_sweep_tests(repo_root, verbose, true, delay)
 }
 
 fn profiling_enabled(options: &RepoTestOptions) -> bool {

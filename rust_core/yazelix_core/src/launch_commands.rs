@@ -716,8 +716,6 @@ fn run_runtime_setup(
             .join("environment.nu")
             .to_string_lossy()
             .into_owned(),
-        "--welcome-source".to_string(),
-        "start".to_string(),
     ];
     if quiet {
         argv.push("--skip-welcome".to_string());

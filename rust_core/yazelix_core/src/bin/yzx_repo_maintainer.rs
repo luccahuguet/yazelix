@@ -1,3 +1,6 @@
+use yazelix_core::repo_plugin_build::build_pane_orchestrator;
+use yazelix_core::repo_update_workflow::{RepoUpdateOptions, run_repo_update_workflow};
+use yazelix_core::repo_nu_lint::run_repo_nu_lint;
 use std::path::PathBuf;
 use yazelix_core::repo_issue_sync::run_issue_sync;
 use yazelix_core::repo_contract_validation::sync_readme_surface;
@@ -105,6 +108,18 @@ fn main() {
                 );
             })
         }
+        "build-pane-orchestrator" => {
+            let sync = parse_build_pane_orchestrator_args(args.collect());
+            build_pane_orchestrator(&resolved_repo_root, sync)
+        }
+        "dev-update" => {
+            let options = parse_dev_update_args(args.collect());
+            run_repo_update_workflow(&resolved_repo_root, &options)
+        }
+        "lint-nu" => {
+            let (format, paths) = parse_lint_nu_args(args.collect());
+            run_repo_nu_lint(&resolved_repo_root, &format, &paths)
+        }
         _ => {
             eprintln!("Unknown maintainer command `{command}`");
             print_usage_and_exit();
@@ -119,7 +134,7 @@ fn main() {
 
 fn print_usage_and_exit() -> ! {
     eprintln!(
-        "Usage: yzx_repo_maintainer [--repo-root PATH] <sync-readme-surface|run-tests|version-bump|sync-issues> [options]"
+        "Usage: yzx_repo_maintainer [--repo-root PATH] <sync-readme-surface|run-tests|version-bump|sync-issues|build-pane-orchestrator|dev-update|lint-nu> [options]"
     );
     std::process::exit(2);
 }
@@ -180,4 +195,89 @@ fn parse_sync_issues_args(args: Vec<String>) -> bool {
         }
     }
     dry_run
+}
+
+fn parse_build_pane_orchestrator_args(args: Vec<String>) -> bool {
+    let mut sync = false;
+    for arg in args {
+        match arg.as_str() {
+            "--sync" => sync = true,
+            _ => {
+                eprintln!("Unknown build-pane-orchestrator option `{arg}`");
+                std::process::exit(2);
+            }
+        }
+    }
+    sync
+}
+
+fn parse_dev_update_args(args: Vec<String>) -> RepoUpdateOptions {
+    let mut options = RepoUpdateOptions::default();
+    let mut iter = args.into_iter();
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "--yes" => options.yes = true,
+            "--no-canary" => options.no_canary = true,
+            "--activate" => {
+                let Some(value) = iter.next() else {
+                    eprintln!("Missing value after --activate");
+                    std::process::exit(2);
+                };
+                options.activate = value;
+            }
+            "--home-manager-dir" => {
+                let Some(value) = iter.next() else {
+                    eprintln!("Missing value after --home-manager-dir");
+                    std::process::exit(2);
+                };
+                options.home_manager_dir = value;
+            }
+            "--home-manager-input" => {
+                let Some(value) = iter.next() else {
+                    eprintln!("Missing value after --home-manager-input");
+                    std::process::exit(2);
+                };
+                options.home_manager_input = value;
+            }
+            "--home-manager-attr" => {
+                let Some(value) = iter.next() else {
+                    eprintln!("Missing value after --home-manager-attr");
+                    std::process::exit(2);
+                };
+                options.home_manager_attr = value;
+            }
+            "--canary-only" => options.canary_only = true,
+            "--canary" => {
+                let Some(value) = iter.next() else {
+                    eprintln!("Missing value after --canary");
+                    std::process::exit(2);
+                };
+                options.canaries.push(value);
+            }
+            _ => {
+                eprintln!("Unknown dev-update option `{arg}`");
+                std::process::exit(2);
+            }
+        }
+    }
+    options
+}
+
+fn parse_lint_nu_args(args: Vec<String>) -> (String, Vec<String>) {
+    let mut format = "pretty".to_string();
+    let mut paths = Vec::new();
+    let mut iter = args.into_iter();
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "--format" | "-f" => {
+                let Some(value) = iter.next() else {
+                    eprintln!("Missing value after {arg}");
+                    std::process::exit(2);
+                };
+                format = value;
+            }
+            _ => paths.push(arg),
+        }
+    }
+    (format, paths)
 }

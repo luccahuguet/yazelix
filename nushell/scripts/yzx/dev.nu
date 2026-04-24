@@ -5,8 +5,6 @@ use ../utils/runtime_paths.nu [
     get_yazelix_state_dir
     get_yazelix_runtime_dir
 ]
-use ../maintainer/plugin_build.nu build_pane_orchestrator_wasm
-use ../maintainer/update_workflow.nu run_dev_update_workflow
 use ../utils/yzx_core_bridge.nu [resolve_yzx_control_path]
 
 # Development and maintainer commands
@@ -69,6 +67,19 @@ def run_repo_maintainer_json_command [repo_root: string, ...maintainer_args: str
     }
 }
 
+def run_repo_maintainer_checked [repo_root: string, failure_message: string, ...maintainer_args: string] {
+    let result = (run_repo_maintainer_command $repo_root ...$maintainer_args)
+    if ($result.stdout | is-not-empty) {
+        print --raw $result.stdout
+    }
+    if ($result.stderr | is-not-empty) {
+        print --stderr --raw $result.stderr
+    }
+    if $result.exit_code != 0 {
+        error make {msg: $failure_message}
+    }
+}
+
 # Refresh maintainer flake inputs and run update canaries
 export def "yzx dev update" [
     --yes      # Skip confirmation prompt
@@ -81,9 +92,26 @@ export def "yzx dev update" [
     --canaries: list<string> = []  # Canary subset: default, shell_layout
 ] {
     let repo_root = (require_yazelix_repo_root)
-    with-env {YAZELIX_REPO_ROOT: $repo_root} {
-        run_dev_update_workflow $yes $no_canary $activate $home_manager_dir $home_manager_input $home_manager_attr $canary_only $canaries
+    mut args = ["dev-update"]
+    if $yes { $args = ($args | append "--yes") }
+    if $no_canary { $args = ($args | append "--no-canary") }
+    if ($activate | is-not-empty) {
+        $args = ($args | append ["--activate", $activate])
     }
+    if ($home_manager_dir | is-not-empty) {
+        $args = ($args | append ["--home-manager-dir", $home_manager_dir])
+    }
+    if ($home_manager_input | is-not-empty) {
+        $args = ($args | append ["--home-manager-input", $home_manager_input])
+    }
+    if ($home_manager_attr | is-not-empty) {
+        $args = ($args | append ["--home-manager-attr", $home_manager_attr])
+    }
+    if $canary_only { $args = ($args | append "--canary-only") }
+    for canary in $canaries {
+        $args = ($args | append ["--canary", $canary])
+    }
+    run_repo_maintainer_checked $repo_root "Yazelix Rust update workflow failed" ...$args
 }
 
 # Bump the tracked Yazelix version and create release metadata
@@ -106,16 +134,7 @@ export def "yzx dev sync_issues" [
     if $dry_run {
         $args = ($args | append "--dry-run")
     }
-    let result = (run_repo_maintainer_command $repo_root ...$args)
-    if ($result.stdout | is-not-empty) {
-        print --raw $result.stdout
-    }
-    if ($result.stderr | is-not-empty) {
-        print --stderr --raw $result.stderr
-    }
-    if $result.exit_code != 0 {
-        error make {msg: "Yazelix Rust issue sync failed"}
-    }
+    run_repo_maintainer_checked $repo_root "Yazelix Rust issue sync failed" ...$args
 }
 
 # Build the Zellij pane-orchestrator wasm
@@ -123,9 +142,11 @@ export def "yzx dev build_pane_orchestrator" [
     --sync  # Sync the built wasm into the repo/runtime paths after a successful build
 ] {
     let repo_root = (require_yazelix_repo_root)
-    with-env {YAZELIX_REPO_ROOT: $repo_root} {
-        build_pane_orchestrator_wasm $sync
+    mut args = ["build-pane-orchestrator"]
+    if $sync {
+        $args = ($args | append "--sync")
     }
+    run_repo_maintainer_checked $repo_root "Yazelix Rust pane-orchestrator build failed" ...$args
 }
 
 def clear_startup_profile_caches [] {
@@ -277,23 +298,7 @@ export def "yzx dev test" [
     --delay: int = 3  # Delay between visual terminal launches in seconds
 ] {
     let repo_root = (require_yazelix_repo_root)
-    mut args = [
-        "develop"
-        "-c"
-        "cargo"
-        "run"
-        "--quiet"
-        "--manifest-path"
-        ($repo_root | path join "rust_core" "Cargo.toml")
-        "-p"
-        "yazelix_core"
-        "--bin"
-        "yzx_repo_maintainer"
-        "--"
-        "--repo-root"
-        $repo_root
-        "run-tests"
-    ]
+    mut args = ["run-tests"]
     if $verbose { $args = ($args | append "--verbose") }
     if $new_window { $args = ($args | append "--new-window") }
     if $lint_only { $args = ($args | append "--lint-only") }
@@ -302,18 +307,7 @@ export def "yzx dev test" [
     if $visual { $args = ($args | append "--visual") }
     if $all { $args = ($args | append "--all") }
     $args = ($args | append ["--delay", ($delay | into string)])
-
-    let runner_args = $args
-    let result = (do { cd $repo_root; ^nix ...$runner_args } | complete)
-    if ($result.stdout | is-not-empty) {
-        print --raw $result.stdout
-    }
-    if ($result.stderr | is-not-empty) {
-        print --stderr --raw $result.stderr
-    }
-    if $result.exit_code != 0 {
-        error make { msg: "Yazelix Rust test runner failed" }
-    }
+    run_repo_maintainer_checked $repo_root "Yazelix Rust test runner failed" ...$args
 }
 
 def run_desktop_profile_command [] {
@@ -422,24 +416,10 @@ export def "yzx dev lint_nu" [
     --format(-f): string = "pretty"  # Output format: pretty or compact
     ...paths: string                 # Specific files or directories (default: nushell/)
 ] {
-    let yazelix_dir = require_yazelix_repo_root
-    let config_path = ($yazelix_dir | path join ".nu-lint.toml")
-
-    if not ($config_path | path exists) {
-        print $"Error: .nu-lint.toml not found at ($config_path)"
-        exit 1
+    let repo_root = (require_yazelix_repo_root)
+    mut args = ["lint-nu", "--format", $format]
+    if ($paths | is-not-empty) {
+        $args = ($args | append $paths)
     }
-
-    let targets = if ($paths | is-empty) {
-        [($yazelix_dir | path join "nushell")]
-    } else {
-        $paths
-    }
-    if (which nu-lint | is-empty) {
-        print "Error: nu-lint not found in PATH."
-        print "Install nu-lint in your maintainer environment, then rerun this command."
-        exit 1
-    }
-
-    ^nu-lint --config $config_path --format $format ...$targets
+    run_repo_maintainer_checked $repo_root "Yazelix Rust nu-lint runner failed" ...$args
 }

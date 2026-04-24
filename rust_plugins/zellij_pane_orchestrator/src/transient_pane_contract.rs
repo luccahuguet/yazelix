@@ -27,13 +27,13 @@ impl TransientPaneKind {
         match self {
             Self::Popup => TransientPaneIdentityContract {
                 pane_title: "yzx_popup",
-                command_marker: "zellij_wrappers/yzx_popup_program.nu",
-                wrapper_relative_path: "nushell/scripts/zellij_wrappers/yzx_popup_program.nu",
+                command_marker: "shells/posix/yzx_popup_program.sh",
+                wrapper_relative_path: "shells/posix/yzx_popup_program.sh",
             },
             Self::Menu => TransientPaneIdentityContract {
                 pane_title: "yzx_menu",
-                command_marker: "zellij_wrappers/yzx_menu_popup.nu",
-                wrapper_relative_path: "nushell/scripts/zellij_wrappers/yzx_menu_popup.nu",
+                command_marker: "shells/posix/yzx_menu_popup.sh",
+                wrapper_relative_path: "shells/posix/yzx_menu_popup.sh",
             },
         }
     }
@@ -150,7 +150,7 @@ mod tests {
         let popup_by_command = [transient_pane(
             8,
             "misc",
-            Some("/tmp/runtime/shells/posix/yazelix_nu.sh /tmp/runtime/nushell/scripts/zellij_wrappers/yzx_popup_program.nu lazygit"),
+            Some("/tmp/runtime/shells/posix/yzx_popup_program.sh lazygit"),
             false,
         )];
         assert_eq!(
@@ -170,8 +170,8 @@ mod tests {
             TransientPaneKind::Popup.identity(),
             TransientPaneIdentityContract {
                 pane_title: "yzx_popup",
-                command_marker: "zellij_wrappers/yzx_popup_program.nu",
-                wrapper_relative_path: "nushell/scripts/zellij_wrappers/yzx_popup_program.nu",
+                command_marker: "shells/posix/yzx_popup_program.sh",
+                wrapper_relative_path: "shells/posix/yzx_popup_program.sh",
             }
         );
 
@@ -179,8 +179,8 @@ mod tests {
             TransientPaneKind::Menu.identity(),
             TransientPaneIdentityContract {
                 pane_title: "yzx_menu",
-                command_marker: "zellij_wrappers/yzx_menu_popup.nu",
-                wrapper_relative_path: "nushell/scripts/zellij_wrappers/yzx_menu_popup.nu",
+                command_marker: "shells/posix/yzx_menu_popup.sh",
+                wrapper_relative_path: "shells/posix/yzx_menu_popup.sh",
             }
         );
     }
@@ -201,7 +201,7 @@ mod tests {
         let menu_by_command = [transient_pane(
             4,
             "other",
-            Some("/tmp/runtime/shells/posix/yazelix_nu.sh /tmp/runtime/nushell/scripts/zellij_wrappers/yzx_menu_popup.nu"),
+            Some("/tmp/runtime/shells/posix/yzx_menu_popup.sh"),
             false,
         )];
         assert_eq!(
@@ -218,8 +218,8 @@ mod tests {
     #[test]
     fn prefers_focused_transient_pane_when_duplicates_exist() {
         let panes = [
-            transient_pane(1, "yzx_menu", Some("yzx_menu_popup.nu"), false),
-            transient_pane(2, "yzx_menu", Some("yzx_menu_popup.nu"), true),
+            transient_pane(1, "yzx_menu", Some("yzx_menu_popup.sh"), false),
+            transient_pane(2, "yzx_menu", Some("yzx_menu_popup.sh"), true),
         ];
 
         assert_eq!(
@@ -239,7 +239,7 @@ mod tests {
             TransientPaneSnapshot {
                 pane_id: 1,
                 title: "yzx_popup",
-                terminal_command: Some("yzx_popup_program.nu"),
+                terminal_command: Some("yzx_popup_program.sh"),
                 is_plugin: false,
                 exited: false,
                 is_floating: false,
@@ -267,7 +267,7 @@ mod tests {
         let present = [transient_pane(
             5,
             "yzx_popup",
-            Some("yzx_popup_program.nu"),
+            Some("yzx_popup_program.sh"),
             false,
         )];
         assert_eq!(
@@ -278,7 +278,7 @@ mod tests {
         let focused = [transient_pane(
             6,
             "yzx_popup",
-            Some("yzx_popup_program.nu"),
+            Some("yzx_popup_program.sh"),
             true,
         )];
         assert_eq!(

@@ -1,6 +1,6 @@
 # Nushell Scripts Organization
 
-This directory contains the surviving Nushell code in Yazelix
+This directory contains the remaining irreducible Nushell code in Yazelix
 
 ## Current Shape
 
@@ -15,21 +15,30 @@ entrypoint cut. The surviving shell boundary is the sidebar Yazi launcher wrappe
 under `zellij_wrappers/`
 
 ### `setup/`
-Shell bootstrap and initializer generation
+Shell bootstrap, shellhook env mutation, and welcome sequencing
 
-- `environment.nu` - Runtime environment file generation and setup orchestration
+- `environment.nu` - Shellhook env setup and initializer generation
+- `welcome.nu` - Interactive welcome display and prompt gating
 
 ### `utils/`
 Small surviving helpers plus runtime shell adapters
 
 - `constants.nu` - Version constants and static metadata accessors
-- `logging.nu` - Logging helpers
 - `yzx_core_bridge.nu` - Narrow Rust helper transport seam
+- `runtime_paths.nu` - Minimal runtime/state path helpers that still feed shell owners
+- `transient_pane_contract.nu` - Tiny popup/menu/sidebar shell facts
 
-### `dev/`
-Maintainer and validation helpers that have not been deleted or ported yet
+### `yzx/`
+The remaining public shell-owned surfaces
 
+- `dev.nu` - Thin maintainer router plus the startup-profile shell harness
+- `menu.nu` - Interactive command palette
 - Syntax validation is Rust-owned by `yzx_repo_validator validate-nushell-syntax`
+
+### `zellij_wrappers/`
+One surviving runtime wrapper
+
+- `launch_sidebar_yazi.nu` - Sidebar Yazi launcher that still needs the shell-facing Yazi handoff
 
 ## Canonical Entry Points
 
@@ -49,11 +58,7 @@ yzx dev test --lint-only
 yzx dev test
 ```
 
-The public launch, desktop, restart, enter, and popup families are no longer owned by direct Nushell modules
-
-## Manual Maintainer Helpers
-
-These are manual or exploratory helpers, not normal runtime entrypoints
+The public launch, desktop, restart, enter, popup, update, sweep, plugin-build, and issue-sync families are no longer owned by direct Nushell modules
 
 ## File Naming Convention
 
