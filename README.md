@@ -1,4 +1,4 @@
-# Yazelix v15.4
+# Yazelix v16
 
 <div align="center">
   <img src="assets/logo.png" alt="Yazelix Logo" width="200"/>
@@ -86,14 +86,14 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 If Yazelix is useful to you, you can support its development on [GitHub Sponsors](https://github.com/sponsors/luccahuguet)
 
 <!-- BEGIN GENERATED README LATEST SERIES -->
-## Latest Tagged Release: v15.4
+## Latest Tagged Release: v16
 
-v15.4 Rust-owns public yzx families and deletes bridge seams
+v16 Rust-forward control plane with an irreducible Nushell core
 
-- Moved more public `yzx` command families onto Rust-owned execution paths, including `yzx config`, `yzx home_manager`, `yzx why`, `yzx sponsor`, `yzx keys`, `yzx doctor`, `yzx cwd`, and `yzx reveal`.
-- Collapsed more transitional Nushell bridge owners: the extern bridge, preflight bridge, runtime-materialization bridge, doctor report cluster, install-ownership bridge, and the surviving Yazi/Zellij compatibility wrappers are gone or demoted.
-- Centralized public command metadata and route planning around the Rust shared command-surface schema so help, menu, extern, and routing behavior stay aligned while duplicated hand-written tables shrink.
-- Updated the Rust migration and spec inventories around the real remaining seams, with the next planning track focused on canonical contracts, stronger test traceability, and a ranked delete-first Nushell budget.
+- Finished the Rust owner cuts across the remaining deterministic control-plane and editor/Yazi integration surfaces, so the public `yzx` story is now much more clearly Rust-owned
+- Reduced Nushell to the explicit shell and UI core, documented the surviving floor, and kept popup/menu wrappers on Nushell where that boundary is the clearest fit
+- Moved maintainer, update, and sweep ownership further out of Nushell, including repo-maintainer flows and pane-orchestrator sync semantics, so the remaining Nu surface is much smaller and more intentional
+- Unified the human CLI rendering for `yzx status`, `yzx status --versions`, and `yzx keys` around one shared Rust styling layer with cleaner grouped output and better contrast
 
 For exact tagged release notes, see [CHANGELOG](./CHANGELOG.md) or run `yzx whats_new` after installing that release
 For the longer project story, see [Version History](./docs/history.md)
