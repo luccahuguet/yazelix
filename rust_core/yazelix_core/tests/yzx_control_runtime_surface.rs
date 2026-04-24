@@ -106,6 +106,7 @@ terminals = ["ghostty"]
     assert!(stdout.contains("Repair needed"));
     assert!(stdout.contains("Persistent sessions"));
     assert!(!stdout.contains("Yazelix status"));
+    assert!(!stdout.contains('\u{1b}'));
     assert!(!stdout.contains("generated_state_materialization_status"));
     assert!(!stdout.contains("generated_state_materialization_reason"));
     assert!(!stdout.contains("default_shell"));
@@ -150,6 +151,41 @@ terminals = ["ghostty"]
     assert_eq!(report["title"], "Yazelix status");
     assert_eq!(versions["title"], "Yazelix Tool Versions");
     assert_eq!(nix_entry["runtime"], "2.28.3");
+}
+
+// Defends: the human `yzx status --versions` output keeps the grouped status surface plus the tool-version matrix without leaking ANSI escapes to redirected output.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_control_status_versions_human_output_keeps_tool_matrix() {
+    let fixture = managed_config_fixture(
+        r#"[terminal]
+terminals = ["ghostty"]
+"#,
+    );
+    let fake_bin = fixture.home_dir.join("fake-bin");
+    fs::create_dir_all(&fake_bin).unwrap();
+    write_executable_script(
+        &fake_bin.join("nix"),
+        "#!/bin/sh\nprintf 'nix (Nix) 2.28.3\\n'\n",
+    );
+    write_executable_script(&fake_bin.join("nu"), "#!/bin/sh\nprintf '0.105.1\\n'\n");
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .env("PATH", prepend_path(&fake_bin))
+        .arg("status")
+        .arg("--versions")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stderr.is_empty());
+
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.starts_with("Runtime\n"));
+    assert!(stdout.contains("\nYazelix Tool Versions\n"));
+    assert!(stdout.contains("nix"));
+    assert!(stdout.contains("2.28.3"));
+    assert!(!stdout.contains('\u{1b}'));
 }
 
 // Defends: the Rust-owned `yzx update upstream` route still fails early for Home Manager-owned installs instead of probing the profile path.

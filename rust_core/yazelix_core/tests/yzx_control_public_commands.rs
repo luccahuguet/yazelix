@@ -47,6 +47,7 @@ fn yzx_control_keys_root_preserves_discoverability_sections() {
     assert!(stdout.contains("yzx keys yazi"));
     assert!(stdout.contains("yzx keys hx"));
     assert!(stdout.contains("yzx keys nu"));
+    assert!(!stdout.contains('\u{1b}'));
 }
 
 // Defends: the Rust-owned `yzx keys` leaves preserve alias parity and tool-specific guidance instead of routing every leaf to the same generic output.

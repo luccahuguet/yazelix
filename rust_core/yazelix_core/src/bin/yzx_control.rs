@@ -1,11 +1,14 @@
 //! Internal control-plane binary for Rust-owned `yzx` families (invoked from `yzx_cli.sh`).
 
-use crossterm::style::Stylize;
 use crossterm::terminal;
 use serde::Serialize;
-use std::io::IsTerminal;
 use std::process::Command;
 use yazelix_core::bridge::{CoreError, ErrorClass};
+use yazelix_core::cli_render::{
+    colors_enabled, label as render_cli_label, muted as render_cli_muted,
+    section_title as render_cli_section_title, success as render_cli_success,
+    warning as render_cli_warning,
+};
 use yazelix_core::compute_runtime_env;
 use yazelix_core::compute_status_report;
 use yazelix_core::config_normalize::ConfigDiagnosticReport;
@@ -268,10 +271,12 @@ fn collect_version_info() -> VersionReportData {
     }
 }
 
-fn print_aligned_rows(rows: &[(String, String)]) {
+fn print_aligned_rows(rows: &[(String, String)], color: bool) {
     let max_label_len = rows.iter().map(|(label, _)| label.len()).max().unwrap_or(0);
     for (label, value) in rows {
-        println!("  {:<width$}  {}", label, value, width = max_label_len);
+        let styled_label =
+            render_cli_label(&format!("{:<width$}", label, width = max_label_len), color);
+        println!("  {}  {}", styled_label, value);
     }
 }
 
@@ -458,16 +463,6 @@ fn build_status_sections(data: &yazelix_core::StatusReportData) -> Vec<StatusSec
     ]
 }
 
-fn colors_enabled() -> bool {
-    if std::env::var_os("NO_COLOR").is_some() {
-        return false;
-    }
-    if std::env::var_os("FORCE_COLOR").is_some() {
-        return true;
-    }
-    std::io::stdout().is_terminal()
-}
-
 fn render_width() -> usize {
     terminal::size()
         .map(|(width, _)| width as usize)
@@ -483,26 +478,14 @@ fn tone_text(text: &str, tone: StatusTone, color: bool) -> String {
 
     match tone {
         StatusTone::Default => text.to_string(),
-        StatusTone::Good => format!("{}", text.green().bold()),
-        StatusTone::Warning => format!("{}", text.yellow().bold()),
-        StatusTone::Muted => format!("{}", text.cyan()),
-    }
-}
-
-fn style_section_title(text: &str, color: bool) -> String {
-    if color {
-        format!("{}", text.yellow().bold())
-    } else {
-        text.to_string()
+        StatusTone::Good => render_cli_success(text, color),
+        StatusTone::Warning => render_cli_warning(text, color),
+        StatusTone::Muted => render_cli_muted(text, color),
     }
 }
 
 fn style_label(text: &str, color: bool) -> String {
-    if color {
-        format!("{}", text.dark_yellow())
-    } else {
-        text.to_string()
-    }
+    render_cli_label(text, color)
 }
 
 fn find_wrap_boundary(text: &str, max_chars: usize) -> usize {
@@ -566,7 +549,7 @@ fn wrap_text(text: &str, width: usize) -> Vec<String> {
 }
 
 fn render_status_section(section: &StatusSection, width: usize, color: bool) {
-    println!("{}", style_section_title(section.title, color));
+    println!("{}", render_cli_section_title(section.title, color));
 
     let max_label_len = section
         .rows
@@ -611,13 +594,14 @@ fn render_status_report(data: &yazelix_core::StatusReportData) {
 }
 
 fn render_version_report(report: &VersionReportData) {
-    println!("{}", report.title);
+    let color = colors_enabled();
+    println!("{}", render_cli_section_title(&report.title, color));
     let rows: Vec<(String, String)> = report
         .tools
         .iter()
         .map(|entry| (entry.tool.clone(), entry.runtime.clone()))
         .collect();
-    print_aligned_rows(&rows);
+    print_aligned_rows(&rows, color);
 }
 
 const CONFIG_RECOVERY_HINT: &str = "Update the reported config fields manually, then retry. Use `yzx config reset` only as a blunt fallback.";

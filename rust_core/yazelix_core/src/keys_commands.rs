@@ -2,11 +2,10 @@
 //! `yzx keys*` family implemented in Rust for `yzx_control`.
 
 use crate::bridge::CoreError;
-
-const ANSI_RESET: &str = "\u{1b}[0m";
-const ANSI_CYAN_BOLD: &str = "\u{1b}[1;36m";
-const ANSI_YELLOW_BOLD: &str = "\u{1b}[1;33m";
-const ANSI_WHITE: &str = "\u{1b}[37m";
+use crate::cli_render::{
+    accent as render_cli_accent, colors_enabled, label as render_cli_label,
+    section_title as render_cli_section_title,
+};
 
 const ROOT_ALIAS_TOKENS: &[&str] = &["yzx"];
 const YAZI_ALIAS_TOKENS: &[&str] = &["yazi"];
@@ -44,11 +43,12 @@ pub fn run_yzx_keys(args: &[String]) -> Result<i32, CoreError> {
         return Ok(0);
     }
 
+    let color = colors_enabled();
     let output = match parsed.view {
-        KeysView::Yazelix => render_yazelix_keys(),
-        KeysView::Yazi => render_yazi_keys(),
-        KeysView::Helix => render_helix_keys(),
-        KeysView::Nushell => render_nushell_keys(),
+        KeysView::Yazelix => render_yazelix_keys(color),
+        KeysView::Yazi => render_yazi_keys(color),
+        KeysView::Helix => render_helix_keys(color),
+        KeysView::Nushell => render_nushell_keys(color),
     };
     print!("{output}");
     Ok(0)
@@ -99,16 +99,16 @@ fn print_keys_help() {
     println!("  yzx keys nushell");
 }
 
-fn heading(text: &str) -> String {
-    format!("{ANSI_CYAN_BOLD}{text}{ANSI_RESET}")
+fn heading(text: &str, color: bool) -> String {
+    render_cli_section_title(text, color)
 }
 
-fn label(text: &str) -> String {
-    format!("{ANSI_YELLOW_BOLD}{text}{ANSI_RESET}")
+fn label(text: &str, color: bool) -> String {
+    render_cli_label(text, color)
 }
 
-fn accent_cmd(text: &str) -> String {
-    format!("{ANSI_WHITE}{text}{ANSI_RESET}")
+fn accent_cmd(text: &str, color: bool) -> String {
+    render_cli_accent(text, color)
 }
 
 fn wrap_text(text: &str, width: usize) -> Vec<String> {
@@ -266,7 +266,7 @@ fn root_tab_rows() -> Vec<TableRow> {
     ]
 }
 
-fn render_yazelix_keys() -> String {
+fn render_yazelix_keys(color: bool) -> String {
     let workspace = render_table(
         &[
             Column {
@@ -308,21 +308,33 @@ fn render_yazelix_keys() -> String {
     );
 
     [
-        heading("Yazelix keybindings"),
+        heading("Yazelix keybindings", color),
         String::new(),
-        heading("Workspace actions"),
+        heading("Workspace actions", color),
         workspace,
         String::new(),
-        heading("Command access"),
+        heading("Command access", color),
         command_access,
         String::new(),
-        heading("Tab and pane movement"),
+        heading("Tab and pane movement", color),
         tabs,
         String::new(),
-        heading("More"),
-        format!("{} {}", label("Yazi:"), accent_cmd("yzx keys yazi")),
-        format!("{} {}", label("Helix:"), accent_cmd("yzx keys hx")),
-        format!("{} {}", label("Nushell:"), accent_cmd("yzx keys nu")),
+        heading("More", color),
+        format!(
+            "{} {}",
+            label("Yazi:", color),
+            accent_cmd("yzx keys yazi", color)
+        ),
+        format!(
+            "{} {}",
+            label("Helix:", color),
+            accent_cmd("yzx keys hx", color)
+        ),
+        format!(
+            "{} {}",
+            label("Nushell:", color),
+            accent_cmd("yzx keys nu", color)
+        ),
         String::new(),
     ]
     .join("\n")
@@ -369,7 +381,7 @@ fn yazi_rows() -> Vec<TableRow> {
     ]
 }
 
-fn render_yazi_keys() -> String {
+fn render_yazi_keys(color: bool) -> String {
     let table = render_table(
         &[
             Column {
@@ -389,14 +401,14 @@ fn render_yazi_keys() -> String {
     );
 
     [
-        heading("Yazi keybindings"),
+        heading("Yazi keybindings", color),
         String::new(),
         table,
         String::new(),
         format!(
             "{} {}",
-            label("For Yazelix-specific bindings:"),
-            accent_cmd("yzx keys")
+            label("For Yazelix-specific bindings:", color),
+            accent_cmd("yzx keys", color)
         ),
         String::new(),
     ]
@@ -420,7 +432,7 @@ fn helix_caveat_rows() -> Vec<TableRow> {
     ])]
 }
 
-fn render_helix_keys() -> String {
+fn render_helix_keys(color: bool) -> String {
     let topics = render_table(
         &[
             Column {
@@ -449,7 +461,7 @@ fn render_helix_keys() -> String {
     );
 
     [
-        heading("Helix keybindings"),
+        heading("Helix keybindings", color),
         String::new(),
         topics,
         String::new(),
@@ -457,8 +469,8 @@ fn render_helix_keys() -> String {
         String::new(),
         format!(
             "{} {}",
-            label("For Yazelix-specific bindings:"),
-            accent_cmd("yzx keys")
+            label("For Yazelix-specific bindings:", color),
+            accent_cmd("yzx keys", color)
         ),
         String::new(),
     ]
@@ -478,7 +490,7 @@ fn nushell_rows() -> Vec<TableRow> {
     ]
 }
 
-fn render_nushell_keys() -> String {
+fn render_nushell_keys(color: bool) -> String {
     let table = render_table(
         &[
             Column {
@@ -498,25 +510,25 @@ fn render_nushell_keys() -> String {
     );
 
     [
-        heading("Nushell keybindings"),
+        heading("Nushell keybindings", color),
         String::new(),
         table,
         String::new(),
-        heading("More"),
+        heading("More", color),
         format!(
             "{} run {} inside Nushell",
-            label("Guided intro:"),
-            label("`tutor`")
+            label("Guided intro:", color),
+            label("`tutor`", color)
         ),
         format!(
             "{} {}",
-            label("Full reference:"),
-            accent_cmd("https://www.nushell.sh/book/line_editor.html")
+            label("Full reference:", color),
+            accent_cmd("https://www.nushell.sh/book/line_editor.html", color)
         ),
         format!(
             "{} {}",
-            label("For Yazelix-specific bindings:"),
-            accent_cmd("yzx keys")
+            label("For Yazelix-specific bindings:", color),
+            accent_cmd("yzx keys", color)
         ),
         String::new(),
     ]
@@ -586,7 +598,7 @@ mod tests {
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn renders_table_style_root_discoverability_surface() {
-        let rendered = render_yazelix_keys();
+        let rendered = render_yazelix_keys(false);
 
         assert!(rendered.contains("Yazelix keybindings"));
         assert!(rendered.contains("Workspace actions"));
