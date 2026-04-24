@@ -2,11 +2,15 @@
 //! Bead: yazelix-ulb2.4.1
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 const HOME_MANAGER_FILES_MARKER: &str = "-home-manager-files/";
 const MANUAL_DESKTOP_ICON_SIZES: &[&str] = &["48x48", "64x64", "128x128", "256x256"];
+pub const HOME_MANAGER_PREPARE_ACTION_ARCHIVE_PATH: &str = "archive_path";
+pub const HOME_MANAGER_PREPARE_ACTION_REMOVE_PROFILE_ENTRY: &str = "remove_profile_entry";
 
 #[derive(Debug, Deserialize)]
 pub struct InstallOwnershipEvaluateRequest {
@@ -41,6 +45,18 @@ pub struct HomeManagerPrepareArtifact {
     pub class: String,
     pub label: String,
     pub path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub action: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub remove_target: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct StandaloneYazelixProfileEntry {
+    pub name: String,
+    pub remove_target: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub store_path: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -54,7 +70,10 @@ pub struct InstallOwnershipEvaluateData {
     pub home_manager_profile_yzx_candidates: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub existing_home_manager_profile_yzx: Option<String>,
+    pub standalone_profile_yazelix_entries: Vec<StandaloneYazelixProfileEntry>,
     pub prepare_artifacts: Vec<HomeManagerPrepareArtifact>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub home_manager_profile_collision: Option<DoctorInstallResult>,
     pub desktop_entry_freshness: DoctorInstallResult,
     pub wrapper_shadowing: Vec<DoctorInstallResult>,
 }
@@ -73,7 +92,15 @@ pub fn evaluate_install_ownership_report(
     let is_manual_runtime_ref = is_manual_runtime_reference_path(
         &request.yazelix_state_dir.join("runtime").join("current"),
     );
-    let prepare_artifacts = collect_home_manager_prepare_artifacts(request, has_hm);
+    let standalone_profile_yazelix_entries =
+        collect_standalone_profile_yazelix_entries(&request.home_dir);
+    let prepare_artifacts = collect_home_manager_prepare_artifacts(
+        request,
+        has_hm,
+        &standalone_profile_yazelix_entries,
+    );
+    let home_manager_profile_collision =
+        check_home_manager_profile_collision(has_hm, &standalone_profile_yazelix_entries);
     let desktop_entry_freshness = check_desktop_entry_freshness(
         request,
         &install_owner,
@@ -93,7 +120,9 @@ pub fn evaluate_install_ownership_report(
             .map(path_to_string)
             .collect(),
         existing_home_manager_profile_yzx: existing_profile.map(|p| path_to_string(&p)),
+        standalone_profile_yazelix_entries,
         prepare_artifacts,
+        home_manager_profile_collision,
         desktop_entry_freshness,
         wrapper_shadowing,
     }
@@ -285,15 +314,105 @@ fn collect_manual_desktop_icon_artifacts(xdg_data_home: &Path) -> Vec<HomeManage
                 class: "cleanup".into(),
                 label: format!("manual desktop icon ({size})"),
                 path: path_to_string(&icon_path),
+                action: Some(HOME_MANAGER_PREPARE_ACTION_ARCHIVE_PATH.into()),
+                remove_target: None,
             });
         }
     }
     out
 }
 
+fn default_profile_manifest_paths(home_dir: &Path) -> Vec<PathBuf> {
+    vec![
+        home_dir.join(".nix-profile").join("manifest.json"),
+        home_dir
+            .join(".local")
+            .join("state")
+            .join("nix")
+            .join("profiles")
+            .join("profile")
+            .join("manifest.json"),
+    ]
+}
+
+fn is_yazelix_profile_entry(name: &str, entry: &JsonValue) -> bool {
+    let attr_path = entry["attrPath"].as_str().unwrap_or("").trim();
+    let original_url = entry["originalUrl"].as_str().unwrap_or("").trim();
+    let resolved_url = entry["url"].as_str().unwrap_or("").trim();
+    let store_paths = entry["storePaths"].as_array().cloned().unwrap_or_default();
+
+    name.trim().starts_with("yazelix")
+        || attr_path.split('.').any(|token| token == "yazelix")
+        || original_url.contains("luccahuguet/yazelix")
+        || resolved_url.contains("luccahuguet/yazelix")
+        || store_paths.iter().any(|path| {
+            let value = path.as_str().unwrap_or("").trim();
+            value.contains("-yazelix-") || value.ends_with("-yazelix")
+        })
+}
+
+fn read_standalone_profile_yazelix_entries(
+    manifest_path: &Path,
+) -> Vec<StandaloneYazelixProfileEntry> {
+    let Ok(raw) = fs::read_to_string(manifest_path) else {
+        return Vec::new();
+    };
+    let Ok(parsed) = serde_json::from_str::<JsonValue>(&raw) else {
+        return Vec::new();
+    };
+    let Some(elements) = parsed.get("elements").and_then(JsonValue::as_object) else {
+        return Vec::new();
+    };
+
+    let mut entries = Vec::new();
+    for (name, entry) in elements {
+        if entry
+            .get("active")
+            .and_then(JsonValue::as_bool)
+            .is_some_and(|active| !active)
+        {
+            continue;
+        }
+        if !is_yazelix_profile_entry(name, entry) {
+            continue;
+        }
+
+        let store_path = entry
+            .get("storePaths")
+            .and_then(JsonValue::as_array)
+            .and_then(|paths| paths.first())
+            .and_then(JsonValue::as_str)
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+        entries.push(StandaloneYazelixProfileEntry {
+            name: name.trim().to_string(),
+            remove_target: name.trim().to_string(),
+            store_path,
+        });
+    }
+    entries
+}
+
+fn collect_standalone_profile_yazelix_entries(
+    home_dir: &Path,
+) -> Vec<StandaloneYazelixProfileEntry> {
+    let mut seen = HashSet::new();
+    let mut entries = Vec::new();
+    for manifest_path in default_profile_manifest_paths(home_dir) {
+        for entry in read_standalone_profile_yazelix_entries(&manifest_path) {
+            if seen.insert(entry.remove_target.clone()) {
+                entries.push(entry);
+            }
+        }
+    }
+    entries.sort_by(|left, right| left.remove_target.cmp(&right.remove_target));
+    entries
+}
+
 fn collect_home_manager_prepare_artifacts(
     request: &InstallOwnershipEvaluateRequest,
     has_hm: bool,
+    standalone_profile_yazelix_entries: &[StandaloneYazelixProfileEntry],
 ) -> Vec<HomeManagerPrepareArtifact> {
     let mut artifacts = Vec::new();
     let main = &request.main_config_path;
@@ -303,6 +422,28 @@ fn collect_home_manager_prepare_artifacts(
             class: "blocker".into(),
             label: "managed yazelix.toml surface".into(),
             path: path_to_string(main),
+            action: Some(HOME_MANAGER_PREPARE_ACTION_ARCHIVE_PATH.into()),
+            remove_target: None,
+        });
+    }
+    for entry in standalone_profile_yazelix_entries {
+        let path = entry
+            .store_path
+            .as_ref()
+            .map(|store_path| {
+                format!(
+                    "default Nix profile entry `{}` -> {}",
+                    entry.name, store_path
+                )
+            })
+            .unwrap_or_else(|| format!("default Nix profile entry `{}`", entry.name));
+        artifacts.push(HomeManagerPrepareArtifact {
+            id: format!("standalone_profile_yazelix_{}", entry.name),
+            class: "blocker".into(),
+            label: "standalone default-profile Yazelix package".into(),
+            path,
+            action: Some(HOME_MANAGER_PREPARE_ACTION_REMOVE_PROFILE_ENTRY.into()),
+            remove_target: Some(entry.remove_target.clone()),
         });
     }
     let desktop_entry = manual_desktop_entry_path(&request.xdg_data_home);
@@ -312,6 +453,8 @@ fn collect_home_manager_prepare_artifacts(
             class: "cleanup".into(),
             label: "manual desktop entry".into(),
             path: path_to_string(&desktop_entry),
+            action: Some(HOME_MANAGER_PREPARE_ACTION_ARCHIVE_PATH.into()),
+            remove_target: None,
         });
     }
     artifacts.extend(collect_manual_desktop_icon_artifacts(
@@ -324,9 +467,35 @@ fn collect_home_manager_prepare_artifacts(
             class: "cleanup".into(),
             label: "legacy ~/.local/bin/yzx wrapper".into(),
             path: path_to_string(&manual_wrapper),
+            action: Some(HOME_MANAGER_PREPARE_ACTION_ARCHIVE_PATH.into()),
+            remove_target: None,
         });
     }
     artifacts
+}
+
+fn check_home_manager_profile_collision(
+    has_hm: bool,
+    standalone_profile_yazelix_entries: &[StandaloneYazelixProfileEntry],
+) -> Option<DoctorInstallResult> {
+    if !has_hm || standalone_profile_yazelix_entries.is_empty() {
+        return None;
+    }
+
+    let remove_targets = standalone_profile_yazelix_entries
+        .iter()
+        .map(|entry| entry.remove_target.as_str())
+        .collect::<Vec<_>>();
+    let details = format!(
+        "Home Manager now owns this Yazelix install, but the default Nix profile still contains standalone Yazelix package entries.\nRemove them with `yzx home_manager prepare --apply` before the next `home-manager switch`, or run `nix profile remove {}` yourself.",
+        remove_targets.join(" ")
+    );
+    Some(DoctorInstallResult {
+        status: "warn".into(),
+        message: "The default Nix profile still contains standalone Yazelix packages alongside the Home Manager install".into(),
+        details: Some(details),
+        fix_available: false,
+    })
 }
 
 fn get_desktop_entry_exec(desktop_path: &Path) -> Option<String> {
@@ -631,6 +800,12 @@ mod tests {
     use std::io::Write;
     use tempfile::TempDir;
 
+    fn write_default_profile_manifest(home_dir: &Path, raw: &str) {
+        let manifest_path = home_dir.join(".nix-profile").join("manifest.json");
+        std::fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
+        std::fs::write(manifest_path, raw).unwrap();
+    }
+
     // Defends: Home Manager ownership detection still recognizes the store-symlink marker path.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
@@ -822,5 +997,107 @@ mod tests {
             r.desktop_entry_freshness.message,
             "A stale user-local Yazelix desktop entry shadows the Home Manager desktop entry"
         );
+    }
+
+    // Regression: Home Manager prepare must surface standalone default-profile Yazelix entries as explicit removal blockers.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn prepare_artifacts_include_standalone_profile_yazelix_entry() {
+        let tmp = TempDir::new().unwrap();
+        let home = tmp.path().join("home");
+        let xdg_data = home.join(".local/share");
+        let main_config = home.join(".config/yazelix/yazelix.toml");
+        std::fs::create_dir_all(main_config.parent().unwrap()).unwrap();
+        std::fs::write(&main_config, "[core]\n").unwrap();
+        write_default_profile_manifest(
+            &home,
+            r#"{"elements":{"yazelix":{"active":true,"storePaths":["/nix/store/test-yazelix"]}},"version":3}"#,
+        );
+
+        let report = evaluate_install_ownership_report(&InstallOwnershipEvaluateRequest {
+            runtime_dir: tmp.path().join("runtime"),
+            home_dir: home,
+            user: Some("test-user".into()),
+            xdg_config_home: tmp.path().join("home/.config"),
+            xdg_data_home: xdg_data.clone(),
+            yazelix_state_dir: xdg_data.join("yazelix"),
+            main_config_path: main_config,
+            invoked_yzx_path: None,
+            redirected_from_stale_yzx_path: None,
+            shell_resolved_yzx_path: None,
+        });
+
+        assert_eq!(report.standalone_profile_yazelix_entries.len(), 1);
+        assert_eq!(
+            report.standalone_profile_yazelix_entries[0].remove_target,
+            "yazelix"
+        );
+        let artifact = report
+            .prepare_artifacts
+            .iter()
+            .find(|artifact| artifact.remove_target.as_deref() == Some("yazelix"))
+            .expect("standalone profile artifact");
+        assert_eq!(
+            artifact.action.as_deref(),
+            Some(HOME_MANAGER_PREPARE_ACTION_REMOVE_PROFILE_ENTRY)
+        );
+        assert_eq!(artifact.class, "blocker");
+    }
+
+    // Regression: doctor ownership diagnostics must flag mixed Home Manager/profile installs instead of leaving the collision to Home Manager's package error.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn evaluate_install_ownership_reports_home_manager_profile_collision() {
+        let tmp = TempDir::new().unwrap();
+        let home = tmp.path().join("home");
+        let xdg_data = home.join(".local/share");
+        let main_config = home.join(".config/yazelix/yazelix.toml");
+        std::fs::create_dir_all(main_config.parent().unwrap()).unwrap();
+        write_default_profile_manifest(
+            &home,
+            r#"{"elements":{"yazelix":{"active":true,"storePaths":["/nix/store/test-yazelix"]}},"version":3}"#,
+        );
+
+        #[cfg(unix)]
+        {
+            let hm_cfg_target = tmp
+                .path()
+                .join("hm-marker")
+                .join("-home-manager-files")
+                .join("yazelix.toml");
+            std::fs::create_dir_all(hm_cfg_target.parent().unwrap()).unwrap();
+            std::fs::write(&hm_cfg_target, "").unwrap();
+            std::os::unix::fs::symlink(&hm_cfg_target, &main_config).unwrap();
+        }
+        #[cfg(not(unix))]
+        {
+            let _ = (&main_config, &xdg_data);
+            return;
+        }
+
+        let report = evaluate_install_ownership_report(&InstallOwnershipEvaluateRequest {
+            runtime_dir: tmp.path().join("runtime"),
+            home_dir: home,
+            user: Some("test-user".into()),
+            xdg_config_home: tmp.path().join("home/.config"),
+            xdg_data_home: xdg_data.clone(),
+            yazelix_state_dir: xdg_data.join("yazelix"),
+            main_config_path: main_config,
+            invoked_yzx_path: None,
+            redirected_from_stale_yzx_path: None,
+            shell_resolved_yzx_path: None,
+        });
+
+        let collision = report
+            .home_manager_profile_collision
+            .as_ref()
+            .expect("mixed ownership warning");
+        assert_eq!(collision.status, "warn");
+        assert!(collision.message.contains("default Nix profile"));
+        assert!(collision
+            .details
+            .as_deref()
+            .unwrap_or_default()
+            .contains("yzx home_manager prepare --apply"));
     }
 }

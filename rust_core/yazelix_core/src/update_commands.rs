@@ -369,6 +369,9 @@ pub fn run_yzx_update(args: &[String]) -> Result<i32, CoreError> {
             println!(
                 "   If your Yazelix input uses a different name, run `nix flake update <your-input-name>` yourself."
             );
+            println!(
+                "   This still matters for `path:` inputs because `flake.lock` pins a snapshot of that local path until you refresh it."
+            );
             println!();
             print_exact_command("nix flake update yazelix");
 

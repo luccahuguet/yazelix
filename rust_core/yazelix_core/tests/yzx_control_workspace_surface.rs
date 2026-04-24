@@ -478,3 +478,53 @@ fn yzx_control_doctor_json_reports_structured_findings() {
             >= 1
     );
 }
+
+// Regression: `yzx doctor --json` must surface mixed Home Manager/default-profile Yazelix ownership before Home Manager activation trips over the package collision.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_control_doctor_json_reports_home_manager_profile_collision() {
+    let fixture = managed_config_fixture("");
+    let hm_store_config = fixture
+        .home_dir
+        .join("hm-store")
+        .join("abc-home-manager-files")
+        .join("yazelix.toml");
+    let manifest_path = fixture.home_dir.join(".nix-profile").join("manifest.json");
+    fs::create_dir_all(hm_store_config.parent().unwrap()).unwrap();
+    fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
+    fs::write(&hm_store_config, "[core]\nwelcome_style = \"random\"\n").unwrap();
+    fs::write(
+        &manifest_path,
+        r#"{"elements":{"yazelix":{"active":true,"storePaths":["/nix/store/test-yazelix"]}},"version":3}"#,
+    )
+    .unwrap();
+    fs::remove_file(&fixture.managed_config).unwrap();
+    std::os::unix::fs::symlink(&hm_store_config, &fixture.managed_config).unwrap();
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .arg("doctor")
+        .arg("--json")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stderr.is_empty());
+    let report: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let ownership_result = report["results"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|result| {
+            result["message"]
+                .as_str()
+                .unwrap_or("")
+                .contains("default Nix profile still contains standalone Yazelix packages")
+        })
+        .expect("mixed ownership warning");
+
+    assert_eq!(ownership_result["status"], "warn");
+    assert!(ownership_result["details"]
+        .as_str()
+        .unwrap_or("")
+        .contains("yzx home_manager prepare --apply"));
+}

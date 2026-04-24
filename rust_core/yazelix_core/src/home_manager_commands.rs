@@ -1,12 +1,15 @@
 //! `yzx home_manager` family implemented in Rust for `yzx_control`.
 
-use crate::bridge::CoreError;
+use crate::bridge::{CoreError, ErrorClass};
 use crate::install_ownership_env::install_ownership_request_from_env;
 use crate::install_ownership_report::{
-    HomeManagerPrepareArtifact, evaluate_install_ownership_report,
+    evaluate_install_ownership_report, HomeManagerPrepareArtifact,
+    HOME_MANAGER_PREPARE_ACTION_ARCHIVE_PATH, HOME_MANAGER_PREPARE_ACTION_REMOVE_PROFILE_ENTRY,
 };
+use serde_json::json;
 use std::fs;
 use std::io::{self, BufRead, Write};
+use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const HOME_MANAGER_PREPARE_BACKUP_LABEL: &str = "home-manager-prepare";
@@ -21,6 +24,12 @@ struct ArchivedArtifact {
     label: String,
     path: String,
     backup_path: String,
+}
+
+struct RemovedProfileArtifact {
+    label: String,
+    description: String,
+    remove_target: String,
 }
 
 pub fn run_yzx_home_manager(args: &[String]) -> Result<i32, CoreError> {
@@ -40,7 +49,7 @@ pub fn run_yzx_home_manager(args: &[String]) -> Result<i32, CoreError> {
 fn print_home_manager_root() {
     println!("Yazelix Home Manager helpers");
     println!(
-        "  yzx home_manager prepare   Preview or archive manual-install artifacts before Home Manager takeover"
+        "  yzx home_manager prepare   Preview or remove takeover blockers before Home Manager takeover"
     );
     println!(
         "  yzx update home_manager    Refresh the current flake input, then print `home-manager switch`"
@@ -48,14 +57,14 @@ fn print_home_manager_root() {
 }
 
 fn print_home_manager_prepare_help() {
-    println!("Preview or archive manual-install artifacts before Home Manager takeover");
+    println!("Preview or remove manual-install takeover blockers before Home Manager takeover");
     println!();
     println!("Usage:");
     println!("  yzx home_manager prepare [--apply] [--yes]");
     println!();
     println!("Flags:");
     println!(
-        "      --apply  Archive the detected manual-install takeover blockers and cleanup-only artifacts"
+        "      --apply  Archive file-based takeover artifacts and remove standalone default-profile Yazelix entries"
     );
     println!("      --yes    Skip confirmation prompt when using --apply");
 }
@@ -119,7 +128,7 @@ fn render_prepare_preview(artifacts: &[HomeManagerPrepareArtifact]) -> String {
 
     lines.push(String::new());
     lines.push(
-        "Run `yzx home_manager prepare --apply` to archive these manual-install artifacts before `home-manager switch`."
+        "Run `yzx home_manager prepare --apply` to archive file artifacts and remove standalone default-profile Yazelix entries before `home-manager switch`."
             .to_string(),
     );
     lines.join("\n")
@@ -169,6 +178,70 @@ fn archive_artifacts(
     Ok(archived)
 }
 
+fn prepare_artifact_action(artifact: &HomeManagerPrepareArtifact) -> &str {
+    artifact
+        .action
+        .as_deref()
+        .unwrap_or(HOME_MANAGER_PREPARE_ACTION_ARCHIVE_PATH)
+}
+
+fn remove_profile_artifacts(
+    artifacts: &[HomeManagerPrepareArtifact],
+) -> Result<Vec<RemovedProfileArtifact>, CoreError> {
+    let remove_targets = artifacts
+        .iter()
+        .filter_map(|artifact| artifact.remove_target.clone())
+        .collect::<Vec<_>>();
+    if remove_targets.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let output = Command::new("nix")
+        .arg("profile")
+        .arg("remove")
+        .args(&remove_targets)
+        .output()
+        .map_err(|error| {
+            CoreError::classified(
+                ErrorClass::Runtime,
+                "home_manager_prepare_remove_profile_entries",
+                "Could not remove the standalone default-profile Yazelix package entries.",
+                "Run `nix profile remove <entry>` yourself, then rerun `yzx home_manager prepare --apply`.",
+                json!({
+                    "command": format!("nix profile remove {}", remove_targets.join(" ")),
+                    "error": error.to_string(),
+                }),
+            )
+        })?;
+    if !output.status.success() {
+        return Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "home_manager_prepare_remove_profile_entries",
+            "Could not remove the standalone default-profile Yazelix package entries.",
+            "Run `nix profile remove <entry>` yourself, then rerun `yzx home_manager prepare --apply`.",
+            json!({
+                "command": format!("nix profile remove {}", remove_targets.join(" ")),
+                "stdout": String::from_utf8_lossy(&output.stdout).trim(),
+                "stderr": String::from_utf8_lossy(&output.stderr).trim(),
+            }),
+        ));
+    }
+
+    Ok(artifacts
+        .iter()
+        .filter_map(|artifact| {
+            artifact
+                .remove_target
+                .as_ref()
+                .map(|remove_target| RemovedProfileArtifact {
+                    label: artifact.label.clone(),
+                    description: artifact.path.clone(),
+                    remove_target: remove_target.clone(),
+                })
+        })
+        .collect())
+}
+
 fn read_confirmation() -> String {
     let _ = io::stdout().flush();
     let mut line = String::new();
@@ -206,7 +279,7 @@ fn run_home_manager_prepare(args: &[String]) -> Result<i32, CoreError> {
 
     if !parsed.yes {
         println!(
-            "⚠️  This archives the detected manual-install Yazelix artifacts so Home Manager can take over their paths."
+            "⚠️  This archives file-based Yazelix takeover artifacts and removes standalone default-profile Yazelix entries so Home Manager can take over cleanly."
         );
         println!(
             "   Archived files stay next to the original path with a timestamped `.home-manager-prepare-backup-*` suffix."
@@ -219,14 +292,44 @@ fn run_home_manager_prepare(args: &[String]) -> Result<i32, CoreError> {
         }
     }
 
-    let archived = archive_artifacts(&artifacts, HOME_MANAGER_PREPARE_BACKUP_LABEL)?;
+    let archive_targets = artifacts
+        .iter()
+        .filter(|artifact| {
+            prepare_artifact_action(artifact) == HOME_MANAGER_PREPARE_ACTION_ARCHIVE_PATH
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+    let profile_remove_targets = artifacts
+        .iter()
+        .filter(|artifact| {
+            prepare_artifact_action(artifact) == HOME_MANAGER_PREPARE_ACTION_REMOVE_PROFILE_ENTRY
+        })
+        .cloned()
+        .collect::<Vec<_>>();
 
-    println!("Archived manual-install artifacts for Home Manager takeover:");
-    for artifact in archived {
-        println!(
-            "  - {}: {} -> {}",
-            artifact.label, artifact.path, artifact.backup_path
-        );
+    let archived = archive_artifacts(&archive_targets, HOME_MANAGER_PREPARE_BACKUP_LABEL)?;
+    let removed = remove_profile_artifacts(&profile_remove_targets)?;
+
+    if !archived.is_empty() {
+        println!("Archived manual-install artifacts for Home Manager takeover:");
+        for artifact in archived {
+            println!(
+                "  - {}: {} -> {}",
+                artifact.label, artifact.path, artifact.backup_path
+            );
+        }
+    }
+    if !removed.is_empty() {
+        if !archive_targets.is_empty() {
+            println!();
+        }
+        println!("Removed standalone default-profile Yazelix entries:");
+        for artifact in removed {
+            println!(
+                "  - {}: {} (removed with `nix profile remove {}`)",
+                artifact.label, artifact.description, artifact.remove_target
+            );
+        }
     }
     println!("Next step:");
     println!("  home-manager switch");

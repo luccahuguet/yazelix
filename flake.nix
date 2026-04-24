@@ -3,6 +3,10 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    home-manager = {
+      url = "github:nix-community/home-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     nixgl.url = "github:guibou/nixGL";
     fenix = {
       url = "github:nix-community/fenix";
@@ -21,6 +25,7 @@
     {
       self,
       nixpkgs,
+      home-manager,
       nixgl,
       fenix,
       beads,

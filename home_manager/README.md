@@ -93,6 +93,8 @@ yzx update home_manager
 
 That command prints the exact `nix flake update yazelix` command it runs in the current flake directory, then prints `home-manager switch` for you to copy and run yourself.
 
+This still matters for `path:` inputs because `flake.lock` pins a snapshot of that local path until you refresh it
+
 Do not mix this with `yzx update upstream` for the same installed Yazelix runtime.
 
 After `home-manager switch`, fresh launches use the profile-owned `yzx` wrapper. Already-open Yazelix windows keep running their current live runtime until you explicitly relaunch them or run `yzx restart`; there is no invisible hot-swap of live sessions.
@@ -137,8 +139,9 @@ Migration note for older setups:
    yzx home_manager prepare --apply
    ```
 
-The prepare command archives the common manual-install takeover blockers and handoff cleanup paths:
+The prepare command archives the common file-based takeover blockers and handoff cleanup paths, and it removes standalone default-profile Yazelix package entries that would collide with Home Manager:
 - `~/.config/yazelix/user_configs/yazelix.toml`
+- standalone default-profile `yazelix` entries from `nix profile list --json`
 - `~/.local/bin/yzx` when it is the legacy Yazelix manual wrapper
 - `~/.local/share/applications/com.yazelix.Yazelix.desktop`
 - `~/.local/share/icons/hicolor/*/apps/yazelix.png`

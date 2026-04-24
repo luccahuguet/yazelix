@@ -16,6 +16,12 @@ fn yzx_control_command_in_fixture(
     command
 }
 
+fn write_default_profile_manifest(fixture: &support::fixtures::ManagedConfigFixture, raw: &str) {
+    let manifest_path = fixture.home_dir.join(".nix-profile").join("manifest.json");
+    fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
+    fs::write(manifest_path, raw).unwrap();
+}
+
 // Defends: the public Rust-owned `yzx config --path` route still bootstraps the managed config surface and returns its canonical path.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
@@ -65,12 +71,10 @@ terminals = ["ghostty"]
     let report: Value = serde_json::from_slice(&output.stdout).unwrap();
     let summary = &report["summary"];
     assert_eq!(report["title"], "Yazelix status");
-    assert!(
-        summary["config_file"]
-            .as_str()
-            .unwrap()
-            .ends_with("yazelix.toml")
-    );
+    assert!(summary["config_file"]
+        .as_str()
+        .unwrap()
+        .ends_with("yazelix.toml"));
     assert_eq!(summary["default_shell"], "nu");
     assert_eq!(summary["terminals"], serde_json::json!(["ghostty"]));
     assert!(summary["generated_state_repair_needed"].is_boolean());
@@ -227,7 +231,11 @@ fn yzx_control_update_upstream_rejects_home_manager_owned_install() {
 fn yzx_control_update_upstream_accepts_profile_owned_install() {
     let fixture = managed_config_fixture("");
     let fake_bin = fixture.home_dir.join("fake-bin");
-    let profile_yzx = fixture.home_dir.join(".nix-profile").join("bin").join("yzx");
+    let profile_yzx = fixture
+        .home_dir
+        .join(".nix-profile")
+        .join("bin")
+        .join("yzx");
     let upgrade_log = fixture.home_dir.join("nix-upgrade.log");
     fs::create_dir_all(&fake_bin).unwrap();
     fs::create_dir_all(profile_yzx.parent().unwrap()).unwrap();
@@ -272,6 +280,111 @@ exit 99
     assert_eq!(
         fs::read_to_string(upgrade_log).unwrap(),
         "profile upgrade --refresh yazelix\n"
+    );
+}
+
+// Regression: `yzx home_manager prepare --apply` must remove standalone profile-owned Yazelix entries as part of the takeover flow instead of only archiving files.
+// Strength: defect=2 behavior=2 resilience=2 cost=2 uniqueness=2 total=10/10
+#[test]
+fn yzx_control_home_manager_prepare_apply_removes_profile_entry_blockers() {
+    let fixture = managed_config_fixture("");
+    let fake_bin = fixture.home_dir.join("fake-bin");
+    let remove_log = fixture.home_dir.join("nix-remove.log");
+    fs::create_dir_all(&fake_bin).unwrap();
+    write_default_profile_manifest(
+        &fixture,
+        r#"{"elements":{"yazelix":{"active":true,"storePaths":["/nix/store/test-yazelix"]}},"version":3}"#,
+    );
+    write_executable_script(
+        &fake_bin.join("nix"),
+        &format!(
+            "#!/bin/sh
+if [ \"$1\" = profile ] && [ \"$2\" = remove ] && [ \"$3\" = yazelix ]; then
+  printf '%s\\n' \"$*\" > \"{}\"
+  exit 0
+fi
+echo unexpected nix invocation: \"$*\" >&2
+exit 99
+",
+            remove_log.display()
+        ),
+    );
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .env("PATH", prepend_path(&fake_bin))
+        .arg("home_manager")
+        .arg("prepare")
+        .arg("--apply")
+        .arg("--yes")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stderr.is_empty());
+
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("Archived manual-install artifacts for Home Manager takeover"));
+    assert!(stdout.contains("Removed standalone default-profile Yazelix entries"));
+    assert!(stdout.contains("home-manager switch"));
+    assert_eq!(
+        fs::read_to_string(remove_log).unwrap(),
+        "profile remove yazelix\n"
+    );
+    assert!(!fixture.managed_config.exists());
+    let archived_paths = fs::read_dir(fixture.managed_config.parent().unwrap())
+        .unwrap()
+        .filter_map(Result::ok)
+        .map(|entry| entry.file_name().to_string_lossy().to_string())
+        .collect::<Vec<_>>();
+    assert!(archived_paths
+        .iter()
+        .any(|name| { name.starts_with("yazelix.toml.home-manager-prepare-backup-") }));
+}
+
+// Regression: `yzx update home_manager` must explain that `path:` inputs are still lock-pinned in flake.lock.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_control_update_home_manager_mentions_path_input_locking() {
+    let fixture = managed_config_fixture("");
+    let fake_bin = fixture.home_dir.join("fake-bin");
+    let update_log = fixture.home_dir.join("nix-update.log");
+    let flake_dir = fixture.home_dir.join("hm-flake");
+    fs::create_dir_all(&fake_bin).unwrap();
+    fs::create_dir_all(&flake_dir).unwrap();
+    fs::write(flake_dir.join("flake.nix"), "{ outputs = { self }: {}; }\n").unwrap();
+    write_executable_script(
+        &fake_bin.join("nix"),
+        &format!(
+            "#!/bin/sh
+if [ \"$1\" = flake ] && [ \"$2\" = update ] && [ \"$3\" = yazelix ]; then
+  printf '%s\\n' \"$*\" > \"{}\"
+  exit 0
+fi
+echo unexpected nix invocation: \"$*\" >&2
+exit 99
+",
+            update_log.display()
+        ),
+    );
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .current_dir(&flake_dir)
+        .env("PATH", prepend_path(&fake_bin))
+        .arg("update")
+        .arg("home_manager")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stderr.is_empty());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("Requested update path: Home Manager flake input."));
+    assert!(stdout.contains("This still matters for `path:` inputs"));
+    assert!(stdout.contains("pins a snapshot of that local path until you refresh it"));
+    assert!(stdout.contains("home-manager switch"));
+    assert_eq!(
+        fs::read_to_string(update_log).unwrap(),
+        "flake update yazelix\n"
     );
 }
 

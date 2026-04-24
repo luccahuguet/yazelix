@@ -196,6 +196,9 @@ fn compute_doctor_report_from_env() -> Result<DoctorReportData, CoreError> {
             .map(serialize_value)
             .collect::<Result<Vec<_>, _>>()?,
     );
+    if let Some(collision) = install_report.home_manager_profile_collision.as_ref() {
+        results.push(serialize_value(collision)?);
+    }
     results.push(serialize_value(&install_report.desktop_entry_freshness)?);
     results.extend(zellij_findings);
 

@@ -170,6 +170,8 @@ Run it only from the Home Manager flake that owns this install
 
 If your Home Manager flake uses a different Yazelix input name, run `nix flake update <your-input-name>` yourself instead
 
+This still matters for `path:` inputs because `flake.lock` pins a snapshot of that local path until you refresh it
+
 Then `yzx update home_manager` prints `home-manager switch` for you to run yourself
 
 Updating replaces the installed runtime that future launches use, while already-open Yazelix windows keep running their current live runtime until you explicitly relaunch them or run `yzx restart`; Yazelix does not silently hot-swap live sessions in place

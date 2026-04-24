@@ -1,6 +1,6 @@
 use crate::config_state::{
-    ComputeConfigStateRequest, ConfigStateData, RecordConfigStateRequest, compute_config_state,
-    record_config_state,
+    compute_config_state, record_config_state, ComputeConfigStateRequest, ConfigStateData,
+    RecordConfigStateRequest,
 };
 use crate::control_plane::read_yazelix_version_from_runtime;
 use crate::repo_validation::ValidationReport;
@@ -96,6 +96,11 @@ pub fn validate_config_surface_contract(repo_root: &Path) -> Result<ValidationRe
     report
         .errors
         .extend(validate_home_manager_desktop_entry_contract(repo_root)?);
+    report
+        .errors
+        .extend(validate_home_manager_activation_hook_static_contract(
+            repo_root,
+        )?);
     report
         .errors
         .extend(validate_generated_state_contract(repo_root)?);
@@ -829,6 +834,7 @@ fn validate_installed_runtime_contract_inner(repo_root: &Path) -> Result<Vec<Str
         "built yazelix detached launch probe helper",
         &mut errors,
     );
+    errors.extend(validate_home_manager_activation_contract(repo_root)?);
 
     let built_yzx = yazelix_out.join("bin").join("yzx");
     require_path_exists_abs(&built_yzx, "built yazelix CLI wrapper", &mut errors);
@@ -868,6 +874,225 @@ fn validate_installed_runtime_contract_inner(repo_root: &Path) -> Result<Vec<Str
     }
 
     Ok(errors)
+}
+
+fn validate_home_manager_activation_contract(repo_root: &Path) -> Result<Vec<String>, String> {
+    let temp_root = create_unique_temp_dir("yazelix_home_manager_activation")?;
+    let cleanup_result = (|| {
+        let flake_root = temp_root.join("flake");
+        let home_root = temp_root.join("home");
+        let system = resolve_nix_current_system(repo_root)?;
+        let xdg_config_home = home_root.join(".config");
+        let xdg_data_home = home_root.join(".local").join("share");
+        fs::create_dir_all(&flake_root)
+            .map_err(|error| format!("Failed to create {}: {}", flake_root.display(), error))?;
+        fs::create_dir_all(&xdg_config_home).map_err(|error| {
+            format!("Failed to create {}: {}", xdg_config_home.display(), error)
+        })?;
+        fs::create_dir_all(&xdg_data_home)
+            .map_err(|error| format!("Failed to create {}: {}", xdg_data_home.display(), error))?;
+        fs::write(
+            flake_root.join("flake.nix"),
+            build_home_manager_activation_validation_flake(repo_root, &home_root, &system),
+        )
+        .map_err(|error| {
+            format!(
+                "Failed to write Home Manager activation validation flake: {}",
+                error
+            )
+        })?;
+
+        let build_output = Command::new("nix")
+            .args([
+                "build",
+                "--no-link",
+                "--print-out-paths",
+                ".#homeConfigurations.validation.activationPackage",
+            ])
+            .current_dir(&flake_root)
+            .output()
+            .map_err(|error| {
+                format!(
+                    "Failed to build the temporary Home Manager activation package: {}",
+                    error
+                )
+            })?;
+        if !build_output.status.success() {
+            return Ok(vec![format!(
+                "Temporary Home Manager activation package failed to build\n{}",
+                command_output_summary(&build_output)
+            )]);
+        }
+
+        let stdout = String::from_utf8_lossy(&build_output.stdout);
+        let Some(activation_package) = stdout
+            .lines()
+            .map(str::trim)
+            .find(|line| !line.is_empty())
+            .map(PathBuf::from)
+        else {
+            return Ok(vec![
+                "Temporary Home Manager activation build did not return an activation package path"
+                    .to_string(),
+            ]);
+        };
+
+        let activate_script = activation_package.join("activate");
+        let mut errors = Vec::new();
+        require_path_exists_abs(
+            &activate_script,
+            "temporary Home Manager activation script",
+            &mut errors,
+        );
+        if !errors.is_empty() {
+            return Ok(errors);
+        }
+
+        let activate_output = Command::new(&activate_script)
+            .env("HOME", &home_root)
+            .env("USER", "validator")
+            .env("XDG_CONFIG_HOME", &xdg_config_home)
+            .env("XDG_DATA_HOME", &xdg_data_home)
+            .env(
+                "PATH",
+                env::var("PATH").unwrap_or_else(|_| "/usr/bin:/bin".to_string()),
+            )
+            .current_dir(&flake_root)
+            .output()
+            .map_err(|error| {
+                format!(
+                    "Failed to run the temporary Home Manager activation script: {}",
+                    error
+                )
+            })?;
+        if !activate_output.status.success() {
+            return Ok(vec![format!(
+                "Temporary Home Manager activation script failed\n{}",
+                command_output_summary(&activate_output)
+            )]);
+        }
+
+        require_path_exists_abs(
+            &home_root
+                .join(".config")
+                .join("yazelix")
+                .join("user_configs")
+                .join("yazelix.toml"),
+            "Home Manager managed yazelix.toml surface after activation",
+            &mut errors,
+        );
+        require_path_exists_abs(
+            &home_root
+                .join(".local")
+                .join("share")
+                .join("yazelix")
+                .join("configs")
+                .join("zellij")
+                .join("config.kdl"),
+            "generated Zellij config after Home Manager activation",
+            &mut errors,
+        );
+        require_path_exists_abs(
+            &home_root
+                .join(".local")
+                .join("share")
+                .join("yazelix")
+                .join("configs")
+                .join("yazi")
+                .join("yazi.toml"),
+            "generated Yazi config after Home Manager activation",
+            &mut errors,
+        );
+        require_path_exists_abs(
+            &home_root
+                .join(".local")
+                .join("share")
+                .join("yazelix")
+                .join("configs")
+                .join("terminal_emulators")
+                .join("ghostty")
+                .join("config"),
+            "generated terminal config after Home Manager activation",
+            &mut errors,
+        );
+        Ok(errors)
+    })();
+    let _ = fs::remove_dir_all(&temp_root);
+    cleanup_result
+}
+
+fn resolve_nix_current_system(repo_root: &Path) -> Result<String, String> {
+    let output = run_repo_command(
+        repo_root,
+        "nix",
+        &[
+            "eval",
+            "--raw",
+            "--impure",
+            "--expr",
+            "builtins.currentSystem",
+        ],
+    )?;
+    if !output.status.success() {
+        return Err(format!(
+            "Failed to resolve the current Nix system for Home Manager activation validation\n{}",
+            command_output_summary(&output)
+        ));
+    }
+    let system = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if system.is_empty() {
+        return Err(
+            "Home Manager activation validation could not resolve the current Nix system"
+                .to_string(),
+        );
+    }
+    Ok(system)
+}
+
+fn build_home_manager_activation_validation_flake(
+    repo_root: &Path,
+    home_root: &Path,
+    system: &str,
+) -> String {
+    let repo_root_literal = escape_nix_string(&repo_root.display().to_string());
+    let home_root_literal = escape_nix_string(&home_root.display().to_string());
+    let system_literal = escape_nix_string(system);
+    [
+        "{".to_string(),
+        "  description = \"Yazelix Home Manager activation validation\";".to_string(),
+        String::new(),
+        "  inputs = {".to_string(),
+        format!("    yazelix.url = \"path:{}\";", repo_root_literal),
+        "    nixpkgs.follows = \"yazelix/nixpkgs\";".to_string(),
+        "    home-manager.follows = \"yazelix/home-manager\";".to_string(),
+        "  };".to_string(),
+        String::new(),
+        "  outputs = { nixpkgs, home-manager, yazelix, ... }:".to_string(),
+        "    let".to_string(),
+        format!("      system = \"{}\";", system_literal),
+        "      pkgs = import nixpkgs { inherit system; };".to_string(),
+        "    in {".to_string(),
+        "      homeConfigurations.validation = home-manager.lib.homeManagerConfiguration {"
+            .to_string(),
+        "        inherit pkgs;".to_string(),
+        "        modules = [".to_string(),
+        "          yazelix.homeManagerModules.default".to_string(),
+        "          ({ ... }: {".to_string(),
+        "            home.username = \"validator\";".to_string(),
+        format!(
+            "            home.homeDirectory = \"{}\";",
+            home_root_literal
+        ),
+        "            home.stateVersion = \"24.11\";".to_string(),
+        "            programs.home-manager.enable = true;".to_string(),
+        "            programs.yazelix.enable = true;".to_string(),
+        "          })".to_string(),
+        "        ];".to_string(),
+        "      };".to_string(),
+        "    };".to_string(),
+        "}".to_string(),
+    ]
+    .join("\n")
 }
 
 fn build_flake_interface_expr(repo_root: &Path) -> String {
@@ -1741,10 +1966,7 @@ fn build_nix_file_output_path(
 
 fn validate_rust_routed_nu_modules(runtime_root: &Path, label: &str, errors: &mut Vec<String>) {
     let scripts_dir = runtime_root.join("nushell").join("scripts");
-    for relative_path in [
-        ["yzx", "dev.nu"],
-        ["yzx", "menu.nu"],
-    ] {
+    for relative_path in [["yzx", "dev.nu"], ["yzx", "menu.nu"]] {
         let path = scripts_dir.join(relative_path.iter().collect::<PathBuf>());
         if !path.exists() {
             errors.push(format!(
@@ -1883,7 +2105,9 @@ fn resolve_readme_latest_release_entries_with_limit(
             if key == "unreleased" {
                 return None;
             }
-            value.as_table().map(|entry| (key.to_string(), entry.clone()))
+            value
+                .as_table()
+                .map(|entry| (key.to_string(), entry.clone()))
         })
         .collect::<Vec<_>>();
     release_entries.sort_by(|(left, _), (right, _)| compare_release_versions_desc(left, right));
@@ -2097,6 +2321,33 @@ fn load_nushell_budget_manifest(repo_root: &Path) -> Result<NushellBudgetManifes
         .map_err(|error| format!("Failed to read {}: {}", manifest_path.display(), error))?;
     toml::from_str(&content)
         .map_err(|error| format!("Invalid TOML in {}: {}", manifest_path.display(), error))
+}
+
+fn validate_home_manager_activation_hook_static_contract(
+    repo_root: &Path,
+) -> Result<Vec<String>, String> {
+    let module_path = repo_root.join(MODULE_RELATIVE_PATH);
+    let content = fs::read_to_string(&module_path)
+        .map_err(|error| format!("Failed to read {}: {}", module_path.display(), error))?;
+    let mut errors = Vec::new();
+
+    for forbidden in ["yazi_config_merger.nu", "zellij_config_merger.nu"] {
+        if content.contains(forbidden) {
+            errors.push(format!(
+                "{} still references deleted Home Manager activation helper `{}`",
+                module_path.display(),
+                forbidden
+            ));
+        }
+    }
+    if !content.contains("runtime-materialization.repair --from-env --force") {
+        errors.push(format!(
+            "{} no longer routes Home Manager generated runtime repair through `runtime-materialization.repair --from-env --force`",
+            module_path.display()
+        ));
+    }
+
+    Ok(errors)
 }
 
 fn load_nushell_script_paths(repo_root: &Path) -> Result<Vec<String>, String> {

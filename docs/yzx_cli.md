@@ -151,13 +151,14 @@ Refresh the current Home Manager flake input, then print the manual switch step
 - Prints the exact command it will run
 - Runs `nix flake update yazelix`
 - If your flake uses a different input name, run `nix flake update <your-input-name>` yourself
+- This still matters for `path:` inputs because `flake.lock` pins a snapshot of that local path until you refresh it
 - Prints `home-manager switch` for the user to copy and run manually
 - After `home-manager switch`, fresh launches and `yzx restart` use the profile-owned wrapper; already-open windows do not hot-swap invisibly
 
 ### `yzx home_manager prepare [--apply] [--yes]`
-Preview or archive manual-install artifacts before Home Manager takeover
+Preview or remove manual-install takeover blockers before Home Manager takeover
 - Default: preview takeover blockers and manual-install artifacts without changing anything
-- `--apply`: archive the takeover artifacts so `home-manager switch` can take ownership cleanly
+- `--apply`: archive file-based takeover artifacts and remove standalone default-profile Yazelix entries so `home-manager switch` can take ownership cleanly
 - `--yes`: skip the confirmation prompt when `--apply` is used
 - It also archives a stale legacy `~/.local/bin/yzx` wrapper when that old manual path would shadow the profile-owned command after migration
 - Use this when migrating an existing upstream/manual install to Home Manager
@@ -287,7 +288,7 @@ yzx update                    # Show the supported update-owner paths
 yzx update upstream           # Print and run nix profile upgrade --refresh <matching-yazelix-profile-entry>
 yzx update home_manager       # Run nix flake update yazelix here, then print home-manager switch
 yzx home_manager prepare      # Preview manual-install takeover blockers before Home Manager switch
-yzx home_manager prepare --apply --yes  # Archive takeover artifacts, then hand off to home-manager switch
+yzx home_manager prepare --apply --yes  # Archive file blockers, remove standalone profile yazelix entries, then hand off to home-manager switch
 yzx update nix                # Upgrade Determinate Nix via determinate-nixd (sudo)
 yzx dev update --yes --activate profile  # Refresh all inputs, run canaries, sync pins, refresh vendored zjstatus and Yazi plugins, then activate the local repo package in the default profile
 yzx dev update --yes --activate none  # Refresh the repo state only and skip local activation
