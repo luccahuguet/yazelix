@@ -1,6 +1,9 @@
 //! Internal control-plane binary for Rust-owned `yzx` families (invoked from `yzx_cli.sh`).
 
+use crossterm::style::Stylize;
+use crossterm::terminal;
 use serde::Serialize;
+use std::io::IsTerminal;
 use std::process::Command;
 use yazelix_core::bridge::{CoreError, ErrorClass};
 use yazelix_core::compute_runtime_env;
@@ -272,31 +275,350 @@ fn print_aligned_rows(rows: &[(String, String)]) {
     }
 }
 
+#[derive(Clone, Copy)]
+enum StatusTone {
+    Default,
+    Good,
+    Warning,
+    Muted,
+}
+
+struct StatusRow {
+    label: &'static str,
+    value: String,
+    tone: StatusTone,
+}
+
+struct StatusSection {
+    title: &'static str,
+    rows: Vec<StatusRow>,
+}
+
+fn json_value_to_display(value: &serde_json::Value) -> String {
+    match value {
+        serde_json::Value::Null => "none".to_string(),
+        serde_json::Value::Bool(true) => "yes".to_string(),
+        serde_json::Value::Bool(false) => "no".to_string(),
+        serde_json::Value::Number(n) => n.to_string(),
+        serde_json::Value::String(s) => s.clone(),
+        serde_json::Value::Array(arr) => arr
+            .iter()
+            .filter_map(|v| match v {
+                serde_json::Value::String(s) => Some(s.clone()),
+                other => Some(other.to_string()),
+            })
+            .collect::<Vec<_>>()
+            .join(", "),
+        serde_json::Value::Object(_) => serde_json::to_string(value).unwrap_or_default(),
+    }
+}
+
+fn status_summary_value(data: &yazelix_core::StatusReportData, key: &str) -> String {
+    data.summary
+        .get(key)
+        .map(json_value_to_display)
+        .unwrap_or_else(|| "unknown".to_string())
+}
+
+fn humanize_token(value: &str) -> String {
+    value.replace('_', " ")
+}
+
+fn status_badge(value: &str) -> (String, StatusTone) {
+    match value {
+        "noop" => ("up to date".to_string(), StatusTone::Good),
+        "refresh_required" => ("refresh required".to_string(), StatusTone::Warning),
+        "repair_missing_artifacts" => ("repair missing artifacts".to_string(), StatusTone::Warning),
+        other => (humanize_token(other), StatusTone::Default),
+    }
+}
+
+fn bool_summary_row(label: &'static str, value: &serde_json::Value) -> StatusRow {
+    match value {
+        serde_json::Value::Bool(true) => StatusRow {
+            label,
+            value: "yes".to_string(),
+            tone: StatusTone::Warning,
+        },
+        serde_json::Value::Bool(false) => StatusRow {
+            label,
+            value: "no".to_string(),
+            tone: StatusTone::Good,
+        },
+        _ => StatusRow {
+            label,
+            value: json_value_to_display(value),
+            tone: StatusTone::Default,
+        },
+    }
+}
+
+fn maybe_muted_row(label: &'static str, value: String) -> StatusRow {
+    let tone = if value == "none" || value == "disabled" {
+        StatusTone::Muted
+    } else {
+        StatusTone::Default
+    };
+    StatusRow { label, value, tone }
+}
+
+fn build_status_sections(data: &yazelix_core::StatusReportData) -> Vec<StatusSection> {
+    let generated_status_raw = status_summary_value(data, "generated_state_materialization_status");
+    let generated_reason = status_summary_value(data, "generated_state_materialization_reason");
+    let (generated_status, generated_tone) = status_badge(&generated_status_raw);
+    let repair_needed_value = data
+        .summary
+        .get("generated_state_repair_needed")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
+    let persistent_sessions = data
+        .summary
+        .get("persistent_sessions")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
+    let session_name = status_summary_value(data, "session_name");
+
+    vec![
+        StatusSection {
+            title: "Runtime",
+            rows: vec![
+                StatusRow {
+                    label: "Version",
+                    value: status_summary_value(data, "version"),
+                    tone: StatusTone::Default,
+                },
+                StatusRow {
+                    label: "Description",
+                    value: status_summary_value(data, "description"),
+                    tone: StatusTone::Muted,
+                },
+                StatusRow {
+                    label: "Config file",
+                    value: status_summary_value(data, "config_file"),
+                    tone: StatusTone::Default,
+                },
+                StatusRow {
+                    label: "Runtime dir",
+                    value: status_summary_value(data, "runtime_dir"),
+                    tone: StatusTone::Default,
+                },
+                StatusRow {
+                    label: "Logs dir",
+                    value: status_summary_value(data, "logs_dir"),
+                    tone: StatusTone::Default,
+                },
+            ],
+        },
+        StatusSection {
+            title: "Generated State",
+            rows: vec![
+                StatusRow {
+                    label: "Status",
+                    value: generated_status,
+                    tone: generated_tone,
+                },
+                bool_summary_row("Repair needed", &repair_needed_value),
+                StatusRow {
+                    label: "Reason",
+                    value: generated_reason,
+                    tone: StatusTone::Muted,
+                },
+            ],
+        },
+        StatusSection {
+            title: "Workspace",
+            rows: vec![
+                StatusRow {
+                    label: "Default shell",
+                    value: status_summary_value(data, "default_shell"),
+                    tone: StatusTone::Default,
+                },
+                StatusRow {
+                    label: "Terminals",
+                    value: status_summary_value(data, "terminals"),
+                    tone: StatusTone::Default,
+                },
+                maybe_muted_row("Helix runtime", status_summary_value(data, "helix_runtime")),
+                StatusRow {
+                    label: "Persistent sessions",
+                    value: match &persistent_sessions {
+                        serde_json::Value::Bool(true) => "enabled".to_string(),
+                        serde_json::Value::Bool(false) => "disabled".to_string(),
+                        other => json_value_to_display(&other),
+                    },
+                    tone: match &persistent_sessions {
+                        serde_json::Value::Bool(true) => StatusTone::Default,
+                        serde_json::Value::Bool(false) => StatusTone::Muted,
+                        _ => StatusTone::Default,
+                    },
+                },
+                maybe_muted_row("Session name", session_name),
+            ],
+        },
+    ]
+}
+
+fn colors_enabled() -> bool {
+    if std::env::var_os("NO_COLOR").is_some() {
+        return false;
+    }
+    if std::env::var_os("FORCE_COLOR").is_some() {
+        return true;
+    }
+    std::io::stdout().is_terminal()
+}
+
+fn render_width() -> usize {
+    terminal::size()
+        .map(|(width, _)| width as usize)
+        .ok()
+        .filter(|width| *width >= 48)
+        .unwrap_or(100)
+}
+
+fn tone_text(text: &str, tone: StatusTone, color: bool) -> String {
+    if !color {
+        return text.to_string();
+    }
+
+    match tone {
+        StatusTone::Default => text.to_string(),
+        StatusTone::Good => format!("{}", text.green().bold()),
+        StatusTone::Warning => format!("{}", text.yellow().bold()),
+        StatusTone::Muted => format!("{}", text.dark_grey()),
+    }
+}
+
+fn style_title(text: &str, color: bool) -> String {
+    if color {
+        format!("{}", text.bold())
+    } else {
+        text.to_string()
+    }
+}
+
+fn style_section_title(text: &str, color: bool) -> String {
+    if color {
+        format!("{}", text.cyan().bold())
+    } else {
+        text.to_string()
+    }
+}
+
+fn style_label(text: &str, color: bool) -> String {
+    if color {
+        format!("{}", text.dark_grey())
+    } else {
+        text.to_string()
+    }
+}
+
+fn find_wrap_boundary(text: &str, max_chars: usize) -> usize {
+    let mut last_space = None;
+    let mut count = 0usize;
+    let mut hard_break = text.len();
+
+    for (idx, ch) in text.char_indices() {
+        if count == max_chars {
+            hard_break = idx;
+            break;
+        }
+        count += 1;
+        if ch.is_whitespace() {
+            last_space = Some(idx);
+        }
+    }
+
+    if count <= max_chars {
+        return text.len();
+    }
+
+    last_space.filter(|idx| *idx > 0).unwrap_or(hard_break)
+}
+
+fn wrap_text(text: &str, width: usize) -> Vec<String> {
+    if width == 0 {
+        return vec![text.to_string()];
+    }
+
+    let mut lines = Vec::new();
+    for paragraph in text.lines() {
+        if paragraph.is_empty() {
+            lines.push(String::new());
+            continue;
+        }
+
+        let mut remaining = paragraph.trim_end();
+        loop {
+            if remaining.chars().count() <= width {
+                lines.push(remaining.to_string());
+                break;
+            }
+
+            let split_at = find_wrap_boundary(remaining, width);
+            let (head, tail) = remaining.split_at(split_at);
+            lines.push(head.trim_end().to_string());
+            remaining = tail.trim_start();
+
+            if remaining.is_empty() {
+                break;
+            }
+        }
+    }
+
+    if lines.is_empty() {
+        vec![String::new()]
+    } else {
+        lines
+    }
+}
+
+fn render_status_section(section: &StatusSection, width: usize, color: bool) {
+    println!("{}", style_section_title(section.title, color));
+
+    let max_label_len = section
+        .rows
+        .iter()
+        .map(|row| row.label.len())
+        .max()
+        .unwrap_or(0);
+    let value_width = width.saturating_sub(2 + max_label_len + 2).max(24);
+
+    for row in &section.rows {
+        let wrapped = wrap_text(&row.value, value_width);
+        let label = style_label(
+            &format!("{:<width$}", row.label, width = max_label_len),
+            color,
+        );
+
+        if let Some(first) = wrapped.first() {
+            println!("  {}  {}", label, tone_text(first, row.tone, color));
+        }
+
+        for continuation in wrapped.iter().skip(1) {
+            println!(
+                "  {:<width$}  {}",
+                "",
+                tone_text(continuation, row.tone, color),
+                width = max_label_len
+            );
+        }
+    }
+}
+
 fn render_status_report(data: &yazelix_core::StatusReportData) {
-    println!("{}", data.title);
+    let color = colors_enabled();
+    let width = render_width();
+
+    println!("{}", style_title(&data.title, color));
     println!();
 
-    let rows: Vec<(String, String)> = data
-        .summary
-        .iter()
-        .map(|(key, value)| {
-            let display = match value {
-                serde_json::Value::Null => "null".to_string(),
-                serde_json::Value::Bool(b) => b.to_string(),
-                serde_json::Value::Number(n) => n.to_string(),
-                serde_json::Value::String(s) => s.clone(),
-                serde_json::Value::Array(arr) => arr
-                    .iter()
-                    .filter_map(|v| v.as_str().map(String::from))
-                    .collect::<Vec<_>>()
-                    .join(", "),
-                serde_json::Value::Object(_) => serde_json::to_string(value).unwrap_or_default(),
-            };
-            (key.clone(), display)
-        })
-        .collect();
-
-    print_aligned_rows(&rows);
+    for (index, section) in build_status_sections(data).iter().enumerate() {
+        if index > 0 {
+            println!();
+        }
+        render_status_section(section, width, color);
+    }
 }
 
 fn render_version_report(report: &VersionReportData) {

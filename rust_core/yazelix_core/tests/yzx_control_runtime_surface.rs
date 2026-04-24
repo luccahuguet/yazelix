@@ -77,6 +77,40 @@ terminals = ["ghostty"]
     assert!(summary["generated_state_materialization_status"].is_string());
 }
 
+// Defends: the default human `yzx status` output groups fields into readable sections instead of leaking raw internal summary keys.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_control_status_human_output_groups_sections_and_human_labels() {
+    let fixture = managed_config_fixture(
+        r#"[shell]
+default_shell = "nu"
+
+[terminal]
+terminals = ["ghostty"]
+"#,
+    );
+    let output = yzx_control_command_in_fixture(&fixture)
+        .arg("status")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stderr.is_empty());
+
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("Yazelix status"));
+    assert!(stdout.contains("\nRuntime\n"));
+    assert!(stdout.contains("\nGenerated State\n"));
+    assert!(stdout.contains("\nWorkspace\n"));
+    assert!(stdout.contains("Config file"));
+    assert!(stdout.contains("Default shell"));
+    assert!(stdout.contains("Repair needed"));
+    assert!(stdout.contains("Persistent sessions"));
+    assert!(!stdout.contains("generated_state_materialization_status"));
+    assert!(!stdout.contains("generated_state_materialization_reason"));
+    assert!(!stdout.contains("default_shell"));
+}
+
 // Defends: the public Rust-owned `yzx status --json --versions` surface still attaches the optional tool matrix under one machine-readable report.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
