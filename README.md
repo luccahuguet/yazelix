@@ -16,17 +16,6 @@ The supported product in this branch is the Rust-forward v16 Yazelix line
 
 Yazelix now uses the managed `yazelix.toml` config surface, with the normal flake surface provided by the packaged `yazelix` runtime plus the top-level Home Manager module, while repo work uses the flake maintainer shell defined in `maintainer_shell.nix`
 
-## What v16 Is
-
-- A narrower workspace product instead of a package-and-environment manager glued onto one
-- One supported line again: `v16` is live, `v15` is the trimmed reboot that set the current boundary, and `v14` is historical and unsupported
-- First-party Ghostty on Linux and macOS, with WezTerm, Kitty, Alacritty, and Foot still supported when you provide them on `PATH`
-- Fast popup and popup-menu panes with explicit managed identity
-- Three built-in sidebar-aware workspace shapes, managed sidebar/editor routing, and a fixed packaged runtime toolset
-- No runtime-local `devenv`, no `yazelix_packs.toml`, no `yazelix packs` or `yzx packs`, no automatic config migrations, and no `yzx refresh`
-
-v16 keeps the trimmed reboot's narrower product boundary: 15.5% fewer code lines than the historical peak, a much clearer product boundary, a slimmer runtime and command surface, notably faster popup/menu panes, the Rust pane orchestrator still owning live workspace state, a much broader Rust-owned control plane, and Nushell reduced to the shell/UI seams where it still pays for itself
-
 ## Daily Workflow
 
 - `yzx launch`: Open Yazelix in a managed terminal window
