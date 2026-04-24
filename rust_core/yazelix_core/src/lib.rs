@@ -146,7 +146,7 @@ pub use profile_commands::{
     run_profile_record_step, run_profile_wait_step,
 };
 pub use zellij_commands::{
-    run_zellij_get_workspace_root, run_zellij_pipe, run_zellij_retarget,
+    run_zellij_get_workspace_root, run_zellij_open_terminal, run_zellij_pipe, run_zellij_retarget,
 };
 pub use zellij_render_plan::{
     ZellijRenderPlanData, ZellijRenderPlanRequest, compute_zellij_render_plan,

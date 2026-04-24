@@ -54,7 +54,7 @@ run = "git"
         yazi_dir.join("yazelix_keymap.toml"),
         r#"[[mgr.append_keymap]]
 on = ["<A-p>"]
-run = "shell 'nu __YAZELIX_RUNTIME_DIR__/nushell/scripts/integrations/open_dir_in_pane.nu \"$0\"'"
+        run = "shell '__YAZELIX_RUNTIME_DIR__/libexec/yzx_control zellij open-terminal \"$0\"'"
 "#,
     )
     .unwrap();

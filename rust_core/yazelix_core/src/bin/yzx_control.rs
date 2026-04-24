@@ -32,6 +32,7 @@ use yazelix_core::run_profile_print_report;
 use yazelix_core::run_profile_record_step;
 use yazelix_core::run_profile_wait_step;
 use yazelix_core::run_zellij_get_workspace_root;
+use yazelix_core::run_zellij_open_terminal;
 use yazelix_core::run_zellij_pipe;
 use yazelix_core::run_zellij_retarget;
 use yazelix_core::run_yzx_reveal;
@@ -69,6 +70,7 @@ fn usage() -> ! {
     eprintln!("       yzx_control zellij pipe <command> [--payload <json>]");
     eprintln!("       yzx_control zellij get-workspace-root [--include-bootstrap]");
     eprintln!("       yzx_control zellij retarget <path> [--editor <kind>]");
+    eprintln!("       yzx_control zellij open-terminal <path>");
     eprintln!("       yzx_control reveal <path>");
     eprintln!("       yzx_control restart");
     eprintln!("       yzx_control screen [style]");
@@ -494,7 +496,7 @@ fn run_profile(args: &[String]) -> Result<i32, CoreError> {
 
 fn run_zellij(args: &[String]) -> Result<i32, CoreError> {
     if args.is_empty() {
-        eprintln!("Usage: yzx_control zellij <pipe|get-workspace-root|retarget> [args...]");
+        eprintln!("Usage: yzx_control zellij <pipe|get-workspace-root|retarget|open-terminal> [args...]");
         return Ok(64);
     }
     let mut argv = args.to_vec();
@@ -503,9 +505,10 @@ fn run_zellij(args: &[String]) -> Result<i32, CoreError> {
         "pipe" => run_zellij_pipe(&argv),
         "get-workspace-root" => run_zellij_get_workspace_root(&argv),
         "retarget" => run_zellij_retarget(&argv),
+        "open-terminal" => run_zellij_open_terminal(&argv),
         _ => {
             eprintln!("Unknown zellij subcommand: {sub}");
-            eprintln!("Usage: yzx_control zellij <pipe|get-workspace-root|retarget> [args...]");
+            eprintln!("Usage: yzx_control zellij <pipe|get-workspace-root|retarget|open-terminal> [args...]");
             Ok(64)
         }
     }

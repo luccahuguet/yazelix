@@ -399,6 +399,106 @@ pub fn run_zellij_retarget(args: &[String]) -> Result<i32, CoreError> {
     }
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct ZellijOpenTerminalArgs {
+    target: Option<String>,
+    help: bool,
+}
+
+fn parse_zellij_open_terminal_args(args: &[String]) -> Result<ZellijOpenTerminalArgs, CoreError> {
+    let mut parsed = ZellijOpenTerminalArgs::default();
+    for arg in args {
+        match arg.as_str() {
+            "-h" | "--help" | "help" => parsed.help = true,
+            other if other.starts_with('-') => {
+                return Err(CoreError::usage(format!(
+                    "Unknown argument for zellij open-terminal: {other}"
+                )));
+            }
+            other => {
+                if parsed.target.is_some() {
+                    return Err(CoreError::usage(
+                        "zellij open-terminal accepts only one target path".to_string(),
+                    ));
+                }
+                parsed.target = Some(other.to_string());
+            }
+        }
+    }
+    Ok(parsed)
+}
+
+fn print_zellij_open_terminal_help() {
+    println!("Open a new terminal pane in the given directory via the pane orchestrator");
+    println!();
+    println!("Usage:");
+    println!("  yzx_control zellij open-terminal <path>");
+}
+
+pub fn run_zellij_open_terminal(args: &[String]) -> Result<i32, CoreError> {
+    let parsed = parse_zellij_open_terminal_args(args)?;
+    if parsed.help {
+        print_zellij_open_terminal_help();
+        return Ok(0);
+    }
+
+    let target = parsed.target.ok_or_else(|| {
+        CoreError::usage(
+            "zellij open-terminal requires a target path. Try `yzx_control zellij open-terminal --help`."
+                .to_string(),
+        )
+    })?;
+
+    let target_dir = resolve_target_dir(&target)?;
+
+    let payload = json!({
+        "cwd": target_dir.display().to_string(),
+    })
+    .to_string();
+
+    let response = run_pane_orchestrator_command("open_terminal_in_cwd", &payload)?;
+    if response.trim() != "ok" {
+        return Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "open_terminal_failed",
+            format!("Pane orchestrator failed to open directory pane in '{}': {}", target_dir.display(), response),
+            "Ensure the pane orchestrator plugin is loaded and the current tab is ready, then retry.",
+            json!({ "path": target_dir.display().to_string(), "response": response }),
+        ));
+    }
+
+    let retarget_payload = json!({
+        "workspace_root": target_dir.display().to_string(),
+        "cd_focused_pane": false,
+        "editor": None::<String>,
+    })
+    .to_string();
+
+    let retarget_response = run_pane_orchestrator_command("retarget_workspace", &retarget_payload)?;
+    let retarget_result = parse_workspace_retarget_response(&retarget_response);
+    let retarget_status = retarget_result
+        .get("status")
+        .and_then(|v| v.as_str())
+        .unwrap_or("error");
+
+    match retarget_status {
+        "ok" => {
+            println!(
+                "{}",
+                json!({
+                    "status": "ok",
+                    "workspace_root": target_dir.display().to_string(),
+                })
+            );
+            Ok(0)
+        }
+        _ => {
+            eprintln!("⚠️  Terminal pane opened, but workspace retarget failed: {}", retarget_response);
+            Ok(1)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
