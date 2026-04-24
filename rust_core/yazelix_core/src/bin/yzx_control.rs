@@ -485,7 +485,7 @@ fn tone_text(text: &str, tone: StatusTone, color: bool) -> String {
         StatusTone::Default => text.to_string(),
         StatusTone::Good => format!("{}", text.green().bold()),
         StatusTone::Warning => format!("{}", text.yellow().bold()),
-        StatusTone::Muted => format!("{}", text.dark_grey()),
+        StatusTone::Muted => format!("{}", text.blue()),
     }
 }
 
@@ -507,7 +507,7 @@ fn style_section_title(text: &str, color: bool) -> String {
 
 fn style_label(text: &str, color: bool) -> String {
     if color {
-        format!("{}", text.dark_grey())
+        format!("{}", text.dark_cyan())
     } else {
         text.to_string()
     }
