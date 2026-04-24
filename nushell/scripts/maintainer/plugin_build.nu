@@ -1,7 +1,14 @@
 #!/usr/bin/env nu
 
-use ../dev/materialization_dev_helpers.nu generate_merged_zellij_config
 use ../utils/runtime_paths.nu get_yazelix_state_dir
+use ../utils/yzx_core_bridge.nu [
+    build_default_yzx_core_error_surface
+    build_record_yzx_core_error_surface
+    resolve_active_config_surface_via_yzx_core
+    run_yzx_core_json_command
+]
+
+const ZELLIJ_MATERIALIZATION_COMMAND = "zellij-materialization.generate"
 
 def require_yazelix_repo_root [] {
     let repo_root = ($env.YAZELIX_REPO_ROOT? | default "" | path expand)
@@ -97,6 +104,32 @@ def run_wasm_build [paths: record, label: string] {
     }
 
     print $"✅ Built ($label) wasm: ($paths.wasm_path)"
+}
+
+def generate_merged_zellij_config [yazelix_dir: string] {
+    let config_surface = (resolve_active_config_surface_via_yzx_core $yazelix_dir)
+    let merged_config_dir = (get_yazelix_state_dir | path join "configs" "zellij")
+    let helper_args = [
+        $ZELLIJ_MATERIALIZATION_COMMAND
+        "--config"
+        $config_surface.config_file
+        "--default-config"
+        $config_surface.default_config_path
+        "--contract"
+        ($yazelix_dir | path join "config_metadata" "main_config_contract.toml")
+        "--runtime-dir"
+        $yazelix_dir
+        "--zellij-config-dir"
+        $merged_config_dir
+    ]
+
+    let result = (run_yzx_core_json_command
+        $yazelix_dir
+        (build_record_yzx_core_error_surface {config_file: $config_surface.config_file})
+        $helper_args
+        "Yazelix Rust zellij-materialization helper returned invalid JSON.")
+
+    $result.merged_config_path
 }
 
 def sync_built_wasm [paths: record, label: string] {

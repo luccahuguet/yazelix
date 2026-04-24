@@ -1,11 +1,41 @@
 #!/usr/bin/env nu
 # Configuration sweep runner for maintainer shell and visual checks
 
-use ./config_normalize_test_helpers.nu [load_normalized_active_config]
+use ../utils/runtime_paths.nu [require_yazelix_runtime_dir]
+use ../utils/yzx_core_bridge.nu [
+    resolve_active_config_surface_via_yzx_core
+    run_yzx_core_json_command
+]
 use sweep/sweep_config_generator.nu *
 use sweep/sweep_process_manager.nu *
 use sweep/sweep_test_executor.nu *
 use sweep/sweep_test_combinations.nu *
+
+def load_normalized_active_config [runtime_dir?: string] {
+    let resolved_runtime_dir = if $runtime_dir == null {
+        require_yazelix_runtime_dir
+    } else {
+        $runtime_dir | path expand
+    }
+    let config_surface = (resolve_active_config_surface_via_yzx_core $resolved_runtime_dir)
+    let contract_path = ($resolved_runtime_dir | path join "config_metadata" "main_config_contract.toml")
+    let helper_args = [
+        "config.normalize"
+        "--config"
+        $config_surface.config_file
+        "--default-config"
+        $config_surface.default_config_path
+        "--contract"
+        $contract_path
+    ]
+
+    (run_yzx_core_json_command
+        $resolved_runtime_dir
+        $config_surface
+        $helper_args
+        "Yazelix Rust config helper returned invalid JSON.")
+    | get normalized_config
+}
 
 def append_progress [line: string]: nothing -> nothing {
     let progress_file = ($env.YAZELIX_SWEEP_PROGRESS_FILE? | default "")

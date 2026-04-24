@@ -18,12 +18,10 @@ allowed_paths = [
 id = "maintainer_and_dev_orchestration"
 status = "transitional_exception"
 owner_bead = "yazelix-lj7z.4"
-max_loc = 2537
+max_loc = 2200
 target_loc = 900
-max_files = 11
+max_files = 9
 allowed_paths = [
-  "nushell/scripts/dev/config_normalize_test_helpers.nu",
-  "nushell/scripts/dev/materialization_dev_helpers.nu",
   "nushell/scripts/dev/sweep/sweep_config_generator.nu",
   "nushell/scripts/dev/sweep/sweep_process_manager.nu",
   "nushell/scripts/dev/sweep/sweep_test_combinations.nu",
