@@ -244,6 +244,13 @@ fn fit_inner_width(resolved_width: usize, minimum_width: usize) -> usize {
     proposed.max(minimum_width)
 }
 
+const MAX_WELCOME_INNER_WIDTH: usize = 100;
+
+fn fit_welcome_inner_width(resolved_width: usize, minimum_width: usize) -> usize {
+    let proposed = resolved_width.saturating_sub(6);
+    proposed.clamp(minimum_width, MAX_WELCOME_INNER_WIDTH)
+}
+
 fn colorize_logo_text(text: &str) -> String {
     let palette = [ANSI_RED, ANSI_GREEN, ANSI_YELLOW, ANSI_BLUE, ANSI_PURPLE];
     text.chars()
@@ -376,7 +383,7 @@ fn build_logo_card_frame(
 fn get_logo_welcome_frame(width: usize) -> Vec<String> {
     let variant = get_logo_welcome_variant(width);
     let spec = logo_spec(variant, width);
-    let inner_width = fit_inner_width(width, spec.minimum_inner_width);
+    let inner_width = fit_welcome_inner_width(width, spec.minimum_inner_width);
     center_frame_lines(
         build_logo_card_frame(spec, inner_width, spec.body_lines.len(), "full"),
         width,
@@ -386,7 +393,7 @@ fn get_logo_welcome_frame(width: usize) -> Vec<String> {
 fn get_logo_animation_frames(width: usize) -> Vec<Vec<String>> {
     let variant = get_logo_welcome_variant(width);
     let spec = logo_spec(variant, width);
-    let inner_width = fit_inner_width(width, spec.minimum_inner_width);
+    let inner_width = fit_welcome_inner_width(width, spec.minimum_inner_width);
     vec![
         center_frame_lines(build_logo_card_frame(spec, inner_width, 0, "hint"), width),
         center_frame_lines(build_logo_card_frame(spec, inner_width, 0, "full"), width),
@@ -433,7 +440,7 @@ fn boid_points(inner_width: usize, body_height: usize, phase: &str) -> Vec<(usiz
 fn build_boids_frame(width: usize) -> Vec<Vec<String>> {
     let variant = get_logo_welcome_variant(width);
     let spec = boids_spec(variant);
-    let inner_width = fit_inner_width(width, spec.minimum_inner_width);
+    let inner_width = fit_welcome_inner_width(width, spec.minimum_inner_width);
     ["scatter", "drift", "cluster"]
         .into_iter()
         .map(|phase| {
@@ -712,7 +719,7 @@ fn welcome_sequence(
         style if is_game_of_life_style(style) => {
             let variant = get_logo_welcome_variant(width);
             let spec = game_of_life_spec(variant);
-            let inner_width = fit_inner_width(width, spec.minimum_inner_width);
+            let inner_width = fit_welcome_inner_width(width, spec.minimum_inner_width);
             let body_height =
                 resolve_game_of_life_body_height(spec.welcome_minimum_body_height, height);
             let width_limit = get_game_of_life_grid_width(inner_width);
@@ -1030,4 +1037,5 @@ mod tests {
         assert_ne!(before, after);
         assert!(!after.contains("welcome to yazelix"));
     }
+
 }
