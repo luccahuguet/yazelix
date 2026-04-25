@@ -1,68 +1,53 @@
 #!/usr/bin/env nu
 
-use ../../nushell/scripts/maintainer/issue_bead_contract.nu [
-    canonical_issue_bead_comment_body
-    contract_start
-    find_issue_bead_comment
-    load_contract_beads
-    load_contract_github_issues
-    load_issue_comments
-]
+const REPO_ROOT = (
+    path self
+    | path dirname
+    | path join ".." ".."
+    | path expand
+)
 
 export def main [] {
-    let github_issues = load_contract_github_issues
-    let beads = load_contract_beads
-    mut errors = []
+    let result = (
+        do {
+            cd $REPO_ROOT
+            ^cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_maintainer -- sync-issues --dry-run
+        } | complete
+    )
 
-    for issue in $github_issues {
-        let created_at = ($issue.createdAt | into datetime)
-        if $created_at < (contract_start) {
-            continue
-        }
-
-        let matches = (
-            $beads
-            | where { |bead| (($bead.external_ref? | default "") == $issue.url) }
-        )
-
-        if ($matches | is-empty) {
-            $errors = ($errors | append $"Missing bead for GitHub issue #($issue.number) (($issue.title))")
-            continue
-        }
-
-        if (($matches | length) > 1) {
-            let ids = ($matches | each { |match| $match.id } | str join ", ")
-            $errors = ($errors | append $"Duplicate beads for GitHub issue #($issue.number): ($ids)")
-            continue
-        }
-
-        let bead = ($matches | first)
-        let is_github_open = ($issue.state == "OPEN")
-        let is_bead_closed = ($bead.status == "closed")
-
-        if $is_github_open and $is_bead_closed {
-            $errors = ($errors | append $"State mismatch for GitHub issue #($issue.number): GitHub is open but bead ($bead.id) is closed")
-        }
-
-        if (not $is_github_open) and (not $is_bead_closed) {
-            $errors = ($errors | append $"State mismatch for GitHub issue #($issue.number): GitHub is closed but bead ($bead.id) is ($bead.status)")
-        }
-
-        let comments = (load_issue_comments $issue.number)
-        let comment = (find_issue_bead_comment $comments)
-        let expected_comment_body = (canonical_issue_bead_comment_body $bead.id)
-
-        if ($comment | is-empty) {
-            $errors = ($errors | append $"Missing Beads comment for GitHub issue #($issue.number): expected `($bead.id)`")
-        } else if ((($comment.body? | default "") | str trim) != $expected_comment_body) {
-            $errors = ($errors | append $"Incorrect Beads comment for GitHub issue #($issue.number): expected `($bead.id)`")
-        }
+    if $result.exit_code != 0 {
+        let stderr = ($result.stderr | default "" | str trim)
+        error make {msg: $"GitHub/Beads contract validation failed: ($stderr)"}
     }
 
-    if not ($errors | is-empty) {
+    let stdout = ($result.stdout | default "" | str trim)
+    if ($stdout | is-empty) {
+        error make {msg: "GitHub/Beads contract validation returned no output."}
+    }
+
+    let lines = ($stdout | lines)
+    let summary = try {
+        $lines | last | from json
+    } catch {
+        error make {msg: $"GitHub/Beads contract validation returned invalid summary JSON.\n($stdout)"}
+    }
+
+    let mutations = (
+        [
+            ($summary.created? | default 0)
+            ($summary.reopened? | default 0)
+            ($summary.closed? | default 0)
+            ($summary.comments_created? | default 0)
+            ($summary.comments_updated? | default 0)
+        ] | math sum
+    )
+
+    if $mutations != 0 {
         print "Bead/GitHub issue contract violations detected:"
-        $errors | each { |error| print $"- ($error)" }
-        error make { msg: "Bead/GitHub issue contract is invalid" }
+        $lines
+        | drop nth (($lines | length) - 1)
+        | each { |line| print $line }
+        error make {msg: "Bead/GitHub issue contract is invalid" }
     }
 
     print "Bead/GitHub issue contract is valid."
