@@ -38,6 +38,7 @@
     debug_mode = true; # Enable verbose logging
     skip_welcome_screen = false; # Show welcome screen
     welcome_style = "static"; # Static Yazelix logo for faster startup
+    game_of_life_cell_style = "full_block"; # Optional: "full_block" or "dotted"
     show_macchina_on_welcome = true;
 
     # Zellij customization

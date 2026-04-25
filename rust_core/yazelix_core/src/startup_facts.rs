@@ -12,6 +12,7 @@ use serde_json::{Map as JsonMap, Value as JsonValue};
 const DEFAULT_SHELL: &str = "nu";
 const DEFAULT_TERMINAL_CONFIG_MODE: &str = "yazelix";
 const DEFAULT_WELCOME_STYLE: &str = "random";
+const DEFAULT_GAME_OF_LIFE_CELL_STYLE: &str = "full_block";
 const DEFAULT_SESSION_NAME: &str = "yazelix";
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -20,6 +21,7 @@ pub struct StartupFactsData {
     pub debug_mode: bool,
     pub skip_welcome_screen: bool,
     pub welcome_style: String,
+    pub game_of_life_cell_style: String,
     pub welcome_duration_seconds: f64,
     pub show_macchina_on_welcome: bool,
     pub persistent_sessions: bool,
@@ -40,6 +42,11 @@ pub fn compute_startup_facts_from_env() -> Result<StartupFactsData, CoreError> {
         debug_mode: bool_config(&normalized, "debug_mode", false),
         skip_welcome_screen: bool_config(&normalized, "skip_welcome_screen", false),
         welcome_style: string_config(&normalized, "welcome_style", DEFAULT_WELCOME_STYLE),
+        game_of_life_cell_style: string_config(
+            &normalized,
+            "game_of_life_cell_style",
+            DEFAULT_GAME_OF_LIFE_CELL_STYLE,
+        ),
         welcome_duration_seconds: float_config(&normalized, "welcome_duration_seconds", 1.0),
         show_macchina_on_welcome: bool_config(&normalized, "show_macchina_on_welcome", false),
         persistent_sessions: bool_config(&normalized, "persistent_sessions", false),
@@ -120,6 +127,7 @@ mod tests {
         config.insert("debug_mode".into(), json!(true));
         config.insert("skip_welcome_screen".into(), json!("true"));
         config.insert("welcome_style".into(), json!("minimal"));
+        config.insert("game_of_life_cell_style".into(), json!("dotted"));
         config.insert("welcome_duration_seconds".into(), json!("2.5"));
         config.insert("show_macchina_on_welcome".into(), json!("false"));
         config.insert("persistent_sessions".into(), json!("true"));
@@ -139,6 +147,14 @@ mod tests {
         assert_eq!(
             string_list_config(&config, "terminals", &["ghostty"]),
             vec!["ghostty", "wezterm"]
+        );
+        assert_eq!(
+            string_config(
+                &config,
+                "game_of_life_cell_style",
+                DEFAULT_GAME_OF_LIFE_CELL_STYLE
+            ),
+            "dotted"
         );
         assert_eq!(
             string_config(

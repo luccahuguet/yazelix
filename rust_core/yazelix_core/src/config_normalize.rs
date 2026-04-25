@@ -795,8 +795,9 @@ mod tests {
         assert_eq!(config.get("default_shell").unwrap(), "nu");
         assert_eq!(config.get("helix_runtime_path").unwrap(), &JsonValue::Null);
         assert_eq!(config.get("zellij_pane_frames").unwrap(), "true");
+        assert_eq!(config.get("game_of_life_cell_style").unwrap(), "full_block");
         assert_eq!(config.get("welcome_duration_seconds").unwrap(), 1.0);
-        assert_eq!(config.len(), 36);
+        assert_eq!(config.len(), 37);
     }
 
     // Defends: compact badge text normalization trims and truncates user input consistently.

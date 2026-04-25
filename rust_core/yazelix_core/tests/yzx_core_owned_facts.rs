@@ -71,6 +71,7 @@ fn startup_facts_compute_reports_retained_startup_and_session_fields() {
 debug_mode = true
 skip_welcome_screen = true
 welcome_style = "static"
+game_of_life_cell_style = "dotted"
 welcome_duration_seconds = 2.5
 show_macchina_on_welcome = false
 
@@ -97,6 +98,7 @@ session_name = "demo-session"
     assert_eq!(envelope["data"]["debug_mode"], true);
     assert_eq!(envelope["data"]["skip_welcome_screen"], true);
     assert_eq!(envelope["data"]["welcome_style"], "static");
+    assert_eq!(envelope["data"]["game_of_life_cell_style"], "dotted");
     assert_eq!(envelope["data"]["welcome_duration_seconds"], 2.5);
     assert_eq!(envelope["data"]["show_macchina_on_welcome"], false);
     assert_eq!(envelope["data"]["persistent_sessions"], true);

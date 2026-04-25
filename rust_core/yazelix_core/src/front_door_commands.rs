@@ -2,9 +2,12 @@
 
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{
+    config_dir_from_env, config_override_from_env, load_normalized_config_for_control,
     read_yazelix_version_from_runtime, runtime_dir_from_env, state_dir_from_env,
 };
-use crate::front_door_render::run_screen_surface;
+use crate::front_door_render::{
+    GameOfLifeCellStyle, play_welcome_style_with_cell_style, run_screen_surface_with_cell_style,
+};
 use crate::upgrade_summary::show_current_upgrade_summary;
 use std::process::Command;
 use std::time::Duration;
@@ -67,11 +70,14 @@ pub fn run_yzx_screen(args: &[String]) -> Result<i32, CoreError> {
         let style = parsed.style.as_deref().unwrap_or("logo");
         return run_internal_welcome_screen(style, Duration::from_millis(parsed.duration_ms));
     }
-    run_screen_surface(parsed.style.as_deref())
+    run_screen_surface_with_cell_style(
+        parsed.style.as_deref(),
+        configured_game_of_life_cell_style()?,
+    )
 }
 
 pub fn run_internal_welcome_screen(style: &str, duration: Duration) -> Result<i32, CoreError> {
-    crate::front_door_render::play_welcome_style(style, duration)?;
+    play_welcome_style_with_cell_style(style, duration, configured_game_of_life_cell_style()?)?;
     Ok(0)
 }
 
@@ -162,6 +168,19 @@ fn parse_whats_new_args(args: &[String]) -> Result<WhatsNewArgs, CoreError> {
         }
     }
     Ok(WhatsNewArgs { help })
+}
+
+fn configured_game_of_life_cell_style() -> Result<GameOfLifeCellStyle, CoreError> {
+    let runtime_dir = runtime_dir_from_env()?;
+    let config_dir = config_dir_from_env()?;
+    let config_override = config_override_from_env();
+    let normalized =
+        load_normalized_config_for_control(&runtime_dir, &config_dir, config_override.as_deref())?;
+    let raw = normalized
+        .get("game_of_life_cell_style")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("full_block");
+    GameOfLifeCellStyle::parse(raw)
 }
 
 fn print_tutor_help() {

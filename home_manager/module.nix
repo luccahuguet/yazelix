@@ -371,6 +371,14 @@ in
       '';
     };
 
+    game_of_life_cell_style = mkMainContractOption "core.game_of_life_cell_style" {
+      description = ''
+        Game of Life cell rendering style.
+        - "full_block": solid cells matching the old Nushell renderer
+        - "dotted": braille scale-4 texture with the same footprint
+      '';
+    };
+
     show_macchina_on_welcome = mkMainContractOption "core.show_macchina_on_welcome" {
       description = "Show macchina system info on welcome screen";
     };
