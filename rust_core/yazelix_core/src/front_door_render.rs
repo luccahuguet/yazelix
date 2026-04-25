@@ -76,6 +76,57 @@ pub struct GameOfLifeScreenState {
     cells: HashSet<(i32, i32)>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ScreenCell {
+    glyph: char,
+    color_x: usize,
+    color_y: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ScreenFrame {
+    width: usize,
+    height: usize,
+    cells: Vec<Option<ScreenCell>>,
+}
+
+impl ScreenFrame {
+    fn new(width: usize, height: usize) -> Self {
+        Self {
+            width,
+            height,
+            cells: vec![None; width.saturating_mul(height)],
+        }
+    }
+
+    fn set(&mut self, x: usize, y: usize, cell: ScreenCell) {
+        if x >= self.width || y >= self.height {
+            return;
+        }
+        self.cells[y * self.width + x] = Some(cell);
+    }
+
+    fn render_game_of_life_lines(&self, resolved_width: usize) -> Vec<String> {
+        let lines = (0..self.height)
+            .map(|y| {
+                let mut line = String::new();
+                for x in 0..self.width {
+                    match self.cells[y * self.width + x] {
+                        Some(cell) => line.push_str(&colorize_game_of_life_glyph(
+                            cell.color_x,
+                            cell.color_y,
+                            cell.glyph,
+                        )),
+                        None => line.push(' '),
+                    }
+                }
+                line
+            })
+            .collect();
+        center_frame_lines(lines, resolved_width)
+    }
+}
+
 fn ascii_art_data() -> &'static AsciiArtData {
     static DATA: OnceLock<AsciiArtData> = OnceLock::new();
     DATA.get_or_init(|| serde_json::from_str(ASCII_ART_DATA_JSON).expect("valid ascii_art_data"))
@@ -525,42 +576,11 @@ fn resolve_game_of_life_screen_body_height(minimum_height: usize, resolved_heigh
 }
 
 fn get_game_of_life_grid_width(inner_width: usize) -> usize {
-    inner_width.saturating_sub(inner_width % 2).max(2)
+    (inner_width / 2).max(3)
 }
 
 fn get_game_of_life_grid_height(body_height: usize) -> usize {
-    body_height.saturating_mul(2).max(2)
-}
-
-fn game_of_life_quadrant_glyph(
-    top_left: bool,
-    top_right: bool,
-    bottom_left: bool,
-    bottom_right: bool,
-) -> Option<char> {
-    let bits = (top_left as u8)
-        | ((top_right as u8) << 1)
-        | ((bottom_left as u8) << 2)
-        | ((bottom_right as u8) << 3);
-    match bits {
-        0 => None,
-        1 => Some('▘'),
-        2 => Some('▝'),
-        3 => Some('▀'),
-        4 => Some('▖'),
-        5 => Some('▌'),
-        6 => Some('▞'),
-        7 => Some('▛'),
-        8 => Some('▗'),
-        9 => Some('▚'),
-        10 => Some('▐'),
-        11 => Some('▜'),
-        12 => Some('▄'),
-        13 => Some('▙'),
-        14 => Some('▟'),
-        15 => Some('█'),
-        _ => None,
-    }
+    (body_height / 2).max(3)
 }
 
 fn game_of_life_shape(name: &str) -> Vec<(i32, i32)> {
@@ -731,29 +751,28 @@ fn build_game_of_life_screen_lines(
 ) -> Vec<String> {
     let grid_width = get_game_of_life_grid_width(inner_width);
     let grid_height = get_game_of_life_grid_height(body_height);
-    let mut body = Vec::new();
-    for top_row_index in (0..grid_height).step_by(2) {
-        let bottom_row_index = top_row_index + 1;
-        let mut row = String::new();
-        for left_x in (0..grid_width).step_by(2) {
-            let right_x = left_x + 1;
-            let glyph = game_of_life_quadrant_glyph(
-                cells.contains(&(left_x as i32, top_row_index as i32)),
-                right_x < grid_width && cells.contains(&(right_x as i32, top_row_index as i32)),
-                cells.contains(&(left_x as i32, bottom_row_index as i32)),
-                right_x < grid_width && cells.contains(&(right_x as i32, bottom_row_index as i32)),
-            );
-            if let Some(glyph) = glyph {
-                let cell = colorize_game_of_life_glyph(left_x / 2, top_row_index / 2, glyph);
-                row.push_str(&cell);
-                row.push_str(&cell);
-            } else {
-                row.push_str("  ");
+    let mut frame = ScreenFrame::new(inner_width, body_height);
+    for y in 0..grid_height {
+        for x in 0..grid_width {
+            if !cells.contains(&(x as i32, y as i32)) {
+                continue;
+            }
+
+            let cell = ScreenCell {
+                glyph: '█',
+                color_x: x,
+                color_y: y,
+            };
+            let origin_x = x * 2;
+            let origin_y = y * 2;
+            for dy in 0..2 {
+                for dx in 0..2 {
+                    frame.set(origin_x + dx, origin_y + dy, cell);
+                }
             }
         }
-        body.push(pad_text_right(&row, inner_width));
     }
-    center_frame_lines(body, resolved_width)
+    frame.render_game_of_life_lines(resolved_width)
 }
 
 fn build_game_of_life_screen_state(
@@ -1113,6 +1132,24 @@ mod tests {
         build_game_of_life_screen_lines(inner_width, body_height, inner_width, &cells)
     }
 
+    fn strip_ansi_codes(line: &str) -> String {
+        let mut visible = String::new();
+        let mut chars = line.chars().peekable();
+        while let Some(ch) = chars.next() {
+            if ch == '\u{1b}' && chars.peek() == Some(&'[') {
+                chars.next();
+                for code_ch in chars.by_ref() {
+                    if code_ch.is_ascii_alphabetic() {
+                        break;
+                    }
+                }
+                continue;
+            }
+            visible.push(ch);
+        }
+        visible
+    }
+
     // Test lane: default
     // Defends: `random` still resolves only to the retained Game of Life screen styles instead of drifting back to logo, boids, or static.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
@@ -1185,24 +1222,40 @@ mod tests {
         );
     }
 
-    // Regression: Game of Life gliders must survive packed rendering as quadrant shapes instead of collapsing into ambiguous horizontal bars.
+    // Regression: Game of Life gliders must render as a canonical full-cell silhouette instead of being compressed into ambiguous quadrant glyphs.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn game_of_life_screen_lines_preserve_glider_silhouette_with_quadrants() {
-        let lines = render_test_game_of_life_lines(4, 2, &[(1, 0), (2, 1), (0, 2), (1, 2), (2, 2)]);
-        assert_eq!(lines.len(), 2);
-        assert!(lines[0].contains('▝'));
-        assert!(lines[0].contains('▖'));
-        assert!(lines[1].contains('▀'));
-        assert!(lines[1].contains('▘'));
+    fn game_of_life_screen_lines_preserve_glider_silhouette_as_tiles() {
+        let lines = render_test_game_of_life_lines(8, 6, &[(1, 0), (2, 1), (0, 2), (1, 2), (2, 2)]);
+        let visible_lines = lines
+            .iter()
+            .map(|line| strip_ansi_codes(line))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            visible_lines,
+            vec![
+                "  ██    ",
+                "  ██    ",
+                "    ██  ",
+                "    ██  ",
+                "██████  ",
+                "██████  "
+            ]
+        );
     }
 
-    // Regression: a fully occupied 2x2 logical block must render as a filled cell under quadrant packing.
+    // Regression: a live Game of Life cell renders as a stable 2x2 tile so terminal row gaps do not erase single-row cells.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn game_of_life_screen_lines_merge_full_quadrants_into_blocks() {
-        let lines = render_test_game_of_life_lines(2, 1, &[(0, 0), (1, 0), (0, 1), (1, 1)]);
-        assert_eq!(lines.len(), 1);
-        assert!(lines[0].contains('█'));
+    fn game_of_life_screen_lines_render_live_cells_as_stable_tiles() {
+        let lines = render_test_game_of_life_lines(8, 4, &[(0, 0)]);
+        let visible_lines = lines
+            .iter()
+            .map(|line| strip_ansi_codes(line))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            visible_lines,
+            vec!["██      ", "██      ", "        ", "        "]
+        );
     }
 }
