@@ -1,8 +1,16 @@
-{ pkgs, src ? ../., nixgl ? null, metaPlatforms ? null, fenixPkgs ? null }:
+{
+  pkgs,
+  src ? ../.,
+  rust_core_src ? src,
+  nixgl ? null,
+  metaPlatforms ? null,
+  fenixPkgs ? null,
+}:
 
 let
   rustCoreHelper = import ./rust_core_helper.nix {
-    inherit pkgs src fenixPkgs;
+    inherit pkgs fenixPkgs;
+    src = rust_core_src;
   };
   runtime = import ./mk_runtime_tree.nix {
     inherit pkgs src nixgl rustCoreHelper;

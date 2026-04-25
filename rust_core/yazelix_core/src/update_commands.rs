@@ -189,13 +189,14 @@ fn print_exact_command(command: &str) {
     println!("  {command}");
 }
 
-fn require_current_working_flake() -> Result<(), i32> {
-    let flake_file = match std::env::current_dir() {
-        Ok(cwd) => cwd.join("flake.nix"),
+fn current_working_flake_dir() -> Result<PathBuf, i32> {
+    let cwd = match std::env::current_dir() {
+        Ok(cwd) => cwd,
         Err(_) => return Err(1),
     };
+    let flake_file = cwd.join("flake.nix");
     if flake_file.is_file() {
-        return Ok(());
+        return Ok(cwd);
     }
     println!(
         "❌ yzx update home_manager must be run from the Home Manager flake directory that owns this install."
@@ -205,6 +206,92 @@ fn require_current_working_flake() -> Result<(), i32> {
         flake_file.display()
     );
     Err(1)
+}
+
+fn flake_input_lock_node(flake_dir: &Path, input_name: &str) -> Option<Value> {
+    let lock_path = flake_dir.join("flake.lock");
+    let raw = std::fs::read_to_string(lock_path).ok()?;
+    let parsed: Value = serde_json::from_str(&raw).ok()?;
+    parsed.get("nodes")?.get(input_name).cloned()
+}
+
+fn local_git_checkout_path(path: &Path) -> Option<PathBuf> {
+    let canonical = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    let git_marker = canonical.join(".git");
+    if git_marker.is_dir() || git_marker.is_file() {
+        Some(canonical)
+    } else {
+        None
+    }
+}
+
+fn encode_file_url_path(path: &Path) -> String {
+    path.to_string_lossy()
+        .chars()
+        .flat_map(|ch| match ch {
+            '%' => "%25".chars().collect::<Vec<_>>(),
+            ' ' => "%20".chars().collect::<Vec<_>>(),
+            '#' => "%23".chars().collect::<Vec<_>>(),
+            '?' => "%3F".chars().collect::<Vec<_>>(),
+            _ => vec![ch],
+        })
+        .collect()
+}
+
+fn local_path_input_git_migration_url(flake_dir: &Path, input_name: &str) -> Option<String> {
+    let node = flake_input_lock_node(flake_dir, input_name)?;
+    let source = node
+        .get("original")
+        .and_then(|value| value.get("type"))
+        .and_then(|value| value.as_str())
+        .filter(|kind| *kind == "path")
+        .and_then(|_| node.get("original"))
+        .or_else(|| {
+            node.get("locked")
+                .and_then(|value| value.get("type"))
+                .and_then(|value| value.as_str())
+                .filter(|kind| *kind == "path")
+                .and_then(|_| node.get("locked"))
+        })?;
+    let path = PathBuf::from(source.get("path")?.as_str()?);
+    let checkout = local_git_checkout_path(&path)?;
+    Some(format!("git+file://{}", encode_file_url_path(&checkout)))
+}
+
+fn print_home_manager_local_path_input_guidance(flake_dir: &Path, input_name: &str) {
+    let Some(git_file_url) = local_path_input_git_migration_url(flake_dir, input_name) else {
+        return;
+    };
+
+    let node = match flake_input_lock_node(flake_dir, input_name) {
+        Some(node) => node,
+        None => return,
+    };
+    let source_path = node
+        .get("original")
+        .and_then(|value| value.get("path"))
+        .and_then(|value| value.as_str())
+        .or_else(|| {
+            node.get("locked")
+                .and_then(|value| value.get("path"))
+                .and_then(|value| value.as_str())
+        });
+    let Some(source_path) = source_path else {
+        return;
+    };
+
+    println!();
+    println!(
+        "⚠️  The current `{input_name}` input is pinned as a local `path:` source: {source_path}"
+    );
+    println!(
+        "   `path:` snapshots the whole directory, including local build artifacts and untracked files."
+    );
+    println!(
+        "   This checkout is a git repository, so prefer `git+file:` for faster Home Manager updates."
+    );
+    println!("   Replace the flake input with:");
+    println!("     url = \"{git_file_url}\";");
 }
 
 fn parse_nix_subcommand_flags(args: &[String]) -> Result<(bool, bool), CoreError> {
@@ -357,9 +444,10 @@ pub fn run_yzx_update(args: &[String]) -> Result<i32, CoreError> {
                 return Ok(1);
             }
 
-            if let Err(code) = require_current_working_flake() {
-                return Ok(code);
-            }
+            let flake_dir = match current_working_flake_dir() {
+                Ok(dir) => dir,
+                Err(code) => return Ok(code),
+            };
             print_update_path_confirmation("home_manager")?;
             println!();
             println!(
@@ -377,6 +465,7 @@ pub fn run_yzx_update(args: &[String]) -> Result<i32, CoreError> {
 
             let output = match Command::new("nix")
                 .args(["flake", "update", "yazelix"])
+                .current_dir(&flake_dir)
                 .output()
             {
                 Ok(o) => o,
@@ -393,6 +482,10 @@ pub fn run_yzx_update(args: &[String]) -> Result<i32, CoreError> {
             }
 
             println!();
+            print_home_manager_local_path_input_guidance(&flake_dir, "yazelix");
+            if local_path_input_git_migration_url(&flake_dir, "yazelix").is_some() {
+                println!();
+            }
             println!("Next step:");
             println!("  home-manager switch");
             Ok(0)

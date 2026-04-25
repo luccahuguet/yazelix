@@ -8,6 +8,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     # This repo-local path keeps the example buildable inside the Yazelix tree.
+    # For a real local clone outside this example, prefer:
+    # yazelix-hm.url = "git+file:///absolute/path/to/yazelix";
     # In a copied user setup, replace it with:
     # yazelix-hm.url = "github:luccahuguet/yazelix";
     yazelix-hm = {

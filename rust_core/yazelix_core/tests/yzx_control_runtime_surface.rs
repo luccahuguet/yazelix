@@ -392,6 +392,89 @@ exit 99
     );
 }
 
+// Regression: `yzx update home_manager` must detect local git-backed `path:` inputs and print the exact safer `git+file:` replacement instead of normalizing the slow path snapshot UX.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_control_update_home_manager_recommends_git_file_for_local_path_input() {
+    let fixture = managed_config_fixture("");
+    let fake_bin = fixture.home_dir.join("fake-bin");
+    let update_log = fixture.home_dir.join("nix-update.log");
+    let flake_dir = fixture.home_dir.join("hm-flake");
+    let local_checkout = fixture.home_dir.join("local-yazelix");
+    fs::create_dir_all(&fake_bin).unwrap();
+    fs::create_dir_all(&flake_dir).unwrap();
+    fs::create_dir_all(local_checkout.join(".git")).unwrap();
+    fs::write(flake_dir.join("flake.nix"), "{ outputs = { self }: {}; }\n").unwrap();
+    fs::write(
+        flake_dir.join("flake.lock"),
+        format!(
+            r#"{{
+  "nodes": {{
+    "root": {{
+      "inputs": {{
+        "yazelix": "yazelix"
+      }}
+    }},
+    "yazelix": {{
+      "locked": {{
+        "path": "{}",
+        "type": "path"
+      }},
+      "original": {{
+        "path": "{}",
+        "type": "path"
+      }}
+    }}
+  }},
+  "root": "root",
+  "version": 7
+}}
+"#,
+            local_checkout.display(),
+            local_checkout.display()
+        ),
+    )
+    .unwrap();
+    write_executable_script(
+        &fake_bin.join("nix"),
+        &format!(
+            "#!/bin/sh
+if [ \"$1\" = flake ] && [ \"$2\" = update ] && [ \"$3\" = yazelix ]; then
+  printf '%s\\n' \"$*\" > \"{}\"
+  exit 0
+fi
+echo unexpected nix invocation: \"$*\" >&2
+exit 99
+",
+            update_log.display()
+        ),
+    );
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .current_dir(&flake_dir)
+        .env("PATH", prepend_path(&fake_bin))
+        .arg("update")
+        .arg("home_manager")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stderr.is_empty());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("pinned as a local `path:` source"));
+    assert!(stdout.contains("snapshots the whole directory"));
+    assert!(stdout.contains("prefer `git+file:`"));
+    assert!(stdout.contains(&format!(
+        "url = \"git+file://{}\";",
+        local_checkout.display()
+    )));
+    assert!(stdout.contains("home-manager switch"));
+    assert_eq!(
+        fs::read_to_string(update_log).unwrap(),
+        "flake update yazelix\n"
+    );
+}
+
 // Defends: the public Rust-owned `yzx run` route preserves child dash flags end to end instead of stealing them as wrapper options.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]

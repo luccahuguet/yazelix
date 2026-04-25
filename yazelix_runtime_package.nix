@@ -1,8 +1,19 @@
-{ pkgs, src ? ./., nixgl ? null, fenixPkgs ? null }:
+{
+  pkgs,
+  src ?
+    import ./packaging/repo_source.nix {
+      lib = pkgs.lib;
+      src = ./.;
+    },
+  rust_core_src ? ./.,
+  nixgl ? null,
+  fenixPkgs ? null,
+}:
 
 let
   rustCoreHelper = import ./packaging/rust_core_helper.nix {
-    inherit pkgs src fenixPkgs;
+    inherit pkgs fenixPkgs;
+    src = rust_core_src;
   };
 in
 

@@ -94,6 +94,7 @@ yzx update home_manager
 That command prints the exact `nix flake update yazelix` command it runs in the current flake directory, then prints `home-manager switch` for you to copy and run yourself.
 
 This still matters for `path:` inputs because `flake.lock` pins a snapshot of that local path until you refresh it
+If you point Home Manager at a local Yazelix git checkout, prefer `git+file:///absolute/path/to/yazelix` over `path:/absolute/path/to/yazelix` so Nix uses the Git working tree instead of snapshotting the whole directory
 
 Do not mix this with `yzx update upstream` for the same installed Yazelix runtime.
 

@@ -1,4 +1,14 @@
-{ pkgs, src ? ./., nixgl ? null, fenixPkgs ? null }:
+{
+  pkgs,
+  src ?
+    import ./packaging/repo_source.nix {
+      lib = pkgs.lib;
+      src = ./.;
+    },
+  rust_core_src ? ./.,
+  nixgl ? null,
+  fenixPkgs ? null,
+}:
 
 let
   firstPartyPlatforms = [
@@ -9,6 +19,6 @@ let
   ];
 in
 import ./packaging/mk_yazelix_package.nix {
-  inherit pkgs src nixgl fenixPkgs;
+  inherit pkgs src rust_core_src nixgl fenixPkgs;
   metaPlatforms = firstPartyPlatforms;
 }
