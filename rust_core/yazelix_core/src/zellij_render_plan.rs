@@ -97,6 +97,10 @@ fn default_terminal_label() -> String {
     "ghostty".into()
 }
 
+fn default_shell_label() -> String {
+    "nu".into()
+}
+
 #[derive(Debug, Deserialize)]
 pub struct ZellijRenderPlanRequest {
     #[serde(default = "default_enable_sidebar")]
@@ -130,6 +134,8 @@ pub struct ZellijRenderPlanRequest {
     pub resolved_default_shell: String,
     #[serde(default = "default_editor_label")]
     pub editor_label: String,
+    #[serde(default = "default_shell_label")]
+    pub shell_label: String,
     #[serde(default = "default_terminal_label")]
     pub terminal_label: String,
 }
@@ -319,7 +325,7 @@ pub fn compute_zellij_render_plan(
         .trim()
         .to_string();
     let editor_label = status_label(&request.editor_label, "hx");
-    let shell_label = status_label(&request.resolved_default_shell, "nu");
+    let shell_label = status_label(&request.shell_label, "nu");
     let terminal_label = status_label(&request.terminal_label, "ghostty");
 
     let default_layout_name = if request.enable_sidebar {
@@ -436,6 +442,7 @@ mod tests {
             yazelix_layout_dir: "/tmp/yazelix/layouts".into(),
             resolved_default_shell: "/usr/bin/nu".into(),
             editor_label: "hx".into(),
+            shell_label: "nu".into(),
             terminal_label: "ghostty".into(),
         }
     }
@@ -520,7 +527,8 @@ mod tests {
     fn status_widget_labels_use_basenames_and_defaults() {
         let mut req = sample_request();
         req.editor_label = "".into();
-        req.resolved_default_shell = "/nix/store/example/bin/nu".into();
+        req.shell_label = "/nix/store/example/bin/nu".into();
+        req.resolved_default_shell = "/nix/store/example/bin/yazelix_nu.sh".into();
         req.terminal_label = "/opt/ghostty/bin/ghostty".into();
         let plan = compute_zellij_render_plan(&req).unwrap();
 

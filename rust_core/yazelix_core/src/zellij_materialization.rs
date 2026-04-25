@@ -262,6 +262,7 @@ fn build_render_plan_request(
         yazelix_layout_dir: layout_dir.to_string_lossy().to_string(),
         resolved_default_shell: resolved_default_shell.to_string(),
         editor_label: string_config(config, "editor_command", "hx").to_string(),
+        shell_label: string_config(config, "default_shell", "nu").to_string(),
         terminal_label: first_string_list_config(config, "terminals", "ghostty"),
     }
 }
@@ -1654,6 +1655,7 @@ mod tests {
             yazelix_layout_dir: "/tmp/yazelix/layouts".into(),
             resolved_default_shell: shell.into(),
             editor_label: editor_label.into(),
+            shell_label: "nu".into(),
             terminal_label: terminal_label.into(),
         })
         .unwrap()
