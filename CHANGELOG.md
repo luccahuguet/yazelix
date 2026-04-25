@@ -4,6 +4,15 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
+Post-v16.1 work in progress
+
+Upgrade impact: no user action required
+
+Highlights:
+- Reserved for post-release changes after v16.1 lands.
+
+## v16.1 - 2026-04-25
+
 v16.1 stabilizes Home Manager installs and screen rendering
 
 Upgrade impact: no user action required
@@ -13,6 +22,7 @@ Highlights:
 - Added `programs.yazelix.manage_config` for Home Manager users who want Home Manager to own the package/runtime/desktop integration while leaving `~/.config/yazelix/user_configs/yazelix.toml` as a normal mutable file
 - Made Home Manager local-input updates faster and clearer by warning about `path:` snapshot semantics and filtering package/runtime source trees away from local build artifacts
 - Fixed empty Zellij status widgets by removing missing dynamic identity helper commands and rendering stable editor, shell, and terminal labels directly in the generated status payload
+
 
 ## v16 - 2026-04-24
 

@@ -1,10 +1,10 @@
 [releases.unreleased]
-acknowledged_guarded_changes = ["yazelix_default.toml", "home_manager/module.nix"]
+acknowledged_guarded_changes = []
 date = ""
-headline = "v16.1 stabilizes Home Manager installs and screen rendering"
+headline = "Post-v16.1 work in progress"
 manual_actions = []
 migration_ids = []
-summary = ["Fixed the welcome and yzx screen Game of Life renderers so gliders keep their intended shape without terminal row-gap artifacts, and added the configurable core.game_of_life_cell_style option with full_block and dotted styles.", "Added programs.yazelix.manage_config for Home Manager users who want Home Manager to own the package/runtime/desktop integration while leaving ~/.config/yazelix/user_configs/yazelix.toml as a normal mutable file.", "Made Home Manager local-input updates faster and clearer by warning about path: snapshot semantics and filtering package/runtime source trees away from local build artifacts.", "Fixed empty Zellij status widgets by removing missing dynamic identity helper commands and rendering stable editor, shell, and terminal labels directly in the generated status payload."]
+summary = ["Reserved for post-release changes after v16.1 lands."]
 upgrade_impact = "no_user_action"
 version = "unreleased"
 
@@ -337,6 +337,16 @@ migration_ids = []
 summary = ["Finished the Rust owner cuts across the remaining deterministic control-plane and editor/Yazi integration surfaces, so the public `yzx` story is now much more clearly Rust-owned", "Reduced Nushell to the explicit shell and UI core, documented the surviving floor, and kept popup/menu wrappers on Nushell where that boundary is the clearest fit", "Moved maintainer, update, and sweep ownership further out of Nushell, including repo-maintainer flows and pane-orchestrator sync semantics, so the remaining Nu surface is much smaller and more intentional", "Unified the human CLI rendering for `yzx status`, `yzx status --versions`, and `yzx keys` around one shared Rust styling layer with cleaner grouped output and better contrast"]
 upgrade_impact = "no_user_action"
 version = "v16"
+
+[releases."v16.1"]
+acknowledged_guarded_changes = ["yazelix_default.toml", "home_manager/module.nix"]
+date = "2026-04-25"
+headline = "v16.1 stabilizes Home Manager installs and screen rendering"
+manual_actions = []
+migration_ids = []
+summary = ["Fixed the welcome and yzx screen Game of Life renderers so gliders keep their intended shape without terminal row-gap artifacts, and added the configurable core.game_of_life_cell_style option with full_block and dotted styles.", "Added programs.yazelix.manage_config for Home Manager users who want Home Manager to own the package/runtime/desktop integration while leaving ~/.config/yazelix/user_configs/yazelix.toml as a normal mutable file.", "Made Home Manager local-input updates faster and clearer by warning about path: snapshot semantics and filtering package/runtime source trees away from local build artifacts.", "Fixed empty Zellij status widgets by removing missing dynamic identity helper commands and rendering stable editor, shell, and terminal labels directly in the generated status payload."]
+upgrade_impact = "no_user_action"
+version = "v16.1"
 
 [series.v13]
 headline = "Plugin-managed workspaces, migration-aware upgrades, richer front-door UX, and the full devenv-era integration push."
