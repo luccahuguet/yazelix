@@ -77,15 +77,6 @@ If Yazelix is useful to you, you can support its development on [GitHub Sponsors
 <!-- BEGIN GENERATED README LATEST SERIES -->
 ## Latest Tagged Releases
 
-### v16.1
-
-v16.1 stabilizes Home Manager installs and screen rendering
-
-- Fixed the welcome and yzx screen Game of Life renderers so gliders keep their intended shape without terminal row-gap artifacts, and added the configurable core.game_of_life_cell_style option with full_block and dotted styles
-- Added programs.yazelix.manage_config for Home Manager users who want Home Manager to own the package/runtime/desktop integration while leaving ~/.config/yazelix/user_configs/yazelix.toml as a normal mutable file
-- Made Home Manager local-input updates faster and clearer by warning about path: snapshot semantics and filtering package/runtime source trees away from local build artifacts
-- Fixed empty Zellij status widgets by removing missing dynamic identity helper commands and rendering stable editor, shell, and terminal labels directly in the generated status payload
-
 ### v16
 
 v16 Rust-forward control plane with an irreducible Nushell core
@@ -94,6 +85,18 @@ v16 Rust-forward control plane with an irreducible Nushell core
 - Reduced Nushell to the explicit shell and UI core, documented the surviving floor, and kept popup/menu wrappers on Nushell where that boundary is the clearest fit
 - Moved maintainer, update, and sweep ownership further out of Nushell, including repo-maintainer flows and pane-orchestrator sync semantics, so the remaining Nu surface is much smaller and more intentional
 - Unified the human CLI rendering for `yzx status`, `yzx status --versions`, and `yzx keys` around one shared Rust styling layer with cleaner grouped output and better contrast
+
+### v15
+
+v15 trims Yazelix down to the fast workspace core
+
+- v15 is the only supported Yazelix line now, and v14 is the final historical Classic snapshot rather than a maintained fallback
+- Dropped the out-of-scope Classic runtime-manager surface: no runtime-local `devenv`, no `yazelix_packs.toml`, no `yazelix packs` or `yzx packs`, no automatic config migrations, and no `yzx refresh`
+- Made Ghostty the first-party bundled terminal on Linux and macOS while keeping WezTerm, Kitty, Alacritty, and Foot as PATH-provided alternatives
+- Split current-terminal startup into `yzx enter`, kept `yzx launch` as the managed external-terminal entrypoint, and kept `yzx env` as the non-UI tool-environment surface
+- Made `yzx popup` and `yzx menu --popup` share the fast floating-pane path with explicit pane identity, shared toggle semantics, and no helper-pane detour
+- Kept the workspace core around layouts, managed editor/sidebar orchestration, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners through `yzx update upstream` or `yzx update home_manager`
+- Continued the delete-first trim by replacing string-built runtime wrapper commands with direct runtime scripts, making maintainer pins explicit again, and keeping the runtime lock on the declared unstable input
 
 For exact tagged release notes, see [CHANGELOG](./CHANGELOG.md) or run `yzx whats_new` after installing that release
 For the longer project story, see [Version History](./docs/history.md)

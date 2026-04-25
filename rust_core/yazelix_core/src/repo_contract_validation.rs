@@ -249,7 +249,7 @@ pub fn validate_readme_version(repo_root: &Path) -> Result<ValidationReport, Str
         ));
     }
 
-    let expected_first_release_heading = format!("### {version}");
+    let expected_first_release_heading = format!("### {}", major_series_key(&version)?);
     let first_release_heading = actual_block
         .lines()
         .skip(3)
@@ -259,7 +259,7 @@ pub fn validate_readme_version(repo_root: &Path) -> Result<ValidationReport, Str
         .to_string();
     if first_release_heading != expected_first_release_heading {
         report.errors.push(format!(
-            "README first latest release drift detected. Expected '{}' but found '{}'.",
+            "README first latest major release drift detected. Expected '{}' but found '{}'.",
             expected_first_release_heading, first_release_heading
         ));
     }
@@ -2126,7 +2126,7 @@ fn render_readme_latest_series_section(repo_root: &Path, version: &str) -> Resul
         }
 
         for item in as_string_list(entry.get("summary")) {
-            lines.push(format!("- {item}"));
+            lines.push(format!("- {}", trim_readme_release_summary_item(&item)));
         }
     }
     lines.extend([
@@ -2137,6 +2137,10 @@ fn render_readme_latest_series_section(repo_root: &Path, version: &str) -> Resul
     ]);
 
     Ok(lines.join("\n"))
+}
+
+fn trim_readme_release_summary_item(item: &str) -> &str {
+    item.trim_end().strip_suffix('.').unwrap_or(item).trim_end()
 }
 
 fn resolve_readme_latest_release_entries(
@@ -2160,7 +2164,7 @@ fn resolve_readme_latest_release_entries_with_limit(
     let mut release_entries = releases
         .iter()
         .filter_map(|(key, value)| {
-            if key == "unreleased" {
+            if key == "unreleased" || !is_major_release_key(key) {
                 return None;
             }
             value
@@ -2174,27 +2178,11 @@ fn resolve_readme_latest_release_entries_with_limit(
         return Err("upgrade notes are missing tagged release entries".to_string());
     }
 
-    if release_entries.iter().any(|(key, _)| key == version) {
-        let mut selected = vec![
-            release_entries
-                .iter()
-                .find(|(key, _)| key == version)
-                .cloned()
-                .expect("version presence already checked"),
-        ];
-        for (key, entry) in release_entries {
-            if key == version {
-                continue;
-            }
-            selected.push((key, entry));
-            if selected.len() == limit {
-                break;
-            }
-        }
-        return Ok(selected);
+    let series_key = major_series_key(version)?;
+    if release_entries.iter().any(|(key, _)| key == &series_key) {
+        return Ok(release_entries.into_iter().take(limit).collect());
     }
 
-    let series_key = major_series_key(version)?;
     let series = notes
         .get("series")
         .and_then(TomlValue::as_table)
@@ -2206,6 +2194,13 @@ fn resolve_readme_latest_release_entries_with_limit(
             format!("upgrade notes are missing the current major series entry `{series_key}`")
         })?;
     Ok(vec![(series_key, entry.clone())])
+}
+
+fn is_major_release_key(version: &str) -> bool {
+    let Some(rest) = version.trim().strip_prefix('v') else {
+        return false;
+    };
+    !rest.is_empty() && rest.chars().all(|ch| ch.is_ascii_digit())
 }
 
 fn compare_release_versions_desc(left: &str, right: &str) -> std::cmp::Ordering {
