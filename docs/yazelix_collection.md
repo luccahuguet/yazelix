@@ -81,7 +81,7 @@ Repo maintenance still uses a broader maintainer toolchain than the end-user run
 - [beads](https://github.com/steveyegge/beads) — Beads issue tracker (`bd`) for local planning and GitHub issue contract work
 - [nu-lint](https://github.com/nushell/nu-lint) — Optional Nushell linter for explicit maintainer lint runs
 
-Use the repo's root [`../.pre-commit-config.yaml`](../.pre-commit-config.yaml) with `prek install`, then run `prek run --all-files` when you want the fast maintainer checks on demand.
+Use the repo's root [`../.pre-commit-config.yaml`](../.pre-commit-config.yaml) with `prek install`, then run `prek run` for the normal incremental maintainer checks on demand.
 
 ---
 

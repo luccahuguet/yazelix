@@ -1094,10 +1094,12 @@ mod tests {
             .expect("mixed ownership warning");
         assert_eq!(collision.status, "warn");
         assert!(collision.message.contains("default Nix profile"));
-        assert!(collision
-            .details
-            .as_deref()
-            .unwrap_or_default()
-            .contains("yzx home_manager prepare --apply"));
+        assert!(
+            collision
+                .details
+                .as_deref()
+                .unwrap_or_default()
+                .contains("yzx home_manager prepare --apply")
+        );
     }
 }

@@ -16,10 +16,17 @@ pub struct VersionBumpResult {
     pub tag: String,
 }
 
-pub fn perform_version_bump(repo_root: &Path, target_version: &str) -> Result<VersionBumpResult, String> {
-    let resolved_repo_root = repo_root
-        .canonicalize()
-        .map_err(|error| format!("Failed to resolve repo root {}: {}", repo_root.display(), error))?;
+pub fn perform_version_bump(
+    repo_root: &Path,
+    target_version: &str,
+) -> Result<VersionBumpResult, String> {
+    let resolved_repo_root = repo_root.canonicalize().map_err(|error| {
+        format!(
+            "Failed to resolve repo root {}: {}",
+            repo_root.display(),
+            error
+        )
+    })?;
     let resolved_target_version = validate_target_version(target_version)?;
     let previous_version = current_version(&resolved_repo_root)?;
 
@@ -60,10 +67,19 @@ pub fn perform_version_bump(repo_root: &Path, target_version: &str) -> Result<Ve
         ],
     )?;
     let commit_message = format!("Bump version to {}", resolved_target_version);
-    run_git(&resolved_repo_root, &["commit", "--quiet", "-m", &commit_message])?;
     run_git(
         &resolved_repo_root,
-        &["tag", "-a", &resolved_target_version, "-m", &format!("Release {}", resolved_target_version)],
+        &["commit", "--quiet", "-m", &commit_message],
+    )?;
+    run_git(
+        &resolved_repo_root,
+        &[
+            "tag",
+            "-a",
+            &resolved_target_version,
+            "-m",
+            &format!("Release {}", resolved_target_version),
+        ],
     )?;
 
     let final_version = current_version(&resolved_repo_root)?;
@@ -75,7 +91,10 @@ pub fn perform_version_bump(repo_root: &Path, target_version: &str) -> Result<Ve
     }
 
     let commit_sha = run_git(&resolved_repo_root, &["rev-parse", "HEAD"])?;
-    let created_tag = run_git(&resolved_repo_root, &["tag", "--list", &resolved_target_version])?;
+    let created_tag = run_git(
+        &resolved_repo_root,
+        &["tag", "--list", &resolved_target_version],
+    )?;
     if created_tag != resolved_target_version {
         return Err(format!(
             "Failed to verify created git tag {}",
@@ -193,7 +212,10 @@ fn render_default_unreleased_summary(released_version: &str) -> Vec<String> {
 
 fn build_default_unreleased_entry(released_version: &str) -> TomlValue {
     let mut table = toml::map::Map::new();
-    table.insert("version".to_string(), TomlValue::String("unreleased".to_string()));
+    table.insert(
+        "version".to_string(),
+        TomlValue::String("unreleased".to_string()),
+    );
     table.insert("date".to_string(), TomlValue::String(String::new()));
     table.insert(
         "headline".to_string(),
@@ -238,7 +260,10 @@ fn render_default_unreleased_changelog(released_version: &str) -> String {
     .join("\n")
 }
 
-fn ensure_releasable_unreleased_entry(entry: &TomlValue, current_version: &str) -> Result<(), String> {
+fn ensure_releasable_unreleased_entry(
+    entry: &TomlValue,
+    current_version: &str,
+) -> Result<(), String> {
     if entry == &build_default_unreleased_entry(current_version) {
         Err(format!(
             "Refusing to bump version while docs/upgrade_notes.toml still has the untouched unreleased placeholder for {}.",
@@ -268,7 +293,10 @@ fn update_version_constant(repo_root: &Path, target_version: &str) -> Result<(),
     let raw = fs::read_to_string(&constants_path)
         .map_err(|error| format!("Failed to read {}: {}", constants_path.display(), error))?;
     let updated = raw.replace(
-        &format!("export const YAZELIX_VERSION = \"{}\"", current_version(repo_root)?),
+        &format!(
+            "export const YAZELIX_VERSION = \"{}\"",
+            current_version(repo_root)?
+        ),
         &format!("export const YAZELIX_VERSION = \"{}\"", target_version),
     );
     fs::write(&constants_path, updated)
@@ -284,8 +312,8 @@ fn rotate_upgrade_notes(
     let notes_path = repo_root.join("docs/upgrade_notes.toml");
     let raw = fs::read_to_string(&notes_path)
         .map_err(|error| format!("Failed to read {}: {}", notes_path.display(), error))?;
-    let mut notes: TomlValue =
-        toml::from_str(&raw).map_err(|error| format!("Failed to parse {}: {}", notes_path.display(), error))?;
+    let mut notes: TomlValue = toml::from_str(&raw)
+        .map_err(|error| format!("Failed to parse {}: {}", notes_path.display(), error))?;
     let releases = notes
         .get_mut("releases")
         .and_then(TomlValue::as_table_mut)
@@ -310,7 +338,10 @@ fn rotate_upgrade_notes(
         "version".to_string(),
         TomlValue::String(target_version.to_string()),
     );
-    released_entry.insert("date".to_string(), TomlValue::String(release_date.to_string()));
+    released_entry.insert(
+        "date".to_string(),
+        TomlValue::String(release_date.to_string()),
+    );
 
     let existing_entries = releases
         .iter()
@@ -368,7 +399,11 @@ fn rotate_changelog_text(
     ensure_releasable_unreleased_changelog(&unreleased_section, current_version)?;
 
     let mut final_lines = Vec::new();
-    final_lines.extend(lines[..unreleased_index].iter().map(|line| line.to_string()));
+    final_lines.extend(
+        lines[..unreleased_index]
+            .iter()
+            .map(|line| line.to_string()),
+    );
     final_lines.extend(
         render_default_unreleased_changelog(target_version)
             .lines()
@@ -383,7 +418,11 @@ fn rotate_changelog_text(
     );
     if next_heading_index < lines.len() {
         final_lines.push(String::new());
-        final_lines.extend(lines[next_heading_index..].iter().map(|line| line.to_string()));
+        final_lines.extend(
+            lines[next_heading_index..]
+                .iter()
+                .map(|line| line.to_string()),
+        );
     }
     Ok(final_lines.join("\n") + "\n")
 }

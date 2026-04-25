@@ -1,6 +1,6 @@
 use crate::config_state::{
-    compute_config_state, record_config_state, ComputeConfigStateRequest, ConfigStateData,
-    RecordConfigStateRequest,
+    ComputeConfigStateRequest, ConfigStateData, RecordConfigStateRequest, compute_config_state,
+    record_config_state,
 };
 use crate::control_plane::read_yazelix_version_from_runtime;
 use crate::repo_validation::ValidationReport;
@@ -2107,11 +2107,13 @@ fn resolve_readme_latest_release_entries_with_limit(
     }
 
     if release_entries.iter().any(|(key, _)| key == version) {
-        let mut selected = vec![release_entries
-            .iter()
-            .find(|(key, _)| key == version)
-            .cloned()
-            .expect("version presence already checked")];
+        let mut selected = vec![
+            release_entries
+                .iter()
+                .find(|(key, _)| key == version)
+                .cloned()
+                .expect("version presence already checked"),
+        ];
         for (key, entry) in release_entries {
             if key == version {
                 continue;

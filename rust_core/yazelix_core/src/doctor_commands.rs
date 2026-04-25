@@ -14,7 +14,9 @@ use crate::install_ownership_env::install_ownership_request_from_env_with_runtim
 use crate::runtime_materialization::{
     RuntimeMaterializationRepairEvaluateRequest, repair_runtime_materialization,
 };
-use crate::zellij_materialization::{ZellijMaterializationRequest, generate_zellij_materialization};
+use crate::zellij_materialization::{
+    ZellijMaterializationRequest, generate_zellij_materialization,
+};
 use crate::{
     DoctorConfigEvaluateRequest, NormalizeConfigRequest, evaluate_doctor_config_report,
     evaluate_install_ownership_report, normalize_config, plan_runtime_materialization,
@@ -534,16 +536,23 @@ fn run_doctor_fix_flow(verbose: bool, results: &[Value]) -> Result<i32, CoreErro
     for result in results {
         let status = result.get("status").and_then(Value::as_str).unwrap_or("");
         let message = result.get("message").and_then(Value::as_str).unwrap_or("");
-        let fix_available = result.get("fix_available").and_then(Value::as_bool).unwrap_or(false);
+        let fix_available = result
+            .get("fix_available")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
         let conflicts = result.get("conflicts").and_then(Value::as_array);
 
-        if !matches!(status, "error" | "warning") || !message.contains("runtime") || !fix_available {
+        if !matches!(status, "error" | "warning") || !message.contains("runtime") || !fix_available
+        {
             continue;
         }
         let Some(conflicts) = conflicts else { continue };
 
         for conflict in conflicts {
-            let severity = conflict.get("severity").and_then(Value::as_str).unwrap_or("");
+            let severity = conflict
+                .get("severity")
+                .and_then(Value::as_str)
+                .unwrap_or("");
             let path = conflict.get("path").and_then(Value::as_str).unwrap_or("");
             let name = conflict.get("name").and_then(Value::as_str).unwrap_or("");
             if severity != "error" || path.is_empty() {
@@ -582,7 +591,9 @@ fn run_doctor_fix_flow(verbose: bool, results: &[Value]) -> Result<i32, CoreErro
                 #[cfg(unix)]
                 {
                     use std::os::unix::fs::PermissionsExt;
-                    if let Err(err) = fs::set_permissions(&paths.user_config, fs::Permissions::from_mode(0o644)) {
+                    if let Err(err) =
+                        fs::set_permissions(&paths.user_config, fs::Permissions::from_mode(0o644))
+                    {
                         println!("⚠️  Could not set permissions on created config: {err}");
                     }
                 }
@@ -603,43 +614,45 @@ fn run_doctor_fix_flow(verbose: bool, results: &[Value]) -> Result<i32, CoreErro
             .unwrap_or(false)
     });
     if needs_runtime_repair {
-        let plan_request = runtime_materialization_plan_request_from_env(config_override_from_env().as_deref())?;
+        let plan_request =
+            runtime_materialization_plan_request_from_env(config_override_from_env().as_deref())?;
         let repair_req = RuntimeMaterializationRepairEvaluateRequest {
             plan: plan_request,
             force: false,
         };
         match repair_runtime_materialization(&repair_req) {
-            Ok(data) => {
-                match &data.repair {
-                    crate::runtime_materialization::RuntimeRepairDirective::Noop { lines } => {
-                        if verbose {
-                            for line in lines {
-                                println!("{line}");
-                            }
-                        }
-                    }
-                    crate::runtime_materialization::RuntimeRepairDirective::Regenerate {
-                        progress_message,
-                        missing_artifacts_detail_line,
-                        success_lines,
-                        ..
-                    } => {
-                        if verbose {
-                            if !progress_message.is_empty() {
-                                println!("{progress_message}");
-                            }
-                            if let Some(detail) = missing_artifacts_detail_line {
-                                println!("{detail}");
-                            }
-                        }
-                        for line in success_lines {
+            Ok(data) => match &data.repair {
+                crate::runtime_materialization::RuntimeRepairDirective::Noop { lines } => {
+                    if verbose {
+                        for line in lines {
                             println!("{line}");
                         }
                     }
                 }
-            }
+                crate::runtime_materialization::RuntimeRepairDirective::Regenerate {
+                    progress_message,
+                    missing_artifacts_detail_line,
+                    success_lines,
+                    ..
+                } => {
+                    if verbose {
+                        if !progress_message.is_empty() {
+                            println!("{progress_message}");
+                        }
+                        if let Some(detail) = missing_artifacts_detail_line {
+                            println!("{detail}");
+                        }
+                    }
+                    for line in success_lines {
+                        println!("{line}");
+                    }
+                }
+            },
             Err(err) => {
-                println!("❌ Failed to repair generated runtime state: {}", err.message());
+                println!(
+                    "❌ Failed to repair generated runtime state: {}",
+                    err.message()
+                );
                 any_failed = true;
             }
         }
@@ -656,7 +669,11 @@ fn run_doctor_fix_flow(verbose: bool, results: &[Value]) -> Result<i32, CoreErro
         let runtime_dir = runtime_dir_from_env()?;
         let config_dir = config_dir_from_env()?;
         let state_dir = state_dir_from_env()?;
-        let paths = resolve_active_config_paths(&runtime_dir, &config_dir, config_override_from_env().as_deref())?;
+        let paths = resolve_active_config_paths(
+            &runtime_dir,
+            &config_dir,
+            config_override_from_env().as_deref(),
+        )?;
         let zellij_config_dir = state_dir.join("configs").join("zellij");
         let req = ZellijMaterializationRequest {
             config_path: paths.config_file,
@@ -668,11 +685,20 @@ fn run_doctor_fix_flow(verbose: bool, results: &[Value]) -> Result<i32, CoreErro
         };
         match generate_zellij_materialization(&req) {
             Ok(_) => {
-                let cache_path = home_dir_from_env()?.join(".cache").join("zellij").join("permissions.kdl");
-                println!("✅ Seeded Yazelix plugin permissions in: {}", cache_path.display());
+                let cache_path = home_dir_from_env()?
+                    .join(".cache")
+                    .join("zellij")
+                    .join("permissions.kdl");
+                println!(
+                    "✅ Seeded Yazelix plugin permissions in: {}",
+                    cache_path.display()
+                );
             }
             Err(err) => {
-                println!("❌ Failed to seed Yazelix plugin permissions: {}", err.message());
+                println!(
+                    "❌ Failed to seed Yazelix plugin permissions: {}",
+                    err.message()
+                );
                 any_failed = true;
             }
         }

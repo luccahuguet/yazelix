@@ -1,7 +1,9 @@
 //! Rust-owned front-door public commands for `yzx tutor`, `yzx screen`, and `yzx whats_new`.
 
 use crate::bridge::{CoreError, ErrorClass};
-use crate::control_plane::{read_yazelix_version_from_runtime, runtime_dir_from_env, state_dir_from_env};
+use crate::control_plane::{
+    read_yazelix_version_from_runtime, runtime_dir_from_env, state_dir_from_env,
+};
 use crate::front_door_render::run_screen_surface;
 use crate::upgrade_summary::show_current_upgrade_summary;
 use std::process::Command;
@@ -215,7 +217,9 @@ fn render_yazelix_tutor() -> String {
     let mut lines = Vec::new();
     lines.push(heading("Yazelix tutor"));
     lines.push(String::new());
-    lines.push("Yazelix is a managed terminal workspace built around Zellij, Yazi, and Helix.".to_string());
+    lines.push(
+        "Yazelix is a managed terminal workspace built around Zellij, Yazi, and Helix.".to_string(),
+    );
     lines.push("The important unit is the current tab workspace root: managed actions use that directory unless a tool is doing something more specific.".to_string());
     lines.push(String::new());
     lines.push(heading("Start here"));

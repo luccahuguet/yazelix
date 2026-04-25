@@ -40,7 +40,11 @@ struct InitializerResult {
 }
 
 fn shell_initializer_dirs(home: &Path) -> Vec<ShellConfig> {
-    let base = home.join(".local").join("share").join("yazelix").join("initializers");
+    let base = home
+        .join(".local")
+        .join("share")
+        .join("yazelix")
+        .join("initializers");
     vec![
         ShellConfig {
             name: "nu",
@@ -191,38 +195,46 @@ fn write_text_atomic(path: &Path, content: &str) -> Result<(), CoreError> {
             json!({"path": path.display().to_string()}),
         )
     })?;
-    fs::create_dir_all(parent).map_err(|e| CoreError::io(
-        "atomic_write_mkdir",
-        format!("Cannot create directory {}", parent.display()),
-        "Fix permissions or choose a different path.",
-        parent.display().to_string(),
-        e,
-    ))?;
+    fs::create_dir_all(parent).map_err(|e| {
+        CoreError::io(
+            "atomic_write_mkdir",
+            format!("Cannot create directory {}", parent.display()),
+            "Fix permissions or choose a different path.",
+            parent.display().to_string(),
+            e,
+        )
+    })?;
 
     let tmp = path.with_extension("tmp");
-    let mut file = fs::File::create(&tmp).map_err(|e| CoreError::io(
-        "atomic_write_create",
-        format!("Cannot create temp file {}", tmp.display()),
-        "Fix permissions or disk space, then retry.",
-        tmp.display().to_string(),
-        e,
-    ))?;
-    file.write_all(content.as_bytes()).map_err(|e| CoreError::io(
-        "atomic_write_write",
-        format!("Cannot write to temp file {}", tmp.display()),
-        "Fix permissions or disk space, then retry.",
-        tmp.display().to_string(),
-        e,
-    ))?;
+    let mut file = fs::File::create(&tmp).map_err(|e| {
+        CoreError::io(
+            "atomic_write_create",
+            format!("Cannot create temp file {}", tmp.display()),
+            "Fix permissions or disk space, then retry.",
+            tmp.display().to_string(),
+            e,
+        )
+    })?;
+    file.write_all(content.as_bytes()).map_err(|e| {
+        CoreError::io(
+            "atomic_write_write",
+            format!("Cannot write to temp file {}", tmp.display()),
+            "Fix permissions or disk space, then retry.",
+            tmp.display().to_string(),
+            e,
+        )
+    })?;
     drop(file);
 
-    fs::rename(&tmp, path).map_err(|e| CoreError::io(
-        "atomic_write_rename",
-        format!("Cannot rename {} to {}", tmp.display(), path.display()),
-        "Fix permissions or retry.",
-        path.display().to_string(),
-        e,
-    ))?;
+    fs::rename(&tmp, path).map_err(|e| {
+        CoreError::io(
+            "atomic_write_rename",
+            format!("Cannot rename {} to {}", tmp.display(), path.display()),
+            "Fix permissions or retry.",
+            path.display().to_string(),
+            e,
+        )
+    })?;
 
     Ok(())
 }
@@ -239,13 +251,18 @@ fn generate_initializers(
     let mut all_results = Vec::new();
 
     for shell in &shells {
-        fs::create_dir_all(&shell.dir).map_err(|e| CoreError::io(
-            "init_mkdir",
-            format!("Cannot create initializer directory {}", shell.dir.display()),
-            "Fix permissions, then retry.",
-            shell.dir.display().to_string(),
-            e,
-        ))?;
+        fs::create_dir_all(&shell.dir).map_err(|e| {
+            CoreError::io(
+                "init_mkdir",
+                format!(
+                    "Cannot create initializer directory {}",
+                    shell.dir.display()
+                ),
+                "Fix permissions, then retry.",
+                shell.dir.display().to_string(),
+                e,
+            )
+        })?;
 
         let mut shell_results = Vec::new();
         let mut successful_files = Vec::new();
@@ -300,7 +317,8 @@ fn generate_initializers(
                         });
                         continue;
                     }
-                    successful_files.push((tool.required, output_file.to_string_lossy().to_string()));
+                    successful_files
+                        .push((tool.required, output_file.to_string_lossy().to_string()));
                     shell_results.push(InitializerResult {
                         status: "success".into(),
                         tool: tool.name.into(),
@@ -332,21 +350,33 @@ fn generate_initializers(
 
         // Build aggregate initializer
         let aggregate_file = shell.dir.join(format!("yazelix_init.{}", shell.ext));
-        let mut aggregate = format!("# Yazelix aggregate initializer for {}\n# Concatenates generated initializers for available tools.\n", shell.name);
+        let mut aggregate = format!(
+            "# Yazelix aggregate initializer for {}\n# Concatenates generated initializers for available tools.\n",
+            shell.name
+        );
 
         // Add warnings for required issues
         for r in &shell_results {
             if matches!(r.status.as_str(), "required-missing" | "required-failed") {
-                let message = r.reason.as_deref().or(r.error.as_deref()).unwrap_or("unknown failure");
+                let message = r
+                    .reason
+                    .as_deref()
+                    .or(r.error.as_deref())
+                    .unwrap_or("unknown failure");
                 for line in message.lines() {
-                    aggregate.push_str(&format!("# WARNING: required initializer not generated for {}: {}\n", r.tool, line));
+                    aggregate.push_str(&format!(
+                        "# WARNING: required initializer not generated for {}: {}\n",
+                        r.tool, line
+                    ));
                 }
             }
         }
 
         // Nushell PATH preservation
         if shell.name == "nu" {
-            aggregate.push_str("\n# Preserve the inherited PATH before Yazelix-managed initializers modify it\n");
+            aggregate.push_str(
+                "\n# Preserve the inherited PATH before Yazelix-managed initializers modify it\n",
+            );
             aggregate.push_str("let initial_path = $env.PATH\n");
             aggregate.push_str("\n# --- Tool initializers below ---\n\n");
         }
@@ -459,7 +489,12 @@ pub fn run_generate_shell_initializers(args: &[String]) -> Result<i32, CoreError
             if !failed.is_empty() {
                 println!("❌ Failed to generate:");
                 for f in &failed {
-                    println!("   {} for {}: {}", f.tool, f.shell, f.error.as_deref().unwrap_or(""));
+                    println!(
+                        "   {} for {}: {}",
+                        f.tool,
+                        f.shell,
+                        f.error.as_deref().unwrap_or("")
+                    );
                 }
             }
         }

@@ -523,8 +523,10 @@ fn yzx_control_doctor_json_reports_home_manager_profile_collision() {
         .expect("mixed ownership warning");
 
     assert_eq!(ownership_result["status"], "warn");
-    assert!(ownership_result["details"]
-        .as_str()
-        .unwrap_or("")
-        .contains("yzx home_manager prepare --apply"));
+    assert!(
+        ownership_result["details"]
+            .as_str()
+            .unwrap_or("")
+            .contains("yzx home_manager prepare --apply")
+    );
 }

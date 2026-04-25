@@ -57,7 +57,9 @@ pub fn build_active_tab_session_state_v1(
     ActiveTabSessionStateV1 {
         schema_version: 1,
         active_tab_position,
-        workspace: read_state.explicit_workspace.or(read_state.bootstrap_workspace),
+        workspace: read_state
+            .explicit_workspace
+            .or(read_state.bootstrap_workspace),
         managed_panes: SessionManagedPanes {
             editor_pane_id: read_state.editor_pane_id,
             sidebar_pane_id: read_state.sidebar_pane_id,
@@ -164,7 +166,10 @@ mod tests {
                 source: "bootstrap".into(),
             })
         );
-        assert_eq!(snapshot.managed_panes.sidebar_pane_id, Some("terminal:9".into()));
+        assert_eq!(
+            snapshot.managed_panes.sidebar_pane_id,
+            Some("terminal:9".into())
+        );
         assert_eq!(snapshot.focus_context, "other");
         assert_eq!(snapshot.sidebar_yazi, None);
     }

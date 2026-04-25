@@ -37,3 +37,13 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: yazelix-rustfmt-core
+        name: check Rust formatting (core)
+        entry: nix develop -c rustfmt --edition 2024 --check
+        language: system
+        files: ^rust_core/.*\.rs$
+      - id: yazelix-rustfmt-pane-orchestrator
+        name: check Rust formatting (pane orchestrator)
+        entry: nix develop -c rustfmt --edition 2021 --check
+        language: system
+        files: ^rust_plugins/zellij_pane_orchestrator/.*\.rs$

@@ -1,6 +1,8 @@
 use crate::active_config_surface::resolve_active_config_paths;
 use crate::control_plane::{config_dir_from_env, state_dir_from_env};
-use crate::zellij_materialization::{ZellijMaterializationRequest, generate_zellij_materialization};
+use crate::zellij_materialization::{
+    ZellijMaterializationRequest, generate_zellij_materialization,
+};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -27,7 +29,9 @@ pub fn build_pane_orchestrator(repo_root: &Path, sync: bool) -> Result<(), Strin
 }
 
 fn pane_orchestrator_paths(repo_root: &Path) -> PaneOrchestratorPaths {
-    let crate_dir = repo_root.join("rust_plugins").join("zellij_pane_orchestrator");
+    let crate_dir = repo_root
+        .join("rust_plugins")
+        .join("zellij_pane_orchestrator");
     let wasm_path = crate_dir
         .join("target")
         .join(BUILD_TARGET)
@@ -77,7 +81,10 @@ fn command_exists(name: &str) -> bool {
 
 fn run_wasm_build(paths: &PaneOrchestratorPaths, label: &str) -> Result<(), String> {
     if !paths.crate_dir.exists() {
-        return Err(format!("❌ {label} crate not found: {}", paths.crate_dir.display()));
+        return Err(format!(
+            "❌ {label} crate not found: {}",
+            paths.crate_dir.display()
+        ));
     }
 
     println!("🦀 Building {label} for target {BUILD_TARGET}...");
@@ -208,7 +215,9 @@ fn sync_built_wasm(paths: &PaneOrchestratorPaths, label: &str) -> Result<(), Str
     println!("Size: {byte_len} bytes");
     println!();
     println!("Safest next step:");
-    println!("Restart Yazelix or open a fresh Yazelix window so Zellij loads the updated plugin cleanly.");
+    println!(
+        "Restart Yazelix or open a fresh Yazelix window so Zellij loads the updated plugin cleanly."
+    );
     println!("In-place plugin reloads can leave the current session in a broken permission state.");
     println!();
     println!("If you are already stuck in a blank/permission-limbo session, recover with:");

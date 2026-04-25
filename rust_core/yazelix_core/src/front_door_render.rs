@@ -148,7 +148,10 @@ pub fn resolve_welcome_style(
     }
 
     for candidate in GAME_OF_LIFE_RANDOM_POOL {
-        if !allowed.iter().any(|allowed_style| allowed_style == candidate) {
+        if !allowed
+            .iter()
+            .any(|allowed_style| allowed_style == candidate)
+        {
             panic!("missing retained random welcome style: {candidate}");
         }
     }
@@ -244,11 +247,11 @@ fn fit_inner_width(resolved_width: usize, minimum_width: usize) -> usize {
     proposed.max(minimum_width)
 }
 
-const MAX_WELCOME_INNER_WIDTH: usize = 100;
-
-fn fit_welcome_inner_width(resolved_width: usize, minimum_width: usize) -> usize {
-    let proposed = resolved_width.saturating_sub(6);
-    proposed.clamp(minimum_width, MAX_WELCOME_INNER_WIDTH)
+// Welcome specs already encode the designed card width for each variant.
+// Stretching them toward the terminal width creates near-edge-to-edge cards
+// with large dead-space gutters inside the frame.
+fn welcome_inner_width(designed_width: usize) -> usize {
+    designed_width
 }
 
 fn colorize_logo_text(text: &str) -> String {
@@ -304,8 +307,15 @@ fn make_border(inner_width: usize) -> String {
     "─".repeat(inner_width)
 }
 
+fn frame_content_width(inner_width: usize) -> usize {
+    inner_width + 2
+}
+
 fn center_frame_lines(lines: Vec<String>, width: usize) -> Vec<String> {
-    lines.into_iter().map(|line| center_text(&line, width)).collect()
+    lines
+        .into_iter()
+        .map(|line| center_text(&line, width))
+        .collect()
 }
 
 fn logo_spec(variant: &str, width: usize) -> &LogoWelcomeSpec {
@@ -337,12 +347,13 @@ fn build_logo_card_frame(
     shown_body_count: usize,
     accent: &str,
 ) -> Vec<String> {
+    let content_width = frame_content_width(inner_width);
     let title_text = if accent == "hint" {
         spec.title_hint_text.as_str()
     } else {
         spec.title_text.as_str()
     };
-    let title_plain = center_text(title_text, inner_width);
+    let title_plain = center_text(title_text, content_width);
     let title_colored = if accent == "hint" {
         format!("{ANSI_FAINT}{ANSI_PURPLE}{title_plain}{ANSI_RESET}")
     } else {
@@ -355,35 +366,44 @@ fn build_logo_card_frame(
         .enumerate()
         .map(|(index, body)| {
             let aligned = if spec.body_alignment == "center" {
-                center_text(body, inner_width)
+                center_text(body, content_width)
             } else {
-                pad_text_right(body, inner_width)
+                pad_text_right(body, content_width)
             };
 
             if index < shown_body_count {
                 colorize_body_line(&aligned)
             } else {
-                format!("{ANSI_FAINT}{}{ANSI_RESET}", pad_text_right("", inner_width))
+                format!(
+                    "{ANSI_FAINT}{}{ANSI_RESET}",
+                    pad_text_right("", content_width)
+                )
             }
         })
         .collect::<Vec<_>>();
 
-    let footer = colorize_footer_text(&center_text(&spec.footer, inner_width));
+    let footer = colorize_footer_text(&center_text(&spec.footer, content_width));
     let mut out = Vec::new();
-    out.push(format!("{ANSI_PURPLE}╭{}╮{ANSI_RESET}", make_border(inner_width)));
-    out.push(format!("{ANSI_PURPLE}│{ANSI_RESET}{title_colored}{ANSI_PURPLE}│{ANSI_RESET}"));
+    out.push(format!(
+        "{ANSI_PURPLE}╭{}╮{ANSI_RESET}",
+        make_border(inner_width)
+    ));
+    out.push(title_colored);
     for line in body_lines {
-        out.push(format!("{ANSI_PURPLE}│{ANSI_RESET}{line}{ANSI_PURPLE}│{ANSI_RESET}"));
+        out.push(line);
     }
-    out.push(format!("{ANSI_PURPLE}│{ANSI_RESET}{footer}{ANSI_PURPLE}│{ANSI_RESET}"));
-    out.push(format!("{ANSI_PURPLE}╰{}╯{ANSI_RESET}", make_border(inner_width)));
+    out.push(footer);
+    out.push(format!(
+        "{ANSI_PURPLE}╰{}╯{ANSI_RESET}",
+        make_border(inner_width)
+    ));
     out
 }
 
 fn get_logo_welcome_frame(width: usize) -> Vec<String> {
     let variant = get_logo_welcome_variant(width);
     let spec = logo_spec(variant, width);
-    let inner_width = fit_welcome_inner_width(width, spec.minimum_inner_width);
+    let inner_width = welcome_inner_width(spec.minimum_inner_width);
     center_frame_lines(
         build_logo_card_frame(spec, inner_width, spec.body_lines.len(), "full"),
         width,
@@ -393,7 +413,7 @@ fn get_logo_welcome_frame(width: usize) -> Vec<String> {
 fn get_logo_animation_frames(width: usize) -> Vec<Vec<String>> {
     let variant = get_logo_welcome_variant(width);
     let spec = logo_spec(variant, width);
-    let inner_width = fit_welcome_inner_width(width, spec.minimum_inner_width);
+    let inner_width = welcome_inner_width(spec.minimum_inner_width);
     vec![
         center_frame_lines(build_logo_card_frame(spec, inner_width, 0, "hint"), width),
         center_frame_lines(build_logo_card_frame(spec, inner_width, 0, "full"), width),
@@ -405,7 +425,11 @@ fn get_logo_animation_frames(width: usize) -> Vec<Vec<String>> {
     ]
 }
 
-fn boid_points(inner_width: usize, body_height: usize, phase: &str) -> Vec<(usize, usize, char, usize)> {
+fn boid_points(
+    inner_width: usize,
+    body_height: usize,
+    phase: &str,
+) -> Vec<(usize, usize, char, usize)> {
     let mid_x = inner_width / 2;
     let low_y = if body_height > 2 { body_height - 2 } else { 1 };
     let mid_y = body_height / 2;
@@ -440,7 +464,8 @@ fn boid_points(inner_width: usize, body_height: usize, phase: &str) -> Vec<(usiz
 fn build_boids_frame(width: usize) -> Vec<Vec<String>> {
     let variant = get_logo_welcome_variant(width);
     let spec = boids_spec(variant);
-    let inner_width = fit_welcome_inner_width(width, spec.minimum_inner_width);
+    let inner_width = welcome_inner_width(spec.minimum_inner_width);
+    let content_width = frame_content_width(inner_width);
     ["scatter", "drift", "cluster"]
         .into_iter()
         .map(|phase| {
@@ -458,7 +483,7 @@ fn build_boids_frame(width: usize) -> Vec<Vec<String>> {
                 let row = if caption_row == Some(row_index) {
                     format!(
                         "{ANSI_FAINT}{ANSI_PURPLE}{}{ANSI_RESET}",
-                        center_text(&spec.caption, inner_width)
+                        center_text(&spec.caption, content_width)
                     )
                 } else {
                     let mut row = String::new();
@@ -472,9 +497,9 @@ fn build_boids_frame(width: usize) -> Vec<Vec<String>> {
                             row.push(' ');
                         }
                     }
-                    row
+                    center_text(&row, content_width)
                 };
-                lines.push(format!("{ANSI_PURPLE}│{ANSI_RESET}{row}{ANSI_PURPLE}│{ANSI_RESET}"));
+                lines.push(row);
             }
             lines.push(format!(
                 "{ANSI_PURPLE}╰{}╯{ANSI_RESET}",
@@ -582,7 +607,11 @@ fn build_game_of_life_oscillators_seed(width: usize, height: usize) -> HashSet<(
         (blinker, (width as i32 / 2) - 1, 1),
         (toad, (width as i32 / 2) - 2, (height as i32 / 2) - 1),
         (game_of_life_shape("blinker"), 2, height as i32 - 2),
-        (game_of_life_shape("beacon"), width as i32 - 5, height as i32 - 5),
+        (
+            game_of_life_shape("beacon"),
+            width as i32 - 5,
+            height as i32 - 5,
+        ),
     ];
     placements
         .into_iter()
@@ -597,7 +626,11 @@ fn build_game_of_life_bloom_seed(width: usize, height: usize) -> HashSet<(i32, i
         (r_pentomino.clone(), 1, 1),
         (acorn, (width as i32 / 2) - 3, (height as i32 / 3) - 1),
         (r_pentomino.clone(), width as i32 - 4, height as i32 - 4),
-        (r_pentomino, (width as i32 / 2) - 1, ((height as i32 * 2) / 3) - 1),
+        (
+            r_pentomino,
+            (width as i32 / 2) - 1,
+            ((height as i32 * 2) / 3) - 1,
+        ),
     ]
     .into_iter()
     .flat_map(|(shape, x, y)| place_shape(&shape, width, height, x, y))
@@ -719,13 +752,13 @@ fn welcome_sequence(
         style if is_game_of_life_style(style) => {
             let variant = get_logo_welcome_variant(width);
             let spec = game_of_life_spec(variant);
-            let inner_width = fit_welcome_inner_width(width, spec.minimum_inner_width);
+            let inner_width = welcome_inner_width(spec.minimum_inner_width);
             let body_height =
                 resolve_game_of_life_body_height(spec.welcome_minimum_body_height, height);
             let width_limit = get_game_of_life_grid_width(inner_width);
             let frame_delay = Duration::from_millis(220);
-            let frame_count = ((duration.as_secs_f64() / frame_delay.as_secs_f64()).ceil() as usize)
-                .max(2);
+            let frame_count =
+                ((duration.as_secs_f64() / frame_delay.as_secs_f64()).ceil() as usize).max(2);
             let mut cells = build_live_game_of_life_seed(inner_width, body_height, style);
             let mut frames = vec![build_game_of_life_screen_lines(
                 inner_width,
@@ -944,7 +977,11 @@ pub fn run_screen_surface(style: Option<&str>) -> Result<i32, CoreError> {
     };
     let mut frame_index = 0usize;
     let mut game_of_life_state = if is_game_of_life {
-        Some(build_game_of_life_screen_state(&resolved_style, width, height))
+        Some(build_game_of_life_screen_state(
+            &resolved_style,
+            width,
+            height,
+        ))
     } else {
         None
     };
@@ -1007,6 +1044,14 @@ pub fn run_screen_surface(style: Option<&str>) -> Result<i32, CoreError> {
 mod tests {
     use super::*;
 
+    fn trimmed_frame_line_width(line: &str) -> usize {
+        visible_line_width(line.trim())
+    }
+
+    fn contains_vertical_border(line: &str) -> bool {
+        line.contains('│')
+    }
+
     // Test lane: default
     // Defends: `random` still resolves only to the retained Game of Life screen styles instead of drifting back to logo, boids, or static.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
@@ -1038,4 +1083,44 @@ mod tests {
         assert!(!after.contains("welcome to yazelix"));
     }
 
+    // Regression: wide terminals must not let the logo welcome card stretch to a near-full-width frame.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn logo_welcome_frame_keeps_wide_variant_at_designed_width() {
+        let frame = get_logo_welcome_frame(110);
+        assert_eq!(trimmed_frame_line_width(&frame[0]), 60);
+    }
+
+    // Regression: crossing the wide-to-hero breakpoint must not reintroduce a sudden width jump.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn hero_breakpoint_keeps_logo_welcome_width_stable() {
+        let wide = get_logo_welcome_frame(119);
+        let hero = get_logo_welcome_frame(120);
+        assert_eq!(trimmed_frame_line_width(&wide[0]), 60);
+        assert_eq!(trimmed_frame_line_width(&hero[0]), 60);
+        assert!(
+            wide[1..wide.len() - 1]
+                .iter()
+                .all(|line| !contains_vertical_border(line))
+        );
+        assert!(
+            hero[1..hero.len() - 1]
+                .iter()
+                .all(|line| !contains_vertical_border(line))
+        );
+    }
+
+    // Regression: the bordered animated boids welcome follows the same stable hero-width contract.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn boids_welcome_frame_keeps_hero_variant_width_stable() {
+        let boids = build_boids_frame(120);
+        assert_eq!(trimmed_frame_line_width(&boids[0][0]), 60);
+        assert!(
+            boids[0][1..boids[0].len() - 1]
+                .iter()
+                .all(|line| !contains_vertical_border(line))
+        );
+    }
 }

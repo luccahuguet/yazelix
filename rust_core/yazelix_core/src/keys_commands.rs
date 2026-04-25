@@ -161,7 +161,10 @@ fn pad(text: &str, width: usize) -> String {
 }
 
 fn render_table(columns: &[Column<'_>], rows: &[TableRow], color: bool) -> String {
-    let widths = columns.iter().map(|column| column.width).collect::<Vec<_>>();
+    let widths = columns
+        .iter()
+        .map(|column| column.width)
+        .collect::<Vec<_>>();
     let gap = "  ";
     let mut lines = Vec::new();
 

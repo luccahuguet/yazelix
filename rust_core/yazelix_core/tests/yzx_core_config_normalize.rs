@@ -2,7 +2,7 @@
 
 use assert_cmd::Command;
 use pretty_assertions::assert_eq;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::fs;
 use std::path::PathBuf;
 use tempfile::tempdir;
@@ -872,19 +872,23 @@ fn terminal_materialization_generate_from_env_writes_generated_configs() {
     let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(envelope["command"], "terminal-materialization.generate");
     assert_eq!(envelope["status"], "ok");
-    assert!(fixture
-        .state_dir
-        .join("configs")
-        .join("terminal_emulators")
-        .join("ghostty")
-        .exists());
-    assert!(fixture
-        .state_dir
-        .join("configs")
-        .join("terminal_emulators")
-        .join("kitty")
-        .join("kitty.conf")
-        .exists());
+    assert!(
+        fixture
+            .state_dir
+            .join("configs")
+            .join("terminal_emulators")
+            .join("ghostty")
+            .exists()
+    );
+    assert!(
+        fixture
+            .state_dir
+            .join("configs")
+            .join("terminal_emulators")
+            .join("kitty")
+            .join("kitty.conf")
+            .exists()
+    );
 }
 
 // Defends: ghostty-materialization.generate can resolve config/runtime/state request roots from process env without Nu path assembly.
@@ -935,12 +939,14 @@ fn ghostty_materialization_generate_from_env_uses_normalized_config() {
         envelope["data"]["cursor_state"]["selected_mode_effect"],
         "ripple"
     );
-    assert!(fixture
-        .state_dir
-        .join("configs")
-        .join("terminal_emulators")
-        .join("ghostty")
-        .exists());
+    assert!(
+        fixture
+            .state_dir
+            .join("configs")
+            .join("terminal_emulators")
+            .join("ghostty")
+            .exists()
+    );
 }
 
 // Defends: doctor-helix.evaluate emits one machine-readable report envelope for a minimal request.
@@ -981,10 +987,12 @@ fn doctor_helix_evaluate_prints_ok_envelope() {
     assert_eq!(envelope["command"], "doctor-helix.evaluate");
     assert_eq!(envelope["status"], "ok");
     assert_eq!(envelope["data"]["runtime_conflicts"]["status"], "ok");
-    assert!(envelope["data"]["managed_integration"]
-        .as_array()
-        .unwrap()
-        .is_empty());
+    assert!(
+        envelope["data"]["managed_integration"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
 }
 
 // Defends: doctor-runtime.evaluate emits one machine-readable report envelope for a minimal request.
@@ -1024,10 +1032,12 @@ fn doctor_runtime_evaluate_prints_ok_envelope() {
         envelope["data"]["distribution"]["capability_mode"],
         "package_runtime"
     );
-    assert!(envelope["data"]["shared_runtime_preflight"]
-        .as_array()
-        .unwrap()
-        .is_empty());
+    assert!(
+        envelope["data"]["shared_runtime_preflight"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
 }
 
 // Defends: doctor-config.evaluate reports duplicate root/user config ownership as a config-surface error finding.
@@ -1106,8 +1116,7 @@ fn doctor_config_evaluate_reports_stale_schema_warning() {
         1
     );
     assert_eq!(
-        envelope["data"]["findings"][1]["config_diagnostic_report"]["doctor_diagnostics"][0]
-            ["headline"],
+        envelope["data"]["findings"][1]["config_diagnostic_report"]["doctor_diagnostics"][0]["headline"],
         "Invalid config value at editor.sidebar_width_percent"
     );
     let details = envelope["data"]["findings"][1]["details"].as_str().unwrap();
@@ -1143,10 +1152,12 @@ fn doctor_config_evaluate_keeps_invalid_toml_as_error() {
         "Could not validate yazelix.toml against the current schema"
     );
     assert_eq!(envelope["data"]["findings"][1]["status"], "error");
-    assert!(envelope["data"]["findings"][1]["details"]
-        .as_str()
-        .unwrap()
-        .contains("Could not parse Yazelix TOML input"));
+    assert!(
+        envelope["data"]["findings"][1]["details"]
+            .as_str()
+            .unwrap()
+            .contains("Could not parse Yazelix TOML input")
+    );
 }
 
 // Defends: doctor-config.evaluate keeps the default-template doctor row fixable instead of bootstrapping config eagerly.

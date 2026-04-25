@@ -188,11 +188,15 @@ pub fn run_repo_update_workflow(
     match activation_mode {
         UpdateActivationMode::None => {
             println!("⚠️  No local activation was requested.");
-            println!("✅ Inputs, canaries, runtime pins, README version marker, vendored zjstatus, and vendored Yazi plugin runtime files are in sync in the repo checkout. Review and commit the changes if everything looks good.");
+            println!(
+                "✅ Inputs, canaries, runtime pins, README version marker, vendored zjstatus, and vendored Yazi plugin runtime files are in sync in the repo checkout. Review and commit the changes if everything looks good."
+            );
         }
         UpdateActivationMode::Profile => {
             activate_updated_profile_runtime(repo_root)?;
-            println!("✅ Inputs, canaries, runtime pins, README version marker, vendored zjstatus, vendored Yazi plugin runtime files, and the local default-profile Yazelix package are in sync. Review and commit the changes if everything looks good.");
+            println!(
+                "✅ Inputs, canaries, runtime pins, README version marker, vendored zjstatus, vendored Yazi plugin runtime files, and the local default-profile Yazelix package are in sync. Review and commit the changes if everything looks good."
+            );
         }
         UpdateActivationMode::HomeManager => {
             let activation = activate_updated_home_manager_runtime(
@@ -200,7 +204,10 @@ pub fn run_repo_update_workflow(
                 options.home_manager_input.trim(),
                 options.home_manager_attr.trim(),
             )?;
-            println!("✅ Inputs, canaries, runtime pins, README version marker, vendored zjstatus, vendored Yazi plugin runtime files, and the Home Manager activation at {} are in sync. Review and commit the changes if everything looks good.", activation.switch_ref);
+            println!(
+                "✅ Inputs, canaries, runtime pins, README version marker, vendored zjstatus, vendored Yazi plugin runtime files, and the Home Manager activation at {} are in sync. Review and commit the changes if everything looks good.",
+                activation.switch_ref
+            );
         }
     }
 
@@ -230,7 +237,9 @@ fn ensure_nix_available() -> Result<(), String> {
 
 fn confirm_real_update() -> Result<bool, String> {
     println!("⚠️  This updates Yazelix runtime inputs to latest upstream unstable revisions.");
-    println!("   The hardened flow updates flake.lock locally, then runs canary refresh/build checks before finishing.");
+    println!(
+        "   The hardened flow updates flake.lock locally, then runs canary refresh/build checks before finishing."
+    );
     println!("   Broken updates should stay local and never be pushed.");
     print!("Continue? [y/N]: ");
     io::stdout()
@@ -327,11 +336,15 @@ fn refresh_repo_runtime_inputs(repo_root: &Path) -> Result<(), String> {
 fn sync_runtime_pins(repo_root: &Path) -> Result<(), String> {
     let constants_path = repo_root.join(DEFAULT_CONSTANTS_RELATIVE_PATH);
     if !constants_path.is_file() {
-        return Err(format!("Constants file not found: {}", constants_path.display()));
+        return Err(format!(
+            "Constants file not found: {}",
+            constants_path.display()
+        ));
     }
 
     println!("   Resolving runtime pins from the locked nixpkgs input...");
-    let nix_version = eval_locked_nixpkgs_version(repo_root, "pkgs.nixVersions.latest.version", "Nix")?;
+    let nix_version =
+        eval_locked_nixpkgs_version(repo_root, "pkgs.nixVersions.latest.version", "Nix")?;
     let nushell_version =
         eval_locked_nixpkgs_version(repo_root, "pkgs.nushell.version", "Nushell")?;
     let contents = fs::read_to_string(&constants_path)
@@ -405,8 +418,7 @@ fn eval_locked_nixpkgs_version(
         ));
     }
     let raw = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    extract_version(&raw)
-        .ok_or_else(|| format!("Failed to parse {label} version from: {raw}"))
+    extract_version(&raw).ok_or_else(|| format!("Failed to parse {label} version from: {raw}"))
 }
 
 fn extract_version(value: &str) -> Option<String> {
@@ -442,11 +454,14 @@ fn sync_vendored_zjstatus(repo_root: &Path) -> Result<(), String> {
     let package = resolve_locked_zjstatus_store_root(repo_root)?;
     let store_path = package.store_root.join("bin").join("zjstatus.wasm");
     if !store_path.is_file() {
-        return Err(format!("zjstatus wasm not found at: {}", store_path.display()));
+        return Err(format!(
+            "zjstatus wasm not found at: {}",
+            store_path.display()
+        ));
     }
 
-    let bytes =
-        fs::read(&store_path).map_err(|error| format!("Failed to read {}: {}", store_path.display(), error))?;
+    let bytes = fs::read(&store_path)
+        .map_err(|error| format!("Failed to read {}: {}", store_path.display(), error))?;
     if bytes.len() < 1024 {
         return Err(format!(
             "Nix-provided zjstatus wasm is too small to be valid (size={} bytes)",
@@ -458,8 +473,13 @@ fn sync_vendored_zjstatus(repo_root: &Path) -> Result<(), String> {
     let tmp_path = target_dir.join("zjstatus.wasm.tmp");
     fs::write(&tmp_path, bytes)
         .map_err(|error| format!("Failed to write temporary zjstatus file: {error}"))?;
-    fs::rename(&tmp_path, &target_path)
-        .map_err(|error| format!("Failed to move {} into place: {}", target_path.display(), error))?;
+    fs::rename(&tmp_path, &target_path).map_err(|error| {
+        format!(
+            "Failed to move {} into place: {}",
+            target_path.display(),
+            error
+        )
+    })?;
     println!(
         "✅ Updated vendored zjstatus at: {} (size={} bytes, source={})",
         target_path.display(),
@@ -489,7 +509,11 @@ fn resolve_locked_zjstatus_store_root(repo_root: &Path) -> Result<ZjstatusPackag
         .ok_or_else(|| "flake.lock is missing nodes.zjstatus.locked.rev".to_string())?;
     let system = resolve_current_system()?;
     let flake_ref = format!("github:{owner}/{repo}/{rev}#packages.{system}.default");
-    let output = run_command_capture("nix", ["build", "--no-link", "--print-out-paths", &flake_ref], None)?;
+    let output = run_command_capture(
+        "nix",
+        ["build", "--no-link", "--print-out-paths", &flake_ref],
+        None,
+    )?;
     if !output.status.success() {
         return Err(format!(
             "Failed to build zjstatus flake ref: {}\n{}",
@@ -506,7 +530,13 @@ fn resolve_locked_zjstatus_store_root(repo_root: &Path) -> Result<ZjstatusPackag
 fn resolve_current_system() -> Result<String, String> {
     let output = run_command_capture(
         "nix",
-        ["eval", "--impure", "--raw", "--expr", "builtins.currentSystem"],
+        [
+            "eval",
+            "--impure",
+            "--raw",
+            "--expr",
+            "builtins.currentSystem",
+        ],
         None,
     )?;
     if !output.status.success() {
@@ -580,13 +610,22 @@ fn ensure_clean_managed_targets(
         .map(|path| target_dir.join(path))
         .collect::<Vec<_>>();
     let mut command = Command::new("git");
-    command.arg("-C").arg(repo_root).arg("status").arg("--porcelain").arg("--");
+    command
+        .arg("-C")
+        .arg(repo_root)
+        .arg("status")
+        .arg("--porcelain")
+        .arg("--");
     for path in &target_paths {
         command.arg(path);
     }
-    let output = command
-        .output()
-        .map_err(|error| format!("Failed to inspect git status for managed Yazi plugin targets under {}: {}", target_dir.display(), error))?;
+    let output = command.output().map_err(|error| {
+        format!(
+            "Failed to inspect git status for managed Yazi plugin targets under {}: {}",
+            target_dir.display(),
+            error
+        )
+    })?;
     if !output.status.success() {
         return Err(format!(
             "Failed to inspect git status for managed Yazi plugin targets under {}: {}",
@@ -617,7 +656,11 @@ fn refresh_vendored_yazi_plugin(
     let checkout_dir = create_unique_temp_dir("yazelix_vendored_yazi_checkout")?;
     let stage_dir = create_unique_temp_dir("yazelix_vendored_yazi_stage")?;
 
-    clone_repo_at_rev(&plugin.upstream_repo, &plugin.pinned_rev, checkout_dir.path())?;
+    clone_repo_at_rev(
+        &plugin.upstream_repo,
+        &plugin.pinned_rev,
+        checkout_dir.path(),
+    )?;
 
     let source_root = if plugin.source_subdir.trim().is_empty() || plugin.source_subdir == "." {
         checkout_dir.path().to_path_buf()
@@ -650,7 +693,12 @@ fn refresh_vendored_yazi_plugin(
 fn clone_repo_at_rev(repo_url: &str, rev: &str, checkout_dir: &Path) -> Result<(), String> {
     let clone = run_command_capture(
         "git",
-        ["clone", "--quiet", repo_url, checkout_dir.to_string_lossy().as_ref()],
+        [
+            "clone",
+            "--quiet",
+            repo_url,
+            checkout_dir.to_string_lossy().as_ref(),
+        ],
         None,
     )?;
     if !clone.status.success() {
@@ -713,7 +761,11 @@ fn copy_managed_files(
     Ok(())
 }
 
-fn apply_patch_overlay(repo_root: &Path, stage_root: &Path, patch_file: &str) -> Result<(), String> {
+fn apply_patch_overlay(
+    repo_root: &Path,
+    stage_root: &Path,
+    patch_file: &str,
+) -> Result<(), String> {
     let trimmed = patch_file.trim();
     if trimmed.is_empty() {
         return Ok(());
@@ -768,7 +820,9 @@ fn install_staged_files(
 
 fn activate_updated_profile_runtime(repo_root: &Path) -> Result<(), String> {
     println!("🔄 Activating updated local Yazelix package in the default Nix profile...");
-    println!("   Streaming local profile activation logs (this may take a while when Nix rebuilds)...");
+    println!(
+        "   Streaming local profile activation logs (this may take a while when Nix rebuilds)..."
+    );
     let existing_entries = find_default_profile_yazelix_entries()?;
     if !existing_entries.is_empty() {
         println!(
@@ -864,9 +918,12 @@ fn activate_updated_home_manager_runtime(
 }
 
 fn resolve_home_manager_flake_dir(candidate: &Path) -> Result<PathBuf, String> {
-    let expanded = candidate
-        .canonicalize()
-        .map_err(|error| format!("Home Manager flake directory not found: {} ({error})", candidate.display()))?;
+    let expanded = candidate.canonicalize().map_err(|error| {
+        format!(
+            "Home Manager flake directory not found: {} ({error})",
+            candidate.display()
+        )
+    })?;
     let flake_file = expanded.join("flake.nix");
     if !flake_file.is_file() {
         return Err(format!(
@@ -936,8 +993,13 @@ fn materialize_update_canaries(
     fs::create_dir_all(&temp_base)
         .map_err(|error| format!("Failed to create {}: {}", temp_base.display(), error))?;
     let temp_dir = create_unique_temp_dir_in(&temp_base, "update")?;
-    let template_raw = fs::read_to_string(&default_config_path)
-        .map_err(|error| format!("Failed to read {}: {}", default_config_path.display(), error))?;
+    let template_raw = fs::read_to_string(&default_config_path).map_err(|error| {
+        format!(
+            "Failed to read {}: {}",
+            default_config_path.display(),
+            error
+        )
+    })?;
     let template_value: TomlValue = template_raw.parse::<TomlValue>().map_err(|error| {
         format!(
             "Invalid TOML in {}: {}",
@@ -956,14 +1018,18 @@ fn materialize_update_canaries(
             }),
             "shell_layout" => {
                 let config_dir = temp_dir.path().join("shell_layout");
-                fs::create_dir_all(&config_dir)
-                    .map_err(|error| format!("Failed to create {}: {}", config_dir.display(), error))?;
+                fs::create_dir_all(&config_dir).map_err(|error| {
+                    format!("Failed to create {}: {}", config_dir.display(), error)
+                })?;
                 let config_path = config_dir.join("yazelix.toml");
                 let mut config = template_value.clone();
                 apply_shell_layout_canary_overrides(&mut config)?;
-                fs::write(&config_path, toml::to_string(&config).map_err(|error| {
-                    format!("Failed to render shell_layout canary TOML: {error}")
-                })?)
+                fs::write(
+                    &config_path,
+                    toml::to_string(&config).map_err(|error| {
+                        format!("Failed to render shell_layout canary TOML: {error}")
+                    })?,
+                )
                 .map_err(|error| format!("Failed to write {}: {}", config_path.display(), error))?;
                 canaries.push(UpdateCanary {
                     name: "shell_layout".to_string(),
@@ -1016,11 +1082,16 @@ fn set_nested_toml_value(table: &mut toml::Table, path: &[&str], value: TomlValu
     set_nested_toml_value(child_table, &path[1..], value);
 }
 
-fn run_update_canary(repo_root: &Path, canary: &UpdateCanary) -> Result<UpdateCanaryResult, String> {
-    let config_parent = canary
-        .config_path
-        .parent()
-        .ok_or_else(|| format!("Config path has no parent: {}", canary.config_path.display()))?;
+fn run_update_canary(
+    repo_root: &Path,
+    canary: &UpdateCanary,
+) -> Result<UpdateCanaryResult, String> {
+    let config_parent = canary.config_path.parent().ok_or_else(|| {
+        format!(
+            "Config path has no parent: {}",
+            canary.config_path.display()
+        )
+    })?;
     let config_dir = if config_parent
         .file_name()
         .and_then(|name| name.to_str())
@@ -1029,7 +1100,12 @@ fn run_update_canary(repo_root: &Path, canary: &UpdateCanary) -> Result<UpdateCa
     {
         config_parent
             .parent()
-            .ok_or_else(|| format!("Config parent has no grandparent: {}", config_parent.display()))?
+            .ok_or_else(|| {
+                format!(
+                    "Config parent has no grandparent: {}",
+                    config_parent.display()
+                )
+            })?
             .to_path_buf()
     } else {
         config_parent.to_path_buf()
@@ -1092,7 +1168,10 @@ fn print_update_canary_summary(results: &[UpdateCanaryResult]) {
 }
 
 fn print_update_canary_failure_details(results: &[UpdateCanaryResult]) {
-    let failures = results.iter().filter(|result| !result.ok).collect::<Vec<_>>();
+    let failures = results
+        .iter()
+        .filter(|result| !result.ok)
+        .collect::<Vec<_>>();
     if failures.is_empty() {
         return;
     }
@@ -1164,9 +1243,12 @@ where
     if let Some(dir) = current_dir {
         command.current_dir(dir);
     }
-    command
-        .output()
-        .map_err(|error| format!("Failed to launch `{program} {}`: {error}", args_vec.join(" ")))
+    command.output().map_err(|error| {
+        format!(
+            "Failed to launch `{program} {}`: {error}",
+            args_vec.join(" ")
+        )
+    })
 }
 
 fn run_command_streaming<I, S>(
@@ -1191,9 +1273,12 @@ where
     if let Some(dir) = current_dir {
         command.current_dir(dir);
     }
-    let status = command
-        .status()
-        .map_err(|error| format!("Failed to launch `{program} {}`: {error}", args_vec.join(" ")))?;
+    let status = command.status().map_err(|error| {
+        format!(
+            "Failed to launch `{program} {}`: {error}",
+            args_vec.join(" ")
+        )
+    })?;
     if status.success() {
         Ok(())
     } else {
@@ -1248,7 +1333,11 @@ fn create_unique_temp_dir_in(base: &Path, prefix: &str) -> Result<TempDirGuard, 
             Ok(()) => return Ok(TempDirGuard::new(candidate)),
             Err(error) if error.kind() == io::ErrorKind::AlreadyExists => continue,
             Err(error) => {
-                return Err(format!("Failed to create {}: {}", candidate.display(), error))
+                return Err(format!(
+                    "Failed to create {}: {}",
+                    candidate.display(),
+                    error
+                ));
             }
         }
     }
@@ -1262,7 +1351,8 @@ fn create_unique_temp_dir_in(base: &Path, prefix: &str) -> Result<TempDirGuard, 
 mod tests {
     use super::{
         UpdateActivationMode, apply_shell_layout_canary_overrides,
-        resolve_requested_update_activation_mode, resolve_update_canary_selection, update_constant_value,
+        resolve_requested_update_activation_mode, resolve_update_canary_selection,
+        update_constant_value,
     };
     use toml::Value as TomlValue;
 

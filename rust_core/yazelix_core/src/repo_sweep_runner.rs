@@ -80,7 +80,10 @@ pub fn run_sweep_tests(
     if visual {
         println!("=== Visual Configuration Sweep Testing ===");
         println!("🖥️  Each configuration will launch in a new window");
-        println!("⏱️  Delay between launches: {:?}", Duration::from_secs(delay_secs));
+        println!(
+            "⏱️  Delay between launches: {:?}",
+            Duration::from_secs(delay_secs)
+        );
     } else {
         println!("=== Configuration Sweep Testing ===");
     }
@@ -300,7 +303,10 @@ fn run_nonvisual_sweep_test(
     verbose: bool,
 ) -> Result<SweepResult, String> {
     if verbose {
-        println!("🧪 Testing: {} + {} ({test_id})", combo.shell, combo.terminal);
+        println!(
+            "🧪 Testing: {} + {} ({test_id})",
+            combo.shell, combo.terminal
+        );
     }
 
     let config_path = generate_sweep_config(combo.shell, combo.terminal, combo.features, test_id)?;
@@ -361,7 +367,10 @@ fn run_visual_sweep_test(
     test_id: &str,
     delay_secs: u64,
 ) -> Result<SweepResult, String> {
-    println!("🖥️  Launching visual test: {} + {} ({test_id})", combo.shell, combo.terminal);
+    println!(
+        "🖥️  Launching visual test: {} + {} ({test_id})",
+        combo.shell, combo.terminal
+    );
 
     let config_path = generate_sweep_config(combo.shell, combo.terminal, combo.features, test_id)?;
     let session_name = format!("sweep_test_{test_id}");
@@ -370,7 +379,10 @@ fn run_visual_sweep_test(
         let launch_result = launch_visual_test(repo_root, &config_path, test_id, combo.terminal);
 
         if launch_result.exit_code == 99 {
-            println!("⏭️  Skipped {} + {} - terminal not installed", combo.shell, combo.terminal);
+            println!(
+                "⏭️  Skipped {} + {} - terminal not installed",
+                combo.shell, combo.terminal
+            );
             return Ok(visual_result(
                 test_id,
                 combo,
@@ -394,7 +406,10 @@ fn run_visual_sweep_test(
             ));
         }
 
-        println!("✅ Launched {} + {} successfully", combo.shell, combo.terminal);
+        println!(
+            "✅ Launched {} + {} successfully",
+            combo.shell, combo.terminal
+        );
 
         let demo = run_visual_verification(test_id);
         cleanup_visual_test(&session_name, combo.terminal, &before_pids, delay_secs);
@@ -552,11 +567,7 @@ disable_tips = true\n\
 rounded_corners = true\n\
 persistent_sessions = {}\n\
 session_name = \"sweep_test_{}\"\n",
-        features.enable_sidebar,
-        shell,
-        terminals_rendered,
-        features.persistent_sessions,
-        test_id,
+        features.enable_sidebar, shell, terminals_rendered, features.persistent_sessions, test_id,
     )
 }
 
@@ -865,9 +876,15 @@ fn run_visual_verification(test_id: &str) -> VisualVerification {
         }
     };
 
-    let zellij_ok = parsed["tools"]["zellij"]["available"].as_bool().unwrap_or(false);
-    let yazi_ok = parsed["tools"]["yazi"]["available"].as_bool().unwrap_or(false);
-    let helix_ok = parsed["tools"]["helix"]["available"].as_bool().unwrap_or(false);
+    let zellij_ok = parsed["tools"]["zellij"]["available"]
+        .as_bool()
+        .unwrap_or(false);
+    let yazi_ok = parsed["tools"]["yazi"]["available"]
+        .as_bool()
+        .unwrap_or(false);
+    let helix_ok = parsed["tools"]["helix"]["available"]
+        .as_bool()
+        .unwrap_or(false);
     if zellij_ok && yazi_ok && helix_ok {
         println!("   ✓ Verification passed - all tools available in launched session");
         println!(
@@ -1038,7 +1055,9 @@ mod tests {
         );
 
         assert!(rendered.contains("default_shell = \"zsh\""));
-        assert!(rendered.contains("terminals = [\"kitty\", \"ghostty\", \"wezterm\", \"alacritty\", \"foot\"]"));
+        assert!(rendered.contains(
+            "terminals = [\"kitty\", \"ghostty\", \"wezterm\", \"alacritty\", \"foot\"]"
+        ));
         assert!(rendered.contains("enable_sidebar = false"));
         assert!(rendered.contains("persistent_sessions = true"));
     }

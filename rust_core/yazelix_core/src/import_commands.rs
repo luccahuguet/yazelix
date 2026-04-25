@@ -35,7 +35,10 @@ fn get_native_zellij_config_path(home: &Path) -> PathBuf {
 }
 
 fn get_managed_zellij_config_path(config_dir: &Path) -> PathBuf {
-    config_dir.join("user_configs").join("zellij").join("config.kdl")
+    config_dir
+        .join("user_configs")
+        .join("zellij")
+        .join("config.kdl")
 }
 
 fn get_native_yazi_config_dir(home: &Path) -> PathBuf {
@@ -51,10 +54,17 @@ fn get_native_helix_config_path(home: &Path) -> PathBuf {
 }
 
 fn get_managed_helix_config_path(config_dir: &Path) -> PathBuf {
-    config_dir.join("user_configs").join("helix").join("config.toml")
+    config_dir
+        .join("user_configs")
+        .join("helix")
+        .join("config.toml")
 }
 
-fn get_import_entries(target: &str, home: &Path, config_dir: &Path) -> Result<Vec<ImportEntry>, CoreError> {
+fn get_import_entries(
+    target: &str,
+    home: &Path,
+    config_dir: &Path,
+) -> Result<Vec<ImportEntry>, CoreError> {
     match target {
         "zellij" => Ok(vec![ImportEntry {
             name: "config.kdl",
@@ -131,7 +141,12 @@ fn civil_from_days(days_since_epoch: i64) -> (i32, u32, u32) {
     (year as i32, month as u32, day as u32)
 }
 
-fn import_target(target: &str, force: bool, home: &Path, config_dir: &Path) -> Result<i32, CoreError> {
+fn import_target(
+    target: &str,
+    force: bool,
+    home: &Path,
+    config_dir: &Path,
+) -> Result<i32, CoreError> {
     let entries = get_import_entries(target, home, config_dir)?;
 
     let existing_sources: Vec<_> = entries.iter().filter(|e| e.source.exists()).collect();
@@ -148,7 +163,10 @@ fn import_target(target: &str, force: bool, home: &Path, config_dir: &Path) -> R
     }
 
     if !force {
-        let conflicts: Vec<_> = existing_sources.iter().filter(|e| e.destination.exists()).collect();
+        let conflicts: Vec<_> = existing_sources
+            .iter()
+            .filter(|e| e.destination.exists())
+            .collect();
         if !conflicts.is_empty() {
             let conflict_lines = conflicts
                 .iter()
@@ -158,8 +176,12 @@ fn import_target(target: &str, force: bool, home: &Path, config_dir: &Path) -> R
             return Err(CoreError::classified(
                 ErrorClass::Usage,
                 "import_conflicts",
-                format!("Managed destination files already exist for `yzx import {target}`:\n{conflict_lines}"),
-                &format!("Use `yzx import {target} --force` to overwrite them after writing backups."),
+                format!(
+                    "Managed destination files already exist for `yzx import {target}`:\n{conflict_lines}"
+                ),
+                &format!(
+                    "Use `yzx import {target} --force` to overwrite them after writing backups."
+                ),
                 json!({ "target": target }),
             ));
         }
@@ -176,10 +198,15 @@ fn import_target(target: &str, force: bool, home: &Path, config_dir: &Path) -> R
         if force && entry.destination.exists() {
             let backup_path = entry.destination.with_file_name(format!(
                 "{}.backup-{}",
-                entry.destination.file_name().and_then(|n| n.to_str()).unwrap_or(entry.name),
+                entry
+                    .destination
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or(entry.name),
                 timestamp
             ));
-            fs::rename(&entry.destination, &backup_path).map_err(|source| io_err(&entry.destination, source, "import_backup"))?;
+            fs::rename(&entry.destination, &backup_path)
+                .map_err(|source| io_err(&entry.destination, source, "import_backup"))?;
             backup_records.push((entry.name, backup_path));
         }
 
@@ -198,15 +225,32 @@ fn import_target(target: &str, force: bool, home: &Path, config_dir: &Path) -> R
         })?;
     }
 
-    println!("✅ Imported native {target} config into: {}", match target {
-        "zellij" => get_managed_zellij_config_path(config_dir).parent().unwrap_or(config_dir).display().to_string(),
-        "yazi" => get_managed_yazi_config_dir(config_dir).display().to_string(),
-        "helix" => get_managed_helix_config_path(config_dir).parent().unwrap_or(config_dir).display().to_string(),
-        _ => config_dir.display().to_string(),
-    });
+    println!(
+        "✅ Imported native {target} config into: {}",
+        match target {
+            "zellij" => get_managed_zellij_config_path(config_dir)
+                .parent()
+                .unwrap_or(config_dir)
+                .display()
+                .to_string(),
+            "yazi" => get_managed_yazi_config_dir(config_dir)
+                .display()
+                .to_string(),
+            "helix" => get_managed_helix_config_path(config_dir)
+                .parent()
+                .unwrap_or(config_dir)
+                .display()
+                .to_string(),
+            _ => config_dir.display().to_string(),
+        }
+    );
 
     if target == "yazi" {
-        let imported_names = existing_sources.iter().map(|e| e.name).collect::<Vec<_>>().join(", ");
+        let imported_names = existing_sources
+            .iter()
+            .map(|e| e.name)
+            .collect::<Vec<_>>()
+            .join(", ");
         println!("   Imported files: {imported_names}");
     } else {
         println!("   Source: {}", existing_sources[0].source.display());
@@ -220,7 +264,11 @@ fn import_target(target: &str, force: bool, home: &Path, config_dir: &Path) -> R
     }
 
     if !missing_sources.is_empty() {
-        let skipped = missing_sources.iter().map(|e| e.name).collect::<Vec<_>>().join(", ");
+        let skipped = missing_sources
+            .iter()
+            .map(|e| e.name)
+            .collect::<Vec<_>>()
+            .join(", ");
         println!("   Skipped missing native files: {skipped}");
     }
 
@@ -262,9 +310,7 @@ pub fn run_yzx_import(args: &[String]) -> Result<i32, CoreError> {
     }
 
     let target = parsed.target.ok_or_else(|| {
-        CoreError::usage(
-            "yzx import requires a target. Try `yzx import --help`.".to_string(),
-        )
+        CoreError::usage("yzx import requires a target. Try `yzx import --help`.".to_string())
     })?;
 
     let home = home_dir_from_env()?;
@@ -316,7 +362,12 @@ mod tests {
 
         let zellij = get_import_entries("zellij", home, config).unwrap();
         assert_eq!(zellij.len(), 1);
-        assert!(zellij[0].source.to_string_lossy().contains("zellij/config.kdl"));
+        assert!(
+            zellij[0]
+                .source
+                .to_string_lossy()
+                .contains("zellij/config.kdl")
+        );
 
         let yazi = get_import_entries("yazi", home, config).unwrap();
         assert_eq!(yazi.len(), 3);
@@ -332,10 +383,7 @@ mod tests {
     #[test]
     fn formats_import_backup_timestamp() {
         assert_eq!(format_backup_timestamp(0), "19700101_000000");
-        assert_eq!(
-            format_backup_timestamp(1_713_398_400),
-            "20240418_000000"
-        );
+        assert_eq!(format_backup_timestamp(1_713_398_400), "20240418_000000");
     }
 
     fn format_backup_timestamp(epoch_secs: i64) -> String {

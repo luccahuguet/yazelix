@@ -70,7 +70,9 @@ fn summary_state_path(state_dir: &Path) -> PathBuf {
         .join("last_seen_version.txt")
 }
 
-fn load_upgrade_notes_registry(runtime_dir: &Path) -> Result<Option<UpgradeNotesRegistry>, CoreError> {
+fn load_upgrade_notes_registry(
+    runtime_dir: &Path,
+) -> Result<Option<UpgradeNotesRegistry>, CoreError> {
     let notes_path = upgrade_notes_path(runtime_dir);
     if !notes_path.is_file() {
         return Ok(None);
@@ -195,7 +197,9 @@ fn render_upgrade_summary(entry: &UpgradeNoteEntry, changelog_path: &Path) -> St
                 "Upgrade impact: this historical release included config-shape changes."
                     .to_string(),
             );
-            lines.push("Yazelix v15 no longer ships an automatic config migration engine.".to_string());
+            lines.push(
+                "Yazelix v15 no longer ships an automatic config migration engine.".to_string(),
+            );
             lines.push(
                 "If you are jumping from this release era, compare your config manually with the current template or run `yzx config reset` to start fresh."
                     .to_string(),
@@ -414,18 +418,20 @@ migration_ids = ["remove_zellij_widget_tray_layout", "remove_shell_enable_atuin"
         )
         .unwrap();
 
-        let first = maybe_show_first_run_upgrade_summary(&runtime_dir, &state_dir, "v15.4")
-            .unwrap();
+        let first =
+            maybe_show_first_run_upgrade_summary(&runtime_dir, &state_dir, "v15.4").unwrap();
         assert!(first.shown);
         assert_eq!(first.reason, "displayed");
         assert!(first.report.output.contains("What's New In Yazelix v15.4"));
-        assert!(first
-            .report
-            .output
-            .contains("historical release included config-shape changes"));
+        assert!(
+            first
+                .report
+                .output
+                .contains("historical release included config-shape changes")
+        );
 
-        let second = maybe_show_first_run_upgrade_summary(&runtime_dir, &state_dir, "v15.4")
-            .unwrap();
+        let second =
+            maybe_show_first_run_upgrade_summary(&runtime_dir, &state_dir, "v15.4").unwrap();
         assert!(!second.shown);
         assert_eq!(second.reason, "already_seen");
 
@@ -494,9 +500,13 @@ manual_actions = []
         fs::write(runtime_dir.path().join("CHANGELOG.md"), "# Changelog\n").unwrap();
 
         for version in ["v12", "v12.10", "v13.2", "v13.3", "v13.7"] {
-            let report = build_upgrade_summary_report(runtime_dir.path(), state_dir.path(), version)
-                .unwrap();
-            assert!(report.found, "missing historical upgrade-note entry for {version}");
+            let report =
+                build_upgrade_summary_report(runtime_dir.path(), state_dir.path(), version)
+                    .unwrap();
+            assert!(
+                report.found,
+                "missing historical upgrade-note entry for {version}"
+            );
         }
     }
 }

@@ -61,8 +61,7 @@ struct ProfileSummary {
 }
 
 fn now_rfc3339() -> String {
-    let now = time::OffsetDateTime::now_local()
-        .unwrap_or_else(|_| time::OffsetDateTime::now_utc());
+    let now = time::OffsetDateTime::now_local().unwrap_or_else(|_| time::OffsetDateTime::now_utc());
     let format = time::format_description::well_known::Rfc3339;
     now.format(&format).unwrap_or_else(|_| {
         time::OffsetDateTime::now_utc()
@@ -74,9 +73,11 @@ fn now_rfc3339() -> String {
 fn generate_run_id() -> String {
     let now = time::OffsetDateTime::now_utc();
     let format = time::format_description::parse(
-        "[year][month][day]_[hour][minute][second]_[subsecond digits:3]"
+        "[year][month][day]_[hour][minute][second]_[subsecond digits:3]",
     )
-    .unwrap_or_else(|_| time::format_description::parse("[year][month][day]_[hour][minute][second]").unwrap());
+    .unwrap_or_else(|_| {
+        time::format_description::parse("[year][month][day]_[hour][minute][second]").unwrap()
+    });
     let timestamp = now.format(&format).unwrap_or_default();
     format!("startup_profile_{}", timestamp)
 }
@@ -89,7 +90,10 @@ fn append_jsonl(path: &Path, value: &serde_json::Value) -> Result<(), CoreError>
         .map_err(|source| {
             CoreError::io(
                 "profile_append",
-                &format!("Could not open profile report for append: {}", path.display()),
+                &format!(
+                    "Could not open profile report for append: {}",
+                    path.display()
+                ),
                 "Check directory permissions and disk space.",
                 path.display().to_string(),
                 source,
@@ -124,9 +128,8 @@ fn append_jsonl(path: &Path, value: &serde_json::Value) -> Result<(), CoreError>
 
 fn parse_metadata(raw: Option<&str>) -> Result<serde_json::Value, CoreError> {
     match raw {
-        Some(s) if !s.trim().is_empty() => serde_json::from_str(s).map_err(|e| {
-            CoreError::usage(format!("Invalid metadata JSON: {}", e))
-        }),
+        Some(s) if !s.trim().is_empty() => serde_json::from_str(s)
+            .map_err(|e| CoreError::usage(format!("Invalid metadata JSON: {}", e))),
         _ => Ok(serde_json::Value::Null),
     }
 }
@@ -135,7 +138,10 @@ fn load_report_data(report_path: &Path) -> Result<ProfileSummary, CoreError> {
     if !report_path.exists() {
         return Err(CoreError::io(
             "profile_load",
-            &format!("Startup profile report not found: {}", report_path.display()),
+            &format!(
+                "Startup profile report not found: {}",
+                report_path.display()
+            ),
             "Check the report path and run the profiler first.",
             report_path.display().to_string(),
             std::io::Error::new(std::io::ErrorKind::NotFound, "missing report"),
@@ -271,12 +277,17 @@ fn render_summary_table(summary: &ProfileSummary) -> String {
         if has_context {
             lines.push(format!(
                 "{:>12}  {:>20}  {:>20}  {:>10}",
-                context, component, step, format!("{:.2}ms", duration_ms)
+                context,
+                component,
+                step,
+                format!("{:.2}ms", duration_ms)
             ));
         } else {
             lines.push(format!(
                 "{:>20}  {:>20}  {:>10}",
-                component, step, format!("{:.2}ms", duration_ms)
+                component,
+                step,
+                format!("{:.2}ms", duration_ms)
             ));
         }
     }
@@ -429,13 +440,15 @@ pub fn run_profile_record_step(args: &[String]) -> Result<i32, CoreError> {
                 } else if step.is_none() {
                     step = Some(other.to_string());
                 } else if started_ns.is_none() {
-                    started_ns = Some(other.parse().map_err(|_| {
-                        CoreError::usage(format!("Invalid started_ns: {}", other))
-                    })?);
+                    started_ns =
+                        Some(other.parse().map_err(|_| {
+                            CoreError::usage(format!("Invalid started_ns: {}", other))
+                        })?);
                 } else if ended_ns.is_none() {
-                    ended_ns = Some(other.parse().map_err(|_| {
-                        CoreError::usage(format!("Invalid ended_ns: {}", other))
-                    })?);
+                    ended_ns =
+                        Some(other.parse().map_err(|_| {
+                            CoreError::usage(format!("Invalid ended_ns: {}", other))
+                        })?);
                 } else {
                     return Err(CoreError::usage(
                         "profile record-step accepts too many positional arguments".to_string(),
@@ -451,26 +464,19 @@ pub fn run_profile_record_step(args: &[String]) -> Result<i32, CoreError> {
         )
     })?;
     let step = step.ok_or_else(|| {
-        CoreError::usage(
-            "profile record-step requires step, started_ns, ended_ns".to_string(),
-        )
+        CoreError::usage("profile record-step requires step, started_ns, ended_ns".to_string())
     })?;
     let started_ns = started_ns.ok_or_else(|| {
-        CoreError::usage(
-            "profile record-step requires started_ns and ended_ns".to_string(),
-        )
+        CoreError::usage("profile record-step requires started_ns and ended_ns".to_string())
     })?;
-    let ended_ns = ended_ns.ok_or_else(|| {
-        CoreError::usage("profile record-step requires ended_ns".to_string())
-    })?;
+    let ended_ns = ended_ns
+        .ok_or_else(|| CoreError::usage("profile record-step requires ended_ns".to_string()))?;
 
     let report_path = std::env::var("YAZELIX_STARTUP_PROFILE_REPORT")
         .ok()
         .filter(|s| !s.trim().is_empty())
         .map(PathBuf::from)
-        .ok_or_else(|| {
-            CoreError::usage("YAZELIX_STARTUP_PROFILE_REPORT not set".to_string())
-        })?;
+        .ok_or_else(|| CoreError::usage("YAZELIX_STARTUP_PROFILE_REPORT not set".to_string()))?;
 
     let run_id = std::env::var("YAZELIX_STARTUP_PROFILE_RUN_ID").unwrap_or_default();
     let scenario = std::env::var("YAZELIX_STARTUP_PROFILE_SCENARIO").unwrap_or_default();
@@ -560,12 +566,12 @@ pub fn run_profile_wait_step(args: &[String]) -> Result<i32, CoreError> {
     while let Some(arg) = iter.next() {
         match arg.as_str() {
             "--timeout-ms" => {
-                let raw = iter.next().ok_or_else(|| {
-                    CoreError::usage("--timeout-ms requires a value".to_string())
-                })?;
-                timeout_ms = raw.parse().map_err(|_| {
-                    CoreError::usage(format!("Invalid timeout value: {}", raw))
-                })?;
+                let raw = iter
+                    .next()
+                    .ok_or_else(|| CoreError::usage("--timeout-ms requires a value".to_string()))?;
+                timeout_ms = raw
+                    .parse()
+                    .map_err(|_| CoreError::usage(format!("Invalid timeout value: {}", raw)))?;
             }
             other if other.starts_with('-') => {
                 return Err(CoreError::usage(format!(
@@ -589,20 +595,16 @@ pub fn run_profile_wait_step(args: &[String]) -> Result<i32, CoreError> {
     }
 
     let report_path = report_path.ok_or_else(|| {
-        CoreError::usage(
-            "profile wait-step requires report_path, component, step".to_string(),
-        )
+        CoreError::usage("profile wait-step requires report_path, component, step".to_string())
     })?;
     let component = component.ok_or_else(|| {
         CoreError::usage("profile wait-step requires component and step".to_string())
     })?;
-    let step = step.ok_or_else(|| {
-        CoreError::usage("profile wait-step requires step".to_string())
-    })?;
+    let step =
+        step.ok_or_else(|| CoreError::usage("profile wait-step requires step".to_string()))?;
 
     let report_path = PathBuf::from(&report_path);
-    let deadline =
-        std::time::Instant::now() + std::time::Duration::from_millis(timeout_ms);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(timeout_ms);
 
     loop {
         if report_path.exists() {
@@ -614,8 +616,7 @@ pub fn run_profile_wait_step(args: &[String]) -> Result<i32, CoreError> {
                     }
                     if let Ok(record) = serde_json::from_str::<serde_json::Value>(line) {
                         if record.get("type").and_then(|v| v.as_str()) == Some("step")
-                            && record.get("component").and_then(|v| v.as_str())
-                                == Some(&component)
+                            && record.get("component").and_then(|v| v.as_str()) == Some(&component)
                             && record.get("step").and_then(|v| v.as_str()) == Some(&step)
                         {
                             println!("true");
@@ -772,14 +773,12 @@ mod tests {
     fn render_summary_table_shows_steps() {
         let summary = ProfileSummary {
             run: serde_json::json!({"scenario": "test"}),
-            steps: vec![
-                serde_json::json!({
-                    "component": "inner",
-                    "step": "init",
-                    "duration_ms": 1.5,
-                    "metadata": {}
-                }),
-            ],
+            steps: vec![serde_json::json!({
+                "component": "inner",
+                "step": "init",
+                "duration_ms": 1.5,
+                "metadata": {}
+            })],
             total_duration_ms: 1.5,
             report_path: "/tmp/test.jsonl".to_string(),
         };

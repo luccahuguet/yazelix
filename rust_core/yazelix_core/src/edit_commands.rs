@@ -3,11 +3,11 @@
 
 use crate::active_config_surface::resolve_active_config_paths;
 use crate::bridge::{CoreError, ErrorClass};
+use crate::compute_runtime_env;
 use crate::control_plane::{
     config_dir_from_env, config_override_from_env, load_normalized_config_for_control,
     runtime_dir_from_env, runtime_env_request,
 };
-use crate::compute_runtime_env;
 use serde_json::json;
 use std::fs;
 use std::io::{self, Write};
@@ -59,14 +59,20 @@ fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
         },
         EditTarget {
             id: "helix",
-            label: format!("helix  - managed Helix user config → {}", helix_path.display()),
+            label: format!(
+                "helix  - managed Helix user config → {}",
+                helix_path.display()
+            ),
             path: helix_path,
             aliases: &["helix", "hx", "editor"],
             search: "helix hx editor config config.toml",
         },
         EditTarget {
             id: "zellij",
-            label: format!("zellij  - managed Zellij user config → {}", zellij_path.display()),
+            label: format!(
+                "zellij  - managed Zellij user config → {}",
+                zellij_path.display()
+            ),
             path: zellij_path,
             aliases: &["zellij", "terminal", "config.kdl"],
             search: "zellij terminal config.kdl multiplexer",
@@ -125,13 +131,7 @@ fn filter_edit_targets<'a>(targets: &'a [EditTarget], query: &str) -> Vec<&'a Ed
     targets
         .iter()
         .filter(|t| {
-            let haystack = format!(
-                "{} {} {}",
-                t.id,
-                t.aliases.join(" "),
-                t.search
-            )
-            .to_lowercase();
+            let haystack = format!("{} {} {}", t.id, t.aliases.join(" "), t.search).to_lowercase();
             tokens.iter().all(|token| haystack.contains(token))
         })
         .collect()
@@ -180,8 +180,15 @@ fn resolve_editor(runtime_dir: &Path) -> Result<(String, Vec<(String, String)>),
     }
 
     // Ensure YAZELIX_RUNTIME_DIR is set for yazelix_hx.sh
-    if Path::new(&editor).file_name().map(|n| n == "yazelix_hx.sh").unwrap_or(false) {
-        env_vars.push(("YAZELIX_RUNTIME_DIR".to_string(), runtime_dir.to_string_lossy().to_string()));
+    if Path::new(&editor)
+        .file_name()
+        .map(|n| n == "yazelix_hx.sh")
+        .unwrap_or(false)
+    {
+        env_vars.push((
+            "YAZELIX_RUNTIME_DIR".to_string(),
+            runtime_dir.to_string_lossy().to_string(),
+        ));
     }
 
     Ok((editor, env_vars))
@@ -192,21 +199,32 @@ fn normalize_editor_command(editor: &str, runtime_dir: &Path) -> String {
     if trimmed.is_empty() {
         return String::new();
     }
-    if Path::new(trimmed).file_name().map(|n| n == "yazelix_hx.sh").unwrap_or(false) {
-        return runtime_dir.join("shells").join("posix").join("yazelix_hx.sh").to_string_lossy().to_string();
+    if Path::new(trimmed)
+        .file_name()
+        .map(|n| n == "yazelix_hx.sh")
+        .unwrap_or(false)
+    {
+        return runtime_dir
+            .join("shells")
+            .join("posix")
+            .join("yazelix_hx.sh")
+            .to_string_lossy()
+            .to_string();
     }
     trimmed.to_string()
 }
 
 fn exec_editor(editor: &str, path: &Path, env_vars: &[(String, String)]) -> Result<i32, CoreError> {
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|source| CoreError::io(
-            "edit_mkdir",
-            format!("Could not create parent directory {}.", parent.display()),
-            "Fix permissions or choose a different path, then retry.",
-            parent.display().to_string(),
-            source,
-        ))?;
+        fs::create_dir_all(parent).map_err(|source| {
+            CoreError::io(
+                "edit_mkdir",
+                format!("Could not create parent directory {}.", parent.display()),
+                "Fix permissions or choose a different path, then retry.",
+                parent.display().to_string(),
+                source,
+            )
+        })?;
     }
 
     let mut cmd = Command::new(editor);
@@ -229,18 +247,22 @@ fn exec_editor(editor: &str, path: &Path, env_vars: &[(String, String)]) -> Resu
     }
     #[cfg(not(unix))]
     {
-        let status = cmd.status().map_err(|source| CoreError::io(
-            "edit_exec",
-            format!("Could not run editor {} with {}.", editor, path.display()),
-            "Ensure the editor is installed and on PATH, then retry.",
-            path.display().to_string(),
-            source,
-        ))?;
+        let status = cmd.status().map_err(|source| {
+            CoreError::io(
+                "edit_exec",
+                format!("Could not run editor {} with {}.", editor, path.display()),
+                "Ensure the editor is installed and on PATH, then retry.",
+                path.display().to_string(),
+                source,
+            )
+        })?;
         Ok(status.code().unwrap_or(1))
     }
 }
 
-fn select_target_interactive<'a>(targets: &'a [&'a EditTarget]) -> Result<Option<&'a EditTarget>, CoreError> {
+fn select_target_interactive<'a>(
+    targets: &'a [&'a EditTarget],
+) -> Result<Option<&'a EditTarget>, CoreError> {
     if targets.is_empty() {
         return Ok(None);
     }
@@ -261,13 +283,15 @@ fn select_target_interactive<'a>(targets: &'a [&'a EditTarget]) -> Result<Option
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())
             .spawn()
-            .map_err(|source| CoreError::io(
-                "fzf_spawn",
-                "Could not start fzf for interactive selection.",
-                "Install fzf or provide an exact target query, then retry.",
-                "fzf",
-                source,
-            ))?;
+            .map_err(|source| {
+                CoreError::io(
+                    "fzf_spawn",
+                    "Could not start fzf for interactive selection.",
+                    "Install fzf or provide an exact target query, then retry.",
+                    "fzf",
+                    source,
+                )
+            })?;
 
         if let Some(stdin) = child.stdin.take() {
             let mut stdin = stdin;
@@ -276,13 +300,15 @@ fn select_target_interactive<'a>(targets: &'a [&'a EditTarget]) -> Result<Option
             }
         }
 
-        let output = child.wait_with_output().map_err(|source| CoreError::io(
-            "fzf_wait",
-            "fzf process failed.",
-            "Retry or provide an exact target query.",
-            "fzf",
-            source,
-        ))?;
+        let output = child.wait_with_output().map_err(|source| {
+            CoreError::io(
+                "fzf_wait",
+                "fzf process failed.",
+                "Retry or provide an exact target query.",
+                "fzf",
+                source,
+            )
+        })?;
 
         if !output.status.success() {
             return Ok(None);
@@ -428,7 +454,10 @@ pub fn run_yzx_edit_config(args: &[String]) -> Result<i32, CoreError> {
 
     let config_dir = config_dir_from_env()?;
     let targets = get_edit_targets(&config_dir);
-    let target = targets.iter().find(|t| t.id == "config").expect("config target always exists");
+    let target = targets
+        .iter()
+        .find(|t| t.id == "config")
+        .expect("config target always exists");
 
     if parsed.print {
         println!("{}", target.path.display());
@@ -544,9 +573,6 @@ mod tests {
             normalize_editor_command("/abs/path/to/hx", rt),
             "/abs/path/to/hx"
         );
-        assert_eq!(
-            normalize_editor_command("  hx  ", rt),
-            "hx"
-        );
+        assert_eq!(normalize_editor_command("  hx  ", rt), "hx");
     }
 }

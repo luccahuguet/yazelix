@@ -55,10 +55,16 @@ manual_actions = []
     )
     .unwrap();
     run_git(&fixture_root, &["init", "--quiet"]);
-    run_git(&fixture_root, &["config", "user.email", "codex@example.com"]);
+    run_git(
+        &fixture_root,
+        &["config", "user.email", "codex@example.com"],
+    );
     run_git(&fixture_root, &["config", "user.name", "Codex"]);
     run_git(&fixture_root, &["add", "-A"]);
-    run_git(&fixture_root, &["commit", "--quiet", "-m", "Fixture baseline"]);
+    run_git(
+        &fixture_root,
+        &["commit", "--quiet", "-m", "Fixture baseline"],
+    );
     (tmp, fixture_root)
 }
 
@@ -105,7 +111,15 @@ fn validate_upgrade_contract_ci_rejects_summary_without_changelog() {
     );
     fs::write(&notes_path, updated).unwrap();
     run_git(&fixture_root, &["add", "-A"]);
-    run_git(&fixture_root, &["commit", "--quiet", "-m", "Change unreleased summary without changelog"]);
+    run_git(
+        &fixture_root,
+        &[
+            "commit",
+            "--quiet",
+            "-m",
+            "Change unreleased summary without changelog",
+        ],
+    );
 
     let report = validate_upgrade_contract(
         &fixture_root,
@@ -115,10 +129,9 @@ fn validate_upgrade_contract_ci_rejects_summary_without_changelog() {
         },
     )
     .unwrap();
-    assert!(report
-        .errors
-        .iter()
-        .any(|error| error.contains("CHANGELOG.md and docs/upgrade_notes.toml must change together")));
+    assert!(report.errors.iter().any(|error| {
+        error.contains("CHANGELOG.md and docs/upgrade_notes.toml must change together")
+    }));
 }
 
 // Defends: the Rust-owned CI upgrade-contract validator still accepts acknowledged guarded-note updates without forcing a changelog edit.
@@ -134,7 +147,15 @@ fn validate_upgrade_contract_ci_accepts_ack_only_note_updates() {
     );
     fs::write(&notes_path, updated).unwrap();
     run_git(&fixture_root, &["add", "-A"]);
-    run_git(&fixture_root, &["commit", "--quiet", "-m", "Ack guarded change in upgrade notes only"]);
+    run_git(
+        &fixture_root,
+        &[
+            "commit",
+            "--quiet",
+            "-m",
+            "Ack guarded change in upgrade notes only",
+        ],
+    );
 
     let report = validate_upgrade_contract(
         &fixture_root,

@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use serde::Serialize;
 use yazelix_pane_orchestrator::active_tab_session_state::{
-    build_active_tab_session_state_v1, ActiveTabReadState, ActiveTabSessionStateV1, SessionSidebarYazi,
-    SessionWorkspace,
+    build_active_tab_session_state_v1, ActiveTabReadState, ActiveTabSessionStateV1,
+    SessionSidebarYazi, SessionWorkspace,
 };
 use yazelix_pane_orchestrator::horizontal_focus_contract::{
     resolve_horizontal_focus, HorizontalDirection, HorizontalFocusPlan, HorizontalPaneSnapshot,
@@ -201,12 +201,16 @@ pub(crate) fn build_terminal_panes_by_tab(
 }
 
 impl State {
-    fn collect_active_tab_read_state(&self, active_tab_position: Option<usize>) -> ActiveTabReadState {
+    fn collect_active_tab_read_state(
+        &self,
+        active_tab_position: Option<usize>,
+    ) -> ActiveTabReadState {
         let active_swap_layout_name = active_tab_position
             .and_then(|tab_position| self.active_swap_layout_name_by_tab.get(&tab_position))
             .cloned()
             .flatten();
-        let layout_variant = active_tab_position.and_then(|tab_position| self.get_active_layout_variant(tab_position));
+        let layout_variant = active_tab_position
+            .and_then(|tab_position| self.get_active_layout_variant(tab_position));
         let workspace_root = active_tab_position
             .and_then(|tab_position| self.workspace_state_by_tab.get(&tab_position))
             .map(|workspace_state| workspace_state.root.clone())
@@ -218,17 +222,23 @@ impl State {
                 WorkspaceStateSource::Explicit => "explicit".to_string(),
             })
             .or_else(|| {
-                self.initial_workspace_state.as_ref().map(|workspace_state| {
-                    match workspace_state.source {
+                self.initial_workspace_state
+                    .as_ref()
+                    .map(|workspace_state| match workspace_state.source {
                         WorkspaceStateSource::Bootstrap => "bootstrap".to_string(),
                         WorkspaceStateSource::Explicit => "explicit".to_string(),
-                    }
-                })
+                    })
             });
-        let explicit_workspace = match (active_tab_position, workspace_root.clone(), workspace_source.clone()) {
+        let explicit_workspace = match (
+            active_tab_position,
+            workspace_root.clone(),
+            workspace_source.clone(),
+        ) {
             (Some(tab_position), Some(root), Some(source))
                 if matches!(
-                    self.workspace_state_by_tab.get(&tab_position).map(|workspace_state| workspace_state.source),
+                    self.workspace_state_by_tab
+                        .get(&tab_position)
+                        .map(|workspace_state| workspace_state.source),
                     Some(WorkspaceStateSource::Explicit)
                 ) =>
             {
@@ -237,9 +247,7 @@ impl State {
             _ => None,
         };
         let bootstrap_workspace = match (workspace_root, workspace_source) {
-            (Some(root), Some(source))
-                if source == "bootstrap" =>
-            {
+            (Some(root), Some(source)) if source == "bootstrap" => {
                 Some(SessionWorkspace { root, source })
             }
             _ => None,
@@ -250,8 +258,8 @@ impl State {
         let sidebar_pane = active_tab_position
             .and_then(|tab_position| self.managed_panes_by_tab.get(&tab_position))
             .and_then(|managed_tab_panes| managed_tab_panes.sidebar);
-        let sidebar_yazi_state =
-            active_tab_position.and_then(|tab_position| self.get_active_sidebar_yazi_state_snapshot(tab_position));
+        let sidebar_yazi_state = active_tab_position
+            .and_then(|tab_position| self.get_active_sidebar_yazi_state_snapshot(tab_position));
         let focus_context = match active_tab_position
             .and_then(|tab_position| self.focus_context_by_tab.get(&tab_position).copied())
             .unwrap_or(FocusContext::Other)
@@ -276,7 +284,10 @@ impl State {
         }
     }
 
-    fn active_tab_session_state_snapshot(&self, active_tab_position: usize) -> ActiveTabSessionStateV1 {
+    fn active_tab_session_state_snapshot(
+        &self,
+        active_tab_position: usize,
+    ) -> ActiveTabSessionStateV1 {
         let read_state = self.collect_active_tab_read_state(Some(active_tab_position));
         build_active_tab_session_state_v1(active_tab_position, read_state)
     }
@@ -460,8 +471,14 @@ impl State {
                 .map(|workspace| workspace.source.clone()),
             editor_pane_id: read_state.editor_pane_id,
             sidebar_pane_id: read_state.sidebar_pane_id,
-            sidebar_yazi_id: read_state.sidebar_yazi.as_ref().map(|state| state.yazi_id.clone()),
-            sidebar_yazi_cwd: read_state.sidebar_yazi.as_ref().map(|state| state.cwd.clone()),
+            sidebar_yazi_id: read_state
+                .sidebar_yazi
+                .as_ref()
+                .map(|state| state.yazi_id.clone()),
+            sidebar_yazi_cwd: read_state
+                .sidebar_yazi
+                .as_ref()
+                .map(|state| state.cwd.clone()),
             sidebar_is_collapsed: read_state.sidebar_collapsed,
         };
 
@@ -541,7 +558,6 @@ impl TerminalPaneLayout {
         }
     }
 }
-
 
 fn select_managed_terminal_pane(
     panes: &[PaneInfo],

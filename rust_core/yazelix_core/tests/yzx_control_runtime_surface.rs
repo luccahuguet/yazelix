@@ -71,10 +71,12 @@ terminals = ["ghostty"]
     let report: Value = serde_json::from_slice(&output.stdout).unwrap();
     let summary = &report["summary"];
     assert_eq!(report["title"], "Yazelix status");
-    assert!(summary["config_file"]
-        .as_str()
-        .unwrap()
-        .ends_with("yazelix.toml"));
+    assert!(
+        summary["config_file"]
+            .as_str()
+            .unwrap()
+            .ends_with("yazelix.toml")
+    );
     assert_eq!(summary["default_shell"], "nu");
     assert_eq!(summary["terminals"], serde_json::json!(["ghostty"]));
     assert!(summary["generated_state_repair_needed"].is_boolean());
@@ -336,9 +338,11 @@ exit 99
         .filter_map(Result::ok)
         .map(|entry| entry.file_name().to_string_lossy().to_string())
         .collect::<Vec<_>>();
-    assert!(archived_paths
-        .iter()
-        .any(|name| { name.starts_with("yazelix.toml.home-manager-prepare-backup-") }));
+    assert!(
+        archived_paths
+            .iter()
+            .any(|name| { name.starts_with("yazelix.toml.home-manager-prepare-backup-") })
+    );
 }
 
 // Regression: `yzx update home_manager` must explain that `path:` inputs are still lock-pinned in flake.lock.

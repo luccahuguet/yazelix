@@ -10,7 +10,9 @@ use crate::control_plane::{
 };
 use crate::install_ownership_env::install_ownership_request_from_env_with_runtime_dir;
 use crate::install_ownership_report::evaluate_install_ownership_report;
-use crate::launch_materialization::{launch_materialization_request_from_env, prepare_launch_materialization};
+use crate::launch_materialization::{
+    launch_materialization_request_from_env, prepare_launch_materialization,
+};
 use crate::runtime_contract::{
     LaunchPreflightPayload, StartupLaunchPreflightRequest, StartupPreflightPayload,
     TerminalCandidate, evaluate_startup_launch_preflight,
@@ -189,8 +191,8 @@ pub fn run_yzx_restart(args: &[String]) -> Result<i32, CoreError> {
     }
 
     let session_to_kill = current_zellij_session();
-    let restart_file = create_restart_sidebar_bootstrap_file(&std::env::current_dir().map_err(
-        |source| {
+    let restart_file =
+        create_restart_sidebar_bootstrap_file(&std::env::current_dir().map_err(|source| {
             CoreError::io(
                 "restart_cwd",
                 "Could not read the current working directory.",
@@ -198,8 +200,7 @@ pub fn run_yzx_restart(args: &[String]) -> Result<i32, CoreError> {
                 ".",
                 source,
             )
-        },
-    )?)?;
+        })?)?;
 
     let is_yazelix_terminal = std::env::var_os("YAZELIX_TERMINAL").is_some();
     if is_yazelix_terminal {
@@ -323,7 +324,10 @@ fn run_desktop_install(print_path: bool) -> Result<i32, CoreError> {
     if print_path {
         println!("{}", desktop_path.display());
     } else {
-        println!("Installed Yazelix desktop entry: {}", desktop_path.display());
+        println!(
+            "Installed Yazelix desktop entry: {}",
+            desktop_path.display()
+        );
     }
     Ok(0)
 }
@@ -471,8 +475,14 @@ fn run_launch_flow(
         }
 
         let mut extra_env = vec![
-            ("YAZELIX_RUNTIME_DIR".to_string(), Some(runtime_dir.to_string_lossy().into_owned())),
-            ("YAZELIX_TERMINAL".to_string(), Some(candidate.terminal.clone())),
+            (
+                "YAZELIX_RUNTIME_DIR".to_string(),
+                Some(runtime_dir.to_string_lossy().into_owned()),
+            ),
+            (
+                "YAZELIX_TERMINAL".to_string(),
+                Some(candidate.terminal.clone()),
+            ),
         ];
         if let Ok(value) = std::env::var("YAZELIX_SWEEP_TEST_ID") {
             if !value.trim().is_empty() {
@@ -575,7 +585,9 @@ fn parse_launch_args(args: &[String]) -> Result<LaunchArgs, CoreError> {
             "--path" | "-p" => {
                 index += 1;
                 let value = args.get(index).ok_or_else(|| {
-                    CoreError::usage("Missing value for yzx launch --path. Try `yzx launch --help`.")
+                    CoreError::usage(
+                        "Missing value for yzx launch --path. Try `yzx launch --help`.",
+                    )
                 })?;
                 parsed.path = Some(value.clone());
             }
@@ -799,10 +811,7 @@ fn user_terminal_config_path(home_dir: &Path, terminal: &str) -> Result<PathBuf,
             if main.exists() {
                 Ok(main)
             } else {
-                Ok(home_dir
-                    .join(".config")
-                    .join("wezterm")
-                    .join("wezterm.lua"))
+                Ok(home_dir.join(".config").join("wezterm").join("wezterm.lua"))
             }
         }
         "alacritty" => Ok(home_dir
@@ -918,7 +927,10 @@ fn build_launch_command_argv(
         return Err(CoreError::classified(
             ErrorClass::Runtime,
             "missing_startup_script",
-            format!("Missing Yazelix startup script at {}.", startup_script.display()),
+            format!(
+                "Missing Yazelix startup script at {}.",
+                startup_script.display()
+            ),
             "Restore shells/posix/start_yazelix.sh or reinstall Yazelix.",
             serde_json::json!({}),
         ));
@@ -1025,7 +1037,10 @@ fn build_launch_command_argv(
 fn render_argv_for_display(argv: &[String]) -> String {
     argv.iter()
         .map(|arg| {
-            if arg.chars().all(|ch| ch.is_ascii_alphanumeric() || "/._:=,@+-".contains(ch)) {
+            if arg
+                .chars()
+                .all(|ch| ch.is_ascii_alphanumeric() || "/._:=,@+-".contains(ch))
+            {
                 arg.clone()
             } else {
                 format!("{arg:?}")
@@ -1038,17 +1053,25 @@ fn render_argv_for_display(argv: &[String]) -> String {
 fn get_launch_probe_log_path(state_dir: &Path, terminal_name: &str) -> Result<PathBuf, CoreError> {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map_err(|error| CoreError::classified(
-            ErrorClass::Internal,
-            "system_clock_error",
-            format!("System clock error while preparing detached launch log path: {error}"),
-            "Fix the system clock, then retry.",
-            serde_json::json!({}),
-        ))?
+        .map_err(|error| {
+            CoreError::classified(
+                ErrorClass::Internal,
+                "system_clock_error",
+                format!("System clock error while preparing detached launch log path: {error}"),
+                "Fix the system clock, then retry.",
+                serde_json::json!({}),
+            )
+        })?
         .as_millis();
     let sanitized = terminal_name
         .chars()
-        .map(|ch| if ch.is_ascii_alphanumeric() { ch.to_ascii_lowercase() } else { '_' })
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() {
+                ch.to_ascii_lowercase()
+            } else {
+                '_'
+            }
+        })
         .collect::<String>()
         .trim_matches('_')
         .to_string();
@@ -1056,7 +1079,10 @@ fn get_launch_probe_log_path(state_dir: &Path, terminal_name: &str) -> Result<Pa
     fs::create_dir_all(&log_dir).map_err(|source| {
         CoreError::io(
             "launch_log_dir",
-            format!("Could not create launch log directory {}.", log_dir.display()),
+            format!(
+                "Could not create launch log directory {}.",
+                log_dir.display()
+            ),
             "Fix the directory permissions, then retry.",
             log_dir.display().to_string(),
             source,
@@ -1092,7 +1118,13 @@ fn run_detached_launch_probe(
         ));
     }
 
-    let log_path = get_launch_probe_log_path(state_dir, launch_argv.first().map(String::as_str).unwrap_or("terminal"))?;
+    let log_path = get_launch_probe_log_path(
+        state_dir,
+        launch_argv
+            .first()
+            .map(String::as_str)
+            .unwrap_or("terminal"),
+    )?;
     let mut argv = vec![
         probe_helper.to_string_lossy().into_owned(),
         log_path.to_string_lossy().into_owned(),
@@ -1241,10 +1273,7 @@ fn current_zellij_session() -> Option<String> {
         }
     }
 
-    let output = Command::new("zellij")
-        .arg("list-sessions")
-        .output()
-        .ok()?;
+    let output = Command::new("zellij").arg("list-sessions").output().ok()?;
     if !output.status.success() {
         return None;
     }
@@ -1296,7 +1325,10 @@ fn create_restart_sidebar_bootstrap_file(target_dir: &Path) -> Result<PathBuf, C
     fs::create_dir_all(&state_dir).map_err(|source| {
         CoreError::io(
             "restart_state_dir",
-            format!("Could not create restart state directory {}.", state_dir.display()),
+            format!(
+                "Could not create restart state directory {}.",
+                state_dir.display()
+            ),
             "Fix the directory permissions, then retry.",
             state_dir.display().to_string(),
             source,
@@ -1304,13 +1336,15 @@ fn create_restart_sidebar_bootstrap_file(target_dir: &Path) -> Result<PathBuf, C
     })?;
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map_err(|error| CoreError::classified(
-            ErrorClass::Internal,
-            "system_clock_error",
-            format!("System clock error while preparing restart bootstrap file: {error}"),
-            "Fix the system clock, then retry.",
-            serde_json::json!({}),
-        ))?
+        .map_err(|error| {
+            CoreError::classified(
+                ErrorClass::Internal,
+                "system_clock_error",
+                format!("System clock error while preparing restart bootstrap file: {error}"),
+                "Fix the system clock, then retry.",
+                serde_json::json!({}),
+            )
+        })?
         .as_millis();
     let path = state_dir.join(format!("sidebar_cwd_{timestamp}.tmp"));
     fs::write(&path, target_dir.to_string_lossy().into_owned()).map_err(|source| {
@@ -1377,7 +1411,10 @@ fn render_desktop_entry(launcher_path: &Path) -> String {
         format!("StartupWMClass={WINDOW_CLASS}"),
         "Terminal=true".to_string(),
         "X-Yazelix-Managed=true".to_string(),
-        format!("Exec={} desktop launch", quote_desktop_exec_arg(launcher_path)),
+        format!(
+            "Exec={} desktop launch",
+            quote_desktop_exec_arg(launcher_path)
+        ),
         "Categories=Development;".to_string(),
     ]
     .join("\n")
@@ -1385,7 +1422,11 @@ fn render_desktop_entry(launcher_path: &Path) -> String {
 
 fn install_desktop_icons(runtime_dir: &Path, icons_root: &Path) -> Result<(), CoreError> {
     for size in DESKTOP_ICON_SIZES {
-        let source = runtime_dir.join("assets").join("icons").join(size).join("yazelix.png");
+        let source = runtime_dir
+            .join("assets")
+            .join("icons")
+            .join(size)
+            .join("yazelix.png");
         if !source.is_file() {
             return Err(CoreError::classified(
                 ErrorClass::Runtime,
@@ -1434,7 +1475,10 @@ fn maybe_validate_desktop_entry(desktop_path: &Path) -> Result<(), CoreError> {
         .map_err(|source| {
             CoreError::io(
                 "desktop_file_validate",
-                format!("Failed to run desktop-file-validate for {}.", desktop_path.display()),
+                format!(
+                    "Failed to run desktop-file-validate for {}.",
+                    desktop_path.display()
+                ),
                 "Install desktop-file-validate or fix the host PATH, then retry.",
                 desktop_path.display().to_string(),
                 source,

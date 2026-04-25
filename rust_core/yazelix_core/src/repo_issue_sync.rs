@@ -175,7 +175,10 @@ pub fn run_issue_sync(repo_root: &Path, dry_run: bool) -> Result<IssueSyncSummar
             match action.kind.as_str() {
                 "create" => {
                     create_issue_comment(action)?;
-                    println!("  ✅ Added Beads comment to GitHub issue #{}", action.issue.number);
+                    println!(
+                        "  ✅ Added Beads comment to GitHub issue #{}",
+                        action.issue.number
+                    );
                 }
                 "update" => {
                     update_issue_comment(action)?;
@@ -224,21 +227,32 @@ fn load_contract_github_issues() -> Result<Vec<GithubIssue>, String> {
             "number,state,title,url,createdAt,body",
         ],
     )?;
-    serde_json::from_str(&raw).map_err(|error| format!("Failed to parse GitHub issues JSON: {error}"))
+    serde_json::from_str(&raw)
+        .map_err(|error| format!("Failed to parse GitHub issues JSON: {error}"))
 }
 
 fn load_contract_beads() -> Result<Vec<BeadIssue>, String> {
     let raw = run_command("bd", &["list", "--all", "--limit", "0", "--json"])?;
-    let value: Value =
-        serde_json::from_str(&raw).map_err(|error| format!("Failed to parse Beads JSON: {error}"))?;
+    let value: Value = serde_json::from_str(&raw)
+        .map_err(|error| format!("Failed to parse Beads JSON: {error}"))?;
     let issues = value.get("issues").cloned().unwrap_or(value);
-    serde_json::from_value(issues).map_err(|error| format!("Failed to decode Beads issues: {error}"))
+    serde_json::from_value(issues)
+        .map_err(|error| format!("Failed to decode Beads issues: {error}"))
 }
 
 fn load_issue_comments(issue_number: i64) -> Result<Vec<GithubComment>, String> {
-    let raw = run_command("gh", &["issue", "view", &issue_number.to_string(), "--json", "comments"])?;
-    let parsed: GithubCommentsEnvelope =
-        serde_json::from_str(&raw).map_err(|error| format!("Failed to parse issue comments JSON: {error}"))?;
+    let raw = run_command(
+        "gh",
+        &[
+            "issue",
+            "view",
+            &issue_number.to_string(),
+            "--json",
+            "comments",
+        ],
+    )?;
+    let parsed: GithubCommentsEnvelope = serde_json::from_str(&raw)
+        .map_err(|error| format!("Failed to parse issue comments JSON: {error}"))?;
     Ok(parsed.comments)
 }
 
@@ -274,7 +288,11 @@ fn build_imported_issue_description(issue: &GithubIssue) -> String {
     if issue.body.trim().is_empty() {
         format!("Imported GitHub issue #{}.", issue.number)
     } else {
-        format!("Imported GitHub issue #{}.\n\n{}", issue.number, issue.body.trim())
+        format!(
+            "Imported GitHub issue #{}.\n\n{}",
+            issue.number,
+            issue.body.trim()
+        )
     }
 }
 
@@ -285,7 +303,10 @@ fn plan_issue_bead_reconciliation(
     let mut actions = Vec::new();
     let mut errors = Vec::new();
 
-    for issue in github_issues.iter().filter(|issue| issue_is_in_contract(issue)) {
+    for issue in github_issues
+        .iter()
+        .filter(|issue| issue_is_in_contract(issue))
+    {
         let matches = beads
             .iter()
             .filter(|bead| bead.external_ref == issue.url)
@@ -332,12 +353,14 @@ fn plan_issue_bead_reconciliation(
 }
 
 fn find_issue_bead_comment(comments: &[GithubComment]) -> Option<GithubComment> {
-    comments.iter().find(|comment| {
-        let body = comment.body.trim();
-        body.starts_with("Tracked in Beads as `")
-            || body.starts_with("Automated: Tracked in Beads as `")
-    })
-    .cloned()
+    comments
+        .iter()
+        .find(|comment| {
+            let body = comment.body.trim();
+            body.starts_with("Tracked in Beads as `")
+                || body.starts_with("Automated: Tracked in Beads as `")
+        })
+        .cloned()
 }
 
 fn plan_issue_bead_comment_sync(
@@ -415,7 +438,8 @@ fn create_bead_from_github_issue(issue: &GithubIssue) -> Result<BeadIssue, Strin
             "--json",
         ],
     )?;
-    serde_json::from_str(&raw).map_err(|error| format!("Failed to parse created bead JSON: {error}"))
+    serde_json::from_str(&raw)
+        .map_err(|error| format!("Failed to parse created bead JSON: {error}"))
 }
 
 fn reopen_bead(bead: &BeadIssue) -> Result<(), String> {
@@ -471,7 +495,10 @@ fn validate_issue_bead_contract(repo_root: &Path) -> Result<(), String> {
 
 fn format_issue_action(action: &IssueAction) -> String {
     match action.kind.as_str() {
-        "create" => format!("create bead for #{} ({})", action.issue.number, action.issue.title),
+        "create" => format!(
+            "create bead for #{} ({})",
+            action.issue.number, action.issue.title
+        ),
         "reopen" => format!(
             "reopen {} for #{} ({})",
             action.bead.as_ref().unwrap().id,
@@ -490,18 +517,42 @@ fn format_issue_action(action: &IssueAction) -> String {
 
 fn format_comment_action(action: &IssueCommentAction) -> String {
     match action.kind.as_str() {
-        "create" => format!("create comment for #{} -> {}", action.issue.number, action.bead.id),
-        "update" => format!("update comment for #{} -> {}", action.issue.number, action.bead.id),
-        _ => format!("noop comment #{} -> {}", action.issue.number, action.bead.id),
+        "create" => format!(
+            "create comment for #{} -> {}",
+            action.issue.number, action.bead.id
+        ),
+        "update" => format!(
+            "update comment for #{} -> {}",
+            action.issue.number, action.bead.id
+        ),
+        _ => format!(
+            "noop comment #{} -> {}",
+            action.issue.number, action.bead.id
+        ),
     }
 }
 
-fn build_summary(actions: &[IssueAction], comment_actions: &[IssueCommentAction]) -> IssueSyncSummary {
+fn build_summary(
+    actions: &[IssueAction],
+    comment_actions: &[IssueCommentAction],
+) -> IssueSyncSummary {
     IssueSyncSummary {
-        created: actions.iter().filter(|action| action.kind == "create").count(),
-        reopened: actions.iter().filter(|action| action.kind == "reopen").count(),
-        closed: actions.iter().filter(|action| action.kind == "close").count(),
-        unchanged: actions.iter().filter(|action| action.kind == "noop").count(),
+        created: actions
+            .iter()
+            .filter(|action| action.kind == "create")
+            .count(),
+        reopened: actions
+            .iter()
+            .filter(|action| action.kind == "reopen")
+            .count(),
+        closed: actions
+            .iter()
+            .filter(|action| action.kind == "close")
+            .count(),
+        unchanged: actions
+            .iter()
+            .filter(|action| action.kind == "noop")
+            .count(),
         comments_created: comment_actions
             .iter()
             .filter(|action| action.kind == "create")
@@ -521,7 +572,13 @@ fn build_summary(actions: &[IssueAction], comment_actions: &[IssueCommentAction]
 mod tests {
     use super::*;
 
-    fn github_issue(number: i64, state: &str, url: &str, created_at: &str, body: &str) -> GithubIssue {
+    fn github_issue(
+        number: i64,
+        state: &str,
+        url: &str,
+        created_at: &str,
+        body: &str,
+    ) -> GithubIssue {
         GithubIssue {
             number,
             state: state.to_string(),
@@ -556,9 +613,27 @@ mod tests {
         let (actions, errors) =
             plan_issue_bead_reconciliation(&[issue_create, issue_reopen, issue_close], &beads);
         assert!(errors.is_empty());
-        assert_eq!(actions.iter().filter(|action| action.kind == "create").count(), 1);
-        assert_eq!(actions.iter().filter(|action| action.kind == "reopen").count(), 1);
-        assert_eq!(actions.iter().filter(|action| action.kind == "close").count(), 1);
+        assert_eq!(
+            actions
+                .iter()
+                .filter(|action| action.kind == "create")
+                .count(),
+            1
+        );
+        assert_eq!(
+            actions
+                .iter()
+                .filter(|action| action.kind == "reopen")
+                .count(),
+            1
+        );
+        assert_eq!(
+            actions
+                .iter()
+                .filter(|action| action.kind == "close")
+                .count(),
+            1
+        );
     }
 
     // Defends: imported GitHub issue bodies still preserve the shared type inference mapping instead of drifting through maintainer-only aliases.
@@ -566,8 +641,14 @@ mod tests {
     #[test]
     fn infer_issue_type_maps_supported_and_legacy_values() {
         assert_eq!(infer_issue_type_from_body("### Issue Type\nbug\n"), "bug");
-        assert_eq!(infer_issue_type_from_body("### Issue Type\nquestion\n"), "decision");
-        assert_eq!(infer_issue_type_from_body("### Issue Type\ndocs\n"), "chore");
+        assert_eq!(
+            infer_issue_type_from_body("### Issue Type\nquestion\n"),
+            "decision"
+        );
+        assert_eq!(
+            infer_issue_type_from_body("### Issue Type\ndocs\n"),
+            "chore"
+        );
         assert_eq!(infer_issue_type_from_body(""), "task");
     }
 
