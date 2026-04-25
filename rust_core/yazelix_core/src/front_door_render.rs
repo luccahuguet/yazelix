@@ -303,6 +303,16 @@ fn colorize_game_of_life_char(x: usize, y: usize) -> String {
     format!("{}█{}", palette[(x + y) % palette.len()], ANSI_RESET)
 }
 
+fn colorize_game_of_life_glyph(x: usize, y: usize, glyph: char) -> String {
+    let palette = [ANSI_GREEN, ANSI_CYAN, ANSI_BLUE, ANSI_PURPLE];
+    format!(
+        "{}{}{}",
+        palette[(x + y) % palette.len()],
+        glyph,
+        ANSI_RESET
+    )
+}
+
 fn make_border(inner_width: usize) -> String {
     "─".repeat(inner_width)
 }
@@ -690,11 +700,20 @@ fn build_game_of_life_screen_lines(
 ) -> Vec<String> {
     let grid_width = get_game_of_life_grid_width(inner_width);
     let mut body = Vec::new();
-    for row_index in 0..body_height {
+    for top_row_index in (0..body_height).step_by(2) {
+        let bottom_row_index = top_row_index + 1;
         let mut row = String::new();
         for x in 0..grid_width {
-            if cells.contains(&(x as i32, row_index as i32)) {
-                let cell = colorize_game_of_life_char(x, row_index);
+            let top_alive = cells.contains(&(x as i32, top_row_index as i32));
+            let bottom_alive = bottom_row_index < body_height
+                && cells.contains(&(x as i32, bottom_row_index as i32));
+            let cell = match (top_alive, bottom_alive) {
+                (true, true) => Some(colorize_game_of_life_char(x, top_row_index)),
+                (true, false) => Some(colorize_game_of_life_glyph(x, top_row_index, '▀')),
+                (false, true) => Some(colorize_game_of_life_glyph(x, bottom_row_index, '▄')),
+                (false, false) => None,
+            };
+            if let Some(cell) = cell {
                 row.push_str(&cell);
                 row.push_str(&cell);
             } else {
@@ -1052,6 +1071,15 @@ mod tests {
         line.contains('│')
     }
 
+    fn render_test_game_of_life_lines(
+        inner_width: usize,
+        body_height: usize,
+        cells: &[(i32, i32)],
+    ) -> Vec<String> {
+        let cells = cells.iter().copied().collect::<HashSet<_>>();
+        build_game_of_life_screen_lines(inner_width, body_height, inner_width, &cells)
+    }
+
     // Test lane: default
     // Defends: `random` still resolves only to the retained Game of Life screen styles instead of drifting back to logo, boids, or static.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
@@ -1122,5 +1150,25 @@ mod tests {
                 .iter()
                 .all(|line| !contains_vertical_border(line))
         );
+    }
+
+    // Regression: Game of Life screen rendering must vertically pack two logical rows into one terminal row so terminals with visible row gaps do not make the pattern look double-spaced.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn game_of_life_screen_lines_use_vertical_half_block_packing() {
+        let lines = render_test_game_of_life_lines(6, 3, &[(1, 0), (2, 1), (0, 2), (1, 2), (2, 2)]);
+        assert_eq!(lines.len(), 2);
+        assert!(lines[0].contains('▀'));
+        assert!(lines[0].contains('▄'));
+        assert!(lines[1].contains('▀'));
+    }
+
+    // Regression: stacked live cells in adjacent logical rows must merge into a filled block instead of two visually separated terminal rows.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn game_of_life_screen_lines_merge_stacked_cells_into_full_blocks() {
+        let lines = render_test_game_of_life_lines(4, 2, &[(1, 0), (1, 1)]);
+        assert_eq!(lines.len(), 1);
+        assert!(lines[0].contains('█'));
     }
 }
