@@ -47,7 +47,7 @@ fn main() {
         "validate-config-surface-contract" => (
             validate_config_surface_contract(&resolved_repo_root),
             Some(
-                "✅ Main config surface, Home Manager desktop entry, and generated-state contract is valid"
+                "✅ Main config surface, Home Manager metadata, desktop entry, and generated-state contract is valid"
                     .to_string(),
             ),
         ),

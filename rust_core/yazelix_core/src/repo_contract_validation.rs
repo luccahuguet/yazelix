@@ -16,6 +16,7 @@ use toml::{Table as TomlTable, Value as TomlValue};
 
 const MAIN_TEMPLATE_RELATIVE_PATH: &str = "yazelix_default.toml";
 const MODULE_RELATIVE_PATH: &str = "home_manager/module.nix";
+const HOME_MANAGER_MODULE_DECLARATION_PATH: &str = "yazelix/home_manager/module.nix";
 const MAIN_CONTRACT_RELATIVE_PATH: &str = "config_metadata/main_config_contract.toml";
 const NUSHELL_BUDGET_RELATIVE_PATH: &str = "config_metadata/nushell_budget.toml";
 const TAPLO_RELATIVE_PATH: &str = ".taplo.toml";
@@ -95,6 +96,11 @@ pub fn validate_config_surface_contract(repo_root: &Path) -> Result<ValidationRe
         .extend(validate_main_contract_parity(repo_root)?);
     report
         .errors
+        .extend(validate_home_manager_option_declaration_contract(
+            repo_root,
+        )?);
+    report
+        .errors
         .extend(validate_home_manager_desktop_entry_contract(repo_root)?);
     report
         .errors
@@ -105,6 +111,24 @@ pub fn validate_config_surface_contract(repo_root: &Path) -> Result<ValidationRe
         .errors
         .extend(validate_generated_state_contract(repo_root)?);
     Ok(report)
+}
+
+pub fn validate_home_manager_option_declaration_contract(
+    repo_root: &Path,
+) -> Result<Vec<String>, String> {
+    let declarations = load_home_manager_option_declarations(repo_root)?;
+    let mut errors = Vec::new();
+    for (option_name, option_declarations) in declarations {
+        for declaration in option_declarations {
+            if declaration != HOME_MANAGER_MODULE_DECLARATION_PATH {
+                errors.push(format!(
+                    "Home Manager option `{}` declaration path must be `{}`, got `{}`",
+                    option_name, HOME_MANAGER_MODULE_DECLARATION_PATH, declaration
+                ));
+            }
+        }
+    }
+    Ok(errors)
 }
 
 pub fn validate_upgrade_contract(
@@ -2538,6 +2562,44 @@ fn build_home_manager_defaults_expr(repo_root: &Path, option_names: &[String]) -
         "in {".to_string(),
         bindings,
         "}".to_string(),
+    ]
+    .join("\n")
+}
+
+fn load_home_manager_option_declarations(
+    repo_root: &Path,
+) -> Result<HashMap<String, Vec<String>>, String> {
+    let expr = build_home_manager_option_declarations_expr(repo_root);
+    let result = run_nix_eval(repo_root, &expr)?;
+    serde_json::from_value(result).map_err(|error| {
+        format!("Home Manager option declaration evaluation returned invalid JSON: {error}")
+    })
+}
+
+fn build_home_manager_option_declarations_expr(repo_root: &Path) -> String {
+    let module_path =
+        escape_nix_string(&repo_root.join(MODULE_RELATIVE_PATH).display().to_string());
+    [
+        "let".to_string(),
+        "  pkgs = import <nixpkgs> {};".to_string(),
+        "  lib = pkgs.lib;".to_string(),
+        "  eval = lib.evalModules {".to_string(),
+        "    specialArgs = { inherit pkgs; nixgl = null; };".to_string(),
+        "    modules = [".to_string(),
+        format!("      (builtins.toPath \"{}\")", module_path),
+        "      ({ lib, ... }: {".to_string(),
+        "        options.xdg.configHome = lib.mkOption { type = lib.types.str; default = \"/tmp/config\"; };".to_string(),
+        "        options.xdg.dataHome = lib.mkOption { type = lib.types.str; default = \"/tmp/data\"; };".to_string(),
+        "        options.xdg.dataFile = lib.mkOption { type = lib.types.attrsOf lib.types.anything; default = {}; };".to_string(),
+        "        options.xdg.configFile = lib.mkOption { type = lib.types.attrsOf lib.types.anything; default = {}; };".to_string(),
+        "        options.xdg.desktopEntries = lib.mkOption { type = lib.types.attrsOf lib.types.anything; default = {}; };".to_string(),
+        "        options.home.packages = lib.mkOption { type = lib.types.listOf lib.types.package; default = []; };".to_string(),
+        "        options.home.activation = lib.mkOption { type = lib.types.attrsOf lib.types.anything; default = {}; };".to_string(),
+        "        options.home.profileDirectory = lib.mkOption { type = lib.types.str; default = \"/tmp/profile\"; };".to_string(),
+        "      })".to_string(),
+        "    ];".to_string(),
+        "  };".to_string(),
+        "in builtins.mapAttrs (_: option: map builtins.toString option.declarations) eval.options.programs.yazelix".to_string(),
     ]
     .join("\n")
 }

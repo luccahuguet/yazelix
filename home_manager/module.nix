@@ -158,6 +158,8 @@ let
 
 in
 {
+  _file = "yazelix/home_manager/module.nix";
+
   options.programs.yazelix = {
     enable = mkEnableOption "Yazelix terminal environment";
 
