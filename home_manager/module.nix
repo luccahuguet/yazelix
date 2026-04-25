@@ -165,13 +165,16 @@ in
 
     manage_config = mkOption {
       type = types.bool;
-      default = true;
+      default = false;
       description = ''
         Whether Home Manager generates ~/.config/yazelix/user_configs/yazelix.toml.
 
-        Set this to false when you want Home Manager to install the Yazelix
-        package/runtime/desktop integration, but keep yazelix.toml as a normal
-        mutable user file managed through `yzx edit` or your editor.
+        The default keeps Home Manager responsible for the Yazelix
+        package/runtime/desktop integration while leaving yazelix.toml as a
+        normal mutable user file managed through `yzx edit` or your editor.
+
+        Set this to true only when you want Home Manager to generate and own
+        yazelix.toml declaratively from programs.yazelix options.
       '';
     };
 

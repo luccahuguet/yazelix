@@ -902,8 +902,8 @@ fn validate_installed_runtime_contract_inner(repo_root: &Path) -> Result<Vec<Str
 
 fn validate_home_manager_activation_contract(repo_root: &Path) -> Result<Vec<String>, String> {
     let mut errors = Vec::new();
-    errors.extend(validate_home_manager_activation_mode(repo_root, true)?);
     errors.extend(validate_home_manager_activation_mode(repo_root, false)?);
+    errors.extend(validate_home_manager_activation_mode(repo_root, true)?);
     Ok(errors)
 }
 
@@ -1140,9 +1140,9 @@ fn build_home_manager_activation_validation_flake(
         "            programs.home-manager.enable = true;".to_string(),
         "            programs.yazelix.enable = true;".to_string(),
         if manage_config {
-            "            # manage_config default is intentionally exercised here.".to_string()
+            "            programs.yazelix.manage_config = true;".to_string()
         } else {
-            "            programs.yazelix.manage_config = false;".to_string()
+            "            # manage_config=false default is intentionally exercised here.".to_string()
         },
         "          })".to_string(),
         "        ];".to_string(),

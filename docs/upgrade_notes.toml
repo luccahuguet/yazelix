@@ -1,10 +1,10 @@
 [releases.unreleased]
-acknowledged_guarded_changes = []
+acknowledged_guarded_changes = ["home_manager/module.nix"]
 date = ""
-headline = "Post-v16.1 work in progress"
+headline = "Home Manager leaves yazelix.toml mutable by default"
 manual_actions = []
 migration_ids = []
-summary = ["Reserved for post-release changes after v16.1 lands."]
+summary = ["Changed the Home Manager module default so it installs the Yazelix package/runtime/desktop integration while leaving ~/.config/yazelix/user_configs/yazelix.toml as a normal mutable file", "Kept programs.yazelix.manage_config = true as the explicit opt-in for users who want Home Manager to generate and own yazelix.toml"]
 upgrade_impact = "no_user_action"
 version = "unreleased"
 

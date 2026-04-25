@@ -4,12 +4,13 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
-Post-v16.1 work in progress
+Home Manager leaves yazelix.toml mutable by default
 
 Upgrade impact: no user action required
 
 Highlights:
-- Reserved for post-release changes after v16.1 lands.
+- Changed the Home Manager module default so it installs the Yazelix package/runtime/desktop integration while leaving `~/.config/yazelix/user_configs/yazelix.toml` as a normal mutable file
+- Kept `programs.yazelix.manage_config = true` as the explicit opt-in for users who want Home Manager to generate and own `yazelix.toml`
 
 ## v16.1 - 2026-04-25
 

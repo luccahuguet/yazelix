@@ -14,7 +14,7 @@ Yazelix is a workspace-focused terminal environment built around [Yazi](https://
 
 The supported product in this branch is the Rust-forward v16 Yazelix line
 
-Yazelix now uses the managed `yazelix.toml` config surface, with the normal flake surface provided by the packaged `yazelix` runtime plus the top-level Home Manager module, while repo work uses the flake maintainer shell defined in `maintainer_shell.nix`
+Yazelix now uses the `yazelix.toml` config surface, with the normal flake surface provided by the packaged `yazelix` runtime plus the top-level Home Manager module, while repo work uses the flake maintainer shell defined in `maintainer_shell.nix`
 
 ## Daily Workflow
 
