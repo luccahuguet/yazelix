@@ -261,6 +261,8 @@ fn build_render_plan_request(
         zellij_default_mode: string_config(config, "zellij_default_mode", "normal").to_string(),
         yazelix_layout_dir: layout_dir.to_string_lossy().to_string(),
         resolved_default_shell: resolved_default_shell.to_string(),
+        editor_label: string_config(config, "editor_command", "hx").to_string(),
+        terminal_label: first_string_list_config(config, "terminals", "ghostty"),
     }
 }
 
@@ -315,6 +317,21 @@ fn string_list_config(config: &JsonMap<String, JsonValue>, key: &str) -> Option<
         ),
         _ => None,
     }
+}
+
+fn first_string_list_config(
+    config: &JsonMap<String, JsonValue>,
+    key: &str,
+    default: &str,
+) -> String {
+    string_list_config(config, key)
+        .and_then(|values| {
+            values
+                .into_iter()
+                .map(|value| value.trim().to_string())
+                .find(|value| !value.is_empty())
+        })
+        .unwrap_or_else(|| default.to_string())
 }
 
 fn resolve_zellij_default_shell(runtime_dir: &Path, default_shell: &str) -> String {
@@ -401,7 +418,7 @@ fn render_merged_config(
         .join("zellij")
         .join("yazelix_overrides.kdl");
     let override_keybinds = read_yazelix_override_keybinds(&overrides_path, runtime_dir)?;
-    let widget_tray_segment = render_widget_tray_segment(&render_plan.widget_tray)?;
+    let widget_tray_segment = render_widget_tray_segment(render_plan)?;
     let custom_text_segment = render_custom_text_segment(&render_plan.custom_text);
     let base_config = strip_yazelix_owned_top_level_settings(
         &extracted_blocks.config_without_semantic_blocks,
@@ -685,15 +702,25 @@ fn read_yazelix_override_keybinds(
     Ok(extract_semantic_config_blocks(&content).keybind_lines)
 }
 
-fn render_widget_tray_segment(widget_tray: &[String]) -> Result<String, CoreError> {
-    widget_tray
+fn render_widget_tray_segment(render_plan: &ZellijRenderPlanData) -> Result<String, CoreError> {
+    render_plan
+        .widget_tray
         .iter()
         .map(|widget| match widget.as_str() {
-            "editor" => Ok("#[fg=#00ff88,bold][editor: {command_editor}]"),
-            "shell" => Ok("#[fg=#00ff88,bold][shell: {command_shell}]"),
-            "term" => Ok("#[fg=#00ff88,bold][term: {command_term}]"),
-            "cpu" => Ok("{command_cpu}"),
-            "ram" => Ok("{command_ram}"),
+            "editor" => Ok(format!(
+                "#[fg=#00ff88,bold][editor: {}]",
+                render_plan.editor_label
+            )),
+            "shell" => Ok(format!(
+                "#[fg=#00ff88,bold][shell: {}]",
+                render_plan.shell_label
+            )),
+            "term" => Ok(format!(
+                "#[fg=#00ff88,bold][term: {}]",
+                render_plan.terminal_label
+            )),
+            "cpu" => Ok("{command_cpu}".to_string()),
+            "ram" => Ok("{command_ram}".to_string()),
             _ => Err(CoreError::classified(
                 ErrorClass::Config,
                 "invalid_widget_tray_entry",
@@ -750,7 +777,7 @@ fn generate_all_layouts(
         .collect::<Result<Vec<_>, CoreError>>()?;
     remove_stale_layouts(target_dir, &expected_targets)?;
     let static_fragments = load_static_fragments(source_dir)?;
-    let widget_tray_segment = render_widget_tray_segment(&render_plan.widget_tray)?;
+    let widget_tray_segment = render_widget_tray_segment(render_plan)?;
     let custom_text_segment = render_custom_text_segment(&render_plan.custom_text);
     let pane_orchestrator_plugin_url =
         format!("file:{}", pane_orchestrator_wasm_path.to_string_lossy());
@@ -1340,6 +1367,8 @@ fn build_generation_fingerprint(
         "support_kitty_keyboard_protocol": string_config(config, "support_kitty_keyboard_protocol", "false"),
         "default_shell": string_config(config, "default_shell", "nu"),
         "resolved_default_shell": resolved_default_shell,
+        "editor_command": string_config(config, "editor_command", ""),
+        "terminals": config.get("terminals").cloned().unwrap_or_else(|| json!(["ghostty"])),
         "zellij_default_mode": string_config(config, "zellij_default_mode", "normal"),
         "enable_sidebar": bool_config(config, "enable_sidebar", true),
         "sidebar_width_percent": int_config(config, "sidebar_width_percent", 20),
@@ -1602,6 +1631,34 @@ fn timestamp_for_metadata() -> String {
 mod tests {
     use super::*;
 
+    fn sample_render_plan_for_widgets(
+        widget_tray: Vec<&str>,
+        editor_label: &str,
+        shell: &str,
+        terminal_label: &str,
+    ) -> ZellijRenderPlanData {
+        compute_zellij_render_plan(&ZellijRenderPlanRequest {
+            enable_sidebar: true,
+            sidebar_width_percent: 20,
+            popup_width_percent: 90,
+            popup_height_percent: 90,
+            zellij_widget_tray: Some(widget_tray.into_iter().map(str::to_string).collect()),
+            zellij_custom_text: None,
+            zellij_theme: "default".into(),
+            zellij_pane_frames: "true".into(),
+            zellij_rounded_corners: "true".into(),
+            disable_zellij_tips: "true".into(),
+            persistent_sessions: "false".into(),
+            support_kitty_keyboard_protocol: "false".into(),
+            zellij_default_mode: "normal".into(),
+            yazelix_layout_dir: "/tmp/yazelix/layouts".into(),
+            resolved_default_shell: shell.into(),
+            editor_label: editor_label.into(),
+            terminal_label: terminal_label.into(),
+        })
+        .unwrap()
+    }
+
     // Defends: semantic block extraction removes first-class KDL blocks while preserving unrelated top-level lines.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
@@ -1633,19 +1690,36 @@ ui { pane_frames { hide_session_name true } }
         );
     }
 
-    // Defends: widget tray rendering stays byte-compatible with the legacy zjstatus layout placeholders.
+    // Regression: widget tray rendering must not leave empty command placeholders when dynamic helper scripts are unavailable.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn renders_widget_tray_segment_with_static_identity_labels() {
+        let plan = sample_render_plan_for_widgets(
+            vec!["editor", "shell", "term", "cpu"],
+            "",
+            "/nix/store/example/bin/nu",
+            "ghostty",
+        );
+        let rendered = render_widget_tray_segment(&plan).unwrap();
+
+        assert!(rendered.contains("[editor: hx]"));
+        assert!(rendered.contains("[shell: nu]"));
+        assert!(rendered.contains("[term: ghostty]"));
+        assert!(rendered.contains("{command_cpu}"));
+        assert!(!rendered.contains("{command_editor}"));
+        assert!(!rendered.contains("[editor: ]"));
+    }
+
+    // Regression: shipped zjstatus templates must not call the deleted dynamic identity widget helper.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
-    fn renders_widget_tray_segment() {
-        let rendered = render_widget_tray_segment(&[
-            "editor".to_string(),
-            "shell".to_string(),
-            "cpu".to_string(),
-        ])
-        .unwrap();
-        assert!(rendered.contains("[editor: {command_editor}]"));
-        assert!(rendered.contains("[shell: {command_shell}]"));
-        assert!(rendered.contains("{command_cpu}"));
+    fn zjstatus_template_does_not_reference_missing_identity_widget_script() {
+        let template =
+            include_str!("../../../configs/zellij/layouts/fragments/zjstatus_tab_template.kdl");
+        assert!(!template.contains("zjstatus_widget.nu"));
+        assert!(!template.contains("command_editor_command"));
+        assert!(!template.contains("command_shell_command"));
+        assert!(!template.contains("command_term_command"));
     }
 
     // Defends: legacy plugin permission blocks are recognized by both stable and hashed wasm names.
@@ -1713,7 +1787,7 @@ keybinds {
         let block = build_yazelix_plugins_block(
             &[],
             std::path::Path::new("/opt/yazelix/plugins/yazelix_pane_orchestrator.wasm"),
-            "[editor: {command_editor}]",
+            "[editor: hx]",
             "",
             25,
             std::path::Path::new("/opt/yazelix"),

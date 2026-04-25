@@ -89,6 +89,14 @@ fn default_widget_tray() -> Vec<String> {
     ]
 }
 
+fn default_editor_label() -> String {
+    "hx".into()
+}
+
+fn default_terminal_label() -> String {
+    "ghostty".into()
+}
+
 #[derive(Debug, Deserialize)]
 pub struct ZellijRenderPlanRequest {
     #[serde(default = "default_enable_sidebar")]
@@ -120,6 +128,10 @@ pub struct ZellijRenderPlanRequest {
     pub zellij_default_mode: String,
     pub yazelix_layout_dir: String,
     pub resolved_default_shell: String,
+    #[serde(default = "default_editor_label")]
+    pub editor_label: String,
+    #[serde(default = "default_terminal_label")]
+    pub terminal_label: String,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -146,6 +158,9 @@ pub struct ZellijRenderPlanData {
     pub popup_width_percent: i64,
     pub popup_height_percent: i64,
     pub widget_tray: Vec<String>,
+    pub editor_label: String,
+    pub shell_label: String,
+    pub terminal_label: String,
     pub custom_text: String,
     pub layout_percentages: LayoutPlaceholderPercents,
     pub rounded_value: String,
@@ -262,6 +277,27 @@ fn kdl_quoted_path(path: &Path) -> String {
     format!("\"{}\"", path.to_string_lossy())
 }
 
+fn status_label(raw: &str, default: &str) -> String {
+    let first_token = raw.split_whitespace().next().unwrap_or("");
+    let candidate = Path::new(first_token)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .filter(|name| !name.trim().is_empty())
+        .unwrap_or(first_token)
+        .trim();
+    let mut label = candidate
+        .chars()
+        .filter(|character| {
+            !character.is_control() && !matches!(character, '[' | ']' | '{' | '}' | '"' | '\\')
+        })
+        .take(24)
+        .collect::<String>();
+    if label.trim().is_empty() {
+        label = default.to_string();
+    }
+    label
+}
+
 pub fn compute_zellij_render_plan(
     request: &ZellijRenderPlanRequest,
 ) -> Result<ZellijRenderPlanData, CoreError> {
@@ -282,6 +318,9 @@ pub fn compute_zellij_render_plan(
         .unwrap_or("")
         .trim()
         .to_string();
+    let editor_label = status_label(&request.editor_label, "hx");
+    let shell_label = status_label(&request.resolved_default_shell, "nu");
+    let terminal_label = status_label(&request.terminal_label, "ghostty");
 
     let default_layout_name = if request.enable_sidebar {
         "yzx_side".to_string()
@@ -361,6 +400,9 @@ pub fn compute_zellij_render_plan(
         popup_width_percent: request.popup_width_percent,
         popup_height_percent: request.popup_height_percent,
         widget_tray,
+        editor_label,
+        shell_label,
+        terminal_label,
         custom_text,
         layout_percentages,
         rounded_value: rounded_value.to_string(),
@@ -393,6 +435,8 @@ mod tests {
             zellij_default_mode: "normal".into(),
             yazelix_layout_dir: "/tmp/yazelix/layouts".into(),
             resolved_default_shell: "/usr/bin/nu".into(),
+            editor_label: "hx".into(),
+            terminal_label: "ghostty".into(),
         }
     }
 
@@ -468,5 +512,20 @@ mod tests {
             .find(|s| s.name == "support_kitty_keyboard_protocol")
             .unwrap();
         assert_eq!(kitty.value, "false");
+    }
+
+    // Regression: status widget labels must never be empty, even when config values are paths or omitted.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn status_widget_labels_use_basenames_and_defaults() {
+        let mut req = sample_request();
+        req.editor_label = "".into();
+        req.resolved_default_shell = "/nix/store/example/bin/nu".into();
+        req.terminal_label = "/opt/ghostty/bin/ghostty".into();
+        let plan = compute_zellij_render_plan(&req).unwrap();
+
+        assert_eq!(plan.editor_label, "hx");
+        assert_eq!(plan.shell_label, "nu");
+        assert_eq!(plan.terminal_label, "ghostty");
     }
 }

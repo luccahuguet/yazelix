@@ -25,10 +25,17 @@ let
         relativePath = lib.removePrefix ((toString src) + "/") (toString path);
         isBuildArtifact =
           relativePath == "rust_core/target" || lib.hasPrefix "rust_core/target/" relativePath;
+        isZellijStatusTemplateSource =
+          relativePath == "configs"
+          || relativePath == "configs/zellij"
+          || relativePath == "configs/zellij/layouts"
+          || relativePath == "configs/zellij/layouts/fragments"
+          || relativePath == "configs/zellij/layouts/fragments/zjstatus_tab_template.kdl";
         isRustCoreSource =
           relativePath == "rust_core"
           || relativePath == "config_metadata"
           || relativePath == "yazelix_default.toml"
+          || isZellijStatusTemplateSource
           || lib.hasPrefix "rust_core/" relativePath
           || lib.hasPrefix "config_metadata/" relativePath;
       in

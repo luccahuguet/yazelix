@@ -31,18 +31,6 @@ plugin location="__YAZELIX_ZJSTATUS_PLUGIN_URL__" {
     datetime        "#[fg=#bb88ff,bold] {format} "
     datetime_format "%H:%M %d/%m"
 
-    command_shell_command "nu __YAZELIX_RUNTIME_DIR__/nushell/scripts/utils/zjstatus_widget.nu shell"
-
-    command_editor_command "nu __YAZELIX_RUNTIME_DIR__/nushell/scripts/utils/zjstatus_widget.nu editor"
-    command_editor_format "#[fg=#00ff88,bold]{stdout}"
-    command_editor_interval "300"
-    command_shell_format "#[fg=#00ff88,bold]{stdout}"
-    command_shell_interval "300"
-
-    command_term_command "nu __YAZELIX_RUNTIME_DIR__/nushell/scripts/utils/zjstatus_widget.nu terminal"
-    command_term_format "#[fg=#00ff88,bold]{stdout}"
-    command_term_interval "300"
-
     command_cpu_command "nu __YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/cpu_usage.nu"
     command_cpu_format "#[fg=#ff6600][cpu {stdout}]"
     command_cpu_interval "5"
