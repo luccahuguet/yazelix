@@ -298,11 +298,6 @@ fn colorize_boid_char(ch: char, index: usize) -> String {
     format!("{}{}{}", palette[index % palette.len()], ch, ANSI_RESET)
 }
 
-fn colorize_game_of_life_char(x: usize, y: usize) -> String {
-    let palette = [ANSI_GREEN, ANSI_CYAN, ANSI_BLUE, ANSI_PURPLE];
-    format!("{}█{}", palette[(x + y) % palette.len()], ANSI_RESET)
-}
-
 fn colorize_game_of_life_glyph(x: usize, y: usize, glyph: char) -> String {
     let palette = [ANSI_GREEN, ANSI_CYAN, ANSI_BLUE, ANSI_PURPLE];
     format!(
@@ -530,7 +525,42 @@ fn resolve_game_of_life_screen_body_height(minimum_height: usize, resolved_heigh
 }
 
 fn get_game_of_life_grid_width(inner_width: usize) -> usize {
-    (inner_width / 2).max(1)
+    inner_width.saturating_sub(inner_width % 2).max(2)
+}
+
+fn get_game_of_life_grid_height(body_height: usize) -> usize {
+    body_height.saturating_mul(2).max(2)
+}
+
+fn game_of_life_quadrant_glyph(
+    top_left: bool,
+    top_right: bool,
+    bottom_left: bool,
+    bottom_right: bool,
+) -> Option<char> {
+    let bits = (top_left as u8)
+        | ((top_right as u8) << 1)
+        | ((bottom_left as u8) << 2)
+        | ((bottom_right as u8) << 3);
+    match bits {
+        0 => None,
+        1 => Some('▘'),
+        2 => Some('▝'),
+        3 => Some('▀'),
+        4 => Some('▖'),
+        5 => Some('▌'),
+        6 => Some('▞'),
+        7 => Some('▛'),
+        8 => Some('▗'),
+        9 => Some('▚'),
+        10 => Some('▐'),
+        11 => Some('▜'),
+        12 => Some('▄'),
+        13 => Some('▙'),
+        14 => Some('▟'),
+        15 => Some('█'),
+        _ => None,
+    }
 }
 
 fn game_of_life_shape(name: &str) -> Vec<(i32, i32)> {
@@ -653,10 +683,11 @@ fn build_live_game_of_life_seed(
     style: &str,
 ) -> HashSet<(i32, i32)> {
     let width = get_game_of_life_grid_width(inner_width);
+    let height = get_game_of_life_grid_height(body_height);
     match style {
-        "game_of_life_gliders" => build_game_of_life_gliders_seed(width, body_height),
-        "game_of_life_oscillators" => build_game_of_life_oscillators_seed(width, body_height),
-        _ => build_game_of_life_bloom_seed(width, body_height),
+        "game_of_life_gliders" => build_game_of_life_gliders_seed(width, height),
+        "game_of_life_oscillators" => build_game_of_life_oscillators_seed(width, height),
+        _ => build_game_of_life_bloom_seed(width, height),
     }
 }
 
@@ -699,21 +730,21 @@ fn build_game_of_life_screen_lines(
     cells: &HashSet<(i32, i32)>,
 ) -> Vec<String> {
     let grid_width = get_game_of_life_grid_width(inner_width);
+    let grid_height = get_game_of_life_grid_height(body_height);
     let mut body = Vec::new();
-    for top_row_index in (0..body_height).step_by(2) {
+    for top_row_index in (0..grid_height).step_by(2) {
         let bottom_row_index = top_row_index + 1;
         let mut row = String::new();
-        for x in 0..grid_width {
-            let top_alive = cells.contains(&(x as i32, top_row_index as i32));
-            let bottom_alive = bottom_row_index < body_height
-                && cells.contains(&(x as i32, bottom_row_index as i32));
-            let cell = match (top_alive, bottom_alive) {
-                (true, true) => Some(colorize_game_of_life_char(x, top_row_index)),
-                (true, false) => Some(colorize_game_of_life_glyph(x, top_row_index, '▀')),
-                (false, true) => Some(colorize_game_of_life_glyph(x, bottom_row_index, '▄')),
-                (false, false) => None,
-            };
-            if let Some(cell) = cell {
+        for left_x in (0..grid_width).step_by(2) {
+            let right_x = left_x + 1;
+            let glyph = game_of_life_quadrant_glyph(
+                cells.contains(&(left_x as i32, top_row_index as i32)),
+                right_x < grid_width && cells.contains(&(right_x as i32, top_row_index as i32)),
+                cells.contains(&(left_x as i32, bottom_row_index as i32)),
+                right_x < grid_width && cells.contains(&(right_x as i32, bottom_row_index as i32)),
+            );
+            if let Some(glyph) = glyph {
+                let cell = colorize_game_of_life_glyph(left_x / 2, top_row_index / 2, glyph);
                 row.push_str(&cell);
                 row.push_str(&cell);
             } else {
@@ -755,7 +786,8 @@ pub fn render_game_of_life_screen_state(state: &GameOfLifeScreenState) -> Vec<St
 
 pub fn step_game_of_life_screen_state(state: &mut GameOfLifeScreenState) {
     let width = get_game_of_life_grid_width(state.inner_width);
-    state.cells = step_game_of_life_cells(&state.cells, width, state.body_height);
+    let height = get_game_of_life_grid_height(state.body_height);
+    state.cells = step_game_of_life_cells(&state.cells, width, height);
 }
 
 fn welcome_sequence(
@@ -775,6 +807,7 @@ fn welcome_sequence(
             let body_height =
                 resolve_game_of_life_body_height(spec.welcome_minimum_body_height, height);
             let width_limit = get_game_of_life_grid_width(inner_width);
+            let height_limit = get_game_of_life_grid_height(body_height);
             let frame_delay = Duration::from_millis(220);
             let frame_count =
                 ((duration.as_secs_f64() / frame_delay.as_secs_f64()).ceil() as usize).max(2);
@@ -786,7 +819,7 @@ fn welcome_sequence(
                 &cells,
             )];
             for _ in 1..frame_count {
-                cells = step_game_of_life_cells(&cells, width_limit, body_height);
+                cells = step_game_of_life_cells(&cells, width_limit, height_limit);
                 frames.push(build_game_of_life_screen_lines(
                     inner_width,
                     body_height,
@@ -1152,22 +1185,23 @@ mod tests {
         );
     }
 
-    // Regression: Game of Life screen rendering must vertically pack two logical rows into one terminal row so terminals with visible row gaps do not make the pattern look double-spaced.
+    // Regression: Game of Life gliders must survive packed rendering as quadrant shapes instead of collapsing into ambiguous horizontal bars.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn game_of_life_screen_lines_use_vertical_half_block_packing() {
-        let lines = render_test_game_of_life_lines(6, 3, &[(1, 0), (2, 1), (0, 2), (1, 2), (2, 2)]);
+    fn game_of_life_screen_lines_preserve_glider_silhouette_with_quadrants() {
+        let lines = render_test_game_of_life_lines(4, 2, &[(1, 0), (2, 1), (0, 2), (1, 2), (2, 2)]);
         assert_eq!(lines.len(), 2);
-        assert!(lines[0].contains('▀'));
-        assert!(lines[0].contains('▄'));
+        assert!(lines[0].contains('▝'));
+        assert!(lines[0].contains('▖'));
         assert!(lines[1].contains('▀'));
+        assert!(lines[1].contains('▘'));
     }
 
-    // Regression: stacked live cells in adjacent logical rows must merge into a filled block instead of two visually separated terminal rows.
+    // Regression: a fully occupied 2x2 logical block must render as a filled cell under quadrant packing.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn game_of_life_screen_lines_merge_stacked_cells_into_full_blocks() {
-        let lines = render_test_game_of_life_lines(4, 2, &[(1, 0), (1, 1)]);
+    fn game_of_life_screen_lines_merge_full_quadrants_into_blocks() {
+        let lines = render_test_game_of_life_lines(2, 1, &[(0, 0), (1, 0), (0, 1), (1, 1)]);
         assert_eq!(lines.len(), 1);
         assert!(lines[0].contains('█'));
     }
