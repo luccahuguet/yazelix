@@ -901,6 +901,16 @@ fn validate_installed_runtime_contract_inner(repo_root: &Path) -> Result<Vec<Str
 }
 
 fn validate_home_manager_activation_contract(repo_root: &Path) -> Result<Vec<String>, String> {
+    let mut errors = Vec::new();
+    errors.extend(validate_home_manager_activation_mode(repo_root, true)?);
+    errors.extend(validate_home_manager_activation_mode(repo_root, false)?);
+    Ok(errors)
+}
+
+fn validate_home_manager_activation_mode(
+    repo_root: &Path,
+    manage_config: bool,
+) -> Result<Vec<String>, String> {
     let temp_root = create_unique_temp_dir("yazelix_home_manager_activation")?;
     let cleanup_result = (|| {
         let flake_root = temp_root.join("flake");
@@ -917,7 +927,12 @@ fn validate_home_manager_activation_contract(repo_root: &Path) -> Result<Vec<Str
             .map_err(|error| format!("Failed to create {}: {}", xdg_data_home.display(), error))?;
         fs::write(
             flake_root.join("flake.nix"),
-            build_home_manager_activation_validation_flake(repo_root, &home_root, &system),
+            build_home_manager_activation_validation_flake(
+                repo_root,
+                &home_root,
+                &system,
+                manage_config,
+            ),
         )
         .map_err(|error| {
             format!(
@@ -1002,9 +1017,32 @@ fn validate_home_manager_activation_contract(repo_root: &Path) -> Result<Vec<Str
                 .join("yazelix")
                 .join("user_configs")
                 .join("yazelix.toml"),
-            "Home Manager managed yazelix.toml surface after activation",
+            if manage_config {
+                "Home Manager managed yazelix.toml surface after activation"
+            } else {
+                "Yazelix bootstrapped mutable yazelix.toml surface after Home Manager activation"
+            },
             &mut errors,
         );
+        let main_config_path = home_root
+            .join(".config")
+            .join("yazelix")
+            .join("user_configs")
+            .join("yazelix.toml");
+        if let Ok(metadata) = fs::symlink_metadata(&main_config_path) {
+            if manage_config && !metadata.file_type().is_symlink() {
+                errors.push(format!(
+                    "Home Manager managed yazelix.toml should be a profile symlink: {}",
+                    main_config_path.display()
+                ));
+            }
+            if !manage_config && metadata.file_type().is_symlink() {
+                errors.push(format!(
+                    "Home Manager manage_config=false should leave yazelix.toml mutable, got symlink: {}",
+                    main_config_path.display()
+                ));
+            }
+        }
         require_path_exists_abs(
             &home_root
                 .join(".local")
@@ -1067,6 +1105,7 @@ fn build_home_manager_activation_validation_flake(
     repo_root: &Path,
     home_root: &Path,
     system: &str,
+    manage_config: bool,
 ) -> String {
     let repo_root_literal = escape_nix_string(&repo_root.display().to_string());
     let home_root_literal = escape_nix_string(&home_root.display().to_string());
@@ -1100,6 +1139,11 @@ fn build_home_manager_activation_validation_flake(
         "            home.stateVersion = \"24.11\";".to_string(),
         "            programs.home-manager.enable = true;".to_string(),
         "            programs.yazelix.enable = true;".to_string(),
+        if manage_config {
+            "            # manage_config default is intentionally exercised here.".to_string()
+        } else {
+            "            programs.yazelix.manage_config = false;".to_string()
+        },
         "          })".to_string(),
         "        ];".to_string(),
         "      };".to_string(),

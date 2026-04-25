@@ -10,6 +10,7 @@
 {
   programs.yazelix = {
     enable = true;
+    manage_config = true; # Set false to keep ~/.config/yazelix/user_configs/yazelix.toml mutable
 
     # Shell entry
     default_shell = "zsh";
