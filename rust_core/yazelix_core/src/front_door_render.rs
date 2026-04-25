@@ -78,7 +78,7 @@ pub struct GameOfLifeScreenState {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct ScreenCell {
-    braille_bits: u8,
+    glyph: char,
     color_x: usize,
     color_y: usize,
 }
@@ -99,26 +99,11 @@ impl ScreenFrame {
         }
     }
 
-    fn set_braille_pixel(&mut self, x: usize, y: usize, color_x: usize, color_y: usize) {
-        let cell_x = x / 2;
-        let cell_y = y / 4;
-        if cell_x >= self.width || cell_y >= self.height {
+    fn set(&mut self, x: usize, y: usize, cell: ScreenCell) {
+        if x >= self.width || y >= self.height {
             return;
         }
-        let Some(mask) = braille_dot_mask(x % 2, y % 4) else {
-            return;
-        };
-        let index = cell_y * self.width + cell_x;
-        match &mut self.cells[index] {
-            Some(cell) => cell.braille_bits |= mask,
-            None => {
-                self.cells[index] = Some(ScreenCell {
-                    braille_bits: mask,
-                    color_x,
-                    color_y,
-                });
-            }
-        }
+        self.cells[y * self.width + x] = Some(cell);
     }
 
     fn render_game_of_life_lines(&self, resolved_width: usize) -> Vec<String> {
@@ -127,15 +112,11 @@ impl ScreenFrame {
                 let mut line = String::new();
                 for x in 0..self.width {
                     match self.cells[y * self.width + x] {
-                        Some(cell) => {
-                            let glyph =
-                                char::from_u32(0x2800 + cell.braille_bits as u32).unwrap_or(' ');
-                            line.push_str(&colorize_game_of_life_glyph(
-                                cell.color_x,
-                                cell.color_y,
-                                glyph,
-                            ));
-                        }
+                        Some(cell) => line.push_str(&colorize_game_of_life_glyph(
+                            cell.color_x,
+                            cell.color_y,
+                            cell.glyph,
+                        )),
                         None => line.push(' '),
                     }
                 }
@@ -143,20 +124,6 @@ impl ScreenFrame {
             })
             .collect();
         center_frame_lines(lines, resolved_width)
-    }
-}
-
-fn braille_dot_mask(x: usize, y: usize) -> Option<u8> {
-    match (x, y) {
-        (0, 0) => Some(0x01),
-        (0, 1) => Some(0x02),
-        (0, 2) => Some(0x04),
-        (0, 3) => Some(0x40),
-        (1, 0) => Some(0x08),
-        (1, 1) => Some(0x10),
-        (1, 2) => Some(0x20),
-        (1, 3) => Some(0x80),
-        _ => None,
     }
 }
 
@@ -609,11 +576,11 @@ fn resolve_game_of_life_screen_body_height(minimum_height: usize, resolved_heigh
 }
 
 fn get_game_of_life_grid_width(inner_width: usize) -> usize {
-    inner_width.max(3)
+    (inner_width / 2).max(1)
 }
 
 fn get_game_of_life_grid_height(body_height: usize) -> usize {
-    body_height.saturating_mul(2).max(3)
+    body_height.max(3)
 }
 
 fn game_of_life_shape(name: &str) -> Vec<(i32, i32)> {
@@ -791,12 +758,14 @@ fn build_game_of_life_screen_lines(
                 continue;
             }
 
+            let cell = ScreenCell {
+                glyph: '█',
+                color_x: x,
+                color_y: y,
+            };
             let origin_x = x * 2;
-            let origin_y = y * 2;
-            for dy in 0..2 {
-                for dx in 0..2 {
-                    frame.set_braille_pixel(origin_x + dx, origin_y + dy, x, y);
-                }
+            for dx in 0..2 {
+                frame.set(origin_x + dx, y, cell);
             }
         }
     }
@@ -1250,27 +1219,30 @@ mod tests {
         );
     }
 
-    // Regression: Game of Life gliders must render as a compact canonical silhouette instead of being stretched into double-height full-block tiles.
+    // Regression: Game of Life gliders must keep the old Nushell full-block silhouette instead of shrinking into tiny braille dots.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn game_of_life_screen_lines_preserve_glider_silhouette_as_braille_tiles() {
-        let lines = render_test_game_of_life_lines(4, 2, &[(1, 0), (2, 1), (0, 2), (1, 2), (2, 2)]);
+    fn game_of_life_screen_lines_preserve_glider_silhouette_as_full_blocks() {
+        let lines = render_test_game_of_life_lines(8, 3, &[(1, 0), (2, 1), (0, 2), (1, 2), (2, 2)]);
         let visible_lines = lines
             .iter()
             .map(|line| strip_ansi_codes(line))
             .collect::<Vec<_>>();
-        assert_eq!(visible_lines, vec![" ⠛⣤ ", "⠛⠛⠛ "]);
+        assert_eq!(visible_lines, vec!["  ██    ", "    ██  ", "██████  "]);
     }
 
-    // Regression: adjacent Game of Life rows must share one terminal row so welcome-screen gliders do not render twice as tall.
+    // Regression: the Rust renderer must match the old Nushell Game of Life row contract: one life row per terminal row.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn game_of_life_screen_lines_pack_two_life_rows_per_terminal_row() {
-        let lines = render_test_game_of_life_lines(4, 2, &[(0, 0), (0, 1)]);
+    fn game_of_life_screen_lines_preserve_life_rows_without_inserted_gaps() {
+        let lines = render_test_game_of_life_lines(8, 4, &[(0, 0), (0, 1), (0, 2)]);
         let visible_lines = lines
             .iter()
             .map(|line| strip_ansi_codes(line))
             .collect::<Vec<_>>();
-        assert_eq!(visible_lines, vec!["⣿   ", "    "]);
+        assert_eq!(
+            visible_lines,
+            vec!["██      ", "██      ", "██      ", "        "]
+        );
     }
 }
