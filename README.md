@@ -81,10 +81,10 @@ If Yazelix is useful to you, you can support its development on [GitHub Sponsors
 
 v16.1 stabilizes Home Manager installs and screen rendering
 
-- Fixed the welcome and yzx screen Game of Life renderers so gliders keep their intended shape without terminal row-gap artifacts, and added the configurable core.game_of_life_cell_style option with full_block and dotted styles.
-- Added programs.yazelix.manage_config for Home Manager users who want Home Manager to own the package/runtime/desktop integration while leaving ~/.config/yazelix/user_configs/yazelix.toml as a normal mutable file.
-- Made Home Manager local-input updates faster and clearer by warning about path: snapshot semantics and filtering package/runtime source trees away from local build artifacts.
-- Fixed empty Zellij status widgets by removing missing dynamic identity helper commands and rendering stable editor, shell, and terminal labels directly in the generated status payload.
+- Fixed the welcome and yzx screen Game of Life renderers so gliders keep their intended shape without terminal row-gap artifacts, and added the configurable core.game_of_life_cell_style option with full_block and dotted styles
+- Added programs.yazelix.manage_config for Home Manager users who want Home Manager to own the package/runtime/desktop integration while leaving ~/.config/yazelix/user_configs/yazelix.toml as a normal mutable file
+- Made Home Manager local-input updates faster and clearer by warning about path: snapshot semantics and filtering package/runtime source trees away from local build artifacts
+- Fixed empty Zellij status widgets by removing missing dynamic identity helper commands and rendering stable editor, shell, and terminal labels directly in the generated status payload
 
 ### v16
 
