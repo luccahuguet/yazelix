@@ -22,6 +22,15 @@ use std::process::Command;
 
 const PANE_ORCHESTRATOR_PLUGIN_ALIAS: &str = "yazelix_pane_orchestrator";
 const EDITOR_PANE_NAME: &str = "editor";
+pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
+    "pipe",
+    "get-workspace-root",
+    "inspect-session",
+    "retarget",
+    "open-editor",
+    "open-editor-cwd",
+    "open-terminal",
+];
 const EDITOR_PANE_ENV_OVERRIDE_KEYS: &[&str] = &[
     "PATH",
     "YAZELIX_RUNTIME_DIR",
@@ -45,6 +54,12 @@ struct ZellijPipeArgs {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ZellijGetWorkspaceRootArgs {
     include_bootstrap: bool,
+    help: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct ZellijInspectSessionArgs {
+    json: bool,
     help: bool,
 }
 
@@ -203,6 +218,161 @@ fn print_zellij_get_workspace_root_help() {
     println!();
     println!("Usage:");
     println!("  yzx_control zellij get-workspace-root [--include-bootstrap]");
+}
+
+pub fn internal_zellij_control_subcommands_usage() -> String {
+    INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS.join("|")
+}
+
+fn parse_zellij_inspect_session_args(
+    args: &[String],
+) -> Result<ZellijInspectSessionArgs, CoreError> {
+    let mut parsed = ZellijInspectSessionArgs::default();
+    for arg in args {
+        match arg.as_str() {
+            "--json" => parsed.json = true,
+            "-h" | "--help" | "help" => parsed.help = true,
+            other if other.starts_with('-') => {
+                return Err(CoreError::usage(format!(
+                    "Unknown argument for zellij inspect-session: {other}"
+                )));
+            }
+            _ => {
+                return Err(CoreError::usage(
+                    "zellij inspect-session accepts no positional arguments".to_string(),
+                ));
+            }
+        }
+    }
+    Ok(parsed)
+}
+
+fn print_zellij_inspect_session_help() {
+    println!("Inspect the current tab session state from the pane orchestrator");
+    println!();
+    println!("Usage:");
+    println!("  yzx_control zellij inspect-session [--json]");
+}
+
+pub fn run_zellij_inspect_session(args: &[String]) -> Result<i32, CoreError> {
+    let parsed = parse_zellij_inspect_session_args(args)?;
+    if parsed.help {
+        print_zellij_inspect_session_help();
+        return Ok(0);
+    }
+
+    if env::var_os("ZELLIJ").is_none() {
+        eprintln!("yzx_control zellij inspect-session only works inside a Yazelix/Zellij session.");
+        return Ok(1);
+    }
+
+    let response = run_pane_orchestrator_command("get_active_tab_session_state", "")?;
+    match response.trim() {
+        "permissions_denied" => {
+            eprintln!("Pane orchestrator permissions are not granted.");
+            Ok(1)
+        }
+        "not_ready" | "missing" => {
+            eprintln!("Pane orchestrator session state is not ready yet.");
+            Ok(1)
+        }
+        "invalid_payload" => {
+            eprintln!("Pane orchestrator rejected the inspect-session request.");
+            Ok(1)
+        }
+        raw => {
+            let value: Value = serde_json::from_str(raw).map_err(|error| {
+                CoreError::classified(
+                    ErrorClass::Runtime,
+                    "invalid_session_state_payload",
+                    format!("Pane orchestrator returned invalid session-state JSON: {error}"),
+                    "Restart Yazelix and retry. If this persists, rebuild the pane orchestrator wasm.",
+                    json!({ "payload": raw }),
+                )
+            })?;
+            if parsed.json {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&value).unwrap_or_else(|_| value.to_string())
+                );
+            } else {
+                for line in render_session_state_inspection_lines(&value) {
+                    println!("{line}");
+                }
+            }
+            Ok(0)
+        }
+    }
+}
+
+fn render_session_state_inspection_lines(value: &Value) -> Vec<String> {
+    let mut lines = Vec::new();
+    lines.push("Yazelix active tab session state".to_string());
+    lines.push(format!(
+        "  schema_version: {}",
+        value
+            .get("schema_version")
+            .and_then(Value::as_i64)
+            .map(|version| version.to_string())
+            .unwrap_or_else(|| "unknown".into())
+    ));
+    lines.push(format!(
+        "  active_tab_position: {}",
+        value
+            .get("active_tab_position")
+            .and_then(Value::as_u64)
+            .map(|position| position.to_string())
+            .unwrap_or_else(|| "unknown".into())
+    ));
+    lines.push(format!(
+        "  workspace: {} ({})",
+        nested_str(value, &["workspace", "root"]).unwrap_or("none"),
+        nested_str(value, &["workspace", "source"]).unwrap_or("unknown")
+    ));
+    lines.push(format!(
+        "  focus_context: {}",
+        value
+            .get("focus_context")
+            .and_then(Value::as_str)
+            .unwrap_or("unknown")
+    ));
+    lines.push(format!(
+        "  layout: active_swap_layout_name={}, sidebar_collapsed={}",
+        nested_str(value, &["layout", "active_swap_layout_name"]).unwrap_or("none"),
+        nested_bool(value, &["layout", "sidebar_collapsed"])
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "unknown".into())
+    ));
+    lines.push(format!(
+        "  managed_panes: editor={}, sidebar={}",
+        nested_str(value, &["managed_panes", "editor_pane_id"]).unwrap_or("none"),
+        nested_str(value, &["managed_panes", "sidebar_pane_id"]).unwrap_or("none")
+    ));
+    lines.push(format!(
+        "  sidebar_yazi: id={}, cwd={}",
+        nested_str(value, &["sidebar_yazi", "yazi_id"]).unwrap_or("none"),
+        nested_str(value, &["sidebar_yazi", "cwd"]).unwrap_or("none")
+    ));
+    lines
+}
+
+fn nested_str<'a>(value: &'a Value, path: &[&str]) -> Option<&'a str> {
+    let mut cursor = value;
+    for key in path {
+        cursor = cursor.get(*key)?;
+    }
+    cursor
+        .as_str()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+}
+
+fn nested_bool(value: &Value, path: &[&str]) -> Option<bool> {
+    let mut cursor = value;
+    for key in path {
+        cursor = cursor.get(*key)?;
+    }
+    cursor.as_bool()
 }
 
 fn parse_zellij_open_editor_args(args: &[String]) -> Result<ZellijOpenEditorArgs, CoreError> {
@@ -1112,5 +1282,21 @@ mod tests {
             parse_workspace_retarget_response("permissions_denied"),
             json!({"status": "permissions_denied"})
         );
+    }
+
+    // Defends: maintainer session inspection renders the stable active-tab snapshot fields used to debug workspace routing.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn session_inspection_lines_include_workspace_layout_and_sidebar_identity() {
+        let value: Value = serde_json::from_str(
+            r#"{"schema_version":1,"active_tab_position":2,"workspace":{"root":"/tmp/project","source":"explicit"},"focus_context":"sidebar","layout":{"active_swap_layout_name":"single_open","sidebar_collapsed":false},"managed_panes":{"editor_pane_id":"terminal:7","sidebar_pane_id":"terminal:8"},"sidebar_yazi":{"yazi_id":"yazi-123","cwd":"/tmp/project"}}"#,
+        )
+        .unwrap();
+        let rendered = render_session_state_inspection_lines(&value).join("\n");
+
+        assert!(rendered.contains("workspace: /tmp/project (explicit)"));
+        assert!(rendered.contains("layout: active_swap_layout_name=single_open"));
+        assert!(rendered.contains("managed_panes: editor=terminal:7, sidebar=terminal:8"));
+        assert!(rendered.contains("sidebar_yazi: id=yazi-123, cwd=/tmp/project"));
     }
 }

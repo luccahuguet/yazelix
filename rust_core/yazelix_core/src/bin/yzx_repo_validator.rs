@@ -10,8 +10,9 @@ use yazelix_core::repo_validation::{
     repo_root, validate_default_test_traceability, validate_package_rust_test_purity,
     validate_rust_test_traceability, validate_specs,
 };
+use yazelix_core::workspace_session_contract::validate_workspace_session_contract;
 
-const USAGE_COMMANDS: &str = "validate-specs|validate-default-test-traceability|validate-rust-test-traceability|validate-package-rust-test-purity|validate-pane-orchestrator-sync|validate-config-surface-contract|validate-nushell-budget|validate-upgrade-contract|validate-installed-runtime-contract|validate-flake-interface|validate-flake-profile-install|validate-nixpkgs-package|validate-nixpkgs-submission|validate-nushell-syntax|validate-readme-version";
+const USAGE_COMMANDS: &str = "validate-specs|validate-default-test-traceability|validate-rust-test-traceability|validate-package-rust-test-purity|validate-pane-orchestrator-sync|validate-workspace-session-contract|validate-config-surface-contract|validate-nushell-budget|validate-upgrade-contract|validate-installed-runtime-contract|validate-flake-interface|validate-flake-profile-install|validate-nixpkgs-package|validate-nixpkgs-submission|validate-nushell-syntax|validate-readme-version";
 
 fn main() {
     let mut args = std::env::args().skip(1);
@@ -55,6 +56,15 @@ fn main() {
                     errors,
                 }),
             Some("✅ Pane-orchestrator tracked wasm is synced with source".to_string()),
+        ),
+        "validate-workspace-session-contract" => (
+            validate_workspace_session_contract(&resolved_repo_root).map(|errors| {
+                yazelix_core::repo_validation::ValidationReport {
+                    warnings: Vec::new(),
+                    errors,
+                }
+            }),
+            Some("✅ Workspace/session asset contract is valid".to_string()),
         ),
         "validate-config-surface-contract" => (
             validate_config_surface_contract(&resolved_repo_root),
@@ -162,6 +172,9 @@ fn main() {
                         "Package-time Rust test purity validation failed"
                     }
                     "validate-pane-orchestrator-sync" => "Pane-orchestrator sync validation failed",
+                    "validate-workspace-session-contract" => {
+                        "Workspace/session contract validation failed"
+                    }
                     "validate-config-surface-contract" => {
                         "Main config surface, Home Manager desktop entry, and generated-state contract validation failed"
                     }

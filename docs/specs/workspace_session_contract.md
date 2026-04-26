@@ -132,6 +132,41 @@ This cache should be treated as an integration cache, not as the main workspace 
   `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`; automated
   `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_core_owned_facts`
 
+#### WSS-006
+- Type: invariant
+- Status: live
+- Owner: built-in Zellij layout family metadata
+- Statement: Built-in Zellij layout family behavior is described by
+  `config_metadata/zellij_layout_families.toml`, and top-level built-in layout
+  KDL files must stay represented there so startup layouts, swap layouts, and
+  family-aware controls do not drift through scattered strings
+- Verification: automated
+  `yzx_repo_validator validate-workspace-session-contract`; automated
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core layout_family_contract::tests`
+
+#### WSS-007
+- Type: behavior
+- Status: live
+- Owner: `yzx doctor` workspace asset drift checks
+- Statement: Missing or stale generated workspace assets, including generated
+  Zellij config, generated layouts, and generated plugin wasm artifacts, must
+  surface as doctor findings with the generated-state repair action when the
+  issue is repairable
+- Verification: automated
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core workspace_asset_contract::tests`
+
+#### WSS-008
+- Type: boundary
+- Status: live
+- Owner: maintainer session inspection surface
+- Statement: Maintainers can inspect the active tab session snapshot through
+  `yzx dev inspect_session` without ad hoc plugin pipes, and that output must
+  include workspace root/source, focus context, layout state, managed panes, and
+  sidebar Yazi identity
+- Verification: automated
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zellij_commands::tests::session_inspection_lines_include_workspace_layout_and_sidebar_identity`; automated
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core public_command_surface::tests::routes_dev_inspect_session_to_internal_nu_leaf`
+
 ## Ownership Rules
 
 ### Nushell Owns
@@ -359,14 +394,20 @@ If the answer is unclear, the feature is probably crossing the boundary incorrec
 - `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
 - `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
 - `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib`
+- `yzx_repo_validator validate-workspace-session-contract`
 - `yzx_repo_validator validate-specs`
 
 ## Traceability
 
 - Bead: `yazelix-0qxa`
+- Bead: `yazelix-tn7h`
+- Bead: `yazelix-v67a`
+- Bead: `yazelix-zaar`
+- Bead: `yazelix-221s`
 - Defended by: `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
 - Defended by: `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
 - Defended by: `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib`
+- Defended by: `yzx_repo_validator validate-workspace-session-contract`
 
 ## Open Questions
 

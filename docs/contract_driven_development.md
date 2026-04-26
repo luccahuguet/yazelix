@@ -117,6 +117,10 @@ The current ratchet is enforced by these validators:
 - `yzx_repo_validator validate-pane-orchestrator-sync`
   - validates tracked pane-orchestrator wasm sync metadata against the current
     source so source edits cannot silently ship with stale plugin artifacts
+- `yzx_repo_validator validate-workspace-session-contract`
+  - validates built-in Zellij layout metadata, workspace runtime assets,
+    internal Zellij command routing, pane-orchestrator pipe commands, and Yazi
+    workspace entrypoints
 
 Current migration-safe debt that is allowed but must shrink is tracked in
 [`docs/contract_traceability_quarantine.toml`](./contract_traceability_quarantine.toml).

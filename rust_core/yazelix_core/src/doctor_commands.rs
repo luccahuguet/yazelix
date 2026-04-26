@@ -14,6 +14,9 @@ use crate::install_ownership_env::install_ownership_request_from_env_with_runtim
 use crate::runtime_materialization::{
     RuntimeMaterializationRepairEvaluateRequest, repair_runtime_materialization,
 };
+use crate::workspace_asset_contract::{
+    WorkspaceAssetEvaluateRequest, evaluate_workspace_asset_report,
+};
 use crate::zellij_materialization::{
     ZellijMaterializationRequest, generate_zellij_materialization,
 };
@@ -185,12 +188,15 @@ fn compute_doctor_report_from_env() -> Result<DoctorReportData, CoreError> {
         normalized_config.as_ref(),
     );
     let config_findings = collect_config_doctor_findings(&runtime_dir, &config_dir);
+    let workspace_asset_findings =
+        collect_workspace_asset_doctor_findings(&runtime_dir, &state_dir);
     let zellij_findings = collect_zellij_plugin_health_findings(normalized_config.as_ref());
 
     let mut results = Vec::new();
     results.extend(runtime_findings);
     results.extend(helix_findings);
     results.extend(config_findings);
+    results.extend(workspace_asset_findings);
     results.extend(
         install_report
             .wrapper_shadowing
@@ -402,6 +408,17 @@ fn collect_config_doctor_findings(runtime_dir: &Path, config_dir: &Path) -> Vec<
         .map(serialize_value)
         .collect::<Result<Vec<_>, _>>()
         .expect("config findings should serialize")
+}
+
+fn collect_workspace_asset_doctor_findings(runtime_dir: &Path, state_dir: &Path) -> Vec<Value> {
+    evaluate_workspace_asset_report(&WorkspaceAssetEvaluateRequest {
+        runtime_dir: runtime_dir.to_path_buf(),
+        state_dir: state_dir.to_path_buf(),
+    })
+    .iter()
+    .map(serialize_value)
+    .collect::<Result<Vec<_>, _>>()
+    .expect("workspace asset findings should serialize")
 }
 
 fn platform_name_for_runtime_doctor() -> String {

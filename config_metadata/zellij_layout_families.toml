@@ -1,0 +1,36 @@
+schema_version = 1
+
+[[layout_families]]
+id = "sidebar"
+layout_file = "yzx_side.kdl"
+swap_layout_file = "yzx_side.swap.kdl"
+sidebar_enabled = true
+required_pane_names = ["sidebar"]
+required_runtime_scripts = ["configs/zellij/scripts/launch_sidebar_yazi.nu"]
+swap_layouts = [
+  "single_open",
+  "single_closed",
+  "vertical_split_open",
+  "vertical_split_closed",
+  "bottom_terminal_open",
+  "bottom_terminal_closed",
+]
+
+[[layout_families]]
+id = "no_sidebar"
+layout_file = "yzx_no_side.kdl"
+swap_layout_file = "yzx_no_side.swap.kdl"
+sidebar_enabled = false
+required_pane_names = ["filemanager"]
+required_runtime_scripts = ["configs/zellij/scripts/launch_sidebar_yazi.nu"]
+swap_layouts = [
+  "basic",
+  "stacked",
+  "two_column",
+  "bottom_terminal",
+]
+
+[[auxiliary_layouts]]
+id = "sweep_test"
+layout_file = "yzx_sweep_test.kdl"
+purpose = "terminal sweep validation"

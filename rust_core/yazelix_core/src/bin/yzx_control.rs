@@ -45,12 +45,14 @@ use yazelix_core::run_yzx_tutor;
 use yazelix_core::run_yzx_whats_new;
 use yazelix_core::run_yzx_why;
 use yazelix_core::run_zellij_get_workspace_root;
+use yazelix_core::run_zellij_inspect_session;
 use yazelix_core::run_zellij_open_editor;
 use yazelix_core::run_zellij_open_editor_cwd;
 use yazelix_core::run_zellij_open_terminal;
 use yazelix_core::run_zellij_pipe;
 use yazelix_core::run_zellij_retarget;
 use yazelix_core::update_commands::run_yzx_update;
+use yazelix_core::zellij_commands::internal_zellij_control_subcommands_usage;
 
 fn usage() -> ! {
     eprintln!("Usage: yzx_control env [--no-shell|-n]");
@@ -81,6 +83,7 @@ fn usage() -> ! {
     eprintln!("       yzx_control profile print-report <report_path>");
     eprintln!("       yzx_control zellij pipe <command> [--payload <json>]");
     eprintln!("       yzx_control zellij get-workspace-root [--include-bootstrap]");
+    eprintln!("       yzx_control zellij inspect-session [--json]");
     eprintln!("       yzx_control zellij retarget <path> [--editor <kind>]");
     eprintln!("       yzx_control zellij open-editor <path>");
     eprintln!("       yzx_control zellij open-editor-cwd <path>");
@@ -804,7 +807,8 @@ fn run_profile(args: &[String]) -> Result<i32, CoreError> {
 fn run_zellij(args: &[String]) -> Result<i32, CoreError> {
     if args.is_empty() {
         eprintln!(
-            "Usage: yzx_control zellij <pipe|get-workspace-root|retarget|open-editor|open-editor-cwd|open-terminal> [args...]"
+            "Usage: yzx_control zellij <{}> [args...]",
+            internal_zellij_control_subcommands_usage()
         );
         return Ok(64);
     }
@@ -813,6 +817,7 @@ fn run_zellij(args: &[String]) -> Result<i32, CoreError> {
     match sub.as_str() {
         "pipe" => run_zellij_pipe(&argv),
         "get-workspace-root" => run_zellij_get_workspace_root(&argv),
+        "inspect-session" => run_zellij_inspect_session(&argv),
         "retarget" => run_zellij_retarget(&argv),
         "open-editor" => run_zellij_open_editor(&argv),
         "open-editor-cwd" => run_zellij_open_editor_cwd(&argv),
@@ -820,7 +825,8 @@ fn run_zellij(args: &[String]) -> Result<i32, CoreError> {
         _ => {
             eprintln!("Unknown zellij subcommand: {sub}");
             eprintln!(
-                "Usage: yzx_control zellij <pipe|get-workspace-root|retarget|open-editor|open-editor-cwd|open-terminal> [args...]"
+                "Usage: yzx_control zellij <{}> [args...]",
+                internal_zellij_control_subcommands_usage()
             );
             Ok(64)
         }

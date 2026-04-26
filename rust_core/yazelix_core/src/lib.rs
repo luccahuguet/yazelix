@@ -24,6 +24,7 @@ pub mod internal_nu_runner;
 pub mod keys_commands;
 pub mod launch_commands;
 pub mod launch_materialization;
+pub mod layout_family_contract;
 pub mod profile_commands;
 pub mod public_command_surface;
 pub mod repo_contract_validation;
@@ -45,7 +46,9 @@ pub mod terminal_materialization;
 pub mod transient_pane_facts;
 pub mod update_commands;
 pub mod upgrade_summary;
+pub mod workspace_asset_contract;
 pub mod workspace_commands;
+pub mod workspace_session_contract;
 pub mod yazi_materialization;
 pub mod yazi_render_plan;
 pub mod zellij_commands;
@@ -148,8 +151,8 @@ pub use yazi_materialization::{
 };
 pub use yazi_render_plan::{YaziRenderPlanData, YaziRenderPlanRequest, compute_yazi_render_plan};
 pub use zellij_commands::{
-    run_zellij_get_workspace_root, run_zellij_open_editor, run_zellij_open_editor_cwd,
-    run_zellij_open_terminal, run_zellij_pipe, run_zellij_retarget,
+    run_zellij_get_workspace_root, run_zellij_inspect_session, run_zellij_open_editor,
+    run_zellij_open_editor_cwd, run_zellij_open_terminal, run_zellij_pipe, run_zellij_retarget,
 };
 pub use zellij_materialization::{
     ZellijMaterializationData, ZellijMaterializationRequest, generate_zellij_materialization,

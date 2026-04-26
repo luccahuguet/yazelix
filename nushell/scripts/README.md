@@ -58,6 +58,7 @@ For maintainer workflows, prefer the Rust-owned runner surfaces
 yzx dev rust fmt --check
 yzx dev rust check
 yzx dev rust test <filter>
+yzx dev inspect_session
 yzx dev build_pane_orchestrator --sync
 yzx dev test --lint-only
 yzx dev test

@@ -148,6 +148,7 @@ const DEV_UPDATE_FLAGS: &[YzxCommandParameter] = &[
 const DEV_BUMP_ARGS: &[YzxCommandParameter] = &[positional("version", "string", false)];
 const DEV_SYNC_FLAGS: &[YzxCommandParameter] = &[switch("dry-run", None)];
 const DEV_BUILD_FLAGS: &[YzxCommandParameter] = &[switch("sync", None)];
+const DEV_INSPECT_SESSION_FLAGS: &[YzxCommandParameter] = &[switch("json", None)];
 const DEV_RUST_TARGET_ARG: &[YzxCommandParameter] = &[positional("target", "string", true)];
 const DEV_RUST_FMT_ARGS: &[YzxCommandParameter] =
     &[positional("target", "string", true), switch("check", None)];
@@ -542,6 +543,18 @@ const DEV_BUMP_COMMAND: YzxCommandLeaf = leaf(
     &["bump"],
     YZX_DEV_RELATIVE_PATH,
 );
+const DEV_INSPECT_SESSION_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx dev inspect_session",
+        "Inspect the current Yazelix tab session state",
+        YzxCommandCategory::Development,
+        DEV_INSPECT_SESSION_FLAGS,
+        None,
+        None,
+    ),
+    &["inspect_session"],
+    YZX_DEV_RELATIVE_PATH,
+);
 const DEV_LINT_COMMAND: YzxCommandLeaf = leaf(
     metadata(
         "yzx dev lint_nu",
@@ -654,6 +667,7 @@ const DEV_COMMANDS: &[YzxCommandLeaf] = &[
     DEV_ROOT_COMMAND,
     DEV_BUILD_COMMAND,
     DEV_BUMP_COMMAND,
+    DEV_INSPECT_SESSION_COMMAND,
     DEV_LINT_COMMAND,
     DEV_PROFILE_COMMAND,
     DEV_RUST_COMMAND,
@@ -1264,6 +1278,23 @@ mod tests {
             plan.tail,
             [String::from("core"), String::from("front_door_render")]
         );
+    }
+
+    // Defends: maintainer session inspection stays reachable through the public `yzx dev` route.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
+    #[test]
+    fn routes_dev_inspect_session_to_internal_nu_leaf() {
+        let argv = [
+            String::from("dev"),
+            String::from("inspect_session"),
+            String::from("--json"),
+        ];
+        let route = classify_yzx_root_route(&argv).unwrap();
+        let YzxPublicRootRoute::InternalNu(plan) = route else {
+            panic!("expected internal Nu route");
+        };
+        assert_eq!(plan.command_name, "yzx dev inspect_session");
+        assert_eq!(plan.tail, [String::from("--json")]);
     }
 
     // Regression: menu visibility and menu categories come from the shared Rust command surface instead of a second Nushell-owned map.

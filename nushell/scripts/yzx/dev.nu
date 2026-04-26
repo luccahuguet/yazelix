@@ -212,6 +212,18 @@ export def "yzx dev build_pane_orchestrator" [
     run_repo_maintainer_checked $repo_root "Yazelix Rust pane-orchestrator build failed" ...$args
 }
 
+# Inspect the current Yazelix tab session state
+export def "yzx dev inspect_session" [
+    --json  # Emit the raw pane-orchestrator session snapshot as JSON
+] {
+    let yzx_control_bin = (resolve_yzx_control_path)
+    mut args = ["zellij", "inspect-session"]
+    if $json {
+        $args = ($args | append "--json")
+    }
+    ^$yzx_control_bin ...$args
+}
+
 # Show fast Rust inner-loop commands
 export def "yzx dev rust" [] {
     print "Fast Rust inner-loop commands:"
