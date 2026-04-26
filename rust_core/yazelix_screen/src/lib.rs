@@ -2,6 +2,7 @@
 
 mod boids;
 mod game_of_life;
+mod mandelbrot;
 
 use crossterm::terminal;
 use std::io::{self, Write};
@@ -15,6 +16,9 @@ pub use game_of_life::{
     render_game_of_life_screen_state, resolve_game_of_life_body_height,
     resolve_game_of_life_screen_body_height, step_game_of_life_cells,
     step_game_of_life_screen_state,
+};
+pub use mandelbrot::{
+    MandelbrotAnimation, mandelbrot_escape_iterations, mandelbrot_max_iterations,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

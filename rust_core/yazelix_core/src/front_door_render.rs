@@ -9,7 +9,7 @@ use std::sync::OnceLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 pub use yazelix_screen::GameOfLifeCellStyle;
 use yazelix_screen::{
-    BoidsAnimation, GameOfLifeAnimation, RawModeGuard as ScreenRawModeGuard,
+    BoidsAnimation, GameOfLifeAnimation, MandelbrotAnimation, RawModeGuard as ScreenRawModeGuard,
     ScreenAnimationContext, ScreenFrameProducer, build_game_of_life_screen_lines,
     build_live_game_of_life_seed, center_frame_lines, center_text, game_of_life_grid_height,
     game_of_life_grid_width, game_of_life_spec, is_game_of_life_style,
@@ -157,6 +157,7 @@ fn screen_frame_delay(resolved_style: &str) -> Duration {
     match resolved_style {
         style if is_game_of_life_style(style) => Duration::from_millis(160),
         "boids" => Duration::from_millis(90),
+        "mandelbrot" => Duration::from_millis(110),
         _ => Duration::from_millis(120),
     }
 }
@@ -632,6 +633,15 @@ fn boids_screen_context(width: usize, height: usize) -> ScreenAnimationContext {
     }
 }
 
+fn mandelbrot_screen_context(width: usize, height: usize) -> ScreenAnimationContext {
+    ScreenAnimationContext {
+        resolved_width: width,
+        resolved_height: height,
+        inner_width: width,
+        size_class: get_logo_welcome_variant(width),
+    }
+}
+
 pub fn play_welcome_style(style: &str, duration: Duration) -> Result<(), CoreError> {
     play_welcome_style_with_cell_style(style, duration, GameOfLifeCellStyle::FullBlock)
 }
@@ -690,9 +700,10 @@ pub fn run_screen_surface_with_cell_style(
     let frame_delay = screen_frame_delay(&resolved_style);
     let is_game_of_life = is_game_of_life_style(&resolved_style);
     let is_boids = resolved_style == "boids";
+    let is_mandelbrot = resolved_style == "mandelbrot";
     let mut width = terminal_width();
     let mut height = terminal_height();
-    let mut frames = if is_game_of_life || is_boids {
+    let mut frames = if is_game_of_life || is_boids || is_mandelbrot {
         Vec::new()
     } else {
         screen_cycle_frames_non_game_of_life(&resolved_style, width)?
@@ -704,6 +715,13 @@ pub fn run_screen_surface_with_cell_style(
             game_of_life_screen_context(width, height),
             cell_style,
         ))
+    } else {
+        None
+    };
+    let mut mandelbrot_state = if is_mandelbrot {
+        Some(MandelbrotAnimation::new(mandelbrot_screen_context(
+            width, height,
+        )))
     } else {
         None
     };
@@ -722,6 +740,8 @@ pub fn run_screen_surface_with_cell_style(
             if let Some(state) = game_of_life_state.as_ref() {
                 render_screen_frame(&state.render_frame())?;
             } else if let Some(state) = boids_state.as_ref() {
+                render_screen_frame(&state.render_frame())?;
+            } else if let Some(state) = mandelbrot_state.as_ref() {
                 render_screen_frame(&state.render_frame())?;
             } else {
                 if frames.is_empty() {
@@ -753,6 +773,10 @@ pub fn run_screen_surface_with_cell_style(
                     if let Some(state) = boids_state.as_mut() {
                         state.resize(boids_screen_context(width, height));
                     }
+                } else if is_mandelbrot {
+                    if let Some(state) = mandelbrot_state.as_mut() {
+                        state.resize(mandelbrot_screen_context(width, height));
+                    }
                 } else {
                     frames = screen_cycle_frames_non_game_of_life(&resolved_style, width)?;
                     frame_index = 0;
@@ -763,6 +787,8 @@ pub fn run_screen_surface_with_cell_style(
             if let Some(state) = game_of_life_state.as_mut() {
                 state.advance_frame();
             } else if let Some(state) = boids_state.as_mut() {
+                state.advance_frame();
+            } else if let Some(state) = mandelbrot_state.as_mut() {
                 state.advance_frame();
             } else {
                 frame_index += 1;
@@ -805,6 +831,28 @@ mod tests {
     fn screen_style_rejects_static() {
         let err = resolve_screen_style(Some("static"), None).unwrap_err();
         assert_eq!(err.code(), "invalid_screen_style");
+    }
+
+    // Defends: Mandelbrot is exposed as a screen-only producer without joining welcome/random rotation.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn mandelbrot_is_screen_only() {
+        assert_eq!(
+            resolve_screen_style(Some("mandelbrot"), None).unwrap(),
+            "mandelbrot"
+        );
+        assert_eq!(
+            resolve_welcome_style("mandelbrot", None)
+                .unwrap_err()
+                .code(),
+            "invalid_welcome_style"
+        );
+        for index in 0..8 {
+            assert_ne!(
+                resolve_screen_style(Some("random"), Some(index)).unwrap(),
+                "mandelbrot"
+            );
+        }
     }
 
     // Regression: wide terminals must not let the logo welcome card stretch to a near-full-width frame.
