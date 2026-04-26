@@ -271,7 +271,7 @@ fn materialize_runtime_state_from_plan(
         contract_path: request.contract_path.clone(),
         runtime_dir: request.runtime_dir.clone(),
         zellij_config_dir: request.zellij_config_dir.clone(),
-        seed_plugin_permissions: false,
+        seed_plugin_permissions: true,
     })?;
 
     let config_dir = config_dir_from_env()?;

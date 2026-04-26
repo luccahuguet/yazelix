@@ -120,7 +120,7 @@ export def build_welcome_message [
         $"($colors.cyan)✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide($colors.reset)",
         $session_info,
         $terminal_info,
-        $"($colors.yellow)⚠️  First run: grant the required Yazelix plugin permissions. Focus the top zjstatus bar and press 'y' if it prompts, and also say yes to the Yazelix orchestrator permission popup.($colors.reset)",
+        $"($colors.yellow)⚠️  First run: Yazelix pre-seeds bundled Zellij plugin permissions before launch. If Zellij still prompts, answer yes; troubleshooting covers cache-reset recovery.($colors.reset)",
         $"($colors.cyan)💡 Quick tips: Use 'alt hjkl' to navigate, 'Ctrl y' to jump between the editor and sidebar, 'Alt y' to toggle the sidebar, and 'Alt [' or 'Alt ]' to change layout family($colors.reset)"
     ] | where $it != ""
 }

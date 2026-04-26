@@ -138,7 +138,6 @@ pub fn generate_zellij_materialization(
         &source_layouts_dir,
         &plugin_artifacts,
     )?;
-
     if reuse_allowed
         && can_reuse_generated_zellij_state(
             &request.zellij_config_dir,
@@ -148,6 +147,9 @@ pub fn generate_zellij_materialization(
             &plugin_artifacts,
         )?
     {
+        if request.seed_plugin_permissions {
+            upsert_plugin_permission_blocks(&plugin_artifacts)?;
+        }
         return Ok(ZellijMaterializationData {
             merged_config_path: merged_config_path.to_string_lossy().to_string(),
             merged_config_dir: request.zellij_config_dir.to_string_lossy().to_string(),
@@ -167,7 +169,7 @@ pub fn generate_zellij_materialization(
                 .to_string_lossy()
                 .to_string(),
             permissions_cache_path: permissions_cache_path()?.to_string_lossy().to_string(),
-            seeded_plugin_permissions: false,
+            seeded_plugin_permissions: request.seed_plugin_permissions,
             generated_layouts: expected_layout_targets(
                 &source_layouts_dir,
                 &request.zellij_config_dir,
@@ -1203,7 +1205,6 @@ fn plugin_name_matches_prefix(file_name: &str, prefix: &str) -> bool {
     file_name == format!("{prefix}.wasm")
         || (file_name.starts_with(&format!("{prefix}_")) && file_name.ends_with(".wasm"))
 }
-
 fn preserve_plugin_permissions(
     prefix: &str,
     tracked_path: &Path,
@@ -1788,7 +1789,6 @@ ui { pane_frames { hide_session_name true } }
         assert!(template.contains("command_workspace_command"));
         assert!(template.contains("status-bus-workspace"));
     }
-
     // Defends: legacy plugin permission blocks are recognized by both stable and hashed wasm names.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]

@@ -4,8 +4,8 @@ use assert_cmd::Command;
 use pretty_assertions::assert_eq;
 use serde_json::{Value, json};
 use std::fs;
-use std::path::PathBuf;
-use tempfile::tempdir;
+use std::path::{Path, PathBuf};
+use tempfile::{TempDir, tempdir};
 
 mod support;
 
@@ -13,23 +13,18 @@ use support::commands::yzx_core_command;
 use support::envelopes::{error_envelope, ok_envelope};
 use support::fixtures::{repo_root, write_runtime_contract_assets};
 
-fn doctor_config_request(config_dir: &std::path::Path, runtime_dir: &std::path::Path) -> String {
+fn doctor_config_request(config_dir: &Path, runtime_dir: &Path) -> String {
     serde_json::json!({
         "config_dir": config_dir.to_string_lossy(),
         "runtime_dir": runtime_dir.to_string_lossy(),
     })
     .to_string()
 }
-
-fn prepare_doctor_config_runtime_fixture(
-    repo: &std::path::Path,
-    tmp: &tempfile::TempDir,
-) -> PathBuf {
+fn prepare_doctor_config_runtime_fixture(repo: &Path, tmp: &TempDir) -> PathBuf {
     let runtime_dir = tmp.path().join("runtime");
     write_runtime_contract_assets(repo, &runtime_dir);
     runtime_dir
 }
-
 struct RuntimeMaterializationFixture {
     home_dir: PathBuf,
     runtime_dir: PathBuf,
@@ -41,10 +36,9 @@ struct RuntimeMaterializationFixture {
     zellij_dir: PathBuf,
     zellij_layout_dir: PathBuf,
 }
-
 fn prepare_runtime_materialization_fixture(
-    repo: &std::path::Path,
-    tmp: &tempfile::TempDir,
+    repo: &Path,
+    tmp: &TempDir,
 ) -> RuntimeMaterializationFixture {
     let home_dir = tmp.path().join("home");
     let runtime_dir = tmp.path().join("runtime");
@@ -71,7 +65,6 @@ fn prepare_runtime_materialization_fixture(
         .join("terminal_emulators")
         .join("ghostty")
         .join("shaders");
-
     fs::create_dir_all(managed_config.parent().unwrap()).unwrap();
     fs::create_dir_all(managed_zellij_config.parent().unwrap()).unwrap();
     fs::create_dir_all(&zellij_layout_dir).unwrap();
@@ -81,7 +74,6 @@ fn prepare_runtime_materialization_fixture(
     fs::create_dir_all(&runtime_shell_dir).unwrap();
     fs::create_dir_all(&runtime_contract_dir).unwrap();
     fs::create_dir_all(&runtime_ghostty_shader_dir).unwrap();
-
     write_runtime_contract_assets(repo, &runtime_dir);
     fs::write(
         runtime_shell_dir.join("yazelix_nu.sh"),
@@ -126,10 +118,8 @@ fn prepare_runtime_materialization_fixture(
         "fixture shaders\n",
     )
     .unwrap();
-
     fs::copy(runtime_dir.join("yazelix_default.toml"), &managed_config).unwrap();
     fs::write(&managed_zellij_config, "keybinds {}\n").unwrap();
-
     RuntimeMaterializationFixture {
         home_dir,
         runtime_dir,
@@ -142,7 +132,6 @@ fn prepare_runtime_materialization_fixture(
         zellij_layout_dir,
     }
 }
-
 fn runtime_materialization_request(fixture: &RuntimeMaterializationFixture) -> Value {
     json!({
         "config_path": fixture.managed_config,
@@ -156,7 +145,6 @@ fn runtime_materialization_request(fixture: &RuntimeMaterializationFixture) -> V
         "layout_override": Value::Null,
     })
 }
-
 fn runtime_materialization_command(
     fixture: &RuntimeMaterializationFixture,
     helper_command: &str,
@@ -174,7 +162,6 @@ fn runtime_materialization_command(
         .env("YAZELIX_RUNTIME_DIR", &fixture.runtime_dir);
     command
 }
-
 // Defends: config.normalize emits a single machine-readable success envelope for valid config input.
 // Contract: CRCP-001
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
@@ -191,7 +178,6 @@ fn config_normalize_prints_one_success_json_envelope() {
         .arg(repo.join("config_metadata/main_config_contract.toml"))
         .output()
         .unwrap();
-
     let envelope: Value = ok_envelope(&output);
     assert_eq!(envelope["command"], "config.normalize");
     assert_eq!(
@@ -199,7 +185,6 @@ fn config_normalize_prints_one_success_json_envelope() {
         "yazelix"
     );
 }
-
 // Defends: config.normalize emits a single machine-readable config error envelope for invalid input.
 // Contract: CRCP-001
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
@@ -209,7 +194,6 @@ fn config_normalize_prints_one_error_json_envelope() {
     let tmp = tempdir().unwrap();
     let config_path = tmp.path().join("yazelix.toml");
     fs::write(&config_path, "[shell]\ndefault_shell = \"powershell\"\n").unwrap();
-
     let output = yzx_core_command()
         .arg("config.normalize")
         .arg("--config")
@@ -516,13 +500,11 @@ fn runtime_materialization_materialize_writes_generated_artifacts_and_records_st
     let tmp = tempdir().unwrap();
     let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
     let request = runtime_materialization_request(&fixture);
-
     let output = runtime_materialization_command(&fixture, "runtime-materialization.materialize")
         .arg("--request-json")
         .arg(request.to_string())
         .output()
         .unwrap();
-
     assert!(output.status.success());
     assert!(output.stderr.is_empty());
     let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
@@ -530,12 +512,20 @@ fn runtime_materialization_materialize_writes_generated_artifacts_and_records_st
     assert_eq!(envelope["status"], "ok");
     assert_eq!(envelope["data"]["plan"]["status"], "refresh_required");
     assert_eq!(envelope["data"]["apply"]["recorded"], true);
+    assert_eq!(
+        envelope["data"]["zellij"]["seeded_plugin_permissions"],
+        true
+    );
     assert!(fixture.yazi_dir.join("yazi.toml").exists());
     assert!(fixture.yazi_dir.join("keymap.toml").exists());
     assert!(fixture.yazi_dir.join("init.lua").exists());
     assert!(fixture.zellij_dir.join("config.kdl").exists());
     assert!(fixture.zellij_layout_dir.join("yzx_side.kdl").exists());
-
+    let permissions =
+        fs::read_to_string(fixture.home_dir.join(".cache/zellij/permissions.kdl")).unwrap();
+    assert!(permissions.contains("zjstatus.wasm"));
+    assert!(permissions.contains("yazelix_pane_orchestrator.wasm"));
+    assert!(permissions.contains("ReadCliPipes"));
     let recorded: Value =
         serde_json::from_str(&fs::read_to_string(&fixture.state_path).unwrap()).unwrap();
     assert_eq!(
@@ -546,6 +536,16 @@ fn runtime_materialization_materialize_writes_generated_artifacts_and_records_st
         recorded["runtime_hash"],
         envelope["data"]["plan"]["runtime_hash"]
     );
+    let second_output =
+        runtime_materialization_command(&fixture, "runtime-materialization.materialize")
+            .arg("--request-json")
+            .arg(request.to_string())
+            .output()
+            .unwrap();
+    assert!(second_output.status.success());
+    let second: Value = serde_json::from_slice(&second_output.stdout).unwrap();
+    assert_eq!(second["data"]["zellij"]["reused"], true);
+    assert_eq!(second["data"]["zellij"]["seeded_plugin_permissions"], true);
 }
 
 // Defends: runtime-materialization.repair repairs missing managed artifacts through the Rust lifecycle owner instead of bouncing back into a Nu coordinator.
