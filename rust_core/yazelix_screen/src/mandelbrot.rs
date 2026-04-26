@@ -8,6 +8,14 @@ const ANSI_PURPLE: &str = "\u{1b}[35m";
 const ANSI_CYAN: &str = "\u{1b}[36m";
 const ANSI_RESET: &str = "\u{1b}[0m";
 
+const MANDELBROT_LOOP_FRAMES: usize = 720;
+const MANDELBROT_MIN_ZOOM: f64 = 0.92;
+const MANDELBROT_MAX_ZOOM: f64 = 96.0;
+const MANDELBROT_START_CENTER_X: f64 = -0.62;
+const MANDELBROT_START_CENTER_Y: f64 = 0.015;
+const MANDELBROT_TARGET_CENTER_X: f64 = -0.743_643_887_037_151;
+const MANDELBROT_TARGET_CENTER_Y: f64 = 0.131_825_904_205_33;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct MandelbrotAnimation {
     context: ScreenAnimationContext,
@@ -42,6 +50,14 @@ pub fn mandelbrot_max_iterations(width: usize, height: usize) -> usize {
     (42 + width.saturating_mul(height) / 320).clamp(48, 96)
 }
 
+fn mandelbrot_max_iterations_for_zoom(width: usize, height: usize, zoom: f64) -> usize {
+    let base_iterations = mandelbrot_max_iterations(width, height);
+    let zoom_iterations = zoom.max(1.0).log2().mul_add(12.0, 0.0).round() as usize;
+    base_iterations
+        .saturating_add(zoom_iterations)
+        .clamp(48, 160)
+}
+
 pub fn mandelbrot_escape_iterations(cx: f64, cy: f64, max_iterations: usize) -> usize {
     let mut x = 0.0;
     let mut y = 0.0;
@@ -61,8 +77,8 @@ pub fn mandelbrot_escape_iterations(cx: f64, cy: f64, max_iterations: usize) -> 
 fn render_mandelbrot_frame(context: ScreenAnimationContext, frame_index: usize) -> Vec<String> {
     let width = context.inner_width.max(1);
     let height = context.resolved_height.max(1);
-    let max_iterations = mandelbrot_max_iterations(width, height);
     let view = mandelbrot_view(frame_index);
+    let max_iterations = mandelbrot_max_iterations_for_zoom(width, height, view.zoom);
     let mut frame = ScreenFrame::new(width, height);
 
     for y in 0..height {
@@ -84,19 +100,52 @@ struct MandelbrotView {
     center_y: f64,
     scale_x: f64,
     scale_y: f64,
+    zoom: f64,
 }
 
 fn mandelbrot_view(frame_index: usize) -> MandelbrotView {
-    let phase = (frame_index % 180) as f64 / 180.0;
-    let wave = (phase * std::f64::consts::TAU).sin();
-    let zoom = 0.88 + phase * 2.4;
+    let phase = (frame_index % MANDELBROT_LOOP_FRAMES) as f64 / MANDELBROT_LOOP_FRAMES as f64;
+    let zoom_progress = mandelbrot_zoom_progress(phase);
+    let zoom =
+        MANDELBROT_MIN_ZOOM * (MANDELBROT_MAX_ZOOM / MANDELBROT_MIN_ZOOM).powf(zoom_progress);
+    let scale_x = 3.12 / zoom;
+    let orbit = (1.0 - zoom_progress).powi(2) * 0.025;
+    let orbit_x = (phase * std::f64::consts::TAU).sin() * orbit;
+    let orbit_y = (phase * std::f64::consts::TAU).cos() * orbit * 0.75;
 
     MandelbrotView {
-        center_x: -0.62 + wave * 0.055,
-        center_y: 0.02 + (phase * std::f64::consts::TAU).cos() * 0.035,
-        scale_x: 3.1 / zoom,
-        scale_y: 1.95 / zoom,
+        center_x: lerp(
+            MANDELBROT_START_CENTER_X,
+            MANDELBROT_TARGET_CENTER_X,
+            zoom_progress,
+        ) + orbit_x,
+        center_y: lerp(
+            MANDELBROT_START_CENTER_Y,
+            MANDELBROT_TARGET_CENTER_Y,
+            zoom_progress,
+        ) + orbit_y,
+        scale_x,
+        scale_y: scale_x * 0.64,
+        zoom,
     }
+}
+
+fn mandelbrot_zoom_progress(phase: f64) -> f64 {
+    const ZOOM_IN_FRACTION: f64 = 0.74;
+    if phase < ZOOM_IN_FRACTION {
+        smoothstep(phase / ZOOM_IN_FRACTION)
+    } else {
+        smoothstep(1.0 - (phase - ZOOM_IN_FRACTION) / (1.0 - ZOOM_IN_FRACTION))
+    }
+}
+
+fn smoothstep(value: f64) -> f64 {
+    let value = value.clamp(0.0, 1.0);
+    value * value * (3.0 - 2.0 * value)
+}
+
+fn lerp(start: f64, end: f64, progress: f64) -> f64 {
+    start + (end - start) * progress
 }
 
 fn mandelbrot_point(
@@ -192,6 +241,13 @@ mod tests {
         visible
     }
 
+    fn strip_ansi_from_frame(frame: Vec<String>) -> Vec<String> {
+        frame
+            .into_iter()
+            .map(|line| strip_ansi_codes(&line))
+            .collect()
+    }
+
     // Defends: Mandelbrot uses deterministic in-house CPU frames without host randomness or external engines.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
@@ -206,6 +262,41 @@ mod tests {
 
         assert_eq!(first.render_frame(), second.render_frame());
         assert_ne!(initial, first.render_frame());
+    }
+
+    // Regression: Mandelbrot must visibly zoom through fractal structure, not merely pulse color.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn mandelbrot_loop_changes_visible_fractal_structure() {
+        let initial = strip_ansi_from_frame(render_mandelbrot_frame(context(64, 20), 0));
+        let deep_zoom = strip_ansi_from_frame(render_mandelbrot_frame(
+            context(64, 20),
+            MANDELBROT_LOOP_FRAMES * 3 / 8,
+        ));
+
+        assert_ne!(initial, deep_zoom);
+    }
+
+    // Defends: the finite animation cycle can repeat forever without a visible loop-boundary snap.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn mandelbrot_frame_loop_boundary_is_exactly_repeatable() {
+        assert_eq!(
+            render_mandelbrot_frame(context(48, 16), 0),
+            render_mandelbrot_frame(context(48, 16), MANDELBROT_LOOP_FRAMES)
+        );
+    }
+
+    // Defends: the Mandelbrot view performs a real deep fractal zoom before returning.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn mandelbrot_view_reaches_deep_zoom_then_loops_home() {
+        let home = mandelbrot_view(0);
+        let deep = mandelbrot_view(MANDELBROT_LOOP_FRAMES * 3 / 4);
+        let loop_home = mandelbrot_view(MANDELBROT_LOOP_FRAMES);
+
+        assert!(deep.scale_x < home.scale_x / 40.0);
+        assert_eq!(home, loop_home);
     }
 
     // Defends: narrow terminals still get a complete frame with no skipped or over-wide rows.
@@ -246,5 +337,6 @@ mod tests {
         assert_eq!(mandelbrot_max_iterations(1, 1), 48);
         assert_eq!(mandelbrot_max_iterations(120, 40), 57);
         assert_eq!(mandelbrot_max_iterations(300, 120), 96);
+        assert_eq!(mandelbrot_max_iterations_for_zoom(300, 120, 10_000.0), 160);
     }
 }
