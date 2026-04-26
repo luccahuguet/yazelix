@@ -212,6 +212,7 @@ fn print_screen_help() {
     println!("  logo");
     println!("  boids");
     println!("  mandelbrot");
+    println!("  mandelbrot_seahorse");
     println!("  game_of_life_gliders");
     println!("  game_of_life_oscillators");
     println!("  game_of_life_bloom");

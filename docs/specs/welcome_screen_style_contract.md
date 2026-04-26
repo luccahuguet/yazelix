@@ -14,7 +14,8 @@ The retained public shape is:
 - welcome keeps `static`, `logo`, `boids`,
   `game_of_life_gliders`, `game_of_life_oscillators`,
   `game_of_life_bloom`, and `random`
-- `yzx screen` keeps the same surface except `static`
+- `yzx screen` keeps the same surface except `static`, plus screen-only
+  Mandelbrot styles
 - `random` means one of the three explicit Game of Life variants, not any
   animated style
 - `logo` and `boids` remain live as explicit opt-in styles, but not part of
@@ -45,6 +46,8 @@ Out of scope:
 | `static` | yes | no | live | explicit low-motion resting frame for startup only |
 | `logo` | yes | yes | live | explicit branded reveal and preview style |
 | `boids` | yes | yes | live | explicit alternate animated preview style |
+| `mandelbrot` | no | yes | live | screen-only self-similar minibrot loop |
+| `mandelbrot_seahorse` | no | yes | live | screen-only Seahorse/Misiurewicz spiral zoom |
 | `game_of_life_gliders` | yes | yes | live | retained default-family live simulation variant |
 | `game_of_life_oscillators` | yes | yes | live | retained default-family live simulation variant |
 | `game_of_life_bloom` | yes | yes | live | retained default-family live simulation variant |
@@ -61,7 +64,7 @@ Out of scope:
 - Statement: The retained public style surface is exactly `static`, `logo`,
   `boids`, `game_of_life_gliders`, `game_of_life_oscillators`,
   `game_of_life_bloom`, and `random` for welcome, and the same minus `static`
-  for `yzx screen`
+  plus `mandelbrot` and `mandelbrot_seahorse` for `yzx screen`
 - Verification: `yzx_repo_validator validate-config-surface-contract`;
   Rust `front_door_render` and `front_door_commands` tests;
   `yzx_repo_validator validate-specs`

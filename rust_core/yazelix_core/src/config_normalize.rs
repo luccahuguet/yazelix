@@ -797,7 +797,14 @@ mod tests {
         assert_eq!(config.get("zellij_pane_frames").unwrap(), "true");
         assert_eq!(config.get("game_of_life_cell_style").unwrap(), "full_block");
         assert_eq!(config.get("welcome_duration_seconds").unwrap(), 1.0);
-        assert_eq!(config.len(), 37);
+
+        let contract = read_toml_table(
+            &repo.join("config_metadata/main_config_contract.toml"),
+            "test",
+        )
+        .unwrap();
+        let fields = load_contract_fields(&contract).unwrap();
+        assert_eq!(config.len(), fields.len() + 1);
     }
 
     // Defends: compact badge text normalization trims and truncates user input consistently.
