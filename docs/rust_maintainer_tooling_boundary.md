@@ -29,16 +29,17 @@ The pragmatic split is therefore an in-repo crate boundary. It makes runtime own
 Current state:
 
 - `packaging/mk_runtime_tree.nix` exposes only `yzx`, `yzx_core`, and `yzx_control` from the Rust helper package
-- `packaging/rust_core_helper.nix` builds and checks only `-p yazelix_core`
+- `packaging/rust_core_helper.nix` builds only `-p yazelix_core`
 - `yzx_repo_validator`, `yzx_repo_maintainer`, and the `repo_*` modules live in `rust_core/yazelix_maintainer`
-- package-time Rust checks no longer include maintainer tooling even though maintainer commands remain available from the workspace
+- package-time Rust tests are disabled for user package builds even though maintainer checks remain available from the workspace
 
 Maintained target state:
 
 - runtime/package builds should target only the product crate and shipped helper binaries
+- user package builds should not run Cargo tests; explicit `yzx dev rust test`, CI, and maintainer validators own Rust verification
 - CI and `yzx dev` should invoke maintainer commands through `yazelix_maintainer`
 - maintainer commands may depend on `yazelix_core` for product contract APIs, but `yazelix_core` must not depend on `yazelix_maintainer`
-- default Rust package-time tests should not require host-only maintainer tools such as Nix, GitHub CLI, Beads, or Home Manager
+- package-time tests should not require host-only maintainer tools such as Nix, GitHub CLI, Beads, or Home Manager because package-time tests should not run on the user install path
 
 ## Subsystem Decisions
 
@@ -68,7 +69,7 @@ The accepted implementation should be a mechanical crate split, not a rewrite:
 - keep maintainer-only modules and bins in that crate
 - update CI and `nushell/scripts/yzx/dev.nu` to call `cargo run -p yazelix_maintainer --bin yzx_repo_validator` or `yzx_repo_maintainer`
 - keep public command names stable: `yzx_repo_validator` and `yzx_repo_maintainer`
-- update `packaging/rust_core_helper.nix` so runtime package builds and tests only the product crate/binaries
+- update `packaging/rust_core_helper.nix` so runtime package builds only the product crate/binaries and leaves tests to explicit maintainer/CI gates
 - keep `yazelix_maintainer -> yazelix_core` as the only dependency direction
 
 Do not split the repository until there is a concrete problem this in-repo crate boundary cannot solve. Current pressure is ownership clarity and package/runtime separation, not independent versioning.

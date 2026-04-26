@@ -54,13 +54,11 @@ rustPlatform.buildRustPackage {
     "-p"
     "yazelix_core"
   ];
-  cargoCheckFlags = [
-    "-p"
-    "yazelix_core"
-  ];
 
-  doCheck = true;
-  nativeCheckInputs = [ pkgs.git ];
+  # User package builds must be install-only. CI and maintainer commands own
+  # Rust test execution so Home Manager switches do not pay test cost or depend
+  # on host-only tools from package-time test cases.
+  doCheck = false;
 
   meta = {
     description = "Private Yazelix Rust core helper";
