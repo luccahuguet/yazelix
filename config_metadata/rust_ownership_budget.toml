@@ -1,0 +1,228 @@
+[contract]
+measured_total_loc = 50340
+measured_total_file_count = 102
+current_total_loc_max = 50340
+current_total_file_count_max = 102
+hard_target_loc = 50340
+
+[[families]]
+id = "bar_runtime"
+status = "extension_surface"
+owner_bead = "yazelix-subsys.3.1"
+measured_loc = 178
+measured_files = 1
+max_loc = 178
+target_loc = 178
+max_files = 1
+allowed_paths = [
+  "rust_core/yazelix_bar/src/lib.rs",
+]
+
+[[families]]
+id = "screen_runtime"
+status = "extension_surface"
+owner_bead = "yazelix-subsys.1.3"
+measured_loc = 1493
+measured_files = 4
+max_loc = 1493
+target_loc = 1493
+max_files = 4
+allowed_paths = [
+  "rust_core/yazelix_screen/src/boids.rs",
+  "rust_core/yazelix_screen/src/game_of_life.rs",
+  "rust_core/yazelix_screen/src/lib.rs",
+  "rust_core/yazelix_screen/src/mandelbrot.rs",
+]
+
+[[families]]
+id = "core_cli_and_public_surface"
+status = "canonical"
+owner_bead = "yazelix-ykti.1"
+measured_loc = 6268
+measured_files = 11
+max_loc = 6268
+target_loc = 6268
+max_files = 11
+allowed_paths = [
+  "rust_core/yazelix_core/src/bin/yzx.rs",
+  "rust_core/yazelix_core/src/bin/yzx_control.rs",
+  "rust_core/yazelix_core/src/bin/yzx_core.rs",
+  "rust_core/yazelix_core/src/bridge.rs",
+  "rust_core/yazelix_core/src/cli_render.rs",
+  "rust_core/yazelix_core/src/command_metadata.rs",
+  "rust_core/yazelix_core/src/front_door_commands.rs",
+  "rust_core/yazelix_core/src/front_door_render.rs",
+  "rust_core/yazelix_core/src/lib.rs",
+  "rust_core/yazelix_core/src/public_command_surface.rs",
+  "rust_core/yazelix_core/src/support_commands.rs",
+]
+
+[[families]]
+id = "core_config_and_materialization"
+status = "canonical"
+owner_bead = "yazelix-9opk.6"
+measured_loc = 8450
+measured_files = 17
+max_loc = 8450
+target_loc = 8450
+max_files = 17
+allowed_paths = [
+  "rust_core/yazelix_core/src/active_config_surface.rs",
+  "rust_core/yazelix_core/src/config_commands.rs",
+  "rust_core/yazelix_core/src/config_normalize.rs",
+  "rust_core/yazelix_core/src/config_state.rs",
+  "rust_core/yazelix_core/src/control_plane.rs",
+  "rust_core/yazelix_core/src/ghostty_materialization.rs",
+  "rust_core/yazelix_core/src/helix_materialization.rs",
+  "rust_core/yazelix_core/src/home_manager_commands.rs",
+  "rust_core/yazelix_core/src/initializer_commands.rs",
+  "rust_core/yazelix_core/src/launch_materialization.rs",
+  "rust_core/yazelix_core/src/runtime_contract.rs",
+  "rust_core/yazelix_core/src/runtime_env.rs",
+  "rust_core/yazelix_core/src/runtime_materialization.rs",
+  "rust_core/yazelix_core/src/startup_facts.rs",
+  "rust_core/yazelix_core/src/terminal_materialization.rs",
+  "rust_core/yazelix_core/src/update_commands.rs",
+  "rust_core/yazelix_core/src/upgrade_summary.rs",
+]
+
+[[families]]
+id = "core_diagnostics_and_recovery"
+status = "canonical"
+owner_bead = "yazelix-ykti.2"
+measured_loc = 5477
+measured_files = 9
+max_loc = 5477
+target_loc = 5477
+max_files = 9
+allowed_paths = [
+  "rust_core/yazelix_core/src/doctor_commands.rs",
+  "rust_core/yazelix_core/src/doctor_config_report.rs",
+  "rust_core/yazelix_core/src/doctor_helix_report.rs",
+  "rust_core/yazelix_core/src/doctor_runtime_report.rs",
+  "rust_core/yazelix_core/src/install_ownership_env.rs",
+  "rust_core/yazelix_core/src/install_ownership_report.rs",
+  "rust_core/yazelix_core/src/onboard_commands.rs",
+  "rust_core/yazelix_core/src/profile_commands.rs",
+  "rust_core/yazelix_core/src/status_report.rs",
+]
+
+[[families]]
+id = "core_workspace_and_pane_integration"
+status = "canonical"
+owner_bead = "yazelix-zaar"
+measured_loc = 10632
+measured_files = 14
+max_loc = 10632
+target_loc = 10632
+max_files = 14
+allowed_paths = [
+  "rust_core/yazelix_core/src/edit_commands.rs",
+  "rust_core/yazelix_core/src/import_commands.rs",
+  "rust_core/yazelix_core/src/internal_nu_runner.rs",
+  "rust_core/yazelix_core/src/keys_commands.rs",
+  "rust_core/yazelix_core/src/launch_commands.rs",
+  "rust_core/yazelix_core/src/layout_family_contract.rs",
+  "rust_core/yazelix_core/src/transient_pane_facts.rs",
+  "rust_core/yazelix_core/src/workspace_asset_contract.rs",
+  "rust_core/yazelix_core/src/workspace_commands.rs",
+  "rust_core/yazelix_core/src/yazi_materialization.rs",
+  "rust_core/yazelix_core/src/yazi_render_plan.rs",
+  "rust_core/yazelix_core/src/zellij_commands.rs",
+  "rust_core/yazelix_core/src/zellij_materialization.rs",
+  "rust_core/yazelix_core/src/zellij_render_plan.rs",
+]
+
+[[families]]
+id = "core_integration_tests"
+status = "canonical"
+owner_bead = "yazelix-9opk.4"
+measured_loc = 3657
+measured_files = 16
+max_loc = 3657
+target_loc = 3657
+max_files = 16
+allowed_paths = [
+  "rust_core/yazelix_core/tests/support/commands.rs",
+  "rust_core/yazelix_core/tests/support/envelopes.rs",
+  "rust_core/yazelix_core/tests/support/fixtures.rs",
+  "rust_core/yazelix_core/tests/support/mod.rs",
+  "rust_core/yazelix_core/tests/yazi_render_plan_metadata_parity.rs",
+  "rust_core/yazelix_core/tests/yzx_control_front_door.rs",
+  "rust_core/yazelix_core/tests/yzx_control_public_commands.rs",
+  "rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs",
+  "rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs",
+  "rust_core/yazelix_core/tests/yzx_core_command_metadata.rs",
+  "rust_core/yazelix_core/tests/yzx_core_config_normalize.rs",
+  "rust_core/yazelix_core/tests/yzx_core_owned_facts.rs",
+  "rust_core/yazelix_core/tests/yzx_core_runtime_env.rs",
+  "rust_core/yazelix_core/tests/yzx_core_yazi_materialization.rs",
+  "rust_core/yazelix_core/tests/yzx_core_yazi_render_plan.rs",
+  "rust_core/yazelix_core/tests/yzx_core_zellij_render_plan.rs",
+]
+
+[[families]]
+id = "maintainer_tooling_and_validators"
+status = "canonical_maintainer"
+owner_bead = "yazelix-9opk.5.1"
+measured_loc = 10543
+measured_files = 14
+max_loc = 10543
+target_loc = 10543
+max_files = 14
+allowed_paths = [
+  "rust_core/yazelix_maintainer/src/bin/yzx_repo_maintainer.rs",
+  "rust_core/yazelix_maintainer/src/bin/yzx_repo_validator.rs",
+  "rust_core/yazelix_maintainer/src/lib.rs",
+  "rust_core/yazelix_maintainer/src/repo_contract_validation.rs",
+  "rust_core/yazelix_maintainer/src/repo_issue_sync.rs",
+  "rust_core/yazelix_maintainer/src/repo_nu_lint.rs",
+  "rust_core/yazelix_maintainer/src/repo_plugin_build.rs",
+  "rust_core/yazelix_maintainer/src/repo_rust_budget.rs",
+  "rust_core/yazelix_maintainer/src/repo_sweep_runner.rs",
+  "rust_core/yazelix_maintainer/src/repo_test_runner.rs",
+  "rust_core/yazelix_maintainer/src/repo_update_workflow.rs",
+  "rust_core/yazelix_maintainer/src/repo_validation.rs",
+  "rust_core/yazelix_maintainer/src/repo_version_bump.rs",
+  "rust_core/yazelix_maintainer/src/workspace_session_contract.rs",
+]
+
+[[families]]
+id = "maintainer_tests"
+status = "canonical_maintainer"
+owner_bead = "yazelix-9opk.4"
+measured_loc = 171
+measured_files = 1
+max_loc = 171
+target_loc = 171
+max_files = 1
+allowed_paths = [
+  "rust_core/yazelix_maintainer/tests/repo_upgrade_contract.rs",
+]
+
+[[families]]
+id = "pane_orchestrator_plugin"
+status = "extension_surface"
+owner_bead = "yazelix-subsys.2.1"
+measured_loc = 3471
+measured_files = 15
+max_loc = 3471
+target_loc = 3471
+max_files = 15
+allowed_paths = [
+  "rust_plugins/zellij_pane_orchestrator/src/active_tab_session_state.rs",
+  "rust_plugins/zellij_pane_orchestrator/src/editor.rs",
+  "rust_plugins/zellij_pane_orchestrator/src/horizontal_focus_contract.rs",
+  "rust_plugins/zellij_pane_orchestrator/src/layout.rs",
+  "rust_plugins/zellij_pane_orchestrator/src/lib.rs",
+  "rust_plugins/zellij_pane_orchestrator/src/main.rs",
+  "rust_plugins/zellij_pane_orchestrator/src/pane_contract.rs",
+  "rust_plugins/zellij_pane_orchestrator/src/panes.rs",
+  "rust_plugins/zellij_pane_orchestrator/src/sidebar_contract.rs",
+  "rust_plugins/zellij_pane_orchestrator/src/sidebar_state_contract.rs",
+  "rust_plugins/zellij_pane_orchestrator/src/sidebar_yazi.rs",
+  "rust_plugins/zellij_pane_orchestrator/src/transient.rs",
+  "rust_plugins/zellij_pane_orchestrator/src/transient_adapter_contract.rs",
+  "rust_plugins/zellij_pane_orchestrator/src/transient_pane_contract.rs",
+  "rust_plugins/zellij_pane_orchestrator/src/workspace.rs",
+]

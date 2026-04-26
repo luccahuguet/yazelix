@@ -6,13 +6,14 @@ use yazelix_maintainer::repo_contract_validation::{
     validate_nushell_syntax, validate_readme_version, validate_upgrade_contract,
 };
 use yazelix_maintainer::repo_plugin_build::validate_pane_orchestrator_sync;
+use yazelix_maintainer::repo_rust_budget::validate_rust_ownership_budget;
 use yazelix_maintainer::repo_validation::{
     repo_root, validate_default_test_traceability, validate_package_rust_test_purity,
     validate_rust_test_traceability, validate_specs,
 };
 use yazelix_maintainer::workspace_session_contract::validate_workspace_session_contract;
 
-const USAGE_COMMANDS: &str = "validate-specs|validate-default-test-traceability|validate-rust-test-traceability|validate-package-rust-test-purity|validate-pane-orchestrator-sync|validate-workspace-session-contract|validate-config-surface-contract|validate-nushell-budget|validate-upgrade-contract|validate-installed-runtime-contract|validate-flake-interface|validate-flake-profile-install|validate-nixpkgs-package|validate-nixpkgs-submission|validate-nushell-syntax|validate-readme-version";
+const USAGE_COMMANDS: &str = "validate-specs|validate-default-test-traceability|validate-rust-test-traceability|validate-package-rust-test-purity|validate-pane-orchestrator-sync|validate-workspace-session-contract|validate-config-surface-contract|validate-nushell-budget|validate-rust-ownership-budget|validate-upgrade-contract|validate-installed-runtime-contract|validate-flake-interface|validate-flake-profile-install|validate-nixpkgs-package|validate-nixpkgs-submission|validate-nushell-syntax|validate-readme-version";
 
 fn main() {
     let mut args = std::env::args().skip(1);
@@ -76,6 +77,10 @@ fn main() {
         "validate-nushell-budget" => (
             validate_nushell_budget(&resolved_repo_root),
             Some("✅ Nushell budget allowlist and no-growth ceilings are valid".to_string()),
+        ),
+        "validate-rust-ownership-budget" => (
+            validate_rust_ownership_budget(&resolved_repo_root),
+            Some("✅ Rust ownership budget and no-growth ceilings are valid".to_string()),
         ),
         "validate-installed-runtime-contract" => (
             validate_installed_runtime_contract(&resolved_repo_root),
@@ -179,6 +184,7 @@ fn main() {
                         "Main config surface, Home Manager desktop entry, and generated-state contract validation failed"
                     }
                     "validate-nushell-budget" => "Nushell budget validation failed",
+                    "validate-rust-ownership-budget" => "Rust ownership budget validation failed",
                     "validate-upgrade-contract" => "Upgrade contract validation failed",
                     "validate-installed-runtime-contract" => {
                         "Installed-runtime contract validation failed"

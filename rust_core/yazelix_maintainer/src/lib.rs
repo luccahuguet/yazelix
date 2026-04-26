@@ -2,6 +2,7 @@ pub mod repo_contract_validation;
 pub mod repo_issue_sync;
 pub mod repo_nu_lint;
 pub mod repo_plugin_build;
+pub mod repo_rust_budget;
 pub mod repo_sweep_runner;
 pub mod repo_test_runner;
 pub mod repo_update_workflow;
