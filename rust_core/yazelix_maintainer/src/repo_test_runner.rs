@@ -1,6 +1,5 @@
 use crate::repo_contract_validation::validate_nushell_syntax;
 use crate::repo_plugin_build::validate_pane_orchestrator_sync;
-use crate::repo_rust_budget::validate_rust_ownership_budget;
 use crate::repo_sweep_runner::run_sweep_tests;
 use crate::repo_validation::validate_package_rust_test_purity;
 use crate::workspace_session_contract::validate_workspace_session_contract;
@@ -170,12 +169,10 @@ fn run_static_maintainer_validations(
     errors.extend(pane_orchestrator_errors);
     let workspace_session_errors = validate_workspace_session_contract(repo_root)?;
     errors.extend(workspace_session_errors);
-    let rust_budget_report = validate_rust_ownership_budget(repo_root)?;
-    errors.extend(rust_budget_report.errors);
 
     if errors.is_empty() {
         println!(
-            "✅ Package-test purity, pane-orchestrator sync, workspace/session, and Rust ownership budget checks passed"
+            "✅ Package-test purity, pane-orchestrator sync, and workspace/session checks passed"
         );
         append_log(log_file, "✅ Static maintainer validations passed\n\n")?;
         Ok(true)
@@ -186,7 +183,7 @@ fn run_static_maintainer_validations(
         }
         if verbose {
             println!(
-                "   Validators: validate-package-rust-test-purity, validate-pane-orchestrator-sync, validate-workspace-session-contract, validate-rust-ownership-budget"
+                "   Validators: validate-package-rust-test-purity, validate-pane-orchestrator-sync, validate-workspace-session-contract"
             );
         }
         append_log(

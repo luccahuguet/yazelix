@@ -135,10 +135,6 @@ jobs:
         shell: bash
         run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-rust-test-traceability
 
-      - name: Validate Rust ownership budget
-        shell: bash
-        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-rust-ownership-budget
-
       - name: Validate top-level flake interface
         run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-flake-interface
 

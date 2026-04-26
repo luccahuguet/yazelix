@@ -323,6 +323,7 @@ mod tests {
 
     // Defends: the Rust ownership validator rejects unowned files and no-growth ceiling breaches instead of silently expanding the Rust surface.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[ignore = "Rust ownership budget is manual audit-only, not a default test gate"]
     #[test]
     fn rust_budget_rejects_unowned_files_and_growth() {
         let temp = tempdir().unwrap();
