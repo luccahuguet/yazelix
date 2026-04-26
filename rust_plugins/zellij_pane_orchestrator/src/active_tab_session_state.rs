@@ -1,29 +1,78 @@
-//! Versioned JSON snapshot for `get_active_tab_session_state` (bead `yazelix-0w1u.1`).
+//! Versioned JSON snapshot for `get_active_tab_session_state`.
+//!
+//! Compatibility policy:
+//! - `schema_version == 1` may add optional fields, but must not rename or remove existing fields.
+//! - Breaking field shape changes require a new schema version and a compatibility producer.
+//! - The schema carries session facts only. Presentation strings, colors, and bar/widget formatting
+//!   belong to consumers such as `yazelix_bar`.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub const ACTIVE_TAB_SESSION_SCHEMA_VERSION: i32 = 1;
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct SessionWorkspace {
+    /// Owned live state: workspace root selected by the orchestrator for this tab.
     pub root: String,
+    /// Adapter state: where the root came from, currently `explicit` or `bootstrap`.
     pub source: String,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct SessionManagedPanes {
+    /// Owned live state: managed editor pane identity, when present.
     pub editor_pane_id: Option<String>,
+    /// Owned live state: managed sidebar pane identity, when present.
     pub sidebar_pane_id: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct SessionLayout {
+    /// Derived state: active Zellij swap layout name reported for the active tab.
     pub active_swap_layout_name: Option<String>,
+    /// Derived state: sidebar visibility resolved from the active Yazelix layout family.
     pub sidebar_collapsed: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct SessionSidebarYazi {
+    /// Owned live state: Yazi instance registered by the sidebar wrapper.
     pub yazi_id: String,
+    /// Owned live state: latest cwd reported by that Yazi instance.
     pub cwd: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct SessionTransientPane {
+    /// Derived state: transient pane identity discovered from the live pane manifest.
+    pub pane_id: String,
+    /// Derived state: whether the transient pane currently owns terminal focus.
+    pub is_focused: bool,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq, Eq)]
+pub struct SessionTransientPanes {
+    /// Derived state: currently visible Yazelix popup pane, if any.
+    pub popup: Option<SessionTransientPane>,
+    /// Derived state: currently visible Yazelix menu pane, if any.
+    pub menu: Option<SessionTransientPane>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct SessionAiPaneActivity {
+    /// Adapter state: provider label supplied by a future AI pane activity detector.
+    pub provider: String,
+    /// Adapter state: pane identity associated with the activity signal.
+    pub pane_id: String,
+    /// Adapter state: stable activity token, for example `thinking` or `streaming`.
+    pub activity: String,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq, Eq)]
+pub struct SessionStatusExtensions {
+    /// Extension slot for future AI pane indicators. Empty means unknown, not idle.
+    #[serde(default)]
+    pub ai_pane_activity: Vec<SessionAiPaneActivity>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,10 +85,12 @@ pub struct ActiveTabReadState {
     pub active_swap_layout_name: Option<String>,
     pub sidebar_collapsed: Option<bool>,
     pub sidebar_yazi: Option<SessionSidebarYazi>,
+    pub transient_panes: SessionTransientPanes,
+    pub extensions: SessionStatusExtensions,
 }
 
 /// Stable v1 payload for the active tab. Serialized to JSON for the pipe response.
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct ActiveTabSessionStateV1 {
     pub schema_version: i32,
     pub active_tab_position: usize,
@@ -48,6 +99,10 @@ pub struct ActiveTabSessionStateV1 {
     pub focus_context: String,
     pub layout: SessionLayout,
     pub sidebar_yazi: Option<SessionSidebarYazi>,
+    #[serde(default)]
+    pub transient_panes: SessionTransientPanes,
+    #[serde(default)]
+    pub extensions: SessionStatusExtensions,
 }
 
 pub fn build_active_tab_session_state_v1(
@@ -55,7 +110,7 @@ pub fn build_active_tab_session_state_v1(
     read_state: ActiveTabReadState,
 ) -> ActiveTabSessionStateV1 {
     ActiveTabSessionStateV1 {
-        schema_version: 1,
+        schema_version: ACTIVE_TAB_SESSION_SCHEMA_VERSION,
         active_tab_position,
         workspace: read_state
             .explicit_workspace
@@ -70,6 +125,8 @@ pub fn build_active_tab_session_state_v1(
             sidebar_collapsed: read_state.sidebar_collapsed,
         },
         sidebar_yazi: read_state.sidebar_yazi,
+        transient_panes: read_state.transient_panes,
+        extensions: read_state.extensions,
     }
 }
 
@@ -77,6 +134,7 @@ pub fn build_active_tab_session_state_v1(
 mod tests {
     // Test lane: default
     use super::*;
+    use serde_json::json;
 
     // Regression: the stable active-tab snapshot must prefer explicit workspace truth over bootstrap fallback.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
@@ -102,10 +160,18 @@ mod tests {
                     yazi_id: "sidebar-123".into(),
                     cwd: "/tmp/project".into(),
                 }),
+                transient_panes: SessionTransientPanes {
+                    popup: Some(SessionTransientPane {
+                        pane_id: "terminal:11".into(),
+                        is_focused: false,
+                    }),
+                    menu: None,
+                },
+                extensions: SessionStatusExtensions::default(),
             },
         );
 
-        assert_eq!(snapshot.schema_version, 1);
+        assert_eq!(snapshot.schema_version, ACTIVE_TAB_SESSION_SCHEMA_VERSION);
         assert_eq!(snapshot.active_tab_position, 3);
         assert_eq!(
             snapshot.workspace,
@@ -136,6 +202,13 @@ mod tests {
                 cwd: "/tmp/project".into(),
             })
         );
+        assert_eq!(
+            snapshot.transient_panes.popup,
+            Some(SessionTransientPane {
+                pane_id: "terminal:11".into(),
+                is_focused: false,
+            })
+        );
     }
 
     // Invariant: bootstrap workspace remains the fallback only when no explicit workspace state exists for the tab.
@@ -156,6 +229,8 @@ mod tests {
                 active_swap_layout_name: None,
                 sidebar_collapsed: None,
                 sidebar_yazi: None,
+                transient_panes: SessionTransientPanes::default(),
+                extensions: SessionStatusExtensions::default(),
             },
         );
 
@@ -172,5 +247,113 @@ mod tests {
         );
         assert_eq!(snapshot.focus_context, "other");
         assert_eq!(snapshot.sidebar_yazi, None);
+        assert_eq!(snapshot.transient_panes, SessionTransientPanes::default());
+    }
+
+    // Defends: additive v1 fields remain readable by consumers replaying older active-tab payload fixtures.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn deserializes_older_v1_payloads_with_default_extension_fields() {
+        let decoded: ActiveTabSessionStateV1 = serde_json::from_value(json!({
+            "schema_version": ACTIVE_TAB_SESSION_SCHEMA_VERSION,
+            "active_tab_position": 1,
+            "workspace": null,
+            "managed_panes": {
+                "editor_pane_id": null,
+                "sidebar_pane_id": null
+            },
+            "focus_context": "other",
+            "layout": {
+                "active_swap_layout_name": null,
+                "sidebar_collapsed": null
+            },
+            "sidebar_yazi": null
+        }))
+        .unwrap();
+
+        assert_eq!(decoded.transient_panes, SessionTransientPanes::default());
+        assert_eq!(decoded.extensions, SessionStatusExtensions::default());
+    }
+
+    // Defends: the status bus exposes stable session facts without embedding bar/zjstatus formatting.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn serializes_representative_payload_without_presentation_formatting() {
+        let snapshot = build_active_tab_session_state_v1(
+            2,
+            ActiveTabReadState {
+                explicit_workspace: Some(SessionWorkspace {
+                    root: "/repo".into(),
+                    source: "explicit".into(),
+                }),
+                bootstrap_workspace: None,
+                editor_pane_id: Some("terminal:1".into()),
+                sidebar_pane_id: Some("terminal:2".into()),
+                focus_context: "editor".into(),
+                active_swap_layout_name: Some("single_open".into()),
+                sidebar_collapsed: Some(false),
+                sidebar_yazi: None,
+                transient_panes: SessionTransientPanes {
+                    popup: None,
+                    menu: Some(SessionTransientPane {
+                        pane_id: "terminal:9".into(),
+                        is_focused: true,
+                    }),
+                },
+                extensions: SessionStatusExtensions {
+                    ai_pane_activity: vec![SessionAiPaneActivity {
+                        provider: "codex".into(),
+                        pane_id: "terminal:4".into(),
+                        activity: "thinking".into(),
+                    }],
+                },
+            },
+        );
+
+        let serialized = serde_json::to_string(&snapshot).unwrap();
+        let decoded: ActiveTabSessionStateV1 = serde_json::from_str(&serialized).unwrap();
+        let value = serde_json::to_value(&snapshot).unwrap();
+
+        assert_eq!(decoded, snapshot);
+        assert_eq!(
+            value,
+            json!({
+                "schema_version": ACTIVE_TAB_SESSION_SCHEMA_VERSION,
+                "active_tab_position": 2,
+                "workspace": {
+                    "root": "/repo",
+                    "source": "explicit"
+                },
+                "managed_panes": {
+                    "editor_pane_id": "terminal:1",
+                    "sidebar_pane_id": "terminal:2"
+                },
+                "focus_context": "editor",
+                "layout": {
+                    "active_swap_layout_name": "single_open",
+                    "sidebar_collapsed": false
+                },
+                "sidebar_yazi": null,
+                "transient_panes": {
+                    "popup": null,
+                    "menu": {
+                        "pane_id": "terminal:9",
+                        "is_focused": true
+                    }
+                },
+                "extensions": {
+                    "ai_pane_activity": [
+                        {
+                            "provider": "codex",
+                            "pane_id": "terminal:4",
+                            "activity": "thinking"
+                        }
+                    ]
+                }
+            })
+        );
+        assert!(!serialized.contains("#["));
+        assert!(!serialized.contains("command_cpu"));
+        assert!(!serialized.contains("zjstatus"));
     }
 }

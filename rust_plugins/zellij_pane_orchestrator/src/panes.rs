@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use serde::Serialize;
 use yazelix_pane_orchestrator::active_tab_session_state::{
     build_active_tab_session_state_v1, ActiveTabReadState, ActiveTabSessionStateV1,
-    SessionSidebarYazi, SessionWorkspace,
+    SessionSidebarYazi, SessionStatusExtensions, SessionTransientPane, SessionTransientPanes,
+    SessionWorkspace,
 };
 use yazelix_pane_orchestrator::horizontal_focus_contract::{
     resolve_horizontal_focus, HorizontalDirection, HorizontalFocusPlan, HorizontalPaneSnapshot,
@@ -14,7 +15,9 @@ use yazelix_pane_orchestrator::pane_contract::{
 use yazelix_pane_orchestrator::sidebar_contract::{
     resolve_sidebar_focus_toggle, SidebarFocusTogglePlan,
 };
-use yazelix_pane_orchestrator::transient_pane_contract::TransientPaneSnapshot;
+use yazelix_pane_orchestrator::transient_pane_contract::{
+    select_transient_pane, TransientPaneKind, TransientPaneSnapshot,
+};
 use zellij_tile::prelude::*;
 
 use crate::workspace::WorkspaceStateSource;
@@ -260,6 +263,11 @@ impl State {
             .and_then(|managed_tab_panes| managed_tab_panes.sidebar);
         let sidebar_yazi_state = active_tab_position
             .and_then(|tab_position| self.get_active_sidebar_yazi_state_snapshot(tab_position));
+        let transient_panes = build_session_transient_panes(
+            active_tab_position
+                .and_then(|tab_position| self.terminal_panes_by_tab.get(&tab_position))
+                .map(Vec::as_slice),
+        );
         let focus_context = match active_tab_position
             .and_then(|tab_position| self.focus_context_by_tab.get(&tab_position).copied())
             .unwrap_or(FocusContext::Other)
@@ -281,6 +289,8 @@ impl State {
             }),
             sidebar_collapsed: layout_variant.map(|variant| variant.is_sidebar_closed()),
             focus_context: focus_context.to_string(),
+            transient_panes,
+            extensions: SessionStatusExtensions::default(),
         }
     }
 
@@ -557,6 +567,34 @@ impl TerminalPaneLayout {
             is_focused: self.is_focused,
         }
     }
+}
+
+fn build_session_transient_panes(
+    terminal_panes: Option<&[TerminalPaneLayout]>,
+) -> SessionTransientPanes {
+    let Some(terminal_panes) = terminal_panes else {
+        return SessionTransientPanes::default();
+    };
+    let snapshots: Vec<TransientPaneSnapshot<'_, PaneId>> = terminal_panes
+        .iter()
+        .map(TerminalPaneLayout::transient_snapshot)
+        .collect();
+
+    SessionTransientPanes {
+        popup: build_session_transient_pane(&snapshots, TransientPaneKind::Popup),
+        menu: build_session_transient_pane(&snapshots, TransientPaneKind::Menu),
+    }
+}
+
+fn build_session_transient_pane(
+    snapshots: &[TransientPaneSnapshot<'_, PaneId>],
+    kind: TransientPaneKind,
+) -> Option<SessionTransientPane> {
+    let transient_pane = select_transient_pane(snapshots, kind)?;
+    pane_id_to_string(Some(transient_pane.pane_id)).map(|pane_id| SessionTransientPane {
+        pane_id,
+        is_focused: transient_pane.is_focused,
+    })
 }
 
 fn select_managed_terminal_pane(
