@@ -19,6 +19,8 @@ use yazelix_core::control_plane::{
     runtime_env_request, runtime_materialization_plan_request_from_env, setpriv_or_sh_exec,
     shell_command, split_run_argv,
 };
+use yazelix_core::evaluate_install_ownership_report;
+use yazelix_core::install_ownership_request_from_env_with_runtime_dir;
 use yazelix_core::run_generate_shell_initializers;
 use yazelix_core::run_profile_create_run;
 use yazelix_core::run_profile_load_report;
@@ -53,6 +55,7 @@ use yazelix_core::run_zellij_pipe;
 use yazelix_core::run_zellij_retarget;
 use yazelix_core::update_commands::run_yzx_update;
 use yazelix_core::zellij_commands::internal_zellij_control_subcommands_usage;
+use yazelix_core::zellij_commands::probe_active_tab_session_state;
 
 fn usage() -> ! {
     eprintln!("Usage: yzx_control env [--no-shell|-n]");
@@ -67,6 +70,7 @@ fn usage() -> ! {
     eprintln!("       yzx_control generate_shell_initializers [shells...]");
     eprintln!("       yzx_control import <zellij|yazi|helix> [--force]");
     eprintln!("       yzx_control enter [--path <dir> | --home] [--verbose]");
+    eprintln!("       yzx_control inspect [--json]");
     eprintln!("       yzx_control status [--versions] [--json]");
     eprintln!("       yzx_control launch [--path <dir> | --home] [--terminal <name>] [--verbose]");
     eprintln!("       yzx_control home_manager [prepare] [args...]");
@@ -162,6 +166,16 @@ fn print_status_help() {
     println!("Flags:");
     println!("  -V, --versions  Include the full tool version matrix");
     println!("      --json      Emit machine-readable status data");
+}
+
+fn print_inspect_help() {
+    println!("Inspect the active Yazelix runtime truth");
+    println!();
+    println!("Usage:");
+    println!("  yzx inspect [--json]");
+    println!();
+    println!("Flags:");
+    println!("      --json      Emit the full machine-readable runtime truth report");
 }
 
 fn first_nonempty_line(text: &str) -> Option<String> {
@@ -272,6 +286,32 @@ fn collect_version_info() -> VersionReportData {
         title: "Yazelix Tool Versions".to_string(),
         tools,
     }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct InspectCliArgs {
+    json: bool,
+    help: bool,
+}
+
+fn parse_inspect_cli_args(args: &[String]) -> Result<InspectCliArgs, CoreError> {
+    let mut out = InspectCliArgs::default();
+    for token in args {
+        match token.as_str() {
+            "--json" => out.json = true,
+            "--help" | "-h" | "help" => out.help = true,
+            other => {
+                return Err(CoreError::classified(
+                    ErrorClass::Usage,
+                    "unexpected_inspect_token",
+                    format!("Unexpected argument for yzx inspect: {other}"),
+                    "Run `yzx inspect --json`.",
+                    serde_json::json!({}),
+                ));
+            }
+        }
+    }
+    Ok(out)
 }
 
 fn print_aligned_rows(rows: &[(String, String)], color: bool) {
@@ -779,6 +819,83 @@ fn run_status(args: &[String]) -> Result<i32, CoreError> {
     Ok(0)
 }
 
+fn run_inspect(args: &[String]) -> Result<i32, CoreError> {
+    let parsed = parse_inspect_cli_args(args)?;
+    if parsed.help {
+        print_inspect_help();
+        return Ok(0);
+    }
+
+    let request =
+        runtime_materialization_plan_request_from_env(config_override_from_env().as_deref())?;
+    let version = read_yazelix_version_from_runtime(&request.runtime_dir)?;
+    let status = compute_status_report(&request, &version, YAZELIX_DESCRIPTION)?;
+    let install = evaluate_install_ownership_report(
+        &install_ownership_request_from_env_with_runtime_dir(request.runtime_dir.clone())?,
+    );
+    let versions = collect_version_info();
+    let session = probe_active_tab_session_state();
+    let invoked_yzx_path = std::env::var("YAZELIX_INVOKED_YZX_PATH")
+        .ok()
+        .filter(|value| !value.trim().is_empty());
+    let current_exe = std::env::current_exe()
+        .ok()
+        .map(|path| path.to_string_lossy().to_string());
+
+    let report = serde_json::json!({
+        "schema_version": 1,
+        "title": "Yazelix inspect",
+        "runtime": {
+            "dir": request.runtime_dir.to_string_lossy(),
+            "exists": request.runtime_dir.exists(),
+            "version": version,
+            "current_exe": current_exe,
+            "invoked_yzx_path": invoked_yzx_path,
+        },
+        "config": {
+            "dir": config_dir_from_env()?.to_string_lossy(),
+            "override": config_override_from_env(),
+            "file": status.summary.get("config_file").cloned().unwrap_or(serde_json::Value::Null),
+        },
+        "generated_state": {
+            "repair_needed": status.summary.get("generated_state_repair_needed").cloned().unwrap_or(serde_json::Value::Null),
+            "materialization_status": status.summary.get("generated_state_materialization_status").cloned().unwrap_or(serde_json::Value::Null),
+            "materialization_reason": status.summary.get("generated_state_materialization_reason").cloned().unwrap_or(serde_json::Value::Null),
+        },
+        "install": install,
+        "session": session,
+        "tool_versions": versions.tools,
+    });
+
+    if parsed.json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&report).unwrap_or_else(|_| report.to_string())
+        );
+    } else {
+        println!("Yazelix inspect");
+        println!("Runtime: {}", request.runtime_dir.display());
+        println!(
+            "Version: {}",
+            report["runtime"]["version"].as_str().unwrap_or("unknown")
+        );
+        println!(
+            "Config: {}",
+            report["config"]["file"].as_str().unwrap_or("unknown")
+        );
+        println!(
+            "Generated state: {}",
+            report["generated_state"]["materialization_status"]
+                .as_str()
+                .unwrap_or("unknown")
+        );
+        println!();
+        println!("Run `yzx inspect --json` for the full machine-readable report.");
+    }
+
+    Ok(0)
+}
+
 fn run_profile(args: &[String]) -> Result<i32, CoreError> {
     if args.is_empty() {
         eprintln!(
@@ -869,6 +986,7 @@ fn main() {
         }
         "enter" => run_yzx_enter(&argv),
         "generate_shell_initializers" => run_generate_shell_initializers(&argv),
+        "inspect" => run_inspect(&argv),
         "status" => run_status(&argv),
         "launch" => run_yzx_launch(&argv),
         "home_manager" => run_yzx_home_manager(&argv),

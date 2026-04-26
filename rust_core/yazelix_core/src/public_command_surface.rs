@@ -123,6 +123,7 @@ const ENTER_FLAGS: &[YzxCommandParameter] = &[
 const UPDATE_NIX_FLAGS: &[YzxCommandParameter] = &[switch("yes", None), switch("verbose", None)];
 const CWD_ARGS: &[YzxCommandParameter] = &[positional("target", "string", true)];
 const REVEAL_ARGS: &[YzxCommandParameter] = &[positional("target", "string", false)];
+const INSPECT_FLAGS: &[YzxCommandParameter] = &[switch("json", None)];
 const STATUS_FLAGS: &[YzxCommandParameter] = &[switch("versions", Some("V")), switch("json", None)];
 const DOCTOR_FLAGS: &[YzxCommandParameter] = &[
     switch("verbose", Some("v")),
@@ -243,6 +244,17 @@ const UPDATE_UPSTREAM_COMMAND: YzxCommandMetadata = metadata(
 
 const ENV_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[ENV_COMMAND];
 const RUN_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[RUN_COMMAND];
+const INSPECT_COMMAND: YzxCommandMetadata = metadata(
+    "yzx inspect",
+    "Inspect active Yazelix runtime truth",
+    YzxCommandCategory::System,
+    INSPECT_FLAGS,
+    Some(YzxMenuCategory::System),
+    Some(
+        "Emit a stable runtime/config/install/session report for humans, agents, and diagnostics.",
+    ),
+);
+const INSPECT_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[INSPECT_COMMAND];
 const STATUS_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[STATUS_COMMAND];
 const DOCTOR_COMMAND: YzxCommandMetadata = metadata(
     "yzx doctor",
@@ -441,6 +453,7 @@ const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
     rust_control_family("enter", ENTER_FAMILY_COMMANDS),
     rust_control_family("env", ENV_FAMILY_COMMANDS),
     rust_control_family("import", IMPORT_FAMILY_COMMANDS),
+    rust_control_family("inspect", INSPECT_FAMILY_COMMANDS),
     rust_control_family("launch", LAUNCH_FAMILY_COMMANDS),
     rust_control_family("run", RUN_FAMILY_COMMANDS),
     rust_control_family("popup", POPUP_FAMILY_COMMANDS),

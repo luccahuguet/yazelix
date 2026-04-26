@@ -13,6 +13,12 @@ Health checks and diagnostics
 - Detects missing or stale workspace assets such as generated Zellij config, layouts, and plugin wasm artifacts
 - Runs installer-owned runtime-link and stable-launcher diagnostics only when the current mode actually owns those surfaces
 
+### `yzx inspect [--json]`
+Inspect active Yazelix runtime truth
+- `--json`: Emit the full machine-readable runtime, config, install, generated-state, tool-version, and session report
+- Works outside Zellij and marks session state unavailable instead of failing
+- Intended as the stable fact source for recovery diagnostics, support, live docs examples, and AI coding agents
+
 ### `yzx dev test [--verbose] [--new-window] [--lint-only] [--profile] [--sweep] [--visual] [--all] [--delay SECONDS]`
 Run Yazelix test suite
 - Default: run the normal non-sweep automated regression suite

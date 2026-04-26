@@ -83,6 +83,59 @@ terminals = ["ghostty"]
     assert!(summary["generated_state_materialization_status"].is_string());
 }
 
+// Defends: `yzx inspect --json` is the canonical runtime truth report for diagnostics and agents.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_control_inspect_json_reports_runtime_truth_without_zellij_session() {
+    let fixture = managed_config_fixture(
+        r#"[shell]
+default_shell = "nu"
+
+[terminal]
+terminals = ["ghostty"]
+"#,
+    );
+    let output = yzx_control_command_in_fixture(&fixture)
+        .env(
+            "YAZELIX_INVOKED_YZX_PATH",
+            "/nix/store/example-yazelix/bin/yzx",
+        )
+        .arg("inspect")
+        .arg("--json")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stderr.is_empty());
+
+    let report: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(report["schema_version"], 1);
+    assert_eq!(report["title"], "Yazelix inspect");
+    assert_eq!(report["runtime"]["version"], "v-test");
+    assert_eq!(report["runtime"]["exists"], true);
+    assert_eq!(
+        report["runtime"]["invoked_yzx_path"],
+        "/nix/store/example-yazelix/bin/yzx"
+    );
+    assert!(
+        report["config"]["file"]
+            .as_str()
+            .unwrap()
+            .ends_with("yazelix.toml")
+    );
+    assert!(report["generated_state"]["repair_needed"].is_boolean());
+    assert_eq!(report["session"]["available"], false);
+    assert_eq!(report["session"]["reason"], "not_in_zellij");
+    assert_eq!(report["install"]["install_owner"], "manual");
+    assert!(
+        report["tool_versions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|entry| { entry["tool"] == "nix" && entry["runtime"].as_str().is_some() })
+    );
+}
+
 // Defends: the default human `yzx status` output groups fields into readable sections instead of leaking raw internal summary keys.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]

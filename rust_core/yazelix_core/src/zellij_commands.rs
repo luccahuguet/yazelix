@@ -305,6 +305,43 @@ pub fn run_zellij_inspect_session(args: &[String]) -> Result<i32, CoreError> {
     }
 }
 
+pub fn probe_active_tab_session_state() -> Value {
+    if env::var_os("ZELLIJ").is_none() {
+        return json!({
+            "available": false,
+            "reason": "not_in_zellij"
+        });
+    }
+
+    match run_pane_orchestrator_command("get_active_tab_session_state", "") {
+        Ok(response) => match response.trim() {
+            "permissions_denied" => json!({
+                "available": false,
+                "reason": "permissions_denied"
+            }),
+            "not_ready" | "missing" => json!({
+                "available": false,
+                "reason": "not_ready"
+            }),
+            "invalid_payload" => json!({
+                "available": false,
+                "reason": "invalid_payload"
+            }),
+            raw => serde_json::from_str(raw).unwrap_or_else(|_| {
+                json!({
+                    "available": false,
+                    "reason": "invalid_json"
+                })
+            }),
+        },
+        Err(error) => json!({
+            "available": false,
+            "reason": "pipe_failed",
+            "error": error.message()
+        }),
+    }
+}
+
 fn render_session_state_inspection_lines(value: &Value) -> Vec<String> {
     let mut lines = Vec::new();
     lines.push("Yazelix active tab session state".to_string());
