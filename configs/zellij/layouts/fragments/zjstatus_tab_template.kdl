@@ -39,6 +39,10 @@ plugin location="__YAZELIX_ZJSTATUS_PLUGIN_URL__" {
     command_ram_format "#[fg=#ff6600][ram {stdout}]"
     command_ram_interval "5"
 
+    command_workspace_command "yzx_control zellij status-bus-workspace"
+    command_workspace_format "#[fg=#00ff88,bold][workspace {stdout}]"
+    command_workspace_interval "1"
+
     command_version_command "nu -c 'use __YAZELIX_RUNTIME_DIR__/nushell/scripts/utils/constants.nu YAZELIX_VERSION; $YAZELIX_VERSION'"
     command_version_format "{stdout}"
     command_version_interval "3600"

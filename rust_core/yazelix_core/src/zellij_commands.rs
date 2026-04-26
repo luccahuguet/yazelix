@@ -28,6 +28,7 @@ pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
     "get-workspace-root",
     "inspect-session",
     "status-bus",
+    "status-bus-workspace",
     "retarget",
     "open-editor",
     "open-editor-cwd",
@@ -68,6 +69,11 @@ struct ZellijInspectSessionArgs {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ZellijStatusBusArgs {
     json: bool,
+    help: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct ZellijStatusBusWorkspaceArgs {
     help: bool,
 }
 
@@ -290,6 +296,35 @@ fn print_zellij_status_bus_help() {
     println!("  yzx_control zellij status-bus [--json]");
 }
 
+fn parse_zellij_status_bus_workspace_args(
+    args: &[String],
+) -> Result<ZellijStatusBusWorkspaceArgs, CoreError> {
+    let mut parsed = ZellijStatusBusWorkspaceArgs::default();
+    for arg in args {
+        match arg.as_str() {
+            "-h" | "--help" | "help" => parsed.help = true,
+            other if other.starts_with('-') => {
+                return Err(CoreError::usage(format!(
+                    "Unknown argument for zellij status-bus-workspace: {other}"
+                )));
+            }
+            _ => {
+                return Err(CoreError::usage(
+                    "zellij status-bus-workspace accepts no positional arguments".to_string(),
+                ));
+            }
+        }
+    }
+    Ok(parsed)
+}
+
+fn print_zellij_status_bus_workspace_help() {
+    println!("Render the workspace status-bus fact for zjstatus");
+    println!();
+    println!("Usage:");
+    println!("  yzx_control zellij status-bus-workspace");
+}
+
 pub fn run_zellij_inspect_session(args: &[String]) -> Result<i32, CoreError> {
     let parsed = parse_zellij_inspect_session_args(args)?;
     if parsed.help {
@@ -367,6 +402,46 @@ pub fn run_zellij_status_bus(args: &[String]) -> Result<i32, CoreError> {
         }
     }
     Ok(0)
+}
+
+pub fn run_zellij_status_bus_workspace(args: &[String]) -> Result<i32, CoreError> {
+    let parsed = parse_zellij_status_bus_workspace_args(args)?;
+    if parsed.help {
+        print_zellij_status_bus_workspace_help();
+        return Ok(0);
+    }
+
+    if env::var_os("ZELLIJ").is_none() {
+        println!("outside");
+        return Ok(0);
+    }
+
+    let response = run_pane_orchestrator_command("get_active_tab_session_state", "")?;
+    let value = decode_status_bus_snapshot(&response)?;
+    println!("{}", render_status_bus_workspace_widget(&value));
+    Ok(0)
+}
+
+fn render_status_bus_workspace_widget(value: &Value) -> String {
+    let root = nested_str(value, &["workspace", "root"]).unwrap_or("");
+    let workspace = Path::new(root)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .filter(|name| !name.trim().is_empty())
+        .unwrap_or("none");
+    let focus = value
+        .get("focus_context")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|focus| !focus.is_empty())
+        .unwrap_or("unknown");
+    let sidebar = nested_bool(value, &["layout", "sidebar_collapsed"]);
+    let sidebar_marker = match sidebar {
+        Some(true) => "side:closed",
+        Some(false) => "side:open",
+        _ => "side:?",
+    };
+    format!("{workspace}/{focus}/{sidebar_marker}")
 }
 
 fn decode_status_bus_snapshot(raw: &str) -> Result<Value, CoreError> {
@@ -1487,6 +1562,21 @@ mod tests {
         assert!(
             err.remediation()
                 .contains("supports status-bus schema_version 1")
+        );
+    }
+
+    // Defends: the bar workspace widget formats only status-bus facts from a fixture payload.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn status_bus_workspace_widget_formats_fixture_payload() {
+        let value = decode_status_bus_snapshot(
+            r#"{"schema_version":1,"active_tab_position":0,"workspace":{"root":"/tmp/yazelix-demo","source":"explicit"},"managed_panes":{"editor_pane_id":"terminal:1","sidebar_pane_id":"terminal:2"},"focus_context":"sidebar","layout":{"active_swap_layout_name":"single_open","sidebar_collapsed":false},"sidebar_yazi":null,"transient_panes":{"popup":null,"menu":null},"extensions":{"ai_pane_activity":[]}}"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            render_status_bus_workspace_widget(&value),
+            "yazelix-demo/sidebar/side:open"
         );
     }
 }

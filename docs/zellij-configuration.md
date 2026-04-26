@@ -55,6 +55,7 @@ widget_tray = [
   "editor",  # Active editor
   "shell",   # Active shell
   "term",    # Terminal emulator
+  # "workspace", # Current workspace/focus from the pane-orchestrator status bus
   "cpu",     # CPU usage
   "ram",     # RAM usage
 ]

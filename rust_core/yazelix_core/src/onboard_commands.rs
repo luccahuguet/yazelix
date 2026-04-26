@@ -472,10 +472,11 @@ fn widget_tray_question() -> MultiQuestion {
             ("Editor", "editor"),
             ("Shell", "shell"),
             ("Terminal", "term"),
+            ("Workspace", "workspace"),
             ("CPU", "cpu"),
             ("RAM", "ram"),
         ],
-        &[true, true, true, true, true],
+        &[true, true, true, false, true, true],
     )
 }
 

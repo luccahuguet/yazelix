@@ -1662,7 +1662,7 @@ ui { pane_frames { hide_session_name true } }
     #[test]
     fn renders_widget_tray_segment_with_static_identity_labels() {
         let plan = sample_render_plan_for_widgets(
-            vec!["editor", "shell", "term", "cpu"],
+            vec!["editor", "shell", "term", "workspace", "cpu"],
             "",
             "/nix/store/example/bin/nu",
             "ghostty",
@@ -1672,6 +1672,7 @@ ui { pane_frames { hide_session_name true } }
         assert!(rendered.contains("[editor: hx]"));
         assert!(rendered.contains("[shell: nu]"));
         assert!(rendered.contains("[term: ghostty]"));
+        assert!(rendered.contains("{command_workspace}"));
         assert!(rendered.contains("{command_cpu}"));
         assert!(!rendered.contains("{command_editor}"));
         assert!(!rendered.contains("[editor: ]"));
@@ -1687,6 +1688,8 @@ ui { pane_frames { hide_session_name true } }
         assert!(!template.contains("command_editor_command"));
         assert!(!template.contains("command_shell_command"));
         assert!(!template.contains("command_term_command"));
+        assert!(template.contains("command_workspace_command"));
+        assert!(template.contains("status-bus-workspace"));
     }
 
     // Defends: legacy plugin permission blocks are recognized by both stable and hashed wasm names.

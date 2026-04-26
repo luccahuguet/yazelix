@@ -6,9 +6,11 @@ pub const ZJSTATUS_RUNTIME_DIR_PLACEHOLDER: &str = "__YAZELIX_RUNTIME_DIR__";
 pub const WIDGET_EDITOR: &str = "editor";
 pub const WIDGET_SHELL: &str = "shell";
 pub const WIDGET_TERM: &str = "term";
+pub const WIDGET_WORKSPACE: &str = "workspace";
 pub const WIDGET_CPU: &str = "cpu";
 pub const WIDGET_RAM: &str = "ram";
 
+pub const COMMAND_WORKSPACE: &str = "{command_workspace}";
 pub const COMMAND_CPU: &str = "{command_cpu}";
 pub const COMMAND_RAM: &str = "{command_ram}";
 pub const COMMAND_VERSION: &str = "{command_version}";
@@ -90,6 +92,7 @@ fn render_widget(widget: &str, request: &BarRenderRequest) -> Result<String, Bar
             "#[fg=#00ff88,bold][term: {}]",
             request.terminal_label
         )),
+        WIDGET_WORKSPACE => Ok(COMMAND_WORKSPACE.to_string()),
         WIDGET_CPU => Ok(COMMAND_CPU.to_string()),
         WIDGET_RAM => Ok(COMMAND_RAM.to_string()),
         _ => Err(BarRenderError::InvalidWidgetTrayEntry {
@@ -135,6 +138,15 @@ mod tests {
         let rendered = render_widget_tray_segment(&render_request(&[])).unwrap();
 
         assert_eq!(rendered, "");
+    }
+
+    // Defends: the workspace widget is a dynamic zjstatus command placeholder rather than a static startup label.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn renders_workspace_widget_as_dynamic_command_placeholder() {
+        let rendered = render_widget_tray_segment(&render_request(&["workspace"])).unwrap();
+
+        assert_eq!(rendered, "{command_workspace}");
     }
 
     // Defends: custom text remains trim-aware and does not reserve bar space when absent.

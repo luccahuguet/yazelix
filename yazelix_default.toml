@@ -176,12 +176,13 @@ support_kitty_keyboard_protocol = false
 theme = "default"
 
 # Zjstatus widget tray (right side of status bar)
-# Available widgets: "editor", "shell", "term", "cpu", "ram"
+# Available widgets: "editor", "shell", "term", "workspace", "cpu", "ram"
 # Comment out any line to hide that widget
 widget_tray = [
   "editor",  # Active editor
   "shell",   # Active shell
   "term",    # Terminal emulator
+  # "workspace", # Current workspace/focus from the pane-orchestrator status bus
   "cpu",     # CPU usage
   "ram",     # RAM usage
 ]

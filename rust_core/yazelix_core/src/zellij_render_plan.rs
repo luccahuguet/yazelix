@@ -45,7 +45,7 @@ const ZELLIJ_THEMES: &[&str] = &[
     "tokyo-night-light",
 ];
 
-const WIDGET_TRAY_ALLOWED: &[&str] = &["editor", "shell", "term", "cpu", "ram"];
+const WIDGET_TRAY_ALLOWED: &[&str] = &["editor", "shell", "term", "workspace", "cpu", "ram"];
 
 fn default_enable_sidebar() -> bool {
     true

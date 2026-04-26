@@ -308,7 +308,7 @@ in
     };
 
     zellij_widget_tray = mkMainContractOption "zellij.widget_tray" {
-      description = "Zjstatus widget tray order (editor/shell/term/cpu/ram)";
+      description = "Zjstatus widget tray order (editor/shell/term/workspace/cpu/ram)";
     };
 
     zellij_custom_text = mkMainContractOption "zellij.custom_text" {

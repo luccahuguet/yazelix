@@ -246,7 +246,7 @@ parser_key = "zellij_widget_tray"
 home_manager_option = "zellij_widget_tray"
 parser_behavior = "direct"
 validation = "enum_string_list"
-allowed_values = ["editor", "shell", "term", "cpu", "ram"]
+allowed_values = ["editor", "shell", "term", "workspace", "cpu", "ram"]
 rebuild_required = false
 
 [fields."zellij.custom_text"]
