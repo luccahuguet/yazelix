@@ -80,6 +80,69 @@ def run_repo_maintainer_checked [repo_root: string, failure_message: string, ...
     }
 }
 
+def require_fast_cargo [] {
+    if ((which cargo | is-empty) or (which rustc | is-empty)) {
+        error make {
+            msg: "Fast Rust maintainer commands require cargo and rustc on PATH. Install the maintainer Rust toolchain once, or use the explicit Nix/package gates when you need full environment realization."
+        }
+    }
+}
+
+def rust_target_specs [repo_root: string, target: string] {
+    let specs = [
+        {
+            name: "core"
+            manifest_path: ($repo_root | path join "rust_core" "Cargo.toml")
+            check_args: ["-p", "yazelix_core"]
+            test_args: ["-p", "yazelix_core"]
+        }
+        {
+            name: "pane_orchestrator"
+            manifest_path: ($repo_root | path join "rust_plugins" "zellij_pane_orchestrator" "Cargo.toml")
+            check_args: ["--lib"]
+            test_args: ["--lib"]
+        }
+    ]
+
+    match $target {
+        "all" => $specs
+        "core" => ($specs | where name == "core")
+        "pane_orchestrator" => ($specs | where name == "pane_orchestrator")
+        _ => {
+            error make {msg: $"Unknown Rust target '($target)'. Expected one of: core, pane_orchestrator, all."}
+        }
+    }
+}
+
+def parse_rust_target_and_tail [args: list<string>, default_target: string] {
+    let known_targets = ["core", "pane_orchestrator", "all"]
+    if ($args | is-empty) {
+        return {target: $default_target, tail: []}
+    }
+
+    let first = ($args | first)
+    if ($first in $known_targets) {
+        return {target: $first, tail: ($args | skip 1)}
+    }
+
+    {target: $default_target, tail: $args}
+}
+
+def run_fast_cargo_checked [repo_root: string, label: string, cargo_args: list<string>] {
+    require_fast_cargo
+    print $"Running: cargo ($cargo_args | str join ' ')"
+    let result = (do { cd $repo_root; ^cargo ...$cargo_args } | complete)
+    if ($result.stdout | is-not-empty) {
+        print --raw $result.stdout
+    }
+    if ($result.stderr | is-not-empty) {
+        print --stderr --raw $result.stderr
+    }
+    if $result.exit_code != 0 {
+        error make {msg: $"Fast Rust ($label) failed."}
+    }
+}
+
 # Refresh maintainer flake inputs and run update canaries
 export def "yzx dev update" [
     --yes      # Skip confirmation prompt
@@ -147,6 +210,56 @@ export def "yzx dev build_pane_orchestrator" [
         $args = ($args | append "--sync")
     }
     run_repo_maintainer_checked $repo_root "Yazelix Rust pane-orchestrator build failed" ...$args
+}
+
+# Show fast Rust inner-loop commands
+export def "yzx dev rust" [] {
+    print "Fast Rust inner-loop commands:"
+    print "  yzx dev rust fmt [TARGET] [--check]"
+    print "  yzx dev rust check [TARGET]"
+    print "  yzx dev rust test [TARGET] [cargo test args...]"
+    print ""
+    print "TARGET: core, pane_orchestrator, or all"
+    print "For tests, TARGET can be omitted; unmatched args are passed to core cargo test."
+    print "These commands run cargo directly from the current environment. Use Nix/Home Manager/package validation as explicit final gates."
+}
+
+# Format Rust code directly without entering nix develop
+export def "yzx dev rust fmt" [
+    target: string = "all"  # core, pane_orchestrator, or all
+    --check                 # Check formatting without changing files
+] {
+    let repo_root = (require_yazelix_repo_root)
+    for spec in (rust_target_specs $repo_root $target) {
+        mut args = ["fmt", "--manifest-path", $spec.manifest_path, "--all"]
+        if $check {
+            $args = ($args | append ["--", "--check"])
+        }
+        run_fast_cargo_checked $repo_root $"rust fmt ($spec.name)" $args
+    }
+}
+
+# Run fast cargo check directly without entering nix develop
+export def "yzx dev rust check" [
+    target: string = "core"  # core, pane_orchestrator, or all
+] {
+    let repo_root = (require_yazelix_repo_root)
+    for spec in (rust_target_specs $repo_root $target) {
+        let args = (["check", "--manifest-path", $spec.manifest_path] | append $spec.check_args)
+        run_fast_cargo_checked $repo_root $"rust check ($spec.name)" $args
+    }
+}
+
+# Run fast cargo tests directly without entering nix develop
+export def "yzx dev rust test" [
+    ...args: string  # Optional target followed by extra cargo test args, such as a focused test filter
+] {
+    let repo_root = (require_yazelix_repo_root)
+    let parsed = (parse_rust_target_and_tail $args "core")
+    for spec in (rust_target_specs $repo_root $parsed.target) {
+        let cargo_args = (["test", "--manifest-path", $spec.manifest_path] | append $spec.test_args | append $parsed.tail)
+        run_fast_cargo_checked $repo_root $"rust test ($spec.name)" $cargo_args
+    }
 }
 
 def clear_startup_profile_caches [] {

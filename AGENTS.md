@@ -134,6 +134,11 @@ When creating new files or directories, always use underscores to maintain consi
 
 - Prefer `yzx run ...` for project-scoped tool invocations instead of raw `nix develop -c ...` when running tools provided by the Yazelix environment.
 - Use raw `nix develop -c ...` only when `yzx run ...` is not a clean fit for the task, such as larger multi-command shell scripts or environment debugging.
+- For Rust inner-loop work, prefer the direct maintainer commands before reaching for Nix:
+  - `yzx dev rust fmt --check`
+  - `yzx dev rust check`
+  - `yzx dev rust test <filter>`
+  These commands require `cargo` and `rustc` on `PATH` and intentionally avoid re-entering `nix develop`. Treat Nix builds, Home Manager switches, and package validators as explicit final gates, not the default edit-check loop.
 - For agent-driven Yazelix invocations, always suppress the welcome/UI path by default. Prefer entrypoints that already do this, such as `yzx run ...`, or pass the equivalent `--skip-welcome` flow when calling Yazelix bootstrap/runtime scripts through `nix develop -c ...`. Do not launch the interactive welcome screen or its animations unless the task is explicitly about validating that UX.
 - Be careful with heavyweight Nix probes during investigation. Prefer cheap read-only commands such as `nix eval`, `nix flake show`, `nix path-info`, `rg`, or repo-local code inspection before running `nix build` on large external inputs. Do not casually launch expensive build jobs just to inspect metadata, and if a diagnostic build is truly needed, say so explicitly and clean it up if it is no longer needed.
 
@@ -165,6 +170,7 @@ When creating new files or directories, always use underscores to maintain consi
   ```
 - **Do not treat `cargo test` or `cargo check` as sufficient verification for live plugin behavior.** They only validate the Rust source. Real behavior changes require the synced wasm plus a fresh Yazelix session.
 - After syncing a new plugin wasm, prefer `yzx restart` or a fresh Yazelix window. Avoid in-place plugin reloads as the default validation path because they can leave the current session in a broken permission state.
+- Run `yzx_repo_validator validate-pane-orchestrator-sync` or `yzx dev test` before committing pane-orchestrator work; the validator checks the tracked wasm sync stamp against the current source so stale source/wasm drift is visible before release.
 
 ## Rust Dependency Gate
 

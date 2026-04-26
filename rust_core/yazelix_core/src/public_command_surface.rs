@@ -148,6 +148,10 @@ const DEV_UPDATE_FLAGS: &[YzxCommandParameter] = &[
 const DEV_BUMP_ARGS: &[YzxCommandParameter] = &[positional("version", "string", false)];
 const DEV_SYNC_FLAGS: &[YzxCommandParameter] = &[switch("dry-run", None)];
 const DEV_BUILD_FLAGS: &[YzxCommandParameter] = &[switch("sync", None)];
+const DEV_RUST_TARGET_ARG: &[YzxCommandParameter] = &[positional("target", "string", true)];
+const DEV_RUST_FMT_ARGS: &[YzxCommandParameter] =
+    &[positional("target", "string", true), switch("check", None)];
+const DEV_RUST_TEST_ARGS: &[YzxCommandParameter] = &[rest("args")];
 const DEV_TEST_FLAGS: &[YzxCommandParameter] = &[
     switch("verbose", Some("v")),
     switch("new-window", Some("n")),
@@ -562,6 +566,54 @@ const DEV_PROFILE_COMMAND: YzxCommandLeaf = leaf(
     &["profile"],
     YZX_DEV_RELATIVE_PATH,
 );
+const DEV_RUST_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx dev rust",
+        "Show fast Rust inner-loop commands",
+        YzxCommandCategory::Development,
+        &[],
+        None,
+        None,
+    ),
+    &["rust"],
+    YZX_DEV_RELATIVE_PATH,
+);
+const DEV_RUST_FMT_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx dev rust fmt",
+        "Format Rust code without entering nix develop",
+        YzxCommandCategory::Development,
+        DEV_RUST_FMT_ARGS,
+        None,
+        None,
+    ),
+    &["rust", "fmt"],
+    YZX_DEV_RELATIVE_PATH,
+);
+const DEV_RUST_CHECK_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx dev rust check",
+        "Run fast cargo check without entering nix develop",
+        YzxCommandCategory::Development,
+        DEV_RUST_TARGET_ARG,
+        None,
+        None,
+    ),
+    &["rust", "check"],
+    YZX_DEV_RELATIVE_PATH,
+);
+const DEV_RUST_TEST_COMMAND: YzxCommandLeaf = leaf(
+    metadata(
+        "yzx dev rust test",
+        "Run fast cargo tests without entering nix develop",
+        YzxCommandCategory::Development,
+        DEV_RUST_TEST_ARGS,
+        None,
+        None,
+    ),
+    &["rust", "test"],
+    YZX_DEV_RELATIVE_PATH,
+);
 const DEV_SYNC_COMMAND: YzxCommandLeaf = leaf(
     metadata(
         "yzx dev sync_issues",
@@ -604,6 +656,10 @@ const DEV_COMMANDS: &[YzxCommandLeaf] = &[
     DEV_BUMP_COMMAND,
     DEV_LINT_COMMAND,
     DEV_PROFILE_COMMAND,
+    DEV_RUST_COMMAND,
+    DEV_RUST_FMT_COMMAND,
+    DEV_RUST_CHECK_COMMAND,
+    DEV_RUST_TEST_COMMAND,
     DEV_SYNC_COMMAND,
     DEV_TEST_COMMAND,
     DEV_UPDATE_COMMAND,
@@ -1186,6 +1242,28 @@ mod tests {
         let err = classify_yzx_root_route(&[String::from("dev"), String::from("not-a-subcommand")])
             .unwrap_err();
         assert_eq!(err.code(), "unknown_subcommand");
+    }
+
+    // Defends: nested maintainer Nu leaves keep their longest-prefix route instead of falling back to the dev root.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
+    #[test]
+    fn routes_nested_dev_rust_commands_to_internal_nu_leaf() {
+        let argv = [
+            String::from("dev"),
+            String::from("rust"),
+            String::from("test"),
+            String::from("core"),
+            String::from("front_door_render"),
+        ];
+        let route = classify_yzx_root_route(&argv).unwrap();
+        let YzxPublicRootRoute::InternalNu(plan) = route else {
+            panic!("expected internal Nu route");
+        };
+        assert_eq!(plan.command_name, "yzx dev rust test");
+        assert_eq!(
+            plan.tail,
+            [String::from("core"), String::from("front_door_render")]
+        );
     }
 
     // Regression: menu visibility and menu categories come from the shared Rust command surface instead of a second Nushell-owned map.

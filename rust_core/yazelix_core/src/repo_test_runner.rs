@@ -1,5 +1,7 @@
 use crate::repo_contract_validation::validate_nushell_syntax;
+use crate::repo_plugin_build::validate_pane_orchestrator_sync;
 use crate::repo_sweep_runner::run_sweep_tests;
+use crate::repo_validation::validate_package_rust_test_purity;
 use serde::Deserialize;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -127,6 +129,14 @@ pub fn run_repo_tests(repo_root: &Path, options: &RepoTestOptions) -> Result<(),
         return Err("Syntax validation failed".to_string());
     }
 
+    if !run_static_maintainer_validations(repo_root, options.verbose, &log_file)? {
+        println!();
+        println!("❌ Test suite aborted due to static maintainer validation errors");
+        println!("   Fix the reported validator errors and try again");
+        println!("📝 Full log: {}", log_file.display());
+        return Err("Static maintainer validation failed".to_string());
+    }
+
     let inventory = load_test_suite_inventory(repo_root)?;
     let results = run_default_functional_suites(repo_root, &inventory, &log_file, options.verbose)?;
     render_suite_summary(&results, &log_file, profiling_enabled(options))?;
@@ -139,6 +149,47 @@ pub fn run_repo_tests(repo_root: &Path, options: &RepoTestOptions) -> Result<(),
     }
 
     Ok(())
+}
+
+fn run_static_maintainer_validations(
+    repo_root: &Path,
+    verbose: bool,
+    log_file: &Path,
+) -> Result<bool, String> {
+    println!();
+    println!("🔒 Phase 2: Static Maintainer Validations");
+    println!("─────────────────────────────────────");
+    append_log(log_file, "=== Static Maintainer Validations ===\n")?;
+
+    let mut errors = Vec::new();
+    let package_test_report = validate_package_rust_test_purity(repo_root)?;
+    errors.extend(package_test_report.errors);
+    let pane_orchestrator_errors = validate_pane_orchestrator_sync(repo_root)?;
+    errors.extend(pane_orchestrator_errors);
+
+    if errors.is_empty() {
+        println!("✅ Package-test purity and pane-orchestrator sync checks passed");
+        append_log(log_file, "✅ Static maintainer validations passed\n\n")?;
+        Ok(true)
+    } else {
+        println!("❌ Static maintainer validations failed");
+        for error in &errors {
+            eprintln!("{error}");
+        }
+        if verbose {
+            println!(
+                "   Validators: validate-package-rust-test-purity, validate-pane-orchestrator-sync"
+            );
+        }
+        append_log(
+            log_file,
+            &format!(
+                "❌ Static maintainer validations failed\n{}\n\n",
+                errors.join("\n")
+            ),
+        )?;
+        Ok(false)
+    }
 }
 
 fn run_new_window(repo_root: &Path, options: &RepoTestOptions) -> Result<(), String> {
@@ -259,7 +310,7 @@ fn run_default_functional_suites(
     verbose: bool,
 ) -> Result<Vec<SuiteResult>, String> {
     println!();
-    println!("🧪 Phase 2: Functional Tests");
+    println!("🧪 Phase 3: Functional Tests");
     println!("─────────────────────────────────────");
     append_log(log_file, "=== Functional Tests ===\n")?;
 

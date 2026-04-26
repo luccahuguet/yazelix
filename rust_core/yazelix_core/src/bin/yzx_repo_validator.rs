@@ -5,17 +5,19 @@ use yazelix_core::repo_contract_validation::{
     validate_nixpkgs_package, validate_nixpkgs_submission, validate_nushell_budget,
     validate_nushell_syntax, validate_readme_version, validate_upgrade_contract,
 };
+use yazelix_core::repo_plugin_build::validate_pane_orchestrator_sync;
 use yazelix_core::repo_validation::{
-    repo_root, validate_default_test_traceability, validate_rust_test_traceability, validate_specs,
+    repo_root, validate_default_test_traceability, validate_package_rust_test_purity,
+    validate_rust_test_traceability, validate_specs,
 };
+
+const USAGE_COMMANDS: &str = "validate-specs|validate-default-test-traceability|validate-rust-test-traceability|validate-package-rust-test-purity|validate-pane-orchestrator-sync|validate-config-surface-contract|validate-nushell-budget|validate-upgrade-contract|validate-installed-runtime-contract|validate-flake-interface|validate-flake-profile-install|validate-nixpkgs-package|validate-nixpkgs-submission|validate-nushell-syntax|validate-readme-version";
 
 fn main() {
     let mut args = std::env::args().skip(1);
     let mut resolved_repo_root = repo_root();
     let Some(first_arg) = args.next() else {
-        eprintln!(
-            "Usage: yzx_repo_validator [--repo-root PATH] <validate-specs|validate-default-test-traceability|validate-rust-test-traceability|validate-config-surface-contract|validate-nushell-budget|validate-upgrade-contract|validate-installed-runtime-contract|validate-flake-interface|validate-flake-profile-install|validate-nixpkgs-package|validate-nixpkgs-submission|validate-nushell-syntax|validate-readme-version>"
-        );
+        eprintln!("Usage: yzx_repo_validator [--repo-root PATH] <{USAGE_COMMANDS}>");
         std::process::exit(2);
     };
 
@@ -26,9 +28,7 @@ fn main() {
         };
         resolved_repo_root = PathBuf::from(path);
         let Some(command) = args.next() else {
-            eprintln!(
-                "Usage: yzx_repo_validator [--repo-root PATH] <validate-specs|validate-default-test-traceability|validate-rust-test-traceability|validate-config-surface-contract|validate-nushell-budget|validate-upgrade-contract|validate-installed-runtime-contract|validate-flake-interface|validate-flake-profile-install|validate-nixpkgs-package|validate-nixpkgs-submission|validate-nushell-syntax|validate-readme-version>"
-            );
+            eprintln!("Usage: yzx_repo_validator [--repo-root PATH] <{USAGE_COMMANDS}>");
             std::process::exit(2);
         };
         (command, args.collect::<Vec<_>>())
@@ -44,6 +44,18 @@ fn main() {
         "validate-rust-test-traceability" => {
             (validate_rust_test_traceability(&resolved_repo_root), None)
         }
+        "validate-package-rust-test-purity" => (
+            validate_package_rust_test_purity(&resolved_repo_root),
+            Some("✅ Package-time Rust tests are host-tool clean".to_string()),
+        ),
+        "validate-pane-orchestrator-sync" => (
+            validate_pane_orchestrator_sync(&resolved_repo_root)
+                .map(|errors| yazelix_core::repo_validation::ValidationReport {
+                    warnings: Vec::new(),
+                    errors,
+                }),
+            Some("✅ Pane-orchestrator tracked wasm is synced with source".to_string()),
+        ),
         "validate-config-surface-contract" => (
             validate_config_surface_contract(&resolved_repo_root),
             Some(
@@ -124,8 +136,8 @@ fn main() {
         }
         _ => {
             eprintln!(
-                "Unknown validator command `{}`. Expected validate-specs, validate-default-test-traceability, validate-rust-test-traceability, validate-config-surface-contract, validate-nushell-budget, validate-upgrade-contract, validate-installed-runtime-contract, validate-flake-interface, validate-flake-profile-install, validate-nixpkgs-package, validate-nixpkgs-submission, validate-nushell-syntax, or validate-readme-version.",
-                command
+                "Unknown validator command `{}`. Expected one of: {}.",
+                command, USAGE_COMMANDS
             );
             std::process::exit(2);
         }
@@ -146,6 +158,10 @@ fn main() {
                         "Governed test traceability validation failed"
                     }
                     "validate-rust-test-traceability" => "Rust test traceability validation failed",
+                    "validate-package-rust-test-purity" => {
+                        "Package-time Rust test purity validation failed"
+                    }
+                    "validate-pane-orchestrator-sync" => "Pane-orchestrator sync validation failed",
                     "validate-config-surface-contract" => {
                         "Main config surface, Home Manager desktop entry, and generated-state contract validation failed"
                     }

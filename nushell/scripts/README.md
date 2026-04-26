@@ -55,10 +55,17 @@ yzx run <command>
 For maintainer workflows, prefer the Rust-owned runner surfaces
 
 ```bash
+yzx dev rust fmt --check
+yzx dev rust check
+yzx dev rust test <filter>
 yzx dev build_pane_orchestrator --sync
 yzx dev test --lint-only
 yzx dev test
 ```
+
+Use the direct `yzx dev rust ...` commands for the fast edit-check loop. Use
+`yzx dev test`, package validators, Nix builds, and Home Manager switches as
+explicit final gates when the change needs package/runtime coverage
 
 The public launch, desktop, restart, enter, popup, update, sweep, plugin-build, and issue-sync families are no longer owned by direct Nushell modules
 

@@ -16,6 +16,15 @@ const ALLOWED_CONTRACT_STATUSES: &[&str] =
     &["live", "planning", "deprecated", "historical", "quarantine"];
 const ALLOWED_VERIFICATION_MODES: &[&str] = &["automated", "validator", "manual", "unverified"];
 const ALLOWED_TEST_LANES: &[&str] = &["default", "maintainer", "sweep", "manual"];
+const PACKAGE_TEST_FORBIDDEN_COMMANDS: &[&str] =
+    &["nix", "nix-build", "nix-env", "nix-shell", "home-manager"];
+const PACKAGE_TEST_FORBIDDEN_SHELL_SNIPPETS: &[&str] = &[
+    "nix build",
+    "nix eval",
+    "nix flake",
+    "nix profile",
+    "home-manager switch",
+];
 
 #[derive(Debug, Default)]
 pub struct ValidationReport {
@@ -154,6 +163,30 @@ pub fn validate_rust_test_traceability(repo_root: &Path) -> Result<ValidationRep
                 report.errors.push(format!(
                     "Governed Rust test is below the minimum strength bar of {}/10 for lane '{}': {} :: {} :: {}/10",
                     minimum_strength, lane, relative_path, test_record.test_name, strength
+                ));
+            }
+        }
+    }
+
+    Ok(report)
+}
+
+pub fn validate_package_rust_test_purity(repo_root: &Path) -> Result<ValidationReport, String> {
+    let mut report = ValidationReport::default();
+
+    for rust_path in load_rust_test_file_paths(repo_root)? {
+        let relative_path = relative_to_repo(repo_root, &rust_path)?;
+        let lines = read_lines(&rust_path)?;
+        let Some(start_index) = package_test_scan_start_index(&relative_path, &lines) else {
+            continue;
+        };
+
+        for (line_index, line) in lines.iter().enumerate().skip(start_index) {
+            if let Some(reason) = package_test_forbidden_host_tool_reason(line) {
+                report.errors.push(format!(
+                    "Package-time Rust test uses host-only tooling ({reason}): {}:{}\n   Move this check into a maintainer validator or explicit package gate instead of the default Cargo test set.",
+                    relative_path,
+                    line_index + 1,
                 ));
             }
         }
@@ -422,6 +455,42 @@ fn load_rust_test_file_paths(repo_root: &Path) -> Result<Vec<PathBuf>, String> {
     files.sort();
     files.dedup();
     Ok(files)
+}
+
+fn package_test_scan_start_index(relative_path: &str, lines: &[String]) -> Option<usize> {
+    if relative_path.contains("/tests/") {
+        return Some(0);
+    }
+
+    lines.iter().position(|line| line.trim() == "#[cfg(test)]")
+}
+
+fn package_test_forbidden_host_tool_reason(line: &str) -> Option<String> {
+    let trimmed = line.trim();
+    if trimmed.starts_with("//") {
+        return None;
+    }
+
+    let whitespace_stripped = trimmed.split_whitespace().collect::<String>();
+    for command in PACKAGE_TEST_FORBIDDEN_COMMANDS {
+        if whitespace_stripped.contains(&format!("Command::new(\"{command}\")"))
+            || whitespace_stripped.contains(&format!("std::process::Command::new(\"{command}\")"))
+        {
+            return Some(format!("Command::new(\"{command}\")"));
+        }
+    }
+
+    let executable_string_context = trimmed.contains(".arg(")
+        || trimmed.contains(".args(")
+        || whitespace_stripped.contains("Command::new(\"sh\")")
+        || whitespace_stripped.contains("Command::new(\"/bin/sh\")");
+    for snippet in PACKAGE_TEST_FORBIDDEN_SHELL_SNIPPETS {
+        if executable_string_context && trimmed.contains(snippet) {
+            return Some(format!("shell snippet `{snippet}`"));
+        }
+    }
+
+    None
 }
 
 fn collect_rust_rs_files(dir: &Path, files: &mut Vec<PathBuf>) -> Result<(), String> {
@@ -1000,5 +1069,74 @@ fn relative_to_repo(repo_root: &Path, path: &Path) -> Result<String, String> {
 fn push_unique<T: PartialEq>(items: &mut Vec<T>, item: T) {
     if !items.contains(&item) {
         items.push(item);
+    }
+}
+
+// Test lane: maintainer
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    fn write_rust_test_fixture(relative_path: &str, content: &str) -> (tempfile::TempDir, PathBuf) {
+        let tmp = tempdir().unwrap();
+        let repo = tmp.path().to_path_buf();
+        let full_path = repo.join(relative_path);
+        fs::create_dir_all(full_path.parent().unwrap()).unwrap();
+        fs::write(full_path, content).unwrap();
+        (tmp, repo)
+    }
+
+    // Regression: package-time Rust tests must not execute Nix because Nix package test sandboxes do not provide host Nix.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn package_rust_test_purity_rejects_nix_command_in_integration_test() {
+        let bad_test_source = [
+            "use std::process::Command;",
+            "",
+            "#[test]",
+            "fn checks_home_manager_metadata() {",
+            "    let _ = Command::new(\"nix\").arg(\"eval\").output();",
+            "}",
+        ]
+        .join("\n");
+        let (_tmp, repo) = write_rust_test_fixture(
+            "rust_core/yazelix_core/tests/home_manager_option_metadata.rs",
+            &bad_test_source,
+        );
+
+        let report = validate_package_rust_test_purity(&repo).unwrap();
+        assert_eq!(report.errors.len(), 1);
+        assert!(report.errors[0].contains("Command::new(\"nix\")"));
+        assert!(report.errors[0].contains("maintainer validator"));
+    }
+
+    // Defends: production command execution code can still mention Nix outside the package-time test scan region.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
+    #[test]
+    fn package_rust_test_purity_ignores_production_code_before_cfg_test_module() {
+        let production_source = [
+            "use std::process::Command;",
+            "",
+            "pub fn run_update() {",
+            "    let _ = Command::new(\"nix\").arg(\"profile\").arg(\"upgrade\").output();",
+            "}",
+            "",
+            "#[cfg(test)]",
+            "mod tests {",
+            "    #[test]",
+            "    fn pure_unit_test() {",
+            "        assert_eq!(2 + 2, 4);",
+            "    }",
+            "}",
+        ]
+        .join("\n");
+        let (_tmp, repo) = write_rust_test_fixture(
+            "rust_core/yazelix_core/src/update_commands.rs",
+            &production_source,
+        );
+
+        let report = validate_package_rust_test_purity(&repo).unwrap();
+        assert!(report.errors.is_empty(), "{:?}", report.errors);
     }
 }

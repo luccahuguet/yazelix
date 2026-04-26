@@ -110,6 +110,13 @@ The current ratchet is enforced by these validators:
     default-suite file-level ratchet
 - `yzx_repo_validator validate-rust-test-traceability`
   - validates governed Rust test metadata and nearby `Contract:` markers
+- `yzx_repo_validator validate-package-rust-test-purity`
+  - validates default/package-time Rust tests do not execute host-only tools
+    such as `nix` or `home-manager`; Nix-dependent metadata checks belong in
+    maintainer validators such as `validate-config-surface-contract`
+- `yzx_repo_validator validate-pane-orchestrator-sync`
+  - validates tracked pane-orchestrator wasm sync metadata against the current
+    source so source edits cannot silently ship with stale plugin artifacts
 
 Current migration-safe debt that is allowed but must shrink is tracked in
 [`docs/contract_traceability_quarantine.toml`](./contract_traceability_quarantine.toml).
