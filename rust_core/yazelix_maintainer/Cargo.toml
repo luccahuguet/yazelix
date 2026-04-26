@@ -1,0 +1,23 @@
+[package]
+name = "yazelix_maintainer"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "yzx_repo_validator"
+path = "src/bin/yzx_repo_validator.rs"
+
+[[bin]]
+name = "yzx_repo_maintainer"
+path = "src/bin/yzx_repo_maintainer.rs"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10"
+toml = "0.9"
+yazelix_core = { path = "../yazelix_core" }
+
+[dev-dependencies]
+tempfile = "3.10"

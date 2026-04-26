@@ -4,7 +4,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use tempfile::tempdir;
-use yazelix_core::repo_contract_validation::{UpgradeContractOptions, validate_upgrade_contract};
+use yazelix_maintainer::repo_contract_validation::{
+    UpgradeContractOptions, validate_upgrade_contract,
+};
 
 fn write_fixture_repo() -> (tempfile::TempDir, PathBuf) {
     let tmp = tempdir().unwrap();

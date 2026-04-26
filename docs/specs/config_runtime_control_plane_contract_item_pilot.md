@@ -95,7 +95,7 @@ of the protocol pressure points at once:
   helper`, `source checkouts without yzx_core must fail clearly`,
   `source-checkout helper fallback must prefer the freshest local yzx_core
   build`); validator
-  `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-installed-runtime-contract`
+  `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-installed-runtime-contract`
 - Source: `docs/specs/rust_nushell_bridge_contract.md`;
   `docs/specs/runtime_root_contract.md`
 - Deletion note: direct Rust or launcher ownership is allowed only if the same

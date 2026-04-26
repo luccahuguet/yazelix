@@ -71,7 +71,7 @@ Without a written contract:
   install-smoke work rather than universal launch blockers
 - Verification: automated
   `rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs`; automated
-  `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-installed-runtime-contract`
+  `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-installed-runtime-contract`
 
 #### PRE-005
 - Type: boundary

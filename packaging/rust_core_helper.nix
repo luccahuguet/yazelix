@@ -50,6 +50,14 @@ rustPlatform.buildRustPackage {
   cargoRoot = "rust_core";
   cargoLock.lockFile = "${src}/rust_core/Cargo.lock";
   buildAndTestSubdir = "rust_core";
+  cargoBuildFlags = [
+    "-p"
+    "yazelix_core"
+  ];
+  cargoCheckFlags = [
+    "-p"
+    "yazelix_core"
+  ];
 
   doCheck = true;
   nativeCheckInputs = [ pkgs.git ];

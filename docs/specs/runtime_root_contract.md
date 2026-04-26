@@ -57,7 +57,7 @@ This contract keeps those boundaries explicit.
   a repo clone under `~/.config/yazelix`
 - Verification: automated
   `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs`; validator
-  `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-installed-runtime-contract`
+  `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-installed-runtime-contract`
 
 #### ROOT-003
 - Type: ownership
@@ -162,7 +162,7 @@ This contract keeps those boundaries explicit.
 - Defended by: `cargo nextest run --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_core_config_normalize`
 - Defended by: `cargo nextest run --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
 - Defended by: `nu nushell/scripts/dev/test_yzx_maintainer.nu`
-- Defended by: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-installed-runtime-contract`
+- Defended by: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-installed-runtime-contract`
 
 ## Open Questions
 

@@ -14,7 +14,7 @@ The target shape is:
 - `yazelix_maintainer`: in-repo maintainer crate for repo validators, release/update automation, Beads/GitHub sync, sweep runners, plugin wasm sync, and maintainer test orchestration
 - no separate repository for now
 
-This is a separation decision, not a deletion decision. The maintainer code is real and release-critical; the problem is that it currently lives in the same crate as runtime code and therefore inflates product ownership, package-time build surface, and Rust LOC accounting.
+This is a separation decision, not a deletion decision. The maintainer code is real and release-critical; the problem was that it lived in the same crate as runtime code and therefore inflated product ownership, package-time build surface, and Rust LOC accounting.
 
 ## First-Principles Rationale
 
@@ -29,10 +29,11 @@ The pragmatic split is therefore an in-repo crate boundary. It makes runtime own
 Current state:
 
 - `packaging/mk_runtime_tree.nix` exposes only `yzx`, `yzx_core`, and `yzx_control` from the Rust helper package
-- `packaging/rust_core_helper.nix` still builds the whole `yazelix_core` crate, including `yzx_repo_validator`, `yzx_repo_maintainer`, and the `repo_*` modules
-- package-time Rust checks therefore see maintainer tooling even though users do not call it
+- `packaging/rust_core_helper.nix` builds and checks only `-p yazelix_core`
+- `yzx_repo_validator`, `yzx_repo_maintainer`, and the `repo_*` modules live in `rust_core/yazelix_maintainer`
+- package-time Rust checks no longer include maintainer tooling even though maintainer commands remain available from the workspace
 
-Target state after the split:
+Maintained target state:
 
 - runtime/package builds should target only the product crate and shipped helper binaries
 - CI and `yzx dev` should invoke maintainer commands through `yazelix_maintainer`
@@ -43,18 +44,18 @@ Target state after the split:
 
 | Subsystem | Current path | Decision | Offload decision | Rationale |
 | --- | --- | --- | --- | --- |
-| Validator dispatcher | `src/bin/yzx_repo_validator.rs` | move to `yazelix_maintainer` | reject external repo | CI entrypoint is repo-specific and validates local files, specs, packages, and release rules |
-| Maintainer dispatcher | `src/bin/yzx_repo_maintainer.rs` | move to `yazelix_maintainer` | reject external repo | Local dev workflow wrapper for Beads/GitHub sync, tests, release bump, updates, and plugin sync |
-| Repo contract validators | `repo_contract_validation.rs` | move to `yazelix_maintainer` | reject external repo | Largest maintainer file; all checks are tied to this repo's Nix, README, Home Manager, release, and package contracts |
-| Generic repo validation | `repo_validation.rs` | move to `yazelix_maintainer` | reject external repo | Spec/test traceability and package-test-purity are repo policy, not runtime product behavior |
-| Issue sync | `repo_issue_sync.rs` | move to `yazelix_maintainer` | reject external repo | Beads/GitHub mapping is local workflow state and should not become a separately versioned tool |
-| Nushell lint wrapper | `repo_nu_lint.rs` | move to `yazelix_maintainer` | reject external repo | Thin repo-local maintainer command around checked-in Nu files |
-| Pane-orchestrator build/sync | `repo_plugin_build.rs` | move to `yazelix_maintainer` | reject external repo | Sync stamp and tracked wasm are part of this repository; command can depend on `yazelix_core` materialization APIs |
-| Sweep runner | `repo_sweep_runner.rs` | move to `yazelix_maintainer` | reject external repo | Runs local runtime/config matrices and visual checks against this checkout |
-| Test runner | `repo_test_runner.rs` | move to `yazelix_maintainer` | reject external repo | Maintainer orchestration over local validator/test surfaces, not shipped product behavior |
-| Update workflow | `repo_update_workflow.rs` | move to `yazelix_maintainer` | reject external repo | Writes local pins, vendored plugins, README surface, and canary materialization |
-| Version bump workflow | `repo_version_bump.rs` | move to `yazelix_maintainer` | reject external repo | Transactional release policy must stay in the repo that owns tags, changelog, and upgrade notes |
-| Workspace session validator | `workspace_session_contract.rs` | move to `yazelix_maintainer` unless a runtime caller appears | reject external repo | Validator-only owner; it can call runtime-owned workspace asset checks through `yazelix_core` |
+| Validator dispatcher | `yazelix_maintainer/src/bin/yzx_repo_validator.rs` | moved to `yazelix_maintainer` | reject external repo | CI entrypoint is repo-specific and validates local files, specs, packages, and release rules |
+| Maintainer dispatcher | `yazelix_maintainer/src/bin/yzx_repo_maintainer.rs` | moved to `yazelix_maintainer` | reject external repo | Local dev workflow wrapper for Beads/GitHub sync, tests, release bump, updates, and plugin sync |
+| Repo contract validators | `yazelix_maintainer/src/repo_contract_validation.rs` | moved to `yazelix_maintainer` | reject external repo | Largest maintainer file; all checks are tied to this repo's Nix, README, Home Manager, release, and package contracts |
+| Generic repo validation | `yazelix_maintainer/src/repo_validation.rs` | moved to `yazelix_maintainer` | reject external repo | Spec/test traceability and package-test-purity are repo policy, not runtime product behavior |
+| Issue sync | `yazelix_maintainer/src/repo_issue_sync.rs` | moved to `yazelix_maintainer` | reject external repo | Beads/GitHub mapping is local workflow state and should not become a separately versioned tool |
+| Nushell lint wrapper | `yazelix_maintainer/src/repo_nu_lint.rs` | moved to `yazelix_maintainer` | reject external repo | Thin repo-local maintainer command around checked-in Nu files |
+| Pane-orchestrator build/sync | `yazelix_maintainer/src/repo_plugin_build.rs` | moved to `yazelix_maintainer` | reject external repo | Sync stamp and tracked wasm are part of this repository; command depends on `yazelix_core` materialization APIs |
+| Sweep runner | `yazelix_maintainer/src/repo_sweep_runner.rs` | moved to `yazelix_maintainer` | reject external repo | Runs local runtime/config matrices and visual checks against this checkout |
+| Test runner | `yazelix_maintainer/src/repo_test_runner.rs` | moved to `yazelix_maintainer` | reject external repo | Maintainer orchestration over local validator/test surfaces, not shipped product behavior |
+| Update workflow | `yazelix_maintainer/src/repo_update_workflow.rs` | moved to `yazelix_maintainer` | reject external repo | Writes local pins, vendored plugins, README surface, and canary materialization |
+| Version bump workflow | `yazelix_maintainer/src/repo_version_bump.rs` | moved to `yazelix_maintainer` | reject external repo | Transactional release policy must stay in the repo that owns tags, changelog, and upgrade notes |
+| Workspace session validator | `yazelix_maintainer/src/workspace_session_contract.rs` | moved to `yazelix_maintainer` | reject external repo | Validator-only owner; it can call runtime-owned workspace asset checks through `yazelix_core` |
 | Workspace asset checks | `workspace_asset_contract.rs` | keep in `yazelix_core` | reject external repo | Used by user-facing `yzx doctor`, so it is product runtime behavior |
 | Layout family contract | `layout_family_contract.rs` | keep in `yazelix_core` | reject external repo | Used by runtime workspace asset checks and doctor reporting |
 | Profile commands | `profile_commands.rs` | keep in `yazelix_core` for now | reject external repo | `yzx_control profile` is used by live startup/profile instrumentation, not only repo validation |
@@ -63,8 +64,8 @@ Target state after the split:
 
 The accepted implementation should be a mechanical crate split, not a rewrite:
 
-- add `rust_core/yazelix_maintainer`
-- move maintainer-only modules and bins into that crate
+- keep `rust_core/yazelix_maintainer`
+- keep maintainer-only modules and bins in that crate
 - update CI and `nushell/scripts/yzx/dev.nu` to call `cargo run -p yazelix_maintainer --bin yzx_repo_validator` or `yzx_repo_maintainer`
 - keep public command names stable: `yzx_repo_validator` and `yzx_repo_maintainer`
 - update `packaging/rust_core_helper.nix` so runtime package builds and tests only the product crate/binaries

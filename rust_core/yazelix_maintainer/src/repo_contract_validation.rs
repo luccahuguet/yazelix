@@ -1,8 +1,3 @@
-use crate::config_state::{
-    ComputeConfigStateRequest, ConfigStateData, RecordConfigStateRequest, compute_config_state,
-    record_config_state,
-};
-use crate::control_plane::read_yazelix_version_from_runtime;
 use crate::repo_validation::ValidationReport;
 use serde::Deserialize;
 use serde_json::{Map as JsonMap, Number as JsonNumber, Value as JsonValue};
@@ -13,6 +8,11 @@ use std::path::{Path, PathBuf};
 use std::process::{self, Command, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
 use toml::{Table as TomlTable, Value as TomlValue};
+use yazelix_core::config_state::{
+    ComputeConfigStateRequest, ConfigStateData, RecordConfigStateRequest, compute_config_state,
+    record_config_state,
+};
+use yazelix_core::control_plane::read_yazelix_version_from_runtime;
 
 const MAIN_TEMPLATE_RELATIVE_PATH: &str = "yazelix_default.toml";
 const MODULE_RELATIVE_PATH: &str = "home_manager/module.nix";

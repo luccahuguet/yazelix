@@ -999,6 +999,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "yazelix_maintainer"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "toml",
+ "yazelix_core",
+]
+
+[[package]]
 name = "yazelix_screen"
 version = "0.1.0"
 dependencies = [

@@ -16,14 +16,6 @@ path = "src/bin/yzx_control.rs"
 name = "yzx"
 path = "src/bin/yzx.rs"
 
-[[bin]]
-name = "yzx_repo_validator"
-path = "src/bin/yzx_repo_validator.rs"
-
-[[bin]]
-name = "yzx_repo_maintainer"
-path = "src/bin/yzx_repo_maintainer.rs"
-
 [dependencies]
 crossterm = "0.29"
 lexopt = "0.3"

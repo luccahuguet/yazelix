@@ -1,12 +1,12 @@
 use std::path::PathBuf;
-use yazelix_core::repo_contract_validation::sync_readme_surface;
-use yazelix_core::repo_issue_sync::run_issue_sync;
-use yazelix_core::repo_nu_lint::run_repo_nu_lint;
-use yazelix_core::repo_plugin_build::build_pane_orchestrator;
-use yazelix_core::repo_test_runner::{RepoTestOptions, run_repo_tests};
-use yazelix_core::repo_update_workflow::{RepoUpdateOptions, run_repo_update_workflow};
-use yazelix_core::repo_validation::repo_root;
-use yazelix_core::repo_version_bump::perform_version_bump;
+use yazelix_maintainer::repo_contract_validation::sync_readme_surface;
+use yazelix_maintainer::repo_issue_sync::run_issue_sync;
+use yazelix_maintainer::repo_nu_lint::run_repo_nu_lint;
+use yazelix_maintainer::repo_plugin_build::build_pane_orchestrator;
+use yazelix_maintainer::repo_test_runner::{RepoTestOptions, run_repo_tests};
+use yazelix_maintainer::repo_update_workflow::{RepoUpdateOptions, run_repo_update_workflow};
+use yazelix_maintainer::repo_validation::repo_root;
+use yazelix_maintainer::repo_version_bump::perform_version_bump;
 
 fn main() {
     let mut args = std::env::args().skip(1);

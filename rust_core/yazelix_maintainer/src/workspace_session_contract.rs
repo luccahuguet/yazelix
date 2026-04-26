@@ -1,9 +1,9 @@
 //! Maintainer validator for workspace/session integration seams.
 
-use crate::workspace_asset_contract::validate_workspace_assets_for_repo;
-use crate::zellij_commands::INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS;
 use std::fs;
 use std::path::Path;
+use yazelix_core::workspace_asset_contract::validate_workspace_assets_for_repo;
+use yazelix_core::zellij_commands::INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS;
 
 const REQUIRED_PANE_ORCHESTRATOR_PIPE_COMMANDS: &[&str] = &[
     "focus_sidebar",

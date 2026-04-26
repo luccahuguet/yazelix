@@ -1,16 +1,16 @@
 use std::path::PathBuf;
-use yazelix_core::repo_contract_validation::{
+use yazelix_maintainer::repo_contract_validation::{
     ColdProfileInstallOptions, UpgradeContractOptions, validate_config_surface_contract,
     validate_flake_interface, validate_flake_profile_install, validate_installed_runtime_contract,
     validate_nixpkgs_package, validate_nixpkgs_submission, validate_nushell_budget,
     validate_nushell_syntax, validate_readme_version, validate_upgrade_contract,
 };
-use yazelix_core::repo_plugin_build::validate_pane_orchestrator_sync;
-use yazelix_core::repo_validation::{
+use yazelix_maintainer::repo_plugin_build::validate_pane_orchestrator_sync;
+use yazelix_maintainer::repo_validation::{
     repo_root, validate_default_test_traceability, validate_package_rust_test_purity,
     validate_rust_test_traceability, validate_specs,
 };
-use yazelix_core::workspace_session_contract::validate_workspace_session_contract;
+use yazelix_maintainer::workspace_session_contract::validate_workspace_session_contract;
 
 const USAGE_COMMANDS: &str = "validate-specs|validate-default-test-traceability|validate-rust-test-traceability|validate-package-rust-test-purity|validate-pane-orchestrator-sync|validate-workspace-session-contract|validate-config-surface-contract|validate-nushell-budget|validate-upgrade-contract|validate-installed-runtime-contract|validate-flake-interface|validate-flake-profile-install|validate-nixpkgs-package|validate-nixpkgs-submission|validate-nushell-syntax|validate-readme-version";
 
@@ -51,7 +51,7 @@ fn main() {
         ),
         "validate-pane-orchestrator-sync" => (
             validate_pane_orchestrator_sync(&resolved_repo_root)
-                .map(|errors| yazelix_core::repo_validation::ValidationReport {
+                .map(|errors| yazelix_maintainer::repo_validation::ValidationReport {
                     warnings: Vec::new(),
                     errors,
                 }),
@@ -59,7 +59,7 @@ fn main() {
         ),
         "validate-workspace-session-contract" => (
             validate_workspace_session_contract(&resolved_repo_root).map(|errors| {
-                yazelix_core::repo_validation::ValidationReport {
+                yazelix_maintainer::repo_validation::ValidationReport {
                     warnings: Vec::new(),
                     errors,
                 }

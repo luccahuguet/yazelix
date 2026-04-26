@@ -43,7 +43,7 @@ def run_repo_maintainer_command [repo_root: string, ...maintainer_args: string] 
         "--manifest-path"
         ($repo_root | path join "rust_core" "Cargo.toml")
         "-p"
-        "yazelix_core"
+        "yazelix_maintainer"
         "--bin"
         "yzx_repo_maintainer"
         "--"
@@ -97,6 +97,12 @@ def rust_target_specs [repo_root: string, target: string] {
             test_args: ["-p", "yazelix_core"]
         }
         {
+            name: "maintainer"
+            manifest_path: ($repo_root | path join "rust_core" "Cargo.toml")
+            check_args: ["-p", "yazelix_maintainer"]
+            test_args: ["-p", "yazelix_maintainer"]
+        }
+        {
             name: "pane_orchestrator"
             manifest_path: ($repo_root | path join "rust_plugins" "zellij_pane_orchestrator" "Cargo.toml")
             check_args: ["--lib"]
@@ -109,13 +115,13 @@ def rust_target_specs [repo_root: string, target: string] {
         "core" => ($specs | where name == "core")
         "pane_orchestrator" => ($specs | where name == "pane_orchestrator")
         _ => {
-            error make {msg: $"Unknown Rust target '($target)'. Expected one of: core, pane_orchestrator, all."}
+            error make {msg: $"Unknown Rust target '($target)'. Expected one of: core, maintainer, pane_orchestrator, all."}
         }
     }
 }
 
 def parse_rust_target_and_tail [args: list<string>, default_target: string] {
-    let known_targets = ["core", "pane_orchestrator", "all"]
+    let known_targets = ["core", "maintainer", "pane_orchestrator", "all"]
     if ($args | is-empty) {
         return {target: $default_target, tail: []}
     }

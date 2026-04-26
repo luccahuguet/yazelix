@@ -30,8 +30,6 @@ This is not a task list. Follow-up execution belongs in Beads.
 | `rust_core/yazelix_core/src/bin/yzx.rs` | 140 | public CLI dispatcher | canonical | Small Rust front door for public `yzx` routing, including internal Nu family fallback |
 | `rust_core/yazelix_core/src/bin/yzx_control.rs` | 965 | public command implementation dispatcher | canonical | Owns user-facing Rust command families and structured errors |
 | `rust_core/yazelix_core/src/bin/yzx_core.rs` | 1254 | machine-readable helper protocol | temporary | Still used by startup, setup, wrappers, Home Manager repair, Helix wrapper, and maintainer workflows; collapse only after those machine callers have another stable owner |
-| `rust_core/yazelix_core/src/bin/yzx_repo_maintainer.rs` | 283 | maintainer workflow runner | canonical-maintainer | Deliberate private maintainer command surface |
-| `rust_core/yazelix_core/src/bin/yzx_repo_validator.rs` | 243 | repo validator dispatcher | canonical-maintainer | Central validator entrypoint; later crate split can move it out of runtime crate |
 | `rust_core/yazelix_core/src/lib.rs` | 162 | crate module and re-export surface | canonical | Broad because binaries and integration tests import shared owners directly |
 | `rust_core/yazelix_core/src/bridge.rs` | 219 | shared error/envelope model | canonical | Historical name, but the code is now the Rust error contract, not a transitional bridge |
 | `rust_core/yazelix_core/src/cli_render.rs` | 60 | terminal text helpers | canonical | Small shared formatting helper |
@@ -79,7 +77,6 @@ This is not a task list. Follow-up execution belongs in Beads.
 | `rust_core/yazelix_core/src/upgrade_summary.rs` | 512 | upgrade summary model/rendering | canonical | Current `whats_new` and first-run upgrade summary behavior |
 | `rust_core/yazelix_core/src/workspace_asset_contract.rs` | 361 | workspace asset drift checks | canonical | Doctor/validator guardrail for generated runtime state |
 | `rust_core/yazelix_core/src/workspace_commands.rs` | 1102 | `yzx cwd`, `yzx reveal`, popup helpers | canonical | Workspace/session integration owner |
-| `rust_core/yazelix_core/src/workspace_session_contract.rs` | 166 | workspace session validator | canonical | Maintainer validator for cross-file workspace contracts |
 | `rust_core/yazelix_core/src/yazi_materialization.rs` | 1221 | Yazi config generation | canonical | Large but cohesive generated Yazi owner; legacy override rejection is user-safety behavior |
 | `rust_core/yazelix_core/src/yazi_render_plan.rs` | 283 | Yazi render plan | canonical | Small deterministic config-plan owner |
 | `rust_core/yazelix_core/src/zellij_commands.rs` | 1302 | Zellij control commands | canonical | Owns pane-orchestrator CLI integration |
@@ -90,15 +87,18 @@ This is not a task list. Follow-up execution belongs in Beads.
 
 | File | LOC | Owner | Disposition | Reason |
 | --- | ---: | --- | --- | --- |
-| `rust_core/yazelix_core/src/repo_contract_validation.rs` | 3547 | repo/package/release contract validators | split-candidate | Largest file; canonical maintainer behavior, but likely belongs in a separate maintainer crate or modules after `yazelix-9opk.5` |
-| `rust_core/yazelix_core/src/repo_issue_sync.rs` | 670 | GitHub/Beads sync tooling | canonical-maintainer | Not user runtime behavior; keep local until maintainer crate/offload decision |
-| `rust_core/yazelix_core/src/repo_nu_lint.rs` | 56 | Nushell lint helper | canonical-maintainer | Small validator helper |
-| `rust_core/yazelix_core/src/repo_plugin_build.rs` | 476 | pane-orchestrator build/sync workflow | canonical-maintainer | Necessary guardrail for wasm/source freshness |
-| `rust_core/yazelix_core/src/repo_sweep_runner.rs` | 1064 | configuration and visual sweep runner | canonical-maintainer | `run_visual_verification` is live visual validation, not demo-only code |
-| `rust_core/yazelix_core/src/repo_test_runner.rs` | 591 | maintainer test orchestration | canonical-maintainer | Central maintainer gate |
-| `rust_core/yazelix_core/src/repo_update_workflow.rs` | 1438 | maintainer update workflow | canonical-maintainer | Large process-heavy workflow; candidate for maintainer crate split, not deletion |
-| `rust_core/yazelix_core/src/repo_validation.rs` | 1142 | generic repo validation helpers | canonical-maintainer | Test traceability and package-purity guardrails |
-| `rust_core/yazelix_core/src/repo_version_bump.rs` | 469 | release bump tooling | canonical-maintainer | Maintainer release automation |
+| `rust_core/yazelix_maintainer/src/bin/yzx_repo_maintainer.rs` | 283 | maintainer workflow runner | canonical-maintainer | Deliberate private maintainer command surface, now outside the runtime crate |
+| `rust_core/yazelix_maintainer/src/bin/yzx_repo_validator.rs` | 243 | repo validator dispatcher | canonical-maintainer | Central validator entrypoint, now outside the runtime crate |
+| `rust_core/yazelix_maintainer/src/repo_contract_validation.rs` | 3547 | repo/package/release contract validators | canonical-maintainer | Largest maintainer file; moved into the in-repo maintainer crate |
+| `rust_core/yazelix_maintainer/src/repo_issue_sync.rs` | 670 | GitHub/Beads sync tooling | canonical-maintainer | Not user runtime behavior; keep local in maintainer crate |
+| `rust_core/yazelix_maintainer/src/repo_nu_lint.rs` | 56 | Nushell lint helper | canonical-maintainer | Small validator helper |
+| `rust_core/yazelix_maintainer/src/repo_plugin_build.rs` | 476 | pane-orchestrator build/sync workflow | canonical-maintainer | Necessary guardrail for wasm/source freshness |
+| `rust_core/yazelix_maintainer/src/repo_sweep_runner.rs` | 1064 | configuration and visual sweep runner | canonical-maintainer | `run_visual_verification` is live visual validation, not demo-only code |
+| `rust_core/yazelix_maintainer/src/repo_test_runner.rs` | 591 | maintainer test orchestration | canonical-maintainer | Central maintainer gate |
+| `rust_core/yazelix_maintainer/src/repo_update_workflow.rs` | 1438 | maintainer update workflow | canonical-maintainer | Large process-heavy workflow; moved out of the runtime crate, not deleted |
+| `rust_core/yazelix_maintainer/src/repo_validation.rs` | 1142 | generic repo validation helpers | canonical-maintainer | Test traceability and package-purity guardrails |
+| `rust_core/yazelix_maintainer/src/repo_version_bump.rs` | 469 | release bump tooling | canonical-maintainer | Maintainer release automation |
+| `rust_core/yazelix_maintainer/src/workspace_session_contract.rs` | 166 | workspace session validator | canonical-maintainer | Maintainer validator for cross-file workspace contracts |
 
 ## Zellij Pane Orchestrator Plugin
 
@@ -159,15 +159,15 @@ This is not a task list. Follow-up execution belongs in Beads.
 
 `yazelix-9opk.5` decided that maintainer-only Rust tooling should stay in this repository but move out of the product runtime crate. The durable decision is recorded in `docs/rust_maintainer_tooling_boundary.md`.
 
-Accepted target shape:
+Accepted shape:
 
 - keep `yazelix_core` as the product/runtime crate for shipped helpers and user-facing behavior
-- add an in-repo `yazelix_maintainer` crate for `repo_*` modules and `yzx_repo_validator` / `yzx_repo_maintainer`
+- keep the in-repo `yazelix_maintainer` crate for `repo_*` modules and `yzx_repo_validator` / `yzx_repo_maintainer`
 - reject a separate repository for now because validators, release tooling, sync stamps, Beads/GitHub state, and CI checks are tightly coupled to this checkout
 - keep `workspace_asset_contract.rs` and `layout_family_contract.rs` in `yazelix_core` because `yzx doctor` uses them
-- move `workspace_session_contract.rs` with maintainer validators unless a runtime caller appears
+- keep `workspace_session_contract.rs` with maintainer validators unless a runtime caller appears
 
-Implementation belongs in `yazelix-9opk.5.1`. The Rust ownership/LOC budget should wait until that crate split lands.
+The crate split landed in `yazelix-9opk.5.1`. The Rust ownership/LOC budget can now use this boundary.
 
 ## Code Removed In This Pass
 

@@ -1,12 +1,12 @@
 // Test lane: maintainer
-use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
-use crate::control_plane::state_dir_from_env;
 use serde_json::Value as JsonValue;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::thread::sleep;
 use std::time::Duration;
+use yazelix_core::config_normalize::{NormalizeConfigRequest, normalize_config};
+use yazelix_core::control_plane::state_dir_from_env;
 
 const DEFAULT_SHELL: &str = "nu";
 const DEFAULT_TERMINAL: &str = "ghostty";

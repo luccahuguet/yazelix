@@ -102,15 +102,15 @@ jobs:
           use-flakehub: false
 
       - name: Validate Nushell syntax
-        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-nushell-syntax
+        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-nushell-syntax
 
       - name: Validate generated README surface
         shell: bash
-        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-readme-version
+        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-readme-version
 
       - name: Validate upgrade contract
         shell: bash
-        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-upgrade-contract --ci
+        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-upgrade-contract --ci
 
       - name: Build yzx_core helper for source-checkout validators
         shell: bash
@@ -121,22 +121,22 @@ jobs:
 
       - name: Validate config surface and launch-profile contract
         shell: bash
-        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-config-surface-contract
+        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-config-surface-contract
 
       - name: Validate spec traceability
         shell: bash
-        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-specs
+        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-specs
 
       - name: Validate default-suite shape and traceability
         shell: bash
-        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-default-test-traceability
+        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-default-test-traceability
 
       - name: Validate Rust test traceability
         shell: bash
-        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-rust-test-traceability
+        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-rust-test-traceability
 
       - name: Validate top-level flake interface
-        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-flake-interface
+        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-flake-interface
 
   integration:
     # Medium-cost installed-runtime contract lane. Keep this path-gated so
@@ -186,7 +186,7 @@ jobs:
       - name: Validate installed-runtime contract smoke
         if: ${{ needs.detect_integration_changes.outputs.run_runtime_contract == 'true' }}
         shell: bash
-        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-installed-runtime-contract
+        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-installed-runtime-contract
 
   cold_install:
     # Full cold profile-install/rebuild smoke. Keep this on weekly/manual validation
@@ -220,7 +220,7 @@ jobs:
           use-flakehub: false
 
       - name: Run cold profile install build
-        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-flake-profile-install install "${{ runner.temp }}/yazelix_flake_install_smoke"
+        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-flake-profile-install install "${{ runner.temp }}/yazelix_flake_install_smoke"
 
       - name: Verify cold profile-installed runtime
-        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-flake-profile-install verify "${{ runner.temp }}/yazelix_flake_install_smoke"
+        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-flake-profile-install verify "${{ runner.temp }}/yazelix_flake_install_smoke"

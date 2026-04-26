@@ -95,7 +95,7 @@ Out of scope:
   (`test_startup_profile_records_detached_terminal_probe`,
   `test_detached_launch_probe_success_path_is_fast`,
   `test_detached_launch_probe_early_failure_is_visible`);
-  validator `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-installed-runtime-contract`
+  validator `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-installed-runtime-contract`
 - Source: `docs/specs/startup_profile_scenarios.md`
 
 ## Deletion Budget For `yazelix-zlt2.2`
@@ -149,11 +149,11 @@ Rust wrapper.
 
 Before `yazelix-zlt2.2` closes, run:
 
-- `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-nushell-syntax`
+- `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-nushell-syntax`
 - `cargo nextest run --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_core_config_normalize`
 - targeted detached-launch tests from
   `nushell/scripts/dev/test_yzx_maintainer.nu`
-- `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-installed-runtime-contract`
+- `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-installed-runtime-contract`
 
 If the full generated-config suite is too expensive for a small edit, at
 minimum run the terminal-launch tests it contains and record the skipped scope

@@ -346,7 +346,7 @@ regression suite instead of being run in yet another lane.
 - integration tests: `nix develop -c cargo nextest run --profile ci --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib`
 - CI checks: `yzx_repo_validator validate-default-test-traceability`
 - CI checks: `yzx_repo_validator validate-rust-test-traceability`
-- CI checks: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-readme-version`
+- CI checks: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-readme-version`
 - CI checks: `yzx_repo_validator validate-config-surface-contract`
 - CI checks: `yzx_repo_validator validate-specs`
 - manual verification: review `.github/workflows/ci.yml` and `.pre-commit-config.yaml` against the lane definitions in this spec
@@ -357,7 +357,7 @@ regression suite instead of being run in yet another lane.
 - Bead: `yazelix-rdn7.4.5.4`
 - Defended by: `yzx_repo_validator validate-default-test-traceability`
 - Defended by: `yzx_repo_validator validate-rust-test-traceability`
-- Defended by: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_core --bin yzx_repo_validator -- validate-readme-version`
+- Defended by: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-readme-version`
 - Defended by: `yzx_repo_validator validate-config-surface-contract`
 - Defended by: `nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev test'`
 - Defended by: `yzx_repo_validator validate-specs`

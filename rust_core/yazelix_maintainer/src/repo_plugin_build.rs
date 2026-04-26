@@ -1,12 +1,12 @@
-use crate::active_config_surface::resolve_active_config_paths;
-use crate::control_plane::{config_dir_from_env, state_dir_from_env};
-use crate::zellij_materialization::{
-    ZellijMaterializationRequest, generate_zellij_materialization,
-};
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use yazelix_core::active_config_surface::resolve_active_config_paths;
+use yazelix_core::control_plane::{config_dir_from_env, state_dir_from_env};
+use yazelix_core::zellij_materialization::{
+    ZellijMaterializationRequest, generate_zellij_materialization,
+};
 
 const BUILD_TARGET: &str = "wasm32-wasip1";
 const PANE_ORCHESTRATOR_WASM_NAME: &str = "yazelix_pane_orchestrator.wasm";
