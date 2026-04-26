@@ -26,7 +26,7 @@ There are three relevant actors:
 
 1. Nushell command and integration layer
 2. Zellij pane orchestrator plugin
-3. Sidebar Yazi state cache
+3. Sidebar Yazi adapter plugin
 
 ### 1. Nushell Layer
 
@@ -57,18 +57,11 @@ It tracks:
 
 The plugin is the source of truth for managed-pane identity and tab-local workspace state.
 
-### 3. Sidebar Yazi State Cache
+### 3. Sidebar Yazi Adapter Plugin
 
-The sidebar Yazi process writes its own cache files under Yazelix state.
+The sidebar Yazi process reports its live pane id, Yazi instance id, and cwd to the pane orchestrator.
 
-That cache currently exists because the plugin does not own Yazi instance identity or cwd directly.
-
-The cache is keyed by:
-
-- session
-- sidebar pane id
-
-This cache should be treated as an integration cache, not as the main workspace source of truth.
+The adapter does not own durable workspace state. It publishes observations, and the pane orchestrator validates them against the current tab's managed sidebar pane before exposing them to `yzx reveal`, `yzx cwd`, sidebar refresh, inspect, and status-bus consumers.
 
 ## Contract Items
 
@@ -87,10 +80,10 @@ This cache should be treated as an integration cache, not as the main workspace 
 #### WSS-002
 - Type: ownership
 - Status: live
-- Owner: pane orchestrator workspace/session state plus sidebar Yazi cache
+- Owner: pane orchestrator workspace/session state plus sidebar Yazi adapter events
 - Statement: The pane orchestrator owns tab-local workspace root and managed
-  pane identity. The sidebar Yazi cache is an integration cache only and must
-  not become the main workspace source of truth
+  pane identity. Sidebar Yazi identity and cwd come from adapter events stored
+  in the pane orchestrator, not from filesystem cache scans or recency guesses
 - Verification: automated
   `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`; automated
   `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
@@ -368,11 +361,11 @@ That seam carries:
 Nushell and later sidebar/Yazi consumers should prefer this seam over
 `maintainer_debug_editor_state` when they need contract-level tab-local truth.
 
-### Sidebar Cache Is Telemetry, Not Truth
+### Sidebar Yazi State Is Plugin Memory, Not Filesystem Truth
 
-The Yazi sidebar plugin may still write cache files under `~/.local/share/yazelix/state/yazi/sidebar`, but active-tab sidebar targeting now comes from pane-orchestrator state keyed by the managed sidebar pane id.
+The Yazi sidebar plugin does not write a separate sidebar identity cache. Active-tab sidebar targeting comes from pane-orchestrator state keyed by the managed sidebar pane id.
 
-That cache is for debugging or external inspection only. Active-tab reveal, refresh, and sidebar sync must not depend on scanning it for correctness.
+If no current-tab sidebar Yazi state has been registered yet, user-facing commands must fail clearly or retry later rather than falling back to a stale file.
 
 ### Workspace Root Naming Is Based On Explicit Updates
 
@@ -413,5 +406,6 @@ If the answer is unclear, the feature is probably crossing the boundary incorrec
 
 - Should Yazelix eventually expose a narrower public contract for adopting an
   existing pane as the managed editor or managed sidebar?
-- Should the sidebar cache survive long term as debugging/telemetry only, or
-  should it shrink further once the remaining adapter seams are deleted?
+- Resolved 2026-04-26: the sidebar identity cache does not survive. The Yazi
+  adapter publishes live state into the pane orchestrator, and consumers read
+  that plugin-owned state.

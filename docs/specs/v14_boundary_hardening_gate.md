@@ -45,7 +45,7 @@ Satisfied by:
 
 - sidebar identity is owned by the pane orchestrator instead of correctness-critical cache files
 - workspace retargeting returns plugin-owned editor/sidebar targeting truth in one response
-- sidebar cache files are telemetry or debugging aids, not correctness paths
+- sidebar identity no longer has a separate filesystem cache path
 
 Satisfied by:
 

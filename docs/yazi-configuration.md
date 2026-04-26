@@ -50,6 +50,7 @@ plugins = ["git"]
 
 **Bundled plugins and helpers:**
 - `git` - Git status integration (shows file changes)
+- `sidebar-state` - Reports the managed sidebar Yazi id and cwd to the pane orchestrator for tab-local reveal and sync
 - `zoxide-editor` - Bundled helper plugin behind `Alt+z`; it drives the direct-open Zoxide jump without needing a `plugins = [...]` entry
 
 **Adding external plugins:**

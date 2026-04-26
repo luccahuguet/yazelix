@@ -55,7 +55,7 @@ wrapper runtime.
 | Rust `yzx_control` | public control-plane leaf parsing and execution for `yzx env`, `yzx run`, and `yzx update*` | becoming a second general public command parser for command bodies that still intentionally live in Nushell |
 | Nushell | remaining public `yzx` CLI command bodies, startup profile schema, shell and terminal orchestration, generated file families that still live in Nu, final human rendering and integration glue | typed runtime truth already owned by `yzx_core`, public command metadata already owned by `yzx_core`, authoritative live tab state already owned by the pane orchestrator |
 | Rust pane orchestrator | authoritative per-tab workspace root, managed pane identity, focus and layout state, tab-local sidebar state, tab-local mutations | high-level config semantics, runtime/update policy, install/distribution ownership |
-| Lua Yazi plugins | in-Yazi keymaps and status UI, small adapter events, local cache writes when needed | workspace source of truth, runtime policy, tab identity |
+| Lua Yazi plugins | in-Yazi keymaps and status UI, small adapter events to the pane orchestrator | workspace source of truth, runtime policy, tab identity, durable sidebar identity caches |
 | Zellij CLI and KDL | command transport and static layout or config shape | durable workspace truth, generated-runtime business logic, config ownership |
 
 ## Hot-Path Classification
