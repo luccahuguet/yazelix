@@ -1,5 +1,5 @@
 [workspace]
-members = ["yazelix_core"]
+members = ["yazelix_core", "yazelix_screen"]
 resolver = "3"
 
 [workspace.package]

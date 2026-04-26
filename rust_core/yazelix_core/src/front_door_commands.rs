@@ -180,7 +180,15 @@ fn configured_game_of_life_cell_style() -> Result<GameOfLifeCellStyle, CoreError
         .get("game_of_life_cell_style")
         .and_then(serde_json::Value::as_str)
         .unwrap_or("full_block");
-    GameOfLifeCellStyle::parse(raw)
+    GameOfLifeCellStyle::parse(raw).map_err(|err| {
+        CoreError::classified(
+            ErrorClass::Usage,
+            "invalid_game_of_life_cell_style",
+            format!("Invalid Game of Life cell style `{}`.", err.normalized()),
+            "Use `full_block` or `dotted`.",
+            serde_json::json!({ "style": err.normalized() }),
+        )
+    })
 }
 
 fn print_tutor_help() {

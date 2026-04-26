@@ -990,6 +990,14 @@ dependencies = [
  "thiserror",
  "time",
  "toml",
+ "yazelix_screen",
+]
+
+[[package]]
+name = "yazelix_screen"
+version = "0.1.0"
+dependencies = [
+ "crossterm",
 ]
 
 [[package]]

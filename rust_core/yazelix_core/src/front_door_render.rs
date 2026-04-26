@@ -2,12 +2,19 @@
 
 use crate::bridge::{CoreError, ErrorClass};
 use crossterm::event::{self, Event};
-use crossterm::terminal;
 use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
-use std::io::{self, Write};
+use std::collections::HashMap;
+use std::io;
 use std::sync::OnceLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+pub use yazelix_screen::GameOfLifeCellStyle;
+use yazelix_screen::{
+    GameOfLifeAnimation, RawModeGuard as ScreenRawModeGuard, ScreenAnimationContext,
+    ScreenFrameProducer, build_game_of_life_screen_lines, build_live_game_of_life_seed,
+    center_frame_lines, center_text, game_of_life_grid_height, game_of_life_grid_width,
+    game_of_life_spec, is_game_of_life_style, resolve_game_of_life_body_height,
+    step_game_of_life_cells, terminal_height, terminal_width, visible_line_width,
+};
 
 const ASCII_ART_DATA_JSON: &str = include_str!("../assets/ascii_art_data.json");
 
@@ -26,43 +33,11 @@ const GAME_OF_LIFE_RANDOM_POOL: &[&str] = &[
     "game_of_life_bloom",
 ];
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum GameOfLifeCellStyle {
-    FullBlock,
-    Dotted,
-}
-
-impl GameOfLifeCellStyle {
-    pub fn parse(raw: &str) -> Result<Self, CoreError> {
-        match raw.trim().to_ascii_lowercase().as_str() {
-            "full_block" => Ok(Self::FullBlock),
-            "dotted" => Ok(Self::Dotted),
-            normalized => Err(CoreError::classified(
-                ErrorClass::Usage,
-                "invalid_game_of_life_cell_style",
-                format!("Invalid Game of Life cell style `{normalized}`."),
-                "Use `full_block` or `dotted`.",
-                serde_json::json!({ "style": normalized }),
-            )),
-        }
-    }
-
-    fn glyph(self) -> char {
-        match self {
-            Self::FullBlock => '█',
-            // Hardcoded scale 4: one life cell occupies exactly two 2x4 braille cells.
-            Self::Dotted => '⣿',
-        }
-    }
-}
-
 #[derive(Debug, Clone, Deserialize)]
 struct AsciiArtData {
     style_catalog: Vec<StyleCatalogEntry>,
     logo_welcome_specs: HashMap<String, LogoWelcomeSpec>,
     boids_welcome_specs: HashMap<String, BoidsWelcomeSpec>,
-    game_of_life_specs: HashMap<String, GameOfLifeSpec>,
-    game_of_life_shapes: HashMap<String, Vec<[i32; 2]>>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -90,74 +65,6 @@ struct BoidsWelcomeSpec {
     caption: String,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-struct GameOfLifeSpec {
-    minimum_inner_width: usize,
-    welcome_minimum_body_height: usize,
-    screen_minimum_body_height: usize,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct GameOfLifeScreenState {
-    resolved_width: usize,
-    resolved_height: usize,
-    inner_width: usize,
-    body_height: usize,
-    cell_style: GameOfLifeCellStyle,
-    cells: HashSet<(i32, i32)>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct ScreenCell {
-    glyph: char,
-    color_x: usize,
-    color_y: usize,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct ScreenFrame {
-    width: usize,
-    height: usize,
-    cells: Vec<Option<ScreenCell>>,
-}
-
-impl ScreenFrame {
-    fn new(width: usize, height: usize) -> Self {
-        Self {
-            width,
-            height,
-            cells: vec![None; width.saturating_mul(height)],
-        }
-    }
-
-    fn set(&mut self, x: usize, y: usize, cell: ScreenCell) {
-        if x >= self.width || y >= self.height {
-            return;
-        }
-        self.cells[y * self.width + x] = Some(cell);
-    }
-
-    fn render_game_of_life_lines(&self, resolved_width: usize) -> Vec<String> {
-        let lines = (0..self.height)
-            .map(|y| {
-                let mut line = String::new();
-                for x in 0..self.width {
-                    match self.cells[y * self.width + x] {
-                        Some(cell) => line.push_str(&colorize_game_of_life_glyph(
-                            cell.color_x,
-                            cell.color_y,
-                            cell.glyph,
-                        )),
-                        None => line.push(' '),
-                    }
-                }
-                line
-            })
-            .collect();
-        center_frame_lines(lines, resolved_width)
-    }
-}
-
 fn ascii_art_data() -> &'static AsciiArtData {
     static DATA: OnceLock<AsciiArtData> = OnceLock::new();
     DATA.get_or_init(|| serde_json::from_str(ASCII_ART_DATA_JSON).expect("valid ascii_art_data"))
@@ -171,24 +78,6 @@ fn system_random_index(max_len: usize) -> usize {
     nanos % max_len
 }
 
-pub fn terminal_width() -> usize {
-    std::env::var("YAZELIX_WELCOME_WIDTH")
-        .ok()
-        .and_then(|raw| raw.trim().parse::<usize>().ok())
-        .filter(|width| *width > 0)
-        .or_else(|| terminal::size().ok().map(|(width, _)| width as usize))
-        .unwrap_or(80)
-}
-
-pub fn terminal_height() -> usize {
-    std::env::var("YAZELIX_WELCOME_HEIGHT")
-        .ok()
-        .and_then(|raw| raw.trim().parse::<usize>().ok())
-        .filter(|height| *height > 0)
-        .or_else(|| terminal::size().ok().map(|(_, height)| height as usize))
-        .unwrap_or(24)
-}
-
 fn style_values_for_surface(surface: &str) -> Vec<&'static str> {
     ascii_art_data()
         .style_catalog
@@ -200,10 +89,6 @@ fn style_values_for_surface(surface: &str) -> Vec<&'static str> {
             _ => None,
         })
         .collect()
-}
-
-fn is_game_of_life_style(style: &str) -> bool {
-    style.starts_with("game_of_life_")
 }
 
 pub fn resolve_welcome_style(
@@ -287,35 +172,6 @@ fn get_logo_welcome_variant(width: usize) -> &'static str {
     }
 }
 
-fn visible_line_width(line: &str) -> usize {
-    let mut count = 0;
-    let mut chars = line.chars().peekable();
-    while let Some(ch) = chars.next() {
-        if ch == '\u{1b}' && chars.peek() == Some(&'[') {
-            let _ = chars.next();
-            for inner in chars.by_ref() {
-                if inner.is_ascii_alphabetic() {
-                    break;
-                }
-            }
-            continue;
-        }
-        count += 1;
-    }
-    count
-}
-
-fn center_text(text: &str, width: usize) -> String {
-    let visible_width = visible_line_width(text);
-    if visible_width >= width {
-        return text.to_string();
-    }
-
-    let left = (width - visible_width) / 2;
-    let right = width - visible_width - left;
-    format!("{}{}{}", " ".repeat(left), text, " ".repeat(right))
-}
-
 fn pad_text_right(text: &str, width: usize) -> String {
     let visible_width = visible_line_width(text);
     if visible_width >= width {
@@ -380,29 +236,12 @@ fn colorize_boid_char(ch: char, index: usize) -> String {
     format!("{}{}{}", palette[index % palette.len()], ch, ANSI_RESET)
 }
 
-fn colorize_game_of_life_glyph(x: usize, y: usize, glyph: char) -> String {
-    let palette = [ANSI_GREEN, ANSI_CYAN, ANSI_BLUE, ANSI_PURPLE];
-    format!(
-        "{}{}{}",
-        palette[(x + y) % palette.len()],
-        glyph,
-        ANSI_RESET
-    )
-}
-
 fn make_border(inner_width: usize) -> String {
     "─".repeat(inner_width)
 }
 
 fn frame_content_width(inner_width: usize) -> usize {
     inner_width + 2
-}
-
-fn center_frame_lines(lines: Vec<String>, width: usize) -> Vec<String> {
-    lines
-        .into_iter()
-        .map(|line| center_text(&line, width))
-        .collect()
 }
 
 fn logo_spec(variant: &str, width: usize) -> &LogoWelcomeSpec {
@@ -419,13 +258,6 @@ fn boids_spec(variant: &str) -> &BoidsWelcomeSpec {
         .boids_welcome_specs
         .get(variant)
         .unwrap_or_else(|| panic!("missing boids spec: {variant}"))
-}
-
-fn game_of_life_spec(variant: &str) -> &GameOfLifeSpec {
-    ascii_art_data()
-        .game_of_life_specs
-        .get(variant)
-        .unwrap_or_else(|| panic!("missing game_of_life spec: {variant}"))
 }
 
 fn build_logo_card_frame(
@@ -598,249 +430,6 @@ fn build_boids_frame(width: usize) -> Vec<Vec<String>> {
         .collect()
 }
 
-fn resolve_game_of_life_body_height(minimum_height: usize, resolved_height: usize) -> usize {
-    resolved_height.saturating_sub(6).max(minimum_height)
-}
-
-fn resolve_game_of_life_screen_body_height(minimum_height: usize, resolved_height: usize) -> usize {
-    resolved_height.max(minimum_height)
-}
-
-fn get_game_of_life_grid_width(inner_width: usize) -> usize {
-    (inner_width / 2).max(1)
-}
-
-fn get_game_of_life_grid_height(body_height: usize) -> usize {
-    body_height.max(3)
-}
-
-fn game_of_life_shape(name: &str) -> Vec<(i32, i32)> {
-    ascii_art_data()
-        .game_of_life_shapes
-        .get(name)
-        .unwrap_or_else(|| panic!("missing game-of-life shape: {name}"))
-        .iter()
-        .map(|pair| (pair[0], pair[1]))
-        .collect()
-}
-
-fn shape_size(shape: &[(i32, i32)]) -> (i32, i32) {
-    let max_x = shape.iter().map(|(x, _)| *x).max().unwrap_or(0);
-    let max_y = shape.iter().map(|(_, y)| *y).max().unwrap_or(0);
-    (max_x + 1, max_y + 1)
-}
-
-fn place_shape(
-    shape: &[(i32, i32)],
-    width: usize,
-    height: usize,
-    origin_x: i32,
-    origin_y: i32,
-) -> Vec<(i32, i32)> {
-    let (shape_width, shape_height) = shape_size(shape);
-    let max_x = (width as i32 - shape_width).max(0);
-    let max_y = (height as i32 - shape_height).max(0);
-    let origin_x = origin_x.clamp(0, max_x);
-    let origin_y = origin_y.clamp(0, max_y);
-
-    shape
-        .iter()
-        .map(|(x, y)| (x + origin_x, y + origin_y))
-        .collect()
-}
-
-fn build_game_of_life_gliders_seed(width: usize, height: usize) -> HashSet<(i32, i32)> {
-    let glider_count = if width >= 36 {
-        6
-    } else if width >= 22 {
-        4
-    } else {
-        2
-    };
-    let right_glider = game_of_life_shape("right_glider");
-    let right_edge_x = (width as i32 - 5).max(0);
-    let inner_right_x = (width as i32 - 9).max(0);
-    let middle_upper_y = (height as i32 / 2) - 3;
-    let middle_lower_y = (height as i32 / 2) + 1;
-
-    let placements = if glider_count == 2 {
-        vec![(1, 1), (right_edge_x, height as i32 - 4)]
-    } else if glider_count == 4 {
-        vec![
-            (1, 1),
-            (right_edge_x, 2),
-            (4, height as i32 - 7),
-            (inner_right_x, height as i32 - 4),
-        ]
-    } else {
-        vec![
-            (1, 1),
-            (right_edge_x, 2),
-            (3, middle_upper_y),
-            (inner_right_x, middle_lower_y),
-            (5, height as i32 - 7),
-            (right_edge_x, height as i32 - 4),
-        ]
-    };
-
-    placements
-        .into_iter()
-        .flat_map(|(x, y)| place_shape(&right_glider, width, height, x, y))
-        .collect()
-}
-
-fn build_game_of_life_oscillators_seed(width: usize, height: usize) -> HashSet<(i32, i32)> {
-    let beacon = game_of_life_shape("beacon");
-    let blinker = game_of_life_shape("blinker");
-    let toad = game_of_life_shape("toad");
-    let placements = vec![
-        (beacon, 1, 1),
-        (blinker, (width as i32 / 2) - 1, 1),
-        (toad, (width as i32 / 2) - 2, (height as i32 / 2) - 1),
-        (game_of_life_shape("blinker"), 2, height as i32 - 2),
-        (
-            game_of_life_shape("beacon"),
-            width as i32 - 5,
-            height as i32 - 5,
-        ),
-    ];
-    placements
-        .into_iter()
-        .flat_map(|(shape, x, y)| place_shape(&shape, width, height, x, y))
-        .collect()
-}
-
-fn build_game_of_life_bloom_seed(width: usize, height: usize) -> HashSet<(i32, i32)> {
-    let r_pentomino = game_of_life_shape("r_pentomino");
-    let acorn = game_of_life_shape("acorn");
-    vec![
-        (r_pentomino.clone(), 1, 1),
-        (acorn, (width as i32 / 2) - 3, (height as i32 / 3) - 1),
-        (r_pentomino.clone(), width as i32 - 4, height as i32 - 4),
-        (
-            r_pentomino,
-            (width as i32 / 2) - 1,
-            ((height as i32 * 2) / 3) - 1,
-        ),
-    ]
-    .into_iter()
-    .flat_map(|(shape, x, y)| place_shape(&shape, width, height, x, y))
-    .collect()
-}
-
-fn build_live_game_of_life_seed(
-    inner_width: usize,
-    body_height: usize,
-    style: &str,
-) -> HashSet<(i32, i32)> {
-    let width = get_game_of_life_grid_width(inner_width);
-    let height = get_game_of_life_grid_height(body_height);
-    match style {
-        "game_of_life_gliders" => build_game_of_life_gliders_seed(width, height),
-        "game_of_life_oscillators" => build_game_of_life_oscillators_seed(width, height),
-        _ => build_game_of_life_bloom_seed(width, height),
-    }
-}
-
-fn step_game_of_life_cells(
-    cells: &HashSet<(i32, i32)>,
-    width: usize,
-    height: usize,
-) -> HashSet<(i32, i32)> {
-    let mut neighbor_counts: HashMap<(i32, i32), usize> = HashMap::new();
-    for &(x, y) in cells {
-        for ny in [y - 1, y, y + 1] {
-            for nx in [x - 1, x, x + 1] {
-                if nx == x && ny == y {
-                    continue;
-                }
-                let wrapped_x = ((nx + width as i32) % width as i32).rem_euclid(width as i32);
-                let wrapped_y = ((ny + height as i32) % height as i32).rem_euclid(height as i32);
-                *neighbor_counts.entry((wrapped_x, wrapped_y)).or_insert(0) += 1;
-            }
-        }
-    }
-
-    neighbor_counts
-        .into_iter()
-        .filter_map(|(cell, neighbors)| {
-            let alive = cells.contains(&cell);
-            if neighbors == 3 || (alive && neighbors == 2) {
-                Some(cell)
-            } else {
-                None
-            }
-        })
-        .collect()
-}
-
-fn build_game_of_life_screen_lines(
-    inner_width: usize,
-    body_height: usize,
-    resolved_width: usize,
-    cell_style: GameOfLifeCellStyle,
-    cells: &HashSet<(i32, i32)>,
-) -> Vec<String> {
-    let grid_width = get_game_of_life_grid_width(inner_width);
-    let grid_height = get_game_of_life_grid_height(body_height);
-    let mut frame = ScreenFrame::new(inner_width, body_height);
-    for y in 0..grid_height {
-        for x in 0..grid_width {
-            if !cells.contains(&(x as i32, y as i32)) {
-                continue;
-            }
-
-            let cell = ScreenCell {
-                glyph: cell_style.glyph(),
-                color_x: x,
-                color_y: y,
-            };
-            let origin_x = x * 2;
-            for dx in 0..2 {
-                frame.set(origin_x + dx, y, cell);
-            }
-        }
-    }
-    frame.render_game_of_life_lines(resolved_width)
-}
-
-fn build_game_of_life_screen_state(
-    style: &str,
-    width: usize,
-    height: usize,
-    cell_style: GameOfLifeCellStyle,
-) -> GameOfLifeScreenState {
-    let variant = get_logo_welcome_variant(width);
-    let spec = game_of_life_spec(variant);
-    let inner_width = fit_inner_width(width, spec.minimum_inner_width);
-    let body_height =
-        resolve_game_of_life_screen_body_height(spec.screen_minimum_body_height, height);
-    GameOfLifeScreenState {
-        resolved_width: width,
-        resolved_height: height,
-        inner_width,
-        body_height,
-        cell_style,
-        cells: build_live_game_of_life_seed(inner_width, body_height, style),
-    }
-}
-
-pub fn render_game_of_life_screen_state(state: &GameOfLifeScreenState) -> Vec<String> {
-    build_game_of_life_screen_lines(
-        state.inner_width,
-        state.body_height,
-        state.resolved_width,
-        state.cell_style,
-        &state.cells,
-    )
-}
-
-pub fn step_game_of_life_screen_state(state: &mut GameOfLifeScreenState) {
-    let width = get_game_of_life_grid_width(state.inner_width);
-    let height = get_game_of_life_grid_height(state.body_height);
-    state.cells = step_game_of_life_cells(&state.cells, width, height);
-}
-
 fn welcome_sequence(
     resolved_style: &str,
     width: usize,
@@ -858,8 +447,8 @@ fn welcome_sequence(
             let inner_width = welcome_inner_width(spec.minimum_inner_width);
             let body_height =
                 resolve_game_of_life_body_height(spec.welcome_minimum_body_height, height);
-            let width_limit = get_game_of_life_grid_width(inner_width);
-            let height_limit = get_game_of_life_grid_height(body_height);
+            let width_limit = game_of_life_grid_width(inner_width);
+            let height_limit = game_of_life_grid_height(body_height);
             let frame_delay = Duration::from_millis(220);
             let frame_count =
                 ((duration.as_secs_f64() / frame_delay.as_secs_f64()).ceil() as usize).max(2);
@@ -941,39 +530,30 @@ fn poll_for_keypress(timeout: Duration) -> Result<bool, CoreError> {
     }
 }
 
+fn map_front_door_flush_error(source: io::Error) -> CoreError {
+    CoreError::io(
+        "front_door_flush",
+        "Failed to flush front-door terminal output.",
+        "Retry in a writable interactive terminal.",
+        ".",
+        source,
+    )
+}
+
 fn flush_stdout() -> Result<(), CoreError> {
-    io::stdout().flush().map_err(|source| {
+    yazelix_screen::flush_stdout().map_err(map_front_door_flush_error)
+}
+
+fn raw_mode_guard() -> Result<ScreenRawModeGuard, CoreError> {
+    ScreenRawModeGuard::new().map_err(|source| {
         CoreError::io(
-            "front_door_flush",
-            "Failed to flush front-door terminal output.",
-            "Retry in a writable interactive terminal.",
+            "front_door_raw_mode_enable",
+            "Failed to enable raw terminal mode for the front-door surface.",
+            "Run Yazelix in a terminal that supports raw input mode.",
             ".",
             source,
         )
     })
-}
-
-struct RawModeGuard;
-
-impl RawModeGuard {
-    fn new() -> Result<Self, CoreError> {
-        terminal::enable_raw_mode().map_err(|source| {
-            CoreError::io(
-                "front_door_raw_mode_enable",
-                "Failed to enable raw terminal mode for the front-door surface.",
-                "Run Yazelix in a terminal that supports raw input mode.",
-                ".",
-                source,
-            )
-        })?;
-        Ok(Self)
-    }
-}
-
-impl Drop for RawModeGuard {
-    fn drop(&mut self) {
-        let _ = terminal::disable_raw_mode();
-    }
 }
 
 fn play_inline_frames(
@@ -1021,26 +601,26 @@ fn play_inline_frames(
 }
 
 fn enter_screen_mode() -> Result<(), CoreError> {
-    print!("\u{1b}[?1049h\u{1b}[?25l\u{1b}[?7l\u{1b}[2J\u{1b}[H");
-    flush_stdout()
+    yazelix_screen::enter_screen_mode().map_err(map_front_door_flush_error)
 }
 
 fn leave_screen_mode() -> Result<(), CoreError> {
-    print!("\u{1b}[?7h\u{1b}[?25h\u{1b}[?1049l");
-    flush_stdout()
-}
-
-fn screen_frame_output(frame: &[String]) -> String {
-    let mut out = String::from("\u{1b}[H\u{1b}[2J");
-    for (row_index, line) in frame.iter().enumerate() {
-        out.push_str(&format!("\u{1b}[{};1H\u{1b}[2K{line}", row_index + 1));
-    }
-    out
+    yazelix_screen::leave_screen_mode().map_err(map_front_door_flush_error)
 }
 
 fn render_screen_frame(frame: &[String]) -> Result<(), CoreError> {
-    print!("{}", screen_frame_output(frame));
-    flush_stdout()
+    yazelix_screen::render_screen_frame(frame).map_err(map_front_door_flush_error)
+}
+
+fn game_of_life_screen_context(width: usize, height: usize) -> ScreenAnimationContext {
+    let size_class = get_logo_welcome_variant(width);
+    let spec = game_of_life_spec(size_class);
+    ScreenAnimationContext {
+        resolved_width: width,
+        resolved_height: height,
+        inner_width: fit_inner_width(width, spec.minimum_inner_width),
+        size_class,
+    }
 }
 
 pub fn play_welcome_style(style: &str, duration: Duration) -> Result<(), CoreError> {
@@ -1052,7 +632,7 @@ pub fn play_welcome_style_with_cell_style(
     duration: Duration,
     cell_style: GameOfLifeCellStyle,
 ) -> Result<(), CoreError> {
-    let _raw = RawModeGuard::new()?;
+    let _raw = raw_mode_guard()?;
     let width = terminal_width();
     let height = terminal_height();
     let resolved_style = resolve_welcome_style(style, None)?;
@@ -1096,7 +676,7 @@ pub fn run_screen_surface_with_cell_style(
     style: Option<&str>,
     cell_style: GameOfLifeCellStyle,
 ) -> Result<i32, CoreError> {
-    let _raw = RawModeGuard::new()?;
+    let _raw = raw_mode_guard()?;
     let resolved_style = resolve_screen_style(style, None)?;
     let frame_delay = screen_frame_delay(&resolved_style);
     let is_game_of_life = is_game_of_life_style(&resolved_style);
@@ -1109,10 +689,9 @@ pub fn run_screen_surface_with_cell_style(
     };
     let mut frame_index = 0usize;
     let mut game_of_life_state = if is_game_of_life {
-        Some(build_game_of_life_screen_state(
+        Some(GameOfLifeAnimation::new(
             &resolved_style,
-            width,
-            height,
+            game_of_life_screen_context(width, height),
             cell_style,
         ))
     } else {
@@ -1123,7 +702,7 @@ pub fn run_screen_surface_with_cell_style(
     let result = (|| -> Result<(), CoreError> {
         loop {
             if let Some(state) = game_of_life_state.as_ref() {
-                render_screen_frame(&render_game_of_life_screen_state(state))?;
+                render_screen_frame(&state.render_frame())?;
             } else {
                 if frames.is_empty() {
                     return Err(CoreError::classified(
@@ -1147,12 +726,9 @@ pub fn run_screen_surface_with_cell_style(
                 width = current_width;
                 height = current_height;
                 if is_game_of_life {
-                    game_of_life_state = Some(build_game_of_life_screen_state(
-                        &resolved_style,
-                        width,
-                        height,
-                        cell_style,
-                    ));
+                    if let Some(state) = game_of_life_state.as_mut() {
+                        state.resize(game_of_life_screen_context(width, height));
+                    }
                 } else {
                     frames = screen_cycle_frames_non_game_of_life(&resolved_style, width)?;
                     frame_index = 0;
@@ -1161,7 +737,7 @@ pub fn run_screen_surface_with_cell_style(
             }
 
             if let Some(state) = game_of_life_state.as_mut() {
-                step_game_of_life_screen_state(state);
+                state.advance_frame();
             } else {
                 frame_index += 1;
             }
@@ -1186,47 +762,6 @@ mod tests {
         line.contains('│')
     }
 
-    fn render_test_game_of_life_lines(
-        inner_width: usize,
-        body_height: usize,
-        cells: &[(i32, i32)],
-    ) -> Vec<String> {
-        render_test_game_of_life_lines_with_style(
-            inner_width,
-            body_height,
-            GameOfLifeCellStyle::FullBlock,
-            cells,
-        )
-    }
-
-    fn render_test_game_of_life_lines_with_style(
-        inner_width: usize,
-        body_height: usize,
-        cell_style: GameOfLifeCellStyle,
-        cells: &[(i32, i32)],
-    ) -> Vec<String> {
-        let cells = cells.iter().copied().collect::<HashSet<_>>();
-        build_game_of_life_screen_lines(inner_width, body_height, inner_width, cell_style, &cells)
-    }
-
-    fn strip_ansi_codes(line: &str) -> String {
-        let mut visible = String::new();
-        let mut chars = line.chars().peekable();
-        while let Some(ch) = chars.next() {
-            if ch == '\u{1b}' && chars.peek() == Some(&'[') {
-                chars.next();
-                for code_ch in chars.by_ref() {
-                    if code_ch.is_ascii_alphabetic() {
-                        break;
-                    }
-                }
-                continue;
-            }
-            visible.push(ch);
-        }
-        visible
-    }
-
     // Test lane: default
     // Defends: `random` still resolves only to the retained Game of Life screen styles instead of drifting back to logo, boids, or static.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
@@ -1244,23 +779,6 @@ mod tests {
     fn screen_style_rejects_static() {
         let err = resolve_screen_style(Some("static"), None).unwrap_err();
         assert_eq!(err.code(), "invalid_screen_style");
-    }
-
-    // Defends: retained Game of Life screen states still roll forward instead of collapsing into a fixed logo frame.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[test]
-    fn game_of_life_screen_state_rolls_forward() {
-        let mut state = build_game_of_life_screen_state(
-            "game_of_life_gliders",
-            80,
-            24,
-            GameOfLifeCellStyle::FullBlock,
-        );
-        let before = render_game_of_life_screen_state(&state).join("\n");
-        step_game_of_life_screen_state(&mut state);
-        let after = render_game_of_life_screen_state(&state).join("\n");
-        assert_ne!(before, after);
-        assert!(!after.contains("welcome to yazelix"));
     }
 
     // Regression: wide terminals must not let the logo welcome card stretch to a near-full-width frame.
@@ -1302,59 +820,5 @@ mod tests {
                 .iter()
                 .all(|line| !contains_vertical_border(line))
         );
-    }
-
-    // Regression: Game of Life gliders must keep the old Nushell full-block silhouette instead of shrinking into tiny braille dots.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[test]
-    fn game_of_life_screen_lines_preserve_glider_silhouette_as_full_blocks() {
-        let lines = render_test_game_of_life_lines(8, 3, &[(1, 0), (2, 1), (0, 2), (1, 2), (2, 2)]);
-        let visible_lines = lines
-            .iter()
-            .map(|line| strip_ansi_codes(line))
-            .collect::<Vec<_>>();
-        assert_eq!(visible_lines, vec!["  ██    ", "    ██  ", "██████  "]);
-    }
-
-    // Defends: the dotted option stays at hardcoded scale 4, matching the full-block footprint without shrinking gliders.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[test]
-    fn game_of_life_screen_lines_preserve_glider_footprint_as_dotted_scale_4() {
-        let lines = render_test_game_of_life_lines_with_style(
-            8,
-            3,
-            GameOfLifeCellStyle::Dotted,
-            &[(1, 0), (2, 1), (0, 2), (1, 2), (2, 2)],
-        );
-        let visible_lines = lines
-            .iter()
-            .map(|line| strip_ansi_codes(line))
-            .collect::<Vec<_>>();
-        assert_eq!(visible_lines, vec!["  ⣿⣿    ", "    ⣿⣿  ", "⣿⣿⣿⣿⣿⣿  "]);
-    }
-
-    // Regression: the Rust renderer must match the old Nushell Game of Life row contract: one life row per terminal row.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[test]
-    fn game_of_life_screen_lines_preserve_life_rows_without_inserted_gaps() {
-        let lines = render_test_game_of_life_lines(8, 4, &[(0, 0), (0, 1), (0, 2)]);
-        let visible_lines = lines
-            .iter()
-            .map(|line| strip_ansi_codes(line))
-            .collect::<Vec<_>>();
-        assert_eq!(
-            visible_lines,
-            vec!["██      ", "██      ", "██      ", "        "]
-        );
-    }
-
-    // Regression: raw alternate-screen rendering must not rely on newlines after full-width lines, which can wrap into every other row.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[test]
-    fn screen_frame_output_addresses_rows_without_newlines() {
-        let output = screen_frame_output(&["aaaaaaaa".to_string(), "bbbbbbbb".to_string()]);
-        assert!(!output.contains('\n'));
-        assert!(output.contains("\u{1b}[1;1H\u{1b}[2Kaaaaaaaa"));
-        assert!(output.contains("\u{1b}[2;1H\u{1b}[2Kbbbbbbbb"));
     }
 }
