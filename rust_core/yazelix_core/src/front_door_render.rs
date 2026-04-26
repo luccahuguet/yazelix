@@ -9,11 +9,12 @@ use std::sync::OnceLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 pub use yazelix_screen::GameOfLifeCellStyle;
 use yazelix_screen::{
-    GameOfLifeAnimation, RawModeGuard as ScreenRawModeGuard, ScreenAnimationContext,
-    ScreenFrameProducer, build_game_of_life_screen_lines, build_live_game_of_life_seed,
-    center_frame_lines, center_text, game_of_life_grid_height, game_of_life_grid_width,
-    game_of_life_spec, is_game_of_life_style, resolve_game_of_life_body_height,
-    step_game_of_life_cells, terminal_height, terminal_width, visible_line_width,
+    BoidsAnimation, GameOfLifeAnimation, RawModeGuard as ScreenRawModeGuard,
+    ScreenAnimationContext, ScreenFrameProducer, build_game_of_life_screen_lines,
+    build_live_game_of_life_seed, center_frame_lines, center_text, game_of_life_grid_height,
+    game_of_life_grid_width, game_of_life_spec, is_game_of_life_style,
+    resolve_game_of_life_body_height, step_game_of_life_cells, terminal_height, terminal_width,
+    visible_line_width,
 };
 
 const ASCII_ART_DATA_JSON: &str = include_str!("../assets/ascii_art_data.json");
@@ -153,10 +154,10 @@ pub fn resolve_screen_style(
 }
 
 fn screen_frame_delay(resolved_style: &str) -> Duration {
-    if is_game_of_life_style(resolved_style) {
-        Duration::from_millis(160)
-    } else {
-        Duration::from_millis(120)
+    match resolved_style {
+        style if is_game_of_life_style(style) => Duration::from_millis(160),
+        "boids" => Duration::from_millis(90),
+        _ => Duration::from_millis(120),
     }
 }
 
@@ -492,7 +493,6 @@ fn screen_cycle_frames_non_game_of_life(
 ) -> Result<Vec<Vec<String>>, CoreError> {
     match resolved_style {
         "logo" => Ok(trim_resting_frame(get_logo_animation_frames(width))),
-        "boids" => Ok(trim_resting_frame(build_boids_frame(width))),
         other => Err(CoreError::classified(
             ErrorClass::Internal,
             "unsupported_screen_style",
@@ -623,6 +623,15 @@ fn game_of_life_screen_context(width: usize, height: usize) -> ScreenAnimationCo
     }
 }
 
+fn boids_screen_context(width: usize, height: usize) -> ScreenAnimationContext {
+    ScreenAnimationContext {
+        resolved_width: width,
+        resolved_height: height,
+        inner_width: width,
+        size_class: get_logo_welcome_variant(width),
+    }
+}
+
 pub fn play_welcome_style(style: &str, duration: Duration) -> Result<(), CoreError> {
     play_welcome_style_with_cell_style(style, duration, GameOfLifeCellStyle::FullBlock)
 }
@@ -680,9 +689,10 @@ pub fn run_screen_surface_with_cell_style(
     let resolved_style = resolve_screen_style(style, None)?;
     let frame_delay = screen_frame_delay(&resolved_style);
     let is_game_of_life = is_game_of_life_style(&resolved_style);
+    let is_boids = resolved_style == "boids";
     let mut width = terminal_width();
     let mut height = terminal_height();
-    let mut frames = if is_game_of_life {
+    let mut frames = if is_game_of_life || is_boids {
         Vec::new()
     } else {
         screen_cycle_frames_non_game_of_life(&resolved_style, width)?
@@ -697,11 +707,21 @@ pub fn run_screen_surface_with_cell_style(
     } else {
         None
     };
+    let mut boids_state = if is_boids {
+        Some(BoidsAnimation::new(
+            boids_screen_context(width, height),
+            cell_style,
+        ))
+    } else {
+        None
+    };
 
     enter_screen_mode()?;
     let result = (|| -> Result<(), CoreError> {
         loop {
             if let Some(state) = game_of_life_state.as_ref() {
+                render_screen_frame(&state.render_frame())?;
+            } else if let Some(state) = boids_state.as_ref() {
                 render_screen_frame(&state.render_frame())?;
             } else {
                 if frames.is_empty() {
@@ -729,6 +749,10 @@ pub fn run_screen_surface_with_cell_style(
                     if let Some(state) = game_of_life_state.as_mut() {
                         state.resize(game_of_life_screen_context(width, height));
                     }
+                } else if is_boids {
+                    if let Some(state) = boids_state.as_mut() {
+                        state.resize(boids_screen_context(width, height));
+                    }
                 } else {
                     frames = screen_cycle_frames_non_game_of_life(&resolved_style, width)?;
                     frame_index = 0;
@@ -737,6 +761,8 @@ pub fn run_screen_surface_with_cell_style(
             }
 
             if let Some(state) = game_of_life_state.as_mut() {
+                state.advance_frame();
+            } else if let Some(state) = boids_state.as_mut() {
                 state.advance_frame();
             } else {
                 frame_index += 1;

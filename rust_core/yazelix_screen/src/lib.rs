@@ -1,10 +1,12 @@
 //! Terminal screen primitives shared by Yazelix front-door animation surfaces.
 
+mod boids;
 mod game_of_life;
 
 use crossterm::terminal;
 use std::io::{self, Write};
 
+pub use boids::BoidsAnimation;
 pub use game_of_life::{
     GameOfLifeAnimation, GameOfLifeCellStyle, GameOfLifeCellStyleParseError, GameOfLifeScreenState,
     GameOfLifeSpec, ScreenAnimationContext, ScreenFrameProducer, build_game_of_life_screen_lines,

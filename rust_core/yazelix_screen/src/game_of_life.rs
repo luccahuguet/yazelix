@@ -39,7 +39,7 @@ impl GameOfLifeCellStyle {
         }
     }
 
-    fn glyph(self) -> char {
+    pub(crate) fn glyph(self) -> char {
         match self {
             Self::FullBlock => '█',
             // Hardcoded scale 4: one life cell occupies exactly two 2x4 braille cells.
