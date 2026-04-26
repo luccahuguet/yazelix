@@ -35,6 +35,7 @@ use std::process::Command;
 struct DoctorCliArgs {
     verbose: bool,
     fix: bool,
+    fix_plan: bool,
     json: bool,
     help: bool,
 }
@@ -54,6 +55,34 @@ pub struct DoctorReportData {
     pub title: String,
     pub results: Vec<Value>,
     pub summary: DoctorReportSummary,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+struct RecoveryPlanSummary {
+    action_count: usize,
+    automatic_action_count: usize,
+    manual_action_count: usize,
+    highest_severity: String,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+struct RecoveryPlanAction {
+    id: String,
+    severity: String,
+    problem: String,
+    evidence: Vec<String>,
+    commands: Vec<String>,
+    safe_to_run_automatically: bool,
+    rationale: String,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+struct RecoveryPlanReport {
+    schema_version: u8,
+    title: String,
+    inspect_command: String,
+    summary: RecoveryPlanSummary,
+    actions: Vec<RecoveryPlanAction>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -93,6 +122,16 @@ pub fn run_yzx_doctor(args: &[String]) -> Result<i32, CoreError> {
         return Ok(0);
     }
 
+    if parsed.fix && parsed.fix_plan {
+        return Err(CoreError::classified(
+            ErrorClass::Usage,
+            "doctor_fix_plan_cannot_fix",
+            "`yzx doctor --fix-plan` is a dry recovery plan and cannot be combined with `--fix`.",
+            "Run `yzx doctor --fix-plan` to inspect recovery steps or `yzx doctor --fix` to run safe automatic repairs.",
+            json!({}),
+        ));
+    }
+
     if parsed.json && parsed.fix {
         return Err(CoreError::classified(
             ErrorClass::Usage,
@@ -104,6 +143,19 @@ pub fn run_yzx_doctor(args: &[String]) -> Result<i32, CoreError> {
     }
 
     let report = compute_doctor_report_from_env()?;
+    if parsed.fix_plan {
+        let recovery = build_recovery_plan(&report);
+        if parsed.json {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&recovery).unwrap_or_else(|_| "{}".to_string())
+            );
+        } else {
+            render_recovery_plan(&recovery);
+        }
+        return Ok(0);
+    }
+
     if parsed.json {
         println!(
             "{}",
@@ -135,11 +187,13 @@ fn print_doctor_help() {
     println!();
     println!("Usage:");
     println!("  yzx doctor [--verbose] [--json]");
+    println!("  yzx doctor --fix-plan [--json]");
     println!("  yzx doctor --fix [--verbose]");
     println!();
     println!("Flags:");
     println!("  -v, --verbose  Show detailed information");
     println!("  -f, --fix      Attempt to auto-fix issues");
+    println!("      --fix-plan Print exact recovery commands without mutating anything");
     println!("      --json     Emit machine-readable doctor data");
 }
 
@@ -149,6 +203,7 @@ fn parse_doctor_cli_args(args: &[String]) -> Result<DoctorCliArgs, CoreError> {
         match token.as_str() {
             "--verbose" | "-v" => out.verbose = true,
             "--fix" | "-f" => out.fix = true,
+            "--fix-plan" => out.fix_plan = true,
             "--json" => out.json = true,
             "--help" | "-h" | "help" => out.help = true,
             other => {
@@ -156,7 +211,7 @@ fn parse_doctor_cli_args(args: &[String]) -> Result<DoctorCliArgs, CoreError> {
                     ErrorClass::Usage,
                     "unexpected_doctor_token",
                     format!("Unexpected argument for yzx doctor: {other}"),
-                    "Run `yzx doctor`, `yzx doctor --json`, or `yzx doctor --fix`.",
+                    "Run `yzx doctor`, `yzx doctor --json`, `yzx doctor --fix-plan`, or `yzx doctor --fix`.",
                     json!({}),
                 ));
             }
@@ -490,6 +545,213 @@ fn result_message(result: &Value) -> &str {
 
 fn result_details(result: &Value) -> Option<&str> {
     result.get("details").and_then(Value::as_str)
+}
+
+fn build_recovery_plan(report: &DoctorReportData) -> RecoveryPlanReport {
+    let mut actions = Vec::new();
+    for result in &report.results {
+        if let Some(action) = recovery_action_for_doctor_result(result) {
+            if !actions
+                .iter()
+                .any(|existing: &RecoveryPlanAction| existing.id == action.id)
+            {
+                actions.push(action);
+            }
+        }
+    }
+
+    let highest_severity = actions
+        .iter()
+        .map(|action| action.severity.as_str())
+        .max_by_key(|severity| severity_rank(severity))
+        .unwrap_or("none")
+        .to_string();
+    let automatic_action_count = actions
+        .iter()
+        .filter(|action| action.safe_to_run_automatically)
+        .count();
+
+    RecoveryPlanReport {
+        schema_version: 1,
+        title: "Yazelix Recovery Fix Plan".into(),
+        inspect_command: "yzx inspect --json".into(),
+        summary: RecoveryPlanSummary {
+            action_count: actions.len(),
+            automatic_action_count,
+            manual_action_count: actions.len().saturating_sub(automatic_action_count),
+            highest_severity,
+        },
+        actions,
+    }
+}
+
+fn recovery_action_for_doctor_result(result: &Value) -> Option<RecoveryPlanAction> {
+    let message = result_message(result);
+    let details = result_details(result).unwrap_or("");
+    let fix_action = result
+        .get("fix_action")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    let evidence = evidence_lines(message, details);
+
+    if fix_action == "repair_generated_runtime_state"
+        || message.contains("Generated workspace assets are missing or stale")
+    {
+        return Some(RecoveryPlanAction {
+            id: "repair_generated_runtime_state".into(),
+            severity: normalize_recovery_severity(result_status(result)),
+            problem: "Generated workspace assets are missing, stale, or out of sync with the active runtime".into(),
+            evidence,
+            commands: vec!["yzx doctor --fix".into(), "yzx restart".into()],
+            safe_to_run_automatically: true,
+            rationale: "`yzx doctor --fix` only regenerates Yazelix-owned generated runtime state for this finding; restart makes Zellij load the fresh assets.".into(),
+        });
+    }
+
+    if message.contains("default Nix profile still contains standalone Yazelix packages")
+        || details.contains("Home Manager now owns this Yazelix install")
+    {
+        return Some(RecoveryPlanAction {
+            id: "resolve_home_manager_profile_collision".into(),
+            severity: normalize_recovery_severity(result_status(result)),
+            problem: "Home Manager ownership conflicts with standalone Yazelix packages in the default Nix profile".into(),
+            evidence,
+            commands: vec![
+                "yzx home_manager prepare --apply".into(),
+                "home-manager switch".into(),
+            ],
+            safe_to_run_automatically: false,
+            rationale: "This changes package ownership and can remove profile entries, so the user should run it deliberately from the Home Manager-owned setup.".into(),
+        });
+    }
+
+    if message.contains("stale host-shell yzx function or alias")
+        || message.contains("stale user-local yzx wrapper")
+        || message.contains("shadows the profile-owned Yazelix command")
+    {
+        return Some(RecoveryPlanAction {
+            id: "remove_shadowed_yzx_launcher".into(),
+            severity: normalize_recovery_severity(result_status(result)),
+            problem: "A stale shell function, alias, or local wrapper is shadowing the current Yazelix command".into(),
+            evidence,
+            commands: vec![
+                "command yzx doctor --fix-plan".into(),
+                "yzx home_manager prepare --apply".into(),
+            ],
+            safe_to_run_automatically: false,
+            rationale: "The exact stale definition usually lives in a user shell startup file, so Yazelix should not edit it implicitly.".into(),
+        });
+    }
+
+    if message.contains("pane-orchestrator plugin permissions not granted") {
+        return Some(RecoveryPlanAction {
+            id: "repair_zellij_plugin_permissions".into(),
+            severity: normalize_recovery_severity(result_status(result)),
+            problem: "The active Zellij session has not granted Yazelix pane-orchestrator permissions".into(),
+            evidence,
+            commands: vec!["yzx doctor --fix".into(), "yzx restart".into()],
+            safe_to_run_automatically: false,
+            rationale: "Permission seeding is safe, but restarting the interactive session should be an explicit user action.".into(),
+        });
+    }
+
+    if message.contains("pane-orchestrator session state is not ready")
+        || message.contains("Could not contact the Yazelix pane-orchestrator plugin")
+        || message.contains("pane-orchestrator returned an unexpected response")
+    {
+        return Some(RecoveryPlanAction {
+            id: "restart_broken_zellij_session".into(),
+            severity: normalize_recovery_severity(result_status(result)),
+            problem: "The active Zellij session is stale, initializing, or returning invalid Yazelix plugin state".into(),
+            evidence,
+            commands: vec!["yzx restart".into(), "yzx doctor --verbose".into()],
+            safe_to_run_automatically: false,
+            rationale: "Restarting can close panes, so the plan reports the exact recovery path without doing it automatically.".into(),
+        });
+    }
+
+    if details.contains("Failure class: host-dependency problem")
+        || message.contains("missing required")
+        || message.contains("command not found")
+    {
+        return Some(RecoveryPlanAction {
+            id: "repair_missing_runtime_tool".into(),
+            severity: normalize_recovery_severity(result_status(result)),
+            problem: "A required runtime command or host dependency is missing for the active Yazelix mode".into(),
+            evidence,
+            commands: vec!["yzx inspect --json".into(), "yzx doctor --verbose".into()],
+            safe_to_run_automatically: false,
+            rationale: "Missing tools depend on the install owner and platform; inspect plus verbose doctor gives the exact active runtime and failing dependency before package changes.".into(),
+        });
+    }
+
+    None
+}
+
+fn evidence_lines(message: &str, details: &str) -> Vec<String> {
+    let mut lines = Vec::new();
+    if !message.trim().is_empty() {
+        lines.push(message.trim().to_string());
+    }
+    for line in details
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+    {
+        lines.push(line.to_string());
+    }
+    lines
+}
+
+fn normalize_recovery_severity(status: &str) -> String {
+    match status {
+        "error" => "error".into(),
+        "warn" | "warning" => "warning".into(),
+        "info" => "info".into(),
+        _ => "notice".into(),
+    }
+}
+
+fn severity_rank(severity: &str) -> u8 {
+    match severity {
+        "error" => 4,
+        "warning" => 3,
+        "info" => 2,
+        "notice" => 1,
+        _ => 0,
+    }
+}
+
+fn render_recovery_plan(plan: &RecoveryPlanReport) {
+    println!("{}", plan.title);
+    println!("Inspect source: {}", plan.inspect_command);
+    println!();
+
+    if plan.actions.is_empty() {
+        println!("No recovery actions found. Run `yzx doctor --verbose` if a problem persists.");
+        return;
+    }
+
+    for action in &plan.actions {
+        println!("[{}] {}", action.severity, action.problem);
+        if let Some(first) = action.evidence.first() {
+            println!("  Evidence: {first}");
+        }
+        println!(
+            "  Safe to auto-run: {}",
+            if action.safe_to_run_automatically {
+                "yes"
+            } else {
+                "no"
+            }
+        );
+        println!("  Commands:");
+        for command in &action.commands {
+            println!("    {command}");
+        }
+        println!("  Why: {}", action.rationale);
+        println!();
+    }
 }
 
 fn render_doctor_report(report: &DoctorReportData, verbose: bool) {
@@ -938,5 +1200,69 @@ mod tests {
             Some("seed_zellij_plugin_permissions")
         );
         assert_eq!(findings[1]["status"], "warning");
+    }
+
+    // Defends: the recovery plan maps known high-friction failures to exact non-mutating recovery commands.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn recovery_plan_maps_common_failure_states_to_exact_commands() {
+        let report = DoctorReportData {
+            title: "Yazelix Health Checks".into(),
+            summary: summarize_doctor_results(&[]),
+            results: vec![
+                json!({
+                    "status": "error",
+                    "message": "Generated workspace assets are missing or stale",
+                    "details": "generated Zellij plugin artifact is stale: /tmp/yazelix_pane_orchestrator.wasm",
+                    "fix_available": true,
+                    "fix_action": "repair_generated_runtime_state"
+                }),
+                json!({
+                    "status": "warn",
+                    "message": "The default Nix profile still contains standalone Yazelix packages alongside the Home Manager install",
+                    "details": "Home Manager now owns this Yazelix install, but the default Nix profile still contains standalone Yazelix package entries."
+                }),
+                json!({
+                    "status": "warning",
+                    "message": "A stale user-local yzx wrapper shadows the profile-owned Yazelix command",
+                    "details": "Shell-resolved yzx: /home/user/.local/bin/yzx"
+                }),
+                json!({
+                    "status": "warning",
+                    "message": "Yazelix pane-orchestrator returned an unexpected response",
+                    "details": "Unexpected payload: not-json"
+                }),
+            ],
+        };
+
+        let plan = build_recovery_plan(&report);
+        let ids = plan
+            .actions
+            .iter()
+            .map(|action| action.id.as_str())
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            ids,
+            vec![
+                "repair_generated_runtime_state",
+                "resolve_home_manager_profile_collision",
+                "remove_shadowed_yzx_launcher",
+                "restart_broken_zellij_session",
+            ]
+        );
+        assert_eq!(
+            plan.actions[0].commands,
+            vec!["yzx doctor --fix", "yzx restart"]
+        );
+        assert!(plan.actions[0].safe_to_run_automatically);
+        assert_eq!(
+            plan.actions[1].commands,
+            vec!["yzx home_manager prepare --apply", "home-manager switch"]
+        );
+        assert!(!plan.actions[1].safe_to_run_automatically);
+        assert_eq!(plan.summary.highest_severity, "error");
+        assert_eq!(plan.summary.automatic_action_count, 1);
+        assert_eq!(plan.summary.manual_action_count, 3);
     }
 }

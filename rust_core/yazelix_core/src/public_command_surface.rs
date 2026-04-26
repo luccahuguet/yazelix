@@ -128,6 +128,7 @@ const STATUS_FLAGS: &[YzxCommandParameter] = &[switch("versions", Some("V")), sw
 const DOCTOR_FLAGS: &[YzxCommandParameter] = &[
     switch("verbose", Some("v")),
     switch("fix", Some("f")),
+    switch("fix-plan", None),
     switch("json", None),
 ];
 const CONFIG_FLAGS: &[YzxCommandParameter] = &[switch("path", None)];

@@ -4,10 +4,12 @@ Shell-agnostic CLI for Yazelix management. Works across bash, fish, zsh, and nus
 
 ## Commands
 
-### `yzx doctor [--verbose] [--fix]`
+### `yzx doctor [--verbose] [--fix] [--fix-plan]`
 Health checks and diagnostics
 - `--verbose`: Detailed output
 - `--fix`: Auto-fix safe issues
+- `--fix-plan`: Print exact recovery commands without mutating anything
+- `--fix-plan --json`: Emit a machine-readable recovery plan for docs, support, and agents
 - Warns when `yazelix.toml` has stale, removed, or invalid fields relative to `yazelix_default.toml`
 - Reports the active runtime/distribution tier before deeper checks
 - Detects missing or stale workspace assets such as generated Zellij config, layouts, and plugin wasm artifacts

@@ -530,3 +530,59 @@ fn yzx_control_doctor_json_reports_home_manager_profile_collision() {
             .contains("yzx home_manager prepare --apply")
     );
 }
+
+// Defends: `yzx doctor --fix-plan --json` exposes exact recovery commands without running the mutating fix flow.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_control_doctor_fix_plan_json_reports_recovery_commands() {
+    let fixture = managed_config_fixture("");
+    let hm_store_config = fixture
+        .home_dir
+        .join("hm-store")
+        .join("abc-home-manager-files")
+        .join("yazelix.toml");
+    let manifest_path = fixture.home_dir.join(".nix-profile").join("manifest.json");
+    fs::create_dir_all(hm_store_config.parent().unwrap()).unwrap();
+    fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
+    fs::write(&hm_store_config, "[core]\nwelcome_style = \"random\"\n").unwrap();
+    fs::write(
+        &manifest_path,
+        r#"{"elements":{"yazelix":{"active":true,"storePaths":["/nix/store/test-yazelix"]}},"version":3}"#,
+    )
+    .unwrap();
+    fs::remove_file(&fixture.managed_config).unwrap();
+    std::os::unix::fs::symlink(&hm_store_config, &fixture.managed_config).unwrap();
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .arg("doctor")
+        .arg("--fix-plan")
+        .arg("--json")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stderr.is_empty());
+    let plan: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let action = plan["actions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|action| action["id"] == "resolve_home_manager_profile_collision")
+        .expect("home manager recovery action");
+
+    assert_eq!(plan["title"], "Yazelix Recovery Fix Plan");
+    assert_eq!(plan["inspect_command"], "yzx inspect --json");
+    assert_eq!(action["safe_to_run_automatically"], false);
+    assert!(
+        action["commands"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|command| command == "yzx home_manager prepare --apply")
+    );
+    assert!(action["evidence"].as_array().unwrap().iter().any(|line| {
+        line.as_str()
+            .unwrap_or("")
+            .contains("Home Manager now owns")
+    }));
+}
