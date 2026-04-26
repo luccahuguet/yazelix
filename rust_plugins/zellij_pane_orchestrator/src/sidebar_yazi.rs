@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
+use yazelix_pane_orchestrator::sidebar_state_contract::{
+    find_tab_for_sidebar_pane_id, retain_tab_local_sidebar_pane_state,
+};
 use zellij_tile::prelude::*;
 
 use crate::panes::pane_id_to_string;
@@ -22,22 +25,12 @@ struct SidebarYaziStateRegistration {
 
 impl State {
     pub(crate) fn reconcile_sidebar_yazi_state(&mut self) {
-        let sidebar_pane_id_by_tab: HashMap<usize, String> = self
-            .managed_panes_by_tab
-            .iter()
-            .filter_map(|(tab_position, managed_tab_panes)| {
-                pane_id_to_string(managed_tab_panes.sidebar.map(|pane| pane.pane_id))
-                    .map(|pane_id| (*tab_position, pane_id))
-            })
-            .collect();
-
-        self.sidebar_yazi_state_by_tab
-            .retain(|tab_position, sidebar_state| {
-                sidebar_pane_id_by_tab
-                    .get(tab_position)
-                    .map(|pane_id| pane_id == &sidebar_state.pane_id)
-                    .unwrap_or(false)
-            });
+        let sidebar_pane_id_by_tab = self.sidebar_pane_id_by_tab();
+        retain_tab_local_sidebar_pane_state(
+            &mut self.sidebar_yazi_state_by_tab,
+            &sidebar_pane_id_by_tab,
+            |sidebar_state| sidebar_state.pane_id.as_str(),
+        );
     }
 
     pub(crate) fn register_sidebar_yazi_state(&mut self, pipe_message: &PipeMessage) {
@@ -103,16 +96,16 @@ impl State {
     }
 
     fn find_tab_position_for_sidebar_pane_id(&self, pane_id: &str) -> Option<usize> {
+        find_tab_for_sidebar_pane_id(&self.sidebar_pane_id_by_tab(), pane_id)
+    }
+
+    fn sidebar_pane_id_by_tab(&self) -> HashMap<usize, String> {
         self.managed_panes_by_tab
             .iter()
-            .find_map(|(tab_position, managed_tab_panes)| {
-                let candidate =
-                    pane_id_to_string(managed_tab_panes.sidebar.map(|pane| pane.pane_id))?;
-                if candidate == pane_id {
-                    Some(*tab_position)
-                } else {
-                    None
-                }
+            .filter_map(|(tab_position, managed_tab_panes)| {
+                pane_id_to_string(managed_tab_panes.sidebar.map(|pane| pane.pane_id))
+                    .map(|pane_id| (*tab_position, pane_id))
             })
+            .collect()
     }
 }

@@ -5,8 +5,14 @@ pub enum HorizontalDirection {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct HorizontalPaneSnapshot<'a> {
-    pub title: &'a str,
+pub enum HorizontalPaneRole {
+    Sidebar,
+    Other,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HorizontalPaneSnapshot {
+    pub role: HorizontalPaneRole,
     pub is_plugin: bool,
     pub exited: bool,
     pub is_focused: bool,
@@ -25,7 +31,7 @@ pub enum HorizontalFocusPlan {
 }
 
 pub fn resolve_horizontal_focus(
-    panes: &[HorizontalPaneSnapshot<'_>],
+    panes: &[HorizontalPaneSnapshot],
     direction: HorizontalDirection,
     sidebar_is_closed: bool,
 ) -> HorizontalFocusPlan {
@@ -47,7 +53,7 @@ pub fn resolve_horizontal_focus(
         .enumerate()
         .filter(|(index, _pane)| *index != focused_index)
         .filter(|(_, pane)| !pane.is_plugin && !pane.exited)
-        .filter(|(_, pane)| !(sidebar_is_closed && pane.title.trim() == "sidebar"))
+        .filter(|(_, pane)| !(sidebar_is_closed && pane.role == HorizontalPaneRole::Sidebar))
         .filter_map(|(index, pane)| {
             let candidate_left = pane.pane_x;
             let candidate_right = pane.pane_x + pane.pane_columns;
@@ -96,7 +102,8 @@ pub fn resolve_horizontal_focus(
 #[cfg(test)]
 mod tests {
     use super::{
-        resolve_horizontal_focus, HorizontalDirection, HorizontalFocusPlan, HorizontalPaneSnapshot,
+        resolve_horizontal_focus, HorizontalDirection, HorizontalFocusPlan, HorizontalPaneRole,
+        HorizontalPaneSnapshot,
     };
 
     // Defends: leftward focus skips a closed sidebar instead of treating it as a real target.
@@ -105,7 +112,7 @@ mod tests {
     fn closed_sidebar_is_skipped_when_walking_left() {
         let panes = [
             HorizontalPaneSnapshot {
-                title: "sidebar",
+                role: HorizontalPaneRole::Sidebar,
                 is_plugin: false,
                 exited: false,
                 is_focused: false,
@@ -115,7 +122,7 @@ mod tests {
                 pane_rows: 40,
             },
             HorizontalPaneSnapshot {
-                title: "shell",
+                role: HorizontalPaneRole::Other,
                 is_plugin: false,
                 exited: false,
                 is_focused: true,
@@ -138,7 +145,7 @@ mod tests {
     fn open_sidebar_is_still_a_valid_left_target() {
         let panes = [
             HorizontalPaneSnapshot {
-                title: "sidebar",
+                role: HorizontalPaneRole::Sidebar,
                 is_plugin: false,
                 exited: false,
                 is_focused: false,
@@ -148,7 +155,7 @@ mod tests {
                 pane_rows: 40,
             },
             HorizontalPaneSnapshot {
-                title: "shell",
+                role: HorizontalPaneRole::Other,
                 is_plugin: false,
                 exited: false,
                 is_focused: true,
@@ -171,7 +178,7 @@ mod tests {
     fn nearest_visible_left_pane_wins_over_hidden_sidebar() {
         let panes = [
             HorizontalPaneSnapshot {
-                title: "sidebar",
+                role: HorizontalPaneRole::Sidebar,
                 is_plugin: false,
                 exited: false,
                 is_focused: false,
@@ -181,7 +188,7 @@ mod tests {
                 pane_rows: 40,
             },
             HorizontalPaneSnapshot {
-                title: "stack",
+                role: HorizontalPaneRole::Other,
                 is_plugin: false,
                 exited: false,
                 is_focused: false,
@@ -191,7 +198,7 @@ mod tests {
                 pane_rows: 40,
             },
             HorizontalPaneSnapshot {
-                title: "shell",
+                role: HorizontalPaneRole::Other,
                 is_plugin: false,
                 exited: false,
                 is_focused: true,
@@ -214,7 +221,7 @@ mod tests {
     fn panes_without_horizontal_overlap_do_not_count_as_left_or_right_targets() {
         let panes = [
             HorizontalPaneSnapshot {
-                title: "stack",
+                role: HorizontalPaneRole::Other,
                 is_plugin: false,
                 exited: false,
                 is_focused: true,
@@ -224,7 +231,7 @@ mod tests {
                 pane_rows: 20,
             },
             HorizontalPaneSnapshot {
-                title: "terminal",
+                role: HorizontalPaneRole::Other,
                 is_plugin: false,
                 exited: false,
                 is_focused: false,

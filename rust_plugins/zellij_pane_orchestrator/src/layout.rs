@@ -3,7 +3,8 @@ use std::time::Duration;
 
 use yazelix_pane_orchestrator::pane_contract::FocusContextPolicy;
 use yazelix_pane_orchestrator::sidebar_contract::{
-    resolve_sidebar_visibility_toggle, SidebarVisibilityTogglePlan,
+    resolve_sidebar_visibility_toggle, sidebar_post_layout_focus_nudges,
+    SidebarFocusNudgeDirection, SidebarPostLayoutFocus, SidebarVisibilityAction,
 };
 use zellij_tile::prelude::*;
 
@@ -106,7 +107,7 @@ impl State {
             .get(&active_tab_position)
             .is_some();
 
-        match resolve_sidebar_visibility_toggle(
+        let plan = resolve_sidebar_visibility_toggle(
             layout_variant.is_sidebar_closed(),
             match focus_context {
                 crate::panes::FocusContext::Editor => FocusContextPolicy::Editor,
@@ -115,20 +116,13 @@ impl State {
             },
             has_editor,
             has_focus_fallback,
-        ) {
-            SidebarVisibilityTogglePlan::OpenPreservingFocus => {
-                self.run_previous_swap_layout_steps(1)
-            }
-            SidebarVisibilityTogglePlan::ClosePreservingFocus => self.run_next_swap_layout_steps(1),
-            SidebarVisibilityTogglePlan::CloseAndFocusEditor => {
-                self.run_next_swap_layout_steps(1);
-                self.move_focus_right_after_layout_settle();
-            }
-            SidebarVisibilityTogglePlan::CloseAndFocusFallback => {
-                self.run_next_swap_layout_steps(1);
-                self.move_focus_right_after_layout_settle();
-            }
+        );
+
+        match plan.action {
+            SidebarVisibilityAction::Open => self.run_previous_swap_layout_steps(1),
+            SidebarVisibilityAction::Close => self.run_next_swap_layout_steps(1),
         }
+        self.run_sidebar_post_layout_focus(plan.post_layout_focus);
 
         self.respond(pipe_message, RESULT_OK);
     }
@@ -178,22 +172,16 @@ impl State {
 
     pub(crate) fn open_sidebar_and_focus_after_layout_settle(&self) {
         self.run_previous_swap_layout_steps(1);
-        self.move_focus_to_sidebar_after_layout_settle();
+        self.run_sidebar_post_layout_focus(SidebarPostLayoutFocus::MoveLeftToSidebar);
     }
 
-    fn move_focus_right_after_layout_settle(&self) {
-        for delay in [35, 105] {
-            sleep(Duration::from_millis(delay));
-            move_focus(Direction::Right);
-        }
-    }
-
-    pub(crate) fn move_focus_to_sidebar_after_layout_settle(&self) {
-        // Sidebar is always the leftmost managed pane, but the currently focused pane
-        // may be one or two panes to the right depending on the active layout family.
-        for delay in [35, 70, 105] {
-            sleep(Duration::from_millis(delay));
-            move_focus(Direction::Left);
+    fn run_sidebar_post_layout_focus(&self, post_layout_focus: SidebarPostLayoutFocus) {
+        for nudge in sidebar_post_layout_focus_nudges(post_layout_focus) {
+            sleep(Duration::from_millis(nudge.delay_ms));
+            move_focus(match nudge.direction {
+                SidebarFocusNudgeDirection::Left => Direction::Left,
+                SidebarFocusNudgeDirection::Right => Direction::Right,
+            });
         }
     }
 }

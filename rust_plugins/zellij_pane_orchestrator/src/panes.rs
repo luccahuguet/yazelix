@@ -7,7 +7,8 @@ use yazelix_pane_orchestrator::active_tab_session_state::{
     SessionWorkspace,
 };
 use yazelix_pane_orchestrator::horizontal_focus_contract::{
-    resolve_horizontal_focus, HorizontalDirection, HorizontalFocusPlan, HorizontalPaneSnapshot,
+    resolve_horizontal_focus, HorizontalDirection, HorizontalFocusPlan, HorizontalPaneRole,
+    HorizontalPaneSnapshot,
 };
 use yazelix_pane_orchestrator::pane_contract::{
     resolve_focus_context, select_managed_pane_index, FocusContextPolicy, PaneSnapshot,
@@ -427,10 +428,14 @@ impl State {
             .get_active_layout_variant(active_tab_position)
             .map(|variant| variant.is_sidebar_closed())
             .unwrap_or(false);
-        let pane_snapshots: Vec<HorizontalPaneSnapshot<'_>> = terminal_panes
+        let pane_snapshots: Vec<HorizontalPaneSnapshot> = terminal_panes
             .iter()
             .map(|pane| HorizontalPaneSnapshot {
-                title: pane.title.as_str(),
+                role: if pane.title.trim() == SIDEBAR_TITLE {
+                    HorizontalPaneRole::Sidebar
+                } else {
+                    HorizontalPaneRole::Other
+                },
                 is_plugin: false,
                 exited: false,
                 is_focused: pane.is_focused,

@@ -1,11 +1,34 @@
 use crate::pane_contract::FocusContextPolicy;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum SidebarVisibilityTogglePlan {
-    OpenPreservingFocus,
-    ClosePreservingFocus,
-    CloseAndFocusEditor,
-    CloseAndFocusFallback,
+pub enum SidebarVisibilityAction {
+    Open,
+    Close,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SidebarPostLayoutFocus {
+    Preserve,
+    MoveLeftToSidebar,
+    MoveRightToNonSidebar,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SidebarVisibilityTogglePlan {
+    pub action: SidebarVisibilityAction,
+    pub post_layout_focus: SidebarPostLayoutFocus,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SidebarFocusNudgeDirection {
+    Left,
+    Right,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SidebarFocusNudge {
+    pub delay_ms: u64,
+    pub direction: SidebarFocusNudgeDirection,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -23,13 +46,25 @@ pub fn resolve_sidebar_visibility_toggle(
     has_focus_fallback: bool,
 ) -> SidebarVisibilityTogglePlan {
     if sidebar_is_closed {
-        SidebarVisibilityTogglePlan::OpenPreservingFocus
+        SidebarVisibilityTogglePlan {
+            action: SidebarVisibilityAction::Open,
+            post_layout_focus: SidebarPostLayoutFocus::Preserve,
+        }
     } else if focus_context == FocusContextPolicy::Sidebar && has_editor {
-        SidebarVisibilityTogglePlan::CloseAndFocusEditor
+        SidebarVisibilityTogglePlan {
+            action: SidebarVisibilityAction::Close,
+            post_layout_focus: SidebarPostLayoutFocus::MoveRightToNonSidebar,
+        }
     } else if focus_context == FocusContextPolicy::Sidebar && has_focus_fallback {
-        SidebarVisibilityTogglePlan::CloseAndFocusFallback
+        SidebarVisibilityTogglePlan {
+            action: SidebarVisibilityAction::Close,
+            post_layout_focus: SidebarPostLayoutFocus::MoveRightToNonSidebar,
+        }
     } else {
-        SidebarVisibilityTogglePlan::ClosePreservingFocus
+        SidebarVisibilityTogglePlan {
+            action: SidebarVisibilityAction::Close,
+            post_layout_focus: SidebarPostLayoutFocus::Preserve,
+        }
     }
 }
 
@@ -54,11 +89,48 @@ pub fn resolve_sidebar_focus_toggle(
     }
 }
 
+pub fn sidebar_post_layout_focus_nudges(
+    post_layout_focus: SidebarPostLayoutFocus,
+) -> &'static [SidebarFocusNudge] {
+    const MOVE_LEFT_TO_SIDEBAR: [SidebarFocusNudge; 3] = [
+        SidebarFocusNudge {
+            delay_ms: 35,
+            direction: SidebarFocusNudgeDirection::Left,
+        },
+        SidebarFocusNudge {
+            delay_ms: 70,
+            direction: SidebarFocusNudgeDirection::Left,
+        },
+        SidebarFocusNudge {
+            delay_ms: 105,
+            direction: SidebarFocusNudgeDirection::Left,
+        },
+    ];
+    const MOVE_RIGHT_TO_NON_SIDEBAR: [SidebarFocusNudge; 2] = [
+        SidebarFocusNudge {
+            delay_ms: 35,
+            direction: SidebarFocusNudgeDirection::Right,
+        },
+        SidebarFocusNudge {
+            delay_ms: 105,
+            direction: SidebarFocusNudgeDirection::Right,
+        },
+    ];
+
+    match post_layout_focus {
+        SidebarPostLayoutFocus::Preserve => &[],
+        SidebarPostLayoutFocus::MoveLeftToSidebar => &MOVE_LEFT_TO_SIDEBAR,
+        SidebarPostLayoutFocus::MoveRightToNonSidebar => &MOVE_RIGHT_TO_NON_SIDEBAR,
+    }
+}
+
 // Test lane: maintainer
 #[cfg(test)]
 mod tests {
     use super::{
-        resolve_sidebar_focus_toggle, resolve_sidebar_visibility_toggle, SidebarFocusTogglePlan,
+        resolve_sidebar_focus_toggle, resolve_sidebar_visibility_toggle,
+        sidebar_post_layout_focus_nudges, SidebarFocusNudge, SidebarFocusNudgeDirection,
+        SidebarFocusTogglePlan, SidebarPostLayoutFocus, SidebarVisibilityAction,
         SidebarVisibilityTogglePlan,
     };
     use crate::pane_contract::FocusContextPolicy;
@@ -69,7 +141,10 @@ mod tests {
     fn opening_sidebar_preserves_current_focus() {
         assert_eq!(
             resolve_sidebar_visibility_toggle(true, FocusContextPolicy::Editor, true, true),
-            SidebarVisibilityTogglePlan::OpenPreservingFocus
+            SidebarVisibilityTogglePlan {
+                action: SidebarVisibilityAction::Open,
+                post_layout_focus: SidebarPostLayoutFocus::Preserve
+            }
         );
     }
 
@@ -79,7 +154,10 @@ mod tests {
     fn closing_focused_sidebar_prefers_editor_fallback() {
         assert_eq!(
             resolve_sidebar_visibility_toggle(false, FocusContextPolicy::Sidebar, true, true),
-            SidebarVisibilityTogglePlan::CloseAndFocusEditor
+            SidebarVisibilityTogglePlan {
+                action: SidebarVisibilityAction::Close,
+                post_layout_focus: SidebarPostLayoutFocus::MoveRightToNonSidebar
+            }
         );
     }
 
@@ -89,7 +167,23 @@ mod tests {
     fn closing_focused_sidebar_uses_non_sidebar_fallback_when_editor_missing() {
         assert_eq!(
             resolve_sidebar_visibility_toggle(false, FocusContextPolicy::Sidebar, false, true),
-            SidebarVisibilityTogglePlan::CloseAndFocusFallback
+            SidebarVisibilityTogglePlan {
+                action: SidebarVisibilityAction::Close,
+                post_layout_focus: SidebarPostLayoutFocus::MoveRightToNonSidebar
+            }
+        );
+    }
+
+    // Defends: closing a non-focused sidebar does not inject extra focus motion.
+    // Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=1 total=7/10
+    #[test]
+    fn closing_unfocused_sidebar_preserves_current_focus() {
+        assert_eq!(
+            resolve_sidebar_visibility_toggle(false, FocusContextPolicy::Editor, true, true),
+            SidebarVisibilityTogglePlan {
+                action: SidebarVisibilityAction::Close,
+                post_layout_focus: SidebarPostLayoutFocus::Preserve
+            }
         );
     }
 
@@ -111,5 +205,29 @@ mod tests {
             resolve_sidebar_focus_toggle(FocusContextPolicy::Sidebar, true, false, true),
             SidebarFocusTogglePlan::FocusEditor
         );
+    }
+
+    // Defends: the reusable sidebar contract owns the post-layout focus nudge sequence.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn post_layout_focus_nudges_are_contract_owned() {
+        assert_eq!(
+            sidebar_post_layout_focus_nudges(SidebarPostLayoutFocus::MoveLeftToSidebar),
+            [
+                SidebarFocusNudge {
+                    delay_ms: 35,
+                    direction: SidebarFocusNudgeDirection::Left,
+                },
+                SidebarFocusNudge {
+                    delay_ms: 70,
+                    direction: SidebarFocusNudgeDirection::Left,
+                },
+                SidebarFocusNudge {
+                    delay_ms: 105,
+                    direction: SidebarFocusNudgeDirection::Left,
+                },
+            ]
+        );
+        assert!(sidebar_post_layout_focus_nudges(SidebarPostLayoutFocus::Preserve).is_empty());
     }
 }
