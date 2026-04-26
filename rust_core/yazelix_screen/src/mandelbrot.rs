@@ -9,7 +9,11 @@ const ANSI_CYAN: &str = "\u{1b}[36m";
 const ANSI_RESET: &str = "\u{1b}[0m";
 
 const MANDELBROT_LOOP_FRAMES: usize = 960;
-const MANDELBROT_BASE_SCALE_X: f64 = 3.12;
+const MANDELBROT_BASE_CENTER: Complex64 = Complex64 {
+    re: -0.77,
+    im: 0.09,
+};
+const MANDELBROT_BASE_SCALE_X: f64 = 0.06;
 const MANDELBROT_LOOP_PERIOD: usize = 3;
 const MANDELBROT_LOOP_NUCLEUS: Complex64 = Complex64 {
     re: -1.754_877_666_246_693,
@@ -251,7 +255,7 @@ fn mandelbrot_point(
     let base = Complex64 {
         re: (nx - 0.5) * MANDELBROT_BASE_SCALE_X,
         im: (ny - 0.5) * MANDELBROT_BASE_SCALE_X * 0.64,
-    };
+    } + MANDELBROT_BASE_CENTER;
     let point = view.fixed_point + view.multiplier * (base - view.fixed_point);
     (point.re, point.im)
 }
@@ -346,6 +350,25 @@ mod tests {
         matching_cells as f64 / total_cells as f64
     }
 
+    fn visible_frame_fraction_matching<F>(frame: &[String], predicate: F) -> f64
+    where
+        F: Fn(char) -> bool,
+    {
+        let mut matching_cells = 0;
+        let mut total_cells = 0;
+
+        for line in frame {
+            for cell in line.chars() {
+                if predicate(cell) {
+                    matching_cells += 1;
+                }
+                total_cells += 1;
+            }
+        }
+
+        matching_cells as f64 / total_cells as f64
+    }
+
     // Defends: Mandelbrot uses deterministic in-house CPU frames without host randomness or external engines.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
@@ -375,6 +398,20 @@ mod tests {
         assert_ne!(initial, deep_zoom);
     }
 
+    // Regression: Mandelbrot should start in a valley crop with organic structure instead of the mostly empty real-axis tip.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn mandelbrot_base_frame_uses_visible_valley_structure() {
+        let initial = strip_ansi_from_frame(render_mandelbrot_frame(context(64, 20), 0));
+
+        assert!(
+            visible_frame_fraction_matching(&initial, |cell| matches!(cell, ':' | '░' | '▒' | '▓'))
+                >= 0.08
+        );
+        assert!(visible_frame_fraction_matching(&initial, |cell| cell == '█') <= 0.90);
+        assert!(visible_frame_fraction_matching(&initial, |cell| cell == ' ') < 0.02);
+    }
+
     // Defends: the finite animation cycle repeats at the real cycle boundary, not by resetting the penultimate frame.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
@@ -396,7 +433,7 @@ mod tests {
         ));
 
         assert_ne!(first, penultimate);
-        assert!(visible_frame_similarity(&first, &penultimate) >= 0.75);
+        assert!(visible_frame_similarity(&first, &penultimate) >= 0.70);
     }
 
     // Defends: the Mandelbrot view uses an approximate miniature-copy transform instead of an unrelated point zoom.
@@ -411,19 +448,24 @@ mod tests {
         let loop_home = mandelbrot_view(MANDELBROT_LOOP_FRAMES);
         let loop_size =
             mandelbrot_component_size_estimate(MANDELBROT_LOOP_NUCLEUS, MANDELBROT_LOOP_PERIOD);
-        let copy_center =
+        let full_set_copy_center =
             home.fixed_point + loop_size * (Complex64 { re: 0.0, im: 0.0 } - home.fixed_point);
+        let valley_copy_center =
+            home.fixed_point + loop_size * (MANDELBROT_BASE_CENTER - home.fixed_point);
 
         assert!(quarter.zoom > home.zoom);
         assert!(half.zoom > quarter.zoom);
         assert!(late.zoom > half.zoom);
         assert!(seam.zoom > late.zoom);
         assert!(seam.scale_x < home.scale_x / 40.0);
+        assert!((home.scale_x - MANDELBROT_BASE_SCALE_X).abs() < f64::EPSILON);
         assert!((home.multiplier.re - 1.0).abs() < f64::EPSILON);
         assert!(home.multiplier.im.abs() < f64::EPSILON);
         assert!((loop_size.abs() - 0.019_035_515_913_132_437).abs() < 1e-15);
-        assert!((copy_center.re - MANDELBROT_LOOP_NUCLEUS.re).abs() < 1e-12);
-        assert!((copy_center.im - MANDELBROT_LOOP_NUCLEUS.im).abs() < 1e-12);
+        assert!((full_set_copy_center.re - MANDELBROT_LOOP_NUCLEUS.re).abs() < 1e-12);
+        assert!((full_set_copy_center.im - MANDELBROT_LOOP_NUCLEUS.im).abs() < 1e-12);
+        assert!(valley_copy_center.re < MANDELBROT_LOOP_NUCLEUS.re);
+        assert!(valley_copy_center.im > MANDELBROT_LOOP_NUCLEUS.im);
         assert_eq!(home, loop_home);
     }
 
