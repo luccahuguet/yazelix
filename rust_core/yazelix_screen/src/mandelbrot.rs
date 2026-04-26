@@ -9,10 +9,12 @@ const ANSI_CYAN: &str = "\u{1b}[36m";
 const ANSI_RESET: &str = "\u{1b}[0m";
 
 const MANDELBROT_LOOP_FRAMES: usize = 960;
-const MANDELBROT_MIN_ZOOM: f64 = 2.55;
-const MANDELBROT_MAX_ZOOM: f64 = 1_450.0;
-const MANDELBROT_SEAHORSE_CENTER: (f64, f64) = (-0.75, 0.1);
-const MANDELBROT_SPIRAL_CENTER: (f64, f64) = (-0.743_643_887_037_151, 0.131_825_904_205_33);
+const MANDELBROT_BASE_SCALE_X: f64 = 3.12;
+const MANDELBROT_LOOP_PERIOD: usize = 3;
+const MANDELBROT_LOOP_NUCLEUS: Complex64 = Complex64 {
+    re: -1.754_877_666_246_693,
+    im: 0.0,
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MandelbrotAnimation {
@@ -54,6 +56,76 @@ fn mandelbrot_max_iterations_for_zoom(width: usize, height: usize, zoom: f64) ->
     base_iterations
         .saturating_add(zoom_iterations)
         .clamp(48, 220)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct Complex64 {
+    re: f64,
+    im: f64,
+}
+
+impl Complex64 {
+    fn abs(self) -> f64 {
+        self.re.hypot(self.im)
+    }
+
+    fn arg(self) -> f64 {
+        self.im.atan2(self.re)
+    }
+
+    fn powf(self, exponent: f64) -> Self {
+        let magnitude = self.abs().powf(exponent);
+        let angle = self.arg() * exponent;
+        Self {
+            re: magnitude * angle.cos(),
+            im: magnitude * angle.sin(),
+        }
+    }
+}
+
+impl std::ops::Add for Complex64 {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            re: self.re + rhs.re,
+            im: self.im + rhs.im,
+        }
+    }
+}
+
+impl std::ops::Sub for Complex64 {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self {
+            re: self.re - rhs.re,
+            im: self.im - rhs.im,
+        }
+    }
+}
+
+impl std::ops::Mul for Complex64 {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Self {
+            re: self.re * rhs.re - self.im * rhs.im,
+            im: self.re * rhs.im + self.im * rhs.re,
+        }
+    }
+}
+
+impl std::ops::Div for Complex64 {
+    type Output = Self;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        let denominator = rhs.re * rhs.re + rhs.im * rhs.im;
+        Self {
+            re: (self.re * rhs.re + self.im * rhs.im) / denominator,
+            im: (self.im * rhs.re - self.re * rhs.im) / denominator,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -117,62 +189,45 @@ fn render_mandelbrot_frame(context: ScreenAnimationContext, frame_index: usize) 
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct MandelbrotView {
-    center_x: f64,
-    center_y: f64,
+    fixed_point: Complex64,
+    multiplier: Complex64,
     scale_x: f64,
-    scale_y: f64,
     zoom: f64,
 }
 
 fn mandelbrot_view(frame_index: usize) -> MandelbrotView {
     let progress = mandelbrot_minibrot_loop_progress(frame_index);
-    let zoom = MANDELBROT_MIN_ZOOM * (MANDELBROT_MAX_ZOOM / MANDELBROT_MIN_ZOOM).powf(progress);
-    let scale_x = 3.12 / zoom;
-    let (center_x, center_y) = mandelbrot_camera_center(progress);
+    let loop_size =
+        mandelbrot_component_size_estimate(MANDELBROT_LOOP_NUCLEUS, MANDELBROT_LOOP_PERIOD);
+    let multiplier = loop_size.powf(progress);
+    let scale_x = MANDELBROT_BASE_SCALE_X * multiplier.abs();
 
     MandelbrotView {
-        center_x,
-        center_y,
+        fixed_point: MANDELBROT_LOOP_NUCLEUS / (Complex64 { re: 1.0, im: 0.0 } - loop_size),
+        multiplier,
         scale_x,
-        scale_y: scale_x * 0.64,
-        zoom,
+        zoom: 1.0 / multiplier.abs(),
     }
 }
 
 fn mandelbrot_minibrot_loop_progress(frame_index: usize) -> f64 {
-    let cycle_frame = frame_index % MANDELBROT_LOOP_FRAMES;
-
-    if cycle_frame == MANDELBROT_LOOP_FRAMES - 1 || MANDELBROT_LOOP_FRAMES <= 2 {
+    if MANDELBROT_LOOP_FRAMES <= 1 {
         0.0
     } else {
-        cycle_frame as f64 / (MANDELBROT_LOOP_FRAMES - 2) as f64
+        (frame_index % MANDELBROT_LOOP_FRAMES) as f64 / MANDELBROT_LOOP_FRAMES as f64
     }
 }
 
-fn mandelbrot_camera_center(progress: f64) -> (f64, f64) {
-    let center_progress = ease_out_cubic(progress);
-    (
-        lerp(
-            MANDELBROT_SEAHORSE_CENTER.0,
-            MANDELBROT_SPIRAL_CENTER.0,
-            center_progress,
-        ),
-        lerp(
-            MANDELBROT_SEAHORSE_CENTER.1,
-            MANDELBROT_SPIRAL_CENTER.1,
-            center_progress,
-        ),
-    )
-}
-
-fn lerp(start: f64, end: f64, progress: f64) -> f64 {
-    let progress = progress.clamp(0.0, 1.0);
-    start + (end - start) * progress
-}
-
-fn ease_out_cubic(value: f64) -> f64 {
-    let value = value.clamp(0.0, 1.0);
-    1.0 - (1.0 - value).powi(3)
+fn mandelbrot_component_size_estimate(nucleus: Complex64, period: usize) -> Complex64 {
+    let mut derivative = Complex64 { re: 1.0, im: 0.0 };
+    let mut sum = Complex64 { re: 1.0, im: 0.0 };
+    let mut z = Complex64 { re: 0.0, im: 0.0 };
+    for _ in 1..period {
+        z = z * z + nucleus;
+        derivative = Complex64 { re: 2.0, im: 0.0 } * z * derivative;
+        sum = sum + Complex64 { re: 1.0, im: 0.0 } / derivative;
+    }
+    Complex64 { re: 1.0, im: 0.0 } / (sum * derivative * derivative)
 }
 
 fn mandelbrot_point(
@@ -193,10 +248,12 @@ fn mandelbrot_point(
         y as f64 / (height - 1) as f64
     };
 
-    (
-        view.center_x + (nx - 0.5) * view.scale_x,
-        view.center_y + (ny - 0.5) * view.scale_y,
-    )
+    let base = Complex64 {
+        re: (nx - 0.5) * MANDELBROT_BASE_SCALE_X,
+        im: (ny - 0.5) * MANDELBROT_BASE_SCALE_X * 0.64,
+    };
+    let point = view.fixed_point + view.multiplier * (base - view.fixed_point);
+    (point.re, point.im)
 }
 
 fn mandelbrot_cell(escape: MandelbrotEscape, max_iterations: usize) -> Option<ScreenCell> {
@@ -273,6 +330,22 @@ mod tests {
             .collect()
     }
 
+    fn visible_frame_similarity(first: &[String], second: &[String]) -> f64 {
+        let mut matching_cells = 0;
+        let mut total_cells = 0;
+
+        for (first_line, second_line) in first.iter().zip(second.iter()) {
+            for (first_cell, second_cell) in first_line.chars().zip(second_line.chars()) {
+                if first_cell == second_cell {
+                    matching_cells += 1;
+                }
+                total_cells += 1;
+            }
+        }
+
+        matching_cells as f64 / total_cells as f64
+    }
+
     // Defends: Mandelbrot uses deterministic in-house CPU frames without host randomness or external engines.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
@@ -302,35 +375,55 @@ mod tests {
         assert_ne!(initial, deep_zoom);
     }
 
-    // Defends: the finite animation cycle can repeat forever without a visible loop-boundary snap.
+    // Defends: the finite animation cycle repeats at the real cycle boundary, not by resetting the penultimate frame.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn mandelbrot_final_frame_is_exactly_the_first_frame() {
+    fn mandelbrot_loop_boundary_repeats_first_frame_exactly() {
         assert_eq!(
             render_mandelbrot_frame(context(48, 16), 0),
-            render_mandelbrot_frame(context(48, 16), MANDELBROT_LOOP_FRAMES - 1)
+            render_mandelbrot_frame(context(48, 16), MANDELBROT_LOOP_FRAMES)
         );
     }
 
-    // Defends: the Mandelbrot view zooms into Seahorse Valley instead of drifting along the boring real-axis bulb line.
+    // Regression: the last visible frame before wrap must already resemble the first frame.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn mandelbrot_view_reaches_seahorse_spiral_without_zooming_out() {
+    fn mandelbrot_loop_seam_is_structurally_continuous() {
+        let first = strip_ansi_from_frame(render_mandelbrot_frame(context(64, 20), 0));
+        let penultimate = strip_ansi_from_frame(render_mandelbrot_frame(
+            context(64, 20),
+            MANDELBROT_LOOP_FRAMES - 1,
+        ));
+
+        assert_ne!(first, penultimate);
+        assert!(visible_frame_similarity(&first, &penultimate) >= 0.75);
+    }
+
+    // Defends: the Mandelbrot view uses an approximate miniature-copy transform instead of an unrelated point zoom.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn mandelbrot_view_zooms_into_miniature_copy_without_zooming_out() {
         let home = mandelbrot_view(0);
         let quarter = mandelbrot_view(MANDELBROT_LOOP_FRAMES / 4);
         let half = mandelbrot_view(MANDELBROT_LOOP_FRAMES / 2);
         let late = mandelbrot_view(MANDELBROT_LOOP_FRAMES * 3 / 4);
-        let spiral = mandelbrot_view(MANDELBROT_LOOP_FRAMES - 2);
+        let seam = mandelbrot_view(MANDELBROT_LOOP_FRAMES - 1);
         let loop_home = mandelbrot_view(MANDELBROT_LOOP_FRAMES);
+        let loop_size =
+            mandelbrot_component_size_estimate(MANDELBROT_LOOP_NUCLEUS, MANDELBROT_LOOP_PERIOD);
+        let copy_center =
+            home.fixed_point + loop_size * (Complex64 { re: 0.0, im: 0.0 } - home.fixed_point);
 
         assert!(quarter.zoom > home.zoom);
         assert!(half.zoom > quarter.zoom);
         assert!(late.zoom > half.zoom);
-        assert!(spiral.zoom > late.zoom);
-        assert!(spiral.scale_x < home.scale_x / 500.0);
-        assert_eq!((home.center_x, home.center_y), MANDELBROT_SEAHORSE_CENTER);
-        assert!((spiral.center_x - MANDELBROT_SPIRAL_CENTER.0).abs() < f64::EPSILON);
-        assert!((spiral.center_y - MANDELBROT_SPIRAL_CENTER.1).abs() < f64::EPSILON);
+        assert!(seam.zoom > late.zoom);
+        assert!(seam.scale_x < home.scale_x / 40.0);
+        assert!((home.multiplier.re - 1.0).abs() < f64::EPSILON);
+        assert!(home.multiplier.im.abs() < f64::EPSILON);
+        assert!((loop_size.abs() - 0.019_035_515_913_132_437).abs() < 1e-15);
+        assert!((copy_center.re - MANDELBROT_LOOP_NUCLEUS.re).abs() < 1e-12);
+        assert!((copy_center.im - MANDELBROT_LOOP_NUCLEUS.im).abs() < 1e-12);
         assert_eq!(home, loop_home);
     }
 
