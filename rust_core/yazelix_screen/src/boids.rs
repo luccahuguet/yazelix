@@ -3,6 +3,8 @@ use crate::{
 };
 
 const ANSI_BLUE: &str = "\u{1b}[34m";
+const ANSI_GREEN: &str = "\u{1b}[32m";
+const ANSI_YELLOW: &str = "\u{1b}[33m";
 const ANSI_PURPLE: &str = "\u{1b}[35m";
 const ANSI_CYAN: &str = "\u{1b}[36m";
 const ANSI_RESET: &str = "\u{1b}[0m";
@@ -59,7 +61,6 @@ pub struct BoidsAnimation {
     context: ScreenAnimationContext,
     cell_style: GameOfLifeCellStyle,
     boids: Vec<Boid>,
-    tick: usize,
 }
 
 impl BoidsAnimation {
@@ -69,7 +70,6 @@ impl BoidsAnimation {
             context,
             cell_style,
             boids,
-            tick: 0,
         }
     }
 
@@ -90,18 +90,22 @@ impl ScreenFrameProducer for BoidsAnimation {
         for (index, boid) in self.boids.iter().enumerate() {
             let x = wrapped_index(boid.position.x.round(), grid_width);
             let y = wrapped_index(boid.position.y.round(), grid_height);
-            let cell = ScreenCell {
-                glyph: self.cell_style.glyph(),
-                color_x: index,
-                color_y: self.tick,
-            };
+            let glyphs = boid_glyph_pair(self.cell_style, boid.velocity);
             let origin_x = x * 2;
-            for dx in 0..2 {
-                frame.set(origin_x + dx, y, cell);
+            for (dx, glyph) in glyphs.into_iter().enumerate() {
+                frame.set(
+                    origin_x + dx,
+                    y,
+                    ScreenCell {
+                        glyph,
+                        color_x: index,
+                        color_y: 0,
+                    },
+                );
             }
         }
         frame.render_lines(self.context.resolved_width, |cell| {
-            colorize_boid_cell(cell.color_x, cell.color_y, cell.glyph)
+            colorize_boid_cell(cell.color_x, cell.glyph)
         })
     }
 
@@ -109,13 +113,11 @@ impl ScreenFrameProducer for BoidsAnimation {
         let grid_width = self.grid_width() as f64;
         let grid_height = self.grid_height() as f64;
         step_boids(&mut self.boids, grid_width, grid_height);
-        self.tick += 1;
     }
 
     fn resize(&mut self, context: ScreenAnimationContext) {
         self.context = context;
         self.boids = seed_boids(context);
-        self.tick = 0;
     }
 }
 
@@ -201,14 +203,44 @@ fn wrapped_index(value: f64, limit: usize) -> usize {
     value.rem_euclid(limit as f64) as usize
 }
 
-fn colorize_boid_cell(index: usize, tick: usize, glyph: char) -> String {
-    let palette = [ANSI_CYAN, ANSI_BLUE, ANSI_PURPLE];
-    format!(
-        "{}{}{}",
-        palette[(index + tick) % palette.len()],
-        glyph,
-        ANSI_RESET
-    )
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BoidDirection {
+    East,
+    West,
+    North,
+    South,
+}
+
+fn boid_direction(velocity: Vec2) -> BoidDirection {
+    if velocity.x.abs() >= velocity.y.abs() {
+        if velocity.x >= 0.0 {
+            BoidDirection::East
+        } else {
+            BoidDirection::West
+        }
+    } else if velocity.y >= 0.0 {
+        BoidDirection::South
+    } else {
+        BoidDirection::North
+    }
+}
+
+fn boid_glyph_pair(cell_style: GameOfLifeCellStyle, velocity: Vec2) -> [char; 2] {
+    match (cell_style, boid_direction(velocity)) {
+        (GameOfLifeCellStyle::FullBlock, BoidDirection::East) => ['▐', '█'],
+        (GameOfLifeCellStyle::FullBlock, BoidDirection::West) => ['█', '▌'],
+        (GameOfLifeCellStyle::FullBlock, BoidDirection::North) => ['▀', '▀'],
+        (GameOfLifeCellStyle::FullBlock, BoidDirection::South) => ['▄', '▄'],
+        (GameOfLifeCellStyle::Dotted, BoidDirection::East) => ['⣶', '⣿'],
+        (GameOfLifeCellStyle::Dotted, BoidDirection::West) => ['⣿', '⣶'],
+        (GameOfLifeCellStyle::Dotted, BoidDirection::North) => ['⠛', '⠛'],
+        (GameOfLifeCellStyle::Dotted, BoidDirection::South) => ['⣤', '⣤'],
+    }
+}
+
+fn colorize_boid_cell(index: usize, glyph: char) -> String {
+    let palette = [ANSI_CYAN, ANSI_BLUE, ANSI_PURPLE, ANSI_GREEN, ANSI_YELLOW];
+    format!("{}{}{}", palette[index % palette.len()], glyph, ANSI_RESET)
 }
 
 #[cfg(test)]
@@ -274,7 +306,11 @@ mod tests {
 
         assert_eq!(visible.len(), 24);
         assert!(visible.iter().all(|line| line.chars().count() == 80));
-        assert!(visible.iter().any(|line| line.contains("██")));
+        assert!(visible.iter().any(|line| {
+            ["▐█", "█▌", "▀▀", "▄▄"]
+                .into_iter()
+                .any(|signature| line.contains(signature))
+        }));
     }
 
     // Defends: boids resize through the same frame-producer contract future animations will use.
@@ -291,6 +327,34 @@ mod tests {
 
         assert_eq!(visible.len(), 12);
         assert!(visible.iter().all(|line| line.chars().count() == 60));
-        assert!(visible.iter().any(|line| line.contains("⣿⣿")));
+        assert!(visible.iter().any(|line| {
+            ["⣶⣿", "⣿⣶", "⠛⠛", "⣤⣤"]
+                .into_iter()
+                .any(|signature| line.contains(signature))
+        }));
+    }
+
+    // Regression: boid units must not collapse into identical pulsing blocks; shape encodes direction and color is stable per boid.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn boid_visual_identity_is_stable_and_directional() {
+        assert_eq!(
+            boid_glyph_pair(GameOfLifeCellStyle::FullBlock, Vec2::new(1.0, 0.1)),
+            ['▐', '█']
+        );
+        assert_eq!(
+            boid_glyph_pair(GameOfLifeCellStyle::FullBlock, Vec2::new(-1.0, 0.1)),
+            ['█', '▌']
+        );
+        assert_eq!(
+            boid_glyph_pair(GameOfLifeCellStyle::FullBlock, Vec2::new(0.1, -1.0)),
+            ['▀', '▀']
+        );
+        assert_eq!(
+            boid_glyph_pair(GameOfLifeCellStyle::FullBlock, Vec2::new(0.1, 1.0)),
+            ['▄', '▄']
+        );
+        assert_eq!(colorize_boid_cell(3, '█'), colorize_boid_cell(3, '█'));
+        assert_ne!(colorize_boid_cell(0, '█'), colorize_boid_cell(1, '█'));
     }
 }
