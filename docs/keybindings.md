@@ -63,6 +63,18 @@ If you find a conflict, please open an issue
 
 You can also print these Yazelix-owned bindings directly with `yzx keys`.
 
+### Sidebar Commands vs Keybindings
+
+The stable sidebar API is the pane-orchestrator command surface, not the default keys:
+
+| Command | Default key | Meaning |
+|---------|-------------|---------|
+| `toggle_editor_sidebar_focus` | `Ctrl y` | Move focus between the managed editor and managed sidebar |
+| `toggle_sidebar` | `Alt y` | Open or close the managed sidebar layout slot |
+| `focus_sidebar` | none | Focus the managed sidebar from commands such as `yzx reveal` |
+
+You can remap the keys in your Zellij override config as long as they still send the same `MessagePlugin` command names to the loaded `yazelix_pane_orchestrator` plugin. The plugin does not know or require Yazelix's default key choices.
+
 ## Keybinding Tips
 - **Zellij**: `Alt+number` for tab, `Alt+w/q` for tab walk, `Alt+Shift+H/L` for tab move
 - **Yazi**: 

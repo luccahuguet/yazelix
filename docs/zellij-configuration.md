@@ -84,10 +84,20 @@ ui {
 }
 ```
 
-**For keybindings**, edit the layout files directly:
-- `configs/zellij/layouts/yzx_side.kdl` (sidebar mode)
-- `configs/zellij/layouts/yzx_no_side.kdl` (no-sidebar mode)
-- Only define keybinds in personal config if you want to replace ALL bindings
+**For keybindings**, use your managed Zellij override config. Layout files define panes and swap layouts; keybindings are policy:
+```kdl
+keybinds {
+    shared_except "locked" {
+        bind "Alt Shift Y" {
+            MessagePlugin "yazelix_pane_orchestrator" {
+                name "toggle_sidebar"
+            }
+        }
+    }
+}
+```
+
+Sidebar commands such as `toggle_sidebar`, `toggle_editor_sidebar_focus`, and `focus_sidebar` are the stable pane-orchestrator contract. The default keys (`Alt+y`, `Ctrl+y`) are just Yazelix's shipped policy.
 
 **Simple settings** (like `theme`, `copy_command`) work perfectly - your value always wins.
 

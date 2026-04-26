@@ -102,6 +102,8 @@ The orchestrator accepts these pipe command names:
 - `debug_write_literal`
 - `debug_send_escape`
 
+These command names are the plugin API. Keybindings are not plugin semantics; they are generated Zellij policy that sends `MessagePlugin` calls to the loaded `yazelix_pane_orchestrator` instance. Yazelix ships `Ctrl+y` for `toggle_editor_sidebar_focus` and `Alt+y` for `toggle_sidebar`, but users may remap those keys without changing the plugin contract as long as they keep sending the same command names.
+
 Nushell must resolve user intent before calling the plugin. For workspace changes, the surviving mutation command is `retarget_workspace`; older split commands for "set workspace root" and "set workspace root plus focused pane cd" are intentionally not part of the component contract.
 
 ### Plugin Configuration
