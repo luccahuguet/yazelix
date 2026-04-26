@@ -2,8 +2,12 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
+use yazelix_pane_orchestrator::transient_adapter_contract::{
+    yazelix_transient_adapter, TransientPostCloseHook, YazelixTransientPaneAdapter,
+};
 use yazelix_pane_orchestrator::transient_pane_contract::{
-    resolve_transient_toggle_plan, TransientPaneKind, TransientPaneSnapshot, TransientTogglePlan,
+    resolve_transient_launch_plan, resolve_transient_toggle_plan, TransientPaneGeometry,
+    TransientPaneKind, TransientPaneLaunchRequest, TransientPaneSnapshot, TransientTogglePlan,
 };
 use zellij_tile::prelude::*;
 
@@ -79,30 +83,14 @@ impl TransientPaneConfig {
         }
     }
 
-    fn floating_coordinates(&self) -> Option<FloatingPaneCoordinates> {
-        let width_arg = format!("{}%", self.width_percent);
-        let height_arg = format!("{}%", self.height_percent);
-        let x_offset = ((100 - self.width_percent) / 2).to_string() + "%";
-        let y_offset = ((100 - self.height_percent) / 2).to_string() + "%";
-
-        FloatingPaneCoordinates::new(
-            Some(x_offset),
-            Some(y_offset),
-            Some(width_arg),
-            Some(height_arg),
-            None,
-            None,
-        )
-    }
-
     fn yzx_cli_path(&self) -> Option<PathBuf> {
         self.runtime_root()
             .map(|root| root.join("shells/posix/yzx_cli.sh"))
     }
 
-    fn wrapper_path(&self, kind: TransientPaneKind) -> Option<PathBuf> {
+    fn wrapper_path(&self, adapter: YazelixTransientPaneAdapter) -> Option<PathBuf> {
         self.runtime_root()
-            .map(|root| root.join(kind.wrapper_relative_path()))
+            .map(|root| root.join(adapter.wrapper_relative_path))
     }
 
     fn with_runtime_dir(&self, runtime_dir: Option<&str>) -> Self {
@@ -126,36 +114,29 @@ impl TransientPaneConfig {
             trimmed_root.to_string()
         }
     }
+
+    fn geometry(&self) -> TransientPaneGeometry {
+        TransientPaneGeometry {
+            width_percent: self.width_percent,
+            height_percent: self.height_percent,
+        }
+    }
 }
 
-// Test lane: maintainer
-#[cfg(test)]
-mod tests {
-    use super::TransientPaneConfig;
+fn floating_coordinates(geometry: TransientPaneGeometry) -> Option<FloatingPaneCoordinates> {
+    let width_arg = format!("{}%", geometry.width_percent);
+    let height_arg = format!("{}%", geometry.height_percent);
+    let x_offset = ((100 - geometry.width_percent) / 2).to_string() + "%";
+    let y_offset = ((100 - geometry.height_percent) / 2).to_string() + "%";
 
-    // Defends: transient popup launch paths derive strictly from the configured runtime root instead of plugin-local wrapper probes.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
-    #[test]
-    fn transient_runtime_wrapper_paths_are_runtime_relative() {
-        let config = TransientPaneConfig {
-            runtime_dir: "/runtime/root".to_owned(),
-            width_percent: 90,
-            height_percent: 90,
-        };
-
-        assert_eq!(
-            config.yzx_cli_path().unwrap(),
-            std::path::PathBuf::from("/runtime/root/shells/posix/yzx_cli.sh")
-        );
-        assert_eq!(
-            config
-                .wrapper_path(super::TransientPaneKind::Popup)
-                .unwrap(),
-            std::path::PathBuf::from(
-                "/runtime/root/nushell/scripts/zellij_wrappers/yzx_popup_program.nu"
-            )
-        );
-    }
+    FloatingPaneCoordinates::new(
+        Some(x_offset),
+        Some(y_offset),
+        Some(width_arg),
+        Some(height_arg),
+        None,
+        None,
+    )
 }
 
 impl State {
@@ -205,7 +186,8 @@ impl State {
             .map(|pane| pane.transient_snapshot())
             .collect();
 
-        match resolve_transient_toggle_plan(&snapshots, kind) {
+        let adapter = yazelix_transient_adapter(kind);
+        match resolve_transient_toggle_plan(&snapshots, adapter.identity) {
             TransientTogglePlan::Open => {
                 let request = OpenTransientPaneRequest {
                     kind,
@@ -220,9 +202,7 @@ impl State {
                 self.respond(pipe_message, RESULT_FOCUSED);
             }
             TransientTogglePlan::Close(pane_id) => {
-                if kind == TransientPaneKind::Popup {
-                    self.refresh_sidebar_yazi_for_transient_close();
-                }
+                self.run_transient_post_close_hook(adapter.post_close_hook);
                 close_pane_with_id(pane_id);
                 self.respond(pipe_message, RESULT_CLOSED);
             }
@@ -238,8 +218,9 @@ impl State {
         let transient_pane_config = self
             .transient_pane_config
             .with_runtime_dir(request.runtime_dir.as_deref());
+        let adapter = yazelix_transient_adapter(request.kind);
 
-        let Some(wrapper_path) = transient_pane_config.wrapper_path(request.kind) else {
+        let Some(wrapper_path) = transient_pane_config.wrapper_path(adapter) else {
             self.respond(pipe_message, RESULT_RUNTIME_NOT_CONFIGURED);
             return;
         };
@@ -248,25 +229,28 @@ impl State {
             .workspace_state_by_tab
             .get(&active_tab_position)
             .map(|state| state.root.as_str());
-        let requested_cwd = request
-            .cwd
-            .as_deref()
-            .map(str::trim)
-            .filter(|cwd| !cwd.is_empty())
-            .map(str::to_string)
-            .unwrap_or_else(|| transient_pane_config.default_cwd(workspace_root));
+        let Some(launch_plan) = resolve_transient_launch_plan(TransientPaneLaunchRequest {
+            command_path: wrapper_path.display().to_string(),
+            args: request.args,
+            requested_cwd: request.cwd,
+            fallback_cwd: transient_pane_config.default_cwd(workspace_root),
+            geometry: transient_pane_config.geometry(),
+        }) else {
+            self.respond(pipe_message, RESULT_RUNTIME_NOT_CONFIGURED);
+            return;
+        };
 
         let command_to_run = CommandToRun {
-            path: wrapper_path,
-            args: request.args,
-            cwd: Some(PathBuf::from(requested_cwd)),
+            path: PathBuf::from(launch_plan.command_path),
+            args: launch_plan.args,
+            cwd: Some(PathBuf::from(launch_plan.cwd)),
         };
 
         // The pane orchestrator runs as a background plugin, so the "near plugin"
         // variant can hang waiting for a pane-local placement anchor that does not exist.
         let pane_id = open_command_pane_floating(
             command_to_run,
-            transient_pane_config.floating_coordinates(),
+            floating_coordinates(launch_plan.geometry),
             BTreeMap::new(),
         );
 
@@ -277,8 +261,17 @@ impl State {
         }
     }
 
-    // Trigger the same sidebar refresh contract the popup wrapper uses, but in
-    // the background so toggle-close does not depend on a visible helper pane.
+    fn run_transient_post_close_hook(&self, hook: TransientPostCloseHook) {
+        match hook {
+            TransientPostCloseHook::None => {}
+            TransientPostCloseHook::RefreshSidebarYazi => {
+                self.refresh_sidebar_yazi_for_transient_close();
+            }
+        }
+    }
+
+    // Trigger the same sidebar refresh contract the Yazelix popup wrapper uses,
+    // but in the background so toggle-close does not depend on a visible helper pane.
     fn refresh_sidebar_yazi_for_transient_close(&self) {
         let Some(launcher_path) = self.transient_pane_config.yzx_cli_path() else {
             return;
