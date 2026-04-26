@@ -9,11 +9,10 @@ const ANSI_CYAN: &str = "\u{1b}[36m";
 const ANSI_RESET: &str = "\u{1b}[0m";
 
 const MANDELBROT_LOOP_FRAMES: usize = 960;
-const MANDELBROT_MIN_ZOOM: f64 = 0.82;
-const MANDELBROT_MAX_ZOOM: f64 = 56.0;
-const MANDELBROT_START_CENTER_X: f64 = -0.56;
-const MANDELBROT_START_CENTER_Y: f64 = 0.0;
-const MANDELBROT_MINIBROT_CENTER_X: f64 = -1.754_877_666_246_692_7;
+const MANDELBROT_MIN_ZOOM: f64 = 2.55;
+const MANDELBROT_MAX_ZOOM: f64 = 1_450.0;
+const MANDELBROT_SEAHORSE_CENTER: (f64, f64) = (-0.75, 0.1);
+const MANDELBROT_SPIRAL_CENTER: (f64, f64) = (-0.743_643_887_037_151, 0.131_825_904_205_33);
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MandelbrotAnimation {
@@ -143,26 +142,26 @@ fn mandelbrot_view(frame_index: usize) -> MandelbrotView {
 fn mandelbrot_minibrot_loop_progress(frame_index: usize) -> f64 {
     let cycle_frame = frame_index % MANDELBROT_LOOP_FRAMES;
 
-    if MANDELBROT_LOOP_FRAMES <= 1 {
+    if cycle_frame == MANDELBROT_LOOP_FRAMES - 1 || MANDELBROT_LOOP_FRAMES <= 2 {
         0.0
     } else {
-        cycle_frame as f64 / (MANDELBROT_LOOP_FRAMES - 1) as f64
+        cycle_frame as f64 / (MANDELBROT_LOOP_FRAMES - 2) as f64
     }
 }
 
 fn mandelbrot_camera_center(progress: f64) -> (f64, f64) {
-    // True terminal-scale Mandelbrot loop: zoom monotonically toward the large
-    // real-axis period-3 baby Mandelbrot. The cycle reset happens only after
-    // the mini copy fills the viewport, giving an endless zoom-in illusion
-    // instead of the previous fake zoom-in/zoom-out palindrome.
     let center_progress = ease_out_cubic(progress);
     (
         lerp(
-            MANDELBROT_START_CENTER_X,
-            MANDELBROT_MINIBROT_CENTER_X,
+            MANDELBROT_SEAHORSE_CENTER.0,
+            MANDELBROT_SPIRAL_CENTER.0,
             center_progress,
         ),
-        lerp(MANDELBROT_START_CENTER_Y, 0.0, center_progress),
+        lerp(
+            MANDELBROT_SEAHORSE_CENTER.1,
+            MANDELBROT_SPIRAL_CENTER.1,
+            center_progress,
+        ),
     )
 }
 
@@ -306,31 +305,32 @@ mod tests {
     // Defends: the finite animation cycle can repeat forever without a visible loop-boundary snap.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn mandelbrot_frame_loop_boundary_is_exactly_repeatable() {
+    fn mandelbrot_final_frame_is_exactly_the_first_frame() {
         assert_eq!(
             render_mandelbrot_frame(context(48, 16), 0),
-            render_mandelbrot_frame(context(48, 16), MANDELBROT_LOOP_FRAMES)
+            render_mandelbrot_frame(context(48, 16), MANDELBROT_LOOP_FRAMES - 1)
         );
     }
 
-    // Defends: the Mandelbrot view zooms monotonically into a self-similar minibrot instead of returning along the same path.
+    // Defends: the Mandelbrot view zooms into Seahorse Valley instead of drifting along the boring real-axis bulb line.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn mandelbrot_view_reaches_minibrot_without_zooming_out() {
+    fn mandelbrot_view_reaches_seahorse_spiral_without_zooming_out() {
         let home = mandelbrot_view(0);
         let quarter = mandelbrot_view(MANDELBROT_LOOP_FRAMES / 4);
         let half = mandelbrot_view(MANDELBROT_LOOP_FRAMES / 2);
         let late = mandelbrot_view(MANDELBROT_LOOP_FRAMES * 3 / 4);
-        let minibrot = mandelbrot_view(MANDELBROT_LOOP_FRAMES - 1);
+        let spiral = mandelbrot_view(MANDELBROT_LOOP_FRAMES - 2);
         let loop_home = mandelbrot_view(MANDELBROT_LOOP_FRAMES);
 
         assert!(quarter.zoom > home.zoom);
         assert!(half.zoom > quarter.zoom);
         assert!(late.zoom > half.zoom);
-        assert!(minibrot.zoom > late.zoom);
-        assert!(minibrot.scale_x < home.scale_x / 40.0);
-        assert!((minibrot.center_x - MANDELBROT_MINIBROT_CENTER_X).abs() < f64::EPSILON);
-        assert!(minibrot.center_y.abs() < f64::EPSILON);
+        assert!(spiral.zoom > late.zoom);
+        assert!(spiral.scale_x < home.scale_x / 500.0);
+        assert_eq!((home.center_x, home.center_y), MANDELBROT_SEAHORSE_CENTER);
+        assert!((spiral.center_x - MANDELBROT_SPIRAL_CENTER.0).abs() < f64::EPSILON);
+        assert!((spiral.center_y - MANDELBROT_SPIRAL_CENTER.1).abs() < f64::EPSILON);
         assert_eq!(home, loop_home);
     }
 
@@ -372,6 +372,6 @@ mod tests {
         assert_eq!(mandelbrot_max_iterations(1, 1), 48);
         assert_eq!(mandelbrot_max_iterations(120, 40), 57);
         assert_eq!(mandelbrot_max_iterations(300, 120), 96);
-        assert_eq!(mandelbrot_max_iterations_for_zoom(300, 120, 56.0), 177);
+        assert_eq!(mandelbrot_max_iterations_for_zoom(300, 120, 1_450.0), 220);
     }
 }
