@@ -16,6 +16,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
+use yazelix_bar::{
+    BarRenderError, BarRenderRequest, CUSTOM_TEXT_PLACEHOLDER, WIDGET_TRAY_PLACEHOLDER,
+    ZJSTATUS_PLUGIN_URL_PLACEHOLDER, ZJSTATUS_RUNTIME_DIR_PLACEHOLDER,
+    render_zjstatus_bar_segments,
+};
 
 const PANE_ORCHESTRATOR_PLUGIN_ALIAS: &str = "yazelix_pane_orchestrator";
 const PANE_ORCHESTRATOR_PLUGIN_PREFIX: &str = "yazelix_pane_orchestrator";
@@ -24,12 +29,9 @@ const ZJSTATUS_PLUGIN_PREFIX: &str = "zjstatus";
 const ZJSTATUS_WASM_NAME: &str = "zjstatus.wasm";
 const GENERATION_METADATA_NAME: &str = ".yazelix_generation.json";
 
-const WIDGET_TRAY_PLACEHOLDER: &str = "__YAZELIX_WIDGET_TRAY__";
-const CUSTOM_TEXT_PLACEHOLDER: &str = "__YAZELIX_CUSTOM_TEXT_SEGMENT__";
 const PANE_ORCHESTRATOR_PLUGIN_URL_PLACEHOLDER: &str = "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__";
-const ZJSTATUS_PLUGIN_URL_PLACEHOLDER: &str = "__YAZELIX_ZJSTATUS_PLUGIN_URL__";
 const HOME_DIR_PLACEHOLDER: &str = "__YAZELIX_HOME_DIR__";
-const RUNTIME_DIR_PLACEHOLDER: &str = "__YAZELIX_RUNTIME_DIR__";
+const RUNTIME_DIR_PLACEHOLDER: &str = ZJSTATUS_RUNTIME_DIR_PLACEHOLDER;
 
 const PANE_ORCHESTRATOR_REQUIRED_PERMISSIONS: &[&str] = &[
     "ReadApplicationState",
@@ -686,46 +688,6 @@ fn read_yazelix_override_keybinds(
     Ok(extract_semantic_config_blocks(&content).keybind_lines)
 }
 
-fn render_widget_tray_segment(render_plan: &ZellijRenderPlanData) -> Result<String, CoreError> {
-    render_plan
-        .widget_tray
-        .iter()
-        .map(|widget| match widget.as_str() {
-            "editor" => Ok(format!(
-                "#[fg=#00ff88,bold][editor: {}]",
-                render_plan.editor_label
-            )),
-            "shell" => Ok(format!(
-                "#[fg=#00ff88,bold][shell: {}]",
-                render_plan.shell_label
-            )),
-            "term" => Ok(format!(
-                "#[fg=#00ff88,bold][term: {}]",
-                render_plan.terminal_label
-            )),
-            "cpu" => Ok("{command_cpu}".to_string()),
-            "ram" => Ok("{command_ram}".to_string()),
-            _ => Err(CoreError::classified(
-                ErrorClass::Config,
-                "invalid_widget_tray_entry",
-                format!("Invalid zellij.widget_tray token in layout renderer: {widget}"),
-                "Use only documented widget tray identifiers.",
-                json!({ "field": "zellij.widget_tray", "entry": widget }),
-            )),
-        })
-        .collect::<Result<Vec<_>, _>>()
-        .map(|parts| parts.join(" "))
-}
-
-fn render_custom_text_segment(custom_text: &str) -> String {
-    let trimmed = custom_text.trim();
-    if trimmed.is_empty() {
-        String::new()
-    } else {
-        format!("#[fg=#ffff00,bold][{trimmed}] ")
-    }
-}
-
 fn block_with_lines(name: &str, lines: &[String]) -> String {
     std::iter::once(format!("{name} {{"))
         .chain(lines.iter().cloned())
@@ -761,8 +723,7 @@ fn generate_all_layouts(
         .collect::<Result<Vec<_>, CoreError>>()?;
     remove_stale_layouts(target_dir, &expected_targets)?;
     let static_fragments = load_static_fragments(source_dir)?;
-    let widget_tray_segment = render_widget_tray_segment(render_plan)?;
-    let custom_text_segment = render_custom_text_segment(&render_plan.custom_text);
+    let bar_segments = render_bar_segments(render_plan)?;
     let pane_orchestrator_plugin_url =
         format!("file:{}", pane_orchestrator_wasm_path.to_string_lossy());
     let zjstatus_plugin_url = format!("file:{}", zjstatus_wasm_path.to_string_lossy());
@@ -773,8 +734,8 @@ fn generate_all_layouts(
         let rendered = render_layout_template(
             &content,
             &static_fragments,
-            &widget_tray_segment,
-            &custom_text_segment,
+            &bar_segments.widget_tray_segment,
+            &bar_segments.custom_text_segment,
             &pane_orchestrator_plugin_url,
             &zjstatus_plugin_url,
             &home_dir,
@@ -785,6 +746,27 @@ fn generate_all_layouts(
     }
 
     Ok(expected_targets)
+}
+
+fn render_bar_segments(
+    render_plan: &ZellijRenderPlanData,
+) -> Result<yazelix_bar::BarRenderData, CoreError> {
+    let request = BarRenderRequest {
+        widget_tray: render_plan.widget_tray.clone(),
+        editor_label: render_plan.editor_label.clone(),
+        shell_label: render_plan.shell_label.clone(),
+        terminal_label: render_plan.terminal_label.clone(),
+        custom_text: render_plan.custom_text.clone(),
+    };
+    render_zjstatus_bar_segments(&request).map_err(|error| match error {
+        BarRenderError::InvalidWidgetTrayEntry { entry } => CoreError::classified(
+            ErrorClass::Config,
+            "invalid_widget_tray_entry",
+            format!("Invalid zellij.widget_tray token in layout renderer: {entry}"),
+            "Use only documented widget tray identifiers.",
+            json!({ "field": "zellij.widget_tray", "entry": entry }),
+        ),
+    })
 }
 
 fn render_layout_template(
@@ -1685,7 +1667,7 @@ ui { pane_frames { hide_session_name true } }
             "/nix/store/example/bin/nu",
             "ghostty",
         );
-        let rendered = render_widget_tray_segment(&plan).unwrap();
+        let rendered = render_bar_segments(&plan).unwrap().widget_tray_segment;
 
         assert!(rendered.contains("[editor: hx]"));
         assert!(rendered.contains("[shell: nu]"));
