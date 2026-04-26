@@ -101,6 +101,15 @@ Sidebar commands such as `toggle_sidebar`, `toggle_editor_sidebar_focus`, and `f
 
 **Simple settings** (like `theme`, `copy_command`) work perfectly - your value always wins.
 
+**For the sidebar launcher**, prefer Yazelix config instead of editing layout templates:
+```toml
+[editor]
+sidebar_command = "nu"
+sidebar_args = ["__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu"]
+```
+
+The default launches the managed Yazi adapter. You can point the same managed sidebar slot at another terminal side surface, but the pane remains named `sidebar` so the pane orchestrator keeps one owner for focus and layout state.
+
 ## Current Yazelix Defaults
 
 - Default layout: `yzx_side` (sidebar) or `yzx_no_side`

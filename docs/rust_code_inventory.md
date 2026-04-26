@@ -15,7 +15,7 @@ Baseline measured on 2026-04-26:
 
 Current enforced ownership budget measured after the canonical cleanup follow-up:
 
-- `50,340` first-party Rust LOC under `rust_core/` and `rust_plugins/`, excluding `target/`
+- `50,498` first-party Rust LOC under `rust_core/` and `rust_plugins/`, excluding `target/`
 - `102` tracked and untracked-to-be-committed `.rs` source/test files in the canonical Rust surface
 - The enforceable family ownership, measured counts, and no-growth ceilings live in `config_metadata/rust_ownership_budget.toml`
 - Use `yzx_repo_validator validate-rust-ownership-budget` after Rust refactors; raising a ceiling should be an explicit ownership decision, not an incidental side effect

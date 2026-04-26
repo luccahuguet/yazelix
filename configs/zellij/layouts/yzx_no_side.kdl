@@ -17,8 +17,8 @@ layout {
          }
          pane split_direction="vertical" {
              pane name="filemanager" {
-                 command "nu"
-                 args "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu"
+                 command __YAZELIX_SIDEBAR_COMMAND__
+                 __YAZELIX_SIDEBAR_ARGS__
              	size "100%"
              }
          }
@@ -33,8 +33,8 @@ layout {
          }
          pane split_direction="vertical" {
              pane name="filemanager" {
-                 command "nu"
-                 args "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu"
+                 command __YAZELIX_SIDEBAR_COMMAND__
+                 __YAZELIX_SIDEBAR_ARGS__
                 size "100%"
              }
          }

@@ -14,9 +14,13 @@ Set the startup mode in `yazelix.toml`:
 sidebar_width_percent = 20
 enable_sidebar = true   # Uses yzx_side.kdl
 enable_sidebar = false  # Uses yzx_no_side.kdl
+sidebar_command = "nu"
+sidebar_args = ["__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu"]
 ```
 
 `editor.sidebar_width_percent` controls the open Yazi sidebar width as a percentage of the tab. Valid range: `10` to `40`.
+
+`editor.sidebar_command` and `editor.sidebar_args` control the terminal side-surface launched in the managed sidebar slot. The default remains the Yazelix-managed Yazi adapter. Custom launchers still run inside the pane named `sidebar`; the pane orchestrator keeps owning sidebar identity, focus, and layout state.
 
 ## Layout Metadata
 
@@ -27,7 +31,8 @@ That file is the machine-readable source for:
 - sidebar and no-sidebar layout family ids
 - the startup KDL file for each family
 - the swap-layout KDL file for each family
-- required managed pane names and runtime scripts
+- required managed pane names
+- required side-surface launcher placeholders
 - the swap layout names that Yazelix family-aware controls expect
 
 Run `yzx_repo_validator validate-workspace-session-contract` after changing built-in layout files or layout metadata
@@ -38,7 +43,8 @@ Yazelix now copies every top-level `.kdl` file in `configs/zellij/layouts/` into
 
 The supported customization paths are:
 
-- Edit `yzx_side.kdl` or `yzx_no_side.kdl` to change startup panes or keybinds
+- Use `editor.sidebar_command` and `editor.sidebar_args` for custom side-surface launchers
+- Edit `yzx_side.kdl` or `yzx_no_side.kdl` to change startup panes
 - Edit `yzx_side.swap.kdl` or `yzx_no_side.swap.kdl` to tweak built-in swap layouts
 - Add a new top-level `.kdl` file in `configs/zellij/layouts/` if you also add it to `config_metadata/zellij_layout_families.toml`
 - Add custom no-sidebar swap layouts inside `yzx_no_side.swap.kdl`

@@ -28,6 +28,8 @@ pub struct ZellijLayoutFamily {
     #[serde(default)]
     pub required_runtime_scripts: Vec<String>,
     #[serde(default)]
+    pub required_launcher_placeholders: Vec<String>,
+    #[serde(default)]
     pub swap_layouts: Vec<String>,
 }
 
@@ -203,6 +205,14 @@ fn validate_family_files(
             ));
         }
     }
+    for placeholder in &family.required_launcher_placeholders {
+        if !layout.contains(placeholder) {
+            errors.push(format!(
+                "Zellij layout `{}` for family `{}` is missing required launcher placeholder `{placeholder}`",
+                family.layout_file, family.id
+            ));
+        }
+    }
 
     let swap_path = layouts_dir.join(&family.swap_layout_file);
     let swap = match fs::read_to_string(&swap_path) {
@@ -280,7 +290,7 @@ layout_file = "yzx_side.kdl"
 swap_layout_file = "yzx_side.swap.kdl"
 sidebar_enabled = true
 required_pane_names = ["sidebar"]
-required_runtime_scripts = ["configs/zellij/scripts/launch_sidebar_yazi.nu"]
+required_launcher_placeholders = ["__YAZELIX_SIDEBAR_COMMAND__", "__YAZELIX_SIDEBAR_ARGS__"]
 swap_layouts = ["single_open", "single_closed"]
 
 [[auxiliary_layouts]]
@@ -292,7 +302,7 @@ purpose = "test"
         .unwrap();
         fs::write(
             layouts_dir.join("yzx_side.kdl"),
-            r#"layout { pane name="sidebar" { args "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu" } } __YAZELIX_KEYBINDS_COMMON__"#,
+            r#"layout { pane name="sidebar" { command __YAZELIX_SIDEBAR_COMMAND__ __YAZELIX_SIDEBAR_ARGS__ } } __YAZELIX_KEYBINDS_COMMON__"#,
         )
         .unwrap();
         fs::write(

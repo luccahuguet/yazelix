@@ -6,7 +6,7 @@ layout_file = "yzx_side.kdl"
 swap_layout_file = "yzx_side.swap.kdl"
 sidebar_enabled = true
 required_pane_names = ["sidebar"]
-required_runtime_scripts = ["configs/zellij/scripts/launch_sidebar_yazi.nu"]
+required_launcher_placeholders = ["__YAZELIX_SIDEBAR_COMMAND__", "__YAZELIX_SIDEBAR_ARGS__"]
 swap_layouts = [
   "single_open",
   "single_closed",
@@ -22,7 +22,7 @@ layout_file = "yzx_no_side.kdl"
 swap_layout_file = "yzx_no_side.swap.kdl"
 sidebar_enabled = false
 required_pane_names = ["filemanager"]
-required_runtime_scripts = ["configs/zellij/scripts/launch_sidebar_yazi.nu"]
+required_launcher_placeholders = ["__YAZELIX_SIDEBAR_COMMAND__", "__YAZELIX_SIDEBAR_ARGS__"]
 swap_layouts = [
   "basic",
   "stacked",

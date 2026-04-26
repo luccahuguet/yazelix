@@ -60,6 +60,13 @@ enable_sidebar = true
 # Higher values give Yazi more room but reduce editor space
 sidebar_width_percent = 20
 
+# Sidebar terminal command and arguments.
+# The default launches Yazelix's managed Yazi sidebar adapter.
+# Advanced users can point this at another terminal side surface; the pane is
+# still owned by Yazelix as the managed "sidebar" pane.
+sidebar_command = "nu"
+sidebar_args = ["__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu"]
+
 [shell]
 # Default shell for Zellij: "nu", "bash", "fish", or "zsh" (default: "nu")
 # The selected shell must be available in the installed Yazelix runtime or host PATH.

@@ -1,9 +1,9 @@
 [contract]
-measured_total_loc = 50340
+measured_total_loc = 50498
 measured_total_file_count = 102
-current_total_loc_max = 50340
+current_total_loc_max = 50498
 current_total_file_count_max = 102
-hard_target_loc = 50340
+hard_target_loc = 50498
 
 [[families]]
 id = "bar_runtime"
@@ -90,10 +90,10 @@ allowed_paths = [
 id = "core_diagnostics_and_recovery"
 status = "canonical"
 owner_bead = "yazelix-ykti.2"
-measured_loc = 5477
+measured_loc = 5484
 measured_files = 9
-max_loc = 5477
-target_loc = 5477
+max_loc = 5484
+target_loc = 5484
 max_files = 9
 allowed_paths = [
   "rust_core/yazelix_core/src/doctor_commands.rs",
@@ -111,10 +111,10 @@ allowed_paths = [
 id = "core_workspace_and_pane_integration"
 status = "canonical"
 owner_bead = "yazelix-zaar"
-measured_loc = 10632
+measured_loc = 10783
 measured_files = 14
-max_loc = 10632
-target_loc = 10632
+max_loc = 10783
+target_loc = 10783
 max_files = 14
 allowed_paths = [
   "rust_core/yazelix_core/src/edit_commands.rs",

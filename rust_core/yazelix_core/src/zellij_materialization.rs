@@ -5,8 +5,7 @@ use crate::control_plane::{
     state_dir_from_env as state_dir_from_control_plane,
 };
 use crate::zellij_render_plan::{
-    LayoutPlaceholderPercents, TopLevelSetting, ZellijRenderPlanData, ZellijRenderPlanRequest,
-    compute_zellij_render_plan,
+    TopLevelSetting, ZellijRenderPlanData, ZellijRenderPlanRequest, compute_zellij_render_plan,
 };
 use serde::Serialize;
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
@@ -245,6 +244,12 @@ fn build_render_plan_request(
     ZellijRenderPlanRequest {
         enable_sidebar: bool_config(config, "enable_sidebar", true),
         sidebar_width_percent: int_config(config, "sidebar_width_percent", 20),
+        sidebar_command: string_config(config, "sidebar_command", "nu").to_string(),
+        sidebar_args: string_list_config(config, "sidebar_args").unwrap_or_else(|| {
+            vec![
+                "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu".to_string(),
+            ]
+        }),
         popup_width_percent: int_config(config, "popup_width_percent", 90),
         popup_height_percent: int_config(config, "popup_height_percent", 90),
         zellij_widget_tray: string_list_config(config, "zellij_widget_tray"),
@@ -740,7 +745,7 @@ fn generate_all_layouts(
             &zjstatus_plugin_url,
             &home_dir,
             runtime_dir,
-            &render_plan.layout_percentages,
+            render_plan,
         )?;
         write_text_atomic(target, &rendered)?;
     }
@@ -778,7 +783,7 @@ fn render_layout_template(
     zjstatus_plugin_url: &str,
     home_dir: &Path,
     runtime_dir: &Path,
-    layout_percentages: &LayoutPlaceholderPercents,
+    render_plan: &ZellijRenderPlanData,
 ) -> Result<String, CoreError> {
     let mut updated = apply_static_fragments(content, static_fragments);
     let replacements = [
@@ -798,47 +803,103 @@ fn render_layout_template(
             runtime_dir.to_string_lossy().to_string(),
         ),
         (
+            "__YAZELIX_SIDEBAR_COMMAND__",
+            json_quote(expand_runtime_placeholder(
+                &render_plan.sidebar_command,
+                runtime_dir,
+            )),
+        ),
+        (
+            "__YAZELIX_SIDEBAR_ARGS__",
+            render_sidebar_args(&render_plan.sidebar_args, runtime_dir),
+        ),
+        (
             "__YAZELIX_SIDEBAR_WIDTH_PERCENT__",
-            layout_percentages.sidebar_width_percent.clone(),
+            render_plan.layout_percentages.sidebar_width_percent.clone(),
         ),
         (
             "__YAZELIX_OPEN_CONTENT_WIDTH_PERCENT__",
-            layout_percentages.open_content_width_percent.clone(),
+            render_plan
+                .layout_percentages
+                .open_content_width_percent
+                .clone(),
         ),
         (
             "__YAZELIX_OPEN_PRIMARY_WIDTH_PERCENT__",
-            layout_percentages.open_primary_width_percent.clone(),
+            render_plan
+                .layout_percentages
+                .open_primary_width_percent
+                .clone(),
         ),
         (
             "__YAZELIX_OPEN_SECONDARY_WIDTH_PERCENT__",
-            layout_percentages.open_secondary_width_percent.clone(),
+            render_plan
+                .layout_percentages
+                .open_secondary_width_percent
+                .clone(),
         ),
         (
             "__YAZELIX_CLOSED_CONTENT_WIDTH_PERCENT__",
-            layout_percentages.closed_content_width_percent.clone(),
+            render_plan
+                .layout_percentages
+                .closed_content_width_percent
+                .clone(),
         ),
         (
             "__YAZELIX_CLOSED_PRIMARY_WIDTH_PERCENT__",
-            layout_percentages.closed_primary_width_percent.clone(),
+            render_plan
+                .layout_percentages
+                .closed_primary_width_percent
+                .clone(),
         ),
         (
             "__YAZELIX_CLOSED_SECONDARY_WIDTH_PERCENT__",
-            layout_percentages.closed_secondary_width_percent.clone(),
+            render_plan
+                .layout_percentages
+                .closed_secondary_width_percent
+                .clone(),
         ),
     ];
     for (placeholder, value) in replacements {
         updated = updated.replace(placeholder, &value);
     }
-    if updated.contains(WIDGET_TRAY_PLACEHOLDER) {
-        return Err(CoreError::classified(
-            ErrorClass::Internal,
-            "unexpanded_zellij_layout_placeholder",
-            "Failed to expand a Zellij layout placeholder",
-            "Report this as a Yazelix internal error.",
-            json!({ "placeholder": WIDGET_TRAY_PLACEHOLDER }),
-        ));
+    for placeholder in [
+        WIDGET_TRAY_PLACEHOLDER,
+        "__YAZELIX_SIDEBAR_COMMAND__",
+        "__YAZELIX_SIDEBAR_ARGS__",
+    ] {
+        if updated.contains(placeholder) {
+            return Err(CoreError::classified(
+                ErrorClass::Internal,
+                "unexpanded_zellij_layout_placeholder",
+                "Failed to expand a Zellij layout placeholder",
+                "Report this as a Yazelix internal error.",
+                json!({ "placeholder": placeholder }),
+            ));
+        }
     }
     Ok(updated)
+}
+
+fn expand_runtime_placeholder(value: &str, runtime_dir: &Path) -> String {
+    value.replace(
+        RUNTIME_DIR_PLACEHOLDER,
+        runtime_dir.to_string_lossy().as_ref(),
+    )
+}
+
+fn render_sidebar_args(args: &[String], runtime_dir: &Path) -> String {
+    if args.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "args {}",
+            args.iter()
+                .map(|arg| json_quote(expand_runtime_placeholder(arg, runtime_dir)))
+                .collect::<Vec<_>>()
+                .join(" ")
+        )
+    }
 }
 
 fn load_static_fragments(source_dir: &Path) -> Result<BTreeMap<String, String>, CoreError> {
@@ -1338,6 +1399,8 @@ fn build_generation_fingerprint(
         "zellij_default_mode": string_config(config, "zellij_default_mode", "normal"),
         "enable_sidebar": bool_config(config, "enable_sidebar", true),
         "sidebar_width_percent": int_config(config, "sidebar_width_percent", 20),
+        "sidebar_command": string_config(config, "sidebar_command", "nu"),
+        "sidebar_args": config.get("sidebar_args").cloned().unwrap_or_else(|| json!(["__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu"])),
         "popup_width_percent": int_config(config, "popup_width_percent", 90),
         "popup_height_percent": int_config(config, "popup_height_percent", 90),
         "disable_zellij_tips": string_config(config, "disable_zellij_tips", "true"),
@@ -1606,6 +1669,10 @@ mod tests {
         compute_zellij_render_plan(&ZellijRenderPlanRequest {
             enable_sidebar: true,
             sidebar_width_percent: 20,
+            sidebar_command: "nu".into(),
+            sidebar_args: vec![
+                "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu".into(),
+            ],
             popup_width_percent: 90,
             popup_height_percent: 90,
             zellij_widget_tray: Some(widget_tray.into_iter().map(str::to_string).collect()),
@@ -1676,6 +1743,36 @@ ui { pane_frames { hide_session_name true } }
         assert!(rendered.contains("{command_cpu}"));
         assert!(!rendered.contains("{command_editor}"));
         assert!(!rendered.contains("[editor: ]"));
+    }
+
+    // Defends: the managed sidebar launcher is a generated config concern rather than a hardcoded Yazi script in layout templates.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn renders_configured_sidebar_launcher_placeholders() {
+        let mut plan =
+            sample_render_plan_for_widgets(vec!["editor"], "hx", "/nix/store/bin/nu", "ghostty");
+        plan.sidebar_command = "__YAZELIX_RUNTIME_DIR__/bin/custom-sidebar".into();
+        plan.sidebar_args = vec!["--root".into(), "__YAZELIX_RUNTIME_DIR__/side".into()];
+        let rendered = render_layout_template(
+            r#"pane name="sidebar" {
+    command __YAZELIX_SIDEBAR_COMMAND__
+    __YAZELIX_SIDEBAR_ARGS__
+}"#,
+            &BTreeMap::new(),
+            "",
+            "",
+            "",
+            "",
+            std::path::Path::new("/home/user"),
+            std::path::Path::new("/opt/yazelix"),
+            &plan,
+        )
+        .unwrap();
+
+        assert!(rendered.contains(r#"command "/opt/yazelix/bin/custom-sidebar""#));
+        assert!(rendered.contains(r#"args "--root" "/opt/yazelix/side""#));
+        assert!(!rendered.contains("__YAZELIX_SIDEBAR_COMMAND__"));
+        assert!(!rendered.contains("__YAZELIX_SIDEBAR_ARGS__"));
     }
 
     // Regression: shipped zjstatus templates must not call the deleted dynamic identity widget helper.

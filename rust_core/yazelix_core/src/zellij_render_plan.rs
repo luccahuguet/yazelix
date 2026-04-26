@@ -55,6 +55,14 @@ fn default_sidebar_width_percent() -> i64 {
     20
 }
 
+fn default_sidebar_command() -> String {
+    "nu".into()
+}
+
+fn default_sidebar_args() -> Vec<String> {
+    vec!["__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu".into()]
+}
+
 fn default_popup_percent() -> i64 {
     90
 }
@@ -107,6 +115,10 @@ pub struct ZellijRenderPlanRequest {
     pub enable_sidebar: bool,
     #[serde(default = "default_sidebar_width_percent")]
     pub sidebar_width_percent: i64,
+    #[serde(default = "default_sidebar_command")]
+    pub sidebar_command: String,
+    #[serde(default = "default_sidebar_args")]
+    pub sidebar_args: Vec<String>,
     #[serde(default = "default_popup_percent")]
     pub popup_width_percent: i64,
     #[serde(default = "default_popup_percent")]
@@ -161,6 +173,8 @@ pub struct TopLevelSetting {
 pub struct ZellijRenderPlanData {
     pub default_layout_name: String,
     pub sidebar_width_percent: i64,
+    pub sidebar_command: String,
+    pub sidebar_args: Vec<String>,
     pub popup_width_percent: i64,
     pub popup_height_percent: i64,
     pub widget_tray: Vec<String>,
@@ -209,6 +223,20 @@ fn validate_sidebar_width(value: i64) -> Result<(), CoreError> {
             format!("sidebar_width_percent must be between 10 and 40 (got {value})"),
             "Set editor.sidebar_width_percent within the documented range.",
             serde_json::json!({ "field": "editor.sidebar_width_percent" }),
+        ))
+    }
+}
+
+fn validate_sidebar_launcher(command: &str) -> Result<(), CoreError> {
+    if !command.trim().is_empty() {
+        Ok(())
+    } else {
+        Err(CoreError::classified(
+            ErrorClass::Config,
+            "invalid_sidebar_command",
+            "editor.sidebar_command must not be empty",
+            "Set editor.sidebar_command to a terminal command such as `nu`, `yazi`, or your side-surface launcher.",
+            serde_json::json!({ "field": "editor.sidebar_command" }),
         ))
     }
 }
@@ -308,6 +336,7 @@ pub fn compute_zellij_render_plan(
     request: &ZellijRenderPlanRequest,
 ) -> Result<ZellijRenderPlanData, CoreError> {
     validate_sidebar_width(request.sidebar_width_percent)?;
+    validate_sidebar_launcher(&request.sidebar_command)?;
     validate_popup_percent("zellij.popup_width_percent", request.popup_width_percent)?;
     validate_popup_percent("zellij.popup_height_percent", request.popup_height_percent)?;
     validate_default_mode(&request.zellij_default_mode)?;
@@ -403,6 +432,8 @@ pub fn compute_zellij_render_plan(
     Ok(ZellijRenderPlanData {
         default_layout_name,
         sidebar_width_percent: request.sidebar_width_percent,
+        sidebar_command: request.sidebar_command.trim().to_string(),
+        sidebar_args: request.sidebar_args.clone(),
         popup_width_percent: request.popup_width_percent,
         popup_height_percent: request.popup_height_percent,
         widget_tray,
@@ -428,6 +459,8 @@ mod tests {
         ZellijRenderPlanRequest {
             enable_sidebar: true,
             sidebar_width_percent: 20,
+            sidebar_command: "nu".into(),
+            sidebar_args: default_sidebar_args(),
             popup_width_percent: 90,
             popup_height_percent: 90,
             zellij_widget_tray: None,
@@ -468,6 +501,17 @@ mod tests {
         let mut req = sample_request();
         req.sidebar_width_percent = 9;
         assert!(compute_zellij_render_plan(&req).is_err());
+    }
+
+    // Defends: custom side-surface launchers fail fast when the command is empty instead of generating unusable Zellij KDL.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
+    #[test]
+    fn rejects_empty_sidebar_command() {
+        let mut req = sample_request();
+        req.sidebar_command = "   ".into();
+        let error = compute_zellij_render_plan(&req).unwrap_err();
+
+        assert_eq!(error.code(), "invalid_sidebar_command");
     }
 
     // Defends: widget tray entries are validated against the same allowed set as config.normalize.

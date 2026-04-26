@@ -11,7 +11,7 @@
 [contract]
 version = 1
 surface = "main"
-field_count = 36
+field_count = 38
 artifact_role = "canonical_machine_metadata"
 default_template = "yazelix_default.toml"
 home_manager_module = "home_manager/module.nix"
@@ -115,6 +115,22 @@ parser_behavior = "direct"
 validation = "int_range"
 min = 10
 max = 40
+rebuild_required = false
+
+[fields."editor.sidebar_command"]
+kind = "string"
+default = "nu"
+parser_key = "sidebar_command"
+home_manager_option = "sidebar_command"
+parser_behavior = "direct"
+rebuild_required = false
+
+[fields."editor.sidebar_args"]
+kind = "string_list"
+default = ["__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu"]
+parser_key = "sidebar_args"
+home_manager_option = "sidebar_args"
+parser_behavior = "direct"
 rebuild_required = false
 
 [fields."shell.default_shell"]

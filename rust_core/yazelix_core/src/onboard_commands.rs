@@ -530,6 +530,8 @@ fn build_onboard_config(answers: &OnboardAnswers) -> String {
 [editor]
 command = "{}"
 enable_sidebar = {}
+sidebar_command = "nu"
+sidebar_args = ["__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu"]
 
 [shell]
 default_shell = "{}"
@@ -638,6 +640,11 @@ mod tests {
 
         assert_eq!(parsed["editor"]["command"].as_str(), Some("nvim"));
         assert_eq!(parsed["editor"]["enable_sidebar"].as_bool(), Some(false));
+        assert_eq!(parsed["editor"]["sidebar_command"].as_str(), Some("nu"));
+        assert_eq!(
+            parsed["editor"]["sidebar_args"].as_array().unwrap()[0].as_str(),
+            Some("__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu")
+        );
         assert_eq!(parsed["shell"]["default_shell"].as_str(), Some("bash"));
         assert_eq!(
             parsed["terminal"]["terminals"].as_array().unwrap()[0].as_str(),

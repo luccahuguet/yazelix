@@ -276,6 +276,14 @@ in
       description = "Width of the open Yazi sidebar as a percentage of the tab.";
     };
 
+    sidebar_command = mkMainContractOption "editor.sidebar_command" {
+      description = "Terminal command used for the managed sidebar pane. Defaults to Nu running the Yazelix Yazi adapter.";
+    };
+
+    sidebar_args = mkMainContractOption "editor.sidebar_args" {
+      description = "Arguments passed to the managed sidebar command. The default launches Yazelix's managed Yazi adapter.";
+    };
+
     disable_zellij_tips = mkMainContractOption "zellij.disable_tips" {
       description = "Disable Zellij tips popup on startup for cleaner launches";
     };
