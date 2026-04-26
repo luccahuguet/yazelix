@@ -155,6 +155,20 @@ This is not a task list. Follow-up execution belongs in Beads.
 | `run_visual_verification` | Canonical maintainer visual sweep | It validates terminal/sweep behavior and is not a dead demo function |
 | `record_demo` | Not present | No tracked Rust function or symbol with that name exists |
 
+## Maintainer Tooling Boundary
+
+`yazelix-9opk.5` decided that maintainer-only Rust tooling should stay in this repository but move out of the product runtime crate. The durable decision is recorded in `docs/rust_maintainer_tooling_boundary.md`.
+
+Accepted target shape:
+
+- keep `yazelix_core` as the product/runtime crate for shipped helpers and user-facing behavior
+- add an in-repo `yazelix_maintainer` crate for `repo_*` modules and `yzx_repo_validator` / `yzx_repo_maintainer`
+- reject a separate repository for now because validators, release tooling, sync stamps, Beads/GitHub state, and CI checks are tightly coupled to this checkout
+- keep `workspace_asset_contract.rs` and `layout_family_contract.rs` in `yazelix_core` because `yzx doctor` uses them
+- move `workspace_session_contract.rs` with maintainer validators unless a runtime caller appears
+
+Implementation belongs in `yazelix-9opk.5.1`. The Rust ownership/LOC budget should wait until that crate split lands.
+
 ## Code Removed In This Pass
 
 The pane orchestrator no longer parses or stores these unused plugin configuration values:
