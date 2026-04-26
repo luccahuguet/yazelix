@@ -9,57 +9,37 @@ const ANSI_CYAN: &str = "\u{1b}[36m";
 const ANSI_RESET: &str = "\u{1b}[0m";
 
 const MANDELBROT_LOOP_FRAMES: usize = 960;
-const MANDELBROT_MINIBROT_BASE_SCALE_X: f64 = 3.12;
-const MANDELBROT_MINIBROT_LOOP_PERIOD: usize = 3;
-const MANDELBROT_MINIBROT_LOOP_NUCLEUS: Complex64 = Complex64 {
-    re: -1.754_877_666_246_693,
-    im: 0.0,
-};
 const MANDELBROT_SEAHORSE_CENTER: Complex64 = Complex64 {
     re: -0.775_683_77,
     im: 0.136_467_37,
 };
-const MANDELBROT_SEAHORSE_BASE_SCALE_X: f64 = 0.02;
-const MANDELBROT_SEAHORSE_LOOP_POWERS: f64 = 40.0;
+const MANDELBROT_SEAHORSE_BASE_SCALE_X: f64 = 0.000_05;
+const MANDELBROT_SEAHORSE_LOOP_POWERS: f64 = 10.0;
+const MANDELBROT_SEAHORSE_MIN_ITERATIONS: usize = 350;
+const MANDELBROT_SEAHORSE_MAX_ITERATIONS: usize = 500;
 const MANDELBROT_SEAHORSE_PERIOD_MULTIPLIER: Complex64 = Complex64 {
     re: 1.042_778_623_972_814,
     im: -0.276_965_371_839_069_33,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum MandelbrotAnimationStyle {
-    Minibrot,
-    SeahorseMisiurewicz,
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct MandelbrotAnimation {
     context: ScreenAnimationContext,
     frame_index: usize,
-    style: MandelbrotAnimationStyle,
 }
 
 impl MandelbrotAnimation {
     pub fn new(context: ScreenAnimationContext) -> Self {
-        Self::with_style(context, MandelbrotAnimationStyle::Minibrot)
-    }
-
-    pub fn new_seahorse_misiurewicz(context: ScreenAnimationContext) -> Self {
-        Self::with_style(context, MandelbrotAnimationStyle::SeahorseMisiurewicz)
-    }
-
-    fn with_style(context: ScreenAnimationContext, style: MandelbrotAnimationStyle) -> Self {
         Self {
             context,
             frame_index: 0,
-            style,
         }
     }
 }
 
 impl ScreenFrameProducer for MandelbrotAnimation {
     fn render_frame(&self) -> Vec<String> {
-        render_mandelbrot_frame(self.context, self.frame_index, self.style)
+        render_mandelbrot_frame(self.context, self.frame_index)
     }
 
     fn advance_frame(&mut self) {
@@ -79,9 +59,10 @@ pub fn mandelbrot_max_iterations(width: usize, height: usize) -> usize {
 fn mandelbrot_max_iterations_for_zoom(width: usize, height: usize, zoom: f64) -> usize {
     let base_iterations = mandelbrot_max_iterations(width, height);
     let zoom_iterations = zoom.max(1.0).log2().mul_add(14.0, 0.0).round() as usize;
-    base_iterations
-        .saturating_add(zoom_iterations)
-        .clamp(48, 220)
+    base_iterations.saturating_add(zoom_iterations).clamp(
+        MANDELBROT_SEAHORSE_MIN_ITERATIONS,
+        MANDELBROT_SEAHORSE_MAX_ITERATIONS,
+    )
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -120,17 +101,6 @@ impl std::ops::Add for Complex64 {
     }
 }
 
-impl std::ops::Sub for Complex64 {
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        Self {
-            re: self.re - rhs.re,
-            im: self.im - rhs.im,
-        }
-    }
-}
-
 impl std::ops::Mul for Complex64 {
     type Output = Self;
 
@@ -138,18 +108,6 @@ impl std::ops::Mul for Complex64 {
         Self {
             re: self.re * rhs.re - self.im * rhs.im,
             im: self.re * rhs.im + self.im * rhs.re,
-        }
-    }
-}
-
-impl std::ops::Div for Complex64 {
-    type Output = Self;
-
-    fn div(self, rhs: Self) -> Self::Output {
-        let denominator = rhs.re * rhs.re + rhs.im * rhs.im;
-        Self {
-            re: (self.re * rhs.re + self.im * rhs.im) / denominator,
-            im: (self.im * rhs.re - self.re * rhs.im) / denominator,
         }
     }
 }
@@ -193,14 +151,10 @@ fn continuous_escape_depth(iteration: usize, magnitude_squared: f64) -> usize {
     (smooth_iteration.max(0.0) * 24.0).round() as usize
 }
 
-fn render_mandelbrot_frame(
-    context: ScreenAnimationContext,
-    frame_index: usize,
-    style: MandelbrotAnimationStyle,
-) -> Vec<String> {
+fn render_mandelbrot_frame(context: ScreenAnimationContext, frame_index: usize) -> Vec<String> {
     let width = context.inner_width.max(1);
     let height = context.resolved_height.max(1);
-    let view = mandelbrot_view(frame_index, style);
+    let view = mandelbrot_view(frame_index);
     let max_iterations = mandelbrot_max_iterations_for_zoom(width, height, view.zoom);
     let mut frame = ScreenFrame::new(width, height);
 
@@ -219,58 +173,21 @@ fn render_mandelbrot_frame(
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct MandelbrotView {
-    mode: MandelbrotViewMode,
+    center: Complex64,
     multiplier: Complex64,
     base_scale_x: f64,
     scale_x: f64,
     zoom: f64,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum MandelbrotViewMode {
-    Minibrot { fixed_point: Complex64 },
-    Misiurewicz { center: Complex64 },
-}
-
-fn mandelbrot_view(frame_index: usize, style: MandelbrotAnimationStyle) -> MandelbrotView {
-    let progress = mandelbrot_minibrot_loop_progress(frame_index);
-    match style {
-        MandelbrotAnimationStyle::Minibrot => mandelbrot_minibrot_view(progress),
-        MandelbrotAnimationStyle::SeahorseMisiurewicz => {
-            mandelbrot_seahorse_misiurewicz_view(progress)
-        }
-    }
-}
-
-fn mandelbrot_minibrot_view(progress: f64) -> MandelbrotView {
-    let loop_size = mandelbrot_component_size_estimate(
-        MANDELBROT_MINIBROT_LOOP_NUCLEUS,
-        MANDELBROT_MINIBROT_LOOP_PERIOD,
-    );
-    let multiplier = loop_size.powf(progress);
-    let scale_x = MANDELBROT_MINIBROT_BASE_SCALE_X * multiplier.abs();
-
-    MandelbrotView {
-        mode: MandelbrotViewMode::Minibrot {
-            fixed_point: MANDELBROT_MINIBROT_LOOP_NUCLEUS
-                / (Complex64 { re: 1.0, im: 0.0 } - loop_size),
-        },
-        multiplier,
-        base_scale_x: MANDELBROT_MINIBROT_BASE_SCALE_X,
-        scale_x,
-        zoom: 1.0 / multiplier.abs(),
-    }
-}
-
-fn mandelbrot_seahorse_misiurewicz_view(progress: f64) -> MandelbrotView {
+fn mandelbrot_view(frame_index: usize) -> MandelbrotView {
+    let progress = mandelbrot_loop_progress(frame_index);
     let multiplier =
         MANDELBROT_SEAHORSE_PERIOD_MULTIPLIER.powf(-MANDELBROT_SEAHORSE_LOOP_POWERS * progress);
     let scale_x = MANDELBROT_SEAHORSE_BASE_SCALE_X * multiplier.abs();
 
     MandelbrotView {
-        mode: MandelbrotViewMode::Misiurewicz {
-            center: MANDELBROT_SEAHORSE_CENTER,
-        },
+        center: MANDELBROT_SEAHORSE_CENTER,
         multiplier,
         base_scale_x: MANDELBROT_SEAHORSE_BASE_SCALE_X,
         scale_x,
@@ -278,24 +195,12 @@ fn mandelbrot_seahorse_misiurewicz_view(progress: f64) -> MandelbrotView {
     }
 }
 
-fn mandelbrot_minibrot_loop_progress(frame_index: usize) -> f64 {
+fn mandelbrot_loop_progress(frame_index: usize) -> f64 {
     if MANDELBROT_LOOP_FRAMES <= 1 {
         0.0
     } else {
         (frame_index % MANDELBROT_LOOP_FRAMES) as f64 / MANDELBROT_LOOP_FRAMES as f64
     }
-}
-
-fn mandelbrot_component_size_estimate(nucleus: Complex64, period: usize) -> Complex64 {
-    let mut derivative = Complex64 { re: 1.0, im: 0.0 };
-    let mut sum = Complex64 { re: 1.0, im: 0.0 };
-    let mut z = Complex64 { re: 0.0, im: 0.0 };
-    for _ in 1..period {
-        z = z * z + nucleus;
-        derivative = Complex64 { re: 2.0, im: 0.0 } * z * derivative;
-        sum = sum + Complex64 { re: 1.0, im: 0.0 } / derivative;
-    }
-    Complex64 { re: 1.0, im: 0.0 } / (sum * derivative * derivative)
 }
 
 fn mandelbrot_point(
@@ -320,12 +225,7 @@ fn mandelbrot_point(
         re: (nx - 0.5) * view.base_scale_x,
         im: (ny - 0.5) * view.base_scale_x * 0.64,
     };
-    let point = match view.mode {
-        MandelbrotViewMode::Minibrot { fixed_point } => {
-            fixed_point + view.multiplier * (base - fixed_point)
-        }
-        MandelbrotViewMode::Misiurewicz { center } => center + view.multiplier * base,
-    };
+    let point = view.center + view.multiplier * base;
     (point.re, point.im)
 }
 
@@ -403,16 +303,8 @@ mod tests {
             .collect()
     }
 
-    fn render_minibrot_frame(context: ScreenAnimationContext, frame_index: usize) -> Vec<String> {
-        render_mandelbrot_frame(context, frame_index, MandelbrotAnimationStyle::Minibrot)
-    }
-
-    fn render_seahorse_frame(context: ScreenAnimationContext, frame_index: usize) -> Vec<String> {
-        render_mandelbrot_frame(
-            context,
-            frame_index,
-            MandelbrotAnimationStyle::SeahorseMisiurewicz,
-        )
+    fn render_test_frame(context: ScreenAnimationContext, frame_index: usize) -> Vec<String> {
+        render_mandelbrot_frame(context, frame_index)
     }
 
     fn visible_frame_similarity(first: &[String], second: &[String]) -> f64 {
@@ -465,8 +357,8 @@ mod tests {
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn mandelbrot_loop_changes_visible_fractal_structure() {
-        let initial = strip_ansi_from_frame(render_minibrot_frame(context(64, 20), 0));
-        let deep_zoom = strip_ansi_from_frame(render_minibrot_frame(
+        let initial = strip_ansi_from_frame(render_test_frame(context(64, 20), 0));
+        let deep_zoom = strip_ansi_from_frame(render_test_frame(
             context(64, 20),
             MANDELBROT_LOOP_FRAMES * 3 / 8,
         ));
@@ -486,11 +378,10 @@ mod tests {
             MANDELBROT_LOOP_FRAMES * 3 / 4,
             MANDELBROT_LOOP_FRAMES - 1,
         ] {
-            let visible =
-                strip_ansi_from_frame(render_minibrot_frame(context(64, 20), frame_index));
+            let visible = strip_ansi_from_frame(render_test_frame(context(64, 20), frame_index));
 
             assert!(
-                dominant_visible_glyph_fraction(&visible) <= 0.96,
+                dominant_visible_glyph_fraction(&visible) <= 0.86,
                 "frame {frame_index} collapsed to one visible glyph"
             );
         }
@@ -501,8 +392,8 @@ mod tests {
     #[test]
     fn mandelbrot_loop_boundary_repeats_first_frame_exactly() {
         assert_eq!(
-            render_minibrot_frame(context(48, 16), 0),
-            render_minibrot_frame(context(48, 16), MANDELBROT_LOOP_FRAMES)
+            render_test_frame(context(48, 16), 0),
+            render_test_frame(context(48, 16), MANDELBROT_LOOP_FRAMES)
         );
     }
 
@@ -510,8 +401,8 @@ mod tests {
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn mandelbrot_loop_seam_is_structurally_continuous() {
-        let first = strip_ansi_from_frame(render_minibrot_frame(context(64, 20), 0));
-        let penultimate = strip_ansi_from_frame(render_minibrot_frame(
+        let first = strip_ansi_from_frame(render_test_frame(context(64, 20), 0));
+        let penultimate = strip_ansi_from_frame(render_test_frame(
             context(64, 20),
             MANDELBROT_LOOP_FRAMES - 1,
         ));
@@ -520,99 +411,23 @@ mod tests {
         assert!(visible_frame_similarity(&first, &penultimate) >= 0.70);
     }
 
-    // Defends: the Mandelbrot view uses an approximate miniature-copy transform instead of an unrelated point zoom.
+    // Defends: the Mandelbrot view uses Seahorse Valley Misiurewicz scaling instead of a wide, boring minibrot path.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn mandelbrot_view_zooms_into_miniature_copy_without_zooming_out() {
-        let home = mandelbrot_view(0, MandelbrotAnimationStyle::Minibrot);
-        let quarter = mandelbrot_view(
-            MANDELBROT_LOOP_FRAMES / 4,
-            MandelbrotAnimationStyle::Minibrot,
-        );
-        let half = mandelbrot_view(
-            MANDELBROT_LOOP_FRAMES / 2,
-            MandelbrotAnimationStyle::Minibrot,
-        );
-        let late = mandelbrot_view(
-            MANDELBROT_LOOP_FRAMES * 3 / 4,
-            MandelbrotAnimationStyle::Minibrot,
-        );
-        let seam = mandelbrot_view(
-            MANDELBROT_LOOP_FRAMES - 1,
-            MandelbrotAnimationStyle::Minibrot,
-        );
-        let loop_home = mandelbrot_view(MANDELBROT_LOOP_FRAMES, MandelbrotAnimationStyle::Minibrot);
-        let loop_size = mandelbrot_component_size_estimate(
-            MANDELBROT_MINIBROT_LOOP_NUCLEUS,
-            MANDELBROT_MINIBROT_LOOP_PERIOD,
-        );
-        let MandelbrotViewMode::Minibrot { fixed_point } = home.mode else {
-            panic!("expected minibrot view mode");
-        };
-        let full_set_copy_center =
-            fixed_point + loop_size * (Complex64 { re: 0.0, im: 0.0 } - fixed_point);
+    fn mandelbrot_view_zooms_into_seahorse_spiral_without_zooming_out() {
+        let home = mandelbrot_view(0);
+        let quarter = mandelbrot_view(MANDELBROT_LOOP_FRAMES / 4);
+        let half = mandelbrot_view(MANDELBROT_LOOP_FRAMES / 2);
+        let late = mandelbrot_view(MANDELBROT_LOOP_FRAMES * 3 / 4);
+        let seam = mandelbrot_view(MANDELBROT_LOOP_FRAMES - 1);
+        let loop_home = mandelbrot_view(MANDELBROT_LOOP_FRAMES);
 
+        assert_eq!(home.center, MANDELBROT_SEAHORSE_CENTER);
         assert!(quarter.zoom > home.zoom);
         assert!(half.zoom > quarter.zoom);
         assert!(late.zoom > half.zoom);
         assert!(seam.zoom > late.zoom);
-        assert!(seam.scale_x < home.scale_x / 40.0);
-        assert!((home.scale_x - MANDELBROT_MINIBROT_BASE_SCALE_X).abs() < f64::EPSILON);
-        assert!((home.multiplier.re - 1.0).abs() < f64::EPSILON);
-        assert!(home.multiplier.im.abs() < f64::EPSILON);
-        assert!((loop_size.abs() - 0.019_035_515_913_132_437).abs() < 1e-15);
-        assert!((full_set_copy_center.re - MANDELBROT_MINIBROT_LOOP_NUCLEUS.re).abs() < 1e-12);
-        assert!((full_set_copy_center.im - MANDELBROT_MINIBROT_LOOP_NUCLEUS.im).abs() < 1e-12);
-        assert_eq!(home, loop_home);
-    }
-
-    // Defends: the opt-in Seahorse screen path uses Misiurewicz-local scaling without collapsing into solid or empty frames.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[test]
-    fn mandelbrot_seahorse_frames_keep_spiral_detail() {
-        for frame_index in [
-            0,
-            MANDELBROT_LOOP_FRAMES / 8,
-            MANDELBROT_LOOP_FRAMES / 4,
-            MANDELBROT_LOOP_FRAMES / 2,
-            MANDELBROT_LOOP_FRAMES * 3 / 4,
-            MANDELBROT_LOOP_FRAMES - 1,
-        ] {
-            let visible =
-                strip_ansi_from_frame(render_seahorse_frame(context(64, 20), frame_index));
-
-            assert!(
-                dominant_visible_glyph_fraction(&visible) <= 0.75,
-                "seahorse frame {frame_index} collapsed to one visible glyph"
-            );
-        }
-    }
-
-    // Defends: the Seahorse variant is an opt-in Misiurewicz-centered zoom path, not a mutation of the default minibrot loop.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[test]
-    fn mandelbrot_seahorse_view_uses_misiurewicz_multiplier() {
-        let home = mandelbrot_view(0, MandelbrotAnimationStyle::SeahorseMisiurewicz);
-        let half = mandelbrot_view(
-            MANDELBROT_LOOP_FRAMES / 2,
-            MandelbrotAnimationStyle::SeahorseMisiurewicz,
-        );
-        let seam = mandelbrot_view(
-            MANDELBROT_LOOP_FRAMES - 1,
-            MandelbrotAnimationStyle::SeahorseMisiurewicz,
-        );
-        let loop_home = mandelbrot_view(
-            MANDELBROT_LOOP_FRAMES,
-            MandelbrotAnimationStyle::SeahorseMisiurewicz,
-        );
-        let MandelbrotViewMode::Misiurewicz { center } = home.mode else {
-            panic!("expected Misiurewicz view mode");
-        };
-
-        assert_eq!(center, MANDELBROT_SEAHORSE_CENTER);
-        assert!(half.zoom > home.zoom);
-        assert!(seam.zoom > half.zoom);
-        assert!(seam.scale_x < home.scale_x / 20.0);
+        assert!(seam.scale_x < home.scale_x / 2.0);
         assert!((home.scale_x - MANDELBROT_SEAHORSE_BASE_SCALE_X).abs() < f64::EPSILON);
         assert!((home.multiplier.re - 1.0).abs() < f64::EPSILON);
         assert!(home.multiplier.im.abs() < f64::EPSILON);
@@ -657,6 +472,17 @@ mod tests {
         assert_eq!(mandelbrot_max_iterations(1, 1), 48);
         assert_eq!(mandelbrot_max_iterations(120, 40), 57);
         assert_eq!(mandelbrot_max_iterations(300, 120), 96);
-        assert_eq!(mandelbrot_max_iterations_for_zoom(300, 120, 1_450.0), 220);
+        assert_eq!(
+            mandelbrot_max_iterations_for_zoom(64, 20, 1.0),
+            MANDELBROT_SEAHORSE_MIN_ITERATIONS
+        );
+        assert_eq!(
+            mandelbrot_max_iterations_for_zoom(300, 120, 1_450.0),
+            MANDELBROT_SEAHORSE_MIN_ITERATIONS
+        );
+        assert_eq!(
+            mandelbrot_max_iterations_for_zoom(300, 120, 1_000_000_000.0),
+            MANDELBROT_SEAHORSE_MAX_ITERATIONS
+        );
     }
 }

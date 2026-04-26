@@ -157,7 +157,7 @@ fn screen_frame_delay(resolved_style: &str) -> Duration {
     match resolved_style {
         style if is_game_of_life_style(style) => Duration::from_millis(160),
         "boids" => Duration::from_millis(90),
-        "mandelbrot" | "mandelbrot_seahorse" => Duration::from_millis(110),
+        "mandelbrot" => Duration::from_millis(110),
         _ => Duration::from_millis(120),
     }
 }
@@ -700,7 +700,7 @@ pub fn run_screen_surface_with_cell_style(
     let frame_delay = screen_frame_delay(&resolved_style);
     let is_game_of_life = is_game_of_life_style(&resolved_style);
     let is_boids = resolved_style == "boids";
-    let is_mandelbrot = resolved_style == "mandelbrot" || resolved_style == "mandelbrot_seahorse";
+    let is_mandelbrot = resolved_style == "mandelbrot";
     let mut width = terminal_width();
     let mut height = terminal_height();
     let mut frames = if is_game_of_life || is_boids || is_mandelbrot {
@@ -719,11 +719,9 @@ pub fn run_screen_surface_with_cell_style(
         None
     };
     let mut mandelbrot_state = if is_mandelbrot {
-        Some(if resolved_style == "mandelbrot_seahorse" {
-            MandelbrotAnimation::new_seahorse_misiurewicz(mandelbrot_screen_context(width, height))
-        } else {
-            MandelbrotAnimation::new(mandelbrot_screen_context(width, height))
-        })
+        Some(MandelbrotAnimation::new(mandelbrot_screen_context(
+            width, height,
+        )))
     } else {
         None
     };
@@ -835,22 +833,29 @@ mod tests {
         assert_eq!(err.code(), "invalid_screen_style");
     }
 
-    // Defends: Mandelbrot styles are exposed as screen-only producers without joining welcome/random rotation.
+    // Defends: Mandelbrot is exposed as a screen-only producer without joining welcome/random rotation.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
-    fn mandelbrot_styles_are_screen_only() {
-        for style in ["mandelbrot", "mandelbrot_seahorse"] {
-            assert_eq!(resolve_screen_style(Some(style), None).unwrap(), style);
+    fn mandelbrot_is_screen_only() {
+        assert_eq!(
+            resolve_screen_style(Some("mandelbrot"), None).unwrap(),
+            "mandelbrot"
+        );
+        assert_eq!(
+            resolve_welcome_style("mandelbrot", None)
+                .unwrap_err()
+                .code(),
+            "invalid_welcome_style"
+        );
+        for index in 0..8 {
             assert_eq!(
-                resolve_welcome_style(style, None).unwrap_err().code(),
-                "invalid_welcome_style"
+                resolve_screen_style(Some("random"), Some(index)).unwrap(),
+                resolve_welcome_style("random", Some(index)).unwrap()
             );
-            for index in 0..8 {
-                assert_ne!(
-                    resolve_screen_style(Some("random"), Some(index)).unwrap(),
-                    style
-                );
-            }
+            assert_ne!(
+                resolve_screen_style(Some("random"), Some(index)).unwrap(),
+                "mandelbrot"
+            );
         }
     }
 
