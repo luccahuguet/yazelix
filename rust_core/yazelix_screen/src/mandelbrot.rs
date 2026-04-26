@@ -1,11 +1,12 @@
 use crate::{ScreenAnimationContext, ScreenCell, ScreenFrame, ScreenFrameProducer};
 
-const ANSI_RED: &str = "\u{1b}[31m";
-const ANSI_GREEN: &str = "\u{1b}[32m";
-const ANSI_YELLOW: &str = "\u{1b}[33m";
-const ANSI_BLUE: &str = "\u{1b}[34m";
-const ANSI_PURPLE: &str = "\u{1b}[35m";
-const ANSI_CYAN: &str = "\u{1b}[36m";
+const ANSI_NEON_LIME: &str = "\u{1b}[38;5;46m";
+const ANSI_NEON_CYAN: &str = "\u{1b}[38;5;51m";
+const ANSI_ELECTRIC_BLUE: &str = "\u{1b}[38;5;33m";
+const ANSI_VIOLET: &str = "\u{1b}[38;5;129m";
+const ANSI_HOT_PINK: &str = "\u{1b}[38;5;201m";
+const ANSI_ORANGE: &str = "\u{1b}[38;5;208m";
+const ANSI_SUN_YELLOW: &str = "\u{1b}[38;5;226m";
 const ANSI_RESET: &str = "\u{1b}[0m";
 
 const MANDELBROT_LOOP_FRAMES: usize = 960;
@@ -116,6 +117,13 @@ impl std::ops::Mul for Complex64 {
 struct MandelbrotEscape {
     iterations: usize,
     normalized_depth: usize,
+    distance_estimate: Option<f64>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct MandelbrotSample {
+    escape: MandelbrotEscape,
+    score: f64,
 }
 
 pub fn mandelbrot_escape_iterations(cx: f64, cy: f64, max_iterations: usize) -> usize {
@@ -125,6 +133,8 @@ pub fn mandelbrot_escape_iterations(cx: f64, cy: f64, max_iterations: usize) -> 
 fn mandelbrot_escape(cx: f64, cy: f64, max_iterations: usize) -> MandelbrotEscape {
     let mut zx = 0.0;
     let mut zy = 0.0;
+    let mut derivative_x = 0.0;
+    let mut derivative_y = 0.0;
 
     for iteration in 0..max_iterations {
         let magnitude_squared = zx * zx + zy * zy;
@@ -132,17 +142,41 @@ fn mandelbrot_escape(cx: f64, cy: f64, max_iterations: usize) -> MandelbrotEscap
             return MandelbrotEscape {
                 iterations: iteration,
                 normalized_depth: continuous_escape_depth(iteration, magnitude_squared),
+                distance_estimate: mandelbrot_distance_estimate(
+                    magnitude_squared,
+                    derivative_x,
+                    derivative_y,
+                ),
             };
         }
+        let next_derivative_x = 2.0 * (zx * derivative_x - zy * derivative_y) + 1.0;
+        let next_derivative_y = 2.0 * (zx * derivative_y + zy * derivative_x);
         let next_x = zx * zx - zy * zy + cx;
         zy = 2.0 * zx * zy + cy;
         zx = next_x;
+        derivative_x = next_derivative_x;
+        derivative_y = next_derivative_y;
     }
 
     MandelbrotEscape {
         iterations: max_iterations,
         normalized_depth: max_iterations.saturating_mul(24),
+        distance_estimate: None,
     }
+}
+
+fn mandelbrot_distance_estimate(
+    magnitude_squared: f64,
+    derivative_x: f64,
+    derivative_y: f64,
+) -> Option<f64> {
+    let derivative_magnitude = derivative_x.hypot(derivative_y);
+    if derivative_magnitude <= f64::EPSILON {
+        return None;
+    }
+
+    let magnitude = magnitude_squared.sqrt();
+    Some(0.5 * magnitude * magnitude.ln() / derivative_magnitude)
 }
 
 fn continuous_escape_depth(iteration: usize, magnitude_squared: f64) -> usize {
@@ -184,14 +218,33 @@ fn render_mandelbrot_cells(
     view: MandelbrotView,
     max_iterations: usize,
 ) -> Vec<Option<ScreenCell>> {
-    let mut cells = vec![None; width.saturating_mul(height)];
+    let mut samples = vec![None; width.saturating_mul(height)];
+    let mut scores = Vec::with_capacity(width.saturating_mul(height));
 
     for y in 0..height {
         for x in 0..width {
             let (cx, cy) = mandelbrot_point(x, y, width, height, view);
             let escape = mandelbrot_escape(cx, cy, max_iterations);
-            cells[y * width + x] = mandelbrot_cell(escape, max_iterations, view);
+            if let Some(sample) = mandelbrot_sample(escape, max_iterations, view, width) {
+                scores.push(sample.score);
+                samples[y * width + x] = Some(sample);
+            }
         }
+    }
+
+    scores.sort_by(f64::total_cmp);
+    let mut cells = vec![None; width.saturating_mul(height)];
+    for (index, sample) in samples.into_iter().enumerate() {
+        let Some(sample) = sample else {
+            continue;
+        };
+        let rank = scores.partition_point(|score| *score < sample.score);
+        let percentile = if scores.len() <= 1 {
+            1.0
+        } else {
+            rank as f64 / (scores.len() - 1) as f64
+        };
+        cells[index] = mandelbrot_cell(sample, percentile, view);
     }
 
     cells
@@ -283,47 +336,68 @@ fn mandelbrot_point(
     (point.re, point.im)
 }
 
-fn mandelbrot_cell(
+fn mandelbrot_sample(
     escape: MandelbrotEscape,
     max_iterations: usize,
     view: MandelbrotView,
-) -> Option<ScreenCell> {
+    width: usize,
+) -> Option<MandelbrotSample> {
     let iterations = escape.iterations;
     if iterations <= 1 {
         return None;
     }
-    let glyph = if iterations >= max_iterations {
-        '█'
+
+    let pixel_scale = view.scale_x / width.max(1) as f64;
+    let distance_pixels = escape
+        .distance_estimate
+        .map(|distance| distance / pixel_scale.max(f64::MIN_POSITIVE))
+        .unwrap_or(0.0);
+    let boundary_weight = (1.0 / (1.0 + distance_pixels.max(0.0).powf(0.7))).clamp(0.0, 1.0);
+    let dwell_weight = (iterations as f64 / max_iterations as f64).powf(0.35);
+    let score = boundary_weight * 0.65 + dwell_weight * 0.35;
+
+    Some(MandelbrotSample { escape, score })
+}
+
+fn mandelbrot_cell(
+    sample: MandelbrotSample,
+    percentile: f64,
+    view: MandelbrotView,
+) -> Option<ScreenCell> {
+    let normalized_percentile = percentile.clamp(0.0, 1.0);
+    let (glyph, intensity_bucket) = if normalized_percentile < 0.14 {
+        return None;
+    } else if normalized_percentile < 0.34 {
+        ('░', 1)
+    } else if normalized_percentile < 0.58 {
+        ('▒', 2)
+    } else if normalized_percentile < 0.80 {
+        ('▓', 4)
     } else {
-        let gradient = ['.', '·', ':', '░', '▒', '▓', '█'];
-        let zoom_adjusted_depth = escape.normalized_depth as f64 - view.zoom.max(1.0).log2() * 24.0;
-        let contour_bucket = ((zoom_adjusted_depth.round() as i64).div_euclid(8))
-            .rem_euclid(gradient.len() as i64) as usize;
-        let edge_bucket = (iterations * gradient.len() / max_iterations).min(gradient.len() - 1);
-        let bucket = ((contour_bucket * 2) + (edge_bucket * 3)) / 5;
-        gradient[bucket]
+        ('█', 6)
     };
 
-    let color_x = (escape.normalized_depth as f64 - view.zoom.max(1.0).log2() * 24.0)
-        .round()
-        .max(0.0) as usize;
+    let rank_band = (normalized_percentile * 6.0).floor() as usize;
+    let zoom_band = (view.zoom.max(1.0).log2() / 4.0).round().max(0.0) as usize;
+    let iteration_band = sample.escape.iterations / 160;
     Some(ScreenCell {
         glyph,
-        color_x,
-        color_y: iterations,
+        color_x: rank_band + zoom_band + iteration_band,
+        color_y: intensity_bucket,
     })
 }
 
 fn colorize_mandelbrot_cell(cell: ScreenCell) -> String {
     let palette = [
-        ANSI_BLUE,
-        ANSI_CYAN,
-        ANSI_GREEN,
-        ANSI_YELLOW,
-        ANSI_PURPLE,
-        ANSI_RED,
+        ANSI_NEON_CYAN,
+        ANSI_ELECTRIC_BLUE,
+        ANSI_VIOLET,
+        ANSI_HOT_PINK,
+        ANSI_ORANGE,
+        ANSI_SUN_YELLOW,
+        ANSI_NEON_LIME,
     ];
-    let color = palette[(cell.color_x / 11 + cell.color_y / 7) % palette.len()];
+    let color = palette[(cell.color_x + cell.color_y / 2) % palette.len()];
     format!("{color}{}{}", cell.glyph, ANSI_RESET)
 }
 
@@ -401,6 +475,22 @@ mod tests {
         counts.values().copied().max().unwrap_or(0) as f64 / total_cells as f64
     }
 
+    fn visible_glyph_fraction(frame: &[String], predicate: impl Fn(char) -> bool) -> f64 {
+        let mut matching_cells = 0;
+        let mut total_cells = 0;
+
+        for line in frame {
+            for cell in line.chars() {
+                if predicate(cell) {
+                    matching_cells += 1;
+                }
+                total_cells += 1;
+            }
+        }
+
+        matching_cells as f64 / total_cells as f64
+    }
+
     // Defends: Mandelbrot uses deterministic in-house CPU frames without host randomness or external engines.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
@@ -448,6 +538,31 @@ mod tests {
             assert!(
                 dominant_visible_glyph_fraction(&visible) <= 0.86,
                 "frame {frame_index} collapsed to one visible glyph"
+            );
+        }
+    }
+
+    // Regression: Mandelbrot should render as a filled fractal surface, not a sparse dotted contour wallpaper.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn mandelbrot_frames_use_filled_density_not_sparse_dot_texture() {
+        for frame_index in [
+            0,
+            MANDELBROT_LOOP_FRAMES / 4,
+            MANDELBROT_LOOP_FRAMES / 2,
+            MANDELBROT_LOOP_FRAMES * 3 / 4,
+            MANDELBROT_LOOP_FRAMES - 1,
+        ] {
+            let visible = strip_ansi_from_frame(render_test_frame(context(64, 20), frame_index));
+            let dotted_fraction =
+                visible_glyph_fraction(&visible, |cell| matches!(cell, '.' | '·' | ':'));
+            let filled_fraction =
+                visible_glyph_fraction(&visible, |cell| matches!(cell, '░' | '▒' | '▓' | '█'));
+
+            assert_eq!(dotted_fraction, 0.0);
+            assert!(
+                filled_fraction >= 0.70,
+                "frame {frame_index} is too sparse: filled fraction {filled_fraction}"
             );
         }
     }
@@ -513,6 +628,19 @@ mod tests {
 
         assert!(turn_error < 0.001);
         assert!(total_zoom > 9_000.0);
+    }
+
+    // Defends: Mandelbrot keeps the requested neon look instead of falling back to dull basic ANSI colors.
+    // Strength: defect=1 behavior=2 resilience=1 cost=1 uniqueness=2 total=7/10
+    #[test]
+    fn mandelbrot_color_palette_uses_vibrant_256_color_ansi() {
+        let rendered = colorize_mandelbrot_cell(ScreenCell {
+            glyph: '█',
+            color_x: 0,
+            color_y: 0,
+        });
+
+        assert!(rendered.starts_with("\u{1b}[38;5;"));
     }
 
     // Defends: narrow terminals still get a complete frame with no skipped or over-wide rows.
