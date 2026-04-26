@@ -131,6 +131,7 @@ const DOCTOR_FLAGS: &[YzxCommandParameter] = &[
     switch("fix-plan", None),
     switch("json", None),
 ];
+const ONBOARD_FLAGS: &[YzxCommandParameter] = &[switch("force", None), switch("dry-run", None)];
 const CONFIG_FLAGS: &[YzxCommandParameter] = &[switch("path", None)];
 const CONFIG_RESET_FLAGS: &[YzxCommandParameter] =
     &[switch("yes", None), switch("no-backup", None)];
@@ -446,6 +447,18 @@ const EDIT_CONFIG_COMMAND: YzxCommandMetadata = metadata(
 );
 const EDIT_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[EDIT_ROOT_COMMAND, EDIT_CONFIG_COMMAND];
 
+const ONBOARD_COMMAND: YzxCommandMetadata = metadata(
+    "yzx onboard",
+    "Generate a focused first-run Yazelix config",
+    YzxCommandCategory::Config,
+    ONBOARD_FLAGS,
+    Some(YzxMenuCategory::Config),
+    Some(
+        "Interactive setup for core editor, shell, terminal, sidebar, session, and status-bar choices.",
+    ),
+);
+const ONBOARD_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[ONBOARD_COMMAND];
+
 const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
     rust_control_family("config", CONFIG_FAMILY_COMMANDS),
     rust_control_family("cwd", CWD_FAMILY_COMMANDS),
@@ -456,6 +469,7 @@ const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
     rust_control_family("import", IMPORT_FAMILY_COMMANDS),
     rust_control_family("inspect", INSPECT_FAMILY_COMMANDS),
     rust_control_family("launch", LAUNCH_FAMILY_COMMANDS),
+    rust_control_family("onboard", ONBOARD_FAMILY_COMMANDS),
     rust_control_family("run", RUN_FAMILY_COMMANDS),
     rust_control_family("popup", POPUP_FAMILY_COMMANDS),
     rust_control_family("reveal", REVEAL_FAMILY_COMMANDS),

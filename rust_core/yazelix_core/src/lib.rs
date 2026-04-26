@@ -25,6 +25,7 @@ pub mod keys_commands;
 pub mod launch_commands;
 pub mod launch_materialization;
 pub mod layout_family_contract;
+pub mod onboard_commands;
 pub mod profile_commands;
 pub mod public_command_surface;
 pub mod runtime_contract;
@@ -95,6 +96,7 @@ pub use launch_materialization::{
     LaunchMaterializationData, LaunchMaterializationRequest,
     launch_materialization_request_from_env, prepare_launch_materialization,
 };
+pub use onboard_commands::run_yzx_onboard;
 pub use profile_commands::{
     run_profile_create_run, run_profile_load_report, run_profile_print_report,
     run_profile_record_step, run_profile_wait_step,

@@ -21,6 +21,14 @@ Inspect active Yazelix runtime truth
 - Works outside Zellij and marks session state unavailable instead of failing
 - Intended as the stable fact source for recovery diagnostics, support, live docs examples, and AI coding agents
 
+### `yzx onboard [--force] [--dry-run]`
+Generate a focused first-run Yazelix config
+- Arrow keys move through single-choice prompts and `Enter` confirms
+- `Space` toggles status-bar widget choices in the multi-select prompt
+- `--force`: Overwrite the managed user `yazelix.toml` when it already exists
+- `--dry-run`: Print the generated config instead of writing it
+- Generates only the current supported main config surface; it does not recreate removed pack sidecars
+
 ### `yzx dev test [--verbose] [--new-window] [--lint-only] [--profile] [--sweep] [--visual] [--all] [--delay SECONDS]`
 Run Yazelix test suite
 - Default: run the normal non-sweep automated regression suite

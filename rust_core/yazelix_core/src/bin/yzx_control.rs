@@ -38,6 +38,7 @@ use yazelix_core::run_yzx_home_manager;
 use yazelix_core::run_yzx_import;
 use yazelix_core::run_yzx_keys;
 use yazelix_core::run_yzx_launch;
+use yazelix_core::run_yzx_onboard;
 use yazelix_core::run_yzx_popup;
 use yazelix_core::run_yzx_restart;
 use yazelix_core::run_yzx_reveal;
@@ -75,6 +76,7 @@ fn usage() -> ! {
     eprintln!("       yzx_control launch [--path <dir> | --home] [--terminal <name>] [--verbose]");
     eprintln!("       yzx_control home_manager [prepare] [args...]");
     eprintln!("       yzx_control keys [yzx|yazi|hx|helix|nu|nushell]");
+    eprintln!("       yzx_control onboard [--force] [--dry-run]");
     eprintln!("       yzx_control popup [program...]");
     eprintln!("       yzx_control profile create-run <scenario> [--metadata <json>]");
     eprintln!(
@@ -992,6 +994,7 @@ fn main() {
         "home_manager" => run_yzx_home_manager(&argv),
         "import" => run_yzx_import(&argv),
         "keys" => run_yzx_keys(&argv),
+        "onboard" => run_yzx_onboard(&argv),
         "popup" => run_yzx_popup(&argv),
         "profile" => run_profile(&argv),
         "zellij" => run_zellij(&argv),

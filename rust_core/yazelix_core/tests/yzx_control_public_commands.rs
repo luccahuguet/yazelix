@@ -54,6 +54,23 @@ fn yzx_control_keys_root_preserves_discoverability_sections() {
     assert!(!stdout.contains("│"));
 }
 
+// Defends: the Rust-owned `yzx onboard` command exposes a non-interactive help path without entering prompt mode.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_control_onboard_help_prints_prompt_contract() {
+    let output = yzx_control_command()
+        .arg("onboard")
+        .arg("--help")
+        .output()
+        .unwrap();
+    let stdout = stdout_text(output);
+
+    assert!(stdout.contains("Generate a focused first-run Yazelix config"));
+    assert!(stdout.contains("yzx onboard [--force] [--dry-run]"));
+    assert!(stdout.contains("--force"));
+    assert!(stdout.contains("--dry-run"));
+}
+
 // Defends: the Rust-owned `yzx keys` leaves preserve alias parity and tool-specific guidance instead of routing every leaf to the same generic output.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
