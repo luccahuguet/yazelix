@@ -1,4 +1,4 @@
-//! Typed Yazi render-plan data for Nushell TOML/Lua renderers.
+//! Typed Yazi render-plan data for generated Yazi TOML/Lua config.
 //!
 //! **Rust dependency gate:** in-house only (std + existing workspace deps). No new crates.
 //!

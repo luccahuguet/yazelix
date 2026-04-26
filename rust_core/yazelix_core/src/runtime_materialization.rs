@@ -107,7 +107,7 @@ pub enum RuntimeRepairDirective {
         #[serde(skip_serializing_if = "Option::is_none")]
         missing_artifacts_detail_line: Option<String>,
         success_lines: Vec<String>,
-        /// `repaired_missing_artifacts` or `repaired` for Nushell return records.
+        /// `repaired_missing_artifacts` or `repaired` for machine-readable callers.
         result_status: String,
     },
 }

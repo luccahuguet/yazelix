@@ -2,7 +2,7 @@
 //! Zellij integration commands for `yzx_control`.
 //!
 //! These are thin wrappers around `zellij action pipe --plugin yazelix_pane_orchestrator`
-//! that replace the Nushell `zellij.nu` pipe functions.
+//! used by Rust-owned public commands and the remaining shell/process wrappers.
 
 use crate::bridge::{CoreError, ErrorClass};
 use crate::compute_runtime_env;

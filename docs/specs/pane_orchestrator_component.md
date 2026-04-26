@@ -111,9 +111,6 @@ The plugin reads these configuration keys from Zellij plugin configuration:
 - `runtime_dir`
 - `popup_width_percent`
 - `popup_height_percent`
-- `widget_tray_segment`
-- `custom_text_segment`
-- `sidebar_width_percent`
 
 `runtime_dir` is session-local plugin state. The generated Zellij config must set it on the loaded pane-orchestrator plugin instance for that session, and direct `MessagePlugin` bindings or `zellij action pipe` calls must target that loaded instance by alias instead of re-supplying `runtime_dir` on each message. Transient-pane payloads may still carry an explicit runtime override when the caller intentionally wants the wrapper launch to use a different runtime root. The geometry keys are percentages and default to the Rust-side transient-pane defaults when absent or outside the accepted runtime range.
 

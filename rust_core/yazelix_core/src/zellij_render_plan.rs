@@ -1,4 +1,4 @@
-//! Typed Zellij render-plan data for Nushell KDL renderers.
+//! Typed Zellij render-plan data for generated Zellij config and layout KDL.
 
 use crate::bridge::{CoreError, ErrorClass};
 use serde::{Deserialize, Serialize};
@@ -502,7 +502,7 @@ mod tests {
         assert!(def.value.contains("yzx_side.kdl"));
     }
 
-    // Regression: omitted JSON fields use config-contract defaults so bridge callers cannot drift from main_config_contract.toml.
+    // Regression: omitted JSON fields use config-contract defaults so machine callers cannot drift from main_config_contract.toml.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn omitted_support_kitty_keyboard_protocol_defaults_to_contract_false() {

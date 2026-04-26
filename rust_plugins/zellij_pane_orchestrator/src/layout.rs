@@ -23,28 +23,6 @@ pub(crate) enum FamilyDirection {
     Previous,
 }
 
-#[derive(Default)]
-pub(crate) struct ZjstatusSegments {
-    pub(crate) widget_tray: String,
-    pub(crate) custom_text: String,
-}
-
-pub(crate) struct OverrideLayoutConfig {
-    pub(crate) zjstatus_segments: ZjstatusSegments,
-    pub(crate) sidebar_width_percent: usize,
-}
-
-pub(crate) const DEFAULT_SIDEBAR_WIDTH_PERCENT: usize = 20;
-
-impl Default for OverrideLayoutConfig {
-    fn default() -> Self {
-        Self {
-            zjstatus_segments: ZjstatusSegments::default(),
-            sidebar_width_percent: DEFAULT_SIDEBAR_WIDTH_PERCENT,
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum LayoutFamily {
     Single,

@@ -419,8 +419,6 @@ fn render_merged_config(
         .join("zellij")
         .join("yazelix_overrides.kdl");
     let override_keybinds = read_yazelix_override_keybinds(&overrides_path, runtime_dir)?;
-    let widget_tray_segment = render_widget_tray_segment(render_plan)?;
-    let custom_text_segment = render_custom_text_segment(&render_plan.custom_text);
     let base_config = strip_yazelix_owned_top_level_settings(
         &extracted_blocks.config_without_semantic_blocks,
         &render_plan.owned_top_level_setting_names,
@@ -431,9 +429,6 @@ fn render_merged_config(
     let plugins_block = build_yazelix_plugins_block(
         &extracted_blocks.plugin_lines,
         pane_orchestrator_wasm_path,
-        &widget_tray_segment,
-        &custom_text_segment,
-        render_plan.sidebar_width_percent,
         runtime_dir,
         render_plan.popup_width_percent,
         render_plan.popup_height_percent,
@@ -583,9 +578,6 @@ fn build_yazelix_load_plugins_block(existing_lines: &[String]) -> String {
 fn build_yazelix_plugins_block(
     existing_lines: &[String],
     pane_orchestrator_wasm_path: &Path,
-    widget_tray_segment: &str,
-    custom_text_segment: &str,
-    sidebar_width_percent: i64,
     runtime_dir: &Path,
     popup_width_percent: i64,
     popup_height_percent: i64,
@@ -600,15 +592,6 @@ fn build_yazelix_plugins_block(
                 "    {PANE_ORCHESTRATOR_PLUGIN_ALIAS} location=\"file:{}\" {{",
                 pane_orchestrator_wasm_path.to_string_lossy()
             ),
-            format!(
-                "        widget_tray_segment {}",
-                json_quote(widget_tray_segment)
-            ),
-            format!(
-                "        custom_text_segment {}",
-                json_quote(custom_text_segment)
-            ),
-            format!("        sidebar_width_percent \"{sidebar_width_percent}\""),
             format!(
                 "        runtime_dir {}",
                 json_quote(&runtime_dir.to_string_lossy())
@@ -1785,23 +1768,22 @@ keybinds {
     // Regression: pane-orchestrator plugin config must carry one shared sidebar/popup/runtime contract without duplicate alias injection.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn plugin_block_carries_sidebar_and_popup_contract_once() {
+    fn plugin_block_carries_runtime_and_popup_contract_once() {
         let block = build_yazelix_plugins_block(
             &[],
             std::path::Path::new("/opt/yazelix/plugins/yazelix_pane_orchestrator.wasm"),
-            "[editor: hx]",
-            "",
-            25,
             std::path::Path::new("/opt/yazelix"),
             82,
             76,
         );
 
         assert!(block.contains("yazelix_pane_orchestrator location=\"file:/opt/yazelix/plugins/yazelix_pane_orchestrator.wasm\""));
-        assert!(block.contains("sidebar_width_percent \"25\""));
         assert!(block.contains("runtime_dir \"/opt/yazelix\""));
         assert!(block.contains("popup_width_percent \"82\""));
         assert!(block.contains("popup_height_percent \"76\""));
+        assert!(!block.contains("widget_tray_segment"));
+        assert!(!block.contains("custom_text_segment"));
+        assert!(!block.contains("sidebar_width_percent"));
         assert_eq!(
             block.matches("yazelix_pane_orchestrator location=").count(),
             1

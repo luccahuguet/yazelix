@@ -41,7 +41,6 @@ struct State {
     sidebar_yazi_state_by_tab: HashMap<usize, sidebar_yazi::SidebarYaziState>,
     seen_tab_positions: HashSet<usize>,
     initial_workspace_state: Option<WorkspaceState>,
-    override_layout_config: layout::OverrideLayoutConfig,
     transient_pane_config: transient::TransientPaneConfig,
     permissions_granted: bool,
 }
@@ -54,23 +53,6 @@ impl ZellijPlugin for State {
         let plugin_ids = get_plugin_ids();
         let bootstrap_root = bootstrap_workspace_root(&plugin_ids.initial_cwd);
         self.initial_workspace_state = Some(WorkspaceState::from_bootstrap_root(bootstrap_root));
-        self.override_layout_config = layout::OverrideLayoutConfig {
-            zjstatus_segments: layout::ZjstatusSegments {
-                widget_tray: configuration
-                    .get("widget_tray_segment")
-                    .cloned()
-                    .unwrap_or_default(),
-                custom_text: configuration
-                    .get("custom_text_segment")
-                    .cloned()
-                    .unwrap_or_default(),
-            },
-            sidebar_width_percent: configuration
-                .get("sidebar_width_percent")
-                .and_then(|value| value.parse::<usize>().ok())
-                .filter(|value| (10..=40).contains(value))
-                .unwrap_or(layout::DEFAULT_SIDEBAR_WIDTH_PERCENT),
-        };
         request_permission(&[
             PermissionType::ReadApplicationState,
             PermissionType::ChangeApplicationState,
