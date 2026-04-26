@@ -21,11 +21,13 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 const PANE_ORCHESTRATOR_PLUGIN_ALIAS: &str = "yazelix_pane_orchestrator";
+const STATUS_BUS_SCHEMA_VERSION: i64 = 1;
 const EDITOR_PANE_NAME: &str = "editor";
 pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
     "pipe",
     "get-workspace-root",
     "inspect-session",
+    "status-bus",
     "retarget",
     "open-editor",
     "open-editor-cwd",
@@ -59,6 +61,12 @@ struct ZellijGetWorkspaceRootArgs {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ZellijInspectSessionArgs {
+    json: bool,
+    help: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct ZellijStatusBusArgs {
     json: bool,
     help: bool,
 }
@@ -254,6 +262,34 @@ fn print_zellij_inspect_session_help() {
     println!("  yzx_control zellij inspect-session [--json]");
 }
 
+fn parse_zellij_status_bus_args(args: &[String]) -> Result<ZellijStatusBusArgs, CoreError> {
+    let mut parsed = ZellijStatusBusArgs::default();
+    for arg in args {
+        match arg.as_str() {
+            "--json" => parsed.json = true,
+            "-h" | "--help" | "help" => parsed.help = true,
+            other if other.starts_with('-') => {
+                return Err(CoreError::usage(format!(
+                    "Unknown argument for zellij status-bus: {other}"
+                )));
+            }
+            _ => {
+                return Err(CoreError::usage(
+                    "zellij status-bus accepts no positional arguments".to_string(),
+                ));
+            }
+        }
+    }
+    Ok(parsed)
+}
+
+fn print_zellij_status_bus_help() {
+    println!("Read the current versioned Yazelix status-bus snapshot");
+    println!();
+    println!("Usage:");
+    println!("  yzx_control zellij status-bus [--json]");
+}
+
 pub fn run_zellij_inspect_session(args: &[String]) -> Result<i32, CoreError> {
     let parsed = parse_zellij_inspect_session_args(args)?;
     if parsed.help {
@@ -303,6 +339,104 @@ pub fn run_zellij_inspect_session(args: &[String]) -> Result<i32, CoreError> {
             Ok(0)
         }
     }
+}
+
+pub fn run_zellij_status_bus(args: &[String]) -> Result<i32, CoreError> {
+    let parsed = parse_zellij_status_bus_args(args)?;
+    if parsed.help {
+        print_zellij_status_bus_help();
+        return Ok(0);
+    }
+
+    if env::var_os("ZELLIJ").is_none() {
+        eprintln!("yzx_control zellij status-bus only works inside a Yazelix/Zellij session.");
+        return Ok(1);
+    }
+
+    let response = run_pane_orchestrator_command("get_active_tab_session_state", "")?;
+    let value = decode_status_bus_snapshot(&response)?;
+    if parsed.json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&value).unwrap_or_else(|_| value.to_string())
+        );
+    } else {
+        println!("Yazelix status bus snapshot");
+        for line in render_session_state_inspection_lines(&value) {
+            println!("{line}");
+        }
+    }
+    Ok(0)
+}
+
+fn decode_status_bus_snapshot(raw: &str) -> Result<Value, CoreError> {
+    match raw.trim() {
+        "permissions_denied" => {
+            return Err(CoreError::classified(
+                ErrorClass::Runtime,
+                "status_bus_permissions_denied",
+                "Pane orchestrator permissions are not granted for the status bus.",
+                "Run `yzx doctor --fix`, restart Yazelix, and retry.",
+                json!({}),
+            ));
+        }
+        "not_ready" | "missing" => {
+            return Err(CoreError::classified(
+                ErrorClass::Runtime,
+                "status_bus_not_ready",
+                "Pane orchestrator status bus is not ready yet.",
+                "Wait a moment and retry from inside the affected Yazelix session.",
+                json!({}),
+            ));
+        }
+        "invalid_payload" => {
+            return Err(CoreError::classified(
+                ErrorClass::Runtime,
+                "status_bus_invalid_request",
+                "Pane orchestrator rejected the status-bus request.",
+                "Restart Yazelix and retry. If this persists, rebuild the pane orchestrator wasm.",
+                json!({}),
+            ));
+        }
+        _ => {}
+    }
+
+    let value: Value = serde_json::from_str(raw).map_err(|error| {
+        CoreError::classified(
+            ErrorClass::Runtime,
+            "invalid_status_bus_payload",
+            format!("Pane orchestrator returned invalid status-bus JSON: {error}"),
+            "Restart Yazelix and retry. If this persists, rebuild the pane orchestrator wasm.",
+            json!({ "payload": raw }),
+        )
+    })?;
+    let schema_version = value
+        .get("schema_version")
+        .and_then(Value::as_i64)
+        .ok_or_else(|| {
+            CoreError::classified(
+                ErrorClass::Runtime,
+                "missing_status_bus_schema_version",
+                "Pane orchestrator status-bus payload is missing schema_version.",
+                "Rebuild the pane orchestrator wasm so consumers can validate the status schema.",
+                json!({ "payload": value.clone() }),
+            )
+        })?;
+    if schema_version != STATUS_BUS_SCHEMA_VERSION {
+        return Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "unsupported_status_bus_schema_version",
+            format!("Unsupported pane-orchestrator status-bus schema_version: {schema_version}."),
+            format!(
+                "This Yazelix build supports status-bus schema_version {STATUS_BUS_SCHEMA_VERSION}. Update Yazelix or rebuild the pane orchestrator wasm so producer and consumer match."
+            ),
+            json!({
+                "expected": STATUS_BUS_SCHEMA_VERSION,
+                "actual": schema_version,
+            }),
+        ));
+    }
+    Ok(value)
 }
 
 pub fn probe_active_tab_session_state() -> Value {
@@ -1335,5 +1469,24 @@ mod tests {
         assert!(rendered.contains("layout: active_swap_layout_name=single_open"));
         assert!(rendered.contains("managed_panes: editor=terminal:7, sidebar=terminal:8"));
         assert!(rendered.contains("sidebar_yazi: id=yazi-123, cwd=/tmp/project"));
+    }
+
+    // Defends: status-bus consumers reject unsupported producer schema versions instead of parsing stale payloads optimistically.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn status_bus_decode_rejects_unsupported_schema_version() {
+        let err = decode_status_bus_snapshot(
+            r#"{"schema_version":99,"active_tab_position":0,"managed_panes":{"editor_pane_id":null,"sidebar_pane_id":null},"focus_context":"unknown","layout":{"active_swap_layout_name":null,"sidebar_collapsed":null}}"#,
+        )
+        .unwrap_err();
+
+        assert!(
+            err.message()
+                .contains("Unsupported pane-orchestrator status-bus schema_version")
+        );
+        assert!(
+            err.remediation()
+                .contains("supports status-bus schema_version 1")
+        );
     }
 }

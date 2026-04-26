@@ -54,6 +54,7 @@ use yazelix_core::run_zellij_open_editor_cwd;
 use yazelix_core::run_zellij_open_terminal;
 use yazelix_core::run_zellij_pipe;
 use yazelix_core::run_zellij_retarget;
+use yazelix_core::run_zellij_status_bus;
 use yazelix_core::update_commands::run_yzx_update;
 use yazelix_core::zellij_commands::internal_zellij_control_subcommands_usage;
 use yazelix_core::zellij_commands::probe_active_tab_session_state;
@@ -937,6 +938,7 @@ fn run_zellij(args: &[String]) -> Result<i32, CoreError> {
         "pipe" => run_zellij_pipe(&argv),
         "get-workspace-root" => run_zellij_get_workspace_root(&argv),
         "inspect-session" => run_zellij_inspect_session(&argv),
+        "status-bus" => run_zellij_status_bus(&argv),
         "retarget" => run_zellij_retarget(&argv),
         "open-editor" => run_zellij_open_editor(&argv),
         "open-editor-cwd" => run_zellij_open_editor_cwd(&argv),

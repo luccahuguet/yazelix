@@ -94,6 +94,36 @@ ya_command = "ya"
     assert!(stdout.contains("Sidebar Yazi synced"));
 }
 
+// Defends: consumers can obtain the current versioned pane-orchestrator status bus without parsing ad hoc logs or generated files.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_control_zellij_status_bus_json_reads_versioned_snapshot() {
+    let fixture = managed_config_fixture("");
+    let fake_bin = fixture.home_dir.join("fake-bin");
+    fs::create_dir_all(&fake_bin).unwrap();
+    write_executable_script(
+        &fake_bin.join("zellij"),
+        "#!/bin/sh\nname=''\nprevious=''\nfor arg in \"$@\"; do\n  if [ \"$previous\" = '--name' ]; then name=\"$arg\"; fi\n  previous=\"$arg\"\ndone\nif [ \"$name\" = 'get_active_tab_session_state' ]; then\n  printf '%s\\n' '{\"schema_version\":1,\"active_tab_position\":4,\"workspace\":{\"root\":\"/tmp/project\",\"source\":\"explicit\"},\"managed_panes\":{\"editor_pane_id\":\"terminal:7\",\"sidebar_pane_id\":\"terminal:8\"},\"focus_context\":\"editor\",\"layout\":{\"active_swap_layout_name\":\"single_open\",\"sidebar_collapsed\":false},\"sidebar_yazi\":{\"yazi_id\":\"yazi-123\",\"cwd\":\"/tmp/project\"},\"transient_panes\":{\"popup\":null,\"menu\":null},\"extensions\":{\"ai_pane_activity\":[]}}'\n  exit 0\nfi\nprintf 'unexpected pipe name: %s\\n' \"$name\" >&2\nexit 1\n",
+    );
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .env("PATH", prepend_path(&fake_bin))
+        .env("ZELLIJ", "1")
+        .arg("zellij")
+        .arg("status-bus")
+        .arg("--json")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stderr.is_empty());
+    let snapshot: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(snapshot["schema_version"], 1);
+    assert_eq!(snapshot["active_tab_position"], 4);
+    assert_eq!(snapshot["workspace"]["root"], "/tmp/project");
+    assert_eq!(snapshot["managed_panes"]["editor_pane_id"], "terminal:7");
+}
+
 // Defends: the public Rust-owned `yzx reveal` route keeps the sidebar-disabled guidance instead of failing through missing session state.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
