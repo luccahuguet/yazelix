@@ -20,7 +20,7 @@ The current tree contained mixed signals about macOS support. The top-level docs
 | `yzx launch` on other terminals | `best_effort` | WezTerm, Kitty, Alacritty, and Foot are PATH-provided alternatives, but macOS launch paths for these terminals have less frequent validation than Ghostty |
 | `yzx enter` | `best_effort` | Should work on macOS but has no dedicated macOS-only validation lane |
 | Zellij and Yazi behavior | `best_effort` | Core session and file manager should work, but macOS-specific edge cases are best-effort until reported and fixed |
-| Package-first macOS launcher preview | `experimental` | `yzx desktop macos_preview install` creates `~/Applications/Yazelix Preview.app` as an opt-in, unsigned, unnotarized, maintainer-unverified preview for community testing. It resolves the default Nix profile or Home Manager profile `yzx` wrapper and does not assume a repo clone. |
+| Package-first macOS launcher preview | `experimental` | `yzx desktop macos_preview install` creates `~/Applications/Yazelix Preview.app` as an opt-in, unsigned, unnotarized, maintainer-unverified preview for community testing. It resolves the default Nix profile or Home Manager profile `yzx` wrapper and does not assume a repo clone. The production stance and promotion gate live in `macos_launcher_productization.md`. |
 | Supported Spotlight/Launchpad/Dock app-bundle launcher | `historical_or_out_of_scope` | Yazelix does not ship a supported macOS app-bundle launcher today. The old clone-era bundle was removed instead of being kept as a half-supported surface. The preview above may inform a future supported surface, but it is not that supported surface. |
 | Home Manager macOS-specific paths | `best_effort` | The Home Manager module works where Nix and Home Manager are available, but macOS-specific integration paths have no dedicated validation |
 
@@ -44,7 +44,7 @@ The macOS launcher preview is intentionally smaller than a supported native app 
 - Missing or non-executable launcher failures are visible through the app script and tell the user to reinstall Yazelix and rerun `yzx desktop macos_preview install`
 - Startup failures ask the user to run `yzx doctor --verbose` from Terminal before reporting feedback
 
-This preview does not include code signing, notarization, a DMG, Dock polish, Launch Services guarantees, or maintainer macOS-hardware validation. Those claims require a separate supported-launcher contract.
+This preview does not include code signing, notarization, a DMG, Dock polish, Launch Services guarantees, or maintainer macOS-hardware validation. Those claims require the supported-launcher gate in [`macos_launcher_productization.md`](./macos_launcher_productization.md).
 
 ## Platform Scope Discipline
 
@@ -59,6 +59,7 @@ Automated:
 - `nu nushell/scripts/dev/test_yzx_generated_configs.nu` — includes `test_ghostty_macos_launch_command_omits_linux_specific_flags` defending the macOS Ghostty command shape
 - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core launch_commands::tests::parse_desktop_args_accepts_macos_preview_action`
 - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core launch_commands::tests::render_macos_preview_launcher_uses_profile_yzx_and_actionable_failures`
+- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core launch_commands::tests::render_macos_preview_info_plist_carries_owned_app_metadata`
 - `yzx_repo_validator validate-specs` — validates this spec is listed in the inventory
 
 Manual smoke gate (maintainer on macOS hardware):
@@ -83,9 +84,11 @@ Manual smoke gate (maintainer on macOS hardware):
 
 - Bead: `yazelix-0nvb`
 - Bead: `yazelix-b63b.1`
+- Bead: `yazelix-b63b.2`
 - Depends on: `yazelix-z5vf` (first-party flake package must report as available on darwin)
 - Follow-up: supported package-first macOS launcher if the preview earns a defended app-bundle contract
 - Defended by: `yzx_repo_validator validate-flake-interface`
 - Defended by: `nushell/scripts/dev/test_yzx_generated_configs.nu::test_ghostty_macos_launch_command_omits_linux_specific_flags`
 - Defended by: `rust_core/yazelix_core/src/launch_commands.rs::parse_desktop_args_accepts_macos_preview_action`
 - Defended by: `rust_core/yazelix_core/src/launch_commands.rs::render_macos_preview_launcher_uses_profile_yzx_and_actionable_failures`
+- Defended by: `rust_core/yazelix_core/src/launch_commands.rs::render_macos_preview_info_plist_carries_owned_app_metadata`

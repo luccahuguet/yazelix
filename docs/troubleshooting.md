@@ -191,6 +191,7 @@ If `~/Applications/Yazelix Preview.app` reports that it could not start:
 3. Run `yzx doctor --verbose` from Terminal and include that output when reporting community feedback
 
 This preview is unsigned, unnotarized, and not a supported macOS app-bundle contract yet.
+If Gatekeeper blocks it, report the macOS version, install method, and exact Gatekeeper text; the supported macOS launch path remains `yzx launch` from Terminal.
 
 ### `yzx update upstream` Still Tries `#install`
 

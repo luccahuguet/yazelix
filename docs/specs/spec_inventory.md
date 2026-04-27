@@ -94,6 +94,7 @@ Status labels:
 | `launch_bootstrap_rust_migration.md` | Historical | Transition record for the landed `runtime-env.compute` slice and the explicit stop condition for further v15.x launch/bootstrap Rust work |
 | `launch_startup_session_canonicalization_audit.md` | Planning | Completed launch/startup/session audit that documents shell-process no-go boundaries and smaller bridge cuts |
 | `likely_nushell_survivor_owner_cut_decisions.md` | Historical | Earlier family-by-family no-go record from the softer survivor pass; keep as background only after `provable_nushell_floor_budget.md` |
+| `macos_launcher_productization.md` | Live | Current production stance and release gate for the package-first macOS launcher preview |
 | `macos_support_floor.md` | Live | Current first-party macOS support floor |
 | `maintainer_harness_canonicalization_audit.md` | Planning | Completed maintainer/dev/validator harness audit; separates product Nu deletion from harness cleanup |
 | `maintainer_and_validator_nushell_budget.md` | Planning | Current hard budget for maintainer, `yzx dev`, and deterministic validator Nu reduction |

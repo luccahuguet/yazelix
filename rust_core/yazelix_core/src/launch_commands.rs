@@ -38,8 +38,11 @@ const DESKTOP_ICON_SIZES: &[&str] = &["48x48", "64x64", "128x128", "256x256"];
 const MACOS_PREVIEW_APP_DIR_NAME: &str = "Yazelix Preview.app";
 const MACOS_PREVIEW_APP_NAME: &str = "Yazelix Preview";
 const MACOS_PREVIEW_BUNDLE_ID: &str = "com.yazelix.YazelixPreview";
+const MACOS_PREVIEW_BUNDLE_SHORT_VERSION: &str = "0.1";
+const MACOS_PREVIEW_BUNDLE_VERSION: &str = "1";
 const MACOS_PREVIEW_EXECUTABLE_NAME: &str = "yazelix_preview_launcher";
 const MACOS_PREVIEW_MARKER_FILE: &str = "yazelix_preview_launcher.marker";
+const MACOS_PREVIEW_MIN_SYSTEM_VERSION: &str = "12.0";
 const DESKTOP_LAUNCH_CLEARED_ENV_KEYS: &[&str] = &[
     "IN_YAZELIX_SHELL",
     "YAZELIX_DIR",
@@ -772,6 +775,7 @@ fn print_desktop_help() {
     println!("  yzx desktop uninstall [--print-path]");
     println!("  yzx desktop macos_preview install [--print-path]");
     println!("  yzx desktop macos_preview uninstall [--print-path]");
+    println!("  macos_preview is unsigned, unnotarized, and community-tested");
 }
 
 fn resolve_requested_working_dir(path: Option<&str>, home: bool) -> Result<PathBuf, CoreError> {
@@ -1711,8 +1715,16 @@ fn render_macos_preview_info_plist() -> String {
         format!("  <string>{MACOS_PREVIEW_APP_NAME}</string>"),
         r#"  <key>CFBundlePackageType</key>"#.to_string(),
         r#"  <string>APPL</string>"#.to_string(),
+        r#"  <key>CFBundleShortVersionString</key>"#.to_string(),
+        format!("  <string>{MACOS_PREVIEW_BUNDLE_SHORT_VERSION}</string>"),
+        r#"  <key>CFBundleVersion</key>"#.to_string(),
+        format!("  <string>{MACOS_PREVIEW_BUNDLE_VERSION}</string>"),
+        r#"  <key>LSApplicationCategoryType</key>"#.to_string(),
+        r#"  <string>public.app-category.developer-tools</string>"#.to_string(),
         r#"  <key>LSMinimumSystemVersion</key>"#.to_string(),
-        r#"  <string>12.0</string>"#.to_string(),
+        format!("  <string>{MACOS_PREVIEW_MIN_SYSTEM_VERSION}</string>"),
+        r#"  <key>NSHighResolutionCapable</key>"#.to_string(),
+        r#"  <true/>"#.to_string(),
         r#"</dict>"#.to_string(),
         r#"</plist>"#.to_string(),
     ]
@@ -1986,6 +1998,25 @@ mod tests {
         assert!(script.contains("yzx doctor --verbose"));
         assert!(script.contains("yzx desktop macos_preview install"));
         assert!(!script.contains("/pjs/yazelix"));
+    }
+
+    // Defends: the macOS preview bundle carries owned app metadata instead of looking like a throwaway script bundle.
+    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
+    #[test]
+    fn render_macos_preview_info_plist_carries_owned_app_metadata() {
+        let info = render_macos_preview_info_plist();
+
+        assert!(info.contains("<key>CFBundlePackageType</key>"));
+        assert!(info.contains("<string>APPL</string>"));
+        assert!(info.contains("<key>CFBundleShortVersionString</key>"));
+        assert!(info.contains(&format!(
+            "<string>{MACOS_PREVIEW_BUNDLE_SHORT_VERSION}</string>"
+        )));
+        assert!(info.contains("<key>CFBundleVersion</key>"));
+        assert!(info.contains(&format!("<string>{MACOS_PREVIEW_BUNDLE_VERSION}</string>")));
+        assert!(info.contains("<key>LSApplicationCategoryType</key>"));
+        assert!(info.contains("<string>public.app-category.developer-tools</string>"));
+        assert!(info.contains("<key>NSHighResolutionCapable</key>"));
     }
 
     // Defends: the macOS preview installer creates only a Yazelix-marked app bundle with a profile-owned launcher script.
