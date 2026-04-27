@@ -135,6 +135,8 @@ Included:
 - `yzx desktop install`
 - `yzx desktop launch`
 - `yzx desktop uninstall`
+- `yzx desktop macos_preview install`
+- `yzx desktop macos_preview uninstall`
 
 Note:
 

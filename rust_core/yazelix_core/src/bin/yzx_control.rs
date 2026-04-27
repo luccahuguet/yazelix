@@ -70,7 +70,9 @@ fn usage() -> ! {
     eprintln!("       yzx_control config [--path]");
     eprintln!("       yzx_control config reset [--yes] [--no-backup]");
     eprintln!("       yzx_control cwd [target]");
-    eprintln!("       yzx_control desktop <install|launch|uninstall> [args...]");
+    eprintln!(
+        "       yzx_control desktop <install|launch|uninstall|macos_preview install|macos_preview uninstall> [args...]"
+    );
     eprintln!("       yzx_control doctor [--verbose] [--fix] [--json]");
     eprintln!("       yzx_control edit [query...] [--print]");
     eprintln!("       yzx_control edit config [--print]");

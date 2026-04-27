@@ -232,6 +232,28 @@ yzx desktop launch
 
 This launches the same command surface used by the generated desktop entry.
 
+##### macOS (Experimental Launcher Preview)
+
+The supported macOS launch path remains `yzx launch` from a terminal after installing the package via `nix profile add` or Home Manager.
+
+Community testers can opt into an experimental package-first app bundle preview:
+
+```bash
+yzx desktop macos_preview install
+```
+
+This creates `~/Applications/Yazelix Preview.app`. The preview app calls `desktop launch` through the active profile-owned `yzx` wrapper, so default-profile installs resolve through `~/.nix-profile/bin/yzx` or `/etc/profiles/per-user/$USER/bin/yzx`, and Home Manager installs resolve through the Home Manager profile wrapper when it exists. It does not assume a repo clone or a checked-out runtime path.
+
+If the package-owned launcher is missing or no longer executable, the app shows an actionable failure and asks you to reinstall Yazelix and rerun `yzx desktop macos_preview install`. If startup itself fails, run `yzx doctor --verbose` from Terminal and include that output when reporting feedback.
+
+Remove the preview app with:
+
+```bash
+yzx desktop macos_preview uninstall
+```
+
+This launcher preview is unsigned, unnotarized, and not maintainer-validated on macOS hardware. It is a community feedback path, not a supported Spotlight/Launchpad/Dock contract. See the [macOS support floor spec](./specs/macos_support_floor.md).
+
 ## Maintainer / Clone-Based Flow
 
 Normal users should prefer the `#yazelix` package or the Home Manager module.
@@ -244,12 +266,6 @@ nix run ~/src/yazelix#yazelix -- launch
 ```
 
 That is now the advanced/maintainer path, not the primary install story.
-
-##### macOS
-
-Yazelix does not ship a macOS app-bundle launcher today. The supported macOS launch path is `yzx launch` from a terminal after installing the package via `nix profile add` or Home Manager.
-
-If Spotlight/Launchpad/Dock integration becomes a supported surface in the future, it will be documented here and in the [macOS support floor spec](../docs/specs/macos_support_floor.md).
 
 ### Step 8: Using Yazelix
 

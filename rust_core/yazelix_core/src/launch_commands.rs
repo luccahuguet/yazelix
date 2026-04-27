@@ -9,7 +9,9 @@ use crate::control_plane::{
     runtime_dir_from_env, runtime_env_request, state_dir_from_env,
 };
 use crate::install_ownership_env::install_ownership_request_from_env_with_runtime_dir;
-use crate::install_ownership_report::evaluate_install_ownership_report;
+use crate::install_ownership_report::{
+    InstallOwnershipEvaluateData, evaluate_install_ownership_report,
+};
 use crate::launch_materialization::{
     launch_materialization_request_from_env, prepare_launch_materialization,
 };
@@ -33,6 +35,11 @@ const SUPPORTED_TERMINALS: &[&str] = &["ghostty", "wezterm", "kitty", "alacritty
 const WINDOW_CLASS: &str = "com.yazelix.Yazelix";
 const X11_INSTANCE: &str = "yazelix";
 const DESKTOP_ICON_SIZES: &[&str] = &["48x48", "64x64", "128x128", "256x256"];
+const MACOS_PREVIEW_APP_DIR_NAME: &str = "Yazelix Preview.app";
+const MACOS_PREVIEW_APP_NAME: &str = "Yazelix Preview";
+const MACOS_PREVIEW_BUNDLE_ID: &str = "com.yazelix.YazelixPreview";
+const MACOS_PREVIEW_EXECUTABLE_NAME: &str = "yazelix_preview_launcher";
+const MACOS_PREVIEW_MARKER_FILE: &str = "yazelix_preview_launcher.marker";
 const DESKTOP_LAUNCH_CLEARED_ENV_KEYS: &[&str] = &[
     "IN_YAZELIX_SHELL",
     "YAZELIX_DIR",
@@ -70,6 +77,7 @@ struct LaunchArgs {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct DesktopArgs {
     subcommand: Option<String>,
+    action: Option<String>,
     print_path: bool,
     help: bool,
 }
@@ -176,6 +184,16 @@ pub fn run_yzx_desktop(args: &[String]) -> Result<i32, CoreError> {
         Some("install") => run_desktop_install(parsed.print_path),
         Some("uninstall") => run_desktop_uninstall(parsed.print_path),
         Some("launch") => run_desktop_launch(),
+        Some("macos_preview") => match parsed.action.as_deref() {
+            Some("install") => run_macos_preview_install(parsed.print_path),
+            Some("uninstall") => run_macos_preview_uninstall(parsed.print_path),
+            Some(other) => Err(CoreError::usage(format!(
+                "Unknown yzx desktop macos_preview action: {other}. Try `yzx desktop --help`."
+            ))),
+            None => Err(CoreError::usage(
+                "yzx desktop macos_preview requires an action: install or uninstall.",
+            )),
+        },
         Some(other) => Err(CoreError::usage(format!(
             "Unknown yzx desktop subcommand: {other}. Try `yzx desktop --help`."
         ))),
@@ -363,6 +381,86 @@ fn run_desktop_uninstall(print_path: bool) -> Result<i32, CoreError> {
         println!("{}", desktop_path.display());
     } else {
         println!("Removed Yazelix desktop entry: {}", desktop_path.display());
+    }
+    Ok(0)
+}
+
+fn run_macos_preview_install(print_path: bool) -> Result<i32, CoreError> {
+    require_macos_preview_platform()?;
+    let runtime_dir = runtime_dir_from_env()?;
+    if !runtime_dir.exists() {
+        return Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "missing_runtime_dir",
+            format!("Missing Yazelix runtime at {}", runtime_dir.display()),
+            "Reinstall Yazelix so the runtime tree is present, then retry.",
+            serde_json::json!({}),
+        ));
+    }
+
+    let report = evaluate_install_ownership_report(
+        &install_ownership_request_from_env_with_runtime_dir(runtime_dir)?,
+    );
+    let launcher_path = macos_preview_profile_launcher_from_report(&report)?;
+    if !launcher_path.exists() {
+        return Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "missing_macos_preview_launcher",
+            format!(
+                "Missing package-owned Yazelix launcher at {}.",
+                launcher_path.display()
+            ),
+            "Reinstall Yazelix through the default Nix profile or Home Manager, then rerun `yzx desktop macos_preview install`.",
+            serde_json::json!({}),
+        ));
+    }
+
+    let home_dir = home_dir_from_env()?;
+    let app_path = macos_preview_app_path(&home_dir);
+    install_macos_preview_app(&app_path, &launcher_path)?;
+
+    if print_path {
+        println!("{}", app_path.display());
+    } else {
+        println!(
+            "Installed experimental Yazelix macOS launcher preview: {}",
+            app_path.display()
+        );
+        println!(
+            "This preview is package-first, unsigned, unnotarized, and maintainer-unverified on macOS hardware."
+        );
+    }
+    Ok(0)
+}
+
+fn run_macos_preview_uninstall(print_path: bool) -> Result<i32, CoreError> {
+    require_macos_preview_platform()?;
+    let home_dir = home_dir_from_env()?;
+    let app_path = macos_preview_app_path(&home_dir);
+
+    if app_path.exists() {
+        ensure_macos_preview_bundle_is_managed(&app_path)?;
+        fs::remove_dir_all(&app_path).map_err(|source| {
+            CoreError::io(
+                "macos_preview_app_remove",
+                format!(
+                    "Could not remove macOS preview launcher app {}.",
+                    app_path.display()
+                ),
+                "Fix the directory permissions, then retry.",
+                app_path.display().to_string(),
+                source,
+            )
+        })?;
+    }
+
+    if print_path {
+        println!("{}", app_path.display());
+    } else {
+        println!(
+            "Removed experimental Yazelix macOS launcher preview: {}",
+            app_path.display()
+        );
     }
     Ok(0)
 }
@@ -631,12 +729,20 @@ fn parse_desktop_args(args: &[String]) -> Result<DesktopArgs, CoreError> {
                 )));
             }
             other => {
-                if parsed.subcommand.is_some() {
+                if parsed.subcommand.as_deref() == Some("macos_preview") && parsed.action.is_none()
+                {
+                    parsed.action = Some(other.to_string());
+                } else if parsed.subcommand.is_some() {
                     return Err(CoreError::usage(
-                        "yzx desktop requires exactly one subcommand: install, launch, or uninstall.",
+                        "yzx desktop requires one subcommand: install, launch, uninstall, or macos_preview install|uninstall.",
                     ));
+                } else if ["install", "launch", "uninstall"].contains(&other) {
+                    parsed.subcommand = Some(other.to_string());
+                } else if other == "macos_preview" {
+                    parsed.subcommand = Some(other.to_string());
+                } else {
+                    parsed.subcommand = Some(other.to_string());
                 }
-                parsed.subcommand = Some(other.to_string());
             }
         }
     }
@@ -664,6 +770,8 @@ fn print_desktop_help() {
     println!("  yzx desktop install [--print-path]");
     println!("  yzx desktop launch");
     println!("  yzx desktop uninstall [--print-path]");
+    println!("  yzx desktop macos_preview install [--print-path]");
+    println!("  yzx desktop macos_preview uninstall [--print-path]");
 }
 
 fn resolve_requested_working_dir(path: Option<&str>, home: bool) -> Result<PathBuf, CoreError> {
@@ -1420,6 +1528,270 @@ fn render_desktop_entry(launcher_path: &Path) -> String {
     .join("\n")
 }
 
+fn require_macos_preview_platform() -> Result<(), CoreError> {
+    if current_platform_name() == "macos" {
+        return Ok(());
+    }
+    Err(CoreError::classified(
+        ErrorClass::Runtime,
+        "macos_preview_requires_macos",
+        "The macOS launcher preview can only be installed on macOS.",
+        "Use `yzx launch` on this platform, or retry `yzx desktop macos_preview install` from macOS.",
+        serde_json::json!({}),
+    ))
+}
+
+fn macos_preview_profile_launcher_from_report(
+    report: &InstallOwnershipEvaluateData,
+) -> Result<PathBuf, CoreError> {
+    let Some(raw) = report.existing_home_manager_profile_yzx.as_deref() else {
+        return Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "missing_macos_preview_profile_launcher",
+            "Could not find a package-owned Yazelix launcher in the default Nix or Home Manager profile.",
+            "Install Yazelix with `nix profile add github:luccahuguet/yazelix#yazelix` or through Home Manager, then rerun `yzx desktop macos_preview install`.",
+            serde_json::json!({
+                "install_owner": &report.install_owner,
+                "profile_candidates": &report.home_manager_profile_yzx_candidates,
+            }),
+        ));
+    };
+    Ok(PathBuf::from(raw))
+}
+
+fn macos_preview_app_path(home_dir: &Path) -> PathBuf {
+    home_dir
+        .join("Applications")
+        .join(MACOS_PREVIEW_APP_DIR_NAME)
+}
+
+fn install_macos_preview_app(app_path: &Path, launcher_path: &Path) -> Result<(), CoreError> {
+    if app_path.exists() {
+        ensure_macos_preview_bundle_is_managed(app_path)?;
+        fs::remove_dir_all(app_path).map_err(|source| {
+            CoreError::io(
+                "macos_preview_app_refresh",
+                format!(
+                    "Could not refresh existing macOS preview launcher app {}.",
+                    app_path.display()
+                ),
+                "Fix the directory permissions, then retry.",
+                app_path.display().to_string(),
+                source,
+            )
+        })?;
+    }
+
+    let contents_dir = app_path.join("Contents");
+    let macos_dir = contents_dir.join("MacOS");
+    let resources_dir = contents_dir.join("Resources");
+    fs::create_dir_all(&macos_dir).map_err(|source| {
+        CoreError::io(
+            "macos_preview_app_dir",
+            format!(
+                "Could not create macOS preview launcher directory {}.",
+                macos_dir.display()
+            ),
+            "Create the directory or fix permissions, then retry.",
+            macos_dir.display().to_string(),
+            source,
+        )
+    })?;
+    fs::create_dir_all(&resources_dir).map_err(|source| {
+        CoreError::io(
+            "macos_preview_resources_dir",
+            format!(
+                "Could not create macOS preview resources directory {}.",
+                resources_dir.display()
+            ),
+            "Create the directory or fix permissions, then retry.",
+            resources_dir.display().to_string(),
+            source,
+        )
+    })?;
+
+    fs::write(
+        contents_dir.join("Info.plist"),
+        render_macos_preview_info_plist(),
+    )
+    .map_err(|source| {
+        CoreError::io(
+            "macos_preview_info_plist_write",
+            format!(
+                "Could not write macOS preview Info.plist under {}.",
+                contents_dir.display()
+            ),
+            "Fix the directory permissions, then retry.",
+            contents_dir.display().to_string(),
+            source,
+        )
+    })?;
+    fs::write(
+        resources_dir.join(MACOS_PREVIEW_MARKER_FILE),
+        "Managed by `yzx desktop macos_preview install`.\n",
+    )
+    .map_err(|source| {
+        CoreError::io(
+            "macos_preview_marker_write",
+            format!(
+                "Could not write macOS preview marker under {}.",
+                resources_dir.display()
+            ),
+            "Fix the directory permissions, then retry.",
+            resources_dir.display().to_string(),
+            source,
+        )
+    })?;
+
+    let executable_path = macos_dir.join(MACOS_PREVIEW_EXECUTABLE_NAME);
+    fs::write(
+        &executable_path,
+        render_macos_preview_launcher_script(launcher_path),
+    )
+    .map_err(|source| {
+        CoreError::io(
+            "macos_preview_launcher_write",
+            format!(
+                "Could not write macOS preview launcher script {}.",
+                executable_path.display()
+            ),
+            "Fix the directory permissions, then retry.",
+            executable_path.display().to_string(),
+            source,
+        )
+    })?;
+    make_file_executable(&executable_path)?;
+
+    Ok(())
+}
+
+fn ensure_macos_preview_bundle_is_managed(app_path: &Path) -> Result<(), CoreError> {
+    if macos_preview_bundle_is_managed(app_path) {
+        return Ok(());
+    }
+    Err(CoreError::classified(
+        ErrorClass::Runtime,
+        "macos_preview_app_conflict",
+        format!(
+            "Refusing to modify existing non-Yazelix preview app bundle at {}.",
+            app_path.display()
+        ),
+        "Move that app bundle aside, or choose a clean ~/Applications path before retrying.",
+        serde_json::json!({ "path": app_path.display().to_string() }),
+    ))
+}
+
+fn macos_preview_bundle_is_managed(app_path: &Path) -> bool {
+    let marker = app_path
+        .join("Contents")
+        .join("Resources")
+        .join(MACOS_PREVIEW_MARKER_FILE);
+    let info = app_path.join("Contents").join("Info.plist");
+    marker.is_file()
+        && fs::read_to_string(info)
+            .map(|raw| raw.contains(MACOS_PREVIEW_BUNDLE_ID))
+            .unwrap_or(false)
+}
+
+fn render_macos_preview_info_plist() -> String {
+    [
+        r#"<?xml version="1.0" encoding="UTF-8"?>"#.to_string(),
+        r#"<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">"#.to_string(),
+        r#"<plist version="1.0">"#.to_string(),
+        r#"<dict>"#.to_string(),
+        r#"  <key>CFBundleDevelopmentRegion</key>"#.to_string(),
+        r#"  <string>en</string>"#.to_string(),
+        r#"  <key>CFBundleDisplayName</key>"#.to_string(),
+        format!("  <string>{MACOS_PREVIEW_APP_NAME}</string>"),
+        r#"  <key>CFBundleExecutable</key>"#.to_string(),
+        format!("  <string>{MACOS_PREVIEW_EXECUTABLE_NAME}</string>"),
+        r#"  <key>CFBundleIdentifier</key>"#.to_string(),
+        format!("  <string>{MACOS_PREVIEW_BUNDLE_ID}</string>"),
+        r#"  <key>CFBundleName</key>"#.to_string(),
+        format!("  <string>{MACOS_PREVIEW_APP_NAME}</string>"),
+        r#"  <key>CFBundlePackageType</key>"#.to_string(),
+        r#"  <string>APPL</string>"#.to_string(),
+        r#"  <key>LSMinimumSystemVersion</key>"#.to_string(),
+        r#"  <string>12.0</string>"#.to_string(),
+        r#"</dict>"#.to_string(),
+        r#"</plist>"#.to_string(),
+    ]
+    .join("\n")
+}
+
+fn shell_single_quote(raw: &str) -> String {
+    format!("'{}'", raw.replace('\'', "'\"'\"'"))
+}
+
+fn render_macos_preview_launcher_script(launcher_path: &Path) -> String {
+    let quoted_launcher = shell_single_quote(&launcher_path.to_string_lossy());
+    format!(
+        r#"#!/bin/sh
+set -u
+
+YAZELIX_STABLE_YZX={quoted_launcher}
+
+show_failure() {{
+  message=$1
+  if command -v osascript >/dev/null 2>&1; then
+    osascript <<'YAZELIX_APPLESCRIPT' >/dev/null 2>&1
+display dialog "Yazelix Preview could not start. Run yzx doctor --verbose from Terminal, then reinstall the preview launcher with yzx desktop macos_preview install." buttons {{"OK"}} default button "OK" with title "Yazelix Preview"
+YAZELIX_APPLESCRIPT
+  fi
+  printf '%s\n' "$message" >&2
+}}
+
+if [ ! -x "$YAZELIX_STABLE_YZX" ]; then
+  show_failure "The package-owned yzx launcher for Yazelix Preview is missing or not executable. Reinstall Yazelix, then run: yzx desktop macos_preview install"
+  exit 1
+fi
+
+"$YAZELIX_STABLE_YZX" desktop launch
+status=$?
+if [ "$status" -ne 0 ]; then
+  show_failure "Yazelix Preview could not start. Run yzx doctor --verbose from Terminal, then reinstall the preview launcher with: yzx desktop macos_preview install"
+fi
+exit "$status"
+"#
+    )
+}
+
+fn make_file_executable(path: &Path) -> Result<(), CoreError> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut permissions = fs::metadata(path)
+            .map_err(|source| {
+                CoreError::io(
+                    "macos_preview_launcher_permissions",
+                    format!(
+                        "Could not read permissions for macOS preview launcher {}.",
+                        path.display()
+                    ),
+                    "Fix the directory permissions, then retry.",
+                    path.display().to_string(),
+                    source,
+                )
+            })?
+            .permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(path, permissions).map_err(|source| {
+            CoreError::io(
+                "macos_preview_launcher_permissions",
+                format!(
+                    "Could not mark macOS preview launcher executable at {}.",
+                    path.display()
+                ),
+                "Fix the directory permissions, then retry.",
+                path.display().to_string(),
+                source,
+            )
+        })?;
+    }
+    let _ = path;
+    Ok(())
+}
+
 fn install_desktop_icons(runtime_dir: &Path, icons_root: &Path) -> Result<(), CoreError> {
     for size in DESKTOP_ICON_SIZES {
         let source = runtime_dir
@@ -1541,6 +1913,7 @@ fn find_command(name: &str) -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::TempDir;
 
     // Defends: Rust launch arg parsing keeps the public path and terminal flag aliases after the owner cut.
     // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
@@ -1583,5 +1956,87 @@ mod tests {
         let entry = render_desktop_entry(Path::new("/tmp/with space/yzx"));
         assert!(entry.contains("Exec=\"/tmp/with space/yzx\" desktop launch"));
         assert!(entry.contains("Terminal=true"));
+    }
+
+    // Defends: macOS preview desktop parsing keeps the opt-in nested action explicit.
+    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
+    #[test]
+    fn parse_desktop_args_accepts_macos_preview_action() {
+        let parsed = parse_desktop_args(&[
+            "macos_preview".into(),
+            "install".into(),
+            "--print-path".into(),
+        ])
+        .unwrap();
+
+        assert_eq!(parsed.subcommand.as_deref(), Some("macos_preview"));
+        assert_eq!(parsed.action.as_deref(), Some("install"));
+        assert!(parsed.print_path);
+    }
+
+    // Defends: the macOS preview app bundle points at a stable package profile wrapper and reports actionable package-first repair steps.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn render_macos_preview_launcher_uses_profile_yzx_and_actionable_failures() {
+        let script =
+            render_macos_preview_launcher_script(Path::new("/Users/demo/.nix-profile/bin/yzx"));
+
+        assert!(script.contains("YAZELIX_STABLE_YZX='/Users/demo/.nix-profile/bin/yzx'"));
+        assert!(script.contains("\"$YAZELIX_STABLE_YZX\" desktop launch"));
+        assert!(script.contains("yzx doctor --verbose"));
+        assert!(script.contains("yzx desktop macos_preview install"));
+        assert!(!script.contains("/pjs/yazelix"));
+    }
+
+    // Defends: the macOS preview installer creates only a Yazelix-marked app bundle with a profile-owned launcher script.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn install_macos_preview_app_writes_managed_bundle() {
+        let tmp = TempDir::new().unwrap();
+        let app_path = tmp
+            .path()
+            .join("Applications")
+            .join(MACOS_PREVIEW_APP_DIR_NAME);
+        let launcher_path = tmp.path().join(".nix-profile").join("bin").join("yzx");
+
+        install_macos_preview_app(&app_path, &launcher_path).unwrap();
+
+        let info = fs::read_to_string(app_path.join("Contents").join("Info.plist")).unwrap();
+        let marker = app_path
+            .join("Contents")
+            .join("Resources")
+            .join(MACOS_PREVIEW_MARKER_FILE);
+        let script = fs::read_to_string(
+            app_path
+                .join("Contents")
+                .join("MacOS")
+                .join(MACOS_PREVIEW_EXECUTABLE_NAME),
+        )
+        .unwrap();
+
+        assert!(info.contains(MACOS_PREVIEW_BUNDLE_ID));
+        assert!(marker.is_file());
+        assert!(script.contains(&launcher_path.to_string_lossy().to_string()));
+        assert!(macos_preview_bundle_is_managed(&app_path));
+    }
+
+    // Regression: uninstall and refresh paths must not take ownership of an unrelated app bundle at the preview path.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn macos_preview_bundle_guard_rejects_unmarked_app_path() {
+        let tmp = TempDir::new().unwrap();
+        let app_path = tmp
+            .path()
+            .join("Applications")
+            .join(MACOS_PREVIEW_APP_DIR_NAME);
+        fs::create_dir_all(app_path.join("Contents")).unwrap();
+        fs::write(
+            app_path.join("Contents").join("Info.plist"),
+            render_macos_preview_info_plist(),
+        )
+        .unwrap();
+
+        let err = ensure_macos_preview_bundle_is_managed(&app_path).unwrap_err();
+        assert_eq!(err.code(), "macos_preview_app_conflict");
     }
 }

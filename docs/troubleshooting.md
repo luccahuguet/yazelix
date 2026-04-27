@@ -182,6 +182,16 @@ If clicking Yazelix in your application menu does nothing:
 3. **Verify your package/profile path:** Ensure the package or Home Manager profile that provides `yzx` is still present
 4. **If a stale user-local entry shadows Home Manager:** remove it with `yzx desktop uninstall`
 
+### Experimental macOS Preview App Doesn't Start
+
+If `~/Applications/Yazelix Preview.app` reports that it could not start:
+
+1. Reinstall or refresh the package-owned Yazelix profile entry
+2. Regenerate the preview app with `yzx desktop macos_preview install`
+3. Run `yzx doctor --verbose` from Terminal and include that output when reporting community feedback
+
+This preview is unsigned, unnotarized, and not a supported macOS app-bundle contract yet.
+
 ### `yzx update upstream` Still Tries `#install`
 
 If `yzx update upstream` still tries the removed `github:luccahuguet/yazelix#install` path, your shell is almost certainly resolving `yzx` through a stale legacy `~/.local/bin/yzx` wrapper instead of the current profile-owned command

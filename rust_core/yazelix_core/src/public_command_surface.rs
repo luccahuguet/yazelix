@@ -528,11 +528,29 @@ const DESKTOP_UNINSTALL_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::System),
     Some("Remove Yazelix-managed desktop entry and icon assets."),
 );
+const DESKTOP_MACOS_PREVIEW_INSTALL_COMMAND: YzxCommandMetadata = metadata(
+    "yzx desktop macos_preview install",
+    "Install the experimental macOS launcher preview app bundle",
+    YzxCommandCategory::Integration,
+    &[],
+    Some(YzxMenuCategory::System),
+    Some("Install the package-first experimental macOS launcher preview."),
+);
+const DESKTOP_MACOS_PREVIEW_UNINSTALL_COMMAND: YzxCommandMetadata = metadata(
+    "yzx desktop macos_preview uninstall",
+    "Remove the experimental macOS launcher preview app bundle",
+    YzxCommandCategory::Integration,
+    &[],
+    Some(YzxMenuCategory::System),
+    Some("Remove the Yazelix-managed experimental macOS launcher preview."),
+);
 const DESKTOP_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[
     DESKTOP_ROOT_COMMAND,
     DESKTOP_INSTALL_COMMAND,
     DESKTOP_LAUNCH_COMMAND,
     DESKTOP_UNINSTALL_COMMAND,
+    DESKTOP_MACOS_PREVIEW_INSTALL_COMMAND,
+    DESKTOP_MACOS_PREVIEW_UNINSTALL_COMMAND,
 ];
 
 const DEV_ROOT_COMMAND: YzxCommandLeaf = leaf(
