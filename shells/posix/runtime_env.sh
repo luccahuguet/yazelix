@@ -15,6 +15,18 @@ export YAZELIX_CONFIG_DIR="${YAZELIX_CONFIG_DIR:-$xdg_config_home/yazelix}"
 export YAZELIX_STATE_DIR="${YAZELIX_STATE_DIR:-$xdg_data_home/yazelix}"
 export YAZELIX_LOGS_DIR="${YAZELIX_LOGS_DIR:-$YAZELIX_STATE_DIR/logs}"
 
+scrub_yazelix_workspace_child_gui_env() {
+  unset GIO_EXTRA_MODULES
+  unset GIO_MODULE_DIR
+  unset GSETTINGS_SCHEMA_DIR
+  unset GI_TYPELIB_PATH
+  unset GTK_PATH
+  unset GTK_EXE_PREFIX
+  unset GTK_DATA_PREFIX
+  unset GDK_PIXBUF_MODULE_FILE
+  unset GDK_PIXBUF_MODULEDIR
+}
+
 strip_runtime_path_entries() {
   current_path="${1:-}"
   cleaned_path=""

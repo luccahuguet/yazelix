@@ -2,11 +2,12 @@
 
 use serde_json::Value;
 use std::fs;
+use std::process::Command;
 
 mod support;
 
 use support::commands::{apply_managed_config_env, yzx_control_command};
-use support::fixtures::{managed_config_fixture, prepend_path, write_executable_script};
+use support::fixtures::{managed_config_fixture, prepend_path, repo_root, write_executable_script};
 
 fn yzx_control_command_in_fixture(
     fixture: &support::fixtures::ManagedConfigFixture,
@@ -20,6 +21,90 @@ fn write_default_profile_manifest(fixture: &support::fixtures::ManagedConfigFixt
     let manifest_path = fixture.home_dir.join(".nix-profile").join("manifest.json");
     fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
     fs::write(manifest_path, raw).unwrap();
+}
+
+// Regression: workspace startup scrubs inherited GTK/GIO loader variables so host GUI apps do not load incompatible Nix modules.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn start_yazelix_scrubs_gui_loader_env_before_control_handoff() {
+    let repo = repo_root();
+    let temp = tempfile::tempdir().unwrap();
+    let runtime_dir = temp.path().join("runtime");
+    let home_dir = temp.path().join("home");
+    let posix_dir = runtime_dir.join("shells").join("posix");
+
+    fs::create_dir_all(&posix_dir).unwrap();
+    fs::create_dir_all(runtime_dir.join("libexec")).unwrap();
+    fs::create_dir_all(&home_dir).unwrap();
+
+    write_executable_script(
+        &posix_dir.join("start_yazelix.sh"),
+        &fs::read_to_string(repo.join("shells/posix/start_yazelix.sh")).unwrap(),
+    );
+    fs::write(
+        posix_dir.join("runtime_env.sh"),
+        fs::read_to_string(repo.join("shells/posix/runtime_env.sh")).unwrap(),
+    )
+    .unwrap();
+    write_executable_script(&runtime_dir.join("libexec/nu"), "#!/bin/sh\nexit 0\n");
+
+    let capture = temp.path().join("capture_env.sh");
+    write_executable_script(
+        &capture,
+        r#"#!/bin/sh
+set -eu
+printf 'argv=%s\n' "${1:-}"
+for key in GIO_EXTRA_MODULES GIO_MODULE_DIR GSETTINGS_SCHEMA_DIR GI_TYPELIB_PATH GTK_PATH GTK_EXE_PREFIX GTK_DATA_PREFIX GDK_PIXBUF_MODULE_FILE GDK_PIXBUF_MODULEDIR; do
+  eval "value=\${$key-unset}"
+  printf '%s=%s\n' "$key" "$value"
+done
+printf 'YAZELIX_RUNTIME_DIR=%s\n' "$YAZELIX_RUNTIME_DIR"
+"#,
+    );
+
+    let output = Command::new(posix_dir.join("start_yazelix.sh"))
+        .env_clear()
+        .env("HOME", &home_dir)
+        .env("PATH", "/usr/bin:/bin")
+        .env("YAZELIX_YZX_CONTROL_BIN", &capture)
+        .env("GIO_EXTRA_MODULES", "/nix/store/bad/lib/gio/modules")
+        .env("GIO_MODULE_DIR", "/nix/store/bad/lib/gio/modules")
+        .env(
+            "GSETTINGS_SCHEMA_DIR",
+            "/nix/store/bad/share/gsettings-schemas",
+        )
+        .env("GI_TYPELIB_PATH", "/nix/store/bad/lib/girepository-1.0")
+        .env("GTK_PATH", "/nix/store/bad/lib/gtk")
+        .env("GTK_EXE_PREFIX", "/nix/store/bad")
+        .env("GTK_DATA_PREFIX", "/nix/store/bad")
+        .env("GDK_PIXBUF_MODULE_FILE", "/nix/store/bad/loaders.cache")
+        .env("GDK_PIXBUF_MODULEDIR", "/nix/store/bad/loaders")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(0));
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("argv=enter"));
+    for key in [
+        "GIO_EXTRA_MODULES",
+        "GIO_MODULE_DIR",
+        "GSETTINGS_SCHEMA_DIR",
+        "GI_TYPELIB_PATH",
+        "GTK_PATH",
+        "GTK_EXE_PREFIX",
+        "GTK_DATA_PREFIX",
+        "GDK_PIXBUF_MODULE_FILE",
+        "GDK_PIXBUF_MODULEDIR",
+    ] {
+        assert!(
+            stdout.contains(&format!("{key}=unset")),
+            "expected {key} to be scrubbed from:\n{stdout}"
+        );
+    }
+    assert!(stdout.contains(&format!(
+        "YAZELIX_RUNTIME_DIR={}",
+        runtime_dir.to_string_lossy()
+    )));
 }
 
 // Defends: the public Rust-owned `yzx config --path` route still bootstraps the managed config surface and returns its canonical path.

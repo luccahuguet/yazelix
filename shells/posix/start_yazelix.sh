@@ -22,6 +22,7 @@ fi
 export YAZELIX_BOOTSTRAP_RUNTIME_DIR="$RUNTIME_DIR"
 . "$runtime_env_script" || exit 1
 unset YAZELIX_BOOTSTRAP_RUNTIME_DIR
+scrub_yazelix_workspace_child_gui_env
 
 yzx_control_bin="${YAZELIX_YZX_CONTROL_BIN:-$RUNTIME_DIR/libexec/yzx_control}"
 if [ ! -x "$yzx_control_bin" ]; then

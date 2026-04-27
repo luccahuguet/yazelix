@@ -27,6 +27,7 @@ fi
 export YAZELIX_BOOTSTRAP_RUNTIME_DIR="$runtime_dir"
 . "$runtime_env_script"
 unset YAZELIX_BOOTSTRAP_RUNTIME_DIR
+scrub_yazelix_workspace_child_gui_env
 
 nu_string_literal() {
   path="$1"
