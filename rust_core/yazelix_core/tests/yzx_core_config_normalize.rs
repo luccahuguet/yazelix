@@ -155,6 +155,13 @@ fn write_cursor_sidecar(fixture: &RuntimeMaterializationFixture, raw: &str) {
     fs::write(cursor_path, raw).unwrap();
 }
 
+fn cursor_sidecar_path(fixture: &RuntimeMaterializationFixture) -> PathBuf {
+    fixture
+        .config_dir
+        .join("user_configs")
+        .join("yazelix_cursors.toml")
+}
+
 fn copy_dir_all(src: &Path, dst: &Path) {
     fs::create_dir_all(dst).unwrap();
     for entry in fs::read_dir(src).unwrap() {
@@ -700,6 +707,130 @@ fn runtime_materialization_repair_summary_prints_one_human_line() {
     );
     assert!(fixture.yazi_dir.join("yazi.toml").exists());
     assert!(fixture.zellij_dir.join("config.kdl").exists());
+}
+
+// Defends: runtime-materialization.repair migrates moved Ghostty cursor fields into the cursor sidecar before strict config validation.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn runtime_materialization_repair_migrates_moved_ghostty_cursor_fields() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    fs::write(
+        &fixture.managed_config,
+        [
+            "[terminal]",
+            "terminals = [\"ghostty\"]",
+            "ghostty_trail_color = \"orchid\"",
+            "ghostty_trail_effect = \"sweep\"",
+            "ghostty_trail_duration = 1.5",
+            "ghostty_mode_effect = \"sonic_boom\"",
+            "ghostty_trail_glow = \"high\"",
+        ]
+        .join("\n"),
+    )
+    .unwrap();
+
+    let repair_request = json!({
+        "plan": runtime_materialization_request(&fixture),
+        "force": true,
+    });
+    let output = runtime_materialization_command(&fixture, "runtime-materialization.repair")
+        .arg("--request-json")
+        .arg(repair_request.to_string())
+        .output()
+        .unwrap();
+
+    if !output.status.success() {
+        panic!(
+            "stdout={}\nstderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    assert!(output.stderr.is_empty());
+    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["command"], "runtime-materialization.repair");
+    assert_eq!(envelope["data"]["status"], "repaired");
+    assert_eq!(
+        envelope["data"]["migration"]["action"],
+        "moved_ghostty_cursor_fields"
+    );
+    assert_eq!(
+        envelope["data"]["migration"]["moved_fields"],
+        json!([
+            "terminal.ghostty_trail_color",
+            "terminal.ghostty_trail_effect",
+            "terminal.ghostty_trail_duration",
+            "terminal.ghostty_mode_effect",
+            "terminal.ghostty_trail_glow",
+        ])
+    );
+
+    let migrated_main = fs::read_to_string(&fixture.managed_config).unwrap();
+    let migrated_main: toml::Table = toml::from_str(&migrated_main).unwrap();
+    let terminal = migrated_main
+        .get("terminal")
+        .and_then(toml::Value::as_table)
+        .unwrap();
+    assert_eq!(
+        terminal.get("terminals").unwrap().as_array().unwrap().len(),
+        1
+    );
+    assert!(terminal.get("ghostty_trail_color").is_none());
+    assert!(terminal.get("ghostty_trail_effect").is_none());
+    assert!(terminal.get("ghostty_trail_duration").is_none());
+    assert!(terminal.get("ghostty_mode_effect").is_none());
+    assert!(terminal.get("ghostty_trail_glow").is_none());
+
+    let cursor_sidecar = fs::read_to_string(cursor_sidecar_path(&fixture)).unwrap();
+    let cursor_sidecar: toml::Table = toml::from_str(&cursor_sidecar).unwrap();
+    let settings = cursor_sidecar
+        .get("settings")
+        .and_then(toml::Value::as_table)
+        .unwrap();
+    assert_eq!(settings["trail"].as_str().unwrap(), "orchid");
+    assert_eq!(settings["trail_effect"].as_str().unwrap(), "sweep");
+    assert_eq!(settings["duration"].as_float().unwrap(), 1.5);
+    assert_eq!(settings["mode_effect"].as_str().unwrap(), "sonic_boom");
+    assert_eq!(settings["glow"].as_str().unwrap(), "high");
+}
+
+// Defends: cursor-field auto-migration does not turn runtime repair into a tolerant path for unrelated unsupported config.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn runtime_materialization_repair_keeps_unrelated_unknown_fields_blocking() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    fs::write(
+        &fixture.managed_config,
+        [
+            "[terminal]",
+            "ghostty_trail_color = \"orchid\"",
+            "not_a_real_terminal_option = true",
+        ]
+        .join("\n"),
+    )
+    .unwrap();
+
+    let repair_request = json!({
+        "plan": runtime_materialization_request(&fixture),
+        "force": true,
+    });
+    let output = runtime_materialization_command(&fixture, "runtime-materialization.repair")
+        .arg("--request-json")
+        .arg(repair_request.to_string())
+        .output()
+        .unwrap();
+
+    let envelope: Value = error_envelope(&output, 65);
+    assert_eq!(envelope["command"], "runtime-materialization.repair");
+    assert_eq!(envelope["error"]["code"], "unsupported_config");
+    assert_eq!(
+        envelope["error"]["details"]["blocking_diagnostics"][0]["path"],
+        "terminal.not_a_real_terminal_option"
+    );
 }
 
 // Defends: runtime-contract.evaluate emits one machine-readable checks envelope for batched preflight requests.

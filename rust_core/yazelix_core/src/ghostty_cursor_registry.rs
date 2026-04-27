@@ -116,6 +116,10 @@ impl CursorRegistry {
                 source,
             )
         })?;
+        CursorRegistry::parse_str(path, &raw)
+    }
+
+    pub fn parse_str(path: &Path, raw: &str) -> Result<Self, CoreError> {
         let parsed = toml::from_str::<RawCursorRegistry>(&raw).map_err(|source| {
             CoreError::toml(
                 "invalid_cursor_config_toml",

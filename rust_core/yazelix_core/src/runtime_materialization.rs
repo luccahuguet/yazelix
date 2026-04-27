@@ -5,6 +5,7 @@ use crate::config_state::{
     record_config_state,
 };
 use crate::control_plane::config_dir_from_env;
+use crate::ghostty_cursor_registry::{CursorRegistry, USER_CURSOR_CONFIG_FILENAME};
 use crate::yazi_materialization::{
     YaziMaterializationData, YaziMaterializationRequest, generate_yazi_materialization,
 };
@@ -16,6 +17,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use std::fs;
 use std::path::{Path, PathBuf};
+use toml::Value as TomlValue;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RuntimeMaterializationPlanRequest {
@@ -81,6 +83,8 @@ pub struct RuntimeMaterializationRepairRunData {
     pub plan: RuntimeMaterializationPlanData,
     pub repair: RuntimeRepairDirective,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub migration: Option<RuntimeCursorConfigMigrationData>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub materialization: Option<RuntimeMaterializationRunData>,
 }
 
@@ -111,6 +115,14 @@ pub enum RuntimeRepairDirective {
         /// `repaired_missing_artifacts` or `repaired` for machine-readable callers.
         result_status: String,
     },
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct RuntimeCursorConfigMigrationData {
+    pub action: String,
+    pub moved_fields: Vec<String>,
+    pub config_path: String,
+    pub cursor_config_path: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -231,6 +243,7 @@ pub fn materialize_runtime_state(
 pub fn repair_runtime_materialization(
     request: &RuntimeMaterializationRepairEvaluateRequest,
 ) -> Result<RuntimeMaterializationRepairRunData, CoreError> {
+    let migration = migrate_moved_ghostty_cursor_fields(&request.plan)?;
     let plan = plan_runtime_materialization(&request.plan)?;
     let repair = build_repair_directive(&plan, request.force);
 
@@ -239,6 +252,7 @@ pub fn repair_runtime_materialization(
             status: "noop".to_string(),
             plan,
             repair,
+            migration,
             materialization: None,
         }),
         RuntimeRepairDirective::Regenerate { result_status, .. } => {
@@ -247,10 +261,386 @@ pub fn repair_runtime_materialization(
                 status: result_status.clone(),
                 plan,
                 repair,
+                migration,
                 materialization: Some(materialization),
             })
         }
     }
+}
+
+const MOVED_GHOSTTY_CURSOR_SETTINGS: &[MovedGhosttyCursorSetting] = &[
+    MovedGhosttyCursorSetting {
+        old_key: "ghostty_trail_color",
+        sidecar_key: "trail",
+        value_kind: MovedGhosttyCursorValueKind::String,
+    },
+    MovedGhosttyCursorSetting {
+        old_key: "ghostty_trail_effect",
+        sidecar_key: "trail_effect",
+        value_kind: MovedGhosttyCursorValueKind::String,
+    },
+    MovedGhosttyCursorSetting {
+        old_key: "ghostty_trail_duration",
+        sidecar_key: "duration",
+        value_kind: MovedGhosttyCursorValueKind::Number,
+    },
+    MovedGhosttyCursorSetting {
+        old_key: "ghostty_mode_effect",
+        sidecar_key: "mode_effect",
+        value_kind: MovedGhosttyCursorValueKind::String,
+    },
+    MovedGhosttyCursorSetting {
+        old_key: "ghostty_trail_glow",
+        sidecar_key: "glow",
+        value_kind: MovedGhosttyCursorValueKind::String,
+    },
+];
+
+#[derive(Debug, Clone, Copy)]
+struct MovedGhosttyCursorSetting {
+    old_key: &'static str,
+    sidecar_key: &'static str,
+    value_kind: MovedGhosttyCursorValueKind,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum MovedGhosttyCursorValueKind {
+    String,
+    Number,
+}
+
+#[derive(Debug, Clone)]
+struct MovedGhosttyCursorValue {
+    old_path: String,
+    sidecar_key: &'static str,
+    rendered_value: String,
+}
+
+fn migrate_moved_ghostty_cursor_fields(
+    request: &RuntimeMaterializationPlanRequest,
+) -> Result<Option<RuntimeCursorConfigMigrationData>, CoreError> {
+    let raw_config = fs::read_to_string(&request.config_path).map_err(|source| {
+        CoreError::io(
+            "read_moved_cursor_migration_config",
+            "Could not read Yazelix config for cursor migration",
+            "Ensure ~/.config/yazelix/user_configs/yazelix.toml exists and is readable.",
+            request.config_path.to_string_lossy(),
+            source,
+        )
+    })?;
+    let parsed_config = toml::from_str::<toml::Table>(&raw_config).map_err(|source| {
+        CoreError::toml(
+            "invalid_toml",
+            "Could not parse Yazelix config for cursor migration",
+            "Fix the TOML syntax in user_configs/yazelix.toml and retry.",
+            request.config_path.to_string_lossy(),
+            source,
+        )
+    })?;
+    let moved_values = moved_ghostty_cursor_values(&parsed_config, &request.config_path)?;
+    if moved_values.is_empty() {
+        return Ok(None);
+    }
+
+    let cursor_config_path = request
+        .config_path
+        .parent()
+        .unwrap_or_else(|| Path::new("."))
+        .join(USER_CURSOR_CONFIG_FILENAME);
+    let raw_cursor_config =
+        read_cursor_sidecar_or_default(&cursor_config_path, &request.runtime_dir)?;
+    let updated_cursor_config = apply_cursor_sidecar_settings(&raw_cursor_config, &moved_values)?;
+    CursorRegistry::parse_str(&cursor_config_path, &updated_cursor_config)?;
+
+    let updated_config = remove_moved_ghostty_cursor_fields(&raw_config, &parsed_config)?;
+    write_text_atomic(&cursor_config_path, &updated_cursor_config)?;
+    write_text_atomic(&request.config_path, &updated_config)?;
+
+    Ok(Some(RuntimeCursorConfigMigrationData {
+        action: "moved_ghostty_cursor_fields".to_string(),
+        moved_fields: moved_values
+            .iter()
+            .map(|value| value.old_path.clone())
+            .collect(),
+        config_path: request.config_path.to_string_lossy().to_string(),
+        cursor_config_path: cursor_config_path.to_string_lossy().to_string(),
+    }))
+}
+
+fn moved_ghostty_cursor_values(
+    config: &toml::Table,
+    config_path: &Path,
+) -> Result<Vec<MovedGhosttyCursorValue>, CoreError> {
+    let Some(terminal) = config.get("terminal").and_then(TomlValue::as_table) else {
+        return Ok(Vec::new());
+    };
+
+    let mut moved_values = Vec::new();
+    for setting in MOVED_GHOSTTY_CURSOR_SETTINGS {
+        let Some(value) = terminal.get(setting.old_key) else {
+            continue;
+        };
+        moved_values.push(MovedGhosttyCursorValue {
+            old_path: format!("terminal.{}", setting.old_key),
+            sidecar_key: setting.sidecar_key,
+            rendered_value: render_moved_cursor_value(config_path, setting, value)?,
+        });
+    }
+    Ok(moved_values)
+}
+
+fn render_moved_cursor_value(
+    config_path: &Path,
+    setting: &MovedGhosttyCursorSetting,
+    value: &TomlValue,
+) -> Result<String, CoreError> {
+    match setting.value_kind {
+        MovedGhosttyCursorValueKind::String => value
+            .as_str()
+            .map(|value| format!("{value:?}"))
+            .ok_or_else(|| invalid_moved_cursor_field_type(config_path, setting, "string")),
+        MovedGhosttyCursorValueKind::Number => toml_numeric_value(value)
+            .map(render_cursor_duration_value)
+            .ok_or_else(|| invalid_moved_cursor_field_type(config_path, setting, "number")),
+    }
+}
+
+fn toml_numeric_value(value: &TomlValue) -> Option<f64> {
+    value
+        .as_float()
+        .or_else(|| value.as_integer().map(|value| value as f64))
+}
+
+fn render_cursor_duration_value(value: f64) -> String {
+    let mut rendered = format!("{value:.3}");
+    while rendered.contains('.') && rendered.ends_with('0') {
+        rendered.pop();
+    }
+    if rendered.ends_with('.') {
+        rendered.push('0');
+    }
+    rendered
+}
+
+fn invalid_moved_cursor_field_type(
+    config_path: &Path,
+    setting: &MovedGhosttyCursorSetting,
+    expected: &str,
+) -> CoreError {
+    CoreError::classified(
+        ErrorClass::Config,
+        "invalid_moved_cursor_config_field",
+        format!(
+            "Moved cursor config field terminal.{} has the wrong type",
+            setting.old_key
+        ),
+        "Update the moved terminal.ghostty_* cursor field manually, then retry repair.",
+        json!({
+            "path": config_path.to_string_lossy(),
+            "field": format!("terminal.{}", setting.old_key),
+            "expected": expected,
+        }),
+    )
+}
+
+fn read_cursor_sidecar_or_default(
+    cursor_config_path: &Path,
+    runtime_dir: &Path,
+) -> Result<String, CoreError> {
+    if cursor_config_path.exists() {
+        return fs::read_to_string(cursor_config_path).map_err(|source| {
+            CoreError::io(
+                "read_cursor_config_for_migration",
+                "Could not read Yazelix cursor config for migration",
+                "Ensure user_configs/yazelix_cursors.toml is readable, then retry.",
+                cursor_config_path.to_string_lossy(),
+                source,
+            )
+        });
+    }
+
+    let default_path = CursorRegistry::default_config_path(runtime_dir);
+    fs::read_to_string(&default_path).map_err(|source| {
+        CoreError::io(
+            "read_default_cursor_config_for_migration",
+            "Could not read the default Yazelix cursor config for migration",
+            "Reinstall Yazelix so the runtime includes yazelix_cursors_default.toml, then retry.",
+            default_path.to_string_lossy(),
+            source,
+        )
+    })
+}
+
+fn apply_cursor_sidecar_settings(
+    raw: &str,
+    moved_values: &[MovedGhosttyCursorValue],
+) -> Result<String, CoreError> {
+    let mut output = String::new();
+    let mut in_settings = false;
+    let mut seen = std::collections::BTreeSet::new();
+
+    for line_with_newline in raw.split_inclusive('\n') {
+        let (line, newline) = split_line_ending(line_with_newline);
+        let trimmed = line.trim();
+        if is_toml_section_header(trimmed) {
+            if in_settings {
+                insert_missing_cursor_settings(&mut output, moved_values, &seen);
+            }
+            in_settings = trimmed == "[settings]";
+        }
+
+        if in_settings {
+            if let Some(key) = toml_assignment_key(line) {
+                if let Some(moved) = moved_values
+                    .iter()
+                    .find(|value| value.sidecar_key == key.as_str())
+                {
+                    let indent = line
+                        .chars()
+                        .take_while(|character| character.is_whitespace())
+                        .collect::<String>();
+                    output.push_str(&format!(
+                        "{indent}{} = {}{newline}",
+                        moved.sidecar_key, moved.rendered_value
+                    ));
+                    seen.insert(moved.sidecar_key);
+                    continue;
+                }
+            }
+        }
+
+        output.push_str(line);
+        output.push_str(newline);
+    }
+
+    if in_settings {
+        insert_missing_cursor_settings(&mut output, moved_values, &seen);
+    }
+
+    Ok(output)
+}
+
+fn insert_missing_cursor_settings(
+    output: &mut String,
+    moved_values: &[MovedGhosttyCursorValue],
+    seen: &std::collections::BTreeSet<&'static str>,
+) {
+    for moved in moved_values {
+        if !seen.contains(moved.sidecar_key) {
+            if !output.ends_with('\n') {
+                output.push('\n');
+            }
+            output.push_str(&format!(
+                "{} = {}\n",
+                moved.sidecar_key, moved.rendered_value
+            ));
+        }
+    }
+}
+
+fn remove_moved_ghostty_cursor_fields(
+    raw_config: &str,
+    parsed_config: &toml::Table,
+) -> Result<String, CoreError> {
+    let mut output = String::new();
+    let mut current_section = String::new();
+
+    for line_with_newline in raw_config.split_inclusive('\n') {
+        let (line, newline) = split_line_ending(line_with_newline);
+        let trimmed = line.trim();
+        if is_toml_section_header(trimmed) {
+            current_section = trimmed
+                .trim_start_matches('[')
+                .trim_end_matches(']')
+                .trim()
+                .to_string();
+        }
+
+        let remove_line = toml_assignment_key(line).is_some_and(|key| {
+            if current_section == "terminal" {
+                moved_ghostty_cursor_old_key(&key)
+            } else {
+                MOVED_GHOSTTY_CURSOR_SETTINGS
+                    .iter()
+                    .any(|setting| key == format!("terminal.{}", setting.old_key))
+            }
+        });
+        if remove_line {
+            continue;
+        }
+
+        output.push_str(line);
+        output.push_str(newline);
+    }
+
+    if !config_has_moved_ghostty_cursor_fields(&parse_toml_table_lossy(&output)) {
+        return Ok(output);
+    }
+
+    let mut normalized = parsed_config.clone();
+    if let Some(terminal) = normalized
+        .get_mut("terminal")
+        .and_then(TomlValue::as_table_mut)
+    {
+        for setting in MOVED_GHOSTTY_CURSOR_SETTINGS {
+            terminal.remove(setting.old_key);
+        }
+    }
+    toml::to_string_pretty(&normalized).map_err(|source| {
+        CoreError::classified(
+            ErrorClass::Internal,
+            "serialize_migrated_config",
+            format!("Could not serialize migrated Yazelix config: {source}"),
+            "Report this as a Yazelix internal error.",
+            json!({}),
+        )
+    })
+}
+
+fn parse_toml_table_lossy(raw: &str) -> Option<toml::Table> {
+    toml::from_str::<toml::Table>(raw).ok()
+}
+
+fn config_has_moved_ghostty_cursor_fields(config: &Option<toml::Table>) -> bool {
+    config
+        .as_ref()
+        .and_then(|config| config.get("terminal"))
+        .and_then(TomlValue::as_table)
+        .is_some_and(|terminal| {
+            MOVED_GHOSTTY_CURSOR_SETTINGS
+                .iter()
+                .any(|setting| terminal.contains_key(setting.old_key))
+        })
+}
+
+fn moved_ghostty_cursor_old_key(key: &str) -> bool {
+    MOVED_GHOSTTY_CURSOR_SETTINGS
+        .iter()
+        .any(|setting| setting.old_key == key)
+}
+
+fn split_line_ending(line_with_newline: &str) -> (&str, &str) {
+    if let Some(line) = line_with_newline.strip_suffix("\r\n") {
+        (line, "\r\n")
+    } else if let Some(line) = line_with_newline.strip_suffix('\n') {
+        (line, "\n")
+    } else {
+        (line_with_newline, "")
+    }
+}
+
+fn is_toml_section_header(trimmed: &str) -> bool {
+    trimmed.starts_with('[') && trimmed.ends_with(']') && !trimmed.starts_with("[[")
+}
+
+fn toml_assignment_key(line: &str) -> Option<String> {
+    let before_comment = line.split_once('#').map_or(line, |(before, _)| before);
+    let (key, _) = before_comment.split_once('=')?;
+    let key = key.trim();
+    if key.is_empty() {
+        return None;
+    }
+    Some(key.trim_matches('"').to_string())
 }
 
 fn materialize_runtime_state_from_plan(
@@ -439,6 +829,59 @@ fn is_missing_file(path: &Path) -> bool {
         Ok(metadata) => !metadata.is_file(),
         Err(_) => true,
     }
+}
+
+fn write_text_atomic(path: &Path, content: &str) -> Result<(), CoreError> {
+    let parent = path.parent().ok_or_else(|| {
+        CoreError::classified(
+            ErrorClass::Io,
+            "atomic_write_no_parent",
+            "Cannot write a file without a parent directory",
+            "Report this as a Yazelix internal error.",
+            json!({ "path": path.to_string_lossy() }),
+        )
+    })?;
+    fs::create_dir_all(parent).map_err(|source| {
+        CoreError::io(
+            "atomic_write_mkdir",
+            "Could not create parent directory for Yazelix config migration",
+            "Check directory permissions, then retry.",
+            parent.to_string_lossy(),
+            source,
+        )
+    })?;
+
+    let unique = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+    let file_name = path
+        .file_name()
+        .map(|name| name.to_string_lossy())
+        .unwrap_or_else(|| "migrated".into());
+    let temp_path = parent.join(format!(
+        ".{file_name}.tmp.{}.{}",
+        std::process::id(),
+        unique
+    ));
+    fs::write(&temp_path, content).map_err(|source| {
+        CoreError::io(
+            "atomic_write_file",
+            "Could not write temporary Yazelix config migration file",
+            "Check directory permissions, then retry.",
+            temp_path.to_string_lossy(),
+            source,
+        )
+    })?;
+    fs::rename(&temp_path, path).map_err(|source| {
+        CoreError::io(
+            "atomic_write_rename",
+            "Could not replace Yazelix config during migration",
+            "Check directory permissions, then retry.",
+            path.to_string_lossy(),
+            source,
+        )
+    })
 }
 
 // Test lane: maintainer
