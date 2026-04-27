@@ -99,7 +99,7 @@ fn usage() -> ! {
     eprintln!("       yzx_control zellij get-workspace-root [--include-bootstrap]");
     eprintln!("       yzx_control zellij inspect-session [--json]");
     eprintln!("       yzx_control zellij retarget <path> [--editor <kind>]");
-    eprintln!("       yzx_control zellij open-editor <path>");
+    eprintln!("       yzx_control zellij open-editor <path> [path ...]");
     eprintln!("       yzx_control zellij open-editor-cwd <path>");
     eprintln!("       yzx_control zellij open-terminal <path>");
     eprintln!("       yzx_control reveal <path>");

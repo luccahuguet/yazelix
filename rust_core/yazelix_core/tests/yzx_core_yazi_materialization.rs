@@ -40,7 +40,7 @@ ratio = [1, 4, 3]
 
 [opener]
 edit = [
-  { run = '__YAZELIX_RUNTIME_DIR__/libexec/yzx_control zellij open-editor "$1"', desc = "Open File with configured editor (with Zellij integration)" },
+  { run = '__YAZELIX_RUNTIME_DIR__/libexec/yzx_control zellij open-editor %s', desc = "Open File with configured editor (with Zellij integration)" },
 ]
 
 [[plugin.prepend_fetchers]]
@@ -159,6 +159,7 @@ plugins = ["git", "starship"]
     assert!(yazi_toml.contains("[manager]"));
     assert!(yazi_toml.contains("sort_by = \"modified\""));
     assert!(yazi_toml.contains(runtime_dir.to_string_lossy().as_ref()));
+    assert!(yazi_toml.contains("yzx_control zellij open-editor %s"));
     assert!(
         init_lua.contains(
             output_dir

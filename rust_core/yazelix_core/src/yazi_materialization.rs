@@ -1194,7 +1194,7 @@ append_keymap = [{ run = "ignored-top-level" }]
     #[test]
     fn renders_runtime_root_placeholders_in_bundled_assets() {
         let rendered = render_runtime_root_placeholders(
-            "__YAZELIX_RUNTIME_DIR__/libexec/yzx_control zellij open-editor \"$1\"",
+            "__YAZELIX_RUNTIME_DIR__/libexec/yzx_control zellij open-editor %s",
             std::path::Path::new("/opt/yazelix"),
         );
 

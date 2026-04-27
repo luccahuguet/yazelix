@@ -8,11 +8,18 @@ use crate::panes::ManagedPaneKind;
 use crate::{
     State, COMMAND_STEP_DELAY_MS, RESULT_INVALID_PAYLOAD, RESULT_OK, RESULT_UNSUPPORTED_EDITOR,
 };
+use yazelix_pane_orchestrator::editor_open_contract::{
+    build_editor_change_directory_command, build_editor_command_sequence,
+    normalize_open_file_targets, EditorCommandSequenceError,
+};
 
 #[derive(Deserialize)]
 struct OpenFileRequest {
     editor: String,
-    file_path: String,
+    #[serde(default)]
+    file_path: Option<String>,
+    #[serde(default)]
+    file_paths: Vec<String>,
     working_dir: String,
 }
 
@@ -20,11 +27,6 @@ struct OpenFileRequest {
 struct EditorCwdRequest {
     editor: String,
     working_dir: String,
-}
-
-struct EditorCommandSequence {
-    change_directory_command: String,
-    open_file_command: String,
 }
 
 impl State {
@@ -81,9 +83,18 @@ impl State {
             }
         };
 
-        let command_sequence = match EditorCommandSequence::new(&open_file_request) {
-            Some(command_sequence) => command_sequence,
-            None => {
+        let file_paths = open_file_request.target_file_paths();
+        let command_sequence = match build_editor_command_sequence(
+            &open_file_request.editor,
+            &open_file_request.working_dir,
+            &file_paths,
+        ) {
+            Ok(command_sequence) => command_sequence,
+            Err(EditorCommandSequenceError::EmptyTargets) => {
+                self.respond(pipe_message, RESULT_INVALID_PAYLOAD);
+                return;
+            }
+            Err(EditorCommandSequenceError::UnsupportedEditor) => {
                 self.respond(pipe_message, RESULT_UNSUPPORTED_EDITOR);
                 return;
             }
@@ -100,9 +111,12 @@ impl State {
         sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
         write_to_pane_id(vec![13], editor_pane.pane_id);
         sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
-        write_chars_to_pane_id(&command_sequence.open_file_command, editor_pane.pane_id);
-        sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
-        write_to_pane_id(vec![13], editor_pane.pane_id);
+        for open_file_command in command_sequence.open_file_commands {
+            write_chars_to_pane_id(&open_file_command, editor_pane.pane_id);
+            sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
+            write_to_pane_id(vec![13], editor_pane.pane_id);
+            sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
+        }
 
         self.respond(pipe_message, RESULT_OK);
     }
@@ -135,51 +149,8 @@ impl State {
     }
 }
 
-impl EditorCommandSequence {
-    fn new(open_file_request: &OpenFileRequest) -> Option<Self> {
-        let change_directory_command = build_editor_change_directory_command(
-            &open_file_request.editor,
-            &open_file_request.working_dir,
-        )?;
-
-        match open_file_request.editor.as_str() {
-            "helix" => Some(Self {
-                change_directory_command,
-                open_file_command: format!(
-                    ":open \"{}\"",
-                    escape_helix_path(&open_file_request.file_path)
-                ),
-            }),
-            "neovim" => Some(Self {
-                change_directory_command,
-                open_file_command: format!(
-                    ":execute 'edit ' . fnameescape('{}')",
-                    escape_vim_single_quoted_string(&open_file_request.file_path)
-                ),
-            }),
-            _ => None,
-        }
+impl OpenFileRequest {
+    fn target_file_paths(&self) -> Vec<&str> {
+        normalize_open_file_targets(self.file_path.as_deref(), &self.file_paths)
     }
-}
-
-pub(crate) fn build_editor_change_directory_command(
-    editor: &str,
-    working_dir: &str,
-) -> Option<String> {
-    match editor {
-        "helix" => Some(format!(":cd \"{}\"", escape_helix_path(working_dir))),
-        "neovim" => Some(format!(
-            ":execute 'cd ' . fnameescape('{}')",
-            escape_vim_single_quoted_string(working_dir)
-        )),
-        _ => None,
-    }
-}
-
-fn escape_helix_path(path: &str) -> String {
-    path.replace('\\', "\\\\").replace('"', "\\\"")
-}
-
-fn escape_vim_single_quoted_string(path: &str) -> String {
-    path.replace('\'', "''")
 }

@@ -5,7 +5,7 @@ ratio = [1, 4, 3]
 
 [opener]
 edit = [
-  { run = '__YAZELIX_RUNTIME_DIR__/libexec/yzx_control zellij open-editor "$1"', desc = "Open File with configured editor (with Zellij integration)" },
+  { run = '__YAZELIX_RUNTIME_DIR__/libexec/yzx_control zellij open-editor %s', desc = "Open File with configured editor (with Zellij integration)" },
 ]
 
 [[plugin.prepend_fetchers]]

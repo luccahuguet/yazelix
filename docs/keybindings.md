@@ -85,8 +85,8 @@ You can remap the keys in your Zellij override config as long as they still send
   - `y`: Yank (copy); `Y`: Unyank (cancel copy)
   - `x`: Cut; `X`: Uncut (cancel cut)
   - `a`: Add a file (`filename.ext`) or folder (`foldername/`)
-  - `Enter`: Open the hovered item through Yazelix's configured editor opener
-  - `o`: Use Yazi's built-in open action for the hovered item
+  - `Enter`: Open selected files through Yazelix's configured editor opener
+  - `o`: Use Yazi's built-in open action for selected files
   - `O`: Open Yazi's built-in "Open with" menu for more options, including the system file manager flow when available
   - `Ctrl+y`: Toggle focus between the editor and sidebar
   - `Alt+p`: Open the selected directory in a new Zellij pane and make it the tab workspace root

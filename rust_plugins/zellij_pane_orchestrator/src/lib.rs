@@ -1,5 +1,6 @@
 pub mod active_tab_session_state;
 pub mod ai_pane_activity_contract;
+pub mod editor_open_contract;
 pub mod horizontal_focus_contract;
 pub mod pane_contract;
 pub mod screen_saver_contract;

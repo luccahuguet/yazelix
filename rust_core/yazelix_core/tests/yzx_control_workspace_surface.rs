@@ -295,7 +295,7 @@ fn yzx_control_popup_override_opens_transient_pane_with_explicit_payload() {
     );
 }
 
-// Defends: the Rust-owned Yazi file-open route reuses the managed editor through the pane orchestrator, then retargets the workspace and syncs the plugin-owned sidebar.
+// Defends: the Rust-owned Yazi file-open route carries all selected files into the managed editor, then retargets the workspace and syncs the plugin-owned sidebar.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_zellij_open_editor_reuses_managed_editor_and_syncs_sidebar() {
@@ -311,6 +311,7 @@ ya_command = "ya"
     let fake_bin = fixture.home_dir.join("fake-bin");
     let target_dir = fixture.home_dir.join("workspace");
     let target_file = target_dir.join("notes.txt");
+    let second_target_file = target_dir.join("tasks.txt");
     let zellij_commands_log = fixture.home_dir.join("zellij-commands.log");
     let open_file_payload_log = fixture.home_dir.join("open-file-payload.json");
     let retarget_payload_log = fixture.home_dir.join("retarget-payload.json");
@@ -318,6 +319,7 @@ ya_command = "ya"
     fs::create_dir_all(&fake_bin).unwrap();
     fs::create_dir_all(&target_dir).unwrap();
     fs::write(&target_file, "").unwrap();
+    fs::write(&second_target_file, "").unwrap();
 
     write_executable_script(
         &fake_bin.join("zellij"),
@@ -343,6 +345,7 @@ ya_command = "ya"
         .arg("zellij")
         .arg("open-editor")
         .arg(&target_file)
+        .arg(&second_target_file)
         .output()
         .unwrap();
 
@@ -365,6 +368,13 @@ ya_command = "ya"
         target_file.to_string_lossy().to_string()
     );
     assert_eq!(
+        open_file_payload["file_paths"],
+        serde_json::json!([
+            target_file.to_string_lossy().to_string(),
+            second_target_file.to_string_lossy().to_string()
+        ])
+    );
+    assert_eq!(
         open_file_payload["working_dir"],
         target_dir.to_string_lossy().to_string()
     );
@@ -377,6 +387,107 @@ ya_command = "ya"
     );
     assert_eq!(retarget_payload["cd_focused_pane"], false);
     assert!(retarget_payload["editor"].is_null());
+    assert_eq!(
+        fs::read_to_string(ya_log).unwrap().trim(),
+        format!(
+            "emit-to plugin-sidebar-yazi-123 cd {}",
+            target_dir.display()
+        )
+    );
+}
+
+// Defends: when the managed editor pane is absent, multi-file Yazi open starts one editor pane invocation with every selected file.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_control_zellij_open_editor_opens_missing_editor_with_all_selected_files() {
+    let fixture = managed_config_fixture(
+        r#"[editor]
+command = "hx"
+initial_sidebar_state = "open"
+
+[yazi]
+ya_command = "ya"
+"#,
+    );
+    let fake_bin = fixture.home_dir.join("fake-bin");
+    let target_dir = fixture.home_dir.join("workspace");
+    let target_file = target_dir.join("notes.txt");
+    let second_target_file = target_dir.join("tasks.txt");
+    let zellij_commands_log = fixture.home_dir.join("zellij-commands.log");
+    let open_file_payload_log = fixture.home_dir.join("open-file-payload.json");
+    let retarget_payload_log = fixture.home_dir.join("retarget-payload.json");
+    let zellij_run_log = fixture.home_dir.join("zellij-run.log");
+    let ya_log = fixture.home_dir.join("ya.log");
+    fs::create_dir_all(&fake_bin).unwrap();
+    fs::create_dir_all(&target_dir).unwrap();
+    fs::write(&target_file, "").unwrap();
+    fs::write(&second_target_file, "").unwrap();
+
+    write_executable_script(
+        &fake_bin.join("zellij"),
+        &format!(
+            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    open_file)\n      printf '%s' \"$8\" > \"{}\"\n      printf '%s\\n' 'missing'\n      exit 0\n      ;;\n    retarget_workspace)\n      printf '%s' \"$8\" > \"{}\"\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"skipped\",\"sidebar_yazi_id\":\"plugin-sidebar-yazi-123\",\"sidebar_yazi_cwd\":\"/home/sidebar\"}}'\n      exit 0\n      ;;\n  esac\nfi\nif [ \"$1\" = \"run\" ]; then\n  printf '%s\\n' \"$*\" >> \"{}\"\n  exit 0\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
+            zellij_commands_log.display(),
+            open_file_payload_log.display(),
+            retarget_payload_log.display(),
+            zellij_run_log.display()
+        ),
+    );
+    write_executable_script(
+        &fake_bin.join("ya"),
+        &format!(
+            "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\n",
+            ya_log.display()
+        ),
+    );
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .env("PATH", prepend_path(&fake_bin))
+        .env("ZELLIJ", "1")
+        .env("YAZI_ID", "current-yazi")
+        .arg("zellij")
+        .arg("open-editor")
+        .arg(&target_file)
+        .arg(&second_target_file)
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stderr.is_empty());
+    assert!(output.stdout.is_empty());
+    assert_eq!(
+        fs::read_to_string(zellij_commands_log)
+            .unwrap()
+            .lines()
+            .collect::<Vec<_>>(),
+        vec!["open_file", "retarget_workspace"]
+    );
+
+    let open_file_payload: Value =
+        serde_json::from_slice(&fs::read(open_file_payload_log).unwrap()).unwrap();
+    assert_eq!(open_file_payload["editor"], "helix");
+    assert_eq!(
+        open_file_payload["file_paths"],
+        serde_json::json!([
+            target_file.to_string_lossy().to_string(),
+            second_target_file.to_string_lossy().to_string()
+        ])
+    );
+
+    let run_log = fs::read_to_string(zellij_run_log).unwrap();
+    assert!(run_log.contains("--name editor"));
+    assert!(run_log.contains(&format!("--cwd {}", target_dir.display())));
+    assert!(run_log.contains("YAZI_ID=current-yazi"));
+    assert!(run_log.contains("shells/posix/yazelix_hx.sh"));
+    assert!(run_log.contains(target_file.to_string_lossy().as_ref()));
+    assert!(run_log.contains(second_target_file.to_string_lossy().as_ref()));
+
+    let retarget_payload: Value =
+        serde_json::from_slice(&fs::read(retarget_payload_log).unwrap()).unwrap();
+    assert_eq!(
+        retarget_payload["workspace_root"],
+        target_dir.to_string_lossy().to_string()
+    );
     assert_eq!(
         fs::read_to_string(ya_log).unwrap().trim(),
         format!(

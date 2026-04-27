@@ -275,12 +275,12 @@ Nushell still owns path resolution and the actual Yazi adapter commands, but it 
 Input:
 
 - editor kind
-- file path
+- file paths, with `file_path` accepted as a single-file compatibility field
 - working directory
 
 Contract:
 
-- Nushell decides the working directory and file target
+- the Rust control plane decides the working directory and file targets
 - the plugin routes to the managed editor pane if present
 - the plugin should not invent its own project-root logic here
 

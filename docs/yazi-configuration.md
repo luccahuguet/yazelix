@@ -163,8 +163,8 @@ desc = "Jump to bookmark"
 
 Yazelix intentionally keeps Yazi's upstream open flow intact:
 
-- `Enter`: opens the hovered item through Yazelix's configured editor opener
-- `o`: uses Yazi's built-in open action
+- `Enter`: opens selected files through Yazelix's configured editor opener
+- `o`: uses Yazi's built-in open action for selected files
 - `O`: opens Yazi's built-in "Open with" menu for alternate handlers, including the system file manager path when available
 - `Z`: keeps Yazi's native Zoxide jump behavior inside Yazi
 - `Alt+z`: runs the bundled `zoxide-editor` plugin so the selected directory becomes the managed editor/workspace target immediately

@@ -6,8 +6,8 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 use zellij_tile::prelude::*;
 
-use crate::editor::build_editor_change_directory_command;
 use crate::{State, COMMAND_STEP_DELAY_MS, RESULT_INVALID_PAYLOAD, RESULT_MISSING, RESULT_OK};
+use yazelix_pane_orchestrator::editor_open_contract::build_editor_change_directory_command;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct WorkspaceState {

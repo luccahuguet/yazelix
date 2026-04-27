@@ -86,7 +86,7 @@ struct ZellijStatusBusWidgetArgs {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ZellijOpenEditorArgs {
-    target: Option<String>,
+    targets: Vec<String>,
     help: bool,
 }
 
@@ -809,14 +809,7 @@ fn parse_zellij_open_editor_args(args: &[String]) -> Result<ZellijOpenEditorArgs
                     "Unknown argument for zellij open-editor: {other}"
                 )));
             }
-            other => {
-                if parsed.target.is_some() {
-                    return Err(CoreError::usage(
-                        "zellij open-editor accepts only one target path".to_string(),
-                    ));
-                }
-                parsed.target = Some(other.to_string());
-            }
+            other => parsed.targets.push(other.to_string()),
         }
     }
     Ok(parsed)
@@ -848,10 +841,10 @@ fn parse_zellij_open_editor_cwd_args(
 }
 
 fn print_zellij_open_editor_help() {
-    println!("Open a file in the configured editor from a Yazi-managed flow");
+    println!("Open one or more files in the configured editor from a Yazi-managed flow");
     println!();
     println!("Usage:");
-    println!("  yzx_control zellij open-editor <path>");
+    println!("  yzx_control zellij open-editor <path> [path ...]");
 }
 
 fn print_zellij_open_editor_cwd_help() {
@@ -1018,6 +1011,17 @@ fn resolve_existing_target_path(target_path: &str) -> Result<PathBuf, CoreError>
     }
 
     Ok(canonical)
+}
+
+fn resolve_existing_target_paths(targets: &[String]) -> Result<Vec<PathBuf>, CoreError> {
+    let mut resolved = Vec::new();
+    for target in targets {
+        let path = resolve_existing_target_path(target)?;
+        if !resolved.iter().any(|existing| existing == &path) {
+            resolved.push(path);
+        }
+    }
+    Ok(resolved)
 }
 
 fn resolve_editor_working_dir(target_path: &Path) -> PathBuf {
@@ -1271,14 +1275,20 @@ fn run_zellij_editor_pane(
     ))
 }
 
-fn open_file_in_managed_editor(
+fn open_files_in_managed_editor(
     editor_kind: &str,
-    file_path: &Path,
+    file_paths: &[PathBuf],
     working_dir: &Path,
 ) -> Result<ManagedEditorOpenStatus, CoreError> {
+    let file_path_strings = file_paths
+        .iter()
+        .map(|path| path.display().to_string())
+        .collect::<Vec<_>>();
+    let first_file_path = file_path_strings.first().cloned().unwrap_or_default();
     let payload = json!({
         "editor": editor_kind,
-        "file_path": file_path.display().to_string(),
+        "file_path": first_file_path,
+        "file_paths": file_path_strings,
         "working_dir": working_dir.display().to_string(),
     })
     .to_string();
@@ -1428,40 +1438,50 @@ pub fn run_zellij_open_editor(args: &[String]) -> Result<i32, CoreError> {
         return Ok(0);
     }
 
-    let target = parsed.target.ok_or_else(|| {
+    if parsed.targets.is_empty() {
+        return Err(CoreError::usage(
+            "zellij open-editor requires at least one target path. Try `yzx_control zellij open-editor --help`."
+                .to_string(),
+        ));
+    }
+    let target_paths = resolve_existing_target_paths(&parsed.targets)?;
+    let primary_target_path = target_paths.first().ok_or_else(|| {
         CoreError::usage(
-            "zellij open-editor requires a target path. Try `yzx_control zellij open-editor --help`."
+            "zellij open-editor requires at least one target path. Try `yzx_control zellij open-editor --help`."
                 .to_string(),
         )
     })?;
-    let target_path = resolve_existing_target_path(&target)?;
     let integration_facts = compute_integration_facts_from_env()?;
     let (runtime_env, editor_command) = resolve_runtime_editor_launch()?;
     let editor_kind = integration_facts.managed_editor_kind.trim().to_string();
     let yazi_id = env::var("YAZI_ID").unwrap_or_default();
-    let editor_working_dir = resolve_editor_working_dir(&target_path);
+    let editor_working_dir = resolve_editor_working_dir(primary_target_path);
 
     if editor_kind == "helix" || editor_kind == "neovim" {
         let open_status =
-            open_file_in_managed_editor(&editor_kind, &target_path, &editor_working_dir)?;
+            open_files_in_managed_editor(&editor_kind, &target_paths, &editor_working_dir)?;
         if open_status == ManagedEditorOpenStatus::Missing {
+            let mut editor_argv = vec![editor_command.clone()];
+            editor_argv.extend(target_paths.iter().map(|path| path.display().to_string()));
             run_zellij_editor_pane(
                 &editor_working_dir,
                 &runtime_env,
                 Some(yazi_id.as_str()),
-                &[editor_command.clone(), target_path.display().to_string()],
+                &editor_argv,
             )?;
         }
     } else {
+        let mut editor_argv = vec![editor_command];
+        editor_argv.extend(target_paths.iter().map(|path| path.display().to_string()));
         run_zellij_editor_pane(
             &editor_working_dir,
             &runtime_env,
             Some(yazi_id.as_str()),
-            &[editor_command, target_path.display().to_string()],
+            &editor_argv,
         )?;
     }
 
-    if let Ok(retarget_result) = retarget_workspace_without_focused_cd(&target_path, None) {
+    if let Ok(retarget_result) = retarget_workspace_without_focused_cd(primary_target_path, None) {
         if workspace_retarget_status(&retarget_result) == "ok" {
             if integration_facts.enable_sidebar {
                 if let Some(sidebar_state) = sidebar_state_from_retarget_response(&retarget_result)
@@ -1470,7 +1490,7 @@ pub fn run_zellij_open_editor(args: &[String]) -> Result<i32, CoreError> {
                         &integration_facts.ya_command,
                         &home_dir_from_env()?,
                         &sidebar_state,
-                        &target_path,
+                        primary_target_path,
                     );
                 }
             } else if !yazi_id.trim().is_empty() {
@@ -1478,7 +1498,7 @@ pub fn run_zellij_open_editor(args: &[String]) -> Result<i32, CoreError> {
                     &integration_facts.ya_command,
                     &home_dir_from_env()?,
                     yazi_id.as_str(),
-                    &target_path,
+                    primary_target_path,
                 );
             }
         }
@@ -1705,6 +1725,22 @@ mod tests {
         assert_eq!(
             parse_workspace_retarget_response("permissions_denied"),
             json!({"status": "permissions_denied"})
+        );
+    }
+
+    // Defends: Yazi selected-file expansion can pass multiple paths through the public open-editor parser in one action.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn parse_open_editor_accepts_multiple_targets() {
+        let parsed = parse_zellij_open_editor_args(&[
+            "/tmp/project/one.txt".to_string(),
+            "/tmp/project/two.txt".to_string(),
+        ])
+        .unwrap();
+
+        assert_eq!(
+            parsed.targets,
+            vec!["/tmp/project/one.txt", "/tmp/project/two.txt"]
         );
     }
 
