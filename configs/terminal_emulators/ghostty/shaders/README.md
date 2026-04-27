@@ -83,6 +83,7 @@ The build is **fully automatic**:
 - Outputs complete shaders ready for Ghostty to use
 - No manual intervention needed!
 - Honors `ghostty_trail_glow = none | low | medium | high` when generating the final shaders
+- Honors `ghostty_trail_duration = 0.25..4.0` as a multiplier for movement-trail timing
 
 ## Important Notes
 

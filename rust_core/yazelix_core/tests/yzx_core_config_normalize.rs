@@ -142,6 +142,21 @@ fn prepare_runtime_materialization_fixture(
         zellij_layout_dir,
     }
 }
+
+fn copy_dir_all(src: &Path, dst: &Path) {
+    fs::create_dir_all(dst).unwrap();
+    for entry in fs::read_dir(src).unwrap() {
+        let entry = entry.unwrap();
+        let source_path = entry.path();
+        let target_path = dst.join(entry.file_name());
+        if source_path.is_dir() {
+            copy_dir_all(&source_path, &target_path);
+        } else {
+            fs::copy(&source_path, &target_path).unwrap();
+        }
+    }
+}
+
 fn runtime_materialization_request(fixture: &RuntimeMaterializationFixture) -> Value {
     json!({
         "config_path": fixture.managed_config,
@@ -194,7 +209,12 @@ fn config_normalize_prints_one_success_json_envelope() {
         envelope["data"]["normalized_config"]["terminal_config_mode"],
         "yazelix"
     );
+    assert_eq!(
+        envelope["data"]["normalized_config"]["ghostty_trail_duration"],
+        serde_json::json!(1.0)
+    );
 }
+
 // Defends: config.normalize emits a single machine-readable config error envelope for invalid input.
 // Contract: CRCP-001
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
@@ -219,6 +239,37 @@ fn config_normalize_prints_one_error_json_envelope() {
     assert_eq!(envelope["command"], "config.normalize");
     assert_eq!(envelope["error"]["class"], "config");
     assert_eq!(envelope["error"]["code"], "unsupported_config");
+}
+
+// Defends: terminal.ghostty_trail_duration rejects unsupported timing values before generated Ghostty shaders are written.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn config_normalize_rejects_out_of_range_ghostty_trail_duration() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let config_path = tmp.path().join("yazelix.toml");
+    fs::write(&config_path, "[terminal]\nghostty_trail_duration = 4.5\n").unwrap();
+    let output = yzx_core_command()
+        .arg("config.normalize")
+        .arg("--config")
+        .arg(&config_path)
+        .arg("--default-config")
+        .arg(repo.join("yazelix_default.toml"))
+        .arg("--contract")
+        .arg(repo.join("config_metadata/main_config_contract.toml"))
+        .output()
+        .unwrap();
+
+    let envelope: Value = error_envelope(&output, 65);
+    assert_eq!(envelope["command"], "config.normalize");
+    assert_eq!(envelope["error"]["class"], "config");
+    assert_eq!(envelope["error"]["code"], "invalid_config_value");
+    assert!(
+        envelope["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("terminal.ghostty_trail_duration")
+    );
 }
 
 // Defends: unknown helper commands report the requested command in the usage error envelope.
@@ -377,7 +428,7 @@ fn config_state_compute_prints_machine_readable_state_envelope() {
     assert_eq!(envelope["data"]["config"]["default_shell"], "nu");
     assert_eq!(
         envelope["data"]["config_hash"],
-        "2f7b0e3920d8a8862d243edcc6c39867042e88390a8b16546783d1482dcb6988"
+        "bc6e031d0488e9e28ba0c86ac0318bb5ab87926694aeb656a48b43c0a0e0119b"
     );
     assert_eq!(envelope["data"]["needs_refresh"], true);
 }
@@ -920,6 +971,19 @@ fn ghostty_materialization_generate_from_env_uses_normalized_config() {
     let repo = repo_root();
     let tmp = tempdir().unwrap();
     let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    copy_dir_all(
+        &repo
+            .join("configs")
+            .join("terminal_emulators")
+            .join("ghostty")
+            .join("shaders"),
+        &fixture
+            .runtime_dir
+            .join("configs")
+            .join("terminal_emulators")
+            .join("ghostty")
+            .join("shaders"),
+    );
 
     fs::write(
         &fixture.managed_config,
@@ -929,6 +993,7 @@ fn ghostty_materialization_generate_from_env_uses_normalized_config() {
             "ghostty_trail_color = \"forest\"",
             "ghostty_trail_effect = \"tail\"",
             "ghostty_mode_effect = \"ripple\"",
+            "ghostty_trail_duration = 1.5",
             "ghostty_trail_glow = \"high\"",
         ]
         .join("\n"),
@@ -961,14 +1026,37 @@ fn ghostty_materialization_generate_from_env_uses_normalized_config() {
         envelope["data"]["cursor_state"]["selected_mode_effect"],
         "ripple"
     );
-    assert!(
-        fixture
-            .state_dir
-            .join("configs")
-            .join("terminal_emulators")
-            .join("ghostty")
-            .exists()
+    assert_eq!(
+        envelope["data"]["cursor_state"]["trail_duration"],
+        serde_json::json!(1.5)
     );
+    let ghostty_dir = fixture
+        .state_dir
+        .join("configs")
+        .join("terminal_emulators")
+        .join("ghostty");
+    let generated_config = fs::read_to_string(ghostty_dir.join("config")).unwrap();
+    assert!(generated_config.contains("# Ghostty trail duration multiplier: 1.5"));
+    let forest_shader =
+        fs::read_to_string(ghostty_dir.join("shaders").join("cursor_trail_forest.glsl")).unwrap();
+    assert!(forest_shader.contains("const float DURATION = 0.375;"));
+    let tail_shader = fs::read_to_string(
+        ghostty_dir
+            .join("shaders")
+            .join("generated_effects")
+            .join("tail.glsl"),
+    )
+    .unwrap();
+    assert!(tail_shader.contains("const float DURATION = 0.135;"));
+    let ripple_shader = fs::read_to_string(
+        ghostty_dir
+            .join("shaders")
+            .join("generated_effects")
+            .join("ripple.glsl"),
+    )
+    .unwrap();
+    assert!(ripple_shader.contains("const float DURATION = 0.15;"));
+    assert!(ghostty_dir.exists());
 }
 
 // Defends: doctor-helix.evaluate emits one machine-readable report envelope for a minimal request.

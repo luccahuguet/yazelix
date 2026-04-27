@@ -11,7 +11,7 @@
 [contract]
 version = 1
 surface = "main"
-field_count = 42
+field_count = 43
 artifact_role = "canonical_machine_metadata"
 default_template = "yazelix_default.toml"
 home_manager_module = "home_manager/module.nix"
@@ -196,6 +196,17 @@ parser_behavior = "direct"
 validation = "enum"
 allowed_values = ["tail", "warp", "sweep", "random"]
 home_manager_can_omit = true
+rebuild_required = false
+
+[fields."terminal.ghostty_trail_duration"]
+kind = "float"
+default = 1.0
+parser_key = "ghostty_trail_duration"
+home_manager_option = "ghostty_trail_duration"
+parser_behavior = "direct"
+validation = "float_range"
+min = 0.25
+max = 4.0
 rebuild_required = false
 
 [fields."terminal.ghostty_mode_effect"]

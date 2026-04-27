@@ -6,7 +6,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use toml::Value as TomlValue;
 
-const FLEXIBLE_NUMERIC_PATHS: &[&str] = &["core.welcome_duration_seconds"];
+const FLEXIBLE_NUMERIC_PATHS: &[&str] = &[
+    "core.welcome_duration_seconds",
+    "terminal.ghostty_trail_duration",
+];
 
 #[derive(Debug, Clone)]
 pub struct NormalizeConfigRequest {

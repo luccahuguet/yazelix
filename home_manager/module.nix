@@ -228,6 +228,13 @@ in
       '';
     };
 
+    ghostty_trail_duration = mkMainContractOption "terminal.ghostty_trail_duration" {
+      description = ''
+        Duration multiplier for Ghostty cursor movement trails.
+        Valid range: 0.25 to 4.0. Use 1.0 to keep the tuned Yazelix shader defaults.
+      '';
+    };
+
     ghostty_mode_effect = mkMainContractOption "terminal.ghostty_mode_effect" {
       description = ''
         Ghostty mode-change effect, triggered when the editor changes cursor mode

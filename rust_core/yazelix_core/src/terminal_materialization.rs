@@ -2,7 +2,7 @@ use crate::bridge::CoreError;
 use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::control_plane::config_dir_from_env;
 use crate::ghostty_materialization::{
-    GhosttyMaterializationRequest, generate_ghostty_materialization,
+    DEFAULT_GHOSTTY_TRAIL_DURATION, GhosttyMaterializationRequest, generate_ghostty_materialization,
 };
 use serde::Serialize;
 use std::fs;
@@ -39,7 +39,7 @@ pub struct TerminalGeneratedConfig {
     pub path: String,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct TerminalMaterializationData {
     pub generated: Vec<TerminalGeneratedConfig>,
     pub ghostty: Option<crate::ghostty_materialization::GhosttyMaterializationData>,
@@ -308,6 +308,10 @@ pub fn generate_terminal_materialization(
         .and_then(|v| v.as_str())
         .unwrap_or("none");
     let ghostty_trail_color = config.get("ghostty_trail_color").and_then(|v| v.as_str());
+    let ghostty_trail_duration = config
+        .get("ghostty_trail_duration")
+        .and_then(|value| value.as_f64())
+        .unwrap_or(DEFAULT_GHOSTTY_TRAIL_DURATION);
 
     let config_dir = config_dir_from_env()?;
     let generated_dir = request.state_dir.join("configs").join("terminal_emulators");
@@ -332,6 +336,7 @@ pub fn generate_terminal_materialization(
                         .get("ghostty_mode_effect")
                         .and_then(|v| v.as_str())
                         .map(|s| s.to_string()),
+                    ghostty_trail_duration,
                     ghostty_trail_glow: config
                         .get("ghostty_trail_glow")
                         .and_then(|v| v.as_str())

@@ -10,6 +10,7 @@ Yazelix owns the integration layer on top of them:
 - `ghostty_trail_effect` selects the Ghostty cursor-movement effect
 - `ghostty_mode_effect` selects the Ghostty mode-change effect
 - `ghostty_trail_glow` scales the generated effect blur and spread so `none | low | medium | high` follows the same glow contract as Yazelix trail shaders
+- `ghostty_trail_duration` scales cursor-movement trail duration while leaving mode-change effects at their tuned timing
 - `build_shaders.nu` keeps these templates color-agnostic and generates the final shader files under `generated_effects/`
 
 The upstream README states the source repository is MIT licensed.

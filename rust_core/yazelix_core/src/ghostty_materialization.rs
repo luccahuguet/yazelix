@@ -76,6 +76,9 @@ const CURSOR_TRAIL_COLOR_LITERALS: &[(&str, &str)] = &[
 const GHOSTTY_TRAIL_EFFECTS: &[&str] = &["tail", "warp", "sweep"];
 const GHOSTTY_MODE_EFFECTS: &[&str] =
     &["ripple", "sonic_boom", "rectangle_boom", "ripple_rectangle"];
+pub const DEFAULT_GHOSTTY_TRAIL_DURATION: f64 = 1.0;
+pub const GHOSTTY_TRAIL_DURATION_MIN: f64 = 0.25;
+pub const GHOSTTY_TRAIL_DURATION_MAX: f64 = 4.0;
 
 const EFFECTS_REQUIRING_ALWAYS_ANIMATION: &[&str] =
     &["ripple", "sonic_boom", "rectangle_boom", "ripple_rectangle"];
@@ -89,18 +92,20 @@ pub struct GhosttyMaterializationRequest {
     pub ghostty_trail_color: Option<String>,
     pub ghostty_trail_effect: Option<String>,
     pub ghostty_mode_effect: Option<String>,
+    pub ghostty_trail_duration: f64,
     pub ghostty_trail_glow: String,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct GhosttyCursorState {
     pub selected_color: Option<String>,
     pub selected_trail_effect: Option<String>,
     pub selected_mode_effect: Option<String>,
+    pub trail_duration: f64,
     pub effect_color_literal: String,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct GhosttyMaterializationData {
     pub generated_path: String,
     pub cursor_state: GhosttyCursorState,
@@ -214,6 +219,47 @@ fn build_ghostty_transparency(transparency: &str) -> String {
     }
 }
 
+fn validate_ghostty_trail_duration(duration: f64) -> Result<(), CoreError> {
+    if !duration.is_finite()
+        || !(GHOSTTY_TRAIL_DURATION_MIN..=GHOSTTY_TRAIL_DURATION_MAX).contains(&duration)
+    {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "invalid_ghostty_trail_duration",
+            format!(
+                "Invalid terminal.ghostty_trail_duration value '{}'. Expected a number from {} to {}.",
+                duration, GHOSTTY_TRAIL_DURATION_MIN, GHOSTTY_TRAIL_DURATION_MAX
+            ),
+            "Update yazelix.toml with a supported Ghostty trail duration multiplier, then retry.",
+            serde_json::json!({
+                "field": "terminal.ghostty_trail_duration",
+                "actual": duration.to_string(),
+                "min": GHOSTTY_TRAIL_DURATION_MIN,
+                "max": GHOSTTY_TRAIL_DURATION_MAX,
+            }),
+        ));
+    }
+    Ok(())
+}
+
+fn format_ghostty_trail_duration(duration: f64) -> String {
+    let mut rendered = format!("{duration:.3}");
+    while rendered.contains('.') && rendered.ends_with('0') {
+        rendered.pop();
+    }
+    if rendered.ends_with('.') {
+        rendered.push('0');
+    }
+    rendered
+}
+
+fn build_ghostty_trail_duration(duration: f64) -> String {
+    format!(
+        "# Ghostty trail duration multiplier: {}",
+        format_ghostty_trail_duration(duration)
+    )
+}
+
 fn build_ghostty_cursor_palette(selected_color: &Option<String>) -> String {
     match selected_color.as_deref() {
         None => "# cursor-color = #ffb929".to_string(),
@@ -271,6 +317,7 @@ fn resolve_ghostty_cursor_render_state(
         selected_color: selected_color.clone(),
         selected_trail_effect: resolve_ghostty_trail_effect(&request.ghostty_trail_effect),
         selected_mode_effect: resolve_ghostty_mode_effect(&request.ghostty_mode_effect),
+        trail_duration: request.ghostty_trail_duration,
         effect_color_literal: get_ghostty_cursor_effect_color_literal(&selected_color),
     }
 }
@@ -302,6 +349,7 @@ window-padding-y = 10,0
 # Ghostty cursor color + effects (configurable via yazelix.toml)
 {}
 {}
+{}
 
 # Personal Yazelix Ghostty overrides (optional, user-owned)
 config-file = ?"{}"
@@ -312,6 +360,7 @@ config-file = ?"{}"
         YAZELIX_THEME,
         build_ghostty_transparency(&request.transparency),
         build_ghostty_cursor_palette(&cursor_state.selected_color),
+        build_ghostty_trail_duration(request.ghostty_trail_duration),
         build_ghostty_cursor_effects(
             &cursor_state.selected_trail_effect,
             &cursor_state.selected_mode_effect
@@ -325,6 +374,7 @@ fn sync_ghostty_shader_assets(
     ghostty_dir: &Path,
     glow_level: &str,
     effect_color_literal: &str,
+    trail_duration: f64,
 ) -> Result<bool, CoreError> {
     let shaders_src = runtime_dir
         .join("configs")
@@ -390,6 +440,7 @@ fn sync_ghostty_shader_assets(
             .arg(glow_level)
             .arg(&shaders_dest)
             .arg(effect_color_literal)
+            .arg(format_ghostty_trail_duration(trail_duration))
             .current_dir(&shaders_src)
             .output()
             .map_err(|source| {
@@ -436,6 +487,7 @@ fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io::Result
 pub fn generate_ghostty_materialization(
     request: &GhosttyMaterializationRequest,
 ) -> Result<GhosttyMaterializationData, CoreError> {
+    validate_ghostty_trail_duration(request.ghostty_trail_duration)?;
     let cursor_state = resolve_ghostty_cursor_render_state(request);
 
     let ghostty_dir = request
@@ -472,6 +524,7 @@ pub fn generate_ghostty_materialization(
         &ghostty_dir,
         &request.ghostty_trail_glow,
         &cursor_state.effect_color_literal,
+        request.ghostty_trail_duration,
     )?;
 
     Ok(GhosttyMaterializationData {

@@ -8,7 +8,7 @@ use crate::control_plane::{
     config_dir_from_env, config_override_from_env, runtime_dir_from_env, state_dir_from_env,
 };
 use crate::ghostty_materialization::{
-    GhosttyMaterializationRequest, generate_ghostty_materialization,
+    DEFAULT_GHOSTTY_TRAIL_DURATION, GhosttyMaterializationRequest, generate_ghostty_materialization,
 };
 use crate::terminal_materialization::{
     TerminalGeneratedConfig, TerminalMaterializationRequest, generate_terminal_materialization,
@@ -111,6 +111,11 @@ pub fn prepare_launch_materialization(
             ghostty_trail_color: optional_string_config(&normalized, "ghostty_trail_color"),
             ghostty_trail_effect: optional_string_config(&normalized, "ghostty_trail_effect"),
             ghostty_mode_effect: optional_string_config(&normalized, "ghostty_mode_effect"),
+            ghostty_trail_duration: float_config(
+                &normalized,
+                "ghostty_trail_duration",
+                DEFAULT_GHOSTTY_TRAIL_DURATION,
+            ),
             ghostty_trail_glow: string_config(&normalized, "ghostty_trail_glow", "medium"),
         })?;
     }
@@ -249,6 +254,13 @@ fn optional_string_config(config: &JsonMap<String, JsonValue>, key: &str) -> Opt
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(ToOwned::to_owned)
+}
+
+fn float_config(config: &JsonMap<String, JsonValue>, key: &str, default: f64) -> f64 {
+    config
+        .get(key)
+        .and_then(JsonValue::as_f64)
+        .unwrap_or(default)
 }
 
 fn string_list_config(

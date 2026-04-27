@@ -120,6 +120,13 @@ ghostty_trail_color = "random"
 # Options: "tail", "warp", "sweep", "random"
 ghostty_trail_effect = "random"
 
+# Duration multiplier for Ghostty cursor movement trails
+# Range: 0.25 to 4.0
+# - 1.0: Keep the tuned Yazelix shader defaults
+# - below 1.0: Shorter, snappier trails
+# - above 1.0: Longer, slower-fading trails
+ghostty_trail_duration = 1.0
+
 # Mode-change effect for Ghostty. This is triggered when the editor changes cursor mode,
 # such as Neovim switching between normal and insert.
 # Options: "ripple", "sonic_boom", "rectangle_boom", "ripple_rectangle", "random"

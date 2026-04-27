@@ -74,6 +74,7 @@ pub use front_door_commands::{
     run_internal_welcome_screen, run_yzx_screen, run_yzx_tutor, run_yzx_whats_new,
 };
 pub use ghostty_materialization::{
+    DEFAULT_GHOSTTY_TRAIL_DURATION, GHOSTTY_TRAIL_DURATION_MAX, GHOSTTY_TRAIL_DURATION_MIN,
     GhosttyCursorState, GhosttyMaterializationData, GhosttyMaterializationRequest,
     generate_ghostty_materialization,
 };

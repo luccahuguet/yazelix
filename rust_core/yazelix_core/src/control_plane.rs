@@ -2,6 +2,7 @@
 
 use crate::active_config_surface::{primary_config_paths, resolve_active_config_paths};
 use crate::bridge::{CoreError, ErrorClass};
+use crate::ghostty_materialization::DEFAULT_GHOSTTY_TRAIL_DURATION;
 use crate::runtime_env::RuntimePathInput;
 use crate::{
     ComputeConfigStateRequest, GhosttyMaterializationRequest, NormalizeConfigRequest,
@@ -320,6 +321,10 @@ pub fn ghostty_materialization_request_from_env(
             .get("ghostty_mode_effect")
             .and_then(|value| value.as_str())
             .map(ToOwned::to_owned),
+        ghostty_trail_duration: normalized
+            .get("ghostty_trail_duration")
+            .and_then(|value| value.as_f64())
+            .unwrap_or(DEFAULT_GHOSTTY_TRAIL_DURATION),
         ghostty_trail_glow: normalized
             .get("ghostty_trail_glow")
             .and_then(|value| value.as_str())
