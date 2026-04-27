@@ -42,7 +42,7 @@ It already ships with Zellij and Yazi plugins, some maintained in this repo, inc
 
 It has features like `reveal in Yazi` from Helix or Neovim, opening files from Yazi in your configured editor, and switching workspace layouts without leaving the workspace
 
-Supports top terminals and popular shells, with Ghostty as the first-party bundled terminal, WezTerm, Kitty, Alacritty, and Foot as supported alternatives when present on the host `PATH`, and everything configured through `yazelix.toml` while the packaged runtime provides the fixed Yazelix toolset
+Supports top terminals and popular shells, with WezTerm as the default Linux packaged terminal, Ghostty as the default macOS and explicit NixOS-friendly packaged terminal, Kitty, Alacritty, and Foot as supported alternatives when present on the host `PATH`, and everything configured through `yazelix.toml` while the packaged runtime provides the fixed Yazelix toolset
 
 Get everything running in less than 10 minutes with no extra dependencies beyond Nix
 
@@ -92,7 +92,7 @@ v15 trims Yazelix down to the fast workspace core
 
 - v15 is the only supported Yazelix line now, and v14 is the final historical Classic snapshot rather than a maintained fallback
 - Dropped the out-of-scope Classic runtime-manager surface: no runtime-local `devenv`, no `yazelix_packs.toml`, no `yazelix packs` or `yzx packs`, no automatic config migrations, and no `yzx refresh`
-- Made Ghostty the first-party bundled terminal on Linux and macOS while keeping WezTerm, Kitty, Alacritty, and Foot as PATH-provided alternatives
+- Made Ghostty the first-party bundled terminal in the initial v15 package shape while keeping WezTerm, Kitty, Alacritty, and Foot as supported alternatives
 - Split current-terminal startup into `yzx enter`, kept `yzx launch` as the managed external-terminal entrypoint, and kept `yzx env` as the non-UI tool-environment surface
 - Made `yzx popup` and `yzx menu --popup` share the fast floating-pane path with explicit pane identity, shared toggle semantics, and no helper-pane detour
 - Kept the workspace core around layouts, managed editor/sidebar orchestration, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners through `yzx update upstream` or `yzx update home_manager`
@@ -112,7 +112,7 @@ v15.0 is the trimmed reboot with a narrower Rust scope, not a broad package-and-
 
 v16 carries that trimmed contract forward, expands Rust ownership across the public control plane and deterministic integrations, and keeps Nushell at the shell/UI core instead of as the default owner of general product logic
 
-On the current branch, the trimmed contract is already narrower: no `yazelix_packs.toml`, no runtime-local `devenv`, no launch-profile reuse semantics, no automatic config migrations, a fixed packaged runtime toolset, built-in Ghostty on Linux and macOS, and explicit update owners through `yzx update upstream` or `yzx update home_manager`
+On the current branch, the trimmed contract is already narrower: no `yazelix_packs.toml`, no runtime-local `devenv`, no launch-profile reuse semantics, no automatic config migrations, a fixed packaged runtime toolset with WezTerm as the Linux default and Ghostty as the macOS/explicit Ghostty path, and explicit update owners through `yzx update upstream` or `yzx update home_manager`
 
 The important split is this: Yazelix Classic was both a terminal workspace and a runtime/package-environment manager, while v15 is the narrower workspace product because dynamic runtime management was not a good long-term fit for Yazelix scope
 
@@ -124,7 +124,7 @@ For the current trimmed branch contract, see [docs/specs/v15_trimmed_runtime_con
 
 ## Compatibility
 - **Platform**: Linux and macOS — see the [macOS support floor spec](docs/specs/macos_support_floor.md) for the current guaranteed macOS surfaces
-- **Terminal**: Ghostty is built into Yazelix on Linux and macOS, while WezTerm, Kitty, and Alacritty remain supported PATH-provided alternatives and Foot remains a Linux-only PATH-provided alternative
+- **Terminal**: WezTerm is the default Linux packaged terminal, Ghostty is the default macOS and explicit Ghostty package path, while Kitty and Alacritty remain supported PATH-provided alternatives and Foot remains a Linux-only PATH-provided alternative
 - **Editor**: Any editor works, with Helix and Neovim getting first-class support (reveal in sidebar, open buffer in a running instance, managed editor-pane targeting) and configuration through `[editor].command` in `yazelix.toml`
 - **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer
 
@@ -293,14 +293,14 @@ See the full catalog of tools and integrations in the Yazelix Collection:
 If you followed [step 4 in the installation guide](./docs/installation.md#step-4-configure-your-installation-optional), you already have your `~/.config/yazelix/user_configs/yazelix.toml` config file ready, you can modify it anytime and restart Yazelix to apply changes, and you can see [yazelix_default.toml](./yazelix_default.toml) for all available options and their descriptions
 
 **Terminal Emulator Selection:**
-- **Ghostty** (default preference): Modern, fast terminal written in Zig with great performance
-- **WezTerm** (recommended fallback): Best image preview support in Yazi
+- **WezTerm** (default Linux preference): Best image preview support in Yazi
+- **Ghostty** (default macOS and explicit Ghostty preference): Modern, fast terminal written in Zig with great performance
 - **Kitty**: Fast, feature-rich, GPU-accelerated terminal
 - **Alacritty**: Fast, GPU-accelerated terminal written in Rust
 - **Foot**: Wayland-native terminal (Linux-only)
 - **Auto-detection**: Fallback order follows your configured terminal list
-- Configure your preference in `yazelix.toml` with `terminals = ["ghostty", "wezterm", ...]` (first item is primary)
-- **v15 terminal contract**: Ghostty is first-party and bundled by Yazelix, while other configured terminals are still supported when you provide them on the host `PATH`
+- Configure your preference in `yazelix.toml` with `terminals = ["wezterm", "ghostty", ...]` (first item is primary)
+- **v15 terminal contract**: Yazelix ships one packaged terminal variant at a time; Linux defaults to WezTerm, macOS defaults to Ghostty, and explicit Ghostty/WezTerm variants remain available
 
 [See the full Customization Guide here.](./docs/customization.md)
 

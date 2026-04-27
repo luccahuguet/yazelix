@@ -271,7 +271,7 @@ fn build_render_plan_request(
         resolved_default_shell: resolved_default_shell.to_string(),
         editor_label: string_config(config, "editor_command", "hx").to_string(),
         shell_label: string_config(config, "default_shell", "nu").to_string(),
-        terminal_label: first_string_list_config(config, "terminals", "ghostty"),
+        terminal_label: first_string_list_config(config, "terminals", "wezterm"),
     }
 }
 
@@ -1398,7 +1398,7 @@ fn build_generation_fingerprint(
         "default_shell": string_config(config, "default_shell", "nu"),
         "resolved_default_shell": resolved_default_shell,
         "editor_command": string_config(config, "editor_command", ""),
-        "terminals": config.get("terminals").cloned().unwrap_or_else(|| json!(["ghostty"])),
+        "terminals": config.get("terminals").cloned().unwrap_or_else(|| json!(["wezterm", "ghostty"])),
         "zellij_default_mode": string_config(config, "zellij_default_mode", "normal"),
         "enable_sidebar": bool_config(config, "enable_sidebar", true),
         "initial_sidebar_state": string_config(config, "initial_sidebar_state", "open"),

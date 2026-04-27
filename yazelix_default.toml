@@ -78,16 +78,20 @@ default_shell = "nu"
 # The first entry is the primary terminal used for launch; the rest are fallbacks.
 # Options: "ghostty", "wezterm", "kitty", "alacritty", "foot" (Linux-only)
 #
-# Ghostty availability:
-# - Linux and macOS: Provided by Yazelix via Nix as the built-in default terminal path
-# - WezTerm, Kitty, and Alacritty: supported PATH-provided alternatives
+# Default policy:
+# - Linux package/Home Manager installs use the WezTerm runtime variant by default
+#   so non-NixOS Linux users are not steered into nixpkgs Ghostty implicitly.
+# - macOS package installs keep Ghostty as the first-party runtime variant.
+# - NixOS users and Ghostty fans can install #yazelix_ghostty or set
+#   programs.yazelix.runtime_variant = "ghostty", then put "ghostty" first.
+# - Kitty and Alacritty are supported PATH-provided alternatives.
 # - Foot: supported Linux-only PATH-provided alternative
 #
 # Auto-detection fallback order matches this list.
-# WezTerm is the recommended fallback (works on both platforms, best image preview)
+# WezTerm is the safe Linux default and best image-preview path.
 terminals = [
+  "wezterm",
   "ghostty",
-  # "wezterm",
   # "kitty",
   # "alacritty",
   # "foot",

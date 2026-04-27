@@ -118,7 +118,7 @@ fn default_editor_label() -> String {
 }
 
 fn default_terminal_label() -> String {
-    "ghostty".into()
+    "wezterm".into()
 }
 
 fn default_shell_label() -> String {
@@ -534,7 +534,7 @@ mod tests {
             resolved_default_shell: "/usr/bin/nu".into(),
             editor_label: "hx".into(),
             shell_label: "nu".into(),
-            terminal_label: "ghostty".into(),
+            terminal_label: "wezterm".into(),
         }
     }
 

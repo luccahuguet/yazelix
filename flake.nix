@@ -74,17 +74,21 @@
         system:
         let
           pkgs = mkPkgs system;
+          defaultRuntimeVariant =
+            if pkgs.stdenv.hostPlatform.isLinux then "wezterm" else "ghostty";
+          runtime_default = runtimePackage system pkgs defaultRuntimeVariant;
           runtime_ghostty = runtimePackage system pkgs "ghostty";
           runtime_wezterm = runtimePackage system pkgs "wezterm";
+          yazelix_default = yazelixPackage system pkgs defaultRuntimeVariant;
           yazelix_ghostty = yazelixPackage system pkgs "ghostty";
           yazelix_wezterm = yazelixPackage system pkgs "wezterm";
         in
         {
-          default = yazelix_ghostty;
-          runtime = runtime_ghostty;
+          default = yazelix_default;
+          runtime = runtime_default;
           runtime_ghostty = runtime_ghostty;
           runtime_wezterm = runtime_wezterm;
-          yazelix = yazelix_ghostty;
+          yazelix = yazelix_default;
           yazelix_ghostty = yazelix_ghostty;
           yazelix_wezterm = yazelix_wezterm;
         }

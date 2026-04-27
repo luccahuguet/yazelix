@@ -30,7 +30,7 @@ use std::process::{Command, Output};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-const DEFAULT_TERMINAL: &str = "ghostty";
+const DEFAULT_TERMINALS: &[&str] = &["wezterm", "ghostty"];
 const SUPPORTED_TERMINALS: &[&str] = &["ghostty", "wezterm", "kitty", "alacritty", "foot"];
 const WINDOW_CLASS: &str = "com.yazelix.Yazelix";
 const X11_INSTANCE: &str = "yazelix";
@@ -870,7 +870,10 @@ fn normalized_configured_terminals(config: &JsonMap<String, JsonValue>) -> Vec<S
             .filter(|value| !value.is_empty())
             .map(|value| value.to_ascii_lowercase())
             .collect::<Vec<_>>(),
-        _ => vec![DEFAULT_TERMINAL.to_string()],
+        _ => DEFAULT_TERMINALS
+            .iter()
+            .map(|terminal| (*terminal).to_string())
+            .collect(),
     };
 
     let mut out = Vec::new();
@@ -1958,6 +1961,18 @@ mod tests {
         assert_eq!(
             normalized_configured_terminals(&config),
             vec!["ghostty".to_string(), "kitty".to_string()]
+        );
+    }
+
+    // Defends: missing terminal config no longer falls back to Ghostty alone on Linux package surfaces.
+    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
+    #[test]
+    fn normalized_configured_terminals_defaults_to_wezterm_then_ghostty() {
+        let config = JsonMap::new();
+
+        assert_eq!(
+            normalized_configured_terminals(&config),
+            vec!["wezterm".to_string(), "ghostty".to_string()]
         );
     }
 

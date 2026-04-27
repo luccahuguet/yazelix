@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 
 const SUPPORTED_TERMINALS: &[&str] = &["ghostty", "wezterm", "kitty", "alacritty", "foot"];
 const DEFAULT_TERMINAL_CONFIG_MODE: &str = "yazelix";
-const DEFAULT_TERMINALS: &[&str] = &["ghostty"];
+const DEFAULT_TERMINALS: &[&str] = &["wezterm", "ghostty"];
 
 #[derive(Debug, Clone)]
 pub struct LaunchMaterializationRequest {

@@ -1,4 +1,8 @@
-{ pkgs, nixgl ? null, runtimeVariant ? "ghostty" }:
+{
+  pkgs,
+  nixgl ? null,
+  runtimeVariant ? if pkgs.stdenv.hostPlatform.isLinux then "wezterm" else "ghostty",
+}:
 
 let
   ghosttyPackage =

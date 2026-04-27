@@ -12,7 +12,7 @@ See the origin story in `docs/the_start.md`.
 ## Major Version Descriptions
 
 - **v16**: Rust-forward control plane, irreducible Nushell core, and cleaner CLI surfaces
-- **v15**: The live trimmed workspace release with first-party Ghostty, fast popup/menu panes, and the Classic runtime-manager surface removed from scope
+- **v15**: The live trimmed workspace release with packaged terminal variants, fast popup/menu panes, and the Classic runtime-manager surface removed from scope
 - **v14**: Boundary hardening, honest update ownership, and package-runtime cleanup before the v15 trim-first transition
 - **v13.1**: Safer multi-tab cwd routing, stronger `yzx cwd` workspace sync, and better Zellij diagnostics
 - **v13**: Plugin-managed workspaces, migration-aware upgrades, richer front-door UX, and the full devenv-era integration push
@@ -43,7 +43,7 @@ See the origin story in `docs/the_start.md`.
 - **One Supported Line Again** – v15 is the only supported Yazelix line now. The two-products-in-one problem from late Classic is resolved by trimming the product boundary instead of trying to maintain both shapes in parallel. v14 remains available only as the final historical Classic snapshot for users who specifically need it.
 - **The Product Boundary Is Much Cleaner** – The broader Classic runtime-manager story is out of scope now: no runtime-local `devenv`, no `yazelix_packs.toml`, no `yazelix packs` or `yzx packs`, no automatic config migrations, and no `yzx refresh`. v15 is the narrower workspace product rather than a package-and-environment manager glued onto one.
 - **The Front Door Is Simpler and Faster** – `yzx launch` owns managed external-terminal startup, `yzx enter` owns current-terminal startup, and `yzx env` remains the non-UI tool-environment path. That split makes the live command surface easier to understand and easier to validate.
-- **Ghostty Became First-Party** – Yazelix now bundles Ghostty as the first-party terminal on Linux and macOS. Other terminals still work when you provide them on the host `PATH`, but the first-party launch story is finally honest and packaged.
+- **Packaged Terminal Variants Became First-Party** – Yazelix now ships WezTerm as the Linux default package path and Ghostty as the macOS default and explicit Ghostty path. Other terminals still work when you provide them on the host `PATH`, but the first-party launch story is finally honest and packaged.
 - **Popup And Menu Became Real Peers** – The popup pane and popup command menu now share the same floating-pane control model, explicit pane identity, and toggle-oriented behavior. That seam is smaller, faster, and closer to the actual product than the old helper-pane detour.
 - **The Workspace Core Stayed Intact** – Layout families, managed editor/sidebar orchestration, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners remain the backbone of the product. v15 is not a feature wipe; it is the point where the surviving workspace core became the product.
 - **Rust Scope Narrowed; It Did Not Disappear** – v15 is the trimmed reboot with narrower Rust scope, not a Rust-free release. The pane orchestrator still owns live workspace and session state, and the trim is what made the later v16 Rust-forward control plane possible.

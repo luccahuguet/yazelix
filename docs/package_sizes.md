@@ -9,7 +9,7 @@ The current runtime includes:
 - helper tools: `fzf`, `zoxide`, `starship`, `lazygit`, `carapace`, `macchina`, `mise`, `taplo`
 - preview/search helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
 - system helpers required by the runtime wrappers and validators: `git`, `nix`, `coreutils`, `findutils`, `gnugrep`, `gnused`, `util-linux`
-- one packaged terminal variant: Ghostty in `#yazelix` / `#yazelix_ghostty`, or WezTerm in `#yazelix_wezterm`
+- one packaged terminal variant: WezTerm in the Linux `#yazelix` default and `#yazelix_wezterm`, or Ghostty in the macOS `#yazelix` default and `#yazelix_ghostty`
 
 It does not ship:
 - a runtime-local `devenv` binary

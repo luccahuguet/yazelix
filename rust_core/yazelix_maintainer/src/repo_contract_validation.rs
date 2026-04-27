@@ -1442,6 +1442,15 @@ fn verify_profile_installed_runtime(
     let runtime_bin = runtime_root.join("bin");
     let runtime_toolbin = runtime_root.join("toolbin");
     let runtime_libexec = runtime_root.join("libexec");
+    let runtime_variant = fs::read_to_string(runtime_root.join("runtime_variant"))
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| "unknown".to_string());
+    let runtime_terminal = match runtime_variant.as_str() {
+        "wezterm" => "wezterm",
+        _ => "ghostty",
+    };
     let runtime_yzx_cli = runtime_root.join("shells").join("posix").join("yzx_cli.sh");
     let runtime_yzx_core = runtime_libexec.join("yzx_core");
     let runtime_ghostty_wrapper = runtime_root
@@ -1465,6 +1474,14 @@ fn verify_profile_installed_runtime(
     let generated_ghostty_effect_dir = generated_ghostty_root
         .join("shaders")
         .join("generated_effects");
+    let generated_wezterm_config = temp_home
+        .join(".local")
+        .join("share")
+        .join("yazelix")
+        .join("configs")
+        .join("terminal_emulators")
+        .join("wezterm")
+        .join(".wezterm.lua");
 
     for (path, label) in [
         (runtime_toolbin.clone(), "runtime toolbin"),
@@ -1508,7 +1525,18 @@ fn verify_profile_installed_runtime(
     }
 
     for expected_tool in [
-        "zellij", "ghostty", "yazi", "hx", "nvim", "fish", "zsh", "bash", "nix", "jq", "fd", "rg",
+        "zellij",
+        runtime_terminal,
+        "yazi",
+        "hx",
+        "nvim",
+        "fish",
+        "zsh",
+        "bash",
+        "nix",
+        "jq",
+        "fd",
+        "rg",
     ] {
         require_path_exists_abs(
             &runtime_libexec.join(expected_tool),
@@ -1635,6 +1663,7 @@ fn verify_profile_installed_runtime(
     }
 
     let yzx_core_arg = runtime_yzx_core.display().to_string();
+    let selected_terminal_json = format!("[\"{runtime_terminal}\"]");
     let materialization_result = run_installed_yzx(
         repo_root,
         temp_home,
@@ -1644,23 +1673,31 @@ fn verify_profile_installed_runtime(
             "launch-materialization.prepare",
             "--from-env",
             "--selected-terminals-json",
-            "[]",
+            &selected_terminal_json,
         ],
     )?;
     if !materialization_result.status.success() {
         errors.push(format!(
-            "Installed runtime failed to materialize Ghostty shader-backed terminal config during cold profile-install validation\n{}",
+            "Installed runtime failed to materialize the selected terminal config during cold profile-install validation\n{}",
             command_output_summary(&materialization_result)
         ));
         return Ok(());
     }
 
-    require_ghostty_shader_references_exist(&generated_ghostty_config, errors)?;
-    require_non_empty_dir_abs(
-        &generated_ghostty_effect_dir,
-        "generated Ghostty cursor effect shaders directory",
-        errors,
-    )?;
+    if runtime_terminal == "ghostty" {
+        require_ghostty_shader_references_exist(&generated_ghostty_config, errors)?;
+        require_non_empty_dir_abs(
+            &generated_ghostty_effect_dir,
+            "generated Ghostty cursor effect shaders directory",
+            errors,
+        )?;
+    } else {
+        require_path_exists_abs(
+            &generated_wezterm_config,
+            "generated WezTerm config for selected runtime variant",
+            errors,
+        );
+    }
     Ok(())
 }
 

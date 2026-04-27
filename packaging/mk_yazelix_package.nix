@@ -5,7 +5,7 @@
   nixgl ? null,
   metaPlatforms ? null,
   fenixPkgs ? null,
-  runtimeVariant ? "ghostty",
+  runtimeVariant ? if pkgs.stdenv.hostPlatform.isLinux then "wezterm" else "ghostty",
 }:
 
 let

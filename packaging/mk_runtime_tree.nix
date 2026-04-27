@@ -4,7 +4,7 @@
   nixgl ? null,
   name ? "yazelix-runtime",
   rustCoreHelper ? null,
-  runtimeVariant ? "ghostty",
+  runtimeVariant ? if pkgs.stdenv.hostPlatform.isLinux then "wezterm" else "ghostty",
 }:
 
 let
