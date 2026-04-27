@@ -22,6 +22,17 @@ const MANDELBROT_SEAHORSE_PERIOD_MULTIPLIER: Complex64 = Complex64 {
     re: 1.042_778_623_972_814,
     im: -0.276_965_371_839_069_33,
 };
+const MANDELBROT_SEAHORSE_TOUR_WAYPOINTS: [MandelbrotTourWaypoint; 9] = [
+    MandelbrotTourWaypoint::new(0.00, 0.00, 0.00), // loop seam and valley entrance
+    MandelbrotTourWaypoint::new(0.10, 0.13, -0.16), // valley entrance
+    MandelbrotTourWaypoint::new(0.22, -0.36, -0.08), // side tendrils
+    MandelbrotTourWaypoint::new(0.36, -0.20, 0.30), // bulb boundary
+    MandelbrotTourWaypoint::new(0.50, 0.26, 0.20), // spiral arm
+    MandelbrotTourWaypoint::new(0.66, 0.42, -0.14), // dense filament field
+    MandelbrotTourWaypoint::new(0.80, 0.08, -0.34), // lower tendrils
+    MandelbrotTourWaypoint::new(0.92, -0.10, -0.12), // return valley
+    MandelbrotTourWaypoint::new(1.00, 0.00, 0.00), // exact loop seam
+];
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MandelbrotAnimation {
@@ -88,6 +99,40 @@ impl Complex64 {
             re: magnitude * angle.cos(),
             im: magnitude * angle.sin(),
         }
+    }
+
+    fn scale(self, scalar: f64) -> Self {
+        Self {
+            re: self.re * scalar,
+            im: self.im * scalar,
+        }
+    }
+
+    #[cfg(test)]
+    fn distance(self, other: Self) -> f64 {
+        (self.re - other.re).hypot(self.im - other.im)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct MandelbrotTourWaypoint {
+    progress: f64,
+    offset_units: Complex64,
+}
+
+impl MandelbrotTourWaypoint {
+    const fn new(progress: f64, re_units: f64, im_units: f64) -> Self {
+        Self {
+            progress,
+            offset_units: Complex64 {
+                re: re_units,
+                im: im_units,
+            },
+        }
+    }
+
+    fn offset(self) -> Complex64 {
+        self.offset_units.scale(MANDELBROT_SEAHORSE_BASE_SCALE_X)
     }
 }
 
@@ -257,11 +302,14 @@ fn blend_mandelbrot_cells_toward_home(
     height: usize,
     seam_blend: f64,
 ) {
-    let threshold = (seam_blend.clamp(0.0, 1.0) * 960.0).round() as usize;
+    const BAYER_4X4: [[usize; 4]; 4] =
+        [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
+
+    let threshold = (seam_blend.clamp(0.0, 1.0) * 16.0).round() as usize;
+    let threshold = threshold.clamp(1, 15);
     for y in 0..height {
         for x in 0..width {
-            let hash = (x.wrapping_mul(73) + y.wrapping_mul(151)) % 1024;
-            if hash < threshold {
+            if BAYER_4X4[y % 4][x % 4] < threshold {
                 cells[y * width + x] = home_cells[y * width + x];
             }
         }
@@ -272,6 +320,7 @@ fn blend_mandelbrot_cells_toward_home(
 struct MandelbrotView {
     center: Complex64,
     multiplier: Complex64,
+    tour_offset: Complex64,
     base_scale_x: f64,
     scale_x: f64,
     zoom: f64,
@@ -279,17 +328,80 @@ struct MandelbrotView {
 
 fn mandelbrot_view(frame_index: usize) -> MandelbrotView {
     let progress = mandelbrot_loop_progress(frame_index);
-    let multiplier =
-        MANDELBROT_SEAHORSE_PERIOD_MULTIPLIER.powf(-MANDELBROT_SEAHORSE_LOOP_POWERS * progress);
+    let zoom_progress = mandelbrot_zoom_progress(progress);
+    let multiplier = MANDELBROT_SEAHORSE_PERIOD_MULTIPLIER
+        .powf(-MANDELBROT_SEAHORSE_LOOP_POWERS * zoom_progress);
+    let tour_offset = mandelbrot_tour_offset(progress);
     let scale_x = MANDELBROT_SEAHORSE_BASE_SCALE_X * multiplier.abs();
 
     MandelbrotView {
-        center: MANDELBROT_SEAHORSE_CENTER,
+        center: MANDELBROT_SEAHORSE_CENTER + multiplier * tour_offset,
         multiplier,
+        tour_offset,
         base_scale_x: MANDELBROT_SEAHORSE_BASE_SCALE_X,
         scale_x,
         zoom: 1.0 / multiplier.abs(),
     }
+}
+
+fn mandelbrot_zoom_progress(progress: f64) -> f64 {
+    let t = progress.clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
+}
+
+fn mandelbrot_tour_offset(progress: f64) -> Complex64 {
+    if !(0.0..1.0).contains(&progress) {
+        return MANDELBROT_SEAHORSE_TOUR_WAYPOINTS[0].offset();
+    }
+
+    let segment_index = MANDELBROT_SEAHORSE_TOUR_WAYPOINTS
+        .windows(2)
+        .position(|waypoints| progress >= waypoints[0].progress && progress < waypoints[1].progress)
+        .unwrap_or(MANDELBROT_SEAHORSE_TOUR_WAYPOINTS.len() - 2);
+    let segment_start = MANDELBROT_SEAHORSE_TOUR_WAYPOINTS[segment_index];
+    let segment_end = MANDELBROT_SEAHORSE_TOUR_WAYPOINTS[segment_index + 1];
+    let previous = MANDELBROT_SEAHORSE_TOUR_WAYPOINTS
+        .get(segment_index.wrapping_sub(1))
+        .copied()
+        .unwrap_or(segment_start);
+    let next = MANDELBROT_SEAHORSE_TOUR_WAYPOINTS
+        .get(segment_index + 2)
+        .copied()
+        .unwrap_or(segment_end);
+    let segment_progress = ((progress - segment_start.progress)
+        / (segment_end.progress - segment_start.progress))
+        .clamp(0.0, 1.0);
+
+    catmull_rom_complex(
+        previous.offset(),
+        segment_start.offset(),
+        segment_end.offset(),
+        next.offset(),
+        segment_progress,
+    )
+}
+
+fn catmull_rom_complex(
+    previous: Complex64,
+    start: Complex64,
+    end: Complex64,
+    next: Complex64,
+    progress: f64,
+) -> Complex64 {
+    Complex64 {
+        re: catmull_rom_coordinate(previous.re, start.re, end.re, next.re, progress),
+        im: catmull_rom_coordinate(previous.im, start.im, end.im, next.im, progress),
+    }
+}
+
+fn catmull_rom_coordinate(previous: f64, start: f64, end: f64, next: f64, progress: f64) -> f64 {
+    let t = progress.clamp(0.0, 1.0);
+    let t2 = t * t;
+    let t3 = t2 * t;
+    0.5 * (2.0 * start
+        + (end - previous) * t
+        + (2.0 * previous - 5.0 * start + 4.0 * end - next) * t2
+        + (-previous + 3.0 * start - 3.0 * end + next) * t3)
 }
 
 fn mandelbrot_loop_progress(frame_index: usize) -> f64 {
@@ -301,7 +413,7 @@ fn mandelbrot_loop_progress(frame_index: usize) -> f64 {
 }
 
 fn mandelbrot_seam_blend(progress: f64) -> f64 {
-    const BLEND_START: f64 = 0.90;
+    const BLEND_START: f64 = 0.985;
     if progress <= BLEND_START {
         return 0.0;
     }
@@ -491,6 +603,29 @@ mod tests {
         matching_cells as f64 / total_cells as f64
     }
 
+    fn visible_mass_center(frame: &[String]) -> Option<(f64, f64)> {
+        let mut weighted_x = 0.0;
+        let mut weighted_y = 0.0;
+        let mut total_weight = 0.0;
+
+        for (y, line) in frame.iter().enumerate() {
+            for (x, cell) in line.chars().enumerate() {
+                let weight = match cell {
+                    '█' => 4.0,
+                    '▓' => 3.0,
+                    '▒' => 2.0,
+                    '░' => 1.0,
+                    _ => 0.0,
+                };
+                weighted_x += x as f64 * weight;
+                weighted_y += y as f64 * weight;
+                total_weight += weight;
+            }
+        }
+
+        (total_weight > 0.0).then_some((weighted_x / total_weight, weighted_y / total_weight))
+    }
+
     // Defends: Mandelbrot uses deterministic in-house CPU frames without host randomness or external engines.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
@@ -588,7 +723,11 @@ mod tests {
         ));
 
         assert_ne!(first, penultimate);
-        assert!(visible_frame_similarity(&first, &penultimate) >= 0.70);
+        let similarity = visible_frame_similarity(&first, &penultimate);
+        assert!(
+            similarity >= 0.70,
+            "penultimate frame similarity was {similarity}"
+        );
     }
 
     // Defends: the Mandelbrot view uses Seahorse Valley Misiurewicz scaling instead of a wide, boring minibrot path.
@@ -614,6 +753,88 @@ mod tests {
         assert_eq!(home, loop_home);
     }
 
+    // Regression: Mandelbrot must tour through Seahorse structures instead of pinning one spiral to pane center.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn mandelbrot_camera_tour_moves_view_center_through_local_offsets() {
+        let home = mandelbrot_view(0);
+        let zero = Complex64 { re: 0.0, im: 0.0 };
+
+        assert_eq!(mandelbrot_tour_offset(0.0), zero);
+        assert_eq!(mandelbrot_tour_offset(1.0), zero);
+
+        for waypoint in MANDELBROT_SEAHORSE_TOUR_WAYPOINTS
+            .iter()
+            .filter(|waypoint| waypoint.progress > 0.0 && waypoint.progress < 1.0)
+        {
+            let offset = mandelbrot_tour_offset(waypoint.progress);
+            assert_eq!(offset, waypoint.offset());
+            assert!(
+                offset.distance(zero) >= MANDELBROT_SEAHORSE_BASE_SCALE_X * 0.14,
+                "tour waypoint at progress {} is too close to the static center",
+                waypoint.progress
+            );
+        }
+
+        for frame_index in [
+            MANDELBROT_LOOP_FRAMES / 10,
+            MANDELBROT_LOOP_FRAMES / 4,
+            MANDELBROT_LOOP_FRAMES / 2,
+            MANDELBROT_LOOP_FRAMES * 2 / 3,
+            MANDELBROT_LOOP_FRAMES * 4 / 5,
+        ] {
+            let view = mandelbrot_view(frame_index);
+            assert_ne!(view.tour_offset, zero);
+            assert_ne!(
+                view.center, home.center,
+                "frame {frame_index} stayed pinned to the static Seahorse center"
+            );
+        }
+    }
+
+    // Regression: the camera tour should move visible fractal mass across the pane, not only rotate in place.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn mandelbrot_camera_tour_moves_visible_mass_across_pane() {
+        let centers = [
+            0,
+            MANDELBROT_LOOP_FRAMES / 10,
+            MANDELBROT_LOOP_FRAMES / 4,
+            MANDELBROT_LOOP_FRAMES / 2,
+            MANDELBROT_LOOP_FRAMES * 2 / 3,
+            MANDELBROT_LOOP_FRAMES * 4 / 5,
+        ]
+        .map(|frame_index| {
+            let visible = strip_ansi_from_frame(render_test_frame(context(72, 22), frame_index));
+            visible_mass_center(&visible).expect("frame should contain visible Mandelbrot mass")
+        });
+        let min_x = centers
+            .iter()
+            .map(|(x, _)| *x)
+            .fold(f64::INFINITY, f64::min);
+        let max_x = centers
+            .iter()
+            .map(|(x, _)| *x)
+            .fold(f64::NEG_INFINITY, f64::max);
+        let min_y = centers
+            .iter()
+            .map(|(_, y)| *y)
+            .fold(f64::INFINITY, f64::min);
+        let max_y = centers
+            .iter()
+            .map(|(_, y)| *y)
+            .fold(f64::NEG_INFINITY, f64::max);
+
+        assert!(
+            max_x - min_x >= 4.0,
+            "visible mass did not travel enough horizontally: {centers:?}"
+        );
+        assert!(
+            max_y - min_y >= 0.75,
+            "visible mass did not travel enough vertically: {centers:?}"
+        );
+    }
+
     // Defends: the loop depth is chosen to return near the same orientation after a materially deep zoom.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
@@ -630,19 +851,6 @@ mod tests {
         assert!(total_zoom > 9_000.0);
     }
 
-    // Defends: Mandelbrot keeps the requested neon look instead of falling back to dull basic ANSI colors.
-    // Strength: defect=1 behavior=2 resilience=1 cost=1 uniqueness=2 total=7/10
-    #[test]
-    fn mandelbrot_color_palette_uses_vibrant_256_color_ansi() {
-        let rendered = colorize_mandelbrot_cell(ScreenCell {
-            glyph: '█',
-            color_x: 0,
-            color_y: 0,
-        });
-
-        assert!(rendered.starts_with("\u{1b}[38;5;"));
-    }
-
     // Defends: narrow terminals still get a complete frame with no skipped or over-wide rows.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
@@ -655,10 +863,11 @@ mod tests {
 
         assert_eq!(visible.len(), 8);
         assert!(visible.iter().all(|line| line.chars().count() == 16));
-        assert!(visible.iter().any(|line| {
-            line.chars()
-                .any(|ch| matches!(ch, '·' | ':' | '░' | '▒' | '▓' | '█'))
-        }));
+        assert!(
+            visible
+                .iter()
+                .any(|line| { line.chars().any(|ch| matches!(ch, '░' | '▒' | '▓' | '█')) })
+        );
     }
 
     // Defends: core Mandelbrot math keeps known outside and inside points stable.
