@@ -21,24 +21,25 @@ Yazelix now uses the `yazelix.toml` config surface, with the normal flake surfac
 - `yzx launch`: Open Yazelix in a managed terminal window
 - `yzx enter`: Start Yazelix in the current terminal
 - `yzx env`: Enter the Yazelix tool environment without the UI
-- `yzx popup`: CLI entrypoint for the managed popup pane, usually `lazygit`; most users trigger the same toggle with `Alt+t`, and closing it reruns the Yazi sidebar refresh path so git state stays current
+- `yzx popup`: CLI entrypoint for the managed popup pane, usually `lazygit`; most users trigger the same toggle with `Alt+t`, and closing it reruns the Yazi file-tree sidebar refresh path so git state stays current
 - `yzx menu --popup`: CLI entrypoint for the popup command palette; most users trigger the same toggle with `Alt+Shift+M`
 - `yzx update upstream`: Upgrade the Yazelix package that owns the current runtime in the default Nix profile
 - `yzx update home_manager`: Refresh the owning Home Manager flake input, then print the `home-manager switch` step
 
 ## Workspace Model
 
-- Zellij orchestrates the workspace, with Yazi as a managed sidebar and your chosen editor in the managed `editor` pane
+- Zellij orchestrates the workspace, with a managed sidebar and your chosen editor in the managed `editor` pane
+- In Yazelix docs, `sidebar` means the generic side-surface slot; the default sidebar is a Yazi file tree
 - Toggle focus between the sidebar and editor with `Ctrl+y`, and toggle the sidebar itself with `Alt+y`
 - Switch between the built-in sidebar-aware workspace shapes and other workspace layouts; see [Layouts](./docs/layouts.md)
-- When you open something from the sidebar with Helix or Neovim, Yazelix targets the managed `editor` pane through the pane orchestrator instead of relying on pane scanning heuristics
-- `yzx reveal` is the stable editor-integration surface for jumping the current file back into the managed sidebar
-- `Alt+t` toggles the managed popup pane and refreshes the Yazi sidebar git view when that popup closes, while `Alt+Shift+M` toggles the popup command menu on the same fast floating-pane path
+- When you open something from the default Yazi file-tree sidebar with Helix or Neovim, Yazelix targets the managed `editor` pane through the pane orchestrator instead of relying on pane scanning heuristics
+- `yzx reveal` is the stable editor-integration surface for jumping the current file back into the managed Yazi file tree
+- `Alt+t` toggles the managed popup pane and refreshes the Yazi file-tree sidebar git view when that popup closes, while `Alt+Shift+M` toggles the popup command menu on the same fast floating-pane path
 
 ## Why Yazelix
 Yazelix is a reproducible terminal IDE that integrates Yazi + Zellij + Helix, delivering a consistent, fast "superterminal" locally or over SSH with zero manual setup through smart pane/layout orchestration, sidebar reveal/open flows, a curated built-in toolset, sane defaults, Helix/Zellij conflict cleanup, auto-configured tools like starship, zoxide, and carapace, and useful bundled tools such as `lazygit`
 
-It already ships with Zellij and Yazi plugins, some maintained in this repo, including the pane orchestrator and sidebar-focused Yazi flows
+It already ships with Zellij and Yazi plugins, some maintained in this repo, including the pane orchestrator and Yazi file-tree sidebar flows
 
 It has features like `reveal in Yazi` from Helix or Neovim, opening files from Yazi in your configured editor, and switching workspace layouts without leaving the workspace
 
@@ -125,7 +126,7 @@ For the current trimmed branch contract, see [docs/specs/v15_trimmed_runtime_con
 ## Compatibility
 - **Platform**: Linux and macOS — see the [macOS support floor spec](docs/specs/macos_support_floor.md) for the current guaranteed macOS surfaces
 - **Terminal**: WezTerm is the default Linux packaged terminal, Ghostty is the default macOS and explicit Ghostty package path, while Kitty and Alacritty remain supported PATH-provided alternatives and Foot remains a Linux-only PATH-provided alternative
-- **Editor**: Any editor works, with Helix and Neovim getting first-class support (reveal in sidebar, open buffer in a running instance, managed editor-pane targeting) and configuration through `[editor].command` in `yazelix.toml`
+- **Editor**: Any editor works, with Helix and Neovim getting first-class support (reveal in the Yazi file tree, open buffer in a running instance, managed editor-pane targeting) and configuration through `[editor].command` in `yazelix.toml`
 - **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer
 
 ## Installation
@@ -190,13 +191,13 @@ For Neovim-Yazi integration, bind `yzx reveal` to any editor-local shortcut that
 This assumes `yzx` is on your editor `PATH`
 
 ```lua
--- Yazelix sidebar integration - reveal current file in Yazi sidebar
+-- Yazelix Yazi file-tree integration - reveal current file in the managed sidebar
 vim.keymap.set('n', '<M-r>', function()
   local buffer_path = vim.fn.expand('%:p')
   if buffer_path ~= '' then
     vim.fn.system({ 'yzx', 'reveal', buffer_path })
   end
-end, { desc = 'Reveal in Yazi sidebar' })
+end, { desc = 'Reveal in Yazi file tree' })
 ```
 
 📖 **[Complete Neovim Keybindings Guide →](./docs/neovim_keybindings.md)** - Setup instructions and workflow tips
@@ -334,7 +335,7 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 - `yzx update` - Show the supported update-owner paths
 - `yzx update upstream` - Upgrade the active default-profile Yazelix package
 - `yzx update home_manager` - Refresh the current Home Manager flake input, then print `home-manager switch`
-- `yzx popup` - Toggle the managed popup program, usually `lazygit`, and refresh the Yazi sidebar git state when it closes
+- `yzx popup` - Toggle the managed popup program, usually `lazygit`, and refresh the Yazi file-tree sidebar git state when it closes
 - `yzx config [--path]` - Show the active config or print its resolved path
 - `yzx edit config` - Open the main managed Yazelix config file in your editor
 - `yzx restart` - Restart Yazelix in a fresh window
@@ -377,21 +378,21 @@ Yazelix uses Zellij as the workspace layer, so the most important bindings are g
 
 | Keybinding | What It Does |
 |------------|--------------|
-| `Ctrl+y` | Toggle focus between the managed editor and Yazi sidebar |
+| `Ctrl+y` | Toggle focus between the managed editor and sidebar, which defaults to a Yazi file tree |
 | `Alt+y` | Open or close the sidebar |
 | `Alt+r` | Smart reveal/focus key; forwards into the editor when appropriate |
 | `Alt+[` / `Alt+]` | Switch between layouts |
 | `Alt+m` | Open a new terminal in the current tab workspace root |
-| `Alt+t` | Toggle the configured managed popup program, usually `lazygit`, and refresh the Yazi sidebar git state when it closes |
+| `Alt+t` | Toggle the configured managed popup program, usually `lazygit`, and refresh the Yazi file-tree sidebar git state when it closes |
 | `Alt+Shift+M` | Open the `yzx` command palette popup |
 | `Alt+1..9` | Jump directly to tabs 1 through 9 |
 | `Alt+w` / `Alt+q` | Move to the next or previous tab |
 | `Alt+Shift+H` / `Alt+Shift+L` | Move the current tab left or right |
 | `Alt+Shift+F` | Toggle pane fullscreen |
 
-Yazi still has its own keymap too: press `~` inside Yazi for its built-in help, and use the most useful Yazelix-specific sidebar flows such as `Enter` to open through the managed editor integration, `Alt+z` to pick a directory with zoxide and retarget the workspace, and `Alt+p` to open the selected directory in a new pane as the current tab workspace root
+Yazi still has its own keymap too: press `~` inside Yazi for its built-in help, and use the most useful Yazelix-specific file-tree sidebar flows such as `Enter` to open through the managed editor integration, `Alt+z` to pick a directory with zoxide and retarget the workspace, and `Alt+p` to open the selected directory in a new pane as the current tab workspace root
 
-Helix and Neovim integration is intentionally small: use `Ctrl+y` and `Alt+y` for workspace navigation, use `Alt+r` / `yzx reveal` when you want the editor to reveal the current file in the managed Yazi sidebar, and see [docs/helix_keybindings.md](./docs/helix_keybindings.md) and [docs/neovim_keybindings.md](./docs/neovim_keybindings.md) for editor-local setup details
+Helix and Neovim integration is intentionally small: use `Ctrl+y` and `Alt+y` for workspace navigation, use `Alt+r` / `yzx reveal` when you want the editor to reveal the current file in the managed Yazi file tree, and see [docs/helix_keybindings.md](./docs/helix_keybindings.md) and [docs/neovim_keybindings.md](./docs/neovim_keybindings.md) for editor-local setup details
 
 ## I'm Lost! Too Much Information
 Start by learning Zellij on its own, then optionally Yazi, and re-read this README afterwards

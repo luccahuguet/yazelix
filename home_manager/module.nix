@@ -296,24 +296,24 @@ in
       description = ''
         Initial managed sidebar state for new Yazelix tabs.
 
-        - "open": start with the Yazi sidebar visible
+        - "open": start with the default Yazi file-tree sidebar visible
         - "closed": start with the managed sidebar collapsed; Alt+y, Ctrl+y, and reveal flows remain available
       '';
     };
 
     sidebar_width_percent = mkMainContractOption "editor.sidebar_width_percent" {
-      description = "Width of the open Yazi sidebar as a percentage of the tab.";
+      description = "Width of the open sidebar as a percentage of the tab; the default sidebar is a Yazi file tree.";
     };
 
     sidebar_command = mkMainContractOption "editor.sidebar_command" {
-      description = "Terminal command used for the managed sidebar pane. Defaults to Nu running the Yazelix Yazi adapter.";
+      description = "Terminal command used for the managed sidebar pane. Defaults to Nu running the Yazelix Yazi file-tree adapter.";
     };
 
     sidebar_args = mkMainContractOption "editor.sidebar_args" {
       description = ''
         Arguments passed to the managed sidebar command.
 
-        The default launches Yazelix's managed Yazi adapter with the default Nu command.
+        The default launches Yazelix's managed Yazi file-tree adapter with the default Nu command.
         When sidebar_command is changed and sidebar_args remains at that default adapter
         path, Yazelix renders the custom sidebar command with no inherited Yazi argument.
       '';

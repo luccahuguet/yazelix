@@ -95,12 +95,12 @@ Retarget the current tab workspace root inside Zellij
 - Updates the current tab's Yazelix workspace root and renames the tab
 - Also applies the directory change to the current pane after the command returns
 - When a managed Helix or Neovim editor pane is present, its cwd is also updated
-- When a managed Yazi sidebar is present, it also follows the updated directory
+- When the managed Yazi file-tree sidebar is present, it also follows the updated directory
 - Other existing panes keep their current working directories; new managed actions use the updated tab directory
 - Errors when run outside Zellij
 
 ### `yzx reveal PATH`
-Reveal a file or directory in the managed Yazi sidebar
+Reveal a file or directory in the managed Yazi file-tree sidebar
 - Targets the managed sidebar in the current Zellij tab
 - Focuses the sidebar after revealing the target when the sidebar is available
 - Intended as the stable editor-integration surface for Helix/Neovim keybindings

@@ -31,10 +31,10 @@ welcome_duration_seconds = 2.0 # Welcome animation duration in seconds for anima
 # • null (recommended): Use yazelix's Nix-provided Helix
 #   - Eliminates runtime conflicts with existing Helix installations
 #   - Binary and runtime are perfectly matched
-#   - Full yazelix integration features (reveal in sidebar, same-instance opening, pane detection)
+#   - Full yazelix integration features (reveal in the Yazi file tree, same-instance opening, pane detection)
 #
 # • "nvim": Use Neovim (first-class support)
-#   - Full yazelix integration features (reveal in sidebar, same-instance opening, pane detection)
+#   - Full yazelix integration features (reveal in the Yazi file tree, same-instance opening, pane detection)
 #   - Requires keybinding setup - see docs/neovim_keybindings.md
 #   - Works with your existing Neovim configuration
 #
@@ -45,21 +45,22 @@ welcome_duration_seconds = 2.0 # Welcome animation duration in seconds for anima
 #
 # • Other editors: "vim", "nano", "emacs", "kak", etc.
 #   - Basic integration only (new panes, tab naming)
-#   - No advanced features (reveal in sidebar, same-instance opening)
+#   - No advanced features (reveal in the Yazi file tree, same-instance opening)
 #   - Works reliably but with limited yazelix-specific functionality
 command = ""  # Leave empty to use yazelix's helix (recommended), or set to "nvim", "hx", "vim", etc.
 
 # Initial managed sidebar state: "open" or "closed" (default: "open")
+# Sidebar is the generic managed side-surface; the default sidebar is a Yazi file tree.
 # "closed" starts new tabs with the sidebar collapsed, while keeping Alt+y/Ctrl+y/reveal available
 initial_sidebar_state = "open"
 
-# Sidebar width when the Yazi sidebar is open (default: 20)
+# Sidebar width when the Yazi file-tree sidebar is open (default: 20)
 # Valid range: 10 to 40 percent
 # Higher values give Yazi more room but reduce editor space
 sidebar_width_percent = 20
 
 # Sidebar terminal command and arguments.
-# The default launches Yazelix's managed Yazi sidebar adapter.
+# The default launches Yazelix's managed Yazi file-tree sidebar adapter.
 # Advanced users can point this at another terminal side surface; the pane is
 # still owned by Yazelix as the managed "sidebar" pane.
 # If sidebar_command changes and sidebar_args stays at this default, Yazelix

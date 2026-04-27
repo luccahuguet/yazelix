@@ -65,7 +65,7 @@ backspace.c = ":config-open"
 
 ### System Integration
 - `C-r`: Reload configuration and current file
-- `A-r`: Reveal the current file in the managed Yazi sidebar
+- `A-r`: Reveal the current file in the managed Yazi file tree
 
 ### Git Integration
 - `A-g.b`: Show git blame for current line

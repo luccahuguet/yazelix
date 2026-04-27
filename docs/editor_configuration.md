@@ -18,8 +18,8 @@ command = ""  # Uses Yazelix's Helix - no conflicts, full features
 ## How It Works
 
 Yazelix sets your configured editor as the `EDITOR` environment variable throughout the system. The editor choice affects:
-- **File opening behavior** from Yazi file manager
-- **Integration features** (reveal in sidebar, open in same instance, etc.)
+- **File opening behavior** from the Yazi file tree
+- **Integration features** (reveal in the Yazi file tree, open in same instance, etc.)
 - **Zellij pane management** and tab naming
 - **Shell commands** that respect `$EDITOR`
 
@@ -40,7 +40,7 @@ sidebar_width_percent = 20
 **Benefits:**
 - ✅ **No conflicts** with existing Helix installations
 - ✅ **Always works** - binary and runtime are perfectly matched
-- ✅ **Full integration** - All yazelix features work (reveal in sidebar, open in same instance, etc.)
+- ✅ **Full integration** - All yazelix features work (reveal in the Yazi file tree, open in same instance, etc.)
 - ✅ **Zero configuration** - Works out of the box
 
 **How it works:**
@@ -94,7 +94,7 @@ command = "nvim"         # Use Neovim
 ```
 
 **Benefits:**
-- ✅ **Full integration** - All yazelix features work (reveal in sidebar, open in same instance, etc.)
+- ✅ **Full integration** - All yazelix features work (reveal in the Yazi file tree, open in same instance, etc.)
 - ✅ **Smart instance management** - Files open in existing Neovim instance when possible
 - ✅ **Managed pane targeting** - Yazelix finds and reuses your managed Neovim pane deterministically
 
@@ -119,7 +119,7 @@ command = "vim"          # "nano", "emacs", etc.
 - ✅ **Use any editor** - Full flexibility
 
 **Limitations:**
-- ❌ **Limited features** - No advanced integration (reveal in sidebar, same-instance opening)
+- ❌ **Limited features** - No advanced integration (reveal in the Yazi file tree, same-instance opening)
 - ❌ **No editor-specific shortcuts** - reveal in Yazi won't work without custom integration
 
 **Popular editor commands:**
@@ -134,7 +134,7 @@ command = "vim"          # "nano", "emacs", etc.
 ### Helix-Specific Features (when using Helix)
 
 **Reveal in Yazi (managed binding):**
-- Jump from Helix buffer to the same file in Yazi sidebar
+- Jump from Helix buffer to the same file in the Yazi file tree
 - Works against the managed sidebar in the current Yazelix tab
 - Default binding: `Alt+r`
 - Managed through Yazelix's Helix config surface instead of `~/.config/helix/config.toml`
@@ -155,7 +155,7 @@ command = "vim"          # "nano", "emacs", etc.
 ### Neovim-Specific Features (when using Neovim)
 
 **Reveal in Yazi (custom binding):**
-- Jump from Neovim buffer to the same file in Yazi sidebar
+- Jump from Neovim buffer to the same file in the Yazi file tree
 - Works against the managed sidebar in the current Yazelix tab
 - Recommended binding: `Alt+r`
 - Recommended command: `yzx reveal`
@@ -322,5 +322,5 @@ runtime_path = "/usr/share/helix/runtime"  # Match system runtime
 - **Tab Naming**: Zellij tabs named after project/directory
 
 **Notes:**
-- Neovim requires [keybinding setup](./neovim_keybindings.md) for reveal in sidebar
+- Neovim requires [keybinding setup](./neovim_keybindings.md) for reveal in the Yazi file tree
 - File picker in Neovim works with your existing plugins (Telescope, fzf-lua, etc.)

@@ -34,9 +34,9 @@ ya_command = "/path/to/custom/ya" # Optional: managed `ya` CLI override
 
 Leave both empty to use `yazi` and `ya` from `PATH`.
 
-Use this only when Yazelix-managed Yazi launches and sidebar actions need a specific binary. Custom plugin initialization should still go in `~/.config/yazelix/user_configs/yazi/init.lua`.
+Use this only when Yazelix-managed Yazi launches and file-tree sidebar actions need a specific binary. Custom plugin initialization should still go in `~/.config/yazelix/user_configs/yazi/init.lua`.
 
-The Zellij sidebar launcher itself is controlled by `[editor].sidebar_command` and `[editor].sidebar_args` in `yazelix.toml`. Leave those at their defaults unless you intentionally want the managed sidebar slot to run something other than Yazelix's Yazi adapter. Custom commands do not inherit the default Yazi adapter arg when `sidebar_args` is left unchanged.
+The Zellij sidebar launcher itself is controlled by `[editor].sidebar_command` and `[editor].sidebar_args` in `yazelix.toml`. Leave those at their defaults unless you intentionally want the managed sidebar slot to run something other than Yazelix's Yazi file-tree adapter. Custom commands do not inherit the default Yazi adapter arg when `sidebar_args` is left unchanged.
 
 ### Plugins
 
@@ -50,7 +50,7 @@ plugins = ["git"]
 
 **Bundled plugins and helpers:**
 - `git` - Git status integration (shows file changes)
-- `sidebar-state` - Reports the managed sidebar Yazi id and cwd to the pane orchestrator for tab-local reveal and sync
+- `sidebar-state` - Reports the managed Yazi file-tree sidebar id and cwd to the pane orchestrator for tab-local reveal and sync
 - `zoxide-editor` - Bundled helper plugin behind `Alt+z`; it drives the direct-open Zoxide jump without needing a `plugins = [...]` entry
 
 **Adding external plugins:**

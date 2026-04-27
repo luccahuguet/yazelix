@@ -2,20 +2,20 @@
 
 This document describes the recommended Neovim keybindings for full Yazelix integration.
 
-## Essential Keybinding: Reveal in Yazi
+## Essential Keybinding: Reveal in Yazi File Tree
 
 The essential keybinding for Yazelix integration should be added to your Neovim config (usually `~/.config/nvim/init.lua`). Use any editor-local shortcut that does not conflict with your terminal or Zellij bindings. A good default is `<M-r>`:
 
 This assumes `yzx` is on your editor `PATH`.
 
 ```lua
--- Yazelix sidebar integration - reveal current file in Yazi sidebar
+-- Yazelix Yazi file-tree integration - reveal current file in the managed sidebar
 vim.keymap.set('n', '<M-r>', function()
   local buffer_path = vim.fn.expand('%:p')
   if buffer_path ~= '' then
     vim.fn.system({ 'yzx', 'reveal', buffer_path })
   end
-end, { desc = 'Reveal in Yazi sidebar' })
+end, { desc = 'Reveal in Yazi file tree' })
 ```
 
 ### For init.vim Users
@@ -23,7 +23,7 @@ end, { desc = 'Reveal in Yazi sidebar' })
 If you use `init.vim` instead of `init.lua`:
 
 ```vim
-" Yazelix sidebar integration - reveal current file in Yazi sidebar
+" Yazelix Yazi file-tree integration - reveal current file in the managed sidebar
 nnoremap <M-r> :call system(['yzx', 'reveal', expand('%:p')])<CR>
 ```
 
@@ -53,7 +53,7 @@ vim.keymap.set('n', '<leader>b', ':Telescope buffers<CR>', { desc = 'List buffer
 
 With Neovim configured for Yazelix, you get:
 
-- **`<M-r>`**: Reveal current buffer in Yazi sidebar (jumps focus to Yazi and selects the file)
+- **`<M-r>`**: Reveal current buffer in the Yazi file tree (jumps focus to Yazi and selects the file)
 - **Smart Instance Management**: Opening files from Yazi reuses existing Neovim instance
 - **Tab Naming**: Zellij tabs automatically named after your project/directory
 - **Yazi Sync**: Yazi directory view stays synchronized with opened files
@@ -61,7 +61,7 @@ With Neovim configured for Yazelix, you get:
 ## Workflow Example
 
 1. Start Yazelix with Neovim: `yzx launch` (with `[editor].command = "nvim"` in `yazelix.toml`)
-2. Navigate files in Yazi sidebar (left pane)
+2. Navigate files in the Yazi file-tree sidebar (left pane)
 3. Press `e` on a file to edit in Neovim
 4. While editing, press your reveal binding to reveal the current file in Yazi
 5. Navigate to a different file in Yazi and press `e` - it opens in the same Neovim instance
