@@ -1,13 +1,11 @@
 # Zellij Layouts
 
-Yazelix ships managed-sidebar startup layouts, the historical no-sidebar layout family, one sweep-test layout, and three swap-layout files:
+Yazelix ships managed-sidebar startup layouts, one sweep-test layout, and swap-layout files:
 
 - `configs/zellij/layouts/yzx_side.kdl` for sidebar mode
 - `configs/zellij/layouts/yzx_side_closed.kdl` for managed-sidebar mode with the sidebar initially collapsed
-- `configs/zellij/layouts/yzx_no_side.kdl` for the historical no-sidebar family
 - `configs/zellij/layouts/yzx_side.swap.kdl` for sidebar swap layouts
 - `configs/zellij/layouts/yzx_side_closed.swap.kdl` for the collapsed-start sidebar swap layouts
-- `configs/zellij/layouts/yzx_no_side.swap.kdl` for no-sidebar swap layouts
 - `configs/zellij/layouts/yzx_sweep_test.kdl` for terminal sweep validation
 
 Set the startup mode in `yazelix.toml`:
@@ -31,7 +29,7 @@ The built-in layout family contract lives in `config_metadata/zellij_layout_fami
 
 That file is the machine-readable source for:
 
-- sidebar, collapsed-sidebar startup, and no-sidebar layout ids
+- sidebar and collapsed-sidebar startup layout ids
 - the startup KDL file for each family
 - the swap-layout KDL file for each family
 - required managed pane names
@@ -47,10 +45,9 @@ Yazelix now copies every top-level `.kdl` file in `configs/zellij/layouts/` into
 The supported customization paths are:
 
 - Use `editor.sidebar_command` and `editor.sidebar_args` for custom side-surface launchers
-- Edit `yzx_side.kdl`, `yzx_side_closed.kdl`, or `yzx_no_side.kdl` to change startup panes
-- Edit `yzx_side.swap.kdl`, `yzx_side_closed.swap.kdl`, or `yzx_no_side.swap.kdl` to tweak built-in swap layouts
+- Edit `yzx_side.kdl` or `yzx_side_closed.kdl` to change startup panes
+- Edit `yzx_side.swap.kdl` or `yzx_side_closed.swap.kdl` to tweak built-in swap layouts
 - Add a new top-level `.kdl` file in `configs/zellij/layouts/` if you also add it to `config_metadata/zellij_layout_families.toml`
-- Add custom no-sidebar swap layouts inside `yzx_no_side.swap.kdl`
 
 ## Important Boundary
 
@@ -61,7 +58,6 @@ The sidebar-aware controls `Alt+y`, `Alt+[`, and `Alt+]` still understand only t
 So the current rule is:
 
 - top-level custom layouts: supported
-- custom no-sidebar swap layouts: supported
 - brand-new sidebar swap families: not yet first-class
 
 ## Tips
