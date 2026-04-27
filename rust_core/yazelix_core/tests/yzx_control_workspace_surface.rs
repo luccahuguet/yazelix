@@ -295,6 +295,61 @@ fn yzx_control_popup_override_opens_transient_pane_with_explicit_payload() {
     );
 }
 
+// Regression: a popup pane already running inside an older session does not strictly reload all user config before starting its program.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_control_popup_pane_tolerates_unrelated_unknown_config_fields() {
+    let fixture = managed_config_fixture(
+        r#"[zellij]
+popup_program = ["popup-probe", "hello"]
+
+[terminal]
+ghostty_trail_color = "random"
+"#,
+    );
+    let fake_bin = fixture.home_dir.join("fake-bin");
+    let popup_log = fixture.home_dir.join("popup.log");
+    let zellij_log = fixture.home_dir.join("zellij.log");
+    fs::create_dir_all(&fake_bin).unwrap();
+
+    write_executable_script(
+        &fake_bin.join("popup-probe"),
+        &format!(
+            "#!/bin/sh\nprintf 'args=%s\\n' \"$*\" > \"{}\"\nprintf 'editor=%s\\n' \"$EDITOR\" >> \"{}\"\n",
+            popup_log.display(),
+            popup_log.display()
+        ),
+    );
+    write_executable_script(
+        &fake_bin.join("zellij"),
+        &format!(
+            "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\nexit 0\n",
+            zellij_log.display()
+        ),
+    );
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .env("PATH", prepend_path(&fake_bin))
+        .env("ZELLIJ", "1")
+        .env("YAZELIX_POPUP_PANE", "true")
+        .env("EDITOR", "runtime-editor")
+        .arg("popup")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stderr.is_empty());
+    assert!(output.stdout.is_empty());
+    assert_eq!(
+        fs::read_to_string(popup_log).unwrap(),
+        "args=hello\neditor=runtime-editor\n"
+    );
+
+    let zellij_log = fs::read_to_string(zellij_log).unwrap();
+    assert!(zellij_log.contains("action rename-pane yzx_popup"));
+    assert!(zellij_log.contains("action close-pane"));
+}
+
 // Defends: the Rust-owned Yazi file-open route carries all selected files into the managed editor, then retargets the workspace and syncs the plugin-owned sidebar.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]

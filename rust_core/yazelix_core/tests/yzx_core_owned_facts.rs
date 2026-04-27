@@ -62,6 +62,35 @@ popup_height_percent = 76
     assert_eq!(envelope["data"]["popup_height_percent"], 76);
 }
 
+// Regression: transient-pane facts tolerate unrelated stale config fields so popup/menu panes still open in older running sessions.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn transient_pane_facts_compute_ignores_unrelated_unknown_fields() {
+    let fixture = managed_config_fixture(
+        r#"[zellij]
+popup_program = ["gitui", "--theme", "cyan"]
+popup_width_percent = 82
+popup_height_percent = 76
+
+[terminal]
+ghostty_trail_color = "random"
+"#,
+    );
+
+    let output = yzx_core_command_in_fixture(&fixture, "transient-pane-facts.compute")
+        .output()
+        .unwrap();
+    let envelope: Value = ok_envelope(&output);
+
+    assert_eq!(envelope["command"], "transient-pane-facts.compute");
+    assert_eq!(
+        envelope["data"]["popup_program"],
+        serde_json::json!(["gitui", "--theme", "cyan"])
+    );
+    assert_eq!(envelope["data"]["popup_width_percent"], 82);
+    assert_eq!(envelope["data"]["popup_height_percent"], 76);
+}
+
 // Defends: startup-facts.compute returns the retained welcome, session, shell, and terminal facts without Nushell-side config parsing.
 // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 #[test]

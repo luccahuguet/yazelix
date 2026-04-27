@@ -2,11 +2,9 @@
 //! Public `yzx cwd`, `yzx reveal`, and `yzx popup` owners for `yzx_control`.
 
 use crate::bridge::{CoreError, ErrorClass};
-use crate::compute_runtime_env;
 use crate::control_plane::{
     config_dir_from_env, config_override_from_env, home_dir_from_env,
     load_normalized_config_for_control, run_child_in_runtime_env, runtime_dir_from_env,
-    runtime_env_request,
 };
 use crate::transient_pane_facts::compute_transient_pane_facts_from_env;
 use serde::{Deserialize, Serialize};
@@ -318,13 +316,7 @@ fn popup_mode_active() -> bool {
 fn run_popup_program_in_current_pane(program_override: Vec<String>) -> Result<i32, CoreError> {
     rename_current_pane("yzx_popup");
 
-    let runtime_dir = runtime_dir_from_env()?;
-    let config_dir = config_dir_from_env()?;
-    let config_override = config_override_from_env();
-    let normalized =
-        load_normalized_config_for_control(&runtime_dir, &config_dir, config_override.as_deref())?;
-    let runtime_env =
-        compute_runtime_env(&runtime_env_request(runtime_dir, &normalized)?)?.runtime_env;
+    let runtime_env = current_process_runtime_env();
     let popup_program = if program_override.is_empty() {
         compute_transient_pane_facts_from_env()?.popup_program
     } else {
@@ -346,6 +338,27 @@ fn run_popup_program_in_current_pane(program_override: Vec<String>) -> Result<i3
         close_current_pane();
     }
     Ok(status.code().unwrap_or(1))
+}
+
+fn current_process_runtime_env() -> serde_json::Map<String, serde_json::Value> {
+    [
+        "PATH",
+        "EDITOR",
+        "VISUAL",
+        "YAZELIX_RUNTIME_DIR",
+        "IN_YAZELIX_SHELL",
+        "ZELLIJ_DEFAULT_LAYOUT",
+        "YAZI_CONFIG_HOME",
+        "YAZELIX_MANAGED_HELIX_BINARY",
+        "HELIX_RUNTIME",
+    ]
+    .into_iter()
+    .filter_map(|key| {
+        env::var(key)
+            .ok()
+            .map(|value| (key.to_string(), Value::String(value)))
+    })
+    .collect()
 }
 
 fn resolve_popup_runtime_argv(
