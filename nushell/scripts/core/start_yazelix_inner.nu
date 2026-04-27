@@ -15,6 +15,7 @@ def get_zellij_config_paths [] {
 
 const RUNTIME_MATERIALIZATION_MATERIALIZE_COMMAND = "runtime-materialization.materialize"
 const STARTUP_HANDOFF_CAPTURE_COMMAND = "startup-handoff.capture"
+const SESSION_CONFIG_SNAPSHOT_WRITE_COMMAND = "session-config-snapshot.write"
 
 def require_existing_directory [path_value: string, label: string] {
     let resolved = ($path_value | path expand)
@@ -60,22 +61,35 @@ def regenerate_runtime_configs [runtime_dir: string, --quiet] {
     $result.plan
 }
 
-def prepare_session_facts_snapshot [] {
-    let source = (get_yazelix_state_dir | path join "state" "session_facts.json")
-    if not ($source | path exists) {
-        return null
+def prepare_session_config_snapshot [runtime_dir: string, applied_runtime_state: record] {
+    let launch_id = (date now | into int | into string)
+    let request = {
+        state_dir: (get_yazelix_state_dir)
+        snapshot_id: $launch_id
+        source_config_file: ($applied_runtime_state.config_file? | default "" | into string)
+        source_config_hash: ($applied_runtime_state.config_hash? | default "" | into string)
+        runtime_dir: $runtime_dir
+        runtime_hash: ($applied_runtime_state.runtime_hash? | default "" | into string)
+        normalized_config: ($applied_runtime_state.config? | default {})
+    }
+    let snapshot = (run_yzx_core_json_command
+        $runtime_dir
+        (build_default_yzx_core_error_surface)
+        [$SESSION_CONFIG_SNAPSHOT_WRITE_COMMAND "--request-json" ($request | to json -r)]
+        "Yazelix Rust session config snapshot helper returned invalid JSON.")
+    let snapshot_path = ($snapshot.snapshot_path? | default "" | into string | str trim)
+
+    if ($snapshot_path | is-empty) {
+        error make {
+            msg: (
+                "Yazelix session config snapshot helper did not return a snapshot path. "
+                + "Run `yzx doctor` to inspect the runtime and generated-state contract."
+            )
+        }
     }
 
-    let launch_id = (date now | into int | into string)
-    let target_dir = (get_yazelix_state_dir | path join "sessions" $launch_id)
-    mkdir $target_dir
-    let target = ($target_dir | path join "session_facts.json")
-    let copy = (do { ^cp $source $target } | complete)
-    if $copy.exit_code != 0 {
-        return null
-    }
-    $env.YAZELIX_SESSION_FACTS_PATH = $target
-    $target
+    $env.YAZELIX_SESSION_CONFIG_PATH = $snapshot_path
+    $snapshot_path
 }
 
 def capture_startup_handoff_context [
@@ -186,7 +200,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     } catch { |err|
             error make {msg: $"Failed to prepare Yazelix generated runtime state: ($err.msg)\nRun `yzx doctor` to inspect the runtime and generated-state contract, then restart Yazelix after fixing the reported problem."}
     })
-    let session_facts_path = (prepare_session_facts_snapshot)
+    let session_config_snapshot_path = (prepare_session_config_snapshot $yazelix_dir $applied_runtime_state)
 
     let merged_zellij_dir = ((get_zellij_config_paths).merged_config_dir | str replace "~" $env.HOME)
     let working_dir = if ($cwd_override | is-not-empty) {
@@ -229,7 +243,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
         } {
             layout_path: $layout_path
             default_shell: $zellij_default_shell
-            session_facts_path: $session_facts_path
+            session_config_snapshot_path: $session_config_snapshot_path
         } | ignore
         return
     }

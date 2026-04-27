@@ -49,6 +49,24 @@ pub struct SessionConfigSnapshotWriteRequest<'a> {
     pub normalized_config: &'a JsonMap<String, JsonValue>,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct SessionConfigSnapshotCreateRequest {
+    pub state_dir: PathBuf,
+    pub snapshot_id: String,
+    pub source_config_file: String,
+    pub source_config_hash: String,
+    pub runtime_dir: PathBuf,
+    pub runtime_hash: String,
+    pub normalized_config: JsonMap<String, JsonValue>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SessionConfigSnapshotWriteData {
+    pub snapshot_path: String,
+    pub snapshot_id: String,
+    pub snapshot: SessionConfigSnapshotData,
+}
+
 pub fn session_config_snapshot_path(session_dir: &Path) -> PathBuf {
     session_dir.join(SESSION_CONFIG_SNAPSHOT_FILE_NAME)
 }
@@ -112,6 +130,33 @@ pub fn write_session_config_snapshot(
     Ok(snapshot)
 }
 
+pub fn write_session_config_snapshot_for_launch(
+    request: &SessionConfigSnapshotCreateRequest,
+    runtime_version: &str,
+) -> Result<SessionConfigSnapshotWriteData, CoreError> {
+    validate_snapshot_id(&request.snapshot_id)?;
+    let session_dir = request
+        .state_dir
+        .join("sessions")
+        .join(&request.snapshot_id);
+    let snapshot_path = session_config_snapshot_path(&session_dir);
+    let snapshot = write_session_config_snapshot(&SessionConfigSnapshotWriteRequest {
+        path: &snapshot_path,
+        snapshot_id: &request.snapshot_id,
+        source_config_file: &request.source_config_file,
+        source_config_hash: &request.source_config_hash,
+        runtime_dir: &request.runtime_dir,
+        runtime_hash: &request.runtime_hash,
+        runtime_version,
+        normalized_config: &request.normalized_config,
+    })?;
+    Ok(SessionConfigSnapshotWriteData {
+        snapshot_path: snapshot_path.to_string_lossy().to_string(),
+        snapshot_id: snapshot.snapshot_id.clone(),
+        snapshot,
+    })
+}
+
 fn build_session_config_snapshot(
     request: &SessionConfigSnapshotWriteRequest<'_>,
     created_at_unix_seconds: u64,
@@ -168,6 +213,25 @@ fn validate_session_config_snapshot(
         ));
     }
     Ok(snapshot)
+}
+
+fn validate_snapshot_id(snapshot_id: &str) -> Result<(), CoreError> {
+    let trimmed = snapshot_id.trim();
+    if trimmed.is_empty()
+        || trimmed == "."
+        || trimmed == ".."
+        || trimmed.contains('/')
+        || trimmed.contains('\\')
+    {
+        return Err(CoreError::classified(
+            ErrorClass::Usage,
+            "invalid_session_config_snapshot_id",
+            format!("Invalid Yazelix session config snapshot id: {snapshot_id:?}."),
+            "Use a non-empty launch id without path separators.",
+            json!({ "snapshot_id": snapshot_id }),
+        ));
+    }
+    Ok(())
 }
 
 fn unix_seconds() -> Result<u64, CoreError> {
@@ -321,5 +385,38 @@ mod tests {
             schema_error.details()["expected_schema_version"],
             json!(SESSION_CONFIG_SNAPSHOT_SCHEMA_VERSION)
         );
+    }
+
+    // Defends: launch-time snapshot creation uses one state-scoped file per launch id and rejects path-like ids.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn session_config_snapshot_launch_writer_scopes_path_to_snapshot_id() {
+        let dir = tempdir().unwrap();
+        let config = JsonMap::from_iter([("default_shell".to_string(), json!("nu"))]);
+        let request = SessionConfigSnapshotCreateRequest {
+            state_dir: dir.path().to_path_buf(),
+            snapshot_id: "launch-456".to_string(),
+            source_config_file: "/config/yazelix.toml".to_string(),
+            source_config_hash: "cfg".to_string(),
+            runtime_dir: PathBuf::from("/runtime"),
+            runtime_hash: "runtime".to_string(),
+            normalized_config: config,
+        };
+
+        let data = write_session_config_snapshot_for_launch(&request, "v16.1").unwrap();
+
+        assert_eq!(data.snapshot_id, "launch-456");
+        assert_eq!(
+            data.snapshot_path,
+            dir.path()
+                .join("sessions/launch-456/config_snapshot.json")
+                .to_string_lossy()
+        );
+        assert_eq!(data.snapshot.runtime.version, "v16.1");
+
+        let mut bad = request;
+        bad.snapshot_id = "../escape".to_string();
+        let error = write_session_config_snapshot_for_launch(&bad, "v16.1").unwrap_err();
+        assert_eq!(error.code(), "invalid_session_config_snapshot_id");
     }
 }

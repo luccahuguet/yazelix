@@ -579,15 +579,58 @@ fn runtime_materialization_plan_reports_missing_artifacts_with_current_state() {
             .as_array()
             .unwrap()
             .len(),
-        6
+        5
     );
-    assert!(
-        envelope["data"]["missing_artifacts"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|artifact| artifact["label"] == "session config snapshot")
+}
+
+// Defends: startup can create a launch-scoped immutable config snapshot through the packaged Rust helper.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn session_config_snapshot_write_command_writes_launch_scoped_snapshot() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    let request = json!({
+        "state_dir": fixture.state_dir,
+        "snapshot_id": "launch-test",
+        "source_config_file": fixture.managed_config,
+        "source_config_hash": "cfg-hash",
+        "runtime_dir": fixture.runtime_dir,
+        "runtime_hash": "runtime-hash",
+        "normalized_config": {
+            "popup_program": ["gitui"],
+            "default_shell": "bash",
+            "terminals": ["ghostty", "wezterm"]
+        },
+    });
+
+    let output = runtime_materialization_command(&fixture, "session-config-snapshot.write")
+        .arg("--request-json")
+        .arg(request.to_string())
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["command"], "session-config-snapshot.write");
+    assert_eq!(envelope["status"], "ok");
+    let snapshot_path = fixture
+        .state_dir
+        .join("sessions/launch-test/config_snapshot.json");
+    assert_eq!(
+        envelope["data"]["snapshot_path"],
+        snapshot_path.to_string_lossy().to_string()
     );
+    assert!(snapshot_path.exists());
+    let snapshot: Value =
+        serde_json::from_str(&fs::read_to_string(snapshot_path).unwrap()).unwrap();
+    assert_eq!(snapshot["schema_version"], 1);
+    assert_eq!(snapshot["snapshot_id"], "launch-test");
+    assert_eq!(snapshot["source_config"]["hash"], "cfg-hash");
+    assert_eq!(snapshot["runtime"]["hash"], "runtime-hash");
+    assert_eq!(snapshot["facts"]["popup_program"], json!(["gitui"]));
+    assert_eq!(snapshot["normalized_config"]["default_shell"], "bash");
 }
 
 // Defends: runtime-materialization.materialize becomes the single Rust owner for generate-plus-record of managed runtime artifacts.
@@ -618,14 +661,6 @@ fn runtime_materialization_materialize_writes_generated_artifacts_and_records_st
     assert!(fixture.yazi_dir.join("keymap.toml").exists());
     assert!(fixture.yazi_dir.join("init.lua").exists());
     assert!(fixture.zellij_dir.join("config.kdl").exists());
-    assert!(fixture.state_dir.join("state/session_facts.json").exists());
-    let session_facts: Value = serde_json::from_str(
-        &fs::read_to_string(fixture.state_dir.join("state/session_facts.json")).unwrap(),
-    )
-    .unwrap();
-    assert_eq!(session_facts["schema_version"], 1);
-    assert_eq!(session_facts["facts"]["popup_program"], json!(["lazygit"]));
-    assert!(session_facts["normalized_config"].is_object());
     assert!(fixture.zellij_layout_dir.join("yzx_side.kdl").exists());
     assert!(
         fixture

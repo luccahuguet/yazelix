@@ -17,14 +17,15 @@ use yazelix_core::{
     LaunchMaterializationRequest, NormalizeConfigRequest, RecordConfigStateRequest,
     RuntimeContractEvaluateRequest, RuntimeMaterializationPlanRequest,
     RuntimeMaterializationRepairEvaluateRequest, RuntimeMaterializationRepairRunData,
-    RuntimeRepairDirective, StartupFactsData, StartupHandoffCaptureRequest,
-    StartupLaunchPreflightRequest, TerminalMaterializationRequest, TransientPaneFactsData,
-    YaziMaterializationRequest, YaziRenderPlanRequest, YzxExternBridgeSyncRequest,
-    ZellijMaterializationRequest, ZellijRenderPlanRequest, capture_startup_handoff_context,
-    compute_config_state, compute_integration_facts_from_env, compute_runtime_env,
-    compute_startup_facts_from_env, compute_status_report, compute_transient_pane_facts_from_env,
-    compute_yazi_render_plan, compute_zellij_render_plan, current_release_headline, error_envelope,
-    evaluate_doctor_config_report, evaluate_doctor_runtime_report, evaluate_helix_doctor_report,
+    RuntimeRepairDirective, SessionConfigSnapshotCreateRequest, StartupFactsData,
+    StartupHandoffCaptureRequest, StartupLaunchPreflightRequest, TerminalMaterializationRequest,
+    TransientPaneFactsData, YaziMaterializationRequest, YaziRenderPlanRequest,
+    YzxExternBridgeSyncRequest, ZellijMaterializationRequest, ZellijRenderPlanRequest,
+    capture_startup_handoff_context, compute_config_state, compute_integration_facts_from_env,
+    compute_runtime_env, compute_startup_facts_from_env, compute_status_report,
+    compute_transient_pane_facts_from_env, compute_yazi_render_plan, compute_zellij_render_plan,
+    current_release_headline, error_envelope, evaluate_doctor_config_report,
+    evaluate_doctor_runtime_report, evaluate_helix_doctor_report,
     evaluate_install_ownership_report, evaluate_runtime_contract,
     evaluate_startup_launch_preflight, generate_ghostty_materialization,
     generate_helix_materialization, generate_terminal_materialization,
@@ -33,8 +34,8 @@ use yazelix_core::{
     launch_materialization_request_from_env, materialize_runtime_state,
     maybe_show_first_run_upgrade_summary, normalize_config, plan_runtime_materialization,
     prepare_launch_materialization, record_config_state, render_yzx_help,
-    repair_runtime_materialization, success_envelope, sync_yzx_extern_bridge, yzx_command_metadata,
-    yzx_command_metadata_data,
+    repair_runtime_materialization, success_envelope, sync_yzx_extern_bridge,
+    write_session_config_snapshot_for_launch, yzx_command_metadata, yzx_command_metadata_data,
 };
 
 const CONFIG_NORMALIZE_COMMAND: &str = "config.normalize";
@@ -48,6 +49,7 @@ const INTEGRATION_FACTS_COMPUTE_COMMAND: &str = "integration-facts.compute";
 const TRANSIENT_PANE_FACTS_COMPUTE_COMMAND: &str = "transient-pane-facts.compute";
 const STARTUP_FACTS_COMPUTE_COMMAND: &str = "startup-facts.compute";
 const STARTUP_HANDOFF_CAPTURE_COMMAND: &str = "startup-handoff.capture";
+const SESSION_CONFIG_SNAPSHOT_WRITE_COMMAND: &str = "session-config-snapshot.write";
 const RUNTIME_MATERIALIZATION_PLAN_COMMAND: &str = "runtime-materialization.plan";
 const RUNTIME_MATERIALIZATION_MATERIALIZE_COMMAND: &str = "runtime-materialization.materialize";
 const RUNTIME_MATERIALIZATION_REPAIR_COMMAND: &str = "runtime-materialization.repair";
@@ -210,6 +212,11 @@ fn run() -> Result<(), Box<CommandError>> {
         STARTUP_HANDOFF_CAPTURE_COMMAND => {
             let command_for_error = command.clone();
             run_startup_handoff_capture(parser)
+                .map_err(|error| CommandError::new(command_for_error, error))
+        }
+        SESSION_CONFIG_SNAPSHOT_WRITE_COMMAND => {
+            let command_for_error = command.clone();
+            run_session_config_snapshot_write(parser)
                 .map_err(|error| CommandError::new(command_for_error, error))
         }
         RUNTIME_MATERIALIZATION_PLAN_COMMAND => {
@@ -1010,6 +1017,15 @@ fn run_startup_handoff_capture(mut parser: lexopt::Parser) -> Result<(), CoreErr
         deserialize_json_request(&request_json, "startup-handoff.capture")?;
     let data = capture_startup_handoff_context(&request)?;
     write_success_envelope(STARTUP_HANDOFF_CAPTURE_COMMAND, data)
+}
+
+fn run_session_config_snapshot_write(mut parser: lexopt::Parser) -> Result<(), CoreError> {
+    let request_json = take_request_json(&mut parser)?;
+    let request: SessionConfigSnapshotCreateRequest =
+        deserialize_json_request(&request_json, "session-config-snapshot.write")?;
+    let version = read_yazelix_version_from_runtime(&request.runtime_dir)?;
+    let data = write_session_config_snapshot_for_launch(&request, &version)?;
+    write_success_envelope(SESSION_CONFIG_SNAPSHOT_WRITE_COMMAND, data)
 }
 
 fn run_runtime_materialization_plan(mut parser: lexopt::Parser) -> Result<(), CoreError> {

@@ -130,11 +130,12 @@ pub use runtime_materialization::{
 };
 pub use session_config_snapshot::{
     SESSION_CONFIG_SNAPSHOT_FILE_NAME, SESSION_CONFIG_SNAPSHOT_PATH_ENV,
-    SESSION_CONFIG_SNAPSHOT_SCHEMA_VERSION, SessionConfigSnapshotData,
-    SessionConfigSnapshotWriteRequest, load_session_config_snapshot_from_env,
-    load_session_config_snapshot_from_path, load_session_facts_from_snapshot_path,
-    session_config_snapshot_path, session_config_snapshot_path_from_env,
-    write_session_config_snapshot,
+    SESSION_CONFIG_SNAPSHOT_SCHEMA_VERSION, SessionConfigSnapshotCreateRequest,
+    SessionConfigSnapshotData, SessionConfigSnapshotWriteData, SessionConfigSnapshotWriteRequest,
+    load_session_config_snapshot_from_env, load_session_config_snapshot_from_path,
+    load_session_facts_from_snapshot_path, session_config_snapshot_path,
+    session_config_snapshot_path_from_env, write_session_config_snapshot,
+    write_session_config_snapshot_for_launch,
 };
 pub use session_facts::{SessionFactsData, compute_session_facts_from_env};
 pub use startup_facts::{StartupFactsData, compute_startup_facts_from_env};
