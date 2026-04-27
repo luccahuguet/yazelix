@@ -833,6 +833,42 @@ fn runtime_materialization_repair_keeps_unrelated_unknown_fields_blocking() {
     );
 }
 
+// Defends: runtime-materialization.repair --summary keeps activation failures human-readable instead of dumping the raw JSON envelope.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn runtime_materialization_repair_summary_prints_human_config_error() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    fs::write(
+        &fixture.managed_config,
+        ["[terminal]", "not_a_real_terminal_option = true"].join("\n"),
+    )
+    .unwrap();
+
+    let repair_request = json!({
+        "plan": runtime_materialization_request(&fixture),
+        "force": true,
+    });
+    let output = runtime_materialization_command(&fixture, "runtime-materialization.repair")
+        .arg("--request-json")
+        .arg(repair_request.to_string())
+        .arg("--summary")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(65));
+    assert!(output.stdout.is_empty());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("Yazelix generated runtime repair failed"));
+    assert!(stderr.contains("Blocking config issues: 1"));
+    assert!(stderr.contains("- Unknown config field at terminal.not_a_real_terminal_option"));
+    assert!(stderr.contains("- Remove or rename this field manually"));
+    assert!(!stderr.trim_start().starts_with('{'));
+    assert!(!stderr.contains("\"schema_version\""));
+    assert!(!stderr.contains("\"blocking_diagnostics\""));
+}
+
 // Defends: runtime-contract.evaluate emits one machine-readable checks envelope for batched preflight requests.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]

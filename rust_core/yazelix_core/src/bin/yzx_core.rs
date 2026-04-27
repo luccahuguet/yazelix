@@ -77,16 +77,35 @@ struct RuntimeMaterializationRepairCommand {
     summary: bool,
 }
 
+enum ErrorOutputMode {
+    Json,
+    RuntimeRepairSummary,
+}
+
 struct CommandError {
     command: String,
     error: CoreError,
+    output_mode: ErrorOutputMode,
 }
 
 impl CommandError {
     fn new(command: impl Into<String>, error: CoreError) -> Box<Self> {
+        Self::new_with_output_mode(command, error, ErrorOutputMode::Json)
+    }
+
+    fn runtime_repair_summary(command: impl Into<String>, error: CoreError) -> Box<Self> {
+        Self::new_with_output_mode(command, error, ErrorOutputMode::RuntimeRepairSummary)
+    }
+
+    fn new_with_output_mode(
+        command: impl Into<String>,
+        error: CoreError,
+        output_mode: ErrorOutputMode,
+    ) -> Box<Self> {
         Box::new(Self {
             command: command.into(),
             error,
+            output_mode,
         })
     }
 }
@@ -95,9 +114,17 @@ fn main() {
     match run() {
         Ok(()) => {}
         Err(command_error) => {
-            let envelope = error_envelope(&command_error.command, &command_error.error);
-            let _ = serde_json::to_writer(std::io::stderr(), &envelope);
-            eprintln!();
+            match command_error.output_mode {
+                ErrorOutputMode::Json => {
+                    let envelope = error_envelope(&command_error.command, &command_error.error);
+                    let _ = serde_json::to_writer(std::io::stderr(), &envelope);
+                    eprintln!();
+                }
+                ErrorOutputMode::RuntimeRepairSummary => {
+                    let _ =
+                        write_runtime_materialization_repair_error_summary(&command_error.error);
+                }
+            }
             std::process::exit(command_error.error.class().exit_code());
         }
     }
@@ -196,9 +223,7 @@ fn run() -> Result<(), Box<CommandError>> {
                 .map_err(|error| CommandError::new(command_for_error, error))
         }
         RUNTIME_MATERIALIZATION_REPAIR_COMMAND => {
-            let command_for_error = command.clone();
-            run_runtime_materialization_repair(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
+            run_runtime_materialization_repair(parser, command.clone())
         }
         STATUS_COMPUTE_COMMAND => {
             let command_for_error = command.clone();
@@ -1003,13 +1028,25 @@ fn run_runtime_materialization_materialize(mut parser: lexopt::Parser) -> Result
     write_success_envelope(RUNTIME_MATERIALIZATION_MATERIALIZE_COMMAND, data)
 }
 
-fn run_runtime_materialization_repair(mut parser: lexopt::Parser) -> Result<(), CoreError> {
-    let command = take_runtime_materialization_repair_command(&mut parser)?;
-    let data = repair_runtime_materialization(&command.request)?;
+fn run_runtime_materialization_repair(
+    mut parser: lexopt::Parser,
+    command_name: String,
+) -> Result<(), Box<CommandError>> {
+    let command = take_runtime_materialization_repair_command(&mut parser)
+        .map_err(|error| CommandError::new(command_name.clone(), error))?;
+    let data = repair_runtime_materialization(&command.request).map_err(|error| {
+        if command.summary {
+            CommandError::runtime_repair_summary(command_name.clone(), error)
+        } else {
+            CommandError::new(command_name.clone(), error)
+        }
+    })?;
     if command.summary {
         write_runtime_materialization_repair_summary(&data)
+            .map_err(|error| CommandError::new(command_name.clone(), error))
     } else {
         write_success_envelope(RUNTIME_MATERIALIZATION_REPAIR_COMMAND, data)
+            .map_err(|error| CommandError::new(command_name.clone(), error))
     }
 }
 
@@ -1246,4 +1283,109 @@ fn write_runtime_materialization_repair_summary(
         )
     })?;
     Ok(())
+}
+
+fn write_runtime_materialization_repair_error_summary(error: &CoreError) -> Result<(), CoreError> {
+    let summary = render_runtime_materialization_repair_error_summary(error);
+    std::io::stderr()
+        .write_all(summary.as_bytes())
+        .map_err(|source| {
+            CoreError::io(
+                "write_stderr",
+                "Could not write helper error summary output",
+                "Retry the command and report this as a Yazelix internal error if it persists.",
+                "<stderr>",
+                source,
+            )
+        })
+}
+
+fn render_runtime_materialization_repair_error_summary(error: &CoreError) -> String {
+    let mut lines = vec![
+        "Yazelix generated runtime repair failed".to_string(),
+        format!("Reason: {}", clean_human_error_line(&error.message())),
+    ];
+
+    if error.code() == "unsupported_config" {
+        append_unsupported_config_summary(error, &mut lines);
+    } else {
+        lines.push(format!(
+            "Recovery: {}",
+            clean_human_error_line(&error.remediation())
+        ));
+    }
+
+    lines.push(String::new());
+    lines.join("\n")
+}
+
+fn append_unsupported_config_summary(error: &CoreError, lines: &mut Vec<String>) {
+    let details = error.details();
+    let diagnostics = details
+        .get("blocking_diagnostics")
+        .and_then(serde_json::Value::as_array)
+        .or_else(|| {
+            details
+                .get("schema_diagnostics")
+                .and_then(serde_json::Value::as_array)
+        })
+        .cloned()
+        .unwrap_or_default();
+    let blocking_count = details
+        .get("blocking_count")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(diagnostics.len() as u64);
+
+    lines.push(format!("Blocking config issues: {blocking_count}"));
+    for diagnostic in diagnostics.iter().take(8) {
+        let headline = diagnostic
+            .get("headline")
+            .and_then(serde_json::Value::as_str)
+            .or_else(|| diagnostic.get("path").and_then(serde_json::Value::as_str))
+            .unwrap_or("Unsupported config entry");
+        lines.push(format!("- {}", clean_human_error_line(headline)));
+    }
+    if diagnostics.len() > 8 {
+        lines.push(format!("- and {} more", diagnostics.len() - 8));
+    }
+
+    let mut next_steps = Vec::new();
+    for diagnostic in &diagnostics {
+        let Some(detail_lines) = diagnostic
+            .get("detail_lines")
+            .and_then(serde_json::Value::as_array)
+        else {
+            continue;
+        };
+        for detail in detail_lines
+            .iter()
+            .filter_map(serde_json::Value::as_str)
+            .filter_map(|line| line.trim().strip_prefix("Next: "))
+        {
+            let cleaned = clean_human_error_line(detail);
+            if !next_steps.contains(&cleaned) {
+                next_steps.push(cleaned);
+            }
+        }
+    }
+
+    if next_steps.is_empty() {
+        lines.push(format!(
+            "Recovery: {}",
+            clean_human_error_line(&error.remediation())
+        ));
+    } else {
+        lines.push("Next:".to_string());
+        for step in next_steps.iter().take(5) {
+            lines.push(format!("- {step}"));
+        }
+    }
+}
+
+fn clean_human_error_line(value: &str) -> String {
+    let mut cleaned = value.trim().to_string();
+    while cleaned.ends_with('.') {
+        cleaned.pop();
+    }
+    cleaned
 }
