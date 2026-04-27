@@ -22,10 +22,7 @@
       "wezterm"
     ];
     terminal_config_mode = "yazelix"; # Optional: "yazelix" or "user"
-    ghostty_trail_color = "random"; # Optional: Ghostty color palette rerolled for each Yazelix Ghostty window
-    ghostty_trail_effect = "random"; # Optional: "tail", "warp", "sweep", "random", or null
-    ghostty_mode_effect = "random"; # Optional: "ripple", "sonic_boom", "rectangle_boom", "ripple_rectangle", "random", or null
-    ghostty_trail_glow = "medium"; # Optional: "none", "low", "medium", or "high"
+    # Ghostty cursor presets and effects live in ~/.config/yazelix/user_configs/yazelix_cursors.toml
     transparency = "medium"; # Optional: "none".."super_high"
 
     # Editor configuration

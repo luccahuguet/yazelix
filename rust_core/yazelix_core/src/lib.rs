@@ -13,6 +13,7 @@ pub mod doctor_runtime_report;
 pub mod edit_commands;
 pub mod front_door_commands;
 pub mod front_door_render;
+pub mod ghostty_cursor_registry;
 pub mod ghostty_materialization;
 pub mod helix_materialization;
 pub mod home_manager_commands;
@@ -73,8 +74,10 @@ pub use edit_commands::{run_yzx_edit, run_yzx_edit_config};
 pub use front_door_commands::{
     run_internal_welcome_screen, run_yzx_screen, run_yzx_tutor, run_yzx_whats_new,
 };
-pub use ghostty_materialization::{
+pub use ghostty_cursor_registry::{
     DEFAULT_GHOSTTY_TRAIL_DURATION, GHOSTTY_TRAIL_DURATION_MAX, GHOSTTY_TRAIL_DURATION_MIN,
+};
+pub use ghostty_materialization::{
     GhosttyCursorState, GhosttyMaterializationData, GhosttyMaterializationRequest,
     generate_ghostty_materialization,
 };

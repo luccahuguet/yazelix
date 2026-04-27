@@ -11,11 +11,11 @@ use yazelix_core::control_plane::{
     terminal_materialization_request_from_env,
 };
 use yazelix_core::{
-    ComputeConfigStateRequest, CoreError, DEFAULT_GHOSTTY_TRAIL_DURATION,
-    DoctorConfigEvaluateRequest, DoctorRuntimeEvaluateRequest, ErrorClass,
-    GhosttyMaterializationRequest, HelixDoctorEvaluateRequest, HelixMaterializationRequest,
-    InstallOwnershipEvaluateRequest, LaunchMaterializationRequest, NormalizeConfigRequest,
-    RecordConfigStateRequest, RuntimeContractEvaluateRequest, RuntimeMaterializationPlanRequest,
+    ComputeConfigStateRequest, CoreError, DoctorConfigEvaluateRequest,
+    DoctorRuntimeEvaluateRequest, ErrorClass, GhosttyMaterializationRequest,
+    HelixDoctorEvaluateRequest, HelixMaterializationRequest, InstallOwnershipEvaluateRequest,
+    LaunchMaterializationRequest, NormalizeConfigRequest, RecordConfigStateRequest,
+    RuntimeContractEvaluateRequest, RuntimeMaterializationPlanRequest,
     RuntimeMaterializationRepairEvaluateRequest, RuntimeMaterializationRepairRunData,
     RuntimeRepairDirective, StartupFactsData, StartupHandoffCaptureRequest,
     StartupLaunchPreflightRequest, TerminalMaterializationRequest, TransientPaneFactsData,
@@ -769,11 +769,7 @@ fn run_ghostty_materialization_generate(mut parser: lexopt::Parser) -> Result<()
     let mut config_dir: Option<PathBuf> = None;
     let mut state_dir: Option<PathBuf> = None;
     let mut transparency: Option<String> = None;
-    let mut ghostty_trail_color: Option<String> = None;
-    let mut ghostty_trail_effect: Option<String> = None;
-    let mut ghostty_mode_effect: Option<String> = None;
-    let mut ghostty_trail_duration: Option<f64> = None;
-    let mut ghostty_trail_glow: Option<String> = None;
+    let mut cursor_config_path: Option<PathBuf> = None;
     let mut from_env = false;
 
     while let Some(arg) = parser
@@ -786,24 +782,7 @@ fn run_ghostty_materialization_generate(mut parser: lexopt::Parser) -> Result<()
             Long("config-dir") => config_dir = Some(parser_path_value(&mut parser)?),
             Long("state-dir") => state_dir = Some(parser_path_value(&mut parser)?),
             Long("transparency") => transparency = Some(parser_string_value(&mut parser)?),
-            Long("ghostty-trail-color") => {
-                ghostty_trail_color = Some(parser_string_value(&mut parser)?)
-            }
-            Long("ghostty-trail-effect") => {
-                ghostty_trail_effect = Some(parser_string_value(&mut parser)?)
-            }
-            Long("ghostty-mode-effect") => {
-                ghostty_mode_effect = Some(parser_string_value(&mut parser)?)
-            }
-            Long("ghostty-trail-duration") => {
-                let raw = parser_string_value(&mut parser)?;
-                ghostty_trail_duration = Some(raw.parse::<f64>().map_err(|_| {
-                    CoreError::usage(format!("Invalid --ghostty-trail-duration value: {raw}"))
-                })?)
-            }
-            Long("ghostty-trail-glow") => {
-                ghostty_trail_glow = Some(parser_string_value(&mut parser)?)
-            }
+            Long("cursor-config") => cursor_config_path = Some(parser_path_value(&mut parser)?),
             _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
         }
     }
@@ -812,11 +791,7 @@ fn run_ghostty_materialization_generate(mut parser: lexopt::Parser) -> Result<()
         || config_dir.is_some()
         || state_dir.is_some()
         || transparency.is_some()
-        || ghostty_trail_color.is_some()
-        || ghostty_trail_effect.is_some()
-        || ghostty_mode_effect.is_some()
-        || ghostty_trail_duration.is_some()
-        || ghostty_trail_glow.is_some();
+        || cursor_config_path.is_some();
 
     let request = if from_env {
         if explicit_args_present {
@@ -832,12 +807,8 @@ fn run_ghostty_materialization_generate(mut parser: lexopt::Parser) -> Result<()
             config_dir: config_dir.ok_or_else(|| CoreError::usage("Missing --config-dir path"))?,
             state_dir: state_dir.ok_or_else(|| CoreError::usage("Missing --state-dir path"))?,
             transparency: transparency.ok_or_else(|| CoreError::usage("Missing --transparency"))?,
-            ghostty_trail_color,
-            ghostty_trail_effect,
-            ghostty_mode_effect,
-            ghostty_trail_duration: ghostty_trail_duration
-                .unwrap_or(DEFAULT_GHOSTTY_TRAIL_DURATION),
-            ghostty_trail_glow: ghostty_trail_glow.unwrap_or_else(|| "medium".to_string()),
+            cursor_config_path: cursor_config_path
+                .ok_or_else(|| CoreError::usage("Missing --cursor-config path"))?,
         }
     };
     let data = generate_ghostty_materialization(&request)?;

@@ -21,7 +21,6 @@ shaders/
 │   ├── dusk.glsl
 │   ├── orchid.glsl
 │   ├── reef.glsl
-│   ├── party.glsl
 │   └── inferno.glsl
 ├── build_shaders.nu             # Build script (nushell, runs automatically)
 └── cursor_trail_*.glsl          # Generated locally/runtime only (gitignored)
@@ -35,7 +34,7 @@ shaders/
 
 **After refactoring:**
 - 1 common library (68 lines)
-- 13 variant files (3-60 lines each, ~311 lines total)
+- 12 variant files (3-60 lines each, ~311 lines total)
 - Total source: **~379 lines** (75% reduction!)
 
 ## Making Changes
@@ -54,7 +53,7 @@ shaders/
 
 1. Create a new file in `variants/` directory (e.g., `variants/new_variant.glsl`)
 2. Add your variant-specific code (constants, helper functions, mainImage)
-3. Update `nushell/scripts/utils/constants.nu` to add the new variant to `CURSOR_TRAIL_SHADERS`
+3. Add the cursor to `yazelix_cursors_default.toml` or your local `user_configs/yazelix_cursors.toml`
 4. Shaders will be **automatically rebuilt** next time Yazelix starts or configs are regenerated
 
 ### Manual build (for testing or local preview):
@@ -82,8 +81,8 @@ The build is **fully automatic**:
 - Combines `cursor_trail_common.glsl` with each variant in `variants/`
 - Outputs complete shaders ready for Ghostty to use
 - No manual intervention needed!
-- Honors `ghostty_trail_glow = none | low | medium | high` when generating the final shaders
-- Honors `ghostty_trail_duration = 0.25..4.0` as a multiplier for movement-trail timing
+- Honors `settings.glow = none | low | medium | high` from `yazelix_cursors.toml`
+- Honors `settings.duration = 0.25..4.0` from `yazelix_cursors.toml` as a multiplier for movement-trail timing
 
 ## Important Notes
 
@@ -110,10 +109,6 @@ The build is **fully automatic**:
 ### Multi-Color (1 variant)
 - `neon`
 - Multiple color constants with axis blending
-
-### HSV Animation (1 variant)
-- `party`
-- Includes `hsv2rgb()` function for rainbow effects
 
 ### Vertical Gradient (1 variant)
 - `inferno`

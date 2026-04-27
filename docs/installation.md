@@ -347,7 +347,7 @@ Check installed tool versions: `yzx status --versions`
 Run diagnostics: `yzx doctor` - Automated health checks and fixes
 
 ### Customization
-If you followed step 5, you already have your `~/.config/yazelix/user_configs/yazelix.toml` config file ready. You can modify it anytime and restart Yazelix to apply changes. See [yazelix_default.toml](../yazelix_default.toml) for all available options and their descriptions.
+If you followed step 5, you already have your `~/.config/yazelix/user_configs/yazelix.toml` config file ready. You can modify it anytime and restart Yazelix to apply changes. See [yazelix_default.toml](../yazelix_default.toml) for main options and `~/.config/yazelix/user_configs/yazelix_cursors.toml` for Ghostty cursor presets and effects.
 
 For complete customization options, see the [Customization Guide](./customization.md).
 

@@ -4,13 +4,17 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
-Home Manager leaves yazelix.toml mutable by default
+Home Manager leaves yazelix.toml mutable and cursor presets move to a sidecar
 
-Upgrade impact: no user action required
+Upgrade impact: manual action required
 
 Highlights:
 - Changed the Home Manager module default so it installs the Yazelix package/runtime/desktop integration while leaving `~/.config/yazelix/user_configs/yazelix.toml` as a normal mutable file
+- Moved Ghostty cursor selection, effects, duration, glow, Kitty fallback, and cursor preset definitions out of `yazelix.toml` and into `~/.config/yazelix/user_configs/yazelix_cursors.toml`
 - Kept `programs.yazelix.manage_config = true` as the explicit opt-in for users who want Home Manager to generate and own `yazelix.toml`
+
+Manual action:
+- If your `user_configs/yazelix.toml` still contains `terminal.ghostty_*` cursor fields, move those cursor choices and effects into `user_configs/yazelix_cursors.toml` and remove the old fields
 
 ## v16.1 - 2026-04-25
 

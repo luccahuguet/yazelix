@@ -123,11 +123,14 @@ fn prepare_runtime_materialization_fixture(
     )
     .unwrap();
     fs::write(runtime_plugin_dir.join("zjstatus.wasm"), b"wasm").unwrap();
-    fs::write(
-        runtime_ghostty_shader_dir.join("README.md"),
-        "fixture shaders\n",
-    )
-    .unwrap();
+    copy_dir_all(
+        &repo
+            .join("configs")
+            .join("terminal_emulators")
+            .join("ghostty")
+            .join("shaders"),
+        &runtime_ghostty_shader_dir,
+    );
     fs::copy(runtime_dir.join("yazelix_default.toml"), &managed_config).unwrap();
     fs::write(&managed_zellij_config, "keybinds {}\n").unwrap();
     RuntimeMaterializationFixture {
@@ -141,6 +144,15 @@ fn prepare_runtime_materialization_fixture(
         zellij_dir,
         zellij_layout_dir,
     }
+}
+
+fn write_cursor_sidecar(fixture: &RuntimeMaterializationFixture, raw: &str) {
+    let cursor_path = fixture
+        .config_dir
+        .join("user_configs")
+        .join("yazelix_cursors.toml");
+    fs::create_dir_all(cursor_path.parent().unwrap()).unwrap();
+    fs::write(cursor_path, raw).unwrap();
 }
 
 fn copy_dir_all(src: &Path, dst: &Path) {
@@ -209,10 +221,6 @@ fn config_normalize_prints_one_success_json_envelope() {
         envelope["data"]["normalized_config"]["terminal_config_mode"],
         "yazelix"
     );
-    assert_eq!(
-        envelope["data"]["normalized_config"]["ghostty_trail_duration"],
-        serde_json::json!(1.0)
-    );
 }
 
 // Defends: config.normalize emits a single machine-readable config error envelope for invalid input.
@@ -241,10 +249,10 @@ fn config_normalize_prints_one_error_json_envelope() {
     assert_eq!(envelope["error"]["code"], "unsupported_config");
 }
 
-// Defends: terminal.ghostty_trail_duration rejects unsupported timing values before generated Ghostty shaders are written.
+// Defends: moved Ghostty cursor fields fail with a sidecar-specific transition hint instead of being silently ignored.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
-fn config_normalize_rejects_out_of_range_ghostty_trail_duration() {
+fn config_normalize_reports_moved_ghostty_cursor_fields() {
     let repo = repo_root();
     let tmp = tempdir().unwrap();
     let config_path = tmp.path().join("yazelix.toml");
@@ -263,12 +271,17 @@ fn config_normalize_rejects_out_of_range_ghostty_trail_duration() {
     let envelope: Value = error_envelope(&output, 65);
     assert_eq!(envelope["command"], "config.normalize");
     assert_eq!(envelope["error"]["class"], "config");
-    assert_eq!(envelope["error"]["code"], "invalid_config_value");
+    assert_eq!(envelope["error"]["code"], "unsupported_config");
+    let diagnostic = &envelope["error"]["details"]["blocking_diagnostics"][0];
+    assert_eq!(
+        diagnostic["headline"],
+        "Moved cursor config field at terminal.ghostty_trail_duration"
+    );
     assert!(
-        envelope["error"]["message"]
+        diagnostic["detail_lines"][1]
             .as_str()
             .unwrap()
-            .contains("terminal.ghostty_trail_duration")
+            .contains("user_configs/yazelix_cursors.toml")
     );
 }
 
@@ -428,7 +441,7 @@ fn config_state_compute_prints_machine_readable_state_envelope() {
     assert_eq!(envelope["data"]["config"]["default_shell"], "nu");
     assert_eq!(
         envelope["data"]["config_hash"],
-        "bc6e031d0488e9e28ba0c86ac0318bb5ab87926694aeb656a48b43c0a0e0119b"
+        "cfba8d137ac98997cbf9437838509db79f49ea26e7e1f806b2a9a1da7580f7a8"
     );
     assert_eq!(envelope["data"]["needs_refresh"], true);
 }
@@ -920,7 +933,6 @@ fn terminal_materialization_generate_from_env_writes_generated_configs() {
             "[terminal]",
             "terminals = [\"ghostty\", \"kitty\"]",
             "transparency = \"low\"",
-            "ghostty_trail_color = \"forest\"",
         ]
         .join("\n"),
     )
@@ -964,6 +976,62 @@ fn terminal_materialization_generate_from_env_writes_generated_configs() {
     );
 }
 
+// Defends: Kitty cursor fallback is controlled by the cursor sidecar's binary kitty_enable_cursor setting.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn terminal_materialization_uses_cursor_sidecar_for_kitty_toggle() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+
+    fs::write(
+        &fixture.managed_config,
+        ["[terminal]", "terminals = [\"kitty\"]"].join("\n"),
+    )
+    .unwrap();
+    write_cursor_sidecar(
+        &fixture,
+        r##"
+schema_version = 1
+enabled_cursors = ["snow"]
+
+[settings]
+trail = "snow"
+trail_effect = "none"
+mode_effect = "none"
+glow = "medium"
+duration = 1.0
+kitty_enable_cursor = false
+
+[[cursor]]
+name = "snow"
+family = "simple_dual"
+colors = ["#ffffff", "#cccccc"]
+cursor_color = "#ffffff"
+"##,
+    );
+
+    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
+        .arg("--from-env")
+        .arg("--terminals-json")
+        .arg(json!(["kitty"]).to_string())
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    let kitty_config = fs::read_to_string(
+        fixture
+            .state_dir
+            .join("configs")
+            .join("terminal_emulators")
+            .join("kitty")
+            .join("kitty.conf"),
+    )
+    .unwrap();
+    assert!(kitty_config.contains("# cursor_trail 0  # disabled by yazelix_cursors.toml"));
+}
+
 // Defends: ghostty-materialization.generate can resolve config/runtime/state request roots from process env without Nu path assembly.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
@@ -987,18 +1055,30 @@ fn ghostty_materialization_generate_from_env_uses_normalized_config() {
 
     fs::write(
         &fixture.managed_config,
-        [
-            "[terminal]",
-            "transparency = \"high\"",
-            "ghostty_trail_color = \"forest\"",
-            "ghostty_trail_effect = \"tail\"",
-            "ghostty_mode_effect = \"ripple\"",
-            "ghostty_trail_duration = 1.5",
-            "ghostty_trail_glow = \"high\"",
-        ]
-        .join("\n"),
+        ["[terminal]", "transparency = \"high\""].join("\n"),
     )
     .unwrap();
+    write_cursor_sidecar(
+        &fixture,
+        r##"
+schema_version = 1
+enabled_cursors = ["forest"]
+
+[settings]
+trail = "forest"
+trail_effect = "tail"
+mode_effect = "ripple"
+glow = "high"
+duration = 1.5
+kitty_enable_cursor = true
+
+[[cursor]]
+name = "forest"
+family = "simple_dual"
+colors = ["#3bd17a", "#1b9e59"]
+cursor_color = "#3bd17a"
+"##,
+    );
 
     let output = runtime_materialization_command(&fixture, "ghostty-materialization.generate")
         .arg("--from-env")

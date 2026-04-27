@@ -61,7 +61,7 @@ window-padding-y = 10,0
 background-opacity = 0.85
 background-opacity-cells = true
 
-# Ghostty cursor color + effects (configurable via yazelix.toml)
+# Ghostty cursor color + effects (configurable via yazelix_cursors.toml)
 # Cursor color palette: dusk
 cursor-color = #e94560
 custom-shader = ./shaders/cursor_trail_dusk.glsl

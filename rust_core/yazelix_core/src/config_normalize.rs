@@ -6,9 +6,13 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use toml::Value as TomlValue;
 
-const FLEXIBLE_NUMERIC_PATHS: &[&str] = &[
-    "core.welcome_duration_seconds",
+const FLEXIBLE_NUMERIC_PATHS: &[&str] = &["core.welcome_duration_seconds"];
+const MOVED_CURSOR_CONFIG_FIELDS: &[&str] = &[
+    "terminal.ghostty_trail_color",
+    "terminal.ghostty_trail_effect",
     "terminal.ghostty_trail_duration",
+    "terminal.ghostty_mode_effect",
+    "terminal.ghostty_trail_glow",
 ];
 
 #[derive(Debug, Clone)]
@@ -442,13 +446,27 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
 
     match finding.kind {
         "unknown_field" => {
-            diagnostic.headline = format!("Unknown config field at {}", finding.path);
-            diagnostic.detail_lines = vec![
-                finding.message,
-                "Next: Remove or rename this field manually.".to_string(),
-                "Next: Run `yzx doctor --verbose` to review the full config report.".to_string(),
-                "Next: Use `yzx config reset` only as a blunt fallback.".to_string(),
-            ];
+            if MOVED_CURSOR_CONFIG_FIELDS.contains(&finding.path.as_str()) {
+                diagnostic.headline = format!("Moved cursor config field at {}", finding.path);
+                diagnostic.detail_lines = vec![
+                    finding.message,
+                    "Next: Move this cursor setting into user_configs/yazelix_cursors.toml."
+                        .to_string(),
+                    "Next: Remove the old terminal.ghostty_* field from user_configs/yazelix.toml."
+                        .to_string(),
+                    "Next: Run `yzx doctor --verbose` to review the full config report."
+                        .to_string(),
+                ];
+            } else {
+                diagnostic.headline = format!("Unknown config field at {}", finding.path);
+                diagnostic.detail_lines = vec![
+                    finding.message,
+                    "Next: Remove or rename this field manually.".to_string(),
+                    "Next: Run `yzx doctor --verbose` to review the full config report."
+                        .to_string(),
+                    "Next: Use `yzx config reset` only as a blunt fallback.".to_string(),
+                ];
+            }
         }
         "type_mismatch" => {
             diagnostic.headline = format!("Wrong config type at {}", finding.path);

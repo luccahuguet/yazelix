@@ -5,12 +5,12 @@
 # Note: Most configuration changes require restarting Yazelix to take effect.
 
 [core]
-debug_mode = false            # Enable verbose debug logging in the shellHook
-skip_welcome_screen = false   # When true, welcome info is logged instead of displayed
-show_macchina_on_welcome = true  # Show system info on welcome screen (uses macchina)
-welcome_style = "random"      # Welcome style: "static", "logo", "boids", "boids_predator", "boids_schools", "mandelbrot", "game_of_life_gliders", "game_of_life_oscillators", "game_of_life_bloom", or "random" (never picks "static" or "logo")
+debug_mode = false                     # Enable verbose debug logging in the shellHook
+skip_welcome_screen = false            # When true, welcome info is logged instead of displayed
+show_macchina_on_welcome = true        # Show system info on welcome screen (uses macchina)
+welcome_style = "random"               # Welcome style: "static", "logo", "boids", "boids_predator", "boids_schools", "mandelbrot", "game_of_life_gliders", "game_of_life_oscillators", "game_of_life_bloom", or "random" (never picks "static" or "logo")
 game_of_life_cell_style = "full_block" # Game of Life cell style: "full_block" or "dotted" (braille scale 4)
-welcome_duration_seconds = 2.0 # Welcome animation duration in seconds for animated styles; logo ignores this and keeps its fixed timing (0.2 to 8.0)
+welcome_duration_seconds = 2.0         # Welcome animation duration in seconds for animated styles; logo ignores this and keeps its fixed timing (0.2 to 8.0)
 
 [helix]
 # Helix runtime path (advanced users only)
@@ -47,7 +47,7 @@ welcome_duration_seconds = 2.0 # Welcome animation duration in seconds for anima
 #   - Basic integration only (new panes, tab naming)
 #   - No advanced features (reveal in the Yazi file tree, same-instance opening)
 #   - Works reliably but with limited yazelix-specific functionality
-command = ""  # Leave empty to use yazelix's helix (recommended), or set to "nvim", "hx", "vim", etc.
+command = "" # Leave empty to use yazelix's helix (recommended), or set to "nvim", "hx", "vim", etc.
 
 # Initial managed sidebar state: "open" or "closed" (default: "open")
 # Sidebar is the generic managed side-surface; the default sidebar is a Yazi file tree.
@@ -66,7 +66,9 @@ sidebar_width_percent = 20
 # If sidebar_command changes and sidebar_args stays at this default, Yazelix
 # runs the custom sidebar command with no inherited Yazi launcher argument.
 sidebar_command = "nu"
-sidebar_args = ["__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu"]
+sidebar_args = [
+  "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu",
+]
 
 [shell]
 # Default shell for Zellij: "nu", "bash", "fish", or "zsh" (default: "nu")
@@ -104,41 +106,6 @@ terminals = [
 # - "user":    Load the terminal's native user config path instead; this requires that the real config file already exists
 # Supported customization path: keep "yazelix" and add terminal-native tweaks under ~/.config/yazelix/user_configs/terminal/
 config_mode = "yazelix"
-
-# Cursor color palette for Ghostty shaders, plus Kitty's simple cursor-trail fallback
-# Disable the palette and fallback trail: "none"
-# Mono-color: "blaze", "snow", "cosmic", "ocean", "forest", "sunset"
-# Duo-color: "neon", "eclipse", "dusk", "orchid", "reef"
-# Extreme: "party"
-# Special: "random" (rerolls a Ghostty color palette for each Yazelix Ghostty window, except "party")
-# Supported by Ghostty and Kitty: "snow"
-# In short: pick ghostty for cool cursor trails
-ghostty_trail_color = "random"
-
-# Tail effect for Ghostty cursor movement
-# Note: Helix does not support all Ghostty trail effects yet. Neovim currently has the best support.
-# Options: "tail", "warp", "sweep", "random"
-ghostty_trail_effect = "random"
-
-# Duration multiplier for Ghostty cursor movement trails
-# Range: 0.25 to 4.0
-# - 1.0: Keep the tuned Yazelix shader defaults
-# - below 1.0: Shorter, snappier trails
-# - above 1.0: Longer, slower-fading trails
-ghostty_trail_duration = 1.0
-
-# Mode-change effect for Ghostty. This is triggered when the editor changes cursor mode,
-# such as Neovim switching between normal and insert.
-# Options: "ripple", "sonic_boom", "rectangle_boom", "ripple_rectangle", "random"
-ghostty_mode_effect = "random"
-
-# Glow around Ghostty cursor trails and related cursor effects (default: "medium")
-# Options: "none", "low", "medium", "high"
-# - "none":   Keep the cursor/trail color effect but remove the extra spatial glow
-# - "low":    Tight, subtle glow
-# - "medium": Current Yazelix look (recommended default)
-# - "high":   Larger, brighter aura
-ghostty_trail_glow = "medium"
 
 # Terminal transparency level (default: "medium")
 # Options: "none", "very_low", "low", "medium", "high", "very_high", "super_high"
@@ -198,14 +165,14 @@ theme = "default"
 # Available widgets: "editor", "shell", "term", "workspace", "ai_activity", "token_budget", "cpu", "ram"
 # Comment out any line to hide that widget
 widget_tray = [
-  "editor",  # Active editor
-  "shell",   # Active shell
-  "term",    # Terminal emulator
+  "editor", # Active editor
+  "shell",  # Active shell
+  "term",   # Terminal emulator
   # "workspace", # Current workspace/focus from the pane-orchestrator status bus
   # "ai_activity", # AI pane activity from status-bus extension facts
   # "token_budget", # AI token-budget status-bus extension point
-  "cpu",     # CPU usage
-  "ram",     # RAM usage
+  "cpu", # CPU usage
+  "ram", # RAM usage
 ]
 
 # Optional short badge shown just before the YAZELIX version segment in zjstatus.
@@ -220,7 +187,9 @@ custom_text = ""
 #   ["editor"]                  # Open the current Yazelix editor.command with its managed runtime/env
 #   ["codex"]
 #   ["opencode"]
-popup_program = ["lazygit"]
+popup_program = [
+  "lazygit",
+]
 
 # Width and height of the managed popup as percentages of the current tab.
 # Valid range: 1 to 100.

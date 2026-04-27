@@ -7,8 +7,9 @@ use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::control_plane::{
     config_dir_from_env, config_override_from_env, runtime_dir_from_env, state_dir_from_env,
 };
+use crate::ghostty_cursor_registry::CursorRegistry;
 use crate::ghostty_materialization::{
-    DEFAULT_GHOSTTY_TRAIL_DURATION, GhosttyMaterializationRequest, generate_ghostty_materialization,
+    GhosttyMaterializationRequest, generate_ghostty_materialization,
 };
 use crate::terminal_materialization::{
     TerminalGeneratedConfig, TerminalMaterializationRequest, generate_terminal_materialization,
@@ -84,11 +85,15 @@ pub fn prepare_launch_materialization(
         include_missing: false,
     })?
     .normalized_config;
+    let cursor_config_path = CursorRegistry::user_config_path(&request.config_dir);
+    let cursor_registry = CursorRegistry::load(&cursor_config_path)?;
+    let ghostty_random_requested = cursor_registry.is_random_request();
     let plan = build_launch_materialization_plan(
         &normalized,
         &request.selected_terminals,
         request.desktop_fast_path,
         &request.state_dir,
+        ghostty_random_requested,
     );
 
     let mut generated_terminals = Vec::new();
@@ -108,15 +113,7 @@ pub fn prepare_launch_materialization(
             config_dir: request.config_dir.clone(),
             state_dir: request.state_dir.clone(),
             transparency: string_config(&normalized, "transparency", "none"),
-            ghostty_trail_color: optional_string_config(&normalized, "ghostty_trail_color"),
-            ghostty_trail_effect: optional_string_config(&normalized, "ghostty_trail_effect"),
-            ghostty_mode_effect: optional_string_config(&normalized, "ghostty_mode_effect"),
-            ghostty_trail_duration: float_config(
-                &normalized,
-                "ghostty_trail_duration",
-                DEFAULT_GHOSTTY_TRAIL_DURATION,
-            ),
-            ghostty_trail_glow: string_config(&normalized, "ghostty_trail_glow", "medium"),
+            cursor_config_path,
         })?;
     }
 
@@ -126,7 +123,7 @@ pub fn prepare_launch_materialization(
                 .selected_terminals
                 .iter()
                 .any(|terminal| terminal == "ghostty")
-            && ghostty_cursor_random_requested(&normalized));
+            && ghostty_random_requested);
 
     Ok(LaunchMaterializationData {
         terminal_config_mode: plan.terminal_config_mode,
@@ -141,6 +138,7 @@ fn build_launch_materialization_plan(
     requested_terminals: &[String],
     desktop_fast_path: bool,
     state_dir: &Path,
+    ghostty_random_requested: bool,
 ) -> LaunchMaterializationPlan {
     let terminal_config_mode = string_config(
         normalized,
@@ -191,7 +189,7 @@ fn build_launch_materialization_plan(
         && selected_terminals
             .iter()
             .any(|terminal| terminal == "ghostty")
-        && ghostty_cursor_random_requested(normalized);
+        && ghostty_random_requested;
 
     LaunchMaterializationPlan {
         terminal_config_mode,
@@ -227,16 +225,6 @@ fn generated_terminal_config_path(state_dir: &Path, terminal: &str) -> PathBuf {
     }
 }
 
-fn ghostty_cursor_random_requested(config: &JsonMap<String, JsonValue>) -> bool {
-    [
-        "ghostty_trail_color",
-        "ghostty_trail_effect",
-        "ghostty_mode_effect",
-    ]
-    .iter()
-    .any(|key| optional_string_config(config, key).as_deref() == Some("random"))
-}
-
 fn string_config(config: &JsonMap<String, JsonValue>, key: &str, default: &str) -> String {
     config
         .get(key)
@@ -245,22 +233,6 @@ fn string_config(config: &JsonMap<String, JsonValue>, key: &str, default: &str) 
         .filter(|value| !value.is_empty())
         .unwrap_or(default)
         .to_string()
-}
-
-fn optional_string_config(config: &JsonMap<String, JsonValue>, key: &str) -> Option<String> {
-    config
-        .get(key)
-        .and_then(JsonValue::as_str)
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(ToOwned::to_owned)
-}
-
-fn float_config(config: &JsonMap<String, JsonValue>, key: &str, default: f64) -> f64 {
-    config
-        .get(key)
-        .and_then(JsonValue::as_f64)
-        .unwrap_or(default)
 }
 
 fn string_list_config(
@@ -289,14 +261,10 @@ mod tests {
     fn config_with_terminals(
         terminals: &[&str],
         terminal_config_mode: &str,
-        ghostty_trail_color: &str,
     ) -> JsonMap<String, JsonValue> {
         let mut config = JsonMap::new();
         config.insert("terminals".into(), json!(terminals));
         config.insert("terminal_config_mode".into(), json!(terminal_config_mode));
-        config.insert("ghostty_trail_color".into(), json!(ghostty_trail_color));
-        config.insert("ghostty_trail_effect".into(), json!("tail"));
-        config.insert("ghostty_mode_effect".into(), json!("ripple"));
         config
     }
 
@@ -312,10 +280,15 @@ mod tests {
             .join("ghostty");
         std::fs::create_dir_all(&ghostty_dir).unwrap();
         std::fs::write(ghostty_dir.join("config"), "existing").unwrap();
-        let config = config_with_terminals(&["ghostty"], "yazelix", "random");
+        let config = config_with_terminals(&["ghostty"], "yazelix");
 
-        let plan =
-            build_launch_materialization_plan(&config, &["ghostty".to_string()], true, temp.path());
+        let plan = build_launch_materialization_plan(
+            &config,
+            &["ghostty".to_string()],
+            true,
+            temp.path(),
+            true,
+        );
 
         assert_eq!(
             plan,
@@ -333,9 +306,9 @@ mod tests {
     #[test]
     fn full_launch_materialization_uses_configured_terminals_when_callers_do_not_override_them() {
         let temp = tempdir().unwrap();
-        let config = config_with_terminals(&["ghostty", "wezterm", ""], "user", "reef");
+        let config = config_with_terminals(&["ghostty", "wezterm", ""], "user");
 
-        let plan = build_launch_materialization_plan(&config, &[], false, temp.path());
+        let plan = build_launch_materialization_plan(&config, &[], false, temp.path(), false);
 
         assert_eq!(
             plan,
@@ -355,7 +328,7 @@ mod tests {
         let temp = tempdir().unwrap();
         let config = JsonMap::new();
 
-        let plan = build_launch_materialization_plan(&config, &[], false, temp.path());
+        let plan = build_launch_materialization_plan(&config, &[], false, temp.path(), false);
 
         assert_eq!(
             plan.selected_terminals,

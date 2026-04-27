@@ -291,7 +291,7 @@ See the full catalog of tools and integrations in the Yazelix Collection:
 - **Environment setup**: Proper paths, variables, and shell configurations
 
 **Customize Your Installation:**
-If you followed [step 4 in the installation guide](./docs/installation.md#step-4-configure-your-installation-optional), you already have your `~/.config/yazelix/user_configs/yazelix.toml` config file ready, you can modify it anytime and restart Yazelix to apply changes, and you can see [yazelix_default.toml](./yazelix_default.toml) for all available options and their descriptions
+If you followed [step 4 in the installation guide](./docs/installation.md#step-4-configure-your-installation-optional), you already have your `~/.config/yazelix/user_configs/yazelix.toml` config file ready, you can modify it anytime and restart Yazelix to apply changes, see [yazelix_default.toml](./yazelix_default.toml) for main options, and use `~/.config/yazelix/user_configs/yazelix_cursors.toml` for Ghostty cursor presets and effects
 
 **Terminal Emulator Selection:**
 - **Ghostty** (default packaged preference): Modern, fast terminal written in Zig with Yazelix cursor trails

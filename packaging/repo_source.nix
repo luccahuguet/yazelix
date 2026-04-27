@@ -13,6 +13,7 @@ let
   includeFiles = [
     ".taplo.toml"
     "CHANGELOG.md"
+    "yazelix_cursors_default.toml"
     "yazelix_default.toml"
   ];
 in

@@ -2,7 +2,6 @@
 
 use crate::active_config_surface::{primary_config_paths, resolve_active_config_paths};
 use crate::bridge::{CoreError, ErrorClass};
-use crate::ghostty_materialization::DEFAULT_GHOSTTY_TRAIL_DURATION;
 use crate::runtime_env::RuntimePathInput;
 use crate::{
     ComputeConfigStateRequest, GhosttyMaterializationRequest, NormalizeConfigRequest,
@@ -297,8 +296,14 @@ pub fn ghostty_materialization_request_from_env(
     let runtime_dir = runtime_dir_from_env()?;
     let config_dir = config_dir_from_env()?;
     let state_dir = state_dir_from_env()?;
-    let normalized =
-        load_normalized_config_for_control(&runtime_dir, &config_dir, config_override)?;
+    let paths = resolve_active_config_paths(&runtime_dir, &config_dir, config_override)?;
+    let normalized = normalize_config(&NormalizeConfigRequest {
+        config_path: paths.config_file.clone(),
+        default_config_path: paths.default_config_path.clone(),
+        contract_path: paths.contract_path.clone(),
+        include_missing: false,
+    })?
+    .normalized_config;
 
     Ok(GhosttyMaterializationRequest {
         runtime_dir,
@@ -309,27 +314,7 @@ pub fn ghostty_materialization_request_from_env(
             .and_then(|value| value.as_str())
             .unwrap_or("none")
             .to_string(),
-        ghostty_trail_color: normalized
-            .get("ghostty_trail_color")
-            .and_then(|value| value.as_str())
-            .map(ToOwned::to_owned),
-        ghostty_trail_effect: normalized
-            .get("ghostty_trail_effect")
-            .and_then(|value| value.as_str())
-            .map(ToOwned::to_owned),
-        ghostty_mode_effect: normalized
-            .get("ghostty_mode_effect")
-            .and_then(|value| value.as_str())
-            .map(ToOwned::to_owned),
-        ghostty_trail_duration: normalized
-            .get("ghostty_trail_duration")
-            .and_then(|value| value.as_f64())
-            .unwrap_or(DEFAULT_GHOSTTY_TRAIL_DURATION),
-        ghostty_trail_glow: normalized
-            .get("ghostty_trail_glow")
-            .and_then(|value| value.as_str())
-            .unwrap_or("medium")
-            .to_string(),
+        cursor_config_path: paths.user_cursor_config,
     })
 }
 

@@ -1,0 +1,178 @@
+# Yazelix-owned default cursor registry
+# Copied to ~/.config/yazelix/user_configs/yazelix_cursors.toml on first run
+#
+# The main yazelix.toml does not carry Ghostty cursor settings
+# Cursor selection, effects, duration, glow, Kitty fallback, and cursor
+# definitions live here
+#
+# enabled_cursors is the source of truth for what can be selected
+# Comment out names to disable cursors, reorder names to influence
+# deterministic cycling, and add a name here after defining a matching
+# [[cursor]] table below
+# The "random" selector picks from enabled_cursors
+
+schema_version = 1
+
+enabled_cursors = [
+  "blaze",
+  "snow",
+  "cosmic",
+  "ocean",
+  "forest",
+  "sunset",
+  "neon",
+  "eclipse",
+  "dusk",
+  "orchid",
+  "reef",
+  "inferno",
+  # "local_lime",
+]
+
+[settings]
+# Cursor palette selector
+# Use a name from enabled_cursors, "random", or "none"
+# "random" picks one cursor from enabled_cursors for each Yazelix Ghostty window
+trail = "random"
+
+# Tail effect for Ghostty cursor movement
+# Options: "tail", "warp", "sweep", "random", or "none"
+trail_effect = "random"
+
+# Mode-change effect for editor cursor mode changes
+# Options: "ripple", "sonic_boom", "rectangle_boom", "ripple_rectangle", "random", or "none"
+mode_effect = "random"
+
+# Glow around Ghostty cursor trails and related cursor effects
+# Options: "none", "low", "medium", or "high"
+glow = "medium"
+
+# Duration multiplier for cursor movement trails
+duration = 1.0
+
+# Kitty can only use a simple cursor-trail fallback
+kitty_enable_cursor = true
+
+# Code-owned families
+# Users pick a family; they do not define raw GLSL
+# Expected color counts:
+# - simple_dual: 2 colors, good for the current mono-looking presets
+# - axis_gradient: 2 colors, good for two-pole blended presets
+# - curated_template: no user colors, keeps a hand-tuned shader by name
+
+[[cursor]]
+name = "blaze"
+family = "simple_dual"
+colors = [
+  "#ffb929",
+  "#ff0000",
+]
+cursor_color = "#ffb929"
+
+[[cursor]]
+name = "snow"
+family = "simple_dual"
+colors = [
+  "#ffffff",
+  "#cccccc",
+]
+cursor_color = "#ffffff"
+
+[[cursor]]
+name = "cosmic"
+family = "simple_dual"
+colors = [
+  "#c761f5",
+  "#783ddc",
+]
+cursor_color = "#c761f5"
+
+[[cursor]]
+name = "ocean"
+family = "simple_dual"
+colors = [
+  "#5ea8ff",
+  "#1e66f5",
+]
+cursor_color = "#5ea8ff"
+
+[[cursor]]
+name = "forest"
+family = "simple_dual"
+colors = [
+  "#3bd17a",
+  "#1b9e59",
+]
+cursor_color = "#3bd17a"
+
+[[cursor]]
+name = "sunset"
+family = "simple_dual"
+colors = [
+  "#ff7a59",
+  "#ff3d5e",
+]
+cursor_color = "#ff7a59"
+
+[[cursor]]
+name = "neon"
+family = "curated_template"
+template = "neon"
+cursor_color = "#0090ff"
+
+[[cursor]]
+name = "eclipse"
+family = "axis_gradient"
+colors = [
+  "#2e294e",
+  "#ffd400",
+]
+cursor_color = "#ffd400"
+
+[[cursor]]
+name = "dusk"
+family = "axis_gradient"
+colors = [
+  "#1e1e2f",
+  "#e94560",
+]
+cursor_color = "#e94560"
+
+[[cursor]]
+name = "orchid"
+family = "axis_gradient"
+colors = [
+  "#ff6b00",
+  "#206dce",
+]
+cursor_color = "#ff6b00"
+
+[[cursor]]
+name = "reef"
+family = "axis_gradient"
+colors = [
+  "#00e6ff",
+  "#00c03b",
+]
+cursor_color = "#00e6ff"
+
+[[cursor]]
+name = "inferno"
+family = "axis_gradient"
+colors = [
+  "#ff1600",
+  "#2a3340",
+]
+cursor_color = "#ff1600"
+
+# Example custom cursor
+# Uncomment the block to enable it
+#
+# [[cursor]]
+# name = "local_lime"
+# family = "simple_dual"
+# colors = [
+#   "#c6ff00",
+#   "#00c853",
+# ]
+# cursor_color = "#c6ff00"

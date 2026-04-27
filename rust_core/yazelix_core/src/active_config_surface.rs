@@ -1,6 +1,7 @@
 //! Resolve active Yazelix config paths for control-plane commands (Rust-only path).
 
 use crate::bridge::{CoreError, ErrorClass};
+use crate::ghostty_cursor_registry::{CursorRegistry, DEFAULT_CURSOR_CONFIG_FILENAME};
 use serde::Serialize;
 use serde_json::json;
 use std::fs;
@@ -11,10 +12,12 @@ use std::path::{Path, PathBuf};
 pub struct ActiveConfigPaths {
     pub user_config_dir: PathBuf,
     pub user_config: PathBuf,
+    pub user_cursor_config: PathBuf,
     pub legacy_user_config: PathBuf,
     pub managed_taplo: PathBuf,
     pub config_file: PathBuf,
     pub default_config_path: PathBuf,
+    pub default_cursor_config_path: PathBuf,
     pub contract_path: PathBuf,
 }
 
@@ -22,8 +25,10 @@ pub struct ActiveConfigPaths {
 pub struct PrimaryConfigPaths {
     pub user_config_dir: PathBuf,
     pub user_config: PathBuf,
+    pub user_cursor_config: PathBuf,
     pub legacy_user_config: PathBuf,
     pub default_config_path: PathBuf,
+    pub default_cursor_config_path: PathBuf,
     pub contract_path: PathBuf,
     pub runtime_taplo: PathBuf,
     pub managed_taplo: PathBuf,
@@ -42,8 +47,10 @@ fn io_err(path: &Path, source: io::Error) -> CoreError {
 pub fn primary_config_paths(runtime_dir: &Path, config_dir: &Path) -> PrimaryConfigPaths {
     let user_config_dir = config_dir.join("user_configs");
     let user_config = user_config_dir.join("yazelix.toml");
+    let user_cursor_config = CursorRegistry::user_config_path(config_dir);
     let legacy_user_config = config_dir.join("yazelix.toml");
     let default_config_path = runtime_dir.join("yazelix_default.toml");
+    let default_cursor_config_path = runtime_dir.join(DEFAULT_CURSOR_CONFIG_FILENAME);
     let contract_path = runtime_dir
         .join("config_metadata")
         .join("main_config_contract.toml");
@@ -53,8 +60,10 @@ pub fn primary_config_paths(runtime_dir: &Path, config_dir: &Path) -> PrimaryCon
     PrimaryConfigPaths {
         user_config_dir,
         user_config,
+        user_cursor_config,
         legacy_user_config,
         default_config_path,
+        default_cursor_config_path,
         contract_path,
         runtime_taplo,
         managed_taplo,
@@ -101,6 +110,7 @@ pub fn resolve_active_config_paths(
 
     validate_primary_config_surface(&paths)?;
     ensure_managed_taplo(&paths.runtime_taplo, &paths.managed_taplo)?;
+    ensure_user_cursor_config(&paths.default_cursor_config_path, &paths.user_cursor_config)?;
 
     let config_file = match config_override {
         Some(raw) if !raw.trim().is_empty() => PathBuf::from(raw.trim()),
@@ -147,12 +157,46 @@ pub fn resolve_active_config_paths(
     Ok(ActiveConfigPaths {
         user_config_dir: paths.user_config_dir,
         user_config: paths.user_config,
+        user_cursor_config: paths.user_cursor_config,
         legacy_user_config: paths.legacy_user_config,
         managed_taplo: paths.managed_taplo,
         config_file,
         default_config_path: paths.default_config_path,
+        default_cursor_config_path: paths.default_cursor_config_path,
         contract_path: paths.contract_path,
     })
+}
+
+fn ensure_user_cursor_config(runtime_src: &Path, managed: &Path) -> Result<(), CoreError> {
+    if !runtime_src.exists() {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "missing_default_cursor_config",
+            format!(
+                "Yazelix runtime is missing the default cursor registry at {}.",
+                runtime_src.display()
+            ),
+            "Reinstall Yazelix so the runtime includes yazelix_cursors_default.toml.",
+            json!({ "path": runtime_src.display().to_string() }),
+        ));
+    }
+
+    if managed.exists() {
+        return Ok(());
+    }
+
+    if let Some(parent) = managed.parent() {
+        fs::create_dir_all(parent).map_err(|e| io_err(parent, e))?;
+    }
+    fs::copy(runtime_src, managed).map_err(|e| io_err(managed, e))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = fs::Permissions::from_mode(0o644);
+        let _ = fs::set_permissions(managed, mode);
+    }
+
+    Ok(())
 }
 
 pub fn ensure_managed_taplo(runtime_src: &Path, managed: &Path) -> Result<(), CoreError> {
@@ -209,6 +253,11 @@ mod tests {
             "[core]\nwelcome_style = \"minimal\"\n",
         )
         .expect("write default config");
+        fs::write(
+            runtime_dir.join(DEFAULT_CURSOR_CONFIG_FILENAME),
+            include_str!("../../../yazelix_cursors_default.toml"),
+        )
+        .expect("write cursor config");
         fs::create_dir_all(runtime_dir.join("config_metadata")).expect("contract dir");
         fs::write(
             runtime_dir
@@ -246,6 +295,10 @@ mod tests {
         assert_eq!(
             fs::read_to_string(&resolved.managed_taplo).unwrap(),
             fs::read_to_string(runtime.path().join(".taplo.toml")).unwrap()
+        );
+        assert_eq!(
+            fs::read_to_string(&resolved.user_cursor_config).unwrap(),
+            fs::read_to_string(runtime.path().join(DEFAULT_CURSOR_CONFIG_FILENAME)).unwrap()
         );
     }
 

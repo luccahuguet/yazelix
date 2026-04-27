@@ -1,8 +1,9 @@
 use crate::bridge::CoreError;
 use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::control_plane::config_dir_from_env;
+use crate::ghostty_cursor_registry::CursorRegistry;
 use crate::ghostty_materialization::{
-    DEFAULT_GHOSTTY_TRAIL_DURATION, GhosttyMaterializationRequest, generate_ghostty_materialization,
+    GhosttyMaterializationRequest, generate_ghostty_materialization,
 };
 use serde::Serialize;
 use std::fs;
@@ -120,18 +121,17 @@ return config"##,
     )
 }
 
-fn build_kitty_cursor(ghostty_trail_color: Option<&str>) -> String {
-    match ghostty_trail_color {
-        Some("snow") | Some("random") => "cursor_shape block\ncursor_trail 3\ncursor_trail_decay 0.1 0.4".to_string(),
-        Some("none") => "# cursor_trail 0  # ghostty_trail_color = none disables the fallback trail".to_string(),
-        None => "# cursor_trail 0".to_string(),
-        _ => "# cursor_trail 0  # Custom effects (blaze/ocean/forest/sunset/neon/cosmic) not supported".to_string(),
+fn build_kitty_cursor(kitty_enable_cursor: bool) -> String {
+    if kitty_enable_cursor {
+        "cursor_shape block\ncursor_trail 3\ncursor_trail_decay 0.1 0.4".to_string()
+    } else {
+        "# cursor_trail 0  # disabled by yazelix_cursors.toml".to_string()
     }
 }
 
 fn generate_kitty_config(
     transparency: &str,
-    ghostty_trail_color: Option<&str>,
+    kitty_enable_cursor: bool,
     override_path: Option<&Path>,
 ) -> String {
     let override_section = match override_path {
@@ -172,7 +172,7 @@ repaint_delay 10
 input_delay 3
 sync_to_monitor yes
 
-# Cursor trail effect (configurable via yazelix.toml)
+# Cursor trail effect (configurable via yazelix_cursors.toml)
 {}
 
 # Personal Yazelix Kitty overrides
@@ -181,7 +181,7 @@ sync_to_monitor yes
         get_terminal_title("kitty"),
         build_transparency(transparency, "ini-space", "background_opacity"),
         FONT_FIRACODE,
-        build_kitty_cursor(ghostty_trail_color),
+        build_kitty_cursor(kitty_enable_cursor),
         override_section,
     )
 }
@@ -307,13 +307,10 @@ pub fn generate_terminal_materialization(
         .get("transparency")
         .and_then(|v| v.as_str())
         .unwrap_or("none");
-    let ghostty_trail_color = config.get("ghostty_trail_color").and_then(|v| v.as_str());
-    let ghostty_trail_duration = config
-        .get("ghostty_trail_duration")
-        .and_then(|value| value.as_f64())
-        .unwrap_or(DEFAULT_GHOSTTY_TRAIL_DURATION);
 
     let config_dir = config_dir_from_env()?;
+    let cursor_config_path = CursorRegistry::user_config_path(&config_dir);
+    let cursor_registry = CursorRegistry::load(&cursor_config_path)?;
     let generated_dir = request.state_dir.join("configs").join("terminal_emulators");
 
     let mut generated = Vec::new();
@@ -327,21 +324,7 @@ pub fn generate_terminal_materialization(
                     config_dir: config_dir.clone(),
                     state_dir: request.state_dir.clone(),
                     transparency: transparency.to_string(),
-                    ghostty_trail_color: ghostty_trail_color.map(|s| s.to_string()),
-                    ghostty_trail_effect: config
-                        .get("ghostty_trail_effect")
-                        .and_then(|v| v.as_str())
-                        .map(|s| s.to_string()),
-                    ghostty_mode_effect: config
-                        .get("ghostty_mode_effect")
-                        .and_then(|v| v.as_str())
-                        .map(|s| s.to_string()),
-                    ghostty_trail_duration,
-                    ghostty_trail_glow: config
-                        .get("ghostty_trail_glow")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("medium")
-                        .to_string(),
+                    cursor_config_path: cursor_config_path.clone(),
                 };
                 let data = generate_ghostty_materialization(&ghostty_request)?;
                 let path = data.generated_path.clone();
@@ -394,7 +377,7 @@ pub fn generate_terminal_materialization(
                     &path,
                     generate_kitty_config(
                         transparency,
-                        ghostty_trail_color,
+                        cursor_registry.settings.kitty_enable_cursor,
                         override_path.as_deref(),
                     ),
                 )

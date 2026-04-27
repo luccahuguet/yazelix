@@ -242,3 +242,5 @@ This module follows Yazelix's configuration structure defined in `yazelix_defaul
 2. Update the examples and documentation
 3. Test with both new and existing Yazelix installations
 4. Ensure type safety and proper defaults
+
+Ghostty cursor presets and effects are intentionally outside the Home Manager main option set for now. Edit `~/.config/yazelix/user_configs/yazelix_cursors.toml` directly for that larger cursor registry surface

@@ -1,9 +1,14 @@
 use crate::bridge::{CoreError, ErrorClass};
+use crate::ghostty_cursor_registry::{
+    CursorDefinition, CursorFamily, CursorRegistry, ResolvedCursorRegistryState,
+};
+pub use crate::ghostty_cursor_registry::{
+    DEFAULT_GHOSTTY_TRAIL_DURATION, GHOSTTY_TRAIL_DURATION_MAX, GHOSTTY_TRAIL_DURATION_MIN,
+};
 use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::time::SystemTime;
 
 const YAZELIX_WINDOW_CLASS: &str = "com.yazelix.Yazelix";
 const YAZELIX_X11_INSTANCE: &str = "yazelix";
@@ -24,62 +29,6 @@ const TRANSPARENCY_VALUES: &[(&str, &str)] = &[
     ("super_high", "0.60"),
 ];
 
-const CURSOR_TRAIL_SHADERS: &[(&str, &str)] = &[
-    ("blaze", "./shaders/cursor_trail_blaze.glsl"),
-    ("snow", "./shaders/cursor_trail_white.glsl"),
-    ("cosmic", "./shaders/cursor_trail_cosmic.glsl"),
-    ("ocean", "./shaders/cursor_trail_ocean.glsl"),
-    ("forest", "./shaders/cursor_trail_forest.glsl"),
-    ("sunset", "./shaders/cursor_trail_sunset.glsl"),
-    ("neon", "./shaders/cursor_trail_neon.glsl"),
-    ("party", "./shaders/cursor_trail_party.glsl"),
-    ("eclipse", "./shaders/cursor_trail_eclipse.glsl"),
-    ("dusk", "./shaders/cursor_trail_dusk.glsl"),
-    ("orchid", "./shaders/cursor_trail_orchid.glsl"),
-    ("reef", "./shaders/cursor_trail_reef.glsl"),
-    ("inferno", "./shaders/cursor_trail_inferno.glsl"),
-    ("none", ""),
-];
-
-const CURSOR_TRAIL_COLOR_HEX: &[(&str, &str)] = &[
-    ("blaze", "#ffb929"),
-    ("snow", "#ffffff"),
-    ("cosmic", "#c761f5"),
-    ("ocean", "#5ea8ff"),
-    ("forest", "#3bd17a"),
-    ("sunset", "#ff7a59"),
-    ("neon", "#0090ff"),
-    ("party", "#ff00ff"),
-    ("eclipse", "#ffd400"),
-    ("dusk", "#e94560"),
-    ("orchid", "#ff6b00"),
-    ("reef", "#00e6ff"),
-    ("inferno", "#ff1600"),
-];
-
-const CURSOR_TRAIL_COLOR_LITERALS: &[(&str, &str)] = &[
-    ("blaze", "vec4(1.0, 0.725, 0.161, 1.0)"),
-    ("snow", "vec4(1.0, 1.0, 1.0, 1.0)"),
-    ("cosmic", "vec4(0.78, 0.38, 0.96, 1.0)"),
-    ("ocean", "vec4(0.37, 0.66, 1.00, 1.0)"),
-    ("forest", "vec4(0.23, 0.82, 0.48, 1.0)"),
-    ("sunset", "vec4(1.00, 0.48, 0.35, 1.0)"),
-    ("neon", "vec4(0.00, 0.565, 1.00, 1.0)"),
-    ("party", "vec4(1.00, 0.00, 1.00, 1.0)"),
-    ("eclipse", "vec4(1.000, 0.831, 0.000, 1.0)"),
-    ("dusk", "vec4(0.914, 0.271, 0.376, 1.0)"),
-    ("orchid", "vec4(1.0, 0.420, 0.0, 1.0)"),
-    ("reef", "vec4(0.0, 0.902, 1.0, 1.0)"),
-    ("inferno", "vec4(1.0, 0.086, 0.0, 1.0)"),
-];
-
-const GHOSTTY_TRAIL_EFFECTS: &[&str] = &["tail", "warp", "sweep"];
-const GHOSTTY_MODE_EFFECTS: &[&str] =
-    &["ripple", "sonic_boom", "rectangle_boom", "ripple_rectangle"];
-pub const DEFAULT_GHOSTTY_TRAIL_DURATION: f64 = 1.0;
-pub const GHOSTTY_TRAIL_DURATION_MIN: f64 = 0.25;
-pub const GHOSTTY_TRAIL_DURATION_MAX: f64 = 4.0;
-
 const EFFECTS_REQUIRING_ALWAYS_ANIMATION: &[&str] =
     &["ripple", "sonic_boom", "rectangle_boom", "ripple_rectangle"];
 
@@ -89,11 +38,7 @@ pub struct GhosttyMaterializationRequest {
     pub config_dir: PathBuf,
     pub state_dir: PathBuf,
     pub transparency: String,
-    pub ghostty_trail_color: Option<String>,
-    pub ghostty_trail_effect: Option<String>,
-    pub ghostty_mode_effect: Option<String>,
-    pub ghostty_trail_duration: f64,
-    pub ghostty_trail_glow: String,
+    pub cursor_config_path: PathBuf,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -118,76 +63,6 @@ fn get_opacity_value(transparency: &str) -> &str {
         .find(|(k, _)| *k == transparency)
         .map(|(_, v)| *v)
         .unwrap_or("1.0")
-}
-
-fn pick_random<'a>(pool: &[&'a str]) -> Option<&'a str> {
-    if pool.is_empty() {
-        return None;
-    }
-    let len = pool.len();
-    let index = SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| (d.as_nanos() as usize) % len)
-        .unwrap_or(0);
-    pool.get(index).copied()
-}
-
-fn resolve_ghostty_trail_color(color: &Option<String>) -> Option<String> {
-    match color.as_deref() {
-        None | Some("") => None,
-        Some("random") => {
-            let pool: Vec<&str> = CURSOR_TRAIL_SHADERS
-                .iter()
-                .filter(|(k, _)| *k != "none" && *k != "party")
-                .map(|(k, _)| *k)
-                .collect();
-            pick_random(&pool).map(String::from)
-        }
-        Some(other) => Some(other.to_string()),
-    }
-}
-
-fn resolve_ghostty_trail_effect(effect: &Option<String>) -> Option<String> {
-    match effect.as_deref() {
-        None | Some("") => None,
-        Some("random") => pick_random(GHOSTTY_TRAIL_EFFECTS).map(String::from),
-        Some(other) => Some(other.to_string()),
-    }
-}
-
-fn resolve_ghostty_mode_effect(effect: &Option<String>) -> Option<String> {
-    match effect.as_deref() {
-        None | Some("") => None,
-        Some("random") => pick_random(GHOSTTY_MODE_EFFECTS).map(String::from),
-        Some(other) => Some(other.to_string()),
-    }
-}
-
-fn get_ghostty_cursor_color_hex(selected_color: &str) -> &str {
-    CURSOR_TRAIL_COLOR_HEX
-        .iter()
-        .find(|(k, _)| *k == selected_color)
-        .map(|(_, v)| *v)
-        .unwrap_or("#ffb929")
-}
-
-fn get_ghostty_cursor_effect_color_literal(selected_color: &Option<String>) -> String {
-    match selected_color.as_deref() {
-        None | Some("none") => "iCurrentCursorColor".to_string(),
-        Some(color) => CURSOR_TRAIL_COLOR_LITERALS
-            .iter()
-            .find(|(k, _)| *k == color)
-            .map(|(_, v)| v.to_string())
-            .unwrap_or_else(|| "iCurrentCursorColor".to_string()),
-    }
-}
-
-fn get_cursor_trail_shader(selected_color: &str) -> &str {
-    CURSOR_TRAIL_SHADERS
-        .iter()
-        .find(|(k, _)| *k == selected_color)
-        .map(|(_, v)| *v)
-        .unwrap_or("")
 }
 
 fn ghostty_effect_requires_always_animation(effect: &str) -> bool {
@@ -227,12 +102,12 @@ fn validate_ghostty_trail_duration(duration: f64) -> Result<(), CoreError> {
             ErrorClass::Config,
             "invalid_ghostty_trail_duration",
             format!(
-                "Invalid terminal.ghostty_trail_duration value '{}'. Expected a number from {} to {}.",
+                "Invalid cursor settings.duration value '{}'. Expected a number from {} to {}.",
                 duration, GHOSTTY_TRAIL_DURATION_MIN, GHOSTTY_TRAIL_DURATION_MAX
             ),
-            "Update yazelix.toml with a supported Ghostty trail duration multiplier, then retry.",
+            "Update user_configs/yazelix_cursors.toml with a supported Ghostty trail duration multiplier, then retry.",
             serde_json::json!({
-                "field": "terminal.ghostty_trail_duration",
+                "field": "settings.duration",
                 "actual": duration.to_string(),
                 "min": GHOSTTY_TRAIL_DURATION_MIN,
                 "max": GHOSTTY_TRAIL_DURATION_MAX,
@@ -260,21 +135,21 @@ fn build_ghostty_trail_duration(duration: f64) -> String {
     )
 }
 
-fn build_ghostty_cursor_palette(selected_color: &Option<String>) -> String {
-    match selected_color.as_deref() {
-        None => "# cursor-color = #ffb929".to_string(),
-        Some("none") => {
-            "# Cursor color palette: none (disable Yazelix color trail palette)".to_string()
-        }
-        Some(color) => {
-            let hex = get_ghostty_cursor_color_hex(color);
-            let shader = get_cursor_trail_shader(color);
-            format!(
-                "# Cursor color palette: {}\ncursor-color = {}\ncustom-shader = {}",
-                color, hex, shader
-            )
-        }
+fn build_ghostty_cursor_palette(cursor_state: &ResolvedCursorRegistryState) -> String {
+    if cursor_state.trail_disabled {
+        return "# Cursor color palette: none (disabled in yazelix_cursors.toml)".to_string();
     }
+
+    let Some(cursor) = &cursor_state.selected_cursor else {
+        return "# cursor-color = #ffb929".to_string();
+    };
+
+    format!(
+        "# Cursor color palette: {}\ncursor-color = {}\ncustom-shader = {}",
+        cursor.name,
+        cursor.cursor_color_hex(),
+        cursor.shader_path()
+    )
 }
 
 fn build_ghostty_cursor_effects(
@@ -309,22 +184,34 @@ fn build_ghostty_cursor_effects(
     lines.join("\n")
 }
 
-fn resolve_ghostty_cursor_render_state(
-    request: &GhosttyMaterializationRequest,
+fn build_ghostty_cursor_render_state(
+    registry_state: &ResolvedCursorRegistryState,
 ) -> GhosttyCursorState {
-    let selected_color = resolve_ghostty_trail_color(&request.ghostty_trail_color);
+    let selected_color = if registry_state.trail_disabled {
+        Some("none".to_string())
+    } else {
+        registry_state
+            .selected_cursor
+            .as_ref()
+            .map(|cursor| cursor.name.clone())
+    };
     GhosttyCursorState {
-        selected_color: selected_color.clone(),
-        selected_trail_effect: resolve_ghostty_trail_effect(&request.ghostty_trail_effect),
-        selected_mode_effect: resolve_ghostty_mode_effect(&request.ghostty_mode_effect),
-        trail_duration: request.ghostty_trail_duration,
-        effect_color_literal: get_ghostty_cursor_effect_color_literal(&selected_color),
+        selected_color,
+        selected_trail_effect: registry_state.selected_trail_effect.clone(),
+        selected_mode_effect: registry_state.selected_mode_effect.clone(),
+        trail_duration: registry_state.duration,
+        effect_color_literal: registry_state
+            .selected_cursor
+            .as_ref()
+            .map(CursorDefinition::cursor_color_literal)
+            .unwrap_or_else(|| "iCurrentCursorColor".to_string()),
     }
 }
 
 fn build_ghostty_config(
     request: &GhosttyMaterializationRequest,
     cursor_state: &GhosttyCursorState,
+    registry_state: &ResolvedCursorRegistryState,
 ) -> String {
     let override_path = get_terminal_override_path(&request.config_dir, "ghostty")
         .map(|p| p.to_string_lossy().into_owned())
@@ -346,7 +233,7 @@ window-padding-y = 10,0
 # Transparency (configurable via yazelix.toml)
 {}
 
-# Ghostty cursor color + effects (configurable via yazelix.toml)
+# Ghostty cursor color + effects (configurable via yazelix_cursors.toml)
 {}
 {}
 {}
@@ -359,8 +246,8 @@ config-file = ?"{}"
         YAZELIX_X11_INSTANCE,
         YAZELIX_THEME,
         build_ghostty_transparency(&request.transparency),
-        build_ghostty_cursor_palette(&cursor_state.selected_color),
-        build_ghostty_trail_duration(request.ghostty_trail_duration),
+        build_ghostty_cursor_palette(registry_state),
+        build_ghostty_trail_duration(cursor_state.trail_duration),
         build_ghostty_cursor_effects(
             &cursor_state.selected_trail_effect,
             &cursor_state.selected_mode_effect
@@ -375,6 +262,7 @@ fn sync_ghostty_shader_assets(
     glow_level: &str,
     effect_color_literal: &str,
     trail_duration: f64,
+    registry: &CursorRegistry,
 ) -> Result<bool, CoreError> {
     let shaders_src = runtime_dir
         .join("configs")
@@ -465,7 +353,177 @@ fn sync_ghostty_shader_assets(
         }
     }
 
+    write_data_driven_cursor_shaders(&shaders_dest, registry, glow_level, trail_duration)?;
+
     Ok(true)
+}
+
+fn write_data_driven_cursor_shaders(
+    shaders_dest: &Path,
+    registry: &CursorRegistry,
+    glow_level: &str,
+    trail_duration: f64,
+) -> Result<(), CoreError> {
+    let data_driven = registry
+        .enabled_definitions()
+        .into_iter()
+        .filter(|definition| {
+            matches!(
+                definition.family,
+                CursorFamily::SimpleDual | CursorFamily::AxisGradient
+            )
+        })
+        .collect::<Vec<_>>();
+    if data_driven.is_empty() {
+        return Ok(());
+    }
+
+    let common_path = shaders_dest.join("cursor_trail_common.glsl");
+    let common = fs::read_to_string(&common_path).map_err(|source| {
+        CoreError::io(
+            "read_ghostty_shader_common",
+            "Could not read the copied Ghostty cursor shader common library",
+            "Reinstall Yazelix so the runtime includes configs/terminal_emulators/ghostty/shaders/cursor_trail_common.glsl.",
+            common_path.to_string_lossy(),
+            source,
+        )
+    })?;
+    let glow_header = render_trail_glow_header(glow_level);
+
+    for definition in data_driven {
+        let output_path = shaders_dest.join(format!("cursor_trail_{}.glsl", definition.name));
+        let rendered = format!(
+            "{}{}\n{}",
+            glow_header,
+            common,
+            render_data_driven_cursor_variant(definition, trail_duration)
+        );
+        fs::write(&output_path, rendered).map_err(|source| {
+            CoreError::io(
+                "write_data_driven_cursor_shader",
+                "Could not write generated Ghostty cursor shader",
+                "Check permissions for the Yazelix state directory and retry.",
+                output_path.to_string_lossy(),
+                source,
+            )
+        })?;
+    }
+
+    Ok(())
+}
+
+fn render_data_driven_cursor_variant(definition: &CursorDefinition, duration_scale: f64) -> String {
+    let color_0 = definition.colors[0].glsl_vec4();
+    let color_1 = definition.colors[1].glsl_vec4();
+    match definition.family {
+        CursorFamily::SimpleDual => {
+            let duration = format_ghostty_trail_duration(0.25 * duration_scale);
+            format!(
+                r#"// Generated Yazelix simple-dual cursor variant
+
+const vec4 YAZELIX_CURSOR_COLOR_0 = {color_0};
+const vec4 YAZELIX_CURSOR_COLOR_1 = {color_1};
+const float DURATION = {duration};
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord)
+{{
+    renderSimpleDualColorTrail(fragColor, fragCoord, YAZELIX_CURSOR_COLOR_0, YAZELIX_CURSOR_COLOR_1, DURATION, .007, 1.5);
+}}
+"#
+            )
+        }
+        CursorFamily::AxisGradient => {
+            let duration = format_ghostty_trail_duration(0.24 * duration_scale);
+            format!(
+                r#"// Generated Yazelix axis-gradient cursor variant
+
+const vec4 YAZELIX_CURSOR_COLOR_0 = {color_0};
+const vec4 YAZELIX_CURSOR_COLOR_1 = {color_1};
+const float DURATION = {duration};
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord)
+{{
+    renderAxisGradientTrail(fragColor, fragCoord, YAZELIX_CURSOR_COLOR_0, YAZELIX_CURSOR_COLOR_1, DURATION, 1.6, 0.42, 0.30, 0.5);
+}}
+"#
+            )
+        }
+        CursorFamily::CuratedTemplate => String::new(),
+    }
+}
+
+fn render_trail_glow_header(glow_level: &str) -> String {
+    let profile = glow_profile(glow_level);
+    format!(
+        r#"// Generated by Yazelix with cursor glow = {glow_level}
+const float YAZELIX_TRAIL_GLOW_STRENGTH = {};
+const float YAZELIX_TRAIL_GLOW_WIDTH_SCALE = {};
+const float YAZELIX_CURSOR_GLOW_STRENGTH = {};
+const float YAZELIX_CURSOR_GLOW_WIDTH_SCALE = {};
+const float YAZELIX_TRAIL_EDGE_WIDTH_SCALE = {};
+const float YAZELIX_CURSOR_EDGE_WIDTH_SCALE = {};
+const float YAZELIX_TRAIL_CORE_OFFSET_SCALE = {};
+
+"#,
+        profile.trail_glow_strength,
+        profile.trail_glow_width_scale,
+        profile.cursor_glow_strength,
+        profile.cursor_glow_width_scale,
+        profile.trail_edge_width_scale,
+        profile.cursor_edge_width_scale,
+        profile.trail_core_offset_scale,
+    )
+}
+
+struct GlowProfile {
+    trail_glow_strength: &'static str,
+    cursor_glow_strength: &'static str,
+    trail_edge_width_scale: &'static str,
+    cursor_edge_width_scale: &'static str,
+    trail_core_offset_scale: &'static str,
+    trail_glow_width_scale: &'static str,
+    cursor_glow_width_scale: &'static str,
+}
+
+fn glow_profile(glow_level: &str) -> GlowProfile {
+    match glow_level {
+        "none" => GlowProfile {
+            trail_glow_strength: "0.0",
+            cursor_glow_strength: "0.0",
+            trail_edge_width_scale: "0.0",
+            cursor_edge_width_scale: "0.0",
+            trail_core_offset_scale: "0.0",
+            trail_glow_width_scale: "1.0",
+            cursor_glow_width_scale: "1.0",
+        },
+        "low" => GlowProfile {
+            trail_glow_strength: "1.0",
+            cursor_glow_strength: "1.0",
+            trail_edge_width_scale: "1.0",
+            cursor_edge_width_scale: "1.0",
+            trail_core_offset_scale: "1.0",
+            trail_glow_width_scale: "0.55",
+            cursor_glow_width_scale: "0.6",
+        },
+        "high" => GlowProfile {
+            trail_glow_strength: "1.0",
+            cursor_glow_strength: "1.0",
+            trail_edge_width_scale: "1.0",
+            cursor_edge_width_scale: "1.0",
+            trail_core_offset_scale: "1.0",
+            trail_glow_width_scale: "1.7",
+            cursor_glow_width_scale: "1.6",
+        },
+        _ => GlowProfile {
+            trail_glow_strength: "1.0",
+            cursor_glow_strength: "1.0",
+            trail_edge_width_scale: "1.0",
+            cursor_edge_width_scale: "1.0",
+            trail_core_offset_scale: "1.0",
+            trail_glow_width_scale: "1.0",
+            cursor_glow_width_scale: "1.0",
+        },
+    }
 }
 
 fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io::Result<()> {
@@ -487,8 +545,10 @@ fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io::Result
 pub fn generate_ghostty_materialization(
     request: &GhosttyMaterializationRequest,
 ) -> Result<GhosttyMaterializationData, CoreError> {
-    validate_ghostty_trail_duration(request.ghostty_trail_duration)?;
-    let cursor_state = resolve_ghostty_cursor_render_state(request);
+    let registry = CursorRegistry::load(&request.cursor_config_path)?;
+    let registry_state = registry.resolve();
+    validate_ghostty_trail_duration(registry_state.duration)?;
+    let cursor_state = build_ghostty_cursor_render_state(&registry_state);
 
     let ghostty_dir = request
         .state_dir
@@ -506,7 +566,7 @@ pub fn generate_ghostty_materialization(
         )
     })?;
 
-    let config_content = build_ghostty_config(request, &cursor_state);
+    let config_content = build_ghostty_config(request, &cursor_state, &registry_state);
     let generated_path = ghostty_dir.join("config");
 
     fs::write(&generated_path, config_content).map_err(|source| {
@@ -522,9 +582,10 @@ pub fn generate_ghostty_materialization(
     let shaders_synced = sync_ghostty_shader_assets(
         &request.runtime_dir,
         &ghostty_dir,
-        &request.ghostty_trail_glow,
+        &registry_state.glow,
         &cursor_state.effect_color_literal,
-        request.ghostty_trail_duration,
+        registry_state.duration,
+        &registry,
     )?;
 
     Ok(GhosttyMaterializationData {

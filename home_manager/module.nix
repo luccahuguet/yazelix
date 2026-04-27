@@ -207,51 +207,8 @@ in
         How Yazelix selects terminal configs:
         - "yazelix": use Yazelix-managed configs in ~/.local/share/yazelix (default)
         - "user": load the terminal's native user config path and fail if it does not exist
-      '';
-    };
 
-    ghostty_trail_color = mkMainContractOption "terminal.ghostty_trail_color" {
-      description = ''
-        Ghostty cursor color palette and Kitty cursor-trail fallback preset.
-        Disable the palette and fallback trail: "none"
-        Supported by Ghostty: "none", "blaze", "snow", "cosmic", "ocean", "forest", "sunset", "neon", "party", "eclipse", "dusk", "orchid", "reef", "inferno", "random"
-        Supported by Ghostty and Kitty: "snow"
-        "random" rerolls a Ghostty color palette for each Yazelix Ghostty window (excluding "party")
-      '';
-    };
-
-    ghostty_trail_effect = mkMainContractOption "terminal.ghostty_trail_effect" {
-      description = ''
-        Ghostty trail effect for cursor movement.
-        Set to null to disable extra tail effects.
-        Valid values: "tail", "warp", "sweep", "random"
-      '';
-    };
-
-    ghostty_trail_duration = mkMainContractOption "terminal.ghostty_trail_duration" {
-      description = ''
-        Duration multiplier for Ghostty cursor movement trails.
-        Valid range: 0.25 to 4.0. Use 1.0 to keep the tuned Yazelix shader defaults.
-      '';
-    };
-
-    ghostty_mode_effect = mkMainContractOption "terminal.ghostty_mode_effect" {
-      description = ''
-        Ghostty mode-change effect, triggered when the editor changes cursor mode
-        such as Neovim switching between normal and insert.
-        Set to null to disable mode-change effects.
-        Valid values: "ripple", "sonic_boom", "rectangle_boom", "ripple_rectangle", "random"
-      '';
-    };
-
-    ghostty_trail_glow = mkMainContractOption "terminal.ghostty_trail_glow" {
-      description = ''
-        Glow level around Ghostty cursor trails and related cursor effects.
-
-        - "none": keep the cursor/trail color effect but remove the extra spatial glow
-        - "low": a tighter, subtler aura
-        - "medium": the current Yazelix look (default)
-        - "high": a larger, brighter aura
+        Ghostty cursor presets and cursor effects live in ~/.config/yazelix/user_configs/yazelix_cursors.toml
       '';
     };
 

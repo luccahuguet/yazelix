@@ -11,7 +11,7 @@
 [contract]
 version = 1
 surface = "main"
-field_count = 43
+field_count = 38
 artifact_role = "canonical_machine_metadata"
 default_template = "yazelix_default.toml"
 home_manager_module = "home_manager/module.nix"
@@ -19,7 +19,8 @@ loader_module = "nushell/scripts/utils/config_contract.nu"
 scope_note = "Pack-surface metadata is intentionally excluded from this artifact."
 
 [rebuild]
-extra_paths = []
+extra_paths = [
+]
 
 [fields."core.debug_mode"]
 kind = "bool"
@@ -52,7 +53,10 @@ parser_key = "game_of_life_cell_style"
 home_manager_option = "game_of_life_cell_style"
 parser_behavior = "direct"
 validation = "enum"
-allowed_values = ["full_block", "dotted"]
+allowed_values = [
+  "full_block",
+  "dotted",
+]
 rebuild_required = false
 
 [fields."core.welcome_style"]
@@ -62,7 +66,18 @@ parser_key = "welcome_style"
 home_manager_option = "welcome_style"
 parser_behavior = "direct"
 validation = "enum"
-allowed_values = ["static", "logo", "boids", "boids_predator", "boids_schools", "mandelbrot", "game_of_life_gliders", "game_of_life_oscillators", "game_of_life_bloom", "random"]
+allowed_values = [
+  "static",
+  "logo",
+  "boids",
+  "boids_predator",
+  "boids_schools",
+  "mandelbrot",
+  "game_of_life_gliders",
+  "game_of_life_oscillators",
+  "game_of_life_bloom",
+  "random",
+]
 rebuild_required = false
 
 [fields."core.welcome_duration_seconds"]
@@ -117,7 +132,10 @@ parser_key = "initial_sidebar_state"
 home_manager_option = "initial_sidebar_state"
 parser_behavior = "direct"
 validation = "enum"
-allowed_values = ["open", "closed"]
+allowed_values = [
+  "open",
+  "closed",
+]
 rebuild_required = false
 
 [fields."editor.sidebar_width_percent"]
@@ -141,7 +159,9 @@ rebuild_required = false
 
 [fields."editor.sidebar_args"]
 kind = "string_list"
-default = ["__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu"]
+default = [
+  "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu",
+]
 parser_key = "sidebar_args"
 home_manager_option = "sidebar_args"
 parser_behavior = "direct"
@@ -154,17 +174,31 @@ parser_key = "default_shell"
 home_manager_option = "default_shell"
 parser_behavior = "direct"
 validation = "enum"
-allowed_values = ["nu", "bash", "fish", "zsh"]
+allowed_values = [
+  "nu",
+  "bash",
+  "fish",
+  "zsh",
+]
 rebuild_required = false
 
 [fields."terminal.terminals"]
 kind = "string_list"
-default = ["ghostty", "wezterm"]
+default = [
+  "ghostty",
+  "wezterm",
+]
 parser_key = "terminals"
 home_manager_option = "terminals"
 parser_behavior = "direct"
 validation = "enum_string_list"
-allowed_values = ["ghostty", "wezterm", "kitty", "alacritty", "foot"]
+allowed_values = [
+  "ghostty",
+  "wezterm",
+  "kitty",
+  "alacritty",
+  "foot",
+]
 rebuild_required = true
 
 [fields."terminal.config_mode"]
@@ -174,60 +208,10 @@ parser_key = "terminal_config_mode"
 home_manager_option = "terminal_config_mode"
 parser_behavior = "direct"
 validation = "enum"
-allowed_values = ["yazelix", "user"]
-rebuild_required = false
-
-[fields."terminal.ghostty_trail_color"]
-kind = "string"
-default = "random"
-parser_key = "ghostty_trail_color"
-home_manager_option = "ghostty_trail_color"
-parser_behavior = "direct"
-validation = "enum"
-allowed_values = ["none", "blaze", "snow", "cosmic", "ocean", "forest", "sunset", "neon", "party", "eclipse", "dusk", "orchid", "reef", "inferno", "random"]
-rebuild_required = false
-
-[fields."terminal.ghostty_trail_effect"]
-kind = "string"
-default = "random"
-parser_key = "ghostty_trail_effect"
-home_manager_option = "ghostty_trail_effect"
-parser_behavior = "direct"
-validation = "enum"
-allowed_values = ["tail", "warp", "sweep", "random"]
-home_manager_can_omit = true
-rebuild_required = false
-
-[fields."terminal.ghostty_trail_duration"]
-kind = "float"
-default = 1.0
-parser_key = "ghostty_trail_duration"
-home_manager_option = "ghostty_trail_duration"
-parser_behavior = "direct"
-validation = "float_range"
-min = 0.25
-max = 4.0
-rebuild_required = false
-
-[fields."terminal.ghostty_mode_effect"]
-kind = "string"
-default = "random"
-parser_key = "ghostty_mode_effect"
-home_manager_option = "ghostty_mode_effect"
-parser_behavior = "direct"
-validation = "enum"
-allowed_values = ["ripple", "sonic_boom", "rectangle_boom", "ripple_rectangle", "random"]
-home_manager_can_omit = true
-rebuild_required = false
-
-[fields."terminal.ghostty_trail_glow"]
-kind = "string"
-default = "medium"
-parser_key = "ghostty_trail_glow"
-home_manager_option = "ghostty_trail_glow"
-parser_behavior = "direct"
-validation = "enum"
-allowed_values = ["none", "low", "medium", "high"]
+allowed_values = [
+  "yazelix",
+  "user",
+]
 rebuild_required = false
 
 [fields."terminal.transparency"]
@@ -237,7 +221,15 @@ parser_key = "transparency"
 home_manager_option = "transparency"
 parser_behavior = "direct"
 validation = "enum"
-allowed_values = ["none", "very_low", "low", "medium", "high", "very_high", "super_high"]
+allowed_values = [
+  "none",
+  "very_low",
+  "low",
+  "medium",
+  "high",
+  "very_high",
+  "super_high",
+]
 rebuild_required = false
 
 [fields."zellij.disable_tips"]
@@ -282,12 +274,27 @@ rebuild_required = false
 
 [fields."zellij.widget_tray"]
 kind = "string_list"
-default = ["editor", "shell", "term", "cpu", "ram"]
+default = [
+  "editor",
+  "shell",
+  "term",
+  "cpu",
+  "ram",
+]
 parser_key = "zellij_widget_tray"
 home_manager_option = "zellij_widget_tray"
 parser_behavior = "direct"
 validation = "enum_string_list"
-allowed_values = ["editor", "shell", "term", "workspace", "ai_activity", "token_budget", "cpu", "ram"]
+allowed_values = [
+  "editor",
+  "shell",
+  "term",
+  "workspace",
+  "ai_activity",
+  "token_budget",
+  "cpu",
+  "ram",
+]
 rebuild_required = false
 
 [fields."zellij.custom_text"]
@@ -300,7 +307,9 @@ rebuild_required = false
 
 [fields."zellij.popup_program"]
 kind = "string_list"
-default = ["lazygit"]
+default = [
+  "lazygit",
+]
 parser_key = "popup_program"
 home_manager_option = "popup_program"
 parser_behavior = "direct"
@@ -354,7 +363,17 @@ parser_key = "screen_saver_style"
 home_manager_option = "screen_saver_style"
 parser_behavior = "direct"
 validation = "enum"
-allowed_values = ["logo", "boids", "boids_predator", "boids_schools", "mandelbrot", "game_of_life_gliders", "game_of_life_oscillators", "game_of_life_bloom", "random"]
+allowed_values = [
+  "logo",
+  "boids",
+  "boids_predator",
+  "boids_schools",
+  "mandelbrot",
+  "game_of_life_gliders",
+  "game_of_life_oscillators",
+  "game_of_life_bloom",
+  "random",
+]
 rebuild_required = false
 
 [fields."zellij.persistent_sessions"]
@@ -380,7 +399,10 @@ parser_key = "zellij_default_mode"
 home_manager_option = "zellij_default_mode"
 parser_behavior = "direct"
 validation = "enum"
-allowed_values = ["normal", "locked"]
+allowed_values = [
+  "normal",
+  "locked",
+]
 rebuild_required = false
 
 [fields."yazi.command"]
@@ -405,7 +427,10 @@ rebuild_required = false
 
 [fields."yazi.plugins"]
 kind = "string_list"
-default = ["git", "starship"]
+default = [
+  "git",
+  "starship",
+]
 parser_key = "yazi_plugins"
 home_manager_option = "yazi_plugins"
 parser_behavior = "direct"
@@ -428,5 +453,11 @@ parser_key = "yazi_sort_by"
 home_manager_option = "yazi_sort_by"
 parser_behavior = "direct"
 validation = "enum"
-allowed_values = ["alphabetical", "natural", "modified", "created", "size"]
+allowed_values = [
+  "alphabetical",
+  "natural",
+  "modified",
+  "created",
+  "size",
+]
 rebuild_required = false
