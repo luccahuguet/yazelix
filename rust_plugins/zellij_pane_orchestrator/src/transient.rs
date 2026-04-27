@@ -84,7 +84,7 @@ impl TransientPaneConfig {
         }
     }
 
-    fn yzx_cli_path(&self) -> Option<PathBuf> {
+    pub(crate) fn yzx_cli_path(&self) -> Option<PathBuf> {
         self.runtime_root()
             .map(|root| root.join("shells/posix/yzx_cli.sh"))
     }
@@ -107,7 +107,7 @@ impl TransientPaneConfig {
         }
     }
 
-    fn default_cwd(&self, workspace_root: Option<&str>) -> String {
+    pub(crate) fn default_cwd(&self, workspace_root: Option<&str>) -> String {
         let trimmed_root = workspace_root.unwrap_or("").trim();
         if trimmed_root.is_empty() {
             self.runtime_dir.clone()

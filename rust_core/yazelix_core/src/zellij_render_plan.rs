@@ -55,6 +55,17 @@ const WIDGET_TRAY_ALLOWED: &[&str] = &[
     "cpu",
     "ram",
 ];
+const SCREEN_SAVER_STYLE_ALLOWED: &[&str] = &[
+    "logo",
+    "boids",
+    "boids_predator",
+    "boids_schools",
+    "mandelbrot",
+    "game_of_life_gliders",
+    "game_of_life_oscillators",
+    "game_of_life_bloom",
+    "random",
+];
 pub const DEFAULT_SIDEBAR_COMMAND: &str = "nu";
 pub const DEFAULT_SIDEBAR_YAZI_ARG: &str =
     "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu";
@@ -81,6 +92,14 @@ fn default_sidebar_args() -> Vec<String> {
 
 fn default_popup_percent() -> i64 {
     90
+}
+
+fn default_screen_saver_idle_seconds() -> i64 {
+    300
+}
+
+fn default_screen_saver_style() -> String {
+    "random".into()
 }
 
 fn default_zellij_theme() -> String {
@@ -142,6 +161,12 @@ pub struct ZellijRenderPlanRequest {
     #[serde(default = "default_popup_percent")]
     pub popup_height_percent: i64,
     #[serde(default)]
+    pub screen_saver_enabled: bool,
+    #[serde(default = "default_screen_saver_idle_seconds")]
+    pub screen_saver_idle_seconds: i64,
+    #[serde(default = "default_screen_saver_style")]
+    pub screen_saver_style: String,
+    #[serde(default)]
     pub zellij_widget_tray: Option<Vec<String>>,
     #[serde(default)]
     pub zellij_custom_text: Option<String>,
@@ -195,6 +220,9 @@ pub struct ZellijRenderPlanData {
     pub sidebar_args: Vec<String>,
     pub popup_width_percent: i64,
     pub popup_height_percent: i64,
+    pub screen_saver_enabled: bool,
+    pub screen_saver_idle_seconds: i64,
+    pub screen_saver_style: String,
     pub widget_tray: Vec<String>,
     pub editor_label: String,
     pub shell_label: String,
@@ -293,6 +321,38 @@ fn validate_popup_percent(field: &str, value: i64) -> Result<(), CoreError> {
     }
 }
 
+fn validate_screen_saver_idle_seconds(value: i64) -> Result<(), CoreError> {
+    if (10..=86400).contains(&value) {
+        Ok(())
+    } else {
+        Err(CoreError::classified(
+            ErrorClass::Config,
+            "invalid_screen_saver_idle_seconds",
+            format!("zellij.screen_saver_idle_seconds must be between 10 and 86400 (got {value})"),
+            "Set zellij.screen_saver_idle_seconds to a supported idle threshold.",
+            serde_json::json!({ "field": "zellij.screen_saver_idle_seconds" }),
+        ))
+    }
+}
+
+fn normalize_screen_saver_style(style: &str) -> Result<String, CoreError> {
+    let normalized = style.trim().to_ascii_lowercase();
+    if SCREEN_SAVER_STYLE_ALLOWED.contains(&normalized.as_str()) {
+        Ok(normalized)
+    } else {
+        Err(CoreError::classified(
+            ErrorClass::Config,
+            "invalid_screen_saver_style",
+            format!(
+                "Invalid zellij.screen_saver_style `{normalized}`. Expected one of: {}",
+                SCREEN_SAVER_STYLE_ALLOWED.join(", ")
+            ),
+            "Use one of the animated styles accepted by `yzx screen`.",
+            serde_json::json!({ "field": "zellij.screen_saver_style", "style": normalized }),
+        ))
+    }
+}
+
 fn validate_widget_tray(entries: &[String]) -> Result<(), CoreError> {
     for entry in entries {
         if !WIDGET_TRAY_ALLOWED.contains(&entry.as_str()) {
@@ -377,7 +437,9 @@ pub fn compute_zellij_render_plan(
     validate_sidebar_launcher(&request.sidebar_command)?;
     validate_popup_percent("zellij.popup_width_percent", request.popup_width_percent)?;
     validate_popup_percent("zellij.popup_height_percent", request.popup_height_percent)?;
+    validate_screen_saver_idle_seconds(request.screen_saver_idle_seconds)?;
     validate_default_mode(&request.zellij_default_mode)?;
+    let screen_saver_style = normalize_screen_saver_style(&request.screen_saver_style)?;
 
     let widget_tray = request
         .zellij_widget_tray
@@ -472,6 +534,9 @@ pub fn compute_zellij_render_plan(
         sidebar_args: effective_sidebar_args(&request.sidebar_command, &request.sidebar_args),
         popup_width_percent: request.popup_width_percent,
         popup_height_percent: request.popup_height_percent,
+        screen_saver_enabled: request.screen_saver_enabled,
+        screen_saver_idle_seconds: request.screen_saver_idle_seconds,
+        screen_saver_style,
         widget_tray,
         editor_label,
         shell_label,
@@ -521,6 +586,9 @@ mod tests {
             sidebar_args: default_sidebar_args(),
             popup_width_percent: 90,
             popup_height_percent: 90,
+            screen_saver_enabled: false,
+            screen_saver_idle_seconds: 300,
+            screen_saver_style: "random".into(),
             zellij_widget_tray: None,
             zellij_custom_text: None,
             zellij_theme: "default".into(),
@@ -620,6 +688,35 @@ mod tests {
         assert_eq!(
             default_widget_tray(),
             vec!["editor", "shell", "term", "cpu", "ram"]
+        );
+    }
+
+    // Defends: idle screen saver config is explicit and bounded before it reaches the pane-orchestrator plugin.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn screen_saver_config_is_normalized_and_bounded() {
+        let mut req = sample_request();
+        req.screen_saver_enabled = true;
+        req.screen_saver_idle_seconds = 120;
+        req.screen_saver_style = "Mandelbrot".into();
+
+        let plan = compute_zellij_render_plan(&req).unwrap();
+
+        assert!(plan.screen_saver_enabled);
+        assert_eq!(plan.screen_saver_idle_seconds, 120);
+        assert_eq!(plan.screen_saver_style, "mandelbrot");
+
+        req.screen_saver_idle_seconds = 5;
+        assert_eq!(
+            compute_zellij_render_plan(&req).unwrap_err().code(),
+            "invalid_screen_saver_idle_seconds"
+        );
+
+        req.screen_saver_idle_seconds = 120;
+        req.screen_saver_style = "static".into();
+        assert_eq!(
+            compute_zellij_render_plan(&req).unwrap_err().code(),
+            "invalid_screen_saver_style"
         );
     }
 

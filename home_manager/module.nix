@@ -374,6 +374,18 @@ in
       description = "Height of the managed popup as a percentage of the current tab.";
     };
 
+    screen_saver_enabled = mkMainContractOption "zellij.screen_saver_enabled" {
+      description = "Enable the opt-in idle `yzx screen` pane-orchestrator screen saver.";
+    };
+
+    screen_saver_idle_seconds = mkMainContractOption "zellij.screen_saver_idle_seconds" {
+      description = "Seconds of Zellij input inactivity before the screen saver opens.";
+    };
+
+    screen_saver_style = mkMainContractOption "zellij.screen_saver_style" {
+      description = "Animated `yzx screen` style to run when the idle screen saver opens.";
+    };
+
     yazi_plugins = mkMainContractOption "yazi.plugins" {
       description = "Yazi plugins to load (core plugins auto_layout and sidebar_status are always loaded)";
     };

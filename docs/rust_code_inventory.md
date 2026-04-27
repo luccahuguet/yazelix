@@ -184,7 +184,7 @@ The pane orchestrator no longer parses or stores these unused plugin configurati
 - `custom_text_segment`
 - `sidebar_width_percent`
 
-Those values are already owned by Rust Zellij materialization and rendered into generated Zellij config/layout files. The loaded plugin only needs `runtime_dir`, `popup_width_percent`, and `popup_height_percent`.
+Those values are already owned by Rust Zellij materialization and rendered into generated Zellij config/layout files. The loaded plugin only needs `runtime_dir`, popup geometry, and the opt-in idle screen-saver keys.
 
 The pane-orchestrator package also now disables the native test harness for the plugin binary. That binary is a Zellij WASM host artifact, so package-level `cargo test` should run the pure Rust library contract tests instead of trying to link host-only Zellij imports.
 

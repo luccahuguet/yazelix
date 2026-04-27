@@ -64,6 +64,15 @@ widget_tray = [
 ```
 Comment out any line to hide that widget. Order matters. Restart Yazelix to regenerate layouts.
 
+**Idle screen saver (yazelix.toml):**
+```toml
+[zellij]
+screen_saver_enabled = false
+screen_saver_idle_seconds = 300
+screen_saver_style = "random"
+```
+When enabled, the pane orchestrator opens `yzx screen` after the configured idle threshold. The screen uses the same renderer and styles as the manual `yzx screen` command.
+
 **Session behavior:**
 ```kdl
 // Show startup tips (Yazelix disables by default)

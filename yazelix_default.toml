@@ -219,6 +219,12 @@ popup_program = ["lazygit"]
 popup_width_percent = 90
 popup_height_percent = 90
 
+# Optional full-tab idle screen driven by the pane orchestrator.
+# Disabled by default. When enabled, Yazelix opens `yzx screen` after the idle threshold.
+screen_saver_enabled = false
+screen_saver_idle_seconds = 300
+screen_saver_style = "random"
+
 # Zellij persistent session configuration
 # When true, Yazelix will use zellij attach with the specified session name
 # When false, Yazelix will create a new session each time

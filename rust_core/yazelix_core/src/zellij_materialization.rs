@@ -253,6 +253,9 @@ fn build_render_plan_request(
             .unwrap_or_else(|| vec![DEFAULT_SIDEBAR_YAZI_ARG.to_string()]),
         popup_width_percent: int_config(config, "popup_width_percent", 90),
         popup_height_percent: int_config(config, "popup_height_percent", 90),
+        screen_saver_enabled: bool_config(config, "screen_saver_enabled", false),
+        screen_saver_idle_seconds: int_config(config, "screen_saver_idle_seconds", 300),
+        screen_saver_style: string_config(config, "screen_saver_style", "random").to_string(),
         zellij_widget_tray: string_list_config(config, "zellij_widget_tray"),
         zellij_custom_text: optional_string_config(config, "zellij_custom_text"),
         zellij_theme: string_config(config, "zellij_theme", "default").to_string(),
@@ -440,6 +443,9 @@ fn render_merged_config(
         runtime_dir,
         render_plan.popup_width_percent,
         render_plan.popup_height_percent,
+        render_plan.screen_saver_enabled,
+        render_plan.screen_saver_idle_seconds,
+        &render_plan.screen_saver_style,
     );
     let load_plugins_block = build_yazelix_load_plugins_block(&extracted_blocks.load_plugin_lines);
 
@@ -589,6 +595,9 @@ fn build_yazelix_plugins_block(
     runtime_dir: &Path,
     popup_width_percent: i64,
     popup_height_percent: i64,
+    screen_saver_enabled: bool,
+    screen_saver_idle_seconds: i64,
+    screen_saver_style: &str,
 ) -> String {
     let mut merged_lines = existing_lines.to_vec();
     let alias_present = merged_lines
@@ -606,6 +615,12 @@ fn build_yazelix_plugins_block(
             ),
             format!("        popup_width_percent \"{popup_width_percent}\""),
             format!("        popup_height_percent \"{popup_height_percent}\""),
+            format!("        screen_saver_enabled \"{screen_saver_enabled}\""),
+            format!("        screen_saver_idle_seconds \"{screen_saver_idle_seconds}\""),
+            format!(
+                "        screen_saver_style {}",
+                json_quote(screen_saver_style)
+            ),
             "    }".to_string(),
         ]);
     }
@@ -1407,6 +1422,9 @@ fn build_generation_fingerprint(
         "sidebar_args": effective_sidebar_args(sidebar_command, &sidebar_args),
         "popup_width_percent": int_config(config, "popup_width_percent", 90),
         "popup_height_percent": int_config(config, "popup_height_percent", 90),
+        "screen_saver_enabled": bool_config(config, "screen_saver_enabled", false),
+        "screen_saver_idle_seconds": int_config(config, "screen_saver_idle_seconds", 300),
+        "screen_saver_style": string_config(config, "screen_saver_style", "random"),
         "disable_zellij_tips": string_config(config, "disable_zellij_tips", "true"),
         "zellij_pane_frames": string_config(config, "zellij_pane_frames", "true"),
         "zellij_rounded_corners": string_config(config, "zellij_rounded_corners", "true"),
@@ -1680,6 +1698,9 @@ mod tests {
             ],
             popup_width_percent: 90,
             popup_height_percent: 90,
+            screen_saver_enabled: false,
+            screen_saver_idle_seconds: 300,
+            screen_saver_style: "random".into(),
             zellij_widget_tray: Some(widget_tray.into_iter().map(str::to_string).collect()),
             zellij_custom_text: None,
             zellij_theme: "default".into(),
@@ -1899,12 +1920,18 @@ keybinds {
             std::path::Path::new("/opt/yazelix"),
             82,
             76,
+            true,
+            180,
+            "mandelbrot",
         );
 
         assert!(block.contains("yazelix_pane_orchestrator location=\"file:/opt/yazelix/plugins/yazelix_pane_orchestrator.wasm\""));
         assert!(block.contains("runtime_dir \"/opt/yazelix\""));
         assert!(block.contains("popup_width_percent \"82\""));
         assert!(block.contains("popup_height_percent \"76\""));
+        assert!(block.contains("screen_saver_enabled \"true\""));
+        assert!(block.contains("screen_saver_idle_seconds \"180\""));
+        assert!(block.contains("screen_saver_style \"mandelbrot\""));
         assert!(!block.contains("widget_tray_segment"));
         assert!(!block.contains("custom_text_segment"));
         assert!(!block.contains("sidebar_width_percent"));

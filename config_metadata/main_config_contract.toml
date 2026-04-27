@@ -11,7 +11,7 @@
 [contract]
 version = 1
 surface = "main"
-field_count = 39
+field_count = 42
 artifact_role = "canonical_machine_metadata"
 default_template = "yazelix_default.toml"
 home_manager_module = "home_manager/module.nix"
@@ -315,6 +315,35 @@ parser_behavior = "direct"
 validation = "int_range"
 min = 1
 max = 100
+rebuild_required = false
+
+[fields."zellij.screen_saver_enabled"]
+kind = "bool"
+default = false
+parser_key = "screen_saver_enabled"
+home_manager_option = "screen_saver_enabled"
+parser_behavior = "direct"
+rebuild_required = false
+
+[fields."zellij.screen_saver_idle_seconds"]
+kind = "int"
+default = 300
+parser_key = "screen_saver_idle_seconds"
+home_manager_option = "screen_saver_idle_seconds"
+parser_behavior = "direct"
+validation = "int_range"
+min = 10
+max = 86400
+rebuild_required = false
+
+[fields."zellij.screen_saver_style"]
+kind = "string"
+default = "random"
+parser_key = "screen_saver_style"
+home_manager_option = "screen_saver_style"
+parser_behavior = "direct"
+validation = "enum"
+allowed_values = ["logo", "boids", "boids_predator", "boids_schools", "mandelbrot", "game_of_life_gliders", "game_of_life_oscillators", "game_of_life_bloom", "random"]
 rebuild_required = false
 
 [fields."zellij.persistent_sessions"]

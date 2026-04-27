@@ -2,6 +2,7 @@ mod ai_pane_activity;
 mod editor;
 mod layout;
 mod panes;
+mod screen_saver;
 mod sidebar_yazi;
 mod transient;
 mod workspace;
@@ -10,9 +11,11 @@ use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use panes::{FocusContext, ManagedTabPanes};
+use std::time::Instant;
 use workspace::{bootstrap_workspace_root, WorkspaceState};
 use yazelix_pane_orchestrator::active_tab_session_state::SessionAiPaneActivity;
 use yazelix_pane_orchestrator::horizontal_focus_contract::HorizontalDirection;
+use yazelix_pane_orchestrator::screen_saver_contract::ScreenSaverConfig;
 use zellij_tile::prelude::*;
 
 pub(crate) const RESULT_OK: &str = "ok";
@@ -45,6 +48,9 @@ struct State {
     seen_tab_positions: HashSet<usize>,
     initial_workspace_state: Option<WorkspaceState>,
     transient_pane_config: transient::TransientPaneConfig,
+    screen_saver_config: ScreenSaverConfig,
+    screen_saver_last_input: Option<Instant>,
+    screen_saver_pane_id: Option<PaneId>,
     permissions_granted: bool,
 }
 
@@ -68,11 +74,25 @@ impl ZellijPlugin for State {
             &configuration,
             &plugin_ids.initial_cwd,
         );
-        subscribe(&[
+        self.screen_saver_config = ScreenSaverConfig::from_plugin_configuration(&configuration);
+        if self.screen_saver_config.enabled {
+            self.screen_saver_last_input = Some(Instant::now());
+        }
+        let mut subscriptions = vec![
             EventType::TabUpdate,
             EventType::PaneUpdate,
             EventType::PermissionRequestResult,
-        ]);
+        ];
+        if self.screen_saver_config.enabled {
+            subscriptions.extend([
+                EventType::InputReceived,
+                EventType::Timer,
+                EventType::PaneClosed,
+                EventType::CommandPaneExited,
+            ]);
+        }
+        subscribe(&subscriptions);
+        self.schedule_initial_screen_saver_timeout();
     }
 
     fn update(&mut self, event: Event) -> bool {
@@ -115,6 +135,14 @@ impl ZellijPlugin for State {
             }
             Event::PermissionRequestResult(status) => {
                 self.permissions_granted = status == PermissionStatus::Granted;
+            }
+            Event::InputReceived => self.record_screen_saver_input(),
+            Event::Timer(_) => {
+                self.handle_screen_saver_timer();
+            }
+            Event::PaneClosed(pane_id) => self.handle_screen_saver_pane_closed(pane_id),
+            Event::CommandPaneExited(terminal_id, _, _) => {
+                self.handle_screen_saver_command_exit(terminal_id);
             }
             _ => {}
         }

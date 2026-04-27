@@ -113,14 +113,19 @@ The plugin reads these configuration keys from Zellij plugin configuration:
 - `runtime_dir`
 - `popup_width_percent`
 - `popup_height_percent`
+- `screen_saver_enabled`
+- `screen_saver_idle_seconds`
+- `screen_saver_style`
 
 `runtime_dir` is session-local plugin state. The generated Zellij config must set it on the loaded pane-orchestrator plugin instance for that session, and direct `MessagePlugin` bindings or `zellij action pipe` calls must target that loaded instance by alias instead of re-supplying `runtime_dir` on each message. Transient-pane payloads may still carry an explicit runtime override when the caller intentionally wants the wrapper launch to use a different runtime root. The geometry keys are percentages and default to the Rust-side transient-pane defaults when absent or outside the accepted runtime range.
+
+The screen-saver keys are opt-in. When enabled, the plugin watches Zellij-wide input activity and opens a full-tab `yzx screen` command pane after the configured idle threshold. The plugin owns only inactivity/session orchestration; the `yzx screen` process remains the single renderer and animation contract.
 
 ### Runtime And Wrapper Paths
 
 The plugin does not probe the local filesystem for wrapper discovery. It derives paths from `runtime_dir`:
 
-- launcher: `shells/posix/yazelix_nu.sh`
+- launcher: `shells/posix/yzx_cli.sh`
 - popup wrapper: `nushell/scripts/zellij_wrappers/yzx_popup_program.nu`
 - menu wrapper: `nushell/scripts/zellij_wrappers/yzx_menu_popup.nu`
 
