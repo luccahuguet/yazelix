@@ -377,29 +377,50 @@ const fn glyph_cell(dx: usize, dy: usize, glyph: char) -> BoidGlyphCell {
     BoidGlyphCell { dx, dy, glyph }
 }
 
-const PREDATOR_BODY: char = '⬤';
+const PREDATOR_HORIZONTAL_BODY: char = '●';
+const PREDATOR_VERTICAL_BODY: char = '⬤';
 
 const PREY_EAST: [BoidGlyphCell; 1] = [glyph_cell(0, 0, '▶')];
-const PREY_SOUTH_EAST: [BoidGlyphCell; 1] = [glyph_cell(0, 0, '◢')];
+const PREY_SOUTH_EAST: [BoidGlyphCell; 1] = [glyph_cell(0, 0, '▶')];
 const PREY_SOUTH: [BoidGlyphCell; 1] = [glyph_cell(0, 0, '▼')];
-const PREY_SOUTH_WEST: [BoidGlyphCell; 1] = [glyph_cell(0, 0, '◣')];
+const PREY_SOUTH_WEST: [BoidGlyphCell; 1] = [glyph_cell(0, 0, '◀')];
 const PREY_WEST: [BoidGlyphCell; 1] = [glyph_cell(0, 0, '◀')];
-const PREY_NORTH_WEST: [BoidGlyphCell; 1] = [glyph_cell(0, 0, '◤')];
+const PREY_NORTH_WEST: [BoidGlyphCell; 1] = [glyph_cell(0, 0, '◀')];
 const PREY_NORTH: [BoidGlyphCell; 1] = [glyph_cell(0, 0, '▲')];
-const PREY_NORTH_EAST: [BoidGlyphCell; 1] = [glyph_cell(0, 0, '◥')];
+const PREY_NORTH_EAST: [BoidGlyphCell; 1] = [glyph_cell(0, 0, '▶')];
 
-const PREDATOR_EAST: [BoidGlyphCell; 2] = [glyph_cell(0, 0, PREDATOR_BODY), glyph_cell(1, 0, '▶')];
-const PREDATOR_SOUTH_EAST: [BoidGlyphCell; 2] =
-    [glyph_cell(0, 0, PREDATOR_BODY), glyph_cell(1, 0, '◢')];
-const PREDATOR_SOUTH: [BoidGlyphCell; 2] = [glyph_cell(0, 0, PREDATOR_BODY), glyph_cell(0, 1, '▼')];
-const PREDATOR_SOUTH_WEST: [BoidGlyphCell; 2] =
-    [glyph_cell(0, 0, '◣'), glyph_cell(1, 0, PREDATOR_BODY)];
-const PREDATOR_WEST: [BoidGlyphCell; 2] = [glyph_cell(0, 0, '◀'), glyph_cell(1, 0, PREDATOR_BODY)];
-const PREDATOR_NORTH_WEST: [BoidGlyphCell; 2] =
-    [glyph_cell(0, 0, '◤'), glyph_cell(1, 0, PREDATOR_BODY)];
-const PREDATOR_NORTH: [BoidGlyphCell; 2] = [glyph_cell(0, 0, '▲'), glyph_cell(0, 1, PREDATOR_BODY)];
-const PREDATOR_NORTH_EAST: [BoidGlyphCell; 2] =
-    [glyph_cell(0, 0, PREDATOR_BODY), glyph_cell(1, 0, '◥')];
+const PREDATOR_EAST: [BoidGlyphCell; 2] = [
+    glyph_cell(0, 0, PREDATOR_HORIZONTAL_BODY),
+    glyph_cell(1, 0, '▶'),
+];
+const PREDATOR_SOUTH_EAST: [BoidGlyphCell; 2] = [
+    glyph_cell(0, 0, PREDATOR_HORIZONTAL_BODY),
+    glyph_cell(1, 0, '▶'),
+];
+const PREDATOR_SOUTH: [BoidGlyphCell; 2] = [
+    glyph_cell(0, 0, PREDATOR_VERTICAL_BODY),
+    glyph_cell(0, 1, '▼'),
+];
+const PREDATOR_SOUTH_WEST: [BoidGlyphCell; 2] = [
+    glyph_cell(0, 0, '◀'),
+    glyph_cell(1, 0, PREDATOR_HORIZONTAL_BODY),
+];
+const PREDATOR_WEST: [BoidGlyphCell; 2] = [
+    glyph_cell(0, 0, '◀'),
+    glyph_cell(1, 0, PREDATOR_HORIZONTAL_BODY),
+];
+const PREDATOR_NORTH_WEST: [BoidGlyphCell; 2] = [
+    glyph_cell(0, 0, '◀'),
+    glyph_cell(1, 0, PREDATOR_HORIZONTAL_BODY),
+];
+const PREDATOR_NORTH: [BoidGlyphCell; 2] = [
+    glyph_cell(0, 0, '▲'),
+    glyph_cell(0, 1, PREDATOR_VERTICAL_BODY),
+];
+const PREDATOR_NORTH_EAST: [BoidGlyphCell; 2] = [
+    glyph_cell(0, 0, PREDATOR_HORIZONTAL_BODY),
+    glyph_cell(1, 0, '▶'),
+];
 
 fn prey_glyph_cells(direction: BoidDirection) -> &'static [BoidGlyphCell] {
     match direction {
@@ -620,7 +641,7 @@ mod tests {
         );
     }
 
-    // Regression: boids must render as filled directional triangles, not braille blobs or plain block cells with skipped rows.
+    // Regression: boids must render as cardinal filled directional triangles, not braille blobs, diagonal corner blocks, or plain cells with skipped rows.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn boids_render_scaled_cells_without_inserted_rows() {
@@ -634,12 +655,12 @@ mod tests {
         assert_eq!(visible.len(), 24);
         assert!(visible.iter().all(|line| line.chars().count() == 80));
         assert!(visible.iter().all(|line| {
-            !["→", "←", "↑", "↓", "⠐", "⠶", "⠈", "⢆"]
+            !["→", "←", "↑", "↓", "⠐", "⠶", "⠈", "⢆", "◤", "◥", "◢", "◣"]
                 .into_iter()
                 .any(|glyph| line.contains(glyph))
         }));
         assert!(visible.iter().any(|line| {
-            ["▶", "◀", "▲", "▼", "◤", "◥", "◢", "◣"]
+            ["▶", "◀", "▲", "▼"]
                 .into_iter()
                 .any(|signature| line.contains(signature))
         }));
@@ -660,34 +681,34 @@ mod tests {
         assert_eq!(visible.len(), 12);
         assert!(visible.iter().all(|line| line.chars().count() == 60));
         assert!(visible.iter().all(|line| {
-            !["→", "←", "↑", "↓", "⠐", "⠶", "⠈", "⢆"]
+            !["→", "←", "↑", "↓", "⠐", "⠶", "⠈", "⢆", "◤", "◥", "◢", "◣"]
                 .into_iter()
                 .any(|glyph| line.contains(glyph))
         }));
         assert!(visible.iter().any(|line| {
-            ["▶", "◀", "▲", "▼", "◤", "◥", "◢", "◣"]
+            ["▶", "◀", "▲", "▼"]
                 .into_iter()
                 .any(|signature| line.contains(signature))
         }));
     }
 
-    // Regression: boid units must not collapse into identical pulsing blocks; filled triangle sprites encode cardinal and diagonal direction.
+    // Regression: boid units must not collapse into identical pulsing blocks; diagonal movement collapses to readable cardinal sprites.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn boid_visual_identity_is_stable_and_directional() {
         assert_eq!(glyph_text(BoidRole::Flock, Vec2::new(1.0, 0.1)), "▶");
-        assert_eq!(glyph_text(BoidRole::Flock, Vec2::new(1.0, 1.0)), "◢");
+        assert_eq!(glyph_text(BoidRole::Flock, Vec2::new(1.0, 1.0)), "▶");
         assert_eq!(glyph_text(BoidRole::Flock, Vec2::new(0.1, 1.0)), "▼");
-        assert_eq!(glyph_text(BoidRole::Flock, Vec2::new(-1.0, 1.0)), "◣");
+        assert_eq!(glyph_text(BoidRole::Flock, Vec2::new(-1.0, 1.0)), "◀");
         assert_eq!(glyph_text(BoidRole::Flock, Vec2::new(-1.0, 0.1)), "◀");
-        assert_eq!(glyph_text(BoidRole::Flock, Vec2::new(-1.0, -1.0)), "◤");
+        assert_eq!(glyph_text(BoidRole::Flock, Vec2::new(-1.0, -1.0)), "◀");
         assert_eq!(glyph_text(BoidRole::Flock, Vec2::new(0.1, -1.0)), "▲");
-        assert_eq!(glyph_text(BoidRole::Flock, Vec2::new(1.0, -1.0)), "◥");
+        assert_eq!(glyph_text(BoidRole::Flock, Vec2::new(1.0, -1.0)), "▶");
         assert_eq!(colorize_boid_cell(3, '▶'), colorize_boid_cell(3, '▶'));
         assert_ne!(colorize_boid_cell(0, '▶'), colorize_boid_cell(1, '▶'));
     }
 
-    // Defends: predator sprites have a larger red body-plus-tip footprint than prey while preserving the same directional vocabulary.
+    // Defends: predator sprites use small horizontal bodies and larger vertical bodies while preserving cardinal pointing.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn predator_sprite_is_larger_than_prey_sprite() {
@@ -703,9 +724,16 @@ mod tests {
         );
 
         assert!(predator.len() > prey.len());
-        assert!(predator.iter().any(|cell| cell.glyph == PREDATOR_BODY));
-        assert_eq!(glyph_text(BoidRole::Predator, Vec2::new(1.0, -1.0)), "⬤◥");
-        assert_ne!(glyph_text(BoidRole::Predator, Vec2::new(1.0, -1.0)), "◥");
+        assert!(
+            predator
+                .iter()
+                .any(|cell| cell.glyph == PREDATOR_HORIZONTAL_BODY)
+        );
+        assert_eq!(glyph_text(BoidRole::Predator, Vec2::new(1.0, -1.0)), "●▶");
+        assert_eq!(glyph_text(BoidRole::Predator, Vec2::new(-1.0, 0.1)), "◀●");
+        assert_eq!(glyph_text(BoidRole::Predator, Vec2::new(0.1, -1.0)), "▲⬤");
+        assert_eq!(glyph_text(BoidRole::Predator, Vec2::new(0.1, 1.0)), "⬤▼");
+        assert_ne!(PREDATOR_HORIZONTAL_BODY, PREDATOR_VERTICAL_BODY);
     }
 
     // Defends: the faster boids tuning moves creatures far enough per frame to read as intentional animation.
