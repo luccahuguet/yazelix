@@ -376,22 +376,6 @@ allowed_values = [
 ]
 rebuild_required = false
 
-[fields."zellij.persistent_sessions"]
-kind = "bool"
-default = false
-parser_key = "persistent_sessions"
-home_manager_option = "persistent_sessions"
-parser_behavior = "bool_to_string"
-rebuild_required = false
-
-[fields."zellij.session_name"]
-kind = "string"
-default = "yazelix"
-parser_key = "session_name"
-home_manager_option = "session_name"
-parser_behavior = "direct"
-rebuild_required = false
-
 [fields."zellij.default_mode"]
 kind = "string"
 default = "normal"

@@ -322,7 +322,7 @@ terminals = ["ghostty"]
     assert!(stdout.contains("Config file"));
     assert!(stdout.contains("Default shell"));
     assert!(stdout.contains("Repair needed"));
-    assert!(stdout.contains("Persistent sessions"));
+    assert!(stdout.contains("Terminals"));
     assert!(!stdout.contains("Yazelix status"));
     assert!(!stdout.contains('\u{1b}'));
     assert!(!stdout.contains("generated_state_materialization_status"));

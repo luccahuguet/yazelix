@@ -351,5 +351,3 @@ yzx dev profile --launch --terminal ghostty  # Profile managed new-window launch
 # 2. Cold cached (~300-500ms): Desktop entry or vanilla terminal launch, config unchanged
 # 3. Config change (~3-8s): After clearing cache (full Nix re-evaluation)
 ```
-
-Note: if `zellij.persistent_sessions = true` and the named session already exists, Zellij reattaches to that session and `yzx enter --path ...` is ignored. Yazelix warns about this and tells you to kill the session first if you want a fresh working directory.

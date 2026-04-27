@@ -109,8 +109,6 @@ pub fn write_session_facts_cache(
         ),
         ("default_shell".to_string(), serde_json::json!("nu")),
         ("terminals".to_string(), serde_json::json!(["ghostty"])),
-        ("persistent_sessions".to_string(), serde_json::json!(false)),
-        ("session_name".to_string(), serde_json::json!("yazelix")),
     ]);
     for (key, value) in overrides {
         facts.insert((*key).to_string(), value.clone());

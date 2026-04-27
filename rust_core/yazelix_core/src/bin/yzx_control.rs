@@ -440,13 +440,6 @@ fn build_status_sections(data: &yazelix_core::StatusReportData) -> Vec<StatusSec
         .get("generated_state_repair_needed")
         .cloned()
         .unwrap_or(serde_json::Value::Null);
-    let persistent_sessions = data
-        .summary
-        .get("persistent_sessions")
-        .cloned()
-        .unwrap_or(serde_json::Value::Null);
-    let session_name = status_summary_value(data, "session_name");
-
     vec![
         StatusSection {
             title: "Runtime",
@@ -508,20 +501,6 @@ fn build_status_sections(data: &yazelix_core::StatusReportData) -> Vec<StatusSec
                     tone: StatusTone::Default,
                 },
                 maybe_muted_row("Helix runtime", status_summary_value(data, "helix_runtime")),
-                StatusRow {
-                    label: "Persistent sessions",
-                    value: match &persistent_sessions {
-                        serde_json::Value::Bool(true) => "enabled".to_string(),
-                        serde_json::Value::Bool(false) => "disabled".to_string(),
-                        other => json_value_to_display(&other),
-                    },
-                    tone: match &persistent_sessions {
-                        serde_json::Value::Bool(true) => StatusTone::Default,
-                        serde_json::Value::Bool(false) => StatusTone::Muted,
-                        _ => StatusTone::Default,
-                    },
-                },
-                maybe_muted_row("Session name", session_name),
             ],
         },
     ]
@@ -783,17 +762,6 @@ fn config_problem_status_report(
         "helix_runtime".to_string(),
         facts
             .helix_runtime_path
-            .map(serde_json::Value::String)
-            .unwrap_or(serde_json::Value::Null),
-    );
-    summary.insert(
-        "persistent_sessions".to_string(),
-        serde_json::json!(facts.persistent_sessions),
-    );
-    summary.insert(
-        "session_name".to_string(),
-        facts
-            .session_name
             .map(serde_json::Value::String)
             .unwrap_or(serde_json::Value::Null),
     );

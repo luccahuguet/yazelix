@@ -108,8 +108,6 @@ def capture_startup_handoff_context [
         zellij_config_dir: $merged_zellij_dir
         layout_path: $layout_path
         default_shell: $zellij_default_shell
-        persistent_sessions: ($startup_facts.persistent_sessions? | default false)
-        session_name: ($startup_facts.session_name? | default "yazelix")
         materialization_status: $materialization_status
         materialization_reason: ($applied_runtime_state.reason? | default "" | into string)
         materialization_should_regenerate: ($applied_runtime_state.should_regenerate? | default false)
@@ -150,8 +148,6 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     mkdir $log_dir
     let colors = get_yazelix_colors
     let welcome_facts = {
-        persistent_sessions: ($startup_facts.persistent_sessions? | default false)
-        session_name: ($startup_facts.session_name? | default "yazelix")
         terminals: ($startup_facts.terminals? | default [])
     }
     let welcome_message = build_welcome_message $yazelix_dir $colors $welcome_facts
@@ -234,54 +230,9 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
             layout_path: $layout_path
             default_shell: $zellij_default_shell
             session_facts_path: $session_facts_path
-            persistent_sessions: ($startup_facts.persistent_sessions? | default false)
         } | ignore
         return
     }
 
-    if ($startup_facts.persistent_sessions? | default false) {
-        # Check if session already exists
-        let existing_sessions = (do { ^zellij list-sessions } | complete)
-        let session_exists = if $existing_sessions.exit_code == 0 {
-            let sessions = (
-                $existing_sessions.stdout
-                | lines
-                | each {|line|
-                    let clean_line = (
-                        $line
-                        | str replace -ra '\u001b\[[0-9;]*[A-Za-z]' ''
-                        | str replace -r '^>\s*' ''
-                        | str trim
-                    )
-                    if ($clean_line | is-empty) {
-                        null
-                    } else {
-                        $clean_line
-                        | split row " "
-                        | where {|token| $token != ""}
-                        | first
-                    }
-                }
-                | where ($it | is-not-empty)
-            )
-            ($sessions | any {|name| $name == $startup_facts.session_name})
-        } else {
-            false
-        }
-
-        if $session_exists {
-            # Warn if --path is used with an existing persistent session
-            if ($cwd_override | is-not-empty) {
-                print $"⚠️  Session '($startup_facts.session_name)' already exists - --path ignored."
-                print $"   To start in a new directory, first run: zellij kill-session ($startup_facts.session_name)"
-            }
-            # Attach to existing session without options to avoid inconsistent state
-            ^zellij --config-dir $merged_zellij_dir attach $startup_facts.session_name
-        } else {
-            # Create new session with all options
-            ^zellij --config-dir $merged_zellij_dir attach -c $startup_facts.session_name options --default-cwd $session_default_cwd --default-layout $layout_path --default-shell $zellij_default_shell
-        }
-    } else {
-        ^zellij --config-dir $merged_zellij_dir options --default-cwd $session_default_cwd --default-layout $layout_path --default-shell $zellij_default_shell
-    }
+    ^zellij --config-dir $merged_zellij_dir options --default-cwd $session_default_cwd --default-layout $layout_path --default-shell $zellij_default_shell
 }

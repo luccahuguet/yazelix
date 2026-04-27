@@ -21,8 +21,6 @@ pub struct StartupHandoffCaptureRequest {
     pub zellij_config_dir: String,
     pub layout_path: String,
     pub default_shell: String,
-    pub persistent_sessions: bool,
-    pub session_name: String,
     pub materialization_status: String,
     pub materialization_reason: String,
     pub materialization_should_regenerate: bool,
@@ -58,8 +56,6 @@ struct StartupHandoffContext<'a> {
     zellij_config_dir: &'a str,
     layout_path: &'a str,
     default_shell: &'a str,
-    persistent_sessions: bool,
-    session_name: &'a str,
     materialization: StartupHandoffMaterialization<'a>,
 }
 
@@ -142,8 +138,6 @@ fn build_startup_handoff_context(
         zellij_config_dir: request.zellij_config_dir.as_str(),
         layout_path: request.layout_path.as_str(),
         default_shell: request.default_shell.as_str(),
-        persistent_sessions: request.persistent_sessions,
-        session_name: request.session_name.as_str(),
         materialization: StartupHandoffMaterialization {
             status: request.materialization_status.as_str(),
             reason: request.materialization_reason.as_str(),
@@ -211,8 +205,6 @@ mod tests {
             zellij_config_dir: "/state/configs/zellij".into(),
             layout_path: "/state/layouts/yzx_side.kdl".into(),
             default_shell: "/state/shells/nu".into(),
-            persistent_sessions: true,
-            session_name: "yazelix".into(),
             materialization_status: status.into(),
             materialization_reason: "generated runtime artifacts missing: generated Zellij layout"
                 .into(),
@@ -254,7 +246,6 @@ mod tests {
         assert_eq!(value["working_dir"], "/repo");
         assert_eq!(value["layout_path"], "/state/layouts/yzx_side.kdl");
         assert_eq!(value["default_shell"], "/state/shells/nu");
-        assert_eq!(value["persistent_sessions"], true);
         assert_eq!(
             value["materialization"]["status"],
             "repair_missing_artifacts"

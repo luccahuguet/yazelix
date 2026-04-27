@@ -2,7 +2,7 @@
 
 ## Summary
 
-When `zellij.persistent_sessions = false`, each Yazelix launch creates an independent live session even when multiple windows consume the same user config, runtime code, and materialized/generated state. Shared durable state may advance between launches, but already-open windows must not be silently hot-swapped or treated as one logical session.
+Each Yazelix launch creates an independent live session even when multiple windows consume the same user config, runtime code, and materialized/generated state. Shared durable state may advance between launches, but already-open windows must not be silently hot-swapped or treated as one logical session.
 
 ## Why
 
@@ -17,7 +17,7 @@ Without a written contract, future fixes will keep rediscovering the same questi
 
 ## Scope
 
-- define the default cross-window behavior when `zellij.persistent_sessions = false`
+- define the default cross-window behavior for Yazelix windows
 - define what is shared across non-persistent windows and what remains session-local
 - define how generated-state repair, external runtime replacement, and `yzx restart` should behave for already-open non-persistent windows
 - define the expected lifecycle of the last client in a non-persistent Yazelix session
@@ -28,7 +28,7 @@ Without a written contract, future fixes will keep rediscovering the same questi
 - Type: behavior
 - Status: live
 - Owner: non-persistent launch/session boundary
-- Statement: When `zellij.persistent_sessions = false`, each Yazelix launch
+- Statement: Each Yazelix launch
   creates an independent live session. That includes current-terminal startup,
   `yzx launch`, and desktop launch flows
 - Verification: automated
@@ -67,8 +67,8 @@ Without a written contract, future fixes will keep rediscovering the same questi
 
 ## Behavior
 
-- The shipped default is non-persistent mode.
-  - `persistent_sessions = false` means new Yazelix windows do not intentionally reattach to one logical session.
+- The shipped window model is non-persistent.
+  - New Yazelix windows do not intentionally reattach to one logical session.
 - Each non-persistent Yazelix entrypoint creates its own live session.
   - This includes new-window launch flows such as `yzx launch` and desktop launch.
   - This also includes current-terminal startup through `yzx enter`.
@@ -95,7 +95,7 @@ Without a written contract, future fixes will keep rediscovering the same questi
 
 ## Non-goals
 
-- defining the persistent-session contract when `persistent_sessions = true`
+- defining raw Zellij session-management behavior outside Yazelix
 - requiring all already-open windows to switch profiles immediately after refresh or external runtime replacement
 - specifying the full internal implementation of Zellij attach/spawn mechanics
 - defining desktop-launch fallback terminal selection in this spec

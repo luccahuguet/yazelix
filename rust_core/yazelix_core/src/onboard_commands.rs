@@ -48,7 +48,6 @@ struct OnboardAnswers {
     shell: String,
     editor_command: String,
     initial_sidebar_state: String,
-    persistent_sessions: bool,
     widget_tray: Vec<String>,
 }
 
@@ -222,7 +221,6 @@ fn run_interactive_onboarding() -> Result<OnboardAnswers, CoreError> {
     let shell = ask_single(shell_question())?;
     let editor_command = ask_single(editor_question())?;
     let initial_sidebar_state = ask_single(sidebar_question())?;
-    let persistent_sessions = ask_single(persistent_sessions_question())? == "true";
     let widget_tray = ask_multi(widget_tray_question())?;
 
     Ok(OnboardAnswers {
@@ -230,7 +228,6 @@ fn run_interactive_onboarding() -> Result<OnboardAnswers, CoreError> {
         shell,
         editor_command,
         initial_sidebar_state,
-        persistent_sessions,
         widget_tray,
     })
 }
@@ -451,17 +448,6 @@ fn sidebar_question() -> SingleQuestion {
     )
 }
 
-fn persistent_sessions_question() -> SingleQuestion {
-    single_question(
-        "Persistent Zellij sessions",
-        0,
-        &[
-            ("No, start fresh by default", "false"),
-            ("Yes, reattach to the same session", "true"),
-        ],
-    )
-}
-
 fn widget_tray_question() -> MultiQuestion {
     multi_question(
         "Status-bar widgets",
@@ -539,14 +525,12 @@ default_shell = "{}"
 terminals = [{}]
 
 [zellij]
-persistent_sessions = {}
 widget_tray = [{}]
 "#,
         toml_escape_string(&answers.editor_command),
         toml_escape_string(&answers.initial_sidebar_state),
         toml_escape_string(&answers.shell),
         toml_array_strings(std::slice::from_ref(&answers.terminal)),
-        answers.persistent_sessions,
         toml_array_strings(&answers.widget_tray),
     )
 }
@@ -632,7 +616,6 @@ mod tests {
             shell: "bash".into(),
             editor_command: "nvim".into(),
             initial_sidebar_state: "closed".into(),
-            persistent_sessions: true,
             widget_tray: vec!["editor".into(), "cpu".into()],
         });
         let parsed: toml::Value = toml::from_str(&config).unwrap();
@@ -653,10 +636,7 @@ mod tests {
             parsed["terminal"]["terminals"].as_array().unwrap()[0].as_str(),
             Some("wezterm")
         );
-        assert_eq!(
-            parsed["zellij"]["persistent_sessions"].as_bool(),
-            Some(true)
-        );
+        assert!(parsed["zellij"].get("persistent_sessions").is_none());
         assert!(!config.contains("yazelix_packs"));
         assert!(!config.contains("[packs]"));
     }
@@ -672,7 +652,6 @@ mod tests {
             shell: "nu".into(),
             editor_command: String::new(),
             initial_sidebar_state: "open".into(),
-            persistent_sessions: false,
             widget_tray: vec!["editor".into(), "shell".into()],
         });
 

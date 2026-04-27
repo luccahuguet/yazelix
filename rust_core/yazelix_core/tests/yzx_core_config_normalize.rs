@@ -370,6 +370,16 @@ fn config_normalize_rejects_removed_surfaces_without_rewriting() {
             "[packs]\nenabled = [\"git\"]\nuser_packages = [\"docker\"]\n\n[packs.declarations]\ngit = [\"gh\", \"prek\"]\n",
             "packs",
         ),
+        (
+            "removed_persistent_sessions",
+            "[zellij]\npersistent_sessions = true\n",
+            "zellij.persistent_sessions",
+        ),
+        (
+            "removed_session_name",
+            "[zellij]\nsession_name = \"demo\"\n",
+            "zellij.session_name",
+        ),
     ] {
         let tmp = tempdir().unwrap();
         let config_dir = tmp.path().join("config").join("user_configs");

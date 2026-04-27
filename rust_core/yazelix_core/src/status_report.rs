@@ -18,26 +18,6 @@ fn path_to_string(path: &Path) -> String {
     path.to_string_lossy().to_string()
 }
 
-fn persistent_sessions_from_config(cfg: &JsonMap<String, JsonValue>) -> bool {
-    match cfg.get("persistent_sessions") {
-        Some(JsonValue::Bool(b)) => *b,
-        Some(JsonValue::String(s)) => s == "true",
-        Some(JsonValue::Number(n)) => n.as_i64() == Some(1),
-        _ => false,
-    }
-}
-
-fn session_name_for_summary(cfg: &JsonMap<String, JsonValue>, persistent: bool) -> JsonValue {
-    if !persistent {
-        return JsonValue::Null;
-    }
-    match cfg.get("session_name") {
-        None => JsonValue::Null,
-        Some(JsonValue::Null) => JsonValue::Null,
-        Some(v) => v.clone(),
-    }
-}
-
 fn default_terminals_value() -> JsonValue {
     json!(["ghostty"])
 }
@@ -50,7 +30,6 @@ pub fn compute_status_report(
 ) -> Result<StatusReportData, CoreError> {
     let plan = plan_runtime_materialization(request)?;
     let cfg = &plan.config_state.config;
-    let persistent = persistent_sessions_from_config(cfg);
 
     let default_shell = cfg
         .get("default_shell")
@@ -95,40 +74,9 @@ pub fn compute_status_report(
     summary.insert("default_shell".to_string(), default_shell);
     summary.insert("terminals".to_string(), terminals);
     summary.insert("helix_runtime".to_string(), helix_runtime);
-    summary.insert("persistent_sessions".to_string(), json!(persistent));
-    summary.insert(
-        "session_name".to_string(),
-        session_name_for_summary(cfg, persistent),
-    );
 
     Ok(StatusReportData {
         title: "Yazelix status".to_string(),
         summary,
     })
-}
-
-#[cfg(test)]
-mod tests {
-    // Test lane: default
-    // Defends: status summary derives persistent_sessions from normalized config shapes.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-    use super::*;
-
-    #[test]
-    fn persistent_sessions_accepts_bool_and_string() {
-        let mut a = JsonMap::new();
-        a.insert("persistent_sessions".into(), json!(true));
-        assert!(persistent_sessions_from_config(&a));
-
-        let mut b = JsonMap::new();
-        b.insert("persistent_sessions".into(), json!("true"));
-        assert!(persistent_sessions_from_config(&b));
-
-        let mut c = JsonMap::new();
-        c.insert("persistent_sessions".into(), json!("false"));
-        assert!(!persistent_sessions_from_config(&c));
-
-        let d = JsonMap::new();
-        assert!(!persistent_sessions_from_config(&d));
-    }
 }

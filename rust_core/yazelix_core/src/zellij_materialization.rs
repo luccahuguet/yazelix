@@ -262,7 +262,6 @@ fn build_render_plan_request(
         zellij_pane_frames: string_config(config, "zellij_pane_frames", "true").to_string(),
         zellij_rounded_corners: string_config(config, "zellij_rounded_corners", "true").to_string(),
         disable_zellij_tips: string_config(config, "disable_zellij_tips", "true").to_string(),
-        persistent_sessions: string_config(config, "persistent_sessions", "false").to_string(),
         support_kitty_keyboard_protocol: string_config(
             config,
             "support_kitty_keyboard_protocol",
@@ -1429,7 +1428,6 @@ fn build_generation_fingerprint(
         "zellij_pane_frames": string_config(config, "zellij_pane_frames", "true"),
         "zellij_rounded_corners": string_config(config, "zellij_rounded_corners", "true"),
         "zellij_theme": string_config(config, "zellij_theme", "default"),
-        "persistent_sessions": string_config(config, "persistent_sessions", "false"),
     });
     let fingerprint_payload = json!({
         "schema_version": 1,
@@ -1707,7 +1705,6 @@ mod tests {
             zellij_pane_frames: "true".into(),
             zellij_rounded_corners: "true".into(),
             disable_zellij_tips: "true".into(),
-            persistent_sessions: "false".into(),
             support_kitty_keyboard_protocol: "false".into(),
             zellij_default_mode: "normal".into(),
             yazelix_layout_dir: "/tmp/yazelix/layouts".into(),

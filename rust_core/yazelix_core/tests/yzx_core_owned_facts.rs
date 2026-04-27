@@ -159,10 +159,6 @@ default_shell = "bash"
 [terminal]
 terminals = ["wezterm", "ghostty"]
 config_mode = "user"
-
-[zellij]
-persistent_sessions = true
-session_name = "demo-session"
 "#,
     );
 
@@ -179,8 +175,6 @@ session_name = "demo-session"
     assert_eq!(envelope["data"]["game_of_life_cell_style"], "dotted");
     assert_eq!(envelope["data"]["welcome_duration_seconds"], 2.5);
     assert_eq!(envelope["data"]["show_macchina_on_welcome"], false);
-    assert_eq!(envelope["data"]["persistent_sessions"], true);
-    assert_eq!(envelope["data"]["session_name"], "demo-session");
     assert_eq!(
         envelope["data"]["terminals"],
         serde_json::json!(["wezterm", "ghostty"])

@@ -110,10 +110,6 @@ fn default_string_true() -> String {
     "true".into()
 }
 
-fn default_string_false() -> String {
-    "false".into()
-}
-
 fn default_support_kitty_keyboard_protocol() -> String {
     "false".into()
 }
@@ -178,8 +174,6 @@ pub struct ZellijRenderPlanRequest {
     pub zellij_rounded_corners: String,
     #[serde(default = "default_string_true")]
     pub disable_zellij_tips: String,
-    #[serde(default = "default_string_false")]
-    pub persistent_sessions: String,
     /// Matches `config_metadata/main_config_contract.toml` (`zellij.support_kitty_keyboard_protocol` default false).
     #[serde(default = "default_support_kitty_keyboard_protocol")]
     pub support_kitty_keyboard_protocol: String,
@@ -479,11 +473,6 @@ pub fn compute_zellij_render_plan(
     } else {
         "true"
     };
-    let on_force_close_value = if bool_setting_from_string(&request.persistent_sessions) {
-        "detach"
-    } else {
-        "quit"
-    };
     let kitty_protocol_value = if bool_setting_from_string(&request.support_kitty_keyboard_protocol)
     {
         "true"
@@ -498,10 +487,7 @@ pub fn compute_zellij_render_plan(
         make_setting("theme", kdl_quoted_path(Path::new(&theme))),
         make_setting("show_startup_tips", show_tips_value),
         make_setting("show_release_notes", "false"),
-        make_setting(
-            "on_force_close",
-            kdl_quoted_path(Path::new(on_force_close_value)),
-        ),
+        make_setting("on_force_close", kdl_quoted_path(Path::new("quit"))),
         make_setting("pane_frames", pane_frames_value),
     ];
 
@@ -595,7 +581,6 @@ mod tests {
             zellij_pane_frames: "true".into(),
             zellij_rounded_corners: "true".into(),
             disable_zellij_tips: "true".into(),
-            persistent_sessions: "false".into(),
             support_kitty_keyboard_protocol: "false".into(),
             zellij_default_mode: "normal".into(),
             yazelix_layout_dir: "/tmp/yazelix/layouts".into(),

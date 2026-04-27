@@ -14,6 +14,8 @@ const MOVED_CURSOR_CONFIG_FIELDS: &[&str] = &[
     "terminal.ghostty_mode_effect",
     "terminal.ghostty_trail_glow",
 ];
+const REMOVED_PERSISTENT_SESSION_FIELDS: &[&str] =
+    &["zellij.persistent_sessions", "zellij.session_name"];
 
 #[derive(Debug, Clone)]
 pub struct NormalizeConfigRequest {
@@ -454,6 +456,18 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
                         .to_string(),
                     "Next: Remove the old terminal.ghostty_* field from user_configs/yazelix.toml."
                         .to_string(),
+                    "Next: Run `yzx doctor --verbose` to review the full config report."
+                        .to_string(),
+                ];
+            } else if REMOVED_PERSISTENT_SESSION_FIELDS.contains(&finding.path.as_str()) {
+                diagnostic.headline = format!(
+                    "Removed persistent-session config field at {}",
+                    finding.path
+                );
+                diagnostic.detail_lines = vec![
+                    finding.message,
+                    "Next: Remove zellij.persistent_sessions and zellij.session_name from user_configs/yazelix.toml.".to_string(),
+                    "Next: Yazelix now starts independent windows; use raw Zellij session management outside Yazelix if you need it.".to_string(),
                     "Next: Run `yzx doctor --verbose` to review the full config report."
                         .to_string(),
                 ];

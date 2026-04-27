@@ -420,14 +420,6 @@ in
       description = "Show macchina system info on welcome screen";
     };
 
-    persistent_sessions = mkMainContractOption "zellij.persistent_sessions" {
-      description = "Enable persistent Zellij sessions";
-    };
-
-    session_name = mkMainContractOption "zellij.session_name" {
-      description = "Session name for persistent sessions";
-    };
-
     zellij_default_mode = mkMainContractOption "zellij.default_mode" {
       description = ''
         Startup mode for new Zellij sessions.

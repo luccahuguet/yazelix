@@ -106,7 +106,6 @@ Status labels:
 | `package_runtime_first_user_and_maintainer_ux.md` | Historical | Transition-space note from before v15 dropped older runtime and pack sidecar assumptions |
 | `pane_orchestrator_component.md` | Live | Current internal pane-orchestrator component boundary |
 | `pane_orchestrator_tab_local_session_state_seam.md` | Planning | Current pane-orchestrator seam proposal; not a shipped contract yet |
-| `persistent_window_session_contract.md` | Live | Current persistent-session behavior contract |
 | `provable_nushell_floor_budget.md` | Planning | Current hard-budget, allowlist, and exception-policy doc for the under-`5k` Nu push; use it before relying on older survivor/no-go assumptions |
 | `public_yzx_command_surface_canonicalization_audit.md` | Planning | Completed public command-surface audit; records Clap no-go and the core registry deletion lane |
 | `ranked_nu_deletion_budget.md` | Planning | Near-term ranked deletion queue from the earlier audit pass; use `provable_nushell_floor_budget.md` for the current hard floor and proof standard |

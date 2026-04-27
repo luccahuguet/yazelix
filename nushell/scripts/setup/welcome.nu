@@ -69,17 +69,8 @@ def get_flake_info [yazelix_dir: string, colors: record]: nothing -> string {
     }
 }
 
-def welcome_value_is_true [value] {
-    ($value | default false | into string | str downcase) == "true"
-}
-
 def format_session_info [facts: record, colors: record]: nothing -> string {
-    if (welcome_value_is_true ($facts.persistent_sessions? | default false)) {
-        let session_name = ($facts.session_name? | default "yazelix")
-        $"($colors.green)🔗 Using persistent session: ($session_name)($colors.reset)"
-    } else {
-        $"($colors.yellow)🆕 Creating new Zellij session($colors.reset)"
-    }
+    $"($colors.yellow)🆕 Creating new Zellij session($colors.reset)"
 }
 
 def format_terminal_info [facts: record, colors: record]: nothing -> string {

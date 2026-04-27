@@ -32,9 +32,6 @@ pub struct SessionFactsData {
     pub game_of_life_cell_style: String,
     pub default_shell: String,
     pub terminals: Vec<String>,
-    pub persistent_sessions: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub session_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -60,8 +57,6 @@ impl Default for SessionFactsData {
             game_of_life_cell_style: "full_block".to_string(),
             default_shell: "nu".to_string(),
             terminals: vec!["ghostty".to_string()],
-            persistent_sessions: false,
-            session_name: Some("yazelix".to_string()),
         }
     }
 }
@@ -97,11 +92,6 @@ impl SessionFactsData {
             terminals: normalized_string_list(config, "terminals")
                 .filter(|items| !items.is_empty())
                 .unwrap_or(defaults.terminals),
-            persistent_sessions: config
-                .get("persistent_sessions")
-                .and_then(JsonValue::as_bool)
-                .unwrap_or(defaults.persistent_sessions),
-            session_name: normalized_string(config, "session_name").or(defaults.session_name),
         }
         .sanitized()
     }
@@ -143,10 +133,6 @@ impl SessionFactsData {
         self.helix_runtime_path = self
             .helix_runtime_path
             .and_then(|value| non_empty_string(value.as_str()));
-        self.session_name = self
-            .session_name
-            .and_then(|value| non_empty_string(value.as_str()))
-            .or(defaults.session_name);
         self
     }
 }
@@ -273,11 +259,6 @@ impl SessionFactsData {
         }
 
         if let Some(zellij) = toml_section(config, "zellij") {
-            if let Some(value) = toml_bool(zellij.get("persistent_sessions")) {
-                self.persistent_sessions = value;
-            }
-            self.session_name =
-                toml_optional_string(zellij.get("session_name")).or(self.session_name.clone());
             if let Some(values) = toml_string_list(zellij.get("popup_program")) {
                 self.popup_program = values;
             }
@@ -443,8 +424,6 @@ mod tests {
             ("game_of_life_cell_style".to_string(), json!("dotted")),
             ("default_shell".to_string(), json!("bash")),
             ("terminals".to_string(), json!(["ghostty", "wezterm"])),
-            ("persistent_sessions".to_string(), json!(true)),
-            ("session_name".to_string(), json!("demo")),
         ]);
 
         let facts = SessionFactsData::from_normalized_config(&config);
@@ -459,7 +438,5 @@ mod tests {
         assert_eq!(facts.game_of_life_cell_style, "dotted");
         assert_eq!(facts.default_shell, "bash");
         assert_eq!(facts.terminals, vec!["ghostty", "wezterm"]);
-        assert!(facts.persistent_sessions);
-        assert_eq!(facts.session_name.as_deref(), Some("demo"));
     }
 }

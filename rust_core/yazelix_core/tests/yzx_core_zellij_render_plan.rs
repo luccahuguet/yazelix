@@ -16,7 +16,6 @@ fn zellij_render_plan_emits_ok_envelope() {
         "zellij_pane_frames": "true",
         "zellij_rounded_corners": "true",
         "disable_zellij_tips": "true",
-        "persistent_sessions": "false",
         "zellij_default_mode": "normal",
         "yazelix_layout_dir": "/tmp/yazelix/layouts",
         "resolved_default_shell": "/usr/bin/nu"
