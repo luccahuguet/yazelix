@@ -14,6 +14,7 @@ use zellij_tile::prelude::*;
 use crate::{State, RESULT_INVALID_PAYLOAD, RESULT_MISSING};
 
 pub(crate) const RESULT_CLOSED: &str = "closed";
+pub(crate) const RESULT_CLOSED_FLOATING_CLEANUP_FAILED: &str = "closed_floating_cleanup_failed";
 pub(crate) const RESULT_FOCUSED: &str = "focused";
 pub(crate) const RESULT_OPENED: &str = "opened";
 pub(crate) const RESULT_RUNTIME_NOT_CONFIGURED: &str = "runtime_not_configured";
@@ -201,10 +202,13 @@ impl State {
                 focus_pane_with_id(pane_id, true, false);
                 self.respond(pipe_message, RESULT_FOCUSED);
             }
-            TransientTogglePlan::Close(pane_id) => {
+            TransientTogglePlan::CloseAndHideFloatingLayer(pane_id) => {
                 self.run_transient_post_close_hook(adapter.post_close_hook);
                 close_pane_with_id(pane_id);
-                self.respond(pipe_message, RESULT_CLOSED);
+                match hide_floating_panes(None) {
+                    Ok(_) => self.respond(pipe_message, RESULT_CLOSED),
+                    Err(_) => self.respond(pipe_message, RESULT_CLOSED_FLOATING_CLEANUP_FAILED),
+                }
             }
         }
     }

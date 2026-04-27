@@ -44,7 +44,7 @@ pub struct TransientPaneState<Id> {
 pub enum TransientTogglePlan<Id> {
     Open,
     Focus(Id),
-    Close(Id),
+    CloseAndHideFloatingLayer(Id),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -124,7 +124,9 @@ pub fn resolve_transient_toggle_plan<Id: Copy>(
     identity: TransientPaneIdentityContract,
 ) -> TransientTogglePlan<Id> {
     match select_transient_pane(panes, identity) {
-        Some(pane) if pane.is_focused => TransientTogglePlan::Close(pane.pane_id),
+        Some(pane) if pane.is_focused => {
+            TransientTogglePlan::CloseAndHideFloatingLayer(pane.pane_id)
+        }
         Some(pane) => TransientTogglePlan::Focus(pane.pane_id),
         None => TransientTogglePlan::Open,
     }
@@ -287,7 +289,31 @@ mod tests {
         )];
         assert_eq!(
             resolve_transient_toggle_plan(&focused, POPUP_IDENTITY),
-            TransientTogglePlan::Close(6)
+            TransientTogglePlan::CloseAndHideFloatingLayer(6)
+        );
+    }
+
+    // Regression: closing a focused popup/menu must also hide the floating layer so unrelated floating panes do not stay visible.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn close_plan_hides_floating_layer_after_managed_transient_closes() {
+        let panes = [
+            transient_pane(6, "floating_picker", Some("picker_wrapper"), true),
+            transient_pane(7, "unrelated_floating_tool", Some("htop"), false),
+            TransientPaneSnapshot {
+                pane_id: 8,
+                title: "editor",
+                terminal_command: Some("hx"),
+                is_plugin: false,
+                exited: false,
+                is_floating: false,
+                is_focused: false,
+            },
+        ];
+
+        assert_eq!(
+            resolve_transient_toggle_plan(&panes, POPUP_IDENTITY),
+            TransientTogglePlan::CloseAndHideFloatingLayer(6)
         );
     }
 
