@@ -1,12 +1,14 @@
 // Test lane: default
 
-use serde_json::Value;
+use serde_json::{Value, json};
 use std::fs;
 
 mod support;
 
 use support::commands::{apply_managed_config_env, yzx_control_command};
-use support::fixtures::{managed_config_fixture, prepend_path, write_executable_script};
+use support::fixtures::{
+    managed_config_fixture, prepend_path, write_executable_script, write_session_facts_cache,
+};
 
 fn yzx_control_command_in_fixture(
     fixture: &support::fixtures::ManagedConfigFixture,
@@ -16,18 +18,21 @@ fn yzx_control_command_in_fixture(
     command
 }
 
-// Defends: the public Rust-owned `yzx cwd` route retargets the active tab through the pane orchestrator and syncs the plugin-owned sidebar once.
+// Defends: the public Rust-owned `yzx cwd` route retargets the active tab from the session snapshot and syncs the plugin-owned sidebar once.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_cwd_retargets_workspace_and_syncs_sidebar() {
     let fixture = managed_config_fixture(
-        r#"[editor]
-command = "hx"
-initial_sidebar_state = "open"
+        r#"[terminal]
+ghostty_trail_color = "random"
 
 [yazi]
-ya_command = "ya"
+ya_command = "config-ya"
 "#,
+    );
+    let cache = write_session_facts_cache(
+        &fixture,
+        &[("editor_command", json!("hx")), ("ya_command", json!("ya"))],
     );
     let fake_bin = fixture.home_dir.join("fake-bin");
     let target_dir = fixture.home_dir.join("workspace");
@@ -63,6 +68,7 @@ ya_command = "ya"
     let output = yzx_control_command_in_fixture(&fixture)
         .env("PATH", prepend_path(&fake_bin))
         .env("ZELLIJ", "1")
+        .env("YAZELIX_SESSION_FACTS_PATH", cache)
         .arg("cwd")
         .arg("workspace-alias")
         .output()
@@ -451,18 +457,24 @@ ya_command = "ya"
     );
 }
 
-// Defends: when the managed editor pane is absent, multi-file Yazi open starts one editor pane invocation with every selected file.
+// Regression: when the managed editor pane is absent, multi-file Yazi open uses the immutable session snapshot even if the live config has newer stale fields.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_zellij_open_editor_opens_missing_editor_with_all_selected_files() {
     let fixture = managed_config_fixture(
         r#"[editor]
-command = "hx"
-initial_sidebar_state = "open"
+command = "vim"
 
 [yazi]
-ya_command = "ya"
+ya_command = "config-ya"
+
+[terminal]
+ghostty_trail_color = "random"
 "#,
+    );
+    let cache = write_session_facts_cache(
+        &fixture,
+        &[("editor_command", json!("hx")), ("ya_command", json!("ya"))],
     );
     let fake_bin = fixture.home_dir.join("fake-bin");
     let target_dir = fixture.home_dir.join("workspace");
@@ -500,6 +512,7 @@ ya_command = "ya"
         .env("PATH", prepend_path(&fake_bin))
         .env("ZELLIJ", "1")
         .env("YAZI_ID", "current-yazi")
+        .env("YAZELIX_SESSION_FACTS_PATH", cache)
         .arg("zellij")
         .arg("open-editor")
         .arg(&target_file)

@@ -7,9 +7,9 @@
 use crate::bridge::{CoreError, ErrorClass};
 use crate::compute_runtime_env;
 use crate::control_plane::{
-    config_dir_from_env, config_override_from_env, home_dir_from_env, json_map_to_child_env,
-    load_normalized_config_for_control, runtime_dir_from_env, runtime_env_request,
+    home_dir_from_env, json_map_to_child_env, runtime_dir_from_env, runtime_env_request,
 };
+use crate::session_facts::compute_session_facts_from_env;
 use crate::workspace_commands::{
     command_is_available, compute_integration_facts_from_env, run_ya_emit_to,
     sync_sidebar_to_directory,
@@ -39,6 +39,7 @@ pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
 const EDITOR_PANE_ENV_OVERRIDE_KEYS: &[&str] = &[
     "PATH",
     "YAZELIX_RUNTIME_DIR",
+    "YAZELIX_SESSION_FACTS_PATH",
     "IN_YAZELIX_SHELL",
     "NIX_CONFIG",
     "ZELLIJ_DEFAULT_LAYOUT",
@@ -1156,10 +1157,19 @@ fn retarget_workspace_without_focused_cd(
 
 fn resolve_runtime_editor_launch() -> Result<(serde_json::Map<String, Value>, String), CoreError> {
     let runtime_dir = runtime_dir_from_env()?;
-    let config_dir = config_dir_from_env()?;
-    let config_override = config_override_from_env();
-    let normalized =
-        load_normalized_config_for_control(&runtime_dir, &config_dir, config_override.as_deref())?;
+    let facts = compute_session_facts_from_env()?;
+    let mut normalized = serde_json::Map::new();
+    normalized.insert("enable_sidebar".to_string(), json!(facts.enable_sidebar));
+    normalized.insert(
+        "initial_sidebar_state".to_string(),
+        json!(facts.initial_sidebar_state),
+    );
+    if let Some(editor_command) = facts.editor_command {
+        normalized.insert("editor_command".to_string(), json!(editor_command));
+    }
+    if let Some(helix_runtime_path) = facts.helix_runtime_path {
+        normalized.insert("helix_runtime_path".to_string(), json!(helix_runtime_path));
+    }
     let runtime_env =
         compute_runtime_env(&runtime_env_request(runtime_dir, &normalized)?)?.runtime_env;
     let editor = runtime_env

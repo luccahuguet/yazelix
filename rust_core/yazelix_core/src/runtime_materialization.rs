@@ -6,6 +6,9 @@ use crate::config_state::{
 };
 use crate::control_plane::config_dir_from_env;
 use crate::ghostty_cursor_registry::{CursorRegistry, USER_CURSOR_CONFIG_FILENAME};
+use crate::session_facts::{
+    session_facts_cache_path_from_state_path, write_session_facts_cache_from_normalized_config,
+};
 use crate::yazi_materialization::{
     YaziMaterializationData, YaziMaterializationRequest, generate_yazi_materialization,
 };
@@ -182,6 +185,12 @@ pub fn plan_runtime_materialization(
         RuntimeArtifact {
             label: "generated Zellij layout".to_string(),
             path: zellij_layout_path.clone(),
+        },
+        RuntimeArtifact {
+            label: "session config snapshot".to_string(),
+            path: session_facts_cache_path_from_state_path(&request.state_path)
+                .to_string_lossy()
+                .to_string(),
         },
     ];
     let missing_artifacts = expected_artifacts
@@ -665,6 +674,12 @@ fn materialize_runtime_state_from_plan(
         seed_plugin_permissions: true,
     })?;
 
+    write_session_facts_cache_from_normalized_config(
+        &request.state_path,
+        &plan.config_state.config_file,
+        &plan.config_state.config,
+    )?;
+
     let config_dir = config_dir_from_env()?;
     let managed_config_path = primary_config_paths(&request.runtime_dir, &config_dir).user_config;
     let apply = apply_runtime_materialization(&RuntimeMaterializationApplyRequest {
@@ -966,7 +981,12 @@ mod tests {
         assert_eq!(plan.status, "repair_missing_artifacts");
         assert_eq!(plan.should_regenerate, true);
         assert_eq!(plan.should_sync_static_assets, false);
-        assert_eq!(plan.missing_artifacts.len(), 5);
+        assert_eq!(plan.missing_artifacts.len(), 6);
+        assert!(
+            plan.missing_artifacts
+                .iter()
+                .any(|artifact| artifact.label == "session config snapshot")
+        );
     }
 
     // Defends: runtime materialization apply refuses to record success when expected generated artifacts are still missing.

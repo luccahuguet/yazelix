@@ -32,6 +32,7 @@ pub mod public_command_surface;
 pub mod runtime_contract;
 pub mod runtime_env;
 pub mod runtime_materialization;
+pub mod session_facts;
 pub mod startup_facts;
 pub mod startup_handoff;
 pub mod status_report;
@@ -126,6 +127,7 @@ pub use runtime_materialization::{
     RuntimeMaterializationRepairRunData, RuntimeMaterializationRunData, RuntimeRepairDirective,
     materialize_runtime_state, plan_runtime_materialization, repair_runtime_materialization,
 };
+pub use session_facts::{SessionFactsData, compute_session_facts_from_env};
 pub use startup_facts::{StartupFactsData, compute_startup_facts_from_env};
 pub use startup_handoff::{
     StartupHandoffArtifact, StartupHandoffCaptureData, StartupHandoffCaptureRequest,

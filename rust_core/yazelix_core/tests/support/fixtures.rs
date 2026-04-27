@@ -88,6 +88,45 @@ pub fn prepend_path(dir: &Path) -> String {
     }
 }
 
+pub fn write_session_facts_cache(
+    fixture: &ManagedConfigFixture,
+    overrides: &[(&str, serde_json::Value)],
+) -> PathBuf {
+    let mut facts = serde_json::Map::from_iter([
+        ("enable_sidebar".to_string(), serde_json::json!(true)),
+        (
+            "initial_sidebar_state".to_string(),
+            serde_json::json!("open"),
+        ),
+        ("yazi_command".to_string(), serde_json::json!("yazi")),
+        ("ya_command".to_string(), serde_json::json!("ya")),
+        ("popup_program".to_string(), serde_json::json!(["lazygit"])),
+        ("popup_width_percent".to_string(), serde_json::json!(90)),
+        ("popup_height_percent".to_string(), serde_json::json!(90)),
+        (
+            "game_of_life_cell_style".to_string(),
+            serde_json::json!("full_block"),
+        ),
+        ("default_shell".to_string(), serde_json::json!("nu")),
+        ("terminals".to_string(), serde_json::json!(["ghostty"])),
+        ("persistent_sessions".to_string(), serde_json::json!(false)),
+        ("session_name".to_string(), serde_json::json!("yazelix")),
+    ]);
+    for (key, value) in overrides {
+        facts.insert((*key).to_string(), value.clone());
+    }
+    let cache = serde_json::json!({
+        "schema_version": 1,
+        "source_config_file": "test-cache",
+        "normalized_config": {},
+        "facts": facts,
+    });
+    let path = fixture.state_dir.join("sessions/test/session_facts.json");
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(&path, serde_json::to_string_pretty(&cache).unwrap()).unwrap();
+    path
+}
+
 pub fn managed_config_fixture(raw_config: &str) -> ManagedConfigFixture {
     let repo = repo_root();
     let temp = TempDir::new().unwrap();

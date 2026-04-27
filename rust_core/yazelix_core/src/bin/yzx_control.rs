@@ -5,6 +5,7 @@ use serde::Serialize;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
+use yazelix_core::StatusReportData;
 use yazelix_core::bridge::{CoreError, ErrorClass};
 use yazelix_core::cli_render::{
     colors_enabled, label as render_cli_label, muted as render_cli_muted,
@@ -12,6 +13,7 @@ use yazelix_core::cli_render::{
     warning as render_cli_warning,
 };
 use yazelix_core::compute_runtime_env;
+use yazelix_core::compute_session_facts_from_env;
 use yazelix_core::compute_status_report;
 use yazelix_core::config_normalize::ConfigDiagnosticReport;
 use yazelix_core::control_plane::{
@@ -395,6 +397,7 @@ fn status_badge(value: &str) -> (String, StatusTone) {
         "noop" => ("up to date".to_string(), StatusTone::Good),
         "refresh_required" => ("refresh required".to_string(), StatusTone::Warning),
         "repair_missing_artifacts" => ("repair missing artifacts".to_string(), StatusTone::Warning),
+        "config_problem" => ("config problem".to_string(), StatusTone::Warning),
         other => (humanize_token(other), StatusTone::Default),
     }
 }
@@ -704,6 +707,119 @@ fn print_control_error(err: &CoreError) {
     }
 }
 
+fn config_diagnostic_report_from_error(err: &CoreError) -> Option<ConfigDiagnosticReport> {
+    if matches!(err.class(), ErrorClass::Config) && err.code() == "unsupported_config" {
+        serde_json::from_value::<ConfigDiagnosticReport>(err.details()).ok()
+    } else {
+        None
+    }
+}
+
+fn compute_status_report_for_control(
+    request: &yazelix_core::RuntimeMaterializationPlanRequest,
+    version: &str,
+) -> Result<StatusReportData, CoreError> {
+    match compute_status_report(request, version, YAZELIX_DESCRIPTION) {
+        Ok(report) => Ok(report),
+        Err(error) => {
+            let Some(config_report) = config_diagnostic_report_from_error(&error) else {
+                return Err(error);
+            };
+            Ok(config_problem_status_report(
+                request,
+                version,
+                &config_report,
+            ))
+        }
+    }
+}
+
+fn config_problem_status_report(
+    request: &yazelix_core::RuntimeMaterializationPlanRequest,
+    version: &str,
+    config_report: &ConfigDiagnosticReport,
+) -> StatusReportData {
+    let facts = compute_session_facts_from_env().unwrap_or_default();
+    let reason = format!(
+        "unsupported config entries: {} blocking, {} total",
+        config_report.blocking_count, config_report.issue_count
+    );
+    let mut summary = serde_json::Map::new();
+    summary.insert("version".to_string(), serde_json::json!(version));
+    summary.insert(
+        "description".to_string(),
+        serde_json::json!(YAZELIX_DESCRIPTION),
+    );
+    summary.insert(
+        "config_file".to_string(),
+        serde_json::json!(config_report.config_path),
+    );
+    summary.insert(
+        "runtime_dir".to_string(),
+        serde_json::json!(request.runtime_dir.to_string_lossy()),
+    );
+    summary.insert(
+        "logs_dir".to_string(),
+        serde_json::json!(request.runtime_dir.join("logs").to_string_lossy()),
+    );
+    summary.insert(
+        "generated_state_repair_needed".to_string(),
+        serde_json::json!(true),
+    );
+    summary.insert(
+        "generated_state_materialization_status".to_string(),
+        serde_json::json!("config_problem"),
+    );
+    summary.insert(
+        "generated_state_materialization_reason".to_string(),
+        serde_json::json!(reason),
+    );
+    summary.insert(
+        "default_shell".to_string(),
+        serde_json::json!(facts.default_shell),
+    );
+    summary.insert("terminals".to_string(), serde_json::json!(facts.terminals));
+    summary.insert(
+        "helix_runtime".to_string(),
+        facts
+            .helix_runtime_path
+            .map(serde_json::Value::String)
+            .unwrap_or(serde_json::Value::Null),
+    );
+    summary.insert(
+        "persistent_sessions".to_string(),
+        serde_json::json!(facts.persistent_sessions),
+    );
+    summary.insert(
+        "session_name".to_string(),
+        facts
+            .session_name
+            .map(serde_json::Value::String)
+            .unwrap_or(serde_json::Value::Null),
+    );
+    summary.insert(
+        "config_status".to_string(),
+        serde_json::json!("unsupported_config"),
+    );
+    summary.insert(
+        "config_issue_count".to_string(),
+        serde_json::json!(config_report.issue_count),
+    );
+    summary.insert(
+        "config_blocking_count".to_string(),
+        serde_json::json!(config_report.blocking_count),
+    );
+    summary.insert(
+        "config_diagnostic_report".to_string(),
+        serde_json::to_value(config_report).unwrap_or(serde_json::Value::Null),
+    );
+
+    StatusReportData {
+        title: "Yazelix status".to_string(),
+        summary,
+    }
+}
+
 fn run_env(args: &[String]) -> Result<i32, CoreError> {
     let parsed = parse_env_cli_args(args)?;
     let runtime_dir = runtime_dir_from_env()?;
@@ -803,7 +919,7 @@ fn run_status(args: &[String]) -> Result<i32, CoreError> {
     let request =
         runtime_materialization_plan_request_from_env(config_override_from_env().as_deref())?;
     let version = read_yazelix_version_from_runtime(&request.runtime_dir)?;
-    let data = compute_status_report(&request, &version, YAZELIX_DESCRIPTION)?;
+    let data = compute_status_report_for_control(&request, &version)?;
     let versions = parsed.versions.then(collect_version_info);
 
     if parsed.json {
@@ -848,7 +964,7 @@ fn run_inspect(args: &[String]) -> Result<i32, CoreError> {
         runtime_materialization_plan_request_from_env(config_override_from_env().as_deref())?;
     let version = read_yazelix_version_from_runtime(&request.runtime_dir)?;
     let runtime_variant = read_runtime_variant_from_runtime(&request.runtime_dir);
-    let status = compute_status_report(&request, &version, YAZELIX_DESCRIPTION)?;
+    let status = compute_status_report_for_control(&request, &version)?;
     let install = evaluate_install_ownership_report(
         &install_ownership_request_from_env_with_runtime_dir(request.runtime_dir.clone())?,
     );
@@ -876,6 +992,8 @@ fn run_inspect(args: &[String]) -> Result<i32, CoreError> {
             "dir": config_dir_from_env()?.to_string_lossy(),
             "override": config_override_from_env(),
             "file": status.summary.get("config_file").cloned().unwrap_or(serde_json::Value::Null),
+            "status": status.summary.get("config_status").cloned().unwrap_or(serde_json::json!("ok")),
+            "diagnostic_report": status.summary.get("config_diagnostic_report").cloned().unwrap_or(serde_json::Value::Null),
         },
         "generated_state": {
             "repair_needed": status.summary.get("generated_state_repair_needed").cloned().unwrap_or(serde_json::Value::Null),

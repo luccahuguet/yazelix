@@ -2,12 +2,12 @@
 
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{
-    config_dir_from_env, config_override_from_env, load_normalized_config_for_control,
     read_yazelix_version_from_runtime, runtime_dir_from_env, state_dir_from_env,
 };
 use crate::front_door_render::{
     GameOfLifeCellStyle, play_welcome_style_with_cell_style, run_screen_surface_with_cell_style,
 };
+use crate::session_facts::compute_session_facts_from_env;
 use crate::upgrade_summary::show_current_upgrade_summary;
 use std::process::Command;
 use std::time::Duration;
@@ -171,15 +171,8 @@ fn parse_whats_new_args(args: &[String]) -> Result<WhatsNewArgs, CoreError> {
 }
 
 fn configured_game_of_life_cell_style() -> Result<GameOfLifeCellStyle, CoreError> {
-    let runtime_dir = runtime_dir_from_env()?;
-    let config_dir = config_dir_from_env()?;
-    let config_override = config_override_from_env();
-    let normalized =
-        load_normalized_config_for_control(&runtime_dir, &config_dir, config_override.as_deref())?;
-    let raw = normalized
-        .get("game_of_life_cell_style")
-        .and_then(serde_json::Value::as_str)
-        .unwrap_or("full_block");
+    let facts = compute_session_facts_from_env()?;
+    let raw = facts.game_of_life_cell_style.as_str();
     GameOfLifeCellStyle::parse(raw).map_err(|err| {
         CoreError::classified(
             ErrorClass::Usage,

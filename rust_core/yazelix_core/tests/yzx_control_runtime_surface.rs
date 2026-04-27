@@ -7,7 +7,10 @@ use std::process::Command;
 mod support;
 
 use support::commands::{apply_managed_config_env, yzx_control_command};
-use support::fixtures::{managed_config_fixture, prepend_path, repo_root, write_executable_script};
+use support::fixtures::{
+    managed_config_fixture, prepend_path, repo_root, write_executable_script,
+    write_session_facts_cache,
+};
 
 fn yzx_control_command_in_fixture(
     fixture: &support::fixtures::ManagedConfigFixture,
@@ -168,6 +171,48 @@ terminals = ["ghostty"]
     assert!(summary["generated_state_materialization_status"].is_string());
 }
 
+// Regression: status stays usable from an older running window whose live config contains newer unsupported fields.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_control_status_json_reports_config_problem_without_aborting() {
+    let fixture = managed_config_fixture(
+        r#"[terminal]
+ghostty_trail_color = "random"
+"#,
+    );
+    let cache = write_session_facts_cache(
+        &fixture,
+        &[
+            ("default_shell", serde_json::json!("bash")),
+            ("terminals", serde_json::json!(["cached-term"])),
+        ],
+    );
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .env("YAZELIX_SESSION_FACTS_PATH", cache)
+        .arg("status")
+        .arg("--json")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stderr.is_empty());
+    let report: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(
+        report["summary"]["generated_state_materialization_status"],
+        "config_problem"
+    );
+    assert_eq!(report["summary"]["default_shell"], "bash");
+    assert_eq!(
+        report["summary"]["terminals"],
+        serde_json::json!(["cached-term"])
+    );
+    assert_eq!(
+        report["summary"]["config_diagnostic_report"]["blocking_count"],
+        1
+    );
+}
+
 // Defends: `yzx inspect --json` is the canonical runtime truth report for diagnostics and agents.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
@@ -219,6 +264,35 @@ terminals = ["ghostty"]
             .iter()
             .any(|entry| { entry["tool"] == "nix" && entry["runtime"].as_str().is_some() })
     );
+}
+
+// Regression: inspect remains the diagnostic escape hatch when config validation is what failed.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_control_inspect_json_embeds_config_problem_without_aborting() {
+    let fixture = managed_config_fixture(
+        r#"[terminal]
+ghostty_trail_color = "random"
+"#,
+    );
+    let cache = write_session_facts_cache(&fixture, &[]);
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .env("YAZELIX_SESSION_FACTS_PATH", cache)
+        .arg("inspect")
+        .arg("--json")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stderr.is_empty());
+    let report: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(report["config"]["status"], "unsupported_config");
+    assert_eq!(
+        report["generated_state"]["materialization_status"],
+        "config_problem"
+    );
+    assert_eq!(report["config"]["diagnostic_report"]["blocking_count"], 1);
 }
 
 // Defends: the default human `yzx status` output groups fields into readable sections instead of leaking raw internal summary keys.

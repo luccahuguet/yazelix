@@ -5,7 +5,7 @@ mod support;
 
 use support::commands::yzx_core_command_in_fixture;
 use support::envelopes::ok_envelope;
-use support::fixtures::managed_config_fixture;
+use support::fixtures::{managed_config_fixture, write_session_facts_cache};
 
 // Defends: integration-facts.compute returns the Rust-owned sidebar, editor-kind, and Yazi command payload directly.
 // Contract: WSS-005, SOE-004
@@ -35,6 +35,43 @@ ya_command = "ya-test"
     assert_eq!(envelope["data"]["ya_command"], "ya-test");
 }
 
+// Regression: integration facts come from the per-session snapshot so an older running window survives newer config fields.
+// Contract: WSS-005, SOE-004
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn integration_facts_compute_prefers_session_snapshot_over_stale_config() {
+    let fixture = managed_config_fixture(
+        r#"[editor]
+command = "vim"
+
+[yazi]
+command = "config-yazi"
+ya_command = "config-ya"
+
+[terminal]
+ghostty_trail_color = "random"
+"#,
+    );
+    let cache = write_session_facts_cache(
+        &fixture,
+        &[
+            ("editor_command", serde_json::json!("nvim")),
+            ("yazi_command", serde_json::json!("cached-yazi")),
+            ("ya_command", serde_json::json!("cached-ya")),
+        ],
+    );
+
+    let output = yzx_core_command_in_fixture(&fixture, "integration-facts.compute")
+        .env("YAZELIX_SESSION_FACTS_PATH", cache)
+        .output()
+        .unwrap();
+    let envelope: Value = ok_envelope(&output);
+
+    assert_eq!(envelope["data"]["managed_editor_kind"], "neovim");
+    assert_eq!(envelope["data"]["yazi_command"], "cached-yazi");
+    assert_eq!(envelope["data"]["ya_command"], "cached-ya");
+}
+
 // Defends: transient-pane-facts.compute keeps popup argv and geometry under one Rust-owned facts surface for popup/menu callers.
 // Contract: POP-001, POP-002, POP-003
 // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
@@ -62,22 +99,34 @@ popup_height_percent = 76
     assert_eq!(envelope["data"]["popup_height_percent"], 76);
 }
 
-// Regression: transient-pane facts tolerate unrelated stale config fields so popup/menu panes still open in older running sessions.
+// Regression: transient-pane facts come from the per-session snapshot so popup/menu panes keep their launch-time config.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
-fn transient_pane_facts_compute_ignores_unrelated_unknown_fields() {
+fn transient_pane_facts_compute_prefers_session_snapshot_over_stale_config() {
     let fixture = managed_config_fixture(
         r#"[zellij]
-popup_program = ["gitui", "--theme", "cyan"]
-popup_width_percent = 82
-popup_height_percent = 76
+popup_program = ["config-popup"]
+popup_width_percent = 11
+popup_height_percent = 12
 
 [terminal]
 ghostty_trail_color = "random"
 "#,
     );
+    let cache = write_session_facts_cache(
+        &fixture,
+        &[
+            (
+                "popup_program",
+                serde_json::json!(["cached-popup", "--flag"]),
+            ),
+            ("popup_width_percent", serde_json::json!(82)),
+            ("popup_height_percent", serde_json::json!(76)),
+        ],
+    );
 
     let output = yzx_core_command_in_fixture(&fixture, "transient-pane-facts.compute")
+        .env("YAZELIX_SESSION_FACTS_PATH", cache)
         .output()
         .unwrap();
     let envelope: Value = ok_envelope(&output);
@@ -85,7 +134,7 @@ ghostty_trail_color = "random"
     assert_eq!(envelope["command"], "transient-pane-facts.compute");
     assert_eq!(
         envelope["data"]["popup_program"],
-        serde_json::json!(["gitui", "--theme", "cyan"])
+        serde_json::json!(["cached-popup", "--flag"])
     );
     assert_eq!(envelope["data"]["popup_width_percent"], 82);
     assert_eq!(envelope["data"]["popup_height_percent"], 76);

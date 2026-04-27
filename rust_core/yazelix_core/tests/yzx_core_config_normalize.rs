@@ -569,7 +569,14 @@ fn runtime_materialization_plan_reports_missing_artifacts_with_current_state() {
             .as_array()
             .unwrap()
             .len(),
-        5
+        6
+    );
+    assert!(
+        envelope["data"]["missing_artifacts"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|artifact| artifact["label"] == "session config snapshot")
     );
 }
 
@@ -601,6 +608,14 @@ fn runtime_materialization_materialize_writes_generated_artifacts_and_records_st
     assert!(fixture.yazi_dir.join("keymap.toml").exists());
     assert!(fixture.yazi_dir.join("init.lua").exists());
     assert!(fixture.zellij_dir.join("config.kdl").exists());
+    assert!(fixture.state_dir.join("state/session_facts.json").exists());
+    let session_facts: Value = serde_json::from_str(
+        &fs::read_to_string(fixture.state_dir.join("state/session_facts.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(session_facts["schema_version"], 1);
+    assert_eq!(session_facts["facts"]["popup_program"], json!(["lazygit"]));
+    assert!(session_facts["normalized_config"].is_object());
     assert!(fixture.zellij_layout_dir.join("yzx_side.kdl").exists());
     assert!(
         fixture

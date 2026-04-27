@@ -60,6 +60,24 @@ def regenerate_runtime_configs [runtime_dir: string, --quiet] {
     $result.plan
 }
 
+def prepare_session_facts_snapshot [] {
+    let source = (get_yazelix_state_dir | path join "state" "session_facts.json")
+    if not ($source | path exists) {
+        return null
+    }
+
+    let launch_id = (date now | into int | into string)
+    let target_dir = (get_yazelix_state_dir | path join "sessions" $launch_id)
+    mkdir $target_dir
+    let target = ($target_dir | path join "session_facts.json")
+    let copy = (do { ^cp $source $target } | complete)
+    if $copy.exit_code != 0 {
+        return null
+    }
+    $env.YAZELIX_SESSION_FACTS_PATH = $target
+    $target
+}
+
 def capture_startup_handoff_context [
     runtime_dir: string
     applied_runtime_state: record
@@ -155,7 +173,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
         null
     })
     if ($upgrade_summary != null) and ($upgrade_summary.shown? | default false) {
-        let output = ($upgrade_summary.report.output? | default "" | into string)
+        let output = ($upgrade_summary.output? | default "" | into string)
         if ($output | is-not-empty) {
             print $output
         }
@@ -172,6 +190,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     } catch { |err|
             error make {msg: $"Failed to prepare Yazelix generated runtime state: ($err.msg)\nRun `yzx doctor` to inspect the runtime and generated-state contract, then restart Yazelix after fixing the reported problem."}
     })
+    let session_facts_path = (prepare_session_facts_snapshot)
 
     let merged_zellij_dir = ((get_zellij_config_paths).merged_config_dir | str replace "~" $env.HOME)
     let working_dir = if ($cwd_override | is-not-empty) {
@@ -214,6 +233,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
         } {
             layout_path: $layout_path
             default_shell: $zellij_default_shell
+            session_facts_path: $session_facts_path
             persistent_sessions: ($startup_facts.persistent_sessions? | default false)
         } | ignore
         return

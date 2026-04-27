@@ -2,10 +2,8 @@
 //! Public `yzx cwd`, `yzx reveal`, and `yzx popup` owners for `yzx_control`.
 
 use crate::bridge::{CoreError, ErrorClass};
-use crate::control_plane::{
-    config_dir_from_env, config_override_from_env, home_dir_from_env,
-    load_normalized_config_for_control, run_child_in_runtime_env, runtime_dir_from_env,
-};
+use crate::control_plane::{home_dir_from_env, run_child_in_runtime_env, runtime_dir_from_env};
+use crate::session_facts::compute_session_facts_from_env;
 use crate::transient_pane_facts::compute_transient_pane_facts_from_env;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -346,6 +344,7 @@ fn current_process_runtime_env() -> serde_json::Map<String, serde_json::Value> {
         "EDITOR",
         "VISUAL",
         "YAZELIX_RUNTIME_DIR",
+        "YAZELIX_SESSION_FACTS_PATH",
         "IN_YAZELIX_SHELL",
         "ZELLIJ_DEFAULT_LAYOUT",
         "YAZI_CONFIG_HOME",
@@ -568,31 +567,8 @@ fn close_current_pane() {
 }
 
 pub(crate) fn load_workspace_command_config() -> Result<WorkspaceCommandConfig, CoreError> {
-    let runtime_dir = runtime_dir_from_env()?;
-    let config_dir = config_dir_from_env()?;
-    let config_override = config_override_from_env();
-    let normalized =
-        load_normalized_config_for_control(&runtime_dir, &config_dir, config_override.as_deref())?;
+    let facts = compute_session_facts_from_env()?;
     let home_dir = home_dir_from_env()?;
-    let yazi_command = normalized
-        .get("yazi_command")
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .unwrap_or("yazi")
-        .to_string();
-    let ya_command = normalized
-        .get("yazi_ya_command")
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .unwrap_or("ya")
-        .to_string();
-    let editor_command = normalized
-        .get("editor_command")
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|value| !value.is_empty());
     let env_editor = env::var("EDITOR")
         .ok()
         .map(|value| value.trim().to_string())
@@ -603,14 +579,14 @@ pub(crate) fn load_workspace_command_config() -> Result<WorkspaceCommandConfig, 
         .filter(|value| !value.is_empty());
 
     Ok(WorkspaceCommandConfig {
-        enable_sidebar: true,
+        enable_sidebar: facts.enable_sidebar,
         editor_kind: resolve_managed_editor_kind(
             managed_helix_binary.as_deref(),
-            editor_command,
+            facts.editor_command.as_deref(),
             env_editor.as_deref(),
         ),
-        yazi_command,
-        ya_command,
+        yazi_command: facts.yazi_command,
+        ya_command: facts.ya_command,
         home_dir,
     })
 }
