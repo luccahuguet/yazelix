@@ -142,21 +142,27 @@ impl ScreenFrameProducer for BoidsAnimation {
         let grid_width = self.grid_width();
         let grid_height = self.grid_height();
         let mut frame = ScreenFrame::new(self.context.inner_width, grid_height);
-        for (index, boid) in self.boids.iter().enumerate() {
-            let x = wrapped_index(boid.position.x.round(), grid_width);
-            let y = wrapped_index(boid.position.y.round(), grid_height);
-            let glyphs = boid_glyph_pair(self.cell_style, boid.velocity);
-            let origin_x = x * 2;
-            for (dx, glyph) in glyphs.into_iter().enumerate() {
-                frame.set(
-                    origin_x + dx,
-                    y,
-                    ScreenCell {
-                        glyph,
-                        color_x: boid_color_index(index, boid, self.variant),
-                        color_y: 0,
-                    },
-                );
+        for role_pass in [BoidRole::Flock, BoidRole::Predator] {
+            for (index, boid) in self.boids.iter().enumerate() {
+                if boid.role != role_pass {
+                    continue;
+                }
+                let x = wrapped_index(boid.position.x.round(), grid_width);
+                let y = wrapped_index(boid.position.y.round(), grid_height);
+                let glyphs = boid_glyph_cells(self.cell_style, boid.role, boid.velocity);
+                let color_x = boid_color_index(index, boid, self.variant);
+                let origin_x = x * 2;
+                for cell in glyphs {
+                    frame.set(
+                        origin_x + cell.dx,
+                        y + cell.dy,
+                        ScreenCell {
+                            glyph: cell.glyph,
+                            color_x,
+                            color_y: 0,
+                        },
+                    );
+                }
             }
         }
         frame.render_lines(self.context.resolved_width, |cell| {
@@ -351,32 +357,137 @@ fn wrapped_index(value: f64, limit: usize) -> usize {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum BoidDirection {
     East,
-    West,
-    North,
+    SouthEast,
     South,
+    SouthWest,
+    West,
+    NorthWest,
+    North,
+    NorthEast,
 }
 
-fn boid_direction(velocity: Vec2) -> BoidDirection {
-    if velocity.x.abs() >= velocity.y.abs() {
-        if velocity.x >= 0.0 {
-            BoidDirection::East
-        } else {
-            BoidDirection::West
-        }
-    } else if velocity.y >= 0.0 {
-        BoidDirection::South
-    } else {
-        BoidDirection::North
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct BoidGlyphCell {
+    dx: usize,
+    dy: usize,
+    glyph: char,
+}
+
+const fn glyph_cell(dx: usize, dy: usize, glyph: char) -> BoidGlyphCell {
+    BoidGlyphCell { dx, dy, glyph }
+}
+
+const PREY_EAST: [BoidGlyphCell; 2] = [glyph_cell(0, 0, '⠐'), glyph_cell(1, 0, '⠶')];
+const PREY_SOUTH_EAST: [BoidGlyphCell; 2] = [glyph_cell(0, 0, '⠠'), glyph_cell(1, 0, '⠘')];
+const PREY_SOUTH: [BoidGlyphCell; 2] = [glyph_cell(0, 0, '⠰'), glyph_cell(1, 0, '⠆')];
+const PREY_SOUTH_WEST: [BoidGlyphCell; 2] = [glyph_cell(0, 0, '⠃'), glyph_cell(1, 0, '⠄')];
+const PREY_WEST: [BoidGlyphCell; 2] = [glyph_cell(0, 0, '⠶'), glyph_cell(1, 0, '⠂')];
+const PREY_NORTH_WEST: [BoidGlyphCell; 2] = [glyph_cell(0, 0, '⡠'), glyph_cell(1, 0, '⠁')];
+const PREY_NORTH: [BoidGlyphCell; 2] = [glyph_cell(0, 0, '⠘'), glyph_cell(1, 0, '⠃')];
+const PREY_NORTH_EAST: [BoidGlyphCell; 2] = [glyph_cell(0, 0, '⠈'), glyph_cell(1, 0, '⢆')];
+
+const PREDATOR_EAST: [BoidGlyphCell; 4] = [
+    glyph_cell(0, 0, '⠐'),
+    glyph_cell(1, 0, '⢦'),
+    glyph_cell(0, 1, '⠠'),
+    glyph_cell(1, 1, '⡴'),
+];
+const PREDATOR_SOUTH_EAST: [BoidGlyphCell; 4] = [
+    glyph_cell(0, 0, '⠠'),
+    glyph_cell(1, 0, '⢄'),
+    glyph_cell(0, 1, '⠘'),
+    glyph_cell(1, 1, '⣆'),
+];
+const PREDATOR_SOUTH: [BoidGlyphCell; 4] = [
+    glyph_cell(0, 0, '⠠'),
+    glyph_cell(1, 0, '⠄'),
+    glyph_cell(0, 1, '⠰'),
+    glyph_cell(1, 1, '⠆'),
+];
+const PREDATOR_SOUTH_WEST: [BoidGlyphCell; 4] = [
+    glyph_cell(0, 0, '⡠'),
+    glyph_cell(1, 0, '⠄'),
+    glyph_cell(0, 1, '⣰'),
+    glyph_cell(1, 1, '⠘'),
+];
+const PREDATOR_WEST: [BoidGlyphCell; 4] = [
+    glyph_cell(0, 0, '⡴'),
+    glyph_cell(1, 0, '⠂'),
+    glyph_cell(0, 1, '⢦'),
+    glyph_cell(1, 1, '⠄'),
+];
+const PREDATOR_NORTH_WEST: [BoidGlyphCell; 4] = [
+    glyph_cell(0, 0, '⣰'),
+    glyph_cell(1, 0, '⠁'),
+    glyph_cell(0, 1, '⠈'),
+    glyph_cell(1, 1, '⢄'),
+];
+const PREDATOR_NORTH: [BoidGlyphCell; 4] = [
+    glyph_cell(0, 0, '⠘'),
+    glyph_cell(1, 0, '⠃'),
+    glyph_cell(0, 1, '⠈'),
+    glyph_cell(1, 1, '⠁'),
+];
+const PREDATOR_NORTH_EAST: [BoidGlyphCell; 4] = [
+    glyph_cell(0, 0, '⠈'),
+    glyph_cell(1, 0, '⣆'),
+    glyph_cell(0, 1, '⡠'),
+    glyph_cell(1, 1, '⠁'),
+];
+
+fn prey_glyph_cells(direction: BoidDirection) -> &'static [BoidGlyphCell] {
+    match direction {
+        BoidDirection::East => &PREY_EAST,
+        BoidDirection::SouthEast => &PREY_SOUTH_EAST,
+        BoidDirection::South => &PREY_SOUTH,
+        BoidDirection::SouthWest => &PREY_SOUTH_WEST,
+        BoidDirection::West => &PREY_WEST,
+        BoidDirection::NorthWest => &PREY_NORTH_WEST,
+        BoidDirection::North => &PREY_NORTH,
+        BoidDirection::NorthEast => &PREY_NORTH_EAST,
     }
 }
 
-fn boid_glyph_pair(cell_style: GameOfLifeCellStyle, velocity: Vec2) -> [char; 2] {
-    let _ = cell_style;
-    match boid_direction(velocity) {
-        BoidDirection::East => ['·', '→'],
-        BoidDirection::West => ['←', '·'],
-        BoidDirection::North => ['↑', '·'],
-        BoidDirection::South => ['↓', '·'],
+fn predator_glyph_cells(direction: BoidDirection) -> &'static [BoidGlyphCell] {
+    match direction {
+        BoidDirection::East => &PREDATOR_EAST,
+        BoidDirection::SouthEast => &PREDATOR_SOUTH_EAST,
+        BoidDirection::South => &PREDATOR_SOUTH,
+        BoidDirection::SouthWest => &PREDATOR_SOUTH_WEST,
+        BoidDirection::West => &PREDATOR_WEST,
+        BoidDirection::NorthWest => &PREDATOR_NORTH_WEST,
+        BoidDirection::North => &PREDATOR_NORTH,
+        BoidDirection::NorthEast => &PREDATOR_NORTH_EAST,
+    }
+}
+
+fn boid_direction(velocity: Vec2) -> BoidDirection {
+    if velocity.length() == 0.0 {
+        return BoidDirection::East;
+    }
+
+    let sector = (velocity.y.atan2(velocity.x) / std::f64::consts::FRAC_PI_4).round() as i32;
+    match sector.rem_euclid(8) {
+        0 => BoidDirection::East,
+        1 => BoidDirection::SouthEast,
+        2 => BoidDirection::South,
+        3 => BoidDirection::SouthWest,
+        4 => BoidDirection::West,
+        5 => BoidDirection::NorthWest,
+        6 => BoidDirection::North,
+        _ => BoidDirection::NorthEast,
+    }
+}
+
+fn boid_glyph_cells(
+    _cell_style: GameOfLifeCellStyle,
+    role: BoidRole,
+    velocity: Vec2,
+) -> &'static [BoidGlyphCell] {
+    let direction = boid_direction(velocity);
+    match role {
+        BoidRole::Flock => prey_glyph_cells(direction),
+        BoidRole::Predator => predator_glyph_cells(direction),
     }
 }
 
@@ -423,6 +534,13 @@ mod tests {
             visible.push(ch);
         }
         visible
+    }
+
+    fn glyph_text(role: BoidRole, velocity: Vec2) -> String {
+        boid_glyph_cells(GameOfLifeCellStyle::FullBlock, role, velocity)
+            .iter()
+            .map(|cell| cell.glyph)
+            .collect()
     }
 
     // Defends: public boids style names include the legacy alias and retained behavior-backed variants, with flow removed from the live surface.
@@ -536,7 +654,7 @@ mod tests {
         );
     }
 
-    // Regression: boids must render as directional two-column creatures, not plain block cells with skipped rows.
+    // Regression: boids must render as directional V-shaped dotted creatures, not arrows or plain block cells with skipped rows.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn boids_render_scaled_cells_without_inserted_rows() {
@@ -549,8 +667,13 @@ mod tests {
 
         assert_eq!(visible.len(), 24);
         assert!(visible.iter().all(|line| line.chars().count() == 80));
+        assert!(visible.iter().all(|line| {
+            !["→", "←", "↑", "↓"]
+                .into_iter()
+                .any(|glyph| line.contains(glyph))
+        }));
         assert!(visible.iter().any(|line| {
-            ["·→", "←·", "↑·", "↓·"]
+            ["⠐⠶", "⠶⠂", "⠈⢆", "⡠⠁", "⠠⠘", "⠃⠄"]
                 .into_iter()
                 .any(|signature| line.contains(signature))
         }));
@@ -570,35 +693,52 @@ mod tests {
 
         assert_eq!(visible.len(), 12);
         assert!(visible.iter().all(|line| line.chars().count() == 60));
+        assert!(visible.iter().all(|line| {
+            !["→", "←", "↑", "↓"]
+                .into_iter()
+                .any(|glyph| line.contains(glyph))
+        }));
         assert!(visible.iter().any(|line| {
-            ["·→", "←·", "↑·", "↓·"]
+            ["⠐⠶", "⠶⠂", "⠈⢆", "⡠⠁", "⠠⠘", "⠃⠄"]
                 .into_iter()
                 .any(|signature| line.contains(signature))
         }));
     }
 
-    // Regression: boid units must not collapse into identical pulsing blocks; shape encodes direction and color is stable per boid.
+    // Regression: boid units must not collapse into identical pulsing blocks; V-shaped dotted sprites encode cardinal and diagonal direction.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn boid_visual_identity_is_stable_and_directional() {
-        assert_eq!(
-            boid_glyph_pair(GameOfLifeCellStyle::FullBlock, Vec2::new(1.0, 0.1)),
-            ['·', '→']
+        assert_eq!(glyph_text(BoidRole::Flock, Vec2::new(1.0, 0.1)), "⠐⠶");
+        assert_eq!(glyph_text(BoidRole::Flock, Vec2::new(1.0, 1.0)), "⠠⠘");
+        assert_eq!(glyph_text(BoidRole::Flock, Vec2::new(0.1, 1.0)), "⠰⠆");
+        assert_eq!(glyph_text(BoidRole::Flock, Vec2::new(-1.0, 1.0)), "⠃⠄");
+        assert_eq!(glyph_text(BoidRole::Flock, Vec2::new(-1.0, 0.1)), "⠶⠂");
+        assert_eq!(glyph_text(BoidRole::Flock, Vec2::new(-1.0, -1.0)), "⡠⠁");
+        assert_eq!(glyph_text(BoidRole::Flock, Vec2::new(0.1, -1.0)), "⠘⠃");
+        assert_eq!(glyph_text(BoidRole::Flock, Vec2::new(1.0, -1.0)), "⠈⢆");
+        assert_eq!(colorize_boid_cell(3, '⠶'), colorize_boid_cell(3, '⠶'));
+        assert_ne!(colorize_boid_cell(0, '⠶'), colorize_boid_cell(1, '⠶'));
+    }
+
+    // Defends: predator sprites have a larger dotted footprint than prey while preserving the same directional vocabulary.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn predator_sprite_is_larger_than_prey_sprite() {
+        let prey = boid_glyph_cells(
+            GameOfLifeCellStyle::FullBlock,
+            BoidRole::Flock,
+            Vec2::new(1.0, -1.0),
         );
-        assert_eq!(
-            boid_glyph_pair(GameOfLifeCellStyle::FullBlock, Vec2::new(-1.0, 0.1)),
-            ['←', '·']
+        let predator = boid_glyph_cells(
+            GameOfLifeCellStyle::FullBlock,
+            BoidRole::Predator,
+            Vec2::new(1.0, -1.0),
         );
-        assert_eq!(
-            boid_glyph_pair(GameOfLifeCellStyle::FullBlock, Vec2::new(0.1, -1.0)),
-            ['↑', '·']
-        );
-        assert_eq!(
-            boid_glyph_pair(GameOfLifeCellStyle::FullBlock, Vec2::new(0.1, 1.0)),
-            ['↓', '·']
-        );
-        assert_eq!(colorize_boid_cell(3, '→'), colorize_boid_cell(3, '→'));
-        assert_ne!(colorize_boid_cell(0, '→'), colorize_boid_cell(1, '→'));
+
+        assert!(predator.len() > prey.len());
+        assert!(predator.iter().any(|cell| cell.dy == 1));
+        assert_ne!(glyph_text(BoidRole::Predator, Vec2::new(1.0, -1.0)), "⠈⢆");
     }
 
     // Defends: the faster boids tuning moves creatures far enough per frame to read as intentional animation.
