@@ -110,7 +110,7 @@ sidebar_command = "nu"
 sidebar_args = ["__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu"]
 ```
 
-The default launches the managed Yazi adapter. You can point the same managed sidebar slot at another terminal side surface, but the pane remains named `sidebar` so the pane orchestrator keeps one owner for focus and layout state.
+The default launches the managed Yazi adapter. You can point the same managed sidebar slot at another terminal side surface; if `sidebar_args` remains at the default Yazi adapter path, Yazelix renders the custom command with no inherited args. The pane remains named `sidebar` so the pane orchestrator keeps one owner for focus and layout state.
 
 ## Current Yazelix Defaults
 

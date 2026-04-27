@@ -309,7 +309,13 @@ in
     };
 
     sidebar_args = mkMainContractOption "editor.sidebar_args" {
-      description = "Arguments passed to the managed sidebar command. The default launches Yazelix's managed Yazi adapter.";
+      description = ''
+        Arguments passed to the managed sidebar command.
+
+        The default launches Yazelix's managed Yazi adapter with the default Nu command.
+        When sidebar_command is changed and sidebar_args remains at that default adapter
+        path, Yazelix renders the custom sidebar command with no inherited Yazi argument.
+      '';
     };
 
     disable_zellij_tips = mkMainContractOption "zellij.disable_tips" {

@@ -5,7 +5,8 @@ use crate::control_plane::{
     state_dir_from_env as state_dir_from_control_plane,
 };
 use crate::zellij_render_plan::{
-    TopLevelSetting, ZellijRenderPlanData, ZellijRenderPlanRequest, compute_zellij_render_plan,
+    DEFAULT_SIDEBAR_YAZI_ARG, TopLevelSetting, ZellijRenderPlanData, ZellijRenderPlanRequest,
+    compute_zellij_render_plan, effective_sidebar_args,
 };
 use serde::Serialize;
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
@@ -248,11 +249,8 @@ fn build_render_plan_request(
         initial_sidebar_state: string_config(config, "initial_sidebar_state", "open").to_string(),
         sidebar_width_percent: int_config(config, "sidebar_width_percent", 20),
         sidebar_command: string_config(config, "sidebar_command", "nu").to_string(),
-        sidebar_args: string_list_config(config, "sidebar_args").unwrap_or_else(|| {
-            vec![
-                "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu".to_string(),
-            ]
-        }),
+        sidebar_args: string_list_config(config, "sidebar_args")
+            .unwrap_or_else(|| vec![DEFAULT_SIDEBAR_YAZI_ARG.to_string()]),
         popup_width_percent: int_config(config, "popup_width_percent", 90),
         popup_height_percent: int_config(config, "popup_height_percent", 90),
         zellij_widget_tray: string_list_config(config, "zellij_widget_tray"),
@@ -1390,6 +1388,9 @@ fn build_generation_fingerprint(
             })
         })
         .collect::<Vec<_>>();
+    let sidebar_command = string_config(config, "sidebar_command", "nu");
+    let sidebar_args = string_list_config(config, "sidebar_args")
+        .unwrap_or_else(|| vec![DEFAULT_SIDEBAR_YAZI_ARG.to_string()]);
     let relevant_config = json!({
         "zellij_widget_tray": config.get("zellij_widget_tray").cloned().unwrap_or_else(|| json!(["editor", "shell", "term", "cpu", "ram"])),
         "zellij_custom_text": string_config(config, "zellij_custom_text", ""),
@@ -1402,8 +1403,8 @@ fn build_generation_fingerprint(
         "enable_sidebar": bool_config(config, "enable_sidebar", true),
         "initial_sidebar_state": string_config(config, "initial_sidebar_state", "open"),
         "sidebar_width_percent": int_config(config, "sidebar_width_percent", 20),
-        "sidebar_command": string_config(config, "sidebar_command", "nu"),
-        "sidebar_args": config.get("sidebar_args").cloned().unwrap_or_else(|| json!(["__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu"])),
+        "sidebar_command": sidebar_command,
+        "sidebar_args": effective_sidebar_args(sidebar_command, &sidebar_args),
         "popup_width_percent": int_config(config, "popup_width_percent", 90),
         "popup_height_percent": int_config(config, "popup_height_percent", 90),
         "disable_zellij_tips": string_config(config, "disable_zellij_tips", "true"),
@@ -1777,6 +1778,40 @@ ui { pane_frames { hide_session_name true } }
         assert!(rendered.contains(r#"args "--root" "/opt/yazelix/side""#));
         assert!(!rendered.contains("__YAZELIX_SIDEBAR_COMMAND__"));
         assert!(!rendered.contains("__YAZELIX_SIDEBAR_ARGS__"));
+    }
+
+    // Regression: custom sidebar apps must not receive the default Yazi launcher script from normalized config.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn renders_custom_sidebar_command_without_implicit_yazi_launcher_arg() {
+        let mut config = JsonMap::new();
+        config.insert("sidebar_command".into(), json!("lazygit"));
+        config.insert("sidebar_args".into(), json!([DEFAULT_SIDEBAR_YAZI_ARG]));
+        let request = build_render_plan_request(
+            &config,
+            std::path::Path::new("/tmp/yazelix/layouts"),
+            "/nix/store/bin/nu",
+        );
+        let plan = compute_zellij_render_plan(&request).unwrap();
+        let rendered = render_layout_template(
+            r#"pane name="sidebar" {
+    command __YAZELIX_SIDEBAR_COMMAND__
+    __YAZELIX_SIDEBAR_ARGS__
+}"#,
+            &BTreeMap::new(),
+            "",
+            "",
+            "",
+            "",
+            std::path::Path::new("/home/user"),
+            std::path::Path::new("/opt/yazelix"),
+            &plan,
+        )
+        .unwrap();
+
+        assert!(rendered.contains(r#"command "lazygit""#));
+        assert!(!rendered.contains("args "));
+        assert!(!rendered.contains("launch_sidebar_yazi.nu"));
     }
 
     // Regression: shipped zjstatus templates must not call the deleted dynamic identity widget helper.

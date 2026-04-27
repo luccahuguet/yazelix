@@ -55,6 +55,9 @@ const WIDGET_TRAY_ALLOWED: &[&str] = &[
     "cpu",
     "ram",
 ];
+pub const DEFAULT_SIDEBAR_COMMAND: &str = "nu";
+pub const DEFAULT_SIDEBAR_YAZI_ARG: &str =
+    "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu";
 
 fn default_enable_sidebar() -> bool {
     true
@@ -69,11 +72,11 @@ fn default_sidebar_width_percent() -> i64 {
 }
 
 fn default_sidebar_command() -> String {
-    "nu".into()
+    DEFAULT_SIDEBAR_COMMAND.into()
 }
 
 fn default_sidebar_args() -> Vec<String> {
-    vec!["__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu".into()]
+    vec![DEFAULT_SIDEBAR_YAZI_ARG.into()]
 }
 
 fn default_popup_percent() -> i64 {
@@ -254,6 +257,26 @@ fn validate_sidebar_launcher(command: &str) -> Result<(), CoreError> {
             serde_json::json!({ "field": "editor.sidebar_command" }),
         ))
     }
+}
+
+pub fn effective_sidebar_args(command: &str, args: &[String]) -> Vec<String> {
+    if !is_default_sidebar_command(command) && args == default_sidebar_args().as_slice() {
+        Vec::new()
+    } else {
+        args.to_vec()
+    }
+}
+
+fn is_default_sidebar_command(command: &str) -> bool {
+    let trimmed = command.trim();
+    if trimmed == DEFAULT_SIDEBAR_COMMAND {
+        return true;
+    }
+    Path::new(trimmed)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .map(|name| name == DEFAULT_SIDEBAR_COMMAND)
+        .unwrap_or(false)
 }
 
 fn validate_popup_percent(field: &str, value: i64) -> Result<(), CoreError> {
@@ -446,7 +469,7 @@ pub fn compute_zellij_render_plan(
         default_layout_name,
         sidebar_width_percent: request.sidebar_width_percent,
         sidebar_command: request.sidebar_command.trim().to_string(),
-        sidebar_args: request.sidebar_args.clone(),
+        sidebar_args: effective_sidebar_args(&request.sidebar_command, &request.sidebar_args),
         popup_width_percent: request.popup_width_percent,
         popup_height_percent: request.popup_height_percent,
         widget_tray,
@@ -547,6 +570,33 @@ mod tests {
         let error = compute_zellij_render_plan(&req).unwrap_err();
 
         assert_eq!(error.code(), "invalid_sidebar_command");
+    }
+
+    // Regression: custom sidebar apps must not inherit the default Yazi launcher script as their first argument.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn custom_sidebar_command_drops_implicit_yazi_launcher_arg() {
+        for command in ["lazygit", "opencode"] {
+            let mut req = sample_request();
+            req.sidebar_command = command.into();
+            req.sidebar_args = default_sidebar_args();
+            let plan = compute_zellij_render_plan(&req).unwrap();
+
+            assert_eq!(plan.sidebar_command, command);
+            assert!(plan.sidebar_args.is_empty());
+        }
+    }
+
+    // Defends: explicit custom sidebar arguments still pass through after the implicit default launcher arg is removed.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn custom_sidebar_command_preserves_explicit_args() {
+        let mut req = sample_request();
+        req.sidebar_command = "lazygit".into();
+        req.sidebar_args = vec!["status".into()];
+        let plan = compute_zellij_render_plan(&req).unwrap();
+
+        assert_eq!(plan.sidebar_args, vec!["status"]);
     }
 
     // Defends: widget tray entries are validated against the same allowed set as config.normalize.

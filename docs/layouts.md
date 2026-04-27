@@ -23,7 +23,7 @@ sidebar_args = ["__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_y
 
 `editor.sidebar_width_percent` controls the open Yazi sidebar width as a percentage of the tab. Valid range: `10` to `40`.
 
-`editor.sidebar_command` and `editor.sidebar_args` control the terminal side-surface launched in the managed sidebar slot. The default remains the Yazelix-managed Yazi adapter. Custom launchers still run inside the pane named `sidebar`; the pane orchestrator keeps owning sidebar identity, focus, and layout state.
+`editor.sidebar_command` and `editor.sidebar_args` control the terminal side-surface launched in the managed sidebar slot. The default remains the Yazelix-managed Yazi adapter. When `sidebar_command` changes and `sidebar_args` is left at the default Yazi adapter path, Yazelix renders the custom sidebar command with no inherited args. Set `sidebar_args` explicitly for tools that need them, such as `["status"]` for `lazygit status`. Custom launchers still run inside the pane named `sidebar`; the pane orchestrator keeps owning sidebar identity, focus, and layout state.
 
 ## Layout Metadata
 

@@ -62,6 +62,8 @@ sidebar_width_percent = 20
 # The default launches Yazelix's managed Yazi sidebar adapter.
 # Advanced users can point this at another terminal side surface; the pane is
 # still owned by Yazelix as the managed "sidebar" pane.
+# If sidebar_command changes and sidebar_args stays at this default, Yazelix
+# runs the custom sidebar command with no inherited Yazi launcher argument.
 sidebar_command = "nu"
 sidebar_args = ["__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu"]
 
