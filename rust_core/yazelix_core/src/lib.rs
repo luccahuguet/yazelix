@@ -32,6 +32,7 @@ pub mod runtime_contract;
 pub mod runtime_env;
 pub mod runtime_materialization;
 pub mod startup_facts;
+pub mod startup_handoff;
 pub mod status_report;
 pub mod support_commands;
 pub mod terminal_materialization;
@@ -122,6 +123,10 @@ pub use runtime_materialization::{
     materialize_runtime_state, plan_runtime_materialization, repair_runtime_materialization,
 };
 pub use startup_facts::{StartupFactsData, compute_startup_facts_from_env};
+pub use startup_handoff::{
+    StartupHandoffArtifact, StartupHandoffCaptureData, StartupHandoffCaptureRequest,
+    capture_startup_handoff_context,
+};
 pub use status_report::{StatusReportData, compute_status_report};
 pub use support_commands::{run_yzx_sponsor, run_yzx_why};
 pub use terminal_materialization::{

@@ -17,14 +17,14 @@ use yazelix_core::{
     LaunchMaterializationRequest, NormalizeConfigRequest, RecordConfigStateRequest,
     RuntimeContractEvaluateRequest, RuntimeMaterializationPlanRequest,
     RuntimeMaterializationRepairEvaluateRequest, RuntimeMaterializationRepairRunData,
-    RuntimeRepairDirective, StartupFactsData, StartupLaunchPreflightRequest,
-    TerminalMaterializationRequest, TransientPaneFactsData, YaziMaterializationRequest,
-    YaziRenderPlanRequest, YzxExternBridgeSyncRequest, ZellijMaterializationRequest,
-    ZellijRenderPlanRequest, compute_config_state, compute_integration_facts_from_env,
-    compute_runtime_env, compute_startup_facts_from_env, compute_status_report,
-    compute_transient_pane_facts_from_env, compute_yazi_render_plan, compute_zellij_render_plan,
-    current_release_headline, error_envelope, evaluate_doctor_config_report,
-    evaluate_doctor_runtime_report, evaluate_helix_doctor_report,
+    RuntimeRepairDirective, StartupFactsData, StartupHandoffCaptureRequest,
+    StartupLaunchPreflightRequest, TerminalMaterializationRequest, TransientPaneFactsData,
+    YaziMaterializationRequest, YaziRenderPlanRequest, YzxExternBridgeSyncRequest,
+    ZellijMaterializationRequest, ZellijRenderPlanRequest, capture_startup_handoff_context,
+    compute_config_state, compute_integration_facts_from_env, compute_runtime_env,
+    compute_startup_facts_from_env, compute_status_report, compute_transient_pane_facts_from_env,
+    compute_yazi_render_plan, compute_zellij_render_plan, current_release_headline, error_envelope,
+    evaluate_doctor_config_report, evaluate_doctor_runtime_report, evaluate_helix_doctor_report,
     evaluate_install_ownership_report, evaluate_runtime_contract,
     evaluate_startup_launch_preflight, generate_ghostty_materialization,
     generate_helix_materialization, generate_terminal_materialization,
@@ -47,6 +47,7 @@ const RUNTIME_ENV_COMPUTE_COMMAND: &str = "runtime-env.compute";
 const INTEGRATION_FACTS_COMPUTE_COMMAND: &str = "integration-facts.compute";
 const TRANSIENT_PANE_FACTS_COMPUTE_COMMAND: &str = "transient-pane-facts.compute";
 const STARTUP_FACTS_COMPUTE_COMMAND: &str = "startup-facts.compute";
+const STARTUP_HANDOFF_CAPTURE_COMMAND: &str = "startup-handoff.capture";
 const RUNTIME_MATERIALIZATION_PLAN_COMMAND: &str = "runtime-materialization.plan";
 const RUNTIME_MATERIALIZATION_MATERIALIZE_COMMAND: &str = "runtime-materialization.materialize";
 const RUNTIME_MATERIALIZATION_REPAIR_COMMAND: &str = "runtime-materialization.repair";
@@ -177,6 +178,11 @@ fn run() -> Result<(), Box<CommandError>> {
         STARTUP_FACTS_COMPUTE_COMMAND => {
             let command_for_error = command.clone();
             run_startup_facts_compute(parser)
+                .map_err(|error| CommandError::new(command_for_error, error))
+        }
+        STARTUP_HANDOFF_CAPTURE_COMMAND => {
+            let command_for_error = command.clone();
+            run_startup_handoff_capture(parser)
                 .map_err(|error| CommandError::new(command_for_error, error))
         }
         RUNTIME_MATERIALIZATION_PLAN_COMMAND => {
@@ -990,6 +996,14 @@ fn run_startup_facts_compute(parser: lexopt::Parser) -> Result<(), CoreError> {
     ensure_no_args(parser)?;
     let data: StartupFactsData = compute_startup_facts_from_env()?;
     write_success_envelope(STARTUP_FACTS_COMPUTE_COMMAND, data)
+}
+
+fn run_startup_handoff_capture(mut parser: lexopt::Parser) -> Result<(), CoreError> {
+    let request_json = take_request_json(&mut parser)?;
+    let request: StartupHandoffCaptureRequest =
+        deserialize_json_request(&request_json, "startup-handoff.capture")?;
+    let data = capture_startup_handoff_context(&request)?;
+    write_success_envelope(STARTUP_HANDOFF_CAPTURE_COMMAND, data)
 }
 
 fn run_runtime_materialization_plan(mut parser: lexopt::Parser) -> Result<(), CoreError> {

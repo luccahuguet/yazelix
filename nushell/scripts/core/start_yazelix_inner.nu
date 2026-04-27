@@ -14,6 +14,7 @@ def get_zellij_config_paths [] {
 }
 
 const RUNTIME_MATERIALIZATION_MATERIALIZE_COMMAND = "runtime-materialization.materialize"
+const STARTUP_HANDOFF_CAPTURE_COMMAND = "startup-handoff.capture"
 
 def require_existing_directory [path_value: string, label: string] {
     let resolved = ($path_value | path expand)
@@ -57,6 +58,60 @@ def regenerate_runtime_configs [runtime_dir: string, --quiet] {
     }
 
     $result.plan
+}
+
+def capture_startup_handoff_context [
+    runtime_dir: string
+    applied_runtime_state: record
+    working_dir: string
+    session_default_cwd: string
+    launch_process_cwd: string
+    merged_zellij_dir: string
+    layout_path: string
+    zellij_default_shell: string
+    startup_facts: record
+    --verbose
+] {
+    let materialization_status = (
+        $applied_runtime_state.status?
+        | default "noop"
+        | into string
+        | str trim
+    )
+    if $materialization_status == "noop" {
+        return
+    }
+
+    let request = {
+        state_dir: (get_yazelix_state_dir)
+        working_dir: $working_dir
+        session_default_cwd: $session_default_cwd
+        launch_process_cwd: $launch_process_cwd
+        zellij_config_dir: $merged_zellij_dir
+        layout_path: $layout_path
+        default_shell: $zellij_default_shell
+        persistent_sessions: ($startup_facts.persistent_sessions? | default false)
+        session_name: ($startup_facts.session_name? | default "yazelix")
+        materialization_status: $materialization_status
+        materialization_reason: ($applied_runtime_state.reason? | default "" | into string)
+        materialization_should_regenerate: ($applied_runtime_state.should_regenerate? | default false)
+        materialization_should_sync_static_assets: ($applied_runtime_state.should_sync_static_assets? | default false)
+        missing_artifacts: ($applied_runtime_state.missing_artifacts? | default [])
+    }
+
+    try {
+        let capture = (run_yzx_core_json_command
+            $runtime_dir
+            (build_default_yzx_core_error_surface)
+            [$STARTUP_HANDOFF_CAPTURE_COMMAND "--request-json" ($request | to json -r)]
+            "Yazelix Rust startup-handoff capture helper returned invalid JSON.")
+        if $verbose and ($capture.recorded? | default false) {
+            let capture_path = ($capture.context_path? | default ($capture.latest_path? | default "unknown"))
+            print $"📝 Startup handoff context: ($capture_path)"
+        }
+    } catch {|err|
+        print $"⚠️ Failed to write startup handoff context: ($err.msg)"
+    }
 }
 
 def main [cwd_override?: string, layout_override?: string, --verbose] {
@@ -148,6 +203,8 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
         $from_plan
     }
     let layout_path = (require_existing_layout $resolved_layout_path)
+
+    capture_startup_handoff_context $yazelix_dir $applied_runtime_state $working_dir $session_default_cwd $launch_process_cwd $merged_zellij_dir $layout_path $zellij_default_shell $startup_facts --verbose=$verbose
 
     cd $launch_process_cwd
 
