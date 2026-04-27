@@ -808,7 +808,7 @@ mod tests {
     }
 
     // Defends: compact badge text normalization trims and truncates user input consistently.
-    // Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=1 total=7/10
+    // Strength: defect=1 behavior=2 resilience=2 cost=2 uniqueness=1 total=8/10
     #[test]
     fn applies_compact_badge_text_behavior() {
         let path = write_user_config("[zellij]\ncustom_text = \"  [hello]  world demo  \"\n");

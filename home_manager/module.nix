@@ -11,7 +11,10 @@ with lib;
 
 let
   cfg = config.programs.yazelix;
-  yazelixPackage = import ../yazelix_package.nix { inherit pkgs fenixPkgs nixgl; };
+  yazelixPackage = import ../yazelix_package.nix {
+    inherit pkgs fenixPkgs nixgl;
+    runtimeVariant = cfg.runtime_variant;
+  };
   mainConfigContract = builtins.fromTOML (builtins.readFile ../config_metadata/main_config_contract.toml);
   mainContractFields = mainConfigContract.fields;
   mainConfigSectionOrder = [
@@ -178,6 +181,17 @@ in
       '';
     };
 
+    runtime_variant = mkOption {
+      type = types.enum [ "ghostty" "wezterm" ];
+      default = "ghostty";
+      description = ''
+        Packaged terminal runtime variant.
+
+        - "ghostty": default first-party Ghostty runtime, including Yazelix Ghostty config effects
+        - "wezterm": WezTerm runtime for image-compatible terminal workflows without pulling heavy media helpers into Yazelix
+      '';
+    };
+
     # Configuration options (mirrors yazelix_default.toml structure)
     default_shell = mkMainContractOption "shell.default_shell" {
       description = "Default shell for Zellij sessions";
@@ -316,7 +330,7 @@ in
     };
 
     zellij_widget_tray = mkMainContractOption "zellij.widget_tray" {
-      description = "Zjstatus widget tray order (editor/shell/term/workspace/cpu/ram)";
+      description = "Zjstatus widget tray order (editor/shell/term/workspace/ai_activity/token_budget/cpu/ram)";
     };
 
     zellij_custom_text = mkMainContractOption "zellij.custom_text" {
@@ -377,11 +391,15 @@ in
         Welcome screen style.
         - "static": show the resting Yazelix logo frame only
         - "logo": show the branded animated logo reveal
-        - "boids": show the animated flocking style
+        - "boids": legacy alias for "boids_flow"
+        - "boids_predator": show boids with predator/prey motion
+        - "boids_schools": show species-separated boids schools
+        - "boids_flow": show the baseline animated flocking style
+        - "mandelbrot": show the Seahorse/Misiurewicz Mandelbrot zoom
         - "game_of_life_gliders": show the glider-swarm Game of Life style
         - "game_of_life_oscillators": show the oscillator-garden Game of Life style
         - "game_of_life_bloom": show the bloom-field Game of Life style
-        - "random": choose one Game of Life variant at random (never "static")
+        - "random": choose evenly across Game of Life, boids, and Mandelbrot families (never "static" or "logo")
       '';
     };
 

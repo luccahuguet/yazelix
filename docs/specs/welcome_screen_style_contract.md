@@ -11,15 +11,15 @@ welcome/startup callers.
 
 The retained public shape is:
 
-- welcome keeps `static`, `logo`, `boids`,
+- welcome keeps `static`, `logo`, `boids`, `boids_predator`,
+  `boids_schools`, `boids_flow`, `mandelbrot`,
   `game_of_life_gliders`, `game_of_life_oscillators`,
   `game_of_life_bloom`, and `random`
-- `yzx screen` keeps the same surface except `static`, plus screen-only
-  Mandelbrot
-- `random` means one of the three explicit Game of Life variants, not any
-  animated style
-- `logo` and `boids` remain live as explicit opt-in styles, but not part of
-  the `random` pool
+- `yzx screen` keeps the same animated surface except `static`
+- welcome `random` splits evenly across Game of Life, boids, and Mandelbrot
+  families while never choosing `static` or `logo`
+- `yzx screen random` remains the direct Game of Life preview selector
+- `boids` remains a legacy alias for `boids_flow`
 
 ## Scope
 
@@ -45,12 +45,15 @@ Out of scope:
 | --- | --- | --- | --- | --- |
 | `static` | yes | no | live | explicit low-motion resting frame for startup only |
 | `logo` | yes | yes | live | explicit branded reveal and preview style |
-| `boids` | yes | yes | live | explicit alternate animated preview style |
-| `mandelbrot` | no | yes | live | screen-only Seahorse/Misiurewicz spiral zoom |
+| `boids` | yes | yes | legacy alias | compatibility alias for `boids_flow` |
+| `boids_predator` | yes | yes | live | predator/prey flocking variant |
+| `boids_schools` | yes | yes | live | species-separated flocking variant |
+| `boids_flow` | yes | yes | live | baseline flow-field flocking variant |
+| `mandelbrot` | yes | yes | live | Seahorse/Misiurewicz spiral zoom |
 | `game_of_life_gliders` | yes | yes | live | retained default-family live simulation variant |
 | `game_of_life_oscillators` | yes | yes | live | retained default-family live simulation variant |
 | `game_of_life_bloom` | yes | yes | live | retained default-family live simulation variant |
-| `random` | yes | yes | live | picks one retained Game of Life variant and never `static`, `logo`, or `boids` |
+| `random` | yes | yes | live | welcome picks one retained animation family; `yzx screen` picks one retained Game of Life variant |
 | `game_of_life` | no | no | deleted compatibility alias | do not revive without an explicit contract change |
 
 ## Contract Items
@@ -61,9 +64,9 @@ Out of scope:
 - Owner: config metadata plus Rust style resolution in
   `front_door_render.rs` and `front_door_commands.rs`
 - Statement: The retained public style surface is exactly `static`, `logo`,
-  `boids`, `game_of_life_gliders`, `game_of_life_oscillators`,
-  `game_of_life_bloom`, and `random` for welcome, and the same minus `static`
-  plus `mandelbrot` for `yzx screen`
+  `boids`, `boids_predator`, `boids_schools`, `boids_flow`, `mandelbrot`,
+  `game_of_life_gliders`, `game_of_life_oscillators`, `game_of_life_bloom`,
+  and `random` for welcome, and the same minus `static` for `yzx screen`
 - Verification: `yzx_repo_validator validate-config-surface-contract`;
   Rust `front_door_render` and `front_door_commands` tests;
   `yzx_repo_validator validate-specs`
@@ -72,9 +75,12 @@ Out of scope:
 - Type: behavior
 - Status: live
 - Owner: Rust random-pool policy in `front_door_render.rs`
-- Statement: `random` means one of the three explicit Game of Life variants:
-  `game_of_life_gliders`, `game_of_life_oscillators`, or
-  `game_of_life_bloom`. It is not a bucket over `logo`, `boids`, or `static`
+- Statement: welcome `random` splits evenly across the Game of Life, boids,
+  and Mandelbrot families. The Game of Life family rotates through
+  `game_of_life_gliders`, `game_of_life_oscillators`, and
+  `game_of_life_bloom`; the boids family rotates through `boids_predator`,
+  `boids_schools`, and `boids_flow`; the Mandelbrot family resolves to
+  `mandelbrot`. It is not a bucket over `static` or `logo`
 - Verification: automated Rust `front_door_render` tests;
   validator `yzx_repo_validator validate-specs`
 
@@ -131,5 +137,7 @@ should either:
 
 - Bead: `yazelix-7krc.1`
 - Bead: `yazelix-lj7z.8`
+- Bead: `yazelix-roe0`
+- Bead: `yazelix-df9z`
 - Defended by: `yzx_repo_validator validate-specs`
 - Defended by: `cargo test -p yazelix_core --manifest-path rust_core/Cargo.toml`

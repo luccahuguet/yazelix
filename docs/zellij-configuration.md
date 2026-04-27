@@ -56,6 +56,8 @@ widget_tray = [
   "shell",   # Active shell
   "term",    # Terminal emulator
   # "workspace", # Current workspace/focus from the pane-orchestrator status bus
+  # "ai_activity", # AI pane activity from status-bus extension facts
+  # "token_budget", # AI token-budget status-bus extension point
   "cpu",     # CPU usage
   "ram",     # RAM usage
 ]

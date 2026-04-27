@@ -270,6 +270,9 @@ impl State {
                 .and_then(|tab_position| self.terminal_panes_by_tab.get(&tab_position))
                 .map(Vec::as_slice),
         );
+        let ai_pane_activity = active_tab_position
+            .map(|tab_position| self.get_active_ai_pane_activity_snapshot(tab_position))
+            .unwrap_or_default();
         let focus_context = match active_tab_position
             .and_then(|tab_position| self.focus_context_by_tab.get(&tab_position).copied())
             .unwrap_or(FocusContext::Other)
@@ -292,7 +295,10 @@ impl State {
             sidebar_collapsed: layout_variant.map(|variant| variant.is_sidebar_closed()),
             focus_context: focus_context.to_string(),
             transient_panes,
-            extensions: SessionStatusExtensions::default(),
+            extensions: SessionStatusExtensions {
+                ai_pane_activity,
+                ai_token_budget: Vec::new(),
+            },
         }
     }
 

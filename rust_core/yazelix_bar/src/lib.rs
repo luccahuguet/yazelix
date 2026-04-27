@@ -7,10 +7,14 @@ pub const WIDGET_EDITOR: &str = "editor";
 pub const WIDGET_SHELL: &str = "shell";
 pub const WIDGET_TERM: &str = "term";
 pub const WIDGET_WORKSPACE: &str = "workspace";
+pub const WIDGET_AI_ACTIVITY: &str = "ai_activity";
+pub const WIDGET_TOKEN_BUDGET: &str = "token_budget";
 pub const WIDGET_CPU: &str = "cpu";
 pub const WIDGET_RAM: &str = "ram";
 
 pub const COMMAND_WORKSPACE: &str = "{command_workspace}";
+pub const COMMAND_AI_ACTIVITY: &str = "{command_ai_activity}";
+pub const COMMAND_TOKEN_BUDGET: &str = "{command_token_budget}";
 pub const COMMAND_CPU: &str = "{command_cpu}";
 pub const COMMAND_RAM: &str = "{command_ram}";
 pub const COMMAND_VERSION: &str = "{command_version}";
@@ -93,6 +97,8 @@ fn render_widget(widget: &str, request: &BarRenderRequest) -> Result<String, Bar
             request.terminal_label
         )),
         WIDGET_WORKSPACE => Ok(COMMAND_WORKSPACE.to_string()),
+        WIDGET_AI_ACTIVITY => Ok(COMMAND_AI_ACTIVITY.to_string()),
+        WIDGET_TOKEN_BUDGET => Ok(COMMAND_TOKEN_BUDGET.to_string()),
         WIDGET_CPU => Ok(COMMAND_CPU.to_string()),
         WIDGET_RAM => Ok(COMMAND_RAM.to_string()),
         _ => Err(BarRenderError::InvalidWidgetTrayEntry {
@@ -132,7 +138,7 @@ mod tests {
     }
 
     // Defends: a deliberately empty tray stays empty rather than introducing stray spacing.
-    // Strength: defect=1 behavior=2 resilience=1 cost=1 uniqueness=2 total=7/10
+    // Strength: defect=1 behavior=2 resilience=1 cost=2 uniqueness=2 total=8/10
     #[test]
     fn renders_empty_widget_tray_without_padding() {
         let rendered = render_widget_tray_segment(&render_request(&[])).unwrap();
@@ -149,8 +155,18 @@ mod tests {
         assert_eq!(rendered, "{command_workspace}");
     }
 
+    // Defends: AI extension widgets render as dynamic zjstatus placeholders without changing default widgets.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn renders_ai_extension_widgets_as_dynamic_command_placeholders() {
+        let rendered =
+            render_widget_tray_segment(&render_request(&["ai_activity", "token_budget"])).unwrap();
+
+        assert_eq!(rendered, "{command_ai_activity} {command_token_budget}");
+    }
+
     // Defends: custom text remains trim-aware and does not reserve bar space when absent.
-    // Strength: defect=1 behavior=2 resilience=1 cost=1 uniqueness=2 total=7/10
+    // Strength: defect=1 behavior=2 resilience=1 cost=2 uniqueness=2 total=8/10
     #[test]
     fn renders_custom_text_segment_only_when_present() {
         assert_eq!(

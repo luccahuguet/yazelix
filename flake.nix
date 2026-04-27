@@ -45,14 +45,14 @@
         _module.args.fenixPkgs = fenix.packages.${pkgs.stdenv.hostPlatform.system};
         imports = [ ./home_manager/module.nix ];
       };
-      runtimePackage = system: pkgs:
+      runtimePackage = system: pkgs: runtimeVariant:
         import ./yazelix_runtime_package.nix {
-          inherit pkgs nixgl;
+          inherit pkgs nixgl runtimeVariant;
           fenixPkgs = fenix.packages.${system};
         };
-      yazelixPackage = system: pkgs:
+      yazelixPackage = system: pkgs: runtimeVariant:
         import ./yazelix_package.nix {
-          inherit pkgs nixgl;
+          inherit pkgs nixgl runtimeVariant;
           fenixPkgs = fenix.packages.${system};
         };
       maintainerShell =
@@ -74,13 +74,19 @@
         system:
         let
           pkgs = mkPkgs system;
-          runtime = runtimePackage system pkgs;
-          yazelix = yazelixPackage system pkgs;
+          runtime_ghostty = runtimePackage system pkgs "ghostty";
+          runtime_wezterm = runtimePackage system pkgs "wezterm";
+          yazelix_ghostty = yazelixPackage system pkgs "ghostty";
+          yazelix_wezterm = yazelixPackage system pkgs "wezterm";
         in
         {
-          default = yazelix;
-          runtime = runtime;
-          yazelix = yazelix;
+          default = yazelix_ghostty;
+          runtime = runtime_ghostty;
+          runtime_ghostty = runtime_ghostty;
+          runtime_wezterm = runtime_wezterm;
+          yazelix = yazelix_ghostty;
+          yazelix_ghostty = yazelix_ghostty;
+          yazelix_wezterm = yazelix_wezterm;
         }
       );
 
@@ -92,6 +98,14 @@
         yazelix = {
           type = "app";
           program = "${self.packages.${system}.yazelix}/bin/yzx";
+        };
+        yazelix_ghostty = {
+          type = "app";
+          program = "${self.packages.${system}.yazelix_ghostty}/bin/yzx";
+        };
+        yazelix_wezterm = {
+          type = "app";
+          program = "${self.packages.${system}.yazelix_wezterm}/bin/yzx";
         };
       });
 

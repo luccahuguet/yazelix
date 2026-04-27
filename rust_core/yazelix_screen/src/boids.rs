@@ -4,10 +4,41 @@ use crate::{
 
 const ANSI_BLUE: &str = "\u{1b}[34m";
 const ANSI_GREEN: &str = "\u{1b}[32m";
+const ANSI_RED: &str = "\u{1b}[31m";
 const ANSI_YELLOW: &str = "\u{1b}[33m";
 const ANSI_PURPLE: &str = "\u{1b}[35m";
 const ANSI_CYAN: &str = "\u{1b}[36m";
 const ANSI_RESET: &str = "\u{1b}[0m";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BoidsVariant {
+    Flow,
+    Predator,
+    Schools,
+}
+
+impl BoidsVariant {
+    pub fn from_style_name(style: &str) -> Option<Self> {
+        match style {
+            "boids" | "boids_flow" => Some(Self::Flow),
+            "boids_predator" => Some(Self::Predator),
+            "boids_schools" => Some(Self::Schools),
+            _ => None,
+        }
+    }
+
+    pub fn canonical_style_name(self) -> &'static str {
+        match self {
+            Self::Flow => "boids_flow",
+            Self::Predator => "boids_predator",
+            Self::Schools => "boids_schools",
+        }
+    }
+}
+
+pub fn is_boids_style(style: &str) -> bool {
+    BoidsVariant::from_style_name(style).is_some()
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct Vec2 {
@@ -48,27 +79,54 @@ impl Vec2 {
     fn scale(self, factor: f64) -> Self {
         Self::new(self.x * factor, self.y * factor)
     }
+
+    fn normalized(self) -> Self {
+        let length = self.length();
+        if length == 0.0 {
+            Self::zero()
+        } else {
+            self.scale(1.0 / length)
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BoidRole {
+    Flock,
+    Predator,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct Boid {
     position: Vec2,
     velocity: Vec2,
+    species: usize,
+    role: BoidRole,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BoidsAnimation {
     context: ScreenAnimationContext,
     cell_style: GameOfLifeCellStyle,
+    variant: BoidsVariant,
     boids: Vec<Boid>,
 }
 
 impl BoidsAnimation {
     pub fn new(context: ScreenAnimationContext, cell_style: GameOfLifeCellStyle) -> Self {
-        let boids = seed_boids(context);
+        Self::with_variant(context, cell_style, BoidsVariant::Flow)
+    }
+
+    pub fn with_variant(
+        context: ScreenAnimationContext,
+        cell_style: GameOfLifeCellStyle,
+        variant: BoidsVariant,
+    ) -> Self {
+        let boids = seed_boids(context, variant);
         Self {
             context,
             cell_style,
+            variant,
             boids,
         }
     }
@@ -98,7 +156,7 @@ impl ScreenFrameProducer for BoidsAnimation {
                     y,
                     ScreenCell {
                         glyph,
-                        color_x: index,
+                        color_x: boid_color_index(index, boid, self.variant),
                         color_y: 0,
                     },
                 );
@@ -112,16 +170,16 @@ impl ScreenFrameProducer for BoidsAnimation {
     fn advance_frame(&mut self) {
         let grid_width = self.grid_width() as f64;
         let grid_height = self.grid_height() as f64;
-        step_boids(&mut self.boids, grid_width, grid_height);
+        step_boids(&mut self.boids, grid_width, grid_height, self.variant);
     }
 
     fn resize(&mut self, context: ScreenAnimationContext) {
         self.context = context;
-        self.boids = seed_boids(context);
+        self.boids = seed_boids(context, self.variant);
     }
 }
 
-fn seed_boids(context: ScreenAnimationContext) -> Vec<Boid> {
+fn seed_boids(context: ScreenAnimationContext, variant: BoidsVariant) -> Vec<Boid> {
     let grid_width = (context.inner_width / 2).max(1);
     let grid_height = context.resolved_height.max(1);
     let area = grid_width.saturating_mul(grid_height);
@@ -133,13 +191,33 @@ fn seed_boids(context: ScreenAnimationContext) -> Vec<Boid> {
 
     (0..count)
         .map(|index| {
-            let px = unit_from_seed(&mut seed) * grid_width as f64;
-            let py = unit_from_seed(&mut seed) * grid_height as f64;
+            let role = if variant == BoidsVariant::Predator && index == 0 {
+                BoidRole::Predator
+            } else {
+                BoidRole::Flock
+            };
+            let (px, py) = if role == BoidRole::Predator {
+                (grid_width as f64 * 0.5, grid_height as f64 * 0.5)
+            } else {
+                (
+                    unit_from_seed(&mut seed) * grid_width as f64,
+                    unit_from_seed(&mut seed) * grid_height as f64,
+                )
+            };
             let angle = unit_from_seed(&mut seed) * std::f64::consts::TAU;
-            let speed = 0.35 + (index % 5) as f64 * 0.04;
+            let speed = if role == BoidRole::Predator {
+                0.72
+            } else {
+                0.35 + (index % 5) as f64 * 0.04
+            };
             Boid {
                 position: Vec2::new(px, py),
                 velocity: Vec2::new(angle.cos() * speed, angle.sin() * speed),
+                species: match variant {
+                    BoidsVariant::Schools => index % 3,
+                    _ => index % 5,
+                },
+                role,
             }
         })
         .collect()
@@ -150,48 +228,120 @@ fn unit_from_seed(seed: &mut u64) -> f64 {
     ((*seed >> 33) as f64) / ((1u64 << 31) as f64)
 }
 
-fn step_boids(boids: &mut [Boid], width: f64, height: f64) {
+fn step_boids(boids: &mut [Boid], width: f64, height: f64, variant: BoidsVariant) {
     let previous = boids.to_vec();
-    let perception = 8.0;
-    let separation_distance = 3.0;
-    let max_speed = 0.85;
 
     for (index, boid) in boids.iter_mut().enumerate() {
-        let mut separation = Vec2::zero();
-        let mut alignment = Vec2::zero();
-        let mut cohesion = Vec2::zero();
-        let mut neighbors = 0.0;
-
-        for (other_index, other) in previous.iter().enumerate() {
-            if index == other_index {
-                continue;
-            }
-            let offset = other.position.sub(previous[index].position);
-            let distance = offset.length();
-            if distance == 0.0 || distance > perception {
-                continue;
-            }
-
-            if distance < separation_distance {
-                separation = separation.sub(offset.scale(1.0 / distance.max(0.2)));
-            }
-            alignment = alignment.add(other.velocity);
-            cohesion = cohesion.add(other.position);
-            neighbors += 1.0;
-        }
-
-        let mut velocity = boid.velocity;
-        if neighbors > 0.0 {
-            alignment = alignment.scale(1.0 / neighbors).sub(boid.velocity);
-            cohesion = cohesion.scale(1.0 / neighbors).sub(boid.position);
-            velocity = velocity
-                .add(separation.scale(0.10))
-                .add(alignment.scale(0.05))
-                .add(cohesion.scale(0.008));
-        }
-
-        boid.velocity = velocity.limit(max_speed);
+        let mut velocity = match (variant, boid.role) {
+            (BoidsVariant::Predator, BoidRole::Predator) => predator_velocity(index, &previous),
+            _ => flock_velocity(index, &previous, variant),
+        };
+        let max_speed = match (variant, boid.role) {
+            (BoidsVariant::Predator, BoidRole::Predator) => 1.15,
+            (BoidsVariant::Schools, BoidRole::Flock) => 0.80,
+            _ => 0.85,
+        };
+        velocity = velocity.limit(max_speed);
+        boid.velocity = velocity;
         boid.position = wrap_position(boid.position.add(boid.velocity), width, height);
+    }
+}
+
+fn flock_velocity(index: usize, previous: &[Boid], variant: BoidsVariant) -> Vec2 {
+    let boid = previous[index];
+    let perception = match variant {
+        BoidsVariant::Schools => 10.0,
+        _ => 8.0,
+    };
+    let separation_distance = 3.0;
+    let mut predator_flee = Vec2::zero();
+    let mut separation = Vec2::zero();
+    let mut alignment = Vec2::zero();
+    let mut cohesion = Vec2::zero();
+    let mut neighbors = 0.0;
+
+    for (other_index, other) in previous.iter().enumerate() {
+        if index == other_index {
+            continue;
+        }
+        let offset = other.position.sub(boid.position);
+        let distance = offset.length();
+        if distance == 0.0 || distance > perception {
+            continue;
+        }
+
+        if variant == BoidsVariant::Predator && other.role == BoidRole::Predator {
+            predator_flee = predator_flee.sub(offset.scale(1.4 / distance.max(0.4)));
+            continue;
+        }
+
+        if variant == BoidsVariant::Schools
+            && other.role == BoidRole::Flock
+            && other.species != boid.species
+        {
+            separation = separation.sub(offset.scale(0.55 / distance.max(0.4)));
+            continue;
+        }
+
+        if distance < separation_distance {
+            separation = separation.sub(offset.scale(1.0 / distance.max(0.2)));
+        }
+        alignment = alignment.add(other.velocity);
+        cohesion = cohesion.add(other.position);
+        neighbors += 1.0;
+    }
+
+    let mut velocity = boid.velocity;
+    if neighbors > 0.0 {
+        alignment = alignment.scale(1.0 / neighbors).sub(boid.velocity);
+        cohesion = cohesion.scale(1.0 / neighbors).sub(boid.position);
+        let (separation_weight, alignment_weight, cohesion_weight) = match variant {
+            BoidsVariant::Schools => (0.14, 0.07, 0.012),
+            BoidsVariant::Predator => (0.12, 0.04, 0.006),
+            BoidsVariant::Flow => (0.10, 0.05, 0.008),
+        };
+        velocity = velocity
+            .add(separation.scale(separation_weight))
+            .add(alignment.scale(alignment_weight))
+            .add(cohesion.scale(cohesion_weight));
+    }
+
+    velocity.add(predator_flee.scale(0.22))
+}
+
+fn predator_velocity(index: usize, previous: &[Boid]) -> Vec2 {
+    let predator = previous[index];
+    let mut nearest: Option<(f64, Vec2)> = None;
+    for other in previous.iter().filter(|boid| boid.role == BoidRole::Flock) {
+        let offset = other.position.sub(predator.position);
+        let distance = offset.length();
+        if distance == 0.0 {
+            continue;
+        }
+        if nearest
+            .as_ref()
+            .map_or(true, |(nearest_distance, _)| distance < *nearest_distance)
+        {
+            nearest = Some((distance, offset));
+        }
+    }
+
+    let Some((_, offset)) = nearest else {
+        return predator.velocity;
+    };
+    let desired = offset.normalized().scale(1.15);
+    predator
+        .velocity
+        .add(desired.sub(predator.velocity).limit(0.18))
+}
+
+fn boid_color_index(index: usize, boid: &Boid, variant: BoidsVariant) -> usize {
+    match (variant, boid.role) {
+        (BoidsVariant::Predator, BoidRole::Predator) => 0,
+        (BoidsVariant::Predator, BoidRole::Flock) => 1 + boid.species % 4,
+        (BoidsVariant::Schools, BoidRole::Flock) => 2 + boid.species % 3,
+        (BoidsVariant::Flow, BoidRole::Flock) => 1 + index % 5,
+        (_, _) => 1 + index % 5,
     }
 }
 
@@ -239,7 +389,14 @@ fn boid_glyph_pair(cell_style: GameOfLifeCellStyle, velocity: Vec2) -> [char; 2]
 }
 
 fn colorize_boid_cell(index: usize, glyph: char) -> String {
-    let palette = [ANSI_CYAN, ANSI_BLUE, ANSI_PURPLE, ANSI_GREEN, ANSI_YELLOW];
+    let palette = [
+        ANSI_RED,
+        ANSI_CYAN,
+        ANSI_BLUE,
+        ANSI_PURPLE,
+        ANSI_GREEN,
+        ANSI_YELLOW,
+    ];
     format!("{}{}{}", palette[index % palette.len()], glyph, ANSI_RESET)
 }
 
@@ -274,6 +431,97 @@ mod tests {
             visible.push(ch);
         }
         visible
+    }
+
+    // Defends: public boids style names include the legacy alias and the three behavior-backed variants.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn boids_style_names_resolve_to_variants() {
+        assert_eq!(
+            BoidsVariant::from_style_name("boids"),
+            Some(BoidsVariant::Flow)
+        );
+        assert_eq!(
+            BoidsVariant::from_style_name("boids_flow"),
+            Some(BoidsVariant::Flow)
+        );
+        assert_eq!(
+            BoidsVariant::from_style_name("boids_predator"),
+            Some(BoidsVariant::Predator)
+        );
+        assert_eq!(
+            BoidsVariant::from_style_name("boids_schools"),
+            Some(BoidsVariant::Schools)
+        );
+        assert_eq!(BoidsVariant::from_style_name("game_of_life_bloom"), None);
+    }
+
+    // Defends: boids variants alter simulation behavior, not just labels or colors.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn boids_variants_apply_distinct_motion_rules() {
+        let starting_boids = vec![
+            Boid {
+                position: Vec2::new(4.0, 5.0),
+                velocity: Vec2::new(0.25, 0.0),
+                species: 0,
+                role: BoidRole::Predator,
+            },
+            Boid {
+                position: Vec2::new(8.0, 5.0),
+                velocity: Vec2::new(-0.1, 0.0),
+                species: 0,
+                role: BoidRole::Flock,
+            },
+            Boid {
+                position: Vec2::new(9.0, 5.0),
+                velocity: Vec2::new(-0.1, 0.1),
+                species: 1,
+                role: BoidRole::Flock,
+            },
+        ];
+        let mut predator = starting_boids.clone();
+        let mut schools = starting_boids.clone();
+        let mut flow = starting_boids;
+
+        step_boids(&mut predator, 40.0, 20.0, BoidsVariant::Predator);
+        step_boids(&mut schools, 40.0, 20.0, BoidsVariant::Schools);
+        step_boids(&mut flow, 40.0, 20.0, BoidsVariant::Flow);
+
+        assert!(predator[0].velocity.x > flow[0].velocity.x);
+        assert_ne!(schools[1].velocity, flow[1].velocity);
+        assert_ne!(predator, schools);
+    }
+
+    // Defends: boids colors map predator roles and school species to stable visual identities.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn boids_variant_colors_follow_roles_and_species() {
+        let predator = Boid {
+            position: Vec2::zero(),
+            velocity: Vec2::zero(),
+            species: 0,
+            role: BoidRole::Predator,
+        };
+        let first_school = Boid {
+            position: Vec2::zero(),
+            velocity: Vec2::zero(),
+            species: 0,
+            role: BoidRole::Flock,
+        };
+        let second_school = Boid {
+            species: 1,
+            ..first_school
+        };
+
+        assert_ne!(
+            boid_color_index(0, &predator, BoidsVariant::Predator),
+            boid_color_index(1, &first_school, BoidsVariant::Predator)
+        );
+        assert_ne!(
+            boid_color_index(1, &first_school, BoidsVariant::Schools),
+            boid_color_index(2, &second_school, BoidsVariant::Schools)
+        );
     }
 
     // Defends: boids use deterministic in-house state updates instead of host randomness.

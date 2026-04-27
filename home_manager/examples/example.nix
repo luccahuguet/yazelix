@@ -11,6 +11,7 @@
   programs.yazelix = {
     enable = true;
     manage_config = true; # Opt into declarative Home Manager ownership of yazelix.toml for this example
+    runtime_variant = "ghostty"; # Optional: "ghostty" or "wezterm"
 
     # Shell entry
     default_shell = "zsh";

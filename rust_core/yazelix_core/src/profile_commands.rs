@@ -756,7 +756,7 @@ mod tests {
     }
 
     // Defends: profile run ID uses the expected prefix format.
-    // Strength: defect=2 behavior=1 resilience=1 cost=1 uniqueness=2 total=7/10
+    // Strength: defect=2 behavior=1 resilience=1 cost=2 uniqueness=2 total=8/10
     #[test]
     fn generate_run_id_has_expected_prefix() {
         let run_id = generate_run_id();
@@ -768,7 +768,7 @@ mod tests {
     }
 
     // Defends: summary table renders steps with and without context.
-    // Strength: defect=1 behavior=2 resilience=1 cost=1 uniqueness=2 total=7/10
+    // Strength: defect=1 behavior=2 resilience=1 cost=2 uniqueness=2 total=8/10
     #[test]
     fn render_summary_table_shows_steps() {
         let summary = ProfileSummary {

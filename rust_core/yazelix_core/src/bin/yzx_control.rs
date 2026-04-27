@@ -2,6 +2,8 @@
 
 use crossterm::terminal;
 use serde::Serialize;
+use std::fs;
+use std::path::Path;
 use std::process::Command;
 use yazelix_core::bridge::{CoreError, ErrorClass};
 use yazelix_core::cli_render::{
@@ -55,6 +57,8 @@ use yazelix_core::run_zellij_open_terminal;
 use yazelix_core::run_zellij_pipe;
 use yazelix_core::run_zellij_retarget;
 use yazelix_core::run_zellij_status_bus;
+use yazelix_core::run_zellij_status_bus_ai_activity;
+use yazelix_core::run_zellij_status_bus_token_budget;
 use yazelix_core::run_zellij_status_bus_workspace;
 use yazelix_core::update_commands::run_yzx_update;
 use yazelix_core::zellij_commands::internal_zellij_control_subcommands_usage;
@@ -180,6 +184,14 @@ fn print_inspect_help() {
     println!();
     println!("Flags:");
     println!("      --json      Emit the full machine-readable runtime truth report");
+}
+
+fn read_runtime_variant_from_runtime(runtime_dir: &Path) -> String {
+    fs::read_to_string(runtime_dir.join("runtime_variant"))
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| "unknown".to_string())
 }
 
 fn first_nonempty_line(text: &str) -> Option<String> {
@@ -833,6 +845,7 @@ fn run_inspect(args: &[String]) -> Result<i32, CoreError> {
     let request =
         runtime_materialization_plan_request_from_env(config_override_from_env().as_deref())?;
     let version = read_yazelix_version_from_runtime(&request.runtime_dir)?;
+    let runtime_variant = read_runtime_variant_from_runtime(&request.runtime_dir);
     let status = compute_status_report(&request, &version, YAZELIX_DESCRIPTION)?;
     let install = evaluate_install_ownership_report(
         &install_ownership_request_from_env_with_runtime_dir(request.runtime_dir.clone())?,
@@ -853,6 +866,7 @@ fn run_inspect(args: &[String]) -> Result<i32, CoreError> {
             "dir": request.runtime_dir.to_string_lossy(),
             "exists": request.runtime_dir.exists(),
             "version": version,
+            "variant": runtime_variant,
             "current_exe": current_exe,
             "invoked_yzx_path": invoked_yzx_path,
         },
@@ -882,6 +896,10 @@ fn run_inspect(args: &[String]) -> Result<i32, CoreError> {
         println!(
             "Version: {}",
             report["runtime"]["version"].as_str().unwrap_or("unknown")
+        );
+        println!(
+            "Variant: {}",
+            report["runtime"]["variant"].as_str().unwrap_or("unknown")
         );
         println!(
             "Config: {}",
@@ -941,6 +959,8 @@ fn run_zellij(args: &[String]) -> Result<i32, CoreError> {
         "inspect-session" => run_zellij_inspect_session(&argv),
         "status-bus" => run_zellij_status_bus(&argv),
         "status-bus-workspace" => run_zellij_status_bus_workspace(&argv),
+        "status-bus-ai-activity" => run_zellij_status_bus_ai_activity(&argv),
+        "status-bus-token-budget" => run_zellij_status_bus_token_budget(&argv),
         "retarget" => run_zellij_retarget(&argv),
         "open-editor" => run_zellij_open_editor(&argv),
         "open-editor-cwd" => run_zellij_open_editor_cwd(&argv),

@@ -16,6 +16,7 @@ const ALLOWED_CONTRACT_STATUSES: &[&str] =
     &["live", "planning", "deprecated", "historical", "quarantine"];
 const ALLOWED_VERIFICATION_MODES: &[&str] = &["automated", "validator", "manual", "unverified"];
 const ALLOWED_TEST_LANES: &[&str] = &["default", "maintainer", "sweep", "manual"];
+const GOVERNED_TEST_STRENGTH_MINIMUM: u32 = 8;
 const PACKAGE_TEST_FORBIDDEN_COMMANDS: &[&str] =
     &["nix", "nix-build", "nix-env", "nix-shell", "home-manager"];
 const PACKAGE_TEST_FORBIDDEN_SHELL_SNIPPETS: &[&str] = &[
@@ -159,9 +160,22 @@ pub fn validate_rust_test_traceability(repo_root: &Path) -> Result<ValidationRep
                 test_record.attribute_index,
                 &test_record.test_name,
             )?;
-            if strength < minimum_strength {
+            let strength_exception = get_rust_definition_strength_exception(
+                repo_root,
+                &relative_path,
+                test_record.attribute_index,
+            )?;
+            if let Some(exception_line) = strength_exception.as_deref() {
+                if !is_valid_strength_exception_line(exception_line) {
+                    report.errors.push(format!(
+                        "Governed Rust test strength exception must cite a bead id or spec path: {} :: {} :: {}",
+                        relative_path, test_record.test_name, exception_line
+                    ));
+                }
+            }
+            if strength < minimum_strength && strength_exception.is_none() {
                 report.errors.push(format!(
-                    "Governed Rust test is below the minimum strength bar of {}/10 for lane '{}': {} :: {} :: {}/10",
+                    "Governed Rust test is below the default minimum strength bar of {}/10 for lane '{}'; add a stronger test or cite a bead/spec with '// Strength exception:': {} :: {} :: {}/10",
                     minimum_strength, lane, relative_path, test_record.test_name, strength
                 ));
             }
@@ -683,6 +697,18 @@ fn get_rust_definition_test_strength(
     parse_structured_strength_line(relative_path, test_name, &strength_line, "// Strength:")
 }
 
+fn get_rust_definition_strength_exception(
+    repo_root: &Path,
+    relative_path: &str,
+    attribute_index: usize,
+) -> Result<Option<String>, String> {
+    Ok(
+        get_prior_nonempty_lines_before_index(repo_root, relative_path, attribute_index)?
+            .into_iter()
+            .find(|line| line.starts_with("// Strength exception:")),
+    )
+}
+
 fn rust_definition_has_policy_only_traceability(
     repo_root: &Path,
     relative_path: &str,
@@ -1022,12 +1048,17 @@ fn parse_strength_component(
 
 fn minimum_strength_for_lane(lane: &str) -> Option<u32> {
     match lane {
-        "default" => Some(7),
-        "maintainer" => Some(6),
-        "sweep" => Some(6),
-        "manual" => Some(6),
+        "default" | "maintainer" | "sweep" | "manual" => Some(GOVERNED_TEST_STRENGTH_MINIMUM),
         _ => None,
     }
+}
+
+fn is_valid_strength_exception_line(line: &str) -> bool {
+    let Some(payload) = line.strip_prefix("// Strength exception:") else {
+        return false;
+    };
+    let trimmed = payload.trim();
+    !trimmed.is_empty() && (trimmed.contains("yazelix-") || trimmed.contains("docs/specs/"))
 }
 
 fn find_contract_item<'a>(
@@ -1085,6 +1116,112 @@ mod tests {
         fs::create_dir_all(full_path.parent().unwrap()).unwrap();
         fs::write(full_path, content).unwrap();
         (tmp, repo)
+    }
+
+    fn write_rust_traceability_fixture(
+        relative_path: &str,
+        content: &str,
+    ) -> (tempfile::TempDir, PathBuf) {
+        let (tmp, repo) = write_rust_test_fixture(relative_path, content);
+        fs::create_dir_all(repo.join("docs/specs")).unwrap();
+        (tmp, repo)
+    }
+
+    // Defends: all governed Rust lanes now share the same default strength floor.
+    // Strength: defect=2 behavior=2 resilience=2 cost=2 uniqueness=1 total=9/10
+    #[test]
+    fn governed_test_lane_minimums_are_eight_by_default() {
+        for lane in ALLOWED_TEST_LANES {
+            assert_eq!(minimum_strength_for_lane(lane), Some(8));
+        }
+    }
+
+    // Regression: below-bar governed Rust tests fail unless their exception cites durable Beads or spec rationale.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn rust_traceability_rejects_below_eight_without_exception() {
+        let source = [
+            "// Test lane: default",
+            "",
+            "#[cfg(test)]",
+            "mod tests {",
+            "    // Defends: the fixture represents a below-bar test.",
+            "    // Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=1 total=7/10",
+            "    #[test]",
+            "    fn weak_fixture_test() {",
+            "        assert_eq!(2 + 2, 4);",
+            "    }",
+            "}",
+        ]
+        .join("\n");
+        let (_tmp, repo) = write_rust_traceability_fixture("rust_core/example/src/lib.rs", &source);
+
+        let report = validate_rust_test_traceability(&repo).unwrap();
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|error| error.contains("default minimum strength bar of 8/10")),
+            "{:?}",
+            report.errors
+        );
+    }
+
+    // Defends: explicit below-bar exceptions require durable rationale instead of ad-hoc reviewer memory.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn rust_traceability_accepts_below_eight_with_bead_exception() {
+        let source = [
+            "// Test lane: maintainer",
+            "",
+            "#[cfg(test)]",
+            "mod tests {",
+            "    // Defends: the fixture represents an explicitly justified low-strength test.",
+            "    // Strength exception: yazelix-ww5o documents the temporary governed-suite exception.",
+            "    // Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=1 total=7/10",
+            "    #[test]",
+            "    fn justified_fixture_test() {",
+            "        assert_eq!(2 + 2, 4);",
+            "    }",
+            "}",
+        ]
+        .join("\n");
+        let (_tmp, repo) = write_rust_traceability_fixture("rust_core/example/src/lib.rs", &source);
+
+        let report = validate_rust_test_traceability(&repo).unwrap();
+        assert!(report.errors.is_empty(), "{:?}", report.errors);
+    }
+
+    // Regression: exception markers without a bead or spec are still rejected.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn rust_traceability_rejects_exception_without_durable_reference() {
+        let source = [
+            "// Test lane: sweep",
+            "",
+            "#[cfg(test)]",
+            "mod tests {",
+            "    // Defends: the fixture represents a malformed exception.",
+            "    // Strength exception: reviewer said this is acceptable for now.",
+            "    // Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=1 total=7/10",
+            "    #[test]",
+            "    fn malformed_exception_fixture_test() {",
+            "        assert_eq!(2 + 2, 4);",
+            "    }",
+            "}",
+        ]
+        .join("\n");
+        let (_tmp, repo) = write_rust_traceability_fixture("rust_core/example/src/lib.rs", &source);
+
+        let report = validate_rust_test_traceability(&repo).unwrap();
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|error| error.contains("must cite a bead id or spec path")),
+            "{:?}",
+            report.errors
+        );
     }
 
     // Regression: package-time Rust tests must not execute Nix because Nix package test sandboxes do not provide host Nix.

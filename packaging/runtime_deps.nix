@@ -1,12 +1,18 @@
-{ pkgs, nixgl ? null }:
+{ pkgs, nixgl ? null, runtimeVariant ? "ghostty" }:
 
 let
-  # Ghostty is the single first-party terminal Yazelix owns across platforms.
   ghosttyPackage =
     if pkgs.stdenv.hostPlatform.isDarwin then
       pkgs."ghostty-bin"
     else
       pkgs.ghostty;
+  terminalPackage =
+    if runtimeVariant == "ghostty" then
+      ghosttyPackage
+    else if runtimeVariant == "wezterm" then
+      pkgs.wezterm
+    else
+      throw "Unsupported Yazelix runtimeVariant: ${runtimeVariant}";
   linuxGlWrapperPackage =
     if pkgs.stdenv.hostPlatform.isLinux && (nixgl != null) then
       (
@@ -24,7 +30,7 @@ with pkgs;
   bashInteractive
   nushell
   zellij
-  ghosttyPackage
+  terminalPackage
   helix
   neovim
   yazi
@@ -58,4 +64,5 @@ with pkgs;
   procps
   xclip
   wl-clipboard
+  xsel
 ]

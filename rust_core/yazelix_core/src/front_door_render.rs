@@ -9,12 +9,12 @@ use std::sync::OnceLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 pub use yazelix_screen::GameOfLifeCellStyle;
 use yazelix_screen::{
-    BoidsAnimation, GameOfLifeAnimation, MandelbrotAnimation, RawModeGuard as ScreenRawModeGuard,
-    ScreenAnimationContext, ScreenFrameProducer, build_game_of_life_screen_lines,
-    build_live_game_of_life_seed, center_frame_lines, center_text, game_of_life_grid_height,
-    game_of_life_grid_width, game_of_life_spec, is_game_of_life_style,
-    resolve_game_of_life_body_height, step_game_of_life_cells, terminal_height, terminal_width,
-    visible_line_width,
+    BoidsAnimation, BoidsVariant, GameOfLifeAnimation, MandelbrotAnimation,
+    RawModeGuard as ScreenRawModeGuard, ScreenAnimationContext, ScreenFrameProducer,
+    build_game_of_life_screen_lines, build_live_game_of_life_seed, center_frame_lines, center_text,
+    game_of_life_grid_height, game_of_life_grid_width, game_of_life_spec, is_boids_style,
+    is_game_of_life_style, resolve_game_of_life_body_height, step_game_of_life_cells,
+    terminal_height, terminal_width, visible_line_width,
 };
 
 const ASCII_ART_DATA_JSON: &str = include_str!("../assets/ascii_art_data.json");
@@ -24,7 +24,6 @@ const ANSI_GREEN: &str = "\u{1b}[32m";
 const ANSI_YELLOW: &str = "\u{1b}[33m";
 const ANSI_BLUE: &str = "\u{1b}[34m";
 const ANSI_PURPLE: &str = "\u{1b}[35m";
-const ANSI_CYAN: &str = "\u{1b}[36m";
 const ANSI_RESET: &str = "\u{1b}[0m";
 const ANSI_FAINT: &str = "\u{1b}[2m";
 
@@ -33,6 +32,8 @@ const GAME_OF_LIFE_RANDOM_POOL: &[&str] = &[
     "game_of_life_oscillators",
     "game_of_life_bloom",
 ];
+const BOIDS_RANDOM_POOL: &[&str] = &["boids_predator", "boids_schools", "boids_flow"];
+const WELCOME_RANDOM_FAMILY_COUNT: usize = 3;
 
 #[derive(Debug, Clone, Deserialize)]
 struct AsciiArtData {
@@ -92,6 +93,51 @@ fn style_values_for_surface(surface: &str) -> Vec<&'static str> {
         .collect()
 }
 
+fn assert_random_welcome_pool_is_allowed(allowed: &[&str]) {
+    for candidate in GAME_OF_LIFE_RANDOM_POOL
+        .iter()
+        .chain(BOIDS_RANDOM_POOL.iter())
+        .chain(["mandelbrot"].iter())
+    {
+        if !allowed
+            .iter()
+            .any(|allowed_style| allowed_style == candidate)
+        {
+            panic!("missing retained random welcome style: {candidate}");
+        }
+    }
+}
+
+fn resolve_random_welcome_style(allowed: &[&str], random_index: Option<usize>) -> String {
+    assert_random_welcome_pool_is_allowed(allowed);
+    let subpool_width = GAME_OF_LIFE_RANDOM_POOL.len().max(BOIDS_RANDOM_POOL.len());
+    let slot_count = WELCOME_RANDOM_FAMILY_COUNT * subpool_width;
+    let selected = random_index.unwrap_or_else(|| system_random_index(slot_count)) % slot_count;
+    let family = selected % WELCOME_RANDOM_FAMILY_COUNT;
+    let family_index = (selected / WELCOME_RANDOM_FAMILY_COUNT) % subpool_width;
+
+    match family {
+        0 => GAME_OF_LIFE_RANDOM_POOL[family_index % GAME_OF_LIFE_RANDOM_POOL.len()].to_string(),
+        1 => BOIDS_RANDOM_POOL[family_index % BOIDS_RANDOM_POOL.len()].to_string(),
+        _ => "mandelbrot".to_string(),
+    }
+}
+
+fn resolve_random_screen_style(allowed: &[&str], random_index: Option<usize>) -> String {
+    for candidate in GAME_OF_LIFE_RANDOM_POOL {
+        if !allowed
+            .iter()
+            .any(|allowed_style| allowed_style == candidate)
+        {
+            panic!("missing retained random screen style: {candidate}");
+        }
+    }
+    let selected = random_index
+        .unwrap_or_else(|| system_random_index(GAME_OF_LIFE_RANDOM_POOL.len()))
+        % GAME_OF_LIFE_RANDOM_POOL.len();
+    GAME_OF_LIFE_RANDOM_POOL[selected].to_string()
+}
+
 pub fn resolve_welcome_style(
     requested: &str,
     random_index: Option<usize>,
@@ -115,17 +161,7 @@ pub fn resolve_welcome_style(
         return Ok(normalized);
     }
 
-    for candidate in GAME_OF_LIFE_RANDOM_POOL {
-        if !allowed
-            .iter()
-            .any(|allowed_style| allowed_style == candidate)
-        {
-            panic!("missing retained random welcome style: {candidate}");
-        }
-    }
-    let pool = GAME_OF_LIFE_RANDOM_POOL;
-    let selected = random_index.unwrap_or_else(|| system_random_index(pool.len())) % pool.len();
-    Ok(pool[selected].to_string())
+    Ok(resolve_random_welcome_style(&allowed, random_index))
 }
 
 pub fn resolve_screen_style(
@@ -148,7 +184,7 @@ pub fn resolve_screen_style(
     }
 
     if normalized == "random" {
-        return resolve_welcome_style("random", random_index);
+        return Ok(resolve_random_screen_style(&allowed, random_index));
     }
     Ok(normalized)
 }
@@ -156,7 +192,7 @@ pub fn resolve_screen_style(
 fn screen_frame_delay(resolved_style: &str) -> Duration {
     match resolved_style {
         style if is_game_of_life_style(style) => Duration::from_millis(160),
-        "boids" => Duration::from_millis(90),
+        style if is_boids_style(style) => Duration::from_millis(90),
         "mandelbrot" => Duration::from_millis(110),
         _ => Duration::from_millis(120),
     }
@@ -231,11 +267,6 @@ fn colorize_body_line(text: &str) -> String {
 
 fn colorize_footer_text(text: &str) -> String {
     format!("{ANSI_YELLOW}{text}{ANSI_RESET}")
-}
-
-fn colorize_boid_char(ch: char, index: usize) -> String {
-    let palette = [ANSI_CYAN, ANSI_BLUE, ANSI_PURPLE];
-    format!("{}{}{}", palette[index % palette.len()], ch, ANSI_RESET)
 }
 
 fn make_border(inner_width: usize) -> String {
@@ -346,90 +377,104 @@ fn get_logo_animation_frames(width: usize) -> Vec<Vec<String>> {
     ]
 }
 
-fn boid_points(
+fn build_boids_card_frame(
+    spec: &BoidsWelcomeSpec,
     inner_width: usize,
-    body_height: usize,
-    phase: &str,
-) -> Vec<(usize, usize, char, usize)> {
-    let mid_x = inner_width / 2;
-    let low_y = if body_height > 2 { body_height - 2 } else { 1 };
-    let mid_y = body_height / 2;
-    match phase {
-        "scatter" => vec![
-            (1, 0, '>', 0),
-            (inner_width.saturating_sub(2), 0, '<', 1),
-            (3, low_y, '^', 2),
-            (inner_width.saturating_sub(4), low_y, 'v', 3),
-            (mid_x.saturating_sub(6), mid_y, '*', 4),
-            (mid_x + 5, mid_y, '*', 5),
-        ],
-        "drift" => vec![
-            (mid_x.saturating_sub(8), 1, '>', 0),
-            (mid_x + 7, 1, '<', 1),
-            (mid_x.saturating_sub(5), mid_y, '^', 2),
-            (mid_x + 4, mid_y, 'v', 3),
-            (mid_x.saturating_sub(2), low_y.saturating_sub(1), '*', 4),
-            (mid_x + 1, low_y.saturating_sub(1), '*', 5),
-        ],
-        _ => vec![
-            (mid_x.saturating_sub(4), 1, '>', 0),
-            (mid_x + 3, 1, '<', 1),
-            (mid_x.saturating_sub(2), mid_y, '^', 2),
-            (mid_x + 1, mid_y, 'v', 3),
-            (mid_x.saturating_sub(6), low_y.saturating_sub(1), '*', 4),
-            (mid_x + 5, low_y.saturating_sub(1), '*', 5),
-        ],
+    body_rows: &[String],
+    show_caption: bool,
+) -> Vec<String> {
+    let content_width = frame_content_width(inner_width);
+    let mut lines = vec![format!(
+        "{ANSI_PURPLE}╭{}╮{ANSI_RESET}",
+        make_border(inner_width)
+    )];
+
+    for row_index in 0..spec.body_height {
+        let row = if show_caption && row_index == spec.body_height.saturating_sub(1) {
+            format!(
+                "{ANSI_FAINT}{ANSI_PURPLE}{}{ANSI_RESET}",
+                center_text(&spec.caption, content_width)
+            )
+        } else {
+            body_rows
+                .get(row_index)
+                .map(|row| center_text(row, content_width))
+                .unwrap_or_else(|| pad_text_right("", content_width))
+        };
+        lines.push(row);
+    }
+
+    lines.push(format!(
+        "{ANSI_PURPLE}╰{}╯{ANSI_RESET}",
+        make_border(inner_width)
+    ));
+    lines
+}
+
+fn build_boids_frame(
+    width: usize,
+    duration: Duration,
+    cell_style: GameOfLifeCellStyle,
+    variant: BoidsVariant,
+) -> Vec<Vec<String>> {
+    let size_class = get_logo_welcome_variant(width);
+    let spec = boids_spec(size_class);
+    let inner_width = welcome_inner_width(spec.minimum_inner_width);
+    let frame_delay = Duration::from_millis(90);
+    let frame_count = ((duration.as_secs_f64() / frame_delay.as_secs_f64()).ceil() as usize).max(3);
+    let mut animation = BoidsAnimation::with_variant(
+        ScreenAnimationContext {
+            resolved_width: inner_width,
+            resolved_height: spec.body_height,
+            inner_width,
+            size_class,
+        },
+        cell_style,
+        variant,
+    );
+    let mut frames = Vec::new();
+
+    for index in 0..frame_count {
+        let rows = animation.render_frame();
+        frames.push(center_frame_lines(
+            build_boids_card_frame(spec, inner_width, &rows, index + 1 == frame_count),
+            width,
+        ));
+        animation.advance_frame();
+    }
+
+    frames.push(get_logo_welcome_frame(width));
+    frames
+}
+
+fn mandelbrot_welcome_context(width: usize, height: usize) -> ScreenAnimationContext {
+    let size_class = get_logo_welcome_variant(width);
+    let spec = game_of_life_spec(size_class);
+    ScreenAnimationContext {
+        resolved_width: width,
+        resolved_height: resolve_game_of_life_body_height(spec.welcome_minimum_body_height, height),
+        inner_width: welcome_inner_width(spec.minimum_inner_width),
+        size_class,
     }
 }
 
-fn build_boids_frame(width: usize) -> Vec<Vec<String>> {
-    let variant = get_logo_welcome_variant(width);
-    let spec = boids_spec(variant);
-    let inner_width = welcome_inner_width(spec.minimum_inner_width);
-    let content_width = frame_content_width(inner_width);
-    ["scatter", "drift", "cluster"]
-        .into_iter()
-        .map(|phase| {
-            let points = boid_points(inner_width, spec.body_height, phase);
-            let caption_row = if phase == "cluster" {
-                Some(spec.body_height.saturating_sub(1))
-            } else {
-                None
-            };
-            let mut lines = vec![format!(
-                "{ANSI_PURPLE}╭{}╮{ANSI_RESET}",
-                make_border(inner_width)
-            )];
-            for row_index in 0..spec.body_height {
-                let row = if caption_row == Some(row_index) {
-                    format!(
-                        "{ANSI_FAINT}{ANSI_PURPLE}{}{ANSI_RESET}",
-                        center_text(&spec.caption, content_width)
-                    )
-                } else {
-                    let mut row = String::new();
-                    for x in 0..inner_width {
-                        let point = points
-                            .iter()
-                            .find(|(px, py, _, _)| *px == x && *py == row_index);
-                        if let Some((_, _, ch, index)) = point {
-                            row.push_str(&colorize_boid_char(*ch, *index));
-                        } else {
-                            row.push(' ');
-                        }
-                    }
-                    center_text(&row, content_width)
-                };
-                lines.push(row);
-            }
-            lines.push(format!(
-                "{ANSI_PURPLE}╰{}╯{ANSI_RESET}",
-                make_border(inner_width)
-            ));
-            center_frame_lines(lines, width)
-        })
-        .chain(std::iter::once(get_logo_welcome_frame(width)))
-        .collect()
+fn build_mandelbrot_welcome_frames(
+    width: usize,
+    height: usize,
+    duration: Duration,
+) -> Vec<Vec<String>> {
+    let frame_delay = Duration::from_millis(110);
+    let frame_count = ((duration.as_secs_f64() / frame_delay.as_secs_f64()).ceil() as usize).max(3);
+    let mut animation = MandelbrotAnimation::new(mandelbrot_welcome_context(width, height));
+    let mut frames = Vec::new();
+
+    for _ in 0..frame_count {
+        frames.push(animation.render_frame());
+        animation.advance_frame();
+    }
+
+    frames.push(get_logo_welcome_frame(width));
+    frames
 }
 
 fn welcome_sequence(
@@ -442,7 +487,13 @@ fn welcome_sequence(
     match resolved_style {
         "static" => vec![get_logo_welcome_frame(width)],
         "logo" => get_logo_animation_frames(width),
-        "boids" => build_boids_frame(width),
+        style if is_boids_style(style) => build_boids_frame(
+            width,
+            duration,
+            cell_style,
+            BoidsVariant::from_style_name(style).expect("validated boids style"),
+        ),
+        "mandelbrot" => build_mandelbrot_welcome_frames(width, height, duration),
         style if is_game_of_life_style(style) => {
             let variant = get_logo_welcome_variant(width);
             let spec = game_of_life_spec(variant);
@@ -676,13 +727,16 @@ pub fn play_welcome_style_with_cell_style(
         playback_duration,
         cell_style,
     );
-    let frame_delay = if resolved_style.starts_with("game_of_life_") {
-        Duration::from_millis(220)
-    } else {
-        let divisor = frames.len().max(1) as u32;
-        playback_duration
-            .checked_div(divisor)
-            .unwrap_or_else(|| Duration::from_millis(120))
+    let frame_delay = match resolved_style.as_str() {
+        style if is_game_of_life_style(style) => Duration::from_millis(220),
+        style if is_boids_style(style) => Duration::from_millis(90),
+        "mandelbrot" => Duration::from_millis(110),
+        _ => {
+            let divisor = frames.len().max(1) as u32;
+            playback_duration
+                .checked_div(divisor)
+                .unwrap_or_else(|| Duration::from_millis(120))
+        }
     };
     play_inline_frames(&frames, frame_delay, width)
 }
@@ -699,7 +753,8 @@ pub fn run_screen_surface_with_cell_style(
     let resolved_style = resolve_screen_style(style, None)?;
     let frame_delay = screen_frame_delay(&resolved_style);
     let is_game_of_life = is_game_of_life_style(&resolved_style);
-    let is_boids = resolved_style == "boids";
+    let boids_variant = BoidsVariant::from_style_name(&resolved_style);
+    let is_boids = boids_variant.is_some();
     let is_mandelbrot = resolved_style == "mandelbrot";
     let mut width = terminal_width();
     let mut height = terminal_height();
@@ -726,9 +781,10 @@ pub fn run_screen_surface_with_cell_style(
         None
     };
     let mut boids_state = if is_boids {
-        Some(BoidsAnimation::new(
+        Some(BoidsAnimation::with_variant(
             boids_screen_context(width, height),
             cell_style,
+            boids_variant.expect("validated boids style"),
         ))
     } else {
         None
@@ -815,7 +871,7 @@ mod tests {
     }
 
     // Test lane: default
-    // Defends: `random` still resolves only to the retained Game of Life screen styles instead of drifting back to logo, boids, or static.
+    // Defends: `yzx screen random` still resolves only to the retained Game of Life screen styles instead of drifting back to logo, boids, Mandelbrot, or static.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn random_screen_style_stays_within_retained_game_of_life_pool() {
@@ -823,6 +879,43 @@ mod tests {
             let resolved = resolve_screen_style(Some("random"), Some(index)).unwrap();
             assert!(GAME_OF_LIFE_RANDOM_POOL.contains(&resolved.as_str()));
         }
+    }
+
+    // Defends: welcome random splits selection evenly across Game of Life, boids, and Mandelbrot families while excluding static and logo.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn random_welcome_style_rotates_evenly_across_animation_families() {
+        let mut game_of_life_count = 0;
+        let mut boids_count = 0;
+        let mut mandelbrot_count = 0;
+        let mut boids_styles = Vec::new();
+
+        for index in 0..9 {
+            let resolved = resolve_welcome_style("random", Some(index)).unwrap();
+            assert_ne!(resolved, "static");
+            assert_ne!(resolved, "logo");
+            if is_game_of_life_style(&resolved) {
+                game_of_life_count += 1;
+            } else if is_boids_style(&resolved) {
+                boids_count += 1;
+                boids_styles.push(resolved);
+            } else if resolved == "mandelbrot" {
+                mandelbrot_count += 1;
+            } else {
+                panic!("unexpected random welcome style: {resolved}");
+            }
+        }
+
+        assert_eq!(game_of_life_count, 3);
+        assert_eq!(boids_count, 3);
+        assert_eq!(mandelbrot_count, 3);
+        assert_eq!(
+            boids_styles,
+            BOIDS_RANDOM_POOL
+                .iter()
+                .map(|style| style.to_string())
+                .collect::<Vec<_>>()
+        );
     }
 
     // Defends: `yzx screen` continues to reject the startup-only `static` style instead of quietly rendering a non-animated frame.
@@ -833,28 +926,26 @@ mod tests {
         assert_eq!(err.code(), "invalid_screen_style");
     }
 
-    // Defends: Mandelbrot is exposed as a screen-only producer without joining welcome/random rotation.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    // Defends: Mandelbrot is accepted for welcome playback without changing the startup-only rejection of static in `yzx screen`.
+    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=2 total=9/10
     #[test]
-    fn mandelbrot_is_screen_only() {
+    fn mandelbrot_is_available_to_welcome_and_screen() {
         assert_eq!(
             resolve_screen_style(Some("mandelbrot"), None).unwrap(),
             "mandelbrot"
         );
         assert_eq!(
-            resolve_welcome_style("mandelbrot", None)
-                .unwrap_err()
-                .code(),
-            "invalid_welcome_style"
+            resolve_welcome_style("mandelbrot", None).unwrap(),
+            "mandelbrot"
         );
         for index in 0..8 {
-            assert_eq!(
-                resolve_screen_style(Some("random"), Some(index)).unwrap(),
-                resolve_welcome_style("random", Some(index)).unwrap()
-            );
             assert_ne!(
                 resolve_screen_style(Some("random"), Some(index)).unwrap(),
-                "mandelbrot"
+                "static"
+            );
+            assert_ne!(
+                resolve_welcome_style("random", Some(index)).unwrap(),
+                "static"
             );
         }
     }
@@ -891,7 +982,12 @@ mod tests {
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn boids_welcome_frame_keeps_hero_variant_width_stable() {
-        let boids = build_boids_frame(120);
+        let boids = build_boids_frame(
+            120,
+            Duration::from_millis(360),
+            GameOfLifeCellStyle::FullBlock,
+            BoidsVariant::Flow,
+        );
         assert_eq!(trimmed_frame_line_width(&boids[0][0]), 60);
         assert!(
             boids[0][1..boids[0].len() - 1]

@@ -473,10 +473,12 @@ fn widget_tray_question() -> MultiQuestion {
             ("Shell", "shell"),
             ("Terminal", "term"),
             ("Workspace", "workspace"),
+            ("AI activity", "ai_activity"),
+            ("Token budget", "token_budget"),
             ("CPU", "cpu"),
             ("RAM", "ram"),
         ],
-        &[true, true, true, false, true, true],
+        &[true, true, true, false, false, false, true, true],
     )
 }
 

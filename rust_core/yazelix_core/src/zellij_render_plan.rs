@@ -45,7 +45,16 @@ const ZELLIJ_THEMES: &[&str] = &[
     "tokyo-night-light",
 ];
 
-const WIDGET_TRAY_ALLOWED: &[&str] = &["editor", "shell", "term", "workspace", "cpu", "ram"];
+const WIDGET_TRAY_ALLOWED: &[&str] = &[
+    "editor",
+    "shell",
+    "term",
+    "workspace",
+    "ai_activity",
+    "token_budget",
+    "cpu",
+    "ram",
+];
 
 fn default_enable_sidebar() -> bool {
     true
@@ -481,7 +490,7 @@ mod tests {
     }
 
     // Defends: layout placeholder percents stay aligned with the historical Nushell geometry helper.
-    // Strength: defect=1 behavior=2 resilience=1 cost=1 uniqueness=2 total=7/10
+    // Strength: defect=1 behavior=2 resilience=1 cost=2 uniqueness=2 total=8/10
     #[test]
     fn layout_percentages_match_legacy_nushell() {
         let p = compute_layout_percentages(20);
@@ -495,7 +504,7 @@ mod tests {
     }
 
     // Defends: sidebar width contract bounds surface as structured config errors, not silent clamping.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
+    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn rejects_sidebar_out_of_range() {
         let mut req = sample_request();
@@ -504,7 +513,7 @@ mod tests {
     }
 
     // Defends: custom side-surface launchers fail fast when the command is empty instead of generating unusable Zellij KDL.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
+    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn rejects_empty_sidebar_command() {
         let mut req = sample_request();
@@ -515,7 +524,7 @@ mod tests {
     }
 
     // Defends: widget tray entries are validated against the same allowed set as config.normalize.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
+    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn rejects_invalid_tray_widget() {
         let mut req = sample_request();
@@ -523,8 +532,23 @@ mod tests {
         assert!(compute_zellij_render_plan(&req).is_err());
     }
 
+    // Defends: AI status widgets are accepted as optional extension points without changing the default tray.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn accepts_ai_extension_tray_widgets_without_defaulting_them() {
+        let mut req = sample_request();
+        req.zellij_widget_tray = Some(vec!["ai_activity".into(), "token_budget".into()]);
+        let plan = compute_zellij_render_plan(&req).unwrap();
+
+        assert_eq!(plan.widget_tray, vec!["ai_activity", "token_budget"]);
+        assert_eq!(
+            default_widget_tray(),
+            vec!["editor", "shell", "term", "cpu", "ram"]
+        );
+    }
+
     // Defends: managed default layout name tracks the sidebar enable flag without Nushell re-deriving it.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
+    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn default_layout_follows_sidebar_flag() {
         let mut req = sample_request();
@@ -534,7 +558,7 @@ mod tests {
     }
 
     // Defends: enforced default_layout points at the computed managed layout file for the active sidebar mode.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
+    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn enforced_default_layout_points_at_plan_layout() {
         let plan = compute_zellij_render_plan(&sample_request()).unwrap();

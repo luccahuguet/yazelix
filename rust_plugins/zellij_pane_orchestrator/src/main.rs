@@ -1,3 +1,4 @@
+mod ai_pane_activity;
 mod editor;
 mod layout;
 mod panes;
@@ -10,6 +11,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 use panes::{FocusContext, ManagedTabPanes};
 use workspace::{bootstrap_workspace_root, WorkspaceState};
+use yazelix_pane_orchestrator::active_tab_session_state::SessionAiPaneActivity;
 use yazelix_pane_orchestrator::horizontal_focus_contract::HorizontalDirection;
 use zellij_tile::prelude::*;
 
@@ -39,6 +41,7 @@ struct State {
     user_pane_count_by_tab: HashMap<usize, usize>,
     workspace_state_by_tab: HashMap<usize, WorkspaceState>,
     sidebar_yazi_state_by_tab: HashMap<usize, sidebar_yazi::SidebarYaziState>,
+    ai_pane_activity_by_tab: HashMap<usize, Vec<SessionAiPaneActivity>>,
     seen_tab_positions: HashSet<usize>,
     initial_workspace_state: Option<WorkspaceState>,
     transient_pane_config: transient::TransientPaneConfig,
@@ -78,6 +81,7 @@ impl ZellijPlugin for State {
                 self.active_tab_position =
                     tabs.iter().find(|tab| tab.active).map(|tab| tab.position);
                 self.reconcile_workspace_state(&tabs);
+                self.reconcile_ai_pane_activity_tabs(&tabs);
                 {
                     let mut last_known_layout_variant_by_tab =
                         self.last_known_layout_variant_by_tab.borrow_mut();
@@ -107,6 +111,7 @@ impl ZellijPlugin for State {
                 self.terminal_panes_by_tab = panes::build_terminal_panes_by_tab(&pane_manifest);
                 self.user_pane_count_by_tab = panes::build_user_pane_count_by_tab(&pane_manifest);
                 self.reconcile_sidebar_yazi_state();
+                self.reconcile_ai_pane_activity_panes();
             }
             Event::PermissionRequestResult(status) => {
                 self.permissions_granted = status == PermissionStatus::Granted;
@@ -164,6 +169,10 @@ impl ZellijPlugin for State {
             }
             "register_sidebar_yazi_state" => {
                 self.register_sidebar_yazi_state(&pipe_message);
+                false
+            }
+            "register_ai_pane_activity" => {
+                self.register_ai_pane_activity(&pipe_message);
                 false
             }
             "get_active_tab_session_state" => {

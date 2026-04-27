@@ -90,7 +90,7 @@ mod tests {
     }
 
     // Defends: registration resolves to the tab that currently owns the sidebar pane id.
-    // Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=1 total=7/10
+    // Strength: defect=1 behavior=2 resilience=2 cost=2 uniqueness=1 total=8/10
     #[test]
     fn find_sidebar_pane_owner_uses_live_pane_identity() {
         let live_sidebar_pane_id_by_tab =

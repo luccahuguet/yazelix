@@ -7,6 +7,7 @@ A Home Manager module for [Yazelix](https://github.com/luccahuguet/yazelix) that
 - **Leaves `yazelix.toml` mutable by default** so users can edit it directly
 - **Can generate `yazelix.toml`** from Home Manager options when `manage_config = true`
 - **Adds `yzx` to the Home Manager profile** through the packaged Yazelix runtime
+- **Selects the packaged terminal runtime variant** with Ghostty by default and WezTerm available through `runtime_variant`
 - **Installs icons and a desktop entry** that target the managed runtime
 - **Keeps the config surface type-safe** with Home Manager validation
 
@@ -62,6 +63,7 @@ If you already have your own Home Manager flake, the minimal setup is:
 {
   programs.yazelix = {
     enable = true;
+    runtime_variant = "ghostty"; # or "wezterm"
     # Customize other options as needed - see example.nix
     # Set manage_config = true if you want Home Manager to own yazelix.toml
   };

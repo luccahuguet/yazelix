@@ -17,18 +17,18 @@ It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij,
 **Important**: You don't need to learn Nix or Nushell to use Yazelix. Nix with flakes is the only real host prerequisite. The normal product surface is the `yazelix` package or the top-level Home Manager module.
 
 ## Supported Terminal Emulators
-Yazelix provides Ghostty built-in via Nix on Linux and macOS. WezTerm, Kitty, Alacritty, and Foot remain supported terminal choices, but you provide those binaries yourself and then list them in `terminals` in `yazelix.toml`.
+Yazelix provides a Ghostty runtime variant by default and a WezTerm runtime variant for users who want the WezTerm/image-compatible path from the package. Kitty, Alacritty, and Foot remain supported terminal choices, but you provide those binaries yourself and then list them in `terminals` in `yazelix.toml`.
 
 See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed breakdown of strengths, gaps, and platform support.
 
 **WezTerm**
 - Modern, fast, written in Rust
-- Supported as a PATH-provided alternative terminal
+- Provided by the `yazelix_wezterm` package/runtime variant, or supported as a PATH-provided alternative terminal
 - Reference: https://wezfurlong.org/wezterm/installation.html
 
 **Ghostty** (Default)
 - Modern, fast, written in Zig, newer
-- **Linux and macOS**: Provided by Yazelix via Nix as the built-in default terminal path
+- **Linux and macOS**: Provided by the default `yazelix` / `yazelix_ghostty` package runtime
 - Download page: https://ghostty.org/download
 - **Note**: Due to a [Zellij/Yazi/Ghostty interaction](https://github.com/zellij-org/zellij/issues/2814#issuecomment-2965117327), image previews in Yazi may not display properly, for now. If this is a problem for you, use WezTerm instead
 
@@ -55,6 +55,8 @@ If you already have Nix with flakes enabled, the canonical install flow is:
 nix profile add github:luccahuguet/yazelix#yazelix
 yzx launch
 ```
+
+Use `#yazelix_wezterm` instead if you want the package-provided WezTerm runtime variant.
 
 One-off use without installing also works:
 
@@ -106,6 +108,12 @@ Install the Yazelix package exposed by the top-level flake:
 nix profile add github:luccahuguet/yazelix#yazelix
 ```
 
+The default package is the Ghostty variant. To install the package-provided WezTerm variant instead:
+
+```bash
+nix profile add github:luccahuguet/yazelix#yazelix_wezterm
+```
+
 > If you previously evaluated this flake (for example with `nix run` or `nix flake show`), Nix may have cached an older version. Add `--refresh` to force a fresh fetch:
 > ```bash
 > nix profile add --refresh github:luccahuguet/yazelix#yazelix
@@ -128,7 +136,7 @@ Normal usage relies on the package-provided `yzx` entrypoint or the Home Manager
 Host prerequisite contract:
 - **Host prerequisite**: Nix with flakes enabled
 - **Package-provided**: the Yazelix runtime, including runtime-local `nu`, `zellij`, `yazi`, `helix`, shells, a curated interactive tool surface, and the internal helper closure behind the runtime root
-- **Not package-provided**: a separate host Nushell install for your everyday shell outside Yazelix, or PATH-provided alternative terminals other than the built-in Ghostty path
+- **Not package-provided**: a separate host Nushell install for your everyday shell outside Yazelix, or PATH-provided alternative terminals outside the selected Ghostty/WezTerm runtime variant
 - **Nushell version ownership**: Yazelix uses the Nushell packaged by the locked `nixpkgs` input for the runtime and bootstrap path. The maintainer update workflow records that as `PINNED_NUSHELL_VERSION`; it does not chase a newer upstream Nushell release until Nixpkgs packages it.
 
 ### Step 3: Configure Your Installation (Optional)
@@ -145,18 +153,20 @@ The trimmed v15 packaged runtime ships a fixed toolset instead of configurable d
 - the core Yazelix stack: `zellij`, `yazi`, `helix`, `nu`, `bash`, `fish`, `zsh`
 - the default CLI helpers: `fzf`, `zoxide`, `starship`, `lazygit`, `mise`, `carapace`, `macchina`
 - the default Yazi preview helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
+- one packaged terminal variant: Ghostty by default, or WezTerm through `#yazelix_wezterm` / `programs.yazelix.runtime_variant = "wezterm"`
 
 When you enter `yzx env`, Yazelix exports that curated tool surface to your shell. Runtime-private helpers stay under `libexec/` so host apps launched from Yazelix do not inherit shadowing tools like `dirname` ahead of the system PATH.
 
 What it does not ship anymore:
 - a runtime-local `devenv` binary
 - dynamic packs or `user_packages`
-- non-Ghostty terminal binaries; install WezTerm, Kitty, Alacritty, or Foot yourself if you choose them
+- non-selected terminal binaries; install Kitty, Alacritty, or Foot yourself if you choose them
+- heavyweight media helpers such as `ffmpeg` or ImageMagick
 
 #### Configuration Options
 - **Custom shells**: Set `default_shell` to your preference (`"nu"`, `"bash"`, `"fish"`, `"zsh"`)
 - **Terminal preference**: Set `terminals` (`["ghostty", "wezterm", "kitty", "alacritty", "foot"]`, ordered)
-- **Terminal launch**: Ghostty is the built-in default on Linux and macOS; other configured terminals are launched from `PATH` in the order you configure
+- **Terminal launch**: Ghostty is the built-in default; the WezTerm package variant provides WezTerm instead; other configured terminals are launched from `PATH` in the order you configure
 - **Editor choice**: Configure your editor (see [Editor Configuration](./editor_configuration.md))
 
 ### Step 4: Install Fonts (Required for Kitty and Alacritty)
@@ -304,8 +314,8 @@ Yazelix includes optional Home Manager support for declarative configuration man
 ### Yazi Extensions (~125MB, enabled by default)
 - `p7zip`, `jq`, `poppler`, `fd`, `ripgrep` (for archives, search, document previews)
 
-### Yazi Media Extensions (~1GB, disabled by default)
-- `ffmpeg`, `imagemagick` (for media previews)
+### Yazi Media Helpers
+Yazelix does not ship `ffmpeg` or ImageMagick in the runtime variants. Install them outside Yazelix if you want heavy media previews.
 
 ### Environment Setup
 - Proper paths, variables, and shell configurations

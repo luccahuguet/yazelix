@@ -243,11 +243,9 @@ Use this as the default refactor and audit method in Yazelix, especially before 
   - `# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10`
 - **Every governed Rust `#[test]` must also carry the same nearby structured strength marker.** Use:
   - `// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10`
-- **Lane minimums are enforced mechanically.** Current minimums are:
-  - `default`: `7/10`
-  - `maintainer`: `6/10`
-  - `sweep`: `6/10`
-  - `manual`: `6/10` if a governed `def test_*` exists there at all
+- **Governed test strength minimums are enforced mechanically.** Current default minimum is `8/10` for every governed lane (`default`, `maintainer`, `sweep`, and `manual`).
+- **Below-8 governed tests require explicit durable rationale.** Only keep one with a nearby `Strength exception:` marker that cites a Bead id or spec path; otherwise strengthen, demote, or delete it.
+- **Cosmetic or trivia assertions do not become strong tests just by scoring them as `8/10`.** Exact palette constants, help-output trivia, command-name discovery, and implementation-string checks are not enough unless they defend a documented product contract or regression.
 - **Do not add packaging/config-sync tests by default** just because two files should match. Only keep them when they defend a maintained source-of-truth invariant in the right lane; otherwise prefer behavior tests, spec-backed validation, or cheaper dedicated validators.
 - When in doubt, **remove or avoid low-value tests** and spend the budget on fewer, stronger assertions.
 

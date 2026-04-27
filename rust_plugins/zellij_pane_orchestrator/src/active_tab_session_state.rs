@@ -58,14 +58,95 @@ pub struct SessionTransientPanes {
     pub menu: Option<SessionTransientPane>,
 }
 
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SessionAiPaneActivityState {
+    Unknown,
+    Inactive,
+    Active,
+    Thinking,
+    Stale,
+}
+
+impl SessionAiPaneActivityState {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Unknown => "unknown",
+            Self::Inactive => "inactive",
+            Self::Active => "active",
+            Self::Thinking => "thinking",
+            Self::Stale => "stale",
+        }
+    }
+
+    pub fn from_activity(activity: &str) -> Option<Self> {
+        match activity.trim() {
+            "unknown" => Some(Self::Unknown),
+            "inactive" | "idle" => Some(Self::Inactive),
+            "active" | "streaming" => Some(Self::Active),
+            "thinking" => Some(Self::Thinking),
+            "stale" => Some(Self::Stale),
+            _ => None,
+        }
+    }
+}
+
+impl Default for SessionAiPaneActivityState {
+    fn default() -> Self {
+        Self::Unknown
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct SessionAiPaneActivity {
+    /// Adapter state: tab position this activity fact belongs to.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tab_position: Option<usize>,
     /// Adapter state: provider label supplied by a future AI pane activity detector.
+    #[serde(default)]
     pub provider: String,
     /// Adapter state: pane identity associated with the activity signal.
+    #[serde(default)]
     pub pane_id: String,
-    /// Adapter state: stable activity token, for example `thinking` or `streaming`.
+    /// Adapter state: legacy stable activity token, retained for schema-v1 compatibility.
+    #[serde(default)]
     pub activity: String,
+    /// Adapter state: normalized activity state for status-bus consumers.
+    #[serde(default)]
+    pub state: SessionAiPaneActivityState,
+}
+
+impl SessionAiPaneActivity {
+    pub fn tab_local(
+        tab_position: usize,
+        provider: String,
+        pane_id: String,
+        state: SessionAiPaneActivityState,
+    ) -> Self {
+        Self {
+            tab_position: Some(tab_position),
+            provider,
+            pane_id,
+            activity: state.as_str().to_string(),
+            state,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq, Eq)]
+pub struct SessionAiTokenBudget {
+    /// Adapter state: tab position this token-budget fact belongs to.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tab_position: Option<usize>,
+    /// Adapter state: provider label supplied by a future token-budget detector.
+    #[serde(default)]
+    pub provider: String,
+    /// Adapter state: known remaining context tokens, when a provider adapter can report it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub remaining_tokens: Option<u64>,
+    /// Adapter state: known total context tokens, when a provider adapter can report it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub total_tokens: Option<u64>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq, Eq)]
@@ -73,6 +154,9 @@ pub struct SessionStatusExtensions {
     /// Extension slot for future AI pane indicators. Empty means unknown, not idle.
     #[serde(default)]
     pub ai_pane_activity: Vec<SessionAiPaneActivity>,
+    /// Extension slot for future provider token-budget adapters. Empty means unknown.
+    #[serde(default)]
+    pub ai_token_budget: Vec<SessionAiTokenBudget>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -301,10 +385,17 @@ mod tests {
                     }),
                 },
                 extensions: SessionStatusExtensions {
-                    ai_pane_activity: vec![SessionAiPaneActivity {
+                    ai_pane_activity: vec![SessionAiPaneActivity::tab_local(
+                        2,
+                        "codex".into(),
+                        "terminal:4".into(),
+                        SessionAiPaneActivityState::Thinking,
+                    )],
+                    ai_token_budget: vec![SessionAiTokenBudget {
+                        tab_position: Some(2),
                         provider: "codex".into(),
-                        pane_id: "terminal:4".into(),
-                        activity: "thinking".into(),
+                        remaining_tokens: Some(120_000),
+                        total_tokens: Some(200_000),
                     }],
                 },
             },
@@ -344,9 +435,19 @@ mod tests {
                 "extensions": {
                     "ai_pane_activity": [
                         {
+                            "tab_position": 2,
                             "provider": "codex",
                             "pane_id": "terminal:4",
-                            "activity": "thinking"
+                            "activity": "thinking",
+                            "state": "thinking"
+                        }
+                    ],
+                    "ai_token_budget": [
+                        {
+                            "tab_position": 2,
+                            "provider": "codex",
+                            "remaining_tokens": 120000,
+                            "total_tokens": 200000
                         }
                     ]
                 }
@@ -355,5 +456,45 @@ mod tests {
         assert!(!serialized.contains("#["));
         assert!(!serialized.contains("command_cpu"));
         assert!(!serialized.contains("zjstatus"));
+    }
+
+    // Defends: the AI activity extension has an explicit tab-local state taxonomy without provider UI formatting.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn ai_activity_extension_represents_tab_local_state_taxonomy() {
+        let states = [
+            SessionAiPaneActivityState::Inactive,
+            SessionAiPaneActivityState::Active,
+            SessionAiPaneActivityState::Thinking,
+            SessionAiPaneActivityState::Stale,
+            SessionAiPaneActivityState::Unknown,
+        ];
+
+        let facts = states
+            .iter()
+            .map(|state| {
+                SessionAiPaneActivity::tab_local(4, "codex".into(), "terminal:12".into(), *state)
+            })
+            .collect::<Vec<_>>();
+        let value = serde_json::to_value(SessionStatusExtensions {
+            ai_pane_activity: facts,
+            ai_token_budget: Vec::new(),
+        })
+        .unwrap();
+
+        assert_eq!(
+            value
+                .get("ai_pane_activity")
+                .and_then(|value| value.as_array())
+                .map(|items| {
+                    items
+                        .iter()
+                        .filter_map(|item| item.get("state").and_then(|state| state.as_str()))
+                        .collect::<Vec<_>>()
+                })
+                .unwrap(),
+            vec!["inactive", "active", "thinking", "stale", "unknown"]
+        );
+        assert!(!value.to_string().contains("#["));
     }
 }

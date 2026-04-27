@@ -379,7 +379,7 @@ mod tests {
     }
 
     // Defends: backup timestamp format stays human-readable after the Rust owner cut.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
+    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn formats_import_backup_timestamp() {
         assert_eq!(format_backup_timestamp(0), "19700101_000000");

@@ -1,7 +1,14 @@
-{ pkgs, src ? ../., nixgl ? null, name ? "yazelix-runtime", rustCoreHelper ? null }:
+{
+  pkgs,
+  src ? ../.,
+  nixgl ? null,
+  name ? "yazelix-runtime",
+  rustCoreHelper ? null,
+  runtimeVariant ? "ghostty",
+}:
 
 let
-  runtimeDeps = import ./runtime_deps.nix { inherit pkgs nixgl; };
+  runtimeDeps = import ./runtime_deps.nix { inherit pkgs nixgl runtimeVariant; };
   runtimeBinDirs = map (pkg: "${pkg}/bin") runtimeDeps;
   escapedRuntimeBinDirs = pkgs.lib.escapeShellArgs runtimeBinDirs;
   exportedRuntimeCommands = [
@@ -11,6 +18,7 @@ let
     "zsh"
     "zellij"
     "ghostty"
+    "wezterm"
     "hx"
     "helix"
     "nvim"
@@ -55,6 +63,7 @@ pkgs.runCommand name { } ''
   ln -s ${src}/CHANGELOG.md "$out/CHANGELOG.md"
   ln -s ${src}/.taplo.toml "$out/.taplo.toml"
   ln -s ${src}/yazelix_default.toml "$out/yazelix_default.toml"
+  printf '%s\n' ${pkgs.lib.escapeShellArg runtimeVariant} > "$out/runtime_variant"
 
   mkdir -p "$out/libexec"
   for bin_dir in ${escapedRuntimeBinDirs}; do

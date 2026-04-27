@@ -976,7 +976,7 @@ mod tests {
     }
 
     // Defends: startup-launch preflight rejects malformed requests that specify both startup and launch.
-    // Strength: defect=2 behavior=1 resilience=1 cost=1 uniqueness=2 total=7/10
+    // Strength: defect=2 behavior=1 resilience=1 cost=2 uniqueness=2 total=8/10
     #[test]
     fn startup_launch_preflight_rejects_ambiguous_request() {
         let temp = tempdir().unwrap();

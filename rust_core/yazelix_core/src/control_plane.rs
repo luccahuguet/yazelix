@@ -638,7 +638,7 @@ mod tests {
 
     // Test lane: default
     // Defends: `yzx env --no-shell` still launches plain Nushell when the invoking shell family is `nu`.
-    // Strength: defect=1 behavior=2 resilience=1 cost=1 uniqueness=2 total=7/10
+    // Strength: defect=1 behavior=2 resilience=1 cost=2 uniqueness=2 total=8/10
     #[test]
     fn shell_command_no_login_nu_stays_plain_nu() {
         let rt = Path::new("/opt/yazelix");

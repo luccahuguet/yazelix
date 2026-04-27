@@ -64,7 +64,7 @@ mod tests {
     use serde_json::json;
 
     // Defends: transient pane facts preserve popup defaults and geometry without Nushell-side config parsing.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
+    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn transient_pane_facts_defaults_and_filters_popup_program() {
         let mut config = JsonMap::new();

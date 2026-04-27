@@ -82,7 +82,8 @@ This spec defines:
 - Owner: governed test metadata validators
 - Statement: Governed Nu and first-party Rust tests must declare a lane, a
   nearby justification marker, and a structured strength score, and they must
-  clear the lane minimum mechanically
+  clear the `8/10` default strength minimum mechanically or carry a durable
+  exception that cites a Bead id or spec path
 - Verification: automated
   `yzx_repo_validator validate-default-test-traceability`; automated
   `yzx_repo_validator validate-rust-test-traceability`
@@ -287,17 +288,19 @@ Score governed tests out of 10 using five `0-2` dimensions:
 Interpretation:
 
 - `0-4`: weak, remove or demote
-- `5-6`: borderline, justify explicitly before keeping
-- `7-10`: strong enough for the default lane
+- `5-7`: below the governed-suite bar; keep only with an explicit durable exception
+- `8-10`: strong enough for a governed lane
 
 Lane minimums:
 
-- `default`: `7/10`
-- `maintainer`: `6/10`
-- `sweep`: `6/10`
-- `manual`: `6/10` if a governed `def test_*` exists there at all
+- `default`: `8/10`
+- `maintainer`: `8/10`
+- `sweep`: `8/10`
+- `manual`: `8/10` if a governed `def test_*` exists there at all
 
-The validator enforces these minimums mechanically. It still cannot prove a test is wise, but it can make low-effort junk and generic overflow much harder to land anywhere in the governed suite.
+The validator enforces these minimums mechanically. A below-8 test must carry a nearby `Strength exception:` marker with a Bead id or spec path so the exception has durable rationale outside reviewer memory.
+
+The score is not a loophole for cosmetic or trivia assertions. Exact palette constants, help-output trivia, command-name discovery, generated-text implementation details, and one-off color or glyph snapshots are not sufficient unless they defend a documented product contract or a concrete regression.
 
 ### Concrete cleanup in this change
 
