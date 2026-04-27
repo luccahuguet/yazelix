@@ -74,8 +74,7 @@
         system:
         let
           pkgs = mkPkgs system;
-          defaultRuntimeVariant =
-            if pkgs.stdenv.hostPlatform.isLinux then "wezterm" else "ghostty";
+          defaultRuntimeVariant = "ghostty";
           runtime_default = runtimePackage system pkgs defaultRuntimeVariant;
           runtime_ghostty = runtimePackage system pkgs "ghostty";
           runtime_wezterm = runtimePackage system pkgs "wezterm";

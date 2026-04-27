@@ -11,15 +11,15 @@
   programs.yazelix = {
     enable = true;
     manage_config = true; # Opt into declarative Home Manager ownership of yazelix.toml for this example
-    runtime_variant = "wezterm"; # Optional: "wezterm" or "ghostty"
+    runtime_variant = "ghostty"; # Optional: "ghostty" or "wezterm"
 
     # Shell entry
     default_shell = "zsh";
 
     # Terminal preference
     terminals = [
-      "wezterm"
       "ghostty"
+      "wezterm"
     ];
     terminal_config_mode = "yazelix"; # Optional: "yazelix" or "user"
     ghostty_trail_color = "random"; # Optional: Ghostty color palette rerolled for each Yazelix Ghostty window

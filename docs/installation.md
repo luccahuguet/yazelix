@@ -17,19 +17,18 @@ It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij,
 **Important**: You don't need to learn Nix or Nushell to use Yazelix. Nix with flakes is the only real host prerequisite. The normal product surface is the `yazelix` package or the top-level Home Manager module.
 
 ## Supported Terminal Emulators
-Yazelix provides one packaged terminal runtime variant at a time. Linux defaults to the WezTerm variant so non-NixOS users are not steered into nixpkgs Ghostty implicitly; macOS defaults to the Ghostty variant. Kitty, Alacritty, and Foot remain supported terminal choices, but you provide those binaries yourself and then list them in `terminals` in `yazelix.toml`.
+Yazelix provides one packaged terminal runtime variant at a time. The default `#yazelix` package uses Ghostty so Yazelix cursor trails and Ghostty config effects are present on first run. WezTerm remains available through `#yazelix_wezterm` or `programs.yazelix.runtime_variant = "wezterm"` for users who prefer its image-preview behavior. Kitty, Alacritty, and Foot remain supported terminal choices, but you provide those binaries yourself and then list them in `terminals` in `yazelix.toml`.
 
 See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed breakdown of strengths, gaps, and platform support.
 
 **WezTerm**
 - Modern, fast, written in Rust
-- Provided by the default Linux `yazelix` package, by `yazelix_wezterm`, or as a PATH-provided alternative terminal
+- Provided by `yazelix_wezterm`, by `programs.yazelix.runtime_variant = "wezterm"`, or as a PATH-provided alternative terminal
 - Reference: https://wezfurlong.org/wezterm/installation.html
 
 **Ghostty**
 - Modern, fast, written in Zig, newer
-- **macOS**: Provided by the default `yazelix` / `yazelix_ghostty` package runtime
-- **Linux**: Provided explicitly by `yazelix_ghostty`, recommended for NixOS or users who knowingly want the Ghostty runtime path
+- Provided by the default `yazelix` package runtime and by `yazelix_ghostty`
 - Download page: https://ghostty.org/download
 - **Note**: Due to a [Zellij/Yazi/Ghostty interaction](https://github.com/zellij-org/zellij/issues/2814#issuecomment-2965117327), image previews in Yazi may not display properly, for now. If this is a problem for you, use WezTerm instead
 
@@ -57,7 +56,7 @@ nix profile add github:luccahuguet/yazelix#yazelix
 yzx launch
 ```
 
-Use `#yazelix_ghostty` instead if you are on NixOS or intentionally want the package-provided Ghostty runtime variant.
+Use `#yazelix_wezterm` instead if you intentionally want the package-provided WezTerm runtime variant.
 
 One-off use without installing also works:
 
@@ -109,10 +108,10 @@ Install the Yazelix package exposed by the top-level flake:
 nix profile add github:luccahuguet/yazelix#yazelix
 ```
 
-On Linux, the default package is the WezTerm variant. On macOS, the default package is the Ghostty variant. To install the package-provided Ghostty variant explicitly:
+The default package is the Ghostty variant. To install the package-provided WezTerm variant explicitly:
 
 ```bash
-nix profile add github:luccahuguet/yazelix#yazelix_ghostty
+nix profile add github:luccahuguet/yazelix#yazelix_wezterm
 ```
 
 > If you previously evaluated this flake (for example with `nix run` or `nix flake show`), Nix may have cached an older version. Add `--refresh` to force a fresh fetch:
@@ -154,7 +153,7 @@ The trimmed v15 packaged runtime ships a fixed toolset instead of configurable d
 - the core Yazelix stack: `zellij`, `yazi`, `helix`, `nu`, `bash`, `fish`, `zsh`
 - the default CLI helpers: `fzf`, `zoxide`, `starship`, `lazygit`, `mise`, `carapace`, `macchina`
 - the default Yazi preview helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
-- one packaged terminal variant: WezTerm by default on Linux, Ghostty by default on macOS, or either variant explicitly through `#yazelix_wezterm`, `#yazelix_ghostty`, or `programs.yazelix.runtime_variant`
+- one packaged terminal variant: Ghostty by default, or either variant explicitly through `#yazelix_ghostty`, `#yazelix_wezterm`, or `programs.yazelix.runtime_variant`
 
 When you enter `yzx env`, Yazelix exports that curated tool surface to your shell. Runtime-private helpers stay under `libexec/` so host apps launched from Yazelix do not inherit shadowing tools like `dirname` ahead of the system PATH.
 
@@ -167,7 +166,7 @@ What it does not ship anymore:
 #### Configuration Options
 - **Custom shells**: Set `default_shell` to your preference (`"nu"`, `"bash"`, `"fish"`, `"zsh"`)
 - **Terminal preference**: Set `terminals` (`["ghostty", "wezterm", "kitty", "alacritty", "foot"]`, ordered)
-- **Terminal launch**: WezTerm is first in the default terminal list to keep non-NixOS Linux safe by default; Ghostty remains available through the Ghostty runtime variant or host `PATH`; other configured terminals are launched from `PATH` in the order you configure
+- **Terminal launch**: Ghostty is first in the default terminal list for Yazelix cursor trails; WezTerm remains available through the WezTerm runtime variant or host `PATH`; other configured terminals are launched from `PATH` in the order you configure
 - **Editor choice**: Configure your editor (see [Editor Configuration](./editor_configuration.md))
 
 ### Step 4: Install Fonts (Required for Kitty and Alacritty)

@@ -159,7 +159,7 @@ rebuild_required = false
 
 [fields."terminal.terminals"]
 kind = "string_list"
-default = ["wezterm", "ghostty"]
+default = ["ghostty", "wezterm"]
 parser_key = "terminals"
 home_manager_option = "terminals"
 parser_behavior = "direct"

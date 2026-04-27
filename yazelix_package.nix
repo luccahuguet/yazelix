@@ -8,7 +8,7 @@
   rust_core_src ? ./.,
   nixgl ? null,
   fenixPkgs ? null,
-  runtimeVariant ? if pkgs.stdenv.hostPlatform.isLinux then "wezterm" else "ghostty",
+  runtimeVariant ? "ghostty",
 }:
 
 let

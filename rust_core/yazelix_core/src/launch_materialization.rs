@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 
 const SUPPORTED_TERMINALS: &[&str] = &["ghostty", "wezterm", "kitty", "alacritty", "foot"];
 const DEFAULT_TERMINAL_CONFIG_MODE: &str = "yazelix";
-const DEFAULT_TERMINALS: &[&str] = &["wezterm", "ghostty"];
+const DEFAULT_TERMINALS: &[&str] = &["ghostty", "wezterm"];
 
 #[derive(Debug, Clone)]
 pub struct LaunchMaterializationRequest {
@@ -345,6 +345,21 @@ mod tests {
                 should_generate_terminal_configs: true,
                 should_reroll_ghostty_cursor: false,
             }
+        );
+    }
+
+    // Defends: missing terminal config materializes Ghostty first so first-run launches use the cursor-trail runtime identity.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn full_launch_materialization_defaults_to_ghostty_then_wezterm() {
+        let temp = tempdir().unwrap();
+        let config = JsonMap::new();
+
+        let plan = build_launch_materialization_plan(&config, &[], false, temp.path());
+
+        assert_eq!(
+            plan.selected_terminals,
+            vec!["ghostty".to_string(), "wezterm".to_string()]
         );
     }
 }

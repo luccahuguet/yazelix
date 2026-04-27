@@ -26,7 +26,7 @@ The current tree contained mixed signals about macOS support. The top-level docs
 
 ## Ghostty on macOS
 
-Ghostty is the intended first-party terminal on macOS and remains an explicit runtime variant on Linux for NixOS or users who knowingly want the Ghostty path. The runtime bundles `pkgs.ghostty-bin` on darwin (a repackaging of the official signed and notarized macOS binary) and `pkgs.ghostty` in the explicit Linux Ghostty variant.
+Ghostty is the intended first-party terminal on macOS and Linux. The runtime bundles `pkgs.ghostty-bin` on darwin (a repackaging of the official signed and notarized macOS binary) and `pkgs.ghostty` on Linux in the default and explicit Ghostty variants.
 
 The supported floor covers opening a Ghostty window on macOS via `yzx launch`. It does not promise automatic Ghostty shell integration on macOS. Ghostty's official docs say automatic shell integration on macOS requires either the macOS app bundle or a layout where Ghostty resources are available above the binary. The Yazelix runtime does not currently provision `GHOSTTY_RESOURCES_DIR` or ship as a macOS app bundle, so shell-integration features that depend on that resource-discovery path are not guaranteed.
 

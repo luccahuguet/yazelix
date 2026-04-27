@@ -11,7 +11,7 @@ with lib;
 
 let
   cfg = config.programs.yazelix;
-  defaultRuntimeVariant = if pkgs.stdenv.hostPlatform.isLinux then "wezterm" else "ghostty";
+  defaultRuntimeVariant = "ghostty";
   yazelixPackage = import ../yazelix_package.nix {
     inherit pkgs fenixPkgs nixgl;
     runtimeVariant = cfg.runtime_variant;
@@ -188,8 +188,8 @@ in
       description = ''
         Packaged terminal runtime variant.
 
-        - "wezterm": default on Linux so non-NixOS installs do not use nixpkgs Ghostty implicitly
-        - "ghostty": default on macOS, and explicit Ghostty runtime for NixOS or users who want Yazelix Ghostty config effects
+        - "ghostty": default packaged runtime with Yazelix cursor trails and Ghostty config effects
+        - "wezterm": explicit compatibility runtime, especially for users who prefer WezTerm image-preview behavior
       '';
     };
 

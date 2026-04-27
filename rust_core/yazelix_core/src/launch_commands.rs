@@ -30,7 +30,7 @@ use std::process::{Command, Output};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-const DEFAULT_TERMINALS: &[&str] = &["wezterm", "ghostty"];
+const DEFAULT_TERMINALS: &[&str] = &["ghostty", "wezterm"];
 const SUPPORTED_TERMINALS: &[&str] = &["ghostty", "wezterm", "kitty", "alacritty", "foot"];
 const WINDOW_CLASS: &str = "com.yazelix.Yazelix";
 const X11_INSTANCE: &str = "yazelix";
@@ -1964,15 +1964,15 @@ mod tests {
         );
     }
 
-    // Defends: missing terminal config no longer falls back to Ghostty alone on Linux package surfaces.
+    // Defends: missing terminal config keeps Ghostty as the default while preserving WezTerm as the first fallback.
     // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
-    fn normalized_configured_terminals_defaults_to_wezterm_then_ghostty() {
+    fn normalized_configured_terminals_defaults_to_ghostty_then_wezterm() {
         let config = JsonMap::new();
 
         assert_eq!(
             normalized_configured_terminals(&config),
-            vec!["wezterm".to_string(), "ghostty".to_string()]
+            vec!["ghostty".to_string(), "wezterm".to_string()]
         );
     }
 

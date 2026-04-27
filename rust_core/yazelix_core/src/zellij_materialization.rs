@@ -1413,7 +1413,7 @@ fn build_generation_fingerprint(
         "default_shell": string_config(config, "default_shell", "nu"),
         "resolved_default_shell": resolved_default_shell,
         "editor_command": string_config(config, "editor_command", ""),
-        "terminals": config.get("terminals").cloned().unwrap_or_else(|| json!(["wezterm", "ghostty"])),
+        "terminals": config.get("terminals").cloned().unwrap_or_else(|| json!(["ghostty", "wezterm"])),
         "zellij_default_mode": string_config(config, "zellij_default_mode", "normal"),
         "enable_sidebar": bool_config(config, "enable_sidebar", true),
         "initial_sidebar_state": string_config(config, "initial_sidebar_state", "open"),
