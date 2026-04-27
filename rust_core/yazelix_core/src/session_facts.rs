@@ -2,9 +2,10 @@
 //! Cached current-session facts for panes that must survive config version skew.
 
 use crate::active_config_surface::primary_config_paths;
-use crate::bridge::CoreError;
-use crate::control_plane::{
-    config_dir_from_env, config_override_from_env, runtime_dir_from_env, state_dir_from_env,
+use crate::bridge::{CoreError, ErrorClass};
+use crate::control_plane::{config_dir_from_env, config_override_from_env, runtime_dir_from_env};
+use crate::session_config_snapshot::{
+    load_session_facts_from_snapshot_path, session_config_snapshot_path_from_env,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Value as JsonValue};
@@ -13,7 +14,6 @@ use std::path::{Path, PathBuf};
 use toml::Value as TomlValue;
 
 const SESSION_FACTS_SCHEMA_VERSION: u64 = 1;
-const SESSION_FACTS_FILE_NAME: &str = "session_facts.json";
 const SESSION_FACTS_PATH_ENV: &str = "YAZELIX_SESSION_FACTS_PATH";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -34,11 +34,13 @@ pub struct SessionFactsData {
     pub terminals: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 struct SessionFactsCache {
     schema_version: u64,
-    source_config_file: String,
-    normalized_config: JsonMap<String, JsonValue>,
+    #[serde(rename = "source_config_file")]
+    _source_config_file: String,
+    #[serde(rename = "normalized_config")]
+    _normalized_config: JsonMap<String, JsonValue>,
     facts: SessionFactsData,
 }
 
@@ -138,44 +140,15 @@ impl SessionFactsData {
 }
 
 pub fn compute_session_facts_from_env() -> Result<SessionFactsData, CoreError> {
-    if let Some(path) = session_facts_cache_path_from_env() {
-        if let Some(facts) = read_session_facts_cache(&path) {
-            return Ok(facts);
-        }
+    if let Some(path) = session_config_snapshot_path_from_env() {
+        return load_session_facts_from_snapshot_path(&path);
     }
 
-    let state_dir = state_dir_from_env()?;
-    if let Some(facts) = read_session_facts_cache(&session_facts_cache_path(&state_dir)) {
-        return Ok(facts);
+    if let Some(path) = session_facts_cache_path_from_env() {
+        return load_legacy_session_facts_cache_from_path(&path);
     }
 
     compute_lossy_session_facts_from_config()
-}
-
-pub fn session_facts_cache_path(state_dir: &Path) -> PathBuf {
-    state_dir.join("state").join(SESSION_FACTS_FILE_NAME)
-}
-
-pub fn session_facts_cache_path_from_state_path(state_path: &Path) -> PathBuf {
-    state_path
-        .parent()
-        .map(|state_dir| state_dir.join(SESSION_FACTS_FILE_NAME))
-        .unwrap_or_else(|| state_path.with_file_name(SESSION_FACTS_FILE_NAME))
-}
-
-pub fn write_session_facts_cache_from_normalized_config(
-    state_path: &Path,
-    source_config_file: &str,
-    config: &JsonMap<String, JsonValue>,
-) -> Result<(), CoreError> {
-    let path = session_facts_cache_path_from_state_path(state_path);
-    let cache = SessionFactsCache {
-        schema_version: SESSION_FACTS_SCHEMA_VERSION,
-        source_config_file: source_config_file.to_string(),
-        normalized_config: config.clone(),
-        facts: SessionFactsData::from_normalized_config(config),
-    };
-    write_json_atomic(&path, &cache)
 }
 
 fn session_facts_cache_path_from_env() -> Option<PathBuf> {
@@ -185,10 +158,46 @@ fn session_facts_cache_path_from_env() -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 
-fn read_session_facts_cache(path: &Path) -> Option<SessionFactsData> {
-    let raw = fs::read_to_string(path).ok()?;
-    let cache = serde_json::from_str::<SessionFactsCache>(&raw).ok()?;
-    (cache.schema_version == SESSION_FACTS_SCHEMA_VERSION).then(|| cache.facts.sanitized())
+fn load_legacy_session_facts_cache_from_path(path: &Path) -> Result<SessionFactsData, CoreError> {
+    let raw = fs::read_to_string(path).map_err(|source| {
+        CoreError::io(
+            "legacy_session_facts_read",
+            "Could not read the legacy Yazelix session facts cache.",
+            "Restart this Yazelix window so it inherits a launch-time config snapshot.",
+            path.to_string_lossy(),
+            source,
+        )
+    })?;
+    let cache = serde_json::from_str::<SessionFactsCache>(&raw).map_err(|source| {
+        CoreError::classified(
+            ErrorClass::Runtime,
+            "legacy_session_facts_parse",
+            format!(
+                "Could not parse the legacy Yazelix session facts cache {}: {source}",
+                path.display()
+            ),
+            "Restart this Yazelix window so it inherits a launch-time config snapshot.",
+            serde_json::json!({ "path": path.to_string_lossy() }),
+        )
+    })?;
+    if cache.schema_version != SESSION_FACTS_SCHEMA_VERSION {
+        return Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "legacy_session_facts_schema",
+            format!(
+                "Unsupported legacy Yazelix session facts schema {} at {}.",
+                cache.schema_version,
+                path.display()
+            ),
+            "Restart this Yazelix window so it inherits a launch-time config snapshot.",
+            serde_json::json!({
+                "path": path.to_string_lossy(),
+                "expected_schema_version": SESSION_FACTS_SCHEMA_VERSION,
+                "actual_schema_version": cache.schema_version,
+            }),
+        ));
+    }
+    Ok(cache.facts.sanitized())
 }
 
 fn compute_lossy_session_facts_from_config() -> Result<SessionFactsData, CoreError> {
@@ -359,49 +368,6 @@ fn non_empty_strings(values: Vec<String>) -> Vec<String> {
         .into_iter()
         .filter_map(|value| non_empty_string(value.as_str()))
         .collect()
-}
-
-fn write_json_atomic<T: Serialize>(path: &Path, value: &T) -> Result<(), CoreError> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|source| {
-            CoreError::io(
-                "session_facts_cache_mkdir",
-                "Could not create the Yazelix session facts cache directory.",
-                "Check permissions under the Yazelix state directory, then retry.",
-                parent.to_string_lossy(),
-                source,
-            )
-        })?;
-    }
-
-    let raw = serde_json::to_string_pretty(value).map_err(|source| {
-        CoreError::classified(
-            crate::bridge::ErrorClass::Internal,
-            "session_facts_cache_serialize",
-            format!("Could not serialize Yazelix session facts: {source}"),
-            "Report this as a Yazelix internal error.",
-            serde_json::json!({}),
-        )
-    })?;
-    let temp_path = path.with_extension(format!("json.tmp.{}", std::process::id()));
-    fs::write(&temp_path, raw).map_err(|source| {
-        CoreError::io(
-            "session_facts_cache_write",
-            "Could not write the Yazelix session facts cache.",
-            "Check permissions under the Yazelix state directory, then retry.",
-            temp_path.to_string_lossy(),
-            source,
-        )
-    })?;
-    fs::rename(&temp_path, path).map_err(|source| {
-        CoreError::io(
-            "session_facts_cache_replace",
-            "Could not replace the Yazelix session facts cache.",
-            "Check permissions under the Yazelix state directory, then retry.",
-            path.to_string_lossy(),
-            source,
-        )
-    })
 }
 
 #[cfg(test)]

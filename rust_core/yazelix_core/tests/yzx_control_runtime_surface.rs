@@ -9,7 +9,7 @@ mod support;
 use support::commands::{apply_managed_config_env, yzx_control_command};
 use support::fixtures::{
     managed_config_fixture, prepend_path, repo_root, write_executable_script,
-    write_session_facts_cache,
+    write_session_config_snapshot,
 };
 
 fn yzx_control_command_in_fixture(
@@ -180,7 +180,7 @@ fn yzx_control_status_json_reports_config_problem_without_aborting() {
 ghostty_trail_color = "random"
 "#,
     );
-    let cache = write_session_facts_cache(
+    let snapshot = write_session_config_snapshot(
         &fixture,
         &[
             ("default_shell", serde_json::json!("bash")),
@@ -189,7 +189,7 @@ ghostty_trail_color = "random"
     );
 
     let output = yzx_control_command_in_fixture(&fixture)
-        .env("YAZELIX_SESSION_FACTS_PATH", cache)
+        .env("YAZELIX_SESSION_CONFIG_PATH", snapshot)
         .arg("status")
         .arg("--json")
         .output()
@@ -275,10 +275,10 @@ fn yzx_control_inspect_json_embeds_config_problem_without_aborting() {
 ghostty_trail_color = "random"
 "#,
     );
-    let cache = write_session_facts_cache(&fixture, &[]);
+    let snapshot = write_session_config_snapshot(&fixture, &[]);
 
     let output = yzx_control_command_in_fixture(&fixture)
-        .env("YAZELIX_SESSION_FACTS_PATH", cache)
+        .env("YAZELIX_SESSION_CONFIG_PATH", snapshot)
         .arg("inspect")
         .arg("--json")
         .output()

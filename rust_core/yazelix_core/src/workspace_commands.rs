@@ -344,6 +344,7 @@ fn current_process_runtime_env() -> serde_json::Map<String, serde_json::Value> {
         "EDITOR",
         "VISUAL",
         "YAZELIX_RUNTIME_DIR",
+        "YAZELIX_SESSION_CONFIG_PATH",
         "YAZELIX_SESSION_FACTS_PATH",
         "IN_YAZELIX_SHELL",
         "ZELLIJ_DEFAULT_LAYOUT",

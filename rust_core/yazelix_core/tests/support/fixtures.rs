@@ -125,6 +125,89 @@ pub fn write_session_facts_cache(
     path
 }
 
+pub fn write_session_config_snapshot(
+    fixture: &ManagedConfigFixture,
+    overrides: &[(&str, serde_json::Value)],
+) -> PathBuf {
+    write_session_config_snapshot_with_id(fixture, "test", overrides)
+}
+
+pub fn write_session_config_snapshot_with_id(
+    fixture: &ManagedConfigFixture,
+    snapshot_id: &str,
+    overrides: &[(&str, serde_json::Value)],
+) -> PathBuf {
+    let mut normalized_config = serde_json::Map::from_iter([
+        ("enable_sidebar".to_string(), serde_json::json!(true)),
+        (
+            "initial_sidebar_state".to_string(),
+            serde_json::json!("open"),
+        ),
+        ("yazi_command".to_string(), serde_json::json!("yazi")),
+        ("yazi_ya_command".to_string(), serde_json::json!("ya")),
+        ("popup_program".to_string(), serde_json::json!(["lazygit"])),
+        ("popup_width_percent".to_string(), serde_json::json!(90)),
+        ("popup_height_percent".to_string(), serde_json::json!(90)),
+        (
+            "game_of_life_cell_style".to_string(),
+            serde_json::json!("full_block"),
+        ),
+        ("default_shell".to_string(), serde_json::json!("nu")),
+        ("terminals".to_string(), serde_json::json!(["ghostty"])),
+    ]);
+    let mut facts = serde_json::Map::from_iter([
+        ("enable_sidebar".to_string(), serde_json::json!(true)),
+        (
+            "initial_sidebar_state".to_string(),
+            serde_json::json!("open"),
+        ),
+        ("yazi_command".to_string(), serde_json::json!("yazi")),
+        ("ya_command".to_string(), serde_json::json!("ya")),
+        ("popup_program".to_string(), serde_json::json!(["lazygit"])),
+        ("popup_width_percent".to_string(), serde_json::json!(90)),
+        ("popup_height_percent".to_string(), serde_json::json!(90)),
+        (
+            "game_of_life_cell_style".to_string(),
+            serde_json::json!("full_block"),
+        ),
+        ("default_shell".to_string(), serde_json::json!("nu")),
+        ("terminals".to_string(), serde_json::json!(["ghostty"])),
+    ]);
+    for (key, value) in overrides {
+        facts.insert((*key).to_string(), value.clone());
+        let normalized_key = if *key == "ya_command" {
+            "yazi_ya_command"
+        } else {
+            key
+        };
+        normalized_config.insert(normalized_key.to_string(), value.clone());
+    }
+    let snapshot = serde_json::json!({
+        "schema_version": 1,
+        "snapshot_id": snapshot_id,
+        "created_at_unix_seconds": 1,
+        "source_config": {
+            "path": fixture.managed_config,
+            "hash": "test-config-hash",
+        },
+        "runtime": {
+            "dir": fixture.runtime_dir,
+            "hash": "test-runtime-hash",
+            "version": "v-test",
+        },
+        "normalized_config": normalized_config,
+        "facts": facts,
+    });
+    let path = fixture
+        .state_dir
+        .join("sessions")
+        .join(snapshot_id)
+        .join("config_snapshot.json");
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(&path, serde_json::to_string_pretty(&snapshot).unwrap()).unwrap();
+    path
+}
+
 pub fn managed_config_fixture(raw_config: &str) -> ManagedConfigFixture {
     let repo = repo_root();
     let temp = TempDir::new().unwrap();

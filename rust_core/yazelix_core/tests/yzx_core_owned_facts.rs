@@ -5,7 +5,10 @@ mod support;
 
 use support::commands::yzx_core_command_in_fixture;
 use support::envelopes::ok_envelope;
-use support::fixtures::{managed_config_fixture, write_session_facts_cache};
+use support::fixtures::{
+    managed_config_fixture, write_session_config_snapshot, write_session_config_snapshot_with_id,
+    write_session_facts_cache,
+};
 
 // Defends: integration-facts.compute returns the Rust-owned sidebar, editor-kind, and Yazi command payload directly.
 // Contract: WSS-005, SOE-004
@@ -52,7 +55,7 @@ ya_command = "config-ya"
 ghostty_trail_color = "random"
 "#,
     );
-    let cache = write_session_facts_cache(
+    let snapshot = write_session_config_snapshot(
         &fixture,
         &[
             ("editor_command", serde_json::json!("nvim")),
@@ -62,7 +65,7 @@ ghostty_trail_color = "random"
     );
 
     let output = yzx_core_command_in_fixture(&fixture, "integration-facts.compute")
-        .env("YAZELIX_SESSION_FACTS_PATH", cache)
+        .env("YAZELIX_SESSION_CONFIG_PATH", snapshot)
         .output()
         .unwrap();
     let envelope: Value = ok_envelope(&output);
@@ -113,7 +116,7 @@ popup_height_percent = 12
 ghostty_trail_color = "random"
 "#,
     );
-    let cache = write_session_facts_cache(
+    let snapshot = write_session_config_snapshot(
         &fixture,
         &[
             (
@@ -126,7 +129,7 @@ ghostty_trail_color = "random"
     );
 
     let output = yzx_core_command_in_fixture(&fixture, "transient-pane-facts.compute")
-        .env("YAZELIX_SESSION_FACTS_PATH", cache)
+        .env("YAZELIX_SESSION_CONFIG_PATH", snapshot)
         .output()
         .unwrap();
     let envelope: Value = ok_envelope(&output);
@@ -138,6 +141,80 @@ ghostty_trail_color = "random"
     );
     assert_eq!(envelope["data"]["popup_width_percent"], 82);
     assert_eq!(envelope["data"]["popup_height_percent"], 76);
+}
+
+// Regression: different Yazelix windows keep the config snapshot they launched with, even after live config edits.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn transient_pane_facts_compute_uses_window_snapshot_identity() {
+    let fixture = managed_config_fixture(
+        r#"[zellij]
+popup_program = ["new-live-config"]
+
+[terminal]
+ghostty_trail_color = "random"
+"#,
+    );
+    let old_snapshot = write_session_config_snapshot_with_id(
+        &fixture,
+        "old-window",
+        &[("popup_program", serde_json::json!(["old-window-popup"]))],
+    );
+    let new_snapshot = write_session_config_snapshot_with_id(
+        &fixture,
+        "new-window",
+        &[("popup_program", serde_json::json!(["new-window-popup"]))],
+    );
+
+    let old_output = yzx_core_command_in_fixture(&fixture, "transient-pane-facts.compute")
+        .env("YAZELIX_SESSION_CONFIG_PATH", old_snapshot)
+        .output()
+        .unwrap();
+    let new_output = yzx_core_command_in_fixture(&fixture, "transient-pane-facts.compute")
+        .env("YAZELIX_SESSION_CONFIG_PATH", new_snapshot)
+        .output()
+        .unwrap();
+    let old_envelope: Value = ok_envelope(&old_output);
+    let new_envelope: Value = ok_envelope(&new_output);
+
+    assert_eq!(
+        old_envelope["data"]["popup_program"],
+        serde_json::json!(["old-window-popup"])
+    );
+    assert_eq!(
+        new_envelope["data"]["popup_program"],
+        serde_json::json!(["new-window-popup"])
+    );
+}
+
+// Regression: already-open windows from the pre-snapshot implementation can still provide their legacy facts cache.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn integration_facts_compute_accepts_legacy_facts_cache_for_already_open_windows() {
+    let fixture = managed_config_fixture(
+        r#"[editor]
+command = "vim"
+
+[terminal]
+ghostty_trail_color = "random"
+"#,
+    );
+    let cache = write_session_facts_cache(
+        &fixture,
+        &[
+            ("editor_command", serde_json::json!("nvim")),
+            ("yazi_command", serde_json::json!("legacy-yazi")),
+        ],
+    );
+
+    let output = yzx_core_command_in_fixture(&fixture, "integration-facts.compute")
+        .env("YAZELIX_SESSION_FACTS_PATH", cache)
+        .output()
+        .unwrap();
+    let envelope: Value = ok_envelope(&output);
+
+    assert_eq!(envelope["data"]["managed_editor_kind"], "neovim");
+    assert_eq!(envelope["data"]["yazi_command"], "legacy-yazi");
 }
 
 // Defends: startup-facts.compute returns the retained welcome, session, shell, and terminal facts without Nushell-side config parsing.

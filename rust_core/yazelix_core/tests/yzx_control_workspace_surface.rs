@@ -7,7 +7,7 @@ mod support;
 
 use support::commands::{apply_managed_config_env, yzx_control_command};
 use support::fixtures::{
-    managed_config_fixture, prepend_path, write_executable_script, write_session_facts_cache,
+    managed_config_fixture, prepend_path, write_executable_script, write_session_config_snapshot,
 };
 
 fn yzx_control_command_in_fixture(
@@ -30,7 +30,7 @@ ghostty_trail_color = "random"
 ya_command = "config-ya"
 "#,
     );
-    let cache = write_session_facts_cache(
+    let snapshot = write_session_config_snapshot(
         &fixture,
         &[("editor_command", json!("hx")), ("ya_command", json!("ya"))],
     );
@@ -68,7 +68,7 @@ ya_command = "config-ya"
     let output = yzx_control_command_in_fixture(&fixture)
         .env("PATH", prepend_path(&fake_bin))
         .env("ZELLIJ", "1")
-        .env("YAZELIX_SESSION_FACTS_PATH", cache)
+        .env("YAZELIX_SESSION_CONFIG_PATH", snapshot)
         .arg("cwd")
         .arg("workspace-alias")
         .output()
@@ -472,7 +472,7 @@ ya_command = "config-ya"
 ghostty_trail_color = "random"
 "#,
     );
-    let cache = write_session_facts_cache(
+    let snapshot = write_session_config_snapshot(
         &fixture,
         &[("editor_command", json!("hx")), ("ya_command", json!("ya"))],
     );
@@ -512,7 +512,7 @@ ghostty_trail_color = "random"
         .env("PATH", prepend_path(&fake_bin))
         .env("ZELLIJ", "1")
         .env("YAZI_ID", "current-yazi")
-        .env("YAZELIX_SESSION_FACTS_PATH", cache)
+        .env("YAZELIX_SESSION_CONFIG_PATH", snapshot)
         .arg("zellij")
         .arg("open-editor")
         .arg(&target_file)
