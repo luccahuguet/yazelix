@@ -445,7 +445,16 @@ const EDIT_CONFIG_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Config),
     Some("Open the active Yazelix config file."),
 );
-const EDIT_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[EDIT_ROOT_COMMAND, EDIT_CONFIG_COMMAND];
+const EDIT_CURSORS_COMMAND: YzxCommandMetadata = metadata(
+    "yzx edit cursors",
+    "Open the Ghostty cursor registry sidecar in the configured editor",
+    YzxCommandCategory::Config,
+    &[switch("print", None)],
+    Some(YzxMenuCategory::Config),
+    Some("Open the active Yazelix cursor sidecar."),
+);
+const EDIT_FAMILY_COMMANDS: &[YzxCommandMetadata] =
+    &[EDIT_ROOT_COMMAND, EDIT_CONFIG_COMMAND, EDIT_CURSORS_COMMAND];
 
 const ONBOARD_COMMAND: YzxCommandMetadata = metadata(
     "yzx onboard",

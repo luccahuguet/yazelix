@@ -4,8 +4,9 @@ use tempfile::TempDir;
 
 mod support;
 
-use support::commands::yzx_control_command;
+use support::commands::{apply_managed_config_env, yzx_control_command};
 use support::envelopes::stdout_text;
+use support::fixtures::managed_config_fixture;
 
 // Defends: the Rust-owned `yzx why` leaf keeps the existing elevator-pitch copy instead of drifting through wrapper churn.
 // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
@@ -69,6 +70,27 @@ fn yzx_control_onboard_help_prints_prompt_contract() {
     assert!(stdout.contains("yzx onboard [--force] [--dry-run]"));
     assert!(stdout.contains("--force"));
     assert!(stdout.contains("--dry-run"));
+}
+
+// Defends: `yzx edit cursors --print` resolves the user-owned Ghostty cursor sidecar without launching an editor.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_control_edit_cursors_prints_cursor_sidecar_path() {
+    let fixture = managed_config_fixture("");
+    let expected_path = fixture
+        .config_dir
+        .join("user_configs")
+        .join("yazelix_cursors.toml");
+    let mut command = yzx_control_command();
+    apply_managed_config_env(&mut command, &fixture)
+        .arg("edit")
+        .arg("cursors")
+        .arg("--print");
+
+    let stdout = stdout_text(command.output().unwrap());
+
+    assert_eq!(stdout, format!("{}\n", expected_path.display()));
+    assert!(expected_path.exists());
 }
 
 // Defends: the Rust-owned `yzx keys` leaves preserve alias parity and tool-specific guidance instead of routing every leaf to the same generic output.

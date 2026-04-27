@@ -244,9 +244,14 @@ Open the main Yazelix config file in your editor
 - Targets `user_configs/yazelix.toml`
 - `--print`: print the resolved config path without opening
 
+### `yzx edit cursors [--print]`
+Open the Ghostty cursor registry sidecar in your editor
+- Targets `user_configs/yazelix_cursors.toml`
+- `--print`: print the resolved cursor sidecar path without opening
+
 ### `yzx edit <target> [--print]`
 Open one of the managed config surfaces through explicit or fuzzy target selection
-- Supported targets include `config`, `helix`, `zellij`, `yazi`, `yazi-keymap`, and `yazi-init`
+- Supported targets include `config`, `cursors`, `helix`, `zellij`, `yazi`, `yazi-keymap`, and `yazi-init`
 - Yazi targets stay inside `user_configs/yazi/` and do not expose host-owned `~/.config/yazi/` files
 - `--print`: print the resolved managed path without opening
 
@@ -299,6 +304,7 @@ yzx import yazi               # Import native Yazi override files into managed o
 yzx import helix              # Import ~/.config/helix/config.toml into managed overrides
 yzx import zellij --force     # Backup and replace the managed Zellij override
 yzx edit config               # Open the main managed config
+yzx edit cursors              # Open the Ghostty cursor registry sidecar
 yzx edit keymap               # Open managed Yazi keymap.toml
 yzx edit init                 # Open managed Yazi init.lua
 yzx config reset              # Replace the managed config with a fresh template after confirmation

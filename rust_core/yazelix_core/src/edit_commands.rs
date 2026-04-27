@@ -8,6 +8,7 @@ use crate::control_plane::{
     config_dir_from_env, config_override_from_env, load_normalized_config_for_control,
     runtime_dir_from_env, runtime_env_request,
 };
+use crate::ghostty_cursor_registry::CursorRegistry;
 use serde_json::json;
 use std::fs;
 use std::io::{self, Write};
@@ -45,9 +46,15 @@ fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
     let yazi_init_path = user_root.join("yazi").join("init.lua");
 
     let runtime_dir = runtime_dir_from_env().unwrap_or_else(|_| PathBuf::from("."));
-    let user_config = resolve_active_config_paths(&runtime_dir, config_dir, None)
-        .map(|p| p.user_config)
-        .unwrap_or_else(|_| user_root.join("yazelix.toml"));
+    let active_paths = resolve_active_config_paths(&runtime_dir, config_dir, None).ok();
+    let user_config = active_paths
+        .as_ref()
+        .map(|p| p.user_config.clone())
+        .unwrap_or_else(|| user_root.join("yazelix.toml"));
+    let cursor_config = active_paths
+        .as_ref()
+        .map(|p| p.user_cursor_config.clone())
+        .unwrap_or_else(|| CursorRegistry::user_config_path(config_dir));
 
     vec![
         EditTarget {
@@ -56,6 +63,22 @@ fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
             path: user_config,
             aliases: &["config", "main", "yazelix.toml"],
             search: "config main yazelix yazelix.toml",
+        },
+        EditTarget {
+            id: "cursors",
+            label: format!(
+                "cursors  - Ghostty cursor registry → {}",
+                cursor_config.display()
+            ),
+            path: cursor_config,
+            aliases: &[
+                "cursors",
+                "cursor",
+                "ghostty-cursors",
+                "ghostty cursors",
+                "yazelix_cursors.toml",
+            ],
+            search: "cursors cursor ghostty cursor trail shader yazelix_cursors.toml",
         },
         EditTarget {
             id: "helix",
@@ -498,7 +521,7 @@ fn print_edit_help() {
     println!("  --print  Print the resolved config path without opening");
     println!();
     println!("Supported surfaces:");
-    println!("  config, helix, zellij, yazi, yazi-keymap, yazi-init");
+    println!("  config, cursors, helix, zellij, yazi, yazi-keymap, yazi-init");
 }
 
 fn print_edit_config_help() {
@@ -529,6 +552,20 @@ mod tests {
         let hx = filter_edit_targets(&targets, "hx");
         assert_eq!(hx.len(), 1);
         assert_eq!(hx[0].id, "helix");
+
+        let cursors = filter_edit_targets(&targets, "cursors");
+        assert_eq!(cursors.len(), 1);
+        assert_eq!(cursors[0].id, "cursors");
+        assert_eq!(
+            cursors[0].path,
+            Path::new("/tmp/cfg")
+                .join("user_configs")
+                .join("yazelix_cursors.toml")
+        );
+
+        let cursor_sidecar = filter_edit_targets(&targets, "yazelix_cursors.toml");
+        assert_eq!(cursor_sidecar.len(), 1);
+        assert_eq!(cursor_sidecar[0].id, "cursors");
 
         let yazi = filter_edit_targets(&targets, "yazi");
         assert_eq!(yazi.len(), 1); // exact id match takes precedence

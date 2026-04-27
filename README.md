@@ -338,6 +338,7 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 - `yzx popup` - Toggle the managed popup program, usually `lazygit`, and refresh the Yazi file-tree sidebar git state when it closes
 - `yzx config [--path]` - Show the active config or print its resolved path
 - `yzx edit config` - Open the main managed Yazelix config file in your editor
+- `yzx edit cursors` - Open the Ghostty cursor registry sidecar in your editor
 - `yzx restart` - Restart Yazelix in a fresh window
 - `yzx doctor [--verbose] [--fix]` - Health checks and diagnostics
 - `yzx dev profile [--cold] [--desktop] [--launch] [--clear-cache]` - Profile current-terminal, desktop-entry, or managed new-window startup phases under `~/.local/share/yazelix/profiles/startup/`
