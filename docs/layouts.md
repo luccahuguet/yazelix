@@ -1,22 +1,25 @@
 # Zellij Layouts
 
-Yazelix ships two startup layout families, one sweep-test layout, and two swap-layout files:
+Yazelix ships managed-sidebar startup layouts, the historical no-sidebar layout family, one sweep-test layout, and three swap-layout files:
 
 - `configs/zellij/layouts/yzx_side.kdl` for sidebar mode
-- `configs/zellij/layouts/yzx_no_side.kdl` for no-sidebar mode
+- `configs/zellij/layouts/yzx_side_closed.kdl` for managed-sidebar mode with the sidebar initially collapsed
+- `configs/zellij/layouts/yzx_no_side.kdl` for the historical no-sidebar family
 - `configs/zellij/layouts/yzx_side.swap.kdl` for sidebar swap layouts
+- `configs/zellij/layouts/yzx_side_closed.swap.kdl` for the collapsed-start sidebar swap layouts
 - `configs/zellij/layouts/yzx_no_side.swap.kdl` for no-sidebar swap layouts
 - `configs/zellij/layouts/yzx_sweep_test.kdl` for terminal sweep validation
 
 Set the startup mode in `yazelix.toml`:
 
 ```toml
+initial_sidebar_state = "open"  # Use "closed" to start tabs collapsed
 sidebar_width_percent = 20
-enable_sidebar = true   # Uses yzx_side.kdl
-enable_sidebar = false  # Uses yzx_no_side.kdl
 sidebar_command = "nu"
 sidebar_args = ["__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu"]
 ```
+
+`editor.initial_sidebar_state = "closed"` starts new tabs with the managed sidebar collapsed while keeping `Alt+y`, `Ctrl+y`, and `yzx reveal` available. Legacy configs with `enable_sidebar = false` are treated as a request for the collapsed managed-sidebar startup layout.
 
 `editor.sidebar_width_percent` controls the open Yazi sidebar width as a percentage of the tab. Valid range: `10` to `40`.
 
@@ -28,7 +31,7 @@ The built-in layout family contract lives in `config_metadata/zellij_layout_fami
 
 That file is the machine-readable source for:
 
-- sidebar and no-sidebar layout family ids
+- sidebar, collapsed-sidebar startup, and no-sidebar layout ids
 - the startup KDL file for each family
 - the swap-layout KDL file for each family
 - required managed pane names
@@ -44,8 +47,8 @@ Yazelix now copies every top-level `.kdl` file in `configs/zellij/layouts/` into
 The supported customization paths are:
 
 - Use `editor.sidebar_command` and `editor.sidebar_args` for custom side-surface launchers
-- Edit `yzx_side.kdl` or `yzx_no_side.kdl` to change startup panes
-- Edit `yzx_side.swap.kdl` or `yzx_no_side.swap.kdl` to tweak built-in swap layouts
+- Edit `yzx_side.kdl`, `yzx_side_closed.kdl`, or `yzx_no_side.kdl` to change startup panes
+- Edit `yzx_side.swap.kdl`, `yzx_side_closed.swap.kdl`, or `yzx_no_side.swap.kdl` to tweak built-in swap layouts
 - Add a new top-level `.kdl` file in `configs/zellij/layouts/` if you also add it to `config_metadata/zellij_layout_families.toml`
 - Add custom no-sidebar swap layouts inside `yzx_no_side.swap.kdl`
 

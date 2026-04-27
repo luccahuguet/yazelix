@@ -95,6 +95,16 @@ fn prepare_runtime_materialization_fixture(
     fs::write(runtime_zellij_dir.join("yazelix_overrides.kdl"), "").unwrap();
     fs::write(runtime_layout_dir.join("yzx_side.kdl"), "layout { pane }\n").unwrap();
     fs::write(
+        runtime_layout_dir.join("yzx_side_closed.kdl"),
+        "layout { pane }\n",
+    )
+    .unwrap();
+    fs::write(
+        runtime_layout_dir.join("yzx_side_closed.swap.kdl"),
+        "swap_tiled_layout name=\"single_open\" {}\n",
+    )
+    .unwrap();
+    fs::write(
         runtime_layout_dir.join("yzx_no_side.kdl"),
         "layout { pane }\n",
     )
@@ -521,6 +531,18 @@ fn runtime_materialization_materialize_writes_generated_artifacts_and_records_st
     assert!(fixture.yazi_dir.join("init.lua").exists());
     assert!(fixture.zellij_dir.join("config.kdl").exists());
     assert!(fixture.zellij_layout_dir.join("yzx_side.kdl").exists());
+    assert!(
+        fixture
+            .zellij_layout_dir
+            .join("yzx_side_closed.kdl")
+            .exists()
+    );
+    assert!(
+        fixture
+            .zellij_layout_dir
+            .join("yzx_side_closed.swap.kdl")
+            .exists()
+    );
     let permissions =
         fs::read_to_string(fixture.home_dir.join(".cache/zellij/permissions.kdl")).unwrap();
     assert!(permissions.contains("zjstatus.wasm"));

@@ -11,6 +11,7 @@ use crate::yazi_materialization::{
 use crate::zellij_materialization::{
     ZellijMaterializationData, ZellijMaterializationRequest, generate_zellij_materialization,
 };
+use crate::zellij_render_plan::managed_sidebar_layout_name;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use std::fs;
@@ -132,7 +133,7 @@ pub fn plan_runtime_materialization(
         &config_state.config,
         &request.zellij_layout_dir,
         request.layout_override.as_deref(),
-    );
+    )?;
     let expected_artifacts = vec![
         RuntimeArtifact {
             label: "generated Yazi config".to_string(),
@@ -392,26 +393,29 @@ fn resolve_zellij_layout_path(
     config: &JsonMap<String, JsonValue>,
     zellij_layout_dir: &Path,
     layout_override: Option<&str>,
-) -> String {
+) -> Result<String, CoreError> {
     let override_value = layout_override
         .map(str::trim)
         .filter(|value| !value.is_empty());
     let layout = if let Some(layout) = override_value {
         layout.to_string()
-    } else if json_bool(config.get("enable_sidebar"), true) {
-        "yzx_side".to_string()
     } else {
-        "yzx_no_side".to_string()
+        managed_sidebar_layout_name(
+            json_bool(config.get("enable_sidebar"), true),
+            json_string(config.get("initial_sidebar_state"), "open"),
+        )?
+        .to_string()
     };
 
-    if layout.contains('/') || layout.ends_with(".kdl") {
+    let path = if layout.contains('/') || layout.ends_with(".kdl") {
         layout
     } else {
         zellij_layout_dir
             .join(format!("{layout}.kdl"))
             .to_string_lossy()
             .to_string()
-    }
+    };
+    Ok(path)
 }
 
 fn json_bool(value: Option<&JsonValue>, default: bool) -> bool {
@@ -424,6 +428,10 @@ fn json_bool(value: Option<&JsonValue>, default: bool) -> bool {
         },
         _ => default,
     }
+}
+
+fn json_string<'a>(value: Option<&'a JsonValue>, default: &'a str) -> &'a str {
+    value.and_then(JsonValue::as_str).unwrap_or(default)
 }
 
 fn is_missing_file(path: &Path) -> bool {

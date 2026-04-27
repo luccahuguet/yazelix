@@ -15,7 +15,7 @@ const NONVISUAL_SHELLS: &[&str] = &["nu", "bash", "fish", "zsh"];
 
 #[derive(Debug, Clone, Copy)]
 struct SweepFeatures {
-    enable_sidebar: bool,
+    initial_sidebar_state: &'static str,
     persistent_sessions: bool,
 }
 
@@ -234,21 +234,21 @@ pub fn run_sweep_tests(
 
 fn standard_features() -> SweepFeatures {
     SweepFeatures {
-        enable_sidebar: true,
+        initial_sidebar_state: "open",
         persistent_sessions: false,
     }
 }
 
 fn minimal_features() -> SweepFeatures {
     SweepFeatures {
-        enable_sidebar: false,
+        initial_sidebar_state: "closed",
         persistent_sessions: false,
     }
 }
 
 fn persistent_features() -> SweepFeatures {
     SweepFeatures {
-        enable_sidebar: true,
+        initial_sidebar_state: "open",
         persistent_sessions: true,
     }
 }
@@ -289,7 +289,7 @@ fn visual_test_combinations() -> Vec<SweepCombination> {
             shell: DEFAULT_SHELL,
             terminal,
             features: SweepFeatures {
-                enable_sidebar: false,
+                initial_sidebar_state: "closed",
                 persistent_sessions: false,
             },
         })
@@ -552,7 +552,7 @@ welcome_duration_seconds = 1.0\n\
 \n\
 [editor]\n\
 command = \"\"\n\
-enable_sidebar = {}\n\
+initial_sidebar_state = \"{}\"\n\
 \n\
 [shell]\n\
 default_shell = \"{}\"\n\
@@ -567,7 +567,11 @@ disable_tips = true\n\
 rounded_corners = true\n\
 persistent_sessions = {}\n\
 session_name = \"sweep_test_{}\"\n",
-        features.enable_sidebar, shell, terminals_rendered, features.persistent_sessions, test_id,
+        features.initial_sidebar_state,
+        shell,
+        terminals_rendered,
+        features.persistent_sessions,
+        test_id,
     )
 }
 
@@ -1048,7 +1052,7 @@ mod tests {
             "zsh",
             "kitty",
             SweepFeatures {
-                enable_sidebar: false,
+                initial_sidebar_state: "closed",
                 persistent_sessions: true,
             },
             "cross_shell_zsh_kitty",
@@ -1058,7 +1062,7 @@ mod tests {
         assert!(rendered.contains(
             "terminals = [\"kitty\", \"ghostty\", \"wezterm\", \"alacritty\", \"foot\"]"
         ));
-        assert!(rendered.contains("enable_sidebar = false"));
+        assert!(rendered.contains("initial_sidebar_state = \"closed\""));
         assert!(rendered.contains("persistent_sessions = true"));
     }
 }

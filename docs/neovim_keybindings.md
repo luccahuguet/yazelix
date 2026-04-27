@@ -70,9 +70,9 @@ With Neovim configured for Yazelix, you get:
 
 ### Reveal binding doesn't work
 
-1. **Check if you're in sidebar mode:**
-   - Reveal in Yazi only works with `sidebar_enabled = true` (default)
-   - Confirm `[zellij].sidebar_enabled` is still enabled in your Yazelix config
+1. **Check the managed sidebar state:**
+   - `yzx reveal` targets the managed sidebar in the current tab
+   - If `initial_sidebar_state = "closed"`, open the sidebar with `Alt+y` before retrying
 
 2. **Verify you're inside Yazelix/Zellij with a sidebar open:**
    - `yzx reveal` targets the managed sidebar in the current tab

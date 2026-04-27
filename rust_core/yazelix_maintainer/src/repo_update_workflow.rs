@@ -1034,7 +1034,7 @@ fn materialize_update_canaries(
                 canaries.push(UpdateCanary {
                     name: "shell_layout".to_string(),
                     config_path,
-                    description: "zsh entry, neovim editor, no-sidebar layout".to_string(),
+                    description: "zsh entry, neovim editor, collapsed-sidebar layout".to_string(),
                 });
             }
             other => {
@@ -1055,16 +1055,12 @@ fn apply_shell_layout_canary_overrides(config: &mut TomlValue) -> Result<(), Str
         .ok_or_else(|| "Default config must be a TOML table".to_string())?;
     set_nested_toml_string(root, &["shell", "default_shell"], "zsh");
     set_nested_toml_string(root, &["editor", "command"], "nvim");
-    set_nested_toml_bool(root, &["editor", "enable_sidebar"], false);
+    set_nested_toml_string(root, &["editor", "initial_sidebar_state"], "closed");
     Ok(())
 }
 
 fn set_nested_toml_string(table: &mut toml::Table, path: &[&str], value: &str) {
     set_nested_toml_value(table, path, TomlValue::String(value.to_string()));
-}
-
-fn set_nested_toml_bool(table: &mut toml::Table, path: &[&str], value: bool) {
-    set_nested_toml_value(table, path, TomlValue::Boolean(value));
 }
 
 fn set_nested_toml_value(table: &mut toml::Table, path: &[&str], value: TomlValue) {
@@ -1372,7 +1368,7 @@ mod tests {
         );
     }
 
-    // Defends: the shell-layout update canary forces the maintained zsh+nvim+no-sidebar override set instead of mutating unrelated config fields.
+    // Defends: the shell-layout update canary forces the maintained zsh+nvim+collapsed-sidebar override set instead of mutating unrelated config fields.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn shell_layout_canary_overrides_expected_fields() {
@@ -1383,7 +1379,7 @@ default_shell = "nu"
 
 [editor]
 command = "hx"
-enable_sidebar = true
+initial_sidebar_state = "open"
 "#,
         )
         .unwrap();
@@ -1402,10 +1398,10 @@ enable_sidebar = true
             "nvim"
         );
         assert_eq!(
-            table["editor"].as_table().unwrap()["enable_sidebar"]
-                .as_bool()
+            table["editor"].as_table().unwrap()["initial_sidebar_state"]
+                .as_str()
                 .unwrap(),
-            false
+            "closed"
         );
     }
 

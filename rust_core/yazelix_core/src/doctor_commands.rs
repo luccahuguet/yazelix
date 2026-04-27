@@ -988,7 +988,7 @@ fn run_doctor_fix_flow(verbose: bool, results: &[Value]) -> Result<i32, CoreErro
 }
 
 fn collect_zellij_plugin_health_findings(
-    normalized_config: Option<&serde_json::Map<String, Value>>,
+    _normalized_config: Option<&serde_json::Map<String, Value>>,
 ) -> Vec<Value> {
     if env::var_os("ZELLIJ").is_none() {
         return vec![json!({
@@ -998,11 +998,6 @@ fn collect_zellij_plugin_health_findings(
             "fix_available": false
         })];
     }
-
-    let sidebar_enabled = normalized_config
-        .and_then(|cfg| cfg.get("enable_sidebar"))
-        .and_then(Value::as_bool)
-        .unwrap_or(true);
 
     let output = Command::new("zellij")
         .args([
@@ -1051,7 +1046,7 @@ fn collect_zellij_plugin_health_findings(
                 editor_pane_id: String::new(),
                 active_swap_layout_name: None,
             },
-            sidebar_enabled,
+            true,
         ),
         "not_ready" | "missing" => vec![json!({
             "status": "warning",
@@ -1068,7 +1063,7 @@ fn collect_zellij_plugin_health_findings(
                     editor_pane_id: session.managed_panes.editor_pane_id.unwrap_or_default(),
                     active_swap_layout_name: session.layout.active_swap_layout_name,
                 },
-                sidebar_enabled,
+                true,
             ),
             Err(_) => vec![json!({
                 "status": "warning",
@@ -1118,7 +1113,7 @@ fn build_zellij_plugin_health_findings(
             results.push(json!({
                 "status": "warning",
                 "message": "Managed sidebar pane not detected in the current tab",
-                "details": "If sidebar mode is enabled, `Alt+y` and `Ctrl+y` may not work until the current tab uses a Yazelix sidebar layout.",
+                "details": "`Alt+y`, `Ctrl+y`, and reveal flows may not work until the current tab uses a Yazelix managed-sidebar layout.",
                 "fix_available": false
             }));
         } else {

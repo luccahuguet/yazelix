@@ -23,7 +23,7 @@ fn yzx_control_cwd_retargets_workspace_and_syncs_sidebar() {
     let fixture = managed_config_fixture(
         r#"[editor]
 command = "hx"
-enable_sidebar = true
+initial_sidebar_state = "open"
 
 [yazi]
 ya_command = "ya"
@@ -124,13 +124,13 @@ fn yzx_control_zellij_status_bus_json_reads_versioned_snapshot() {
     assert_eq!(snapshot["managed_panes"]["editor_pane_id"], "terminal:7");
 }
 
-// Defends: the public Rust-owned `yzx reveal` route keeps the sidebar-disabled guidance instead of failing through missing session state.
+// Defends: a closed initial sidebar state keeps `yzx reveal` on the managed-sidebar path instead of reviving no-sidebar guidance.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
-fn yzx_control_reveal_keeps_sidebar_disabled_guidance() {
+fn yzx_control_reveal_treats_closed_sidebar_as_managed_sidebar_available() {
     let fixture = managed_config_fixture(
         r#"[editor]
-enable_sidebar = false
+initial_sidebar_state = "closed"
 "#,
     );
     let target_path = fixture.home_dir.join("target.txt");
@@ -145,8 +145,8 @@ enable_sidebar = false
     assert_eq!(output.status.code(), Some(0));
     assert!(output.stderr.is_empty());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    assert!(stdout.contains("Reveal in Yazi only works in sidebar mode"));
-    assert!(stdout.contains("enable sidebar mode in yazelix.toml"));
+    assert!(stdout.contains("Reveal in Yazi only works inside a Yazelix/Zellij session"));
+    assert!(!stdout.contains("no-sidebar mode"));
 }
 
 // Defends: the public Rust-owned `yzx reveal` route uses the pane-orchestrator session snapshot as the only sidebar identity source and then focuses the sidebar.
@@ -155,7 +155,7 @@ enable_sidebar = false
 fn yzx_control_reveal_uses_session_snapshot_and_focuses_sidebar() {
     let fixture = managed_config_fixture(
         r#"[editor]
-enable_sidebar = true
+initial_sidebar_state = "open"
 
 [yazi]
 ya_command = "ya"
@@ -302,7 +302,7 @@ fn yzx_control_zellij_open_editor_reuses_managed_editor_and_syncs_sidebar() {
     let fixture = managed_config_fixture(
         r#"[editor]
 command = "nvim"
-enable_sidebar = true
+initial_sidebar_state = "open"
 
 [yazi]
 ya_command = "ya"
@@ -393,7 +393,7 @@ fn yzx_control_zellij_open_editor_cwd_opens_missing_managed_editor_pane() {
     let fixture = managed_config_fixture(
         r#"[editor]
 command = "hx"
-enable_sidebar = true
+initial_sidebar_state = "open"
 
 [yazi]
 ya_command = "ya"

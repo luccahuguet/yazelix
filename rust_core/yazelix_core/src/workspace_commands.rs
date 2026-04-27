@@ -182,16 +182,6 @@ pub fn run_yzx_reveal(args: &[String]) -> Result<i32, CoreError> {
     }
 
     let config = load_workspace_command_config()?;
-    if !config.enable_sidebar {
-        println!(
-            "📂 Reveal in Yazi only works in sidebar mode. You're currently using no-sidebar mode."
-        );
-        println!(
-            "💡 Tip: Use your editor-local file picker in no-sidebar mode, or enable sidebar mode in yazelix.toml"
-        );
-        return Ok(0);
-    }
-
     if env::var_os("ZELLIJ").is_none() {
         println!("Error: Reveal in Yazi only works inside a Yazelix/Zellij session.");
         return Ok(0);
@@ -571,10 +561,6 @@ pub(crate) fn load_workspace_command_config() -> Result<WorkspaceCommandConfig, 
     let normalized =
         load_normalized_config_for_control(&runtime_dir, &config_dir, config_override.as_deref())?;
     let home_dir = home_dir_from_env()?;
-    let enable_sidebar = normalized
-        .get("enable_sidebar")
-        .and_then(Value::as_bool)
-        .unwrap_or(true);
     let yazi_command = normalized
         .get("yazi_command")
         .and_then(Value::as_str)
@@ -604,7 +590,7 @@ pub(crate) fn load_workspace_command_config() -> Result<WorkspaceCommandConfig, 
         .filter(|value| !value.is_empty());
 
     Ok(WorkspaceCommandConfig {
-        enable_sidebar,
+        enable_sidebar: true,
         editor_kind: resolve_managed_editor_kind(
             managed_helix_binary.as_deref(),
             editor_command,

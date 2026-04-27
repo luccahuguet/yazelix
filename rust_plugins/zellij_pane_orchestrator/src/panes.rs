@@ -34,6 +34,7 @@ pub(crate) const SIDEBAR_TITLE: &str = "sidebar";
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct ManagedTerminalPane {
     pub(crate) pane_id: PaneId,
+    pub(crate) pane_columns: usize,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -214,8 +215,6 @@ impl State {
             .and_then(|tab_position| self.active_swap_layout_name_by_tab.get(&tab_position))
             .cloned()
             .flatten();
-        let layout_variant = active_tab_position
-            .and_then(|tab_position| self.get_active_layout_variant(tab_position));
         let workspace_root = active_tab_position
             .and_then(|tab_position| self.workspace_state_by_tab.get(&tab_position))
             .map(|workspace_state| workspace_state.root.clone())
@@ -292,7 +291,8 @@ impl State {
                 yazi_id: state.yazi_id.clone(),
                 cwd: state.cwd.clone(),
             }),
-            sidebar_collapsed: layout_variant.map(|variant| variant.is_sidebar_closed()),
+            sidebar_collapsed: active_tab_position
+                .and_then(|tab_position| self.sidebar_is_closed(tab_position)),
             focus_context: focus_context.to_string(),
             transient_panes,
             extensions: SessionStatusExtensions {
@@ -346,15 +346,18 @@ impl State {
 
         let sidebar_is_closed = if matches!(pane_kind, ManagedPaneKind::Sidebar) {
             self.active_tab_position
-                .and_then(|tab_position| self.get_active_layout_variant(tab_position))
-                .map(|variant| variant.is_sidebar_closed())
+                .and_then(|tab_position| self.sidebar_is_closed(tab_position))
                 .unwrap_or(false)
         } else {
             false
         };
 
         if sidebar_is_closed {
-            self.open_sidebar_and_focus_after_layout_settle();
+            if let Some(active_tab_position) = self.active_tab_position {
+                self.open_sidebar_and_focus_after_layout_settle_for_tab(active_tab_position);
+            } else {
+                self.open_sidebar_and_focus_after_layout_settle();
+            }
         } else {
             focus_pane_with_id(managed_pane.pane_id, false, false);
         }
@@ -376,10 +379,7 @@ impl State {
             .get(&active_tab_position)
             .copied()
             .unwrap_or(FocusContext::Other);
-        let sidebar_is_closed = self
-            .get_active_layout_variant(active_tab_position)
-            .map(|variant| variant.is_sidebar_closed())
-            .unwrap_or(false);
+        let sidebar_is_closed = self.sidebar_is_closed(active_tab_position).unwrap_or(false);
         let plan = resolve_sidebar_focus_toggle(
             focus_context_to_policy(focus_context),
             managed_tab_panes.sidebar.is_some(),
@@ -406,7 +406,7 @@ impl State {
             }
             SidebarFocusTogglePlan::OpenAndFocusSidebar => {
                 if managed_tab_panes.sidebar.is_some() {
-                    self.open_sidebar_and_focus_after_layout_settle();
+                    self.open_sidebar_and_focus_after_layout_settle_for_tab(active_tab_position);
                     self.respond(pipe_message, RESULT_OPENED_SIDEBAR);
                 } else {
                     self.respond(pipe_message, RESULT_MISSING);
@@ -430,10 +430,7 @@ impl State {
             return;
         };
 
-        let sidebar_is_closed = self
-            .get_active_layout_variant(active_tab_position)
-            .map(|variant| variant.is_sidebar_closed())
-            .unwrap_or(false);
+        let sidebar_is_closed = self.sidebar_is_closed(active_tab_position).unwrap_or(false);
         let pane_snapshots: Vec<HorizontalPaneSnapshot> = terminal_panes
             .iter()
             .map(|pane| HorizontalPaneSnapshot {
@@ -630,6 +627,7 @@ fn select_managed_terminal_pane(
 
     selected_pane.map(|pane| ManagedTerminalPane {
         pane_id: PaneId::Terminal(pane.id),
+        pane_columns: pane.pane_columns,
     })
 }
 

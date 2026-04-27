@@ -99,7 +99,7 @@ fn runtime_env_compute_prints_machine_readable_env_envelope() {
     );
     assert_eq!(
         envelope["data"]["runtime_env"]["ZELLIJ_DEFAULT_LAYOUT"],
-        "yzx_no_side"
+        "yzx_side_closed"
     );
 }
 
@@ -138,6 +138,7 @@ fn runtime_env_compute_from_env_accepts_config_json() {
     let runtime_bin = runtime_dir.join("bin");
     let config_json = json!({
         "enable_sidebar": true,
+        "initial_sidebar_state": "closed",
         "editor_command": "hx",
         "helix_runtime_path": "/tmp/managed-helix-runtime",
     });
@@ -178,7 +179,7 @@ fn runtime_env_compute_from_env_accepts_config_json() {
     assert_eq!(envelope["data"]["runtime_env"]["VISUAL"], expected_wrapper);
     assert_eq!(
         envelope["data"]["runtime_env"]["ZELLIJ_DEFAULT_LAYOUT"],
-        "yzx_side"
+        "yzx_side_closed"
     );
     assert_eq!(
         envelope["data"]["runtime_env"]["HELIX_RUNTIME"],

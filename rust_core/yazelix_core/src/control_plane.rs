@@ -459,6 +459,11 @@ pub fn runtime_env_request(
         .get("enable_sidebar")
         .and_then(|v| v.as_bool())
         .unwrap_or(true);
+    let initial_sidebar_state = normalized
+        .get("initial_sidebar_state")
+        .and_then(|v| v.as_str())
+        .unwrap_or("open")
+        .to_string();
     let editor_command = normalized
         .get("editor_command")
         .and_then(|v| v.as_str())
@@ -473,6 +478,7 @@ pub fn runtime_env_request(
         home_dir,
         current_path: RuntimePathInput::String(current_path),
         enable_sidebar,
+        initial_sidebar_state,
         editor_command,
         helix_runtime_path,
     })

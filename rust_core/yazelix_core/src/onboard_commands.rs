@@ -47,7 +47,7 @@ struct OnboardAnswers {
     terminal: String,
     shell: String,
     editor_command: String,
-    enable_sidebar: bool,
+    initial_sidebar_state: String,
     persistent_sessions: bool,
     widget_tray: Vec<String>,
 }
@@ -221,7 +221,7 @@ fn run_interactive_onboarding() -> Result<OnboardAnswers, CoreError> {
     let terminal = ask_single(terminal_question())?;
     let shell = ask_single(shell_question())?;
     let editor_command = ask_single(editor_question())?;
-    let enable_sidebar = ask_single(sidebar_question())? == "true";
+    let initial_sidebar_state = ask_single(sidebar_question())?;
     let persistent_sessions = ask_single(persistent_sessions_question())? == "true";
     let widget_tray = ask_multi(widget_tray_question())?;
 
@@ -229,7 +229,7 @@ fn run_interactive_onboarding() -> Result<OnboardAnswers, CoreError> {
         terminal,
         shell,
         editor_command,
-        enable_sidebar,
+        initial_sidebar_state,
         persistent_sessions,
         widget_tray,
     })
@@ -445,12 +445,9 @@ fn editor_question() -> SingleQuestion {
 
 fn sidebar_question() -> SingleQuestion {
     single_question(
-        "Enable the Yazi sidebar",
+        "Initial Yazi sidebar state",
         0,
-        &[
-            ("Yes, keep the IDE-style sidebar", "true"),
-            ("No, use full-screen layouts", "false"),
-        ],
+        &[("Open on startup", "open"), ("Start collapsed", "closed")],
     )
 }
 
@@ -531,7 +528,7 @@ fn build_onboard_config(answers: &OnboardAnswers) -> String {
 
 [editor]
 command = "{}"
-enable_sidebar = {}
+initial_sidebar_state = "{}"
 sidebar_command = "nu"
 sidebar_args = ["__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu"]
 
@@ -546,7 +543,7 @@ persistent_sessions = {}
 widget_tray = [{}]
 "#,
         toml_escape_string(&answers.editor_command),
-        answers.enable_sidebar,
+        toml_escape_string(&answers.initial_sidebar_state),
         toml_escape_string(&answers.shell),
         toml_array_strings(std::slice::from_ref(&answers.terminal)),
         answers.persistent_sessions,
@@ -634,14 +631,18 @@ mod tests {
             terminal: "wezterm".into(),
             shell: "bash".into(),
             editor_command: "nvim".into(),
-            enable_sidebar: false,
+            initial_sidebar_state: "closed".into(),
             persistent_sessions: true,
             widget_tray: vec!["editor".into(), "cpu".into()],
         });
         let parsed: toml::Value = toml::from_str(&config).unwrap();
 
         assert_eq!(parsed["editor"]["command"].as_str(), Some("nvim"));
-        assert_eq!(parsed["editor"]["enable_sidebar"].as_bool(), Some(false));
+        assert_eq!(
+            parsed["editor"]["initial_sidebar_state"].as_str(),
+            Some("closed")
+        );
+        assert!(parsed["editor"].get("enable_sidebar").is_none());
         assert_eq!(parsed["editor"]["sidebar_command"].as_str(), Some("nu"));
         assert_eq!(
             parsed["editor"]["sidebar_args"].as_array().unwrap()[0].as_str(),
@@ -670,7 +671,7 @@ mod tests {
             terminal: "ghostty".into(),
             shell: "nu".into(),
             editor_command: String::new(),
-            enable_sidebar: true,
+            initial_sidebar_state: "open".into(),
             persistent_sessions: false,
             widget_tray: vec!["editor".into(), "shell".into()],
         });

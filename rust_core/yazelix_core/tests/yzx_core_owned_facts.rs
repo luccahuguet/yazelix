@@ -15,7 +15,7 @@ fn integration_facts_compute_reports_sidebar_editor_and_yazi_payload() {
     let fixture = managed_config_fixture(
         r#"[editor]
 command = "nvim"
-enable_sidebar = false
+initial_sidebar_state = "closed"
 
 [yazi]
 command = "yy"
@@ -29,7 +29,7 @@ ya_command = "ya-test"
     let envelope: Value = ok_envelope(&output);
 
     assert_eq!(envelope["command"], "integration-facts.compute");
-    assert_eq!(envelope["data"]["enable_sidebar"], false);
+    assert_eq!(envelope["data"]["enable_sidebar"], true);
     assert_eq!(envelope["data"]["managed_editor_kind"], "neovim");
     assert_eq!(envelope["data"]["yazi_command"], "yy");
     assert_eq!(envelope["data"]["ya_command"], "ya-test");

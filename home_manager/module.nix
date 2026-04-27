@@ -283,7 +283,21 @@ in
     };
 
     enable_sidebar = mkMainContractOption "editor.enable_sidebar" {
-      description = "Enable or disable the Yazi sidebar";
+      description = ''
+        Legacy compatibility toggle for older configs.
+
+        Prefer initial_sidebar_state = "closed" to start new tabs with the
+        managed sidebar collapsed while preserving sidebar actions.
+      '';
+    };
+
+    initial_sidebar_state = mkMainContractOption "editor.initial_sidebar_state" {
+      description = ''
+        Initial managed sidebar state for new Yazelix tabs.
+
+        - "open": start with the Yazi sidebar visible
+        - "closed": start with the managed sidebar collapsed; Alt+y, Ctrl+y, and reveal flows remain available
+      '';
     };
 
     sidebar_width_percent = mkMainContractOption "editor.sidebar_width_percent" {

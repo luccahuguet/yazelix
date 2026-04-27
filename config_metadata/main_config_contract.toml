@@ -11,7 +11,7 @@
 [contract]
 version = 1
 surface = "main"
-field_count = 38
+field_count = 39
 artifact_role = "canonical_machine_metadata"
 default_template = "yazelix_default.toml"
 home_manager_module = "home_manager/module.nix"
@@ -104,6 +104,20 @@ default = true
 parser_key = "enable_sidebar"
 home_manager_option = "enable_sidebar"
 parser_behavior = "direct"
+nullable = true
+emit_in_default_template = false
+home_manager_default_is_null = true
+home_manager_can_omit = true
+rebuild_required = false
+
+[fields."editor.initial_sidebar_state"]
+kind = "string"
+default = "open"
+parser_key = "initial_sidebar_state"
+home_manager_option = "initial_sidebar_state"
+parser_behavior = "direct"
+validation = "enum"
+allowed_values = ["open", "closed"]
 rebuild_required = false
 
 [fields."editor.sidebar_width_percent"]

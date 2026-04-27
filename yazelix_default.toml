@@ -49,11 +49,9 @@ welcome_duration_seconds = 1.0 # Welcome animation duration in seconds for anima
 #   - Works reliably but with limited yazelix-specific functionality
 command = ""  # Leave empty to use yazelix's helix (recommended), or set to "nvim", "hx", "vim", etc.
 
-# Enable or disable the Yazi sidebar (default: true)
-# When false, Yazelix uses clean, full-screen layouts with on-demand file picking
-# When true, Yazelix uses persistent sidebar layouts for IDE-like workflow
-# You can access Yazi manually with `yazi` command or `Ctrl+y` inside Yazelix
-enable_sidebar = true
+# Initial managed sidebar state: "open" or "closed" (default: "open")
+# "closed" starts new tabs with the sidebar collapsed, while keeping Alt+y/Ctrl+y/reveal available
+initial_sidebar_state = "open"
 
 # Sidebar width when the Yazi sidebar is open (default: 20)
 # Valid range: 10 to 40 percent

@@ -1,0 +1,95 @@
+// Startup-closed variant for yzx_side_closed.kdl.
+//
+// Layout order mirrors yzx_side.swap.kdl after the collapsed BASE layout:
+// - the first next-swap from BASE opens the single layout
+// - adjacent open/closed pairs keep sidebar toggle one-step after that
+
+swap_tiled_layout name="single_open" {
+    ui min_panes=4 {
+        pane split_direction="vertical" {
+            __YAZELIX_SWAP_SIDEBAR_OPEN__
+            pane stacked=true {
+                children;
+                size "__YAZELIX_OPEN_CONTENT_WIDTH_PERCENT__"
+            }
+        }
+    }
+}
+
+swap_tiled_layout name="single_closed" {
+    ui min_panes=4 {
+        pane split_direction="vertical" {
+            __YAZELIX_SWAP_SIDEBAR_CLOSED__
+            pane stacked=true {
+                children;
+                size "__YAZELIX_CLOSED_CONTENT_WIDTH_PERCENT__"
+            }
+        }
+    }
+}
+
+swap_tiled_layout name="vertical_split_open" {
+    ui min_panes=4 {
+        pane split_direction="vertical" {
+            __YAZELIX_SWAP_SIDEBAR_OPEN__
+            pane stacked=true {
+                children;
+                size "__YAZELIX_OPEN_PRIMARY_WIDTH_PERCENT__"
+            }
+            pane {
+                size "__YAZELIX_OPEN_SECONDARY_WIDTH_PERCENT__"
+            }
+        }
+    }
+}
+
+swap_tiled_layout name="vertical_split_closed" {
+    ui min_panes=4 {
+        pane split_direction="vertical" {
+            __YAZELIX_SWAP_SIDEBAR_CLOSED__
+            pane stacked=true {
+                children;
+                size "__YAZELIX_CLOSED_PRIMARY_WIDTH_PERCENT__"
+            }
+            pane {
+                size "__YAZELIX_CLOSED_SECONDARY_WIDTH_PERCENT__"
+            }
+        }
+    }
+}
+
+swap_tiled_layout name="bottom_terminal_open" {
+    ui min_panes=4 {
+        pane split_direction="vertical" {
+            __YAZELIX_SWAP_SIDEBAR_OPEN__
+            pane split_direction="horizontal" {
+                size "__YAZELIX_OPEN_CONTENT_WIDTH_PERCENT__"
+                pane stacked=true {
+                    children;
+                    size "70%"
+                }
+                pane {
+                    size "30%"
+                }
+            }
+        }
+    }
+}
+
+swap_tiled_layout name="bottom_terminal_closed" {
+    ui min_panes=4 {
+        pane split_direction="vertical" {
+            __YAZELIX_SWAP_SIDEBAR_CLOSED__
+            pane split_direction="horizontal" {
+                size "__YAZELIX_CLOSED_CONTENT_WIDTH_PERCENT__"
+                pane stacked=true {
+                    children;
+                    size "70%"
+                }
+                pane {
+                    size "30%"
+                }
+            }
+        }
+    }
+}

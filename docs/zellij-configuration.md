@@ -114,7 +114,7 @@ The default launches the managed Yazi adapter. You can point the same managed si
 
 ## Current Yazelix Defaults
 
-- Default layout: `yzx_side` (sidebar) or `yzx_no_side`
+- Default layout: `yzx_side` or `yzx_side_closed` for the managed-sidebar startup surface
 - Copy command: `wl-copy` (Wayland clipboard)
 - Scrollback editor: `hx` (Helix)
 - Session serialization: enabled for persistence

@@ -57,7 +57,7 @@ Use these buckets:
 | Backend graph and build knobs | `core.recommended_deps`, `core.yazi_extensions`, `core.yazi_media`, `core.max_jobs`, `core.build_cores` | backend/devenv-owned | yes | keep | move out of Yazelix, narrow sharply, or drop |
 | Helix runtime sourcing | `helix.mode`, `helix.runtime_path` | backend plus editor runtime sourcing | yes | keep | narrow or move; only survives if a future host-owned editor/runtime contract replaces the current backend owner |
 | Editor command locator | `editor.command` | host-tool locator seam | yes today | keep | keep, but stop treating it as backend-owned rebuild input by default |
-| Editor/sidebar workspace UX | `editor.enable_sidebar`, `editor.sidebar_width_percent` | workspace/session-owned | no | keep | keep |
+| Editor/sidebar workspace UX | `editor.initial_sidebar_state`, legacy `editor.enable_sidebar`, `editor.sidebar_width_percent` | workspace/session-owned | no | keep | keep |
 | Shell entry choice | `shell.default_shell` | launch/integration policy | no | keep | narrow or drop unless current-terminal entry remains a first-class product behavior |
 | Extra shell package graph | `shell.extra_shells` | backend/devenv-owned | yes | keep | move out of Yazelix or drop |
 | Terminal package and dispatch selection | `terminal.terminals` | backend plus launch/integration | yes | keep | narrow or move unless Yazelix still owns launch dispatch |

@@ -17,6 +17,8 @@ const VERTICAL_SPLIT_OPEN_LAYOUT_NAME: &str = "vertical_split_open";
 const VERTICAL_SPLIT_CLOSED_LAYOUT_NAME: &str = "vertical_split_closed";
 const BOTTOM_TERMINAL_OPEN_LAYOUT_NAME: &str = "bottom_terminal_open";
 const BOTTOM_TERMINAL_CLOSED_LAYOUT_NAME: &str = "bottom_terminal_closed";
+const BASE_LAYOUT_NAME: &str = "BASE";
+const CLOSED_BASE_SIDEBAR_COLUMNS: usize = 2;
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum FamilyDirection {
@@ -90,7 +92,7 @@ impl State {
             return;
         }
 
-        let Some(layout_variant) = self.get_active_layout_variant(active_tab_position) else {
+        let Some(sidebar_is_closed) = self.sidebar_is_closed(active_tab_position) else {
             self.respond(pipe_message, RESULT_UNKNOWN_LAYOUT);
             return;
         };
@@ -108,7 +110,7 @@ impl State {
             .is_some();
 
         let plan = resolve_sidebar_visibility_toggle(
-            layout_variant.is_sidebar_closed(),
+            sidebar_is_closed,
             match focus_context {
                 crate::panes::FocusContext::Editor => FocusContextPolicy::Editor,
                 crate::panes::FocusContext::Sidebar => FocusContextPolicy::Sidebar,
@@ -119,6 +121,11 @@ impl State {
         );
 
         match plan.action {
+            SidebarVisibilityAction::Open
+                if self.active_layout_is_collapsed_base(active_tab_position) =>
+            {
+                self.run_next_swap_layout_steps(1)
+            }
             SidebarVisibilityAction::Open => self.run_previous_swap_layout_steps(1),
             SidebarVisibilityAction::Close => self.run_next_swap_layout_steps(1),
         }
@@ -140,6 +147,34 @@ impl State {
         active_swap_layout_name
             .as_deref()
             .and_then(LayoutVariant::from_layout_name)
+    }
+
+    pub(crate) fn sidebar_is_closed(&self, active_tab_position: usize) -> Option<bool> {
+        self.get_active_layout_variant(active_tab_position)
+            .map(|variant| variant.is_sidebar_closed())
+            .or_else(|| self.base_layout_sidebar_is_closed(active_tab_position))
+    }
+
+    fn base_layout_sidebar_is_closed(&self, active_tab_position: usize) -> Option<bool> {
+        if !self.active_layout_is_base(active_tab_position) {
+            return None;
+        }
+        self.managed_panes_by_tab
+            .get(&active_tab_position)
+            .and_then(|tab| tab.sidebar)
+            .map(|sidebar| sidebar.pane_columns <= CLOSED_BASE_SIDEBAR_COLUMNS)
+    }
+
+    fn active_layout_is_base(&self, active_tab_position: usize) -> bool {
+        self.active_swap_layout_name_by_tab
+            .get(&active_tab_position)
+            .and_then(|layout| layout.as_deref())
+            .is_some_and(|layout| layout == BASE_LAYOUT_NAME)
+    }
+
+    fn active_layout_is_collapsed_base(&self, active_tab_position: usize) -> bool {
+        self.active_layout_is_base(active_tab_position)
+            && self.base_layout_sidebar_is_closed(active_tab_position) == Some(true)
     }
 
     fn can_switch_layout_family(&self, active_tab_position: usize) -> bool {
@@ -172,6 +207,18 @@ impl State {
 
     pub(crate) fn open_sidebar_and_focus_after_layout_settle(&self) {
         self.run_previous_swap_layout_steps(1);
+        self.run_sidebar_post_layout_focus(SidebarPostLayoutFocus::MoveLeftToSidebar);
+    }
+
+    pub(crate) fn open_sidebar_and_focus_after_layout_settle_for_tab(
+        &self,
+        active_tab_position: usize,
+    ) {
+        if self.active_layout_is_collapsed_base(active_tab_position) {
+            self.run_next_swap_layout_steps(1);
+        } else {
+            self.run_previous_swap_layout_steps(1);
+        }
         self.run_sidebar_post_layout_focus(SidebarPostLayoutFocus::MoveLeftToSidebar);
     }
 

@@ -32,7 +32,7 @@ Set by Yazelix entrypoints to wire integrations:
 
 - Installed/runtime-owned launch paths export `YAZELIX_RUNTIME_DIR` to point at the active Yazelix runtime root.
 - Maintained entrypoints set `IN_YAZELIX_SHELL=true` when executing inside the Yazelix runtime environment.
-- `ZELLIJ_DEFAULT_LAYOUT` – chosen layout name (`yzx_side` or `yzx_no_side`)
+- `ZELLIJ_DEFAULT_LAYOUT` – chosen layout name (`yzx_side` or `yzx_side_closed` by default)
 - `YAZI_CONFIG_HOME` – `~/.local/share/yazelix/configs/yazi` for consistent Yazi behavior
 - `EDITOR` – your configured editor command or Yazelix Helix
 

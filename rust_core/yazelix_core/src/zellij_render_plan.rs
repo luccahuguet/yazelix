@@ -60,6 +60,10 @@ fn default_enable_sidebar() -> bool {
     true
 }
 
+fn default_initial_sidebar_state() -> String {
+    "open".into()
+}
+
 fn default_sidebar_width_percent() -> i64 {
     20
 }
@@ -122,6 +126,8 @@ fn default_shell_label() -> String {
 pub struct ZellijRenderPlanRequest {
     #[serde(default = "default_enable_sidebar")]
     pub enable_sidebar: bool,
+    #[serde(default = "default_initial_sidebar_state")]
+    pub initial_sidebar_state: String,
     #[serde(default = "default_sidebar_width_percent")]
     pub sidebar_width_percent: i64,
     #[serde(default = "default_sidebar_command")]
@@ -366,11 +372,9 @@ pub fn compute_zellij_render_plan(
     let shell_label = status_label(&request.shell_label, "nu");
     let terminal_label = status_label(&request.terminal_label, "ghostty");
 
-    let default_layout_name = if request.enable_sidebar {
-        "yzx_side".to_string()
-    } else {
-        "yzx_no_side".to_string()
-    };
+    let default_layout_name =
+        managed_sidebar_layout_name(request.enable_sidebar, &request.initial_sidebar_state)?
+            .to_string();
 
     let layout_percentages = compute_layout_percentages(request.sidebar_width_percent);
 
@@ -458,6 +462,27 @@ pub fn compute_zellij_render_plan(
     })
 }
 
+pub fn managed_sidebar_layout_name(
+    enable_sidebar: bool,
+    initial_sidebar_state: &str,
+) -> Result<&'static str, CoreError> {
+    let normalized = initial_sidebar_state.trim().to_lowercase();
+    match normalized.as_str() {
+        "open" if enable_sidebar => Ok("yzx_side"),
+        "open" | "closed" => Ok("yzx_side_closed"),
+        _ => Err(CoreError::classified(
+            ErrorClass::Config,
+            "invalid_initial_sidebar_state",
+            format!(
+                "editor.initial_sidebar_state must be `open` or `closed`, got `{}`.",
+                initial_sidebar_state
+            ),
+            "Set editor.initial_sidebar_state to `open` or `closed`, then retry.",
+            serde_json::json!({ "initial_sidebar_state": initial_sidebar_state }),
+        )),
+    }
+}
+
 // Test lane: maintainer
 
 #[cfg(test)]
@@ -467,6 +492,7 @@ mod tests {
     fn sample_request() -> ZellijRenderPlanRequest {
         ZellijRenderPlanRequest {
             enable_sidebar: true,
+            initial_sidebar_state: "open".into(),
             sidebar_width_percent: 20,
             sidebar_command: "nu".into(),
             sidebar_args: default_sidebar_args(),
@@ -547,17 +573,22 @@ mod tests {
         );
     }
 
-    // Defends: managed default layout name tracks the sidebar enable flag without Nushell re-deriving it.
+    // Defends: managed default layout name tracks the initial sidebar state without disabling sidebar capability.
     // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
-    fn default_layout_follows_sidebar_flag() {
+    fn default_layout_follows_initial_sidebar_state() {
         let mut req = sample_request();
+        req.initial_sidebar_state = "closed".into();
+        let plan = compute_zellij_render_plan(&req).unwrap();
+        assert_eq!(plan.default_layout_name, "yzx_side_closed");
+
+        req.initial_sidebar_state = "open".into();
         req.enable_sidebar = false;
         let plan = compute_zellij_render_plan(&req).unwrap();
-        assert_eq!(plan.default_layout_name, "yzx_no_side");
+        assert_eq!(plan.default_layout_name, "yzx_side_closed");
     }
 
-    // Defends: enforced default_layout points at the computed managed layout file for the active sidebar mode.
+    // Defends: enforced default_layout points at the computed managed layout file for the active initial sidebar state.
     // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn enforced_default_layout_points_at_plan_layout() {

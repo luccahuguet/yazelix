@@ -31,6 +31,16 @@ swap_layouts = [
 ]
 
 [[auxiliary_layouts]]
+id = "sidebar_closed_startup"
+layout_file = "yzx_side_closed.kdl"
+purpose = "managed-sidebar startup layout with the sidebar initially collapsed"
+
+[[auxiliary_layouts]]
+id = "sidebar_closed_startup_swap"
+layout_file = "yzx_side_closed.swap.kdl"
+purpose = "swap layouts for the managed-sidebar startup layout with the sidebar initially collapsed"
+
+[[auxiliary_layouts]]
 id = "sweep_test"
 layout_file = "yzx_sweep_test.kdl"
 purpose = "terminal sweep validation"
