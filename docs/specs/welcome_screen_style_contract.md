@@ -12,14 +12,14 @@ welcome/startup callers.
 The retained public shape is:
 
 - welcome keeps `static`, `logo`, `boids`, `boids_predator`,
-  `boids_schools`, `boids_flow`, `mandelbrot`,
+  `boids_schools`, `mandelbrot`,
   `game_of_life_gliders`, `game_of_life_oscillators`,
   `game_of_life_bloom`, and `random`
 - `yzx screen` keeps the same animated surface except `static`
 - welcome `random` splits evenly across Game of Life, boids, and Mandelbrot
   families while never choosing `static` or `logo`
 - `yzx screen random` remains the direct Game of Life preview selector
-- `boids` remains a legacy alias for `boids_flow`
+- `boids` remains an alias for `boids_predator`
 
 ## Scope
 
@@ -45,10 +45,10 @@ Out of scope:
 | --- | --- | --- | --- | --- |
 | `static` | yes | no | live | explicit low-motion resting frame for startup only |
 | `logo` | yes | yes | live | explicit branded reveal and preview style |
-| `boids` | yes | yes | legacy alias | compatibility alias for `boids_flow` |
+| `boids` | yes | yes | alias | compatibility alias for `boids_predator` |
 | `boids_predator` | yes | yes | live | predator/prey flocking variant |
 | `boids_schools` | yes | yes | live | species-separated flocking variant |
-| `boids_flow` | yes | yes | live | baseline flow-field flocking variant |
+| `boids_flow` | no | no | deleted | removed after the flow-field variant looked odd in the welcome surface |
 | `mandelbrot` | yes | yes | live | Seahorse/Misiurewicz spiral zoom |
 | `game_of_life_gliders` | yes | yes | live | retained default-family live simulation variant |
 | `game_of_life_oscillators` | yes | yes | live | retained default-family live simulation variant |
@@ -64,7 +64,7 @@ Out of scope:
 - Owner: config metadata plus Rust style resolution in
   `front_door_render.rs` and `front_door_commands.rs`
 - Statement: The retained public style surface is exactly `static`, `logo`,
-  `boids`, `boids_predator`, `boids_schools`, `boids_flow`, `mandelbrot`,
+  `boids`, `boids_predator`, `boids_schools`, `mandelbrot`,
   `game_of_life_gliders`, `game_of_life_oscillators`, `game_of_life_bloom`,
   and `random` for welcome, and the same minus `static` for `yzx screen`
 - Verification: `yzx_repo_validator validate-config-surface-contract`;
@@ -79,7 +79,7 @@ Out of scope:
   and Mandelbrot families. The Game of Life family rotates through
   `game_of_life_gliders`, `game_of_life_oscillators`, and
   `game_of_life_bloom`; the boids family rotates through `boids_predator`,
-  `boids_schools`, and `boids_flow`; the Mandelbrot family resolves to
+  and `boids_schools`; the Mandelbrot family resolves to
   `mandelbrot`. It is not a bucket over `static` or `logo`
 - Verification: automated Rust `front_door_render` tests;
   validator `yzx_repo_validator validate-specs`

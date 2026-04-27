@@ -5,7 +5,6 @@
     { "name": "boids", "welcome": true, "screen": true, "random": false },
     { "name": "boids_predator", "welcome": true, "screen": true, "random": true },
     { "name": "boids_schools", "welcome": true, "screen": true, "random": true },
-    { "name": "boids_flow", "welcome": true, "screen": true, "random": true },
     { "name": "mandelbrot", "welcome": true, "screen": true, "random": true },
     { "name": "game_of_life_gliders", "welcome": true, "screen": true, "random": true },
     { "name": "game_of_life_oscillators", "welcome": true, "screen": true, "random": true },

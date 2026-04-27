@@ -405,10 +405,9 @@ in
         Welcome screen style.
         - "static": show the resting Yazelix logo frame only
         - "logo": show the branded animated logo reveal
-        - "boids": legacy alias for "boids_flow"
+        - "boids": alias for "boids_predator"
         - "boids_predator": show boids with predator/prey motion
         - "boids_schools": show species-separated boids schools
-        - "boids_flow": show the baseline animated flocking style
         - "mandelbrot": show the Seahorse/Misiurewicz Mandelbrot zoom
         - "game_of_life_gliders": show the glider-swarm Game of Life style
         - "game_of_life_oscillators": show the oscillator-garden Game of Life style
@@ -421,7 +420,7 @@ in
       description = ''
         Welcome animation duration in seconds for animated styles.
         The logo style keeps its fixed timing and ignores this value.
-        Default: 1.0.
+        Default: 2.0.
         Valid range: 0.2 to 8.0.
       '';
     };

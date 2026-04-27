@@ -47,7 +47,7 @@ pub fn compute_startup_facts_from_env() -> Result<StartupFactsData, CoreError> {
             "game_of_life_cell_style",
             DEFAULT_GAME_OF_LIFE_CELL_STYLE,
         ),
-        welcome_duration_seconds: float_config(&normalized, "welcome_duration_seconds", 1.0),
+        welcome_duration_seconds: float_config(&normalized, "welcome_duration_seconds", 2.0),
         show_macchina_on_welcome: bool_config(&normalized, "show_macchina_on_welcome", false),
         persistent_sessions: bool_config(&normalized, "persistent_sessions", false),
         session_name: string_config(&normalized, "session_name", DEFAULT_SESSION_NAME),

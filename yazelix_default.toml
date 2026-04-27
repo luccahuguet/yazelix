@@ -8,9 +8,9 @@
 debug_mode = false            # Enable verbose debug logging in the shellHook
 skip_welcome_screen = false   # When true, welcome info is logged instead of displayed
 show_macchina_on_welcome = true  # Show system info on welcome screen (uses macchina)
-welcome_style = "random"      # Welcome style: "static", "logo", "boids", "boids_predator", "boids_schools", "boids_flow", "mandelbrot", "game_of_life_gliders", "game_of_life_oscillators", "game_of_life_bloom", or "random" (never picks "static" or "logo")
+welcome_style = "random"      # Welcome style: "static", "logo", "boids", "boids_predator", "boids_schools", "mandelbrot", "game_of_life_gliders", "game_of_life_oscillators", "game_of_life_bloom", or "random" (never picks "static" or "logo")
 game_of_life_cell_style = "full_block" # Game of Life cell style: "full_block" or "dotted" (braille scale 4)
-welcome_duration_seconds = 1.0 # Welcome animation duration in seconds for animated styles; logo ignores this and keeps its fixed timing (0.2 to 8.0)
+welcome_duration_seconds = 2.0 # Welcome animation duration in seconds for animated styles; logo ignores this and keeps its fixed timing (0.2 to 8.0)
 
 [helix]
 # Helix runtime path (advanced users only)

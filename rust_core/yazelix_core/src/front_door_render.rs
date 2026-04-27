@@ -32,7 +32,7 @@ const GAME_OF_LIFE_RANDOM_POOL: &[&str] = &[
     "game_of_life_oscillators",
     "game_of_life_bloom",
 ];
-const BOIDS_RANDOM_POOL: &[&str] = &["boids_predator", "boids_schools", "boids_flow"];
+const BOIDS_RANDOM_POOL: &[&str] = &["boids_predator", "boids_schools"];
 const WELCOME_RANDOM_FAMILY_COUNT: usize = 3;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -62,9 +62,7 @@ struct LogoWelcomeSpec {
 
 #[derive(Debug, Clone, Deserialize)]
 struct BoidsWelcomeSpec {
-    minimum_inner_width: usize,
     body_height: usize,
-    caption: String,
 }
 
 fn ascii_art_data() -> &'static AsciiArtData {
@@ -110,7 +108,10 @@ fn assert_random_welcome_pool_is_allowed(allowed: &[&str]) {
 
 fn resolve_random_welcome_style(allowed: &[&str], random_index: Option<usize>) -> String {
     assert_random_welcome_pool_is_allowed(allowed);
-    let subpool_width = GAME_OF_LIFE_RANDOM_POOL.len().max(BOIDS_RANDOM_POOL.len());
+    let subpool_width = lcm(
+        GAME_OF_LIFE_RANDOM_POOL.len(),
+        BOIDS_RANDOM_POOL.len().max(1),
+    );
     let slot_count = WELCOME_RANDOM_FAMILY_COUNT * subpool_width;
     let selected = random_index.unwrap_or_else(|| system_random_index(slot_count)) % slot_count;
     let family = selected % WELCOME_RANDOM_FAMILY_COUNT;
@@ -121,6 +122,22 @@ fn resolve_random_welcome_style(allowed: &[&str], random_index: Option<usize>) -
         1 => BOIDS_RANDOM_POOL[family_index % BOIDS_RANDOM_POOL.len()].to_string(),
         _ => "mandelbrot".to_string(),
     }
+}
+
+fn lcm(left: usize, right: usize) -> usize {
+    if left == 0 || right == 0 {
+        return 0;
+    }
+    left / gcd(left, right) * right
+}
+
+fn gcd(mut left: usize, mut right: usize) -> usize {
+    while right != 0 {
+        let remainder = left % right;
+        left = right;
+        right = remainder;
+    }
+    left
 }
 
 fn resolve_random_screen_style(allowed: &[&str], random_index: Option<usize>) -> String {
@@ -192,7 +209,7 @@ pub fn resolve_screen_style(
 fn screen_frame_delay(resolved_style: &str) -> Duration {
     match resolved_style {
         style if is_game_of_life_style(style) => Duration::from_millis(160),
-        style if is_boids_style(style) => Duration::from_millis(90),
+        style if is_boids_style(style) => Duration::from_millis(70),
         "mandelbrot" => Duration::from_millis(110),
         _ => Duration::from_millis(120),
     }
@@ -377,40 +394,6 @@ fn get_logo_animation_frames(width: usize) -> Vec<Vec<String>> {
     ]
 }
 
-fn build_boids_card_frame(
-    spec: &BoidsWelcomeSpec,
-    inner_width: usize,
-    body_rows: &[String],
-    show_caption: bool,
-) -> Vec<String> {
-    let content_width = frame_content_width(inner_width);
-    let mut lines = vec![format!(
-        "{ANSI_PURPLE}╭{}╮{ANSI_RESET}",
-        make_border(inner_width)
-    )];
-
-    for row_index in 0..spec.body_height {
-        let row = if show_caption && row_index == spec.body_height.saturating_sub(1) {
-            format!(
-                "{ANSI_FAINT}{ANSI_PURPLE}{}{ANSI_RESET}",
-                center_text(&spec.caption, content_width)
-            )
-        } else {
-            body_rows
-                .get(row_index)
-                .map(|row| center_text(row, content_width))
-                .unwrap_or_else(|| pad_text_right("", content_width))
-        };
-        lines.push(row);
-    }
-
-    lines.push(format!(
-        "{ANSI_PURPLE}╰{}╯{ANSI_RESET}",
-        make_border(inner_width)
-    ));
-    lines
-}
-
 fn build_boids_frame(
     width: usize,
     duration: Duration,
@@ -419,8 +402,8 @@ fn build_boids_frame(
 ) -> Vec<Vec<String>> {
     let size_class = get_logo_welcome_variant(width);
     let spec = boids_spec(size_class);
-    let inner_width = welcome_inner_width(spec.minimum_inner_width);
-    let frame_delay = Duration::from_millis(90);
+    let inner_width = width.saturating_sub(1).max(1);
+    let frame_delay = Duration::from_millis(70);
     let frame_count = ((duration.as_secs_f64() / frame_delay.as_secs_f64()).ceil() as usize).max(3);
     let mut animation = BoidsAnimation::with_variant(
         ScreenAnimationContext {
@@ -434,12 +417,9 @@ fn build_boids_frame(
     );
     let mut frames = Vec::new();
 
-    for index in 0..frame_count {
+    for _ in 0..frame_count {
         let rows = animation.render_frame();
-        frames.push(center_frame_lines(
-            build_boids_card_frame(spec, inner_width, &rows, index + 1 == frame_count),
-            width,
-        ));
+        frames.push(rows);
         animation.advance_frame();
     }
 
@@ -629,7 +609,7 @@ fn play_inline_frames(
         }
 
         for line in &padded {
-            print!("\r\u{1b}[2K{line}\n");
+            print!("\r\u{1b}[2K{}\n", inline_printable_line(line));
         }
         flush_stdout()?;
 
@@ -650,6 +630,10 @@ fn play_inline_frames(
     }
 
     Ok(())
+}
+
+fn inline_printable_line(line: &str) -> &str {
+    line.trim_end_matches(' ')
 }
 
 fn enter_screen_mode() -> Result<(), CoreError> {
@@ -729,7 +713,7 @@ pub fn play_welcome_style_with_cell_style(
     );
     let frame_delay = match resolved_style.as_str() {
         style if is_game_of_life_style(style) => Duration::from_millis(220),
-        style if is_boids_style(style) => Duration::from_millis(90),
+        style if is_boids_style(style) => Duration::from_millis(70),
         "mandelbrot" => Duration::from_millis(110),
         _ => {
             let divisor = frames.len().max(1) as u32;
@@ -890,7 +874,7 @@ mod tests {
         let mut mandelbrot_count = 0;
         let mut boids_styles = Vec::new();
 
-        for index in 0..9 {
+        for index in 0..18 {
             let resolved = resolve_welcome_style("random", Some(index)).unwrap();
             assert_ne!(resolved, "static");
             assert_ne!(resolved, "logo");
@@ -906,13 +890,15 @@ mod tests {
             }
         }
 
-        assert_eq!(game_of_life_count, 3);
-        assert_eq!(boids_count, 3);
-        assert_eq!(mandelbrot_count, 3);
+        assert_eq!(game_of_life_count, 6);
+        assert_eq!(boids_count, 6);
+        assert_eq!(mandelbrot_count, 6);
         assert_eq!(
             boids_styles,
             BOIDS_RANDOM_POOL
                 .iter()
+                .cycle()
+                .take(6)
                 .map(|style| style.to_string())
                 .collect::<Vec<_>>()
         );
@@ -978,21 +964,30 @@ mod tests {
         );
     }
 
-    // Regression: the bordered animated boids welcome follows the same stable hero-width contract.
+    // Regression: animated boids welcome renders as an unframed broad flock instead of being trapped in the logo card border.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn boids_welcome_frame_keeps_hero_variant_width_stable() {
+    fn boids_welcome_frame_uses_unframed_broad_surface() {
         let boids = build_boids_frame(
             120,
             Duration::from_millis(360),
             GameOfLifeCellStyle::FullBlock,
-            BoidsVariant::Flow,
+            BoidsVariant::Predator,
         );
-        assert_eq!(trimmed_frame_line_width(&boids[0][0]), 60);
-        assert!(
-            boids[0][1..boids[0].len() - 1]
-                .iter()
-                .all(|line| !contains_vertical_border(line))
+        assert!(boids[0].iter().all(|line| visible_line_width(line) == 119));
+        assert!(boids[0].iter().all(|line| !contains_vertical_border(line)));
+        assert!(boids[0].iter().all(|line| !line.contains('╭')));
+        assert!(boids[0].iter().all(|line| !line.contains('╯')));
+    }
+
+    // Regression: inline welcome playback trims trailing padding so centered frames do not trigger terminal autowrap artifacts.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn inline_printable_line_trims_right_padding() {
+        assert_eq!(inline_printable_line("hello   "), "hello");
+        assert_eq!(
+            visible_line_width(inline_printable_line(&center_text("YAZELIX", 120))),
+            63
         );
     }
 }

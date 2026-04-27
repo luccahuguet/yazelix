@@ -548,7 +548,7 @@ debug_mode = false\n\
 skip_welcome_screen = true\n\
 show_macchina_on_welcome = false\n\
 welcome_style = \"static\"\n\
-welcome_duration_seconds = 1.0\n\
+welcome_duration_seconds = 2.0\n\
 \n\
 [editor]\n\
 command = \"\"\n\

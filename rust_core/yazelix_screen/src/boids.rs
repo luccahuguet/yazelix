@@ -12,7 +12,6 @@ const ANSI_RESET: &str = "\u{1b}[0m";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BoidsVariant {
-    Flow,
     Predator,
     Schools,
 }
@@ -20,8 +19,7 @@ pub enum BoidsVariant {
 impl BoidsVariant {
     pub fn from_style_name(style: &str) -> Option<Self> {
         match style {
-            "boids" | "boids_flow" => Some(Self::Flow),
-            "boids_predator" => Some(Self::Predator),
+            "boids" | "boids_predator" => Some(Self::Predator),
             "boids_schools" => Some(Self::Schools),
             _ => None,
         }
@@ -29,7 +27,6 @@ impl BoidsVariant {
 
     pub fn canonical_style_name(self) -> &'static str {
         match self {
-            Self::Flow => "boids_flow",
             Self::Predator => "boids_predator",
             Self::Schools => "boids_schools",
         }
@@ -114,7 +111,7 @@ pub struct BoidsAnimation {
 
 impl BoidsAnimation {
     pub fn new(context: ScreenAnimationContext, cell_style: GameOfLifeCellStyle) -> Self {
-        Self::with_variant(context, cell_style, BoidsVariant::Flow)
+        Self::with_variant(context, cell_style, BoidsVariant::Predator)
     }
 
     pub fn with_variant(
@@ -206,16 +203,16 @@ fn seed_boids(context: ScreenAnimationContext, variant: BoidsVariant) -> Vec<Boi
             };
             let angle = unit_from_seed(&mut seed) * std::f64::consts::TAU;
             let speed = if role == BoidRole::Predator {
-                0.72
+                1.08
             } else {
-                0.35 + (index % 5) as f64 * 0.04
+                0.62 + (index % 5) as f64 * 0.07
             };
             Boid {
                 position: Vec2::new(px, py),
                 velocity: Vec2::new(angle.cos() * speed, angle.sin() * speed),
                 species: match variant {
                     BoidsVariant::Schools => index % 3,
-                    _ => index % 5,
+                    _ => 0,
                 },
                 role,
             }
@@ -237,9 +234,9 @@ fn step_boids(boids: &mut [Boid], width: f64, height: f64, variant: BoidsVariant
             _ => flock_velocity(index, &previous, variant),
         };
         let max_speed = match (variant, boid.role) {
-            (BoidsVariant::Predator, BoidRole::Predator) => 1.15,
-            (BoidsVariant::Schools, BoidRole::Flock) => 0.80,
-            _ => 0.85,
+            (BoidsVariant::Predator, BoidRole::Predator) => 1.70,
+            (BoidsVariant::Schools, BoidRole::Flock) => 1.28,
+            _ => 1.35,
         };
         velocity = velocity.limit(max_speed);
         boid.velocity = velocity;
@@ -298,7 +295,6 @@ fn flock_velocity(index: usize, previous: &[Boid], variant: BoidsVariant) -> Vec
         let (separation_weight, alignment_weight, cohesion_weight) = match variant {
             BoidsVariant::Schools => (0.14, 0.07, 0.012),
             BoidsVariant::Predator => (0.12, 0.04, 0.006),
-            BoidsVariant::Flow => (0.10, 0.05, 0.008),
         };
         velocity = velocity
             .add(separation.scale(separation_weight))
@@ -329,19 +325,18 @@ fn predator_velocity(index: usize, previous: &[Boid]) -> Vec2 {
     let Some((_, offset)) = nearest else {
         return predator.velocity;
     };
-    let desired = offset.normalized().scale(1.15);
+    let desired = offset.normalized().scale(1.70);
     predator
         .velocity
-        .add(desired.sub(predator.velocity).limit(0.18))
+        .add(desired.sub(predator.velocity).limit(0.28))
 }
 
-fn boid_color_index(index: usize, boid: &Boid, variant: BoidsVariant) -> usize {
+fn boid_color_index(_index: usize, boid: &Boid, variant: BoidsVariant) -> usize {
     match (variant, boid.role) {
         (BoidsVariant::Predator, BoidRole::Predator) => 0,
-        (BoidsVariant::Predator, BoidRole::Flock) => 1 + boid.species % 4,
+        (BoidsVariant::Predator, BoidRole::Flock) => 1,
+        (_, BoidRole::Predator) => 0,
         (BoidsVariant::Schools, BoidRole::Flock) => 2 + boid.species % 3,
-        (BoidsVariant::Flow, BoidRole::Flock) => 1 + index % 5,
-        (_, _) => 1 + index % 5,
     }
 }
 
@@ -376,15 +371,12 @@ fn boid_direction(velocity: Vec2) -> BoidDirection {
 }
 
 fn boid_glyph_pair(cell_style: GameOfLifeCellStyle, velocity: Vec2) -> [char; 2] {
-    match (cell_style, boid_direction(velocity)) {
-        (GameOfLifeCellStyle::FullBlock, BoidDirection::East) => ['▐', '█'],
-        (GameOfLifeCellStyle::FullBlock, BoidDirection::West) => ['█', '▌'],
-        (GameOfLifeCellStyle::FullBlock, BoidDirection::North) => ['▀', '▀'],
-        (GameOfLifeCellStyle::FullBlock, BoidDirection::South) => ['▄', '▄'],
-        (GameOfLifeCellStyle::Dotted, BoidDirection::East) => ['⣶', '⣿'],
-        (GameOfLifeCellStyle::Dotted, BoidDirection::West) => ['⣿', '⣶'],
-        (GameOfLifeCellStyle::Dotted, BoidDirection::North) => ['⠛', '⠛'],
-        (GameOfLifeCellStyle::Dotted, BoidDirection::South) => ['⣤', '⣤'],
+    let _ = cell_style;
+    match boid_direction(velocity) {
+        BoidDirection::East => ['·', '→'],
+        BoidDirection::West => ['←', '·'],
+        BoidDirection::North => ['↑', '·'],
+        BoidDirection::South => ['↓', '·'],
     }
 }
 
@@ -433,17 +425,13 @@ mod tests {
         visible
     }
 
-    // Defends: public boids style names include the legacy alias and the three behavior-backed variants.
+    // Defends: public boids style names include the legacy alias and retained behavior-backed variants, with flow removed from the live surface.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn boids_style_names_resolve_to_variants() {
         assert_eq!(
             BoidsVariant::from_style_name("boids"),
-            Some(BoidsVariant::Flow)
-        );
-        assert_eq!(
-            BoidsVariant::from_style_name("boids_flow"),
-            Some(BoidsVariant::Flow)
+            Some(BoidsVariant::Predator)
         );
         assert_eq!(
             BoidsVariant::from_style_name("boids_predator"),
@@ -453,6 +441,7 @@ mod tests {
             BoidsVariant::from_style_name("boids_schools"),
             Some(BoidsVariant::Schools)
         );
+        assert_eq!(BoidsVariant::from_style_name("boids_flow"), None);
         assert_eq!(BoidsVariant::from_style_name("game_of_life_bloom"), None);
     }
 
@@ -482,14 +471,12 @@ mod tests {
         ];
         let mut predator = starting_boids.clone();
         let mut schools = starting_boids.clone();
-        let mut flow = starting_boids;
 
         step_boids(&mut predator, 40.0, 20.0, BoidsVariant::Predator);
         step_boids(&mut schools, 40.0, 20.0, BoidsVariant::Schools);
-        step_boids(&mut flow, 40.0, 20.0, BoidsVariant::Flow);
 
-        assert!(predator[0].velocity.x > flow[0].velocity.x);
-        assert_ne!(schools[1].velocity, flow[1].velocity);
+        assert!(predator[0].velocity.x > starting_boids[0].velocity.x);
+        assert_ne!(schools[1].velocity, starting_boids[1].velocity);
         assert_ne!(predator, schools);
     }
 
@@ -513,10 +500,18 @@ mod tests {
             species: 1,
             ..first_school
         };
+        let other_prey = Boid {
+            species: 3,
+            ..first_school
+        };
 
         assert_ne!(
             boid_color_index(0, &predator, BoidsVariant::Predator),
             boid_color_index(1, &first_school, BoidsVariant::Predator)
+        );
+        assert_eq!(
+            boid_color_index(1, &first_school, BoidsVariant::Predator),
+            boid_color_index(2, &other_prey, BoidsVariant::Predator)
         );
         assert_ne!(
             boid_color_index(1, &first_school, BoidsVariant::Schools),
@@ -541,7 +536,7 @@ mod tests {
         );
     }
 
-    // Regression: boids must render as scaled 2-column cells, not tiny one-dot artifacts with skipped rows.
+    // Regression: boids must render as directional two-column creatures, not plain block cells with skipped rows.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn boids_render_scaled_cells_without_inserted_rows() {
@@ -555,7 +550,7 @@ mod tests {
         assert_eq!(visible.len(), 24);
         assert!(visible.iter().all(|line| line.chars().count() == 80));
         assert!(visible.iter().any(|line| {
-            ["▐█", "█▌", "▀▀", "▄▄"]
+            ["·→", "←·", "↑·", "↓·"]
                 .into_iter()
                 .any(|signature| line.contains(signature))
         }));
@@ -576,7 +571,7 @@ mod tests {
         assert_eq!(visible.len(), 12);
         assert!(visible.iter().all(|line| line.chars().count() == 60));
         assert!(visible.iter().any(|line| {
-            ["⣶⣿", "⣿⣶", "⠛⠛", "⣤⣤"]
+            ["·→", "←·", "↑·", "↓·"]
                 .into_iter()
                 .any(|signature| line.contains(signature))
         }));
@@ -588,21 +583,40 @@ mod tests {
     fn boid_visual_identity_is_stable_and_directional() {
         assert_eq!(
             boid_glyph_pair(GameOfLifeCellStyle::FullBlock, Vec2::new(1.0, 0.1)),
-            ['▐', '█']
+            ['·', '→']
         );
         assert_eq!(
             boid_glyph_pair(GameOfLifeCellStyle::FullBlock, Vec2::new(-1.0, 0.1)),
-            ['█', '▌']
+            ['←', '·']
         );
         assert_eq!(
             boid_glyph_pair(GameOfLifeCellStyle::FullBlock, Vec2::new(0.1, -1.0)),
-            ['▀', '▀']
+            ['↑', '·']
         );
         assert_eq!(
             boid_glyph_pair(GameOfLifeCellStyle::FullBlock, Vec2::new(0.1, 1.0)),
-            ['▄', '▄']
+            ['↓', '·']
         );
-        assert_eq!(colorize_boid_cell(3, '█'), colorize_boid_cell(3, '█'));
-        assert_ne!(colorize_boid_cell(0, '█'), colorize_boid_cell(1, '█'));
+        assert_eq!(colorize_boid_cell(3, '→'), colorize_boid_cell(3, '→'));
+        assert_ne!(colorize_boid_cell(0, '→'), colorize_boid_cell(1, '→'));
+    }
+
+    // Defends: the faster boids tuning moves creatures far enough per frame to read as intentional animation.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn boids_motion_uses_faster_velocity_floor() {
+        let animation = BoidsAnimation::with_variant(
+            context(80, 24),
+            GameOfLifeCellStyle::FullBlock,
+            BoidsVariant::Predator,
+        );
+        let slowest_prey = animation
+            .boids
+            .iter()
+            .filter(|boid| boid.role == BoidRole::Flock)
+            .map(|boid| boid.velocity.length())
+            .fold(f64::INFINITY, f64::min);
+
+        assert!(slowest_prey >= 0.62);
     }
 }
