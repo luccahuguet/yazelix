@@ -143,7 +143,7 @@ pub use startup_handoff::{
     StartupHandoffArtifact, StartupHandoffCaptureData, StartupHandoffCaptureRequest,
     capture_startup_handoff_context,
 };
-pub use status_report::{StatusReportData, compute_status_report};
+pub use status_report::{StatusReportData, compute_status_report, session_config_snapshot_summary};
 pub use support_commands::{run_yzx_sponsor, run_yzx_why};
 pub use terminal_materialization::{
     TerminalGeneratedConfig, TerminalMaterializationData, TerminalMaterializationRequest,

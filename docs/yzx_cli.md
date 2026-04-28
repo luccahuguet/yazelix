@@ -127,7 +127,7 @@ Show the guided Yazelix overview
 - `yzx tutor nushell`: alias for `yzx tutor nu`
 
 ### `yzx restart`
-Restart Yazelix (handles persistent sessions)
+Restart the current Yazelix window
 - Relaunches through the stable owner-provided `yzx` wrapper when one exists
 - Profile installs relaunch through the default-profile `yzx`; Home Manager installs relaunch through the Home Manager-owned `yzx`
 - Already-open Yazelix windows keep running their current live runtime until they are explicitly relaunched or restarted

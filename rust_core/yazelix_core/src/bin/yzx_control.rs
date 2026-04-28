@@ -388,6 +388,19 @@ fn status_summary_value(data: &yazelix_core::StatusReportData, key: &str) -> Str
         .unwrap_or_else(|| "unknown".to_string())
 }
 
+fn nested_status_summary_value(
+    data: &yazelix_core::StatusReportData,
+    object_key: &str,
+    field_key: &str,
+) -> String {
+    data.summary
+        .get(object_key)
+        .and_then(serde_json::Value::as_object)
+        .and_then(|object| object.get(field_key))
+        .map(json_value_to_display)
+        .unwrap_or_else(|| "none".to_string())
+}
+
 fn humanize_token(value: &str) -> String {
     value.replace('_', " ")
 }
@@ -399,6 +412,15 @@ fn status_badge(value: &str) -> (String, StatusTone) {
         "repair_missing_artifacts" => ("repair missing artifacts".to_string(), StatusTone::Warning),
         "config_problem" => ("config problem".to_string(), StatusTone::Warning),
         other => (humanize_token(other), StatusTone::Default),
+    }
+}
+
+fn snapshot_status_tone(value: &str) -> StatusTone {
+    match value {
+        "ok" => StatusTone::Good,
+        "not_set" => StatusTone::Muted,
+        "error" => StatusTone::Warning,
+        _ => StatusTone::Default,
     }
 }
 
@@ -435,6 +457,7 @@ fn build_status_sections(data: &yazelix_core::StatusReportData) -> Vec<StatusSec
     let generated_status_raw = status_summary_value(data, "generated_state_materialization_status");
     let generated_reason = status_summary_value(data, "generated_state_materialization_reason");
     let (generated_status, generated_tone) = status_badge(&generated_status_raw);
+    let snapshot_status = nested_status_summary_value(data, "session_config_snapshot", "status");
     let repair_needed_value = data
         .summary
         .get("generated_state_repair_needed")
@@ -485,6 +508,36 @@ fn build_status_sections(data: &yazelix_core::StatusReportData) -> Vec<StatusSec
                     value: generated_reason,
                     tone: StatusTone::Muted,
                 },
+            ],
+        },
+        StatusSection {
+            title: "Session Config",
+            rows: vec![
+                StatusRow {
+                    label: "Snapshot",
+                    value: humanize_token(&snapshot_status),
+                    tone: snapshot_status_tone(&snapshot_status),
+                },
+                maybe_muted_row(
+                    "Path",
+                    nested_status_summary_value(data, "session_config_snapshot", "path"),
+                ),
+                maybe_muted_row(
+                    "Source config",
+                    nested_status_summary_value(
+                        data,
+                        "session_config_snapshot",
+                        "source_config_file",
+                    ),
+                ),
+                maybe_muted_row(
+                    "Runtime version",
+                    nested_status_summary_value(data, "session_config_snapshot", "runtime_version"),
+                ),
+                maybe_muted_row(
+                    "Problem",
+                    nested_status_summary_value(data, "session_config_snapshot", "message"),
+                ),
             ],
         },
         StatusSection {
@@ -766,6 +819,10 @@ fn config_problem_status_report(
             .unwrap_or(serde_json::Value::Null),
     );
     summary.insert(
+        "session_config_snapshot".to_string(),
+        yazelix_core::session_config_snapshot_summary(),
+    );
+    summary.insert(
         "config_status".to_string(),
         serde_json::json!("unsupported_config"),
     );
@@ -962,6 +1019,7 @@ fn run_inspect(args: &[String]) -> Result<i32, CoreError> {
             "file": status.summary.get("config_file").cloned().unwrap_or(serde_json::Value::Null),
             "status": status.summary.get("config_status").cloned().unwrap_or(serde_json::json!("ok")),
             "diagnostic_report": status.summary.get("config_diagnostic_report").cloned().unwrap_or(serde_json::Value::Null),
+            "session_config_snapshot": status.summary.get("session_config_snapshot").cloned().unwrap_or(serde_json::Value::Null),
         },
         "generated_state": {
             "repair_needed": status.summary.get("generated_state_repair_needed").cloned().unwrap_or(serde_json::Value::Null),

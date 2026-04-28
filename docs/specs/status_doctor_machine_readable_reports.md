@@ -86,8 +86,7 @@ Default behavior remains human-rendered.
 - default shell
 - terminal list
 - optional Helix runtime override
-- persistent-session boolean
-- optional session name
+- active session config snapshot status, path, source config, and readable snapshot error details when present
 
 The human table is rendered from that report rather than being the primary source of truth.
 

@@ -169,6 +169,7 @@ terminals = ["ghostty"]
     assert_eq!(summary["terminals"], serde_json::json!(["ghostty"]));
     assert!(summary["generated_state_repair_needed"].is_boolean());
     assert!(summary["generated_state_materialization_status"].is_string());
+    assert_eq!(summary["session_config_snapshot"]["status"], "not_set");
 }
 
 // Regression: status stays usable from an older running window whose live config contains newer unsupported fields.
@@ -187,6 +188,7 @@ ghostty_trail_color = "random"
             ("terminals", serde_json::json!(["cached-term"])),
         ],
     );
+    let snapshot_display = snapshot.to_string_lossy().to_string();
 
     let output = yzx_control_command_in_fixture(&fixture)
         .env("YAZELIX_SESSION_CONFIG_PATH", snapshot)
@@ -210,6 +212,58 @@ ghostty_trail_color = "random"
     assert_eq!(
         report["summary"]["config_diagnostic_report"]["blocking_count"],
         1
+    );
+    assert_eq!(report["summary"]["session_config_snapshot"]["status"], "ok");
+    assert_eq!(
+        report["summary"]["session_config_snapshot"]["path"],
+        snapshot_display
+    );
+    assert_eq!(
+        report["summary"]["session_config_snapshot"]["source_config_file"],
+        fixture.managed_config.to_string_lossy().to_string()
+    );
+}
+
+// Regression: status reports a bad active snapshot as a readable diagnostic instead of hiding the snapshot problem.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_control_status_json_reports_bad_session_snapshot_diagnostic() {
+    let fixture = managed_config_fixture(
+        r#"[terminal]
+terminals = ["ghostty"]
+"#,
+    );
+    let missing_snapshot = fixture
+        .state_dir
+        .join("sessions/missing/config_snapshot.json");
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .env("YAZELIX_SESSION_CONFIG_PATH", &missing_snapshot)
+        .arg("status")
+        .arg("--json")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stderr.is_empty());
+    let report: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(
+        report["summary"]["session_config_snapshot"]["status"],
+        "error"
+    );
+    assert_eq!(
+        report["summary"]["session_config_snapshot"]["path"],
+        missing_snapshot.to_string_lossy().to_string()
+    );
+    assert_eq!(
+        report["summary"]["session_config_snapshot"]["error_code"],
+        "session_config_snapshot_read"
+    );
+    assert!(
+        report["summary"]["session_config_snapshot"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("Could not read the Yazelix session config snapshot")
     );
 }
 
@@ -253,6 +307,10 @@ terminals = ["ghostty"]
             .unwrap()
             .ends_with("yazelix.toml")
     );
+    assert_eq!(
+        report["config"]["session_config_snapshot"]["status"],
+        "not_set"
+    );
     assert!(report["generated_state"]["repair_needed"].is_boolean());
     assert_eq!(report["session"]["available"], false);
     assert_eq!(report["session"]["reason"], "not_in_zellij");
@@ -276,6 +334,7 @@ ghostty_trail_color = "random"
 "#,
     );
     let snapshot = write_session_config_snapshot(&fixture, &[]);
+    let snapshot_display = snapshot.to_string_lossy().to_string();
 
     let output = yzx_control_command_in_fixture(&fixture)
         .env("YAZELIX_SESSION_CONFIG_PATH", snapshot)
@@ -293,6 +352,11 @@ ghostty_trail_color = "random"
         "config_problem"
     );
     assert_eq!(report["config"]["diagnostic_report"]["blocking_count"], 1);
+    assert_eq!(report["config"]["session_config_snapshot"]["status"], "ok");
+    assert_eq!(
+        report["config"]["session_config_snapshot"]["path"],
+        snapshot_display
+    );
 }
 
 // Defends: the default human `yzx status` output groups fields into readable sections instead of leaking raw internal summary keys.
@@ -318,8 +382,10 @@ terminals = ["ghostty"]
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.starts_with("Runtime\n"));
     assert!(stdout.contains("\nGenerated State\n"));
+    assert!(stdout.contains("\nSession Config\n"));
     assert!(stdout.contains("\nWorkspace\n"));
     assert!(stdout.contains("Config file"));
+    assert!(stdout.contains("Snapshot"));
     assert!(stdout.contains("Default shell"));
     assert!(stdout.contains("Repair needed"));
     assert!(stdout.contains("Terminals"));

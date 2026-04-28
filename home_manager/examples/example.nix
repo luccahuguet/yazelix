@@ -53,11 +53,6 @@
     ];
     yazi_theme = "tokyo-night"; # Optional: flavor name or "random-dark"
     yazi_sort_by = "alphabetical";
-
-    # Persistent sessions for long-running work
-    persistent_sessions = true;
-    session_name = "main-dev";
-    enable_atuin = true;
   };
 
   # Optional: install Nushell as your normal interactive shell outside Yazelix.

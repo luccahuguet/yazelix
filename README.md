@@ -233,6 +233,7 @@ Yazelix uses a **layered configuration system** that safely merges your personal
 - **Zellij customization**: Use the built-in `[zellij]` settings in `yazelix.toml` for Yazelix-owned Zellij knobs, and use `~/.config/yazelix/user_configs/zellij/config.kdl` for your deeper managed Zellij overrides (see [Zellij Configuration](./docs/zellij-configuration.md))
 - **Your configs persist** across Yazelix updates without git conflicts
 - **Intelligent merging**: Generated Yazi and Zellij runtime configs are rebuilt from Yazelix defaults plus your managed overrides instead of forcing you to edit tracked runtime files
+- **Launch-time config snapshots**: each Yazelix window keeps the `yazelix.toml` snapshot it launched with; edit config whenever you want, then open a new Yazelix window or run `yzx restart` to apply it to live panes
 
 📖 **[Complete Customization Guide →](./docs/customization.md)** - Detailed instructions for customizing every tool
 

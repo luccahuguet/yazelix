@@ -25,7 +25,7 @@ The merger now prefers your **Yazelix-managed Zellij config** when present, then
 3. **Enforced Yazelix settings**: Always appended last to guarantee required behavior:
    - `pane_frames false` (needed for `zjstatus`)
    - `support_kitty_keyboard_protocol` set from `yazelix.toml` (default: false)
-   - `on_force_close` set from Yazelix session mode (`quit` for default non-persistent sessions, `detach` for persistent sessions)
+   - `on_force_close` set to `quit` so closed windows do not leave detached Yazelix sessions behind
    - `default_layout` set to Yazelix’s layout file (absolute path)
    - `layout_dir` set to Yazelix’s generated layouts directory
 
@@ -126,8 +126,8 @@ The default launches the managed Yazi file-tree adapter. You can point the same 
 - Default layout: `yzx_side` or `yzx_side_closed` for the managed-sidebar startup surface
 - Copy command: `wl-copy` (Wayland clipboard)
 - Scrollback editor: `hx` (Helix)
-- Session serialization: enabled for persistence
-- `on_force_close`: `quit` for default non-persistent sessions, `detach` for persistent sessions
+- Session serialization: enabled for Zellij's own session state
+- `on_force_close`: `quit`
 - Startup tips: disabled
 
 ## Troubleshooting

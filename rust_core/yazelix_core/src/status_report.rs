@@ -4,6 +4,9 @@ use crate::bridge::CoreError;
 use crate::runtime_materialization::{
     RuntimeMaterializationPlanRequest, plan_runtime_materialization,
 };
+use crate::session_config_snapshot::{
+    load_session_config_snapshot_from_path, session_config_snapshot_path_from_env,
+};
 use serde::Serialize;
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use std::path::Path;
@@ -20,6 +23,36 @@ fn path_to_string(path: &Path) -> String {
 
 fn default_terminals_value() -> JsonValue {
     json!(["ghostty"])
+}
+
+pub fn session_config_snapshot_summary() -> JsonValue {
+    let Some(path) = session_config_snapshot_path_from_env() else {
+        return json!({
+            "status": "not_set",
+            "path": JsonValue::Null,
+        });
+    };
+
+    match load_session_config_snapshot_from_path(&path) {
+        Ok(snapshot) => json!({
+            "status": "ok",
+            "path": path_to_string(&path),
+            "snapshot_id": snapshot.snapshot_id,
+            "created_at_unix_seconds": snapshot.created_at_unix_seconds,
+            "source_config_file": snapshot.source_config.path,
+            "source_config_hash": snapshot.source_config.hash,
+            "runtime_dir": snapshot.runtime.dir,
+            "runtime_hash": snapshot.runtime.hash,
+            "runtime_version": snapshot.runtime.version,
+        }),
+        Err(error) => json!({
+            "status": "error",
+            "path": path_to_string(&path),
+            "error_code": error.code(),
+            "message": error.message(),
+            "remediation": error.remediation(),
+        }),
+    }
 }
 
 /// Build the structured status report consumed by `yzx status` / `yzx status --json`.
@@ -74,6 +107,10 @@ pub fn compute_status_report(
     summary.insert("default_shell".to_string(), default_shell);
     summary.insert("terminals".to_string(), terminals);
     summary.insert("helix_runtime".to_string(), helix_runtime);
+    summary.insert(
+        "session_config_snapshot".to_string(),
+        session_config_snapshot_summary(),
+    );
 
     Ok(StatusReportData {
         title: "Yazelix status".to_string(),

@@ -3,6 +3,8 @@
 Yazelix is highly customizable! Here are the main ways you can tailor your experience:
 
 - **Configuration File**: Edit `~/.config/yazelix/user_configs/yazelix.toml` for all core options. See [yazelix_default.toml](../yazelix_default.toml) for a full list and descriptions of every option (shell, editor, terminal, recommended tools, sidebar toggle, debug mode, etc).
+  - Yazelix snapshots the main config for each new window. Live popup, menu, sidebar, reveal, and editor-launch commands keep using that window snapshot, so config edits apply to the next Yazelix window or after `yzx restart`
+  - `yzx status --json` and `yzx inspect --json` include `session_config_snapshot` with the active snapshot path, source config, and readable snapshot errors
 - **Terminal Configurations**:
   - **Bundled terminals** (yazelix-ghostty, etc.): Configs generated dynamically from your yazelix settings
     - **Ghostty cursor shaders**: Edit `~/.config/yazelix/user_configs/yazelix_cursors.toml` to choose the cursor trail, enabled cursor list, global effects, duration, glow, and Kitty fallback toggle. `settings.trail = "random"` picks from `enabled_cursors`, `settings.trail = "none"` disables the Ghostty palette shader, and `settings.kitty_enable_cursor = false` disables Kitty's simple fallback trail.

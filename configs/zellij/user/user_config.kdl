@@ -66,13 +66,13 @@ theme "dracula"
 // What to do when terminal is closed: "detach" or "quit"
 // on_force_close "quit"
 
-// Enable session serialization for persistence across restarts
+// Enable Zellij session serialization for its own internal state
 // session_serialization true
 
 // === CUSTOM KEYBINDINGS ===
 // RECOMMENDED: For small keybinding changes, edit the layout files directly:
 //   - configs/zellij/layouts/yzx_side.kdl
-//   - configs/zellij/layouts/yzx_no_side.kdl
+//   - configs/zellij/layouts/yzx_side_closed.kdl
 //
 // Only use this section if you want to completely replace all keybindings:
 
