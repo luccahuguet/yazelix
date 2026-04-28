@@ -1130,7 +1130,7 @@ fn find_external_command(command_name: &str) -> Option<PathBuf> {
 fn zellij_new_tab_args(
     target_dir: &Path,
     tab_name: &str,
-    layout_name: Option<&str>,
+    layout_path: Option<&str>,
 ) -> Vec<String> {
     let mut args = vec![
         "action".to_string(),
@@ -1140,7 +1140,7 @@ fn zellij_new_tab_args(
         "--name".to_string(),
         tab_name.to_string(),
     ];
-    if let Some(layout) = layout_name
+    if let Some(layout) = layout_path
         .map(str::trim)
         .filter(|layout| !layout.is_empty())
     {
@@ -1148,6 +1148,32 @@ fn zellij_new_tab_args(
         args.push(layout.to_string());
     }
     args
+}
+
+fn resolve_new_tab_layout_arg(
+    raw_layout: Option<&str>,
+    state_dir: Option<&Path>,
+) -> Option<String> {
+    let layout = raw_layout?.trim();
+    if layout.is_empty() {
+        return None;
+    }
+
+    if layout.contains('/') || layout.ends_with(".kdl") {
+        return Some(layout.to_string());
+    }
+
+    let generated_layout = state_dir.map(|dir| {
+        dir.join("configs")
+            .join("zellij")
+            .join("layouts")
+            .join(format!("{layout}.kdl"))
+    });
+    if let Some(path) = generated_layout.as_ref().filter(|path| path.exists()) {
+        return Some(path.to_string_lossy().into_owned());
+    }
+
+    Some(layout.to_string())
 }
 
 fn active_tab_id_from_json(raw: &str) -> Option<u64> {
@@ -1195,11 +1221,13 @@ fn current_zellij_tab_id() -> Result<u64, CoreError> {
 }
 
 fn open_zellij_workspace_tab(target_dir: &Path, tab_name: &str) -> Result<(), CoreError> {
-    let layout_name = env::var("ZELLIJ_DEFAULT_LAYOUT")
+    let layout_from_env = env::var("ZELLIJ_DEFAULT_LAYOUT")
         .ok()
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty());
-    let args = zellij_new_tab_args(target_dir, tab_name, layout_name.as_deref());
+    let state_dir = env::var_os("YAZELIX_STATE_DIR").map(PathBuf::from);
+    let layout_arg = resolve_new_tab_layout_arg(layout_from_env.as_deref(), state_dir.as_deref());
+    let args = zellij_new_tab_args(target_dir, tab_name, layout_arg.as_deref());
     let output = Command::new("zellij")
         .args(&args)
         .output()
@@ -1384,6 +1412,38 @@ mod tests {
                 "yzx_side_closed",
             ]
         );
+    }
+
+    // Regression: existing Yazelix windows expose `ZELLIJ_DEFAULT_LAYOUT` as a layout name, but `zellij action new-tab --layout` needs a resolvable layout path.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn warp_resolves_generated_layout_name_to_state_path() {
+        let state = tempfile::tempdir().expect("state dir");
+        let layouts = state.path().join("configs").join("zellij").join("layouts");
+        std::fs::create_dir_all(&layouts).expect("layouts dir");
+        std::fs::write(layouts.join("yzx_side.kdl"), "layout { pane }\n").expect("layout");
+
+        let resolved = resolve_new_tab_layout_arg(Some("yzx_side"), Some(state.path()));
+
+        assert_eq!(
+            resolved,
+            Some(
+                state
+                    .path()
+                    .join("configs/zellij/layouts/yzx_side.kdl")
+                    .to_string_lossy()
+                    .into_owned()
+            )
+        );
+    }
+
+    // Defends: explicit custom layout paths survive yzx warp unchanged instead of being rewritten as managed Yazelix layouts.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn warp_preserves_explicit_layout_paths() {
+        let resolved = resolve_new_tab_layout_arg(Some("/tmp/custom.kdl"), None);
+
+        assert_eq!(resolved, Some("/tmp/custom.kdl".to_string()));
     }
 
     // Defends: yzx warp --kill closes the original stable tab id rather than whichever tab is focused after new-tab.
