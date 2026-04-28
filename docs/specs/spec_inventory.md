@@ -134,6 +134,7 @@ Status labels:
 | `terminal_launch_contract.md` | Live | Current retained terminal launch/process-boundary contract and deletion budget |
 | `terminal_override_layers.md` | Live | Current terminal preference and override guidance |
 | `test_suite_governance.md` | Live | Current test-strength and lane policy |
+| `toml_tooling_taplo_tombi_evaluation.md` | Planning | Current staged decision for evaluating Tombi without a blind Taplo replacement |
 | `upgrade_notes_contract.md` | Live | Current structured upgrade-notes contract |
 | `v14_boundary_hardening_gate.md` | Historical | v14 release-gate history |
 | `v15_trimmed_runtime_contract.md` | Live | Primary branch-level contract; start here for runtime, config, and update questions |
