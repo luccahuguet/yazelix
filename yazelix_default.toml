@@ -5,12 +5,12 @@
 # Note: Most configuration changes require restarting Yazelix to take effect.
 
 [core]
-debug_mode = false                     # Enable verbose debug logging in the shellHook
-skip_welcome_screen = false            # When true, welcome info is logged instead of displayed
-show_macchina_on_welcome = true        # Show system info on welcome screen (uses macchina)
-welcome_style = "random"               # Welcome style: "static", "logo", "boids", "boids_predator", "boids_schools", "mandelbrot", "game_of_life_gliders", "game_of_life_oscillators", "game_of_life_bloom", or "random" (never picks "static" or "logo")
-game_of_life_cell_style = "full_block" # Game of Life cell style: "full_block" or "dotted" (braille scale 4)
-welcome_duration_seconds = 2.0         # Welcome animation duration in seconds for animated styles; logo ignores this and keeps its fixed timing (0.2 to 8.0)
+debug_mode = false  # Enable verbose debug logging in the shellHook
+skip_welcome_screen = false  # When true, welcome info is logged instead of displayed
+show_macchina_on_welcome = true  # Show system info on welcome screen (uses macchina)
+welcome_style = "random"  # Welcome style: "static", "logo", "boids", "boids_predator", "boids_schools", "mandelbrot", "game_of_life_gliders", "game_of_life_oscillators", "game_of_life_bloom", or "random" (never picks "static" or "logo")
+game_of_life_cell_style = "full_block"  # Game of Life cell style: "full_block" or "dotted" (braille scale 4)
+welcome_duration_seconds = 2.0  # Welcome animation duration in seconds for animated styles; logo ignores this and keeps its fixed timing (0.2 to 8.0)
 
 [helix]
 # Helix runtime path (advanced users only)
@@ -47,7 +47,7 @@ welcome_duration_seconds = 2.0         # Welcome animation duration in seconds f
 #   - Basic integration only (new panes, tab naming)
 #   - No advanced features (reveal in the Yazi file tree, same-instance opening)
 #   - Works reliably but with limited yazelix-specific functionality
-command = "" # Leave empty to use yazelix's helix (recommended), or set to "nvim", "hx", "vim", etc.
+command = ""  # Leave empty to use yazelix's helix (recommended), or set to "nvim", "hx", "vim", etc.
 
 # Initial managed sidebar state: "open" or "closed" (default: "open")
 # Sidebar is the generic managed side-surface; the default sidebar is a Yazi file tree.
@@ -74,7 +74,6 @@ sidebar_args = [
 # Default shell for Zellij: "nu", "bash", "fish", or "zsh" (default: "nu")
 # The selected shell must be available in the installed Yazelix runtime or host PATH.
 default_shell = "nu"
-
 
 [terminal]
 # Terminal emulator preference list (ordered)
@@ -165,14 +164,14 @@ theme = "default"
 # Available widgets: "editor", "shell", "term", "workspace", "ai_activity", "token_budget", "cpu", "ram"
 # Comment out any line to hide that widget
 widget_tray = [
-  "editor", # Active editor
+  "editor",  # Active editor
   "shell",  # Active shell
-  "term",   # Terminal emulator
+  "term",  # Terminal emulator
   # "workspace", # Current workspace/focus from the pane-orchestrator status bus
   # "ai_activity", # AI pane activity from status-bus extension facts
   # "token_budget", # AI token-budget status-bus extension point
-  "cpu", # CPU usage
-  "ram", # RAM usage
+  "cpu",  # CPU usage
+  "ram",  # RAM usage
 ]
 
 # Optional short badge shown just before the YAZELIX version segment in zjstatus.

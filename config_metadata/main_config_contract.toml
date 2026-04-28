@@ -19,8 +19,7 @@ loader_module = "nushell/scripts/utils/config_contract.nu"
 scope_note = "Pack-surface metadata is intentionally excluded from this artifact."
 
 [rebuild]
-extra_paths = [
-]
+extra_paths = []
 
 [fields."core.debug_mode"]
 kind = "bool"

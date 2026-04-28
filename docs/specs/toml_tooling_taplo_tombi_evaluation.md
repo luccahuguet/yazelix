@@ -9,9 +9,9 @@ upstream Tombi, Tombi formats different files than Taplo today, and Yazelix has
 Taplo-named runtime/user support paths embedded in packaging, docs, diagnostics,
 and tests.
 
-Decision: keep Taplo for the current runtime package, open a Tombi migration
-track, and only flip the shipped runtime tool after a prototype proves formatter
-stability and the Taplo-named managed support surface is renamed deliberately.
+Decision: migrate to Tombi through the staged track. The prototype accepted a
+bounded Yazelix-owned TOML corpus, leaving vendored Yazi flavor TOML and Rust
+Cargo manifests out of the formatter gate to avoid unrelated churn.
 
 ## Why
 
@@ -130,6 +130,62 @@ exists in locked nixpkgs, still provides the current shipped CLI, and remains
 smaller. The migration track exists because Tombi's upstream activity and TOML
 toolkit scope make it the better candidate once Yazelix can migrate without
 leaving Taplo-shaped product seams behind.
+
+## Prototype Outcome
+
+`yazelix-zz0k.1` accepted a configured Tombi corpus instead of the whole tracked
+TOML tree:
+
+```toml
+[files]
+include = [
+  "*.toml",
+  "config_metadata/**/*.toml",
+  "docs/upgrade_notes.toml",
+  "user_configs/**/*.toml",
+]
+exclude = [
+  "configs/yazi/flavors/**/*.toml",
+  "rust_core/**/*.toml",
+  "rust_plugins/**/*.toml",
+]
+```
+
+Reason:
+
+- vendored Yazi flavor TOML is external theme data, not a Yazelix-authored
+  formatting surface
+- Cargo manifests already follow Rust tooling expectations
+- the runtime/user support target is Yazelix TOML configuration, especially
+  `yazelix_default.toml`, `yazelix_cursors_default.toml`,
+  `config_metadata/*.toml`, `docs/upgrade_notes.toml`, and
+  `user_configs/**/*.toml`
+
+The configured Tombi pass changed five files:
+
+```text
+5 files changed, 241 insertions(+), 71 deletions(-)
+```
+
+Changed TOML files:
+
+- `.nu-lint.toml`
+- `config_metadata/main_config_contract.toml`
+- `docs/upgrade_notes.toml`
+- `tombi.toml`
+- `yazelix_default.toml`
+
+Unsupported or deliberately unmapped Taplo knobs:
+
+- Taplo's `array_auto_expand`, `array_trailing_comma`, `align_entries`,
+  `column_width`, `compact_arrays`, `compact_inline_tables`, and
+  `indent_string` do not map one-for-one into the accepted Tombi config
+- Tombi's accepted replacement is a narrower formatter rule set:
+  `indent-width = 2`, `line-width = 200`, and `string-quote-style = "preserve"`
+
+Recommendation after the prototype: the package swap is safe if Yazelix keeps
+the configured corpus boundary and does not attempt a full repo-wide TOML
+reformat.
 
 ## Follow-Up Beads
 

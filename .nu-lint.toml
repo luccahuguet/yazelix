@@ -28,27 +28,26 @@ upstream = "off"
 
 # --- Individual rule overrides ---
 [rules]
-
 # Suppress noisy rules from enabled groups (runtime-errors, type-safety, performance, dead-code)
-redundant_nu_subprocess = "off"      # intentional process isolation in tests/menus/runners
-spread_list_to_external = "off"      # false positives on typed internal Nushell helper calls that intentionally accept list args
-redundant_ignore = "off"             # low-value advisory churn; many hits intentionally suppress helper output
-chained_str_transform = "off"        # style/perf hint, not worth rewriting readable text transforms
-error_make_for_non_fatal = "off"     # style hint; several hits intentionally print contextual recovery text
-if_null_to_default = "off"           # style simplification, not a defect signal
-unused_parameter = "off"             # false positives on user-facing flags forwarded as named args
-unused_variable = "off"              # false positives on values used as Nushell command arguments
-unused_helper_functions = "off"      # false positives on callback helpers passed through closures
-assign_then_return = "off"           # low-value style hint
-catch_builtin_error_try = "off"      # too broad, flags normal pipeline usage
-exit_only_in_main = "off"            # scripts legitimately use exit
-try_instead_of_do = "off"            # stylistic, not a correctness issue
+redundant_nu_subprocess = "off"  # intentional process isolation in tests/menus/runners
+spread_list_to_external = "off"  # false positives on typed internal Nushell helper calls that intentionally accept list args
+redundant_ignore = "off"  # low-value advisory churn; many hits intentionally suppress helper output
+chained_str_transform = "off"  # style/perf hint, not worth rewriting readable text transforms
+error_make_for_non_fatal = "off"  # style hint; several hits intentionally print contextual recovery text
+if_null_to_default = "off"  # style simplification, not a defect signal
+unused_parameter = "off"  # false positives on user-facing flags forwarded as named args
+unused_variable = "off"  # false positives on values used as Nushell command arguments
+unused_helper_functions = "off"  # false positives on callback helpers passed through closures
+assign_then_return = "off"  # low-value style hint
+catch_builtin_error_try = "off"  # too broad, flags normal pipeline usage
+exit_only_in_main = "off"  # scripts legitimately use exit
+try_instead_of_do = "off"  # stylistic, not a correctness issue
 wrap_external_with_complete = "off"  # too noisy for this codebase
-missing_output_type = "off"          # high-churn annotation requirement
-missing_in_type = "off"              # high-churn annotation requirement
-add_type_hints_arguments = "off"     # high-churn annotation requirement
-string_param_as_path = "off"         # too many false positives
+missing_output_type = "off"  # high-churn annotation requirement
+missing_in_type = "off"  # high-churn annotation requirement
+add_type_hints_arguments = "off"  # high-churn annotation requirement
+string_param_as_path = "off"  # too many false positives
 external_script_as_argument = "off"  # intentional pattern in Yazelix
-string_may_be_bare = "off"           # Yazelix quotes strings deliberately
-script_export_main = "off"           # not applicable to module-style scripts
-single_call_command = "off"          # intentional wrapper functions
+string_may_be_bare = "off"  # Yazelix quotes strings deliberately
+script_export_main = "off"  # not applicable to module-style scripts
+single_call_command = "off"  # intentional wrapper functions

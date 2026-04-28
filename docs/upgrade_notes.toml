@@ -2,9 +2,15 @@
 acknowledged_guarded_changes = ["home_manager/module.nix", "yazelix_default.toml"]
 date = ""
 headline = "Home Manager leaves yazelix.toml mutable and cursor presets move to a sidecar"
-manual_actions = ["If your user_configs/yazelix.toml still contains terminal.ghostty_* cursor fields, move those cursor choices and effects into user_configs/yazelix_cursors.toml and remove the old fields"]
+manual_actions = [
+  "If your user_configs/yazelix.toml still contains terminal.ghostty_* cursor fields, move those cursor choices and effects into user_configs/yazelix_cursors.toml and remove the old fields"
+]
 migration_ids = []
-summary = ["Changed the Home Manager module default so it installs the Yazelix package/runtime/desktop integration while leaving ~/.config/yazelix/user_configs/yazelix.toml as a normal mutable file", "Moved Ghostty cursor selection, effects, duration, glow, Kitty fallback, and cursor preset definitions out of yazelix.toml and into ~/.config/yazelix/user_configs/yazelix_cursors.toml", "Kept programs.yazelix.manage_config = true as the explicit opt-in for users who want Home Manager to generate and own yazelix.toml"]
+summary = [
+  "Changed the Home Manager module default so it installs the Yazelix package/runtime/desktop integration while leaving ~/.config/yazelix/user_configs/yazelix.toml as a normal mutable file",
+  "Moved Ghostty cursor selection, effects, duration, glow, Kitty fallback, and cursor preset definitions out of yazelix.toml and into ~/.config/yazelix/user_configs/yazelix_cursors.toml",
+  "Kept programs.yazelix.manage_config = true as the explicit opt-in for users who want Home Manager to generate and own yazelix.toml"
+]
 upgrade_impact = "manual_action_required"
 version = "unreleased"
 
@@ -14,7 +20,10 @@ date = "2026-01-25"
 headline = "User-declared packs, Yazi config merging, and tighter terminal integration"
 manual_actions = []
 migration_ids = []
-summary = ["Added user-declared packs, Yazi user-config merging, and cleaner terminal and persistent-session behavior.", "Fixed default-shell persistence, hot-reload behavior, and Kitty cursor-trail fallback handling."]
+summary = [
+  "Added user-declared packs, Yazi user-config merging, and cleaner terminal and persistent-session behavior.",
+  "Fixed default-shell persistence, hot-reload behavior, and Kitty cursor-trail fallback handling."
+]
 upgrade_impact = "no_user_action"
 version = "v12"
 
@@ -34,7 +43,10 @@ date = "2026-03-03"
 headline = "Refresh command and shell-initializer simplification"
 manual_actions = []
 migration_ids = ["remove_shell_enable_atuin"]
-summary = ["Added yzx refresh and shared devenv refresh helpers across the main command surface.", "Removed the shell.enable_atuin toggle and simplified shell initializers to rely on direct PATH detection."]
+summary = [
+  "Added yzx refresh and shared devenv refresh helpers across the main command surface.",
+  "Removed the shell.enable_atuin toggle and simplified shell initializers to rely on direct PATH detection."
+]
 upgrade_impact = "migration_available"
 version = "v12.10"
 
@@ -64,7 +76,10 @@ date = "2026-01-29"
 headline = "llm-agents integration, AI packs, and yzx packs"
 manual_actions = []
 migration_ids = []
-summary = ["Integrated llm-agents.nix, added AI-focused packs, and added the yzx packs inspection command.", "Added Cachix binary caches and tightened unfree-package handling around the AI tooling surface."]
+summary = [
+  "Integrated llm-agents.nix, added AI-focused packs, and added the yzx packs inspection command.",
+  "Added Cachix binary caches and tightened unfree-package handling around the AI tooling surface."
+]
 upgrade_impact = "no_user_action"
 version = "v12.3"
 
@@ -104,7 +119,10 @@ date = "2026-02-07"
 headline = "Safer yzx env shell supervision and better version reporting"
 manual_actions = []
 migration_ids = []
-summary = ["Reworked yzx env shell supervision to prevent orphaned shells and prefer the stronger setpriv path where available.", "Improved version reporting and locked tool-version resolution more tightly to the repo state."]
+summary = [
+  "Reworked yzx env shell supervision to prevent orphaned shells and prefer the stronger setpriv path where available.",
+  "Improved version reporting and locked tool-version resolution more tightly to the repo state."
+]
 upgrade_impact = "no_user_action"
 version = "v12.7"
 
@@ -134,7 +152,10 @@ date = "2026-03-07"
 headline = "Plugin-managed editor/sidebar orchestration and deterministic workspace controls"
 manual_actions = []
 migration_ids = []
-summary = ["Replaced fragile pane-scanning with plugin-managed editor and sidebar orchestration plus deterministic layout controls.", "Improved launch freshness on restart and unified workspace-navigation behavior around the pane orchestrator."]
+summary = [
+  "Replaced fragile pane-scanning with plugin-managed editor and sidebar orchestration plus deterministic layout controls.",
+  "Improved launch freshness on restart and unified workspace-navigation behavior around the pane orchestrator."
+]
 upgrade_impact = "no_user_action"
 version = "v13"
 
@@ -144,7 +165,10 @@ date = "2026-03-14"
 headline = "Safer multi-tab cwd routing, stronger workspace sync, and better diagnostics"
 manual_actions = []
 migration_ids = []
-summary = ["Scoped Yazi sidebar cwd sync to the current tab and strengthened the yzx cwd workspace flow.", "Improved Zellij and workspace diagnostics while cleaning up pane-handling and update-canary behavior."]
+summary = [
+  "Scoped Yazi sidebar cwd sync to the current tab and strengthened the yzx cwd workspace flow.",
+  "Improved Zellij and workspace diagnostics while cleaning up pane-handling and update-canary behavior."
+]
 upgrade_impact = "no_user_action"
 version = "v13.1"
 
@@ -152,9 +176,16 @@ version = "v13.1"
 acknowledged_guarded_changes = ["yazelix_default.toml", "home_manager/module.nix"]
 date = "2026-03-30"
 headline = "Automatic safe migrations, sidebar/layout polish, and cleaner config commands"
-manual_actions = ["Replace `yzx config hx`, `yzx config yazi`, and `yzx config zellij` with `yzx open hx`, `yzx open yazi`, and `yzx open zellij`.", "Replace `yzx config open config` and `yzx config open packs` with `yzx edit config` and `yzx edit packs`."]
+manual_actions = [
+  "Replace `yzx config hx`, `yzx config yazi`, and `yzx config zellij` with `yzx open hx`, `yzx open yazi`, and `yzx open zellij`.",
+  "Replace `yzx config open config` and `yzx config open packs` with `yzx edit config` and `yzx edit packs`."
+]
 migration_ids = []
-summary = ["Added automatic safe config-migration preflight on startup, launch, restart, and interactive env flows, while keeping `yzx config migrate` as the explicit preview and repair surface.", "Stabilized sidebar-aware layout control with pane-orchestrator fixes, removed stale swap-layout widget output, added the missing no-side bottom-terminal family, and made `editor.sidebar_width_percent` configurable.", "Simplified config-facing commands by splitting downstream inspection into `yzx open hx|yazi|zellij`, managed config editing into `yzx edit config|packs`, and adding `yzx config reset --no-backup`, while polishing welcome-screen skip behavior."]
+summary = [
+  "Added automatic safe config-migration preflight on startup, launch, restart, and interactive env flows, while keeping `yzx config migrate` as the explicit preview and repair surface.",
+  "Stabilized sidebar-aware layout control with pane-orchestrator fixes, removed stale swap-layout widget output, added the missing no-side bottom-terminal family, and made `editor.sidebar_width_percent` configurable.",
+  "Simplified config-facing commands by splitting downstream inspection into `yzx open hx|yazi|zellij`, managed config editing into `yzx edit config|packs`, and adding `yzx config reset --no-backup`, while polishing welcome-screen skip behavior."
+]
 upgrade_impact = "manual_action_required"
 version = "v13.10"
 
@@ -164,7 +195,13 @@ date = "2026-03-31"
 headline = "Configurable Yazi command overrides, Ghostty neon tuning, and maintainer tooling polish"
 manual_actions = []
 migration_ids = []
-summary = ["Added `[yazi].command` and `[yazi].ya_command` so managed Yazi launches and sidebar/reveal actions can use explicit binaries instead of only relying on `PATH`.", "Added `nu-lint` to the `maintainer` pack and exposed the same maintainer-tooling surface through Home Manager's pack definitions.", "Tuned the Ghostty neon cursor-trail base color from violet toward a brighter cyan-blue so the shipped neon variant matches its intended palette.", "Clarified that custom Yazi plugin initialization lives in `user_configs/yazi/init.lua`, and updated user-facing docs to the current nested config shape and `user_configs/` paths.", "Refreshed maintainer input pins and updated the runtime-owned `devenv` CLI to `2.0.7`."]
+summary = [
+  "Added `[yazi].command` and `[yazi].ya_command` so managed Yazi launches and sidebar/reveal actions can use explicit binaries instead of only relying on `PATH`.",
+  "Added `nu-lint` to the `maintainer` pack and exposed the same maintainer-tooling surface through Home Manager's pack definitions.",
+  "Tuned the Ghostty neon cursor-trail base color from violet toward a brighter cyan-blue so the shipped neon variant matches its intended palette.",
+  "Clarified that custom Yazi plugin initialization lives in `user_configs/yazi/init.lua`, and updated user-facing docs to the current nested config shape and `user_configs/` paths.",
+  "Refreshed maintainer input pins and updated the runtime-owned `devenv` CLI to `2.0.7`."
+]
 upgrade_impact = "no_user_action"
 version = "v13.11"
 
@@ -174,7 +211,16 @@ date = "2026-04-05"
 headline = "Simpler runtime updates and stronger update-path hardening"
 manual_actions = []
 migration_ids = []
-summary = ["Replaced the clone-oriented `yzx update repo` flow with `yzx update runtime`, and redefined `yzx update all` around the packaged runtime plus the runtime-owned `devenv` CLI.", "Hardened `yzx launch` and `yzx restart` so they stop trusting stale current shells that do not contain the newly configured terminal.", "Fixed `yzx dev update --canary-only` regressions around canary selection syntax and read-only temporary config copies.", "Deleted the copied `PINNED_DEVENV_VERSION` contract so maintainer pins and doctor output stop pretending there is a third authoritative `devenv` version source.", "Restored `[zellij].pane_frames` as a canonical managed config option while keeping direct Zellij pane-frame ownership and rounded-corner control.", "Reverted the managed Yazi default theme to Yazi's upstream built-in default while keeping explicit flavor selection available through `[yazi].theme`.", "Fixed Home Manager runtime-source evaluation so the standalone `home_manager` flake can validate and install the lock-derived runtime without tripping invalid parent-source paths.", "Dropped the broken Home Manager source-input workaround and kept the simpler module wiring now that the lock-derived `devenv` source import is stable again."]
+summary = [
+  "Replaced the clone-oriented `yzx update repo` flow with `yzx update runtime`, and redefined `yzx update all` around the packaged runtime plus the runtime-owned `devenv` CLI.",
+  "Hardened `yzx launch` and `yzx restart` so they stop trusting stale current shells that do not contain the newly configured terminal.",
+  "Fixed `yzx dev update --canary-only` regressions around canary selection syntax and read-only temporary config copies.",
+  "Deleted the copied `PINNED_DEVENV_VERSION` contract so maintainer pins and doctor output stop pretending there is a third authoritative `devenv` version source.",
+  "Restored `[zellij].pane_frames` as a canonical managed config option while keeping direct Zellij pane-frame ownership and rounded-corner control.",
+  "Reverted the managed Yazi default theme to Yazi's upstream built-in default while keeping explicit flavor selection available through `[yazi].theme`.",
+  "Fixed Home Manager runtime-source evaluation so the standalone `home_manager` flake can validate and install the lock-derived runtime without tripping invalid parent-source paths.",
+  "Dropped the broken Home Manager source-input workaround and kept the simpler module wiring now that the lock-derived `devenv` source import is stable again."
+]
 upgrade_impact = "no_user_action"
 version = "v13.12"
 
@@ -184,7 +230,11 @@ date = "2026-04-05"
 headline = "Yazi git refresh hardening, fresh launch-profile recording, and maintainer input updates"
 manual_actions = []
 migration_ids = []
-summary = ["Refreshed Yazi sidebar git decorations more reliably on focus return, open, navigation, and explicit sidebar refresh so the managed sidebar stops carrying stale git state.", "Recorded the fresh built launch profile after Yazelix-owned rebuilds so desktop-entry and restart flows stop reactivating stale `DEVENV_PROFILE` paths.", "Updated maintainer inputs, including the then-current Beads tracker build, and verified the real issue-mutation path after the bump."]
+summary = [
+  "Refreshed Yazi sidebar git decorations more reliably on focus return, open, navigation, and explicit sidebar refresh so the managed sidebar stops carrying stale git state.",
+  "Recorded the fresh built launch profile after Yazelix-owned rebuilds so desktop-entry and restart flows stop reactivating stale `DEVENV_PROFILE` paths.",
+  "Updated maintainer inputs, including the then-current Beads tracker build, and verified the real issue-mutation path after the bump."
+]
 upgrade_impact = "no_user_action"
 version = "v13.13"
 
@@ -194,7 +244,10 @@ date = "2026-03-15"
 headline = "Workspace opening polish and the Ghostty cursor-effect transition"
 manual_actions = ["If you customized older Ghostty cursor-trail settings, review them against the newer trail and mode fields because the old intent is not always safe to rewrite automatically."]
 migration_ids = []
-summary = ["Made Alt+p set the tab workspace root and fixed Alt+m cwd regressions and startup cwd leaks.", "Started the Ghostty cursor-effect transition that split older cursor-trail intent across newer trail and mode fields."]
+summary = [
+  "Made Alt+p set the tab workspace root and fixed Alt+m cwd regressions and startup cwd leaks.",
+  "Started the Ghostty cursor-effect transition that split older cursor-trail intent across newer trail and mode fields."
+]
 upgrade_impact = "manual_action_required"
 version = "v13.2"
 
@@ -204,7 +257,10 @@ date = "2026-03-15"
 headline = "Restart workspace bootstrap follow-through and roadmap reset"
 manual_actions = []
 migration_ids = []
-summary = ["Bootstrapped the first-tab workspace from restarted Yazi state and added restart-only Yazi cwd inheritance.", "Refined the maintainer update flow, restored Gemini CLI support, and reset the rewrite roadmap in Beads."]
+summary = [
+  "Bootstrapped the first-tab workspace from restarted Yazi state and added restart-only Yazi cwd inheritance.",
+  "Refined the maintainer update flow, restored Gemini CLI support, and reset the rewrite roadmap in Beads."
+]
 upgrade_impact = "no_user_action"
 version = "v13.3"
 
@@ -214,7 +270,10 @@ date = "2026-03-22"
 headline = "Reliability hardening, issue automation, and spec workflow foundations"
 manual_actions = []
 migration_ids = []
-summary = ["Hardened launch, config, CI, and Home Manager reliability around the modern runtime model.", "Added Beads and GitHub issue contract automation, architecture docs, and the spec-driven workflow foundation."]
+summary = [
+  "Hardened launch, config, CI, and Home Manager reliability around the modern runtime model.",
+  "Added Beads and GitHub issue contract automation, architecture docs, and the spec-driven workflow foundation."
+]
 upgrade_impact = "no_user_action"
 version = "v13.4"
 
@@ -244,7 +303,11 @@ date = "2026-03-26"
 headline = "Popup polish, Ghostty controls, and stronger validation"
 manual_actions = []
 migration_ids = []
-summary = ["Added configurable popup sizing and a configurable popup program for Zellij floating panes.", 'Added Ghostty trail glow controls plus a ghostty_trail_color = "none" option.', "Tightened config-schema validation, ignored Yazelix config backup files, and improved test/spec governance."]
+summary = [
+  "Added configurable popup sizing and a configurable popup program for Zellij floating panes.",
+  'Added Ghostty trail glow controls plus a ghostty_trail_color = "none" option.',
+  "Tightened config-schema validation, ignored Yazelix config backup files, and improved test/spec governance."
+]
 upgrade_impact = "no_user_action"
 version = "v13.7"
 
@@ -254,7 +317,11 @@ date = "2026-03-27"
 headline = "Zellij 0.44, startup recovery, and migration-aware upgrade UX"
 manual_actions = []
 migration_ids = ["remove_zellij_widget_tray_layout", "remove_shell_enable_atuin"]
-summary = ["Upgraded Yazelix to Zellij 0.44, hardened the startup handoff, and added an explicit permission recovery path for broken plugin state.", "Added migration-aware stale-config diagnostics plus yzx config migrate and yzx doctor --fix for safe deterministic rewrites.", "Added a root CHANGELOG, structured upgrade notes, first-run upgrade summaries, and historical v12/v13 note backfill."]
+summary = [
+  "Upgraded Yazelix to Zellij 0.44, hardened the startup handoff, and added an explicit permission recovery path for broken plugin state.",
+  "Added migration-aware stale-config diagnostics plus yzx config migrate and yzx doctor --fix for safe deterministic rewrites.",
+  "Added a root CHANGELOG, structured upgrade notes, first-run upgrade summaries, and historical v12/v13 note backfill."
+]
 upgrade_impact = "migration_available"
 version = "v13.8"
 
@@ -264,7 +331,11 @@ date = "2026-03-29"
 headline = "Managed config boundaries, richer welcomes, and cleaner terminal ownership"
 manual_actions = []
 migration_ids = ["split_legacy_pack_config_surface", "replace_ascii_art_mode_with_welcome_style", "rename_life_welcome_style_to_game_of_life", "review_terminal_config_mode_auto"]
-summary = ["Split pack settings into `yazelix_packs.toml`, tightened migration-aware config ownership, and made `user_configs/` the canonical managed input boundary for Zellij, Yazi, and the main Yazelix config surfaces.", "Added terminal override layers for Ghostty, Kitty, and Alacritty while keeping launch-critical startup behavior Yazelix-owned and moving Ghostty shader generation toward runtime state.", "Expanded the front-door UX with per-user desktop entries, `yzx tutor`, `yzx screen`, explicit `yzx config open` targets, and a much richer welcome-screen system with multiple styles and animations."]
+summary = [
+  "Split pack settings into `yazelix_packs.toml`, tightened migration-aware config ownership, and made `user_configs/` the canonical managed input boundary for Zellij, Yazi, and the main Yazelix config surfaces.",
+  "Added terminal override layers for Ghostty, Kitty, and Alacritty while keeping launch-critical startup behavior Yazelix-owned and moving Ghostty shader generation toward runtime state.",
+  "Expanded the front-door UX with per-user desktop entries, `yzx tutor`, `yzx screen`, explicit `yzx config open` targets, and a much richer welcome-screen system with multiple styles and animations."
+]
 upgrade_impact = "migration_available"
 version = "v13.9"
 
@@ -272,9 +343,28 @@ version = "v13.9"
 acknowledged_guarded_changes = ["nushell/scripts/utils/constants.nu"]
 date = "2026-04-10"
 headline = "Boundary hardening, honest update ownership, and runtime cleanup"
-manual_actions = ["Replace `yzx update runtime` with `yzx update upstream` for upstream/manual installs.", "Replace `yzx update all` with exactly one owner path: `yzx update upstream` for upstream/manual installs or `yzx update home_manager` for Home Manager installs."]
+manual_actions = [
+  "Replace `yzx update runtime` with `yzx update upstream` for upstream/manual installs.",
+  "Replace `yzx update all` with exactly one owner path: `yzx update upstream` for upstream/manual installs or `yzx update home_manager` for Home Manager installs."
+]
 migration_ids = []
-summary = ["Applied a broad delete-first Nushell cleanup pass that removed stale compatibility surfaces, broad helper aliases, the old config-manager layer, the standalone startup-profile module, and many one-caller wrappers that no longer justified their own seams.", "Refined Zellij, Yazi, terminal, and shell-hook ownership by splitting semantic merger blocks, centralizing Yazelix-owned Zellij settings, tightening Yazi override boundaries, replacing wrapper `nu -c` calls with runtime scripts, and failing fast on legacy override paths.", "Matured the Home Manager path with clean-room validation, root-flake consolidation, tighter activation ordering, support for symlinked generated config surfaces, profile-owned `yzx`, `yzx home_manager prepare` to preview or archive manual-install artifacts before Home Manager takeover, and clearer doctor validation around takeover and desktop shadowing.", "Tightened everyday workspace UX with direct `Ctrl+y` focus toggling, `Alt+number` tab jumps, and better zjstatus tab-window overflow behavior before truncation.", "Hardened runtime and refresh internals with shared atomic file writes, managed-root cleanup guards, a clearer backend adapter seam, explicit runtime entry transitions, no-op refresh recovery, canonical-contract config parsing, and launch-profile freshness diagnostics in `yzx doctor`.", "Fixed real runtime identity regressions around Nix-store symlink cleanup, fresh launch-profile imports after rebuilds, desktop bootstrap env setup, bundled Yazi asset refresh cleanup, and manual desktop icon installation.", "Moved sidebar identity and workspace retargeting deeper into the pane orchestrator so managed editor/sidebar routing depends less on shell-side cache heuristics and more on live Zellij truth, then documented the backend-free workspace slice and the v14 boundary-hardening gate explicitly.", "Simplified the packaged-runtime story by making the flake package surface primary, removing `runtime/current` from the Home Manager identity path, dropping installed-runtime fallbacks from shared runtime logic, and trimming most installer-artifact doctoring.", "Replaced the late-series runtime updater experiment with explicit owner commands: `yzx update upstream` refreshes upstream/manual installs, `yzx update home_manager` refreshes the current Home Manager flake input, desktop launch now targets the active runtime launcher directly, and the transitional `yzx update runtime` / `yzx update all` flow is gone again.", "Made `yzx run` a real argv passthrough for one-shot Yazelix-environment commands, so child args like `yzx run rg --files` pass through unchanged, and documented the package-runtime simplification path, config dependence matrix, subsystem code inventory, and the trim-first v15 roadmap that follows this transition release.", "v14 is now best read as Yazelix Classic: the broad `devenv`-era shape with `yazelix packs`, dynamic runtime management, shell and terminal breadth, and the wider `yzx` surface, including commands like `yzx packs`.", "v15 has since become the only supported line rather than a parallel future experiment: a smaller trimmed reboot with narrower Rust scope, no runtime-local `devenv`, no `yazelix_packs.toml`, no config-migration engine, and a clearer focus on fast workspace entry while the pane orchestrator still owns live workspace truth.", "That means much of the broader Classic machinery belongs to the historical v14 snapshot: explicit refresh semantics, launch-profile reuse, the first-class `yazelix packs` / `yzx packs` model, broad pack/package-graph ownership, and the older `devenv`-driven hot-path model around commands like `yzx refresh` and much of `yzx run`.", "Rust remains a later implementation path: selective Rust may land in v15.x point releases when it clearly pays for itself, while v16 is the Rust-forward release target.", "The `v14` tag remains available only as the final historical Classic snapshot for users who specifically need that broader product shape; it is no longer a supported line."]
+summary = [
+  "Applied a broad delete-first Nushell cleanup pass that removed stale compatibility surfaces, broad helper aliases, the old config-manager layer, the standalone startup-profile module, and many one-caller wrappers that no longer justified their own seams.",
+  "Refined Zellij, Yazi, terminal, and shell-hook ownership by splitting semantic merger blocks, centralizing Yazelix-owned Zellij settings, tightening Yazi override boundaries, replacing wrapper `nu -c` calls with runtime scripts, and failing fast on legacy override paths.",
+  "Matured the Home Manager path with clean-room validation, root-flake consolidation, tighter activation ordering, support for symlinked generated config surfaces, profile-owned `yzx`, `yzx home_manager prepare` to preview or archive manual-install artifacts before Home Manager takeover, and clearer doctor validation around takeover and desktop shadowing.",
+  "Tightened everyday workspace UX with direct `Ctrl+y` focus toggling, `Alt+number` tab jumps, and better zjstatus tab-window overflow behavior before truncation.",
+  "Hardened runtime and refresh internals with shared atomic file writes, managed-root cleanup guards, a clearer backend adapter seam, explicit runtime entry transitions, no-op refresh recovery, canonical-contract config parsing, and launch-profile freshness diagnostics in `yzx doctor`.",
+  "Fixed real runtime identity regressions around Nix-store symlink cleanup, fresh launch-profile imports after rebuilds, desktop bootstrap env setup, bundled Yazi asset refresh cleanup, and manual desktop icon installation.",
+  "Moved sidebar identity and workspace retargeting deeper into the pane orchestrator so managed editor/sidebar routing depends less on shell-side cache heuristics and more on live Zellij truth, then documented the backend-free workspace slice and the v14 boundary-hardening gate explicitly.",
+  "Simplified the packaged-runtime story by making the flake package surface primary, removing `runtime/current` from the Home Manager identity path, dropping installed-runtime fallbacks from shared runtime logic, and trimming most installer-artifact doctoring.",
+  "Replaced the late-series runtime updater experiment with explicit owner commands: `yzx update upstream` refreshes upstream/manual installs, `yzx update home_manager` refreshes the current Home Manager flake input, desktop launch now targets the active runtime launcher directly, and the transitional `yzx update runtime` / `yzx update all` flow is gone again.",
+  "Made `yzx run` a real argv passthrough for one-shot Yazelix-environment commands, so child args like `yzx run rg --files` pass through unchanged, and documented the package-runtime simplification path, config dependence matrix, subsystem code inventory, and the trim-first v15 roadmap that follows this transition release.",
+  "v14 is now best read as Yazelix Classic: the broad `devenv`-era shape with `yazelix packs`, dynamic runtime management, shell and terminal breadth, and the wider `yzx` surface, including commands like `yzx packs`.",
+  "v15 has since become the only supported line rather than a parallel future experiment: a smaller trimmed reboot with narrower Rust scope, no runtime-local `devenv`, no `yazelix_packs.toml`, no config-migration engine, and a clearer focus on fast workspace entry while the pane orchestrator still owns live workspace truth.",
+  "That means much of the broader Classic machinery belongs to the historical v14 snapshot: explicit refresh semantics, launch-profile reuse, the first-class `yazelix packs` / `yzx packs` model, broad pack/package-graph ownership, and the older `devenv`-driven hot-path model around commands like `yzx refresh` and much of `yzx run`.",
+  "Rust remains a later implementation path: selective Rust may land in v15.x point releases when it clearly pays for itself, while v16 is the Rust-forward release target.",
+  "The `v14` tag remains available only as the final historical Classic snapshot for users who specifically need that broader product shape; it is no longer a supported line."
+]
 upgrade_impact = "manual_action_required"
 version = "v14"
 
@@ -282,9 +372,20 @@ version = "v14"
 acknowledged_guarded_changes = ["yazelix_default.toml", "home_manager/module.nix", "nushell/scripts/utils/constants.nu"]
 date = "2026-04-13"
 headline = "v15 trims Yazelix down to the fast workspace core"
-manual_actions = ["Compare your current config with `yazelix_default.toml` or run `yzx config reset` to start fresh; v15 does not ship automatic config migrations.", "If you relied on Classic-only surfaces such as `yazelix packs`, `yzx packs`, or `yzx refresh`, stay on the historical `v14` tag or adapt to the trimmed v15 command surface."]
+manual_actions = [
+  "Compare your current config with `yazelix_default.toml` or run `yzx config reset` to start fresh; v15 does not ship automatic config migrations.",
+  "If you relied on Classic-only surfaces such as `yazelix packs`, `yzx packs`, or `yzx refresh`, stay on the historical `v14` tag or adapt to the trimmed v15 command surface."
+]
 migration_ids = []
-summary = ["v15 is the only supported Yazelix line now, and v14 is the final historical Classic snapshot rather than a maintained fallback.", "Dropped the out-of-scope Classic runtime-manager surface: no runtime-local `devenv`, no `yazelix_packs.toml`, no `yazelix packs` or `yzx packs`, no automatic config migrations, and no `yzx refresh`.", "Made Ghostty the first-party bundled terminal on Linux and macOS while keeping WezTerm, Kitty, Alacritty, and Foot as PATH-provided alternatives.", "Split current-terminal startup into `yzx enter`, kept `yzx launch` as the managed external-terminal entrypoint, and kept `yzx env` as the non-UI tool-environment surface.", "Made `yzx popup` and `yzx menu --popup` share the fast floating-pane path with explicit pane identity, shared toggle semantics, and no helper-pane detour.", "Kept the workspace core around layouts, managed editor/sidebar orchestration, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners through `yzx update upstream` or `yzx update home_manager`.", "Continued the delete-first trim by replacing string-built runtime wrapper commands with direct runtime scripts, making maintainer pins explicit again, and keeping the runtime lock on the declared unstable input."]
+summary = [
+  "v15 is the only supported Yazelix line now, and v14 is the final historical Classic snapshot rather than a maintained fallback.",
+  "Dropped the out-of-scope Classic runtime-manager surface: no runtime-local `devenv`, no `yazelix_packs.toml`, no `yazelix packs` or `yzx packs`, no automatic config migrations, and no `yzx refresh`.",
+  "Made Ghostty the first-party bundled terminal on Linux and macOS while keeping WezTerm, Kitty, Alacritty, and Foot as PATH-provided alternatives.",
+  "Split current-terminal startup into `yzx enter`, kept `yzx launch` as the managed external-terminal entrypoint, and kept `yzx env` as the non-UI tool-environment surface.",
+  "Made `yzx popup` and `yzx menu --popup` share the fast floating-pane path with explicit pane identity, shared toggle semantics, and no helper-pane detour.",
+  "Kept the workspace core around layouts, managed editor/sidebar orchestration, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners through `yzx update upstream` or `yzx update home_manager`.",
+  "Continued the delete-first trim by replacing string-built runtime wrapper commands with direct runtime scripts, making maintainer pins explicit again, and keeping the runtime lock on the declared unstable input."
+]
 upgrade_impact = "manual_action_required"
 version = "v15"
 
@@ -294,7 +395,13 @@ date = "2026-04-15"
 headline = "v15.1 hardens install ownership, popup env, and Home Manager packaging"
 manual_actions = []
 migration_ids = []
-summary = ["Stopped packaged and one-off runtime entrypoints from rewriting host shell dotfiles, kept runtime setup inside `~/.local/share/yazelix`, and narrowed `yzx status` back to runtime/config inspection with clearer stale-shell recovery guidance.", "Added the explicit `editor` token for `zellij.popup_program`, propagated the canonical runtime env into popup flows, and set `VISUAL` alongside `EDITOR` so popup editors and TUI tools reuse the configured Yazelix editor contract.", "Narrowed the packaged public `bin/` surface to `yzx`, moved bundled runtime tools under `libexec/`, and kept packaged and Home Manager installs away from binary-collision traps while still shipping the full runtime toolset.", "Hardened Linux Home Manager and desktop-launch reliability by passing the runtime-owned `nixGL` wrapper through the module build, improving Ghostty launch diagnostics, and documenting a minimal flake example plus clearer update-owner recovery.", "Replaced the remaining popup and workflow examples that still referenced Claude with Codex examples."]
+summary = [
+  "Stopped packaged and one-off runtime entrypoints from rewriting host shell dotfiles, kept runtime setup inside `~/.local/share/yazelix`, and narrowed `yzx status` back to runtime/config inspection with clearer stale-shell recovery guidance.",
+  "Added the explicit `editor` token for `zellij.popup_program`, propagated the canonical runtime env into popup flows, and set `VISUAL` alongside `EDITOR` so popup editors and TUI tools reuse the configured Yazelix editor contract.",
+  "Narrowed the packaged public `bin/` surface to `yzx`, moved bundled runtime tools under `libexec/`, and kept packaged and Home Manager installs away from binary-collision traps while still shipping the full runtime toolset.",
+  "Hardened Linux Home Manager and desktop-launch reliability by passing the runtime-owned `nixGL` wrapper through the module build, improving Ghostty launch diagnostics, and documenting a minimal flake example plus clearer update-owner recovery.",
+  "Replaced the remaining popup and workflow examples that still referenced Claude with Codex examples."
+]
 upgrade_impact = "no_user_action"
 version = "v15.1"
 
@@ -304,7 +411,12 @@ date = "2026-04-19"
 headline = "v15.2 hardens startup, desktop launch, and Ghostty polish"
 manual_actions = []
 migration_ids = []
-summary = ["Upgraded `yzx menu` to a prettier `fzf`-backed command palette and fixed the popup selection crash path.", "Rerolled Ghostty random cursor palettes and effects for each Yazelix Ghostty window, including desktop fast-path launches, while keeping fixed palettes stable.", "Made managed desktop entries terminal-backed and surfaced desktop-launch pre-terminal progress and failures so desktop entry clicks no longer fail invisibly before terminal handoff.", "Moved config parsing and generated-state hashing onto the packaged Rust `yzx_core` helper, deleted the old Nushell fallback and legacy raw-string rebuild cache path, and kept malformed cache state on the safe one-time-refresh path."]
+summary = [
+  "Upgraded `yzx menu` to a prettier `fzf`-backed command palette and fixed the popup selection crash path.",
+  "Rerolled Ghostty random cursor palettes and effects for each Yazelix Ghostty window, including desktop fast-path launches, while keeping fixed palettes stable.",
+  "Made managed desktop entries terminal-backed and surfaced desktop-launch pre-terminal progress and failures so desktop entry clicks no longer fail invisibly before terminal handoff.",
+  "Moved config parsing and generated-state hashing onto the packaged Rust `yzx_core` helper, deleted the old Nushell fallback and legacy raw-string rebuild cache path, and kept malformed cache state on the safe one-time-refresh path."
+]
 upgrade_impact = "no_user_action"
 version = "v15.2"
 
@@ -314,7 +426,12 @@ date = "2026-04-21"
 headline = "v15.3 Rust-owns more of the core and starts much faster"
 manual_actions = []
 migration_ids = []
-summary = ["Moved more of the typed core into Rust: `yzx` root metadata, `yzx env`, `yzx run`, `yzx update*`, `yzx status`, doctor findings, startup preflight, runtime-env planning, and runtime-materialization planning now route through `yzx_core` or `yzx_control`.", "Rust now owns Yazi, Zellij, terminal, Helix, and runtime-materialization generation or write lifecycles, while the old Nushell wrapper owners were deleted or collapsed.", "Startup got much faster on the same maintainer machine: 75.6% faster warm current-terminal, 95.6% faster cold clear-cache, 55.6% faster desktop launch, and 59.0% faster managed new-window launch.", "Rewrote the Rust migration inventory around the real remaining Nushell seams, so follow-up work now targets bridge collapse and honest shell-bound survivors instead of stale transition docs."]
+summary = [
+  "Moved more of the typed core into Rust: `yzx` root metadata, `yzx env`, `yzx run`, `yzx update*`, `yzx status`, doctor findings, startup preflight, runtime-env planning, and runtime-materialization planning now route through `yzx_core` or `yzx_control`.",
+  "Rust now owns Yazi, Zellij, terminal, Helix, and runtime-materialization generation or write lifecycles, while the old Nushell wrapper owners were deleted or collapsed.",
+  "Startup got much faster on the same maintainer machine: 75.6% faster warm current-terminal, 95.6% faster cold clear-cache, 55.6% faster desktop launch, and 59.0% faster managed new-window launch.",
+  "Rewrote the Rust migration inventory around the real remaining Nushell seams, so follow-up work now targets bridge collapse and honest shell-bound survivors instead of stale transition docs."
+]
 upgrade_impact = "no_user_action"
 version = "v15.3"
 
@@ -324,7 +441,12 @@ date = "2026-04-21"
 headline = "v15.4 Rust-owns public yzx families and deletes bridge seams"
 manual_actions = []
 migration_ids = []
-summary = ["Moved more public `yzx` command families onto Rust-owned execution paths, including `yzx config`, `yzx home_manager`, `yzx why`, `yzx sponsor`, `yzx keys`, `yzx doctor`, `yzx cwd`, and `yzx reveal`.", "Collapsed more transitional Nushell bridge owners: the extern bridge, preflight bridge, runtime-materialization bridge, doctor report cluster, install-ownership bridge, and the surviving Yazi/Zellij compatibility wrappers are gone or demoted.", "Centralized public command metadata and route planning around the Rust shared command-surface schema so help, menu, extern, and routing behavior stay aligned while duplicated hand-written tables shrink.", "Updated the Rust migration and spec inventories around the real remaining seams, with the next planning track focused on canonical contracts, stronger test traceability, and a ranked delete-first Nushell budget."]
+summary = [
+  "Moved more public `yzx` command families onto Rust-owned execution paths, including `yzx config`, `yzx home_manager`, `yzx why`, `yzx sponsor`, `yzx keys`, `yzx doctor`, `yzx cwd`, and `yzx reveal`.",
+  "Collapsed more transitional Nushell bridge owners: the extern bridge, preflight bridge, runtime-materialization bridge, doctor report cluster, install-ownership bridge, and the surviving Yazi/Zellij compatibility wrappers are gone or demoted.",
+  "Centralized public command metadata and route planning around the Rust shared command-surface schema so help, menu, extern, and routing behavior stay aligned while duplicated hand-written tables shrink.",
+  "Updated the Rust migration and spec inventories around the real remaining seams, with the next planning track focused on canonical contracts, stronger test traceability, and a ranked delete-first Nushell budget."
+]
 upgrade_impact = "no_user_action"
 version = "v15.4"
 
@@ -334,7 +456,12 @@ date = "2026-04-24"
 headline = "v16 Rust-forward control plane with an irreducible Nushell core"
 manual_actions = []
 migration_ids = []
-summary = ["Finished the Rust owner cuts across the remaining deterministic control-plane and editor/Yazi integration surfaces, so the public `yzx` story is now much more clearly Rust-owned", "Reduced Nushell to the explicit shell and UI core, documented the surviving floor, and kept popup/menu wrappers on Nushell where that boundary is the clearest fit", "Moved maintainer, update, and sweep ownership further out of Nushell, including repo-maintainer flows and pane-orchestrator sync semantics, so the remaining Nu surface is much smaller and more intentional", "Unified the human CLI rendering for `yzx status`, `yzx status --versions`, and `yzx keys` around one shared Rust styling layer with cleaner grouped output and better contrast"]
+summary = [
+  "Finished the Rust owner cuts across the remaining deterministic control-plane and editor/Yazi integration surfaces, so the public `yzx` story is now much more clearly Rust-owned",
+  "Reduced Nushell to the explicit shell and UI core, documented the surviving floor, and kept popup/menu wrappers on Nushell where that boundary is the clearest fit",
+  "Moved maintainer, update, and sweep ownership further out of Nushell, including repo-maintainer flows and pane-orchestrator sync semantics, so the remaining Nu surface is much smaller and more intentional",
+  "Unified the human CLI rendering for `yzx status`, `yzx status --versions`, and `yzx keys` around one shared Rust styling layer with cleaner grouped output and better contrast"
+]
 upgrade_impact = "no_user_action"
 version = "v16"
 
@@ -344,21 +471,56 @@ date = "2026-04-25"
 headline = "v16.1 stabilizes Home Manager installs and screen rendering"
 manual_actions = []
 migration_ids = []
-summary = ["Fixed the welcome and yzx screen Game of Life renderers so gliders keep their intended shape without terminal row-gap artifacts, and added the configurable core.game_of_life_cell_style option with full_block and dotted styles", "Added programs.yazelix.manage_config for Home Manager users who want Home Manager to own the package/runtime/desktop integration while leaving ~/.config/yazelix/user_configs/yazelix.toml as a normal mutable file", "Made Home Manager local-input updates faster and clearer by warning about path: snapshot semantics and filtering package/runtime source trees away from local build artifacts", "Fixed empty Zellij status widgets by removing missing dynamic identity helper commands and rendering stable editor, shell, and terminal labels directly in the generated status payload"]
+summary = [
+  "Fixed the welcome and yzx screen Game of Life renderers so gliders keep their intended shape without terminal row-gap artifacts, and added the configurable core.game_of_life_cell_style option with full_block and dotted styles",
+  "Added programs.yazelix.manage_config for Home Manager users who want Home Manager to own the package/runtime/desktop integration while leaving ~/.config/yazelix/user_configs/yazelix.toml as a normal mutable file",
+  "Made Home Manager local-input updates faster and clearer by warning about path: snapshot semantics and filtering package/runtime source trees away from local build artifacts",
+  "Fixed empty Zellij status widgets by removing missing dynamic identity helper commands and rendering stable editor, shell, and terminal labels directly in the generated status payload"
+]
 upgrade_impact = "no_user_action"
 version = "v16.1"
 
 [series.v13]
 headline = "Plugin-managed workspaces, migration-aware upgrades, richer front-door UX, and the full devenv-era integration push."
-summary = ["Plugin-managed editor/sidebar orchestration, deterministic workspace routing, and tighter `yzx cwd` and reveal flows became the core of the v13 experience.", "The front-door surface grew up with richer welcome screens, popup-runner support, `yzx tutor`, better desktop integration, and the Zellij 0.44 transition.", "Config ownership became migration-aware through `user_configs/`, `yazelix_packs.toml`, structured release notes, `yzx config migrate`, and `yzx doctor --fix`.", "The command surface got clearer with `yzx menu`, `yzx keys`, `yzx open`, `yzx edit`, and explicit refresh/restart flows around the packaged `devenv` runtime.", "Late v13 tightened Home Manager, runtime identity, and update behavior in ways that fed directly into the v14 boundary-hardening cleanup."]
+summary = [
+  "Plugin-managed editor/sidebar orchestration, deterministic workspace routing, and tighter `yzx cwd` and reveal flows became the core of the v13 experience.",
+  "The front-door surface grew up with richer welcome screens, popup-runner support, `yzx tutor`, better desktop integration, and the Zellij 0.44 transition.",
+  "Config ownership became migration-aware through `user_configs/`, `yazelix_packs.toml`, structured release notes, `yzx config migrate`, and `yzx doctor --fix`.",
+  "The command surface got clearer with `yzx menu`, `yzx keys`, `yzx open`, `yzx edit`, and explicit refresh/restart flows around the packaged `devenv` runtime.",
+  "Late v13 tightened Home Manager, runtime identity, and update behavior in ways that fed directly into the v14 boundary-hardening cleanup."
+]
 version = "v13"
 
 [series.v14]
 headline = "Boundary hardening, honest update ownership, and a much cleaner runtime surface."
-summary = ["v14 is the final historical Yazelix Classic release. It is no longer a supported line, and its broader dynamic-runtime-management scope is now historical context rather than the current product direction.", "Launch, runtime, and desktop startup got much harder to break on flake-installed or Home Manager-owned setups.", "Workspace truth moved deeper into the pane orchestrator with explicit sidebar identity and cleaner retargeting semantics.", "Home Manager became a cleaner first-class path with profile-owned `yzx`, `yzx home_manager prepare` to preview or archive manual-install artifacts before Home Manager takeover, and better validation around generated config surfaces.", "The packaged runtime became the honest center of the install story, with `runtime/current` and installer-owned indirection trimmed back sharply.", "`yzx update` now points at explicit owners: `yzx update upstream` for upstream/manual installs and `yzx update home_manager` for Home Manager installs.", "`yzx update` now points at explicit owners, the transitional `yzx update runtime` / `yzx update all` flow is gone again, and `yzx run` became a real argv passthrough for one-shot tools like `yzx run rg --files`.", "The current v14 line also carries forward the front-door UX expansion introduced late in v13, including the welcome style selector, the live `game_of_life` welcome mode, `yzx screen` to preview the animated welcome screen directly in the terminal, and the managed popup runner with configurable popup commands and sizing.", "Config ownership and upgrade UX became much more explicit through `user_configs/`, the separate `yazelix_packs.toml` file, the migration engine, and first-run upgrade summaries instead of ad hoc breakage.", "Workspace control also matured across the line with managed editor/sidebar routing, deterministic sidebar controls, and `yzx cwd` to retarget the current tab workspace root with editor/sidebar sync.", "A large delete-first cleanup pass trimmed broad helper surfaces and documented the trim-first path toward v15.", "v14 is now best read as Yazelix Classic: the broader `devenv`-era shape with `yazelix packs`, dynamic runtime management, shell and terminal breadth, and the wider `yzx` surface, including `yzx packs`.", "v15 has since become the live trimmed line rather than a parallel future experiment: a smaller trimmed reboot with narrower Rust scope, no runtime-local `devenv`, no `yazelix_packs.toml`, no config-migration engine, and a clearer focus on fast workspace entry while the pane orchestrator still owns live workspace truth.", "Rust remains a later implementation path: selective Rust may land in v15.x point releases when it clearly pays for itself, while v16 is the Rust-forward release target.", "The `v14` tag remains available only as the final historical Classic snapshot for users who specifically need that broader product shape; it is no longer a supported line."]
+summary = [
+  "v14 is the final historical Yazelix Classic release. It is no longer a supported line, and its broader dynamic-runtime-management scope is now historical context rather than the current product direction.",
+  "Launch, runtime, and desktop startup got much harder to break on flake-installed or Home Manager-owned setups.",
+  "Workspace truth moved deeper into the pane orchestrator with explicit sidebar identity and cleaner retargeting semantics.",
+  "Home Manager became a cleaner first-class path with profile-owned `yzx`, `yzx home_manager prepare` to preview or archive manual-install artifacts before Home Manager takeover, and better validation around generated config surfaces.",
+  "The packaged runtime became the honest center of the install story, with `runtime/current` and installer-owned indirection trimmed back sharply.",
+  "`yzx update` now points at explicit owners: `yzx update upstream` for upstream/manual installs and `yzx update home_manager` for Home Manager installs.",
+  "`yzx update` now points at explicit owners, the transitional `yzx update runtime` / `yzx update all` flow is gone again, and `yzx run` became a real argv passthrough for one-shot tools like `yzx run rg --files`.",
+  "The current v14 line also carries forward the front-door UX expansion introduced late in v13, including the welcome style selector, the live `game_of_life` welcome mode, `yzx screen` to preview the animated welcome screen directly in the terminal, and the managed popup runner with configurable popup commands and sizing.",
+  "Config ownership and upgrade UX became much more explicit through `user_configs/`, the separate `yazelix_packs.toml` file, the migration engine, and first-run upgrade summaries instead of ad hoc breakage.",
+  "Workspace control also matured across the line with managed editor/sidebar routing, deterministic sidebar controls, and `yzx cwd` to retarget the current tab workspace root with editor/sidebar sync.",
+  "A large delete-first cleanup pass trimmed broad helper surfaces and documented the trim-first path toward v15.",
+  "v14 is now best read as Yazelix Classic: the broader `devenv`-era shape with `yazelix packs`, dynamic runtime management, shell and terminal breadth, and the wider `yzx` surface, including `yzx packs`.",
+  "v15 has since become the live trimmed line rather than a parallel future experiment: a smaller trimmed reboot with narrower Rust scope, no runtime-local `devenv`, no `yazelix_packs.toml`, no config-migration engine, and a clearer focus on fast workspace entry while the pane orchestrator still owns live workspace truth.",
+  "Rust remains a later implementation path: selective Rust may land in v15.x point releases when it clearly pays for itself, while v16 is the Rust-forward release target.",
+  "The `v14` tag remains available only as the final historical Classic snapshot for users who specifically need that broader product shape; it is no longer a supported line."
+]
 version = "v14"
 
 [series.v15]
 headline = "The trimmed workspace release: one supported line, packaged terminal variants, and fast popup/menu panes"
-summary = ["v15 is the only supported Yazelix line now. v14 remains available only as the final historical Classic snapshot for users who specifically need the old broader product shape", "Yazelix is now the narrower workspace product: no runtime-local `devenv`, no `yazelix_packs.toml`, no `yazelix packs` or `yzx packs`, no automatic config migrations, and no `yzx refresh`", "The packaged terminal path now ships Ghostty as the default cursor-trail path, WezTerm as the explicit image-compatible package variant, and keeps Kitty, Alacritty, and Foot supported when you provide them on the host `PATH`", "The front door is clearer: `yzx launch` opens a managed terminal window, `yzx enter` starts Yazelix in the current terminal, and `yzx env` remains the non-UI environment surface", "The fast transient workspace tools now share the floating-pane path: `yzx popup` toggles the configured popup program and `yzx menu --popup` toggles the command palette with the same identity and geometry seam", "The core workspace surface remains layouts, managed editor/sidebar orchestration, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners through `yzx update upstream` or `yzx update home_manager`", "v15 is the trimmed reboot with narrower Rust scope, not a Rust-free release. The pane orchestrator still owns live workspace and session state. Selective Rust can still land in v15.x where it clearly pays for itself, while v16 remains the Rust-forward release target"]
+summary = [
+  "v15 is the only supported Yazelix line now. v14 remains available only as the final historical Classic snapshot for users who specifically need the old broader product shape",
+  "Yazelix is now the narrower workspace product: no runtime-local `devenv`, no `yazelix_packs.toml`, no `yazelix packs` or `yzx packs`, no automatic config migrations, and no `yzx refresh`",
+  "The packaged terminal path now ships Ghostty as the default cursor-trail path, WezTerm as the explicit image-compatible package variant, and keeps Kitty, Alacritty, and Foot supported when you provide them on the host `PATH`",
+  "The front door is clearer: `yzx launch` opens a managed terminal window, `yzx enter` starts Yazelix in the current terminal, and `yzx env` remains the non-UI environment surface",
+  "The fast transient workspace tools now share the floating-pane path: `yzx popup` toggles the configured popup program and `yzx menu --popup` toggles the command palette with the same identity and geometry seam",
+  "The core workspace surface remains layouts, managed editor/sidebar orchestration, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners through `yzx update upstream` or `yzx update home_manager`",
+  "v15 is the trimmed reboot with narrower Rust scope, not a Rust-free release. The pane orchestrator still owns live workspace and session state. Selective Rust can still land in v15.x where it clearly pays for itself, while v16 remains the Rust-forward release target"
+]
 version = "v15"

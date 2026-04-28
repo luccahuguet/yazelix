@@ -1,0 +1,23 @@
+# Tombi TOML formatter configuration
+# https://tombi-toml.github.io/tombi/docs/configuration/
+
+toml-version = "v1.0.0"
+
+[files]
+include = [
+  "*.toml",
+  "config_metadata/**/*.toml",
+  "docs/upgrade_notes.toml",
+  "user_configs/**/*.toml",
+]
+exclude = [
+  "configs/yazi/flavors/**/*.toml",
+  "rust_core/**/*.toml",
+  "rust_plugins/**/*.toml",
+]
+
+[format]
+[format.rules]
+indent-width = 2
+line-width = 200
+string-quote-style = "preserve"
