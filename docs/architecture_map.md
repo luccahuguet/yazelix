@@ -11,12 +11,16 @@ See [Subsystem Code Inventory](./subsystem_code_inventory.md) for the current
 delete-first inventory, the remaining Nushell deletion lanes, and the surfaces
 that are still honest Nushell fits.
 
+See [Documentation Architecture](./documentation_architecture.md) for the
+delete-first boundary between canonical contracts, user docs, maintainer docs,
+history, and Beads-owned planning state.
+
 ## Subsystem Families
 
 | Subsystem family | What it owns | Main paths | Main source of truth |
 | --- | --- | --- | --- |
 | Runtime control plane and command surface | Config parsing, runtime/bootstrap behavior, generated-state repair, and the `yzx` command surface | `nushell/scripts/core`, `nushell/scripts/setup`, `nushell/scripts/utils`, `nushell/scripts/yzx` | Runtime/config/state contracts plus the surviving `yzx` command semantics |
-| Workspace session orchestration | Live Zellij/Yazi/editor session behavior: panes, tabs, sidebar identity, reveal/open flows, popup flows, and layout-family transitions | `nushell/scripts/integrations`, `nushell/scripts/zellij_wrappers`, `rust_plugins/` | Live Zellij session truth, pane-orchestrator contracts, and workspace/session specs |
+| Workspace session orchestration | Live Zellij/Yazi/editor session behavior: panes, tabs, sidebar identity, reveal/open flows, popup flows, and layout-family transitions | `nushell/scripts/integrations`, `nushell/scripts/zellij_wrappers`, `rust_plugins/` | Live Zellij session truth, pane-orchestrator contracts, and workspace/session contracts |
 | Distribution and host integration | How Yazelix is packaged, launched, and adapted into external owners such as Home Manager, shells, terminals, desktop integration, and profile-owned installs | `home_manager`, `packaging`, `shells`, `flake.nix`, `yazelix_package.nix`, `yazelix_runtime_package.nix` | The packaged runtime shape and explicit integration contracts |
 | Shipped runtime data and assets | The tracked data the runtime consumes directly: layouts, themes, plugins, templates, release metadata, TOML tooling support, cursor presets, and visual assets | `configs`, `config_metadata`, `user_configs`, `assets`, `nushell/config`, `tombi.toml`, `yazelix_default.toml`, `yazelix_cursors_default.toml`, `docs/upgrade_notes.toml` | Version-controlled shipped files |
 | Maintainer workflow and validation | The non-user-facing machinery that keeps the other four coherent: tests, validators, release/update workflow, CI, and maintainer tooling | `nushell/scripts/dev`, `.github`, `maintainer_shell.nix`, `.nu-lint.toml` | Beads, specs/contracts, CI policy, and maintainer command surfaces |
@@ -135,4 +139,4 @@ For current v16 work, the right mental model is:
 4. Shipped runtime data and assets are a first-class subsystem, not miscellaneous residue.
 5. Maintainer workflow and validation keeps the other four honest.
 
-Historical pre-trim planning notes still exist under `docs/specs/`, but this map should describe the living repo shape, not the old broader Classic-era model.
+Historical pre-trim planning notes do not belong in canonical contracts. This map should describe the living repo shape, not the old broader Classic-era model.
