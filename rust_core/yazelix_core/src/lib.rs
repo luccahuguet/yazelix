@@ -26,6 +26,7 @@ pub mod keys_commands;
 pub mod launch_commands;
 pub mod launch_materialization;
 pub mod layout_family_contract;
+pub mod managed_user_config_stubs;
 pub mod onboard_commands;
 pub mod profile_commands;
 pub mod public_command_surface;

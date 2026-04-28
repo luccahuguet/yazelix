@@ -309,6 +309,10 @@ pub fn generate_terminal_materialization(
         .unwrap_or("none");
 
     let config_dir = config_dir_from_env()?;
+    crate::managed_user_config_stubs::ensure_terminal_override_stubs(
+        &config_dir,
+        &request.terminals,
+    )?;
     let cursor_config_path = CursorRegistry::user_config_path(&config_dir);
     let cursor_registry = CursorRegistry::load(&cursor_config_path)?;
     let generated_dir = request.state_dir.join("configs").join("terminal_emulators");

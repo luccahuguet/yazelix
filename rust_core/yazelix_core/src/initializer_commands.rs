@@ -464,6 +464,9 @@ pub fn run_generate_shell_initializers(args: &[String]) -> Result<i32, CoreError
         ];
     }
 
+    let config_dir = crate::control_plane::config_dir_from_env()?;
+    crate::managed_user_config_stubs::ensure_shell_hook_stubs(&config_dir, &shells_to_configure)?;
+
     let home = crate::control_plane::home_dir_from_env()?;
     let results = generate_initializers(&home, &shells_to_configure)?;
 

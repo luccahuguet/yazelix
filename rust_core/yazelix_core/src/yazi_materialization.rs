@@ -61,6 +61,7 @@ pub fn generate_yazi_materialization(
         &normalized.normalized_config,
     ))?;
     let config_dir = config_dir_from_env()?;
+    crate::managed_user_config_stubs::ensure_yazi_surface_stub(&config_dir)?;
     let user_paths = resolve_user_override_paths(&config_dir)?;
     let source_dir = request.runtime_dir.join("configs").join("yazi");
     fs::create_dir_all(&request.yazi_config_dir).map_err(|source| {

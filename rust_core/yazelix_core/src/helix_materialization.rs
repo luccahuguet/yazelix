@@ -59,6 +59,7 @@ pub(crate) fn build_managed_helix_contract_json(
 pub fn generate_helix_materialization(
     request: &HelixMaterializationRequest,
 ) -> Result<HelixMaterializationData, CoreError> {
+    crate::managed_user_config_stubs::ensure_helix_surface_stub(&request.config_dir)?;
     let prepared = prepare_managed_helix_config(&request.runtime_dir, &request.config_dir)?;
 
     let generated_dir = request.state_dir.join("configs").join("helix");
