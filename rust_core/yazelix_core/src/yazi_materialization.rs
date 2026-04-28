@@ -1133,7 +1133,7 @@ id = "extra"
         );
     }
 
-    // Defends: Yazi keymap merging only extends known top-level sections while appending subsection arrays.
+    // Regression: Yazi keymap merging only extends known top-level sections while appending subsection arrays.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn keymap_merge_appends_known_sections_only() {

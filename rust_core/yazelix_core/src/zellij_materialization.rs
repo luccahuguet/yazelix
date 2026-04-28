@@ -1849,7 +1849,7 @@ ui { pane_frames { hide_session_name true } }
         assert!(template.contains("command_token_budget_command"));
         assert!(template.contains("status-bus-token-budget"));
     }
-    // Defends: legacy plugin permission blocks are recognized by both stable and hashed wasm names.
+    // Regression: legacy plugin permission blocks are recognized by both stable and hashed wasm names.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn plugin_prefix_matches_stable_and_hashed_names() {

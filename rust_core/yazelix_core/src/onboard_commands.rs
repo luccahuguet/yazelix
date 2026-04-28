@@ -625,7 +625,6 @@ mod tests {
             parsed["editor"]["initial_sidebar_state"].as_str(),
             Some("closed")
         );
-        assert!(parsed["editor"].get("enable_sidebar").is_none());
         assert_eq!(parsed["editor"]["sidebar_command"].as_str(), Some("nu"));
         assert_eq!(
             parsed["editor"]["sidebar_args"].as_array().unwrap()[0].as_str(),
@@ -636,9 +635,6 @@ mod tests {
             parsed["terminal"]["terminals"].as_array().unwrap()[0].as_str(),
             Some("wezterm")
         );
-        assert!(parsed["zellij"].get("persistent_sessions").is_none());
-        assert!(!config.contains("yazelix_packs"));
-        assert!(!config.contains("[packs]"));
     }
 
     // Defends: onboarding writes only the supported main config surface and refuses accidental overwrite by default.

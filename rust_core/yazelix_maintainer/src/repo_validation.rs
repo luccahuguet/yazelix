@@ -26,6 +26,41 @@ const PACKAGE_TEST_FORBIDDEN_SHELL_SNIPPETS: &[&str] = &[
     "nix profile",
     "home-manager switch",
 ];
+const REMOVAL_ABSENCE_NAME_TERMS: &[&str] = &[
+    "removed",
+    "deleted",
+    "absence",
+    "without_party",
+    "without_legacy",
+    "legacy_absence",
+];
+const REMOVAL_ABSENCE_CLEANUP_TERMS: &[&str] = &[
+    "removed",
+    "deleted",
+    "legacy",
+    "old name",
+    "old_names",
+    "old surface",
+    "old preset",
+    "party",
+    "absence",
+];
+const ACTIVE_NEGATIVE_CONTRACT_TERMS: &[&str] = &[
+    "reject",
+    "fail",
+    "invalid",
+    "unsafe",
+    "stale",
+    "fallback",
+    "blocking",
+    "schema",
+    "config",
+    "migration",
+    "user-visible",
+    "runtime",
+    "contract",
+    "diagnostic",
+];
 
 #[derive(Debug, Default)]
 pub struct ValidationReport {
@@ -152,6 +187,13 @@ pub fn validate_rust_test_traceability(repo_root: &Path) -> Result<ValidationRep
                     &test_record,
                     &lane,
                     &contract_items,
+                )?);
+            report
+                .errors
+                .extend(collect_rust_definition_removal_absence_errors(
+                    repo_root,
+                    &relative_path,
+                    &test_record,
                 )?);
 
             let strength = get_rust_definition_test_strength(
@@ -672,6 +714,98 @@ fn has_valid_rust_definition_test_justification(
                     .any(|prefix| line.starts_with(prefix))
             }),
     )
+}
+
+fn collect_rust_definition_removal_absence_errors(
+    repo_root: &Path,
+    relative_path: &str,
+    test_record: &RustTestRecord,
+) -> Result<Vec<String>, String> {
+    if !rust_definition_looks_like_removal_absence_test(repo_root, relative_path, test_record)? {
+        return Ok(Vec::new());
+    }
+    if has_rust_definition_regression_or_invariant(
+        repo_root,
+        relative_path,
+        test_record.attribute_index,
+    )? || rust_definition_traceability_mentions_active_negative_contract(
+        repo_root,
+        relative_path,
+        test_record.attribute_index,
+    )? {
+        return Ok(Vec::new());
+    }
+    Ok(vec![format!(
+        "Governed Rust test looks like a removal-only absence check; rewrite it to defend active behavior, or use '// Regression:'/'// Invariant:' for a real negative contract instead of cleanup history: {} :: {}",
+        relative_path, test_record.test_name
+    )])
+}
+
+fn rust_definition_looks_like_removal_absence_test(
+    repo_root: &Path,
+    relative_path: &str,
+    test_record: &RustTestRecord,
+) -> Result<bool, String> {
+    let name = test_record.test_name.to_lowercase();
+    if REMOVAL_ABSENCE_NAME_TERMS
+        .iter()
+        .any(|term| name.contains(term))
+    {
+        return Ok(true);
+    }
+
+    let traceability = load_rust_definition_traceability_lines(
+        repo_root,
+        relative_path,
+        test_record.attribute_index,
+    )?
+    .join("\n")
+    .to_lowercase();
+    let body = load_rust_definition_body_lines(repo_root, relative_path, test_record)?
+        .join("\n")
+        .to_lowercase();
+
+    Ok(body_has_absence_assertion(&body)
+        && [traceability.as_str(), body.as_str()].iter().any(|text| {
+            REMOVAL_ABSENCE_CLEANUP_TERMS
+                .iter()
+                .any(|term| text.contains(term))
+        }))
+}
+
+fn body_has_absence_assertion(body: &str) -> bool {
+    body.contains("assert!(!") || body.contains(".is_none()")
+}
+
+fn rust_definition_traceability_mentions_active_negative_contract(
+    repo_root: &Path,
+    relative_path: &str,
+    attribute_index: usize,
+) -> Result<bool, String> {
+    let traceability =
+        load_rust_definition_traceability_lines(repo_root, relative_path, attribute_index)?
+            .join("\n")
+            .to_lowercase();
+    Ok(ACTIVE_NEGATIVE_CONTRACT_TERMS
+        .iter()
+        .any(|term| traceability.contains(term)))
+}
+
+fn load_rust_definition_body_lines(
+    repo_root: &Path,
+    relative_path: &str,
+    test_record: &RustTestRecord,
+) -> Result<Vec<String>, String> {
+    let lines = read_lines(&repo_root.join(relative_path))?;
+    let start = test_record.attribute_index.saturating_add(1);
+    let mut body = Vec::new();
+    for line in lines.iter().skip(start) {
+        if is_rust_test_attribute_line(line) {
+            break;
+        }
+        body.push(line.clone());
+    }
+    Ok(body)
 }
 
 fn get_rust_definition_test_strength(
@@ -1222,6 +1356,63 @@ mod tests {
             "{:?}",
             report.errors
         );
+    }
+
+    // Regression: cleanup-only absence tests are rejected even when they try to score themselves as strong.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn rust_traceability_rejects_cleanup_only_absence_tests() {
+        let source = [
+            "// Test lane: default",
+            "",
+            "#[cfg(test)]",
+            "mod tests {",
+            "    // Defends: the fixture excludes a removed preset from the default list.",
+            "    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10",
+            "    #[test]",
+            "    fn shipped_default_registry_parses_without_party() {",
+            "        let registry = std::collections::BTreeMap::<String, String>::new();",
+            "        assert!(!registry.contains_key(\"party\"));",
+            "    }",
+            "}",
+        ]
+        .join("\n");
+        let (_tmp, repo) = write_rust_traceability_fixture("rust_core/example/src/lib.rs", &source);
+
+        let report = validate_rust_test_traceability(&repo).unwrap();
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|error| error.contains("removal-only absence check")),
+            "{:?}",
+            report.errors
+        );
+    }
+
+    // Regression: meaningful negative-contract tests can still assert absence when the marker explains the behavior being defended.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn rust_traceability_accepts_behavior_backed_absence_tests() {
+        let source = [
+            "// Test lane: default",
+            "",
+            "#[cfg(test)]",
+            "mod tests {",
+            "    // Defends: config normalization rejects removed legacy fields without mutating user files.",
+            "    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10",
+            "    #[test]",
+            "    fn rejects_removed_config_field_without_rewrite() {",
+            "        let report = [\"error\"];",
+            "        assert!(!report.contains(&\"rewritten\"));",
+            "    }",
+            "}",
+        ]
+        .join("\n");
+        let (_tmp, repo) = write_rust_traceability_fixture("rust_core/example/src/lib.rs", &source);
+
+        let report = validate_rust_test_traceability(&repo).unwrap();
+        assert!(report.errors.is_empty(), "{:?}", report.errors);
     }
 
     // Regression: package-time Rust tests must not execute Nix because Nix package test sandboxes do not provide host Nix.

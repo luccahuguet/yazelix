@@ -676,17 +676,22 @@ cursor_color = "#ffffff"
         assert!(format!("{error:?}").contains("#rrggbb"));
     }
 
-    // Defends: the shipped default registry parses as the product cursor surface and excludes the removed party preset.
+    // Defends: the shipped default registry parses as the active product cursor surface.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn shipped_default_registry_parses_without_party() {
+    fn shipped_default_registry_parses_active_cursor_surface() {
         let (_temp, path) = write_registry(include_str!("../../../yazelix_cursors_default.toml"));
 
         let registry = CursorRegistry::load(&path).unwrap();
 
         assert!(registry.enabled_cursors.contains(&"blaze".to_string()));
         assert!(registry.enabled_cursors.contains(&"neon".to_string()));
-        assert!(!registry.definitions.contains_key("party"));
+        assert!(
+            registry
+                .enabled_cursors
+                .iter()
+                .all(|name| registry.definitions.contains_key(name))
+        );
         assert_eq!(registry.settings.trail, "random");
     }
 }
