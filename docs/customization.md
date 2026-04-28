@@ -19,6 +19,7 @@ Yazelix is highly customizable! Here are the main ways you can tailor your exper
     - **No manual copying required** - generated automatically when launching Yazelix
   - **Reference configs** (generated snapshot): `configs/terminal_emulators/`
     - Snapshots match the generated configs under `~/.local/share/yazelix/configs/terminal_emulators/`
+- **Visible managed stubs**: Yazelix creates lightweight README or hook stubs under `~/.config/yazelix/user_configs/` when a managed surface becomes relevant. It does not create behavior-owning Zellij or Helix config files automatically, so native fallback and `yzx import` discovery keep working until you choose those managed surfaces.
 - **Zellij Configuration**: Yazelix-managed user config plus generated runtime overlays:
   - **Quick start**: Edit `~/.config/yazelix/user_configs/zellij/config.kdl`
   - **Full guide**: [Zellij Configuration Documentation](./zellij-configuration.md)

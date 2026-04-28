@@ -1,4 +1,5 @@
 pub mod repo_contract_validation;
+pub mod repo_docs_validation;
 pub mod repo_issue_sync;
 pub mod repo_nu_lint;
 pub mod repo_plugin_build;

@@ -49,6 +49,8 @@ Get everything running in less than 10 minutes with no extra dependencies beyond
 
 Install once, get the same environment everywhere
 
+Want the docs front door? See [Yazelix Docs](./docs/README.md)
+
 Want the high-level product map? See [Architecture Map](./docs/architecture_map.md); want the current runtime boundary? See [Current Trimmed Runtime Contract](./docs/contracts/v15_trimmed_runtime_contract.md)
 
 ## Startup Performance

@@ -7,6 +7,7 @@ Yazelix documentation has one durable source-of-truth hierarchy. Delete or demot
 | Surface | Owns | Does not own |
 | --- | --- | --- |
 | `README.md` | The public front door, install hint, and high-level product promise | Detailed reference material or maintainer process |
+| `docs/README.md` | The docs front door and route map for current user, architecture, maintainer, and history docs | New product promises or planning status |
 | `docs/contracts/` | Current Yazelix contracts: product behavior, runtime boundaries, subsystem ownership, supported failure semantics, and validation policy | Research, implementation diaries, historical audits, migration plans, release archaeology, or Bead execution history |
 | User guides under `docs/` | Task-oriented user explanation derived from contracts | New source-of-truth semantics that contradict contracts |
 | Maintainer docs under `docs/` | How maintainers operate the repo, release surface, validators, and tooling | Planning status or issue sequencing |
