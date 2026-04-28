@@ -8,6 +8,7 @@ Yazelix is highly customizable! Here are the main ways you can tailor your exper
 - **Terminal Configurations**:
   - **Bundled terminals** (yazelix-ghostty, etc.): Configs generated dynamically from your yazelix settings
     - **Ghostty cursor shaders**: Edit `~/.config/yazelix/user_configs/yazelix_cursors.toml` to choose the cursor trail, enabled cursor list, global effects, duration, glow, and Kitty fallback toggle. `settings.trail = "random"` picks from `enabled_cursors`, `settings.trail = "none"` disables the Ghostty palette shader, and `settings.kitty_enable_cursor = false` disables Kitty's simple fallback trail.
+    - **Standalone Ghostty cursor shaders**: Build or install `.#ghostty_cursor_shaders` to get the generated Yazelix Ghostty cursor shaders without launching Yazelix. The package output includes complete GLSL files plus `share/yazelix/ghostty_cursor_shaders/examples/ghostty_blaze_tail.conf` with `custom-shader` lines for your Ghostty config.
     - **Transparency**: Configure `transparency = "none"`, `"low"`, `"medium"`, or `"high"`
     - **Yazelix-specific terminal overrides**: For Ghostty, Kitty, and Alacritty, add personal terminal-native settings under `~/.config/yazelix/user_configs/terminal/`
       - `ghostty`

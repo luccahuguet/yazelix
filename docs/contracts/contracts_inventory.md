@@ -30,6 +30,7 @@ This inventory lists the canonical contracts under `docs/contracts/`. It is not 
 | `rust_nushell_bridge_contract.md` | Rust/Nushell bridge behavior |
 | `shell_opened_editors.md` | Managed-editor versus shell-opened editor boundary |
 | `stale_config_diagnostics.md` | Unsupported/stale config diagnostics |
+| `standalone_ghostty_cursor_distribution.md` | Standalone Ghostty cursor shader export package |
 | `startup_profile_scenarios.md` | Structured startup-profile scenarios |
 | `status_doctor_machine_readable_reports.md` | Machine-readable status and doctor reports |
 | `supply_chain_hardening.md` | Supply-chain hardening policy |

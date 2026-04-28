@@ -81,9 +81,16 @@
           yazelix_default = yazelixPackage system pkgs defaultRuntimeVariant;
           yazelix_ghostty = yazelixPackage system pkgs "ghostty";
           yazelix_wezterm = yazelixPackage system pkgs "wezterm";
+          ghostty_cursor_shaders = import ./packaging/ghostty_cursor_shaders.nix {
+            inherit pkgs;
+            src = ./.;
+            rust_core_src = ./.;
+            fenixPkgs = fenix.packages.${system};
+          };
         in
         {
           default = yazelix_default;
+          ghostty_cursor_shaders = ghostty_cursor_shaders;
           runtime = runtime_default;
           runtime_ghostty = runtime_ghostty;
           runtime_wezterm = runtime_wezterm;
