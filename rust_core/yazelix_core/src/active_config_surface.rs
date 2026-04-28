@@ -8,13 +8,15 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
+pub const TOML_TOOLING_CONFIG_FILENAME: &str = ".taplo.toml";
+
 #[derive(Debug, Clone, Serialize)]
 pub struct ActiveConfigPaths {
     pub user_config_dir: PathBuf,
     pub user_config: PathBuf,
     pub user_cursor_config: PathBuf,
     pub legacy_user_config: PathBuf,
-    pub managed_taplo: PathBuf,
+    pub managed_toml_tooling_config: PathBuf,
     pub config_file: PathBuf,
     pub default_config_path: PathBuf,
     pub default_cursor_config_path: PathBuf,
@@ -30,8 +32,8 @@ pub struct PrimaryConfigPaths {
     pub default_config_path: PathBuf,
     pub default_cursor_config_path: PathBuf,
     pub contract_path: PathBuf,
-    pub runtime_taplo: PathBuf,
-    pub managed_taplo: PathBuf,
+    pub runtime_toml_tooling_config: PathBuf,
+    pub managed_toml_tooling_config: PathBuf,
 }
 
 fn io_err(path: &Path, source: io::Error) -> CoreError {
@@ -54,8 +56,8 @@ pub fn primary_config_paths(runtime_dir: &Path, config_dir: &Path) -> PrimaryCon
     let contract_path = runtime_dir
         .join("config_metadata")
         .join("main_config_contract.toml");
-    let runtime_taplo = runtime_dir.join(".taplo.toml");
-    let managed_taplo = config_dir.join(".taplo.toml");
+    let runtime_toml_tooling_config = runtime_dir.join(TOML_TOOLING_CONFIG_FILENAME);
+    let managed_toml_tooling_config = config_dir.join(TOML_TOOLING_CONFIG_FILENAME);
 
     PrimaryConfigPaths {
         user_config_dir,
@@ -65,8 +67,8 @@ pub fn primary_config_paths(runtime_dir: &Path, config_dir: &Path) -> PrimaryCon
         default_config_path,
         default_cursor_config_path,
         contract_path,
-        runtime_taplo,
-        managed_taplo,
+        runtime_toml_tooling_config,
+        managed_toml_tooling_config,
     }
 }
 
@@ -109,7 +111,10 @@ pub fn resolve_active_config_paths(
     let paths = primary_config_paths(runtime_dir, config_dir);
 
     validate_primary_config_surface(&paths)?;
-    ensure_managed_taplo(&paths.runtime_taplo, &paths.managed_taplo)?;
+    ensure_managed_toml_tooling_config(
+        &paths.runtime_toml_tooling_config,
+        &paths.managed_toml_tooling_config,
+    )?;
     ensure_user_cursor_config(&paths.default_cursor_config_path, &paths.user_cursor_config)?;
 
     let config_file = match config_override {
@@ -159,7 +164,7 @@ pub fn resolve_active_config_paths(
         user_config: paths.user_config,
         user_cursor_config: paths.user_cursor_config,
         legacy_user_config: paths.legacy_user_config,
-        managed_taplo: paths.managed_taplo,
+        managed_toml_tooling_config: paths.managed_toml_tooling_config,
         config_file,
         default_config_path: paths.default_config_path,
         default_cursor_config_path: paths.default_cursor_config_path,
@@ -199,16 +204,19 @@ fn ensure_user_cursor_config(runtime_src: &Path, managed: &Path) -> Result<(), C
     Ok(())
 }
 
-pub fn ensure_managed_taplo(runtime_src: &Path, managed: &Path) -> Result<(), CoreError> {
+pub fn ensure_managed_toml_tooling_config(
+    runtime_src: &Path,
+    managed: &Path,
+) -> Result<(), CoreError> {
     if !runtime_src.exists() {
         return Err(CoreError::classified(
             ErrorClass::Config,
-            "missing_runtime_taplo",
+            "missing_runtime_toml_tooling_config",
             format!(
-                "Yazelix runtime is missing the Taplo formatter config at {}.",
+                "Yazelix runtime is missing the TOML tooling config at {}.",
                 runtime_src.display()
             ),
-            "Reinstall Yazelix so the runtime includes the managed Taplo formatter config.",
+            "Reinstall Yazelix so the runtime includes the managed TOML tooling config.",
             json!({ "path": runtime_src.display().to_string() }),
         ));
     }
@@ -267,16 +275,16 @@ mod tests {
         )
         .expect("write contract");
         fs::write(
-            runtime_dir.join(".taplo.toml"),
+            runtime_dir.join(TOML_TOOLING_CONFIG_FILENAME),
             "array_auto_expand = true\n",
         )
-        .expect("write taplo");
+        .expect("write TOML tooling config");
     }
 
-    // Defends: Rust active-config-surface resolution bootstraps the managed main config and Taplo support when the canonical surface is missing.
+    // Defends: Rust active-config-surface resolution bootstraps the managed main config and TOML tooling support when the canonical surface is missing.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn bootstraps_missing_managed_config_and_taplo_support() {
+    fn bootstraps_missing_managed_config_and_toml_tooling_support() {
         let runtime = tempdir().expect("runtime dir");
         let config = tempdir().expect("config dir");
         write_runtime_layout(runtime.path());
@@ -293,8 +301,8 @@ mod tests {
             fs::read_to_string(runtime.path().join("yazelix_default.toml")).unwrap()
         );
         assert_eq!(
-            fs::read_to_string(&resolved.managed_taplo).unwrap(),
-            fs::read_to_string(runtime.path().join(".taplo.toml")).unwrap()
+            fs::read_to_string(&resolved.managed_toml_tooling_config).unwrap(),
+            fs::read_to_string(runtime.path().join(TOML_TOOLING_CONFIG_FILENAME)).unwrap()
         );
         assert_eq!(
             fs::read_to_string(&resolved.user_cursor_config).unwrap(),

@@ -6,6 +6,7 @@ use serde_json::{Value, json};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::{TempDir, tempdir};
+use yazelix_core::active_config_surface::TOML_TOOLING_CONFIG_FILENAME;
 
 mod support;
 
@@ -310,11 +311,11 @@ fn unsupported_command_reports_requested_command_in_error_envelope() {
     assert_eq!(envelope["error"]["code"], "invalid_arguments");
 }
 
-// Defends: config-surface.resolve bootstraps the canonical managed config and Taplo support through the Rust active-config owner.
+// Defends: config-surface.resolve bootstraps the canonical managed config and TOML tooling support through the Rust active-config owner.
 // Contract: CRCP-004
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
-fn config_surface_resolve_bootstraps_managed_config_and_taplo_support() {
+fn config_surface_resolve_bootstraps_managed_config_and_toml_tooling_support() {
     let repo = repo_root();
     let tmp = tempdir().unwrap();
     let runtime_dir = prepare_doctor_config_runtime_fixture(&repo, &tmp);
@@ -336,7 +337,7 @@ fn config_surface_resolve_bootstraps_managed_config_and_taplo_support() {
     assert_eq!(envelope["status"], "ok");
 
     let managed_config = config_dir.join("user_configs").join("yazelix.toml");
-    let managed_taplo = config_dir.join(".taplo.toml");
+    let managed_toml_tooling_config = config_dir.join(TOML_TOOLING_CONFIG_FILENAME);
     assert_eq!(
         envelope["data"]["config_file"],
         managed_config.to_string_lossy().to_string()
@@ -346,8 +347,8 @@ fn config_surface_resolve_bootstraps_managed_config_and_taplo_support() {
         fs::read_to_string(runtime_dir.join("yazelix_default.toml")).unwrap()
     );
     assert_eq!(
-        fs::read_to_string(&managed_taplo).unwrap(),
-        fs::read_to_string(runtime_dir.join(".taplo.toml")).unwrap()
+        fs::read_to_string(&managed_toml_tooling_config).unwrap(),
+        fs::read_to_string(runtime_dir.join(TOML_TOOLING_CONFIG_FILENAME)).unwrap()
     );
 }
 

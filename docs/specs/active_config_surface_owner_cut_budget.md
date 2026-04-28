@@ -13,7 +13,7 @@ resolution while preserving the live v15.4 behavior:
 - canonical `user_configs/yazelix.toml` ownership
 - fail-fast duplicate and legacy-root detection
 - default bootstrap from the shipped template
-- managed Taplo support synchronization
+- managed TOML tooling support synchronization
 - Home Manager parity with the shipped default config
 
 This bead is planning-only. It does not delete code. It defines what may be
@@ -64,7 +64,7 @@ Out of scope:
 | `control_plane.rs` | `resolve_active_config_paths` | already correct |
 | `edit_commands.rs` | `resolve_active_config_paths` for `yzx edit` | already correct |
 | `runtime_materialization.rs` | `primary_config_paths` | already correct |
-| `doctor_config_report.rs` | `primary_config_paths`, `validate_primary_config_surface`, `ensure_managed_taplo` | already correct |
+| `doctor_config_report.rs` | `primary_config_paths`, `validate_primary_config_surface`, `ensure_managed_toml_tooling_config` | already correct |
 
 ## Surviving Owner Decision
 
@@ -76,7 +76,7 @@ That means these rules must stop living in Nushell:
 - canonical `user_configs` path resolution
 - duplicate user-config versus legacy-root rejection
 - fallback bootstrap from `yazelix_default.toml`
-- managed Taplo support synchronization
+- managed TOML tooling support synchronization
 - active main-config path selection with `YAZELIX_CONFIG_OVERRIDE`
 
 Nu may still own shell-local behavior after the cut, but only when it is not
@@ -102,7 +102,7 @@ Those helpers must not:
 
 - validate legacy-root versus canonical ownership
 - decide whether to bootstrap the managed main config
-- synchronize Taplo support
+- synchronize TOML tooling support
 - choose the active main config surface
 
 If those are the only survivors, `config_surfaces.nu` should be deleted and the
@@ -124,7 +124,7 @@ These are owner functions and should move entirely behind Rust.
 ## Survive only if relocated as non-owning helpers
 
 - `get_main_user_config_path`
-- `get_managed_taplo_support_path`
+- `get_managed_toml_tooling_config_path`
 - `copy_default_config_surfaces`
 - `load_config_surface_pair`
 - `load_config_surface_from_main`
@@ -139,7 +139,7 @@ callers that still need active config-surface facts. The exact command shape is
 still implementation work, but the budget is:
 
 - the interface must return structured paths, not human prose
-- the interface must preserve bootstrap, Taplo sync, and fail-fast validation
+- the interface must preserve bootstrap, TOML tooling sync, and fail-fast validation
 - Nu callers should not parse `yzx config` human output to recover those paths
 - the interface may be an internal helper command or a narrow structured
   control-plane surface, but it must not create a second semantic owner
@@ -152,7 +152,7 @@ The owner cut is only honest if all of these still hold afterward:
 - `nu nushell/scripts/dev/test_yzx_core_commands.nu`
   - especially the `yzx config --path` and `yzx config reset` cases
 - `nu nushell/scripts/dev/test_yzx_generated_configs.nu`
-  - especially managed config bootstrap and Taplo support cases
+  - especially managed config bootstrap and TOML tooling support cases
 - Rust coverage exists for the surviving owner
   - current gap: `active_config_surface.rs` still lacks dedicated unit tests and
     `yazelix-izwm.2` should add them or explain why adjacent coverage is enough
@@ -164,7 +164,7 @@ true:
 
 - the only way to remove `config_surfaces.nu` is to make Nu parse human-facing
   output from a public command
-- the surviving Rust interface cannot preserve default bootstrap or Taplo sync
+- the surviving Rust interface cannot preserve default bootstrap or TOML tooling sync
   without implicitly taking ownership of user-managed external config files
 - a caller still needs mixed shell side effects and active-surface ownership in
   one inseparable step

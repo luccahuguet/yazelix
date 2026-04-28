@@ -46,7 +46,7 @@ the remaining serious Nu cuts.
 
 | Behavior | Current contract or source | Current owner | Current verification | Candidate surviving owner |
 | --- | --- | --- | --- | --- |
-| Canonical managed config surface lives under `user_configs/`, rejects legacy-root conflicts, bootstraps missing `yazelix.toml`, and keeps managed Taplo support current | `docs/specs/config_surface_and_launch_profile_contract.md`; `CRCP-004` | Rust `active_config_surface.rs` is the canonical owner; Nu callers consume the resolved surface where shell UX still needs it | `yzx_repo_validator validate-config-surface-contract`; `rust_core/yazelix_core/src/active_config_surface.rs`; `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs` | Rust `active_config_surface.rs` with only caller-local Nu shell orchestration where file writes or editor launch UX still require it |
+| Canonical managed config surface lives under `user_configs/`, rejects legacy-root conflicts, bootstraps missing `yazelix.toml`, and keeps managed TOML tooling support current | `docs/specs/config_surface_and_launch_profile_contract.md`; `CRCP-004` | Rust `active_config_surface.rs` is the canonical owner; Nu callers consume the resolved surface where shell UX still needs it | `yzx_repo_validator validate-config-surface-contract`; `rust_core/yazelix_core/src/active_config_surface.rs`; `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs` | Rust `active_config_surface.rs` with only caller-local Nu shell orchestration where file writes or editor launch UX still require it |
 | Typed main-config normalization and diagnostic classification stay Rust-owned | `CRCP-001`; `docs/specs/rust_nushell_bridge_contract.md` | Rust `normalize_config`; the former `config_parser.nu` bridge owner is deleted | `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`; the remaining helper-resolution cases in `nu nushell/scripts/dev/test_yzx_generated_configs.nu` | same |
 | Canonical runtime env policy stays in Rust and does not drift back into Nu | `CRCP-002`; `docs/specs/launch_bootstrap_rust_migration.md` | Rust `runtime_env.rs` plus the explicit Nu shell-exec seam in `runtime_env.nu` | `rust_core/yazelix_core/tests/yzx_core_runtime_env.rs`; `nu nushell/scripts/dev/test_helix_managed_config_contracts.nu`; `nu nushell/scripts/dev/test_yzx_popup_commands.nu` | Rust `runtime_env.rs` / `control_plane.rs` with Nu limited to shell env application and argv execution |
 | Packaged helper resolution and source-checkout helper fallback fail fast without reviving deleted Nu semantics | `CRCP-003`; `docs/specs/runtime_root_contract.md` | Nu `yzx_core_bridge.nu` plus POSIX/runtime launcher wiring | Rust config/materialization tests; `yzx_repo_validator validate-installed-runtime-contract` | smaller helper bridge or later public Rust command owner, but not a wider Nu bridge |
@@ -59,7 +59,7 @@ the remaining serious Nu cuts.
 | --- | --- | --- | --- |
 | User-visible config/runtime behavior | Nu `yzx` commands and startup/launch frontends calling Rust helpers | intentional | The public surface is still Nu-first in v15.4, but typed decisions should keep shrinking out of Nu |
 | Typed or deterministic logic | Rust `active_config_surface.rs`, `runtime_env.rs`, `config_state.rs`, `config_commands.rs` | intentional | This is already the canonical owner set |
-| Active config-surface resolution and Taplo synchronization | Rust `active_config_surface.rs`; Nu callers consume the structured result via `yzx_core_bridge.nu` | landed owner cut | Rust now owns the bootstrap and Taplo rules; surviving Nu callers no longer need a separate parser owner |
+| Active config-surface resolution and TOML tooling synchronization | Rust `active_config_surface.rs`; Nu callers consume the structured result via `yzx_core_bridge.nu` | landed owner cut | Rust now owns the bootstrap and TOML tooling rules; surviving Nu callers no longer need a separate parser owner |
 | Runtime-env request construction | Rust `control_plane.rs` feeding `runtime-env.compute`; Nu callers use `compute_runtime_env_via_yzx_core` | landed owner cut | Request assembly no longer belongs to Nu; the surviving Nu seam is env application and argv execution only |
 | Generated-state request construction and recording gate | Rust `control_plane.rs` feeding `config-state.compute` / `config-state.record` | landed owner cut | `config_state.nu` is deleted and the state hash logic plus request construction are Rust-owned |
 | Shell or process orchestration | Nu `start_yazelix.nu`, `launch_yazelix.nu`, popup wrappers, `runtime_env.nu::run_runtime_argv`, POSIX wrappers | intentional | This is a real shell boundary until the launch/startup audit proves otherwise |
@@ -142,7 +142,7 @@ should be deleted or narrowed.
 - duplicate owners:
   - `config_surfaces.nu` and `active_config_surface.rs` both own canonical
     `user_configs` resolution, legacy-root rejection, default bootstrap, and
-    Taplo synchronization
+    TOML tooling synchronization
   - `runtime_env.nu` and Rust control-plane code both assemble runtime-env
     request inputs from runtime dir, home, PATH, and normalized config
   - `common.nu` and `control_plane.rs` both resolve config/state roots and
@@ -189,7 +189,7 @@ should be deleted or narrowed.
 
 | Bead | Retained behavior | Deletion class | Candidate surviving owner | Verification that must still pass | Explicit stop condition |
 | --- | --- | --- | --- | --- | --- |
-| `yazelix-izwm` | canonical `user_configs` ownership, default bootstrap, Taplo sync, legacy-root fail-fast, HM/default parity | `bridge_collapse` | Rust `active_config_surface.rs` plus caller-local Nu shell UX only where needed | `yzx_repo_validator validate-config-surface-contract`; `nu nushell/scripts/dev/test_yzx_core_commands.nu` | stop if a surviving Nu caller still needs shell-side file bootstrap behavior that Rust cannot own without taking over user-managed external config |
+| `yazelix-izwm` | canonical `user_configs` ownership, default bootstrap, TOML tooling sync, legacy-root fail-fast, HM/default parity | `bridge_collapse` | Rust `active_config_surface.rs` plus caller-local Nu shell UX only where needed | `yzx_repo_validator validate-config-surface-contract`; `nu nushell/scripts/dev/test_yzx_core_commands.nu` | stop if a surviving Nu caller still needs shell-side file bootstrap behavior that Rust cannot own without taking over user-managed external config |
 | `yazelix-ekfc` | runtime-env parity and generated-state hash/record behavior without reviving ambient host inference | `bridge_collapse` | Rust `runtime_env.rs`, `config_state.rs`, and `control_plane.rs` plus explicit Nu shell-exec boundaries only | `rust_core/yazelix_core/tests/yzx_core_runtime_env.rs`; `rust_core/yazelix_core/src/config_state.rs`; `nu nushell/scripts/dev/test_helix_managed_config_contracts.nu`; `nu nushell/scripts/dev/test_yzx_generated_configs.nu`; `yzx_repo_validator validate-config-surface-contract` | stop if a caller still depends on Nu-owned shell/process state that cannot be expressed as explicit Rust inputs without changing live behavior |
 
 Follow-up lanes deliberately not created here:

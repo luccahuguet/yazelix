@@ -101,11 +101,13 @@ Runtime/package surfaces:
 Runtime/user support surfaces:
 
 - `.taplo.toml` is the shipped formatter config
-- `active_config_surface.rs` computes runtime and managed `.taplo.toml` paths
-- `ensure_managed_taplo` copies the runtime Taplo support file to the managed
-  config root and fails clearly when the runtime support file is missing
-- doctor/onboard flows call the same managed Taplo support path
-- tests and fixtures name Taplo support directly
+- `active_config_surface.rs` computes runtime and managed TOML tooling config
+  paths
+- `ensure_managed_toml_tooling_config` copies the runtime TOML tooling support
+  file to the managed config root and fails clearly when the runtime support
+  file is missing
+- doctor/onboard flows call the same managed TOML tooling support path
+- tests and fixtures name TOML tooling support directly
 
 Docs:
 

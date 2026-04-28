@@ -2,7 +2,7 @@
 //! Bead: yazelix-ulb2.4.4
 
 use crate::active_config_surface::{
-    ensure_managed_taplo, primary_config_paths, validate_primary_config_surface,
+    ensure_managed_toml_tooling_config, primary_config_paths, validate_primary_config_surface,
 };
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_normalize::{
@@ -52,7 +52,10 @@ pub fn evaluate_doctor_config_report(
         };
     }
 
-    if let Err(error) = ensure_managed_taplo(&paths.runtime_taplo, &paths.managed_taplo) {
+    if let Err(error) = ensure_managed_toml_tooling_config(
+        &paths.runtime_toml_tooling_config,
+        &paths.managed_toml_tooling_config,
+    ) {
         return DoctorConfigEvaluateData {
             findings: vec![DoctorConfigFinding {
                 status: "error".into(),
@@ -266,7 +269,7 @@ fn format_surface_reconcile_error(error: &CoreError) -> String {
                 lines.push(format!("current main: {current_main}"));
             }
         }
-        "missing_runtime_taplo" => {
+        "missing_runtime_toml_tooling_config" => {
             if let Some(path) = details.get("path").and_then(Value::as_str) {
                 lines.push(format!("runtime support file: {path}"));
             }

@@ -1,7 +1,8 @@
 //! Interactive first-run config generator for `yzx onboard`.
 
 use crate::active_config_surface::{
-    PrimaryConfigPaths, ensure_managed_taplo, primary_config_paths, validate_primary_config_surface,
+    PrimaryConfigPaths, ensure_managed_toml_tooling_config, primary_config_paths,
+    validate_primary_config_surface,
 };
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{config_dir_from_env, runtime_dir_from_env};
@@ -471,7 +472,10 @@ fn write_onboard_config(
     force: bool,
 ) -> Result<(), CoreError> {
     validate_primary_config_surface(paths)?;
-    ensure_managed_taplo(&paths.runtime_taplo, &paths.managed_taplo)?;
+    ensure_managed_toml_tooling_config(
+        &paths.runtime_toml_tooling_config,
+        &paths.managed_toml_tooling_config,
+    )?;
 
     if paths.user_config.exists() && !force {
         return Err(CoreError::classified(

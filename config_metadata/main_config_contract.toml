@@ -11,7 +11,7 @@
 [contract]
 version = 1
 surface = "main"
-field_count = 38
+field_count = 36
 artifact_role = "canonical_machine_metadata"
 default_template = "yazelix_default.toml"
 home_manager_module = "home_manager/module.nix"
