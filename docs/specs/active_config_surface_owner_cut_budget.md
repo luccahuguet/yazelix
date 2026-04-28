@@ -46,7 +46,6 @@ Out of scope:
 | `core/launch_yazelix.nu` | active config path/default path for terminal materialization and Ghostty reroll helpers | shell orchestration is real, active-surface ownership is not | should consume Rust-owned active-surface facts |
 | `utils/doctor_fix.nu` | active config path for repair commands plus default-copy helper | shell-side fix flow is real; active-surface ownership is not | split: Rust-owned path resolution, tiny file-copy helper may survive elsewhere |
 | `dev/materialization_dev_helpers.nu` | active config path/default path for internal helper calls | no | should consume Rust-owned active-surface facts |
-| `yzx/edit.nu` | canonical managed main-config path | yes, it launches an editor, but not an owner-level need | can use a narrower path query instead of full active-surface ownership |
 
 ## Nu callers that only use small path/file helpers
 
@@ -63,6 +62,7 @@ Out of scope:
 | `config_commands.rs` | `resolve_active_config_paths`, `primary_config_paths` | already correct |
 | `doctor_commands.rs` | `resolve_active_config_paths` | already correct |
 | `control_plane.rs` | `resolve_active_config_paths` | already correct |
+| `edit_commands.rs` | `resolve_active_config_paths` for `yzx edit` | already correct |
 | `runtime_materialization.rs` | `primary_config_paths` | already correct |
 | `doctor_config_report.rs` | `primary_config_paths`, `validate_primary_config_surface`, `ensure_managed_taplo` | already correct |
 

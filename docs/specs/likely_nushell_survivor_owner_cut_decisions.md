@@ -69,8 +69,6 @@ another helper layer.
 ### Reviewed files
 
 - `nushell/scripts/yzx/menu.nu`
-- `nushell/scripts/yzx/edit.nu`
-- `nushell/scripts/yzx/import.nu`
 - `nushell/scripts/setup/welcome.nu`
 - `nushell/scripts/utils/front_door_runtime.nu`
 

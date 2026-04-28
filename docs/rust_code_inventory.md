@@ -65,7 +65,7 @@ This is not a task list. Follow-up execution belongs in Beads.
 | `rust_core/yazelix_core/src/initializer_commands.rs` | 553 | shell initializer generation | canonical | Still owns generated shell initializer text; external shell semantics justify dedicated code |
 | `rust_core/yazelix_core/src/install_ownership_env.rs` | 100 | install ownership env request builder | canonical | Small shared control-plane helper |
 | `rust_core/yazelix_core/src/install_ownership_report.rs` | 1105 | install ownership diagnostics | canonical | Large but user-safety-heavy; legacy wrapper detection remains valuable for upgrades |
-| `rust_core/yazelix_core/src/internal_nu_runner.rs` | 181 | internal Nu route executor | temporary | Keep while `yzx dev`, menu/edit/import/popup wrappers, and process-heavy flows remain Nu-owned |
+| `rust_core/yazelix_core/src/internal_nu_runner.rs` | 181 | internal Nu route executor | temporary | Keep while `yzx dev`, menu/popup wrappers, and process-heavy flows remain Nu-owned |
 | `rust_core/yazelix_core/src/keys_commands.rs` | 601 | `yzx keys` | canonical | Public key-discovery command |
 | `rust_core/yazelix_core/src/launch_commands.rs` | 1587 | launch/restart/desktop command orchestration | canonical | Large because it sits on shell/process/terminal boundaries; no safe broad deletion found |
 | `rust_core/yazelix_core/src/launch_materialization.rs` | 338 | launch materialization planning | canonical | Separates launch prep from command UX |

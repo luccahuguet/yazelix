@@ -128,7 +128,7 @@ It is not worth doing just to:
 | `yzx status`, `yzx doctor` | `yzx status` and the public report half of `yzx doctor` are now on the Rust public path; the side-effecting `yzx doctor --fix` flow still ends in a private Nu helper | `yzx status` is already done, and `yazelix-5ewl.3` landed the honest report-only doctor owner cut by deleting the public Nu doctor surface and the shared report bridge. `yazelix-5ewl.4` then closed the Clap follow-up as a no-go because the surviving private fix helper plus the still-large internal-family rule engine are not a meaningful parser-deletion budget yet. |
 | `yzx config` | `yzx_control` | Good Rust-owned public-family cut once the config surface loader and reset semantics are both owned directly in Rust and the public Nu wrapper disappears |
 | `yzx keys` | `yzx_control` | Good Rust-owned help/discoverability cut only if the alias family and the table-style human output survive without turning into a flat wrapper or a broad formatting-crate dependency |
-| `yzx edit`, `yzx import` | Nushell | Keep Nushell-owned unless a later separate ownership argument appears |
+| `yzx edit`, `yzx import` | Rust `edit_commands.rs` and `import_commands.rs` | Already Rust-owned. Keep this command surface out of the Nu survivor list unless a future change adds a real shell/process owner again |
 | `yzx why`, `yzx sponsor` | `yzx_control` | Good tiny Rust-owned leaf cuts when the goal is deleting the last trivial support-family Nu owner without changing user-visible copy or sponsor fallback behavior |
 | `yzx menu`, `yzx popup`, `yzx screen`, `yzx tutor`, `yzx whats_new` | Nushell | Keep Nushell-owned |
 | `yzx desktop`, maintainer surfaces, package and distribution commands | Nushell, Nix, POSIX | Keep Nushell, Nix, and POSIX-owned unless a separate distribution-policy rewrite justifies moving them. `yzx home_manager` left this bucket once the install-ownership report became the real owner and the public family moved to Rust |
@@ -194,8 +194,7 @@ Surviving internal Nu helper owners after the cut:
 
 - `nushell/scripts/core/yzx_session.nu` for `yzx restart`
 - `nushell/scripts/yzx/launch.nu`, `enter.nu`, `desktop.nu`, `menu.nu`,
-  `popup.nu`, `edit.nu`, `tutor.nu`, `screen.nu`,
-  `whats_new.nu`, `import.nu`, and `dev.nu` as explicit
+  `popup.nu`, `tutor.nu`, `screen.nu`, `whats_new.nu`, and `dev.nu` as explicit
   internal helper modules, not as the public root registry
 
 Explicit no-go for the first mixed family:

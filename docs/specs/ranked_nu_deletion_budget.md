@@ -88,7 +88,7 @@ today:
 
 | Bucket | Current owner read | Why it is not the next big port |
 | --- | --- | --- |
-| public CLI UX command bodies | `yzx/menu.nu`, `yzx/edit.nu`, `yzx/import.nu`, `yzx/dev.nu` | the public root, metadata, and helper routing already moved to Rust; the surviving command bodies are now mostly `fzf`, editor, or maintainer-process boundaries and need family-by-family deletion budgets |
+| public CLI UX command bodies | `yzx/menu.nu`, `yzx/dev.nu` | the public root, metadata, and helper routing already moved to Rust; `yzx edit` and `yzx import` are Rust-owned, so the surviving command bodies are now mostly `fzf` or maintainer-process boundaries and need family-by-family deletion budgets |
 | startup/session orchestration | `start_yazelix.nu`, `start_yazelix_inner.nu`, `launch_yazelix.nu`, `setup/environment.nu`, POSIX wrappers | the hard part is shell/process/Zellij handoff, not typed decision logic |
 | integration adapters | `yazi.nu`, `managed_editor.nu`, `zellij.nu`, popup wrappers | the surviving work is external-tool execution and user-facing copy after the larger live-state and config-owner cuts already moved |
 | issue/release/update automation | maintainer modules and validators | large maintainer surface, but not product/runtime deletion value |

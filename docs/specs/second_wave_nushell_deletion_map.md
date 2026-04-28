@@ -53,8 +53,6 @@ Remaining Nu front-door floor:
 - `nushell/scripts/setup/welcome.nu`
 - `nushell/scripts/utils/front_door_runtime.nu`
 - `nushell/scripts/yzx/menu.nu`
-- `nushell/scripts/yzx/edit.nu`
-- `nushell/scripts/yzx/import.nu`
 
 That remaining floor is no longer a renderer/data owner. It is now mostly shell
 presentation, popup/editor/process handoff, and startup-shell integration.
@@ -117,7 +115,7 @@ checks.
 2. Delete more maintainer and `yzx dev` shell routing after the remaining
    update/plugin/sweep surfaces get narrower explicit owners
 3. Re-evaluate the front-door shell floor file by file, especially
-   `yzx/menu.nu`, `yzx/edit.nu`, and `yzx/import.nu`
+   `yzx/menu.nu` and the remaining popup/startup-shell helpers
 4. Keep reducing live Nu budget ceilings in `config_metadata/nushell_budget.toml`
    instead of treating current survivors as permanent
 
