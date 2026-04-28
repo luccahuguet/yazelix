@@ -555,13 +555,14 @@ fn toml_escape_string(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::active_config_surface::TOML_TOOLING_CONFIG_FILENAME;
     use tempfile::tempdir;
 
     fn test_paths(root: &std::path::Path) -> PrimaryConfigPaths {
         let runtime = root.join("runtime");
         let config = root.join("config");
         fs::create_dir_all(runtime.join("config_metadata")).unwrap();
-        fs::write(runtime.join(".taplo.toml"), "[format]\n").unwrap();
+        fs::write(runtime.join(TOML_TOOLING_CONFIG_FILENAME), "[format]\n").unwrap();
         fs::write(runtime.join("yazelix_default.toml"), "").unwrap();
         fs::write(
             runtime.join("config_metadata/main_config_contract.toml"),

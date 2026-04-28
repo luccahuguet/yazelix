@@ -2,23 +2,20 @@
 
 ## Summary
 
-Yazelix should not replace Taplo with Tombi in one dependency swap. Tombi is the
-more active upstream and is a plausible long-term TOML tooling owner, but the
-repo needs a staged migration because the locked nixpkgs input is behind
-upstream Tombi, Tombi formats different files than Taplo today, and Yazelix has
-Taplo-named runtime/user support paths embedded in packaging, docs, diagnostics,
-and tests.
+Yazelix migrated from Taplo to Tombi through a staged track rather than one blind
+dependency swap. Tombi is the more active upstream and is now the default runtime
+TOML tooling owner, while the repo keeps a bounded formatter corpus to avoid
+unrelated vendored/Cargo TOML churn.
 
-Decision: migrate to Tombi through the staged track. The prototype accepted a
-bounded Yazelix-owned TOML corpus, leaving vendored Yazi flavor TOML and Rust
-Cargo manifests out of the formatter gate to avoid unrelated churn.
+Decision: ship Tombi in the runtime, ship `tombi.toml` as the managed TOML
+tooling config, and keep Taplo references only as historical migration evidence.
 
 ## Why
 
-The product problem is not just "which formatter binary is newer." Yazelix ships
-a TOML tool as part of the runtime and copies `.taplo.toml` into the managed
+The product problem was not just "which formatter binary is newer." Yazelix ships
+a TOML tool as part of the runtime and copies its support config into the managed
 config root so user config editing gets consistent support. Replacing that tool
-changes package closure, editor/LSP expectations, managed-support naming,
+changed package closure, editor/LSP expectations, managed-support naming,
 doctor/onboard diagnostics, and the style of committed TOML.
 
 A migration is attractive because Tombi is actively releasing and explicitly
@@ -89,18 +86,18 @@ Tombi versus Taplo formatting output for the same temporary sample still differs
 5 repo files changed, 163 insertions(+), 271 deletions(-)
 ```
 
-## Current Yazelix Taplo Surface
+## Current Yazelix Tombi Surface
 
 Runtime/package surfaces:
 
-- `packaging/runtime_deps.nix` includes `taplo`
-- `packaging/mk_runtime_tree.nix` exports `taplo` in `toolbin`
-- `packaging/mk_runtime_tree.nix` symlinks `.taplo.toml` into the runtime tree
-- `packaging/repo_source.nix` keeps `.taplo.toml` in the package source
+- `packaging/runtime_deps.nix` includes `tombi`
+- `packaging/mk_runtime_tree.nix` exports `tombi` in `toolbin`
+- `packaging/mk_runtime_tree.nix` symlinks `tombi.toml` into the runtime tree
+- `packaging/repo_source.nix` keeps `tombi.toml` in the package source
 
 Runtime/user support surfaces:
 
-- `.taplo.toml` is the shipped formatter config
+- `tombi.toml` is the shipped formatter config
 - `active_config_surface.rs` computes runtime and managed TOML tooling config
   paths
 - `ensure_managed_toml_tooling_config` copies the runtime TOML tooling support
@@ -112,7 +109,7 @@ Runtime/user support surfaces:
 Docs:
 
 - `docs/architecture_map.md`, `docs/posix_xdg.md`,
-  `docs/package_sizes.md`, and `docs/contributing.md` describe Taplo support
+  `docs/package_sizes.md`, and `docs/contributing.md` describe Tombi support
 
 ## Decision
 
@@ -127,11 +124,9 @@ Use a three-step migration track:
    proves acceptable formatter churn and the locked nixpkgs input is close
    enough to upstream Tombi for the package to represent the active project
 
-This keeps the no-migration option valid for the current release: Taplo still
-exists in locked nixpkgs, still provides the current shipped CLI, and remains
-smaller. The migration track exists because Tombi's upstream activity and TOML
-toolkit scope make it the better candidate once Yazelix can migrate without
-leaving Taplo-shaped product seams behind.
+The migration track existed because Tombi's upstream activity and TOML toolkit
+scope made it the better candidate once Yazelix could migrate without leaving
+Taplo-shaped product seams behind.
 
 ## Prototype Outcome
 
@@ -189,22 +184,21 @@ Recommendation after the prototype: the package swap is safe if Yazelix keeps
 the configured corpus boundary and does not attempt a full repo-wide TOML
 reformat.
 
-## Follow-Up Beads
+## Runtime Swap Outcome
 
-Create implementation beads for:
+`yazelix-zz0k.3` completed the package and runtime surface swap:
 
-- a Tombi config and formatter-churn prototype over the repo TOML corpus
-- renaming Taplo-specific managed support concepts to generic TOML tooling
-  support
-- swapping the runtime package dependency and docs from Taplo to Tombi after the
-  prototype gate passes
+- `taplo` was removed from `packaging/runtime_deps.nix` and `toolbin`
+- `tombi` is now the runtime TOML CLI
+- `.taplo.toml` was deleted from the shipped source
+- `tombi.toml` is now the runtime and managed TOML tooling config
+- active config surface code and tests use the generic TOML tooling config
+  constant instead of Taplo-specific paths
+- docs now describe Tombi/TOML tooling support as the current surface
 
 ## Non-Goals
 
-- Do not replace Taplo in this bead
 - Do not run broad TOML formatting as incidental cleanup
-- Do not keep `.taplo.toml` as a user-visible concept after the runtime tool
-  actually changes
 - Do not add both Taplo and Tombi to the default runtime package just to avoid
   choosing
 
@@ -219,8 +213,8 @@ Create implementation beads for:
   - `nix eval --raw --impure --expr 'let flake = builtins.getFlake "path:/home/lucca/pjs/yazelix"; pkgs = import flake.inputs.nixpkgs { system = builtins.currentSystem; }; in pkgs.taplo.version'`
   - `nix eval --raw --impure --expr 'let flake = builtins.getFlake "path:/home/lucca/pjs/yazelix"; pkgs = import flake.inputs.nixpkgs { system = builtins.currentSystem; }; in if pkgs ? tombi then pkgs.tombi.version else "missing"'`
 - local formatter sample:
-  - `taplo fmt --check yazelix_default.toml config_metadata/*.toml docs/upgrade_notes.toml`
-  - `tombi format --check yazelix_default.toml config_metadata/*.toml docs/upgrade_notes.toml`
+  - `tombi format --check`
+  - `tombi lint --offline`
 - CI/spec check:
   - `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-specs`
 

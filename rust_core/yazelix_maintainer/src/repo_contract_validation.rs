@@ -19,7 +19,7 @@ const MODULE_RELATIVE_PATH: &str = "home_manager/module.nix";
 const HOME_MANAGER_MODULE_DECLARATION_PATH: &str = "yazelix/home_manager/module.nix";
 const MAIN_CONTRACT_RELATIVE_PATH: &str = "config_metadata/main_config_contract.toml";
 const NUSHELL_BUDGET_RELATIVE_PATH: &str = "config_metadata/nushell_budget.toml";
-const TAPLO_RELATIVE_PATH: &str = ".taplo.toml";
+const TOML_TOOLING_CONFIG_RELATIVE_PATH: &str = "tombi.toml";
 const README_LATEST_SERIES_BEGIN: &str = "<!-- BEGIN GENERATED README LATEST SERIES -->";
 const README_LATEST_SERIES_END: &str = "<!-- END GENERATED README LATEST SERIES -->";
 const GUARDED_FILES: &[&str] = &[
@@ -2765,7 +2765,7 @@ fn setup_config_state_fixture(repo_root: &Path) -> Result<ConfigStateFixture, St
         .map_err(|error| format!("Failed to create {}: {}", home_root.display(), error))?;
 
     for relative_path in [
-        TAPLO_RELATIVE_PATH,
+        TOML_TOOLING_CONFIG_RELATIVE_PATH,
         MAIN_TEMPLATE_RELATIVE_PATH,
         MAIN_CONTRACT_RELATIVE_PATH,
     ] {

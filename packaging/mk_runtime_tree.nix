@@ -33,7 +33,7 @@ let
     "carapace"
     "macchina"
     "mise"
-    "taplo"
+    "tombi"
     "git"
     "jq"
     "fd"
@@ -61,7 +61,7 @@ pkgs.runCommand name { } ''
   ln -s ${src}/shells "$out/shells"
 
   ln -s ${src}/CHANGELOG.md "$out/CHANGELOG.md"
-  ln -s ${src}/.taplo.toml "$out/.taplo.toml"
+  ln -s ${src}/tombi.toml "$out/tombi.toml"
   ln -s ${src}/yazelix_default.toml "$out/yazelix_default.toml"
   ln -s ${src}/yazelix_cursors_default.toml "$out/yazelix_cursors_default.toml"
   printf '%s\n' ${pkgs.lib.escapeShellArg runtimeVariant} > "$out/runtime_variant"

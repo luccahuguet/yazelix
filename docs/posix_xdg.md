@@ -11,7 +11,7 @@ Yazelix follows the XDG Base Directory Specification and respects these variable
 
 - Config (XDG_CONFIG_HOME)
   - `~/.config/yazelix/user_configs/yazelix.toml` – user config (auto‑created from template on first run)
-  - `~/.config/yazelix/.taplo.toml` – managed Taplo support file for formatting Yazelix TOML
+  - `~/.config/yazelix/tombi.toml` – managed Tombi support file for formatting Yazelix TOML
   - `~/.config/yazelix/nushell/config/config.nu` – Yazelix Nushell config sourced into your shell
 
 - Data (XDG_DATA_HOME)

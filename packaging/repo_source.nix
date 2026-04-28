@@ -11,8 +11,8 @@ let
     "shells"
   ];
   includeFiles = [
-    ".taplo.toml"
     "CHANGELOG.md"
+    "tombi.toml"
     "yazelix_cursors_default.toml"
     "yazelix_default.toml"
   ];

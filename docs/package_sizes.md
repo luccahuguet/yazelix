@@ -6,7 +6,7 @@ The current trimmed line no longer exposes dependency-group toggles like `recomm
 
 The current runtime includes:
 - the core stack: `nu`, `bash`, `fish`, `zsh`, `zellij`, `yazi`, `helix`, `neovim`
-- helper tools: `fzf`, `zoxide`, `starship`, `lazygit`, `carapace`, `macchina`, `mise`, `taplo`
+- helper tools: `fzf`, `zoxide`, `starship`, `lazygit`, `carapace`, `macchina`, `mise`, `tombi`
 - preview/search helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
 - system helpers required by the runtime wrappers and validators: `git`, `nix`, `coreutils`, `findutils`, `gnugrep`, `gnused`, `util-linux`
 - one packaged terminal variant: Ghostty in the `#yazelix` default and `#yazelix_ghostty`, or WezTerm in `#yazelix_wezterm`

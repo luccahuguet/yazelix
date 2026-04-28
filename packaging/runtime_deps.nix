@@ -45,7 +45,7 @@ with pkgs;
   carapace
   macchina
   mise
-  taplo
+  tombi
   fish
   zsh
   git

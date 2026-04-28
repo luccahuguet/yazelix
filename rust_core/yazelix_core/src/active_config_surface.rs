@@ -8,7 +8,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
-pub const TOML_TOOLING_CONFIG_FILENAME: &str = ".taplo.toml";
+pub const TOML_TOOLING_CONFIG_FILENAME: &str = "tombi.toml";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ActiveConfigPaths {
