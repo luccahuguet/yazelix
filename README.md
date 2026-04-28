@@ -96,7 +96,7 @@ v15 trims Yazelix down to the fast workspace core
 - Made Ghostty the first-party bundled terminal on Linux and macOS while keeping WezTerm, Kitty, Alacritty, and Foot as PATH-provided alternatives
 - Split current-terminal startup into `yzx enter`, kept `yzx launch` as the managed external-terminal entrypoint, and kept `yzx env` as the non-UI tool-environment surface
 - Made `yzx popup` and `yzx menu --popup` share the fast floating-pane path with explicit pane identity, shared toggle semantics, and no helper-pane detour
-- Kept the workspace core around layouts, managed editor/sidebar orchestration, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners through `yzx update upstream` or `yzx update home_manager`
+- Kept the workspace core around layouts, managed editor/sidebar orchestration, `yzx warp`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners through `yzx update upstream` or `yzx update home_manager`
 - Continued the delete-first trim by replacing string-built runtime wrapper commands with direct runtime scripts, making maintainer pins explicit again, and keeping the runtime lock on the declared unstable input
 
 For exact tagged release notes, see [CHANGELOG](./CHANGELOG.md) or run `yzx whats_new` after installing that release

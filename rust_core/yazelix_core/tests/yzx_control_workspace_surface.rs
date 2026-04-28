@@ -18,7 +18,7 @@ fn yzx_control_command_in_fixture(
     command
 }
 
-// Defends: the public Rust-owned `yzx cwd` route retargets the active tab from the session snapshot and syncs the plugin-owned sidebar once.
+// Defends: the Rust-owned legacy workspace-retarget route syncs the plugin-owned sidebar from the active-tab session snapshot once.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_cwd_retargets_workspace_and_syncs_sidebar() {

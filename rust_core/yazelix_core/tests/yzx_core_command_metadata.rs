@@ -42,13 +42,14 @@ fn command_metadata_externs_include_rust_only_leaves_once() {
     );
     assert!(extern_content.contains("--no-shell(-n)"));
     assert!(extern_content.contains("export extern \"yzx config\""));
-    assert!(extern_content.contains("export extern \"yzx cwd\""));
     assert!(extern_content.contains("export extern \"yzx doctor\""));
     assert!(extern_content.contains("export extern \"yzx keys\""));
     assert!(extern_content.contains("export extern \"yzx keys helix\""));
     assert!(extern_content.contains("export extern \"yzx reveal\""));
     assert!(extern_content.contains("export extern \"yzx sponsor\""));
+    assert!(extern_content.contains("export extern \"yzx warp\""));
     assert!(extern_content.contains("export extern \"yzx why\""));
+    assert!(extern_content.contains("--kill(-k)"));
     assert!(extern_content.contains("--path"));
     assert!(extern_content.contains("--yes"));
     assert!(extern_content.contains("--no-backup"));
@@ -71,13 +72,13 @@ fn command_metadata_help_prints_public_yzx_surface() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("Commands:"));
     assert!(stdout.contains("yzx config"));
-    assert!(stdout.contains("yzx cwd"));
     assert!(stdout.contains("yzx doctor"));
     assert!(stdout.contains("yzx env"));
     assert!(stdout.contains("yzx keys"));
     assert!(stdout.contains("yzx reveal"));
     assert!(stdout.contains("yzx run"));
     assert!(stdout.contains("yzx sponsor"));
+    assert!(stdout.contains("yzx warp"));
     assert!(stdout.contains("yzx why"));
     assert!(stdout.contains("yzx update nix"));
 }

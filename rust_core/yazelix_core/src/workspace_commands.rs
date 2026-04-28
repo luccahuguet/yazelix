@@ -1,5 +1,5 @@
 // Test lane: default
-//! Public `yzx cwd`, `yzx reveal`, and `yzx popup` owners for `yzx_control`.
+//! Public workspace command owners for `yzx_control`.
 
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{home_dir_from_env, run_child_in_runtime_env, runtime_dir_from_env};
@@ -9,13 +9,20 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::env;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 const PANE_ORCHESTRATOR_PLUGIN_ALIAS: &str = "yazelix_pane_orchestrator";
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct CwdArgs {
     target: Option<String>,
+    help: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct WarpArgs {
+    target: Option<String>,
+    kill_old_tab: bool,
     help: bool,
 }
 
@@ -84,6 +91,49 @@ struct ActiveTabSessionStateV1 {
 struct SessionSidebarYazi {
     yazi_id: String,
     cwd: String,
+}
+
+pub fn run_yzx_warp(args: &[String]) -> Result<i32, CoreError> {
+    let parsed = parse_warp_args(args)?;
+    if parsed.help {
+        print_warp_help();
+        return Ok(0);
+    }
+
+    if env::var_os("ZELLIJ").is_none() {
+        println!("❌ yzx warp only works inside Zellij.");
+        println!("   Start Yazelix first, then run this command from the tab you want to leave.");
+        return Ok(1);
+    }
+
+    let old_tab_id = if parsed.kill_old_tab {
+        Some(current_zellij_tab_id()?)
+    } else {
+        None
+    };
+    let home_dir = home_dir_from_env()?;
+    let resolved_target = match resolve_warp_target(parsed.target.as_deref(), &home_dir) {
+        Ok(WarpTargetResolution::Target(path)) => path,
+        Ok(WarpTargetResolution::Cancelled) => return Ok(0),
+        Err(message) => {
+            println!("❌ {message}");
+            return Ok(1);
+        }
+    };
+    let target_dir = resolve_existing_target_dir(&resolved_target)?;
+    let tab_name = workspace_tab_name(&target_dir);
+
+    open_zellij_workspace_tab(&target_dir, &tab_name)?;
+    if let Some(tab_id) = old_tab_id {
+        close_zellij_tab_by_id(tab_id)?;
+    }
+
+    println!("✅ Opened Yazelix workspace tab: {}", target_dir.display());
+    println!("   Tab named: {tab_name}");
+    if old_tab_id.is_some() {
+        println!("   Previous tab closed.");
+    }
+    Ok(0)
 }
 
 pub fn run_yzx_cwd(args: &[String]) -> Result<i32, CoreError> {
@@ -484,6 +534,30 @@ fn parse_cwd_args(args: &[String]) -> Result<CwdArgs, CoreError> {
     Ok(parsed)
 }
 
+fn parse_warp_args(args: &[String]) -> Result<WarpArgs, CoreError> {
+    let mut parsed = WarpArgs::default();
+    for arg in args {
+        match arg.as_str() {
+            "-h" | "--help" | "help" => parsed.help = true,
+            "-k" | "--kill" => parsed.kill_old_tab = true,
+            other if other.starts_with('-') => {
+                return Err(CoreError::usage(format!(
+                    "Unknown argument for yzx warp: {other}. Try `yzx warp --help`."
+                )));
+            }
+            other => {
+                if parsed.target.is_some() {
+                    return Err(CoreError::usage(
+                        "yzx warp accepts at most one optional target argument.",
+                    ));
+                }
+                parsed.target = Some(other.to_string());
+            }
+        }
+    }
+    Ok(parsed)
+}
+
 fn parse_reveal_args(args: &[String]) -> Result<RevealArgs, CoreError> {
     let mut parsed = RevealArgs::default();
     for arg in args {
@@ -539,6 +613,19 @@ fn print_cwd_help() {
     println!();
     println!("Arguments:");
     println!("  target       Directory path or zoxide query for the current tab workspace root");
+}
+
+fn print_warp_help() {
+    println!("Open a Yazelix workspace in a new Zellij tab");
+    println!();
+    println!("Usage:");
+    println!("  yzx warp [target] [--kill]");
+    println!();
+    println!("Arguments:");
+    println!("  target       Directory path or zoxide query for the new workspace tab");
+    println!();
+    println!("Flags:");
+    println!("  -k, --kill   Close the previous tab after the new workspace tab opens");
 }
 
 fn print_reveal_help() {
@@ -703,6 +790,63 @@ fn workspace_tab_name(workspace_root: &Path) -> String {
         .filter(|name| !name.is_empty())
         .unwrap_or("unnamed")
         .to_string()
+}
+
+enum WarpTargetResolution {
+    Target(PathBuf),
+    Cancelled,
+}
+
+fn resolve_warp_target(
+    target: Option<&str>,
+    home_dir: &Path,
+) -> Result<WarpTargetResolution, String> {
+    if let Some(target) = target {
+        return resolve_cwd_target(Some(target), home_dir).map(WarpTargetResolution::Target);
+    }
+
+    if !command_is_available("zoxide", home_dir) {
+        return Err(
+            "zoxide is required for interactive yzx warp. Pass a directory path explicitly."
+                .to_string(),
+        );
+    }
+
+    let current_dir =
+        env::current_dir().map_err(|err| format!("Could not read the current directory: {err}"))?;
+    let output = Command::new("zoxide")
+        .args(["query", "-i", "--exclude"])
+        .arg(&current_dir)
+        .env("SHELL", "sh")
+        .env("CLICOLOR", "1")
+        .env("CLICOLOR_FORCE", "1")
+        .stdin(Stdio::inherit())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|err| format!("Failed to launch zoxide: {err}"))?;
+
+    if output.status.success() {
+        let resolved = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if resolved.is_empty() {
+            return Ok(WarpTargetResolution::Cancelled);
+        }
+        return Ok(WarpTargetResolution::Target(PathBuf::from(resolved)));
+    }
+
+    if output.status.code() == Some(130) {
+        return Ok(WarpTargetResolution::Cancelled);
+    }
+
+    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+    if stderr.is_empty() {
+        Err(format!(
+            "zoxide exited with code {}.",
+            output.status.code().unwrap_or(1)
+        ))
+    } else {
+        Err(stderr.trim_start_matches("zoxide: ").to_string())
+    }
 }
 
 fn resolve_reveal_target_path(target: &str, home_dir: &Path) -> Result<PathBuf, String> {
@@ -983,6 +1127,134 @@ fn find_external_command(command_name: &str) -> Option<PathBuf> {
         .find(|candidate| candidate.is_file())
 }
 
+fn zellij_new_tab_args(
+    target_dir: &Path,
+    tab_name: &str,
+    layout_name: Option<&str>,
+) -> Vec<String> {
+    let mut args = vec![
+        "action".to_string(),
+        "new-tab".to_string(),
+        "--cwd".to_string(),
+        target_dir.display().to_string(),
+        "--name".to_string(),
+        tab_name.to_string(),
+    ];
+    if let Some(layout) = layout_name
+        .map(str::trim)
+        .filter(|layout| !layout.is_empty())
+    {
+        args.push("--layout".to_string());
+        args.push(layout.to_string());
+    }
+    args
+}
+
+fn active_tab_id_from_json(raw: &str) -> Option<u64> {
+    serde_json::from_str::<Value>(raw)
+        .ok()?
+        .get("tab_id")?
+        .as_u64()
+}
+
+fn current_zellij_tab_id() -> Result<u64, CoreError> {
+    let output = Command::new("zellij")
+        .args(["action", "current-tab-info", "--json"])
+        .output()
+        .map_err(|source| {
+            CoreError::io(
+                "zellij_current_tab_failed",
+                "Failed to read the current Zellij tab id.",
+                "Run this command inside an active Yazelix/Zellij session, then retry.",
+                "zellij",
+                source,
+            )
+        })?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        return Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "zellij_current_tab_failed",
+            format!("Failed to read the current Zellij tab id: {stderr}"),
+            "Run this command inside an active Yazelix/Zellij session, then retry.",
+            json!({ "stderr": stderr }),
+        ));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    active_tab_id_from_json(&stdout).ok_or_else(|| {
+        CoreError::classified(
+            ErrorClass::Runtime,
+            "zellij_current_tab_unparseable",
+            "Zellij returned current-tab-info JSON without a tab_id.",
+            "Upgrade Zellij or run `yzx warp` without --kill.",
+            json!({ "stdout": stdout.to_string() }),
+        )
+    })
+}
+
+fn open_zellij_workspace_tab(target_dir: &Path, tab_name: &str) -> Result<(), CoreError> {
+    let layout_name = env::var("ZELLIJ_DEFAULT_LAYOUT")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+    let args = zellij_new_tab_args(target_dir, tab_name, layout_name.as_deref());
+    let output = Command::new("zellij")
+        .args(&args)
+        .output()
+        .map_err(|source| {
+            CoreError::io(
+                "zellij_new_tab_failed",
+                "Failed to open a new Yazelix workspace tab.",
+                "Run this command inside an active Yazelix/Zellij session, then retry.",
+                "zellij",
+                source,
+            )
+        })?;
+
+    if output.status.success() {
+        return Ok(());
+    }
+
+    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+    Err(CoreError::classified(
+        ErrorClass::Runtime,
+        "zellij_new_tab_failed",
+        format!("Failed to open a new Yazelix workspace tab: {stderr}"),
+        "Ensure the current Zellij session can create new tabs, then retry.",
+        json!({ "cwd": target_dir.display().to_string(), "stderr": stderr }),
+    ))
+}
+
+fn close_zellij_tab_by_id(tab_id: u64) -> Result<(), CoreError> {
+    let output = Command::new("zellij")
+        .args(["action", "close-tab-by-id", &tab_id.to_string()])
+        .output()
+        .map_err(|source| {
+            CoreError::io(
+                "zellij_close_tab_failed",
+                "Failed to close the previous Zellij tab.",
+                "Close the previous tab manually if the new workspace tab opened.",
+                "zellij",
+                source,
+            )
+        })?;
+
+    if output.status.success() {
+        return Ok(());
+    }
+
+    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+    Err(CoreError::classified(
+        ErrorClass::Runtime,
+        "zellij_close_tab_failed",
+        format!("Failed to close the previous Zellij tab: {stderr}"),
+        "Close the previous tab manually if the new workspace tab opened.",
+        json!({ "tab_id": tab_id, "stderr": stderr }),
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     // Test lane: default
@@ -1074,5 +1346,52 @@ mod tests {
             argv,
             vec!["/tmp/yazelix_hx.sh".to_string(), "README.md".to_string()]
         );
+    }
+
+    // Defends: yzx warp keeps its kill-old-tab behavior explicit instead of overloading positional project queries.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn parses_warp_target_and_kill_flag() {
+        let parsed =
+            parse_warp_args(&["project".to_string(), "--kill".to_string()]).expect("warp args");
+
+        assert_eq!(
+            parsed,
+            WarpArgs {
+                target: Some("project".to_string()),
+                kill_old_tab: true,
+                help: false,
+            }
+        );
+    }
+
+    // Defends: yzx warp opens a fresh tab through structured Zellij argv with cwd/name/layout separated from user input.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn builds_structured_zellij_new_tab_args() {
+        let args = zellij_new_tab_args(Path::new("/tmp/demo"), "demo", Some("yzx_side_closed"));
+
+        assert_eq!(
+            args,
+            vec![
+                "action",
+                "new-tab",
+                "--cwd",
+                "/tmp/demo",
+                "--name",
+                "demo",
+                "--layout",
+                "yzx_side_closed",
+            ]
+        );
+    }
+
+    // Defends: yzx warp --kill closes the original stable tab id rather than whichever tab is focused after new-tab.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn parses_active_zellij_tab_id_from_current_tab_info_json() {
+        let raw = r#"{"position":0,"name":"project","active":true,"tab_id":42}"#;
+
+        assert_eq!(active_tab_id_from_json(raw), Some(42));
     }
 }

@@ -83,7 +83,7 @@ This is not a task list. Follow-up execution belongs in Beads.
 | `rust_core/yazelix_core/src/update_commands.rs` | 497 | `yzx update` | canonical | Public update command family; local path migration logic remains current UX |
 | `rust_core/yazelix_core/src/upgrade_summary.rs` | 512 | upgrade summary model/rendering | canonical | Current `whats_new` and first-run upgrade summary behavior |
 | `rust_core/yazelix_core/src/workspace_asset_contract.rs` | 361 | workspace asset drift checks | canonical | Doctor/validator guardrail for generated runtime state |
-| `rust_core/yazelix_core/src/workspace_commands.rs` | 1102 | `yzx cwd`, `yzx reveal`, popup helpers | canonical | Workspace/session integration owner |
+| `rust_core/yazelix_core/src/workspace_commands.rs` | 1102 | `yzx warp`, `yzx reveal`, popup helpers | canonical | Workspace/session integration owner |
 | `rust_core/yazelix_core/src/yazi_materialization.rs` | 1221 | Yazi config generation | canonical | Large but cohesive generated Yazi owner; legacy override rejection is user-safety behavior |
 | `rust_core/yazelix_core/src/yazi_render_plan.rs` | 283 | Yazi render plan | canonical | Small deterministic config-plan owner |
 | `rust_core/yazelix_core/src/zellij_commands.rs` | 1302 | Zellij control commands | canonical | Owns pane-orchestrator CLI integration |

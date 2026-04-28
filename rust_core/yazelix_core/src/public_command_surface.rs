@@ -121,7 +121,10 @@ const ENTER_FLAGS: &[YzxCommandParameter] = &[
     switch("verbose", None),
 ];
 const UPDATE_NIX_FLAGS: &[YzxCommandParameter] = &[switch("yes", None), switch("verbose", None)];
-const CWD_ARGS: &[YzxCommandParameter] = &[positional("target", "string", true)];
+const WARP_ARGS: &[YzxCommandParameter] = &[
+    positional("target", "string", true),
+    switch("kill", Some("k")),
+];
 const REVEAL_ARGS: &[YzxCommandParameter] = &[positional("target", "string", false)];
 const INSPECT_FLAGS: &[YzxCommandParameter] = &[switch("json", None)];
 const STATUS_FLAGS: &[YzxCommandParameter] = &[switch("versions", Some("V")), switch("json", None)];
@@ -470,7 +473,6 @@ const ONBOARD_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[ONBOARD_COMMAND];
 
 const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
     rust_control_family("config", CONFIG_FAMILY_COMMANDS),
-    rust_control_family("cwd", CWD_FAMILY_COMMANDS),
     rust_control_family("desktop", DESKTOP_FAMILY_COMMANDS),
     rust_control_family("edit", EDIT_FAMILY_COMMANDS),
     rust_control_family("enter", ENTER_FAMILY_COMMANDS),
@@ -491,19 +493,20 @@ const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
     rust_control_family("keys", KEYS_FAMILY_COMMANDS),
     rust_control_family("sponsor", SPONSOR_FAMILY_COMMANDS),
     rust_control_family("update", UPDATE_FAMILY_COMMANDS),
+    rust_control_family("warp", WARP_FAMILY_COMMANDS),
     rust_control_family("whats_new", WHATS_NEW_FAMILY_COMMANDS),
     rust_control_family("why", WHY_FAMILY_COMMANDS),
 ];
 
-const CWD_COMMAND: YzxCommandMetadata = metadata(
-    "yzx cwd",
-    "Retarget the current Yazelix tab workspace directory",
+const WARP_COMMAND: YzxCommandMetadata = metadata(
+    "yzx warp",
+    "Open a project workspace in a new Yazelix tab",
     YzxCommandCategory::Workspace,
-    CWD_ARGS,
+    WARP_ARGS,
     None,
-    None,
+    Some("Resolve a directory or zoxide query, then open it as a fresh workspace tab."),
 );
-const CWD_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[CWD_COMMAND];
+const WARP_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[WARP_COMMAND];
 
 const DESKTOP_ROOT_COMMAND: YzxCommandMetadata = metadata(
     "yzx desktop",
@@ -1180,7 +1183,7 @@ mod tests {
             YzxPublicRootRoute::RustControl
         );
         assert_eq!(
-            classify_yzx_root_route(&["cwd".into(), "/tmp/project".into()]).unwrap(),
+            classify_yzx_root_route(&["warp".into(), "/tmp/project".into()]).unwrap(),
             YzxPublicRootRoute::RustControl
         );
         assert_eq!(

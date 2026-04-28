@@ -92,15 +92,13 @@ Run a single command in the Yazelix environment and exit
 - Dash-prefixed child args do not need special quoting just to avoid Yazelix flag parsing
 - If you want shell parsing, call the shell explicitly, for example: `yzx run bash -lc "lazygit"`
 
-### `yzx cwd [DIR]`
-Retarget the current tab workspace root inside Zellij
-- Default: use the current directory when `DIR` is omitted
+### `yzx warp [DIR] [--kill]`
+Open a project workspace in a new Zellij tab
+- Default: open an interactive zoxide picker when `DIR` is omitted
 - When `DIR` is not an existing path, Yazelix resolves it with `zoxide query`
-- Updates the current tab's Yazelix workspace root and renames the tab
-- Also applies the directory change to the current pane after the command returns
-- When a managed Helix or Neovim editor pane is present, its cwd is also updated
-- When the managed Yazi file-tree sidebar is present, it also follows the updated directory
-- Other existing panes keep their current working directories; new managed actions use the updated tab directory
+- Opens a fresh Yazelix workspace tab at the target directory
+- Uses the active Yazelix layout so the new tab gets the normal managed workspace shape
+- `--kill` / `-k` closes the previous tab after the new workspace tab opens
 - Errors when run outside Zellij
 
 ### `yzx reveal PATH`
@@ -287,9 +285,10 @@ yzx run lazygit              # Run single command and exit
 yzx run bash -lc "lazygit"   # Run through a shell
 yzx run bd ready             # Outside-shell fallback for Beads issue triage
 yzx run bd prime             # Outside-shell fallback for agent-oriented Beads context
-yzx cwd                       # Set the current tab directory to $PWD
-yzx cwd ~/project             # Set the current tab directory explicitly
-yzx cwd yazelix               # Resolve a project via zoxide, then retarget the current tab
+yzx warp                      # Pick a project with zoxide and open it in a new tab
+yzx warp ~/project            # Open a directory as a fresh workspace tab
+yzx warp yazelix              # Resolve a project via zoxide, then open a workspace tab
+yzx warp yazelix --kill       # Open the new workspace tab and close the previous tab
 yzx keys                      # Show Yazelix-owned bindings and remaps
 yzx keys yazi                 # How to view Yazi's own bindings
 yzx keys hx                   # How to discover Helix bindings

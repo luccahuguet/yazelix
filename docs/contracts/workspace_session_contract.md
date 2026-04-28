@@ -34,7 +34,7 @@ This layer owns user intent and path resolution.
 
 Examples:
 
-- resolve `yzx cwd foo` through `zoxide` or the filesystem
+- resolve `yzx warp foo` through `zoxide` or the filesystem
 - decide whether a target path should become a directory or repo-root workspace
 - decide when editor and sidebar cwd should be synchronized
 - generate runtime config before launching the session
@@ -61,7 +61,7 @@ The plugin is the source of truth for managed-pane identity and tab-local worksp
 
 The sidebar Yazi process reports its live pane id, Yazi instance id, and cwd to the pane orchestrator.
 
-The adapter does not own durable workspace state. It publishes observations, and the pane orchestrator validates them against the current tab's managed sidebar pane before exposing them to `yzx reveal`, `yzx cwd`, sidebar refresh, inspect, and status-bus consumers.
+The adapter does not own durable workspace state. It publishes observations, and the pane orchestrator validates them against the current tab's managed sidebar pane before exposing them to `yzx reveal`, sidebar refresh, inspect, and status-bus consumers.
 
 ## Contract Items
 

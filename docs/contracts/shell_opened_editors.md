@@ -18,7 +18,7 @@ Users can start Helix or another editor manually from a shell pane, but Yazelix 
 
 - which pane should Yazi opens target?
 - which pane should `Ctrl+y` focus?
-- which editor pane should `yzx cwd` synchronize?
+- which editor pane should workspace retargeting synchronize?
 
 The contract needs to be explicit.
 
@@ -131,7 +131,7 @@ Those may be explored later, but they are outside this contract.
 1. When a user starts Helix manually from a normal shell pane, that pane is not treated as the managed editor pane.
 2. When Yazi opens a file and no managed editor pane exists, Yazelix creates a new managed editor pane instead of guessing that a shell-opened editor should be reused.
 3. When a managed editor pane exists, Yazi-driven opens target that managed pane even if other editor processes are running in ordinary panes.
-4. When `yzx cwd` or equivalent workspace retargeting runs, managed editor cwd sync applies only to the managed editor pane.
+4. When workspace retargeting runs, managed editor cwd sync applies only to the managed editor pane.
 5. Doctor/docs language distinguishes between "editor process exists somewhere" and "managed editor pane exists in the current tab."
 
 ## Verification

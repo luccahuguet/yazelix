@@ -256,8 +256,8 @@ fn render_yazelix_tutor() -> String {
         command_label("yzx keys")
     ));
     lines.push(format!(
-        "3. Use {} when you want to retarget the current tab workspace root manually. Opening a file from Yazi into the managed editor also moves the workspace root to that file's directory.",
-        command_label("yzx cwd <dir>")
+        "3. Use {} when you want to jump to a project in a fresh workspace tab. Opening a file from Yazi into the managed editor also moves that tab's workspace root to the file's directory.",
+        command_label("yzx warp <dir>")
     ));
     lines.push(format!(
         "4. Use {} for fuzzy command discovery (or {} inside Yazelix) and {} when behavior looks wrong.",

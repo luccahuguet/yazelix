@@ -383,7 +383,7 @@ summary = [
   "Made Ghostty the first-party bundled terminal on Linux and macOS while keeping WezTerm, Kitty, Alacritty, and Foot as PATH-provided alternatives.",
   "Split current-terminal startup into `yzx enter`, kept `yzx launch` as the managed external-terminal entrypoint, and kept `yzx env` as the non-UI tool-environment surface.",
   "Made `yzx popup` and `yzx menu --popup` share the fast floating-pane path with explicit pane identity, shared toggle semantics, and no helper-pane detour.",
-  "Kept the workspace core around layouts, managed editor/sidebar orchestration, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners through `yzx update upstream` or `yzx update home_manager`.",
+  "Kept the workspace core around layouts, managed editor/sidebar orchestration, `yzx warp`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners through `yzx update upstream` or `yzx update home_manager`.",
   "Continued the delete-first trim by replacing string-built runtime wrapper commands with direct runtime scripts, making maintainer pins explicit again, and keeping the runtime lock on the declared unstable input."
 ]
 upgrade_impact = "manual_action_required"
@@ -520,7 +520,7 @@ summary = [
   "The packaged terminal path now ships Ghostty as the default cursor-trail path, WezTerm as the explicit image-compatible package variant, and keeps Kitty, Alacritty, and Foot supported when you provide them on the host `PATH`",
   "The front door is clearer: `yzx launch` opens a managed terminal window, `yzx enter` starts Yazelix in the current terminal, and `yzx env` remains the non-UI environment surface",
   "The fast transient workspace tools now share the floating-pane path: `yzx popup` toggles the configured popup program and `yzx menu --popup` toggles the command palette with the same identity and geometry seam",
-  "The core workspace surface remains layouts, managed editor/sidebar orchestration, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners through `yzx update upstream` or `yzx update home_manager`",
+  "The core workspace surface remains layouts, managed editor/sidebar orchestration, `yzx warp`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners through `yzx update upstream` or `yzx update home_manager`",
   "v15 is the trimmed reboot with narrower Rust scope, not a Rust-free release. The pane orchestrator still owns live workspace and session state. Selective Rust can still land in v15.x where it clearly pays for itself, while v16 remains the Rust-forward release target"
 ]
 version = "v15"

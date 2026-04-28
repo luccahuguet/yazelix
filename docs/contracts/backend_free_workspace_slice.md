@@ -71,13 +71,13 @@ This is the honest closest current analogue to a future narrower workspace-orien
 - Required local conditions:
   - a usable editor command is available from the canonical launch env or ambient shell
 
-### `yzx cwd`
+### `yzx warp`
 
-- Tab-local workspace retargeting is owned by Zellij session state and the pane orchestrator, not by backend provisioning.
-- The proof here is not “works outside Zellij”; it is that the workspace mutation path is session-local once a supported session exists.
+- Project switching is owned by Zellij tab creation and the active Yazelix layout, not by backend provisioning.
+- The proof here is not “works outside Zellij”; it is that the workspace navigation path is session-local once a supported session exists.
 - Required local conditions:
   - inside Zellij
-  - pane orchestrator available
+  - zoxide available for interactive/query resolution, or an explicit existing path
 
 ## Explicit Non-proof Areas
 

@@ -940,7 +940,9 @@ fn print_zellij_retarget_help() {
     println!("Usage:");
     println!("  yzx_control zellij retarget <path> [--editor <kind>]");
     println!();
-    println!("This is the internal variant of `yzx cwd` that does not cd the focused pane.");
+    println!(
+        "This is the internal workspace-retarget primitive that does not cd the focused pane."
+    );
 }
 
 fn resolve_target_dir(target_path: &str) -> Result<PathBuf, CoreError> {
