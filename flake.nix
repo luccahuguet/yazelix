@@ -55,6 +55,12 @@
           inherit pkgs nixgl runtimeVariant;
           fenixPkgs = fenix.packages.${system};
         };
+      yazelixScreenPackage = system: pkgs:
+        import ./packaging/yazelix_screen.nix {
+          inherit pkgs;
+          src = ./.;
+          fenixPkgs = fenix.packages.${system};
+        };
       maintainerShell =
         system: pkgs:
         import ./maintainer_shell.nix {
@@ -81,6 +87,7 @@
           yazelix_default = yazelixPackage system pkgs defaultRuntimeVariant;
           yazelix_ghostty = yazelixPackage system pkgs "ghostty";
           yazelix_wezterm = yazelixPackage system pkgs "wezterm";
+          yazelix_screen = yazelixScreenPackage system pkgs;
           ghostty_cursor_shaders = import ./packaging/ghostty_cursor_shaders.nix {
             inherit pkgs;
             src = ./.;
@@ -96,6 +103,7 @@
           runtime_wezterm = runtime_wezterm;
           yazelix = yazelix_default;
           yazelix_ghostty = yazelix_ghostty;
+          yazelix_screen = yazelix_screen;
           yazelix_wezterm = yazelix_wezterm;
         }
       );
@@ -116,6 +124,10 @@
         yazelix_wezterm = {
           type = "app";
           program = "${self.packages.${system}.yazelix_wezterm}/bin/yzx";
+        };
+        yazelix_screen = {
+          type = "app";
+          program = "${self.packages.${system}.yazelix_screen}/bin/yazelix_screen";
         };
       });
 

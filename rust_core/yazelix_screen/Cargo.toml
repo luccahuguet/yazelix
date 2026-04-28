@@ -4,5 +4,9 @@ version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
 
+[[bin]]
+name = "yazelix_screen"
+path = "src/bin/yazelix_screen.rs"
+
 [dependencies]
 crossterm = "0.29"
