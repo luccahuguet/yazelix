@@ -2,6 +2,7 @@
   config,
   lib,
   fenixPkgs ? null,
+  llmAgentsPackages ? null,
   nixgl ? null,
   pkgs,
   ...
@@ -12,9 +13,34 @@ with lib;
 let
   cfg = config.programs.yazelix;
   defaultRuntimeVariant = "ghostty";
+  agentUsageProgramNames = [
+    "ccusage"
+    "ccusage-codex"
+    "ccusage-amp"
+    "ccusage-opencode"
+  ];
+  agentUsagePackageMap =
+    if llmAgentsPackages == null then
+      { }
+    else
+      {
+        ccusage = llmAgentsPackages.ccusage;
+        "ccusage-codex" = llmAgentsPackages."ccusage-codex";
+        "ccusage-amp" = llmAgentsPackages."ccusage-amp";
+        "ccusage-opencode" = llmAgentsPackages."ccusage-opencode";
+      };
+  selectedAgentUsagePackages =
+    map (
+      program:
+      if builtins.hasAttr program agentUsagePackageMap then
+        builtins.getAttr program agentUsagePackageMap
+      else
+        throw "programs.yazelix.agent_usage_programs requires the flake-provided llm-agents package set"
+    ) cfg.agent_usage_programs;
   yazelixPackage = import ../yazelix_package.nix {
     inherit pkgs fenixPkgs nixgl;
     runtimeVariant = cfg.runtime_variant;
+    extraRuntimePackages = selectedAgentUsagePackages;
   };
   mainConfigContract = builtins.fromTOML (builtins.readFile ../config_metadata/main_config_contract.toml);
   mainContractFields = mainConfigContract.fields;
@@ -193,6 +219,20 @@ in
       '';
     };
 
+    agent_usage_programs = mkOption {
+      type = types.listOf (types.enum agentUsageProgramNames);
+      default = [ ];
+      description = ''
+        Opt-in ccusage binaries from the llm-agents flake to include in the Yazelix runtime.
+
+        These power optional zellij.widget_tray entries:
+        - "ccusage": claude_usage
+        - "ccusage-codex": codex_usage
+        - "ccusage-amp": amp_usage
+        - "ccusage-opencode": opencode_usage
+      '';
+    };
+
     # Configuration options (mirrors yazelix_default.toml structure)
     default_shell = mkMainContractOption "shell.default_shell" {
       description = "Default shell for Zellij sessions";
@@ -315,7 +355,7 @@ in
     };
 
     zellij_widget_tray = mkMainContractOption "zellij.widget_tray" {
-      description = "Zjstatus widget tray order (editor/shell/term/workspace/ai_activity/token_budget/cpu/ram)";
+      description = "Zjstatus widget tray order (editor/shell/term/workspace/ai_activity/token_budget/claude_usage/codex_usage/amp_usage/opencode_usage/cpu/ram)";
     };
 
     zellij_custom_text = mkMainContractOption "zellij.custom_text" {

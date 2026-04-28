@@ -9,6 +9,7 @@
   nixgl ? null,
   fenixPkgs ? null,
   runtimeVariant ? "ghostty",
+  extraRuntimePackages ? [ ],
 }:
 
 let
@@ -20,6 +21,6 @@ let
   ];
 in
 import ./packaging/mk_yazelix_package.nix {
-  inherit pkgs src rust_core_src nixgl fenixPkgs runtimeVariant;
+  inherit pkgs src rust_core_src nixgl fenixPkgs runtimeVariant extraRuntimePackages;
   metaPlatforms = firstPartyPlatforms;
 }

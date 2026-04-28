@@ -58,11 +58,17 @@ widget_tray = [
   # "workspace", # Current workspace/focus from the pane-orchestrator status bus
   # "ai_activity", # AI pane activity from status-bus extension facts
   # "token_budget", # AI token-budget status-bus extension point
+  # "claude_usage", # Claude Code usage from opt-in ccusage package
+  # "codex_usage", # Codex usage from opt-in ccusage-codex package
+  # "amp_usage", # Amp usage from opt-in ccusage-amp package
+  # "opencode_usage", # OpenCode usage from opt-in ccusage-opencode package
   "cpu",     # CPU usage
   "ram",     # RAM usage
 ]
 ```
 Comment out any line to hide that widget. Order matters. Restart Yazelix to regenerate layouts.
+
+The usage widgets are inert until their matching ccusage binary is available in the Yazelix runtime. Standalone flake users can install `.#yazelix_agent_tools`; Home Manager users can set `programs.yazelix.agent_usage_programs = [ "ccusage" "ccusage-codex" ]`.
 
 **Idle screen saver (yazelix.toml):**
 ```toml

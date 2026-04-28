@@ -19,6 +19,10 @@
       url = "github:dj95/zjstatus";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    llm-agents = {
+      url = "github:numtide/llm-agents.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -30,6 +34,7 @@
       fenix,
       beads,
       zjstatus,
+      llm-agents,
     }:
     let
       systems = [
@@ -43,17 +48,30 @@
       homeManagerModule = { pkgs, ... }: {
         _module.args.nixgl = nixgl;
         _module.args.fenixPkgs = fenix.packages.${pkgs.stdenv.hostPlatform.system};
+        _module.args.llmAgentsPackages = llm-agents.packages.${pkgs.stdenv.hostPlatform.system};
         imports = [ ./home_manager/module.nix ];
       };
-      runtimePackage = system: pkgs: runtimeVariant:
+      agentUsagePackages = system:
+        let
+          packages = llm-agents.packages.${system};
+        in
+        [
+          packages.ccusage
+          packages."ccusage-codex"
+          packages."ccusage-amp"
+          packages."ccusage-opencode"
+        ];
+      runtimePackage = system: pkgs: runtimeVariant: extraRuntimePackages:
         import ./yazelix_runtime_package.nix {
           inherit pkgs nixgl runtimeVariant;
           fenixPkgs = fenix.packages.${system};
+          inherit extraRuntimePackages;
         };
-      yazelixPackage = system: pkgs: runtimeVariant:
+      yazelixPackage = system: pkgs: runtimeVariant: extraRuntimePackages:
         import ./yazelix_package.nix {
           inherit pkgs nixgl runtimeVariant;
           fenixPkgs = fenix.packages.${system};
+          inherit extraRuntimePackages;
         };
       yazelixScreenPackage = system: pkgs:
         import ./packaging/yazelix_screen.nix {
@@ -81,12 +99,16 @@
         let
           pkgs = mkPkgs system;
           defaultRuntimeVariant = "ghostty";
-          runtime_default = runtimePackage system pkgs defaultRuntimeVariant;
-          runtime_ghostty = runtimePackage system pkgs "ghostty";
-          runtime_wezterm = runtimePackage system pkgs "wezterm";
-          yazelix_default = yazelixPackage system pkgs defaultRuntimeVariant;
-          yazelix_ghostty = yazelixPackage system pkgs "ghostty";
-          yazelix_wezterm = yazelixPackage system pkgs "wezterm";
+          noExtraRuntimePackages = [ ];
+          agentUsageRuntimePackages = agentUsagePackages system;
+          runtime_default = runtimePackage system pkgs defaultRuntimeVariant noExtraRuntimePackages;
+          runtime_ghostty = runtimePackage system pkgs "ghostty" noExtraRuntimePackages;
+          runtime_wezterm = runtimePackage system pkgs "wezterm" noExtraRuntimePackages;
+          runtime_agent_tools = runtimePackage system pkgs defaultRuntimeVariant agentUsageRuntimePackages;
+          yazelix_default = yazelixPackage system pkgs defaultRuntimeVariant noExtraRuntimePackages;
+          yazelix_ghostty = yazelixPackage system pkgs "ghostty" noExtraRuntimePackages;
+          yazelix_wezterm = yazelixPackage system pkgs "wezterm" noExtraRuntimePackages;
+          yazelix_agent_tools = yazelixPackage system pkgs defaultRuntimeVariant agentUsageRuntimePackages;
           yazelix_screen = yazelixScreenPackage system pkgs;
           ghostty_cursor_shaders = import ./packaging/ghostty_cursor_shaders.nix {
             inherit pkgs;
@@ -99,9 +121,11 @@
           default = yazelix_default;
           ghostty_cursor_shaders = ghostty_cursor_shaders;
           runtime = runtime_default;
+          runtime_agent_tools = runtime_agent_tools;
           runtime_ghostty = runtime_ghostty;
           runtime_wezterm = runtime_wezterm;
           yazelix = yazelix_default;
+          yazelix_agent_tools = yazelix_agent_tools;
           yazelix_ghostty = yazelix_ghostty;
           yazelix_screen = yazelix_screen;
           yazelix_wezterm = yazelix_wezterm;
@@ -124,6 +148,10 @@
         yazelix_wezterm = {
           type = "app";
           program = "${self.packages.${system}.yazelix_wezterm}/bin/yzx";
+        };
+        yazelix_agent_tools = {
+          type = "app";
+          program = "${self.packages.${system}.yazelix_agent_tools}/bin/yzx";
         };
         yazelix_screen = {
           type = "app";

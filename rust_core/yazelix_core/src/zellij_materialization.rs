@@ -1848,6 +1848,10 @@ ui { pane_frames { hide_session_name true } }
         assert!(template.contains("status-bus-ai-activity"));
         assert!(template.contains("command_token_budget_command"));
         assert!(template.contains("status-bus-token-budget"));
+        assert!(template.contains("command_claude_usage_command"));
+        assert!(template.contains("agent-usage claude"));
+        assert!(template.contains("command_codex_usage_command"));
+        assert!(template.contains("agent-usage codex"));
     }
     // Regression: legacy plugin permission blocks are recognized by both stable and hashed wasm names.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10

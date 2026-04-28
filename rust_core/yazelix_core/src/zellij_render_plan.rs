@@ -52,6 +52,10 @@ const WIDGET_TRAY_ALLOWED: &[&str] = &[
     "workspace",
     "ai_activity",
     "token_budget",
+    "claude_usage",
+    "codex_usage",
+    "amp_usage",
+    "opencode_usage",
     "cpu",
     "ram",
 ];
@@ -661,15 +665,22 @@ mod tests {
         assert!(compute_zellij_render_plan(&req).is_err());
     }
 
-    // Defends: AI status widgets are accepted as optional extension points without changing the default tray.
+    // Defends: AI status and usage widgets are accepted as optional extension points without changing the default tray.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn accepts_ai_extension_tray_widgets_without_defaulting_them() {
         let mut req = sample_request();
-        req.zellij_widget_tray = Some(vec!["ai_activity".into(), "token_budget".into()]);
+        req.zellij_widget_tray = Some(vec![
+            "ai_activity".into(),
+            "token_budget".into(),
+            "claude_usage".into(),
+        ]);
         let plan = compute_zellij_render_plan(&req).unwrap();
 
-        assert_eq!(plan.widget_tray, vec!["ai_activity", "token_budget"]);
+        assert_eq!(
+            plan.widget_tray,
+            vec!["ai_activity", "token_budget", "claude_usage"]
+        );
         assert_eq!(
             default_widget_tray(),
             vec!["editor", "shell", "term", "cpu", "ram"]

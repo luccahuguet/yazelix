@@ -291,6 +291,10 @@ allowed_values = [
   "workspace",
   "ai_activity",
   "token_budget",
+  "claude_usage",
+  "codex_usage",
+  "amp_usage",
+  "opencode_usage",
   "cpu",
   "ram",
 ]

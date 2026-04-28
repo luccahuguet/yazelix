@@ -5,10 +5,11 @@
   name ? "yazelix-runtime",
   rustCoreHelper ? null,
   runtimeVariant ? "ghostty",
+  extraRuntimePackages ? [ ],
 }:
 
 let
-  runtimeDeps = import ./runtime_deps.nix { inherit pkgs nixgl runtimeVariant; };
+  runtimeDeps = (import ./runtime_deps.nix { inherit pkgs nixgl runtimeVariant; }) ++ extraRuntimePackages;
   runtimeBinDirs = map (pkg: "${pkg}/bin") runtimeDeps;
   escapedRuntimeBinDirs = pkgs.lib.escapeShellArgs runtimeBinDirs;
   exportedRuntimeCommands = [
@@ -46,6 +47,10 @@ let
     "pdftoppm"
     "pdftocairo"
     "resvg"
+    "ccusage"
+    "ccusage-codex"
+    "ccusage-amp"
+    "ccusage-opencode"
   ];
   escapedExportedRuntimeCommands = pkgs.lib.escapeShellArgs exportedRuntimeCommands;
 in

@@ -31,6 +31,7 @@ pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
     "status-bus-workspace",
     "status-bus-ai-activity",
     "status-bus-token-budget",
+    "agent-usage",
     "retarget",
     "open-editor",
     "open-editor-cwd",
@@ -84,6 +85,20 @@ struct ZellijStatusBusWorkspaceArgs {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ZellijStatusBusWidgetArgs {
     help: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct ZellijAgentUsageArgs {
+    provider: Option<String>,
+    help: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AgentUsageProvider {
+    Claude,
+    Codex,
+    Amp,
+    Opencode,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -350,6 +365,29 @@ fn parse_zellij_status_bus_widget_args(
     Ok(parsed)
 }
 
+fn parse_zellij_agent_usage_args(args: &[String]) -> Result<ZellijAgentUsageArgs, CoreError> {
+    let mut parsed = ZellijAgentUsageArgs::default();
+    for arg in args {
+        match arg.as_str() {
+            "-h" | "--help" | "help" => parsed.help = true,
+            other if other.starts_with('-') => {
+                return Err(CoreError::usage(format!(
+                    "Unknown argument for zellij agent-usage: {other}"
+                )));
+            }
+            other => {
+                if parsed.provider.is_some() {
+                    return Err(CoreError::usage(
+                        "zellij agent-usage accepts exactly one provider".to_string(),
+                    ));
+                }
+                parsed.provider = Some(other.to_string());
+            }
+        }
+    }
+    Ok(parsed)
+}
+
 fn print_zellij_status_bus_workspace_help() {
     println!("Render the workspace status-bus fact for zjstatus");
     println!();
@@ -369,6 +407,13 @@ fn print_zellij_status_bus_token_budget_help() {
     println!();
     println!("Usage:");
     println!("  yzx_control zellij status-bus-token-budget");
+}
+
+fn print_zellij_agent_usage_help() {
+    println!("Render an opt-in ccusage provider summary for zjstatus");
+    println!();
+    println!("Usage:");
+    println!("  yzx_control zellij agent-usage <claude|codex|amp|opencode>");
 }
 
 pub fn run_zellij_inspect_session(args: &[String]) -> Result<i32, CoreError> {
@@ -504,6 +549,55 @@ pub fn run_zellij_status_bus_token_budget(args: &[String]) -> Result<i32, CoreEr
     Ok(0)
 }
 
+pub fn run_zellij_agent_usage(args: &[String]) -> Result<i32, CoreError> {
+    let parsed = parse_zellij_agent_usage_args(args)?;
+    if parsed.help {
+        print_zellij_agent_usage_help();
+        return Ok(0);
+    }
+    let Some(provider) = parsed
+        .provider
+        .as_deref()
+        .and_then(parse_agent_usage_provider)
+    else {
+        return Err(CoreError::usage(
+            "zellij agent-usage requires one of: claude, codex, amp, opencode".to_string(),
+        ));
+    };
+
+    let Some(binary_path) = find_command_in_path(agent_usage_binary(provider)) else {
+        println!();
+        return Ok(0);
+    };
+
+    let output = Command::new(binary_path)
+        .args(["blocks", "--active", "--json"])
+        .output()
+        .map_err(|source| {
+            CoreError::io(
+                "agent_usage_failed",
+                "Failed to run the configured ccusage provider.",
+                "Ensure the opt-in agent usage package is healthy, then retry.",
+                agent_usage_binary(provider),
+                source,
+            )
+        })?;
+
+    if !output.status.success() {
+        println!();
+        return Ok(0);
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let summary = agent_usage_summary_from_json(&stdout);
+    if summary.is_empty() {
+        println!();
+    } else {
+        println!("{}", render_agent_usage_widget(provider, &summary));
+    }
+    Ok(0)
+}
+
 fn render_status_bus_workspace_widget(value: &Value) -> String {
     let root = nested_str(value, &["workspace", "root"]).unwrap_or("");
     let workspace = Path::new(root)
@@ -605,6 +699,162 @@ fn format_token_count(tokens: u64) -> String {
         format!("{}k", tokens / 1_000)
     } else {
         tokens.to_string()
+    }
+}
+
+fn parse_agent_usage_provider(raw: &str) -> Option<AgentUsageProvider> {
+    match raw.trim() {
+        "claude" | "ccusage" => Some(AgentUsageProvider::Claude),
+        "codex" | "ccusage-codex" => Some(AgentUsageProvider::Codex),
+        "amp" | "ccusage-amp" => Some(AgentUsageProvider::Amp),
+        "opencode" | "ccusage-opencode" => Some(AgentUsageProvider::Opencode),
+        _ => None,
+    }
+}
+
+fn agent_usage_binary(provider: AgentUsageProvider) -> &'static str {
+    match provider {
+        AgentUsageProvider::Claude => "ccusage",
+        AgentUsageProvider::Codex => "ccusage-codex",
+        AgentUsageProvider::Amp => "ccusage-amp",
+        AgentUsageProvider::Opencode => "ccusage-opencode",
+    }
+}
+
+fn agent_usage_label(provider: AgentUsageProvider) -> &'static str {
+    match provider {
+        AgentUsageProvider::Claude => "claude",
+        AgentUsageProvider::Codex => "codex",
+        AgentUsageProvider::Amp => "amp",
+        AgentUsageProvider::Opencode => "opencode",
+    }
+}
+
+fn find_command_in_path(command_name: &str) -> Option<PathBuf> {
+    let path_var = env::var_os("PATH")?;
+    env::split_paths(&path_var)
+        .map(|entry| entry.join(command_name))
+        .find(|candidate| candidate.is_file())
+}
+
+fn agent_usage_summary_from_json(raw: &str) -> String {
+    let Ok(value) = serde_json::from_str::<Value>(raw) else {
+        return String::new();
+    };
+    let selected = value
+        .get("blocks")
+        .and_then(Value::as_array)
+        .and_then(|blocks| {
+            blocks
+                .iter()
+                .find(|block| {
+                    block
+                        .get("isActive")
+                        .or_else(|| block.get("is_active"))
+                        .and_then(Value::as_bool)
+                        == Some(true)
+                })
+                .or_else(|| blocks.first())
+        })
+        .or_else(|| value.get("block"))
+        .unwrap_or(&value);
+
+    let mut parts = Vec::new();
+    if let Some(tokens) = first_u64_at(
+        selected,
+        &[
+            &["totalTokens"],
+            &["total_tokens"],
+            &["usage", "totalTokens"],
+            &["usage", "total_tokens"],
+            &["totals", "totalTokens"],
+            &["totals", "total_tokens"],
+            &["totals", "tokens"],
+        ],
+    ) {
+        parts.push(format_token_count(tokens));
+    }
+    if let Some(cost) = first_f64_at(
+        selected,
+        &[
+            &["costUSD"],
+            &["cost_usd"],
+            &["totalCost"],
+            &["total_cost"],
+            &["totals", "costUSD"],
+            &["totals", "cost_usd"],
+        ],
+    ) {
+        parts.push(format_agent_usage_cost(cost));
+    }
+    if let Some(minutes) = first_i64_at(
+        selected,
+        &[
+            &["remainingMinutes"],
+            &["remaining_minutes"],
+            &["projection", "remainingMinutes"],
+            &["projection", "remaining_minutes"],
+        ],
+    ) {
+        if minutes > 0 {
+            parts.push(format_remaining_minutes(minutes));
+        }
+    }
+    parts.join(" ")
+}
+
+fn render_agent_usage_widget(provider: AgentUsageProvider, summary: &str) -> String {
+    let label = agent_usage_label(provider);
+    format!("#[fg=#bb88ff,bold][{label} {summary}]")
+}
+
+fn first_u64_at(value: &Value, paths: &[&[&str]]) -> Option<u64> {
+    paths
+        .iter()
+        .find_map(|path| nested_value(value, path)?.as_u64())
+}
+
+fn first_i64_at(value: &Value, paths: &[&[&str]]) -> Option<i64> {
+    paths
+        .iter()
+        .find_map(|path| nested_value(value, path)?.as_i64())
+}
+
+fn first_f64_at(value: &Value, paths: &[&[&str]]) -> Option<f64> {
+    paths
+        .iter()
+        .find_map(|path| nested_value(value, path)?.as_f64())
+}
+
+fn nested_value<'a>(value: &'a Value, path: &[&str]) -> Option<&'a Value> {
+    let mut current = value;
+    for segment in path {
+        current = current.get(*segment)?;
+    }
+    Some(current)
+}
+
+fn format_agent_usage_cost(cost: f64) -> String {
+    if cost >= 10.0 {
+        format!("${cost:.0}")
+    } else if cost >= 1.0 {
+        format!("${cost:.2}")
+    } else {
+        format!("${cost:.3}")
+    }
+}
+
+fn format_remaining_minutes(minutes: i64) -> String {
+    if minutes >= 60 {
+        let hours = minutes / 60;
+        let remaining = minutes % 60;
+        if remaining == 0 {
+            format!("{hours}h")
+        } else {
+            format!("{hours}h{remaining}m")
+        }
+    } else {
+        format!("{minutes}m")
     }
 }
 
@@ -1842,5 +2092,42 @@ mod tests {
             "codex:120k/200k"
         );
         assert_eq!(render_status_bus_token_budget_widget(&empty), "unknown");
+    }
+
+    // Defends: ccusage-backed tray widgets derive a compact, fully formatted segment from the active usage block.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn agent_usage_widget_formats_active_json_block() {
+        let summary = agent_usage_summary_from_json(
+            r#"{"blocks":[{"isActive":false,"totalTokens":10},{"isActive":true,"totalTokens":123456,"costUSD":1.234,"projection":{"remainingMinutes":137}}]}"#,
+        );
+
+        assert_eq!(summary, "123k $1.23 2h17m");
+        assert_eq!(
+            render_agent_usage_widget(AgentUsageProvider::Codex, &summary),
+            "#[fg=#bb88ff,bold][codex 123k $1.23 2h17m]"
+        );
+    }
+
+    // Defends: provider aliases map to the exact opt-in ccusage binaries used by flake and Home Manager package wiring.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn agent_usage_provider_aliases_map_to_binaries() {
+        assert_eq!(
+            parse_agent_usage_provider("claude").map(agent_usage_binary),
+            Some("ccusage")
+        );
+        assert_eq!(
+            parse_agent_usage_provider("ccusage-codex").map(agent_usage_binary),
+            Some("ccusage-codex")
+        );
+        assert_eq!(
+            parse_agent_usage_provider("amp").map(agent_usage_binary),
+            Some("ccusage-amp")
+        );
+        assert_eq!(
+            parse_agent_usage_provider("opencode").map(agent_usage_binary),
+            Some("ccusage-opencode")
+        );
     }
 }

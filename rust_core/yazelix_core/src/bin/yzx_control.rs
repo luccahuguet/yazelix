@@ -55,6 +55,7 @@ use yazelix_core::run_yzx_tutor;
 use yazelix_core::run_yzx_warp;
 use yazelix_core::run_yzx_whats_new;
 use yazelix_core::run_yzx_why;
+use yazelix_core::run_zellij_agent_usage;
 use yazelix_core::run_zellij_get_workspace_root;
 use yazelix_core::run_zellij_inspect_session;
 use yazelix_core::run_zellij_open_editor;
@@ -108,6 +109,7 @@ fn usage() -> ! {
     eprintln!("       yzx_control zellij pipe <command> [--payload <json>]");
     eprintln!("       yzx_control zellij get-workspace-root [--include-bootstrap]");
     eprintln!("       yzx_control zellij inspect-session [--json]");
+    eprintln!("       yzx_control zellij agent-usage <claude|codex|amp|opencode>");
     eprintln!("       yzx_control zellij retarget <path> [--editor <kind>]");
     eprintln!("       yzx_control zellij open-editor <path> [path ...]");
     eprintln!("       yzx_control zellij open-editor-cwd <path>");
@@ -1111,6 +1113,7 @@ fn run_zellij(args: &[String]) -> Result<i32, CoreError> {
     let mut argv = args.to_vec();
     let sub = argv.remove(0);
     match sub.as_str() {
+        "agent-usage" => run_zellij_agent_usage(&argv),
         "pipe" => run_zellij_pipe(&argv),
         "get-workspace-root" => run_zellij_get_workspace_root(&argv),
         "inspect-session" => run_zellij_inspect_session(&argv),
