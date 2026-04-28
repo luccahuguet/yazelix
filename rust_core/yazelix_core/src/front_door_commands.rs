@@ -19,10 +19,45 @@ const ANSI_WHITE: &str = "\u{1b}[37m";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum TutorView {
-    Yazelix,
+    Overview,
+    Begin,
+    List,
+    Lesson(TutorLesson),
     Helix,
     Nushell,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TutorLesson {
+    Workspace,
+    Discovery,
+    ToolTutors,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct TutorLessonSpec {
+    id: &'static str,
+    title: &'static str,
+    summary: &'static str,
+}
+
+const TUTOR_LESSONS: &[TutorLessonSpec] = &[
+    TutorLessonSpec {
+        id: "workspace",
+        title: "Workspace roots and managed panes",
+        summary: "Practice the current-tab workspace model, Yazi handoff, and fresh project tabs",
+    },
+    TutorLessonSpec {
+        id: "discovery",
+        title: "Command and key discovery",
+        summary: "Use the command palette, key tables, and doctor output without memorizing everything",
+    },
+    TutorLessonSpec {
+        id: "tool_tutors",
+        title: "Helix and Nushell tutors",
+        summary: "Jump from Yazelix-specific guidance into the upstream editor and shell tutors",
+    },
+];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct TutorArgs {
@@ -51,8 +86,20 @@ pub fn run_yzx_tutor(args: &[String]) -> Result<i32, CoreError> {
     }
 
     match parsed.view {
-        TutorView::Yazelix => {
-            print!("{}", render_yazelix_tutor());
+        TutorView::Overview => {
+            print!("{}", render_yazelix_tutor_overview());
+            Ok(0)
+        }
+        TutorView::Begin => {
+            print!("{}", render_tutor_lesson(TutorLesson::Workspace));
+            Ok(0)
+        }
+        TutorView::List => {
+            print!("{}", render_tutor_list());
+            Ok(0)
+        }
+        TutorView::Lesson(lesson) => {
+            print!("{}", render_tutor_lesson(lesson));
             Ok(0)
         }
         TutorView::Helix => run_external_command("hx", &["--tutor"], "Helix"),
@@ -107,7 +154,12 @@ fn parse_tutor_args(args: &[String]) -> Result<TutorArgs, CoreError> {
     }
 
     let view = match tokens.as_slice() {
-        [] => TutorView::Yazelix,
+        [] => TutorView::Overview,
+        ["begin"] => TutorView::Begin,
+        ["list"] => TutorView::List,
+        [lesson] if tutor_lesson_from_id(lesson).is_some() => {
+            TutorView::Lesson(tutor_lesson_from_id(lesson).unwrap())
+        }
         ["hx"] | ["helix"] => TutorView::Helix,
         ["nu"] | ["nushell"] => TutorView::Nushell,
         [other] => {
@@ -185,10 +237,15 @@ fn configured_game_of_life_cell_style() -> Result<GameOfLifeCellStyle, CoreError
 }
 
 fn print_tutor_help() {
-    println!("Show the Yazelix guided overview");
+    println!("Show the Yazelix guided tutor");
     println!();
     println!("Usage:");
     println!("  yzx tutor");
+    println!("  yzx tutor begin");
+    println!("  yzx tutor list");
+    println!("  yzx tutor workspace");
+    println!("  yzx tutor discovery");
+    println!("  yzx tutor tool_tutors");
     println!("  yzx tutor hx");
     println!("  yzx tutor helix");
     println!("  yzx tutor nu");
@@ -236,7 +293,7 @@ fn command_label(text: &str) -> String {
     format!("{ANSI_WHITE}{text}{ANSI_RESET}")
 }
 
-fn render_yazelix_tutor() -> String {
+fn render_yazelix_tutor_overview() -> String {
     let mut lines = Vec::new();
     lines.push(heading("Yazelix tutor"));
     lines.push(String::new());
@@ -247,17 +304,21 @@ fn render_yazelix_tutor() -> String {
     lines.push(String::new());
     lines.push(heading("Start here"));
     lines.push(format!(
-        "1. Launch a session with {} or start it in the current terminal with {}.",
+        "Need a session first? Launch with {} or start in the current terminal with {}.",
         command_label("yzx launch"),
         command_label("yzx enter")
     ));
     lines.push(format!(
-        "2. Learn the workspace-critical bindings with {}.",
-        command_label("yzx keys")
+        "1. Start the guided flow with {}.",
+        command_label("yzx tutor begin")
     ));
     lines.push(format!(
-        "3. Use {} when you want to jump to a project in a fresh workspace tab. Opening a file from Yazi into the managed editor also moves that tab's workspace root to the file's directory.",
-        command_label("yzx warp <dir>")
+        "2. See every short lesson with {}.",
+        command_label("yzx tutor list")
+    ));
+    lines.push(format!(
+        "3. Learn the workspace-critical bindings with {}.",
+        command_label("yzx keys")
     ));
     lines.push(format!(
         "4. Use {} for fuzzy command discovery (or {} inside Yazelix) and {} when behavior looks wrong.",
@@ -307,6 +368,145 @@ fn render_yazelix_tutor() -> String {
     format!("{}\n", lines.join("\n"))
 }
 
+fn tutor_lesson_from_id(id: &str) -> Option<TutorLesson> {
+    match id {
+        "workspace" => Some(TutorLesson::Workspace),
+        "discovery" => Some(TutorLesson::Discovery),
+        "tool_tutors" => Some(TutorLesson::ToolTutors),
+        _ => None,
+    }
+}
+
+fn tutor_lesson_spec(lesson: TutorLesson) -> &'static TutorLessonSpec {
+    let id = match lesson {
+        TutorLesson::Workspace => "workspace",
+        TutorLesson::Discovery => "discovery",
+        TutorLesson::ToolTutors => "tool_tutors",
+    };
+    TUTOR_LESSONS
+        .iter()
+        .find(|spec| spec.id == id)
+        .expect("lesson spec exists")
+}
+
+fn render_tutor_list() -> String {
+    let mut lines = Vec::new();
+    lines.push(heading("Yazelix tutor lessons"));
+    lines.push(String::new());
+    for (index, lesson) in TUTOR_LESSONS.iter().enumerate() {
+        lines.push(format!(
+            "{}. {} {}",
+            index + 1,
+            command_label(&format!("yzx tutor {}", lesson.id)),
+            lesson.title
+        ));
+        lines.push(format!("   {}", lesson.summary));
+    }
+    lines.push(String::new());
+    lines.push(format!("Start with {}.", command_label("yzx tutor begin")));
+    format!("{}\n", lines.join("\n"))
+}
+
+fn render_tutor_lesson(lesson: TutorLesson) -> String {
+    match lesson {
+        TutorLesson::Workspace => render_workspace_lesson(),
+        TutorLesson::Discovery => render_discovery_lesson(),
+        TutorLesson::ToolTutors => render_tool_tutors_lesson(),
+    }
+}
+
+fn render_lesson_header(lesson: TutorLesson) -> Vec<String> {
+    let spec = tutor_lesson_spec(lesson);
+    vec![
+        heading(&format!("Yazelix tutor: {}", spec.title)),
+        String::new(),
+        spec.summary.to_string(),
+        String::new(),
+    ]
+}
+
+fn render_workspace_lesson() -> String {
+    let mut lines = render_lesson_header(TutorLesson::Workspace);
+    lines.push(heading("Learn"));
+    lines.push("The current tab has a workspace root. Yazelix uses that root for new panes, popup commands, and managed editor/sidebar coordination.".to_string());
+    lines.push("Opening a file from Yazi into the managed editor also moves that tab's workspace root to the file's directory.".to_string());
+    lines.push(String::new());
+    lines.push(heading("Mini quest"));
+    lines.push(format!(
+        "1. Run {} to open this directory as a fresh workspace tab.",
+        command_label("yzx warp .")
+    ));
+    lines.push(format!(
+        "2. Run {} and check the Yazi section before opening a file from the sidebar.",
+        command_label("yzx keys yazi")
+    ));
+    lines.push(format!(
+        "3. Run {} and confirm the workspace facts match the tab you expect.",
+        command_label("yzx status")
+    ));
+    lines.push(String::new());
+    lines.push(format!(
+        "Next lesson: {}.",
+        command_label("yzx tutor discovery")
+    ));
+    format!("{}\n", lines.join("\n"))
+}
+
+fn render_discovery_lesson() -> String {
+    let mut lines = render_lesson_header(TutorLesson::Discovery);
+    lines.push(heading("Learn"));
+    lines.push(
+        "Use command surfaces when you know what you want, and discovery surfaces when you do not."
+            .to_string(),
+    );
+    lines.push(String::new());
+    lines.push(heading("Mini quest"));
+    lines.push(format!(
+        "1. Run {} for the command reference.",
+        command_label("yzx help")
+    ));
+    lines.push(format!(
+        "2. Run {} for keybinding discovery.",
+        command_label("yzx keys")
+    ));
+    lines.push(format!(
+        "3. Run {} for fuzzy command discovery, or press {} inside Yazelix.",
+        command_label("yzx menu"),
+        command_label("Alt+Shift+M")
+    ));
+    lines.push(format!(
+        "4. Run {} when the current runtime or config feels wrong.",
+        command_label("yzx doctor")
+    ));
+    lines.push(String::new());
+    lines.push(format!(
+        "Next lesson: {}.",
+        command_label("yzx tutor tool_tutors")
+    ));
+    format!("{}\n", lines.join("\n"))
+}
+
+fn render_tool_tutors_lesson() -> String {
+    let mut lines = render_lesson_header(TutorLesson::ToolTutors);
+    lines.push(heading("Learn"));
+    lines.push("Yazelix owns the workspace integration. Helix and Nushell still have their own deep learning flows.".to_string());
+    lines.push(String::new());
+    lines.push(heading("Mini quest"));
+    lines.push(format!(
+        "1. Run {} to practice Helix inside the editor's own tutor.",
+        command_label("yzx tutor hx")
+    ));
+    lines.push(format!(
+        "2. Run {} to practice Nushell in Nushell's own tutor.",
+        command_label("yzx tutor nu")
+    ));
+    lines.push(format!(
+        "3. Return to {} when you want the Yazelix workspace path again.",
+        command_label("yzx tutor list")
+    ));
+    format!("{}\n", lines.join("\n"))
+}
+
 fn run_external_command(command: &str, args: &[&str], label: &str) -> Result<i32, CoreError> {
     let status = Command::new(command).args(args).status().map_err(|_| {
         let remediation = match command {
@@ -348,6 +548,27 @@ mod tests {
                 help: false,
             }
         );
+        assert_eq!(
+            parse_tutor_args(&["begin".into()]).unwrap(),
+            TutorArgs {
+                view: TutorView::Begin,
+                help: false,
+            }
+        );
+        assert_eq!(
+            parse_tutor_args(&["list".into()]).unwrap(),
+            TutorArgs {
+                view: TutorView::List,
+                help: false,
+            }
+        );
+        assert_eq!(
+            parse_tutor_args(&["workspace".into()]).unwrap(),
+            TutorArgs {
+                view: TutorView::Lesson(TutorLesson::Workspace),
+                help: false,
+            }
+        );
         assert!(parse_tutor_args(&["weird".into()]).is_err());
     }
 
@@ -355,11 +576,29 @@ mod tests {
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn tutor_root_output_keeps_guided_overview_copy() {
-        let output = render_yazelix_tutor();
+        let output = render_yazelix_tutor_overview();
         assert!(output.contains("Yazelix tutor"));
+        assert!(output.contains("yzx tutor begin"));
+        assert!(output.contains("yzx tutor list"));
         assert!(output.contains("yzx menu"));
         assert!(output.contains("Alt+Shift+M"));
         assert!(output.contains("README.md"));
+    }
+
+    // Defends: the guided tutor has concrete lesson entrypoints and a workspace mini quest instead of only a flat overview.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn tutor_lessons_include_list_and_workspace_mini_quest() {
+        let list = render_tutor_list();
+        assert!(list.contains("yzx tutor workspace"));
+        assert!(list.contains("yzx tutor discovery"));
+        assert!(list.contains("yzx tutor tool_tutors"));
+
+        let lesson = render_tutor_lesson(TutorLesson::Workspace);
+        assert!(lesson.contains("Mini quest"));
+        assert!(lesson.contains("yzx warp ."));
+        assert!(lesson.contains("yzx keys yazi"));
+        assert!(lesson.contains("yzx status"));
     }
 
     // Defends: the Rust-owned `yzx screen` parser keeps the public one-style surface while reserving the welcome-only internal flags for startup callers.

@@ -15,9 +15,34 @@ fn yzx_control_tutor_root_keeps_guided_overview() {
     let output = yzx_control_command().arg("tutor").output().unwrap();
     let stdout = stdout_text(output);
     assert!(stdout.contains("Yazelix tutor"));
+    assert!(stdout.contains("yzx tutor begin"));
+    assert!(stdout.contains("yzx tutor list"));
     assert!(stdout.contains("yzx launch"));
     assert!(stdout.contains("yzx menu"));
     assert!(stdout.contains("yzx doctor"));
+}
+
+// Defends: the public `yzx tutor begin/list` flow exposes concrete lessons and the first workspace mini quest through the actual CLI binary.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_control_tutor_begin_and_list_expose_guided_lessons() {
+    let list_output = yzx_control_command()
+        .args(["tutor", "list"])
+        .output()
+        .unwrap();
+    let list_stdout = stdout_text(list_output);
+    assert!(list_stdout.contains("Yazelix tutor lessons"));
+    assert!(list_stdout.contains("yzx tutor workspace"));
+    assert!(list_stdout.contains("yzx tutor discovery"));
+
+    let begin_output = yzx_control_command()
+        .args(["tutor", "begin"])
+        .output()
+        .unwrap();
+    let begin_stdout = stdout_text(begin_output);
+    assert!(begin_stdout.contains("Mini quest"));
+    assert!(begin_stdout.contains("yzx warp ."));
+    assert!(begin_stdout.contains("yzx keys yazi"));
 }
 
 // Defends: the Rust-owned `yzx whats_new` command still renders the current-version summary and marks the version seen in Yazelix-managed state.

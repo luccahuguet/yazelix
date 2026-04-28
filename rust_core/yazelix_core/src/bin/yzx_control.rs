@@ -119,7 +119,9 @@ fn usage() -> ! {
     eprintln!("       yzx_control screen [style]");
     eprintln!("       yzx_control why");
     eprintln!("       yzx_control sponsor");
-    eprintln!("       yzx_control tutor [hx|helix|nu|nushell]");
+    eprintln!(
+        "       yzx_control tutor [begin|list|workspace|discovery|tool_tutors|hx|helix|nu|nushell]"
+    );
     eprintln!("       yzx_control update [subcommand] [args...]");
     eprintln!("       yzx_control whats_new");
     std::process::exit(64);

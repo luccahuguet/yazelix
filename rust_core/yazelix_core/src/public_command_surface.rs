@@ -346,6 +346,46 @@ const TUTOR_ROOT_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Help),
     None,
 );
+const TUTOR_BEGIN_COMMAND: YzxCommandMetadata = metadata(
+    "yzx tutor begin",
+    "Start the first Yazelix tutor lesson",
+    YzxCommandCategory::Help,
+    &[],
+    Some(YzxMenuCategory::Help),
+    None,
+);
+const TUTOR_LIST_COMMAND: YzxCommandMetadata = metadata(
+    "yzx tutor list",
+    "List Yazelix tutor lessons",
+    YzxCommandCategory::Help,
+    &[],
+    Some(YzxMenuCategory::Help),
+    None,
+);
+const TUTOR_WORKSPACE_COMMAND: YzxCommandMetadata = metadata(
+    "yzx tutor workspace",
+    "Practice workspace roots and managed panes",
+    YzxCommandCategory::Help,
+    &[],
+    Some(YzxMenuCategory::Help),
+    None,
+);
+const TUTOR_DISCOVERY_COMMAND: YzxCommandMetadata = metadata(
+    "yzx tutor discovery",
+    "Practice command and key discovery surfaces",
+    YzxCommandCategory::Help,
+    &[],
+    Some(YzxMenuCategory::Help),
+    None,
+);
+const TUTOR_TOOL_TUTORS_COMMAND: YzxCommandMetadata = metadata(
+    "yzx tutor tool_tutors",
+    "Find the upstream Helix and Nushell tutors",
+    YzxCommandCategory::Help,
+    &[],
+    Some(YzxMenuCategory::Help),
+    None,
+);
 const TUTOR_HELIX_COMMAND: YzxCommandMetadata = metadata(
     "yzx tutor helix",
     "Alias for yzx tutor hx",
@@ -380,6 +420,11 @@ const TUTOR_NUSHELL_COMMAND: YzxCommandMetadata = metadata(
 );
 const TUTOR_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[
     TUTOR_ROOT_COMMAND,
+    TUTOR_BEGIN_COMMAND,
+    TUTOR_LIST_COMMAND,
+    TUTOR_WORKSPACE_COMMAND,
+    TUTOR_DISCOVERY_COMMAND,
+    TUTOR_TOOL_TUTORS_COMMAND,
     TUTOR_HELIX_COMMAND,
     TUTOR_HX_COMMAND,
     TUTOR_NU_COMMAND,
