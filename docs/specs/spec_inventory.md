@@ -126,6 +126,7 @@ Status labels:
 | `second_wave_nushell_deletion_map.md` | Planning | Current file-level second-wave deletion map from `13.2k` Nu LOC toward the `4.2k` hard floor |
 | `spec_docs_contract_alignment_audit.md` | Planning | Current docs/spec alignment audit; feeds contract-item migration and historical-doc cleanup |
 | `spec_inventory.md` | Live | Maintained inventory of specs by current planning status |
+| `standalone_ghostty_cursor_distribution.md` | Planning | Current decision to expose Ghostty cursor assets through an in-repo export before considering a separate repo |
 | `status_doctor_machine_readable_reports.md` | Live | Current structured-report contract for `yzx status` and `yzx doctor` |
 | `stale_config_diagnostics.md` | Live | Current unsupported-config diagnostic contract without a migration engine |
 | `startup_profile_scenarios.md` | Live | Current structured startup-profile scenario contract |
