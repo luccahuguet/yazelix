@@ -49,8 +49,12 @@ Profile launch sequence and identify performance bottlenecks
 - `--launch`: Profile the managed new-window launch path, including wrapper preparation, terminal dispatch, and the profiled handoff inside the spawned terminal
 - `--clear-cache`: Clear the runtime project cache plus recorded materialized/launch state first so the profiled run exercises the rebuild-heavy path
 - `--terminal`: Override terminal selection for `--launch` profiling
+- `yzx dev profile compare <baseline-report> <candidate-report>`: Compare two saved reports without rerunning startup, including total and per-step deltas
+- `yzx dev profile save-baseline <name> <report>`: Copy a saved report into the local baseline directory
+- `yzx dev profile compare-baseline <name> <candidate-report>`: Compare a named local baseline with another saved report
 - The summary breaks out real startup phases such as preflight, config-state checks, maintainer-shell entry, shellHook setup, and inner startup work
 - Profiling works from either a repo checkout or the active installed runtime
+- Startup profile comparison is a local evidence tool, not a hosted CI timing gate
 
 ### `yzx dev bump VERSION`
 Automate the version bump, release commit, and matching git tag
@@ -345,6 +349,9 @@ yzx dev profile --cold        # Profile cold start from a vanilla terminal
 yzx dev profile --cold --clear-cache  # Force a rebuild-heavy cold profile run
 yzx dev profile --desktop     # Profile the desktop-entry launch path
 yzx dev profile --launch --terminal ghostty  # Profile managed new-window launch with a terminal override
+yzx dev profile compare ~/.local/share/yazelix/profiles/startup/old.jsonl ~/.local/share/yazelix/profiles/startup/new.jsonl
+yzx dev profile save-baseline warm-v16 ~/.local/share/yazelix/profiles/startup/startup_profile_20260428_120000_000.jsonl
+yzx dev profile compare-baseline warm-v16 ~/.local/share/yazelix/profiles/startup/startup_profile_20260428_121500_000.jsonl
 
 # Performance scenarios explained:
 # 1. Warm start (~130ms): Already in Yazelix, launching tools/commands

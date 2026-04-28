@@ -522,6 +522,33 @@ def run_launch_profile_command [
     ^$yzx_control_bin profile print-report $profile_run.report_path
 }
 
+def run_profile_compare_command [
+    baseline_report: string
+    candidate_report: string
+] {
+    let source_info = (resolve_profile_source_root)
+    let yzx_control_bin = (resolve_yzx_control_path $source_info.root)
+    ^$yzx_control_bin profile compare-reports $baseline_report $candidate_report
+}
+
+def run_profile_save_baseline_command [
+    name: string
+    report_path: string
+] {
+    let source_info = (resolve_profile_source_root)
+    let yzx_control_bin = (resolve_yzx_control_path $source_info.root)
+    ^$yzx_control_bin profile save-baseline $name $report_path
+}
+
+def run_profile_compare_baseline_command [
+    name: string
+    candidate_report: string
+] {
+    let source_info = (resolve_profile_source_root)
+    let yzx_control_bin = (resolve_yzx_control_path $source_info.root)
+    ^$yzx_control_bin profile compare-baseline $name $candidate_report
+}
+
 # Profile launch sequence and identify bottlenecks
 export def "yzx dev profile" [
     --cold(-c)        # Profile cold launch from vanilla terminal (emulates desktop entry or fresh terminal launch)
@@ -540,6 +567,30 @@ export def "yzx dev profile" [
     } else {
         run_default_profile_command
     }
+}
+
+# Compare two saved startup profile reports without rerunning startup
+export def "yzx dev profile compare" [
+    baseline_report: string   # Earlier report path under ~/.local/share/yazelix/profiles/startup/
+    candidate_report: string  # Later report path under ~/.local/share/yazelix/profiles/startup/
+] {
+    run_profile_compare_command $baseline_report $candidate_report
+}
+
+# Save a startup profile report as a named local baseline
+export def "yzx dev profile save-baseline" [
+    name: string         # Baseline name, such as warm-v16.1
+    report_path: string  # Report path to copy into the local baseline directory
+] {
+    run_profile_save_baseline_command $name $report_path
+}
+
+# Compare a named local baseline with a saved startup profile report
+export def "yzx dev profile compare-baseline" [
+    name: string              # Baseline name created by yzx dev profile save-baseline
+    candidate_report: string  # Report path to compare against the named baseline
+] {
+    run_profile_compare_baseline_command $name $candidate_report
 }
 
 # Lint Nushell scripts with repo-tuned nu-lint config from the maintainer tool surface

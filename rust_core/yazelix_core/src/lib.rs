@@ -105,8 +105,9 @@ pub use launch_materialization::{
 };
 pub use onboard_commands::run_yzx_onboard;
 pub use profile_commands::{
-    run_profile_create_run, run_profile_load_report, run_profile_print_report,
-    run_profile_record_step, run_profile_wait_step,
+    run_profile_compare_baseline, run_profile_compare_reports, run_profile_create_run,
+    run_profile_load_report, run_profile_print_report, run_profile_record_step,
+    run_profile_save_baseline, run_profile_wait_step,
 };
 pub use public_command_surface::{
     YzxCommandCategory, YzxCommandMetadata, YzxCommandParameter, YzxInternalNuRoutePlan,

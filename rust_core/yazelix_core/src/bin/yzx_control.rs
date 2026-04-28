@@ -26,10 +26,13 @@ use yazelix_core::control_plane::{
 use yazelix_core::evaluate_install_ownership_report;
 use yazelix_core::install_ownership_request_from_env_with_runtime_dir;
 use yazelix_core::run_generate_shell_initializers;
+use yazelix_core::run_profile_compare_baseline;
+use yazelix_core::run_profile_compare_reports;
 use yazelix_core::run_profile_create_run;
 use yazelix_core::run_profile_load_report;
 use yazelix_core::run_profile_print_report;
 use yazelix_core::run_profile_record_step;
+use yazelix_core::run_profile_save_baseline;
 use yazelix_core::run_profile_wait_step;
 use yazelix_core::run_yzx_config;
 use yazelix_core::run_yzx_cwd;
@@ -97,6 +100,9 @@ fn usage() -> ! {
         "       yzx_control profile wait-step <report_path> <component> <step> [--timeout-ms <n>]"
     );
     eprintln!("       yzx_control profile print-report <report_path>");
+    eprintln!("       yzx_control profile compare-reports <baseline_report> <candidate_report>");
+    eprintln!("       yzx_control profile save-baseline <name> <report_path>");
+    eprintln!("       yzx_control profile compare-baseline <name> <candidate_report>");
     eprintln!("       yzx_control zellij pipe <command> [--payload <json>]");
     eprintln!("       yzx_control zellij get-workspace-root [--include-bootstrap]");
     eprintln!("       yzx_control zellij inspect-session [--json]");
@@ -1067,7 +1073,7 @@ fn run_inspect(args: &[String]) -> Result<i32, CoreError> {
 fn run_profile(args: &[String]) -> Result<i32, CoreError> {
     if args.is_empty() {
         eprintln!(
-            "Usage: yzx_control profile <create-run|record-step|load-report|wait-step|print-report> [args...]"
+            "Usage: yzx_control profile <create-run|record-step|load-report|wait-step|print-report|compare-reports|save-baseline|compare-baseline> [args...]"
         );
         return Ok(64);
     }
@@ -1079,10 +1085,13 @@ fn run_profile(args: &[String]) -> Result<i32, CoreError> {
         "load-report" => run_profile_load_report(&argv),
         "wait-step" => run_profile_wait_step(&argv),
         "print-report" => run_profile_print_report(&argv),
+        "compare-reports" => run_profile_compare_reports(&argv),
+        "save-baseline" => run_profile_save_baseline(&argv),
+        "compare-baseline" => run_profile_compare_baseline(&argv),
         _ => {
             eprintln!("Unknown profile subcommand: {sub}");
             eprintln!(
-                "Usage: yzx_control profile <create-run|record-step|load-report|wait-step|print-report> [args...]"
+                "Usage: yzx_control profile <create-run|record-step|load-report|wait-step|print-report|compare-reports|save-baseline|compare-baseline> [args...]"
             );
             Ok(64)
         }

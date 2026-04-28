@@ -68,7 +68,7 @@ A large part of the gain comes from Rust ownership cuts across config, materiali
 
 These numbers come from the built-in structured startup profiler under `~/.local/share/yazelix/profiles/startup/`
 
-You can collect your own reports with `yzx dev profile`, `yzx dev profile --cold --clear-cache`, `yzx dev profile --desktop`, and `yzx dev profile --launch`
+You can collect your own reports with `yzx dev profile`, `yzx dev profile --cold --clear-cache`, `yzx dev profile --desktop`, and `yzx dev profile --launch`, then compare saved runs with `yzx dev profile compare`
 
 ## Acknowledgments
 See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all projects, tools, and plugins Yazelix integrates, including links to each project and their homepages
@@ -342,7 +342,7 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 - `yzx edit cursors` - Open the Ghostty cursor registry sidecar in your editor
 - `yzx restart` - Restart Yazelix in a fresh window
 - `yzx doctor [--verbose] [--fix]` - Health checks and diagnostics
-- `yzx dev profile [--cold] [--desktop] [--launch] [--clear-cache]` - Profile current-terminal, desktop-entry, or managed new-window startup phases under `~/.local/share/yazelix/profiles/startup/`
+- `yzx dev profile [--cold] [--desktop] [--launch] [--clear-cache]` - Profile current-terminal, desktop-entry, or managed new-window startup phases under `~/.local/share/yazelix/profiles/startup/`, with local saved-report comparison through `yzx dev profile compare`
 - `yzx status [--versions]` - Show current Yazelix status and optional tool versions
 
 ## Troubleshooting

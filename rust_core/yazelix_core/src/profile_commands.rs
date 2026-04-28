@@ -10,6 +10,7 @@
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::state_dir_from_env;
 use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -60,6 +61,31 @@ struct ProfileSummary {
     report_path: String,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
+struct StepComparisonKey {
+    phase: String,
+    component: String,
+    step: String,
+}
+
+#[derive(Debug, Clone)]
+struct StepComparison {
+    key: StepComparisonKey,
+    baseline_ms: Option<f64>,
+    candidate_ms: Option<f64>,
+    delta_ms: Option<f64>,
+    delta_percent: Option<f64>,
+}
+
+#[derive(Debug, Clone)]
+struct ProfileComparison {
+    baseline: ProfileSummary,
+    candidate: ProfileSummary,
+    total_delta_ms: f64,
+    total_delta_percent: Option<f64>,
+    steps: Vec<StepComparison>,
+}
+
 fn now_rfc3339() -> String {
     let now = time::OffsetDateTime::now_local().unwrap_or_else(|_| time::OffsetDateTime::now_utc());
     let format = time::format_description::well_known::Rfc3339;
@@ -80,6 +106,18 @@ fn generate_run_id() -> String {
     });
     let timestamp = now.format(&format).unwrap_or_default();
     format!("startup_profile_{}", timestamp)
+}
+
+fn round_ms(value: f64) -> f64 {
+    (value * 100.0).round() / 100.0
+}
+
+fn percent_delta(baseline: f64, candidate: f64) -> Option<f64> {
+    if baseline.abs() < f64::EPSILON {
+        None
+    } else {
+        Some(((candidate - baseline) / baseline * 100.0 * 10.0).round() / 10.0)
+    }
 }
 
 fn append_jsonl(path: &Path, value: &serde_json::Value) -> Result<(), CoreError> {
@@ -213,7 +251,7 @@ fn load_report_data(report_path: &Path) -> Result<ProfileSummary, CoreError> {
             .max()
             .unwrap_or(0);
         let duration_ns = ended_ns.saturating_sub(started_ns);
-        ((duration_ns as f64) / 1_000_000.0 * 100.0).round() / 100.0
+        round_ms((duration_ns as f64) / 1_000_000.0)
     };
 
     Ok(ProfileSummary {
@@ -222,6 +260,176 @@ fn load_report_data(report_path: &Path) -> Result<ProfileSummary, CoreError> {
         total_duration_ms,
         report_path: report_path.to_string_lossy().to_string(),
     })
+}
+
+fn step_key(record: &serde_json::Value) -> StepComparisonKey {
+    let phase = record
+        .get("metadata")
+        .and_then(|m| m.get("phase"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let component = record
+        .get("component")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let step = record
+        .get("step")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+
+    StepComparisonKey {
+        phase,
+        component,
+        step,
+    }
+}
+
+fn step_duration_map(summary: &ProfileSummary) -> BTreeMap<StepComparisonKey, f64> {
+    let mut durations = BTreeMap::new();
+    for record in &summary.steps {
+        let duration = record
+            .get("duration_ms")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0);
+        let entry = durations.entry(step_key(record)).or_insert(0.0);
+        *entry = round_ms(*entry + duration);
+    }
+    durations
+}
+
+fn compare_profile_summaries(
+    baseline: ProfileSummary,
+    candidate: ProfileSummary,
+) -> ProfileComparison {
+    let baseline_steps = step_duration_map(&baseline);
+    let candidate_steps = step_duration_map(&candidate);
+    let keys: BTreeSet<StepComparisonKey> = baseline_steps
+        .keys()
+        .chain(candidate_steps.keys())
+        .cloned()
+        .collect();
+
+    let steps = keys
+        .into_iter()
+        .map(|key| {
+            let baseline_ms = baseline_steps.get(&key).copied();
+            let candidate_ms = candidate_steps.get(&key).copied();
+            let delta_ms = baseline_ms
+                .zip(candidate_ms)
+                .map(|(baseline, candidate)| round_ms(candidate - baseline));
+            let delta_percent = baseline_ms
+                .zip(candidate_ms)
+                .and_then(|(baseline, candidate)| percent_delta(baseline, candidate));
+            StepComparison {
+                key,
+                baseline_ms,
+                candidate_ms,
+                delta_ms,
+                delta_percent,
+            }
+        })
+        .collect();
+
+    let total_delta_ms = round_ms(candidate.total_duration_ms - baseline.total_duration_ms);
+    let total_delta_percent =
+        percent_delta(baseline.total_duration_ms, candidate.total_duration_ms);
+
+    ProfileComparison {
+        baseline,
+        candidate,
+        total_delta_ms,
+        total_delta_percent,
+        steps,
+    }
+}
+
+fn format_optional_ms(value: Option<f64>) -> String {
+    value
+        .map(|ms| format!("{:.2}ms", ms))
+        .unwrap_or_else(|| "-".to_string())
+}
+
+fn format_delta_ms(value: f64) -> String {
+    if value >= 0.0 {
+        format!("+{:.2}ms", value)
+    } else {
+        format!("{:.2}ms", value)
+    }
+}
+
+fn format_optional_delta(value: Option<f64>) -> String {
+    value
+        .map(format_delta_ms)
+        .unwrap_or_else(|| "new/removed".to_string())
+}
+
+fn format_optional_percent(value: Option<f64>) -> String {
+    value
+        .map(|percent| {
+            if percent >= 0.0 {
+                format!("+{:.1}%", percent)
+            } else {
+                format!("{:.1}%", percent)
+            }
+        })
+        .unwrap_or_else(|| "-".to_string())
+}
+
+fn scenario(summary: &ProfileSummary) -> &str {
+    summary
+        .run
+        .get("scenario")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown")
+}
+
+fn render_profile_comparison(comparison: &ProfileComparison) -> String {
+    let mut lines = Vec::new();
+    lines.push("Startup Profile Comparison".to_string());
+    lines.push(format!(
+        "baseline: {} ({})",
+        scenario(&comparison.baseline),
+        comparison.baseline.report_path
+    ));
+    lines.push(format!(
+        "candidate: {} ({})",
+        scenario(&comparison.candidate),
+        comparison.candidate.report_path
+    ));
+    lines.push(format!(
+        "total: {:.2}ms -> {:.2}ms  {} ({})",
+        comparison.baseline.total_duration_ms,
+        comparison.candidate.total_duration_ms,
+        format_delta_ms(comparison.total_delta_ms),
+        format_optional_percent(comparison.total_delta_percent)
+    ));
+    lines.push(String::new());
+    lines.push(format!(
+        "{:>14}  {:>20}  {:>24}  {:>12}  {:>12}  {:>12}  {:>9}",
+        "Phase", "Component", "Step", "Baseline", "Candidate", "Delta", "Delta %"
+    ));
+
+    for row in &comparison.steps {
+        lines.push(format!(
+            "{:>14}  {:>20}  {:>24}  {:>12}  {:>12}  {:>12}  {:>9}",
+            if row.key.phase.is_empty() {
+                "-"
+            } else {
+                row.key.phase.as_str()
+            },
+            row.key.component.as_str(),
+            row.key.step.as_str(),
+            format_optional_ms(row.baseline_ms),
+            format_optional_ms(row.candidate_ms),
+            format_optional_delta(row.delta_ms),
+            format_optional_percent(row.delta_percent)
+        ));
+    }
+
+    lines.join("\n")
 }
 
 fn render_summary_table(summary: &ProfileSummary) -> String {
@@ -302,6 +510,36 @@ fn render_summary_table(summary: &ProfileSummary) -> String {
     };
 
     format!("{}\n{}", header, lines.join("\n"))
+}
+
+fn validate_baseline_name(name: &str) -> Result<(), CoreError> {
+    if name.is_empty() {
+        return Err(CoreError::usage(
+            "Baseline name cannot be empty".to_string(),
+        ));
+    }
+    if name == "." || name == ".." {
+        return Err(CoreError::usage(format!("Invalid baseline name: {}", name)));
+    }
+    if !name
+        .chars()
+        .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-' | '.'))
+    {
+        return Err(CoreError::usage(format!(
+            "Invalid baseline name: {}. Use letters, numbers, dots, dashes, or underscores.",
+            name
+        )));
+    }
+    Ok(())
+}
+
+fn baseline_path(name: &str) -> Result<PathBuf, CoreError> {
+    validate_baseline_name(name)?;
+    Ok(state_dir_from_env()?
+        .join("profiles")
+        .join("startup")
+        .join("baselines")
+        .join(format!("{}.jsonl", name)))
 }
 
 pub fn run_profile_create_run(args: &[String]) -> Result<i32, CoreError> {
@@ -556,6 +794,197 @@ pub fn run_profile_load_report(args: &[String]) -> Result<i32, CoreError> {
     Ok(0)
 }
 
+pub fn run_profile_compare_reports(args: &[String]) -> Result<i32, CoreError> {
+    let mut baseline_report: Option<String> = None;
+    let mut candidate_report: Option<String> = None;
+    let mut help = false;
+
+    let mut iter = args.iter();
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "-h" | "--help" | "help" => help = true,
+            other if other.starts_with('-') => {
+                return Err(CoreError::usage(format!(
+                    "Unknown argument for profile compare-reports: {other}"
+                )));
+            }
+            other => {
+                if baseline_report.is_none() {
+                    baseline_report = Some(other.to_string());
+                } else if candidate_report.is_none() {
+                    candidate_report = Some(other.to_string());
+                } else {
+                    return Err(CoreError::usage(
+                        "profile compare-reports accepts baseline_report and candidate_report"
+                            .to_string(),
+                    ));
+                }
+            }
+        }
+    }
+
+    if help {
+        println!("Compare two saved startup profile reports");
+        println!();
+        println!("Usage:");
+        println!("  yzx_control profile compare-reports <baseline_report> <candidate_report>");
+        return Ok(0);
+    }
+
+    let baseline_report = baseline_report.ok_or_else(|| {
+        CoreError::usage(
+            "profile compare-reports requires baseline_report and candidate_report".to_string(),
+        )
+    })?;
+    let candidate_report = candidate_report.ok_or_else(|| {
+        CoreError::usage("profile compare-reports requires candidate_report".to_string())
+    })?;
+
+    let baseline = load_report_data(Path::new(&baseline_report))?;
+    let candidate = load_report_data(Path::new(&candidate_report))?;
+    let comparison = compare_profile_summaries(baseline, candidate);
+    println!("{}", render_profile_comparison(&comparison));
+    Ok(0)
+}
+
+pub fn run_profile_save_baseline(args: &[String]) -> Result<i32, CoreError> {
+    let mut name: Option<String> = None;
+    let mut report_path: Option<String> = None;
+    let mut help = false;
+
+    let mut iter = args.iter();
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "-h" | "--help" | "help" => help = true,
+            other if other.starts_with('-') => {
+                return Err(CoreError::usage(format!(
+                    "Unknown argument for profile save-baseline: {other}"
+                )));
+            }
+            other => {
+                if name.is_none() {
+                    name = Some(other.to_string());
+                } else if report_path.is_none() {
+                    report_path = Some(other.to_string());
+                } else {
+                    return Err(CoreError::usage(
+                        "profile save-baseline accepts name and report_path".to_string(),
+                    ));
+                }
+            }
+        }
+    }
+
+    if help {
+        println!("Save a startup profile report as a named local baseline");
+        println!();
+        println!("Usage:");
+        println!("  yzx_control profile save-baseline <name> <report_path>");
+        return Ok(0);
+    }
+
+    let name = name.ok_or_else(|| {
+        CoreError::usage("profile save-baseline requires name and report_path".to_string())
+    })?;
+    let report_path = report_path.ok_or_else(|| {
+        CoreError::usage("profile save-baseline requires report_path".to_string())
+    })?;
+    let source = PathBuf::from(&report_path);
+    if !source.exists() {
+        return Err(CoreError::io(
+            "profile_baseline_source",
+            &format!("Startup profile report not found: {}", source.display()),
+            "Check the report path before saving it as a baseline.",
+            source.display().to_string(),
+            std::io::Error::new(std::io::ErrorKind::NotFound, "missing report"),
+        ));
+    }
+
+    let destination = baseline_path(&name)?;
+    if let Some(parent) = destination.parent() {
+        std::fs::create_dir_all(parent).map_err(|source| {
+            CoreError::io(
+                "profile_baseline_mkdir",
+                &format!(
+                    "Could not create profile baseline directory: {}",
+                    parent.display()
+                ),
+                "Check directory permissions.",
+                parent.display().to_string(),
+                source,
+            )
+        })?;
+    }
+
+    std::fs::copy(&source, &destination).map_err(|source_error| {
+        CoreError::io(
+            "profile_baseline_save",
+            &format!(
+                "Could not save profile baseline {} to {}.",
+                name,
+                destination.display()
+            ),
+            "Check directory permissions and disk space.",
+            destination.display().to_string(),
+            source_error,
+        )
+    })?;
+
+    println!("Saved startup profile baseline `{}`", name);
+    println!("{}", destination.display());
+    Ok(0)
+}
+
+pub fn run_profile_compare_baseline(args: &[String]) -> Result<i32, CoreError> {
+    let mut name: Option<String> = None;
+    let mut candidate_report: Option<String> = None;
+    let mut help = false;
+
+    let mut iter = args.iter();
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "-h" | "--help" | "help" => help = true,
+            other if other.starts_with('-') => {
+                return Err(CoreError::usage(format!(
+                    "Unknown argument for profile compare-baseline: {other}"
+                )));
+            }
+            other => {
+                if name.is_none() {
+                    name = Some(other.to_string());
+                } else if candidate_report.is_none() {
+                    candidate_report = Some(other.to_string());
+                } else {
+                    return Err(CoreError::usage(
+                        "profile compare-baseline accepts name and candidate_report".to_string(),
+                    ));
+                }
+            }
+        }
+    }
+
+    if help {
+        println!("Compare a saved startup profile baseline with a report");
+        println!();
+        println!("Usage:");
+        println!("  yzx_control profile compare-baseline <name> <candidate_report>");
+        return Ok(0);
+    }
+
+    let name = name.ok_or_else(|| {
+        CoreError::usage("profile compare-baseline requires name and candidate_report".to_string())
+    })?;
+    let candidate_report = candidate_report.ok_or_else(|| {
+        CoreError::usage("profile compare-baseline requires candidate_report".to_string())
+    })?;
+
+    let baseline = load_report_data(&baseline_path(&name)?)?;
+    let candidate = load_report_data(Path::new(&candidate_report))?;
+    let comparison = compare_profile_summaries(baseline, candidate);
+    println!("{}", render_profile_comparison(&comparison));
+    Ok(0)
+}
+
 pub fn run_profile_wait_step(args: &[String]) -> Result<i32, CoreError> {
     let mut report_path: Option<String> = None;
     let mut component: Option<String> = None;
@@ -753,6 +1182,78 @@ mod tests {
         );
         assert_eq!(summary.steps.len(), 2);
         assert_eq!(summary.total_duration_ms, 4.0);
+    }
+
+    // Defends: startup profile comparison matches saved reports by phase/component/step and surfaces total plus per-step deltas.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn compare_profile_summaries_reports_total_and_step_deltas() {
+        let baseline = ProfileSummary {
+            run: serde_json::json!({"scenario": "enter_warm"}),
+            steps: vec![
+                serde_json::json!({
+                    "component": "inner",
+                    "step": "config",
+                    "duration_ms": 10.0,
+                    "metadata": {"phase": "startup"}
+                }),
+                serde_json::json!({
+                    "component": "inner",
+                    "step": "materialize",
+                    "duration_ms": 5.0,
+                    "metadata": {"phase": "startup"}
+                }),
+            ],
+            total_duration_ms: 20.0,
+            report_path: "/tmp/baseline.jsonl".to_string(),
+        };
+        let candidate = ProfileSummary {
+            run: serde_json::json!({"scenario": "enter_warm"}),
+            steps: vec![
+                serde_json::json!({
+                    "component": "inner",
+                    "step": "config",
+                    "duration_ms": 14.5,
+                    "metadata": {"phase": "startup"}
+                }),
+                serde_json::json!({
+                    "component": "inner",
+                    "step": "zellij_handoff_ready",
+                    "duration_ms": 2.0,
+                    "metadata": {"phase": "startup"}
+                }),
+            ],
+            total_duration_ms: 30.0,
+            report_path: "/tmp/candidate.jsonl".to_string(),
+        };
+
+        let comparison = compare_profile_summaries(baseline, candidate);
+        assert_eq!(comparison.total_delta_ms, 10.0);
+        assert_eq!(comparison.total_delta_percent, Some(50.0));
+
+        let config = comparison
+            .steps
+            .iter()
+            .find(|row| row.key.step == "config")
+            .unwrap();
+        assert_eq!(config.baseline_ms, Some(10.0));
+        assert_eq!(config.candidate_ms, Some(14.5));
+        assert_eq!(config.delta_ms, Some(4.5));
+        assert_eq!(config.delta_percent, Some(45.0));
+
+        let removed = comparison
+            .steps
+            .iter()
+            .find(|row| row.key.step == "materialize")
+            .unwrap();
+        assert_eq!(removed.baseline_ms, Some(5.0));
+        assert_eq!(removed.candidate_ms, None);
+
+        let rendered = render_profile_comparison(&comparison);
+        assert!(rendered.contains("Startup Profile Comparison"));
+        assert!(rendered.contains("total: 20.00ms -> 30.00ms  +10.00ms (+50.0%)"));
+        assert!(rendered.contains("new/removed"));
+        assert!(rendered.contains("zellij_handoff_ready"));
     }
 
     // Defends: profile run ID uses the expected prefix format.
