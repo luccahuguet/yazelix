@@ -49,7 +49,7 @@ Get everything running in less than 10 minutes with no extra dependencies beyond
 
 Install once, get the same environment everywhere
 
-Want the high-level product map? See [Architecture Map](./docs/architecture_map.md); want the current runtime boundary? See [Current Trimmed Runtime Contract](./docs/specs/v15_trimmed_runtime_contract.md)
+Want the high-level product map? See [Architecture Map](./docs/architecture_map.md); want the current runtime boundary? See [Current Trimmed Runtime Contract](./docs/contracts/v15_trimmed_runtime_contract.md)
 
 ## Startup Performance
 
@@ -117,14 +117,14 @@ On the current branch, the trimmed contract is already narrower: no `yazelix_pac
 
 The important split is this: Yazelix Classic was both a terminal workspace and a runtime/package-environment manager, while v15 is the narrower workspace product because dynamic runtime management was not a good long-term fit for Yazelix scope
 
-For the current trimmed branch contract, see [docs/specs/v15_trimmed_runtime_contract.md](./docs/specs/v15_trimmed_runtime_contract.md)
+For the current trimmed branch contract, see [docs/contracts/v15_trimmed_runtime_contract.md](./docs/contracts/v15_trimmed_runtime_contract.md)
 
 ## Experiments
 
 - **Nixless (System) Mode** – Experimental work lives on the `nixless-system-mode` branch and might never land in `main`
 
 ## Compatibility
-- **Platform**: Linux and macOS — see the [macOS support floor spec](docs/specs/macos_support_floor.md) for the current guaranteed macOS surfaces
+- **Platform**: Linux and macOS — see the [macOS support floor contract](docs/contracts/macos_support_floor.md) for the current guaranteed macOS surfaces
 - **Terminal**: Ghostty is the default packaged terminal, WezTerm is available through the explicit WezTerm package path, while Kitty and Alacritty remain supported PATH-provided alternatives and Foot remains a Linux-only PATH-provided alternative
 - **Editor**: Any editor works, with Helix and Neovim getting first-class support (reveal in the Yazi file tree, open buffer in a running instance, managed editor-pane targeting) and configuration through `[editor].command` in `yazelix.toml`
 - **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer

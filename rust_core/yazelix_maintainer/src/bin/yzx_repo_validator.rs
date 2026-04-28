@@ -8,12 +8,12 @@ use yazelix_maintainer::repo_contract_validation::{
 use yazelix_maintainer::repo_plugin_build::validate_pane_orchestrator_sync;
 use yazelix_maintainer::repo_rust_budget::validate_rust_ownership_budget;
 use yazelix_maintainer::repo_validation::{
-    repo_root, validate_default_test_traceability, validate_package_rust_test_purity,
-    validate_rust_test_traceability, validate_specs,
+    repo_root, validate_contracts, validate_default_test_traceability,
+    validate_package_rust_test_purity, validate_rust_test_traceability,
 };
 use yazelix_maintainer::workspace_session_contract::validate_workspace_session_contract;
 
-const USAGE_COMMANDS: &str = "validate-specs|validate-default-test-traceability|validate-rust-test-traceability|validate-package-rust-test-purity|validate-pane-orchestrator-sync|validate-workspace-session-contract|validate-config-surface-contract|validate-nushell-budget|validate-rust-ownership-budget|validate-upgrade-contract|validate-installed-runtime-contract|validate-flake-interface|validate-flake-profile-install|validate-nixpkgs-package|validate-nixpkgs-submission|validate-nushell-syntax|validate-readme-version";
+const USAGE_COMMANDS: &str = "validate-contracts|validate-default-test-traceability|validate-rust-test-traceability|validate-package-rust-test-purity|validate-pane-orchestrator-sync|validate-workspace-session-contract|validate-config-surface-contract|validate-nushell-budget|validate-rust-ownership-budget|validate-upgrade-contract|validate-installed-runtime-contract|validate-flake-interface|validate-flake-profile-install|validate-nixpkgs-package|validate-nixpkgs-submission|validate-nushell-syntax|validate-readme-version";
 
 fn main() {
     let mut args = std::env::args().skip(1);
@@ -39,7 +39,7 @@ fn main() {
     };
 
     let (report, success_label) = match command.as_str() {
-        "validate-specs" => (validate_specs(&resolved_repo_root), None),
+        "validate-contracts" => (validate_contracts(&resolved_repo_root), None),
         "validate-default-test-traceability" => {
             (validate_default_test_traceability(&resolved_repo_root), None)
         }
@@ -168,7 +168,7 @@ fn main() {
                     println!("❌ {}", error);
                 }
                 let failure_label = match command.as_str() {
-                    "validate-specs" => "Spec traceability validation failed",
+                    "validate-contracts" => "Contract validation failed",
                     "validate-default-test-traceability" => {
                         "Governed test traceability validation failed"
                     }

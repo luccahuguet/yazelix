@@ -18,7 +18,7 @@ This is a separation decision, not a deletion decision. The maintainer code is r
 
 ## First-Principles Rationale
 
-Runtime users need a small, stable helper surface: `yzx`, `yzx_core`, and `yzx_control`. They do not need to understand or conceptually own release bumping, issue sync, spec validation, CI contract checks, visual sweep orchestration, or pane-orchestrator wasm synchronization.
+Runtime users need a small, stable helper surface: `yzx`, `yzx_core`, and `yzx_control`. They do not need to understand or conceptually own release bumping, issue sync, contract validation, CI checks, visual sweep orchestration, or pane-orchestrator wasm synchronization.
 
 Maintainers need those tools to live close to the repository contracts they defend. Offloading them to another repository would reduce local LOC on paper, but it would split validators from the files they validate and create version-skew risk between Yazelix, its release process, and its CI checks.
 
@@ -45,10 +45,10 @@ Maintained target state:
 
 | Subsystem | Current path | Decision | Offload decision | Rationale |
 | --- | --- | --- | --- | --- |
-| Validator dispatcher | `yazelix_maintainer/src/bin/yzx_repo_validator.rs` | moved to `yazelix_maintainer` | reject external repo | CI entrypoint is repo-specific and validates local files, specs, packages, and release rules |
+| Validator dispatcher | `yazelix_maintainer/src/bin/yzx_repo_validator.rs` | moved to `yazelix_maintainer` | reject external repo | CI entrypoint is repo-specific and validates local files, contracts, packages, and release rules |
 | Maintainer dispatcher | `yazelix_maintainer/src/bin/yzx_repo_maintainer.rs` | moved to `yazelix_maintainer` | reject external repo | Local dev workflow wrapper for Beads/GitHub sync, tests, release bump, updates, and plugin sync |
 | Repo contract validators | `yazelix_maintainer/src/repo_contract_validation.rs` | moved to `yazelix_maintainer` | reject external repo | Largest maintainer file; all checks are tied to this repo's Nix, README, Home Manager, release, and package contracts |
-| Generic repo validation | `yazelix_maintainer/src/repo_validation.rs` | moved to `yazelix_maintainer` | reject external repo | Spec/test traceability and package-test-purity are repo policy, not runtime product behavior |
+| Generic repo validation | `yazelix_maintainer/src/repo_validation.rs` | moved to `yazelix_maintainer` | reject external repo | Contract/test traceability and package-test-purity are repo policy, not runtime product behavior |
 | Issue sync | `yazelix_maintainer/src/repo_issue_sync.rs` | moved to `yazelix_maintainer` | reject external repo | Beads/GitHub mapping is local workflow state and should not become a separately versioned tool |
 | Nushell lint wrapper | `yazelix_maintainer/src/repo_nu_lint.rs` | moved to `yazelix_maintainer` | reject external repo | Thin repo-local maintainer command around checked-in Nu files |
 | Pane-orchestrator build/sync | `yazelix_maintainer/src/repo_plugin_build.rs` | moved to `yazelix_maintainer` | reject external repo | Sync stamp and tracked wasm are part of this repository; command depends on `yazelix_core` materialization APIs |

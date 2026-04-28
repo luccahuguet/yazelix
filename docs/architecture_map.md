@@ -23,7 +23,7 @@ history, and Beads-owned planning state.
 | Workspace session orchestration | Live Zellij/Yazi/editor session behavior: panes, tabs, sidebar identity, reveal/open flows, popup flows, and layout-family transitions | `nushell/scripts/integrations`, `nushell/scripts/zellij_wrappers`, `rust_plugins/` | Live Zellij session truth, pane-orchestrator contracts, and workspace/session contracts |
 | Distribution and host integration | How Yazelix is packaged, launched, and adapted into external owners such as Home Manager, shells, terminals, desktop integration, and profile-owned installs | `home_manager`, `packaging`, `shells`, `flake.nix`, `yazelix_package.nix`, `yazelix_runtime_package.nix` | The packaged runtime shape and explicit integration contracts |
 | Shipped runtime data and assets | The tracked data the runtime consumes directly: layouts, themes, plugins, templates, release metadata, TOML tooling support, cursor presets, and visual assets | `configs`, `config_metadata`, `user_configs`, `assets`, `nushell/config`, `tombi.toml`, `yazelix_default.toml`, `yazelix_cursors_default.toml`, `docs/upgrade_notes.toml` | Version-controlled shipped files |
-| Maintainer workflow and validation | The non-user-facing machinery that keeps the other four coherent: tests, validators, release/update workflow, CI, and maintainer tooling | `nushell/scripts/dev`, `.github`, `maintainer_shell.nix`, `.nu-lint.toml` | Beads, specs/contracts, CI policy, and maintainer command surfaces |
+| Maintainer workflow and validation | The non-user-facing machinery that keeps the other four coherent: tests, validators, release/update workflow, CI, and maintainer tooling | `nushell/scripts/dev`, `.github`, `maintainer_shell.nix`, `.nu-lint.toml` | Beads, contracts, CI policy, and maintainer command surfaces |
 
 ## How They Fit Together
 
@@ -52,11 +52,10 @@ This is still the single largest shipped logic surface in the repo. If Yazelix i
 
 Related contracts:
 
-- [Current Trimmed Runtime Contract](./specs/v15_trimmed_runtime_contract.md)
-- [Runtime Root Contract](./specs/runtime_root_contract.md)
-- [Rust/Nushell Bridge Contract](./specs/rust_nushell_bridge_contract.md)
-- [Rust Migration Matrix](./specs/rust_migration_matrix.md)
-- [Runtime Dependency And Launch Preflight Contract](./specs/runtime_dependency_preflight_contract.md)
+- [Current Trimmed Runtime Contract](./contracts/v15_trimmed_runtime_contract.md)
+- [Runtime Root Contract](./contracts/runtime_root_contract.md)
+- [Rust/Nushell Bridge Contract](./contracts/rust_nushell_bridge_contract.md)
+- [Runtime Dependency And Launch Preflight Contract](./contracts/runtime_dependency_preflight_contract.md)
 
 ### Workspace Session Orchestration
 
@@ -71,9 +70,9 @@ This is where the Rust plugins matter. They are not "extra integration code"; th
 
 Related contracts:
 
-- [Workspace Session Contract](./specs/workspace_session_contract.md)
-- [Backend-Free Workspace Slice](./specs/backend_free_workspace_slice.md)
-- [Cross-Language Runtime Ownership](./specs/cross_language_runtime_ownership.md)
+- [Workspace Session Contract](./contracts/workspace_session_contract.md)
+- [Backend-Free Workspace Slice](./contracts/backend_free_workspace_slice.md)
+- [Cross-Language Runtime Ownership](./contracts/cross_language_runtime_ownership.md)
 
 ### Distribution And Host Integration
 
@@ -87,9 +86,9 @@ This layer should stay thin. If it starts owning behavior that belongs to runtim
 
 Related contracts:
 
-- [Nixpkgs Package Contract](./specs/nixpkgs_package_contract.md)
-- [Runtime Distribution Capability Tiers](./specs/runtime_distribution_capability_tiers.md)
-- [Helix Managed Config Contract](./specs/helix_managed_config_contract.md)
+- [Nixpkgs Package Contract](./contracts/nixpkgs_package_contract.md)
+- [Runtime Distribution Capability Tiers](./contracts/runtime_distribution_capability_tiers.md)
+- [Helix Managed Config Contract](./contracts/helix_managed_config_contract.md)
 
 ### Shipped Runtime Data And Assets
 

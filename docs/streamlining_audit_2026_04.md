@@ -5,7 +5,7 @@
 > that have since been removed
 > Current planning should start from
 > [subsystem_code_inventory.md](./subsystem_code_inventory.md) and
-> [specs/rust_migration_matrix.md](./specs/rust_migration_matrix.md)
+> [architecture_map.md](./architecture_map.md)
 
 ## Summary
 

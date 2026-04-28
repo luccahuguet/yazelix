@@ -1,9 +1,16 @@
-use serde_json::Value as JsonValue;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const POLICY_ONLY_SPEC_PATHS: &[&str] = &["docs/specs/test_suite_governance.md"];
+const POLICY_ONLY_CONTRACT_PATHS: &[&str] = &["docs/contracts/test_suite_governance.md"];
+const PLANNING_LANGUAGE_MARKERS: &[&str] = &[
+    "Follow-Up Beads",
+    "Follow-up bead",
+    "Prototype Outcome",
+    "Historical planning note",
+    "Historical transition note",
+    "Status: Historical",
+];
 const ALLOWED_CONTRACT_TYPES: &[&str] = &[
     "behavior",
     "invariant",
@@ -71,7 +78,7 @@ pub struct ValidationReport {
 #[derive(Debug, Clone)]
 pub struct ContractItem {
     pub id: String,
-    pub spec: String,
+    pub contract_path: String,
     pub item_type: Option<String>,
     pub status: Option<String>,
     pub owner: Option<String>,
@@ -92,31 +99,30 @@ pub fn repo_root() -> PathBuf {
         .expect("repo root")
 }
 
-pub fn validate_specs(repo_root: &Path) -> Result<ValidationReport, String> {
-    let spec_files = load_spec_files(repo_root)?;
-    if spec_files.is_empty() {
+pub fn validate_contracts(repo_root: &Path) -> Result<ValidationReport, String> {
+    let contract_files = load_contract_files(repo_root)?;
+    if contract_files.is_empty() {
         return Ok(ValidationReport::default());
     }
 
-    let bead_ids = load_bead_ids(repo_root)?;
     let contract_items = load_contract_items(repo_root)?;
     let mut report = ValidationReport::default();
     let mut seen_ids: HashMap<String, String> = HashMap::new();
 
-    for spec_path in &spec_files {
+    for contract_path in &contract_files {
         report
             .errors
-            .extend(validate_spec_file(repo_root, spec_path, &bead_ids)?);
+            .extend(validate_contract_file(repo_root, contract_path)?);
     }
 
     for item in &contract_items {
-        if let Some(existing_spec) = seen_ids.get(&item.id) {
+        if let Some(existing_contract_path) = seen_ids.get(&item.id) {
             report.errors.push(format!(
                 "Duplicate contract item id `{}` appears in both {} and {}",
-                item.id, existing_spec, item.spec
+                item.id, existing_contract_path, item.contract_path
             ));
         } else {
-            seen_ids.insert(item.id.clone(), item.spec.clone());
+            seen_ids.insert(item.id.clone(), item.contract_path.clone());
         }
 
         report.errors.extend(validate_contract_item(item));
@@ -210,14 +216,14 @@ pub fn validate_rust_test_traceability(repo_root: &Path) -> Result<ValidationRep
             if let Some(exception_line) = strength_exception.as_deref() {
                 if !is_valid_strength_exception_line(exception_line) {
                     report.errors.push(format!(
-                        "Governed Rust test strength exception must cite a bead id or spec path: {} :: {} :: {}",
+                        "Governed Rust test strength exception must cite a bead id or contract path: {} :: {} :: {}",
                         relative_path, test_record.test_name, exception_line
                     ));
                 }
             }
             if strength < minimum_strength && strength_exception.is_none() {
                 report.errors.push(format!(
-                    "Governed Rust test is below the default minimum strength bar of {}/10 for lane '{}'; add a stronger test or cite a bead/spec with '// Strength exception:': {} :: {} :: {}/10",
+                    "Governed Rust test is below the default minimum strength bar of {}/10 for lane '{}'; add a stronger test or cite a bead/contract with '// Strength exception:': {} :: {} :: {}/10",
                     minimum_strength, lane, relative_path, test_record.test_name, strength
                 ));
             }
@@ -251,55 +257,50 @@ pub fn validate_package_rust_test_purity(repo_root: &Path) -> Result<ValidationR
     Ok(report)
 }
 
-fn validate_spec_file(
-    repo_root: &Path,
-    spec_path: &Path,
-    bead_ids: &HashSet<String>,
-) -> Result<Vec<String>, String> {
-    let relative_path = relative_to_repo(repo_root, spec_path)?;
-    let content = fs::read_to_string(spec_path).map_err(|error| {
+fn validate_contract_file(repo_root: &Path, contract_path: &Path) -> Result<Vec<String>, String> {
+    let relative_path = relative_to_repo(repo_root, contract_path)?;
+    let content = fs::read_to_string(contract_path).map_err(|error| {
         format!(
-            "Failed to read spec file {}: {}",
-            spec_path.display(),
+            "Failed to read contract file {}: {}",
+            contract_path.display(),
             error
         )
     })?;
-    let traceability = get_traceability_section(&content);
-
-    if traceability.trim().is_empty() {
-        return Ok(vec![format!(
-            "{}: missing `## Traceability` section",
-            relative_path
-        )]);
-    }
-
-    let bead_match = traceability
-        .lines()
-        .map(str::trim)
-        .find_map(parse_traceability_bead_line);
-    let defended_by_count = traceability
-        .lines()
-        .map(str::trim)
-        .filter(|line| line.starts_with("- Defended by:"))
-        .count();
 
     let mut errors = Vec::new();
 
-    match bead_match {
-        None => errors.push(format!(
-            "{}: missing valid `- Bead: ` traceability entry",
+    if content.contains("docs/specs") {
+        errors.push(format!(
+            "{}: canonical contracts must not reference stale `docs/specs` paths",
             relative_path
-        )),
-        Some(bead_id) if !bead_ids.contains(&bead_id) => errors.push(format!(
-            "{}: traceability bead `{}` does not exist in .beads/issues.jsonl",
-            relative_path, bead_id
-        )),
-        Some(_) => {}
+        ));
     }
 
-    if defended_by_count == 0 {
+    for (line_index, line) in content.lines().enumerate() {
+        let line_number = line_index + 1;
+        let lower_line = line.to_lowercase();
+        if lower_line.contains("bead") || line_contains_bead_id(line) {
+            errors.push(format!(
+                "{}:{}: canonical contracts must not mention Beads; put planning traceability in the issue tracker instead",
+                relative_path, line_number
+            ));
+        }
+        for marker in PLANNING_LANGUAGE_MARKERS {
+            if line.contains(marker) {
+                errors.push(format!(
+                    "{}:{}: canonical contracts must not contain planning marker `{}`",
+                    relative_path, line_number, marker
+                ));
+            }
+        }
+    }
+
+    if !content.contains("## Verification")
+        && !content.contains("- Verification:")
+        && !content.contains("- Defended by:")
+    {
         errors.push(format!(
-            "{}: expected at least one `- Defended by:` traceability entry",
+            "{}: canonical contract must name a concrete verification path",
             relative_path
         ));
     }
@@ -313,11 +314,11 @@ fn validate_contract_item(item: &ContractItem) -> Vec<String> {
     match item.item_type.as_deref() {
         None => errors.push(format!(
             "{}: contract item `{}` is missing `- Type:`",
-            item.spec, item.id
+            item.contract_path, item.id
         )),
         Some(item_type) if !ALLOWED_CONTRACT_TYPES.contains(&item_type) => errors.push(format!(
             "{}: contract item `{}` declares unsupported type `{}`",
-            item.spec, item.id, item_type
+            item.contract_path, item.id, item_type
         )),
         Some(_) => {}
     }
@@ -325,7 +326,7 @@ fn validate_contract_item(item: &ContractItem) -> Vec<String> {
     let Some(status) = item.status.as_deref() else {
         errors.push(format!(
             "{}: contract item `{}` is missing `- Status:`",
-            item.spec, item.id
+            item.contract_path, item.id
         ));
         return errors;
     };
@@ -333,7 +334,7 @@ fn validate_contract_item(item: &ContractItem) -> Vec<String> {
     if !ALLOWED_CONTRACT_STATUSES.contains(&status) {
         errors.push(format!(
             "{}: contract item `{}` declares unsupported status `{}`",
-            item.spec, item.id, status
+            item.contract_path, item.id, status
         ));
         return errors;
     }
@@ -347,7 +348,7 @@ fn validate_contract_item(item: &ContractItem) -> Vec<String> {
             if field.is_none() {
                 errors.push(format!(
                     "{}: contract item `{}` is missing `- {}:`",
-                    item.spec, item.id, label
+                    item.contract_path, item.id, label
                 ));
             }
         }
@@ -360,7 +361,7 @@ fn validate_contract_item(item: &ContractItem) -> Vec<String> {
         {
             errors.push(format!(
                 "{}: contract item `{}` has `- Verification:` but no allowed verification mode keyword",
-                item.spec, item.id
+                item.contract_path, item.id
             ));
         }
     }
@@ -368,48 +369,18 @@ fn validate_contract_item(item: &ContractItem) -> Vec<String> {
     if status == "live" && item.verification.is_none() {
         errors.push(format!(
             "{}: live contract item `{}` must name a verification path or explicit manual/unverified reason",
-            item.spec, item.id
+            item.contract_path, item.id
         ));
     }
 
     errors
 }
 
-fn load_bead_ids(repo_root: &Path) -> Result<HashSet<String>, String> {
-    let issues_path = repo_root.join(".beads").join("issues.jsonl");
-    if !issues_path.exists() {
-        return Ok(HashSet::new());
-    }
-
-    let mut ids = HashSet::new();
-    let content = fs::read_to_string(&issues_path).map_err(|error| {
-        format!(
-            "Failed to read bead export {}: {}",
-            issues_path.display(),
-            error
-        )
-    })?;
-
-    for line in content
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty())
-    {
-        let value: JsonValue = serde_json::from_str(line)
-            .map_err(|error| format!("Invalid issues.jsonl line: {error}"))?;
-        if let Some(id) = value.get("id").and_then(JsonValue::as_str) {
-            ids.insert(id.to_string());
-        }
-    }
-
-    Ok(ids)
-}
-
 fn load_contract_items(repo_root: &Path) -> Result<Vec<ContractItem>, String> {
     let mut items = Vec::new();
-    for spec_path in load_spec_files(repo_root)? {
-        let relative_path = relative_to_repo(repo_root, &spec_path)?;
-        let lines = read_lines(&spec_path)?;
+    for contract_path in load_contract_files(repo_root)? {
+        let relative_path = relative_to_repo(repo_root, &contract_path)?;
+        let lines = read_lines(&contract_path)?;
         let mut current: Option<ContractItem> = None;
 
         for line in lines {
@@ -420,7 +391,7 @@ fn load_contract_items(repo_root: &Path) -> Result<Vec<ContractItem>, String> {
                 }
                 current = Some(ContractItem {
                     id,
-                    spec: relative_path.clone(),
+                    contract_path: relative_path.clone(),
                     item_type: None,
                     status: None,
                     owner: None,
@@ -463,20 +434,18 @@ fn load_contract_items(repo_root: &Path) -> Result<Vec<ContractItem>, String> {
     Ok(items)
 }
 
-fn load_spec_files(repo_root: &Path) -> Result<Vec<PathBuf>, String> {
+fn load_contract_files(repo_root: &Path) -> Result<Vec<PathBuf>, String> {
     let mut files = Vec::new();
-    let specs_dir = repo_root.join("docs").join("specs");
-    for entry in fs::read_dir(&specs_dir).map_err(|error| {
+    let contracts_dir = repo_root.join("docs").join("contracts");
+    for entry in fs::read_dir(&contracts_dir).map_err(|error| {
         format!(
-            "Failed to read specs directory {}: {}",
-            specs_dir.display(),
+            "Failed to read contracts directory {}: {}",
+            contracts_dir.display(),
             error
         )
     })? {
         let path = entry.map_err(|error| error.to_string())?.path();
-        if path.extension().and_then(|ext| ext.to_str()) == Some("md")
-            && path.file_name().and_then(|name| name.to_str()) != Some("template.md")
-        {
+        if path.extension().and_then(|ext| ext.to_str()) == Some("md") {
             files.push(path);
         }
     }
@@ -636,7 +605,7 @@ fn collect_rust_definition_contract_traceability_errors(
     let mut errors = Vec::new();
     let contract_ids =
         load_rust_definition_contract_ids(repo_root, relative_path, test_record.attribute_index)?;
-    let defends_spec_paths = load_rust_definition_defends_spec_paths(
+    let defended_contract_paths = load_rust_definition_defended_contract_paths(
         repo_root,
         relative_path,
         test_record.attribute_index,
@@ -655,7 +624,7 @@ fn collect_rust_definition_contract_traceability_errors(
         )?
     {
         errors.push(format!(
-            "Governed Rust test cannot rely only on `docs/specs/test_suite_governance.md` as nearby traceability: {} :: {}",
+            "Governed Rust test cannot rely only on `docs/contracts/test_suite_governance.md` as nearby traceability: {} :: {}",
             relative_path, test_record.test_name
         ));
     }
@@ -663,12 +632,12 @@ fn collect_rust_definition_contract_traceability_errors(
     if lane == "default"
         && contract_ids.is_empty()
         && !has_regression_or_invariant
-        && defends_spec_paths
+        && defended_contract_paths
             .iter()
-            .any(|spec_path| spec_has_contract_items(contract_items, spec_path))
+            .any(|contract_path| contract_has_contract_items(contract_items, contract_path))
     {
         errors.push(format!(
-            "Default-lane Rust test defends a spec with indexed contract items but is missing a nearby '// Contract:' marker: {} :: {}",
+            "Default-lane Rust test defends a contract with indexed items but is missing a nearby '// Contract:' marker: {} :: {}",
             relative_path, test_record.test_name
         ));
     }
@@ -848,17 +817,17 @@ fn rust_definition_has_policy_only_traceability(
     relative_path: &str,
     attribute_index: usize,
 ) -> Result<bool, String> {
-    let spec_paths =
-        load_rust_definition_defends_spec_paths(repo_root, relative_path, attribute_index)?;
-    if spec_paths.is_empty() {
+    let contract_paths =
+        load_rust_definition_defended_contract_paths(repo_root, relative_path, attribute_index)?;
+    if contract_paths.is_empty() {
         return Ok(false);
     }
     if has_rust_definition_regression_or_invariant(repo_root, relative_path, attribute_index)? {
         return Ok(false);
     }
-    Ok(spec_paths
+    Ok(contract_paths
         .iter()
-        .all(|spec_path| is_policy_only_spec_path(spec_path)))
+        .all(|contract_path| is_policy_only_contract_path(contract_path)))
 }
 
 fn has_rust_definition_regression_or_invariant(
@@ -890,7 +859,7 @@ fn load_rust_definition_contract_ids(
     Ok(ids)
 }
 
-fn load_rust_definition_defends_spec_paths(
+fn load_rust_definition_defended_contract_paths(
     repo_root: &Path,
     relative_path: &str,
     attribute_index: usize,
@@ -898,8 +867,8 @@ fn load_rust_definition_defends_spec_paths(
     let mut paths = Vec::new();
     for line in load_rust_definition_traceability_lines(repo_root, relative_path, attribute_index)?
     {
-        if let Some(spec_path) = parse_rust_defends_spec_path(repo_root, &line) {
-            push_unique(&mut paths, spec_path);
+        if let Some(contract_path) = parse_rust_defends_contract_path(repo_root, &line) {
+            push_unique(&mut paths, contract_path);
         }
     }
     Ok(paths)
@@ -988,35 +957,6 @@ fn get_prior_nonempty_lines_before_index(
         .collect())
 }
 
-fn get_traceability_section(content: &str) -> String {
-    let mut in_section = false;
-    let mut body = Vec::new();
-    for line in content.lines() {
-        let trimmed = line.trim_end();
-        if trimmed == "## Traceability" {
-            in_section = true;
-            continue;
-        }
-        if in_section && trimmed.starts_with("## ") {
-            break;
-        }
-        if in_section {
-            body.push(trimmed);
-        }
-    }
-    body.join("\n")
-}
-
-fn parse_traceability_bead_line(line: &str) -> Option<String> {
-    let payload = line.strip_prefix("- Bead:")?.trim();
-    let bead_id = payload.strip_prefix('`')?.strip_suffix('`')?;
-    if bead_id.is_empty() {
-        None
-    } else {
-        Some(bead_id.to_string())
-    }
-}
-
 fn parse_contract_heading(line: &str) -> Option<String> {
     let candidate = line.strip_prefix("#### ")?.trim();
     if is_valid_contract_id(candidate) {
@@ -1056,11 +996,11 @@ fn normalize_contract_field_name(field_name: &str) -> String {
     field_name.to_lowercase().replace(' ', "_")
 }
 
-fn parse_rust_defends_spec_path(repo_root: &Path, line: &str) -> Option<String> {
-    parse_defends_spec_path(repo_root, line, "// Defends:")
+fn parse_rust_defends_contract_path(repo_root: &Path, line: &str) -> Option<String> {
+    parse_defends_contract_path(repo_root, line, "// Defends:")
 }
 
-fn parse_defends_spec_path(repo_root: &Path, line: &str, marker: &str) -> Option<String> {
+fn parse_defends_contract_path(repo_root: &Path, line: &str, marker: &str) -> Option<String> {
     let candidate = line.trim().strip_prefix(marker)?.trim();
     if !candidate.starts_with("docs/") || !repo_root.join(candidate).exists() {
         return None;
@@ -1192,7 +1132,7 @@ fn is_valid_strength_exception_line(line: &str) -> bool {
         return false;
     };
     let trimmed = payload.trim();
-    !trimmed.is_empty() && (trimmed.contains("yazelix-") || trimmed.contains("docs/specs/"))
+    !trimmed.is_empty() && (trimmed.contains("yazelix-") || trimmed.contains("docs/contracts/"))
 }
 
 fn find_contract_item<'a>(
@@ -1202,12 +1142,21 @@ fn find_contract_item<'a>(
     contract_items.iter().find(|item| item.id == contract_id)
 }
 
-fn spec_has_contract_items(contract_items: &[ContractItem], spec_path: &str) -> bool {
-    contract_items.iter().any(|item| item.spec == spec_path)
+fn contract_has_contract_items(contract_items: &[ContractItem], contract_path: &str) -> bool {
+    contract_items
+        .iter()
+        .any(|item| item.contract_path == contract_path)
 }
 
-fn is_policy_only_spec_path(spec_path: &str) -> bool {
-    POLICY_ONLY_SPEC_PATHS.contains(&spec_path)
+fn is_policy_only_contract_path(contract_path: &str) -> bool {
+    POLICY_ONLY_CONTRACT_PATHS.contains(&contract_path)
+}
+
+fn line_contains_bead_id(line: &str) -> bool {
+    if line.contains("yazelix-validate-") {
+        return false;
+    }
+    line.contains("yazelix-")
 }
 
 fn read_lines(path: &Path) -> Result<Vec<String>, String> {
@@ -1257,7 +1206,16 @@ mod tests {
         content: &str,
     ) -> (tempfile::TempDir, PathBuf) {
         let (tmp, repo) = write_rust_test_fixture(relative_path, content);
-        fs::create_dir_all(repo.join("docs/specs")).unwrap();
+        fs::create_dir_all(repo.join("docs/contracts")).unwrap();
+        (tmp, repo)
+    }
+
+    fn write_contract_fixture(relative_path: &str, content: &str) -> (tempfile::TempDir, PathBuf) {
+        let tmp = tempdir().unwrap();
+        let repo = tmp.path().to_path_buf();
+        let full_path = repo.join(relative_path);
+        fs::create_dir_all(full_path.parent().unwrap()).unwrap();
+        fs::write(full_path, content).unwrap();
         (tmp, repo)
     }
 
@@ -1270,7 +1228,75 @@ mod tests {
         }
     }
 
-    // Regression: below-bar governed Rust tests fail unless their exception cites durable Beads or spec rationale.
+    // Defends: canonical contracts reject issue-tracker traceability so planning state stays out.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn contract_validation_rejects_bead_traceability() {
+        let source = [
+            "# Example Contract",
+            "",
+            "## Summary",
+            "This contract is intentionally tiny.",
+            "",
+            "## Verification",
+            "",
+            "- `yzx_repo_validator validate-contracts`",
+            "",
+            "## Traceability",
+            "",
+            "- Bead: `yazelix-7iye`",
+        ]
+        .join("\n");
+        let (_tmp, repo) = write_contract_fixture("docs/contracts/example.md", &source);
+
+        let report = validate_contracts(&repo).unwrap();
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|error| error.contains("must not mention Beads")),
+            "{:?}",
+            report.errors
+        );
+    }
+
+    // Defends: canonical contracts reject stale spec paths and planning markers.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn contract_validation_rejects_stale_spec_paths_and_planning_markers() {
+        let source = [
+            "# Example Contract",
+            "",
+            "## Summary",
+            "Prototype Outcome: this belongs in Beads, not contracts.",
+            "",
+            "## Verification",
+            "",
+            "- stale reference: docs/specs/example.md",
+        ]
+        .join("\n");
+        let (_tmp, repo) = write_contract_fixture("docs/contracts/example.md", &source);
+
+        let report = validate_contracts(&repo).unwrap();
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|error| error.contains("docs/specs")),
+            "{:?}",
+            report.errors
+        );
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|error| error.contains("Prototype Outcome")),
+            "{:?}",
+            report.errors
+        );
+    }
+
+    // Regression: below-bar governed Rust tests fail unless their exception cites durable Beads or contract rationale.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn rust_traceability_rejects_below_eight_without_exception() {
@@ -1326,7 +1352,7 @@ mod tests {
         assert!(report.errors.is_empty(), "{:?}", report.errors);
     }
 
-    // Regression: exception markers without a bead or spec are still rejected.
+    // Regression: exception markers without a bead or contract are still rejected.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn rust_traceability_rejects_exception_without_durable_reference() {
@@ -1352,7 +1378,7 @@ mod tests {
             report
                 .errors
                 .iter()
-                .any(|error| error.contains("must cite a bead id or spec path")),
+                .any(|error| error.contains("must cite a bead id or contract path")),
             "{:?}",
             report.errors
         );

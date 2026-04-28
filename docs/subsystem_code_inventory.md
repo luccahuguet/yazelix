@@ -10,9 +10,8 @@ no longer "which subsystem is largest?" The useful question is "which surviving
 Nushell owners can disappear next, and which ones are still honest Nushell
 fits?"
 
-The current ranked answer now lives in
-`docs/specs/ranked_nu_deletion_budget.md`. This inventory stays as the public
-delete-first map; the ranked budget is the execution queue.
+The current ranked answer belongs in Beads. This inventory stays as the public
+delete-first map and should not become an execution queue.
 
 The previous inventory was stale in two important ways:
 
@@ -54,9 +53,9 @@ not progress toward the current repo goal.
 ## Delete Now
 
 The old zero-replacement doc deletes are done. `yazelix-k0f3` verified that
-`docs/specs/yzx_env_run_rust_owner_transition.md` and
-`docs/specs/yzx_command_surface_backend_coupling.md` are already gone from the
-tracked tree, and `spec_inventory.md` keeps them out of active planning.
+`docs/contracts/yzx_env_run_rust_owner_transition.md` and
+`docs/contracts/yzx_command_surface_backend_coupling.md` are already gone from the
+tracked tree, and `contracts_inventory.md` keeps them out of active planning.
 
 There are no remaining pure runtime-code deletes with zero replacement work.
 Most remaining product-side Nushell either bridges to an existing Rust owner or

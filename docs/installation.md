@@ -252,9 +252,9 @@ Remove the preview app with:
 yzx desktop macos_preview uninstall
 ```
 
-This launcher preview is unsigned, unnotarized, and not maintainer-validated on macOS hardware. It is a community feedback path, not a supported Spotlight/Launchpad/Dock contract. See the [macOS support floor spec](./specs/macos_support_floor.md).
+This launcher preview is unsigned, unnotarized, and not maintainer-validated on macOS hardware. It is a community feedback path, not a supported Spotlight/Launchpad/Dock contract. See the [macOS support floor contract](./contracts/macos_support_floor.md).
 
-The current production stance is intentionally `unsigned preview`: Yazelix owns the app-bundle metadata, install/uninstall path, and failure messages, but signed or notarized distribution is gated until the release workflow can defend Developer ID signing, notarization, stapling, and macOS hardware smoke tests. See the [macOS launcher productization spec](./specs/macos_launcher_productization.md).
+The current production stance is intentionally `unsigned preview`: Yazelix owns the app-bundle metadata, install/uninstall path, and failure messages, but signed or notarized distribution is gated until the release workflow can defend Developer ID signing, notarization, stapling, and macOS hardware smoke tests.
 
 ## Maintainer / Clone-Based Flow
 

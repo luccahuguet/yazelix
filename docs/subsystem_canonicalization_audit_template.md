@@ -5,7 +5,7 @@
 Use this template before running a delete-first subsystem audit in Yazelix.
 
 An audit is planning-only work. It exists to identify the canonical surviving
-owner, the bridges that can be burned, the tests and specs that matter, and the
+owner, the bridges that can be burned, the tests and contracts that matter, and the
 deletions that are real versus illusory. An audit is not permission to start
 deleting code, tests, or docs without naming the retained behavior and the
 verification that survives afterward.
@@ -35,7 +35,7 @@ Use one row per behavior:
 Rules:
 
 - if the behavior is already covered by contract items, reference the IDs
-- if no contract item exists yet, name the closest live spec or regression
+- if no contract item exists yet, name the closest live contract or regression
 - if current verification is unknown, say that explicitly before recommending
   deletion
 
@@ -109,7 +109,7 @@ Record:
 - DRY opportunities
 - weak or orphan tests
 - only-known-executable-defense tests
-- spec gaps
+- contract gaps
 - docs drift
 
 Do not stop at "this feels messy." Name the concrete seam and the retained
@@ -160,12 +160,12 @@ Additional hard rules:
 
 ## Recommended Audit Flow
 
-1. Read the live specs, current planning specs, and the relevant code together
+1. Read the live contracts, current planning notes, and the relevant code together
 2. Fill the must-not-lose behavior table before discussing deletions
 3. Draw the current owner map across Nu, Rust, plugins, POSIX shell, and any
    other runtime involved
 4. Classify each layer as canonical owner, survivor, bridge debt, or no-go
-5. Record weak tests and spec gaps before proposing code removal
+5. Record weak tests and contract gaps before proposing code removal
 6. Create follow-up beads only after the deletion class and stop condition are
    clear
 

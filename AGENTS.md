@@ -123,12 +123,13 @@ When creating new files or directories, always use underscores to maintain consi
 - Do not block on `yzx dev sync_issues` when it is slow or hanging. Prefer `bd` for Beads mutations whenever possible, continue the implementation work, and repair the GitHub/Beads contract afterward.
 - Use `bd export` and `bd import` for JSONL interchange when needed. bd uses embedded Dolt as its storage backend — there is no separate DB/JSONL sync cycle.
 
-## Spec Workflow
+## Contract Workflow
 
-- Use `docs/spec_driven_workflow.md` as the durable entrypoint for when a change needs a spec and how specs relate to Beads.
-- Store reusable spec templates and concrete specs under `docs/specs/`.
-- Prefer specs for user-visible behavior, subsystem contracts, and integration boundaries. Do not create specs for trivial edits or purely mechanical refactors.
-- Real specs should include a small `Traceability` section with one Bead id and at least one concrete `Defended by` check or test.
+- Use `docs/contract_driven_development.md` as the durable entrypoint for when a change needs a canonical contract and how contracts relate to Beads.
+- Store canonical contracts under `docs/contracts/`.
+- Prefer contracts for durable user-visible behavior, subsystem contracts, integration boundaries, source-of-truth rules, and supported failure modes. Do not create contracts for trivial edits, purely mechanical refactors, research notes, prototype outcomes, or implementation diaries.
+- Beads own planning state, decision history, rejected alternatives, implementation sequencing, and closure evidence.
+- Contracts own current supported behavior and verification paths. Contracts should not mention Bead ids unless the contract is specifically about Beads/GitHub planning architecture.
 
 ## Tool Invocation Workflow
 
@@ -175,11 +176,11 @@ When creating new files or directories, always use underscores to maintain consi
 
 ## Rust Dependency Gate
 
-- Before starting any Rust implementation bead, record a crate-vs-in-house decision in the bead notes or linked spec.
+- Before starting any Rust implementation bead, record a crate-vs-in-house decision in the bead notes or linked contract.
 - The decision must list production crates, dev-only crates, logic to build in-house, rejected alternatives, and packaging impact.
 - Default to in-house/std for small domain logic. Add crates when they buy stable parsing, serialization, hashing, error modeling, or test coverage that would be wasteful or riskier to recreate.
 - Avoid broad frameworks or convenience crates by default, especially for private helpers. If a broad crate is chosen, explain why the narrower option is worse.
-- If the crate list changes during implementation, update the bead/spec before continuing so dependency drift is explicit.
+- If the crate list changes during implementation, update the bead or linked contract before continuing so dependency drift is explicit.
 
 ## Zellij Keybinding Rule
 
@@ -224,7 +225,7 @@ Use this as the default refactor and audit method in Yazelix, especially before 
 2. Delete the part or process: Remove unnecessary steps, compatibility paths, duplicate ownership layers, stale surfaces, or helper indirection before introducing new abstractions. If nothing can be deleted, be explicit about why.
 3. Simplify or optimize only what survives: After deletion, make the remaining path smaller, clearer, and more DRY. Never optimize a part that should have been removed.
 4. Verify the simpler contract: Test the exact user-visible behavior or subsystem contract that remains after the deletion/simplification. Prefer focused behavior checks and regressions over broad noise.
-5. Record the decision and the new seam: When the work changes future planning, capture the outcome in Beads/specs/notes so later refactors build on the clarified boundary instead of reopening the same ambiguity.
+5. Record the decision and the new seam: When the work changes future planning, capture the outcome in Beads or maintainer notes so later refactors build on the clarified boundary instead of reopening the same ambiguity.
 
 ## Verification Requirements
 
@@ -244,9 +245,9 @@ Use this as the default refactor and audit method in Yazelix, especially before 
 - **Every governed Rust `#[test]` must also carry the same nearby structured strength marker.** Use:
   - `// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10`
 - **Governed test strength minimums are enforced mechanically.** Current default minimum is `8/10` for every governed lane (`default`, `maintainer`, `sweep`, and `manual`).
-- **Below-8 governed tests require explicit durable rationale.** Only keep one with a nearby `Strength exception:` marker that cites a Bead id or spec path; otherwise strengthen, demote, or delete it.
+- **Below-8 governed tests require explicit durable rationale.** Only keep one with a nearby `Strength exception:` marker that cites a Bead id or contract path; otherwise strengthen, demote, or delete it.
 - **Cosmetic or trivia assertions do not become strong tests just by scoring them as `8/10`.** Exact palette constants, help-output trivia, command-name discovery, and implementation-string checks are not enough unless they defend a documented product contract or regression.
-- **Do not add packaging/config-sync tests by default** just because two files should match. Only keep them when they defend a maintained source-of-truth invariant in the right lane; otherwise prefer behavior tests, spec-backed validation, or cheaper dedicated validators.
+- **Do not add packaging/config-sync tests by default** just because two files should match. Only keep them when they defend a maintained source-of-truth invariant in the right lane; otherwise prefer behavior tests, contract-backed validation, or cheaper dedicated validators.
 - When in doubt, **remove or avoid low-value tests** and spend the budget on fewer, stronger assertions.
 
 ## Yazelix Versioning

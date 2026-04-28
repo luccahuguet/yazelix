@@ -123,9 +123,9 @@ jobs:
         shell: bash
         run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-config-surface-contract
 
-      - name: Validate spec traceability
+      - name: Validate contracts
         shell: bash
-        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-specs
+        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-contracts
 
       - name: Validate default-suite shape and traceability
         shell: bash
