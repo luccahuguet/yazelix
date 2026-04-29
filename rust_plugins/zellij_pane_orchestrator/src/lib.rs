@@ -6,5 +6,6 @@ pub mod pane_contract;
 pub mod screen_saver_contract;
 pub mod sidebar_contract;
 pub mod sidebar_state_contract;
+pub mod status_bar_cache_contract;
 pub mod transient_adapter_contract;
 pub mod transient_pane_contract;

@@ -67,6 +67,8 @@ use yazelix_core::run_zellij_status_bus;
 use yazelix_core::run_zellij_status_bus_ai_activity;
 use yazelix_core::run_zellij_status_bus_token_budget;
 use yazelix_core::run_zellij_status_bus_workspace;
+use yazelix_core::run_zellij_status_cache_widget;
+use yazelix_core::run_zellij_status_cache_write;
 use yazelix_core::update_commands::run_yzx_update;
 use yazelix_core::zellij_commands::internal_zellij_control_subcommands_usage;
 use yazelix_core::zellij_commands::probe_active_tab_session_state;
@@ -110,6 +112,7 @@ fn usage() -> ! {
     eprintln!("       yzx_control zellij get-workspace-root [--include-bootstrap]");
     eprintln!("       yzx_control zellij inspect-session [--json]");
     eprintln!("       yzx_control zellij agent-usage <claude|codex|amp|opencode>");
+    eprintln!("       yzx_control zellij status-cache-widget <widget>");
     eprintln!("       yzx_control zellij retarget <path> [--editor <kind>]");
     eprintln!("       yzx_control zellij open-editor <path> [path ...]");
     eprintln!("       yzx_control zellij open-editor-cwd <path>");
@@ -1123,6 +1126,8 @@ fn run_zellij(args: &[String]) -> Result<i32, CoreError> {
         "status-bus-workspace" => run_zellij_status_bus_workspace(&argv),
         "status-bus-ai-activity" => run_zellij_status_bus_ai_activity(&argv),
         "status-bus-token-budget" => run_zellij_status_bus_token_budget(&argv),
+        "status-cache-write" => run_zellij_status_cache_write(&argv),
+        "status-cache-widget" => run_zellij_status_cache_widget(&argv),
         "retarget" => run_zellij_retarget(&argv),
         "open-editor" => run_zellij_open_editor(&argv),
         "open-editor-cwd" => run_zellij_open_editor_cwd(&argv),

@@ -4,6 +4,7 @@ mod layout;
 mod panes;
 mod screen_saver;
 mod sidebar_yazi;
+mod status_bar_cache;
 mod transient;
 mod workspace;
 
@@ -16,6 +17,7 @@ use workspace::{bootstrap_workspace_root, WorkspaceState};
 use yazelix_pane_orchestrator::active_tab_session_state::SessionAiPaneActivity;
 use yazelix_pane_orchestrator::horizontal_focus_contract::HorizontalDirection;
 use yazelix_pane_orchestrator::screen_saver_contract::ScreenSaverConfig;
+use yazelix_pane_orchestrator::status_bar_cache_contract::StatusBarCacheRuntime;
 use zellij_tile::prelude::*;
 
 pub(crate) const RESULT_OK: &str = "ok";
@@ -51,6 +53,8 @@ struct State {
     screen_saver_config: ScreenSaverConfig,
     screen_saver_last_input: Option<Instant>,
     screen_saver_pane_id: Option<PaneId>,
+    status_bar_cache_runtime: Option<StatusBarCacheRuntime>,
+    status_bar_cache_last_payload: Option<String>,
     permissions_granted: bool,
 }
 
@@ -69,6 +73,7 @@ impl ZellijPlugin for State {
             PermissionType::RunCommands,
             PermissionType::WriteToStdin,
             PermissionType::ReadCliPipes,
+            PermissionType::ReadSessionEnvironmentVariables,
         ]);
         self.transient_pane_config = transient::TransientPaneConfig::from_plugin_configuration(
             &configuration,
@@ -146,6 +151,7 @@ impl ZellijPlugin for State {
             }
             _ => {}
         }
+        self.refresh_status_bar_cache();
         false
     }
 

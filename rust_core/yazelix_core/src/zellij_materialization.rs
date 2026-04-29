@@ -40,6 +40,7 @@ const PANE_ORCHESTRATOR_REQUIRED_PERMISSIONS: &[&str] = &[
     "RunCommands",
     "WriteToStdin",
     "ReadCliPipes",
+    "ReadSessionEnvironmentVariables",
 ];
 const ZJSTATUS_REQUIRED_PERMISSIONS: &[&str] = &[
     "ReadApplicationState",
@@ -1892,41 +1893,44 @@ ui { pane_frames { hide_session_name true } }
         assert!(!rendered.contains("launch_sidebar_yazi.nu"));
     }
 
-    // Regression: shipped zjstatus templates must not call deleted or unsafe dynamic widget helpers.
+    // Regression: shipped zjstatus templates use cache readers for dynamic widgets and do not revive direct Zellij pipe or usage polling.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn zjstatus_template_does_not_reference_missing_or_unsafe_widget_helpers() {
+    fn zjstatus_template_uses_cached_dynamic_widget_helpers() {
         let template =
             include_str!("../../../configs/zellij/layouts/fragments/zjstatus_tab_template.kdl");
         assert!(!template.contains("zjstatus_widget.nu"));
         assert!(!template.contains("command_editor_command"));
         assert!(!template.contains("command_shell_command"));
         assert!(!template.contains("command_term_command"));
-        assert!(!template.contains("yzx_control zellij"));
         assert!(template.contains(ZJSTATUS_NU_BIN_PLACEHOLDER));
-        assert!(!template.contains(ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER));
-        assert!(!template.contains("command_workspace_command"));
+        assert!(template.contains(ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER));
+        assert!(template.contains("command_workspace_command"));
+        assert!(template.contains("status-cache-widget workspace"));
         assert!(!template.contains("status-bus-workspace"));
-        assert!(!template.contains("command_ai_activity_command"));
+        assert!(template.contains("command_ai_activity_command"));
+        assert!(template.contains("status-cache-widget ai_activity"));
         assert!(!template.contains("status-bus-ai-activity"));
-        assert!(!template.contains("command_token_budget_command"));
+        assert!(template.contains("command_token_budget_command"));
+        assert!(template.contains("status-cache-widget token_budget"));
         assert!(!template.contains("status-bus-token-budget"));
-        assert!(!template.contains("command_claude_usage_command"));
-        assert!(!template.contains("command_codex_usage_command"));
-        assert!(!template.contains("command_amp_usage_command"));
-        assert!(!template.contains("command_opencode_usage_command"));
+        assert!(template.contains("command_claude_usage_command"));
+        assert!(template.contains("command_codex_usage_command"));
+        assert!(template.contains("command_amp_usage_command"));
+        assert!(template.contains("command_opencode_usage_command"));
         assert!(!template.contains("agent-usage"));
     }
 
-    // Regression: generated zjstatus command widgets use resolved safe runtime helpers without invoking yzx_control polling.
+    // Regression: generated zjstatus command widgets use resolved runtime helpers while dynamic widgets read only the local cache.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn renders_safe_zjstatus_widget_commands_with_runtime_helper_paths() {
+    fn renders_cached_zjstatus_widget_commands_with_runtime_helper_paths() {
         let temp = tempfile::tempdir().unwrap();
         let runtime_dir = temp.path();
         let libexec = runtime_dir.join("libexec");
         std::fs::create_dir_all(&libexec).unwrap();
         std::fs::write(libexec.join("nu"), "").unwrap();
+        std::fs::write(libexec.join("yzx_control"), "").unwrap();
         let plan =
             sample_render_plan_for_widgets(vec!["workspace"], "hx", "/nix/store/bin/nu", "ghostty");
         let rendered = render_layout_template(
@@ -1942,11 +1946,16 @@ ui { pane_frames { hide_session_name true } }
         )
         .unwrap();
         let expected_nu = libexec.join("nu").to_string_lossy().to_string();
+        let expected_yzx_control = libexec.join("yzx_control").to_string_lossy().to_string();
 
         assert!(rendered.contains(&format!(
             r#"command_cpu_command "{} {}/configs/zellij/scripts/cpu_usage.nu""#,
             expected_nu,
             runtime_dir.to_string_lossy()
+        )));
+        assert!(rendered.contains(&format!(
+            r#"command_workspace_command "{} zellij status-cache-widget workspace""#,
+            expected_yzx_control
         )));
         assert!(!rendered.contains(ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER));
         assert!(!rendered.contains(ZJSTATUS_NU_BIN_PLACEHOLDER));

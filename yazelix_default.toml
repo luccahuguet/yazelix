@@ -161,20 +161,20 @@ support_kitty_keyboard_protocol = false
 theme = "default"
 
 # Zjstatus widget tray (right side of status bar)
-# Available widgets: "editor", "shell", "term", "cpu", "ram"
-# Reserved but currently hidden until backed by cached facts: "workspace", "ai_activity", "token_budget", "claude_usage", "codex_usage", "amp_usage", "opencode_usage"
+# Available widgets: "editor", "shell", "term", "workspace", "ai_activity", "token_budget", "claude_usage", "codex_usage", "amp_usage", "opencode_usage", "cpu", "ram"
+# Dynamic widgets read from a window-local cache so multiple Yazelix windows keep independent facts
 # Comment out any line to hide that widget
 widget_tray = [
   "editor",  # Active editor
   "shell",  # Active shell
   "term",  # Terminal emulator
-  # "workspace", # Reserved for cached workspace facts
-  # "ai_activity", # Reserved for cached AI pane activity facts
-  # "token_budget", # Reserved for cached AI token-budget facts
-  # "claude_usage", # Reserved for cached Claude Code usage facts
-  # "codex_usage", # Reserved for cached Codex usage facts
-  # "amp_usage", # Reserved for cached Amp usage facts
-  # "opencode_usage", # Reserved for cached OpenCode usage facts
+  # "workspace", # Active workspace, focus, and sidebar state
+  # "ai_activity", # Cached AI pane activity
+  # "token_budget", # Cached AI token-budget facts
+  # "claude_usage", # Cached Claude Code usage facts
+  # "codex_usage", # Cached Codex usage facts
+  # "amp_usage", # Cached Amp usage facts
+  # "opencode_usage", # Cached OpenCode usage facts
   "cpu",  # CPU usage
   "ram",  # RAM usage
 ]

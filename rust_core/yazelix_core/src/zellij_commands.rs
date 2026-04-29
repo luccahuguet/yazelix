@@ -17,11 +17,14 @@ use crate::workspace_commands::{
 use serde_json::{Value, json};
 use std::env;
 use std::ffi::OsString;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 const PANE_ORCHESTRATOR_PLUGIN_ALIAS: &str = "yazelix_pane_orchestrator";
 const STATUS_BUS_SCHEMA_VERSION: i64 = 1;
+const STATUS_BAR_CACHE_SCHEMA_VERSION: i64 = 1;
 const EDITOR_PANE_NAME: &str = "editor";
 pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
     "pipe",
@@ -31,6 +34,8 @@ pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
     "status-bus-workspace",
     "status-bus-ai-activity",
     "status-bus-token-budget",
+    "status-cache-write",
+    "status-cache-widget",
     "agent-usage",
     "retarget",
     "open-editor",
@@ -84,6 +89,20 @@ struct ZellijStatusBusWorkspaceArgs {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ZellijStatusBusWidgetArgs {
+    help: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct ZellijStatusCacheWriteArgs {
+    path: Option<PathBuf>,
+    payload: Option<String>,
+    help: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct ZellijStatusCacheWidgetArgs {
+    widget: Option<String>,
+    path: Option<PathBuf>,
     help: bool,
 }
 
@@ -365,6 +384,80 @@ fn parse_zellij_status_bus_widget_args(
     Ok(parsed)
 }
 
+fn parse_zellij_status_cache_write_args(
+    args: &[String],
+) -> Result<ZellijStatusCacheWriteArgs, CoreError> {
+    let mut parsed = ZellijStatusCacheWriteArgs::default();
+    let mut iter = args.iter();
+
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "--path" => {
+                parsed.path = Some(PathBuf::from(
+                    iter.next()
+                        .ok_or_else(|| CoreError::usage("--path requires a value".to_string()))?
+                        .as_str(),
+                ));
+            }
+            "--payload" => {
+                parsed.payload = Some(
+                    iter.next()
+                        .ok_or_else(|| CoreError::usage("--payload requires a value".to_string()))?
+                        .to_string(),
+                );
+            }
+            "-h" | "--help" | "help" => parsed.help = true,
+            other if other.starts_with('-') => {
+                return Err(CoreError::usage(format!(
+                    "Unknown argument for zellij status-cache-write: {other}"
+                )));
+            }
+            _ => {
+                return Err(CoreError::usage(
+                    "zellij status-cache-write accepts only --path and --payload".to_string(),
+                ));
+            }
+        }
+    }
+
+    Ok(parsed)
+}
+
+fn parse_zellij_status_cache_widget_args(
+    args: &[String],
+) -> Result<ZellijStatusCacheWidgetArgs, CoreError> {
+    let mut parsed = ZellijStatusCacheWidgetArgs::default();
+    let mut iter = args.iter();
+
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "--path" => {
+                parsed.path = Some(PathBuf::from(
+                    iter.next()
+                        .ok_or_else(|| CoreError::usage("--path requires a value".to_string()))?
+                        .as_str(),
+                ));
+            }
+            "-h" | "--help" | "help" => parsed.help = true,
+            other if other.starts_with('-') => {
+                return Err(CoreError::usage(format!(
+                    "Unknown argument for zellij status-cache-widget: {other}"
+                )));
+            }
+            other => {
+                if parsed.widget.is_some() {
+                    return Err(CoreError::usage(
+                        "zellij status-cache-widget accepts exactly one widget".to_string(),
+                    ));
+                }
+                parsed.widget = Some(other.to_string());
+            }
+        }
+    }
+
+    Ok(parsed)
+}
+
 fn parse_zellij_agent_usage_args(args: &[String]) -> Result<ZellijAgentUsageArgs, CoreError> {
     let mut parsed = ZellijAgentUsageArgs::default();
     for arg in args {
@@ -407,6 +500,20 @@ fn print_zellij_status_bus_token_budget_help() {
     println!();
     println!("Usage:");
     println!("  yzx_control zellij status-bus-token-budget");
+}
+
+fn print_zellij_status_cache_write_help() {
+    println!("Write the window-local cached status-bar facts");
+    println!();
+    println!("Usage:");
+    println!("  yzx_control zellij status-cache-write --payload <json> [--path <path>]");
+}
+
+fn print_zellij_status_cache_widget_help() {
+    println!("Render one status-bar widget from the window-local cache");
+    println!();
+    println!("Usage:");
+    println!("  yzx_control zellij status-cache-widget <widget> [--path <path>]");
 }
 
 fn print_zellij_agent_usage_help() {
@@ -546,6 +653,55 @@ pub fn run_zellij_status_bus_token_budget(args: &[String]) -> Result<i32, CoreEr
     Ok(0)
 }
 
+pub fn run_zellij_status_cache_write(args: &[String]) -> Result<i32, CoreError> {
+    let parsed = parse_zellij_status_cache_write_args(args)?;
+    if parsed.help {
+        print_zellij_status_cache_write_help();
+        return Ok(0);
+    }
+
+    let payload = parsed.payload.as_deref().ok_or_else(|| {
+        CoreError::usage(
+            "zellij status-cache-write requires --payload <status-bus-json>".to_string(),
+        )
+    })?;
+    let path = parsed
+        .path
+        .or_else(status_bar_cache_path_from_env)
+        .ok_or_else(missing_status_bar_cache_path_error)?;
+    let status_bus = decode_status_bus_snapshot(payload)?;
+    let agent_usage = read_status_bar_cache_value(&path)
+        .and_then(|cache| cache.get("agent_usage").cloned())
+        .unwrap_or_else(|| json!({}));
+    let cache = build_status_bar_cache(status_bus, agent_usage);
+    write_status_bar_cache_value(&path, &cache)?;
+    Ok(0)
+}
+
+pub fn run_zellij_status_cache_widget(args: &[String]) -> Result<i32, CoreError> {
+    let parsed = parse_zellij_status_cache_widget_args(args)?;
+    if parsed.help {
+        print_zellij_status_cache_widget_help();
+        return Ok(0);
+    }
+
+    let widget = parsed.widget.as_deref().ok_or_else(|| {
+        CoreError::usage(
+            "zellij status-cache-widget requires a widget name. Try `yzx_control zellij status-cache-widget --help`."
+                .to_string(),
+        )
+    })?;
+    let path = match parsed.path.or_else(status_bar_cache_path_from_env) {
+        Some(path) => path,
+        None => return Ok(0),
+    };
+    let Some(cache) = read_status_bar_cache_value(&path) else {
+        return Ok(0);
+    };
+    print_optional_zjstatus_segment(render_status_cache_widget(&cache, widget)?);
+    Ok(0)
+}
+
 pub fn run_zellij_agent_usage(args: &[String]) -> Result<i32, CoreError> {
     let parsed = parse_zellij_agent_usage_args(args)?;
     if parsed.help {
@@ -593,6 +749,179 @@ pub fn run_zellij_agent_usage(args: &[String]) -> Result<i32, CoreError> {
         println!("{}", render_agent_usage_widget(provider, &summary));
     }
     Ok(0)
+}
+
+fn status_bar_cache_path_from_env() -> Option<PathBuf> {
+    if let Some(path) = env::var_os("YAZELIX_STATUS_BAR_CACHE_PATH").map(PathBuf::from) {
+        return Some(path);
+    }
+
+    env::var_os("YAZELIX_SESSION_CONFIG_PATH")
+        .map(PathBuf::from)
+        .and_then(|path| {
+            path.parent()
+                .map(|parent| parent.join("status_bar_cache.json"))
+        })
+}
+
+fn missing_status_bar_cache_path_error() -> CoreError {
+    CoreError::classified(
+        ErrorClass::Runtime,
+        "missing_status_bar_cache_path",
+        "Yazelix status-bar cache path is not available.",
+        "Start a fresh Yazelix window so the launch-scoped session environment is available.",
+        json!({}),
+    )
+}
+
+fn build_status_bar_cache(status_bus: Value, agent_usage: Value) -> Value {
+    json!({
+        "schema_version": STATUS_BAR_CACHE_SCHEMA_VERSION,
+        "updated_at_unix_seconds": unix_time_seconds(),
+        "status_bus": status_bus,
+        "agent_usage": agent_usage,
+    })
+}
+
+fn unix_time_seconds() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .unwrap_or(0)
+}
+
+fn write_status_bar_cache_value(path: &Path, cache: &Value) -> Result<(), CoreError> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|source| {
+            CoreError::io(
+                "status_bar_cache_parent_create_failed",
+                "Failed to create the Yazelix status-bar cache directory.",
+                "Check permissions for the Yazelix state directory, then restart Yazelix.",
+                &parent.display().to_string(),
+                source,
+            )
+        })?;
+    }
+
+    let serialized = format!(
+        "{}\n",
+        serde_json::to_string(cache).map_err(|error| {
+            CoreError::classified(
+                ErrorClass::Runtime,
+                "status_bar_cache_serialize_failed",
+                format!("Failed to serialize Yazelix status-bar cache: {error}"),
+                "Restart Yazelix and retry. If this persists, report the status-bar cache payload.",
+                json!({ "cache": cache.clone() }),
+            )
+        })?
+    );
+    let tmp_path = temporary_status_bar_cache_path(path);
+    fs::write(&tmp_path, serialized).map_err(|source| {
+        CoreError::io(
+            "status_bar_cache_write_failed",
+            "Failed to write the temporary Yazelix status-bar cache file.",
+            "Check permissions for the Yazelix state directory, then restart Yazelix.",
+            &tmp_path.display().to_string(),
+            source,
+        )
+    })?;
+    fs::rename(&tmp_path, path).map_err(|source| {
+        CoreError::io(
+            "status_bar_cache_rename_failed",
+            "Failed to publish the Yazelix status-bar cache file.",
+            "Check permissions for the Yazelix state directory, then restart Yazelix.",
+            &path.display().to_string(),
+            source,
+        )
+    })?;
+    Ok(())
+}
+
+fn temporary_status_bar_cache_path(path: &Path) -> PathBuf {
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .filter(|name| !name.is_empty())
+        .unwrap_or("status_bar_cache.json");
+    path.with_file_name(format!(".{file_name}.tmp"))
+}
+
+fn read_status_bar_cache_value(path: &Path) -> Option<Value> {
+    let raw = fs::read_to_string(path).ok()?;
+    let cache: Value = serde_json::from_str(&raw).ok()?;
+    if cache.get("schema_version").and_then(Value::as_i64) != Some(STATUS_BAR_CACHE_SCHEMA_VERSION)
+    {
+        return None;
+    }
+    if status_bar_cache_status_bus(&cache).is_none() {
+        return None;
+    }
+    Some(cache)
+}
+
+fn status_bar_cache_status_bus(cache: &Value) -> Option<&Value> {
+    let status_bus = cache.get("status_bus")?;
+    if status_bus.get("schema_version").and_then(Value::as_i64) == Some(STATUS_BUS_SCHEMA_VERSION) {
+        Some(status_bus)
+    } else {
+        None
+    }
+}
+
+fn render_status_cache_widget(cache: &Value, widget: &str) -> Result<String, CoreError> {
+    let status_bus = status_bar_cache_status_bus(cache);
+    match widget {
+        "workspace" => Ok(status_bus
+            .map(render_zjstatus_workspace_widget)
+            .unwrap_or_default()),
+        "ai_activity" => Ok(status_bus
+            .map(render_zjstatus_ai_activity_widget)
+            .unwrap_or_default()),
+        "token_budget" => Ok(status_bus
+            .map(render_zjstatus_token_budget_widget)
+            .unwrap_or_default()),
+        "claude_usage" => Ok(render_cached_agent_usage_segment(
+            cache,
+            AgentUsageProvider::Claude,
+        )),
+        "codex_usage" => Ok(render_cached_agent_usage_segment(
+            cache,
+            AgentUsageProvider::Codex,
+        )),
+        "amp_usage" => Ok(render_cached_agent_usage_segment(
+            cache,
+            AgentUsageProvider::Amp,
+        )),
+        "opencode_usage" => Ok(render_cached_agent_usage_segment(
+            cache,
+            AgentUsageProvider::Opencode,
+        )),
+        _ => Err(CoreError::usage(format!(
+            "zellij status-cache-widget requires one of: workspace, ai_activity, token_budget, claude_usage, codex_usage, amp_usage, opencode_usage"
+        ))),
+    }
+}
+
+fn render_cached_agent_usage_segment(cache: &Value, provider: AgentUsageProvider) -> String {
+    let label = agent_usage_label(provider);
+    let Some(entry) = cache.get("agent_usage").and_then(|usage| usage.get(label)) else {
+        return String::new();
+    };
+    if let Some(segment) = entry
+        .get("segment")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|segment| !segment.is_empty())
+    {
+        return segment.to_string();
+    }
+    entry
+        .get("summary")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|summary| !summary.is_empty())
+        .map(|summary| render_agent_usage_widget(provider, summary))
+        .unwrap_or_default()
 }
 
 fn render_status_bus_workspace_widget(value: &Value) -> String {
@@ -2155,6 +2484,71 @@ mod tests {
         assert_eq!(render_zjstatus_workspace_widget(&empty), "");
         assert_eq!(render_zjstatus_ai_activity_widget(&empty), "");
         assert_eq!(render_zjstatus_token_budget_widget(&empty), "");
+    }
+
+    // Regression: zjstatus reads dynamic widgets from a local cache instead of invoking Zellij pipes from every bar command.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn status_cache_round_trip_renders_cached_workspace_fact() {
+        let temp = tempfile::tempdir().unwrap();
+        let cache_path = temp.path().join("window_a").join("status_bar_cache.json");
+        let payload = r#"{"schema_version":1,"active_tab_position":0,"workspace":{"root":"/tmp/yazelix-demo","source":"explicit"},"managed_panes":{"editor_pane_id":"terminal:1","sidebar_pane_id":"terminal:2"},"focus_context":"sidebar","layout":{"active_swap_layout_name":"single_open","sidebar_collapsed":false},"sidebar_yazi":null,"transient_panes":{"popup":null,"menu":null},"extensions":{"ai_pane_activity":[],"ai_token_budget":[]}}"#;
+
+        run_zellij_status_cache_write(&[
+            "--path".to_string(),
+            cache_path.display().to_string(),
+            "--payload".to_string(),
+            payload.to_string(),
+        ])
+        .unwrap();
+        let cache = read_status_bar_cache_value(&cache_path).unwrap();
+
+        assert_eq!(
+            render_status_cache_widget(&cache, "workspace").unwrap(),
+            "#[fg=#00ff88,bold][workspace yazelix-demo/sidebar/side:open]"
+        );
+    }
+
+    // Defends: cache readers stay quiet when a launch-scoped cache has not been written yet.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn missing_status_cache_file_renders_no_widget_segment() {
+        let temp = tempfile::tempdir().unwrap();
+
+        assert!(read_status_bar_cache_value(&temp.path().join("missing.json")).is_none());
+    }
+
+    // Defends: cached agent usage widgets consume precomputed summaries instead of running provider binaries from zjstatus.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn status_cache_agent_usage_renders_precomputed_summary() {
+        let cache = json!({
+            "schema_version": 1,
+            "updated_at_unix_seconds": 10,
+            "status_bus": {
+                "schema_version": 1,
+                "active_tab_position": 0,
+                "workspace": null,
+                "managed_panes": {"editor_pane_id": null, "sidebar_pane_id": null},
+                "focus_context": "other",
+                "layout": {"active_swap_layout_name": null, "sidebar_collapsed": null},
+                "sidebar_yazi": null,
+                "transient_panes": {"popup": null, "menu": null},
+                "extensions": {"ai_pane_activity": [], "ai_token_budget": []}
+            },
+            "agent_usage": {
+                "codex": {"summary": "123k $1.23"}
+            }
+        });
+
+        assert_eq!(
+            render_status_cache_widget(&cache, "codex_usage").unwrap(),
+            "#[fg=#bb88ff,bold][codex 123k $1.23]"
+        );
+        assert_eq!(
+            render_status_cache_widget(&cache, "claude_usage").unwrap(),
+            ""
+        );
     }
 
     // Defends: ccusage-backed tray widgets derive a compact, fully formatted segment from the active usage block.

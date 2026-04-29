@@ -112,13 +112,13 @@ fn render_widget(widget: &str, request: &BarRenderRequest) -> Result<String, Bar
             "#[fg=#00ff88,bold][term: {}]",
             request.terminal_label
         )),
-        WIDGET_WORKSPACE
-        | WIDGET_AI_ACTIVITY
-        | WIDGET_TOKEN_BUDGET
-        | WIDGET_CLAUDE_USAGE
-        | WIDGET_CODEX_USAGE
-        | WIDGET_AMP_USAGE
-        | WIDGET_OPENCODE_USAGE => Ok(String::new()),
+        WIDGET_WORKSPACE => Ok(COMMAND_WORKSPACE.to_string()),
+        WIDGET_AI_ACTIVITY => Ok(COMMAND_AI_ACTIVITY.to_string()),
+        WIDGET_TOKEN_BUDGET => Ok(COMMAND_TOKEN_BUDGET.to_string()),
+        WIDGET_CLAUDE_USAGE => Ok(COMMAND_CLAUDE_USAGE.to_string()),
+        WIDGET_CODEX_USAGE => Ok(COMMAND_CODEX_USAGE.to_string()),
+        WIDGET_AMP_USAGE => Ok(COMMAND_AMP_USAGE.to_string()),
+        WIDGET_OPENCODE_USAGE => Ok(COMMAND_OPENCODE_USAGE.to_string()),
         WIDGET_CPU => Ok(COMMAND_CPU.to_string()),
         WIDGET_RAM => Ok(COMMAND_RAM.to_string()),
         _ => Err(BarRenderError::InvalidWidgetTrayEntry {
@@ -166,29 +166,29 @@ mod tests {
         assert_eq!(rendered, "");
     }
 
-    // Regression: unsafe status-bus widgets stay config-valid but cannot activate zjstatus command polling.
+    // Regression: dynamic status-bus widgets render through cached zjstatus command placeholders instead of being silently hidden.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn suppresses_status_bus_widgets_until_cached_backend_exists() {
+    fn renders_status_bus_widgets_as_cached_command_placeholders() {
         let rendered = render_widget_tray_segment(&render_request(&["workspace"])).unwrap();
 
-        assert_eq!(rendered, "");
+        assert_eq!(rendered, "{command_workspace}");
     }
 
-    // Regression: unsafe AI extension widgets stay config-valid but cannot activate zjstatus command polling.
+    // Regression: AI extension widgets render through cached command placeholders without direct Zellij polling.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn suppresses_ai_extension_widgets_until_cached_backend_exists() {
+    fn renders_ai_extension_widgets_as_cached_command_placeholders() {
         let rendered =
             render_widget_tray_segment(&render_request(&["ai_activity", "token_budget"])).unwrap();
 
-        assert_eq!(rendered, "");
+        assert_eq!(rendered, "{command_ai_activity} {command_token_budget}");
     }
 
-    // Regression: unsafe agent usage widgets stay config-valid but cannot activate zjstatus command polling.
+    // Regression: agent usage widgets render through cache readers so expensive providers are never polled by zjstatus.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn suppresses_agent_usage_widgets_until_cached_backend_exists() {
+    fn renders_agent_usage_widgets_as_cached_command_placeholders() {
         let rendered = render_widget_tray_segment(&render_request(&[
             "claude_usage",
             "codex_usage",
@@ -197,19 +197,22 @@ mod tests {
         ]))
         .unwrap();
 
-        assert_eq!(rendered, "");
+        assert_eq!(
+            rendered,
+            "{command_claude_usage} {command_codex_usage} {command_amp_usage} {command_opencode_usage}"
+        );
     }
 
-    // Regression: suppressing unsafe dynamic widgets must not leave stray bar spacing around safe widgets.
+    // Regression: dynamic command placeholders must preserve stable spacing around safe widgets.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn suppressed_dynamic_widgets_do_not_leave_spacing_artifacts() {
+    fn dynamic_widgets_do_not_leave_spacing_artifacts() {
         let rendered =
             render_widget_tray_segment(&render_request(&["editor", "workspace", "shell"])).unwrap();
 
         assert_eq!(
             rendered,
-            "#[fg=#00ff88,bold][editor: hx] #[fg=#00ff88,bold][shell: nu]"
+            "#[fg=#00ff88,bold][editor: hx] {command_workspace} #[fg=#00ff88,bold][shell: nu]"
         );
     }
 

@@ -89,6 +89,7 @@ def prepare_session_config_snapshot [runtime_dir: string, applied_runtime_state:
     }
 
     $env.YAZELIX_SESSION_CONFIG_PATH = $snapshot_path
+    $env.YAZELIX_STATUS_BAR_CACHE_PATH = ($snapshot_path | path dirname | path join "status_bar_cache.json")
     $snapshot_path
 }
 

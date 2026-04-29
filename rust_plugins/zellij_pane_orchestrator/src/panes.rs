@@ -302,7 +302,7 @@ impl State {
         }
     }
 
-    fn active_tab_session_state_snapshot(
+    pub(crate) fn active_tab_session_state_snapshot(
         &self,
         active_tab_position: usize,
     ) -> ActiveTabSessionStateV1 {
