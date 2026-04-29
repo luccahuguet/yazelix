@@ -41,15 +41,15 @@ plugin location="__YAZELIX_ZJSTATUS_PLUGIN_URL__" {
 
     command_workspace_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-bus-workspace"
     command_workspace_format "{stdout}"
-    command_workspace_interval "1"
+    command_workspace_interval "30"
 
     command_ai_activity_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-bus-ai-activity"
     command_ai_activity_format "{stdout}"
-    command_ai_activity_interval "1"
+    command_ai_activity_interval "30"
 
     command_token_budget_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-bus-token-budget"
     command_token_budget_format "{stdout}"
-    command_token_budget_interval "5"
+    command_token_budget_interval "60"
 
     command_claude_usage_command "__YAZELIX_YZX_CONTROL_BIN__ zellij agent-usage claude"
     command_claude_usage_format "{stdout}"
