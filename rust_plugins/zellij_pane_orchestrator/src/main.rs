@@ -55,6 +55,7 @@ struct State {
     screen_saver_pane_id: Option<PaneId>,
     status_bar_cache_runtime: Option<StatusBarCacheRuntime>,
     status_bar_cache_last_payload: Option<String>,
+    status_bar_agent_usage_next_refresh: Option<Instant>,
     permissions_granted: bool,
 }
 
@@ -87,17 +88,18 @@ impl ZellijPlugin for State {
             EventType::TabUpdate,
             EventType::PaneUpdate,
             EventType::PermissionRequestResult,
+            EventType::Timer,
         ];
         if self.screen_saver_config.enabled {
             subscriptions.extend([
                 EventType::InputReceived,
-                EventType::Timer,
                 EventType::PaneClosed,
                 EventType::CommandPaneExited,
             ]);
         }
         subscribe(&subscriptions);
         self.schedule_initial_screen_saver_timeout();
+        self.schedule_initial_status_bar_agent_usage_refresh();
     }
 
     fn update(&mut self, event: Event) -> bool {
@@ -144,6 +146,7 @@ impl ZellijPlugin for State {
             Event::InputReceived => self.record_screen_saver_input(),
             Event::Timer(_) => {
                 self.handle_screen_saver_timer();
+                self.handle_status_bar_agent_usage_timer();
             }
             Event::PaneClosed(pane_id) => self.handle_screen_saver_pane_closed(pane_id),
             Event::CommandPaneExited(terminal_id, _, _) => {

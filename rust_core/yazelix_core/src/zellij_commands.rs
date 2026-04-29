@@ -16,11 +16,12 @@ use crate::workspace_commands::{
 };
 use serde_json::{Value, json};
 use std::env;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::process::{Command, Stdio};
+use std::thread;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const PANE_ORCHESTRATOR_PLUGIN_ALIAS: &str = "yazelix_pane_orchestrator";
 const STATUS_BUS_SCHEMA_VERSION: i64 = 1;
@@ -36,6 +37,7 @@ pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
     "status-bus-token-budget",
     "status-cache-write",
     "status-cache-widget",
+    "status-cache-refresh-agent-usage",
     "agent-usage",
     "retarget",
     "open-editor",
@@ -103,6 +105,14 @@ struct ZellijStatusCacheWriteArgs {
 struct ZellijStatusCacheWidgetArgs {
     widget: Option<String>,
     path: Option<PathBuf>,
+    help: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct ZellijStatusCacheRefreshAgentUsageArgs {
+    path: Option<PathBuf>,
+    max_age_seconds: Option<u64>,
+    timeout_ms: Option<u64>,
     help: bool,
 }
 
@@ -458,6 +468,54 @@ fn parse_zellij_status_cache_widget_args(
     Ok(parsed)
 }
 
+fn parse_zellij_status_cache_refresh_agent_usage_args(
+    args: &[String],
+) -> Result<ZellijStatusCacheRefreshAgentUsageArgs, CoreError> {
+    let mut parsed = ZellijStatusCacheRefreshAgentUsageArgs::default();
+    let mut iter = args.iter();
+
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "--path" => {
+                parsed.path = Some(PathBuf::from(
+                    iter.next()
+                        .ok_or_else(|| CoreError::usage("--path requires a value".to_string()))?
+                        .as_str(),
+                ));
+            }
+            "--max-age-seconds" => {
+                let raw = iter.next().ok_or_else(|| {
+                    CoreError::usage("--max-age-seconds requires a value".to_string())
+                })?;
+                parsed.max_age_seconds = Some(raw.parse::<u64>().map_err(|_| {
+                    CoreError::usage("--max-age-seconds must be an integer".to_string())
+                })?);
+            }
+            "--timeout-ms" => {
+                let raw = iter
+                    .next()
+                    .ok_or_else(|| CoreError::usage("--timeout-ms requires a value".to_string()))?;
+                parsed.timeout_ms = Some(raw.parse::<u64>().map_err(|_| {
+                    CoreError::usage("--timeout-ms must be an integer".to_string())
+                })?);
+            }
+            "-h" | "--help" | "help" => parsed.help = true,
+            other if other.starts_with('-') => {
+                return Err(CoreError::usage(format!(
+                    "Unknown argument for zellij status-cache-refresh-agent-usage: {other}"
+                )));
+            }
+            _ => {
+                return Err(CoreError::usage(
+                    "zellij status-cache-refresh-agent-usage accepts only flags".to_string(),
+                ));
+            }
+        }
+    }
+
+    Ok(parsed)
+}
+
 fn parse_zellij_agent_usage_args(args: &[String]) -> Result<ZellijAgentUsageArgs, CoreError> {
     let mut parsed = ZellijAgentUsageArgs::default();
     for arg in args {
@@ -514,6 +572,15 @@ fn print_zellij_status_cache_widget_help() {
     println!();
     println!("Usage:");
     println!("  yzx_control zellij status-cache-widget <widget> [--path <path>]");
+}
+
+fn print_zellij_status_cache_refresh_agent_usage_help() {
+    println!("Refresh cached agent-usage facts for status-bar widgets");
+    println!();
+    println!("Usage:");
+    println!(
+        "  yzx_control zellij status-cache-refresh-agent-usage [--path <path>] [--max-age-seconds <n>] [--timeout-ms <n>]"
+    );
 }
 
 fn print_zellij_agent_usage_help() {
@@ -670,10 +737,17 @@ pub fn run_zellij_status_cache_write(args: &[String]) -> Result<i32, CoreError> 
         .or_else(status_bar_cache_path_from_env)
         .ok_or_else(missing_status_bar_cache_path_error)?;
     let status_bus = decode_status_bus_snapshot(payload)?;
-    let agent_usage = read_status_bar_cache_value(&path)
+    let previous_cache = read_status_bar_cache_value(&path);
+    let agent_usage = previous_cache
+        .as_ref()
         .and_then(|cache| cache.get("agent_usage").cloned())
         .unwrap_or_else(|| json!({}));
-    let cache = build_status_bar_cache(status_bus, agent_usage);
+    let agent_usage_updated_at = previous_cache.as_ref().and_then(|cache| {
+        cache
+            .get("agent_usage_updated_at_unix_seconds")
+            .and_then(Value::as_u64)
+    });
+    let cache = build_status_bar_cache(status_bus, agent_usage, agent_usage_updated_at);
     write_status_bar_cache_value(&path, &cache)?;
     Ok(0)
 }
@@ -699,6 +773,34 @@ pub fn run_zellij_status_cache_widget(args: &[String]) -> Result<i32, CoreError>
         return Ok(0);
     };
     print_optional_zjstatus_segment(render_status_cache_widget(&cache, widget)?);
+    Ok(0)
+}
+
+pub fn run_zellij_status_cache_refresh_agent_usage(args: &[String]) -> Result<i32, CoreError> {
+    let parsed = parse_zellij_status_cache_refresh_agent_usage_args(args)?;
+    if parsed.help {
+        print_zellij_status_cache_refresh_agent_usage_help();
+        return Ok(0);
+    }
+
+    let path = match parsed.path.or_else(status_bar_cache_path_from_env) {
+        Some(path) => path,
+        None => return Ok(0),
+    };
+    let Some(mut cache) = read_status_bar_cache_value(&path) else {
+        return Ok(0);
+    };
+    let max_age_seconds = parsed.max_age_seconds.unwrap_or(120);
+    let timeout = Duration::from_millis(parsed.timeout_ms.unwrap_or(1500).max(1));
+    if refresh_status_bar_cache_agent_usage_value(
+        &mut cache,
+        env::var_os("PATH").as_deref(),
+        unix_time_seconds(),
+        max_age_seconds,
+        timeout,
+    ) {
+        write_status_bar_cache_value(&path, &cache)?;
+    }
     Ok(0)
 }
 
@@ -774,13 +876,21 @@ fn missing_status_bar_cache_path_error() -> CoreError {
     )
 }
 
-fn build_status_bar_cache(status_bus: Value, agent_usage: Value) -> Value {
-    json!({
+fn build_status_bar_cache(
+    status_bus: Value,
+    agent_usage: Value,
+    agent_usage_updated_at: Option<u64>,
+) -> Value {
+    let mut cache = json!({
         "schema_version": STATUS_BAR_CACHE_SCHEMA_VERSION,
         "updated_at_unix_seconds": unix_time_seconds(),
         "status_bus": status_bus,
         "agent_usage": agent_usage,
-    })
+    });
+    if let Some(updated_at) = agent_usage_updated_at {
+        cache["agent_usage_updated_at_unix_seconds"] = json!(updated_at);
+    }
+    cache
 }
 
 fn unix_time_seconds() -> u64 {
@@ -922,6 +1032,96 @@ fn render_cached_agent_usage_segment(cache: &Value, provider: AgentUsageProvider
         .filter(|summary| !summary.is_empty())
         .map(|summary| render_agent_usage_widget(provider, summary))
         .unwrap_or_default()
+}
+
+fn refresh_status_bar_cache_agent_usage_value(
+    cache: &mut Value,
+    path_var: Option<&OsStr>,
+    now: u64,
+    max_age_seconds: u64,
+    timeout: Duration,
+) -> bool {
+    if agent_usage_cache_is_fresh(cache, now, max_age_seconds) {
+        return false;
+    }
+
+    let agent_usage = collect_agent_usage_entries(path_var, now, timeout);
+    cache["agent_usage"] = agent_usage;
+    cache["agent_usage_updated_at_unix_seconds"] = json!(now);
+    true
+}
+
+fn agent_usage_cache_is_fresh(cache: &Value, now: u64, max_age_seconds: u64) -> bool {
+    cache
+        .get("agent_usage_updated_at_unix_seconds")
+        .and_then(Value::as_u64)
+        .is_some_and(|updated_at| {
+            now.saturating_sub(updated_at) < max_age_seconds
+                && cache
+                    .get("agent_usage")
+                    .and_then(Value::as_object)
+                    .is_some_and(|usage| !usage.is_empty())
+        })
+}
+
+fn collect_agent_usage_entries(path_var: Option<&OsStr>, now: u64, timeout: Duration) -> Value {
+    let mut usage = serde_json::Map::new();
+    for provider in [
+        AgentUsageProvider::Claude,
+        AgentUsageProvider::Codex,
+        AgentUsageProvider::Amp,
+        AgentUsageProvider::Opencode,
+    ] {
+        let Some(summary) = agent_usage_summary_from_provider(provider, path_var, timeout) else {
+            continue;
+        };
+        usage.insert(
+            agent_usage_label(provider).to_string(),
+            json!({
+                "updated_at_unix_seconds": now,
+                "summary": summary,
+            }),
+        );
+    }
+    Value::Object(usage)
+}
+
+fn agent_usage_summary_from_provider(
+    provider: AgentUsageProvider,
+    path_var: Option<&OsStr>,
+    timeout: Duration,
+) -> Option<String> {
+    let binary_path = find_command_in_path_var(path_var?, agent_usage_binary(provider))?;
+    let output = run_agent_usage_command_with_timeout(&binary_path, timeout).ok()??;
+    if !output.status.success() {
+        return None;
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let summary = agent_usage_summary_from_json(&stdout);
+    (!summary.is_empty()).then_some(summary)
+}
+
+fn run_agent_usage_command_with_timeout(
+    binary_path: &Path,
+    timeout: Duration,
+) -> std::io::Result<Option<std::process::Output>> {
+    let mut child = Command::new(binary_path)
+        .args(["blocks", "--active", "--json"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()?;
+    let started = Instant::now();
+    loop {
+        if child.try_wait()?.is_some() {
+            return child.wait_with_output().map(Some);
+        }
+        if started.elapsed() >= timeout {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Ok(None);
+        }
+        thread::sleep(Duration::from_millis(25));
+    }
 }
 
 fn render_status_bus_workspace_widget(value: &Value) -> String {
@@ -1094,7 +1294,11 @@ fn agent_usage_label(provider: AgentUsageProvider) -> &'static str {
 
 fn find_command_in_path(command_name: &str) -> Option<PathBuf> {
     let path_var = env::var_os("PATH")?;
-    env::split_paths(&path_var)
+    find_command_in_path_var(&path_var, command_name)
+}
+
+fn find_command_in_path_var(path_var: &OsStr, command_name: &str) -> Option<PathBuf> {
+    env::split_paths(path_var)
         .map(|entry| entry.join(command_name))
         .find(|candidate| candidate.is_file())
 }
@@ -2548,6 +2752,124 @@ mod tests {
         assert_eq!(
             render_status_cache_widget(&cache, "claude_usage").unwrap(),
             ""
+        );
+    }
+
+    // Regression: the agent-usage producer updates cached summaries from opt-in providers without making zjstatus run provider binaries.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[cfg(unix)]
+    #[test]
+    fn status_cache_agent_usage_refresh_writes_precomputed_summary() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp = tempfile::tempdir().unwrap();
+        let bin_dir = temp.path().join("bin");
+        fs::create_dir_all(&bin_dir).unwrap();
+        let provider = bin_dir.join("ccusage-codex");
+        fs::write(
+            &provider,
+            r#"#!/usr/bin/env sh
+if [ "$1" = "blocks" ]; then
+  printf '%s\n' '{"blocks":[{"isActive":true,"totalTokens":123456,"costUSD":1.234}]}'
+  exit 0
+fi
+exit 64
+"#,
+        )
+        .unwrap();
+        let mut permissions = fs::metadata(&provider).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&provider, permissions).unwrap();
+        let mut cache = json!({
+            "schema_version": 1,
+            "updated_at_unix_seconds": 10,
+            "status_bus": {
+                "schema_version": 1,
+                "active_tab_position": 0,
+                "workspace": null,
+                "managed_panes": {"editor_pane_id": null, "sidebar_pane_id": null},
+                "focus_context": "other",
+                "layout": {"active_swap_layout_name": null, "sidebar_collapsed": null},
+                "sidebar_yazi": null,
+                "transient_panes": {"popup": null, "menu": null},
+                "extensions": {"ai_pane_activity": [], "ai_token_budget": []}
+            },
+            "agent_usage": {}
+        });
+
+        let refreshed = refresh_status_bar_cache_agent_usage_value(
+            &mut cache,
+            Some(bin_dir.as_os_str()),
+            1_000,
+            120,
+            Duration::from_secs(1),
+        );
+
+        assert!(refreshed);
+        assert_eq!(
+            cache
+                .get("agent_usage")
+                .and_then(|usage| usage.get("codex"))
+                .and_then(|entry| entry.get("summary"))
+                .and_then(Value::as_str),
+            Some("123k $1.23")
+        );
+        assert_eq!(
+            render_status_cache_widget(&cache, "codex_usage").unwrap(),
+            "#[fg=#bb88ff,bold][codex 123k $1.23]"
+        );
+    }
+
+    // Regression: hung agent-usage providers are killed quickly so the cache producer cannot recreate the CPU-spike failure mode.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[cfg(unix)]
+    #[test]
+    fn status_cache_agent_usage_refresh_times_out_hung_provider() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp = tempfile::tempdir().unwrap();
+        let bin_dir = temp.path().join("bin");
+        fs::create_dir_all(&bin_dir).unwrap();
+        let provider = bin_dir.join("ccusage");
+        fs::write(&provider, "#!/usr/bin/env sh\nsleep 5\n").unwrap();
+        let mut permissions = fs::metadata(&provider).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&provider, permissions).unwrap();
+        let mut cache = json!({
+            "schema_version": 1,
+            "updated_at_unix_seconds": 10,
+            "status_bus": {
+                "schema_version": 1,
+                "active_tab_position": 0,
+                "workspace": null,
+                "managed_panes": {"editor_pane_id": null, "sidebar_pane_id": null},
+                "focus_context": "other",
+                "layout": {"active_swap_layout_name": null, "sidebar_collapsed": null},
+                "sidebar_yazi": null,
+                "transient_panes": {"popup": null, "menu": null},
+                "extensions": {"ai_pane_activity": [], "ai_token_budget": []}
+            },
+            "agent_usage": {}
+        });
+        let started = Instant::now();
+
+        let refreshed = refresh_status_bar_cache_agent_usage_value(
+            &mut cache,
+            Some(bin_dir.as_os_str()),
+            1_000,
+            120,
+            Duration::from_millis(50),
+        );
+
+        assert!(refreshed);
+        assert!(started.elapsed() < Duration::from_secs(2));
+        assert_eq!(
+            cache
+                .get("agent_usage")
+                .and_then(Value::as_object)
+                .unwrap()
+                .len(),
+            0
         );
     }
 
