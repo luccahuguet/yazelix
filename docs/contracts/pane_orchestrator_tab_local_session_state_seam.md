@@ -234,8 +234,9 @@ contract. This slice is only about the read contract.
    consumers to change without redoing architecture discovery.
 6. AI pane activity facts remain tab-local and can represent inactive,
    active/thinking, stale, and unknown states.
-7. The bar can opt into `ai_activity` and `token_budget` widgets without changing
-   the existing default widget tray.
+7. The pane orchestrator continues exposing AI activity and token-budget facts
+   for future bar consumers, while the current zjstatus tray suppresses those
+   dynamic widgets until they are backed by a cached fact reader.
 
 ## Verification
 

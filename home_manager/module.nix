@@ -225,7 +225,7 @@ in
       description = ''
         Opt-in ccusage binaries from the llm-agents flake to include in the Yazelix runtime.
 
-        These power optional zellij.widget_tray entries:
+        These are reserved for future cached zellij.widget_tray entries:
         - "ccusage": claude_usage
         - "ccusage-codex": codex_usage
         - "ccusage-amp": amp_usage
@@ -355,7 +355,7 @@ in
     };
 
     zellij_widget_tray = mkMainContractOption "zellij.widget_tray" {
-      description = "Zjstatus widget tray order (editor/shell/term/workspace/ai_activity/token_budget/claude_usage/codex_usage/amp_usage/opencode_usage/cpu/ram)";
+      description = "Zjstatus widget tray order (editor/shell/term/cpu/ram; workspace/AI/usage names are accepted but hidden until backed by cached facts)";
     };
 
     zellij_custom_text = mkMainContractOption "zellij.custom_text" {

@@ -1892,10 +1892,10 @@ ui { pane_frames { hide_session_name true } }
         assert!(!rendered.contains("launch_sidebar_yazi.nu"));
     }
 
-    // Regression: shipped zjstatus templates must not call the deleted dynamic identity widget helper.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    // Regression: shipped zjstatus templates must not call deleted or unsafe dynamic widget helpers.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn zjstatus_template_does_not_reference_missing_identity_widget_script() {
+    fn zjstatus_template_does_not_reference_missing_or_unsafe_widget_helpers() {
         let template =
             include_str!("../../../configs/zellij/layouts/fragments/zjstatus_tab_template.kdl");
         assert!(!template.contains("zjstatus_widget.nu"));
@@ -1903,39 +1903,36 @@ ui { pane_frames { hide_session_name true } }
         assert!(!template.contains("command_shell_command"));
         assert!(!template.contains("command_term_command"));
         assert!(!template.contains("yzx_control zellij"));
-        assert!(template.contains(ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER));
         assert!(template.contains(ZJSTATUS_NU_BIN_PLACEHOLDER));
-        assert!(template.contains("command_workspace_command"));
-        assert!(template.contains("status-bus-workspace"));
-        assert!(template.contains("command_ai_activity_command"));
-        assert!(template.contains("status-bus-ai-activity"));
-        assert!(template.contains("command_token_budget_command"));
-        assert!(template.contains("status-bus-token-budget"));
-        assert!(template.contains(r#"command_workspace_interval "30""#));
-        assert!(template.contains(r#"command_ai_activity_interval "30""#));
-        assert!(template.contains(r#"command_token_budget_interval "60""#));
-        assert!(template.contains("command_claude_usage_command"));
-        assert!(template.contains("agent-usage claude"));
-        assert!(template.contains("command_codex_usage_command"));
-        assert!(template.contains("agent-usage codex"));
+        assert!(!template.contains(ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER));
+        assert!(!template.contains("command_workspace_command"));
+        assert!(!template.contains("status-bus-workspace"));
+        assert!(!template.contains("command_ai_activity_command"));
+        assert!(!template.contains("status-bus-ai-activity"));
+        assert!(!template.contains("command_token_budget_command"));
+        assert!(!template.contains("status-bus-token-budget"));
+        assert!(!template.contains("command_claude_usage_command"));
+        assert!(!template.contains("command_codex_usage_command"));
+        assert!(!template.contains("command_amp_usage_command"));
+        assert!(!template.contains("command_opencode_usage_command"));
+        assert!(!template.contains("agent-usage"));
     }
 
-    // Regression: generated zjstatus command widgets use resolved runtime helpers, so private libexec tools do not have to be on PATH.
+    // Regression: generated zjstatus command widgets use resolved safe runtime helpers without invoking yzx_control polling.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn renders_zjstatus_widget_commands_with_runtime_helper_paths() {
+    fn renders_safe_zjstatus_widget_commands_with_runtime_helper_paths() {
         let temp = tempfile::tempdir().unwrap();
         let runtime_dir = temp.path();
         let libexec = runtime_dir.join("libexec");
         std::fs::create_dir_all(&libexec).unwrap();
         std::fs::write(libexec.join("nu"), "").unwrap();
-        std::fs::write(libexec.join("yzx_control"), "").unwrap();
         let plan =
             sample_render_plan_for_widgets(vec!["workspace"], "hx", "/nix/store/bin/nu", "ghostty");
         let rendered = render_layout_template(
             include_str!("../../../configs/zellij/layouts/fragments/zjstatus_tab_template.kdl"),
             &BTreeMap::new(),
-            "{command_workspace}",
+            "",
             "",
             "file:/tmp/pane.wasm",
             "file:/tmp/zjstatus.wasm",
@@ -1944,18 +1941,8 @@ ui { pane_frames { hide_session_name true } }
             &plan,
         )
         .unwrap();
-        let expected_yzx_control = libexec.join("yzx_control").to_string_lossy().to_string();
         let expected_nu = libexec.join("nu").to_string_lossy().to_string();
 
-        assert!(rendered.contains(&format!(
-            r#"command_workspace_command "{} zellij status-bus-workspace""#,
-            expected_yzx_control
-        )));
-        assert!(rendered.contains(r#"command_workspace_format "{stdout}""#));
-        assert!(rendered.contains(&format!(
-            r#"command_ai_activity_command "{} zellij status-bus-ai-activity""#,
-            expected_yzx_control
-        )));
         assert!(rendered.contains(&format!(
             r#"command_cpu_command "{} {}/configs/zellij/scripts/cpu_usage.nu""#,
             expected_nu,
@@ -1963,6 +1950,8 @@ ui { pane_frames { hide_session_name true } }
         )));
         assert!(!rendered.contains(ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER));
         assert!(!rendered.contains(ZJSTATUS_NU_BIN_PLACEHOLDER));
+        assert!(!rendered.contains("status-bus-workspace"));
+        assert!(!rendered.contains("agent-usage"));
     }
     // Regression: legacy plugin permission blocks are recognized by both stable and hashed wasm names.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10

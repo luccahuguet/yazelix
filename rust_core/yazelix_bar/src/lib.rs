@@ -80,7 +80,13 @@ pub fn render_widget_tray_segment(request: &BarRenderRequest) -> Result<String, 
         .iter()
         .map(|widget| render_widget(widget, request))
         .collect::<Result<Vec<_>, _>>()
-        .map(|parts| parts.join(" "))
+        .map(|parts| {
+            parts
+                .into_iter()
+                .filter(|part| !part.is_empty())
+                .collect::<Vec<_>>()
+                .join(" ")
+        })
 }
 
 pub fn render_custom_text_segment(custom_text: &str) -> String {
@@ -106,13 +112,13 @@ fn render_widget(widget: &str, request: &BarRenderRequest) -> Result<String, Bar
             "#[fg=#00ff88,bold][term: {}]",
             request.terminal_label
         )),
-        WIDGET_WORKSPACE => Ok(COMMAND_WORKSPACE.to_string()),
-        WIDGET_AI_ACTIVITY => Ok(COMMAND_AI_ACTIVITY.to_string()),
-        WIDGET_TOKEN_BUDGET => Ok(COMMAND_TOKEN_BUDGET.to_string()),
-        WIDGET_CLAUDE_USAGE => Ok(COMMAND_CLAUDE_USAGE.to_string()),
-        WIDGET_CODEX_USAGE => Ok(COMMAND_CODEX_USAGE.to_string()),
-        WIDGET_AMP_USAGE => Ok(COMMAND_AMP_USAGE.to_string()),
-        WIDGET_OPENCODE_USAGE => Ok(COMMAND_OPENCODE_USAGE.to_string()),
+        WIDGET_WORKSPACE
+        | WIDGET_AI_ACTIVITY
+        | WIDGET_TOKEN_BUDGET
+        | WIDGET_CLAUDE_USAGE
+        | WIDGET_CODEX_USAGE
+        | WIDGET_AMP_USAGE
+        | WIDGET_OPENCODE_USAGE => Ok(String::new()),
         WIDGET_CPU => Ok(COMMAND_CPU.to_string()),
         WIDGET_RAM => Ok(COMMAND_RAM.to_string()),
         _ => Err(BarRenderError::InvalidWidgetTrayEntry {
@@ -160,29 +166,29 @@ mod tests {
         assert_eq!(rendered, "");
     }
 
-    // Defends: the workspace widget is a dynamic zjstatus command placeholder rather than a static startup label.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-    #[test]
-    fn renders_workspace_widget_as_dynamic_command_placeholder() {
-        let rendered = render_widget_tray_segment(&render_request(&["workspace"])).unwrap();
-
-        assert_eq!(rendered, "{command_workspace}");
-    }
-
-    // Defends: AI extension widgets render as dynamic zjstatus placeholders without changing default widgets.
+    // Regression: unsafe status-bus widgets stay config-valid but cannot activate zjstatus command polling.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn renders_ai_extension_widgets_as_dynamic_command_placeholders() {
+    fn suppresses_status_bus_widgets_until_cached_backend_exists() {
+        let rendered = render_widget_tray_segment(&render_request(&["workspace"])).unwrap();
+
+        assert_eq!(rendered, "");
+    }
+
+    // Regression: unsafe AI extension widgets stay config-valid but cannot activate zjstatus command polling.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn suppresses_ai_extension_widgets_until_cached_backend_exists() {
         let rendered =
             render_widget_tray_segment(&render_request(&["ai_activity", "token_budget"])).unwrap();
 
-        assert_eq!(rendered, "{command_ai_activity} {command_token_budget}");
+        assert_eq!(rendered, "");
     }
 
-    // Defends: opt-in agent usage widgets are dynamic placeholders so missing ccusage binaries can render no tray text.
+    // Regression: unsafe agent usage widgets stay config-valid but cannot activate zjstatus command polling.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn renders_agent_usage_widgets_as_dynamic_command_placeholders() {
+    fn suppresses_agent_usage_widgets_until_cached_backend_exists() {
         let rendered = render_widget_tray_segment(&render_request(&[
             "claude_usage",
             "codex_usage",
@@ -191,9 +197,19 @@ mod tests {
         ]))
         .unwrap();
 
+        assert_eq!(rendered, "");
+    }
+
+    // Regression: suppressing unsafe dynamic widgets must not leave stray bar spacing around safe widgets.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn suppressed_dynamic_widgets_do_not_leave_spacing_artifacts() {
+        let rendered =
+            render_widget_tray_segment(&render_request(&["editor", "workspace", "shell"])).unwrap();
+
         assert_eq!(
             rendered,
-            "{command_claude_usage} {command_codex_usage} {command_amp_usage} {command_opencode_usage}"
+            "#[fg=#00ff88,bold][editor: hx] #[fg=#00ff88,bold][shell: nu]"
         );
     }
 
