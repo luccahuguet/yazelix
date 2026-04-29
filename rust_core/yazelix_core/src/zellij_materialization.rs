@@ -18,8 +18,8 @@ use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 use yazelix_bar::{
     BarRenderError, BarRenderRequest, CUSTOM_TEXT_PLACEHOLDER, WIDGET_TRAY_PLACEHOLDER,
-    ZJSTATUS_PLUGIN_URL_PLACEHOLDER, ZJSTATUS_RUNTIME_DIR_PLACEHOLDER,
-    render_zjstatus_bar_segments,
+    ZJSTATUS_NU_BIN_PLACEHOLDER, ZJSTATUS_PLUGIN_URL_PLACEHOLDER, ZJSTATUS_RUNTIME_DIR_PLACEHOLDER,
+    ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER, render_zjstatus_bar_segments,
 };
 
 const PANE_ORCHESTRATOR_PLUGIN_ALIAS: &str = "yazelix_pane_orchestrator";
@@ -819,6 +819,14 @@ fn render_layout_template(
             runtime_dir.to_string_lossy().to_string(),
         ),
         (
+            ZJSTATUS_NU_BIN_PLACEHOLDER,
+            resolve_zjstatus_nu_bin(runtime_dir),
+        ),
+        (
+            ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER,
+            resolve_zjstatus_yzx_control_bin(runtime_dir),
+        ),
+        (
             "__YAZELIX_SIDEBAR_COMMAND__",
             json_quote(expand_runtime_placeholder(
                 &render_plan.sidebar_command,
@@ -881,6 +889,8 @@ fn render_layout_template(
     }
     for placeholder in [
         WIDGET_TRAY_PLACEHOLDER,
+        ZJSTATUS_NU_BIN_PLACEHOLDER,
+        ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER,
         "__YAZELIX_SIDEBAR_COMMAND__",
         "__YAZELIX_SIDEBAR_ARGS__",
     ] {
@@ -902,6 +912,55 @@ fn expand_runtime_placeholder(value: &str, runtime_dir: &Path) -> String {
         RUNTIME_DIR_PLACEHOLDER,
         runtime_dir.to_string_lossy().as_ref(),
     )
+}
+
+fn resolve_zjstatus_nu_bin(runtime_dir: &Path) -> String {
+    let runtime_nu = runtime_dir.join("libexec").join("nu");
+    if runtime_nu.is_file() {
+        runtime_nu.to_string_lossy().to_string()
+    } else if let Some(path) = env_path_if_file("YAZELIX_NU_BIN") {
+        path.to_string_lossy().to_string()
+    } else {
+        "nu".to_string()
+    }
+}
+
+fn resolve_zjstatus_yzx_control_bin(runtime_dir: &Path) -> String {
+    for candidate in [
+        runtime_dir.join("libexec").join("yzx_control"),
+        runtime_dir
+            .join("rust_core")
+            .join("target")
+            .join("release")
+            .join("yzx_control"),
+        runtime_dir
+            .join("rust_core")
+            .join("target")
+            .join("debug")
+            .join("yzx_control"),
+    ] {
+        if candidate.is_file() {
+            return candidate.to_string_lossy().to_string();
+        }
+    }
+    if let Some(path) = env_path_if_file("YAZELIX_YZX_CONTROL_BIN") {
+        return path.to_string_lossy().to_string();
+    }
+    runtime_dir
+        .join("libexec")
+        .join("yzx_control")
+        .to_string_lossy()
+        .to_string()
+}
+
+fn env_path_if_file(variable: &str) -> Option<PathBuf> {
+    let raw = std::env::var(variable).ok()?;
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    let path = PathBuf::from(trimmed);
+    path.is_file().then_some(path)
 }
 
 fn render_sidebar_args(args: &[String], runtime_dir: &Path) -> String {
@@ -1843,6 +1902,9 @@ ui { pane_frames { hide_session_name true } }
         assert!(!template.contains("command_editor_command"));
         assert!(!template.contains("command_shell_command"));
         assert!(!template.contains("command_term_command"));
+        assert!(!template.contains("yzx_control zellij"));
+        assert!(template.contains(ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER));
+        assert!(template.contains(ZJSTATUS_NU_BIN_PLACEHOLDER));
         assert!(template.contains("command_workspace_command"));
         assert!(template.contains("status-bus-workspace"));
         assert!(template.contains("command_ai_activity_command"));
@@ -1853,6 +1915,51 @@ ui { pane_frames { hide_session_name true } }
         assert!(template.contains("agent-usage claude"));
         assert!(template.contains("command_codex_usage_command"));
         assert!(template.contains("agent-usage codex"));
+    }
+
+    // Regression: generated zjstatus command widgets use resolved runtime helpers, so private libexec tools do not have to be on PATH.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn renders_zjstatus_widget_commands_with_runtime_helper_paths() {
+        let temp = tempfile::tempdir().unwrap();
+        let runtime_dir = temp.path();
+        let libexec = runtime_dir.join("libexec");
+        std::fs::create_dir_all(&libexec).unwrap();
+        std::fs::write(libexec.join("nu"), "").unwrap();
+        std::fs::write(libexec.join("yzx_control"), "").unwrap();
+        let plan =
+            sample_render_plan_for_widgets(vec!["workspace"], "hx", "/nix/store/bin/nu", "ghostty");
+        let rendered = render_layout_template(
+            include_str!("../../../configs/zellij/layouts/fragments/zjstatus_tab_template.kdl"),
+            &BTreeMap::new(),
+            "{command_workspace}",
+            "",
+            "file:/tmp/pane.wasm",
+            "file:/tmp/zjstatus.wasm",
+            std::path::Path::new("/home/user"),
+            runtime_dir,
+            &plan,
+        )
+        .unwrap();
+        let expected_yzx_control = libexec.join("yzx_control").to_string_lossy().to_string();
+        let expected_nu = libexec.join("nu").to_string_lossy().to_string();
+
+        assert!(rendered.contains(&format!(
+            r#"command_workspace_command "{} zellij status-bus-workspace""#,
+            expected_yzx_control
+        )));
+        assert!(rendered.contains(r#"command_workspace_format "{stdout}""#));
+        assert!(rendered.contains(&format!(
+            r#"command_ai_activity_command "{} zellij status-bus-ai-activity""#,
+            expected_yzx_control
+        )));
+        assert!(rendered.contains(&format!(
+            r#"command_cpu_command "{} {}/configs/zellij/scripts/cpu_usage.nu""#,
+            expected_nu,
+            runtime_dir.to_string_lossy()
+        )));
+        assert!(!rendered.contains(ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER));
+        assert!(!rendered.contains(ZJSTATUS_NU_BIN_PLACEHOLDER));
     }
     // Regression: legacy plugin permission blocks are recognized by both stable and hashed wasm names.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10

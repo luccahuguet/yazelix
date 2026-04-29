@@ -31,7 +31,7 @@ plugin location="__YAZELIX_ZJSTATUS_PLUGIN_URL__" {
     datetime        "#[fg=#bb88ff,bold] {format} "
     datetime_format "%H:%M %d/%m"
 
-    command_cpu_command "nu __YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/cpu_usage.nu"
+    command_cpu_command "__YAZELIX_NU_BIN__ __YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/cpu_usage.nu"
     command_cpu_format "#[fg=#ff6600][cpu {stdout}]"
     command_cpu_interval "5"
 
@@ -39,35 +39,35 @@ plugin location="__YAZELIX_ZJSTATUS_PLUGIN_URL__" {
     command_ram_format "#[fg=#ff6600][ram {stdout}]"
     command_ram_interval "5"
 
-    command_workspace_command "yzx_control zellij status-bus-workspace"
-    command_workspace_format "#[fg=#00ff88,bold][workspace {stdout}]"
+    command_workspace_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-bus-workspace"
+    command_workspace_format "{stdout}"
     command_workspace_interval "1"
 
-    command_ai_activity_command "yzx_control zellij status-bus-ai-activity"
-    command_ai_activity_format "#[fg=#00ff88,bold][ai {stdout}]"
+    command_ai_activity_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-bus-ai-activity"
+    command_ai_activity_format "{stdout}"
     command_ai_activity_interval "1"
 
-    command_token_budget_command "yzx_control zellij status-bus-token-budget"
-    command_token_budget_format "#[fg=#00ff88,bold][tokens {stdout}]"
+    command_token_budget_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-bus-token-budget"
+    command_token_budget_format "{stdout}"
     command_token_budget_interval "5"
 
-    command_claude_usage_command "yzx_control zellij agent-usage claude"
+    command_claude_usage_command "__YAZELIX_YZX_CONTROL_BIN__ zellij agent-usage claude"
     command_claude_usage_format "{stdout}"
     command_claude_usage_interval "120"
 
-    command_codex_usage_command "yzx_control zellij agent-usage codex"
+    command_codex_usage_command "__YAZELIX_YZX_CONTROL_BIN__ zellij agent-usage codex"
     command_codex_usage_format "{stdout}"
     command_codex_usage_interval "120"
 
-    command_amp_usage_command "yzx_control zellij agent-usage amp"
+    command_amp_usage_command "__YAZELIX_YZX_CONTROL_BIN__ zellij agent-usage amp"
     command_amp_usage_format "{stdout}"
     command_amp_usage_interval "120"
 
-    command_opencode_usage_command "yzx_control zellij agent-usage opencode"
+    command_opencode_usage_command "__YAZELIX_YZX_CONTROL_BIN__ zellij agent-usage opencode"
     command_opencode_usage_format "{stdout}"
     command_opencode_usage_interval "120"
 
-    command_version_command "nu -c 'use __YAZELIX_RUNTIME_DIR__/nushell/scripts/utils/constants.nu YAZELIX_VERSION; $YAZELIX_VERSION'"
+    command_version_command "__YAZELIX_NU_BIN__ -c 'use __YAZELIX_RUNTIME_DIR__/nushell/scripts/utils/constants.nu YAZELIX_VERSION; $YAZELIX_VERSION'"
     command_version_format "{stdout}"
     command_version_interval "3600"
 }
