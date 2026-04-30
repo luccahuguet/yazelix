@@ -10,6 +10,11 @@ const INITIAL_AGENT_USAGE_REFRESH_DELAY: Duration = Duration::from_secs(5);
 const AGENT_USAGE_REFRESH_INTERVAL: Duration = Duration::from_secs(120);
 const AGENT_USAGE_PROVIDER_TIMEOUT_MS: &str = "1500";
 const AGENT_USAGE_MAX_AGE_SECONDS: &str = "120";
+const INITIAL_CODEX_USAGE_REFRESH_DELAY: Duration = Duration::from_secs(2);
+const CODEX_USAGE_REFRESH_INTERVAL: Duration = Duration::from_secs(600);
+const CODEX_USAGE_PROVIDER_TIMEOUT_MS: &str = "5000";
+const CODEX_USAGE_MAX_AGE_SECONDS: &str = "600";
+const CODEX_USAGE_ERROR_BACKOFF_SECONDS: &str = "1800";
 
 impl State {
     pub(crate) fn refresh_status_bar_cache(&mut self) {
@@ -53,6 +58,10 @@ impl State {
         self.schedule_status_bar_agent_usage_refresh_after(INITIAL_AGENT_USAGE_REFRESH_DELAY);
     }
 
+    pub(crate) fn schedule_initial_status_bar_codex_usage_refresh(&mut self) {
+        self.schedule_status_bar_codex_usage_refresh_after(INITIAL_CODEX_USAGE_REFRESH_DELAY);
+    }
+
     pub(crate) fn handle_status_bar_agent_usage_timer(&mut self) {
         let now = Instant::now();
         let Some(next_refresh) = self.status_bar_agent_usage_next_refresh else {
@@ -75,8 +84,35 @@ impl State {
         self.schedule_status_bar_agent_usage_refresh_after(AGENT_USAGE_REFRESH_INTERVAL);
     }
 
+    pub(crate) fn handle_status_bar_codex_usage_timer(&mut self) {
+        let now = Instant::now();
+        let Some(next_refresh) = self.status_bar_codex_usage_next_refresh else {
+            self.schedule_initial_status_bar_codex_usage_refresh();
+            return;
+        };
+        if now < next_refresh {
+            self.schedule_status_bar_codex_usage_refresh_after(
+                next_refresh.saturating_duration_since(now),
+            );
+            return;
+        }
+
+        if !self.permissions_granted {
+            self.schedule_status_bar_codex_usage_refresh_after(INITIAL_CODEX_USAGE_REFRESH_DELAY);
+            return;
+        }
+
+        self.refresh_status_bar_codex_usage_cache();
+        self.schedule_status_bar_codex_usage_refresh_after(CODEX_USAGE_REFRESH_INTERVAL);
+    }
+
     fn schedule_status_bar_agent_usage_refresh_after(&mut self, delay: Duration) {
         self.status_bar_agent_usage_next_refresh = Some(Instant::now() + delay);
+        set_timeout(delay.as_secs_f64().max(0.5));
+    }
+
+    fn schedule_status_bar_codex_usage_refresh_after(&mut self, delay: Duration) {
+        self.status_bar_codex_usage_next_refresh = Some(Instant::now() + delay);
         set_timeout(delay.as_secs_f64().max(0.5));
     }
 
@@ -99,6 +135,31 @@ impl State {
             AGENT_USAGE_MAX_AGE_SECONDS,
             "--timeout-ms",
             AGENT_USAGE_PROVIDER_TIMEOUT_MS,
+        ];
+        run_command_with_env_variables_and_cwd(&command, runtime.env, runtime.cwd, BTreeMap::new());
+    }
+
+    fn refresh_status_bar_codex_usage_cache(&mut self) {
+        let Some(runtime) = self.status_bar_cache_runtime.clone().or_else(|| {
+            let session_env = get_session_environment_variables();
+            resolve_status_bar_cache_runtime(&session_env)
+        }) else {
+            return;
+        };
+        self.status_bar_cache_runtime = Some(runtime.clone());
+
+        let command = [
+            runtime.yzx_control_path.as_str(),
+            "zellij",
+            "status-cache-refresh-codex-usage",
+            "--path",
+            runtime.cache_path.as_str(),
+            "--max-age-seconds",
+            CODEX_USAGE_MAX_AGE_SECONDS,
+            "--error-backoff-seconds",
+            CODEX_USAGE_ERROR_BACKOFF_SECONDS,
+            "--timeout-ms",
+            CODEX_USAGE_PROVIDER_TIMEOUT_MS,
         ];
         run_command_with_env_variables_and_cwd(&command, runtime.env, runtime.cwd, BTreeMap::new());
     }

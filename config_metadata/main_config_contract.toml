@@ -299,6 +299,20 @@ allowed_values = [
 ]
 rebuild_required = false
 
+[fields."zellij.codex_usage_display"]
+kind = "string"
+default = "both"
+parser_key = "zellij_codex_usage_display"
+home_manager_option = "zellij_codex_usage_display"
+parser_behavior = "direct"
+validation = "enum"
+allowed_values = [
+  "token",
+  "quota",
+  "both",
+]
+rebuild_required = false
+
 [fields."zellij.agent_usage_display"]
 kind = "string"
 default = "tokens"
@@ -320,21 +334,6 @@ default = [
 ]
 parser_key = "zellij_claude_usage_periods"
 home_manager_option = "zellij_claude_usage_periods"
-parser_behavior = "direct"
-validation = "enum_string_list"
-allowed_values = [
-  "day",
-  "month",
-]
-rebuild_required = false
-
-[fields."zellij.codex_usage_periods"]
-kind = "string_list"
-default = [
-  "day",
-]
-parser_key = "zellij_codex_usage_periods"
-home_manager_option = "zellij_codex_usage_periods"
 parser_behavior = "direct"
 validation = "enum_string_list"
 allowed_values = [

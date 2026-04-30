@@ -19,6 +19,7 @@ use std::collections::BTreeSet;
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fs;
+use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::thread;
@@ -27,8 +28,10 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 const PANE_ORCHESTRATOR_PLUGIN_ALIAS: &str = "yazelix_pane_orchestrator";
 const STATUS_BUS_SCHEMA_VERSION: i64 = 1;
 const STATUS_BAR_CACHE_SCHEMA_VERSION: i64 = 1;
+const CODEX_USAGE_CACHE_SCHEMA_VERSION: i64 = 1;
 const AGENT_USAGE_SEED_MAX_AGE_SECONDS: u64 = 180;
 const AGENT_USAGE_SEED_CANDIDATE_LIMIT: usize = 16;
+const CODEX_USAGE_LOCK_STALE_AFTER_SECONDS: u64 = 300;
 const EDITOR_PANE_NAME: &str = "editor";
 pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
     "pipe",
@@ -41,6 +44,7 @@ pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
     "status-cache-write",
     "status-cache-widget",
     "status-cache-refresh-agent-usage",
+    "status-cache-refresh-codex-usage",
     "agent-usage",
     "retarget",
     "open-editor",
@@ -120,6 +124,15 @@ struct ZellijStatusCacheRefreshAgentUsageArgs {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct ZellijStatusCacheRefreshCodexUsageArgs {
+    path: Option<PathBuf>,
+    max_age_seconds: Option<u64>,
+    error_backoff_seconds: Option<u64>,
+    timeout_ms: Option<u64>,
+    help: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ZellijAgentUsageArgs {
     provider: Option<String>,
     help: bool,
@@ -142,20 +155,37 @@ impl AgentUsageDisplay {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CodexUsageDisplay {
+    Both,
+    Token,
+    Quota,
+}
+
+impl CodexUsageDisplay {
+    fn parse(raw: &str) -> Self {
+        match raw.trim() {
+            "token" | "tokens" => Self::Token,
+            "quota" => Self::Quota,
+            _ => Self::Both,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct AgentUsageWidgetSettings {
     display: AgentUsageDisplay,
+    codex_display: CodexUsageDisplay,
     claude_periods: Vec<AgentUsagePeriod>,
-    codex_periods: Vec<AgentUsagePeriod>,
     opencode_periods: Vec<AgentUsagePeriod>,
 }
 
 impl Default for AgentUsageWidgetSettings {
     fn default() -> Self {
         Self {
-            display: AgentUsageDisplay::Both,
+            display: AgentUsageDisplay::Tokens,
+            codex_display: CodexUsageDisplay::Both,
             claude_periods: vec![AgentUsagePeriod::Daily],
-            codex_periods: vec![AgentUsagePeriod::Daily],
             opencode_periods: vec![AgentUsagePeriod::Daily],
         }
     }
@@ -165,7 +195,6 @@ impl Default for AgentUsageWidgetSettings {
 struct AgentUsageRefreshConfig {
     widgets: Option<BTreeSet<String>>,
     claude_periods: Vec<AgentUsagePeriod>,
-    codex_periods: Vec<AgentUsagePeriod>,
     opencode_periods: Vec<AgentUsagePeriod>,
 }
 
@@ -174,9 +203,31 @@ impl Default for AgentUsageRefreshConfig {
         Self {
             widgets: None,
             claude_periods: vec![AgentUsagePeriod::Daily],
-            codex_periods: vec![AgentUsagePeriod::Daily],
             opencode_periods: vec![AgentUsagePeriod::Daily],
         }
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct CodexCombinedUsageFacts {
+    five_hour_tokens: Option<u64>,
+    weekly_tokens: Option<u64>,
+    five_hour_remaining_percent: Option<u64>,
+    weekly_remaining_percent: Option<u64>,
+    error: Option<String>,
+}
+
+impl CodexCombinedUsageFacts {
+    fn has_tokens(&self) -> bool {
+        self.five_hour_tokens.is_some() || self.weekly_tokens.is_some()
+    }
+
+    fn has_quota(&self) -> bool {
+        self.five_hour_remaining_percent.is_some() || self.weekly_remaining_percent.is_some()
+    }
+
+    fn is_empty(&self) -> bool {
+        !self.has_tokens() && !self.has_quota()
     }
 }
 
@@ -218,7 +269,6 @@ impl AgentUsageFacts {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum AgentUsageProvider {
     Claude,
-    Codex,
     Opencode,
 }
 
@@ -652,6 +702,62 @@ fn parse_zellij_status_cache_refresh_agent_usage_args(
     Ok(parsed)
 }
 
+fn parse_zellij_status_cache_refresh_codex_usage_args(
+    args: &[String],
+) -> Result<ZellijStatusCacheRefreshCodexUsageArgs, CoreError> {
+    let mut parsed = ZellijStatusCacheRefreshCodexUsageArgs::default();
+    let mut iter = args.iter();
+
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "--path" => {
+                parsed.path = Some(PathBuf::from(
+                    iter.next()
+                        .ok_or_else(|| CoreError::usage("--path requires a value".to_string()))?
+                        .as_str(),
+                ));
+            }
+            "--max-age-seconds" => {
+                let raw = iter.next().ok_or_else(|| {
+                    CoreError::usage("--max-age-seconds requires a value".to_string())
+                })?;
+                parsed.max_age_seconds = Some(raw.parse::<u64>().map_err(|_| {
+                    CoreError::usage("--max-age-seconds must be an integer".to_string())
+                })?);
+            }
+            "--error-backoff-seconds" => {
+                let raw = iter.next().ok_or_else(|| {
+                    CoreError::usage("--error-backoff-seconds requires a value".to_string())
+                })?;
+                parsed.error_backoff_seconds = Some(raw.parse::<u64>().map_err(|_| {
+                    CoreError::usage("--error-backoff-seconds must be an integer".to_string())
+                })?);
+            }
+            "--timeout-ms" => {
+                let raw = iter
+                    .next()
+                    .ok_or_else(|| CoreError::usage("--timeout-ms requires a value".to_string()))?;
+                parsed.timeout_ms = Some(raw.parse::<u64>().map_err(|_| {
+                    CoreError::usage("--timeout-ms must be an integer".to_string())
+                })?);
+            }
+            "-h" | "--help" | "help" => parsed.help = true,
+            other if other.starts_with('-') => {
+                return Err(CoreError::usage(format!(
+                    "Unknown argument for zellij status-cache-refresh-codex-usage: {other}"
+                )));
+            }
+            _ => {
+                return Err(CoreError::usage(
+                    "zellij status-cache-refresh-codex-usage accepts only flags".to_string(),
+                ));
+            }
+        }
+    }
+
+    Ok(parsed)
+}
+
 fn parse_zellij_agent_usage_args(args: &[String]) -> Result<ZellijAgentUsageArgs, CoreError> {
     let mut parsed = ZellijAgentUsageArgs::default();
     for arg in args {
@@ -719,11 +825,20 @@ fn print_zellij_status_cache_refresh_agent_usage_help() {
     );
 }
 
+fn print_zellij_status_cache_refresh_codex_usage_help() {
+    println!("Refresh cached Codex 5h/week usage and quota facts for status-bar widgets");
+    println!();
+    println!("Usage:");
+    println!(
+        "  yzx_control zellij status-cache-refresh-codex-usage [--path <path>] [--max-age-seconds <n>] [--error-backoff-seconds <n>] [--timeout-ms <n>]"
+    );
+}
+
 fn print_zellij_agent_usage_help() {
     println!("Render an opt-in agent usage provider summary for zjstatus");
     println!();
     println!("Usage:");
-    println!("  yzx_control zellij agent-usage <claude|codex|opencode>");
+    println!("  yzx_control zellij agent-usage <claude|opencode>");
 }
 
 pub fn run_zellij_inspect_session(args: &[String]) -> Result<i32, CoreError> {
@@ -907,14 +1022,46 @@ pub fn run_zellij_status_cache_widget(args: &[String]) -> Result<i32, CoreError>
         Some(path) => path,
         None => return Ok(0),
     };
-    let Some(cache) = read_status_bar_cache_value(&path) else {
+    let Some(mut cache) = read_status_bar_cache_value(&path) else {
         return Ok(0);
     };
+    if widget == "codex_usage" {
+        hydrate_status_cache_codex_usage(&mut cache, &path);
+    }
     print_optional_zjstatus_segment(render_status_cache_widget_with_agent_usage_settings(
         &cache,
         widget,
         &agent_usage_widget_settings_from_session_config_env(),
     )?);
+    Ok(0)
+}
+
+pub fn run_zellij_status_cache_refresh_codex_usage(args: &[String]) -> Result<i32, CoreError> {
+    let parsed = parse_zellij_status_cache_refresh_codex_usage_args(args)?;
+    if parsed.help {
+        print_zellij_status_cache_refresh_codex_usage_help();
+        return Ok(0);
+    }
+
+    if !codex_usage_widget_enabled_from_session_config_env() {
+        return Ok(0);
+    }
+    let path = match parsed.path.or_else(status_bar_cache_path_from_env) {
+        Some(path) => path,
+        None => return Ok(0),
+    };
+    let Some(shared_path) = codex_usage_shared_cache_path_from_status_cache_path(&path) else {
+        return Ok(0);
+    };
+    let timeout = Duration::from_millis(parsed.timeout_ms.unwrap_or(5_000).max(1));
+    refresh_codex_usage_shared_cache(
+        &shared_path,
+        env::var_os("PATH").as_deref(),
+        unix_time_seconds(),
+        parsed.max_age_seconds.unwrap_or(600),
+        parsed.error_backoff_seconds.unwrap_or(1_800),
+        timeout,
+    )?;
     Ok(0)
 }
 
@@ -960,7 +1107,7 @@ pub fn run_zellij_agent_usage(args: &[String]) -> Result<i32, CoreError> {
         .and_then(parse_agent_usage_provider)
     else {
         return Err(CoreError::usage(
-            "zellij agent-usage requires one of: claude, codex, opencode".to_string(),
+            "zellij agent-usage requires one of: claude, opencode".to_string(),
         ));
     };
     let target = default_agent_usage_target_for_provider(provider);
@@ -1123,6 +1270,13 @@ fn missing_status_bar_cache_path_error() -> CoreError {
     )
 }
 
+fn codex_usage_shared_cache_path_from_status_cache_path(
+    status_cache_path: &Path,
+) -> Option<PathBuf> {
+    let state_dir = status_cache_path.parent()?.parent()?.parent()?;
+    Some(state_dir.join("agent_usage").join("codex_usage_cache.json"))
+}
+
 fn build_status_bar_cache_at(
     status_bus: Value,
     agent_usage: Value,
@@ -1282,6 +1436,57 @@ fn write_status_bar_cache_value(path: &Path, cache: &Value) -> Result<(), CoreEr
     Ok(())
 }
 
+fn write_json_value_atomic(
+    path: &Path,
+    value: &Value,
+    error_prefix: &str,
+) -> Result<(), CoreError> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|source| {
+            CoreError::io(
+                format!("{error_prefix}_parent_create_failed"),
+                "Failed to create the Yazelix cache directory.",
+                "Check permissions for the Yazelix state directory, then retry.",
+                &parent.display().to_string(),
+                source,
+            )
+        })?;
+    }
+
+    let serialized = format!(
+        "{}\n",
+        serde_json::to_string(value).map_err(|error| {
+            CoreError::classified(
+                ErrorClass::Runtime,
+                format!("{error_prefix}_serialize_failed"),
+                format!("Failed to serialize Yazelix cache payload: {error}"),
+                "Retry the command. If this persists, report the cache payload.",
+                json!({ "cache": value.clone() }),
+            )
+        })?
+    );
+    let tmp_path = temporary_status_bar_cache_path(path);
+    fs::write(&tmp_path, serialized).map_err(|source| {
+        CoreError::io(
+            format!("{error_prefix}_write_failed"),
+            "Failed to write the temporary Yazelix cache file.",
+            "Check permissions for the Yazelix state directory, then retry.",
+            &tmp_path.display().to_string(),
+            source,
+        )
+    })?;
+    fs::rename(&tmp_path, path).map_err(|source| {
+        CoreError::io(
+            format!("{error_prefix}_rename_failed"),
+            "Failed to publish the Yazelix cache file.",
+            "Check permissions for the Yazelix state directory, then retry.",
+            &path.display().to_string(),
+            source,
+        )
+    })?;
+    Ok(())
+}
+
 fn temporary_status_bar_cache_path(path: &Path) -> PathBuf {
     let file_name = path
         .file_name()
@@ -1299,6 +1504,30 @@ fn read_status_bar_cache_value(path: &Path) -> Option<Value> {
         return None;
     }
     if status_bar_cache_status_bus(&cache).is_none() {
+        return None;
+    }
+    Some(cache)
+}
+
+fn hydrate_status_cache_codex_usage(cache: &mut Value, status_cache_path: &Path) {
+    let Some(shared_path) = codex_usage_shared_cache_path_from_status_cache_path(status_cache_path)
+    else {
+        return;
+    };
+    let Some(shared_cache) = read_codex_usage_shared_cache_value(&shared_path) else {
+        return;
+    };
+    let Some(codex) = shared_cache.get("codex").cloned() else {
+        return;
+    };
+    cache["codex_usage"] = codex;
+}
+
+fn read_codex_usage_shared_cache_value(path: &Path) -> Option<Value> {
+    let raw = fs::read_to_string(path).ok()?;
+    let cache: Value = serde_json::from_str(&raw).ok()?;
+    if cache.get("schema_version").and_then(Value::as_i64) != Some(CODEX_USAGE_CACHE_SCHEMA_VERSION)
+    {
         return None;
     }
     Some(cache)
@@ -1353,12 +1582,7 @@ fn render_status_cache_widget_with_agent_usage_settings(
             settings.claude_periods.as_slice(),
             settings.display,
         )),
-        "codex_usage" => Ok(render_grouped_agent_usage_segment(
-            cache,
-            AgentUsageProvider::Codex,
-            settings.codex_periods.as_slice(),
-            settings.display,
-        )),
+        "codex_usage" => Ok(render_codex_usage_segment(cache, settings.codex_display)),
         "opencode_usage" => Ok(render_grouped_agent_usage_segment(
             cache,
             AgentUsageProvider::Opencode,
@@ -1408,6 +1632,91 @@ fn render_grouped_agent_usage_segment(
         String::new()
     } else {
         render_agent_usage_widget(agent_usage_provider_label(provider), &parts.join(" | "))
+    }
+}
+
+fn render_codex_usage_segment(cache: &Value, display: CodexUsageDisplay) -> String {
+    let Some(entry) = cache.get("codex_usage") else {
+        return String::new();
+    };
+    let facts = codex_usage_facts_from_cache_entry(entry);
+    let summary = render_codex_usage_summary(&facts, display);
+    if summary.is_empty() {
+        String::new()
+    } else {
+        render_agent_usage_widget("codex", &summary)
+    }
+}
+
+fn render_codex_usage_summary(
+    facts: &CodexCombinedUsageFacts,
+    display: CodexUsageDisplay,
+) -> String {
+    let mut parts = Vec::new();
+    if let Some(part) = render_codex_usage_window(
+        "5h",
+        facts.five_hour_tokens,
+        facts.five_hour_remaining_percent,
+        display,
+    ) {
+        parts.push(part);
+    }
+    if let Some(part) = render_codex_usage_window(
+        "wk",
+        facts.weekly_tokens,
+        facts.weekly_remaining_percent,
+        display,
+    ) {
+        parts.push(part);
+    }
+    parts.join(" ")
+}
+
+fn render_codex_usage_window(
+    label: &str,
+    tokens: Option<u64>,
+    remaining_percent: Option<u64>,
+    display: CodexUsageDisplay,
+) -> Option<String> {
+    let mut pieces = vec![label.to_string()];
+    match display {
+        CodexUsageDisplay::Token => {
+            pieces.push(format_agent_usage_token_count(tokens?));
+        }
+        CodexUsageDisplay::Quota => {
+            pieces.push(format_codex_quota_percent(remaining_percent?));
+        }
+        CodexUsageDisplay::Both => {
+            if let Some(tokens) = tokens {
+                pieces.push(format_agent_usage_token_count(tokens));
+            }
+            if let Some(remaining_percent) = remaining_percent {
+                pieces.push(format_codex_quota_percent(remaining_percent));
+            }
+            if pieces.len() == 1 {
+                return None;
+            }
+        }
+    }
+    Some(pieces.join("|"))
+}
+
+fn codex_usage_facts_from_cache_entry(entry: &Value) -> CodexCombinedUsageFacts {
+    CodexCombinedUsageFacts {
+        five_hour_tokens: entry.get("five_hour_tokens").and_then(Value::as_u64),
+        weekly_tokens: entry.get("weekly_tokens").and_then(Value::as_u64),
+        five_hour_remaining_percent: entry
+            .get("five_hour_remaining_percent")
+            .and_then(Value::as_u64),
+        weekly_remaining_percent: entry
+            .get("weekly_remaining_percent")
+            .and_then(Value::as_u64),
+        error: entry
+            .get("error")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_string),
     }
 }
 
@@ -1474,6 +1783,346 @@ fn collect_agent_usage_entries(
     Value::Object(usage)
 }
 
+fn refresh_codex_usage_shared_cache(
+    shared_path: &Path,
+    path_var: Option<&OsStr>,
+    now: u64,
+    max_age_seconds: u64,
+    error_backoff_seconds: u64,
+    timeout: Duration,
+) -> Result<bool, CoreError> {
+    if codex_usage_shared_cache_is_fresh(shared_path, now, max_age_seconds) {
+        return Ok(false);
+    }
+    if codex_usage_shared_cache_is_backing_off(shared_path, now) {
+        return Ok(false);
+    }
+    let Some(_lock) = try_acquire_codex_usage_cache_lock(shared_path, now)? else {
+        return Ok(false);
+    };
+    if codex_usage_shared_cache_is_fresh(shared_path, now, max_age_seconds)
+        || codex_usage_shared_cache_is_backing_off(shared_path, now)
+    {
+        return Ok(false);
+    }
+
+    let facts = collect_codex_usage_facts(path_var, timeout);
+    let mut codex = serde_json::Map::new();
+    codex.insert("updated_at_unix_seconds".to_string(), json!(now));
+    if let Some(tokens) = facts.five_hour_tokens {
+        codex.insert("five_hour_tokens".to_string(), json!(tokens));
+    }
+    if let Some(tokens) = facts.weekly_tokens {
+        codex.insert("weekly_tokens".to_string(), json!(tokens));
+    }
+    if let Some(percent) = facts.five_hour_remaining_percent {
+        codex.insert("five_hour_remaining_percent".to_string(), json!(percent));
+    }
+    if let Some(percent) = facts.weekly_remaining_percent {
+        codex.insert("weekly_remaining_percent".to_string(), json!(percent));
+    }
+    if let Some(error) = facts.error.as_deref().filter(|value| !value.is_empty()) {
+        codex.insert("error".to_string(), json!(error));
+        codex.insert(
+            "backoff_until_unix_seconds".to_string(),
+            json!(now.saturating_add(error_backoff_seconds)),
+        );
+    }
+    let status = if facts.is_empty() {
+        "error"
+    } else if facts.has_tokens() && facts.has_quota() {
+        "ok"
+    } else {
+        "partial"
+    };
+    codex.insert("status".to_string(), json!(status));
+
+    let cache = json!({
+        "schema_version": CODEX_USAGE_CACHE_SCHEMA_VERSION,
+        "codex": Value::Object(codex),
+    });
+    write_json_value_atomic(shared_path, &cache, "codex_usage_cache")?;
+    Ok(true)
+}
+
+fn codex_usage_shared_cache_is_fresh(path: &Path, now: u64, max_age_seconds: u64) -> bool {
+    let Some(cache) = read_codex_usage_shared_cache_value(path) else {
+        return false;
+    };
+    cache
+        .get("codex")
+        .and_then(|codex| codex.get("updated_at_unix_seconds"))
+        .and_then(Value::as_u64)
+        .is_some_and(|updated_at| {
+            now.saturating_sub(updated_at) < max_age_seconds
+                && cache
+                    .get("codex")
+                    .map(codex_usage_facts_from_cache_entry)
+                    .is_some_and(|facts| !facts.is_empty())
+        })
+}
+
+fn codex_usage_shared_cache_is_backing_off(path: &Path, now: u64) -> bool {
+    read_codex_usage_shared_cache_value(path)
+        .and_then(|cache| {
+            cache
+                .get("codex")?
+                .get("backoff_until_unix_seconds")?
+                .as_u64()
+        })
+        .is_some_and(|backoff_until| now < backoff_until)
+}
+
+struct CodexUsageCacheLock {
+    path: PathBuf,
+}
+
+impl Drop for CodexUsageCacheLock {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir(&self.path);
+    }
+}
+
+fn try_acquire_codex_usage_cache_lock(
+    shared_path: &Path,
+    now: u64,
+) -> Result<Option<CodexUsageCacheLock>, CoreError> {
+    let lock_path = shared_path.with_file_name(".codex_usage_cache.lock");
+    if let Some(parent) = lock_path.parent() {
+        fs::create_dir_all(parent).map_err(|source| {
+            CoreError::io(
+                "codex_usage_cache_lock_parent_create_failed",
+                "Failed to create the Yazelix Codex usage cache lock directory.",
+                "Check permissions for the Yazelix state directory, then retry.",
+                &parent.display().to_string(),
+                source,
+            )
+        })?;
+    }
+    match fs::create_dir(&lock_path) {
+        Ok(()) => Ok(Some(CodexUsageCacheLock { path: lock_path })),
+        Err(source) if source.kind() == ErrorKind::AlreadyExists => {
+            if codex_usage_cache_lock_is_stale(&lock_path, now) {
+                let _ = fs::remove_dir(&lock_path);
+                return match fs::create_dir(&lock_path) {
+                    Ok(()) => Ok(Some(CodexUsageCacheLock { path: lock_path })),
+                    Err(source) if source.kind() == ErrorKind::AlreadyExists => Ok(None),
+                    Err(source) => Err(CoreError::io(
+                        "codex_usage_cache_lock_create_failed",
+                        "Failed to acquire the Yazelix Codex usage cache lock.",
+                        "Check permissions for the Yazelix state directory, then retry.",
+                        &lock_path.display().to_string(),
+                        source,
+                    )),
+                };
+            }
+            Ok(None)
+        }
+        Err(source) => Err(CoreError::io(
+            "codex_usage_cache_lock_create_failed",
+            "Failed to acquire the Yazelix Codex usage cache lock.",
+            "Check permissions for the Yazelix state directory, then retry.",
+            &lock_path.display().to_string(),
+            source,
+        )),
+    }
+}
+
+fn codex_usage_cache_lock_is_stale(lock_path: &Path, now: u64) -> bool {
+    fs::metadata(lock_path)
+        .ok()
+        .and_then(|metadata| metadata.modified().ok())
+        .and_then(|modified| modified.duration_since(UNIX_EPOCH).ok())
+        .map(|duration| {
+            now.saturating_sub(duration.as_secs()) > CODEX_USAGE_LOCK_STALE_AFTER_SECONDS
+        })
+        .unwrap_or(false)
+}
+
+fn collect_codex_usage_facts(
+    path_var: Option<&OsStr>,
+    timeout: Duration,
+) -> CodexCombinedUsageFacts {
+    let Some(path_var) = path_var else {
+        return CodexCombinedUsageFacts {
+            error: Some("missing PATH".to_string()),
+            ..CodexCombinedUsageFacts::default()
+        };
+    };
+    let Some(binary_path) = find_command_in_path_var(path_var, "tu") else {
+        return CodexCombinedUsageFacts {
+            error: Some("missing tu".to_string()),
+            ..CodexCombinedUsageFacts::default()
+        };
+    };
+
+    let mut facts = CodexCombinedUsageFacts::default();
+    match run_codex_usage_json_command(
+        &binary_path,
+        &[
+            "blocks",
+            "--active",
+            "--json",
+            "--offline",
+            "--no-claude",
+            "--no-antigravity",
+        ],
+        timeout,
+    ) {
+        Ok(Some(value)) => {
+            facts.five_hour_tokens = codex_active_block_tokens_from_json(&value);
+        }
+        Ok(None) => facts.error = Some("active block unavailable".to_string()),
+        Err(error) => facts.error = Some(error),
+    }
+
+    match run_codex_usage_json_command(
+        &binary_path,
+        &[
+            "weekly",
+            "--json",
+            "--offline",
+            "--no-claude",
+            "--no-antigravity",
+            "--order",
+            "desc",
+        ],
+        timeout,
+    ) {
+        Ok(Some(value)) => {
+            facts.weekly_tokens = codex_weekly_tokens_from_json(&value);
+        }
+        Ok(None) => {
+            facts.error = facts
+                .error
+                .or_else(|| Some("weekly usage unavailable".to_string()))
+        }
+        Err(error) => facts.error = facts.error.or(Some(error)),
+    }
+
+    match run_codex_usage_json_command(
+        &binary_path,
+        &[
+            "blocks",
+            "--active",
+            "--json",
+            "--official-limits",
+            "--no-claude",
+            "--no-antigravity",
+        ],
+        timeout,
+    ) {
+        Ok(Some(value)) => {
+            let quota = codex_quota_from_official_json(&value);
+            facts.five_hour_remaining_percent = quota.five_hour_remaining_percent;
+            facts.weekly_remaining_percent = quota.weekly_remaining_percent;
+            if !quota.has_quota() {
+                facts.error = facts
+                    .error
+                    .or_else(|| Some("quota unavailable".to_string()));
+            }
+        }
+        Ok(None) => {
+            facts.error = facts
+                .error
+                .or_else(|| Some("quota unavailable".to_string()))
+        }
+        Err(error) => facts.error = facts.error.or(Some(error)),
+    }
+
+    facts
+}
+
+fn run_codex_usage_json_command(
+    binary_path: &Path,
+    args: &[&str],
+    timeout: Duration,
+) -> Result<Option<Value>, String> {
+    let output = run_agent_usage_command_with_timeout(binary_path, args, timeout)
+        .map_err(|error| error.to_string())?;
+    let Some(output) = output else {
+        return Ok(None);
+    };
+    if !output.status.success() {
+        return Ok(None);
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let Some(json_raw) = extract_json_object(&stdout) else {
+        return Ok(None);
+    };
+    serde_json::from_str::<Value>(json_raw)
+        .map(Some)
+        .map_err(|error| error.to_string())
+}
+
+fn codex_active_block_tokens_from_json(value: &Value) -> Option<u64> {
+    value
+        .get("blocks")
+        .and_then(Value::as_array)
+        .and_then(|blocks| {
+            blocks
+                .iter()
+                .find(|block| {
+                    block
+                        .get("isActive")
+                        .or_else(|| block.get("is_active"))
+                        .and_then(Value::as_bool)
+                        == Some(true)
+                })
+                .or_else(|| blocks.first())
+        })
+        .and_then(|block| {
+            first_u64_at(
+                block,
+                &[
+                    &["totals", "total_tokens"],
+                    &["totals", "totalTokens"],
+                    &["total_tokens"],
+                    &["totalTokens"],
+                ],
+            )
+        })
+}
+
+fn codex_weekly_tokens_from_json(value: &Value) -> Option<u64> {
+    value
+        .get("weekly")
+        .and_then(Value::as_array)
+        .and_then(|rows| rows.first())
+        .and_then(|row| {
+            first_u64_at(
+                row,
+                &[
+                    &["totals", "total_tokens"],
+                    &["totals", "totalTokens"],
+                    &["total_tokens"],
+                    &["totalTokens"],
+                ],
+            )
+        })
+}
+
+fn codex_quota_from_official_json(value: &Value) -> CodexCombinedUsageFacts {
+    let Some(official) = value.get("official_codex") else {
+        return CodexCombinedUsageFacts::default();
+    };
+    CodexCombinedUsageFacts {
+        five_hour_remaining_percent: official
+            .get("primary_used_percent")
+            .and_then(Value::as_f64)
+            .map(remaining_percent_from_used),
+        weekly_remaining_percent: official
+            .get("secondary_used_percent")
+            .and_then(Value::as_f64)
+            .map(remaining_percent_from_used),
+        ..CodexCombinedUsageFacts::default()
+    }
+}
+
+fn remaining_percent_from_used(used_percent: f64) -> u64 {
+    (100.0 - used_percent).clamp(0.0, 100.0).round() as u64
+}
+
 fn agent_usage_refresh_config_from_session_config_env() -> AgentUsageRefreshConfig {
     let Some(config) = normalized_session_config_from_env() else {
         return AgentUsageRefreshConfig::default();
@@ -1485,7 +2134,6 @@ fn agent_usage_refresh_config_from_normalized_config(config: &Value) -> AgentUsa
     AgentUsageRefreshConfig {
         widgets: agent_usage_widget_names_from_config(&config),
         claude_periods: agent_usage_periods_from_config(&config, "zellij_claude_usage_periods"),
-        codex_periods: agent_usage_periods_from_config(&config, "zellij_codex_usage_periods"),
         opencode_periods: agent_usage_periods_from_config(&config, "zellij_opencode_usage_periods"),
     }
 }
@@ -1512,11 +2160,21 @@ fn agent_usage_widget_settings_from_session_config_env() -> AgentUsageWidgetSett
             .get("zellij_agent_usage_display")
             .and_then(Value::as_str)
             .map(AgentUsageDisplay::parse)
-            .unwrap_or(AgentUsageDisplay::Both),
+            .unwrap_or(AgentUsageDisplay::Tokens),
+        codex_display: config
+            .get("zellij_codex_usage_display")
+            .and_then(Value::as_str)
+            .map(CodexUsageDisplay::parse)
+            .unwrap_or(CodexUsageDisplay::Both),
         claude_periods: agent_usage_periods_from_config(&config, "zellij_claude_usage_periods"),
-        codex_periods: agent_usage_periods_from_config(&config, "zellij_codex_usage_periods"),
         opencode_periods: agent_usage_periods_from_config(&config, "zellij_opencode_usage_periods"),
     }
+}
+
+fn codex_usage_widget_enabled_from_session_config_env() -> bool {
+    normalized_session_config_from_env()
+        .and_then(|config| agent_usage_widget_names_from_config(&config))
+        .is_some_and(|widgets| widgets.contains("codex_usage"))
 }
 
 fn agent_usage_widget_names_from_config(config: &Value) -> Option<BTreeSet<String>> {
@@ -1798,7 +2456,6 @@ fn format_token_count(tokens: u64) -> String {
 fn parse_agent_usage_provider(raw: &str) -> Option<AgentUsageProvider> {
     match raw.trim() {
         "claude" => Some(AgentUsageProvider::Claude),
-        "codex" => Some(AgentUsageProvider::Codex),
         "opencode" => Some(AgentUsageProvider::Opencode),
         _ => None,
     }
@@ -1806,7 +2463,7 @@ fn parse_agent_usage_provider(raw: &str) -> Option<AgentUsageProvider> {
 
 fn agent_usage_binary(provider: AgentUsageProvider) -> &'static str {
     match provider {
-        AgentUsageProvider::Claude | AgentUsageProvider::Codex => "tu",
+        AgentUsageProvider::Claude => "tu",
         AgentUsageProvider::Opencode => "ccusage-opencode",
     }
 }
@@ -1814,7 +2471,6 @@ fn agent_usage_binary(provider: AgentUsageProvider) -> &'static str {
 fn default_agent_usage_target_for_provider(provider: AgentUsageProvider) -> AgentUsageTarget {
     match provider {
         AgentUsageProvider::Claude => CLAUDE_USAGE_TARGET,
-        AgentUsageProvider::Codex => CODEX_USAGE_TARGET,
         AgentUsageProvider::Opencode => OPENCODE_USAGE_TARGET,
     }
 }
@@ -1836,24 +2492,6 @@ const CLAUDE_MONTHLY_USAGE_TARGET: AgentUsageTarget = AgentUsageTarget {
     period: AgentUsagePeriod::Monthly,
     cache_key: "claude_monthly",
     label: "claude|mon",
-};
-const CODEX_USAGE_TARGET: AgentUsageTarget = AgentUsageTarget {
-    provider: AgentUsageProvider::Codex,
-    period: AgentUsagePeriod::Daily,
-    cache_key: "codex",
-    label: "codex|d",
-};
-const CODEX_DAILY_USAGE_TARGET: AgentUsageTarget = AgentUsageTarget {
-    provider: AgentUsageProvider::Codex,
-    period: AgentUsagePeriod::Daily,
-    cache_key: "codex_daily",
-    label: "codex|d",
-};
-const CODEX_MONTHLY_USAGE_TARGET: AgentUsageTarget = AgentUsageTarget {
-    provider: AgentUsageProvider::Codex,
-    period: AgentUsagePeriod::Monthly,
-    cache_key: "codex_monthly",
-    label: "codex|mon",
 };
 const OPENCODE_USAGE_TARGET: AgentUsageTarget = AgentUsageTarget {
     provider: AgentUsageProvider::Opencode,
@@ -1883,8 +2521,6 @@ fn agent_usage_target_for_provider_period(
         (AgentUsageProvider::Claude, AgentUsagePeriod::Monthly) => {
             Some(CLAUDE_MONTHLY_USAGE_TARGET)
         }
-        (AgentUsageProvider::Codex, AgentUsagePeriod::Daily) => Some(CODEX_DAILY_USAGE_TARGET),
-        (AgentUsageProvider::Codex, AgentUsagePeriod::Monthly) => Some(CODEX_MONTHLY_USAGE_TARGET),
         (AgentUsageProvider::Opencode, AgentUsagePeriod::Daily) => {
             Some(OPENCODE_DAILY_USAGE_TARGET)
         }
@@ -1897,7 +2533,6 @@ fn agent_usage_target_for_provider_period(
 fn agent_usage_provider_label(provider: AgentUsageProvider) -> &'static str {
     match provider {
         AgentUsageProvider::Claude => "claude",
-        AgentUsageProvider::Codex => "codex",
         AgentUsageProvider::Opencode => "oc",
     }
 }
@@ -1907,11 +2542,7 @@ fn configured_agent_usage_targets(
 ) -> Vec<AgentUsageTarget> {
     let mut targets = Vec::new();
     let Some(widgets) = refresh_config.widgets.as_ref() else {
-        targets.extend([
-            CLAUDE_DAILY_USAGE_TARGET,
-            CODEX_DAILY_USAGE_TARGET,
-            OPENCODE_DAILY_USAGE_TARGET,
-        ]);
+        targets.extend([CLAUDE_DAILY_USAGE_TARGET, OPENCODE_DAILY_USAGE_TARGET]);
         return targets;
     };
 
@@ -1919,15 +2550,6 @@ fn configured_agent_usage_targets(
         for period in &refresh_config.claude_periods {
             if let Some(target) =
                 agent_usage_target_for_provider_period(AgentUsageProvider::Claude, *period)
-            {
-                push_unique_agent_usage_target(&mut targets, target);
-            }
-        }
-    }
-    if widgets.contains("codex_usage") {
-        for period in &refresh_config.codex_periods {
-            if let Some(target) =
-                agent_usage_target_for_provider_period(AgentUsageProvider::Codex, *period)
             {
                 push_unique_agent_usage_target(&mut targets, target);
             }
@@ -1969,28 +2591,6 @@ fn agent_usage_command_candidates(target: AgentUsageTarget) -> Vec<AgentUsageCom
                 "--json",
                 "--offline",
                 "--no-codex",
-                "--no-antigravity",
-                "--order",
-                "desc",
-            ],
-            AgentUsageJsonDialect::Tokenusage,
-        ),
-        (AgentUsageProvider::Codex, AgentUsagePeriod::Daily) => (
-            vec![
-                "today",
-                "--json",
-                "--offline",
-                "--no-claude",
-                "--no-antigravity",
-            ],
-            AgentUsageJsonDialect::Tokenusage,
-        ),
-        (AgentUsageProvider::Codex, AgentUsagePeriod::Monthly) => (
-            vec![
-                "monthly",
-                "--json",
-                "--offline",
-                "--no-claude",
                 "--no-antigravity",
                 "--order",
                 "desc",
@@ -2189,6 +2789,10 @@ fn format_scaled_agent_usage_count(value: f64, suffix: &str) -> String {
     };
     let trimmed = raw.trim_end_matches('0').trim_end_matches('.');
     format!("{trimmed}{suffix}")
+}
+
+fn format_codex_quota_percent(percent: u64) -> String {
+    format!("{}%", percent.min(100))
 }
 
 fn format_remaining_minutes(minutes: i64) -> String {
@@ -3513,7 +4117,7 @@ mod tests {
         let old_cache = build_status_bar_cache_at(
             status_cache_test_status_bus(),
             json!({
-                "codex_daily": {
+                "opencode_daily": {
                     "summary": "42k $0.42",
                     "tokens": "42k",
                     "cost": "$0.42"
@@ -3534,8 +4138,8 @@ mod tests {
         let new_cache = read_status_bar_cache_value(&new_cache_path).unwrap();
 
         assert_eq!(
-            render_status_cache_widget(&new_cache, "codex_usage").unwrap(),
-            " [codex d 42k $0.42]"
+            render_status_cache_widget(&new_cache, "opencode_usage").unwrap(),
+            " [oc d 42k $0.42]"
         );
         assert_eq!(
             new_cache
@@ -3558,7 +4162,7 @@ mod tests {
         let old_cache = build_status_bar_cache_at(
             status_cache_test_status_bus(),
             json!({
-                "codex_daily": {
+                "opencode_daily": {
                     "summary": "42k $0.42",
                     "tokens": "42k",
                     "cost": "$0.42"
@@ -3579,7 +4183,7 @@ mod tests {
         let new_cache = read_status_bar_cache_value(&new_cache_path).unwrap();
 
         assert_eq!(
-            render_status_cache_widget(&new_cache, "codex_usage").unwrap(),
+            render_status_cache_widget(&new_cache, "opencode_usage").unwrap(),
             ""
         );
         assert!(
@@ -3648,10 +4252,9 @@ mod tests {
             &config_path,
             json!({
                 "normalized_config": {
-                    "zellij_widget_tray": ["codex_usage"],
-                    "zellij_codex_usage_periods": ["day", "month"],
+                    "zellij_widget_tray": ["codex_usage", "claude_usage", "opencode_usage"],
                     "zellij_claude_usage_periods": ["day"],
-                    "zellij_opencode_usage_periods": ["day"],
+                    "zellij_opencode_usage_periods": ["day", "month"],
                     "zellij_agent_usage_display": "both"
                 }
             })
@@ -3663,7 +4266,11 @@ mod tests {
 
         assert_eq!(
             configured_agent_usage_targets(&refresh_config),
-            vec![CODEX_DAILY_USAGE_TARGET, CODEX_MONTHLY_USAGE_TARGET,]
+            vec![
+                CLAUDE_DAILY_USAGE_TARGET,
+                OPENCODE_DAILY_USAGE_TARGET,
+                OPENCODE_MONTHLY_USAGE_TARGET,
+            ]
         );
     }
 
@@ -3686,21 +4293,21 @@ mod tests {
                 "extensions": {"ai_pane_activity": [], "ai_token_budget": []}
             },
             "agent_usage": {
-                "codex_daily": {"summary": "123k $1.23"}
+                "claude_daily": {"summary": "123k $1.23"}
             }
         });
 
         assert_eq!(
-            render_status_cache_widget(&cache, "codex_usage").unwrap(),
-            " [codex d 123k $1.23]"
+            render_status_cache_widget(&cache, "claude_usage").unwrap(),
+            " [claude d 123k $1.23]"
         );
         assert!(
-            !render_status_cache_widget(&cache, "codex_usage")
+            !render_status_cache_widget(&cache, "claude_usage")
                 .unwrap()
                 .contains("#[")
         );
         assert_eq!(
-            render_status_cache_widget(&cache, "claude_usage").unwrap(),
+            render_status_cache_widget(&cache, "codex_usage").unwrap(),
             ""
         );
     }
@@ -3762,10 +4369,10 @@ mod tests {
         );
     }
 
-    // Defends: grouped provider usage widgets avoid repeating the provider name while preserving configured period order.
+    // Defends: Codex usage renders only the compact 5h/week token/quota contract selected by codex_usage_display.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn status_cache_grouped_codex_usage_renders_configured_periods_compactly() {
+    fn status_cache_codex_usage_renders_5h_week_display_modes() {
         let cache = json!({
             "schema_version": 1,
             "updated_at_unix_seconds": 10,
@@ -3780,23 +4387,200 @@ mod tests {
                 "transient_panes": {"popup": null, "menu": null},
                 "extensions": {"ai_pane_activity": [], "ai_token_budget": []}
             },
-            "agent_usage": {
-                "codex_daily": {"tokens": "124M", "cost": "$6.69"},
-                "codex_monthly": {"tokens": "1.58B", "cost": "$98"}
+            "codex_usage": {
+                "five_hour_tokens": 138424632u64,
+                "weekly_tokens": 1335519960u64,
+                "five_hour_remaining_percent": 49u64,
+                "weekly_remaining_percent": 80u64
             }
         });
-        let settings = AgentUsageWidgetSettings {
-            display: AgentUsageDisplay::Both,
-            claude_periods: vec![AgentUsagePeriod::Daily],
-            codex_periods: vec![AgentUsagePeriod::Daily, AgentUsagePeriod::Monthly],
-            opencode_periods: vec![AgentUsagePeriod::Daily],
-        };
 
         assert_eq!(
-            render_status_cache_widget_with_agent_usage_settings(&cache, "codex_usage", &settings)
-                .unwrap(),
-            " [codex d 124M $6.69 | mon 1.58B $98]"
+            render_status_cache_widget_with_agent_usage_settings(
+                &cache,
+                "codex_usage",
+                &AgentUsageWidgetSettings {
+                    codex_display: CodexUsageDisplay::Both,
+                    ..AgentUsageWidgetSettings::default()
+                },
+            )
+            .unwrap(),
+            " [codex 5h|138M|49% wk|1.34B|80%]"
         );
+        assert_eq!(
+            render_status_cache_widget_with_agent_usage_settings(
+                &cache,
+                "codex_usage",
+                &AgentUsageWidgetSettings {
+                    codex_display: CodexUsageDisplay::Token,
+                    ..AgentUsageWidgetSettings::default()
+                },
+            )
+            .unwrap(),
+            " [codex 5h|138M wk|1.34B]"
+        );
+        assert_eq!(
+            render_status_cache_widget_with_agent_usage_settings(
+                &cache,
+                "codex_usage",
+                &AgentUsageWidgetSettings {
+                    codex_display: CodexUsageDisplay::Quota,
+                    ..AgentUsageWidgetSettings::default()
+                },
+            )
+            .unwrap(),
+            " [codex 5h|49% wk|80%]"
+        );
+    }
+
+    // Defends: tokenusage JSON shape for Codex active-block, weekly, and official quota facts maps to the compact widget contract.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn codex_usage_json_parsers_read_tokenusage_windows_and_official_quota() {
+        let active = json!({
+            "blocks": [
+                {"isActive": false, "totals": {"total_tokens": 10u64}},
+                {"isActive": true, "totals": {"total_tokens": 138424632u64}}
+            ]
+        });
+        let weekly = json!({
+            "weekly": [
+                {"totals": {"total_tokens": 1335519960u64}},
+                {"totals": {"total_tokens": 1u64}}
+            ]
+        });
+        let official = json!({
+            "official_codex": {
+                "primary_used_percent": 51.0,
+                "secondary_used_percent": 20.0
+            }
+        });
+
+        let quota = codex_quota_from_official_json(&official);
+
+        assert_eq!(
+            codex_active_block_tokens_from_json(&active),
+            Some(138424632)
+        );
+        assert_eq!(codex_weekly_tokens_from_json(&weekly), Some(1335519960));
+        assert_eq!(quota.five_hour_remaining_percent, Some(49));
+        assert_eq!(quota.weekly_remaining_percent, Some(80));
+    }
+
+    // Regression: the dedicated Codex refresh writes a shared cache that new windows hydrate before rendering.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[cfg(unix)]
+    #[test]
+    fn status_cache_codex_usage_refresh_writes_shared_combined_cache() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp = tempfile::tempdir().unwrap();
+        let bin_dir = temp.path().join("bin");
+        fs::create_dir_all(&bin_dir).unwrap();
+        let provider = bin_dir.join("tu");
+        fs::write(
+            &provider,
+            r#"#!/usr/bin/env sh
+if [ "$1" = "blocks" ] && [ "$2" = "--active" ]; then
+  case " $* " in
+    *" --official-limits "*)
+      printf '%s\n' '{"official_codex":{"primary_used_percent":51.0,"secondary_used_percent":20.0}}'
+      ;;
+    *)
+      printf '%s\n' '{"blocks":[{"isActive":true,"totals":{"total_tokens":138424632}}]}'
+      ;;
+  esac
+  exit 0
+fi
+if [ "$1" = "weekly" ]; then
+  printf '%s\n' '{"weekly":[{"totals":{"total_tokens":1335519960}}]}'
+  exit 0
+fi
+exit 64
+"#,
+        )
+        .unwrap();
+        let mut permissions = fs::metadata(&provider).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&provider, permissions).unwrap();
+        let status_cache_path = temp
+            .path()
+            .join("state")
+            .join("sessions")
+            .join("window_a")
+            .join("status_bar_cache.json");
+        let shared_path =
+            codex_usage_shared_cache_path_from_status_cache_path(&status_cache_path).unwrap();
+
+        let refreshed = refresh_codex_usage_shared_cache(
+            &shared_path,
+            Some(bin_dir.as_os_str()),
+            1_000,
+            600,
+            1_800,
+            Duration::from_secs(1),
+        )
+        .unwrap();
+        let mut cache =
+            build_status_bar_cache_at(status_cache_test_status_bus(), json!({}), None, 1_000);
+        hydrate_status_cache_codex_usage(&mut cache, &status_cache_path);
+
+        assert!(refreshed);
+        assert_eq!(
+            render_status_cache_widget_with_agent_usage_settings(
+                &cache,
+                "codex_usage",
+                &AgentUsageWidgetSettings {
+                    codex_display: CodexUsageDisplay::Both,
+                    ..AgentUsageWidgetSettings::default()
+                },
+            )
+            .unwrap(),
+            " [codex 5h|138M|49% wk|1.34B|80%]"
+        );
+    }
+
+    // Defends: shared Codex usage caches have explicit freshness and error backoff so multiple Yazelix windows do not stampede provider calls.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn codex_usage_shared_cache_respects_freshness_and_backoff() {
+        let temp = tempfile::tempdir().unwrap();
+        let shared_path = temp.path().join("codex_usage_cache.json");
+
+        write_json_value_atomic(
+            &shared_path,
+            &json!({
+                "schema_version": CODEX_USAGE_CACHE_SCHEMA_VERSION,
+                "codex": {
+                    "updated_at_unix_seconds": 1_000u64,
+                    "five_hour_tokens": 138424632u64,
+                    "weekly_tokens": 1335519960u64
+                }
+            }),
+            "codex_usage_cache_test",
+        )
+        .unwrap();
+        assert!(codex_usage_shared_cache_is_fresh(&shared_path, 1_100, 600));
+        assert!(!codex_usage_shared_cache_is_fresh(&shared_path, 1_700, 600));
+
+        write_json_value_atomic(
+            &shared_path,
+            &json!({
+                "schema_version": CODEX_USAGE_CACHE_SCHEMA_VERSION,
+                "codex": {
+                    "updated_at_unix_seconds": 1_700u64,
+                    "error": "quota unavailable",
+                    "backoff_until_unix_seconds": 2_000u64
+                }
+            }),
+            "codex_usage_cache_test",
+        )
+        .unwrap();
+        assert!(codex_usage_shared_cache_is_backing_off(&shared_path, 1_999));
+        assert!(!codex_usage_shared_cache_is_backing_off(
+            &shared_path,
+            2_000
+        ));
     }
 
     // Defends: Claude usage mirrors the grouped period contract used by the other provider widgets.
@@ -3825,8 +4609,8 @@ mod tests {
         let settings = AgentUsageWidgetSettings {
             display: AgentUsageDisplay::Both,
             claude_periods: vec![AgentUsagePeriod::Daily, AgentUsagePeriod::Monthly],
-            codex_periods: vec![AgentUsagePeriod::Daily],
             opencode_periods: vec![AgentUsagePeriod::Daily],
+            ..AgentUsageWidgetSettings::default()
         };
 
         assert_eq!(
@@ -3880,12 +4664,12 @@ exit 64
         });
 
         let refresh_config = AgentUsageRefreshConfig {
-            widgets: Some(["codex_usage".to_string()].into_iter().collect()),
+            widgets: Some(["claude_usage".to_string()].into_iter().collect()),
             ..AgentUsageRefreshConfig::default()
         };
         assert_eq!(
             configured_agent_usage_targets(&refresh_config),
-            vec![CODEX_DAILY_USAGE_TARGET]
+            vec![CLAUDE_DAILY_USAGE_TARGET]
         );
         let refreshed = refresh_status_bar_cache_agent_usage_value(
             &mut cache,
@@ -3900,14 +4684,14 @@ exit 64
         assert_eq!(
             cache
                 .get("agent_usage")
-                .and_then(|usage| usage.get("codex_daily"))
+                .and_then(|usage| usage.get("claude_daily"))
                 .and_then(|entry| entry.get("summary"))
                 .and_then(Value::as_str),
             Some("123k $1.23")
         );
         assert_eq!(
-            render_status_cache_widget(&cache, "codex_usage").unwrap(),
-            " [codex d 123k $1.23]"
+            render_status_cache_widget(&cache, "claude_usage").unwrap(),
+            " [claude d 123k $1.23]"
         );
     }
 
@@ -3979,8 +4763,8 @@ esac
         let settings = AgentUsageWidgetSettings {
             display: AgentUsageDisplay::Both,
             claude_periods: refresh_config.claude_periods.clone(),
-            codex_periods: vec![AgentUsagePeriod::Daily],
             opencode_periods: vec![AgentUsagePeriod::Daily],
+            ..AgentUsageWidgetSettings::default()
         };
 
         assert!(refreshed);
@@ -3991,22 +4775,24 @@ esac
         );
     }
 
-    // Regression: Codex usage widgets have one configured provider path and must not silently fall back to ccusage-codex.
+    // Regression: the grouped agent-usage refresh must not invoke Codex providers now that codex_usage has a dedicated 5h/week cache.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[cfg(unix)]
     #[test]
-    fn status_cache_agent_usage_refresh_requires_tokenusage_for_codex() {
+    fn status_cache_agent_usage_refresh_does_not_run_codex_combined_widget() {
         use std::os::unix::fs::PermissionsExt;
 
         let temp = tempfile::tempdir().unwrap();
         let bin_dir = temp.path().join("bin");
         fs::create_dir_all(&bin_dir).unwrap();
-        let provider = bin_dir.join("ccusage-codex");
+        let sentinel = temp.path().join("tu_was_invoked");
+        let provider = bin_dir.join("tu");
         fs::write(
             &provider,
-            r#"#!/usr/bin/env sh
-printf '%s\n' '{"totals":{"totalTokens":123456,"totalCost":1.234}}'
-"#,
+            format!(
+                "#!/usr/bin/env sh\nprintf touched > '{}'\nprintf '%s\\n' '{{\"overview\":{{\"totals\":{{\"total_tokens\":123456}}}}}}'\n",
+                sentinel.display()
+            ),
         )
         .unwrap();
         let mut permissions = fs::metadata(&provider).unwrap().permissions();
@@ -4033,6 +4819,7 @@ printf '%s\n' '{"totals":{"totalTokens":123456,"totalCost":1.234}}'
             widgets: Some(["codex_usage".to_string()].into_iter().collect()),
             ..AgentUsageRefreshConfig::default()
         };
+        assert!(configured_agent_usage_targets(&refresh_config).is_empty());
         refresh_status_bar_cache_agent_usage_value(
             &mut cache,
             Some(bin_dir.as_os_str()),
@@ -4045,11 +4832,11 @@ printf '%s\n' '{"totals":{"totalTokens":123456,"totalCost":1.234}}'
         assert_eq!(
             cache
                 .get("agent_usage")
-                .and_then(|usage| usage.get("codex"))
-                .and_then(|entry| entry.get("summary"))
-                .and_then(Value::as_str),
-            None
+                .and_then(Value::as_object)
+                .map(|usage| usage.len()),
+            Some(0)
         );
+        assert!(!sentinel.exists());
     }
 
     // Regression: hung agent-usage providers are killed quickly so the cache producer cannot recreate the CPU-spike failure mode.
@@ -4115,17 +4902,17 @@ printf '%s\n' '{"totals":{"totalTokens":123456,"totalCost":1.234}}'
     #[test]
     fn ccusage_json_uses_active_block_when_present() {
         let summary = agent_usage_summary_from_json(
-            CODEX_USAGE_TARGET,
+            OPENCODE_USAGE_TARGET,
             AgentUsageJsonDialect::Ccusage,
             r#"{"blocks":[{"isActive":false,"totalTokens":10},{"isActive":true,"totalTokens":123456,"costUSD":1.234,"projection":{"remainingMinutes":137}}]}"#,
         );
 
         assert_eq!(summary, "123k $1.23 2h17m");
         assert_eq!(
-            render_agent_usage_widget("codex|d", &summary),
-            " [codex|d 123k $1.23 2h17m]"
+            render_agent_usage_widget("oc|d", &summary),
+            " [oc|d 123k $1.23 2h17m]"
         );
-        assert!(!render_agent_usage_widget("codex|d", &summary).contains("#["));
+        assert!(!render_agent_usage_widget("oc|d", &summary).contains("#["));
     }
 
     // Regression: tokenusage monthly JSON includes all-history top-level totals; Yazelix must render the current row instead.
@@ -4133,7 +4920,7 @@ printf '%s\n' '{"totals":{"totalTokens":123456,"totalCost":1.234}}'
     #[test]
     fn tokenusage_json_uses_selected_period_row_instead_of_all_history_totals() {
         let monthly = agent_usage_summary_from_json(
-            CODEX_MONTHLY_USAGE_TARGET,
+            CLAUDE_MONTHLY_USAGE_TARGET,
             AgentUsageJsonDialect::Tokenusage,
             r#"{"monthly":[{"date":"2026-04","totals":{"total_tokens":1576759000,"cost_usd":98.0}}],"totals":{"total_tokens":999000,"cost_usd":99.9}}"#,
         );
@@ -4150,10 +4937,6 @@ printf '%s\n' '{"totals":{"totalTokens":123456,"totalCost":1.234}}'
         );
         assert_eq!(
             parse_agent_usage_provider("codex").map(agent_usage_binary),
-            Some("tu")
-        );
-        assert_eq!(
-            parse_agent_usage_provider("ccusage-codex").map(agent_usage_binary),
             None
         );
         assert_eq!(

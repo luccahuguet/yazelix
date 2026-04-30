@@ -460,7 +460,7 @@ fn widget_tray_question() -> MultiQuestion {
             ("AI activity", "ai_activity"),
             ("Token budget", "token_budget"),
             ("Grouped Claude usage", "claude_usage"),
-            ("Grouped Codex usage", "codex_usage"),
+            ("Codex 5h/week usage and quota", "codex_usage"),
             ("Grouped OpenCode usage", "opencode_usage"),
             ("CPU", "cpu"),
             ("RAM", "ram"),

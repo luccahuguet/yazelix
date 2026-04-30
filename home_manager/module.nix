@@ -224,9 +224,10 @@ in
         - "tokenusage": claude_usage, codex_usage
         - "ccusage-opencode": opencode_usage
 
-        claude_usage, codex_usage, and opencode_usage are grouped widgets.
-        Configure their period lists with zellij_claude_usage_periods,
-        zellij_codex_usage_periods, and zellij_opencode_usage_periods.
+        codex_usage is a combined 5h/week token and quota widget.
+        claude_usage and opencode_usage are grouped widgets. Configure their
+        period lists with zellij_claude_usage_periods and
+        zellij_opencode_usage_periods.
       '';
     };
 
@@ -356,15 +357,15 @@ in
     };
 
     zellij_agent_usage_display = mkMainContractOption "zellij.agent_usage_display" {
-      description = "Agent usage widget display mode: tokens, money, or both";
+      description = "Claude/OpenCode usage widget display mode: tokens, money, or both";
+    };
+
+    zellij_codex_usage_display = mkMainContractOption "zellij.codex_usage_display" {
+      description = "Codex usage widget display mode: token, quota, or both";
     };
 
     zellij_claude_usage_periods = mkMainContractOption "zellij.claude_usage_periods" {
       description = "Periods shown by the grouped claude_usage widget: day, month";
-    };
-
-    zellij_codex_usage_periods = mkMainContractOption "zellij.codex_usage_periods" {
-      description = "Periods shown by the grouped codex_usage widget: day, month";
     };
 
     zellij_opencode_usage_periods = mkMainContractOption "zellij.opencode_usage_periods" {

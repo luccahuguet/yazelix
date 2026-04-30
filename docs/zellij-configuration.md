@@ -59,20 +59,20 @@ widget_tray = [
   # "ai_activity", # AI pane activity
   # "token_budget", # AI token budget
   # "claude_usage", # Grouped Claude usage
-  # "codex_usage", # Grouped Codex usage
+  # "codex_usage", # Combined Codex 5h/week usage and quota
   # "opencode_usage", # Grouped OpenCode usage
   "cpu",     # CPU usage
   "ram",     # RAM usage
 ]
 
-agent_usage_display = "tokens" # "tokens", "money", or "both"
+agent_usage_display = "tokens" # Claude/OpenCode: "tokens", "money", or "both"
+codex_usage_display = "both" # "token", "quota", or "both"
 claude_usage_periods = ["day", "month"]
-codex_usage_periods = ["day", "month"]
 opencode_usage_periods = ["day"]
 ```
 Comment out any line to hide that widget. Order matters. Restart Yazelix to regenerate layouts.
 
-The grouped usage widgets render compactly, for example `[codex d 124M | mon 1.58B]`. The default display is tokens-only because money values are provider estimates, not subscription bills. The usage widgets are inert until their matching usage binary is available in the Yazelix runtime. Claude and Codex widgets use `tu` from tokenusage. OpenCode widgets use `ccusage-opencode`. Standalone flake users can install `.#yazelix_agent_tools`; Home Manager users can set `programs.yazelix.agent_usage_programs = [ "tokenusage" "ccusage-opencode" ]`.
+The Codex usage widget combines local token totals with official quota percentages, for example `[codex 5h|138M|49% wk|1.34B|80%]`. Claude and OpenCode usage widgets render grouped token periods, for example `[oc d 94k]`. The default non-Codex usage display is tokens-only because money values are provider estimates, not subscription bills. The usage widgets are inert until their matching usage binary is available in the Yazelix runtime. Claude and Codex widgets use `tu` from tokenusage. OpenCode widgets use `ccusage-opencode`. Standalone flake users can install `.#yazelix_agent_tools`; Home Manager users can set `programs.yazelix.agent_usage_programs = [ "tokenusage" "ccusage-opencode" ]`.
 
 **Idle screen saver (yazelix.toml):**
 ```toml

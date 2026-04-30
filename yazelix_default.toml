@@ -162,7 +162,7 @@ theme = "default"
 
 # Zjstatus widget tray (right side of status bar)
 # Available widgets: "editor", "shell", "term", "workspace", "ai_activity", "token_budget", "claude_usage", "codex_usage", "opencode_usage", "cpu", "ram"
-# Configure grouped usage widget periods below
+# Configure usage widget display below
 # Dynamic widgets read from a window-local cache so multiple Yazelix windows keep independent facts
 # Comment out any line to hide that widget
 widget_tray = [
@@ -173,19 +173,21 @@ widget_tray = [
   # "ai_activity", # AI pane activity
   # "token_budget", # AI token budget
   # "claude_usage", # Grouped Claude usage
-  # "codex_usage", # Grouped Codex usage
+  # "codex_usage", # Combined Codex 5h/week usage and quota
   # "opencode_usage", # Grouped OpenCode usage
   "cpu",  # CPU usage
   "ram",  # RAM usage
 ]
 
-# Agent usage widget display: "tokens", "money", or "both"
+# Claude/OpenCode usage widget display: "tokens", "money", or "both"
 # Money is a provider estimate, not your subscription bill
 agent_usage_display = "tokens"
 
+# Codex usage display: "token", "quota", or "both"
+codex_usage_display = "both"
+
 # Periods shown by grouped usage widgets: "day" or "month"
 claude_usage_periods = ["day"]
-codex_usage_periods = ["day"]
 opencode_usage_periods = ["day"]
 
 # Optional short badge shown just before the YAZELIX version segment in zjstatus.

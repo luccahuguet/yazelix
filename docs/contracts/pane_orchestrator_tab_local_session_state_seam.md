@@ -237,12 +237,14 @@ contract. This slice is only about the read contract.
 7. The pane orchestrator writes active-tab status facts to a launch-scoped
    status-bar cache, and zjstatus dynamic widgets read only that cache instead
    of opening pane-orchestrator pipes from the bar.
-8. Agent-usage facts are produced by a throttled cache writer with provider
+8. Agent-usage facts are produced by throttled cache writers with provider
    command timeouts. New windows may seed their first paint from recent sibling
    session cache facts, but zjstatus usage widgets must never run usage
-   providers directly. The grouped provider widgets (`claude_usage`,
-   `codex_usage`, and `opencode_usage`) render configured period lists as one
-   compact segment so the provider name is not repeated for day/month facts.
+   providers directly. The grouped provider widgets (`claude_usage` and
+   `opencode_usage`) render configured period lists as one compact segment so
+   the provider name is not repeated for day/month facts. The `codex_usage`
+   widget reads a shared cross-window cache and renders only the 5-hour and
+   weekly token/quota windows.
 
 ## Verification
 
@@ -264,7 +266,8 @@ contract. This slice is only about the read contract.
 - Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_round_trip_renders_cached_workspace_fact`
 - Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_agent_usage_refresh_writes_precomputed_summary`
 - Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_write_seeds_agent_usage_from_recent_sibling_session_cache`
-- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_grouped_codex_usage_renders_configured_periods_compactly`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_codex_usage_renders_5h_week_display_modes`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_codex_usage_refresh_writes_shared_combined_cache`
 - Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_grouped_claude_usage_renders_configured_periods_compactly`
 - Defended by: `nu -c 'source nushell/scripts/dev/test_yzx_workspace_commands.nu; [(test_run_pane_orchestrator_command_raw_targets_session_plugin_without_plugin_configuration) (test_retarget_workspace_for_path_returns_plugin_owned_sidebar_state_and_editor_status)]'`
 
