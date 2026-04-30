@@ -1922,12 +1922,23 @@ ui { pane_frames { hide_session_name true } }
         assert!(template.contains(r##"command_claude_usage_format "#[fg=#bb88ff,bold]{stdout}""##));
         assert!(template.contains("command_codex_usage_command"));
         assert!(template.contains(r##"command_codex_usage_format "#[fg=#bb88ff,bold]{stdout}""##));
-        assert!(template.contains("command_amp_usage_command"));
-        assert!(template.contains(r##"command_amp_usage_format "#[fg=#bb88ff,bold]{stdout}""##));
+        assert!(template.contains("command_codex_daily_usage_command"));
+        assert!(template.contains("status-cache-widget codex_daily_usage"));
+        assert!(template.contains("command_codex_monthly_usage_command"));
+        assert!(template.contains("status-cache-widget codex_monthly_usage"));
+        assert!(template.contains("command_codex_session_usage_command"));
+        assert!(template.contains("status-cache-widget codex_session_usage"));
         assert!(template.contains("command_opencode_usage_command"));
         assert!(
             template.contains(r##"command_opencode_usage_format "#[fg=#bb88ff,bold]{stdout}""##)
         );
+        assert!(template.contains("command_opencode_daily_usage_command"));
+        assert!(template.contains("status-cache-widget opencode_daily_usage"));
+        assert!(template.contains("command_opencode_monthly_usage_command"));
+        assert!(template.contains("status-cache-widget opencode_monthly_usage"));
+        assert!(template.contains("command_opencode_session_usage_command"));
+        assert!(template.contains("status-cache-widget opencode_session_usage"));
+        assert!(!template.contains("command_amp_usage_command"));
         assert!(!template.contains("agent-usage"));
     }
 

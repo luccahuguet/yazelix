@@ -13,8 +13,13 @@ pub const WIDGET_AI_ACTIVITY: &str = "ai_activity";
 pub const WIDGET_TOKEN_BUDGET: &str = "token_budget";
 pub const WIDGET_CLAUDE_USAGE: &str = "claude_usage";
 pub const WIDGET_CODEX_USAGE: &str = "codex_usage";
-pub const WIDGET_AMP_USAGE: &str = "amp_usage";
+pub const WIDGET_CODEX_DAILY_USAGE: &str = "codex_daily_usage";
+pub const WIDGET_CODEX_MONTHLY_USAGE: &str = "codex_monthly_usage";
+pub const WIDGET_CODEX_SESSION_USAGE: &str = "codex_session_usage";
 pub const WIDGET_OPENCODE_USAGE: &str = "opencode_usage";
+pub const WIDGET_OPENCODE_DAILY_USAGE: &str = "opencode_daily_usage";
+pub const WIDGET_OPENCODE_MONTHLY_USAGE: &str = "opencode_monthly_usage";
+pub const WIDGET_OPENCODE_SESSION_USAGE: &str = "opencode_session_usage";
 pub const WIDGET_CPU: &str = "cpu";
 pub const WIDGET_RAM: &str = "ram";
 
@@ -23,8 +28,13 @@ pub const COMMAND_AI_ACTIVITY: &str = "{command_ai_activity}";
 pub const COMMAND_TOKEN_BUDGET: &str = "{command_token_budget}";
 pub const COMMAND_CLAUDE_USAGE: &str = "{command_claude_usage}";
 pub const COMMAND_CODEX_USAGE: &str = "{command_codex_usage}";
-pub const COMMAND_AMP_USAGE: &str = "{command_amp_usage}";
+pub const COMMAND_CODEX_DAILY_USAGE: &str = "{command_codex_daily_usage}";
+pub const COMMAND_CODEX_MONTHLY_USAGE: &str = "{command_codex_monthly_usage}";
+pub const COMMAND_CODEX_SESSION_USAGE: &str = "{command_codex_session_usage}";
 pub const COMMAND_OPENCODE_USAGE: &str = "{command_opencode_usage}";
+pub const COMMAND_OPENCODE_DAILY_USAGE: &str = "{command_opencode_daily_usage}";
+pub const COMMAND_OPENCODE_MONTHLY_USAGE: &str = "{command_opencode_monthly_usage}";
+pub const COMMAND_OPENCODE_SESSION_USAGE: &str = "{command_opencode_session_usage}";
 pub const COMMAND_CPU: &str = "{command_cpu}";
 pub const COMMAND_RAM: &str = "{command_ram}";
 pub const COMMAND_VERSION: &str = "{command_version}";
@@ -85,7 +95,7 @@ pub fn render_widget_tray_segment(request: &BarRenderRequest) -> Result<String, 
                 .into_iter()
                 .filter(|part| !part.is_empty())
                 .collect::<Vec<_>>()
-                .join(" ")
+                .join("")
         })
 }
 
@@ -101,15 +111,15 @@ pub fn render_custom_text_segment(custom_text: &str) -> String {
 fn render_widget(widget: &str, request: &BarRenderRequest) -> Result<String, BarRenderError> {
     match widget {
         WIDGET_EDITOR => Ok(format!(
-            "#[fg=#00ff88,bold][editor: {}]",
+            " #[fg=#00ff88,bold][editor: {}]",
             request.editor_label
         )),
         WIDGET_SHELL => Ok(format!(
-            "#[fg=#00ff88,bold][shell: {}]",
+            " #[fg=#00ff88,bold][shell: {}]",
             request.shell_label
         )),
         WIDGET_TERM => Ok(format!(
-            "#[fg=#00ff88,bold][term: {}]",
+            " #[fg=#00ff88,bold][term: {}]",
             request.terminal_label
         )),
         WIDGET_WORKSPACE => Ok(COMMAND_WORKSPACE.to_string()),
@@ -117,8 +127,13 @@ fn render_widget(widget: &str, request: &BarRenderRequest) -> Result<String, Bar
         WIDGET_TOKEN_BUDGET => Ok(COMMAND_TOKEN_BUDGET.to_string()),
         WIDGET_CLAUDE_USAGE => Ok(COMMAND_CLAUDE_USAGE.to_string()),
         WIDGET_CODEX_USAGE => Ok(COMMAND_CODEX_USAGE.to_string()),
-        WIDGET_AMP_USAGE => Ok(COMMAND_AMP_USAGE.to_string()),
+        WIDGET_CODEX_DAILY_USAGE => Ok(COMMAND_CODEX_DAILY_USAGE.to_string()),
+        WIDGET_CODEX_MONTHLY_USAGE => Ok(COMMAND_CODEX_MONTHLY_USAGE.to_string()),
+        WIDGET_CODEX_SESSION_USAGE => Ok(COMMAND_CODEX_SESSION_USAGE.to_string()),
         WIDGET_OPENCODE_USAGE => Ok(COMMAND_OPENCODE_USAGE.to_string()),
+        WIDGET_OPENCODE_DAILY_USAGE => Ok(COMMAND_OPENCODE_DAILY_USAGE.to_string()),
+        WIDGET_OPENCODE_MONTHLY_USAGE => Ok(COMMAND_OPENCODE_MONTHLY_USAGE.to_string()),
+        WIDGET_OPENCODE_SESSION_USAGE => Ok(COMMAND_OPENCODE_SESSION_USAGE.to_string()),
         WIDGET_CPU => Ok(COMMAND_CPU.to_string()),
         WIDGET_RAM => Ok(COMMAND_RAM.to_string()),
         _ => Err(BarRenderError::InvalidWidgetTrayEntry {
@@ -153,7 +168,7 @@ mod tests {
 
         assert_eq!(
             rendered,
-            "#[fg=#00ff88,bold][editor: hx] #[fg=#00ff88,bold][shell: nu] #[fg=#00ff88,bold][term: ghostty] {command_cpu} {command_ram}"
+            " #[fg=#00ff88,bold][editor: hx] #[fg=#00ff88,bold][shell: nu] #[fg=#00ff88,bold][term: ghostty]{command_cpu}{command_ram}"
         );
     }
 
@@ -182,7 +197,7 @@ mod tests {
         let rendered =
             render_widget_tray_segment(&render_request(&["ai_activity", "token_budget"])).unwrap();
 
-        assert_eq!(rendered, "{command_ai_activity} {command_token_budget}");
+        assert_eq!(rendered, "{command_ai_activity}{command_token_budget}");
     }
 
     // Regression: agent usage widgets render through cache readers so expensive providers are never polled by zjstatus.
@@ -192,14 +207,19 @@ mod tests {
         let rendered = render_widget_tray_segment(&render_request(&[
             "claude_usage",
             "codex_usage",
-            "amp_usage",
             "opencode_usage",
+            "codex_daily_usage",
+            "codex_monthly_usage",
+            "codex_session_usage",
+            "opencode_daily_usage",
+            "opencode_monthly_usage",
+            "opencode_session_usage",
         ]))
         .unwrap();
 
         assert_eq!(
             rendered,
-            "{command_claude_usage} {command_codex_usage} {command_amp_usage} {command_opencode_usage}"
+            "{command_claude_usage}{command_codex_usage}{command_opencode_usage}{command_codex_daily_usage}{command_codex_monthly_usage}{command_codex_session_usage}{command_opencode_daily_usage}{command_opencode_monthly_usage}{command_opencode_session_usage}"
         );
     }
 
@@ -212,7 +232,7 @@ mod tests {
 
         assert_eq!(
             rendered,
-            "#[fg=#00ff88,bold][editor: hx] {command_workspace} #[fg=#00ff88,bold][shell: nu]"
+            " #[fg=#00ff88,bold][editor: hx]{command_workspace} #[fg=#00ff88,bold][shell: nu]"
         );
     }
 

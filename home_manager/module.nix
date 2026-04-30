@@ -16,7 +16,6 @@ let
   agentUsageProgramNames = [
     "ccusage"
     "ccusage-codex"
-    "ccusage-amp"
     "ccusage-opencode"
   ];
   agentUsagePackageMap =
@@ -26,7 +25,6 @@ let
       {
         ccusage = llmAgentsPackages.ccusage;
         "ccusage-codex" = llmAgentsPackages."ccusage-codex";
-        "ccusage-amp" = llmAgentsPackages."ccusage-amp";
         "ccusage-opencode" = llmAgentsPackages."ccusage-opencode";
       };
   selectedAgentUsagePackages =
@@ -225,11 +223,10 @@ in
       description = ''
         Opt-in ccusage binaries from the llm-agents flake to include in the Yazelix runtime.
 
-        These support cached zellij.widget_tray usage entries:
+        These support zellij.widget_tray usage entries:
         - "ccusage": claude_usage
-        - "ccusage-codex": codex_usage
-        - "ccusage-amp": amp_usage
-        - "ccusage-opencode": opencode_usage
+        - "ccusage-codex": codex_usage, codex_daily_usage, codex_monthly_usage, codex_session_usage
+        - "ccusage-opencode": opencode_usage, opencode_daily_usage, opencode_monthly_usage, opencode_session_usage
       '';
     };
 

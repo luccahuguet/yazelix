@@ -58,7 +58,6 @@
         [
           packages.ccusage
           packages."ccusage-codex"
-          packages."ccusage-amp"
           packages."ccusage-opencode"
         ];
       runtimePackage = system: pkgs: runtimeVariant: extraRuntimePackages:

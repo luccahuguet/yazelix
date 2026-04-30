@@ -112,7 +112,7 @@ fn usage() -> ! {
     eprintln!("       yzx_control zellij pipe <command> [--payload <json>]");
     eprintln!("       yzx_control zellij get-workspace-root [--include-bootstrap]");
     eprintln!("       yzx_control zellij inspect-session [--json]");
-    eprintln!("       yzx_control zellij agent-usage <claude|codex|amp|opencode>");
+    eprintln!("       yzx_control zellij agent-usage <claude|codex|opencode>");
     eprintln!("       yzx_control zellij status-cache-widget <widget>");
     eprintln!("       yzx_control zellij status-cache-refresh-agent-usage");
     eprintln!("       yzx_control zellij retarget <path> [--editor <kind>]");

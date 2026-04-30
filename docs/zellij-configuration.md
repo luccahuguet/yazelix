@@ -55,20 +55,23 @@ widget_tray = [
   "editor",  # Active editor
   "shell",   # Active shell
   "term",    # Terminal emulator
-  # "workspace", # Reserved for cached workspace facts
-  # "ai_activity", # Reserved for cached AI pane activity facts
-  # "token_budget", # Reserved for cached AI token-budget facts
-  # "claude_usage", # Reserved for cached Claude Code usage facts
-  # "codex_usage", # Reserved for cached Codex usage facts
-  # "amp_usage", # Reserved for cached Amp usage facts
-  # "opencode_usage", # Reserved for cached OpenCode usage facts
+  # "workspace", # Workspace root
+  # "ai_activity", # AI pane activity
+  # "token_budget", # AI token budget
+  # "claude_usage", # Claude Code usage
+  # "codex_usage", # Codex daily usage
+  # "codex_monthly_usage", # Codex monthly usage
+  # "codex_session_usage", # Codex session usage
+  # "opencode_usage", # OpenCode daily usage
+  # "opencode_monthly_usage", # OpenCode monthly usage
+  # "opencode_session_usage", # OpenCode session usage
   "cpu",     # CPU usage
   "ram",     # RAM usage
 ]
 ```
 Comment out any line to hide that widget. Order matters. Restart Yazelix to regenerate layouts.
 
-The usage widgets are inert until their matching ccusage binary is available in the Yazelix runtime. Standalone flake users can install `.#yazelix_agent_tools`; Home Manager users can set `programs.yazelix.agent_usage_programs = [ "ccusage" "ccusage-codex" ]`.
+The usage widgets are inert until their matching ccusage binary is available in the Yazelix runtime. Standalone flake users can install `.#yazelix_agent_tools`; Home Manager users can set `programs.yazelix.agent_usage_programs = [ "ccusage" "ccusage-codex" "ccusage-opencode" ]`.
 
 **Idle screen saver (yazelix.toml):**
 ```toml

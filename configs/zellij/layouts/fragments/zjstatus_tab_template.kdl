@@ -1,7 +1,7 @@
 plugin location="__YAZELIX_ZJSTATUS_PLUGIN_URL__" {
     format_left   "{mode} {tabs}"
     format_center ""
-    format_right  "#[fg=#ff0088,bold]{session} __YAZELIX_WIDGET_TRAY__ __YAZELIX_CUSTOM_TEXT_SEGMENT__#[fg=#00ccff,bold]YAZELIX {command_version} " // {datetime}
+    format_right  "#[fg=#ff0088,bold]{session}__YAZELIX_WIDGET_TRAY__ __YAZELIX_CUSTOM_TEXT_SEGMENT__#[fg=#00ccff,bold]YAZELIX {command_version} " // {datetime}
     format_hide_on_overlength "true"
     format_precedence "lrc"
     format_space  ""
@@ -51,20 +51,40 @@ plugin location="__YAZELIX_ZJSTATUS_PLUGIN_URL__" {
     command_codex_usage_format "#[fg=#bb88ff,bold]{stdout}"
     command_codex_usage_interval "120"
 
-    command_amp_usage_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-cache-widget amp_usage"
-    command_amp_usage_format "#[fg=#bb88ff,bold]{stdout}"
-    command_amp_usage_interval "120"
+    command_codex_daily_usage_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-cache-widget codex_daily_usage"
+    command_codex_daily_usage_format "#[fg=#bb88ff,bold]{stdout}"
+    command_codex_daily_usage_interval "120"
+
+    command_codex_monthly_usage_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-cache-widget codex_monthly_usage"
+    command_codex_monthly_usage_format "#[fg=#bb88ff,bold]{stdout}"
+    command_codex_monthly_usage_interval "120"
+
+    command_codex_session_usage_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-cache-widget codex_session_usage"
+    command_codex_session_usage_format "#[fg=#bb88ff,bold]{stdout}"
+    command_codex_session_usage_interval "120"
 
     command_opencode_usage_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-cache-widget opencode_usage"
     command_opencode_usage_format "#[fg=#bb88ff,bold]{stdout}"
     command_opencode_usage_interval "120"
 
+    command_opencode_daily_usage_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-cache-widget opencode_daily_usage"
+    command_opencode_daily_usage_format "#[fg=#bb88ff,bold]{stdout}"
+    command_opencode_daily_usage_interval "120"
+
+    command_opencode_monthly_usage_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-cache-widget opencode_monthly_usage"
+    command_opencode_monthly_usage_format "#[fg=#bb88ff,bold]{stdout}"
+    command_opencode_monthly_usage_interval "120"
+
+    command_opencode_session_usage_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-cache-widget opencode_session_usage"
+    command_opencode_session_usage_format "#[fg=#bb88ff,bold]{stdout}"
+    command_opencode_session_usage_interval "120"
+
     command_cpu_command "__YAZELIX_NU_BIN__ __YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/cpu_usage.nu"
-    command_cpu_format "#[fg=#ff6600][cpu {stdout}]"
+    command_cpu_format " #[fg=#ff6600][cpu {stdout}]"
     command_cpu_interval "5"
 
     command_ram_command "bash -c 'macchina -o memory -m 2>/dev/null | grep -o \"[0-9]\\+%\" | head -1'"
-    command_ram_format "#[fg=#ff6600][ram {stdout}]"
+    command_ram_format " #[fg=#ff6600][ram {stdout}]"
     command_ram_interval "5"
 
     command_version_command "__YAZELIX_NU_BIN__ -c 'use __YAZELIX_RUNTIME_DIR__/nushell/scripts/utils/constants.nu YAZELIX_VERSION; $YAZELIX_VERSION'"
