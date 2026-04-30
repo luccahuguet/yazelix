@@ -61,7 +61,7 @@ def regenerate_runtime_configs [runtime_dir: string, --quiet] {
     $result.plan
 }
 
-def prepare_session_config_snapshot [runtime_dir: string, applied_runtime_state: record] {
+def --env prepare_session_config_snapshot [runtime_dir: string, applied_runtime_state: record] {
     let launch_id = (date now | into int | into string)
     let request = {
         state_dir: (get_yazelix_state_dir)

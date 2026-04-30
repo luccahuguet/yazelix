@@ -110,6 +110,9 @@ pub fn validate_config_surface_contract(repo_root: &Path) -> Result<ValidationRe
     report
         .errors
         .extend(validate_generated_state_contract(repo_root)?);
+    report
+        .errors
+        .extend(validate_startup_snapshot_env_contract(repo_root)?);
     Ok(report)
 }
 
@@ -2598,6 +2601,44 @@ fn validate_generated_state_contract(repo_root: &Path) -> Result<Vec<String>, St
     Ok(errors)
 }
 
+fn validate_startup_snapshot_env_contract(repo_root: &Path) -> Result<Vec<String>, String> {
+    let relative_path = "nushell/scripts/core/start_yazelix_inner.nu";
+    let path = repo_root.join(relative_path);
+    let content = fs::read_to_string(&path)
+        .map_err(|error| format!("Failed to read {}: {}", path.display(), error))?;
+    Ok(validate_startup_snapshot_env_contract_content(
+        relative_path,
+        &content,
+    ))
+}
+
+fn validate_startup_snapshot_env_contract_content(label: &str, content: &str) -> Vec<String> {
+    let mut errors = Vec::new();
+    let assigns_launch_env = content.contains("$env.YAZELIX_SESSION_CONFIG_PATH")
+        || content.contains("$env.YAZELIX_STATUS_BAR_CACHE_PATH");
+    if !assigns_launch_env {
+        return errors;
+    }
+
+    let helper_header = content.lines().map(str::trim_start).find(|line| {
+        (line.starts_with("def ") || line.starts_with("def --env "))
+            && line.contains("prepare_session_config_snapshot")
+    });
+    match helper_header {
+        Some(header) if header.starts_with("def --env ") => {}
+        Some(header) => errors.push(format!(
+            "{} sets launch-scoped session/cache env vars inside `{}`. The helper must be declared `def --env` so Zellij and pane-orchestrator inherit `YAZELIX_SESSION_CONFIG_PATH` and `YAZELIX_STATUS_BAR_CACHE_PATH`.",
+            label, header
+        )),
+        None => errors.push(format!(
+            "{} sets launch-scoped session/cache env vars but no `prepare_session_config_snapshot` helper declaration was found.",
+            label
+        )),
+    }
+
+    errors
+}
+
 fn load_home_manager_defaults(
     repo_root: &Path,
     option_names: &[String],
@@ -3581,4 +3622,37 @@ fn sorted_keys(table: &TomlTable) -> Vec<String> {
 
 fn escape_nix_string(value: &str) -> String {
     value.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Test lane: maintainer
+    // Regression: startup lost `YAZELIX_SESSION_CONFIG_PATH` and `YAZELIX_STATUS_BAR_CACHE_PATH` because a plain Nushell `def` swallowed env mutations before the Zellij handoff.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn startup_snapshot_env_contract_requires_env_preserving_helper() {
+        let plain_def = r#"
+def prepare_session_config_snapshot [] {
+    $env.YAZELIX_SESSION_CONFIG_PATH = "/tmp/session/config_snapshot.json"
+    $env.YAZELIX_STATUS_BAR_CACHE_PATH = "/tmp/session/status_bar_cache.json"
+}
+"#;
+
+        let errors =
+            validate_startup_snapshot_env_contract_content("start_yazelix_inner.nu", plain_def);
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("must be declared `def --env`"));
+
+        let env_def = plain_def.replacen(
+            "def prepare_session_config_snapshot",
+            "def --env prepare_session_config_snapshot",
+            1,
+        );
+        assert!(
+            validate_startup_snapshot_env_contract_content("start_yazelix_inner.nu", &env_def)
+                .is_empty()
+        );
+    }
 }
