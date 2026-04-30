@@ -353,7 +353,7 @@ in
     };
 
     zellij_widget_tray = mkMainContractOption "zellij.widget_tray" {
-      description = "Zjstatus widget tray order (editor/shell/term/workspace/AI/usage/cpu/ram); dynamic entries read from a window-local cache";
+      description = "Zjstatus widget tray order (editor/shell/term/workspace/usage/cpu/ram); dynamic entries read from a window-local cache";
     };
 
     zellij_agent_usage_display = mkMainContractOption "zellij.agent_usage_display" {

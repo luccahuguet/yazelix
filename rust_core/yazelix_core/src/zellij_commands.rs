@@ -39,8 +39,6 @@ pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
     "inspect-session",
     "status-bus",
     "status-bus-workspace",
-    "status-bus-ai-activity",
-    "status-bus-token-budget",
     "status-cache-write",
     "status-cache-widget",
     "status-cache-refresh-agent-usage",
@@ -93,11 +91,6 @@ struct ZellijStatusBusArgs {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ZellijStatusBusWorkspaceArgs {
-    help: bool,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-struct ZellijStatusBusWidgetArgs {
     help: bool,
 }
 
@@ -557,29 +550,6 @@ fn parse_zellij_status_bus_workspace_args(
     Ok(parsed)
 }
 
-fn parse_zellij_status_bus_widget_args(
-    args: &[String],
-    subcommand: &str,
-) -> Result<ZellijStatusBusWidgetArgs, CoreError> {
-    let mut parsed = ZellijStatusBusWidgetArgs::default();
-    for arg in args {
-        match arg.as_str() {
-            "-h" | "--help" | "help" => parsed.help = true,
-            other if other.starts_with('-') => {
-                return Err(CoreError::usage(format!(
-                    "Unknown argument for zellij {subcommand}: {other}"
-                )));
-            }
-            _ => {
-                return Err(CoreError::usage(format!(
-                    "zellij {subcommand} accepts no positional arguments"
-                )));
-            }
-        }
-    }
-    Ok(parsed)
-}
-
 fn parse_zellij_status_cache_write_args(
     args: &[String],
 ) -> Result<ZellijStatusCacheWriteArgs, CoreError> {
@@ -788,20 +758,6 @@ fn print_zellij_status_bus_workspace_help() {
     println!("  yzx_control zellij status-bus-workspace");
 }
 
-fn print_zellij_status_bus_ai_activity_help() {
-    println!("Render the AI activity status-bus fact for zjstatus");
-    println!();
-    println!("Usage:");
-    println!("  yzx_control zellij status-bus-ai-activity");
-}
-
-fn print_zellij_status_bus_token_budget_help() {
-    println!("Render the AI token-budget status-bus fact for zjstatus");
-    println!();
-    println!("Usage:");
-    println!("  yzx_control zellij status-bus-token-budget");
-}
-
 fn print_zellij_status_cache_write_help() {
     println!("Write the window-local cached status-bar facts");
     println!();
@@ -934,40 +890,6 @@ pub fn run_zellij_status_bus_workspace(args: &[String]) -> Result<i32, CoreError
     let response = run_pane_orchestrator_command("get_active_tab_session_state", "")?;
     let value = decode_status_bus_snapshot(&response)?;
     print_optional_zjstatus_segment(render_zjstatus_workspace_widget(&value));
-    Ok(0)
-}
-
-pub fn run_zellij_status_bus_ai_activity(args: &[String]) -> Result<i32, CoreError> {
-    let parsed = parse_zellij_status_bus_widget_args(args, "status-bus-ai-activity")?;
-    if parsed.help {
-        print_zellij_status_bus_ai_activity_help();
-        return Ok(0);
-    }
-
-    if env::var_os("ZELLIJ").is_none() {
-        return Ok(0);
-    }
-
-    let response = run_pane_orchestrator_command("get_active_tab_session_state", "")?;
-    let value = decode_status_bus_snapshot(&response)?;
-    print_optional_zjstatus_segment(render_zjstatus_ai_activity_widget(&value));
-    Ok(0)
-}
-
-pub fn run_zellij_status_bus_token_budget(args: &[String]) -> Result<i32, CoreError> {
-    let parsed = parse_zellij_status_bus_widget_args(args, "status-bus-token-budget")?;
-    if parsed.help {
-        print_zellij_status_bus_token_budget_help();
-        return Ok(0);
-    }
-
-    if env::var_os("ZELLIJ").is_none() {
-        return Ok(0);
-    }
-
-    let response = run_pane_orchestrator_command("get_active_tab_session_state", "")?;
-    let value = decode_status_bus_snapshot(&response)?;
-    print_optional_zjstatus_segment(render_zjstatus_token_budget_widget(&value));
     Ok(0)
 }
 
@@ -1570,12 +1492,6 @@ fn render_status_cache_widget_with_agent_usage_settings(
         "workspace" => Ok(status_bus
             .map(render_zjstatus_workspace_widget)
             .unwrap_or_default()),
-        "ai_activity" => Ok(status_bus
-            .map(render_zjstatus_ai_activity_widget)
-            .unwrap_or_default()),
-        "token_budget" => Ok(status_bus
-            .map(render_zjstatus_token_budget_widget)
-            .unwrap_or_default()),
         "claude_usage" => Ok(render_grouped_agent_usage_segment(
             cache,
             AgentUsageProvider::Claude,
@@ -1597,14 +1513,7 @@ fn render_status_cache_widget_with_agent_usage_settings(
 }
 
 fn status_cache_widget_names() -> Vec<&'static str> {
-    vec![
-        "workspace",
-        "ai_activity",
-        "token_budget",
-        "claude_usage",
-        "codex_usage",
-        "opencode_usage",
-    ]
+    vec!["workspace", "claude_usage", "codex_usage", "opencode_usage"]
 }
 
 fn render_grouped_agent_usage_segment(
@@ -2346,110 +2255,9 @@ fn render_zjstatus_workspace_widget(value: &Value) -> String {
     format!(" [{}]", render_status_bus_workspace_widget(value))
 }
 
-fn render_status_bus_ai_activity_widget(value: &Value) -> String {
-    let Some(activity_facts) = nested_array(value, &["extensions", "ai_pane_activity"]) else {
-        return "unknown".to_string();
-    };
-    let Some(selected) = activity_facts
-        .iter()
-        .max_by_key(|fact| ai_activity_state_rank(ai_activity_state(fact)))
-    else {
-        return "unknown".to_string();
-    };
-    let state = ai_activity_state(selected);
-    let provider = selected
-        .get("provider")
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|provider| !provider.is_empty())
-        .unwrap_or("ai");
-    if state == "unknown" && provider == "ai" {
-        "unknown".to_string()
-    } else {
-        format!("{provider}:{state}")
-    }
-}
-
-fn render_zjstatus_ai_activity_widget(value: &Value) -> String {
-    let rendered = render_status_bus_ai_activity_widget(value);
-    render_zjstatus_segment("ai", &rendered)
-}
-
-fn render_status_bus_token_budget_widget(value: &Value) -> String {
-    let Some(token_budget_facts) = nested_array(value, &["extensions", "ai_token_budget"]) else {
-        return "unknown".to_string();
-    };
-    let Some(selected) = token_budget_facts.iter().find(|fact| {
-        fact.get("remaining_tokens")
-            .and_then(Value::as_u64)
-            .is_some()
-            || fact.get("total_tokens").and_then(Value::as_u64).is_some()
-    }) else {
-        return "unknown".to_string();
-    };
-    let provider = selected
-        .get("provider")
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|provider| !provider.is_empty())
-        .unwrap_or("ai");
-    let remaining = selected
-        .get("remaining_tokens")
-        .and_then(Value::as_u64)
-        .map(format_token_count)
-        .unwrap_or_else(|| "?".to_string());
-    let total = selected
-        .get("total_tokens")
-        .and_then(Value::as_u64)
-        .map(format_token_count)
-        .unwrap_or_else(|| "?".to_string());
-    format!("{provider}:{remaining}/{total}")
-}
-
-fn render_zjstatus_token_budget_widget(value: &Value) -> String {
-    let rendered = render_status_bus_token_budget_widget(value);
-    render_zjstatus_segment("tokens", &rendered)
-}
-
-fn render_zjstatus_segment(label: &str, value: &str) -> String {
-    let trimmed = value.trim();
-    if trimmed.is_empty() || trimmed == "unknown" {
-        String::new()
-    } else {
-        format!(" [{label} {trimmed}]")
-    }
-}
-
 fn print_optional_zjstatus_segment(segment: String) {
     if !segment.is_empty() {
         println!("{segment}");
-    }
-}
-
-fn ai_activity_state(fact: &Value) -> &str {
-    fact.get("state")
-        .and_then(Value::as_str)
-        .or_else(|| fact.get("activity").and_then(Value::as_str))
-        .map(str::trim)
-        .filter(|state| !state.is_empty())
-        .unwrap_or("unknown")
-}
-
-fn ai_activity_state_rank(state: &str) -> u8 {
-    match state {
-        "thinking" => 5,
-        "active" | "streaming" => 4,
-        "stale" => 3,
-        "inactive" | "idle" => 2,
-        _ => 1,
-    }
-}
-
-fn format_token_count(tokens: u64) -> String {
-    if tokens >= 1_000 {
-        format!("{}k", tokens / 1_000)
-    } else {
-        tokens.to_string()
     }
 }
 
@@ -2964,14 +2772,6 @@ fn render_session_state_inspection_lines(value: &Value) -> Vec<String> {
         nested_str(value, &["sidebar_yazi", "yazi_id"]).unwrap_or("none"),
         nested_str(value, &["sidebar_yazi", "cwd"]).unwrap_or("none")
     ));
-    lines.push(format!(
-        "  ai_activity: {}",
-        render_status_bus_ai_activity_widget(value)
-    ));
-    lines.push(format!(
-        "  token_budget: {}",
-        render_status_bus_token_budget_widget(value)
-    ));
     lines
 }
 
@@ -2992,14 +2792,6 @@ fn nested_bool(value: &Value, path: &[&str]) -> Option<bool> {
         cursor = cursor.get(*key)?;
     }
     cursor.as_bool()
-}
-
-fn nested_array<'a>(value: &'a Value, path: &[&str]) -> Option<&'a Vec<Value>> {
-    let mut cursor = value;
-    for key in path {
-        cursor = cursor.get(*key)?;
-    }
-    cursor.as_array()
 }
 
 fn parse_zellij_open_editor_args(args: &[String]) -> Result<ZellijOpenEditorArgs, CoreError> {
@@ -3887,7 +3679,7 @@ pub fn run_zellij_open_terminal(args: &[String]) -> Result<i32, CoreError> {
 mod tests {
     use super::*;
 
-    const STATUS_CACHE_TEST_PAYLOAD: &str = r#"{"schema_version":1,"active_tab_position":0,"workspace":{"root":"/tmp/yazelix-demo","source":"explicit"},"managed_panes":{"editor_pane_id":"terminal:1","sidebar_pane_id":"terminal:2"},"focus_context":"sidebar","layout":{"active_swap_layout_name":"single_open","sidebar_collapsed":false},"sidebar_yazi":null,"transient_panes":{"popup":null,"menu":null},"extensions":{"ai_pane_activity":[],"ai_token_budget":[]}}"#;
+    const STATUS_CACHE_TEST_PAYLOAD: &str = r#"{"schema_version":1,"active_tab_position":0,"workspace":{"root":"/tmp/yazelix-demo","source":"explicit"},"managed_panes":{"editor_pane_id":"terminal:1","sidebar_pane_id":"terminal:2"},"focus_context":"sidebar","layout":{"active_swap_layout_name":"single_open","sidebar_collapsed":false},"sidebar_yazi":null,"transient_panes":{"popup":null,"menu":null},"extensions":{"ai_pane_activity":[]}}"#;
 
     fn status_cache_test_status_bus() -> Value {
         serde_json::from_str(STATUS_CACHE_TEST_PAYLOAD).unwrap()
@@ -3969,7 +3761,7 @@ mod tests {
     #[test]
     fn session_inspection_lines_include_workspace_layout_and_sidebar_identity() {
         let value: Value = serde_json::from_str(
-            r#"{"schema_version":1,"active_tab_position":2,"workspace":{"root":"/tmp/project","source":"explicit"},"focus_context":"sidebar","layout":{"active_swap_layout_name":"single_open","sidebar_collapsed":false},"managed_panes":{"editor_pane_id":"terminal:7","sidebar_pane_id":"terminal:8"},"sidebar_yazi":{"yazi_id":"yazi-123","cwd":"/tmp/project"},"extensions":{"ai_pane_activity":[{"tab_position":2,"provider":"codex","pane_id":"terminal:9","activity":"thinking","state":"thinking"}],"ai_token_budget":[{"tab_position":2,"provider":"codex","remaining_tokens":120000,"total_tokens":200000}]}}"#,
+            r#"{"schema_version":1,"active_tab_position":2,"workspace":{"root":"/tmp/project","source":"explicit"},"focus_context":"sidebar","layout":{"active_swap_layout_name":"single_open","sidebar_collapsed":false},"managed_panes":{"editor_pane_id":"terminal:7","sidebar_pane_id":"terminal:8"},"sidebar_yazi":{"yazi_id":"yazi-123","cwd":"/tmp/project"},"extensions":{"ai_pane_activity":[{"tab_position":2,"provider":"codex","pane_id":"terminal:9","activity":"thinking","state":"thinking"}]}}"#,
         )
         .unwrap();
         let rendered = render_session_state_inspection_lines(&value).join("\n");
@@ -3978,8 +3770,6 @@ mod tests {
         assert!(rendered.contains("layout: active_swap_layout_name=single_open"));
         assert!(rendered.contains("managed_panes: editor=terminal:7, sidebar=terminal:8"));
         assert!(rendered.contains("sidebar_yazi: id=yazi-123, cwd=/tmp/project"));
-        assert!(rendered.contains("ai_activity: codex:thinking"));
-        assert!(rendered.contains("token_budget: codex:120k/200k"));
     }
 
     // Defends: status-bus consumers reject unsupported producer schema versions instead of parsing stale payloads optimistically.
@@ -4006,76 +3796,29 @@ mod tests {
     #[test]
     fn status_bus_workspace_widget_formats_fixture_payload() {
         let value = decode_status_bus_snapshot(
-            r#"{"schema_version":1,"active_tab_position":0,"workspace":{"root":"/tmp/yazelix-demo","source":"explicit"},"managed_panes":{"editor_pane_id":"terminal:1","sidebar_pane_id":"terminal:2"},"focus_context":"sidebar","layout":{"active_swap_layout_name":"single_open","sidebar_collapsed":false},"sidebar_yazi":null,"transient_panes":{"popup":null,"menu":null},"extensions":{"ai_pane_activity":[],"ai_token_budget":[]}}"#,
+            r#"{"schema_version":1,"active_tab_position":0,"workspace":{"root":"/tmp/yazelix-demo","source":"explicit"},"managed_panes":{"editor_pane_id":"terminal:1","sidebar_pane_id":"terminal:2"},"focus_context":"sidebar","layout":{"active_swap_layout_name":"single_open","sidebar_collapsed":false},"sidebar_yazi":null,"transient_panes":{"popup":null,"menu":null},"extensions":{"ai_pane_activity":[]}}"#,
         )
         .unwrap();
 
         assert_eq!(render_status_bus_workspace_widget(&value), "yazelix-demo");
     }
 
-    // Defends: the AI activity widget consumes status-bus facts and prioritizes active/thinking over stale or idle states.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[test]
-    fn status_bus_ai_activity_widget_formats_highest_priority_fact() {
-        let value = decode_status_bus_snapshot(
-            r#"{"schema_version":1,"active_tab_position":0,"workspace":null,"managed_panes":{"editor_pane_id":null,"sidebar_pane_id":null},"focus_context":"other","layout":{"active_swap_layout_name":null,"sidebar_collapsed":null},"sidebar_yazi":null,"transient_panes":{"popup":null,"menu":null},"extensions":{"ai_pane_activity":[{"tab_position":0,"provider":"codex","pane_id":"terminal:1","activity":"stale","state":"stale"},{"tab_position":0,"provider":"claude","pane_id":"terminal:2","activity":"thinking","state":"thinking"}],"ai_token_budget":[]}}"#,
-        )
-        .unwrap();
-
-        assert_eq!(
-            render_status_bus_ai_activity_widget(&value),
-            "claude:thinking"
-        );
-    }
-
-    // Defends: the token-budget widget is a status-bus extension point and stays explicit when no provider facts exist.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[test]
-    fn status_bus_token_budget_widget_formats_known_budget_and_unknown_empty_budget() {
-        let value = decode_status_bus_snapshot(
-            r#"{"schema_version":1,"active_tab_position":0,"workspace":null,"managed_panes":{"editor_pane_id":null,"sidebar_pane_id":null},"focus_context":"other","layout":{"active_swap_layout_name":null,"sidebar_collapsed":null},"sidebar_yazi":null,"transient_panes":{"popup":null,"menu":null},"extensions":{"ai_pane_activity":[],"ai_token_budget":[{"tab_position":0,"provider":"codex","remaining_tokens":120000,"total_tokens":200000}]}}"#,
-        )
-        .unwrap();
-        let empty = decode_status_bus_snapshot(
-            r#"{"schema_version":1,"active_tab_position":0,"workspace":null,"managed_panes":{"editor_pane_id":null,"sidebar_pane_id":null},"focus_context":"other","layout":{"active_swap_layout_name":null,"sidebar_collapsed":null},"sidebar_yazi":null,"transient_panes":{"popup":null,"menu":null},"extensions":{"ai_pane_activity":[],"ai_token_budget":[]}}"#,
-        )
-        .unwrap();
-
-        assert_eq!(
-            render_status_bus_token_budget_widget(&value),
-            "codex:120k/200k"
-        );
-        assert_eq!(render_status_bus_token_budget_widget(&empty), "unknown");
-    }
-
     // Regression: zjstatus command widgets return plain text while the template owns style markup, so command stdout cannot print literal `#[fg=...]` tags.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn zjstatus_status_bus_widgets_render_plain_segments_and_hide_missing_facts() {
+    fn zjstatus_status_bus_workspace_widget_renders_plain_segment_and_hides_missing_facts() {
         let value = decode_status_bus_snapshot(
-            r#"{"schema_version":1,"active_tab_position":0,"workspace":{"root":"/tmp/yazelix-demo","source":"explicit"},"managed_panes":{"editor_pane_id":"terminal:1","sidebar_pane_id":"terminal:2"},"focus_context":"sidebar","layout":{"active_swap_layout_name":"single_open","sidebar_collapsed":false},"sidebar_yazi":null,"transient_panes":{"popup":null,"menu":null},"extensions":{"ai_pane_activity":[{"tab_position":0,"provider":"claude","pane_id":"terminal:2","activity":"thinking","state":"thinking"}],"ai_token_budget":[{"tab_position":0,"provider":"codex","remaining_tokens":120000,"total_tokens":200000}]}}"#,
+            r#"{"schema_version":1,"active_tab_position":0,"workspace":{"root":"/tmp/yazelix-demo","source":"explicit"},"managed_panes":{"editor_pane_id":"terminal:1","sidebar_pane_id":"terminal:2"},"focus_context":"sidebar","layout":{"active_swap_layout_name":"single_open","sidebar_collapsed":false},"sidebar_yazi":null,"transient_panes":{"popup":null,"menu":null},"extensions":{"ai_pane_activity":[{"tab_position":0,"provider":"claude","pane_id":"terminal:2","activity":"thinking","state":"thinking"}]}}"#,
         )
         .unwrap();
         let empty = decode_status_bus_snapshot(
-            r#"{"schema_version":1,"active_tab_position":0,"workspace":null,"managed_panes":{"editor_pane_id":null,"sidebar_pane_id":null},"focus_context":"other","layout":{"active_swap_layout_name":null,"sidebar_collapsed":null},"sidebar_yazi":null,"transient_panes":{"popup":null,"menu":null},"extensions":{"ai_pane_activity":[],"ai_token_budget":[]}}"#,
+            r#"{"schema_version":1,"active_tab_position":0,"workspace":null,"managed_panes":{"editor_pane_id":null,"sidebar_pane_id":null},"focus_context":"other","layout":{"active_swap_layout_name":null,"sidebar_collapsed":null},"sidebar_yazi":null,"transient_panes":{"popup":null,"menu":null},"extensions":{"ai_pane_activity":[]}}"#,
         )
         .unwrap();
 
         assert_eq!(render_zjstatus_workspace_widget(&value), " [yazelix-demo]");
-        assert_eq!(
-            render_zjstatus_ai_activity_widget(&value),
-            " [ai claude:thinking]"
-        );
-        assert_eq!(
-            render_zjstatus_token_budget_widget(&value),
-            " [tokens codex:120k/200k]"
-        );
         assert!(!render_zjstatus_workspace_widget(&value).contains("#["));
-        assert!(!render_zjstatus_ai_activity_widget(&value).contains("#["));
-        assert!(!render_zjstatus_token_budget_widget(&value).contains("#["));
         assert_eq!(render_zjstatus_workspace_widget(&empty), "");
-        assert_eq!(render_zjstatus_ai_activity_widget(&empty), "");
-        assert_eq!(render_zjstatus_token_budget_widget(&empty), "");
     }
 
     // Regression: zjstatus reads dynamic widgets from a local cache instead of invoking Zellij pipes from every bar command.
@@ -4290,7 +4033,7 @@ mod tests {
                 "layout": {"active_swap_layout_name": null, "sidebar_collapsed": null},
                 "sidebar_yazi": null,
                 "transient_panes": {"popup": null, "menu": null},
-                "extensions": {"ai_pane_activity": [], "ai_token_budget": []}
+                "extensions": {"ai_pane_activity": []}
             },
             "agent_usage": {
                 "claude_daily": {"summary": "123k $1.23"}
@@ -4328,7 +4071,7 @@ mod tests {
                 "layout": {"active_swap_layout_name": null, "sidebar_collapsed": null},
                 "sidebar_yazi": null,
                 "transient_panes": {"popup": null, "menu": null},
-                "extensions": {"ai_pane_activity": [], "ai_token_budget": []}
+                "extensions": {"ai_pane_activity": []}
             },
             "agent_usage": {
                 "opencode_daily": {
@@ -4385,7 +4128,7 @@ mod tests {
                 "layout": {"active_swap_layout_name": null, "sidebar_collapsed": null},
                 "sidebar_yazi": null,
                 "transient_panes": {"popup": null, "menu": null},
-                "extensions": {"ai_pane_activity": [], "ai_token_budget": []}
+                "extensions": {"ai_pane_activity": []}
             },
             "codex_usage": {
                 "five_hour_tokens": 138424632u64,
@@ -4599,7 +4342,7 @@ exit 64
                 "layout": {"active_swap_layout_name": null, "sidebar_collapsed": null},
                 "sidebar_yazi": null,
                 "transient_panes": {"popup": null, "menu": null},
-                "extensions": {"ai_pane_activity": [], "ai_token_budget": []}
+                "extensions": {"ai_pane_activity": []}
             },
             "agent_usage": {
                 "claude_daily": {"tokens": "124M", "cost": "$6.69"},
@@ -4658,7 +4401,7 @@ exit 64
                 "layout": {"active_swap_layout_name": null, "sidebar_collapsed": null},
                 "sidebar_yazi": null,
                 "transient_panes": {"popup": null, "menu": null},
-                "extensions": {"ai_pane_activity": [], "ai_token_budget": []}
+                "extensions": {"ai_pane_activity": []}
             },
             "agent_usage": {}
         });
@@ -4738,7 +4481,7 @@ esac
                 "layout": {"active_swap_layout_name": null, "sidebar_collapsed": null},
                 "sidebar_yazi": null,
                 "transient_panes": {"popup": null, "menu": null},
-                "extensions": {"ai_pane_activity": [], "ai_token_budget": []}
+                "extensions": {"ai_pane_activity": []}
             },
             "agent_usage": {}
         });
@@ -4810,7 +4553,7 @@ esac
                 "layout": {"active_swap_layout_name": null, "sidebar_collapsed": null},
                 "sidebar_yazi": null,
                 "transient_panes": {"popup": null, "menu": null},
-                "extensions": {"ai_pane_activity": [], "ai_token_budget": []}
+                "extensions": {"ai_pane_activity": []}
             },
             "agent_usage": {}
         });
@@ -4866,7 +4609,7 @@ esac
                 "layout": {"active_swap_layout_name": null, "sidebar_collapsed": null},
                 "sidebar_yazi": null,
                 "transient_panes": {"popup": null, "menu": null},
-                "extensions": {"ai_pane_activity": [], "ai_token_budget": []}
+                "extensions": {"ai_pane_activity": []}
             },
             "agent_usage": {}
         });

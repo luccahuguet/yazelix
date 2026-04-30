@@ -56,8 +56,6 @@ widget_tray = [
   "shell",   # Active shell
   "term",    # Terminal emulator
   # "workspace", # Workspace root
-  # "ai_activity", # AI pane activity
-  # "token_budget", # AI token budget
   # "claude_usage", # Grouped Claude usage
   # "codex_usage", # Combined Codex 5h/week usage and quota
   # "opencode_usage", # Grouped OpenCode usage

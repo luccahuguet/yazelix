@@ -295,10 +295,7 @@ impl State {
                 .and_then(|tab_position| self.sidebar_is_closed(tab_position)),
             focus_context: focus_context.to_string(),
             transient_panes,
-            extensions: SessionStatusExtensions {
-                ai_pane_activity,
-                ai_token_budget: Vec::new(),
-            },
+            extensions: SessionStatusExtensions { ai_pane_activity },
         }
     }
 

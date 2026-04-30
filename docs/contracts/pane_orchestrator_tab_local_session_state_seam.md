@@ -44,8 +44,8 @@ consumers can stop depending on debug payload shape or ad-hoc re-derivation.
   correctness or test clarity
 - Nushell transport/client helpers that should consume the new seam first
 - docs that define the owner boundary and bootstrap policy
-- AI activity and token-budget extension slots that carry facts only, leaving
-  provider-specific UI formatting to status-bar consumers
+- AI activity extension facts remain plugin-internal until they have a reliable
+  product surface; this contract does not expose an AI bar widget
 
 ## Rust Dependency Gate
 
@@ -117,8 +117,7 @@ On success, the plugin returns JSON with this shape:
         "activity": "thinking",
         "state": "thinking"
       }
-    ],
-    "ai_token_budget": []
+    ]
   }
 }
 ```
@@ -152,12 +151,6 @@ On success, the plugin returns JSON with this shape:
     `thinking`, or `stale`
   - `activity` remains a schema-v1 compatibility token; consumers should prefer
     the normalized `state`
-- `extensions.ai_token_budget`
-  - empty means unknown
-  - future provider adapters may publish `{ tab_position, provider,
-    remaining_tokens, total_tokens }`
-  - the pane orchestrator owns only the fact transport, not provider-specific
-    token accounting
 
 The seam should be assembled from the plugin's existing tab-local state:
 
@@ -213,7 +206,7 @@ contract. This slice is only about the read contract.
 - moving path resolution, `zoxide`, repo-root inference, or Yazi `emit-to`
   execution into Rust
 - a full pane manifest export
-- provider SDK integration or provider-specific token-budget adapters
+- provider SDK integration or provider-specific quota adapters
 - bar colors, labels, or other provider-specific presentation rules inside the
   pane orchestrator
 - replacing `retarget_workspace`
@@ -262,7 +255,6 @@ contract. This slice is only about the read contract.
 ## Traceability
 - Defended by: `yzx_repo_validator validate-contracts`
 - Defended by: `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib ai_activity_extension_represents_tab_local_state_taxonomy`
-- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_bus_ai_activity_widget_formats_highest_priority_fact`
 - Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_round_trip_renders_cached_workspace_fact`
 - Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_agent_usage_refresh_writes_precomputed_summary`
 - Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_write_seeds_agent_usage_from_recent_sibling_session_cache`

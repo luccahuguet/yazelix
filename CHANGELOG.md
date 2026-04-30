@@ -11,7 +11,7 @@ Upgrade impact: manual action required
 Highlights:
 - Changed the Home Manager module default so it installs the Yazelix package/runtime/desktop integration while leaving `~/.config/yazelix/user_configs/yazelix.toml` as a normal mutable file
 - Moved Ghostty cursor selection, effects, duration, glow, Kitty fallback, and cursor preset definitions out of `yazelix.toml` and into `~/.config/yazelix/user_configs/yazelix_cursors.toml`
-- Restored workspace, AI, token-budget, and agent-usage status-bar widgets through window-local cached facts instead of direct zjstatus pane-orchestrator or provider polling
+- Restored workspace and agent-usage status-bar widgets through window-local cached facts instead of direct zjstatus pane-orchestrator or provider polling
 - Kept `programs.yazelix.manage_config = true` as the explicit opt-in for users who want Home Manager to generate and own `yazelix.toml`
 
 Manual action:

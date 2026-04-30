@@ -134,29 +134,10 @@ impl SessionAiPaneActivity {
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq, Eq)]
-pub struct SessionAiTokenBudget {
-    /// Adapter state: tab position this token-budget fact belongs to.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub tab_position: Option<usize>,
-    /// Adapter state: provider label supplied by a future token-budget detector.
-    #[serde(default)]
-    pub provider: String,
-    /// Adapter state: known remaining context tokens, when a provider adapter can report it.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub remaining_tokens: Option<u64>,
-    /// Adapter state: known total context tokens, when a provider adapter can report it.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub total_tokens: Option<u64>,
-}
-
-#[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq, Eq)]
 pub struct SessionStatusExtensions {
     /// Extension slot for future AI pane indicators. Empty means unknown, not idle.
     #[serde(default)]
     pub ai_pane_activity: Vec<SessionAiPaneActivity>,
-    /// Extension slot for future provider token-budget adapters. Empty means unknown.
-    #[serde(default)]
-    pub ai_token_budget: Vec<SessionAiTokenBudget>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -391,12 +372,6 @@ mod tests {
                         "terminal:4".into(),
                         SessionAiPaneActivityState::Thinking,
                     )],
-                    ai_token_budget: vec![SessionAiTokenBudget {
-                        tab_position: Some(2),
-                        provider: "codex".into(),
-                        remaining_tokens: Some(120_000),
-                        total_tokens: Some(200_000),
-                    }],
                 },
             },
         );
@@ -441,14 +416,6 @@ mod tests {
                             "activity": "thinking",
                             "state": "thinking"
                         }
-                    ],
-                    "ai_token_budget": [
-                        {
-                            "tab_position": 2,
-                            "provider": "codex",
-                            "remaining_tokens": 120000,
-                            "total_tokens": 200000
-                        }
                     ]
                 }
             })
@@ -478,7 +445,6 @@ mod tests {
             .collect::<Vec<_>>();
         let value = serde_json::to_value(SessionStatusExtensions {
             ai_pane_activity: facts,
-            ai_token_budget: Vec::new(),
         })
         .unwrap();
 

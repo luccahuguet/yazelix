@@ -9,8 +9,6 @@ pub const WIDGET_EDITOR: &str = "editor";
 pub const WIDGET_SHELL: &str = "shell";
 pub const WIDGET_TERM: &str = "term";
 pub const WIDGET_WORKSPACE: &str = "workspace";
-pub const WIDGET_AI_ACTIVITY: &str = "ai_activity";
-pub const WIDGET_TOKEN_BUDGET: &str = "token_budget";
 pub const WIDGET_CLAUDE_USAGE: &str = "claude_usage";
 pub const WIDGET_CODEX_USAGE: &str = "codex_usage";
 pub const WIDGET_OPENCODE_USAGE: &str = "opencode_usage";
@@ -18,8 +16,6 @@ pub const WIDGET_CPU: &str = "cpu";
 pub const WIDGET_RAM: &str = "ram";
 
 pub const COMMAND_WORKSPACE: &str = "{command_workspace}";
-pub const COMMAND_AI_ACTIVITY: &str = "{command_ai_activity}";
-pub const COMMAND_TOKEN_BUDGET: &str = "{command_token_budget}";
 pub const COMMAND_CLAUDE_USAGE: &str = "{command_claude_usage}";
 pub const COMMAND_CODEX_USAGE: &str = "{command_codex_usage}";
 pub const COMMAND_OPENCODE_USAGE: &str = "{command_opencode_usage}";
@@ -111,8 +107,6 @@ fn render_widget(widget: &str, request: &BarRenderRequest) -> Result<String, Bar
             request.terminal_label
         )),
         WIDGET_WORKSPACE => Ok(COMMAND_WORKSPACE.to_string()),
-        WIDGET_AI_ACTIVITY => Ok(COMMAND_AI_ACTIVITY.to_string()),
-        WIDGET_TOKEN_BUDGET => Ok(COMMAND_TOKEN_BUDGET.to_string()),
         WIDGET_CLAUDE_USAGE => Ok(COMMAND_CLAUDE_USAGE.to_string()),
         WIDGET_CODEX_USAGE => Ok(COMMAND_CODEX_USAGE.to_string()),
         WIDGET_OPENCODE_USAGE => Ok(COMMAND_OPENCODE_USAGE.to_string()),
@@ -170,16 +164,6 @@ mod tests {
         let rendered = render_widget_tray_segment(&render_request(&["workspace"])).unwrap();
 
         assert_eq!(rendered, "{command_workspace}");
-    }
-
-    // Regression: AI extension widgets render through cached command placeholders without direct Zellij polling.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[test]
-    fn renders_ai_extension_widgets_as_cached_command_placeholders() {
-        let rendered =
-            render_widget_tray_segment(&render_request(&["ai_activity", "token_budget"])).unwrap();
-
-        assert_eq!(rendered, "{command_ai_activity}{command_token_budget}");
     }
 
     // Regression: agent usage widgets render through cache readers so expensive providers are never polled by zjstatus.

@@ -64,8 +64,6 @@ use yazelix_core::run_zellij_open_terminal;
 use yazelix_core::run_zellij_pipe;
 use yazelix_core::run_zellij_retarget;
 use yazelix_core::run_zellij_status_bus;
-use yazelix_core::run_zellij_status_bus_ai_activity;
-use yazelix_core::run_zellij_status_bus_token_budget;
 use yazelix_core::run_zellij_status_bus_workspace;
 use yazelix_core::run_zellij_status_cache_refresh_agent_usage;
 use yazelix_core::run_zellij_status_cache_refresh_codex_usage;
@@ -1128,8 +1126,6 @@ fn run_zellij(args: &[String]) -> Result<i32, CoreError> {
         "inspect-session" => run_zellij_inspect_session(&argv),
         "status-bus" => run_zellij_status_bus(&argv),
         "status-bus-workspace" => run_zellij_status_bus_workspace(&argv),
-        "status-bus-ai-activity" => run_zellij_status_bus_ai_activity(&argv),
-        "status-bus-token-budget" => run_zellij_status_bus_token_budget(&argv),
         "status-cache-write" => run_zellij_status_cache_write(&argv),
         "status-cache-widget" => run_zellij_status_cache_widget(&argv),
         "status-cache-refresh-agent-usage" => run_zellij_status_cache_refresh_agent_usage(&argv),
