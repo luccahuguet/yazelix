@@ -1907,17 +1907,26 @@ ui { pane_frames { hide_session_name true } }
         assert!(template.contains(ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER));
         assert!(template.contains("command_workspace_command"));
         assert!(template.contains("status-cache-widget workspace"));
+        assert!(template.contains(r##"command_workspace_format "#[fg=#00ff88,bold]{stdout}""##));
         assert!(!template.contains("status-bus-workspace"));
         assert!(template.contains("command_ai_activity_command"));
         assert!(template.contains("status-cache-widget ai_activity"));
+        assert!(template.contains(r##"command_ai_activity_format "#[fg=#00ff88,bold]{stdout}""##));
         assert!(!template.contains("status-bus-ai-activity"));
         assert!(template.contains("command_token_budget_command"));
         assert!(template.contains("status-cache-widget token_budget"));
+        assert!(template.contains(r##"command_token_budget_format "#[fg=#00ff88,bold]{stdout}""##));
         assert!(!template.contains("status-bus-token-budget"));
         assert!(template.contains("command_claude_usage_command"));
+        assert!(template.contains(r##"command_claude_usage_format "#[fg=#bb88ff,bold]{stdout}""##));
         assert!(template.contains("command_codex_usage_command"));
+        assert!(template.contains(r##"command_codex_usage_format "#[fg=#bb88ff,bold]{stdout}""##));
         assert!(template.contains("command_amp_usage_command"));
+        assert!(template.contains(r##"command_amp_usage_format "#[fg=#bb88ff,bold]{stdout}""##));
         assert!(template.contains("command_opencode_usage_command"));
+        assert!(
+            template.contains(r##"command_opencode_usage_format "#[fg=#bb88ff,bold]{stdout}""##)
+        );
         assert!(!template.contains("agent-usage"));
     }
 

@@ -32,31 +32,31 @@ plugin location="__YAZELIX_ZJSTATUS_PLUGIN_URL__" {
     datetime_format "%H:%M %d/%m"
 
     command_workspace_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-cache-widget workspace"
-    command_workspace_format "{stdout}"
+    command_workspace_format "#[fg=#00ff88,bold]{stdout}"
     command_workspace_interval "5"
 
     command_ai_activity_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-cache-widget ai_activity"
-    command_ai_activity_format "{stdout}"
+    command_ai_activity_format "#[fg=#00ff88,bold]{stdout}"
     command_ai_activity_interval "5"
 
     command_token_budget_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-cache-widget token_budget"
-    command_token_budget_format "{stdout}"
+    command_token_budget_format "#[fg=#00ff88,bold]{stdout}"
     command_token_budget_interval "5"
 
     command_claude_usage_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-cache-widget claude_usage"
-    command_claude_usage_format "{stdout}"
+    command_claude_usage_format "#[fg=#bb88ff,bold]{stdout}"
     command_claude_usage_interval "120"
 
     command_codex_usage_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-cache-widget codex_usage"
-    command_codex_usage_format "{stdout}"
+    command_codex_usage_format "#[fg=#bb88ff,bold]{stdout}"
     command_codex_usage_interval "120"
 
     command_amp_usage_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-cache-widget amp_usage"
-    command_amp_usage_format "{stdout}"
+    command_amp_usage_format "#[fg=#bb88ff,bold]{stdout}"
     command_amp_usage_interval "120"
 
     command_opencode_usage_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-cache-widget opencode_usage"
-    command_opencode_usage_format "{stdout}"
+    command_opencode_usage_format "#[fg=#bb88ff,bold]{stdout}"
     command_opencode_usage_interval "120"
 
     command_cpu_command "__YAZELIX_NU_BIN__ __YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/cpu_usage.nu"

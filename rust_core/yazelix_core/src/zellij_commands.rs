@@ -1227,7 +1227,7 @@ fn render_zjstatus_segment(label: &str, value: &str) -> String {
     if trimmed.is_empty() || trimmed == "unknown" {
         String::new()
     } else {
-        format!("#[fg=#00ff88,bold][{label} {trimmed}]")
+        format!("[{label} {trimmed}]")
     }
 }
 
@@ -1371,7 +1371,7 @@ fn agent_usage_summary_from_json(raw: &str) -> String {
 
 fn render_agent_usage_widget(provider: AgentUsageProvider, summary: &str) -> String {
     let label = agent_usage_label(provider);
-    format!("#[fg=#bb88ff,bold][{label} {summary}]")
+    format!("[{label} {summary}]")
 }
 
 fn first_u64_at(value: &Value, paths: &[&[&str]]) -> Option<u64> {
@@ -2660,10 +2660,10 @@ mod tests {
         assert_eq!(render_status_bus_token_budget_widget(&empty), "unknown");
     }
 
-    // Regression: zjstatus command widgets own their full visible segment so empty helper output cannot leave bracket shells in the bar.
+    // Regression: zjstatus command widgets return plain text while the template owns style markup, so command stdout cannot print literal `#[fg=...]` tags.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn zjstatus_status_bus_widgets_render_segments_and_hide_missing_facts() {
+    fn zjstatus_status_bus_widgets_render_plain_segments_and_hide_missing_facts() {
         let value = decode_status_bus_snapshot(
             r#"{"schema_version":1,"active_tab_position":0,"workspace":{"root":"/tmp/yazelix-demo","source":"explicit"},"managed_panes":{"editor_pane_id":"terminal:1","sidebar_pane_id":"terminal:2"},"focus_context":"sidebar","layout":{"active_swap_layout_name":"single_open","sidebar_collapsed":false},"sidebar_yazi":null,"transient_panes":{"popup":null,"menu":null},"extensions":{"ai_pane_activity":[{"tab_position":0,"provider":"claude","pane_id":"terminal:2","activity":"thinking","state":"thinking"}],"ai_token_budget":[{"tab_position":0,"provider":"codex","remaining_tokens":120000,"total_tokens":200000}]}}"#,
         )
@@ -2675,16 +2675,19 @@ mod tests {
 
         assert_eq!(
             render_zjstatus_workspace_widget(&value),
-            "#[fg=#00ff88,bold][workspace yazelix-demo/sidebar/side:open]"
+            "[workspace yazelix-demo/sidebar/side:open]"
         );
         assert_eq!(
             render_zjstatus_ai_activity_widget(&value),
-            "#[fg=#00ff88,bold][ai claude:thinking]"
+            "[ai claude:thinking]"
         );
         assert_eq!(
             render_zjstatus_token_budget_widget(&value),
-            "#[fg=#00ff88,bold][tokens codex:120k/200k]"
+            "[tokens codex:120k/200k]"
         );
+        assert!(!render_zjstatus_workspace_widget(&value).contains("#["));
+        assert!(!render_zjstatus_ai_activity_widget(&value).contains("#["));
+        assert!(!render_zjstatus_token_budget_widget(&value).contains("#["));
         assert_eq!(render_zjstatus_workspace_widget(&empty), "");
         assert_eq!(render_zjstatus_ai_activity_widget(&empty), "");
         assert_eq!(render_zjstatus_token_budget_widget(&empty), "");
@@ -2709,7 +2712,12 @@ mod tests {
 
         assert_eq!(
             render_status_cache_widget(&cache, "workspace").unwrap(),
-            "#[fg=#00ff88,bold][workspace yazelix-demo/sidebar/side:open]"
+            "[workspace yazelix-demo/sidebar/side:open]"
+        );
+        assert!(
+            !render_status_cache_widget(&cache, "workspace")
+                .unwrap()
+                .contains("#[")
         );
     }
 
@@ -2747,7 +2755,12 @@ mod tests {
 
         assert_eq!(
             render_status_cache_widget(&cache, "codex_usage").unwrap(),
-            "#[fg=#bb88ff,bold][codex 123k $1.23]"
+            "[codex 123k $1.23]"
+        );
+        assert!(
+            !render_status_cache_widget(&cache, "codex_usage")
+                .unwrap()
+                .contains("#[")
         );
         assert_eq!(
             render_status_cache_widget(&cache, "claude_usage").unwrap(),
@@ -2816,7 +2829,7 @@ exit 64
         );
         assert_eq!(
             render_status_cache_widget(&cache, "codex_usage").unwrap(),
-            "#[fg=#bb88ff,bold][codex 123k $1.23]"
+            "[codex 123k $1.23]"
         );
     }
 
@@ -2873,7 +2886,7 @@ exit 64
         );
     }
 
-    // Defends: ccusage-backed tray widgets derive a compact, fully formatted segment from the active usage block.
+    // Defends: ccusage-backed tray widgets derive compact plain text from the active usage block while template formatting owns color.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn agent_usage_widget_formats_active_json_block() {
@@ -2884,8 +2897,9 @@ exit 64
         assert_eq!(summary, "123k $1.23 2h17m");
         assert_eq!(
             render_agent_usage_widget(AgentUsageProvider::Codex, &summary),
-            "#[fg=#bb88ff,bold][codex 123k $1.23 2h17m]"
+            "[codex 123k $1.23 2h17m]"
         );
+        assert!(!render_agent_usage_widget(AgentUsageProvider::Codex, &summary).contains("#["));
     }
 
     // Defends: provider aliases map to the exact opt-in ccusage binaries used by flake and Home Manager package wiring.
