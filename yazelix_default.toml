@@ -179,8 +179,9 @@ widget_tray = [
   "ram",  # RAM usage
 ]
 
-# Agent usage widget display: "both", "tokens", or "money"
-agent_usage_display = "both"
+# Agent usage widget display: "tokens", "money", or "both"
+# Money is a provider estimate, not your subscription bill
+agent_usage_display = "tokens"
 
 # Periods shown by grouped usage widgets: "day" or "month"
 claude_usage_periods = ["day"]

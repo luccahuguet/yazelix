@@ -356,7 +356,7 @@ in
     };
 
     zellij_agent_usage_display = mkMainContractOption "zellij.agent_usage_display" {
-      description = "Agent usage widget display mode: both, tokens, or money";
+      description = "Agent usage widget display mode: tokens, money, or both";
     };
 
     zellij_claude_usage_periods = mkMainContractOption "zellij.claude_usage_periods" {

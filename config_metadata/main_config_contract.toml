@@ -301,15 +301,15 @@ rebuild_required = false
 
 [fields."zellij.agent_usage_display"]
 kind = "string"
-default = "both"
+default = "tokens"
 parser_key = "zellij_agent_usage_display"
 home_manager_option = "zellij_agent_usage_display"
 parser_behavior = "direct"
 validation = "enum"
 allowed_values = [
-  "both",
   "tokens",
   "money",
+  "both",
 ]
 rebuild_required = false
 
