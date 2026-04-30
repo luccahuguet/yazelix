@@ -182,6 +182,9 @@ widget_tray = [
   "ram",  # RAM usage
 ]
 
+# Agent usage widget display: "both", "tokens", or "money"
+agent_usage_display = "both"
+
 # Optional short badge shown just before the YAZELIX version segment in zjstatus.
 # Empty by default. Whitespace is trimmed and the rendered text is capped at 8 characters.
 custom_text = ""

@@ -355,6 +355,10 @@ in
       description = "Zjstatus widget tray order (editor/shell/term/workspace/AI/usage/cpu/ram); dynamic entries read from a window-local cache";
     };
 
+    zellij_agent_usage_display = mkMainContractOption "zellij.agent_usage_display" {
+      description = "Agent usage widget display mode: both, tokens, or money";
+    };
+
     zellij_custom_text = mkMainContractOption "zellij.custom_text" {
       description = "Optional short zjstatus badge shown before YAZELIX. Trimmed and capped at 8 characters.";
     };

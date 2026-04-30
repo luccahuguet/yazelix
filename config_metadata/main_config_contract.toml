@@ -11,7 +11,7 @@
 [contract]
 version = 1
 surface = "main"
-field_count = 36
+field_count = 37
 artifact_role = "canonical_machine_metadata"
 default_template = "yazelix_default.toml"
 home_manager_module = "home_manager/module.nix"
@@ -302,6 +302,20 @@ allowed_values = [
   "opencode_session_usage",
   "cpu",
   "ram",
+]
+rebuild_required = false
+
+[fields."zellij.agent_usage_display"]
+kind = "string"
+default = "both"
+parser_key = "zellij_agent_usage_display"
+home_manager_option = "zellij_agent_usage_display"
+parser_behavior = "direct"
+validation = "enum"
+allowed_values = [
+  "both",
+  "tokens",
+  "money",
 ]
 rebuild_required = false
 

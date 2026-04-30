@@ -68,6 +68,8 @@ widget_tray = [
   "cpu",     # CPU usage
   "ram",     # RAM usage
 ]
+
+agent_usage_display = "both" # "both", "tokens", or "money"
 ```
 Comment out any line to hide that widget. Order matters. Restart Yazelix to regenerate layouts.
 
