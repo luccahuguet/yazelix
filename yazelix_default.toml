@@ -161,7 +161,7 @@ support_kitty_keyboard_protocol = false
 theme = "default"
 
 # Zjstatus widget tray (right side of status bar)
-# Available widgets: "editor", "shell", "term", "workspace", "claude_usage", "codex_usage", "opencode_usage", "cpu", "ram"
+# Available widgets: "editor", "shell", "term", "workspace", "claude_usage", "codex_usage", "opencode_go_usage", "cpu", "ram"
 # Configure usage widget display below
 # Dynamic widgets read from a window-local cache so multiple Yazelix windows keep independent facts
 # Comment out any line to hide that widget
@@ -172,21 +172,23 @@ widget_tray = [
   # "workspace", # Active workspace root name
   # "claude_usage", # Grouped Claude usage
   # "codex_usage", # Combined Codex 5h/week usage and quota
-  # "opencode_usage", # Grouped OpenCode usage
+  # "opencode_go_usage", # Combined OpenCode Go 5h/week usage and quota
   "cpu",  # CPU usage
   "ram",  # RAM usage
 ]
 
-# Claude/OpenCode usage widget display: "tokens", "money", or "both"
+# Claude usage widget display: "tokens", "money", or "both"
 # Money is a provider estimate, not your subscription bill
 agent_usage_display = "tokens"
 
 # Codex usage display: "token", "quota", or "both"
 codex_usage_display = "both"
 
-# Periods shown by grouped usage widgets: "day" or "month"
+# OpenCode Go usage display: "token", "quota", or "both"
+opencode_go_usage_display = "both"
+
+# Periods shown by grouped Claude usage widgets: "day" or "month"
 claude_usage_periods = ["day"]
-opencode_usage_periods = ["day"]
 
 # Optional short badge shown just before the YAZELIX version segment in zjstatus.
 # Empty by default. Whitespace is trimmed and the rendered text is capped at 8 characters.

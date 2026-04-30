@@ -291,7 +291,7 @@ allowed_values = [
   "workspace",
   "claude_usage",
   "codex_usage",
-  "opencode_usage",
+  "opencode_go_usage",
   "cpu",
   "ram",
 ]
@@ -340,18 +340,17 @@ allowed_values = [
 ]
 rebuild_required = false
 
-[fields."zellij.opencode_usage_periods"]
-kind = "string_list"
-default = [
-  "day",
-]
-parser_key = "zellij_opencode_usage_periods"
-home_manager_option = "zellij_opencode_usage_periods"
+[fields."zellij.opencode_go_usage_display"]
+kind = "string"
+default = "both"
+parser_key = "zellij_opencode_go_usage_display"
+home_manager_option = "zellij_opencode_go_usage_display"
 parser_behavior = "direct"
-validation = "enum_string_list"
+validation = "enum"
 allowed_values = [
-  "day",
-  "month",
+  "token",
+  "quota",
+  "both",
 ]
 rebuild_required = false
 

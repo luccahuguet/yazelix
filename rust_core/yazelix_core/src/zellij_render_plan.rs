@@ -52,7 +52,7 @@ const WIDGET_TRAY_ALLOWED: &[&str] = &[
     "workspace",
     "claude_usage",
     "codex_usage",
-    "opencode_usage",
+    "opencode_go_usage",
     "cpu",
     "ram",
 ];
@@ -671,12 +671,18 @@ mod tests {
             "workspace".into(),
             "claude_usage".into(),
             "codex_usage".into(),
+            "opencode_go_usage".into(),
         ]);
         let plan = compute_zellij_render_plan(&req).unwrap();
 
         assert_eq!(
             plan.widget_tray,
-            vec!["workspace", "claude_usage", "codex_usage"]
+            vec![
+                "workspace",
+                "claude_usage",
+                "codex_usage",
+                "opencode_go_usage"
+            ]
         );
         assert_eq!(
             default_widget_tray(),

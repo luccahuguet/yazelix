@@ -19,10 +19,6 @@
       url = "github:dj95/zjstatus";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    llm-agents = {
-      url = "github:numtide/llm-agents.nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
   outputs =
@@ -34,7 +30,6 @@
       fenix,
       beads,
       zjstatus,
-      llm-agents,
     }:
     let
       systems = [
@@ -48,17 +43,14 @@
       homeManagerModule = { pkgs, ... }: {
         _module.args.nixgl = nixgl;
         _module.args.fenixPkgs = fenix.packages.${pkgs.stdenv.hostPlatform.system};
-        _module.args.llmAgentsPackages = llm-agents.packages.${pkgs.stdenv.hostPlatform.system};
         imports = [ ./home_manager/module.nix ];
       };
       agentUsagePackages = system:
         let
           pkgs = mkPkgs system;
-          packages = llm-agents.packages.${system};
         in
         [
           (import ./packaging/tokenusage.nix { inherit pkgs; })
-          packages."ccusage-opencode"
         ];
       runtimePackage = system: pkgs: runtimeVariant: extraRuntimePackages:
         import ./yazelix_runtime_package.nix {

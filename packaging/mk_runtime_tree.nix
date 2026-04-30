@@ -48,7 +48,6 @@ let
     "pdftocairo"
     "resvg"
     "tu"
-    "ccusage-opencode"
   ];
   escapedExportedRuntimeCommands = pkgs.lib.escapeShellArgs exportedRuntimeCommands;
 in

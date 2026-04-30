@@ -10,7 +10,7 @@ The current runtime includes:
 - preview/search helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
 - system helpers required by the runtime wrappers and validators: `git`, `nix`, `coreutils`, `findutils`, `gnugrep`, `gnused`, `util-linux`
 - one packaged terminal variant: Ghostty in the `#yazelix` default and `#yazelix_ghostty`, or WezTerm in `#yazelix_wezterm`
-- opt-in agent usage tools in `#yazelix_agent_tools`: `tokenusage`, `ccusage-opencode`
+- opt-in agent usage tools in `#yazelix_agent_tools`: `tokenusage`
 
 It does not ship:
 - a runtime-local `devenv` binary

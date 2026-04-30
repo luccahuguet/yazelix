@@ -459,7 +459,7 @@ fn widget_tray_question() -> MultiQuestion {
             ("Workspace", "workspace"),
             ("Grouped Claude usage", "claude_usage"),
             ("Codex 5h/week usage and quota", "codex_usage"),
-            ("Grouped OpenCode usage", "opencode_usage"),
+            ("OpenCode Go 5h/week usage and quota", "opencode_go_usage"),
             ("CPU", "cpu"),
             ("RAM", "ram"),
         ],

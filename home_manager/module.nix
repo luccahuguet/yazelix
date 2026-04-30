@@ -2,7 +2,6 @@
   config,
   lib,
   fenixPkgs ? null,
-  llmAgentsPackages ? null,
   nixgl ? null,
   pkgs,
   ...
@@ -15,22 +14,17 @@ let
   defaultRuntimeVariant = "ghostty";
   agentUsageProgramNames = [
     "tokenusage"
-    "ccusage-opencode"
   ];
-  agentUsagePackageMap =
-    {
-      tokenusage = import ../packaging/tokenusage.nix { inherit pkgs; };
-    }
-    // optionalAttrs (llmAgentsPackages != null) {
-      "ccusage-opencode" = llmAgentsPackages."ccusage-opencode";
-    };
+  agentUsagePackageMap = {
+    tokenusage = import ../packaging/tokenusage.nix { inherit pkgs; };
+  };
   selectedAgentUsagePackages =
     map (
       program:
       if builtins.hasAttr program agentUsagePackageMap then
         builtins.getAttr program agentUsagePackageMap
       else
-        throw "programs.yazelix.agent_usage_programs requires the flake-provided llm-agents package set"
+        throw "programs.yazelix.agent_usage_programs contains an unsupported agent usage program"
     ) cfg.agent_usage_programs;
   yazelixPackage = import ../yazelix_package.nix {
     inherit pkgs fenixPkgs nixgl;
@@ -222,12 +216,11 @@ in
 
         These support zellij.widget_tray usage entries:
         - "tokenusage": claude_usage, codex_usage
-        - "ccusage-opencode": opencode_usage
 
         codex_usage is a combined 5h/week token and quota widget.
-        claude_usage and opencode_usage are grouped widgets. Configure their
-        period lists with zellij_claude_usage_periods and
-        zellij_opencode_usage_periods.
+        claude_usage is a grouped widget configured with zellij_claude_usage_periods.
+        opencode_go_usage reads OpenCode's local SQLite database directly and does
+        not require an extra usage binary.
       '';
     };
 
@@ -357,19 +350,19 @@ in
     };
 
     zellij_agent_usage_display = mkMainContractOption "zellij.agent_usage_display" {
-      description = "Claude/OpenCode usage widget display mode: tokens, money, or both";
+      description = "Claude usage widget display mode: tokens, money, or both";
     };
 
     zellij_codex_usage_display = mkMainContractOption "zellij.codex_usage_display" {
       description = "Codex usage widget display mode: token, quota, or both";
     };
 
-    zellij_claude_usage_periods = mkMainContractOption "zellij.claude_usage_periods" {
-      description = "Periods shown by the grouped claude_usage widget: day, month";
+    zellij_opencode_go_usage_display = mkMainContractOption "zellij.opencode_go_usage_display" {
+      description = "OpenCode Go usage widget display mode: token, quota, or both";
     };
 
-    zellij_opencode_usage_periods = mkMainContractOption "zellij.opencode_usage_periods" {
-      description = "Periods shown by the grouped opencode_usage widget: day, month";
+    zellij_claude_usage_periods = mkMainContractOption "zellij.claude_usage_periods" {
+      description = "Periods shown by the grouped claude_usage widget: day, month";
     };
 
     zellij_custom_text = mkMainContractOption "zellij.custom_text" {

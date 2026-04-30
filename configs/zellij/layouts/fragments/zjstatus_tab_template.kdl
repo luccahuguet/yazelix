@@ -43,9 +43,9 @@ plugin location="__YAZELIX_ZJSTATUS_PLUGIN_URL__" {
     command_codex_usage_format "#[fg=#bb88ff,bold]{stdout}"
     command_codex_usage_interval "5"
 
-    command_opencode_usage_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-cache-widget opencode_usage"
-    command_opencode_usage_format "#[fg=#bb88ff,bold]{stdout}"
-    command_opencode_usage_interval "120"
+    command_opencode_go_usage_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-cache-widget opencode_go_usage"
+    command_opencode_go_usage_format "#[fg=#bb88ff,bold]{stdout}"
+    command_opencode_go_usage_interval "5"
 
     command_cpu_command "__YAZELIX_NU_BIN__ __YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/cpu_usage.nu"
     command_cpu_format " #[fg=#ff6600][cpu {stdout}]"

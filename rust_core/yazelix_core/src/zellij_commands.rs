@@ -14,6 +14,7 @@ use crate::workspace_commands::{
     command_is_available, compute_integration_facts_from_env, run_ya_emit_to,
     sync_sidebar_to_directory,
 };
+use rusqlite::{Connection, OpenFlags, params};
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
 use std::env;
@@ -29,9 +30,16 @@ const PANE_ORCHESTRATOR_PLUGIN_ALIAS: &str = "yazelix_pane_orchestrator";
 const STATUS_BUS_SCHEMA_VERSION: i64 = 1;
 const STATUS_BAR_CACHE_SCHEMA_VERSION: i64 = 1;
 const CODEX_USAGE_CACHE_SCHEMA_VERSION: i64 = 1;
+const OPENCODE_GO_USAGE_CACHE_SCHEMA_VERSION: i64 = 1;
 const AGENT_USAGE_SEED_MAX_AGE_SECONDS: u64 = 180;
 const AGENT_USAGE_SEED_CANDIDATE_LIMIT: usize = 16;
 const CODEX_USAGE_LOCK_STALE_AFTER_SECONDS: u64 = 300;
+const OPENCODE_GO_USAGE_LOCK_STALE_AFTER_SECONDS: u64 = 300;
+const OPENCODE_GO_PROVIDER_ID: &str = "opencode-go";
+const OPENCODE_GO_FIVE_HOUR_SECONDS: u64 = 5 * 60 * 60;
+const OPENCODE_GO_WEEK_SECONDS: u64 = 7 * 24 * 60 * 60;
+const OPENCODE_GO_FIVE_HOUR_LIMIT_USD: f64 = 12.0;
+const OPENCODE_GO_WEEKLY_LIMIT_USD: f64 = 30.0;
 const EDITOR_PANE_NAME: &str = "editor";
 pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
     "pipe",
@@ -43,6 +51,7 @@ pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
     "status-cache-widget",
     "status-cache-refresh-agent-usage",
     "status-cache-refresh-codex-usage",
+    "status-cache-refresh-opencode-go-usage",
     "agent-usage",
     "retarget",
     "open-editor",
@@ -126,6 +135,14 @@ struct ZellijStatusCacheRefreshCodexUsageArgs {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct ZellijStatusCacheRefreshOpenCodeGoUsageArgs {
+    path: Option<PathBuf>,
+    max_age_seconds: Option<u64>,
+    error_backoff_seconds: Option<u64>,
+    help: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ZellijAgentUsageArgs {
     provider: Option<String>,
     help: bool,
@@ -149,13 +166,13 @@ impl AgentUsageDisplay {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum CodexUsageDisplay {
+enum WindowedUsageDisplay {
     Both,
     Token,
     Quota,
 }
 
-impl CodexUsageDisplay {
+impl WindowedUsageDisplay {
     fn parse(raw: &str) -> Self {
         match raw.trim() {
             "token" | "tokens" => Self::Token,
@@ -168,18 +185,18 @@ impl CodexUsageDisplay {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct AgentUsageWidgetSettings {
     display: AgentUsageDisplay,
-    codex_display: CodexUsageDisplay,
+    codex_display: WindowedUsageDisplay,
+    opencode_go_display: WindowedUsageDisplay,
     claude_periods: Vec<AgentUsagePeriod>,
-    opencode_periods: Vec<AgentUsagePeriod>,
 }
 
 impl Default for AgentUsageWidgetSettings {
     fn default() -> Self {
         Self {
             display: AgentUsageDisplay::Tokens,
-            codex_display: CodexUsageDisplay::Both,
+            codex_display: WindowedUsageDisplay::Both,
+            opencode_go_display: WindowedUsageDisplay::Both,
             claude_periods: vec![AgentUsagePeriod::Daily],
-            opencode_periods: vec![AgentUsagePeriod::Daily],
         }
     }
 }
@@ -188,7 +205,6 @@ impl Default for AgentUsageWidgetSettings {
 struct AgentUsageRefreshConfig {
     widgets: Option<BTreeSet<String>>,
     claude_periods: Vec<AgentUsagePeriod>,
-    opencode_periods: Vec<AgentUsagePeriod>,
 }
 
 impl Default for AgentUsageRefreshConfig {
@@ -196,13 +212,12 @@ impl Default for AgentUsageRefreshConfig {
         Self {
             widgets: None,
             claude_periods: vec![AgentUsagePeriod::Daily],
-            opencode_periods: vec![AgentUsagePeriod::Daily],
         }
     }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-struct CodexCombinedUsageFacts {
+struct WindowedUsageFacts {
     five_hour_tokens: Option<u64>,
     weekly_tokens: Option<u64>,
     five_hour_remaining_percent: Option<u64>,
@@ -210,7 +225,7 @@ struct CodexCombinedUsageFacts {
     error: Option<String>,
 }
 
-impl CodexCombinedUsageFacts {
+impl WindowedUsageFacts {
     fn has_tokens(&self) -> bool {
         self.five_hour_tokens.is_some() || self.weekly_tokens.is_some()
     }
@@ -262,7 +277,6 @@ impl AgentUsageFacts {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum AgentUsageProvider {
     Claude,
-    Opencode,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -298,7 +312,6 @@ struct AgentUsageTarget {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum AgentUsageJsonDialect {
-    Ccusage,
     Tokenusage,
 }
 
@@ -728,6 +741,54 @@ fn parse_zellij_status_cache_refresh_codex_usage_args(
     Ok(parsed)
 }
 
+fn parse_zellij_status_cache_refresh_opencode_go_usage_args(
+    args: &[String],
+) -> Result<ZellijStatusCacheRefreshOpenCodeGoUsageArgs, CoreError> {
+    let mut parsed = ZellijStatusCacheRefreshOpenCodeGoUsageArgs::default();
+    let mut iter = args.iter();
+
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "--path" => {
+                parsed.path = Some(PathBuf::from(
+                    iter.next()
+                        .ok_or_else(|| CoreError::usage("--path requires a value".to_string()))?
+                        .as_str(),
+                ));
+            }
+            "--max-age-seconds" => {
+                let raw = iter.next().ok_or_else(|| {
+                    CoreError::usage("--max-age-seconds requires a value".to_string())
+                })?;
+                parsed.max_age_seconds = Some(raw.parse::<u64>().map_err(|_| {
+                    CoreError::usage("--max-age-seconds must be an integer".to_string())
+                })?);
+            }
+            "--error-backoff-seconds" => {
+                let raw = iter.next().ok_or_else(|| {
+                    CoreError::usage("--error-backoff-seconds requires a value".to_string())
+                })?;
+                parsed.error_backoff_seconds = Some(raw.parse::<u64>().map_err(|_| {
+                    CoreError::usage("--error-backoff-seconds must be an integer".to_string())
+                })?);
+            }
+            "-h" | "--help" | "help" => parsed.help = true,
+            other if other.starts_with('-') => {
+                return Err(CoreError::usage(format!(
+                    "Unknown argument for zellij status-cache-refresh-opencode-go-usage: {other}"
+                )));
+            }
+            _ => {
+                return Err(CoreError::usage(
+                    "zellij status-cache-refresh-opencode-go-usage accepts only flags".to_string(),
+                ));
+            }
+        }
+    }
+
+    Ok(parsed)
+}
+
 fn parse_zellij_agent_usage_args(args: &[String]) -> Result<ZellijAgentUsageArgs, CoreError> {
     let mut parsed = ZellijAgentUsageArgs::default();
     for arg in args {
@@ -790,11 +851,20 @@ fn print_zellij_status_cache_refresh_codex_usage_help() {
     );
 }
 
+fn print_zellij_status_cache_refresh_opencode_go_usage_help() {
+    println!("Refresh cached OpenCode Go 5h/week usage and quota facts for status-bar widgets");
+    println!();
+    println!("Usage:");
+    println!(
+        "  yzx_control zellij status-cache-refresh-opencode-go-usage [--path <path>] [--max-age-seconds <n>] [--error-backoff-seconds <n>]"
+    );
+}
+
 fn print_zellij_agent_usage_help() {
     println!("Render an opt-in agent usage provider summary for zjstatus");
     println!();
     println!("Usage:");
-    println!("  yzx_control zellij agent-usage <claude|opencode>");
+    println!("  yzx_control zellij agent-usage <claude>");
 }
 
 pub fn run_zellij_inspect_session(args: &[String]) -> Result<i32, CoreError> {
@@ -949,11 +1019,13 @@ pub fn run_zellij_status_cache_widget(args: &[String]) -> Result<i32, CoreError>
     };
     if widget == "codex_usage" {
         hydrate_status_cache_codex_usage(&mut cache, &path);
+    } else if widget == "opencode_go_usage" {
+        hydrate_status_cache_opencode_go_usage(&mut cache, &path);
     }
     print_optional_zjstatus_segment(render_status_cache_widget_with_agent_usage_settings(
         &cache,
         widget,
-        &agent_usage_widget_settings_from_session_config_env(),
+        &agent_usage_widget_settings_from_status_cache_path(&path),
     )?);
     Ok(0)
 }
@@ -965,13 +1037,13 @@ pub fn run_zellij_status_cache_refresh_codex_usage(args: &[String]) -> Result<i3
         return Ok(0);
     }
 
-    if !codex_usage_widget_enabled_from_session_config_env() {
-        return Ok(0);
-    }
     let path = match parsed.path.or_else(status_bar_cache_path_from_env) {
         Some(path) => path,
         None => return Ok(0),
     };
+    if !usage_widget_enabled_from_status_cache_path(&path, "codex_usage") {
+        return Ok(0);
+    }
     let Some(shared_path) = codex_usage_shared_cache_path_from_status_cache_path(&path) else {
         return Ok(0);
     };
@@ -983,6 +1055,35 @@ pub fn run_zellij_status_cache_refresh_codex_usage(args: &[String]) -> Result<i3
         parsed.max_age_seconds.unwrap_or(600),
         parsed.error_backoff_seconds.unwrap_or(1_800),
         timeout,
+    )?;
+    Ok(0)
+}
+
+pub fn run_zellij_status_cache_refresh_opencode_go_usage(
+    args: &[String],
+) -> Result<i32, CoreError> {
+    let parsed = parse_zellij_status_cache_refresh_opencode_go_usage_args(args)?;
+    if parsed.help {
+        print_zellij_status_cache_refresh_opencode_go_usage_help();
+        return Ok(0);
+    }
+
+    let path = match parsed.path.or_else(status_bar_cache_path_from_env) {
+        Some(path) => path,
+        None => return Ok(0),
+    };
+    if !usage_widget_enabled_from_status_cache_path(&path, "opencode_go_usage") {
+        return Ok(0);
+    }
+    let Some(shared_path) = opencode_go_usage_shared_cache_path_from_status_cache_path(&path)
+    else {
+        return Ok(0);
+    };
+    refresh_opencode_go_usage_shared_cache(
+        &shared_path,
+        unix_time_seconds(),
+        parsed.max_age_seconds.unwrap_or(600),
+        parsed.error_backoff_seconds.unwrap_or(1_800),
     )?;
     Ok(0)
 }
@@ -1003,7 +1104,7 @@ pub fn run_zellij_status_cache_refresh_agent_usage(args: &[String]) -> Result<i3
     };
     let max_age_seconds = parsed.max_age_seconds.unwrap_or(120);
     let timeout = Duration::from_millis(parsed.timeout_ms.unwrap_or(1500).max(1));
-    let refresh_config = agent_usage_refresh_config_from_session_config_env();
+    let refresh_config = agent_usage_refresh_config_from_status_cache_path(&path);
     if refresh_status_bar_cache_agent_usage_value(
         &mut cache,
         env::var_os("PATH").as_deref(),
@@ -1029,7 +1130,7 @@ pub fn run_zellij_agent_usage(args: &[String]) -> Result<i32, CoreError> {
         .and_then(parse_agent_usage_provider)
     else {
         return Err(CoreError::usage(
-            "zellij agent-usage requires one of: claude, opencode".to_string(),
+            "zellij agent-usage requires one of: claude".to_string(),
         ));
     };
     let target = default_agent_usage_target_for_provider(provider);
@@ -1197,6 +1298,17 @@ fn codex_usage_shared_cache_path_from_status_cache_path(
 ) -> Option<PathBuf> {
     let state_dir = status_cache_path.parent()?.parent()?.parent()?;
     Some(state_dir.join("agent_usage").join("codex_usage_cache.json"))
+}
+
+fn opencode_go_usage_shared_cache_path_from_status_cache_path(
+    status_cache_path: &Path,
+) -> Option<PathBuf> {
+    let state_dir = status_cache_path.parent()?.parent()?.parent()?;
+    Some(
+        state_dir
+            .join("agent_usage")
+            .join("opencode_go_usage_cache.json"),
+    )
 }
 
 fn build_status_bar_cache_at(
@@ -1445,10 +1557,36 @@ fn hydrate_status_cache_codex_usage(cache: &mut Value, status_cache_path: &Path)
     cache["codex_usage"] = codex;
 }
 
+fn hydrate_status_cache_opencode_go_usage(cache: &mut Value, status_cache_path: &Path) {
+    let Some(shared_path) =
+        opencode_go_usage_shared_cache_path_from_status_cache_path(status_cache_path)
+    else {
+        return;
+    };
+    let Some(shared_cache) = read_opencode_go_usage_shared_cache_value(&shared_path) else {
+        return;
+    };
+    let Some(opencode_go) = shared_cache.get("opencode_go").cloned() else {
+        return;
+    };
+    cache["opencode_go_usage"] = opencode_go;
+}
+
 fn read_codex_usage_shared_cache_value(path: &Path) -> Option<Value> {
     let raw = fs::read_to_string(path).ok()?;
     let cache: Value = serde_json::from_str(&raw).ok()?;
     if cache.get("schema_version").and_then(Value::as_i64) != Some(CODEX_USAGE_CACHE_SCHEMA_VERSION)
+    {
+        return None;
+    }
+    Some(cache)
+}
+
+fn read_opencode_go_usage_shared_cache_value(path: &Path) -> Option<Value> {
+    let raw = fs::read_to_string(path).ok()?;
+    let cache: Value = serde_json::from_str(&raw).ok()?;
+    if cache.get("schema_version").and_then(Value::as_i64)
+        != Some(OPENCODE_GO_USAGE_CACHE_SCHEMA_VERSION)
     {
         return None;
     }
@@ -1498,12 +1636,17 @@ fn render_status_cache_widget_with_agent_usage_settings(
             settings.claude_periods.as_slice(),
             settings.display,
         )),
-        "codex_usage" => Ok(render_codex_usage_segment(cache, settings.codex_display)),
-        "opencode_usage" => Ok(render_grouped_agent_usage_segment(
+        "codex_usage" => Ok(render_windowed_usage_segment(
             cache,
-            AgentUsageProvider::Opencode,
-            settings.opencode_periods.as_slice(),
-            settings.display,
+            "codex_usage",
+            "codex",
+            settings.codex_display,
+        )),
+        "opencode_go_usage" => Ok(render_windowed_usage_segment(
+            cache,
+            "opencode_go_usage",
+            "go",
+            settings.opencode_go_display,
         )),
         _ => Err(CoreError::usage(format!(
             "zellij status-cache-widget requires one of: {}",
@@ -1513,7 +1656,12 @@ fn render_status_cache_widget_with_agent_usage_settings(
 }
 
 fn status_cache_widget_names() -> Vec<&'static str> {
-    vec!["workspace", "claude_usage", "codex_usage", "opencode_usage"]
+    vec![
+        "workspace",
+        "claude_usage",
+        "codex_usage",
+        "opencode_go_usage",
+    ]
 }
 
 fn render_grouped_agent_usage_segment(
@@ -1544,25 +1692,30 @@ fn render_grouped_agent_usage_segment(
     }
 }
 
-fn render_codex_usage_segment(cache: &Value, display: CodexUsageDisplay) -> String {
-    let Some(entry) = cache.get("codex_usage") else {
+fn render_windowed_usage_segment(
+    cache: &Value,
+    cache_key: &str,
+    label: &str,
+    display: WindowedUsageDisplay,
+) -> String {
+    let Some(entry) = cache.get(cache_key) else {
         return String::new();
     };
-    let facts = codex_usage_facts_from_cache_entry(entry);
-    let summary = render_codex_usage_summary(&facts, display);
+    let facts = windowed_usage_facts_from_cache_entry(entry);
+    let summary = render_windowed_usage_summary(&facts, display);
     if summary.is_empty() {
         String::new()
     } else {
-        render_agent_usage_widget("codex", &summary)
+        render_agent_usage_widget(label, &summary)
     }
 }
 
-fn render_codex_usage_summary(
-    facts: &CodexCombinedUsageFacts,
-    display: CodexUsageDisplay,
+fn render_windowed_usage_summary(
+    facts: &WindowedUsageFacts,
+    display: WindowedUsageDisplay,
 ) -> String {
     let mut parts = Vec::new();
-    if let Some(part) = render_codex_usage_window(
+    if let Some(part) = render_windowed_usage_window(
         "5h",
         facts.five_hour_tokens,
         facts.five_hour_remaining_percent,
@@ -1570,7 +1723,7 @@ fn render_codex_usage_summary(
     ) {
         parts.push(part);
     }
-    if let Some(part) = render_codex_usage_window(
+    if let Some(part) = render_windowed_usage_window(
         "wk",
         facts.weekly_tokens,
         facts.weekly_remaining_percent,
@@ -1581,26 +1734,26 @@ fn render_codex_usage_summary(
     parts.join(" ")
 }
 
-fn render_codex_usage_window(
+fn render_windowed_usage_window(
     label: &str,
     tokens: Option<u64>,
     remaining_percent: Option<u64>,
-    display: CodexUsageDisplay,
+    display: WindowedUsageDisplay,
 ) -> Option<String> {
     let mut pieces = vec![label.to_string()];
     match display {
-        CodexUsageDisplay::Token => {
+        WindowedUsageDisplay::Token => {
             pieces.push(format_agent_usage_token_count(tokens?));
         }
-        CodexUsageDisplay::Quota => {
-            pieces.push(format_codex_quota_percent(remaining_percent?));
+        WindowedUsageDisplay::Quota => {
+            pieces.push(format_quota_percent(remaining_percent?));
         }
-        CodexUsageDisplay::Both => {
+        WindowedUsageDisplay::Both => {
             if let Some(tokens) = tokens {
                 pieces.push(format_agent_usage_token_count(tokens));
             }
             if let Some(remaining_percent) = remaining_percent {
-                pieces.push(format_codex_quota_percent(remaining_percent));
+                pieces.push(format_quota_percent(remaining_percent));
             }
             if pieces.len() == 1 {
                 return None;
@@ -1610,8 +1763,8 @@ fn render_codex_usage_window(
     Some(pieces.join("|"))
 }
 
-fn codex_usage_facts_from_cache_entry(entry: &Value) -> CodexCombinedUsageFacts {
-    CodexCombinedUsageFacts {
+fn windowed_usage_facts_from_cache_entry(entry: &Value) -> WindowedUsageFacts {
+    WindowedUsageFacts {
         five_hour_tokens: entry.get("five_hour_tokens").and_then(Value::as_u64),
         weekly_tokens: entry.get("weekly_tokens").and_then(Value::as_u64),
         five_hour_remaining_percent: entry
@@ -1766,7 +1919,7 @@ fn codex_usage_shared_cache_is_fresh(path: &Path, now: u64, max_age_seconds: u64
             now.saturating_sub(updated_at) < max_age_seconds
                 && cache
                     .get("codex")
-                    .map(codex_usage_facts_from_cache_entry)
+                    .map(windowed_usage_facts_from_cache_entry)
                     .is_some_and(|facts| !facts.is_empty())
         })
 }
@@ -1848,24 +2001,389 @@ fn codex_usage_cache_lock_is_stale(lock_path: &Path, now: u64) -> bool {
         .unwrap_or(false)
 }
 
-fn collect_codex_usage_facts(
-    path_var: Option<&OsStr>,
-    timeout: Duration,
-) -> CodexCombinedUsageFacts {
+fn refresh_opencode_go_usage_shared_cache(
+    shared_path: &Path,
+    now: u64,
+    max_age_seconds: u64,
+    error_backoff_seconds: u64,
+) -> Result<bool, CoreError> {
+    if opencode_go_usage_shared_cache_is_fresh(shared_path, now, max_age_seconds) {
+        return Ok(false);
+    }
+    if opencode_go_usage_shared_cache_is_backing_off(shared_path, now) {
+        return Ok(false);
+    }
+    let Some(_lock) = try_acquire_opencode_go_usage_cache_lock(shared_path, now)? else {
+        return Ok(false);
+    };
+    if opencode_go_usage_shared_cache_is_fresh(shared_path, now, max_age_seconds)
+        || opencode_go_usage_shared_cache_is_backing_off(shared_path, now)
+    {
+        return Ok(false);
+    }
+
+    let db_paths = opencode_db_candidates_from_env();
+    refresh_opencode_go_usage_shared_cache_from_dbs(
+        shared_path,
+        &db_paths,
+        now,
+        error_backoff_seconds,
+    )
+}
+
+fn refresh_opencode_go_usage_shared_cache_from_dbs(
+    shared_path: &Path,
+    db_paths: &[PathBuf],
+    now: u64,
+    error_backoff_seconds: u64,
+) -> Result<bool, CoreError> {
+    let facts = collect_opencode_go_usage_facts_from_dbs(db_paths, now);
+    let mut opencode_go = serde_json::Map::new();
+    opencode_go.insert("updated_at_unix_seconds".to_string(), json!(now));
+    if let Some(tokens) = facts.five_hour_tokens {
+        opencode_go.insert("five_hour_tokens".to_string(), json!(tokens));
+    }
+    if let Some(tokens) = facts.weekly_tokens {
+        opencode_go.insert("weekly_tokens".to_string(), json!(tokens));
+    }
+    if let Some(percent) = facts.five_hour_remaining_percent {
+        opencode_go.insert("five_hour_remaining_percent".to_string(), json!(percent));
+    }
+    if let Some(percent) = facts.weekly_remaining_percent {
+        opencode_go.insert("weekly_remaining_percent".to_string(), json!(percent));
+    }
+    if let Some(error) = facts.error.as_deref().filter(|value| !value.is_empty()) {
+        opencode_go.insert("error".to_string(), json!(error));
+        opencode_go.insert(
+            "backoff_until_unix_seconds".to_string(),
+            json!(now.saturating_add(error_backoff_seconds)),
+        );
+    }
+    let status = if facts.is_empty() {
+        "error"
+    } else if facts.has_tokens() && facts.has_quota() {
+        "ok"
+    } else {
+        "partial"
+    };
+    opencode_go.insert("status".to_string(), json!(status));
+
+    let cache = json!({
+        "schema_version": OPENCODE_GO_USAGE_CACHE_SCHEMA_VERSION,
+        "opencode_go": Value::Object(opencode_go),
+    });
+    write_json_value_atomic(shared_path, &cache, "opencode_go_usage_cache")?;
+    Ok(true)
+}
+
+fn opencode_go_usage_shared_cache_is_fresh(path: &Path, now: u64, max_age_seconds: u64) -> bool {
+    let Some(cache) = read_opencode_go_usage_shared_cache_value(path) else {
+        return false;
+    };
+    cache
+        .get("opencode_go")
+        .and_then(|opencode_go| opencode_go.get("updated_at_unix_seconds"))
+        .and_then(Value::as_u64)
+        .is_some_and(|updated_at| {
+            now.saturating_sub(updated_at) < max_age_seconds
+                && cache
+                    .get("opencode_go")
+                    .map(windowed_usage_facts_from_cache_entry)
+                    .is_some_and(|facts| !facts.is_empty())
+        })
+}
+
+fn opencode_go_usage_shared_cache_is_backing_off(path: &Path, now: u64) -> bool {
+    read_opencode_go_usage_shared_cache_value(path)
+        .and_then(|cache| {
+            cache
+                .get("opencode_go")?
+                .get("backoff_until_unix_seconds")?
+                .as_u64()
+        })
+        .is_some_and(|backoff_until| now < backoff_until)
+}
+
+struct OpenCodeGoUsageCacheLock {
+    path: PathBuf,
+}
+
+impl Drop for OpenCodeGoUsageCacheLock {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir(&self.path);
+    }
+}
+
+fn try_acquire_opencode_go_usage_cache_lock(
+    shared_path: &Path,
+    now: u64,
+) -> Result<Option<OpenCodeGoUsageCacheLock>, CoreError> {
+    let lock_path = shared_path.with_file_name(".opencode_go_usage_cache.lock");
+    if let Some(parent) = lock_path.parent() {
+        fs::create_dir_all(parent).map_err(|source| {
+            CoreError::io(
+                "opencode_go_usage_cache_lock_parent_create_failed",
+                "Failed to create the Yazelix OpenCode Go usage cache lock directory.",
+                "Check permissions for the Yazelix state directory, then retry.",
+                &parent.display().to_string(),
+                source,
+            )
+        })?;
+    }
+    match fs::create_dir(&lock_path) {
+        Ok(()) => Ok(Some(OpenCodeGoUsageCacheLock { path: lock_path })),
+        Err(source) if source.kind() == ErrorKind::AlreadyExists => {
+            if opencode_go_usage_cache_lock_is_stale(&lock_path, now) {
+                let _ = fs::remove_dir(&lock_path);
+                return match fs::create_dir(&lock_path) {
+                    Ok(()) => Ok(Some(OpenCodeGoUsageCacheLock { path: lock_path })),
+                    Err(source) if source.kind() == ErrorKind::AlreadyExists => Ok(None),
+                    Err(source) => Err(CoreError::io(
+                        "opencode_go_usage_cache_lock_create_failed",
+                        "Failed to acquire the Yazelix OpenCode Go usage cache lock.",
+                        "Check permissions for the Yazelix state directory, then retry.",
+                        &lock_path.display().to_string(),
+                        source,
+                    )),
+                };
+            }
+            Ok(None)
+        }
+        Err(source) => Err(CoreError::io(
+            "opencode_go_usage_cache_lock_create_failed",
+            "Failed to acquire the Yazelix OpenCode Go usage cache lock.",
+            "Check permissions for the Yazelix state directory, then retry.",
+            &lock_path.display().to_string(),
+            source,
+        )),
+    }
+}
+
+fn opencode_go_usage_cache_lock_is_stale(lock_path: &Path, now: u64) -> bool {
+    fs::metadata(lock_path)
+        .ok()
+        .and_then(|metadata| metadata.modified().ok())
+        .and_then(|modified| modified.duration_since(UNIX_EPOCH).ok())
+        .map(|duration| {
+            now.saturating_sub(duration.as_secs()) > OPENCODE_GO_USAGE_LOCK_STALE_AFTER_SECONDS
+        })
+        .unwrap_or(false)
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+struct OpenCodeGoUsageWindow {
+    tokens: u64,
+    cost_usd: f64,
+}
+
+fn collect_opencode_go_usage_facts_from_dbs(db_paths: &[PathBuf], now: u64) -> WindowedUsageFacts {
+    if db_paths.is_empty() {
+        return WindowedUsageFacts {
+            error: Some("missing OpenCode DB".to_string()),
+            ..WindowedUsageFacts::default()
+        };
+    }
+
+    let mut five_hour = OpenCodeGoUsageWindow::default();
+    let mut weekly = OpenCodeGoUsageWindow::default();
+    let mut opened_any = false;
+    let mut first_error = None;
+
+    for path in db_paths {
+        match collect_opencode_go_usage_windows_from_db(path, now) {
+            Ok((db_five_hour, db_weekly)) => {
+                opened_any = true;
+                five_hour.tokens = five_hour.tokens.saturating_add(db_five_hour.tokens);
+                five_hour.cost_usd += db_five_hour.cost_usd;
+                weekly.tokens = weekly.tokens.saturating_add(db_weekly.tokens);
+                weekly.cost_usd += db_weekly.cost_usd;
+            }
+            Err(error) => {
+                if first_error.is_none() {
+                    first_error = Some(format!("{}: {error}", path.display()));
+                }
+            }
+        }
+    }
+
+    if !opened_any {
+        return WindowedUsageFacts {
+            error: first_error.or_else(|| Some("OpenCode DB unavailable".to_string())),
+            ..WindowedUsageFacts::default()
+        };
+    }
+
+    let mut facts = WindowedUsageFacts::default();
+    if five_hour.tokens > 0 || five_hour.cost_usd > 0.0 {
+        facts.five_hour_tokens = Some(five_hour.tokens);
+        facts.five_hour_remaining_percent = Some(remaining_percent_from_cost_limit(
+            five_hour.cost_usd,
+            OPENCODE_GO_FIVE_HOUR_LIMIT_USD,
+        ));
+    }
+    if weekly.tokens > 0 || weekly.cost_usd > 0.0 {
+        facts.weekly_tokens = Some(weekly.tokens);
+        facts.weekly_remaining_percent = Some(remaining_percent_from_cost_limit(
+            weekly.cost_usd,
+            OPENCODE_GO_WEEKLY_LIMIT_USD,
+        ));
+    }
+    if facts.is_empty() {
+        facts.error = Some("OpenCode Go usage unavailable".to_string());
+    }
+    facts
+}
+
+fn collect_opencode_go_usage_windows_from_db(
+    path: &Path,
+    now: u64,
+) -> Result<(OpenCodeGoUsageWindow, OpenCodeGoUsageWindow), String> {
+    let connection = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY)
+        .map_err(|error| format!("failed to open OpenCode DB read-only: {error}"))?;
+    connection
+        .busy_timeout(Duration::from_millis(250))
+        .map_err(|error| format!("failed to configure OpenCode DB read timeout: {error}"))?;
+    let five_hour = query_opencode_go_usage_window(
+        &connection,
+        now.saturating_sub(OPENCODE_GO_FIVE_HOUR_SECONDS),
+    )?;
+    let weekly =
+        query_opencode_go_usage_window(&connection, now.saturating_sub(OPENCODE_GO_WEEK_SECONDS))?;
+    Ok((five_hour, weekly))
+}
+
+fn query_opencode_go_usage_window(
+    connection: &Connection,
+    since_unix_seconds: u64,
+) -> Result<OpenCodeGoUsageWindow, String> {
+    connection
+        .query_row(
+            r#"
+            SELECT
+              COALESCE(SUM(
+                COALESCE(
+                  json_extract(data, '$.tokens.total'),
+                  COALESCE(json_extract(data, '$.tokens.input'), 0) +
+                  COALESCE(json_extract(data, '$.tokens.output'), 0) +
+                  COALESCE(json_extract(data, '$.tokens.reasoning'), 0) +
+                  COALESCE(json_extract(data, '$.tokens.cache.read'), 0) +
+                  COALESCE(json_extract(data, '$.tokens.cache.write'), 0)
+                )
+              ), 0),
+              COALESCE(SUM(COALESCE(json_extract(data, '$.cost'), 0.0)), 0.0)
+            FROM message
+            WHERE time_created >= ?1
+              AND json_extract(data, '$.role') = 'assistant'
+              AND json_extract(data, '$.providerID') = ?2
+            "#,
+            params![
+                unix_millis_from_seconds_saturating(since_unix_seconds),
+                OPENCODE_GO_PROVIDER_ID
+            ],
+            |row| {
+                Ok(OpenCodeGoUsageWindow {
+                    tokens: row.get::<_, i64>(0)?.max(0) as u64,
+                    cost_usd: row.get::<_, f64>(1)?.max(0.0),
+                })
+            },
+        )
+        .map_err(|error| format!("failed to read OpenCode Go usage window: {error}"))
+}
+
+fn unix_millis_from_seconds_saturating(seconds: u64) -> i64 {
+    seconds.saturating_mul(1000).min(i64::MAX as u64) as i64
+}
+
+fn remaining_percent_from_cost_limit(cost_usd: f64, limit_usd: f64) -> u64 {
+    if limit_usd <= 0.0 {
+        return 0;
+    }
+    (100.0 - (cost_usd / limit_usd * 100.0))
+        .clamp(0.0, 100.0)
+        .round() as u64
+}
+
+fn opencode_db_candidates_from_env() -> Vec<PathBuf> {
+    opencode_db_candidates_from_values(
+        env::var_os("OPENCODE_DB").map(PathBuf::from),
+        env::var_os("OPENCODE_DATA_DIR").map(PathBuf::from),
+        env::var_os("XDG_DATA_HOME").map(PathBuf::from),
+        env::var_os("HOME").map(PathBuf::from),
+    )
+}
+
+fn opencode_db_candidates_from_values(
+    opencode_db: Option<PathBuf>,
+    opencode_data_dir: Option<PathBuf>,
+    xdg_data_home: Option<PathBuf>,
+    home: Option<PathBuf>,
+) -> Vec<PathBuf> {
+    let data_dir = opencode_data_dir
+        .filter(|path| !path.as_os_str().is_empty())
+        .or_else(|| {
+            xdg_data_home
+                .filter(|path| !path.as_os_str().is_empty())
+                .map(|path| path.join("opencode"))
+        })
+        .or_else(|| {
+            home.filter(|path| !path.as_os_str().is_empty())
+                .map(|path| path.join(".local").join("share").join("opencode"))
+        });
+
+    let mut candidates = Vec::new();
+    if let Some(path) = opencode_db.filter(|path| !path.as_os_str().is_empty()) {
+        if path.is_absolute() {
+            push_unique_path(&mut candidates, path);
+        } else if let Some(data_dir) = data_dir.as_ref() {
+            push_unique_path(&mut candidates, data_dir.join(path));
+        } else {
+            push_unique_path(&mut candidates, path);
+        }
+    }
+
+    if let Some(data_dir) = data_dir {
+        push_unique_path(&mut candidates, data_dir.join("opencode.db"));
+        if let Ok(entries) = fs::read_dir(data_dir) {
+            let mut channel_dbs = entries
+                .filter_map(Result::ok)
+                .map(|entry| entry.path())
+                .filter(|path| {
+                    path.file_name()
+                        .and_then(|name| name.to_str())
+                        .is_some_and(|name| name.starts_with("opencode-") && name.ends_with(".db"))
+                })
+                .collect::<Vec<_>>();
+            channel_dbs.sort();
+            for path in channel_dbs {
+                push_unique_path(&mut candidates, path);
+            }
+        }
+    }
+
+    candidates
+}
+
+fn push_unique_path(paths: &mut Vec<PathBuf>, path: PathBuf) {
+    if !paths.contains(&path) {
+        paths.push(path);
+    }
+}
+
+fn collect_codex_usage_facts(path_var: Option<&OsStr>, timeout: Duration) -> WindowedUsageFacts {
     let Some(path_var) = path_var else {
-        return CodexCombinedUsageFacts {
+        return WindowedUsageFacts {
             error: Some("missing PATH".to_string()),
-            ..CodexCombinedUsageFacts::default()
+            ..WindowedUsageFacts::default()
         };
     };
     let Some(binary_path) = find_command_in_path_var(path_var, "tu") else {
-        return CodexCombinedUsageFacts {
+        return WindowedUsageFacts {
             error: Some("missing tu".to_string()),
-            ..CodexCombinedUsageFacts::default()
+            ..WindowedUsageFacts::default()
         };
     };
 
-    let mut facts = CodexCombinedUsageFacts::default();
+    let mut facts = WindowedUsageFacts::default();
     match run_codex_usage_json_command(
         &binary_path,
         &[
@@ -2011,11 +2529,11 @@ fn codex_weekly_tokens_from_json(value: &Value) -> Option<u64> {
         })
 }
 
-fn codex_quota_from_official_json(value: &Value) -> CodexCombinedUsageFacts {
+fn codex_quota_from_official_json(value: &Value) -> WindowedUsageFacts {
     let Some(official) = value.get("official_codex") else {
-        return CodexCombinedUsageFacts::default();
+        return WindowedUsageFacts::default();
     };
-    CodexCombinedUsageFacts {
+    WindowedUsageFacts {
         five_hour_remaining_percent: official
             .get("primary_used_percent")
             .and_then(Value::as_f64)
@@ -2024,7 +2542,7 @@ fn codex_quota_from_official_json(value: &Value) -> CodexCombinedUsageFacts {
             .get("secondary_used_percent")
             .and_then(Value::as_f64)
             .map(remaining_percent_from_used),
-        ..CodexCombinedUsageFacts::default()
+        ..WindowedUsageFacts::default()
     }
 }
 
@@ -2032,8 +2550,10 @@ fn remaining_percent_from_used(used_percent: f64) -> u64 {
     (100.0 - used_percent).clamp(0.0, 100.0).round() as u64
 }
 
-fn agent_usage_refresh_config_from_session_config_env() -> AgentUsageRefreshConfig {
-    let Some(config) = normalized_session_config_from_env() else {
+fn agent_usage_refresh_config_from_status_cache_path(
+    status_cache_path: &Path,
+) -> AgentUsageRefreshConfig {
+    let Some(config) = normalized_session_config_for_status_cache_path(status_cache_path) else {
         return AgentUsageRefreshConfig::default();
     };
     agent_usage_refresh_config_from_normalized_config(&config)
@@ -2043,12 +2563,21 @@ fn agent_usage_refresh_config_from_normalized_config(config: &Value) -> AgentUsa
     AgentUsageRefreshConfig {
         widgets: agent_usage_widget_names_from_config(&config),
         claude_periods: agent_usage_periods_from_config(&config, "zellij_claude_usage_periods"),
-        opencode_periods: agent_usage_periods_from_config(&config, "zellij_opencode_usage_periods"),
     }
 }
 
 fn normalized_session_config_from_env() -> Option<Value> {
     let path = session_config_path_from_env()?;
+    normalized_session_config_from_path(&path)
+}
+
+fn normalized_session_config_for_status_cache_path(status_cache_path: &Path) -> Option<Value> {
+    normalized_session_config_from_status_cache_path(status_cache_path)
+        .or_else(normalized_session_config_from_env)
+}
+
+fn normalized_session_config_from_status_cache_path(status_cache_path: &Path) -> Option<Value> {
+    let path = session_config_path_from_values(None, Some(status_cache_path.to_path_buf()))?;
     normalized_session_config_from_path(&path)
 }
 
@@ -2060,8 +2589,10 @@ fn normalized_session_config_from_path(path: &Path) -> Option<Value> {
         .cloned()
 }
 
-fn agent_usage_widget_settings_from_session_config_env() -> AgentUsageWidgetSettings {
-    let Some(config) = normalized_session_config_from_env() else {
+fn agent_usage_widget_settings_from_status_cache_path(
+    status_cache_path: &Path,
+) -> AgentUsageWidgetSettings {
+    let Some(config) = normalized_session_config_for_status_cache_path(status_cache_path) else {
         return AgentUsageWidgetSettings::default();
     };
     AgentUsageWidgetSettings {
@@ -2073,17 +2604,21 @@ fn agent_usage_widget_settings_from_session_config_env() -> AgentUsageWidgetSett
         codex_display: config
             .get("zellij_codex_usage_display")
             .and_then(Value::as_str)
-            .map(CodexUsageDisplay::parse)
-            .unwrap_or(CodexUsageDisplay::Both),
+            .map(WindowedUsageDisplay::parse)
+            .unwrap_or(WindowedUsageDisplay::Both),
+        opencode_go_display: config
+            .get("zellij_opencode_go_usage_display")
+            .and_then(Value::as_str)
+            .map(WindowedUsageDisplay::parse)
+            .unwrap_or(WindowedUsageDisplay::Both),
         claude_periods: agent_usage_periods_from_config(&config, "zellij_claude_usage_periods"),
-        opencode_periods: agent_usage_periods_from_config(&config, "zellij_opencode_usage_periods"),
     }
 }
 
-fn codex_usage_widget_enabled_from_session_config_env() -> bool {
-    normalized_session_config_from_env()
+fn usage_widget_enabled_from_status_cache_path(status_cache_path: &Path, widget: &str) -> bool {
+    normalized_session_config_for_status_cache_path(status_cache_path)
         .and_then(|config| agent_usage_widget_names_from_config(&config))
-        .is_some_and(|widgets| widgets.contains("codex_usage"))
+        .is_some_and(|widgets| widgets.contains(widget))
 }
 
 fn agent_usage_widget_names_from_config(config: &Value) -> Option<BTreeSet<String>> {
@@ -2264,22 +2799,17 @@ fn print_optional_zjstatus_segment(segment: String) {
 fn parse_agent_usage_provider(raw: &str) -> Option<AgentUsageProvider> {
     match raw.trim() {
         "claude" => Some(AgentUsageProvider::Claude),
-        "opencode" => Some(AgentUsageProvider::Opencode),
         _ => None,
     }
 }
 
-fn agent_usage_binary(provider: AgentUsageProvider) -> &'static str {
-    match provider {
-        AgentUsageProvider::Claude => "tu",
-        AgentUsageProvider::Opencode => "ccusage-opencode",
-    }
+fn agent_usage_binary(_provider: AgentUsageProvider) -> &'static str {
+    "tu"
 }
 
 fn default_agent_usage_target_for_provider(provider: AgentUsageProvider) -> AgentUsageTarget {
     match provider {
         AgentUsageProvider::Claude => CLAUDE_USAGE_TARGET,
-        AgentUsageProvider::Opencode => OPENCODE_USAGE_TARGET,
     }
 }
 
@@ -2301,24 +2831,6 @@ const CLAUDE_MONTHLY_USAGE_TARGET: AgentUsageTarget = AgentUsageTarget {
     cache_key: "claude_monthly",
     label: "claude|mon",
 };
-const OPENCODE_USAGE_TARGET: AgentUsageTarget = AgentUsageTarget {
-    provider: AgentUsageProvider::Opencode,
-    period: AgentUsagePeriod::Daily,
-    cache_key: "opencode",
-    label: "oc|d",
-};
-const OPENCODE_DAILY_USAGE_TARGET: AgentUsageTarget = AgentUsageTarget {
-    provider: AgentUsageProvider::Opencode,
-    period: AgentUsagePeriod::Daily,
-    cache_key: "opencode_daily",
-    label: "oc|d",
-};
-const OPENCODE_MONTHLY_USAGE_TARGET: AgentUsageTarget = AgentUsageTarget {
-    provider: AgentUsageProvider::Opencode,
-    period: AgentUsagePeriod::Monthly,
-    cache_key: "opencode_monthly",
-    label: "oc|mon",
-};
 
 fn agent_usage_target_for_provider_period(
     provider: AgentUsageProvider,
@@ -2329,20 +2841,11 @@ fn agent_usage_target_for_provider_period(
         (AgentUsageProvider::Claude, AgentUsagePeriod::Monthly) => {
             Some(CLAUDE_MONTHLY_USAGE_TARGET)
         }
-        (AgentUsageProvider::Opencode, AgentUsagePeriod::Daily) => {
-            Some(OPENCODE_DAILY_USAGE_TARGET)
-        }
-        (AgentUsageProvider::Opencode, AgentUsagePeriod::Monthly) => {
-            Some(OPENCODE_MONTHLY_USAGE_TARGET)
-        }
     }
 }
 
-fn agent_usage_provider_label(provider: AgentUsageProvider) -> &'static str {
-    match provider {
-        AgentUsageProvider::Claude => "claude",
-        AgentUsageProvider::Opencode => "oc",
-    }
+fn agent_usage_provider_label(_provider: AgentUsageProvider) -> &'static str {
+    "claude"
 }
 
 fn configured_agent_usage_targets(
@@ -2350,7 +2853,7 @@ fn configured_agent_usage_targets(
 ) -> Vec<AgentUsageTarget> {
     let mut targets = Vec::new();
     let Some(widgets) = refresh_config.widgets.as_ref() else {
-        targets.extend([CLAUDE_DAILY_USAGE_TARGET, OPENCODE_DAILY_USAGE_TARGET]);
+        targets.push(CLAUDE_DAILY_USAGE_TARGET);
         return targets;
     };
 
@@ -2358,15 +2861,6 @@ fn configured_agent_usage_targets(
         for period in &refresh_config.claude_periods {
             if let Some(target) =
                 agent_usage_target_for_provider_period(AgentUsageProvider::Claude, *period)
-            {
-                push_unique_agent_usage_target(&mut targets, target);
-            }
-        }
-    }
-    if widgets.contains("opencode_usage") {
-        for period in &refresh_config.opencode_periods {
-            if let Some(target) =
-                agent_usage_target_for_provider_period(AgentUsageProvider::Opencode, *period)
             {
                 push_unique_agent_usage_target(&mut targets, target);
             }
@@ -2405,12 +2899,6 @@ fn agent_usage_command_candidates(target: AgentUsageTarget) -> Vec<AgentUsageCom
             ],
             AgentUsageJsonDialect::Tokenusage,
         ),
-        (AgentUsageProvider::Opencode, AgentUsagePeriod::Daily) => {
-            (vec!["daily", "--json"], AgentUsageJsonDialect::Ccusage)
-        }
-        (AgentUsageProvider::Opencode, AgentUsagePeriod::Monthly) => {
-            (vec!["monthly", "--json"], AgentUsageJsonDialect::Ccusage)
-        }
     };
     vec![AgentUsageCommand {
         binary: agent_usage_binary(target.provider),
@@ -2447,31 +2935,10 @@ fn agent_usage_facts_from_json(
         return None;
     };
     let selected = match dialect {
-        AgentUsageJsonDialect::Ccusage => ccusage_agent_usage_value(&value),
         AgentUsageJsonDialect::Tokenusage => tokenusage_agent_usage_value(target.period, &value),
     };
 
     agent_usage_facts_from_usage_value(selected)
-}
-
-fn ccusage_agent_usage_value(value: &Value) -> &Value {
-    value
-        .get("blocks")
-        .and_then(Value::as_array)
-        .and_then(|blocks| {
-            blocks
-                .iter()
-                .find(|block| {
-                    block
-                        .get("isActive")
-                        .or_else(|| block.get("is_active"))
-                        .and_then(Value::as_bool)
-                        == Some(true)
-                })
-                .or_else(|| blocks.first())
-        })
-        .or_else(|| value.get("block"))
-        .unwrap_or(value)
 }
 
 fn tokenusage_agent_usage_value(period: AgentUsagePeriod, value: &Value) -> &Value {
@@ -2595,11 +3062,15 @@ fn format_scaled_agent_usage_count(value: f64, suffix: &str) -> String {
     } else {
         format!("{value:.2}")
     };
-    let trimmed = raw.trim_end_matches('0').trim_end_matches('.');
+    let trimmed = if raw.contains('.') {
+        raw.trim_end_matches('0').trim_end_matches('.')
+    } else {
+        raw.as_str()
+    };
     format!("{trimmed}{suffix}")
 }
 
-fn format_codex_quota_percent(percent: u64) -> String {
+fn format_quota_percent(percent: u64) -> String {
     format!("{}%", percent.min(100))
 }
 
@@ -3860,7 +4331,7 @@ mod tests {
         let old_cache = build_status_bar_cache_at(
             status_cache_test_status_bus(),
             json!({
-                "opencode_daily": {
+                "claude_daily": {
                     "summary": "42k $0.42",
                     "tokens": "42k",
                     "cost": "$0.42"
@@ -3881,8 +4352,8 @@ mod tests {
         let new_cache = read_status_bar_cache_value(&new_cache_path).unwrap();
 
         assert_eq!(
-            render_status_cache_widget(&new_cache, "opencode_usage").unwrap(),
-            " [oc d 42k $0.42]"
+            render_status_cache_widget(&new_cache, "claude_usage").unwrap(),
+            " [claude d 42k $0.42]"
         );
         assert_eq!(
             new_cache
@@ -3905,7 +4376,7 @@ mod tests {
         let old_cache = build_status_bar_cache_at(
             status_cache_test_status_bus(),
             json!({
-                "opencode_daily": {
+                "claude_daily": {
                     "summary": "42k $0.42",
                     "tokens": "42k",
                     "cost": "$0.42"
@@ -3926,7 +4397,7 @@ mod tests {
         let new_cache = read_status_bar_cache_value(&new_cache_path).unwrap();
 
         assert_eq!(
-            render_status_cache_widget(&new_cache, "opencode_usage").unwrap(),
+            render_status_cache_widget(&new_cache, "claude_usage").unwrap(),
             ""
         );
         assert!(
@@ -3985,7 +4456,37 @@ mod tests {
         );
     }
 
-    // Regression: agent usage refresh must honor grouped period settings from the launch snapshot when direct env has been stripped.
+    // Regression: refresh commands receive an explicit cache path from the plugin, so they must recover the sibling config snapshot without relying on ambient env.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn usage_widget_settings_can_be_recovered_from_cache_path() {
+        let temp = tempfile::tempdir().unwrap();
+        let cache_path = temp.path().join("window").join("status_bar_cache.json");
+        let config_path = temp.path().join("window").join("config_snapshot.json");
+        fs::create_dir_all(config_path.parent().unwrap()).unwrap();
+        fs::write(
+            &config_path,
+            json!({
+                "normalized_config": {
+                    "zellij_widget_tray": ["opencode_go_usage"],
+                    "zellij_opencode_go_usage_display": "quota"
+                }
+            })
+            .to_string(),
+        )
+        .unwrap();
+
+        assert!(usage_widget_enabled_from_status_cache_path(
+            &cache_path,
+            "opencode_go_usage"
+        ));
+        assert_eq!(
+            agent_usage_widget_settings_from_status_cache_path(&cache_path).opencode_go_display,
+            WindowedUsageDisplay::Quota
+        );
+    }
+
+    // Regression: agent usage refresh must honor grouped Claude period settings from the launch snapshot while dedicated windowed widgets use separate refresh paths.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn agent_usage_refresh_config_reads_grouped_periods_from_snapshot_path() {
@@ -3995,9 +4496,8 @@ mod tests {
             &config_path,
             json!({
                 "normalized_config": {
-                    "zellij_widget_tray": ["codex_usage", "claude_usage", "opencode_usage"],
-                    "zellij_claude_usage_periods": ["day"],
-                    "zellij_opencode_usage_periods": ["day", "month"],
+                    "zellij_widget_tray": ["codex_usage", "claude_usage", "opencode_go_usage"],
+                    "zellij_claude_usage_periods": ["day", "month"],
                     "zellij_agent_usage_display": "both"
                 }
             })
@@ -4009,11 +4509,7 @@ mod tests {
 
         assert_eq!(
             configured_agent_usage_targets(&refresh_config),
-            vec![
-                CLAUDE_DAILY_USAGE_TARGET,
-                OPENCODE_DAILY_USAGE_TARGET,
-                OPENCODE_MONTHLY_USAGE_TARGET,
-            ]
+            vec![CLAUDE_DAILY_USAGE_TARGET, CLAUDE_MONTHLY_USAGE_TARGET]
         );
     }
 
@@ -4074,7 +4570,7 @@ mod tests {
                 "extensions": {"ai_pane_activity": []}
             },
             "agent_usage": {
-                "opencode_daily": {
+                "claude_daily": {
                     "summary": "94k $0.113 2h17m",
                     "tokens": "94k",
                     "cost": "$0.113",
@@ -4086,29 +4582,29 @@ mod tests {
         assert_eq!(
             render_status_cache_widget_with_agent_usage_display(
                 &cache,
-                "opencode_usage",
+                "claude_usage",
                 AgentUsageDisplay::Both
             )
             .unwrap(),
-            " [oc d 94k $0.113 2h17m]"
+            " [claude d 94k $0.113 2h17m]"
         );
         assert_eq!(
             render_status_cache_widget_with_agent_usage_display(
                 &cache,
-                "opencode_usage",
+                "claude_usage",
                 AgentUsageDisplay::Tokens
             )
             .unwrap(),
-            " [oc d 94k]"
+            " [claude d 94k]"
         );
         assert_eq!(
             render_status_cache_widget_with_agent_usage_display(
                 &cache,
-                "opencode_usage",
+                "claude_usage",
                 AgentUsageDisplay::Money
             )
             .unwrap(),
-            " [oc d $0.113]"
+            " [claude d $0.113]"
         );
     }
 
@@ -4143,7 +4639,7 @@ mod tests {
                 &cache,
                 "codex_usage",
                 &AgentUsageWidgetSettings {
-                    codex_display: CodexUsageDisplay::Both,
+                    codex_display: WindowedUsageDisplay::Both,
                     ..AgentUsageWidgetSettings::default()
                 },
             )
@@ -4155,7 +4651,7 @@ mod tests {
                 &cache,
                 "codex_usage",
                 &AgentUsageWidgetSettings {
-                    codex_display: CodexUsageDisplay::Token,
+                    codex_display: WindowedUsageDisplay::Token,
                     ..AgentUsageWidgetSettings::default()
                 },
             )
@@ -4167,12 +4663,76 @@ mod tests {
                 &cache,
                 "codex_usage",
                 &AgentUsageWidgetSettings {
-                    codex_display: CodexUsageDisplay::Quota,
+                    codex_display: WindowedUsageDisplay::Quota,
                     ..AgentUsageWidgetSettings::default()
                 },
             )
             .unwrap(),
             " [codex 5h|49% wk|80%]"
+        );
+    }
+
+    // Defends: OpenCode Go usage renders the same compact 5h/week token/quota contract as Codex with the short `go` label.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn status_cache_opencode_go_usage_renders_5h_week_display_modes() {
+        let cache = json!({
+            "schema_version": 1,
+            "updated_at_unix_seconds": 10,
+            "status_bus": {
+                "schema_version": 1,
+                "active_tab_position": 0,
+                "workspace": null,
+                "managed_panes": {"editor_pane_id": null, "sidebar_pane_id": null},
+                "focus_context": "other",
+                "layout": {"active_swap_layout_name": null, "sidebar_collapsed": null},
+                "sidebar_yazi": null,
+                "transient_panes": {"popup": null, "menu": null},
+                "extensions": {"ai_pane_activity": []}
+            },
+            "opencode_go_usage": {
+                "five_hour_tokens": 138424632u64,
+                "weekly_tokens": 1335519960u64,
+                "five_hour_remaining_percent": 49u64,
+                "weekly_remaining_percent": 80u64
+            }
+        });
+
+        assert_eq!(
+            render_status_cache_widget_with_agent_usage_settings(
+                &cache,
+                "opencode_go_usage",
+                &AgentUsageWidgetSettings {
+                    opencode_go_display: WindowedUsageDisplay::Both,
+                    ..AgentUsageWidgetSettings::default()
+                },
+            )
+            .unwrap(),
+            " [go 5h|138M|49% wk|1.34B|80%]"
+        );
+        assert_eq!(
+            render_status_cache_widget_with_agent_usage_settings(
+                &cache,
+                "opencode_go_usage",
+                &AgentUsageWidgetSettings {
+                    opencode_go_display: WindowedUsageDisplay::Token,
+                    ..AgentUsageWidgetSettings::default()
+                },
+            )
+            .unwrap(),
+            " [go 5h|138M wk|1.34B]"
+        );
+        assert_eq!(
+            render_status_cache_widget_with_agent_usage_settings(
+                &cache,
+                "opencode_go_usage",
+                &AgentUsageWidgetSettings {
+                    opencode_go_display: WindowedUsageDisplay::Quota,
+                    ..AgentUsageWidgetSettings::default()
+                },
+            )
+            .unwrap(),
+            " [go 5h|49% wk|80%]"
         );
     }
 
@@ -4274,12 +4834,116 @@ exit 64
                 &cache,
                 "codex_usage",
                 &AgentUsageWidgetSettings {
-                    codex_display: CodexUsageDisplay::Both,
+                    codex_display: WindowedUsageDisplay::Both,
                     ..AgentUsageWidgetSettings::default()
                 },
             )
             .unwrap(),
             " [codex 5h|138M|49% wk|1.34B|80%]"
+        );
+    }
+
+    fn write_opencode_go_usage_test_db(path: &Path, now: u64) {
+        let connection = Connection::open(path).unwrap();
+        connection
+            .execute_batch(
+                r#"
+                CREATE TABLE message (
+                    id text PRIMARY KEY,
+                    session_id text NOT NULL,
+                    time_created integer NOT NULL,
+                    time_updated integer NOT NULL,
+                    data text NOT NULL
+                );
+                "#,
+            )
+            .unwrap();
+        let rows = [
+            (
+                "within_five_hour",
+                now.saturating_sub(60),
+                r#"{"role":"assistant","providerID":"opencode-go","cost":3.0,"tokens":{"input":1000000,"output":2000000,"reasoning":3000000,"cache":{"read":4000000,"write":5000000}}}"#,
+            ),
+            (
+                "within_week",
+                now.saturating_sub(6 * 60 * 60),
+                r#"{"role":"assistant","providerID":"opencode-go","cost":12.0,"tokens":{"total":85000000}}"#,
+            ),
+            (
+                "wrong_provider",
+                now.saturating_sub(60),
+                r#"{"role":"assistant","providerID":"opencode","cost":99.0,"tokens":{"total":900000000}}"#,
+            ),
+            (
+                "wrong_role",
+                now.saturating_sub(60),
+                r#"{"role":"user","providerID":"opencode-go","cost":99.0,"tokens":{"total":900000000}}"#,
+            ),
+        ];
+        for (id, created_at, data) in rows {
+            let created_at = unix_millis_from_seconds_saturating(created_at);
+            connection
+                .execute(
+                    "INSERT INTO message (id, session_id, time_created, time_updated, data) VALUES (?1, 'session', ?2, ?2, ?3)",
+                    rusqlite::params![id, created_at, data],
+                )
+                .unwrap();
+        }
+    }
+
+    // Defends: OpenCode Go usage reads only assistant rows from OpenCode's SQLite store and converts official dollar limits to remaining percentages.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn opencode_go_sqlite_reader_filters_provider_and_computes_quota_windows() {
+        let temp = tempfile::tempdir().unwrap();
+        let db_path = temp.path().join("opencode.db");
+        let now = 2_000_000;
+        write_opencode_go_usage_test_db(&db_path, now);
+
+        let facts = collect_opencode_go_usage_facts_from_dbs(&[db_path], now);
+
+        assert_eq!(facts.five_hour_tokens, Some(15_000_000));
+        assert_eq!(facts.weekly_tokens, Some(100_000_000));
+        assert_eq!(facts.five_hour_remaining_percent, Some(75));
+        assert_eq!(facts.weekly_remaining_percent, Some(50));
+    }
+
+    // Regression: the dedicated OpenCode Go refresh writes a shared cache that new windows hydrate before rendering.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn status_cache_opencode_go_usage_refresh_writes_shared_combined_cache() {
+        let temp = tempfile::tempdir().unwrap();
+        let db_path = temp.path().join("opencode.db");
+        let now = 2_000_000;
+        write_opencode_go_usage_test_db(&db_path, now);
+        let status_cache_path = temp
+            .path()
+            .join("state")
+            .join("sessions")
+            .join("window_a")
+            .join("status_bar_cache.json");
+        let shared_path =
+            opencode_go_usage_shared_cache_path_from_status_cache_path(&status_cache_path).unwrap();
+
+        let refreshed =
+            refresh_opencode_go_usage_shared_cache_from_dbs(&shared_path, &[db_path], now, 1_800)
+                .unwrap();
+        let mut cache =
+            build_status_bar_cache_at(status_cache_test_status_bus(), json!({}), None, now);
+        hydrate_status_cache_opencode_go_usage(&mut cache, &status_cache_path);
+
+        assert!(refreshed);
+        assert_eq!(
+            render_status_cache_widget_with_agent_usage_settings(
+                &cache,
+                "opencode_go_usage",
+                &AgentUsageWidgetSettings {
+                    opencode_go_display: WindowedUsageDisplay::Both,
+                    ..AgentUsageWidgetSettings::default()
+                },
+            )
+            .unwrap(),
+            " [go 5h|15M|75% wk|100M|50%]"
         );
     }
 
@@ -4352,7 +5016,6 @@ exit 64
         let settings = AgentUsageWidgetSettings {
             display: AgentUsageDisplay::Both,
             claude_periods: vec![AgentUsagePeriod::Daily, AgentUsagePeriod::Monthly],
-            opencode_periods: vec![AgentUsagePeriod::Daily],
             ..AgentUsageWidgetSettings::default()
         };
 
@@ -4420,7 +5083,7 @@ exit 64
             &refresh_config,
             1_000,
             120,
-            Duration::from_secs(1),
+            Duration::from_secs(3),
         );
 
         assert!(refreshed);
@@ -4501,12 +5164,11 @@ esac
             &refresh_config,
             1_000,
             120,
-            Duration::from_secs(1),
+            Duration::from_secs(3),
         );
         let settings = AgentUsageWidgetSettings {
             display: AgentUsageDisplay::Both,
             claude_periods: refresh_config.claude_periods.clone(),
-            opencode_periods: vec![AgentUsagePeriod::Daily],
             ..AgentUsageWidgetSettings::default()
         };
 
@@ -4640,24 +5302,6 @@ esac
         );
     }
 
-    // Defends: ccusage-style JSON derives compact plain text while template formatting owns color.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[test]
-    fn ccusage_json_uses_active_block_when_present() {
-        let summary = agent_usage_summary_from_json(
-            OPENCODE_USAGE_TARGET,
-            AgentUsageJsonDialect::Ccusage,
-            r#"{"blocks":[{"isActive":false,"totalTokens":10},{"isActive":true,"totalTokens":123456,"costUSD":1.234,"projection":{"remainingMinutes":137}}]}"#,
-        );
-
-        assert_eq!(summary, "123k $1.23 2h17m");
-        assert_eq!(
-            render_agent_usage_widget("oc|d", &summary),
-            " [oc|d 123k $1.23 2h17m]"
-        );
-        assert!(!render_agent_usage_widget("oc|d", &summary).contains("#["));
-    }
-
     // Regression: tokenusage monthly JSON includes all-history top-level totals; Yazelix must render the current row instead.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
@@ -4680,14 +5324,6 @@ esac
         );
         assert_eq!(
             parse_agent_usage_provider("codex").map(agent_usage_binary),
-            None
-        );
-        assert_eq!(
-            parse_agent_usage_provider("opencode").map(agent_usage_binary),
-            Some("ccusage-opencode")
-        );
-        assert_eq!(
-            parse_agent_usage_provider("ccusage-opencode").map(agent_usage_binary),
             None
         );
     }

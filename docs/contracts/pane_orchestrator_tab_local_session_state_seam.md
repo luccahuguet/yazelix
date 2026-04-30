@@ -233,11 +233,11 @@ contract. This slice is only about the read contract.
 8. Agent-usage facts are produced by throttled cache writers with provider
    command timeouts. New windows may seed their first paint from recent sibling
    session cache facts, but zjstatus usage widgets must never run usage
-   providers directly. The grouped provider widgets (`claude_usage` and
-   `opencode_usage`) render configured period lists as one compact segment so
-   the provider name is not repeated for day/month facts. The `codex_usage`
-   widget reads a shared cross-window cache and renders only the 5-hour and
-   weekly token/quota windows.
+   providers directly. The grouped `claude_usage` widget renders configured
+   period lists as one compact segment so the provider name is not repeated for
+   day/month facts. The `codex_usage` and `opencode_go_usage` widgets read
+   shared cross-window caches and render only the 5-hour and weekly token/quota
+   windows.
 
 ## Verification
 

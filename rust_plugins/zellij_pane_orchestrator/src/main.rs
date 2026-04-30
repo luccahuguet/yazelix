@@ -57,6 +57,7 @@ struct State {
     status_bar_cache_last_payload: Option<String>,
     status_bar_agent_usage_next_refresh: Option<Instant>,
     status_bar_codex_usage_next_refresh: Option<Instant>,
+    status_bar_opencode_go_usage_next_refresh: Option<Instant>,
     permissions_granted: bool,
 }
 
@@ -102,6 +103,7 @@ impl ZellijPlugin for State {
         self.schedule_initial_screen_saver_timeout();
         self.schedule_initial_status_bar_agent_usage_refresh();
         self.schedule_initial_status_bar_codex_usage_refresh();
+        self.schedule_initial_status_bar_opencode_go_usage_refresh();
     }
 
     fn update(&mut self, event: Event) -> bool {
@@ -150,6 +152,7 @@ impl ZellijPlugin for State {
                 self.handle_screen_saver_timer();
                 self.handle_status_bar_agent_usage_timer();
                 self.handle_status_bar_codex_usage_timer();
+                self.handle_status_bar_opencode_go_usage_timer();
             }
             Event::PaneClosed(pane_id) => self.handle_screen_saver_pane_closed(pane_id),
             Event::CommandPaneExited(terminal_id, _, _) => {

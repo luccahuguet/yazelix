@@ -11,14 +11,14 @@ pub const WIDGET_TERM: &str = "term";
 pub const WIDGET_WORKSPACE: &str = "workspace";
 pub const WIDGET_CLAUDE_USAGE: &str = "claude_usage";
 pub const WIDGET_CODEX_USAGE: &str = "codex_usage";
-pub const WIDGET_OPENCODE_USAGE: &str = "opencode_usage";
+pub const WIDGET_OPENCODE_GO_USAGE: &str = "opencode_go_usage";
 pub const WIDGET_CPU: &str = "cpu";
 pub const WIDGET_RAM: &str = "ram";
 
 pub const COMMAND_WORKSPACE: &str = "{command_workspace}";
 pub const COMMAND_CLAUDE_USAGE: &str = "{command_claude_usage}";
 pub const COMMAND_CODEX_USAGE: &str = "{command_codex_usage}";
-pub const COMMAND_OPENCODE_USAGE: &str = "{command_opencode_usage}";
+pub const COMMAND_OPENCODE_GO_USAGE: &str = "{command_opencode_go_usage}";
 pub const COMMAND_CPU: &str = "{command_cpu}";
 pub const COMMAND_RAM: &str = "{command_ram}";
 pub const COMMAND_VERSION: &str = "{command_version}";
@@ -109,7 +109,7 @@ fn render_widget(widget: &str, request: &BarRenderRequest) -> Result<String, Bar
         WIDGET_WORKSPACE => Ok(COMMAND_WORKSPACE.to_string()),
         WIDGET_CLAUDE_USAGE => Ok(COMMAND_CLAUDE_USAGE.to_string()),
         WIDGET_CODEX_USAGE => Ok(COMMAND_CODEX_USAGE.to_string()),
-        WIDGET_OPENCODE_USAGE => Ok(COMMAND_OPENCODE_USAGE.to_string()),
+        WIDGET_OPENCODE_GO_USAGE => Ok(COMMAND_OPENCODE_GO_USAGE.to_string()),
         WIDGET_CPU => Ok(COMMAND_CPU.to_string()),
         WIDGET_RAM => Ok(COMMAND_RAM.to_string()),
         _ => Err(BarRenderError::InvalidWidgetTrayEntry {
@@ -173,13 +173,13 @@ mod tests {
         let rendered = render_widget_tray_segment(&render_request(&[
             "claude_usage",
             "codex_usage",
-            "opencode_usage",
+            "opencode_go_usage",
         ]))
         .unwrap();
 
         assert_eq!(
             rendered,
-            "{command_claude_usage}{command_codex_usage}{command_opencode_usage}"
+            "{command_claude_usage}{command_codex_usage}{command_opencode_go_usage}"
         );
     }
 
