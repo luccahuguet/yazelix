@@ -38,8 +38,10 @@ const OPENCODE_GO_USAGE_LOCK_STALE_AFTER_SECONDS: u64 = 300;
 const OPENCODE_GO_PROVIDER_ID: &str = "opencode-go";
 const OPENCODE_GO_FIVE_HOUR_SECONDS: u64 = 5 * 60 * 60;
 const OPENCODE_GO_WEEK_SECONDS: u64 = 7 * 24 * 60 * 60;
+const OPENCODE_GO_MONTH_SECONDS: u64 = 30 * 24 * 60 * 60;
 const OPENCODE_GO_FIVE_HOUR_LIMIT_USD: f64 = 12.0;
 const OPENCODE_GO_WEEKLY_LIMIT_USD: f64 = 30.0;
+const OPENCODE_GO_MONTHLY_LIMIT_USD: f64 = 60.0;
 const EDITOR_PANE_NAME: &str = "editor";
 pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
     "pipe",
@@ -187,6 +189,7 @@ struct AgentUsageWidgetSettings {
     display: AgentUsageDisplay,
     codex_display: WindowedUsageDisplay,
     opencode_go_display: WindowedUsageDisplay,
+    opencode_go_periods: Vec<WindowedUsagePeriod>,
     claude_periods: Vec<AgentUsagePeriod>,
 }
 
@@ -196,6 +199,7 @@ impl Default for AgentUsageWidgetSettings {
             display: AgentUsageDisplay::Tokens,
             codex_display: WindowedUsageDisplay::Both,
             opencode_go_display: WindowedUsageDisplay::Both,
+            opencode_go_periods: default_opencode_go_usage_periods(),
             claude_periods: vec![AgentUsagePeriod::Daily],
         }
     }
@@ -220,18 +224,24 @@ impl Default for AgentUsageRefreshConfig {
 struct WindowedUsageFacts {
     five_hour_tokens: Option<u64>,
     weekly_tokens: Option<u64>,
+    monthly_tokens: Option<u64>,
     five_hour_remaining_percent: Option<u64>,
     weekly_remaining_percent: Option<u64>,
+    monthly_remaining_percent: Option<u64>,
     error: Option<String>,
 }
 
 impl WindowedUsageFacts {
     fn has_tokens(&self) -> bool {
-        self.five_hour_tokens.is_some() || self.weekly_tokens.is_some()
+        self.five_hour_tokens.is_some()
+            || self.weekly_tokens.is_some()
+            || self.monthly_tokens.is_some()
     }
 
     fn has_quota(&self) -> bool {
-        self.five_hour_remaining_percent.is_some() || self.weekly_remaining_percent.is_some()
+        self.five_hour_remaining_percent.is_some()
+            || self.weekly_remaining_percent.is_some()
+            || self.monthly_remaining_percent.is_some()
     }
 
     fn is_empty(&self) -> bool {
@@ -300,6 +310,40 @@ impl AgentUsagePeriod {
             Self::Monthly => "mon",
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum WindowedUsagePeriod {
+    FiveHour,
+    Weekly,
+    Monthly,
+}
+
+impl WindowedUsagePeriod {
+    fn parse_config(raw: &str) -> Option<Self> {
+        match raw.trim() {
+            "5h" | "five_hour" | "five-hour" | "rolling" => Some(Self::FiveHour),
+            "week" | "weekly" | "wk" => Some(Self::Weekly),
+            "month" | "monthly" | "mon" | "mo" => Some(Self::Monthly),
+            _ => None,
+        }
+    }
+
+    fn short_label(self) -> &'static str {
+        match self {
+            Self::FiveHour => "5h",
+            Self::Weekly => "wk",
+            Self::Monthly => "mo",
+        }
+    }
+}
+
+fn default_windowed_usage_periods() -> &'static [WindowedUsagePeriod] {
+    &[WindowedUsagePeriod::FiveHour, WindowedUsagePeriod::Weekly]
+}
+
+fn default_opencode_go_usage_periods() -> Vec<WindowedUsagePeriod> {
+    default_windowed_usage_periods().to_vec()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1640,12 +1684,14 @@ fn render_status_cache_widget_with_agent_usage_settings(
             cache,
             "codex_usage",
             "codex",
+            default_windowed_usage_periods(),
             settings.codex_display,
         )),
         "opencode_go_usage" => Ok(render_windowed_usage_segment(
             cache,
             "opencode_go_usage",
             "go",
+            settings.opencode_go_periods.as_slice(),
             settings.opencode_go_display,
         )),
         _ => Err(CoreError::usage(format!(
@@ -1696,13 +1742,14 @@ fn render_windowed_usage_segment(
     cache: &Value,
     cache_key: &str,
     label: &str,
+    periods: &[WindowedUsagePeriod],
     display: WindowedUsageDisplay,
 ) -> String {
     let Some(entry) = cache.get(cache_key) else {
         return String::new();
     };
     let facts = windowed_usage_facts_from_cache_entry(entry);
-    let summary = render_windowed_usage_summary(&facts, display);
+    let summary = render_windowed_usage_summary(&facts, periods, display);
     if summary.is_empty() {
         String::new()
     } else {
@@ -1712,24 +1759,23 @@ fn render_windowed_usage_segment(
 
 fn render_windowed_usage_summary(
     facts: &WindowedUsageFacts,
+    periods: &[WindowedUsagePeriod],
     display: WindowedUsageDisplay,
 ) -> String {
     let mut parts = Vec::new();
-    if let Some(part) = render_windowed_usage_window(
-        "5h",
-        facts.five_hour_tokens,
-        facts.five_hour_remaining_percent,
-        display,
-    ) {
-        parts.push(part);
-    }
-    if let Some(part) = render_windowed_usage_window(
-        "wk",
-        facts.weekly_tokens,
-        facts.weekly_remaining_percent,
-        display,
-    ) {
-        parts.push(part);
+    for period in periods {
+        let (tokens, remaining_percent) = match period {
+            WindowedUsagePeriod::FiveHour => {
+                (facts.five_hour_tokens, facts.five_hour_remaining_percent)
+            }
+            WindowedUsagePeriod::Weekly => (facts.weekly_tokens, facts.weekly_remaining_percent),
+            WindowedUsagePeriod::Monthly => (facts.monthly_tokens, facts.monthly_remaining_percent),
+        };
+        if let Some(part) =
+            render_windowed_usage_window(period.short_label(), tokens, remaining_percent, display)
+        {
+            parts.push(part);
+        }
     }
     parts.join(" ")
 }
@@ -1767,11 +1813,15 @@ fn windowed_usage_facts_from_cache_entry(entry: &Value) -> WindowedUsageFacts {
     WindowedUsageFacts {
         five_hour_tokens: entry.get("five_hour_tokens").and_then(Value::as_u64),
         weekly_tokens: entry.get("weekly_tokens").and_then(Value::as_u64),
+        monthly_tokens: entry.get("monthly_tokens").and_then(Value::as_u64),
         five_hour_remaining_percent: entry
             .get("five_hour_remaining_percent")
             .and_then(Value::as_u64),
         weekly_remaining_percent: entry
             .get("weekly_remaining_percent")
+            .and_then(Value::as_u64),
+        monthly_remaining_percent: entry
+            .get("monthly_remaining_percent")
             .and_then(Value::as_u64),
         error: entry
             .get("error")
@@ -2046,11 +2096,17 @@ fn refresh_opencode_go_usage_shared_cache_from_dbs(
     if let Some(tokens) = facts.weekly_tokens {
         opencode_go.insert("weekly_tokens".to_string(), json!(tokens));
     }
+    if let Some(tokens) = facts.monthly_tokens {
+        opencode_go.insert("monthly_tokens".to_string(), json!(tokens));
+    }
     if let Some(percent) = facts.five_hour_remaining_percent {
         opencode_go.insert("five_hour_remaining_percent".to_string(), json!(percent));
     }
     if let Some(percent) = facts.weekly_remaining_percent {
         opencode_go.insert("weekly_remaining_percent".to_string(), json!(percent));
+    }
+    if let Some(percent) = facts.monthly_remaining_percent {
+        opencode_go.insert("monthly_remaining_percent".to_string(), json!(percent));
     }
     if let Some(error) = facts.error.as_deref().filter(|value| !value.is_empty()) {
         opencode_go.insert("error".to_string(), json!(error));
@@ -2176,6 +2232,13 @@ struct OpenCodeGoUsageWindow {
     cost_usd: f64,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+struct OpenCodeGoUsageWindows {
+    five_hour: OpenCodeGoUsageWindow,
+    weekly: OpenCodeGoUsageWindow,
+    monthly: OpenCodeGoUsageWindow,
+}
+
 fn collect_opencode_go_usage_facts_from_dbs(db_paths: &[PathBuf], now: u64) -> WindowedUsageFacts {
     if db_paths.is_empty() {
         return WindowedUsageFacts {
@@ -2186,17 +2249,20 @@ fn collect_opencode_go_usage_facts_from_dbs(db_paths: &[PathBuf], now: u64) -> W
 
     let mut five_hour = OpenCodeGoUsageWindow::default();
     let mut weekly = OpenCodeGoUsageWindow::default();
+    let mut monthly = OpenCodeGoUsageWindow::default();
     let mut opened_any = false;
     let mut first_error = None;
 
     for path in db_paths {
         match collect_opencode_go_usage_windows_from_db(path, now) {
-            Ok((db_five_hour, db_weekly)) => {
+            Ok(db_windows) => {
                 opened_any = true;
-                five_hour.tokens = five_hour.tokens.saturating_add(db_five_hour.tokens);
-                five_hour.cost_usd += db_five_hour.cost_usd;
-                weekly.tokens = weekly.tokens.saturating_add(db_weekly.tokens);
-                weekly.cost_usd += db_weekly.cost_usd;
+                five_hour.tokens = five_hour.tokens.saturating_add(db_windows.five_hour.tokens);
+                five_hour.cost_usd += db_windows.five_hour.cost_usd;
+                weekly.tokens = weekly.tokens.saturating_add(db_windows.weekly.tokens);
+                weekly.cost_usd += db_windows.weekly.cost_usd;
+                monthly.tokens = monthly.tokens.saturating_add(db_windows.monthly.tokens);
+                monthly.cost_usd += db_windows.monthly.cost_usd;
             }
             Err(error) => {
                 if first_error.is_none() {
@@ -2228,6 +2294,13 @@ fn collect_opencode_go_usage_facts_from_dbs(db_paths: &[PathBuf], now: u64) -> W
             OPENCODE_GO_WEEKLY_LIMIT_USD,
         ));
     }
+    if monthly.tokens > 0 || monthly.cost_usd > 0.0 {
+        facts.monthly_tokens = Some(monthly.tokens);
+        facts.monthly_remaining_percent = Some(remaining_percent_from_cost_limit(
+            monthly.cost_usd,
+            OPENCODE_GO_MONTHLY_LIMIT_USD,
+        ));
+    }
     if facts.is_empty() {
         facts.error = Some("OpenCode Go usage unavailable".to_string());
     }
@@ -2237,7 +2310,7 @@ fn collect_opencode_go_usage_facts_from_dbs(db_paths: &[PathBuf], now: u64) -> W
 fn collect_opencode_go_usage_windows_from_db(
     path: &Path,
     now: u64,
-) -> Result<(OpenCodeGoUsageWindow, OpenCodeGoUsageWindow), String> {
+) -> Result<OpenCodeGoUsageWindows, String> {
     let connection = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY)
         .map_err(|error| format!("failed to open OpenCode DB read-only: {error}"))?;
     connection
@@ -2249,7 +2322,13 @@ fn collect_opencode_go_usage_windows_from_db(
     )?;
     let weekly =
         query_opencode_go_usage_window(&connection, now.saturating_sub(OPENCODE_GO_WEEK_SECONDS))?;
-    Ok((five_hour, weekly))
+    let monthly =
+        query_opencode_go_usage_window(&connection, now.saturating_sub(OPENCODE_GO_MONTH_SECONDS))?;
+    Ok(OpenCodeGoUsageWindows {
+        five_hour,
+        weekly,
+        monthly,
+    })
 }
 
 fn query_opencode_go_usage_window(
@@ -2611,6 +2690,10 @@ fn agent_usage_widget_settings_from_status_cache_path(
             .and_then(Value::as_str)
             .map(WindowedUsageDisplay::parse)
             .unwrap_or(WindowedUsageDisplay::Both),
+        opencode_go_periods: windowed_usage_periods_from_config(
+            &config,
+            "zellij_opencode_go_usage_periods",
+        ),
         claude_periods: agent_usage_periods_from_config(&config, "zellij_claude_usage_periods"),
     }
 }
@@ -2649,6 +2732,25 @@ fn agent_usage_periods_from_config(config: &Value, key: &str) -> Vec<AgentUsageP
         .unwrap_or_default();
     if periods.is_empty() {
         vec![AgentUsagePeriod::Daily]
+    } else {
+        periods
+    }
+}
+
+fn windowed_usage_periods_from_config(config: &Value, key: &str) -> Vec<WindowedUsagePeriod> {
+    let periods = config
+        .get(key)
+        .and_then(Value::as_array)
+        .map(|values| {
+            values
+                .iter()
+                .filter_map(Value::as_str)
+                .filter_map(WindowedUsagePeriod::parse_config)
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    if periods.is_empty() {
+        default_opencode_go_usage_periods()
     } else {
         periods
     }
@@ -4469,7 +4571,8 @@ mod tests {
             json!({
                 "normalized_config": {
                     "zellij_widget_tray": ["opencode_go_usage"],
-                    "zellij_opencode_go_usage_display": "quota"
+                    "zellij_opencode_go_usage_display": "quota",
+                    "zellij_opencode_go_usage_periods": ["5h", "month"]
                 }
             })
             .to_string(),
@@ -4480,9 +4583,11 @@ mod tests {
             &cache_path,
             "opencode_go_usage"
         ));
+        let settings = agent_usage_widget_settings_from_status_cache_path(&cache_path);
+        assert_eq!(settings.opencode_go_display, WindowedUsageDisplay::Quota);
         assert_eq!(
-            agent_usage_widget_settings_from_status_cache_path(&cache_path).opencode_go_display,
-            WindowedUsageDisplay::Quota
+            settings.opencode_go_periods,
+            vec![WindowedUsagePeriod::FiveHour, WindowedUsagePeriod::Monthly]
         );
     }
 
@@ -4672,10 +4777,10 @@ mod tests {
         );
     }
 
-    // Defends: OpenCode Go usage renders the same compact 5h/week token/quota contract as Codex with the short `go` label.
+    // Defends: OpenCode Go usage renders configurable 5h/week/month token/quota windows with the short `go` label.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn status_cache_opencode_go_usage_renders_5h_week_display_modes() {
+    fn status_cache_opencode_go_usage_renders_configured_window_display_modes() {
         let cache = json!({
             "schema_version": 1,
             "updated_at_unix_seconds": 10,
@@ -4693,10 +4798,18 @@ mod tests {
             "opencode_go_usage": {
                 "five_hour_tokens": 138424632u64,
                 "weekly_tokens": 1335519960u64,
+                "monthly_tokens": 2220000000u64,
                 "five_hour_remaining_percent": 49u64,
-                "weekly_remaining_percent": 80u64
+                "weekly_remaining_percent": 80u64,
+                "monthly_remaining_percent": 70u64
             }
         });
+
+        let monthly_periods = vec![
+            WindowedUsagePeriod::FiveHour,
+            WindowedUsagePeriod::Weekly,
+            WindowedUsagePeriod::Monthly,
+        ];
 
         assert_eq!(
             render_status_cache_widget_with_agent_usage_settings(
@@ -4715,24 +4828,39 @@ mod tests {
                 &cache,
                 "opencode_go_usage",
                 &AgentUsageWidgetSettings {
-                    opencode_go_display: WindowedUsageDisplay::Token,
+                    opencode_go_periods: monthly_periods.clone(),
+                    opencode_go_display: WindowedUsageDisplay::Both,
                     ..AgentUsageWidgetSettings::default()
                 },
             )
             .unwrap(),
-            " [go 5h|138M wk|1.34B]"
+            " [go 5h|138M|49% wk|1.34B|80% mo|2.22B|70%]"
         );
         assert_eq!(
             render_status_cache_widget_with_agent_usage_settings(
                 &cache,
                 "opencode_go_usage",
                 &AgentUsageWidgetSettings {
+                    opencode_go_periods: monthly_periods.clone(),
+                    opencode_go_display: WindowedUsageDisplay::Token,
+                    ..AgentUsageWidgetSettings::default()
+                },
+            )
+            .unwrap(),
+            " [go 5h|138M wk|1.34B mo|2.22B]"
+        );
+        assert_eq!(
+            render_status_cache_widget_with_agent_usage_settings(
+                &cache,
+                "opencode_go_usage",
+                &AgentUsageWidgetSettings {
+                    opencode_go_periods: monthly_periods,
                     opencode_go_display: WindowedUsageDisplay::Quota,
                     ..AgentUsageWidgetSettings::default()
                 },
             )
             .unwrap(),
-            " [go 5h|49% wk|80%]"
+            " [go 5h|49% wk|80% mo|70%]"
         );
     }
 
@@ -4870,6 +4998,11 @@ exit 64
                 r#"{"role":"assistant","providerID":"opencode-go","cost":12.0,"tokens":{"total":85000000}}"#,
             ),
             (
+                "within_month",
+                now.saturating_sub(8 * 24 * 60 * 60),
+                r#"{"role":"assistant","providerID":"opencode-go","cost":15.0,"tokens":{"total":200000000}}"#,
+            ),
+            (
                 "wrong_provider",
                 now.saturating_sub(60),
                 r#"{"role":"assistant","providerID":"opencode","cost":99.0,"tokens":{"total":900000000}}"#,
@@ -4904,8 +5037,10 @@ exit 64
 
         assert_eq!(facts.five_hour_tokens, Some(15_000_000));
         assert_eq!(facts.weekly_tokens, Some(100_000_000));
+        assert_eq!(facts.monthly_tokens, Some(300_000_000));
         assert_eq!(facts.five_hour_remaining_percent, Some(75));
         assert_eq!(facts.weekly_remaining_percent, Some(50));
+        assert_eq!(facts.monthly_remaining_percent, Some(50));
     }
 
     // Regression: the dedicated OpenCode Go refresh writes a shared cache that new windows hydrate before rendering.
@@ -4938,12 +5073,17 @@ exit 64
                 &cache,
                 "opencode_go_usage",
                 &AgentUsageWidgetSettings {
+                    opencode_go_periods: vec![
+                        WindowedUsagePeriod::FiveHour,
+                        WindowedUsagePeriod::Weekly,
+                        WindowedUsagePeriod::Monthly,
+                    ],
                     opencode_go_display: WindowedUsageDisplay::Both,
                     ..AgentUsageWidgetSettings::default()
                 },
             )
             .unwrap(),
-            " [go 5h|15M|75% wk|100M|50%]"
+            " [go 5h|15M|75% wk|100M|50% mo|300M|50%]"
         );
     }
 

@@ -11,7 +11,7 @@
 [contract]
 version = 1
 surface = "main"
-field_count = 40
+field_count = 41
 artifact_role = "canonical_machine_metadata"
 default_template = "yazelix_default.toml"
 home_manager_module = "home_manager/module.nix"
@@ -351,6 +351,23 @@ allowed_values = [
   "token",
   "quota",
   "both",
+]
+rebuild_required = false
+
+[fields."zellij.opencode_go_usage_periods"]
+kind = "string_list"
+default = [
+  "5h",
+  "week",
+]
+parser_key = "zellij_opencode_go_usage_periods"
+home_manager_option = "zellij_opencode_go_usage_periods"
+parser_behavior = "direct"
+validation = "enum_string_list"
+allowed_values = [
+  "5h",
+  "week",
+  "month",
 ]
 rebuild_required = false
 

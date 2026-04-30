@@ -220,7 +220,8 @@ in
         codex_usage is a combined 5h/week token and quota widget.
         claude_usage is a grouped widget configured with zellij_claude_usage_periods.
         opencode_go_usage reads OpenCode's local SQLite database directly and does
-        not require an extra usage binary.
+        not require an extra usage binary. Configure its rendered windows with
+        zellij_opencode_go_usage_periods.
       '';
     };
 
@@ -359,6 +360,10 @@ in
 
     zellij_opencode_go_usage_display = mkMainContractOption "zellij.opencode_go_usage_display" {
       description = "OpenCode Go usage widget display mode: token, quota, or both";
+    };
+
+    zellij_opencode_go_usage_periods = mkMainContractOption "zellij.opencode_go_usage_periods" {
+      description = "Periods shown by the opencode_go_usage widget: 5h, week, month";
     };
 
     zellij_claude_usage_periods = mkMainContractOption "zellij.claude_usage_periods" {

@@ -235,9 +235,10 @@ contract. This slice is only about the read contract.
    session cache facts, but zjstatus usage widgets must never run usage
    providers directly. The grouped `claude_usage` widget renders configured
    period lists as one compact segment so the provider name is not repeated for
-   day/month facts. The `codex_usage` and `opencode_go_usage` widgets read
-   shared cross-window caches and render only the 5-hour and weekly token/quota
-   windows.
+   day/month facts. The `codex_usage` widget reads a shared cross-window cache
+   and renders 5-hour and weekly token/quota windows. The `opencode_go_usage`
+   widget reads a shared cross-window cache and renders its configured 5-hour,
+   weekly, and monthly token/quota windows.
 
 ## Verification
 

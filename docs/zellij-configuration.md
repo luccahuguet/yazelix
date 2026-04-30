@@ -58,7 +58,7 @@ widget_tray = [
   # "workspace", # Workspace root
   # "claude_usage", # Grouped Claude usage
   # "codex_usage", # Combined Codex 5h/week usage and quota
-  # "opencode_go_usage", # Combined OpenCode Go 5h/week usage and quota
+  # "opencode_go_usage", # Combined OpenCode Go 5h/week/month usage and quota
   "cpu",     # CPU usage
   "ram",     # RAM usage
 ]
@@ -66,6 +66,7 @@ widget_tray = [
 agent_usage_display = "tokens" # Claude: "tokens", "money", or "both"
 codex_usage_display = "both" # "token", "quota", or "both"
 opencode_go_usage_display = "both" # "token", "quota", or "both"
+opencode_go_usage_periods = ["5h", "week"] # Add "month" to render mo
 claude_usage_periods = ["day", "month"]
 ```
 Comment out any line to hide that widget. Order matters. Restart Yazelix to regenerate layouts.
