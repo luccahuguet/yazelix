@@ -29,6 +29,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 const PANE_ORCHESTRATOR_PLUGIN_ALIAS: &str = "yazelix_pane_orchestrator";
 const STATUS_BUS_SCHEMA_VERSION: i64 = 1;
 const STATUS_BAR_CACHE_SCHEMA_VERSION: i64 = 1;
+const ORCHESTRATOR_HEARTBEAT_SCHEMA_VERSION: i64 = 1;
 const CODEX_USAGE_CACHE_SCHEMA_VERSION: i64 = 1;
 const OPENCODE_GO_USAGE_CACHE_SCHEMA_VERSION: i64 = 1;
 const AGENT_USAGE_SEED_MAX_AGE_SECONDS: u64 = 180;
@@ -50,6 +51,7 @@ pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
     "status-bus",
     "status-bus-workspace",
     "status-cache-write",
+    "status-cache-heartbeat",
     "status-cache-widget",
     "status-cache-refresh-agent-usage",
     "status-cache-refresh-codex-usage",
@@ -109,6 +111,14 @@ struct ZellijStatusBusWorkspaceArgs {
 struct ZellijStatusCacheWriteArgs {
     path: Option<PathBuf>,
     payload: Option<String>,
+    help: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct ZellijStatusCacheHeartbeatArgs {
+    path: Option<PathBuf>,
+    payload: Option<String>,
+    json: bool,
     help: bool,
 }
 
@@ -681,6 +691,46 @@ fn parse_zellij_status_cache_widget_args(
     Ok(parsed)
 }
 
+fn parse_zellij_status_cache_heartbeat_args(
+    args: &[String],
+) -> Result<ZellijStatusCacheHeartbeatArgs, CoreError> {
+    let mut parsed = ZellijStatusCacheHeartbeatArgs::default();
+    let mut iter = args.iter();
+
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "--path" => {
+                parsed.path = Some(PathBuf::from(
+                    iter.next()
+                        .ok_or_else(|| CoreError::usage("--path requires a value".to_string()))?
+                        .as_str(),
+                ));
+            }
+            "--payload" => {
+                parsed.payload = Some(
+                    iter.next()
+                        .ok_or_else(|| CoreError::usage("--payload requires a value".to_string()))?
+                        .to_string(),
+                );
+            }
+            "--json" => parsed.json = true,
+            "-h" | "--help" | "help" => parsed.help = true,
+            other if other.starts_with('-') => {
+                return Err(CoreError::usage(format!(
+                    "Unknown argument for zellij status-cache-heartbeat: {other}"
+                )));
+            }
+            _ => {
+                return Err(CoreError::usage(
+                    "zellij status-cache-heartbeat accepts only flags".to_string(),
+                ));
+            }
+        }
+    }
+
+    Ok(parsed)
+}
+
 fn parse_zellij_status_cache_refresh_agent_usage_args(
     args: &[String],
 ) -> Result<ZellijStatusCacheRefreshAgentUsageArgs, CoreError> {
@@ -877,6 +927,13 @@ fn print_zellij_status_cache_widget_help() {
     println!("  yzx_control zellij status-cache-widget <widget> [--path <path>]");
 }
 
+fn print_zellij_status_cache_heartbeat_help() {
+    println!("Read or update window-local pane-orchestrator heartbeat facts");
+    println!();
+    println!("Usage:");
+    println!("  yzx_control zellij status-cache-heartbeat [--json] [--path <path>]");
+}
+
 fn print_zellij_status_cache_refresh_agent_usage_help() {
     println!("Refresh cached agent-usage facts for status-bar widgets");
     println!();
@@ -1028,7 +1085,7 @@ pub fn run_zellij_status_cache_write(args: &[String]) -> Result<i32, CoreError> 
     let now = unix_time_seconds();
     let agent_usage_seed =
         agent_usage_seed_for_status_cache_path(&path, previous_cache.as_ref(), now);
-    let cache = build_status_bar_cache_at(
+    let mut cache = build_status_bar_cache_at(
         status_bus,
         agent_usage_seed
             .as_ref()
@@ -1037,7 +1094,53 @@ pub fn run_zellij_status_cache_write(args: &[String]) -> Result<i32, CoreError> 
         agent_usage_seed.and_then(|seed| seed.updated_at_unix_seconds),
         now,
     );
+    if let Some(heartbeat) = previous_cache
+        .as_ref()
+        .and_then(|cache| cache.get("orchestrator_heartbeat"))
+        .cloned()
+    {
+        cache["orchestrator_heartbeat"] = heartbeat;
+    }
     write_status_bar_cache_value(&path, &cache)?;
+    Ok(0)
+}
+
+pub fn run_zellij_status_cache_heartbeat(args: &[String]) -> Result<i32, CoreError> {
+    let parsed = parse_zellij_status_cache_heartbeat_args(args)?;
+    if parsed.help {
+        print_zellij_status_cache_heartbeat_help();
+        return Ok(0);
+    }
+
+    let path = parsed
+        .path
+        .or_else(status_bar_cache_path_from_env)
+        .ok_or_else(missing_status_bar_cache_path_error)?;
+
+    if let Some(payload) = parsed.payload {
+        let heartbeat = decode_orchestrator_heartbeat_payload(&payload)?;
+        merge_status_bar_cache_orchestrator_heartbeat_value(&path, heartbeat)?;
+        return Ok(0);
+    }
+
+    let Some(cache) = read_status_bar_cache_value(&path) else {
+        return Ok(0);
+    };
+    let Some(heartbeat) = cache.get("orchestrator_heartbeat") else {
+        if parsed.json {
+            println!("{{}}");
+        }
+        return Ok(0);
+    };
+
+    if parsed.json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(heartbeat).unwrap_or_else(|_| heartbeat.to_string())
+        );
+    } else {
+        println!("{heartbeat}");
+    }
     Ok(0)
 }
 
@@ -1100,6 +1203,7 @@ pub fn run_zellij_status_cache_refresh_codex_usage(args: &[String]) -> Result<i3
         parsed.error_backoff_seconds.unwrap_or(1_800),
         timeout,
     )?;
+    mark_status_cache_refresh_finished(&path, "codex_usage")?;
     Ok(0)
 }
 
@@ -1129,6 +1233,7 @@ pub fn run_zellij_status_cache_refresh_opencode_go_usage(
         parsed.max_age_seconds.unwrap_or(600),
         parsed.error_backoff_seconds.unwrap_or(1_800),
     )?;
+    mark_status_cache_refresh_finished(&path, "opencode_go_usage")?;
     Ok(0)
 }
 
@@ -1158,6 +1263,7 @@ pub fn run_zellij_status_cache_refresh_agent_usage(args: &[String]) -> Result<i3
         timeout,
     ) {
         write_status_bar_cache_value(&path, &cache)?;
+        mark_status_cache_refresh_finished(&path, "agent_usage")?;
     }
     Ok(0)
 }
@@ -1512,6 +1618,106 @@ fn write_status_bar_cache_value(path: &Path, cache: &Value) -> Result<(), CoreEr
         )
     })?;
     Ok(())
+}
+
+fn decode_orchestrator_heartbeat_payload(raw: &str) -> Result<Value, CoreError> {
+    let value: Value = serde_json::from_str(raw).map_err(|error| {
+        CoreError::classified(
+            ErrorClass::Runtime,
+            "invalid_orchestrator_heartbeat_payload",
+            format!("Invalid pane-orchestrator heartbeat payload: {error}"),
+            "Restart Yazelix and retry. If this persists, report the heartbeat payload.",
+            json!({ "payload": raw }),
+        )
+    })?;
+    if value.get("schema_version").and_then(Value::as_i64)
+        != Some(ORCHESTRATOR_HEARTBEAT_SCHEMA_VERSION)
+    {
+        return Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "unsupported_orchestrator_heartbeat_schema",
+            "Unsupported pane-orchestrator heartbeat schema.",
+            "Restart Yazelix so the runtime and pane-orchestrator plugin agree on heartbeat format.",
+            json!({ "payload": value }),
+        ));
+    }
+    Ok(value)
+}
+
+fn merge_status_bar_cache_orchestrator_heartbeat_value(
+    path: &Path,
+    heartbeat: Value,
+) -> Result<(), CoreError> {
+    let Some(mut cache) = read_status_bar_cache_value(path) else {
+        return Ok(());
+    };
+    merge_orchestrator_heartbeat_into_cache(&mut cache, heartbeat);
+    write_status_bar_cache_value(path, &cache)
+}
+
+fn mark_status_cache_refresh_finished(path: &Path, refresh_name: &str) -> Result<(), CoreError> {
+    let heartbeat = json!({
+        "schema_version": ORCHESTRATOR_HEARTBEAT_SCHEMA_VERSION,
+        "status_refreshes": {
+            refresh_name: {
+                "finished_at_unix_seconds": unix_time_seconds(),
+            }
+        }
+    });
+    merge_status_bar_cache_orchestrator_heartbeat_value(path, heartbeat)
+}
+
+fn merge_orchestrator_heartbeat_into_cache(cache: &mut Value, incoming: Value) {
+    let existing = cache.get("orchestrator_heartbeat").cloned();
+    cache["orchestrator_heartbeat"] = merge_orchestrator_heartbeat_values(existing, incoming);
+}
+
+fn merge_orchestrator_heartbeat_values(existing: Option<Value>, incoming: Value) -> Value {
+    let Some(Value::Object(mut merged)) = existing else {
+        return incoming;
+    };
+    let Value::Object(incoming_object) = incoming else {
+        return Value::Object(merged);
+    };
+
+    for (key, value) in incoming_object {
+        if key == "status_refreshes" {
+            let existing_refreshes = merged.remove("status_refreshes");
+            merged.insert(
+                key,
+                merge_status_refresh_heartbeat_values(existing_refreshes, value),
+            );
+        } else {
+            merged.insert(key, value);
+        }
+    }
+
+    Value::Object(merged)
+}
+
+fn merge_status_refresh_heartbeat_values(existing: Option<Value>, incoming: Value) -> Value {
+    let Some(Value::Object(mut merged)) = existing else {
+        return incoming;
+    };
+    let Value::Object(incoming_object) = incoming else {
+        return Value::Object(merged);
+    };
+
+    for (refresh_name, refresh_value) in incoming_object {
+        let existing_refresh = merged.remove(&refresh_name);
+        let merged_refresh = match (existing_refresh, refresh_value) {
+            (Some(Value::Object(mut existing_fields)), Value::Object(incoming_fields)) => {
+                for (field, value) in incoming_fields {
+                    existing_fields.insert(field, value);
+                }
+                Value::Object(existing_fields)
+            }
+            (_, incoming_value) => incoming_value,
+        };
+        merged.insert(refresh_name, merged_refresh);
+    }
+
+    Value::Object(merged)
 }
 
 fn write_json_value_atomic(
@@ -4418,6 +4624,114 @@ mod tests {
             !render_status_cache_widget(&cache, "workspace")
                 .unwrap()
                 .contains("#[")
+        );
+    }
+
+    // Defends: heartbeat updates merge into the window-local cache without replacing status-bus or usage facts.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn status_cache_heartbeat_merge_preserves_cached_session_facts() {
+        let mut cache = build_status_bar_cache_at(
+            status_cache_test_status_bus(),
+            json!({
+                "claude_daily": {
+                    "summary": "42k $0.42",
+                    "tokens": "42k",
+                    "cost": "$0.42"
+                }
+            }),
+            Some(1_000),
+            1_000,
+        );
+        let status_bus_before = cache.get("status_bus").cloned();
+        let agent_usage_before = cache.get("agent_usage").cloned();
+
+        merge_orchestrator_heartbeat_into_cache(
+            &mut cache,
+            json!({
+                "schema_version": 1,
+                "heartbeat_at_unix_seconds": 2_000,
+                "last_pipe": {
+                    "name": "toggle_transient_pane",
+                    "at_unix_seconds": 1_990
+                },
+                "status_refreshes": {
+                    "codex_usage": {
+                        "started_at_unix_seconds": 1_980
+                    }
+                }
+            }),
+        );
+        merge_orchestrator_heartbeat_into_cache(
+            &mut cache,
+            json!({
+                "schema_version": 1,
+                "status_refreshes": {
+                    "codex_usage": {
+                        "finished_at_unix_seconds": 2_010
+                    }
+                }
+            }),
+        );
+
+        assert_eq!(cache.get("status_bus").cloned(), status_bus_before);
+        assert_eq!(cache.get("agent_usage").cloned(), agent_usage_before);
+        assert_eq!(
+            cache
+                .pointer("/orchestrator_heartbeat/last_pipe/name")
+                .and_then(Value::as_str),
+            Some("toggle_transient_pane")
+        );
+        assert_eq!(
+            cache
+                .pointer(
+                    "/orchestrator_heartbeat/status_refreshes/codex_usage/started_at_unix_seconds"
+                )
+                .and_then(Value::as_u64),
+            Some(1_980)
+        );
+        assert_eq!(
+            cache
+                .pointer(
+                    "/orchestrator_heartbeat/status_refreshes/codex_usage/finished_at_unix_seconds"
+                )
+                .and_then(Value::as_u64),
+            Some(2_010)
+        );
+    }
+
+    // Regression: status-bus cache rewrites must not erase heartbeat facts used to debug orchestrator stalls.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn status_cache_write_preserves_existing_heartbeat() {
+        let temp = tempfile::tempdir().unwrap();
+        let cache_path = temp.path().join("window_a").join("status_bar_cache.json");
+        let mut cache =
+            build_status_bar_cache_at(status_cache_test_status_bus(), json!({}), None, 1_000);
+        merge_orchestrator_heartbeat_into_cache(
+            &mut cache,
+            json!({
+                "schema_version": 1,
+                "heartbeat_at_unix_seconds": 2_000,
+                "last_timer_at_unix_seconds": 1_990
+            }),
+        );
+        write_status_bar_cache_value(&cache_path, &cache).unwrap();
+
+        run_zellij_status_cache_write(&[
+            "--path".to_string(),
+            cache_path.display().to_string(),
+            "--payload".to_string(),
+            STATUS_CACHE_TEST_PAYLOAD.to_string(),
+        ])
+        .unwrap();
+
+        let updated_cache = read_status_bar_cache_value(&cache_path).unwrap();
+        assert_eq!(
+            updated_cache
+                .pointer("/orchestrator_heartbeat/last_timer_at_unix_seconds")
+                .and_then(Value::as_u64),
+            Some(1_990)
         );
     }
 

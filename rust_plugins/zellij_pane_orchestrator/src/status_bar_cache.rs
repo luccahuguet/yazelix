@@ -54,6 +54,7 @@ impl State {
             "--payload",
             payload.as_str(),
         ];
+        self.record_status_cache_write();
         run_command_with_env_variables_and_cwd(&command, runtime.env, runtime.cwd, BTreeMap::new());
         self.status_bar_cache_last_payload = Some(payload);
     }
@@ -146,6 +147,7 @@ impl State {
     }
 
     fn refresh_status_bar_agent_usage_cache(&mut self) {
+        self.record_status_refresh_start("agent_usage");
         let Some(runtime) = self.status_bar_cache_runtime.clone().or_else(|| {
             let session_env = get_session_environment_variables();
             resolve_status_bar_cache_runtime(&session_env)
@@ -169,6 +171,7 @@ impl State {
     }
 
     fn refresh_status_bar_codex_usage_cache(&mut self) {
+        self.record_status_refresh_start("codex_usage");
         let Some(runtime) = self.status_bar_cache_runtime.clone().or_else(|| {
             let session_env = get_session_environment_variables();
             resolve_status_bar_cache_runtime(&session_env)
@@ -194,6 +197,7 @@ impl State {
     }
 
     fn refresh_status_bar_opencode_go_usage_cache(&mut self) {
+        self.record_status_refresh_start("opencode_go_usage");
         let Some(runtime) = self.status_bar_cache_runtime.clone().or_else(|| {
             let session_env = get_session_environment_variables();
             resolve_status_bar_cache_runtime(&session_env)

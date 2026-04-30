@@ -65,6 +65,7 @@ use yazelix_core::run_zellij_pipe;
 use yazelix_core::run_zellij_retarget;
 use yazelix_core::run_zellij_status_bus;
 use yazelix_core::run_zellij_status_bus_workspace;
+use yazelix_core::run_zellij_status_cache_heartbeat;
 use yazelix_core::run_zellij_status_cache_refresh_agent_usage;
 use yazelix_core::run_zellij_status_cache_refresh_codex_usage;
 use yazelix_core::run_zellij_status_cache_refresh_opencode_go_usage;
@@ -114,6 +115,7 @@ fn usage() -> ! {
     eprintln!("       yzx_control zellij inspect-session [--json]");
     eprintln!("       yzx_control zellij agent-usage <claude>");
     eprintln!("       yzx_control zellij status-cache-widget <widget>");
+    eprintln!("       yzx_control zellij status-cache-heartbeat [--json]");
     eprintln!("       yzx_control zellij status-cache-refresh-agent-usage");
     eprintln!("       yzx_control zellij status-cache-refresh-codex-usage");
     eprintln!("       yzx_control zellij status-cache-refresh-opencode-go-usage");
@@ -1129,6 +1131,7 @@ fn run_zellij(args: &[String]) -> Result<i32, CoreError> {
         "status-bus" => run_zellij_status_bus(&argv),
         "status-bus-workspace" => run_zellij_status_bus_workspace(&argv),
         "status-cache-write" => run_zellij_status_cache_write(&argv),
+        "status-cache-heartbeat" => run_zellij_status_cache_heartbeat(&argv),
         "status-cache-widget" => run_zellij_status_cache_widget(&argv),
         "status-cache-refresh-agent-usage" => run_zellij_status_cache_refresh_agent_usage(&argv),
         "status-cache-refresh-codex-usage" => run_zellij_status_cache_refresh_codex_usage(&argv),

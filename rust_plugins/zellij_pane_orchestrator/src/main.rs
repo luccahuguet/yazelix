@@ -1,5 +1,6 @@
 mod ai_pane_activity;
 mod editor;
+mod heartbeat;
 mod layout;
 mod panes;
 mod screen_saver;
@@ -60,6 +61,7 @@ struct State {
     status_bar_agent_usage_next_refresh: Option<Instant>,
     status_bar_codex_usage_next_refresh: Option<Instant>,
     status_bar_opencode_go_usage_next_refresh: Option<Instant>,
+    orchestrator_heartbeat: heartbeat::OrchestratorHeartbeat,
     timer_armed_for: Option<Instant>,
     permissions_granted: bool,
 }
@@ -89,6 +91,7 @@ impl ZellijPlugin for State {
         if self.screen_saver_config.enabled {
             self.screen_saver_last_input = Some(Instant::now());
         }
+        self.initialize_orchestrator_heartbeat();
         let mut subscriptions = vec![
             EventType::TabUpdate,
             EventType::PaneUpdate,
@@ -111,6 +114,7 @@ impl ZellijPlugin for State {
     }
 
     fn update(&mut self, event: Event) -> bool {
+        self.record_orchestrator_event(heartbeat::event_kind(&event));
         match event {
             Event::TabUpdate(tabs) => {
                 self.active_tab_position =
@@ -154,10 +158,12 @@ impl ZellijPlugin for State {
             Event::InputReceived => self.record_screen_saver_input(),
             Event::Timer(_) => {
                 self.timer_armed_for = None;
+                self.record_orchestrator_timer();
                 self.handle_screen_saver_timer();
                 self.handle_status_bar_agent_usage_timer();
                 self.handle_status_bar_codex_usage_timer();
                 self.handle_status_bar_opencode_go_usage_timer();
+                self.handle_orchestrator_heartbeat_timer();
             }
             Event::PaneClosed(pane_id) => self.handle_screen_saver_pane_closed(pane_id),
             Event::CommandPaneExited(terminal_id, _, _) => {
@@ -171,6 +177,7 @@ impl ZellijPlugin for State {
     }
 
     fn pipe(&mut self, pipe_message: PipeMessage) -> bool {
+        self.record_orchestrator_pipe(pipe_message.name.as_str());
         match pipe_message.name.as_str() {
             "focus_editor" => {
                 self.focus_managed_pane(&pipe_message, panes::ManagedPaneKind::Editor);
@@ -299,6 +306,7 @@ impl State {
                 self.status_bar_agent_usage_next_refresh,
                 self.status_bar_codex_usage_next_refresh,
                 self.status_bar_opencode_go_usage_next_refresh,
+                self.orchestrator_heartbeat.next_flush,
             ],
             self.timer_armed_for,
         ) else {
