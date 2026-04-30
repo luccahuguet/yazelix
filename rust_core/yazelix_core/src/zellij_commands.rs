@@ -854,16 +854,79 @@ pub fn run_zellij_agent_usage(args: &[String]) -> Result<i32, CoreError> {
 }
 
 fn status_bar_cache_path_from_env() -> Option<PathBuf> {
-    if let Some(path) = env::var_os("YAZELIX_STATUS_BAR_CACHE_PATH").map(PathBuf::from) {
+    status_bar_cache_path_from_values(
+        env::var_os("YAZELIX_STATUS_BAR_CACHE_PATH"),
+        env::var_os("YAZELIX_SESSION_CONFIG_PATH"),
+    )
+    .or_else(status_bar_cache_path_from_parent_process_env)
+}
+
+fn status_bar_cache_path_from_values(
+    cache_path: Option<OsString>,
+    session_config_path: Option<OsString>,
+) -> Option<PathBuf> {
+    if let Some(path) = cache_path.map(PathBuf::from) {
         return Some(path);
     }
 
-    env::var_os("YAZELIX_SESSION_CONFIG_PATH")
-        .map(PathBuf::from)
-        .and_then(|path| {
-            path.parent()
-                .map(|parent| parent.join("status_bar_cache.json"))
-        })
+    session_config_path.map(PathBuf::from).and_then(|path| {
+        path.parent()
+            .map(|parent| parent.join("status_bar_cache.json"))
+    })
+}
+
+#[cfg(target_os = "linux")]
+fn status_bar_cache_path_from_parent_process_env() -> Option<PathBuf> {
+    let mut pid = parent_pid(std::process::id())?;
+    for _ in 0..4 {
+        let env_path = PathBuf::from("/proc").join(pid.to_string()).join("environ");
+        if let Ok(raw) = fs::read(env_path) {
+            if let Some(path) = status_bar_cache_path_from_environ_bytes(&raw) {
+                return Some(path);
+            }
+        }
+        let next = parent_pid(pid)?;
+        if next == pid || next <= 1 {
+            break;
+        }
+        pid = next;
+    }
+    None
+}
+
+#[cfg(not(target_os = "linux"))]
+fn status_bar_cache_path_from_parent_process_env() -> Option<PathBuf> {
+    None
+}
+
+#[cfg(target_os = "linux")]
+fn parent_pid(pid: u32) -> Option<u32> {
+    let stat_path = PathBuf::from("/proc").join(pid.to_string()).join("stat");
+    let raw = fs::read_to_string(stat_path).ok()?;
+    let after_name = raw.rsplit_once(") ")?.1;
+    let mut fields = after_name.split_whitespace();
+    fields.next()?;
+    fields.next()?.parse().ok()
+}
+
+fn status_bar_cache_path_from_environ_bytes(raw: &[u8]) -> Option<PathBuf> {
+    let mut cache_path: Option<OsString> = None;
+    let mut session_config_path: Option<OsString> = None;
+
+    for item in raw.split(|byte| *byte == 0) {
+        if let Some(value) = item.strip_prefix(b"YAZELIX_STATUS_BAR_CACHE_PATH=") {
+            if !value.is_empty() {
+                cache_path = Some(OsString::from(String::from_utf8_lossy(value).to_string()));
+            }
+        } else if let Some(value) = item.strip_prefix(b"YAZELIX_SESSION_CONFIG_PATH=") {
+            if !value.is_empty() {
+                session_config_path =
+                    Some(OsString::from(String::from_utf8_lossy(value).to_string()));
+            }
+        }
+    }
+
+    status_bar_cache_path_from_values(cache_path, session_config_path)
 }
 
 fn missing_status_bar_cache_path_error() -> CoreError {
@@ -2728,6 +2791,27 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
 
         assert!(read_status_bar_cache_value(&temp.path().join("missing.json")).is_none());
+    }
+
+    // Regression: zjstatus command execution can strip direct Yazelix cache env even though its Zellij parent still carries the launch env.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn status_cache_path_can_be_recovered_from_process_environ_bytes() {
+        let explicit = status_bar_cache_path_from_environ_bytes(
+            b"PATH=/bin\0YAZELIX_STATUS_BAR_CACHE_PATH=/tmp/window/status_bar_cache.json\0YAZELIX_SESSION_CONFIG_PATH=/tmp/other/config_snapshot.json\0",
+        );
+        assert_eq!(
+            explicit,
+            Some(PathBuf::from("/tmp/window/status_bar_cache.json"))
+        );
+
+        let derived = status_bar_cache_path_from_environ_bytes(
+            b"PATH=/bin\0YAZELIX_SESSION_CONFIG_PATH=/tmp/session/config_snapshot.json\0",
+        );
+        assert_eq!(
+            derived,
+            Some(PathBuf::from("/tmp/session/status_bar_cache.json"))
+        );
     }
 
     // Defends: cached agent usage widgets consume precomputed summaries instead of running provider binaries from zjstatus.
