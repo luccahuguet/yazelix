@@ -14,19 +14,16 @@ let
   cfg = config.programs.yazelix;
   defaultRuntimeVariant = "ghostty";
   agentUsageProgramNames = [
-    "ccusage"
-    "ccusage-codex"
+    "tokenusage"
     "ccusage-opencode"
   ];
   agentUsagePackageMap =
-    if llmAgentsPackages == null then
-      { }
-    else
-      {
-        ccusage = llmAgentsPackages.ccusage;
-        "ccusage-codex" = llmAgentsPackages."ccusage-codex";
-        "ccusage-opencode" = llmAgentsPackages."ccusage-opencode";
-      };
+    {
+      tokenusage = import ../packaging/tokenusage.nix { inherit pkgs; };
+    }
+    // optionalAttrs (llmAgentsPackages != null) {
+      "ccusage-opencode" = llmAgentsPackages."ccusage-opencode";
+    };
   selectedAgentUsagePackages =
     map (
       program:
@@ -221,11 +218,10 @@ in
       type = types.listOf (types.enum agentUsageProgramNames);
       default = [ ];
       description = ''
-        Opt-in ccusage binaries from the llm-agents flake to include in the Yazelix runtime.
+        Opt-in usage binaries to include in the Yazelix runtime.
 
         These support zellij.widget_tray usage entries:
-        - "ccusage": claude_usage
-        - "ccusage-codex": codex_usage, codex_daily_usage, codex_monthly_usage, codex_session_usage
+        - "tokenusage": claude_usage, codex_usage, codex_daily_usage, codex_monthly_usage, codex_session_usage
         - "ccusage-opencode": opencode_usage, opencode_daily_usage, opencode_monthly_usage, opencode_session_usage
       '';
     };

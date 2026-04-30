@@ -73,7 +73,7 @@ agent_usage_display = "both" # "both", "tokens", or "money"
 ```
 Comment out any line to hide that widget. Order matters. Restart Yazelix to regenerate layouts.
 
-The usage widgets are inert until their matching usage binary is available in the Yazelix runtime. Codex widgets prefer `tu` from tokenusage when present, then fall back to `ccusage-codex`. Standalone flake users can install `.#yazelix_agent_tools`; Home Manager users can set `programs.yazelix.agent_usage_programs = [ "ccusage" "ccusage-codex" "ccusage-opencode" ]`.
+The usage widgets are inert until their matching usage binary is available in the Yazelix runtime. Claude and Codex widgets use `tu` from tokenusage. OpenCode widgets use `ccusage-opencode`. Standalone flake users can install `.#yazelix_agent_tools`; Home Manager users can set `programs.yazelix.agent_usage_programs = [ "tokenusage" "ccusage-opencode" ]`.
 
 **Idle screen saver (yazelix.toml):**
 ```toml

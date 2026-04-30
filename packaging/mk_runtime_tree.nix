@@ -47,9 +47,7 @@ let
     "pdftoppm"
     "pdftocairo"
     "resvg"
-    "ccusage"
-    "ccusage-codex"
-    "ccusage-amp"
+    "tu"
     "ccusage-opencode"
   ];
   escapedExportedRuntimeCommands = pkgs.lib.escapeShellArgs exportedRuntimeCommands;

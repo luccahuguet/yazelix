@@ -53,11 +53,11 @@
       };
       agentUsagePackages = system:
         let
+          pkgs = mkPkgs system;
           packages = llm-agents.packages.${system};
         in
         [
-          packages.ccusage
-          packages."ccusage-codex"
+          (import ./packaging/tokenusage.nix { inherit pkgs; })
           packages."ccusage-opencode"
         ];
       runtimePackage = system: pkgs: runtimeVariant: extraRuntimePackages:

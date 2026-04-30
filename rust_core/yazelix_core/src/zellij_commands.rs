@@ -666,7 +666,7 @@ fn print_zellij_status_cache_refresh_agent_usage_help() {
 }
 
 fn print_zellij_agent_usage_help() {
-    println!("Render an opt-in ccusage provider summary for zjstatus");
+    println!("Render an opt-in agent usage provider summary for zjstatus");
     println!();
     println!("Usage:");
     println!("  yzx_control zellij agent-usage <claude|codex|opencode>");
@@ -1547,17 +1547,16 @@ fn format_token_count(tokens: u64) -> String {
 
 fn parse_agent_usage_provider(raw: &str) -> Option<AgentUsageProvider> {
     match raw.trim() {
-        "claude" | "ccusage" => Some(AgentUsageProvider::Claude),
-        "codex" | "ccusage-codex" => Some(AgentUsageProvider::Codex),
-        "opencode" | "ccusage-opencode" => Some(AgentUsageProvider::Opencode),
+        "claude" => Some(AgentUsageProvider::Claude),
+        "codex" => Some(AgentUsageProvider::Codex),
+        "opencode" => Some(AgentUsageProvider::Opencode),
         _ => None,
     }
 }
 
 fn agent_usage_binary(provider: AgentUsageProvider) -> &'static str {
     match provider {
-        AgentUsageProvider::Claude => "ccusage",
-        AgentUsageProvider::Codex => "ccusage-codex",
+        AgentUsageProvider::Claude | AgentUsageProvider::Codex => "tu",
         AgentUsageProvider::Opencode => "ccusage-opencode",
     }
 }
@@ -1673,70 +1672,71 @@ fn configured_agent_usage_targets(
 }
 
 fn agent_usage_command_candidates(target: AgentUsageTarget) -> Vec<AgentUsageCommand> {
-    let ccusage_args = match (target.provider, target.period) {
-        (AgentUsageProvider::Claude, AgentUsagePeriod::ActiveBlock) => {
-            vec!["blocks", "--active", "--json"]
-        }
-        (AgentUsageProvider::Codex, AgentUsagePeriod::Daily) => {
-            vec!["daily", "--json", "--offline"]
-        }
-        (AgentUsageProvider::Codex, AgentUsagePeriod::Monthly) => {
-            vec!["monthly", "--json", "--offline"]
-        }
-        (AgentUsageProvider::Codex, AgentUsagePeriod::Session) => {
-            vec!["session", "--json", "--offline"]
-        }
-        (AgentUsageProvider::Opencode, AgentUsagePeriod::Daily) => vec!["daily", "--json"],
-        (AgentUsageProvider::Opencode, AgentUsagePeriod::Monthly) => vec!["monthly", "--json"],
-        (AgentUsageProvider::Opencode, AgentUsagePeriod::Session) => vec!["session", "--json"],
-        _ => vec!["blocks", "--active", "--json"],
-    };
-
-    let fallback = AgentUsageCommand {
-        binary: agent_usage_binary(target.provider),
-        args: ccusage_args,
-        dialect: AgentUsageJsonDialect::Ccusage,
-    };
-
-    if target.provider != AgentUsageProvider::Codex {
-        return vec![fallback];
-    }
-
-    let tokenusage_args = match target.period {
-        AgentUsagePeriod::Daily => {
-            vec!["today", "--json", "--offline", "--no-claude"]
-        }
-        AgentUsagePeriod::Monthly => {
+    let (args, dialect) = match (target.provider, target.period) {
+        (AgentUsageProvider::Claude, AgentUsagePeriod::ActiveBlock) => (
+            vec![
+                "blocks",
+                "--active",
+                "--json",
+                "--offline",
+                "--no-codex",
+                "--no-antigravity",
+            ],
+            AgentUsageJsonDialect::Tokenusage,
+        ),
+        (AgentUsageProvider::Codex, AgentUsagePeriod::Daily) => (
+            vec![
+                "today",
+                "--json",
+                "--offline",
+                "--no-claude",
+                "--no-antigravity",
+            ],
+            AgentUsageJsonDialect::Tokenusage,
+        ),
+        (AgentUsageProvider::Codex, AgentUsagePeriod::Monthly) => (
             vec![
                 "monthly",
                 "--json",
                 "--offline",
                 "--no-claude",
+                "--no-antigravity",
                 "--order",
                 "desc",
-            ]
-        }
-        AgentUsagePeriod::Session => {
+            ],
+            AgentUsageJsonDialect::Tokenusage,
+        ),
+        (AgentUsageProvider::Codex, AgentUsagePeriod::Session) => (
             vec![
                 "session",
                 "--json",
                 "--offline",
                 "--no-claude",
+                "--no-antigravity",
                 "--order",
                 "desc",
-            ]
+            ],
+            AgentUsageJsonDialect::Tokenusage,
+        ),
+        (AgentUsageProvider::Opencode, AgentUsagePeriod::Daily) => {
+            (vec!["daily", "--json"], AgentUsageJsonDialect::Ccusage)
         }
-        AgentUsagePeriod::ActiveBlock => return vec![fallback],
+        (AgentUsageProvider::Opencode, AgentUsagePeriod::Monthly) => {
+            (vec!["monthly", "--json"], AgentUsageJsonDialect::Ccusage)
+        }
+        (AgentUsageProvider::Opencode, AgentUsagePeriod::Session) => {
+            (vec!["session", "--json"], AgentUsageJsonDialect::Ccusage)
+        }
+        _ => (
+            vec!["blocks", "--active", "--json"],
+            AgentUsageJsonDialect::Ccusage,
+        ),
     };
-
-    vec![
-        AgentUsageCommand {
-            binary: "tu",
-            args: tokenusage_args,
-            dialect: AgentUsageJsonDialect::Tokenusage,
-        },
-        fallback,
-    ]
+    vec![AgentUsageCommand {
+        binary: agent_usage_binary(target.provider),
+        args,
+        dialect,
+    }]
 }
 
 fn find_command_in_path_var(path_var: &OsStr, command_name: &str) -> Option<PathBuf> {
@@ -3341,17 +3341,13 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let bin_dir = temp.path().join("bin");
         fs::create_dir_all(&bin_dir).unwrap();
-        let provider = bin_dir.join("ccusage-codex");
+        let provider = bin_dir.join("tu");
         fs::write(
             &provider,
             r#"#!/usr/bin/env sh
-if [ "$1" = "blocks" ]; then
-  printf '%s\n' '{"blocks":[{"isActive":true,"totalTokens":123456,"costUSD":1.234}]}'
-  exit 0
-fi
-if [ "$1" = "daily" ]; then
+if [ "$1" = "today" ]; then
   printf '%s\n' 'log prefix before json'
-  printf '%s\n' '{"totals":{"totalTokens":123456,"totalCost":1.234}}'
+  printf '%s\n' '{"date":"2026-04-30","overview":{"totals":{"total_tokens":123456,"cost_usd":1.234}}}'
   exit 0
 fi
 exit 64
@@ -3403,41 +3399,27 @@ exit 64
         );
     }
 
-    // Regression: large Codex histories use tokenusage when available instead of the slower ccusage-codex fallback.
+    // Regression: Codex usage widgets have one configured provider path and must not silently fall back to ccusage-codex.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[cfg(unix)]
     #[test]
-    fn status_cache_agent_usage_refresh_prefers_tokenusage_for_codex() {
+    fn status_cache_agent_usage_refresh_requires_tokenusage_for_codex() {
         use std::os::unix::fs::PermissionsExt;
 
         let temp = tempfile::tempdir().unwrap();
         let bin_dir = temp.path().join("bin");
         fs::create_dir_all(&bin_dir).unwrap();
-        let tokenusage = bin_dir.join("tu");
+        let provider = bin_dir.join("ccusage-codex");
         fs::write(
-            &tokenusage,
-            r#"#!/usr/bin/env sh
-if [ "$1" = "today" ]; then
-  printf '%s\n' '{"date":"2026-04-30","overview":{"totals":{"total_tokens":987654,"cost_usd":9.876}}}'
-  exit 0
-fi
-exit 64
-"#,
-        )
-        .unwrap();
-        let fallback = bin_dir.join("ccusage-codex");
-        fs::write(
-            &fallback,
+            &provider,
             r#"#!/usr/bin/env sh
 printf '%s\n' '{"totals":{"totalTokens":123456,"totalCost":1.234}}'
 "#,
         )
         .unwrap();
-        for provider in [&tokenusage, &fallback] {
-            let mut permissions = fs::metadata(provider).unwrap().permissions();
-            permissions.set_mode(0o755);
-            fs::set_permissions(provider, permissions).unwrap();
-        }
+        let mut permissions = fs::metadata(&provider).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&provider, permissions).unwrap();
         let mut cache = json!({
             "schema_version": 1,
             "updated_at_unix_seconds": 10,
@@ -3471,7 +3453,7 @@ printf '%s\n' '{"totals":{"totalTokens":123456,"totalCost":1.234}}'
                 .and_then(|usage| usage.get("codex"))
                 .and_then(|entry| entry.get("summary"))
                 .and_then(Value::as_str),
-            Some("987k $9.88")
+            None
         );
     }
 
@@ -3485,7 +3467,7 @@ printf '%s\n' '{"totals":{"totalTokens":123456,"totalCost":1.234}}'
         let temp = tempfile::tempdir().unwrap();
         let bin_dir = temp.path().join("bin");
         fs::create_dir_all(&bin_dir).unwrap();
-        let provider = bin_dir.join("ccusage");
+        let provider = bin_dir.join("tu");
         fs::write(&provider, "#!/usr/bin/env sh\nsleep 5\n").unwrap();
         let mut permissions = fs::metadata(&provider).unwrap().permissions();
         permissions.set_mode(0o755);
@@ -3530,7 +3512,7 @@ printf '%s\n' '{"totals":{"totalTokens":123456,"totalCost":1.234}}'
         );
     }
 
-    // Defends: ccusage-backed tray widgets derive compact plain text from the active usage block while template formatting owns color.
+    // Defends: ccusage-style JSON derives compact plain text while template formatting owns color.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn agent_usage_widget_formats_active_json_block() {
@@ -3567,25 +3549,29 @@ printf '%s\n' '{"totals":{"totalTokens":123456,"totalCost":1.234}}'
         assert_eq!(session, "77k $0.770");
     }
 
-    // Defends: provider aliases map to the exact opt-in ccusage binaries used by flake and Home Manager package wiring.
+    // Defends: provider names map to the exact opt-in usage binaries without legacy binary-name aliases.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn agent_usage_provider_aliases_map_to_binaries() {
+    fn agent_usage_provider_names_map_to_binaries_without_legacy_aliases() {
         assert_eq!(
             parse_agent_usage_provider("claude").map(agent_usage_binary),
-            Some("ccusage")
+            Some("tu")
+        );
+        assert_eq!(
+            parse_agent_usage_provider("codex").map(agent_usage_binary),
+            Some("tu")
         );
         assert_eq!(
             parse_agent_usage_provider("ccusage-codex").map(agent_usage_binary),
-            Some("ccusage-codex")
-        );
-        assert_eq!(
-            parse_agent_usage_provider("amp").map(agent_usage_binary),
             None
         );
         assert_eq!(
             parse_agent_usage_provider("opencode").map(agent_usage_binary),
             Some("ccusage-opencode")
+        );
+        assert_eq!(
+            parse_agent_usage_provider("ccusage-opencode").map(agent_usage_binary),
+            None
         );
     }
 }
