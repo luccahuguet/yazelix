@@ -360,15 +360,15 @@ in
     };
 
     zellij_claude_usage_periods = mkMainContractOption "zellij.claude_usage_periods" {
-      description = "Periods shown by the grouped claude_usage widget: day, month, last";
+      description = "Periods shown by the grouped claude_usage widget: day, month";
     };
 
     zellij_codex_usage_periods = mkMainContractOption "zellij.codex_usage_periods" {
-      description = "Periods shown by the grouped codex_usage widget: day, month, last";
+      description = "Periods shown by the grouped codex_usage widget: day, month";
     };
 
     zellij_opencode_usage_periods = mkMainContractOption "zellij.opencode_usage_periods" {
-      description = "Periods shown by the grouped opencode_usage widget: day, month, last";
+      description = "Periods shown by the grouped opencode_usage widget: day, month";
     };
 
     zellij_custom_text = mkMainContractOption "zellij.custom_text" {

@@ -66,13 +66,13 @@ widget_tray = [
 ]
 
 agent_usage_display = "both" # "both", "tokens", or "money"
-claude_usage_periods = ["day", "month", "last"]
-codex_usage_periods = ["day", "month", "last"]
+claude_usage_periods = ["day", "month"]
+codex_usage_periods = ["day", "month"]
 opencode_usage_periods = ["day"]
 ```
 Comment out any line to hide that widget. Order matters. Restart Yazelix to regenerate layouts.
 
-The grouped usage widgets render compactly, for example `[codex d 124M $6.69 | mon 1.58B $98 | last 872M $47]`. `last` means the latest provider session reported by the usage tool, not the current Yazelix window. The usage widgets are inert until their matching usage binary is available in the Yazelix runtime. Claude and Codex widgets use `tu` from tokenusage. OpenCode widgets use `ccusage-opencode`. Standalone flake users can install `.#yazelix_agent_tools`; Home Manager users can set `programs.yazelix.agent_usage_programs = [ "tokenusage" "ccusage-opencode" ]`.
+The grouped usage widgets render compactly, for example `[codex d 124M $6.69 | mon 1.58B $98]`. The usage widgets are inert until their matching usage binary is available in the Yazelix runtime. Claude and Codex widgets use `tu` from tokenusage. OpenCode widgets use `ccusage-opencode`. Standalone flake users can install `.#yazelix_agent_tools`; Home Manager users can set `programs.yazelix.agent_usage_programs = [ "tokenusage" "ccusage-opencode" ]`.
 
 **Idle screen saver (yazelix.toml):**
 ```toml

@@ -242,8 +242,7 @@ contract. This slice is only about the read contract.
    session cache facts, but zjstatus usage widgets must never run usage
    providers directly. The grouped provider widgets (`claude_usage`,
    `codex_usage`, and `opencode_usage`) render configured period lists as one
-   compact segment so the provider name is not repeated for
-   day/month/latest-session facts.
+   compact segment so the provider name is not repeated for day/month facts.
 
 ## Verification
 

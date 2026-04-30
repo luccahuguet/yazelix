@@ -182,8 +182,7 @@ widget_tray = [
 # Agent usage widget display: "both", "tokens", or "money"
 agent_usage_display = "both"
 
-# Periods shown by grouped usage widgets.
-# "last" means the latest provider session reported by the usage tool, not the current Yazelix window.
+# Periods shown by grouped usage widgets: "day" or "month"
 claude_usage_periods = ["day"]
 codex_usage_periods = ["day"]
 opencode_usage_periods = ["day"]

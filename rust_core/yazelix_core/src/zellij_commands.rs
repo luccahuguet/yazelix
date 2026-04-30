@@ -226,7 +226,6 @@ enum AgentUsageProvider {
 enum AgentUsagePeriod {
     Daily,
     Monthly,
-    Session,
 }
 
 impl AgentUsagePeriod {
@@ -234,7 +233,6 @@ impl AgentUsagePeriod {
         match raw.trim() {
             "day" | "daily" | "d" => Some(Self::Daily),
             "month" | "monthly" | "mon" => Some(Self::Monthly),
-            "last" | "session" | "sesh" => Some(Self::Session),
             _ => None,
         }
     }
@@ -243,7 +241,6 @@ impl AgentUsagePeriod {
         match self {
             Self::Daily => "d",
             Self::Monthly => "mon",
-            Self::Session => "last",
         }
     }
 }
@@ -1840,12 +1837,6 @@ const CLAUDE_MONTHLY_USAGE_TARGET: AgentUsageTarget = AgentUsageTarget {
     cache_key: "claude_monthly",
     label: "claude|mon",
 };
-const CLAUDE_SESSION_USAGE_TARGET: AgentUsageTarget = AgentUsageTarget {
-    provider: AgentUsageProvider::Claude,
-    period: AgentUsagePeriod::Session,
-    cache_key: "claude_session",
-    label: "claude|last",
-};
 const CODEX_USAGE_TARGET: AgentUsageTarget = AgentUsageTarget {
     provider: AgentUsageProvider::Codex,
     period: AgentUsagePeriod::Daily,
@@ -1863,12 +1854,6 @@ const CODEX_MONTHLY_USAGE_TARGET: AgentUsageTarget = AgentUsageTarget {
     period: AgentUsagePeriod::Monthly,
     cache_key: "codex_monthly",
     label: "codex|mon",
-};
-const CODEX_SESSION_USAGE_TARGET: AgentUsageTarget = AgentUsageTarget {
-    provider: AgentUsageProvider::Codex,
-    period: AgentUsagePeriod::Session,
-    cache_key: "codex_session",
-    label: "codex|last",
 };
 const OPENCODE_USAGE_TARGET: AgentUsageTarget = AgentUsageTarget {
     provider: AgentUsageProvider::Opencode,
@@ -1888,12 +1873,6 @@ const OPENCODE_MONTHLY_USAGE_TARGET: AgentUsageTarget = AgentUsageTarget {
     cache_key: "opencode_monthly",
     label: "oc|mon",
 };
-const OPENCODE_SESSION_USAGE_TARGET: AgentUsageTarget = AgentUsageTarget {
-    provider: AgentUsageProvider::Opencode,
-    period: AgentUsagePeriod::Session,
-    cache_key: "opencode_session",
-    label: "oc|last",
-};
 
 fn agent_usage_target_for_provider_period(
     provider: AgentUsageProvider,
@@ -1904,20 +1883,13 @@ fn agent_usage_target_for_provider_period(
         (AgentUsageProvider::Claude, AgentUsagePeriod::Monthly) => {
             Some(CLAUDE_MONTHLY_USAGE_TARGET)
         }
-        (AgentUsageProvider::Claude, AgentUsagePeriod::Session) => {
-            Some(CLAUDE_SESSION_USAGE_TARGET)
-        }
         (AgentUsageProvider::Codex, AgentUsagePeriod::Daily) => Some(CODEX_DAILY_USAGE_TARGET),
         (AgentUsageProvider::Codex, AgentUsagePeriod::Monthly) => Some(CODEX_MONTHLY_USAGE_TARGET),
-        (AgentUsageProvider::Codex, AgentUsagePeriod::Session) => Some(CODEX_SESSION_USAGE_TARGET),
         (AgentUsageProvider::Opencode, AgentUsagePeriod::Daily) => {
             Some(OPENCODE_DAILY_USAGE_TARGET)
         }
         (AgentUsageProvider::Opencode, AgentUsagePeriod::Monthly) => {
             Some(OPENCODE_MONTHLY_USAGE_TARGET)
-        }
-        (AgentUsageProvider::Opencode, AgentUsagePeriod::Session) => {
-            Some(OPENCODE_SESSION_USAGE_TARGET)
         }
     }
 }
@@ -2003,18 +1975,6 @@ fn agent_usage_command_candidates(target: AgentUsageTarget) -> Vec<AgentUsageCom
             ],
             AgentUsageJsonDialect::Tokenusage,
         ),
-        (AgentUsageProvider::Claude, AgentUsagePeriod::Session) => (
-            vec![
-                "session",
-                "--json",
-                "--offline",
-                "--no-codex",
-                "--no-antigravity",
-                "--order",
-                "desc",
-            ],
-            AgentUsageJsonDialect::Tokenusage,
-        ),
         (AgentUsageProvider::Codex, AgentUsagePeriod::Daily) => (
             vec![
                 "today",
@@ -2037,26 +1997,11 @@ fn agent_usage_command_candidates(target: AgentUsageTarget) -> Vec<AgentUsageCom
             ],
             AgentUsageJsonDialect::Tokenusage,
         ),
-        (AgentUsageProvider::Codex, AgentUsagePeriod::Session) => (
-            vec![
-                "session",
-                "--json",
-                "--offline",
-                "--no-claude",
-                "--no-antigravity",
-                "--order",
-                "desc",
-            ],
-            AgentUsageJsonDialect::Tokenusage,
-        ),
         (AgentUsageProvider::Opencode, AgentUsagePeriod::Daily) => {
             (vec!["daily", "--json"], AgentUsageJsonDialect::Ccusage)
         }
         (AgentUsageProvider::Opencode, AgentUsagePeriod::Monthly) => {
             (vec!["monthly", "--json"], AgentUsageJsonDialect::Ccusage)
-        }
-        (AgentUsageProvider::Opencode, AgentUsagePeriod::Session) => {
-            (vec!["session", "--json"], AgentUsageJsonDialect::Ccusage)
         }
     };
     vec![AgentUsageCommand {
@@ -2126,11 +2071,6 @@ fn tokenusage_agent_usage_value(period: AgentUsagePeriod, value: &Value) -> &Val
         AgentUsagePeriod::Daily => value.get("overview").unwrap_or(value),
         AgentUsagePeriod::Monthly => value
             .get("monthly")
-            .and_then(Value::as_array)
-            .and_then(|rows| rows.first())
-            .unwrap_or(value),
-        AgentUsagePeriod::Session => value
-            .get("sessions")
             .and_then(Value::as_array)
             .and_then(|rows| rows.first())
             .unwrap_or(value),
@@ -3709,7 +3649,7 @@ mod tests {
             json!({
                 "normalized_config": {
                     "zellij_widget_tray": ["codex_usage"],
-                    "zellij_codex_usage_periods": ["day", "month", "last"],
+                    "zellij_codex_usage_periods": ["day", "month"],
                     "zellij_claude_usage_periods": ["day"],
                     "zellij_opencode_usage_periods": ["day"],
                     "zellij_agent_usage_display": "both"
@@ -3723,11 +3663,7 @@ mod tests {
 
         assert_eq!(
             configured_agent_usage_targets(&refresh_config),
-            vec![
-                CODEX_DAILY_USAGE_TARGET,
-                CODEX_MONTHLY_USAGE_TARGET,
-                CODEX_SESSION_USAGE_TARGET,
-            ]
+            vec![CODEX_DAILY_USAGE_TARGET, CODEX_MONTHLY_USAGE_TARGET,]
         );
     }
 
@@ -3846,25 +3782,20 @@ mod tests {
             },
             "agent_usage": {
                 "codex_daily": {"tokens": "124M", "cost": "$6.69"},
-                "codex_monthly": {"tokens": "1.58B", "cost": "$98"},
-                "codex_session": {"tokens": "872M", "cost": "$47"}
+                "codex_monthly": {"tokens": "1.58B", "cost": "$98"}
             }
         });
         let settings = AgentUsageWidgetSettings {
             display: AgentUsageDisplay::Both,
             claude_periods: vec![AgentUsagePeriod::Daily],
-            codex_periods: vec![
-                AgentUsagePeriod::Daily,
-                AgentUsagePeriod::Monthly,
-                AgentUsagePeriod::Session,
-            ],
+            codex_periods: vec![AgentUsagePeriod::Daily, AgentUsagePeriod::Monthly],
             opencode_periods: vec![AgentUsagePeriod::Daily],
         };
 
         assert_eq!(
             render_status_cache_widget_with_agent_usage_settings(&cache, "codex_usage", &settings)
                 .unwrap(),
-            " [codex d 124M $6.69 | mon 1.58B $98 | last 872M $47]"
+            " [codex d 124M $6.69 | mon 1.58B $98]"
         );
     }
 
@@ -3888,17 +3819,12 @@ mod tests {
             },
             "agent_usage": {
                 "claude_daily": {"tokens": "124M", "cost": "$6.69"},
-                "claude_monthly": {"tokens": "1.58B", "cost": "$98"},
-                "claude_session": {"tokens": "872M", "cost": "$47"}
+                "claude_monthly": {"tokens": "1.58B", "cost": "$98"}
             }
         });
         let settings = AgentUsageWidgetSettings {
             display: AgentUsageDisplay::Both,
-            claude_periods: vec![
-                AgentUsagePeriod::Daily,
-                AgentUsagePeriod::Monthly,
-                AgentUsagePeriod::Session,
-            ],
+            claude_periods: vec![AgentUsagePeriod::Daily, AgentUsagePeriod::Monthly],
             codex_periods: vec![AgentUsagePeriod::Daily],
             opencode_periods: vec![AgentUsagePeriod::Daily],
         };
@@ -3906,7 +3832,7 @@ mod tests {
         assert_eq!(
             render_status_cache_widget_with_agent_usage_settings(&cache, "claude_usage", &settings)
                 .unwrap(),
-            " [claude d 124M $6.69 | mon 1.58B $98 | last 872M $47]"
+            " [claude d 124M $6.69 | mon 1.58B $98]"
         );
     }
 
@@ -4006,9 +3932,6 @@ case "$1" in
   monthly)
     printf '%s\n' '{"monthly":[{"totals":{"total_tokens":1576759000,"cost_usd":98.0}}]}'
     ;;
-  session)
-    printf '%s\n' '{"sessions":[{"totals":{"total_tokens":871799000,"cost_usd":47.0}}]}'
-    ;;
   *)
     exit 64
     ;;
@@ -4038,20 +3961,12 @@ esac
 
         let refresh_config = AgentUsageRefreshConfig {
             widgets: Some(["claude_usage".to_string()].into_iter().collect()),
-            claude_periods: vec![
-                AgentUsagePeriod::Daily,
-                AgentUsagePeriod::Monthly,
-                AgentUsagePeriod::Session,
-            ],
+            claude_periods: vec![AgentUsagePeriod::Daily, AgentUsagePeriod::Monthly],
             ..AgentUsageRefreshConfig::default()
         };
         assert_eq!(
             configured_agent_usage_targets(&refresh_config),
-            vec![
-                CLAUDE_DAILY_USAGE_TARGET,
-                CLAUDE_MONTHLY_USAGE_TARGET,
-                CLAUDE_SESSION_USAGE_TARGET,
-            ]
+            vec![CLAUDE_DAILY_USAGE_TARGET, CLAUDE_MONTHLY_USAGE_TARGET,]
         );
         let refreshed = refresh_status_bar_cache_agent_usage_value(
             &mut cache,
@@ -4072,7 +3987,7 @@ esac
         assert_eq!(
             render_status_cache_widget_with_agent_usage_settings(&cache, "claude_usage", &settings)
                 .unwrap(),
-            " [claude d 123k $1.23 | mon 1.58B $98 | last 872M $47]"
+            " [claude d 123k $1.23 | mon 1.58B $98]"
         );
     }
 
@@ -4213,7 +4128,7 @@ printf '%s\n' '{"totals":{"totalTokens":123456,"totalCost":1.234}}'
         assert!(!render_agent_usage_widget("codex|d", &summary).contains("#["));
     }
 
-    // Regression: tokenusage monthly/session JSON includes all-history top-level totals; Yazelix must render the current row instead.
+    // Regression: tokenusage monthly JSON includes all-history top-level totals; Yazelix must render the current row instead.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn tokenusage_json_uses_selected_period_row_instead_of_all_history_totals() {
@@ -4223,13 +4138,6 @@ printf '%s\n' '{"totals":{"totalTokens":123456,"totalCost":1.234}}'
             r#"{"monthly":[{"date":"2026-04","totals":{"total_tokens":1576759000,"cost_usd":98.0}}],"totals":{"total_tokens":999000,"cost_usd":99.9}}"#,
         );
         assert_eq!(monthly, "1.58B $98");
-
-        let session = agent_usage_summary_from_json(
-            CODEX_SESSION_USAGE_TARGET,
-            AgentUsageJsonDialect::Tokenusage,
-            r#"{"sessions":[{"session_id":"latest","totals":{"total_tokens":871799000,"cost_usd":47.0}}],"totals":{"total_tokens":999000,"cost_usd":99.9}}"#,
-        );
-        assert_eq!(session, "872M $47");
     }
 
     // Defends: provider names map to the exact opt-in usage binaries without legacy binary-name aliases.
