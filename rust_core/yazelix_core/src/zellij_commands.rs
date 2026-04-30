@@ -5454,17 +5454,20 @@ esac
         assert_eq!(monthly, "1.58B $98");
     }
 
-    // Defends: provider names map to the exact opt-in usage binaries without legacy binary-name aliases.
+    // Defends: configured Claude usage periods expand to tokenusage-backed cache targets used by the status bar.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn agent_usage_provider_names_map_to_binaries_without_legacy_aliases() {
+    fn claude_usage_period_config_expands_to_tokenusage_targets() {
+        let provider = parse_agent_usage_provider("claude").unwrap();
+        let refresh_config = AgentUsageRefreshConfig {
+            widgets: Some(["claude_usage".to_string()].into_iter().collect()),
+            claude_periods: vec![AgentUsagePeriod::Daily, AgentUsagePeriod::Monthly],
+        };
+
+        assert_eq!(agent_usage_binary(provider), "tu");
         assert_eq!(
-            parse_agent_usage_provider("claude").map(agent_usage_binary),
-            Some("tu")
-        );
-        assert_eq!(
-            parse_agent_usage_provider("codex").map(agent_usage_binary),
-            None
+            configured_agent_usage_targets(&refresh_config),
+            vec![CLAUDE_DAILY_USAGE_TARGET, CLAUDE_MONTHLY_USAGE_TARGET]
         );
     }
 }

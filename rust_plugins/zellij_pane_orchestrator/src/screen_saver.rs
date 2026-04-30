@@ -10,8 +10,6 @@ use zellij_tile::prelude::*;
 use crate::State;
 
 const SCREEN_SAVER_PANE_TITLE: &str = "yzx_screen";
-const MINIMUM_RESCHEDULE_SECONDS: f64 = 0.5;
-
 fn full_tab_coordinates() -> Option<FloatingPaneCoordinates> {
     FloatingPaneCoordinates::new(
         Some("0%".to_string()),
@@ -24,11 +22,13 @@ fn full_tab_coordinates() -> Option<FloatingPaneCoordinates> {
 }
 
 impl State {
-    pub(crate) fn schedule_initial_screen_saver_timeout(&self) {
+    pub(crate) fn schedule_initial_screen_saver_timeout(&mut self) {
         if self.screen_saver_config.enabled {
             self.schedule_screen_saver_timeout(Duration::from_secs(
                 self.screen_saver_config.idle_seconds,
             ));
+        } else {
+            self.screen_saver_next_timeout = None;
         }
     }
 
@@ -38,9 +38,9 @@ impl State {
         }
 
         self.screen_saver_last_input = Some(Instant::now());
+        self.schedule_initial_screen_saver_timeout();
         if let Some(pane_id) = self.screen_saver_pane_id.take() {
             close_pane_with_id(pane_id);
-            self.schedule_initial_screen_saver_timeout();
         }
     }
 
@@ -57,9 +57,14 @@ impl State {
             idle_elapsed,
             self.screen_saver_pane_id.is_some(),
         ) {
-            ScreenSaverTimerPlan::Disabled => {}
+            ScreenSaverTimerPlan::Disabled => {
+                self.screen_saver_next_timeout = None;
+            }
             ScreenSaverTimerPlan::Wait(delay) => self.schedule_screen_saver_timeout(delay),
-            ScreenSaverTimerPlan::Open { style } => self.open_screen_saver_pane(&style),
+            ScreenSaverTimerPlan::Open { style } => {
+                self.screen_saver_next_timeout = None;
+                self.open_screen_saver_pane(&style);
+            }
         }
     }
 
@@ -75,12 +80,12 @@ impl State {
         self.handle_screen_saver_pane_closed(PaneId::Terminal(terminal_id));
     }
 
-    fn schedule_screen_saver_timeout(&self, delay: Duration) {
+    fn schedule_screen_saver_timeout(&mut self, delay: Duration) {
         if !self.screen_saver_config.enabled {
             return;
         }
 
-        set_timeout(delay.as_secs_f64().max(MINIMUM_RESCHEDULE_SECONDS));
+        self.screen_saver_next_timeout = Some(Instant::now() + delay);
     }
 
     fn open_screen_saver_pane(&mut self, style: &str) {

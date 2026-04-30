@@ -18,6 +18,7 @@ use yazelix_pane_orchestrator::active_tab_session_state::SessionAiPaneActivity;
 use yazelix_pane_orchestrator::horizontal_focus_contract::HorizontalDirection;
 use yazelix_pane_orchestrator::screen_saver_contract::ScreenSaverConfig;
 use yazelix_pane_orchestrator::status_bar_cache_contract::StatusBarCacheRuntime;
+use yazelix_pane_orchestrator::timer_schedule_contract::next_timer_delay;
 use zellij_tile::prelude::*;
 
 pub(crate) const RESULT_OK: &str = "ok";
@@ -52,12 +53,14 @@ struct State {
     transient_pane_config: transient::TransientPaneConfig,
     screen_saver_config: ScreenSaverConfig,
     screen_saver_last_input: Option<Instant>,
+    screen_saver_next_timeout: Option<Instant>,
     screen_saver_pane_id: Option<PaneId>,
     status_bar_cache_runtime: Option<StatusBarCacheRuntime>,
     status_bar_cache_last_payload: Option<String>,
     status_bar_agent_usage_next_refresh: Option<Instant>,
     status_bar_codex_usage_next_refresh: Option<Instant>,
     status_bar_opencode_go_usage_next_refresh: Option<Instant>,
+    timer_armed_for: Option<Instant>,
     permissions_granted: bool,
 }
 
@@ -104,6 +107,7 @@ impl ZellijPlugin for State {
         self.schedule_initial_status_bar_agent_usage_refresh();
         self.schedule_initial_status_bar_codex_usage_refresh();
         self.schedule_initial_status_bar_opencode_go_usage_refresh();
+        self.arm_next_timer();
     }
 
     fn update(&mut self, event: Event) -> bool {
@@ -149,6 +153,7 @@ impl ZellijPlugin for State {
             }
             Event::InputReceived => self.record_screen_saver_input(),
             Event::Timer(_) => {
+                self.timer_armed_for = None;
                 self.handle_screen_saver_timer();
                 self.handle_status_bar_agent_usage_timer();
                 self.handle_status_bar_codex_usage_timer();
@@ -161,6 +166,7 @@ impl ZellijPlugin for State {
             _ => {}
         }
         self.refresh_status_bar_cache();
+        self.arm_next_timer();
         false
     }
 
@@ -280,5 +286,26 @@ impl State {
         if let PipeSource::Cli(pipe_id) = &pipe_message.source {
             cli_pipe_output(pipe_id, result);
         }
+    }
+}
+
+impl State {
+    fn arm_next_timer(&mut self) {
+        let now = Instant::now();
+        let Some((deadline, delay)) = next_timer_delay(
+            now,
+            [
+                self.screen_saver_next_timeout,
+                self.status_bar_agent_usage_next_refresh,
+                self.status_bar_codex_usage_next_refresh,
+                self.status_bar_opencode_go_usage_next_refresh,
+            ],
+            self.timer_armed_for,
+        ) else {
+            return;
+        };
+
+        set_timeout(delay.as_secs_f64());
+        self.timer_armed_for = Some(deadline);
     }
 }

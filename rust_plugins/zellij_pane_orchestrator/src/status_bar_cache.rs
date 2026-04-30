@@ -79,9 +79,6 @@ impl State {
             return;
         };
         if now < next_refresh {
-            self.schedule_status_bar_agent_usage_refresh_after(
-                next_refresh.saturating_duration_since(now),
-            );
             return;
         }
 
@@ -101,9 +98,6 @@ impl State {
             return;
         };
         if now < next_refresh {
-            self.schedule_status_bar_codex_usage_refresh_after(
-                next_refresh.saturating_duration_since(now),
-            );
             return;
         }
 
@@ -123,9 +117,6 @@ impl State {
             return;
         };
         if now < next_refresh {
-            self.schedule_status_bar_opencode_go_usage_refresh_after(
-                next_refresh.saturating_duration_since(now),
-            );
             return;
         }
 
@@ -144,17 +135,14 @@ impl State {
 
     fn schedule_status_bar_agent_usage_refresh_after(&mut self, delay: Duration) {
         self.status_bar_agent_usage_next_refresh = Some(Instant::now() + delay);
-        set_timeout(delay.as_secs_f64().max(0.5));
     }
 
     fn schedule_status_bar_codex_usage_refresh_after(&mut self, delay: Duration) {
         self.status_bar_codex_usage_next_refresh = Some(Instant::now() + delay);
-        set_timeout(delay.as_secs_f64().max(0.5));
     }
 
     fn schedule_status_bar_opencode_go_usage_refresh_after(&mut self, delay: Duration) {
         self.status_bar_opencode_go_usage_next_refresh = Some(Instant::now() + delay);
-        set_timeout(delay.as_secs_f64().max(0.5));
     }
 
     fn refresh_status_bar_agent_usage_cache(&mut self) {
