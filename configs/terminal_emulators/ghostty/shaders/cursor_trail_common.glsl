@@ -206,6 +206,112 @@ void renderOrbitDualColorTrail(
     fragColor = mix(trail, fragColor, 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength));
 }
 
+void renderVerticalSplitTrail(
+    out vec4 fragColor,
+    in vec2 fragCoord,
+    vec4 color0,
+    vec4 color1,
+    float duration,
+    float pulseFrequency
+) {
+    #if !defined(WEB)
+    fragColor = texture(iChannel0, fragCoord.xy / iResolution.xy);
+    #endif
+    vec2 vu = normalize(fragCoord, 1.);
+    vec2 offsetFactor = vec2(-.5, 0.5);
+
+    vec4 currentCursor = vec4(normalize(iCurrentCursor.xy, 1.), normalize(iCurrentCursor.zw, 0.));
+    vec4 previousCursor = vec4(normalize(iPreviousCursor.xy, 1.), normalize(iPreviousCursor.zw, 0.));
+
+    vec2 centerCC = getRectangleCenter(currentCursor);
+    vec2 centerCP = getRectangleCenter(previousCursor);
+    float vertexFactor = determineStartVertexFactor(currentCursor.xy, previousCursor.xy);
+    float invertedVertexFactor = 1.0 - vertexFactor;
+
+    vec2 v0 = vec2(currentCursor.x + currentCursor.z * vertexFactor, currentCursor.y - currentCursor.w);
+    vec2 v1 = vec2(currentCursor.x + currentCursor.z * invertedVertexFactor, currentCursor.y);
+    vec2 v2 = vec2(previousCursor.x + currentCursor.z * invertedVertexFactor, previousCursor.y);
+    vec2 v3 = vec2(previousCursor.x + currentCursor.z * vertexFactor, previousCursor.y - previousCursor.w);
+
+    float sdfCurrentCursor = getSdfRectangle(vu, currentCursor.xy - (currentCursor.zw * offsetFactor), currentCursor.zw * 0.5);
+    float sdfTrail = getSdfParallelogram(vu, v0, v1, v2, v3);
+
+    float progress = clamp((iTime - iTimeCursorChange) / duration, 0.0, 1.0);
+    float easedProgress = ease(progress);
+    float lineLength = distance(centerCC, centerCP);
+
+    float mod = .005;
+    vec2 dir = normalize(vu - centerCC + 1e-6);
+    float verticalMix = smoothstep(-0.08, 0.08, dir.y);
+    float pulse = 0.05 * sin(iTime * pulseFrequency);
+    float edgeMix = clamp(verticalMix + pulse * 0.5, 0.0, 1.0);
+
+    vec4 base = mix(color0, color1, verticalMix);
+    vec4 edge = mix(color0, color1, edgeMix);
+
+    vec4 trail = fragColor;
+    trail = applyTrailLayer(trail, saturate(base, 1.6), trailGlowMask(sdfTrail, mod + 0.010, 0.035));
+    trail = applyTrailLayer(trail, saturate(edge, 1.7), trailEdgeMask(sdfTrail, mod, 0.006));
+    trail = mix(trail, saturate(base, 1.65), trailCoreMask(sdfTrail, mod));
+
+    trail = applyTrailLayer(trail, saturate(edge, 1.7), cursorGlowMask(sdfCurrentCursor, .002, 0.004));
+    trail = applyTrailLayer(trail, saturate(base, 1.65), cursorEdgeMask(sdfCurrentCursor, .002, 0.004));
+    fragColor = mix(trail, fragColor, 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength));
+}
+
+void renderHorizontalSplitTrail(
+    out vec4 fragColor,
+    in vec2 fragCoord,
+    vec4 color0,
+    vec4 color1,
+    float duration,
+    float pulseFrequency
+) {
+    #if !defined(WEB)
+    fragColor = texture(iChannel0, fragCoord.xy / iResolution.xy);
+    #endif
+    vec2 vu = normalize(fragCoord, 1.);
+    vec2 offsetFactor = vec2(-.5, 0.5);
+
+    vec4 currentCursor = vec4(normalize(iCurrentCursor.xy, 1.), normalize(iCurrentCursor.zw, 0.));
+    vec4 previousCursor = vec4(normalize(iPreviousCursor.xy, 1.), normalize(iPreviousCursor.zw, 0.));
+
+    vec2 centerCC = getRectangleCenter(currentCursor);
+    vec2 centerCP = getRectangleCenter(previousCursor);
+    float vertexFactor = determineStartVertexFactor(currentCursor.xy, previousCursor.xy);
+    float invertedVertexFactor = 1.0 - vertexFactor;
+
+    vec2 v0 = vec2(currentCursor.x + currentCursor.z * vertexFactor, currentCursor.y - currentCursor.w);
+    vec2 v1 = vec2(currentCursor.x + currentCursor.z * invertedVertexFactor, currentCursor.y);
+    vec2 v2 = vec2(previousCursor.x + currentCursor.z * invertedVertexFactor, previousCursor.y);
+    vec2 v3 = vec2(previousCursor.x + currentCursor.z * vertexFactor, previousCursor.y - previousCursor.w);
+
+    float sdfCurrentCursor = getSdfRectangle(vu, currentCursor.xy - (currentCursor.zw * offsetFactor), currentCursor.zw * 0.5);
+    float sdfTrail = getSdfParallelogram(vu, v0, v1, v2, v3);
+
+    float progress = clamp((iTime - iTimeCursorChange) / duration, 0.0, 1.0);
+    float easedProgress = ease(progress);
+    float lineLength = distance(centerCC, centerCP);
+
+    float mod = .005;
+    vec2 dir = normalize(vu - centerCC + 1e-6);
+    float horizontalMix = smoothstep(-0.08, 0.08, dir.x);
+    float pulse = 0.05 * sin(iTime * pulseFrequency);
+    float edgeMix = clamp(horizontalMix + pulse * 0.5, 0.0, 1.0);
+
+    vec4 base = mix(color0, color1, horizontalMix);
+    vec4 edge = mix(color0, color1, edgeMix);
+
+    vec4 trail = fragColor;
+    trail = applyTrailLayer(trail, saturate(base, 1.6), trailGlowMask(sdfTrail, mod + 0.010, 0.035));
+    trail = applyTrailLayer(trail, saturate(edge, 1.7), trailEdgeMask(sdfTrail, mod, 0.006));
+    trail = mix(trail, saturate(base, 1.65), trailCoreMask(sdfTrail, mod));
+
+    trail = applyTrailLayer(trail, saturate(edge, 1.7), cursorGlowMask(sdfCurrentCursor, .002, 0.004));
+    trail = applyTrailLayer(trail, saturate(base, 1.65), cursorEdgeMask(sdfCurrentCursor, .002, 0.004));
+    fragColor = mix(trail, fragColor, 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength));
+}
+
 void renderAxisGradientTrail(
     out vec4 fragColor,
     in vec2 fragCoord,

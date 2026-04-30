@@ -26,6 +26,8 @@ enabled_cursors = [
   "orchid",
   "reef",
   "inferno",
+  "ember",
+  "horizon",
   # "local_lime",
 ]
 
@@ -164,6 +166,24 @@ colors = [
   "#2a3340",
 ]
 cursor_color = "#ff1600"
+
+[[cursor]]
+name = "ember"
+family = "vertical_split"
+colors = [
+  "#ff4500",
+  "#1a1a2e",
+]
+cursor_color = "#ff4500"
+
+[[cursor]]
+name = "horizon"
+family = "horizontal_split"
+colors = [
+  "#0f3460",
+  "#e94560",
+]
+cursor_color = "#e94560"
 
 # Example custom cursor
 # Uncomment the block to enable it

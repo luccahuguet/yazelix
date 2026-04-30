@@ -21,7 +21,9 @@ shaders/
 │   ├── dusk.glsl
 │   ├── orchid.glsl
 │   ├── reef.glsl
-│   └── inferno.glsl
+│   ├── inferno.glsl
+│   ├── ember.glsl
+│   └── horizon.glsl
 ├── build_shaders.nu             # Build script (nushell, runs automatically)
 └── cursor_trail_*.glsl          # Generated locally/runtime only (gitignored)
 ```
@@ -113,3 +115,11 @@ The build is **fully automatic**:
 ### Vertical Gradient (1 variant)
 - `inferno`
 - Vertical directional blending
+
+### Vertical Split (1 variant)
+- `ember`
+- Split trail into top/bottom halves with distinct colors
+
+### Horizontal Split (1 variant)
+- `horizon`
+- Split trail into left/right halves with distinct colors

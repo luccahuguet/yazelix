@@ -54,6 +54,8 @@ pub struct CursorDefinition {
 pub enum CursorFamily {
     SimpleDual,
     AxisGradient,
+    VerticalSplit,
+    HorizontalSplit,
     CuratedTemplate,
 }
 
@@ -270,7 +272,7 @@ impl CursorDefinition {
                 "./shaders/cursor_trail_{}.glsl",
                 self.template.as_deref().unwrap_or(&self.name)
             ),
-            CursorFamily::SimpleDual | CursorFamily::AxisGradient => {
+            CursorFamily::SimpleDual | CursorFamily::AxisGradient | CursorFamily::VerticalSplit | CursorFamily::HorizontalSplit => {
                 format!("./shaders/cursor_trail_{}.glsl", self.name)
             }
         }
@@ -373,13 +375,15 @@ fn validate_definition(
     let family = match raw.family.trim() {
         "simple_dual" => CursorFamily::SimpleDual,
         "axis_gradient" => CursorFamily::AxisGradient,
+        "vertical_split" => CursorFamily::VerticalSplit,
+        "horizontal_split" => CursorFamily::HorizontalSplit,
         "curated_template" => CursorFamily::CuratedTemplate,
         other => {
             return Err(invalid_cursor_config(
                 path,
                 "cursor.family",
                 format!(
-                    "Cursor '{name}' uses unsupported family '{other}'. Expected simple_dual, axis_gradient, or curated_template."
+                    "Cursor '{name}' uses unsupported family '{other}'. Expected simple_dual, axis_gradient, vertical_split, horizontal_split, or curated_template."
                 ),
             ));
         }
@@ -391,7 +395,7 @@ fn validate_definition(
     )?;
 
     match family {
-        CursorFamily::SimpleDual | CursorFamily::AxisGradient => {
+        CursorFamily::SimpleDual | CursorFamily::AxisGradient | CursorFamily::VerticalSplit | CursorFamily::HorizontalSplit => {
             if raw.colors.len() != 2 {
                 return Err(invalid_cursor_config(
                     path,
@@ -686,6 +690,8 @@ cursor_color = "#ffffff"
 
         assert!(registry.enabled_cursors.contains(&"blaze".to_string()));
         assert!(registry.enabled_cursors.contains(&"neon".to_string()));
+        assert!(registry.enabled_cursors.contains(&"ember".to_string()));
+        assert!(registry.enabled_cursors.contains(&"horizon".to_string()));
         assert!(
             registry
                 .enabled_cursors
@@ -693,5 +699,119 @@ cursor_color = "#ffffff"
                 .all(|name| registry.definitions.contains_key(name))
         );
         assert_eq!(registry.settings.trail, "random");
+    }
+
+    // Defends: vertical_split family with exactly 2 colors parses as a valid data-driven cursor definition.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn registry_parses_vertical_split_with_two_colors() {
+        let raw = base_registry(
+            r##"
+[[cursor]]
+name = "ember"
+family = "vertical_split"
+colors = ["#ff4500", "#1a1a2e"]
+cursor_color = "#ff4500"
+"##,
+        )
+        .replace(
+            "enabled_cursors = [\"blaze\"]",
+            "enabled_cursors = [\"blaze\", \"ember\"]",
+        );
+        let (_temp, path) = write_registry(&raw);
+
+        let registry = CursorRegistry::load(&path).unwrap();
+
+        let def = registry.definitions.get("ember").unwrap();
+        assert_eq!(def.family, CursorFamily::VerticalSplit);
+        assert_eq!(def.colors.len(), 2);
+        assert_eq!(def.shader_path(), "./shaders/cursor_trail_ember.glsl");
+    }
+
+    // Defends: horizontal_split family with exactly 2 colors parses as a valid data-driven cursor definition.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn registry_parses_horizontal_split_with_two_colors() {
+        let raw = base_registry(
+            r##"
+[[cursor]]
+name = "horizon"
+family = "horizontal_split"
+colors = ["#0f3460", "#e94560"]
+cursor_color = "#e94560"
+"##,
+        )
+        .replace(
+            "enabled_cursors = [\"blaze\"]",
+            "enabled_cursors = [\"blaze\", \"horizon\"]",
+        );
+        let (_temp, path) = write_registry(&raw);
+
+        let registry = CursorRegistry::load(&path).unwrap();
+
+        let def = registry.definitions.get("horizon").unwrap();
+        assert_eq!(def.family, CursorFamily::HorizontalSplit);
+        assert_eq!(def.colors.len(), 2);
+        assert_eq!(def.shader_path(), "./shaders/cursor_trail_horizon.glsl");
+    }
+
+    // Defends: vertical_split rejects color counts other than 2, preventing malformed shader generation.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn registry_rejects_vertical_split_with_wrong_color_count() {
+        for (label, colors) in [
+            ("too_few", "[\"#ff4500\"]"),
+            ("too_many", "[\"#ff4500\", \"#1a1a2e\", \"#ffffff\"]"),
+        ] {
+            let raw = base_registry(&format!(
+                r##"
+[[cursor]]
+name = "bad_vs_{label}"
+family = "vertical_split"
+colors = {colors}
+cursor_color = "#ff4500"
+"##
+            ))
+            .replace(
+                "enabled_cursors = [\"blaze\"]",
+                &format!("enabled_cursors = [\"blaze\", \"bad_vs_{label}\"]"),
+            );
+            let (_temp, path) = write_registry(&raw);
+
+            let error = CursorRegistry::load(&path).unwrap_err();
+
+            assert_eq!(error.code(), "invalid_cursor_config");
+            assert!(format!("{error:?}").contains("requires exactly 2 colors"));
+        }
+    }
+
+    // Defends: horizontal_split rejects color counts other than 2, preventing malformed shader generation.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn registry_rejects_horizontal_split_with_wrong_color_count() {
+        for (label, colors) in [
+            ("too_few", "[\"#0f3460\"]"),
+            ("too_many", "[\"#0f3460\", \"#e94560\", \"#ffffff\"]"),
+        ] {
+            let raw = base_registry(&format!(
+                r##"
+[[cursor]]
+name = "bad_hs_{label}"
+family = "horizontal_split"
+colors = {colors}
+cursor_color = "#e94560"
+"##
+            ))
+            .replace(
+                "enabled_cursors = [\"blaze\"]",
+                &format!("enabled_cursors = [\"blaze\", \"bad_hs_{label}\"]"),
+            );
+            let (_temp, path) = write_registry(&raw);
+
+            let error = CursorRegistry::load(&path).unwrap_err();
+
+            assert_eq!(error.code(), "invalid_cursor_config");
+            assert!(format!("{error:?}").contains("requires exactly 2 colors"));
+        }
     }
 }
