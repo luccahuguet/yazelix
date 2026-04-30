@@ -370,7 +370,10 @@ fn write_data_driven_cursor_shaders(
         .filter(|definition| {
             matches!(
                 definition.family,
-                CursorFamily::SimpleDual | CursorFamily::AxisGradient
+                CursorFamily::SimpleDual
+                    | CursorFamily::AxisGradient
+                    | CursorFamily::VerticalSplit
+                    | CursorFamily::HorizontalSplit
             )
         })
         .collect::<Vec<_>>();
@@ -444,6 +447,38 @@ const float DURATION = {duration};
 void mainImage(out vec4 fragColor, in vec2 fragCoord)
 {{
     renderAxisGradientTrail(fragColor, fragCoord, YAZELIX_CURSOR_COLOR_0, YAZELIX_CURSOR_COLOR_1, DURATION, 1.6, 0.42, 0.30, 0.5);
+}}
+"#
+            )
+        }
+        CursorFamily::VerticalSplit => {
+            let duration = format_ghostty_trail_duration(0.24 * duration_scale);
+            format!(
+                r#"// Generated Yazelix vertical-split cursor variant
+
+const vec4 YAZELIX_CURSOR_COLOR_0 = {color_0};
+const vec4 YAZELIX_CURSOR_COLOR_1 = {color_1};
+const float DURATION = {duration};
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord)
+{{
+    renderVerticalSplitTrail(fragColor, fragCoord, YAZELIX_CURSOR_COLOR_0, YAZELIX_CURSOR_COLOR_1, DURATION, 1.8);
+}}
+"#
+            )
+        }
+        CursorFamily::HorizontalSplit => {
+            let duration = format_ghostty_trail_duration(0.24 * duration_scale);
+            format!(
+                r#"// Generated Yazelix horizontal-split cursor variant
+
+const vec4 YAZELIX_CURSOR_COLOR_0 = {color_0};
+const vec4 YAZELIX_CURSOR_COLOR_1 = {color_1};
+const float DURATION = {duration};
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord)
+{{
+    renderHorizontalSplitTrail(fragColor, fragCoord, YAZELIX_CURSOR_COLOR_0, YAZELIX_CURSOR_COLOR_1, DURATION, 1.6);
 }}
 "#
             )
