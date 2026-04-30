@@ -281,6 +281,7 @@ Input:
 Contract:
 
 - the Rust control plane decides the working directory and file targets
+- Yazi-to-editor file opens use the resolved editor working directory as the workspace retarget root, so files nested inside a Git repository keep the repository root instead of the file parent
 - the plugin routes to the managed editor pane if present
 - the plugin should not invent its own project-root logic here
 

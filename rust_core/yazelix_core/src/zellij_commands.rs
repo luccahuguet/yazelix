@@ -3916,6 +3916,13 @@ fn retarget_workspace_without_focused_cd(
             .map(Path::to_path_buf)
             .unwrap_or_else(|| target_path.to_path_buf())
     };
+    retarget_workspace_dir_without_focused_cd(&target_dir, editor_kind)
+}
+
+fn retarget_workspace_dir_without_focused_cd(
+    target_dir: &Path,
+    editor_kind: Option<&str>,
+) -> Result<Value, CoreError> {
     let payload = json!({
         "workspace_root": target_dir.display().to_string(),
         "cd_focused_pane": false,
@@ -4266,7 +4273,9 @@ pub fn run_zellij_open_editor(args: &[String]) -> Result<i32, CoreError> {
         )?;
     }
 
-    if let Ok(retarget_result) = retarget_workspace_without_focused_cd(primary_target_path, None) {
+    if let Ok(retarget_result) =
+        retarget_workspace_dir_without_focused_cd(&editor_working_dir, None)
+    {
         if workspace_retarget_status(&retarget_result) == "ok" {
             if integration_facts.enable_sidebar {
                 if let Some(sidebar_state) = sidebar_state_from_retarget_response(&retarget_result)

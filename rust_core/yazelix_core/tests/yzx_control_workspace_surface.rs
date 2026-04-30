@@ -457,6 +457,101 @@ ya_command = "ya"
     );
 }
 
+// Regression: nested Yazi-to-Helix file opens keep the Git workspace root instead of retargeting the tab to the file parent.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_control_zellij_open_editor_keeps_repo_root_for_nested_helix_file() {
+    let fixture = managed_config_fixture(
+        r#"[editor]
+command = "hx"
+initial_sidebar_state = "open"
+
+[yazi]
+ya_command = "ya"
+"#,
+    );
+    let fake_bin = fixture.home_dir.join("fake-bin");
+    let repo_dir = fixture.home_dir.join("workspace");
+    let nested_dir = repo_dir.join("crates").join("app").join("src");
+    let target_file = nested_dir.join("main.rs");
+    let zellij_commands_log = fixture.home_dir.join("zellij-commands.log");
+    let open_file_payload_log = fixture.home_dir.join("open-file-payload.json");
+    let retarget_payload_log = fixture.home_dir.join("retarget-payload.json");
+    let ya_log = fixture.home_dir.join("ya.log");
+    fs::create_dir_all(&fake_bin).unwrap();
+    fs::create_dir_all(&nested_dir).unwrap();
+    fs::write(&target_file, "").unwrap();
+
+    write_executable_script(
+        &fake_bin.join("git"),
+        &format!(
+            "#!/bin/sh\nif [ \"$1\" = \"-C\" ] && [ \"$3\" = \"rev-parse\" ] && [ \"$4\" = \"--show-toplevel\" ]; then\n  printf '%s\\n' \"{}\"\n  exit 0\nfi\nprintf 'unexpected git args: %s\\n' \"$*\" >&2\nexit 1\n",
+            repo_dir.display()
+        ),
+    );
+    write_executable_script(
+        &fake_bin.join("zellij"),
+        &format!(
+            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    open_file)\n      printf '%s' \"$8\" > \"{}\"\n      printf '%s\\n' 'ok'\n      exit 0\n      ;;\n    retarget_workspace)\n      printf '%s' \"$8\" > \"{}\"\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"skipped\",\"sidebar_yazi_id\":\"plugin-sidebar-yazi-123\",\"sidebar_yazi_cwd\":\"/home/sidebar\"}}'\n      exit 0\n      ;;\n  esac\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
+            zellij_commands_log.display(),
+            open_file_payload_log.display(),
+            retarget_payload_log.display()
+        ),
+    );
+    write_executable_script(
+        &fake_bin.join("ya"),
+        &format!(
+            "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\n",
+            ya_log.display()
+        ),
+    );
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .env("PATH", prepend_path(&fake_bin))
+        .env("ZELLIJ", "1")
+        .env("YAZI_ID", "current-yazi")
+        .arg("zellij")
+        .arg("open-editor")
+        .arg(&target_file)
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stderr.is_empty());
+    assert!(output.stdout.is_empty());
+    assert_eq!(
+        fs::read_to_string(zellij_commands_log)
+            .unwrap()
+            .lines()
+            .collect::<Vec<_>>(),
+        vec!["open_file", "retarget_workspace"]
+    );
+
+    let open_file_payload: Value =
+        serde_json::from_slice(&fs::read(open_file_payload_log).unwrap()).unwrap();
+    assert_eq!(open_file_payload["editor"], "helix");
+    assert_eq!(
+        open_file_payload["working_dir"],
+        repo_dir.to_string_lossy().to_string()
+    );
+
+    let retarget_payload: Value =
+        serde_json::from_slice(&fs::read(retarget_payload_log).unwrap()).unwrap();
+    assert_eq!(
+        retarget_payload["workspace_root"],
+        repo_dir.to_string_lossy().to_string()
+    );
+    assert_eq!(retarget_payload["cd_focused_pane"], false);
+    assert!(retarget_payload["editor"].is_null());
+    assert_eq!(
+        fs::read_to_string(ya_log).unwrap().trim(),
+        format!(
+            "emit-to plugin-sidebar-yazi-123 cd {}",
+            nested_dir.display()
+        )
+    );
+}
+
 // Regression: when the managed editor pane is absent, multi-file Yazi open uses the immutable session snapshot even if the live config has newer stale fields.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
