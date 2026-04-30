@@ -54,13 +54,7 @@ const WIDGET_TRAY_ALLOWED: &[&str] = &[
     "token_budget",
     "claude_usage",
     "codex_usage",
-    "codex_daily_usage",
-    "codex_monthly_usage",
-    "codex_session_usage",
     "opencode_usage",
-    "opencode_daily_usage",
-    "opencode_monthly_usage",
-    "opencode_session_usage",
     "cpu",
     "ram",
 ];

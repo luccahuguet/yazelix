@@ -11,7 +11,7 @@
 [contract]
 version = 1
 surface = "main"
-field_count = 37
+field_count = 40
 artifact_role = "canonical_machine_metadata"
 default_template = "yazelix_default.toml"
 home_manager_module = "home_manager/module.nix"
@@ -293,13 +293,7 @@ allowed_values = [
   "token_budget",
   "claude_usage",
   "codex_usage",
-  "codex_daily_usage",
-  "codex_monthly_usage",
-  "codex_session_usage",
   "opencode_usage",
-  "opencode_daily_usage",
-  "opencode_monthly_usage",
-  "opencode_session_usage",
   "cpu",
   "ram",
 ]
@@ -316,6 +310,54 @@ allowed_values = [
   "both",
   "tokens",
   "money",
+]
+rebuild_required = false
+
+[fields."zellij.claude_usage_periods"]
+kind = "string_list"
+default = [
+  "day",
+]
+parser_key = "zellij_claude_usage_periods"
+home_manager_option = "zellij_claude_usage_periods"
+parser_behavior = "direct"
+validation = "enum_string_list"
+allowed_values = [
+  "day",
+  "month",
+  "last",
+]
+rebuild_required = false
+
+[fields."zellij.codex_usage_periods"]
+kind = "string_list"
+default = [
+  "day",
+]
+parser_key = "zellij_codex_usage_periods"
+home_manager_option = "zellij_codex_usage_periods"
+parser_behavior = "direct"
+validation = "enum_string_list"
+allowed_values = [
+  "day",
+  "month",
+  "last",
+]
+rebuild_required = false
+
+[fields."zellij.opencode_usage_periods"]
+kind = "string_list"
+default = [
+  "day",
+]
+parser_key = "zellij_opencode_usage_periods"
+home_manager_option = "zellij_opencode_usage_periods"
+parser_behavior = "direct"
+validation = "enum_string_list"
+allowed_values = [
+  "day",
+  "month",
+  "last",
 ]
 rebuild_required = false
 

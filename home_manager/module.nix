@@ -221,8 +221,12 @@ in
         Opt-in usage binaries to include in the Yazelix runtime.
 
         These support zellij.widget_tray usage entries:
-        - "tokenusage": claude_usage, codex_usage, codex_daily_usage, codex_monthly_usage, codex_session_usage
-        - "ccusage-opencode": opencode_usage, opencode_daily_usage, opencode_monthly_usage, opencode_session_usage
+        - "tokenusage": claude_usage, codex_usage
+        - "ccusage-opencode": opencode_usage
+
+        claude_usage, codex_usage, and opencode_usage are grouped widgets.
+        Configure their period lists with zellij_claude_usage_periods,
+        zellij_codex_usage_periods, and zellij_opencode_usage_periods.
       '';
     };
 
@@ -353,6 +357,18 @@ in
 
     zellij_agent_usage_display = mkMainContractOption "zellij.agent_usage_display" {
       description = "Agent usage widget display mode: both, tokens, or money";
+    };
+
+    zellij_claude_usage_periods = mkMainContractOption "zellij.claude_usage_periods" {
+      description = "Periods shown by the grouped claude_usage widget: day, month, last";
+    };
+
+    zellij_codex_usage_periods = mkMainContractOption "zellij.codex_usage_periods" {
+      description = "Periods shown by the grouped codex_usage widget: day, month, last";
+    };
+
+    zellij_opencode_usage_periods = mkMainContractOption "zellij.opencode_usage_periods" {
+      description = "Periods shown by the grouped opencode_usage widget: day, month, last";
     };
 
     zellij_custom_text = mkMainContractOption "zellij.custom_text" {

@@ -13,13 +13,7 @@ pub const WIDGET_AI_ACTIVITY: &str = "ai_activity";
 pub const WIDGET_TOKEN_BUDGET: &str = "token_budget";
 pub const WIDGET_CLAUDE_USAGE: &str = "claude_usage";
 pub const WIDGET_CODEX_USAGE: &str = "codex_usage";
-pub const WIDGET_CODEX_DAILY_USAGE: &str = "codex_daily_usage";
-pub const WIDGET_CODEX_MONTHLY_USAGE: &str = "codex_monthly_usage";
-pub const WIDGET_CODEX_SESSION_USAGE: &str = "codex_session_usage";
 pub const WIDGET_OPENCODE_USAGE: &str = "opencode_usage";
-pub const WIDGET_OPENCODE_DAILY_USAGE: &str = "opencode_daily_usage";
-pub const WIDGET_OPENCODE_MONTHLY_USAGE: &str = "opencode_monthly_usage";
-pub const WIDGET_OPENCODE_SESSION_USAGE: &str = "opencode_session_usage";
 pub const WIDGET_CPU: &str = "cpu";
 pub const WIDGET_RAM: &str = "ram";
 
@@ -28,13 +22,7 @@ pub const COMMAND_AI_ACTIVITY: &str = "{command_ai_activity}";
 pub const COMMAND_TOKEN_BUDGET: &str = "{command_token_budget}";
 pub const COMMAND_CLAUDE_USAGE: &str = "{command_claude_usage}";
 pub const COMMAND_CODEX_USAGE: &str = "{command_codex_usage}";
-pub const COMMAND_CODEX_DAILY_USAGE: &str = "{command_codex_daily_usage}";
-pub const COMMAND_CODEX_MONTHLY_USAGE: &str = "{command_codex_monthly_usage}";
-pub const COMMAND_CODEX_SESSION_USAGE: &str = "{command_codex_session_usage}";
 pub const COMMAND_OPENCODE_USAGE: &str = "{command_opencode_usage}";
-pub const COMMAND_OPENCODE_DAILY_USAGE: &str = "{command_opencode_daily_usage}";
-pub const COMMAND_OPENCODE_MONTHLY_USAGE: &str = "{command_opencode_monthly_usage}";
-pub const COMMAND_OPENCODE_SESSION_USAGE: &str = "{command_opencode_session_usage}";
 pub const COMMAND_CPU: &str = "{command_cpu}";
 pub const COMMAND_RAM: &str = "{command_ram}";
 pub const COMMAND_VERSION: &str = "{command_version}";
@@ -127,13 +115,7 @@ fn render_widget(widget: &str, request: &BarRenderRequest) -> Result<String, Bar
         WIDGET_TOKEN_BUDGET => Ok(COMMAND_TOKEN_BUDGET.to_string()),
         WIDGET_CLAUDE_USAGE => Ok(COMMAND_CLAUDE_USAGE.to_string()),
         WIDGET_CODEX_USAGE => Ok(COMMAND_CODEX_USAGE.to_string()),
-        WIDGET_CODEX_DAILY_USAGE => Ok(COMMAND_CODEX_DAILY_USAGE.to_string()),
-        WIDGET_CODEX_MONTHLY_USAGE => Ok(COMMAND_CODEX_MONTHLY_USAGE.to_string()),
-        WIDGET_CODEX_SESSION_USAGE => Ok(COMMAND_CODEX_SESSION_USAGE.to_string()),
         WIDGET_OPENCODE_USAGE => Ok(COMMAND_OPENCODE_USAGE.to_string()),
-        WIDGET_OPENCODE_DAILY_USAGE => Ok(COMMAND_OPENCODE_DAILY_USAGE.to_string()),
-        WIDGET_OPENCODE_MONTHLY_USAGE => Ok(COMMAND_OPENCODE_MONTHLY_USAGE.to_string()),
-        WIDGET_OPENCODE_SESSION_USAGE => Ok(COMMAND_OPENCODE_SESSION_USAGE.to_string()),
         WIDGET_CPU => Ok(COMMAND_CPU.to_string()),
         WIDGET_RAM => Ok(COMMAND_RAM.to_string()),
         _ => Err(BarRenderError::InvalidWidgetTrayEntry {
@@ -208,18 +190,12 @@ mod tests {
             "claude_usage",
             "codex_usage",
             "opencode_usage",
-            "codex_daily_usage",
-            "codex_monthly_usage",
-            "codex_session_usage",
-            "opencode_daily_usage",
-            "opencode_monthly_usage",
-            "opencode_session_usage",
         ]))
         .unwrap();
 
         assert_eq!(
             rendered,
-            "{command_claude_usage}{command_codex_usage}{command_opencode_usage}{command_codex_daily_usage}{command_codex_monthly_usage}{command_codex_session_usage}{command_opencode_daily_usage}{command_opencode_monthly_usage}{command_opencode_session_usage}"
+            "{command_claude_usage}{command_codex_usage}{command_opencode_usage}"
         );
     }
 
