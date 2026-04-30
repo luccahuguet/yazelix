@@ -33,7 +33,7 @@ plugin location="__YAZELIX_ZJSTATUS_PLUGIN_URL__" {
 
     command_workspace_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-cache-widget workspace"
     command_workspace_format "#[fg=#00ff88,bold]{stdout}"
-    command_workspace_interval "5"
+    command_workspace_interval "1"
 
     command_ai_activity_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-cache-widget ai_activity"
     command_ai_activity_format "#[fg=#00ff88,bold]{stdout}"

@@ -1908,6 +1908,7 @@ ui { pane_frames { hide_session_name true } }
         assert!(template.contains("command_workspace_command"));
         assert!(template.contains("status-cache-widget workspace"));
         assert!(template.contains(r##"command_workspace_format "#[fg=#00ff88,bold]{stdout}""##));
+        assert!(template.contains(r#"command_workspace_interval "1""#));
         assert!(!template.contains("status-bus-workspace"));
         assert!(template.contains("command_ai_activity_command"));
         assert!(template.contains("status-cache-widget ai_activity"));

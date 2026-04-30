@@ -1189,24 +1189,12 @@ fn run_agent_usage_command_with_timeout(
 
 fn render_status_bus_workspace_widget(value: &Value) -> String {
     let root = nested_str(value, &["workspace", "root"]).unwrap_or("");
-    let workspace = Path::new(root)
+    Path::new(root)
         .file_name()
         .and_then(|name| name.to_str())
         .filter(|name| !name.trim().is_empty())
-        .unwrap_or("none");
-    let focus = value
-        .get("focus_context")
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|focus| !focus.is_empty())
-        .unwrap_or("unknown");
-    let sidebar = nested_bool(value, &["layout", "sidebar_collapsed"]);
-    let sidebar_marker = match sidebar {
-        Some(true) => "side:closed",
-        Some(false) => "side:open",
-        _ => "side:?",
-    };
-    format!("{workspace}/{focus}/{sidebar_marker}")
+        .unwrap_or("none")
+        .to_string()
 }
 
 fn render_zjstatus_workspace_widget(value: &Value) -> String {
@@ -1217,7 +1205,7 @@ fn render_zjstatus_workspace_widget(value: &Value) -> String {
     {
         return String::new();
     }
-    render_zjstatus_segment("workspace", &render_status_bus_workspace_widget(value))
+    format!("[{}]", render_status_bus_workspace_widget(value))
 }
 
 fn render_status_bus_ai_activity_widget(value: &Value) -> String {
@@ -2682,10 +2670,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(
-            render_status_bus_workspace_widget(&value),
-            "yazelix-demo/sidebar/side:open"
-        );
+        assert_eq!(render_status_bus_workspace_widget(&value), "yazelix-demo");
     }
 
     // Defends: the AI activity widget consumes status-bus facts and prioritizes active/thinking over stale or idle states.
@@ -2736,10 +2721,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(
-            render_zjstatus_workspace_widget(&value),
-            "[workspace yazelix-demo/sidebar/side:open]"
-        );
+        assert_eq!(render_zjstatus_workspace_widget(&value), "[yazelix-demo]");
         assert_eq!(
             render_zjstatus_ai_activity_widget(&value),
             "[ai claude:thinking]"
@@ -2775,7 +2757,7 @@ mod tests {
 
         assert_eq!(
             render_status_cache_widget(&cache, "workspace").unwrap(),
-            "[workspace yazelix-demo/sidebar/side:open]"
+            "[yazelix-demo]"
         );
         assert!(
             !render_status_cache_widget(&cache, "workspace")
