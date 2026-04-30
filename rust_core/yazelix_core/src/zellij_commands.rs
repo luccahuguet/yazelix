@@ -1004,33 +1004,68 @@ pub fn run_zellij_agent_usage(args: &[String]) -> Result<i32, CoreError> {
 
 fn status_bar_cache_path_from_env() -> Option<PathBuf> {
     status_bar_cache_path_from_values(
-        env::var_os("YAZELIX_STATUS_BAR_CACHE_PATH"),
-        env::var_os("YAZELIX_SESSION_CONFIG_PATH"),
+        env::var_os("YAZELIX_STATUS_BAR_CACHE_PATH").map(PathBuf::from),
+        env::var_os("YAZELIX_SESSION_CONFIG_PATH").map(PathBuf::from),
     )
     .or_else(status_bar_cache_path_from_parent_process_env)
 }
 
 fn status_bar_cache_path_from_values(
-    cache_path: Option<OsString>,
-    session_config_path: Option<OsString>,
+    cache_path: Option<PathBuf>,
+    session_config_path: Option<PathBuf>,
 ) -> Option<PathBuf> {
-    if let Some(path) = cache_path.map(PathBuf::from) {
+    if let Some(path) = cache_path {
         return Some(path);
     }
 
-    session_config_path.map(PathBuf::from).and_then(|path| {
+    session_config_path.and_then(|path| {
         path.parent()
             .map(|parent| parent.join("status_bar_cache.json"))
     })
 }
 
+fn session_config_path_from_env() -> Option<PathBuf> {
+    session_config_path_from_values(
+        env::var_os("YAZELIX_SESSION_CONFIG_PATH")
+            .map(PathBuf::from)
+            .or_else(session_config_path_from_parent_process_env),
+        env::var_os("YAZELIX_STATUS_BAR_CACHE_PATH")
+            .map(PathBuf::from)
+            .or_else(status_bar_cache_path_from_parent_process_env),
+    )
+}
+
+fn session_config_path_from_values(
+    session_config_path: Option<PathBuf>,
+    cache_path: Option<PathBuf>,
+) -> Option<PathBuf> {
+    if let Some(path) = session_config_path {
+        return Some(path);
+    }
+
+    cache_path.and_then(|path| {
+        path.parent()
+            .map(|parent| parent.join("config_snapshot.json"))
+    })
+}
+
 #[cfg(target_os = "linux")]
 fn status_bar_cache_path_from_parent_process_env() -> Option<PathBuf> {
+    path_from_parent_process_env(status_bar_cache_path_from_environ_bytes)
+}
+
+#[cfg(target_os = "linux")]
+fn session_config_path_from_parent_process_env() -> Option<PathBuf> {
+    path_from_parent_process_env(session_config_path_from_environ_bytes)
+}
+
+#[cfg(target_os = "linux")]
+fn path_from_parent_process_env(extract: fn(&[u8]) -> Option<PathBuf>) -> Option<PathBuf> {
     let mut pid = parent_pid(std::process::id())?;
     for _ in 0..4 {
         let env_path = PathBuf::from("/proc").join(pid.to_string()).join("environ");
         if let Ok(raw) = fs::read(env_path) {
-            if let Some(path) = status_bar_cache_path_from_environ_bytes(&raw) {
+            if let Some(path) = extract(&raw) {
                 return Some(path);
             }
         }
@@ -1048,6 +1083,11 @@ fn status_bar_cache_path_from_parent_process_env() -> Option<PathBuf> {
     None
 }
 
+#[cfg(not(target_os = "linux"))]
+fn session_config_path_from_parent_process_env() -> Option<PathBuf> {
+    None
+}
+
 #[cfg(target_os = "linux")]
 fn parent_pid(pid: u32) -> Option<u32> {
     let stat_path = PathBuf::from("/proc").join(pid.to_string()).join("stat");
@@ -1059,23 +1099,21 @@ fn parent_pid(pid: u32) -> Option<u32> {
 }
 
 fn status_bar_cache_path_from_environ_bytes(raw: &[u8]) -> Option<PathBuf> {
-    let mut cache_path: Option<OsString> = None;
-    let mut session_config_path: Option<OsString> = None;
+    status_bar_cache_path_from_values(
+        environ_path_value(raw, b"YAZELIX_STATUS_BAR_CACHE_PATH="),
+        session_config_path_from_environ_bytes(raw),
+    )
+}
 
-    for item in raw.split(|byte| *byte == 0) {
-        if let Some(value) = item.strip_prefix(b"YAZELIX_STATUS_BAR_CACHE_PATH=") {
-            if !value.is_empty() {
-                cache_path = Some(OsString::from(String::from_utf8_lossy(value).to_string()));
-            }
-        } else if let Some(value) = item.strip_prefix(b"YAZELIX_SESSION_CONFIG_PATH=") {
-            if !value.is_empty() {
-                session_config_path =
-                    Some(OsString::from(String::from_utf8_lossy(value).to_string()));
-            }
-        }
-    }
+fn session_config_path_from_environ_bytes(raw: &[u8]) -> Option<PathBuf> {
+    environ_path_value(raw, b"YAZELIX_SESSION_CONFIG_PATH=")
+}
 
-    status_bar_cache_path_from_values(cache_path, session_config_path)
+fn environ_path_value(raw: &[u8], prefix: &[u8]) -> Option<PathBuf> {
+    raw.split(|byte| *byte == 0).find_map(|item| {
+        let value = item.strip_prefix(prefix)?;
+        (!value.is_empty()).then(|| PathBuf::from(String::from_utf8_lossy(value).to_string()))
+    })
 }
 
 fn missing_status_bar_cache_path_error() -> CoreError {
@@ -1443,6 +1481,10 @@ fn agent_usage_refresh_config_from_session_config_env() -> AgentUsageRefreshConf
     let Some(config) = normalized_session_config_from_env() else {
         return AgentUsageRefreshConfig::default();
     };
+    agent_usage_refresh_config_from_normalized_config(&config)
+}
+
+fn agent_usage_refresh_config_from_normalized_config(config: &Value) -> AgentUsageRefreshConfig {
     AgentUsageRefreshConfig {
         widgets: agent_usage_widget_names_from_config(&config),
         claude_periods: agent_usage_periods_from_config(&config, "zellij_claude_usage_periods"),
@@ -1452,7 +1494,11 @@ fn agent_usage_refresh_config_from_session_config_env() -> AgentUsageRefreshConf
 }
 
 fn normalized_session_config_from_env() -> Option<Value> {
-    let path = env::var_os("YAZELIX_SESSION_CONFIG_PATH").map(PathBuf::from)?;
+    let path = session_config_path_from_env()?;
+    normalized_session_config_from_path(&path)
+}
+
+fn normalized_session_config_from_path(path: &Path) -> Option<Value> {
     let raw = fs::read_to_string(path).ok()?;
     serde_json::from_str::<Value>(&raw)
         .ok()?
@@ -3630,6 +3676,58 @@ mod tests {
         assert_eq!(
             derived,
             Some(PathBuf::from("/tmp/session/status_bar_cache.json"))
+        );
+    }
+
+    // Regression: zjstatus command execution can preserve only the cache path, so usage refresh still needs the sibling config snapshot.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn session_config_path_can_be_recovered_from_cache_path() {
+        assert_eq!(
+            session_config_path_from_values(
+                None,
+                Some(PathBuf::from("/tmp/session/status_bar_cache.json")),
+            ),
+            Some(PathBuf::from("/tmp/session/config_snapshot.json"))
+        );
+        assert_eq!(
+            session_config_path_from_environ_bytes(
+                b"PATH=/bin\0YAZELIX_SESSION_CONFIG_PATH=/tmp/session/config_snapshot.json\0",
+            ),
+            Some(PathBuf::from("/tmp/session/config_snapshot.json"))
+        );
+    }
+
+    // Regression: agent usage refresh must honor grouped period settings from the launch snapshot when direct env has been stripped.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn agent_usage_refresh_config_reads_grouped_periods_from_snapshot_path() {
+        let temp = tempfile::tempdir().unwrap();
+        let config_path = temp.path().join("config_snapshot.json");
+        fs::write(
+            &config_path,
+            json!({
+                "normalized_config": {
+                    "zellij_widget_tray": ["codex_usage"],
+                    "zellij_codex_usage_periods": ["day", "month", "last"],
+                    "zellij_claude_usage_periods": ["day"],
+                    "zellij_opencode_usage_periods": ["day"],
+                    "zellij_agent_usage_display": "both"
+                }
+            })
+            .to_string(),
+        )
+        .unwrap();
+        let config = normalized_session_config_from_path(&config_path).unwrap();
+        let refresh_config = agent_usage_refresh_config_from_normalized_config(&config);
+
+        assert_eq!(
+            configured_agent_usage_targets(&refresh_config),
+            vec![
+                CODEX_DAILY_USAGE_TARGET,
+                CODEX_MONTHLY_USAGE_TARGET,
+                CODEX_SESSION_USAGE_TARGET,
+            ]
         );
     }
 
