@@ -157,6 +157,8 @@ When creating new files or directories, always use underscores to maintain consi
 
 - When renaming or simplifying a user-facing command surface, do not keep legacy aliases by default.
 - Only preserve old command names as aliases when the user explicitly asks for a compatibility transition.
+- Do not add legacy support for command/config/API surfaces that have not been pushed yet. Amend or replace the local commits and delete the old surface instead.
+- For recently pushed surfaces, ask the maintainer before adding compatibility support. Bias toward removing the stale surface unless there is a clear release, upgrade, or user-support reason to keep it temporarily.
 
 ## Rust Plugin Workflow
 
