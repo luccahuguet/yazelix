@@ -27,6 +27,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 const PANE_ORCHESTRATOR_PLUGIN_ALIAS: &str = "yazelix_pane_orchestrator";
 const STATUS_BUS_SCHEMA_VERSION: i64 = 1;
 const STATUS_BAR_CACHE_SCHEMA_VERSION: i64 = 1;
+const AGENT_USAGE_SEED_MAX_AGE_SECONDS: u64 = 180;
+const AGENT_USAGE_SEED_CANDIDATE_LIMIT: usize = 16;
 const EDITOR_PANE_NAME: &str = "editor";
 pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
     "pipe",
@@ -820,16 +822,18 @@ pub fn run_zellij_status_cache_write(args: &[String]) -> Result<i32, CoreError> 
         .ok_or_else(missing_status_bar_cache_path_error)?;
     let status_bus = decode_status_bus_snapshot(payload)?;
     let previous_cache = read_status_bar_cache_value(&path);
-    let agent_usage = previous_cache
-        .as_ref()
-        .and_then(|cache| cache.get("agent_usage").cloned())
-        .unwrap_or_else(|| json!({}));
-    let agent_usage_updated_at = previous_cache.as_ref().and_then(|cache| {
-        cache
-            .get("agent_usage_updated_at_unix_seconds")
-            .and_then(Value::as_u64)
-    });
-    let cache = build_status_bar_cache(status_bus, agent_usage, agent_usage_updated_at);
+    let now = unix_time_seconds();
+    let agent_usage_seed =
+        agent_usage_seed_for_status_cache_path(&path, previous_cache.as_ref(), now);
+    let cache = build_status_bar_cache_at(
+        status_bus,
+        agent_usage_seed
+            .as_ref()
+            .map(|seed| seed.agent_usage.clone())
+            .unwrap_or_else(|| json!({})),
+        agent_usage_seed.and_then(|seed| seed.updated_at_unix_seconds),
+        now,
+    );
     write_status_bar_cache_value(&path, &cache)?;
     Ok(0)
 }
@@ -1028,14 +1032,15 @@ fn missing_status_bar_cache_path_error() -> CoreError {
     )
 }
 
-fn build_status_bar_cache(
+fn build_status_bar_cache_at(
     status_bus: Value,
     agent_usage: Value,
     agent_usage_updated_at: Option<u64>,
+    now: u64,
 ) -> Value {
     let mut cache = json!({
         "schema_version": STATUS_BAR_CACHE_SCHEMA_VERSION,
-        "updated_at_unix_seconds": unix_time_seconds(),
+        "updated_at_unix_seconds": now,
         "status_bus": status_bus,
         "agent_usage": agent_usage,
     });
@@ -1043,6 +1048,93 @@ fn build_status_bar_cache(
         cache["agent_usage_updated_at_unix_seconds"] = json!(updated_at);
     }
     cache
+}
+
+#[derive(Debug, Clone)]
+struct AgentUsageCacheSeed {
+    agent_usage: Value,
+    updated_at_unix_seconds: Option<u64>,
+}
+
+fn agent_usage_seed_for_status_cache_path(
+    path: &Path,
+    previous_cache: Option<&Value>,
+    now: u64,
+) -> Option<AgentUsageCacheSeed> {
+    previous_cache
+        .and_then(agent_usage_seed_from_current_cache)
+        .or_else(|| recent_sibling_agent_usage_seed(path, now))
+}
+
+fn agent_usage_seed_from_current_cache(cache: &Value) -> Option<AgentUsageCacheSeed> {
+    let agent_usage = non_empty_agent_usage_value(cache)?;
+    Some(AgentUsageCacheSeed {
+        agent_usage,
+        updated_at_unix_seconds: cache
+            .get("agent_usage_updated_at_unix_seconds")
+            .and_then(Value::as_u64),
+    })
+}
+
+fn recent_sibling_agent_usage_seed(path: &Path, now: u64) -> Option<AgentUsageCacheSeed> {
+    let sessions_dir = path.parent()?.parent()?;
+    let mut candidates = status_bar_cache_sibling_candidates(sessions_dir, path);
+    candidates.sort_by(|left, right| right.modified_unix_seconds.cmp(&left.modified_unix_seconds));
+
+    candidates
+        .into_iter()
+        .take(AGENT_USAGE_SEED_CANDIDATE_LIMIT)
+        .find_map(|candidate| {
+            let cache = read_status_bar_cache_value(&candidate.path)?;
+            let seed = agent_usage_seed_from_current_cache(&cache)?;
+            let updated_at = seed.updated_at_unix_seconds?;
+            if now.saturating_sub(updated_at) <= AGENT_USAGE_SEED_MAX_AGE_SECONDS {
+                Some(seed)
+            } else {
+                None
+            }
+        })
+}
+
+#[derive(Debug, Clone)]
+struct StatusBarCacheCandidate {
+    path: PathBuf,
+    modified_unix_seconds: u64,
+}
+
+fn status_bar_cache_sibling_candidates(
+    sessions_dir: &Path,
+    current_path: &Path,
+) -> Vec<StatusBarCacheCandidate> {
+    let Ok(entries) = fs::read_dir(sessions_dir) else {
+        return Vec::new();
+    };
+
+    entries
+        .filter_map(Result::ok)
+        .filter_map(|entry| {
+            let cache_path = entry.path().join("status_bar_cache.json");
+            if cache_path == current_path {
+                return None;
+            }
+            let modified_unix_seconds = fs::metadata(&cache_path)
+                .ok()
+                .and_then(|metadata| metadata.modified().ok())
+                .and_then(|modified| modified.duration_since(UNIX_EPOCH).ok())
+                .map(|duration| duration.as_secs())?;
+            Some(StatusBarCacheCandidate {
+                path: cache_path,
+                modified_unix_seconds,
+            })
+        })
+        .collect()
+}
+
+fn non_empty_agent_usage_value(cache: &Value) -> Option<Value> {
+    cache
+        .get("agent_usage")
+        .filter(|usage| usage.as_object().is_some_and(|entries| !entries.is_empty()))
+        .cloned()
 }
 
 fn unix_time_seconds() -> u64 {
@@ -2993,6 +3085,12 @@ pub fn run_zellij_open_terminal(args: &[String]) -> Result<i32, CoreError> {
 mod tests {
     use super::*;
 
+    const STATUS_CACHE_TEST_PAYLOAD: &str = r#"{"schema_version":1,"active_tab_position":0,"workspace":{"root":"/tmp/yazelix-demo","source":"explicit"},"managed_panes":{"editor_pane_id":"terminal:1","sidebar_pane_id":"terminal:2"},"focus_context":"sidebar","layout":{"active_swap_layout_name":"single_open","sidebar_collapsed":false},"sidebar_yazi":null,"transient_panes":{"popup":null,"menu":null},"extensions":{"ai_pane_activity":[],"ai_token_budget":[]}}"#;
+
+    fn status_cache_test_status_bus() -> Value {
+        serde_json::from_str(STATUS_CACHE_TEST_PAYLOAD).unwrap()
+    }
+
     // Defends: workspace root parsing respects the bootstrap exclusion flag.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
@@ -3184,13 +3282,12 @@ mod tests {
     fn status_cache_round_trip_renders_cached_workspace_fact() {
         let temp = tempfile::tempdir().unwrap();
         let cache_path = temp.path().join("window_a").join("status_bar_cache.json");
-        let payload = r#"{"schema_version":1,"active_tab_position":0,"workspace":{"root":"/tmp/yazelix-demo","source":"explicit"},"managed_panes":{"editor_pane_id":"terminal:1","sidebar_pane_id":"terminal:2"},"focus_context":"sidebar","layout":{"active_swap_layout_name":"single_open","sidebar_collapsed":false},"sidebar_yazi":null,"transient_panes":{"popup":null,"menu":null},"extensions":{"ai_pane_activity":[],"ai_token_budget":[]}}"#;
 
         run_zellij_status_cache_write(&[
             "--path".to_string(),
             cache_path.display().to_string(),
             "--payload".to_string(),
-            payload.to_string(),
+            STATUS_CACHE_TEST_PAYLOAD.to_string(),
         ])
         .unwrap();
         let cache = read_status_bar_cache_value(&cache_path).unwrap();
@@ -3203,6 +3300,94 @@ mod tests {
             !render_status_cache_widget(&cache, "workspace")
                 .unwrap()
                 .contains("#[")
+        );
+    }
+
+    // Regression: new Yazelix windows should first-paint agent usage from recent sibling cache facts instead of waiting for provider refresh.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn status_cache_write_seeds_agent_usage_from_recent_sibling_session_cache() {
+        let temp = tempfile::tempdir().unwrap();
+        let sessions_dir = temp.path().join("sessions");
+        let old_cache_path = sessions_dir.join("window_a").join("status_bar_cache.json");
+        let new_cache_path = sessions_dir.join("window_b").join("status_bar_cache.json");
+        let now = unix_time_seconds();
+        let old_cache = build_status_bar_cache_at(
+            status_cache_test_status_bus(),
+            json!({
+                "codex_daily": {
+                    "summary": "42k $0.42",
+                    "tokens": "42k",
+                    "cost": "$0.42"
+                }
+            }),
+            Some(now),
+            now,
+        );
+        write_status_bar_cache_value(&old_cache_path, &old_cache).unwrap();
+
+        run_zellij_status_cache_write(&[
+            "--path".to_string(),
+            new_cache_path.display().to_string(),
+            "--payload".to_string(),
+            STATUS_CACHE_TEST_PAYLOAD.to_string(),
+        ])
+        .unwrap();
+        let new_cache = read_status_bar_cache_value(&new_cache_path).unwrap();
+
+        assert_eq!(
+            render_status_cache_widget(&new_cache, "codex_daily_usage").unwrap(),
+            " [codex|day 42k $0.42]"
+        );
+        assert_eq!(
+            new_cache
+                .get("agent_usage_updated_at_unix_seconds")
+                .and_then(Value::as_u64),
+            Some(now)
+        );
+    }
+
+    // Defends: first-paint seeding refuses old sibling usage facts so a new day or stale session cannot render misleading usage indefinitely.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn status_cache_write_ignores_stale_sibling_agent_usage_seed() {
+        let temp = tempfile::tempdir().unwrap();
+        let sessions_dir = temp.path().join("sessions");
+        let old_cache_path = sessions_dir.join("window_a").join("status_bar_cache.json");
+        let new_cache_path = sessions_dir.join("window_b").join("status_bar_cache.json");
+        let now = unix_time_seconds();
+        let stale_updated_at = now.saturating_sub(AGENT_USAGE_SEED_MAX_AGE_SECONDS + 1);
+        let old_cache = build_status_bar_cache_at(
+            status_cache_test_status_bus(),
+            json!({
+                "codex_daily": {
+                    "summary": "42k $0.42",
+                    "tokens": "42k",
+                    "cost": "$0.42"
+                }
+            }),
+            Some(stale_updated_at),
+            stale_updated_at,
+        );
+        write_status_bar_cache_value(&old_cache_path, &old_cache).unwrap();
+
+        run_zellij_status_cache_write(&[
+            "--path".to_string(),
+            new_cache_path.display().to_string(),
+            "--payload".to_string(),
+            STATUS_CACHE_TEST_PAYLOAD.to_string(),
+        ])
+        .unwrap();
+        let new_cache = read_status_bar_cache_value(&new_cache_path).unwrap();
+
+        assert_eq!(
+            render_status_cache_widget(&new_cache, "codex_daily_usage").unwrap(),
+            ""
+        );
+        assert!(
+            new_cache
+                .get("agent_usage_updated_at_unix_seconds")
+                .is_none()
         );
     }
 

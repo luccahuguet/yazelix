@@ -238,8 +238,9 @@ contract. This slice is only about the read contract.
    status-bar cache, and zjstatus dynamic widgets read only that cache instead
    of opening pane-orchestrator pipes from the bar.
 8. Agent-usage facts are produced by a throttled cache writer with provider
-   command timeouts. Zjstatus usage widgets must never run usage providers
-   directly.
+   command timeouts. New windows may seed their first paint from recent sibling
+   session cache facts, but zjstatus usage widgets must never run usage
+   providers directly.
 
 ## Verification
 
@@ -260,6 +261,7 @@ contract. This slice is only about the read contract.
 - Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_bus_ai_activity_widget_formats_highest_priority_fact`
 - Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_round_trip_renders_cached_workspace_fact`
 - Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_agent_usage_refresh_writes_precomputed_summary`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_write_seeds_agent_usage_from_recent_sibling_session_cache`
 - Defended by: `nu -c 'source nushell/scripts/dev/test_yzx_workspace_commands.nu; [(test_run_pane_orchestrator_command_raw_targets_session_plugin_without_plugin_configuration) (test_retarget_workspace_for_path_returns_plugin_owned_sidebar_state_and_editor_status)]'`
 
 ## Open Questions
