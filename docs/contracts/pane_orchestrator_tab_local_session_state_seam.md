@@ -238,7 +238,7 @@ contract. This slice is only about the read contract.
    status-bar cache, and zjstatus dynamic widgets read only that cache instead
    of opening pane-orchestrator pipes from the bar.
 8. Agent-usage facts are produced by a throttled cache writer with provider
-   command timeouts. Zjstatus usage widgets must never run ccusage providers
+   command timeouts. Zjstatus usage widgets must never run usage providers
    directly.
 
 ## Verification

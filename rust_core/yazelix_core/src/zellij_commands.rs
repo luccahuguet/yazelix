@@ -199,6 +199,19 @@ struct AgentUsageTarget {
     label: &'static str,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AgentUsageJsonDialect {
+    Ccusage,
+    Tokenusage,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct AgentUsageCommand {
+    binary: &'static str,
+    args: Vec<&'static str>,
+    dialect: AgentUsageJsonDialect,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ZellijOpenEditorArgs {
     targets: Vec<String>,
@@ -894,37 +907,38 @@ pub fn run_zellij_agent_usage(args: &[String]) -> Result<i32, CoreError> {
         ));
     };
     let target = default_agent_usage_target_for_provider(provider);
+    let path_var = env::var_os("PATH");
 
-    let Some(binary_path) = find_command_in_path(agent_usage_binary(provider)) else {
-        println!();
-        return Ok(0);
-    };
-
-    let output = Command::new(binary_path)
-        .args(agent_usage_command_args(target))
-        .output()
-        .map_err(|source| {
-            CoreError::io(
-                "agent_usage_failed",
-                "Failed to run the configured ccusage provider.",
-                "Ensure the opt-in agent usage package is healthy, then retry.",
-                agent_usage_binary(provider),
-                source,
-            )
-        })?;
-
-    if !output.status.success() {
-        println!();
-        return Ok(0);
+    if let Some(path_var) = path_var.as_deref() {
+        for command in agent_usage_command_candidates(target) {
+            let Some(binary_path) = find_command_in_path_var(path_var, command.binary) else {
+                continue;
+            };
+            let output = Command::new(binary_path)
+                .args(command.args.as_slice())
+                .output()
+                .map_err(|source| {
+                    CoreError::io(
+                        "agent_usage_failed",
+                        "Failed to run the configured agent usage provider.",
+                        "Ensure the opt-in agent usage package is healthy, then retry.",
+                        command.binary,
+                        source,
+                    )
+                })?;
+            if !output.status.success() {
+                continue;
+            }
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let summary = agent_usage_summary_from_json(target, command.dialect, &stdout);
+            if !summary.is_empty() {
+                println!("{}", render_agent_usage_widget(target.label, &summary));
+                return Ok(0);
+            }
+        }
     }
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let summary = agent_usage_summary_from_json(&stdout);
-    if summary.is_empty() {
-        println!();
-    } else {
-        println!("{}", render_agent_usage_widget(target.label, &summary));
-    }
+    println!();
     Ok(0)
 }
 
@@ -1360,18 +1374,23 @@ fn agent_usage_facts_from_provider(
     path_var: Option<&OsStr>,
     timeout: Duration,
 ) -> Option<AgentUsageFacts> {
-    let binary_path = find_command_in_path_var(path_var?, agent_usage_binary(target.provider))?;
-    let output = run_agent_usage_command_with_timeout(
-        &binary_path,
-        agent_usage_command_args(target).as_slice(),
-        timeout,
-    )
-    .ok()??;
-    if !output.status.success() {
-        return None;
+    let path_var = path_var?;
+    for command in agent_usage_command_candidates(target) {
+        let Some(binary_path) = find_command_in_path_var(path_var, command.binary) else {
+            continue;
+        };
+        let output =
+            run_agent_usage_command_with_timeout(&binary_path, command.args.as_slice(), timeout)
+                .ok()??;
+        if !output.status.success() {
+            continue;
+        }
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        if let Some(facts) = agent_usage_facts_from_json(target, command.dialect, &stdout) {
+            return Some(facts);
+        }
     }
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    agent_usage_facts_from_json(&stdout)
+    None
 }
 
 fn run_agent_usage_command_with_timeout(
@@ -1653,8 +1672,8 @@ fn configured_agent_usage_targets(
         .collect()
 }
 
-fn agent_usage_command_args(target: AgentUsageTarget) -> Vec<&'static str> {
-    match (target.provider, target.period) {
+fn agent_usage_command_candidates(target: AgentUsageTarget) -> Vec<AgentUsageCommand> {
+    let ccusage_args = match (target.provider, target.period) {
         (AgentUsageProvider::Claude, AgentUsagePeriod::ActiveBlock) => {
             vec!["blocks", "--active", "--json"]
         }
@@ -1671,12 +1690,53 @@ fn agent_usage_command_args(target: AgentUsageTarget) -> Vec<&'static str> {
         (AgentUsageProvider::Opencode, AgentUsagePeriod::Monthly) => vec!["monthly", "--json"],
         (AgentUsageProvider::Opencode, AgentUsagePeriod::Session) => vec!["session", "--json"],
         _ => vec!["blocks", "--active", "--json"],
-    }
-}
+    };
 
-fn find_command_in_path(command_name: &str) -> Option<PathBuf> {
-    let path_var = env::var_os("PATH")?;
-    find_command_in_path_var(&path_var, command_name)
+    let fallback = AgentUsageCommand {
+        binary: agent_usage_binary(target.provider),
+        args: ccusage_args,
+        dialect: AgentUsageJsonDialect::Ccusage,
+    };
+
+    if target.provider != AgentUsageProvider::Codex {
+        return vec![fallback];
+    }
+
+    let tokenusage_args = match target.period {
+        AgentUsagePeriod::Daily => {
+            vec!["today", "--json", "--offline", "--no-claude"]
+        }
+        AgentUsagePeriod::Monthly => {
+            vec![
+                "monthly",
+                "--json",
+                "--offline",
+                "--no-claude",
+                "--order",
+                "desc",
+            ]
+        }
+        AgentUsagePeriod::Session => {
+            vec![
+                "session",
+                "--json",
+                "--offline",
+                "--no-claude",
+                "--order",
+                "desc",
+            ]
+        }
+        AgentUsagePeriod::ActiveBlock => return vec![fallback],
+    };
+
+    vec![
+        AgentUsageCommand {
+            binary: "tu",
+            args: tokenusage_args,
+            dialect: AgentUsageJsonDialect::Tokenusage,
+        },
+        fallback,
+    ]
 }
 
 fn find_command_in_path_var(path_var: &OsStr, command_name: &str) -> Option<PathBuf> {
@@ -1685,20 +1745,37 @@ fn find_command_in_path_var(path_var: &OsStr, command_name: &str) -> Option<Path
         .find(|candidate| candidate.is_file())
 }
 
-fn agent_usage_summary_from_json(raw: &str) -> String {
-    agent_usage_facts_from_json(raw)
+fn agent_usage_summary_from_json(
+    target: AgentUsageTarget,
+    dialect: AgentUsageJsonDialect,
+    raw: &str,
+) -> String {
+    agent_usage_facts_from_json(target, dialect, raw)
         .map(|facts| facts.summary())
         .unwrap_or_default()
 }
 
-fn agent_usage_facts_from_json(raw: &str) -> Option<AgentUsageFacts> {
+fn agent_usage_facts_from_json(
+    target: AgentUsageTarget,
+    dialect: AgentUsageJsonDialect,
+    raw: &str,
+) -> Option<AgentUsageFacts> {
     let Some(json_raw) = extract_json_object(raw) else {
         return None;
     };
     let Ok(value) = serde_json::from_str::<Value>(json_raw) else {
         return None;
     };
-    let selected = value
+    let selected = match dialect {
+        AgentUsageJsonDialect::Ccusage => ccusage_agent_usage_value(&value),
+        AgentUsageJsonDialect::Tokenusage => tokenusage_agent_usage_value(target.period, &value),
+    };
+
+    agent_usage_facts_from_usage_value(selected)
+}
+
+fn ccusage_agent_usage_value(value: &Value) -> &Value {
+    value
         .get("blocks")
         .and_then(Value::as_array)
         .and_then(|blocks| {
@@ -1714,8 +1791,27 @@ fn agent_usage_facts_from_json(raw: &str) -> Option<AgentUsageFacts> {
                 .or_else(|| blocks.first())
         })
         .or_else(|| value.get("block"))
-        .unwrap_or(&value);
+        .unwrap_or(value)
+}
 
+fn tokenusage_agent_usage_value(period: AgentUsagePeriod, value: &Value) -> &Value {
+    match period {
+        AgentUsagePeriod::Daily => value.get("overview").unwrap_or(value),
+        AgentUsagePeriod::Monthly => value
+            .get("monthly")
+            .and_then(Value::as_array)
+            .and_then(|rows| rows.first())
+            .unwrap_or(value),
+        AgentUsagePeriod::Session => value
+            .get("sessions")
+            .and_then(Value::as_array)
+            .and_then(|rows| rows.first())
+            .unwrap_or(value),
+        AgentUsagePeriod::ActiveBlock => value,
+    }
+}
+
+fn agent_usage_facts_from_usage_value(selected: &Value) -> Option<AgentUsageFacts> {
     let facts = AgentUsageFacts {
         tokens: first_u64_at(
             selected,
@@ -3307,6 +3403,78 @@ exit 64
         );
     }
 
+    // Regression: large Codex histories use tokenusage when available instead of the slower ccusage-codex fallback.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[cfg(unix)]
+    #[test]
+    fn status_cache_agent_usage_refresh_prefers_tokenusage_for_codex() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp = tempfile::tempdir().unwrap();
+        let bin_dir = temp.path().join("bin");
+        fs::create_dir_all(&bin_dir).unwrap();
+        let tokenusage = bin_dir.join("tu");
+        fs::write(
+            &tokenusage,
+            r#"#!/usr/bin/env sh
+if [ "$1" = "today" ]; then
+  printf '%s\n' '{"date":"2026-04-30","overview":{"totals":{"total_tokens":987654,"cost_usd":9.876}}}'
+  exit 0
+fi
+exit 64
+"#,
+        )
+        .unwrap();
+        let fallback = bin_dir.join("ccusage-codex");
+        fs::write(
+            &fallback,
+            r#"#!/usr/bin/env sh
+printf '%s\n' '{"totals":{"totalTokens":123456,"totalCost":1.234}}'
+"#,
+        )
+        .unwrap();
+        for provider in [&tokenusage, &fallback] {
+            let mut permissions = fs::metadata(provider).unwrap().permissions();
+            permissions.set_mode(0o755);
+            fs::set_permissions(provider, permissions).unwrap();
+        }
+        let mut cache = json!({
+            "schema_version": 1,
+            "updated_at_unix_seconds": 10,
+            "status_bus": {
+                "schema_version": 1,
+                "active_tab_position": 0,
+                "workspace": null,
+                "managed_panes": {"editor_pane_id": null, "sidebar_pane_id": null},
+                "focus_context": "other",
+                "layout": {"active_swap_layout_name": null, "sidebar_collapsed": null},
+                "sidebar_yazi": null,
+                "transient_panes": {"popup": null, "menu": null},
+                "extensions": {"ai_pane_activity": [], "ai_token_budget": []}
+            },
+            "agent_usage": {}
+        });
+
+        let configured_widgets = ["codex_usage".to_string()].into_iter().collect();
+        refresh_status_bar_cache_agent_usage_value(
+            &mut cache,
+            Some(bin_dir.as_os_str()),
+            Some(&configured_widgets),
+            1_000,
+            120,
+            Duration::from_secs(1),
+        );
+
+        assert_eq!(
+            cache
+                .get("agent_usage")
+                .and_then(|usage| usage.get("codex"))
+                .and_then(|entry| entry.get("summary"))
+                .and_then(Value::as_str),
+            Some("987k $9.88")
+        );
+    }
+
     // Regression: hung agent-usage providers are killed quickly so the cache producer cannot recreate the CPU-spike failure mode.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[cfg(unix)]
@@ -3367,6 +3535,8 @@ exit 64
     #[test]
     fn agent_usage_widget_formats_active_json_block() {
         let summary = agent_usage_summary_from_json(
+            CODEX_USAGE_TARGET,
+            AgentUsageJsonDialect::Ccusage,
             r#"{"blocks":[{"isActive":false,"totalTokens":10},{"isActive":true,"totalTokens":123456,"costUSD":1.234,"projection":{"remainingMinutes":137}}]}"#,
         );
 
@@ -3376,6 +3546,25 @@ exit 64
             " [codex|day 123k $1.23 2h17m]"
         );
         assert!(!render_agent_usage_widget("codex|day", &summary).contains("#["));
+    }
+
+    // Regression: tokenusage monthly/session JSON includes all-history top-level totals; Yazelix must render the current row instead.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn tokenusage_json_uses_selected_period_row_instead_of_all_history_totals() {
+        let monthly = agent_usage_summary_from_json(
+            CODEX_MONTHLY_USAGE_TARGET,
+            AgentUsageJsonDialect::Tokenusage,
+            r#"{"monthly":[{"date":"2026-04","totals":{"total_tokens":42000,"cost_usd":0.42}}],"totals":{"total_tokens":999000,"cost_usd":99.9}}"#,
+        );
+        assert_eq!(monthly, "42k $0.420");
+
+        let session = agent_usage_summary_from_json(
+            CODEX_SESSION_USAGE_TARGET,
+            AgentUsageJsonDialect::Tokenusage,
+            r#"{"sessions":[{"session_id":"latest","totals":{"total_tokens":77000,"cost_usd":0.77}}],"totals":{"total_tokens":999000,"cost_usd":99.9}}"#,
+        );
+        assert_eq!(session, "77k $0.770");
     }
 
     // Defends: provider aliases map to the exact opt-in ccusage binaries used by flake and Home Manager package wiring.
