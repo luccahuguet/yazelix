@@ -1906,6 +1906,13 @@ ui { pane_frames { hide_session_name true } }
         assert!(template.contains("status-cache-widget workspace"));
         assert!(template.contains(r##"command_workspace_format "#[fg=#00ff88,bold]{stdout}""##));
         assert!(template.contains(r#"command_workspace_interval "1""#));
+        assert!(template.contains("command_cursor_command"));
+        assert!(template.contains("status-cache-widget cursor"));
+        assert!(template.contains(r##"command_cursor_format "#[fg=#00ff88,bold]{stdout}""##));
+        assert!(template.contains(r#"command_cursor_interval "10""#));
+        assert!(template.contains("configs/zellij/scripts/ram_usage.nu"));
+        assert!(!template.contains("macchina -o memory"));
+        assert!(!template.contains("grep -o"));
         assert!(!template.contains("status-bus-workspace"));
         assert!(template.contains("command_claude_usage_command"));
         assert!(template.contains(r##"command_claude_usage_format "#[fg=#bb88ff,bold]{stdout}""##));
@@ -1955,7 +1962,16 @@ ui { pane_frames { hide_session_name true } }
             runtime_dir.to_string_lossy()
         )));
         assert!(rendered.contains(&format!(
+            r#"command_ram_command "{} {}/configs/zellij/scripts/ram_usage.nu""#,
+            expected_nu,
+            runtime_dir.to_string_lossy()
+        )));
+        assert!(rendered.contains(&format!(
             r#"command_workspace_command "{} zellij status-cache-widget workspace""#,
+            expected_yzx_control
+        )));
+        assert!(rendered.contains(&format!(
+            r#"command_cursor_command "{} zellij status-cache-widget cursor""#,
             expected_yzx_control
         )));
         assert!(!rendered.contains(ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER));

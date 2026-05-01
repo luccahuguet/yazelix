@@ -7,7 +7,7 @@ use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::control_plane::{
     config_dir_from_env, config_override_from_env, runtime_dir_from_env, state_dir_from_env,
 };
-use crate::ghostty_cursor_registry::CursorRegistry;
+use crate::ghostty_cursor_registry::{CursorRegistry, ResolvedCursorRegistryState};
 use crate::ghostty_materialization::{
     GhosttyMaterializationRequest, generate_ghostty_materialization,
 };
@@ -39,6 +39,7 @@ pub struct LaunchMaterializationData {
     pub terminal_config_mode: String,
     pub selected_terminals: Vec<String>,
     pub generated_terminals: Vec<TerminalGeneratedConfig>,
+    pub ghostty_cursor_name: Option<String>,
     pub rerolled_ghostty_cursor: bool,
 }
 
@@ -97,24 +98,34 @@ pub fn prepare_launch_materialization(
     );
 
     let mut generated_terminals = Vec::new();
+    let mut ghostty_cursor_name = None;
     if plan.should_generate_terminal_configs {
-        generated_terminals = generate_terminal_materialization(&TerminalMaterializationRequest {
+        let terminal_data = generate_terminal_materialization(&TerminalMaterializationRequest {
             config_path: request.config_path.clone(),
             default_config_path: request.default_config_path.clone(),
             contract_path: request.contract_path.clone(),
             runtime_dir: request.runtime_dir.clone(),
             state_dir: request.state_dir.clone(),
             terminals: plan.selected_terminals.clone(),
-        })?
-        .generated;
+        })?;
+        if plan_uses_yazelix_ghostty_cursor(&plan) {
+            ghostty_cursor_name = terminal_data
+                .ghostty
+                .as_ref()
+                .and_then(|data| data.cursor_state.selected_color.clone());
+        }
+        generated_terminals = terminal_data.generated;
     } else if plan.should_reroll_ghostty_cursor {
-        generate_ghostty_materialization(&GhosttyMaterializationRequest {
+        let ghostty_data = generate_ghostty_materialization(&GhosttyMaterializationRequest {
             runtime_dir: request.runtime_dir.clone(),
             config_dir: request.config_dir.clone(),
             state_dir: request.state_dir.clone(),
             transparency: string_config(&normalized, "transparency", "none"),
             cursor_config_path,
         })?;
+        ghostty_cursor_name = ghostty_data.cursor_state.selected_color;
+    } else if plan_uses_yazelix_ghostty_cursor(&plan) {
+        ghostty_cursor_name = resolved_ghostty_cursor_name(&cursor_registry.resolve());
     }
 
     let rerolled_ghostty_cursor = plan.should_reroll_ghostty_cursor
@@ -129,8 +140,28 @@ pub fn prepare_launch_materialization(
         terminal_config_mode: plan.terminal_config_mode,
         selected_terminals: plan.selected_terminals,
         generated_terminals,
+        ghostty_cursor_name,
         rerolled_ghostty_cursor,
     })
+}
+
+fn plan_uses_yazelix_ghostty_cursor(plan: &LaunchMaterializationPlan) -> bool {
+    plan.terminal_config_mode == "yazelix"
+        && plan
+            .selected_terminals
+            .iter()
+            .any(|terminal| terminal == "ghostty")
+}
+
+fn resolved_ghostty_cursor_name(state: &ResolvedCursorRegistryState) -> Option<String> {
+    if state.trail_disabled {
+        Some("none".to_string())
+    } else {
+        state
+            .selected_cursor
+            .as_ref()
+            .map(|cursor| cursor.name.clone())
+    }
 }
 
 fn build_launch_materialization_plan(
@@ -319,6 +350,7 @@ mod tests {
                 should_reroll_ghostty_cursor: false,
             }
         );
+        assert!(!plan_uses_yazelix_ghostty_cursor(&plan));
     }
 
     // Defends: missing terminal config materializes Ghostty first so first-run launches use the cursor-trail runtime identity.
@@ -334,5 +366,6 @@ mod tests {
             plan.selected_terminals,
             vec!["ghostty".to_string(), "wezterm".to_string()]
         );
+        assert!(plan_uses_yazelix_ghostty_cursor(&plan));
     }
 }

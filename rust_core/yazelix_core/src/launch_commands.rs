@@ -13,7 +13,8 @@ use crate::install_ownership_report::{
     InstallOwnershipEvaluateData, evaluate_install_ownership_report,
 };
 use crate::launch_materialization::{
-    launch_materialization_request_from_env, prepare_launch_materialization,
+    LaunchMaterializationData, launch_materialization_request_from_env,
+    prepare_launch_materialization,
 };
 use crate::runtime_contract::{
     LaunchPreflightPayload, StartupLaunchPreflightRequest, StartupPreflightPayload,
@@ -607,6 +608,13 @@ fn run_launch_flow(
                 "YAZELIX_TERMINAL".to_string(),
                 Some(candidate.terminal.clone()),
             ),
+            (
+                "YAZELIX_CURSOR_NAME".to_string(),
+                Some(launch_cursor_name_for_terminal(
+                    &materialization,
+                    &candidate.terminal,
+                )),
+            ),
         ];
         if let Ok(value) = std::env::var("YAZELIX_SWEEP_TEST_ID") {
             if !value.trim().is_empty() {
@@ -661,6 +669,22 @@ fn run_launch_flow(
         "Install a supported terminal or adjust [terminal].terminals to match what is available.",
         serde_json::json!({}),
     ))
+}
+
+fn launch_cursor_name_for_terminal(
+    materialization: &LaunchMaterializationData,
+    terminal: &str,
+) -> String {
+    if terminal == "ghostty" {
+        materialization
+            .ghostty_cursor_name
+            .as_deref()
+            .filter(|name| !name.trim().is_empty())
+            .unwrap_or("n/a")
+            .to_string()
+    } else {
+        "n/a".to_string()
+    }
 }
 
 fn parse_enter_args(args: &[String]) -> Result<EnterArgs, CoreError> {
@@ -1997,6 +2021,33 @@ mod tests {
             normalized_configured_terminals(&config),
             vec!["ghostty".to_string(), "wezterm".to_string()]
         );
+    }
+
+    // Defends: launch publishes a compact current-cursor fact only for Ghostty cursor-aware sessions and a clear n/a fallback elsewhere.
+    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
+    #[test]
+    fn launch_cursor_name_is_terminal_scoped() {
+        let materialization = LaunchMaterializationData {
+            terminal_config_mode: "yazelix".to_string(),
+            selected_terminals: vec!["ghostty".to_string()],
+            generated_terminals: Vec::new(),
+            ghostty_cursor_name: Some("reef".to_string()),
+            rerolled_ghostty_cursor: false,
+        };
+        let missing = LaunchMaterializationData {
+            ghostty_cursor_name: None,
+            ..materialization.clone()
+        };
+
+        assert_eq!(
+            launch_cursor_name_for_terminal(&materialization, "ghostty"),
+            "reef"
+        );
+        assert_eq!(
+            launch_cursor_name_for_terminal(&materialization, "wezterm"),
+            "n/a"
+        );
+        assert_eq!(launch_cursor_name_for_terminal(&missing, "ghostty"), "n/a");
     }
 
     // Invariant: restart must relaunch through the stable owner without leaking old window runtime/session helper env.

@@ -40,7 +40,7 @@ layout {
                 command_cpu_format "#[fg=#ff6600][cpu {stdout}]"
                 command_cpu_interval "5"
 
-                command_ram_command "bash -c 'macchina -o memory -m 2>/dev/null | grep -o \"[0-9]\\+%\" | head -1'"
+                command_ram_command "nu __YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/ram_usage.nu"
                 command_ram_format "#[fg=#ff6600][ram {stdout}]"
                 command_ram_interval "5"
 
@@ -96,7 +96,7 @@ layout {
                command_cpu_format "#[fg=#ff6600][cpu {stdout}]"
                command_cpu_interval "5"
 
-                command_ram_command "bash -c 'macchina -o memory -m 2>/dev/null | grep -o \"[0-9]\\+%\" | head -1'"
+                command_ram_command "nu __YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/ram_usage.nu"
                 command_ram_format "#[fg=#ff6600][ram {stdout}]"
                 command_ram_interval "5"
 

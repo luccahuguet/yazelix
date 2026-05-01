@@ -161,7 +161,7 @@ support_kitty_keyboard_protocol = false
 theme = "default"
 
 # Zjstatus widget tray (right side of status bar)
-# Available widgets: "editor", "shell", "term", "workspace", "claude_usage", "codex_usage", "opencode_go_usage", "cpu", "ram"
+# Available widgets: "editor", "shell", "term", "workspace", "cursor", "claude_usage", "codex_usage", "opencode_go_usage", "cpu", "ram"
 # Configure usage widget display below
 # Dynamic widgets read from a window-local cache so multiple Yazelix windows keep independent facts
 # Comment out any line to hide that widget
@@ -170,6 +170,7 @@ widget_tray = [
   "shell",  # Active shell
   "term",  # Terminal emulator
   # "workspace", # Active workspace root name
+  # "cursor", # Active Ghostty cursor preset (▌ name, n/a outside Yazelix Ghostty)
   # "claude_usage", # Combined Claude 5h/week usage and quota
   # "codex_usage", # Combined Codex 5h/week usage and quota
   # "opencode_go_usage", # Combined OpenCode Go 5h/week/month usage and quota

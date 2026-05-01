@@ -35,6 +35,10 @@ plugin location="__YAZELIX_ZJSTATUS_PLUGIN_URL__" {
     command_workspace_format "#[fg=#00ff88,bold]{stdout}"
     command_workspace_interval "1"
 
+    command_cursor_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-cache-widget cursor"
+    command_cursor_format "#[fg=#00ff88,bold]{stdout}"
+    command_cursor_interval "10"
+
     command_claude_usage_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-cache-widget claude_usage"
     command_claude_usage_format "#[fg=#bb88ff,bold]{stdout}"
     command_claude_usage_interval "10"
@@ -51,7 +55,7 @@ plugin location="__YAZELIX_ZJSTATUS_PLUGIN_URL__" {
     command_cpu_format " #[fg=#ff6600][cpu {stdout}]"
     command_cpu_interval "5"
 
-    command_ram_command "bash -c 'macchina -o memory -m 2>/dev/null | grep -o \"[0-9]\\+%\" | head -1'"
+    command_ram_command "__YAZELIX_NU_BIN__ __YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/ram_usage.nu"
     command_ram_format " #[fg=#ff6600][ram {stdout}]"
     command_ram_interval "5"
 

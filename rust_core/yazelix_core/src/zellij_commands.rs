@@ -44,6 +44,8 @@ const OPENCODE_GO_FIVE_HOUR_LIMIT_USD: f64 = 12.0;
 const OPENCODE_GO_WEEKLY_LIMIT_USD: f64 = 30.0;
 const OPENCODE_GO_MONTHLY_LIMIT_USD: f64 = 60.0;
 const EDITOR_PANE_NAME: &str = "editor";
+const CURSOR_NAME_ENV: &str = "YAZELIX_CURSOR_NAME";
+const TERMINAL_ENV: &str = "YAZELIX_TERMINAL";
 pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
     "pipe",
     "get-workspace-root",
@@ -953,6 +955,13 @@ pub fn run_zellij_status_cache_write(args: &[String]) -> Result<i32, CoreError> 
     let previous_cache = read_status_bar_cache_value(&path);
     let now = unix_time_seconds();
     let mut cache = build_status_bar_cache_at(status_bus, now);
+    merge_status_bar_cache_cursor_value(
+        &mut cache,
+        previous_cache
+            .as_ref()
+            .and_then(|cache| cache.get("cursor"))
+            .cloned(),
+    );
     if let Some(heartbeat) = previous_cache
         .as_ref()
         .and_then(|cache| cache.get("orchestrator_heartbeat"))
@@ -1040,21 +1049,30 @@ pub fn run_zellij_status_cache_widget(args: &[String]) -> Result<i32, CoreError>
 }
 
 fn status_cache_value_for_widget_path(path: &Path, widget: &str, now: u64) -> Option<Value> {
-    read_status_bar_cache_value(path)
-        .or_else(|| first_paint_usage_cache_for_widget(path, widget, now))
+    read_status_bar_cache_value(path).or_else(|| first_paint_cache_for_widget(widget, now))
 }
 
-fn first_paint_usage_cache_for_widget(_path: &Path, widget: &str, now: u64) -> Option<Value> {
-    if !matches!(widget, "claude_usage" | "codex_usage" | "opencode_go_usage") {
-        return None;
+fn first_paint_cache_for_widget(widget: &str, now: u64) -> Option<Value> {
+    if matches!(widget, "claude_usage" | "codex_usage" | "opencode_go_usage") {
+        return Some(json!({
+            "schema_version": STATUS_BAR_CACHE_SCHEMA_VERSION,
+            "updated_at_unix_seconds": now,
+            "agent_usage": {},
+        }));
     }
 
-    let cache = json!({
-        "schema_version": STATUS_BAR_CACHE_SCHEMA_VERSION,
-        "updated_at_unix_seconds": now,
-        "agent_usage": {},
-    });
-    Some(cache)
+    if widget == "cursor" {
+        return cursor_status_value_from_env().map(|cursor| {
+            json!({
+                "schema_version": STATUS_BAR_CACHE_SCHEMA_VERSION,
+                "updated_at_unix_seconds": now,
+                "agent_usage": {},
+                "cursor": cursor,
+            })
+        });
+    }
+
+    None
 }
 
 pub fn run_zellij_status_cache_refresh_codex_usage(args: &[String]) -> Result<i32, CoreError> {
@@ -1308,6 +1326,33 @@ fn build_status_bar_cache_at(status_bus: Value, now: u64) -> Value {
         "status_bus": status_bus,
         "agent_usage": {},
     })
+}
+
+fn merge_status_bar_cache_cursor_value(cache: &mut Value, previous_cursor: Option<Value>) {
+    if let Some(cursor) = cursor_status_value_from_env().or(previous_cursor) {
+        cache["cursor"] = cursor;
+    }
+}
+
+fn cursor_status_value_from_env() -> Option<Value> {
+    let terminal = env::var_os(TERMINAL_ENV);
+    let cursor_name = env::var_os(CURSOR_NAME_ENV);
+    cursor_status_value(terminal.as_deref(), cursor_name.as_deref())
+}
+
+fn cursor_status_value(terminal: Option<&OsStr>, cursor_name: Option<&OsStr>) -> Option<Value> {
+    let name = cursor_name
+        .map(|value| value.to_string_lossy().trim().to_string())
+        .filter(|value| !value.is_empty())?;
+    let terminal = terminal
+        .map(|value| value.to_string_lossy().trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| "unknown".to_string());
+
+    Some(json!({
+        "terminal": terminal,
+        "name": name,
+    }))
 }
 
 fn unix_time_seconds() -> u64 {
@@ -1693,6 +1738,7 @@ fn render_status_cache_widget_with_agent_usage_settings(
         "workspace" => Ok(status_bus
             .map(render_zjstatus_workspace_widget)
             .unwrap_or_default()),
+        "cursor" => Ok(render_zjstatus_cursor_widget(cache)),
         "claude_usage" => Ok(render_windowed_usage_segment(
             cache,
             "claude_usage",
@@ -1724,6 +1770,7 @@ fn render_status_cache_widget_with_agent_usage_settings(
 fn status_cache_widget_names() -> Vec<&'static str> {
     vec![
         "workspace",
+        "cursor",
         "claude_usage",
         "codex_usage",
         "opencode_go_usage",
@@ -2857,6 +2904,20 @@ fn render_zjstatus_workspace_widget(value: &Value) -> String {
         return String::new();
     }
     format!(" [{}]", render_status_bus_workspace_widget(value))
+}
+
+fn render_zjstatus_cursor_widget(cache: &Value) -> String {
+    let Some(name) = cache
+        .get("cursor")
+        .and_then(|cursor| cursor.get("name"))
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+    else {
+        return String::new();
+    };
+
+    format!(" [▌ {name}]")
 }
 
 fn print_optional_zjstatus_segment(segment: String) {
@@ -4203,6 +4264,48 @@ mod tests {
             !render_status_cache_widget(&cache, "workspace")
                 .unwrap()
                 .contains("#[")
+        );
+    }
+
+    // Defends: the cursor widget renders a compact cursor-like glyph plus the cached launch cursor name without zjstatus markup in stdout.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn status_cache_cursor_widget_renders_cached_launch_fact() {
+        let cache = json!({
+            "schema_version": STATUS_BAR_CACHE_SCHEMA_VERSION,
+            "updated_at_unix_seconds": 1_000,
+            "status_bus": status_cache_test_status_bus(),
+            "agent_usage": {},
+            "cursor": {
+                "terminal": "ghostty",
+                "name": "reef"
+            }
+        });
+
+        let rendered = render_status_cache_widget(&cache, "cursor").unwrap();
+
+        assert_eq!(rendered, " [▌ reef]");
+        assert!(!rendered.contains("#["));
+        assert_eq!(
+            render_status_cache_widget(&json!({"cursor": {"name": ""}}), "cursor").unwrap(),
+            ""
+        );
+    }
+
+    // Defends: cursor status facts are copied from launch env as small terminal-scoped data, not by parsing config on every bar refresh.
+    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
+    #[test]
+    fn cursor_status_value_uses_non_empty_launch_env_values() {
+        assert_eq!(
+            cursor_status_value(Some(OsStr::new("ghostty")), Some(OsStr::new("magma"))),
+            Some(json!({
+                "terminal": "ghostty",
+                "name": "magma"
+            }))
+        );
+        assert_eq!(
+            cursor_status_value(Some(OsStr::new("ghostty")), Some(OsStr::new("  "))),
+            None
         );
     }
 

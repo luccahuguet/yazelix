@@ -50,6 +50,7 @@ const WIDGET_TRAY_ALLOWED: &[&str] = &[
     "shell",
     "term",
     "workspace",
+    "cursor",
     "claude_usage",
     "codex_usage",
     "opencode_go_usage",
@@ -647,6 +648,7 @@ mod tests {
         let mut req = sample_request();
         req.zellij_widget_tray = Some(vec![
             "workspace".into(),
+            "cursor".into(),
             "claude_usage".into(),
             "codex_usage".into(),
             "opencode_go_usage".into(),
@@ -657,6 +659,7 @@ mod tests {
             plan.widget_tray,
             vec![
                 "workspace",
+                "cursor",
                 "claude_usage",
                 "codex_usage",
                 "opencode_go_usage"

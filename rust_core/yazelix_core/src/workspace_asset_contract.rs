@@ -15,6 +15,7 @@ const RUNTIME_WORKSPACE_ASSETS: &[&str] = &[
     "configs/zellij/scripts/launch_sidebar_yazi.nu",
     "configs/zellij/scripts/runtime_helper.nu",
     "configs/zellij/scripts/cpu_usage.nu",
+    "configs/zellij/scripts/ram_usage.nu",
     "configs/zellij/plugins/yazelix_pane_orchestrator.wasm",
     "configs/zellij/plugins/zjstatus.wasm",
 ];
@@ -295,6 +296,7 @@ swap_layouts = ["single_open"]
             "launch_sidebar_yazi.nu",
             "runtime_helper.nu",
             "cpu_usage.nu",
+            "ram_usage.nu",
         ] {
             fs::write(runtime_scripts.join(script), "").unwrap();
         }

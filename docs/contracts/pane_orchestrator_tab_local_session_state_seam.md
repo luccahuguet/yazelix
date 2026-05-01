@@ -230,7 +230,9 @@ contract. This slice is only about the read contract.
 7. The pane orchestrator writes active-tab status facts to a launch-scoped
    status-bar cache, and zjstatus dynamic widgets read only that cache instead
    of opening pane-orchestrator pipes from the bar.
-8. Agent-usage facts are produced by throttled cache writers with provider
+8. The `cursor` widget reads the launch-scoped cursor fact from that cache and
+   renders a compact cursor glyph plus the resolved preset name.
+9. Agent-usage facts are produced by throttled cache writers with provider
    command timeouts, but zjstatus usage widgets must never run usage providers
    directly. The `claude_usage` and `codex_usage` widgets read shared
    cross-window caches and render configured 5-hour and weekly token/quota
