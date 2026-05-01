@@ -30,10 +30,10 @@ const PANE_ORCHESTRATOR_PLUGIN_ALIAS: &str = "yazelix_pane_orchestrator";
 const STATUS_BUS_SCHEMA_VERSION: i64 = 1;
 const STATUS_BAR_CACHE_SCHEMA_VERSION: i64 = 1;
 const ORCHESTRATOR_HEARTBEAT_SCHEMA_VERSION: i64 = 1;
+const CLAUDE_USAGE_CACHE_SCHEMA_VERSION: i64 = 1;
 const CODEX_USAGE_CACHE_SCHEMA_VERSION: i64 = 1;
 const OPENCODE_GO_USAGE_CACHE_SCHEMA_VERSION: i64 = 1;
-const AGENT_USAGE_SEED_MAX_AGE_SECONDS: u64 = 180;
-const AGENT_USAGE_SEED_CANDIDATE_LIMIT: usize = 16;
+const CLAUDE_USAGE_LOCK_STALE_AFTER_SECONDS: u64 = 300;
 const CODEX_USAGE_LOCK_STALE_AFTER_SECONDS: u64 = 300;
 const OPENCODE_GO_USAGE_LOCK_STALE_AFTER_SECONDS: u64 = 300;
 const OPENCODE_GO_PROVIDER_ID: &str = "opencode-go";
@@ -53,10 +53,9 @@ pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
     "status-cache-write",
     "status-cache-heartbeat",
     "status-cache-widget",
-    "status-cache-refresh-agent-usage",
+    "status-cache-refresh-claude-usage",
     "status-cache-refresh-codex-usage",
     "status-cache-refresh-opencode-go-usage",
-    "agent-usage",
     "retarget",
     "open-editor",
     "open-editor-cwd",
@@ -130,9 +129,10 @@ struct ZellijStatusCacheWidgetArgs {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-struct ZellijStatusCacheRefreshAgentUsageArgs {
+struct ZellijStatusCacheRefreshTokenusageWindowedArgs {
     path: Option<PathBuf>,
     max_age_seconds: Option<u64>,
+    error_backoff_seconds: Option<u64>,
     timeout_ms: Option<u64>,
     help: bool,
 }
@@ -154,29 +154,6 @@ struct ZellijStatusCacheRefreshOpenCodeGoUsageArgs {
     help: bool,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-struct ZellijAgentUsageArgs {
-    provider: Option<String>,
-    help: bool,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum AgentUsageDisplay {
-    Both,
-    Tokens,
-    Money,
-}
-
-impl AgentUsageDisplay {
-    fn parse(raw: &str) -> Self {
-        match raw.trim() {
-            "tokens" => Self::Tokens,
-            "money" => Self::Money,
-            _ => Self::Both,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum WindowedUsageDisplay {
     Both,
@@ -196,36 +173,21 @@ impl WindowedUsageDisplay {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct AgentUsageWidgetSettings {
-    display: AgentUsageDisplay,
+    claude_display: WindowedUsageDisplay,
     codex_display: WindowedUsageDisplay,
     opencode_go_display: WindowedUsageDisplay,
+    claude_periods: Vec<WindowedUsagePeriod>,
     opencode_go_periods: Vec<WindowedUsagePeriod>,
-    claude_periods: Vec<AgentUsagePeriod>,
 }
 
 impl Default for AgentUsageWidgetSettings {
     fn default() -> Self {
         Self {
-            display: AgentUsageDisplay::Tokens,
+            claude_display: WindowedUsageDisplay::Both,
             codex_display: WindowedUsageDisplay::Both,
             opencode_go_display: WindowedUsageDisplay::Both,
+            claude_periods: default_windowed_usage_periods().to_vec(),
             opencode_go_periods: default_opencode_go_usage_periods(),
-            claude_periods: vec![AgentUsagePeriod::Daily],
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct AgentUsageRefreshConfig {
-    widgets: Option<BTreeSet<String>>,
-    claude_periods: Vec<AgentUsagePeriod>,
-}
-
-impl Default for AgentUsageRefreshConfig {
-    fn default() -> Self {
-        Self {
-            widgets: None,
-            claude_periods: vec![AgentUsagePeriod::Daily],
         }
     }
 }
@@ -259,67 +221,10 @@ impl WindowedUsageFacts {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-struct AgentUsageFacts {
-    tokens: Option<String>,
-    cost: Option<String>,
-    remaining: Option<String>,
-}
-
-impl AgentUsageFacts {
-    fn summary(&self) -> String {
-        let mut parts = Vec::new();
-        if let Some(tokens) = self.tokens.as_deref().filter(|value| !value.is_empty()) {
-            parts.push(tokens);
-        }
-        if let Some(cost) = self.cost.as_deref().filter(|value| !value.is_empty()) {
-            parts.push(cost);
-        }
-        if let Some(remaining) = self.remaining.as_deref().filter(|value| !value.is_empty()) {
-            parts.push(remaining);
-        }
-        parts.join(" ")
-    }
-
-    fn display_summary(&self, display: AgentUsageDisplay) -> String {
-        match display {
-            AgentUsageDisplay::Both => self.summary(),
-            AgentUsageDisplay::Tokens => self.tokens.clone().unwrap_or_default(),
-            AgentUsageDisplay::Money => self.cost.clone().unwrap_or_default(),
-        }
-    }
-
-    fn is_empty(&self) -> bool {
-        self.tokens.is_none() && self.cost.is_none() && self.remaining.is_none()
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum AgentUsageProvider {
+enum TokenusageWindowedProvider {
     Claude,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum AgentUsagePeriod {
-    Daily,
-    Monthly,
-}
-
-impl AgentUsagePeriod {
-    fn parse_config(raw: &str) -> Option<Self> {
-        match raw.trim() {
-            "day" | "daily" | "d" => Some(Self::Daily),
-            "month" | "monthly" | "mon" => Some(Self::Monthly),
-            _ => None,
-        }
-    }
-
-    fn short_label(self) -> &'static str {
-        match self {
-            Self::Daily => "d",
-            Self::Monthly => "mon",
-        }
-    }
+    Codex,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -358,26 +263,6 @@ fn default_opencode_go_usage_periods() -> Vec<WindowedUsagePeriod> {
         WindowedUsagePeriod::Weekly,
         WindowedUsagePeriod::Monthly,
     ]
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct AgentUsageTarget {
-    provider: AgentUsageProvider,
-    period: AgentUsagePeriod,
-    cache_key: &'static str,
-    label: &'static str,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum AgentUsageJsonDialect {
-    Tokenusage,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct AgentUsageCommand {
-    binary: &'static str,
-    args: Vec<&'static str>,
-    dialect: AgentUsageJsonDialect,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -735,10 +620,10 @@ fn parse_zellij_status_cache_heartbeat_args(
     Ok(parsed)
 }
 
-fn parse_zellij_status_cache_refresh_agent_usage_args(
+fn parse_zellij_status_cache_refresh_tokenusage_windowed_args(
     args: &[String],
-) -> Result<ZellijStatusCacheRefreshAgentUsageArgs, CoreError> {
-    let mut parsed = ZellijStatusCacheRefreshAgentUsageArgs::default();
+) -> Result<ZellijStatusCacheRefreshTokenusageWindowedArgs, CoreError> {
+    let mut parsed = ZellijStatusCacheRefreshTokenusageWindowedArgs::default();
     let mut iter = args.iter();
 
     while let Some(arg) = iter.next() {
@@ -758,6 +643,14 @@ fn parse_zellij_status_cache_refresh_agent_usage_args(
                     CoreError::usage("--max-age-seconds must be an integer".to_string())
                 })?);
             }
+            "--error-backoff-seconds" => {
+                let raw = iter.next().ok_or_else(|| {
+                    CoreError::usage("--error-backoff-seconds requires a value".to_string())
+                })?;
+                parsed.error_backoff_seconds = Some(raw.parse::<u64>().map_err(|_| {
+                    CoreError::usage("--error-backoff-seconds must be an integer".to_string())
+                })?);
+            }
             "--timeout-ms" => {
                 let raw = iter
                     .next()
@@ -769,12 +662,12 @@ fn parse_zellij_status_cache_refresh_agent_usage_args(
             "-h" | "--help" | "help" => parsed.help = true,
             other if other.starts_with('-') => {
                 return Err(CoreError::usage(format!(
-                    "Unknown argument for zellij status-cache-refresh-agent-usage: {other}"
+                    "Unknown argument for zellij status-cache-refresh-claude-usage: {other}"
                 )));
             }
             _ => {
                 return Err(CoreError::usage(
-                    "zellij status-cache-refresh-agent-usage accepts only flags".to_string(),
+                    "zellij status-cache-refresh-claude-usage accepts only flags".to_string(),
                 ));
             }
         }
@@ -887,29 +780,6 @@ fn parse_zellij_status_cache_refresh_opencode_go_usage_args(
     Ok(parsed)
 }
 
-fn parse_zellij_agent_usage_args(args: &[String]) -> Result<ZellijAgentUsageArgs, CoreError> {
-    let mut parsed = ZellijAgentUsageArgs::default();
-    for arg in args {
-        match arg.as_str() {
-            "-h" | "--help" | "help" => parsed.help = true,
-            other if other.starts_with('-') => {
-                return Err(CoreError::usage(format!(
-                    "Unknown argument for zellij agent-usage: {other}"
-                )));
-            }
-            other => {
-                if parsed.provider.is_some() {
-                    return Err(CoreError::usage(
-                        "zellij agent-usage accepts exactly one provider".to_string(),
-                    ));
-                }
-                parsed.provider = Some(other.to_string());
-            }
-        }
-    }
-    Ok(parsed)
-}
-
 fn print_zellij_status_bus_workspace_help() {
     println!("Render the workspace status-bus fact for zjstatus");
     println!();
@@ -938,12 +808,12 @@ fn print_zellij_status_cache_heartbeat_help() {
     println!("  yzx_control zellij status-cache-heartbeat [--json] [--path <path>]");
 }
 
-fn print_zellij_status_cache_refresh_agent_usage_help() {
-    println!("Refresh cached agent-usage facts for status-bar widgets");
+fn print_zellij_status_cache_refresh_claude_usage_help() {
+    println!("Refresh cached Claude 5h/week usage and quota facts for status-bar widgets");
     println!();
     println!("Usage:");
     println!(
-        "  yzx_control zellij status-cache-refresh-agent-usage [--path <path>] [--max-age-seconds <n>] [--timeout-ms <n>]"
+        "  yzx_control zellij status-cache-refresh-claude-usage [--path <path>] [--max-age-seconds <n>] [--error-backoff-seconds <n>] [--timeout-ms <n>]"
     );
 }
 
@@ -965,13 +835,6 @@ fn print_zellij_status_cache_refresh_opencode_go_usage_help() {
     println!(
         "  yzx_control zellij status-cache-refresh-opencode-go-usage [--path <path>] [--max-age-seconds <n>] [--error-backoff-seconds <n>]"
     );
-}
-
-fn print_zellij_agent_usage_help() {
-    println!("Render an opt-in agent usage provider summary for zjstatus");
-    println!();
-    println!("Usage:");
-    println!("  yzx_control zellij agent-usage <claude>");
 }
 
 pub fn run_zellij_inspect_session(args: &[String]) -> Result<i32, CoreError> {
@@ -1089,17 +952,7 @@ pub fn run_zellij_status_cache_write(args: &[String]) -> Result<i32, CoreError> 
     let status_bus = decode_status_bus_snapshot(payload)?;
     let previous_cache = read_status_bar_cache_value(&path);
     let now = unix_time_seconds();
-    let agent_usage_seed =
-        agent_usage_seed_for_status_cache_path(&path, previous_cache.as_ref(), now);
-    let mut cache = build_status_bar_cache_at(
-        status_bus,
-        agent_usage_seed
-            .as_ref()
-            .map(|seed| seed.agent_usage.clone())
-            .unwrap_or_else(|| json!({})),
-        agent_usage_seed.and_then(|seed| seed.updated_at_unix_seconds),
-        now,
-    );
+    let mut cache = build_status_bar_cache_at(status_bus, now);
     if let Some(heartbeat) = previous_cache
         .as_ref()
         .and_then(|cache| cache.get("orchestrator_heartbeat"))
@@ -1171,7 +1024,9 @@ pub fn run_zellij_status_cache_widget(args: &[String]) -> Result<i32, CoreError>
     else {
         return Ok(0);
     };
-    if widget == "codex_usage" {
+    if widget == "claude_usage" {
+        hydrate_status_cache_claude_usage(&mut cache, &path);
+    } else if widget == "codex_usage" {
         hydrate_status_cache_codex_usage(&mut cache, &path);
     } else if widget == "opencode_go_usage" {
         hydrate_status_cache_opencode_go_usage(&mut cache, &path);
@@ -1189,27 +1044,16 @@ fn status_cache_value_for_widget_path(path: &Path, widget: &str, now: u64) -> Op
         .or_else(|| first_paint_usage_cache_for_widget(path, widget, now))
 }
 
-fn first_paint_usage_cache_for_widget(path: &Path, widget: &str, now: u64) -> Option<Value> {
+fn first_paint_usage_cache_for_widget(_path: &Path, widget: &str, now: u64) -> Option<Value> {
     if !matches!(widget, "claude_usage" | "codex_usage" | "opencode_go_usage") {
         return None;
     }
 
-    let seed = if widget == "claude_usage" {
-        agent_usage_seed_for_status_cache_path(path, None, now)
-    } else {
-        None
-    };
-    let mut cache = json!({
+    let cache = json!({
         "schema_version": STATUS_BAR_CACHE_SCHEMA_VERSION,
         "updated_at_unix_seconds": now,
-        "agent_usage": seed
-            .as_ref()
-            .map(|seed| seed.agent_usage.clone())
-            .unwrap_or_else(|| json!({})),
+        "agent_usage": {},
     });
-    if let Some(updated_at) = seed.and_then(|seed| seed.updated_at_unix_seconds) {
-        cache["agent_usage_updated_at_unix_seconds"] = json!(updated_at);
-    }
     Some(cache)
 }
 
@@ -1273,10 +1117,10 @@ pub fn run_zellij_status_cache_refresh_opencode_go_usage(
     Ok(0)
 }
 
-pub fn run_zellij_status_cache_refresh_agent_usage(args: &[String]) -> Result<i32, CoreError> {
-    let parsed = parse_zellij_status_cache_refresh_agent_usage_args(args)?;
+pub fn run_zellij_status_cache_refresh_claude_usage(args: &[String]) -> Result<i32, CoreError> {
+    let parsed = parse_zellij_status_cache_refresh_tokenusage_windowed_args(args)?;
     if parsed.help {
-        print_zellij_status_cache_refresh_agent_usage_help();
+        print_zellij_status_cache_refresh_claude_usage_help();
         return Ok(0);
     }
 
@@ -1284,74 +1128,23 @@ pub fn run_zellij_status_cache_refresh_agent_usage(args: &[String]) -> Result<i3
         Some(path) => path,
         None => return Ok(0),
     };
-    let Some(mut cache) = read_status_bar_cache_value(&path) else {
+    if !usage_widget_enabled_from_status_cache_path(&path, "claude_usage") {
+        return Ok(0);
+    }
+    let Some(shared_path) = claude_usage_shared_cache_path_from_status_cache_path(&path) else {
         return Ok(0);
     };
-    let max_age_seconds = parsed.max_age_seconds.unwrap_or(120);
-    let timeout = Duration::from_millis(parsed.timeout_ms.unwrap_or(1500).max(1));
-    let refresh_config = agent_usage_refresh_config_from_status_cache_path(&path);
-    if refresh_status_bar_cache_agent_usage_value(
-        &mut cache,
+    let timeout = Duration::from_millis(parsed.timeout_ms.unwrap_or(5_000).max(1));
+    refresh_tokenusage_windowed_usage_shared_cache(
+        &shared_path,
+        TokenusageWindowedProvider::Claude,
         env::var_os("PATH").as_deref(),
-        &refresh_config,
         unix_time_seconds(),
-        max_age_seconds,
+        parsed.max_age_seconds.unwrap_or(600),
+        parsed.error_backoff_seconds.unwrap_or(1_800),
         timeout,
-    ) {
-        write_status_bar_cache_value(&path, &cache)?;
-        mark_status_cache_refresh_finished(&path, "agent_usage")?;
-    }
-    Ok(0)
-}
-
-pub fn run_zellij_agent_usage(args: &[String]) -> Result<i32, CoreError> {
-    let parsed = parse_zellij_agent_usage_args(args)?;
-    if parsed.help {
-        print_zellij_agent_usage_help();
-        return Ok(0);
-    }
-    let Some(provider) = parsed
-        .provider
-        .as_deref()
-        .and_then(parse_agent_usage_provider)
-    else {
-        return Err(CoreError::usage(
-            "zellij agent-usage requires one of: claude".to_string(),
-        ));
-    };
-    let target = default_agent_usage_target_for_provider(provider);
-    let path_var = env::var_os("PATH");
-
-    if let Some(path_var) = path_var.as_deref() {
-        for command in agent_usage_command_candidates(target) {
-            let Some(binary_path) = find_command_in_path_var(path_var, command.binary) else {
-                continue;
-            };
-            let output = Command::new(binary_path)
-                .args(command.args.as_slice())
-                .output()
-                .map_err(|source| {
-                    CoreError::io(
-                        "agent_usage_failed",
-                        "Failed to run the configured agent usage provider.",
-                        "Ensure the opt-in agent usage package is healthy, then retry.",
-                        command.binary,
-                        source,
-                    )
-                })?;
-            if !output.status.success() {
-                continue;
-            }
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let summary = agent_usage_summary_from_json(target, command.dialect, &stdout);
-            if !summary.is_empty() {
-                println!("{}", render_agent_usage_widget(target.label, &summary));
-                return Ok(0);
-            }
-        }
-    }
-
-    println!();
+    )?;
+    mark_status_cache_refresh_finished(&path, "claude_usage")?;
     Ok(0)
 }
 
@@ -1486,6 +1279,17 @@ fn codex_usage_shared_cache_path_from_status_cache_path(
     Some(state_dir.join("agent_usage").join("codex_usage_cache.json"))
 }
 
+fn claude_usage_shared_cache_path_from_status_cache_path(
+    status_cache_path: &Path,
+) -> Option<PathBuf> {
+    let state_dir = status_cache_path.parent()?.parent()?.parent()?;
+    Some(
+        state_dir
+            .join("agent_usage")
+            .join("claude_usage_cache.json"),
+    )
+}
+
 fn opencode_go_usage_shared_cache_path_from_status_cache_path(
     status_cache_path: &Path,
 ) -> Option<PathBuf> {
@@ -1497,109 +1301,13 @@ fn opencode_go_usage_shared_cache_path_from_status_cache_path(
     )
 }
 
-fn build_status_bar_cache_at(
-    status_bus: Value,
-    agent_usage: Value,
-    agent_usage_updated_at: Option<u64>,
-    now: u64,
-) -> Value {
-    let mut cache = json!({
+fn build_status_bar_cache_at(status_bus: Value, now: u64) -> Value {
+    json!({
         "schema_version": STATUS_BAR_CACHE_SCHEMA_VERSION,
         "updated_at_unix_seconds": now,
         "status_bus": status_bus,
-        "agent_usage": agent_usage,
-    });
-    if let Some(updated_at) = agent_usage_updated_at {
-        cache["agent_usage_updated_at_unix_seconds"] = json!(updated_at);
-    }
-    cache
-}
-
-#[derive(Debug, Clone)]
-struct AgentUsageCacheSeed {
-    agent_usage: Value,
-    updated_at_unix_seconds: Option<u64>,
-}
-
-fn agent_usage_seed_for_status_cache_path(
-    path: &Path,
-    previous_cache: Option<&Value>,
-    now: u64,
-) -> Option<AgentUsageCacheSeed> {
-    previous_cache
-        .and_then(agent_usage_seed_from_current_cache)
-        .or_else(|| recent_sibling_agent_usage_seed(path, now))
-}
-
-fn agent_usage_seed_from_current_cache(cache: &Value) -> Option<AgentUsageCacheSeed> {
-    let agent_usage = non_empty_agent_usage_value(cache)?;
-    Some(AgentUsageCacheSeed {
-        agent_usage,
-        updated_at_unix_seconds: cache
-            .get("agent_usage_updated_at_unix_seconds")
-            .and_then(Value::as_u64),
+        "agent_usage": {},
     })
-}
-
-fn recent_sibling_agent_usage_seed(path: &Path, now: u64) -> Option<AgentUsageCacheSeed> {
-    let sessions_dir = path.parent()?.parent()?;
-    let mut candidates = status_bar_cache_sibling_candidates(sessions_dir, path);
-    candidates.sort_by(|left, right| right.modified_unix_seconds.cmp(&left.modified_unix_seconds));
-
-    candidates
-        .into_iter()
-        .take(AGENT_USAGE_SEED_CANDIDATE_LIMIT)
-        .find_map(|candidate| {
-            let cache = read_status_bar_cache_value(&candidate.path)?;
-            let seed = agent_usage_seed_from_current_cache(&cache)?;
-            let updated_at = seed.updated_at_unix_seconds?;
-            if now.saturating_sub(updated_at) <= AGENT_USAGE_SEED_MAX_AGE_SECONDS {
-                Some(seed)
-            } else {
-                None
-            }
-        })
-}
-
-#[derive(Debug, Clone)]
-struct StatusBarCacheCandidate {
-    path: PathBuf,
-    modified_unix_seconds: u64,
-}
-
-fn status_bar_cache_sibling_candidates(
-    sessions_dir: &Path,
-    current_path: &Path,
-) -> Vec<StatusBarCacheCandidate> {
-    let Ok(entries) = fs::read_dir(sessions_dir) else {
-        return Vec::new();
-    };
-
-    entries
-        .filter_map(Result::ok)
-        .filter_map(|entry| {
-            let cache_path = entry.path().join("status_bar_cache.json");
-            if cache_path == current_path {
-                return None;
-            }
-            let modified_unix_seconds = fs::metadata(&cache_path)
-                .ok()
-                .and_then(|metadata| metadata.modified().ok())
-                .and_then(|modified| modified.duration_since(UNIX_EPOCH).ok())
-                .map(|duration| duration.as_secs())?;
-            Some(StatusBarCacheCandidate {
-                path: cache_path,
-                modified_unix_seconds,
-            })
-        })
-        .collect()
-}
-
-fn non_empty_agent_usage_value(cache: &Value) -> Option<Value> {
-    cache
-        .get("agent_usage")
-        .filter(|usage| usage.as_object().is_some_and(|entries| !entries.is_empty()))
-        .cloned()
 }
 
 fn unix_time_seconds() -> u64 {
@@ -1843,6 +1551,21 @@ fn hydrate_status_cache_codex_usage(cache: &mut Value, status_cache_path: &Path)
     cache["codex_usage"] = codex;
 }
 
+fn hydrate_status_cache_claude_usage(cache: &mut Value, status_cache_path: &Path) {
+    let Some(shared_path) =
+        claude_usage_shared_cache_path_from_status_cache_path(status_cache_path)
+    else {
+        return;
+    };
+    let Some(shared_cache) = read_claude_usage_shared_cache_value(&shared_path) else {
+        return;
+    };
+    let Some(claude) = shared_cache.get("claude").cloned() else {
+        return;
+    };
+    cache["claude_usage"] = claude;
+}
+
 fn hydrate_status_cache_opencode_go_usage(cache: &mut Value, status_cache_path: &Path) {
     let Some(shared_path) =
         opencode_go_usage_shared_cache_path_from_status_cache_path(status_cache_path)
@@ -1868,6 +1591,17 @@ fn read_codex_usage_shared_cache_value(path: &Path) -> Option<Value> {
     Some(cache)
 }
 
+fn read_claude_usage_shared_cache_value(path: &Path) -> Option<Value> {
+    let raw = fs::read_to_string(path).ok()?;
+    let cache: Value = serde_json::from_str(&raw).ok()?;
+    if cache.get("schema_version").and_then(Value::as_i64)
+        != Some(CLAUDE_USAGE_CACHE_SCHEMA_VERSION)
+    {
+        return None;
+    }
+    Some(cache)
+}
+
 fn read_opencode_go_usage_shared_cache_value(path: &Path) -> Option<Value> {
     let raw = fs::read_to_string(path).ok()?;
     let cache: Value = serde_json::from_str(&raw).ok()?;
@@ -1877,6 +1611,58 @@ fn read_opencode_go_usage_shared_cache_value(path: &Path) -> Option<Value> {
         return None;
     }
     Some(cache)
+}
+
+fn read_tokenusage_windowed_usage_shared_cache_value(
+    path: &Path,
+    provider: TokenusageWindowedProvider,
+) -> Option<Value> {
+    match provider {
+        TokenusageWindowedProvider::Claude => read_claude_usage_shared_cache_value(path),
+        TokenusageWindowedProvider::Codex => read_codex_usage_shared_cache_value(path),
+    }
+}
+
+fn tokenusage_windowed_usage_cache_schema_version(provider: TokenusageWindowedProvider) -> i64 {
+    match provider {
+        TokenusageWindowedProvider::Claude => CLAUDE_USAGE_CACHE_SCHEMA_VERSION,
+        TokenusageWindowedProvider::Codex => CODEX_USAGE_CACHE_SCHEMA_VERSION,
+    }
+}
+
+fn tokenusage_windowed_usage_cache_key(provider: TokenusageWindowedProvider) -> &'static str {
+    match provider {
+        TokenusageWindowedProvider::Claude => "claude",
+        TokenusageWindowedProvider::Codex => "codex",
+    }
+}
+
+fn tokenusage_windowed_usage_label(provider: TokenusageWindowedProvider) -> &'static str {
+    match provider {
+        TokenusageWindowedProvider::Claude => "Claude",
+        TokenusageWindowedProvider::Codex => "Codex",
+    }
+}
+
+fn tokenusage_windowed_usage_error_prefix(provider: TokenusageWindowedProvider) -> &'static str {
+    match provider {
+        TokenusageWindowedProvider::Claude => "claude_usage_cache",
+        TokenusageWindowedProvider::Codex => "codex_usage_cache",
+    }
+}
+
+fn tokenusage_windowed_usage_lock_name(provider: TokenusageWindowedProvider) -> &'static str {
+    match provider {
+        TokenusageWindowedProvider::Claude => ".claude_usage_cache.lock",
+        TokenusageWindowedProvider::Codex => ".codex_usage_cache.lock",
+    }
+}
+
+fn tokenusage_windowed_usage_lock_stale_after_seconds(provider: TokenusageWindowedProvider) -> u64 {
+    match provider {
+        TokenusageWindowedProvider::Claude => CLAUDE_USAGE_LOCK_STALE_AFTER_SECONDS,
+        TokenusageWindowedProvider::Codex => CODEX_USAGE_LOCK_STALE_AFTER_SECONDS,
+    }
 }
 
 fn status_bar_cache_status_bus(cache: &Value) -> Option<&Value> {
@@ -1890,20 +1676,11 @@ fn status_bar_cache_status_bus(cache: &Value) -> Option<&Value> {
 
 #[cfg(test)]
 fn render_status_cache_widget(cache: &Value, widget: &str) -> Result<String, CoreError> {
-    render_status_cache_widget_with_agent_usage_display(cache, widget, AgentUsageDisplay::Both)
-}
-
-#[cfg(test)]
-fn render_status_cache_widget_with_agent_usage_display(
-    cache: &Value,
-    widget: &str,
-    agent_usage_display: AgentUsageDisplay,
-) -> Result<String, CoreError> {
-    let settings = AgentUsageWidgetSettings {
-        display: agent_usage_display,
-        ..AgentUsageWidgetSettings::default()
-    };
-    render_status_cache_widget_with_agent_usage_settings(cache, widget, &settings)
+    render_status_cache_widget_with_agent_usage_settings(
+        cache,
+        widget,
+        &AgentUsageWidgetSettings::default(),
+    )
 }
 
 fn render_status_cache_widget_with_agent_usage_settings(
@@ -1916,11 +1693,12 @@ fn render_status_cache_widget_with_agent_usage_settings(
         "workspace" => Ok(status_bus
             .map(render_zjstatus_workspace_widget)
             .unwrap_or_default()),
-        "claude_usage" => Ok(render_grouped_agent_usage_segment(
+        "claude_usage" => Ok(render_windowed_usage_segment(
             cache,
-            AgentUsageProvider::Claude,
+            "claude_usage",
+            "claude",
             settings.claude_periods.as_slice(),
-            settings.display,
+            settings.claude_display,
         )),
         "codex_usage" => Ok(render_windowed_usage_segment(
             cache,
@@ -1950,34 +1728,6 @@ fn status_cache_widget_names() -> Vec<&'static str> {
         "codex_usage",
         "opencode_go_usage",
     ]
-}
-
-fn render_grouped_agent_usage_segment(
-    cache: &Value,
-    provider: AgentUsageProvider,
-    periods: &[AgentUsagePeriod],
-    display: AgentUsageDisplay,
-) -> String {
-    let mut parts = Vec::new();
-    for period in periods {
-        let Some(target) = agent_usage_target_for_provider_period(provider, *period) else {
-            continue;
-        };
-        let Some(entry) = cached_agent_usage_entry(cache, target) else {
-            continue;
-        };
-        let facts = agent_usage_facts_from_cache_entry(entry);
-        let summary = facts.display_summary(display);
-        if !summary.is_empty() {
-            parts.push(format!("{} {}", period.short_label(), summary));
-        }
-    }
-
-    if parts.is_empty() {
-        String::new()
-    } else {
-        render_agent_usage_widget(agent_usage_provider_label(provider), &parts.join(" | "))
-    }
 }
 
 fn render_windowed_usage_segment(
@@ -2074,69 +1824,6 @@ fn windowed_usage_facts_from_cache_entry(entry: &Value) -> WindowedUsageFacts {
     }
 }
 
-fn cached_agent_usage_entry(cache: &Value, target: AgentUsageTarget) -> Option<&Value> {
-    cache.get("agent_usage")?.get(target.cache_key)
-}
-
-fn refresh_status_bar_cache_agent_usage_value(
-    cache: &mut Value,
-    path_var: Option<&OsStr>,
-    refresh_config: &AgentUsageRefreshConfig,
-    now: u64,
-    max_age_seconds: u64,
-    timeout: Duration,
-) -> bool {
-    if agent_usage_cache_is_fresh(cache, now, max_age_seconds) {
-        return false;
-    }
-
-    let agent_usage = collect_agent_usage_entries(path_var, refresh_config, now, timeout);
-    cache["agent_usage"] = agent_usage;
-    cache["agent_usage_updated_at_unix_seconds"] = json!(now);
-    true
-}
-
-fn agent_usage_cache_is_fresh(cache: &Value, now: u64, max_age_seconds: u64) -> bool {
-    cache
-        .get("agent_usage_updated_at_unix_seconds")
-        .and_then(Value::as_u64)
-        .is_some_and(|updated_at| {
-            now.saturating_sub(updated_at) < max_age_seconds
-                && cache
-                    .get("agent_usage")
-                    .and_then(Value::as_object)
-                    .is_some_and(|usage| !usage.is_empty())
-        })
-}
-
-fn collect_agent_usage_entries(
-    path_var: Option<&OsStr>,
-    refresh_config: &AgentUsageRefreshConfig,
-    now: u64,
-    timeout: Duration,
-) -> Value {
-    let mut usage = serde_json::Map::new();
-    for target in configured_agent_usage_targets(refresh_config) {
-        let Some(facts) = agent_usage_facts_from_provider(target, path_var, timeout) else {
-            continue;
-        };
-        let mut entry = serde_json::Map::new();
-        entry.insert("updated_at_unix_seconds".to_string(), json!(now));
-        entry.insert("summary".to_string(), json!(facts.summary()));
-        if let Some(tokens) = facts.tokens {
-            entry.insert("tokens".to_string(), json!(tokens));
-        }
-        if let Some(cost) = facts.cost {
-            entry.insert("cost".to_string(), json!(cost));
-        }
-        if let Some(remaining) = facts.remaining {
-            entry.insert("remaining".to_string(), json!(remaining));
-        }
-        usage.insert(target.cache_key.to_string(), Value::Object(entry));
-    }
-    Value::Object(usage)
-}
-
 fn refresh_codex_usage_shared_cache(
     shared_path: &Path,
     path_var: Option<&OsStr>,
@@ -2145,44 +1832,84 @@ fn refresh_codex_usage_shared_cache(
     error_backoff_seconds: u64,
     timeout: Duration,
 ) -> Result<bool, CoreError> {
-    if codex_usage_shared_cache_is_fresh(shared_path, now, max_age_seconds) {
+    refresh_tokenusage_windowed_usage_shared_cache(
+        shared_path,
+        TokenusageWindowedProvider::Codex,
+        path_var,
+        now,
+        max_age_seconds,
+        error_backoff_seconds,
+        timeout,
+    )
+}
+
+fn refresh_tokenusage_windowed_usage_shared_cache(
+    shared_path: &Path,
+    provider: TokenusageWindowedProvider,
+    path_var: Option<&OsStr>,
+    now: u64,
+    max_age_seconds: u64,
+    error_backoff_seconds: u64,
+    timeout: Duration,
+) -> Result<bool, CoreError> {
+    if tokenusage_windowed_usage_shared_cache_is_fresh(shared_path, provider, now, max_age_seconds)
+    {
         return Ok(false);
     }
-    if codex_usage_shared_cache_is_backing_off(shared_path, now) {
+    if tokenusage_windowed_usage_shared_cache_is_backing_off(shared_path, provider, now) {
         return Ok(false);
     }
-    let Some(_lock) = try_acquire_codex_usage_cache_lock(shared_path, now)? else {
+    let Some(_lock) = try_acquire_tokenusage_windowed_usage_cache_lock(shared_path, provider, now)?
+    else {
         return Ok(false);
     };
-    if codex_usage_shared_cache_is_fresh(shared_path, now, max_age_seconds)
-        || codex_usage_shared_cache_is_backing_off(shared_path, now)
+    if tokenusage_windowed_usage_shared_cache_is_fresh(shared_path, provider, now, max_age_seconds)
+        || tokenusage_windowed_usage_shared_cache_is_backing_off(shared_path, provider, now)
     {
         return Ok(false);
     }
 
-    let facts = collect_codex_usage_facts(path_var, timeout);
-    let mut codex = serde_json::Map::new();
-    codex.insert("updated_at_unix_seconds".to_string(), json!(now));
+    let quota_backoff_until =
+        tokenusage_windowed_usage_quota_backoff_until(shared_path, provider, now);
+    let facts = collect_tokenusage_windowed_usage_facts(
+        provider,
+        path_var,
+        timeout,
+        quota_backoff_until.is_none(),
+    );
+    let mut entry = serde_json::Map::new();
+    entry.insert("updated_at_unix_seconds".to_string(), json!(now));
     if let Some(tokens) = facts.five_hour_tokens {
-        codex.insert("five_hour_tokens".to_string(), json!(tokens));
+        entry.insert("five_hour_tokens".to_string(), json!(tokens));
     }
     if let Some(tokens) = facts.weekly_tokens {
-        codex.insert("weekly_tokens".to_string(), json!(tokens));
+        entry.insert("weekly_tokens".to_string(), json!(tokens));
     }
     if let Some(percent) = facts.five_hour_remaining_percent {
-        codex.insert("five_hour_remaining_percent".to_string(), json!(percent));
+        entry.insert("five_hour_remaining_percent".to_string(), json!(percent));
     }
     if let Some(percent) = facts.weekly_remaining_percent {
-        codex.insert("weekly_remaining_percent".to_string(), json!(percent));
+        entry.insert("weekly_remaining_percent".to_string(), json!(percent));
     }
     if let Some(error) = facts.error.as_deref().filter(|value| !value.is_empty()) {
-        codex.insert("error".to_string(), json!(error));
+        entry.insert("error".to_string(), json!(error));
         if facts.is_empty() {
-            codex.insert(
+            entry.insert(
                 "backoff_until_unix_seconds".to_string(),
                 json!(now.saturating_add(error_backoff_seconds)),
             );
         }
+    }
+    if let Some(backoff_until) = quota_backoff_until {
+        entry.insert(
+            "quota_backoff_until_unix_seconds".to_string(),
+            json!(backoff_until),
+        );
+    } else if facts.has_tokens() && !facts.has_quota() {
+        entry.insert(
+            "quota_backoff_until_unix_seconds".to_string(),
+            json!(now.saturating_add(error_backoff_seconds)),
+        );
     }
     let status = if facts.is_empty() {
         "error"
@@ -2191,73 +1918,137 @@ fn refresh_codex_usage_shared_cache(
     } else {
         "partial"
     };
-    codex.insert("status".to_string(), json!(status));
+    entry.insert("status".to_string(), json!(status));
 
     let cache = json!({
-        "schema_version": CODEX_USAGE_CACHE_SCHEMA_VERSION,
-        "codex": Value::Object(codex),
+        "schema_version": tokenusage_windowed_usage_cache_schema_version(provider),
+        tokenusage_windowed_usage_cache_key(provider): Value::Object(entry),
     });
-    write_json_value_atomic(shared_path, &cache, "codex_usage_cache")?;
+    write_json_value_atomic(
+        shared_path,
+        &cache,
+        tokenusage_windowed_usage_error_prefix(provider),
+    )?;
     Ok(true)
 }
 
+#[cfg(test)]
 fn codex_usage_shared_cache_is_fresh(path: &Path, now: u64, max_age_seconds: u64) -> bool {
-    let Some(cache) = read_codex_usage_shared_cache_value(path) else {
-        return false;
-    };
-    cache
-        .get("codex")
-        .and_then(|codex| codex.get("updated_at_unix_seconds"))
-        .and_then(Value::as_u64)
-        .is_some_and(|updated_at| {
-            now.saturating_sub(updated_at) < max_age_seconds
-                && cache
-                    .get("codex")
-                    .map(windowed_usage_facts_from_cache_entry)
-                    .is_some_and(|facts| codex_usage_facts_are_complete(&facts))
-        })
+    tokenusage_windowed_usage_shared_cache_is_fresh(
+        path,
+        TokenusageWindowedProvider::Codex,
+        now,
+        max_age_seconds,
+    )
 }
 
-fn codex_usage_facts_are_complete(facts: &WindowedUsageFacts) -> bool {
+fn tokenusage_windowed_usage_facts_are_complete(facts: &WindowedUsageFacts) -> bool {
     facts.five_hour_tokens.is_some()
         && facts.weekly_tokens.is_some()
         && facts.five_hour_remaining_percent.is_some()
         && facts.weekly_remaining_percent.is_some()
 }
 
+#[cfg(test)]
 fn codex_usage_shared_cache_is_backing_off(path: &Path, now: u64) -> bool {
-    read_codex_usage_shared_cache_value(path)
+    tokenusage_windowed_usage_shared_cache_is_backing_off(
+        path,
+        TokenusageWindowedProvider::Codex,
+        now,
+    )
+}
+
+fn tokenusage_windowed_usage_shared_cache_is_fresh(
+    path: &Path,
+    provider: TokenusageWindowedProvider,
+    now: u64,
+    max_age_seconds: u64,
+) -> bool {
+    let Some(cache) = read_tokenusage_windowed_usage_shared_cache_value(path, provider) else {
+        return false;
+    };
+    let cache_key = tokenusage_windowed_usage_cache_key(provider);
+    cache
+        .get(cache_key)
+        .and_then(|entry| entry.get("updated_at_unix_seconds"))
+        .and_then(Value::as_u64)
+        .is_some_and(|updated_at| {
+            now.saturating_sub(updated_at) < max_age_seconds
+                && cache
+                    .get(cache_key)
+                    .map(windowed_usage_facts_from_cache_entry)
+                    .is_some_and(|facts| tokenusage_windowed_usage_facts_are_complete(&facts))
+        })
+}
+
+fn tokenusage_windowed_usage_shared_cache_is_backing_off(
+    path: &Path,
+    provider: TokenusageWindowedProvider,
+    now: u64,
+) -> bool {
+    read_tokenusage_windowed_usage_shared_cache_value(path, provider)
         .and_then(|cache| {
-            let codex = cache.get("codex")?;
-            let facts = windowed_usage_facts_from_cache_entry(codex);
-            if !facts.is_empty() && !codex_usage_facts_are_complete(&facts) {
+            let entry = cache.get(tokenusage_windowed_usage_cache_key(provider))?;
+            let facts = windowed_usage_facts_from_cache_entry(entry);
+            if !facts.is_empty() && !tokenusage_windowed_usage_facts_are_complete(&facts) {
                 return None;
             }
-            codex.get("backoff_until_unix_seconds")?.as_u64()
+            entry.get("backoff_until_unix_seconds")?.as_u64()
         })
         .is_some_and(|backoff_until| now < backoff_until)
 }
 
-struct CodexUsageCacheLock {
+#[cfg(test)]
+fn tokenusage_windowed_usage_quota_is_backing_off(
+    path: &Path,
+    provider: TokenusageWindowedProvider,
+    now: u64,
+) -> bool {
+    tokenusage_windowed_usage_quota_backoff_until(path, provider, now).is_some()
+}
+
+fn tokenusage_windowed_usage_quota_backoff_until(
+    path: &Path,
+    provider: TokenusageWindowedProvider,
+    now: u64,
+) -> Option<u64> {
+    read_tokenusage_windowed_usage_shared_cache_value(path, provider)
+        .and_then(|cache| {
+            cache
+                .get(tokenusage_windowed_usage_cache_key(provider))?
+                .get("quota_backoff_until_unix_seconds")?
+                .as_u64()
+        })
+        .filter(|backoff_until| now < *backoff_until)
+}
+
+struct TokenusageWindowedUsageCacheLock {
     path: PathBuf,
 }
 
-impl Drop for CodexUsageCacheLock {
+impl Drop for TokenusageWindowedUsageCacheLock {
     fn drop(&mut self) {
         let _ = fs::remove_dir(&self.path);
     }
 }
 
-fn try_acquire_codex_usage_cache_lock(
+fn try_acquire_tokenusage_windowed_usage_cache_lock(
     shared_path: &Path,
+    provider: TokenusageWindowedProvider,
     now: u64,
-) -> Result<Option<CodexUsageCacheLock>, CoreError> {
-    let lock_path = shared_path.with_file_name(".codex_usage_cache.lock");
+) -> Result<Option<TokenusageWindowedUsageCacheLock>, CoreError> {
+    let lock_path = shared_path.with_file_name(tokenusage_windowed_usage_lock_name(provider));
     if let Some(parent) = lock_path.parent() {
         fs::create_dir_all(parent).map_err(|source| {
             CoreError::io(
-                "codex_usage_cache_lock_parent_create_failed",
-                "Failed to create the Yazelix Codex usage cache lock directory.",
+                format!(
+                    "{}_lock_parent_create_failed",
+                    tokenusage_windowed_usage_error_prefix(provider)
+                ),
+                format!(
+                    "Failed to create the Yazelix {} usage cache lock directory.",
+                    tokenusage_windowed_usage_label(provider)
+                ),
                 "Check permissions for the Yazelix state directory, then retry.",
                 &parent.display().to_string(),
                 source,
@@ -2265,16 +2056,22 @@ fn try_acquire_codex_usage_cache_lock(
         })?;
     }
     match fs::create_dir(&lock_path) {
-        Ok(()) => Ok(Some(CodexUsageCacheLock { path: lock_path })),
+        Ok(()) => Ok(Some(TokenusageWindowedUsageCacheLock { path: lock_path })),
         Err(source) if source.kind() == ErrorKind::AlreadyExists => {
-            if codex_usage_cache_lock_is_stale(&lock_path, now) {
+            if tokenusage_windowed_usage_cache_lock_is_stale(&lock_path, provider, now) {
                 let _ = fs::remove_dir(&lock_path);
                 return match fs::create_dir(&lock_path) {
-                    Ok(()) => Ok(Some(CodexUsageCacheLock { path: lock_path })),
+                    Ok(()) => Ok(Some(TokenusageWindowedUsageCacheLock { path: lock_path })),
                     Err(source) if source.kind() == ErrorKind::AlreadyExists => Ok(None),
                     Err(source) => Err(CoreError::io(
-                        "codex_usage_cache_lock_create_failed",
-                        "Failed to acquire the Yazelix Codex usage cache lock.",
+                        format!(
+                            "{}_lock_create_failed",
+                            tokenusage_windowed_usage_error_prefix(provider)
+                        ),
+                        format!(
+                            "Failed to acquire the Yazelix {} usage cache lock.",
+                            tokenusage_windowed_usage_label(provider)
+                        ),
                         "Check permissions for the Yazelix state directory, then retry.",
                         &lock_path.display().to_string(),
                         source,
@@ -2284,8 +2081,14 @@ fn try_acquire_codex_usage_cache_lock(
             Ok(None)
         }
         Err(source) => Err(CoreError::io(
-            "codex_usage_cache_lock_create_failed",
-            "Failed to acquire the Yazelix Codex usage cache lock.",
+            format!(
+                "{}_lock_create_failed",
+                tokenusage_windowed_usage_error_prefix(provider)
+            ),
+            format!(
+                "Failed to acquire the Yazelix {} usage cache lock.",
+                tokenusage_windowed_usage_label(provider)
+            ),
             "Check permissions for the Yazelix state directory, then retry.",
             &lock_path.display().to_string(),
             source,
@@ -2293,13 +2096,18 @@ fn try_acquire_codex_usage_cache_lock(
     }
 }
 
-fn codex_usage_cache_lock_is_stale(lock_path: &Path, now: u64) -> bool {
+fn tokenusage_windowed_usage_cache_lock_is_stale(
+    lock_path: &Path,
+    provider: TokenusageWindowedProvider,
+    now: u64,
+) -> bool {
     fs::metadata(lock_path)
         .ok()
         .and_then(|metadata| metadata.modified().ok())
         .and_then(|modified| modified.duration_since(UNIX_EPOCH).ok())
         .map(|duration| {
-            now.saturating_sub(duration.as_secs()) > CODEX_USAGE_LOCK_STALE_AFTER_SECONDS
+            now.saturating_sub(duration.as_secs())
+                > tokenusage_windowed_usage_lock_stale_after_seconds(provider)
         })
         .unwrap_or(false)
 }
@@ -2704,7 +2512,12 @@ fn push_unique_path(paths: &mut Vec<PathBuf>, path: PathBuf) {
     }
 }
 
-fn collect_codex_usage_facts(path_var: Option<&OsStr>, timeout: Duration) -> WindowedUsageFacts {
+fn collect_tokenusage_windowed_usage_facts(
+    provider: TokenusageWindowedProvider,
+    path_var: Option<&OsStr>,
+    timeout: Duration,
+    include_quota: bool,
+) -> WindowedUsageFacts {
     let Some(path_var) = path_var else {
         return WindowedUsageFacts {
             error: Some("missing PATH".to_string()),
@@ -2719,40 +2532,25 @@ fn collect_codex_usage_facts(path_var: Option<&OsStr>, timeout: Duration) -> Win
     };
 
     let mut facts = WindowedUsageFacts::default();
-    match run_codex_usage_json_command(
+    match run_tokenusage_json_command(
         &binary_path,
-        &[
-            "blocks",
-            "--active",
-            "--json",
-            "--offline",
-            "--no-claude",
-            "--no-antigravity",
-        ],
+        tokenusage_active_block_args(provider).as_slice(),
         timeout,
     ) {
         Ok(Some(value)) => {
-            facts.five_hour_tokens = codex_active_block_tokens_from_json(&value);
+            facts.five_hour_tokens = tokenusage_active_block_tokens_from_json(&value);
         }
         Ok(None) => facts.error = Some("active block unavailable".to_string()),
         Err(error) => facts.error = Some(error),
     }
 
-    match run_codex_usage_json_command(
+    match run_tokenusage_json_command(
         &binary_path,
-        &[
-            "weekly",
-            "--json",
-            "--offline",
-            "--no-claude",
-            "--no-antigravity",
-            "--order",
-            "desc",
-        ],
+        tokenusage_weekly_args(provider).as_slice(),
         timeout,
     ) {
         Ok(Some(value)) => {
-            facts.weekly_tokens = codex_weekly_tokens_from_json(&value);
+            facts.weekly_tokens = tokenusage_weekly_tokens_from_json(&value);
         }
         Ok(None) => {
             facts.error = facts
@@ -2762,40 +2560,63 @@ fn collect_codex_usage_facts(path_var: Option<&OsStr>, timeout: Duration) -> Win
         Err(error) => facts.error = facts.error.or(Some(error)),
     }
 
-    match run_codex_usage_json_command(
-        &binary_path,
-        &[
-            "blocks",
-            "--active",
-            "--json",
-            "--official-limits",
-            "--no-claude",
-            "--no-antigravity",
-        ],
-        timeout,
-    ) {
-        Ok(Some(value)) => {
-            let quota = codex_quota_from_official_json(&value);
-            facts.five_hour_remaining_percent = quota.five_hour_remaining_percent;
-            facts.weekly_remaining_percent = quota.weekly_remaining_percent;
-            if !quota.has_quota() {
+    if include_quota {
+        match run_tokenusage_json_command(
+            &binary_path,
+            tokenusage_official_limits_args(provider).as_slice(),
+            timeout,
+        ) {
+            Ok(Some(value)) => {
+                let quota = tokenusage_quota_from_official_json(&value, provider);
+                facts.five_hour_remaining_percent = quota.five_hour_remaining_percent;
+                facts.weekly_remaining_percent = quota.weekly_remaining_percent;
+                if !quota.has_quota() {
+                    facts.error = facts
+                        .error
+                        .or_else(|| Some("quota unavailable".to_string()));
+                }
+            }
+            Ok(None) => {
                 facts.error = facts
                     .error
-                    .or_else(|| Some("quota unavailable".to_string()));
+                    .or_else(|| Some("quota unavailable".to_string()))
             }
+            Err(error) => facts.error = facts.error.or(Some(error)),
         }
-        Ok(None) => {
-            facts.error = facts
-                .error
-                .or_else(|| Some("quota unavailable".to_string()))
-        }
-        Err(error) => facts.error = facts.error.or(Some(error)),
     }
 
     facts
 }
 
-fn run_codex_usage_json_command(
+fn tokenusage_active_block_args(provider: TokenusageWindowedProvider) -> Vec<&'static str> {
+    let mut args = vec!["blocks", "--active", "--json", "--offline"];
+    args.extend(tokenusage_disabled_source_args(provider));
+    args
+}
+
+fn tokenusage_weekly_args(provider: TokenusageWindowedProvider) -> Vec<&'static str> {
+    let mut args = vec!["weekly", "--json", "--offline"];
+    args.extend(tokenusage_disabled_source_args(provider));
+    args.extend(["--order", "desc"]);
+    args
+}
+
+fn tokenusage_official_limits_args(provider: TokenusageWindowedProvider) -> Vec<&'static str> {
+    let mut args = vec!["blocks", "--active", "--json", "--official-limits"];
+    args.extend(tokenusage_disabled_source_args(provider));
+    args
+}
+
+fn tokenusage_disabled_source_args(
+    provider: TokenusageWindowedProvider,
+) -> &'static [&'static str] {
+    match provider {
+        TokenusageWindowedProvider::Claude => &["--no-codex", "--no-antigravity"],
+        TokenusageWindowedProvider::Codex => &["--no-claude", "--no-antigravity"],
+    }
+}
+
+fn run_tokenusage_json_command(
     binary_path: &Path,
     args: &[&str],
     timeout: Duration,
@@ -2817,7 +2638,7 @@ fn run_codex_usage_json_command(
         .map_err(|error| error.to_string())
 }
 
-fn codex_active_block_tokens_from_json(value: &Value) -> Option<u64> {
+fn tokenusage_active_block_tokens_from_json(value: &Value) -> Option<u64> {
     value
         .get("blocks")
         .and_then(Value::as_array)
@@ -2846,7 +2667,7 @@ fn codex_active_block_tokens_from_json(value: &Value) -> Option<u64> {
         })
 }
 
-fn codex_weekly_tokens_from_json(value: &Value) -> Option<u64> {
+fn tokenusage_weekly_tokens_from_json(value: &Value) -> Option<u64> {
     value
         .get("weekly")
         .and_then(Value::as_array)
@@ -2864,8 +2685,15 @@ fn codex_weekly_tokens_from_json(value: &Value) -> Option<u64> {
         })
 }
 
-fn codex_quota_from_official_json(value: &Value) -> WindowedUsageFacts {
-    let Some(official) = value.get("official_codex") else {
+fn tokenusage_quota_from_official_json(
+    value: &Value,
+    provider: TokenusageWindowedProvider,
+) -> WindowedUsageFacts {
+    let official_key = match provider {
+        TokenusageWindowedProvider::Claude => "official_claude",
+        TokenusageWindowedProvider::Codex => "official_codex",
+    };
+    let Some(official) = value.get(official_key) else {
         return WindowedUsageFacts::default();
     };
     WindowedUsageFacts {
@@ -2883,22 +2711,6 @@ fn codex_quota_from_official_json(value: &Value) -> WindowedUsageFacts {
 
 fn remaining_percent_from_used(used_percent: f64) -> u64 {
     (100.0 - used_percent).clamp(0.0, 100.0).round() as u64
-}
-
-fn agent_usage_refresh_config_from_status_cache_path(
-    status_cache_path: &Path,
-) -> AgentUsageRefreshConfig {
-    let Some(config) = normalized_session_config_for_status_cache_path(status_cache_path) else {
-        return AgentUsageRefreshConfig::default();
-    };
-    agent_usage_refresh_config_from_normalized_config(&config)
-}
-
-fn agent_usage_refresh_config_from_normalized_config(config: &Value) -> AgentUsageRefreshConfig {
-    AgentUsageRefreshConfig {
-        widgets: agent_usage_widget_names_from_config(&config),
-        claude_periods: agent_usage_periods_from_config(&config, "zellij_claude_usage_periods"),
-    }
 }
 
 fn normalized_session_config_from_env() -> Option<Value> {
@@ -2931,11 +2743,11 @@ fn agent_usage_widget_settings_from_status_cache_path(
         return AgentUsageWidgetSettings::default();
     };
     AgentUsageWidgetSettings {
-        display: config
-            .get("zellij_agent_usage_display")
+        claude_display: config
+            .get("zellij_claude_usage_display")
             .and_then(Value::as_str)
-            .map(AgentUsageDisplay::parse)
-            .unwrap_or(AgentUsageDisplay::Tokens),
+            .map(WindowedUsageDisplay::parse)
+            .unwrap_or(WindowedUsageDisplay::Both),
         codex_display: config
             .get("zellij_codex_usage_display")
             .and_then(Value::as_str)
@@ -2946,11 +2758,16 @@ fn agent_usage_widget_settings_from_status_cache_path(
             .and_then(Value::as_str)
             .map(WindowedUsageDisplay::parse)
             .unwrap_or(WindowedUsageDisplay::Both),
+        claude_periods: windowed_usage_periods_from_config(
+            &config,
+            "zellij_claude_usage_periods",
+            default_windowed_usage_periods(),
+        ),
         opencode_go_periods: windowed_usage_periods_from_config(
             &config,
             "zellij_opencode_go_usage_periods",
+            &default_opencode_go_usage_periods(),
         ),
-        claude_periods: agent_usage_periods_from_config(&config, "zellij_claude_usage_periods"),
     }
 }
 
@@ -2974,26 +2791,11 @@ fn agent_usage_widget_names_from_config(config: &Value) -> Option<BTreeSet<Strin
     )
 }
 
-fn agent_usage_periods_from_config(config: &Value, key: &str) -> Vec<AgentUsagePeriod> {
-    let periods = config
-        .get(key)
-        .and_then(Value::as_array)
-        .map(|values| {
-            values
-                .iter()
-                .filter_map(Value::as_str)
-                .filter_map(AgentUsagePeriod::parse_config)
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
-    if periods.is_empty() {
-        vec![AgentUsagePeriod::Daily]
-    } else {
-        periods
-    }
-}
-
-fn windowed_usage_periods_from_config(config: &Value, key: &str) -> Vec<WindowedUsagePeriod> {
+fn windowed_usage_periods_from_config(
+    config: &Value,
+    key: &str,
+    default_periods: &[WindowedUsagePeriod],
+) -> Vec<WindowedUsagePeriod> {
     let periods = config
         .get(key)
         .and_then(Value::as_array)
@@ -3006,101 +2808,10 @@ fn windowed_usage_periods_from_config(config: &Value, key: &str) -> Vec<Windowed
         })
         .unwrap_or_default();
     if periods.is_empty() {
-        default_opencode_go_usage_periods()
+        default_periods.to_vec()
     } else {
         periods
     }
-}
-
-fn agent_usage_facts_from_cache_entry(entry: &Value) -> AgentUsageFacts {
-    let mut facts = AgentUsageFacts {
-        tokens: entry
-            .get("tokens")
-            .and_then(Value::as_str)
-            .map(str::trim)
-            .filter(|value| !value.is_empty())
-            .map(str::to_string),
-        cost: entry
-            .get("cost")
-            .or_else(|| entry.get("money"))
-            .and_then(Value::as_str)
-            .map(str::trim)
-            .filter(|value| !value.is_empty())
-            .map(str::to_string),
-        remaining: entry
-            .get("remaining")
-            .and_then(Value::as_str)
-            .map(str::trim)
-            .filter(|value| !value.is_empty())
-            .map(str::to_string),
-    };
-
-    if facts.is_empty() {
-        if let Some(summary) = entry
-            .get("summary")
-            .and_then(Value::as_str)
-            .map(str::trim)
-            .filter(|summary| !summary.is_empty())
-        {
-            facts = agent_usage_facts_from_summary(summary);
-        }
-    }
-    facts
-}
-
-fn agent_usage_facts_from_summary(summary: &str) -> AgentUsageFacts {
-    let mut facts = AgentUsageFacts::default();
-    for part in summary.split_whitespace() {
-        if part.starts_with('$') {
-            if facts.cost.is_none() {
-                facts.cost = Some(part.to_string());
-            }
-        } else if looks_like_token_count(part) {
-            if facts.tokens.is_none() {
-                facts.tokens = Some(part.to_string());
-            }
-        } else if facts.remaining.is_none() {
-            facts.remaining = Some(part.to_string());
-        }
-    }
-    facts
-}
-
-fn looks_like_token_count(value: &str) -> bool {
-    let raw = value.trim();
-    if raw.is_empty() {
-        return false;
-    }
-    raw.chars().all(|c| c.is_ascii_digit())
-        || ['k', 'M', 'B'].iter().any(|suffix| {
-            raw.strip_suffix(*suffix).is_some_and(|number| {
-                !number.is_empty() && number.chars().all(|c| c.is_ascii_digit() || c == '.')
-            })
-        })
-}
-
-fn agent_usage_facts_from_provider(
-    target: AgentUsageTarget,
-    path_var: Option<&OsStr>,
-    timeout: Duration,
-) -> Option<AgentUsageFacts> {
-    let path_var = path_var?;
-    for command in agent_usage_command_candidates(target) {
-        let Some(binary_path) = find_command_in_path_var(path_var, command.binary) else {
-            continue;
-        };
-        let output =
-            run_agent_usage_command_with_timeout(&binary_path, command.args.as_slice(), timeout)
-                .ok()??;
-        if !output.status.success() {
-            continue;
-        }
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        if let Some(facts) = agent_usage_facts_from_json(target, command.dialect, &stdout) {
-            return Some(facts);
-        }
-    }
-    None
 }
 
 fn run_agent_usage_command_with_timeout(
@@ -3154,204 +2865,10 @@ fn print_optional_zjstatus_segment(segment: String) {
     }
 }
 
-fn parse_agent_usage_provider(raw: &str) -> Option<AgentUsageProvider> {
-    match raw.trim() {
-        "claude" => Some(AgentUsageProvider::Claude),
-        _ => None,
-    }
-}
-
-fn agent_usage_binary(_provider: AgentUsageProvider) -> &'static str {
-    "tu"
-}
-
-fn default_agent_usage_target_for_provider(provider: AgentUsageProvider) -> AgentUsageTarget {
-    match provider {
-        AgentUsageProvider::Claude => CLAUDE_USAGE_TARGET,
-    }
-}
-
-const CLAUDE_USAGE_TARGET: AgentUsageTarget = AgentUsageTarget {
-    provider: AgentUsageProvider::Claude,
-    period: AgentUsagePeriod::Daily,
-    cache_key: "claude",
-    label: "claude|d",
-};
-const CLAUDE_DAILY_USAGE_TARGET: AgentUsageTarget = AgentUsageTarget {
-    provider: AgentUsageProvider::Claude,
-    period: AgentUsagePeriod::Daily,
-    cache_key: "claude_daily",
-    label: "claude|d",
-};
-const CLAUDE_MONTHLY_USAGE_TARGET: AgentUsageTarget = AgentUsageTarget {
-    provider: AgentUsageProvider::Claude,
-    period: AgentUsagePeriod::Monthly,
-    cache_key: "claude_monthly",
-    label: "claude|mon",
-};
-
-fn agent_usage_target_for_provider_period(
-    provider: AgentUsageProvider,
-    period: AgentUsagePeriod,
-) -> Option<AgentUsageTarget> {
-    match (provider, period) {
-        (AgentUsageProvider::Claude, AgentUsagePeriod::Daily) => Some(CLAUDE_DAILY_USAGE_TARGET),
-        (AgentUsageProvider::Claude, AgentUsagePeriod::Monthly) => {
-            Some(CLAUDE_MONTHLY_USAGE_TARGET)
-        }
-    }
-}
-
-fn agent_usage_provider_label(_provider: AgentUsageProvider) -> &'static str {
-    "claude"
-}
-
-fn configured_agent_usage_targets(
-    refresh_config: &AgentUsageRefreshConfig,
-) -> Vec<AgentUsageTarget> {
-    let mut targets = Vec::new();
-    let Some(widgets) = refresh_config.widgets.as_ref() else {
-        targets.push(CLAUDE_DAILY_USAGE_TARGET);
-        return targets;
-    };
-
-    if widgets.contains("claude_usage") {
-        for period in &refresh_config.claude_periods {
-            if let Some(target) =
-                agent_usage_target_for_provider_period(AgentUsageProvider::Claude, *period)
-            {
-                push_unique_agent_usage_target(&mut targets, target);
-            }
-        }
-    }
-    targets
-}
-
-fn push_unique_agent_usage_target(targets: &mut Vec<AgentUsageTarget>, target: AgentUsageTarget) {
-    if !targets.contains(&target) {
-        targets.push(target);
-    }
-}
-
-fn agent_usage_command_candidates(target: AgentUsageTarget) -> Vec<AgentUsageCommand> {
-    let (args, dialect) = match (target.provider, target.period) {
-        (AgentUsageProvider::Claude, AgentUsagePeriod::Daily) => (
-            vec![
-                "today",
-                "--json",
-                "--offline",
-                "--no-codex",
-                "--no-antigravity",
-            ],
-            AgentUsageJsonDialect::Tokenusage,
-        ),
-        (AgentUsageProvider::Claude, AgentUsagePeriod::Monthly) => (
-            vec![
-                "monthly",
-                "--json",
-                "--offline",
-                "--no-codex",
-                "--no-antigravity",
-                "--order",
-                "desc",
-            ],
-            AgentUsageJsonDialect::Tokenusage,
-        ),
-    };
-    vec![AgentUsageCommand {
-        binary: agent_usage_binary(target.provider),
-        args,
-        dialect,
-    }]
-}
-
 fn find_command_in_path_var(path_var: &OsStr, command_name: &str) -> Option<PathBuf> {
     env::split_paths(path_var)
         .map(|entry| entry.join(command_name))
         .find(|candidate| candidate.is_file())
-}
-
-fn agent_usage_summary_from_json(
-    target: AgentUsageTarget,
-    dialect: AgentUsageJsonDialect,
-    raw: &str,
-) -> String {
-    agent_usage_facts_from_json(target, dialect, raw)
-        .map(|facts| facts.summary())
-        .unwrap_or_default()
-}
-
-fn agent_usage_facts_from_json(
-    target: AgentUsageTarget,
-    dialect: AgentUsageJsonDialect,
-    raw: &str,
-) -> Option<AgentUsageFacts> {
-    let Some(json_raw) = extract_json_object(raw) else {
-        return None;
-    };
-    let Ok(value) = serde_json::from_str::<Value>(json_raw) else {
-        return None;
-    };
-    let selected = match dialect {
-        AgentUsageJsonDialect::Tokenusage => tokenusage_agent_usage_value(target.period, &value),
-    };
-
-    agent_usage_facts_from_usage_value(selected)
-}
-
-fn tokenusage_agent_usage_value(period: AgentUsagePeriod, value: &Value) -> &Value {
-    match period {
-        AgentUsagePeriod::Daily => value.get("overview").unwrap_or(value),
-        AgentUsagePeriod::Monthly => value
-            .get("monthly")
-            .and_then(Value::as_array)
-            .and_then(|rows| rows.first())
-            .unwrap_or(value),
-    }
-}
-
-fn agent_usage_facts_from_usage_value(selected: &Value) -> Option<AgentUsageFacts> {
-    let facts = AgentUsageFacts {
-        tokens: first_u64_at(
-            selected,
-            &[
-                &["totalTokens"],
-                &["total_tokens"],
-                &["usage", "totalTokens"],
-                &["usage", "total_tokens"],
-                &["totals", "totalTokens"],
-                &["totals", "total_tokens"],
-                &["totals", "tokens"],
-            ],
-        )
-        .map(format_agent_usage_token_count),
-        cost: first_f64_at(
-            selected,
-            &[
-                &["costUSD"],
-                &["cost_usd"],
-                &["totalCost"],
-                &["total_cost"],
-                &["totals", "costUSD"],
-                &["totals", "cost_usd"],
-                &["totals", "totalCost"],
-                &["totals", "total_cost"],
-            ],
-        )
-        .map(format_agent_usage_cost),
-        remaining: first_i64_at(
-            selected,
-            &[
-                &["remainingMinutes"],
-                &["remaining_minutes"],
-                &["projection", "remainingMinutes"],
-                &["projection", "remaining_minutes"],
-            ],
-        )
-        .filter(|minutes| *minutes > 0)
-        .map(format_remaining_minutes),
-    };
-    (!facts.is_empty()).then_some(facts)
 }
 
 fn extract_json_object(raw: &str) -> Option<&str> {
@@ -3370,34 +2887,12 @@ fn first_u64_at(value: &Value, paths: &[&[&str]]) -> Option<u64> {
         .find_map(|path| nested_value(value, path)?.as_u64())
 }
 
-fn first_i64_at(value: &Value, paths: &[&[&str]]) -> Option<i64> {
-    paths
-        .iter()
-        .find_map(|path| nested_value(value, path)?.as_i64())
-}
-
-fn first_f64_at(value: &Value, paths: &[&[&str]]) -> Option<f64> {
-    paths
-        .iter()
-        .find_map(|path| nested_value(value, path)?.as_f64())
-}
-
 fn nested_value<'a>(value: &'a Value, path: &[&str]) -> Option<&'a Value> {
     let mut current = value;
     for segment in path {
         current = current.get(*segment)?;
     }
     Some(current)
-}
-
-fn format_agent_usage_cost(cost: f64) -> String {
-    if cost >= 10.0 {
-        format!("${cost:.0}")
-    } else if cost >= 1.0 {
-        format!("${cost:.2}")
-    } else {
-        format!("${cost:.3}")
-    }
 }
 
 fn format_agent_usage_token_count(tokens: u64) -> String {
@@ -3430,20 +2925,6 @@ fn format_scaled_agent_usage_count(value: f64, suffix: &str) -> String {
 
 fn format_quota_percent(percent: u64) -> String {
     format!("{}%", percent.min(100))
-}
-
-fn format_remaining_minutes(minutes: i64) -> String {
-    if minutes >= 60 {
-        let hours = minutes / 60;
-        let remaining = minutes % 60;
-        if remaining == 0 {
-            format!("{hours}h")
-        } else {
-            format!("{hours}h{remaining}m")
-        }
-    } else {
-        format!("{minutes}m")
-    }
 }
 
 fn decode_status_bus_snapshot(raw: &str) -> Result<Value, CoreError> {
@@ -4690,18 +4171,7 @@ mod tests {
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn status_cache_heartbeat_merge_preserves_cached_session_facts() {
-        let mut cache = build_status_bar_cache_at(
-            status_cache_test_status_bus(),
-            json!({
-                "claude_daily": {
-                    "summary": "42k $0.42",
-                    "tokens": "42k",
-                    "cost": "$0.42"
-                }
-            }),
-            Some(1_000),
-            1_000,
-        );
+        let mut cache = build_status_bar_cache_at(status_cache_test_status_bus(), 1_000);
         let status_bus_before = cache.get("status_bus").cloned();
         let agent_usage_before = cache.get("agent_usage").cloned();
 
@@ -4765,8 +4235,7 @@ mod tests {
     fn status_cache_write_preserves_existing_heartbeat() {
         let temp = tempfile::tempdir().unwrap();
         let cache_path = temp.path().join("window_a").join("status_bar_cache.json");
-        let mut cache =
-            build_status_bar_cache_at(status_cache_test_status_bus(), json!({}), None, 1_000);
+        let mut cache = build_status_bar_cache_at(status_cache_test_status_bus(), 1_000);
         merge_orchestrator_heartbeat_into_cache(
             &mut cache,
             json!({
@@ -4794,117 +4263,33 @@ mod tests {
         );
     }
 
-    // Regression: new Yazelix windows should first-paint agent usage from recent sibling cache facts instead of waiting for provider refresh.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[test]
-    fn status_cache_write_seeds_agent_usage_from_recent_sibling_session_cache() {
-        let temp = tempfile::tempdir().unwrap();
-        let sessions_dir = temp.path().join("sessions");
-        let old_cache_path = sessions_dir.join("window_a").join("status_bar_cache.json");
-        let new_cache_path = sessions_dir.join("window_b").join("status_bar_cache.json");
-        let now = unix_time_seconds();
-        let old_cache = build_status_bar_cache_at(
-            status_cache_test_status_bus(),
-            json!({
-                "claude_daily": {
-                    "summary": "42k $0.42",
-                    "tokens": "42k",
-                    "cost": "$0.42"
-                }
-            }),
-            Some(now),
-            now,
-        );
-        write_status_bar_cache_value(&old_cache_path, &old_cache).unwrap();
-
-        run_zellij_status_cache_write(&[
-            "--path".to_string(),
-            new_cache_path.display().to_string(),
-            "--payload".to_string(),
-            STATUS_CACHE_TEST_PAYLOAD.to_string(),
-        ])
-        .unwrap();
-        let new_cache = read_status_bar_cache_value(&new_cache_path).unwrap();
-
-        assert_eq!(
-            render_status_cache_widget(&new_cache, "claude_usage").unwrap(),
-            " [claude d 42k $0.42]"
-        );
-        assert_eq!(
-            new_cache
-                .get("agent_usage_updated_at_unix_seconds")
-                .and_then(Value::as_u64),
-            Some(now)
-        );
-    }
-
-    // Defends: first-paint seeding refuses old sibling usage facts so a new day or stale session cannot render misleading usage indefinitely.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[test]
-    fn status_cache_write_ignores_stale_sibling_agent_usage_seed() {
-        let temp = tempfile::tempdir().unwrap();
-        let sessions_dir = temp.path().join("sessions");
-        let old_cache_path = sessions_dir.join("window_a").join("status_bar_cache.json");
-        let new_cache_path = sessions_dir.join("window_b").join("status_bar_cache.json");
-        let now = unix_time_seconds();
-        let stale_updated_at = now.saturating_sub(AGENT_USAGE_SEED_MAX_AGE_SECONDS + 1);
-        let old_cache = build_status_bar_cache_at(
-            status_cache_test_status_bus(),
-            json!({
-                "claude_daily": {
-                    "summary": "42k $0.42",
-                    "tokens": "42k",
-                    "cost": "$0.42"
-                }
-            }),
-            Some(stale_updated_at),
-            stale_updated_at,
-        );
-        write_status_bar_cache_value(&old_cache_path, &old_cache).unwrap();
-
-        run_zellij_status_cache_write(&[
-            "--path".to_string(),
-            new_cache_path.display().to_string(),
-            "--payload".to_string(),
-            STATUS_CACHE_TEST_PAYLOAD.to_string(),
-        ])
-        .unwrap();
-        let new_cache = read_status_bar_cache_value(&new_cache_path).unwrap();
-
-        assert_eq!(
-            render_status_cache_widget(&new_cache, "claude_usage").unwrap(),
-            ""
-        );
-        assert!(
-            new_cache
-                .get("agent_usage_updated_at_unix_seconds")
-                .is_none()
-        );
-    }
-
     // Regression: usage widgets should first-paint from recent sibling/shared caches before the new window writes its status-bus cache.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn usage_widgets_render_from_existing_caches_before_status_bus_write() {
         let temp = tempfile::tempdir().unwrap();
         let sessions_dir = temp.path().join("state").join("sessions");
-        let old_cache_path = sessions_dir.join("window_a").join("status_bar_cache.json");
         let new_cache_path = sessions_dir.join("window_b").join("status_bar_cache.json");
         let now = unix_time_seconds();
-        let old_cache = build_status_bar_cache_at(
-            status_cache_test_status_bus(),
-            json!({
-                "claude_daily": {
-                    "summary": "42k $0.42",
-                    "tokens": "42k",
-                    "cost": "$0.42"
+
+        let claude_shared_path =
+            claude_usage_shared_cache_path_from_status_cache_path(&new_cache_path).unwrap();
+        write_json_value_atomic(
+            &claude_shared_path,
+            &json!({
+                "schema_version": CLAUDE_USAGE_CACHE_SCHEMA_VERSION,
+                "claude": {
+                    "updated_at_unix_seconds": now,
+                    "five_hour_tokens": 42_000_000u64,
+                    "weekly_tokens": 420_000_000u64,
+                    "five_hour_remaining_percent": 73u64,
+                    "weekly_remaining_percent": 81u64,
+                    "status": "ok"
                 }
             }),
-            Some(now),
-            now,
-        );
-        write_status_bar_cache_value(&old_cache_path, &old_cache).unwrap();
-
+            "claude_usage_cache_test",
+        )
+        .unwrap();
         let codex_shared_path =
             codex_usage_shared_cache_path_from_status_cache_path(&new_cache_path).unwrap();
         write_json_value_atomic(
@@ -4944,11 +4329,12 @@ mod tests {
         )
         .unwrap();
 
-        let claude_cache =
+        let mut claude_cache =
             status_cache_value_for_widget_path(&new_cache_path, "claude_usage", now).unwrap();
+        hydrate_status_cache_claude_usage(&mut claude_cache, &new_cache_path);
         assert_eq!(
             render_status_cache_widget(&claude_cache, "claude_usage").unwrap(),
-            " [claude d 42k $0.42]"
+            " [claude 5h|42M|73% wk|420M|81%]"
         );
 
         let mut codex_cache =
@@ -5031,7 +4417,9 @@ mod tests {
             &config_path,
             json!({
                 "normalized_config": {
-                    "zellij_widget_tray": ["opencode_go_usage"],
+                    "zellij_widget_tray": ["claude_usage", "opencode_go_usage"],
+                    "zellij_claude_usage_display": "quota",
+                    "zellij_claude_usage_periods": ["week"],
                     "zellij_opencode_go_usage_display": "quota",
                     "zellij_opencode_go_usage_periods": ["5h", "month"]
                 }
@@ -5044,7 +4432,13 @@ mod tests {
             &cache_path,
             "opencode_go_usage"
         ));
+        assert!(usage_widget_enabled_from_status_cache_path(
+            &cache_path,
+            "claude_usage"
+        ));
         let settings = agent_usage_widget_settings_from_status_cache_path(&cache_path);
+        assert_eq!(settings.claude_display, WindowedUsageDisplay::Quota);
+        assert_eq!(settings.claude_periods, vec![WindowedUsagePeriod::Weekly]);
         assert_eq!(settings.opencode_go_display, WindowedUsageDisplay::Quota);
         assert_eq!(
             settings.opencode_go_periods,
@@ -5052,37 +4446,10 @@ mod tests {
         );
     }
 
-    // Regression: agent usage refresh must honor grouped Claude period settings from the launch snapshot while dedicated windowed widgets use separate refresh paths.
+    // Defends: Claude usage mirrors the compact 5h/week token/quota contract selected by claude_usage_display.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn agent_usage_refresh_config_reads_grouped_periods_from_snapshot_path() {
-        let temp = tempfile::tempdir().unwrap();
-        let config_path = temp.path().join("config_snapshot.json");
-        fs::write(
-            &config_path,
-            json!({
-                "normalized_config": {
-                    "zellij_widget_tray": ["codex_usage", "claude_usage", "opencode_go_usage"],
-                    "zellij_claude_usage_periods": ["day", "month"],
-                    "zellij_agent_usage_display": "both"
-                }
-            })
-            .to_string(),
-        )
-        .unwrap();
-        let config = normalized_session_config_from_path(&config_path).unwrap();
-        let refresh_config = agent_usage_refresh_config_from_normalized_config(&config);
-
-        assert_eq!(
-            configured_agent_usage_targets(&refresh_config),
-            vec![CLAUDE_DAILY_USAGE_TARGET, CLAUDE_MONTHLY_USAGE_TARGET]
-        );
-    }
-
-    // Defends: cached agent usage widgets consume precomputed summaries instead of running provider binaries from zjstatus.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[test]
-    fn status_cache_agent_usage_renders_precomputed_summary() {
+    fn status_cache_claude_usage_renders_5h_week_display_modes() {
         let cache = json!({
             "schema_version": 1,
             "updated_at_unix_seconds": 10,
@@ -5097,80 +4464,49 @@ mod tests {
                 "transient_panes": {"popup": null, "menu": null},
                 "extensions": {"ai_pane_activity": []}
             },
-            "agent_usage": {
-                "claude_daily": {"summary": "123k $1.23"}
+            "claude_usage": {
+                "five_hour_tokens": 15456373u64,
+                "weekly_tokens": 66610005u64,
+                "five_hour_remaining_percent": 49u64,
+                "weekly_remaining_percent": 80u64
             }
         });
 
         assert_eq!(
-            render_status_cache_widget(&cache, "claude_usage").unwrap(),
-            " [claude d 123k $1.23]"
-        );
-        assert!(
-            !render_status_cache_widget(&cache, "claude_usage")
-                .unwrap()
-                .contains("#[")
-        );
-        assert_eq!(
-            render_status_cache_widget(&cache, "codex_usage").unwrap(),
-            ""
-        );
-    }
-
-    // Defends: agent usage display modes can keep status-bar widgets compact without rerunning provider commands.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[test]
-    fn status_cache_agent_usage_display_modes_filter_cached_facts() {
-        let cache = json!({
-            "schema_version": 1,
-            "updated_at_unix_seconds": 10,
-            "status_bus": {
-                "schema_version": 1,
-                "active_tab_position": 0,
-                "workspace": null,
-                "managed_panes": {"editor_pane_id": null, "sidebar_pane_id": null},
-                "focus_context": "other",
-                "layout": {"active_swap_layout_name": null, "sidebar_collapsed": null},
-                "sidebar_yazi": null,
-                "transient_panes": {"popup": null, "menu": null},
-                "extensions": {"ai_pane_activity": []}
-            },
-            "agent_usage": {
-                "claude_daily": {
-                    "summary": "94k $0.113 2h17m",
-                    "tokens": "94k",
-                    "cost": "$0.113",
-                    "remaining": "2h17m"
-                }
-            }
-        });
-
-        assert_eq!(
-            render_status_cache_widget_with_agent_usage_display(
+            render_status_cache_widget_with_agent_usage_settings(
                 &cache,
                 "claude_usage",
-                AgentUsageDisplay::Both
+                &AgentUsageWidgetSettings {
+                    claude_display: WindowedUsageDisplay::Both,
+                    ..AgentUsageWidgetSettings::default()
+                },
             )
             .unwrap(),
-            " [claude d 94k $0.113 2h17m]"
+            " [claude 5h|15.5M|49% wk|66.6M|80%]"
         );
         assert_eq!(
-            render_status_cache_widget_with_agent_usage_display(
+            render_status_cache_widget_with_agent_usage_settings(
                 &cache,
                 "claude_usage",
-                AgentUsageDisplay::Tokens
+                &AgentUsageWidgetSettings {
+                    claude_display: WindowedUsageDisplay::Token,
+                    ..AgentUsageWidgetSettings::default()
+                },
             )
             .unwrap(),
-            " [claude d 94k]"
+            " [claude 5h|15.5M wk|66.6M]"
         );
         assert_eq!(
-            render_status_cache_widget_with_agent_usage_display(
+            render_status_cache_widget_with_agent_usage_settings(
                 &cache,
                 "claude_usage",
-                AgentUsageDisplay::Money
+                &AgentUsageWidgetSettings {
+                    claude_display: WindowedUsageDisplay::Quota,
+                    ..AgentUsageWidgetSettings::default()
+                },
             )
             .unwrap(),
-            " [claude d $0.113]"
+            " [claude 5h|49% wk|80%]"
         );
     }
 
@@ -5325,10 +4661,10 @@ mod tests {
         );
     }
 
-    // Defends: tokenusage JSON shape for Codex active-block, weekly, and official quota facts maps to the compact widget contract.
+    // Defends: tokenusage JSON shape for active-block, weekly, and official quota facts maps to the compact widget contract.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn codex_usage_json_parsers_read_tokenusage_windows_and_official_quota() {
+    fn tokenusage_json_parsers_read_windows_and_official_quota() {
         let active = json!({
             "blocks": [
                 {"isActive": false, "totals": {"total_tokens": 10u64}},
@@ -5345,18 +4681,30 @@ mod tests {
             "official_codex": {
                 "primary_used_percent": 51.0,
                 "secondary_used_percent": 20.0
+            },
+            "official_claude": {
+                "primary_used_percent": 25.0,
+                "secondary_used_percent": 35.0
             }
         });
 
-        let quota = codex_quota_from_official_json(&official);
+        let codex_quota =
+            tokenusage_quota_from_official_json(&official, TokenusageWindowedProvider::Codex);
+        let claude_quota =
+            tokenusage_quota_from_official_json(&official, TokenusageWindowedProvider::Claude);
 
         assert_eq!(
-            codex_active_block_tokens_from_json(&active),
+            tokenusage_active_block_tokens_from_json(&active),
             Some(138424632)
         );
-        assert_eq!(codex_weekly_tokens_from_json(&weekly), Some(1335519960));
-        assert_eq!(quota.five_hour_remaining_percent, Some(49));
-        assert_eq!(quota.weekly_remaining_percent, Some(80));
+        assert_eq!(
+            tokenusage_weekly_tokens_from_json(&weekly),
+            Some(1335519960)
+        );
+        assert_eq!(codex_quota.five_hour_remaining_percent, Some(49));
+        assert_eq!(codex_quota.weekly_remaining_percent, Some(80));
+        assert_eq!(claude_quota.five_hour_remaining_percent, Some(75));
+        assert_eq!(claude_quota.weekly_remaining_percent, Some(65));
     }
 
     // Regression: the dedicated Codex refresh writes a shared cache that new windows hydrate before rendering.
@@ -5413,8 +4761,7 @@ exit 64
             Duration::from_secs(1),
         )
         .unwrap();
-        let mut cache =
-            build_status_bar_cache_at(status_cache_test_status_bus(), json!({}), None, 1_000);
+        let mut cache = build_status_bar_cache_at(status_cache_test_status_bus(), 1_000);
         hydrate_status_cache_codex_usage(&mut cache, &status_cache_path);
 
         assert!(refreshed);
@@ -5588,8 +4935,7 @@ exit 64
         let refreshed =
             refresh_opencode_go_usage_shared_cache_from_dbs(&shared_path, &[db_path], now, 1_800)
                 .unwrap();
-        let mut cache =
-            build_status_bar_cache_at(status_cache_test_status_bus(), json!({}), None, now);
+        let mut cache = build_status_bar_cache_at(status_cache_test_status_bus(), now);
         hydrate_status_cache_opencode_go_usage(&mut cache, &status_cache_path);
 
         assert!(refreshed);
@@ -5732,47 +5078,11 @@ exit 64
         ));
     }
 
-    // Defends: Claude usage mirrors the grouped period contract used by the other provider widgets.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[test]
-    fn status_cache_grouped_claude_usage_renders_configured_periods_compactly() {
-        let cache = json!({
-            "schema_version": 1,
-            "updated_at_unix_seconds": 10,
-            "status_bus": {
-                "schema_version": 1,
-                "active_tab_position": 0,
-                "workspace": null,
-                "managed_panes": {"editor_pane_id": null, "sidebar_pane_id": null},
-                "focus_context": "other",
-                "layout": {"active_swap_layout_name": null, "sidebar_collapsed": null},
-                "sidebar_yazi": null,
-                "transient_panes": {"popup": null, "menu": null},
-                "extensions": {"ai_pane_activity": []}
-            },
-            "agent_usage": {
-                "claude_daily": {"tokens": "124M", "cost": "$6.69"},
-                "claude_monthly": {"tokens": "1.58B", "cost": "$98"}
-            }
-        });
-        let settings = AgentUsageWidgetSettings {
-            display: AgentUsageDisplay::Both,
-            claude_periods: vec![AgentUsagePeriod::Daily, AgentUsagePeriod::Monthly],
-            ..AgentUsageWidgetSettings::default()
-        };
-
-        assert_eq!(
-            render_status_cache_widget_with_agent_usage_settings(&cache, "claude_usage", &settings)
-                .unwrap(),
-            " [claude d 124M $6.69 | mon 1.58B $98]"
-        );
-    }
-
-    // Regression: the agent-usage producer updates cached summaries from opt-in providers without making zjstatus run provider binaries.
+    // Regression: the dedicated Claude refresh writes a shared 5h/week token/quota cache that new windows hydrate before rendering.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[cfg(unix)]
     #[test]
-    fn status_cache_agent_usage_refresh_writes_precomputed_summary() {
+    fn status_cache_claude_usage_refresh_writes_shared_combined_cache() {
         use std::os::unix::fs::PermissionsExt;
 
         let temp = tempfile::tempdir().unwrap();
@@ -5782,9 +5092,19 @@ exit 64
         fs::write(
             &provider,
             r#"#!/usr/bin/env sh
-if [ "$1" = "today" ]; then
-  printf '%s\n' 'log prefix before json'
-  printf '%s\n' '{"date":"2026-04-30","overview":{"totals":{"total_tokens":123456,"cost_usd":1.234}}}'
+if [ "$1" = "blocks" ] && [ "$2" = "--active" ]; then
+  case " $* " in
+    *" --official-limits "*)
+      printf '%s\n' '{"official_claude":{"primary_used_percent":25.0,"secondary_used_percent":35.0}}'
+      ;;
+    *)
+      printf '%s\n' '{"blocks":[{"is_active":true,"totals":{"total_tokens":15456373}}]}'
+      ;;
+  esac
+  exit 0
+fi
+if [ "$1" = "weekly" ]; then
+  printf '%s\n' '{"weekly":[{"totals":{"total_tokens":66610005}}]}'
   exit 0
 fi
 exit 64
@@ -5794,203 +5114,141 @@ exit 64
         let mut permissions = fs::metadata(&provider).unwrap().permissions();
         permissions.set_mode(0o755);
         fs::set_permissions(&provider, permissions).unwrap();
-        let mut cache = json!({
-            "schema_version": 1,
-            "updated_at_unix_seconds": 10,
-            "status_bus": {
-                "schema_version": 1,
-                "active_tab_position": 0,
-                "workspace": null,
-                "managed_panes": {"editor_pane_id": null, "sidebar_pane_id": null},
-                "focus_context": "other",
-                "layout": {"active_swap_layout_name": null, "sidebar_collapsed": null},
-                "sidebar_yazi": null,
-                "transient_panes": {"popup": null, "menu": null},
-                "extensions": {"ai_pane_activity": []}
-            },
-            "agent_usage": {}
-        });
+        let status_cache_path = temp
+            .path()
+            .join("state")
+            .join("sessions")
+            .join("window_a")
+            .join("status_bar_cache.json");
+        let shared_path =
+            claude_usage_shared_cache_path_from_status_cache_path(&status_cache_path).unwrap();
 
-        let refresh_config = AgentUsageRefreshConfig {
-            widgets: Some(["claude_usage".to_string()].into_iter().collect()),
-            ..AgentUsageRefreshConfig::default()
-        };
-        assert_eq!(
-            configured_agent_usage_targets(&refresh_config),
-            vec![CLAUDE_DAILY_USAGE_TARGET]
-        );
-        let refreshed = refresh_status_bar_cache_agent_usage_value(
-            &mut cache,
+        let refreshed = refresh_tokenusage_windowed_usage_shared_cache(
+            &shared_path,
+            TokenusageWindowedProvider::Claude,
             Some(bin_dir.as_os_str()),
-            &refresh_config,
             1_000,
-            120,
-            Duration::from_secs(3),
+            600,
+            1_800,
+            Duration::from_secs(1),
         );
+        let mut cache = build_status_bar_cache_at(status_cache_test_status_bus(), 1_000);
+        hydrate_status_cache_claude_usage(&mut cache, &status_cache_path);
 
-        assert!(refreshed);
+        assert!(refreshed.unwrap());
         assert_eq!(
-            cache
-                .get("agent_usage")
-                .and_then(|usage| usage.get("claude_daily"))
-                .and_then(|entry| entry.get("summary"))
-                .and_then(Value::as_str),
-            Some("123k $1.23")
-        );
-        assert_eq!(
-            render_status_cache_widget(&cache, "claude_usage").unwrap(),
-            " [claude d 123k $1.23]"
+            render_status_cache_widget_with_agent_usage_settings(
+                &cache,
+                "claude_usage",
+                &AgentUsageWidgetSettings::default(),
+            )
+            .unwrap(),
+            " [claude 5h|15.5M|75% wk|66.6M|65%]"
         );
     }
 
-    // Regression: Claude usage refresh writes the same grouped-period cache entries used by status rendering.
+    // Regression: logged-out Claude quota probes must back off without stopping cheap local token refreshes.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[cfg(unix)]
     #[test]
-    fn status_cache_claude_usage_refresh_writes_grouped_period_summaries() {
+    fn tokenusage_windowed_refresh_backs_off_missing_quota_only() {
         use std::os::unix::fs::PermissionsExt;
 
         let temp = tempfile::tempdir().unwrap();
         let bin_dir = temp.path().join("bin");
         fs::create_dir_all(&bin_dir).unwrap();
-        let provider = bin_dir.join("tu");
-        fs::write(
-            &provider,
-            r#"#!/usr/bin/env sh
-case "$1" in
-  today)
-    printf '%s\n' '{"overview":{"totals":{"total_tokens":123456,"cost_usd":1.234}}}'
-    ;;
-  monthly)
-    printf '%s\n' '{"monthly":[{"totals":{"total_tokens":1576759000,"cost_usd":98.0}}]}'
-    ;;
-  *)
-    exit 64
-    ;;
-esac
-"#,
-        )
-        .unwrap();
-        let mut permissions = fs::metadata(&provider).unwrap().permissions();
-        permissions.set_mode(0o755);
-        fs::set_permissions(&provider, permissions).unwrap();
-        let mut cache = json!({
-            "schema_version": 1,
-            "updated_at_unix_seconds": 10,
-            "status_bus": {
-                "schema_version": 1,
-                "active_tab_position": 0,
-                "workspace": null,
-                "managed_panes": {"editor_pane_id": null, "sidebar_pane_id": null},
-                "focus_context": "other",
-                "layout": {"active_swap_layout_name": null, "sidebar_collapsed": null},
-                "sidebar_yazi": null,
-                "transient_panes": {"popup": null, "menu": null},
-                "extensions": {"ai_pane_activity": []}
-            },
-            "agent_usage": {}
-        });
-
-        let refresh_config = AgentUsageRefreshConfig {
-            widgets: Some(["claude_usage".to_string()].into_iter().collect()),
-            claude_periods: vec![AgentUsagePeriod::Daily, AgentUsagePeriod::Monthly],
-            ..AgentUsageRefreshConfig::default()
-        };
-        assert_eq!(
-            configured_agent_usage_targets(&refresh_config),
-            vec![CLAUDE_DAILY_USAGE_TARGET, CLAUDE_MONTHLY_USAGE_TARGET,]
-        );
-        let refreshed = refresh_status_bar_cache_agent_usage_value(
-            &mut cache,
-            Some(bin_dir.as_os_str()),
-            &refresh_config,
-            1_000,
-            120,
-            Duration::from_secs(3),
-        );
-        let settings = AgentUsageWidgetSettings {
-            display: AgentUsageDisplay::Both,
-            claude_periods: refresh_config.claude_periods.clone(),
-            ..AgentUsageWidgetSettings::default()
-        };
-
-        assert!(refreshed);
-        assert_eq!(
-            render_status_cache_widget_with_agent_usage_settings(&cache, "claude_usage", &settings)
-                .unwrap(),
-            " [claude d 123k $1.23 | mon 1.58B $98]"
-        );
-    }
-
-    // Regression: the grouped agent-usage refresh must not invoke Codex providers now that codex_usage has a dedicated 5h/week cache.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[cfg(unix)]
-    #[test]
-    fn status_cache_agent_usage_refresh_does_not_run_codex_combined_widget() {
-        use std::os::unix::fs::PermissionsExt;
-
-        let temp = tempfile::tempdir().unwrap();
-        let bin_dir = temp.path().join("bin");
-        fs::create_dir_all(&bin_dir).unwrap();
-        let sentinel = temp.path().join("tu_was_invoked");
+        let calls_path = temp.path().join("tu_calls.log");
         let provider = bin_dir.join("tu");
         fs::write(
             &provider,
             format!(
-                "#!/usr/bin/env sh\nprintf touched > '{}'\nprintf '%s\\n' '{{\"overview\":{{\"totals\":{{\"total_tokens\":123456}}}}}}'\n",
-                sentinel.display()
+                r#"#!/usr/bin/env sh
+printf '%s\n' "$*" >> '{}'
+if [ "$1" = "blocks" ] && [ "$2" = "--active" ]; then
+  case " $* " in
+    *" --official-limits "*)
+      printf '%s\n' '{{"official_claude":null}}'
+      ;;
+    *)
+      printf '%s\n' '{{"blocks":[{{"is_active":true,"totals":{{"total_tokens":15456373}}}}]}}'
+      ;;
+  esac
+  exit 0
+fi
+if [ "$1" = "weekly" ]; then
+  printf '%s\n' '{{"weekly":[{{"totals":{{"total_tokens":66610005}}}}]}}'
+  exit 0
+fi
+exit 64
+"#,
+                calls_path.display()
             ),
         )
         .unwrap();
         let mut permissions = fs::metadata(&provider).unwrap().permissions();
         permissions.set_mode(0o755);
         fs::set_permissions(&provider, permissions).unwrap();
-        let mut cache = json!({
-            "schema_version": 1,
-            "updated_at_unix_seconds": 10,
-            "status_bus": {
-                "schema_version": 1,
-                "active_tab_position": 0,
-                "workspace": null,
-                "managed_panes": {"editor_pane_id": null, "sidebar_pane_id": null},
-                "focus_context": "other",
-                "layout": {"active_swap_layout_name": null, "sidebar_collapsed": null},
-                "sidebar_yazi": null,
-                "transient_panes": {"popup": null, "menu": null},
-                "extensions": {"ai_pane_activity": []}
-            },
-            "agent_usage": {}
-        });
+        let shared_path = temp.path().join("claude_usage_cache.json");
 
-        let refresh_config = AgentUsageRefreshConfig {
-            widgets: Some(["codex_usage".to_string()].into_iter().collect()),
-            ..AgentUsageRefreshConfig::default()
-        };
-        assert!(configured_agent_usage_targets(&refresh_config).is_empty());
-        refresh_status_bar_cache_agent_usage_value(
-            &mut cache,
-            Some(bin_dir.as_os_str()),
-            &refresh_config,
-            1_000,
-            120,
-            Duration::from_secs(1),
+        assert!(
+            refresh_tokenusage_windowed_usage_shared_cache(
+                &shared_path,
+                TokenusageWindowedProvider::Claude,
+                Some(bin_dir.as_os_str()),
+                1_000,
+                10,
+                1_800,
+                Duration::from_secs(1),
+            )
+            .unwrap()
+        );
+        assert!(tokenusage_windowed_usage_quota_is_backing_off(
+            &shared_path,
+            TokenusageWindowedProvider::Claude,
+            1_001,
+        ));
+        assert!(
+            refresh_tokenusage_windowed_usage_shared_cache(
+                &shared_path,
+                TokenusageWindowedProvider::Claude,
+                Some(bin_dir.as_os_str()),
+                1_010,
+                10,
+                1_800,
+                Duration::from_secs(1),
+            )
+            .unwrap()
         );
 
+        let calls = fs::read_to_string(calls_path).unwrap();
         assert_eq!(
-            cache
-                .get("agent_usage")
-                .and_then(Value::as_object)
-                .map(|usage| usage.len()),
-            Some(0)
+            calls
+                .lines()
+                .filter(|line| line.contains("--official-limits"))
+                .count(),
+            1
         );
-        assert!(!sentinel.exists());
+        assert_eq!(
+            calls
+                .lines()
+                .filter(|line| line.starts_with("blocks --active --json --offline"))
+                .count(),
+            2
+        );
+        assert_eq!(
+            calls
+                .lines()
+                .filter(|line| line.starts_with("weekly --json --offline"))
+                .count(),
+            2
+        );
     }
 
-    // Regression: hung agent-usage providers are killed quickly so the cache producer cannot recreate the CPU-spike failure mode.
+    // Regression: hung tokenusage providers are killed quickly so the cache producer cannot recreate the CPU-spike failure mode.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[cfg(unix)]
     #[test]
-    fn status_cache_agent_usage_refresh_times_out_hung_provider() {
+    fn tokenusage_windowed_refresh_times_out_hung_provider() {
         use std::os::unix::fs::PermissionsExt;
 
         let temp = tempfile::tempdir().unwrap();
@@ -6001,75 +5259,27 @@ esac
         let mut permissions = fs::metadata(&provider).unwrap().permissions();
         permissions.set_mode(0o755);
         fs::set_permissions(&provider, permissions).unwrap();
-        let mut cache = json!({
-            "schema_version": 1,
-            "updated_at_unix_seconds": 10,
-            "status_bus": {
-                "schema_version": 1,
-                "active_tab_position": 0,
-                "workspace": null,
-                "managed_panes": {"editor_pane_id": null, "sidebar_pane_id": null},
-                "focus_context": "other",
-                "layout": {"active_swap_layout_name": null, "sidebar_collapsed": null},
-                "sidebar_yazi": null,
-                "transient_panes": {"popup": null, "menu": null},
-                "extensions": {"ai_pane_activity": []}
-            },
-            "agent_usage": {}
-        });
         let started = Instant::now();
+        let shared_path = temp.path().join("claude_usage_cache.json");
 
-        let refresh_config = AgentUsageRefreshConfig {
-            widgets: Some(["claude_usage".to_string()].into_iter().collect()),
-            ..AgentUsageRefreshConfig::default()
-        };
-        let refreshed = refresh_status_bar_cache_agent_usage_value(
-            &mut cache,
+        let refreshed = refresh_tokenusage_windowed_usage_shared_cache(
+            &shared_path,
+            TokenusageWindowedProvider::Claude,
             Some(bin_dir.as_os_str()),
-            &refresh_config,
             1_000,
-            120,
+            10,
+            1_800,
             Duration::from_millis(50),
-        );
+        )
+        .unwrap();
 
         assert!(refreshed);
         assert!(started.elapsed() < Duration::from_secs(2));
         assert_eq!(
-            cache
-                .get("agent_usage")
-                .and_then(Value::as_object)
-                .unwrap()
-                .len(),
-            0
-        );
-    }
-
-    // Regression: tokenusage monthly JSON includes all-history top-level totals; Yazelix must render the current row instead.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[test]
-    fn tokenusage_json_uses_selected_period_row_instead_of_all_history_totals() {
-        let monthly = agent_usage_summary_from_json(
-            CLAUDE_MONTHLY_USAGE_TARGET,
-            AgentUsageJsonDialect::Tokenusage,
-            r#"{"monthly":[{"date":"2026-04","totals":{"total_tokens":1576759000,"cost_usd":98.0}}],"totals":{"total_tokens":999000,"cost_usd":99.9}}"#,
-        );
-        assert_eq!(monthly, "1.58B $98");
-    }
-
-    // Defends: configured Claude usage periods expand to tokenusage-backed cache targets used by the status bar.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[test]
-    fn claude_usage_period_config_expands_to_tokenusage_targets() {
-        let provider = parse_agent_usage_provider("claude").unwrap();
-        let refresh_config = AgentUsageRefreshConfig {
-            widgets: Some(["claude_usage".to_string()].into_iter().collect()),
-            claude_periods: vec![AgentUsagePeriod::Daily, AgentUsagePeriod::Monthly],
-        };
-
-        assert_eq!(agent_usage_binary(provider), "tu");
-        assert_eq!(
-            configured_agent_usage_targets(&refresh_config),
-            vec![CLAUDE_DAILY_USAGE_TARGET, CLAUDE_MONTHLY_USAGE_TARGET]
+            read_claude_usage_shared_cache_value(&shared_path)
+                .and_then(|cache| cache.pointer("/claude/status").cloned())
+                .and_then(|status| status.as_str().map(str::to_string)),
+            Some("error".to_string())
         );
     }
 }

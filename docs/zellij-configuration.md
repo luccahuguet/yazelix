@@ -56,22 +56,22 @@ widget_tray = [
   "shell",   # Active shell
   "term",    # Terminal emulator
   # "workspace", # Workspace root
-  # "claude_usage", # Grouped Claude usage
+  # "claude_usage", # Combined Claude 5h/week usage and quota
   # "codex_usage", # Combined Codex 5h/week usage and quota
   # "opencode_go_usage", # Combined OpenCode Go 5h/week/month usage and quota
   "cpu",     # CPU usage
   "ram",     # RAM usage
 ]
 
-agent_usage_display = "tokens" # Claude: "tokens", "money", or "both"
+claude_usage_display = "both" # "token", "quota", or "both"
 codex_usage_display = "both" # "token", "quota", or "both"
 opencode_go_usage_display = "both" # "token", "quota", or "both"
 opencode_go_usage_periods = ["5h", "week", "month"]
-claude_usage_periods = ["day", "month"]
+claude_usage_periods = ["5h", "week"]
 ```
 Comment out any line to hide that widget. Order matters. Restart Yazelix to regenerate layouts.
 
-The Codex usage widget combines local token totals with official quota percentages, for example `[codex 5h|138M|49% wk|1.34B|80%]`. The OpenCode Go widget reads OpenCode's local SQLite database directly and renders the compact 5h/week/month shape with the `go` label. Claude usage renders grouped token periods, for example `[claude d 94k]`. Claude and Codex widgets use `tu` from tokenusage. Standalone flake users can install `.#yazelix_agent_tools`; Home Manager users can set `programs.yazelix.agent_usage_programs = [ "tokenusage" ]`.
+The Codex and Claude usage widgets combine local token totals with official quota percentages, for example `[codex 5h|138M|49% wk|1.34B|80%]` and `[claude 5h|15.5M|75% wk|66.6M|65%]`. The OpenCode Go widget reads OpenCode's local SQLite database directly and renders the compact 5h/week/month shape with the `go` label. Claude and Codex widgets use `tu` from tokenusage. Standalone flake users can install `.#yazelix_agent_tools`; Home Manager users can set `programs.yazelix.agent_usage_programs = [ "tokenusage" ]`.
 
 **Idle screen saver (yazelix.toml):**
 ```toml

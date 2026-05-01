@@ -457,7 +457,7 @@ fn widget_tray_question() -> MultiQuestion {
             ("Shell", "shell"),
             ("Terminal", "term"),
             ("Workspace", "workspace"),
-            ("Grouped Claude usage", "claude_usage"),
+            ("Claude 5h/week usage and quota", "claude_usage"),
             ("Codex 5h/week usage and quota", "codex_usage"),
             (
                 "OpenCode Go 5h/week/month usage and quota",

@@ -231,14 +231,11 @@ contract. This slice is only about the read contract.
    status-bar cache, and zjstatus dynamic widgets read only that cache instead
    of opening pane-orchestrator pipes from the bar.
 8. Agent-usage facts are produced by throttled cache writers with provider
-   command timeouts. New windows may seed their first paint from recent sibling
-   session cache facts, but zjstatus usage widgets must never run usage
-   providers directly. The grouped `claude_usage` widget renders configured
-   period lists as one compact segment so the provider name is not repeated for
-   day/month facts. The `codex_usage` widget reads a shared cross-window cache
-   and renders 5-hour and weekly token/quota windows. The `opencode_go_usage`
-   widget reads a shared cross-window cache and renders its configured 5-hour,
-   weekly, and monthly token/quota windows.
+   command timeouts, but zjstatus usage widgets must never run usage providers
+   directly. The `claude_usage` and `codex_usage` widgets read shared
+   cross-window caches and render configured 5-hour and weekly token/quota
+   windows. The `opencode_go_usage` widget reads a shared cross-window cache and
+   renders its configured 5-hour, weekly, and monthly token/quota windows.
 
 ## Verification
 
@@ -257,11 +254,10 @@ contract. This slice is only about the read contract.
 - Defended by: `yzx_repo_validator validate-contracts`
 - Defended by: `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib ai_activity_extension_represents_tab_local_state_taxonomy`
 - Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_round_trip_renders_cached_workspace_fact`
-- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_agent_usage_refresh_writes_precomputed_summary`
-- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_write_seeds_agent_usage_from_recent_sibling_session_cache`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_claude_usage_refresh_writes_shared_combined_cache`
 - Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_codex_usage_renders_5h_week_display_modes`
 - Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_codex_usage_refresh_writes_shared_combined_cache`
-- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_grouped_claude_usage_renders_configured_periods_compactly`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_claude_usage_renders_5h_week_display_modes`
 - Defended by: `nu -c 'source nushell/scripts/dev/test_yzx_workspace_commands.nu; [(test_run_pane_orchestrator_command_raw_targets_session_plugin_without_plugin_configuration) (test_retarget_workspace_for_path_returns_plugin_owned_sidebar_state_and_editor_status)]'`
 
 ## Open Questions

@@ -1912,6 +1912,7 @@ ui { pane_frames { hide_session_name true } }
         assert!(!template.contains("status-bus-workspace"));
         assert!(template.contains("command_claude_usage_command"));
         assert!(template.contains(r##"command_claude_usage_format "#[fg=#bb88ff,bold]{stdout}""##));
+        assert!(template.contains(r#"command_claude_usage_interval "10""#));
         assert!(template.contains("command_codex_usage_command"));
         assert!(template.contains(r##"command_codex_usage_format "#[fg=#bb88ff,bold]{stdout}""##));
         assert!(template.contains(r#"command_codex_usage_interval "10""#));

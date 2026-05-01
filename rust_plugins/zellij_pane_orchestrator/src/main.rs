@@ -58,7 +58,7 @@ struct State {
     screen_saver_pane_id: Option<PaneId>,
     status_bar_cache_runtime: Option<StatusBarCacheRuntime>,
     status_bar_cache_last_payload: Option<String>,
-    status_bar_agent_usage_next_refresh: Option<Instant>,
+    status_bar_claude_usage_next_refresh: Option<Instant>,
     status_bar_codex_usage_next_refresh: Option<Instant>,
     status_bar_opencode_go_usage_next_refresh: Option<Instant>,
     orchestrator_heartbeat: heartbeat::OrchestratorHeartbeat,
@@ -107,7 +107,7 @@ impl ZellijPlugin for State {
         }
         subscribe(&subscriptions);
         self.schedule_initial_screen_saver_timeout();
-        self.schedule_initial_status_bar_agent_usage_refresh();
+        self.schedule_initial_status_bar_claude_usage_refresh();
         self.schedule_initial_status_bar_codex_usage_refresh();
         self.schedule_initial_status_bar_opencode_go_usage_refresh();
         self.arm_next_timer();
@@ -160,7 +160,7 @@ impl ZellijPlugin for State {
                 self.timer_armed_for = None;
                 self.record_orchestrator_timer();
                 self.handle_screen_saver_timer();
-                self.handle_status_bar_agent_usage_timer();
+                self.handle_status_bar_claude_usage_timer();
                 self.handle_status_bar_codex_usage_timer();
                 self.handle_status_bar_opencode_go_usage_timer();
                 self.handle_orchestrator_heartbeat_timer();
@@ -303,7 +303,7 @@ impl State {
             now,
             [
                 self.screen_saver_next_timeout,
-                self.status_bar_agent_usage_next_refresh,
+                self.status_bar_claude_usage_next_refresh,
                 self.status_bar_codex_usage_next_refresh,
                 self.status_bar_opencode_go_usage_next_refresh,
                 self.orchestrator_heartbeat.next_flush,

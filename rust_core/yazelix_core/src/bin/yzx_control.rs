@@ -55,7 +55,6 @@ use yazelix_core::run_yzx_tutor;
 use yazelix_core::run_yzx_warp;
 use yazelix_core::run_yzx_whats_new;
 use yazelix_core::run_yzx_why;
-use yazelix_core::run_zellij_agent_usage;
 use yazelix_core::run_zellij_get_workspace_root;
 use yazelix_core::run_zellij_inspect_session;
 use yazelix_core::run_zellij_open_editor;
@@ -66,7 +65,7 @@ use yazelix_core::run_zellij_retarget;
 use yazelix_core::run_zellij_status_bus;
 use yazelix_core::run_zellij_status_bus_workspace;
 use yazelix_core::run_zellij_status_cache_heartbeat;
-use yazelix_core::run_zellij_status_cache_refresh_agent_usage;
+use yazelix_core::run_zellij_status_cache_refresh_claude_usage;
 use yazelix_core::run_zellij_status_cache_refresh_codex_usage;
 use yazelix_core::run_zellij_status_cache_refresh_opencode_go_usage;
 use yazelix_core::run_zellij_status_cache_widget;
@@ -113,10 +112,9 @@ fn usage() -> ! {
     eprintln!("       yzx_control zellij pipe <command> [--payload <json>]");
     eprintln!("       yzx_control zellij get-workspace-root [--include-bootstrap]");
     eprintln!("       yzx_control zellij inspect-session [--json]");
-    eprintln!("       yzx_control zellij agent-usage <claude>");
     eprintln!("       yzx_control zellij status-cache-widget <widget>");
     eprintln!("       yzx_control zellij status-cache-heartbeat [--json]");
-    eprintln!("       yzx_control zellij status-cache-refresh-agent-usage");
+    eprintln!("       yzx_control zellij status-cache-refresh-claude-usage");
     eprintln!("       yzx_control zellij status-cache-refresh-codex-usage");
     eprintln!("       yzx_control zellij status-cache-refresh-opencode-go-usage");
     eprintln!("       yzx_control zellij retarget <path> [--editor <kind>]");
@@ -1124,7 +1122,6 @@ fn run_zellij(args: &[String]) -> Result<i32, CoreError> {
     let mut argv = args.to_vec();
     let sub = argv.remove(0);
     match sub.as_str() {
-        "agent-usage" => run_zellij_agent_usage(&argv),
         "pipe" => run_zellij_pipe(&argv),
         "get-workspace-root" => run_zellij_get_workspace_root(&argv),
         "inspect-session" => run_zellij_inspect_session(&argv),
@@ -1133,7 +1130,7 @@ fn run_zellij(args: &[String]) -> Result<i32, CoreError> {
         "status-cache-write" => run_zellij_status_cache_write(&argv),
         "status-cache-heartbeat" => run_zellij_status_cache_heartbeat(&argv),
         "status-cache-widget" => run_zellij_status_cache_widget(&argv),
-        "status-cache-refresh-agent-usage" => run_zellij_status_cache_refresh_agent_usage(&argv),
+        "status-cache-refresh-claude-usage" => run_zellij_status_cache_refresh_claude_usage(&argv),
         "status-cache-refresh-codex-usage" => run_zellij_status_cache_refresh_codex_usage(&argv),
         "status-cache-refresh-opencode-go-usage" => {
             run_zellij_status_cache_refresh_opencode_go_usage(&argv)

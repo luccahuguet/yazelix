@@ -170,16 +170,15 @@ widget_tray = [
   "shell",  # Active shell
   "term",  # Terminal emulator
   # "workspace", # Active workspace root name
-  # "claude_usage", # Grouped Claude usage
+  # "claude_usage", # Combined Claude 5h/week usage and quota
   # "codex_usage", # Combined Codex 5h/week usage and quota
   # "opencode_go_usage", # Combined OpenCode Go 5h/week/month usage and quota
   "cpu",  # CPU usage
   "ram",  # RAM usage
 ]
 
-# Claude usage widget display: "tokens", "money", or "both"
-# Money is a provider estimate, not your subscription bill
-agent_usage_display = "tokens"
+# Claude usage display: "token", "quota", or "both"
+claude_usage_display = "both"
 
 # Codex usage display: "token", "quota", or "both"
 codex_usage_display = "both"
@@ -190,8 +189,8 @@ opencode_go_usage_display = "both"
 # OpenCode Go usage windows: "5h", "week", or "month"
 opencode_go_usage_periods = ["5h", "week", "month"]
 
-# Periods shown by grouped Claude usage widgets: "day" or "month"
-claude_usage_periods = ["day"]
+# Claude usage windows: "5h" or "week"
+claude_usage_periods = ["5h", "week"]
 
 # Optional short badge shown just before the YAZELIX version segment in zjstatus.
 # Empty by default. Whitespace is trimmed and the rendered text is capped at 8 characters.
