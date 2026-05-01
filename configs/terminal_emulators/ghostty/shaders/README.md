@@ -96,7 +96,7 @@ The build is **fully automatic**:
 
 ### Split (5 data-driven presets)
 - `eclipse`, `dusk`, `orchid`, `reef`, `magma`
-- Each preset defines two colors plus `direction = "vertical" | "horizontal"` and `blend = true | false`
+- Each preset defines two colors plus `divider = "vertical" | "horizontal"` and `transition = "soft" | "hard"`
 
 ### Curated Template (1 variant)
 - `neon`

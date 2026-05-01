@@ -41,7 +41,7 @@
     show_macchina_on_welcome = true;
 
     # Zellij customization
-    initial_sidebar_state = "open";
+    hide_sidebar_on_file_open = false;
     disable_zellij_tips = true;
     zellij_rounded_corners = true;
     zellij_theme = "default"; # Optional: any built-in theme name

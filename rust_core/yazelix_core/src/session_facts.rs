@@ -19,7 +19,7 @@ const SESSION_FACTS_PATH_ENV: &str = "YAZELIX_SESSION_FACTS_PATH";
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SessionFactsData {
     pub enable_sidebar: bool,
-    pub initial_sidebar_state: String,
+    pub hide_sidebar_on_file_open: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub editor_command: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -48,7 +48,7 @@ impl Default for SessionFactsData {
     fn default() -> Self {
         Self {
             enable_sidebar: true,
-            initial_sidebar_state: "open".to_string(),
+            hide_sidebar_on_file_open: false,
             editor_command: None,
             helix_runtime_path: None,
             yazi_command: "yazi".to_string(),
@@ -71,8 +71,10 @@ impl SessionFactsData {
                 .get("enable_sidebar")
                 .and_then(JsonValue::as_bool)
                 .unwrap_or(defaults.enable_sidebar),
-            initial_sidebar_state: normalized_string(config, "initial_sidebar_state")
-                .unwrap_or(defaults.initial_sidebar_state),
+            hide_sidebar_on_file_open: config
+                .get("hide_sidebar_on_file_open")
+                .and_then(JsonValue::as_bool)
+                .unwrap_or(defaults.hide_sidebar_on_file_open),
             editor_command: normalized_string(config, "editor_command"),
             helix_runtime_path: normalized_string(config, "helix_runtime_path"),
             yazi_command: normalized_string(config, "yazi_command")
@@ -100,9 +102,6 @@ impl SessionFactsData {
 
     fn sanitized(mut self) -> Self {
         let defaults = Self::default();
-        if self.initial_sidebar_state != "open" && self.initial_sidebar_state != "closed" {
-            self.initial_sidebar_state = defaults.initial_sidebar_state;
-        }
         if self.yazi_command.trim().is_empty() {
             self.yazi_command = defaults.yazi_command;
         }
@@ -256,8 +255,8 @@ impl SessionFactsData {
             if let Some(value) = toml_bool(editor.get("enable_sidebar")) {
                 self.enable_sidebar = value;
             }
-            if let Some(value) = toml_string(editor.get("initial_sidebar_state")) {
-                self.initial_sidebar_state = value;
+            if let Some(value) = toml_bool(editor.get("hide_sidebar_on_file_open")) {
+                self.hide_sidebar_on_file_open = value;
             }
         }
 
@@ -381,7 +380,7 @@ mod tests {
     fn session_facts_from_normalized_config_keeps_current_session_values() {
         let config = JsonMap::from_iter([
             ("editor_command".to_string(), json!("nvim")),
-            ("initial_sidebar_state".to_string(), json!("closed")),
+            ("hide_sidebar_on_file_open".to_string(), json!(true)),
             ("yazi_command".to_string(), json!("yy")),
             ("yazi_ya_command".to_string(), json!("ya-test")),
             ("popup_program".to_string(), json!(["gitui", "status"])),
@@ -395,7 +394,7 @@ mod tests {
         let facts = SessionFactsData::from_normalized_config(&config);
 
         assert_eq!(facts.editor_command.as_deref(), Some("nvim"));
-        assert_eq!(facts.initial_sidebar_state, "closed");
+        assert!(facts.hide_sidebar_on_file_open);
         assert_eq!(facts.yazi_command, "yy");
         assert_eq!(facts.ya_command, "ya-test");
         assert_eq!(facts.popup_program, vec!["gitui", "status"]);

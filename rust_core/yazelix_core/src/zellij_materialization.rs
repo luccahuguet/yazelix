@@ -247,7 +247,6 @@ fn build_render_plan_request(
 ) -> ZellijRenderPlanRequest {
     ZellijRenderPlanRequest {
         enable_sidebar: bool_config(config, "enable_sidebar", true),
-        initial_sidebar_state: string_config(config, "initial_sidebar_state", "open").to_string(),
         sidebar_width_percent: int_config(config, "sidebar_width_percent", 20),
         sidebar_command: string_config(config, "sidebar_command", "nu").to_string(),
         sidebar_args: string_list_config(config, "sidebar_args")
@@ -1476,7 +1475,6 @@ fn build_generation_fingerprint(
         "terminals": config.get("terminals").cloned().unwrap_or_else(|| json!(["ghostty", "wezterm"])),
         "zellij_default_mode": string_config(config, "zellij_default_mode", "normal"),
         "enable_sidebar": bool_config(config, "enable_sidebar", true),
-        "initial_sidebar_state": string_config(config, "initial_sidebar_state", "open"),
         "sidebar_width_percent": int_config(config, "sidebar_width_percent", 20),
         "sidebar_command": sidebar_command,
         "sidebar_args": effective_sidebar_args(sidebar_command, &sidebar_args),
@@ -1749,7 +1747,6 @@ mod tests {
     ) -> ZellijRenderPlanData {
         compute_zellij_render_plan(&ZellijRenderPlanRequest {
             enable_sidebar: true,
-            initial_sidebar_state: "open".into(),
             sidebar_width_percent: 20,
             sidebar_command: "nu".into(),
             sidebar_args: vec![

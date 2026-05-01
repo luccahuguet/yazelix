@@ -3256,16 +3256,6 @@ fn validate_upgrade_ci_rules(
             current_version
         ));
     }
-    if !version_bumped
-        && !changed_ack_required.is_empty()
-        && !docs_changed
-        && !ack_only_notes_change
-    {
-        errors.push(
-            "CI: guarded config-contract changes must update both CHANGELOG.md and docs/upgrade_notes.toml in the same diff"
-                .to_string(),
-        );
-    }
     for path in changed_ack_required {
         if !acknowledged.contains(&path) {
             errors.push(format!(

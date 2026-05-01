@@ -169,3 +169,76 @@ fn validate_upgrade_contract_ci_accepts_ack_only_note_updates() {
     .unwrap();
     assert!(report.errors.is_empty(), "{:?}", report.errors);
 }
+
+// Defends: guarded config paths use the upgrade-notes acknowledgement as the source of truth, not same-commit changelog churn.
+// Regression: a push that changed an already-acknowledged guarded file failed CI even though `unreleased` still acknowledged the path.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn validate_upgrade_contract_ci_accepts_guarded_change_with_existing_ack() {
+    let (_tmp, fixture_root) = write_fixture_repo();
+    let notes_path = fixture_root.join("docs/upgrade_notes.toml");
+    let raw = fs::read_to_string(&notes_path).unwrap();
+    let updated = raw.replacen(
+        "acknowledged_guarded_changes = []",
+        "acknowledged_guarded_changes = [\"yazelix_default.toml\"]",
+        1,
+    );
+    fs::write(&notes_path, updated).unwrap();
+    run_git(&fixture_root, &["add", "-A"]);
+    run_git(
+        &fixture_root,
+        &[
+            "commit",
+            "--quiet",
+            "-m",
+            "Acknowledge guarded default config",
+        ],
+    );
+
+    fs::write(fixture_root.join("yazelix_default.toml"), "[core]\n").unwrap();
+    run_git(&fixture_root, &["add", "-A"]);
+    run_git(
+        &fixture_root,
+        &["commit", "--quiet", "-m", "Change default config"],
+    );
+
+    let report = validate_upgrade_contract(
+        &fixture_root,
+        &UpgradeContractOptions {
+            ci: true,
+            diff_base: Some("HEAD~1".to_string()),
+        },
+    )
+    .unwrap();
+    assert!(report.errors.is_empty(), "{:?}", report.errors);
+}
+
+// Defends: guarded config paths still fail CI when the target release entry does not acknowledge the changed path.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn validate_upgrade_contract_ci_rejects_unacknowledged_guarded_change() {
+    let (_tmp, fixture_root) = write_fixture_repo();
+    fs::write(fixture_root.join("yazelix_default.toml"), "[core]\n").unwrap();
+    run_git(&fixture_root, &["add", "-A"]);
+    run_git(
+        &fixture_root,
+        &[
+            "commit",
+            "--quiet",
+            "-m",
+            "Change default config without ack",
+        ],
+    );
+
+    let report = validate_upgrade_contract(
+        &fixture_root,
+        &UpgradeContractOptions {
+            ci: true,
+            diff_base: Some("HEAD~1".to_string()),
+        },
+    )
+    .unwrap();
+    assert!(report.errors.iter().any(|error| {
+        error.contains("entry `unreleased` must acknowledge guarded change `yazelix_default.toml`")
+    }));
+}

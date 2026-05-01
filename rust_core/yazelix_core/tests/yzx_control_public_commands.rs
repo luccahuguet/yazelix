@@ -93,6 +93,29 @@ fn yzx_control_edit_cursors_prints_cursor_sidecar_path() {
     assert!(expected_path.exists());
 }
 
+// Defends: `yzx cursors` exposes resolved cursor colors and split shape names without requiring users to inspect generated shaders.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_control_cursors_prints_resolved_color_surface() {
+    let fixture = managed_config_fixture("");
+    let expected_path = fixture
+        .config_dir
+        .join("user_configs")
+        .join("yazelix_cursors.toml");
+    let mut command = yzx_control_command();
+    apply_managed_config_env(&mut command, &fixture).arg("cursors");
+
+    let stdout = stdout_text(command.output().unwrap());
+
+    assert!(stdout.contains("Ghostty cursors"));
+    assert!(stdout.contains(&format!("Config: {}", expected_path.display())));
+    assert!(stdout.contains("Trail: random from"));
+    assert!(stdout.contains("blaze: mono base=#ffb929 accent="));
+    assert!(stdout.contains("orchid: split divider=vertical transition=hard"));
+    assert!(stdout.contains("magma: split divider=horizontal transition=soft"));
+    assert!(expected_path.exists());
+}
+
 // Defends: the Rust-owned `yzx keys` leaves preserve alias parity and tool-specific guidance instead of routing every leaf to the same generic output.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]

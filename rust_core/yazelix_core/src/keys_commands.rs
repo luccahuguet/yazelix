@@ -212,7 +212,7 @@ fn root_workspace_rows() -> Vec<TableRow> {
             "Ctrl+y",
             "Toggle focus between the managed editor and sidebar",
         ]),
-        table_row(&["Alt+y", "Toggle the sidebar open/closed"]),
+        table_row(&["Alt+y", "Show or hide the sidebar"]),
         table_row(&["Alt+[ / Alt+]", "Switch between Yazelix layout families"]),
         table_row(&[
             "Alt+m",

@@ -35,6 +35,7 @@ use yazelix_core::run_profile_record_step;
 use yazelix_core::run_profile_save_baseline;
 use yazelix_core::run_profile_wait_step;
 use yazelix_core::run_yzx_config;
+use yazelix_core::run_yzx_cursors;
 use yazelix_core::run_yzx_cwd;
 use yazelix_core::run_yzx_desktop;
 use yazelix_core::run_yzx_doctor;
@@ -79,6 +80,7 @@ fn usage() -> ! {
     eprintln!("       yzx_control run <command> [args...]");
     eprintln!("       yzx_control config [--path]");
     eprintln!("       yzx_control config reset [--yes] [--no-backup]");
+    eprintln!("       yzx_control cursors");
     eprintln!("       yzx_control cwd [target]");
     eprintln!("       yzx_control warp [target] [--kill|-k]");
     eprintln!(
@@ -1174,6 +1176,7 @@ fn main() {
             }
         }
         "config" => run_yzx_config(&argv),
+        "cursors" => run_yzx_cursors(&argv),
         "cwd" => run_yzx_cwd(&argv),
         "desktop" => run_yzx_desktop(&argv),
         "doctor" => run_yzx_doctor(&argv),

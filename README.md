@@ -340,6 +340,7 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 - `yzx update home_manager` - Refresh the current Home Manager flake input, then print `home-manager switch`
 - `yzx popup` - Toggle the managed popup program, usually `lazygit`, and refresh the Yazi file-tree sidebar git state when it closes
 - `yzx config [--path]` - Show the active config or print its resolved path
+- `yzx cursors` - Inspect Ghostty cursor presets, effects, and resolved colors
 - `yzx edit config` - Open the main managed Yazelix config file in your editor
 - `yzx edit cursors` - Open the Ghostty cursor registry sidecar in your editor
 - `yzx restart` - Restart Yazelix in a fresh window
@@ -383,7 +384,7 @@ Yazelix uses Zellij as the workspace layer, so the most important bindings are g
 | Keybinding | What It Does |
 |------------|--------------|
 | `Ctrl+y` | Toggle focus between the managed editor and sidebar, which defaults to a Yazi file tree |
-| `Alt+y` | Open or close the sidebar |
+| `Alt+y` | Show or hide the sidebar |
 | `Alt+r` | Smart reveal/focus key; forwards into the editor when appropriate |
 | `Alt+[` / `Alt+]` | Switch between layouts |
 | `Alt+m` | Open a new terminal in the current tab workspace root |

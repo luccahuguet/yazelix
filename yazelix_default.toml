@@ -49,10 +49,10 @@ welcome_duration_seconds = 2.0  # Welcome animation duration in seconds for anim
 #   - Works reliably but with limited yazelix-specific functionality
 command = ""  # Leave empty to use yazelix's helix (recommended), or set to "nvim", "hx", "vim", etc.
 
-# Initial managed sidebar state: "open" or "closed" (default: "open")
-# Sidebar is the generic managed side-surface; the default sidebar is a Yazi file tree.
-# "closed" starts new tabs with the sidebar collapsed, while keeping Alt+y/Ctrl+y/reveal available
-initial_sidebar_state = "open"
+# Hide the managed sidebar after opening a file from Yazi (default: false)
+# This keeps new tabs starting with the Yazi sidebar visible, then hides it
+# after the file-open workflow hands control to the editor
+hide_sidebar_on_file_open = false
 
 # Sidebar width when the Yazi file-tree sidebar is open (default: 20)
 # Valid range: 10 to 40 percent

@@ -6,6 +6,7 @@ pub mod config_commands;
 pub mod config_normalize;
 pub mod config_state;
 pub mod control_plane;
+pub mod cursor_commands;
 pub mod doctor_commands;
 pub mod doctor_config_report;
 pub mod doctor_helix_report;
@@ -63,6 +64,7 @@ pub use config_state::{
     ComputeConfigStateRequest, ConfigStateData, RecordConfigStateData, RecordConfigStateRequest,
     compute_config_state, record_config_state,
 };
+pub use cursor_commands::run_yzx_cursors;
 pub use doctor_commands::{DoctorReportData, DoctorReportSummary, run_yzx_doctor};
 pub use doctor_config_report::{
     DoctorConfigEvaluateData, DoctorConfigEvaluateRequest, evaluate_doctor_config_report,

@@ -45,8 +45,8 @@ pub struct CursorDefinition {
     pub name: String,
     pub family: CursorFamily,
     pub colors: Vec<CursorColor>,
-    pub direction: Option<SplitDirection>,
-    pub blend: Option<bool>,
+    pub divider: Option<SplitDivider>,
+    pub transition: Option<SplitTransition>,
     pub template: Option<String>,
     pub cursor_color: CursorColor,
 }
@@ -61,9 +61,16 @@ pub enum CursorFamily {
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-pub enum SplitDirection {
+pub enum SplitDivider {
     Vertical,
     Horizontal,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SplitTransition {
+    Soft,
+    Hard,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -112,8 +119,8 @@ struct RawCursorDefinition {
     accent_color: Option<String>,
     #[serde(default)]
     colors: Vec<String>,
-    direction: Option<String>,
-    blend: Option<bool>,
+    divider: Option<String>,
+    transition: Option<String>,
     template: Option<String>,
     cursor_color: Option<String>,
 }
@@ -407,18 +414,18 @@ fn validate_definition(
                     format!("Cursor '{name}' uses mono and must not define colors."),
                 ));
             }
-            if raw.direction.is_some() {
+            if raw.divider.is_some() {
                 return Err(invalid_cursor_config(
                     path,
-                    "cursor.direction",
-                    format!("Cursor '{name}' uses mono and must not set direction."),
+                    "cursor.divider",
+                    format!("Cursor '{name}' uses mono and must not set divider."),
                 ));
             }
-            if raw.blend.is_some() {
+            if raw.transition.is_some() {
                 return Err(invalid_cursor_config(
                     path,
-                    "cursor.blend",
-                    format!("Cursor '{name}' uses mono and must not set blend."),
+                    "cursor.transition",
+                    format!("Cursor '{name}' uses mono and must not set transition."),
                 ));
             }
             if raw.template.is_some() {
@@ -453,8 +460,8 @@ fn validate_definition(
                 name,
                 family,
                 colors: vec![base_color, accent_color],
-                direction: None,
-                blend: None,
+                divider: None,
+                transition: None,
                 template: None,
                 cursor_color,
             })
@@ -488,14 +495,8 @@ fn validate_definition(
                     format!("Cursor '{name}' is data-driven and must not set template."),
                 ));
             }
-            let direction = validate_split_direction(path, &name, raw.direction.as_deref())?;
-            let blend = raw.blend.ok_or_else(|| {
-                invalid_cursor_config(
-                    path,
-                    "cursor.blend",
-                    format!("Cursor '{name}' uses split and must set blend to true or false."),
-                )
-            })?;
+            let divider = validate_split_divider(path, &name, raw.divider.as_deref())?;
+            let transition = validate_split_transition(path, &name, raw.transition.as_deref())?;
             let colors = raw
                 .colors
                 .iter()
@@ -515,8 +516,8 @@ fn validate_definition(
                 name,
                 family,
                 colors,
-                direction: Some(direction),
-                blend: Some(blend),
+                divider: Some(divider),
+                transition: Some(transition),
                 template: None,
                 cursor_color,
             })
@@ -554,18 +555,18 @@ fn validate_curated_template_definition(
             format!("Cursor '{name}' uses curated_template and must not define colors."),
         ));
     }
-    if raw.direction.is_some() {
+    if raw.divider.is_some() {
         return Err(invalid_cursor_config(
             path,
-            "cursor.direction",
-            format!("Cursor '{name}' uses curated_template and must not set direction."),
+            "cursor.divider",
+            format!("Cursor '{name}' uses curated_template and must not set divider."),
         ));
     }
-    if raw.blend.is_some() {
+    if raw.transition.is_some() {
         return Err(invalid_cursor_config(
             path,
-            "cursor.blend",
-            format!("Cursor '{name}' uses curated_template and must not set blend."),
+            "cursor.transition",
+            format!("Cursor '{name}' uses curated_template and must not set transition."),
         ));
     }
 
@@ -604,34 +605,60 @@ fn validate_curated_template_definition(
         name,
         family,
         colors: Vec::new(),
-        direction: None,
-        blend: None,
+        divider: None,
+        transition: None,
         template: Some(template.to_ascii_lowercase()),
         cursor_color,
     })
 }
 
-fn validate_split_direction(
+fn validate_split_divider(
     path: &Path,
     name: &str,
-    raw_direction: Option<&str>,
-) -> Result<SplitDirection, CoreError> {
-    let Some(direction) = raw_direction.map(str::trim) else {
+    raw_divider: Option<&str>,
+) -> Result<SplitDivider, CoreError> {
+    let Some(divider) = raw_divider.map(str::trim) else {
         return Err(invalid_cursor_config(
             path,
-            "cursor.direction",
-            format!("Cursor '{name}' uses split and must set direction to vertical or horizontal."),
+            "cursor.divider",
+            format!("Cursor '{name}' uses split and must set divider to vertical or horizontal."),
         ));
     };
 
-    match direction {
-        "vertical" => Ok(SplitDirection::Vertical),
-        "horizontal" => Ok(SplitDirection::Horizontal),
+    match divider {
+        "vertical" => Ok(SplitDivider::Vertical),
+        "horizontal" => Ok(SplitDivider::Horizontal),
         other => Err(invalid_cursor_config(
             path,
-            "cursor.direction",
+            "cursor.divider",
             format!(
-                "Cursor '{name}' uses unsupported split direction '{other}'. Expected vertical or horizontal."
+                "Cursor '{name}' uses unsupported split divider '{other}'. Expected vertical or horizontal."
+            ),
+        )),
+    }
+}
+
+fn validate_split_transition(
+    path: &Path,
+    name: &str,
+    raw_transition: Option<&str>,
+) -> Result<SplitTransition, CoreError> {
+    let Some(transition) = raw_transition.map(str::trim) else {
+        return Err(invalid_cursor_config(
+            path,
+            "cursor.transition",
+            format!("Cursor '{name}' uses split and must set transition to soft or hard."),
+        ));
+    };
+
+    match transition {
+        "soft" => Ok(SplitTransition::Soft),
+        "hard" => Ok(SplitTransition::Hard),
+        other => Err(invalid_cursor_config(
+            path,
+            "cursor.transition",
+            format!(
+                "Cursor '{name}' uses unsupported split transition '{other}'. Expected soft or hard."
             ),
         )),
     }
@@ -919,18 +946,18 @@ cursor_color = "#00ff66"
         assert_eq!(blaze.cursor_color.hex, "#00ff66");
     }
 
-    // Defends: split cursors carry the explicit direction and blend contract used by generated shaders.
+    // Defends: split cursors carry the explicit divider and transition contract used by generated shaders.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn registry_parses_split_direction_and_blend() {
+    fn registry_parses_split_divider_and_transition() {
         let raw = base_registry("").replace(
             r##"name = "blaze"
 family = "mono"
 color = "#ffb929""##,
             r##"name = "blaze"
 family = "split"
-direction = "horizontal"
-blend = false
+divider = "horizontal"
+transition = "hard"
 colors = ["#ff1600", "#2a3340"]"##,
         );
         let (_temp, path) = write_registry(&raw);
@@ -939,8 +966,8 @@ colors = ["#ff1600", "#2a3340"]"##,
         let blaze = registry.definitions.get("blaze").unwrap();
 
         assert_eq!(blaze.family, CursorFamily::Split);
-        assert_eq!(blaze.direction, Some(SplitDirection::Horizontal));
-        assert_eq!(blaze.blend, Some(false));
+        assert_eq!(blaze.divider, Some(SplitDivider::Horizontal));
+        assert_eq!(blaze.transition, Some(SplitTransition::Hard));
         assert_eq!(blaze.cursor_color.hex, "#ff1600");
     }
 
@@ -1020,6 +1047,27 @@ color = "#ffffff"
         assert!(format!("{error:?}").contains("Expected mono, split, or curated_template"));
     }
 
+    // Regression: retired split field names must fail fast instead of silently taking compatibility paths.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn registry_rejects_retired_split_field_names() {
+        let raw = base_registry("").replace(
+            r##"name = "blaze"
+family = "mono"
+color = "#ffb929""##,
+            r##"name = "blaze"
+family = "split"
+direction = "horizontal"
+blend = false
+colors = ["#ff1600", "#2a3340"]"##,
+        );
+        let (_temp, path) = write_registry(&raw);
+
+        let error = CursorRegistry::load(&path).unwrap_err();
+
+        assert_eq!(error.code(), "invalid_cursor_config_toml");
+    }
+
     // Defends: the shipped default registry parses as the active product cursor surface.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
@@ -1039,12 +1087,12 @@ color = "#ffffff"
                 .all(|name| registry.definitions.contains_key(name))
         );
         assert_eq!(
-            registry.definitions.get("magma").unwrap().direction,
-            Some(SplitDirection::Horizontal)
+            registry.definitions.get("magma").unwrap().divider,
+            Some(SplitDivider::Horizontal)
         );
         assert_eq!(
-            registry.definitions.get("orchid").unwrap().blend,
-            Some(false)
+            registry.definitions.get("orchid").unwrap().transition,
+            Some(SplitTransition::Hard)
         );
         assert_eq!(
             registry.definitions.get("reef").unwrap().colors[1].hex,

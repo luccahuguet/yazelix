@@ -1,6 +1,7 @@
 use crate::bridge::{CoreError, ErrorClass};
 use crate::ghostty_cursor_registry::{
-    CursorDefinition, CursorFamily, CursorRegistry, ResolvedCursorRegistryState, SplitDirection,
+    CursorDefinition, CursorFamily, CursorRegistry, ResolvedCursorRegistryState, SplitDivider,
+    SplitTransition,
 };
 pub use crate::ghostty_cursor_registry::{
     DEFAULT_GHOSTTY_TRAIL_DURATION, GHOSTTY_TRAIL_DURATION_MAX, GHOSTTY_TRAIL_DURATION_MIN,
@@ -422,7 +423,7 @@ const float DURATION = {duration};
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord)
 {{
-    renderSimpleDualColorTrail(fragColor, fragCoord, YAZELIX_CURSOR_COLOR_0, YAZELIX_CURSOR_COLOR_1, DURATION, .007, 1.5);
+    renderMonoColorTrail(fragColor, fragCoord, YAZELIX_CURSOR_COLOR_0, YAZELIX_CURSOR_COLOR_1, DURATION, .007, 1.5);
 }}
 "#
             )
@@ -430,19 +431,18 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
         CursorFamily::Split => {
             let duration = format_ghostty_trail_duration(0.24 * duration_scale);
             let horizontal = match definition
-                .direction
-                .expect("validated split cursor definitions always have a direction")
+                .divider
+                .expect("validated split cursor definitions always have a divider")
             {
-                SplitDirection::Vertical => "0.0",
-                SplitDirection::Horizontal => "1.0",
+                SplitDivider::Vertical => "0.0",
+                SplitDivider::Horizontal => "1.0",
             };
-            let blend = if definition
-                .blend
-                .expect("validated split cursor definitions always have a blend setting")
+            let transition = match definition
+                .transition
+                .expect("validated split cursor definitions always have a transition")
             {
-                "1.0"
-            } else {
-                "0.0"
+                SplitTransition::Soft => "1.0",
+                SplitTransition::Hard => "0.0",
             };
             format!(
                 r#"// Generated Yazelix split cursor variant
@@ -451,7 +451,7 @@ const vec4 YAZELIX_CURSOR_COLOR_0 = {color_0};
 const vec4 YAZELIX_CURSOR_COLOR_1 = {color_1};
 const float DURATION = {duration};
 const float YAZELIX_SPLIT_HORIZONTAL = {horizontal};
-const float YAZELIX_SPLIT_BLEND = {blend};
+const float YAZELIX_SPLIT_BLEND = {transition};
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord)
 {{

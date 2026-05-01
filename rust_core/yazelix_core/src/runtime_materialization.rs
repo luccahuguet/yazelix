@@ -790,11 +790,7 @@ fn resolve_zellij_layout_path(
     let layout = if let Some(layout) = override_value {
         layout.to_string()
     } else {
-        managed_sidebar_layout_name(
-            json_bool(config.get("enable_sidebar"), true),
-            json_string(config.get("initial_sidebar_state"), "open"),
-        )?
-        .to_string()
+        managed_sidebar_layout_name(json_bool(config.get("enable_sidebar"), true)).to_string()
     };
 
     let path = if layout.contains('/') || layout.ends_with(".kdl") {
@@ -818,10 +814,6 @@ fn json_bool(value: Option<&JsonValue>, default: bool) -> bool {
         },
         _ => default,
     }
-}
-
-fn json_string<'a>(value: Option<&'a JsonValue>, default: &'a str) -> &'a str {
-    value.and_then(JsonValue::as_str).unwrap_or(default)
 }
 
 fn is_missing_file(path: &Path) -> bool {

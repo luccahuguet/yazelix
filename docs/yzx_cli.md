@@ -252,6 +252,12 @@ Open the main Yazelix config file in your editor
 - Targets `user_configs/yazelix.toml`
 - `--print`: print the resolved config path without opening
 
+### `yzx cursors`
+Inspect Ghostty cursor presets and resolved colors
+- Shows the active `user_configs/yazelix_cursors.toml` path
+- Shows global trail, effect, glow, duration, and Kitty fallback settings
+- Shows resolved colors for enabled presets, including derived mono accents
+
 ### `yzx edit cursors [--print]`
 Open the Ghostty cursor registry sidecar in your editor
 - Targets `user_configs/yazelix_cursors.toml`
@@ -310,6 +316,7 @@ yzx restart                   # Reopen Yazelix in a fresh window
 yzx doctor --fix              # Health check with auto-fix
 yzx config                    # Show active config
 yzx config --path             # Print the active config path
+yzx cursors                   # Inspect Ghostty cursor presets and resolved colors
 yzx import zellij             # Import ~/.config/zellij/config.kdl into managed overrides
 yzx import yazi               # Import native Yazi override files into managed overrides
 yzx import helix              # Import ~/.config/helix/config.toml into managed overrides

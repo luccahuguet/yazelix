@@ -42,6 +42,7 @@ struct PopupArgs {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct WorkspaceCommandConfig {
     pub(crate) enable_sidebar: bool,
+    pub(crate) hide_sidebar_on_file_open: bool,
     pub(crate) editor_kind: String,
     pub(crate) yazi_command: String,
     pub(crate) ya_command: String,
@@ -51,6 +52,7 @@ pub(crate) struct WorkspaceCommandConfig {
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct IntegrationFactsData {
     pub enable_sidebar: bool,
+    pub hide_sidebar_on_file_open: bool,
     pub managed_editor_kind: String,
     pub yazi_command: String,
     pub ya_command: String,
@@ -668,6 +670,7 @@ pub(crate) fn load_workspace_command_config() -> Result<WorkspaceCommandConfig, 
 
     Ok(WorkspaceCommandConfig {
         enable_sidebar: facts.enable_sidebar,
+        hide_sidebar_on_file_open: facts.hide_sidebar_on_file_open,
         editor_kind: resolve_managed_editor_kind(
             managed_helix_binary.as_deref(),
             facts.editor_command.as_deref(),
@@ -683,6 +686,7 @@ pub fn compute_integration_facts_from_env() -> Result<IntegrationFactsData, Core
     let config = load_workspace_command_config()?;
     Ok(IntegrationFactsData {
         enable_sidebar: config.enable_sidebar,
+        hide_sidebar_on_file_open: config.hide_sidebar_on_file_open,
         managed_editor_kind: config.editor_kind,
         yazi_command: config.yazi_command,
         ya_command: config.ya_command,

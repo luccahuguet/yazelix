@@ -6,5 +6,5 @@ const float DURATION = 0.26;
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord)
 {
-    renderSimpleDualColorTrail(fragColor, fragCoord, TRAIL_COLOR, TRAIL_COLOR_ACCENT, DURATION, .006, 1.4);
+    renderMonoColorTrail(fragColor, fragCoord, TRAIL_COLOR, TRAIL_COLOR_ACCENT, DURATION, .006, 1.4);
 }

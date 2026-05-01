@@ -283,17 +283,15 @@ in
       description = ''
         Legacy compatibility toggle for older configs.
 
-        Prefer initial_sidebar_state = "closed" to start new tabs with the
-        managed sidebar collapsed while preserving sidebar actions.
+        Prefer hide_sidebar_on_file_open for the file-open workflow that hides
+        the managed sidebar after opening a file.
       '';
     };
 
-    initial_sidebar_state = mkMainContractOption "editor.initial_sidebar_state" {
+    hide_sidebar_on_file_open = mkMainContractOption "editor.hide_sidebar_on_file_open" {
       description = ''
-        Initial managed sidebar state for new Yazelix tabs.
-
-        - "open": start with the default Yazi file-tree sidebar visible
-        - "closed": start with the managed sidebar collapsed; Alt+y, Ctrl+y, and reveal flows remain available
+        Whether Yazelix should hide the managed sidebar after opening a file from
+        the Yazi file-tree sidebar.
       '';
     };
 

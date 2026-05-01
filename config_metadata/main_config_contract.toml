@@ -124,17 +124,12 @@ home_manager_default_is_null = true
 home_manager_can_omit = true
 rebuild_required = false
 
-[fields."editor.initial_sidebar_state"]
-kind = "string"
-default = "open"
-parser_key = "initial_sidebar_state"
-home_manager_option = "initial_sidebar_state"
+[fields."editor.hide_sidebar_on_file_open"]
+kind = "bool"
+default = false
+parser_key = "hide_sidebar_on_file_open"
+home_manager_option = "hide_sidebar_on_file_open"
 parser_behavior = "direct"
-validation = "enum"
-allowed_values = [
-  "open",
-  "closed",
-]
 rebuild_required = false
 
 [fields."editor.sidebar_width_percent"]

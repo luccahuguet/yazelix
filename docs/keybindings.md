@@ -55,7 +55,7 @@ If you find a conflict, please open an issue
   - `Alt+Shift+L` moves the current tab right
   - `Alt+w/q` walks left/right (focus tabs)
   - `Ctrl+y` toggles focus between the managed sidebar and editor
-  - `Alt+y` toggles the sidebar open/closed
+  - `Alt+y` shows or hides the sidebar
   - `Alt+m` opens a new terminal in the current tab workspace root
   - `Alt+r` is the smart reveal key: in the editor it forwards `Alt+r` into the editor, and outside the editor it falls back to the editor/sidebar focus flow
   - `Ctrl+Alt+g` locked mode, `Ctrl+Alt+s` scroll mode, `Ctrl+Alt+o` session mode
@@ -70,7 +70,7 @@ The stable sidebar API is the pane-orchestrator command surface, not the default
 | Command | Default key | Meaning |
 |---------|-------------|---------|
 | `toggle_editor_sidebar_focus` | `Ctrl y` | Move focus between the managed editor and managed sidebar |
-| `toggle_sidebar` | `Alt y` | Open or close the managed sidebar layout slot |
+| `toggle_sidebar` | `Alt y` | Show or hide the managed sidebar layout slot |
 | `focus_sidebar` | none | Focus the managed sidebar from commands such as `yzx reveal` |
 
 You can remap the keys in your Zellij override config as long as they still send the same `MessagePlugin` command names to the loaded `yazelix_pane_orchestrator` plugin. The plugin does not know or require Yazelix's default key choices.
@@ -108,7 +108,7 @@ The shipped workspace keys are:
 | Keybinding | Action |
 |------------|--------|
 | `Ctrl y` | Toggle focus between the managed editor and sidebar |
-| `Alt y` | Toggle the sidebar open/closed |
+| `Alt y` | Show or hide the sidebar |
 | `Alt r` | Smart reveal key: forwards `Alt+r` into the editor, otherwise falls back to the editor/sidebar focus toggle |
 
-If you add a Helix-local reveal binding, treat it as optional editor customization rather than part of the default Yazelix keymap. The recommended split is `Alt+r` for reveal, `Ctrl+y` for editor/sidebar focus, and `Alt+y` for sidebar open/close. Yazelix now also binds `Alt+r` at the Zellij layer so it behaves like `Ctrl+y` outside the editor.
+If you add a Helix-local reveal binding, treat it as optional editor customization rather than part of the default Yazelix keymap. The recommended split is `Alt+r` for reveal, `Ctrl+y` for editor/sidebar focus, and `Alt+y` for sidebar show/hide. Yazelix now also binds `Alt+r` at the Zellij layer so it behaves like `Ctrl+y` outside the editor.

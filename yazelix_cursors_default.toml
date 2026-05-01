@@ -57,94 +57,106 @@ kitty_enable_cursor = true
 # Users pick a family; they do not define raw GLSL
 # Expected color fields:
 # - mono: one base color; optional accent_color and cursor_color overrides
-# - split: two colors, direction = "vertical" or "horizontal", blend = true or false
+# - split: two colors, divider = "vertical" or "horizontal", transition = "soft" or "hard"
 # - curated_template: no user colors, keeps a hand-tuned shader by name
 
+# Blaze: warm golden mono trail with a hot derived accent
 [[cursor]]
 name = "blaze"
 family = "mono"
 color = "#ffb929"
 
+# Snow: clean white mono trail with a soft gray derived accent
 [[cursor]]
 name = "snow"
 family = "mono"
 color = "#ffffff"
 
+# Cosmic: bright violet mono trail with a deeper derived accent
 [[cursor]]
 name = "cosmic"
 family = "mono"
 color = "#c761f5"
 
+# Ocean: clear blue mono trail with a darker derived accent
 [[cursor]]
 name = "ocean"
 family = "mono"
 color = "#5ea8ff"
 
+# Forest: fresh green mono trail with a denser derived accent
 [[cursor]]
 name = "forest"
 family = "mono"
 color = "#3bd17a"
 
+# Sunset: warm coral mono trail with a saturated derived accent
 [[cursor]]
 name = "sunset"
 family = "mono"
 color = "#ff7a59"
 
+# Neon: hand-tuned cyan-blue neon template
 [[cursor]]
 name = "neon"
 family = "curated_template"
 template = "neon"
 cursor_color = "#0090ff"
 
+# Eclipse: soft vertical split between deep indigo and gold
 [[cursor]]
 name = "eclipse"
 family = "split"
-direction = "vertical"
-blend = true
+divider = "vertical"
+transition = "soft"
 colors = [
   "#2e294e",
   "#ffd400",
 ]
 cursor_color = "#ffd400"
 
+# Dusk: soft vertical split between midnight blue and coral
 [[cursor]]
 name = "dusk"
 family = "split"
-direction = "vertical"
-blend = true
+divider = "vertical"
+transition = "soft"
 colors = [
   "#1e1e2f",
   "#e94560",
 ]
 cursor_color = "#e94560"
 
+# Orchid: hard vertical split between molten amber and cobalt
 [[cursor]]
 name = "orchid"
 family = "split"
-direction = "vertical"
-blend = false
+divider = "vertical"
+transition = "hard"
 colors = [
   "#ff6b00",
   "#206dce",
 ]
 cursor_color = "#ff6b00"
 
+# Reef: soft vertical split between electric cyan and intense green
 [[cursor]]
 name = "reef"
 family = "split"
-direction = "vertical"
-blend = true
+divider = "vertical"
+transition = "soft"
 colors = [
   "#00e6ff",
   "#00ff66",
 ]
 cursor_color = "#00e6ff"
 
+# Magma: soft horizontal split between blazing crimson and gunmetal
 [[cursor]]
 name = "magma"
 family = "split"
-direction = "horizontal"
-blend = true
+divider = "horizontal"
+transition = "soft"
 colors = [
   "#ff1600",
   "#2a3340",

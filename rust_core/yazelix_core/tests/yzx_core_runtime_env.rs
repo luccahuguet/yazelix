@@ -137,8 +137,7 @@ fn runtime_env_compute_from_env_accepts_config_json() {
     let runtime_toolbin = runtime_dir.join("toolbin");
     let runtime_bin = runtime_dir.join("bin");
     let config_json = json!({
-        "enable_sidebar": true,
-        "initial_sidebar_state": "closed",
+        "enable_sidebar": false,
         "editor_command": "hx",
         "helix_runtime_path": "/tmp/managed-helix-runtime",
     });

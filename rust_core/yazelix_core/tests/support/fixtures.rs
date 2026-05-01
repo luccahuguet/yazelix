@@ -96,8 +96,8 @@ pub fn write_session_facts_cache(
     let mut facts = serde_json::Map::from_iter([
         ("enable_sidebar".to_string(), serde_json::json!(true)),
         (
-            "initial_sidebar_state".to_string(),
-            serde_json::json!("open"),
+            "hide_sidebar_on_file_open".to_string(),
+            serde_json::json!(false),
         ),
         ("yazi_command".to_string(), serde_json::json!("yazi")),
         ("ya_command".to_string(), serde_json::json!("ya")),
@@ -141,8 +141,8 @@ pub fn write_session_config_snapshot_with_id(
     let mut normalized_config = serde_json::Map::from_iter([
         ("enable_sidebar".to_string(), serde_json::json!(true)),
         (
-            "initial_sidebar_state".to_string(),
-            serde_json::json!("open"),
+            "hide_sidebar_on_file_open".to_string(),
+            serde_json::json!(false),
         ),
         ("yazi_command".to_string(), serde_json::json!("yazi")),
         ("yazi_ya_command".to_string(), serde_json::json!("ya")),
@@ -159,8 +159,8 @@ pub fn write_session_config_snapshot_with_id(
     let mut facts = serde_json::Map::from_iter([
         ("enable_sidebar".to_string(), serde_json::json!(true)),
         (
-            "initial_sidebar_state".to_string(),
-            serde_json::json!("open"),
+            "hide_sidebar_on_file_open".to_string(),
+            serde_json::json!(false),
         ),
         ("yazi_command".to_string(), serde_json::json!("yazi")),
         ("ya_command".to_string(), serde_json::json!("ya")),

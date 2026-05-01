@@ -381,6 +381,11 @@ fn config_normalize_rejects_removed_surfaces_without_rewriting() {
             "[zellij]\nsession_name = \"demo\"\n",
             "zellij.session_name",
         ),
+        (
+            "removed_initial_sidebar_state",
+            "[editor]\ninitial_sidebar_state = \"closed\"\n",
+            "editor.initial_sidebar_state",
+        ),
     ] {
         let tmp = tempdir().unwrap();
         let config_dir = tmp.path().join("config").join("user_configs");

@@ -293,6 +293,15 @@ const CONFIG_RESET_COMMAND: YzxCommandMetadata = metadata(
     Some("Reset managed Yazelix config surfaces back to their defaults."),
 );
 const CONFIG_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[CONFIG_ROOT_COMMAND, CONFIG_RESET_COMMAND];
+const CURSORS_COMMAND: YzxCommandMetadata = metadata(
+    "yzx cursors",
+    "Inspect Ghostty cursor presets and resolved colors",
+    YzxCommandCategory::Config,
+    &[],
+    Some(YzxMenuCategory::Config),
+    Some("Show the active cursor sidecar, effects, and resolved preset colors."),
+);
+const CURSORS_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[CURSORS_COMMAND];
 const HOME_MANAGER_ROOT_COMMAND: YzxCommandMetadata = metadata(
     "yzx home_manager",
     "Show Yazelix Home Manager takeover helpers",
@@ -518,6 +527,7 @@ const ONBOARD_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[ONBOARD_COMMAND];
 
 const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
     rust_control_family("config", CONFIG_FAMILY_COMMANDS),
+    rust_control_family("cursors", CURSORS_FAMILY_COMMANDS),
     rust_control_family("desktop", DESKTOP_FAMILY_COMMANDS),
     rust_control_family("edit", EDIT_FAMILY_COMMANDS),
     rust_control_family("enter", ENTER_FAMILY_COMMANDS),
@@ -1225,6 +1235,10 @@ mod tests {
         );
         assert_eq!(
             classify_yzx_root_route(&["config".into(), "reset".into(), "--yes".into()]).unwrap(),
+            YzxPublicRootRoute::RustControl
+        );
+        assert_eq!(
+            classify_yzx_root_route(&["cursors".into()]).unwrap(),
             YzxPublicRootRoute::RustControl
         );
         assert_eq!(

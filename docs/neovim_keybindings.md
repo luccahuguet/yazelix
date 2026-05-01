@@ -72,11 +72,11 @@ With Neovim configured for Yazelix, you get:
 
 1. **Check the managed sidebar state:**
    - `yzx reveal` targets the managed sidebar in the current tab
-   - If `initial_sidebar_state = "closed"`, open the sidebar with `Alt+y` before retrying
+   - If the sidebar is hidden, show it with `Alt+y` before retrying
 
-2. **Verify you're inside Yazelix/Zellij with a sidebar open:**
+2. **Verify you're inside Yazelix/Zellij with a visible sidebar:**
    - `yzx reveal` targets the managed sidebar in the current tab
-   - If the sidebar is closed or the plugin state is not ready yet, the reveal action will fail clearly
+   - If the sidebar is hidden or the plugin state is not ready yet, the reveal action will fail clearly
 
 3. **Check the logs:**
    ```bash

@@ -15,7 +15,7 @@ const NONVISUAL_SHELLS: &[&str] = &["nu", "bash", "fish", "zsh"];
 
 #[derive(Debug, Clone, Copy)]
 struct SweepFeatures {
-    initial_sidebar_state: &'static str,
+    hide_sidebar_on_file_open: bool,
     persistent_sessions: bool,
 }
 
@@ -234,21 +234,21 @@ pub fn run_sweep_tests(
 
 fn standard_features() -> SweepFeatures {
     SweepFeatures {
-        initial_sidebar_state: "open",
+        hide_sidebar_on_file_open: false,
         persistent_sessions: false,
     }
 }
 
 fn minimal_features() -> SweepFeatures {
     SweepFeatures {
-        initial_sidebar_state: "closed",
+        hide_sidebar_on_file_open: true,
         persistent_sessions: false,
     }
 }
 
 fn persistent_features() -> SweepFeatures {
     SweepFeatures {
-        initial_sidebar_state: "open",
+        hide_sidebar_on_file_open: false,
         persistent_sessions: true,
     }
 }
@@ -289,7 +289,7 @@ fn visual_test_combinations() -> Vec<SweepCombination> {
             shell: DEFAULT_SHELL,
             terminal,
             features: SweepFeatures {
-                initial_sidebar_state: "closed",
+                hide_sidebar_on_file_open: true,
                 persistent_sessions: false,
             },
         })
@@ -552,7 +552,7 @@ welcome_duration_seconds = 2.0\n\
 \n\
 [editor]\n\
 command = \"\"\n\
-initial_sidebar_state = \"{}\"\n\
+hide_sidebar_on_file_open = {}\n\
 \n\
 [shell]\n\
 default_shell = \"{}\"\n\
@@ -567,7 +567,7 @@ disable_tips = true\n\
 rounded_corners = true\n\
 persistent_sessions = {}\n\
 session_name = \"sweep_test_{}\"\n",
-        features.initial_sidebar_state,
+        features.hide_sidebar_on_file_open,
         shell,
         terminals_rendered,
         features.persistent_sessions,
@@ -1052,7 +1052,7 @@ mod tests {
             "zsh",
             "kitty",
             SweepFeatures {
-                initial_sidebar_state: "closed",
+                hide_sidebar_on_file_open: true,
                 persistent_sessions: true,
             },
             "cross_shell_zsh_kitty",
@@ -1062,7 +1062,7 @@ mod tests {
         assert!(rendered.contains(
             "terminals = [\"kitty\", \"ghostty\", \"wezterm\", \"alacritty\", \"foot\"]"
         ));
-        assert!(rendered.contains("initial_sidebar_state = \"closed\""));
+        assert!(rendered.contains("hide_sidebar_on_file_open = true"));
         assert!(rendered.contains("persistent_sessions = true"));
     }
 }

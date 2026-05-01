@@ -48,7 +48,7 @@ struct OnboardAnswers {
     terminal: String,
     shell: String,
     editor_command: String,
-    initial_sidebar_state: String,
+    hide_sidebar_on_file_open: bool,
     widget_tray: Vec<String>,
 }
 
@@ -221,14 +221,14 @@ fn run_interactive_onboarding() -> Result<OnboardAnswers, CoreError> {
     let terminal = ask_single(terminal_question())?;
     let shell = ask_single(shell_question())?;
     let editor_command = ask_single(editor_question())?;
-    let initial_sidebar_state = ask_single(sidebar_question())?;
+    let hide_sidebar_on_file_open = ask_single(sidebar_file_open_question())? == "true";
     let widget_tray = ask_multi(widget_tray_question())?;
 
     Ok(OnboardAnswers {
         terminal,
         shell,
         editor_command,
-        initial_sidebar_state,
+        hide_sidebar_on_file_open,
         widget_tray,
     })
 }
@@ -441,11 +441,11 @@ fn editor_question() -> SingleQuestion {
     )
 }
 
-fn sidebar_question() -> SingleQuestion {
+fn sidebar_file_open_question() -> SingleQuestion {
     single_question(
-        "Initial Yazi sidebar state",
+        "Yazi sidebar after opening a file",
         0,
-        &[("Open on startup", "open"), ("Start collapsed", "closed")],
+        &[("Keep visible", "false"), ("Hide after file open", "true")],
     )
 }
 
@@ -522,7 +522,7 @@ fn build_onboard_config(answers: &OnboardAnswers) -> String {
 
 [editor]
 command = "{}"
-initial_sidebar_state = "{}"
+hide_sidebar_on_file_open = {}
 sidebar_command = "nu"
 sidebar_args = ["__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu"]
 
@@ -536,7 +536,7 @@ terminals = [{}]
 widget_tray = [{}]
 "#,
         toml_escape_string(&answers.editor_command),
-        toml_escape_string(&answers.initial_sidebar_state),
+        answers.hide_sidebar_on_file_open,
         toml_escape_string(&answers.shell),
         toml_array_strings(std::slice::from_ref(&answers.terminal)),
         toml_array_strings(&answers.widget_tray),
@@ -624,15 +624,15 @@ mod tests {
             terminal: "wezterm".into(),
             shell: "bash".into(),
             editor_command: "nvim".into(),
-            initial_sidebar_state: "closed".into(),
+            hide_sidebar_on_file_open: true,
             widget_tray: vec!["editor".into(), "cpu".into()],
         });
         let parsed: toml::Value = toml::from_str(&config).unwrap();
 
         assert_eq!(parsed["editor"]["command"].as_str(), Some("nvim"));
         assert_eq!(
-            parsed["editor"]["initial_sidebar_state"].as_str(),
-            Some("closed")
+            parsed["editor"]["hide_sidebar_on_file_open"].as_bool(),
+            Some(true)
         );
         assert_eq!(parsed["editor"]["sidebar_command"].as_str(), Some("nu"));
         assert_eq!(
@@ -656,7 +656,7 @@ mod tests {
             terminal: "ghostty".into(),
             shell: "nu".into(),
             editor_command: String::new(),
-            initial_sidebar_state: "open".into(),
+            hide_sidebar_on_file_open: false,
             widget_tray: vec!["editor".into(), "shell".into()],
         });
 

@@ -99,7 +99,7 @@ float trailCoreMask(float sdf, float offset) {
     return step(sdf + (offset * YAZELIX_TRAIL_CORE_OFFSET_SCALE), 0.0);
 }
 
-void renderSimpleDualColorTrail(
+void renderMonoColorTrail(
     out vec4 fragColor,
     in vec2 fragCoord,
     vec4 trailColor,

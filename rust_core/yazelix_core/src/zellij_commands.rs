@@ -3435,6 +3435,45 @@ fn sidebar_state_from_retarget_response(
     })
 }
 
+fn hide_sidebar_if_visible() -> Result<(), CoreError> {
+    let response = run_pane_orchestrator_command("get_active_tab_session_state", "")?;
+    let state = serde_json::from_str::<Value>(response.trim()).map_err(|source| {
+        CoreError::classified(
+            ErrorClass::Runtime,
+            "sidebar_state_parse_failed",
+            format!("Could not parse active Yazelix tab state: {source}"),
+            "Ensure the pane orchestrator plugin is loaded, then retry opening the file.",
+            json!({ "response": response }),
+        )
+    })?;
+
+    match nested_bool(&state, &["layout", "sidebar_collapsed"]) {
+        Some(false) => {}
+        Some(true) => return Ok(()),
+        None => {
+            return Err(CoreError::classified(
+                ErrorClass::Runtime,
+                "sidebar_state_missing",
+                "The active Yazelix tab state did not report whether the sidebar is hidden.",
+                "Ensure the pane orchestrator plugin is loaded, then retry opening the file.",
+                json!({ "response": response }),
+            ));
+        }
+    }
+
+    let response = run_pane_orchestrator_command("toggle_sidebar", "")?;
+    match response.trim() {
+        "ok" | "closed" | "focused" => Ok(()),
+        other => Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "hide_sidebar_failed",
+            format!("Could not hide the managed sidebar after opening the file: {other}"),
+            "Ensure the pane orchestrator plugin is loaded, then retry.",
+            json!({ "response": response }),
+        )),
+    }
+}
+
 fn retarget_workspace_without_focused_cd(
     target_path: &Path,
     editor_kind: Option<&str>,
@@ -3473,10 +3512,6 @@ fn resolve_runtime_editor_launch() -> Result<(serde_json::Map<String, Value>, St
     let facts = compute_session_facts_from_env()?;
     let mut normalized = serde_json::Map::new();
     normalized.insert("enable_sidebar".to_string(), json!(facts.enable_sidebar));
-    normalized.insert(
-        "initial_sidebar_state".to_string(),
-        json!(facts.initial_sidebar_state),
-    );
     if let Some(editor_command) = facts.editor_command {
         normalized.insert("editor_command".to_string(), json!(editor_command));
     }
@@ -3827,6 +3862,10 @@ pub fn run_zellij_open_editor(args: &[String]) -> Result<i32, CoreError> {
                 );
             }
         }
+    }
+
+    if integration_facts.enable_sidebar && integration_facts.hide_sidebar_on_file_open {
+        hide_sidebar_if_visible()?;
     }
 
     Ok(0)
