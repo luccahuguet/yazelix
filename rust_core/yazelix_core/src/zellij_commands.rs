@@ -2357,8 +2357,17 @@ fn opencode_go_usage_shared_cache_is_fresh(path: &Path, now: u64, max_age_second
                 && cache
                     .get("opencode_go")
                     .map(windowed_usage_facts_from_cache_entry)
-                    .is_some_and(|facts| !facts.is_empty())
+                    .is_some_and(|facts| opencode_go_usage_facts_are_complete(&facts))
         })
+}
+
+fn opencode_go_usage_facts_are_complete(facts: &WindowedUsageFacts) -> bool {
+    facts.five_hour_tokens.is_some()
+        && facts.weekly_tokens.is_some()
+        && facts.monthly_tokens.is_some()
+        && facts.five_hour_remaining_percent.is_some()
+        && facts.weekly_remaining_percent.is_some()
+        && facts.monthly_remaining_percent.is_some()
 }
 
 fn opencode_go_usage_shared_cache_is_backing_off(path: &Path, now: u64) -> bool {
@@ -2492,23 +2501,17 @@ fn collect_opencode_go_usage_facts_from_dbs(db_paths: &[PathBuf], now: u64) -> W
     }
 
     let mut facts = WindowedUsageFacts::default();
-    if five_hour.tokens > 0 || five_hour.cost_usd > 0.0 {
-        facts.five_hour_tokens = Some(five_hour.tokens);
-    }
+    facts.five_hour_tokens = Some(five_hour.tokens);
     facts.five_hour_remaining_percent = Some(remaining_percent_from_cost_limit(
         five_hour.cost_usd,
         OPENCODE_GO_FIVE_HOUR_LIMIT_USD,
     ));
-    if weekly.tokens > 0 || weekly.cost_usd > 0.0 {
-        facts.weekly_tokens = Some(weekly.tokens);
-    }
+    facts.weekly_tokens = Some(weekly.tokens);
     facts.weekly_remaining_percent = Some(remaining_percent_from_cost_limit(
         weekly.cost_usd,
         OPENCODE_GO_WEEKLY_LIMIT_USD,
     ));
-    if monthly.tokens > 0 || monthly.cost_usd > 0.0 {
-        facts.monthly_tokens = Some(monthly.tokens);
-    }
+    facts.monthly_tokens = Some(monthly.tokens);
     facts.monthly_remaining_percent = Some(remaining_percent_from_cost_limit(
         monthly.cost_usd,
         OPENCODE_GO_MONTHLY_LIMIT_USD,
@@ -5406,7 +5409,7 @@ exit 64
 
         let facts = collect_opencode_go_usage_facts_from_dbs(&[db_path], now);
 
-        assert_eq!(facts.five_hour_tokens, None);
+        assert_eq!(facts.five_hour_tokens, Some(0));
         assert_eq!(facts.five_hour_remaining_percent, Some(100));
         assert_eq!(facts.weekly_tokens, Some(85_000_000));
         assert_eq!(facts.weekly_remaining_percent, Some(60));
@@ -5417,6 +5420,7 @@ exit 64
             "schema_version": 1,
             "updated_at_unix_seconds": now,
             "opencode_go_usage": {
+                "five_hour_tokens": facts.five_hour_tokens,
                 "five_hour_remaining_percent": facts.five_hour_remaining_percent,
                 "weekly_tokens": facts.weekly_tokens,
                 "weekly_remaining_percent": facts.weekly_remaining_percent,
@@ -5431,7 +5435,7 @@ exit 64
                 &AgentUsageWidgetSettings::default(),
             )
             .unwrap(),
-            " [go 5h|100% wk|85M|60% mo|85M|80%]"
+            " [go 5h|0|100% wk|85M|60% mo|85M|80%]"
         );
     }
 
@@ -5477,6 +5481,60 @@ exit 64
             .unwrap(),
             " [go 5h|15M|75% wk|100M|50% mo|300M|50%]"
         );
+    }
+
+    // Regression: old OpenCode Go shared caches without complete 5h/week/month fields must refresh instead of hiding the 5h window.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn opencode_go_usage_shared_cache_rejects_partial_fresh_shape() {
+        let temp = tempfile::tempdir().unwrap();
+        let shared_path = temp.path().join("opencode_go_usage_cache.json");
+
+        write_json_value_atomic(
+            &shared_path,
+            &json!({
+                "schema_version": OPENCODE_GO_USAGE_CACHE_SCHEMA_VERSION,
+                "opencode_go": {
+                    "updated_at_unix_seconds": 1_000u64,
+                    "weekly_tokens": 85_000_000u64,
+                    "weekly_remaining_percent": 60u64,
+                    "monthly_tokens": 85_000_000u64,
+                    "monthly_remaining_percent": 80u64,
+                    "status": "ok"
+                }
+            }),
+            "opencode_go_usage_cache_test",
+        )
+        .unwrap();
+        assert!(!opencode_go_usage_shared_cache_is_fresh(
+            &shared_path,
+            1_001,
+            600
+        ));
+
+        write_json_value_atomic(
+            &shared_path,
+            &json!({
+                "schema_version": OPENCODE_GO_USAGE_CACHE_SCHEMA_VERSION,
+                "opencode_go": {
+                    "updated_at_unix_seconds": 1_001u64,
+                    "five_hour_tokens": 0u64,
+                    "five_hour_remaining_percent": 100u64,
+                    "weekly_tokens": 85_000_000u64,
+                    "weekly_remaining_percent": 60u64,
+                    "monthly_tokens": 85_000_000u64,
+                    "monthly_remaining_percent": 80u64,
+                    "status": "ok"
+                }
+            }),
+            "opencode_go_usage_cache_test",
+        )
+        .unwrap();
+        assert!(opencode_go_usage_shared_cache_is_fresh(
+            &shared_path,
+            1_002,
+            600
+        ));
     }
 
     // Defends: shared Codex usage caches have explicit freshness and error backoff so multiple Yazelix windows do not stampede provider calls.

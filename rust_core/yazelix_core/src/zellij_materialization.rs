@@ -1914,10 +1914,12 @@ ui { pane_frames { hide_session_name true } }
         assert!(template.contains(r##"command_claude_usage_format "#[fg=#bb88ff,bold]{stdout}""##));
         assert!(template.contains("command_codex_usage_command"));
         assert!(template.contains(r##"command_codex_usage_format "#[fg=#bb88ff,bold]{stdout}""##));
+        assert!(template.contains(r#"command_codex_usage_interval "5""#));
         assert!(template.contains("command_opencode_go_usage_command"));
         assert!(
             template.contains(r##"command_opencode_go_usage_format "#[fg=#bb88ff,bold]{stdout}""##)
         );
+        assert!(template.contains(r#"command_opencode_go_usage_interval "5""#));
         assert!(!template.contains("command_amp_usage_command"));
         assert!(!template.contains("agent-usage"));
     }
