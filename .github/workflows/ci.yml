@@ -77,7 +77,7 @@ jobs:
     # Always-on fast lane. Keep this strong enough for branch protection and
     # routine pushes, but do not make every commit pay for cold install/runtime smoke.
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 12
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       YAZELIX_DIR: ${{ github.workspace }}
@@ -95,22 +95,21 @@ jobs:
         with:
           determinate: false
 
-      - name: Enable Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@main
-        with:
-          use-gha-cache: true
-          use-flakehub: false
+      # Keep the always-on lane off Magic Nix Cache. Its post-job uploads can
+      # outlive the validators and turn green checks into timeout failures.
+      - name: Build maintainer validator
+        run: nix develop -c cargo build --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator
 
       - name: Validate Nushell syntax
-        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-nushell-syntax
+        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-nushell-syntax
 
       - name: Validate generated README surface
         shell: bash
-        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-readme-version
+        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-readme-version
 
       - name: Validate upgrade contract
         shell: bash
-        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-upgrade-contract --ci
+        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-upgrade-contract --ci
 
       - name: Build yzx_core helper for source-checkout validators
         shell: bash
@@ -121,22 +120,22 @@ jobs:
 
       - name: Validate config surface and launch-profile contract
         shell: bash
-        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-config-surface-contract
+        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-config-surface-contract
 
       - name: Validate contracts
         shell: bash
-        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-contracts
+        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-contracts
 
       - name: Validate default-suite shape and traceability
         shell: bash
-        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-default-test-traceability
+        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-default-test-traceability
 
       - name: Validate Rust test traceability
         shell: bash
-        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-rust-test-traceability
+        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-rust-test-traceability
 
       - name: Validate top-level flake interface
-        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-flake-interface
+        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-flake-interface
 
   integration:
     # Medium-cost installed-runtime contract lane. Keep this path-gated so
