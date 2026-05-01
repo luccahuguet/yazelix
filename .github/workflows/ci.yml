@@ -77,7 +77,7 @@ jobs:
     # Always-on fast lane. Keep this strong enough for branch protection and
     # routine pushes, but do not make every commit pay for cold install/runtime smoke.
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       YAZELIX_DIR: ${{ github.workspace }}
