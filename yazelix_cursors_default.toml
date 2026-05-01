@@ -25,7 +25,7 @@ enabled_cursors = [
   "dusk",
   "orchid",
   "reef",
-  "inferno",
+  "magma",
   # "local_lime",
 ]
 
@@ -55,64 +55,40 @@ kitty_enable_cursor = true
 
 # Code-owned families
 # Users pick a family; they do not define raw GLSL
-# Expected color counts:
-# - simple_dual: 2 colors, good for the current mono-looking presets
-# - axis_gradient: 2 colors, good for two-pole blended presets
+# Expected color fields:
+# - mono: one base color; optional accent_color and cursor_color overrides
+# - split: two colors, direction = "vertical" or "horizontal", blend = true or false
 # - curated_template: no user colors, keeps a hand-tuned shader by name
 
 [[cursor]]
 name = "blaze"
-family = "simple_dual"
-colors = [
-  "#ffb929",
-  "#ff0000",
-]
-cursor_color = "#ffb929"
+family = "mono"
+color = "#ffb929"
 
 [[cursor]]
 name = "snow"
-family = "simple_dual"
-colors = [
-  "#ffffff",
-  "#cccccc",
-]
-cursor_color = "#ffffff"
+family = "mono"
+color = "#ffffff"
 
 [[cursor]]
 name = "cosmic"
-family = "simple_dual"
-colors = [
-  "#c761f5",
-  "#783ddc",
-]
-cursor_color = "#c761f5"
+family = "mono"
+color = "#c761f5"
 
 [[cursor]]
 name = "ocean"
-family = "simple_dual"
-colors = [
-  "#5ea8ff",
-  "#1e66f5",
-]
-cursor_color = "#5ea8ff"
+family = "mono"
+color = "#5ea8ff"
 
 [[cursor]]
 name = "forest"
-family = "simple_dual"
-colors = [
-  "#3bd17a",
-  "#1b9e59",
-]
-cursor_color = "#3bd17a"
+family = "mono"
+color = "#3bd17a"
 
 [[cursor]]
 name = "sunset"
-family = "simple_dual"
-colors = [
-  "#ff7a59",
-  "#ff3d5e",
-]
-cursor_color = "#ff7a59"
+family = "mono"
+color = "#ff7a59"
 
 [[cursor]]
 name = "neon"
@@ -122,7 +98,9 @@ cursor_color = "#0090ff"
 
 [[cursor]]
 name = "eclipse"
-family = "axis_gradient"
+family = "split"
+direction = "vertical"
+blend = true
 colors = [
   "#2e294e",
   "#ffd400",
@@ -131,7 +109,9 @@ cursor_color = "#ffd400"
 
 [[cursor]]
 name = "dusk"
-family = "axis_gradient"
+family = "split"
+direction = "vertical"
+blend = true
 colors = [
   "#1e1e2f",
   "#e94560",
@@ -140,7 +120,9 @@ cursor_color = "#e94560"
 
 [[cursor]]
 name = "orchid"
-family = "axis_gradient"
+family = "split"
+direction = "vertical"
+blend = false
 colors = [
   "#ff6b00",
   "#206dce",
@@ -149,16 +131,20 @@ cursor_color = "#ff6b00"
 
 [[cursor]]
 name = "reef"
-family = "axis_gradient"
+family = "split"
+direction = "vertical"
+blend = true
 colors = [
   "#00e6ff",
-  "#00c03b",
+  "#00ff66",
 ]
 cursor_color = "#00e6ff"
 
 [[cursor]]
-name = "inferno"
-family = "axis_gradient"
+name = "magma"
+family = "split"
+direction = "horizontal"
+blend = true
 colors = [
   "#ff1600",
   "#2a3340",
@@ -170,9 +156,6 @@ cursor_color = "#ff1600"
 #
 # [[cursor]]
 # name = "local_lime"
-# family = "simple_dual"
-# colors = [
-#   "#c6ff00",
-#   "#00c853",
-# ]
-# cursor_color = "#c6ff00"
+# family = "mono"
+# color = "#c6ff00"
+# accent_color = "#00c853"

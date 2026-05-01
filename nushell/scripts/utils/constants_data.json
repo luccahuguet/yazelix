@@ -41,7 +41,7 @@
     "dusk": "./shaders/cursor_trail_dusk.glsl",
     "orchid": "./shaders/cursor_trail_orchid.glsl",
     "reef": "./shaders/cursor_trail_reef.glsl",
-    "inferno": "./shaders/cursor_trail_inferno.glsl",
+    "magma": "./shaders/cursor_trail_magma.glsl",
     "none": ""
   },
   "ghostty_trail_effects": ["tail", "warp", "sweep"],

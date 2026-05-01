@@ -45,6 +45,8 @@ pub struct CursorDefinition {
     pub name: String,
     pub family: CursorFamily,
     pub colors: Vec<CursorColor>,
+    pub direction: Option<SplitDirection>,
+    pub blend: Option<bool>,
     pub template: Option<String>,
     pub cursor_color: CursorColor,
 }
@@ -52,9 +54,16 @@ pub struct CursorDefinition {
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum CursorFamily {
-    SimpleDual,
-    AxisGradient,
+    Mono,
+    Split,
     CuratedTemplate,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SplitDirection {
+    Vertical,
+    Horizontal,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -99,10 +108,14 @@ struct RawCursorSettings {
 struct RawCursorDefinition {
     name: String,
     family: String,
+    color: Option<String>,
+    accent_color: Option<String>,
     #[serde(default)]
     colors: Vec<String>,
+    direction: Option<String>,
+    blend: Option<bool>,
     template: Option<String>,
-    cursor_color: String,
+    cursor_color: Option<String>,
 }
 
 impl CursorRegistry {
@@ -270,7 +283,7 @@ impl CursorDefinition {
                 "./shaders/cursor_trail_{}.glsl",
                 self.template.as_deref().unwrap_or(&self.name)
             ),
-            CursorFamily::SimpleDual | CursorFamily::AxisGradient => {
+            CursorFamily::Mono | CursorFamily::Split => {
                 format!("./shaders/cursor_trail_{}.glsl", self.name)
             }
         }
@@ -371,35 +384,41 @@ fn validate_definition(
     }
 
     let family = match raw.family.trim() {
-        "simple_dual" => CursorFamily::SimpleDual,
-        "axis_gradient" => CursorFamily::AxisGradient,
+        "mono" => CursorFamily::Mono,
+        "split" => CursorFamily::Split,
         "curated_template" => CursorFamily::CuratedTemplate,
         other => {
             return Err(invalid_cursor_config(
                 path,
                 "cursor.family",
                 format!(
-                    "Cursor '{name}' uses unsupported family '{other}'. Expected simple_dual, axis_gradient, or curated_template."
+                    "Cursor '{name}' uses unsupported family '{other}'. Expected mono, split, or curated_template."
                 ),
             ));
         }
     };
-    let cursor_color = validate_color(
-        path,
-        &format!("cursor.{name}.cursor_color"),
-        &raw.cursor_color,
-    )?;
 
     match family {
-        CursorFamily::SimpleDual | CursorFamily::AxisGradient => {
-            if raw.colors.len() != 2 {
+        CursorFamily::Mono => {
+            if !raw.colors.is_empty() {
                 return Err(invalid_cursor_config(
                     path,
                     "cursor.colors",
-                    format!(
-                        "Cursor '{name}' uses family '{}', which requires exactly 2 colors.",
-                        raw.family
-                    ),
+                    format!("Cursor '{name}' uses mono and must not define colors."),
+                ));
+            }
+            if raw.direction.is_some() {
+                return Err(invalid_cursor_config(
+                    path,
+                    "cursor.direction",
+                    format!("Cursor '{name}' uses mono and must not set direction."),
+                ));
+            }
+            if raw.blend.is_some() {
+                return Err(invalid_cursor_config(
+                    path,
+                    "cursor.blend",
+                    format!("Cursor '{name}' uses mono and must not set blend."),
                 ));
             }
             if raw.template.is_some() {
@@ -409,55 +428,213 @@ fn validate_definition(
                     format!("Cursor '{name}' is data-driven and must not set template."),
                 ));
             }
+            let color = raw.color.as_deref().ok_or_else(|| {
+                invalid_cursor_config(
+                    path,
+                    "cursor.color",
+                    format!("Cursor '{name}' uses mono and must set color."),
+                )
+            })?;
+            let base_color = validate_color(path, &format!("cursor.{name}.color"), color)?;
+            let accent_color = match raw.accent_color.as_deref() {
+                Some(accent) => {
+                    validate_color(path, &format!("cursor.{name}.accent_color"), accent)?
+                }
+                None => derive_accent_color(&base_color),
+            };
+            let cursor_color = match raw.cursor_color.as_deref() {
+                Some(cursor_color) => {
+                    validate_color(path, &format!("cursor.{name}.cursor_color"), cursor_color)?
+                }
+                None => base_color.clone(),
+            };
+
+            Ok(CursorDefinition {
+                name,
+                family,
+                colors: vec![base_color, accent_color],
+                direction: None,
+                blend: None,
+                template: None,
+                cursor_color,
+            })
         }
-        CursorFamily::CuratedTemplate => {
-            if !raw.colors.is_empty() {
+        CursorFamily::Split => {
+            if raw.color.is_some() {
+                return Err(invalid_cursor_config(
+                    path,
+                    "cursor.color",
+                    format!("Cursor '{name}' uses split and must not set color."),
+                ));
+            }
+            if raw.accent_color.is_some() {
+                return Err(invalid_cursor_config(
+                    path,
+                    "cursor.accent_color",
+                    format!("Cursor '{name}' uses split and must not set accent_color."),
+                ));
+            }
+            if raw.colors.len() != 2 {
                 return Err(invalid_cursor_config(
                     path,
                     "cursor.colors",
-                    format!("Cursor '{name}' uses curated_template and must not define colors."),
+                    format!("Cursor '{name}' uses split and must define exactly 2 colors."),
                 ));
             }
-            let template = raw
-                .template
-                .as_deref()
-                .map(str::trim)
-                .filter(|value| !value.is_empty())
-                .ok_or_else(|| {
-                    invalid_cursor_config(
-                        path,
-                        "cursor.template",
-                        format!("Cursor '{name}' uses curated_template and must set template."),
-                    )
-                })?;
-            if !SUPPORTED_CURATED_TEMPLATES.contains(&template) {
+            if raw.template.is_some() {
                 return Err(invalid_cursor_config(
                     path,
                     "cursor.template",
-                    format!(
-                        "Cursor '{name}' uses unsupported curated template '{template}'. Expected neon."
-                    ),
+                    format!("Cursor '{name}' is data-driven and must not set template."),
                 ));
             }
+            let direction = validate_split_direction(path, &name, raw.direction.as_deref())?;
+            let blend = raw.blend.ok_or_else(|| {
+                invalid_cursor_config(
+                    path,
+                    "cursor.blend",
+                    format!("Cursor '{name}' uses split and must set blend to true or false."),
+                )
+            })?;
+            let colors = raw
+                .colors
+                .iter()
+                .enumerate()
+                .map(|(index, color)| {
+                    validate_color(path, &format!("cursor.{name}.colors[{index}]"), color)
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            let cursor_color = match raw.cursor_color.as_deref() {
+                Some(cursor_color) => {
+                    validate_color(path, &format!("cursor.{name}.cursor_color"), cursor_color)?
+                }
+                None => colors[0].clone(),
+            };
+
+            Ok(CursorDefinition {
+                name,
+                family,
+                colors,
+                direction: Some(direction),
+                blend: Some(blend),
+                template: None,
+                cursor_color,
+            })
+        }
+        CursorFamily::CuratedTemplate => {
+            validate_curated_template_definition(path, name, family, raw)
         }
     }
+}
 
-    let colors = raw
-        .colors
-        .iter()
-        .enumerate()
-        .map(|(index, color)| {
-            validate_color(path, &format!("cursor.{name}.colors[{index}]"), color)
-        })
-        .collect::<Result<Vec<_>, _>>()?;
+fn validate_curated_template_definition(
+    path: &Path,
+    name: String,
+    family: CursorFamily,
+    raw: RawCursorDefinition,
+) -> Result<CursorDefinition, CoreError> {
+    if raw.color.is_some() {
+        return Err(invalid_cursor_config(
+            path,
+            "cursor.color",
+            format!("Cursor '{name}' uses curated_template and must not set color."),
+        ));
+    }
+    if raw.accent_color.is_some() {
+        return Err(invalid_cursor_config(
+            path,
+            "cursor.accent_color",
+            format!("Cursor '{name}' uses curated_template and must not set accent_color."),
+        ));
+    }
+    if !raw.colors.is_empty() {
+        return Err(invalid_cursor_config(
+            path,
+            "cursor.colors",
+            format!("Cursor '{name}' uses curated_template and must not define colors."),
+        ));
+    }
+    if raw.direction.is_some() {
+        return Err(invalid_cursor_config(
+            path,
+            "cursor.direction",
+            format!("Cursor '{name}' uses curated_template and must not set direction."),
+        ));
+    }
+    if raw.blend.is_some() {
+        return Err(invalid_cursor_config(
+            path,
+            "cursor.blend",
+            format!("Cursor '{name}' uses curated_template and must not set blend."),
+        ));
+    }
+
+    let template = raw
+        .template
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            invalid_cursor_config(
+                path,
+                "cursor.template",
+                format!("Cursor '{name}' uses curated_template and must set template."),
+            )
+        })?;
+    if !SUPPORTED_CURATED_TEMPLATES.contains(&template) {
+        return Err(invalid_cursor_config(
+            path,
+            "cursor.template",
+            format!(
+                "Cursor '{name}' uses unsupported curated template '{template}'. Expected neon."
+            ),
+        ));
+    }
+
+    let cursor_color = raw.cursor_color.as_deref().ok_or_else(|| {
+        invalid_cursor_config(
+            path,
+            "cursor.cursor_color",
+            format!("Cursor '{name}' uses curated_template and must set cursor_color."),
+        )
+    })?;
+    let cursor_color = validate_color(path, &format!("cursor.{name}.cursor_color"), cursor_color)?;
 
     Ok(CursorDefinition {
         name,
         family,
-        colors,
-        template: raw.template.map(|value| value.trim().to_ascii_lowercase()),
+        colors: Vec::new(),
+        direction: None,
+        blend: None,
+        template: Some(template.to_ascii_lowercase()),
         cursor_color,
     })
+}
+
+fn validate_split_direction(
+    path: &Path,
+    name: &str,
+    raw_direction: Option<&str>,
+) -> Result<SplitDirection, CoreError> {
+    let Some(direction) = raw_direction.map(str::trim) else {
+        return Err(invalid_cursor_config(
+            path,
+            "cursor.direction",
+            format!("Cursor '{name}' uses split and must set direction to vertical or horizontal."),
+        ));
+    };
+
+    match direction {
+        "vertical" => Ok(SplitDirection::Vertical),
+        "horizontal" => Ok(SplitDirection::Horizontal),
+        other => Err(invalid_cursor_config(
+            path,
+            "cursor.direction",
+            format!(
+                "Cursor '{name}' uses unsupported split direction '{other}'. Expected vertical or horizontal."
+            ),
+        )),
+    }
 }
 
 fn validate_optional_setting(
@@ -533,6 +710,103 @@ fn validate_color(path: &Path, field: &str, value: &str) -> Result<CursorColor, 
     ))
 }
 
+fn derive_accent_color(base: &CursorColor) -> CursorColor {
+    let [red, green, blue] = base.rgb_bytes();
+    let (hue, saturation, lightness) = rgb_to_hsl(red, green, blue);
+    let (accent_hue, accent_saturation, accent_lightness) = if saturation < 0.08 || lightness > 0.92
+    {
+        (hue, saturation, lightness * 0.80)
+    } else if !(45.0..330.0).contains(&hue) {
+        (hue - 22.0, (saturation + 0.05).min(1.0), lightness - 0.06)
+    } else if hue < 80.0 {
+        (hue - 45.0, saturation, lightness - 0.08)
+    } else if hue < 180.0 {
+        (hue + 4.0, (saturation + 0.08).min(1.0), lightness - 0.16)
+    } else if hue < 250.0 {
+        (hue + 8.0, (saturation - 0.08).max(0.0), lightness - 0.15)
+    } else {
+        (hue - 20.0, (saturation - 0.15).max(0.0), lightness - 0.12)
+    };
+
+    let [red, green, blue] = hsl_to_rgb(
+        accent_hue,
+        accent_saturation,
+        accent_lightness.clamp(0.0, 1.0),
+    );
+    CursorColor {
+        hex: format!("#{red:02x}{green:02x}{blue:02x}"),
+    }
+}
+
+fn rgb_to_hsl(red: u8, green: u8, blue: u8) -> (f64, f64, f64) {
+    let red = f64::from(red) / 255.0;
+    let green = f64::from(green) / 255.0;
+    let blue = f64::from(blue) / 255.0;
+    let max = red.max(green).max(blue);
+    let min = red.min(green).min(blue);
+    let lightness = (max + min) / 2.0;
+    let delta = max - min;
+
+    if delta == 0.0 {
+        return (0.0, 0.0, lightness);
+    }
+
+    let saturation = if lightness > 0.5 {
+        delta / (2.0 - max - min)
+    } else {
+        delta / (max + min)
+    };
+    let hue = if max == red {
+        60.0 * ((green - blue) / delta).rem_euclid(6.0)
+    } else if max == green {
+        60.0 * (((blue - red) / delta) + 2.0)
+    } else {
+        60.0 * (((red - green) / delta) + 4.0)
+    };
+
+    (hue, saturation, lightness)
+}
+
+fn hsl_to_rgb(hue: f64, saturation: f64, lightness: f64) -> [u8; 3] {
+    let hue = hue.rem_euclid(360.0) / 360.0;
+    let saturation = saturation.clamp(0.0, 1.0);
+    let lightness = lightness.clamp(0.0, 1.0);
+
+    if saturation == 0.0 {
+        let value = float_to_byte(lightness);
+        return [value, value, value];
+    }
+
+    let q = if lightness < 0.5 {
+        lightness * (1.0 + saturation)
+    } else {
+        lightness + saturation - (lightness * saturation)
+    };
+    let p = (2.0 * lightness) - q;
+    [
+        float_to_byte(hue_to_rgb(p, q, hue + (1.0 / 3.0))),
+        float_to_byte(hue_to_rgb(p, q, hue)),
+        float_to_byte(hue_to_rgb(p, q, hue - (1.0 / 3.0))),
+    ]
+}
+
+fn hue_to_rgb(p: f64, q: f64, hue: f64) -> f64 {
+    let hue = hue.rem_euclid(1.0);
+    if hue < 1.0 / 6.0 {
+        p + (q - p) * 6.0 * hue
+    } else if hue < 1.0 / 2.0 {
+        q
+    } else if hue < 2.0 / 3.0 {
+        p + (q - p) * ((2.0 / 3.0) - hue) * 6.0
+    } else {
+        p
+    }
+}
+
+fn float_to_byte(value: f64) -> u8 {
+    (value.clamp(0.0, 1.0) * 255.0).round() as u8
+}
+
 fn resolve_optional_effect(value: &str, allowed: &[&str], entropy: usize) -> Option<String> {
     match value {
         "none" => None,
@@ -586,9 +860,8 @@ kitty_enable_cursor = true
 
 [[cursor]]
 name = "blaze"
-family = "simple_dual"
-colors = ["#ffb929", "#ff0000"]
-cursor_color = "#ffb929"
+family = "mono"
+color = "#ffb929"
 {extra}
 "##
         )
@@ -610,6 +883,65 @@ cursor_color = "#ffb929"
             Some("ripple_rectangle".to_string())
         );
         assert!(resolved.kitty_enable_cursor);
+    }
+
+    // Defends: mono cursors accept one base color and derive the shader accent without requiring palette duplication.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn registry_derives_mono_accent_and_cursor_color() {
+        let (_temp, path) = write_registry(&base_registry(""));
+
+        let registry = CursorRegistry::load(&path).unwrap();
+        let blaze = registry.definitions.get("blaze").unwrap();
+
+        assert_eq!(blaze.family, CursorFamily::Mono);
+        assert_eq!(blaze.colors[0].hex, "#ffb929");
+        assert_eq!(blaze.colors.len(), 2);
+        assert_ne!(blaze.colors[1].hex, "#ffb929");
+        assert_eq!(blaze.cursor_color.hex, "#ffb929");
+    }
+
+    // Defends: mono cursors still allow explicit accent and cursor overrides when the heuristic is not enough.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn registry_accepts_mono_accent_and_cursor_overrides() {
+        let (_temp, path) = write_registry(&base_registry(
+            r##"
+accent_color = "#ff0000"
+cursor_color = "#00ff66"
+"##,
+        ));
+
+        let registry = CursorRegistry::load(&path).unwrap();
+        let blaze = registry.definitions.get("blaze").unwrap();
+
+        assert_eq!(blaze.colors[1].hex, "#ff0000");
+        assert_eq!(blaze.cursor_color.hex, "#00ff66");
+    }
+
+    // Defends: split cursors carry the explicit direction and blend contract used by generated shaders.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn registry_parses_split_direction_and_blend() {
+        let raw = base_registry("").replace(
+            r##"name = "blaze"
+family = "mono"
+color = "#ffb929""##,
+            r##"name = "blaze"
+family = "split"
+direction = "horizontal"
+blend = false
+colors = ["#ff1600", "#2a3340"]"##,
+        );
+        let (_temp, path) = write_registry(&raw);
+
+        let registry = CursorRegistry::load(&path).unwrap();
+        let blaze = registry.definitions.get("blaze").unwrap();
+
+        assert_eq!(blaze.family, CursorFamily::Split);
+        assert_eq!(blaze.direction, Some(SplitDirection::Horizontal));
+        assert_eq!(blaze.blend, Some(false));
+        assert_eq!(blaze.cursor_color.hex, "#ff1600");
     }
 
     // Defends: disabled Kitty cursor fallback remains a first-class sidecar setting independent of Ghostty shader selection.
@@ -650,9 +982,8 @@ cursor_color = "#ffb929"
             r##"
 [[cursor]]
 name = "blaze"
-family = "simple_dual"
-colors = ["#ffffff", "#cccccc"]
-cursor_color = "#ffffff"
+family = "mono"
+color = "#ffffff"
 "##,
         );
         let (_temp, path) = write_registry(&raw);
@@ -667,13 +998,26 @@ cursor_color = "#ffffff"
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn registry_rejects_invalid_color_for_data_driven_cursor() {
-        let raw = base_registry("").replace("#ff0000", "red");
+        let raw = base_registry("").replace("#ffb929", "red");
         let (_temp, path) = write_registry(&raw);
 
         let error = CursorRegistry::load(&path).unwrap_err();
 
         assert_eq!(error.code(), "invalid_cursor_config");
         assert!(format!("{error:?}").contains("#rrggbb"));
+    }
+
+    // Regression: retired data-driven family names must fail fast instead of silently taking compatibility paths.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn registry_rejects_retired_data_driven_family_names() {
+        let raw = base_registry("").replace("family = \"mono\"", "family = \"simple_dual\"");
+        let (_temp, path) = write_registry(&raw);
+
+        let error = CursorRegistry::load(&path).unwrap_err();
+
+        assert_eq!(error.code(), "invalid_cursor_config");
+        assert!(format!("{error:?}").contains("Expected mono, split, or curated_template"));
     }
 
     // Defends: the shipped default registry parses as the active product cursor surface.
@@ -686,11 +1030,25 @@ cursor_color = "#ffffff"
 
         assert!(registry.enabled_cursors.contains(&"blaze".to_string()));
         assert!(registry.enabled_cursors.contains(&"neon".to_string()));
+        assert!(registry.enabled_cursors.contains(&"magma".to_string()));
+        assert!(!registry.enabled_cursors.contains(&"inferno".to_string()));
         assert!(
             registry
                 .enabled_cursors
                 .iter()
                 .all(|name| registry.definitions.contains_key(name))
+        );
+        assert_eq!(
+            registry.definitions.get("magma").unwrap().direction,
+            Some(SplitDirection::Horizontal)
+        );
+        assert_eq!(
+            registry.definitions.get("orchid").unwrap().blend,
+            Some(false)
+        );
+        assert_eq!(
+            registry.definitions.get("reef").unwrap().colors[1].hex,
+            "#00ff66"
         );
         assert_eq!(registry.settings.trail, "random");
     }

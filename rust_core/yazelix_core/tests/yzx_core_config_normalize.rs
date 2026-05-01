@@ -1233,9 +1233,8 @@ kitty_enable_cursor = false
 
 [[cursor]]
 name = "snow"
-family = "simple_dual"
-colors = ["#ffffff", "#cccccc"]
-cursor_color = "#ffffff"
+family = "mono"
+color = "#ffffff"
 "##,
     );
 
@@ -1302,9 +1301,8 @@ kitty_enable_cursor = true
 
 [[cursor]]
 name = "forest"
-family = "simple_dual"
-colors = ["#3bd17a", "#1b9e59"]
-cursor_color = "#3bd17a"
+family = "mono"
+color = "#3bd17a"
 "##,
     );
 

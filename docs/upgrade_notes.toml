@@ -3,12 +3,14 @@ acknowledged_guarded_changes = ["home_manager/module.nix", "yazelix_default.toml
 date = ""
 headline = "Home Manager leaves yazelix.toml mutable, cursor presets move to a sidecar, and status widgets use cached facts"
 manual_actions = [
-  "If your user_configs/yazelix.toml still contains terminal.ghostty_* cursor fields, move those cursor choices and effects into user_configs/yazelix_cursors.toml and remove the old fields"
+  "If your user_configs/yazelix.toml still contains terminal.ghostty_* cursor fields, move those cursor choices and effects into user_configs/yazelix_cursors.toml and remove the old fields",
+  "If your user_configs/yazelix_cursors.toml uses family = \"simple_dual\" or \"axis_gradient\", update those cursor definitions to family = \"mono\" or family = \"split\""
 ]
 migration_ids = []
 summary = [
   "Changed the Home Manager module default so it installs the Yazelix package/runtime/desktop integration while leaving ~/.config/yazelix/user_configs/yazelix.toml as a normal mutable file",
   "Moved Ghostty cursor selection, effects, duration, glow, Kitty fallback, and cursor preset definitions out of yazelix.toml and into ~/.config/yazelix/user_configs/yazelix_cursors.toml",
+  "Simplified Ghostty cursor definitions to mono and split families, renamed the black/red horizontal preset from inferno to magma, and intensified reef's green",
   "Restored workspace and agent-usage status-bar widgets through window-local cached facts instead of direct zjstatus pane-orchestrator or provider polling",
   "Kept programs.yazelix.manage_config = true as the explicit opt-in for users who want Home Manager to generate and own yazelix.toml"
 ]

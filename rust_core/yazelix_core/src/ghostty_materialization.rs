@@ -1,6 +1,6 @@
 use crate::bridge::{CoreError, ErrorClass};
 use crate::ghostty_cursor_registry::{
-    CursorDefinition, CursorFamily, CursorRegistry, ResolvedCursorRegistryState,
+    CursorDefinition, CursorFamily, CursorRegistry, ResolvedCursorRegistryState, SplitDirection,
 };
 pub use crate::ghostty_cursor_registry::{
     DEFAULT_GHOSTTY_TRAIL_DURATION, GHOSTTY_TRAIL_DURATION_MAX, GHOSTTY_TRAIL_DURATION_MIN,
@@ -367,12 +367,7 @@ fn write_data_driven_cursor_shaders(
     let data_driven = registry
         .enabled_definitions()
         .into_iter()
-        .filter(|definition| {
-            matches!(
-                definition.family,
-                CursorFamily::SimpleDual | CursorFamily::AxisGradient
-            )
-        })
+        .filter(|definition| matches!(definition.family, CursorFamily::Mono | CursorFamily::Split))
         .collect::<Vec<_>>();
     if data_driven.is_empty() {
         return Ok(());
@@ -416,10 +411,10 @@ fn render_data_driven_cursor_variant(definition: &CursorDefinition, duration_sca
     let color_0 = definition.colors[0].glsl_vec4();
     let color_1 = definition.colors[1].glsl_vec4();
     match definition.family {
-        CursorFamily::SimpleDual => {
+        CursorFamily::Mono => {
             let duration = format_ghostty_trail_duration(0.25 * duration_scale);
             format!(
-                r#"// Generated Yazelix simple-dual cursor variant
+                r#"// Generated Yazelix mono cursor variant
 
 const vec4 YAZELIX_CURSOR_COLOR_0 = {color_0};
 const vec4 YAZELIX_CURSOR_COLOR_1 = {color_1};
@@ -432,18 +427,35 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
 "#
             )
         }
-        CursorFamily::AxisGradient => {
+        CursorFamily::Split => {
             let duration = format_ghostty_trail_duration(0.24 * duration_scale);
+            let horizontal = match definition
+                .direction
+                .expect("validated split cursor definitions always have a direction")
+            {
+                SplitDirection::Vertical => "0.0",
+                SplitDirection::Horizontal => "1.0",
+            };
+            let blend = if definition
+                .blend
+                .expect("validated split cursor definitions always have a blend setting")
+            {
+                "1.0"
+            } else {
+                "0.0"
+            };
             format!(
-                r#"// Generated Yazelix axis-gradient cursor variant
+                r#"// Generated Yazelix split cursor variant
 
 const vec4 YAZELIX_CURSOR_COLOR_0 = {color_0};
 const vec4 YAZELIX_CURSOR_COLOR_1 = {color_1};
 const float DURATION = {duration};
+const float YAZELIX_SPLIT_HORIZONTAL = {horizontal};
+const float YAZELIX_SPLIT_BLEND = {blend};
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord)
 {{
-    renderAxisGradientTrail(fragColor, fragCoord, YAZELIX_CURSOR_COLOR_0, YAZELIX_CURSOR_COLOR_1, DURATION, 1.6, 0.42, 0.30, 0.5);
+    renderSplitColorTrail(fragColor, fragCoord, YAZELIX_CURSOR_COLOR_0, YAZELIX_CURSOR_COLOR_1, DURATION, YAZELIX_SPLIT_HORIZONTAL, YAZELIX_SPLIT_BLEND);
 }}
 "#
             )

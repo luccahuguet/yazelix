@@ -87,7 +87,7 @@ EOF
       $shader_out/cursor_trail_blaze.glsl
       $shader_out/cursor_trail_snow.glsl
       $shader_out/cursor_trail_neon.glsl
-      $shader_out/cursor_trail_inferno.glsl
+      $shader_out/cursor_trail_magma.glsl
       $shader_out/generated_effects/tail.glsl
       $shader_out/generated_effects/ripple.glsl
       $examples_dir/ghostty_blaze_tail.conf

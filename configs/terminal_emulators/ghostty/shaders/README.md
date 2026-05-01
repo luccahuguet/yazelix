@@ -4,11 +4,11 @@ This directory contains cursor trail shaders for Ghostty terminal.
 
 ## Structure
 
-The cursor trail shaders are now built from modular components to eliminate ~79% code duplication:
+The cursor trail shaders are built from modular source files:
 
 ```
 shaders/
-├── cursor_trail_common.glsl     # Shared functions (~68 lines)
+├── cursor_trail_common.glsl     # Shared functions
 ├── variants/                     # Variant-specific code (3-60 lines each)
 │   ├── blaze.glsl
 │   ├── white.glsl
@@ -21,21 +21,17 @@ shaders/
 │   ├── dusk.glsl
 │   ├── orchid.glsl
 │   ├── reef.glsl
-│   └── inferno.glsl
+│   └── magma.glsl
 ├── build_shaders.nu             # Build script (nushell, runs automatically)
 └── cursor_trail_*.glsl          # Generated locally/runtime only (gitignored)
 ```
 
 ## How It Works
 
-**Before refactoring:**
-- 13 shader files × ~100+ lines each = ~1,500 lines total
-- ~1,200 lines of duplicated code (79%)
-
-**After refactoring:**
-- 1 common library (68 lines)
-- 12 variant files (3-60 lines each, ~311 lines total)
-- Total source: **~379 lines** (75% reduction!)
+Yazelix copies the shader sources into the runtime Ghostty shader directory, runs
+`build_shaders.nu`, and then writes data-driven cursor variants from
+`yazelix_cursors.toml`. Hand-tuned variants remain in `variants/`, while `mono`
+and `split` presets are rendered from cursor registry data.
 
 ## Making Changes
 
@@ -94,22 +90,14 @@ The build is **fully automatic**:
 
 ## Variant Categories
 
-### Simple Two-Color (6 variants)
-- `blaze`, `white`, `sunset`, `ocean`, `forest`, `cosmic`
-- Only color constants differ
+### Mono (6 data-driven presets)
+- `blaze`, `snow`, `sunset`, `ocean`, `forest`, `cosmic`
+- Each preset defines one base color in `yazelix_cursors_default.toml`; Yazelix derives the accent unless `accent_color` overrides it
 
-### Dual-Blend (2 variants)
-- `orchid`, `reef`
-- Include `dualBlend()` function for angular color mixing
+### Split (5 data-driven presets)
+- `eclipse`, `dusk`, `orchid`, `reef`, `magma`
+- Each preset defines two colors plus `direction = "vertical" | "horizontal"` and `blend = true | false`
 
-### Gradient Blend (2 variants)
-- `eclipse`, `dusk`
-- Axis-based color blending with pulse animation
-
-### Multi-Color (1 variant)
+### Curated Template (1 variant)
 - `neon`
-- Multiple color constants with axis blending
-
-### Vertical Gradient (1 variant)
-- `inferno`
-- Vertical directional blending
+- Keeps hand-tuned shader logic selected by `template = "neon"`
