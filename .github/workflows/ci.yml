@@ -139,9 +139,10 @@ jobs:
 
   integration:
     # Medium-cost installed-runtime contract lane. Keep this path-gated so
-    # routine pushes do not disappear behind top-level workflow filters.
-    needs: [detect_integration_changes, validate]
-    if: ${{ needs.validate.result == 'success' }}
+    # routine pushes do not disappear behind top-level workflow filters. It
+    # runs independently of validate so runtime-impacting changes do not stack
+    # the two lane times serially.
+    needs: [detect_integration_changes]
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
@@ -175,17 +176,14 @@ jobs:
         with:
           determinate: false
 
-      - name: Enable Nix cache
+      - name: Build maintainer validator
         if: ${{ needs.detect_integration_changes.outputs.run_runtime_contract == 'true' }}
-        uses: DeterminateSystems/magic-nix-cache-action@main
-        with:
-          use-gha-cache: true
-          use-flakehub: false
+        run: nix develop -c cargo build --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator
 
       - name: Validate installed-runtime contract smoke
         if: ${{ needs.detect_integration_changes.outputs.run_runtime_contract == 'true' }}
         shell: bash
-        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-installed-runtime-contract
+        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-installed-runtime-contract
 
   cold_install:
     # Full cold profile-install/rebuild smoke. Keep this on weekly/manual validation
@@ -218,8 +216,11 @@ jobs:
           use-gha-cache: true
           use-flakehub: false
 
+      - name: Build maintainer validator
+        run: nix develop -c cargo build --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator
+
       - name: Run cold profile install build
-        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-flake-profile-install install "${{ runner.temp }}/yazelix_flake_install_smoke"
+        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-flake-profile-install install "${{ runner.temp }}/yazelix_flake_install_smoke"
 
       - name: Verify cold profile-installed runtime
-        run: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-flake-profile-install verify "${{ runner.temp }}/yazelix_flake_install_smoke"
+        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-flake-profile-install verify "${{ runner.temp }}/yazelix_flake_install_smoke"
