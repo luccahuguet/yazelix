@@ -58,6 +58,29 @@ const DESKTOP_LAUNCH_CLEARED_ENV_KEYS: &[&str] = &[
     "ZELLIJ_TAB_NAME",
     "ZELLIJ_TAB_POSITION",
 ];
+const RESTART_LAUNCH_CLEARED_ENV_KEYS: &[&str] = &[
+    "IN_YAZELIX_SHELL",
+    "YAZELIX_BOOTSTRAP_RUNTIME_DIR",
+    "YAZELIX_DIR",
+    "YAZELIX_MENU_POPUP",
+    "YAZELIX_NU_BIN",
+    "YAZELIX_POPUP_PANE",
+    "YAZELIX_RUNTIME_DIR",
+    "YAZELIX_SESSION_CONFIG_PATH",
+    "YAZELIX_SESSION_FACTS_PATH",
+    "YAZELIX_STATUS_BAR_CACHE_PATH",
+    "YAZELIX_TERMINAL",
+    "YAZELIX_YZX_BIN",
+    "YAZELIX_YZX_CONTROL_BIN",
+    "YAZELIX_YZX_CORE_BIN",
+    "YAZI_ID",
+    "ZELLIJ",
+    "ZELLIJ_DEFAULT_LAYOUT",
+    "ZELLIJ_PANE_ID",
+    "ZELLIJ_SESSION_NAME",
+    "ZELLIJ_TAB_NAME",
+    "ZELLIJ_TAB_POSITION",
+];
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct EnterArgs {
@@ -254,7 +277,7 @@ pub fn run_yzx_restart(args: &[String]) -> Result<i32, CoreError> {
                 source,
             )
         })?,
-        &[],
+        RESTART_LAUNCH_CLEARED_ENV_KEYS,
         &[(
             "YAZELIX_BOOTSTRAP_SIDEBAR_CWD_FILE".to_string(),
             Some(restart_file.to_string_lossy().into_owned()),
@@ -1974,6 +1997,27 @@ mod tests {
             normalized_configured_terminals(&config),
             vec!["ghostty".to_string(), "wezterm".to_string()]
         );
+    }
+
+    // Invariant: restart must relaunch through the stable owner without leaking old window runtime/session helper env.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn restart_launch_clears_stale_runtime_session_and_helper_env() {
+        for key in [
+            "YAZELIX_BOOTSTRAP_RUNTIME_DIR",
+            "YAZELIX_RUNTIME_DIR",
+            "YAZELIX_SESSION_CONFIG_PATH",
+            "YAZELIX_SESSION_FACTS_PATH",
+            "YAZELIX_STATUS_BAR_CACHE_PATH",
+            "YAZELIX_YZX_BIN",
+            "YAZELIX_YZX_CONTROL_BIN",
+            "YAZELIX_YZX_CORE_BIN",
+        ] {
+            assert!(
+                RESTART_LAUNCH_CLEARED_ENV_KEYS.contains(&key),
+                "restart launch must clear stale {key}"
+            );
+        }
     }
 
     // Defends: desktop entry rendering keeps a quoted launcher path so spaces do not corrupt the Exec owner surface.
