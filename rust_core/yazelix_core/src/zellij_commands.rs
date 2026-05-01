@@ -1167,7 +1167,8 @@ pub fn run_zellij_status_cache_widget(args: &[String]) -> Result<i32, CoreError>
         Some(path) => path,
         None => return Ok(0),
     };
-    let Some(mut cache) = read_status_bar_cache_value(&path) else {
+    let Some(mut cache) = status_cache_value_for_widget_path(&path, widget, unix_time_seconds())
+    else {
         return Ok(0);
     };
     if widget == "codex_usage" {
@@ -1181,6 +1182,35 @@ pub fn run_zellij_status_cache_widget(args: &[String]) -> Result<i32, CoreError>
         &agent_usage_widget_settings_from_status_cache_path(&path),
     )?);
     Ok(0)
+}
+
+fn status_cache_value_for_widget_path(path: &Path, widget: &str, now: u64) -> Option<Value> {
+    read_status_bar_cache_value(path)
+        .or_else(|| first_paint_usage_cache_for_widget(path, widget, now))
+}
+
+fn first_paint_usage_cache_for_widget(path: &Path, widget: &str, now: u64) -> Option<Value> {
+    if !matches!(widget, "claude_usage" | "codex_usage" | "opencode_go_usage") {
+        return None;
+    }
+
+    let seed = if widget == "claude_usage" {
+        agent_usage_seed_for_status_cache_path(path, None, now)
+    } else {
+        None
+    };
+    let mut cache = json!({
+        "schema_version": STATUS_BAR_CACHE_SCHEMA_VERSION,
+        "updated_at_unix_seconds": now,
+        "agent_usage": seed
+            .as_ref()
+            .map(|seed| seed.agent_usage.clone())
+            .unwrap_or_else(|| json!({})),
+    });
+    if let Some(updated_at) = seed.and_then(|seed| seed.updated_at_unix_seconds) {
+        cache["agent_usage_updated_at_unix_seconds"] = json!(updated_at);
+    }
+    Some(cache)
 }
 
 pub fn run_zellij_status_cache_refresh_codex_usage(args: &[String]) -> Result<i32, CoreError> {
@@ -2147,10 +2177,12 @@ fn refresh_codex_usage_shared_cache(
     }
     if let Some(error) = facts.error.as_deref().filter(|value| !value.is_empty()) {
         codex.insert("error".to_string(), json!(error));
-        codex.insert(
-            "backoff_until_unix_seconds".to_string(),
-            json!(now.saturating_add(error_backoff_seconds)),
-        );
+        if facts.is_empty() {
+            codex.insert(
+                "backoff_until_unix_seconds".to_string(),
+                json!(now.saturating_add(error_backoff_seconds)),
+            );
+        }
     }
     let status = if facts.is_empty() {
         "error"
@@ -2182,17 +2214,26 @@ fn codex_usage_shared_cache_is_fresh(path: &Path, now: u64, max_age_seconds: u64
                 && cache
                     .get("codex")
                     .map(windowed_usage_facts_from_cache_entry)
-                    .is_some_and(|facts| !facts.is_empty())
+                    .is_some_and(|facts| codex_usage_facts_are_complete(&facts))
         })
+}
+
+fn codex_usage_facts_are_complete(facts: &WindowedUsageFacts) -> bool {
+    facts.five_hour_tokens.is_some()
+        && facts.weekly_tokens.is_some()
+        && facts.five_hour_remaining_percent.is_some()
+        && facts.weekly_remaining_percent.is_some()
 }
 
 fn codex_usage_shared_cache_is_backing_off(path: &Path, now: u64) -> bool {
     read_codex_usage_shared_cache_value(path)
         .and_then(|cache| {
-            cache
-                .get("codex")?
-                .get("backoff_until_unix_seconds")?
-                .as_u64()
+            let codex = cache.get("codex")?;
+            let facts = windowed_usage_facts_from_cache_entry(codex);
+            if !facts.is_empty() && !codex_usage_facts_are_complete(&facts) {
+                return None;
+            }
+            codex.get("backoff_until_unix_seconds")?.as_u64()
         })
         .is_some_and(|backoff_until| now < backoff_until)
 }
@@ -4841,6 +4882,94 @@ mod tests {
         );
     }
 
+    // Regression: usage widgets should first-paint from recent sibling/shared caches before the new window writes its status-bus cache.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn usage_widgets_render_from_existing_caches_before_status_bus_write() {
+        let temp = tempfile::tempdir().unwrap();
+        let sessions_dir = temp.path().join("state").join("sessions");
+        let old_cache_path = sessions_dir.join("window_a").join("status_bar_cache.json");
+        let new_cache_path = sessions_dir.join("window_b").join("status_bar_cache.json");
+        let now = unix_time_seconds();
+        let old_cache = build_status_bar_cache_at(
+            status_cache_test_status_bus(),
+            json!({
+                "claude_daily": {
+                    "summary": "42k $0.42",
+                    "tokens": "42k",
+                    "cost": "$0.42"
+                }
+            }),
+            Some(now),
+            now,
+        );
+        write_status_bar_cache_value(&old_cache_path, &old_cache).unwrap();
+
+        let codex_shared_path =
+            codex_usage_shared_cache_path_from_status_cache_path(&new_cache_path).unwrap();
+        write_json_value_atomic(
+            &codex_shared_path,
+            &json!({
+                "schema_version": CODEX_USAGE_CACHE_SCHEMA_VERSION,
+                "codex": {
+                    "updated_at_unix_seconds": now,
+                    "five_hour_tokens": 138424632u64,
+                    "weekly_tokens": 1335519960u64,
+                    "five_hour_remaining_percent": 49u64,
+                    "weekly_remaining_percent": 80u64,
+                    "status": "ok"
+                }
+            }),
+            "codex_usage_cache_test",
+        )
+        .unwrap();
+        let opencode_go_shared_path =
+            opencode_go_usage_shared_cache_path_from_status_cache_path(&new_cache_path).unwrap();
+        write_json_value_atomic(
+            &opencode_go_shared_path,
+            &json!({
+                "schema_version": OPENCODE_GO_USAGE_CACHE_SCHEMA_VERSION,
+                "opencode_go": {
+                    "updated_at_unix_seconds": now,
+                    "five_hour_tokens": 0u64,
+                    "five_hour_remaining_percent": 100u64,
+                    "weekly_tokens": 85_000_000u64,
+                    "weekly_remaining_percent": 60u64,
+                    "monthly_tokens": 85_000_000u64,
+                    "monthly_remaining_percent": 80u64,
+                    "status": "ok"
+                }
+            }),
+            "opencode_go_usage_cache_test",
+        )
+        .unwrap();
+
+        let claude_cache =
+            status_cache_value_for_widget_path(&new_cache_path, "claude_usage", now).unwrap();
+        assert_eq!(
+            render_status_cache_widget(&claude_cache, "claude_usage").unwrap(),
+            " [claude d 42k $0.42]"
+        );
+
+        let mut codex_cache =
+            status_cache_value_for_widget_path(&new_cache_path, "codex_usage", now).unwrap();
+        hydrate_status_cache_codex_usage(&mut codex_cache, &new_cache_path);
+        assert_eq!(
+            render_status_cache_widget(&codex_cache, "codex_usage").unwrap(),
+            " [codex 5h|138M|49% wk|1.34B|80%]"
+        );
+
+        let mut opencode_go_cache =
+            status_cache_value_for_widget_path(&new_cache_path, "opencode_go_usage", now).unwrap();
+        hydrate_status_cache_opencode_go_usage(&mut opencode_go_cache, &new_cache_path);
+        assert_eq!(
+            render_status_cache_widget(&opencode_go_cache, "opencode_go_usage").unwrap(),
+            " [go 5h|0|100% wk|85M|60% mo|85M|80%]"
+        );
+
+        assert!(status_cache_value_for_widget_path(&new_cache_path, "workspace", now).is_none());
+    }
+
     // Defends: cache readers stay quiet when a launch-scoped cache has not been written yet.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
@@ -5551,7 +5680,9 @@ exit 64
                 "codex": {
                     "updated_at_unix_seconds": 1_000u64,
                     "five_hour_tokens": 138424632u64,
-                    "weekly_tokens": 1335519960u64
+                    "weekly_tokens": 1335519960u64,
+                    "five_hour_remaining_percent": 49u64,
+                    "weekly_remaining_percent": 80u64
                 }
             }),
             "codex_usage_cache_test",
@@ -5559,6 +5690,27 @@ exit 64
         .unwrap();
         assert!(codex_usage_shared_cache_is_fresh(&shared_path, 1_100, 600));
         assert!(!codex_usage_shared_cache_is_fresh(&shared_path, 1_700, 600));
+
+        write_json_value_atomic(
+            &shared_path,
+            &json!({
+                "schema_version": CODEX_USAGE_CACHE_SCHEMA_VERSION,
+                "codex": {
+                    "updated_at_unix_seconds": 1_700u64,
+                    "five_hour_tokens": 138424632u64,
+                    "weekly_tokens": 1335519960u64,
+                    "error": "quota unavailable",
+                    "backoff_until_unix_seconds": 2_000u64
+                }
+            }),
+            "codex_usage_cache_test",
+        )
+        .unwrap();
+        assert!(!codex_usage_shared_cache_is_fresh(&shared_path, 1_701, 600));
+        assert!(!codex_usage_shared_cache_is_backing_off(
+            &shared_path,
+            1_999
+        ));
 
         write_json_value_atomic(
             &shared_path,
