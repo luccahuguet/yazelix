@@ -11,13 +11,13 @@ const AGENT_USAGE_REFRESH_INTERVAL: Duration = Duration::from_secs(120);
 const AGENT_USAGE_PROVIDER_TIMEOUT_MS: &str = "1500";
 const AGENT_USAGE_MAX_AGE_SECONDS: &str = "120";
 const INITIAL_CODEX_USAGE_REFRESH_DELAY: Duration = Duration::from_secs(2);
-const CODEX_USAGE_REFRESH_INTERVAL: Duration = Duration::from_secs(5);
+const CODEX_USAGE_REFRESH_INTERVAL: Duration = Duration::from_secs(10);
 const CODEX_USAGE_PROVIDER_TIMEOUT_MS: &str = "5000";
-const CODEX_USAGE_MAX_AGE_SECONDS: &str = "5";
+const CODEX_USAGE_MAX_AGE_SECONDS: &str = "10";
 const CODEX_USAGE_ERROR_BACKOFF_SECONDS: &str = "1800";
 const INITIAL_OPENCODE_GO_USAGE_REFRESH_DELAY: Duration = Duration::from_secs(2);
-const OPENCODE_GO_USAGE_REFRESH_INTERVAL: Duration = Duration::from_secs(5);
-const OPENCODE_GO_USAGE_MAX_AGE_SECONDS: &str = "5";
+const OPENCODE_GO_USAGE_REFRESH_INTERVAL: Duration = Duration::from_secs(10);
+const OPENCODE_GO_USAGE_MAX_AGE_SECONDS: &str = "10";
 const OPENCODE_GO_USAGE_ERROR_BACKOFF_SECONDS: &str = "1800";
 
 impl State {
