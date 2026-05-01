@@ -4,8 +4,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::Path;
 use std::process::Command;
+use std::thread::sleep;
+use std::time::Duration;
 
 const CONTRACT_START: &str = "2026-03-22T00:00:00Z";
+const GITHUB_TRANSIENT_RETRY_DELAY_MS: [u64; 3] = [250, 750, 1500];
 
 #[derive(Debug, Clone, Deserialize)]
 struct GithubIssue {
@@ -65,6 +68,11 @@ struct IssueCommentAction {
     bead: BeadIssue,
     body: String,
     comment: Option<GithubComment>,
+}
+
+#[derive(Debug, Clone)]
+struct CommandFailure {
+    message: String,
 }
 
 pub fn run_issue_sync(repo_root: &Path, dry_run: bool) -> Result<IssueSyncSummary, String> {
@@ -197,36 +205,81 @@ pub fn run_issue_sync(repo_root: &Path, dry_run: bool) -> Result<IssueSyncSummar
     Ok(build_summary(&actions, &comment_actions))
 }
 
-fn run_command(program: &str, args: &[&str]) -> Result<String, String> {
+fn run_command_once(program: &str, args: &[&str]) -> Result<String, CommandFailure> {
     let output = Command::new(program)
         .args(args)
         .output()
-        .map_err(|error| format!("Failed to run {} {}: {}", program, args.join(" "), error))?;
+        .map_err(|error| CommandFailure {
+            message: format!("Failed to run {} {}: {}", program, args.join(" "), error),
+        })?;
     if !output.status.success() {
-        return Err(format!(
-            "{} {} failed\n{}",
-            program,
-            args.join(" "),
-            String::from_utf8_lossy(&output.stderr).trim()
-        ));
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        return Err(CommandFailure {
+            message: format!("{} {} failed\n{}", program, args.join(" "), stderr),
+        });
     }
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
+fn run_command(program: &str, args: &[&str]) -> Result<String, String> {
+    run_command_once(program, args).map_err(|failure| failure.message)
+}
+
+fn run_github_read_command(args: &[&str]) -> Result<String, String> {
+    for (attempt, delay_ms) in GITHUB_TRANSIENT_RETRY_DELAY_MS.iter().enumerate() {
+        match run_command_once("gh", args) {
+            Ok(stdout) => return Ok(stdout),
+            Err(failure) => {
+                if !is_transient_github_cli_failure(&failure.message) {
+                    return Err(failure.message);
+                }
+                eprintln!(
+                    "Transient GitHub CLI failure while running gh {}; retrying in {}ms ({}/{})",
+                    args.join(" "),
+                    delay_ms,
+                    attempt + 1,
+                    GITHUB_TRANSIENT_RETRY_DELAY_MS.len()
+                );
+                sleep(Duration::from_millis(*delay_ms));
+            }
+        }
+    }
+    run_command_once("gh", args).map_err(|failure| failure.message)
+}
+
+fn is_transient_github_cli_failure(message: &str) -> bool {
+    let normalized = message.to_ascii_lowercase();
+    [
+        "http 500",
+        "http 502",
+        "http 503",
+        "http 504",
+        "bad gateway",
+        "service unavailable",
+        "gateway timeout",
+        "timed out",
+        "timeout",
+        "connection reset",
+        "connection refused",
+        "temporarily unavailable",
+        "secondary rate limit",
+        "rate limit exceeded",
+    ]
+    .iter()
+    .any(|marker| normalized.contains(marker))
+}
+
 fn load_contract_github_issues() -> Result<Vec<GithubIssue>, String> {
-    let raw = run_command(
-        "gh",
-        &[
-            "issue",
-            "list",
-            "--state",
-            "all",
-            "--limit",
-            "1000",
-            "--json",
-            "number,state,title,url,createdAt,body",
-        ],
-    )?;
+    let raw = run_github_read_command(&[
+        "issue",
+        "list",
+        "--state",
+        "all",
+        "--limit",
+        "1000",
+        "--json",
+        "number,state,title,url,createdAt,body",
+    ])?;
     serde_json::from_str(&raw)
         .map_err(|error| format!("Failed to parse GitHub issues JSON: {error}"))
 }
@@ -241,16 +294,13 @@ fn load_contract_beads() -> Result<Vec<BeadIssue>, String> {
 }
 
 fn load_issue_comments(issue_number: i64) -> Result<Vec<GithubComment>, String> {
-    let raw = run_command(
-        "gh",
-        &[
-            "issue",
-            "view",
-            &issue_number.to_string(),
-            "--json",
-            "comments",
-        ],
-    )?;
+    let raw = run_github_read_command(&[
+        "issue",
+        "view",
+        &issue_number.to_string(),
+        "--json",
+        "comments",
+    ])?;
     let parsed: GithubCommentsEnvelope = serde_json::from_str(&raw)
         .map_err(|error| format!("Failed to parse issue comments JSON: {error}"))?;
     Ok(parsed.comments)
@@ -650,6 +700,33 @@ mod tests {
             "chore"
         );
         assert_eq!(infer_issue_type_from_body(""), "task");
+    }
+
+    // Regression: scheduled Bead contract validation should retry transient GitHub GraphQL failures instead of failing on one 504 while reading issue comments.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn github_cli_retry_classifier_matches_transient_failures() {
+        assert!(is_transient_github_cli_failure(
+            "gh issue view 496 --json comments failed\nHTTP 504: 504 Gateway Timeout (https://api.github.com/graphql)"
+        ));
+        assert!(is_transient_github_cli_failure(
+            "gh issue list --state all failed\nHTTP 502: Bad Gateway"
+        ));
+        assert!(is_transient_github_cli_failure(
+            "gh issue view 1 failed\nsecondary rate limit exceeded"
+        ));
+    }
+
+    // Defends: permanent GitHub CLI errors stay terminal so the sync does not hide repository, issue, or authentication contract failures behind retries.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn github_cli_retry_classifier_rejects_permanent_failures() {
+        assert!(!is_transient_github_cli_failure(
+            "gh issue view 1 failed\ncould not resolve to an Issue with the number of 1"
+        ));
+        assert!(!is_transient_github_cli_failure(
+            "gh issue list failed\nGraphQL: Could not resolve to a Repository with the name 'missing'"
+        ));
     }
 
     // Defends: canonical Beads comments still converge to one stable body instead of accumulating stale variants.
