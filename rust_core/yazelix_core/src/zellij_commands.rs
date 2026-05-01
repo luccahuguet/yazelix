@@ -353,7 +353,11 @@ fn default_windowed_usage_periods() -> &'static [WindowedUsagePeriod] {
 }
 
 fn default_opencode_go_usage_periods() -> Vec<WindowedUsagePeriod> {
-    default_windowed_usage_periods().to_vec()
+    vec![
+        WindowedUsagePeriod::FiveHour,
+        WindowedUsagePeriod::Weekly,
+        WindowedUsagePeriod::Monthly,
+    ]
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -953,7 +957,9 @@ fn print_zellij_status_cache_refresh_codex_usage_help() {
 }
 
 fn print_zellij_status_cache_refresh_opencode_go_usage_help() {
-    println!("Refresh cached OpenCode Go 5h/week usage and quota facts for status-bar widgets");
+    println!(
+        "Refresh cached OpenCode Go 5h/week/month usage and quota facts for status-bar widgets"
+    );
     println!();
     println!("Usage:");
     println!(
@@ -2488,25 +2494,25 @@ fn collect_opencode_go_usage_facts_from_dbs(db_paths: &[PathBuf], now: u64) -> W
     let mut facts = WindowedUsageFacts::default();
     if five_hour.tokens > 0 || five_hour.cost_usd > 0.0 {
         facts.five_hour_tokens = Some(five_hour.tokens);
-        facts.five_hour_remaining_percent = Some(remaining_percent_from_cost_limit(
-            five_hour.cost_usd,
-            OPENCODE_GO_FIVE_HOUR_LIMIT_USD,
-        ));
     }
+    facts.five_hour_remaining_percent = Some(remaining_percent_from_cost_limit(
+        five_hour.cost_usd,
+        OPENCODE_GO_FIVE_HOUR_LIMIT_USD,
+    ));
     if weekly.tokens > 0 || weekly.cost_usd > 0.0 {
         facts.weekly_tokens = Some(weekly.tokens);
-        facts.weekly_remaining_percent = Some(remaining_percent_from_cost_limit(
-            weekly.cost_usd,
-            OPENCODE_GO_WEEKLY_LIMIT_USD,
-        ));
     }
+    facts.weekly_remaining_percent = Some(remaining_percent_from_cost_limit(
+        weekly.cost_usd,
+        OPENCODE_GO_WEEKLY_LIMIT_USD,
+    ));
     if monthly.tokens > 0 || monthly.cost_usd > 0.0 {
         facts.monthly_tokens = Some(monthly.tokens);
-        facts.monthly_remaining_percent = Some(remaining_percent_from_cost_limit(
-            monthly.cost_usd,
-            OPENCODE_GO_MONTHLY_LIMIT_USD,
-        ));
     }
+    facts.monthly_remaining_percent = Some(remaining_percent_from_cost_limit(
+        monthly.cost_usd,
+        OPENCODE_GO_MONTHLY_LIMIT_USD,
+    ));
     if facts.is_empty() {
         facts.error = Some("OpenCode Go usage unavailable".to_string());
     }
@@ -5144,20 +5150,20 @@ mod tests {
                 },
             )
             .unwrap(),
-            " [go 5h|138M|49% wk|1.34B|80%]"
+            " [go 5h|138M|49% wk|1.34B|80% mo|2.22B|70%]"
         );
         assert_eq!(
             render_status_cache_widget_with_agent_usage_settings(
                 &cache,
                 "opencode_go_usage",
                 &AgentUsageWidgetSettings {
-                    opencode_go_periods: monthly_periods.clone(),
+                    opencode_go_periods: vec![WindowedUsagePeriod::Weekly],
                     opencode_go_display: WindowedUsageDisplay::Both,
                     ..AgentUsageWidgetSettings::default()
                 },
             )
             .unwrap(),
-            " [go 5h|138M|49% wk|1.34B|80% mo|2.22B|70%]"
+            " [go wk|1.34B|80%]"
         );
         assert_eq!(
             render_status_cache_widget_with_agent_usage_settings(
@@ -5353,7 +5359,7 @@ exit 64
     fn opencode_go_sqlite_reader_filters_provider_and_computes_quota_windows() {
         let temp = tempfile::tempdir().unwrap();
         let db_path = temp.path().join("opencode.db");
-        let now = 2_000_000;
+        let now = 2_000_000u64;
         write_opencode_go_usage_test_db(&db_path, now);
 
         let facts = collect_opencode_go_usage_facts_from_dbs(&[db_path], now);
@@ -5364,6 +5370,69 @@ exit 64
         assert_eq!(facts.five_hour_remaining_percent, Some(75));
         assert_eq!(facts.weekly_remaining_percent, Some(50));
         assert_eq!(facts.monthly_remaining_percent, Some(50));
+    }
+
+    // Regression: a quiet 5h OpenCode Go window should still render quota instead of disappearing from the combined widget.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn opencode_go_sqlite_reader_keeps_empty_window_quota_facts() {
+        let temp = tempfile::tempdir().unwrap();
+        let db_path = temp.path().join("opencode.db");
+        let now = 2_000_000u64;
+        let connection = Connection::open(&db_path).unwrap();
+        connection
+            .execute_batch(
+                r#"
+                CREATE TABLE message (
+                    id text PRIMARY KEY,
+                    session_id text NOT NULL,
+                    time_created integer NOT NULL,
+                    time_updated integer NOT NULL,
+                    data text NOT NULL
+                );
+                "#,
+            )
+            .unwrap();
+        let created_at = unix_millis_from_seconds_saturating(now.saturating_sub(6 * 60 * 60));
+        connection
+            .execute(
+                "INSERT INTO message (id, session_id, time_created, time_updated, data) VALUES ('within_week', 'session', ?1, ?1, ?2)",
+                rusqlite::params![
+                    created_at,
+                    r#"{"role":"assistant","providerID":"opencode-go","cost":12.0,"tokens":{"total":85000000}}"#
+                ],
+            )
+            .unwrap();
+
+        let facts = collect_opencode_go_usage_facts_from_dbs(&[db_path], now);
+
+        assert_eq!(facts.five_hour_tokens, None);
+        assert_eq!(facts.five_hour_remaining_percent, Some(100));
+        assert_eq!(facts.weekly_tokens, Some(85_000_000));
+        assert_eq!(facts.weekly_remaining_percent, Some(60));
+        assert_eq!(facts.monthly_tokens, Some(85_000_000));
+        assert_eq!(facts.monthly_remaining_percent, Some(80));
+
+        let cache = json!({
+            "schema_version": 1,
+            "updated_at_unix_seconds": now,
+            "opencode_go_usage": {
+                "five_hour_remaining_percent": facts.five_hour_remaining_percent,
+                "weekly_tokens": facts.weekly_tokens,
+                "weekly_remaining_percent": facts.weekly_remaining_percent,
+                "monthly_tokens": facts.monthly_tokens,
+                "monthly_remaining_percent": facts.monthly_remaining_percent
+            }
+        });
+        assert_eq!(
+            render_status_cache_widget_with_agent_usage_settings(
+                &cache,
+                "opencode_go_usage",
+                &AgentUsageWidgetSettings::default(),
+            )
+            .unwrap(),
+            " [go 5h|100% wk|85M|60% mo|85M|80%]"
+        );
     }
 
     // Regression: the dedicated OpenCode Go refresh writes a shared cache that new windows hydrate before rendering.

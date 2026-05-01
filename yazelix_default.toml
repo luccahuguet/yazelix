@@ -188,8 +188,7 @@ codex_usage_display = "both"
 opencode_go_usage_display = "both"
 
 # OpenCode Go usage windows: "5h", "week", or "month"
-# Add "month" if you want the monthly local usage estimate in the status bar
-opencode_go_usage_periods = ["5h", "week"]
+opencode_go_usage_periods = ["5h", "week", "month"]
 
 # Periods shown by grouped Claude usage widgets: "day" or "month"
 claude_usage_periods = ["day"]

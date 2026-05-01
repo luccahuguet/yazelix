@@ -359,6 +359,7 @@ kind = "string_list"
 default = [
   "5h",
   "week",
+  "month",
 ]
 parser_key = "zellij_opencode_go_usage_periods"
 home_manager_option = "zellij_opencode_go_usage_periods"
