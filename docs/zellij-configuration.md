@@ -18,7 +18,7 @@ yzx import zellij
 
 ## How It Works
 
-The merger now prefers your **Yazelix-managed Zellij config** when present, then falls back to your native Zellij config, then forcibly layers Yazelix requirements on top:
+The merger prefers your **Yazelix-managed Zellij config** when present, then falls back to your native Zellij config, then forcibly layers Yazelix requirements on top:
 
 1. **User config**: `~/.config/yazelix/user_configs/zellij/config.kdl` (if it exists). If missing, Yazelix reads `~/.config/zellij/config.kdl` as a read-only fallback. If neither exists, Yazelix falls back to `zellij setup --dump-config`.
 2. **Dynamic Yazelix settings**: Generated from `yazelix.toml` (e.g., rounded corners) and appended after the user config so they win.
@@ -71,6 +71,8 @@ opencode_go_usage_periods = ["5h", "week", "month"]
 claude_usage_periods = ["5h", "week"]
 ```
 Comment out any line to hide that widget. Order matters. Restart Yazelix to regenerate layouts.
+
+`editor`, `shell`, and `term` render static labels from the active Yazelix config. `workspace`, `cursor`, and usage widgets read window-local cached facts so separate Yazelix windows keep independent status-bar state. The cursor widget renders as `▌ name` from the launch-scoped Ghostty cursor fact; it shows `none` when Ghostty cursor trails are disabled, `n/a` outside Yazelix-managed Ghostty cursor sessions, and no segment while the cache is missing. CPU and RAM use bundled runtime helper scripts; RAM reads Nushell `sys mem` data instead of scraping the welcome-screen machine summary.
 
 The Codex and Claude usage widgets combine local token totals with official quota percentages, for example `[codex 5h|138M|49% wk|1.34B|80%]` and `[claude 5h|15.5M|75% wk|66.6M|65%]`. The OpenCode Go widget reads OpenCode's local SQLite database directly and renders the compact 5h/week/month shape with the `go` label. Claude and Codex widgets use `tu` from tokenusage. Standalone flake users can install `.#yazelix_agent_tools`; Home Manager users can set `programs.yazelix.agent_usage_programs = [ "tokenusage" ]`.
 
