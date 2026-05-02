@@ -40,6 +40,7 @@ pub struct LaunchMaterializationData {
     pub selected_terminals: Vec<String>,
     pub generated_terminals: Vec<TerminalGeneratedConfig>,
     pub ghostty_cursor_name: Option<String>,
+    pub ghostty_cursor_color_hex: Option<String>,
     pub rerolled_ghostty_cursor: bool,
 }
 
@@ -99,6 +100,7 @@ pub fn prepare_launch_materialization(
 
     let mut generated_terminals = Vec::new();
     let mut ghostty_cursor_name = None;
+    let mut ghostty_cursor_color_hex = None;
     if plan.should_generate_terminal_configs {
         let terminal_data = generate_terminal_materialization(&TerminalMaterializationRequest {
             config_path: request.config_path.clone(),
@@ -109,10 +111,10 @@ pub fn prepare_launch_materialization(
             terminals: plan.selected_terminals.clone(),
         })?;
         if plan_uses_yazelix_ghostty_cursor(&plan) {
-            ghostty_cursor_name = terminal_data
-                .ghostty
-                .as_ref()
-                .and_then(|data| data.cursor_state.selected_color.clone());
+            if let Some(ghostty_data) = terminal_data.ghostty.as_ref() {
+                ghostty_cursor_name = ghostty_data.cursor_state.selected_color.clone();
+                ghostty_cursor_color_hex = ghostty_data.cursor_state.selected_color_hex.clone();
+            }
         }
         generated_terminals = terminal_data.generated;
     } else if plan.should_reroll_ghostty_cursor {
@@ -124,8 +126,11 @@ pub fn prepare_launch_materialization(
             cursor_config_path,
         })?;
         ghostty_cursor_name = ghostty_data.cursor_state.selected_color;
+        ghostty_cursor_color_hex = ghostty_data.cursor_state.selected_color_hex;
     } else if plan_uses_yazelix_ghostty_cursor(&plan) {
-        ghostty_cursor_name = resolved_ghostty_cursor_name(&cursor_registry.resolve());
+        let cursor_state = cursor_registry.resolve();
+        ghostty_cursor_name = resolved_ghostty_cursor_name(&cursor_state);
+        ghostty_cursor_color_hex = resolved_ghostty_cursor_color_hex(&cursor_state);
     }
 
     let rerolled_ghostty_cursor = plan.should_reroll_ghostty_cursor
@@ -141,6 +146,7 @@ pub fn prepare_launch_materialization(
         selected_terminals: plan.selected_terminals,
         generated_terminals,
         ghostty_cursor_name,
+        ghostty_cursor_color_hex,
         rerolled_ghostty_cursor,
     })
 }
@@ -162,6 +168,13 @@ fn resolved_ghostty_cursor_name(state: &ResolvedCursorRegistryState) -> Option<S
             .as_ref()
             .map(|cursor| cursor.name.clone())
     }
+}
+
+fn resolved_ghostty_cursor_color_hex(state: &ResolvedCursorRegistryState) -> Option<String> {
+    state
+        .selected_cursor
+        .as_ref()
+        .map(|cursor| cursor.cursor_color_hex().to_string())
 }
 
 fn build_launch_materialization_plan(

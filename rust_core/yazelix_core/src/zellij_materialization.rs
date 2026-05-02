@@ -1908,7 +1908,8 @@ ui { pane_frames { hide_session_name true } }
         assert!(template.contains(r#"command_workspace_interval "1""#));
         assert!(template.contains("command_cursor_command"));
         assert!(template.contains("status-cache-widget cursor"));
-        assert!(template.contains(r##"command_cursor_format "#[fg=#00ff88,bold]{stdout}""##));
+        assert!(template.contains(r#"command_cursor_format "{stdout}""#));
+        assert!(template.contains(r#"command_cursor_rendermode "dynamic""#));
         assert!(template.contains(r#"command_cursor_interval "10""#));
         assert!(template.contains("configs/zellij/scripts/ram_usage.nu"));
         assert!(!template.contains("macchina -o memory"));

@@ -44,8 +44,10 @@ const OPENCODE_GO_FIVE_HOUR_LIMIT_USD: f64 = 12.0;
 const OPENCODE_GO_WEEKLY_LIMIT_USD: f64 = 30.0;
 const OPENCODE_GO_MONTHLY_LIMIT_USD: f64 = 60.0;
 const EDITOR_PANE_NAME: &str = "editor";
+const DEFAULT_CURSOR_WIDGET_COLOR: &str = "#00ff88";
 const CURSOR_STATUS_GLYPH: &str = "█";
 const CURSOR_NAME_ENV: &str = "YAZELIX_CURSOR_NAME";
+const CURSOR_COLOR_ENV: &str = "YAZELIX_CURSOR_COLOR";
 const TERMINAL_ENV: &str = "YAZELIX_TERMINAL";
 pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
     "pipe",
@@ -1338,10 +1340,19 @@ fn merge_status_bar_cache_cursor_value(cache: &mut Value, previous_cursor: Optio
 fn cursor_status_value_from_env() -> Option<Value> {
     let terminal = env::var_os(TERMINAL_ENV);
     let cursor_name = env::var_os(CURSOR_NAME_ENV);
-    cursor_status_value(terminal.as_deref(), cursor_name.as_deref())
+    let cursor_color = env::var_os(CURSOR_COLOR_ENV);
+    cursor_status_value(
+        terminal.as_deref(),
+        cursor_name.as_deref(),
+        cursor_color.as_deref(),
+    )
 }
 
-fn cursor_status_value(terminal: Option<&OsStr>, cursor_name: Option<&OsStr>) -> Option<Value> {
+fn cursor_status_value(
+    terminal: Option<&OsStr>,
+    cursor_name: Option<&OsStr>,
+    cursor_color: Option<&OsStr>,
+) -> Option<Value> {
     let name = cursor_name
         .map(|value| value.to_string_lossy().trim().to_string())
         .filter(|value| !value.is_empty())?;
@@ -1350,10 +1361,18 @@ fn cursor_status_value(terminal: Option<&OsStr>, cursor_name: Option<&OsStr>) ->
         .filter(|value| !value.is_empty())
         .unwrap_or_else(|| "unknown".to_string());
 
-    Some(json!({
+    let mut cursor = json!({
         "terminal": terminal,
         "name": name,
-    }))
+    });
+    if let Some(color) = cursor_color
+        .map(|value| value.to_string_lossy())
+        .and_then(|value| normalize_status_hex_color(value.as_ref()))
+    {
+        cursor["color"] = json!(color);
+    }
+
+    Some(cursor)
 }
 
 fn unix_time_seconds() -> u64 {
@@ -2914,11 +2933,34 @@ fn render_zjstatus_cursor_widget(cache: &Value) -> String {
         .and_then(Value::as_str)
         .map(str::trim)
         .filter(|name| !name.is_empty())
+        .map(sanitize_zjstatus_cursor_name)
+        .filter(|name| !name.is_empty())
     else {
         return String::new();
     };
 
-    format!(" [ {CURSOR_STATUS_GLYPH} {name}]")
+    let color = cache
+        .get("cursor")
+        .and_then(|cursor| cursor.get("color"))
+        .and_then(Value::as_str)
+        .and_then(normalize_status_hex_color)
+        .unwrap_or_else(|| DEFAULT_CURSOR_WIDGET_COLOR.to_string());
+
+    format!(" #[fg={color},bold][{CURSOR_STATUS_GLYPH} {name}]")
+}
+
+fn normalize_status_hex_color(raw: &str) -> Option<String> {
+    let normalized = raw.trim().to_ascii_lowercase();
+    let valid = normalized.len() == 7
+        && normalized.starts_with('#')
+        && normalized[1..].bytes().all(|byte| byte.is_ascii_hexdigit());
+    valid.then_some(normalized)
+}
+
+fn sanitize_zjstatus_cursor_name(name: &str) -> String {
+    name.chars()
+        .filter(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-' | '/' | '.'))
+        .collect()
 }
 
 fn print_optional_zjstatus_segment(segment: String) {
@@ -4268,7 +4310,7 @@ mod tests {
         );
     }
 
-    // Defends: the cursor widget renders a full-width block cursor glyph plus the cached launch cursor name without zjstatus markup in stdout.
+    // Defends: the cursor widget renders a full-width block cursor glyph and cached launch cursor name in the cursor's display color.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn status_cache_cursor_widget_renders_cached_launch_fact() {
@@ -4279,14 +4321,18 @@ mod tests {
             "agent_usage": {},
             "cursor": {
                 "terminal": "ghostty",
-                "name": "reef"
+                "name": "reef",
+                "color": "#14D9A0"
             }
         });
 
         let rendered = render_status_cache_widget(&cache, "cursor").unwrap();
 
-        assert_eq!(rendered, " [ █ reef]");
-        assert!(!rendered.contains("#["));
+        assert_eq!(rendered, " #[fg=#14d9a0,bold][█ reef]");
+        assert_eq!(
+            render_status_cache_widget(&json!({"cursor": {"name": "n/a"}}), "cursor").unwrap(),
+            " #[fg=#00ff88,bold][█ n/a]"
+        );
         assert_eq!(
             render_status_cache_widget(&json!({"cursor": {"name": ""}}), "cursor").unwrap(),
             ""
@@ -4298,14 +4344,23 @@ mod tests {
     #[test]
     fn cursor_status_value_uses_non_empty_launch_env_values() {
         assert_eq!(
-            cursor_status_value(Some(OsStr::new("ghostty")), Some(OsStr::new("magma"))),
+            cursor_status_value(
+                Some(OsStr::new("ghostty")),
+                Some(OsStr::new("magma")),
+                Some(OsStr::new("#FF1600")),
+            ),
             Some(json!({
                 "terminal": "ghostty",
-                "name": "magma"
+                "name": "magma",
+                "color": "#ff1600"
             }))
         );
         assert_eq!(
-            cursor_status_value(Some(OsStr::new("ghostty")), Some(OsStr::new("  "))),
+            cursor_status_value(
+                Some(OsStr::new("ghostty")),
+                Some(OsStr::new("  ")),
+                Some(OsStr::new("#ff1600")),
+            ),
             None
         );
     }

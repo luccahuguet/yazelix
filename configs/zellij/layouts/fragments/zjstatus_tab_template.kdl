@@ -36,7 +36,8 @@ plugin location="__YAZELIX_ZJSTATUS_PLUGIN_URL__" {
     command_workspace_interval "1"
 
     command_cursor_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-cache-widget cursor"
-    command_cursor_format "#[fg=#00ff88,bold]{stdout}"
+    command_cursor_format "{stdout}"
+    command_cursor_rendermode "dynamic"
     command_cursor_interval "10"
 
     command_claude_usage_command "__YAZELIX_YZX_CONTROL_BIN__ zellij status-cache-widget claude_usage"

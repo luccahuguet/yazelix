@@ -66,6 +66,8 @@ const RESTART_LAUNCH_CLEARED_ENV_KEYS: &[&str] = &[
     "YAZELIX_MENU_POPUP",
     "YAZELIX_NU_BIN",
     "YAZELIX_POPUP_PANE",
+    "YAZELIX_CURSOR_COLOR",
+    "YAZELIX_CURSOR_NAME",
     "YAZELIX_RUNTIME_DIR",
     "YAZELIX_SESSION_CONFIG_PATH",
     "YAZELIX_SESSION_FACTS_PATH",
@@ -623,6 +625,10 @@ fn run_launch_flow(
                     &candidate.terminal,
                 )),
             ),
+            (
+                "YAZELIX_CURSOR_COLOR".to_string(),
+                launch_cursor_color_for_terminal(&materialization, &candidate.terminal),
+            ),
         ];
         if let Ok(value) = std::env::var("YAZELIX_SWEEP_TEST_ID") {
             if !value.trim().is_empty() {
@@ -692,6 +698,17 @@ fn launch_cursor_name_for_terminal(
             .to_string()
     } else {
         "n/a".to_string()
+    }
+}
+
+fn launch_cursor_color_for_terminal(
+    materialization: &LaunchMaterializationData,
+    terminal: &str,
+) -> Option<String> {
+    if terminal == "ghostty" {
+        materialization.ghostty_cursor_color_hex.clone()
+    } else {
+        None
     }
 }
 
@@ -2047,10 +2064,12 @@ mod tests {
             selected_terminals: vec!["ghostty".to_string()],
             generated_terminals: Vec::new(),
             ghostty_cursor_name: Some("reef".to_string()),
+            ghostty_cursor_color_hex: Some("#00ff66".to_string()),
             rerolled_ghostty_cursor: false,
         };
         let missing = LaunchMaterializationData {
             ghostty_cursor_name: None,
+            ghostty_cursor_color_hex: None,
             ..materialization.clone()
         };
 
@@ -2063,6 +2082,15 @@ mod tests {
             "n/a"
         );
         assert_eq!(launch_cursor_name_for_terminal(&missing, "ghostty"), "n/a");
+        assert_eq!(
+            launch_cursor_color_for_terminal(&materialization, "ghostty"),
+            Some("#00ff66".to_string())
+        );
+        assert_eq!(
+            launch_cursor_color_for_terminal(&materialization, "wezterm"),
+            None
+        );
+        assert_eq!(launch_cursor_color_for_terminal(&missing, "ghostty"), None);
     }
 
     // Invariant: restart must relaunch through the stable owner without leaking old window runtime/session helper env.
@@ -2071,6 +2099,8 @@ mod tests {
     fn restart_launch_clears_stale_runtime_session_and_helper_env() {
         for key in [
             "YAZELIX_BOOTSTRAP_RUNTIME_DIR",
+            "YAZELIX_CURSOR_COLOR",
+            "YAZELIX_CURSOR_NAME",
             "YAZELIX_RUNTIME_DIR",
             "YAZELIX_SESSION_CONFIG_PATH",
             "YAZELIX_SESSION_FACTS_PATH",

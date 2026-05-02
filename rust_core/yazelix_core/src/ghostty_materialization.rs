@@ -45,6 +45,7 @@ pub struct GhosttyMaterializationRequest {
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct GhosttyCursorState {
     pub selected_color: Option<String>,
+    pub selected_color_hex: Option<String>,
     pub selected_trail_effect: Option<String>,
     pub selected_mode_effect: Option<String>,
     pub trail_duration: f64,
@@ -196,8 +197,14 @@ fn build_ghostty_cursor_render_state(
             .as_ref()
             .map(|cursor| cursor.name.clone())
     };
+    let selected_color_hex = registry_state
+        .selected_cursor
+        .as_ref()
+        .map(|cursor| cursor.cursor_color_hex().to_string());
+
     GhosttyCursorState {
         selected_color,
+        selected_color_hex,
         selected_trail_effect: registry_state.selected_trail_effect.clone(),
         selected_mode_effect: registry_state.selected_mode_effect.clone(),
         trail_duration: registry_state.duration,
