@@ -3841,7 +3841,7 @@ fn hide_sidebar_if_visible() -> Result<(), CoreError> {
         other => Err(CoreError::classified(
             ErrorClass::Runtime,
             "hide_sidebar_failed",
-            format!("Could not hide the managed sidebar after opening the file: {other}"),
+            format!("Could not hide the managed sidebar before opening the editor: {other}"),
             "Ensure the pane orchestrator plugin is loaded, then retry.",
             json!({ "response": response }),
         )),
@@ -4189,6 +4189,10 @@ pub fn run_zellij_open_editor(args: &[String]) -> Result<i32, CoreError> {
     let yazi_id = env::var("YAZI_ID").unwrap_or_default();
     let editor_working_dir = resolve_editor_working_dir(primary_target_path);
 
+    if integration_facts.enable_sidebar && integration_facts.hide_sidebar_on_file_open {
+        hide_sidebar_if_visible()?;
+    }
+
     if editor_kind == "helix" || editor_kind == "neovim" {
         let open_status =
             open_files_in_managed_editor(&editor_kind, &target_paths, &editor_working_dir)?;
@@ -4238,10 +4242,6 @@ pub fn run_zellij_open_editor(args: &[String]) -> Result<i32, CoreError> {
         }
     }
 
-    if integration_facts.enable_sidebar && integration_facts.hide_sidebar_on_file_open {
-        hide_sidebar_if_visible()?;
-    }
-
     Ok(0)
 }
 
@@ -4269,6 +4269,10 @@ pub fn run_zellij_open_editor_cwd(args: &[String]) -> Result<i32, CoreError> {
             "Set the configured editor to Helix or Neovim before using the Yazi zoxide editor flow.",
             json!({}),
         ));
+    }
+
+    if integration_facts.enable_sidebar && integration_facts.hide_sidebar_on_file_open {
+        hide_sidebar_if_visible()?;
     }
 
     let retarget_result =
