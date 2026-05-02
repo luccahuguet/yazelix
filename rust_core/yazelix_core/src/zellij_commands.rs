@@ -44,6 +44,7 @@ const OPENCODE_GO_FIVE_HOUR_LIMIT_USD: f64 = 12.0;
 const OPENCODE_GO_WEEKLY_LIMIT_USD: f64 = 30.0;
 const OPENCODE_GO_MONTHLY_LIMIT_USD: f64 = 60.0;
 const EDITOR_PANE_NAME: &str = "editor";
+const CURSOR_STATUS_GLYPH: &str = "⌶";
 const CURSOR_NAME_ENV: &str = "YAZELIX_CURSOR_NAME";
 const TERMINAL_ENV: &str = "YAZELIX_TERMINAL";
 pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
@@ -2917,7 +2918,7 @@ fn render_zjstatus_cursor_widget(cache: &Value) -> String {
         return String::new();
     };
 
-    format!(" [▌ {name}]")
+    format!(" [{CURSOR_STATUS_GLYPH} {name}]")
 }
 
 fn print_optional_zjstatus_segment(segment: String) {
@@ -4267,7 +4268,7 @@ mod tests {
         );
     }
 
-    // Defends: the cursor widget renders a compact cursor-like glyph plus the cached launch cursor name without zjstatus markup in stdout.
+    // Defends: the cursor widget renders a compact text-cursor glyph plus the cached launch cursor name without zjstatus markup in stdout.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn status_cache_cursor_widget_renders_cached_launch_fact() {
@@ -4284,7 +4285,7 @@ mod tests {
 
         let rendered = render_status_cache_widget(&cache, "cursor").unwrap();
 
-        assert_eq!(rendered, " [▌ reef]");
+        assert_eq!(rendered, " [⌶ reef]");
         assert!(!rendered.contains("#["));
         assert_eq!(
             render_status_cache_widget(&json!({"cursor": {"name": ""}}), "cursor").unwrap(),
