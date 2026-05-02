@@ -1,5 +1,5 @@
 [releases.unreleased]
-acknowledged_guarded_changes = []
+acknowledged_guarded_changes = ["yazelix_default.toml"]
 date = ""
 headline = "Post-v16.2 work in progress"
 manual_actions = []
