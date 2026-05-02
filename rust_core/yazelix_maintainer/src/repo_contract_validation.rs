@@ -665,6 +665,7 @@ pub fn validate_flake_profile_install(
 fn validate_installed_runtime_contract_inner(repo_root: &Path) -> Result<Vec<String>, String> {
     let mut errors = Vec::new();
     let cli_wrapper = "shells/posix/yzx_cli.sh";
+    let desktop_deferred_launch_probe = "shells/posix/desktop_deferred_launch_probe.sh";
     let detached_launch_probe = "shells/posix/detached_launch_probe.sh";
     let runtime_env = "shells/posix/runtime_env.sh";
     let environment_setup = "nushell/scripts/setup/environment.nu";
@@ -682,6 +683,12 @@ fn validate_installed_runtime_contract_inner(repo_root: &Path) -> Result<Vec<Str
         repo_root,
         cli_wrapper,
         "stable POSIX CLI wrapper",
+        &mut errors,
+    );
+    require_path_exists(
+        repo_root,
+        desktop_deferred_launch_probe,
+        "desktop deferred launch probe helper",
         &mut errors,
     );
     require_path_exists(
@@ -845,6 +852,11 @@ fn validate_installed_runtime_contract_inner(repo_root: &Path) -> Result<Vec<Str
     )?;
     validate_rust_routed_nu_modules(&runtime_out, "built runtime package", &mut errors);
     require_path_exists_abs(
+        &runtime_out.join(desktop_deferred_launch_probe),
+        "built runtime desktop deferred launch probe helper",
+        &mut errors,
+    );
+    require_path_exists_abs(
         &runtime_out.join(detached_launch_probe),
         "built runtime detached launch probe helper",
         &mut errors,
@@ -856,6 +868,11 @@ fn validate_installed_runtime_contract_inner(repo_root: &Path) -> Result<Vec<Str
         "building yazelix package for installed-runtime validation",
     )?;
     validate_rust_routed_nu_modules(&yazelix_out, "built yazelix package", &mut errors);
+    require_path_exists_abs(
+        &yazelix_out.join(desktop_deferred_launch_probe),
+        "built yazelix desktop deferred launch probe helper",
+        &mut errors,
+    );
     require_path_exists_abs(
         &yazelix_out.join(detached_launch_probe),
         "built yazelix detached launch probe helper",

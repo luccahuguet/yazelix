@@ -8,7 +8,7 @@ Desktop entry launches must create an immediate visible surface before Yazelix r
 
 Desktop environments usually run application launch commands without an attached terminal. Yazelix desktop launch does meaningful work before the managed terminal exists: runtime resolution, config parsing, terminal selection, generated terminal config repair, Ghostty cursor rerolls, and the detached terminal handoff. Any failure in that phase can otherwise disappear.
 
-The supported contract is that desktop launch is allowed to use a short-lived bootstrap terminal surface before handing off to the configured Yazelix terminal. Visible failure feedback matters more than hiding every intermediate process.
+The supported contract is that desktop launch uses a short-lived bootstrap terminal surface for preflight and failure feedback, but the configured Yazelix terminal must be scheduled only after that bootstrap process exits on the success path. Visible failure feedback and clean first-window geometry both matter.
 
 ## Scope
 
@@ -22,7 +22,7 @@ The supported contract is that desktop launch is allowed to use a short-lived bo
 - Managed Yazelix desktop entries must be terminal-backed so the launch command has a visible surface immediately.
 - User-local and Home Manager desktop entries must share the same visible-feedback contract.
 - `yzx desktop launch` must print concise progress before invoking the fast path.
-- If the fast path succeeds and hands off to the managed Yazelix terminal, the bootstrap surface may exit normally.
+- If the fast path succeeds, `yzx desktop launch` must schedule the managed Yazelix terminal through the deferred desktop launcher and then exit the bootstrap surface before the managed terminal appears.
 - If launch fails before terminal handoff, `yzx desktop launch` must print the actionable error in the visible surface and pause long enough for the user to read it.
 - The desktop path must preserve runtime re-anchoring and inherited-environment cleanup. It must not trust stale ambient Yazelix, Zellij, Yazi, or shell activation state.
 - Doctor must report desktop entries that still point at the expected launcher but are not terminal-backed.
@@ -40,8 +40,9 @@ The supported contract is that desktop launch is allowed to use a short-lived bo
 1. When `yzx desktop install` writes the user-local desktop entry, the entry includes a terminal-backed launch surface and still points at the expected launcher.
 2. When Home Manager generates the Yazelix desktop entry, it also requests a terminal-backed launch surface.
 3. When `yzx desktop launch` fails before terminal handoff, the user sees both progress and actionable failure text in the visible bootstrap surface.
-4. When an installed desktop entry points at the expected launcher but lacks the terminal-backed contract, `yzx doctor` reports it as stale with repair guidance.
-5. Desktop launch still clears inherited Yazelix, Zellij, and Yazi session variables before invoking the runtime fast path.
+4. When `yzx desktop launch` succeeds, the bootstrap process exits before the managed terminal command is spawned, so tiling window managers do not size the real Yazelix window around the starter terminal.
+5. When an installed desktop entry points at the expected launcher but lacks the terminal-backed contract, `yzx doctor` reports it as stale with repair guidance.
+6. Desktop launch still clears inherited Yazelix, Zellij, and Yazi session variables before invoking the runtime fast path.
 
 ## Verification
 

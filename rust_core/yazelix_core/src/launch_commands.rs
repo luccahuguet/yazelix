@@ -641,16 +641,29 @@ fn run_launch_flow(
             }
         }
 
-        let output = run_detached_launch_probe(
-            &runtime_dir,
-            &state_dir,
-            &argv,
-            &runtime_env,
-            &working_dir,
-            config_state.needs_refresh,
-            env_removals,
-            &extra_env,
-        )?;
+        let output = if desktop_fast_path {
+            run_desktop_deferred_launch_probe(
+                &runtime_dir,
+                &state_dir,
+                &argv,
+                &runtime_env,
+                &working_dir,
+                config_state.needs_refresh,
+                env_removals,
+                &extra_env,
+            )?
+        } else {
+            run_detached_launch_probe(
+                &runtime_dir,
+                &state_dir,
+                &argv,
+                &runtime_env,
+                &working_dir,
+                config_state.needs_refresh,
+                env_removals,
+                &extra_env,
+            )?
+        };
 
         if output.status.success() {
             if verbose {
@@ -1337,6 +1350,65 @@ fn run_detached_launch_probe(
         "detached_launch_probe",
         "Retry with a valid configured terminal or reinstall Yazelix so the detached launch helper is present.",
     )
+}
+
+fn run_desktop_deferred_launch_probe(
+    runtime_dir: &Path,
+    state_dir: &Path,
+    launch_argv: &[String],
+    runtime_env: &JsonMap<String, JsonValue>,
+    cwd: &Path,
+    needs_reload: bool,
+    env_removals: &[&str],
+    extra_env: &[(String, Option<String>)],
+) -> Result<Output, CoreError> {
+    let probe_helper = desktop_deferred_launch_probe_path(runtime_dir);
+    if !probe_helper.is_file() {
+        return Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "missing_desktop_deferred_launch_probe",
+            format!(
+                "Cannot launch from desktop: deferred launch helper is missing at {}.",
+                probe_helper.display()
+            ),
+            "Restore shells/posix/desktop_deferred_launch_probe.sh or reinstall Yazelix.",
+            serde_json::json!({}),
+        ));
+    }
+
+    let log_path = get_launch_probe_log_path(
+        state_dir,
+        launch_argv
+            .first()
+            .map(String::as_str)
+            .unwrap_or("terminal"),
+    )?;
+    let mut argv = vec![
+        probe_helper.to_string_lossy().into_owned(),
+        log_path.to_string_lossy().into_owned(),
+        std::process::id().to_string(),
+    ];
+    if needs_reload {
+        argv.push("--reload".to_string());
+    }
+    argv.push("--".to_string());
+    argv.extend(launch_argv.iter().cloned());
+    command_output_with_overrides(
+        &argv,
+        Some(runtime_env),
+        cwd,
+        env_removals,
+        extra_env,
+        "desktop_deferred_launch_probe",
+        "Retry with a valid configured terminal or reinstall Yazelix so the deferred desktop launch helper is present.",
+    )
+}
+
+fn desktop_deferred_launch_probe_path(runtime_dir: &Path) -> PathBuf {
+    runtime_dir
+        .join("shells")
+        .join("posix")
+        .join("desktop_deferred_launch_probe.sh")
 }
 
 fn render_launch_failure(output: &Output) -> String {
@@ -2123,6 +2195,44 @@ mod tests {
         let entry = render_desktop_entry(Path::new("/tmp/with space/yzx"));
         assert!(entry.contains("Exec=\"/tmp/with space/yzx\" desktop launch"));
         assert!(entry.contains("Terminal=true"));
+    }
+
+    // Regression: desktop launch must keep its starter terminal for visible preflight, but schedule the real terminal through a deferred helper so the starter can close first.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn desktop_deferred_launch_helper_schedules_after_starter_parent_exits() {
+        let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .and_then(Path::parent)
+            .unwrap();
+        let helper = desktop_deferred_launch_probe_path(repo_root);
+        let tmp = TempDir::new().unwrap();
+        let launch_log = tmp.path().join("deferred.log");
+        let marker = tmp.path().join("marker");
+
+        let output = Command::new(&helper)
+            .arg(&launch_log)
+            .arg("999999999")
+            .arg("--")
+            .arg("sh")
+            .arg("-c")
+            .arg(format!("printf done > {}", marker.display()))
+            .output()
+            .unwrap();
+
+        assert!(output.status.success());
+        assert_eq!(
+            String::from_utf8_lossy(&output.stdout).trim(),
+            launch_log.display().to_string()
+        );
+
+        for _ in 0..20 {
+            if marker.is_file() {
+                return;
+            }
+            thread::sleep(Duration::from_millis(50));
+        }
+        panic!("deferred desktop helper did not launch scheduled command");
     }
 
     // Defends: macOS preview desktop parsing keeps the opt-in nested action explicit.

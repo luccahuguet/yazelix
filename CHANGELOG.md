@@ -9,7 +9,7 @@ Post-v16.2 work in progress
 Upgrade impact: no user action required
 
 Highlights:
-- Reserved for post-release changes after v16.2 lands.
+- Desktop launch keeps its starter terminal for visible preflight and failure feedback, but defers the managed Yazelix window until after the starter exits so tiling window managers do not size the real session around the bootstrap window
 
 ## v16.2 - 2026-05-02
 
