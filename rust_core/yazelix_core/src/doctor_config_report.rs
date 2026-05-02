@@ -191,7 +191,7 @@ fn render_doctor_config_details(report: &ConfigDiagnosticReport) -> String {
 
     lines.push(String::new());
     lines.push("Review the listed fields manually.".to_string());
-    lines.push("Blunt fallback: `yzx config reset`".to_string());
+    lines.push("Blunt fallback: `yzx reset config`".to_string());
     lines.join("\n")
 }
 
@@ -353,7 +353,7 @@ mod tests {
         assert!(out.contains("Unknown config field: core.stale_field"));
         assert!(out.contains("  line one"));
         assert!(out.contains("Review the listed fields manually."));
-        assert!(out.contains("yzx config reset"));
+        assert!(out.contains("yzx reset config"));
     }
 
     // Defends: zero-issue report must not emit a misleading multi-line “stale config” block.

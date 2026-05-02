@@ -34,7 +34,7 @@ def format_diagnostic_lines [diagnostics: list<record>] {
 
 def render_startup_config_error [report: record] {
     let detail_lines = (format_diagnostic_lines ($report.blocking_diagnostics? | default []))
-    let recovery_hint = "Update the reported config fields manually, then retry. Use `yzx config reset` only as a blunt fallback."
+    let recovery_hint = "Update the reported config fields manually, then retry. Use `yzx reset config` only as a blunt fallback."
 
     (
         [

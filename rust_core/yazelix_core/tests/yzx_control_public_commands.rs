@@ -2,6 +2,8 @@
 
 use tempfile::TempDir;
 
+use std::fs;
+
 mod support;
 
 use support::commands::{apply_managed_config_env, yzx_control_command};
@@ -114,6 +116,77 @@ fn yzx_control_cursors_prints_resolved_color_surface() {
     assert!(stdout.contains("orchid: split divider=vertical transition=hard"));
     assert!(stdout.contains("magma: split divider=horizontal transition=soft"));
     assert!(expected_path.exists());
+}
+
+// Defends: `yzx reset cursor` is the explicit recovery path for stale cursor sidecars instead of compatibility-migrating old cursor schemas.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_control_reset_cursor_replaces_stale_cursor_sidecar() {
+    let fixture = managed_config_fixture("");
+    let cursor_path = fixture
+        .config_dir
+        .join("user_configs")
+        .join("yazelix_cursors.toml");
+    fs::write(
+        &cursor_path,
+        r##"
+schema_version = 1
+enabled_cursors = ["blaze", "inferno"]
+
+[settings]
+trail = "inferno"
+trail_effect = "random"
+mode_effect = "random"
+glow = "medium"
+duration = 1.0
+kitty_enable_cursor = true
+
+[[cursor]]
+name = "blaze"
+family = "simple_dual"
+colors = ["#ffb929", "#ff0000"]
+"##,
+    )
+    .unwrap();
+
+    let mut command = yzx_control_command();
+    apply_managed_config_env(&mut command, &fixture)
+        .arg("reset")
+        .arg("cursor")
+        .arg("--yes");
+    let stdout = stdout_text(command.output().unwrap());
+    let reset = fs::read_to_string(&cursor_path).unwrap();
+
+    assert!(stdout.contains("Replaced yazelix_cursors.toml with a fresh template"));
+    assert!(reset.contains("family = \"mono\""));
+    assert!(reset.contains("name = \"magma\""));
+    assert!(!reset.contains("simple_dual"));
+    assert!(!reset.contains("inferno"));
+    assert!(
+        fs::read_dir(cursor_path.parent().unwrap())
+            .unwrap()
+            .any(|entry| entry
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .starts_with("yazelix_cursors.toml.backup-"))
+    );
+}
+
+// Regression: the removed nested reset shape must fail instead of surviving as a hidden compatibility alias.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_control_config_reset_shape_is_removed() {
+    let output = yzx_control_command()
+        .arg("config")
+        .arg("reset")
+        .arg("--help")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(64));
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("Unknown argument for yzx config: reset"));
 }
 
 // Defends: the Rust-owned `yzx keys` leaves preserve alias parity and tool-specific guidance instead of routing every leaf to the same generic output.

@@ -136,8 +136,7 @@ const DOCTOR_FLAGS: &[YzxCommandParameter] = &[
 ];
 const ONBOARD_FLAGS: &[YzxCommandParameter] = &[switch("force", None), switch("dry-run", None)];
 const CONFIG_FLAGS: &[YzxCommandParameter] = &[switch("path", None)];
-const CONFIG_RESET_FLAGS: &[YzxCommandParameter] =
-    &[switch("yes", None), switch("no-backup", None)];
+const RESET_FLAGS: &[YzxCommandParameter] = &[switch("yes", None), switch("no-backup", None)];
 
 const POPUP_ARGS: &[YzxCommandParameter] = &[rest("program")];
 const SCREEN_ARGS: &[YzxCommandParameter] = &[positional("style", "string", true)];
@@ -284,15 +283,36 @@ const CONFIG_ROOT_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Config),
     Some("Print the active config TOML or its resolved path."),
 );
-const CONFIG_RESET_COMMAND: YzxCommandMetadata = metadata(
-    "yzx config reset",
+const CONFIG_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[CONFIG_ROOT_COMMAND];
+const RESET_ROOT_COMMAND: YzxCommandMetadata = metadata(
+    "yzx reset",
+    "Show Yazelix reset targets",
+    YzxCommandCategory::Config,
+    &[],
+    Some(YzxMenuCategory::Config),
+    Some("Show reset targets for managed Yazelix config surfaces."),
+);
+const RESET_CONFIG_COMMAND: YzxCommandMetadata = metadata(
+    "yzx reset config",
     "Replace the main Yazelix config with a fresh shipped template",
     YzxCommandCategory::Config,
-    CONFIG_RESET_FLAGS,
+    RESET_FLAGS,
     Some(YzxMenuCategory::Config),
-    Some("Reset managed Yazelix config surfaces back to their defaults."),
+    Some("Reset user_configs/yazelix.toml back to the shipped default."),
 );
-const CONFIG_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[CONFIG_ROOT_COMMAND, CONFIG_RESET_COMMAND];
+const RESET_CURSOR_COMMAND: YzxCommandMetadata = metadata(
+    "yzx reset cursor",
+    "Replace the Ghostty cursor registry with a fresh shipped template",
+    YzxCommandCategory::Config,
+    RESET_FLAGS,
+    Some(YzxMenuCategory::Config),
+    Some("Reset user_configs/yazelix_cursors.toml back to the shipped default."),
+);
+const RESET_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[
+    RESET_ROOT_COMMAND,
+    RESET_CONFIG_COMMAND,
+    RESET_CURSOR_COMMAND,
+];
 const CURSORS_COMMAND: YzxCommandMetadata = metadata(
     "yzx cursors",
     "Inspect Ghostty cursor presets and resolved colors",
@@ -539,6 +559,7 @@ const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
     rust_control_family("run", RUN_FAMILY_COMMANDS),
     rust_control_family("popup", POPUP_FAMILY_COMMANDS),
     rust_control_family("reveal", REVEAL_FAMILY_COMMANDS),
+    rust_control_family("reset", RESET_FAMILY_COMMANDS),
     rust_control_family("restart", RESTART_FAMILY_COMMANDS),
     rust_control_family("screen", SCREEN_FAMILY_COMMANDS),
     rust_control_family("status", STATUS_FAMILY_COMMANDS),
@@ -1234,7 +1255,11 @@ mod tests {
             YzxPublicRootRoute::RustControl
         );
         assert_eq!(
-            classify_yzx_root_route(&["config".into(), "reset".into(), "--yes".into()]).unwrap(),
+            classify_yzx_root_route(&["reset".into(), "config".into(), "--yes".into()]).unwrap(),
+            YzxPublicRootRoute::RustControl
+        );
+        assert_eq!(
+            classify_yzx_root_route(&["reset".into(), "cursor".into(), "--yes".into()]).unwrap(),
             YzxPublicRootRoute::RustControl
         );
         assert_eq!(

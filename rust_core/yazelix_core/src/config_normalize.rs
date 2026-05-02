@@ -100,7 +100,7 @@ pub fn normalize_config(
                 "Yazelix found stale or unsupported config entries in {}.",
                 diagnostic_report.config_path
             ),
-            "Update the reported config fields manually, then retry. Use `yzx config reset` only as a blunt fallback.",
+            "Update the reported config fields manually, then retry. Use `yzx reset config` only as a blunt fallback.",
             serde_json::to_value(&diagnostic_report).unwrap_or_else(|_| json!({})),
         ));
     }
@@ -478,7 +478,7 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
                     "Next: Remove or rename this field manually.".to_string(),
                     "Next: Run `yzx doctor --verbose` to review the full config report."
                         .to_string(),
-                    "Next: Use `yzx config reset` only as a blunt fallback.".to_string(),
+                    "Next: Use `yzx reset config` only as a blunt fallback.".to_string(),
                 ];
             }
         }
@@ -496,7 +496,7 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
                 finding.message,
                 "Next: Replace this value with one of the supported options.".to_string(),
                 "Next: Run `yzx doctor --verbose` to review the full config report.".to_string(),
-                "Next: Use `yzx config reset` only as a blunt fallback.".to_string(),
+                "Next: Use `yzx reset config` only as a blunt fallback.".to_string(),
             ];
         }
         "missing_field" => {
@@ -684,7 +684,7 @@ fn invalid_value_error(field_path: &str, actual_value: &str, expectation: &str) 
     let remediation = if field_path == "terminal.config_mode" {
         "Use `terminal.config_mode = \"yazelix\"` for the supported managed path, or `\"user\"` only when you want Yazelix to load the terminal's native config file."
     } else {
-        "Update yazelix.toml with a supported value, or run `yzx config reset` to restore the template."
+        "Update yazelix.toml with a supported value, or run `yzx reset config` to restore the template."
     };
 
     CoreError::classified(

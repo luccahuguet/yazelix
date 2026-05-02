@@ -91,7 +91,7 @@ pub fn validate_primary_config_surface(paths: &PrimaryConfigPaths) -> Result<(),
             ErrorClass::Config,
             "legacy_root_config_surface",
             "Yazelix found an unsupported legacy root-level config surface.",
-            "Move your current Yazelix config to user_configs/yazelix.toml manually, or run `yzx config reset` to create a fresh v15 config template.",
+            "Move your current Yazelix config to user_configs/yazelix.toml manually, or run `yzx reset config` to create a fresh v15 config template.",
             json!({
                 "legacy_main": paths.legacy_user_config.display().to_string(),
                 "current_main": paths.user_config.display().to_string(),

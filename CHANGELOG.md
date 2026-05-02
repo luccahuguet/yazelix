@@ -123,7 +123,7 @@ Command surface:
 - `yzx menu --popup`: toggle the popup command palette.
 
 Migration notes:
-- Compare your current config with `yazelix_default.toml` or run `yzx config reset` to start fresh; v15 does not ship automatic config migrations.
+- Compare your current config with `yazelix_default.toml` or run `yzx reset config` to start fresh; v15 does not ship automatic config migrations.
 - If you relied on Classic-only surfaces such as `yazelix packs`, `yzx packs`, or `yzx refresh`, stay on the historical `v14` tag or adapt to the trimmed v15 command surface.
 
 
@@ -234,7 +234,7 @@ Upgrade impact: manual action required
 Highlights:
 - Added automatic safe config-migration preflight on startup, launch, restart, and interactive env flows, while keeping `yzx config migrate` as the explicit preview and repair surface.
 - Stabilized sidebar-aware layout control with pane-orchestrator fixes, removed stale swap-layout widget output, added the missing no-side bottom-terminal family, and made `editor.sidebar_width_percent` configurable.
-- Simplified config-facing commands by splitting downstream inspection into `yzx open hx|yazi|zellij`, managed config editing into `yzx edit config|packs`, and adding `yzx config reset --no-backup`, while polishing welcome-screen skip behavior.
+- Simplified config-facing commands by splitting downstream inspection into `yzx open hx|yazi|zellij`, managed config editing into `yzx edit config|packs`, and adding `yzx reset config --no-backup`, while polishing welcome-screen skip behavior.
 
 Migration notes:
 - Replace `yzx config hx`, `yzx config yazi`, and `yzx config zellij` with `yzx open hx`, `yzx open yazi`, and `yzx open zellij`.

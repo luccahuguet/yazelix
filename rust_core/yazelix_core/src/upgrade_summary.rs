@@ -201,7 +201,7 @@ fn render_upgrade_summary(entry: &UpgradeNoteEntry, changelog_path: &Path) -> St
                 "Yazelix v15 no longer ships an automatic config migration engine.".to_string(),
             );
             lines.push(
-                "If you are jumping from this release era, compare your config manually with the current template or run `yzx config reset` to start fresh."
+                "If you are jumping from this release era, compare your config manually with the current template or run `yzx reset config` to start fresh."
                     .to_string(),
             );
         }
@@ -436,7 +436,7 @@ migration_ids = ["remove_zellij_widget_tray_layout", "remove_shell_enable_atuin"
         assert_eq!(second.reason, "already_seen");
 
         let manual = show_current_upgrade_summary(&runtime_dir, &state_dir, "v15.4", true).unwrap();
-        assert!(manual.report.output.contains("yzx config reset"));
+        assert!(manual.report.output.contains("yzx reset config"));
         assert_eq!(manual.report.last_seen_version.as_deref(), Some("v15.4"));
     }
 

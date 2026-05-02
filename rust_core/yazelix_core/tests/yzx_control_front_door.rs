@@ -83,7 +83,7 @@ migration_ids = ["remove_zellij_widget_tray_layout"]
     let stdout = stdout_text(output);
     assert!(stdout.contains("What's New In Yazelix v15.4"));
     assert!(stdout.contains("historical release included config-shape changes"));
-    assert!(stdout.contains("yzx config reset"));
+    assert!(stdout.contains("yzx reset config"));
 
     let state_path = state_dir.join("state/upgrade_summary/last_seen_version.txt");
     assert_eq!(fs::read_to_string(state_path).unwrap().trim(), "v15.4");

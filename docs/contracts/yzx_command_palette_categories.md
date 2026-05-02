@@ -110,7 +110,8 @@ Commands that show, edit, import, migrate, or reset user-managed config surfaces
 Included:
 
 - `yzx config`
-- `yzx config reset`
+- `yzx reset config`
+- `yzx reset cursor`
 - `yzx edit`
 - `yzx edit config`
 - `yzx import`

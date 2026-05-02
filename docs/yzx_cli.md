@@ -269,12 +269,19 @@ Open one of the managed config surfaces through explicit or fuzzy target selecti
 - Yazi targets stay inside `user_configs/yazi/` and do not expose host-owned `~/.config/yazi/` files
 - `--print`: print the resolved managed path without opening
 
-### `yzx config reset [--yes] [--no-backup]`
+### `yzx reset config [--yes] [--no-backup]`
 Replace `yazelix.toml` with a fresh copy of the shipped template
 - Backs up the current config file to `*.backup-<timestamp>` first when it exists
 - `--yes`: skip the confirmation prompt
 - `--no-backup`: discard the previous config file instead of renaming it to a backup first
 - Use this as a blunt recovery path when `yzx doctor` reports stale config fields
+
+### `yzx reset cursor [--yes] [--no-backup]`
+Replace `yazelix_cursors.toml` with a fresh copy of the shipped cursor template
+- Backs up the current cursor sidecar to `*.backup-<timestamp>` first when it exists
+- `--yes`: skip the confirmation prompt
+- `--no-backup`: discard the previous cursor sidecar instead of renaming it to a backup first
+- Use this when cursor schema changes make launch-time Ghostty materialization fail
 
 ### `yzx help`
 Show command reference
@@ -325,9 +332,11 @@ yzx edit config               # Open the main managed config
 yzx edit cursors              # Open the Ghostty cursor registry sidecar
 yzx edit keymap               # Open managed Yazi keymap.toml
 yzx edit init                 # Open managed Yazi init.lua
-yzx config reset              # Replace the managed config with a fresh template after confirmation
-yzx config reset --yes        # Replace the managed config with a fresh template and keep backups
-yzx config reset --yes --no-backup  # Replace the managed config without writing backups
+yzx reset config              # Replace the managed config with a fresh template after confirmation
+yzx reset config --yes        # Replace the managed config with a fresh template and keep backups
+yzx reset config --yes --no-backup  # Replace the managed config without writing backups
+yzx reset cursor              # Replace the cursor sidecar with a fresh template after confirmation
+yzx reset cursor --yes        # Replace the cursor sidecar with a fresh template and keep backups
 yzx status                    # System information
 yzx status --versions         # Show all tool versions
 yzx sponsor                   # Open the Yazelix sponsor page

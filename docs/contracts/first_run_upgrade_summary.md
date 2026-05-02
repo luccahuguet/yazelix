@@ -26,7 +26,7 @@ The last-seen version must be stored in Yazelix-managed state, not in the user c
 
 `yzx whats_new` should render the same current-version summary on demand even when the version was already seen automatically. The command should also mark the current version as seen so intentional manual review does not force a duplicate automatic prompt later.
 
-When historical release notes declare `upgrade_impact = "migration_available"`, the rendered summary should explain that v15 no longer ships an automatic config-migration engine. It should point users toward manual comparison with the current template or `yzx config reset` as a blunt fresh-start path. It should not probe the current config through a migration registry, because that registry is no longer part of the live product.
+When historical release notes declare `upgrade_impact = "migration_available"`, the rendered summary should explain that v15 no longer ships an automatic config-migration engine. It should point users toward manual comparison with the current template or `yzx reset config` as a blunt fresh-start path. It should not probe the current config through a migration registry, because that registry is no longer part of the live product.
 
 If the current version has no release-note entry, startup should stay quiet instead of inventing notes. `yzx whats_new` should fail clearly in that case.
 

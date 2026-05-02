@@ -31,6 +31,7 @@ pub mod managed_user_config_stubs;
 pub mod onboard_commands;
 pub mod profile_commands;
 pub mod public_command_surface;
+pub mod reset_commands;
 pub mod runtime_contract;
 pub mod runtime_env;
 pub mod runtime_materialization;
@@ -117,6 +118,7 @@ pub use public_command_surface::{
     YzxMenuCategory, YzxParameterKind, YzxPublicRootRoute, classify_yzx_root_route,
     yzx_command_metadata,
 };
+pub use reset_commands::run_yzx_reset;
 pub use runtime_contract::{
     GeneratedLayoutCheckRequest, LaunchPreflightPayload, LinuxGhosttyDesktopGraphicsRequest,
     PreflightKind, RuntimeCheckData, RuntimeContractEvaluateData, RuntimeContractEvaluateRequest,

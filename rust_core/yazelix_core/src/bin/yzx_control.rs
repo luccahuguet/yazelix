@@ -48,6 +48,7 @@ use yazelix_core::run_yzx_keys;
 use yazelix_core::run_yzx_launch;
 use yazelix_core::run_yzx_onboard;
 use yazelix_core::run_yzx_popup;
+use yazelix_core::run_yzx_reset;
 use yazelix_core::run_yzx_restart;
 use yazelix_core::run_yzx_reveal;
 use yazelix_core::run_yzx_screen;
@@ -79,7 +80,6 @@ fn usage() -> ! {
     eprintln!("Usage: yzx_control env [--no-shell|-n]");
     eprintln!("       yzx_control run <command> [args...]");
     eprintln!("       yzx_control config [--path]");
-    eprintln!("       yzx_control config reset [--yes] [--no-backup]");
     eprintln!("       yzx_control cursors");
     eprintln!("       yzx_control cwd [target]");
     eprintln!("       yzx_control warp [target] [--kill|-k]");
@@ -124,6 +124,7 @@ fn usage() -> ! {
     eprintln!("       yzx_control zellij open-editor-cwd <path>");
     eprintln!("       yzx_control zellij open-terminal <path>");
     eprintln!("       yzx_control reveal <path>");
+    eprintln!("       yzx_control reset <config|cursor> [--yes] [--no-backup]");
     eprintln!("       yzx_control restart");
     eprintln!("       yzx_control screen [style]");
     eprintln!("       yzx_control why");
@@ -721,7 +722,7 @@ fn render_version_report(report: &VersionReportData) {
     print_aligned_rows(&rows, color);
 }
 
-const CONFIG_RECOVERY_HINT: &str = "Update the reported config fields manually, then retry. Use `yzx config reset` only as a blunt fallback.";
+const CONFIG_RECOVERY_HINT: &str = "Update the reported config fields manually, then retry. Use `yzx reset config` only as a blunt fallback.";
 
 fn render_startup_config_error(report: &ConfigDiagnosticReport) -> String {
     let mut lines = vec![
@@ -1200,6 +1201,7 @@ fn main() {
         "profile" => run_profile(&argv),
         "zellij" => run_zellij(&argv),
         "reveal" => run_yzx_reveal(&argv),
+        "reset" => run_yzx_reset(&argv),
         "restart" => run_yzx_restart(&argv),
         "screen" => run_yzx_screen(&argv),
         "why" => run_yzx_why(&argv),

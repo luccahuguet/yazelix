@@ -55,7 +55,7 @@ This file exists so current docs and current contracts can point at one authorit
 - Managed override directories such as Zellij, Yazi, Helix, and shell user hooks remain part of that user-owned config surface.
 - The current trimmed branch does not have a `yazelix_packs.toml` sidecar and does not expose a first-class pack graph.
 - Legacy or removed config fields fail fast instead of degrading silently.
-- The current trimmed line does not ship a config-migration engine. Users moving from very old config shapes should compare with the current template manually or use `yzx config reset` as a blunt fresh-start path.
+- The current trimmed line does not ship a config-migration engine. Users moving from very old config shapes should compare with the current template manually or use `yzx reset config` as a blunt fresh-start path.
 
 ### Generated State
 

@@ -4,7 +4,7 @@ date = ""
 headline = "Home Manager leaves yazelix.toml mutable, cursor presets move to a sidecar, and status widgets use cached facts"
 manual_actions = [
   "If your user_configs/yazelix.toml still contains terminal.ghostty_* cursor fields, move those cursor choices and effects into user_configs/yazelix_cursors.toml and remove the old fields",
-  "If your user_configs/yazelix_cursors.toml uses family = \"simple_dual\" or \"axis_gradient\", update those cursor definitions to family = \"mono\" or family = \"split\" and replace split direction/blend with divider/transition",
+  "If your user_configs/yazelix_cursors.toml uses family = \"simple_dual\" or \"axis_gradient\", update those cursor definitions to family = \"mono\" or family = \"split\", or run `yzx reset cursor` to replace the cursor sidecar with the current shipped template",
   "If your user_configs/yazelix.toml uses editor.initial_sidebar_state, remove it and set editor.hide_sidebar_on_file_open = true when you want the Yazi sidebar hidden after opening a file"
 ]
 migration_ids = []
@@ -189,7 +189,7 @@ migration_ids = []
 summary = [
   "Added automatic safe config-migration preflight on startup, launch, restart, and interactive env flows, while keeping `yzx config migrate` as the explicit preview and repair surface.",
   "Stabilized sidebar-aware layout control with pane-orchestrator fixes, removed stale swap-layout widget output, added the missing no-side bottom-terminal family, and made `editor.sidebar_width_percent` configurable.",
-  "Simplified config-facing commands by splitting downstream inspection into `yzx open hx|yazi|zellij`, managed config editing into `yzx edit config|packs`, and adding `yzx config reset --no-backup`, while polishing welcome-screen skip behavior."
+  "Simplified config-facing commands by splitting downstream inspection into `yzx open hx|yazi|zellij`, managed config editing into `yzx edit config|packs`, and adding `yzx reset config --no-backup`, while polishing welcome-screen skip behavior."
 ]
 upgrade_impact = "manual_action_required"
 version = "v13.10"
@@ -378,7 +378,7 @@ acknowledged_guarded_changes = ["yazelix_default.toml", "home_manager/module.nix
 date = "2026-04-13"
 headline = "v15 trims Yazelix down to the fast workspace core"
 manual_actions = [
-  "Compare your current config with `yazelix_default.toml` or run `yzx config reset` to start fresh; v15 does not ship automatic config migrations.",
+  "Compare your current config with `yazelix_default.toml` or run `yzx reset config` to start fresh; v15 does not ship automatic config migrations.",
   "If you relied on Classic-only surfaces such as `yazelix packs`, `yzx packs`, or `yzx refresh`, stay on the historical `v14` tag or adapt to the trimmed v15 command surface."
 ]
 migration_ids = []

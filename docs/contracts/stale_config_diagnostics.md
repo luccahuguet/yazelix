@@ -6,7 +6,7 @@ Yazelix should surface stale or unsupported `yazelix.toml` problems through one 
 
 ## Why
 
-When a config change breaks startup, generic wrapper failures force users to guess whether Yazelix itself is broken or whether their config is stale. v15 no longer carries the old automatic config-migration engine, so the live contract is narrower: detect unsupported config precisely, fail fast, and point users to manual cleanup or `yzx config reset` instead of pretending Yazelix can rewrite every historical shape safely.
+When a config change breaks startup, generic wrapper failures force users to guess whether Yazelix itself is broken or whether their config is stale. v15 no longer carries the old automatic config-migration engine, so the live contract is narrower: detect unsupported config precisely, fail fast, and point users to manual cleanup or `yzx reset config` instead of pretending Yazelix can rewrite every historical shape safely.
 
 ## Scope
 
@@ -21,7 +21,7 @@ This contract covers:
 
 When Yazelix reads `yazelix.toml`, it should build a shared config-diagnostic report before continuing. Startup should block only on genuinely unsupported config problems such as unknown fields, type mismatches, or unsupported enum values. It should not block on merely omitted fields that Yazelix can still default safely.
 
-For unsupported config, Yazelix should fail clearly without pretending a migration exists. Messages should identify the exact field and next step, usually manual cleanup followed by a retry. `yzx config reset` is a blunt fallback, not a silent rewrite path.
+For unsupported config, Yazelix should fail clearly without pretending a migration exists. Messages should identify the exact field and next step, usually manual cleanup followed by a retry. `yzx reset config` is a blunt fallback, not a silent rewrite path.
 
 `yzx doctor` should consume the same structured report, but it may additionally show missing-field hygiene findings that startup intentionally tolerates. `yzx doctor --fix` should not apply config migrations because the live v15 migration engine is gone; it may still own other fixable doctor surfaces.
 
