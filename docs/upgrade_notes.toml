@@ -1,10 +1,10 @@
 [releases.unreleased]
-acknowledged_guarded_changes = ["yazelix_default.toml"]
+acknowledged_guarded_changes = ["yazelix_default.toml", "home_manager/module.nix"]
 date = ""
 headline = "Post-v16.2 work in progress"
 manual_actions = []
 migration_ids = []
-summary = ["Desktop launch keeps its starter terminal for visible preflight and failure feedback, but defers the managed Yazelix window until after the starter exits so tiling window managers do not size the real session around the bootstrap window.", "The default Zellij status widget tray includes codex_usage so new configs show the Codex quota/reset widget without manual opt-in."]
+summary = ["Desktop launch keeps its starter terminal for visible preflight and failure feedback, but defers the managed Yazelix window until after the starter exits so tiling window managers do not size the real session around the bootstrap window.", "The default Zellij status widget tray includes codex_usage so new configs show the Codex quota/reset widget without manual opt-in.", "Home Manager desktop-entry generation is Linux-only so Darwin Home Manager evaluations do not require Linux xdg desktop-entry options."]
 upgrade_impact = "no_user_action"
 version = "unreleased"
 
