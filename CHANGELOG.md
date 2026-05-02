@@ -4,6 +4,15 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
+Post-v16.2 work in progress
+
+Upgrade impact: no user action required
+
+Highlights:
+- Reserved for post-release changes after v16.2 lands.
+
+## v16.2 - 2026-05-02
+
 Home Manager leaves yazelix.toml mutable, cursor presets move to a sidecar, and status widgets use cached facts
 
 Upgrade impact: manual action required
@@ -20,6 +29,7 @@ Manual action:
 - If your `user_configs/yazelix.toml` still contains `terminal.ghostty_*` cursor fields, move those cursor choices and effects into `user_configs/yazelix_cursors.toml` and remove the old fields
 - If your `user_configs/yazelix_cursors.toml` uses `family = "simple_dual"` or `family = "axis_gradient"`, update those cursor definitions to `family = "mono"` or `family = "split"` and replace split `direction`/`blend` with `divider`/`transition`
 - If your `user_configs/yazelix.toml` uses `editor.initial_sidebar_state`, remove it and set `editor.hide_sidebar_on_file_open = true` when you want the Yazi sidebar hidden after opening a file
+
 
 ## v16.1 - 2026-04-25
 
