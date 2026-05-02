@@ -55,8 +55,8 @@ widget_tray = [
   "editor",  # Active editor
   "shell",   # Active shell
   "term",    # Terminal emulator
+  "cursor",  # Active Ghostty cursor preset (colored █ name, n/a outside Yazelix Ghostty)
   # "workspace", # Workspace root
-  # "cursor", # Active Ghostty cursor preset (colored █ name, n/a outside Yazelix Ghostty)
   # "claude_usage", # Combined Claude 5h/week usage and quota
   # "codex_usage", # Codex 5h/week reset timing and quota
   # "opencode_go_usage", # Combined OpenCode Go 5h/week/month usage and quota

@@ -272,6 +272,7 @@ default = [
   "editor",
   "shell",
   "term",
+  "cursor",
   "cpu",
   "ram",
 ]

@@ -121,6 +121,7 @@ fn default_widget_tray() -> Vec<String> {
         "editor".into(),
         "shell".into(),
         "term".into(),
+        "cursor".into(),
         "cpu".into(),
         "ram".into(),
     ]
@@ -667,7 +668,7 @@ mod tests {
         );
         assert_eq!(
             default_widget_tray(),
-            vec!["editor", "shell", "term", "cpu", "ram"]
+            vec!["editor", "shell", "term", "cursor", "cpu", "ram"]
         );
     }
 
