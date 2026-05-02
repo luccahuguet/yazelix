@@ -6,7 +6,9 @@ use std::fs;
 
 mod support;
 
-use support::commands::{apply_managed_config_env, yzx_control_command};
+use support::commands::{
+    apply_managed_config_env, yzx_control_bin_path, yzx_control_command, yzx_root_command,
+};
 use support::envelopes::stdout_text;
 use support::fixtures::managed_config_fixture;
 
@@ -72,6 +74,25 @@ fn yzx_control_onboard_help_prints_prompt_contract() {
     assert!(stdout.contains("yzx onboard [--force] [--dry-run]"));
     assert!(stdout.contains("--force"));
     assert!(stdout.contains("--dry-run"));
+}
+
+// Regression: no-argument public commands still accept help flags through the public root without reporting them as operational arguments.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_restart_help_prints_usage_without_restarting() {
+    for flag in ["-h", "--help"] {
+        let output = yzx_root_command()
+            .arg("restart")
+            .arg(flag)
+            .env("YAZELIX_RUNTIME_DIR", std::env::temp_dir())
+            .env("YAZELIX_YZX_CONTROL_BIN", yzx_control_bin_path())
+            .output()
+            .unwrap();
+        let stdout = stdout_text(output);
+
+        assert!(stdout.contains("Restart the current Yazelix window"));
+        assert!(stdout.contains("yzx restart"));
+    }
 }
 
 // Defends: `yzx edit cursors --print` resolves the user-owned Ghostty cursor sidecar without launching an editor.

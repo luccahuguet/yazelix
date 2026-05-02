@@ -229,6 +229,14 @@ pub fn run_yzx_desktop(args: &[String]) -> Result<i32, CoreError> {
 }
 
 pub fn run_yzx_restart(args: &[String]) -> Result<i32, CoreError> {
+    if matches!(
+        args,
+        [arg] if matches!(arg.as_str(), "-h" | "--help" | "help")
+    ) {
+        print_restart_help();
+        return Ok(0);
+    }
+
     if !args.is_empty() {
         return Err(CoreError::usage(
             "yzx restart does not accept arguments. Try `yzx restart`.",
@@ -811,6 +819,13 @@ fn print_launch_help() {
     println!();
     println!("Usage:");
     println!("  yzx launch [--path <dir> | --home] [--terminal <name>] [--verbose]");
+}
+
+fn print_restart_help() {
+    println!("Restart the current Yazelix window");
+    println!();
+    println!("Usage:");
+    println!("  yzx restart");
 }
 
 fn print_desktop_help() {

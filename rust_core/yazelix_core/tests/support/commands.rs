@@ -1,4 +1,5 @@
 use assert_cmd::Command;
+use std::path::PathBuf;
 
 use super::fixtures::ManagedConfigFixture;
 
@@ -8,6 +9,10 @@ pub fn yzx_core_command() -> Command {
 
 pub fn yzx_control_command() -> Command {
     Command::cargo_bin("yzx_control").unwrap()
+}
+
+pub fn yzx_control_bin_path() -> PathBuf {
+    assert_cmd::cargo::cargo_bin("yzx_control")
 }
 
 pub fn yzx_root_command() -> Command {
