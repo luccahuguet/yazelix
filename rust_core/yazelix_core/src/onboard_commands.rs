@@ -459,7 +459,7 @@ fn widget_tray_question() -> MultiQuestion {
             ("Workspace", "workspace"),
             ("Cursor preset", "cursor"),
             ("Claude 5h/week usage and quota", "claude_usage"),
-            ("Codex 5h/week usage and quota", "codex_usage"),
+            ("Codex 5h/week reset timing and quota", "codex_usage"),
             (
                 "OpenCode Go 5h/week/month usage and quota",
                 "opencode_go_usage",

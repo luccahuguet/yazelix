@@ -31,8 +31,9 @@ const STATUS_BUS_SCHEMA_VERSION: i64 = 1;
 const STATUS_BAR_CACHE_SCHEMA_VERSION: i64 = 1;
 const ORCHESTRATOR_HEARTBEAT_SCHEMA_VERSION: i64 = 1;
 const CLAUDE_USAGE_CACHE_SCHEMA_VERSION: i64 = 1;
-const CODEX_USAGE_CACHE_SCHEMA_VERSION: i64 = 1;
+const CODEX_USAGE_CACHE_SCHEMA_VERSION: i64 = 2;
 const OPENCODE_GO_USAGE_CACHE_SCHEMA_VERSION: i64 = 1;
+const CODEX_USAGE_WINDOW_SEPARATOR: &str = " · ";
 const CLAUDE_USAGE_LOCK_STALE_AFTER_SECONDS: u64 = 300;
 const CODEX_USAGE_LOCK_STALE_AFTER_SECONDS: u64 = 300;
 const OPENCODE_GO_USAGE_LOCK_STALE_AFTER_SECONDS: u64 = 300;
@@ -43,6 +44,9 @@ const OPENCODE_GO_MONTH_SECONDS: u64 = 30 * 24 * 60 * 60;
 const OPENCODE_GO_FIVE_HOUR_LIMIT_USD: f64 = 12.0;
 const OPENCODE_GO_WEEKLY_LIMIT_USD: f64 = 30.0;
 const OPENCODE_GO_MONTHLY_LIMIT_USD: f64 = 60.0;
+const MINUTE_SECONDS: u64 = 60;
+const HOUR_SECONDS: u64 = 60 * MINUTE_SECONDS;
+const DAY_SECONDS: u64 = 24 * HOUR_SECONDS;
 const EDITOR_PANE_NAME: &str = "editor";
 const DEFAULT_CURSOR_WIDGET_COLOR: &str = "#00ff88";
 const CURSOR_STATUS_GLYPH: &str = "█";
@@ -189,7 +193,7 @@ impl Default for AgentUsageWidgetSettings {
     fn default() -> Self {
         Self {
             claude_display: WindowedUsageDisplay::Both,
-            codex_display: WindowedUsageDisplay::Both,
+            codex_display: WindowedUsageDisplay::Quota,
             opencode_go_display: WindowedUsageDisplay::Both,
             claude_periods: default_windowed_usage_periods().to_vec(),
             opencode_go_periods: default_opencode_go_usage_periods(),
@@ -199,12 +203,17 @@ impl Default for AgentUsageWidgetSettings {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct WindowedUsageFacts {
+    updated_at_unix_seconds: Option<u64>,
     five_hour_tokens: Option<u64>,
     weekly_tokens: Option<u64>,
     monthly_tokens: Option<u64>,
     five_hour_remaining_percent: Option<u64>,
     weekly_remaining_percent: Option<u64>,
     monthly_remaining_percent: Option<u64>,
+    five_hour_reset_at_unix_seconds: Option<u64>,
+    weekly_reset_at_unix_seconds: Option<u64>,
+    five_hour_window_seconds: Option<u64>,
+    weekly_window_seconds: Option<u64>,
     error: Option<String>,
 }
 
@@ -223,6 +232,22 @@ impl WindowedUsageFacts {
 
     fn is_empty(&self) -> bool {
         !self.has_tokens() && !self.has_quota()
+    }
+
+    fn codex_window_reset_label(&self, period: WindowedUsagePeriod) -> Option<String> {
+        let now = self.updated_at_unix_seconds?;
+        let (reset_at, window_seconds) = match period {
+            WindowedUsagePeriod::FiveHour => (
+                self.five_hour_reset_at_unix_seconds?,
+                self.five_hour_window_seconds?,
+            ),
+            WindowedUsagePeriod::Weekly => (
+                self.weekly_reset_at_unix_seconds?,
+                self.weekly_window_seconds?,
+            ),
+            WindowedUsagePeriod::Monthly => return None,
+        };
+        format_reset_window_label(reset_at, window_seconds, now)
     }
 }
 
@@ -823,7 +848,9 @@ fn print_zellij_status_cache_refresh_claude_usage_help() {
 }
 
 fn print_zellij_status_cache_refresh_codex_usage_help() {
-    println!("Refresh cached Codex 5h/week usage and quota facts for status-bar widgets");
+    println!(
+        "Refresh cached Codex 5h/week usage, quota, and reset-window facts for status-bar widgets"
+    );
     println!();
     println!("Usage:");
     println!(
@@ -1766,13 +1793,7 @@ fn render_status_cache_widget_with_agent_usage_settings(
             settings.claude_periods.as_slice(),
             settings.claude_display,
         )),
-        "codex_usage" => Ok(render_windowed_usage_segment(
-            cache,
-            "codex_usage",
-            "codex",
-            default_windowed_usage_periods(),
-            settings.codex_display,
-        )),
+        "codex_usage" => Ok(render_codex_usage_segment(cache, settings.codex_display)),
         "opencode_go_usage" => Ok(render_windowed_usage_segment(
             cache,
             "opencode_go_usage",
@@ -1795,6 +1816,68 @@ fn status_cache_widget_names() -> Vec<&'static str> {
         "codex_usage",
         "opencode_go_usage",
     ]
+}
+
+fn render_codex_usage_segment(cache: &Value, display: WindowedUsageDisplay) -> String {
+    let Some(entry) = cache.get("codex_usage") else {
+        return String::new();
+    };
+    let facts = windowed_usage_facts_from_cache_entry(entry);
+    let summary = render_codex_usage_summary(&facts, display);
+    if summary.is_empty() {
+        String::new()
+    } else {
+        render_agent_usage_widget("codex", &summary)
+    }
+}
+
+fn render_codex_usage_summary(facts: &WindowedUsageFacts, display: WindowedUsageDisplay) -> String {
+    let mut parts = Vec::new();
+    for period in default_windowed_usage_periods() {
+        let (tokens, remaining_percent) = match period {
+            WindowedUsagePeriod::FiveHour => {
+                (facts.five_hour_tokens, facts.five_hour_remaining_percent)
+            }
+            WindowedUsagePeriod::Weekly => (facts.weekly_tokens, facts.weekly_remaining_percent),
+            WindowedUsagePeriod::Monthly => (facts.monthly_tokens, facts.monthly_remaining_percent),
+        };
+        let label = facts
+            .codex_window_reset_label(*period)
+            .unwrap_or_else(|| period.short_label().to_string());
+        if let Some(part) = render_codex_usage_window(&label, tokens, remaining_percent, display) {
+            parts.push(part);
+        }
+    }
+    parts.join(CODEX_USAGE_WINDOW_SEPARATOR)
+}
+
+fn render_codex_usage_window(
+    label: &str,
+    tokens: Option<u64>,
+    remaining_percent: Option<u64>,
+    display: WindowedUsageDisplay,
+) -> Option<String> {
+    let mut pieces = vec![label.to_string()];
+    match display {
+        WindowedUsageDisplay::Token => {
+            pieces.push(format_agent_usage_token_count(tokens?));
+        }
+        WindowedUsageDisplay::Quota => {
+            pieces.push(format_quota_percent(remaining_percent?));
+        }
+        WindowedUsageDisplay::Both => {
+            if let Some(tokens) = tokens {
+                pieces.push(format_agent_usage_token_count(tokens));
+            }
+            if let Some(remaining_percent) = remaining_percent {
+                pieces.push(format_quota_percent(remaining_percent));
+            }
+            if pieces.len() == 1 {
+                return None;
+            }
+        }
+    }
+    Some(pieces.join(" "))
 }
 
 fn render_windowed_usage_segment(
@@ -1870,6 +1953,7 @@ fn render_windowed_usage_window(
 
 fn windowed_usage_facts_from_cache_entry(entry: &Value) -> WindowedUsageFacts {
     WindowedUsageFacts {
+        updated_at_unix_seconds: entry.get("updated_at_unix_seconds").and_then(Value::as_u64),
         five_hour_tokens: entry.get("five_hour_tokens").and_then(Value::as_u64),
         weekly_tokens: entry.get("weekly_tokens").and_then(Value::as_u64),
         monthly_tokens: entry.get("monthly_tokens").and_then(Value::as_u64),
@@ -1882,6 +1966,16 @@ fn windowed_usage_facts_from_cache_entry(entry: &Value) -> WindowedUsageFacts {
         monthly_remaining_percent: entry
             .get("monthly_remaining_percent")
             .and_then(Value::as_u64),
+        five_hour_reset_at_unix_seconds: entry
+            .get("five_hour_reset_at_unix_seconds")
+            .and_then(Value::as_u64),
+        weekly_reset_at_unix_seconds: entry
+            .get("weekly_reset_at_unix_seconds")
+            .and_then(Value::as_u64),
+        five_hour_window_seconds: entry
+            .get("five_hour_window_seconds")
+            .and_then(Value::as_u64),
+        weekly_window_seconds: entry.get("weekly_window_seconds").and_then(Value::as_u64),
         error: entry
             .get("error")
             .and_then(Value::as_str)
@@ -1958,6 +2052,24 @@ fn refresh_tokenusage_windowed_usage_shared_cache(
     if let Some(percent) = facts.weekly_remaining_percent {
         entry.insert("weekly_remaining_percent".to_string(), json!(percent));
     }
+    if let Some(reset_at) = facts.five_hour_reset_at_unix_seconds {
+        entry.insert(
+            "five_hour_reset_at_unix_seconds".to_string(),
+            json!(reset_at),
+        );
+    }
+    if let Some(reset_at) = facts.weekly_reset_at_unix_seconds {
+        entry.insert("weekly_reset_at_unix_seconds".to_string(), json!(reset_at));
+    }
+    if let Some(window_seconds) = facts.five_hour_window_seconds {
+        entry.insert(
+            "five_hour_window_seconds".to_string(),
+            json!(window_seconds),
+        );
+    }
+    if let Some(window_seconds) = facts.weekly_window_seconds {
+        entry.insert("weekly_window_seconds".to_string(), json!(window_seconds));
+    }
     if let Some(error) = facts.error.as_deref().filter(|value| !value.is_empty()) {
         entry.insert("error".to_string(), json!(error));
         if facts.is_empty() {
@@ -2009,11 +2121,24 @@ fn codex_usage_shared_cache_is_fresh(path: &Path, now: u64, max_age_seconds: u64
     )
 }
 
-fn tokenusage_windowed_usage_facts_are_complete(facts: &WindowedUsageFacts) -> bool {
-    facts.five_hour_tokens.is_some()
+fn tokenusage_windowed_usage_facts_are_complete(
+    provider: TokenusageWindowedProvider,
+    facts: &WindowedUsageFacts,
+) -> bool {
+    let has_token_and_quota = facts.five_hour_tokens.is_some()
         && facts.weekly_tokens.is_some()
         && facts.five_hour_remaining_percent.is_some()
-        && facts.weekly_remaining_percent.is_some()
+        && facts.weekly_remaining_percent.is_some();
+    let has_reset_window = match provider {
+        TokenusageWindowedProvider::Claude => true,
+        TokenusageWindowedProvider::Codex => {
+            facts.five_hour_reset_at_unix_seconds.is_some()
+                && facts.weekly_reset_at_unix_seconds.is_some()
+                && facts.five_hour_window_seconds.is_some()
+                && facts.weekly_window_seconds.is_some()
+        }
+    };
+    has_token_and_quota && has_reset_window
 }
 
 #[cfg(test)]
@@ -2044,7 +2169,9 @@ fn tokenusage_windowed_usage_shared_cache_is_fresh(
                 && cache
                     .get(cache_key)
                     .map(windowed_usage_facts_from_cache_entry)
-                    .is_some_and(|facts| tokenusage_windowed_usage_facts_are_complete(&facts))
+                    .is_some_and(|facts| {
+                        tokenusage_windowed_usage_facts_are_complete(provider, &facts)
+                    })
         })
 }
 
@@ -2057,7 +2184,8 @@ fn tokenusage_windowed_usage_shared_cache_is_backing_off(
         .and_then(|cache| {
             let entry = cache.get(tokenusage_windowed_usage_cache_key(provider))?;
             let facts = windowed_usage_facts_from_cache_entry(entry);
-            if !facts.is_empty() && !tokenusage_windowed_usage_facts_are_complete(&facts) {
+            if !facts.is_empty() && !tokenusage_windowed_usage_facts_are_complete(provider, &facts)
+            {
                 return None;
             }
             entry.get("backoff_until_unix_seconds")?.as_u64()
@@ -2637,6 +2765,10 @@ fn collect_tokenusage_windowed_usage_facts(
                 let quota = tokenusage_quota_from_official_json(&value, provider);
                 facts.five_hour_remaining_percent = quota.five_hour_remaining_percent;
                 facts.weekly_remaining_percent = quota.weekly_remaining_percent;
+                facts.five_hour_reset_at_unix_seconds = quota.five_hour_reset_at_unix_seconds;
+                facts.weekly_reset_at_unix_seconds = quota.weekly_reset_at_unix_seconds;
+                facts.five_hour_window_seconds = quota.five_hour_window_seconds;
+                facts.weekly_window_seconds = quota.weekly_window_seconds;
                 if !quota.has_quota() {
                     facts.error = facts
                         .error
@@ -2772,8 +2904,24 @@ fn tokenusage_quota_from_official_json(
             .get("secondary_used_percent")
             .and_then(Value::as_f64)
             .map(remaining_percent_from_used),
+        five_hour_reset_at_unix_seconds: official.get("primary_resets_at").and_then(Value::as_u64),
+        weekly_reset_at_unix_seconds: official.get("secondary_resets_at").and_then(Value::as_u64),
+        five_hour_window_seconds: official
+            .get("primary_window_mins")
+            .and_then(Value::as_u64)
+            .and_then(window_minutes_to_seconds),
+        weekly_window_seconds: official
+            .get("secondary_window_mins")
+            .and_then(Value::as_u64)
+            .and_then(window_minutes_to_seconds),
         ..WindowedUsageFacts::default()
     }
+}
+
+fn window_minutes_to_seconds(minutes: u64) -> Option<u64> {
+    minutes
+        .checked_mul(MINUTE_SECONDS)
+        .filter(|seconds| *seconds > 0)
 }
 
 fn remaining_percent_from_used(used_percent: f64) -> u64 {
@@ -2819,7 +2967,7 @@ fn agent_usage_widget_settings_from_status_cache_path(
             .get("zellij_codex_usage_display")
             .and_then(Value::as_str)
             .map(WindowedUsageDisplay::parse)
-            .unwrap_or(WindowedUsageDisplay::Both),
+            .unwrap_or(WindowedUsageDisplay::Quota),
         opencode_go_display: config
             .get("zellij_opencode_go_usage_display")
             .and_then(Value::as_str)
@@ -3025,6 +3173,52 @@ fn format_scaled_agent_usage_count(value: f64, suffix: &str) -> String {
         raw.as_str()
     };
     format!("{trimmed}{suffix}")
+}
+
+fn format_reset_window_label(
+    reset_at_unix_seconds: u64,
+    window_seconds: u64,
+    now_unix_seconds: u64,
+) -> Option<String> {
+    if window_seconds == 0 {
+        return None;
+    }
+    let remaining_seconds = reset_at_unix_seconds
+        .saturating_sub(now_unix_seconds)
+        .min(window_seconds);
+    Some(format!(
+        "{}/{}",
+        format_reset_remaining_duration(remaining_seconds, window_seconds),
+        format_reset_window_total_duration(window_seconds)
+    ))
+}
+
+fn format_reset_remaining_duration(seconds: u64, window_seconds: u64) -> String {
+    if window_seconds >= DAY_SECONDS {
+        if seconds >= DAY_SECONDS {
+            format!("{}d", seconds / DAY_SECONDS)
+        } else if seconds >= HOUR_SECONDS {
+            format!("{}h", seconds / HOUR_SECONDS)
+        } else {
+            format!("{}m", seconds.div_ceil(MINUTE_SECONDS))
+        }
+    } else if seconds >= HOUR_SECONDS {
+        format!("{}h", seconds / HOUR_SECONDS)
+    } else {
+        format!("{}m", seconds.div_ceil(MINUTE_SECONDS))
+    }
+}
+
+fn format_reset_window_total_duration(seconds: u64) -> String {
+    if seconds % DAY_SECONDS == 0 {
+        format!("{}d", seconds / DAY_SECONDS)
+    } else if seconds % HOUR_SECONDS == 0 {
+        format!("{}h", seconds / HOUR_SECONDS)
+    } else if seconds % MINUTE_SECONDS == 0 {
+        format!("{}m", seconds / MINUTE_SECONDS)
+    } else {
+        format!("{seconds}s")
+    }
 }
 
 fn format_quota_percent(percent: u64) -> String {
@@ -4500,6 +4694,10 @@ mod tests {
                     "weekly_tokens": 1335519960u64,
                     "five_hour_remaining_percent": 49u64,
                     "weekly_remaining_percent": 80u64,
+                    "five_hour_reset_at_unix_seconds": now + 2 * HOUR_SECONDS,
+                    "weekly_reset_at_unix_seconds": now + 3 * DAY_SECONDS,
+                    "five_hour_window_seconds": 5 * HOUR_SECONDS,
+                    "weekly_window_seconds": 7 * DAY_SECONDS,
                     "status": "ok"
                 }
             }),
@@ -4540,7 +4738,7 @@ mod tests {
         hydrate_status_cache_codex_usage(&mut codex_cache, &new_cache_path);
         assert_eq!(
             render_status_cache_widget(&codex_cache, "codex_usage").unwrap(),
-            " [codex 5h|138M|49% wk|1.34B|80%]"
+            " [codex 2h/5h 49% · 3d/7d 80%]"
         );
 
         let mut opencode_go_cache =
@@ -4637,6 +4835,7 @@ mod tests {
         let settings = agent_usage_widget_settings_from_status_cache_path(&cache_path);
         assert_eq!(settings.claude_display, WindowedUsageDisplay::Quota);
         assert_eq!(settings.claude_periods, vec![WindowedUsagePeriod::Weekly]);
+        assert_eq!(settings.codex_display, WindowedUsageDisplay::Quota);
         assert_eq!(settings.opencode_go_display, WindowedUsageDisplay::Quota);
         assert_eq!(
             settings.opencode_go_periods,
@@ -4727,10 +4926,15 @@ mod tests {
                 "extensions": {"ai_pane_activity": []}
             },
             "codex_usage": {
+                "updated_at_unix_seconds": 10u64,
                 "five_hour_tokens": 138424632u64,
                 "weekly_tokens": 1335519960u64,
                 "five_hour_remaining_percent": 49u64,
-                "weekly_remaining_percent": 80u64
+                "weekly_remaining_percent": 80u64,
+                "five_hour_reset_at_unix_seconds": 7210u64,
+                "weekly_reset_at_unix_seconds": 259210u64,
+                "five_hour_window_seconds": 18000u64,
+                "weekly_window_seconds": 604800u64
             }
         });
 
@@ -4744,7 +4948,7 @@ mod tests {
                 },
             )
             .unwrap(),
-            " [codex 5h|138M|49% wk|1.34B|80%]"
+            " [codex 2h/5h 138M 49% · 3d/7d 1.34B 80%]"
         );
         assert_eq!(
             render_status_cache_widget_with_agent_usage_settings(
@@ -4756,7 +4960,7 @@ mod tests {
                 },
             )
             .unwrap(),
-            " [codex 5h|138M wk|1.34B]"
+            " [codex 2h/5h 138M · 3d/7d 1.34B]"
         );
         assert_eq!(
             render_status_cache_widget_with_agent_usage_settings(
@@ -4768,7 +4972,7 @@ mod tests {
                 },
             )
             .unwrap(),
-            " [codex 5h|49% wk|80%]"
+            " [codex 2h/5h 49% · 3d/7d 80%]"
         );
     }
 
@@ -4878,7 +5082,11 @@ mod tests {
         let official = json!({
             "official_codex": {
                 "primary_used_percent": 51.0,
-                "secondary_used_percent": 20.0
+                "secondary_used_percent": 20.0,
+                "primary_resets_at": 8_200u64,
+                "primary_window_mins": 300u64,
+                "secondary_resets_at": 260_200u64,
+                "secondary_window_mins": 10_080u64
             },
             "official_claude": {
                 "primary_used_percent": 25.0,
@@ -4901,6 +5109,10 @@ mod tests {
         );
         assert_eq!(codex_quota.five_hour_remaining_percent, Some(49));
         assert_eq!(codex_quota.weekly_remaining_percent, Some(80));
+        assert_eq!(codex_quota.five_hour_reset_at_unix_seconds, Some(8_200));
+        assert_eq!(codex_quota.weekly_reset_at_unix_seconds, Some(260_200));
+        assert_eq!(codex_quota.five_hour_window_seconds, Some(18_000));
+        assert_eq!(codex_quota.weekly_window_seconds, Some(604_800));
         assert_eq!(claude_quota.five_hour_remaining_percent, Some(75));
         assert_eq!(claude_quota.weekly_remaining_percent, Some(65));
     }
@@ -4922,7 +5134,7 @@ mod tests {
 if [ "$1" = "blocks" ] && [ "$2" = "--active" ]; then
   case " $* " in
     *" --official-limits "*)
-      printf '%s\n' '{"official_codex":{"primary_used_percent":51.0,"secondary_used_percent":20.0}}'
+      printf '%s\n' '{"official_codex":{"primary_used_percent":51.0,"secondary_used_percent":20.0,"primary_resets_at":8200,"primary_window_mins":300,"secondary_resets_at":260200,"secondary_window_mins":10080}}'
       ;;
     *)
       printf '%s\n' '{"blocks":[{"isActive":true,"totals":{"total_tokens":138424632}}]}'
@@ -4973,7 +5185,7 @@ exit 64
                 },
             )
             .unwrap(),
-            " [codex 5h|138M|49% wk|1.34B|80%]"
+            " [codex 2h/5h 138M 49% · 3d/7d 1.34B 80%]"
         );
     }
 
@@ -5220,6 +5432,23 @@ exit 64
         write_json_value_atomic(
             &shared_path,
             &json!({
+                "schema_version": 1,
+                "codex": {
+                    "updated_at_unix_seconds": 1_000u64,
+                    "five_hour_tokens": 138424632u64,
+                    "weekly_tokens": 1335519960u64,
+                    "five_hour_remaining_percent": 49u64,
+                    "weekly_remaining_percent": 80u64
+                }
+            }),
+            "codex_usage_cache_test",
+        )
+        .unwrap();
+        assert!(!codex_usage_shared_cache_is_fresh(&shared_path, 1_100, 600));
+
+        write_json_value_atomic(
+            &shared_path,
+            &json!({
                 "schema_version": CODEX_USAGE_CACHE_SCHEMA_VERSION,
                 "codex": {
                     "updated_at_unix_seconds": 1_000u64,
@@ -5227,6 +5456,27 @@ exit 64
                     "weekly_tokens": 1335519960u64,
                     "five_hour_remaining_percent": 49u64,
                     "weekly_remaining_percent": 80u64
+                }
+            }),
+            "codex_usage_cache_test",
+        )
+        .unwrap();
+        assert!(!codex_usage_shared_cache_is_fresh(&shared_path, 1_100, 600));
+
+        write_json_value_atomic(
+            &shared_path,
+            &json!({
+                "schema_version": CODEX_USAGE_CACHE_SCHEMA_VERSION,
+                "codex": {
+                    "updated_at_unix_seconds": 1_000u64,
+                    "five_hour_tokens": 138424632u64,
+                    "weekly_tokens": 1335519960u64,
+                    "five_hour_remaining_percent": 49u64,
+                    "weekly_remaining_percent": 80u64,
+                    "five_hour_reset_at_unix_seconds": 8_200u64,
+                    "weekly_reset_at_unix_seconds": 260_200u64,
+                    "five_hour_window_seconds": 18_000u64,
+                    "weekly_window_seconds": 604_800u64
                 }
             }),
             "codex_usage_cache_test",

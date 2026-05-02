@@ -235,9 +235,11 @@ contract. This slice is only about the read contract.
 9. Agent-usage facts are produced by throttled cache writers with provider
    command timeouts, but zjstatus usage widgets must never run usage providers
    directly. The `claude_usage` and `codex_usage` widgets read shared
-   cross-window caches and render configured 5-hour and weekly token/quota
-   windows. The `opencode_go_usage` widget reads a shared cross-window cache and
-   renders its configured 5-hour, weekly, and monthly token/quota windows.
+   cross-window caches. `codex_usage` renders 5-hour and weekly reset-window
+   timing plus quota percentages by default, with token totals available through
+   `codex_usage_display = "both"`. The `opencode_go_usage` widget reads a shared
+   cross-window cache and renders its configured 5-hour, weekly, and monthly
+   token/quota windows.
 
 ## Verification
 

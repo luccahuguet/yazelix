@@ -295,7 +295,7 @@ rebuild_required = false
 
 [fields."zellij.codex_usage_display"]
 kind = "string"
-default = "both"
+default = "quota"
 parser_key = "zellij_codex_usage_display"
 home_manager_option = "zellij_codex_usage_display"
 parser_behavior = "direct"
