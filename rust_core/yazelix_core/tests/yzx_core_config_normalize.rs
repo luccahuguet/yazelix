@@ -231,6 +231,37 @@ fn config_normalize_prints_one_success_json_envelope() {
     );
 }
 
+// Regression: config.normalize accepts every documented widget_tray value, including the cursor widget added to the bar renderer.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn config_normalize_accepts_cursor_widget_tray_entry() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let config_path = tmp.path().join("yazelix.toml");
+    fs::write(
+        &config_path,
+        "[zellij]\nwidget_tray = [\"editor\", \"cursor\", \"cpu\"]\n",
+    )
+    .unwrap();
+
+    let output = yzx_core_command()
+        .arg("config.normalize")
+        .arg("--config")
+        .arg(&config_path)
+        .arg("--default-config")
+        .arg(repo.join("yazelix_default.toml"))
+        .arg("--contract")
+        .arg(repo.join("config_metadata/main_config_contract.toml"))
+        .output()
+        .unwrap();
+
+    let envelope: Value = ok_envelope(&output);
+    assert_eq!(
+        envelope["data"]["normalized_config"]["zellij_widget_tray"],
+        json!(["editor", "cursor", "cpu"])
+    );
+}
+
 // Defends: config.normalize emits a single machine-readable config error envelope for invalid input.
 // Contract: CRCP-001
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
