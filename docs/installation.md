@@ -218,7 +218,7 @@ yzx desktop install
 
 After this, you can search for "Yazelix" in your application launcher and launch it directly.
 `yzx desktop install` points the desktop entry at the active Yazelix runtime launcher, and `yzx desktop uninstall` removes that user-local desktop integration again.
-For Home Manager installs, do not run `yzx desktop install`; the Home Manager module owns the profile desktop entry. Use `yzx desktop uninstall` only to remove a stale user-local entry that shadows the Home Manager launcher.
+For Home Manager installs on Linux, do not run `yzx desktop install`; the Home Manager module owns the profile desktop entry. Use `yzx desktop uninstall` only to remove a stale user-local entry that shadows the Home Manager launcher.
 
 For better icon quality, see [desktop_icon_setup.md](./desktop_icon_setup.md).
 
@@ -234,7 +234,7 @@ This launches the same command surface used by the generated desktop entry.
 
 ##### macOS (Experimental Launcher Preview)
 
-The supported macOS launch path remains `yzx launch` from a terminal after installing the package via `nix profile add` or Home Manager.
+The supported macOS launch path remains `yzx launch` from a terminal after installing the package via `nix profile add` or Home Manager. The Home Manager module does not emit Linux `xdg.desktopEntries` on macOS.
 
 Community testers can opt into an experimental package-first app bundle preview:
 

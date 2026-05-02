@@ -8,7 +8,7 @@ A Home Manager module for [Yazelix](https://github.com/luccahuguet/yazelix) that
 - **Can generate `yazelix.toml`** from Home Manager options when `manage_config = true`
 - **Adds `yzx` to the Home Manager profile** through the packaged Yazelix runtime
 - **Selects the packaged terminal runtime variant** with Ghostty by default and WezTerm available through `runtime_variant`
-- **Installs icons and a desktop entry** that target the managed runtime
+- **Installs icons and, on Linux, a desktop entry** that target the managed runtime
 - **Keeps the config surface type-safe** with Home Manager validation
 
 Config ownership is configurable: set `programs.yazelix.manage_config = true` only if you want Home Manager to generate and own `~/.config/yazelix/user_configs/yazelix.toml`
@@ -81,7 +81,7 @@ home-manager switch
 This creates:
 - the `yzx` command in your Home Manager profile, typically `~/.nix-profile/bin/yzx`
 - `~/.config/yazelix/user_configs/yazelix.toml`, bootstrapped as a mutable file by default or Home Manager-generated when `manage_config = true`
-- a Home Manager profile desktop entry, typically `~/.nix-profile/share/applications/yazelix.desktop`
+- on Linux, a Home Manager profile desktop entry, typically `~/.nix-profile/share/applications/yazelix.desktop`
 
 Then open a fresh shell and run:
 
@@ -112,14 +112,14 @@ For maintainer workflows, a cloned repo is still useful. Normal Home Manager usa
 
 Manual validation on April 8, 2026 covered both a lived-in account and a throwaway clean-room Home Manager activation.
 
-- By default, Home Manager owns the package/runtime/desktop integration while Yazelix bootstraps the main `yazelix.toml` as a mutable file
+- By default, Home Manager owns the package/runtime integration while Yazelix bootstraps the main `yazelix.toml` as a mutable file
 - Set `programs.yazelix.manage_config = true` only if you want Home Manager to own generated `user_configs/` TOML files through symlinks into the Home Manager profile
 - The managed `yzx` command resolves through the Home Manager profile, typically `~/.nix-profile/bin/yzx`, rather than through a legacy user-local wrapper path.
 - The active runtime root resolves directly from the packaged Yazelix runtime in the Home Manager profile/store path, not through a manual-install runtime symlink.
-- The Home Manager desktop entry comes from the Home Manager profile, typically `~/.nix-profile/share/applications/yazelix.desktop`, rather than from `yzx desktop install`.
+- On Linux, the Home Manager desktop entry comes from the Home Manager profile, typically `~/.nix-profile/share/applications/yazelix.desktop`, rather than from `yzx desktop install`.
 - A stale legacy `~/.local/bin/yzx` wrapper can still shadow the profile-owned command on `PATH` after migration; archive it with `yzx home_manager prepare --apply` or remove it manually so `yzx` resolves to the Home Manager profile path.
 - Old manual desktop-entry files under `~/.local/share/applications/` can linger after migration; they are not Home Manager-owned and will shadow the Home Manager profile entry until you remove them.
-- Host shell hooks are optional for the Home Manager path. Launch through `yzx` or the Home Manager desktop entry; do not expect `home-manager switch` to rewrite `.bashrc` or `~/.config/nushell/config.nu`.
+- Host shell hooks are optional for the Home Manager path. Launch through `yzx` or, on Linux, the Home Manager desktop entry; do not expect `home-manager switch` to rewrite `.bashrc` or `~/.config/nushell/config.nu`.
 
 Migration note for older setups:
 - Replace `github:luccahuguet/yazelix?dir=home_manager` with `github:luccahuguet/yazelix` in your Home Manager flake inputs.
@@ -200,7 +200,7 @@ If Home Manager still reports an unexpected unmanaged-file collision outside tho
 - Check that `~/.config/yazelix/user_configs/yazelix.toml` was created
 - By default, that file should be a normal writable file, not a Home Manager store symlink
 - Check that `~/.nix-profile/bin/yzx` exists and that your Home Manager profile bin dir is on your `PATH`
-- Check that `~/.nix-profile/share/applications/yazelix.desktop` exists if you expect desktop-launcher integration through Home Manager
+- On Linux, check that `~/.nix-profile/share/applications/yazelix.desktop` exists if you expect desktop-launcher integration through Home Manager
 - Verify Home Manager configuration syntax
 - Run `home-manager switch` to apply changes
 

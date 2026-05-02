@@ -22,7 +22,7 @@ The current tree contained mixed signals about macOS support. The top-level docs
 | Zellij and Yazi behavior | `best_effort` | Core session and file manager should work, but macOS-specific edge cases are best-effort until reported and fixed |
 | Package-first macOS launcher preview | `experimental` | `yzx desktop macos_preview install` creates `~/Applications/Yazelix Preview.app` as an opt-in, unsigned, unnotarized, maintainer-unverified preview for community testing. It resolves the default Nix profile or Home Manager profile `yzx` wrapper and does not assume a repo clone. It is explicitly separate from any supported Spotlight/Launchpad/Dock launcher claim. |
 | Supported Spotlight/Launchpad/Dock app-bundle launcher | `historical_or_out_of_scope` | Yazelix does not ship a supported macOS app-bundle launcher today. The old clone-era bundle was removed instead of being kept as a half-supported surface. The preview above may inform a future supported surface, but it is not that supported surface. |
-| Home Manager macOS-specific paths | `best_effort` | The Home Manager module works where Nix and Home Manager are available, but macOS-specific integration paths have no dedicated validation |
+| Home Manager macOS-specific paths | `best_effort` | The Home Manager module works where Nix and Home Manager are available and does not emit Linux desktop-entry definitions on macOS, but macOS-specific integration paths have no dedicated validation |
 
 ## Ghostty on macOS
 

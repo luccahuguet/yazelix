@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  options,
   fenixPkgs ? null,
   nixgl ? null,
   pkgs,
@@ -495,7 +496,18 @@ in
       xdg.dataFile."icons/hicolor/256x256/apps/yazelix.png".source =
         ../assets/icons/256x256/yazelix.png;
 
-      # Desktop entry for application launcher
+      home.activation.yazelixGeneratedRuntimeConfigs = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+        export PATH="${runtimeConfigGenerationPath}:$PATH"
+        export YAZELIX_RUNTIME_DIR="${yazelixPackage}"
+        export YAZELIX_CONFIG_DIR="${managedConfigRoot}"
+        export YAZELIX_STATE_DIR="${stateRoot}"
+        export YAZELIX_LOGS_DIR="${logsPath}"
+
+        $DRY_RUN_CMD ${runtimeYzxCore} runtime-materialization.repair --from-env --force --summary
+      '';
+    }
+    (lib.optionalAttrs (lib.hasAttrByPath [ "xdg" "desktopEntries" ] options) {
+      # Linux desktop entry for application launchers.
       xdg.desktopEntries.yazelix = {
         name = "Yazelix";
         comment = "Yazi + Zellij + Helix integrated terminal environment";
@@ -508,17 +520,7 @@ in
           StartupWMClass = "com.yazelix.Yazelix";
         };
       };
-
-      home.activation.yazelixGeneratedRuntimeConfigs = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-        export PATH="${runtimeConfigGenerationPath}:$PATH"
-        export YAZELIX_RUNTIME_DIR="${yazelixPackage}"
-        export YAZELIX_CONFIG_DIR="${managedConfigRoot}"
-        export YAZELIX_STATE_DIR="${stateRoot}"
-        export YAZELIX_LOGS_DIR="${logsPath}"
-
-        $DRY_RUN_CMD ${runtimeYzxCore} runtime-materialization.repair --from-env --force --summary
-      '';
-    }
+    })
     (mkIf cfg.manage_config {
       # Generate yazelix.toml configuration file
       xdg.configFile."yazelix/user_configs/yazelix.toml" = {
