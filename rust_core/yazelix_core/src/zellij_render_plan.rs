@@ -122,6 +122,7 @@ fn default_widget_tray() -> Vec<String> {
         "shell".into(),
         "term".into(),
         "cursor".into(),
+        "codex_usage".into(),
         "cpu".into(),
         "ram".into(),
     ]
@@ -642,10 +643,10 @@ mod tests {
         assert!(compute_zellij_render_plan(&req).is_err());
     }
 
-    // Defends: supported dynamic widgets are accepted as optional extension points without changing the default tray.
+    // Defends: supported dynamic widgets are accepted as optional extension points while Codex usage stays in the default tray.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn accepts_dynamic_tray_widgets_without_defaulting_them() {
+    fn accepts_dynamic_tray_widgets_with_codex_defaulted() {
         let mut req = sample_request();
         req.zellij_widget_tray = Some(vec![
             "workspace".into(),
@@ -668,7 +669,7 @@ mod tests {
         );
         assert_eq!(
             default_widget_tray(),
-            vec!["editor", "shell", "term", "cursor", "cpu", "ram"]
+            vec!["editor", "shell", "term", "cursor", "codex_usage", "cpu", "ram"]
         );
     }
 

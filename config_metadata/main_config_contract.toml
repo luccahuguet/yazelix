@@ -273,6 +273,7 @@ default = [
   "shell",
   "term",
   "cursor",
+  "codex_usage",
   "cpu",
   "ram",
 ]

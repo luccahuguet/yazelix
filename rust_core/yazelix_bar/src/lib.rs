@@ -29,6 +29,8 @@ pub const DEFAULT_WIDGET_TRAY: &[&str] = &[
     WIDGET_EDITOR,
     WIDGET_SHELL,
     WIDGET_TERM,
+    WIDGET_CURSOR,
+    WIDGET_CODEX_USAGE,
     WIDGET_CPU,
     WIDGET_RAM,
 ];
@@ -147,7 +149,7 @@ mod tests {
 
         assert_eq!(
             rendered,
-            " #[fg=#00ff88,bold][editor: hx] #[fg=#00ff88,bold][shell: nu] #[fg=#00ff88,bold][term: ghostty]{command_cpu}{command_ram}"
+            " #[fg=#00ff88,bold][editor: hx] #[fg=#00ff88,bold][shell: nu] #[fg=#00ff88,bold][term: ghostty]{command_cursor}{command_codex_usage}{command_cpu}{command_ram}"
         );
     }
 

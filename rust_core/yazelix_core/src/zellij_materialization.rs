@@ -1466,7 +1466,7 @@ fn build_generation_fingerprint(
     let sidebar_args = string_list_config(config, "sidebar_args")
         .unwrap_or_else(|| vec![DEFAULT_SIDEBAR_YAZI_ARG.to_string()]);
     let relevant_config = json!({
-        "zellij_widget_tray": config.get("zellij_widget_tray").cloned().unwrap_or_else(|| json!(["editor", "shell", "term", "cursor", "cpu", "ram"])),
+        "zellij_widget_tray": config.get("zellij_widget_tray").cloned().unwrap_or_else(|| json!(["editor", "shell", "term", "cursor", "codex_usage", "cpu", "ram"])),
         "zellij_custom_text": string_config(config, "zellij_custom_text", ""),
         "support_kitty_keyboard_protocol": string_config(config, "support_kitty_keyboard_protocol", "false"),
         "default_shell": string_config(config, "default_shell", "nu"),
