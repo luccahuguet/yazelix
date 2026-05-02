@@ -75,6 +75,8 @@ You can collect your own reports with `yzx dev profile`, `yzx dev profile --cold
 ## Acknowledgments
 See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all projects, tools, and plugins Yazelix integrates, including links to each project and their homepages
 
+Special thanks to [soderluk](https://github.com/soderluk) for grinding with me through unstable periods of Yazelix, when things that should work were not working. His many reports had very high value for the development of Yazelix
+
 If Yazelix is useful to you, you can support its development on [GitHub Sponsors](https://github.com/sponsors/luccahuguet)
 
 <!-- BEGIN GENERATED README LATEST SERIES -->
