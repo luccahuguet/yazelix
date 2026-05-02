@@ -223,6 +223,10 @@ impl ZellijPlugin for State {
                 self.toggle_sidebar(&pipe_message);
                 false
             }
+            "hide_sidebar" => {
+                self.hide_sidebar(&pipe_message);
+                false
+            }
             "register_sidebar_yazi_state" => {
                 self.register_sidebar_yazi_state(&pipe_message);
                 false

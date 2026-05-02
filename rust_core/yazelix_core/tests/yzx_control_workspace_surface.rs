@@ -476,7 +476,7 @@ hide_sidebar_on_file_open = true
     write_executable_script(
         &fake_bin.join("zellij"),
         &format!(
-            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    open_file)\n      printf '%s\\n' 'ok'\n      exit 0\n      ;;\n    retarget_workspace)\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"skipped\"}}'\n      exit 0\n      ;;\n    get_active_tab_session_state)\n      printf '%s\\n' '{{\"schema_version\":1,\"layout\":{{\"sidebar_collapsed\":false}}}}'\n      exit 0\n      ;;\n    toggle_sidebar)\n      printf '%s\\n' 'ok'\n      exit 0\n      ;;\n  esac\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
+            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    open_file)\n      printf '%s\\n' 'ok'\n      exit 0\n      ;;\n    retarget_workspace)\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"skipped\"}}'\n      exit 0\n      ;;\n    get_active_tab_session_state)\n      printf '%s\\n' '{{\"schema_version\":1,\"layout\":{{\"sidebar_collapsed\":false}}}}'\n      exit 0\n      ;;\n    hide_sidebar)\n      printf '%s\\n' 'ok'\n      exit 0\n      ;;\n  esac\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
             zellij_commands_log.display(),
         ),
     );
@@ -502,7 +502,7 @@ hide_sidebar_on_file_open = true
             "open_file",
             "retarget_workspace",
             "get_active_tab_session_state",
-            "toggle_sidebar"
+            "hide_sidebar"
         ]
     );
 }

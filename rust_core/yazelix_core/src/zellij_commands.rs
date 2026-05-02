@@ -3835,7 +3835,7 @@ fn hide_sidebar_if_visible() -> Result<(), CoreError> {
         }
     }
 
-    let response = run_pane_orchestrator_command("toggle_sidebar", "")?;
+    let response = run_pane_orchestrator_command("hide_sidebar", "")?;
     match response.trim() {
         "ok" | "closed" | "focused" => Ok(()),
         other => Err(CoreError::classified(

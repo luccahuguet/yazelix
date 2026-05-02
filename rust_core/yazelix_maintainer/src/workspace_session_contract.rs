@@ -16,6 +16,7 @@ const REQUIRED_PANE_ORCHESTRATOR_PIPE_COMMANDS: &[&str] = &[
     "next_family",
     "previous_family",
     "toggle_sidebar",
+    "hide_sidebar",
     "register_sidebar_yazi_state",
     "get_active_tab_session_state",
     "retarget_workspace",

@@ -134,6 +134,28 @@ impl State {
         self.respond(pipe_message, RESULT_OK);
     }
 
+    pub(crate) fn hide_sidebar(&self, pipe_message: &PipeMessage) {
+        let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
+            return;
+        };
+
+        if is_no_sidebar_mode(self.managed_panes_by_tab.get(&active_tab_position)) {
+            self.respond(pipe_message, RESULT_MISSING);
+            return;
+        }
+
+        let Some(sidebar_is_closed) = self.sidebar_is_closed(active_tab_position) else {
+            self.respond(pipe_message, RESULT_UNKNOWN_LAYOUT);
+            return;
+        };
+
+        if !sidebar_is_closed {
+            self.run_next_swap_layout_steps(1);
+        }
+
+        self.respond(pipe_message, RESULT_OK);
+    }
+
     pub(crate) fn get_active_layout_variant(
         &self,
         active_tab_position: usize,
