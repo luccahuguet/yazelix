@@ -240,6 +240,9 @@ contract. This slice is only about the read contract.
    `codex_usage_display = "both"`. The `opencode_go_usage` widget reads a shared
    cross-window cache and renders its configured 5-hour, weekly, and monthly
    token/quota windows.
+10. Shared agent-usage cache and lock filenames are scoped by provider cache
+    schema version, so runtime versions with different cache contracts do not
+    read from or write to the same files.
 
 ## Verification
 

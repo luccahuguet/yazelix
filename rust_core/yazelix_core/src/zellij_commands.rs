@@ -1323,29 +1323,43 @@ fn missing_status_bar_cache_path_error() -> CoreError {
 fn codex_usage_shared_cache_path_from_status_cache_path(
     status_cache_path: &Path,
 ) -> Option<PathBuf> {
-    let state_dir = status_cache_path.parent()?.parent()?.parent()?;
-    Some(state_dir.join("agent_usage").join("codex_usage_cache.json"))
+    agent_usage_shared_cache_path_from_status_cache_path(
+        status_cache_path,
+        "codex_usage_cache",
+        CODEX_USAGE_CACHE_SCHEMA_VERSION,
+    )
 }
 
 fn claude_usage_shared_cache_path_from_status_cache_path(
     status_cache_path: &Path,
 ) -> Option<PathBuf> {
-    let state_dir = status_cache_path.parent()?.parent()?.parent()?;
-    Some(
-        state_dir
-            .join("agent_usage")
-            .join("claude_usage_cache.json"),
+    agent_usage_shared_cache_path_from_status_cache_path(
+        status_cache_path,
+        "claude_usage_cache",
+        CLAUDE_USAGE_CACHE_SCHEMA_VERSION,
     )
 }
 
 fn opencode_go_usage_shared_cache_path_from_status_cache_path(
     status_cache_path: &Path,
 ) -> Option<PathBuf> {
+    agent_usage_shared_cache_path_from_status_cache_path(
+        status_cache_path,
+        "opencode_go_usage_cache",
+        OPENCODE_GO_USAGE_CACHE_SCHEMA_VERSION,
+    )
+}
+
+fn agent_usage_shared_cache_path_from_status_cache_path(
+    status_cache_path: &Path,
+    file_stem: &str,
+    schema_version: i64,
+) -> Option<PathBuf> {
     let state_dir = status_cache_path.parent()?.parent()?.parent()?;
     Some(
         state_dir
             .join("agent_usage")
-            .join("opencode_go_usage_cache.json"),
+            .join(format!("{file_stem}_v{schema_version}.json")),
     )
 }
 
@@ -1743,10 +1757,16 @@ fn tokenusage_windowed_usage_error_prefix(provider: TokenusageWindowedProvider) 
     }
 }
 
-fn tokenusage_windowed_usage_lock_name(provider: TokenusageWindowedProvider) -> &'static str {
+fn tokenusage_windowed_usage_lock_name(provider: TokenusageWindowedProvider) -> String {
     match provider {
-        TokenusageWindowedProvider::Claude => ".claude_usage_cache.lock",
-        TokenusageWindowedProvider::Codex => ".codex_usage_cache.lock",
+        TokenusageWindowedProvider::Claude => format!(
+            ".claude_usage_cache_v{}.lock",
+            CLAUDE_USAGE_CACHE_SCHEMA_VERSION
+        ),
+        TokenusageWindowedProvider::Codex => format!(
+            ".codex_usage_cache_v{}.lock",
+            CODEX_USAGE_CACHE_SCHEMA_VERSION
+        ),
     }
 }
 
@@ -2439,7 +2459,10 @@ fn try_acquire_opencode_go_usage_cache_lock(
     shared_path: &Path,
     now: u64,
 ) -> Result<Option<OpenCodeGoUsageCacheLock>, CoreError> {
-    let lock_path = shared_path.with_file_name(".opencode_go_usage_cache.lock");
+    let lock_path = shared_path.with_file_name(format!(
+        ".opencode_go_usage_cache_v{}.lock",
+        OPENCODE_GO_USAGE_CACHE_SCHEMA_VERSION
+    ));
     if let Some(parent) = lock_path.parent() {
         fs::create_dir_all(parent).map_err(|source| {
             CoreError::io(
@@ -5175,6 +5198,93 @@ exit 64
         hydrate_status_cache_codex_usage(&mut cache, &status_cache_path);
 
         assert!(refreshed);
+        assert_eq!(
+            render_status_cache_widget_with_agent_usage_settings(
+                &cache,
+                "codex_usage",
+                &AgentUsageWidgetSettings {
+                    codex_display: WindowedUsageDisplay::Both,
+                    ..AgentUsageWidgetSettings::default()
+                },
+            )
+            .unwrap(),
+            " [codex 2h/5h 138M 49% · 3d/7d 1.34B 80%]"
+        );
+    }
+
+    // Regression: runtime skew must not let old Codex cache writers overwrite the cache file read by a newer schema.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn status_cache_codex_usage_uses_schema_scoped_shared_cache_path() {
+        let temp = tempfile::tempdir().unwrap();
+        let status_cache_path = temp
+            .path()
+            .join("state")
+            .join("sessions")
+            .join("window_a")
+            .join("status_bar_cache.json");
+        let shared_path =
+            codex_usage_shared_cache_path_from_status_cache_path(&status_cache_path).unwrap();
+        assert_eq!(
+            shared_path.file_name().and_then(|name| name.to_str()),
+            Some("codex_usage_cache_v2.json")
+        );
+
+        write_json_value_atomic(
+            &shared_path.with_file_name("codex_usage_cache.json"),
+            &json!({
+                "schema_version": 1,
+                "codex": {
+                    "updated_at_unix_seconds": 1_000u64,
+                    "five_hour_tokens": 138424632u64,
+                    "weekly_tokens": 1335519960u64,
+                    "five_hour_remaining_percent": 49u64,
+                    "weekly_remaining_percent": 80u64,
+                    "status": "ok"
+                }
+            }),
+            "codex_usage_cache_test",
+        )
+        .unwrap();
+
+        let mut cache = build_status_bar_cache_at(status_cache_test_status_bus(), 1_000);
+        hydrate_status_cache_codex_usage(&mut cache, &status_cache_path);
+        assert_eq!(
+            render_status_cache_widget_with_agent_usage_settings(
+                &cache,
+                "codex_usage",
+                &AgentUsageWidgetSettings {
+                    codex_display: WindowedUsageDisplay::Both,
+                    ..AgentUsageWidgetSettings::default()
+                },
+            )
+            .unwrap(),
+            ""
+        );
+
+        write_json_value_atomic(
+            &shared_path,
+            &json!({
+                "schema_version": CODEX_USAGE_CACHE_SCHEMA_VERSION,
+                "codex": {
+                    "updated_at_unix_seconds": 1_000u64,
+                    "five_hour_tokens": 138424632u64,
+                    "weekly_tokens": 1335519960u64,
+                    "five_hour_remaining_percent": 49u64,
+                    "weekly_remaining_percent": 80u64,
+                    "five_hour_reset_at_unix_seconds": 8_200u64,
+                    "weekly_reset_at_unix_seconds": 260_200u64,
+                    "five_hour_window_seconds": 18_000u64,
+                    "weekly_window_seconds": 604_800u64,
+                    "status": "ok"
+                }
+            }),
+            "codex_usage_cache_test",
+        )
+        .unwrap();
+
+        let mut cache = build_status_bar_cache_at(status_cache_test_status_bus(), 1_000);
+        hydrate_status_cache_codex_usage(&mut cache, &status_cache_path);
         assert_eq!(
             render_status_cache_widget_with_agent_usage_settings(
                 &cache,
