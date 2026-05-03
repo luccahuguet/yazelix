@@ -1,0 +1,48 @@
+name: Publish Nix Cache
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-nix-cache-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish_x86_64_linux:
+    if: github.repository == 'luccahuguet/yazelix'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v22
+        with:
+          determinate: false
+
+      - name: Configure Cachix
+        uses: cachix/cachix-action@v15
+        with:
+          name: yazelix
+          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
+
+      - name: Build user-facing packages
+        run: |
+          nix build --no-link --print-out-paths \
+            .#packages.x86_64-linux.yazelix \
+            .#packages.x86_64-linux.yazelix_ghostty \
+            .#packages.x86_64-linux.yazelix_wezterm \
+            .#packages.x86_64-linux.yazelix_agent_tools \
+            .#packages.x86_64-linux.yazelix_screen

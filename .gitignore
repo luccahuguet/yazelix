@@ -10,6 +10,9 @@ shells/zsh/initializers
 .config/
 
 # Legacy local environment caches
+.env
+.env.*
+!.env.example
 
 # User configuration
 yazelix.nix
