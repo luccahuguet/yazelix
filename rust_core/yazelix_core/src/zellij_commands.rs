@@ -2080,7 +2080,9 @@ fn refresh_tokenusage_windowed_usage_shared_cache(
         timeout,
         quota_backoff_until.is_none(),
     );
+    let quota_probe_failed = quota_backoff_until.is_none() && !facts.has_quota();
     preserve_previous_tokenusage_window_tokens(provider, &mut facts, previous_facts.as_ref());
+    preserve_previous_tokenusage_window_quota(provider, &mut facts, previous_facts.as_ref(), now);
     let mut entry = serde_json::Map::new();
     entry.insert("updated_at_unix_seconds".to_string(), json!(now));
     if let Some(tokens) = facts.five_hour_tokens {
@@ -2127,7 +2129,7 @@ fn refresh_tokenusage_windowed_usage_shared_cache(
             "quota_backoff_until_unix_seconds".to_string(),
             json!(backoff_until),
         );
-    } else if facts.has_tokens() && !facts.has_quota() {
+    } else if facts.has_tokens() && (quota_probe_failed || !facts.has_quota()) {
         entry.insert(
             "quota_backoff_until_unix_seconds".to_string(),
             json!(now.saturating_add(error_backoff_seconds)),
@@ -2135,7 +2137,11 @@ fn refresh_tokenusage_windowed_usage_shared_cache(
     }
     let status = if facts.is_empty() {
         "error"
-    } else if facts.has_tokens() && facts.has_quota() {
+    } else if facts.has_tokens()
+        && facts.has_quota()
+        && !quota_probe_failed
+        && quota_backoff_until.is_none()
+    {
         "ok"
     } else {
         "partial"
@@ -2185,6 +2191,57 @@ fn preserve_previous_tokenusage_window_tokens(
         )
     {
         facts.weekly_tokens = previous.weekly_tokens;
+    }
+}
+
+fn preserve_previous_tokenusage_window_quota(
+    provider: TokenusageWindowedProvider,
+    facts: &mut WindowedUsageFacts,
+    previous: Option<&WindowedUsageFacts>,
+    now: u64,
+) {
+    let Some(previous) = previous else {
+        return;
+    };
+
+    if facts.five_hour_remaining_percent.is_none()
+        && previous_quota_window_is_still_valid(
+            provider,
+            previous.five_hour_reset_at_unix_seconds,
+            previous.five_hour_window_seconds,
+            now,
+        )
+    {
+        facts.five_hour_remaining_percent = previous.five_hour_remaining_percent;
+        facts.five_hour_reset_at_unix_seconds = previous.five_hour_reset_at_unix_seconds;
+        facts.five_hour_window_seconds = previous.five_hour_window_seconds;
+    }
+    if facts.weekly_remaining_percent.is_none()
+        && previous_quota_window_is_still_valid(
+            provider,
+            previous.weekly_reset_at_unix_seconds,
+            previous.weekly_window_seconds,
+            now,
+        )
+    {
+        facts.weekly_remaining_percent = previous.weekly_remaining_percent;
+        facts.weekly_reset_at_unix_seconds = previous.weekly_reset_at_unix_seconds;
+        facts.weekly_window_seconds = previous.weekly_window_seconds;
+    }
+}
+
+fn previous_quota_window_is_still_valid(
+    provider: TokenusageWindowedProvider,
+    reset_at_unix_seconds: Option<u64>,
+    window_seconds: Option<u64>,
+    now: u64,
+) -> bool {
+    match provider {
+        TokenusageWindowedProvider::Claude => true,
+        TokenusageWindowedProvider::Codex => {
+            reset_at_unix_seconds.is_some_and(|reset_at| now < reset_at)
+                && window_seconds.is_some_and(|seconds| seconds > 0)
+        }
     }
 }
 
@@ -5529,6 +5586,114 @@ exit 64
             )
             .unwrap(),
             " [codex 3h/5h 999k 49% · 4d/7d 1.34B 80%]"
+        );
+    }
+
+    // Regression: transient official quota failures must not replace a previously good Codex widget with n/a labels.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[cfg(unix)]
+    #[test]
+    fn codex_usage_refresh_preserves_previous_quota_during_probe_backoff() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp = tempfile::tempdir().unwrap();
+        let bin_dir = temp.path().join("bin");
+        fs::create_dir_all(&bin_dir).unwrap();
+        let provider = bin_dir.join("tu");
+        fs::write(
+            &provider,
+            r#"#!/usr/bin/env sh
+if [ "$1" = "blocks" ] && [ "$2" = "--active" ]; then
+  case " $* " in
+    *" --official-limits "*)
+      exit 65
+      ;;
+    *)
+      printf '%s\n' '{"blocks":[{"is_active":true,"totals":{"total_tokens":999000}}]}'
+      exit 0
+      ;;
+  esac
+fi
+if [ "$1" = "weekly" ]; then
+  printf '%s\n' '{"weekly":[{"totals":{"total_tokens":1000000}}]}'
+  exit 0
+fi
+exit 64
+"#,
+        )
+        .unwrap();
+        let mut permissions = fs::metadata(&provider).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&provider, permissions).unwrap();
+
+        let status_cache_path = temp
+            .path()
+            .join("state")
+            .join("sessions")
+            .join("window_a")
+            .join("status_bar_cache.json");
+        let shared_path =
+            codex_usage_shared_cache_path_from_status_cache_path(&status_cache_path).unwrap();
+        write_json_value_atomic(
+            &shared_path,
+            &json!({
+                "schema_version": CODEX_USAGE_CACHE_SCHEMA_VERSION,
+                "codex": {
+                    "updated_at_unix_seconds": 0u64,
+                    "five_hour_tokens": 138424632u64,
+                    "weekly_tokens": 1335519960u64,
+                    "five_hour_remaining_percent": 49u64,
+                    "weekly_remaining_percent": 80u64,
+                    "five_hour_reset_at_unix_seconds": 10000u64,
+                    "weekly_reset_at_unix_seconds": 260200u64,
+                    "five_hour_window_seconds": 18000u64,
+                    "weekly_window_seconds": 604800u64,
+                    "status": "ok"
+                }
+            }),
+            "codex_usage_cache_test",
+        )
+        .unwrap();
+
+        let refreshed = refresh_codex_usage_shared_cache(
+            &shared_path,
+            Some(bin_dir.as_os_str()),
+            1_000,
+            600,
+            1_800,
+            Duration::from_secs(1),
+        )
+        .unwrap();
+        let shared_cache = read_codex_usage_shared_cache_value(&shared_path).unwrap();
+        let mut cache = build_status_bar_cache_at(status_cache_test_status_bus(), 1_000);
+        hydrate_status_cache_codex_usage(&mut cache, &status_cache_path);
+
+        assert!(refreshed);
+        assert_eq!(
+            shared_cache
+                .get("codex")
+                .and_then(|entry| entry.get("quota_backoff_until_unix_seconds"))
+                .and_then(Value::as_u64),
+            Some(2_800)
+        );
+        assert_eq!(
+            shared_cache
+                .get("codex")
+                .and_then(|entry| entry.get("status"))
+                .and_then(Value::as_str),
+            Some("partial")
+        );
+        assert_eq!(
+            render_status_cache_widget_with_agent_usage_settings(
+                &cache,
+                "codex_usage",
+                &AgentUsageWidgetSettings {
+                    codex_display: WindowedUsageDisplay::Both,
+                    ..AgentUsageWidgetSettings::default()
+                },
+            )
+            .unwrap(),
+            " [codex 2h30m/5h 999k 49% · 4d/7d 1M 80%]"
         );
     }
 
