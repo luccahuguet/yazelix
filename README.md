@@ -140,6 +140,8 @@ nix profile add github:luccahuguet/yazelix#yazelix
 yzx launch
 ```
 
+Yazelix publishes an optional `x86_64-linux` Cachix binary cache for package installs and Home Manager switches; see the [installation guide](./docs/installation.md#optional-use-the-yazelix-binary-cache) for the Nix configuration snippet
+
 > If you previously evaluated this flake (for example with `nix run` or `nix flake show`), Nix may have cached an older version. Add `--refresh` to force a fresh fetch:
 > ```bash
 > nix profile add --refresh github:luccahuguet/yazelix#yazelix

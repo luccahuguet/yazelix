@@ -100,6 +100,28 @@ eval-cores = 0
 
 Set `eval-cores` to 0 to use all cores, or 1 to disable.
 
+### Optional: Use the Yazelix Binary Cache
+
+Yazelix publishes `x86_64-linux` package builds to the public Cachix cache at `https://yazelix.cachix.org`. The cache is optional: Nix still builds from source when the cache is unavailable or does not contain the requested output.
+
+Add the cache to your Nix settings before installing or updating Yazelix:
+
+```nix
+{
+  nix.settings.substituters = [
+    "https://cache.nixos.org/"
+    "https://yazelix.cachix.org"
+  ];
+
+  nix.settings.trusted-public-keys = [
+    "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
+    "yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM="
+  ];
+}
+```
+
+If another cache is already configured, keep it in the same lists. For example, a Home Manager user can place those `nix.settings` entries in their Home Manager configuration, then run `home-manager switch`. Standalone Home Manager users should also set `nix.package = pkgs.nix` when Home Manager generates `~/.config/nix/nix.conf`.
+
 ### Step 2: Install Yazelix
 
 Install the Yazelix package exposed by the top-level flake:

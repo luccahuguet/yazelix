@@ -70,6 +70,27 @@ If you already have your own Home Manager flake, the minimal setup is:
 }
 ```
 
+Optional: use Yazelix's public `x86_64-linux` Cachix cache for faster package builds and Home Manager switches:
+
+```nix
+{ pkgs, ... }: {
+  nix.package = pkgs.nix;
+  nix.settings.substituters = [
+    "https://cache.nixos.org/"
+    "https://yazelix.cachix.org"
+  ];
+
+  nix.settings.trusted-public-keys = [
+    "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
+    "yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM="
+  ];
+}
+```
+
+Standalone Home Manager needs `nix.package` when it generates `~/.config/nix/nix.conf`
+
+If your Home Manager configuration already defines Nix caches, keep those cache URLs and keys in the same `substituters` and `trusted-public-keys` lists
+
 ### 3. Install and Use Yazelix
 
 Run:
