@@ -669,7 +669,15 @@ mod tests {
         );
         assert_eq!(
             default_widget_tray(),
-            vec!["editor", "shell", "term", "cursor", "codex_usage", "cpu", "ram"]
+            vec![
+                "editor",
+                "shell",
+                "term",
+                "cursor",
+                "codex_usage",
+                "cpu",
+                "ram"
+            ]
         );
     }
 

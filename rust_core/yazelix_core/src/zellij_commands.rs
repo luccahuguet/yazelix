@@ -313,6 +313,13 @@ enum ManagedEditorOpenStatus {
     Missing,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CurrentSidebarYaziRegistration {
+    pane_id: String,
+    yazi_id: String,
+    cwd: String,
+}
+
 fn run_pane_orchestrator_command(command_name: &str, payload: &str) -> Result<String, CoreError> {
     let output = Command::new("zellij")
         .args([
@@ -3872,10 +3879,52 @@ fn retarget_workspace_dir_without_focused_cd(
             .filter(|editor| !editor.is_empty())
             .map(|editor| Value::String(editor.to_string()))
             .unwrap_or(Value::Null),
+        "sidebar_yazi": current_sidebar_yazi_registration()
+            .map(|registration| {
+                json!({
+                    "pane_id": registration.pane_id,
+                    "yazi_id": registration.yazi_id,
+                    "cwd": registration.cwd,
+                })
+            })
+            .unwrap_or(Value::Null),
     })
     .to_string();
     let response = run_pane_orchestrator_command("retarget_workspace", &payload)?;
     Ok(parse_workspace_retarget_response(&response))
+}
+
+fn current_sidebar_yazi_registration() -> Option<CurrentSidebarYaziRegistration> {
+    let yazi_id = env::var("YAZI_ID").ok()?;
+    let yazi_id = yazi_id.trim();
+    if yazi_id.is_empty() {
+        return None;
+    }
+
+    let pane_id = env::var("ZELLIJ_PANE_ID").ok()?;
+    let pane_id = normalize_terminal_pane_id(&pane_id)?;
+
+    let cwd = env::current_dir().ok()?.display().to_string();
+    if cwd.trim().is_empty() {
+        return None;
+    }
+
+    Some(CurrentSidebarYaziRegistration {
+        pane_id,
+        yazi_id: yazi_id.to_string(),
+        cwd,
+    })
+}
+
+fn normalize_terminal_pane_id(raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        None
+    } else if trimmed.contains(':') {
+        Some(trimmed.to_string())
+    } else {
+        Some(format!("terminal:{trimmed}"))
+    }
 }
 
 fn resolve_runtime_editor_launch() -> Result<(serde_json::Map<String, Value>, String), CoreError> {

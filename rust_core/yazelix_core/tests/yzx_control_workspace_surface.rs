@@ -457,6 +457,58 @@ ya_command = "ya"
     );
 }
 
+// Regression: early Yazi file opens carry the active sidebar Yazi identity through the existing retarget pipe instead of waiting for startup sidebar-state registration.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_control_zellij_open_editor_passes_current_yazi_state_to_retarget() {
+    let fixture = managed_config_fixture(
+        r#"[editor]
+command = "nvim"
+hide_sidebar_on_file_open = false
+"#,
+    );
+    let fake_bin = fixture.home_dir.join("fake-bin");
+    let sidebar_dir = fixture.home_dir.join("sidebar-cwd");
+    let target_dir = fixture.home_dir.join("workspace");
+    let target_file = target_dir.join("notes.txt");
+    let retarget_payload_log = fixture.home_dir.join("retarget-payload.json");
+    fs::create_dir_all(&fake_bin).unwrap();
+    fs::create_dir_all(&sidebar_dir).unwrap();
+    fs::create_dir_all(&target_dir).unwrap();
+    fs::write(&target_file, "").unwrap();
+
+    write_executable_script(
+        &fake_bin.join("zellij"),
+        &format!(
+            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  case \"$6\" in\n    open_file)\n      printf '%s\\n' 'ok'\n      exit 0\n      ;;\n    retarget_workspace)\n      printf '%s' \"$8\" > \"{}\"\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"skipped\"}}'\n      exit 0\n      ;;\n  esac\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
+            retarget_payload_log.display(),
+        ),
+    );
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .current_dir(&sidebar_dir)
+        .env("PATH", prepend_path(&fake_bin))
+        .env("ZELLIJ", "1")
+        .env("ZELLIJ_PANE_ID", "42")
+        .env("YAZI_ID", "current-yazi")
+        .arg("zellij")
+        .arg("open-editor")
+        .arg(&target_file)
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stderr.is_empty());
+    let retarget_payload: Value =
+        serde_json::from_slice(&fs::read(retarget_payload_log).unwrap()).unwrap();
+    assert_eq!(retarget_payload["sidebar_yazi"]["pane_id"], "terminal:42");
+    assert_eq!(retarget_payload["sidebar_yazi"]["yazi_id"], "current-yazi");
+    assert_eq!(
+        retarget_payload["sidebar_yazi"]["cwd"],
+        sidebar_dir.to_string_lossy().to_string()
+    );
+}
+
 // Defends: hide_sidebar_on_file_open hides the managed sidebar before opening files so the editor is not visibly resized after focus.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
