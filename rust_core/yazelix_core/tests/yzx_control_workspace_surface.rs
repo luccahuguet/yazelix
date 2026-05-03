@@ -559,6 +559,60 @@ hide_sidebar_on_file_open = true
     );
 }
 
+// Regression: the first single-Yazi pane cannot visibly hide until the editor pane exists, so a missing-editor open needs one post-create hide pass.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_control_zellij_open_editor_hides_sidebar_after_creating_first_editor_pane() {
+    let fixture = managed_config_fixture(
+        r#"[editor]
+command = "nvim"
+hide_sidebar_on_file_open = true
+"#,
+    );
+    let fake_bin = fixture.home_dir.join("fake-bin");
+    let target_file = fixture.home_dir.join("notes.txt");
+    let zellij_commands_log = fixture.home_dir.join("zellij-commands.log");
+    fs::create_dir_all(&fake_bin).unwrap();
+    fs::write(&target_file, "").unwrap();
+
+    write_executable_script(
+        &fake_bin.join("zellij"),
+        &format!(
+            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    get_active_tab_session_state)\n      printf '%s\\n' '{{\"schema_version\":1,\"layout\":{{\"sidebar_collapsed\":false}}}}'\n      exit 0\n      ;;\n    hide_sidebar)\n      printf '%s\\n' 'ok'\n      exit 0\n      ;;\n    open_file)\n      printf '%s\\n' 'missing'\n      exit 0\n      ;;\n    retarget_workspace)\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"skipped\"}}'\n      exit 0\n      ;;\n  esac\nfi\nif [ \"$1\" = \"run\" ]; then\n  printf '%s\\n' 'run_editor' >> \"{}\"\n  exit 0\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
+            zellij_commands_log.display(),
+            zellij_commands_log.display(),
+        ),
+    );
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .env("PATH", prepend_path(&fake_bin))
+        .env("ZELLIJ", "1")
+        .env("YAZI_ID", "current-yazi")
+        .arg("zellij")
+        .arg("open-editor")
+        .arg(&target_file)
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stderr.is_empty());
+    assert_eq!(
+        fs::read_to_string(zellij_commands_log)
+            .unwrap()
+            .lines()
+            .collect::<Vec<_>>(),
+        vec![
+            "get_active_tab_session_state",
+            "hide_sidebar",
+            "open_file",
+            "run_editor",
+            "retarget_workspace",
+            "get_active_tab_session_state",
+            "hide_sidebar",
+        ]
+    );
+}
+
 // Regression: nested Yazi-to-Helix file opens keep the Git workspace root instead of retargeting the tab to the file parent.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
@@ -887,6 +941,59 @@ hide_sidebar_on_file_open = true
             "get_active_tab_session_state",
             "hide_sidebar",
             "retarget_workspace"
+        ]
+    );
+}
+
+// Regression: Alt+z from the initial single-Yazi pane needs a post-create hide because the closed layout is not applicable before the editor pane exists.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_control_zellij_open_editor_cwd_hides_sidebar_after_creating_first_editor_pane() {
+    let fixture = managed_config_fixture(
+        r#"[editor]
+command = "hx"
+hide_sidebar_on_file_open = true
+"#,
+    );
+    let fake_bin = fixture.home_dir.join("fake-bin");
+    let target_dir = fixture.home_dir.join("workspace");
+    let zellij_commands_log = fixture.home_dir.join("zellij-commands.log");
+    fs::create_dir_all(&fake_bin).unwrap();
+    fs::create_dir_all(&target_dir).unwrap();
+
+    write_executable_script(
+        &fake_bin.join("zellij"),
+        &format!(
+            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    get_active_tab_session_state)\n      printf '%s\\n' '{{\"schema_version\":1,\"layout\":{{\"sidebar_collapsed\":false}}}}'\n      exit 0\n      ;;\n    hide_sidebar)\n      printf '%s\\n' 'ok'\n      exit 0\n      ;;\n    retarget_workspace)\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"missing\"}}'\n      exit 0\n      ;;\n  esac\nfi\nif [ \"$1\" = \"run\" ]; then\n  printf '%s\\n' 'run_editor' >> \"{}\"\n  exit 0\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
+            zellij_commands_log.display(),
+            zellij_commands_log.display(),
+        ),
+    );
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .env("PATH", prepend_path(&fake_bin))
+        .env("ZELLIJ", "1")
+        .env("YAZI_ID", "current-yazi")
+        .arg("zellij")
+        .arg("open-editor-cwd")
+        .arg(&target_dir)
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stderr.is_empty());
+    assert_eq!(
+        fs::read_to_string(zellij_commands_log)
+            .unwrap()
+            .lines()
+            .collect::<Vec<_>>(),
+        vec![
+            "get_active_tab_session_state",
+            "hide_sidebar",
+            "retarget_workspace",
+            "run_editor",
+            "get_active_tab_session_state",
+            "hide_sidebar",
         ]
     );
 }

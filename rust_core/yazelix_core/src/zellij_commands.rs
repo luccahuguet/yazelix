@@ -37,6 +37,7 @@ const CODEX_USAGE_WINDOW_SEPARATOR: &str = " · ";
 const CLAUDE_USAGE_LOCK_STALE_AFTER_SECONDS: u64 = 300;
 const CODEX_USAGE_LOCK_STALE_AFTER_SECONDS: u64 = 300;
 const OPENCODE_GO_USAGE_LOCK_STALE_AFTER_SECONDS: u64 = 300;
+const EDITOR_PANE_CREATE_LAYOUT_SETTLE_MS: u64 = 80;
 const OPENCODE_GO_PROVIDER_ID: &str = "opencode-go";
 const OPENCODE_GO_FIVE_HOUR_SECONDS: u64 = 5 * 60 * 60;
 const OPENCODE_GO_WEEK_SECONDS: u64 = 7 * 24 * 60 * 60;
@@ -3852,6 +3853,11 @@ fn hide_sidebar_if_visible() -> Result<(), CoreError> {
     }
 }
 
+fn hide_sidebar_after_editor_pane_creation() -> Result<(), CoreError> {
+    thread::sleep(Duration::from_millis(EDITOR_PANE_CREATE_LAYOUT_SETTLE_MS));
+    hide_sidebar_if_visible()
+}
+
 fn retarget_workspace_without_focused_cd(
     target_path: &Path,
     editor_kind: Option<&str>,
@@ -4234,6 +4240,7 @@ pub fn run_zellij_open_editor(args: &[String]) -> Result<i32, CoreError> {
     let editor_kind = integration_facts.managed_editor_kind.trim().to_string();
     let yazi_id = env::var("YAZI_ID").unwrap_or_default();
     let editor_working_dir = resolve_editor_working_dir(primary_target_path);
+    let mut created_editor_pane = false;
 
     if integration_facts.enable_sidebar && integration_facts.hide_sidebar_on_file_open {
         hide_sidebar_if_visible()?;
@@ -4251,6 +4258,7 @@ pub fn run_zellij_open_editor(args: &[String]) -> Result<i32, CoreError> {
                 Some(yazi_id.as_str()),
                 &editor_argv,
             )?;
+            created_editor_pane = true;
         }
     } else {
         let mut editor_argv = vec![editor_command];
@@ -4261,6 +4269,7 @@ pub fn run_zellij_open_editor(args: &[String]) -> Result<i32, CoreError> {
             Some(yazi_id.as_str()),
             &editor_argv,
         )?;
+        created_editor_pane = true;
     }
 
     if let Ok(retarget_result) =
@@ -4286,6 +4295,13 @@ pub fn run_zellij_open_editor(args: &[String]) -> Result<i32, CoreError> {
                 );
             }
         }
+    }
+
+    if created_editor_pane
+        && integration_facts.enable_sidebar
+        && integration_facts.hide_sidebar_on_file_open
+    {
+        hide_sidebar_after_editor_pane_creation()?;
     }
 
     Ok(0)
@@ -4323,6 +4339,7 @@ pub fn run_zellij_open_editor_cwd(args: &[String]) -> Result<i32, CoreError> {
 
     let retarget_result =
         retarget_workspace_without_focused_cd(&target_dir, Some(editor_kind.as_str()))?;
+    let mut created_editor_pane = false;
     let status = workspace_retarget_status(&retarget_result);
     if status != "ok" {
         let reason = retarget_result
@@ -4356,6 +4373,7 @@ pub fn run_zellij_open_editor_cwd(args: &[String]) -> Result<i32, CoreError> {
                 Some(yazi_id.as_str()),
                 &editor_argv,
             )?;
+            created_editor_pane = true;
         }
         "unsupported_editor" => {
             return Err(CoreError::classified(
@@ -4381,6 +4399,13 @@ pub fn run_zellij_open_editor_cwd(args: &[String]) -> Result<i32, CoreError> {
                 &target_dir,
             );
         }
+    }
+
+    if created_editor_pane
+        && integration_facts.enable_sidebar
+        && integration_facts.hide_sidebar_on_file_open
+    {
+        hide_sidebar_after_editor_pane_creation()?;
     }
 
     Ok(0)
