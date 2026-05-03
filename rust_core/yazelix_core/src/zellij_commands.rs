@@ -1891,7 +1891,11 @@ fn render_codex_usage_window(
             pieces.push(format_agent_usage_token_count(tokens?));
         }
         WindowedUsageDisplay::Quota => {
-            pieces.push(format_quota_percent(remaining_percent?));
+            pieces.push(match remaining_percent {
+                Some(percent) => format_quota_percent(percent),
+                None if tokens.is_some() => "n/a".to_string(),
+                None => return None,
+            });
         }
         WindowedUsageDisplay::Both => {
             if let Some(tokens) = tokens {
@@ -1962,7 +1966,11 @@ fn render_windowed_usage_window(
             pieces.push(format_agent_usage_token_count(tokens?));
         }
         WindowedUsageDisplay::Quota => {
-            pieces.push(format_quota_percent(remaining_percent?));
+            pieces.push(match remaining_percent {
+                Some(percent) => format_quota_percent(percent),
+                None if tokens.is_some() => "n/a".to_string(),
+                None => return None,
+            });
         }
         WindowedUsageDisplay::Both => {
             if let Some(tokens) = tokens {
@@ -3270,26 +3278,56 @@ fn format_reset_window_label(
     let remaining_seconds = reset_at_unix_seconds
         .saturating_sub(now_unix_seconds)
         .min(window_seconds);
+    let elapsed_seconds = window_seconds.saturating_sub(remaining_seconds);
     Some(format!(
         "{}/{}",
-        format_reset_remaining_duration(remaining_seconds, window_seconds),
+        format_reset_window_position_duration(elapsed_seconds, window_seconds),
         format_reset_window_total_duration(window_seconds)
     ))
 }
 
-fn format_reset_remaining_duration(seconds: u64, window_seconds: u64) -> String {
+fn format_reset_window_position_duration(seconds: u64, window_seconds: u64) -> String {
     if window_seconds >= DAY_SECONDS {
-        if seconds >= DAY_SECONDS {
-            format!("{}d", seconds / DAY_SECONDS)
-        } else if seconds >= HOUR_SECONDS {
-            format!("{}h", seconds / HOUR_SECONDS)
+        let days = seconds / DAY_SECONDS;
+        let hours = (seconds % DAY_SECONDS) / HOUR_SECONDS;
+        if days > 0 && hours > 0 {
+            format!("{days}d{hours}h")
+        } else if days > 0 {
+            format!("{days}d")
+        } else if hours > 0 {
+            format!("{hours}h")
         } else {
-            format!("{}m", seconds.div_ceil(MINUTE_SECONDS))
+            "0h".to_string()
         }
-    } else if seconds >= HOUR_SECONDS {
-        format!("{}h", seconds / HOUR_SECONDS)
+    } else if window_seconds >= HOUR_SECONDS {
+        let hours = seconds / HOUR_SECONDS;
+        let minutes = elapsed_minutes_after_hour(seconds);
+        if hours > 0 && minutes > 0 {
+            format!("{hours}h{minutes}m")
+        } else if hours > 0 {
+            format!("{hours}h")
+        } else {
+            format!("{minutes}m")
+        }
+    } else if window_seconds >= MINUTE_SECONDS {
+        if seconds > 0 {
+            format!("{}m", seconds.div_ceil(MINUTE_SECONDS))
+        } else {
+            "0m".to_string()
+        }
+    } else if seconds > 0 {
+        format!("{seconds}s")
     } else {
-        format!("{}m", seconds.div_ceil(MINUTE_SECONDS))
+        "0s".to_string()
+    }
+}
+
+fn elapsed_minutes_after_hour(seconds: u64) -> u64 {
+    let minutes = (seconds % HOUR_SECONDS) / MINUTE_SECONDS;
+    if seconds > 0 && seconds < HOUR_SECONDS && minutes == 0 {
+        1
+    } else {
+        minutes
     }
 }
 
@@ -4889,7 +4927,7 @@ mod tests {
         hydrate_status_cache_codex_usage(&mut codex_cache, &new_cache_path);
         assert_eq!(
             render_status_cache_widget(&codex_cache, "codex_usage").unwrap(),
-            " [codex 2h/5h 49% · 3d/7d 80%]"
+            " [codex 3h/5h 49% · 4d/7d 80%]"
         );
 
         let mut opencode_go_cache =
@@ -5082,8 +5120,8 @@ mod tests {
                 "weekly_tokens": 1335519960u64,
                 "five_hour_remaining_percent": 49u64,
                 "weekly_remaining_percent": 80u64,
-                "five_hour_reset_at_unix_seconds": 7210u64,
-                "weekly_reset_at_unix_seconds": 259210u64,
+                "five_hour_reset_at_unix_seconds": 9610u64,
+                "weekly_reset_at_unix_seconds": 241210u64,
                 "five_hour_window_seconds": 18000u64,
                 "weekly_window_seconds": 604800u64
             }
@@ -5099,7 +5137,7 @@ mod tests {
                 },
             )
             .unwrap(),
-            " [codex 2h/5h 138M 49% · 3d/7d 1.34B 80%]"
+            " [codex 2h20m/5h 138M 49% · 4d5h/7d 1.34B 80%]"
         );
         assert_eq!(
             render_status_cache_widget_with_agent_usage_settings(
@@ -5111,7 +5149,7 @@ mod tests {
                 },
             )
             .unwrap(),
-            " [codex 2h/5h 138M · 3d/7d 1.34B]"
+            " [codex 2h20m/5h 138M · 4d5h/7d 1.34B]"
         );
         assert_eq!(
             render_status_cache_widget_with_agent_usage_settings(
@@ -5123,7 +5161,62 @@ mod tests {
                 },
             )
             .unwrap(),
-            " [codex 2h/5h 49% · 3d/7d 80%]"
+            " [codex 2h20m/5h 49% · 4d5h/7d 80%]"
+        );
+    }
+
+    // Regression: Codex window labels show current window position instead of time remaining until reset.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn codex_window_label_reports_elapsed_position() {
+        assert_eq!(
+            format_reset_window_label(2 * DAY_SECONDS, 7 * DAY_SECONDS, 7 * HOUR_SECONDS),
+            Some("5d7h/7d".to_string())
+        );
+        assert_eq!(
+            format_reset_window_label(5 * HOUR_SECONDS, 5 * HOUR_SECONDS, 10 * MINUTE_SECONDS),
+            Some("10m/5h".to_string())
+        );
+    }
+
+    // Regression: quota-only Codex widgets must remain visible while official quota data is temporarily unavailable.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn status_cache_codex_usage_quota_mode_renders_partial_token_cache() {
+        let cache = json!({
+            "schema_version": 1,
+            "updated_at_unix_seconds": 10,
+            "status_bus": {
+                "schema_version": 1,
+                "active_tab_position": 0,
+                "workspace": null,
+                "managed_panes": {"editor_pane_id": null, "sidebar_pane_id": null},
+                "focus_context": "other",
+                "layout": {"active_swap_layout_name": null, "sidebar_collapsed": null},
+                "sidebar_yazi": null,
+                "transient_panes": {"popup": null, "menu": null},
+                "extensions": {"ai_pane_activity": []}
+            },
+            "codex_usage": {
+                "updated_at_unix_seconds": 10u64,
+                "five_hour_tokens": 4015883u64,
+                "weekly_tokens": 106335620u64,
+                "status": "partial",
+                "quota_backoff_until_unix_seconds": 1810u64
+            }
+        });
+
+        assert_eq!(
+            render_status_cache_widget_with_agent_usage_settings(
+                &cache,
+                "codex_usage",
+                &AgentUsageWidgetSettings {
+                    codex_display: WindowedUsageDisplay::Quota,
+                    ..AgentUsageWidgetSettings::default()
+                },
+            )
+            .unwrap(),
+            " [codex 5h n/a · wk n/a]"
         );
     }
 
@@ -5336,7 +5429,7 @@ exit 64
                 },
             )
             .unwrap(),
-            " [codex 2h/5h 138M 49% · 3d/7d 1.34B 80%]"
+            " [codex 3h/5h 138M 49% · 4d/7d 1.34B 80%]"
         );
     }
 
@@ -5435,7 +5528,7 @@ exit 64
                 },
             )
             .unwrap(),
-            " [codex 2h/5h 999k 49% · 3d/7d 1.34B 80%]"
+            " [codex 3h/5h 999k 49% · 4d/7d 1.34B 80%]"
         );
     }
 
@@ -5522,7 +5615,7 @@ exit 64
                 },
             )
             .unwrap(),
-            " [codex 2h/5h 138M 49% · 3d/7d 1.34B 80%]"
+            " [codex 3h/5h 138M 49% · 4d/7d 1.34B 80%]"
         );
     }
 
