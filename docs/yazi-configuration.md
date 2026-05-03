@@ -98,12 +98,18 @@ When yazelix starts:
 
 1. Reads the built-in `[yazi]` settings from `yazelix.toml`
 2. Generates the managed base `yazi.toml` from Yazelix defaults plus those settings
-3. Merges your optional `~/.config/yazelix/user_configs/yazi/yazi.toml` overrides when that file exists
+3. Merges your optional `~/.config/yazelix/user_configs/yazi/yazi.toml` overrides when that file exists, while preserving Yazelix-owned `[opener].edit`
 4. Generates `init.lua` with the built-in plugin list, then appends your optional `~/.config/yazelix/user_configs/yazi/init.lua`
 5. Merges your optional `~/.config/yazelix/user_configs/yazi/keymap.toml` with the Yazelix keymap layer
 6. Copies bundled configs, plugins, and flavors into the generated runtime Yazi directory
 
 The generated runtime config lives under `~/.local/share/yazelix/configs/yazi/`. You customize the managed inputs under `user_configs/yazi/`, not the generated output.
+
+### Yazi opener ownership
+
+Yazelix owns the generated `[opener].edit` entry. That opener sends file opens through `yzx_control zellij open-editor` so files target the managed editor pane instead of spawning an unmanaged editor.
+
+`~/.config/yazelix/user_configs/yazi/yazi.toml` can add or override other Yazi settings, but it does not replace `[opener].edit`. Use `keymap.toml` to remap file-open keys, and use `init.lua` for custom Lua setup.
 
 ## Default Features
 

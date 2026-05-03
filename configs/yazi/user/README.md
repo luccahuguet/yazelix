@@ -1,10 +1,22 @@
 # User Yazi Configuration
 
-This directory is for your custom Yazi configurations. Files here are gitignored.
+This directory is for your custom Yazi configurations
+
+Files here are gitignored
+
+## Custom Yazi Settings (yazi.toml)
+
+Create `yazi.toml` to add Yazi settings that Yazelix does not own
+
+Yazelix owns `[opener].edit` so file opens keep going through the managed editor pane
+
+Use `keymap.toml` to remap file-open keys instead
 
 ## Custom Keybindings (keymap.toml)
 
-Create `keymap.toml` to add custom keybindings. Your keybindings are merged with yazelix defaults.
+Create `keymap.toml` to add custom keybindings
+
+Your keybindings are merged with yazelix defaults
 
 ### Example: yamb bookmarks
 
@@ -29,9 +41,9 @@ desc = "Jump to bookmark"
 
 ## Custom Lua Code (init.lua)
 
-Create `init.lua` to add custom Lua code to Yazi's initialization.
+Create `init.lua` to add custom Lua code to Yazi's initialization
 
-Your code is appended after the plugin `require()` statements.
+Your code is appended after the plugin `require()` statements
 
 ### Example: yamb setup with custom options
 
@@ -41,7 +53,9 @@ require("yamb"):setup({
 })
 ```
 
-**Tip:** Plugins in `yazelix.toml` get auto-generated `setup()` calls. If you need custom options, configure the plugin here instead of adding it to `yazelix.toml`.
+**Tip:** Plugins in `yazelix.toml` get auto-generated `setup()` calls
+
+If you need custom options, configure the plugin here instead of adding it to `yazelix.toml`
 
 ## Notes
 
