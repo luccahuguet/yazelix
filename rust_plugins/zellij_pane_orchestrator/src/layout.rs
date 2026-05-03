@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use yazelix_pane_orchestrator::pane_contract::FocusContextPolicy;
 use yazelix_pane_orchestrator::sidebar_contract::{
-    resolve_sidebar_visibility_toggle, sidebar_post_layout_focus_nudges,
+    resolve_sidebar_hide, resolve_sidebar_visibility_toggle, sidebar_post_layout_focus_nudges,
     SidebarFocusNudgeDirection, SidebarPostLayoutFocus, SidebarVisibilityAction,
 };
 use zellij_tile::prelude::*;
@@ -149,8 +149,30 @@ impl State {
             return;
         };
 
-        if !sidebar_is_closed {
+        let focus_context = self
+            .focus_context_by_tab
+            .get(&active_tab_position)
+            .copied()
+            .unwrap_or(crate::panes::FocusContext::Other);
+        let managed_tab_panes = self.managed_panes_by_tab.get(&active_tab_position);
+        let has_editor = managed_tab_panes.and_then(|tab| tab.editor).is_some();
+        let has_focus_fallback = self
+            .fallback_terminal_pane_by_tab
+            .get(&active_tab_position)
+            .is_some();
+
+        if let Some(post_layout_focus) = resolve_sidebar_hide(
+            sidebar_is_closed,
+            match focus_context {
+                crate::panes::FocusContext::Editor => FocusContextPolicy::Editor,
+                crate::panes::FocusContext::Sidebar => FocusContextPolicy::Sidebar,
+                crate::panes::FocusContext::Other => FocusContextPolicy::Other,
+            },
+            has_editor,
+            has_focus_fallback,
+        ) {
             self.run_next_swap_layout_steps(1);
+            self.run_sidebar_post_layout_focus(post_layout_focus);
         }
 
         self.respond(pipe_message, RESULT_OK);

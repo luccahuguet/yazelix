@@ -89,6 +89,23 @@ pub fn resolve_sidebar_focus_toggle(
     }
 }
 
+pub fn resolve_sidebar_hide(
+    sidebar_is_closed: bool,
+    focus_context: FocusContextPolicy,
+    has_editor: bool,
+    has_focus_fallback: bool,
+) -> Option<SidebarPostLayoutFocus> {
+    if sidebar_is_closed {
+        return None;
+    }
+
+    if focus_context == FocusContextPolicy::Sidebar && (has_editor || has_focus_fallback) {
+        Some(SidebarPostLayoutFocus::MoveRightToNonSidebar)
+    } else {
+        Some(SidebarPostLayoutFocus::Preserve)
+    }
+}
+
 pub fn sidebar_post_layout_focus_nudges(
     post_layout_focus: SidebarPostLayoutFocus,
 ) -> &'static [SidebarFocusNudge] {
@@ -128,7 +145,7 @@ pub fn sidebar_post_layout_focus_nudges(
 #[cfg(test)]
 mod tests {
     use super::{
-        resolve_sidebar_focus_toggle, resolve_sidebar_visibility_toggle,
+        resolve_sidebar_focus_toggle, resolve_sidebar_hide, resolve_sidebar_visibility_toggle,
         sidebar_post_layout_focus_nudges, SidebarFocusNudge, SidebarFocusNudgeDirection,
         SidebarFocusTogglePlan, SidebarPostLayoutFocus, SidebarVisibilityAction,
         SidebarVisibilityTogglePlan,
@@ -171,6 +188,26 @@ mod tests {
                 action: SidebarVisibilityAction::Close,
                 post_layout_focus: SidebarPostLayoutFocus::MoveRightToNonSidebar
             }
+        );
+    }
+
+    // Regression: the programmatic hide path must move focus off the sidebar before a missing editor pane is opened.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn hide_focused_sidebar_uses_non_sidebar_fallback_when_editor_missing() {
+        assert_eq!(
+            resolve_sidebar_hide(false, FocusContextPolicy::Sidebar, false, true),
+            Some(SidebarPostLayoutFocus::MoveRightToNonSidebar)
+        );
+    }
+
+    // Defends: hiding an already hidden sidebar is a no-op and does not inject focus motion.
+    // Strength: defect=1 behavior=2 resilience=2 cost=2 uniqueness=1 total=8/10
+    #[test]
+    fn hide_closed_sidebar_is_noop() {
+        assert_eq!(
+            resolve_sidebar_hide(true, FocusContextPolicy::Sidebar, false, true),
+            None
         );
     }
 
