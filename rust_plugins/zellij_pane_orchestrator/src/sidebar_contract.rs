@@ -106,6 +106,14 @@ pub fn resolve_sidebar_hide(
     }
 }
 
+pub fn sidebar_close_swap_steps(active_layout_is_base: bool) -> usize {
+    if active_layout_is_base {
+        2
+    } else {
+        1
+    }
+}
+
 pub fn sidebar_post_layout_focus_nudges(
     post_layout_focus: SidebarPostLayoutFocus,
 ) -> &'static [SidebarFocusNudge] {
@@ -146,9 +154,9 @@ pub fn sidebar_post_layout_focus_nudges(
 mod tests {
     use super::{
         resolve_sidebar_focus_toggle, resolve_sidebar_hide, resolve_sidebar_visibility_toggle,
-        sidebar_post_layout_focus_nudges, SidebarFocusNudge, SidebarFocusNudgeDirection,
-        SidebarFocusTogglePlan, SidebarPostLayoutFocus, SidebarVisibilityAction,
-        SidebarVisibilityTogglePlan,
+        sidebar_close_swap_steps, sidebar_post_layout_focus_nudges, SidebarFocusNudge,
+        SidebarFocusNudgeDirection, SidebarFocusTogglePlan, SidebarPostLayoutFocus,
+        SidebarVisibilityAction, SidebarVisibilityTogglePlan,
     };
     use crate::pane_contract::FocusContextPolicy;
 
@@ -209,6 +217,14 @@ mod tests {
             resolve_sidebar_hide(true, FocusContextPolicy::Sidebar, false, true),
             None
         );
+    }
+
+    // Regression: closing the startup BASE layout needs two swaps because the first swap is the open single layout.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn close_from_base_layout_skips_open_single_layout() {
+        assert_eq!(sidebar_close_swap_steps(true), 2);
+        assert_eq!(sidebar_close_swap_steps(false), 1);
     }
 
     // Defends: closing a non-focused sidebar does not inject extra focus motion.

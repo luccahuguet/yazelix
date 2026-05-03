@@ -18,7 +18,7 @@ use crate::workspace_asset_contract::{
     WorkspaceAssetEvaluateRequest, evaluate_workspace_asset_report,
 };
 use crate::zellij_materialization::{
-    ZellijMaterializationRequest, generate_zellij_materialization,
+    ZellijMaterializationRequest, generate_zellij_materialization, zellij_permissions_cache_path,
 };
 use crate::{
     DoctorConfigEvaluateRequest, NormalizeConfigRequest, evaluate_doctor_config_report,
@@ -964,10 +964,7 @@ fn run_doctor_fix_flow(verbose: bool, results: &[Value]) -> Result<i32, CoreErro
         };
         match generate_zellij_materialization(&req) {
             Ok(_) => {
-                let cache_path = home_dir_from_env()?
-                    .join(".cache")
-                    .join("zellij")
-                    .join("permissions.kdl");
+                let cache_path = zellij_permissions_cache_path()?;
                 println!(
                     "✅ Seeded Yazelix plugin permissions in: {}",
                     cache_path.display()

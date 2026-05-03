@@ -8,6 +8,7 @@ use crate::zellij_render_plan::{
     DEFAULT_SIDEBAR_YAZI_ARG, TopLevelSetting, ZellijRenderPlanData, ZellijRenderPlanRequest,
     compute_zellij_render_plan, effective_sidebar_args,
 };
+use directories::ProjectDirs;
 use serde::Serialize;
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use sha2::{Digest, Sha256};
@@ -170,7 +171,9 @@ pub fn generate_zellij_materialization(
                 .runtime_path
                 .to_string_lossy()
                 .to_string(),
-            permissions_cache_path: permissions_cache_path()?.to_string_lossy().to_string(),
+            permissions_cache_path: zellij_permissions_cache_path()?
+                .to_string_lossy()
+                .to_string(),
             seeded_plugin_permissions: request.seed_plugin_permissions,
             generated_layouts: expected_layout_targets(
                 &source_layouts_dir,
@@ -231,7 +234,9 @@ pub fn generate_zellij_materialization(
             .to_string_lossy()
             .to_string(),
         zjstatus_runtime_path: zjstatus_runtime_path.to_string_lossy().to_string(),
-        permissions_cache_path: permissions_cache_path()?.to_string_lossy().to_string(),
+        permissions_cache_path: zellij_permissions_cache_path()?
+            .to_string_lossy()
+            .to_string(),
         seeded_plugin_permissions: request.seed_plugin_permissions,
         generated_layouts: generated_layouts
             .into_iter()
@@ -1284,7 +1289,7 @@ fn preserve_plugin_permissions(
     runtime_path: &Path,
     required_permissions: &[&str],
 ) -> Result<(), CoreError> {
-    let permissions_cache_path = permissions_cache_path()?;
+    let permissions_cache_path = zellij_permissions_cache_path()?;
     if !permissions_cache_path.exists() {
         return Ok(());
     }
@@ -1322,7 +1327,7 @@ fn preserve_plugin_permissions(
 }
 
 fn remove_permission_blocks_by_prefix(prefix: &str) -> Result<(), CoreError> {
-    let permissions_cache_path = permissions_cache_path()?;
+    let permissions_cache_path = zellij_permissions_cache_path()?;
     if !permissions_cache_path.exists() {
         return Ok(());
     }
@@ -1387,7 +1392,7 @@ fn build_permission_block(plugin_path: &str, permissions: &[String]) -> String {
 }
 
 fn upsert_plugin_permission_blocks(plugin_artifacts: &[PluginArtifact]) -> Result<(), CoreError> {
-    let permissions_cache_path = permissions_cache_path()?;
+    let permissions_cache_path = zellij_permissions_cache_path()?;
     let existing_blocks = if permissions_cache_path.exists() {
         parse_permission_blocks(&read_text(
             &permissions_cache_path,
@@ -1716,11 +1721,18 @@ fn home_dir_from_env() -> Result<PathBuf, CoreError> {
     home_dir_from_control_plane()
 }
 
-fn permissions_cache_path() -> Result<PathBuf, CoreError> {
-    Ok(home_dir_from_env()?
-        .join(".cache")
-        .join("zellij")
-        .join("permissions.kdl"))
+pub(crate) fn zellij_permissions_cache_path() -> Result<PathBuf, CoreError> {
+    ProjectDirs::from("org", "Zellij Contributors", "Zellij")
+        .map(|dirs| dirs.cache_dir().join("permissions.kdl"))
+        .ok_or_else(|| {
+            CoreError::classified(
+                ErrorClass::Runtime,
+                "resolve_zellij_permissions_cache",
+                "Could not resolve Zellij's plugin permission cache directory.",
+                "Ensure HOME is set, then retry.",
+                json!({}),
+            )
+        })
 }
 
 fn timestamp_for_header() -> String {
@@ -1772,6 +1784,31 @@ mod tests {
             terminal_label: terminal_label.into(),
         })
         .unwrap()
+    }
+
+    // Regression: plugin permission seeding must write the same cache file that Zellij reads on each platform.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
+    #[test]
+    fn zellij_permissions_cache_path_matches_upstream_project_dirs() {
+        let expected = ProjectDirs::from("org", "Zellij Contributors", "Zellij")
+            .unwrap()
+            .cache_dir()
+            .join("permissions.kdl");
+
+        assert_eq!(zellij_permissions_cache_path().unwrap(), expected);
+    }
+
+    // Regression: macOS Zellij reads plugin permissions from ProjectDirs' Library/Caches path, not ~/.cache/zellij.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn zellij_permissions_cache_path_uses_macos_cache_location() {
+        let path = zellij_permissions_cache_path()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
+
+        assert!(path.ends_with("/Library/Caches/org.Zellij-Contributors.Zellij/permissions.kdl"));
     }
 
     // Defends: semantic block extraction removes first-class KDL blocks while preserving unrelated top-level lines.

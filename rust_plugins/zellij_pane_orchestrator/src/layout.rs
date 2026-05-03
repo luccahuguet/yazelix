@@ -3,8 +3,9 @@ use std::time::Duration;
 
 use yazelix_pane_orchestrator::pane_contract::FocusContextPolicy;
 use yazelix_pane_orchestrator::sidebar_contract::{
-    resolve_sidebar_hide, resolve_sidebar_visibility_toggle, sidebar_post_layout_focus_nudges,
-    SidebarFocusNudgeDirection, SidebarPostLayoutFocus, SidebarVisibilityAction,
+    resolve_sidebar_hide, resolve_sidebar_visibility_toggle, sidebar_close_swap_steps,
+    sidebar_post_layout_focus_nudges, SidebarFocusNudgeDirection, SidebarPostLayoutFocus,
+    SidebarVisibilityAction,
 };
 use zellij_tile::prelude::*;
 
@@ -127,7 +128,9 @@ impl State {
                 self.run_next_swap_layout_steps(1)
             }
             SidebarVisibilityAction::Open => self.run_previous_swap_layout_steps(1),
-            SidebarVisibilityAction::Close => self.run_next_swap_layout_steps(1),
+            SidebarVisibilityAction::Close => self.run_next_swap_layout_steps(
+                sidebar_close_swap_steps(self.active_layout_is_base(active_tab_position)),
+            ),
         }
         self.run_sidebar_post_layout_focus(plan.post_layout_focus);
 
@@ -171,7 +174,9 @@ impl State {
             has_editor,
             has_focus_fallback,
         ) {
-            self.run_next_swap_layout_steps(1);
+            self.run_next_swap_layout_steps(sidebar_close_swap_steps(
+                self.active_layout_is_base(active_tab_position),
+            ));
             self.run_sidebar_post_layout_focus(post_layout_focus);
         }
 

@@ -1,5 +1,6 @@
 local M = {}
 local PANE_ORCHESTRATOR_PLUGIN_ALIAS = "yazelix_pane_orchestrator"
+local STARTUP_REGISTER_DELAY_SECONDS = 1.25
 
 local function normalize_pane_id(value)
 	if not value or value == "" then
@@ -39,7 +40,7 @@ local function json_escape(value)
 		:gsub("\t", "\\t")
 end
 
-local function register_sidebar_state_with_pane_orchestrator(yazi_id, pane_id, cwd)
+local function register_sidebar_state_with_pane_orchestrator(yazi_id, pane_id, cwd, delay_seconds)
 	if not yazi_id or yazi_id == "" or not pane_id or pane_id == "" or not cwd or cwd == "" then
 		return
 	end
@@ -50,14 +51,30 @@ local function register_sidebar_state_with_pane_orchestrator(yazi_id, pane_id, c
 		json_escape(yazi_id),
 		json_escape(cwd)
 	)
-	os.execute(string.format(
-		"zellij action pipe --plugin %q --name register_sidebar_yazi_state -- %q >/dev/null 2>&1",
-		PANE_ORCHESTRATOR_PLUGIN_ALIAS,
-		payload
-	))
+	ya.async(function()
+		if delay_seconds and delay_seconds > 0 then
+			ya.sleep(delay_seconds)
+		end
+
+		Command("zellij")
+			:arg({
+				"action",
+				"pipe",
+				"--plugin",
+				PANE_ORCHESTRATOR_PLUGIN_ALIAS,
+				"--name",
+				"register_sidebar_yazi_state",
+				"--",
+				payload,
+			})
+			:stdin(Command.NULL)
+			:stdout(Command.NULL)
+			:stderr(Command.NULL)
+			:status()
+	end)
 end
 
-local function publish_sidebar_state()
+local function publish_sidebar_state(delay_seconds)
 	local normalized_pane_id = normalize_pane_id(os.getenv("ZELLIJ_PANE_ID"))
 	local yazi_id = os.getenv("YAZI_ID")
 	local cwd = current_cwd()
@@ -66,7 +83,11 @@ local function publish_sidebar_state()
 		return
 	end
 
-	register_sidebar_state_with_pane_orchestrator(yazi_id, normalized_pane_id, cwd)
+	register_sidebar_state_with_pane_orchestrator(yazi_id, normalized_pane_id, cwd, delay_seconds)
+end
+
+local function publish_sidebar_state_after_startup_delay()
+	publish_sidebar_state(STARTUP_REGISTER_DELAY_SECONDS)
 end
 
 local function emit_sidebar_git_refresh()
@@ -85,7 +106,7 @@ local function emit_sidebar_starship_refresh()
 end
 
 function M.setup()
-	publish_sidebar_state()
+	publish_sidebar_state_after_startup_delay()
 	emit_sidebar_git_refresh()
 	emit_sidebar_starship_refresh()
 

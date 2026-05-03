@@ -1203,6 +1203,17 @@ append_keymap = [{ run = "ignored-top-level" }]
         assert!(!rendered.contains("__YAZELIX_RUNTIME_DIR__"));
     }
 
+    // Regression: sidebar-state must not synchronously pipe to Zellij during Yazi startup.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
+    #[test]
+    fn sidebar_state_registers_with_orchestrator_asynchronously() {
+        let source = include_str!("../../../configs/yazi/plugins/sidebar-state.yazi/main.lua");
+
+        assert!(source.contains("ya.async(function()"));
+        assert!(source.contains("STARTUP_REGISTER_DELAY_SECONDS"));
+        assert!(!source.contains("os.execute"));
+    }
+
     // Regression: the bundled Yazi Starship config must copy into the generated surface without becoming read-only or drift-prone.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
