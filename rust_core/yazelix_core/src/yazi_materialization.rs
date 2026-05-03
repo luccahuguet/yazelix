@@ -795,14 +795,18 @@ fn deep_merge_toml(base: &mut TomlValue, user: &TomlValue) {
 }
 
 fn merge_yazi_keymap(base_keymap: toml::Table, user_keymap: toml::Table) -> toml::Table {
-    let mut merged = base_keymap.clone();
-    for section in base_keymap.keys() {
-        let Some(user_section) = user_keymap.get(section).and_then(TomlValue::as_table) else {
+    let mut merged = base_keymap;
+    for (section, user_value) in user_keymap {
+        let TomlValue::Table(user_section) = user_value else {
+            merged.insert(section, user_value);
             continue;
         };
-        let Some(base_section) = merged.get_mut(section).and_then(TomlValue::as_table_mut) else {
+
+        let Some(base_section) = merged.get_mut(&section).and_then(TomlValue::as_table_mut) else {
+            merged.insert(section, TomlValue::Table(user_section));
             continue;
         };
+
         let base_subsections = base_section.keys().cloned().collect::<Vec<_>>();
         for subsection in &base_subsections {
             let Some(user_value) = user_section.get(subsection) else {
@@ -820,10 +824,7 @@ fn merge_yazi_keymap(base_keymap: toml::Table, user_keymap: toml::Table) -> toml
             }
         }
         for (subsection, user_value) in user_section {
-            if !base_subsections
-                .iter()
-                .any(|existing| existing == subsection)
-            {
+            if !base_subsections.contains(&subsection) {
                 base_section.insert(subsection.clone(), user_value.clone());
             }
         }
@@ -1134,10 +1135,10 @@ id = "extra"
         );
     }
 
-    // Regression: Yazi keymap merging only extends known top-level sections while appending subsection arrays.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    // Regression: documented Yazi keymap sections absent from the bundled base keymap must survive user keymap merging.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn keymap_merge_appends_known_sections_only() {
+    fn keymap_merge_preserves_user_sections_absent_from_base() {
         let base = toml::from_str::<toml::Table>(
             r#"
 [mgr]
@@ -1151,7 +1152,10 @@ prepend_keymap = [{ run = "base" }]
 prepend_keymap = [{ run = "user" }]
 
 [input]
-append_keymap = [{ run = "ignored-top-level" }]
+append_keymap = [{ run = "input-user" }]
+
+[cmp]
+prepend_keymap = [{ run = "cmp-user" }]
 "#,
         )
         .unwrap();
@@ -1165,7 +1169,26 @@ append_keymap = [{ run = "ignored-top-level" }]
                 .len(),
             2
         );
-        assert!(!merged.contains_key("input"));
+        assert_eq!(
+            merged
+                .get("input")
+                .and_then(TomlValue::as_table)
+                .and_then(|input| input.get("append_keymap"))
+                .and_then(TomlValue::as_array)
+                .unwrap()
+                .len(),
+            1
+        );
+        assert_eq!(
+            merged
+                .get("cmp")
+                .and_then(TomlValue::as_table)
+                .and_then(|cmp| cmp.get("prepend_keymap"))
+                .and_then(TomlValue::as_array)
+                .unwrap()
+                .len(),
+            1
+        );
     }
 
     // Defends: missing bundled asset targets are detected so warm Yazi generation can self-heal deleted files.

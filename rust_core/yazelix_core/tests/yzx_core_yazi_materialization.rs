@@ -172,6 +172,125 @@ plugins = ["git", "starship"]
     assert!(runtime_placeholder_plugin.contains(runtime_dir.to_string_lossy().as_ref()));
 }
 
+// Regression: user Yazi keymap sections that are absent from Yazelix's bundled base keymap still survive materialization.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yazi_materialization_generate_preserves_user_keymap_sections_beyond_mgr() {
+    let repo = repo_root();
+    let temp = tempdir().unwrap();
+    let home = temp.path().join("home");
+    let config_root = home.join(".config").join("yazelix");
+    let output_dir = temp.path().join("state").join("configs").join("yazi");
+    let runtime_dir = temp.path().join("runtime");
+    let config_path = prepare_managed_config(&config_root, &repo, "");
+    let user_yazi_dir = config_root.join("user_configs").join("yazi");
+    prepare_runtime_fixture(&runtime_dir);
+    fs::create_dir_all(&user_yazi_dir).unwrap();
+    fs::write(
+        user_yazi_dir.join("keymap.toml"),
+        r#"
+[[input.append_keymap]]
+on = ["<Esc>"]
+run = "close"
+desc = "Close input"
+
+[[input.prepend_keymap]]
+on = ["<C-a>"]
+run = "move -999"
+desc = "Move to start"
+
+[[cmp.append_keymap]]
+on = ["<Tab>"]
+run = "confirm"
+desc = "Confirm completion"
+
+[[cmp.prepend_keymap]]
+on = ["<BackTab>"]
+run = "arrow -1"
+desc = "Previous completion"
+"#,
+    )
+    .unwrap();
+
+    let output = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .env("HOME", &home)
+        .env("XDG_CONFIG_HOME", home.join(".config"))
+        .env("XDG_DATA_HOME", home.join(".local").join("share"))
+        .env("YAZELIX_CONFIG_DIR", &config_root)
+        .arg("yazi-materialization.generate")
+        .arg("--config")
+        .arg(&config_path)
+        .arg("--default-config")
+        .arg(repo.join("yazelix_default.toml"))
+        .arg("--contract")
+        .arg(repo.join("config_metadata/main_config_contract.toml"))
+        .arg("--runtime-dir")
+        .arg(&runtime_dir)
+        .arg("--yazi-config-dir")
+        .arg(&output_dir)
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let generated_keymap = fs::read_to_string(output_dir.join("keymap.toml")).unwrap();
+    let parsed_keymap: toml::Value = toml::from_str(&generated_keymap).unwrap();
+
+    assert_eq!(
+        parsed_keymap
+            .get("mgr")
+            .and_then(|section| section.get("append_keymap"))
+            .and_then(toml::Value::as_array)
+            .unwrap()
+            .len(),
+        1
+    );
+    assert_eq!(
+        parsed_keymap
+            .get("input")
+            .and_then(|section| section.get("append_keymap"))
+            .and_then(toml::Value::as_array)
+            .and_then(|entries| entries.first())
+            .and_then(|entry| entry.get("run"))
+            .and_then(toml::Value::as_str),
+        Some("close")
+    );
+    assert_eq!(
+        parsed_keymap
+            .get("input")
+            .and_then(|section| section.get("prepend_keymap"))
+            .and_then(toml::Value::as_array)
+            .and_then(|entries| entries.first())
+            .and_then(|entry| entry.get("run"))
+            .and_then(toml::Value::as_str),
+        Some("move -999")
+    );
+    assert_eq!(
+        parsed_keymap
+            .get("cmp")
+            .and_then(|section| section.get("append_keymap"))
+            .and_then(toml::Value::as_array)
+            .and_then(|entries| entries.first())
+            .and_then(|entry| entry.get("run"))
+            .and_then(toml::Value::as_str),
+        Some("confirm")
+    );
+    assert_eq!(
+        parsed_keymap
+            .get("cmp")
+            .and_then(|section| section.get("prepend_keymap"))
+            .and_then(toml::Value::as_array)
+            .and_then(|entries| entries.first())
+            .and_then(|entry| entry.get("run"))
+            .and_then(toml::Value::as_str),
+        Some("arrow -1")
+    );
+}
+
 // Defends: yazi-materialization.generate rejects legacy Yazi override ownership instead of silently adopting configs/yazi/user.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
