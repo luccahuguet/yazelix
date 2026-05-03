@@ -83,7 +83,7 @@ def run_repo_maintainer_checked [repo_root: string, failure_message: string, ...
 def require_fast_cargo [] {
     if ((which cargo | is-empty) or (which rustc | is-empty)) {
         error make {
-            msg: "Fast Rust maintainer commands require cargo and rustc on PATH. Install the maintainer Rust toolchain once, or use the explicit Nix/package gates when you need full environment realization."
+            msg: "Fast Rust maintainer commands require cargo and rustc on PATH. Add the maintainer Rust toolchain to the loaded Yazelix/Home Manager profile, then rerun. Use explicit Nix/package gates only for final validation."
         }
     }
 }
@@ -136,8 +136,19 @@ def parse_rust_target_and_tail [args: list<string>, default_target: string] {
 
 def run_fast_cargo_checked [repo_root: string, label: string, cargo_args: list<string>] {
     require_fast_cargo
+    let cargo_env = if (($cargo_args | first) == "fmt") {
+        let rustfmt_matches = (which rustfmt)
+        if ($rustfmt_matches | is-empty) {
+            error make {
+                msg: "Fast Rust fmt requires rustfmt on PATH. Add rustfmt to the loaded Yazelix/Home Manager profile, then rerun. Use explicit Nix/package gates only for final validation."
+            }
+        }
+        {RUSTFMT: ($rustfmt_matches | first | get path)}
+    } else {
+        {}
+    }
     print $"Running: cargo ($cargo_args | str join ' ')"
-    let result = (do { cd $repo_root; ^cargo ...$cargo_args } | complete)
+    let result = (with-env $cargo_env { do { cd $repo_root; ^cargo ...$cargo_args } | complete })
     if ($result.stdout | is-not-empty) {
         print --raw $result.stdout
     }

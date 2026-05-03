@@ -3821,29 +3821,26 @@ fn hide_sidebar_if_visible() -> Result<(), CoreError> {
         )
     })?;
 
-    match nested_bool(&state, &["layout", "sidebar_collapsed"]) {
-        Some(false) => {}
+    let sidebar_collapsed = nested_bool(&state, &["layout", "sidebar_collapsed"]);
+    match sidebar_collapsed {
         Some(true) => return Ok(()),
-        None => {
-            return Err(CoreError::classified(
-                ErrorClass::Runtime,
-                "sidebar_state_missing",
-                "The active Yazelix tab state did not report whether the sidebar is hidden.",
-                "Ensure the pane orchestrator plugin is loaded, then retry opening the file.",
-                json!({ "response": response }),
-            ));
-        }
+        Some(false) | None => {}
     }
 
-    let response = run_pane_orchestrator_command("hide_sidebar", "")?;
-    match response.trim() {
+    let hide_response = run_pane_orchestrator_command("hide_sidebar", "")?;
+    let trimmed = hide_response.trim();
+    if sidebar_collapsed.is_none() && matches!(trimmed, "unknown_layout" | "missing") {
+        return Ok(());
+    }
+
+    match trimmed {
         "ok" | "closed" | "focused" => Ok(()),
         other => Err(CoreError::classified(
             ErrorClass::Runtime,
             "hide_sidebar_failed",
             format!("Could not hide the managed sidebar before opening the editor: {other}"),
             "Ensure the pane orchestrator plugin is loaded, then retry.",
-            json!({ "response": response }),
+            json!({ "response": hide_response }),
         )),
     }
 }

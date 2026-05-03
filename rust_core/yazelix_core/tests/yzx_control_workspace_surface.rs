@@ -839,6 +839,54 @@ hide_sidebar_on_file_open = true
     );
 }
 
+// Regression: Alt+z should still open the editor when a live/stale pane-orchestrator reports no sidebar collapsed fact.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_control_zellij_open_editor_cwd_continues_when_sidebar_state_unknown() {
+    let fixture = managed_config_fixture(
+        r#"[editor]
+command = "hx"
+hide_sidebar_on_file_open = true
+"#,
+    );
+    let fake_bin = fixture.home_dir.join("fake-bin");
+    let target_dir = fixture.home_dir.join("workspace");
+    let zellij_commands_log = fixture.home_dir.join("zellij-commands.log");
+    fs::create_dir_all(&fake_bin).unwrap();
+    fs::create_dir_all(&target_dir).unwrap();
+
+    write_executable_script(
+        &fake_bin.join("zellij"),
+        &format!(
+            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    get_active_tab_session_state)\n      printf '%s\\n' '{{\"schema_version\":1,\"layout\":{{\"active_swap_layout_name\":null,\"sidebar_collapsed\":null}}}}'\n      exit 0\n      ;;\n    hide_sidebar)\n      printf '%s\\n' 'unknown_layout'\n      exit 0\n      ;;\n    retarget_workspace)\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"ok\"}}'\n      exit 0\n      ;;\n  esac\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
+            zellij_commands_log.display(),
+        ),
+    );
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .env("PATH", prepend_path(&fake_bin))
+        .env("ZELLIJ", "1")
+        .arg("zellij")
+        .arg("open-editor-cwd")
+        .arg(&target_dir)
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stderr.is_empty());
+    assert_eq!(
+        fs::read_to_string(zellij_commands_log)
+            .unwrap()
+            .lines()
+            .collect::<Vec<_>>(),
+        vec![
+            "get_active_tab_session_state",
+            "hide_sidebar",
+            "retarget_workspace"
+        ]
+    );
+}
+
 // Defends: the public Rust-owned `yzx doctor --json` surface exposes structured findings without depending on the removed Nu omnibus suite.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
