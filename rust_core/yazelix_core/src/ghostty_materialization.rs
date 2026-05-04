@@ -6,6 +6,7 @@ use crate::ghostty_cursor_registry::{
 pub use crate::ghostty_cursor_registry::{
     DEFAULT_GHOSTTY_TRAIL_DURATION, GHOSTTY_TRAIL_DURATION_MAX, GHOSTTY_TRAIL_DURATION_MIN,
 };
+use crate::user_config_paths;
 use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -71,14 +72,22 @@ fn ghostty_effect_requires_always_animation(effect: &str) -> bool {
     EFFECTS_REQUIRING_ALWAYS_ANIMATION.contains(&effect)
 }
 
-fn get_terminal_override_path(config_dir: &Path, terminal: &str) -> Option<PathBuf> {
-    let override_dir = config_dir.join("user_configs").join("terminal");
-    match terminal {
-        "ghostty" => Some(override_dir.join("ghostty")),
-        "kitty" => Some(override_dir.join("kitty.conf")),
-        "alacritty" => Some(override_dir.join("alacritty.toml")),
-        _ => None,
-    }
+fn get_terminal_override_path(
+    config_dir: &Path,
+    terminal: &str,
+) -> Result<Option<PathBuf>, CoreError> {
+    let Some(current) = user_config_paths::terminal_config(config_dir, terminal) else {
+        return Ok(None);
+    };
+    let Some(legacy) = user_config_paths::legacy_terminal_config(config_dir, terminal) else {
+        return Ok(None);
+    };
+    let path = user_config_paths::resolve_flat_config_file(
+        &current,
+        &legacy,
+        &format!("{terminal} terminal override"),
+    )?;
+    Ok(Some(path))
 }
 
 fn build_ghostty_transparency(transparency: &str) -> String {
@@ -107,7 +116,7 @@ fn validate_ghostty_trail_duration(duration: f64) -> Result<(), CoreError> {
                 "Invalid cursor settings.duration value '{}'. Expected a number from {} to {}.",
                 duration, GHOSTTY_TRAIL_DURATION_MIN, GHOSTTY_TRAIL_DURATION_MAX
             ),
-            "Update user_configs/yazelix_cursors.toml with a supported Ghostty trail duration multiplier, then retry.",
+            "Update ~/.config/yazelix/cursors.toml with a supported Ghostty trail duration multiplier, then retry.",
             serde_json::json!({
                 "field": "settings.duration",
                 "actual": duration.to_string(),
@@ -139,7 +148,7 @@ fn build_ghostty_trail_duration(duration: f64) -> String {
 
 fn build_ghostty_cursor_palette(cursor_state: &ResolvedCursorRegistryState) -> String {
     if cursor_state.trail_disabled {
-        return "# Cursor color palette: none (disabled in yazelix_cursors.toml)".to_string();
+        return "# Cursor color palette: none (disabled in cursors.toml)".to_string();
     }
 
     let Some(cursor) = &cursor_state.selected_cursor else {
@@ -220,12 +229,12 @@ fn build_ghostty_config(
     request: &GhosttyMaterializationRequest,
     cursor_state: &GhosttyCursorState,
     registry_state: &ResolvedCursorRegistryState,
-) -> String {
-    let override_path = get_terminal_override_path(&request.config_dir, "ghostty")
+) -> Result<String, CoreError> {
+    let override_path = get_terminal_override_path(&request.config_dir, "ghostty")?
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_default();
 
-    format!(
+    Ok(format!(
         r#"{}
 
 # Yazelix branding for desktop environment recognition
@@ -241,7 +250,7 @@ window-padding-y = 10,0
 # Transparency (configurable via yazelix.toml)
 {}
 
-# Ghostty cursor color + effects (configurable via yazelix_cursors.toml)
+# Ghostty cursor color + effects (configurable via cursors.toml)
 {}
 {}
 {}
@@ -261,7 +270,7 @@ config-file = ?"{}"
             &cursor_state.selected_mode_effect
         ),
         override_path,
-    )
+    ))
 }
 
 fn sync_ghostty_shader_assets(
@@ -585,7 +594,7 @@ pub fn generate_ghostty_materialization(
         )
     })?;
 
-    let config_content = build_ghostty_config(request, &cursor_state, &registry_state);
+    let config_content = build_ghostty_config(request, &cursor_state, &registry_state)?;
     let generated_path = ghostty_dir.join("config");
 
     fs::write(&generated_path, config_content).map_err(|source| {

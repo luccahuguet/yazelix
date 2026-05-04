@@ -310,7 +310,7 @@ mod tests {
         SessionConfigSnapshotWriteRequest {
             path,
             snapshot_id: "launch-123",
-            source_config_file: "/home/user/.config/yazelix/user_configs/yazelix.toml",
+            source_config_file: "/home/user/.config/yazelix/yazelix.toml",
             source_config_hash: "cfg-hash",
             runtime_dir: Path::new("/nix/store/yazelix"),
             runtime_hash: "runtime-hash",
@@ -343,7 +343,7 @@ mod tests {
         assert_eq!(loaded.snapshot_id, "launch-123");
         assert_eq!(
             loaded.source_config.path,
-            "/home/user/.config/yazelix/user_configs/yazelix.toml"
+            "/home/user/.config/yazelix/yazelix.toml"
         );
         assert_eq!(loaded.source_config.hash, "cfg-hash");
         assert_eq!(loaded.runtime.hash, "runtime-hash");

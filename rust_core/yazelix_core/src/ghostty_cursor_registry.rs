@@ -2,6 +2,7 @@
 //! Data-driven Yazelix cursor registry for Ghostty shader materialization.
 
 use crate::bridge::{CoreError, ErrorClass};
+use crate::user_config_paths;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::{BTreeMap, BTreeSet};
@@ -10,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub const DEFAULT_CURSOR_CONFIG_FILENAME: &str = "yazelix_cursors_default.toml";
-pub const USER_CURSOR_CONFIG_FILENAME: &str = "yazelix_cursors.toml";
+pub const USER_CURSOR_CONFIG_FILENAME: &str = user_config_paths::CURSOR_CONFIG;
 pub const DEFAULT_GHOSTTY_TRAIL_DURATION: f64 = 1.0;
 pub const GHOSTTY_TRAIL_DURATION_MIN: f64 = 0.25;
 pub const GHOSTTY_TRAIL_DURATION_MAX: f64 = 4.0;
@@ -131,7 +132,7 @@ impl CursorRegistry {
             CoreError::io(
                 "read_cursor_config",
                 "Could not read Yazelix cursor config",
-                "Restore user_configs/yazelix_cursors.toml from yazelix_cursors_default.toml, then retry.",
+                "Restore cursors.toml from yazelix_cursors_default.toml, then retry.",
                 path.to_string_lossy(),
                 source,
             )
@@ -144,7 +145,7 @@ impl CursorRegistry {
             CoreError::toml(
                 "invalid_cursor_config_toml",
                 "Could not parse Yazelix cursor config",
-                "Fix ~/.config/yazelix/user_configs/yazelix_cursors.toml or restore it from yazelix_cursors_default.toml.",
+                "Fix ~/.config/yazelix/cursors.toml or restore it from yazelix_cursors_default.toml.",
                 path.to_string_lossy(),
                 source,
             )
@@ -153,9 +154,7 @@ impl CursorRegistry {
     }
 
     pub fn user_config_path(config_dir: &Path) -> PathBuf {
-        config_dir
-            .join("user_configs")
-            .join(USER_CURSOR_CONFIG_FILENAME)
+        user_config_paths::cursor_config(config_dir)
     }
 
     pub fn default_config_path(runtime_dir: &Path) -> PathBuf {
@@ -386,7 +385,7 @@ fn validate_definition(
         return Err(invalid_cursor_config(
             path,
             "cursor.name",
-            format!("Cursor '{name}' is not supported. Remove it from yazelix_cursors.toml."),
+            format!("Cursor '{name}' is not supported. Remove it from cursors.toml."),
         ));
     }
 
@@ -849,7 +848,7 @@ fn invalid_cursor_config(path: &Path, field: &str, detail: String) -> CoreError 
         ErrorClass::Config,
         "invalid_cursor_config",
         format!("Invalid Yazelix cursor config at {field}."),
-        "Update ~/.config/yazelix/user_configs/yazelix_cursors.toml, then retry.",
+        "Update ~/.config/yazelix/cursors.toml, then retry.",
         json!({
             "path": path.display().to_string(),
             "field": field,

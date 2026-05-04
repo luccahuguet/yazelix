@@ -7,7 +7,7 @@ Yazelix uses a three-layer Zellij configuration system centered on its managed u
 Edit your Yazelix-managed Zellij config:
 
 ```bash
-~/.config/yazelix/user_configs/zellij/config.kdl
+~/.config/yazelix/zellij.kdl
 ```
 
 If you already have a native Zellij config, import it into the managed path first:
@@ -20,7 +20,7 @@ yzx import zellij
 
 The merger prefers your **Yazelix-managed Zellij config** when present, then falls back to your native Zellij config, then forcibly layers Yazelix requirements on top:
 
-1. **User config**: `~/.config/yazelix/user_configs/zellij/config.kdl` (if it exists). If missing, Yazelix reads `~/.config/zellij/config.kdl` as a read-only fallback. If neither exists, Yazelix falls back to `zellij setup --dump-config`.
+1. **User config**: `~/.config/yazelix/zellij.kdl` (if it exists). If missing, Yazelix reads `~/.config/zellij/config.kdl` as a read-only fallback. If neither exists, Yazelix falls back to `zellij setup --dump-config`.
 2. **Dynamic Yazelix settings**: Generated from `yazelix.toml` (e.g., rounded corners) and appended after the user config so they win.
 3. **Enforced Yazelix settings**: Always appended last to guarantee required behavior:
    - `pane_frames false` (needed for `zjstatus`)
@@ -158,10 +158,10 @@ The default launches the managed Yazi file-tree adapter. You can point the same 
 - Zellij will show parsing errors on startup if KDL is invalid
 
 **Migrating from a native Zellij config?**
-- Preferred explicit path: run `yzx import zellij` to copy `~/.config/zellij/config.kdl` into `~/.config/yazelix/user_configs/zellij/config.kdl`
+- Preferred explicit path: run `yzx import zellij` to copy `~/.config/zellij/config.kdl` into `~/.config/yazelix/zellij.kdl`
 - If you already have a managed override and want to replace it, use `yzx import zellij --force` so Yazelix writes a backup first
 - If the managed file is missing, Yazelix can still read `~/.config/zellij/config.kdl` as the base config for that launch, but it will not move or delete it
-- If both files exist, Yazelix keeps using the managed `user_configs` copy and leaves the native Zellij config alone for plain `zellij` launches
+- If both files exist, Yazelix keeps using the managed `zellij.kdl` copy and leaves the native Zellij config alone for plain `zellij` launches
 - If you want changes from `~/.config/zellij/config.kdl` to become the managed Yazelix config, run `yzx import zellij` explicitly
 
 For complete Zellij configuration options: https://zellij.dev/documentation/

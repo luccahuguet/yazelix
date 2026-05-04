@@ -33,7 +33,7 @@ See the origin story in `docs/the_start.md`.
 
 - **Rust Became The Clear Public Owner** – v16 turns the old "selective Rust" story into the main product story. The public `yzx` control plane, typed runtime/config logic, and more of the editor/Yazi integration flow now live in Rust instead of behind transitional Nu bridges.
 - **Nushell Was Reduced To An Honest Core** – The surviving Nushell surface is now mostly startup/bootstrap, direct TTY/UI, and tiny live shell wrappers. The broad "Nu because it used to live there" middle layer is gone.
-- **The Trim Held** – v16 does not reopen Classic scope. The fixed packaged runtime, explicit update owners, managed `user_configs/`, and workspace-first product boundary from v15 remain intact.
+- **The Trim Held** – v16 does not reopen Classic scope. The fixed packaged runtime, explicit update owners, managed `./`, and workspace-first product boundary from v15 remain intact.
 - **Popup/Menu And Workspace Orchestration Stayed Intentional** – Popup and command-menu panes still follow the managed floating-pane model, but the remaining shell seams now sit where they are architecturally honest: Rust owns the deterministic contracts and Nushell owns the direct shell/UI handoff.
 - **CLI Surfaces Feel More Deliberate** – `yzx status`, `yzx status --versions`, and `yzx keys` now share a clearer visual language and stronger default human rendering without giving up the typed `--json` surfaces underneath.
 - **v15 Becomes The Reboot Foundation** – The trimmed v15 release is no longer just the live product line; it is the reboot that made the v16 Rust-forward line possible.
@@ -75,7 +75,7 @@ v14 is the final historical Yazelix Classic release. It is no longer a supported
 
 - **The Biggest Workspace Pain Points Were Fixed** – v13 replaced fragile pane-scanning flows with a real Zellij plugin (written in Rust) that tracks the managed `editor` and `sidebar` panes and routes workspace actions directly instead of relying on shell heuristics.
 - **The Sidebar Could Finally Find the Editor Reliably** – Opening from Yazi, `yzx cwd`, reveal flows, and tab-local workspace routing all got much tighter and more deterministic across the v13 line.
-- **Config Ownership Grew Up** – v13 introduced `user_configs/` as the canonical managed boundary, split pack settings into `yazelix_packs.toml`, and added migration-aware diagnostics, structured release notes, `yzx config migrate`, and `yzx doctor --fix`.
+- **Config Ownership Grew Up** – v13 introduced `./` as the canonical managed boundary, split pack settings into `yazelix_packs.toml`, and added migration-aware diagnostics, structured release notes, `yzx config migrate`, and `yzx doctor --fix`.
 - **The Front Door Got Much Richer** – Popup-runner support, `yzx menu`, `yzx keys`, `yzx tutor`, richer welcome screens, better desktop integration, and the Zellij 0.44 transition all landed during v13.
 - **The Devenv-Era Runtime Story Matured** – Refresh/restart behavior, command-surface cleanup, Home Manager integration, Yazi command overrides, and late-series runtime identity hardening set up the eventual v14 boundary cleanup.
 
@@ -83,7 +83,7 @@ v14 is the final historical Yazelix Classic release. It is no longer a supported
 
 - **User-Declared Packs** – Packs are defined in `packs.declarations` and enabled via `packs.enabled`, with refreshed presets (Rust/Go split, `jj` pack, simpler git, YAML support).
 - **Yazi Plugin System** – Declaratively enable/disable plugins via `[yazi] plugins = ["git", "starship"]` in `yazelix.toml`. Bundled plugins (git, starship, lazygit) can be disabled or replaced with your own installed via `ya pkg add`.
-- **Yazi User Configs** – Full merging support for `yazi.toml`, `keymap.toml`, and `init.lua` from `user_configs/yazi/`. User settings override defaults while preserving Yazelix's editor integration.
+- **Yazi User Configs** – Full merging support for `yazi.toml`, `keymap.toml`, and `init.lua` from `./`. User settings override defaults while preserving Yazelix's editor integration.
 - **Zellij & Yazi Themes** – Theme/sorting controls, bundled Yazi flavor themes, and a documented cross-theme set shared by Zellij/Helix/Yazi.
 - **Terminal** – Ordered terminal list that defines primary launch target and fallback order for auto-detection, `manage_terminals` to disable Yazelix-managed terminal packages for system-installed terminals, and automatic environment rebuilds before launch/restart on terminal config changes.
 - **Zellij** – Pinned zjstatus with configurable widget tray (`zellij.widget_tray`) and per-item toggles.

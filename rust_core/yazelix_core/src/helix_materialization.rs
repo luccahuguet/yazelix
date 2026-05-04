@@ -1,4 +1,5 @@
 use crate::bridge::{CoreError, ErrorClass};
+use crate::user_config_paths;
 use serde::Serialize;
 use serde_json::Value as JsonValue;
 use std::fs;
@@ -146,17 +147,18 @@ fn prepare_managed_helix_config(
         )
     })?;
 
-    let user_config_path = config_dir
-        .join("user_configs")
-        .join("helix")
-        .join("config.toml");
+    let user_config_path = user_config_paths::resolve_flat_config_file(
+        &user_config_paths::helix_config(config_dir),
+        &user_config_paths::legacy_helix_config(config_dir),
+        "Helix override",
+    )?;
 
     let user_config_merged = if user_config_path.exists() {
         let user_content = fs::read_to_string(&user_config_path).map_err(|source| {
             CoreError::io(
                 "read_helix_user_config",
                 "Could not read the user Helix config override",
-                "Check permissions for ~/.config/yazelix/user_configs/helix/config.toml and retry.",
+                "Check permissions for ~/.config/yazelix/helix.toml and retry.",
                 user_config_path.to_string_lossy(),
                 source,
             )
@@ -165,7 +167,7 @@ fn prepare_managed_helix_config(
             CoreError::toml(
                 "parse_helix_user_config",
                 "Could not parse the user Helix config override as TOML",
-                "Fix the TOML syntax in ~/.config/yazelix/user_configs/helix/config.toml and retry.",
+                "Fix the TOML syntax in ~/.config/yazelix/helix.toml and retry.",
                 user_config_path.to_string_lossy(),
                 source,
             )

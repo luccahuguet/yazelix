@@ -22,7 +22,7 @@
       "wezterm"
     ];
     terminal_config_mode = "yazelix"; # Optional: "yazelix" or "user"
-    # Ghostty cursor presets and effects live in ~/.config/yazelix/user_configs/yazelix_cursors.toml
+    # Ghostty cursor presets and effects live in ~/.config/yazelix/cursors.toml
     transparency = "medium"; # Optional: "none".."super_high"
 
     # Editor configuration

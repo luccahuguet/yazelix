@@ -5,6 +5,7 @@ use crate::control_plane::{
     config_dir_from_env, expand_user_path, home_dir_from_env, runtime_dir_from_env,
 };
 use crate::install_ownership_report::InstallOwnershipEvaluateRequest;
+use crate::user_config_paths;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -83,7 +84,7 @@ pub fn install_ownership_request_from_env_with_runtime_dir(
 ) -> Result<InstallOwnershipEvaluateRequest, CoreError> {
     let home_dir = home_dir_from_env()?;
     let config_root = config_dir_from_env()?;
-    let main_config_path = config_root.join("user_configs").join("yazelix.toml");
+    let main_config_path = user_config_paths::main_config(&config_root);
 
     Ok(InstallOwnershipEvaluateRequest {
         runtime_dir,

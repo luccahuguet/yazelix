@@ -77,6 +77,8 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 
 Special thanks to [soderluk](https://github.com/soderluk) for grinding with me through unstable periods of Yazelix, when things that should work were not working. His many reports had very high value for the development of Yazelix
 
+Special thanks to [tag-und-nacht](https://github.com/tag-und-nacht) for very detailed macOS, Home Manager, theming, and configuration reports that helped sharpen Yazelix's cross-platform support and user-config story
+
 If Yazelix is useful to you, you can support its development on [GitHub Sponsors](https://github.com/sponsors/luccahuguet)
 
 <!-- BEGIN GENERATED README LATEST SERIES -->
@@ -117,7 +119,7 @@ v15.0 is the trimmed reboot with a narrower Rust scope, not a broad package-and-
 
 v16 carries that trimmed contract forward, expands Rust ownership across the public control plane and deterministic integrations, and keeps Nushell at the shell/UI core instead of as the default owner of general product logic
 
-On the current branch, the trimmed contract is already narrower: no `yazelix_packs.toml`, no runtime-local `devenv`, no launch-profile reuse semantics, no automatic config migrations, a fixed packaged runtime toolset with Ghostty as the default packaged terminal and WezTerm available through the explicit WezTerm variant, and explicit update owners through `yzx update upstream` or `yzx update home_manager`
+On the current branch, the trimmed contract is already narrower: no `yazelix_packs.toml`, no runtime-local `devenv`, no launch-profile reuse semantics, no broad config schema migration engine, a fixed packaged runtime toolset with Ghostty as the default packaged terminal and WezTerm available through the explicit WezTerm variant, and explicit update owners through `yzx update upstream` or `yzx update home_manager`
 
 The important split is this: Yazelix Classic was both a terminal workspace and a runtime/package-environment manager, while v15 is the narrower workspace product because dynamic runtime management was not a good long-term fit for Yazelix scope
 
@@ -234,9 +236,9 @@ Yazelix shines over SSH: the TUI stack (Zellij, Yazi, Helix) runs cleanly withou
 
 Yazelix uses a **layered configuration system** that safely merges your personal settings with Yazelix defaults:
 
-- **Core settings**: Edit `~/.config/yazelix/user_configs/yazelix.toml` for shell, editor, terminal, and package preferences
-- **Yazi customization**: Use the built-in `[yazi]` settings in `yazelix.toml` for things like plugins, theme, sorting, and binary overrides, and use `~/.config/yazelix/user_configs/yazi/` for deeper merged overrides such as `init.lua`, `keymap.toml`, or `yazi.toml` additions (see [Yazi Configuration](./docs/yazi-configuration.md))
-- **Zellij customization**: Use the built-in `[zellij]` settings in `yazelix.toml` for Yazelix-owned Zellij knobs, and use `~/.config/yazelix/user_configs/zellij/config.kdl` for your deeper managed Zellij overrides (see [Zellij Configuration](./docs/zellij-configuration.md))
+- **Core settings**: Edit `~/.config/yazelix/yazelix.toml` for shell, editor, terminal, and package preferences
+- **Yazi customization**: Use the built-in `[yazi]` settings in `yazelix.toml` for things like plugins, theme, sorting, and binary overrides, and use `~/.config/yazelix/yazi.toml`, `~/.config/yazelix/yazi_keymap.toml`, and `~/.config/yazelix/yazi_init.lua` for deeper merged overrides (see [Yazi Configuration](./docs/yazi-configuration.md))
+- **Zellij customization**: Use the built-in `[zellij]` settings in `yazelix.toml` for Yazelix-owned Zellij knobs, and use `~/.config/yazelix/zellij.kdl` for deeper managed Zellij overrides (see [Zellij Configuration](./docs/zellij-configuration.md))
 - **Status bar widgets**: Configure `[zellij].widget_tray` to order or hide `editor`, `shell`, `term`, `workspace`, `cursor`, usage, `cpu`, and `ram` widgets; the default cursor widget renders as colored `█ name` from the launch-scoped Ghostty cursor fact
 - **Your configs persist** across Yazelix updates without git conflicts
 - **Intelligent merging**: Generated Yazi and Zellij runtime configs are rebuilt from Yazelix defaults plus your managed overrides instead of forcing you to edit tracked runtime files
@@ -299,7 +301,7 @@ See the full catalog of tools and integrations in the Yazelix Collection:
 - **Environment setup**: Proper paths, variables, and shell configurations
 
 **Customize Your Installation:**
-If you followed [step 4 in the installation guide](./docs/installation.md#step-4-configure-your-installation-optional), you already have your `~/.config/yazelix/user_configs/yazelix.toml` config file ready, you can modify it anytime and restart Yazelix to apply changes, see [yazelix_default.toml](./yazelix_default.toml) for main options, and use `~/.config/yazelix/user_configs/yazelix_cursors.toml` for Ghostty cursor presets and effects
+If you followed [step 4 in the installation guide](./docs/installation.md#step-4-configure-your-installation-optional), you already have your `~/.config/yazelix/yazelix.toml` config file ready, you can modify it anytime and restart Yazelix to apply changes, see [yazelix_default.toml](./yazelix_default.toml) for main options, and use `~/.config/yazelix/cursors.toml` for Ghostty cursor presets and effects
 
 **Terminal Emulator Selection:**
 - **Ghostty** (default packaged preference): Modern, fast terminal written in Zig with Yazelix cursor trails

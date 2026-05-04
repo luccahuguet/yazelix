@@ -323,7 +323,7 @@ fn migrate_moved_ghostty_cursor_fields(
         CoreError::io(
             "read_moved_cursor_migration_config",
             "Could not read Yazelix config for cursor migration",
-            "Ensure ~/.config/yazelix/user_configs/yazelix.toml exists and is readable.",
+            "Ensure ~/.config/yazelix/yazelix.toml exists and is readable.",
             request.config_path.to_string_lossy(),
             source,
         )
@@ -332,7 +332,7 @@ fn migrate_moved_ghostty_cursor_fields(
         CoreError::toml(
             "invalid_toml",
             "Could not parse Yazelix config for cursor migration",
-            "Fix the TOML syntax in user_configs/yazelix.toml and retry.",
+            "Fix the TOML syntax in ~/.config/yazelix/yazelix.toml and retry.",
             request.config_path.to_string_lossy(),
             source,
         )
@@ -452,7 +452,7 @@ fn read_cursor_sidecar_or_default(
             CoreError::io(
                 "read_cursor_config_for_migration",
                 "Could not read Yazelix cursor config for migration",
-                "Ensure user_configs/yazelix_cursors.toml is readable, then retry.",
+                "Ensure ~/.config/yazelix/cursors.toml is readable, then retry.",
                 cursor_config_path.to_string_lossy(),
                 source,
             )

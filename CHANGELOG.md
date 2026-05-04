@@ -6,12 +6,17 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 Post-v16.2 work in progress
 
-Upgrade impact: no user action required
+Upgrade impact: manual action may be required
 
 Highlights:
 - Desktop launch keeps its starter terminal for visible preflight and failure feedback, but defers the managed Yazelix window until after the starter exits so tiling window managers do not size the real session around the bootstrap window
 - The default Zellij status widget tray includes `codex_usage` so new configs show the Codex quota/reset widget without manual opt-in
 - Home Manager desktop-entry generation is Linux-only so Darwin Home Manager evaluations do not require Linux `xdg.desktopEntries` options
+- User-editable config surfaces are flat under `~/.config/yazelix/`, with unambiguous old regular files migrated into the flat names on first use
+
+Manual action:
+- If both the old nested config path and the new flat path exist with different contents, keep the new flat path or move the old file aside before launching
+- If the old nested path is a Home Manager or Nix symlink, move that ownership to the flat path instead of relying on automatic migration
 
 ## v16.2 - 2026-05-02
 

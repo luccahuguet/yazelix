@@ -10,7 +10,7 @@ Yazelix follows the XDG Base Directory Specification and respects these variable
 ## Key Locations
 
 - Config (XDG_CONFIG_HOME)
-  - `~/.config/yazelix/user_configs/yazelix.toml` – user config (auto‑created from template on first run)
+  - `~/.config/yazelix/yazelix.toml` – user config (auto‑created from template on first run)
   - `~/.config/yazelix/tombi.toml` – managed Tombi support file for formatting Yazelix TOML
   - `~/.config/yazelix/nushell/config/config.nu` – Yazelix Nushell config sourced into your shell
 
@@ -37,7 +37,7 @@ Set by Yazelix entrypoints to wire integrations:
 - `EDITOR` – your configured editor command or Yazelix Helix
 
 Notes:
-- If you change `XDG_CONFIG_HOME`, Yazelix looks for config under the new `.../yazelix/user_configs/` path.
+- If you change `XDG_CONFIG_HOME`, Yazelix looks for config directly under the new `.../yazelix/` path.
 - Generated files follow `XDG_DATA_HOME`.
 - The supported `yzx` command normally comes from the install owner, such as a Nix profile or Home Manager.
 - A stale legacy `~/.local/bin/yzx` wrapper may still exist on older machines, but it is no longer part of the supported install contract.

@@ -44,7 +44,7 @@ nu_string_literal() {
 
 generated_config_dir="$YAZELIX_STATE_DIR/generated/nushell"
 generated_config="$generated_config_dir/config.nu"
-user_config="$YAZELIX_CONFIG_DIR/user_configs/shells/nu.nu"
+user_config="$YAZELIX_CONFIG_DIR/shell_nu.nu"
 
 mkdir -p "$generated_config_dir"
 

@@ -9,6 +9,7 @@ use crate::control_plane::{
     runtime_dir_from_env, runtime_env_request,
 };
 use crate::ghostty_cursor_registry::CursorRegistry;
+use crate::user_config_paths;
 use serde_json::json;
 use std::fs;
 use std::io::{self, Write};
@@ -38,19 +39,18 @@ struct EditConfigArgs {
 }
 
 fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
-    let user_root = config_dir.join("user_configs");
-    let helix_path = user_root.join("helix").join("config.toml");
-    let zellij_path = user_root.join("zellij").join("config.kdl");
-    let yazi_toml_path = user_root.join("yazi").join("yazi.toml");
-    let yazi_keymap_path = user_root.join("yazi").join("keymap.toml");
-    let yazi_init_path = user_root.join("yazi").join("init.lua");
+    let helix_path = user_config_paths::helix_config(config_dir);
+    let zellij_path = user_config_paths::zellij_config(config_dir);
+    let yazi_toml_path = user_config_paths::yazi_config(config_dir);
+    let yazi_keymap_path = user_config_paths::yazi_keymap(config_dir);
+    let yazi_init_path = user_config_paths::yazi_init(config_dir);
 
     let runtime_dir = runtime_dir_from_env().unwrap_or_else(|_| PathBuf::from("."));
     let active_paths = resolve_active_config_paths(&runtime_dir, config_dir, None).ok();
     let user_config = active_paths
         .as_ref()
         .map(|p| p.user_config.clone())
-        .unwrap_or_else(|| user_root.join("yazelix.toml"));
+        .unwrap_or_else(|| user_config_paths::main_config(config_dir));
     let cursor_config = active_paths
         .as_ref()
         .map(|p| p.user_cursor_config.clone())
@@ -76,9 +76,10 @@ fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
                 "cursor",
                 "ghostty-cursors",
                 "ghostty cursors",
+                "cursors.toml",
                 "yazelix_cursors.toml",
             ],
-            search: "cursors cursor ghostty cursor trail shader yazelix_cursors.toml",
+            search: "cursors cursor ghostty cursor trail shader cursors.toml yazelix_cursors.toml",
         },
         EditTarget {
             id: "helix",
@@ -556,12 +557,7 @@ mod tests {
         let cursors = filter_edit_targets(&targets, "cursors");
         assert_eq!(cursors.len(), 1);
         assert_eq!(cursors[0].id, "cursors");
-        assert_eq!(
-            cursors[0].path,
-            Path::new("/tmp/cfg")
-                .join("user_configs")
-                .join("yazelix_cursors.toml")
-        );
+        assert_eq!(cursors[0].path, Path::new("/tmp/cfg").join("cursors.toml"));
 
         let cursor_sidecar = filter_edit_targets(&targets, "yazelix_cursors.toml");
         assert_eq!(cursor_sidecar.len(), 1);

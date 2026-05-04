@@ -70,7 +70,7 @@ That means:
 The package should still respect the existing split-root contract:
 
 - config root: `~/.config/yazelix`
-- user config root: `~/.config/yazelix/user_configs`
+- user config root: `~/.config/yazelix`
 - state root: `~/.local/share/yazelix`
 
 The package must never treat the runtime root as the user config root.

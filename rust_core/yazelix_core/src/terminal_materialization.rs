@@ -5,6 +5,7 @@ use crate::ghostty_cursor_registry::CursorRegistry;
 use crate::ghostty_materialization::{
     GhosttyMaterializationRequest, generate_ghostty_materialization,
 };
+use crate::user_config_paths;
 use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -66,14 +67,22 @@ fn get_terminal_title(terminal: &str) -> String {
     format!("Yazelix - {}", name)
 }
 
-fn get_terminal_override_path(config_dir: &Path, terminal: &str) -> Option<PathBuf> {
-    let override_dir = config_dir.join("user_configs").join("terminal");
-    match terminal {
-        "ghostty" => Some(override_dir.join("ghostty")),
-        "kitty" => Some(override_dir.join("kitty.conf")),
-        "alacritty" => Some(override_dir.join("alacritty.toml")),
-        _ => None,
-    }
+fn get_terminal_override_path(
+    config_dir: &Path,
+    terminal: &str,
+) -> Result<Option<PathBuf>, CoreError> {
+    let Some(current) = user_config_paths::terminal_config(config_dir, terminal) else {
+        return Ok(None);
+    };
+    let Some(legacy) = user_config_paths::legacy_terminal_config(config_dir, terminal) else {
+        return Ok(None);
+    };
+    let path = user_config_paths::resolve_flat_config_file(
+        &current,
+        &legacy,
+        &format!("{terminal} terminal override"),
+    )?;
+    Ok(Some(path))
 }
 
 fn build_transparency(transparency: &str, format: &str, key: &str) -> String {
@@ -125,7 +134,7 @@ fn build_kitty_cursor(kitty_enable_cursor: bool) -> String {
     if kitty_enable_cursor {
         "cursor_shape block\ncursor_trail 3\ncursor_trail_decay 0.1 0.4".to_string()
     } else {
-        "# cursor_trail 0  # disabled by yazelix_cursors.toml".to_string()
+        "# cursor_trail 0  # disabled by cursors.toml".to_string()
     }
 }
 
@@ -172,7 +181,7 @@ repaint_delay 10
 input_delay 3
 sync_to_monitor yes
 
-# Cursor trail effect (configurable via yazelix_cursors.toml)
+# Cursor trail effect (configurable via cursors.toml)
 {}
 
 # Personal Yazelix Kitty overrides
@@ -262,7 +271,22 @@ import = [{}]
     )
 }
 
-fn generate_foot_config(transparency: &str) -> String {
+fn generate_foot_config(transparency: &str, override_path: Option<PathBuf>) -> String {
+    let override_include = match override_path {
+        Some(path) => format!(
+            r#"
+# Personal Yazelix Foot overrides (optional, user-owned)
+[main]
+include={}
+"#,
+            path.display()
+        ),
+        None => r#"
+# Create a user override if you want terminal-native Foot tweaks.
+"#
+        .to_string(),
+    };
+
     format!(
         r##"# Foot configuration for Yazelix
 
@@ -284,11 +308,13 @@ border-width=0
 
 [cursor]
 style=block
-blink=false"##,
+blink=false
+{}"##,
         build_transparency(transparency, "ini", "alpha"),
         YAZELIX_WINDOW_CLASS,
         get_terminal_title("foot"),
         FONT_FIRACODE,
+        override_include,
     )
 }
 
@@ -375,7 +401,7 @@ pub fn generate_terminal_materialization(
                         source,
                     )
                 })?;
-                let override_path = get_terminal_override_path(&config_dir, "kitty");
+                let override_path = get_terminal_override_path(&config_dir, "kitty")?;
                 let path = kitty_dir.join("kitty.conf");
                 fs::write(
                     &path,
@@ -422,7 +448,7 @@ pub fn generate_terminal_materialization(
                         )
                     },
                 )?;
-                let override_path = get_terminal_override_path(&config_dir, "alacritty");
+                let override_path = get_terminal_override_path(&config_dir, "alacritty")?;
                 let entry_path = alacritty_dir.join("alacritty.toml");
                 fs::write(
                     &entry_path,
@@ -453,16 +479,19 @@ pub fn generate_terminal_materialization(
                         source,
                     )
                 })?;
+                let override_path = get_terminal_override_path(&config_dir, "foot")?;
                 let path = foot_dir.join("foot.ini");
-                fs::write(&path, generate_foot_config(transparency)).map_err(|source| {
-                    CoreError::io(
-                        "write_foot_config",
-                        "Could not write Foot config",
-                        "Check permissions for the Yazelix state directory.",
-                        path.to_string_lossy(),
-                        source,
-                    )
-                })?;
+                fs::write(&path, generate_foot_config(transparency, override_path)).map_err(
+                    |source| {
+                        CoreError::io(
+                            "write_foot_config",
+                            "Could not write Foot config",
+                            "Check permissions for the Yazelix state directory.",
+                            path.to_string_lossy(),
+                            source,
+                        )
+                    },
+                )?;
                 generated.push(TerminalGeneratedConfig {
                     terminal: "foot".to_string(),
                     path: path.to_string_lossy().into_owned(),

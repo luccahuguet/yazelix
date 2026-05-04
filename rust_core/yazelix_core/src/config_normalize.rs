@@ -452,9 +452,9 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
                 diagnostic.headline = format!("Moved cursor config field at {}", finding.path);
                 diagnostic.detail_lines = vec![
                     finding.message,
-                    "Next: Move this cursor setting into user_configs/yazelix_cursors.toml."
+                    "Next: Move this cursor setting into ~/.config/yazelix/cursors.toml."
                         .to_string(),
-                    "Next: Remove the old terminal.ghostty_* field from user_configs/yazelix.toml."
+                    "Next: Remove the old terminal.ghostty_* field from ~/.config/yazelix/yazelix.toml."
                         .to_string(),
                     "Next: Run `yzx doctor --verbose` to review the full config report."
                         .to_string(),
@@ -466,7 +466,7 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
                 );
                 diagnostic.detail_lines = vec![
                     finding.message,
-                    "Next: Remove zellij.persistent_sessions and zellij.session_name from user_configs/yazelix.toml.".to_string(),
+                    "Next: Remove zellij.persistent_sessions and zellij.session_name from ~/.config/yazelix/yazelix.toml.".to_string(),
                     "Next: Yazelix now starts independent windows; use raw Zellij session management outside Yazelix if you need it.".to_string(),
                     "Next: Run `yzx doctor --verbose` to review the full config report."
                         .to_string(),

@@ -45,11 +45,8 @@ fn prepare_runtime_materialization_fixture(
     let runtime_dir = tmp.path().join("runtime");
     let config_dir = home_dir.join(".config").join("yazelix");
     let state_dir = home_dir.join(".local").join("share").join("yazelix");
-    let managed_config = config_dir.join("user_configs").join("yazelix.toml");
-    let managed_zellij_config = config_dir
-        .join("user_configs")
-        .join("zellij")
-        .join("config.kdl");
+    let managed_config = config_dir.join("yazelix.toml");
+    let managed_zellij_config = config_dir.join("zellij.kdl");
     let state_path = state_dir.join("state").join("rebuild_hash");
     let yazi_dir = state_dir.join("configs").join("yazi");
     let zellij_dir = state_dir.join("configs").join("zellij");
@@ -148,19 +145,13 @@ fn prepare_runtime_materialization_fixture(
 }
 
 fn write_cursor_sidecar(fixture: &RuntimeMaterializationFixture, raw: &str) {
-    let cursor_path = fixture
-        .config_dir
-        .join("user_configs")
-        .join("yazelix_cursors.toml");
+    let cursor_path = fixture.config_dir.join("cursors.toml");
     fs::create_dir_all(cursor_path.parent().unwrap()).unwrap();
     fs::write(cursor_path, raw).unwrap();
 }
 
 fn cursor_sidecar_path(fixture: &RuntimeMaterializationFixture) -> PathBuf {
-    fixture
-        .config_dir
-        .join("user_configs")
-        .join("yazelix_cursors.toml")
+    fixture.config_dir.join("cursors.toml")
 }
 
 fn copy_dir_all(src: &Path, dst: &Path) {
@@ -320,7 +311,7 @@ fn config_normalize_reports_moved_ghostty_cursor_fields() {
         diagnostic["detail_lines"][1]
             .as_str()
             .unwrap()
-            .contains("user_configs/yazelix_cursors.toml")
+            .contains("cursors.toml")
     );
 }
 
@@ -367,7 +358,7 @@ fn config_surface_resolve_bootstraps_managed_config_and_toml_tooling_support() {
     assert_eq!(envelope["command"], "config-surface.resolve");
     assert_eq!(envelope["status"], "ok");
 
-    let managed_config = config_dir.join("user_configs").join("yazelix.toml");
+    let managed_config = config_dir.join("yazelix.toml");
     let managed_toml_tooling_config = config_dir.join(TOML_TOOLING_CONFIG_FILENAME);
     assert_eq!(
         envelope["data"]["config_file"],
@@ -419,7 +410,7 @@ fn config_normalize_rejects_removed_surfaces_without_rewriting() {
         ),
     ] {
         let tmp = tempdir().unwrap();
-        let config_dir = tmp.path().join("config").join("user_configs");
+        let config_dir = tmp.path().join("config");
         fs::create_dir_all(&config_dir).unwrap();
         let config_path = config_dir.join("yazelix.toml");
         fs::write(&config_path, raw_config).unwrap();
@@ -505,7 +496,7 @@ fn config_state_compute_prints_machine_readable_state_envelope() {
 #[test]
 fn config_state_record_writes_only_managed_surface_state() {
     let tmp = tempdir().unwrap();
-    let managed_config = tmp.path().join("config/user_configs/yazelix.toml");
+    let managed_config = tmp.path().join("config/yazelix.toml");
     let state_path = tmp.path().join("state/rebuild_hash");
 
     let output = Command::cargo_bin("yzx_core")
@@ -542,7 +533,7 @@ fn config_state_record_writes_only_managed_surface_state() {
 fn runtime_materialization_plan_reports_missing_artifacts_with_current_state() {
     let repo = repo_root();
     let tmp = tempdir().unwrap();
-    let managed_config = tmp.path().join("config/user_configs/yazelix.toml");
+    let managed_config = tmp.path().join("config/yazelix.toml");
     let state_path = tmp.path().join("state/rebuild_hash");
     let yazi_dir = tmp.path().join("configs/yazi");
     let zellij_dir = tmp.path().join("configs/zellij");
@@ -1141,13 +1132,9 @@ fn install_ownership_evaluate_from_env_resolves_stable_profile_wrapper() {
     let state_dir = xdg_data.join("yazelix");
     let profile_yzx = home.join(".nix-profile").join("bin").join("yzx");
 
-    fs::create_dir_all(config_dir.join("user_configs")).unwrap();
+    fs::create_dir_all(&config_dir).unwrap();
     fs::create_dir_all(profile_yzx.parent().unwrap()).unwrap();
-    fs::write(
-        config_dir.join("user_configs").join("yazelix.toml"),
-        "[core]\n",
-    )
-    .unwrap();
+    fs::write(config_dir.join("yazelix.toml"), "[core]\n").unwrap();
     fs::write(&profile_yzx, "#!/bin/sh\nexit 0\n").unwrap();
 
     let output = Command::cargo_bin("yzx_core")
@@ -1195,17 +1182,19 @@ fn terminal_materialization_generate_from_env_writes_generated_configs() {
         &fixture.managed_config,
         [
             "[terminal]",
-            "terminals = [\"ghostty\", \"kitty\"]",
+            "terminals = [\"ghostty\", \"kitty\", \"foot\"]",
             "transparency = \"low\"",
         ]
         .join("\n"),
     )
     .unwrap();
+    let foot_override = fixture.config_dir.join("terminal_foot.ini");
+    fs::write(&foot_override, "[main]\nfont=monospace:size=10\n").unwrap();
 
     let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
         .arg("--from-env")
         .arg("--terminals-json")
-        .arg(json!(["ghostty", "kitty"]).to_string())
+        .arg(json!(["ghostty", "kitty", "foot"]).to_string())
         .output()
         .unwrap();
 
@@ -1238,6 +1227,16 @@ fn terminal_materialization_generate_from_env_writes_generated_configs() {
             .join("kitty.conf")
             .exists()
     );
+    let foot_config = fs::read_to_string(
+        fixture
+            .state_dir
+            .join("configs")
+            .join("terminal_emulators")
+            .join("foot")
+            .join("foot.ini"),
+    )
+    .unwrap();
+    assert!(foot_config.contains(&format!("include={}", foot_override.display())));
 }
 
 // Defends: Kitty cursor fallback is controlled by the cursor sidecar's binary kitty_enable_cursor setting.
@@ -1292,7 +1291,7 @@ color = "#ffffff"
             .join("kitty.conf"),
     )
     .unwrap();
-    assert!(kitty_config.contains("# cursor_trail 0  # disabled by yazelix_cursors.toml"));
+    assert!(kitty_config.contains("# cursor_trail 0  # disabled by cursors.toml"));
 }
 
 // Defends: ghostty-materialization.generate can resolve config/runtime/state request roots from process env without Nu path assembly.
@@ -1502,8 +1501,16 @@ fn doctor_config_evaluate_reports_duplicate_config_surfaces() {
     let config_dir = tmp.path().join("config");
     let user_config_dir = config_dir.join("user_configs");
     fs::create_dir_all(&user_config_dir).unwrap();
-    fs::write(user_config_dir.join("yazelix.toml"), "[shell]\n").unwrap();
-    fs::write(config_dir.join("yazelix.toml"), "[shell]\n").unwrap();
+    fs::write(
+        user_config_dir.join("yazelix.toml"),
+        "[shell]\ndefault_shell = \"bash\"\n",
+    )
+    .unwrap();
+    fs::write(
+        config_dir.join("yazelix.toml"),
+        "[shell]\ndefault_shell = \"nu\"\n",
+    )
+    .unwrap();
 
     let output = Command::cargo_bin("yzx_core")
         .unwrap()
@@ -1523,8 +1530,8 @@ fn doctor_config_evaluate_reports_duplicate_config_surfaces() {
     );
     assert_eq!(envelope["data"]["findings"][0]["status"], "error");
     let details = envelope["data"]["findings"][0]["details"].as_str().unwrap();
-    assert!(details.contains("user_configs main:"));
-    assert!(details.contains("legacy main:"));
+    assert!(details.contains("flat main:"));
+    assert!(details.contains("old nested main:"));
 }
 
 // Defends: doctor-config.evaluate preserves the stale-schema warning contract and includes the diagnostic report payload.
@@ -1535,10 +1542,9 @@ fn doctor_config_evaluate_reports_stale_schema_warning() {
     let tmp = tempdir().unwrap();
     let runtime_dir = prepare_doctor_config_runtime_fixture(&repo, &tmp);
     let config_dir = tmp.path().join("config");
-    let user_config_dir = config_dir.join("user_configs");
-    fs::create_dir_all(&user_config_dir).unwrap();
+    fs::create_dir_all(&config_dir).unwrap();
     fs::write(
-        user_config_dir.join("yazelix.toml"),
+        config_dir.join("yazelix.toml"),
         "[editor]\nsidebar_width_percent = 99\n",
     )
     .unwrap();
@@ -1585,9 +1591,8 @@ fn doctor_config_evaluate_keeps_invalid_toml_as_error() {
     let tmp = tempdir().unwrap();
     let runtime_dir = prepare_doctor_config_runtime_fixture(&repo, &tmp);
     let config_dir = tmp.path().join("config");
-    let user_config_dir = config_dir.join("user_configs");
-    fs::create_dir_all(&user_config_dir).unwrap();
-    fs::write(user_config_dir.join("yazelix.toml"), "[editor\n").unwrap();
+    fs::create_dir_all(&config_dir).unwrap();
+    fs::write(config_dir.join("yazelix.toml"), "[editor\n").unwrap();
 
     let output = Command::cargo_bin("yzx_core")
         .unwrap()

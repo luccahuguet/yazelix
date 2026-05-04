@@ -69,7 +69,7 @@ fn run_reset_cursor(args: &[String]) -> Result<i32, CoreError> {
         ResetSurface {
             command: "yzx reset cursor",
             display_name: "Ghostty cursor registry",
-            target_file_name: "yazelix_cursors.toml",
+            target_file_name: "cursors.toml",
             default_path: paths.default_cursor_config_path,
             target_path: paths.user_cursor_config,
             missing_default_code: "missing_default_cursor_config",
@@ -106,7 +106,7 @@ fn print_reset_help() {
     println!();
     println!("Targets:");
     println!("  config  Replace yazelix.toml with a fresh shipped template");
-    println!("  cursor  Replace yazelix_cursors.toml with a fresh shipped template");
+    println!("  cursor  Replace cursors.toml with a fresh shipped template");
 }
 
 fn print_reset_surface_help(surface: &ResetSurface) {

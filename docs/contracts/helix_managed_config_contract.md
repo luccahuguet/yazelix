@@ -18,7 +18,7 @@ This contract describes the target contract. The current user-facing docs may st
 
 Today the Helix reveal path is inconsistent with the rest of Yazelix's config ownership model:
 
-- Yazi and Zellij already have Yazelix-managed user override surfaces under `~/.config/yazelix/user_configs/`
+- Yazi and Zellij already have Yazelix-managed user override surfaces under `~/.config/yazelix/`
 - Helix-specific reveal behavior is still documented as a manual edit to `~/.config/helix/config.toml`
 - `yzx doctor` cannot verify a clean contract because there is no Yazelix-owned Helix integration surface to check
 
@@ -38,7 +38,7 @@ To keep the first Helix contract small and honest:
 
 Phase 1 managed input surface:
 
-- `~/.config/yazelix/user_configs/helix/config.toml`
+- `~/.config/yazelix/helix.toml`
 
 Phase 1 generated runtime surface:
 
@@ -96,7 +96,7 @@ If a user wants to reuse settings from personal Helix config, the adoption path 
 
 In phase 1, that command should only copy:
 
-- `~/.config/helix/config.toml` -> `~/.config/yazelix/user_configs/helix/config.toml`
+- `~/.config/helix/config.toml` -> `~/.config/yazelix/helix.toml`
 
 It must not:
 

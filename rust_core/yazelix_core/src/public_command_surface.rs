@@ -298,7 +298,7 @@ const RESET_CONFIG_COMMAND: YzxCommandMetadata = metadata(
     YzxCommandCategory::Config,
     RESET_FLAGS,
     Some(YzxMenuCategory::Config),
-    Some("Reset user_configs/yazelix.toml back to the shipped default."),
+    Some("Reset yazelix.toml back to the shipped default."),
 );
 const RESET_CURSOR_COMMAND: YzxCommandMetadata = metadata(
     "yzx reset cursor",
@@ -306,7 +306,7 @@ const RESET_CURSOR_COMMAND: YzxCommandMetadata = metadata(
     YzxCommandCategory::Config,
     RESET_FLAGS,
     Some(YzxMenuCategory::Config),
-    Some("Reset user_configs/yazelix_cursors.toml back to the shipped default."),
+    Some("Reset cursors.toml back to the shipped default."),
 );
 const RESET_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[
     RESET_ROOT_COMMAND,

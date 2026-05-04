@@ -10,7 +10,7 @@ The product surface is now centered on:
 
 - a fixed packaged runtime
 - explicit install/update owners
-- managed `user_configs/` configuration
+- managed `./` configuration
 - workspace/session commands
 - helperless fast popup/menu transient panes
 - generated-state repair instead of backend/profile orchestration
@@ -21,7 +21,7 @@ It is no longer centered on:
 - dynamic pack graphs
 - the old runtime-local `devenv` layer
 - cached launch-profile reuse
-- automatic config migrations
+- a broad config schema migration engine
 - a generic Yazelix-owned runtime updater
 
 ## Why
@@ -50,8 +50,8 @@ This file exists so current docs and current contracts can point at one authorit
 
 ### Config Surface
 
-- The canonical user config surface is `~/.config/yazelix/user_configs/`.
-- The main config is `user_configs/yazelix.toml`.
+- The canonical user config surface is `~/.config/yazelix/`.
+- The main config is `yazelix.toml`.
 - Managed override directories such as Zellij, Yazi, Helix, and shell user hooks remain part of that user-owned config surface.
 - The current trimmed branch does not have a `yazelix_packs.toml` sidecar and does not expose a first-class pack graph.
 - Legacy or removed config fields fail fast instead of degrading silently.
@@ -84,13 +84,13 @@ This file exists so current docs and current contracts can point at one authorit
 - reintroducing dynamic pack management on the current trimmed branch
 - treating cached launch-profile reuse as a current product guarantee
 - restoring the old runtime-local `devenv` layer as part of the normal shipped runtime
-- restoring automatic config migrations as a normal trimmed-line product surface
+- restoring a broad config schema migration engine as a normal trimmed-line product surface
 - pretending the compatibility installer is the canonical everyday product flow
 - treating v15.0 as the Rust-forward release
 
 ## Acceptance Cases
 
-1. A current user can understand the product without learning about `yazelix_packs.toml`, launch-profile reuse, runtime-local `devenv`, or automatic config migrations.
+1. A current user can understand the product without learning about `yazelix_packs.toml`, launch-profile reuse, runtime-local `devenv`, or a broad config schema migration engine.
 2. Current docs explain generated-state repair through startup and `yzx doctor` rather than through a public refresh command.
 3. Current docs explain update ownership through explicit owner commands rather than a generic runtime updater.
 4. Current docs distinguish the normal packaged runtime from maintainer-only `nix develop` workflows.

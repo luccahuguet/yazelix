@@ -4,6 +4,7 @@ use crate::control_plane::{
     config_dir_from_env, home_dir_from_env as home_dir_from_control_plane,
     state_dir_from_env as state_dir_from_control_plane,
 };
+use crate::user_config_paths;
 use crate::zellij_render_plan::{
     DEFAULT_SIDEBAR_YAZI_ARG, TopLevelSetting, ZellijRenderPlanData, ZellijRenderPlanRequest,
     compute_zellij_render_plan, effective_sidebar_args,
@@ -366,10 +367,11 @@ fn resolve_zellij_default_shell(runtime_dir: &Path, default_shell: &str) -> Stri
 fn resolve_base_config_source() -> Result<ZellijBaseConfigSource, CoreError> {
     let config_dir = config_dir_from_env()?;
     crate::managed_user_config_stubs::ensure_zellij_surface_stub(&config_dir)?;
-    let managed_path = config_dir
-        .join("user_configs")
-        .join("zellij")
-        .join("config.kdl");
+    let managed_path = user_config_paths::resolve_flat_config_file(
+        &user_config_paths::zellij_config(&config_dir),
+        &user_config_paths::legacy_zellij_config(&config_dir),
+        "Zellij override",
+    )?;
     if managed_path.exists() {
         return Ok(ZellijBaseConfigSource {
             source: "managed".to_string(),
@@ -459,7 +461,7 @@ fn render_merged_config(
         "// GENERATED ZELLIJ CONFIG (YAZELIX)".to_string(),
         "// ========================================".to_string(),
         "// Source preference:".to_string(),
-        "//   1) ~/.config/yazelix/user_configs/zellij/config.kdl (user-managed)".to_string(),
+        "//   1) ~/.config/yazelix/zellij.kdl (Yazelix-managed override)".to_string(),
         "//   2) ~/.config/zellij/config.kdl (native fallback, read-only)".to_string(),
         "//   3) zellij setup --dump-config (defaults)".to_string(),
         "//".to_string(),

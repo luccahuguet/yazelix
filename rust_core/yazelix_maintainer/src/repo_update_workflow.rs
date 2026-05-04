@@ -1092,24 +1092,7 @@ fn run_update_canary(
             canary.config_path.display()
         )
     })?;
-    let config_dir = if config_parent
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or_default()
-        == "user_configs"
-    {
-        config_parent
-            .parent()
-            .ok_or_else(|| {
-                format!(
-                    "Config parent has no grandparent: {}",
-                    config_parent.display()
-                )
-            })?
-            .to_path_buf()
-    } else {
-        config_parent.to_path_buf()
-    };
+    let config_dir = config_parent.to_path_buf();
     let yzx_core_bin = resolve_update_yzx_core_bin(repo_root)?;
     let output = Command::new(&yzx_core_bin)
         .args(["runtime-materialization.repair", "--from-env", "--force"])

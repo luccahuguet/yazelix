@@ -993,7 +993,7 @@ fn print_empty_terminal_error() -> Result<(), CoreError> {
     };
     eprintln!("Error: terminal.terminals must include at least one terminal");
     eprintln!("Detected terminals: {available_text}");
-    eprintln!("Set [terminal].terminals in ~/.config/yazelix/user_configs/yazelix.toml");
+    eprintln!("Set [terminal].terminals in ~/.config/yazelix/yazelix.toml");
     Ok(())
 }
 

@@ -547,7 +547,7 @@ mod tests {
     fn records_only_the_managed_main_config_surface() {
         let dir = tempdir().expect("tempdir");
         let state_path = dir.path().join("state/rebuild_hash");
-        let managed = dir.path().join("config/user_configs/yazelix.toml");
+        let managed = dir.path().join("config/yazelix.toml");
         let unmanaged = dir.path().join("other/yazelix.toml");
 
         let skipped = record_config_state(&RecordConfigStateRequest {

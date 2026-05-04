@@ -5,12 +5,10 @@ Yazelix provides a two-layer Yazi configuration system that prevents git conflic
 ## Quick Start
 
 ```bash
-mkdir -p ~/.config/yazelix/user_configs/yazi
-
-# Then create only the files you need:
-#   ~/.config/yazelix/user_configs/yazi/yazi.toml
-#   ~/.config/yazelix/user_configs/yazi/keymap.toml
-#   ~/.config/yazelix/user_configs/yazi/init.lua
+# Create only the flat sidecar files you need:
+#   ~/.config/yazelix/yazi.toml
+#   ~/.config/yazelix/yazi_keymap.toml
+#   ~/.config/yazelix/yazi_init.lua
 ```
 
 ## Documentation

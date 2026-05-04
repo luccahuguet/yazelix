@@ -187,7 +187,7 @@ in
       type = types.bool;
       default = false;
       description = ''
-        Whether Home Manager generates ~/.config/yazelix/user_configs/yazelix.toml.
+        Whether Home Manager generates ~/.config/yazelix/yazelix.toml.
 
         The default keeps Home Manager responsible for the Yazelix
         package/runtime/desktop integration while leaving yazelix.toml as a
@@ -241,7 +241,7 @@ in
         - "yazelix": use Yazelix-managed configs in ~/.local/share/yazelix (default)
         - "user": load the terminal's native user config path and fail if it does not exist
 
-        Ghostty cursor presets and cursor effects live in ~/.config/yazelix/user_configs/yazelix_cursors.toml
+        Ghostty cursor presets and cursor effects live in ~/.config/yazelix/cursors.toml
       '';
     };
 
@@ -523,7 +523,7 @@ in
     })
     (mkIf cfg.manage_config {
       # Generate yazelix.toml configuration file
-      xdg.configFile."yazelix/user_configs/yazelix.toml" = {
+      xdg.configFile."yazelix/yazelix.toml" = {
         text =
           lib.concatStringsSep "\n" (
             [

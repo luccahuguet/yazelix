@@ -103,7 +103,7 @@ terminals = [
 # Options:
 # - "yazelix": Use Yazelix-managed configs under ~/.local/share/yazelix/configs/terminal_emulators
 # - "user":    Load the terminal's native user config path instead; this requires that the real config file already exists
-# Supported customization path: keep "yazelix" and add terminal-native tweaks under ~/.config/yazelix/user_configs/terminal/
+# Supported customization path: keep "yazelix" and add terminal-native tweaks under ~/.config/yazelix/terminal_<terminal>.<ext>
 config_mode = "yazelix"
 
 # Terminal transparency level (default: "medium")

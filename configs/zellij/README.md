@@ -1,12 +1,12 @@
 # Yazelix: Zellij Configuration
 
-Yazelix uses your managed Zellij config under `user_configs/` when present, then layers Yazelix requirements on top.
+Yazelix uses `~/.config/yazelix/zellij.kdl` when present, then layers Yazelix requirements on top.
 
 ## Quick Start
 
 ```bash
 # Edit your Yazelix-managed Zellij config
-~/.config/yazelix/user_configs/zellij/config.kdl
+~/.config/yazelix/zellij.kdl
 ```
 
 ## Documentation

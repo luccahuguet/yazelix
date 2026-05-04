@@ -100,10 +100,7 @@ fn yzx_restart_help_prints_usage_without_restarting() {
 #[test]
 fn yzx_control_edit_cursors_prints_cursor_sidecar_path() {
     let fixture = managed_config_fixture("");
-    let expected_path = fixture
-        .config_dir
-        .join("user_configs")
-        .join("yazelix_cursors.toml");
+    let expected_path = fixture.config_dir.join("cursors.toml");
     let mut command = yzx_control_command();
     apply_managed_config_env(&mut command, &fixture)
         .arg("edit")
@@ -121,10 +118,7 @@ fn yzx_control_edit_cursors_prints_cursor_sidecar_path() {
 #[test]
 fn yzx_control_cursors_prints_resolved_color_surface() {
     let fixture = managed_config_fixture("");
-    let expected_path = fixture
-        .config_dir
-        .join("user_configs")
-        .join("yazelix_cursors.toml");
+    let expected_path = fixture.config_dir.join("cursors.toml");
     let mut command = yzx_control_command();
     apply_managed_config_env(&mut command, &fixture).arg("cursors");
 
@@ -144,10 +138,7 @@ fn yzx_control_cursors_prints_resolved_color_surface() {
 #[test]
 fn yzx_control_reset_cursor_replaces_stale_cursor_sidecar() {
     let fixture = managed_config_fixture("");
-    let cursor_path = fixture
-        .config_dir
-        .join("user_configs")
-        .join("yazelix_cursors.toml");
+    let cursor_path = fixture.config_dir.join("cursors.toml");
     fs::write(
         &cursor_path,
         r##"
@@ -178,7 +169,7 @@ colors = ["#ffb929", "#ff0000"]
     let stdout = stdout_text(command.output().unwrap());
     let reset = fs::read_to_string(&cursor_path).unwrap();
 
-    assert!(stdout.contains("Replaced yazelix_cursors.toml with a fresh template"));
+    assert!(stdout.contains("Replaced cursors.toml with a fresh template"));
     assert!(reset.contains("family = \"mono\""));
     assert!(reset.contains("name = \"magma\""));
     assert!(!reset.contains("simple_dual"));
@@ -190,7 +181,7 @@ colors = ["#ffb929", "#ff0000"]
                 .unwrap()
                 .file_name()
                 .to_string_lossy()
-                .starts_with("yazelix_cursors.toml.backup-"))
+                .starts_with("cursors.toml.backup-"))
     );
 }
 

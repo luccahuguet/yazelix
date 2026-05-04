@@ -31,7 +31,7 @@ pkgs.runCommand "yazelix-ghostty-cursor-shaders"
     shader_out="$share_dir/shaders"
     examples_dir="$share_dir/examples"
 
-    mkdir -p "$config_dir/user_configs" "$state_dir" "$examples_dir"
+    mkdir -p "$config_dir" "$state_dir" "$examples_dir"
 
     PATH="${pkgs.nushell}/bin:$PATH" \
       ${rustCoreHelper}/bin/yzx_core ghostty-materialization.generate \

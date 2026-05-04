@@ -1,5 +1,5 @@
 #!/bin/zsh
-# ~/.config/yazelix/shells/zsh/yazelix_zsh_config.zsh
+# Yazelix-managed Zsh startup. User hook: ~/.config/yazelix/shell_zsh.zsh
 # This file is part of Yazelix and should be persisted in the repository.
 
 YAZELIX_RUNTIME_DIR="$(cd "$(dirname "${(%):-%N}")/../.." && pwd)"
@@ -68,11 +68,10 @@ hx() {
 # export SOME_ZSH_SPECIFIC_VAR="value"
 
 if [[ -n "${YAZELIX_CONFIG_DIR:-}" ]]; then
-  yazelix_user_shell_hook_dir="$YAZELIX_CONFIG_DIR/user_configs/shells"
+  yazelix_zsh_user_hook="$YAZELIX_CONFIG_DIR/shell_zsh.zsh"
 else
-  yazelix_user_shell_hook_dir="$HOME/.config/yazelix/user_configs/shells"
+  yazelix_zsh_user_hook="$HOME/.config/yazelix/shell_zsh.zsh"
 fi
-yazelix_zsh_user_hook="$yazelix_user_shell_hook_dir/zsh.zsh"
 if [[ -f "$yazelix_zsh_user_hook" && -s "$yazelix_zsh_user_hook" ]]; then
   source "$yazelix_zsh_user_hook"
 fi

@@ -61,7 +61,7 @@ window-padding-y = 10,0
 background-opacity = 0.85
 background-opacity-cells = true
 
-# Ghostty cursor color + effects (configurable via yazelix_cursors.toml)
+# Ghostty cursor color + effects (configurable via cursors.toml)
 # Cursor color palette: dusk
 cursor-color = #e94560
 custom-shader = ./shaders/cursor_trail_dusk.glsl
@@ -71,4 +71,4 @@ custom-shader = ./shaders/generated_effects/sweep.glsl
 custom-shader = ./shaders/generated_effects/rectangle_boom.glsl
 
 # Personal Yazelix Ghostty overrides (optional, user-owned)
-config-file = ?"/home/lucca/.config/yazelix/user_configs/terminal/ghostty"
+config-file = ?"/home/lucca/.config/yazelix/terminal_ghostty.conf"

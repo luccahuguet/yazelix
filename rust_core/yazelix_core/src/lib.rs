@@ -45,6 +45,7 @@ pub mod terminal_materialization;
 pub mod transient_pane_facts;
 pub mod update_commands;
 pub mod upgrade_summary;
+pub mod user_config_paths;
 pub mod workspace_asset_contract;
 pub mod workspace_commands;
 pub mod yazi_materialization;

@@ -1035,7 +1035,6 @@ fn validate_home_manager_activation_mode(
             &home_root
                 .join(".config")
                 .join("yazelix")
-                .join("user_configs")
                 .join("yazelix.toml"),
             if manage_config {
                 "Home Manager managed yazelix.toml surface after activation"
@@ -1047,7 +1046,6 @@ fn validate_home_manager_activation_mode(
         let main_config_path = home_root
             .join(".config")
             .join("yazelix")
-            .join("user_configs")
             .join("yazelix.toml");
         if let Ok(metadata) = fs::symlink_metadata(&main_config_path) {
             if manage_config && !metadata.file_type().is_symlink() {
@@ -1406,12 +1404,10 @@ fn verify_profile_installed_runtime(
     let user_config = temp_home
         .join(".config")
         .join("yazelix")
-        .join("user_configs")
         .join("yazelix.toml");
     let pack_config = temp_home
         .join(".config")
         .join("yazelix")
-        .join("user_configs")
         .join("yazelix_packs.toml");
     let nushell_config = temp_home.join(".config").join("nushell").join("config.nu");
 
@@ -2858,14 +2854,13 @@ fn setup_config_state_fixture(repo_root: &Path) -> Result<ConfigStateFixture, St
     let runtime_root = fixture_root.join("runtime");
     let runtime_root_alt = fixture_root.join("runtime_alt");
     let config_root = fixture_root.join("config");
-    let user_config_dir = config_root.join("user_configs");
     let home_root = fixture_root.join("home");
     fs::create_dir_all(&runtime_root)
         .map_err(|error| format!("Failed to create {}: {}", runtime_root.display(), error))?;
     fs::create_dir_all(&runtime_root_alt)
         .map_err(|error| format!("Failed to create {}: {}", runtime_root_alt.display(), error))?;
-    fs::create_dir_all(&user_config_dir)
-        .map_err(|error| format!("Failed to create {}: {}", user_config_dir.display(), error))?;
+    fs::create_dir_all(&config_root)
+        .map_err(|error| format!("Failed to create {}: {}", config_root.display(), error))?;
     fs::create_dir_all(&home_root)
         .map_err(|error| format!("Failed to create {}: {}", home_root.display(), error))?;
 
@@ -2878,7 +2873,7 @@ fn setup_config_state_fixture(repo_root: &Path) -> Result<ConfigStateFixture, St
         copy_fixture_file(repo_root, &runtime_root_alt, relative_path)?;
     }
 
-    let main_config_path = user_config_dir.join("yazelix.toml");
+    let main_config_path = config_root.join("yazelix.toml");
     fs::copy(
         repo_root.join(MAIN_TEMPLATE_RELATIVE_PATH),
         &main_config_path,

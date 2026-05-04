@@ -2,29 +2,9 @@
 //! User-owned managed config surface scaffolding.
 
 use crate::bridge::CoreError;
+use crate::user_config_paths;
 use std::fs;
 use std::path::Path;
-
-const ZELLIJ_README: &str = r#"# Yazelix-managed Zellij overrides
-
-Create `config.kdl` here when you want Zellij settings that apply only inside Yazelix
-
-Yazelix intentionally does not create `config.kdl` automatically, so native `~/.config/zellij/config.kdl` fallback keeps working until you choose this managed surface
-"#;
-
-const HELIX_README: &str = r#"# Yazelix-managed Helix overrides
-
-Create `config.toml` here when you want Helix settings that apply only inside Yazelix
-
-Yazelix intentionally does not create `config.toml` automatically, so `yzx import helix` can still detect native Helix config before you choose this managed surface
-"#;
-
-const YAZI_README: &str = r#"# Yazelix-managed Yazi overrides
-
-Create `yazi.toml`, `keymap.toml`, or `init.lua` here for Yazi settings that apply only inside Yazelix
-
-Yazelix merges these files into the generated Yazi runtime config when they exist
-"#;
 
 const BASH_HOOK: &str = r#"# Yazelix-managed Bash hook
 # Add Bash-only commands for Yazelix sessions here
@@ -54,34 +34,16 @@ const ALACRITTY_OVERRIDE: &str = r#"# Yazelix-managed Alacritty overrides
 # Add terminal-native Alacritty settings for Yazelix windows here
 "#;
 
-pub(crate) fn ensure_zellij_surface_stub(config_dir: &Path) -> Result<(), CoreError> {
-    write_stub_if_missing(
-        &config_dir
-            .join("user_configs")
-            .join("zellij")
-            .join("README.md"),
-        ZELLIJ_README,
-    )
+pub(crate) fn ensure_zellij_surface_stub(_config_dir: &Path) -> Result<(), CoreError> {
+    Ok(())
 }
 
-pub(crate) fn ensure_helix_surface_stub(config_dir: &Path) -> Result<(), CoreError> {
-    write_stub_if_missing(
-        &config_dir
-            .join("user_configs")
-            .join("helix")
-            .join("README.md"),
-        HELIX_README,
-    )
+pub(crate) fn ensure_helix_surface_stub(_config_dir: &Path) -> Result<(), CoreError> {
+    Ok(())
 }
 
-pub(crate) fn ensure_yazi_surface_stub(config_dir: &Path) -> Result<(), CoreError> {
-    write_stub_if_missing(
-        &config_dir
-            .join("user_configs")
-            .join("yazi")
-            .join("README.md"),
-        YAZI_README,
-    )
+pub(crate) fn ensure_yazi_surface_stub(_config_dir: &Path) -> Result<(), CoreError> {
+    Ok(())
 }
 
 pub(crate) fn ensure_shell_hook_stubs(
@@ -90,31 +52,10 @@ pub(crate) fn ensure_shell_hook_stubs(
 ) -> Result<(), CoreError> {
     for shell in shells_to_configure {
         match shell.as_str() {
-            "bash" => write_stub_if_missing(
-                &config_dir
-                    .join("user_configs")
-                    .join("shells")
-                    .join("bash.sh"),
-                BASH_HOOK,
-            )?,
-            "zsh" => write_stub_if_missing(
-                &config_dir
-                    .join("user_configs")
-                    .join("shells")
-                    .join("zsh.zsh"),
-                ZSH_HOOK,
-            )?,
-            "fish" => write_stub_if_missing(
-                &config_dir
-                    .join("user_configs")
-                    .join("shells")
-                    .join("fish.fish"),
-                FISH_HOOK,
-            )?,
-            "nu" => write_stub_if_missing(
-                &config_dir.join("user_configs").join("shells").join("nu.nu"),
-                NU_HOOK,
-            )?,
+            "bash" => ensure_stub_with_legacy(config_dir, shell, BASH_HOOK)?,
+            "zsh" => ensure_stub_with_legacy(config_dir, shell, ZSH_HOOK)?,
+            "fish" => ensure_stub_with_legacy(config_dir, shell, FISH_HOOK)?,
+            "nu" => ensure_stub_with_legacy(config_dir, shell, NU_HOOK)?,
             _ => {}
         }
     }
@@ -128,32 +69,49 @@ pub(crate) fn ensure_terminal_override_stubs(
 ) -> Result<(), CoreError> {
     for terminal in terminals {
         match terminal.as_str() {
-            "ghostty" => write_stub_if_missing(
-                &config_dir
-                    .join("user_configs")
-                    .join("terminal")
-                    .join("ghostty"),
-                GHOSTTY_OVERRIDE,
-            )?,
-            "kitty" => write_stub_if_missing(
-                &config_dir
-                    .join("user_configs")
-                    .join("terminal")
-                    .join("kitty.conf"),
-                KITTY_OVERRIDE,
-            )?,
-            "alacritty" => write_stub_if_missing(
-                &config_dir
-                    .join("user_configs")
-                    .join("terminal")
-                    .join("alacritty.toml"),
-                ALACRITTY_OVERRIDE,
+            "ghostty" => ensure_terminal_stub_with_legacy(config_dir, terminal, GHOSTTY_OVERRIDE)?,
+            "kitty" => ensure_terminal_stub_with_legacy(config_dir, terminal, KITTY_OVERRIDE)?,
+            "alacritty" => {
+                ensure_terminal_stub_with_legacy(config_dir, terminal, ALACRITTY_OVERRIDE)?
+            }
+            "foot" => ensure_terminal_stub_with_legacy(
+                config_dir,
+                terminal,
+                "# Yazelix-managed Foot overrides\n# Add terminal-native Foot settings for Yazelix windows here\n",
             )?,
             _ => {}
         }
     }
 
     Ok(())
+}
+
+fn ensure_stub_with_legacy(config_dir: &Path, shell: &str, content: &str) -> Result<(), CoreError> {
+    let current = user_config_paths::shell_hook(config_dir, shell).expect("supported shell");
+    let legacy = user_config_paths::legacy_shell_hook(config_dir, shell).expect("supported shell");
+    let path = user_config_paths::resolve_flat_config_file(
+        &current,
+        &legacy,
+        &format!("Yazelix {shell} shell hook"),
+    )?;
+    write_stub_if_missing(&path, content)
+}
+
+fn ensure_terminal_stub_with_legacy(
+    config_dir: &Path,
+    terminal: &str,
+    content: &str,
+) -> Result<(), CoreError> {
+    let current =
+        user_config_paths::terminal_config(config_dir, terminal).expect("supported terminal");
+    let legacy = user_config_paths::legacy_terminal_config(config_dir, terminal)
+        .expect("supported terminal");
+    let path = user_config_paths::resolve_flat_config_file(
+        &current,
+        &legacy,
+        &format!("Yazelix {terminal} terminal override"),
+    )?;
+    write_stub_if_missing(&path, content)
 }
 
 fn write_stub_if_missing(path: &Path, content: &str) -> Result<(), CoreError> {
@@ -166,7 +124,7 @@ fn write_stub_if_missing(path: &Path, content: &str) -> Result<(), CoreError> {
             CoreError::io(
                 "create_user_config_stub_dir",
                 "Could not create Yazelix managed user config stub directory",
-                "Check permissions for ~/.config/yazelix/user_configs and retry.",
+                "Check permissions for ~/.config/yazelix and retry.",
                 parent.to_string_lossy(),
                 source,
             )
@@ -177,7 +135,7 @@ fn write_stub_if_missing(path: &Path, content: &str) -> Result<(), CoreError> {
         CoreError::io(
             "write_user_config_stub",
             "Could not write Yazelix managed user config stub",
-            "Check permissions for ~/.config/yazelix/user_configs and retry.",
+            "Check permissions for ~/.config/yazelix and retry.",
             path.to_string_lossy(),
             source,
         )
@@ -190,7 +148,7 @@ mod tests {
     use std::fs;
     use tempfile::tempdir;
 
-    // Defends: discovery stubs for fallback-sensitive surfaces do not create live config files that would change source selection.
+    // Defends: fallback-sensitive surfaces do not create live flat files that would change source selection.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn readme_stubs_preserve_zellij_and_helix_behavior_owned_files_absent() {
@@ -199,20 +157,8 @@ mod tests {
         ensure_zellij_surface_stub(config.path()).unwrap();
         ensure_helix_surface_stub(config.path()).unwrap();
 
-        assert!(config.path().join("user_configs/zellij/README.md").exists());
-        assert!(config.path().join("user_configs/helix/README.md").exists());
-        assert!(
-            !config
-                .path()
-                .join("user_configs/zellij/config.kdl")
-                .exists()
-        );
-        assert!(
-            !config
-                .path()
-                .join("user_configs/helix/config.toml")
-                .exists()
-        );
+        assert!(!config.path().join("zellij.kdl").exists());
+        assert!(!config.path().join("helix.toml").exists());
     }
 
     // Defends: shell hook scaffolding follows the configured shell set instead of dumping every supported shell hook.
@@ -223,11 +169,10 @@ mod tests {
 
         ensure_shell_hook_stubs(config.path(), &["bash".to_string(), "nu".to_string()]).unwrap();
 
-        let shells = config.path().join("user_configs/shells");
-        assert!(shells.join("bash.sh").exists());
-        assert!(shells.join("nu.nu").exists());
-        assert!(!shells.join("fish.fish").exists());
-        assert!(!shells.join("zsh.zsh").exists());
+        assert!(config.path().join("shell_bash.sh").exists());
+        assert!(config.path().join("shell_nu.nu").exists());
+        assert!(!config.path().join("shell_fish.fish").exists());
+        assert!(!config.path().join("shell_zsh.zsh").exists());
     }
 
     // Defends: terminal override scaffolding only creates files for terminals with a live managed override contract.
@@ -247,13 +192,12 @@ mod tests {
         )
         .unwrap();
 
-        let terminal = config.path().join("user_configs/terminal");
-        assert!(terminal.join("ghostty").exists());
-        assert!(terminal.join("kitty.conf").exists());
-        assert!(terminal.join("alacritty.toml").exists());
-        assert!(!terminal.join("wezterm.lua").exists());
+        assert!(config.path().join("terminal_ghostty.conf").exists());
+        assert!(config.path().join("terminal_kitty.conf").exists());
+        assert!(config.path().join("terminal_alacritty.toml").exists());
+        assert!(!config.path().join("terminal_wezterm.lua").exists());
         assert!(
-            fs::read_to_string(terminal.join("ghostty"))
+            fs::read_to_string(config.path().join("terminal_ghostty.conf"))
                 .unwrap()
                 .contains("Yazelix-managed Ghostty overrides")
         );

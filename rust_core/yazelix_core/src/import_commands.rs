@@ -3,6 +3,7 @@
 
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{config_dir_from_env, home_dir_from_env};
+use crate::user_config_paths;
 use serde_json::json;
 use std::fs;
 use std::io;
@@ -35,10 +36,7 @@ fn get_native_zellij_config_path(home: &Path) -> PathBuf {
 }
 
 fn get_managed_zellij_config_path(config_dir: &Path) -> PathBuf {
-    config_dir
-        .join("user_configs")
-        .join("zellij")
-        .join("config.kdl")
+    user_config_paths::zellij_config(config_dir)
 }
 
 fn get_native_yazi_config_dir(home: &Path) -> PathBuf {
@@ -46,7 +44,7 @@ fn get_native_yazi_config_dir(home: &Path) -> PathBuf {
 }
 
 fn get_managed_yazi_config_dir(config_dir: &Path) -> PathBuf {
-    config_dir.join("user_configs").join("yazi")
+    config_dir.to_path_buf()
 }
 
 fn get_native_helix_config_path(home: &Path) -> PathBuf {
@@ -54,10 +52,7 @@ fn get_native_helix_config_path(home: &Path) -> PathBuf {
 }
 
 fn get_managed_helix_config_path(config_dir: &Path) -> PathBuf {
-    config_dir
-        .join("user_configs")
-        .join("helix")
-        .join("config.toml")
+    user_config_paths::helix_config(config_dir)
 }
 
 fn get_import_entries(
@@ -78,17 +73,17 @@ fn get_import_entries(
                 ImportEntry {
                     name: "yazi.toml",
                     source: source_dir.join("yazi.toml"),
-                    destination: dest_dir.join("yazi.toml"),
+                    destination: user_config_paths::yazi_config(&dest_dir),
                 },
                 ImportEntry {
                     name: "keymap.toml",
                     source: source_dir.join("keymap.toml"),
-                    destination: dest_dir.join("keymap.toml"),
+                    destination: user_config_paths::yazi_keymap(&dest_dir),
                 },
                 ImportEntry {
                     name: "init.lua",
                     source: source_dir.join("init.lua"),
-                    destination: dest_dir.join("init.lua"),
+                    destination: user_config_paths::yazi_init(&dest_dir),
                 },
             ])
         }

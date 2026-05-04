@@ -153,7 +153,7 @@ If you only want to try Yazelix without installing it persistently:
 nix run github:luccahuguet/yazelix#yazelix -- launch
 ```
 
-Normal usage relies on the package-provided `yzx` entrypoint or the Home Manager module. User configuration lives under `~/.config/yazelix/user_configs/`.
+Normal usage relies on the package-provided `yzx` entrypoint or the Home Manager module. User configuration lives under `~/.config/yazelix/`.
 
 Host prerequisite contract:
 - **Host prerequisite**: Nix with flakes enabled
@@ -163,10 +163,10 @@ Host prerequisite contract:
 
 ### Step 3: Configure Your Installation (Optional)
 
-If you launch before editing config, Yazelix will auto-create `user_configs/yazelix.toml` from the shipped default. You can edit it anytime afterward:
+If you launch before editing config, Yazelix will auto-create `yazelix.toml` from the shipped default. You can edit it anytime afterward:
 
 ```bash
-hx ~/.config/yazelix/user_configs/yazelix.toml
+hx ~/.config/yazelix/yazelix.toml
 ```
 
 #### Runtime Surface
@@ -369,7 +369,7 @@ Check installed tool versions: `yzx status --versions`
 Run diagnostics: `yzx doctor` - Automated health checks and fixes
 
 ### Customization
-If you followed step 5, you already have your `~/.config/yazelix/user_configs/yazelix.toml` config file ready. You can modify it anytime and restart Yazelix to apply changes. See [yazelix_default.toml](../yazelix_default.toml) for main options and `~/.config/yazelix/user_configs/yazelix_cursors.toml` for Ghostty cursor presets and effects.
+If you followed step 5, you already have your `~/.config/yazelix/yazelix.toml` config file ready. You can modify it anytime and restart Yazelix to apply changes. See [yazelix_default.toml](../yazelix_default.toml) for main options and `~/.config/yazelix/cursors.toml` for Ghostty cursor presets and effects.
 
 For complete customization options, see the [Customization Guide](./customization.md).
 

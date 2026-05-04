@@ -77,15 +77,15 @@ If you previously installed Yazelix via `git clone`, an installer script, or man
 **Yazelix now uses `yazelix.toml` and the packaged `yazelix` runtime instead of the old `yazelix.nix` flow.**
 
 If you have an older Yazelix setup:
-- Configuration is now in `~/.config/yazelix/user_configs/yazelix.toml` (not `yazelix.nix`)
+- Configuration is now in `~/.config/yazelix/yazelix.toml` (not `yazelix.nix`)
 - The normal runtime entry path is the packaged `yazelix` flake output
 - The top-level flake now exposes the package-first product surface: `nix run github:luccahuguet/yazelix#yazelix -- launch`
 - The main config template is `yazelix_default.toml`, and the cursor registry template is `yazelix_cursors_default.toml`
 
 **Migration steps:**
 1. It's recommended that you go through the [Installation Guide](installation.md) and install the packaged `yazelix` runtime cleanly
-2. Your `user_configs/yazelix.toml` and `user_configs/yazelix_cursors.toml` files will be auto-created from the shipped defaults on yazelix startup if not found
-3. Copy any custom settings from your old `yazelix.nix` to the new `user_configs/yazelix.toml` format
+2. Your `yazelix.toml` and `cursors.toml` files will be auto-created from the shipped defaults on yazelix startup if not found
+3. Copy any custom settings from your old `yazelix.nix` to the new `yazelix.toml` format
 
 ## First Run: Zellij Plugin Permissions (is the top bar looking funny/weird/broken?)
 
@@ -144,7 +144,7 @@ Yazelix aligns Helix with the selected runtime automatically. Old `~/.config/hel
 
 ### Reset Configuration
 ```bash
-rm ~/.config/yazelix/user_configs/yazelix.toml
+rm ~/.config/yazelix/yazelix.toml
 exit         # Exit current session
 yzx launch   # Start fresh in new window - regenerates defaults
 ```

@@ -14,6 +14,7 @@ use crate::install_ownership_env::install_ownership_request_from_env_with_runtim
 use crate::runtime_materialization::{
     RuntimeMaterializationRepairEvaluateRequest, repair_runtime_materialization,
 };
+use crate::user_config_paths;
 use crate::workspace_asset_contract::{
     WorkspaceAssetEvaluateRequest, evaluate_workspace_asset_report,
 };
@@ -424,10 +425,7 @@ fn collect_helix_doctor_findings(
             .map(|value| value.contains("hx"))
             .unwrap_or(false),
         editor_command,
-        managed_helix_user_config_path: config_dir
-            .join("user_configs")
-            .join("helix")
-            .join("config.toml"),
+        managed_helix_user_config_path: user_config_paths::helix_config(config_dir),
         native_helix_config_path: xdg_config_home(home_dir).join("helix").join("config.toml"),
         generated_helix_config_path: state_dir.join("configs").join("helix").join("config.toml"),
         expected_managed_config: None,

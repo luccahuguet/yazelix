@@ -216,7 +216,7 @@ pub fn managed_config_fixture(raw_config: &str) -> ManagedConfigFixture {
     let runtime_dir = temp.path().join("runtime");
     let config_dir = home_dir.join(".config").join("yazelix");
     let state_dir = home_dir.join(".local").join("share").join("yazelix");
-    let managed_config = config_dir.join("user_configs").join("yazelix.toml");
+    let managed_config = config_dir.join("yazelix.toml");
 
     fs::create_dir_all(managed_config.parent().unwrap()).unwrap();
     fs::create_dir_all(&state_dir).unwrap();

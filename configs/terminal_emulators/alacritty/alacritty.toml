@@ -8,4 +8,4 @@
 import = ["/home/lucca/.local/share/yazelix/configs/terminal_emulators/alacritty/alacritty_base.toml"]
 
 # Personal Yazelix Alacritty overrides (optional, user-owned)
-# Create /home/lucca/.config/yazelix/user_configs/terminal/alacritty.toml if you want terminal-native Alacritty tweaks.
+# Create /home/lucca/.config/yazelix/terminal_alacritty.toml if you want terminal-native Alacritty tweaks.

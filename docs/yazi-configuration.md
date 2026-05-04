@@ -1,6 +1,6 @@
 # Yazi Configuration
 
-Yazelix provides a layered Yazi configuration system built from Yazelix defaults, dynamic settings from `yazelix.toml`, and optional managed overrides under `~/.config/yazelix/user_configs/yazi/`.
+Yazelix provides a layered Yazi configuration system built from Yazelix defaults, dynamic settings from `yazelix.toml`, and optional managed overrides under `~/.config/yazelix/`.
 
 ## Quick Start
 
@@ -20,7 +20,7 @@ Restart yazelix and your changes take effect.
 Yazi has two customization layers:
 
 1. Built-in Yazelix-facing Yazi settings in `yazelix.toml`
-2. Optional managed Yazi override files in `~/.config/yazelix/user_configs/yazi/`
+2. Optional managed Yazi override files in `~/.config/yazelix/`
 
 The `yazelix.toml` layer controls the common knobs Yazelix understands directly.
 
@@ -34,7 +34,7 @@ ya_command = "/path/to/custom/ya" # Optional: managed `ya` CLI override
 
 Leave both empty to use `yazi` and `ya` from `PATH`.
 
-Use this only when Yazelix-managed Yazi launches and file-tree sidebar actions need a specific binary. Custom plugin initialization should still go in `~/.config/yazelix/user_configs/yazi/init.lua`.
+Use this only when Yazelix-managed Yazi launches and file-tree sidebar actions need a specific binary. Custom plugin initialization should still go in `~/.config/yazelix/yazi_init.lua`.
 
 The Zellij sidebar launcher itself is controlled by `[editor].sidebar_command` and `[editor].sidebar_args` in `yazelix.toml`. Leave those at their defaults unless you intentionally want the managed sidebar slot to run something other than Yazelix's Yazi file-tree adapter. Custom commands do not inherit the default Yazi adapter arg when `sidebar_args` is left unchanged.
 
@@ -63,7 +63,7 @@ ya pkg add XYenon/clipboard.yazi
 plugins = ["git", "clipboard"]
 ```
 
-**Note:** Plugins in this list get auto-generated `require("plugin"):setup()` calls. If you need custom configuration options, don't add the plugin here; configure them manually in `~/.config/yazelix/user_configs/yazi/init.lua` instead.
+**Note:** Plugins in this list get auto-generated `require("plugin"):setup()` calls. If you need custom configuration options, don't add the plugin here; configure them manually in `~/.config/yazelix/yazi_init.lua` instead.
 
 ### Theme
 
@@ -98,18 +98,18 @@ When yazelix starts:
 
 1. Reads the built-in `[yazi]` settings from `yazelix.toml`
 2. Generates the managed base `yazi.toml` from Yazelix defaults plus those settings
-3. Merges your optional `~/.config/yazelix/user_configs/yazi/yazi.toml` overrides when that file exists, while preserving Yazelix-owned `[opener].edit`
-4. Generates `init.lua` with the built-in plugin list, then appends your optional `~/.config/yazelix/user_configs/yazi/init.lua`
-5. Merges your optional `~/.config/yazelix/user_configs/yazi/keymap.toml` with the Yazelix keymap layer
+3. Merges your optional `~/.config/yazelix/yazi.toml` overrides when that file exists, while preserving Yazelix-owned `[opener].edit`
+4. Generates `init.lua` with the built-in plugin list, then appends your optional `~/.config/yazelix/yazi_init.lua`
+5. Merges your optional `~/.config/yazelix/yazi_keymap.toml` with the Yazelix keymap layer
 6. Copies bundled configs, plugins, and flavors into the generated runtime Yazi directory
 
-The generated runtime config lives under `~/.local/share/yazelix/configs/yazi/`. You customize the managed inputs under `user_configs/yazi/`, not the generated output.
+The generated runtime config lives under `~/.local/share/yazelix/configs/yazi/`. You customize the flat managed sidecars under `~/.config/yazelix/`, not the generated output.
 
 ### Yazi opener ownership
 
 Yazelix owns the generated `[opener].edit` entry. That opener sends file opens through `yzx_control zellij open-editor` so files target the managed editor pane instead of spawning an unmanaged editor.
 
-`~/.config/yazelix/user_configs/yazi/yazi.toml` can add or override other Yazi settings, but it does not replace `[opener].edit`. Use `keymap.toml` to remap file-open keys, and use `init.lua` for custom Lua setup.
+`~/.config/yazelix/yazi.toml` can add or override other Yazi settings, but it does not replace `[opener].edit`. Use `keymap.toml` to remap file-open keys, and use `init.lua` for custom Lua setup.
 
 ## Default Features
 
@@ -122,14 +122,14 @@ Yazelix owns the generated `[opener].edit` entry. That opener sends file opens t
 
 ## Advanced Customization
 
-For deeper customization beyond the built-in `yazelix.toml` options, use the managed override files under `~/.config/yazelix/user_configs/yazi/`.
+For deeper customization beyond the built-in `yazelix.toml` options, use the managed override files under `~/.config/yazelix/`.
 
 ### Custom init.lua Code
 
 Some plugins (like `yamb` for bookmarks) require custom Lua code beyond a simple `require().setup()`. Create your own init.lua:
 
 ```bash
-~/.config/yazelix/user_configs/yazi/init.lua
+~/.config/yazelix/yazi_init.lua
 ```
 
 Your code is appended after the auto-generated plugin requires. Example:
@@ -150,7 +150,7 @@ This file is gitignored, so your customizations persist across updates.
 Add custom keybindings without editing the base keymap:
 
 ```bash
-~/.config/yazelix/user_configs/yazi/keymap.toml
+~/.config/yazelix/yazi_keymap.toml
 ```
 
 Your keybindings are merged with yazelix defaults. Example for yamb bookmarks:
@@ -187,7 +187,7 @@ If you already have a native Yazi setup, import the supported override files int
 yzx import yazi
 ```
 
-This imports `yazi.toml`, `keymap.toml`, and `init.lua` from `~/.config/yazi/` into `~/.config/yazelix/user_configs/yazi/`.
+This imports `yazi.toml`, `keymap.toml`, and `init.lua` from `~/.config/yazi/` into `~/.config/yazelix/`.
 
 If you need to replace existing managed override files, use:
 
@@ -237,7 +237,7 @@ yzx restart
 - Check for warnings during yazelix startup
 
 **Migrating from a native Yazi config?**
-- Run `yzx import yazi` to copy `yazi.toml`, `keymap.toml`, and `init.lua` into `~/.config/yazelix/user_configs/yazi/`
+- Run `yzx import yazi` to copy `yazi.toml`, `keymap.toml`, and `init.lua` into `~/.config/yazelix/`
 - Use `yzx import yazi --force` to back up and replace existing managed override files
 
 **Want default settings?**

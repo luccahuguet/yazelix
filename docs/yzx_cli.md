@@ -239,9 +239,9 @@ Show the active Yazelix configuration through the Rust-owned control path
 
 ### `yzx import zellij|yazi|helix [--force]`
 Import native Zellij, Yazi, or Helix config into Yazelix-managed overrides
-- `yzx import zellij`: copies `~/.config/zellij/config.kdl` into `user_configs/zellij/config.kdl`
-- `yzx import yazi`: imports `yazi.toml`, `keymap.toml`, and `init.lua` from `~/.config/yazi/` into `user_configs/yazi/`
-- `yzx import helix`: copies `~/.config/helix/config.toml` into `user_configs/helix/config.toml`
+- `yzx import zellij`: copies `~/.config/zellij/config.kdl` into `zellij.kdl`
+- `yzx import yazi`: imports `yazi.toml`, `keymap.toml`, and `init.lua` from `~/.config/yazi/` into `./`
+- `yzx import helix`: copies `~/.config/helix/config.toml` into `helix.toml`
 - Fails clearly when no native source files are available for the selected target
 - Refuses to overwrite existing managed destination files by default
 - `--force`: writes `*.backup-<timestamp>` backups before replacing managed destination files
@@ -249,24 +249,24 @@ Import native Zellij, Yazi, or Helix config into Yazelix-managed overrides
 ### `yzx edit config [--print]`
 Open the main Yazelix config file in your editor
 - Uses `$EDITOR` (set by Yazelix from `[editor] command` in yazelix.toml)
-- Targets `user_configs/yazelix.toml`
+- Targets `yazelix.toml`
 - `--print`: print the resolved config path without opening
 
 ### `yzx cursors`
 Inspect Ghostty cursor presets and resolved colors
-- Shows the active `user_configs/yazelix_cursors.toml` path
+- Shows the active `cursors.toml` path
 - Shows global trail, effect, glow, duration, and Kitty fallback settings
 - Shows resolved colors for enabled presets, including derived mono accents
 
 ### `yzx edit cursors [--print]`
 Open the Ghostty cursor registry sidecar in your editor
-- Targets `user_configs/yazelix_cursors.toml`
+- Targets `cursors.toml`
 - `--print`: print the resolved cursor sidecar path without opening
 
 ### `yzx edit <target> [--print]`
 Open one of the managed config surfaces through explicit or fuzzy target selection
 - Supported targets include `config`, `cursors`, `helix`, `zellij`, `yazi`, `yazi-keymap`, and `yazi-init`
-- Yazi targets stay inside `user_configs/yazi/` and do not expose host-owned `~/.config/yazi/` files
+- Yazi targets stay inside `./` and do not expose host-owned `~/.config/yazi/` files
 - `--print`: print the resolved managed path without opening
 
 ### `yzx reset config [--yes] [--no-backup]`
@@ -277,7 +277,7 @@ Replace `yazelix.toml` with a fresh copy of the shipped template
 - Use this as a blunt recovery path when `yzx doctor` reports stale config fields
 
 ### `yzx reset cursor [--yes] [--no-backup]`
-Replace `yazelix_cursors.toml` with a fresh copy of the shipped cursor template
+Replace `cursors.toml` with a fresh copy of the shipped cursor template
 - Backs up the current cursor sidecar to `*.backup-<timestamp>` first when it exists
 - `--yes`: skip the confirmation prompt
 - `--no-backup`: discard the previous cursor sidecar instead of renaming it to a backup first

@@ -24,7 +24,7 @@ This directory contains Zsh-specific configuration files for Yazelix.
 
 ## Usage
 
-To use zsh in the trimmed v15 runtime, set it as your default shell in `~/.config/yazelix/user_configs/yazelix.toml`:
+To use zsh in the trimmed v15 runtime, set it as your default shell in `~/.config/yazelix/yazelix.toml`:
 
 ```toml
 [shell]

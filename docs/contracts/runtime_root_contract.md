@@ -7,7 +7,7 @@ Yazelix treats the config root, runtime root, and state root as separate locatio
 These roots line up with three filesystem-backed kinds of state plus one process-local layer:
 
 1. Dynamic user intent
-   - config under `~/.config/yazelix/user_configs/`
+   - config under `~/.config/yazelix/`
 2. Deterministic runtime code
    - the shipped runtime tree from the package, flake output, or repo checkout
 3. Materialized/generated state
@@ -41,8 +41,8 @@ This contract keeps those boundaries explicit.
 - Status: live
 - Owner: config-root resolution in Nushell and Rust control-plane helpers
 - Statement: The config root is the user-owned configuration surface under
-  `YAZELIX_CONFIG_DIR`, with managed Yazelix config living under
-  `user_configs/` rather than under the runtime tree
+  `YAZELIX_CONFIG_DIR`, with managed Yazelix config living directly under
+  that root rather than under the runtime tree
 - Verification: automated
   `nushell/scripts/dev/test_yzx_generated_configs.nu`; validator
   `yzx_repo_validator validate-contracts`
@@ -99,8 +99,8 @@ This contract keeps those boundaries explicit.
   - Default location: `~/.config/yazelix`
   - Canonical environment variable: `YAZELIX_CONFIG_DIR`
   - Contents include:
-    - `user_configs/yazelix.toml`
-    - user-managed overrides such as `user_configs/zellij/`, `user_configs/yazi/`, `user_configs/helix/`, and `user_configs/shells/`
+    - `yazelix.toml`
+    - user-managed overrides such as `zellij.kdl`, `helix.toml`, `yazi.toml`, `yazi_keymap.toml`, `yazi_init.lua`, `terminal_*`, and `shell_*`
   - The current trimmed line does not treat `yazelix_packs.toml` as part of the current config contract.
 - The runtime root is the shipped Yazelix asset tree used at runtime.
   - Canonical environment variable: `YAZELIX_RUNTIME_DIR`

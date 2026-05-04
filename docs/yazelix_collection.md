@@ -43,7 +43,7 @@ Yazelix is built on a focused terminal-workspace stack. This catalog lists the p
 - [Kitty](https://sw.kovidgoyal.net/kitty/) — Supported PATH-provided terminal choice. Yazelix can generate Kitty config and launch Kitty when it is available on the host.
 - [Alacritty](https://github.com/alacritty/alacritty) — Supported PATH-provided terminal choice with generated Yazelix config.
 - [Foot](https://codeberg.org/dnkl/foot) — Supported Linux PATH-provided terminal choice with generated Yazelix config.
-- [ghostty-cursor-shaders](https://github.com/sahaj-b/ghostty-cursor-shaders) — Upstream inspiration for the Yazelix-managed Ghostty cursor shader system. Yazelix vendors/adapts the shader direction through `yazelix_cursors.toml`, generated config, and the standalone `#ghostty_cursor_shaders` package.
+- [ghostty-cursor-shaders](https://github.com/sahaj-b/ghostty-cursor-shaders) — Upstream inspiration for the Yazelix-managed Ghostty cursor shader system. Yazelix vendors/adapts the shader direction through `cursors.toml`, generated config, and the standalone `#ghostty_cursor_shaders` package.
 
 ## Editors And Shells
 
@@ -90,11 +90,11 @@ Plugin catalog: https://github.com/yazi-rs/plugins
 
 ## User Configuration Surfaces
 
-- [`yazelix.toml`](../yazelix_default.toml) — Main user config surface under `~/.config/yazelix/user_configs/yazelix.toml`.
-- [`yazelix_cursors.toml`](../yazelix_cursors_default.toml) — Ghostty cursor preset/effect sidecar under `~/.config/yazelix/user_configs/yazelix_cursors.toml`.
-- [Yazi user overrides](../user_configs/yazi/README.md) — Personal Yazi config overlays under `~/.config/yazelix/user_configs/yazi/`.
-- [Zellij user config](../user_configs/zellij/README.md) — Managed Zellij user config under `~/.config/yazelix/user_configs/zellij/config.kdl`.
-- [Terminal overrides](../user_configs/terminal/README.md) — Terminal-native override files for Ghostty, Kitty, and Alacritty.
+- [`yazelix.toml`](../yazelix_default.toml) — Main user config surface under `~/.config/yazelix/yazelix.toml`.
+- [`cursors.toml`](../yazelix_cursors_default.toml) — Ghostty cursor preset/effect sidecar under `~/.config/yazelix/cursors.toml`.
+- [Yazi configuration](./yazi-configuration.md) — Personal Yazi config overlays under `~/.config/yazelix/`
+- [Zellij configuration](./zellij-configuration.md) — Managed Zellij user config under `~/.config/yazelix/zellij.kdl`
+- [Terminal overrides](./terminal_emulators.md) — Terminal-native override files for Ghostty, Kitty, and Alacritty
 - [Managed shell hooks](../shells/zsh/README.md) — Yazelix-only shell hook files for Bash, Zsh, Fish, and Nushell.
 
 ## Runtime Boundary

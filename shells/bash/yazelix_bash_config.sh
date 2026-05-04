@@ -1,5 +1,5 @@
 #!/bin/bash
-# ~/.config/yazelix/shells/bash/yazelix_bash_config.sh
+# Yazelix-managed Bash startup. User hook: ~/.config/yazelix/shell_bash.sh
 # This file is part of Yazelix and should be persisted in the repository.
 
 YAZELIX_RUNTIME_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -38,11 +38,10 @@ alias lg='lazygit'
 # Note: yzx command is defined in ~/.bashrc (via v3 hooks) and is always available
 
 if [ -n "${YAZELIX_CONFIG_DIR:-}" ]; then
-  yazelix_user_shell_hook_dir="$YAZELIX_CONFIG_DIR/user_configs/shells"
+  yazelix_bash_user_hook="$YAZELIX_CONFIG_DIR/shell_bash.sh"
 else
-  yazelix_user_shell_hook_dir="$HOME/.config/yazelix/user_configs/shells"
+  yazelix_bash_user_hook="$HOME/.config/yazelix/shell_bash.sh"
 fi
-yazelix_bash_user_hook="$yazelix_user_shell_hook_dir/bash.sh"
 if [ -f "$yazelix_bash_user_hook" ] && [ -s "$yazelix_bash_user_hook" ]; then
   # shellcheck disable=SC1090
   source "$yazelix_bash_user_hook"

@@ -2,7 +2,7 @@
 
 ## Summary
 
-Yazelix should keep owning launch and integration-critical terminal behavior while giving users a clean, Yazelix-specific override layer for terminal-local preferences. The initial supported terminals are Ghostty, Kitty, and Alacritty.
+Yazelix should keep owning launch and integration-critical terminal behavior while giving users a clean, Yazelix-specific override layer for terminal-local preferences. The supported override files are `terminal_ghostty.conf`, `terminal_kitty.conf`, `terminal_alacritty.toml`, and `terminal_foot.ini`.
 
 ## Why
 
@@ -10,15 +10,15 @@ The real customization need is not full terminal-config ownership. It is a safe 
 
 ## Scope
 
-- Ghostty, Kitty, and Alacritty terminal override layering
+- Ghostty, Kitty, Alacritty, and Foot terminal override layering
 - Yazelix-managed base terminal configs
-- Yazelix-specific user override files under `~/.config/yazelix/user_configs/terminal/`
+- Yazelix-specific user override files under `~/.config/yazelix/terminal_*`
 - launcher ownership of startup behavior where needed so user override files can stay broad
 
 ## Behavior
 
 - Yazelix generates its own managed base config for supported terminals.
-- Yazelix also supports a per-terminal user override file under `~/.config/yazelix/user_configs/terminal/`.
+- Yazelix also supports one flat per-terminal user override file under `~/.config/yazelix/terminal_*`.
 - User override files are automatically picked up when Yazelix launches in the managed-config path.
 - `terminal.config_mode = "yazelix"` keeps using the managed config plus the Yazelix-specific override layer.
 - `terminal.config_mode = "user"` switches to the terminal's real native config path and fails fast if that file does not exist.
@@ -30,13 +30,13 @@ The real customization need is not full terminal-config ownership. It is a safe 
 - Generic terminal-config merging
 - Full ownership handoff to user configs
 - Using the terminal's normal config location as the default override source
-- Solving WezTerm or Foot in this first slice
+- Solving WezTerm terminal override layering
 
 ## Acceptance Cases
 
-1. When Yazelix generates Ghostty, Kitty, or Alacritty configs, it also supports a Yazelix-specific user override file for that terminal.
+1. When Yazelix generates Ghostty, Kitty, Alacritty, or Foot configs, it also supports a Yazelix-specific user override file for that terminal.
 2. When a user adds harmless terminal-native settings to the override file, Yazelix picks them up automatically in the managed-config path.
-3. Launch-critical startup behavior for Ghostty, Kitty, and Alacritty stays Yazelix-owned instead of being overridden through the terminal override file.
+3. Launch-critical startup behavior for Ghostty, Kitty, Alacritty, and Foot stays Yazelix-owned instead of being overridden through the terminal override file.
 4. The override-layer implementation is simpler than a full terminal ownership split.
 
 ## Verification

@@ -49,11 +49,10 @@ function hx --description "Helix editor with Yazelix mode support"
     command hx $argv
 end
 
-set -l fish_user_hook_dir "$HOME/.config/yazelix/user_configs/shells"
+set -l YAZELIX_FISH_USER_HOOK "$HOME/.config/yazelix/shell_fish.fish"
 if test -n "$YAZELIX_CONFIG_DIR"
-    set fish_user_hook_dir "$YAZELIX_CONFIG_DIR/user_configs/shells"
+    set YAZELIX_FISH_USER_HOOK "$YAZELIX_CONFIG_DIR/shell_fish.fish"
 end
-set -l YAZELIX_FISH_USER_HOOK "$fish_user_hook_dir/fish.fish"
 if test -f "$YAZELIX_FISH_USER_HOOK"
     if test -s "$YAZELIX_FISH_USER_HOOK"
         source "$YAZELIX_FISH_USER_HOOK"

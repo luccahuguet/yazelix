@@ -2,6 +2,7 @@
 
 use crate::bridge::{CoreError, ErrorClass};
 use crate::ghostty_cursor_registry::{CursorRegistry, DEFAULT_CURSOR_CONFIG_FILENAME};
+use crate::user_config_paths;
 use serde::Serialize;
 use serde_json::json;
 use std::fs;
@@ -47,10 +48,10 @@ fn io_err(path: &Path, source: io::Error) -> CoreError {
 }
 
 pub fn primary_config_paths(runtime_dir: &Path, config_dir: &Path) -> PrimaryConfigPaths {
-    let user_config_dir = config_dir.join("user_configs");
-    let user_config = user_config_dir.join("yazelix.toml");
+    let user_config_dir = config_dir.to_path_buf();
+    let user_config = user_config_paths::main_config(config_dir);
     let user_cursor_config = CursorRegistry::user_config_path(config_dir);
-    let legacy_user_config = config_dir.join("yazelix.toml");
+    let legacy_user_config = user_config_paths::legacy_main_config(config_dir);
     let default_config_path = runtime_dir.join("yazelix_default.toml");
     let default_cursor_config_path = runtime_dir.join(DEFAULT_CURSOR_CONFIG_FILENAME);
     let contract_path = runtime_dir
@@ -77,8 +78,8 @@ pub fn validate_primary_config_surface(paths: &PrimaryConfigPaths) -> Result<(),
         return Err(CoreError::classified(
             ErrorClass::Config,
             "duplicate_config_surfaces",
-            "Yazelix found duplicate config surfaces in both the repo root and user_configs.",
-            "Keep only the user_configs copies. Move or delete the legacy root-level config files so Yazelix has one clear config owner.",
+            "Yazelix found duplicate main config surfaces in both the flat config root and old user_configs path.",
+            "Keep only the flat ~/.config/yazelix/yazelix.toml file. Move or delete the old user_configs/yazelix.toml file so Yazelix has one clear config owner.",
             json!({
                 "user_config": paths.user_config.display().to_string(),
                 "legacy_user_config": paths.legacy_user_config.display().to_string(),
@@ -89,9 +90,9 @@ pub fn validate_primary_config_surface(paths: &PrimaryConfigPaths) -> Result<(),
     if paths.legacy_user_config.exists() && !paths.user_config.exists() {
         return Err(CoreError::classified(
             ErrorClass::Config,
-            "legacy_root_config_surface",
-            "Yazelix found an unsupported legacy root-level config surface.",
-            "Move your current Yazelix config to user_configs/yazelix.toml manually, or run `yzx reset config` to create a fresh v15 config template.",
+            "legacy_nested_config_surface",
+            "Yazelix found an old nested main config surface.",
+            "Let Yazelix launch once to auto-migrate a regular file, or move it manually to ~/.config/yazelix/yazelix.toml. Home Manager symlinks must be updated through Home Manager.",
             json!({
                 "legacy_main": paths.legacy_user_config.display().to_string(),
                 "current_main": paths.user_config.display().to_string(),
@@ -110,7 +111,11 @@ pub fn resolve_active_config_paths(
 ) -> Result<ActiveConfigPaths, CoreError> {
     let paths = primary_config_paths(runtime_dir, config_dir);
 
-    validate_primary_config_surface(&paths)?;
+    user_config_paths::resolve_flat_config_file(
+        &paths.user_config,
+        &paths.legacy_user_config,
+        "main Yazelix",
+    )?;
     ensure_managed_toml_tooling_config(
         &paths.runtime_toml_tooling_config,
         &paths.managed_toml_tooling_config,
@@ -173,6 +178,14 @@ pub fn resolve_active_config_paths(
 }
 
 fn ensure_user_cursor_config(runtime_src: &Path, managed: &Path) -> Result<(), CoreError> {
+    if let Some(config_dir) = managed.parent() {
+        user_config_paths::resolve_flat_config_file(
+            managed,
+            &user_config_paths::legacy_cursor_config(config_dir),
+            "Yazelix cursor registry",
+        )?;
+    }
+
     if !runtime_src.exists() {
         return Err(CoreError::classified(
             ErrorClass::Config,
@@ -291,10 +304,7 @@ mod tests {
 
         let resolved = resolve_active_config_paths(runtime.path(), config.path(), None).unwrap();
 
-        assert_eq!(
-            resolved.user_config,
-            config.path().join("user_configs").join("yazelix.toml")
-        );
+        assert_eq!(resolved.user_config, config.path().join("yazelix.toml"));
         assert_eq!(resolved.config_file, resolved.user_config);
         assert_eq!(
             fs::read_to_string(&resolved.config_file).unwrap(),
@@ -321,17 +331,68 @@ mod tests {
         let user_config_dir = config.path().join("user_configs");
         fs::create_dir_all(&user_config_dir).expect("user config dir");
         fs::write(
-            user_config_dir.join("yazelix.toml"),
+            config.path().join("yazelix.toml"),
             "[core]\nwelcome_style = \"minimal\"\n",
         )
         .expect("write canonical config");
         fs::write(
-            config.path().join("yazelix.toml"),
+            user_config_dir.join("yazelix.toml"),
             "[core]\nwelcome_style = \"random\"\n",
         )
         .expect("write legacy config");
 
         let error = resolve_active_config_paths(runtime.path(), config.path(), None).unwrap_err();
-        assert_eq!(error.code(), "duplicate_config_surfaces");
+        assert_eq!(error.code(), "duplicate_flat_config_surface");
+    }
+
+    // Defends: old-only regular main configs are migrated to the accepted flat path before launch uses them.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn migrates_old_only_regular_main_config_to_flat_path() {
+        let runtime = tempdir().expect("runtime dir");
+        let config = tempdir().expect("config dir");
+        write_runtime_layout(runtime.path());
+
+        let user_config_dir = config.path().join("user_configs");
+        let legacy_config = user_config_dir.join("yazelix.toml");
+        let current_config = config.path().join("yazelix.toml");
+        fs::create_dir_all(&user_config_dir).expect("user config dir");
+        fs::write(&legacy_config, "[core]\nwelcome_style = \"minimal\"\n")
+            .expect("write legacy config");
+
+        let resolved = resolve_active_config_paths(runtime.path(), config.path(), None).unwrap();
+
+        assert_eq!(resolved.user_config, current_config);
+        assert_eq!(
+            fs::read_to_string(&resolved.user_config).unwrap(),
+            "[core]\nwelcome_style = \"minimal\"\n"
+        );
+        assert!(!legacy_config.exists());
+    }
+
+    // Regression: dangling old nested symlinks still require manual owner migration instead of being ignored as missing paths.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[cfg(unix)]
+    #[test]
+    fn rejects_dangling_legacy_config_symlink() {
+        use std::os::unix::fs::symlink;
+
+        let runtime = tempdir().expect("runtime dir");
+        let config = tempdir().expect("config dir");
+        write_runtime_layout(runtime.path());
+
+        let user_config_dir = config.path().join("user_configs");
+        fs::create_dir_all(&user_config_dir).expect("user config dir");
+        symlink(
+            config.path().join("missing_home_manager_target.toml"),
+            user_config_dir.join("yazelix.toml"),
+        )
+        .expect("legacy symlink");
+
+        let error = resolve_active_config_paths(runtime.path(), config.path(), None).unwrap_err();
+        assert_eq!(
+            error.code(),
+            "legacy_config_symlink_requires_manual_migration"
+        );
     }
 }

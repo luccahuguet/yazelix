@@ -10,6 +10,7 @@ use crate::config_normalize::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::fs;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Deserialize)]
@@ -39,6 +40,61 @@ pub fn evaluate_doctor_config_report(
 ) -> DoctorConfigEvaluateData {
     let paths = primary_config_paths(&request.runtime_dir, &request.config_dir);
     let legacy_nix_config = request.config_dir.join("yazelix.nix");
+
+    if paths.user_config.exists() && paths.legacy_user_config.exists() {
+        let identical = match (
+            fs::read(&paths.user_config),
+            fs::read(&paths.legacy_user_config),
+        ) {
+            (Ok(current), Ok(legacy)) => current == legacy,
+            _ => false,
+        };
+        if identical {
+            return DoctorConfigEvaluateData {
+                findings: vec![DoctorConfigFinding {
+                    status: "warning".into(),
+                    message: "Old nested yazelix.toml duplicate detected".into(),
+                    details: Some(format!(
+                        "flat main: {}\nold nested main: {}\n\nThe files are identical. Yazelix uses the flat path; remove the old nested copy when convenient.",
+                        paths.user_config.display(),
+                        paths.legacy_user_config.display()
+                    )),
+                    fix_available: false,
+                    config_diagnostic_report: None,
+                }],
+            };
+        }
+
+        return DoctorConfigEvaluateData {
+            findings: vec![DoctorConfigFinding {
+                status: "error".into(),
+                message: "Could not reconcile Yazelix config surfaces".into(),
+                details: Some(format!(
+                    "Yazelix found divergent main config files.\nflat main: {}\nold nested main: {}\n\nKeep one file and move the other aside, then retry.",
+                    paths.user_config.display(),
+                    paths.legacy_user_config.display()
+                )),
+                fix_available: false,
+                config_diagnostic_report: None,
+            }],
+        };
+    }
+
+    if paths.legacy_user_config.exists() && !paths.user_config.exists() {
+        return DoctorConfigEvaluateData {
+            findings: vec![DoctorConfigFinding {
+                status: "warning".into(),
+                message: "Old nested yazelix.toml needs migration".into(),
+                details: Some(format!(
+                    "old nested main: {}\nflat main: {}\n\nMutable files auto-migrate on launch. Home Manager or Nix-store symlinks must be updated through their owner.",
+                    paths.legacy_user_config.display(),
+                    paths.user_config.display()
+                )),
+                fix_available: false,
+                config_diagnostic_report: None,
+            }],
+        };
+    }
 
     if let Err(error) = validate_primary_config_surface(&paths) {
         return DoctorConfigEvaluateData {
@@ -255,10 +311,10 @@ fn format_surface_reconcile_error(error: &CoreError) -> String {
     match error.code() {
         "duplicate_config_surfaces" => {
             if let Some(user_config) = details.get("user_config").and_then(Value::as_str) {
-                lines.push(format!("user_configs main: {user_config}"));
+                lines.push(format!("flat main: {user_config}"));
             }
             if let Some(legacy_main) = details.get("legacy_user_config").and_then(Value::as_str) {
-                lines.push(format!("legacy main: {legacy_main}"));
+                lines.push(format!("old nested main: {legacy_main}"));
             }
         }
         "legacy_root_config_surface" => {

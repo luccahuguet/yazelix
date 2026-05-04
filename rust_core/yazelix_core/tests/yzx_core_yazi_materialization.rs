@@ -18,7 +18,7 @@ fn prepare_managed_config(
     repo: &std::path::Path,
     body: &str,
 ) -> PathBuf {
-    let config_path = config_root.join("user_configs").join("yazelix.toml");
+    let config_path = config_root.join("yazelix.toml");
     fs::create_dir_all(config_path.parent().unwrap()).unwrap();
     if body.is_empty() {
         fs::copy(repo.join("yazelix_default.toml"), &config_path).unwrap();
@@ -183,11 +183,11 @@ fn yazi_materialization_generate_preserves_user_keymap_sections_beyond_mgr() {
     let output_dir = temp.path().join("state").join("configs").join("yazi");
     let runtime_dir = temp.path().join("runtime");
     let config_path = prepare_managed_config(&config_root, &repo, "");
-    let user_yazi_dir = config_root.join("user_configs").join("yazi");
+    let user_yazi_dir = config_root.clone();
     prepare_runtime_fixture(&runtime_dir);
     fs::create_dir_all(&user_yazi_dir).unwrap();
     fs::write(
-        user_yazi_dir.join("keymap.toml"),
+        user_yazi_dir.join("yazi_keymap.toml"),
         r#"
 [[input.append_keymap]]
 on = ["<Esc>"]
@@ -335,5 +335,5 @@ fn yazi_materialization_generate_rejects_legacy_override_surface() {
     assert_eq!(envelope["error"]["code"], "legacy_yazi_user_override");
     let message = envelope["error"]["message"].as_str().unwrap();
     assert!(message.contains("yzx import yazi"));
-    assert!(message.contains("~/.config/yazelix/user_configs/yazi/"));
+    assert!(message.contains("~/.config/yazelix/"));
 }
