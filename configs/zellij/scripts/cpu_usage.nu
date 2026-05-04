@@ -51,15 +51,17 @@ def ps_normalized_usage [] {
     let cores = (sys cpu | length)
     let core_count = if $cores < 1 { 1 } else { $cores }
 
+    let ps_result = (try { ^ps -A -o %cpu | complete } catch { return null })
+    if $ps_result.exit_code != 0 { return null }
+
     let total = (
-        try {
-            ^ps -A -o %cpu
-            | skip 1
-            | where {|it| not ($it | str trim | is-empty)}
-            | each {|it| try { $it | str trim | into float } catch { null }}
-            | where {|it| $it != null}
-            | math sum
-        } catch { null }
+        $ps_result.stdout
+        | lines
+        | skip 1
+        | where {|it| not ($it | str trim | is-empty)}
+        | each {|it| try { $it | str trim | into float } catch { null }}
+        | where {|it| $it != null}
+        | math sum
     )
 
     if $total == null { null } else { $total / $core_count }
