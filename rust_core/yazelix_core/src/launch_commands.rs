@@ -21,8 +21,9 @@ use crate::runtime_contract::{
     TerminalCandidate, evaluate_startup_launch_preflight,
 };
 use crate::runtime_env::compute_runtime_env;
+use crate::settings_surface::{read_settings_jsonc_value, render_settings_jsonc_value};
 use serde_json::{Map as JsonMap, Value as JsonValue};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
 use std::fs;
 use std::io::{self, Write};
@@ -100,6 +101,7 @@ const RESTART_LAUNCH_CLEARED_ENV_KEYS: &[&str] = &[
 struct EnterArgs {
     path: Option<String>,
     config: Option<String>,
+    with_overrides: Vec<String>,
     home: bool,
     verbose: bool,
     setup_only: bool,
@@ -110,6 +112,7 @@ struct EnterArgs {
 struct LaunchArgs {
     path: Option<String>,
     config: Option<String>,
+    with_overrides: Vec<String>,
     home: bool,
     terminal: Option<String>,
     verbose: bool,
@@ -127,6 +130,7 @@ struct DesktopArgs {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct RestartArgs {
     config: Option<String>,
+    with_overrides: Vec<String>,
     skip_welcome: bool,
     help: bool,
 }
@@ -141,13 +145,16 @@ pub fn run_yzx_enter(args: &[String]) -> Result<i32, CoreError> {
     let runtime_dir = runtime_dir_from_env()?;
     let config_dir = config_dir_from_env()?;
     let inherited_config_override = config_override_from_env();
-    let config_override = parsed
-        .config
-        .as_deref()
-        .or(inherited_config_override.as_deref());
-    let config_extra_env = config_override_extra_env(config_override);
+    let config_override = prepare_session_config_override(
+        parsed
+            .config
+            .as_deref()
+            .or(inherited_config_override.as_deref()),
+        &parsed.with_overrides,
+    )?;
+    let config_extra_env = config_override_extra_env(config_override.as_deref());
     let normalized =
-        load_normalized_config_for_control(&runtime_dir, &config_dir, config_override)?;
+        load_normalized_config_for_control(&runtime_dir, &config_dir, config_override.as_deref())?;
     let req = runtime_env_request(runtime_dir.clone(), &normalized)?;
     let runtime_data = compute_runtime_env(&req)?;
     let runtime_env = runtime_data.runtime_env;
@@ -230,13 +237,16 @@ pub fn run_yzx_launch(args: &[String]) -> Result<i32, CoreError> {
     }
 
     let inherited_config_override = config_override_from_env();
-    let config_override = parsed
-        .config
-        .as_deref()
-        .or(inherited_config_override.as_deref());
+    let config_override = prepare_session_config_override(
+        parsed
+            .config
+            .as_deref()
+            .or(inherited_config_override.as_deref()),
+        &parsed.with_overrides,
+    )?;
     run_launch_flow(
         parsed.path.as_deref(),
-        config_override,
+        config_override.as_deref(),
         parsed.home,
         parsed.terminal.as_deref(),
         parsed.verbose,
@@ -304,10 +314,13 @@ pub fn run_yzx_restart(args: &[String]) -> Result<i32, CoreError> {
         &install_ownership_request_from_env_with_runtime_dir(runtime_dir.clone())?,
     );
     let inherited_config_override = config_override_from_env();
-    let config_override = parsed
-        .config
-        .as_deref()
-        .or(inherited_config_override.as_deref());
+    let config_override = prepare_session_config_override(
+        parsed
+            .config
+            .as_deref()
+            .or(inherited_config_override.as_deref()),
+        &parsed.with_overrides,
+    )?;
     let launcher = report
         .stable_yzx_wrapper
         .map(PathBuf::from)
@@ -322,7 +335,7 @@ pub fn run_yzx_restart(args: &[String]) -> Result<i32, CoreError> {
             Some("true".to_string()),
         ));
     }
-    restart_extra_env.extend(config_override_extra_env(config_override));
+    restart_extra_env.extend(config_override_extra_env(config_override.as_deref()));
 
     let output = command_output_with_overrides(
         &[
@@ -858,6 +871,339 @@ fn resolve_config_override_path(raw: &str, cwd: &Path, home: &Path) -> Result<St
     Ok(path.to_string_lossy().to_string())
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SessionConfigOverrideKind {
+    Bool,
+    Float,
+    Int,
+    String,
+    StringList,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SessionConfigOverrideField {
+    kind: SessionConfigOverrideKind,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct SessionConfigPatch {
+    path: String,
+    value: JsonValue,
+}
+
+fn prepare_session_config_override(
+    base_config_override: Option<&str>,
+    with_overrides: &[String],
+) -> Result<Option<String>, CoreError> {
+    if with_overrides.is_empty() {
+        return Ok(base_config_override.map(ToOwned::to_owned));
+    }
+
+    let runtime_dir = runtime_dir_from_env()?;
+    let config_dir = config_dir_from_env()?;
+    let state_dir = state_dir_from_env()?;
+    materialize_session_config_override(
+        &runtime_dir,
+        &config_dir,
+        &state_dir,
+        base_config_override,
+        with_overrides,
+    )
+    .map(Some)
+}
+
+fn materialize_session_config_override(
+    runtime_dir: &Path,
+    config_dir: &Path,
+    state_dir: &Path,
+    base_config_override: Option<&str>,
+    with_overrides: &[String],
+) -> Result<String, CoreError> {
+    let active_paths = crate::active_config_surface::resolve_active_config_paths(
+        runtime_dir,
+        config_dir,
+        base_config_override,
+    )?;
+    let contract_fields = load_session_config_override_fields(&active_paths.contract_path)?;
+    let mut root = read_settings_jsonc_value(&active_paths.config_file)?;
+    for raw in with_overrides {
+        let patch = parse_session_config_patch(raw, &contract_fields)?;
+        apply_session_config_patch(&mut root, &patch)?;
+    }
+
+    let session_dir = state_dir.join("config_overrides").join(format!(
+        "session_{}_{}",
+        std::process::id(),
+        epoch_millis()
+    ));
+    fs::create_dir_all(&session_dir).map_err(|source| {
+        CoreError::io(
+            "session_config_override_dir",
+            "Could not create the Yazelix one-shot config override directory.",
+            "Check permissions for the Yazelix state directory, then retry.",
+            session_dir.display().to_string(),
+            source,
+        )
+    })?;
+    let session_config = session_dir.join(crate::user_config_paths::SETTINGS_CONFIG);
+    let rendered = render_settings_jsonc_value(&root)?;
+    fs::write(&session_config, rendered).map_err(|source| {
+        CoreError::io(
+            "session_config_override_write",
+            "Could not write the Yazelix one-shot config override.",
+            "Check permissions for the Yazelix state directory, then retry.",
+            session_config.display().to_string(),
+            source,
+        )
+    })?;
+
+    let session_config_override = session_config.to_string_lossy().to_string();
+    load_normalized_config_for_control(runtime_dir, config_dir, Some(&session_config_override))?;
+    Ok(session_config_override)
+}
+
+fn epoch_millis() -> u128 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+}
+
+fn load_session_config_override_fields(
+    contract_path: &Path,
+) -> Result<HashMap<String, SessionConfigOverrideField>, CoreError> {
+    let raw = fs::read_to_string(contract_path).map_err(|source| {
+        CoreError::io(
+            "read_config_contract",
+            "Could not read the Yazelix config contract.",
+            "Reinstall Yazelix so config_metadata/main_config_contract.toml is present.",
+            contract_path.display().to_string(),
+            source,
+        )
+    })?;
+    let contract = raw.parse::<toml::Table>().map_err(|source| {
+        CoreError::toml(
+            "read_config_contract",
+            "Could not parse the Yazelix config contract.",
+            "Reinstall Yazelix so config_metadata/main_config_contract.toml is valid.",
+            contract_path.display().to_string(),
+            source,
+        )
+    })?;
+    let fields = contract
+        .get("fields")
+        .and_then(toml::Value::as_table)
+        .ok_or_else(|| {
+            CoreError::classified(
+                ErrorClass::Internal,
+                "missing_config_contract_fields",
+                "Yazelix config contract is missing its fields table.",
+                "Report this as a Yazelix internal error.",
+                serde_json::json!({ "path": contract_path.display().to_string() }),
+            )
+        })?;
+
+    let mut parsed = HashMap::new();
+    for (path, value) in fields {
+        let field = value.as_table().ok_or_else(|| {
+            CoreError::classified(
+                ErrorClass::Internal,
+                "invalid_config_contract_field",
+                format!("Yazelix config contract field {path} is not a table."),
+                "Report this as a Yazelix internal error.",
+                serde_json::json!({ "path": contract_path.display().to_string() }),
+            )
+        })?;
+        let raw_kind = field
+            .get("kind")
+            .and_then(toml::Value::as_str)
+            .ok_or_else(|| {
+                CoreError::classified(
+                    ErrorClass::Internal,
+                    "missing_config_contract_kind",
+                    format!("Yazelix config contract field {path} has no kind."),
+                    "Report this as a Yazelix internal error.",
+                    serde_json::json!({ "path": contract_path.display().to_string() }),
+                )
+            })?;
+        let kind = match raw_kind {
+            "bool" => SessionConfigOverrideKind::Bool,
+            "float" => SessionConfigOverrideKind::Float,
+            "int" => SessionConfigOverrideKind::Int,
+            "string" => SessionConfigOverrideKind::String,
+            "string_list" => SessionConfigOverrideKind::StringList,
+            other => {
+                return Err(CoreError::classified(
+                    ErrorClass::Internal,
+                    "unsupported_config_contract_kind",
+                    format!("Yazelix config contract field {path} has unsupported kind {other}."),
+                    "Report this as a Yazelix internal error.",
+                    serde_json::json!({ "path": contract_path.display().to_string() }),
+                ));
+            }
+        };
+        parsed.insert(path.clone(), SessionConfigOverrideField { kind });
+    }
+    Ok(parsed)
+}
+
+fn parse_session_config_patch(
+    raw: &str,
+    fields: &HashMap<String, SessionConfigOverrideField>,
+) -> Result<SessionConfigPatch, CoreError> {
+    let (raw_path, raw_value) = raw.split_once('=').ok_or_else(|| {
+        CoreError::usage("yzx --with expects key=value, for example `--with editor.command=nvim`.")
+    })?;
+    let path = raw_path.trim();
+    if path.is_empty() {
+        return Err(CoreError::usage(
+            "yzx --with requires a config path before `=`.",
+        ));
+    }
+    let field = fields.get(path).ok_or_else(|| {
+        CoreError::classified(
+            ErrorClass::Config,
+            "unknown_session_config_override",
+            format!("Unknown Yazelix config setting for --with: {path}."),
+            "Use a supported settings.jsonc path from the Yazelix config contract.",
+            serde_json::json!({ "path": path }),
+        )
+    })?;
+    Ok(SessionConfigPatch {
+        path: path.to_string(),
+        value: parse_session_config_patch_value(path, raw_value, field.kind)?,
+    })
+}
+
+fn parse_session_config_patch_value(
+    path: &str,
+    raw: &str,
+    kind: SessionConfigOverrideKind,
+) -> Result<JsonValue, CoreError> {
+    match kind {
+        SessionConfigOverrideKind::Bool => match raw.trim() {
+            "true" => Ok(JsonValue::Bool(true)),
+            "false" => Ok(JsonValue::Bool(false)),
+            _ => Err(CoreError::classified(
+                ErrorClass::Config,
+                "invalid_session_config_override_bool",
+                format!("Invalid boolean value for --with {path}."),
+                "Use `true` or `false`.",
+                serde_json::json!({ "path": path, "value": raw }),
+            )),
+        },
+        SessionConfigOverrideKind::Float => {
+            let value = raw.trim().parse::<f64>().map_err(|_| {
+                CoreError::classified(
+                    ErrorClass::Config,
+                    "invalid_session_config_override_float",
+                    format!("Invalid float value for --with {path}."),
+                    "Use a decimal number.",
+                    serde_json::json!({ "path": path, "value": raw }),
+                )
+            })?;
+            serde_json::Number::from_f64(value)
+                .map(JsonValue::Number)
+                .ok_or_else(|| {
+                    CoreError::classified(
+                        ErrorClass::Config,
+                        "invalid_session_config_override_float",
+                        format!("Invalid float value for --with {path}."),
+                        "Use a finite decimal number.",
+                        serde_json::json!({ "path": path, "value": raw }),
+                    )
+                })
+        }
+        SessionConfigOverrideKind::Int => {
+            let value = raw.trim().parse::<i64>().map_err(|_| {
+                CoreError::classified(
+                    ErrorClass::Config,
+                    "invalid_session_config_override_int",
+                    format!("Invalid integer value for --with {path}."),
+                    "Use a whole number.",
+                    serde_json::json!({ "path": path, "value": raw }),
+                )
+            })?;
+            Ok(JsonValue::Number(value.into()))
+        }
+        SessionConfigOverrideKind::String => Ok(JsonValue::String(raw.to_string())),
+        SessionConfigOverrideKind::StringList => {
+            let value = serde_json::from_str::<JsonValue>(raw.trim()).map_err(|source| {
+                CoreError::classified(
+                    ErrorClass::Config,
+                    "invalid_session_config_override_string_list",
+                    format!("Invalid string-list value for --with {path}."),
+                    "Use a JSON array of strings, for example `[\"ghostty\", \"wezterm\"]`.",
+                    serde_json::json!({
+                        "path": path,
+                        "value": raw,
+                        "error": source.to_string(),
+                    }),
+                )
+            })?;
+            let Some(items) = value.as_array() else {
+                return Err(CoreError::classified(
+                    ErrorClass::Config,
+                    "invalid_session_config_override_string_list",
+                    format!("Invalid string-list value for --with {path}."),
+                    "Use a JSON array of strings, for example `[\"ghostty\", \"wezterm\"]`.",
+                    serde_json::json!({ "path": path, "value": raw }),
+                ));
+            };
+            if items.iter().any(|item| !item.is_string()) {
+                return Err(CoreError::classified(
+                    ErrorClass::Config,
+                    "invalid_session_config_override_string_list",
+                    format!("Invalid string-list value for --with {path}."),
+                    "Every array item must be a string.",
+                    serde_json::json!({ "path": path, "value": raw }),
+                ));
+            }
+            Ok(value)
+        }
+    }
+}
+
+fn apply_session_config_patch(
+    root: &mut JsonValue,
+    patch: &SessionConfigPatch,
+) -> Result<(), CoreError> {
+    let segments = patch.path.split('.').collect::<Vec<_>>();
+    let Some((last, parents)) = segments.split_last() else {
+        return Err(CoreError::usage(
+            "yzx --with requires a non-empty config path.",
+        ));
+    };
+    let mut object = root.as_object_mut().ok_or_else(|| {
+        CoreError::classified(
+            ErrorClass::Config,
+            "session_config_override_root_not_object",
+            "Yazelix can only apply --with patches to a settings JSON object.",
+            "Use a complete settings.jsonc object, then retry.",
+            serde_json::json!({}),
+        )
+    })?;
+    for segment in parents {
+        let value = object
+            .entry((*segment).to_string())
+            .or_insert_with(|| JsonValue::Object(JsonMap::new()));
+        object = value.as_object_mut().ok_or_else(|| {
+            CoreError::classified(
+                ErrorClass::Config,
+                "session_config_override_parent_not_object",
+                format!(
+                    "Cannot apply --with {} because {segment} is not an object.",
+                    patch.path
+                ),
+                "Fix the settings.jsonc structure or choose a supported config path.",
+                serde_json::json!({ "path": patch.path, "segment": segment }),
+            )
+        })?;
+    }
+    object.insert((*last).to_string(), patch.value.clone());
+    Ok(())
+}
+
 fn parse_enter_args(args: &[String]) -> Result<EnterArgs, CoreError> {
     let mut parsed = EnterArgs::default();
     let mut index = 0;
@@ -887,6 +1233,13 @@ fn parse_enter_args(args: &[String]) -> Result<EnterArgs, CoreError> {
                     ));
                 }
                 parsed.config = Some(resolve_cli_config_override(value)?);
+            }
+            "--with" => {
+                index += 1;
+                let value = args.get(index).ok_or_else(|| {
+                    CoreError::usage("Missing value for yzx enter --with. Try `yzx enter --help`.")
+                })?;
+                parsed.with_overrides.push(value.clone());
             }
             other if other.starts_with('-') => {
                 return Err(CoreError::usage(format!(
@@ -937,6 +1290,15 @@ fn parse_launch_args(args: &[String]) -> Result<LaunchArgs, CoreError> {
                     ));
                 }
                 parsed.config = Some(resolve_cli_config_override(value)?);
+            }
+            "--with" => {
+                index += 1;
+                let value = args.get(index).ok_or_else(|| {
+                    CoreError::usage(
+                        "Missing value for yzx launch --with. Try `yzx launch --help`.",
+                    )
+                })?;
+                parsed.with_overrides.push(value.clone());
             }
             "--terminal" | "-t" => {
                 index += 1;
@@ -1019,6 +1381,15 @@ fn parse_restart_args(args: &[String]) -> Result<RestartArgs, CoreError> {
                 }
                 parsed.config = Some(resolve_cli_config_override(value)?);
             }
+            "--with" => {
+                index += 1;
+                let value = args.get(index).ok_or_else(|| {
+                    CoreError::usage(
+                        "Missing value for yzx restart --with. Try `yzx restart --help`.",
+                    )
+                })?;
+                parsed.with_overrides.push(value.clone());
+            }
             other if other.starts_with('-') => {
                 return Err(CoreError::usage(format!(
                     "Unknown argument for yzx restart: {other}. Try `yzx restart --help`."
@@ -1039,7 +1410,9 @@ fn print_enter_help() {
     println!("Start Yazelix in the current terminal");
     println!();
     println!("Usage:");
-    println!("  yzx enter [--path <dir> | --home] [--config <file>] [--verbose]");
+    println!(
+        "  yzx enter [--path <dir> | --home] [--config <file>] [--with key=value] [--verbose]"
+    );
 }
 
 fn print_launch_help() {
@@ -1047,7 +1420,7 @@ fn print_launch_help() {
     println!();
     println!("Usage:");
     println!(
-        "  yzx launch [--path <dir> | --home] [--config <file>] [--terminal <name>] [--verbose]"
+        "  yzx launch [--path <dir> | --home] [--config <file>] [--with key=value] [--terminal <name>] [--verbose]"
     );
 }
 
@@ -1055,11 +1428,12 @@ fn print_restart_help() {
     println!("Restart the current Yazelix window");
     println!();
     println!("Usage:");
-    println!("  yzx restart [-s | --skip] [--config <file>]");
+    println!("  yzx restart [-s | --skip] [--config <file>] [--with key=value]");
     println!();
     println!("Options:");
     println!("  -s, --skip    Skip the welcome screen for the restarted window");
     println!("  --config      Use an alternate complete settings.jsonc for the restarted window");
+    println!("  --with        Apply one session-only settings override, repeatable");
 }
 
 fn print_desktop_help() {
@@ -2377,6 +2751,13 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
+    fn repo_root() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .canonicalize()
+            .expect("repo root")
+    }
+
     // Defends: Rust launch arg parsing keeps the public path and terminal flag aliases after the owner cut.
     // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
@@ -2392,6 +2773,8 @@ mod tests {
             "/tmp/demo".into(),
             "--config".into(),
             "settings.jsonc".into(),
+            "--with".into(),
+            "editor.command=nvim".into(),
             "-t".into(),
             "kitty".into(),
             "--verbose".into(),
@@ -2400,6 +2783,7 @@ mod tests {
 
         assert_eq!(parsed.path.as_deref(), Some("/tmp/demo"));
         assert_eq!(parsed.config.as_deref(), Some(expected_config.as_str()));
+        assert_eq!(parsed.with_overrides, vec!["editor.command=nvim"]);
         assert_eq!(parsed.terminal.as_deref(), Some("kitty"));
         assert!(parsed.verbose);
     }
@@ -2453,12 +2837,145 @@ mod tests {
             &home_dir_from_env().unwrap(),
         )
         .unwrap();
-        let parsed =
-            parse_restart_args(&["--skip".into(), "--config".into(), "minimal.jsonc".into()])
-                .unwrap();
+        let parsed = parse_restart_args(&[
+            "--skip".into(),
+            "--config".into(),
+            "minimal.jsonc".into(),
+            "--with".into(),
+            "core.welcome_style=static".into(),
+            "--with".into(),
+            "zellij.pane_frames=false".into(),
+        ])
+        .unwrap();
 
         assert!(parsed.skip_welcome);
         assert_eq!(parsed.config.as_deref(), Some(expected_config.as_str()));
+        assert_eq!(
+            parsed.with_overrides,
+            vec!["core.welcome_style=static", "zellij.pane_frames=false"]
+        );
+    }
+
+    // Defends: repeatable --with patches stay contract-typed and reject unknown settings before launch materialization.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
+    #[test]
+    fn session_config_patches_are_contract_typed() {
+        let fields = HashMap::from([
+            (
+                "editor.command".to_string(),
+                SessionConfigOverrideField {
+                    kind: SessionConfigOverrideKind::String,
+                },
+            ),
+            (
+                "core.skip_welcome_screen".to_string(),
+                SessionConfigOverrideField {
+                    kind: SessionConfigOverrideKind::Bool,
+                },
+            ),
+            (
+                "core.welcome_duration_seconds".to_string(),
+                SessionConfigOverrideField {
+                    kind: SessionConfigOverrideKind::Float,
+                },
+            ),
+            (
+                "editor.sidebar_width_percent".to_string(),
+                SessionConfigOverrideField {
+                    kind: SessionConfigOverrideKind::Int,
+                },
+            ),
+            (
+                "terminal.terminals".to_string(),
+                SessionConfigOverrideField {
+                    kind: SessionConfigOverrideKind::StringList,
+                },
+            ),
+        ]);
+        let mut root = serde_json::json!({
+            "core": { "skip_welcome_screen": false },
+            "editor": {},
+            "terminal": { "terminals": ["ghostty"] }
+        });
+
+        for raw in [
+            "editor.command=nvim",
+            "core.skip_welcome_screen=true",
+            "core.welcome_duration_seconds=3.5",
+            "editor.sidebar_width_percent=24",
+            "terminal.terminals=[\"wezterm\", \"kitty\"]",
+        ] {
+            let patch = parse_session_config_patch(raw, &fields).unwrap();
+            apply_session_config_patch(&mut root, &patch).unwrap();
+        }
+
+        assert_eq!(root["editor"]["command"], "nvim");
+        assert_eq!(root["core"]["skip_welcome_screen"], true);
+        assert_eq!(root["core"]["welcome_duration_seconds"], 3.5);
+        assert_eq!(root["editor"]["sidebar_width_percent"], 24);
+        assert_eq!(
+            root["terminal"]["terminals"],
+            serde_json::json!(["wezterm", "kitty"])
+        );
+
+        let unknown = parse_session_config_patch("editor.nope=true", &fields).unwrap_err();
+        assert!(
+            unknown
+                .to_string()
+                .contains("Unknown Yazelix config setting")
+        );
+        let invalid_bool =
+            parse_session_config_patch("core.skip_welcome_screen=maybe", &fields).unwrap_err();
+        assert!(invalid_bool.to_string().contains("Invalid boolean value"));
+    }
+
+    // Defends: --with writes an ephemeral settings.jsonc snapshot and validates it through the normal config contract without mutating the user's config.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn session_config_overrides_materialize_valid_ephemeral_settings() {
+        let repo = repo_root();
+        let config = TempDir::new().unwrap();
+        let state = TempDir::new().unwrap();
+
+        let session_config = materialize_session_config_override(
+            &repo,
+            config.path(),
+            state.path(),
+            None,
+            &[
+                "editor.command=nvim".to_string(),
+                "core.welcome_style=static".to_string(),
+                "zellij.pane_frames=false".to_string(),
+                "terminal.terminals=[\"wezterm\"]".to_string(),
+            ],
+        )
+        .unwrap();
+
+        let session_path = Path::new(&session_config);
+        assert_eq!(
+            session_path.file_name().and_then(|name| name.to_str()),
+            Some(crate::user_config_paths::SETTINGS_CONFIG)
+        );
+        assert!(session_path.starts_with(state.path()));
+
+        let session_value = read_settings_jsonc_value(session_path).unwrap();
+        assert_eq!(session_value["editor"]["command"], "nvim");
+        assert_eq!(session_value["core"]["welcome_style"], "static");
+        assert_eq!(session_value["zellij"]["pane_frames"], false);
+        assert_eq!(
+            session_value["terminal"]["terminals"],
+            serde_json::json!(["wezterm"])
+        );
+
+        let user_value = read_settings_jsonc_value(&config.path().join("settings.jsonc")).unwrap();
+        assert_ne!(user_value["editor"]["command"], "nvim");
+
+        let normalized =
+            load_normalized_config_for_control(&repo, config.path(), Some(&session_config))
+                .unwrap();
+        assert_eq!(normalized.get("editor_command").unwrap(), "nvim");
+        assert_eq!(normalized.get("welcome_style").unwrap(), "static");
+        assert_eq!(normalized.get("zellij_pane_frames").unwrap(), "false");
     }
 
     // Defends: the Rust launch owner still filters duplicate or unsupported configured terminals before fallback logic runs.

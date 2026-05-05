@@ -112,6 +112,7 @@ const RUN_REST: &[YzxCommandParameter] = &[rest("argv")];
 const LAUNCH_FLAGS: &[YzxCommandParameter] = &[
     named("path", Some("p"), "string", true),
     named("config", None, "path", true),
+    named("with", None, "key=value", true),
     switch("home", None),
     named("terminal", Some("t"), "string", true),
     switch("verbose", None),
@@ -119,10 +120,12 @@ const LAUNCH_FLAGS: &[YzxCommandParameter] = &[
 const RESTART_FLAGS: &[YzxCommandParameter] = &[
     switch("skip", Some("s")),
     named("config", None, "path", true),
+    named("with", None, "key=value", true),
 ];
 const ENTER_FLAGS: &[YzxCommandParameter] = &[
     named("path", Some("p"), "string", true),
     named("config", None, "path", true),
+    named("with", None, "key=value", true),
     switch("home", None),
     switch("verbose", None),
 ];

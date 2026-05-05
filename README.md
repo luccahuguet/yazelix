@@ -242,7 +242,7 @@ Yazelix uses a **layered configuration system** that safely merges your personal
 - **Status bar widgets**: Configure `[zellij].widget_tray` to order or hide `editor`, `shell`, `term`, `workspace`, `cursor`, usage, `cpu`, and `ram` widgets; the default cursor widget renders mono presets as colored `█ name` and split presets as one-cell split glyphs from the launch-scoped Ghostty cursor fact
 - **Your configs persist** across Yazelix updates without git conflicts
 - **Intelligent merging**: Generated Yazi and Zellij runtime configs are rebuilt from Yazelix defaults plus your managed overrides instead of forcing you to edit tracked runtime files
-- **Launch-time config snapshots**: each Yazelix window keeps the `settings.jsonc` snapshot it launched with; edit config whenever you want, then open a new Yazelix window or run `yzx restart` to apply it to live panes
+- **Launch-time config snapshots**: each Yazelix window keeps the `settings.jsonc` snapshot it launched with; edit config whenever you want, then open a new Yazelix window or run `yzx restart` to apply it to live panes. Use repeatable `--with KEY=VALUE` on `yzx launch`, `yzx enter`, or `yzx restart` for session-only settings overrides
 
 📖 **[Complete Customization Guide →](./docs/customization.md)** - Detailed instructions for customizing every tool
 
@@ -340,6 +340,7 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 - `yzx launch --home` - Launch in home directory
 - `yzx launch --terminal ghostty` - Force a particular terminal for this launch
 - `yzx launch --config ./minimal.jsonc` - Start one window from an alternate complete settings file
+- `yzx launch --with editor.command=nvim` - Override one settings field for this window only
 - `yzx launch --verbose` - Print detailed launch diagnostics
 - `yzx env [--no-shell]` - Load Yazelix tools without UI (`--no-shell` keeps your current shell)
 - `yzx run <command> [args...]` - Run a single command inside the Yazelix environment
@@ -350,7 +351,7 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 - `yzx config [--path]` - Show the active config or print its resolved path
 - `yzx cursors` - Inspect Ghostty cursor presets, effects, and resolved colors
 - `yzx edit config` - Open the main managed Yazelix config file in your editor
-- `yzx restart [-s | --skip] [--config FILE]` - Restart Yazelix in a fresh window, optionally skipping the welcome screen or using an alternate settings file once
+- `yzx restart [-s | --skip] [--config FILE] [--with KEY=VALUE]` - Restart Yazelix in a fresh window, optionally skipping the welcome screen, using an alternate settings file, or applying session-only settings overrides
 - `yzx doctor [--verbose] [--fix]` - Health checks and diagnostics
 - `yzx dev profile [--cold] [--desktop] [--launch] [--clear-cache]` - Profile current-terminal, desktop-entry, or managed new-window startup phases under `~/.local/share/yazelix/profiles/startup/`, with local saved-report comparison through `yzx dev profile compare`
 - `yzx status [--versions]` - Show current Yazelix status and optional tool versions

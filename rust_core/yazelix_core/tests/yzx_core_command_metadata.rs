@@ -51,6 +51,7 @@ fn command_metadata_externs_include_rust_only_leaves_once() {
     assert!(extern_content.contains("export extern \"yzx why\""));
     assert!(extern_content.contains("--kill(-k)"));
     assert!(extern_content.contains("--path"));
+    assert!(extern_content.contains("--with"));
     assert!(extern_content.contains("--yes"));
     assert!(extern_content.contains("--no-backup"));
     assert!(extern_content.contains("...argv: string"));
