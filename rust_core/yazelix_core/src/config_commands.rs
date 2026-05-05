@@ -4,6 +4,7 @@
 use crate::active_config_surface::resolve_active_config_paths;
 use crate::bridge::CoreError;
 use crate::control_plane::{config_dir_from_env, config_override_from_env, runtime_dir_from_env};
+use crate::settings_surface::{is_settings_config_path, parse_jsonc_value};
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -67,6 +68,11 @@ fn io_err(path: &Path, source: io::Error) -> CoreError {
 
 fn render_config_text(path: &Path) -> Result<String, CoreError> {
     let raw = fs::read_to_string(path).map_err(|source| io_err(path, source))?;
+    if is_settings_config_path(path) {
+        parse_jsonc_value(path, &raw)?;
+        return Ok(raw);
+    }
+
     toml::from_str::<toml::Table>(&raw).map_err(|source| {
         CoreError::toml(
             "invalid_config_surface",
@@ -74,7 +80,7 @@ fn render_config_text(path: &Path) -> Result<String, CoreError> {
                 "Could not parse the active Yazelix config at {}.",
                 path.display()
             ),
-            "Fix the TOML syntax or run `yzx reset config` to restore the managed template.",
+            "Fix the config syntax or run `yzx reset config` to restore the managed template.",
             path.display().to_string(),
             source,
         )

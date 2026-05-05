@@ -5,9 +5,12 @@ Yazelix provides smart editor configuration to avoid conflicts with existing ins
 ## Quick Start
 
 **Most users should use the default:**
-```toml
-[editor]
-command = ""  # Uses Yazelix's Helix - no conflicts, full features
+```jsonc
+{
+  "editor": {
+    "command": ""
+  }
+}
 ```
 
 **If you have specific needs:**
@@ -27,14 +30,16 @@ Yazelix sets your configured editor as the `EDITOR` environment variable through
 
 ### Default (Recommended): Yazelix's Helix
 
-```toml
-# In yazelix.toml:
-[editor]
-command = ""             # Use Yazelix's Helix (recommended)
-sidebar_width_percent = 20
-
-[helix]
-# runtime_path = "/path/to/runtime"  # Optional override when using custom builds
+```jsonc
+{
+  "editor": {
+    "command": "",
+    "sidebar_width_percent": 20
+  },
+  "helix": {
+    // "runtime_path": "/path/to/runtime"
+  }
+}
 ```
 
 **Benefits:**
@@ -50,13 +55,15 @@ sidebar_width_percent = 20
 
 ### Using Your Existing Helix
 
-```toml
-# In yazelix.toml:
-[editor]
-command = "hx"  # Use system Helix from PATH
-
-[helix]
-# runtime_path = "/home/user/helix/runtime"  # Only for custom/nonstandard Helix runtimes
+```jsonc
+{
+  "editor": {
+    "command": "hx"
+  },
+  "helix": {
+    // "runtime_path": "/home/user/helix/runtime"
+  }
+}
 ```
 
 **Benefits:**
@@ -64,8 +71,8 @@ command = "hx"  # Use system Helix from PATH
 - ✅ **Use your custom build** - Great for Helix developers
 
 **Notes:**
-- Standard packaged Helix installs usually do not need `[helix].runtime_path`
-- Set `[helix].runtime_path` only when your Helix runtime lives outside Helix's normal discovery paths
+- Standard packaged Helix installs usually do not need `helix.runtime_path`
+- Set `helix.runtime_path` only when your Helix runtime lives outside Helix's normal discovery paths
 - If you set it, it MUST match your Helix binary version
 - ⚠️ **Requires matching runtime** - Version mismatch causes startup errors
 - ⚠️ **Manual configuration** - You must specify the correct runtime path
@@ -87,10 +94,12 @@ hx --health | head -n 5
 
 ### Using Neovim
 
-```toml
-# In yazelix.toml:
-[editor]
-command = "nvim"         # Use Neovim
+```jsonc
+{
+  "editor": {
+    "command": "nvim"
+  }
+}
 ```
 
 **Benefits:**
@@ -108,10 +117,12 @@ command = "nvim"         # Use Neovim
 
 ### Using Other Editors
 
-```toml
-# In yazelix.toml:
-[editor]
-command = "vim"          # "nano", "emacs", etc.
+```jsonc
+{
+  "editor": {
+    "command": "vim"
+  }
+}
 ```
 
 **Benefits:**
@@ -190,7 +201,7 @@ command = "vim"          # "nano", "emacs", etc.
 
 **📋 [Complete Troubleshooting Guide →](./troubleshooting.md)** - Quick fixes for common issues
 
-**Quick reset:** Delete `yazelix.toml` and run `yzx launch` to regenerate defaults.
+**Quick reset:** Run `yzx reset config --yes`, then restart Yazelix.
 
 ## Advanced Scenarios
 
@@ -198,36 +209,42 @@ command = "vim"          # "nano", "emacs", etc.
 
 If you have multiple Helix installations:
 
-```toml
-# Use specific version
-[editor]
-command = "/opt/helix-custom/bin/hx"
-
-[helix]
-runtime_path = "/opt/helix-custom/share/helix/runtime"
+```jsonc
+{
+  "editor": {
+    "command": "/opt/helix-custom/bin/hx"
+  },
+  "helix": {
+    "runtime_path": "/opt/helix-custom/share/helix/runtime"
+  }
+}
 ```
 
 ### Development Setup
 
 For Helix development:
 
-```toml
-# Use your development build
-[editor]
-command = "/home/user/helix/target/release/hx"
-
-[helix]
-runtime_path = "/home/user/helix/runtime"
+```jsonc
+{
+  "editor": {
+    "command": "/home/user/helix/target/release/hx"
+  },
+  "helix": {
+    "runtime_path": "/home/user/helix/runtime"
+  }
+}
 ```
 
 ### Fallback Configuration
 
 For maximum reliability:
 
-```toml
-# Always use yazelix's Helix
-[editor]
-command = ""
+```jsonc
+{
+  "editor": {
+    "command": ""
+  }
+}
 ```
 
 ## Home Manager Integration
@@ -253,54 +270,57 @@ See `home_manager/examples/example.nix` for complete configuration examples.
 ## Common Configuration Examples
 
 ### Most Users (Recommended)
-```toml
-# yazelix.toml
-[editor]
-command = ""             # Use Yazelix's Helix
-
-[helix]
-# runtime_path = null  # Use matching runtime
-# ... other settings
+```jsonc
+{
+  "editor": {
+    "command": ""
+  },
+  "helix": {}
+}
 ```
 
 ### Helix Developer
-```toml
-# yazelix.toml
-[editor]
-command = "/home/user/helix/target/release/hx"
-
-[helix]
-runtime_path = "/home/user/helix/runtime"
-# ... other settings
+```jsonc
+{
+  "editor": {
+    "command": "/home/user/helix/target/release/hx"
+  },
+  "helix": {
+    "runtime_path": "/home/user/helix/runtime"
+  }
+}
 ```
 
 ### Neovim User
-```toml
-# yazelix.toml
-[editor]
-command = "nvim"         # Use Neovim
-# ... other settings
+```jsonc
+{
+  "editor": {
+    "command": "nvim"
+  }
+}
 ```
 
 **Remember:** Add a custom reveal binding to your Neovim config - see [Neovim Keybindings](./neovim_keybindings.md)
 
 ### Vim/Other Editor User
-```toml
-# yazelix.toml
-[editor]
-command = "vim"          # Or "nano", "emacs", etc.
-# ... other settings
+```jsonc
+{
+  "editor": {
+    "command": "vim"
+  }
+}
 ```
 
 ### System Helix User (Advanced)
-```toml
-# yazelix.toml
-[editor]
-command = "hx"  # Use system Helix
-
-[helix]
-runtime_path = "/usr/share/helix/runtime"  # Match system runtime
-# ... other settings
+```jsonc
+{
+  "editor": {
+    "command": "hx"
+  },
+  "helix": {
+    "runtime_path": "/usr/share/helix/runtime"
+  }
+}
 ```
 
 ## Integration Feature Matrix

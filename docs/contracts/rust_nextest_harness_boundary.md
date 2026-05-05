@@ -39,7 +39,7 @@ and stay limited to four categories:
      fixtures into temporary test roots
 2. managed-config fixture setup
    - create temp HOME/config/state roots
-   - write temporary managed `yazelix.toml` surfaces
+   - write temporary managed `settings.jsonc` surfaces
    - expose the canonical env vars used by `yzx`, `yzx_control`, and `yzx_core`
 3. typed command wrappers
    - `yzx_core_command(...)`

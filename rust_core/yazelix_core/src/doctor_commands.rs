@@ -14,6 +14,7 @@ use crate::install_ownership_env::install_ownership_request_from_env_with_runtim
 use crate::runtime_materialization::{
     RuntimeMaterializationRepairEvaluateRequest, repair_runtime_materialization,
 };
+use crate::settings_surface::render_default_settings_jsonc;
 use crate::user_config_paths;
 use crate::workspace_asset_contract::{
     WorkspaceAssetEvaluateRequest, evaluate_workspace_asset_report,
@@ -863,7 +864,18 @@ fn run_doctor_fix_flow(verbose: bool, results: &[Value]) -> Result<i32, CoreErro
                 continue;
             }
         }
-        match fs::copy(&paths.default_config_path, &paths.user_config) {
+        let rendered = match render_default_settings_jsonc(
+            &paths.default_config_path,
+            &paths.default_cursor_config_path,
+        ) {
+            Ok(rendered) => rendered,
+            Err(err) => {
+                println!("❌ Failed to render settings.jsonc from defaults: {err}");
+                any_failed = true;
+                continue;
+            }
+        };
+        match fs::write(&paths.user_config, rendered) {
             Ok(_) => {
                 #[cfg(unix)]
                 {
@@ -874,10 +886,10 @@ fn run_doctor_fix_flow(verbose: bool, results: &[Value]) -> Result<i32, CoreErro
                         println!("⚠️  Could not set permissions on created config: {err}");
                     }
                 }
-                println!("✅ Created yazelix.toml from template");
+                println!("✅ Created settings.jsonc from shipped defaults");
             }
             Err(err) => {
-                println!("❌ Failed to create yazelix.toml: {err}");
+                println!("❌ Failed to create settings.jsonc: {err}");
                 any_failed = true;
             }
         }

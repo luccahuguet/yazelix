@@ -10,7 +10,6 @@ use crate::config_normalize::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::fs;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Deserialize)]
@@ -41,52 +40,13 @@ pub fn evaluate_doctor_config_report(
     let paths = primary_config_paths(&request.runtime_dir, &request.config_dir);
     let legacy_nix_config = request.config_dir.join("yazelix.nix");
 
-    if paths.user_config.exists() && paths.legacy_user_config.exists() {
-        let identical = match (
-            fs::read(&paths.user_config),
-            fs::read(&paths.legacy_user_config),
-        ) {
-            (Ok(current), Ok(legacy)) => current == legacy,
-            _ => false,
-        };
-        if identical {
-            return DoctorConfigEvaluateData {
-                findings: vec![DoctorConfigFinding {
-                    status: "warning".into(),
-                    message: "Old nested yazelix.toml duplicate detected".into(),
-                    details: Some(format!(
-                        "flat main: {}\nold nested main: {}\n\nThe files are identical. Yazelix uses the flat path; remove the old nested copy when convenient.",
-                        paths.user_config.display(),
-                        paths.legacy_user_config.display()
-                    )),
-                    fix_available: false,
-                    config_diagnostic_report: None,
-                }],
-            };
-        }
-
-        return DoctorConfigEvaluateData {
-            findings: vec![DoctorConfigFinding {
-                status: "error".into(),
-                message: "Could not reconcile Yazelix config surfaces".into(),
-                details: Some(format!(
-                    "Yazelix found divergent main config files.\nflat main: {}\nold nested main: {}\n\nKeep one file and move the other aside, then retry.",
-                    paths.user_config.display(),
-                    paths.legacy_user_config.display()
-                )),
-                fix_available: false,
-                config_diagnostic_report: None,
-            }],
-        };
-    }
-
     if paths.legacy_user_config.exists() && !paths.user_config.exists() {
         return DoctorConfigEvaluateData {
             findings: vec![DoctorConfigFinding {
                 status: "warning".into(),
-                message: "Old nested yazelix.toml needs migration".into(),
+                message: "Old nested settings input needs migration".into(),
                 details: Some(format!(
-                    "old nested main: {}\nflat main: {}\n\nMutable files auto-migrate on launch. Home Manager or Nix-store symlinks must be updated through their owner.",
+                    "old nested main: {}\ncanonical settings: {}\n\nMutable TOML files auto-migrate on launch. Home Manager or Nix-store symlinks must be updated through their owner.",
                     paths.legacy_user_config.display(),
                     paths.user_config.display()
                 )),
@@ -126,7 +86,7 @@ pub fn evaluate_doctor_config_report(
     if paths.user_config.exists() {
         let mut findings = vec![DoctorConfigFinding {
             status: "ok".into(),
-            message: "Using custom yazelix.toml configuration".into(),
+            message: "Using custom settings.jsonc configuration".into(),
             details: Some(path_to_string(&paths.user_config)),
             fix_available: false,
             config_diagnostic_report: None,
@@ -145,7 +105,7 @@ pub fn evaluate_doctor_config_report(
                 findings.push(DoctorConfigFinding {
                     status: "warning".into(),
                     message: format!(
-                        "Stale or unsupported yazelix.toml entries detected ({} issues)",
+                        "Stale or unsupported settings.jsonc entries detected ({} issues)",
                         report.issue_count
                     ),
                     details: Some(details),
@@ -157,7 +117,7 @@ pub fn evaluate_doctor_config_report(
             Err(error) => {
                 findings.push(DoctorConfigFinding {
                     status: "error".into(),
-                    message: "Could not validate yazelix.toml against the current schema".into(),
+                    message: "Could not validate settings.jsonc against the current schema".into(),
                     details: Some(format_validation_error(&error)),
                     fix_available: false,
                     config_diagnostic_report: None,
@@ -185,7 +145,7 @@ pub fn evaluate_doctor_config_report(
             findings: vec![DoctorConfigFinding {
                 status: "info".into(),
                 message: "Using default configuration (yazelix_default.toml)".into(),
-                details: Some("Consider copying to yazelix.toml for customization".into()),
+                details: Some("Yazelix can create settings.jsonc from the shipped defaults".into()),
                 fix_available: true,
                 config_diagnostic_report: None,
             }],
@@ -196,7 +156,7 @@ pub fn evaluate_doctor_config_report(
         findings: vec![DoctorConfigFinding {
             status: "error".into(),
             message: "No configuration file found".into(),
-            details: Some("Neither yazelix.toml nor yazelix_default.toml exists".into()),
+            details: Some("Neither settings.jsonc nor yazelix_default.toml exists".into()),
             fix_available: false,
             config_diagnostic_report: None,
         }],
@@ -213,7 +173,10 @@ fn collect_doctor_diagnostic_report(
                 return deserialize_config_diagnostic_report(error.details());
             }
 
-            if error.code() == "invalid_toml" {
+            if matches!(
+                error.code(),
+                "invalid_toml" | "invalid_settings_jsonc" | "settings_jsonc_not_object"
+            ) {
                 return Err(error);
             }
 
@@ -309,6 +272,17 @@ fn format_surface_reconcile_error(error: &CoreError) -> String {
     let mut lines = vec![error.message()];
 
     match error.code() {
+        "stale_old_settings_input" => {
+            if let Some(user_config) = details.get("user_config").and_then(Value::as_str) {
+                lines.push(format!("canonical settings: {user_config}"));
+            }
+            if let Some(old_flat) = details.get("old_flat_user_config").and_then(Value::as_str) {
+                lines.push(format!("old flat main: {old_flat}"));
+            }
+            if let Some(legacy_main) = details.get("legacy_user_config").and_then(Value::as_str) {
+                lines.push(format!("old nested main: {legacy_main}"));
+            }
+        }
         "duplicate_config_surfaces" => {
             if let Some(user_config) = details.get("user_config").and_then(Value::as_str) {
                 lines.push(format!("flat main: {user_config}"));
@@ -384,7 +358,7 @@ mod tests {
     #[test]
     fn render_doctor_config_details_matches_expected_shape() {
         let report = ConfigDiagnosticReport {
-            config_path: "/tmp/yazelix.toml".into(),
+            config_path: "/tmp/settings.jsonc".into(),
             schema_diagnostics: vec![],
             doctor_diagnostics: vec![ConfigDiagnostic {
                 category: "schema".into(),
@@ -404,7 +378,7 @@ mod tests {
         };
 
         let out = render_doctor_config_details(&report);
-        assert!(out.contains("Config report for: /tmp/yazelix.toml"));
+        assert!(out.contains("Config report for: /tmp/settings.jsonc"));
         assert!(out.contains("Issues: 1"));
         assert!(out.contains("Unknown config field: core.stale_field"));
         assert!(out.contains("  line one"));

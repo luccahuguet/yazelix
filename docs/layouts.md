@@ -8,14 +8,17 @@ Yazelix ships managed-sidebar startup layouts, one sweep-test layout, and swap-l
 - `configs/zellij/layouts/yzx_side_closed.swap.kdl` for hidden-start sidebar swap layouts
 - `configs/zellij/layouts/yzx_sweep_test.kdl` for terminal sweep validation
 
-Set the file-open behavior in `yazelix.toml`:
+Set the file-open behavior in `settings.jsonc`:
 
-```toml
-[editor]
-hide_sidebar_on_file_open = false
-sidebar_width_percent = 20
-sidebar_command = "nu"
-sidebar_args = ["__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu"]
+```jsonc
+{
+  "editor": {
+    "hide_sidebar_on_file_open": false,
+    "sidebar_width_percent": 20,
+    "sidebar_command": "nu",
+    "sidebar_args": ["__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu"]
+  }
+}
 ```
 
 `editor.hide_sidebar_on_file_open = true` hides the managed sidebar after opening a file from Yazi while keeping new tabs on the normal managed-sidebar startup layout. `Alt+y`, `Ctrl+y`, and `yzx reveal` remain available because the sidebar pane still exists. Legacy configs with `enable_sidebar = false` are treated as a request for the hidden managed-sidebar startup layout.

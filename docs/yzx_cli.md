@@ -10,7 +10,7 @@ Health checks and diagnostics
 - `--fix`: Auto-fix safe issues
 - `--fix-plan`: Print exact recovery commands without mutating anything
 - `--fix-plan --json`: Emit a machine-readable recovery plan for docs, support, and agents
-- Warns when `yazelix.toml` has stale, removed, or invalid fields relative to `yazelix_default.toml`
+- Warns when `settings.jsonc` has stale, removed, or invalid fields relative to the current settings contract
 - Reports the active runtime/distribution tier before deeper checks
 - Detects missing or stale workspace assets such as generated Zellij config, layouts, and plugin wasm artifacts
 - Runs installer-owned runtime-link and stable-launcher diagnostics only when the current mode actually owns those surfaces
@@ -25,7 +25,7 @@ Inspect active Yazelix runtime truth
 Generate a focused first-run Yazelix config
 - Arrow keys move through single-choice prompts and `Enter` confirms
 - `Space` toggles status-bar widget choices in the multi-select prompt
-- `--force`: Overwrite the managed user `yazelix.toml` when it already exists
+- `--force`: Overwrite the managed user `settings.jsonc` when it already exists
 - `--dry-run`: Print the generated config instead of writing it
 - Generates only the current supported main config surface; it does not recreate removed pack sidecars
 
@@ -224,7 +224,7 @@ Preview the animated welcome screen directly in the current terminal
 
 ### `yzx popup [COMMAND ...]`
 Open a transient floating-pane command inside Zellij
-- Default: runs `zellij.popup_program` from `yazelix.toml`
+- Default: runs `zellij.popup_program` from `settings.jsonc`
 - Special token: `editor` resolves to the current Yazelix `editor.command` with its managed runtime/env
 - `COMMAND ...`: override the configured popup command for one invocation
 - Uses the current tab workspace root as cwd when available; otherwise uses the current shell cwd
@@ -248,20 +248,20 @@ Import native Zellij, Yazi, or Helix config into Yazelix-managed overrides
 
 ### `yzx edit config [--print]`
 Open the main Yazelix config file in your editor
-- Uses `$EDITOR` (set by Yazelix from `[editor] command` in yazelix.toml)
-- Targets `yazelix.toml`
+- Uses `$EDITOR` (set by Yazelix from `editor.command` in `settings.jsonc`)
+- Targets `settings.jsonc`
 - `--print`: print the resolved config path without opening
 
 ### `yzx cursors`
 Inspect Ghostty cursor presets and resolved colors
-- Shows the active `cursors.toml` path
+- Shows the active `settings.jsonc` path
 - Shows global trail, effect, glow, duration, and Kitty fallback settings
 - Shows resolved colors for enabled presets, including derived mono accents
 
 ### `yzx edit cursors [--print]`
-Open the Ghostty cursor registry sidecar in your editor
-- Targets `cursors.toml`
-- `--print`: print the resolved cursor sidecar path without opening
+Open the Ghostty cursor registry section in your editor
+- Targets `settings.jsonc`
+- `--print`: print the resolved settings path without opening
 
 ### `yzx edit <target> [--print]`
 Open one of the managed config surfaces through explicit or fuzzy target selection
@@ -270,17 +270,17 @@ Open one of the managed config surfaces through explicit or fuzzy target selecti
 - `--print`: print the resolved managed path without opening
 
 ### `yzx reset config [--yes] [--no-backup]`
-Replace `yazelix.toml` with a fresh copy of the shipped template
+Replace `settings.jsonc` with a fresh copy of the shipped settings template
 - Backs up the current config file to `*.backup-<timestamp>` first when it exists
 - `--yes`: skip the confirmation prompt
 - `--no-backup`: discard the previous config file instead of renaming it to a backup first
 - Use this as a blunt recovery path when `yzx doctor` reports stale config fields
 
 ### `yzx reset cursor [--yes] [--no-backup]`
-Replace `cursors.toml` with a fresh copy of the shipped cursor template
-- Backs up the current cursor sidecar to `*.backup-<timestamp>` first when it exists
+Replace the `settings.jsonc` `cursors` section with a fresh copy of the shipped cursor template
+- Backs up the current settings file to `*.backup-<timestamp>` first when it exists
 - `--yes`: skip the confirmation prompt
-- `--no-backup`: discard the previous cursor sidecar instead of renaming it to a backup first
+- `--no-backup`: discard the previous settings file instead of renaming it to a backup first
 - Use this when cursor schema changes make launch-time Ghostty materialization fail
 
 ### `yzx help`

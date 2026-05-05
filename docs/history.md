@@ -1,6 +1,6 @@
 # Yazelix Version History & Changelog
 
-> **Note:** Older entries reference the legacy `yazelix.nix` configuration. Yazelix now uses `yazelix.toml`, but historical notes retain the original terminology for accuracy.
+> **Note:** Older entries reference legacy `yazelix.nix`, `yazelix.toml`, and `cursors.toml` configuration surfaces. Yazelix now uses `settings.jsonc`, but historical notes retain the original terminology for accuracy.
 
 Use [CHANGELOG.md](../CHANGELOG.md) for concise upgrade-facing notes. This page is the longer narrative companion, and the recent release framing here should stay aligned with [docs/upgrade_notes.toml](./upgrade_notes.toml).
 

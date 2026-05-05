@@ -13,7 +13,7 @@ yzx doctor --fix              # Auto-fix safe issues
 **What it checks:**
 - **Helix runtime conflicts** - Detects old `~/.config/helix/runtime` that breaks syntax highlighting
 - **Environment variables** - EDITOR and other critical session settings
-- **Configuration health** - yazelix.toml validation and shell integration
+- **Configuration health** - `settings.jsonc` validation and shell integration
 - **System status** - Log file sizes, file permissions, git repository state
 
 **Auto-fix capabilities:**
@@ -74,18 +74,19 @@ If you previously installed Yazelix via `git clone`, an installer script, or man
 
 ## Configuration File Migration
 
-**Yazelix now uses `yazelix.toml` and the packaged `yazelix` runtime instead of the old `yazelix.nix` flow.**
+**Yazelix now uses `settings.jsonc` and the packaged `yazelix` runtime instead of the old `yazelix.nix` flow.**
 
 If you have an older Yazelix setup:
-- Configuration is now in `~/.config/yazelix/yazelix.toml` (not `yazelix.nix`)
+- Configuration is now in `~/.config/yazelix/settings.jsonc` (not `yazelix.nix`)
 - The normal runtime entry path is the packaged `yazelix` flake output
 - The top-level flake now exposes the package-first product surface: `nix run github:luccahuguet/yazelix#yazelix -- launch`
-- The main config template is `yazelix_default.toml`, and the cursor registry template is `yazelix_cursors_default.toml`
+- The shipped defaults are rendered into `settings.jsonc`, including the cursor registry
 
 **Migration steps:**
 1. It's recommended that you go through the [Installation Guide](installation.md) and install the packaged `yazelix` runtime cleanly
-2. Your `yazelix.toml` and `cursors.toml` files will be auto-created from the shipped defaults on yazelix startup if not found
-3. Copy any custom settings from your old `yazelix.nix` to the new `yazelix.toml` format
+2. `settings.jsonc` will be auto-created from the shipped defaults on Yazelix startup if not found
+3. Old mutable `yazelix.toml` and `cursors.toml` files are auto-migrated when safe, and block with clear diagnostics when ownership or content is ambiguous
+4. Copy any custom settings from your old `yazelix.nix` to the new `settings.jsonc` format
 
 ## First Run: Zellij Plugin Permissions (is the top bar looking funny/weird/broken?)
 
@@ -144,9 +145,9 @@ Yazelix aligns Helix with the selected runtime automatically. Old `~/.config/hel
 
 ### Reset Configuration
 ```bash
-rm ~/.config/yazelix/yazelix.toml
+yzx reset config
 exit         # Exit current session
-yzx launch   # Start fresh in new window - regenerates defaults
+yzx launch   # Start fresh in new window
 ```
 
 ### Restart Fresh
@@ -236,5 +237,5 @@ hx --health | head -n 8
 ## Getting Help
 
 1. Check logs: `~/.config/yazelix/logs/`
-2. Test with defaults: delete `yazelix.toml`
+2. Test with defaults: run `yzx reset config`
 3. Report issues

@@ -169,7 +169,7 @@ pub fn resolve_welcome_style(
                 "Invalid welcome style `{normalized}`. Expected one of: {}",
                 allowed.join(", ")
             ),
-            "Pick one of the documented welcome styles from `yazelix.toml` or `yzx screen --help`.",
+            "Pick one of the documented welcome styles from `settings.jsonc` or `yzx screen --help`.",
             serde_json::json!({ "style": normalized }),
         ));
     }

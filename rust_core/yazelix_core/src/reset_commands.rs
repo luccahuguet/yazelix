@@ -4,6 +4,7 @@
 use crate::active_config_surface::primary_config_paths;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{config_dir_from_env, runtime_dir_from_env};
+use crate::settings_surface::{render_default_settings_jsonc, replace_cursor_settings_in_jsonc};
 use serde_json::json;
 use std::fs;
 use std::io::{self, BufRead, Write};
@@ -46,17 +47,22 @@ fn run_reset_config(args: &[String]) -> Result<i32, CoreError> {
     let runtime_dir = runtime_dir_from_env()?;
     let config_dir = config_dir_from_env()?;
     let paths = primary_config_paths(&runtime_dir, &config_dir);
-    reset_surface(
+    let content = render_default_settings_jsonc(
+        &paths.default_config_path,
+        &paths.default_cursor_config_path,
+    )?;
+    reset_surface_with_content(
         args,
         ResetSurface {
             command: "yzx reset config",
             display_name: "main Yazelix config",
-            target_file_name: "yazelix.toml",
+            target_file_name: "settings.jsonc",
             default_path: paths.default_config_path,
             target_path: paths.user_config,
             missing_default_code: "missing_default_config",
             missing_default_remediation: "Reinstall Yazelix or restore yazelix_default.toml in the runtime, then retry.",
         },
+        content,
     )
 }
 
@@ -64,17 +70,26 @@ fn run_reset_cursor(args: &[String]) -> Result<i32, CoreError> {
     let runtime_dir = runtime_dir_from_env()?;
     let config_dir = config_dir_from_env()?;
     let paths = primary_config_paths(&runtime_dir, &config_dir);
-    reset_surface(
+    let content = if paths.user_config.exists() {
+        replace_cursor_settings_in_jsonc(&paths.user_config, &paths.default_cursor_config_path)?
+    } else {
+        render_default_settings_jsonc(
+            &paths.default_config_path,
+            &paths.default_cursor_config_path,
+        )?
+    };
+    reset_surface_with_content(
         args,
         ResetSurface {
             command: "yzx reset cursor",
             display_name: "Ghostty cursor registry",
-            target_file_name: "cursors.toml",
+            target_file_name: "settings.jsonc cursor section",
             default_path: paths.default_cursor_config_path,
-            target_path: paths.user_cursor_config,
+            target_path: paths.user_config,
             missing_default_code: "missing_default_cursor_config",
             missing_default_remediation: "Reinstall Yazelix so the runtime includes yazelix_cursors_default.toml, then retry.",
         },
+        content,
     )
 }
 
@@ -105,8 +120,8 @@ fn print_reset_help() {
     println!("  yzx reset cursor [--yes] [--no-backup]");
     println!();
     println!("Targets:");
-    println!("  config  Replace yazelix.toml with a fresh shipped template");
-    println!("  cursor  Replace cursors.toml with a fresh shipped template");
+    println!("  config  Replace settings.jsonc with fresh shipped settings");
+    println!("  cursor  Replace the settings.jsonc cursors section with shipped defaults");
 }
 
 fn print_reset_surface_help(surface: &ResetSurface) {
@@ -123,7 +138,11 @@ fn print_reset_surface_help(surface: &ResetSurface) {
     println!("      --no-backup  Replace the file without writing a timestamped backup first");
 }
 
-fn reset_surface(args: &[String], surface: ResetSurface) -> Result<i32, CoreError> {
+fn reset_surface_with_content(
+    args: &[String],
+    surface: ResetSurface,
+    content: String,
+) -> Result<i32, CoreError> {
     let parsed = parse_reset_args(args, surface.command)?;
     if parsed.help {
         print_reset_surface_help(&surface);
@@ -213,7 +232,7 @@ fn reset_surface(args: &[String], surface: ResetSurface) -> Result<i32, CoreErro
         None
     };
 
-    copy_default_surface(&surface.default_path, &surface.target_path)?;
+    write_reset_surface(&surface.target_path, &content)?;
 
     if let Some(path) = backup_path {
         println!("✅ Backed up previous file to: {}", path.display());
@@ -237,16 +256,15 @@ fn read_confirmation() -> String {
     line.trim().to_lowercase()
 }
 
-fn copy_default_surface(default_path: &Path, target_path: &Path) -> Result<(), CoreError> {
+fn write_reset_surface(target_path: &Path, content: &str) -> Result<(), CoreError> {
     if let Some(parent) = target_path.parent() {
         fs::create_dir_all(parent).map_err(|source| io_err(parent, source))?;
     }
-    fs::copy(default_path, target_path).map_err(|source| {
+    fs::write(target_path, content).map_err(|source| {
         CoreError::io(
-            "reset_copy_default",
+            "reset_write_default",
             format!(
-                "Could not copy the default Yazelix template from {} to {}.",
-                default_path.display(),
+                "Could not write the default Yazelix template to {}.",
                 target_path.display()
             ),
             "Fix permissions or restore the missing runtime template, then retry.",

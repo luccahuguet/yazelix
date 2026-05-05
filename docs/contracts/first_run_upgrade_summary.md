@@ -12,7 +12,7 @@ The changelog and structured upgrade notes are passive surfaces. Users also need
 
 This contract covers:
 
-- persisted last-seen version state outside `yazelix.toml`
+- persisted last-seen version state outside `settings.jsonc`
 - current-version note selection from `docs/upgrade_notes.toml`
 - first-run suppression on repeated launches
 - manual reopen via `yzx whats_new`
@@ -34,7 +34,7 @@ If the current version has no release-note entry, startup should stay quiet inst
 
 - showing upgrade notes on every launch
 - scraping `CHANGELOG.md` directly at runtime
-- mutating `yazelix.toml` automatically from the summary path
+- mutating `settings.jsonc` automatically from the summary path
 - showing the full historical changelog during startup
 - restoring migration-registry probing to the v15 upgrade-summary path
 

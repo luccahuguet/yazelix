@@ -1,12 +1,13 @@
 // Test lane: default
 //! Cached current-session facts for panes that must survive config version skew.
 
-use crate::active_config_surface::primary_config_paths;
+use crate::active_config_surface::resolve_active_config_paths;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{config_dir_from_env, config_override_from_env, runtime_dir_from_env};
 use crate::session_config_snapshot::{
     load_session_facts_from_snapshot_path, session_config_snapshot_path_from_env,
 };
+use crate::settings_surface::read_config_table;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Value as JsonValue};
 use std::fs;
@@ -203,26 +204,13 @@ fn compute_lossy_session_facts_from_config() -> Result<SessionFactsData, CoreErr
     let runtime_dir = runtime_dir_from_env()?;
     let config_dir = config_dir_from_env()?;
     let config_override = config_override_from_env();
-    let paths = primary_config_paths(&runtime_dir, &config_dir);
+    let paths = resolve_active_config_paths(&runtime_dir, &config_dir, config_override.as_deref())?;
 
     let mut facts = SessionFactsData::default();
-    facts.apply_lossy_table(read_toml_table_lossy(&paths.default_config_path).as_ref());
+    facts.apply_lossy_table(read_config_table_lossy(&paths.default_config_path).as_ref());
 
-    let active_config_path = config_override
-        .as_deref()
-        .map(str::trim)
-        .filter(|path| !path.is_empty())
-        .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            if paths.user_config.exists() {
-                paths.user_config.clone()
-            } else {
-                paths.default_config_path.clone()
-            }
-        });
-
-    if active_config_path != paths.default_config_path {
-        facts.apply_lossy_table(read_toml_table_lossy(&active_config_path).as_ref());
+    if paths.config_file != paths.default_config_path {
+        facts.apply_lossy_table(read_config_table_lossy(&paths.config_file).as_ref());
     }
 
     Ok(facts.sanitized())
@@ -314,10 +302,8 @@ fn normalized_i64(config: &JsonMap<String, JsonValue>, key: &str) -> Option<i64>
     }
 }
 
-fn read_toml_table_lossy(path: &Path) -> Option<toml::Table> {
-    fs::read_to_string(path)
-        .ok()
-        .and_then(|raw| toml::from_str::<toml::Table>(&raw).ok())
+fn read_config_table_lossy(path: &Path) -> Option<toml::Table> {
+    read_config_table(path, "read_session_facts_config").ok()
 }
 
 fn toml_section<'a>(config: &'a toml::Table, section: &str) -> Option<&'a toml::Table> {

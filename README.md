@@ -14,7 +14,7 @@ Yazelix is a workspace-focused terminal environment built around [Yazi](https://
 
 The supported product in this branch is the Rust-forward v16 Yazelix line
 
-Yazelix uses the `yazelix.toml` config surface, with the normal flake surface provided by the packaged `yazelix` runtime plus the top-level Home Manager module, while repo work uses the flake maintainer shell defined in `maintainer_shell.nix`
+Yazelix uses `~/.config/yazelix/settings.jsonc` as the canonical settings surface, with the normal flake surface provided by the packaged `yazelix` runtime plus the top-level Home Manager module, while repo work uses the flake maintainer shell defined in `maintainer_shell.nix`
 
 ## Daily Workflow
 
@@ -43,7 +43,7 @@ It already ships with Zellij and Yazi plugins, some maintained in this repo, inc
 
 It has features like `reveal in Yazi` from Helix or Neovim, opening files from Yazi in your configured editor, and switching workspace layouts without leaving the workspace
 
-Supports top terminals and popular shells, with Ghostty as the default packaged terminal for Yazelix cursor trails, WezTerm as the explicit image-compatible packaged variant, Kitty, Alacritty, and Foot as supported alternatives when present on the host `PATH`, and everything configured through `yazelix.toml` while the packaged runtime provides the fixed Yazelix toolset
+Supports top terminals and popular shells, with Ghostty as the default packaged terminal for Yazelix cursor trails, WezTerm as the explicit image-compatible packaged variant, Kitty, Alacritty, and Foot as supported alternatives when present on the host `PATH`, and everything configured through `settings.jsonc` while the packaged runtime provides the fixed Yazelix toolset
 
 Get everything running in less than 10 minutes with no extra dependencies beyond Nix
 
@@ -132,7 +132,7 @@ For the current trimmed branch contract, see [docs/contracts/v15_trimmed_runtime
 ## Compatibility
 - **Platform**: Linux and macOS — see the [macOS support floor contract](docs/contracts/macos_support_floor.md) for the current guaranteed macOS surfaces
 - **Terminal**: Ghostty is the default packaged terminal, WezTerm is available through the explicit WezTerm package path, while Kitty and Alacritty remain supported PATH-provided alternatives and Foot remains a Linux-only PATH-provided alternative
-- **Editor**: Any editor works, with Helix and Neovim getting first-class support (reveal in the Yazi file tree, open buffer in a running instance, managed editor-pane targeting) and configuration through `[editor].command` in `yazelix.toml`
+- **Editor**: Any editor works, with Helix and Neovim getting first-class support (reveal in the Yazi file tree, open buffer in a running instance, managed editor-pane targeting) and configuration through `editor.command` in `settings.jsonc`
 - **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer
 
 ## Installation
@@ -222,7 +222,7 @@ When opening files from Yazi, Yazelix will:
 - Ask the Yazelix pane orchestrator plugin for the managed `editor` pane in the current tab
 - Reuse that pane directly when it exists, instead of scanning nearby panes or depending on stack position
 - Create a new pane titled `editor` when no managed editor pane exists yet
-- Use the same managed-pane flow for both Helix and Neovim; configure the editor via `[editor].command` in `yazelix.toml`
+- Use the same managed-pane flow for both Helix and Neovim; configure the editor via `editor.command` in `settings.jsonc`
 
 ## POSIX/XDG Paths
 
@@ -236,13 +236,13 @@ Yazelix shines over SSH: the TUI stack (Zellij, Yazi, Helix) runs cleanly withou
 
 Yazelix uses a **layered configuration system** that safely merges your personal settings with Yazelix defaults:
 
-- **Core settings**: Edit `~/.config/yazelix/yazelix.toml` for shell, editor, terminal, and package preferences
-- **Yazi customization**: Use the built-in `[yazi]` settings in `yazelix.toml` for things like plugins, theme, sorting, and binary overrides, and use `~/.config/yazelix/yazi.toml`, `~/.config/yazelix/yazi_keymap.toml`, and `~/.config/yazelix/yazi_init.lua` for deeper merged overrides (see [Yazi Configuration](./docs/yazi-configuration.md))
-- **Zellij customization**: Use the built-in `[zellij]` settings in `yazelix.toml` for Yazelix-owned Zellij knobs, and use `~/.config/yazelix/zellij.kdl` for deeper managed Zellij overrides (see [Zellij Configuration](./docs/zellij-configuration.md))
+- **Core settings**: Edit `~/.config/yazelix/settings.jsonc` for shell, editor, terminal, Zellij, Yazi, and cursor settings
+- **Yazi customization**: Use the built-in `yazi` settings in `settings.jsonc` for things like plugins, theme, sorting, and binary overrides, and use `~/.config/yazelix/yazi.toml`, `~/.config/yazelix/yazi_keymap.toml`, and `~/.config/yazelix/yazi_init.lua` for deeper merged overrides (see [Yazi Configuration](./docs/yazi-configuration.md))
+- **Zellij customization**: Use the built-in `zellij` settings in `settings.jsonc` for Yazelix-owned Zellij knobs, and use `~/.config/yazelix/zellij.kdl` for deeper managed Zellij overrides (see [Zellij Configuration](./docs/zellij-configuration.md))
 - **Status bar widgets**: Configure `[zellij].widget_tray` to order or hide `editor`, `shell`, `term`, `workspace`, `cursor`, usage, `cpu`, and `ram` widgets; the default cursor widget renders as colored `█ name` from the launch-scoped Ghostty cursor fact
 - **Your configs persist** across Yazelix updates without git conflicts
 - **Intelligent merging**: Generated Yazi and Zellij runtime configs are rebuilt from Yazelix defaults plus your managed overrides instead of forcing you to edit tracked runtime files
-- **Launch-time config snapshots**: each Yazelix window keeps the `yazelix.toml` snapshot it launched with; edit config whenever you want, then open a new Yazelix window or run `yzx restart` to apply it to live panes
+- **Launch-time config snapshots**: each Yazelix window keeps the `settings.jsonc` snapshot it launched with; edit config whenever you want, then open a new Yazelix window or run `yzx restart` to apply it to live panes
 
 📖 **[Complete Customization Guide →](./docs/customization.md)** - Detailed instructions for customizing every tool
 
@@ -280,7 +280,7 @@ To use Yazelix tools without starting the full interface (no sidebar, no Zellij)
 ```bash
 yzx env
 ```
-This loads the curated Yazelix tool surface into your current shell, with Yazelix env vars set and clean messaging, and automatically launches the shell configured in your `yazelix.toml`; if you prefer the legacy behavior, run `yzx env --no-shell` to stay in your current shell
+This loads the curated Yazelix tool surface into your current shell, with Yazelix env vars set and clean messaging, and automatically launches the shell configured in your `settings.jsonc`; if you prefer the legacy behavior, run `yzx env --no-shell` to stay in your current shell
 
 Internal runtime helpers stay private under `libexec/` instead of leaking into your interactive PATH, so host-distributed apps launched from that shell do not accidentally inherit Yazelix-owned core userland tools ahead of the system PATH
 
@@ -301,7 +301,7 @@ See the full catalog of tools and integrations in the Yazelix Collection:
 - **Environment setup**: Proper paths, variables, and shell configurations
 
 **Customize Your Installation:**
-If you followed [step 4 in the installation guide](./docs/installation.md#step-4-configure-your-installation-optional), you already have your `~/.config/yazelix/yazelix.toml` config file ready, you can modify it anytime and restart Yazelix to apply changes, see [yazelix_default.toml](./yazelix_default.toml) for main options, and use `~/.config/yazelix/cursors.toml` for Ghostty cursor presets and effects
+If you followed [step 4 in the installation guide](./docs/installation.md#step-4-configure-your-installation-optional), you already have your `~/.config/yazelix/settings.jsonc` config file ready, you can modify it anytime and restart Yazelix to apply changes. Main options and Ghostty cursor presets live in that file
 
 **Terminal Emulator Selection:**
 - **Ghostty** (default packaged preference): Modern, fast terminal written in Zig with Yazelix cursor trails
@@ -310,7 +310,7 @@ If you followed [step 4 in the installation guide](./docs/installation.md#step-4
 - **Alacritty**: Fast, GPU-accelerated terminal written in Rust
 - **Foot**: Wayland-native terminal (Linux-only)
 - **Auto-detection**: Fallback order follows your configured terminal list
-- Configure your preference in `yazelix.toml` with `terminals = ["ghostty", "wezterm", ...]` (first item is primary)
+- Configure your preference in `settings.jsonc` with `terminal.terminals = ["ghostty", "wezterm", ...]` (first item is primary)
 - **v15 terminal contract**: Yazelix ships one packaged terminal variant at a time; Ghostty is the default, and explicit Ghostty/WezTerm variants remain available
 
 [See the full Customization Guide here.](./docs/customization.md)

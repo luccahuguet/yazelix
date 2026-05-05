@@ -1,17 +1,17 @@
 # Yazelix Home Manager Module
 
-A Home Manager module for [Yazelix](https://github.com/luccahuguet/yazelix) that manages the package-ready runtime surface while leaving `yazelix.toml` mutable by default
+A Home Manager module for [Yazelix](https://github.com/luccahuguet/yazelix) that manages the package-ready runtime surface while leaving `settings.jsonc` mutable by default
 
 ## What This Module Does
 
-- **Leaves `yazelix.toml` mutable by default** so users can edit it directly
-- **Can generate `yazelix.toml`** from Home Manager options when `manage_config = true`
+- **Leaves `settings.jsonc` mutable by default** so users can edit it directly
+- **Can generate `settings.jsonc`** from Home Manager options when `manage_config = true`
 - **Adds `yzx` to the Home Manager profile** through the packaged Yazelix runtime
 - **Selects the packaged terminal runtime variant** with Ghostty by default and WezTerm available through `runtime_variant`
 - **Installs icons and, on Linux, a desktop entry** that target the managed runtime
 - **Keeps the config surface type-safe** with Home Manager validation
 
-Config ownership is configurable: set `programs.yazelix.manage_config = true` only if you want Home Manager to generate and own `~/.config/yazelix/yazelix.toml`
+Config ownership is configurable: set `programs.yazelix.manage_config = true` only if you want Home Manager to generate and own `~/.config/yazelix/settings.jsonc`
 
 ## What This Module Does NOT Do
 
@@ -65,7 +65,7 @@ If you already have your own Home Manager flake, the minimal setup is:
     enable = true;
     runtime_variant = "ghostty"; # Default; use "wezterm" when you prefer WezTerm image-preview behavior
     # Customize other options as needed - see example.nix
-    # Set manage_config = true if you want Home Manager to own yazelix.toml
+    # Set manage_config = true if you want Home Manager to own settings.jsonc
   };
 }
 ```
@@ -101,7 +101,7 @@ home-manager switch
 
 This creates:
 - the `yzx` command in your Home Manager profile, typically `~/.nix-profile/bin/yzx`
-- `~/.config/yazelix/yazelix.toml`, bootstrapped as a mutable file by default or Home Manager-generated when `manage_config = true`
+- `~/.config/yazelix/settings.jsonc`, bootstrapped as a mutable file by default or Home Manager-generated when `manage_config = true`
 - on Linux, a Home Manager profile desktop entry, typically `~/.nix-profile/share/applications/yazelix.desktop`
 
 Then open a fresh shell and run:
@@ -133,8 +133,8 @@ For maintainer workflows, a cloned repo is still useful. Normal Home Manager usa
 
 Manual validation on April 8, 2026 covered both a lived-in account and a throwaway clean-room Home Manager activation.
 
-- By default, Home Manager owns the package/runtime integration while Yazelix bootstraps the main `yazelix.toml` as a mutable file
-- Set `programs.yazelix.manage_config = true` only if you want Home Manager to own generated Yazelix TOML through a symlink into the Home Manager profile
+- By default, Home Manager owns the package/runtime integration while Yazelix bootstraps the main `settings.jsonc` as a mutable file
+- Set `programs.yazelix.manage_config = true` only if you want Home Manager to own generated Yazelix settings through a symlink into the Home Manager profile
 - The managed `yzx` command resolves through the Home Manager profile, typically `~/.nix-profile/bin/yzx`, rather than through a legacy user-local wrapper path.
 - The active runtime root resolves directly from the packaged Yazelix runtime in the Home Manager profile/store path, not through a manual-install runtime symlink.
 - On Linux, the Home Manager desktop entry comes from the Home Manager profile, typically `~/.nix-profile/share/applications/yazelix.desktop`, rather than from `yzx desktop install`.
@@ -157,7 +157,7 @@ Migration note for older setups:
 
 1. **Backup your current configuration:**
    ```bash
-   cp ~/.config/yazelix/yazelix.toml ~/.config/yazelix/yazelix.toml.backup
+   cp ~/.config/yazelix/settings.jsonc ~/.config/yazelix/settings.jsonc.backup
    ```
 
 2. **Configure the Home Manager module** (see example.nix)
@@ -169,7 +169,7 @@ Migration note for older setups:
    ```
 
 The prepare command archives the common file-based takeover blockers and handoff cleanup paths, and it removes standalone default-profile Yazelix package entries that would collide with Home Manager:
-- `~/.config/yazelix/yazelix.toml`
+- `~/.config/yazelix/settings.jsonc`
 - standalone default-profile `yazelix` entries from `nix profile list --json`
 - `~/.local/bin/yzx` when it is the legacy Yazelix manual wrapper
 - `~/.local/share/applications/com.yazelix.Yazelix.desktop`
@@ -206,7 +206,7 @@ If Home Manager still reports an unexpected unmanaged-file collision outside tho
    home-manager switch
    ```
 
-3. **Restore manual config:** recreate `~/.config/yazelix/yazelix.toml` from your backup or from the shipped default template in the Yazelix package/repo you install manually.
+3. **Restore manual config:** recreate `~/.config/yazelix/settings.jsonc` from your backup or by running `yzx reset config` in the Yazelix package/repo you install manually.
 
 ## Safety Features
 
@@ -218,7 +218,7 @@ If Home Manager still reports an unexpected unmanaged-file collision outside tho
 ## Troubleshooting
 
 ### Configuration not applied
-- Check that `~/.config/yazelix/yazelix.toml` was created
+- Check that `~/.config/yazelix/settings.jsonc` was created
 - By default, that file should be a normal writable file, not a Home Manager store symlink
 - Check that `~/.nix-profile/bin/yzx` exists and that your Home Manager profile bin dir is on your `PATH`
 - On Linux, check that `~/.nix-profile/share/applications/yazelix.desktop` exists if you expect desktop-launcher integration through Home Manager
@@ -228,11 +228,11 @@ If Home Manager still reports an unexpected unmanaged-file collision outside tho
 ### Conflicts with an existing manual install
 - Existing manual Yazelix files can cause `home-manager switch` to stop with collision errors
 - Prefer `yzx home_manager prepare --apply` before the first takeover
-- The most common collision paths are generated Yazelix TOML files under `~/.config/yazelix/`
-- By default, Home Manager will not take over the main `yazelix.toml` file
+- The most common collision paths are generated Yazelix settings files under `~/.config/yazelix/`
+- By default, Home Manager will not take over the main `settings.jsonc` file
 - If you set `programs.yazelix.manage_config = true`, Home Manager owns that file through a profile symlink
 - `home-manager switch -b hm-backup` is now the fallback aid if you still hit an unexpected unmanaged-file collision after the prepare step
-- See example.nix to recreate your settings declaratively instead of editing the generated TOML files directly
+- See example.nix to recreate your settings declaratively instead of editing the generated settings file directly
 
 ### Nushell expectations
 - Yazelix launchers use the runtime-local Nushell shipped with the managed runtime
@@ -257,11 +257,11 @@ Use the repo root environment and your preferred Nix formatting/lint tools as ne
 
 ## Contributing
 
-This module follows Yazelix's configuration structure defined in `yazelix_default.toml`. When adding new options:
+This module follows Yazelix's configuration structure defined by `config_metadata/main_config_contract.toml`. When adding new options:
 
-1. Add the option to both `yazelix_default.toml` and this module
+1. Add the option to `yazelix_default.toml`, `config_metadata/main_config_contract.toml`, and this module
 2. Update the examples and documentation
 3. Test with both new and existing Yazelix installations
 4. Ensure type safety and proper defaults
 
-Ghostty cursor presets and effects are intentionally outside the Home Manager main option set for now. Edit `~/.config/yazelix/cursors.toml` directly for that larger cursor registry surface
+Ghostty cursor presets and effects live under `cursors` in `~/.config/yazelix/settings.jsonc`

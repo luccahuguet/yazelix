@@ -6,7 +6,8 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-pub const MAIN_CONFIG: &str = "yazelix.toml";
+pub const SETTINGS_CONFIG: &str = "settings.jsonc";
+pub const OLD_MAIN_CONFIG: &str = "yazelix.toml";
 pub const CURSOR_CONFIG: &str = "cursors.toml";
 pub const HELIX_CONFIG: &str = "helix.toml";
 pub const ZELLIJ_CONFIG: &str = "zellij.kdl";
@@ -15,11 +16,15 @@ pub const YAZI_KEYMAP: &str = "yazi_keymap.toml";
 pub const YAZI_INIT: &str = "yazi_init.lua";
 
 pub fn main_config(config_dir: &Path) -> PathBuf {
-    config_dir.join(MAIN_CONFIG)
+    config_dir.join(SETTINGS_CONFIG)
+}
+
+pub fn old_main_config(config_dir: &Path) -> PathBuf {
+    config_dir.join(OLD_MAIN_CONFIG)
 }
 
 pub fn legacy_main_config(config_dir: &Path) -> PathBuf {
-    config_dir.join("user_configs").join(MAIN_CONFIG)
+    config_dir.join("user_configs").join(OLD_MAIN_CONFIG)
 }
 
 pub fn cursor_config(config_dir: &Path) -> PathBuf {

@@ -5,7 +5,9 @@ use crate::config_state::{
     record_config_state,
 };
 use crate::control_plane::config_dir_from_env;
-use crate::ghostty_cursor_registry::{CursorRegistry, USER_CURSOR_CONFIG_FILENAME};
+use crate::ghostty_cursor_registry::CursorRegistry;
+use crate::settings_surface::is_settings_config_path;
+use crate::user_config_paths;
 use crate::yazi_materialization::{
     YaziMaterializationData, YaziMaterializationRequest, generate_yazi_materialization,
 };
@@ -319,6 +321,10 @@ struct MovedGhosttyCursorValue {
 fn migrate_moved_ghostty_cursor_fields(
     request: &RuntimeMaterializationPlanRequest,
 ) -> Result<Option<RuntimeCursorConfigMigrationData>, CoreError> {
+    if is_settings_config_path(&request.config_path) {
+        return Ok(None);
+    }
+
     let raw_config = fs::read_to_string(&request.config_path).map_err(|source| {
         CoreError::io(
             "read_moved_cursor_migration_config",
@@ -346,7 +352,7 @@ fn migrate_moved_ghostty_cursor_fields(
         .config_path
         .parent()
         .unwrap_or_else(|| Path::new("."))
-        .join(USER_CURSOR_CONFIG_FILENAME);
+        .join(user_config_paths::CURSOR_CONFIG);
     let raw_cursor_config =
         read_cursor_sidecar_or_default(&cursor_config_path, &request.runtime_dir)?;
     let updated_cursor_config = apply_cursor_sidecar_settings(&raw_cursor_config, &moved_values)?;

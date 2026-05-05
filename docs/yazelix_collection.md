@@ -43,7 +43,7 @@ Yazelix is built on a focused terminal-workspace stack. This catalog lists the p
 - [Kitty](https://sw.kovidgoyal.net/kitty/) — Supported PATH-provided terminal choice. Yazelix can generate Kitty config and launch Kitty when it is available on the host.
 - [Alacritty](https://github.com/alacritty/alacritty) — Supported PATH-provided terminal choice with generated Yazelix config.
 - [Foot](https://codeberg.org/dnkl/foot) — Supported Linux PATH-provided terminal choice with generated Yazelix config.
-- [ghostty-cursor-shaders](https://github.com/sahaj-b/ghostty-cursor-shaders) — Upstream inspiration for the Yazelix-managed Ghostty cursor shader system. Yazelix vendors/adapts the shader direction through `cursors.toml`, generated config, and the standalone `#ghostty_cursor_shaders` package.
+- [ghostty-cursor-shaders](https://github.com/sahaj-b/ghostty-cursor-shaders) — Upstream inspiration for the Yazelix-managed Ghostty cursor shader system. Yazelix vendors/adapts the shader direction through `settings.jsonc` cursor settings, generated config, and the standalone `#ghostty_cursor_shaders` package.
 
 ## Editors And Shells
 
@@ -90,8 +90,7 @@ Plugin catalog: https://github.com/yazi-rs/plugins
 
 ## User Configuration Surfaces
 
-- [`yazelix.toml`](../yazelix_default.toml) — Main user config surface under `~/.config/yazelix/yazelix.toml`.
-- [`cursors.toml`](../yazelix_cursors_default.toml) — Ghostty cursor preset/effect sidecar under `~/.config/yazelix/cursors.toml`.
+- [`settings.jsonc`](../config_metadata/yazelix_settings.schema.json) — Canonical semantic settings surface under `~/.config/yazelix/settings.jsonc`, including Ghostty cursor presets and effects
 - [Yazi configuration](./yazi-configuration.md) — Personal Yazi config overlays under `~/.config/yazelix/`
 - [Zellij configuration](./zellij-configuration.md) — Managed Zellij user config under `~/.config/yazelix/zellij.kdl`
 - [Terminal overrides](./terminal_emulators.md) — Terminal-native override files for Ghostty, Kitty, and Alacritty

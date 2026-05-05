@@ -1,4 +1,5 @@
 use crate::bridge::{CoreError, ErrorClass};
+use crate::settings_surface::{is_settings_config_path, read_config_table};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Number as JsonNumber, Value as JsonValue, json};
 use std::collections::BTreeMap;
@@ -79,7 +80,7 @@ struct ContractField {
 pub fn normalize_config(
     request: &NormalizeConfigRequest,
 ) -> Result<NormalizeConfigData, CoreError> {
-    let config = read_toml_table(&request.config_path, "read_config")?;
+    let config = read_config_table(&request.config_path, "read_config")?;
     let default_config = read_toml_table(&request.default_config_path, "read_default_config")?;
     let contract = read_toml_table(&request.contract_path, "read_config_contract")?;
     let fields = load_contract_fields(&contract)?;
@@ -251,7 +252,7 @@ fn build_diagnostic_report(
     let should_validate_like_startup = config_path
         .file_name()
         .and_then(|name| name.to_str())
-        .map(|name| name == "yazelix.toml")
+        .map(|name| name == "yazelix.toml" || is_settings_config_path(config_path))
         .unwrap_or(false);
 
     let findings = if should_validate_like_startup {
@@ -319,6 +320,9 @@ fn compare_configs(default: &TomlValue, user: &TomlValue, path: &[&str]) -> Vec<
 
         let mut findings = Vec::new();
         for key in user_table.keys() {
+            if path.is_empty() && key == "cursors" {
+                continue;
+            }
             if !default_table.contains_key(key) {
                 let mut finding_path = path.to_vec();
                 finding_path.push(key);
@@ -452,9 +456,9 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
                 diagnostic.headline = format!("Moved cursor config field at {}", finding.path);
                 diagnostic.detail_lines = vec![
                     finding.message,
-                    "Next: Move this cursor setting into ~/.config/yazelix/cursors.toml."
+                    "Next: Move this cursor setting into ~/.config/yazelix/settings.jsonc under cursors."
                         .to_string(),
-                    "Next: Remove the old terminal.ghostty_* field from ~/.config/yazelix/yazelix.toml."
+                    "Next: Remove the old terminal.ghostty_* field from ~/.config/yazelix/settings.jsonc."
                         .to_string(),
                     "Next: Run `yzx doctor --verbose` to review the full config report."
                         .to_string(),
@@ -466,7 +470,7 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
                 );
                 diagnostic.detail_lines = vec![
                     finding.message,
-                    "Next: Remove zellij.persistent_sessions and zellij.session_name from ~/.config/yazelix/yazelix.toml.".to_string(),
+                    "Next: Remove zellij.persistent_sessions and zellij.session_name from ~/.config/yazelix/settings.jsonc.".to_string(),
                     "Next: Yazelix now starts independent windows; use raw Zellij session management outside Yazelix if you need it.".to_string(),
                     "Next: Run `yzx doctor --verbose` to review the full config report."
                         .to_string(),
@@ -684,7 +688,7 @@ fn invalid_value_error(field_path: &str, actual_value: &str, expectation: &str) 
     let remediation = if field_path == "terminal.config_mode" {
         "Use `terminal.config_mode = \"yazelix\"` for the supported managed path, or `\"user\"` only when you want Yazelix to load the terminal's native config file."
     } else {
-        "Update yazelix.toml with a supported value, or run `yzx reset config` to restore the template."
+        "Update settings.jsonc with a supported value, or run `yzx reset config` to restore the template."
     };
 
     CoreError::classified(

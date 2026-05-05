@@ -6,7 +6,10 @@ use serde_json::{Value, json};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::{TempDir, tempdir};
-use yazelix_core::active_config_surface::TOML_TOOLING_CONFIG_FILENAME;
+use yazelix_core::{
+    active_config_surface::TOML_TOOLING_CONFIG_FILENAME,
+    settings_surface::{read_settings_jsonc_value, render_default_settings_jsonc},
+};
 
 mod support;
 
@@ -181,6 +184,26 @@ fn runtime_materialization_request(fixture: &RuntimeMaterializationFixture) -> V
         "layout_override": Value::Null,
     })
 }
+
+fn runtime_materialization_canonical_settings_request(
+    fixture: &RuntimeMaterializationFixture,
+) -> Value {
+    let settings_path = fixture.config_dir.join("settings.jsonc");
+    let rendered = render_default_settings_jsonc(
+        &fixture.runtime_dir.join("yazelix_default.toml"),
+        &fixture.runtime_dir.join("yazelix_cursors_default.toml"),
+    )
+    .unwrap();
+    fs::write(&settings_path, rendered).unwrap();
+
+    let mut request = runtime_materialization_request(fixture);
+    request
+        .as_object_mut()
+        .unwrap()
+        .insert("config_path".into(), json!(settings_path));
+    request
+}
+
 fn runtime_materialization_command(
     fixture: &RuntimeMaterializationFixture,
     helper_command: &str,
@@ -311,7 +334,7 @@ fn config_normalize_reports_moved_ghostty_cursor_fields() {
         diagnostic["detail_lines"][1]
             .as_str()
             .unwrap()
-            .contains("cursors.toml")
+            .contains("settings.jsonc")
     );
 }
 
@@ -358,16 +381,15 @@ fn config_surface_resolve_bootstraps_managed_config_and_toml_tooling_support() {
     assert_eq!(envelope["command"], "config-surface.resolve");
     assert_eq!(envelope["status"], "ok");
 
-    let managed_config = config_dir.join("yazelix.toml");
+    let managed_config = config_dir.join("settings.jsonc");
     let managed_toml_tooling_config = config_dir.join(TOML_TOOLING_CONFIG_FILENAME);
     assert_eq!(
         envelope["data"]["config_file"],
         managed_config.to_string_lossy().to_string()
     );
-    assert_eq!(
-        fs::read_to_string(&managed_config).unwrap(),
-        fs::read_to_string(runtime_dir.join("yazelix_default.toml")).unwrap()
-    );
+    let managed_value = read_settings_jsonc_value(&managed_config).unwrap();
+    assert!(managed_value.get("core").is_some());
+    assert!(managed_value.get("cursors").is_some());
     assert_eq!(
         fs::read_to_string(&managed_toml_tooling_config).unwrap(),
         fs::read_to_string(runtime_dir.join(TOML_TOOLING_CONFIG_FILENAME)).unwrap()
@@ -668,7 +690,7 @@ fn runtime_materialization_materialize_writes_generated_artifacts_and_records_st
     let repo = repo_root();
     let tmp = tempdir().unwrap();
     let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
-    let request = runtime_materialization_request(&fixture);
+    let request = runtime_materialization_canonical_settings_request(&fixture);
     let output = runtime_materialization_command(&fixture, "runtime-materialization.materialize")
         .arg("--request-json")
         .arg(request.to_string())
@@ -736,7 +758,7 @@ fn runtime_materialization_repair_regenerates_missing_artifacts_end_to_end() {
     let repo = repo_root();
     let tmp = tempdir().unwrap();
     let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
-    let request = runtime_materialization_request(&fixture);
+    let request = runtime_materialization_canonical_settings_request(&fixture);
 
     let initial_output =
         runtime_materialization_command(&fixture, "runtime-materialization.materialize")
@@ -1291,7 +1313,7 @@ color = "#ffffff"
             .join("kitty.conf"),
     )
     .unwrap();
-    assert!(kitty_config.contains("# cursor_trail 0  # disabled by cursors.toml"));
+    assert!(kitty_config.contains("# cursor_trail 0  # disabled in settings.jsonc"));
 }
 
 // Defends: ghostty-materialization.generate can resolve config/runtime/state request roots from process env without Nu path assembly.
@@ -1501,6 +1523,7 @@ fn doctor_config_evaluate_reports_duplicate_config_surfaces() {
     let config_dir = tmp.path().join("config");
     let user_config_dir = config_dir.join("user_configs");
     fs::create_dir_all(&user_config_dir).unwrap();
+    fs::write(config_dir.join("settings.jsonc"), "{}\n").unwrap();
     fs::write(
         user_config_dir.join("yazelix.toml"),
         "[shell]\ndefault_shell = \"bash\"\n",
@@ -1530,7 +1553,8 @@ fn doctor_config_evaluate_reports_duplicate_config_surfaces() {
     );
     assert_eq!(envelope["data"]["findings"][0]["status"], "error");
     let details = envelope["data"]["findings"][0]["details"].as_str().unwrap();
-    assert!(details.contains("flat main:"));
+    assert!(details.contains("canonical settings:"));
+    assert!(details.contains("old flat main:"));
     assert!(details.contains("old nested main:"));
 }
 
@@ -1544,8 +1568,8 @@ fn doctor_config_evaluate_reports_stale_schema_warning() {
     let config_dir = tmp.path().join("config");
     fs::create_dir_all(&config_dir).unwrap();
     fs::write(
-        config_dir.join("yazelix.toml"),
-        "[editor]\nsidebar_width_percent = 99\n",
+        config_dir.join("settings.jsonc"),
+        "{ \"editor\": { \"sidebar_width_percent\": 99 } }\n",
     )
     .unwrap();
 
@@ -1562,12 +1586,12 @@ fn doctor_config_evaluate_reports_stale_schema_warning() {
     assert_eq!(envelope["command"], "doctor-config.evaluate");
     assert_eq!(
         envelope["data"]["findings"][0]["message"],
-        "Using custom yazelix.toml configuration"
+        "Using custom settings.jsonc configuration"
     );
     assert_eq!(envelope["data"]["findings"][1]["status"], "warning");
     assert_eq!(
         envelope["data"]["findings"][1]["message"],
-        "Stale or unsupported yazelix.toml entries detected (1 issues)"
+        "Stale or unsupported settings.jsonc entries detected (1 issues)"
     );
     assert_eq!(
         envelope["data"]["findings"][1]["config_diagnostic_report"]["issue_count"],
@@ -1583,16 +1607,16 @@ fn doctor_config_evaluate_reports_stale_schema_warning() {
     assert!(details.contains("Invalid config value at editor.sidebar_width_percent"));
 }
 
-// Regression: malformed TOML must stay on the validation-error path instead of being downgraded into the stale-schema warning row.
+// Regression: malformed JSONC must stay on the validation-error path instead of being downgraded into the stale-schema warning row.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
-fn doctor_config_evaluate_keeps_invalid_toml_as_error() {
+fn doctor_config_evaluate_keeps_invalid_jsonc_as_error() {
     let repo = repo_root();
     let tmp = tempdir().unwrap();
     let runtime_dir = prepare_doctor_config_runtime_fixture(&repo, &tmp);
     let config_dir = tmp.path().join("config");
     fs::create_dir_all(&config_dir).unwrap();
-    fs::write(config_dir.join("yazelix.toml"), "[editor\n").unwrap();
+    fs::write(config_dir.join("settings.jsonc"), "{ \"editor\": ").unwrap();
 
     let output = Command::cargo_bin("yzx_core")
         .unwrap()
@@ -1606,14 +1630,14 @@ fn doctor_config_evaluate_keeps_invalid_toml_as_error() {
     let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(
         envelope["data"]["findings"][1]["message"],
-        "Could not validate yazelix.toml against the current schema"
+        "Could not validate settings.jsonc against the current schema"
     );
     assert_eq!(envelope["data"]["findings"][1]["status"], "error");
     assert!(
         envelope["data"]["findings"][1]["details"]
             .as_str()
             .unwrap()
-            .contains("Could not parse Yazelix TOML input")
+            .contains("Could not parse Yazelix settings JSONC")
     );
 }
 

@@ -11,7 +11,7 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 ## Scope
 
 - Add `yzx popup`
-- Add `zellij.popup_program` to `yazelix.toml` / Home Manager
+- Add `zellij.popup_program` to `settings.jsonc` / Home Manager
 - Bind the configured popup to a dedicated key
 - Keep the command-palette popup as a separate flow
 - Reuse one shared floating-pane launch model for both popup surfaces

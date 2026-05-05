@@ -51,11 +51,11 @@ This file exists so current docs and current contracts can point at one authorit
 ### Config Surface
 
 - The canonical user config surface is `~/.config/yazelix/`.
-- The main config is `yazelix.toml`.
+- The main semantic settings file is `settings.jsonc`.
 - Managed override directories such as Zellij, Yazi, Helix, and shell user hooks remain part of that user-owned config surface.
 - The current trimmed branch does not have a `yazelix_packs.toml` sidecar and does not expose a first-class pack graph.
 - Legacy or removed config fields fail fast instead of degrading silently.
-- The current trimmed line does not ship a config-migration engine. Users moving from very old config shapes should compare with the current template manually or use `yzx reset config` as a blunt fresh-start path.
+- Old mutable `yazelix.toml` and `cursors.toml` inputs are auto-migrated only when conversion is unambiguous and safe; unsafe or stale old inputs hard-error with actionable diagnostics.
 
 ### Generated State
 

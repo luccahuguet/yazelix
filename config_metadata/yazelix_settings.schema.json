@@ -1,0 +1,217 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yazelix.com/schemas/yazelix_settings.schema.json",
+  "title": "Yazelix Settings",
+  "description": "Canonical Yazelix user settings surface. Main runtime settings use the same field contract as config_metadata/main_config_contract.toml; Ghostty cursor settings live under cursors.",
+  "type": "object",
+  "additionalProperties": false,
+  "x-yazelix": {
+    "canonical_file": "settings.jsonc",
+    "main_contract": "config_metadata/main_config_contract.toml",
+    "cursor_default_template": "yazelix_cursors_default.toml",
+    "tabs": [
+      "general",
+      "editor",
+      "terminal",
+      "zellij",
+      "yazi",
+      "cursors",
+      "advanced"
+    ]
+  },
+  "properties": {
+    "core": {
+      "type": "object",
+      "description": "General Yazelix runtime behavior and welcome screen settings",
+      "additionalProperties": true,
+      "x-yazelix": {
+        "tab": "general"
+      }
+    },
+    "helix": {
+      "type": "object",
+      "description": "Helix-specific runtime integration settings",
+      "additionalProperties": true,
+      "x-yazelix": {
+        "tab": "editor"
+      }
+    },
+    "editor": {
+      "type": "object",
+      "description": "Editor command, sidebar behavior, and editor integration settings",
+      "additionalProperties": true,
+      "x-yazelix": {
+        "tab": "editor"
+      }
+    },
+    "shell": {
+      "type": "object",
+      "description": "Default shell settings for Yazelix panes",
+      "additionalProperties": true,
+      "x-yazelix": {
+        "tab": "terminal"
+      }
+    },
+    "terminal": {
+      "type": "object",
+      "description": "Terminal emulator selection, transparency, and config mode settings",
+      "additionalProperties": true,
+      "x-yazelix": {
+        "tab": "terminal"
+      }
+    },
+    "zellij": {
+      "type": "object",
+      "description": "Zellij chrome, widgets, popup, and screen-saver settings",
+      "additionalProperties": true,
+      "x-yazelix": {
+        "tab": "zellij"
+      }
+    },
+    "yazi": {
+      "type": "object",
+      "description": "Yazi theme, plugin, sorting, and command settings",
+      "additionalProperties": true,
+      "x-yazelix": {
+        "tab": "yazi"
+      }
+    },
+    "cursors": {
+      "type": "object",
+      "description": "Ghostty cursor preset, effect, and cursor definition registry",
+      "required": [
+        "schema_version",
+        "enabled_cursors",
+        "settings",
+        "cursor"
+      ],
+      "additionalProperties": false,
+      "x-yazelix": {
+        "tab": "cursors"
+      },
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "enabled_cursors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "settings": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "trail": {
+              "type": "string"
+            },
+            "trail_effect": {
+              "type": "string",
+              "enum": [
+                "tail",
+                "warp",
+                "sweep",
+                "random",
+                "none"
+              ]
+            },
+            "mode_effect": {
+              "type": "string",
+              "enum": [
+                "ripple",
+                "sonic_boom",
+                "rectangle_boom",
+                "ripple_rectangle",
+                "random",
+                "none"
+              ]
+            },
+            "glow": {
+              "type": "string",
+              "enum": [
+                "none",
+                "low",
+                "medium",
+                "high"
+              ]
+            },
+            "duration": {
+              "type": "number",
+              "minimum": 0.25,
+              "maximum": 4.0
+            },
+            "kitty_enable_cursor": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "trail",
+            "trail_effect",
+            "mode_effect",
+            "glow",
+            "duration",
+            "kitty_enable_cursor"
+          ]
+        },
+        "cursor": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "family"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "family": {
+                "type": "string",
+                "enum": [
+                  "mono",
+                  "split",
+                  "curated_template"
+                ]
+              },
+              "color": {
+                "type": "string"
+              },
+              "accent_color": {
+                "type": "string"
+              },
+              "colors": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "divider": {
+                "type": "string",
+                "enum": [
+                  "vertical",
+                  "horizontal"
+                ]
+              },
+              "transition": {
+                "type": "string",
+                "enum": [
+                  "soft",
+                  "hard"
+                ]
+              },
+              "template": {
+                "type": "string"
+              },
+              "cursor_color": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    }
+  }
+}

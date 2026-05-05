@@ -17,7 +17,7 @@ It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij,
 **Important**: You don't need to learn Nix or Nushell to use Yazelix. Nix with flakes is the only real host prerequisite. The normal product surface is the `yazelix` package or the top-level Home Manager module.
 
 ## Supported Terminal Emulators
-Yazelix provides one packaged terminal runtime variant at a time. The default `#yazelix` package uses Ghostty so Yazelix cursor trails and Ghostty config effects are present on first run. WezTerm remains available through `#yazelix_wezterm` or `programs.yazelix.runtime_variant = "wezterm"` for users who prefer its image-preview behavior. Kitty, Alacritty, and Foot remain supported terminal choices, but you provide those binaries yourself and then list them in `terminals` in `yazelix.toml`.
+Yazelix provides one packaged terminal runtime variant at a time. The default `#yazelix` package uses Ghostty so Yazelix cursor trails and Ghostty config effects are present on first run. WezTerm remains available through `#yazelix_wezterm` or `programs.yazelix.runtime_variant = "wezterm"` for users who prefer its image-preview behavior. Kitty, Alacritty, and Foot remain supported terminal choices, but you provide those binaries yourself and then list them in `terminal.terminals` in `settings.jsonc`.
 
 See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed breakdown of strengths, gaps, and platform support.
 
@@ -163,10 +163,10 @@ Host prerequisite contract:
 
 ### Step 3: Configure Your Installation (Optional)
 
-If you launch before editing config, Yazelix will auto-create `yazelix.toml` from the shipped default. You can edit it anytime afterward:
+If you launch before editing config, Yazelix will auto-create `settings.jsonc` from the shipped defaults. You can edit it anytime afterward:
 
 ```bash
-hx ~/.config/yazelix/yazelix.toml
+hx ~/.config/yazelix/settings.jsonc
 ```
 
 #### Runtime Surface
@@ -369,7 +369,7 @@ Check installed tool versions: `yzx status --versions`
 Run diagnostics: `yzx doctor` - Automated health checks and fixes
 
 ### Customization
-If you followed step 5, you already have your `~/.config/yazelix/yazelix.toml` config file ready. You can modify it anytime and restart Yazelix to apply changes. See [yazelix_default.toml](../yazelix_default.toml) for main options and `~/.config/yazelix/cursors.toml` for Ghostty cursor presets and effects.
+If you followed step 5, you already have your `~/.config/yazelix/settings.jsonc` config file ready. You can modify it anytime and restart Yazelix to apply changes. Main options and Ghostty cursor presets live in that file.
 
 For complete customization options, see the [Customization Guide](./customization.md).
 

@@ -37,6 +37,7 @@ pub mod runtime_env;
 pub mod runtime_materialization;
 pub mod session_config_snapshot;
 pub mod session_facts;
+pub mod settings_surface;
 pub mod startup_facts;
 pub mod startup_handoff;
 pub mod status_report;

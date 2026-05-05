@@ -116,6 +116,7 @@ printf 'YAZELIX_RUNTIME_DIR=%s\n' "$YAZELIX_RUNTIME_DIR"
 fn yzx_control_config_path_bootstraps_missing_managed_config() {
     let fixture = managed_config_fixture("");
     fs::remove_file(&fixture.managed_config).unwrap();
+    let settings_path = fixture.config_dir.join("settings.jsonc");
 
     let output = yzx_control_command_in_fixture(&fixture)
         .arg("config")
@@ -124,15 +125,14 @@ fn yzx_control_config_path_bootstraps_missing_managed_config() {
         .unwrap();
 
     assert_eq!(output.status.code(), Some(0));
-    assert!(fixture.managed_config.is_file());
+    assert!(settings_path.is_file());
     assert_eq!(
         String::from_utf8(output.stdout).unwrap().trim(),
-        fixture.managed_config.to_string_lossy()
+        settings_path.to_string_lossy()
     );
 
     let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(stderr.contains("Creating yazelix.toml from yazelix_default.toml"));
-    assert!(stderr.contains("yazelix.toml created"));
+    assert!(stderr.is_empty());
 }
 
 // Defends: the public Rust-owned `yzx status --json` surface keeps the typed runtime summary instead of a wrapper-shaped blob.
@@ -163,7 +163,7 @@ terminals = ["ghostty"]
         summary["config_file"]
             .as_str()
             .unwrap()
-            .ends_with("yazelix.toml")
+            .ends_with("settings.jsonc")
     );
     assert_eq!(summary["default_shell"], "nu");
     assert_eq!(summary["terminals"], serde_json::json!(["ghostty"]));
@@ -305,7 +305,7 @@ terminals = ["ghostty"]
         report["config"]["file"]
             .as_str()
             .unwrap()
-            .ends_with("yazelix.toml")
+            .ends_with("settings.jsonc")
     );
     assert_eq!(
         report["config"]["session_config_snapshot"]["status"],
@@ -485,11 +485,16 @@ fn yzx_control_update_upstream_rejects_home_manager_owned_install() {
         .home_dir
         .join("hm-store")
         .join("abc-home-manager-files")
-        .join("yazelix.toml");
+        .join("settings.jsonc");
     fs::create_dir_all(hm_store_config.parent().unwrap()).unwrap();
-    fs::write(&hm_store_config, "[core]\nwelcome_style = \"random\"\n").unwrap();
+    fs::write(
+        &hm_store_config,
+        "{\"core\":{\"welcome_style\":\"random\"}}\n",
+    )
+    .unwrap();
     fs::remove_file(&fixture.managed_config).unwrap();
-    std::os::unix::fs::symlink(&hm_store_config, &fixture.managed_config).unwrap();
+    std::os::unix::fs::symlink(&hm_store_config, fixture.config_dir.join("settings.jsonc"))
+        .unwrap();
 
     let output = yzx_control_command_in_fixture(&fixture)
         .env("PATH", prepend_path(&fake_bin))

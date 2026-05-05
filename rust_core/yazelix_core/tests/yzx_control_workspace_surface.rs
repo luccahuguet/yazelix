@@ -1051,9 +1051,17 @@ hide_sidebar_on_file_open = true
 #[test]
 fn yzx_control_doctor_json_reports_structured_findings() {
     let fixture = managed_config_fixture("");
+    fs::remove_file(&fixture.managed_config).unwrap();
+    let settings_path = fixture.config_dir.join("settings.jsonc");
     fs::write(
-        &fixture.managed_config,
-        "[core]\nstale_field = true\nwelcome_style = \"random\"\n",
+        &settings_path,
+        r#"{
+  "core": {
+    "stale_field": true,
+    "welcome_style": "random"
+  }
+}
+"#,
     )
     .unwrap();
 
@@ -1074,7 +1082,7 @@ fn yzx_control_doctor_json_reports_structured_findings() {
             result["message"]
                 .as_str()
                 .unwrap_or("")
-                .contains("Stale or unsupported yazelix.toml entries detected")
+                .contains("Stale or unsupported settings.jsonc entries detected")
         })
         .expect("stale config result");
 
@@ -1097,18 +1105,23 @@ fn yzx_control_doctor_json_reports_home_manager_profile_collision() {
         .home_dir
         .join("hm-store")
         .join("abc-home-manager-files")
-        .join("yazelix.toml");
+        .join("settings.jsonc");
     let manifest_path = fixture.home_dir.join(".nix-profile").join("manifest.json");
     fs::create_dir_all(hm_store_config.parent().unwrap()).unwrap();
     fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
-    fs::write(&hm_store_config, "[core]\nwelcome_style = \"random\"\n").unwrap();
+    fs::write(
+        &hm_store_config,
+        "{\"core\":{\"welcome_style\":\"random\"}}\n",
+    )
+    .unwrap();
     fs::write(
         &manifest_path,
         r#"{"elements":{"yazelix":{"active":true,"storePaths":["/nix/store/test-yazelix"]}},"version":3}"#,
     )
     .unwrap();
     fs::remove_file(&fixture.managed_config).unwrap();
-    std::os::unix::fs::symlink(&hm_store_config, &fixture.managed_config).unwrap();
+    std::os::unix::fs::symlink(&hm_store_config, fixture.config_dir.join("settings.jsonc"))
+        .unwrap();
 
     let output = yzx_control_command_in_fixture(&fixture)
         .arg("doctor")
@@ -1149,18 +1162,23 @@ fn yzx_control_doctor_fix_plan_json_reports_recovery_commands() {
         .home_dir
         .join("hm-store")
         .join("abc-home-manager-files")
-        .join("yazelix.toml");
+        .join("settings.jsonc");
     let manifest_path = fixture.home_dir.join(".nix-profile").join("manifest.json");
     fs::create_dir_all(hm_store_config.parent().unwrap()).unwrap();
     fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
-    fs::write(&hm_store_config, "[core]\nwelcome_style = \"random\"\n").unwrap();
+    fs::write(
+        &hm_store_config,
+        "{\"core\":{\"welcome_style\":\"random\"}}\n",
+    )
+    .unwrap();
     fs::write(
         &manifest_path,
         r#"{"elements":{"yazelix":{"active":true,"storePaths":["/nix/store/test-yazelix"]}},"version":3}"#,
     )
     .unwrap();
     fs::remove_file(&fixture.managed_config).unwrap();
-    std::os::unix::fs::symlink(&hm_store_config, &fixture.managed_config).unwrap();
+    std::os::unix::fs::symlink(&hm_store_config, fixture.config_dir.join("settings.jsonc"))
+        .unwrap();
 
     let output = yzx_control_command_in_fixture(&fixture)
         .arg("doctor")

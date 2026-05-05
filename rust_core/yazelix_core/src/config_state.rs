@@ -1,5 +1,6 @@
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
+use crate::settings_surface::read_config_table;
 use serde::Serialize;
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use sha2::{Digest, Sha256};
@@ -63,7 +64,7 @@ pub fn compute_config_state(
         contract_path: request.contract_path.clone(),
         include_missing: false,
     })?;
-    let raw_config = read_toml_table(&request.config_path, "read_config")?;
+    let raw_config = read_config_table(&request.config_path, "read_config")?;
     let contract = read_toml_table(&request.contract_path, "read_config_contract")?;
     let rebuild_paths = load_rebuild_required_paths(&contract);
     let rebuild_config = extract_rebuild_config(&raw_config, &rebuild_paths);

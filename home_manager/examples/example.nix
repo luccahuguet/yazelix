@@ -3,14 +3,14 @@
 #
 # For complete option reference, see:
 #   - home_manager/module.nix (complete option definitions)
-#   - yazelix_default.toml (TOML structure with detailed comments)
+#   - settings.jsonc (generated canonical settings file)
 
 { config, pkgs, ... }:
 
 {
   programs.yazelix = {
     enable = true;
-    manage_config = true; # Opt into declarative Home Manager ownership of yazelix.toml for this example
+    manage_config = true; # Opt into declarative Home Manager ownership of settings.jsonc for this example
     runtime_variant = "ghostty"; # Optional: "ghostty" or "wezterm"
 
     # Shell entry
@@ -22,7 +22,7 @@
       "wezterm"
     ];
     terminal_config_mode = "yazelix"; # Optional: "yazelix" or "user"
-    # Ghostty cursor presets and effects live in ~/.config/yazelix/cursors.toml
+    # Ghostty cursor presets and effects live in ~/.config/yazelix/settings.jsonc under cursors
     transparency = "medium"; # Optional: "none".."super_high"
 
     # Editor configuration

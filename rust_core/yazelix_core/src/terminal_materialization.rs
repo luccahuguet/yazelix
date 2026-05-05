@@ -119,7 +119,7 @@ config.color_scheme = '{}'
 -- Hide tab bar (Zellij handles tabs)
 config.enable_tab_bar = false
 
--- Transparency (configurable via yazelix.toml)
+-- Transparency (configurable via settings.jsonc)
 {}
 
 -- Cursor trails: Not supported in WezTerm
@@ -134,7 +134,7 @@ fn build_kitty_cursor(kitty_enable_cursor: bool) -> String {
     if kitty_enable_cursor {
         "cursor_shape block\ncursor_trail 3\ncursor_trail_decay 0.1 0.4".to_string()
     } else {
-        "# cursor_trail 0  # disabled by cursors.toml".to_string()
+        "# cursor_trail 0  # disabled in settings.jsonc".to_string()
     }
 }
 
@@ -167,7 +167,7 @@ window_padding_width 2
 include {}.conf
 window_title {}
 
-# Transparency (configurable via yazelix.toml)
+# Transparency (configurable via settings.jsonc)
 {}
 
 # Font settings
@@ -181,7 +181,7 @@ repaint_delay 10
 input_delay 3
 sync_to_monitor yes
 
-# Cursor trail effect (configurable via cursors.toml)
+# Cursor trail effect (configurable via settings.jsonc)
 {}
 
 # Personal Yazelix Kitty overrides
@@ -208,7 +208,7 @@ padding = {{ x = 0, y = 10 }}
 class = {{ instance = "{}", general = "{}" }}
 title = "{}"
 
-# Transparency (configurable via yazelix.toml)
+# Transparency (configurable via settings.jsonc)
 {}
 
 # Cursor trails: Not supported in Alacritty
@@ -291,7 +291,7 @@ include={}
         r##"# Foot configuration for Yazelix
 
 [colors-dark]
-# Transparency (configurable via yazelix.toml)
+# Transparency (configurable via settings.jsonc)
 {}
 
 [main]

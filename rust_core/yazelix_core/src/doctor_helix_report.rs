@@ -21,7 +21,7 @@ pub struct HelixDoctorEvaluateRequest {
     #[serde(default)]
     pub hx_exe_path: Option<PathBuf>,
     pub include_runtime_health: bool,
-    /// When `None`, managed Helix integration checks are skipped (e.g. yazelix.toml could not be parsed).
+    /// When `None`, managed Helix integration checks are skipped (e.g. settings.jsonc could not be parsed).
     #[serde(default)]
     pub editor_command: Option<String>,
     pub managed_helix_user_config_path: PathBuf,

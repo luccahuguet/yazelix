@@ -1,8 +1,10 @@
 //! Resolve active Yazelix config paths for control-plane commands (Rust-only path).
 
 use crate::bridge::{CoreError, ErrorClass};
-use crate::ghostty_cursor_registry::{CursorRegistry, DEFAULT_CURSOR_CONFIG_FILENAME};
-use crate::user_config_paths;
+use crate::ghostty_cursor_registry::DEFAULT_CURSOR_CONFIG_FILENAME;
+use crate::settings_surface::{
+    ensure_settings_config, settings_schema_path, settings_surface_paths,
+};
 use serde::Serialize;
 use serde_json::json;
 use std::fs;
@@ -22,6 +24,7 @@ pub struct ActiveConfigPaths {
     pub default_config_path: PathBuf,
     pub default_cursor_config_path: PathBuf,
     pub contract_path: PathBuf,
+    pub settings_schema_path: PathBuf,
 }
 
 #[derive(Debug, Clone)]
@@ -30,9 +33,11 @@ pub struct PrimaryConfigPaths {
     pub user_config: PathBuf,
     pub user_cursor_config: PathBuf,
     pub legacy_user_config: PathBuf,
+    pub old_flat_user_config: PathBuf,
     pub default_config_path: PathBuf,
     pub default_cursor_config_path: PathBuf,
     pub contract_path: PathBuf,
+    pub settings_schema_path: PathBuf,
     pub runtime_toml_tooling_config: PathBuf,
     pub managed_toml_tooling_config: PathBuf,
 }
@@ -49,14 +54,17 @@ fn io_err(path: &Path, source: io::Error) -> CoreError {
 
 pub fn primary_config_paths(runtime_dir: &Path, config_dir: &Path) -> PrimaryConfigPaths {
     let user_config_dir = config_dir.to_path_buf();
-    let user_config = user_config_paths::main_config(config_dir);
-    let user_cursor_config = CursorRegistry::user_config_path(config_dir);
-    let legacy_user_config = user_config_paths::legacy_main_config(config_dir);
+    let settings_paths = settings_surface_paths(config_dir);
+    let user_config = settings_paths.settings_config;
+    let user_cursor_config = user_config.clone();
+    let old_flat_user_config = settings_paths.old_main_config;
+    let legacy_user_config = settings_paths.old_nested_main_config;
     let default_config_path = runtime_dir.join("yazelix_default.toml");
     let default_cursor_config_path = runtime_dir.join(DEFAULT_CURSOR_CONFIG_FILENAME);
     let contract_path = runtime_dir
         .join("config_metadata")
         .join("main_config_contract.toml");
+    let settings_schema_path = settings_schema_path(runtime_dir);
     let runtime_toml_tooling_config = runtime_dir.join(TOML_TOOLING_CONFIG_FILENAME);
     let managed_toml_tooling_config = config_dir.join(TOML_TOOLING_CONFIG_FILENAME);
 
@@ -65,37 +73,29 @@ pub fn primary_config_paths(runtime_dir: &Path, config_dir: &Path) -> PrimaryCon
         user_config,
         user_cursor_config,
         legacy_user_config,
+        old_flat_user_config,
         default_config_path,
         default_cursor_config_path,
         contract_path,
+        settings_schema_path,
         runtime_toml_tooling_config,
         managed_toml_tooling_config,
     }
 }
 
 pub fn validate_primary_config_surface(paths: &PrimaryConfigPaths) -> Result<(), CoreError> {
-    if paths.user_config.exists() && paths.legacy_user_config.exists() {
+    if paths.user_config.exists()
+        && (paths.old_flat_user_config.exists() || paths.legacy_user_config.exists())
+    {
         return Err(CoreError::classified(
             ErrorClass::Config,
-            "duplicate_config_surfaces",
-            "Yazelix found duplicate main config surfaces in both the flat config root and old user_configs path.",
-            "Keep only the flat ~/.config/yazelix/yazelix.toml file. Move or delete the old user_configs/yazelix.toml file so Yazelix has one clear config owner.",
+            "stale_old_settings_input",
+            "Yazelix found old settings input next to canonical settings.jsonc.",
+            "Move the old TOML config aside after confirming settings.jsonc contains the migrated values, then retry.",
             json!({
                 "user_config": paths.user_config.display().to_string(),
+                "old_flat_user_config": paths.old_flat_user_config.display().to_string(),
                 "legacy_user_config": paths.legacy_user_config.display().to_string(),
-            }),
-        ));
-    }
-
-    if paths.legacy_user_config.exists() && !paths.user_config.exists() {
-        return Err(CoreError::classified(
-            ErrorClass::Config,
-            "legacy_nested_config_surface",
-            "Yazelix found an old nested main config surface.",
-            "Let Yazelix launch once to auto-migrate a regular file, or move it manually to ~/.config/yazelix/yazelix.toml. Home Manager symlinks must be updated through Home Manager.",
-            json!({
-                "legacy_main": paths.legacy_user_config.display().to_string(),
-                "current_main": paths.user_config.display().to_string(),
             }),
         ));
     }
@@ -111,41 +111,25 @@ pub fn resolve_active_config_paths(
 ) -> Result<ActiveConfigPaths, CoreError> {
     let paths = primary_config_paths(runtime_dir, config_dir);
 
-    user_config_paths::resolve_flat_config_file(
-        &paths.user_config,
-        &paths.legacy_user_config,
-        "main Yazelix",
+    ensure_settings_config(
+        &paths.user_config_dir,
+        &paths.default_config_path,
+        &paths.default_cursor_config_path,
     )?;
     ensure_managed_toml_tooling_config(
         &paths.runtime_toml_tooling_config,
         &paths.managed_toml_tooling_config,
     )?;
-    ensure_user_cursor_config(&paths.default_cursor_config_path, &paths.user_cursor_config)?;
 
     let config_file = match config_override {
         Some(raw) if !raw.trim().is_empty() => PathBuf::from(raw.trim()),
         _ if paths.user_config.exists() => paths.user_config.clone(),
-        _ if paths.default_config_path.exists() => {
-            eprintln!("📝 Creating yazelix.toml from yazelix_default.toml...");
-            fs::create_dir_all(&paths.user_config_dir)
-                .map_err(|e| io_err(&paths.user_config_dir, e))?;
-            fs::copy(&paths.default_config_path, &paths.user_config)
-                .map_err(|e| io_err(&paths.user_config, e))?;
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::PermissionsExt;
-                let mode = fs::Permissions::from_mode(0o644);
-                let _ = fs::set_permissions(&paths.user_config, mode);
-            }
-            eprintln!("✅ yazelix.toml created\n");
-            paths.user_config.clone()
-        }
         _ => {
             return Err(CoreError::classified(
                 ErrorClass::Config,
                 "missing_default_config",
-                "No yazelix configuration file found.",
-                "Restore yazelix_default.toml, or reinstall Yazelix if the default config is missing from the runtime.",
+                "No Yazelix settings file found.",
+                "Restore settings.jsonc with `yzx reset config`, or reinstall Yazelix if the shipped defaults are missing from the runtime.",
                 json!({}),
             ));
         }
@@ -174,47 +158,8 @@ pub fn resolve_active_config_paths(
         default_config_path: paths.default_config_path,
         default_cursor_config_path: paths.default_cursor_config_path,
         contract_path: paths.contract_path,
+        settings_schema_path: paths.settings_schema_path,
     })
-}
-
-fn ensure_user_cursor_config(runtime_src: &Path, managed: &Path) -> Result<(), CoreError> {
-    if let Some(config_dir) = managed.parent() {
-        user_config_paths::resolve_flat_config_file(
-            managed,
-            &user_config_paths::legacy_cursor_config(config_dir),
-            "Yazelix cursor registry",
-        )?;
-    }
-
-    if !runtime_src.exists() {
-        return Err(CoreError::classified(
-            ErrorClass::Config,
-            "missing_default_cursor_config",
-            format!(
-                "Yazelix runtime is missing the default cursor registry at {}.",
-                runtime_src.display()
-            ),
-            "Reinstall Yazelix so the runtime includes yazelix_cursors_default.toml.",
-            json!({ "path": runtime_src.display().to_string() }),
-        ));
-    }
-
-    if managed.exists() {
-        return Ok(());
-    }
-
-    if let Some(parent) = managed.parent() {
-        fs::create_dir_all(parent).map_err(|e| io_err(parent, e))?;
-    }
-    fs::copy(runtime_src, managed).map_err(|e| io_err(managed, e))?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mode = fs::Permissions::from_mode(0o644);
-        let _ = fs::set_permissions(managed, mode);
-    }
-
-    Ok(())
 }
 
 pub fn ensure_managed_toml_tooling_config(
@@ -294,7 +239,7 @@ mod tests {
         .expect("write TOML tooling config");
     }
 
-    // Defends: Rust active-config-surface resolution bootstraps the managed main config and TOML tooling support when the canonical surface is missing.
+    // Defends: Rust active-config-surface resolution bootstraps settings.jsonc and TOML tooling support when the canonical surface is missing.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn bootstraps_missing_managed_config_and_toml_tooling_support() {
@@ -304,58 +249,44 @@ mod tests {
 
         let resolved = resolve_active_config_paths(runtime.path(), config.path(), None).unwrap();
 
-        assert_eq!(resolved.user_config, config.path().join("yazelix.toml"));
+        assert_eq!(resolved.user_config, config.path().join("settings.jsonc"));
         assert_eq!(resolved.config_file, resolved.user_config);
-        assert_eq!(
-            fs::read_to_string(&resolved.config_file).unwrap(),
-            fs::read_to_string(runtime.path().join("yazelix_default.toml")).unwrap()
-        );
+        let rendered = fs::read_to_string(&resolved.config_file).unwrap();
+        assert!(rendered.contains("\"core\""));
+        assert!(rendered.contains("\"cursors\""));
         assert_eq!(
             fs::read_to_string(&resolved.managed_toml_tooling_config).unwrap(),
             fs::read_to_string(runtime.path().join(TOML_TOOLING_CONFIG_FILENAME)).unwrap()
         );
-        assert_eq!(
-            fs::read_to_string(&resolved.user_cursor_config).unwrap(),
-            fs::read_to_string(runtime.path().join(DEFAULT_CURSOR_CONFIG_FILENAME)).unwrap()
-        );
+        assert_eq!(resolved.user_cursor_config, resolved.user_config);
     }
 
-    // Defends: Rust active-config-surface resolution rejects duplicate canonical and legacy managed config surfaces instead of guessing.
+    // Defends: Rust active-config-surface resolution rejects stale old-format inputs when settings.jsonc already exists.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn rejects_duplicate_canonical_and_legacy_surfaces() {
+    fn rejects_settings_jsonc_with_old_inputs() {
         let runtime = tempdir().expect("runtime dir");
         let config = tempdir().expect("config dir");
         write_runtime_layout(runtime.path());
 
-        let user_config_dir = config.path().join("user_configs");
-        fs::create_dir_all(&user_config_dir).expect("user config dir");
-        fs::write(
-            config.path().join("yazelix.toml"),
-            "[core]\nwelcome_style = \"minimal\"\n",
-        )
-        .expect("write canonical config");
-        fs::write(
-            user_config_dir.join("yazelix.toml"),
-            "[core]\nwelcome_style = \"random\"\n",
-        )
-        .expect("write legacy config");
+        fs::write(config.path().join("settings.jsonc"), "{}").expect("write settings config");
+        fs::write(config.path().join("yazelix.toml"), "[core]\n").expect("write old config");
 
         let error = resolve_active_config_paths(runtime.path(), config.path(), None).unwrap_err();
-        assert_eq!(error.code(), "duplicate_flat_config_surface");
+        assert_eq!(error.code(), "stale_old_settings_input");
     }
 
-    // Defends: old-only regular main configs are migrated to the accepted flat path before launch uses them.
+    // Defends: old-only regular main configs are migrated to settings.jsonc before launch uses them.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn migrates_old_only_regular_main_config_to_flat_path() {
+    fn migrates_old_only_regular_main_config_to_settings_jsonc() {
         let runtime = tempdir().expect("runtime dir");
         let config = tempdir().expect("config dir");
         write_runtime_layout(runtime.path());
 
         let user_config_dir = config.path().join("user_configs");
         let legacy_config = user_config_dir.join("yazelix.toml");
-        let current_config = config.path().join("yazelix.toml");
+        let current_config = config.path().join("settings.jsonc");
         fs::create_dir_all(&user_config_dir).expect("user config dir");
         fs::write(&legacy_config, "[core]\nwelcome_style = \"minimal\"\n")
             .expect("write legacy config");
@@ -363,9 +294,10 @@ mod tests {
         let resolved = resolve_active_config_paths(runtime.path(), config.path(), None).unwrap();
 
         assert_eq!(resolved.user_config, current_config);
-        assert_eq!(
-            fs::read_to_string(&resolved.user_config).unwrap(),
-            "[core]\nwelcome_style = \"minimal\"\n"
+        assert!(
+            fs::read_to_string(&resolved.user_config)
+                .unwrap()
+                .contains("\"welcome_style\": \"minimal\"")
         );
         assert!(!legacy_config.exists());
     }
@@ -392,7 +324,7 @@ mod tests {
         let error = resolve_active_config_paths(runtime.path(), config.path(), None).unwrap_err();
         assert_eq!(
             error.code(),
-            "legacy_config_symlink_requires_manual_migration"
+            "old_settings_symlink_requires_manual_migration"
         );
     }
 }

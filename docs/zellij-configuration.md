@@ -21,10 +21,10 @@ yzx import zellij
 The merger prefers your **Yazelix-managed Zellij config** when present, then falls back to your native Zellij config, then forcibly layers Yazelix requirements on top:
 
 1. **User config**: `~/.config/yazelix/zellij.kdl` (if it exists). If missing, Yazelix reads `~/.config/zellij/config.kdl` as a read-only fallback. If neither exists, Yazelix falls back to `zellij setup --dump-config`.
-2. **Dynamic Yazelix settings**: Generated from `yazelix.toml` (e.g., rounded corners) and appended after the user config so they win.
+2. **Dynamic Yazelix settings**: Generated from `settings.jsonc` (e.g., rounded corners) and appended after the user config so they win.
 3. **Enforced Yazelix settings**: Always appended last to guarantee required behavior:
    - `pane_frames false` (needed for `zjstatus`)
-   - `support_kitty_keyboard_protocol` set from `yazelix.toml` (default: false)
+   - `support_kitty_keyboard_protocol` set from `settings.jsonc` (default: false)
    - `on_force_close` set to `quit` so closed windows do not leave detached Yazelix sessions behind
    - `default_layout` set to Yazelix’s layout file (absolute path)
    - `layout_dir` set to Yazelix’s generated layouts directory
@@ -48,27 +48,26 @@ mouse_mode false
 simplified_ui true
 ```
 
-**Zjstatus widget tray (yazelix.toml):**
-```toml
-[zellij]
-widget_tray = [
-  "editor",  # Active editor
-  "shell",   # Active shell
-  "term",    # Terminal emulator
-  "cursor",  # Active Ghostty cursor preset (colored █ name, n/a outside Yazelix Ghostty)
-  # "workspace", # Workspace root
-  # "claude_usage", # Combined Claude 5h/week usage and quota
-  "codex_usage", # Codex 5h/week reset timing and quota
-  # "opencode_go_usage", # Combined OpenCode Go 5h/week/month usage and quota
-  "cpu",     # CPU usage
-  "ram",     # RAM usage
-]
-
-claude_usage_display = "both" # "token", "quota", or "both"
-codex_usage_display = "quota" # "token", "quota", or "both"
-opencode_go_usage_display = "both" # "token", "quota", or "both"
-opencode_go_usage_periods = ["5h", "week", "month"]
-claude_usage_periods = ["5h", "week"]
+**Zjstatus widget tray (`settings.jsonc`):**
+```jsonc
+{
+  "zellij": {
+    "widget_tray": [
+      "editor",
+      "shell",
+      "term",
+      "cursor",
+      "codex_usage",
+      "cpu",
+      "ram"
+    ],
+    "claude_usage_display": "both",
+    "codex_usage_display": "quota",
+    "opencode_go_usage_display": "both",
+    "opencode_go_usage_periods": ["5h", "week", "month"],
+    "claude_usage_periods": ["5h", "week"]
+  }
+}
 ```
 Comment out any line to hide that widget. Order matters. Restart Yazelix to regenerate layouts.
 
@@ -76,12 +75,15 @@ Comment out any line to hide that widget. Order matters. Restart Yazelix to rege
 
 The Codex usage widget includes quota-window position and official quota percentages by default, for example `[codex 2h20m/5h 49% · 4d5h/7d 80%]`; with `codex_usage_display = "both"` it also shows token totals as `[codex 2h20m/5h 138M 49% · 4d5h/7d 1.34B 80%]`. The Claude usage widget combines local token totals with official quota percentages, for example `[claude 5h|15.5M|75% wk|66.6M|65%]`. The OpenCode Go widget reads OpenCode's local SQLite database directly and renders the compact 5h/week/month shape with the `go` label. Claude and Codex widgets use `tu` from tokenusage. Standalone flake users can install `.#yazelix_agent_tools`; Home Manager users can set `programs.yazelix.agent_usage_programs = [ "tokenusage" ]`.
 
-**Idle screen saver (yazelix.toml):**
-```toml
-[zellij]
-screen_saver_enabled = false
-screen_saver_idle_seconds = 300
-screen_saver_style = "random"
+**Idle screen saver (`settings.jsonc`):**
+```jsonc
+{
+  "zellij": {
+    "screen_saver_enabled": false,
+    "screen_saver_idle_seconds": 300,
+    "screen_saver_style": "random"
+  }
+}
 ```
 When enabled, the pane orchestrator opens `yzx screen` after the configured idle threshold. The screen uses the same renderer and styles as the manual `yzx screen` command.
 
@@ -102,7 +104,7 @@ scroll_buffer_size 50000
 ```kdl
 ui {
     pane_frames {
-        rounded_corners true  # Yazelix may override via yazelix.toml
+        rounded_corners true  # Yazelix may override via settings.jsonc
     }
 }
 ```

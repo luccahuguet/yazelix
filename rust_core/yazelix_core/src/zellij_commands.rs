@@ -4051,7 +4051,7 @@ fn resolve_runtime_editor_launch() -> Result<(serde_json::Map<String, Value>, St
                 ErrorClass::Config,
                 "editor_command_missing",
                 "EDITOR is not configured for the Yazelix runtime.",
-                "Set [editor].command in yazelix.toml or export EDITOR before running this command.",
+                "Set editor.command in settings.jsonc or export EDITOR before running this command.",
                 json!({}),
             )
         })?

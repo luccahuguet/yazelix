@@ -2,6 +2,7 @@
 //! Data-driven Yazelix cursor registry for Ghostty shader materialization.
 
 use crate::bridge::{CoreError, ErrorClass};
+use crate::settings_surface::{is_settings_config_path, read_settings_jsonc_value};
 use crate::user_config_paths;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -11,7 +12,6 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub const DEFAULT_CURSOR_CONFIG_FILENAME: &str = "yazelix_cursors_default.toml";
-pub const USER_CURSOR_CONFIG_FILENAME: &str = user_config_paths::CURSOR_CONFIG;
 pub const DEFAULT_GHOSTTY_TRAIL_DURATION: f64 = 1.0;
 pub const GHOSTTY_TRAIL_DURATION_MIN: f64 = 0.25;
 pub const GHOSTTY_TRAIL_DURATION_MAX: f64 = 4.0;
@@ -128,11 +128,15 @@ struct RawCursorDefinition {
 
 impl CursorRegistry {
     pub fn load(path: &Path) -> Result<Self, CoreError> {
+        if is_settings_config_path(path) {
+            return CursorRegistry::load_from_settings_jsonc(path);
+        }
+
         let raw = fs::read_to_string(path).map_err(|source| {
             CoreError::io(
                 "read_cursor_config",
                 "Could not read Yazelix cursor config",
-                "Restore cursors.toml from yazelix_cursors_default.toml, then retry.",
+                "Run `yzx reset cursor --yes`, then retry.",
                 path.to_string_lossy(),
                 source,
             )
@@ -140,12 +144,41 @@ impl CursorRegistry {
         CursorRegistry::parse_str(path, &raw)
     }
 
+    pub fn load_from_settings_jsonc(path: &Path) -> Result<Self, CoreError> {
+        let value = read_settings_jsonc_value(path)?;
+        let Some(cursors) = value.get("cursors").cloned() else {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "missing_cursor_settings",
+                "Yazelix settings.jsonc is missing its cursors section.",
+                "Run `yzx reset cursor --yes` or restore settings.jsonc from the shipped defaults.",
+                json!({ "path": path.display().to_string() }),
+            ));
+        };
+        let parsed = serde_json::from_value::<RawCursorRegistry>(cursors).map_err(|source| {
+            CoreError::classified(
+                ErrorClass::Config,
+                "invalid_cursor_settings_jsonc",
+                format!(
+                    "Could not parse Yazelix cursor settings in {}.",
+                    path.display()
+                ),
+                "Fix the cursors object in settings.jsonc or run `yzx reset cursor --yes`.",
+                json!({
+                    "path": path.display().to_string(),
+                    "error": source.to_string(),
+                }),
+            )
+        })?;
+        CursorRegistry::from_raw(path, parsed)
+    }
+
     pub fn parse_str(path: &Path, raw: &str) -> Result<Self, CoreError> {
         let parsed = toml::from_str::<RawCursorRegistry>(&raw).map_err(|source| {
             CoreError::toml(
                 "invalid_cursor_config_toml",
                 "Could not parse Yazelix cursor config",
-                "Fix ~/.config/yazelix/cursors.toml or restore it from yazelix_cursors_default.toml.",
+                "Fix the cursor settings or run `yzx reset cursor --yes`.",
                 path.to_string_lossy(),
                 source,
             )
@@ -154,7 +187,7 @@ impl CursorRegistry {
     }
 
     pub fn user_config_path(config_dir: &Path) -> PathBuf {
-        user_config_paths::cursor_config(config_dir)
+        user_config_paths::main_config(config_dir)
     }
 
     pub fn default_config_path(runtime_dir: &Path) -> PathBuf {
@@ -385,7 +418,7 @@ fn validate_definition(
         return Err(invalid_cursor_config(
             path,
             "cursor.name",
-            format!("Cursor '{name}' is not supported. Remove it from cursors.toml."),
+            format!("Cursor '{name}' is not supported. Remove it from settings.jsonc."),
         ));
     }
 
@@ -848,7 +881,7 @@ fn invalid_cursor_config(path: &Path, field: &str, detail: String) -> CoreError 
         ErrorClass::Config,
         "invalid_cursor_config",
         format!("Invalid Yazelix cursor config at {field}."),
-        "Update ~/.config/yazelix/cursors.toml, then retry.",
+        "Update ~/.config/yazelix/settings.jsonc under cursors, then retry.",
         json!({
             "path": path.display().to_string(),
             "field": field,
@@ -865,7 +898,7 @@ mod tests {
 
     fn write_registry(raw: &str) -> (TempDir, PathBuf) {
         let temp = tempdir().unwrap();
-        let path = temp.path().join(USER_CURSOR_CONFIG_FILENAME);
+        let path = temp.path().join(user_config_paths::CURSOR_CONFIG);
         fs::write(&path, raw).unwrap();
         (temp, path)
     }

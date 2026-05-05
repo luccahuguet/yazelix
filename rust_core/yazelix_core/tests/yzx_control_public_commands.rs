@@ -95,12 +95,12 @@ fn yzx_restart_help_prints_usage_without_restarting() {
     }
 }
 
-// Defends: `yzx edit cursors --print` resolves the user-owned Ghostty cursor sidecar without launching an editor.
+// Defends: `yzx edit cursors --print` resolves the canonical settings file without launching an editor.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_edit_cursors_prints_cursor_sidecar_path() {
     let fixture = managed_config_fixture("");
-    let expected_path = fixture.config_dir.join("cursors.toml");
+    let expected_path = fixture.config_dir.join("settings.jsonc");
     let mut command = yzx_control_command();
     apply_managed_config_env(&mut command, &fixture)
         .arg("edit")
@@ -113,12 +113,12 @@ fn yzx_control_edit_cursors_prints_cursor_sidecar_path() {
     assert!(expected_path.exists());
 }
 
-// Defends: `yzx cursors` exposes resolved cursor colors and split shape names without requiring users to inspect generated shaders.
+// Defends: `yzx cursors` exposes resolved cursor colors and split shape names from canonical settings without requiring users to inspect generated shaders.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_cursors_prints_resolved_color_surface() {
     let fixture = managed_config_fixture("");
-    let expected_path = fixture.config_dir.join("cursors.toml");
+    let expected_path = fixture.config_dir.join("settings.jsonc");
     let mut command = yzx_control_command();
     apply_managed_config_env(&mut command, &fixture).arg("cursors");
 
@@ -133,30 +133,37 @@ fn yzx_control_cursors_prints_resolved_color_surface() {
     assert!(expected_path.exists());
 }
 
-// Defends: `yzx reset cursor` is the explicit recovery path for stale cursor sidecars instead of compatibility-migrating old cursor schemas.
+// Defends: `yzx reset cursor` is the explicit recovery path for stale cursor settings instead of compatibility-migrating old cursor schemas.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_reset_cursor_replaces_stale_cursor_sidecar() {
     let fixture = managed_config_fixture("");
-    let cursor_path = fixture.config_dir.join("cursors.toml");
+    let settings_path = fixture.config_dir.join("settings.jsonc");
+    let _ = fs::remove_file(&fixture.managed_config);
     fs::write(
-        &cursor_path,
+        &settings_path,
         r##"
-schema_version = 1
-enabled_cursors = ["blaze", "inferno"]
-
-[settings]
-trail = "inferno"
-trail_effect = "random"
-mode_effect = "random"
-glow = "medium"
-duration = 1.0
-kitty_enable_cursor = true
-
-[[cursor]]
-name = "blaze"
-family = "simple_dual"
-colors = ["#ffb929", "#ff0000"]
+{
+  "cursors": {
+    "schema_version": 1,
+    "enabled_cursors": ["blaze", "inferno"],
+    "settings": {
+      "trail": "inferno",
+      "trail_effect": "random",
+      "mode_effect": "random",
+      "glow": "medium",
+      "duration": 1.0,
+      "kitty_enable_cursor": true
+    },
+    "cursor": [
+      {
+        "name": "blaze",
+        "family": "simple_dual",
+        "colors": ["#ffb929", "#ff0000"]
+      }
+    ]
+  }
+}
 "##,
     )
     .unwrap();
@@ -167,21 +174,21 @@ colors = ["#ffb929", "#ff0000"]
         .arg("cursor")
         .arg("--yes");
     let stdout = stdout_text(command.output().unwrap());
-    let reset = fs::read_to_string(&cursor_path).unwrap();
+    let reset = fs::read_to_string(&settings_path).unwrap();
 
-    assert!(stdout.contains("Replaced cursors.toml with a fresh template"));
-    assert!(reset.contains("family = \"mono\""));
-    assert!(reset.contains("name = \"magma\""));
+    assert!(stdout.contains("Replaced settings.jsonc cursor section with a fresh template"));
+    assert!(reset.contains("\"family\": \"mono\""));
+    assert!(reset.contains("\"name\": \"magma\""));
     assert!(!reset.contains("simple_dual"));
     assert!(!reset.contains("inferno"));
     assert!(
-        fs::read_dir(cursor_path.parent().unwrap())
+        fs::read_dir(settings_path.parent().unwrap())
             .unwrap()
             .any(|entry| entry
                 .unwrap()
                 .file_name()
                 .to_string_lossy()
-                .starts_with("cursors.toml.backup-"))
+                .starts_with("settings.jsonc.backup-"))
     );
 }
 

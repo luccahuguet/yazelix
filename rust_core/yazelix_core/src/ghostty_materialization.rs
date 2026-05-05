@@ -116,7 +116,7 @@ fn validate_ghostty_trail_duration(duration: f64) -> Result<(), CoreError> {
                 "Invalid cursor settings.duration value '{}'. Expected a number from {} to {}.",
                 duration, GHOSTTY_TRAIL_DURATION_MIN, GHOSTTY_TRAIL_DURATION_MAX
             ),
-            "Update ~/.config/yazelix/cursors.toml with a supported Ghostty trail duration multiplier, then retry.",
+            "Update ~/.config/yazelix/settings.jsonc under cursors with a supported Ghostty trail duration multiplier, then retry.",
             serde_json::json!({
                 "field": "settings.duration",
                 "actual": duration.to_string(),
@@ -148,7 +148,7 @@ fn build_ghostty_trail_duration(duration: f64) -> String {
 
 fn build_ghostty_cursor_palette(cursor_state: &ResolvedCursorRegistryState) -> String {
     if cursor_state.trail_disabled {
-        return "# Cursor color palette: none (disabled in cursors.toml)".to_string();
+        return "# Cursor color palette: none (disabled in settings.jsonc)".to_string();
     }
 
     let Some(cursor) = &cursor_state.selected_cursor else {
@@ -247,10 +247,10 @@ theme = "{}"
 window-decoration = "none"
 window-padding-y = 10,0
 
-# Transparency (configurable via yazelix.toml)
+# Transparency (configurable via settings.jsonc)
 {}
 
-# Ghostty cursor color + effects (configurable via cursors.toml)
+# Ghostty cursor color + effects (configurable via settings.jsonc)
 {}
 {}
 {}

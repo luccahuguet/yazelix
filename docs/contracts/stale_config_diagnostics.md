@@ -2,11 +2,11 @@
 
 ## Summary
 
-Yazelix should surface stale or unsupported `yazelix.toml` problems through one shared diagnostic contract so startup and `yzx doctor` both explain the same issue in the same terms and point to the same safest next action.
+Yazelix should surface stale or unsupported `settings.jsonc` problems through one shared diagnostic contract so startup and `yzx doctor` both explain the same issue in the same terms and point to the same safest next action.
 
 ## Why
 
-When a config change breaks startup, generic wrapper failures force users to guess whether Yazelix itself is broken or whether their config is stale. v15 no longer carries the old automatic config-migration engine, so the live contract is narrower: detect unsupported config precisely, fail fast, and point users to manual cleanup or `yzx reset config` instead of pretending Yazelix can rewrite every historical shape safely.
+When a config change breaks startup, generic wrapper failures force users to guess whether Yazelix itself is broken or whether their config is stale. The live contract is narrow: auto-migrate old TOML inputs only when conversion is unambiguous and safe, otherwise detect unsupported config precisely, fail fast, and point users to manual cleanup or `yzx reset config`.
 
 ## Scope
 
@@ -19,11 +19,11 @@ This contract covers:
 
 ## Behavior
 
-When Yazelix reads `yazelix.toml`, it should build a shared config-diagnostic report before continuing. Startup should block only on genuinely unsupported config problems such as unknown fields, type mismatches, or unsupported enum values. It should not block on merely omitted fields that Yazelix can still default safely.
+When Yazelix reads `settings.jsonc`, it should build a shared config-diagnostic report before continuing. Startup should block only on genuinely unsupported config problems such as malformed JSONC, unknown fields, type mismatches, unsupported enum values, or stale old TOML inputs next to the canonical file. It should not block on merely omitted fields that Yazelix can still default safely.
 
-For unsupported config, Yazelix should fail clearly without pretending a migration exists. Messages should identify the exact field and next step, usually manual cleanup followed by a retry. `yzx reset config` is a blunt fallback, not a silent rewrite path.
+For unsupported config, Yazelix should fail clearly without pretending an unsafe migration exists. Messages should identify the exact field or stale input and next step, usually manual cleanup followed by a retry. `yzx reset config` is a blunt fallback, not a silent rewrite path.
 
-`yzx doctor` should consume the same structured report, but it may additionally show missing-field hygiene findings that startup intentionally tolerates. `yzx doctor --fix` should not apply config migrations because the live v15 migration engine is gone; it may still own other fixable doctor surfaces.
+`yzx doctor` should consume the same structured report, but it may additionally show missing-field hygiene findings that startup intentionally tolerates. `yzx doctor --fix` may create missing defaults, but it should not perform ambiguous config migration or silently rewrite user-authored settings.
 
 ## Non-goals
 
@@ -31,11 +31,11 @@ For unsupported config, Yazelix should fail clearly without pretending a migrati
 - hiding unknown config problems behind generic launch or refresh wrappers
 - treating missing fields as startup blockers when Yazelix can still supply safe defaults
 - inventing migration guidance for unsupported config
-- restoring the v13/v14 automatic config-migration engine as part of the v15 contract
+- restoring broad historical config-migration registries outside the safe old-TOML-to-JSONC gate
 
 ## Acceptance Cases
 
-1. When config contains an unsupported value such as `core.refresh_output = "loud"`, Yazelix fails clearly as a config problem but does not pretend a migration exists.
+1. When config contains an unsupported value such as `"welcome_style": "loud"`, Yazelix fails clearly as a config problem but does not pretend a migration exists.
 2. When `yzx doctor --verbose` sees the same stale config, it reports the same path and manual next steps without advertising `yzx doctor --fix` as a config migration path.
 3. When config contains a removed legacy field such as `shell.enable_atuin`, startup fails clearly and leaves the file untouched.
 4. When config merely omits fields that Yazelix can default, startup does not fail solely because of the omission, though doctor may still report the drift.
@@ -56,4 +56,4 @@ For unsupported config, Yazelix should fail clearly without pretending a migrati
 
 ## Open Questions
 
-- Historical upgrade notes can still say that older releases had migration-aware UX, but the live v15 diagnostic contract should not depend on a migration registry.
+- Historical upgrade notes can still say that older releases had migration-aware UX, but the live diagnostic contract should not depend on a broad migration registry.

@@ -477,7 +477,7 @@ fn render_merged_config(
         merged_ui,
         String::new(),
         render_top_level_settings_block(
-            "// === YAZELIX DYNAMIC SETTINGS (from yazelix.toml) ===",
+            "// === YAZELIX DYNAMIC SETTINGS (from settings.jsonc) ===",
             &render_plan.dynamic_top_level_settings,
         ),
         String::new(),

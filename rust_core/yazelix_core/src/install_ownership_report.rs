@@ -1,6 +1,7 @@
 //! Install ownership, launcher provenance, and doctor install-artifact classification.
 //! Bead: yazelix-ulb2.4.1
 
+use crate::user_config_paths;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use std::collections::HashSet;
@@ -420,11 +421,36 @@ fn collect_home_manager_prepare_artifacts(
         artifacts.push(HomeManagerPrepareArtifact {
             id: "main_config".into(),
             class: "blocker".into(),
-            label: "managed yazelix.toml surface".into(),
+            label: "managed settings.jsonc surface".into(),
             path: path_to_string(main),
             action: Some(HOME_MANAGER_PREPARE_ACTION_ARCHIVE_PATH.into()),
             remove_target: None,
         });
+    }
+    if let Some(config_dir) = main.parent() {
+        for (id, label, path) in [
+            (
+                "old_main_config",
+                "old yazelix.toml settings input",
+                config_dir.join(user_config_paths::OLD_MAIN_CONFIG),
+            ),
+            (
+                "old_cursor_config",
+                "old cursors.toml settings input",
+                config_dir.join(user_config_paths::CURSOR_CONFIG),
+            ),
+        ] {
+            if path.exists() && path != *main {
+                artifacts.push(HomeManagerPrepareArtifact {
+                    id: id.into(),
+                    class: "blocker".into(),
+                    label: label.into(),
+                    path: path_to_string(path),
+                    action: Some(HOME_MANAGER_PREPARE_ACTION_ARCHIVE_PATH.into()),
+                    remove_target: None,
+                });
+            }
+        }
     }
     for entry in standalone_profile_yazelix_entries {
         let path = entry

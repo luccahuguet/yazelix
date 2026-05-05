@@ -10,8 +10,8 @@ Yazelix follows the XDG Base Directory Specification and respects these variable
 ## Key Locations
 
 - Config (XDG_CONFIG_HOME)
-  - `~/.config/yazelix/yazelix.toml` – user config (auto‑created from template on first run)
-  - `~/.config/yazelix/tombi.toml` – managed Tombi support file for formatting Yazelix TOML
+  - `~/.config/yazelix/settings.jsonc` – canonical user settings file (auto-created from shipped defaults on first run)
+  - `~/.config/yazelix/tombi.toml` – managed Tombi support file for formatting Yazelix TOML sidecars
   - `~/.config/yazelix/nushell/config/config.nu` – Yazelix Nushell config sourced into your shell
 
 - Data (XDG_DATA_HOME)

@@ -422,7 +422,7 @@ fn resolve_popup_runtime_argv(
             ErrorClass::Config,
             "popup_program_empty",
             "No popup program was configured for Yazelix.",
-            "Set popup_program in yazelix.toml or pass an explicit program to `yzx popup`.",
+            "Set zellij.popup_program in settings.jsonc or pass an explicit program to `yzx popup`.",
             json!({}),
         ));
     }
@@ -450,7 +450,7 @@ fn resolve_popup_runtime_argv(
                     ErrorClass::Config,
                     "popup_editor_unresolved",
                     "The configured Yazelix editor could not be resolved for popup_program = [\"editor\"].",
-                    "Set editor.command in yazelix.toml or set EDITOR inside the Yazelix runtime.",
+                    "Set editor.command in settings.jsonc or set EDITOR inside the Yazelix runtime.",
                     json!({}),
                 )
             })?

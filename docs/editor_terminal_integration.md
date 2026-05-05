@@ -13,7 +13,7 @@ The simplest approach is the same in every editor:
 2. Run `yzx env`.
 3. Work in the Yazelix environment for that terminal only.
 
-If you want to keep the editor's current shell instead of switching into the shell configured in `yazelix.toml`, use:
+If you want to keep the editor's current shell instead of switching into the shell configured in `settings.jsonc`, use:
 
 ```bash
 yzx env --no-shell
@@ -117,7 +117,7 @@ Setting `defaultProfile` means every new VS Code or Cursor terminal opens direct
 ### Notes
 
 - `bash -ic` starts an interactive Bash shell so your normal shell init can expose `yzx`.
-- `yzx env` then loads the Yazelix environment and switches into the shell configured in `yazelix.toml`.
+- `yzx env` then loads the Yazelix environment and switches into the shell configured in `settings.jsonc`.
 - Prefer to stay in Bash/Zsh/Fish/Nushell instead of switching shells? Change the profile command to `yzx env --no-shell`.
 - If `yzx` is not available in your editor terminal yet, make sure your normal shell startup files expose `~/.local/bin` on `PATH`.
 

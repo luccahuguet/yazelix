@@ -43,7 +43,7 @@ That means Yazelix is no longer best described as just "workspace plus runtime."
 
 This subsystem answers questions like:
 
-- How does `yazelix.toml` become actual runtime behavior?
+- How does `settings.jsonc` become actual runtime behavior?
 - Where do generated configs live?
 - What does `yzx launch`, `yzx env`, `yzx doctor`, or `yzx update` mean now?
 - Which paths are config-owned, runtime-owned, or generated-state-owned?
@@ -98,7 +98,7 @@ This subsystem answers questions like:
 - Which layouts, plugins, themes, templates, and metadata are product code rather than generated state?
 - Which user-facing defaults are actually shipped with the runtime?
 
-This bucket matters because Yazelix is not just Nushell and Rust. A meaningful part of the product lives in TOML, Lua, GLSL, KDL, shell config, and release metadata.
+This bucket matters because Yazelix is not just Nushell and Rust. A meaningful part of the product lives in JSONC schema metadata, TOML, Lua, GLSL, KDL, shell config, and release metadata.
 
 ### Maintainer Workflow And Validation
 

@@ -61,8 +61,8 @@ fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
             id: "config",
             label: format!("config  - main Yazelix config → {}", user_config.display()),
             path: user_config,
-            aliases: &["config", "main", "yazelix.toml"],
-            search: "config main yazelix yazelix.toml",
+            aliases: &["config", "main", "settings", "settings.jsonc"],
+            search: "config main yazelix settings settings.jsonc",
         },
         EditTarget {
             id: "cursors",
@@ -71,15 +71,8 @@ fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
                 cursor_config.display()
             ),
             path: cursor_config,
-            aliases: &[
-                "cursors",
-                "cursor",
-                "ghostty-cursors",
-                "ghostty cursors",
-                "cursors.toml",
-                "yazelix_cursors.toml",
-            ],
-            search: "cursors cursor ghostty cursor trail shader cursors.toml yazelix_cursors.toml",
+            aliases: &["cursors", "cursor", "ghostty-cursors", "ghostty cursors"],
+            search: "cursors cursor ghostty cursor trail shader settings settings.jsonc",
         },
         EditTarget {
             id: "helix",
@@ -188,8 +181,8 @@ fn resolve_editor(runtime_dir: &Path) -> Result<(String, Vec<(String, String)>),
         return Err(CoreError::classified(
             ErrorClass::Runtime,
             "missing_editor",
-            "EDITOR is not set. Set it in yazelix.toml under [editor] command, or export EDITOR in your shell.",
-            "Update yazelix.toml or your shell environment, then retry.",
+            "EDITOR is not set. Set it in settings.jsonc under editor.command, or export EDITOR in your shell.",
+            "Update settings.jsonc or your shell environment, then retry.",
             json!({}),
         ));
     }
@@ -557,11 +550,14 @@ mod tests {
         let cursors = filter_edit_targets(&targets, "cursors");
         assert_eq!(cursors.len(), 1);
         assert_eq!(cursors[0].id, "cursors");
-        assert_eq!(cursors[0].path, Path::new("/tmp/cfg").join("cursors.toml"));
+        assert_eq!(
+            cursors[0].path,
+            Path::new("/tmp/cfg").join("settings.jsonc")
+        );
 
-        let cursor_sidecar = filter_edit_targets(&targets, "yazelix_cursors.toml");
-        assert_eq!(cursor_sidecar.len(), 1);
-        assert_eq!(cursor_sidecar[0].id, "cursors");
+        let settings = filter_edit_targets(&targets, "settings.jsonc");
+        assert_eq!(settings.len(), 1);
+        assert_eq!(settings[0].id, "config");
 
         let yazi = filter_edit_targets(&targets, "yazi");
         assert_eq!(yazi.len(), 1); // exact id match takes precedence
