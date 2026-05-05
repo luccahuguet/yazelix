@@ -133,11 +133,12 @@ Show the guided Yazelix tutor
 - `yzx tutor nu`: launch Nushell's built-in tutorial in a fresh `nu` process
 - `yzx tutor nushell`: alias for `yzx tutor nu`
 
-### `yzx restart`
+### `yzx restart [-s | --skip]`
 Restart the current Yazelix window
 - Relaunches through the stable owner-provided `yzx` wrapper when one exists
 - Profile installs relaunch through the default-profile `yzx`; Home Manager installs relaunch through the Home Manager-owned `yzx`
 - Already-open Yazelix windows keep running their current live runtime until they are explicitly relaunched or restarted
+- `--skip, -s`: skip the welcome screen for the restarted window only
 
 ### `yzx status [--versions]`
 Show current Yazelix status
@@ -310,6 +311,7 @@ yzx tutor list                # List Yazelix tutor lessons
 yzx tutor hx                  # Launch Helix's built-in tutor
 yzx tutor nu                  # Launch Nushell's built-in tutor
 yzx restart                   # Reopen Yazelix in a fresh window
+yzx restart -s                # Reopen Yazelix and skip the welcome screen once
 
 # Diagnostics and info
 yzx doctor --fix              # Health check with auto-fix

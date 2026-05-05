@@ -81,6 +81,7 @@ const RESTART_LAUNCH_CLEARED_ENV_KEYS: &[&str] = &[
     "YAZELIX_RUNTIME_DIR",
     "YAZELIX_SESSION_CONFIG_PATH",
     "YAZELIX_SESSION_FACTS_PATH",
+    "YAZELIX_STARTUP_PROFILE_SKIP_WELCOME",
     "YAZELIX_STATUS_BAR_CACHE_PATH",
     "YAZELIX_TERMINAL",
     "YAZELIX_YZX_BIN",
@@ -118,6 +119,12 @@ struct DesktopArgs {
     subcommand: Option<String>,
     action: Option<String>,
     print_path: bool,
+    help: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct RestartArgs {
+    skip_welcome: bool,
     help: bool,
 }
 
@@ -241,18 +248,10 @@ pub fn run_yzx_desktop(args: &[String]) -> Result<i32, CoreError> {
 }
 
 pub fn run_yzx_restart(args: &[String]) -> Result<i32, CoreError> {
-    if matches!(
-        args,
-        [arg] if matches!(arg.as_str(), "-h" | "--help" | "help")
-    ) {
+    let parsed = parse_restart_args(args)?;
+    if parsed.help {
         print_restart_help();
         return Ok(0);
-    }
-
-    if !args.is_empty() {
-        return Err(CoreError::usage(
-            "yzx restart does not accept arguments. Try `yzx restart`.",
-        ));
     }
 
     let session_to_kill = current_zellij_session();
@@ -282,6 +281,16 @@ pub fn run_yzx_restart(args: &[String]) -> Result<i32, CoreError> {
         .stable_yzx_wrapper
         .map(PathBuf::from)
         .unwrap_or_else(|| runtime_dir.join("shells").join("posix").join("yzx_cli.sh"));
+    let mut restart_extra_env = vec![(
+        "YAZELIX_BOOTSTRAP_SIDEBAR_CWD_FILE".to_string(),
+        Some(restart_file.to_string_lossy().into_owned()),
+    )];
+    if parsed.skip_welcome {
+        restart_extra_env.push((
+            "YAZELIX_STARTUP_PROFILE_SKIP_WELCOME".to_string(),
+            Some("true".to_string()),
+        ));
+    }
 
     let output = command_output_with_overrides(
         &[
@@ -299,10 +308,7 @@ pub fn run_yzx_restart(args: &[String]) -> Result<i32, CoreError> {
             )
         })?,
         RESTART_LAUNCH_CLEARED_ENV_KEYS,
-        &[(
-            "YAZELIX_BOOTSTRAP_SIDEBAR_CWD_FILE".to_string(),
-            Some(restart_file.to_string_lossy().into_owned()),
-        )],
+        &restart_extra_env,
         "restart_launch",
         "Retry the restart from a working Yazelix install, or relaunch manually with `yzx launch`.",
     )?;
@@ -879,6 +885,27 @@ fn parse_desktop_args(args: &[String]) -> Result<DesktopArgs, CoreError> {
     Ok(parsed)
 }
 
+fn parse_restart_args(args: &[String]) -> Result<RestartArgs, CoreError> {
+    let mut parsed = RestartArgs::default();
+    for arg in args {
+        match arg.as_str() {
+            "--help" | "-h" | "help" => parsed.help = true,
+            "--skip" | "-s" => parsed.skip_welcome = true,
+            other if other.starts_with('-') => {
+                return Err(CoreError::usage(format!(
+                    "Unknown argument for yzx restart: {other}. Try `yzx restart --help`."
+                )));
+            }
+            other => {
+                return Err(CoreError::usage(format!(
+                    "Unknown yzx restart argument: {other}. Try `yzx restart --help`."
+                )));
+            }
+        }
+    }
+    Ok(parsed)
+}
+
 fn print_enter_help() {
     println!("Start Yazelix in the current terminal");
     println!();
@@ -897,7 +924,10 @@ fn print_restart_help() {
     println!("Restart the current Yazelix window");
     println!();
     println!("Usage:");
-    println!("  yzx restart");
+    println!("  yzx restart [-s | --skip]");
+    println!();
+    println!("Options:");
+    println!("  -s, --skip    Skip the welcome screen for the restarted window");
 }
 
 fn print_desktop_help() {
@@ -2198,6 +2228,21 @@ mod tests {
         assert!(parsed.verbose);
     }
 
+    // Defends: restart exposes a one-shot welcome skip flag without making the config skip setting sticky.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
+    #[test]
+    fn parse_restart_args_accepts_skip_aliases() {
+        for arg in ["-s", "--skip"] {
+            let parsed = parse_restart_args(&[arg.into()]).unwrap();
+
+            assert!(parsed.skip_welcome);
+            assert!(!parsed.help);
+        }
+
+        let help = parse_restart_args(&["--help".into()]).unwrap();
+        assert!(help.help);
+    }
+
     // Defends: the Rust launch owner still filters duplicate or unsupported configured terminals before fallback logic runs.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
@@ -2368,6 +2413,7 @@ mod tests {
             "YAZELIX_RUNTIME_DIR",
             "YAZELIX_SESSION_CONFIG_PATH",
             "YAZELIX_SESSION_FACTS_PATH",
+            "YAZELIX_STARTUP_PROFILE_SKIP_WELCOME",
             "YAZELIX_STATUS_BAR_CACHE_PATH",
             "YAZELIX_YZX_BIN",
             "YAZELIX_YZX_CONTROL_BIN",

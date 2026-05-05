@@ -115,6 +115,7 @@ const LAUNCH_FLAGS: &[YzxCommandParameter] = &[
     named("terminal", Some("t"), "string", true),
     switch("verbose", None),
 ];
+const RESTART_FLAGS: &[YzxCommandParameter] = &[switch("skip", Some("s"))];
 const ENTER_FLAGS: &[YzxCommandParameter] = &[
     named("path", Some("p"), "string", true),
     switch("home", None),
@@ -906,9 +907,9 @@ const RESTART_COMMAND: YzxCommandMetadata = metadata(
     "yzx restart",
     "Restart Yazelix",
     YzxCommandCategory::Session,
-    &[],
+    RESTART_FLAGS,
     Some(YzxMenuCategory::Session),
-    Some("Restart Yazelix."),
+    Some("Restart Yazelix. Use `--skip` or `-s` to skip the welcome screen once."),
 );
 const RESTART_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[RESTART_COMMAND];
 

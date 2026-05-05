@@ -349,7 +349,7 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 - `yzx config [--path]` - Show the active config or print its resolved path
 - `yzx cursors` - Inspect Ghostty cursor presets, effects, and resolved colors
 - `yzx edit config` - Open the main managed Yazelix config file in your editor
-- `yzx restart` - Restart Yazelix in a fresh window
+- `yzx restart [-s | --skip]` - Restart Yazelix in a fresh window, optionally skipping the welcome screen once
 - `yzx doctor [--verbose] [--fix]` - Health checks and diagnostics
 - `yzx dev profile [--cold] [--desktop] [--launch] [--clear-cache]` - Profile current-terminal, desktop-entry, or managed new-window startup phases under `~/.local/share/yazelix/profiles/startup/`, with local saved-report comparison through `yzx dev profile compare`
 - `yzx status [--versions]` - Show current Yazelix status and optional tool versions
