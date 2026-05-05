@@ -35,6 +35,7 @@ const DEFAULT_TABS: &[&str] = &[
     "general", "editor", "terminal", "zellij", "yazi", "cursors", "advanced",
 ];
 const HOME_MANAGER_FILES_MARKER: &str = "-home-manager-files/";
+const HEADER_HORIZONTAL_PADDING: u16 = 1;
 
 #[derive(Debug, Clone)]
 pub struct ConfigUiRequest {
@@ -332,7 +333,7 @@ fn draw_config_ui(frame: &mut Frame<'_>, app: &mut ConfigUiApp) {
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(2),
-            Constraint::Length(3),
+            Constraint::Length(1),
             Constraint::Min(8),
             Constraint::Length(2),
         ])
@@ -384,10 +385,13 @@ fn render_header(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect) {
     )]);
 
     frame.render_widget(Block::default().borders(Borders::BOTTOM), area);
+    let horizontal_padding = HEADER_HORIZONTAL_PADDING.min(area.width / 2);
     let content = Rect {
-        x: area.x,
+        x: area.x + horizontal_padding,
         y: area.y,
-        width: area.width,
+        width: area
+            .width
+            .saturating_sub(horizontal_padding.saturating_mul(2)),
         height: area.height.saturating_sub(1).max(1),
     };
     let title_width = 15_u16.min(content.width);
@@ -468,8 +472,7 @@ fn render_tabs(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect) {
                 Style::default()
                     .fg(Color::Yellow)
                     .add_modifier(Modifier::BOLD),
-            )
-            .block(Block::default().borders(Borders::BOTTOM)),
+            ),
         area,
     );
 }
@@ -2124,6 +2127,7 @@ mod tests {
 
         let buffer = terminal.backend().buffer();
         let title = buffer_line(buffer, 0);
+        assert!(title.starts_with(" Yazelix Config"));
         assert!(title.contains("Yazelix Config"));
         assert!(title.contains("path: /home/lucca/.config/yazelix/settings.jsonc"));
         assert!(title.contains("owner: user"));
@@ -2132,6 +2136,50 @@ mod tests {
         assert_eq!(buffer_text_fg(buffer, 0, "path:"), Color::LightBlue);
         assert_eq!(buffer_text_fg(buffer, 0, "owner:"), Color::LightBlue);
         assert!(!buffer_line(buffer, 1).contains("path:"));
+    }
+
+    // Regression: the tabs row should not reserve a blank divider row between tabs and the settings body.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn tabs_render_as_single_unbordered_row() {
+        let app = ConfigUiApp {
+            request: ConfigUiRequest {
+                runtime_dir: PathBuf::from("/runtime"),
+                config_dir: PathBuf::from("/home/lucca/.config/yazelix"),
+                config_override: None,
+            },
+            model: ConfigUiModel {
+                active_config_path: PathBuf::from("/home/lucca/.config/yazelix/settings.jsonc"),
+                active_config_exists: true,
+                config_owner: ConfigUiPathOwner::User,
+                config_read_only: false,
+                tabs: vec![
+                    "general".to_string(),
+                    "editor".to_string(),
+                    "terminal".to_string(),
+                ],
+                fields: Vec::new(),
+                sidecars: Vec::new(),
+                diagnostics: Vec::new(),
+            },
+            selected_tab: 0,
+            selected_row: 0,
+            search: String::new(),
+            search_active: false,
+            edit: None,
+            notice: None,
+        };
+        let backend = TestBackend::new(80, 1);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+
+        terminal
+            .draw(|frame| render_tabs(frame, &app, frame.area()))
+            .expect("draw");
+
+        let line = buffer_line(terminal.backend().buffer(), 0);
+        assert!(line.contains("general"));
+        assert!(line.contains("editor"));
+        assert!(!line.contains("─"));
     }
 
     // Regression: config UI setting keys should read as navigable keys, not unstyled body text.
