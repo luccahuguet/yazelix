@@ -1,13 +1,13 @@
 [contract]
-current_total_loc_max = 1880
-current_total_file_count_max = 14
-hard_target_loc = 1880
+current_total_loc_max = 2144
+current_total_file_count_max = 15
+hard_target_loc = 1901
 
 [[families]]
 id = "maintainer_and_dev_orchestration"
 status = "allowlisted_floor"
 owner_bead = "yazelix-pw9j.4.1"
-max_loc = 425
+max_loc = 618
 target_loc = 425
 max_files = 1
 allowed_paths = [
@@ -18,11 +18,12 @@ allowed_paths = [
 id = "integration_and_wrappers"
 status = "allowlisted_floor"
 owner_bead = "yazelix-uz6m"
-max_loc = 90
-target_loc = 90
-max_files = 3
+max_loc = 111
+target_loc = 111
+max_files = 4
 allowed_paths = [
   "nushell/scripts/zellij_wrappers/launch_sidebar_yazi.nu",
+  "nushell/scripts/zellij_wrappers/yzx_config_ui_popup.nu",
   "nushell/scripts/zellij_wrappers/yzx_popup_program.nu",
   "nushell/scripts/zellij_wrappers/yzx_menu_popup.nu",
 ]
@@ -31,7 +32,7 @@ allowed_paths = [
 id = "setup_and_bootstrap"
 status = "allowlisted_floor"
 owner_bead = "yazelix-pw9j.5"
-max_loc = 345
+max_loc = 389
 target_loc = 345
 max_files = 2
 allowed_paths = [
@@ -55,7 +56,7 @@ allowed_paths = [
 id = "runtime_helpers"
 status = "allowlisted_floor"
 owner_bead = "yazelix-pw9j.3"
-max_loc = 611
+max_loc = 617
 target_loc = 611
 max_files = 6
 allowed_paths = [

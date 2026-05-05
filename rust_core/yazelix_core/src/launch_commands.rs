@@ -48,6 +48,7 @@ const MACOS_PREVIEW_MIN_SYSTEM_VERSION: &str = "12.0";
 const DESKTOP_LAUNCH_CLEARED_ENV_KEYS: &[&str] = &[
     "IN_YAZELIX_SHELL",
     "YAZELIX_DIR",
+    "YAZELIX_CONFIG_POPUP",
     "YAZELIX_MENU_POPUP",
     "YAZELIX_POPUP_PANE",
     "YAZELIX_CURSOR_COLOR",
@@ -70,6 +71,7 @@ const RESTART_LAUNCH_CLEARED_ENV_KEYS: &[&str] = &[
     "IN_YAZELIX_SHELL",
     "YAZELIX_BOOTSTRAP_RUNTIME_DIR",
     "YAZELIX_DIR",
+    "YAZELIX_CONFIG_POPUP",
     "YAZELIX_MENU_POPUP",
     "YAZELIX_NU_BIN",
     "YAZELIX_POPUP_PANE",
@@ -3139,12 +3141,15 @@ mod tests {
     fn restart_launch_clears_stale_runtime_session_and_helper_env() {
         for key in [
             "YAZELIX_BOOTSTRAP_RUNTIME_DIR",
+            "YAZELIX_CONFIG_POPUP",
             "YAZELIX_CURSOR_COLOR",
             "YAZELIX_CURSOR_DIVIDER",
             "YAZELIX_CURSOR_FAMILY",
             "YAZELIX_CURSOR_NAME",
             "YAZELIX_CURSOR_PRIMARY_COLOR",
             "YAZELIX_CURSOR_SECONDARY_COLOR",
+            "YAZELIX_MENU_POPUP",
+            "YAZELIX_POPUP_PANE",
             "YAZELIX_RUNTIME_DIR",
             "YAZELIX_SESSION_CONFIG_PATH",
             "YAZELIX_SESSION_FACTS_PATH",

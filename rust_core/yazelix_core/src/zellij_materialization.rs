@@ -2139,6 +2139,12 @@ keybinds {
                 payload "menu"
             }
         }
+        bind "Alt Shift C" {
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                name "toggle_transient_pane"
+                payload "config"
+            }
+        }
         bind "Ctrl y" {
             MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
                 name "toggle_editor_sidebar_focus"
@@ -2158,6 +2164,7 @@ keybinds {
         assert!(merged.contains("toggle_transient_pane"));
         assert!(merged.contains("payload \"popup\""));
         assert!(merged.contains("payload \"menu\""));
+        assert!(merged.contains("payload \"config\""));
         assert!(merged.contains("toggle_editor_sidebar_focus"));
         assert!(!merged.contains("yazelix_popup_runner.wasm"));
     }

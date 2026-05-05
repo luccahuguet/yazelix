@@ -23,6 +23,7 @@ Yazelix uses `~/.config/yazelix/settings.jsonc` as the canonical settings surfac
 - `yzx env`: Enter the Yazelix tool environment without the UI
 - `yzx popup`: CLI entrypoint for the managed popup pane, usually `lazygit`; most users trigger the same toggle with `Alt+t`, and closing it reruns the Yazi file-tree sidebar refresh path so git state stays current
 - `yzx menu --popup`: CLI entrypoint for the popup command palette; most users trigger the same toggle with `Alt+Shift+M`
+- `yzx config ui`: CLI entrypoint for the config UI; most users trigger the same popup with `Alt+Shift+C`
 - `yzx update upstream`: Upgrade the Yazelix package that owns the current runtime in the default Nix profile
 - `yzx update home_manager`: Refresh the owning Home Manager flake input, then print the `home-manager switch` step
 
@@ -34,7 +35,7 @@ Yazelix uses `~/.config/yazelix/settings.jsonc` as the canonical settings surfac
 - Switch between the built-in sidebar-aware workspace shapes and other workspace layouts; see [Layouts](./docs/layouts.md)
 - When you open something from the default Yazi file-tree sidebar with Helix or Neovim, Yazelix targets the managed `editor` pane through the pane orchestrator instead of relying on pane scanning heuristics
 - `yzx reveal` is the stable editor-integration surface for jumping the current file back into the managed Yazi file tree
-- `Alt+t` toggles the managed popup pane and refreshes the Yazi file-tree sidebar git view when that popup closes, while `Alt+Shift+M` toggles the popup command menu on the same fast floating-pane path
+- `Alt+t` toggles the managed popup pane and refreshes the Yazi file-tree sidebar git view when that popup closes, while `Alt+Shift+M` toggles the popup command menu and `Alt+Shift+C` toggles the config UI on the same fast floating-pane path
 
 ## Why Yazelix
 Yazelix is a reproducible terminal IDE that integrates Yazi + Zellij + Helix, delivering a consistent, fast "superterminal" locally or over SSH with zero manual setup through smart pane/layout orchestration, sidebar reveal/open flows, a curated built-in toolset, sane defaults, Helix/Zellij conflict cleanup, auto-configured tools like starship, zoxide, and carapace, and useful bundled tools such as `lazygit`
@@ -401,6 +402,7 @@ Yazelix uses Zellij as the workspace layer, so the most important bindings are g
 | `Alt+m` | Open a new terminal in the current tab workspace root |
 | `Alt+t` | Toggle the configured managed popup program, usually `lazygit`, and refresh the Yazi file-tree sidebar git state when it closes |
 | `Alt+Shift+M` | Open the `yzx` command palette popup |
+| `Alt+Shift+C` | Open the Yazelix config UI popup |
 | `Alt+1..9` | Jump directly to tabs 1 through 9 |
 | `Alt+w` / `Alt+q` | Move to the next or previous tab |
 | `Alt+Shift+H` / `Alt+Shift+L` | Move the current tab left or right |

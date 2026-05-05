@@ -31,6 +31,14 @@ pub fn yazelix_transient_adapter(kind: TransientPaneKind) -> YazelixTransientPan
             wrapper_relative_path: "nushell/scripts/zellij_wrappers/yzx_menu_popup.nu",
             post_close_hook: TransientPostCloseHook::None,
         },
+        TransientPaneKind::Config => YazelixTransientPaneAdapter {
+            identity: TransientPaneIdentityContract {
+                pane_title: "yzx_config",
+                command_marker: Some("nushell/scripts/zellij_wrappers/yzx_config_ui_popup.nu"),
+            },
+            wrapper_relative_path: "nushell/scripts/zellij_wrappers/yzx_config_ui_popup.nu",
+            post_close_hook: TransientPostCloseHook::None,
+        },
     }
 }
 
@@ -63,6 +71,17 @@ mod tests {
                     command_marker: Some("nushell/scripts/zellij_wrappers/yzx_menu_popup.nu"),
                 },
                 wrapper_relative_path: "nushell/scripts/zellij_wrappers/yzx_menu_popup.nu",
+                post_close_hook: TransientPostCloseHook::None,
+            }
+        );
+        assert_eq!(
+            yazelix_transient_adapter(TransientPaneKind::Config),
+            YazelixTransientPaneAdapter {
+                identity: TransientPaneIdentityContract {
+                    pane_title: "yzx_config",
+                    command_marker: Some("nushell/scripts/zellij_wrappers/yzx_config_ui_popup.nu"),
+                },
+                wrapper_relative_path: "nushell/scripts/zellij_wrappers/yzx_config_ui_popup.nu",
                 post_close_hook: TransientPostCloseHook::None,
             }
         );

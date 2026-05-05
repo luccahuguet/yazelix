@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 pub enum TransientPaneKind {
     Popup,
     Menu,
+    Config,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -18,6 +19,7 @@ impl TransientPaneKind {
         match payload.trim() {
             "popup" => Some(Self::Popup),
             "menu" => Some(Self::Menu),
+            "config" => Some(Self::Config),
             _ => None,
         }
     }

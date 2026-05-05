@@ -233,6 +233,7 @@ fn root_command_rows() -> Vec<TableRow> {
     vec![
         table_row(&["Alt+t", "Toggle the configured managed popup program"]),
         table_row(&["Alt+Shift+M", "Open the yzx command palette popup"]),
+        table_row(&["Alt+Shift+C", "Open the Yazelix config UI popup"]),
     ]
 }
 
@@ -593,6 +594,7 @@ mod tests {
         assert!(rendered.contains("Tab and pane movement"));
         assert!(rendered.contains("Keybinding"));
         assert!(rendered.contains("Alt+Shift+M"));
+        assert!(rendered.contains("Alt+Shift+C"));
         assert!(rendered.contains("yzx keys yazi"));
         assert!(!rendered.contains("╭"));
         assert!(!rendered.contains("│"));

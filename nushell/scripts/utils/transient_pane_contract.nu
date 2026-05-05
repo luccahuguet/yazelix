@@ -14,6 +14,12 @@ export def get_transient_pane_contract [kind: string] {
             mode_env_key: "YAZELIX_MENU_POPUP"
             mode_env_value: "true"
         }
+        "config" => {
+            kind: "config"
+            pane_title: "yzx_config"
+            mode_env_key: "YAZELIX_CONFIG_POPUP"
+            mode_env_value: "true"
+        }
         _ => {
             error make {msg: $"Unsupported transient pane kind: ($kind)"}
         }

@@ -87,6 +87,14 @@ keybinds {
                 payload "menu"
             }
         }
+
+        // Yazelix config UI in a floating pane
+        bind "Alt Shift C" {
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                name "toggle_transient_pane"
+                payload "config"
+            }
+        }
     }
 
     shared_except "locked" {
