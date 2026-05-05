@@ -77,6 +77,7 @@ pub struct ConfigUiField {
     pub tab: String,
     pub kind: String,
     pub current_value: String,
+    edit_value: String,
     pub default_value: String,
     pub state: ConfigUiValueState,
     pub description: String,
@@ -575,13 +576,7 @@ fn render_footer(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect) {
                 style,
             ))
         })
-        .unwrap_or_else(|| {
-            Line::from(vec![
-                Span::raw("Enter/e edit  "),
-                Span::raw("Space toggle/cycle  "),
-                Span::raw("u unset"),
-            ])
-        });
+        .unwrap_or_else(|| normal_control_line(app));
     let search = if app.search_active {
         format!("search: {}_", app.search)
     } else if app.search.is_empty() {
@@ -609,6 +604,18 @@ fn edit_status_line(field: &ConfigUiField, edit: &ConfigUiEditState) -> Line<'st
         Span::raw(" = "),
         Span::styled(value, Style::default().fg(Color::White)),
     ])
+}
+
+fn normal_control_line(app: &ConfigUiApp) -> Line<'static> {
+    match app.selected_field() {
+        Some(field) if is_direct_choice_field(field) => Line::from(vec![
+            Span::raw("Enter/Space toggle/cycle  "),
+            Span::raw("e edit  "),
+            Span::raw("u unset"),
+        ]),
+        Some(_) => Line::from(vec![Span::raw("Enter/e edit  "), Span::raw("u unset")]),
+        None => Line::from(Span::raw("Select a setting row to edit")),
+    }
 }
 
 fn edit_control_line(mode: ConfigUiEditMode) -> Line<'static> {
@@ -658,7 +665,8 @@ impl ConfigUiApp {
             KeyCode::Char('/') => self.search_active = true,
             KeyCode::Char('j') | KeyCode::Down => self.move_down(),
             KeyCode::Char('k') | KeyCode::Up => self.move_up(),
-            KeyCode::Enter | KeyCode::Char('e') => self.begin_edit_selected_field(),
+            KeyCode::Enter => self.activate_selected_field(),
+            KeyCode::Char('e') => self.begin_edit_selected_field(),
             KeyCode::Char(' ') => self.quick_edit_selected_field(),
             KeyCode::Char('u') => self.unset_selected_field(),
             KeyCode::Tab | KeyCode::Right | KeyCode::Char('l') => self.next_tab(),
@@ -749,6 +757,19 @@ impl ConfigUiApp {
         match row {
             UiRowRef::Field(index) => Some(index),
             _ => None,
+        }
+    }
+
+    fn selected_field(&self) -> Option<&ConfigUiField> {
+        self.selected_field_index()
+            .and_then(|index| self.model.fields.get(index))
+    }
+
+    fn activate_selected_field(&mut self) {
+        if self.selected_field().is_some_and(is_direct_choice_field) {
+            self.quick_edit_selected_field();
+        } else {
+            self.begin_edit_selected_field();
         }
     }
 
@@ -1579,6 +1600,10 @@ fn build_field_row(
             .or(default)
             .map(render_json_value)
             .unwrap_or_else(|| "not set".to_string()),
+        edit_value: current
+            .or(default)
+            .map(render_json_edit_value)
+            .unwrap_or_default(),
         default_value: default
             .map(render_json_value)
             .unwrap_or_else(|| "no default".to_string()),
@@ -1672,6 +1697,10 @@ fn render_json_value(value: &JsonValue) -> String {
     }
 }
 
+fn render_json_edit_value(value: &JsonValue) -> String {
+    serde_json::to_string(value).unwrap_or_else(|_| render_json_value(value))
+}
+
 fn edit_input_for_field(field: &ConfigUiField) -> String {
     if field.current_value == "not set" {
         if is_bool_field(field) {
@@ -1686,11 +1715,15 @@ fn edit_input_for_field(field: &ConfigUiField) -> String {
         return parse_rendered_json_string(&field.current_value)
             .unwrap_or_else(|| field.current_value.clone());
     }
-    field.current_value.clone()
+    if field.edit_value.is_empty() {
+        field.current_value.clone()
+    } else {
+        field.edit_value.clone()
+    }
 }
 
 fn edit_mode_for_field(field: &ConfigUiField) -> ConfigUiEditMode {
-    if is_bool_field(field) || is_scalar_enum_field(field) {
+    if is_direct_choice_field(field) {
         ConfigUiEditMode::Choice
     } else {
         ConfigUiEditMode::Text
@@ -1807,6 +1840,10 @@ fn ensure_allowed_value(field: &ConfigUiField, value: &str) -> Result<(), String
 
 fn is_bool_field(field: &ConfigUiField) -> bool {
     matches!(field.kind.as_str(), "bool" | "boolean")
+}
+
+fn is_direct_choice_field(field: &ConfigUiField) -> bool {
+    is_bool_field(field) || is_scalar_enum_field(field)
 }
 
 fn is_string_field(field: &ConfigUiField) -> bool {
@@ -2111,6 +2148,7 @@ mod tests {
             tab: "general".to_string(),
             kind: kind.to_string(),
             current_value: current_value.to_string(),
+            edit_value: current_value.to_string(),
             default_value: "no default".to_string(),
             state: ConfigUiValueState::Explicit,
             description: String::new(),
@@ -2157,6 +2195,38 @@ mod tests {
             config_dir: config.to_path_buf(),
             config_override: None,
         }
+    }
+
+    fn line_text(line: &Line<'_>) -> String {
+        line.spans
+            .iter()
+            .map(|span| span.content.as_ref())
+            .collect()
+    }
+
+    fn select_field_path(app: &mut ConfigUiApp, path: &str) {
+        let field = app
+            .model
+            .fields
+            .iter()
+            .find(|field| field.path == path)
+            .expect("field");
+        app.selected_tab = app
+            .model
+            .tabs
+            .iter()
+            .position(|tab| tab == &field.tab)
+            .expect("tab");
+        app.selected_row = app
+            .visible_rows()
+            .iter()
+            .position(|row| {
+                matches!(
+                    row,
+                    UiRowRef::Field(index) if app.model.fields[*index].path == path
+                )
+            })
+            .expect("row");
     }
 
     // Regression: diagnostic statuses longer than their nominal column width still need a separator before the path.
@@ -2280,6 +2350,47 @@ mod tests {
         );
     }
 
+    // Regression: choice fields should advertise direct controls, not the text-field Enter-to-edit flow.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn choice_field_footer_uses_direct_control_hint() {
+        let mut app = ConfigUiApp {
+            request: ConfigUiRequest {
+                runtime_dir: PathBuf::from("/runtime"),
+                config_dir: PathBuf::from("/home/lucca/.config/yazelix"),
+                config_override: None,
+            },
+            model: ConfigUiModel {
+                active_config_path: PathBuf::from("/home/lucca/.config/yazelix/settings.jsonc"),
+                active_config_exists: true,
+                config_owner: ConfigUiPathOwner::User,
+                config_read_only: false,
+                tabs: vec!["general".to_string()],
+                fields: vec![
+                    test_field("core.debug_mode", "bool", "true", &[]),
+                    test_field("editor.runtime_path", "string", r#""hx""#, &[]),
+                ],
+                sidecars: Vec::new(),
+                diagnostics: Vec::new(),
+            },
+            selected_tab: 0,
+            selected_row: 0,
+            search: String::new(),
+            search_active: false,
+            edit: None,
+            notice: None,
+        };
+
+        let choice_hint = line_text(&normal_control_line(&app));
+        assert!(choice_hint.contains("Enter/Space toggle/cycle"));
+        assert!(!choice_hint.contains("Enter/e edit"));
+
+        app.selected_row = 1;
+        let text_hint = line_text(&normal_control_line(&app));
+        assert!(text_hint.contains("Enter/e edit"));
+        assert!(!text_hint.contains("Enter/Space toggle/cycle"));
+    }
+
     // Defends: the editable config UI interprets typed values from the field contract instead of guessing strings for every setting.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
@@ -2309,6 +2420,38 @@ mod tests {
             json!(["git", "ouch"])
         );
         assert!(parse_edit_input(&list_field, r#"["unknown"]"#).is_err());
+    }
+
+    // Regression: summarized list displays must not become the edit buffer, because placeholders like `[7 items]` are not JSON.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn list_fields_edit_from_full_json_not_display_summary() {
+        let runtime = tempdir().expect("runtime");
+        let config = tempdir().expect("config");
+        write_runtime_layout(runtime.path());
+        let request = test_request(runtime.path(), config.path());
+        let model = build_config_ui_model(&request).expect("model");
+        let field = model
+            .fields
+            .iter()
+            .find(|field| field.path == "zellij.widget_tray")
+            .expect("widget tray");
+
+        assert_eq!(field.current_value, "[7 items]");
+        let input = edit_input_for_field(field);
+        assert!(input.starts_with("[\"editor\",\"shell\",\"term\""));
+        assert_eq!(
+            parse_edit_input(field, &input).expect("string list"),
+            json!([
+                "editor",
+                "shell",
+                "term",
+                "cursor",
+                "codex_usage",
+                "cpu",
+                "ram"
+            ])
+        );
     }
 
     // Defends: keyboard-oriented quick edits produce deterministic toggles/cycles from the value shown in the UI.
@@ -2380,6 +2523,46 @@ mod tests {
         });
         app.handle_edit_key(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
         assert_eq!(app.edit.as_ref().expect("enum edit").input, "full");
+    }
+
+    // Defends: Enter on bool/enum rows performs the direct control action instead of opening an edit session.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn enter_directly_applies_choice_field_without_edit_mode() {
+        let runtime = tempdir().expect("runtime");
+        let config = tempdir().expect("config");
+        write_runtime_layout(runtime.path());
+        let settings_path = config.path().join("settings.jsonc");
+        fs::write(
+            &settings_path,
+            r#"{
+  "editor": { "hide_sidebar_on_file_open": false }
+}
+"#,
+        )
+        .expect("settings");
+        let request = test_request(runtime.path(), config.path());
+        let model = build_config_ui_model(&request).expect("model");
+        let mut app = ConfigUiApp {
+            request,
+            model,
+            selected_tab: 0,
+            selected_row: 0,
+            search: String::new(),
+            search_active: false,
+            edit: None,
+            notice: None,
+        };
+
+        select_field_path(&mut app, "editor.hide_sidebar_on_file_open");
+        app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+        assert!(app.edit.is_none());
+        let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
+        assert_eq!(
+            get_json_path(&value, "editor.hide_sidebar_on_file_open"),
+            Some(&json!(true))
+        );
     }
 
     // Defends: UI edits use the same comment-preserving settings.jsonc patcher and validation path as `yzx config set`.

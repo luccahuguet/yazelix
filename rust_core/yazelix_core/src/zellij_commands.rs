@@ -3288,12 +3288,22 @@ fn render_zjstatus_cursor_widget(cache: &Value) -> String {
     if let Some((glyph, primary_color, secondary_color)) =
         cursor_widget_split_preview(cache, &color)
     {
-        return format!(
-            " #[fg={color},bg=default,bold][#[fg={primary_color},bg={secondary_color},bold]{glyph}#[fg={color},bg=default,bold] {name}]"
-        );
+        let glyph_segment = format!("#[fg={primary_color},bg={secondary_color},bold]{glyph}");
+        return render_zjstatus_cursor_widget_frame(&color, &glyph_segment, &name);
     }
 
-    format!(" #[fg={color},bold][{CURSOR_STATUS_GLYPH} {name}]")
+    let glyph_segment = format!("#[fg={color},bold]{CURSOR_STATUS_GLYPH}");
+    render_zjstatus_cursor_widget_frame(&color, &glyph_segment, &name)
+}
+
+fn render_zjstatus_cursor_widget_frame(
+    accent_color: &str,
+    glyph_segment: &str,
+    name: &str,
+) -> String {
+    format!(
+        " #[fg={accent_color},bg=default,bold][{glyph_segment}#[fg={accent_color},bg=default,bold] {name}]"
+    )
 }
 
 fn normalize_status_hex_color(raw: &str) -> Option<String> {
@@ -4868,7 +4878,7 @@ mod tests {
 
         assert_eq!(
             render_status_cache_widget(&mono, "cursor").unwrap(),
-            " #[fg=#14d9a0,bold][█ reef]"
+            " #[fg=#14d9a0,bg=default,bold][#[fg=#14d9a0,bold]█#[fg=#14d9a0,bg=default,bold] reef]"
         );
         assert_eq!(
             render_status_cache_widget(&vertical_split, "cursor").unwrap(),
@@ -4885,11 +4895,11 @@ mod tests {
         );
         assert_eq!(
             render_status_cache_widget(&invalid_split, "cursor").unwrap(),
-            " #[fg=#ff1600,bold][█ magma]"
+            " #[fg=#ff1600,bg=default,bold][#[fg=#ff1600,bold]█#[fg=#ff1600,bg=default,bold] magma]"
         );
         assert_eq!(
             render_status_cache_widget(&json!({"cursor": {"name": "n/a"}}), "cursor").unwrap(),
-            " #[fg=#00ff88,bold][█ n/a]"
+            " #[fg=#00ff88,bg=default,bold][#[fg=#00ff88,bold]█#[fg=#00ff88,bg=default,bold] n/a]"
         );
         assert_eq!(
             render_status_cache_widget(&json!({"cursor": {"name": ""}}), "cursor").unwrap(),
