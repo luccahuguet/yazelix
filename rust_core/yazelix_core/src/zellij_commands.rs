@@ -3292,7 +3292,7 @@ fn render_zjstatus_cursor_widget(cache: &Value) -> String {
         cursor_widget_split_preview(cache, &color)
     {
         return format!(
-            " #[fg={primary_color},bg={secondary_color},bold][{glyph}]#[fg={color},bg=default,bold][ {name}]"
+            " #[fg={color},bg=default,bold][#[fg={primary_color},bg={secondary_color},bold]{glyph}#[fg={color},bg=default,bold] {name}]"
         );
     }
 
@@ -4913,16 +4913,16 @@ mod tests {
         );
         assert_eq!(
             render_status_cache_widget(&vertical_split, "cursor").unwrap(),
-            " #[fg=#00e6ff,bg=#00ff66,bold][▌]#[fg=#00e6ff,bg=default,bold][ reef]"
+            " #[fg=#00e6ff,bg=default,bold][#[fg=#00e6ff,bg=#00ff66,bold]▌#[fg=#00e6ff,bg=default,bold] reef]"
         );
         assert_eq!(
             render_status_cache_widget(&horizontal_split, "cursor").unwrap(),
-            " #[fg=#ff1600,bg=#2a3340,bold][▀]#[fg=#ff1600,bg=default,bold][ magma]"
+            " #[fg=#ff1600,bg=default,bold][#[fg=#ff1600,bg=#2a3340,bold]▀#[fg=#ff1600,bg=default,bold] magma]"
         );
         assert_eq!(
             render_status_cache_widget(&display_color_differs_from_split_primary, "cursor")
                 .unwrap(),
-            " #[fg=#2e294e,bg=#ffd400,bold][▌]#[fg=#ffd400,bg=default,bold][ eclipse]"
+            " #[fg=#ffd400,bg=default,bold][#[fg=#2e294e,bg=#ffd400,bold]▌#[fg=#ffd400,bg=default,bold] eclipse]"
         );
         assert_eq!(
             render_status_cache_widget(&invalid_split, "cursor").unwrap(),
