@@ -859,6 +859,23 @@ mod tests {
         );
     }
 
+    // Defends: compact tab-label mode flows through the main config contract as a typed Zellij setting.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn normalizes_zellij_tab_label_mode() {
+        let path = write_user_config("[zellij]\ntab_label_mode = \"compact\"\n");
+        let data = normalize_config(&request_for(path)).unwrap();
+
+        assert_eq!(
+            data.normalized_config.get("zellij_tab_label_mode").unwrap(),
+            "compact"
+        );
+
+        let bad_path = write_user_config("[zellij]\ntab_label_mode = \"tiny\"\n");
+        let error = normalize_config(&request_for(bad_path)).unwrap_err();
+        assert_eq!(error.code(), "unsupported_config");
+    }
+
     // Defends: removed config surfaces fail as unsupported config instead of being silently accepted.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]

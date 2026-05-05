@@ -19,9 +19,12 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 use yazelix_bar::{
-    BarRenderError, BarRenderRequest, CUSTOM_TEXT_PLACEHOLDER, WIDGET_TRAY_PLACEHOLDER,
-    ZJSTATUS_NU_BIN_PLACEHOLDER, ZJSTATUS_PLUGIN_URL_PLACEHOLDER, ZJSTATUS_RUNTIME_DIR_PLACEHOLDER,
-    ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER, render_zjstatus_bar_segments,
+    BarRenderError, BarRenderRequest, CUSTOM_TEXT_PLACEHOLDER, TAB_ACTIVE_FULLSCREEN_PLACEHOLDER,
+    TAB_ACTIVE_PLACEHOLDER, TAB_ACTIVE_SYNC_PLACEHOLDER, TAB_NORMAL_FULLSCREEN_PLACEHOLDER,
+    TAB_NORMAL_PLACEHOLDER, TAB_NORMAL_SYNC_PLACEHOLDER, TAB_RENAME_PLACEHOLDER,
+    WIDGET_TRAY_PLACEHOLDER, ZJSTATUS_NU_BIN_PLACEHOLDER, ZJSTATUS_PLUGIN_URL_PLACEHOLDER,
+    ZJSTATUS_RUNTIME_DIR_PLACEHOLDER, ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER,
+    render_zjstatus_bar_segments, render_zjstatus_tab_label_formats,
 };
 
 const PANE_ORCHESTRATOR_PLUGIN_ALIAS: &str = "yazelix_pane_orchestrator";
@@ -275,6 +278,7 @@ fn build_render_plan_request(
         )
         .to_string(),
         zellij_default_mode: string_config(config, "zellij_default_mode", "normal").to_string(),
+        zellij_tab_label_mode: string_config(config, "zellij_tab_label_mode", "full").to_string(),
         yazelix_layout_dir: layout_dir.to_string_lossy().to_string(),
         resolved_default_shell: resolved_default_shell.to_string(),
         editor_label: string_config(config, "editor_command", "hx").to_string(),
@@ -794,6 +798,13 @@ fn render_bar_segments(
             "Use only documented widget tray identifiers.",
             json!({ "field": "zellij.widget_tray", "entry": entry }),
         ),
+        BarRenderError::InvalidTabLabelMode { mode } => CoreError::classified(
+            ErrorClass::Config,
+            "invalid_tab_label_mode",
+            format!("Invalid zellij.tab_label_mode in layout renderer: {mode}"),
+            "Set zellij.tab_label_mode to `full` or `compact`.",
+            json!({ "field": "zellij.tab_label_mode", "mode": mode }),
+        ),
     })
 }
 
@@ -809,9 +820,46 @@ fn render_layout_template(
     render_plan: &ZellijRenderPlanData,
 ) -> Result<String, CoreError> {
     let mut updated = apply_static_fragments(content, static_fragments);
+    let tab_labels = render_zjstatus_tab_label_formats(&render_plan.tab_label_mode).map_err(
+        |error| match error {
+            BarRenderError::InvalidTabLabelMode { mode } => CoreError::classified(
+                ErrorClass::Config,
+                "invalid_tab_label_mode",
+                format!("Invalid zellij.tab_label_mode in layout renderer: {mode}"),
+                "Set zellij.tab_label_mode to `full` or `compact`.",
+                json!({ "field": "zellij.tab_label_mode", "mode": mode }),
+            ),
+            BarRenderError::InvalidWidgetTrayEntry { entry } => CoreError::classified(
+                ErrorClass::Config,
+                "invalid_widget_tray_entry",
+                format!("Invalid zellij.widget_tray token in layout renderer: {entry}"),
+                "Use only documented widget tray identifiers.",
+                json!({ "field": "zellij.widget_tray", "entry": entry }),
+            ),
+        },
+    )?;
     let replacements = [
         (WIDGET_TRAY_PLACEHOLDER, widget_tray_segment.to_string()),
         (CUSTOM_TEXT_PLACEHOLDER, custom_text_segment.to_string()),
+        (TAB_NORMAL_PLACEHOLDER, tab_labels.tab_normal.to_string()),
+        (
+            TAB_NORMAL_FULLSCREEN_PLACEHOLDER,
+            tab_labels.tab_normal_fullscreen.to_string(),
+        ),
+        (
+            TAB_NORMAL_SYNC_PLACEHOLDER,
+            tab_labels.tab_normal_sync.to_string(),
+        ),
+        (TAB_ACTIVE_PLACEHOLDER, tab_labels.tab_active.to_string()),
+        (
+            TAB_ACTIVE_FULLSCREEN_PLACEHOLDER,
+            tab_labels.tab_active_fullscreen.to_string(),
+        ),
+        (
+            TAB_ACTIVE_SYNC_PLACEHOLDER,
+            tab_labels.tab_active_sync.to_string(),
+        ),
+        (TAB_RENAME_PLACEHOLDER, tab_labels.tab_rename.to_string()),
         (
             PANE_ORCHESTRATOR_PLUGIN_URL_PLACEHOLDER,
             pane_orchestrator_plugin_url.to_string(),
@@ -898,6 +946,13 @@ fn render_layout_template(
         WIDGET_TRAY_PLACEHOLDER,
         ZJSTATUS_NU_BIN_PLACEHOLDER,
         ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER,
+        TAB_NORMAL_PLACEHOLDER,
+        TAB_NORMAL_FULLSCREEN_PLACEHOLDER,
+        TAB_NORMAL_SYNC_PLACEHOLDER,
+        TAB_ACTIVE_PLACEHOLDER,
+        TAB_ACTIVE_FULLSCREEN_PLACEHOLDER,
+        TAB_ACTIVE_SYNC_PLACEHOLDER,
+        TAB_RENAME_PLACEHOLDER,
         "__YAZELIX_SIDEBAR_COMMAND__",
         "__YAZELIX_SIDEBAR_ARGS__",
     ] {
@@ -1779,6 +1834,7 @@ mod tests {
             disable_zellij_tips: "true".into(),
             support_kitty_keyboard_protocol: "false".into(),
             zellij_default_mode: "normal".into(),
+            zellij_tab_label_mode: "full".into(),
             yazelix_layout_dir: "/tmp/yazelix/layouts".into(),
             resolved_default_shell: shell.into(),
             editor_label: editor_label.into(),
@@ -2019,6 +2075,38 @@ ui { pane_frames { hide_session_name true } }
         assert!(!rendered.contains("status-bus-workspace"));
         assert!(!rendered.contains("agent-usage"));
     }
+
+    // Defends: compact tab-label mode shortens zjstatus tab labels in generated layout KDL without affecting rename text.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn renders_compact_tab_label_mode_in_zjstatus_template() {
+        let mut plan =
+            sample_render_plan_for_widgets(vec!["workspace"], "hx", "/nix/store/bin/nu", "ghostty");
+        plan.tab_label_mode = "compact".into();
+        let rendered = render_layout_template(
+            include_str!("../../../configs/zellij/layouts/fragments/zjstatus_tab_template.kdl"),
+            &BTreeMap::new(),
+            "",
+            "",
+            "file:/tmp/pane.wasm",
+            "file:/tmp/zjstatus.wasm",
+            std::path::Path::new("/home/user"),
+            std::path::Path::new("/opt/yazelix"),
+            &plan,
+        )
+        .unwrap();
+
+        assert!(rendered.contains(r##"tab_normal   "#[fg=#ffff00] [{index}] ""##));
+        assert!(rendered.contains(
+            r##"tab_active   "#[bg=#ff6600,fg=#000000,bold] [{index}] {floating_indicator}""##
+        ));
+        assert!(rendered.contains(
+            r##"tab_rename    "#[bg=#ff6600,fg=#000000,bold] {index} {name} {floating_indicator} ""##
+        ));
+        assert!(!rendered.contains(r##"tab_normal   "#[fg=#ffff00] [{index}] {name} ""##));
+        assert!(!rendered.contains("__YAZELIX_ZJSTATUS_TAB_NORMAL__"));
+    }
+
     // Regression: legacy plugin permission blocks are recognized by both stable and hashed wasm names.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]

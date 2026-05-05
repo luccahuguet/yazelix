@@ -13,14 +13,14 @@ plugin location="__YAZELIX_ZJSTATUS_PLUGIN_URL__" {
     mode_session "#[bg=#ff6600,fg=#000000,bold] SESSION "
     mode_scroll  "#[bg=#ff0088,fg=#ffffff,bold] SCROLL "
 
-    tab_normal   "#[fg=#ffff00] [{index}] {name} "
-    tab_normal_fullscreen "#[fg=#ffff00] [{index}] {name} [] "
-    tab_normal_sync       "#[fg=#ffff00] [{index}] {name} <> "
-    tab_active   "#[bg=#ff6600,fg=#000000,bold] [{index}] {name} {floating_indicator}"
-    tab_active_fullscreen "#[bg=#ff6600,fg=#000000,bold] [{index}] {name} {fullscreen_indicator}"
-    tab_active_sync       "#[bg=#ff6600,fg=#000000,bold] [{index}] {name} {sync_indicator}"
+    __YAZELIX_ZJSTATUS_TAB_NORMAL__
+    __YAZELIX_ZJSTATUS_TAB_NORMAL_FULLSCREEN__
+    __YAZELIX_ZJSTATUS_TAB_NORMAL_SYNC__
+    __YAZELIX_ZJSTATUS_TAB_ACTIVE__
+    __YAZELIX_ZJSTATUS_TAB_ACTIVE_FULLSCREEN__
+    __YAZELIX_ZJSTATUS_TAB_ACTIVE_SYNC__
     tab_separator ""
-    tab_rename    "#[bg=#ff6600,fg=#000000,bold] {index} {name} {floating_indicator} "
+    __YAZELIX_ZJSTATUS_TAB_RENAME__
     tab_sync_indicator       "<> "
     tab_fullscreen_indicator "[] "
     tab_floating_indicator   "⬚ "

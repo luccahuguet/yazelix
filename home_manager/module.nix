@@ -409,6 +409,15 @@ in
       description = "Zjstatus widget tray order (editor/shell/term/workspace/cursor/usage/cpu/ram); dynamic entries read from a window-local cache";
     };
 
+    zellij_tab_label_mode = mkMainContractOption "zellij.tab_label_mode" {
+      description = ''
+        Zjstatus tab-label mode.
+
+        - "full": show tab index and tab name
+        - "compact": show tab index and state indicators only
+      '';
+    };
+
     zellij_codex_usage_display = mkMainContractOption "zellij.codex_usage_display" {
       description = "Codex usage widget display mode: token, quota, or both";
     };
@@ -566,7 +575,7 @@ in
         $DRY_RUN_CMD ${runtimeYzxCore} runtime-materialization.repair --from-env --force --summary
       '';
     }
-    (mkIf (pkgs.stdenv.hostPlatform.isLinux && lib.hasAttrByPath [ "xdg" "desktopEntries" ] options) {
+    (lib.optionalAttrs (pkgs.stdenv.hostPlatform.isLinux && lib.hasAttrByPath [ "xdg" "desktopEntries" ] options) {
       # Linux desktop entry for application launchers.
       xdg.desktopEntries.yazelix = {
         name = "Yazelix";

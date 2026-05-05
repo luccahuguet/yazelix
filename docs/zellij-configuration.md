@@ -61,6 +61,7 @@ simplified_ui true
       "cpu",
       "ram"
     ],
+    "tab_label_mode": "full",
     "claude_usage_display": "both",
     "codex_usage_display": "quota",
     "opencode_go_usage_display": "both",
@@ -70,6 +71,8 @@ simplified_ui true
 }
 ```
 Comment out any line to hide that widget. Order matters. Restart Yazelix to regenerate layouts.
+
+`tab_label_mode = "full"` keeps the default tab index plus tab name labels. Set it to `"compact"` when a workspace/root widget already shows the project context and tabs should use only index plus fullscreen/sync/floating state indicators.
 
 `editor`, `shell`, and `term` render static labels from the active Yazelix config. `workspace`, `cursor`, and usage widgets read window-local cached facts so separate Yazelix windows keep independent status-bar state. The cursor widget renders mono presets as colored `█ name` and split presets as one-cell vertical or horizontal split glyphs from the launch-scoped Ghostty cursor fact; it shows `none` when Ghostty cursor trails are disabled, `n/a` outside Yazelix-managed Ghostty cursor sessions, and no segment while the cache is missing. CPU and RAM use bundled runtime helper scripts; RAM reads Nushell `sys mem` data instead of scraping the welcome-screen machine summary.
 

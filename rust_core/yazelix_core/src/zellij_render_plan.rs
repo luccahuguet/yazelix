@@ -68,6 +68,10 @@ const SCREEN_SAVER_STYLE_ALLOWED: &[&str] = &[
     "game_of_life_bloom",
     "random",
 ];
+const TAB_LABEL_MODE_ALLOWED: &[&str] = &[
+    yazelix_bar::TAB_LABEL_MODE_FULL,
+    yazelix_bar::TAB_LABEL_MODE_COMPACT,
+];
 pub const DEFAULT_SIDEBAR_COMMAND: &str = "nu";
 pub const DEFAULT_SIDEBAR_YAZI_ARG: &str =
     "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu";
@@ -114,6 +118,10 @@ fn default_support_kitty_keyboard_protocol() -> String {
 
 fn default_zellij_default_mode() -> String {
     "normal".into()
+}
+
+fn default_tab_label_mode() -> String {
+    yazelix_bar::TAB_LABEL_MODE_FULL.into()
 }
 
 fn default_widget_tray() -> Vec<String> {
@@ -177,6 +185,8 @@ pub struct ZellijRenderPlanRequest {
     pub support_kitty_keyboard_protocol: String,
     #[serde(default = "default_zellij_default_mode")]
     pub zellij_default_mode: String,
+    #[serde(default = "default_tab_label_mode")]
+    pub zellij_tab_label_mode: String,
     pub yazelix_layout_dir: String,
     pub resolved_default_shell: String,
     #[serde(default = "default_editor_label")]
@@ -219,6 +229,7 @@ pub struct ZellijRenderPlanData {
     pub editor_label: String,
     pub shell_label: String,
     pub terminal_label: String,
+    pub tab_label_mode: String,
     pub custom_text: String,
     pub layout_percentages: LayoutPlaceholderPercents,
     pub rounded_value: String,
@@ -375,6 +386,24 @@ fn validate_default_mode(mode: &str) -> Result<(), CoreError> {
     }
 }
 
+fn normalize_tab_label_mode(mode: &str) -> Result<String, CoreError> {
+    let normalized = mode.trim().to_ascii_lowercase();
+    if TAB_LABEL_MODE_ALLOWED.contains(&normalized.as_str()) {
+        Ok(normalized)
+    } else {
+        Err(CoreError::classified(
+            ErrorClass::Config,
+            "invalid_tab_label_mode",
+            format!(
+                "Invalid zellij.tab_label_mode `{normalized}`. Expected one of: {}",
+                TAB_LABEL_MODE_ALLOWED.join(", ")
+            ),
+            "Set zellij.tab_label_mode to `full` or `compact`.",
+            serde_json::json!({ "field": "zellij.tab_label_mode", "mode": normalized }),
+        ))
+    }
+}
+
 fn pick_theme(resolved_theme_config: &str) -> String {
     if resolved_theme_config == "random" {
         let idx = SystemTime::now()
@@ -432,6 +461,7 @@ pub fn compute_zellij_render_plan(
     validate_screen_saver_idle_seconds(request.screen_saver_idle_seconds)?;
     validate_default_mode(&request.zellij_default_mode)?;
     let screen_saver_style = normalize_screen_saver_style(&request.screen_saver_style)?;
+    let tab_label_mode = normalize_tab_label_mode(&request.zellij_tab_label_mode)?;
 
     let widget_tray = request
         .zellij_widget_tray
@@ -523,6 +553,7 @@ pub fn compute_zellij_render_plan(
         editor_label,
         shell_label,
         terminal_label,
+        tab_label_mode,
         custom_text,
         layout_percentages,
         rounded_value: rounded_value.to_string(),
@@ -565,6 +596,7 @@ mod tests {
             disable_zellij_tips: "true".into(),
             support_kitty_keyboard_protocol: "false".into(),
             zellij_default_mode: "normal".into(),
+            zellij_tab_label_mode: "full".into(),
             yazelix_layout_dir: "/tmp/yazelix/layouts".into(),
             resolved_default_shell: "/usr/bin/nu".into(),
             editor_label: "hx".into(),
@@ -767,5 +799,21 @@ mod tests {
         assert_eq!(plan.editor_label, "hx");
         assert_eq!(plan.shell_label, "nu");
         assert_eq!(plan.terminal_label, "ghostty");
+    }
+
+    // Defends: compact tab labels are explicit and normalized before layout KDL rendering.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn normalizes_tab_label_mode() {
+        let mut req = sample_request();
+        req.zellij_tab_label_mode = "Compact".into();
+        let plan = compute_zellij_render_plan(&req).unwrap();
+        assert_eq!(plan.tab_label_mode, "compact");
+
+        req.zellij_tab_label_mode = "tiny".into();
+        assert_eq!(
+            compute_zellij_render_plan(&req).unwrap_err().code(),
+            "invalid_tab_label_mode"
+        );
     }
 }

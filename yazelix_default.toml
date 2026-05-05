@@ -178,6 +178,13 @@ widget_tray = [
   "ram",  # RAM usage
 ]
 
+# Tab label mode (left side of status bar)
+# Options:
+# - "full":    show tab index and tab name, e.g. [1] project
+# - "compact": show tab index and state indicators only, e.g. [1]
+# Compact is useful when workspace/root widgets already show the project name
+tab_label_mode = "full"
+
 # Claude usage display: "token", "quota", or "both"
 claude_usage_display = "both"
 

@@ -1,5 +1,12 @@
 pub const WIDGET_TRAY_PLACEHOLDER: &str = "__YAZELIX_WIDGET_TRAY__";
 pub const CUSTOM_TEXT_PLACEHOLDER: &str = "__YAZELIX_CUSTOM_TEXT_SEGMENT__";
+pub const TAB_NORMAL_PLACEHOLDER: &str = "__YAZELIX_ZJSTATUS_TAB_NORMAL__";
+pub const TAB_NORMAL_FULLSCREEN_PLACEHOLDER: &str = "__YAZELIX_ZJSTATUS_TAB_NORMAL_FULLSCREEN__";
+pub const TAB_NORMAL_SYNC_PLACEHOLDER: &str = "__YAZELIX_ZJSTATUS_TAB_NORMAL_SYNC__";
+pub const TAB_ACTIVE_PLACEHOLDER: &str = "__YAZELIX_ZJSTATUS_TAB_ACTIVE__";
+pub const TAB_ACTIVE_FULLSCREEN_PLACEHOLDER: &str = "__YAZELIX_ZJSTATUS_TAB_ACTIVE_FULLSCREEN__";
+pub const TAB_ACTIVE_SYNC_PLACEHOLDER: &str = "__YAZELIX_ZJSTATUS_TAB_ACTIVE_SYNC__";
+pub const TAB_RENAME_PLACEHOLDER: &str = "__YAZELIX_ZJSTATUS_TAB_RENAME__";
 pub const ZJSTATUS_PLUGIN_URL_PLACEHOLDER: &str = "__YAZELIX_ZJSTATUS_PLUGIN_URL__";
 pub const ZJSTATUS_RUNTIME_DIR_PLACEHOLDER: &str = "__YAZELIX_RUNTIME_DIR__";
 pub const ZJSTATUS_NU_BIN_PLACEHOLDER: &str = "__YAZELIX_NU_BIN__";
@@ -24,6 +31,8 @@ pub const COMMAND_OPENCODE_GO_USAGE: &str = "{command_opencode_go_usage}";
 pub const COMMAND_CPU: &str = "{command_cpu}";
 pub const COMMAND_RAM: &str = "{command_ram}";
 pub const COMMAND_VERSION: &str = "{command_version}";
+pub const TAB_LABEL_MODE_FULL: &str = "full";
+pub const TAB_LABEL_MODE_COMPACT: &str = "compact";
 
 pub const DEFAULT_WIDGET_TRAY: &[&str] = &[
     WIDGET_EDITOR,
@@ -51,14 +60,27 @@ pub struct BarRenderData {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TabLabelFormats {
+    pub tab_normal: &'static str,
+    pub tab_normal_fullscreen: &'static str,
+    pub tab_normal_sync: &'static str,
+    pub tab_active: &'static str,
+    pub tab_active_fullscreen: &'static str,
+    pub tab_active_sync: &'static str,
+    pub tab_rename: &'static str,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BarRenderError {
     InvalidWidgetTrayEntry { entry: String },
+    InvalidTabLabelMode { mode: String },
 }
 
 impl BarRenderError {
     pub fn code(&self) -> &'static str {
         match self {
             Self::InvalidWidgetTrayEntry { .. } => "invalid_widget_tray_entry",
+            Self::InvalidTabLabelMode { .. } => "invalid_tab_label_mode",
         }
     }
 }
@@ -93,6 +115,32 @@ pub fn render_custom_text_segment(custom_text: &str) -> String {
         String::new()
     } else {
         format!("#[fg=#ffff00,bold][{trimmed}] ")
+    }
+}
+
+pub fn render_zjstatus_tab_label_formats(mode: &str) -> Result<TabLabelFormats, BarRenderError> {
+    match mode {
+        TAB_LABEL_MODE_FULL => Ok(TabLabelFormats {
+            tab_normal: r##"tab_normal   "#[fg=#ffff00] [{index}] {name} ""##,
+            tab_normal_fullscreen: r##"tab_normal_fullscreen "#[fg=#ffff00] [{index}] {name} [] ""##,
+            tab_normal_sync: r##"tab_normal_sync       "#[fg=#ffff00] [{index}] {name} <> ""##,
+            tab_active: r##"tab_active   "#[bg=#ff6600,fg=#000000,bold] [{index}] {name} {floating_indicator}""##,
+            tab_active_fullscreen: r##"tab_active_fullscreen "#[bg=#ff6600,fg=#000000,bold] [{index}] {name} {fullscreen_indicator}""##,
+            tab_active_sync: r##"tab_active_sync       "#[bg=#ff6600,fg=#000000,bold] [{index}] {name} {sync_indicator}""##,
+            tab_rename: r##"tab_rename    "#[bg=#ff6600,fg=#000000,bold] {index} {name} {floating_indicator} ""##,
+        }),
+        TAB_LABEL_MODE_COMPACT => Ok(TabLabelFormats {
+            tab_normal: r##"tab_normal   "#[fg=#ffff00] [{index}] ""##,
+            tab_normal_fullscreen: r##"tab_normal_fullscreen "#[fg=#ffff00] [{index}] [] ""##,
+            tab_normal_sync: r##"tab_normal_sync       "#[fg=#ffff00] [{index}] <> ""##,
+            tab_active: r##"tab_active   "#[bg=#ff6600,fg=#000000,bold] [{index}] {floating_indicator}""##,
+            tab_active_fullscreen: r##"tab_active_fullscreen "#[bg=#ff6600,fg=#000000,bold] [{index}] {fullscreen_indicator}""##,
+            tab_active_sync: r##"tab_active_sync       "#[bg=#ff6600,fg=#000000,bold] [{index}] {sync_indicator}""##,
+            tab_rename: r##"tab_rename    "#[bg=#ff6600,fg=#000000,bold] {index} {name} {floating_indicator} ""##,
+        }),
+        _ => Err(BarRenderError::InvalidTabLabelMode {
+            mode: mode.to_string(),
+        }),
     }
 }
 
@@ -227,5 +275,47 @@ mod tests {
             }
         );
         assert_eq!(error.code(), "invalid_widget_tray_entry");
+    }
+
+    // Defends: full tab labels keep the existing index plus name format unless compact mode is explicitly enabled.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn renders_full_tab_label_formats_by_default_contract() {
+        let formats = render_zjstatus_tab_label_formats(TAB_LABEL_MODE_FULL).unwrap();
+
+        assert!(formats.tab_normal.contains("[{index}] {name}"));
+        assert!(formats.tab_active.contains("[{index}] {name}"));
+        assert!(formats.tab_rename.contains("{index} {name}"));
+    }
+
+    // Defends: compact tab labels remove tab names from normal rendering while preserving index and state indicators.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn renders_compact_tab_label_formats_without_names() {
+        let formats = render_zjstatus_tab_label_formats(TAB_LABEL_MODE_COMPACT).unwrap();
+
+        assert_eq!(
+            formats.tab_normal,
+            r##"tab_normal   "#[fg=#ffff00] [{index}] ""##
+        );
+        assert!(formats.tab_normal_fullscreen.contains("{index}] []"));
+        assert!(formats.tab_active_sync.contains("{sync_indicator}"));
+        assert!(!formats.tab_active.contains("{name}"));
+        assert!(formats.tab_rename.contains("{name}"));
+    }
+
+    // Regression: unsupported tab label modes fail fast instead of emitting broken zjstatus KDL.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn rejects_unknown_tab_label_mode() {
+        let error = render_zjstatus_tab_label_formats("tiny").unwrap_err();
+
+        assert_eq!(
+            error,
+            BarRenderError::InvalidTabLabelMode {
+                mode: "tiny".to_string()
+            }
+        );
+        assert_eq!(error.code(), "invalid_tab_label_mode");
     }
 }

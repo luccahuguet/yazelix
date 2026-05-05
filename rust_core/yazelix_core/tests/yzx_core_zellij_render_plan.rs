@@ -44,6 +44,7 @@ fn zellij_render_plan_emits_ok_envelope() {
         envelope["data"]["layout_percentages"]["open_primary_width_percent"],
         "48%"
     );
+    assert_eq!(envelope["data"]["tab_label_mode"], "full");
     let kitty = envelope["data"]["enforced_top_level_settings"]
         .as_array()
         .unwrap()
