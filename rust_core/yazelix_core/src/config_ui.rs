@@ -1,8 +1,11 @@
-//! Read-only terminal UI for inspecting the canonical Yazelix config surface.
+//! Terminal UI for inspecting and editing the canonical Yazelix config surface.
 
 use crate::active_config_surface::{PrimaryConfigPaths, primary_config_paths};
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_normalize::{ConfigDiagnostic, ConfigDiagnosticReport, NormalizeConfigRequest};
+use crate::settings_jsonc_patch::{
+    SettingsJsoncPatchMutation, set_settings_jsonc_value_text, unset_settings_jsonc_value_text,
+};
 use crate::settings_surface::{SETTINGS_SCHEMA_FILENAME, render_default_settings_jsonc};
 use crate::settings_surface::{
     is_settings_config_path, parse_jsonc_value, read_settings_jsonc_value,
@@ -25,7 +28,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::io::{self, IsTerminal};
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use toml::Value as TomlValue;
 
 const DEFAULT_TABS: &[&str] = &[
@@ -128,11 +131,26 @@ enum UiRowRef {
 }
 
 struct ConfigUiApp {
+    request: ConfigUiRequest,
     model: ConfigUiModel,
     selected_tab: usize,
     selected_row: usize,
     search: String,
     search_active: bool,
+    edit: Option<ConfigUiEditState>,
+    notice: Option<ConfigUiNotice>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ConfigUiEditState {
+    field_index: usize,
+    input: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ConfigUiNotice {
+    text: String,
+    is_error: bool,
 }
 
 pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel, CoreError> {
@@ -248,7 +266,7 @@ pub fn run_config_ui(request: ConfigUiRequest) -> Result<i32, CoreError> {
     execute!(stdout, EnterAlternateScreen).map_err(terminal_err)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend).map_err(terminal_err)?;
-    let result = run_ui_loop(&mut terminal, model);
+    let result = run_ui_loop(&mut terminal, request, model);
     let cleanup = restore_terminal(&mut terminal);
 
     match (result, cleanup) {
@@ -260,14 +278,18 @@ pub fn run_config_ui(request: ConfigUiRequest) -> Result<i32, CoreError> {
 
 fn run_ui_loop(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    request: ConfigUiRequest,
     model: ConfigUiModel,
 ) -> Result<(), CoreError> {
     let mut app = ConfigUiApp {
+        request,
         model,
         selected_tab: 0,
         selected_row: 0,
         search: String::new(),
         search_active: false,
+        edit: None,
+        notice: None,
     };
 
     loop {
@@ -457,6 +479,63 @@ fn render_details(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect, row: Opt
 }
 
 fn render_footer(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect) {
+    if let Some(edit) = &app.edit {
+        let field = &app.model.fields[edit.field_index];
+        let editing = Line::from(vec![
+            Span::styled("editing: ", Style::default().fg(Color::Yellow)),
+            Span::raw(field.path.clone()),
+            Span::raw(" = "),
+            Span::styled(
+                format!("{}_", edit.input),
+                Style::default().fg(Color::White),
+            ),
+        ]);
+        let status = app
+            .notice
+            .as_ref()
+            .map(|notice| {
+                let style = if notice.is_error {
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default().fg(Color::Green)
+                };
+                Line::from(Span::styled(
+                    truncate(&notice.text, area.width as usize),
+                    style,
+                ))
+            })
+            .unwrap_or_else(|| {
+                Line::from(vec![
+                    Span::raw("Enter save  "),
+                    Span::raw("Esc cancel  "),
+                    Span::raw("Ctrl+u clear"),
+                ])
+            });
+        frame.render_widget(Paragraph::new(vec![editing, status]), area);
+        return;
+    }
+
+    let notice = app
+        .notice
+        .as_ref()
+        .map(|notice| {
+            let style = if notice.is_error {
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::Green)
+            };
+            Line::from(Span::styled(
+                truncate(&notice.text, area.width as usize),
+                style,
+            ))
+        })
+        .unwrap_or_else(|| {
+            Line::from(vec![
+                Span::raw("Enter/e edit  "),
+                Span::raw("Space toggle/cycle  "),
+                Span::raw("u unset"),
+            ])
+        });
     let search = if app.search_active {
         format!("search: {}_", app.search)
     } else if app.search.is_empty() {
@@ -470,11 +549,16 @@ fn render_footer(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect) {
         Span::raw("j/k move  "),
         Span::styled(search, Style::default().fg(Color::Yellow)),
     ]);
-    frame.render_widget(Paragraph::new(controls), area);
+    frame.render_widget(Paragraph::new(vec![notice, controls]), area);
 }
 
 impl ConfigUiApp {
     fn handle_key(&mut self, key: KeyEvent) -> bool {
+        if self.edit.is_some() {
+            self.handle_edit_key(key);
+            return false;
+        }
+
         if self.search_active {
             match key.code {
                 KeyCode::Esc | KeyCode::Enter => self.search_active = false,
@@ -498,6 +582,9 @@ impl ConfigUiApp {
             KeyCode::Char('/') => self.search_active = true,
             KeyCode::Char('j') | KeyCode::Down => self.move_down(),
             KeyCode::Char('k') | KeyCode::Up => self.move_up(),
+            KeyCode::Enter | KeyCode::Char('e') => self.begin_edit_selected_field(),
+            KeyCode::Char(' ') => self.quick_edit_selected_field(),
+            KeyCode::Char('u') => self.unset_selected_field(),
             KeyCode::Tab | KeyCode::Right | KeyCode::Char('l') => self.next_tab(),
             KeyCode::BackTab | KeyCode::Left | KeyCode::Char('h') => self.previous_tab(),
             KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => return true,
@@ -505,6 +592,260 @@ impl ConfigUiApp {
         }
 
         false
+    }
+
+    fn handle_edit_key(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Esc => {
+                self.edit = None;
+                self.notice_info("Edit canceled.");
+            }
+            KeyCode::Enter => self.save_edit(),
+            KeyCode::Backspace => {
+                self.notice = None;
+                if let Some(edit) = &mut self.edit {
+                    edit.input.pop();
+                }
+            }
+            KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.notice = None;
+                if let Some(edit) = &mut self.edit {
+                    edit.input.clear();
+                }
+            }
+            KeyCode::Char(ch) => {
+                self.notice = None;
+                if let Some(edit) = &mut self.edit {
+                    edit.input.push(ch);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn selected_field_index(&self) -> Option<usize> {
+        let row = self.visible_rows().get(self.selected_row).copied()?;
+        match row {
+            UiRowRef::Field(index) => Some(index),
+            _ => None,
+        }
+    }
+
+    fn begin_edit_selected_field(&mut self) {
+        self.notice = None;
+        let Some(field_index) = self.selected_field_index() else {
+            self.notice_error("Only settings rows can be edited.");
+            return;
+        };
+        if let Err(error) = self.ensure_editable_config() {
+            self.notice_error(error.message());
+            return;
+        }
+        let field = &self.model.fields[field_index];
+        self.edit = Some(ConfigUiEditState {
+            field_index,
+            input: edit_input_for_field(field),
+        });
+    }
+
+    fn quick_edit_selected_field(&mut self) {
+        self.notice = None;
+        let Some(field_index) = self.selected_field_index() else {
+            self.notice_error("Only settings rows can be edited.");
+            return;
+        };
+        if let Err(error) = self.ensure_editable_config() {
+            self.notice_error(error.message());
+            return;
+        }
+        let field = &self.model.fields[field_index];
+        let value = if is_bool_field(field) {
+            Some(JsonValue::Bool(!field_bool_value(field).unwrap_or(false)))
+        } else if is_scalar_enum_field(field) && !field.allowed_values.is_empty() {
+            Some(JsonValue::String(next_allowed_value(field)))
+        } else {
+            None
+        };
+
+        if let Some(value) = value {
+            self.set_field_value(field_index, value);
+        } else {
+            self.begin_edit_selected_field();
+        }
+    }
+
+    fn unset_selected_field(&mut self) {
+        self.notice = None;
+        let Some(field_index) = self.selected_field_index() else {
+            self.notice_error("Only settings rows can be unset.");
+            return;
+        };
+        if let Err(error) = self.ensure_editable_config() {
+            self.notice_error(error.message());
+            return;
+        }
+        let path = self.model.fields[field_index].path.clone();
+        match self.unset_field_value(&path) {
+            Ok(mutation) => {
+                if mutation == SettingsJsoncPatchMutation::Unchanged {
+                    self.notice_info(format!("{path} was already unset."));
+                } else {
+                    self.notice_info(format!("Unset {path}."));
+                }
+            }
+            Err(error) => self.notice_error(error.message()),
+        }
+    }
+
+    fn save_edit(&mut self) {
+        let Some(edit) = self.edit.clone() else {
+            return;
+        };
+        let field = self.model.fields[edit.field_index].clone();
+        let value = match parse_edit_input(&field, &edit.input) {
+            Ok(value) => value,
+            Err(message) => {
+                self.notice_error(message);
+                return;
+            }
+        };
+        self.set_field_value(edit.field_index, value);
+        if self
+            .notice
+            .as_ref()
+            .map(|notice| !notice.is_error)
+            .unwrap_or(false)
+        {
+            self.edit = None;
+        }
+    }
+
+    fn set_field_value(&mut self, field_index: usize, value: JsonValue) {
+        let path = self.model.fields[field_index].path.clone();
+        match self.write_field_value(&path, &value) {
+            Ok(mutation) => {
+                if mutation == SettingsJsoncPatchMutation::Unchanged {
+                    self.notice_info(format!("{path} was already set."));
+                } else {
+                    self.notice_info(format!("Saved {path}."));
+                }
+            }
+            Err(error) => self.notice_error(error.message()),
+        }
+    }
+
+    fn write_field_value(
+        &mut self,
+        setting_path: &str,
+        value: &JsonValue,
+    ) -> Result<SettingsJsoncPatchMutation, CoreError> {
+        self.ensure_editable_config()?;
+        let config_path = self.model.active_config_path.clone();
+        let raw = read_settings_for_edit_or_empty(&config_path)?;
+        let outcome = set_settings_jsonc_value_text(&config_path, &raw, setting_path, value)?;
+        if outcome.changed() {
+            validate_patched_settings_for_ui(&self.request, &outcome.text)?;
+            write_settings_edit(&config_path, &outcome.text)?;
+        }
+        self.reload_model_preserving_selection(setting_path)?;
+        Ok(outcome.mutation)
+    }
+
+    fn unset_field_value(
+        &mut self,
+        setting_path: &str,
+    ) -> Result<SettingsJsoncPatchMutation, CoreError> {
+        self.ensure_editable_config()?;
+        let config_path = self.model.active_config_path.clone();
+        let raw = read_settings_for_edit_or_empty(&config_path)?;
+        let outcome = unset_settings_jsonc_value_text(&config_path, &raw, setting_path)?;
+        if outcome.changed() {
+            validate_patched_settings_for_ui(&self.request, &outcome.text)?;
+            write_settings_edit(&config_path, &outcome.text)?;
+        }
+        self.reload_model_preserving_selection(setting_path)?;
+        Ok(outcome.mutation)
+    }
+
+    fn reload_model_preserving_selection(&mut self, selected_path: &str) -> Result<(), CoreError> {
+        let selected_tab = self
+            .model
+            .fields
+            .iter()
+            .find(|field| field.path == selected_path)
+            .map(|field| field.tab.clone());
+        self.model = build_config_ui_model(&self.request)?;
+        if let Some(tab) = selected_tab
+            && let Some(tab_index) = self
+                .model
+                .tabs
+                .iter()
+                .position(|candidate| candidate == &tab)
+        {
+            self.selected_tab = tab_index;
+        }
+        self.selected_row = self
+            .visible_rows()
+            .iter()
+            .position(|row| {
+                matches!(
+                    row,
+                    UiRowRef::Field(index) if self.model.fields[*index].path == selected_path
+                )
+            })
+            .unwrap_or(0);
+        Ok(())
+    }
+
+    fn ensure_editable_config(&self) -> Result<(), CoreError> {
+        if !is_settings_config_path(&self.model.active_config_path) {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "unsupported_config_edit_surface",
+                format!(
+                    "The config UI can only edit settings.jsonc, but the active config is {}.",
+                    self.model.active_config_path.display()
+                ),
+                "Move this setting to settings.jsonc, or clear YAZELIX_CONFIG_OVERRIDE.",
+                json!({ "path": self.model.active_config_path.display().to_string() }),
+            ));
+        }
+        if self.model.config_owner == ConfigUiPathOwner::HomeManager {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "home_manager_owned_config",
+                "This settings file is owned by Home Manager.",
+                "Edit your Home Manager module options instead, then run home-manager switch.",
+                json!({ "path": self.model.active_config_path.display().to_string() }),
+            ));
+        }
+        if self.model.config_read_only {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "read_only_settings_config",
+                format!(
+                    "The active settings file is read-only: {}.",
+                    self.model.active_config_path.display()
+                ),
+                "Fix file permissions or edit the owning configuration source.",
+                json!({ "path": self.model.active_config_path.display().to_string() }),
+            ));
+        }
+        Ok(())
+    }
+
+    fn notice_info(&mut self, text: impl Into<String>) {
+        self.notice = Some(ConfigUiNotice {
+            text: text.into(),
+            is_error: false,
+        });
+    }
+
+    fn notice_error(&mut self, text: impl Into<String>) {
+        self.notice = Some(ConfigUiNotice {
+            text: text.into(),
+            is_error: true,
+        });
     }
 
     fn visible_rows(&self) -> Vec<UiRowRef> {
@@ -1211,6 +1552,253 @@ fn render_json_value(value: &JsonValue) -> String {
     }
 }
 
+fn edit_input_for_field(field: &ConfigUiField) -> String {
+    if field.current_value == "not set" {
+        return String::new();
+    }
+    if is_string_field(field) || is_scalar_enum_field(field) {
+        return parse_rendered_json_string(&field.current_value)
+            .unwrap_or_else(|| field.current_value.clone());
+    }
+    field.current_value.clone()
+}
+
+fn parse_edit_input(field: &ConfigUiField, input: &str) -> Result<JsonValue, String> {
+    let trimmed = input.trim();
+    match field.kind.as_str() {
+        "bool" | "boolean" => parse_bool_input(field, trimmed),
+        "int" | "integer" => parse_i64_input(field, trimmed),
+        "float" | "number" => parse_f64_input(field, trimmed),
+        "string" => parse_string_field_input(field, input),
+        "string_list" => parse_string_list_input(field, trimmed),
+        "array" => parse_json_input(field, trimmed, "JSON array").and_then(|value| {
+            if value.is_array() {
+                Ok(value)
+            } else {
+                Err(format!("{} must be a JSON array.", field.path))
+            }
+        }),
+        "object" => parse_json_input(field, trimmed, "JSON object").and_then(|value| {
+            if value.is_object() {
+                Ok(value)
+            } else {
+                Err(format!("{} must be a JSON object.", field.path))
+            }
+        }),
+        _ => parse_json_input(field, trimmed, "JSON value"),
+    }
+}
+
+fn parse_bool_input(field: &ConfigUiField, input: &str) -> Result<JsonValue, String> {
+    match input {
+        "true" => Ok(JsonValue::Bool(true)),
+        "false" => Ok(JsonValue::Bool(false)),
+        _ => Err(format!("{} must be true or false.", field.path)),
+    }
+}
+
+fn parse_i64_input(field: &ConfigUiField, input: &str) -> Result<JsonValue, String> {
+    let value = input
+        .parse::<i64>()
+        .map_err(|_| format!("{} must be an integer.", field.path))?;
+    Ok(JsonValue::Number(value.into()))
+}
+
+fn parse_f64_input(field: &ConfigUiField, input: &str) -> Result<JsonValue, String> {
+    let value = input
+        .parse::<f64>()
+        .map_err(|_| format!("{} must be a number.", field.path))?;
+    let number = serde_json::Number::from_f64(value)
+        .ok_or_else(|| format!("{} must be a finite number.", field.path))?;
+    Ok(JsonValue::Number(number))
+}
+
+fn parse_string_field_input(field: &ConfigUiField, input: &str) -> Result<JsonValue, String> {
+    let value = parse_string_input(input)
+        .map_err(|message| format!("{} must be a string: {message}.", field.path))?;
+    ensure_allowed_value(field, &value)?;
+    Ok(JsonValue::String(value))
+}
+
+fn parse_string_list_input(field: &ConfigUiField, input: &str) -> Result<JsonValue, String> {
+    let value = parse_json_input(field, input, "JSON string array")?;
+    let array = value
+        .as_array()
+        .ok_or_else(|| format!("{} must be a JSON string array.", field.path))?;
+    let mut strings = Vec::with_capacity(array.len());
+    for value in array {
+        let Some(value) = value.as_str() else {
+            return Err(format!("{} must contain only strings.", field.path));
+        };
+        ensure_allowed_value(field, value)?;
+        strings.push(JsonValue::String(value.to_string()));
+    }
+    Ok(JsonValue::Array(strings))
+}
+
+fn parse_json_input(
+    field: &ConfigUiField,
+    input: &str,
+    expected: &str,
+) -> Result<JsonValue, String> {
+    serde_json::from_str::<JsonValue>(input)
+        .map_err(|source| format!("{} must be a valid {expected}: {source}.", field.path))
+}
+
+fn parse_string_input(input: &str) -> Result<String, String> {
+    let trimmed = input.trim();
+    if trimmed.starts_with('"') {
+        serde_json::from_str::<String>(trimmed).map_err(|source| source.to_string())
+    } else {
+        Ok(input.to_string())
+    }
+}
+
+fn parse_rendered_json_string(value: &str) -> Option<String> {
+    serde_json::from_str::<String>(value).ok()
+}
+
+fn ensure_allowed_value(field: &ConfigUiField, value: &str) -> Result<(), String> {
+    if field.allowed_values.is_empty()
+        || field.allowed_values.iter().any(|allowed| allowed == value)
+    {
+        return Ok(());
+    }
+    Err(format!(
+        "{} must be one of: {}.",
+        field.path,
+        field.allowed_values.join(", ")
+    ))
+}
+
+fn is_bool_field(field: &ConfigUiField) -> bool {
+    matches!(field.kind.as_str(), "bool" | "boolean")
+}
+
+fn is_string_field(field: &ConfigUiField) -> bool {
+    field.kind == "string"
+}
+
+fn is_scalar_enum_field(field: &ConfigUiField) -> bool {
+    is_string_field(field) && !field.allowed_values.is_empty()
+}
+
+fn field_bool_value(field: &ConfigUiField) -> Option<bool> {
+    match field.current_value.as_str() {
+        "true" => Some(true),
+        "false" => Some(false),
+        _ => None,
+    }
+}
+
+fn field_string_value(field: &ConfigUiField) -> Option<String> {
+    parse_rendered_json_string(&field.current_value).or_else(|| {
+        if field.current_value == "not set" {
+            None
+        } else {
+            Some(field.current_value.clone())
+        }
+    })
+}
+
+fn next_allowed_value(field: &ConfigUiField) -> String {
+    let current = field_string_value(field);
+    let next_index = current
+        .as_deref()
+        .and_then(|value| {
+            field
+                .allowed_values
+                .iter()
+                .position(|candidate| candidate == value)
+        })
+        .map(|index| (index + 1) % field.allowed_values.len())
+        .unwrap_or(0);
+    field.allowed_values[next_index].clone()
+}
+
+fn read_settings_for_edit_or_empty(path: &Path) -> Result<String, CoreError> {
+    match fs::read_to_string(path) {
+        Ok(raw) => Ok(raw),
+        Err(source) if source.kind() == io::ErrorKind::NotFound => Ok("{}\n".to_string()),
+        Err(source) => Err(CoreError::io(
+            "read_settings_jsonc_for_edit",
+            "Could not read Yazelix settings.jsonc for editing",
+            "Fix permissions or restore the settings file, then retry.",
+            path.display().to_string(),
+            source,
+        )),
+    }
+}
+
+fn write_settings_edit(path: &Path, raw: &str) -> Result<(), CoreError> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|source| {
+            CoreError::io(
+                "create_settings_jsonc_parent",
+                "Could not create the Yazelix config directory",
+                "Fix permissions for the config directory, then retry.",
+                parent.display().to_string(),
+                source,
+            )
+        })?;
+    }
+    fs::write(path, raw).map_err(|source| {
+        CoreError::io(
+            "write_settings_jsonc_edit",
+            "Could not write Yazelix settings.jsonc",
+            "Fix permissions for the settings file, then retry.",
+            path.display().to_string(),
+            source,
+        )
+    })
+}
+
+fn validate_patched_settings_for_ui(request: &ConfigUiRequest, raw: &str) -> Result<(), CoreError> {
+    let paths = primary_config_paths(&request.runtime_dir, &request.config_dir);
+    let temp_dir = std::env::temp_dir().join(format!(
+        "yazelix_config_ui_settings_check_{}_{}",
+        std::process::id(),
+        monotonic_suffix()
+    ));
+    fs::create_dir_all(&temp_dir).map_err(|source| {
+        CoreError::io(
+            "create_settings_validation_temp_dir",
+            "Could not create a temporary directory to validate settings.jsonc",
+            "Check the system temporary directory permissions, then retry.",
+            temp_dir.display().to_string(),
+            source,
+        )
+    })?;
+    let temp_config = temp_dir.join(SETTINGS_CONFIG);
+    let result = (|| {
+        fs::write(&temp_config, raw).map_err(|source| {
+            CoreError::io(
+                "write_settings_validation_temp_config",
+                "Could not write a temporary settings.jsonc validation file",
+                "Check the system temporary directory permissions, then retry.",
+                temp_config.display().to_string(),
+                source,
+            )
+        })?;
+        crate::config_normalize::normalize_config(&NormalizeConfigRequest {
+            config_path: temp_config,
+            default_config_path: paths.default_config_path.clone(),
+            contract_path: paths.contract_path.clone(),
+            include_missing: true,
+        })?;
+        Ok(())
+    })();
+    let _ = fs::remove_dir_all(&temp_dir);
+    result
+}
+
+fn monotonic_suffix() -> u128 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0)
+}
+
 fn toml_value_to_json(value: &TomlValue) -> Result<JsonValue, CoreError> {
     match value {
         TomlValue::String(value) => Ok(JsonValue::String(value.clone())),
@@ -1333,13 +1921,74 @@ fn terminal_err(source: io::Error) -> CoreError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ghostty_cursor_registry::DEFAULT_CURSOR_CONFIG_FILENAME;
     use ratatui::backend::TestBackend;
+    use tempfile::tempdir;
 
     fn buffer_line(buffer: &ratatui::buffer::Buffer, y: u16) -> String {
         (0..buffer.area.width)
             .filter_map(|x| buffer.cell((x, y)))
             .map(|cell| cell.symbol())
             .collect::<String>()
+    }
+
+    fn test_field(
+        path: &str,
+        kind: &str,
+        current_value: &str,
+        allowed_values: &[&str],
+    ) -> ConfigUiField {
+        ConfigUiField {
+            path: path.to_string(),
+            tab: "general".to_string(),
+            kind: kind.to_string(),
+            current_value: current_value.to_string(),
+            default_value: "no default".to_string(),
+            state: ConfigUiValueState::Explicit,
+            description: String::new(),
+            allowed_values: allowed_values
+                .iter()
+                .map(|value| (*value).to_string())
+                .collect(),
+            validation: String::new(),
+            rebuild_required: false,
+        }
+    }
+
+    fn write_runtime_layout(runtime: &Path) {
+        fs::create_dir_all(runtime.join("config_metadata")).expect("metadata dir");
+        fs::write(
+            runtime
+                .join("config_metadata")
+                .join("main_config_contract.toml"),
+            include_str!("../../../config_metadata/main_config_contract.toml"),
+        )
+        .expect("main config contract");
+        fs::write(
+            runtime
+                .join("config_metadata")
+                .join("yazelix_settings.schema.json"),
+            include_str!("../../../config_metadata/yazelix_settings.schema.json"),
+        )
+        .expect("settings schema");
+        fs::write(
+            runtime.join("yazelix_default.toml"),
+            include_str!("../../../yazelix_default.toml"),
+        )
+        .expect("main defaults");
+        fs::write(
+            runtime.join(DEFAULT_CURSOR_CONFIG_FILENAME),
+            include_str!("../../../yazelix_cursors_default.toml"),
+        )
+        .expect("cursor defaults");
+    }
+
+    fn test_request(runtime: &Path, config: &Path) -> ConfigUiRequest {
+        ConfigUiRequest {
+            runtime_dir: runtime.to_path_buf(),
+            config_dir: config.to_path_buf(),
+            config_override: None,
+        }
     }
 
     // Regression: diagnostic statuses longer than their nominal column width still need a separator before the path.
@@ -1363,6 +2012,11 @@ mod tests {
     #[test]
     fn header_uses_structured_title_metadata_and_path_label() {
         let app = ConfigUiApp {
+            request: ConfigUiRequest {
+                runtime_dir: PathBuf::from("/runtime"),
+                config_dir: PathBuf::from("/home/lucca/.config/yazelix"),
+                config_override: None,
+            },
             model: ConfigUiModel {
                 active_config_path: PathBuf::from("/home/lucca/.config/yazelix/settings.jsonc"),
                 active_config_exists: true,
@@ -1377,6 +2031,8 @@ mod tests {
             selected_row: 0,
             search: String::new(),
             search_active: false,
+            edit: None,
+            notice: None,
         };
         let backend = TestBackend::new(80, 3);
         let mut terminal = Terminal::new(backend).expect("terminal");
@@ -1392,5 +2048,105 @@ mod tests {
         assert!(
             buffer_line(buffer, 1).contains("path: /home/lucca/.config/yazelix/settings.jsonc")
         );
+    }
+
+    // Defends: the editable config UI interprets typed values from the field contract instead of guessing strings for every setting.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn parse_edit_input_uses_field_type_and_allowed_values() {
+        let bool_field = test_field("editor.hide_sidebar_on_file_open", "bool", "false", &[]);
+        assert_eq!(
+            parse_edit_input(&bool_field, "true").expect("bool"),
+            json!(true)
+        );
+        assert!(parse_edit_input(&bool_field, "yes").is_err());
+
+        let enum_field = test_field(
+            "zellij.tab_label_mode",
+            "string",
+            "\"short\"",
+            &["short", "compact", "full"],
+        );
+        assert_eq!(
+            parse_edit_input(&enum_field, "compact").expect("enum"),
+            json!("compact")
+        );
+        assert!(parse_edit_input(&enum_field, "wide").is_err());
+
+        let list_field = test_field("yazi.plugins", "string_list", "[\"git\"]", &["git", "ouch"]);
+        assert_eq!(
+            parse_edit_input(&list_field, r#"["git","ouch"]"#).expect("list"),
+            json!(["git", "ouch"])
+        );
+        assert!(parse_edit_input(&list_field, r#"["unknown"]"#).is_err());
+    }
+
+    // Defends: keyboard-oriented quick edits produce deterministic toggles/cycles from the value shown in the UI.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn quick_edit_helpers_toggle_bool_and_cycle_enum() {
+        let bool_field = test_field("core.debug_mode", "bool", "true", &[]);
+        assert_eq!(field_bool_value(&bool_field), Some(true));
+
+        let enum_field = test_field(
+            "zellij.tab_label_mode",
+            "string",
+            "\"compact\"",
+            &["short", "compact", "full"],
+        );
+        assert_eq!(edit_input_for_field(&enum_field), "compact");
+        assert_eq!(next_allowed_value(&enum_field), "full");
+    }
+
+    // Defends: UI edits use the same comment-preserving settings.jsonc patcher and validation path as `yzx config set`.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn write_field_value_patches_settings_jsonc_and_reloads_model() {
+        let runtime = tempdir().expect("runtime");
+        let config = tempdir().expect("config");
+        write_runtime_layout(runtime.path());
+        let settings_path = config.path().join("settings.jsonc");
+        fs::write(
+            &settings_path,
+            r#"{
+  // keep this comment
+  "editor": { "hide_sidebar_on_file_open": false }
+}
+"#,
+        )
+        .expect("settings");
+        let request = test_request(runtime.path(), config.path());
+        let model = build_config_ui_model(&request).expect("model");
+        let mut app = ConfigUiApp {
+            request,
+            model,
+            selected_tab: 0,
+            selected_row: 0,
+            search: String::new(),
+            search_active: false,
+            edit: None,
+            notice: None,
+        };
+
+        let mutation = app
+            .write_field_value("editor.hide_sidebar_on_file_open", &json!(true))
+            .expect("write");
+
+        assert_eq!(mutation, SettingsJsoncPatchMutation::Replaced);
+        let raw = fs::read_to_string(&settings_path).expect("settings raw");
+        assert!(raw.contains("// keep this comment"));
+        let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
+        assert_eq!(
+            get_json_path(&value, "editor.hide_sidebar_on_file_open"),
+            Some(&json!(true))
+        );
+        let field = app
+            .model
+            .fields
+            .iter()
+            .find(|field| field.path == "editor.hide_sidebar_on_file_open")
+            .expect("field");
+        assert_eq!(field.state, ConfigUiValueState::Explicit);
+        assert_eq!(field.current_value, "true");
     }
 }
