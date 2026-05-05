@@ -64,19 +64,21 @@ Automate the version bump, release commit, and matching git tag
 - Rotates the current `Unreleased` release notes into the requested version, resets a fresh `Unreleased` placeholder, updates `YAZELIX_VERSION`, syncs the README title/version marker, creates a dedicated commit, and creates the matching annotated tag
 - Refuses to run if `CHANGELOG.md` or `docs/upgrade_notes.toml` still contain the untouched default `Unreleased` placeholder text
 
-### `yzx launch [--path DIR] [--home] [--terminal TERM] [--verbose]`
+### `yzx launch [--path DIR] [--home] [--config FILE] [--terminal TERM] [--verbose]`
 Launch Yazelix with directory and mode options
 - Default: Launch new terminal in current directory
 - `--path DIR`: Start in specific directory
 - `--home`: Start in home directory
+- `--config FILE`: Use an alternate complete `settings.jsonc` for this window
 - `--terminal TERM`: Override terminal selection (e.g., ghostty, wezterm, kitty)
 - `--verbose`: Print detailed launch diagnostics
 
-### `yzx enter [--path DIR] [--home] [--verbose]`
+### `yzx enter [--path DIR] [--home] [--config FILE] [--verbose]`
 Start Yazelix in the current terminal
 - Default: Start in the current terminal and current directory
 - `--path DIR`: Start in specific directory
 - `--home`: Start in home directory
+- `--config FILE`: Use an alternate complete `settings.jsonc` for this current-terminal session
 - `--verbose`: Print detailed startup diagnostics
 
 ### `yzx env [--no-shell]`
@@ -133,12 +135,13 @@ Show the guided Yazelix tutor
 - `yzx tutor nu`: launch Nushell's built-in tutorial in a fresh `nu` process
 - `yzx tutor nushell`: alias for `yzx tutor nu`
 
-### `yzx restart [-s | --skip]`
+### `yzx restart [-s | --skip] [--config FILE]`
 Restart the current Yazelix window
 - Relaunches through the stable owner-provided `yzx` wrapper when one exists
 - Profile installs relaunch through the default-profile `yzx`; Home Manager installs relaunch through the Home Manager-owned `yzx`
 - Already-open Yazelix windows keep running their current live runtime until they are explicitly relaunched or restarted
 - `--skip, -s`: skip the welcome screen for the restarted window only
+- `--config FILE`: Use an alternate complete `settings.jsonc` for the restarted window
 
 ### `yzx status [--versions]`
 Show current Yazelix status
@@ -289,6 +292,7 @@ yzx launch --home             # New terminal in home directory
 yzx enter --path ~/project    # Current terminal, specific directory
 yzx launch --terminal wezterm # Force WezTerm for this launch
 yzx launch --verbose          # Detailed launch diagnostics
+yzx launch --config ./minimal.jsonc # Use an alternate complete settings file
 
 # Environment-only mode (no UI)
 yzx env                       # Drop into configured shell with Yazelix tools
@@ -312,6 +316,7 @@ yzx tutor hx                  # Launch Helix's built-in tutor
 yzx tutor nu                  # Launch Nushell's built-in tutor
 yzx restart                   # Reopen Yazelix in a fresh window
 yzx restart -s                # Reopen Yazelix and skip the welcome screen once
+yzx restart --config ./minimal.jsonc # Reopen with an alternate complete settings file
 
 # Diagnostics and info
 yzx doctor --fix              # Health check with auto-fix

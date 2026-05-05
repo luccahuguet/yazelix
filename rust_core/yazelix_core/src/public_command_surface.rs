@@ -111,13 +111,18 @@ const ENV_FLAGS: &[YzxCommandParameter] = &[switch("no-shell", Some("n"))];
 const RUN_REST: &[YzxCommandParameter] = &[rest("argv")];
 const LAUNCH_FLAGS: &[YzxCommandParameter] = &[
     named("path", Some("p"), "string", true),
+    named("config", None, "path", true),
     switch("home", None),
     named("terminal", Some("t"), "string", true),
     switch("verbose", None),
 ];
-const RESTART_FLAGS: &[YzxCommandParameter] = &[switch("skip", Some("s"))];
+const RESTART_FLAGS: &[YzxCommandParameter] = &[
+    switch("skip", Some("s")),
+    named("config", None, "path", true),
+];
 const ENTER_FLAGS: &[YzxCommandParameter] = &[
     named("path", Some("p"), "string", true),
+    named("config", None, "path", true),
     switch("home", None),
     switch("verbose", None),
 ];

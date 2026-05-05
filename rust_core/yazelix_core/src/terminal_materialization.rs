@@ -339,7 +339,7 @@ pub fn generate_terminal_materialization(
         &config_dir,
         &request.terminals,
     )?;
-    let cursor_config_path = CursorRegistry::user_config_path(&config_dir);
+    let cursor_config_path = request.config_path.clone();
     let cursor_registry = CursorRegistry::load(&cursor_config_path)?;
     let generated_dir = request.state_dir.join("configs").join("terminal_emulators");
 

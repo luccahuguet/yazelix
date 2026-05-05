@@ -5,8 +5,8 @@ use crate::bridge::{CoreError, ErrorClass};
 use crate::config_state::compute_config_state;
 use crate::control_plane::{
     config_dir_from_env, config_override_from_env, config_state_compute_request_from_env,
-    home_dir_from_env, load_normalized_config_for_control, run_child_in_runtime_env,
-    runtime_dir_from_env, runtime_env_request, state_dir_from_env,
+    home_dir_from_env, load_normalized_config_for_control, runtime_dir_from_env,
+    runtime_env_request, state_dir_from_env,
 };
 use crate::install_ownership_env::install_ownership_request_from_env_with_runtime_dir;
 use crate::install_ownership_report::{
@@ -99,6 +99,7 @@ const RESTART_LAUNCH_CLEARED_ENV_KEYS: &[&str] = &[
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct EnterArgs {
     path: Option<String>,
+    config: Option<String>,
     home: bool,
     verbose: bool,
     setup_only: bool,
@@ -108,6 +109,7 @@ struct EnterArgs {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct LaunchArgs {
     path: Option<String>,
+    config: Option<String>,
     home: bool,
     terminal: Option<String>,
     verbose: bool,
@@ -124,6 +126,7 @@ struct DesktopArgs {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct RestartArgs {
+    config: Option<String>,
     skip_welcome: bool,
     help: bool,
 }
@@ -137,11 +140,14 @@ pub fn run_yzx_enter(args: &[String]) -> Result<i32, CoreError> {
 
     let runtime_dir = runtime_dir_from_env()?;
     let config_dir = config_dir_from_env()?;
-    let normalized = load_normalized_config_for_control(
-        &runtime_dir,
-        &config_dir,
-        config_override_from_env().as_deref(),
-    )?;
+    let inherited_config_override = config_override_from_env();
+    let config_override = parsed
+        .config
+        .as_deref()
+        .or(inherited_config_override.as_deref());
+    let config_extra_env = config_override_extra_env(config_override);
+    let normalized =
+        load_normalized_config_for_control(&runtime_dir, &config_dir, config_override)?;
     let req = runtime_env_request(runtime_dir.clone(), &normalized)?;
     let runtime_data = compute_runtime_env(&req)?;
     let runtime_env = runtime_data.runtime_env;
@@ -154,7 +160,13 @@ pub fn run_yzx_enter(args: &[String]) -> Result<i32, CoreError> {
 
     if parsed.setup_only {
         println!("🔧 Setting up Yazelix generated environment files...");
-        run_runtime_setup(&runtime_dir, &nu_bin, &runtime_env, false)?;
+        run_runtime_setup(
+            &runtime_dir,
+            &nu_bin,
+            &runtime_env,
+            false,
+            &config_extra_env,
+        )?;
         println!("✅ Setup complete.");
         return Ok(0);
     }
@@ -187,7 +199,7 @@ pub fn run_yzx_enter(args: &[String]) -> Result<i32, CoreError> {
         )
     })?;
 
-    run_runtime_setup(&runtime_dir, &nu_bin, &runtime_env, true)?;
+    run_runtime_setup(&runtime_dir, &nu_bin, &runtime_env, true, &config_extra_env)?;
 
     let mut argv = vec![
         nu_bin.to_string_lossy().into_owned(),
@@ -198,7 +210,15 @@ pub fn run_yzx_enter(args: &[String]) -> Result<i32, CoreError> {
     if parsed.verbose {
         argv.push("--verbose".to_string());
     }
-    let status = run_child_in_runtime_env(&argv, &runtime_env, &working_dir)?;
+    let status = command_status_with_overrides(
+        &argv,
+        Some(&runtime_env),
+        &working_dir,
+        &[],
+        &config_extra_env,
+        "enter_startup",
+        "Retry from a valid Yazelix runtime or relaunch with `yzx launch`.",
+    )?;
     Ok(status.code().unwrap_or(1))
 }
 
@@ -209,8 +229,14 @@ pub fn run_yzx_launch(args: &[String]) -> Result<i32, CoreError> {
         return Ok(0);
     }
 
+    let inherited_config_override = config_override_from_env();
+    let config_override = parsed
+        .config
+        .as_deref()
+        .or(inherited_config_override.as_deref());
     run_launch_flow(
         parsed.path.as_deref(),
+        config_override,
         parsed.home,
         parsed.terminal.as_deref(),
         parsed.verbose,
@@ -277,6 +303,11 @@ pub fn run_yzx_restart(args: &[String]) -> Result<i32, CoreError> {
     let report = evaluate_install_ownership_report(
         &install_ownership_request_from_env_with_runtime_dir(runtime_dir.clone())?,
     );
+    let inherited_config_override = config_override_from_env();
+    let config_override = parsed
+        .config
+        .as_deref()
+        .or(inherited_config_override.as_deref());
     let launcher = report
         .stable_yzx_wrapper
         .map(PathBuf::from)
@@ -291,6 +322,7 @@ pub fn run_yzx_restart(args: &[String]) -> Result<i32, CoreError> {
             Some("true".to_string()),
         ));
     }
+    restart_extra_env.extend(config_override_extra_env(config_override));
 
     let output = command_output_with_overrides(
         &[
@@ -524,6 +556,7 @@ fn run_desktop_launch() -> Result<i32, CoreError> {
     let home_dir_string = home_dir.to_string_lossy().to_string();
     match run_launch_flow(
         Some(&home_dir_string),
+        config_override_from_env().as_deref(),
         false,
         None,
         false,
@@ -540,6 +573,7 @@ fn run_desktop_launch() -> Result<i32, CoreError> {
 
 fn run_launch_flow(
     requested_path: Option<&str>,
+    config_override: Option<&str>,
     home: bool,
     requested_terminal: Option<&str>,
     verbose: bool,
@@ -548,9 +582,8 @@ fn run_launch_flow(
 ) -> Result<i32, CoreError> {
     let runtime_dir = runtime_dir_from_env()?;
     let state_dir = state_dir_from_env()?;
-    let config_state = compute_config_state(&config_state_compute_request_from_env(
-        config_override_from_env().as_deref(),
-    )?)?;
+    let config_state =
+        compute_config_state(&config_state_compute_request_from_env(config_override)?)?;
     let configured_terminals = normalized_configured_terminals(&config_state.config);
     if configured_terminals.is_empty() {
         print_empty_terminal_error()?;
@@ -580,6 +613,7 @@ fn run_launch_flow(
             .map(|candidate| candidate.terminal.clone())
             .collect(),
         desktop_fast_path,
+        config_override,
     )?;
     let materialization = prepare_launch_materialization(&req)?;
     if !desktop_fast_path && !materialization.generated_terminals.is_empty() {
@@ -684,6 +718,7 @@ fn run_launch_flow(
                 extra_env.push(("YAZELIX_LAYOUT_OVERRIDE".to_string(), Some(value)));
             }
         }
+        extra_env.extend(config_override_extra_env(config_override));
 
         let output = if desktop_fast_path {
             run_desktop_deferred_launch_probe(
@@ -773,6 +808,56 @@ fn launch_cursor_fact_for_terminal(value: &Option<String>, terminal: &str) -> Op
     }
 }
 
+fn config_override_extra_env(config_override: Option<&str>) -> Vec<(String, Option<String>)> {
+    config_override
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|value| {
+            vec![(
+                "YAZELIX_CONFIG_OVERRIDE".to_string(),
+                Some(value.to_string()),
+            )]
+        })
+        .unwrap_or_default()
+}
+
+fn resolve_cli_config_override(raw: &str) -> Result<String, CoreError> {
+    resolve_config_override_path(
+        raw,
+        &std::env::current_dir().map_err(|source| {
+            CoreError::io(
+                "config_override_cwd",
+                "Could not read the current working directory while resolving --config.",
+                "cd into a valid directory, then retry.",
+                ".",
+                source,
+            )
+        })?,
+        &home_dir_from_env()?,
+    )
+}
+
+fn resolve_config_override_path(raw: &str, cwd: &Path, home: &Path) -> Result<String, CoreError> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Err(CoreError::usage("Missing value for --config."));
+    }
+
+    let path = if trimmed == "~" {
+        home.to_path_buf()
+    } else if let Some(rest) = trimmed.strip_prefix("~/") {
+        home.join(rest)
+    } else {
+        PathBuf::from(trimmed)
+    };
+    let path = if path.is_absolute() {
+        path
+    } else {
+        cwd.join(path)
+    };
+    Ok(path.to_string_lossy().to_string())
+}
+
 fn parse_enter_args(args: &[String]) -> Result<EnterArgs, CoreError> {
     let mut parsed = EnterArgs::default();
     let mut index = 0;
@@ -788,6 +873,20 @@ fn parse_enter_args(args: &[String]) -> Result<EnterArgs, CoreError> {
                     CoreError::usage("Missing value for yzx enter --path. Try `yzx enter --help`.")
                 })?;
                 parsed.path = Some(value.clone());
+            }
+            "--config" => {
+                index += 1;
+                let value = args.get(index).ok_or_else(|| {
+                    CoreError::usage(
+                        "Missing value for yzx enter --config. Try `yzx enter --help`.",
+                    )
+                })?;
+                if parsed.config.is_some() {
+                    return Err(CoreError::usage(
+                        "yzx enter accepts at most one --config override.",
+                    ));
+                }
+                parsed.config = Some(resolve_cli_config_override(value)?);
             }
             other if other.starts_with('-') => {
                 return Err(CoreError::usage(format!(
@@ -824,6 +923,20 @@ fn parse_launch_args(args: &[String]) -> Result<LaunchArgs, CoreError> {
                     )
                 })?;
                 parsed.path = Some(value.clone());
+            }
+            "--config" => {
+                index += 1;
+                let value = args.get(index).ok_or_else(|| {
+                    CoreError::usage(
+                        "Missing value for yzx launch --config. Try `yzx launch --help`.",
+                    )
+                })?;
+                if parsed.config.is_some() {
+                    return Err(CoreError::usage(
+                        "yzx launch accepts at most one --config override.",
+                    ));
+                }
+                parsed.config = Some(resolve_cli_config_override(value)?);
             }
             "--terminal" | "-t" => {
                 index += 1;
@@ -887,10 +1000,25 @@ fn parse_desktop_args(args: &[String]) -> Result<DesktopArgs, CoreError> {
 
 fn parse_restart_args(args: &[String]) -> Result<RestartArgs, CoreError> {
     let mut parsed = RestartArgs::default();
-    for arg in args {
-        match arg.as_str() {
+    let mut index = 0;
+    while index < args.len() {
+        match args[index].as_str() {
             "--help" | "-h" | "help" => parsed.help = true,
             "--skip" | "-s" => parsed.skip_welcome = true,
+            "--config" => {
+                index += 1;
+                let value = args.get(index).ok_or_else(|| {
+                    CoreError::usage(
+                        "Missing value for yzx restart --config. Try `yzx restart --help`.",
+                    )
+                })?;
+                if parsed.config.is_some() {
+                    return Err(CoreError::usage(
+                        "yzx restart accepts at most one --config override.",
+                    ));
+                }
+                parsed.config = Some(resolve_cli_config_override(value)?);
+            }
             other if other.starts_with('-') => {
                 return Err(CoreError::usage(format!(
                     "Unknown argument for yzx restart: {other}. Try `yzx restart --help`."
@@ -902,6 +1030,7 @@ fn parse_restart_args(args: &[String]) -> Result<RestartArgs, CoreError> {
                 )));
             }
         }
+        index += 1;
     }
     Ok(parsed)
 }
@@ -910,24 +1039,27 @@ fn print_enter_help() {
     println!("Start Yazelix in the current terminal");
     println!();
     println!("Usage:");
-    println!("  yzx enter [--path <dir> | --home] [--verbose]");
+    println!("  yzx enter [--path <dir> | --home] [--config <file>] [--verbose]");
 }
 
 fn print_launch_help() {
     println!("Launch Yazelix in a new terminal window");
     println!();
     println!("Usage:");
-    println!("  yzx launch [--path <dir> | --home] [--terminal <name>] [--verbose]");
+    println!(
+        "  yzx launch [--path <dir> | --home] [--config <file>] [--terminal <name>] [--verbose]"
+    );
 }
 
 fn print_restart_help() {
     println!("Restart the current Yazelix window");
     println!();
     println!("Usage:");
-    println!("  yzx restart [-s | --skip]");
+    println!("  yzx restart [-s | --skip] [--config <file>]");
     println!();
     println!("Options:");
     println!("  -s, --skip    Skip the welcome screen for the restarted window");
+    println!("  --config      Use an alternate complete settings.jsonc for the restarted window");
 }
 
 fn print_desktop_help() {
@@ -994,6 +1126,7 @@ fn run_runtime_setup(
     nu_bin: &Path,
     runtime_env: &JsonMap<String, JsonValue>,
     quiet: bool,
+    extra_env: &[(String, Option<String>)],
 ) -> Result<(), CoreError> {
     let mut argv = vec![
         nu_bin.to_string_lossy().into_owned(),
@@ -1008,7 +1141,15 @@ fn run_runtime_setup(
     if quiet {
         argv.push("--skip-welcome".to_string());
     }
-    let status = run_child_in_runtime_env(&argv, runtime_env, runtime_dir)?;
+    let status = command_status_with_overrides(
+        &argv,
+        Some(runtime_env),
+        runtime_dir,
+        &[],
+        extra_env,
+        "runtime_setup",
+        "Retry from a valid Yazelix runtime or reinstall Yazelix.",
+    )?;
     if status.success() {
         Ok(())
     } else {
@@ -1590,6 +1731,32 @@ fn command_output_with_overrides(
     cmd.args(args);
     configure_command_env(&mut cmd, runtime_env, cwd, env_removals, extra_env);
     cmd.output().map_err(|source| {
+        CoreError::io(
+            owner,
+            format!("Failed to launch {owner}."),
+            remediation,
+            command.clone(),
+            source,
+        )
+    })
+}
+
+fn command_status_with_overrides(
+    argv: &[String],
+    runtime_env: Option<&JsonMap<String, JsonValue>>,
+    cwd: &Path,
+    env_removals: &[&str],
+    extra_env: &[(String, Option<String>)],
+    owner: &str,
+    remediation: &str,
+) -> Result<std::process::ExitStatus, CoreError> {
+    let (command, args) = argv
+        .split_first()
+        .ok_or_else(|| CoreError::usage("Missing command argv"))?;
+    let mut cmd = Command::new(command);
+    cmd.args(args);
+    configure_command_env(&mut cmd, runtime_env, cwd, env_removals, extra_env);
+    cmd.status().map_err(|source| {
         CoreError::io(
             owner,
             format!("Failed to launch {owner}."),
@@ -2214,9 +2381,17 @@ mod tests {
     // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn parse_launch_args_accepts_aliases() {
+        let expected_config = resolve_config_override_path(
+            "settings.jsonc",
+            &std::env::current_dir().unwrap(),
+            &home_dir_from_env().unwrap(),
+        )
+        .unwrap();
         let parsed = parse_launch_args(&[
             "-p".into(),
             "/tmp/demo".into(),
+            "--config".into(),
+            "settings.jsonc".into(),
             "-t".into(),
             "kitty".into(),
             "--verbose".into(),
@@ -2224,8 +2399,33 @@ mod tests {
         .unwrap();
 
         assert_eq!(parsed.path.as_deref(), Some("/tmp/demo"));
+        assert_eq!(parsed.config.as_deref(), Some(expected_config.as_str()));
         assert_eq!(parsed.terminal.as_deref(), Some("kitty"));
         assert!(parsed.verbose);
+    }
+
+    // Defends: public one-shot config file overrides resolve before launch so child terminals do not reinterpret relative paths from a different cwd.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
+    #[test]
+    fn config_override_paths_are_invocation_scoped() {
+        let cwd = Path::new("/tmp/project");
+        let home = Path::new("/home/demo");
+
+        assert_eq!(
+            resolve_config_override_path("alt/settings.jsonc", cwd, home).unwrap(),
+            "/tmp/project/alt/settings.jsonc"
+        );
+        assert_eq!(
+            resolve_config_override_path("~/settings.jsonc", cwd, home).unwrap(),
+            "/home/demo/settings.jsonc"
+        );
+        assert_eq!(
+            config_override_extra_env(Some("/tmp/custom.jsonc")),
+            vec![(
+                "YAZELIX_CONFIG_OVERRIDE".to_string(),
+                Some("/tmp/custom.jsonc".to_string())
+            )]
+        );
     }
 
     // Defends: restart exposes a one-shot welcome skip flag without making the config skip setting sticky.
@@ -2241,6 +2441,24 @@ mod tests {
 
         let help = parse_restart_args(&["--help".into()]).unwrap();
         assert!(help.help);
+    }
+
+    // Defends: restart can replace the inherited config override for one relaunched window without mutating settings.jsonc.
+    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
+    #[test]
+    fn parse_restart_args_accepts_config_override() {
+        let expected_config = resolve_config_override_path(
+            "minimal.jsonc",
+            &std::env::current_dir().unwrap(),
+            &home_dir_from_env().unwrap(),
+        )
+        .unwrap();
+        let parsed =
+            parse_restart_args(&["--skip".into(), "--config".into(), "minimal.jsonc".into()])
+                .unwrap();
+
+        assert!(parsed.skip_welcome);
+        assert_eq!(parsed.config.as_deref(), Some(expected_config.as_str()));
     }
 
     // Defends: the Rust launch owner still filters duplicate or unsupported configured terminals before fallback logic runs.

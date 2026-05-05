@@ -91,8 +91,9 @@ fn yzx_restart_help_prints_usage_without_restarting() {
         let stdout = stdout_text(output);
 
         assert!(stdout.contains("Restart the current Yazelix window"));
-        assert!(stdout.contains("yzx restart [-s | --skip]"));
+        assert!(stdout.contains("yzx restart [-s | --skip] [--config <file>]"));
         assert!(stdout.contains("-s, --skip"));
+        assert!(stdout.contains("--config"));
     }
 }
 

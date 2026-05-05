@@ -4,9 +4,7 @@
 use crate::active_config_surface::resolve_active_config_paths;
 use crate::bridge::CoreError;
 use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
-use crate::control_plane::{
-    config_dir_from_env, config_override_from_env, runtime_dir_from_env, state_dir_from_env,
-};
+use crate::control_plane::{config_dir_from_env, runtime_dir_from_env, state_dir_from_env};
 use crate::ghostty_cursor_registry::{CursorRegistry, ResolvedCursorRegistryState};
 use crate::ghostty_materialization::{
     GhosttyMaterializationRequest, generate_ghostty_materialization,
@@ -59,14 +57,11 @@ struct LaunchMaterializationPlan {
 pub fn launch_materialization_request_from_env(
     selected_terminals: Vec<String>,
     desktop_fast_path: bool,
+    config_override: Option<&str>,
 ) -> Result<LaunchMaterializationRequest, CoreError> {
     let runtime_dir = runtime_dir_from_env()?;
     let config_dir = config_dir_from_env()?;
-    let paths = resolve_active_config_paths(
-        &runtime_dir,
-        &config_dir,
-        config_override_from_env().as_deref(),
-    )?;
+    let paths = resolve_active_config_paths(&runtime_dir, &config_dir, config_override)?;
     let state_dir = state_dir_from_env()?;
 
     Ok(LaunchMaterializationRequest {
@@ -91,7 +86,7 @@ pub fn prepare_launch_materialization(
         include_missing: false,
     })?
     .normalized_config;
-    let cursor_config_path = CursorRegistry::user_config_path(&request.config_dir);
+    let cursor_config_path = request.config_path.clone();
     let cursor_registry = CursorRegistry::load(&cursor_config_path)?;
     let ghostty_random_requested = cursor_registry.is_random_request();
     let plan = build_launch_materialization_plan(

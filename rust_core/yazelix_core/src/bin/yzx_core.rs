@@ -938,8 +938,11 @@ fn run_launch_materialization_prepare(mut parser: lexopt::Parser) -> Result<(), 
         })?,
         None => Vec::new(),
     };
-    let request: LaunchMaterializationRequest =
-        launch_materialization_request_from_env(selected_terminals, desktop_fast_path)?;
+    let request: LaunchMaterializationRequest = launch_materialization_request_from_env(
+        selected_terminals,
+        desktop_fast_path,
+        config_override_from_env().as_deref(),
+    )?;
     let data = prepare_launch_materialization(&request)?;
     write_success_envelope(LAUNCH_MATERIALIZATION_PREPARE_COMMAND, data)
 }
