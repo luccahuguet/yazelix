@@ -559,7 +559,7 @@ fn render_footer(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect) {
                     style,
                 ))
             })
-            .unwrap_or_else(|| edit_control_line(edit.mode));
+            .unwrap_or_else(|| edit_control_line(field, edit.mode));
         frame.render_widget(Paragraph::new(vec![editing, status]), area);
         return;
     }
@@ -598,6 +598,9 @@ fn render_footer(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect) {
 fn edit_status_line(field: &ConfigUiField, edit: &ConfigUiEditState) -> Line<'static> {
     let value = match edit.mode {
         ConfigUiEditMode::Text => format!("{}_", edit.input),
+        ConfigUiEditMode::Choice if is_scalar_enum_field(field) => {
+            single_choice_status_value(field, edit)
+        }
         ConfigUiEditMode::Choice => edit.input.clone(),
         ConfigUiEditMode::MultiChoice => multi_choice_status_value(field, edit),
     };
@@ -611,9 +614,14 @@ fn edit_status_line(field: &ConfigUiField, edit: &ConfigUiEditState) -> Line<'st
 
 fn normal_control_line(app: &ConfigUiApp) -> Line<'static> {
     match app.selected_field() {
-        Some(field) if is_direct_choice_field(field) => Line::from(vec![
+        Some(field) if is_bool_field(field) => Line::from(vec![
             Span::raw("Enter/Space toggle/cycle  "),
             Span::raw("e edit  "),
+            Span::raw("u unset"),
+        ]),
+        Some(field) if is_scalar_enum_field(field) => Line::from(vec![
+            Span::raw("Enter/e picker  "),
+            Span::raw("Space cycle  "),
             Span::raw("u unset"),
         ]),
         Some(field) if is_enum_string_list_field(field) => {
@@ -624,22 +632,26 @@ fn normal_control_line(app: &ConfigUiApp) -> Line<'static> {
     }
 }
 
-fn edit_control_line(mode: ConfigUiEditMode) -> Line<'static> {
+fn edit_control_line(field: &ConfigUiField, mode: ConfigUiEditMode) -> Line<'static> {
     match mode {
         ConfigUiEditMode::Text => Line::from(vec![
             Span::raw("Enter save  "),
             Span::raw("Esc cancel  "),
             Span::raw("Ctrl+u clear"),
         ]),
+        ConfigUiEditMode::Choice if is_scalar_enum_field(field) => Line::from(vec![
+            Span::raw("hjkl/Arrows move  "),
+            Span::raw("Space select  "),
+            Span::raw("Enter save  "),
+            Span::raw("Esc cancel"),
+        ]),
         ConfigUiEditMode::Choice => Line::from(vec![
-            Span::raw("Up/Down cycle  "),
-            Span::raw("Left/Right cycle  "),
-            Span::raw("Space toggle/cycle  "),
+            Span::raw("Space toggle  "),
             Span::raw("Enter save  "),
             Span::raw("Esc cancel"),
         ]),
         ConfigUiEditMode::MultiChoice => Line::from(vec![
-            Span::raw("Up/Down move  "),
+            Span::raw("hjkl/Arrows move  "),
             Span::raw("Space enable/disable  "),
             Span::raw("Enter save  "),
             Span::raw("Esc cancel"),
@@ -734,12 +746,37 @@ impl ConfigUiApp {
     }
 
     fn handle_choice_edit_key(&mut self, key: KeyEvent) {
+        let scalar_enum = self
+            .edit
+            .as_ref()
+            .and_then(|edit| self.model.fields.get(edit.field_index))
+            .is_some_and(is_scalar_enum_field);
         match key.code {
             KeyCode::Esc => {
                 self.edit = None;
                 self.notice_info("Edit canceled.");
             }
+            KeyCode::Enter if scalar_enum => {
+                self.select_single_choice_edit();
+                self.save_edit();
+            }
             KeyCode::Enter => self.save_edit(),
+            KeyCode::Up | KeyCode::Left | KeyCode::Char('k') | KeyCode::Char('h')
+                if scalar_enum =>
+            {
+                self.notice = None;
+                self.move_single_choice_edit(-1);
+            }
+            KeyCode::Down | KeyCode::Right | KeyCode::Char('j') | KeyCode::Char('l')
+                if scalar_enum =>
+            {
+                self.notice = None;
+                self.move_single_choice_edit(1);
+            }
+            KeyCode::Char(' ') if scalar_enum => {
+                self.notice = None;
+                self.select_single_choice_edit();
+            }
             KeyCode::Up | KeyCode::Right | KeyCode::Down | KeyCode::Left | KeyCode::Char(' ') => {
                 self.notice = None;
                 self.cycle_choice_edit();
@@ -755,11 +792,11 @@ impl ConfigUiApp {
                 self.notice_info("Edit canceled.");
             }
             KeyCode::Enter => self.save_edit(),
-            KeyCode::Up | KeyCode::Left => {
+            KeyCode::Up | KeyCode::Left | KeyCode::Char('k') | KeyCode::Char('h') => {
                 self.notice = None;
                 self.move_multi_choice_edit(-1);
             }
-            KeyCode::Down | KeyCode::Right => {
+            KeyCode::Down | KeyCode::Right | KeyCode::Char('j') | KeyCode::Char('l') => {
                 self.notice = None;
                 self.move_multi_choice_edit(1);
             }
@@ -789,6 +826,39 @@ impl ConfigUiApp {
         };
         if let Some(edit) = &mut self.edit {
             edit.input = next;
+        }
+    }
+
+    fn move_single_choice_edit(&mut self, delta: isize) {
+        let Some(edit) = self.edit.clone() else {
+            return;
+        };
+        let field = &self.model.fields[edit.field_index];
+        let len = field.allowed_values.len();
+        if len == 0 {
+            return;
+        }
+        let index = edit.choice_index.min(len - 1);
+        let next = if delta < 0 {
+            index.checked_sub(1).unwrap_or(len - 1)
+        } else {
+            (index + 1) % len
+        };
+        if let Some(edit) = &mut self.edit {
+            edit.choice_index = next;
+        }
+    }
+
+    fn select_single_choice_edit(&mut self) {
+        let Some(edit) = self.edit.clone() else {
+            return;
+        };
+        let field = &self.model.fields[edit.field_index];
+        let Some(value) = field.allowed_values.get(edit.choice_index) else {
+            return;
+        };
+        if let Some(edit) = &mut self.edit {
+            edit.input = value.clone();
         }
     }
 
@@ -843,7 +913,7 @@ impl ConfigUiApp {
     }
 
     fn activate_selected_field(&mut self) {
-        if self.selected_field().is_some_and(is_direct_choice_field) {
+        if self.selected_field().is_some_and(is_bool_field) {
             self.quick_edit_selected_field();
         } else {
             self.begin_edit_selected_field();
@@ -1163,6 +1233,13 @@ impl ConfigUiApp {
                 let field = &self.model.fields[index];
                 if let Some(edit) = &self.edit
                     && edit.field_index == index
+                    && edit.mode == ConfigUiEditMode::Choice
+                    && is_scalar_enum_field(field)
+                {
+                    return single_choice_detail_lines(field, edit);
+                }
+                if let Some(edit) = &self.edit
+                    && edit.field_index == index
                     && edit.mode == ConfigUiEditMode::MultiChoice
                 {
                     return multi_choice_detail_lines(field, edit);
@@ -1281,6 +1358,60 @@ fn field_detail_lines(field: &ConfigUiField) -> Vec<Line<'static>> {
         lines.push(Line::from(""));
         lines.push(Line::from(field.description.clone()));
     }
+    lines
+}
+
+fn single_choice_detail_lines(
+    field: &ConfigUiField,
+    edit: &ConfigUiEditState,
+) -> Vec<Line<'static>> {
+    let selected_value = edit.input.as_str();
+    let mut lines = vec![
+        Line::from(Span::styled(
+            field.path.clone(),
+            config_key_style().add_modifier(Modifier::BOLD),
+        )),
+        Line::from(""),
+        detail_line("selected", selected_value),
+        Line::from(""),
+    ];
+
+    for (index, value) in field.allowed_values.iter().enumerate() {
+        let highlighted = index
+            == edit
+                .choice_index
+                .min(field.allowed_values.len().saturating_sub(1));
+        let selected = value == selected_value;
+        let selector_style = if highlighted {
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::Gray)
+        };
+        let marker_style = if selected {
+            Style::default()
+                .fg(Color::Green)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::Gray)
+        };
+        let value_style = if highlighted {
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD)
+        } else if selected {
+            Style::default().fg(Color::White)
+        } else {
+            Style::default().fg(Color::Gray)
+        };
+        lines.push(Line::from(vec![
+            Span::styled(if highlighted { "> " } else { "  " }, selector_style),
+            Span::styled(if selected { "(x) " } else { "( ) " }, marker_style),
+            Span::styled(value.clone(), value_style),
+        ]));
+    }
+
     lines
 }
 
@@ -1879,6 +2010,14 @@ fn edit_mode_for_field(field: &ConfigUiField) -> ConfigUiEditMode {
 }
 
 fn initial_edit_choice_index(field: &ConfigUiField, input: &str) -> usize {
+    if is_scalar_enum_field(field)
+        && let Some(index) = field
+            .allowed_values
+            .iter()
+            .position(|allowed| allowed == input)
+    {
+        return index;
+    }
     if is_enum_string_list_field(field)
         && let Ok(values) = parse_string_list_values(field, input)
         && let Some(index) = values.first().and_then(|value| {
@@ -2006,6 +2145,19 @@ fn ensure_allowed_value(field: &ConfigUiField, value: &str) -> Result<(), String
         field.path,
         field.allowed_values.join(", ")
     ))
+}
+
+fn single_choice_status_value(field: &ConfigUiField, edit: &ConfigUiEditState) -> String {
+    let highlighted = field
+        .allowed_values
+        .get(edit.choice_index)
+        .map(String::as_str)
+        .unwrap_or("none");
+    if highlighted == edit.input {
+        format!("selected {}", edit.input)
+    } else {
+        format!("selected {}, highlighted {highlighted}", edit.input)
+    }
 }
 
 fn multi_choice_status_value(field: &ConfigUiField, edit: &ConfigUiEditState) -> String {
@@ -2710,9 +2862,13 @@ mod tests {
         assert!(details.contains("> [x] editor"));
         assert!(details.contains("  [ ] workspace"));
 
-        app.handle_edit_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
-        app.handle_edit_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
-        app.handle_edit_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+        app.handle_edit_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+        app.handle_edit_key(KeyEvent::new(KeyCode::Char('l'), KeyModifiers::NONE));
+        app.handle_edit_key(KeyEvent::new(KeyCode::Char('k'), KeyModifiers::NONE));
+        app.handle_edit_key(KeyEvent::new(KeyCode::Char('h'), KeyModifiers::NONE));
+        app.handle_edit_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+        app.handle_edit_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+        app.handle_edit_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
         app.handle_edit_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
 
         let field = app.model.fields[edit.field_index].clone();
@@ -2769,10 +2925,10 @@ mod tests {
         assert_eq!(next_allowed_value(&enum_field), "full");
     }
 
-    // Defends: bool and enum edits are direct controls, so users can change them without typing JSON or strings.
+    // Defends: bool edits stay direct controls while enum edit mode behaves like a single-select picker.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn choice_edit_arrows_toggle_bool_and_cycle_enum_input() {
+    fn choice_edit_keys_toggle_bool_and_move_enum_picker() {
         let mut app = ConfigUiApp {
             request: ConfigUiRequest {
                 runtime_dir: PathBuf::from("/runtime"),
@@ -2817,16 +2973,66 @@ mod tests {
             field_index: 1,
             input: "compact".to_string(),
             mode: ConfigUiEditMode::Choice,
-            choice_index: 0,
+            choice_index: 1,
         });
-        app.handle_edit_key(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
+        app.handle_edit_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+        assert_eq!(app.edit.as_ref().expect("enum edit").choice_index, 2);
+        assert_eq!(app.edit.as_ref().expect("enum edit").input, "compact");
+        app.handle_edit_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
         assert_eq!(app.edit.as_ref().expect("enum edit").input, "full");
     }
 
-    // Defends: Enter on bool/enum rows performs the direct control action instead of opening an edit session.
+    // Defends: enum rows open a single-select picker that can be driven with hjkl and saved through the JSONC patcher.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn enter_directly_applies_choice_field_without_edit_mode() {
+    fn scalar_enum_enter_opens_single_select_picker() {
+        let runtime = tempdir().expect("runtime");
+        let config = tempdir().expect("config");
+        write_runtime_layout(runtime.path());
+        let settings_path = config.path().join("settings.jsonc");
+        let request = test_request(runtime.path(), config.path());
+        let model = build_config_ui_model(&request).expect("model");
+        let mut app = ConfigUiApp {
+            request,
+            model,
+            selected_tab: 0,
+            selected_row: 0,
+            search: String::new(),
+            search_active: false,
+            edit: None,
+            notice: None,
+        };
+
+        select_field_path(&mut app, "zellij.tab_label_mode");
+        app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+        let edit = app.edit.clone().expect("edit");
+        assert_eq!(edit.mode, ConfigUiEditMode::Choice);
+        let details = lines_text(&app.render_details(UiRowRef::Field(edit.field_index)));
+        assert!(details.contains("> (x) full"));
+        assert!(details.contains("  ( ) compact"));
+
+        app.handle_edit_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+        let details = lines_text(&app.render_details(UiRowRef::Field(edit.field_index)));
+        assert!(details.contains("> ( ) compact"));
+        app.handle_edit_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
+        let details = lines_text(&app.render_details(UiRowRef::Field(edit.field_index)));
+        assert!(details.contains("> (x) compact"));
+
+        app.handle_edit_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+        assert!(app.edit.is_none());
+        let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
+        assert_eq!(
+            get_json_path(&value, "zellij.tab_label_mode"),
+            Some(&json!("compact"))
+        );
+    }
+
+    // Defends: Enter on bool rows performs the direct control action instead of opening an edit session.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn enter_directly_applies_bool_field_without_edit_mode() {
         let runtime = tempdir().expect("runtime");
         let config = tempdir().expect("config");
         write_runtime_layout(runtime.path());
