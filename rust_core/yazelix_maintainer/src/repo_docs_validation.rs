@@ -36,7 +36,6 @@ const COMMAND_REFERENCE_MARKERS: &[&str] = &[
     "yzx warp",
     "yzx tutor begin",
     "yzx cursors",
-    "yzx edit cursors",
     "yzx update upstream",
     "yzx update home_manager",
 ];
@@ -161,7 +160,7 @@ mod tests {
         write(
             &repo,
             "docs/yzx_cli.md",
-            "yzx launch\nyzx enter\nyzx warp\nyzx tutor begin\nyzx cursors\nyzx edit cursors\nyzx update upstream\nyzx update home_manager\n",
+            "yzx launch\nyzx enter\nyzx warp\nyzx tutor begin\nyzx cursors\nyzx update upstream\nyzx update home_manager\n",
         );
         (temp, repo)
     }
