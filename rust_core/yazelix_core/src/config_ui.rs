@@ -343,28 +343,40 @@ fn render_header(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect) {
         .iter()
         .filter(|diagnostic| diagnostic.blocking)
         .count();
-    let diagnostics = if warning_count > 0 {
+    let diagnostic_value = if warning_count > 0 {
         Span::styled(
-            format!("  blocking issues: {warning_count}"),
+            warning_count.to_string(),
             Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
         )
     } else {
-        Span::styled("  diagnostics: ok", Style::default().fg(Color::Green))
+        Span::styled("ok", Style::default().fg(Color::Green))
     };
+    let key_style = Style::default().fg(Color::Gray);
+    let value_style = Style::default().fg(Color::White);
 
-    let line = Line::from(vec![
+    let title = Line::from(vec![
         Span::styled(
             "Yazelix Config",
             Style::default()
                 .fg(Color::Cyan)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::raw(format!("  owner: {owner}  {write_state}")),
-        diagnostics,
+        Span::raw("   "),
+        Span::styled("owner: ", key_style),
+        Span::styled(owner, value_style),
+        Span::raw("   "),
+        Span::styled("mode: ", key_style),
+        Span::styled(write_state, value_style),
+        Span::raw("   "),
+        Span::styled("diagnostics: ", key_style),
+        diagnostic_value,
     ]);
-    let path = Line::from(vec![Span::styled(source, Style::default().fg(Color::Gray))]);
+    let path = Line::from(vec![
+        Span::styled("path: ", key_style),
+        Span::styled(source, Style::default().fg(Color::White)),
+    ]);
     frame.render_widget(
-        Paragraph::new(vec![line, path]).block(Block::default().borders(Borders::BOTTOM)),
+        Paragraph::new(vec![title, path]).block(Block::default().borders(Borders::BOTTOM)),
         area,
     );
 }
@@ -452,13 +464,13 @@ fn render_footer(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect) {
     } else {
         "Esc clears search".to_string()
     };
-    let line = Line::from(vec![
+    let controls = Line::from(vec![
         Span::raw("q quit  "),
         Span::raw("Tab tabs  "),
         Span::raw("j/k move  "),
         Span::styled(search, Style::default().fg(Color::Yellow)),
     ]);
-    frame.render_widget(Paragraph::new(line), area);
+    frame.render_widget(Paragraph::new(controls), area);
 }
 
 impl ConfigUiApp {
@@ -558,9 +570,9 @@ impl ConfigUiApp {
                     "missing"
                 };
                 let style = if sidecar.present {
-                    Style::default().fg(Color::Green)
+                    sidecar_status_style(true)
                 } else {
-                    Style::default().fg(Color::DarkGray)
+                    sidecar_status_style(false)
                 };
                 Line::from(vec![
                     Span::styled(fixed_label(status, 9), style),
@@ -1265,6 +1277,14 @@ fn state_style(state: ConfigUiValueState) -> Style {
     }
 }
 
+fn sidecar_status_style(present: bool) -> Style {
+    if present {
+        Style::default().fg(Color::Green)
+    } else {
+        Style::default().fg(Color::Yellow)
+    }
+}
+
 fn owner_label(owner: ConfigUiPathOwner) -> &'static str {
     match owner {
         ConfigUiPathOwner::Default => "default",
@@ -1313,6 +1333,14 @@ fn terminal_err(source: io::Error) -> CoreError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ratatui::backend::TestBackend;
+
+    fn buffer_line(buffer: &ratatui::buffer::Buffer, y: u16) -> String {
+        (0..buffer.area.width)
+            .filter_map(|x| buffer.cell((x, y)))
+            .map(|cell| cell.symbol())
+            .collect::<String>()
+    }
 
     // Regression: diagnostic statuses longer than their nominal column width still need a separator before the path.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
@@ -1320,5 +1348,49 @@ mod tests {
     fn fixed_label_keeps_separator_after_long_values() {
         assert_eq!(fixed_label("default", 9), "default  ");
         assert_eq!(fixed_label("missing_field", 9), "missing_field ");
+    }
+
+    // Regression: missing optional sidecars stay readable instead of rendering as low-contrast dark gray.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn missing_sidecar_status_uses_readable_warning_color() {
+        assert_eq!(sidecar_status_style(false).fg, Some(Color::Yellow));
+        assert_eq!(sidecar_status_style(true).fg, Some(Color::Green));
+    }
+
+    // Regression: the config UI header keeps metadata structured on the title line and labels the config path.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn header_uses_structured_title_metadata_and_path_label() {
+        let app = ConfigUiApp {
+            model: ConfigUiModel {
+                active_config_path: PathBuf::from("/home/lucca/.config/yazelix/settings.jsonc"),
+                active_config_exists: true,
+                config_owner: ConfigUiPathOwner::User,
+                config_read_only: false,
+                tabs: Vec::new(),
+                fields: Vec::new(),
+                sidecars: Vec::new(),
+                diagnostics: Vec::new(),
+            },
+            selected_tab: 0,
+            selected_row: 0,
+            search: String::new(),
+            search_active: false,
+        };
+        let backend = TestBackend::new(80, 3);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+
+        terminal
+            .draw(|frame| render_header(frame, &app, frame.area()))
+            .expect("draw");
+
+        let buffer = terminal.backend().buffer();
+        let title = buffer_line(buffer, 0);
+        assert!(title.contains("Yazelix Config"));
+        assert!(title.contains("owner: user   mode: writable   diagnostics: ok"));
+        assert!(
+            buffer_line(buffer, 1).contains("path: /home/lucca/.config/yazelix/settings.jsonc")
+        );
     }
 }
