@@ -575,21 +575,23 @@ in
         $DRY_RUN_CMD ${runtimeYzxCore} runtime-materialization.repair --from-env --force --summary
       '';
     }
-    (lib.optionalAttrs (pkgs.stdenv.hostPlatform.isLinux && lib.hasAttrByPath [ "xdg" "desktopEntries" ] options) {
-      # Linux desktop entry for application launchers.
-      xdg.desktopEntries.yazelix = {
-        name = "Yazelix";
-        comment = "Yazi + Zellij + Helix integrated terminal environment";
-        exec = "${config.home.profileDirectory}/bin/yzx desktop launch";
-        icon = "yazelix";
-        categories = [ "Development" ];
-        type = "Application";
-        terminal = true;
-        settings = {
-          StartupWMClass = "com.yazelix.Yazelix";
+    (mkIf pkgs.stdenv.hostPlatform.isLinux (
+      lib.optionalAttrs (lib.hasAttrByPath [ "xdg" "desktopEntries" ] options) {
+        # Linux desktop entry for application launchers.
+        xdg.desktopEntries.yazelix = {
+          name = "Yazelix";
+          comment = "Yazi + Zellij + Helix integrated terminal environment";
+          exec = "${config.home.profileDirectory}/bin/yzx desktop launch";
+          icon = "yazelix";
+          categories = [ "Development" ];
+          type = "Application";
+          terminal = true;
+          settings = {
+            StartupWMClass = "com.yazelix.Yazelix";
+          };
         };
-      };
-    })
+      }
+    ))
     (mkIf cfg.manage_config {
       # Generate settings.jsonc configuration file
       xdg.configFile."yazelix/settings.jsonc" = {
