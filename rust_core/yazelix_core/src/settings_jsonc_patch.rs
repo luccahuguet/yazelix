@@ -104,10 +104,10 @@ fn parse_cst(source_path: &Path, raw: &str) -> Result<CstRootNode, CoreError> {
             ErrorClass::Config,
             "invalid_settings_jsonc",
             format!(
-                "Could not parse Yazelix settings JSONC at {}.",
-                source_path.display()
+                "Could not parse Yazelix settings JSONC at {}: {source}.",
+                source_path.display(),
             ),
-            "Fix the JSONC syntax in settings.jsonc and retry.",
+            "Fix the JSONC syntax in settings.jsonc and retry. Comments must use `//` or `/* ... */`, not `#`.",
             json!({
                 "path": source_path.display().to_string(),
                 "error": source.to_string(),

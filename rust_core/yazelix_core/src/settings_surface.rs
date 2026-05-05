@@ -187,10 +187,10 @@ pub fn parse_jsonc_value(path: &Path, raw: &str) -> Result<JsonValue, CoreError>
             ErrorClass::Config,
             "invalid_settings_jsonc",
             format!(
-                "Could not parse Yazelix settings JSONC at {}.",
-                path.display()
+                "Could not parse Yazelix settings JSONC at {}: {source}.",
+                path.display(),
             ),
-            "Fix the JSONC syntax in settings.jsonc and retry.",
+            "Fix the JSONC syntax in settings.jsonc and retry. Comments must use `//` or `/* ... */`, not `#`.",
             json!({
                 "path": path.display().to_string(),
                 "error": source.to_string(),
@@ -636,6 +636,17 @@ mod tests {
         assert_eq!(value["cursors"]["settings"]["trail"].as_str(), Some("snow"));
         assert!(!config.path().join("yazelix.toml").exists());
         assert!(!config.path().join("cursors.toml").exists());
+    }
+
+    // Regression: JSONC parse errors should explain that TOML/Nix-style # comments are not valid settings comments.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn invalid_jsonc_error_mentions_supported_comment_syntax() {
+        let err = parse_jsonc_value(Path::new("settings.jsonc"), "{\n  # comment\n}\n")
+            .expect_err("invalid jsonc");
+
+        assert_eq!(err.code(), "invalid_settings_jsonc");
+        assert!(err.remediation().contains("not `#`"));
     }
 
     // Defends: generated settings.jsonc stays readable by keeping the heavy cursors block after the normal semantic sections.

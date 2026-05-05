@@ -195,6 +195,53 @@ fn resolve_editor(runtime_dir: &Path) -> Result<(String, Vec<(String, String)>),
     Ok((editor, env_vars))
 }
 
+fn resolve_editor_for_target(
+    runtime_dir: &Path,
+    target: &EditTarget,
+) -> Result<(String, Vec<(String, String)>), CoreError> {
+    if target.id != "config" {
+        return resolve_editor(runtime_dir);
+    }
+
+    match resolve_editor(runtime_dir) {
+        Ok(editor) => Ok(editor),
+        Err(error) if config_edit_recovery_should_use_host_editor(&error) => {
+            resolve_host_editor_for_config_recovery(&error)
+        }
+        Err(error) => Err(error),
+    }
+}
+
+fn config_edit_recovery_should_use_host_editor(error: &CoreError) -> bool {
+    matches!(
+        error.code(),
+        "invalid_settings_jsonc"
+            | "settings_jsonc_not_object"
+            | "invalid_toml"
+            | "unsupported_config"
+    )
+}
+
+fn resolve_host_editor_for_config_recovery(
+    parse_error: &CoreError,
+) -> Result<(String, Vec<(String, String)>), CoreError> {
+    let editor = std::env::var("EDITOR").unwrap_or_default();
+    let editor = editor.trim();
+    if editor.is_empty() {
+        return Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "missing_recovery_editor",
+            format!(
+                "The main Yazelix config could not be parsed, and EDITOR is not set: {}",
+                parse_error.message()
+            ),
+            "Set EDITOR in your shell, then run `yzx edit config` again to repair the config file.",
+            json!({ "parse_error_code": parse_error.code() }),
+        ));
+    }
+    Ok((editor.to_string(), Vec::new()))
+}
+
 fn normalize_editor_command(editor: &str, runtime_dir: &Path) -> String {
     let trimmed = editor.trim();
     if trimmed.is_empty() {
@@ -405,7 +452,7 @@ pub fn run_yzx_edit(args: &[String]) -> Result<i32, CoreError> {
         };
 
         let runtime_dir = runtime_dir_from_env()?;
-        let (editor, env_vars) = resolve_editor(&runtime_dir)?;
+        let (editor, env_vars) = resolve_editor_for_target(&runtime_dir, target)?;
         return exec_editor(&editor, &target.path, &env_vars);
     }
 
@@ -425,7 +472,7 @@ pub fn run_yzx_edit(args: &[String]) -> Result<i32, CoreError> {
             return Ok(0);
         }
         let runtime_dir = runtime_dir_from_env()?;
-        let (editor, env_vars) = resolve_editor(&runtime_dir)?;
+        let (editor, env_vars) = resolve_editor_for_target(&runtime_dir, target)?;
         return exec_editor(&editor, &target.path, &env_vars);
     }
 
@@ -442,7 +489,7 @@ pub fn run_yzx_edit(args: &[String]) -> Result<i32, CoreError> {
     };
 
     let runtime_dir = runtime_dir_from_env()?;
-    let (editor, env_vars) = resolve_editor(&runtime_dir)?;
+    let (editor, env_vars) = resolve_editor_for_target(&runtime_dir, target)?;
     exec_editor(&editor, &target.path, &env_vars)
 }
 
@@ -466,7 +513,7 @@ pub fn run_yzx_edit_config(args: &[String]) -> Result<i32, CoreError> {
     }
 
     let runtime_dir = runtime_dir_from_env()?;
-    let (editor, env_vars) = resolve_editor(&runtime_dir)?;
+    let (editor, env_vars) = resolve_editor_for_target(&runtime_dir, target)?;
     exec_editor(&editor, &target.path, &env_vars)
 }
 
@@ -565,6 +612,29 @@ mod tests {
         assert_eq!(parsed.query, vec!["yazi", "keymap"]);
 
         assert!(parse_edit_args(&["--unknown".into()]).is_err());
+    }
+
+    // Regression: `yzx edit config` remains a repair path when the main config is too malformed to load the configured editor.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn config_edit_recovery_is_limited_to_config_parse_errors() {
+        let parse_error = CoreError::classified(
+            ErrorClass::Config,
+            "invalid_settings_jsonc",
+            "invalid settings",
+            "fix settings",
+            json!({}),
+        );
+        assert!(config_edit_recovery_should_use_host_editor(&parse_error));
+
+        let runtime_error = CoreError::classified(
+            ErrorClass::Runtime,
+            "missing_editor",
+            "missing editor",
+            "set editor",
+            json!({}),
+        );
+        assert!(!config_edit_recovery_should_use_host_editor(&runtime_error));
     }
 
     // Defends: editor normalization resolves yazelix_hx.sh relative to runtime_dir.
