@@ -39,9 +39,11 @@ When creating new files or directories, always use underscores to maintain consi
 
 ## Project Structure Notes
 
-- Yazelix is a development environment (`devShell`) not a traditional package
-- Configuration is handled via `yazelix.toml` (user) and `yazelix_default.toml` (template)
-- All paths reference `~/.config/yazelix/` as the base directory
+- Yazelix has packaged runtime surfaces and maintainer development-shell surfaces; keep user runtime behavior distinct from dev tooling
+- The canonical user semantic config is `~/.config/yazelix/settings.jsonc`
+- Shipped config defaults/templates feed `settings.jsonc` generation through `yazelix_default.toml`, `yazelix_cursors_default.toml`, `config_metadata/yazelix_settings.schema.json`, and `config_metadata/main_config_contract.toml`
+- Old mutable `yazelix.toml` and `cursors.toml` files are legacy migration inputs, not current runtime config sources
+- All Yazelix-owned user config paths reference `~/.config/yazelix/` as the base directory unless an explicit XDG/config override is in effect
 - Scripts are organized in `nushell/scripts/` with subdirectories using underscores
 
 ## README Style

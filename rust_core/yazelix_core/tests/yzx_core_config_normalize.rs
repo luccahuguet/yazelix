@@ -819,7 +819,7 @@ fn runtime_materialization_repair_summary_prints_one_human_line() {
     assert!(fixture.zellij_dir.join("config.kdl").exists());
 }
 
-// Defends: runtime-materialization.repair migrates moved Ghostty cursor fields into the cursor sidecar before strict config validation.
+// Defends: runtime-materialization.repair migrates moved Ghostty cursor fields into the settings cursor registry before strict config validation.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn runtime_materialization_repair_migrates_moved_ghostty_cursor_fields() {
@@ -1261,7 +1261,7 @@ fn terminal_materialization_generate_from_env_writes_generated_configs() {
     assert!(foot_config.contains(&format!("include={}", foot_override.display())));
 }
 
-// Defends: Kitty cursor fallback is controlled by the cursor sidecar's binary kitty_enable_cursor setting.
+// Defends: Kitty cursor fallback is controlled by the settings cursor registry's binary kitty_enable_cursor setting.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn terminal_materialization_uses_cursor_sidecar_for_kitty_toggle() {

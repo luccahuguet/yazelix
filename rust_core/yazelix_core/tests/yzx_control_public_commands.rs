@@ -95,22 +95,21 @@ fn yzx_restart_help_prints_usage_without_restarting() {
     }
 }
 
-// Defends: `yzx edit cursors --print` resolves the canonical settings file without launching an editor.
+// Regression: cursor settings live inside settings.jsonc, so the removed `yzx edit cursors` surface must not survive as an alias.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
-fn yzx_control_edit_cursors_prints_cursor_sidecar_path() {
+fn yzx_control_edit_cursors_shape_is_removed() {
     let fixture = managed_config_fixture("");
-    let expected_path = fixture.config_dir.join("settings.jsonc");
     let mut command = yzx_control_command();
     apply_managed_config_env(&mut command, &fixture)
         .arg("edit")
         .arg("cursors")
         .arg("--print");
+    let output = command.output().unwrap();
 
-    let stdout = stdout_text(command.output().unwrap());
-
-    assert_eq!(stdout, format!("{}\n", expected_path.display()));
-    assert!(expected_path.exists());
+    assert_eq!(output.status.code(), Some(64));
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("No managed Yazelix config surface matched `cursors`"));
 }
 
 // Defends: `yzx cursors` exposes resolved cursor colors and split shape names from canonical settings without requiring users to inspect generated shaders.
@@ -133,63 +132,67 @@ fn yzx_control_cursors_prints_resolved_color_surface() {
     assert!(expected_path.exists());
 }
 
-// Defends: `yzx reset cursor` is the explicit recovery path for stale cursor settings instead of compatibility-migrating old cursor schemas.
+// Regression: cursor settings reset through settings.jsonc as a whole, so the removed `yzx reset cursor` surface must not survive as an alias.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
-fn yzx_control_reset_cursor_replaces_stale_cursor_sidecar() {
+fn yzx_control_reset_cursor_shape_is_removed() {
+    let output = yzx_control_command()
+        .arg("reset")
+        .arg("cursor")
+        .arg("--yes")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(64));
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("Unknown reset target for yzx reset: cursor"));
+}
+
+// Defends: `yzx reset config` preserves adjacent managed overrides and user-owned files instead of deleting them silently.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yzx_control_reset_config_warns_about_preserved_adjacent_files() {
     let fixture = managed_config_fixture("");
     let settings_path = fixture.config_dir.join("settings.jsonc");
-    let _ = fs::remove_file(&fixture.managed_config);
-    fs::write(
-        &settings_path,
-        r##"
-{
-  "cursors": {
-    "schema_version": 1,
-    "enabled_cursors": ["blaze", "inferno"],
-    "settings": {
-      "trail": "inferno",
-      "trail_effect": "random",
-      "mode_effect": "random",
-      "glow": "medium",
-      "duration": 1.0,
-      "kitty_enable_cursor": true
-    },
-    "cursor": [
-      {
-        "name": "blaze",
-        "family": "simple_dual",
-        "colors": ["#ffb929", "#ff0000"]
-      }
-    ]
-  }
-}
-"##,
-    )
-    .unwrap();
+    let old_main_path = fixture.config_dir.join("yazelix.toml");
+    let legacy_cursor_path = fixture.config_dir.join("cursors.toml");
+    let helix_override_path = fixture.config_dir.join("helix.toml");
+    let notes_path = fixture.config_dir.join("notes.txt");
+    let settings_backup_path = fixture
+        .config_dir
+        .join("settings.jsonc.backup-20260505_000000");
+
+    fs::write(&settings_path, "{\"editor\": {\"command\": \"nvim\"}}\n").unwrap();
+    fs::write(&legacy_cursor_path, "legacy cursor data").unwrap();
+    fs::write(&helix_override_path, "rainbow-brackets = true\n").unwrap();
+    fs::write(&notes_path, "do not delete\n").unwrap();
+    fs::write(&settings_backup_path, "old backup\n").unwrap();
+    fs::remove_file(&old_main_path).unwrap();
 
     let mut command = yzx_control_command();
     apply_managed_config_env(&mut command, &fixture)
         .arg("reset")
-        .arg("cursor")
-        .arg("--yes");
+        .arg("config")
+        .arg("--yes")
+        .arg("--no-backup");
     let stdout = stdout_text(command.output().unwrap());
     let reset = fs::read_to_string(&settings_path).unwrap();
 
-    assert!(stdout.contains("Replaced settings.jsonc cursor section with a fresh template"));
-    assert!(reset.contains("\"family\": \"mono\""));
-    assert!(reset.contains("\"name\": \"magma\""));
-    assert!(!reset.contains("simple_dual"));
-    assert!(!reset.contains("inferno"));
+    assert!(stdout.contains("only replaces settings.jsonc"));
+    assert!(stdout.contains("helix.toml"));
+    assert!(stdout.contains("legacy Yazelix config inputs were left untouched: cursors.toml"));
     assert!(
-        fs::read_dir(settings_path.parent().unwrap())
-            .unwrap()
-            .any(|entry| entry
-                .unwrap()
-                .file_name()
-                .to_string_lossy()
-                .starts_with("settings.jsonc.backup-"))
+        stdout.contains(
+            "unknown adjacent entries in ~/.config/yazelix were left untouched: notes.txt"
+        )
     );
+    assert!(!stdout.contains("settings.jsonc.backup-20260505_000000"));
+    assert!(reset.contains("\"editor\""));
+    assert!(reset.contains("\"cursors\""));
+    assert!(helix_override_path.exists());
+    assert!(legacy_cursor_path.exists());
+    assert!(notes_path.exists());
+    assert!(settings_backup_path.exists());
 }
 
 // Regression: the removed nested reset shape must fail instead of surviving as a hidden compatibility alias.

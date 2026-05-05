@@ -150,6 +150,8 @@ exit         # Exit current session
 yzx launch   # Start fresh in new window
 ```
 
+`yzx reset config` replaces only `~/.config/yazelix/settings.jsonc`. Managed override files such as `helix.toml`, `zellij.kdl`, `yazi.toml`, terminal snippets, shell hooks, legacy TOML inputs, and unknown adjacent files are preserved and reported so you can move them aside manually when you want a completely clean configuration.
+
 ### Restart Fresh
 ```bash
 exit        # Exit current session  

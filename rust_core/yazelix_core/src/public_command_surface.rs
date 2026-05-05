@@ -300,26 +300,14 @@ const RESET_CONFIG_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Config),
     Some("Reset settings.jsonc back to the shipped default."),
 );
-const RESET_CURSOR_COMMAND: YzxCommandMetadata = metadata(
-    "yzx reset cursor",
-    "Replace the Ghostty cursor registry with a fresh shipped template",
-    YzxCommandCategory::Config,
-    RESET_FLAGS,
-    Some(YzxMenuCategory::Config),
-    Some("Reset the settings.jsonc cursors section back to the shipped default."),
-);
-const RESET_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[
-    RESET_ROOT_COMMAND,
-    RESET_CONFIG_COMMAND,
-    RESET_CURSOR_COMMAND,
-];
+const RESET_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[RESET_ROOT_COMMAND, RESET_CONFIG_COMMAND];
 const CURSORS_COMMAND: YzxCommandMetadata = metadata(
     "yzx cursors",
     "Inspect Ghostty cursor presets and resolved colors",
     YzxCommandCategory::Config,
     &[],
     Some(YzxMenuCategory::Config),
-    Some("Show the active cursor sidecar, effects, and resolved preset colors."),
+    Some("Show the active settings.jsonc cursor registry, effects, and resolved preset colors."),
 );
 const CURSORS_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[CURSORS_COMMAND];
 const HOME_MANAGER_ROOT_COMMAND: YzxCommandMetadata = metadata(
@@ -522,16 +510,7 @@ const EDIT_CONFIG_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Config),
     Some("Open the active Yazelix config file."),
 );
-const EDIT_CURSORS_COMMAND: YzxCommandMetadata = metadata(
-    "yzx edit cursors",
-    "Open the Ghostty cursor registry sidecar in the configured editor",
-    YzxCommandCategory::Config,
-    &[switch("print", None)],
-    Some(YzxMenuCategory::Config),
-    Some("Open the active Yazelix cursor sidecar."),
-);
-const EDIT_FAMILY_COMMANDS: &[YzxCommandMetadata] =
-    &[EDIT_ROOT_COMMAND, EDIT_CONFIG_COMMAND, EDIT_CURSORS_COMMAND];
+const EDIT_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[EDIT_ROOT_COMMAND, EDIT_CONFIG_COMMAND];
 
 const ONBOARD_COMMAND: YzxCommandMetadata = metadata(
     "yzx onboard",
@@ -1256,10 +1235,6 @@ mod tests {
         );
         assert_eq!(
             classify_yzx_root_route(&["reset".into(), "config".into(), "--yes".into()]).unwrap(),
-            YzxPublicRootRoute::RustControl
-        );
-        assert_eq!(
-            classify_yzx_root_route(&["reset".into(), "cursor".into(), "--yes".into()]).unwrap(),
             YzxPublicRootRoute::RustControl
         );
         assert_eq!(

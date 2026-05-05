@@ -136,7 +136,7 @@ impl CursorRegistry {
             CoreError::io(
                 "read_cursor_config",
                 "Could not read Yazelix cursor config",
-                "Run `yzx reset cursor --yes`, then retry.",
+                "Restore settings.jsonc with `yzx reset config --yes`, then retry.",
                 path.to_string_lossy(),
                 source,
             )
@@ -151,7 +151,7 @@ impl CursorRegistry {
                 ErrorClass::Config,
                 "missing_cursor_settings",
                 "Yazelix settings.jsonc is missing its cursors section.",
-                "Run `yzx reset cursor --yes` or restore settings.jsonc from the shipped defaults.",
+                "Restore settings.jsonc with `yzx reset config --yes`, then retry.",
                 json!({ "path": path.display().to_string() }),
             ));
         };
@@ -163,7 +163,7 @@ impl CursorRegistry {
                     "Could not parse Yazelix cursor settings in {}.",
                     path.display()
                 ),
-                "Fix the cursors object in settings.jsonc or run `yzx reset cursor --yes`.",
+                "Fix the cursors object in settings.jsonc or run `yzx reset config --yes` as a blunt fallback.",
                 json!({
                     "path": path.display().to_string(),
                     "error": source.to_string(),
@@ -178,7 +178,7 @@ impl CursorRegistry {
             CoreError::toml(
                 "invalid_cursor_config_toml",
                 "Could not parse Yazelix cursor config",
-                "Fix the cursor settings or run `yzx reset cursor --yes`.",
+                "Fix the cursor settings or restore settings.jsonc with `yzx reset config --yes`.",
                 path.to_string_lossy(),
                 source,
             )
@@ -332,8 +332,47 @@ impl CursorDefinition {
         &self.cursor_color.hex
     }
 
+    pub fn family_name(&self) -> &'static str {
+        self.family.as_str()
+    }
+
+    pub fn divider_name(&self) -> Option<&'static str> {
+        self.divider.map(|divider| divider.as_str())
+    }
+
+    pub fn split_primary_color_hex(&self) -> Option<&str> {
+        matches!(self.family, CursorFamily::Split)
+            .then(|| self.colors.first().map(|color| color.hex.as_str()))
+            .flatten()
+    }
+
+    pub fn split_secondary_color_hex(&self) -> Option<&str> {
+        matches!(self.family, CursorFamily::Split)
+            .then(|| self.colors.get(1).map(|color| color.hex.as_str()))
+            .flatten()
+    }
+
     pub fn cursor_color_literal(&self) -> String {
         self.cursor_color.glsl_vec4()
+    }
+}
+
+impl CursorFamily {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            CursorFamily::Mono => "mono",
+            CursorFamily::Split => "split",
+            CursorFamily::CuratedTemplate => "curated_template",
+        }
+    }
+}
+
+impl SplitDivider {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            SplitDivider::Vertical => "vertical",
+            SplitDivider::Horizontal => "horizontal",
+        }
     }
 }
 
@@ -926,7 +965,7 @@ color = "#ffb929"
         )
     }
 
-    // Defends: the shipped cursor sidecar can resolve a one-item enabled list and random only draws from that list.
+    // Defends: the shipped cursor registry can resolve a one-item enabled list and random only draws from that list.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn registry_resolves_random_from_enabled_cursors() {

@@ -169,7 +169,7 @@ widget_tray = [
   "editor",  # Active editor
   "shell",  # Active shell
   "term",  # Terminal emulator
-  "cursor", # Active Ghostty cursor preset (colored █ name, n/a outside Yazelix Ghostty)
+  "cursor", # Active Ghostty cursor preset (mono █, split ▌/▀, n/a outside Yazelix Ghostty)
   # "workspace", # Active workspace root name
   # "claude_usage", # Combined Claude 5h/week usage and quota
   "codex_usage", # Codex 5h/week reset timing and quota

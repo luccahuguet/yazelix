@@ -14,6 +14,33 @@ pub const ZELLIJ_CONFIG: &str = "zellij.kdl";
 pub const YAZI_CONFIG: &str = "yazi.toml";
 pub const YAZI_KEYMAP: &str = "yazi_keymap.toml";
 pub const YAZI_INIT: &str = "yazi_init.lua";
+pub const TERMINAL_GHOSTTY_CONFIG: &str = "terminal_ghostty.conf";
+pub const TERMINAL_KITTY_CONFIG: &str = "terminal_kitty.conf";
+pub const TERMINAL_ALACRITTY_CONFIG: &str = "terminal_alacritty.toml";
+pub const TERMINAL_FOOT_CONFIG: &str = "terminal_foot.ini";
+pub const SHELL_BASH_HOOK: &str = "shell_bash.sh";
+pub const SHELL_ZSH_HOOK: &str = "shell_zsh.zsh";
+pub const SHELL_FISH_HOOK: &str = "shell_fish.fish";
+pub const SHELL_NU_HOOK: &str = "shell_nu.nu";
+
+pub const CURRENT_MANAGED_CONFIG_FILE_NAMES: &[&str] = &[
+    SETTINGS_CONFIG,
+    HELIX_CONFIG,
+    ZELLIJ_CONFIG,
+    YAZI_CONFIG,
+    YAZI_KEYMAP,
+    YAZI_INIT,
+    TERMINAL_GHOSTTY_CONFIG,
+    TERMINAL_KITTY_CONFIG,
+    TERMINAL_ALACRITTY_CONFIG,
+    TERMINAL_FOOT_CONFIG,
+    SHELL_BASH_HOOK,
+    SHELL_ZSH_HOOK,
+    SHELL_FISH_HOOK,
+    SHELL_NU_HOOK,
+];
+
+pub const LEGACY_CONFIG_ENTRY_NAMES: &[&str] = &[OLD_MAIN_CONFIG, CURSOR_CONFIG, "user_configs"];
 
 pub fn main_config(config_dir: &Path) -> PathBuf {
     config_dir.join(SETTINGS_CONFIG)
@@ -92,10 +119,10 @@ pub fn legacy_yazi_init(config_dir: &Path) -> PathBuf {
 
 pub fn terminal_config(config_dir: &Path, terminal: &str) -> Option<PathBuf> {
     match terminal {
-        "ghostty" => Some(config_dir.join("terminal_ghostty.conf")),
-        "kitty" => Some(config_dir.join("terminal_kitty.conf")),
-        "alacritty" => Some(config_dir.join("terminal_alacritty.toml")),
-        "foot" => Some(config_dir.join("terminal_foot.ini")),
+        "ghostty" => Some(config_dir.join(TERMINAL_GHOSTTY_CONFIG)),
+        "kitty" => Some(config_dir.join(TERMINAL_KITTY_CONFIG)),
+        "alacritty" => Some(config_dir.join(TERMINAL_ALACRITTY_CONFIG)),
+        "foot" => Some(config_dir.join(TERMINAL_FOOT_CONFIG)),
         _ => None,
     }
 }
@@ -113,10 +140,10 @@ pub fn legacy_terminal_config(config_dir: &Path, terminal: &str) -> Option<PathB
 
 pub fn shell_hook(config_dir: &Path, shell: &str) -> Option<PathBuf> {
     match shell {
-        "bash" => Some(config_dir.join("shell_bash.sh")),
-        "zsh" => Some(config_dir.join("shell_zsh.zsh")),
-        "fish" => Some(config_dir.join("shell_fish.fish")),
-        "nu" => Some(config_dir.join("shell_nu.nu")),
+        "bash" => Some(config_dir.join(SHELL_BASH_HOOK)),
+        "zsh" => Some(config_dir.join(SHELL_ZSH_HOOK)),
+        "fish" => Some(config_dir.join(SHELL_FISH_HOOK)),
+        "nu" => Some(config_dir.join(SHELL_NU_HOOK)),
         _ => None,
     }
 }

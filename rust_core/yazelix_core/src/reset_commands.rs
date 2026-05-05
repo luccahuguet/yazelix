@@ -4,8 +4,12 @@
 use crate::active_config_surface::primary_config_paths;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{config_dir_from_env, runtime_dir_from_env};
-use crate::settings_surface::{render_default_settings_jsonc, replace_cursor_settings_in_jsonc};
+use crate::settings_surface::render_default_settings_jsonc;
+use crate::user_config_paths::{
+    CURRENT_MANAGED_CONFIG_FILE_NAMES, LEGACY_CONFIG_ENTRY_NAMES, SETTINGS_CONFIG,
+};
 use serde_json::json;
+use std::collections::BTreeSet;
 use std::fs;
 use std::io::{self, BufRead, Write};
 use std::path::{Path, PathBuf};
@@ -29,6 +33,13 @@ struct ResetSurface {
     missing_default_remediation: &'static str,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct ResetConfigAdjacencyReport {
+    managed_overrides: Vec<String>,
+    legacy_inputs: Vec<String>,
+    unknown_entries: Vec<String>,
+}
+
 pub fn run_yzx_reset(args: &[String]) -> Result<i32, CoreError> {
     match args.first().map(String::as_str) {
         None | Some("-h" | "--help" | "help") => {
@@ -36,7 +47,6 @@ pub fn run_yzx_reset(args: &[String]) -> Result<i32, CoreError> {
             Ok(0)
         }
         Some("config") => run_reset_config(&args[1..]),
-        Some("cursor") => run_reset_cursor(&args[1..]),
         Some(other) => Err(CoreError::usage(format!(
             "Unknown reset target for yzx reset: {other}. Try `yzx reset --help`."
         ))),
@@ -47,6 +57,7 @@ fn run_reset_config(args: &[String]) -> Result<i32, CoreError> {
     let runtime_dir = runtime_dir_from_env()?;
     let config_dir = config_dir_from_env()?;
     let paths = primary_config_paths(&runtime_dir, &config_dir);
+    let adjacency_report = reset_config_adjacency_report(&config_dir)?;
     let content = render_default_settings_jsonc(
         &paths.default_config_path,
         &paths.default_cursor_config_path,
@@ -63,33 +74,7 @@ fn run_reset_config(args: &[String]) -> Result<i32, CoreError> {
             missing_default_remediation: "Reinstall Yazelix or restore yazelix_default.toml in the runtime, then retry.",
         },
         content,
-    )
-}
-
-fn run_reset_cursor(args: &[String]) -> Result<i32, CoreError> {
-    let runtime_dir = runtime_dir_from_env()?;
-    let config_dir = config_dir_from_env()?;
-    let paths = primary_config_paths(&runtime_dir, &config_dir);
-    let content = if paths.user_config.exists() {
-        replace_cursor_settings_in_jsonc(&paths.user_config, &paths.default_cursor_config_path)?
-    } else {
-        render_default_settings_jsonc(
-            &paths.default_config_path,
-            &paths.default_cursor_config_path,
-        )?
-    };
-    reset_surface_with_content(
-        args,
-        ResetSurface {
-            command: "yzx reset cursor",
-            display_name: "Ghostty cursor registry",
-            target_file_name: "settings.jsonc cursor section",
-            default_path: paths.default_cursor_config_path,
-            target_path: paths.user_config,
-            missing_default_code: "missing_default_cursor_config",
-            missing_default_remediation: "Reinstall Yazelix so the runtime includes yazelix_cursors_default.toml, then retry.",
-        },
-        content,
+        Some(adjacency_report),
     )
 }
 
@@ -117,11 +102,12 @@ fn print_reset_help() {
     println!();
     println!("Usage:");
     println!("  yzx reset config [--yes] [--no-backup]");
-    println!("  yzx reset cursor [--yes] [--no-backup]");
     println!();
     println!("Targets:");
-    println!("  config  Replace settings.jsonc with fresh shipped settings");
-    println!("  cursor  Replace the settings.jsonc cursors section with shipped defaults");
+    println!("  config  Replace settings.jsonc, including cursors, with fresh shipped settings");
+    println!();
+    println!("Note:");
+    println!("  reset config preserves managed override sidecars and unknown adjacent files");
 }
 
 fn print_reset_surface_help(surface: &ResetSurface) {
@@ -142,6 +128,7 @@ fn reset_surface_with_content(
     args: &[String],
     surface: ResetSurface,
     content: String,
+    adjacency_report: Option<ResetConfigAdjacencyReport>,
 ) -> Result<i32, CoreError> {
     let parsed = parse_reset_args(args, surface.command)?;
     if parsed.help {
@@ -164,6 +151,10 @@ fn reset_surface_with_content(
             surface.missing_default_remediation,
             json!({ "path": surface.default_path.display().to_string() }),
         ));
+    }
+
+    if let Some(report) = adjacency_report.as_ref() {
+        print_reset_config_adjacency_warnings(report, &surface);
     }
 
     if !parsed.yes {
@@ -247,6 +238,74 @@ fn reset_surface_with_content(
     }
 
     Ok(0)
+}
+
+fn reset_config_adjacency_report(
+    config_dir: &Path,
+) -> Result<ResetConfigAdjacencyReport, CoreError> {
+    let current_managed: BTreeSet<&str> =
+        CURRENT_MANAGED_CONFIG_FILE_NAMES.iter().copied().collect();
+    let legacy: BTreeSet<&str> = LEGACY_CONFIG_ENTRY_NAMES.iter().copied().collect();
+    let mut report = ResetConfigAdjacencyReport::default();
+
+    let entries = match fs::read_dir(config_dir) {
+        Ok(entries) => entries,
+        Err(source) if source.kind() == io::ErrorKind::NotFound => return Ok(report),
+        Err(source) => return Err(io_err(config_dir, source)),
+    };
+
+    for entry in entries {
+        let entry = entry.map_err(|source| io_err(config_dir, source))?;
+        let name = entry.file_name().to_string_lossy().to_string();
+        if name == SETTINGS_CONFIG
+            || name == "tombi.toml"
+            || name.starts_with("settings.jsonc.backup-")
+        {
+            continue;
+        }
+        if current_managed.contains(name.as_str()) {
+            report.managed_overrides.push(name);
+        } else if legacy.contains(name.as_str()) {
+            report.legacy_inputs.push(name);
+        } else {
+            report.unknown_entries.push(name);
+        }
+    }
+
+    Ok(report)
+}
+
+fn print_reset_config_adjacency_warnings(
+    report: &ResetConfigAdjacencyReport,
+    surface: &ResetSurface,
+) {
+    if !report.managed_overrides.is_empty() {
+        println!(
+            "Warning: {} only replaces {}. Managed override files were left untouched: {}.",
+            surface.command,
+            surface.target_file_name,
+            report.managed_overrides.join(", ")
+        );
+        println!(
+            "         These files can still affect Helix, Yazi, Zellij, terminal, or shell behavior after reset."
+        );
+    }
+    if !report.legacy_inputs.is_empty() {
+        println!(
+            "Warning: legacy Yazelix config inputs were left untouched: {}.",
+            report.legacy_inputs.join(", ")
+        );
+        println!(
+            "         Move them aside after confirming settings.jsonc contains the migrated values; stale old inputs can block startup."
+        );
+    }
+    if !report.unknown_entries.is_empty() {
+        println!(
+            "Warning: unknown adjacent entries in ~/.config/yazelix were left untouched: {}.",
+            report.unknown_entries.join(", ")
+        );
+        println!("         Yazelix will not delete or adopt user-managed files automatically.");
+    }
 }
 
 fn read_confirmation() -> String {
@@ -343,7 +402,7 @@ fn civil_from_days(days_since_epoch: i64) -> (i32, u32, u32) {
 mod tests {
     use super::*;
 
-    // Defends: `yzx reset config` and `yzx reset cursor` keep the real reset flags while rejecting stale force-style reset shapes.
+    // Defends: `yzx reset config` keeps the real reset flags while rejecting stale force-style reset shapes.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn parses_reset_surface_flags() {
@@ -355,13 +414,10 @@ mod tests {
                 help: false,
             }
         );
-        assert_eq!(
-            parse_reset_args(&["help".into()], "yzx reset cursor").unwrap(),
-            ResetArgs {
-                yes: false,
-                no_backup: false,
-                help: true,
-            }
+        assert!(
+            parse_reset_args(&["help".into()], "yzx reset config")
+                .unwrap()
+                .help
         );
         assert!(parse_reset_args(&["--force".into()], "yzx reset config").is_err());
     }

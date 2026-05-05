@@ -8,7 +8,6 @@ use crate::control_plane::{
     config_dir_from_env, config_override_from_env, load_normalized_config_for_control,
     runtime_dir_from_env, runtime_env_request,
 };
-use crate::ghostty_cursor_registry::CursorRegistry;
 use crate::user_config_paths;
 use serde_json::json;
 use std::fs;
@@ -51,11 +50,6 @@ fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
         .as_ref()
         .map(|p| p.user_config.clone())
         .unwrap_or_else(|| user_config_paths::main_config(config_dir));
-    let cursor_config = active_paths
-        .as_ref()
-        .map(|p| p.user_cursor_config.clone())
-        .unwrap_or_else(|| CursorRegistry::user_config_path(config_dir));
-
     vec![
         EditTarget {
             id: "config",
@@ -63,16 +57,6 @@ fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
             path: user_config,
             aliases: &["config", "main", "settings", "settings.jsonc"],
             search: "config main yazelix settings settings.jsonc",
-        },
-        EditTarget {
-            id: "cursors",
-            label: format!(
-                "cursors  - Ghostty cursor registry → {}",
-                cursor_config.display()
-            ),
-            path: cursor_config,
-            aliases: &["cursors", "cursor", "ghostty-cursors", "ghostty cursors"],
-            search: "cursors cursor ghostty cursor trail shader settings settings.jsonc",
         },
         EditTarget {
             id: "helix",
@@ -515,7 +499,7 @@ fn print_edit_help() {
     println!("  --print  Print the resolved config path without opening");
     println!();
     println!("Supported surfaces:");
-    println!("  config, cursors, helix, zellij, yazi, yazi-keymap, yazi-init");
+    println!("  config, helix, zellij, yazi, yazi-keymap, yazi-init");
 }
 
 fn print_edit_config_help() {
@@ -547,13 +531,7 @@ mod tests {
         assert_eq!(hx.len(), 1);
         assert_eq!(hx[0].id, "helix");
 
-        let cursors = filter_edit_targets(&targets, "cursors");
-        assert_eq!(cursors.len(), 1);
-        assert_eq!(cursors[0].id, "cursors");
-        assert_eq!(
-            cursors[0].path,
-            Path::new("/tmp/cfg").join("settings.jsonc")
-        );
+        assert!(filter_edit_targets(&targets, "cursors").is_empty());
 
         let settings = filter_edit_targets(&targets, "settings.jsonc");
         assert_eq!(settings.len(), 1);

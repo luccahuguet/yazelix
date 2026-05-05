@@ -51,8 +51,14 @@ const DAY_SECONDS: u64 = 24 * HOUR_SECONDS;
 const EDITOR_PANE_NAME: &str = "editor";
 const DEFAULT_CURSOR_WIDGET_COLOR: &str = "#00ff88";
 const CURSOR_STATUS_GLYPH: &str = "█";
+const CURSOR_STATUS_VERTICAL_SPLIT_GLYPH: &str = "▌";
+const CURSOR_STATUS_HORIZONTAL_SPLIT_GLYPH: &str = "▀";
 const CURSOR_NAME_ENV: &str = "YAZELIX_CURSOR_NAME";
 const CURSOR_COLOR_ENV: &str = "YAZELIX_CURSOR_COLOR";
+const CURSOR_FAMILY_ENV: &str = "YAZELIX_CURSOR_FAMILY";
+const CURSOR_DIVIDER_ENV: &str = "YAZELIX_CURSOR_DIVIDER";
+const CURSOR_PRIMARY_COLOR_ENV: &str = "YAZELIX_CURSOR_PRIMARY_COLOR";
+const CURSOR_SECONDARY_COLOR_ENV: &str = "YAZELIX_CURSOR_SECONDARY_COLOR";
 const TERMINAL_ENV: &str = "YAZELIX_TERMINAL";
 pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
     "pipe",
@@ -1390,10 +1396,18 @@ fn cursor_status_value_from_env() -> Option<Value> {
     let terminal = env::var_os(TERMINAL_ENV);
     let cursor_name = env::var_os(CURSOR_NAME_ENV);
     let cursor_color = env::var_os(CURSOR_COLOR_ENV);
+    let cursor_family = env::var_os(CURSOR_FAMILY_ENV);
+    let cursor_divider = env::var_os(CURSOR_DIVIDER_ENV);
+    let cursor_primary_color = env::var_os(CURSOR_PRIMARY_COLOR_ENV);
+    let cursor_secondary_color = env::var_os(CURSOR_SECONDARY_COLOR_ENV);
     cursor_status_value(
         terminal.as_deref(),
         cursor_name.as_deref(),
         cursor_color.as_deref(),
+        cursor_family.as_deref(),
+        cursor_divider.as_deref(),
+        cursor_primary_color.as_deref(),
+        cursor_secondary_color.as_deref(),
     )
 }
 
@@ -1401,6 +1415,10 @@ fn cursor_status_value(
     terminal: Option<&OsStr>,
     cursor_name: Option<&OsStr>,
     cursor_color: Option<&OsStr>,
+    cursor_family: Option<&OsStr>,
+    cursor_divider: Option<&OsStr>,
+    cursor_primary_color: Option<&OsStr>,
+    cursor_secondary_color: Option<&OsStr>,
 ) -> Option<Value> {
     let name = cursor_name
         .map(|value| value.to_string_lossy().trim().to_string())
@@ -1419,6 +1437,33 @@ fn cursor_status_value(
         .and_then(|value| normalize_status_hex_color(value.as_ref()))
     {
         cursor["color"] = json!(color);
+    }
+    let family = cursor_family
+        .map(|value| value.to_string_lossy())
+        .and_then(|value| normalize_status_cursor_family(value.as_ref()));
+    if let Some(family) = family {
+        let is_split = family == "split";
+        cursor["family"] = json!(family);
+        if is_split {
+            if let Some(divider) = cursor_divider
+                .map(|value| value.to_string_lossy())
+                .and_then(|value| normalize_status_cursor_divider(value.as_ref()))
+            {
+                cursor["divider"] = json!(divider);
+            }
+            if let Some(color) = cursor_primary_color
+                .map(|value| value.to_string_lossy())
+                .and_then(|value| normalize_status_hex_color(value.as_ref()))
+            {
+                cursor["primary_color"] = json!(color);
+            }
+            if let Some(color) = cursor_secondary_color
+                .map(|value| value.to_string_lossy())
+                .and_then(|value| normalize_status_hex_color(value.as_ref()))
+            {
+                cursor["secondary_color"] = json!(color);
+            }
+        }
     }
 
     Some(cursor)
@@ -3243,6 +3288,14 @@ fn render_zjstatus_cursor_widget(cache: &Value) -> String {
         .and_then(normalize_status_hex_color)
         .unwrap_or_else(|| DEFAULT_CURSOR_WIDGET_COLOR.to_string());
 
+    if let Some((glyph, primary_color, secondary_color)) =
+        cursor_widget_split_preview(cache, &color)
+    {
+        return format!(
+            " #[fg={primary_color},bg={secondary_color},bold][{glyph}]#[fg={color},bg=default,bold][ {name}]"
+        );
+    }
+
     format!(" #[fg={color},bold][{CURSOR_STATUS_GLYPH} {name}]")
 }
 
@@ -3252,6 +3305,50 @@ fn normalize_status_hex_color(raw: &str) -> Option<String> {
         && normalized.starts_with('#')
         && normalized[1..].bytes().all(|byte| byte.is_ascii_hexdigit());
     valid.then_some(normalized)
+}
+
+fn normalize_status_cursor_family(raw: &str) -> Option<String> {
+    let normalized = raw.trim().to_ascii_lowercase();
+    match normalized.as_str() {
+        "mono" | "split" | "curated_template" => Some(normalized),
+        _ => None,
+    }
+}
+
+fn normalize_status_cursor_divider(raw: &str) -> Option<String> {
+    let normalized = raw.trim().to_ascii_lowercase();
+    match normalized.as_str() {
+        "vertical" | "horizontal" => Some(normalized),
+        _ => None,
+    }
+}
+
+fn cursor_widget_split_preview(
+    cache: &Value,
+    fallback_primary_color: &str,
+) -> Option<(&'static str, String, String)> {
+    let cursor = cache.get("cursor")?;
+    let family = cursor.get("family").and_then(Value::as_str)?.trim();
+    if family != "split" {
+        return None;
+    }
+
+    let glyph = match cursor.get("divider").and_then(Value::as_str)?.trim() {
+        "vertical" => CURSOR_STATUS_VERTICAL_SPLIT_GLYPH,
+        "horizontal" => CURSOR_STATUS_HORIZONTAL_SPLIT_GLYPH,
+        _ => return None,
+    };
+    let primary_color = cursor
+        .get("primary_color")
+        .and_then(Value::as_str)
+        .and_then(normalize_status_hex_color)
+        .unwrap_or_else(|| fallback_primary_color.to_string());
+    let secondary_color = cursor
+        .get("secondary_color")
+        .and_then(Value::as_str)
+        .and_then(normalize_status_hex_color)?;
+
+    Some((glyph, primary_color, secondary_color))
 }
 
 fn sanitize_zjstatus_cursor_name(name: &str) -> String {
@@ -4750,11 +4847,11 @@ mod tests {
         );
     }
 
-    // Defends: the cursor widget renders a full-width block cursor glyph and cached launch cursor name in the cursor's display color.
+    // Defends: the cursor widget renders mono and split cursor previews from cached launch facts without widening the status segment.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn status_cache_cursor_widget_renders_cached_launch_fact() {
-        let cache = json!({
+        let mono = json!({
             "schema_version": STATUS_BAR_CACHE_SCHEMA_VERSION,
             "updated_at_unix_seconds": 1_000,
             "status_bus": status_cache_test_status_bus(),
@@ -4762,13 +4859,75 @@ mod tests {
             "cursor": {
                 "terminal": "ghostty",
                 "name": "reef",
-                "color": "#14D9A0"
+                "color": "#14D9A0",
+                "family": "mono"
+            }
+        });
+        let vertical_split = json!({
+            "cursor": {
+                "terminal": "ghostty",
+                "name": "reef",
+                "color": "#00e6ff",
+                "family": "split",
+                "divider": "vertical",
+                "primary_color": "#00e6ff",
+                "secondary_color": "#00ff66"
+            }
+        });
+        let horizontal_split = json!({
+            "cursor": {
+                "terminal": "ghostty",
+                "name": "magma",
+                "color": "#ff1600",
+                "family": "split",
+                "divider": "horizontal",
+                "primary_color": "#ff1600",
+                "secondary_color": "#2a3340"
+            }
+        });
+        let display_color_differs_from_split_primary = json!({
+            "cursor": {
+                "terminal": "ghostty",
+                "name": "eclipse",
+                "color": "#ffd400",
+                "family": "split",
+                "divider": "vertical",
+                "primary_color": "#2e294e",
+                "secondary_color": "#ffd400"
+            }
+        });
+        let invalid_split = json!({
+            "cursor": {
+                "name": "magma",
+                "color": "#ff1600",
+                "family": "split",
+                "divider": "horizontal",
+                "primary_color": "#ff1600",
+                "secondary_color": "hot"
             }
         });
 
-        let rendered = render_status_cache_widget(&cache, "cursor").unwrap();
-
-        assert_eq!(rendered, " #[fg=#14d9a0,bold][█ reef]");
+        assert_eq!(
+            render_status_cache_widget(&mono, "cursor").unwrap(),
+            " #[fg=#14d9a0,bold][█ reef]"
+        );
+        assert_eq!(
+            render_status_cache_widget(&vertical_split, "cursor").unwrap(),
+            " #[fg=#00e6ff,bg=#00ff66,bold][▌]#[fg=#00e6ff,bg=default,bold][ reef]"
+        );
+        assert_eq!(
+            render_status_cache_widget(&horizontal_split, "cursor").unwrap(),
+            " #[fg=#ff1600,bg=#2a3340,bold][▀]#[fg=#ff1600,bg=default,bold][ magma]"
+        );
+        assert_eq!(
+            render_status_cache_widget(&display_color_differs_from_split_primary, "cursor")
+                .unwrap(),
+            " #[fg=#2e294e,bg=#ffd400,bold][▌]#[fg=#ffd400,bg=default,bold][ eclipse]"
+        );
+        assert_eq!(
+            render_status_cache_widget(&invalid_split, "cursor").unwrap(),
+            " #[fg=#ff1600,bold][█ magma]"
+        );
         assert_eq!(
             render_status_cache_widget(&json!({"cursor": {"name": "n/a"}}), "cursor").unwrap(),
             " #[fg=#00ff88,bold][█ n/a]"
@@ -4788,11 +4947,19 @@ mod tests {
                 Some(OsStr::new("ghostty")),
                 Some(OsStr::new("magma")),
                 Some(OsStr::new("#FF1600")),
+                Some(OsStr::new("split")),
+                Some(OsStr::new("horizontal")),
+                Some(OsStr::new("#FF1600")),
+                Some(OsStr::new("#2A3340")),
             ),
             Some(json!({
                 "terminal": "ghostty",
                 "name": "magma",
-                "color": "#ff1600"
+                "color": "#ff1600",
+                "family": "split",
+                "divider": "horizontal",
+                "primary_color": "#ff1600",
+                "secondary_color": "#2a3340"
             }))
         );
         assert_eq!(
@@ -4800,6 +4967,10 @@ mod tests {
                 Some(OsStr::new("ghostty")),
                 Some(OsStr::new("  ")),
                 Some(OsStr::new("#ff1600")),
+                Some(OsStr::new("split")),
+                Some(OsStr::new("horizontal")),
+                Some(OsStr::new("#ff1600")),
+                Some(OsStr::new("#2a3340")),
             ),
             None
         );

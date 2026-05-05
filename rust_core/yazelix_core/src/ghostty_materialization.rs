@@ -47,6 +47,10 @@ pub struct GhosttyMaterializationRequest {
 pub struct GhosttyCursorState {
     pub selected_color: Option<String>,
     pub selected_color_hex: Option<String>,
+    pub selected_family: Option<String>,
+    pub selected_divider: Option<String>,
+    pub selected_primary_color_hex: Option<String>,
+    pub selected_secondary_color_hex: Option<String>,
     pub selected_trail_effect: Option<String>,
     pub selected_mode_effect: Option<String>,
     pub trail_duration: f64,
@@ -198,22 +202,26 @@ fn build_ghostty_cursor_effects(
 fn build_ghostty_cursor_render_state(
     registry_state: &ResolvedCursorRegistryState,
 ) -> GhosttyCursorState {
+    let selected_cursor = registry_state.selected_cursor.as_ref();
     let selected_color = if registry_state.trail_disabled {
         Some("none".to_string())
     } else {
-        registry_state
-            .selected_cursor
-            .as_ref()
-            .map(|cursor| cursor.name.clone())
+        selected_cursor.map(|cursor| cursor.name.clone())
     };
-    let selected_color_hex = registry_state
-        .selected_cursor
-        .as_ref()
-        .map(|cursor| cursor.cursor_color_hex().to_string());
+    let selected_color_hex = selected_cursor.map(|cursor| cursor.cursor_color_hex().to_string());
 
     GhosttyCursorState {
         selected_color,
         selected_color_hex,
+        selected_family: selected_cursor.map(|cursor| cursor.family_name().to_string()),
+        selected_divider: selected_cursor
+            .and_then(|cursor| cursor.divider_name().map(|divider| divider.to_string())),
+        selected_primary_color_hex: selected_cursor
+            .and_then(CursorDefinition::split_primary_color_hex)
+            .map(str::to_string),
+        selected_secondary_color_hex: selected_cursor
+            .and_then(CursorDefinition::split_secondary_color_hex)
+            .map(str::to_string),
         selected_trail_effect: registry_state.selected_trail_effect.clone(),
         selected_mode_effect: registry_state.selected_mode_effect.clone(),
         trail_duration: registry_state.duration,

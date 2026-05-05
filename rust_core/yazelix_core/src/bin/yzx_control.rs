@@ -124,7 +124,7 @@ fn usage() -> ! {
     eprintln!("       yzx_control zellij open-editor-cwd <path>");
     eprintln!("       yzx_control zellij open-terminal <path>");
     eprintln!("       yzx_control reveal <path>");
-    eprintln!("       yzx_control reset <config|cursor> [--yes] [--no-backup]");
+    eprintln!("       yzx_control reset config [--yes] [--no-backup]");
     eprintln!("       yzx_control restart");
     eprintln!("       yzx_control screen [style]");
     eprintln!("       yzx_control why");

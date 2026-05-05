@@ -239,7 +239,7 @@ Yazelix uses a **layered configuration system** that safely merges your personal
 - **Core settings**: Edit `~/.config/yazelix/settings.jsonc` for shell, editor, terminal, Zellij, Yazi, and cursor settings
 - **Yazi customization**: Use the built-in `yazi` settings in `settings.jsonc` for things like plugins, theme, sorting, and binary overrides, and use `~/.config/yazelix/yazi.toml`, `~/.config/yazelix/yazi_keymap.toml`, and `~/.config/yazelix/yazi_init.lua` for deeper merged overrides (see [Yazi Configuration](./docs/yazi-configuration.md))
 - **Zellij customization**: Use the built-in `zellij` settings in `settings.jsonc` for Yazelix-owned Zellij knobs, and use `~/.config/yazelix/zellij.kdl` for deeper managed Zellij overrides (see [Zellij Configuration](./docs/zellij-configuration.md))
-- **Status bar widgets**: Configure `[zellij].widget_tray` to order or hide `editor`, `shell`, `term`, `workspace`, `cursor`, usage, `cpu`, and `ram` widgets; the default cursor widget renders as colored `█ name` from the launch-scoped Ghostty cursor fact
+- **Status bar widgets**: Configure `[zellij].widget_tray` to order or hide `editor`, `shell`, `term`, `workspace`, `cursor`, usage, `cpu`, and `ram` widgets; the default cursor widget renders mono presets as colored `█ name` and split presets as one-cell split glyphs from the launch-scoped Ghostty cursor fact
 - **Your configs persist** across Yazelix updates without git conflicts
 - **Intelligent merging**: Generated Yazi and Zellij runtime configs are rebuilt from Yazelix defaults plus your managed overrides instead of forcing you to edit tracked runtime files
 - **Launch-time config snapshots**: each Yazelix window keeps the `settings.jsonc` snapshot it launched with; edit config whenever you want, then open a new Yazelix window or run `yzx restart` to apply it to live panes
@@ -349,7 +349,6 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 - `yzx config [--path]` - Show the active config or print its resolved path
 - `yzx cursors` - Inspect Ghostty cursor presets, effects, and resolved colors
 - `yzx edit config` - Open the main managed Yazelix config file in your editor
-- `yzx edit cursors` - Open the Ghostty cursor registry sidecar in your editor
 - `yzx restart` - Restart Yazelix in a fresh window
 - `yzx doctor [--verbose] [--fix]` - Health checks and diagnostics
 - `yzx dev profile [--cold] [--desktop] [--launch] [--clear-cache]` - Profile current-terminal, desktop-entry, or managed new-window startup phases under `~/.local/share/yazelix/profiles/startup/`, with local saved-report comparison through `yzx dev profile compare`

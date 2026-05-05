@@ -111,7 +111,6 @@ Included:
 
 - `yzx config`
 - `yzx reset config`
-- `yzx reset cursor`
 - `yzx edit`
 - `yzx edit config`
 - `yzx import`

@@ -49,6 +49,12 @@ const DESKTOP_LAUNCH_CLEARED_ENV_KEYS: &[&str] = &[
     "YAZELIX_DIR",
     "YAZELIX_MENU_POPUP",
     "YAZELIX_POPUP_PANE",
+    "YAZELIX_CURSOR_COLOR",
+    "YAZELIX_CURSOR_DIVIDER",
+    "YAZELIX_CURSOR_FAMILY",
+    "YAZELIX_CURSOR_NAME",
+    "YAZELIX_CURSOR_PRIMARY_COLOR",
+    "YAZELIX_CURSOR_SECONDARY_COLOR",
     "YAZELIX_NU_BIN",
     "YAZELIX_TERMINAL",
     "YAZI_ID",
@@ -67,7 +73,11 @@ const RESTART_LAUNCH_CLEARED_ENV_KEYS: &[&str] = &[
     "YAZELIX_NU_BIN",
     "YAZELIX_POPUP_PANE",
     "YAZELIX_CURSOR_COLOR",
+    "YAZELIX_CURSOR_DIVIDER",
+    "YAZELIX_CURSOR_FAMILY",
     "YAZELIX_CURSOR_NAME",
+    "YAZELIX_CURSOR_PRIMARY_COLOR",
+    "YAZELIX_CURSOR_SECONDARY_COLOR",
     "YAZELIX_RUNTIME_DIR",
     "YAZELIX_SESSION_CONFIG_PATH",
     "YAZELIX_SESSION_FACTS_PATH",
@@ -629,6 +639,34 @@ fn run_launch_flow(
                 "YAZELIX_CURSOR_COLOR".to_string(),
                 launch_cursor_color_for_terminal(&materialization, &candidate.terminal),
             ),
+            (
+                "YAZELIX_CURSOR_FAMILY".to_string(),
+                launch_cursor_fact_for_terminal(
+                    &materialization.ghostty_cursor_family,
+                    &candidate.terminal,
+                ),
+            ),
+            (
+                "YAZELIX_CURSOR_DIVIDER".to_string(),
+                launch_cursor_fact_for_terminal(
+                    &materialization.ghostty_cursor_divider,
+                    &candidate.terminal,
+                ),
+            ),
+            (
+                "YAZELIX_CURSOR_PRIMARY_COLOR".to_string(),
+                launch_cursor_fact_for_terminal(
+                    &materialization.ghostty_cursor_primary_color_hex,
+                    &candidate.terminal,
+                ),
+            ),
+            (
+                "YAZELIX_CURSOR_SECONDARY_COLOR".to_string(),
+                launch_cursor_fact_for_terminal(
+                    &materialization.ghostty_cursor_secondary_color_hex,
+                    &candidate.terminal,
+                ),
+            ),
         ];
         if let Ok(value) = std::env::var("YAZELIX_SWEEP_TEST_ID") {
             if !value.trim().is_empty() {
@@ -718,8 +756,12 @@ fn launch_cursor_color_for_terminal(
     materialization: &LaunchMaterializationData,
     terminal: &str,
 ) -> Option<String> {
+    launch_cursor_fact_for_terminal(&materialization.ghostty_cursor_color_hex, terminal)
+}
+
+fn launch_cursor_fact_for_terminal(value: &Option<String>, terminal: &str) -> Option<String> {
     if terminal == "ghostty" {
-        materialization.ghostty_cursor_color_hex.clone()
+        value.clone()
     } else {
         None
     }
@@ -2137,11 +2179,19 @@ mod tests {
             generated_terminals: Vec::new(),
             ghostty_cursor_name: Some("reef".to_string()),
             ghostty_cursor_color_hex: Some("#00ff66".to_string()),
+            ghostty_cursor_family: Some("split".to_string()),
+            ghostty_cursor_divider: Some("vertical".to_string()),
+            ghostty_cursor_primary_color_hex: Some("#00e6ff".to_string()),
+            ghostty_cursor_secondary_color_hex: Some("#00ff66".to_string()),
             rerolled_ghostty_cursor: false,
         };
         let missing = LaunchMaterializationData {
             ghostty_cursor_name: None,
             ghostty_cursor_color_hex: None,
+            ghostty_cursor_family: None,
+            ghostty_cursor_divider: None,
+            ghostty_cursor_primary_color_hex: None,
+            ghostty_cursor_secondary_color_hex: None,
             ..materialization.clone()
         };
 
@@ -2163,6 +2213,32 @@ mod tests {
             None
         );
         assert_eq!(launch_cursor_color_for_terminal(&missing, "ghostty"), None);
+        assert_eq!(
+            launch_cursor_fact_for_terminal(&materialization.ghostty_cursor_family, "ghostty"),
+            Some("split".to_string())
+        );
+        assert_eq!(
+            launch_cursor_fact_for_terminal(&materialization.ghostty_cursor_divider, "ghostty"),
+            Some("vertical".to_string())
+        );
+        assert_eq!(
+            launch_cursor_fact_for_terminal(
+                &materialization.ghostty_cursor_primary_color_hex,
+                "ghostty"
+            ),
+            Some("#00e6ff".to_string())
+        );
+        assert_eq!(
+            launch_cursor_fact_for_terminal(
+                &materialization.ghostty_cursor_secondary_color_hex,
+                "ghostty"
+            ),
+            Some("#00ff66".to_string())
+        );
+        assert_eq!(
+            launch_cursor_fact_for_terminal(&materialization.ghostty_cursor_family, "wezterm"),
+            None
+        );
     }
 
     // Invariant: restart must relaunch through the stable owner without leaking old window runtime/session helper env.
@@ -2172,7 +2248,11 @@ mod tests {
         for key in [
             "YAZELIX_BOOTSTRAP_RUNTIME_DIR",
             "YAZELIX_CURSOR_COLOR",
+            "YAZELIX_CURSOR_DIVIDER",
+            "YAZELIX_CURSOR_FAMILY",
             "YAZELIX_CURSOR_NAME",
+            "YAZELIX_CURSOR_PRIMARY_COLOR",
+            "YAZELIX_CURSOR_SECONDARY_COLOR",
             "YAZELIX_RUNTIME_DIR",
             "YAZELIX_SESSION_CONFIG_PATH",
             "YAZELIX_SESSION_FACTS_PATH",

@@ -258,14 +258,9 @@ Inspect Ghostty cursor presets and resolved colors
 - Shows global trail, effect, glow, duration, and Kitty fallback settings
 - Shows resolved colors for enabled presets, including derived mono accents
 
-### `yzx edit cursors [--print]`
-Open the Ghostty cursor registry section in your editor
-- Targets `settings.jsonc`
-- `--print`: print the resolved settings path without opening
-
 ### `yzx edit <target> [--print]`
 Open one of the managed config surfaces through explicit or fuzzy target selection
-- Supported targets include `config`, `cursors`, `helix`, `zellij`, `yazi`, `yazi-keymap`, and `yazi-init`
+- Supported targets include `config`, `helix`, `zellij`, `yazi`, `yazi-keymap`, and `yazi-init`
 - Yazi targets stay inside `./` and do not expose host-owned `~/.config/yazi/` files
 - `--print`: print the resolved managed path without opening
 
@@ -275,13 +270,10 @@ Replace `settings.jsonc` with a fresh copy of the shipped settings template
 - `--yes`: skip the confirmation prompt
 - `--no-backup`: discard the previous config file instead of renaming it to a backup first
 - Use this as a blunt recovery path when `yzx doctor` reports stale config fields
-
-### `yzx reset cursor [--yes] [--no-backup]`
-Replace the `settings.jsonc` `cursors` section with a fresh copy of the shipped cursor template
-- Backs up the current settings file to `*.backup-<timestamp>` first when it exists
-- `--yes`: skip the confirmation prompt
-- `--no-backup`: discard the previous settings file instead of renaming it to a backup first
-- Use this when cursor schema changes make launch-time Ghostty materialization fail
+- Only replaces `~/.config/yazelix/settings.jsonc`
+- Preserves managed override sidecars such as `helix.toml`, `zellij.kdl`, `yazi.toml`, `yazi_keymap.toml`, `yazi_init.lua`, `terminal_*.conf|toml|ini`, and `shell_*.sh|zsh|fish|nu`
+- Preserves unknown adjacent files under `~/.config/yazelix/` and prints a warning instead of deleting or adopting them
+- Cursor presets live inside `settings.jsonc`; there is no separate current cursor sidecar for `reset config` to clean up
 
 ### `yzx help`
 Show command reference
@@ -329,14 +321,11 @@ yzx import yazi               # Import native Yazi override files into managed o
 yzx import helix              # Import ~/.config/helix/config.toml into managed overrides
 yzx import zellij --force     # Backup and replace the managed Zellij override
 yzx edit config               # Open the main managed config
-yzx edit cursors              # Open the Ghostty cursor registry sidecar
 yzx edit keymap               # Open managed Yazi keymap.toml
 yzx edit init                 # Open managed Yazi init.lua
 yzx reset config              # Replace the managed config with a fresh template after confirmation
 yzx reset config --yes        # Replace the managed config with a fresh template and keep backups
 yzx reset config --yes --no-backup  # Replace the managed config without writing backups
-yzx reset cursor              # Replace the cursor sidecar with a fresh template after confirmation
-yzx reset cursor --yes        # Replace the cursor sidecar with a fresh template and keep backups
 yzx status                    # System information
 yzx status --versions         # Show all tool versions
 yzx sponsor                   # Open the Yazelix sponsor page
