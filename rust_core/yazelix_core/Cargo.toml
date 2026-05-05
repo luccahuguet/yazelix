@@ -19,7 +19,7 @@ path = "src/bin/yzx.rs"
 [dependencies]
 crossterm = "0.29"
 directories = "5.0.1"
-jsonc-parser = { version = "0.32.3", features = ["serde"] }
+jsonc-parser = { version = "0.32.3", features = ["cst", "serde"] }
 lexopt = "0.3"
 ratatui = { version = "0.30.0", default-features = false, features = ["crossterm_0_29"] }
 serde = { version = "1.0", features = ["derive"] }

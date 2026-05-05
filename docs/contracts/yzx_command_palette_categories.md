@@ -111,6 +111,8 @@ Included:
 
 - `yzx config`
 - `yzx config ui`
+- `yzx config set`
+- `yzx config unset`
 - `yzx reset config`
 - `yzx edit`
 - `yzx edit config`

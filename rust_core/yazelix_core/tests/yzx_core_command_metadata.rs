@@ -42,6 +42,8 @@ fn command_metadata_externs_include_rust_only_leaves_once() {
     );
     assert!(extern_content.contains("--no-shell(-n)"));
     assert!(extern_content.contains("export extern \"yzx config\""));
+    assert!(extern_content.contains("export extern \"yzx config set\""));
+    assert!(extern_content.contains("export extern \"yzx config unset\""));
     assert!(extern_content.contains("export extern \"yzx doctor\""));
     assert!(extern_content.contains("export extern \"yzx keys\""));
     assert!(extern_content.contains("export extern \"yzx keys helix\""));
@@ -55,6 +57,9 @@ fn command_metadata_externs_include_rust_only_leaves_once() {
     assert!(extern_content.contains("--yes"));
     assert!(extern_content.contains("--no-backup"));
     assert!(extern_content.contains("...argv: string"));
+    assert!(!extern_content.contains(": settings.path"));
+    assert!(!extern_content.contains(": json"));
+    assert!(!extern_content.contains(": key=value"));
 }
 
 // Defends: root yzx help can be served without evaluating the Nushell command tree.

@@ -236,7 +236,7 @@ Yazelix shines over SSH: the TUI stack (Zellij, Yazi, Helix) runs cleanly withou
 
 Yazelix uses a **layered configuration system** that safely merges your personal settings with Yazelix defaults:
 
-- **Core settings**: Edit `~/.config/yazelix/settings.jsonc` for shell, editor, terminal, Zellij, Yazi, and cursor settings, or run `yzx config ui` to inspect explicit/defaulted values and stale-field diagnostics without writing files
+- **Core settings**: Edit `~/.config/yazelix/settings.jsonc` for shell, editor, terminal, Zellij, Yazi, and cursor settings, run `yzx config set/unset` for safe scalar and string-list edits, or run `yzx config ui` to inspect explicit/defaulted values and stale-field diagnostics without writing files
 - **Yazi customization**: Use the built-in `yazi` settings in `settings.jsonc` for things like plugins, theme, sorting, and binary overrides, and use `~/.config/yazelix/yazi.toml`, `~/.config/yazelix/yazi_keymap.toml`, and `~/.config/yazelix/yazi_init.lua` for deeper merged overrides (see [Yazi Configuration](./docs/yazi-configuration.md))
 - **Zellij customization**: Use the built-in `zellij` settings in `settings.jsonc` for Yazelix-owned Zellij knobs, and use `~/.config/yazelix/zellij.kdl` for deeper managed Zellij overrides (see [Zellij Configuration](./docs/zellij-configuration.md))
 - **Status bar widgets**: Configure `[zellij].widget_tray` to order or hide `editor`, `shell`, `term`, `workspace`, `cursor`, usage, `cpu`, and `ram` widgets; the default cursor widget renders mono presets as colored `█ name` and split presets as one-cell split glyphs from the launch-scoped Ghostty cursor fact
@@ -350,6 +350,8 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 - `yzx popup` - Toggle the managed popup program, usually `lazygit`, and refresh the Yazi file-tree sidebar git state when it closes
 - `yzx config [--path]` - Show the active config or print its resolved path
 - `yzx config ui` - Browse settings, defaults, diagnostics, and managed sidecar status in a read-only terminal UI
+- `yzx config set PATH JSON` - Set a supported `settings.jsonc` value while preserving comments
+- `yzx config unset PATH` - Remove an explicit `settings.jsonc` value so defaults apply
 - `yzx cursors` - Inspect Ghostty cursor presets, effects, and resolved colors
 - `yzx edit config` - Open the main managed Yazelix config file in your editor
 - `yzx restart [-s | --skip] [--config FILE] [--with KEY=VALUE]` - Restart Yazelix in a fresh window, optionally skipping the welcome screen, using an alternate settings file, or applying session-only settings overrides

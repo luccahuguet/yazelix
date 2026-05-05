@@ -199,7 +199,7 @@ pub fn parse_jsonc_value(path: &Path, raw: &str) -> Result<JsonValue, CoreError>
     })
 }
 
-fn jsonc_parse_options() -> ParseOptions {
+pub(crate) fn jsonc_parse_options() -> ParseOptions {
     ParseOptions {
         allow_comments: true,
         allow_loose_object_property_names: false,

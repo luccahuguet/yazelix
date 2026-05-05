@@ -112,7 +112,7 @@ const RUN_REST: &[YzxCommandParameter] = &[rest("argv")];
 const LAUNCH_FLAGS: &[YzxCommandParameter] = &[
     named("path", Some("p"), "string", true),
     named("config", None, "path", true),
-    named("with", None, "key=value", true),
+    named("with", None, "string", true),
     switch("home", None),
     named("terminal", Some("t"), "string", true),
     switch("verbose", None),
@@ -120,12 +120,12 @@ const LAUNCH_FLAGS: &[YzxCommandParameter] = &[
 const RESTART_FLAGS: &[YzxCommandParameter] = &[
     switch("skip", Some("s")),
     named("config", None, "path", true),
-    named("with", None, "key=value", true),
+    named("with", None, "string", true),
 ];
 const ENTER_FLAGS: &[YzxCommandParameter] = &[
     named("path", Some("p"), "string", true),
     named("config", None, "path", true),
-    named("with", None, "key=value", true),
+    named("with", None, "string", true),
     switch("home", None),
     switch("verbose", None),
 ];
@@ -145,6 +145,11 @@ const DOCTOR_FLAGS: &[YzxCommandParameter] = &[
 ];
 const ONBOARD_FLAGS: &[YzxCommandParameter] = &[switch("force", None), switch("dry-run", None)];
 const CONFIG_FLAGS: &[YzxCommandParameter] = &[switch("path", None)];
+const CONFIG_SET_ARGS: &[YzxCommandParameter] = &[
+    positional("path", "string", false),
+    positional("value", "string", false),
+];
+const CONFIG_UNSET_ARGS: &[YzxCommandParameter] = &[positional("path", "string", false)];
 const RESET_FLAGS: &[YzxCommandParameter] = &[switch("yes", None), switch("no-backup", None)];
 
 const POPUP_ARGS: &[YzxCommandParameter] = &[rest("program")];
@@ -290,7 +295,7 @@ const CONFIG_ROOT_COMMAND: YzxCommandMetadata = metadata(
     YzxCommandCategory::Config,
     CONFIG_FLAGS,
     Some(YzxMenuCategory::Config),
-    Some("Print the active config TOML or its resolved path."),
+    Some("Print the active settings surface or its resolved path."),
 );
 const CONFIG_UI_COMMAND: YzxCommandMetadata = metadata(
     "yzx config ui",
@@ -300,7 +305,28 @@ const CONFIG_UI_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Config),
     Some("Inspect explicit, defaulted, stale, and advanced config surfaces without writing files."),
 );
-const CONFIG_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[CONFIG_ROOT_COMMAND, CONFIG_UI_COMMAND];
+const CONFIG_SET_COMMAND: YzxCommandMetadata = metadata(
+    "yzx config set",
+    "Set a settings.jsonc value",
+    YzxCommandCategory::Config,
+    CONFIG_SET_ARGS,
+    Some(YzxMenuCategory::Config),
+    Some("Patch a supported settings.jsonc path with a JSON literal while preserving comments."),
+);
+const CONFIG_UNSET_COMMAND: YzxCommandMetadata = metadata(
+    "yzx config unset",
+    "Remove an explicit settings.jsonc value",
+    YzxCommandCategory::Config,
+    CONFIG_UNSET_ARGS,
+    Some(YzxMenuCategory::Config),
+    Some("Remove an explicit value so Yazelix falls back to the shipped default."),
+);
+const CONFIG_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[
+    CONFIG_ROOT_COMMAND,
+    CONFIG_UI_COMMAND,
+    CONFIG_SET_COMMAND,
+    CONFIG_UNSET_COMMAND,
+];
 const RESET_ROOT_COMMAND: YzxCommandMetadata = metadata(
     "yzx reset",
     "Show Yazelix reset targets",

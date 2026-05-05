@@ -251,6 +251,19 @@ Open the read-only terminal config browser
 - Shows stale-field diagnostics and managed sidecar status under the Advanced tab
 - Does not write `settings.jsonc` or sidecar files
 
+### `yzx config set <settings.path> <json-value>`
+Set a supported `settings.jsonc` value without rewriting the whole file
+- Preserves unrelated comments and formatting
+- Accepts JSON literals such as `true`, `20`, `"bash"`, or `["ghostty"]`
+- Validates the patched config against the existing config contract before writing
+- Refuses Home Manager-owned, read-only, non-`settings.jsonc`, or unsafe object/array edits
+
+### `yzx config unset <settings.path>`
+Remove an explicit `settings.jsonc` value so Yazelix uses the default
+- Preserves unrelated comments and formatting
+- Validates the patched config against the existing config contract before writing
+- Leaves the file unchanged when the value is already absent
+
 ### `yzx import zellij|yazi|helix [--force]`
 Import native Zellij, Yazi, or Helix config into Yazelix-managed overrides
 - `yzx import zellij`: copies `~/.config/zellij/config.kdl` into `zellij.kdl`
@@ -335,6 +348,8 @@ yzx doctor --fix              # Health check with auto-fix
 yzx config                    # Show active config
 yzx config --path             # Print the active config path
 yzx config ui                 # Browse config values and diagnostics without writing files
+yzx config set editor.hide_sidebar_on_file_open true # Set a config value with a JSON literal
+yzx config unset editor.hide_sidebar_on_file_open # Remove an explicit config value
 yzx cursors                   # Inspect Ghostty cursor presets and resolved colors
 yzx import zellij             # Import ~/.config/zellij/config.kdl into managed overrides
 yzx import yazi               # Import native Yazi override files into managed overrides

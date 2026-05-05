@@ -4,6 +4,7 @@ Yazelix is highly customizable! Here are the main ways you can tailor your exper
 
 - **Configuration File**: Edit `~/.config/yazelix/settings.jsonc` for core options and Ghostty cursor settings. On first launch, Yazelix creates it from the shipped defaults; old mutable `yazelix.toml` and `cursors.toml` files auto-migrate when safe and block with a clear error when ownership is ambiguous.
   - Run `yzx config ui` to browse settings, defaults, stale-field diagnostics, Home Manager/read-only ownership, and managed sidecar status without writing files
+  - Use `yzx config set PATH JSON` and `yzx config unset PATH` for safe comment-preserving edits to supported `settings.jsonc` fields
   - Yazelix snapshots the main config for each new window. Live popup, menu, sidebar, reveal, and editor-launch commands keep using that window snapshot, so config edits apply to the next Yazelix window or after `yzx restart`
   - For temporary changes, use repeatable `--with KEY=VALUE` on `yzx launch`, `yzx enter`, or `yzx restart`; Yazelix writes an ephemeral settings snapshot and does not mutate your config file
   - `yzx status --json` and `yzx inspect --json` include `session_config_snapshot` with the active snapshot path, source config, and readable snapshot errors
