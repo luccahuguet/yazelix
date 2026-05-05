@@ -32,8 +32,19 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use toml::Value as TomlValue;
 
 const DEFAULT_TABS: &[&str] = &[
-    "general", "editor", "terminal", "zellij", "yazi", "cursors", "advanced",
+    "general",
+    "workspace",
+    "editor",
+    "terminal",
+    "appearance",
+    "cursors",
+    "status_bar",
+    "file_manager",
+    "keybindings",
+    "shell",
+    "advanced",
 ];
+const CONFIG_UI_METADATA_FILENAME: &str = "config_ui_metadata.toml";
 const HOME_MANAGER_FILES_MARKER: &str = "-home-manager-files/";
 const HEADER_HORIZONTAL_PADDING: u16 = 1;
 
@@ -117,11 +128,21 @@ struct ContractField {
 }
 
 #[derive(Debug, Clone)]
+struct FieldUiMetadata {
+    tab: String,
+    help: String,
+}
+
+#[derive(Debug, Clone)]
+struct ConfigUiMetadata {
+    tabs: Vec<String>,
+    fields: BTreeMap<String, FieldUiMetadata>,
+}
+
+#[derive(Debug, Clone)]
 struct SchemaField {
     path: String,
-    tab: String,
     kind: String,
-    description: String,
     allowed_values: Vec<String>,
 }
 
@@ -171,8 +192,11 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
         "read_settings_schema",
         "Could not read the Yazelix settings schema",
     )?;
-    let tabs = schema_tabs(&schema);
-    let top_level_tabs = schema_top_level_tabs(&schema);
+    let schema_tab_order = schema_tabs(&schema);
+    let ui_metadata =
+        load_config_ui_metadata(&config_ui_metadata_path(&paths.settings_schema_path))?;
+    ensure_ui_metadata_tabs_match_schema(&ui_metadata.tabs, &schema_tab_order)?;
+    let tabs = ui_metadata.tabs.clone();
     let active_config_path = active_config_path(&paths, request.config_override.as_deref());
     let active_config_exists = path_present(&active_config_path);
     let active_value = if active_config_exists {
@@ -203,18 +227,18 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
 
     let mut fields = Vec::new();
     for field in contract_fields.values() {
-        let tab = tab_for_path(&field.path, &top_level_tabs);
+        let metadata = field_ui_metadata(&ui_metadata, &field.path)?;
         let current = get_json_path(&active_value, &field.path);
         let default = get_json_path(&default_value, &field.path)
             .cloned()
             .or_else(|| field.default_value.clone());
         fields.push(build_field_row(
             &field.path,
-            &tab,
+            &metadata.tab,
             &field.kind,
             current,
             default.as_ref(),
-            field_description(field),
+            field_description(field, metadata),
             field.allowed_values.clone(),
             field.validation.clone(),
             field.rebuild_required,
@@ -226,15 +250,16 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
         if fields.iter().any(|field| field.path == schema_field.path) {
             continue;
         }
+        let metadata = field_ui_metadata(&ui_metadata, &schema_field.path)?;
         let current = get_json_path(&active_value, &schema_field.path);
         let default = get_json_path(&default_value, &schema_field.path);
         fields.push(build_field_row(
             &schema_field.path,
-            &schema_field.tab,
+            &metadata.tab,
             &schema_field.kind,
             current,
             default,
-            schema_field.description,
+            metadata.help.clone(),
             schema_field.allowed_values,
             String::new(),
             false,
@@ -1683,6 +1708,140 @@ fn load_contract_fields(path: &Path) -> Result<BTreeMap<String, ContractField>, 
     Ok(fields)
 }
 
+fn config_ui_metadata_path(settings_schema_path: &Path) -> PathBuf {
+    settings_schema_path.with_file_name(CONFIG_UI_METADATA_FILENAME)
+}
+
+fn load_config_ui_metadata(path: &Path) -> Result<ConfigUiMetadata, CoreError> {
+    let raw = fs::read_to_string(path).map_err(|source| {
+        CoreError::io(
+            "read_config_ui_metadata",
+            "Could not read the Yazelix config UI metadata",
+            "Reinstall Yazelix so the runtime includes config_metadata/config_ui_metadata.toml.",
+            path.display().to_string(),
+            source,
+        )
+    })?;
+    let metadata = toml::from_str::<toml::Table>(&raw).map_err(|source| {
+        CoreError::toml(
+            "invalid_config_ui_metadata",
+            "Could not parse the Yazelix config UI metadata",
+            "Reinstall Yazelix so the runtime includes a valid config UI metadata file.",
+            path.display().to_string(),
+            source,
+        )
+    })?;
+
+    let tabs = metadata
+        .get("tab_order")
+        .and_then(TomlValue::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(TomlValue::as_str)
+        .map(ToOwned::to_owned)
+        .collect::<Vec<_>>();
+    if tabs.is_empty() {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "missing_config_ui_tabs",
+            "The Yazelix config UI metadata is missing tab_order.",
+            "Reinstall Yazelix so the runtime includes current config UI metadata.",
+            json!({ "path": path.display().to_string() }),
+        ));
+    }
+
+    let fields_table = metadata
+        .get("fields")
+        .and_then(TomlValue::as_table)
+        .ok_or_else(|| {
+            CoreError::classified(
+                ErrorClass::Config,
+                "missing_config_ui_fields",
+                "The Yazelix config UI metadata is missing its fields table.",
+                "Reinstall Yazelix so the runtime includes current config UI metadata.",
+                json!({ "path": path.display().to_string() }),
+            )
+        })?;
+
+    let mut fields = BTreeMap::new();
+    for (field_path, value) in fields_table {
+        let table = value.as_table().ok_or_else(|| {
+            CoreError::classified(
+                ErrorClass::Config,
+                "invalid_config_ui_field",
+                format!("Config UI metadata field {field_path} must be a TOML table."),
+                "Reinstall Yazelix so the runtime includes valid config UI metadata.",
+                json!({ "field": field_path }),
+            )
+        })?;
+        fields.insert(
+            field_path.clone(),
+            FieldUiMetadata {
+                tab: required_toml_string(table, field_path, "tab")?,
+                help: required_toml_string(table, field_path, "help")?,
+            },
+        );
+    }
+
+    Ok(ConfigUiMetadata { tabs, fields })
+}
+
+fn required_toml_string(
+    table: &toml::Table,
+    field_path: &str,
+    key: &str,
+) -> Result<String, CoreError> {
+    table
+        .get(key)
+        .and_then(TomlValue::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .map(ToOwned::to_owned)
+        .ok_or_else(|| {
+            CoreError::classified(
+                ErrorClass::Config,
+                "invalid_config_ui_field_metadata",
+                format!("Config UI metadata field {field_path} is missing {key}."),
+                "Reinstall Yazelix so the runtime includes complete config UI metadata.",
+                json!({ "field": field_path, "key": key }),
+            )
+        })
+}
+
+fn ensure_ui_metadata_tabs_match_schema(
+    metadata_tabs: &[String],
+    schema_tabs: &[String],
+) -> Result<(), CoreError> {
+    if metadata_tabs == schema_tabs {
+        return Ok(());
+    }
+
+    Err(CoreError::classified(
+        ErrorClass::Config,
+        "config_ui_tab_order_mismatch",
+        "The Yazelix config UI metadata tab order does not match the settings schema.",
+        "Reinstall Yazelix so config_metadata/config_ui_metadata.toml and yazelix_settings.schema.json come from the same version.",
+        json!({
+            "metadata_tabs": metadata_tabs,
+            "schema_tabs": schema_tabs,
+        }),
+    ))
+}
+
+fn field_ui_metadata<'a>(
+    metadata: &'a ConfigUiMetadata,
+    path: &str,
+) -> Result<&'a FieldUiMetadata, CoreError> {
+    metadata.fields.get(path).ok_or_else(|| {
+        CoreError::classified(
+            ErrorClass::Config,
+            "missing_config_ui_field_metadata",
+            format!("The Yazelix config UI metadata is missing field {path}."),
+            "Reinstall Yazelix so the config UI metadata covers the current settings surface.",
+            json!({ "field": path }),
+        )
+    })
+}
+
 fn collect_config_diagnostics(
     config_path: &Path,
     paths: &PrimaryConfigPaths,
@@ -1747,22 +1906,6 @@ fn schema_tabs(schema: &JsonValue) -> Vec<String> {
     tabs
 }
 
-fn schema_top_level_tabs(schema: &JsonValue) -> BTreeMap<String, String> {
-    schema
-        .get("properties")
-        .and_then(JsonValue::as_object)
-        .into_iter()
-        .flat_map(|properties| properties.iter())
-        .filter_map(|(name, value)| {
-            let tab = value
-                .get("x-yazelix")
-                .and_then(|metadata| metadata.get("tab"))
-                .and_then(JsonValue::as_str)?;
-            Some((name.clone(), tab.to_string()))
-        })
-        .collect()
-}
-
 fn collect_cursor_schema_fields(schema: &JsonValue) -> Vec<SchemaField> {
     let mut fields = Vec::new();
     let Some(cursors) = schema
@@ -1771,19 +1914,19 @@ fn collect_cursor_schema_fields(schema: &JsonValue) -> Vec<SchemaField> {
     else {
         return fields;
     };
-    collect_schema_fields(cursors, "cursors", "cursors", &mut fields);
+    collect_schema_fields(cursors, "cursors", &mut fields);
     fields
 }
 
-fn collect_schema_fields(schema: &JsonValue, path: &str, tab: &str, out: &mut Vec<SchemaField>) {
+fn collect_schema_fields(schema: &JsonValue, path: &str, out: &mut Vec<SchemaField>) {
     let kind = schema_type(schema);
     if kind == "object" {
         let Some(properties) = schema.get("properties").and_then(JsonValue::as_object) else {
-            out.push(schema_field(schema, path, tab, kind));
+            out.push(schema_field(schema, path, kind));
             return;
         };
         for (name, property) in properties {
-            collect_schema_fields(property, &format!("{path}.{name}"), tab, out);
+            collect_schema_fields(property, &format!("{path}.{name}"), out);
         }
         return;
     }
@@ -1792,23 +1935,17 @@ fn collect_schema_fields(schema: &JsonValue, path: &str, tab: &str, out: &mut Ve
         && let Some(items) = schema.get("items")
         && items.get("type").and_then(JsonValue::as_str) == Some("object")
     {
-        out.push(schema_field(schema, path, tab, kind));
+        out.push(schema_field(schema, path, kind));
         return;
     }
 
-    out.push(schema_field(schema, path, tab, kind));
+    out.push(schema_field(schema, path, kind));
 }
 
-fn schema_field(schema: &JsonValue, path: &str, tab: &str, kind: String) -> SchemaField {
+fn schema_field(schema: &JsonValue, path: &str, kind: String) -> SchemaField {
     SchemaField {
         path: path.to_string(),
-        tab: tab.to_string(),
         kind,
-        description: schema
-            .get("description")
-            .and_then(JsonValue::as_str)
-            .unwrap_or("")
-            .to_string(),
         allowed_values: schema_enum_values(schema),
     }
 }
@@ -1830,22 +1967,6 @@ fn schema_enum_values(schema: &JsonValue) -> Vec<String> {
         .filter_map(JsonValue::as_str)
         .map(ToOwned::to_owned)
         .collect()
-}
-
-fn tab_for_path(path: &str, top_level_tabs: &BTreeMap<String, String>) -> String {
-    let root = path.split('.').next().unwrap_or("");
-    top_level_tabs.get(root).cloned().unwrap_or_else(|| {
-        match root {
-            "core" => "general",
-            "helix" | "editor" => "editor",
-            "shell" | "terminal" => "terminal",
-            "zellij" => "zellij",
-            "yazi" => "yazi",
-            "cursors" => "cursors",
-            _ => "advanced",
-        }
-        .to_string()
-    })
 }
 
 fn build_field_row(
@@ -1892,8 +2013,9 @@ fn build_field_row(
     }
 }
 
-fn field_description(field: &ContractField) -> String {
+fn field_description(field: &ContractField, metadata: &FieldUiMetadata) -> String {
     let mut parts = Vec::new();
+    parts.push(metadata.help.clone());
     if !field.validation.is_empty() {
         parts.push(format!("validation: {}", field.validation));
     }
@@ -2551,6 +2673,13 @@ mod tests {
             include_str!("../../../config_metadata/yazelix_settings.schema.json"),
         )
         .expect("settings schema");
+        fs::write(
+            runtime
+                .join("config_metadata")
+                .join("config_ui_metadata.toml"),
+            include_str!("../../../config_metadata/config_ui_metadata.toml"),
+        )
+        .expect("config ui metadata");
         fs::write(
             runtime.join("yazelix_default.toml"),
             include_str!("../../../yazelix_default.toml"),

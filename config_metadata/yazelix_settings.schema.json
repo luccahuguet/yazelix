@@ -8,14 +8,19 @@
   "x-yazelix": {
     "canonical_file": "settings.jsonc",
     "main_contract": "config_metadata/main_config_contract.toml",
+    "config_ui_metadata": "config_metadata/config_ui_metadata.toml",
     "cursor_default_template": "yazelix_cursors_default.toml",
     "tabs": [
       "general",
+      "workspace",
       "editor",
       "terminal",
-      "zellij",
-      "yazi",
+      "appearance",
       "cursors",
+      "status_bar",
+      "file_manager",
+      "keybindings",
+      "shell",
       "advanced"
     ]
   },
@@ -49,7 +54,7 @@
       "description": "Default shell settings for Yazelix panes",
       "additionalProperties": true,
       "x-yazelix": {
-        "tab": "terminal"
+        "tab": "shell"
       }
     },
     "terminal": {
@@ -65,7 +70,7 @@
       "description": "Zellij chrome, widgets, popup, and screen-saver settings",
       "additionalProperties": true,
       "x-yazelix": {
-        "tab": "zellij"
+        "tab": "workspace"
       }
     },
     "yazi": {
@@ -73,7 +78,7 @@
       "description": "Yazi theme, plugin, sorting, and command settings",
       "additionalProperties": true,
       "x-yazelix": {
-        "tab": "yazi"
+        "tab": "file_manager"
       }
     },
     "cursors": {

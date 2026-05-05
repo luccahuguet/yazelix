@@ -25,6 +25,13 @@ fn write_runtime_layout(runtime: &Path) {
     )
     .expect("settings schema");
     fs::write(
+        runtime
+            .join("config_metadata")
+            .join("config_ui_metadata.toml"),
+        include_str!("../../../config_metadata/config_ui_metadata.toml"),
+    )
+    .expect("config ui metadata");
+    fs::write(
         runtime.join("yazelix_default.toml"),
         include_str!("../../../yazelix_default.toml"),
     )
@@ -70,7 +77,17 @@ fn builds_inventory_tabs_and_value_states() {
     assert_eq!(
         model.tabs,
         vec![
-            "general", "editor", "terminal", "zellij", "yazi", "cursors", "advanced"
+            "general",
+            "workspace",
+            "editor",
+            "terminal",
+            "appearance",
+            "cursors",
+            "status_bar",
+            "file_manager",
+            "keybindings",
+            "shell",
+            "advanced"
         ]
     );
     let debug_mode = model
@@ -87,8 +104,16 @@ fn builds_inventory_tabs_and_value_states() {
         .iter()
         .find(|field| field.path == "zellij.theme")
         .expect("zellij theme field");
-    assert_eq!(zellij_theme.tab, "zellij");
+    assert_eq!(zellij_theme.tab, "appearance");
     assert_eq!(zellij_theme.state, ConfigUiValueState::Defaulted);
+
+    let widget_tray = model
+        .fields
+        .iter()
+        .find(|field| field.path == "zellij.widget_tray")
+        .expect("widget tray field");
+    assert_eq!(widget_tray.tab, "status_bar");
+    assert!(widget_tray.description.contains("status bar"));
 
     let cursor_trail = model
         .fields
@@ -98,6 +123,124 @@ fn builds_inventory_tabs_and_value_states() {
     assert_eq!(cursor_trail.tab, "cursors");
     assert_eq!(cursor_trail.state, ConfigUiValueState::Explicit);
     assert_eq!(cursor_trail.current_value, "\"magma\"");
+}
+
+// Defends: config UI metadata covers every visible field and stays aligned with the schema tab order instead of relying on path-prefix guesses.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn config_ui_metadata_covers_visible_fields_and_tabs() {
+    let runtime = tempdir().expect("runtime");
+    let config = tempdir().expect("config");
+    write_runtime_layout(runtime.path());
+
+    let model = build_config_ui_model(&request(
+        runtime.path().to_path_buf(),
+        config.path().to_path_buf(),
+    ))
+    .expect("model");
+    let visible_paths = model
+        .fields
+        .iter()
+        .map(|field| field.path.as_str())
+        .collect::<std::collections::BTreeSet<_>>();
+
+    let metadata = toml::from_str::<toml::Table>(include_str!(
+        "../../../config_metadata/config_ui_metadata.toml"
+    ))
+    .expect("metadata toml");
+    let tab_order = metadata
+        .get("tab_order")
+        .and_then(toml::Value::as_array)
+        .expect("tab_order")
+        .iter()
+        .map(|value| value.as_str().expect("tab string"))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        tab_order,
+        vec![
+            "general",
+            "workspace",
+            "editor",
+            "terminal",
+            "appearance",
+            "cursors",
+            "status_bar",
+            "file_manager",
+            "keybindings",
+            "shell",
+            "advanced"
+        ]
+    );
+
+    let schema = serde_json::from_str::<serde_json::Value>(include_str!(
+        "../../../config_metadata/yazelix_settings.schema.json"
+    ))
+    .expect("schema json");
+    let schema_tabs = schema
+        .get("x-yazelix")
+        .and_then(|value| value.get("tabs"))
+        .and_then(serde_json::Value::as_array)
+        .expect("schema tabs")
+        .iter()
+        .map(|value| value.as_str().expect("schema tab"))
+        .collect::<Vec<_>>();
+    assert_eq!(tab_order, schema_tabs);
+
+    let metadata_fields = metadata
+        .get("fields")
+        .and_then(toml::Value::as_table)
+        .expect("metadata fields");
+    assert_eq!(
+        metadata_fields
+            .keys()
+            .map(String::as_str)
+            .collect::<std::collections::BTreeSet<_>>(),
+        visible_paths
+    );
+
+    let allowed_editors = [
+        "toggle",
+        "enum_picker",
+        "multi_select",
+        "text",
+        "string_list",
+        "integer",
+        "float",
+        "read_only",
+        "list",
+    ]
+    .into_iter()
+    .collect::<std::collections::BTreeSet<_>>();
+    for (path, value) in metadata_fields {
+        let table = value.as_table().expect("field table");
+        for key in [
+            "tab",
+            "group",
+            "label",
+            "help",
+            "editor",
+            "default_source",
+            "write_support",
+            "home_manager_behavior",
+            "lifecycle",
+        ] {
+            assert!(
+                table
+                    .get(key)
+                    .and_then(toml::Value::as_str)
+                    .is_some_and(|value| !value.trim().is_empty()),
+                "{path} missing {key}"
+            );
+        }
+        assert!(
+            tab_order.contains(&table["tab"].as_str().expect("field tab")),
+            "{path} uses unknown tab"
+        );
+        assert!(
+            allowed_editors.contains(table["editor"].as_str().expect("field editor")),
+            "{path} uses unknown editor"
+        );
+    }
 }
 
 // Defends: advanced config UI state exposes sidecar presence and the Home Manager/read-only ownership signal without mutating config files.

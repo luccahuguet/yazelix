@@ -1,0 +1,692 @@
+# User-facing metadata for the Yazelix config UI.
+# Parser semantics live in main_config_contract.toml; this file owns labels,
+# grouping, editor affordances, and UI-only lifecycle notes.
+
+tab_order = [
+  "general",
+  "workspace",
+  "editor",
+  "terminal",
+  "appearance",
+  "cursors",
+  "status_bar",
+  "file_manager",
+  "keybindings",
+  "shell",
+  "advanced",
+]
+
+[tabs.general]
+label = "general"
+help = "Startup, welcome screen, and general Yazelix behavior"
+
+[tabs.workspace]
+label = "workspace"
+help = "Pane, popup, and Zellij workspace behavior"
+
+[tabs.editor]
+label = "editor"
+help = "Editor command, sidebar behavior, and Helix integration"
+
+[tabs.terminal]
+label = "terminal"
+help = "Terminal emulator selection and generated terminal configs"
+
+[tabs.appearance]
+label = "appearance"
+help = "Theme, chrome, transparency, and screen saver presentation"
+
+[tabs.cursors]
+label = "cursors"
+help = "Ghostty cursor presets, effects, and cursor registry"
+
+[tabs.status_bar]
+label = "status_bar"
+help = "Status bar widgets, labels, and AI usage displays"
+
+[tabs.file_manager]
+label = "file_manager"
+help = "Yazi command, plugins, theme, and sorting behavior"
+
+[tabs.keybindings]
+label = "keybindings"
+help = "Future action and keybinding ownership controls"
+
+[tabs.shell]
+label = "shell"
+help = "Default shell and generated shell hooks"
+
+[tabs.advanced]
+label = "advanced"
+help = "Low-level runtime paths and settings most users should not need"
+
+[fields."core.debug_mode"]
+tab = "general"
+group = "diagnostics"
+label = "debug_mode"
+help = "Enable verbose Yazelix diagnostics for troubleshooting runtime behavior"
+editor = "toggle"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."core.skip_welcome_screen"]
+tab = "general"
+group = "startup"
+label = "skip_welcome_screen"
+help = "Skip the starter welcome screen during launch and restart"
+editor = "toggle"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."core.show_macchina_on_welcome"]
+tab = "general"
+group = "startup"
+label = "show_macchina_on_welcome"
+help = "Show the macchina system summary on the welcome screen"
+editor = "toggle"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."core.game_of_life_cell_style"]
+tab = "general"
+group = "welcome"
+label = "game_of_life_cell_style"
+help = "Choose the glyph style for Game of Life welcome animations"
+editor = "enum_picker"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."core.welcome_style"]
+tab = "general"
+group = "welcome"
+label = "welcome_style"
+help = "Choose the welcome animation, or randomize among supported styles"
+editor = "enum_picker"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."core.welcome_duration_seconds"]
+tab = "general"
+group = "welcome"
+label = "welcome_duration_seconds"
+help = "Set how long the welcome screen stays visible before Yazelix launches"
+editor = "float"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."helix.runtime_path"]
+tab = "advanced"
+group = "runtime_paths"
+label = "helix_runtime_path"
+help = "Override the Helix runtime path used by Yazelix materialization"
+editor = "text"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+advanced = true
+
+[fields."editor.command"]
+tab = "editor"
+group = "command"
+label = "editor_command"
+help = "Override the editor command Yazelix uses when opening files"
+editor = "text"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."editor.hide_sidebar_on_file_open"]
+tab = "editor"
+group = "sidebar"
+label = "hide_sidebar_on_file_open"
+help = "Hide the sidebar when opening a file in the editor"
+editor = "toggle"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."editor.sidebar_width_percent"]
+tab = "editor"
+group = "sidebar"
+label = "sidebar_width_percent"
+help = "Set the sidebar pane width as a percentage of the tab"
+editor = "integer"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."editor.sidebar_command"]
+tab = "editor"
+group = "sidebar"
+label = "sidebar_command"
+help = "Set the command used to start the sidebar pane"
+editor = "text"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."editor.sidebar_args"]
+tab = "editor"
+group = "sidebar"
+label = "sidebar_args"
+help = "Set the arguments passed to the sidebar command"
+editor = "string_list"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."shell.default_shell"]
+tab = "shell"
+group = "default_shell"
+label = "default_shell"
+help = "Choose the shell used for new Yazelix shell panes and generated shell hooks"
+editor = "enum_picker"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."terminal.terminals"]
+tab = "terminal"
+group = "emulators"
+label = "terminals"
+help = "Choose which terminal emulator configs Yazelix materializes"
+editor = "multi_select"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."terminal.config_mode"]
+tab = "terminal"
+group = "ownership"
+label = "terminal_config_mode"
+help = "Choose whether Yazelix owns generated terminal config files"
+editor = "enum_picker"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."terminal.transparency"]
+tab = "appearance"
+group = "terminal"
+label = "transparency"
+help = "Choose the generated terminal background transparency level"
+editor = "enum_picker"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."zellij.disable_tips"]
+tab = "appearance"
+group = "zellij_chrome"
+label = "disable_zellij_tips"
+help = "Hide Zellij tip text in generated Yazelix layouts"
+editor = "toggle"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."zellij.pane_frames"]
+tab = "appearance"
+group = "zellij_chrome"
+label = "pane_frames"
+help = "Show or hide Zellij pane frames in generated layouts"
+editor = "toggle"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."zellij.rounded_corners"]
+tab = "appearance"
+group = "zellij_chrome"
+label = "rounded_corners"
+help = "Use rounded borders in generated Zellij pane frames"
+editor = "toggle"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."zellij.support_kitty_keyboard_protocol"]
+tab = "appearance"
+group = "zellij_chrome"
+label = "support_kitty_keyboard_protocol"
+help = "Enable Zellij support for the Kitty keyboard protocol"
+editor = "toggle"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."zellij.theme"]
+tab = "appearance"
+group = "theme"
+label = "theme"
+help = "Choose the Zellij theme used by generated Yazelix sessions"
+editor = "text"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."zellij.widget_tray"]
+tab = "status_bar"
+group = "widgets"
+label = "widget_tray"
+help = "Choose which widgets appear in the Yazelix status bar"
+editor = "multi_select"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."zellij.tab_label_mode"]
+tab = "status_bar"
+group = "labels"
+label = "tab_label_mode"
+help = "Choose how tab labels are rendered in the Yazelix status bar"
+editor = "enum_picker"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."zellij.codex_usage_display"]
+tab = "status_bar"
+group = "ai_usage"
+label = "codex_usage_display"
+help = "Choose how Codex usage appears in the status bar"
+editor = "enum_picker"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."zellij.claude_usage_display"]
+tab = "status_bar"
+group = "ai_usage"
+label = "claude_usage_display"
+help = "Choose how Claude usage appears in the status bar"
+editor = "enum_picker"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."zellij.claude_usage_periods"]
+tab = "status_bar"
+group = "ai_usage"
+label = "claude_usage_periods"
+help = "Choose which Claude quota periods appear in the status bar"
+editor = "multi_select"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."zellij.opencode_go_usage_display"]
+tab = "status_bar"
+group = "ai_usage"
+label = "opencode_go_usage_display"
+help = "Choose how OpenCode Go usage appears in the status bar"
+editor = "enum_picker"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."zellij.opencode_go_usage_periods"]
+tab = "status_bar"
+group = "ai_usage"
+label = "opencode_go_usage_periods"
+help = "Choose which OpenCode Go quota periods appear in the status bar"
+editor = "multi_select"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."zellij.custom_text"]
+tab = "status_bar"
+group = "custom_text"
+label = "custom_text"
+help = "Set custom compact text shown in the Yazelix status bar"
+editor = "text"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."zellij.popup_program"]
+tab = "workspace"
+group = "popup"
+label = "popup_program"
+help = "Set the command used by the Yazelix popup launcher"
+editor = "string_list"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."zellij.popup_width_percent"]
+tab = "workspace"
+group = "popup"
+label = "popup_width_percent"
+help = "Set popup width as a percentage of the terminal"
+editor = "integer"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."zellij.popup_height_percent"]
+tab = "workspace"
+group = "popup"
+label = "popup_height_percent"
+help = "Set popup height as a percentage of the terminal"
+editor = "integer"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."zellij.screen_saver_enabled"]
+tab = "appearance"
+group = "screen_saver"
+label = "screen_saver_enabled"
+help = "Enable the idle Yazelix screen saver"
+editor = "toggle"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."zellij.screen_saver_idle_seconds"]
+tab = "appearance"
+group = "screen_saver"
+label = "screen_saver_idle_seconds"
+help = "Set the idle time before the screen saver opens"
+editor = "integer"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."zellij.screen_saver_style"]
+tab = "appearance"
+group = "screen_saver"
+label = "screen_saver_style"
+help = "Choose the screen saver animation, or randomize among supported styles"
+editor = "enum_picker"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."zellij.default_mode"]
+tab = "workspace"
+group = "mode"
+label = "default_mode"
+help = "Choose the Zellij mode Yazelix enters after launch"
+editor = "enum_picker"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."yazi.command"]
+tab = "file_manager"
+group = "command"
+label = "yazi_command"
+help = "Override the Yazi command Yazelix launches in the sidebar"
+editor = "text"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."yazi.ya_command"]
+tab = "file_manager"
+group = "command"
+label = "ya_command"
+help = "Override the ya helper command used by Yazi plugin management"
+editor = "text"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."yazi.plugins"]
+tab = "file_manager"
+group = "plugins"
+label = "plugins"
+help = "Choose which curated Yazi plugins Yazelix installs"
+editor = "string_list"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."yazi.theme"]
+tab = "file_manager"
+group = "theme"
+label = "theme"
+help = "Choose the generated Yazi flavor or theme mode"
+editor = "text"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."yazi.sort_by"]
+tab = "file_manager"
+group = "sorting"
+label = "sort_by"
+help = "Choose the default Yazi sort key"
+editor = "enum_picker"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."cursors.schema_version"]
+tab = "cursors"
+group = "registry"
+label = "schema_version"
+help = "Internal cursor schema version used by Yazelix"
+editor = "read_only"
+default_source = "yazelix_cursors_default.toml"
+write_support = "read_only"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+advanced = true
+
+[fields."cursors.enabled_cursors"]
+tab = "cursors"
+group = "active_cursors"
+label = "enabled_cursors"
+help = "Choose which Ghostty cursor presets are generated"
+editor = "string_list"
+default_source = "yazelix_cursors_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."cursors.settings.trail"]
+tab = "cursors"
+group = "effects"
+label = "trail"
+help = "Choose the cursor preset used as the active trail cursor"
+editor = "text"
+default_source = "yazelix_cursors_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."cursors.settings.trail_effect"]
+tab = "cursors"
+group = "effects"
+label = "trail_effect"
+help = "Choose how the cursor trail animates between positions"
+editor = "enum_picker"
+default_source = "yazelix_cursors_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."cursors.settings.mode_effect"]
+tab = "cursors"
+group = "effects"
+label = "mode_effect"
+help = "Choose the animation used when cursor mode changes"
+editor = "enum_picker"
+default_source = "yazelix_cursors_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."cursors.settings.glow"]
+tab = "cursors"
+group = "effects"
+label = "glow"
+help = "Choose the Ghostty cursor glow intensity"
+editor = "enum_picker"
+default_source = "yazelix_cursors_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."cursors.settings.duration"]
+tab = "cursors"
+group = "effects"
+label = "duration"
+help = "Set cursor animation duration in seconds"
+editor = "float"
+default_source = "yazelix_cursors_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."cursors.settings.kitty_enable_cursor"]
+tab = "cursors"
+group = "compatibility"
+label = "kitty_enable_cursor"
+help = "Enable cursor shader generation for Kitty-compatible cursor config"
+editor = "toggle"
+default_source = "yazelix_cursors_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."cursors.cursor"]
+tab = "cursors"
+group = "registry"
+label = "cursor_registry"
+help = "Edit the cursor preset registry used by generated Ghostty cursor configs"
+editor = "list"
+default_source = "yazelix_cursors_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+advanced = true
+
+[sidecars."helix.toml"]
+tab = "editor"
+label = "helix.toml"
+action = "edit_sidecar"
+owner = "user_or_home_manager"
+
+[sidecars."zellij.kdl"]
+tab = "workspace"
+label = "zellij.kdl"
+action = "edit_sidecar"
+owner = "user_or_home_manager"
+
+[sidecars."yazi.toml"]
+tab = "file_manager"
+label = "yazi.toml"
+action = "edit_sidecar"
+owner = "user_or_home_manager"
+
+[sidecars."yazi_keymap.toml"]
+tab = "keybindings"
+label = "yazi_keymap.toml"
+action = "edit_sidecar"
+owner = "user_or_home_manager"
+
+[sidecars."yazi_init.lua"]
+tab = "file_manager"
+label = "yazi_init.lua"
+action = "edit_sidecar"
+owner = "user_or_home_manager"
+
+[sidecars."terminal_ghostty.conf"]
+tab = "terminal"
+label = "terminal_ghostty.conf"
+action = "edit_sidecar"
+owner = "user_or_home_manager"
+
+[sidecars."terminal_kitty.conf"]
+tab = "terminal"
+label = "terminal_kitty.conf"
+action = "edit_sidecar"
+owner = "user_or_home_manager"
+
+[sidecars."terminal_alacritty.toml"]
+tab = "terminal"
+label = "terminal_alacritty.toml"
+action = "edit_sidecar"
+owner = "user_or_home_manager"
+
+[sidecars."terminal_foot.ini"]
+tab = "terminal"
+label = "terminal_foot.ini"
+action = "edit_sidecar"
+owner = "user_or_home_manager"
+
+[sidecars."shell_bash.sh"]
+tab = "shell"
+label = "shell_bash.sh"
+action = "edit_sidecar"
+owner = "user_or_home_manager"
+
+[sidecars."shell_zsh.zsh"]
+tab = "shell"
+label = "shell_zsh.zsh"
+action = "edit_sidecar"
+owner = "user_or_home_manager"
+
+[sidecars."shell_fish.fish"]
+tab = "shell"
+label = "shell_fish.fish"
+action = "edit_sidecar"
+owner = "user_or_home_manager"
+
+[sidecars."shell_nu.nu"]
+tab = "shell"
+label = "shell_nu.nu"
+action = "edit_sidecar"
+owner = "user_or_home_manager"
