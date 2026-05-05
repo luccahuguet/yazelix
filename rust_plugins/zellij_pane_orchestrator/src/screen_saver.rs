@@ -10,16 +10,6 @@ use zellij_tile::prelude::*;
 use crate::State;
 
 const SCREEN_SAVER_PANE_TITLE: &str = "yzx_screen";
-fn full_tab_coordinates() -> Option<FloatingPaneCoordinates> {
-    FloatingPaneCoordinates::new(
-        Some("0%".to_string()),
-        Some("0%".to_string()),
-        Some("100%".to_string()),
-        Some("100%".to_string()),
-        None,
-        None,
-    )
-}
 
 impl State {
     pub(crate) fn schedule_initial_screen_saver_timeout(&mut self) {
@@ -42,6 +32,7 @@ impl State {
         if let Some(pane_id) = self.screen_saver_pane_id.take() {
             close_pane_with_id(pane_id);
         }
+        self.restore_screen_saver_floating_layer();
     }
 
     pub(crate) fn handle_screen_saver_timer(&mut self) {
@@ -72,6 +63,7 @@ impl State {
         if self.screen_saver_pane_id == Some(pane_id) {
             self.screen_saver_pane_id = None;
             self.screen_saver_last_input = Some(Instant::now());
+            self.restore_screen_saver_floating_layer();
             self.schedule_initial_screen_saver_timeout();
         }
     }
@@ -99,6 +91,10 @@ impl State {
             return;
         };
 
+        // A floating screensaver revives every hidden floating pane in the tab.
+        // Use a fullscreen tiled command pane so stale popups stay hidden.
+        self.screen_saver_restore_floating_layer = hide_floating_panes(None).unwrap_or(false);
+
         let workspace_root = self
             .active_tab_position
             .and_then(|tab_position| self.workspace_state_by_tab.get(&tab_position))
@@ -111,14 +107,22 @@ impl State {
             )),
         };
 
-        let pane_id =
-            open_command_pane_floating(command_to_run, full_tab_coordinates(), BTreeMap::new());
+        let pane_id = open_command_pane(command_to_run, BTreeMap::new());
         if let Some(pane_id) = pane_id {
             rename_pane_with_id(pane_id, SCREEN_SAVER_PANE_TITLE);
             focus_pane_with_id(pane_id, true, false);
+            toggle_pane_id_fullscreen(pane_id);
             self.screen_saver_pane_id = Some(pane_id);
         } else {
+            self.restore_screen_saver_floating_layer();
             self.schedule_initial_screen_saver_timeout();
+        }
+    }
+
+    fn restore_screen_saver_floating_layer(&mut self) {
+        if self.screen_saver_restore_floating_layer {
+            let _ = show_floating_panes(None);
+            self.screen_saver_restore_floating_layer = false;
         }
     }
 }

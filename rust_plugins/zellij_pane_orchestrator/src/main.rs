@@ -56,6 +56,7 @@ struct State {
     screen_saver_last_input: Option<Instant>,
     screen_saver_next_timeout: Option<Instant>,
     screen_saver_pane_id: Option<PaneId>,
+    screen_saver_restore_floating_layer: bool,
     status_bar_cache_runtime: Option<StatusBarCacheRuntime>,
     status_bar_cache_last_payload: Option<String>,
     status_bar_claude_usage_next_refresh: Option<Instant>,
