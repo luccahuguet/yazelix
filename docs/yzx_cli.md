@@ -244,6 +244,13 @@ Show the active Yazelix configuration through the Rust-owned control path
 - Default: print the active config
 - `--path`: print the resolved config path
 
+### `yzx config ui`
+Open the read-only terminal config browser
+- Lists schema-known settings by user-intent tab
+- Shows explicit, defaulted, unset, and invalid values
+- Shows stale-field diagnostics and managed sidecar status under the Advanced tab
+- Does not write `settings.jsonc` or sidecar files
+
 ### `yzx import zellij|yazi|helix [--force]`
 Import native Zellij, Yazi, or Helix config into Yazelix-managed overrides
 - `yzx import zellij`: copies `~/.config/zellij/config.kdl` into `zellij.kdl`
@@ -327,6 +334,7 @@ yzx restart --with core.welcome_style=static # Reopen with a one-shot config ove
 yzx doctor --fix              # Health check with auto-fix
 yzx config                    # Show active config
 yzx config --path             # Print the active config path
+yzx config ui                 # Browse config values and diagnostics without writing files
 yzx cursors                   # Inspect Ghostty cursor presets and resolved colors
 yzx import zellij             # Import ~/.config/zellij/config.kdl into managed overrides
 yzx import yazi               # Import native Yazi override files into managed overrides

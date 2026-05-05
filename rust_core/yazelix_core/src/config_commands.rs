@@ -3,6 +3,7 @@
 
 use crate::active_config_surface::resolve_active_config_paths;
 use crate::bridge::CoreError;
+use crate::config_ui::{ConfigUiRequest, run_config_ui};
 use crate::control_plane::{config_dir_from_env, config_override_from_env, runtime_dir_from_env};
 use crate::settings_surface::{is_settings_config_path, parse_jsonc_value};
 use std::fs;
@@ -11,8 +12,16 @@ use std::path::Path;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ConfigArgs {
+    action: ConfigAction,
     print_path: bool,
     help: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+enum ConfigAction {
+    #[default]
+    Show,
+    Ui,
 }
 
 pub fn run_yzx_config(args: &[String]) -> Result<i32, CoreError> {
@@ -22,7 +31,10 @@ pub fn run_yzx_config(args: &[String]) -> Result<i32, CoreError> {
         return Ok(0);
     }
 
-    run_config_show(parsed.print_path)
+    match parsed.action {
+        ConfigAction::Show => run_config_show(parsed.print_path),
+        ConfigAction::Ui => run_config_ui_from_env(),
+    }
 }
 
 fn parse_config_args(args: &[String]) -> Result<ConfigArgs, CoreError> {
@@ -30,7 +42,10 @@ fn parse_config_args(args: &[String]) -> Result<ConfigArgs, CoreError> {
 
     for arg in args {
         match arg.as_str() {
-            "--path" => parsed.print_path = true,
+            "ui" if parsed.action == ConfigAction::Show && !parsed.print_path => {
+                parsed.action = ConfigAction::Ui;
+            }
+            "--path" if parsed.action == ConfigAction::Show => parsed.print_path = true,
             "-h" | "--help" | "help" => parsed.help = true,
             other => {
                 return Err(CoreError::usage(format!(
@@ -48,9 +63,13 @@ fn print_config_help() {
     println!();
     println!("Usage:");
     println!("  yzx config [--path]");
+    println!("  yzx config ui");
     println!();
     println!("Flags:");
     println!("      --path       Print the resolved config path");
+    println!();
+    println!("Subcommands:");
+    println!("  ui              Open the read-only config browser");
 }
 
 fn io_err(path: &Path, source: io::Error) -> CoreError {
@@ -111,6 +130,14 @@ fn run_config_show(print_path: bool) -> Result<i32, CoreError> {
     Ok(0)
 }
 
+fn run_config_ui_from_env() -> Result<i32, CoreError> {
+    run_config_ui(ConfigUiRequest {
+        runtime_dir: runtime_dir_from_env()?,
+        config_dir: config_dir_from_env()?,
+        config_override: config_override_from_env(),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -122,6 +149,7 @@ mod tests {
         assert_eq!(
             parse_config_args(&["--path".into()]).unwrap(),
             ConfigArgs {
+                action: ConfigAction::Show,
                 print_path: true,
                 help: false,
             }
@@ -129,10 +157,20 @@ mod tests {
         assert_eq!(
             parse_config_args(&["--help".into()]).unwrap(),
             ConfigArgs {
+                action: ConfigAction::Show,
                 print_path: false,
                 help: true,
             }
         );
+        assert_eq!(
+            parse_config_args(&["ui".into()]).unwrap(),
+            ConfigArgs {
+                action: ConfigAction::Ui,
+                print_path: false,
+                help: false,
+            }
+        );
         assert!(parse_config_args(&["--force".into()]).is_err());
+        assert!(parse_config_args(&["ui".into(), "--path".into()]).is_err());
     }
 }

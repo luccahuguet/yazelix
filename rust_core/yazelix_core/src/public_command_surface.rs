@@ -292,7 +292,15 @@ const CONFIG_ROOT_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Config),
     Some("Print the active config TOML or its resolved path."),
 );
-const CONFIG_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[CONFIG_ROOT_COMMAND];
+const CONFIG_UI_COMMAND: YzxCommandMetadata = metadata(
+    "yzx config ui",
+    "Browse Yazelix settings in a read-only terminal UI",
+    YzxCommandCategory::Config,
+    &[],
+    Some(YzxMenuCategory::Config),
+    Some("Inspect explicit, defaulted, stale, and advanced config surfaces without writing files."),
+);
+const CONFIG_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[CONFIG_ROOT_COMMAND, CONFIG_UI_COMMAND];
 const RESET_ROOT_COMMAND: YzxCommandMetadata = metadata(
     "yzx reset",
     "Show Yazelix reset targets",

@@ -79,7 +79,7 @@ use yazelix_core::zellij_commands::probe_active_tab_session_state;
 fn usage() -> ! {
     eprintln!("Usage: yzx_control env [--no-shell|-n]");
     eprintln!("       yzx_control run <command> [args...]");
-    eprintln!("       yzx_control config [--path]");
+    eprintln!("       yzx_control config [--path|ui]");
     eprintln!("       yzx_control cursors");
     eprintln!("       yzx_control cwd [target]");
     eprintln!("       yzx_control warp [target] [--kill|-k]");

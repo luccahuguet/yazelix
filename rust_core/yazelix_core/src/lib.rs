@@ -5,6 +5,7 @@ pub mod command_metadata;
 pub mod config_commands;
 pub mod config_normalize;
 pub mod config_state;
+pub mod config_ui;
 pub mod control_plane;
 pub mod cursor_commands;
 pub mod doctor_commands;
@@ -67,6 +68,7 @@ pub use config_state::{
     ComputeConfigStateRequest, ConfigStateData, RecordConfigStateData, RecordConfigStateRequest,
     compute_config_state, record_config_state,
 };
+pub use config_ui::{ConfigUiModel, ConfigUiRequest, build_config_ui_model, run_config_ui};
 pub use cursor_commands::run_yzx_cursors;
 pub use doctor_commands::{DoctorReportData, DoctorReportSummary, run_yzx_doctor};
 pub use doctor_config_report::{
