@@ -148,12 +148,14 @@ struct ConfigUiEditState {
     field_index: usize,
     input: String,
     mode: ConfigUiEditMode,
+    choice_index: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ConfigUiEditMode {
     Text,
     Choice,
+    MultiChoice,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -597,6 +599,7 @@ fn edit_status_line(field: &ConfigUiField, edit: &ConfigUiEditState) -> Line<'st
     let value = match edit.mode {
         ConfigUiEditMode::Text => format!("{}_", edit.input),
         ConfigUiEditMode::Choice => edit.input.clone(),
+        ConfigUiEditMode::MultiChoice => multi_choice_status_value(field, edit),
     };
     Line::from(vec![
         Span::styled("editing: ", Style::default().fg(Color::Yellow)),
@@ -613,6 +616,9 @@ fn normal_control_line(app: &ConfigUiApp) -> Line<'static> {
             Span::raw("e edit  "),
             Span::raw("u unset"),
         ]),
+        Some(field) if is_enum_string_list_field(field) => {
+            Line::from(vec![Span::raw("Enter/e picker  "), Span::raw("u unset")])
+        }
         Some(_) => Line::from(vec![Span::raw("Enter/e edit  "), Span::raw("u unset")]),
         None => Line::from(Span::raw("Select a setting row to edit")),
     }
@@ -629,6 +635,12 @@ fn edit_control_line(mode: ConfigUiEditMode) -> Line<'static> {
             Span::raw("Up/Down cycle  "),
             Span::raw("Left/Right cycle  "),
             Span::raw("Space toggle/cycle  "),
+            Span::raw("Enter save  "),
+            Span::raw("Esc cancel"),
+        ]),
+        ConfigUiEditMode::MultiChoice => Line::from(vec![
+            Span::raw("Up/Down move  "),
+            Span::raw("Space enable/disable  "),
             Span::raw("Enter save  "),
             Span::raw("Esc cancel"),
         ]),
@@ -679,13 +691,18 @@ impl ConfigUiApp {
     }
 
     fn handle_edit_key(&mut self, key: KeyEvent) {
-        if self
-            .edit
-            .as_ref()
-            .is_some_and(|edit| edit.mode == ConfigUiEditMode::Choice)
-        {
-            self.handle_choice_edit_key(key);
-            return;
+        if let Some(mode) = self.edit.as_ref().map(|edit| edit.mode) {
+            match mode {
+                ConfigUiEditMode::Choice => {
+                    self.handle_choice_edit_key(key);
+                    return;
+                }
+                ConfigUiEditMode::MultiChoice => {
+                    self.handle_multi_choice_edit_key(key);
+                    return;
+                }
+                ConfigUiEditMode::Text => {}
+            }
         }
 
         match key.code {
@@ -731,6 +748,29 @@ impl ConfigUiApp {
         }
     }
 
+    fn handle_multi_choice_edit_key(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Esc => {
+                self.edit = None;
+                self.notice_info("Edit canceled.");
+            }
+            KeyCode::Enter => self.save_edit(),
+            KeyCode::Up | KeyCode::Left => {
+                self.notice = None;
+                self.move_multi_choice_edit(-1);
+            }
+            KeyCode::Down | KeyCode::Right => {
+                self.notice = None;
+                self.move_multi_choice_edit(1);
+            }
+            KeyCode::Char(' ') => {
+                self.notice = None;
+                self.toggle_multi_choice_edit();
+            }
+            _ => {}
+        }
+    }
+
     fn cycle_choice_edit(&mut self) {
         let Some(edit) = self.edit.clone() else {
             return;
@@ -746,6 +786,43 @@ impl ConfigUiApp {
             next_allowed_value_from(&field.allowed_values, Some(edit.input.as_str()))
         } else {
             return;
+        };
+        if let Some(edit) = &mut self.edit {
+            edit.input = next;
+        }
+    }
+
+    fn move_multi_choice_edit(&mut self, delta: isize) {
+        let Some(edit) = self.edit.clone() else {
+            return;
+        };
+        let field = &self.model.fields[edit.field_index];
+        let len = field.allowed_values.len();
+        if len == 0 {
+            return;
+        }
+        let index = edit.choice_index.min(len - 1);
+        let next = if delta < 0 {
+            index.checked_sub(1).unwrap_or(len - 1)
+        } else {
+            (index + 1) % len
+        };
+        if let Some(edit) = &mut self.edit {
+            edit.choice_index = next;
+        }
+    }
+
+    fn toggle_multi_choice_edit(&mut self) {
+        let Some(edit) = self.edit.clone() else {
+            return;
+        };
+        let field = &self.model.fields[edit.field_index];
+        let next = match toggled_string_list_input(field, &edit.input, edit.choice_index) {
+            Ok(next) => next,
+            Err(message) => {
+                self.notice_error(message);
+                return;
+            }
         };
         if let Some(edit) = &mut self.edit {
             edit.input = next;
@@ -784,9 +861,11 @@ impl ConfigUiApp {
             return;
         }
         let field = &self.model.fields[field_index];
+        let input = edit_input_for_field(field);
         self.edit = Some(ConfigUiEditState {
             field_index,
-            input: edit_input_for_field(field),
+            choice_index: initial_edit_choice_index(field, &input),
+            input,
             mode: edit_mode_for_field(field),
         });
     }
@@ -1080,7 +1159,16 @@ impl ConfigUiApp {
 
     fn render_details(&self, row: UiRowRef) -> Vec<Line<'static>> {
         match row {
-            UiRowRef::Field(index) => field_detail_lines(&self.model.fields[index]),
+            UiRowRef::Field(index) => {
+                let field = &self.model.fields[index];
+                if let Some(edit) = &self.edit
+                    && edit.field_index == index
+                    && edit.mode == ConfigUiEditMode::MultiChoice
+                {
+                    return multi_choice_detail_lines(field, edit);
+                }
+                field_detail_lines(field)
+            }
             UiRowRef::Sidecar(index) => sidecar_detail_lines(&self.model.sidecars[index]),
             UiRowRef::Diagnostic(index) => diagnostic_detail_lines(&self.model.diagnostics[index]),
         }
@@ -1193,6 +1281,64 @@ fn field_detail_lines(field: &ConfigUiField) -> Vec<Line<'static>> {
         lines.push(Line::from(""));
         lines.push(Line::from(field.description.clone()));
     }
+    lines
+}
+
+fn multi_choice_detail_lines(
+    field: &ConfigUiField,
+    edit: &ConfigUiEditState,
+) -> Vec<Line<'static>> {
+    let enabled_values = parse_string_list_values(field, &edit.input).unwrap_or_default();
+    let enabled_set = enabled_values.iter().cloned().collect::<BTreeSet<_>>();
+    let mut lines = vec![
+        Line::from(Span::styled(
+            field.path.clone(),
+            config_key_style().add_modifier(Modifier::BOLD),
+        )),
+        Line::from(""),
+        detail_line(
+            "enabled",
+            &format!("{}/{}", enabled_set.len(), field.allowed_values.len()),
+        ),
+        Line::from(""),
+    ];
+
+    for (index, value) in field.allowed_values.iter().enumerate() {
+        let selected = index
+            == edit
+                .choice_index
+                .min(field.allowed_values.len().saturating_sub(1));
+        let enabled = enabled_set.contains(value);
+        let selector_style = if selected {
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::Gray)
+        };
+        let marker_style = if enabled {
+            Style::default()
+                .fg(Color::Green)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::Gray)
+        };
+        let value_style = if selected {
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD)
+        } else if enabled {
+            Style::default().fg(Color::White)
+        } else {
+            Style::default().fg(Color::Gray)
+        };
+        lines.push(Line::from(vec![
+            Span::styled(if selected { "> " } else { "  " }, selector_style),
+            Span::styled(if enabled { "[x] " } else { "[ ] " }, marker_style),
+            Span::styled(value.clone(), value_style),
+        ]));
+    }
+
     lines
 }
 
@@ -1723,11 +1869,28 @@ fn edit_input_for_field(field: &ConfigUiField) -> String {
 }
 
 fn edit_mode_for_field(field: &ConfigUiField) -> ConfigUiEditMode {
-    if is_direct_choice_field(field) {
+    if is_enum_string_list_field(field) {
+        ConfigUiEditMode::MultiChoice
+    } else if is_direct_choice_field(field) {
         ConfigUiEditMode::Choice
     } else {
         ConfigUiEditMode::Text
     }
+}
+
+fn initial_edit_choice_index(field: &ConfigUiField, input: &str) -> usize {
+    if is_enum_string_list_field(field)
+        && let Ok(values) = parse_string_list_values(field, input)
+        && let Some(index) = values.first().and_then(|value| {
+            field
+                .allowed_values
+                .iter()
+                .position(|allowed| allowed == value)
+        })
+    {
+        return index;
+    }
+    0
 }
 
 fn parse_edit_input(field: &ConfigUiField, input: &str) -> Result<JsonValue, String> {
@@ -1788,6 +1951,13 @@ fn parse_string_field_input(field: &ConfigUiField, input: &str) -> Result<JsonVa
 }
 
 fn parse_string_list_input(field: &ConfigUiField, input: &str) -> Result<JsonValue, String> {
+    let strings = parse_string_list_values(field, input)?;
+    Ok(JsonValue::Array(
+        strings.into_iter().map(JsonValue::String).collect(),
+    ))
+}
+
+fn parse_string_list_values(field: &ConfigUiField, input: &str) -> Result<Vec<String>, String> {
     let value = parse_json_input(field, input, "JSON string array")?;
     let array = value
         .as_array()
@@ -1798,9 +1968,9 @@ fn parse_string_list_input(field: &ConfigUiField, input: &str) -> Result<JsonVal
             return Err(format!("{} must contain only strings.", field.path));
         };
         ensure_allowed_value(field, value)?;
-        strings.push(JsonValue::String(value.to_string()));
+        strings.push(value.to_string());
     }
-    Ok(JsonValue::Array(strings))
+    Ok(strings)
 }
 
 fn parse_json_input(
@@ -1838,6 +2008,54 @@ fn ensure_allowed_value(field: &ConfigUiField, value: &str) -> Result<(), String
     ))
 }
 
+fn multi_choice_status_value(field: &ConfigUiField, edit: &ConfigUiEditState) -> String {
+    let enabled = parse_string_list_values(field, &edit.input)
+        .map(|values| values.len())
+        .unwrap_or(0);
+    let selected = field
+        .allowed_values
+        .get(edit.choice_index)
+        .map(String::as_str)
+        .unwrap_or("none");
+    format!(
+        "{enabled}/{} enabled, selected {selected}",
+        field.allowed_values.len()
+    )
+}
+
+fn toggled_string_list_input(
+    field: &ConfigUiField,
+    input: &str,
+    choice_index: usize,
+) -> Result<String, String> {
+    let target = field
+        .allowed_values
+        .get(choice_index)
+        .ok_or_else(|| format!("{} has no value selected.", field.path))?;
+    let mut values = parse_string_list_values(field, input)?;
+    if values.iter().any(|value| value == target) {
+        values.retain(|value| value != target);
+    } else {
+        values.push(target.clone());
+    }
+    values = ordered_string_list_values(field, &values);
+    serde_json::to_string(&values)
+        .map_err(|source| format!("Could not render {} string list: {source}.", field.path))
+}
+
+fn ordered_string_list_values(field: &ConfigUiField, values: &[String]) -> Vec<String> {
+    if field.allowed_values.is_empty() {
+        return values.to_vec();
+    }
+    let selected = values.iter().cloned().collect::<BTreeSet<_>>();
+    field
+        .allowed_values
+        .iter()
+        .filter(|value| selected.contains(*value))
+        .cloned()
+        .collect()
+}
+
 fn is_bool_field(field: &ConfigUiField) -> bool {
     matches!(field.kind.as_str(), "bool" | "boolean")
 }
@@ -1852,6 +2070,10 @@ fn is_string_field(field: &ConfigUiField) -> bool {
 
 fn is_scalar_enum_field(field: &ConfigUiField) -> bool {
     is_string_field(field) && !field.allowed_values.is_empty()
+}
+
+fn is_enum_string_list_field(field: &ConfigUiField) -> bool {
+    field.kind == "string_list" && !field.allowed_values.is_empty()
 }
 
 fn field_bool_value(field: &ConfigUiField) -> Option<bool> {
@@ -2204,6 +2426,10 @@ mod tests {
             .collect()
     }
 
+    fn lines_text(lines: &[Line<'_>]) -> String {
+        lines.iter().map(line_text).collect::<Vec<_>>().join("\n")
+    }
+
     fn select_field_path(app: &mut ConfigUiApp, path: &str) {
         let field = app
             .model
@@ -2454,6 +2680,76 @@ mod tests {
         );
     }
 
+    // Defends: enum-backed string lists use an enable/disable picker instead of forcing users to edit JSON arrays.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn enum_string_list_picker_toggles_subvalues_with_space() {
+        let runtime = tempdir().expect("runtime");
+        let config = tempdir().expect("config");
+        write_runtime_layout(runtime.path());
+        let settings_path = config.path().join("settings.jsonc");
+        let request = test_request(runtime.path(), config.path());
+        let model = build_config_ui_model(&request).expect("model");
+        let mut app = ConfigUiApp {
+            request,
+            model,
+            selected_tab: 0,
+            selected_row: 0,
+            search: String::new(),
+            search_active: false,
+            edit: None,
+            notice: None,
+        };
+
+        select_field_path(&mut app, "zellij.widget_tray");
+        app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+        let edit = app.edit.clone().expect("edit");
+        assert_eq!(edit.mode, ConfigUiEditMode::MultiChoice);
+        let details = lines_text(&app.render_details(UiRowRef::Field(edit.field_index)));
+        assert!(details.contains("> [x] editor"));
+        assert!(details.contains("  [ ] workspace"));
+
+        app.handle_edit_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+        app.handle_edit_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+        app.handle_edit_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+        app.handle_edit_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
+
+        let field = app.model.fields[edit.field_index].clone();
+        let input = app.edit.as_ref().expect("edit").input.clone();
+        assert_eq!(
+            parse_string_list_values(&field, &input).expect("values"),
+            vec![
+                "editor",
+                "shell",
+                "term",
+                "workspace",
+                "cursor",
+                "codex_usage",
+                "cpu",
+                "ram"
+            ]
+        );
+
+        app.handle_edit_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+        assert!(app.edit.is_none());
+        let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
+        assert_eq!(
+            get_json_path(&value, "zellij.widget_tray"),
+            Some(&json!([
+                "editor",
+                "shell",
+                "term",
+                "workspace",
+                "cursor",
+                "codex_usage",
+                "cpu",
+                "ram"
+            ]))
+        );
+    }
+
     // Defends: keyboard-oriented quick edits produce deterministic toggles/cycles from the value shown in the UI.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
@@ -2509,6 +2805,7 @@ mod tests {
                 field_index: 0,
                 input: "true".to_string(),
                 mode: ConfigUiEditMode::Choice,
+                choice_index: 0,
             }),
             notice: None,
         };
@@ -2520,6 +2817,7 @@ mod tests {
             field_index: 1,
             input: "compact".to_string(),
             mode: ConfigUiEditMode::Choice,
+            choice_index: 0,
         });
         app.handle_edit_key(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
         assert_eq!(app.edit.as_ref().expect("enum edit").input, "full");
