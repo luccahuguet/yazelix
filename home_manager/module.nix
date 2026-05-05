@@ -566,7 +566,7 @@ in
         $DRY_RUN_CMD ${runtimeYzxCore} runtime-materialization.repair --from-env --force --summary
       '';
     }
-    (lib.optionalAttrs (lib.hasAttrByPath [ "xdg" "desktopEntries" ] options) {
+    (mkIf (pkgs.stdenv.hostPlatform.isLinux && lib.hasAttrByPath [ "xdg" "desktopEntries" ] options) {
       # Linux desktop entry for application launchers.
       xdg.desktopEntries.yazelix = {
         name = "Yazelix";
