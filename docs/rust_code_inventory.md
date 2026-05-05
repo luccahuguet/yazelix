@@ -1,204 +1,147 @@
 # Rust Code Inventory
 
-This inventory records the post-migration Rust shape so cleanup work starts from concrete ownership instead of raw line count.
+This inventory is the extraction gate for reusable Yazelix components. It records the current Rust shape before moving code out of the main repository so extraction decisions start from concrete ownership rather than a raw line-count hunch.
 
-Baseline measured on 2026-04-26:
+Baseline measured on 2026-05-05:
 
-- `46,583` tracked first-party Rust LOC excluding `target/`
-- `92` tracked `.rs` files excluding `target/`
-- `42,913` LOC under source files
-- `3,670` LOC under Rust integration-test files
-- `cargo check -p yazelix_core` reported no Rust warnings
-- `cargo check` for the Zellij pane orchestrator initially reported unused plugin layout config fields; this pass removed them
-- `record_demo` does not exist in the tracked Rust tree
-- `run_visual_verification` is live maintainer sweep code, not dead demo code
+- `tokei rust_core rust_plugins --exclude target` reports `67,462` Rust code LOC across `128` Rust files
+- the same `tokei` run reports `74,009` Rust lines including blanks and comments
+- `config_metadata/rust_ownership_budget.toml` tracks `74,118` raw Rust file lines across `128` Rust files because the budget validator counts `content.lines()`
+- the remaining difference between `tokei` lines and the budget total is measurement-method noise from embedded blobs and parser classification, not a separate ownership surface
+- `cargo check --workspace --all-targets` under `rust_core/` reports no warnings
+- `cargo check --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --all-targets` reports no warnings
+- `cargo +nightly udeps --manifest-path rust_core/Cargo.toml --workspace --all-targets` reports all dependencies used
+- `cargo +nightly udeps --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --all-targets` reported direct dependency `shlex` unused; this pass removed it
+- `cargo-udeps` requires nightly Rust because it passes unstable `-Z` compiler flags
 
-Current manual ownership budget snapshot measured after the canonical cleanup follow-up:
+The canonical family ownership, no-growth ceilings, and long-term warning target live in `config_metadata/rust_ownership_budget.toml`.
 
-- `50,498` first-party Rust LOC under `rust_core/` and `rust_plugins/`, excluding `target/`
-- `102` tracked and untracked-to-be-committed `.rs` source/test files in the canonical Rust surface
-- The family ownership, measured counts, and historical no-growth ceilings live in `config_metadata/rust_ownership_budget.toml`
-- `yzx_repo_validator validate-rust-ownership-budget` remains available for explicit manual audits, but it is not a default or CI gate
+## Ownership Split
 
-Disposition meanings:
+| Family | Files | Raw lines | Status | Extraction pressure |
+| --- | ---: | ---: | --- | --- |
+| Product runtime source | 68 | 51,363 | canonical and extension surfaces | High: contains the largest user-facing seams |
+| Product integration tests | 19 | 5,964 | canonical tests | Medium: split by behavior family, do not delete broadly |
+| Maintainer tooling and tests | 16 | 11,584 | canonical maintainer | Medium: keep in repo, but split large validator files |
+| Pane orchestrator plugin | 25 | 5,207 | extension surface | High: already has a natural Zellij plugin boundary |
+| Total | 128 | 74,118 | current budget ceiling | Reduce or extract before raising ceilings |
 
-- `canonical`: keep as a first-class owner
-- `canonical-maintainer`: keep, but it belongs to maintainer tooling rather than user runtime behavior
-- `temporary`: keep for now with a deletion/collapse trigger
-- `simplified`: kept, and this pass removed stale or redundant code from it
-- `split-candidate`: keep behavior, but reconsider crate/module ownership in a later split
+Detailed budget families:
 
-This is not a task list. Follow-up execution belongs in Beads.
+| Family | Files | Raw lines | Budget target | Notes |
+| --- | ---: | ---: | ---: | --- |
+| `bar_runtime` | 1 | 321 | 300 | Small crate; real extraction value comes from status cache/widgets in `zellij_commands.rs` |
+| `screen_runtime` | 5 | 2,776 | 2,000 | Natural extraction candidate after screen style ownership is stable |
+| `core_cli_and_public_surface` | 12 | 7,885 | 7,000 | Public command dispatch and front-door rendering |
+| `core_config_ui_and_materialization` | 32 | 19,283 | 14,000 | Largest product family; config UI, materializers, cursors, settings surfaces |
+| `core_diagnostics_and_recovery` | 8 | 5,350 | 4,500 | Doctor, install ownership, profile/status reporting |
+| `core_workspace_and_pane_integration` | 10 | 15,748 | 11,000 | Zellij/session/workspace command surface; biggest pre-extraction cleanup target |
+| `core_integration_tests` | 19 | 5,964 | 4,500 | High-value tests, but several files are broad family buckets |
+| `maintainer_tooling_and_validators` | 15 | 11,340 | 9,000 | Keep in repo; split validators by domain before optimizing |
+| `maintainer_tests` | 1 | 244 | 244 | Small release/upgrade contract test surface |
+| `pane_orchestrator_plugin` | 25 | 5,207 | 4,500 | Extension surface; refactor timer/status/sidebar modules before public extraction |
 
-## Binaries And Core Library
+## Largest Files
 
-| File | LOC | Owner | Disposition | Reason |
-| --- | ---: | --- | --- | --- |
-| `rust_core/yazelix_core/src/bin/yzx.rs` | 140 | public CLI dispatcher | canonical | Small Rust front door for public `yzx` routing, including internal Nu family fallback |
-| `rust_core/yazelix_core/src/bin/yzx_control.rs` | 965 | public command implementation dispatcher | canonical | Owns user-facing Rust command families and structured errors |
-| `rust_core/yazelix_core/src/bin/yzx_core.rs` | 1254 | machine-readable helper protocol | temporary | Still used by startup, setup, wrappers, Home Manager repair, Helix wrapper, and maintainer workflows; collapse only after those machine callers have another stable owner |
-| `rust_core/yazelix_core/src/lib.rs` | 162 | crate module and re-export surface | canonical | Broad because binaries and integration tests import shared owners directly |
-| `rust_core/yazelix_core/src/bridge.rs` | 219 | shared error/envelope model | canonical | Historical name, but the code is now the Rust error contract, not a transitional bridge |
-| `rust_core/yazelix_core/src/cli_render.rs` | 60 | terminal text helpers | canonical | Small shared formatting helper |
+| File | Raw lines | Disposition |
+| --- | ---: | --- |
+| `rust_core/yazelix_core/src/zellij_commands.rs` | 6,468 | Split before extracting bar/workspace/status surfaces |
+| `rust_core/yazelix_maintainer/src/repo_contract_validation.rs` | 3,707 | Split by validator domain, keep in maintainer crate |
+| `rust_core/yazelix_core/src/launch_commands.rs` | 3,316 | Split terminal selection, config overrides, launch execution, desktop/macOS handling |
+| `rust_core/yazelix_core/src/config_ui.rs` | 3,123 | Split model, rendering, editing, and schema metadata before `yazelix_ratconfig` extraction |
+| `rust_core/yazelix_core/src/zellij_materialization.rs` | 2,202 | Keep until keybinding ownership and layout-generation contracts settle |
+| `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs` | 1,671 | Split by config/materialization behavior family; do not delete without replacement coverage |
+| `rust_core/yazelix_maintainer/src/repo_validation.rs` | 1,496 | Split generic validation helpers by contract/test/package domain |
+| `rust_core/yazelix_core/src/public_command_surface.rs` | 1,486 | Keep central registry; future action registry may absorb part of this |
+| `rust_core/yazelix_core/src/workspace_commands.rs` | 1,457 | Split popup/session/workspace concerns before workspace extraction |
+| `rust_core/yazelix_maintainer/src/repo_update_workflow.rs` | 1,421 | Process-heavy maintainer workflow; keep local but modularize |
+| `rust_core/yazelix_core/src/bin/yzx_core.rs` | 1,410 | Temporary machine helper; collapse only after shell callers have a stable replacement |
+| `rust_core/yazelix_core/src/profile_commands.rs` | 1,292 | Keep while startup profiling remains an active debugging surface |
+| `rust_core/yazelix_core/src/bin/yzx_control.rs` | 1,290 | Public command implementation dispatcher; split only if routing remains obvious |
+| `rust_core/yazelix_core/src/yazi_materialization.rs` | 1,276 | Keep until Yazi config ownership/import mode is settled |
+| `rust_core/yazelix_core/src/doctor_commands.rs` | 1,270 | Split report rendering from fix orchestration only after doctor behavior stabilizes |
+| `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs` | 1,215 | Broad but behavior-backed; split by workspace/popup/session behaviors |
+| `rust_core/yazelix_core/src/ghostty_cursor_registry.rs` | 1,174 | Strong `yazelix_cursors` extraction candidate |
+| `rust_core/yazelix_core/src/runtime_materialization.rs` | 1,142 | Keep as runtime generated-state lifecycle owner |
+| `rust_core/yazelix_core/src/install_ownership_report.rs` | 1,131 | Contains live recovery and legacy install diagnostics; prune only after transition windows |
+| `rust_core/yazelix_maintainer/src/repo_sweep_runner.rs` | 1,068 | Live maintainer sweep surface, not demo code |
 
-## User Runtime And Command Owners
+## Dead-Code And Dependency Evidence
 
-| File | LOC | Owner | Disposition | Reason |
-| --- | ---: | --- | --- | --- |
-| `rust_core/yazelix_core/src/active_config_surface.rs` | 276 | active config path resolver | canonical | Keeps canonical user config ownership explicit and rejects legacy duplicate surfaces |
-| `rust_core/yazelix_core/src/command_metadata.rs` | 536 | public command metadata and Nushell extern generation | canonical | The extern bridge is still canonical for Nushell shell completions because `yzx` is an external command there |
-| `rust_core/yazelix_core/src/config_commands.rs` | 382 | `yzx config` | canonical | Public config command implementation |
-| `rust_core/yazelix_core/src/config_normalize.rs` | 871 | config normalization and validation | canonical | Central config contract owner; legacy rejection paths are user-safety guardrails |
-| `rust_core/yazelix_core/src/config_state.rs` | 579 | generated-state hash lifecycle | canonical | Current rebuild-state owner; legacy malformed cache handling remains defensive |
-| `rust_core/yazelix_core/src/control_plane.rs` | 667 | shared env/path request construction | canonical | Repeated path/env logic is centralized here rather than duplicated in command families |
-| `rust_core/yazelix_core/src/doctor_commands.rs` | 942 | `yzx doctor` report and repair flow | canonical | Rust now owns report/fix coordination for user-facing doctor behavior |
-| `rust_core/yazelix_core/src/doctor_config_report.rs` | 376 | doctor config findings | canonical | Shared config-drift diagnostics |
-| `rust_core/yazelix_core/src/doctor_helix_report.rs` | 677 | doctor Helix findings | canonical | Detects Helix runtime and managed config issues |
-| `rust_core/yazelix_core/src/doctor_runtime_report.rs` | 351 | doctor runtime/distribution findings | canonical | Keeps install/runtime mode diagnostics explicit |
-| `rust_core/yazelix_core/src/edit_commands.rs` | 578 | `yzx edit` | canonical | Rust-owned editor/config edit command |
-| `rust_core/yazelix_core/src/front_door_commands.rs` | 391 | screen, tutor, upgrade-summary commands | canonical | Public front-door commands, with shell-specific tutor entry still external by nature |
-| `rust_core/yazelix_core/src/front_door_render.rs` | 1360 | terminal screen renderer | canonical | Large but cohesive renderer/game-of-life owner after the screen refactor |
-| `rust_core/yazelix_core/src/ghostty_materialization.rs` | 482 | Ghostty config generation | canonical | Runtime materialization owner for Ghostty-specific config |
-| `rust_core/yazelix_core/src/helix_materialization.rs` | 305 | Helix config generation/import notice | canonical | Rust-owned generated Helix write lifecycle |
-| `rust_core/yazelix_core/src/home_manager_commands.rs` | 337 | `yzx home_manager` | canonical | Public Home Manager helper surface |
-| `rust_core/yazelix_core/src/import_commands.rs` | 398 | `yzx import` | canonical | Rust-owned import command |
-| `rust_core/yazelix_core/src/initializer_commands.rs` | 553 | shell initializer generation | canonical | Still owns generated shell initializer text; external shell semantics justify dedicated code |
-| `rust_core/yazelix_core/src/install_ownership_env.rs` | 100 | install ownership env request builder | canonical | Small shared control-plane helper |
-| `rust_core/yazelix_core/src/install_ownership_report.rs` | 1105 | install ownership diagnostics | canonical | Large but user-safety-heavy; legacy wrapper detection remains valuable for upgrades |
-| `rust_core/yazelix_core/src/internal_nu_runner.rs` | 181 | internal Nu route executor | temporary | Keep while `yzx dev`, menu/popup wrappers, and process-heavy flows remain Nu-owned |
-| `rust_core/yazelix_core/src/keys_commands.rs` | 601 | `yzx keys` | canonical | Public key-discovery command |
-| `rust_core/yazelix_core/src/launch_commands.rs` | 1587 | launch/restart/desktop command orchestration | canonical | Large because it sits on shell/process/terminal boundaries; no safe broad deletion found |
-| `rust_core/yazelix_core/src/launch_materialization.rs` | 338 | launch materialization planning | canonical | Separates launch prep from command UX |
-| `rust_core/yazelix_core/src/layout_family_contract.rs` | 331 | built-in Zellij layout metadata validator | canonical | Current layout family guardrail |
-| `rust_core/yazelix_core/src/profile_commands.rs` | 791 | startup profiling commands | canonical-maintainer | Used by profiling workflows; not runtime critical |
-| `rust_core/yazelix_core/src/public_command_surface.rs` | 1326 | public command metadata and routing | canonical | Large but central; prevents duplicated Nu/help/menu command registries |
-| `rust_core/yazelix_core/src/runtime_contract.rs` | 1036 | runtime/preflight contract | canonical | Core launch dependency and preflight contract owner |
-| `rust_core/yazelix_core/src/runtime_env.rs` | 253 | runtime environment computation | canonical | Small deterministic env owner |
-| `rust_core/yazelix_core/src/runtime_materialization.rs` | 707 | generated runtime-state orchestration | canonical | Single materialization lifecycle owner |
-| `rust_core/yazelix_core/src/startup_facts.rs` | 168 | startup facts | canonical | Small machine contract for startup shell boundary |
-| `rust_core/yazelix_core/src/status_report.rs` | 134 | status report | canonical | Public status data owner |
-| `rust_core/yazelix_core/src/support_commands.rs` | 162 | `yzx why` and `yzx sponsor` | canonical | Small public helper commands |
-| `rust_core/yazelix_core/src/terminal_materialization.rs` | 487 | terminal config generation | canonical | Runtime materialization owner for terminal emulator configs |
-| `rust_core/yazelix_core/src/transient_pane_facts.rs` | 91 | transient pane facts | canonical | Small machine contract for popup/menu wrappers |
-| `rust_core/yazelix_core/src/update_commands.rs` | 497 | `yzx update` | canonical | Public update command family; local path migration logic remains current UX |
-| `rust_core/yazelix_core/src/upgrade_summary.rs` | 512 | upgrade summary model/rendering | canonical | Current `whats_new` and first-run upgrade summary behavior |
-| `rust_core/yazelix_core/src/workspace_asset_contract.rs` | 361 | workspace asset drift checks | canonical | Doctor/validator guardrail for generated runtime state |
-| `rust_core/yazelix_core/src/workspace_commands.rs` | 1102 | `yzx warp`, `yzx reveal`, popup helpers | canonical | Workspace/session integration owner |
-| `rust_core/yazelix_core/src/yazi_materialization.rs` | 1221 | Yazi config generation | canonical | Large but cohesive generated Yazi owner; legacy override rejection is user-safety behavior |
-| `rust_core/yazelix_core/src/yazi_render_plan.rs` | 283 | Yazi render plan | canonical | Small deterministic config-plan owner |
-| `rust_core/yazelix_core/src/zellij_commands.rs` | 1302 | Zellij control commands | canonical | Owns pane-orchestrator CLI integration |
-| `rust_core/yazelix_core/src/zellij_materialization.rs` | 1792 | Zellij config/layout generation | simplified | Kept as canonical; removed dead pane-orchestrator config entries for widget/sidebar data |
-| `rust_core/yazelix_core/src/zellij_render_plan.rs` | 539 | Zellij render plan | canonical | Deterministic config/layout plan owner |
+No broad Rust source deletion is justified from compiler evidence in this pass.
 
-## Maintainer Tooling And Validators
+Observed evidence:
 
-| File | LOC | Owner | Disposition | Reason |
-| --- | ---: | --- | --- | --- |
-| `rust_core/yazelix_maintainer/src/bin/yzx_repo_maintainer.rs` | 283 | maintainer workflow runner | canonical-maintainer | Deliberate private maintainer command surface, now outside the runtime crate |
-| `rust_core/yazelix_maintainer/src/bin/yzx_repo_validator.rs` | 243 | repo validator dispatcher | canonical-maintainer | Central validator entrypoint, now outside the runtime crate |
-| `rust_core/yazelix_maintainer/src/repo_contract_validation.rs` | 3547 | repo/package/release contract validators | canonical-maintainer | Largest maintainer file; moved into the in-repo maintainer crate |
-| `rust_core/yazelix_maintainer/src/repo_issue_sync.rs` | 670 | GitHub/Beads sync tooling | canonical-maintainer | Not user runtime behavior; keep local in maintainer crate |
-| `rust_core/yazelix_maintainer/src/repo_nu_lint.rs` | 56 | Nushell lint helper | canonical-maintainer | Small validator helper |
-| `rust_core/yazelix_maintainer/src/repo_plugin_build.rs` | 476 | pane-orchestrator build/sync workflow | canonical-maintainer | Necessary guardrail for wasm/source freshness |
-| `rust_core/yazelix_maintainer/src/repo_sweep_runner.rs` | 1064 | configuration and visual sweep runner | canonical-maintainer | `run_visual_verification` is live visual validation, not demo-only code |
-| `rust_core/yazelix_maintainer/src/repo_test_runner.rs` | 591 | maintainer test orchestration | canonical-maintainer | Central maintainer gate |
-| `rust_core/yazelix_maintainer/src/repo_update_workflow.rs` | 1438 | maintainer update workflow | canonical-maintainer | Large process-heavy workflow; moved out of the runtime crate, not deleted |
-| `rust_core/yazelix_maintainer/src/repo_validation.rs` | 1142 | generic repo validation helpers | canonical-maintainer | Test traceability and package-purity guardrails |
-| `rust_core/yazelix_maintainer/src/repo_version_bump.rs` | 469 | release bump tooling | canonical-maintainer | Maintainer release automation |
-| `rust_core/yazelix_maintainer/src/workspace_session_contract.rs` | 166 | workspace session validator | canonical-maintainer | Maintainer validator for cross-file workspace contracts |
+- Core workspace `cargo check --workspace --all-targets` is warning-free
+- Pane orchestrator `cargo check --all-targets` is warning-free
+- `cargo-udeps` found no unused dependency in the core workspace
+- `cargo-udeps` found `shlex` unused as a direct pane-orchestrator dependency; it was removed
+- no tracked Rust symbol named `record_demo` exists
+- `run_visual_verification` remains live maintainer sweep code
 
-## Zellij Pane Orchestrator Plugin
+Deletion candidates need transition evidence, not only age:
 
-| File | LOC | Owner | Disposition | Reason |
-| --- | ---: | --- | --- | --- |
-| `rust_plugins/zellij_pane_orchestrator/src/active_tab_session_state.rs` | 176 | active-tab session snapshot | canonical | Live session-state inspect and workspace routing data |
-| `rust_plugins/zellij_pane_orchestrator/src/editor.rs` | 185 | managed editor actions | canonical | Plugin-side editor control |
-| `rust_plugins/zellij_pane_orchestrator/src/horizontal_focus_contract.rs` | 243 | horizontal focus policy | canonical | Pure policy with tests |
-| `rust_plugins/zellij_pane_orchestrator/src/layout.rs` | 239 | layout family and sidebar toggling | simplified | Removed unused override layout config structs; remaining code owns live swap-layout behavior |
-| `rust_plugins/zellij_pane_orchestrator/src/lib.rs` | 5 | plugin library module exports | canonical | Exposes pure contract modules to tests |
-| `rust_plugins/zellij_pane_orchestrator/src/main.rs` | 232 | Zellij plugin event/pipe dispatcher | simplified | Removed unused configuration parsing; remaining dispatcher is live |
-| `rust_plugins/zellij_pane_orchestrator/src/pane_contract.rs` | 124 | pane identity policy | canonical | Pure pane classification contract |
-| `rust_plugins/zellij_pane_orchestrator/src/panes.rs` | 599 | Zellij pane-manifest parsing | canonical | Live pane identity/focus/fallback owner |
-| `rust_plugins/zellij_pane_orchestrator/src/sidebar_contract.rs` | 115 | sidebar toggle policy | canonical | Pure sidebar behavior contract |
-| `rust_plugins/zellij_pane_orchestrator/src/sidebar_yazi.rs` | 118 | sidebar Yazi identity state | canonical | Live sidebar Yazi tracking |
-| `rust_plugins/zellij_pane_orchestrator/src/transient.rs` | 298 | popup/transient panes | canonical | Live transient pane opening/toggling |
-| `rust_plugins/zellij_pane_orchestrator/src/transient_pane_contract.rs` | 289 | transient pane policy | canonical | Pure transient pane command contract |
-| `rust_plugins/zellij_pane_orchestrator/src/workspace.rs` | 277 | workspace state | canonical | Live workspace root/source state |
+| Surface | Evidence needed before deletion |
+| --- | --- |
+| `yzx_core` machine helper | Shell/bootstrap/Home Manager/Helix/Yazi callers need another stable machine protocol |
+| `internal_nu_runner.rs` | Remaining `yzx dev`, popup/menu, and process-heavy Nu leaves need Rust replacements or explicit ownership |
+| old flat config migration helpers | Delete only after the migration-retirement heuristic bead closes |
+| legacy wrapper/install diagnostics | Delete only after supported upgrade windows no longer need doctor recovery |
+| legacy popup-runner cleanup in Zellij materialization | Delete only after old runtime artifacts are outside the support boundary |
+| `migration_available` upgrade-note rendering | Keep for historical upgrade-note display unless old note rendering is removed |
 
-## Rust Tests
+## Overengineering Hotspots
 
-| File | LOC | Owner | Disposition | Reason |
-| --- | ---: | --- | --- | --- |
-| `rust_core/yazelix_core/tests/repo_upgrade_contract.rs` | 169 | upgrade-note contract tests | canonical | Defends release-note/changelog invariants and no-live-migration policy |
-| `rust_core/yazelix_core/tests/yazi_render_plan_metadata_parity.rs` | 76 | config metadata parity test | canonical | Defends source-of-truth consistency for Yazi render metadata |
-| `rust_core/yazelix_core/tests/yzx_control_front_door.rs` | 65 | front-door command tests | canonical | Defends `tutor` and `whats_new` behavior |
-| `rust_core/yazelix_core/tests/yzx_control_public_commands.rs` | 115 | public command behavior tests | canonical | Defends `why`, `sponsor`, and `keys` outputs; not mere existence checks |
-| `rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs` | 509 | runtime public command tests | canonical | Defends `env`, `run`, `update`, status/runtime surfaces |
-| `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs` | 532 | workspace public command tests | canonical | Defends `cwd`, `reveal`, Zellij workspace command behavior |
-| `rust_core/yazelix_core/tests/yzx_core_command_metadata.rs` | 174 | command metadata and extern tests | canonical | Extern bridge remains canonical for Nushell shell integration |
-| `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs` | 1190 | broad machine helper contract tests | canonical | Large but high-value; candidate for later file split by family, not deletion |
-| `rust_core/yazelix_core/tests/yzx_core_owned_facts.rs` | 111 | machine facts tests | canonical | Defends startup/integration/transient facts used by shell boundaries |
-| `rust_core/yazelix_core/tests/yzx_core_runtime_env.rs` | 187 | runtime env tests | canonical | Defends deterministic env planning |
-| `rust_core/yazelix_core/tests/yzx_core_yazi_materialization.rs` | 219 | Yazi materialization tests | canonical | Defends generated Yazi output and legacy override rejection |
-| `rust_core/yazelix_core/tests/yzx_core_yazi_render_plan.rs` | 60 | Yazi render-plan helper tests | canonical | Defends success and error envelopes |
-| `rust_core/yazelix_core/tests/yzx_core_zellij_render_plan.rs` | 82 | Zellij render-plan helper tests | canonical | Defends success and error envelopes |
-| `rust_core/yazelix_core/tests/support/commands.rs` | 41 | integration-test command helpers | canonical | Shared test support |
-| `rust_core/yazelix_core/tests/support/envelopes.rs` | 26 | integration-test envelope helpers | canonical | Shared test support |
-| `rust_core/yazelix_core/tests/support/fixtures.rs` | 109 | integration-test fixtures | canonical | Shared test fixtures |
-| `rust_core/yazelix_core/tests/support/mod.rs` | 5 | integration-test support module | canonical | Shared test support root |
+The main overengineering risk is not one bad abstraction; it is several broad modules owning too many unrelated contracts.
 
-## Migration-Era Surface Decisions
+- `zellij_commands.rs` mixes Zellij pipe commands, status cache IO, AI usage widgets, cursor widgets, session inspection, and pane actions. Split this before extracting `yazelix_bar`, `yazelix_workspace`, or public status widgets.
+- `launch_commands.rs` mixes terminal discovery, temporary config overrides, desktop/macOS launchers, process spawning, and restart/enter behavior. Split config override parsing and terminal selection before workspace/session extraction.
+- `config_ui.rs` is already product-useful, but it should be split into schema model, list/editor state, rendering, and write-back before `yazelix_ratconfig`.
+- `zellij_materialization.rs` contains real generated-config ownership, but it should wait for keybinding ownership and layout-profile decisions before major extraction.
+- `repo_contract_validation.rs` and `repo_validation.rs` are maintainer-only, but their domain split would make future cleanup safer.
 
-| Surface | Decision | Rationale |
+## Extraction Sequence
+
+1. Finish this inventory and keep the no-growth budget current
+2. Extract `yazelix_screen` first if the goal is a low-risk public component; its code is already isolated and has a standalone binary
+3. Split `zellij_commands.rs` before attempting `yazelix_bar` or workspace extraction
+4. Extract `yazelix_cursors` after the Ghostty cursor registry is separated from terminal materialization and status-widget rendering
+5. Split `config_ui.rs` before extracting `yazelix_ratconfig`; keep JSONC patching and schema metadata contracts stable first
+6. Evaluate `yazelix_zellij_popup` after transient-pane commands and plugin transient policy have a clean boundary
+7. Evaluate `yazelix_workspace` last; it touches launch, restart, session facts, workspace roots, Zellij layout state, and the pane orchestrator
+
+Do before extraction:
+
+- split broad modules by behavior boundary
+- remove unused dependencies and stale transition helpers with evidence
+- keep package/runtime surfaces distinct from maintainer-only tools
+- update docs and validators while the source still lives in one repo
+
+Wait until after extraction:
+
+- aggressive test deletion
+- public crate API polish
+- package-size optimization for extracted crates
+- cross-repo release automation
+- lowering main-repo LOC ceilings to the post-extraction number
+
+## LOC Targets
+
+These targets separate deletion from extraction accounting. Moving code out of this repository reduces main-repo LOC, but it does not reduce total maintenance unless the extracted API is simpler than the old internal boundary.
+
+| Target | Main-repo path | Total-maintenance interpretation |
 | --- | --- | --- |
-| `yzx_core` binary | Temporary canonical helper | Still called from startup/setup/sidebar Yazi/Menu/Home Manager/Helix/POSIX flows. Collapsing it now would recreate shell glue or destabilize active runtime paths |
-| `nushell/scripts/utils/yzx_core_bridge.nu` consumers | Out of Rust scope for this pass | Rust code is canonical, but the Nu transport still exists at real shell/process boundaries. Collapse belongs to a separate Nu bridge-deletion bead |
-| `command_metadata.rs` extern bridge | Canonical | Nushell needs extern definitions for external `yzx`; this is not just migration scaffolding |
-| `internal_nu_runner.rs` | Temporary | Public Rust routing still deliberately delegates process-heavy `yzx dev` and remaining Nu-owned surfaces |
-| Legacy root config and Yazi override rejection | Canonical user-safety guardrails | These fail fast instead of silently adopting stale user files |
-| Legacy installer/wrapper diagnostics | Canonical doctor behavior | These still help users recover from older installs |
-| Legacy popup-runner cleanup | Temporary safety cleanup | Low-cost stale-artifact cleanup; can be removed in a later major release if old runtimes are no longer supported |
-| `migration_available` upgrade-note handling | Canonical historical renderer | Current releases should not use it, but historical upgrade notes still render accurately |
-| `run_visual_verification` | Canonical maintainer visual sweep | It validates terminal/sweep behavior and is not a dead demo function |
-| `record_demo` | Not present | No tracked Rust function or symbol with that name exists |
+| `70k` | Achievable by extracting or simplifying roughly `4.1k` raw lines, such as `yazelix_screen` plus focused stale transition cleanup | Useful first target; should not require risky rewrites |
+| `65k` | Requires another `5k` beyond the first cut, likely from cursors/config UI/bar boundary work | Good medium target if extracted packages have clean ownership |
+| `60k` | Requires multiple successful extractions or real simplification of `zellij_commands.rs`, `launch_commands.rs`, and `config_ui.rs` | Realistic as a main-repo target, not as immediate deletion |
+| `50k` | Requires moving maintainer tooling and several reusable components out of the main repo, or deleting large behavior surfaces | Not realistic as near-term true maintenance reduction; only valid if public extracted crates are independently useful and simpler |
 
-## Maintainer Tooling Boundary
+The current budget sets `hard_target_loc = 60000`. The validator intentionally warns while the repo is above that target; the warning should push deletion, simplification, or extraction before anyone raises ceilings again.
 
-`yazelix-9opk.5` decided that maintainer-only Rust tooling should stay in this repository but move out of the product runtime crate. The durable decision is recorded in `docs/rust_maintainer_tooling_boundary.md`.
+## Maintainer Tooling Split
 
-Accepted shape:
+Personal Home Manager should own day-to-day maintainer binaries that speed local work: `cargo-nextest`, `cargo-udeps`, `tokei`, `gh`, `jq`, `nu-lint`, Beads, and similar tools. This avoids repeated `nix shell` startup for common audits.
 
-- keep `yazelix_core` as the product/runtime crate for shipped helpers and user-facing behavior
-- keep the in-repo `yazelix_maintainer` crate for `repo_*` modules and `yzx_repo_validator` / `yzx_repo_maintainer`
-- reject a separate repository for now because validators, release tooling, sync stamps, Beads/GitHub state, and CI checks are tightly coupled to this checkout
-- keep `workspace_asset_contract.rs` and `layout_family_contract.rs` in `yazelix_core` because `yzx doctor` uses them
-- keep `workspace_session_contract.rs` with maintainer validators unless a runtime caller appears
+The repo should still own reproducible gates and package/runtime contracts. Do not move Cargo `target/` directories, incremental build state, or project-specific generated artifacts into Home Manager; those caches are project-local by design.
 
-The crate split landed in `yazelix-9opk.5.1`. The Rust ownership/LOC budget can now use this boundary.
-
-## Code Removed In This Pass
-
-The pane orchestrator no longer parses or stores these unused plugin configuration values:
-
-- `widget_tray_segment`
-- `custom_text_segment`
-- `sidebar_width_percent`
-
-Those values are already owned by Rust Zellij materialization and rendered into generated Zellij config/layout files. The loaded plugin only needs `runtime_dir`, popup geometry, and the opt-in idle screen-saver keys.
-
-The pane-orchestrator package also now disables the native test harness for the plugin binary. That binary is a Zellij WASM host artifact, so package-level `cargo test` should run the pure Rust library contract tests instead of trying to link host-only Zellij imports.
-
-## Test Audit Outcome
-
-No Rust test file was deleted in this pass. The audited integration tests defend current behavior rather than pure command existence:
-
-- public command outputs and error fallbacks
-- machine-readable helper envelopes
-- generated materialization behavior
-- config and upgrade contract invariants
-- workspace/session behavior
-- metadata parity
-
-The largest test file, `yzx_core_config_normalize.rs`, is a split candidate because it covers several machine helper families in one file. It is not a deletion candidate because its assertions defend current generated-state, runtime-materialization, config, and install-ownership contracts.
-
-The pane-orchestrator test surface is library-owned. Its package manifest explicitly disables native bin tests because the plugin binary imports Zellij host functions that only exist under the WASM plugin runtime.
+`cargo-udeps` is useful but manual. It belongs in the maintainer toolbox, not in the user runtime package.

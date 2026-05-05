@@ -24,6 +24,23 @@ Maintainers need those tools to live close to the repository contracts they defe
 
 The pragmatic split is therefore an in-repo crate boundary. It makes runtime ownership smaller without weakening reproducible releases or forcing cross-repo coordination for every contract change.
 
+## Tool Residency
+
+Use three different homes for three different kinds of speed.
+
+- Personal Home Manager owns frequently used command-line tools that are not part of the shipped Yazelix runtime: `cargo-nextest`, `cargo-udeps`, `tokei`, `gh`, `jq`, `nu-lint`, Beads, and similar maintainer binaries
+- The Yazelix maintainer shell owns reproducible repo gates and runtime-adjacent tools that should be available to contributors from the flake
+- Cargo compilation outputs, incremental state, and `target/` directories stay project-local; moving those into Home Manager would not make builds cleaner and would make cache ownership harder to reason about
+
+`cargo-udeps` is a manual cleanup audit, not a default gate. It requires a nightly Rust compiler because it uses unstable compiler flags, so it is best run from a loaded maintainer profile that provides both the `cargo-udeps` binary and a nightly toolchain, for example:
+
+```bash
+cargo +nightly udeps --manifest-path rust_core/Cargo.toml --workspace --all-targets
+cargo +nightly udeps --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --all-targets
+```
+
+Do not add `cargo-udeps` to user runtime packages. Runtime users do not need Rust cleanup tools to launch Yazelix.
+
 ## Runtime Package Impact
 
 Current state:
