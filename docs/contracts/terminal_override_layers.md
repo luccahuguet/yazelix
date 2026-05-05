@@ -22,6 +22,7 @@ The real customization need is not full terminal-config ownership. It is a safe 
 - User override files are automatically picked up when Yazelix launches in the managed-config path.
 - `terminal.config_mode = "yazelix"` keeps using the managed config plus the Yazelix-specific override layer.
 - `terminal.config_mode = "user"` switches to the terminal's real native config path and fails fast if that file does not exist.
+- For Ghostty user mode, Yazelix checks upstream native config candidates in order: `$XDG_CONFIG_HOME/ghostty/config.ghostty`, `$XDG_CONFIG_HOME/ghostty/config`, and on macOS `~/Library/Application Support/com.mitchellh.ghostty/config.ghostty` then `config`.
 - Yazelix does not read the terminal's normal default config by default for this override feature.
 - Startup behavior remains Yazelix-owned at the launcher layer, even when the terminal config file itself comes from the user path.
 

@@ -1051,25 +1051,92 @@ fn generated_terminal_config_path(state_dir: &Path, terminal: &str) -> PathBuf {
     }
 }
 
-fn user_terminal_config_path(home_dir: &Path, terminal: &str) -> Result<PathBuf, String> {
+fn xdg_config_home_for_user(home_dir: &Path) -> PathBuf {
+    std::env::var_os("XDG_CONFIG_HOME")
+        .map(PathBuf::from)
+        .filter(|path| !path.as_os_str().is_empty())
+        .unwrap_or_else(|| home_dir.join(".config"))
+}
+
+fn ghostty_user_config_candidates(
+    home_dir: &Path,
+    xdg_config_home: &Path,
+    platform: &str,
+) -> Vec<PathBuf> {
+    let xdg_ghostty = xdg_config_home.join("ghostty");
+    let mut candidates = vec![
+        xdg_ghostty.join("config.ghostty"),
+        xdg_ghostty.join("config"),
+    ];
+
+    if matches!(platform, "macos" | "darwin") {
+        let app_support = home_dir
+            .join("Library")
+            .join("Application Support")
+            .join("com.mitchellh.ghostty");
+        candidates.push(app_support.join("config.ghostty"));
+        candidates.push(app_support.join("config"));
+    }
+
+    candidates
+}
+
+fn user_terminal_config_candidates_for_platform(
+    home_dir: &Path,
+    terminal: &str,
+    xdg_config_home: &Path,
+    platform: &str,
+) -> Result<Vec<PathBuf>, String> {
     match terminal {
-        "ghostty" => Ok(home_dir.join(".config").join("ghostty").join("config")),
-        "kitty" => Ok(home_dir.join(".config").join("kitty").join("kitty.conf")),
-        "wezterm" => {
-            let main = home_dir.join(".wezterm.lua");
-            if main.exists() {
-                Ok(main)
-            } else {
-                Ok(home_dir.join(".config").join("wezterm").join("wezterm.lua"))
-            }
-        }
-        "alacritty" => Ok(home_dir
-            .join(".config")
-            .join("alacritty")
-            .join("alacritty.toml")),
-        "foot" => Ok(home_dir.join(".config").join("foot").join("foot.ini")),
+        "ghostty" => Ok(ghostty_user_config_candidates(
+            home_dir,
+            xdg_config_home,
+            platform,
+        )),
+        "kitty" => Ok(vec![
+            home_dir.join(".config").join("kitty").join("kitty.conf"),
+        ]),
+        "wezterm" => Ok(vec![
+            home_dir.join(".wezterm.lua"),
+            home_dir.join(".config").join("wezterm").join("wezterm.lua"),
+        ]),
+        "alacritty" => Ok(vec![
+            home_dir
+                .join(".config")
+                .join("alacritty")
+                .join("alacritty.toml"),
+        ]),
+        "foot" => Ok(vec![home_dir.join(".config").join("foot").join("foot.ini")]),
         other => Err(format!("Unsupported terminal config lookup: {other}")),
     }
+}
+
+fn user_terminal_config_path(home_dir: &Path, terminal: &str) -> Result<PathBuf, String> {
+    let candidates = user_terminal_config_candidates_for_platform(
+        home_dir,
+        terminal,
+        &xdg_config_home_for_user(home_dir),
+        &current_platform_name(),
+    )?;
+    select_existing_user_terminal_config_path(terminal, &candidates)
+}
+
+fn select_existing_user_terminal_config_path(
+    terminal: &str,
+    candidates: &[PathBuf],
+) -> Result<PathBuf, String> {
+    if let Some(path) = candidates.iter().find(|path| path.exists()) {
+        return Ok(path.clone());
+    }
+
+    let checked = candidates
+        .iter()
+        .map(|path| path.display().to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    Err(format!(
+        "terminal.config_mode = user requires a real {terminal} user config at one of: {checked}"
+    ))
 }
 
 fn resolve_terminal_config_path(
@@ -1080,17 +1147,7 @@ fn resolve_terminal_config_path(
 ) -> Result<PathBuf, String> {
     match mode {
         "yazelix" => Ok(generated_terminal_config_path(state_dir, terminal)),
-        "user" => {
-            let path = user_terminal_config_path(home_dir, terminal)?;
-            if path.exists() {
-                Ok(path)
-            } else {
-                Err(format!(
-                    "terminal.config_mode = user requires a real {terminal} user config at {}",
-                    path.display()
-                ))
-            }
-        }
+        "user" => user_terminal_config_path(home_dir, terminal),
         other => Err(format!(
             "Unsupported terminal.config_mode '{other}'. Expected 'yazelix' or 'user'."
         )),
@@ -2167,6 +2224,61 @@ mod tests {
             normalized_configured_terminals(&config),
             vec!["ghostty".to_string(), "wezterm".to_string()]
         );
+    }
+
+    // Defends: Ghostty user-mode config discovery follows upstream file-name and macOS path candidates instead of hard-coding the old config name.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn ghostty_user_config_candidates_follow_upstream_paths() {
+        let home = Path::new("/Users/demo");
+        let xdg = Path::new("/Users/demo/.config");
+
+        assert_eq!(
+            ghostty_user_config_candidates(home, xdg, "linux"),
+            vec![
+                PathBuf::from("/Users/demo/.config/ghostty/config.ghostty"),
+                PathBuf::from("/Users/demo/.config/ghostty/config"),
+            ]
+        );
+        assert_eq!(
+            ghostty_user_config_candidates(home, xdg, "macos"),
+            vec![
+                PathBuf::from("/Users/demo/.config/ghostty/config.ghostty"),
+                PathBuf::from("/Users/demo/.config/ghostty/config"),
+                PathBuf::from(
+                    "/Users/demo/Library/Application Support/com.mitchellh.ghostty/config.ghostty",
+                ),
+                PathBuf::from(
+                    "/Users/demo/Library/Application Support/com.mitchellh.ghostty/config",
+                ),
+            ]
+        );
+    }
+
+    // Regression: terminal.config_mode=user accepts Ghostty's current config.ghostty name and reports every checked candidate when none exists.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn ghostty_user_config_selection_accepts_config_ghostty_and_lists_misses() {
+        let tmp = TempDir::new().unwrap();
+        let home = tmp.path().join("home");
+        let xdg = home.join(".config");
+        let ghostty_dir = xdg.join("ghostty");
+        fs::create_dir_all(&ghostty_dir).unwrap();
+        let current = ghostty_dir.join("config.ghostty");
+        fs::write(&current, "font-family = PragmataPro Mono Liga\n").unwrap();
+        let candidates =
+            user_terminal_config_candidates_for_platform(&home, "ghostty", &xdg, "macos").unwrap();
+
+        assert_eq!(
+            select_existing_user_terminal_config_path("ghostty", &candidates).unwrap(),
+            current
+        );
+
+        fs::remove_file(&current).unwrap();
+        let missing =
+            select_existing_user_terminal_config_path("ghostty", &candidates).unwrap_err();
+        assert!(missing.contains("config.ghostty"));
+        assert!(missing.contains("Application Support/com.mitchellh.ghostty/config"));
     }
 
     // Defends: launch publishes a compact current-cursor fact only for Ghostty cursor-aware sessions and a clear n/a fallback elsewhere.
