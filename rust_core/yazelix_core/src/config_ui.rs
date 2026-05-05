@@ -19,7 +19,7 @@ use crossterm::terminal::{
 use ratatui::Frame;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
-use ratatui::layout::{Constraint, Direction, Layout, Rect};
+use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Tabs, Wrap};
@@ -331,7 +331,7 @@ fn draw_config_ui(frame: &mut Frame<'_>, app: &mut ConfigUiApp) {
     let root = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),
+            Constraint::Length(2),
             Constraint::Length(3),
             Constraint::Min(8),
             Constraint::Length(2),
@@ -365,42 +365,92 @@ fn render_header(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect) {
         .iter()
         .filter(|diagnostic| diagnostic.blocking)
         .count();
-    let diagnostic_value = if warning_count > 0 {
-        Span::styled(
-            warning_count.to_string(),
-            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
-        )
+    let diagnostic_text = if warning_count > 0 {
+        warning_count.to_string()
     } else {
-        Span::styled("ok", Style::default().fg(Color::Green))
+        "ok".to_string()
     };
-    let key_style = Style::default().fg(Color::Gray);
-    let value_style = Style::default().fg(Color::White);
+    let diagnostic_style = if warning_count > 0 {
+        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().fg(Color::Green)
+    };
 
-    let title = Line::from(vec![
-        Span::styled(
-            "Yazelix Config",
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::raw("   "),
-        Span::styled("owner: ", key_style),
-        Span::styled(owner, value_style),
-        Span::raw("   "),
-        Span::styled("mode: ", key_style),
-        Span::styled(write_state, value_style),
-        Span::raw("   "),
-        Span::styled("diagnostics: ", key_style),
-        diagnostic_value,
-    ]);
-    let path = Line::from(vec![
-        Span::styled("path: ", key_style),
-        Span::styled(source, Style::default().fg(Color::White)),
-    ]);
-    frame.render_widget(
-        Paragraph::new(vec![title, path]).block(Block::default().borders(Borders::BOTTOM)),
-        area,
-    );
+    let title = Line::from(vec![Span::styled(
+        "Yazelix Config",
+        Style::default()
+            .fg(Color::Cyan)
+            .add_modifier(Modifier::BOLD),
+    )]);
+
+    frame.render_widget(Block::default().borders(Borders::BOTTOM), area);
+    let content = Rect {
+        x: area.x,
+        y: area.y,
+        width: area.width,
+        height: area.height.saturating_sub(1).max(1),
+    };
+    let title_width = 15_u16.min(content.width);
+    let gap = if content.width > title_width { 1 } else { 0 };
+    let title_area = Rect {
+        x: content.x,
+        y: content.y,
+        width: title_width,
+        height: 1,
+    };
+    let metadata_area = Rect {
+        x: content.x + title_width + gap,
+        y: content.y,
+        width: content.width.saturating_sub(title_width + gap),
+        height: 1,
+    };
+
+    frame.render_widget(Paragraph::new(title).alignment(Alignment::Left), title_area);
+    if metadata_area.width > 0 {
+        frame.render_widget(
+            Paragraph::new(header_metadata_line(
+                &source,
+                owner,
+                write_state,
+                &diagnostic_text,
+                diagnostic_style,
+                metadata_area.width as usize,
+            ))
+            .alignment(Alignment::Right),
+            metadata_area,
+        );
+    }
+}
+
+fn header_metadata_line(
+    source: &str,
+    owner: &str,
+    mode: &str,
+    diagnostic: &str,
+    diagnostic_style: Style,
+    width: usize,
+) -> Line<'static> {
+    let fixed_width = "path: ".len()
+        + "  owner: ".len()
+        + owner.len()
+        + "  mode: ".len()
+        + mode.len()
+        + "  diag: ".len()
+        + diagnostic.len();
+    let path = truncate_start(source, width.saturating_sub(fixed_width));
+    Line::from(vec![
+        Span::styled("path: ", metadata_key_style()),
+        Span::styled(path, metadata_value_style()),
+        Span::raw("  "),
+        Span::styled("owner: ", metadata_key_style()),
+        Span::styled(owner.to_string(), metadata_value_style()),
+        Span::raw("  "),
+        Span::styled("mode: ", metadata_key_style()),
+        Span::styled(mode.to_string(), metadata_value_style()),
+        Span::raw("  "),
+        Span::styled("diag: ", metadata_key_style()),
+        Span::styled(diagnostic.to_string(), diagnostic_style),
+    ])
 }
 
 fn render_tabs(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect) {
@@ -896,7 +946,7 @@ impl ConfigUiApp {
                         fixed_label(state_label(field.state), 9),
                         state_style(field.state),
                     ),
-                    Span::raw(truncate(&field.path, 42)),
+                    Span::styled(truncate(&field.path, 42), config_key_style()),
                     Span::styled(
                         format!(" {}", truncate(&field.current_value, 28)),
                         Style::default().fg(Color::Gray),
@@ -917,7 +967,7 @@ impl ConfigUiApp {
                 };
                 Line::from(vec![
                     Span::styled(fixed_label(status, 9), style),
-                    Span::raw(sidecar.name.clone()),
+                    Span::styled(sidecar.name.clone(), config_key_style()),
                 ])
             }
             UiRowRef::Diagnostic(index) => {
@@ -929,7 +979,7 @@ impl ConfigUiApp {
                 };
                 Line::from(vec![
                     Span::styled(fixed_label(&diagnostic.status, 9), style),
-                    Span::raw(truncate(&diagnostic.path, 42)),
+                    Span::styled(truncate(&diagnostic.path, 42), config_key_style()),
                 ])
             }
         }
@@ -1029,9 +1079,7 @@ fn field_detail_lines(field: &ConfigUiField) -> Vec<Line<'static>> {
     let mut lines = vec![
         Line::from(Span::styled(
             field.path.clone(),
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
+            config_key_style().add_modifier(Modifier::BOLD),
         )),
         Line::from(""),
         detail_line("state", state_label(field.state)),
@@ -1111,8 +1159,8 @@ fn diagnostic_detail_lines(diagnostic: &ConfigUiDiagnostic) -> Vec<Line<'static>
 
 fn detail_line(label: &str, value: &str) -> Line<'static> {
     Line::from(vec![
-        Span::styled(fixed_label(label, 11), Style::default().fg(Color::Gray)),
-        Span::raw(value.to_string()),
+        Span::styled(fixed_label(label, 11), metadata_key_style()),
+        Span::styled(value.to_string(), metadata_value_style()),
     ])
 }
 
@@ -1873,6 +1921,18 @@ fn sidecar_status_style(present: bool) -> Style {
     }
 }
 
+fn metadata_key_style() -> Style {
+    Style::default().fg(Color::LightBlue)
+}
+
+fn metadata_value_style() -> Style {
+    Style::default().fg(Color::White)
+}
+
+fn config_key_style() -> Style {
+    Style::default().fg(Color::LightCyan)
+}
+
 fn owner_label(owner: ConfigUiPathOwner) -> &'static str {
     match owner {
         ConfigUiPathOwner::Default => "default",
@@ -1899,6 +1959,21 @@ fn truncate(value: &str, limit: usize) -> String {
         .take(limit.saturating_sub(3))
         .collect::<String>()
         + "..."
+}
+
+fn truncate_start(value: &str, limit: usize) -> String {
+    let len = value.chars().count();
+    if len <= limit {
+        return value.to_string();
+    }
+    if limit <= 3 {
+        return ".".repeat(limit);
+    }
+    let tail = value
+        .chars()
+        .skip(len.saturating_sub(limit - 3))
+        .collect::<String>();
+    format!("...{tail}")
 }
 
 fn tab_index(tabs: &[String], tab: &str) -> usize {
@@ -1930,6 +2005,12 @@ mod tests {
             .filter_map(|x| buffer.cell((x, y)))
             .map(|cell| cell.symbol())
             .collect::<String>()
+    }
+
+    fn buffer_text_fg(buffer: &ratatui::buffer::Buffer, y: u16, text: &str) -> Color {
+        let line = buffer_line(buffer, y);
+        let x = line.find(text).expect("text in buffer") as u16;
+        buffer.cell((x, y)).expect("cell").fg
     }
 
     fn test_field(
@@ -2034,7 +2115,7 @@ mod tests {
             edit: None,
             notice: None,
         };
-        let backend = TestBackend::new(80, 3);
+        let backend = TestBackend::new(120, 2);
         let mut terminal = Terminal::new(backend).expect("terminal");
 
         terminal
@@ -2044,9 +2125,26 @@ mod tests {
         let buffer = terminal.backend().buffer();
         let title = buffer_line(buffer, 0);
         assert!(title.contains("Yazelix Config"));
-        assert!(title.contains("owner: user   mode: writable   diagnostics: ok"));
-        assert!(
-            buffer_line(buffer, 1).contains("path: /home/lucca/.config/yazelix/settings.jsonc")
+        assert!(title.contains("path: /home/lucca/.config/yazelix/settings.jsonc"));
+        assert!(title.contains("owner: user"));
+        assert!(title.contains("mode: writable"));
+        assert!(title.contains("diag: ok"));
+        assert_eq!(buffer_text_fg(buffer, 0, "path:"), Color::LightBlue);
+        assert_eq!(buffer_text_fg(buffer, 0, "owner:"), Color::LightBlue);
+        assert!(!buffer_line(buffer, 1).contains("path:"));
+    }
+
+    // Regression: config UI setting keys should read as navigable keys, not unstyled body text.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn setting_keys_use_dedicated_key_color() {
+        let field = test_field("editor.hide_sidebar_on_file_open", "bool", "true", &[]);
+        let lines = field_detail_lines(&field);
+
+        assert_eq!(lines[0].spans[0].style.fg, Some(Color::LightCyan));
+        assert_eq!(
+            detail_line("current", "true").spans[0].style.fg,
+            Some(Color::LightBlue)
         );
     }
 
