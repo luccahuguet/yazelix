@@ -1274,7 +1274,12 @@ fn owner_label(owner: ConfigUiPathOwner) -> &'static str {
 }
 
 fn fixed_label(value: &str, width: usize) -> String {
-    format!("{value:<width$}")
+    let label = format!("{value:<width$}");
+    if label.ends_with(' ') {
+        label
+    } else {
+        format!("{label} ")
+    }
 }
 
 fn truncate(value: &str, limit: usize) -> String {
@@ -1302,4 +1307,18 @@ fn terminal_err(source: io::Error) -> CoreError {
         ".",
         source,
     )
+}
+
+// Test lane: default
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Regression: diagnostic statuses longer than their nominal column width still need a separator before the path.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn fixed_label_keeps_separator_after_long_values() {
+        assert_eq!(fixed_label("default", 9), "default  ");
+        assert_eq!(fixed_label("missing_field", 9), "missing_field ");
+    }
 }
