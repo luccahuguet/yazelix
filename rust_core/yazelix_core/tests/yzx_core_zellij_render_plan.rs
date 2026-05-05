@@ -8,7 +8,6 @@ use serde_json::Value;
 #[test]
 fn zellij_render_plan_emits_ok_envelope() {
     let request = serde_json::json!({
-        "enable_sidebar": true,
         "sidebar_width_percent": 20,
         "popup_width_percent": 90,
         "popup_height_percent": 90,

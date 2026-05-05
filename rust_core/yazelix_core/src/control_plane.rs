@@ -445,10 +445,6 @@ pub fn runtime_env_request(
     })?;
 
     let current_path = std::env::var("PATH").unwrap_or_default();
-    let enable_sidebar = normalized
-        .get("enable_sidebar")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(true);
     let editor_command = normalized
         .get("editor_command")
         .and_then(|v| v.as_str())
@@ -462,7 +458,6 @@ pub fn runtime_env_request(
         runtime_dir,
         home_dir,
         current_path: RuntimePathInput::String(current_path),
-        enable_sidebar,
         editor_command,
         helix_runtime_path,
     })

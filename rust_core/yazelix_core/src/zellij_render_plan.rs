@@ -76,10 +76,6 @@ pub const DEFAULT_SIDEBAR_COMMAND: &str = "nu";
 pub const DEFAULT_SIDEBAR_YAZI_ARG: &str =
     "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu";
 
-fn default_enable_sidebar() -> bool {
-    true
-}
-
 fn default_sidebar_width_percent() -> i64 {
     20
 }
@@ -150,8 +146,6 @@ fn default_shell_label() -> String {
 
 #[derive(Debug, Deserialize)]
 pub struct ZellijRenderPlanRequest {
-    #[serde(default = "default_enable_sidebar")]
-    pub enable_sidebar: bool,
     #[serde(default = "default_sidebar_width_percent")]
     pub sidebar_width_percent: i64,
     #[serde(default = "default_sidebar_command")]
@@ -479,7 +473,7 @@ pub fn compute_zellij_render_plan(
     let shell_label = status_label(&request.shell_label, "nu");
     let terminal_label = status_label(&request.terminal_label, "ghostty");
 
-    let default_layout_name = managed_sidebar_layout_name(request.enable_sidebar).to_string();
+    let default_layout_name = MANAGED_SIDEBAR_LAYOUT_NAME.to_string();
 
     let layout_percentages = compute_layout_percentages(request.sidebar_width_percent);
 
@@ -563,13 +557,7 @@ pub fn compute_zellij_render_plan(
     })
 }
 
-pub fn managed_sidebar_layout_name(enable_sidebar: bool) -> &'static str {
-    if enable_sidebar {
-        "yzx_side"
-    } else {
-        "yzx_side_closed"
-    }
-}
+pub const MANAGED_SIDEBAR_LAYOUT_NAME: &str = "yzx_side";
 
 // Test lane: maintainer
 
@@ -579,7 +567,6 @@ mod tests {
 
     fn sample_request() -> ZellijRenderPlanRequest {
         ZellijRenderPlanRequest {
-            enable_sidebar: true,
             sidebar_width_percent: 20,
             sidebar_command: "nu".into(),
             sidebar_args: default_sidebar_args(),
@@ -740,17 +727,6 @@ mod tests {
             compute_zellij_render_plan(&req).unwrap_err().code(),
             "invalid_screen_saver_style"
         );
-    }
-
-    // Defends: legacy disabled-sidebar configs still start from the collapsed managed-sidebar layout.
-    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
-    #[test]
-    fn disabled_sidebar_uses_collapsed_startup_layout() {
-        let mut req = sample_request();
-        req.enable_sidebar = false;
-        let plan = compute_zellij_render_plan(&req).unwrap();
-
-        assert_eq!(plan.default_layout_name, "yzx_side_closed");
     }
 
     // Defends: enforced default_layout points at the computed managed layout file for the active sidebar capability.

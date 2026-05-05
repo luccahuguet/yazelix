@@ -14,9 +14,9 @@ use crate::yazi_materialization::{
 use crate::zellij_materialization::{
     ZellijMaterializationData, ZellijMaterializationRequest, generate_zellij_materialization,
 };
-use crate::zellij_render_plan::managed_sidebar_layout_name;
+use crate::zellij_render_plan::MANAGED_SIDEBAR_LAYOUT_NAME;
 use serde::{Deserialize, Serialize};
-use serde_json::{Map as JsonMap, Value as JsonValue, json};
+use serde_json::json;
 use std::fs;
 use std::path::{Path, PathBuf};
 use toml::Value as TomlValue;
@@ -144,7 +144,6 @@ pub fn plan_runtime_materialization(
         state_path: request.state_path.clone(),
     })?;
     let zellij_layout_path = resolve_zellij_layout_path(
-        &config_state.config,
         &request.zellij_layout_dir,
         request.layout_override.as_deref(),
     )?;
@@ -786,7 +785,6 @@ pub fn apply_runtime_materialization(
 }
 
 fn resolve_zellij_layout_path(
-    config: &JsonMap<String, JsonValue>,
     zellij_layout_dir: &Path,
     layout_override: Option<&str>,
 ) -> Result<String, CoreError> {
@@ -796,7 +794,7 @@ fn resolve_zellij_layout_path(
     let layout = if let Some(layout) = override_value {
         layout.to_string()
     } else {
-        managed_sidebar_layout_name(json_bool(config.get("enable_sidebar"), true)).to_string()
+        MANAGED_SIDEBAR_LAYOUT_NAME.to_string()
     };
 
     let path = if layout.contains('/') || layout.ends_with(".kdl") {
@@ -808,18 +806,6 @@ fn resolve_zellij_layout_path(
             .to_string()
     };
     Ok(path)
-}
-
-fn json_bool(value: Option<&JsonValue>, default: bool) -> bool {
-    match value {
-        Some(JsonValue::Bool(value)) => *value,
-        Some(JsonValue::String(value)) => match value.as_str() {
-            "true" => true,
-            "false" => false,
-            _ => default,
-        },
-        _ => default,
-    }
 }
 
 fn is_missing_file(path: &Path) -> bool {

@@ -10,10 +10,7 @@ use crate::control_plane::{
     home_dir_from_env, json_map_to_child_env, runtime_dir_from_env, runtime_env_request,
 };
 use crate::session_facts::compute_session_facts_from_env;
-use crate::workspace_commands::{
-    command_is_available, compute_integration_facts_from_env, run_ya_emit_to,
-    sync_sidebar_to_directory,
-};
+use crate::workspace_commands::{compute_integration_facts_from_env, sync_sidebar_to_directory};
 use rusqlite::{Connection, OpenFlags, params};
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
@@ -4129,7 +4126,6 @@ fn resolve_runtime_editor_launch() -> Result<(serde_json::Map<String, Value>, St
     let runtime_dir = runtime_dir_from_env()?;
     let facts = compute_session_facts_from_env()?;
     let mut normalized = serde_json::Map::new();
-    normalized.insert("enable_sidebar".to_string(), json!(facts.enable_sidebar));
     if let Some(editor_command) = facts.editor_command {
         normalized.insert("editor_command".to_string(), json!(editor_command));
     }
@@ -4282,25 +4278,6 @@ fn open_files_in_managed_editor(
     }
 }
 
-fn sync_current_yazi_to_directory(
-    ya_command: &str,
-    home_dir: &Path,
-    yazi_id: &str,
-    target_path: &Path,
-) {
-    if !command_is_available(ya_command, home_dir) {
-        return;
-    }
-
-    let target_dir = if target_path.is_dir() {
-        target_path
-    } else {
-        target_path.parent().unwrap_or(target_path)
-    };
-    let target = target_dir.to_string_lossy().to_string();
-    let _ = run_ya_emit_to(ya_command, home_dir, yazi_id, "cd", &[target.as_str()]);
-}
-
 pub fn run_zellij_retarget(args: &[String]) -> Result<i32, CoreError> {
     let parsed = parse_zellij_retarget_args(args)?;
     if parsed.help {
@@ -4434,7 +4411,7 @@ pub fn run_zellij_open_editor(args: &[String]) -> Result<i32, CoreError> {
     let editor_working_dir = resolve_editor_working_dir(primary_target_path);
     let mut created_editor_pane = false;
 
-    if integration_facts.enable_sidebar && integration_facts.hide_sidebar_on_file_open {
+    if integration_facts.hide_sidebar_on_file_open {
         hide_sidebar_if_visible()?;
     }
 
@@ -4468,31 +4445,18 @@ pub fn run_zellij_open_editor(args: &[String]) -> Result<i32, CoreError> {
         retarget_workspace_dir_without_focused_cd(&editor_working_dir, None)
     {
         if workspace_retarget_status(&retarget_result) == "ok" {
-            if integration_facts.enable_sidebar {
-                if let Some(sidebar_state) = sidebar_state_from_retarget_response(&retarget_result)
-                {
-                    let _ = sync_sidebar_to_directory(
-                        &integration_facts.ya_command,
-                        &home_dir_from_env()?,
-                        &sidebar_state,
-                        primary_target_path,
-                    );
-                }
-            } else if !yazi_id.trim().is_empty() {
-                sync_current_yazi_to_directory(
+            if let Some(sidebar_state) = sidebar_state_from_retarget_response(&retarget_result) {
+                let _ = sync_sidebar_to_directory(
                     &integration_facts.ya_command,
                     &home_dir_from_env()?,
-                    yazi_id.as_str(),
+                    &sidebar_state,
                     primary_target_path,
                 );
             }
         }
     }
 
-    if created_editor_pane
-        && integration_facts.enable_sidebar
-        && integration_facts.hide_sidebar_on_file_open
-    {
+    if created_editor_pane && integration_facts.hide_sidebar_on_file_open {
         hide_sidebar_after_editor_pane_creation()?;
     }
 
@@ -4525,7 +4489,7 @@ pub fn run_zellij_open_editor_cwd(args: &[String]) -> Result<i32, CoreError> {
         ));
     }
 
-    if integration_facts.enable_sidebar && integration_facts.hide_sidebar_on_file_open {
+    if integration_facts.hide_sidebar_on_file_open {
         hide_sidebar_if_visible()?;
     }
 
@@ -4582,21 +4546,16 @@ pub fn run_zellij_open_editor_cwd(args: &[String]) -> Result<i32, CoreError> {
         _ => {}
     }
 
-    if integration_facts.enable_sidebar {
-        if let Some(sidebar_state) = sidebar_state_from_retarget_response(&retarget_result) {
-            let _ = sync_sidebar_to_directory(
-                &integration_facts.ya_command,
-                &home_dir_from_env()?,
-                &sidebar_state,
-                &target_dir,
-            );
-        }
+    if let Some(sidebar_state) = sidebar_state_from_retarget_response(&retarget_result) {
+        let _ = sync_sidebar_to_directory(
+            &integration_facts.ya_command,
+            &home_dir_from_env()?,
+            &sidebar_state,
+            &target_dir,
+        );
     }
 
-    if created_editor_pane
-        && integration_facts.enable_sidebar
-        && integration_facts.hide_sidebar_on_file_open
-    {
+    if created_editor_pane && integration_facts.hide_sidebar_on_file_open {
         hide_sidebar_after_editor_pane_creation()?;
     }
 

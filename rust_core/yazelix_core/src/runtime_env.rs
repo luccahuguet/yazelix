@@ -1,5 +1,5 @@
 use crate::bridge::CoreError;
-use crate::zellij_render_plan::managed_sidebar_layout_name;
+use crate::zellij_render_plan::MANAGED_SIDEBAR_LAYOUT_NAME;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Value as JsonValue};
 use std::collections::HashSet;
@@ -11,8 +11,6 @@ pub struct RuntimeEnvComputeRequest {
     pub home_dir: PathBuf,
     #[serde(default)]
     pub current_path: RuntimePathInput,
-    #[serde(default = "default_enable_sidebar")]
-    pub enable_sidebar: bool,
     #[serde(default)]
     pub editor_command: Option<String>,
     #[serde(default)]
@@ -59,7 +57,6 @@ pub fn compute_runtime_env(
 
     let resolved_editor_command = resolve_editor_command(request);
     let editor_kind = resolve_editor_kind(&resolved_editor_command);
-    let default_layout_name = managed_sidebar_layout_name(request.enable_sidebar);
     let editor_command = if editor_kind == "helix" {
         path_to_string(
             &request
@@ -93,7 +90,7 @@ pub fn compute_runtime_env(
     );
     runtime_env.insert(
         "ZELLIJ_DEFAULT_LAYOUT".to_string(),
-        JsonValue::String(default_layout_name.to_string()),
+        JsonValue::String(MANAGED_SIDEBAR_LAYOUT_NAME.to_string()),
     );
     runtime_env.insert(
         "YAZI_CONFIG_HOME".to_string(),
@@ -132,10 +129,6 @@ pub fn compute_runtime_env(
         editor_kind,
         path_entries,
     })
-}
-
-fn default_enable_sidebar() -> bool {
-    true
 }
 
 fn normalize_path_entries(value: &RuntimePathInput) -> Vec<String> {

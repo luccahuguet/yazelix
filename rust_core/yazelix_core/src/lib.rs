@@ -186,6 +186,6 @@ pub use zellij_materialization::{
     ZellijMaterializationData, ZellijMaterializationRequest, generate_zellij_materialization,
 };
 pub use zellij_render_plan::{
-    ZellijRenderPlanData, ZellijRenderPlanRequest, compute_zellij_render_plan,
-    managed_sidebar_layout_name,
+    MANAGED_SIDEBAR_LAYOUT_NAME, ZellijRenderPlanData, ZellijRenderPlanRequest,
+    compute_zellij_render_plan,
 };

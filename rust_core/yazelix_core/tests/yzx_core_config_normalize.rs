@@ -105,11 +105,6 @@ fn prepare_runtime_materialization_fixture(
         "swap_tiled_layout name=\"single_open\" {}\n",
     )
     .unwrap();
-    fs::write(
-        runtime_layout_dir.join("yzx_no_side.kdl"),
-        "layout { pane }\n",
-    )
-    .unwrap();
     for fragment in [
         "zjstatus_tab_template.kdl",
         "keybinds_common.kdl",
@@ -429,6 +424,11 @@ fn config_normalize_rejects_removed_surfaces_without_rewriting() {
             "removed_initial_sidebar_state",
             "[editor]\ninitial_sidebar_state = \"closed\"\n",
             "editor.initial_sidebar_state",
+        ),
+        (
+            "removed_enable_sidebar",
+            "[editor]\nenable_sidebar = false\n",
+            "editor.enable_sidebar",
         ),
     ] {
         let tmp = tempdir().unwrap();

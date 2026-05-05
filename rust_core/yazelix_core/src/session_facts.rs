@@ -19,7 +19,6 @@ const SESSION_FACTS_PATH_ENV: &str = "YAZELIX_SESSION_FACTS_PATH";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SessionFactsData {
-    pub enable_sidebar: bool,
     pub hide_sidebar_on_file_open: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub editor_command: Option<String>,
@@ -48,7 +47,6 @@ struct SessionFactsCache {
 impl Default for SessionFactsData {
     fn default() -> Self {
         Self {
-            enable_sidebar: true,
             hide_sidebar_on_file_open: false,
             editor_command: None,
             helix_runtime_path: None,
@@ -68,10 +66,6 @@ impl SessionFactsData {
     pub(crate) fn from_normalized_config(config: &JsonMap<String, JsonValue>) -> Self {
         let defaults = Self::default();
         Self {
-            enable_sidebar: config
-                .get("enable_sidebar")
-                .and_then(JsonValue::as_bool)
-                .unwrap_or(defaults.enable_sidebar),
             hide_sidebar_on_file_open: config
                 .get("hide_sidebar_on_file_open")
                 .and_then(JsonValue::as_bool)
@@ -240,9 +234,6 @@ impl SessionFactsData {
 
         if let Some(editor) = toml_section(config, "editor") {
             self.editor_command = toml_optional_string(editor.get("command"));
-            if let Some(value) = toml_bool(editor.get("enable_sidebar")) {
-                self.enable_sidebar = value;
-            }
             if let Some(value) = toml_bool(editor.get("hide_sidebar_on_file_open")) {
                 self.hide_sidebar_on_file_open = value;
             }

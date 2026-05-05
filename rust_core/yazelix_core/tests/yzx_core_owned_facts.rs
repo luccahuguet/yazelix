@@ -32,7 +32,6 @@ ya_command = "ya-test"
     let envelope: Value = ok_envelope(&output);
 
     assert_eq!(envelope["command"], "integration-facts.compute");
-    assert_eq!(envelope["data"]["enable_sidebar"], true);
     assert_eq!(envelope["data"]["hide_sidebar_on_file_open"], true);
     assert_eq!(envelope["data"]["managed_editor_kind"], "neovim");
     assert_eq!(envelope["data"]["yazi_command"], "yy");

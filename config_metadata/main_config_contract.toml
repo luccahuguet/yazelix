@@ -11,7 +11,7 @@
 [contract]
 version = 1
 surface = "main"
-field_count = 42
+field_count = 41
 artifact_role = "canonical_machine_metadata"
 default_template = "yazelix_default.toml"
 home_manager_module = "home_manager/module.nix"
@@ -111,18 +111,6 @@ parser_behavior = "empty_string_to_null"
 nullable = true
 home_manager_default_is_null = true
 rebuild_required = true
-
-[fields."editor.enable_sidebar"]
-kind = "bool"
-default = true
-parser_key = "enable_sidebar"
-home_manager_option = "enable_sidebar"
-parser_behavior = "direct"
-nullable = true
-emit_in_default_template = false
-home_manager_default_is_null = true
-home_manager_can_omit = true
-rebuild_required = false
 
 [fields."editor.hide_sidebar_on_file_open"]
 kind = "bool"

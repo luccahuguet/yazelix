@@ -920,7 +920,7 @@ fn collect_config_diagnostics(
         config_path: config_path.to_path_buf(),
         default_config_path: paths.default_config_path.clone(),
         contract_path: paths.contract_path.clone(),
-        include_missing: true,
+        include_missing: false,
     };
 
     match crate::config_normalize::normalize_config(&request) {

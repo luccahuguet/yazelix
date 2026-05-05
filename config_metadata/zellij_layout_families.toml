@@ -16,20 +16,6 @@ swap_layouts = [
   "bottom_terminal_closed",
 ]
 
-[[layout_families]]
-id = "no_sidebar"
-layout_file = "yzx_no_side.kdl"
-swap_layout_file = "yzx_no_side.swap.kdl"
-sidebar_enabled = false
-required_pane_names = ["filemanager"]
-required_launcher_placeholders = ["__YAZELIX_SIDEBAR_COMMAND__", "__YAZELIX_SIDEBAR_ARGS__"]
-swap_layouts = [
-  "basic",
-  "stacked",
-  "two_column",
-  "bottom_terminal",
-]
-
 [[auxiliary_layouts]]
 id = "sidebar_closed_startup"
 layout_file = "yzx_side_closed.kdl"

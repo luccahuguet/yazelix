@@ -340,15 +340,6 @@ in
       '';
     };
 
-    enable_sidebar = mkMainContractOption "editor.enable_sidebar" {
-      description = ''
-        Legacy compatibility toggle for older configs.
-
-        Prefer hide_sidebar_on_file_open for the file-open workflow that hides
-        the managed sidebar after opening a file.
-      '';
-    };
-
     hide_sidebar_on_file_open = mkMainContractOption "editor.hide_sidebar_on_file_open" {
       description = ''
         Whether Yazelix should hide the managed sidebar after opening a file from

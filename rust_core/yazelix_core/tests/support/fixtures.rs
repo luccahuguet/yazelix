@@ -94,7 +94,6 @@ pub fn write_session_facts_cache(
     overrides: &[(&str, serde_json::Value)],
 ) -> PathBuf {
     let mut facts = serde_json::Map::from_iter([
-        ("enable_sidebar".to_string(), serde_json::json!(true)),
         (
             "hide_sidebar_on_file_open".to_string(),
             serde_json::json!(false),
@@ -139,7 +138,6 @@ pub fn write_session_config_snapshot_with_id(
     overrides: &[(&str, serde_json::Value)],
 ) -> PathBuf {
     let mut normalized_config = serde_json::Map::from_iter([
-        ("enable_sidebar".to_string(), serde_json::json!(true)),
         (
             "hide_sidebar_on_file_open".to_string(),
             serde_json::json!(false),
@@ -157,7 +155,6 @@ pub fn write_session_config_snapshot_with_id(
         ("terminals".to_string(), serde_json::json!(["ghostty"])),
     ]);
     let mut facts = serde_json::Map::from_iter([
-        ("enable_sidebar".to_string(), serde_json::json!(true)),
         (
             "hide_sidebar_on_file_open".to_string(),
             serde_json::json!(false),

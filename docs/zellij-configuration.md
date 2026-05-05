@@ -140,7 +140,7 @@ The default launches the managed Yazi file-tree adapter. You can point the same 
 
 ## Current Yazelix Defaults
 
-- Default layout: `yzx_side` or `yzx_side_closed` for the managed-sidebar startup surface
+- Default layout: `yzx_side` for the managed-sidebar startup surface
 - Copy command: `wl-copy` (Wayland clipboard)
 - Scrollback editor: `hx` (Helix)
 - Session serialization: enabled for Zellij's own session state
