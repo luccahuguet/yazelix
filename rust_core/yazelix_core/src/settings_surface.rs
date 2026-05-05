@@ -12,6 +12,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use toml::Value as TomlValue;
 
 pub const SETTINGS_SCHEMA_FILENAME: &str = "yazelix_settings.schema.json";
+const SETTINGS_TOP_LEVEL_ORDER: &[&str] = &[
+    "core", "helix", "editor", "shell", "terminal", "zellij", "yazi",
+];
 
 #[derive(Debug, Clone)]
 pub struct SettingsSurfacePaths {
@@ -420,7 +423,17 @@ fn render_settings_jsonc(
 }
 
 pub fn render_settings_jsonc_value(value: &JsonValue) -> Result<String, CoreError> {
-    let body = serde_json::to_string_pretty(value).map_err(|source| {
+    let body = match value.as_object() {
+        Some(object) => render_ordered_settings_root(object)?,
+        None => serialize_settings_jsonc_fragment(value)?,
+    };
+    Ok(format!(
+        "// Yazelix settings. Edit with `yzx config`/your editor; schema metadata powers future UI discovery.\n{body}\n"
+    ))
+}
+
+fn serialize_settings_jsonc_fragment(value: &JsonValue) -> Result<String, CoreError> {
+    serde_json::to_string_pretty(value).map_err(|source| {
         CoreError::classified(
             ErrorClass::Internal,
             "serialize_settings_jsonc",
@@ -428,10 +441,53 @@ pub fn render_settings_jsonc_value(value: &JsonValue) -> Result<String, CoreErro
             "Report this as a Yazelix internal error.",
             json!({}),
         )
-    })?;
-    Ok(format!(
-        "// Yazelix settings. Edit with `yzx config`/your editor; schema metadata powers future UI discovery.\n{body}\n"
-    ))
+    })
+}
+
+fn render_ordered_settings_root(object: &JsonMap<String, JsonValue>) -> Result<String, CoreError> {
+    let mut ordered_keys = Vec::new();
+    for key in SETTINGS_TOP_LEVEL_ORDER {
+        if object.contains_key(*key) {
+            ordered_keys.push((*key).to_string());
+        }
+    }
+    for key in object.keys() {
+        if key != "cursors" && !SETTINGS_TOP_LEVEL_ORDER.contains(&key.as_str()) {
+            ordered_keys.push(key.clone());
+        }
+    }
+    if object.contains_key("cursors") {
+        ordered_keys.push("cursors".to_string());
+    }
+
+    let mut entries = Vec::with_capacity(ordered_keys.len());
+    for key in ordered_keys {
+        let rendered_key = serde_json::to_string(&key).map_err(|source| {
+            CoreError::classified(
+                ErrorClass::Internal,
+                "serialize_settings_jsonc",
+                format!("Could not serialize settings.jsonc key: {source}"),
+                "Report this as a Yazelix internal error.",
+                json!({ "key": key }),
+            )
+        })?;
+        let rendered_value = serialize_settings_jsonc_fragment(&object[&key])?;
+        let indented_value = rendered_value
+            .lines()
+            .enumerate()
+            .map(|(index, line)| {
+                if index == 0 {
+                    line.to_string()
+                } else {
+                    format!("  {line}")
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        entries.push(format!("  {rendered_key}: {indented_value}"));
+    }
+
+    Ok(format!("{{\n{}\n}}", entries.join(",\n")))
 }
 
 fn toml_value_to_json(value: &TomlValue) -> Result<JsonValue, CoreError> {
@@ -604,6 +660,25 @@ mod tests {
         assert_eq!(value["cursors"]["settings"]["trail"].as_str(), Some("snow"));
         assert!(!config.path().join("yazelix.toml").exists());
         assert!(!config.path().join("cursors.toml").exists());
+    }
+
+    // Defends: generated settings.jsonc stays readable by keeping the heavy cursors block after the normal semantic sections.
+    // Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn renders_cursors_last_in_default_settings_jsonc() {
+        let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .canonicalize()
+            .unwrap();
+        let rendered = render_default_settings_jsonc(
+            &repo.join("yazelix_default.toml"),
+            &repo.join(DEFAULT_CURSOR_CONFIG_FILENAME),
+        )
+        .unwrap();
+
+        let yazi_index = rendered.find("\"yazi\"").unwrap();
+        let cursors_index = rendered.find("\"cursors\"").unwrap();
+        assert!(yazi_index < cursors_index);
     }
 
     // Defends: old flat TOML config inputs are one-time migration inputs, not long-lived runtime alternatives.
