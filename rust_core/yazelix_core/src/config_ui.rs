@@ -146,6 +146,13 @@ struct ConfigUiApp {
 struct ConfigUiEditState {
     field_index: usize,
     input: String,
+    mode: ConfigUiEditMode,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ConfigUiEditMode {
+    Text,
+    Choice,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -534,15 +541,7 @@ fn render_details(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect, row: Opt
 fn render_footer(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect) {
     if let Some(edit) = &app.edit {
         let field = &app.model.fields[edit.field_index];
-        let editing = Line::from(vec![
-            Span::styled("editing: ", Style::default().fg(Color::Yellow)),
-            Span::raw(field.path.clone()),
-            Span::raw(" = "),
-            Span::styled(
-                format!("{}_", edit.input),
-                Style::default().fg(Color::White),
-            ),
-        ]);
+        let editing = edit_status_line(field, edit);
         let status = app
             .notice
             .as_ref()
@@ -557,13 +556,7 @@ fn render_footer(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect) {
                     style,
                 ))
             })
-            .unwrap_or_else(|| {
-                Line::from(vec![
-                    Span::raw("Enter save  "),
-                    Span::raw("Esc cancel  "),
-                    Span::raw("Ctrl+u clear"),
-                ])
-            });
+            .unwrap_or_else(|| edit_control_line(edit.mode));
         frame.render_widget(Paragraph::new(vec![editing, status]), area);
         return;
     }
@@ -603,6 +596,36 @@ fn render_footer(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect) {
         Span::styled(search, Style::default().fg(Color::Yellow)),
     ]);
     frame.render_widget(Paragraph::new(vec![notice, controls]), area);
+}
+
+fn edit_status_line(field: &ConfigUiField, edit: &ConfigUiEditState) -> Line<'static> {
+    let value = match edit.mode {
+        ConfigUiEditMode::Text => format!("{}_", edit.input),
+        ConfigUiEditMode::Choice => edit.input.clone(),
+    };
+    Line::from(vec![
+        Span::styled("editing: ", Style::default().fg(Color::Yellow)),
+        Span::styled(field.path.clone(), config_key_style()),
+        Span::raw(" = "),
+        Span::styled(value, Style::default().fg(Color::White)),
+    ])
+}
+
+fn edit_control_line(mode: ConfigUiEditMode) -> Line<'static> {
+    match mode {
+        ConfigUiEditMode::Text => Line::from(vec![
+            Span::raw("Enter save  "),
+            Span::raw("Esc cancel  "),
+            Span::raw("Ctrl+u clear"),
+        ]),
+        ConfigUiEditMode::Choice => Line::from(vec![
+            Span::raw("Up/Down cycle  "),
+            Span::raw("Left/Right cycle  "),
+            Span::raw("Space toggle/cycle  "),
+            Span::raw("Enter save  "),
+            Span::raw("Esc cancel"),
+        ]),
+    }
 }
 
 impl ConfigUiApp {
@@ -648,6 +671,15 @@ impl ConfigUiApp {
     }
 
     fn handle_edit_key(&mut self, key: KeyEvent) {
+        if self
+            .edit
+            .as_ref()
+            .is_some_and(|edit| edit.mode == ConfigUiEditMode::Choice)
+        {
+            self.handle_choice_edit_key(key);
+            return;
+        }
+
         match key.code {
             KeyCode::Esc => {
                 self.edit = None;
@@ -676,6 +708,42 @@ impl ConfigUiApp {
         }
     }
 
+    fn handle_choice_edit_key(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Esc => {
+                self.edit = None;
+                self.notice_info("Edit canceled.");
+            }
+            KeyCode::Enter => self.save_edit(),
+            KeyCode::Up | KeyCode::Right | KeyCode::Down | KeyCode::Left | KeyCode::Char(' ') => {
+                self.notice = None;
+                self.cycle_choice_edit();
+            }
+            _ => {}
+        }
+    }
+
+    fn cycle_choice_edit(&mut self) {
+        let Some(edit) = self.edit.clone() else {
+            return;
+        };
+        let field = &self.model.fields[edit.field_index];
+        let next = if is_bool_field(field) {
+            if edit.input.trim() == "true" {
+                "false".to_string()
+            } else {
+                "true".to_string()
+            }
+        } else if is_scalar_enum_field(field) && !field.allowed_values.is_empty() {
+            next_allowed_value_from(&field.allowed_values, Some(edit.input.as_str()))
+        } else {
+            return;
+        };
+        if let Some(edit) = &mut self.edit {
+            edit.input = next;
+        }
+    }
+
     fn selected_field_index(&self) -> Option<usize> {
         let row = self.visible_rows().get(self.selected_row).copied()?;
         match row {
@@ -698,6 +766,7 @@ impl ConfigUiApp {
         self.edit = Some(ConfigUiEditState {
             field_index,
             input: edit_input_for_field(field),
+            mode: edit_mode_for_field(field),
         });
     }
 
@@ -1605,6 +1674,12 @@ fn render_json_value(value: &JsonValue) -> String {
 
 fn edit_input_for_field(field: &ConfigUiField) -> String {
     if field.current_value == "not set" {
+        if is_bool_field(field) {
+            return "false".to_string();
+        }
+        if is_scalar_enum_field(field) && !field.allowed_values.is_empty() {
+            return field.allowed_values[0].clone();
+        }
         return String::new();
     }
     if is_string_field(field) || is_scalar_enum_field(field) {
@@ -1612,6 +1687,14 @@ fn edit_input_for_field(field: &ConfigUiField) -> String {
             .unwrap_or_else(|| field.current_value.clone());
     }
     field.current_value.clone()
+}
+
+fn edit_mode_for_field(field: &ConfigUiField) -> ConfigUiEditMode {
+    if is_bool_field(field) || is_scalar_enum_field(field) {
+        ConfigUiEditMode::Choice
+    } else {
+        ConfigUiEditMode::Text
+    }
 }
 
 fn parse_edit_input(field: &ConfigUiField, input: &str) -> Result<JsonValue, String> {
@@ -1753,18 +1836,19 @@ fn field_string_value(field: &ConfigUiField) -> Option<String> {
 }
 
 fn next_allowed_value(field: &ConfigUiField) -> String {
-    let current = field_string_value(field);
+    next_allowed_value_from(&field.allowed_values, field_string_value(field).as_deref())
+}
+
+fn next_allowed_value_from(allowed_values: &[String], current: Option<&str>) -> String {
     let next_index = current
-        .as_deref()
         .and_then(|value| {
-            field
-                .allowed_values
+            allowed_values
                 .iter()
                 .position(|candidate| candidate == value)
         })
-        .map(|index| (index + 1) % field.allowed_values.len())
+        .map(|index| (index + 1) % allowed_values.len())
         .unwrap_or(0);
-    field.allowed_values[next_index].clone()
+    allowed_values[next_index].clone()
 }
 
 fn read_settings_for_edit_or_empty(path: &Path) -> Result<String, CoreError> {
@@ -2233,6 +2317,7 @@ mod tests {
     fn quick_edit_helpers_toggle_bool_and_cycle_enum() {
         let bool_field = test_field("core.debug_mode", "bool", "true", &[]);
         assert_eq!(field_bool_value(&bool_field), Some(true));
+        assert_eq!(edit_mode_for_field(&bool_field), ConfigUiEditMode::Choice);
 
         let enum_field = test_field(
             "zellij.tab_label_mode",
@@ -2241,7 +2326,60 @@ mod tests {
             &["short", "compact", "full"],
         );
         assert_eq!(edit_input_for_field(&enum_field), "compact");
+        assert_eq!(edit_mode_for_field(&enum_field), ConfigUiEditMode::Choice);
         assert_eq!(next_allowed_value(&enum_field), "full");
+    }
+
+    // Defends: bool and enum edits are direct controls, so users can change them without typing JSON or strings.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn choice_edit_arrows_toggle_bool_and_cycle_enum_input() {
+        let mut app = ConfigUiApp {
+            request: ConfigUiRequest {
+                runtime_dir: PathBuf::from("/runtime"),
+                config_dir: PathBuf::from("/home/lucca/.config/yazelix"),
+                config_override: None,
+            },
+            model: ConfigUiModel {
+                active_config_path: PathBuf::from("/home/lucca/.config/yazelix/settings.jsonc"),
+                active_config_exists: true,
+                config_owner: ConfigUiPathOwner::User,
+                config_read_only: false,
+                tabs: vec!["general".to_string()],
+                fields: vec![
+                    test_field("core.debug_mode", "bool", "true", &[]),
+                    test_field(
+                        "zellij.tab_label_mode",
+                        "string",
+                        "\"compact\"",
+                        &["short", "compact", "full"],
+                    ),
+                ],
+                sidecars: Vec::new(),
+                diagnostics: Vec::new(),
+            },
+            selected_tab: 0,
+            selected_row: 0,
+            search: String::new(),
+            search_active: false,
+            edit: Some(ConfigUiEditState {
+                field_index: 0,
+                input: "true".to_string(),
+                mode: ConfigUiEditMode::Choice,
+            }),
+            notice: None,
+        };
+
+        app.handle_edit_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+        assert_eq!(app.edit.as_ref().expect("bool edit").input, "false");
+
+        app.edit = Some(ConfigUiEditState {
+            field_index: 1,
+            input: "compact".to_string(),
+            mode: ConfigUiEditMode::Choice,
+        });
+        app.handle_edit_key(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
+        assert_eq!(app.edit.as_ref().expect("enum edit").input, "full");
     }
 
     // Defends: UI edits use the same comment-preserving settings.jsonc patcher and validation path as `yzx config set`.
