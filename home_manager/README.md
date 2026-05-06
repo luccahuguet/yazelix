@@ -70,6 +70,27 @@ If you already have your own Home Manager flake, the minimal setup is:
 }
 ```
 
+To save space by using tools you already manage on your host, set runtime tool sources per tool:
+
+```nix
+{
+  programs.yazelix = {
+    enable = true;
+    runtime_tool_sources = {
+      lazygit = "host";
+      helix = "host";
+      yazi = "host";
+      ripgrep = "host";
+      fd = "host";
+    };
+  };
+}
+```
+
+Omitted tools stay `bundled`. Host mode is for leaf tools such as `lazygit`, `helix`, `neovim`, `yazi`, `fzf`, `zoxide`, `starship`, `carapace`, `macchina`, `mise`, `tombi`, `git`, `jq`, `fd`, and `ripgrep`. Bootstrap tools such as Nushell, Zellij, the selected terminal, Nix, POSIX utilities, and graphics wrappers remain bundled.
+
+Run `yzx doctor` after switching. Doctor reads the runtime manifest and warns when a host-sourced command is missing from `PATH`.
+
 Optional: use Yazelix's public `x86_64-linux` Cachix cache for faster package builds and Home Manager switches:
 
 ```nix

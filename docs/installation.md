@@ -337,6 +337,55 @@ yzx env --no-shell
 ### Home Manager Integration
 Yazelix includes optional Home Manager support for declarative configuration management through the top-level flake's `homeManagerModules.default` output. See [home_manager/README.md](../home_manager/README.md) for setup instructions.
 
+### Granular Nix Customization
+
+The default flake packages stay batteries-included. Yazelix does not expose a package matrix for every possible storage-saving combination; use Home Manager or `lib.${system}.mkYazelix` when you want specific tools to come from your host `PATH`.
+
+Home Manager is the recommended granular path:
+
+```nix
+{
+  programs.yazelix = {
+    enable = true;
+    runtime_tool_sources = {
+      lazygit = "host";
+      helix = "host";
+      yazi = "host";
+      ripgrep = "host";
+      fd = "host";
+    };
+  };
+}
+```
+
+Advanced flake users can build the same shape directly:
+
+```nix
+let
+  system = "x86_64-linux";
+  pkgs = import nixpkgs { inherit system; };
+in
+inputs.yazelix.lib.${system}.mkYazelix {
+  inherit pkgs;
+  runtimeToolSources = {
+    lazygit = "host";
+    helix = "host";
+  };
+}
+```
+
+Package-set users can also use the default overlay:
+
+```nix
+{
+  nixpkgs.overlays = [
+    inputs.yazelix.overlays.default
+  ];
+}
+```
+
+`host` mode removes that tool from the Yazelix runtime export and lets the inherited `PATH` provide the required command. Run `yzx doctor` after switching; it reports missing host-sourced commands from the runtime manifest. `off` exists as a source mode, but no product component is disabled by default, and component disabling remains future-only until the package can truly omit those feature crates.
+
 ## What Gets Installed
 
 ### Essential Tools (~225MB)
