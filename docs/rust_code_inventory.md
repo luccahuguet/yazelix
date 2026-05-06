@@ -6,7 +6,7 @@ Baseline measured on 2026-05-05 before extracting `yazelix-screen`:
 
 - `tokei rust_core rust_plugins --exclude target` reports `67,462` Rust code LOC across `128` Rust files
 - the same `tokei` run reports `74,009` Rust lines including blanks and comments
-- `config_metadata/rust_ownership_budget.toml` tracks `72,385` raw Rust file lines across `123` Rust files after extracting `yazelix-screen`
+- `config_metadata/rust_ownership_budget.toml` tracks `72,478` raw Rust file lines across `124` Rust files after extracting `yazelix-screen` and splitting status/cache/widget ownership out of `zellij_commands.rs`
 - the remaining difference between `tokei` lines and the budget total is measurement-method noise from embedded blobs and parser classification, not a separate ownership surface
 - `cargo check --workspace --all-targets` under `rust_core/` reports no warnings
 - `cargo check --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --all-targets` reports no warnings
@@ -20,21 +20,21 @@ The canonical family ownership, no-growth ceilings, and long-term warning target
 
 | Family | Files | Raw lines | Status | Extraction pressure |
 | --- | ---: | ---: | --- | --- |
-| Product runtime source | 63 | 49,483 | canonical and extension surfaces | High: contains the largest user-facing seams |
+| Product runtime source | 64 | 49,576 | canonical and extension surfaces | High: contains the largest user-facing seams |
 | Product integration tests | 19 | 6,107 | canonical tests | Medium: split by behavior family, do not delete broadly |
 | Maintainer tooling and tests | 16 | 11,583 | canonical maintainer | Medium: keep in repo, but split large validator files |
 | Pane orchestrator plugin | 25 | 5,212 | extension surface | High: already has a natural Zellij plugin boundary |
-| Total | 123 | 72,385 | current budget ceiling | Reduce or extract before raising ceilings |
+| Total | 124 | 72,478 | current budget ceiling | Reduce or extract before raising ceilings |
 
 Detailed budget families:
 
 | Family | Files | Raw lines | Budget target | Notes |
 | --- | ---: | ---: | ---: | --- |
 | `bar_runtime` | 1 | 321 | 300 | Small crate; real extraction value comes from status cache/widgets in `zellij_commands.rs` |
-| `core_cli_and_public_surface` | 12 | 8,652 | 7,000 | Public command dispatch and front-door rendering |
+| `core_cli_and_public_surface` | 12 | 8,655 | 7,000 | Public command dispatch and front-door rendering |
 | `core_config_ui_and_materialization` | 32 | 19,412 | 14,000 | Largest product family; config UI, materializers, cursors, settings surfaces |
 | `core_diagnostics_and_recovery` | 8 | 5,350 | 4,500 | Doctor, install ownership, profile/status reporting |
-| `core_workspace_and_pane_integration` | 10 | 15,748 | 11,000 | Zellij/session/workspace command surface; biggest pre-extraction cleanup target |
+| `core_workspace_and_pane_integration` | 11 | 15,838 | 11,000 | Zellij/session/workspace command surface; status/cache/widgets now have a child module |
 | `core_integration_tests` | 19 | 6,107 | 4,500 | High-value tests, but several files are broad family buckets |
 | `maintainer_tooling_and_validators` | 15 | 11,339 | 9,000 | Keep in repo; split validators by domain before optimizing |
 | `maintainer_tests` | 1 | 244 | 244 | Small release/upgrade contract test surface |
@@ -44,10 +44,11 @@ Detailed budget families:
 
 | File | Raw lines | Disposition |
 | --- | ---: | --- |
-| `rust_core/yazelix_core/src/zellij_commands.rs` | 6,468 | Split before extracting bar/workspace/status surfaces |
 | `rust_core/yazelix_maintainer/src/repo_contract_validation.rs` | 3,707 | Split by validator domain, keep in maintainer crate |
+| `rust_core/yazelix_core/src/zellij_commands/status.rs` | 3,516 | Status bus/cache, AI usage widgets, cursor/workspace widget rendering; next candidate for `yazelix_bar` provider extraction |
 | `rust_core/yazelix_core/src/launch_commands.rs` | 3,316 | Split terminal selection, config overrides, launch execution, desktop/macOS handling |
-| `rust_core/yazelix_core/src/config_ui.rs` | 3,123 | Split model, rendering, editing, and schema metadata before `yazelix_ratconfig` extraction |
+| `rust_core/yazelix_core/src/config_ui.rs` | 3,252 | Split model, rendering, editing, and schema metadata before `yazelix_ratconfig` extraction |
+| `rust_core/yazelix_core/src/zellij_commands.rs` | 3,042 | Split remaining pipe primitive, workspace/editor flow, and terminal pane actions before workspace extraction |
 | `rust_core/yazelix_core/src/zellij_materialization.rs` | 2,202 | Keep until keybinding ownership and layout-generation contracts settle |
 | `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs` | 1,671 | Split by config/materialization behavior family; do not delete without replacement coverage |
 | `rust_core/yazelix_maintainer/src/repo_validation.rs` | 1,496 | Split generic validation helpers by contract/test/package domain |
@@ -93,7 +94,7 @@ Deletion candidates need transition evidence, not only age:
 
 The main overengineering risk is not one bad abstraction; it is several broad modules owning too many unrelated contracts.
 
-- `zellij_commands.rs` mixes Zellij pipe commands, status cache IO, AI usage widgets, cursor widgets, session inspection, and pane actions. Split this before extracting `yazelix_bar`, `yazelix_workspace`, or public status widgets.
+- `zellij_commands.rs` has had status cache IO, AI usage widgets, cursor widgets, and session inspection moved into `zellij_commands/status.rs`. The remaining file still mixes Zellij pipe primitives, workspace/editor flow, terminal pane actions, and pane actions; split those before extracting `yazelix_workspace`.
 - `launch_commands.rs` mixes terminal discovery, temporary config overrides, desktop/macOS launchers, process spawning, and restart/enter behavior. Split config override parsing and terminal selection before workspace/session extraction.
 - `config_ui.rs` is already product-useful, but it should be split into schema model, list/editor state, rendering, and write-back before `yazelix_ratconfig`.
 - `zellij_materialization.rs` contains real generated-config ownership, but it should wait for keybinding ownership and layout-profile decisions before major extraction.
@@ -103,7 +104,7 @@ The main overengineering risk is not one bad abstraction; it is several broad mo
 
 1. Finish this inventory and keep the no-growth budget current
 2. Keep `yazelix-screen` external and avoid reintroducing duplicated screen source into the main repo
-3. Split `zellij_commands.rs` before attempting `yazelix_bar` or workspace extraction
+3. Continue the `zellij_commands.rs` split: status/cache/widget code now lives in `zellij_commands/status.rs`; next isolate workspace/editor pane flow before `yazelix_workspace`, then extract bar/status providers
 4. Extract `yazelix_cursors` after the Ghostty cursor registry is separated from terminal materialization and status-widget rendering
 5. Split `config_ui.rs` before extracting `yazelix_ratconfig`; keep JSONC patching and schema metadata contracts stable first
 6. Evaluate `yazelix_zellij_popup` after transient-pane commands and plugin transient policy have a clean boundary
