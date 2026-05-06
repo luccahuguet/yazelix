@@ -8,6 +8,9 @@ use crate::runtime_contract::{
     evaluate_runtime_contract,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
+use std::env;
+use std::fs;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Deserialize)]
@@ -57,6 +60,15 @@ pub struct DoctorRuntimeEvaluateData {
     pub shared_runtime_preflight: Vec<DoctorRuntimeDoctorFinding>,
 }
 
+#[derive(Debug, Deserialize)]
+struct RuntimeToolManifestEntry {
+    pub source: String,
+    #[serde(default)]
+    pub commands: Vec<String>,
+    #[serde(default)]
+    pub required_commands: Vec<String>,
+}
+
 pub fn evaluate_doctor_runtime_report(
     request: &DoctorRuntimeEvaluateRequest,
 ) -> DoctorRuntimeEvaluateData {
@@ -71,7 +83,12 @@ pub fn evaluate_doctor_runtime_report(
         .join("zellij")
         .join("layouts");
 
-    let shared_runtime_preflight = match &request.shared_runtime {
+    let runtime_tool_command_search_paths = match &request.shared_runtime {
+        Some(shared) => effective_command_search_paths(&shared.command_search_paths),
+        None => effective_command_search_paths(&[]),
+    };
+
+    let mut shared_runtime_preflight = match &request.shared_runtime {
         None => Vec::new(),
         Some(shared) => match build_shared_preflight_findings(
             shared,
@@ -92,11 +109,143 @@ pub fn evaluate_doctor_runtime_report(
             }],
         },
     };
+    shared_runtime_preflight.extend(build_host_runtime_tool_findings(
+        &request.runtime_dir,
+        &runtime_tool_command_search_paths,
+    ));
 
     DoctorRuntimeEvaluateData {
         distribution,
         shared_runtime_preflight,
     }
+}
+
+fn runtime_tools_manifest_path(runtime_dir: &Path) -> PathBuf {
+    runtime_dir.join("runtime_tools.json")
+}
+
+fn effective_command_search_paths(configured_paths: &[PathBuf]) -> Vec<PathBuf> {
+    if !configured_paths.is_empty() {
+        return configured_paths.to_vec();
+    }
+
+    env::var_os("PATH")
+        .map(|path| env::split_paths(&path).collect())
+        .unwrap_or_default()
+}
+
+fn command_exists_in_paths(command: &str, command_search_paths: &[PathBuf]) -> bool {
+    command_search_paths
+        .iter()
+        .any(|dir| dir.join(command).is_file())
+}
+
+fn read_runtime_tool_manifest(
+    runtime_dir: &Path,
+) -> Result<Option<BTreeMap<String, RuntimeToolManifestEntry>>, String> {
+    let manifest_path = runtime_tools_manifest_path(runtime_dir);
+    let raw = match fs::read_to_string(&manifest_path) {
+        Ok(raw) => raw,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => {
+            return Err(format!(
+                "Could not read runtime tool manifest at {}: {error}",
+                manifest_path.display()
+            ));
+        }
+    };
+
+    serde_json::from_str(&raw).map(Some).map_err(|error| {
+        format!(
+            "Could not parse runtime tool manifest at {}: {error}",
+            manifest_path.display()
+        )
+    })
+}
+
+fn format_path_list(command_search_paths: &[PathBuf]) -> String {
+    if command_search_paths.is_empty() {
+        return "No command search paths were available.".into();
+    }
+
+    command_search_paths
+        .iter()
+        .map(|path| format!("  - {}", path.display()))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn build_host_runtime_tool_findings(
+    runtime_dir: &Path,
+    command_search_paths: &[PathBuf],
+) -> Vec<DoctorRuntimeDoctorFinding> {
+    let manifest = match read_runtime_tool_manifest(runtime_dir) {
+        Ok(Some(manifest)) => manifest,
+        Ok(None) => return Vec::new(),
+        Err(error) => {
+            return vec![DoctorRuntimeDoctorFinding {
+                status: "warning".into(),
+                message: "Runtime tool manifest could not be read".into(),
+                details: Some(error),
+                fix_available: false,
+                fix_action: None,
+                capability_tier: None,
+                capability_mode: None,
+                runtime_contract_check: Some("runtime_tool_manifest".into()),
+                owner_surface: Some("runtime_tool_sources".into()),
+            }];
+        }
+    };
+
+    manifest
+        .into_iter()
+        .filter(|(_, tool)| tool.source == "host")
+        .map(|(name, tool)| {
+            let required_commands = if tool.required_commands.is_empty() {
+                tool.commands
+            } else {
+                tool.required_commands
+            };
+            let missing_commands = required_commands
+                .iter()
+                .filter(|command| !command_exists_in_paths(command, command_search_paths))
+                .cloned()
+                .collect::<Vec<_>>();
+
+            if missing_commands.is_empty() {
+                DoctorRuntimeDoctorFinding {
+                    status: "ok".into(),
+                    message: format!("Host runtime tool available: {name}"),
+                    details: Some(format!(
+                        "Found required command(s): {}",
+                        required_commands.join(", ")
+                    )),
+                    fix_available: false,
+                    fix_action: None,
+                    capability_tier: None,
+                    capability_mode: None,
+                    runtime_contract_check: Some(format!("host_runtime_tool:{name}")),
+                    owner_surface: Some("runtime_tool_sources".into()),
+                }
+            } else {
+                DoctorRuntimeDoctorFinding {
+                    status: "warning".into(),
+                    message: format!("Host runtime tool missing: {name}"),
+                    details: Some(format!(
+                        "Missing required command(s): {}\nSearched PATH entries:\n{}",
+                        missing_commands.join(", "),
+                        format_path_list(command_search_paths)
+                    )),
+                    fix_available: false,
+                    fix_action: None,
+                    capability_tier: None,
+                    capability_mode: None,
+                    runtime_contract_check: Some(format!("host_runtime_tool:{name}")),
+                    owner_surface: Some("runtime_tool_sources".into()),
+                }
+            }
+        })
+        .collect()
 }
 
 fn is_package_runtime_root(runtime_dir: &Path) -> bool {
@@ -347,5 +496,64 @@ mod tests {
             f.fix_action.as_deref(),
             Some("repair_generated_runtime_state")
         );
+    }
+
+    // Regression: Home Manager host-sourced tools get an actionable doctor finding when PATH does not provide them.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn missing_host_runtime_tool_reports_warning() {
+        let tmp = TempDir::new().unwrap();
+        let runtime = tmp.path().join("runtime");
+        let path_dir = tmp.path().join("empty_path");
+        std::fs::create_dir_all(&runtime).unwrap();
+        std::fs::create_dir_all(&path_dir).unwrap();
+        std::fs::write(
+            runtime.join("runtime_tools.json"),
+            r#"{
+              "lazygit": {
+                "source": "host",
+                "commands": ["lazygit", "lg"],
+                "required_commands": ["lazygit"]
+              }
+            }"#,
+        )
+        .unwrap();
+
+        let findings = build_host_runtime_tool_findings(&runtime, &[path_dir]);
+
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].status, "warning");
+        assert_eq!(findings[0].message, "Host runtime tool missing: lazygit");
+        assert!(
+            findings[0]
+                .details
+                .as_deref()
+                .unwrap()
+                .contains("Missing required command(s): lazygit")
+        );
+    }
+
+    // Defends: default bundled runtimes do not gain host-tool warnings from the runtime manifest.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn bundled_runtime_tool_manifest_produces_no_host_findings() {
+        let tmp = TempDir::new().unwrap();
+        let runtime = tmp.path().join("runtime");
+        std::fs::create_dir_all(&runtime).unwrap();
+        std::fs::write(
+            runtime.join("runtime_tools.json"),
+            r#"{
+              "lazygit": {
+                "source": "bundled",
+                "commands": ["lazygit", "lg"],
+                "required_commands": ["lazygit"]
+              }
+            }"#,
+        )
+        .unwrap();
+
+        let findings = build_host_runtime_tool_findings(&runtime, &[]);
+
+        assert!(findings.is_empty());
     }
 }

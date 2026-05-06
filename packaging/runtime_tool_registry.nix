@@ -46,12 +46,13 @@ let
     {
       package,
       commands,
+      requiredCommands ? commands,
       hostable ? false,
       disableable ? false,
       notes ? [ ],
     }:
     {
-      inherit package commands hostable disableable notes;
+      inherit package commands requiredCommands hostable disableable notes;
     };
   tools =
     with pkgs;
@@ -78,6 +79,7 @@ let
           "hx"
           "helix"
         ];
+        requiredCommands = [ "hx" ];
         hostable = true;
       };
       neovim = makeTool {
@@ -86,6 +88,7 @@ let
           "nvim"
           "neovim"
         ];
+        requiredCommands = [ "nvim" ];
         hostable = true;
       };
       yazi = makeTool {
@@ -94,6 +97,7 @@ let
           "yazi"
           "ya"
         ];
+        requiredCommands = [ "yazi" ];
         hostable = true;
       };
       fzf = makeTool {
@@ -117,6 +121,7 @@ let
           "lazygit"
           "lg"
         ];
+        requiredCommands = [ "lazygit" ];
         hostable = true;
       };
       carapace = makeTool {
@@ -260,6 +265,7 @@ let
   manifest = lib.mapAttrs (name: tool: {
     source = sourceFor name;
     commands = tool.commands;
+    required_commands = tool.requiredCommands;
     hostable = tool.hostable;
     disableable = tool.disableable;
     notes = tool.notes;
