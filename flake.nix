@@ -95,6 +95,9 @@
         mkYazelix system {
           inherit pkgs runtimeVariant extraRuntimePackages;
         };
+      defaultOverlay = final: _prev: {
+        yazelix = mkYazelix final.stdenv.hostPlatform.system { pkgs = final; };
+      };
       maintainerShell =
         system: pkgs:
         import ./maintainer_shell.nix {
@@ -113,6 +116,9 @@
       lib = forAllSystems (system: {
         mkYazelix = mkYazelix system;
       });
+
+      overlays.default = defaultOverlay;
+      overlays.yazelix = defaultOverlay;
 
       packages = forAllSystems (
         system:
