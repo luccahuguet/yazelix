@@ -167,6 +167,56 @@ impl CoreError {
     }
 }
 
+impl From<yazelix_cursors::CursorError> for CoreError {
+    fn from(error: yazelix_cursors::CursorError) -> Self {
+        match error {
+            yazelix_cursors::CursorError::Classified {
+                class,
+                code,
+                message,
+                remediation,
+                details,
+            } => CoreError::classified(
+                cursor_error_class_to_core(class),
+                code,
+                message,
+                remediation,
+                details,
+            ),
+            yazelix_cursors::CursorError::Io {
+                code,
+                message,
+                remediation,
+                path,
+                source,
+            } => CoreError::io(code, message, remediation, path, source),
+            yazelix_cursors::CursorError::Toml {
+                code,
+                message,
+                remediation,
+                path,
+                source,
+            } => CoreError::Toml {
+                code,
+                message,
+                remediation,
+                path,
+                source,
+            },
+        }
+    }
+}
+
+fn cursor_error_class_to_core(class: yazelix_cursors::CursorErrorClass) -> ErrorClass {
+    match class {
+        yazelix_cursors::CursorErrorClass::Usage => ErrorClass::Usage,
+        yazelix_cursors::CursorErrorClass::Config => ErrorClass::Config,
+        yazelix_cursors::CursorErrorClass::Io => ErrorClass::Io,
+        yazelix_cursors::CursorErrorClass::Runtime => ErrorClass::Runtime,
+        yazelix_cursors::CursorErrorClass::Internal => ErrorClass::Internal,
+    }
+}
+
 #[derive(Serialize)]
 pub struct SuccessEnvelope<T: Serialize> {
     schema_version: u8,

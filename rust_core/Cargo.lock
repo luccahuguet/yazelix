@@ -1600,7 +1600,20 @@ dependencies = [
  "time",
  "toml",
  "yazelix_bar",
+ "yazelix_cursors",
  "yazelix_screen",
+]
+
+[[package]]
+name = "yazelix_cursors"
+version = "0.1.0"
+source = "git+https://github.com/luccahuguet/yazelix-cursors?rev=abc0f7f84f5a06f69a9e04a77384bd202b9f31bc#abc0f7f84f5a06f69a9e04a77384bd202b9f31bc"
+dependencies = [
+ "jsonc-parser",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "toml",
 ]
 
 [[package]]

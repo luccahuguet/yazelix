@@ -5,7 +5,9 @@ use crate::active_config_surface::resolve_active_config_paths;
 use crate::bridge::CoreError;
 use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::control_plane::{config_dir_from_env, runtime_dir_from_env, state_dir_from_env};
-use crate::ghostty_cursor_registry::{CursorRegistry, ResolvedCursorRegistryState};
+use crate::ghostty_cursor_registry::{
+    CursorRegistry, ResolvedCursorRegistryState, YazelixCursorRegistryExt,
+};
 use crate::ghostty_materialization::{
     GhosttyMaterializationRequest, generate_ghostty_materialization,
 };

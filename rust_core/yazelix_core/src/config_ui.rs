@@ -11,7 +11,6 @@ use crate::settings_surface::{
     is_settings_config_path, parse_jsonc_value, read_settings_jsonc_value,
 };
 use crate::user_config_paths::{CURRENT_MANAGED_CONFIG_FILE_NAMES, SETTINGS_CONFIG};
-use crate::yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{
@@ -31,6 +30,7 @@ use std::io::{self, IsTerminal};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use toml::Value as TomlValue;
+use yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
 
 const DEFAULT_TABS: &[&str] = &[
     "general",

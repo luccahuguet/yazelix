@@ -184,6 +184,7 @@
         "home-manager": "home-manager",
         "nixgl": "nixgl",
         "nixpkgs": "nixpkgs_3",
+        "yazelixCursors": "yazelixCursors",
         "yazelixScreen": "yazelixScreen",
         "zjstatus": "zjstatus"
       }
@@ -253,6 +254,29 @@
       "original": {
         "owner": "nix-systems",
         "repo": "default",
+        "type": "github"
+      }
+    },
+    "yazelixCursors": {
+      "inputs": {
+        "fenix": [
+          "fenix"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1778088952,
+        "narHash": "sha256-5BlGyV5ZCkpHfDvl+eMaFvsl3y51mnPR+vWFs+H4ul8=",
+        "owner": "luccahuguet",
+        "repo": "yazelix-cursors",
+        "rev": "abc0f7f84f5a06f69a9e04a77384bd202b9f31bc",
+        "type": "github"
+      },
+      "original": {
+        "owner": "luccahuguet",
+        "repo": "yazelix-cursors",
         "type": "github"
       }
     },

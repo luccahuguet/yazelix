@@ -1,6 +1,6 @@
 //! Yazelix-owned loader for the reusable cursor registry.
 
-pub use crate::yazelix_cursors::{
+pub use yazelix_cursors::{
     CursorColor, CursorDefinition, CursorFamily, CursorRegistry, CursorSettings,
     DEFAULT_CURSOR_CONFIG_FILENAME, DEFAULT_GHOSTTY_TRAIL_DURATION, GHOSTTY_TRAIL_DURATION_MAX,
     GHOSTTY_TRAIL_DURATION_MIN, ResolvedCursorRegistryState, SplitDivider, SplitTransition,
@@ -16,8 +16,16 @@ use serde_json::json;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-impl CursorRegistry {
-    pub fn load(path: &Path) -> Result<Self, CoreError> {
+pub trait YazelixCursorRegistryExt: Sized {
+    fn load(path: &Path) -> Result<Self, CoreError>;
+    fn load_from_cursor_settings_jsonc(path: &Path) -> Result<Self, CoreError>;
+    fn load_from_settings_jsonc(path: &Path) -> Result<Self, CoreError>;
+    fn user_config_path(config_dir: &Path) -> PathBuf;
+    fn default_config_path(runtime_dir: &Path) -> PathBuf;
+}
+
+impl YazelixCursorRegistryExt for CursorRegistry {
+    fn load(path: &Path) -> Result<Self, CoreError> {
         if user_config_paths::is_shared_cursor_config_path(path) {
             return CursorRegistry::load_from_cursor_settings_jsonc(path);
         }
@@ -34,10 +42,10 @@ impl CursorRegistry {
                 source,
             )
         })?;
-        CursorRegistry::parse_str(path, &raw)
+        CursorRegistry::parse_str(path, &raw).map_err(CoreError::from)
     }
 
-    pub fn load_from_cursor_settings_jsonc(path: &Path) -> Result<Self, CoreError> {
+    fn load_from_cursor_settings_jsonc(path: &Path) -> Result<Self, CoreError> {
         let raw = fs::read_to_string(path).map_err(|source| {
             CoreError::io(
                 "read_cursor_settings_jsonc",
@@ -64,12 +72,12 @@ impl CursorRegistry {
                     }),
                 )
             } else {
-                error
+                CoreError::from(error)
             }
         })
     }
 
-    pub fn load_from_settings_jsonc(path: &Path) -> Result<Self, CoreError> {
+    fn load_from_settings_jsonc(path: &Path) -> Result<Self, CoreError> {
         let value = read_settings_jsonc_value(path)?;
         let Some(cursors) = value.get("cursors").cloned() else {
             return Err(CoreError::classified(
@@ -96,16 +104,16 @@ impl CursorRegistry {
                     }),
                 )
             } else {
-                error
+                CoreError::from(error)
             }
         })
     }
 
-    pub fn user_config_path(config_dir: &Path) -> PathBuf {
+    fn user_config_path(config_dir: &Path) -> PathBuf {
         user_config_paths::shared_cursor_config(config_dir)
     }
 
-    pub fn default_config_path(runtime_dir: &Path) -> PathBuf {
+    fn default_config_path(runtime_dir: &Path) -> PathBuf {
         runtime_dir.join(DEFAULT_CURSOR_CONFIG_FILENAME)
     }
 }

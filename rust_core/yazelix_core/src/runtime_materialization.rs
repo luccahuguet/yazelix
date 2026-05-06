@@ -5,7 +5,7 @@ use crate::config_state::{
     record_config_state,
 };
 use crate::control_plane::config_dir_from_env;
-use crate::ghostty_cursor_registry::CursorRegistry;
+use crate::ghostty_cursor_registry::{CursorRegistry, YazelixCursorRegistryExt};
 use crate::settings_surface::is_settings_config_path;
 use crate::user_config_paths;
 use crate::yazi_materialization::{

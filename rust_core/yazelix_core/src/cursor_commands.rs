@@ -5,6 +5,7 @@ use crate::bridge::CoreError;
 use crate::control_plane::{config_dir_from_env, config_override_from_env, runtime_dir_from_env};
 use crate::ghostty_cursor_registry::{
     CursorDefinition, CursorFamily, CursorRegistry, SplitDivider, SplitTransition,
+    YazelixCursorRegistryExt,
 };
 
 pub fn run_yzx_cursors(args: &[String]) -> Result<i32, CoreError> {

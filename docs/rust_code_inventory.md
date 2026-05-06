@@ -57,7 +57,6 @@ Detailed budget families:
 | `rust_core/yazelix_maintainer/src/repo_update_workflow.rs` | 1,421 | Process-heavy maintainer workflow; keep local but modularize |
 | `rust_core/yazelix_core/src/bin/yzx_core.rs` | 1,410 | Temporary machine helper; collapse only after shell callers have a stable replacement |
 | `rust_core/yazelix_core/src/public_command_surface.rs` | 1,396 | Keep central registry; future action registry may absorb part of this |
-| `rust_core/yazelix_core/src/yazelix_cursors.rs` | 1,559 | Reusable cursor registry and Ghostty shader generator; next step before separate-repo cursor extraction |
 | `rust_core/yazelix_core/src/profile_commands.rs` | 1,292 | Keep while startup profiling remains an active debugging surface |
 | `rust_core/yazelix_core/src/yazi_materialization.rs` | 1,276 | Keep until Yazi config ownership/import mode is settled |
 | `rust_core/yazelix_core/src/doctor_commands.rs` | 1,270 | Split report rendering from fix orchestration only after doctor behavior stabilizes |
@@ -105,7 +104,7 @@ The main overengineering risk is not one bad abstraction; it is several broad mo
 1. Finish this inventory and keep the no-growth budget current
 2. Keep `yazelix-screen` external and avoid reintroducing duplicated screen source into the main repo
 3. Continue the `zellij_commands.rs` split: status/cache/widget code now lives in `zellij_commands/status.rs`; next isolate workspace/editor pane flow before `yazelix_workspace`, then extract bar/status providers
-4. Keep `#yazelix_cursors` as the standalone cursor package; reusable registry and Ghostty palette generation now live in `yazelix_cursors.rs`, while `ghostty_cursor_registry.rs` remains the Yazelix settings adapter. Separate-repo extraction still waits for preview/docs/release shape.
+4. Keep `#yazelix_cursors` as the standalone cursor package; reusable registry, `yzc`, Ghostty shader generation, and packaged shader assets live in `github:luccahuguet/yazelix-cursors`, while `ghostty_cursor_registry.rs` remains the Yazelix settings adapter
 5. Split `config_ui.rs` before extracting `yazelix_ratconfig`; keep JSONC patching and schema metadata contracts stable first
 6. Evaluate `yazelix_zellij_popup` after transient-pane commands and plugin transient policy have a clean boundary
 7. Evaluate `yazelix_workspace` last; it touches launch, restart, session facts, workspace roots, Zellij layout state, and the pane orchestrator

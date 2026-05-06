@@ -3,7 +3,6 @@
 
 use crate::bridge::{CoreError, ErrorClass};
 use crate::user_config_paths;
-use crate::yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
 use jsonc_parser::ParseOptions;
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use std::fs;
@@ -11,6 +10,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use toml::Value as TomlValue;
+use yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
 
 pub const SETTINGS_SCHEMA_FILENAME: &str = "yazelix_settings.schema.json";
 const SETTINGS_TOP_LEVEL_ORDER: &[&str] = &[

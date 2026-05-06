@@ -17,6 +17,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.fenix.follows = "fenix";
     };
+    yazelixCursors = {
+      url = "github:luccahuguet/yazelix-cursors";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.fenix.follows = "fenix";
+    };
     beads = {
       url = "github:steveyegge/beads/v1.0.0";
     };
@@ -34,6 +39,7 @@
       nixgl,
       fenix,
       yazelixScreen,
+      yazelixCursors,
       beads,
       zjstatus,
     }:
@@ -101,12 +107,7 @@
           yazelix_wezterm = yazelixPackage system pkgs "wezterm" noExtraRuntimePackages;
           yazelix_agent_tools = yazelixPackage system pkgs defaultRuntimeVariant agentUsageRuntimePackages;
           yazelix_screen = yazelixScreen.packages.${system}.yzs;
-          yazelix_cursors = import ./packaging/yazelix_cursors.nix {
-            inherit pkgs;
-            src = ./.;
-            rust_core_src = ./.;
-            fenixPkgs = fenix.packages.${system};
-          };
+          yazelix_cursors = yazelixCursors.packages.${system}.yazelix_cursors;
         in
         {
           default = yazelix_default;

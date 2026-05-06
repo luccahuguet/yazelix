@@ -11,12 +11,12 @@ use crate::settings_jsonc_patch::{
     SettingsJsoncPatchMutation, set_settings_jsonc_value_text, unset_settings_jsonc_value_text,
 };
 use crate::settings_surface::{is_settings_config_path, parse_jsonc_value};
-use crate::yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
 use serde_json::{Value as JsonValue, json};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
+use yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
 
 const HOME_MANAGER_FILES_MARKER: &str = "-home-manager-files/";
 

@@ -1,7 +1,7 @@
 use crate::bridge::{CoreError, ErrorClass};
 use crate::ghostty_cursor_registry::{
-    CursorDefinition, CursorRegistry, ResolvedCursorRegistryState, format_ghostty_trail_duration,
-    write_ghostty_cursor_palette_shaders,
+    CursorDefinition, CursorRegistry, ResolvedCursorRegistryState, YazelixCursorRegistryExt,
+    format_ghostty_trail_duration, write_ghostty_cursor_palette_shaders,
 };
 pub use crate::ghostty_cursor_registry::{
     DEFAULT_GHOSTTY_TRAIL_DURATION, GHOSTTY_TRAIL_DURATION_MAX, GHOSTTY_TRAIL_DURATION_MIN,
