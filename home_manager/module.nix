@@ -14,6 +14,11 @@ with lib;
 let
   cfg = config.programs.yazelix;
   defaultRuntimeVariant = "ghostty";
+  runtimeToolSourceModes = [
+    "bundled"
+    "host"
+    "off"
+  ];
   agentUsageProgramNames = [
     "tokenusage"
   ];
@@ -31,7 +36,7 @@ let
   packageBuilderArgs = {
     inherit pkgs;
     runtimeVariant = cfg.runtime_variant;
-    runtimeToolSources = { };
+    runtimeToolSources = cfg.runtime_tool_sources;
     components = { };
     extraRuntimePackages = selectedAgentUsagePackages;
   };
@@ -299,6 +304,24 @@ in
 
         - "ghostty": default packaged runtime with Yazelix cursor trails and Ghostty config effects
         - "wezterm": explicit compatibility runtime, especially for users who prefer WezTerm image-preview behavior
+      '';
+    };
+
+    runtime_tool_sources = mkOption {
+      type = types.attrsOf (types.enum runtimeToolSourceModes);
+      default = { };
+      description = ''
+        Per-tool runtime source modes. Omitted tools default to "bundled".
+
+        Supported values:
+        - "bundled": include the Yazelix-packaged tool and export its commands
+        - "host": omit the package/export and rely on the inherited host PATH
+        - "off": omit the package/export when the tool explicitly supports disabling
+
+        Host mode is supported for leaf tools such as lazygit, helix, neovim,
+        yazi, fzf, zoxide, starship, carapace, macchina, mise, tombi, git, jq,
+        fd, and ripgrep. Bootstrap tools such as Nushell, Zellij, the selected
+        terminal, Nix, POSIX utilities, and graphics wrappers remain bundled.
       '';
     };
 
