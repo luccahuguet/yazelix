@@ -5,50 +5,19 @@
   name ? "yazelix-runtime",
   rustCoreHelper ? null,
   runtimeVariant ? "ghostty",
+  runtimeToolSources ? { },
   extraRuntimePackages ? [ ],
+  extraRuntimeCommands ? [ "tu" ],
 }:
 
 let
-  runtimeDeps = (import ./runtime_deps.nix { inherit pkgs nixgl runtimeVariant; }) ++ extraRuntimePackages;
+  runtimeToolRegistry = import ./runtime_tool_registry.nix {
+    inherit pkgs nixgl runtimeVariant runtimeToolSources;
+  };
+  runtimeDeps = runtimeToolRegistry.runtimePackages ++ extraRuntimePackages;
   runtimeBinDirs = map (pkg: "${pkg}/bin") runtimeDeps;
   escapedRuntimeBinDirs = pkgs.lib.escapeShellArgs runtimeBinDirs;
-  exportedRuntimeCommands = [
-    "nu"
-    "bash"
-    "fish"
-    "zsh"
-    "zellij"
-    "ghostty"
-    "wezterm"
-    "hx"
-    "helix"
-    "nvim"
-    "neovim"
-    "yazi"
-    "ya"
-    "fzf"
-    "zoxide"
-    "starship"
-    "lazygit"
-    "lg"
-    "carapace"
-    "macchina"
-    "mise"
-    "tombi"
-    "git"
-    "jq"
-    "fd"
-    "rg"
-    "7z"
-    "7za"
-    "7zr"
-    "pdfinfo"
-    "pdftotext"
-    "pdftoppm"
-    "pdftocairo"
-    "resvg"
-    "tu"
-  ];
+  exportedRuntimeCommands = runtimeToolRegistry.exportedCommands ++ extraRuntimeCommands;
   escapedExportedRuntimeCommands = pkgs.lib.escapeShellArgs exportedRuntimeCommands;
 in
 pkgs.runCommand name { } ''
@@ -67,6 +36,7 @@ pkgs.runCommand name { } ''
   ln -s ${src}/yazelix_default.toml "$out/yazelix_default.toml"
   ln -s ${src}/yazelix_cursors_default.toml "$out/yazelix_cursors_default.toml"
   printf '%s\n' ${pkgs.lib.escapeShellArg runtimeVariant} > "$out/runtime_variant"
+  printf '%s\n' ${pkgs.lib.escapeShellArg runtimeToolRegistry.manifestJson} > "$out/runtime_tools.json"
 
   mkdir -p "$out/libexec"
   for bin_dir in ${escapedRuntimeBinDirs}; do
