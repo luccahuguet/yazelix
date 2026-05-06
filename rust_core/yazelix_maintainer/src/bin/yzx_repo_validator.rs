@@ -2,8 +2,9 @@ use std::path::PathBuf;
 use yazelix_maintainer::repo_contract_validation::{
     ColdProfileInstallOptions, UpgradeContractOptions, validate_config_surface_contract,
     validate_flake_interface, validate_flake_profile_install, validate_installed_runtime_contract,
-    validate_nixpkgs_package, validate_nixpkgs_submission, validate_nushell_budget,
-    validate_nushell_syntax, validate_readme_version, validate_upgrade_contract,
+    validate_nix_customization_api, validate_nixpkgs_package, validate_nixpkgs_submission,
+    validate_nushell_budget, validate_nushell_syntax, validate_readme_version,
+    validate_upgrade_contract,
 };
 use yazelix_maintainer::repo_docs_validation::validate_docs_experience;
 use yazelix_maintainer::repo_plugin_build::validate_pane_orchestrator_sync;
@@ -14,7 +15,7 @@ use yazelix_maintainer::repo_validation::{
 };
 use yazelix_maintainer::workspace_session_contract::validate_workspace_session_contract;
 
-const USAGE_COMMANDS: &str = "validate-contracts|validate-default-test-traceability|validate-rust-test-traceability|validate-package-rust-test-purity|validate-pane-orchestrator-sync|validate-workspace-session-contract|validate-config-surface-contract|validate-docs-experience|validate-nushell-budget|validate-rust-ownership-budget|validate-upgrade-contract|validate-installed-runtime-contract|validate-flake-interface|validate-flake-profile-install|validate-nixpkgs-package|validate-nixpkgs-submission|validate-nushell-syntax|validate-readme-version";
+const USAGE_COMMANDS: &str = "validate-contracts|validate-default-test-traceability|validate-rust-test-traceability|validate-package-rust-test-purity|validate-pane-orchestrator-sync|validate-workspace-session-contract|validate-config-surface-contract|validate-docs-experience|validate-nushell-budget|validate-rust-ownership-budget|validate-upgrade-contract|validate-installed-runtime-contract|validate-flake-interface|validate-flake-profile-install|validate-nix-customization-api|validate-nixpkgs-package|validate-nixpkgs-submission|validate-nushell-syntax|validate-readme-version";
 
 fn main() {
     let mut args = std::env::args().skip(1);
@@ -94,6 +95,10 @@ fn main() {
         "validate-flake-interface" => (
             validate_flake_interface(&resolved_repo_root),
             Some("✅ Top-level flake interface is valid".to_string()),
+        ),
+        "validate-nix-customization-api" => (
+            validate_nix_customization_api(&resolved_repo_root),
+            Some("✅ Nix customization API is valid".to_string()),
         ),
         "validate-flake-profile-install" => {
             let options = parse_cold_profile_install_options(command.as_str(), remaining_args);
@@ -196,6 +201,7 @@ fn main() {
                         "Installed-runtime contract validation failed"
                     }
                     "validate-flake-interface" => "Top-level flake interface validation failed",
+                    "validate-nix-customization-api" => "Nix customization API validation failed",
                     "validate-flake-profile-install" => "Cold profile-install validation failed",
                     "validate-nixpkgs-package" => "Nixpkgs package validation failed",
                     "validate-nixpkgs-submission" => "Nixpkgs submission validation failed",

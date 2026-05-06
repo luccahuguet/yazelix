@@ -86,6 +86,9 @@ jobs:
       - name: Validate top-level flake interface
         run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-flake-interface
 
+      - name: Validate Nix customization API
+        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-nix-customization-api
+
   integration:
     # Manual maintainer gate for Home Manager/runtime activation behavior.
     # Routine pushes stay on the faster source-contract lane, while Nix CI and

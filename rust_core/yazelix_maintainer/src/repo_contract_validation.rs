@@ -528,6 +528,92 @@ pub fn validate_flake_interface(repo_root: &Path) -> Result<ValidationReport, St
     Ok(report)
 }
 
+pub fn validate_nix_customization_api(repo_root: &Path) -> Result<ValidationReport, String> {
+    let mut report = ValidationReport::default();
+    let result = run_nix_eval(repo_root, &build_nix_customization_api_expr(repo_root))?;
+    let object = result
+        .as_object()
+        .ok_or("Nix customization API validation did not return a JSON object")?;
+
+    require_json_bool(
+        object,
+        "has_mk_yazelix",
+        "flake lib must expose lib.<system>.mkYazelix",
+        &mut report.errors,
+    );
+    require_json_string(
+        object,
+        "default_main_program",
+        "yzx",
+        "default flake package must expose yzx as the main program",
+        &mut report.errors,
+    );
+    require_json_string(
+        object,
+        "mk_default_main_program",
+        "yzx",
+        "lib.<system>.mkYazelix default package must expose yzx as the main program",
+        &mut report.errors,
+    );
+    require_json_string(
+        object,
+        "overlay_main_program",
+        "yzx",
+        "overlays.default must expose a yazelix package with yzx as the main program",
+        &mut report.errors,
+    );
+    require_json_string(
+        object,
+        "home_manager_runtime_tool_source",
+        "host",
+        "Home Manager runtime_tool_sources must pass typed host values through evaluation",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
+        "home_manager_has_package",
+        "Home Manager evaluation must install a Yazelix package",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
+        "invalid_runtime_tool_rejected",
+        "invalid runtimeToolSources host modes must fail during Nix evaluation",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
+        "invalid_component_rejected",
+        "unsupported component disabling must fail during Nix evaluation",
+        &mut report.errors,
+    );
+
+    Ok(report)
+}
+
+fn require_json_bool(
+    object: &JsonMap<String, JsonValue>,
+    key: &str,
+    message: &str,
+    errors: &mut Vec<String>,
+) {
+    if object.get(key).and_then(JsonValue::as_bool) != Some(true) {
+        errors.push(message.to_string());
+    }
+}
+
+fn require_json_string(
+    object: &JsonMap<String, JsonValue>,
+    key: &str,
+    expected: &str,
+    message: &str,
+    errors: &mut Vec<String>,
+) {
+    if object.get(key).and_then(JsonValue::as_str) != Some(expected) {
+        errors.push(message.to_string());
+    }
+}
+
 pub fn validate_nushell_syntax(
     repo_root: &Path,
     verbose: bool,
@@ -1184,8 +1270,9 @@ fn build_flake_interface_expr(repo_root: &Path) -> String {
         "  builtins.hasAttr \"runtime\" flake.packages.${system} &&".to_string(),
         "  builtins.hasAttr \"yazelix\" flake.packages.${system} &&".to_string(),
         "  !builtins.hasAttr \"install\" flake.packages.${system} &&".to_string(),
-        "  flake.packages.${system}.default.outPath == flake.packages.${system}.yazelix.outPath &&"
+        "  (flake.packages.${system}.default.name or \"\") == (flake.packages.${system}.yazelix.name or \"\") &&"
             .to_string(),
+        "  (flake.packages.${system}.default.name or \"\") != \"yazelix-runtime\" &&".to_string(),
         "  builtins.hasAttr \"apps\" flake &&".to_string(),
         "  builtins.hasAttr system flake.apps &&".to_string(),
         "  builtins.hasAttr \"default\" flake.apps.${system} &&".to_string(),
@@ -2701,6 +2788,48 @@ fn build_home_manager_defaults_expr(repo_root: &Path, option_names: &[String]) -
         ),
         "in {".to_string(),
         bindings,
+        "}".to_string(),
+    ]
+    .join("\n")
+}
+
+fn build_nix_customization_api_expr(repo_root: &Path) -> String {
+    let flake_ref = format!(
+        "path:{}",
+        escape_nix_string(&repo_root.display().to_string())
+    );
+    [
+        "let".to_string(),
+        format!("  flake = builtins.getFlake \"{}\";", flake_ref),
+        "  system = \"x86_64-linux\";".to_string(),
+        "  pkgs = import flake.inputs.nixpkgs { inherit system; };".to_string(),
+        "  defaultPackage = flake.packages.${system}.yazelix;".to_string(),
+        "  mkDefaultPackage = flake.lib.${system}.mkYazelix {};".to_string(),
+        "  overlayPkgs = import flake.inputs.nixpkgs { inherit system; overlays = [ flake.overlays.default ]; };".to_string(),
+        "  hm = flake.inputs.home-manager.lib.homeManagerConfiguration {".to_string(),
+        "    inherit pkgs;".to_string(),
+        "    modules = [".to_string(),
+        "      flake.homeManagerModules.yazelix".to_string(),
+        "      {".to_string(),
+        "        home.username = \"validator\";".to_string(),
+        "        home.homeDirectory = \"/home/validator\";".to_string(),
+        "        home.stateVersion = \"24.11\";".to_string(),
+        "        programs.yazelix.enable = true;".to_string(),
+        "        programs.yazelix.runtime_tool_sources.helix = \"host\";".to_string(),
+        "      }".to_string(),
+        "    ];".to_string(),
+        "  };".to_string(),
+        "  invalidRuntimeTool = builtins.tryEval ((flake.lib.${system}.mkYazelix { runtimeToolSources = { zellij = \"host\"; }; }).drvPath);".to_string(),
+        "  invalidComponent = builtins.tryEval ((flake.lib.${system}.mkYazelix { components = { screen = false; }; }).drvPath);".to_string(),
+        "in {".to_string(),
+        "  has_mk_yazelix = builtins.hasAttr \"mkYazelix\" flake.lib.${system};".to_string(),
+        "  default_main_program = defaultPackage.meta.mainProgram or \"\";".to_string(),
+        "  mk_default_main_program = mkDefaultPackage.meta.mainProgram or \"\";".to_string(),
+        "  overlay_main_program = overlayPkgs.yazelix.meta.mainProgram or \"\";".to_string(),
+        "  home_manager_runtime_tool_source = hm.config.programs.yazelix.runtime_tool_sources.helix or \"\";".to_string(),
+        "  home_manager_has_package = builtins.length hm.config.home.packages > 0;".to_string(),
+        "  invalid_runtime_tool_rejected = !invalidRuntimeTool.success;".to_string(),
+        "  invalid_component_rejected = !invalidComponent.success;".to_string(),
         "}".to_string(),
     ]
     .join("\n")
