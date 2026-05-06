@@ -61,7 +61,7 @@ Detailed budget families:
 | `rust_core/yazelix_core/src/yazi_materialization.rs` | 1,276 | Keep until Yazi config ownership/import mode is settled |
 | `rust_core/yazelix_core/src/doctor_commands.rs` | 1,270 | Split report rendering from fix orchestration only after doctor behavior stabilizes |
 | `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs` | 1,215 | Broad but behavior-backed; split by workspace/popup/session behaviors |
-| `rust_core/yazelix_core/src/ghostty_cursor_registry.rs` | 1,174 | Strong `yazelix_cursors` extraction candidate |
+| `rust_core/yazelix_core/src/ghostty_cursor_registry.rs` | 1,174 | Powers `#yazelix_cursors`; separate-repo extraction waits for a smaller registry/materialization seam |
 | `rust_core/yazelix_core/src/runtime_materialization.rs` | 1,142 | Keep as runtime generated-state lifecycle owner |
 | `rust_core/yazelix_core/src/install_ownership_report.rs` | 1,131 | Contains live recovery and legacy install diagnostics; prune only after transition windows |
 | `rust_core/yazelix_maintainer/src/repo_sweep_runner.rs` | 1,068 | Live maintainer sweep surface, not demo code |
@@ -105,7 +105,7 @@ The main overengineering risk is not one bad abstraction; it is several broad mo
 1. Finish this inventory and keep the no-growth budget current
 2. Keep `yazelix-screen` external and avoid reintroducing duplicated screen source into the main repo
 3. Continue the `zellij_commands.rs` split: status/cache/widget code now lives in `zellij_commands/status.rs`; next isolate workspace/editor pane flow before `yazelix_workspace`, then extract bar/status providers
-4. Extract `yazelix_cursors` after the Ghostty cursor registry is separated from terminal materialization and status-widget rendering
+4. Keep `#yazelix_cursors` as the standalone cursor package; split the Ghostty cursor registry from terminal materialization before any separate-repo extraction
 5. Split `config_ui.rs` before extracting `yazelix_ratconfig`; keep JSONC patching and schema metadata contracts stable first
 6. Evaluate `yazelix_zellij_popup` after transient-pane commands and plugin transient policy have a clean boundary
 7. Evaluate `yazelix_workspace` last; it touches launch, restart, session facts, workspace roots, Zellij layout state, and the pane orchestrator

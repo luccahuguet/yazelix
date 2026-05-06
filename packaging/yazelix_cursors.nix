@@ -11,11 +11,11 @@ let
     src = rust_core_src;
   };
 in
-pkgs.runCommand "yazelix-ghostty-cursor-shaders"
+pkgs.runCommand "yazelix-cursors"
   {
     nativeBuildInputs = [ pkgs.nushell ];
     meta = {
-      description = "Standalone Ghostty cursor shader export generated from Yazelix cursor presets";
+      description = "Standalone Yazelix cursor shader package for Ghostty users";
       homepage = "https://github.com/luccahuguet/yazelix";
       license = pkgs.lib.licenses.mit;
       platforms = pkgs.lib.platforms.all;
@@ -24,10 +24,11 @@ pkgs.runCommand "yazelix-ghostty-cursor-shaders"
   ''
     set -eu
 
-    work="$TMPDIR/yazelix_ghostty_cursor_shader_export"
+    work="$TMPDIR/yazelix_cursors_export"
     config_dir="$work/config"
     state_dir="$work/state"
-    share_dir="$out/share/yazelix/ghostty_cursor_shaders"
+    share_dir="$out/share/yazelix/yazelix_cursors"
+    legacy_share_dir="$out/share/yazelix/ghostty_cursor_shaders"
     shader_out="$share_dir/shaders"
     examples_dir="$share_dir/examples"
 
@@ -48,7 +49,7 @@ pkgs.runCommand "yazelix-ghostty-cursor-shaders"
     cp -R "$generated_shaders" "$shader_out"
 
     cat > "$examples_dir/ghostty_blaze_tail.conf" <<EOF
-# Yazelix Ghostty cursor shader export example
+# Yazelix cursor shader example for Ghostty
 #
 # Add these lines to a Ghostty config to try the blaze palette with the tail effect
 custom-shader = $shader_out/cursor_trail_blaze.glsl
@@ -56,7 +57,7 @@ custom-shader = $shader_out/generated_effects/tail.glsl
 EOF
 
     cat > "$share_dir/README.md" <<EOF
-# Yazelix Ghostty Cursor Shaders
+# Yazelix Cursors
 
 This package exports complete Ghostty cursor shader files generated from Yazelix cursor presets
 
@@ -81,6 +82,8 @@ $examples_dir/ghostty_blaze_tail.conf
 
 This package does not mutate your Ghostty config and does not include Yazelix runtime reroll behavior
 EOF
+
+    ln -s "$share_dir" "$legacy_share_dir"
 
     required_files="
       $generated_config

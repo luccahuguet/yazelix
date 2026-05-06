@@ -101,7 +101,7 @@
           yazelix_wezterm = yazelixPackage system pkgs "wezterm" noExtraRuntimePackages;
           yazelix_agent_tools = yazelixPackage system pkgs defaultRuntimeVariant agentUsageRuntimePackages;
           yazelix_screen = yazelixScreen.packages.${system}.yzs;
-          ghostty_cursor_shaders = import ./packaging/ghostty_cursor_shaders.nix {
+          yazelix_cursors = import ./packaging/yazelix_cursors.nix {
             inherit pkgs;
             src = ./.;
             rust_core_src = ./.;
@@ -110,13 +110,14 @@
         in
         {
           default = yazelix_default;
-          ghostty_cursor_shaders = ghostty_cursor_shaders;
+          ghostty_cursor_shaders = yazelix_cursors;
           runtime = runtime_default;
           runtime_agent_tools = runtime_agent_tools;
           runtime_ghostty = runtime_ghostty;
           runtime_wezterm = runtime_wezterm;
           yazelix = yazelix_default;
           yazelix_agent_tools = yazelix_agent_tools;
+          yazelix_cursors = yazelix_cursors;
           yazelix_ghostty = yazelix_ghostty;
           yazelix_screen = yazelix_screen;
           yazelix_wezterm = yazelix_wezterm;
