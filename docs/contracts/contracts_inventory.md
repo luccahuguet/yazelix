@@ -18,6 +18,7 @@ This inventory lists the canonical contracts under `docs/contracts/`. It is not 
 | `floating_tui_panes.md` | Popup, menu, and transient floating-pane behavior |
 | `helix_managed_config_contract.md` | Managed Helix config ownership |
 | `macos_support_floor.md` | First-party macOS support floor |
+| `nix_customization_surfaces.md` | Supported granular Nix customization surfaces |
 | `nixpkgs_package_contract.md` | Nixpkgs-style package shape |
 | `nonpersistent_window_session_contract.md` | Default window/session behavior |
 | `pane_orchestrator_component.md` | Pane-orchestrator component boundary |
