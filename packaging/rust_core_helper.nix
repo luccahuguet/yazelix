@@ -49,7 +49,12 @@ rustPlatform.buildRustPackage {
 
   src = rustSource;
   cargoRoot = "rust_core";
-  cargoLock.lockFile = "${src}/rust_core/Cargo.lock";
+  cargoLock = {
+    lockFile = "${src}/rust_core/Cargo.lock";
+    outputHashes = {
+      "yazelix_screen-0.1.0" = "sha256-PkZ4ChP94XabPULG1ohd4vojF3ne/p0CZ6HdsLCtI9g=";
+    };
+  };
   buildAndTestSubdir = "rust_core";
   cargoBuildFlags = [
     "-p"

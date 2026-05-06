@@ -21,7 +21,7 @@ Yazelix is built on a focused terminal-workspace stack. This catalog lists the p
 - `#yazelix_wezterm` — Explicit WezTerm runtime package for users who prefer WezTerm behavior, especially around image preview support
 - `#runtime`, `#runtime_ghostty`, `#runtime_wezterm` — Runtime-only package outputs used by the wrapper packages and validation surfaces
 - `#yazelix_agent_tools` and `#runtime_agent_tools` — Opt-in runtime variants that add agent usage helpers such as `tokenusage`
-- `#yazelix_screen` — Standalone terminal animation package for the Yazelix screen engines outside Zellij and outside a full Yazelix session
+- `#yzs` and `#yazelix_screen` — Standalone terminal animation package forwarded from `luccahuguet/yazelix-screen` for the Yazelix screen engines outside Zellij and outside a full Yazelix session
 - `#ghostty_cursor_shaders` — Standalone Ghostty cursor shader package with generated GLSL files and example Ghostty config snippets
 - `homeManagerModules.yazelix` — The Home Manager module for declarative installs, with `runtime_variant = "ghostty"` by default and `"wezterm"` available explicitly
 
@@ -34,7 +34,7 @@ Yazelix is built on a focused terminal-workspace stack. This catalog lists the p
 - [Nushell](https://www.nushell.sh) — Default shell and the remaining shell/UI core. The packaged runtime provides `nu`, the generated shell initializers, `yzx env`, and the small shell floor that still belongs in Nushell.
 - [zjstatus](https://github.com/dj95/zjstatus) — Zellij status plugin used for the Yazelix top bar, tab labels, widget tray, custom text, CPU/RAM widgets, and optional agent usage widgets.
 - [Yazelix pane orchestrator](../rust_plugins/zellij_pane_orchestrator) — First-party Zellij plugin that owns managed pane identity, editor/sidebar handoff, transient panes, status-cache facts, and workspace state.
-- [yazelix_screen](../rust_core/yazelix_screen) — First-party Rust animation engine used by welcome/screen styles such as logo, boids, Mandelbrot, and Game of Life.
+- [yazelix-screen](https://github.com/luccahuguet/yazelix-screen) — First-party Rust animation engine used by welcome/screen styles such as logo, boids, Mandelbrot, and Game of Life.
 
 ## Terminal Emulators
 

@@ -2,11 +2,11 @@
 
 This inventory is the extraction gate for reusable Yazelix components. It records the current Rust shape before moving code out of the main repository so extraction decisions start from concrete ownership rather than a raw line-count hunch.
 
-Baseline measured on 2026-05-05:
+Baseline measured on 2026-05-05 before extracting `yazelix-screen`:
 
 - `tokei rust_core rust_plugins --exclude target` reports `67,462` Rust code LOC across `128` Rust files
 - the same `tokei` run reports `74,009` Rust lines including blanks and comments
-- `config_metadata/rust_ownership_budget.toml` tracks `74,118` raw Rust file lines across `128` Rust files because the budget validator counts `content.lines()`
+- `config_metadata/rust_ownership_budget.toml` tracks `72,385` raw Rust file lines across `123` Rust files after extracting `yazelix-screen`
 - the remaining difference between `tokei` lines and the budget total is measurement-method noise from embedded blobs and parser classification, not a separate ownership surface
 - `cargo check --workspace --all-targets` under `rust_core/` reports no warnings
 - `cargo check --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --all-targets` reports no warnings
@@ -14,32 +14,31 @@ Baseline measured on 2026-05-05:
 - `cargo +nightly udeps --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --all-targets` reported direct dependency `shlex` unused; this pass removed it
 - `cargo-udeps` requires nightly Rust because it passes unstable `-Z` compiler flags
 
-The canonical family ownership, no-growth ceilings, and long-term warning target live in `config_metadata/rust_ownership_budget.toml`.
+The canonical family ownership, no-growth ceilings, and long-term warning target live in `config_metadata/rust_ownership_budget.toml`. The current budget excludes the extracted `yazelix-screen` crate.
 
 ## Ownership Split
 
 | Family | Files | Raw lines | Status | Extraction pressure |
 | --- | ---: | ---: | --- | --- |
-| Product runtime source | 68 | 51,363 | canonical and extension surfaces | High: contains the largest user-facing seams |
-| Product integration tests | 19 | 5,964 | canonical tests | Medium: split by behavior family, do not delete broadly |
-| Maintainer tooling and tests | 16 | 11,584 | canonical maintainer | Medium: keep in repo, but split large validator files |
-| Pane orchestrator plugin | 25 | 5,207 | extension surface | High: already has a natural Zellij plugin boundary |
-| Total | 128 | 74,118 | current budget ceiling | Reduce or extract before raising ceilings |
+| Product runtime source | 63 | 49,483 | canonical and extension surfaces | High: contains the largest user-facing seams |
+| Product integration tests | 19 | 6,107 | canonical tests | Medium: split by behavior family, do not delete broadly |
+| Maintainer tooling and tests | 16 | 11,583 | canonical maintainer | Medium: keep in repo, but split large validator files |
+| Pane orchestrator plugin | 25 | 5,212 | extension surface | High: already has a natural Zellij plugin boundary |
+| Total | 123 | 72,385 | current budget ceiling | Reduce or extract before raising ceilings |
 
 Detailed budget families:
 
 | Family | Files | Raw lines | Budget target | Notes |
 | --- | ---: | ---: | ---: | --- |
 | `bar_runtime` | 1 | 321 | 300 | Small crate; real extraction value comes from status cache/widgets in `zellij_commands.rs` |
-| `screen_runtime` | 5 | 2,776 | 2,000 | Natural extraction candidate after screen style ownership is stable |
-| `core_cli_and_public_surface` | 12 | 7,885 | 7,000 | Public command dispatch and front-door rendering |
-| `core_config_ui_and_materialization` | 32 | 19,283 | 14,000 | Largest product family; config UI, materializers, cursors, settings surfaces |
+| `core_cli_and_public_surface` | 12 | 8,652 | 7,000 | Public command dispatch and front-door rendering |
+| `core_config_ui_and_materialization` | 32 | 19,412 | 14,000 | Largest product family; config UI, materializers, cursors, settings surfaces |
 | `core_diagnostics_and_recovery` | 8 | 5,350 | 4,500 | Doctor, install ownership, profile/status reporting |
 | `core_workspace_and_pane_integration` | 10 | 15,748 | 11,000 | Zellij/session/workspace command surface; biggest pre-extraction cleanup target |
-| `core_integration_tests` | 19 | 5,964 | 4,500 | High-value tests, but several files are broad family buckets |
-| `maintainer_tooling_and_validators` | 15 | 11,340 | 9,000 | Keep in repo; split validators by domain before optimizing |
+| `core_integration_tests` | 19 | 6,107 | 4,500 | High-value tests, but several files are broad family buckets |
+| `maintainer_tooling_and_validators` | 15 | 11,339 | 9,000 | Keep in repo; split validators by domain before optimizing |
 | `maintainer_tests` | 1 | 244 | 244 | Small release/upgrade contract test surface |
-| `pane_orchestrator_plugin` | 25 | 5,207 | 4,500 | Extension surface; refactor timer/status/sidebar modules before public extraction |
+| `pane_orchestrator_plugin` | 25 | 5,212 | 4,500 | Extension surface; refactor timer/status/sidebar modules before public extraction |
 
 ## Largest Files
 
@@ -103,7 +102,7 @@ The main overengineering risk is not one bad abstraction; it is several broad mo
 ## Extraction Sequence
 
 1. Finish this inventory and keep the no-growth budget current
-2. Extract `yazelix_screen` first if the goal is a low-risk public component; its code is already isolated and has a standalone binary
+2. Keep `yazelix-screen` external and avoid reintroducing duplicated screen source into the main repo
 3. Split `zellij_commands.rs` before attempting `yazelix_bar` or workspace extraction
 4. Extract `yazelix_cursors` after the Ghostty cursor registry is separated from terminal materialization and status-widget rendering
 5. Split `config_ui.rs` before extracting `yazelix_ratconfig`; keep JSONC patching and schema metadata contracts stable first
@@ -131,7 +130,7 @@ These targets separate deletion from extraction accounting. Moving code out of t
 
 | Target | Main-repo path | Total-maintenance interpretation |
 | --- | --- | --- |
-| `70k` | Achievable by extracting or simplifying roughly `4.1k` raw lines, such as `yazelix_screen` plus focused stale transition cleanup | Useful first target; should not require risky rewrites |
+| `70k` | Achievable by keeping `yazelix-screen` external plus focused stale transition cleanup | Useful first target; should not require risky rewrites |
 | `65k` | Requires another `5k` beyond the first cut, likely from cursors/config UI/bar boundary work | Good medium target if extracted packages have clean ownership |
 | `60k` | Requires multiple successful extractions or real simplification of `zellij_commands.rs`, `launch_commands.rs`, and `config_ui.rs` | Realistic as a main-repo target, not as immediate deletion |
 | `50k` | Requires moving maintainer tooling and several reusable components out of the main repo, or deleting large behavior surfaces | Not realistic as near-term true maintenance reduction; only valid if public extracted crates are independently useful and simpler |

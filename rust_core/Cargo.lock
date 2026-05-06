@@ -1618,6 +1618,7 @@ dependencies = [
 [[package]]
 name = "yazelix_screen"
 version = "0.1.0"
+source = "git+https://github.com/luccahuguet/yazelix-screen?rev=9ac6d3f62216c8200b6c9d58c85f26110666fa00#9ac6d3f62216c8200b6c9d58c85f26110666fa00"
 dependencies = [
  "crossterm",
 ]

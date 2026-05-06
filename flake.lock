@@ -184,6 +184,7 @@
         "home-manager": "home-manager",
         "nixgl": "nixgl",
         "nixpkgs": "nixpkgs_3",
+        "yazelixScreen": "yazelixScreen",
         "zjstatus": "zjstatus"
       }
     },
@@ -252,6 +253,29 @@
       "original": {
         "owner": "nix-systems",
         "repo": "default",
+        "type": "github"
+      }
+    },
+    "yazelixScreen": {
+      "inputs": {
+        "fenix": [
+          "fenix"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1778037626,
+        "narHash": "sha256-PkZ4ChP94XabPULG1ohd4vojF3ne/p0CZ6HdsLCtI9g=",
+        "owner": "luccahuguet",
+        "repo": "yazelix-screen",
+        "rev": "9ac6d3f62216c8200b6c9d58c85f26110666fa00",
+        "type": "github"
+      },
+      "original": {
+        "owner": "luccahuguet",
+        "repo": "yazelix-screen",
         "type": "github"
       }
     },

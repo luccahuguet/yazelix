@@ -1,8 +1,8 @@
 [contract]
-measured_total_loc = 74118
-measured_total_file_count = 128
-current_total_loc_max = 74118
-current_total_file_count_max = 128
+measured_total_loc = 72385
+measured_total_file_count = 123
+current_total_loc_max = 72385
+current_total_file_count_max = 123
 hard_target_loc = 60000
 
 [[families]]
@@ -19,29 +19,12 @@ allowed_paths = [
 ]
 
 [[families]]
-id = "screen_runtime"
-status = "extension_surface"
-owner_bead = "yazelix-w032.1"
-measured_loc = 2776
-measured_files = 5
-max_loc = 2776
-target_loc = 2000
-max_files = 5
-allowed_paths = [
-  "rust_core/yazelix_screen/src/bin/yazelix_screen.rs",
-  "rust_core/yazelix_screen/src/boids.rs",
-  "rust_core/yazelix_screen/src/game_of_life.rs",
-  "rust_core/yazelix_screen/src/lib.rs",
-  "rust_core/yazelix_screen/src/mandelbrot.rs",
-]
-
-[[families]]
 id = "core_cli_and_public_surface"
 status = "canonical"
 owner_bead = "yazelix-ykti.1"
-measured_loc = 7885
+measured_loc = 8652
 measured_files = 12
-max_loc = 7885
+max_loc = 8652
 target_loc = 7000
 max_files = 12
 allowed_paths = [
@@ -63,9 +46,9 @@ allowed_paths = [
 id = "core_config_ui_and_materialization"
 status = "canonical"
 owner_bead = "yazelix-ryx4.6"
-measured_loc = 19283
+measured_loc = 19412
 measured_files = 32
-max_loc = 19283
+max_loc = 19412
 target_loc = 14000
 max_files = 32
 allowed_paths = [
@@ -149,9 +132,9 @@ allowed_paths = [
 id = "core_integration_tests"
 status = "canonical"
 owner_bead = "yazelix-9opk.4"
-measured_loc = 5964
+measured_loc = 6107
 measured_files = 19
-max_loc = 5964
+max_loc = 6107
 target_loc = 4500
 max_files = 19
 allowed_paths = [
@@ -180,9 +163,9 @@ allowed_paths = [
 id = "maintainer_tooling_and_validators"
 status = "canonical_maintainer"
 owner_bead = "yazelix-9opk.5.1"
-measured_loc = 11340
+measured_loc = 11339
 measured_files = 15
-max_loc = 11340
+max_loc = 11339
 target_loc = 9000
 max_files = 15
 allowed_paths = [
@@ -220,9 +203,9 @@ allowed_paths = [
 id = "pane_orchestrator_plugin"
 status = "extension_surface"
 owner_bead = "yazelix-subsys.2.1"
-measured_loc = 5207
+measured_loc = 5212
 measured_files = 25
-max_loc = 5207
+max_loc = 5212
 target_loc = 4500
 max_files = 25
 allowed_paths = [

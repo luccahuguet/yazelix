@@ -12,6 +12,11 @@
       url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    yazelixScreen = {
+      url = "github:luccahuguet/yazelix-screen";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.fenix.follows = "fenix";
+    };
     beads = {
       url = "github:steveyegge/beads/v1.0.0";
     };
@@ -28,6 +33,7 @@
       home-manager,
       nixgl,
       fenix,
+      yazelixScreen,
       beads,
       zjstatus,
     }:
@@ -64,12 +70,6 @@
           fenixPkgs = fenix.packages.${system};
           inherit extraRuntimePackages;
         };
-      yazelixScreenPackage = system: pkgs:
-        import ./packaging/yazelix_screen.nix {
-          inherit pkgs;
-          src = ./.;
-          fenixPkgs = fenix.packages.${system};
-        };
       maintainerShell =
         system: pkgs:
         import ./maintainer_shell.nix {
@@ -100,7 +100,7 @@
           yazelix_ghostty = yazelixPackage system pkgs "ghostty" noExtraRuntimePackages;
           yazelix_wezterm = yazelixPackage system pkgs "wezterm" noExtraRuntimePackages;
           yazelix_agent_tools = yazelixPackage system pkgs defaultRuntimeVariant agentUsageRuntimePackages;
-          yazelix_screen = yazelixScreenPackage system pkgs;
+          yazelix_screen = yazelixScreen.packages.${system}.yzs;
           ghostty_cursor_shaders = import ./packaging/ghostty_cursor_shaders.nix {
             inherit pkgs;
             src = ./.;
