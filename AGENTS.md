@@ -293,7 +293,8 @@ bd import <file>       # Import issues from JSONL
 2. **Claim**: Use `bd update <id> --status=in_progress --claim`
 3. **Work**: Implement the task
 4. **Complete**: Use `bd close <id> --reason="Completed"`
-5. **Sync**: `git add .beads/ && git commit` — Dolt versioning handles the rest
+5. **Commit immediately**: After finishing a bead or a local fix, commit the completed change before starting unrelated work. Include `.beads/` changes with the code/docs/config changes they describe.
+6. **Sync**: `git add .beads/ && git commit` — Dolt versioning handles the rest
 
 ### Key Concepts
 
@@ -356,6 +357,7 @@ bd close <id>         # Complete work
 
 **CRITICAL RULES:**
 - Do not push non-trivial changes before user manual testing and explicit approval
+- Commit after finishing each bead or local fix before moving to unrelated work
 - Once a push is approved or otherwise required, finish it fully: `git pull --rebase`, `bd dolt push`, `git push`, then verify status
 - Do not claim remote completion for unpushed work
 - If an approved push fails, resolve and retry until it succeeds
