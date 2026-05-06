@@ -63,6 +63,18 @@ If you find a conflict, please open an issue
 
 You can also print these Yazelix-owned bindings directly with `yzx keys`.
 
+### Ownership Layers
+
+Use semantic remaps for Yazelix-owned actions and native sidecars for the owning tool's broader keymap.
+
+- Yazelix-owned Zellij actions: `settings.jsonc` under `zellij.keybindings`
+- Full native Zellij keymap ownership: `~/.config/yazelix/zellij.kdl`
+- Yazi-native bindings: `~/.config/yazelix/yazi_keymap.toml`
+- Helix-local bindings for managed Helix sessions: `~/.config/yazelix/helix.toml`
+- Terminal-emulator shortcuts: the terminal emulator config
+
+`zellij.keybindings` accepts action ids such as `popup`, `menu`, `toggle_sidebar`, and `open_workspace_terminal`. Omitted actions keep defaults, and `[]` disables a Yazelix-owned binding. Yazelix rejects duplicate semantic Zellij keys before launch.
+
 ### Sidebar Commands vs Keybindings
 
 The stable sidebar API is the pane-orchestrator command surface, not the default keys:
