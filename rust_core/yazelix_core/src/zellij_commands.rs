@@ -42,6 +42,7 @@ use std::time::Instant;
 
 const PANE_ORCHESTRATOR_PLUGIN_ALIAS: &str = "yazelix_pane_orchestrator";
 const EDITOR_PANE_CREATE_LAYOUT_SETTLE_MS: u64 = 80;
+const OPEN_FILE_ORCHESTRATOR_RETRY_DELAYS_MS: &[u64] = &[50, 100, 200];
 const EDITOR_PANE_NAME: &str = "editor";
 pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
     "pipe",
@@ -104,6 +105,7 @@ struct ZellijOpenEditorCwdArgs {
 enum ManagedEditorOpenStatus {
     Ok,
     Missing,
+    NotReady,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -848,10 +850,32 @@ fn open_files_in_managed_editor(
         "working_dir": working_dir.display().to_string(),
     })
     .to_string();
-    let response = run_pane_orchestrator_command("open_file", &payload)?;
+
+    for retry_index in 0..=OPEN_FILE_ORCHESTRATOR_RETRY_DELAYS_MS.len() {
+        match run_pane_orchestrator_command("open_file", &payload) {
+            Ok(response) => match parse_managed_editor_open_response(&response)? {
+                ManagedEditorOpenStatus::NotReady => {}
+                status => return Ok(status),
+            },
+            Err(error) if is_transient_orchestrator_pipe_error(&error) => {}
+            Err(error) => return Err(error),
+        }
+
+        if let Some(delay_ms) = OPEN_FILE_ORCHESTRATOR_RETRY_DELAYS_MS.get(retry_index) {
+            thread::sleep(Duration::from_millis(*delay_ms));
+        }
+    }
+
+    Ok(ManagedEditorOpenStatus::NotReady)
+}
+
+fn parse_managed_editor_open_response(
+    response: &str,
+) -> Result<ManagedEditorOpenStatus, CoreError> {
     match response.trim() {
         "ok" | "opened" | "focused" => Ok(ManagedEditorOpenStatus::Ok),
         "missing" => Ok(ManagedEditorOpenStatus::Missing),
+        "not_ready" => Ok(ManagedEditorOpenStatus::NotReady),
         other => Err(CoreError::classified(
             ErrorClass::Runtime,
             "managed_editor_open_failed",
@@ -860,6 +884,19 @@ fn open_files_in_managed_editor(
             json!({ "response": response }),
         )),
     }
+}
+
+fn is_transient_orchestrator_pipe_error(error: &CoreError) -> bool {
+    if error.code() != "pane_orchestrator_pipe_failed" {
+        return false;
+    }
+    let message = error.message().to_ascii_lowercase();
+    message.contains("timed out")
+        || message.contains("timeout")
+        || message.contains("no response")
+        || message.contains("did not receive")
+        || message.contains("not ready")
+        || message.contains("not_ready")
 }
 
 pub fn run_zellij_retarget(args: &[String]) -> Result<i32, CoreError> {
@@ -1002,7 +1039,10 @@ pub fn run_zellij_open_editor(args: &[String]) -> Result<i32, CoreError> {
     if editor_kind == "helix" || editor_kind == "neovim" {
         let open_status =
             open_files_in_managed_editor(&editor_kind, &target_paths, &editor_working_dir)?;
-        if open_status == ManagedEditorOpenStatus::Missing {
+        if matches!(
+            open_status,
+            ManagedEditorOpenStatus::Missing | ManagedEditorOpenStatus::NotReady
+        ) {
             let mut editor_argv = vec![editor_command.clone()];
             editor_argv.extend(target_paths.iter().map(|path| path.display().to_string()));
             run_zellij_editor_pane(
