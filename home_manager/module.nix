@@ -3,6 +3,7 @@
   lib,
   options,
   fenixPkgs ? null,
+  mkYazelixPackage ? null,
   nixgl ? null,
   pkgs,
   ...
@@ -27,11 +28,23 @@ let
       else
         throw "programs.yazelix.agent_usage_programs contains an unsupported agent usage program"
     ) cfg.agent_usage_programs;
-  yazelixPackage = import ../yazelix_package.nix {
-    inherit pkgs fenixPkgs nixgl;
+  packageBuilderArgs = {
+    inherit pkgs;
     runtimeVariant = cfg.runtime_variant;
+    runtimeToolSources = { };
+    components = { };
     extraRuntimePackages = selectedAgentUsagePackages;
   };
+  yazelixPackage =
+    if mkYazelixPackage != null then
+      mkYazelixPackage packageBuilderArgs
+    else
+      import ../yazelix_package.nix (
+        packageBuilderArgs
+        // {
+          inherit fenixPkgs nixgl;
+        }
+      );
   mainConfigContract = builtins.fromTOML (builtins.readFile ../config_metadata/main_config_contract.toml);
   mainContractFields = mainConfigContract.fields;
   defaultCursorConfig = builtins.fromTOML (builtins.readFile ../yazelix_cursors_default.toml);

@@ -56,6 +56,7 @@
       homeManagerModule = { pkgs, ... }: {
         _module.args.nixgl = nixgl;
         _module.args.fenixPkgs = fenix.packages.${pkgs.stdenv.hostPlatform.system};
+        _module.args.mkYazelixPackage = mkYazelix pkgs.stdenv.hostPlatform.system;
         imports = [ ./home_manager/module.nix ];
       };
       agentUsagePackages = system:
