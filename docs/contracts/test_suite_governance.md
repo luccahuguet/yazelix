@@ -344,7 +344,7 @@ regression suite instead of being run in yet another lane.
 ## Verification
 
 - unit tests: n/a
-- integration tests: `nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev test'`
+- integration tests: `yzx dev test`
 - integration tests: `nix develop -c cargo nextest run --profile ci --manifest-path rust_core/Cargo.toml -p yazelix_core`
 - integration tests: `nix develop -c cargo nextest run --profile ci --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib`
 - CI checks: `yzx_repo_validator validate-default-test-traceability`
@@ -359,7 +359,7 @@ regression suite instead of being run in yet another lane.
 - Defended by: `yzx_repo_validator validate-rust-test-traceability`
 - Defended by: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-readme-version`
 - Defended by: `yzx_repo_validator validate-config-surface-contract`
-- Defended by: `nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev test'`
+- Defended by: `yzx dev test`
 - Defended by: `yzx_repo_validator validate-contracts`
 
 ## Open Questions

@@ -29,9 +29,8 @@ Small surviving helpers plus runtime shell adapters
 - `transient_pane_contract.nu` - Tiny popup/menu/sidebar shell facts
 
 ### `yzx/`
-The remaining public shell-owned surfaces
+The remaining public shell-owned surface
 
-- `dev.nu` - Thin maintainer router plus the startup-profile shell harness
 - `menu.nu` - Interactive command palette
 - Syntax validation is Rust-owned by `yzx_repo_validator validate-nushell-syntax`
 

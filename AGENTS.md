@@ -171,7 +171,7 @@ When creating new files or directories, always use underscores to maintain consi
   ```
 - If the current shell toolchain cannot build `wasm32-wasip1`, use the flake maintainer shell:
   ```bash
-  nix develop -c nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev build_pane_orchestrator --sync'
+  nix develop -c yzx dev build_pane_orchestrator --sync
   ```
 - **Do not treat `cargo test` or `cargo check` as sufficient verification for live plugin behavior.** They only validate the Rust source. Real behavior changes require the synced wasm plus a fresh Yazelix session.
 - After syncing a new plugin wasm, prefer `yzx restart` or a fresh Yazelix window. Avoid in-place plugin reloads as the default validation path because they can leave the current session in a broken permission state.

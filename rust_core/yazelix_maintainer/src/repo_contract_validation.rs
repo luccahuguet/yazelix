@@ -2077,7 +2077,7 @@ fn build_nix_file_output_path(
 
 fn validate_rust_routed_nu_modules(runtime_root: &Path, label: &str, errors: &mut Vec<String>) {
     let scripts_dir = runtime_root.join("nushell").join("scripts");
-    for relative_path in [["yzx", "dev.nu"], ["yzx", "menu.nu"]] {
+    for relative_path in [["yzx", "menu.nu"]] {
         let path = scripts_dir.join(relative_path.iter().collect::<PathBuf>());
         if !path.exists() {
             errors.push(format!(

@@ -94,5 +94,5 @@ Useful audit commands:
 ```bash
 bd list --status=open --limit 0 --json
 nu .github/scripts/validate_issue_bead_contract.nu
-nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev sync_issues --dry-run'
+yzx dev sync_issues --dry-run
 ```

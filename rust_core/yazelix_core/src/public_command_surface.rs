@@ -2,7 +2,6 @@ use crate::bridge::{CoreError, ErrorClass};
 use serde::Serialize;
 use serde_json::json;
 
-const YZX_DEV_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "dev.nu"];
 const YZX_MENU_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "menu.nu"];
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
@@ -76,7 +75,6 @@ pub struct YzxInternalNuRoutePlan<'a> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum YzxUnknownSubcommandBehavior {
     RouteRoot,
-    Error,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -571,6 +569,7 @@ const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
     rust_control_family("config", CONFIG_FAMILY_COMMANDS),
     rust_control_family("cursors", CURSORS_FAMILY_COMMANDS),
     rust_control_family("desktop", DESKTOP_FAMILY_COMMANDS),
+    rust_control_family("dev", DEV_RUST_CONTROL_COMMANDS),
     rust_control_family("edit", EDIT_FAMILY_COMMANDS),
     rust_control_family("enter", ENTER_FAMILY_COMMANDS),
     rust_control_family("env", ENV_FAMILY_COMMANDS),
@@ -663,163 +662,111 @@ const DESKTOP_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[
     DESKTOP_MACOS_PREVIEW_UNINSTALL_COMMAND,
 ];
 
-const DEV_ROOT_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx dev",
-        "Development and maintainer commands",
-        YzxCommandCategory::Development,
-        &[],
-        None,
-        None,
-    ),
+const DEV_ROOT_COMMAND: YzxCommandMetadata = metadata(
+    "yzx dev",
+    "Development and maintainer commands",
+    YzxCommandCategory::Development,
     &[],
-    YZX_DEV_RELATIVE_PATH,
+    None,
+    None,
 );
-const DEV_BUILD_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx dev build_pane_orchestrator",
-        "Build the Zellij pane-orchestrator wasm",
-        YzxCommandCategory::Development,
-        DEV_BUILD_FLAGS,
-        None,
-        None,
-    ),
-    &["build_pane_orchestrator"],
-    YZX_DEV_RELATIVE_PATH,
+const DEV_BUILD_COMMAND: YzxCommandMetadata = metadata(
+    "yzx dev build_pane_orchestrator",
+    "Build the Zellij pane-orchestrator wasm",
+    YzxCommandCategory::Development,
+    DEV_BUILD_FLAGS,
+    None,
+    None,
 );
-const DEV_BUMP_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx dev bump",
-        "Bump the tracked Yazelix version and create release metadata",
-        YzxCommandCategory::Development,
-        DEV_BUMP_ARGS,
-        None,
-        None,
-    ),
-    &["bump"],
-    YZX_DEV_RELATIVE_PATH,
+const DEV_BUMP_COMMAND: YzxCommandMetadata = metadata(
+    "yzx dev bump",
+    "Bump the tracked Yazelix version and create release metadata",
+    YzxCommandCategory::Development,
+    DEV_BUMP_ARGS,
+    None,
+    None,
 );
-const DEV_INSPECT_SESSION_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx dev inspect_session",
-        "Inspect the current Yazelix tab session state",
-        YzxCommandCategory::Development,
-        DEV_INSPECT_SESSION_FLAGS,
-        None,
-        None,
-    ),
-    &["inspect_session"],
-    YZX_DEV_RELATIVE_PATH,
+const DEV_INSPECT_SESSION_COMMAND: YzxCommandMetadata = metadata(
+    "yzx dev inspect_session",
+    "Inspect the current Yazelix tab session state",
+    YzxCommandCategory::Development,
+    DEV_INSPECT_SESSION_FLAGS,
+    None,
+    None,
 );
-const DEV_LINT_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx dev lint_nu",
-        "Lint Nushell scripts with repo-tuned nu-lint config",
-        YzxCommandCategory::Development,
-        DEV_LINT_ARGS,
-        None,
-        None,
-    ),
-    &["lint_nu"],
-    YZX_DEV_RELATIVE_PATH,
+const DEV_LINT_COMMAND: YzxCommandMetadata = metadata(
+    "yzx dev lint_nu",
+    "Lint Nushell scripts with repo-tuned nu-lint config",
+    YzxCommandCategory::Development,
+    DEV_LINT_ARGS,
+    None,
+    None,
 );
-const DEV_PROFILE_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx dev profile",
-        "Profile launch sequence and identify bottlenecks",
-        YzxCommandCategory::Development,
-        DEV_PROFILE_FLAGS,
-        None,
-        None,
-    ),
-    &["profile"],
-    YZX_DEV_RELATIVE_PATH,
+const DEV_PROFILE_COMMAND: YzxCommandMetadata = metadata(
+    "yzx dev profile",
+    "Profile launch sequence and identify bottlenecks",
+    YzxCommandCategory::Development,
+    DEV_PROFILE_FLAGS,
+    None,
+    None,
 );
-const DEV_RUST_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx dev rust",
-        "Show fast Rust inner-loop commands",
-        YzxCommandCategory::Development,
-        &[],
-        None,
-        None,
-    ),
-    &["rust"],
-    YZX_DEV_RELATIVE_PATH,
+const DEV_RUST_COMMAND: YzxCommandMetadata = metadata(
+    "yzx dev rust",
+    "Show fast Rust inner-loop commands",
+    YzxCommandCategory::Development,
+    &[],
+    None,
+    None,
 );
-const DEV_RUST_FMT_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx dev rust fmt",
-        "Format Rust code without entering nix develop",
-        YzxCommandCategory::Development,
-        DEV_RUST_FMT_ARGS,
-        None,
-        None,
-    ),
-    &["rust", "fmt"],
-    YZX_DEV_RELATIVE_PATH,
+const DEV_RUST_FMT_COMMAND: YzxCommandMetadata = metadata(
+    "yzx dev rust fmt",
+    "Format Rust code without entering nix develop",
+    YzxCommandCategory::Development,
+    DEV_RUST_FMT_ARGS,
+    None,
+    None,
 );
-const DEV_RUST_CHECK_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx dev rust check",
-        "Run fast cargo check without entering nix develop",
-        YzxCommandCategory::Development,
-        DEV_RUST_TARGET_ARG,
-        None,
-        None,
-    ),
-    &["rust", "check"],
-    YZX_DEV_RELATIVE_PATH,
+const DEV_RUST_CHECK_COMMAND: YzxCommandMetadata = metadata(
+    "yzx dev rust check",
+    "Run fast cargo check without entering nix develop",
+    YzxCommandCategory::Development,
+    DEV_RUST_TARGET_ARG,
+    None,
+    None,
 );
-const DEV_RUST_TEST_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx dev rust test",
-        "Run fast cargo tests without entering nix develop",
-        YzxCommandCategory::Development,
-        DEV_RUST_TEST_ARGS,
-        None,
-        None,
-    ),
-    &["rust", "test"],
-    YZX_DEV_RELATIVE_PATH,
+const DEV_RUST_TEST_COMMAND: YzxCommandMetadata = metadata(
+    "yzx dev rust test",
+    "Run fast cargo tests without entering nix develop",
+    YzxCommandCategory::Development,
+    DEV_RUST_TEST_ARGS,
+    None,
+    None,
 );
-const DEV_SYNC_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx dev sync_issues",
-        "Sync GitHub issue lifecycle into Beads locally",
-        YzxCommandCategory::Development,
-        DEV_SYNC_FLAGS,
-        None,
-        None,
-    ),
-    &["sync_issues"],
-    YZX_DEV_RELATIVE_PATH,
+const DEV_SYNC_COMMAND: YzxCommandMetadata = metadata(
+    "yzx dev sync_issues",
+    "Sync GitHub issue lifecycle into Beads locally",
+    YzxCommandCategory::Development,
+    DEV_SYNC_FLAGS,
+    None,
+    None,
 );
-const DEV_TEST_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx dev test",
-        "Run Yazelix test suite",
-        YzxCommandCategory::Development,
-        DEV_TEST_FLAGS,
-        None,
-        None,
-    ),
-    &["test"],
-    YZX_DEV_RELATIVE_PATH,
+const DEV_TEST_COMMAND: YzxCommandMetadata = metadata(
+    "yzx dev test",
+    "Run Yazelix test suite",
+    YzxCommandCategory::Development,
+    DEV_TEST_FLAGS,
+    None,
+    None,
 );
-const DEV_UPDATE_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx dev update",
-        "Refresh maintainer flake inputs and run update canaries",
-        YzxCommandCategory::Development,
-        DEV_UPDATE_FLAGS,
-        None,
-        None,
-    ),
-    &["update"],
-    YZX_DEV_RELATIVE_PATH,
+const DEV_UPDATE_COMMAND: YzxCommandMetadata = metadata(
+    "yzx dev update",
+    "Refresh maintainer flake inputs and run update canaries",
+    YzxCommandCategory::Development,
+    DEV_UPDATE_FLAGS,
+    None,
+    None,
 );
-const DEV_COMMANDS: &[YzxCommandLeaf] = &[
+const DEV_RUST_CONTROL_COMMANDS: &[YzxCommandMetadata] = &[
     DEV_ROOT_COMMAND,
     DEV_BUILD_COMMAND,
     DEV_BUMP_COMMAND,
@@ -965,26 +912,15 @@ const REVEAL_COMMAND: YzxCommandMetadata = metadata(
 );
 const REVEAL_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[REVEAL_COMMAND];
 
-const INTERNAL_NU_FAMILIES: &[YzxInternalNuFamily] = &[
-    internal_family(
-        "dev",
-        DEV_COMMANDS,
-        Some(0),
-        true,
-        true,
-        YzxUnknownSubcommandBehavior::Error,
-        &[],
-    ),
-    internal_family(
-        "menu",
-        MENU_COMMANDS,
-        Some(0),
-        false,
-        false,
-        YzxUnknownSubcommandBehavior::RouteRoot,
-        &[],
-    ),
-];
+const INTERNAL_NU_FAMILIES: &[YzxInternalNuFamily] = &[internal_family(
+    "menu",
+    MENU_COMMANDS,
+    Some(0),
+    false,
+    false,
+    YzxUnknownSubcommandBehavior::RouteRoot,
+    &[],
+)];
 
 pub fn yzx_command_metadata() -> Vec<YzxCommandMetadata> {
     let mut commands = vec![ROOT_COMMAND];
@@ -1192,7 +1128,6 @@ fn plan_internal_nu_route<'a>(
                 root_command(family).expect("route-root families must define a root command");
             Ok(plan_route(command, argv))
         }
-        YzxUnknownSubcommandBehavior::Error => Err(unknown_subcommand_error(family.root_token)),
     }
 }
 
@@ -1237,16 +1172,6 @@ fn plan_route<'a>(
 
 fn first_arg(argv: &[String]) -> Option<&str> {
     argv.first().map(String::as_str)
-}
-
-fn unknown_subcommand_error(route: &str) -> CoreError {
-    CoreError::classified(
-        ErrorClass::Usage,
-        "unknown_subcommand",
-        format!("Unknown yzx {route} subcommand"),
-        format!("Run `yzx {route} --help` or `yzx --help` to see supported commands."),
-        json!({ "route": route }),
-    )
 }
 
 fn required_subcommand_error(route: &str, expected: &[&str]) -> CoreError {
@@ -1372,21 +1297,17 @@ mod tests {
         assert!(matches!(route, YzxPublicRootRoute::RustControl));
     }
 
-    // Regression: dev and import keep their explicit help shims instead of treating `help` as an unknown subcommand.
+    // Regression: grouped Rust-owned families route through the Rust control plane even for help aliases.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn keeps_help_alias_behavior_for_grouped_internal_families() {
+    fn routes_grouped_help_aliases_to_control_plane() {
         let dev_argv = [
             String::from("dev"),
             String::from("help"),
             String::from("ignored"),
         ];
         let route = classify_yzx_root_route(&dev_argv).unwrap();
-        let YzxPublicRootRoute::InternalNu(plan) = route else {
-            panic!("expected internal Nu route");
-        };
-        assert_eq!(plan.command_name, "yzx dev");
-        assert!(plan.tail.is_empty());
+        assert!(matches!(route, YzxPublicRootRoute::RustControl));
 
         let import_argv = [String::from("import"), String::from("--help")];
         let route = classify_yzx_root_route(&import_argv).unwrap();
@@ -1413,15 +1334,15 @@ mod tests {
         let desktop_route = classify_yzx_root_route(&desktop_argv).unwrap();
         assert!(matches!(desktop_route, YzxPublicRootRoute::RustControl));
 
-        let err = classify_yzx_root_route(&[String::from("dev"), String::from("not-a-subcommand")])
-            .unwrap_err();
-        assert_eq!(err.code(), "unknown_subcommand");
+        let dev_argv = [String::from("dev"), String::from("not-a-subcommand")];
+        let route = classify_yzx_root_route(&dev_argv).unwrap();
+        assert!(matches!(route, YzxPublicRootRoute::RustControl));
     }
 
-    // Defends: nested maintainer Nu leaves keep their longest-prefix route instead of falling back to the dev root.
+    // Defends: nested maintainer commands are Rust-owned so the dev surface can avoid a large Nushell module.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
-    fn routes_nested_dev_rust_commands_to_internal_nu_leaf() {
+    fn routes_nested_dev_rust_commands_to_control_plane() {
         let argv = [
             String::from("dev"),
             String::from("rust"),
@@ -1430,31 +1351,20 @@ mod tests {
             String::from("front_door_render"),
         ];
         let route = classify_yzx_root_route(&argv).unwrap();
-        let YzxPublicRootRoute::InternalNu(plan) = route else {
-            panic!("expected internal Nu route");
-        };
-        assert_eq!(plan.command_name, "yzx dev rust test");
-        assert_eq!(
-            plan.tail,
-            [String::from("core"), String::from("front_door_render")]
-        );
+        assert!(matches!(route, YzxPublicRootRoute::RustControl));
     }
 
     // Defends: maintainer session inspection stays reachable through the public `yzx dev` route.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
-    fn routes_dev_inspect_session_to_internal_nu_leaf() {
+    fn routes_dev_inspect_session_to_control_plane() {
         let argv = [
             String::from("dev"),
             String::from("inspect_session"),
             String::from("--json"),
         ];
         let route = classify_yzx_root_route(&argv).unwrap();
-        let YzxPublicRootRoute::InternalNu(plan) = route else {
-            panic!("expected internal Nu route");
-        };
-        assert_eq!(plan.command_name, "yzx dev inspect_session");
-        assert_eq!(plan.tail, [String::from("--json")]);
+        assert!(matches!(route, YzxPublicRootRoute::RustControl));
     }
 
     // Regression: menu visibility and menu categories come from the shared Rust command surface instead of a second Nushell-owned map.

@@ -1,18 +1,7 @@
 [contract]
-current_total_loc_max = 2144
-current_total_file_count_max = 15
+current_total_loc_max = 1517
+current_total_file_count_max = 14
 hard_target_loc = 1901
-
-[[families]]
-id = "maintainer_and_dev_orchestration"
-status = "allowlisted_floor"
-owner_bead = "yazelix-pw9j.4.1"
-max_loc = 618
-target_loc = 425
-max_files = 1
-allowed_paths = [
-  "nushell/scripts/yzx/dev.nu",
-]
 
 [[families]]
 id = "integration_and_wrappers"
@@ -44,8 +33,8 @@ allowed_paths = [
 id = "front_door_presentation"
 status = "allowlisted_floor"
 owner_bead = "yazelix-pw9j.6.1"
-max_loc = 409
-target_loc = 409
+max_loc = 400
+target_loc = 400
 max_files = 2
 allowed_paths = [
   "nushell/scripts/setup/welcome.nu",

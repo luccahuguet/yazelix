@@ -84,7 +84,7 @@ The accepted implementation should be a mechanical crate split, not a rewrite:
 
 - keep `rust_core/yazelix_maintainer`
 - keep maintainer-only modules and bins in that crate
-- update CI and `nushell/scripts/yzx/dev.nu` to call `cargo run -p yazelix_maintainer --bin yzx_repo_validator` or `yzx_repo_maintainer`
+- keep `yzx dev` routed through Rust-owned `yzx_control` wrappers that call `yzx_repo_validator` or `yzx_repo_maintainer`
 - keep public command names stable: `yzx_repo_validator` and `yzx_repo_maintainer`
 - update `packaging/rust_core_helper.nix` so runtime package builds only the product crate/binaries and leaves tests to explicit maintainer/CI gates
 - keep `yazelix_maintainer -> yazelix_core` as the only dependency direction

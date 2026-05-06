@@ -201,9 +201,9 @@ Upgrade Determinate Nix
 Maintainer-only updates:
 - `yzx dev inspect_session [--json]`: Inspect the current Yazelix/Zellij tab session snapshot from the pane orchestrator; useful for debugging workspace root, focus context, layout state, managed panes, and sidebar Yazi identity
 - `yzx_control zellij status-cache-heartbeat --json`: Read the last window-local pane-orchestrator heartbeat from `status_bar_cache.json` without piping into the plugin; useful during stalls because it shows stale heartbeat age, last timer tick, last handled pipe, and recent status-refresh timestamps
-- `yzx dev rust fmt [core|pane_orchestrator|all] [--check]`: Run `cargo fmt` directly from the current maintainer environment without entering `nix develop`. Default target is `all`
-- `yzx dev rust check [core|pane_orchestrator|all]`: Run fast `cargo check` directly. Default target is `core`
-- `yzx dev rust test [core|pane_orchestrator|all] [cargo test args...]`: Run fast `cargo test` directly. Default target is `core`; pass a focused test filter directly or after the target
+- `yzx dev rust fmt [core|maintainer|pane_orchestrator|all] [--check]`: Run `cargo fmt` directly from the current maintainer environment without entering `nix develop`. Default target is `all`
+- `yzx dev rust check [core|maintainer|pane_orchestrator|all]`: Run fast `cargo check` directly. Default target is `core`
+- `yzx dev rust test [core|maintainer|pane_orchestrator|all] [cargo test args...]`: Run fast `cargo test` directly. Default target is `core`; pass a focused test filter directly or after the target
 - `yzx_repo_validator validate-package-rust-test-purity`: Guard default/package-time Rust tests from host-only commands such as `nix` and `home-manager`; Nix-dependent checks belong in explicit validators or package gates
 - `yzx_repo_validator validate-pane-orchestrator-sync`: Check that the tracked pane-orchestrator wasm sync stamp matches the current source and wasm
 - `yzx_repo_validator validate-workspace-session-contract`: Check built-in layout metadata, workspace runtime assets, internal Zellij command routing, pane-orchestrator pipe commands, and Yazi workspace entrypoints

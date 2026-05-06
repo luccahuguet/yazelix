@@ -6,31 +6,32 @@ The product/runtime Nushell floor is now the measured allowlist below:
 
 | Family | Files | LOC |
 | --- | ---: | ---: |
-| Integration wrapper floor | `3` | `90` |
-| Setup/bootstrap shell entry | `2` | `345` |
+| Integration wrapper floor | `4` | `111` |
+| Setup/bootstrap shell entry | `2` | `389` |
+| Front-door presentation floor | `2` | `400` |
 | Runtime helper seam | `6` | `611` |
 
-Total product/runtime Nu outside `yzx/dev.nu`: `1,046` LOC across `11` files.
+Total tracked product/runtime Nu: `1,517` LOC across `14` files.
 
 ## Scope
 
 In scope:
 
 - the remaining runtime-side Nushell owners under `core/`, `setup/`, `utils/`,
-  and `zellij_wrappers/`
+  `yzx/`, and `zellij_wrappers/`
 
 Out of scope:
 
-- `yzx/dev.nu`
-- front-door Nu presentation (`welcome.nu`, `menu.nu`)
+- maintainer command orchestration, which is Rust-owned through `yzx_control dev`
 
 ## Behavior
 
 ### Integration wrapper floor
 
-Three wrappers remain:
+Four wrappers remain:
 
 - `nushell/scripts/zellij_wrappers/launch_sidebar_yazi.nu`
+- `nushell/scripts/zellij_wrappers/yzx_config_ui_popup.nu`
 - `nushell/scripts/zellij_wrappers/yzx_popup_program.nu`
 - `nushell/scripts/zellij_wrappers/yzx_menu_popup.nu`
 
@@ -68,6 +69,16 @@ The surviving runtime-side helper files are:
 These survive only as the narrow remaining env/path/bridge helpers consumed by
 the runtime shell owners above.
 
+### Front-door presentation floor
+
+The surviving presentation files are:
+
+- `nushell/scripts/setup/welcome.nu`
+- `nushell/scripts/yzx/menu.nu`
+
+These remain Nu-owned while they are mostly human-facing terminal presentation,
+fzf/menu process handoff, and startup-shell UX.
+
 ## Non-goals
 
 - broad Rust wrapper insertions that leave the same startup/process boundary in
@@ -76,16 +87,10 @@ the runtime shell owners above.
 
 ## Acceptance Cases
 
-1. The runtime-side wrapper floor is only the sidebar, popup, and menu wrappers in Nu
+1. The runtime-side wrapper floor is only the sidebar, config UI popup, popup, and menu wrappers in Nu
 2. `environment.nu` reads as shellhook/env setup instead of a second welcome
    owner
 3. The runtime helper allowlist matches the canonical budget exactly
-
-## Verification
-
-- `yzx_repo_validator validate-contracts`
-- `yzx_repo_validator validate-nushell-budget`
-- `yzx_repo_validator validate-nushell-syntax`
 
 ## Verification
 
