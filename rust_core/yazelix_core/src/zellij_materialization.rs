@@ -102,6 +102,7 @@ struct ExtractedSemanticBlocks {
     load_plugin_lines: Vec<String>,
     plugin_lines: Vec<String>,
     keybind_lines: Vec<String>,
+    keybinds_clear_defaults: bool,
     ui_lines: Vec<String>,
 }
 
@@ -444,8 +445,11 @@ fn render_merged_config(
         &extracted_blocks.config_without_semantic_blocks,
         &render_plan.owned_top_level_setting_names,
     );
-    let merged_keybinds =
-        build_merged_keybinds_block(&extracted_blocks.keybind_lines, &override_keybinds);
+    let merged_keybinds = build_merged_keybinds_block(
+        &extracted_blocks.keybind_lines,
+        &override_keybinds,
+        extracted_blocks.keybinds_clear_defaults,
+    );
     let merged_ui = build_yazelix_ui_block(&extracted_blocks.ui_lines, &render_plan.rounded_value);
     let plugins_block = build_yazelix_plugins_block(
         &extracted_blocks.plugin_lines,
@@ -500,6 +504,7 @@ fn extract_semantic_config_blocks(config_content: &str) -> ExtractedSemanticBloc
     let mut load_plugin_lines = Vec::new();
     let mut plugin_lines = Vec::new();
     let mut keybind_lines = Vec::new();
+    let mut keybinds_clear_defaults = false;
     let mut ui_lines = Vec::new();
     let mut active_block = String::new();
     let mut brace_depth: i64 = 0;
@@ -514,6 +519,9 @@ fn extract_semantic_config_blocks(config_content: &str) -> ExtractedSemanticBloc
                 .into_iter()
                 .find(|block| trimmed.starts_with(block));
             if let Some(block) = matched_block {
+                if block == "keybinds" && keybinds_declares_clear_defaults(trimmed) {
+                    keybinds_clear_defaults = true;
+                }
                 active_block = block.to_string();
                 brace_depth = open_braces - close_braces;
                 if brace_depth <= 0 {
@@ -561,8 +569,14 @@ fn extract_semantic_config_blocks(config_content: &str) -> ExtractedSemanticBloc
         load_plugin_lines,
         plugin_lines,
         keybind_lines,
+        keybinds_clear_defaults,
         ui_lines,
     }
+}
+
+fn keybinds_declares_clear_defaults(line: &str) -> bool {
+    let header = line.split('{').next().unwrap_or(line);
+    header.contains("clear-defaults=true") || header.contains("clear-defaults = true")
 }
 
 fn push_semantic_line(
@@ -642,10 +656,18 @@ fn build_yazelix_plugins_block(
     }
 }
 
-fn build_merged_keybinds_block(existing_lines: &[String], override_lines: &[String]) -> String {
+fn build_merged_keybinds_block(
+    existing_lines: &[String],
+    override_lines: &[String],
+    clear_defaults: bool,
+) -> String {
     let mut merged = existing_lines.to_vec();
-    merged.extend_from_slice(override_lines);
-    if merged.is_empty() {
+    if !clear_defaults {
+        merged.extend_from_slice(override_lines);
+    }
+    if clear_defaults {
+        block_with_lines("keybinds clear-defaults=true", &merged)
+    } else if merged.is_empty() {
         String::new()
     } else {
         block_with_lines("keybinds", &merged)
@@ -1895,6 +1917,70 @@ ui { pane_frames { hide_session_name true } }
                 .iter()
                 .any(|line| line.contains("hide_session_name"))
         );
+        assert!(!extracted.keybinds_clear_defaults);
+    }
+
+    // Defends: user-owned Zellij keybinding mode survives semantic block extraction instead of being reduced to an ordinary keybind body.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn extracts_keybinds_clear_defaults_ownership() {
+        let extracted = extract_semantic_config_blocks(
+            r#"keybinds clear-defaults=true {
+    locked { bind "Ctrl `" { SwitchToMode "Normal"; } }
+}
+"#,
+        );
+
+        assert!(extracted.keybinds_clear_defaults);
+        assert!(
+            extracted
+                .keybind_lines
+                .iter()
+                .any(|line| line.contains("Ctrl `"))
+        );
+    }
+
+    // Defends: full user-owned Zellij keybinding mode preserves the clear-defaults header and does not append Yazelix default integrations.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn clear_defaults_keybinds_skip_yazelix_overrides() {
+        let existing_lines = vec![
+            r#"    locked { bind "Ctrl `" { SwitchToMode "Normal"; } }"#.to_string(),
+            r#"    normal { bind "Alt y" { Write 27; } }"#.to_string(),
+        ];
+        let override_lines = vec![
+            r#"    shared_except "locked" {"#.to_string(),
+            r#"        bind "Alt y" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_sidebar" } }"#.to_string(),
+            r#"    }"#.to_string(),
+        ];
+
+        let merged = build_merged_keybinds_block(&existing_lines, &override_lines, true);
+
+        assert!(merged.starts_with("keybinds clear-defaults=true {"));
+        assert!(merged.contains("Ctrl `"));
+        assert!(merged.contains("Write 27"));
+        assert!(!merged.contains("MessagePlugin"));
+        assert!(!merged.contains("toggle_sidebar"));
+    }
+
+    // Defends: ordinary Zellij keybinding customization keeps Yazelix integration bindings appended for default managed behavior.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn ordinary_keybinds_keep_yazelix_overrides() {
+        let existing_lines = vec![r#"    normal { bind "Alt y" { Write 27; } }"#.to_string()];
+        let override_lines = vec![
+            r#"    shared_except "locked" {"#.to_string(),
+            r#"        bind "Alt y" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_sidebar" } }"#.to_string(),
+            r#"    }"#.to_string(),
+        ];
+
+        let merged = build_merged_keybinds_block(&existing_lines, &override_lines, false);
+
+        assert!(merged.starts_with("keybinds {"));
+        assert!(!merged.starts_with("keybinds clear-defaults=true"));
+        assert!(merged.contains("Write 27"));
+        assert!(merged.contains("MessagePlugin"));
+        assert!(merged.contains("toggle_sidebar"));
     }
 
     // Regression: widget tray rendering must not leave empty command placeholders when dynamic helper scripts are unavailable.

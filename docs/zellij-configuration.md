@@ -127,6 +127,17 @@ keybinds {
 
 Sidebar commands such as `toggle_sidebar`, `toggle_editor_sidebar_focus`, and `focus_sidebar` are the stable pane-orchestrator contract. The default keys (`Alt+y`, `Ctrl+y`) are just Yazelix's shipped policy.
 
+For full native Zellij keybinding ownership, use `keybinds clear-defaults=true` in `~/.config/yazelix/zellij.kdl`:
+```kdl
+keybinds clear-defaults=true {
+    locked {
+        bind "Ctrl `" { SwitchToMode "Normal"; }
+    }
+}
+```
+
+In this mode Yazelix preserves your `clear-defaults` block and does not append its shipped Zellij integration keybindings. Recreate any Yazelix actions you still want, such as `toggle_sidebar` or `toggle_transient_pane`, in your own keybinds block.
+
 **Simple settings** (like `theme`, `copy_command`) work perfectly - your value always wins.
 
 **For the sidebar launcher**, prefer Yazelix config instead of editing layout templates:
