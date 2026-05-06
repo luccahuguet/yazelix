@@ -24,6 +24,7 @@ Yazelix is highly customizable! Here are the main ways you can tailor your exper
   - **Reference configs** (generated snapshot): `configs/terminal_emulators/`
     - Snapshots match the generated configs under `~/.local/share/yazelix/configs/terminal_emulators/`
 - **Visible managed stubs**: Yazelix creates lightweight README or hook stubs under `~/.config/yazelix/` when a managed surface becomes relevant. It does not create behavior-owning Zellij or Helix config files automatically, so native fallback and `yzx import` discovery keep working until you choose those managed surfaces.
+- **Native config status**: Yazelix treats native tool configs as user-owned unless you explicitly import them or select a supported native read-only mode. The shared status words are `managed_default`, `managed_override`, `imported_override`, `native_read_only`, `native_available`, `native_required_missing`, `home_manager_read_only`, and `generated_runtime`.
 - **Zellij Configuration**: Yazelix-managed user config plus generated runtime overlays:
   - **Quick start**: Edit `~/.config/yazelix/zellij.kdl`
   - **Full guide**: [Zellij Configuration Documentation](./zellij-configuration.md)

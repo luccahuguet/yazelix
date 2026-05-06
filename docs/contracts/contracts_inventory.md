@@ -21,6 +21,7 @@ This inventory lists the canonical contracts under `docs/contracts/`. It is not 
 | `macos_support_floor.md` | First-party macOS support floor |
 | `nix_customization_surfaces.md` | Supported granular Nix customization surfaces |
 | `nixpkgs_package_contract.md` | Nixpkgs-style package shape |
+| `native_config_integration_status.md` | Native, managed, imported, read-only, and generated config status vocabulary |
 | `nonpersistent_window_session_contract.md` | Default window/session behavior |
 | `pane_orchestrator_component.md` | Pane-orchestrator component boundary |
 | `pane_orchestrator_tab_local_session_state_seam.md` | Pane-orchestrator tab-local session state boundary |
