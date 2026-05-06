@@ -81,7 +81,7 @@ fn inserts_absent_field_in_existing_section() {
     assert_eq!(parsed["editor"]["hide_sidebar_on_file_open"], json!(true));
 }
 
-// Defends: reset-style edits can remove an explicit value while preserving the rest of the JSONC document.
+// Invariant: reset-style edits can remove an explicit value while preserving the rest of the JSONC document.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn unsets_existing_field_without_rewriting_document() {

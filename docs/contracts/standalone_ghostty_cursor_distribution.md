@@ -10,7 +10,7 @@ The primary flake package is `.#yazelix_cursors`. `.#ghostty_cursor_shaders` rem
 
 Yazelix should ship `yazelix_cursors` as a standalone package surface now, but should not move the cursor registry and shader generator into a separate repository yet.
 
-The current extraction boundary is a flake package produced from the main Yazelix source tree. That gives Ghostty users a real external-user artifact while keeping the cursor schema, generated Ghostty config behavior, config UI, and Yazelix status-widget integration on one side of the repo boundary until those seams settle.
+The current extraction boundary is a flake package produced from the main Yazelix source tree plus an internal Rust module boundary. `yazelix_cursors.rs` owns reusable cursor registry parsing, validation, resolution, and Ghostty palette shader generation. `ghostty_cursor_registry.rs` remains the Yazelix-specific loader for `settings.jsonc` and config paths. That gives Ghostty users a real external-user artifact while keeping generated Ghostty config behavior, config UI, and Yazelix status-widget integration on one side of the repo boundary until those seams settle.
 
 Selected name: `yazelix_cursors`
 
@@ -37,7 +37,7 @@ Alternatives considered:
 - Users opt in by adding explicit `custom-shader` lines to their own Ghostty config
 - The package does not edit user Ghostty config files
 - The package does not provide Yazelix runtime random reroll behavior
-- The package is generated from the same cursor registry and Ghostty materialization code used by Yazelix
+- The package is generated from the same cursor registry and Ghostty palette generator used by Yazelix
 
 ## Release Policy
 
@@ -51,14 +51,16 @@ Alternatives considered:
 Yazelix continues to own:
 
 - `settings.jsonc` cursor schema and config UI metadata
-- cursor preset validation
 - generated Ghostty config materialization
-- runtime random cursor selection
+- invoking runtime random cursor selection
 - status-bar cursor widget facts
 - terminal package selection
 
 `yazelix_cursors` owns:
 
+- cursor preset validation
+- cursor registry resolution
+- generated Ghostty palette shader content
 - exported Ghostty shader files
 - exported Ghostty examples
 - public package naming and install instructions for non-Yazelix users

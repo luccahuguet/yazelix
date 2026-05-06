@@ -51,6 +51,7 @@ pub mod upgrade_summary;
 pub mod user_config_paths;
 pub mod workspace_asset_contract;
 pub mod workspace_commands;
+pub mod yazelix_cursors;
 pub mod yazi_materialization;
 pub mod yazi_render_plan;
 pub mod zellij_commands;

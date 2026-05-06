@@ -245,8 +245,8 @@ fn config_ui_metadata_covers_visible_fields_and_tabs() {
 
 // Defends: advanced config UI state exposes sidecar presence and the Home Manager/read-only ownership signal without mutating config files.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-#[test]
 #[cfg(unix)]
+#[test]
 fn reports_sidecars_and_home_manager_read_only_state() {
     use std::os::unix::fs::symlink;
 

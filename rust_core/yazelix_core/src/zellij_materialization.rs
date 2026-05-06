@@ -2073,7 +2073,7 @@ ui { pane_frames { hide_session_name true } }
         assert!(!rendered.contains("agent-usage"));
     }
 
-    // Defends: compact tab-label mode shortens zjstatus tab labels in generated layout KDL without affecting rename text.
+    // Invariant: compact tab-label mode shortens zjstatus tab labels in generated layout KDL without affecting rename text.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn renders_compact_tab_label_mode_in_zjstatus_template() {

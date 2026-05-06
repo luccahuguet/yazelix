@@ -1,7 +1,7 @@
 use crate::bridge::{CoreError, ErrorClass};
 use crate::ghostty_cursor_registry::{
-    CursorDefinition, CursorFamily, CursorRegistry, ResolvedCursorRegistryState, SplitDivider,
-    SplitTransition,
+    CursorDefinition, CursorRegistry, ResolvedCursorRegistryState, format_ghostty_trail_duration,
+    write_ghostty_cursor_palette_shaders,
 };
 pub use crate::ghostty_cursor_registry::{
     DEFAULT_GHOSTTY_TRAIL_DURATION, GHOSTTY_TRAIL_DURATION_MAX, GHOSTTY_TRAIL_DURATION_MIN,
@@ -130,17 +130,6 @@ fn validate_ghostty_trail_duration(duration: f64) -> Result<(), CoreError> {
         ));
     }
     Ok(())
-}
-
-fn format_ghostty_trail_duration(duration: f64) -> String {
-    let mut rendered = format!("{duration:.3}");
-    while rendered.contains('.') && rendered.ends_with('0') {
-        rendered.pop();
-    }
-    if rendered.ends_with('.') {
-        rendered.push('0');
-    }
-    rendered
 }
 
 fn build_ghostty_trail_duration(duration: f64) -> String {
@@ -378,188 +367,9 @@ fn sync_ghostty_shader_assets(
         }
     }
 
-    write_data_driven_cursor_shaders(&shaders_dest, registry, glow_level, trail_duration)?;
+    write_ghostty_cursor_palette_shaders(&shaders_dest, registry, glow_level, trail_duration)?;
 
     Ok(true)
-}
-
-fn write_data_driven_cursor_shaders(
-    shaders_dest: &Path,
-    registry: &CursorRegistry,
-    glow_level: &str,
-    trail_duration: f64,
-) -> Result<(), CoreError> {
-    let data_driven = registry
-        .enabled_definitions()
-        .into_iter()
-        .filter(|definition| matches!(definition.family, CursorFamily::Mono | CursorFamily::Split))
-        .collect::<Vec<_>>();
-    if data_driven.is_empty() {
-        return Ok(());
-    }
-
-    let common_path = shaders_dest.join("cursor_trail_common.glsl");
-    let common = fs::read_to_string(&common_path).map_err(|source| {
-        CoreError::io(
-            "read_ghostty_shader_common",
-            "Could not read the copied Ghostty cursor shader common library",
-            "Reinstall Yazelix so the runtime includes configs/terminal_emulators/ghostty/shaders/cursor_trail_common.glsl.",
-            common_path.to_string_lossy(),
-            source,
-        )
-    })?;
-    let glow_header = render_trail_glow_header(glow_level);
-
-    for definition in data_driven {
-        let output_path = shaders_dest.join(format!("cursor_trail_{}.glsl", definition.name));
-        let rendered = format!(
-            "{}{}\n{}",
-            glow_header,
-            common,
-            render_data_driven_cursor_variant(definition, trail_duration)
-        );
-        fs::write(&output_path, rendered).map_err(|source| {
-            CoreError::io(
-                "write_data_driven_cursor_shader",
-                "Could not write generated Ghostty cursor shader",
-                "Check permissions for the Yazelix state directory and retry.",
-                output_path.to_string_lossy(),
-                source,
-            )
-        })?;
-    }
-
-    Ok(())
-}
-
-fn render_data_driven_cursor_variant(definition: &CursorDefinition, duration_scale: f64) -> String {
-    let color_0 = definition.colors[0].glsl_vec4();
-    let color_1 = definition.colors[1].glsl_vec4();
-    match definition.family {
-        CursorFamily::Mono => {
-            let duration = format_ghostty_trail_duration(0.25 * duration_scale);
-            format!(
-                r#"// Generated Yazelix mono cursor variant
-
-const vec4 YAZELIX_CURSOR_COLOR_0 = {color_0};
-const vec4 YAZELIX_CURSOR_COLOR_1 = {color_1};
-const float DURATION = {duration};
-
-void mainImage(out vec4 fragColor, in vec2 fragCoord)
-{{
-    renderMonoColorTrail(fragColor, fragCoord, YAZELIX_CURSOR_COLOR_0, YAZELIX_CURSOR_COLOR_1, DURATION, .007, 1.5);
-}}
-"#
-            )
-        }
-        CursorFamily::Split => {
-            let duration = format_ghostty_trail_duration(0.24 * duration_scale);
-            let horizontal = match definition
-                .divider
-                .expect("validated split cursor definitions always have a divider")
-            {
-                SplitDivider::Vertical => "0.0",
-                SplitDivider::Horizontal => "1.0",
-            };
-            let transition = match definition
-                .transition
-                .expect("validated split cursor definitions always have a transition")
-            {
-                SplitTransition::Soft => "1.0",
-                SplitTransition::Hard => "0.0",
-            };
-            format!(
-                r#"// Generated Yazelix split cursor variant
-
-const vec4 YAZELIX_CURSOR_COLOR_0 = {color_0};
-const vec4 YAZELIX_CURSOR_COLOR_1 = {color_1};
-const float DURATION = {duration};
-const float YAZELIX_SPLIT_HORIZONTAL = {horizontal};
-const float YAZELIX_SPLIT_BLEND = {transition};
-
-void mainImage(out vec4 fragColor, in vec2 fragCoord)
-{{
-    renderSplitColorTrail(fragColor, fragCoord, YAZELIX_CURSOR_COLOR_0, YAZELIX_CURSOR_COLOR_1, DURATION, YAZELIX_SPLIT_HORIZONTAL, YAZELIX_SPLIT_BLEND);
-}}
-"#
-            )
-        }
-        CursorFamily::CuratedTemplate => String::new(),
-    }
-}
-
-fn render_trail_glow_header(glow_level: &str) -> String {
-    let profile = glow_profile(glow_level);
-    format!(
-        r#"// Generated by Yazelix with cursor glow = {glow_level}
-const float YAZELIX_TRAIL_GLOW_STRENGTH = {};
-const float YAZELIX_TRAIL_GLOW_WIDTH_SCALE = {};
-const float YAZELIX_CURSOR_GLOW_STRENGTH = {};
-const float YAZELIX_CURSOR_GLOW_WIDTH_SCALE = {};
-const float YAZELIX_TRAIL_EDGE_WIDTH_SCALE = {};
-const float YAZELIX_CURSOR_EDGE_WIDTH_SCALE = {};
-const float YAZELIX_TRAIL_CORE_OFFSET_SCALE = {};
-
-"#,
-        profile.trail_glow_strength,
-        profile.trail_glow_width_scale,
-        profile.cursor_glow_strength,
-        profile.cursor_glow_width_scale,
-        profile.trail_edge_width_scale,
-        profile.cursor_edge_width_scale,
-        profile.trail_core_offset_scale,
-    )
-}
-
-struct GlowProfile {
-    trail_glow_strength: &'static str,
-    cursor_glow_strength: &'static str,
-    trail_edge_width_scale: &'static str,
-    cursor_edge_width_scale: &'static str,
-    trail_core_offset_scale: &'static str,
-    trail_glow_width_scale: &'static str,
-    cursor_glow_width_scale: &'static str,
-}
-
-fn glow_profile(glow_level: &str) -> GlowProfile {
-    match glow_level {
-        "none" => GlowProfile {
-            trail_glow_strength: "0.0",
-            cursor_glow_strength: "0.0",
-            trail_edge_width_scale: "0.0",
-            cursor_edge_width_scale: "0.0",
-            trail_core_offset_scale: "0.0",
-            trail_glow_width_scale: "1.0",
-            cursor_glow_width_scale: "1.0",
-        },
-        "low" => GlowProfile {
-            trail_glow_strength: "1.0",
-            cursor_glow_strength: "1.0",
-            trail_edge_width_scale: "1.0",
-            cursor_edge_width_scale: "1.0",
-            trail_core_offset_scale: "1.0",
-            trail_glow_width_scale: "0.55",
-            cursor_glow_width_scale: "0.6",
-        },
-        "high" => GlowProfile {
-            trail_glow_strength: "1.0",
-            cursor_glow_strength: "1.0",
-            trail_edge_width_scale: "1.0",
-            cursor_edge_width_scale: "1.0",
-            trail_core_offset_scale: "1.0",
-            trail_glow_width_scale: "1.7",
-            cursor_glow_width_scale: "1.6",
-        },
-        _ => GlowProfile {
-            trail_glow_strength: "1.0",
-            cursor_glow_strength: "1.0",
-            trail_edge_width_scale: "1.0",
-            cursor_edge_width_scale: "1.0",
-            trail_core_offset_scale: "1.0",
-            trail_glow_width_scale: "1.0",
-            cursor_glow_width_scale: "1.0",
-        },
-    }
 }
 
 fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io::Result<()> {
