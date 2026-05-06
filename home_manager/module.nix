@@ -121,6 +121,8 @@ let
           types.str
         else if field.kind == "string_list" then
           types.listOf types.str
+        else if field.kind == "string_list_map" then
+          types.attrsOf (types.listOf types.str)
         else if field.kind == "int" then
           types.int
         else if field.kind == "float" then
@@ -168,6 +170,14 @@ let
       toString value
     else if builtins.isList value then
       listToToml value
+    else if builtins.isAttrs value then
+      "{ "
+      + concatStringsSep ", " (
+        map (name: "${name} = ${renderTomlValue (builtins.getAttr name value)}") (
+          builtins.attrNames value
+        )
+      )
+      + " }"
     else
       escapeString value;
 
@@ -592,6 +602,16 @@ in
         Startup mode for new Zellij sessions.
         - "normal": Yazelix default, starts unlocked
         - "locked": start in Zellij locked mode for compatibility with other TUIs
+      '';
+    };
+
+    zellij_keybindings = mkMainContractOption "zellij.keybindings" {
+      description = ''
+        Semantic remaps for Yazelix-owned Zellij actions.
+
+        Keys are action ids such as "popup", "menu", "toggle_sidebar", and
+        "move_focus_left_or_tab"; values are lists of Zellij key strings. Use an
+        empty list to disable the generated binding for one action.
       '';
     };
 

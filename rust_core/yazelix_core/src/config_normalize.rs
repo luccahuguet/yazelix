@@ -876,6 +876,28 @@ mod tests {
         assert_eq!(error.code(), "unsupported_config");
     }
 
+    // Defends: semantic Zellij keybinding remaps flow through the main config contract as a typed action map.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn normalizes_zellij_keybinding_map() {
+        let path = write_user_config(
+            r#"
+[zellij.keybindings]
+menu = ["Alt Space"]
+toggle_sidebar = []
+"#,
+        );
+        let data = normalize_config(&request_for(path)).unwrap();
+        let keybindings = data
+            .normalized_config
+            .get("zellij_keybindings")
+            .and_then(JsonValue::as_object)
+            .expect("zellij keybindings");
+
+        assert_eq!(keybindings["menu"], json!(["Alt Space"]));
+        assert_eq!(keybindings["toggle_sidebar"], json!([]));
+    }
+
     // Defends: removed config surfaces fail as unsupported config instead of being silently accepted.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]

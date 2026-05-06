@@ -70,6 +70,18 @@
       "type": "object",
       "description": "Zellij chrome, widgets, popup, and screen-saver settings",
       "additionalProperties": true,
+      "properties": {
+        "keybindings": {
+          "type": "object",
+          "description": "Semantic remaps for Yazelix-owned Zellij actions",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "x-yazelix": {
         "tab": "workspace"
       }

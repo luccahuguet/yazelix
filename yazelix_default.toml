@@ -233,6 +233,23 @@ screen_saver_style = "random"
 # Options: "normal", "locked"
 default_mode = "normal"
 
+[zellij.keybindings]
+# Semantic remaps for Yazelix-owned Zellij actions.
+# Each value is a list of Zellij key strings. Set an action to [] to disable
+# that Yazelix-owned binding. Native Zellij keybind ownership still belongs in
+# ~/.config/yazelix/zellij.kdl.
+open_workspace_terminal = ["Alt m"]
+popup = ["Alt t"]
+menu = ["Alt Shift M"]
+config = ["Alt Shift C"]
+move_focus_left_or_tab = ["Alt h", "Alt Left"]
+move_focus_right_or_tab = ["Alt l", "Alt Right"]
+toggle_editor_sidebar_focus = ["Ctrl y"]
+toggle_sidebar = ["Alt y"]
+smart_reveal = ["Alt r"]
+previous_family = ["Alt ["]
+next_family = ["Alt ]"]
+
 [yazi]
 # Custom Yazi binary override.
 # Leave empty to use `yazi` from PATH.

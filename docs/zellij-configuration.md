@@ -127,6 +127,21 @@ keybinds {
 
 Sidebar commands such as `toggle_sidebar`, `toggle_editor_sidebar_focus`, and `focus_sidebar` are the stable pane-orchestrator contract. The default keys (`Alt+y`, `Ctrl+y`) are just Yazelix's shipped policy.
 
+For Yazelix-owned Zellij action remaps, prefer `settings.jsonc` semantic keys instead of copying the whole Zellij `keybinds` block:
+```jsonc
+"zellij": {
+  "keybindings": {
+    "popup": ["Alt p"],
+    "menu": ["Alt Space"],
+    "toggle_sidebar": ["Alt y"],
+    "move_focus_left_or_tab": ["Alt h", "Alt Left"],
+    "move_focus_right_or_tab": ["Alt l", "Alt Right"]
+  }
+}
+```
+
+Supported action ids are `open_workspace_terminal`, `popup`, `menu`, `config`, `move_focus_left_or_tab`, `move_focus_right_or_tab`, `toggle_editor_sidebar_focus`, `toggle_sidebar`, `smart_reveal`, `previous_family`, and `next_family`. Omitted actions keep their defaults. Set an action to `[]` to disable Yazelix's generated binding for that action. Yazelix rejects duplicate keys across this semantic map before launch.
+
 For full native Zellij keybinding ownership inside Yazelix, use `keybinds clear-defaults=true` in the explicit Yazelix-managed sidecar `~/.config/yazelix/zellij.kdl`:
 ```kdl
 keybinds clear-defaults=true {
@@ -136,7 +151,7 @@ keybinds clear-defaults=true {
 }
 ```
 
-In this mode Yazelix preserves your `clear-defaults` block and does not append its shipped Zellij integration keybindings. Recreate any Yazelix actions you still want, such as `toggle_sidebar` or `toggle_transient_pane`, in your own keybinds block.
+In this mode Yazelix preserves your `clear-defaults` block and does not append its shipped Zellij integration keybindings or semantic `zellij.keybindings` remaps. Recreate any Yazelix actions you still want, such as `toggle_sidebar` or `toggle_transient_pane`, in your own keybinds block.
 
 This full-ownership mode is not inferred from the read-only native fallback `~/.config/zellij/config.kdl`. If Yazelix is only borrowing that native file because `~/.config/yazelix/zellij.kdl` is absent, Yazelix still appends its integration keybindings so managed popup/menu/sidebar focus behavior keeps working.
 

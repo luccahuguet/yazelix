@@ -457,6 +457,17 @@ write_support = "settings_jsonc"
 home_manager_behavior = "read_only_in_ui"
 lifecycle = "stable"
 
+[fields."zellij.keybindings"]
+tab = "keybindings"
+group = "zellij"
+label = "zellij_keybindings"
+help = "Remap Yazelix-owned Zellij actions without copying the full Zellij keybind block"
+editor = "object"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
 [fields."yazi.command"]
 tab = "file_manager"
 group = "command"

@@ -26,9 +26,23 @@ const REQUIRED_PANE_ORCHESTRATOR_PIPE_COMMANDS: &[&str] = &[
     "toggle_transient_pane",
 ];
 
-const OVERRIDE_BOUND_PIPE_COMMANDS: &[&str] = &[
+const SEMANTIC_KEYBINDING_BOUND_PIPE_COMMANDS: &[&str] = &[
     "open_workspace_terminal",
     "toggle_transient_pane",
+    "move_focus_left_or_tab",
+    "move_focus_right_or_tab",
+    "toggle_editor_sidebar_focus",
+    "toggle_sidebar",
+    "smart_reveal",
+    "previous_family",
+    "next_family",
+];
+
+const REQUIRED_ZELLIJ_SEMANTIC_ACTION_IDS: &[&str] = &[
+    "open_workspace_terminal",
+    "popup",
+    "menu",
+    "config",
     "move_focus_left_or_tab",
     "move_focus_right_or_tab",
     "toggle_editor_sidebar_focus",
@@ -77,11 +91,27 @@ fn validate_pane_orchestrator_pipe_surface(repo_root: &Path) -> Result<Vec<Strin
         }
     }
 
-    let overrides = read_repo_file(repo_root, &["configs", "zellij", "yazelix_overrides.kdl"])?;
-    for command in OVERRIDE_BOUND_PIPE_COMMANDS {
-        if !overrides.contains(&format!("name \"{command}\"")) {
+    let materialization = read_repo_file(
+        repo_root,
+        &[
+            "rust_core",
+            "yazelix_core",
+            "src",
+            "zellij_materialization.rs",
+        ],
+    )?;
+    for command in SEMANTIC_KEYBINDING_BOUND_PIPE_COMMANDS {
+        if !materialization.contains(&format!("message_name: \"{command}\"")) {
             errors.push(format!(
-                "Yazelix Zellij overrides no longer bind required pane-orchestrator command `{command}`"
+                "Yazelix semantic Zellij keybindings no longer generate required pane-orchestrator command `{command}`"
+            ));
+        }
+    }
+    let default_config = read_repo_file(repo_root, &["yazelix_default.toml"])?;
+    for action in REQUIRED_ZELLIJ_SEMANTIC_ACTION_IDS {
+        if !default_config.contains(&format!("{action} = [")) {
+            errors.push(format!(
+                "Default config no longer declares semantic Zellij keybinding action `{action}`"
             ));
         }
     }

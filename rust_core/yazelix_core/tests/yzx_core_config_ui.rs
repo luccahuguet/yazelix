@@ -229,6 +229,7 @@ fn config_ui_metadata_covers_visible_fields_and_tabs() {
         "float",
         "read_only",
         "list",
+        "object",
     ]
     .into_iter()
     .collect::<std::collections::BTreeSet<_>>();

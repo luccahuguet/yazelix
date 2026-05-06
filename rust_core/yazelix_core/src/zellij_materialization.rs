@@ -33,7 +33,8 @@ const PANE_ORCHESTRATOR_WASM_NAME: &str = "yazelix_pane_orchestrator.wasm";
 const ZJSTATUS_PLUGIN_PREFIX: &str = "zjstatus";
 const ZJSTATUS_WASM_NAME: &str = "zjstatus.wasm";
 const GENERATION_METADATA_NAME: &str = ".yazelix_generation.json";
-const GENERATION_FINGERPRINT_SCHEMA_VERSION: u64 = 2;
+const GENERATION_FINGERPRINT_SCHEMA_VERSION: u64 = 3;
+const ZELLIJ_KEYBINDINGS_CONFIG_KEY: &str = "zellij_keybindings";
 
 const PANE_ORCHESTRATOR_PLUGIN_URL_PLACEHOLDER: &str = "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__";
 const HOME_DIR_PLACEHOLDER: &str = "__YAZELIX_HOME_DIR__";
@@ -52,6 +53,95 @@ const ZJSTATUS_REQUIRED_PERMISSIONS: &[&str] = &[
     "ReadApplicationState",
     "ChangeApplicationState",
     "RunCommands",
+];
+
+#[derive(Debug, Clone, Copy)]
+struct ZellijKeybindingActionSpec {
+    id: &'static str,
+    mode: &'static str,
+    message_name: &'static str,
+    payload: Option<&'static str>,
+    default_keys: &'static [&'static str],
+}
+
+const ZELLIJ_KEYBINDING_ACTIONS: &[ZellijKeybindingActionSpec] = &[
+    ZellijKeybindingActionSpec {
+        id: "open_workspace_terminal",
+        mode: "shared",
+        message_name: "open_workspace_terminal",
+        payload: None,
+        default_keys: &["Alt m"],
+    },
+    ZellijKeybindingActionSpec {
+        id: "popup",
+        mode: "shared",
+        message_name: "toggle_transient_pane",
+        payload: Some("popup"),
+        default_keys: &["Alt t"],
+    },
+    ZellijKeybindingActionSpec {
+        id: "menu",
+        mode: "shared",
+        message_name: "toggle_transient_pane",
+        payload: Some("menu"),
+        default_keys: &["Alt Shift M"],
+    },
+    ZellijKeybindingActionSpec {
+        id: "config",
+        mode: "shared",
+        message_name: "toggle_transient_pane",
+        payload: Some("config"),
+        default_keys: &["Alt Shift C"],
+    },
+    ZellijKeybindingActionSpec {
+        id: "move_focus_left_or_tab",
+        mode: "shared_except \"locked\"",
+        message_name: "move_focus_left_or_tab",
+        payload: None,
+        default_keys: &["Alt h", "Alt Left"],
+    },
+    ZellijKeybindingActionSpec {
+        id: "move_focus_right_or_tab",
+        mode: "shared_except \"locked\"",
+        message_name: "move_focus_right_or_tab",
+        payload: None,
+        default_keys: &["Alt l", "Alt Right"],
+    },
+    ZellijKeybindingActionSpec {
+        id: "toggle_editor_sidebar_focus",
+        mode: "shared_except \"locked\"",
+        message_name: "toggle_editor_sidebar_focus",
+        payload: None,
+        default_keys: &["Ctrl y"],
+    },
+    ZellijKeybindingActionSpec {
+        id: "toggle_sidebar",
+        mode: "shared_except \"locked\"",
+        message_name: "toggle_sidebar",
+        payload: None,
+        default_keys: &["Alt y"],
+    },
+    ZellijKeybindingActionSpec {
+        id: "smart_reveal",
+        mode: "shared_except \"locked\"",
+        message_name: "smart_reveal",
+        payload: None,
+        default_keys: &["Alt r"],
+    },
+    ZellijKeybindingActionSpec {
+        id: "previous_family",
+        mode: "shared_except \"locked\"",
+        message_name: "previous_family",
+        payload: None,
+        default_keys: &["Alt ["],
+    },
+    ZellijKeybindingActionSpec {
+        id: "next_family",
+        mode: "shared_except \"locked\"",
+        message_name: "next_family",
+        payload: None,
+        default_keys: &["Alt ]"],
+    },
 ];
 
 #[derive(Debug, Clone)]
@@ -138,6 +228,7 @@ pub fn generate_zellij_materialization(
     let base_config_source = resolve_base_config_source()?;
     cleanup_legacy_popup_runner_artifacts(&state_dir)?;
     let plugin_artifacts = resolve_plugin_artifacts(&request.runtime_dir, &state_dir)?;
+    let zellij_keybindings = resolve_zellij_keybindings(&config)?;
     let reuse_allowed = string_config(&config, "zellij_theme", "default") != "random";
     let generation_fingerprint = build_generation_fingerprint(
         &config,
@@ -146,6 +237,7 @@ pub fn generate_zellij_materialization(
         &resolved_default_shell,
         &source_layouts_dir,
         &plugin_artifacts,
+        &zellij_keybindings,
     )?;
     if reuse_allowed
         && can_reuse_generated_zellij_state(
@@ -221,6 +313,7 @@ pub fn generate_zellij_materialization(
         &request.runtime_dir,
         &base_config_source.content,
         base_config_source.source == "managed",
+        &zellij_keybindings,
         &render_plan,
         &pane_orchestrator_runtime_path,
     )?;
@@ -435,6 +528,7 @@ fn render_merged_config(
     runtime_dir: &Path,
     base_config_content: &str,
     preserve_keybinds_clear_defaults: bool,
+    zellij_keybindings: &BTreeMap<String, Vec<String>>,
     render_plan: &ZellijRenderPlanData,
     pane_orchestrator_wasm_path: &Path,
 ) -> Result<String, CoreError> {
@@ -443,7 +537,8 @@ fn render_merged_config(
         .join("configs")
         .join("zellij")
         .join("yazelix_overrides.kdl");
-    let override_keybinds = read_yazelix_override_keybinds(&overrides_path, runtime_dir)?;
+    let override_keybinds =
+        read_yazelix_override_keybinds(&overrides_path, runtime_dir, zellij_keybindings)?;
     let base_config = strip_yazelix_owned_top_level_settings(
         &extracted_blocks.config_without_semantic_blocks,
         &render_plan.owned_top_level_setting_names,
@@ -716,9 +811,138 @@ fn strip_yazelix_owned_top_level_settings(content: &str, owned_setting_names: &[
         .join("\n")
 }
 
+fn default_zellij_keybindings() -> BTreeMap<String, Vec<String>> {
+    ZELLIJ_KEYBINDING_ACTIONS
+        .iter()
+        .map(|spec| {
+            (
+                spec.id.to_string(),
+                spec.default_keys
+                    .iter()
+                    .map(|key| (*key).to_string())
+                    .collect(),
+            )
+        })
+        .collect()
+}
+
+fn resolve_zellij_keybindings(
+    config: &JsonMap<String, JsonValue>,
+) -> Result<BTreeMap<String, Vec<String>>, CoreError> {
+    let mut resolved = default_zellij_keybindings();
+    let Some(value) = config.get(ZELLIJ_KEYBINDINGS_CONFIG_KEY) else {
+        validate_zellij_keybindings(&resolved)?;
+        return Ok(resolved);
+    };
+    let Some(object) = value.as_object() else {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "invalid_zellij_keybindings",
+            "zellij.keybindings must be an object whose values are lists of Zellij key strings.",
+            "Use settings such as `\"popup\": [\"Alt t\"]`, or remove zellij.keybindings to use Yazelix defaults.",
+            json!({ "actual": value }),
+        ));
+    };
+
+    for (action, raw_keys) in object {
+        if !is_supported_zellij_keybinding_action(action) {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "unsupported_zellij_keybinding_action",
+                format!("Unsupported Zellij keybinding action: {action}."),
+                "Use one of the supported Yazelix Zellij action ids, or remove the unsupported keybinding entry.",
+                json!({
+                    "action": action,
+                    "supported_actions": supported_zellij_keybinding_actions(),
+                }),
+            ));
+        }
+        let Some(values) = raw_keys.as_array() else {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "invalid_zellij_keybinding_keys",
+                format!("zellij.keybindings.{action} must be a list of Zellij key strings."),
+                "Use a list such as `[\"Alt t\"]`, or an empty list to disable that Yazelix action binding.",
+                json!({ "action": action, "actual": raw_keys }),
+            ));
+        };
+        let mut keys = Vec::with_capacity(values.len());
+        for value in values {
+            let Some(raw_key) = value.as_str() else {
+                return Err(CoreError::classified(
+                    ErrorClass::Config,
+                    "invalid_zellij_keybinding_key",
+                    format!("zellij.keybindings.{action} contains a non-string key."),
+                    "Use Zellij key strings such as \"Alt t\" or \"Ctrl y\".",
+                    json!({ "action": action, "actual": value }),
+                ));
+            };
+            let key = raw_key.trim();
+            if key.is_empty() || key.contains('\n') || key.contains('\r') {
+                return Err(CoreError::classified(
+                    ErrorClass::Config,
+                    "invalid_zellij_keybinding_key",
+                    format!("zellij.keybindings.{action} contains an invalid key string."),
+                    "Use a non-empty single-line Zellij key string such as \"Alt t\".",
+                    json!({ "action": action, "actual": raw_key }),
+                ));
+            }
+            keys.push(key.to_string());
+        }
+        resolved.insert(action.clone(), keys);
+    }
+
+    validate_zellij_keybindings(&resolved)?;
+    Ok(resolved)
+}
+
+fn validate_zellij_keybindings(
+    keybindings: &BTreeMap<String, Vec<String>>,
+) -> Result<(), CoreError> {
+    let mut seen = BTreeMap::<String, String>::new();
+    for spec in ZELLIJ_KEYBINDING_ACTIONS {
+        let Some(keys) = keybindings.get(spec.id) else {
+            continue;
+        };
+        for key in keys {
+            if let Some(existing_action) = seen.insert(key.clone(), spec.id.to_string()) {
+                return Err(CoreError::classified(
+                    ErrorClass::Config,
+                    "duplicate_zellij_keybinding",
+                    format!(
+                        "Zellij keybinding {key:?} is assigned to both {existing_action} and {}.",
+                        spec.id
+                    ),
+                    "Give each Yazelix Zellij action a distinct key, or set one action to an empty list to disable its binding.",
+                    json!({
+                        "key": key,
+                        "first_action": existing_action,
+                        "second_action": spec.id,
+                    }),
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn is_supported_zellij_keybinding_action(action: &str) -> bool {
+    ZELLIJ_KEYBINDING_ACTIONS
+        .iter()
+        .any(|spec| spec.id == action)
+}
+
+fn supported_zellij_keybinding_actions() -> Vec<&'static str> {
+    ZELLIJ_KEYBINDING_ACTIONS
+        .iter()
+        .map(|spec| spec.id)
+        .collect()
+}
+
 fn read_yazelix_override_keybinds(
     overrides_path: &Path,
     runtime_dir: &Path,
+    zellij_keybindings: &BTreeMap<String, Vec<String>>,
 ) -> Result<Vec<String>, CoreError> {
     if !overrides_path.exists() {
         return Err(CoreError::classified(
@@ -741,7 +965,103 @@ fn read_yazelix_override_keybinds(
             RUNTIME_DIR_PLACEHOLDER,
             runtime_dir.to_string_lossy().as_ref(),
         );
-    Ok(extract_semantic_config_blocks(&content).keybind_lines)
+    let assigned_keys = assigned_zellij_keybinding_keys(zellij_keybindings);
+    let mut keybind_lines = extract_semantic_config_blocks(&content)
+        .keybind_lines
+        .into_iter()
+        .filter(|line| !unbind_line_conflicts_with_semantic_key(line, &assigned_keys))
+        .collect::<Vec<_>>();
+    keybind_lines.extend(build_semantic_zellij_keybind_lines(zellij_keybindings));
+    Ok(keybind_lines)
+}
+
+fn assigned_zellij_keybinding_keys(
+    keybindings: &BTreeMap<String, Vec<String>>,
+) -> BTreeSet<String> {
+    keybindings
+        .values()
+        .flatten()
+        .cloned()
+        .collect::<BTreeSet<_>>()
+}
+
+fn unbind_line_conflicts_with_semantic_key(line: &str, assigned_keys: &BTreeSet<String>) -> bool {
+    let trimmed = line.trim();
+    trimmed.starts_with("unbind ")
+        && quoted_kdl_strings(trimmed)
+            .iter()
+            .any(|key| assigned_keys.contains(key))
+}
+
+fn quoted_kdl_strings(line: &str) -> Vec<String> {
+    let mut strings = Vec::new();
+    let mut chars = line.chars().peekable();
+    while let Some(character) = chars.next() {
+        if character != '"' {
+            continue;
+        }
+        let mut value = String::new();
+        let mut escaped = false;
+        for next in chars.by_ref() {
+            if escaped {
+                value.push(next);
+                escaped = false;
+            } else if next == '\\' {
+                escaped = true;
+            } else if next == '"' {
+                break;
+            } else {
+                value.push(next);
+            }
+        }
+        strings.push(value);
+    }
+    strings
+}
+
+fn build_semantic_zellij_keybind_lines(keybindings: &BTreeMap<String, Vec<String>>) -> Vec<String> {
+    let mut by_mode = BTreeMap::<&str, Vec<String>>::new();
+    for spec in ZELLIJ_KEYBINDING_ACTIONS {
+        let Some(keys) = keybindings.get(spec.id) else {
+            continue;
+        };
+        if keys.is_empty() {
+            continue;
+        }
+        let mode_lines = by_mode.entry(spec.mode).or_default();
+        push_zellij_message_bind(mode_lines, keys, spec.message_name, spec.payload);
+    }
+
+    let mut lines = Vec::new();
+    for (mode, binds) in by_mode {
+        if !lines.is_empty() {
+            lines.push(String::new());
+        }
+        lines.push(format!("    {mode} {{"));
+        lines.extend(binds);
+        lines.push("    }".to_string());
+    }
+    lines
+}
+
+fn push_zellij_message_bind(
+    lines: &mut Vec<String>,
+    keys: &[String],
+    message_name: &str,
+    payload: Option<&str>,
+) {
+    let key_list = keys.iter().map(json_quote).collect::<Vec<_>>().join(" ");
+    lines.push(format!("        bind {key_list} {{"));
+    lines.push(format!(
+        "            MessagePlugin {} {{",
+        json_quote(PANE_ORCHESTRATOR_PLUGIN_ALIAS)
+    ));
+    lines.push(format!("                name {}", json_quote(message_name)));
+    if let Some(payload) = payload {
+        lines.push(format!("                payload {}", json_quote(payload)));
+    }
+    lines.push("            }".to_string());
+    lines.push("        }".to_string());
 }
 
 fn block_with_lines(name: &str, lines: &[String]) -> String {
@@ -1522,6 +1842,7 @@ fn build_generation_fingerprint(
     resolved_default_shell: &str,
     source_layouts_dir: &Path,
     plugin_artifacts: &[PluginArtifact],
+    zellij_keybindings: &BTreeMap<String, Vec<String>>,
 ) -> Result<String, CoreError> {
     let overrides_path = runtime_dir
         .join("configs")
@@ -1572,6 +1893,7 @@ fn build_generation_fingerprint(
         "zellij_pane_frames": string_config(config, "zellij_pane_frames", "true"),
         "zellij_rounded_corners": string_config(config, "zellij_rounded_corners", "true"),
         "zellij_theme": string_config(config, "zellij_theme", "default"),
+        "zellij_keybindings": zellij_keybindings,
     });
     let fingerprint_payload = json!({
         "schema_version": GENERATION_FINGERPRINT_SCHEMA_VERSION,
@@ -1866,6 +2188,10 @@ mod tests {
         .unwrap()
     }
 
+    fn sample_zellij_keybindings() -> BTreeMap<String, Vec<String>> {
+        default_zellij_keybindings()
+    }
+
     // Regression: plugin permission seeding must write the same cache file that Zellij reads on each platform.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
@@ -1999,6 +2325,7 @@ keybinds {
 }
 "#,
             false,
+            &sample_zellij_keybindings(),
             &plan,
             Path::new("/tmp/pane.wasm"),
         )
@@ -2044,6 +2371,7 @@ keybinds {
 }
 "#,
             true,
+            &sample_zellij_keybindings(),
             &plan,
             Path::new("/tmp/pane.wasm"),
         )
@@ -2294,57 +2622,112 @@ keybinds {
         assert!(!plugin_name_matches_prefix("not_zjstatus.wasm", "zjstatus"));
     }
 
-    // Regression: the shipped override keybinds keep popup/menu and sidebar-focus actions on the pane orchestrator instead of reviving helper panes.
+    // Regression: semantic keybinding generation keeps popup/menu and sidebar-focus actions on the pane orchestrator instead of reviving helper panes.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn override_keybinds_keep_pane_orchestrator_contract() {
+    fn semantic_keybinds_keep_pane_orchestrator_contract() {
         let temp = tempfile::tempdir().unwrap();
         let overrides_path = temp.path().join("yazelix_overrides.kdl");
         std::fs::write(
             &overrides_path,
             r#"
 keybinds {
-    normal {
-        bind "Alt t" {
-            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
-                name "toggle_transient_pane"
-                payload "popup"
-            }
-        }
-        bind "Alt Shift M" {
-            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
-                name "toggle_transient_pane"
-                payload "menu"
-            }
-        }
-        bind "Alt Shift C" {
-            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
-                name "toggle_transient_pane"
-                payload "config"
-            }
-        }
-        bind "Ctrl y" {
-            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
-                name "toggle_editor_sidebar_focus"
-                payload "__YAZELIX_RUNTIME_DIR__"
-            }
-        }
+    shared {
+        unbind "Alt p"
     }
 }
 "#,
         )
         .unwrap();
-        let override_lines =
-            read_yazelix_override_keybinds(&overrides_path, std::path::Path::new("/opt/yazelix"))
-                .unwrap();
+        let override_lines = read_yazelix_override_keybinds(
+            &overrides_path,
+            std::path::Path::new("/opt/yazelix"),
+            &sample_zellij_keybindings(),
+        )
+        .unwrap();
         let merged = override_lines.join("\n");
 
         assert!(merged.contains("toggle_transient_pane"));
+        assert!(merged.contains("open_workspace_terminal"));
         assert!(merged.contains("payload \"popup\""));
         assert!(merged.contains("payload \"menu\""));
         assert!(merged.contains("payload \"config\""));
         assert!(merged.contains("toggle_editor_sidebar_focus"));
+        assert!(merged.contains("move_focus_left_or_tab"));
         assert!(!merged.contains("yazelix_popup_runner.wasm"));
+    }
+
+    // Defends: semantic remaps replace Yazelix-owned Zellij action keys without copying the full keybind block.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn semantic_keybinds_honor_user_remaps_and_drop_matching_unbinds() {
+        let temp = tempfile::tempdir().unwrap();
+        let overrides_path = temp.path().join("yazelix_overrides.kdl");
+        std::fs::write(
+            &overrides_path,
+            r#"
+keybinds {
+    shared {
+        unbind "Alt p"
+    }
+}
+"#,
+        )
+        .unwrap();
+        let mut keybindings = sample_zellij_keybindings();
+        keybindings.insert("popup".to_string(), vec!["Alt p".to_string()]);
+        keybindings.insert("menu".to_string(), vec!["Alt Space".to_string()]);
+        validate_zellij_keybindings(&keybindings).unwrap();
+
+        let merged = read_yazelix_override_keybinds(
+            &overrides_path,
+            std::path::Path::new("/opt/yazelix"),
+            &keybindings,
+        )
+        .unwrap()
+        .join("\n");
+
+        assert!(!merged.contains(r#"unbind "Alt p""#));
+        assert!(merged.contains(r#"bind "Alt p" {"#));
+        assert!(merged.contains(r#"payload "popup""#));
+        assert!(merged.contains(r#"bind "Alt Space" {"#));
+        assert!(merged.contains(r#"payload "menu""#));
+        assert!(!merged.contains(r#"bind "Alt t" {"#));
+        assert!(!merged.contains(r#"bind "Alt Shift M" {"#));
+    }
+
+    // Defends: generated semantic Zellij action bindings fail fast when two actions claim the same key.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn semantic_keybinds_reject_duplicate_action_keys() {
+        let mut keybindings = sample_zellij_keybindings();
+        keybindings.insert("popup".to_string(), vec!["Alt Space".to_string()]);
+        keybindings.insert("menu".to_string(), vec!["Alt Space".to_string()]);
+
+        let error = validate_zellij_keybindings(&keybindings).unwrap_err();
+
+        assert_eq!(error.code(), "duplicate_zellij_keybinding");
+        assert_eq!(error.class().as_str(), "config");
+    }
+
+    // Defends: partial settings.jsonc remaps inherit defaults for omitted Yazelix-owned Zellij actions.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn partial_zellij_keybinding_config_inherits_omitted_defaults() {
+        let mut config = JsonMap::new();
+        config.insert(
+            ZELLIJ_KEYBINDINGS_CONFIG_KEY.to_string(),
+            json!({
+                "menu": ["Alt Space"],
+                "toggle_sidebar": [],
+            }),
+        );
+
+        let keybindings = resolve_zellij_keybindings(&config).unwrap();
+
+        assert_eq!(keybindings["menu"], vec!["Alt Space"]);
+        assert_eq!(keybindings["toggle_sidebar"], Vec::<String>::new());
+        assert_eq!(keybindings["popup"], vec!["Alt t"]);
     }
 
     // Regression: pane-orchestrator plugin config must carry one shared sidebar/popup/runtime contract without duplicate alias injection.
