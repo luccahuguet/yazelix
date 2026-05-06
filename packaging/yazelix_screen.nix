@@ -21,7 +21,7 @@ let
         rustc = rustToolchain;
       };
   rustSource = lib.cleanSourceWith {
-    name = "yazelix-screen-source";
+    name = "yzs-source";
     src = src;
     filter =
       path: _type:
@@ -34,7 +34,7 @@ let
   };
 in
 rustPlatform.buildRustPackage {
-  pname = "yazelix-screen";
+  pname = "yzs";
   version = "0.1.0";
 
   src = rustSource;
@@ -51,7 +51,7 @@ rustPlatform.buildRustPackage {
   meta = {
     description = "Standalone terminal screen animations from Yazelix";
     homepage = "https://github.com/luccahuguet/yazelix";
-    license = pkgs.lib.licenses.mit;
-    mainProgram = "yazelix_screen";
+    license = pkgs.lib.licenses.asl20;
+    mainProgram = "yzs";
   };
 }

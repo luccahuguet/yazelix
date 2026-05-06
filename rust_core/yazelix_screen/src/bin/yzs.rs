@@ -92,9 +92,7 @@ fn parse_args(args: impl IntoIterator<Item = String>) -> Result<Args, String> {
             }
             other if style.is_none() => style = Some(other.to_string()),
             other => {
-                return Err(format!(
-                    "Unexpected argument `{other}`. Try `yazelix_screen --help`"
-                ));
+                return Err(format!("Unexpected argument `{other}`. Try `yzs --help`"));
             }
         }
     }
@@ -110,7 +108,7 @@ fn print_help() {
     println!("Show standalone Yazelix terminal screen animations");
     println!();
     println!("Usage:");
-    println!("  yazelix_screen [STYLE] [--cell-style full_block|dotted]");
+    println!("  yzs [STYLE] [--cell-style full_block|dotted]");
     println!();
     println!("Styles:");
     println!("  boids");
@@ -186,7 +184,7 @@ fn resolve_style(raw: &str, random_index: Option<usize>) -> Result<StandaloneSty
     }
 
     Err(format!(
-        "Unsupported standalone yazelix_screen style `{normalized}`. Try `yazelix_screen --help`"
+        "Unsupported standalone yzs style `{normalized}`. Try `yzs --help`"
     ))
 }
 

@@ -120,6 +120,7 @@
           yazelix_ghostty = yazelix_ghostty;
           yazelix_screen = yazelix_screen;
           yazelix_wezterm = yazelix_wezterm;
+          yzs = yazelix_screen;
         }
       );
 
@@ -146,7 +147,11 @@
         };
         yazelix_screen = {
           type = "app";
-          program = "${self.packages.${system}.yazelix_screen}/bin/yazelix_screen";
+          program = "${self.packages.${system}.yazelix_screen}/bin/yzs";
+        };
+        yzs = {
+          type = "app";
+          program = "${self.packages.${system}.yazelix_screen}/bin/yzs";
         };
       });
 

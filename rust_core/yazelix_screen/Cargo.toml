@@ -3,10 +3,16 @@ name = "yazelix_screen"
 version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
+description = "Standalone terminal screen animations from Yazelix"
+license = "Apache-2.0"
+repository = "https://github.com/luccahuguet/yazelix"
+readme = "README.md"
+keywords = ["animation", "terminal", "tui", "yazelix"]
+categories = ["command-line-utilities"]
 
 [[bin]]
-name = "yazelix_screen"
-path = "src/bin/yazelix_screen.rs"
+name = "yzs"
+path = "src/bin/yzs.rs"
 
 [dependencies]
 crossterm = "0.29"
