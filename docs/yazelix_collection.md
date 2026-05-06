@@ -22,7 +22,8 @@ Yazelix is built on a focused terminal-workspace stack. This catalog lists the p
 - `#runtime`, `#runtime_ghostty`, `#runtime_wezterm` — Runtime-only package outputs used by the wrapper packages and validation surfaces
 - `#yazelix_agent_tools` and `#runtime_agent_tools` — Opt-in runtime variants that add agent usage helpers such as `tokenusage`
 - `#yzs` and `#yazelix_screen` — Standalone terminal animation package forwarded from `luccahuguet/yazelix-screen` for the Yazelix screen engines outside Zellij and outside a full Yazelix session
-- `#yazelix_cursors` — Standalone Yazelix cursor package for Ghostty users, with generated GLSL files and example Ghostty config snippets
+- `#yazelix_cursors` — Standalone Yazelix cursor package for Ghostty users, with generated GLSL files, example Ghostty config snippets, and the `yzc` CLI
+- `#yzc` — Flake app for the standalone Yazelix cursor CLI
 - `#ghostty_cursor_shaders` — Compatibility package attribute for the same standalone cursor output
 - `homeManagerModules.yazelix` — The Home Manager module for declarative installs, with `runtime_variant = "ghostty"` by default and `"wezterm"` available explicitly
 

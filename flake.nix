@@ -154,6 +154,14 @@
           type = "app";
           program = "${self.packages.${system}.yazelix_screen}/bin/yzs";
         };
+        yazelix_cursors = {
+          type = "app";
+          program = "${self.packages.${system}.yazelix_cursors}/bin/yzc";
+        };
+        yzc = {
+          type = "app";
+          program = "${self.packages.${system}.yazelix_cursors}/bin/yzc";
+        };
       });
 
       devShells = forAllSystems (

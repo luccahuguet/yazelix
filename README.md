@@ -241,6 +241,7 @@ Yazelix uses a **layered configuration system** that safely merges your personal
 - **Yazi customization**: Use the built-in `yazi` settings in `settings.jsonc` for things like plugins, theme, sorting, and binary overrides, and use `~/.config/yazelix/yazi.toml`, `~/.config/yazelix/yazi_keymap.toml`, and `~/.config/yazelix/yazi_init.lua` for deeper merged overrides (see [Yazi Configuration](./docs/yazi-configuration.md))
 - **Zellij customization**: Use the built-in `zellij` settings in `settings.jsonc` for Yazelix-owned Zellij knobs, and use `~/.config/yazelix/zellij.kdl` for deeper managed Zellij overrides (see [Zellij Configuration](./docs/zellij-configuration.md))
 - **Status bar widgets**: Configure `[zellij].widget_tray` to order or hide `editor`, `shell`, `term`, `workspace`, `cursor`, usage, `cpu`, and `ram` widgets; the default cursor widget renders mono presets as colored `█ name` and split presets as one-cell split glyphs from the launch-scoped Ghostty cursor fact
+- **Standalone Ghostty cursors**: install `.#yazelix_cursors` or run `nix run .#yzc -- --help`; `yzc init` creates `~/.config/yazelix_cursors/settings.jsonc`, and `yzc generate ghostty` writes `~/.config/yazelix_cursors/ghostty.conf` for Ghostty's `config-file` include
 - **Your configs persist** across Yazelix updates without git conflicts
 - **Intelligent merging**: Generated Yazi and Zellij runtime configs are rebuilt from Yazelix defaults plus your managed overrides instead of forcing you to edit tracked runtime files
 - **Launch-time config snapshots**: each Yazelix window keeps the `settings.jsonc` snapshot it launched with; edit config whenever you want, then open a new Yazelix window or run `yzx restart` to apply it to live panes. Use repeatable `--with KEY=VALUE` on `yzx launch`, `yzx enter`, or `yzx restart` for session-only settings overrides
@@ -354,6 +355,7 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 - `yzx config set PATH JSON` - Set a supported `settings.jsonc` value while preserving comments
 - `yzx config unset PATH` - Remove an explicit `settings.jsonc` value so defaults apply
 - `yzx cursors` - Inspect Ghostty cursor presets, effects, and resolved colors
+- `yzc init/list/inspect/generate ghostty` - Manage standalone Yazelix cursor presets for Ghostty users outside a full Yazelix session
 - `yzx edit config` - Open the main managed Yazelix config file in your editor
 - `yzx restart [-s | --skip] [--config FILE] [--with KEY=VALUE]` - Restart Yazelix in a fresh window, optionally skipping the welcome screen, using an alternate settings file, or applying session-only settings overrides
 - `yzx doctor [--verbose] [--fix]` - Health checks and diagnostics

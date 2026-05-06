@@ -16,6 +16,10 @@ path = "src/bin/yzx_control.rs"
 name = "yzx"
 path = "src/bin/yzx.rs"
 
+[[bin]]
+name = "yzc"
+path = "src/bin/yzc.rs"
+
 [dependencies]
 crossterm = "0.29"
 directories = "5.0.1"

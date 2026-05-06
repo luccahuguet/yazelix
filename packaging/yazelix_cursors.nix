@@ -32,7 +32,7 @@ pkgs.runCommand "yazelix-cursors"
     shader_out="$share_dir/shaders"
     examples_dir="$share_dir/examples"
 
-    mkdir -p "$config_dir" "$state_dir" "$examples_dir"
+    mkdir -p "$config_dir" "$state_dir" "$examples_dir" "$out/bin"
 
     PATH="${pkgs.nushell}/bin:$PATH" \
       ${rustCoreHelper}/bin/yzx_core ghostty-materialization.generate \
@@ -47,6 +47,7 @@ pkgs.runCommand "yazelix-cursors"
     generated_config="$state_dir/configs/terminal_emulators/ghostty/config"
 
     cp -R "$generated_shaders" "$shader_out"
+    cp ${rustCoreHelper}/bin/yzc "$out/bin/yzc"
 
     cat > "$examples_dir/ghostty_blaze_tail.conf" <<EOF
 # Yazelix cursor shader example for Ghostty
@@ -60,6 +61,19 @@ EOF
 # Yazelix Cursors
 
 This package exports complete Ghostty cursor shader files generated from Yazelix cursor presets
+
+The package also includes the `yzc` CLI for standalone cursor config:
+
+\`\`\`bash
+yzc init
+yzc generate ghostty
+\`\`\`
+
+Then include the generated file from Ghostty:
+
+\`\`\`conf
+config-file = ~/.config/yazelix_cursors/ghostty.conf
+\`\`\`
 
 Use one cursor palette shader and one optional effect shader in your Ghostty config:
 
@@ -94,6 +108,7 @@ EOF
       $shader_out/generated_effects/tail.glsl
       $shader_out/generated_effects/ripple.glsl
       $examples_dir/ghostty_blaze_tail.conf
+      $out/bin/yzc
     "
     for required in $required_files; do
       test -s "$required"
