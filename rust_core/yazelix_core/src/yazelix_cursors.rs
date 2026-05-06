@@ -10,6 +10,8 @@ use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub const DEFAULT_CURSOR_CONFIG_FILENAME: &str = "yazelix_cursors_default.toml";
+pub const STANDALONE_CURSOR_CONFIG_DIR_NAME: &str = "yazelix_cursors";
+pub const STANDALONE_CURSOR_SETTINGS_FILENAME: &str = "settings.jsonc";
 pub const DEFAULT_GHOSTTY_TRAIL_DURATION: f64 = 1.0;
 pub const GHOSTTY_TRAIL_DURATION_MIN: f64 = 0.25;
 pub const GHOSTTY_TRAIL_DURATION_MAX: f64 = 4.0;
@@ -376,6 +378,115 @@ impl CursorColor {
             u8::from_str_radix(&self.hex[5..7], 16).unwrap_or(0),
         ]
     }
+}
+
+pub fn render_cursor_settings_jsonc(registry: &CursorRegistry) -> String {
+    let mut out = String::new();
+    out.push_str("// Yazelix Cursors settings\n");
+    out.push_str("// Edit this file through `yzx config ui`, `yzc init`, or your editor.\n");
+    out.push_str("// In Ghostty standalone setups, add: config-file = ~/.config/yazelix_cursors/ghostty.conf\n");
+    out.push_str("{\n");
+    out.push_str(&format!(
+        "  \"schema_version\": {},\n",
+        registry.schema_version
+    ));
+    out.push_str("  \"enabled_cursors\": [\n");
+    for (index, name) in registry.enabled_cursors.iter().enumerate() {
+        let comma = if index + 1 == registry.enabled_cursors.len() {
+            ""
+        } else {
+            ","
+        };
+        out.push_str(&format!("    \"{name}\"{comma}\n"));
+    }
+    out.push_str("  ],\n");
+    out.push_str("  \"settings\": {\n");
+    out.push_str(&format!(
+        "    \"trail\": \"{}\",\n",
+        registry.settings.trail
+    ));
+    out.push_str(&format!(
+        "    \"trail_effect\": \"{}\",\n",
+        registry.settings.trail_effect
+    ));
+    out.push_str(&format!(
+        "    \"mode_effect\": \"{}\",\n",
+        registry.settings.mode_effect
+    ));
+    out.push_str(&format!("    \"glow\": \"{}\",\n", registry.settings.glow));
+    out.push_str(&format!(
+        "    \"duration\": {},\n",
+        format_ghostty_trail_duration(registry.settings.duration)
+    ));
+    out.push_str(&format!(
+        "    \"kitty_enable_cursor\": {}\n",
+        registry.settings.kitty_enable_cursor
+    ));
+    out.push_str("  },\n");
+    out.push_str("  \"cursor\": [\n");
+    let definitions = registry.enabled_definitions();
+    for (index, definition) in definitions.iter().enumerate() {
+        let comma = if index + 1 == definitions.len() {
+            ""
+        } else {
+            ","
+        };
+        out.push_str(&render_cursor_definition_jsonc(definition, comma));
+    }
+    out.push_str("  ]\n");
+    out.push_str("}\n");
+    out
+}
+
+fn render_cursor_definition_jsonc(definition: &CursorDefinition, comma: &str) -> String {
+    let mut out = String::new();
+    out.push_str("    {\n");
+    out.push_str(&format!("      \"name\": \"{}\",\n", definition.name));
+    out.push_str(&format!(
+        "      \"family\": \"{}\",\n",
+        definition.family.as_str()
+    ));
+    match definition.family {
+        CursorFamily::Mono => {
+            out.push_str(&format!(
+                "      \"color\": \"{}\",\n",
+                definition.colors[0].hex
+            ));
+            out.push_str(&format!(
+                "      \"accent_color\": \"{}\",\n",
+                definition.colors[1].hex
+            ));
+        }
+        CursorFamily::Split => {
+            let divider = definition
+                .divider
+                .expect("validated split cursor definitions always have a divider");
+            let transition = definition
+                .transition
+                .expect("validated split cursor definitions always have a transition");
+            out.push_str(&format!("      \"divider\": \"{}\",\n", divider.as_str()));
+            out.push_str(&format!(
+                "      \"transition\": \"{}\",\n",
+                transition.as_str()
+            ));
+            out.push_str("      \"colors\": [\n");
+            out.push_str(&format!("        \"{}\",\n", definition.colors[0].hex));
+            out.push_str(&format!("        \"{}\"\n", definition.colors[1].hex));
+            out.push_str("      ],\n");
+        }
+        CursorFamily::CuratedTemplate => {
+            out.push_str(&format!(
+                "      \"template\": \"{}\",\n",
+                definition.template.as_deref().unwrap_or("neon")
+            ));
+        }
+    }
+    out.push_str(&format!(
+        "      \"cursor_color\": \"{}\"\n",
+        definition.cursor_color.hex
+    ));
+    out.push_str(&format!("    }}{comma}\n"));
+    out
 }
 
 fn validate_settings(

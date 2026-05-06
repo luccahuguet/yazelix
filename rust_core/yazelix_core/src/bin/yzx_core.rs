@@ -891,8 +891,10 @@ fn run_terminal_materialization_generate(mut parser: lexopt::Parser) -> Result<(
         }
         terminal_materialization_request_from_env(terminals, config_override_from_env().as_deref())?
     } else {
+        let config_path = config_path.ok_or_else(|| CoreError::usage("Missing --config path"))?;
         TerminalMaterializationRequest {
-            config_path: config_path.ok_or_else(|| CoreError::usage("Missing --config path"))?,
+            cursor_config_path: config_path.clone(),
+            config_path,
             default_config_path: default_config_path
                 .ok_or_else(|| CoreError::usage("Missing --default-config path"))?,
             contract_path: contract_path

@@ -28,6 +28,7 @@ const TRANSPARENCY_VALUES: &[(&str, &str)] = &[
 #[derive(Debug, Clone)]
 pub struct TerminalMaterializationRequest {
     pub config_path: PathBuf,
+    pub cursor_config_path: PathBuf,
     pub default_config_path: PathBuf,
     pub contract_path: PathBuf,
     pub runtime_dir: PathBuf,
@@ -339,8 +340,7 @@ pub fn generate_terminal_materialization(
         &config_dir,
         &request.terminals,
     )?;
-    let cursor_config_path = request.config_path.clone();
-    let cursor_registry = CursorRegistry::load(&cursor_config_path)?;
+    let cursor_registry = CursorRegistry::load(&request.cursor_config_path)?;
     let generated_dir = request.state_dir.join("configs").join("terminal_emulators");
 
     let mut generated = Vec::new();
@@ -354,7 +354,7 @@ pub fn generate_terminal_materialization(
                     config_dir: config_dir.clone(),
                     state_dir: request.state_dir.clone(),
                     transparency: transparency.to_string(),
-                    cursor_config_path: cursor_config_path.clone(),
+                    cursor_config_path: request.cursor_config_path.clone(),
                 };
                 let data = generate_ghostty_materialization(&ghostty_request)?;
                 let path = data.generated_path.clone();

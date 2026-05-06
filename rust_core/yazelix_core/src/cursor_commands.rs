@@ -1,4 +1,4 @@
-//! `yzx cursors` inspection command for the Ghostty cursor registry in settings.jsonc.
+//! `yzx cursors` inspection command for the shared Ghostty cursor registry.
 
 use crate::active_config_surface::resolve_active_config_paths;
 use crate::bridge::CoreError;

@@ -245,23 +245,25 @@ Show the active Yazelix configuration through the Rust-owned control path
 - `--path`: print the resolved config path
 
 ### `yzx config ui`
-Open the read-only terminal config browser
+Open the terminal config browser and editor
 - Lists schema-known settings by user-intent tab
 - Shows explicit, defaulted, unset, and invalid values
 - Shows stale-field diagnostics and managed sidecar status under the Advanced tab
-- Does not write `settings.jsonc` or sidecar files
+- Edits writable main settings and cursor settings while preserving unrelated comments and formatting
 
 ### `yzx config set <settings.path> <json-value>`
-Set a supported `settings.jsonc` value without rewriting the whole file
+Set a supported config value without rewriting the whole file
 - Preserves unrelated comments and formatting
 - Accepts JSON literals such as `true`, `20`, `"bash"`, or `["ghostty"]`
-- Validates the patched config against the existing config contract before writing
+- Writes normal settings to `~/.config/yazelix/settings.jsonc` and `cursors.*` paths to `~/.config/yazelix_cursors/settings.jsonc`
+- Validates the patched config or cursor registry before writing
 - Refuses Home Manager-owned, read-only, non-`settings.jsonc`, or unsafe object/array edits
 
 ### `yzx config unset <settings.path>`
-Remove an explicit `settings.jsonc` value so Yazelix uses the default
+Remove an explicit config value so Yazelix uses the default
 - Preserves unrelated comments and formatting
-- Validates the patched config against the existing config contract before writing
+- Writes normal settings to `~/.config/yazelix/settings.jsonc` and `cursors.*` paths to `~/.config/yazelix_cursors/settings.jsonc`
+- Validates the patched config or cursor registry before writing
 - Leaves the file unchanged when the value is already absent
 
 ### `yzx import zellij|yazi|helix [--force]`
@@ -281,7 +283,7 @@ Open the main Yazelix config file in your editor
 
 ### `yzx cursors`
 Inspect Ghostty cursor presets and resolved colors
-- Shows the active `settings.jsonc` path
+- Shows the active cursor `settings.jsonc` path
 - Shows global trail, effect, glow, duration, and Kitty fallback settings
 - Shows resolved colors for enabled presets, including derived mono accents
 
@@ -300,7 +302,7 @@ Replace `settings.jsonc` with a fresh copy of the shipped settings template
 - Only replaces `~/.config/yazelix/settings.jsonc`
 - Preserves managed override sidecars such as `helix.toml`, `zellij.kdl`, `yazi.toml`, `yazi_keymap.toml`, `yazi_init.lua`, `terminal_*.conf|toml|ini`, and `shell_*.sh|zsh|fish|nu`
 - Preserves unknown adjacent files under `~/.config/yazelix/` and prints a warning instead of deleting or adopting them
-- Cursor presets live inside `settings.jsonc`; there is no separate current cursor sidecar for `reset config` to clean up
+- Cursor presets live in `~/.config/yazelix_cursors/settings.jsonc`; `reset config` only resets the main Yazelix settings file
 
 ### `yzx help`
 Show command reference
@@ -347,7 +349,7 @@ yzx restart --with core.welcome_style=static # Reopen with a one-shot config ove
 yzx doctor --fix              # Health check with auto-fix
 yzx config                    # Show active config
 yzx config --path             # Print the active config path
-yzx config ui                 # Browse config values and diagnostics without writing files
+yzx config ui                 # Browse and edit config values and diagnostics
 yzx config set editor.hide_sidebar_on_file_open true # Set a config value with a JSON literal
 yzx config unset editor.hide_sidebar_on_file_open # Remove an explicit config value
 yzx cursors                   # Inspect Ghostty cursor presets and resolved colors

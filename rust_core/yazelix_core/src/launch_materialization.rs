@@ -23,6 +23,7 @@ const DEFAULT_TERMINALS: &[&str] = &["ghostty", "wezterm"];
 #[derive(Debug, Clone)]
 pub struct LaunchMaterializationRequest {
     pub config_path: PathBuf,
+    pub cursor_config_path: PathBuf,
     pub default_config_path: PathBuf,
     pub contract_path: PathBuf,
     pub runtime_dir: PathBuf,
@@ -66,6 +67,7 @@ pub fn launch_materialization_request_from_env(
 
     Ok(LaunchMaterializationRequest {
         config_path: paths.config_file,
+        cursor_config_path: paths.user_cursor_config,
         default_config_path: paths.default_config_path,
         contract_path: paths.contract_path,
         runtime_dir,
@@ -86,7 +88,7 @@ pub fn prepare_launch_materialization(
         include_missing: false,
     })?
     .normalized_config;
-    let cursor_config_path = request.config_path.clone();
+    let cursor_config_path = request.cursor_config_path.clone();
     let cursor_registry = CursorRegistry::load(&cursor_config_path)?;
     let ghostty_random_requested = cursor_registry.is_random_request();
     let plan = build_launch_materialization_plan(
@@ -107,6 +109,7 @@ pub fn prepare_launch_materialization(
     if plan.should_generate_terminal_configs {
         let terminal_data = generate_terminal_materialization(&TerminalMaterializationRequest {
             config_path: request.config_path.clone(),
+            cursor_config_path: request.cursor_config_path.clone(),
             default_config_path: request.default_config_path.clone(),
             contract_path: request.contract_path.clone(),
             runtime_dir: request.runtime_dir.clone(),

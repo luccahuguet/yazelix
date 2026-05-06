@@ -9,6 +9,7 @@ use tempfile::{TempDir, tempdir};
 use yazelix_core::{
     active_config_surface::TOML_TOOLING_CONFIG_FILENAME,
     settings_surface::{read_settings_jsonc_value, render_default_settings_jsonc},
+    user_config_paths::shared_cursor_config,
 };
 
 mod support;
@@ -384,7 +385,8 @@ fn config_surface_resolve_bootstraps_managed_config_and_toml_tooling_support() {
     );
     let managed_value = read_settings_jsonc_value(&managed_config).unwrap();
     assert!(managed_value.get("core").is_some());
-    assert!(managed_value.get("cursors").is_some());
+    assert!(managed_value.get("cursors").is_none());
+    assert!(shared_cursor_config(&config_dir).exists());
     assert_eq!(
         fs::read_to_string(&managed_toml_tooling_config).unwrap(),
         fs::read_to_string(runtime_dir.join(TOML_TOOLING_CONFIG_FILENAME)).unwrap()

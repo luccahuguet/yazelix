@@ -11,6 +11,7 @@ use crate::settings_surface::{
     is_settings_config_path, parse_jsonc_value, read_settings_jsonc_value,
 };
 use crate::user_config_paths::{CURRENT_MANAGED_CONFIG_FILE_NAMES, SETTINGS_CONFIG};
+use crate::yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{
@@ -58,6 +59,8 @@ pub struct ConfigUiRequest {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConfigUiModel {
     pub active_config_path: PathBuf,
+    pub cursor_config_path: PathBuf,
+    pub default_cursor_config_path: PathBuf,
     pub active_config_exists: bool,
     pub config_owner: ConfigUiPathOwner,
     pub config_read_only: bool,
@@ -185,6 +188,19 @@ struct ConfigUiNotice {
     is_error: bool,
 }
 
+#[derive(Debug, Clone)]
+struct ConfigUiEditTarget {
+    path: PathBuf,
+    path_in_file: String,
+    kind: ConfigUiEditTargetKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ConfigUiEditTargetKind {
+    Main,
+    Cursors,
+}
+
 pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel, CoreError> {
     let paths = primary_config_paths(&request.runtime_dir, &request.config_dir);
     let schema = read_json_file(
@@ -199,18 +215,26 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
     let tabs = ui_metadata.tabs.clone();
     let active_config_path = active_config_path(&paths, request.config_override.as_deref());
     let active_config_exists = path_present(&active_config_path);
-    let active_value = if active_config_exists {
+    let active_main_value = if active_config_exists {
         read_active_config_value(&active_config_path)?
     } else {
         JsonValue::Object(JsonMap::new())
     };
-    ensure_root_object(&active_config_path, &active_value)?;
+    ensure_root_object(&active_config_path, &active_main_value)?;
+    let active_value = compose_config_ui_value(
+        active_main_value,
+        read_cursor_config_value(&paths.user_cursor_config)?,
+    )?;
 
     let default_raw = render_default_settings_jsonc(
         &paths.default_config_path,
         &paths.default_cursor_config_path,
     )?;
-    let default_value = parse_jsonc_value(&paths.default_config_path, &default_raw)?;
+    let default_main_value = parse_jsonc_value(&paths.default_config_path, &default_raw)?;
+    let default_value = compose_config_ui_value(
+        default_main_value,
+        read_default_cursor_config_value(&paths.default_cursor_config_path)?,
+    )?;
     ensure_root_object(&paths.default_config_path, &default_value)?;
 
     let contract_fields = load_contract_fields(&paths.contract_path)?;
@@ -275,6 +299,8 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
 
     Ok(ConfigUiModel {
         active_config_path: active_config_path.clone(),
+        cursor_config_path: paths.user_cursor_config.clone(),
+        default_cursor_config_path: paths.default_cursor_config_path.clone(),
         active_config_exists,
         config_owner: classify_path_owner(&active_config_path, active_config_exists),
         config_read_only: path_is_read_only(&active_config_path),
@@ -951,11 +977,11 @@ impl ConfigUiApp {
             self.notice_error("Only settings rows can be edited.");
             return;
         };
-        if let Err(error) = self.ensure_editable_config() {
+        let field = &self.model.fields[field_index];
+        if let Err(error) = self.ensure_editable_config(&field.path) {
             self.notice_error(error.message());
             return;
         }
-        let field = &self.model.fields[field_index];
         let input = edit_input_for_field(field);
         self.edit = Some(ConfigUiEditState {
             field_index,
@@ -971,11 +997,11 @@ impl ConfigUiApp {
             self.notice_error("Only settings rows can be edited.");
             return;
         };
-        if let Err(error) = self.ensure_editable_config() {
+        let field = &self.model.fields[field_index];
+        if let Err(error) = self.ensure_editable_config(&field.path) {
             self.notice_error(error.message());
             return;
         }
-        let field = &self.model.fields[field_index];
         let value = if is_bool_field(field) {
             Some(JsonValue::Bool(!field_bool_value(field).unwrap_or(false)))
         } else if is_scalar_enum_field(field) && !field.allowed_values.is_empty() {
@@ -997,11 +1023,11 @@ impl ConfigUiApp {
             self.notice_error("Only settings rows can be unset.");
             return;
         };
-        if let Err(error) = self.ensure_editable_config() {
+        let path = self.model.fields[field_index].path.clone();
+        if let Err(error) = self.ensure_editable_config(&path) {
             self.notice_error(error.message());
             return;
         }
-        let path = self.model.fields[field_index].path.clone();
         match self.unset_field_value(&path) {
             Ok(mutation) => {
                 if mutation == SettingsJsoncPatchMutation::Unchanged {
@@ -1056,13 +1082,14 @@ impl ConfigUiApp {
         setting_path: &str,
         value: &JsonValue,
     ) -> Result<SettingsJsoncPatchMutation, CoreError> {
-        self.ensure_editable_config()?;
-        let config_path = self.model.active_config_path.clone();
-        let raw = read_settings_for_edit_or_empty(&config_path)?;
-        let outcome = set_settings_jsonc_value_text(&config_path, &raw, setting_path, value)?;
+        self.ensure_editable_config(setting_path)?;
+        let target = self.edit_target(setting_path);
+        let raw = self.read_edit_target_or_default(&target)?;
+        let outcome =
+            set_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file, value)?;
         if outcome.changed() {
-            validate_patched_settings_for_ui(&self.request, &outcome.text)?;
-            write_settings_edit(&config_path, &outcome.text)?;
+            self.validate_patched_edit_target(&target, &outcome.text)?;
+            write_settings_edit(&target.path, &outcome.text)?;
         }
         self.reload_model_preserving_selection(setting_path)?;
         Ok(outcome.mutation)
@@ -1072,13 +1099,13 @@ impl ConfigUiApp {
         &mut self,
         setting_path: &str,
     ) -> Result<SettingsJsoncPatchMutation, CoreError> {
-        self.ensure_editable_config()?;
-        let config_path = self.model.active_config_path.clone();
-        let raw = read_settings_for_edit_or_empty(&config_path)?;
-        let outcome = unset_settings_jsonc_value_text(&config_path, &raw, setting_path)?;
+        self.ensure_editable_config(setting_path)?;
+        let target = self.edit_target(setting_path);
+        let raw = self.read_edit_target_or_default(&target)?;
+        let outcome = unset_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file)?;
         if outcome.changed() {
-            validate_patched_settings_for_ui(&self.request, &outcome.text)?;
-            write_settings_edit(&config_path, &outcome.text)?;
+            self.validate_patched_edit_target(&target, &outcome.text)?;
+            write_settings_edit(&target.path, &outcome.text)?;
         }
         self.reload_model_preserving_selection(setting_path)?;
         Ok(outcome.mutation)
@@ -1114,38 +1141,98 @@ impl ConfigUiApp {
         Ok(())
     }
 
-    fn ensure_editable_config(&self) -> Result<(), CoreError> {
-        if !is_settings_config_path(&self.model.active_config_path) {
+    fn edit_target(&self, setting_path: &str) -> ConfigUiEditTarget {
+        if let Some(cursor_path) = setting_path.strip_prefix("cursors.") {
+            ConfigUiEditTarget {
+                path: self.model.cursor_config_path.clone(),
+                path_in_file: cursor_path.to_string(),
+                kind: ConfigUiEditTargetKind::Cursors,
+            }
+        } else {
+            ConfigUiEditTarget {
+                path: self.model.active_config_path.clone(),
+                path_in_file: setting_path.to_string(),
+                kind: ConfigUiEditTargetKind::Main,
+            }
+        }
+    }
+
+    fn read_edit_target_or_default(
+        &self,
+        target: &ConfigUiEditTarget,
+    ) -> Result<String, CoreError> {
+        if target.path.exists() {
+            return read_settings_for_edit_or_empty(&target.path);
+        }
+        match target.kind {
+            ConfigUiEditTargetKind::Main => read_settings_for_edit_or_empty(&target.path),
+            ConfigUiEditTargetKind::Cursors => {
+                let raw =
+                    fs::read_to_string(&self.model.default_cursor_config_path).map_err(|source| {
+                        CoreError::io(
+                            "read_default_cursor_config_for_ui_edit",
+                            "Could not read the default Yazelix cursor settings",
+                            "Reinstall Yazelix so the runtime includes yazelix_cursors_default.toml.",
+                            self.model.default_cursor_config_path.display().to_string(),
+                            source,
+                        )
+                    })?;
+                let registry =
+                    CursorRegistry::parse_str(&self.model.default_cursor_config_path, &raw)?;
+                Ok(render_cursor_settings_jsonc(&registry))
+            }
+        }
+    }
+
+    fn validate_patched_edit_target(
+        &self,
+        target: &ConfigUiEditTarget,
+        text: &str,
+    ) -> Result<(), CoreError> {
+        match target.kind {
+            ConfigUiEditTargetKind::Main => validate_patched_settings_for_ui(&self.request, text),
+            ConfigUiEditTargetKind::Cursors => {
+                let value = parse_jsonc_value(&target.path, text)?;
+                CursorRegistry::parse_json_value(&target.path, value)?;
+                Ok(())
+            }
+        }
+    }
+
+    fn ensure_editable_config(&self, setting_path: &str) -> Result<(), CoreError> {
+        let target = self.edit_target(setting_path);
+        if !is_settings_config_path(&target.path) {
             return Err(CoreError::classified(
                 ErrorClass::Config,
                 "unsupported_config_edit_surface",
                 format!(
                     "The config UI can only edit settings.jsonc, but the active config is {}.",
-                    self.model.active_config_path.display()
+                    target.path.display()
                 ),
                 "Move this setting to settings.jsonc, or clear YAZELIX_CONFIG_OVERRIDE.",
-                json!({ "path": self.model.active_config_path.display().to_string() }),
+                json!({ "path": target.path.display().to_string() }),
             ));
         }
-        if self.model.config_owner == ConfigUiPathOwner::HomeManager {
+        let target_exists = path_present(&target.path);
+        if classify_path_owner(&target.path, target_exists) == ConfigUiPathOwner::HomeManager {
             return Err(CoreError::classified(
                 ErrorClass::Config,
                 "home_manager_owned_config",
                 "This settings file is owned by Home Manager.",
                 "Edit your Home Manager module options instead, then run home-manager switch.",
-                json!({ "path": self.model.active_config_path.display().to_string() }),
+                json!({ "path": target.path.display().to_string() }),
             ));
         }
-        if self.model.config_read_only {
+        if path_is_read_only(&target.path) {
             return Err(CoreError::classified(
                 ErrorClass::Config,
                 "read_only_settings_config",
                 format!(
                     "The active settings file is read-only: {}.",
-                    self.model.active_config_path.display()
+                    target.path.display()
                 ),
                 "Fix file permissions or edit the owning configuration source.",
-                json!({ "path": self.model.active_config_path.display().to_string() }),
+                json!({ "path": target.path.display().to_string() }),
             ));
         }
         Ok(())
@@ -1592,6 +1679,54 @@ fn read_active_config_value(path: &Path) -> Result<JsonValue, CoreError> {
     toml_value_to_json(&TomlValue::Table(table))
 }
 
+fn compose_config_ui_value(
+    mut main_value: JsonValue,
+    cursor_value: JsonValue,
+) -> Result<JsonValue, CoreError> {
+    let Some(object) = main_value.as_object_mut() else {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "settings_jsonc_not_object",
+            "Yazelix settings must contain a JSON object.",
+            "Replace the settings file with a valid object, then retry.",
+            json!({}),
+        ));
+    };
+    object.insert("cursors".to_string(), cursor_value);
+    Ok(main_value)
+}
+
+fn read_cursor_config_value(path: &Path) -> Result<JsonValue, CoreError> {
+    if !path.exists() {
+        return Ok(JsonValue::Object(JsonMap::new()));
+    }
+    let raw = fs::read_to_string(path).map_err(|source| {
+        CoreError::io(
+            "read_config_ui_cursor_config",
+            "Could not read the Yazelix cursor settings",
+            "Fix permissions for ~/.config/yazelix_cursors/settings.jsonc, then retry.",
+            path.display().to_string(),
+            source,
+        )
+    })?;
+    parse_jsonc_value(path, &raw)
+}
+
+fn read_default_cursor_config_value(path: &Path) -> Result<JsonValue, CoreError> {
+    let raw = fs::read_to_string(path).map_err(|source| {
+        CoreError::io(
+            "read_config_ui_default_cursor_config",
+            "Could not read the default Yazelix cursor settings",
+            "Reinstall Yazelix so the runtime includes yazelix_cursors_default.toml.",
+            path.display().to_string(),
+            source,
+        )
+    })?;
+    let registry = CursorRegistry::parse_str(path, &raw)?;
+    let rendered = render_cursor_settings_jsonc(&registry);
+    parse_jsonc_value(path, &rendered)
+}
+
 fn ensure_root_object(path: &Path, value: &JsonValue) -> Result<(), CoreError> {
     if value.is_object() {
         return Ok(());
@@ -2029,7 +2164,7 @@ fn field_description(field: &ContractField, metadata: &FieldUiMetadata) -> Strin
 }
 
 fn collect_sidecars(config_dir: &Path) -> Vec<ConfigUiSidecar> {
-    CURRENT_MANAGED_CONFIG_FILE_NAMES
+    let mut sidecars = CURRENT_MANAGED_CONFIG_FILE_NAMES
         .iter()
         .filter(|name| **name != SETTINGS_CONFIG)
         .map(|name| {
@@ -2043,7 +2178,17 @@ fn collect_sidecars(config_dir: &Path) -> Vec<ConfigUiSidecar> {
                 present,
             }
         })
-        .collect()
+        .collect::<Vec<_>>();
+    let cursor_path = crate::user_config_paths::shared_cursor_config(config_dir);
+    let cursor_present = fs::symlink_metadata(&cursor_path).is_ok();
+    sidecars.push(ConfigUiSidecar {
+        name: "yazelix_cursors/settings.jsonc".to_string(),
+        owner: classify_path_owner(&cursor_path, cursor_present),
+        read_only: path_is_read_only(&cursor_path),
+        path: cursor_path,
+        present: cursor_present,
+    });
+    sidecars
 }
 
 fn classify_path_owner(path: &Path, present: bool) -> ConfigUiPathOwner {
@@ -2764,6 +2909,10 @@ mod tests {
             },
             model: ConfigUiModel {
                 active_config_path: PathBuf::from("/home/lucca/.config/yazelix/settings.jsonc"),
+                cursor_config_path: PathBuf::from(
+                    "/home/lucca/.config/yazelix_cursors/settings.jsonc",
+                ),
+                default_cursor_config_path: PathBuf::from("/runtime/yazelix_cursors_default.toml"),
                 active_config_exists: true,
                 config_owner: ConfigUiPathOwner::User,
                 config_read_only: false,
@@ -2811,6 +2960,10 @@ mod tests {
             },
             model: ConfigUiModel {
                 active_config_path: PathBuf::from("/home/lucca/.config/yazelix/settings.jsonc"),
+                cursor_config_path: PathBuf::from(
+                    "/home/lucca/.config/yazelix_cursors/settings.jsonc",
+                ),
+                default_cursor_config_path: PathBuf::from("/runtime/yazelix_cursors_default.toml"),
                 active_config_exists: true,
                 config_owner: ConfigUiPathOwner::User,
                 config_read_only: false,
@@ -2869,6 +3022,10 @@ mod tests {
             },
             model: ConfigUiModel {
                 active_config_path: PathBuf::from("/home/lucca/.config/yazelix/settings.jsonc"),
+                cursor_config_path: PathBuf::from(
+                    "/home/lucca/.config/yazelix_cursors/settings.jsonc",
+                ),
+                default_cursor_config_path: PathBuf::from("/runtime/yazelix_cursors_default.toml"),
                 active_config_exists: true,
                 config_owner: ConfigUiPathOwner::User,
                 config_read_only: false,
@@ -3066,6 +3223,10 @@ mod tests {
             },
             model: ConfigUiModel {
                 active_config_path: PathBuf::from("/home/lucca/.config/yazelix/settings.jsonc"),
+                cursor_config_path: PathBuf::from(
+                    "/home/lucca/.config/yazelix_cursors/settings.jsonc",
+                ),
+                default_cursor_config_path: PathBuf::from("/runtime/yazelix_cursors_default.toml"),
                 active_config_exists: true,
                 config_owner: ConfigUiPathOwner::User,
                 config_read_only: false,

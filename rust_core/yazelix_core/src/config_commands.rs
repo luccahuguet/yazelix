@@ -11,13 +11,27 @@ use crate::settings_jsonc_patch::{
     SettingsJsoncPatchMutation, set_settings_jsonc_value_text, unset_settings_jsonc_value_text,
 };
 use crate::settings_surface::{is_settings_config_path, parse_jsonc_value};
+use crate::yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
 use serde_json::{Value as JsonValue, json};
 use std::fs;
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const HOME_MANAGER_FILES_MARKER: &str = "-home-manager-files/";
+
+#[derive(Debug, Clone)]
+struct ConfigEditTarget {
+    path: PathBuf,
+    path_in_file: String,
+    kind: ConfigEditTargetKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ConfigEditTargetKind {
+    Main,
+    Cursors,
+}
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ConfigArgs {
@@ -124,8 +138,8 @@ fn print_config_help() {
     println!();
     println!("Subcommands:");
     println!("  ui              Open the config browser");
-    println!("  set             Set a settings.jsonc value using a JSON literal");
-    println!("  unset           Remove an explicit settings.jsonc value");
+    println!("  set             Set a supported config value using a JSON literal");
+    println!("  unset           Remove an explicit config value");
 }
 
 fn io_err(path: &Path, source: io::Error) -> CoreError {
@@ -209,24 +223,28 @@ fn run_config_set(setting_path: &str, raw_value: &str) -> Result<i32, CoreError>
         )
     })?;
     let paths = resolve_editable_settings_path()?;
-    let raw = read_config_for_edit(&paths.config_file)?;
-    let outcome = set_settings_jsonc_value_text(&paths.config_file, &raw, setting_path, &value)?;
+    let target = edit_target(&paths, setting_path);
+    ensure_edit_target_writable(&target)?;
+    let raw = read_config_for_edit_or_default(&paths, &target)?;
+    let outcome = set_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file, &value)?;
     if outcome.changed() {
-        validate_patched_settings(&paths, &outcome.text)?;
+        validate_patched_edit_target(&paths, &target, &outcome.text)?;
     }
-    write_config_edit(&paths.config_file, &outcome.text, outcome.mutation)?;
+    write_config_edit(&target.path, &outcome.text, outcome.mutation)?;
     print_edit_outcome(setting_path, outcome.mutation);
     Ok(0)
 }
 
 fn run_config_unset(setting_path: &str) -> Result<i32, CoreError> {
     let paths = resolve_editable_settings_path()?;
-    let raw = read_config_for_edit(&paths.config_file)?;
-    let outcome = unset_settings_jsonc_value_text(&paths.config_file, &raw, setting_path)?;
+    let target = edit_target(&paths, setting_path);
+    ensure_edit_target_writable(&target)?;
+    let raw = read_config_for_edit_or_default(&paths, &target)?;
+    let outcome = unset_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file)?;
     if outcome.changed() {
-        validate_patched_settings(&paths, &outcome.text)?;
+        validate_patched_edit_target(&paths, &target, &outcome.text)?;
     }
-    write_config_edit(&paths.config_file, &outcome.text, outcome.mutation)?;
+    write_config_edit(&target.path, &outcome.text, outcome.mutation)?;
     print_edit_outcome(setting_path, outcome.mutation);
     Ok(0)
 }
@@ -248,28 +266,60 @@ fn resolve_editable_settings_path() -> Result<ActiveConfigPaths, CoreError> {
             json!({ "path": paths.config_file.display().to_string() }),
         ));
     }
-    if is_home_manager_owned_path(&paths.config_file) {
+    Ok(paths)
+}
+
+fn edit_target(paths: &ActiveConfigPaths, setting_path: &str) -> ConfigEditTarget {
+    if let Some(cursor_path) = setting_path.strip_prefix("cursors.") {
+        ConfigEditTarget {
+            path: paths.user_cursor_config.clone(),
+            path_in_file: cursor_path.to_string(),
+            kind: ConfigEditTargetKind::Cursors,
+        }
+    } else {
+        ConfigEditTarget {
+            path: paths.config_file.clone(),
+            path_in_file: setting_path.to_string(),
+            kind: ConfigEditTargetKind::Main,
+        }
+    }
+}
+
+fn ensure_edit_target_writable(target: &ConfigEditTarget) -> Result<(), CoreError> {
+    if !is_settings_config_path(&target.path) {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "unsupported_config_edit_surface",
+            format!(
+                "Yazelix can only edit settings.jsonc, but the active config is {}.",
+                target.path.display()
+            ),
+            "Move this setting to the canonical settings.jsonc surface, or clear YAZELIX_CONFIG_OVERRIDE.",
+            json!({ "path": target.path.display().to_string() }),
+        ));
+    }
+    if is_home_manager_owned_path(&target.path) {
         return Err(CoreError::classified(
             ErrorClass::Config,
             "home_manager_owned_config",
             "The active Yazelix settings file is owned by Home Manager.",
             "Edit your Home Manager module options instead, then run home-manager switch.",
-            json!({ "path": paths.config_file.display().to_string() }),
+            json!({ "path": target.path.display().to_string() }),
         ));
     }
-    if config_path_is_read_only(&paths.config_file) {
+    if config_path_is_read_only(&target.path) {
         return Err(CoreError::classified(
             ErrorClass::Config,
             "read_only_settings_config",
             format!(
                 "The active Yazelix settings file is read-only: {}.",
-                paths.config_file.display()
+                target.path.display()
             ),
             "Fix file permissions or edit the owning configuration source.",
-            json!({ "path": paths.config_file.display().to_string() }),
+            json!({ "path": target.path.display().to_string() }),
         ));
     }
-    Ok(paths)
+    Ok(())
 }
 
 fn read_config_for_edit(path: &Path) -> Result<String, CoreError> {
@@ -282,6 +332,46 @@ fn read_config_for_edit(path: &Path) -> Result<String, CoreError> {
             source,
         )
     })
+}
+
+fn read_config_for_edit_or_default(
+    paths: &ActiveConfigPaths,
+    target: &ConfigEditTarget,
+) -> Result<String, CoreError> {
+    if target.path.exists() {
+        return read_config_for_edit(&target.path);
+    }
+    match target.kind {
+        ConfigEditTargetKind::Main => read_config_for_edit(&target.path),
+        ConfigEditTargetKind::Cursors => {
+            let raw = fs::read_to_string(&paths.default_cursor_config_path).map_err(|source| {
+                CoreError::io(
+                    "read_default_cursor_config_for_edit",
+                    "Could not read the default Yazelix cursor settings",
+                    "Reinstall Yazelix so the runtime includes yazelix_cursors_default.toml.",
+                    paths.default_cursor_config_path.display().to_string(),
+                    source,
+                )
+            })?;
+            let registry = CursorRegistry::parse_str(&paths.default_cursor_config_path, &raw)?;
+            Ok(render_cursor_settings_jsonc(&registry))
+        }
+    }
+}
+
+fn validate_patched_edit_target(
+    paths: &ActiveConfigPaths,
+    target: &ConfigEditTarget,
+    raw: &str,
+) -> Result<(), CoreError> {
+    match target.kind {
+        ConfigEditTargetKind::Main => validate_patched_settings(paths, raw),
+        ConfigEditTargetKind::Cursors => {
+            let value = parse_jsonc_value(&target.path, raw)?;
+            CursorRegistry::parse_json_value(&target.path, value)?;
+            Ok(())
+        }
+    }
 }
 
 fn validate_patched_settings(paths: &ActiveConfigPaths, raw: &str) -> Result<(), CoreError> {
@@ -336,6 +426,17 @@ fn write_config_edit(
 ) -> Result<(), CoreError> {
     if mutation == SettingsJsoncPatchMutation::Unchanged {
         return Ok(());
+    }
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|source| {
+            CoreError::io(
+                "create_settings_jsonc_parent",
+                "Could not create the Yazelix config directory",
+                "Fix permissions for the config directory, then retry.",
+                parent.display().to_string(),
+                source,
+            )
+        })?;
     }
     fs::write(path, raw).map_err(|source| {
         CoreError::io(

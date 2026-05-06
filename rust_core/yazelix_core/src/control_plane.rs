@@ -282,6 +282,7 @@ pub fn terminal_materialization_request_from_env(
 
     Ok(TerminalMaterializationRequest {
         config_path: paths.config_file,
+        cursor_config_path: paths.user_cursor_config,
         default_config_path: paths.default_config_path,
         contract_path: paths.contract_path,
         runtime_dir,

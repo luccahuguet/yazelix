@@ -10,7 +10,7 @@ The primary flake package is `.#yazelix_cursors`. `.#ghostty_cursor_shaders` rem
 
 Yazelix should ship `yazelix_cursors` as a standalone package surface now, but should not move the cursor registry and shader generator into a separate repository yet.
 
-The current extraction boundary is a flake package produced from the main Yazelix source tree plus an internal Rust module boundary. `yazelix_cursors.rs` owns reusable cursor registry parsing, validation, resolution, and Ghostty palette shader generation. `ghostty_cursor_registry.rs` remains the Yazelix-specific loader for `settings.jsonc` and config paths. That gives Ghostty users a real external-user artifact while keeping generated Ghostty config behavior, config UI, and Yazelix status-widget integration on one side of the repo boundary until those seams settle.
+The current extraction boundary is a flake package produced from the main Yazelix source tree plus an internal Rust module boundary. `yazelix_cursors.rs` owns reusable cursor registry parsing, validation, resolution, and Ghostty palette shader generation. `ghostty_cursor_registry.rs` remains the Yazelix-specific loader for `~/.config/yazelix_cursors/settings.jsonc` and legacy embedded settings migration. That gives Ghostty users a real external-user artifact while keeping generated Ghostty config behavior, config UI, and Yazelix status-widget integration on one side of the repo boundary until those seams settle.
 
 Selected name: `yazelix_cursors`
 
@@ -56,7 +56,7 @@ Alternatives considered:
 
 Yazelix continues to own:
 
-- `settings.jsonc` cursor schema and config UI metadata
+- main `~/.config/yazelix/settings.jsonc` runtime schema and config UI metadata
 - generated Ghostty config materialization
 - invoking runtime random cursor selection
 - status-bar cursor widget facts

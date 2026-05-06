@@ -9,6 +9,8 @@ use std::path::{Path, PathBuf};
 pub const SETTINGS_CONFIG: &str = "settings.jsonc";
 pub const OLD_MAIN_CONFIG: &str = "yazelix.toml";
 pub const CURSOR_CONFIG: &str = "cursors.toml";
+pub const SHARED_CURSOR_CONFIG_DIR: &str = "yazelix_cursors";
+pub const SHARED_CURSOR_SETTINGS_CONFIG: &str = "settings.jsonc";
 pub const HELIX_CONFIG: &str = "helix.toml";
 pub const ZELLIJ_CONFIG: &str = "zellij.kdl";
 pub const YAZI_CONFIG: &str = "yazi.toml";
@@ -56,6 +58,35 @@ pub fn legacy_main_config(config_dir: &Path) -> PathBuf {
 
 pub fn cursor_config(config_dir: &Path) -> PathBuf {
     config_dir.join(CURSOR_CONFIG)
+}
+
+pub fn shared_cursor_config_dir(config_dir: &Path) -> PathBuf {
+    if config_dir
+        .file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name == "yazelix")
+    {
+        return config_dir
+            .parent()
+            .map(|parent| parent.join(SHARED_CURSOR_CONFIG_DIR))
+            .unwrap_or_else(|| PathBuf::from(SHARED_CURSOR_CONFIG_DIR));
+    }
+    config_dir.join(SHARED_CURSOR_CONFIG_DIR)
+}
+
+pub fn shared_cursor_config(config_dir: &Path) -> PathBuf {
+    shared_cursor_config_dir(config_dir).join(SHARED_CURSOR_SETTINGS_CONFIG)
+}
+
+pub fn is_shared_cursor_config_path(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name == SHARED_CURSOR_SETTINGS_CONFIG)
+        && path
+            .parent()
+            .and_then(|parent| parent.file_name())
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name == SHARED_CURSOR_CONFIG_DIR)
 }
 
 pub fn legacy_cursor_config(config_dir: &Path) -> PathBuf {

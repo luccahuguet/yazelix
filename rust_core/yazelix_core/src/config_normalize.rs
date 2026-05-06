@@ -456,7 +456,7 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
                 diagnostic.headline = format!("Moved cursor config field at {}", finding.path);
                 diagnostic.detail_lines = vec![
                     finding.message,
-                    "Next: Move this cursor setting into ~/.config/yazelix/settings.jsonc under cursors."
+                    "Next: Move this cursor setting into ~/.config/yazelix_cursors/settings.jsonc."
                         .to_string(),
                     "Next: Remove the old terminal.ghostty_* field from ~/.config/yazelix/settings.jsonc."
                         .to_string(),

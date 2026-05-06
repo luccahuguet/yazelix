@@ -104,7 +104,7 @@ fn print_reset_help() {
     println!("  yzx reset config [--yes] [--no-backup]");
     println!();
     println!("Targets:");
-    println!("  config  Replace settings.jsonc, including cursors, with fresh shipped settings");
+    println!("  config  Replace ~/.config/yazelix/settings.jsonc with fresh shipped settings");
     println!();
     println!("Note:");
     println!("  reset config preserves managed override sidecars and unknown adjacent files");

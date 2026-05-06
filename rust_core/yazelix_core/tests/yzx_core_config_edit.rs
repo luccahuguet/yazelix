@@ -3,6 +3,7 @@
 use serde_json::json;
 use tempfile::tempdir;
 use yazelix_core::settings_surface::read_settings_jsonc_value;
+use yazelix_core::user_config_paths::shared_cursor_config;
 
 mod support;
 
@@ -48,8 +49,12 @@ fn config_set_and_unset_edit_settings_jsonc() {
     set_cursor.args(["config", "set", "cursors.settings.trail", "\"magma\""]);
     set_cursor.assert().success();
 
+    let cursor_settings_path = shared_cursor_config(&config);
+    let cursor_value =
+        read_settings_jsonc_value(&cursor_settings_path).expect("cursor settings after cursor set");
+    assert_eq!(cursor_value["settings"]["trail"], json!("magma"));
     let value = read_settings_jsonc_value(&settings_path).expect("settings after cursor set");
-    assert_eq!(value["cursors"]["settings"]["trail"], json!("magma"));
+    assert!(value.get("cursors").is_none());
 
     let mut unset = yzx_control_command();
     with_config_env(&mut unset, &home, &runtime, &config);

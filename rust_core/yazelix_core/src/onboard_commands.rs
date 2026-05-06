@@ -678,7 +678,7 @@ mod tests {
         assert_eq!(state.apply(PromptEvent::Abort), PromptOutcome::Aborted);
     }
 
-    // Defends: onboarding emits valid settings.jsonc with current supported config fields and cursor settings.
+    // Defends: onboarding emits valid settings.jsonc with current supported main config fields.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn onboard_config_is_valid_current_main_config() {
@@ -723,7 +723,7 @@ mod tests {
             parsed["terminal"]["terminals"].as_array().unwrap()[0].as_str(),
             Some("wezterm")
         );
-        assert!(parsed["cursors"]["settings"]["trail"].is_string());
+        assert!(parsed.get("cursors").is_none());
     }
 
     // Defends: onboarding writes only the supported main config surface and refuses accidental overwrite by default.

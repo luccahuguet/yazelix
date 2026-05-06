@@ -3,6 +3,7 @@
 
 use crate::bridge::{CoreError, ErrorClass};
 use crate::user_config_paths;
+use crate::yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
 use jsonc_parser::ParseOptions;
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use std::fs;
@@ -19,6 +20,7 @@ const SETTINGS_TOP_LEVEL_ORDER: &[&str] = &[
 #[derive(Debug, Clone)]
 pub struct SettingsSurfacePaths {
     pub settings_config: PathBuf,
+    pub shared_cursor_config: PathBuf,
     pub old_main_config: PathBuf,
     pub old_nested_main_config: PathBuf,
     pub old_cursor_config: PathBuf,
@@ -28,6 +30,7 @@ pub struct SettingsSurfacePaths {
 pub fn settings_surface_paths(config_dir: &Path) -> SettingsSurfacePaths {
     SettingsSurfacePaths {
         settings_config: user_config_paths::main_config(config_dir),
+        shared_cursor_config: user_config_paths::shared_cursor_config(config_dir),
         old_main_config: user_config_paths::old_main_config(config_dir),
         old_nested_main_config: user_config_paths::legacy_main_config(config_dir),
         old_cursor_config: user_config_paths::cursor_config(config_dir),
@@ -54,9 +57,11 @@ pub fn ensure_settings_config(
     default_cursor_config: &Path,
 ) -> Result<PathBuf, CoreError> {
     let paths = settings_surface_paths(config_dir);
-    ensure_no_old_inputs_next_to_settings(&paths)?;
 
     if paths.settings_config.exists() {
+        ensure_no_old_main_inputs_next_to_settings(&paths)?;
+        migrate_embedded_cursor_settings(&paths)?;
+        ensure_shared_cursor_settings_config(&paths, default_cursor_config)?;
         return Ok(paths.settings_config);
     }
 
@@ -72,28 +77,12 @@ pub fn ensure_settings_config(
             json!({ "path": default_main_config.display().to_string() }),
         ));
     }
-    if !default_cursor_config.exists() {
-        return Err(CoreError::classified(
-            ErrorClass::Config,
-            "missing_default_cursor_config",
-            format!(
-                "Yazelix runtime is missing the default cursor registry at {}.",
-                default_cursor_config.display()
-            ),
-            "Reinstall Yazelix so the runtime includes yazelix_cursors_default.toml.",
-            json!({ "path": default_cursor_config.display().to_string() }),
-        ));
-    }
+    ensure_default_cursor_config_exists(default_cursor_config)?;
 
     let main_source = migration_source(
         &paths.old_main_config,
         &paths.old_nested_main_config,
         "main Yazelix settings",
-    )?;
-    let cursor_source = migration_source(
-        &paths.old_cursor_config,
-        &paths.old_nested_cursor_config,
-        "Yazelix cursor settings",
     )?;
 
     let main_table = read_toml_source_or_default(
@@ -101,12 +90,7 @@ pub fn ensure_settings_config(
         default_main_config,
         "main Yazelix settings",
     )?;
-    let cursor_table = read_toml_source_or_default(
-        cursor_source.as_ref().map(|source| source.path.as_path()),
-        default_cursor_config,
-        "Yazelix cursor settings",
-    )?;
-    let rendered = render_settings_jsonc(&main_table, &cursor_table)?;
+    let rendered = render_settings_jsonc(&main_table)?;
 
     if let Some(parent) = paths.settings_config.parent() {
         fs::create_dir_all(parent).map_err(|source| {
@@ -136,9 +120,7 @@ pub fn ensure_settings_config(
     if let Some(source) = main_source {
         move_migrated_input(&source.path)?;
     }
-    if let Some(source) = cursor_source {
-        move_migrated_input(&source.path)?;
-    }
+    ensure_shared_cursor_settings_config(&paths, default_cursor_config)?;
 
     Ok(paths.settings_config)
 }
@@ -152,12 +134,8 @@ pub fn render_default_settings_jsonc(
         "read_default_main_config",
         "Could not parse the default Yazelix main config",
     )?;
-    let cursor_table = read_toml_table(
-        default_cursor_config,
-        "read_default_cursor_config",
-        "Could not parse the default Yazelix cursor config",
-    )?;
-    render_settings_jsonc(&main_table, &cursor_table)
+    ensure_default_cursor_config_exists(default_cursor_config)?;
+    render_settings_jsonc(&main_table)
 }
 
 pub fn read_config_table(path: &Path, code: &'static str) -> Result<toml::Table, CoreError> {
@@ -216,17 +194,30 @@ struct MigrationSource {
     path: PathBuf,
 }
 
-fn ensure_no_old_inputs_next_to_settings(paths: &SettingsSurfacePaths) -> Result<(), CoreError> {
+fn ensure_default_cursor_config_exists(default_cursor_config: &Path) -> Result<(), CoreError> {
+    if default_cursor_config.exists() {
+        return Ok(());
+    }
+    Err(CoreError::classified(
+        ErrorClass::Config,
+        "missing_default_cursor_config",
+        format!(
+            "Yazelix runtime is missing the default cursor registry at {}.",
+            default_cursor_config.display()
+        ),
+        "Reinstall Yazelix so the runtime includes yazelix_cursors_default.toml.",
+        json!({ "path": default_cursor_config.display().to_string() }),
+    ))
+}
+
+fn ensure_no_old_main_inputs_next_to_settings(
+    paths: &SettingsSurfacePaths,
+) -> Result<(), CoreError> {
     if !paths.settings_config.exists() {
         return Ok(());
     }
 
-    for path in [
-        &paths.old_main_config,
-        &paths.old_nested_main_config,
-        &paths.old_cursor_config,
-        &paths.old_nested_cursor_config,
-    ] {
+    for path in [&paths.old_main_config, &paths.old_nested_main_config] {
         if optional_symlink_metadata(path)?.is_some() {
             return Err(CoreError::classified(
                 ErrorClass::Config,
@@ -244,6 +235,152 @@ fn ensure_no_old_inputs_next_to_settings(paths: &SettingsSurfacePaths) -> Result
         }
     }
 
+    Ok(())
+}
+
+fn ensure_shared_cursor_settings_config(
+    paths: &SettingsSurfacePaths,
+    default_cursor_config: &Path,
+) -> Result<(), CoreError> {
+    ensure_default_cursor_config_exists(default_cursor_config)?;
+    if paths.shared_cursor_config.exists() {
+        ensure_no_old_cursor_inputs_next_to_shared(paths)?;
+        return Ok(());
+    }
+
+    let cursor_source = migration_source(
+        &paths.old_cursor_config,
+        &paths.old_nested_cursor_config,
+        "Yazelix cursor settings",
+    )?;
+    let source_path = cursor_source
+        .as_ref()
+        .map(|source| source.path.as_path())
+        .unwrap_or(default_cursor_config);
+    let raw = fs::read_to_string(source_path).map_err(|source| {
+        io_err(
+            "read_cursor_settings_source",
+            source_path,
+            "Could not read Yazelix cursor settings input",
+            source,
+        )
+    })?;
+    let registry = CursorRegistry::parse_str(source_path, &raw)?;
+    write_shared_cursor_settings(paths, &registry)?;
+
+    if let Some(source) = cursor_source {
+        move_migrated_input(&source.path)?;
+    }
+
+    Ok(())
+}
+
+fn ensure_no_old_cursor_inputs_next_to_shared(
+    paths: &SettingsSurfacePaths,
+) -> Result<(), CoreError> {
+    for path in [&paths.old_cursor_config, &paths.old_nested_cursor_config] {
+        if optional_symlink_metadata(path)?.is_some() {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "stale_old_cursor_settings_input",
+                format!(
+                    "Yazelix found old cursor settings input {} next to canonical cursor settings.",
+                    path.display()
+                ),
+                "Move the old cursor TOML file aside after confirming ~/.config/yazelix_cursors/settings.jsonc contains the migrated values, then retry.",
+                json!({
+                    "shared_cursor_config": paths.shared_cursor_config.display().to_string(),
+                    "old_input": path.display().to_string(),
+                }),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn migrate_embedded_cursor_settings(paths: &SettingsSurfacePaths) -> Result<(), CoreError> {
+    let value = read_settings_jsonc_value(&paths.settings_config)?;
+    let Some(cursors) = value.get("cursors").cloned() else {
+        return Ok(());
+    };
+    if paths.shared_cursor_config.exists() {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "embedded_cursor_settings_after_sidecar",
+            "Yazelix found cursor settings embedded in settings.jsonc after the shared cursor config already exists.",
+            "Move or delete the stale cursors object from ~/.config/yazelix/settings.jsonc; cursor settings now live in ~/.config/yazelix_cursors/settings.jsonc.",
+            json!({
+                "settings_config": paths.settings_config.display().to_string(),
+                "shared_cursor_config": paths.shared_cursor_config.display().to_string(),
+            }),
+        ));
+    }
+    if optional_symlink_metadata(&paths.old_cursor_config)?.is_some()
+        || optional_symlink_metadata(&paths.old_nested_cursor_config)?.is_some()
+    {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "duplicate_cursor_settings_sources",
+            "Yazelix found embedded cursor settings and old cursor TOML inputs at the same time.",
+            "Keep one cursor settings source, move the others aside, then retry.",
+            json!({
+                "settings_config": paths.settings_config.display().to_string(),
+                "old_cursor_config": paths.old_cursor_config.display().to_string(),
+                "old_nested_cursor_config": paths.old_nested_cursor_config.display().to_string(),
+            }),
+        ));
+    }
+
+    let registry = CursorRegistry::parse_json_value(&paths.settings_config, cursors)?;
+    write_shared_cursor_settings(paths, &registry)?;
+
+    let mut updated = value;
+    if let Some(object) = updated.as_object_mut() {
+        object.remove("cursors");
+    }
+    let rendered = render_settings_jsonc_value(&updated)?;
+    fs::write(&paths.settings_config, rendered).map_err(|source| {
+        io_err(
+            "remove_embedded_cursor_settings",
+            &paths.settings_config,
+            "Could not remove migrated cursor settings from settings.jsonc",
+            source,
+        )
+    })
+}
+
+fn write_shared_cursor_settings(
+    paths: &SettingsSurfacePaths,
+    registry: &CursorRegistry,
+) -> Result<(), CoreError> {
+    if let Some(parent) = paths.shared_cursor_config.parent() {
+        fs::create_dir_all(parent).map_err(|source| {
+            io_err(
+                "create_shared_cursor_config_parent",
+                parent,
+                "Could not create the Yazelix cursor settings directory",
+                source,
+            )
+        })?;
+    }
+    fs::write(
+        &paths.shared_cursor_config,
+        render_cursor_settings_jsonc(registry),
+    )
+    .map_err(|source| {
+        io_err(
+            "write_shared_cursor_settings",
+            &paths.shared_cursor_config,
+            "Could not write ~/.config/yazelix_cursors/settings.jsonc",
+            source,
+        )
+    })?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = fs::Permissions::from_mode(0o644);
+        let _ = fs::set_permissions(&paths.shared_cursor_config, mode);
+    }
     Ok(())
 }
 
@@ -379,12 +516,8 @@ fn read_toml_table(
     })
 }
 
-fn render_settings_jsonc(
-    main_table: &toml::Table,
-    cursor_table: &toml::Table,
-) -> Result<String, CoreError> {
+fn render_settings_jsonc(main_table: &toml::Table) -> Result<String, CoreError> {
     let mut root = toml_value_to_json(&TomlValue::Table(main_table.clone()))?;
-    let cursor_json = toml_value_to_json(&TomlValue::Table(cursor_table.clone()))?;
     let Some(root_object) = root.as_object_mut() else {
         return Err(CoreError::classified(
             ErrorClass::Internal,
@@ -394,7 +527,7 @@ fn render_settings_jsonc(
             json!({}),
         ));
     };
-    root_object.insert("cursors".to_string(), cursor_json);
+    root_object.remove("cursors");
     render_settings_jsonc_value(&root)
 }
 
@@ -633,7 +766,11 @@ mod tests {
             value["editor"]["hide_sidebar_on_file_open"].as_bool(),
             Some(true)
         );
-        assert_eq!(value["cursors"]["settings"]["trail"].as_str(), Some("snow"));
+        assert!(value.get("cursors").is_none());
+        let cursor_value =
+            read_settings_jsonc_value(&config.path().join("yazelix_cursors/settings.jsonc"))
+                .unwrap();
+        assert_eq!(cursor_value["settings"]["trail"].as_str(), Some("snow"));
         assert!(!config.path().join("yazelix.toml").exists());
         assert!(!config.path().join("cursors.toml").exists());
     }
@@ -649,10 +786,10 @@ mod tests {
         assert!(err.remediation().contains("not `#`"));
     }
 
-    // Defends: generated settings.jsonc stays readable by keeping the heavy cursors block after the normal semantic sections.
+    // Defends: generated settings.jsonc stays focused on main settings while cursors use their shared sidecar.
     // Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=2 total=8/10
     #[test]
-    fn renders_cursors_last_in_default_settings_jsonc() {
+    fn renders_default_settings_without_embedded_cursors() {
         let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../..")
             .canonicalize()
@@ -663,9 +800,8 @@ mod tests {
         )
         .unwrap();
 
-        let yazi_index = rendered.find("\"yazi\"").unwrap();
-        let cursors_index = rendered.find("\"cursors\"").unwrap();
-        assert!(yazi_index < cursors_index);
+        assert!(rendered.contains("\"yazi\""));
+        assert!(!rendered.contains("\"cursors\""));
     }
 
     // Defends: old flat TOML config inputs are one-time migration inputs, not long-lived runtime alternatives.
@@ -690,7 +826,11 @@ mod tests {
         let value = read_settings_jsonc_value(&path).unwrap();
 
         assert_eq!(value["editor"]["command"].as_str(), Some("nvim"));
-        assert_eq!(value["cursors"]["settings"]["glow"].as_str(), Some("high"));
+        assert!(value.get("cursors").is_none());
+        let cursor_value =
+            read_settings_jsonc_value(&config.path().join("yazelix_cursors/settings.jsonc"))
+                .unwrap();
+        assert_eq!(cursor_value["settings"]["glow"].as_str(), Some("high"));
         assert!(!config.path().join("yazelix.toml").exists());
         assert!(!config.path().join("cursors.toml").exists());
         assert!(fs::read_dir(config.path()).unwrap().any(|entry| {
@@ -700,6 +840,37 @@ mod tests {
                 .to_string_lossy()
                 .contains("migrated-")
         }));
+    }
+
+    // Regression: embedded settings.jsonc cursors migrate once to the shared cursor config, then are removed from the main file.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn migrates_embedded_cursors_to_shared_cursor_settings_once() {
+        let runtime = tempdir().unwrap();
+        let config = tempdir().unwrap();
+        let (main, cursor) = write_defaults(runtime.path());
+        let embedded = render_default_settings_jsonc(&main, &cursor).unwrap();
+        let mut value =
+            parse_jsonc_value(&config.path().join("settings.jsonc"), &embedded).unwrap();
+        let cursor_table = read_toml_table(&cursor, "read_cursor", "read cursor").unwrap();
+        value.as_object_mut().unwrap().insert(
+            "cursors".to_string(),
+            toml_value_to_json(&TomlValue::Table(cursor_table)).unwrap(),
+        );
+        fs::write(
+            config.path().join("settings.jsonc"),
+            render_settings_jsonc_value(&value).unwrap(),
+        )
+        .unwrap();
+
+        ensure_settings_config(config.path(), &main, &cursor).unwrap();
+
+        let main_value = read_settings_jsonc_value(&config.path().join("settings.jsonc")).unwrap();
+        assert!(main_value.get("cursors").is_none());
+        let cursor_value =
+            read_settings_jsonc_value(&config.path().join("yazelix_cursors/settings.jsonc"))
+                .unwrap();
+        assert_eq!(cursor_value["settings"]["trail"].as_str(), Some("snow"));
     }
 
     // Defends: settings.jsonc plus stale old-format inputs fails fast instead of mixing config owners.

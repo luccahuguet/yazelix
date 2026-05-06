@@ -7,6 +7,7 @@ use yazelix_core::config_ui::{
     ConfigUiPathOwner, ConfigUiRequest, ConfigUiValueState, build_config_ui_model,
 };
 use yazelix_core::ghostty_cursor_registry::DEFAULT_CURSOR_CONFIG_FILENAME;
+use yazelix_core::user_config_paths::shared_cursor_config;
 
 fn write_runtime_layout(runtime: &Path) {
     fs::create_dir_all(runtime.join("config_metadata")).expect("metadata dir");
@@ -62,11 +63,31 @@ fn builds_inventory_tabs_and_value_states() {
         config.path().join("settings.jsonc"),
         r##"{
           "core": { "debug_mode": true },
-          "editor": { "hide_sidebar_on_file_open": true },
-          "cursors": { "settings": { "trail": "magma" } }
+          "editor": { "hide_sidebar_on_file_open": true }
         }"##,
     )
     .expect("settings");
+    let cursor_path = shared_cursor_config(config.path());
+    fs::create_dir_all(cursor_path.parent().expect("cursor parent")).expect("cursor dir");
+    fs::write(
+        cursor_path,
+        r##"{
+          "schema_version": 1,
+          "enabled_cursors": ["magma"],
+          "settings": {
+            "trail": "magma",
+            "trail_effect": "tail",
+            "mode_effect": "ripple",
+            "glow": "medium",
+            "duration": 1.0,
+            "kitty_enable_cursor": true
+          },
+          "cursor": [
+            { "name": "magma", "family": "mono", "color": "#ff3300" }
+          ]
+        }"##,
+    )
+    .expect("cursor settings");
 
     let model = build_config_ui_model(&request(
         runtime.path().to_path_buf(),

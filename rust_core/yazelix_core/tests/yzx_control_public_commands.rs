@@ -11,6 +11,7 @@ use support::commands::{
 };
 use support::envelopes::stdout_text;
 use support::fixtures::managed_config_fixture;
+use yazelix_core::user_config_paths::shared_cursor_config;
 
 // Defends: the Rust-owned `yzx why` leaf keeps the existing elevator-pitch copy instead of drifting through wrapper churn.
 // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
@@ -98,7 +99,7 @@ fn yzx_restart_help_prints_usage_without_restarting() {
     }
 }
 
-// Regression: cursor settings live inside settings.jsonc, so the removed `yzx edit cursors` surface must not survive as an alias.
+// Regression: cursor settings live in the shared cursor settings.jsonc, so the removed `yzx edit cursors` surface must not survive as an alias.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_edit_cursors_shape_is_removed() {
@@ -115,12 +116,12 @@ fn yzx_control_edit_cursors_shape_is_removed() {
     assert!(stderr.contains("No managed Yazelix config surface matched `cursors`"));
 }
 
-// Defends: `yzx cursors` exposes resolved cursor colors and split shape names from canonical settings without requiring users to inspect generated shaders.
+// Defends: `yzx cursors` exposes resolved cursor colors and split shape names from canonical cursor settings without requiring users to inspect generated shaders.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_cursors_prints_resolved_color_surface() {
     let fixture = managed_config_fixture("");
-    let expected_path = fixture.config_dir.join("settings.jsonc");
+    let expected_path = shared_cursor_config(&fixture.config_dir);
     let mut command = yzx_control_command();
     apply_managed_config_env(&mut command, &fixture).arg("cursors");
 
@@ -135,7 +136,7 @@ fn yzx_control_cursors_prints_resolved_color_surface() {
     assert!(expected_path.exists());
 }
 
-// Regression: cursor settings reset through settings.jsonc as a whole, so the removed `yzx reset cursor` surface must not survive as an alias.
+// Regression: cursor settings are not reset through a hidden legacy `yzx reset cursor` alias.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_reset_cursor_shape_is_removed() {
@@ -191,7 +192,7 @@ fn yzx_control_reset_config_warns_about_preserved_adjacent_files() {
     );
     assert!(!stdout.contains("settings.jsonc.backup-20260505_000000"));
     assert!(reset.contains("\"editor\""));
-    assert!(reset.contains("\"cursors\""));
+    assert!(!reset.contains("\"cursors\""));
     assert!(helix_override_path.exists());
     assert!(legacy_cursor_path.exists());
     assert!(notes_path.exists());

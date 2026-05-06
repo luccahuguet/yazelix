@@ -297,23 +297,23 @@ const CONFIG_ROOT_COMMAND: YzxCommandMetadata = metadata(
 );
 const CONFIG_UI_COMMAND: YzxCommandMetadata = metadata(
     "yzx config ui",
-    "Browse Yazelix settings in a read-only terminal UI",
+    "Browse and edit Yazelix settings in a terminal UI",
     YzxCommandCategory::Config,
     &[],
     Some(YzxMenuCategory::Config),
-    Some("Inspect explicit, defaulted, stale, and advanced config surfaces without writing files."),
+    Some("Inspect and edit explicit, defaulted, stale, and advanced config surfaces."),
 );
 const CONFIG_SET_COMMAND: YzxCommandMetadata = metadata(
     "yzx config set",
-    "Set a settings.jsonc value",
+    "Set a supported config value",
     YzxCommandCategory::Config,
     CONFIG_SET_ARGS,
     Some(YzxMenuCategory::Config),
-    Some("Patch a supported settings.jsonc path with a JSON literal while preserving comments."),
+    Some("Patch a supported config path with a JSON literal while preserving comments."),
 );
 const CONFIG_UNSET_COMMAND: YzxCommandMetadata = metadata(
     "yzx config unset",
-    "Remove an explicit settings.jsonc value",
+    "Remove an explicit config value",
     YzxCommandCategory::Config,
     CONFIG_UNSET_ARGS,
     Some(YzxMenuCategory::Config),

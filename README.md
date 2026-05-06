@@ -237,7 +237,7 @@ Yazelix shines over SSH: the TUI stack (Zellij, Yazi, Helix) runs cleanly withou
 
 Yazelix uses a **layered configuration system** that safely merges your personal settings with Yazelix defaults:
 
-- **Core settings**: Edit `~/.config/yazelix/settings.jsonc` for shell, editor, terminal, Zellij, Yazi, and cursor settings, run `yzx config set/unset` for safe scalar and string-list edits, or run `yzx config ui` to inspect explicit/defaulted values and stale-field diagnostics without writing files
+- **Core settings**: Edit `~/.config/yazelix/settings.jsonc` for shell, editor, terminal, Zellij, and Yazi settings, edit `~/.config/yazelix_cursors/settings.jsonc` for Ghostty cursor settings, run `yzx config set/unset` for safe scalar and string-list edits, or run `yzx config ui` to inspect and edit explicit/defaulted values and stale-field diagnostics
 - **Yazi customization**: Use the built-in `yazi` settings in `settings.jsonc` for things like plugins, theme, sorting, and binary overrides, and use `~/.config/yazelix/yazi.toml`, `~/.config/yazelix/yazi_keymap.toml`, and `~/.config/yazelix/yazi_init.lua` for deeper merged overrides (see [Yazi Configuration](./docs/yazi-configuration.md))
 - **Zellij customization**: Use the built-in `zellij` settings in `settings.jsonc` for Yazelix-owned Zellij knobs, and use `~/.config/yazelix/zellij.kdl` for deeper managed Zellij overrides (see [Zellij Configuration](./docs/zellij-configuration.md))
 - **Status bar widgets**: Configure `[zellij].widget_tray` to order or hide `editor`, `shell`, `term`, `workspace`, `cursor`, usage, `cpu`, and `ram` widgets; the default cursor widget renders mono presets as colored `█ name` and split presets as one-cell split glyphs from the launch-scoped Ghostty cursor fact
@@ -303,7 +303,7 @@ See the full catalog of tools and integrations in the Yazelix Collection:
 - **Environment setup**: Proper paths, variables, and shell configurations
 
 **Customize Your Installation:**
-If you followed [step 4 in the installation guide](./docs/installation.md#step-4-configure-your-installation-optional), you already have your `~/.config/yazelix/settings.jsonc` config file ready, you can modify it anytime and restart Yazelix to apply changes. Main options and Ghostty cursor presets live in that file
+If you followed [step 4 in the installation guide](./docs/installation.md#step-4-configure-your-installation-optional), you already have your `~/.config/yazelix/settings.jsonc` config file ready, you can modify it anytime and restart Yazelix to apply changes. Main options live in that file; Ghostty cursor presets live in `~/.config/yazelix_cursors/settings.jsonc`
 
 **Terminal Emulator Selection:**
 - **Ghostty** (default packaged preference): Modern, fast terminal written in Zig with Yazelix cursor trails
@@ -351,9 +351,9 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 - `yzx update home_manager` - Refresh the current Home Manager flake input, then print `home-manager switch`
 - `yzx popup` - Toggle the managed popup program, usually `lazygit`, and refresh the Yazi file-tree sidebar git state when it closes
 - `yzx config [--path]` - Show the active config or print its resolved path
-- `yzx config ui` - Browse settings, defaults, diagnostics, and managed sidecar status in a read-only terminal UI
-- `yzx config set PATH JSON` - Set a supported `settings.jsonc` value while preserving comments
-- `yzx config unset PATH` - Remove an explicit `settings.jsonc` value so defaults apply
+- `yzx config ui` - Browse and edit settings, defaults, diagnostics, and managed sidecar status in a terminal UI
+- `yzx config set PATH JSON` - Set a supported config value while preserving comments
+- `yzx config unset PATH` - Remove an explicit config value so defaults apply
 - `yzx cursors` - Inspect Ghostty cursor presets, effects, and resolved colors
 - `yzc init/list/inspect/generate ghostty` - Manage standalone Yazelix cursor presets for Ghostty users outside a full Yazelix session
 - `yzx edit config` - Open the main managed Yazelix config file in your editor
