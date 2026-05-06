@@ -32,7 +32,7 @@ def __yazelix_prompt_input_line [rendered: string] {
     if ($lines | is-empty) {
         ""
     } else {
-        $lines | last
+        [($lines | last) " "] | str join ""
     }
 }
 
