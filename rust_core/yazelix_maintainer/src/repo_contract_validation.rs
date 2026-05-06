@@ -1035,28 +1035,28 @@ fn validate_home_manager_activation_mode(
             &home_root
                 .join(".config")
                 .join("yazelix")
-                .join("yazelix.toml"),
+                .join("settings.jsonc"),
             if manage_config {
-                "Home Manager managed yazelix.toml surface after activation"
+                "Home Manager managed settings.jsonc surface after activation"
             } else {
-                "Yazelix bootstrapped mutable yazelix.toml surface after Home Manager activation"
+                "Yazelix bootstrapped mutable settings.jsonc surface after Home Manager activation"
             },
             &mut errors,
         );
         let main_config_path = home_root
             .join(".config")
             .join("yazelix")
-            .join("yazelix.toml");
+            .join("settings.jsonc");
         if let Ok(metadata) = fs::symlink_metadata(&main_config_path) {
             if manage_config && !metadata.file_type().is_symlink() {
                 errors.push(format!(
-                    "Home Manager managed yazelix.toml should be a profile symlink: {}",
+                    "Home Manager managed settings.jsonc should be a profile symlink: {}",
                     main_config_path.display()
                 ));
             }
             if !manage_config && metadata.file_type().is_symlink() {
                 errors.push(format!(
-                    "Home Manager manage_config=false should leave yazelix.toml mutable, got symlink: {}",
+                    "Home Manager manage_config=false should leave settings.jsonc mutable, got symlink: {}",
                     main_config_path.display()
                 ));
             }

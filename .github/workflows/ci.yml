@@ -4,6 +4,17 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      run_runtime_smoke:
+        description: "Run installed-runtime contract smoke"
+        required: false
+        type: boolean
+        default: false
+      run_cold_install:
+        description: "Run cold profile install smoke"
+        required: false
+        type: boolean
+        default: false
   schedule:
     - cron: "30 7 * * 0"
 
@@ -11,68 +22,6 @@ permissions:
   contents: read
 
 jobs:
-  # Keep change detection inside the workflow, not in top-level path filters.
-  # Required workflows that are skipped by path filters can leave checks pending.
-  detect_integration_changes:
-    runs-on: ubuntu-latest
-    outputs:
-      run_runtime_contract: ${{ steps.detect.outputs.run_runtime_contract }}
-      changed_files: ${{ steps.detect.outputs.changed_files }}
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Detect runtime/install-impacting changes
-        id: detect
-        shell: bash
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
-          HEAD_SHA: ${{ github.sha }}
-        run: |
-          set -euo pipefail
-
-          if [ "$EVENT_NAME" = "schedule" ] || [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            {
-              echo "run_runtime_contract=true"
-              echo "changed_files<<EOF"
-              echo "(forced full integration run for $EVENT_NAME)"
-              echo "EOF"
-            } >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          base="$BASE_SHA"
-          head="$HEAD_SHA"
-          integration_paths_regex='^(flake\.nix|flake\.lock|maintainer_shell\.nix|\.github/workflows/ci\.yml|shells/|configs/|home_manager/|packaging/mk_runtime_tree\.nix|yazelix_package\.nix|yazelix_runtime_package\.nix|yazelix_default\.toml|nushell/scripts/core/|nushell/scripts/setup/|nushell/scripts/utils/|rust_core/)'
-
-          if [ -z "${base:-}" ] || [ "$base" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
-            base="$(git rev-parse "$head^" 2>/dev/null || git rev-list --max-parents=0 "$head" | tail -n1)"
-          fi
-
-          changed="$(git diff --name-only "$base" "$head")"
-
-          echo "Changed files since $base..$head:"
-          if [ -n "$changed" ]; then
-            printf '%s\n' "$changed"
-          else
-            echo "(none)"
-          fi
-
-          run_runtime_contract=false
-          if printf '%s\n' "$changed" | grep -E "$integration_paths_regex" >/dev/null; then
-            run_runtime_contract=true
-          fi
-
-          {
-            echo "run_runtime_contract=$run_runtime_contract"
-            echo "changed_files<<EOF"
-            printf '%s\n' "$changed"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
   validate:
     # Always-on fast lane. Keep this strong enough for branch protection and
     # routine pushes, but do not make every commit pay for cold install/runtime smoke.
@@ -138,11 +87,11 @@ jobs:
         run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-flake-interface
 
   integration:
-    # Medium-cost installed-runtime contract lane. Keep this path-gated so
-    # routine pushes do not disappear behind top-level workflow filters. It
-    # runs independently of validate so runtime-impacting changes do not stack
-    # the two lane times serially.
-    needs: [detect_integration_changes]
+    # Manual maintainer gate for Home Manager/runtime activation behavior.
+    # Routine pushes stay on the faster source-contract lane, while Nix CI and
+    # the cache publisher keep covering package buildability.
+    needs: [validate]
+    if: ${{ needs.validate.result == 'success' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_runtime_smoke)) }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
@@ -152,45 +101,29 @@ jobs:
       run:
         shell: bash
     steps:
-      - name: Skip installed-runtime contract smoke
-        if: ${{ needs.detect_integration_changes.outputs.run_runtime_contract != 'true' }}
-        shell: bash
-        run: |
-          echo "Skipping installed-runtime contract lane: no relevant files changed."
-          echo "Changed files:"
-          if [ -n "${{ needs.detect_integration_changes.outputs.changed_files }}" ]; then
-            printf '%s\n' "${{ needs.detect_integration_changes.outputs.changed_files }}"
-          else
-            echo "(none)"
-          fi
-
       - name: Check out repository
-        if: ${{ needs.detect_integration_changes.outputs.run_runtime_contract == 'true' }}
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Install Nix
-        if: ${{ needs.detect_integration_changes.outputs.run_runtime_contract == 'true' }}
         uses: DeterminateSystems/nix-installer-action@v22
         with:
           determinate: false
 
       - name: Build maintainer validator
-        if: ${{ needs.detect_integration_changes.outputs.run_runtime_contract == 'true' }}
         run: nix develop -c cargo build --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator
 
       - name: Validate installed-runtime contract smoke
-        if: ${{ needs.detect_integration_changes.outputs.run_runtime_contract == 'true' }}
         shell: bash
         run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-installed-runtime-contract
 
   cold_install:
-    # Full cold profile-install/rebuild smoke. Keep this on weekly/manual validation
-    # instead of routine pushes and PRs because the runtime closure can be
-    # substitution-sensitive and much more expensive than the contract lane.
-    needs: [detect_integration_changes, validate]
-    if: ${{ needs.validate.result == 'success' && needs.detect_integration_changes.outputs.run_runtime_contract == 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
+    # Full cold profile-install/rebuild smoke. Keep it explicit because the
+    # runtime closure can be substitution-sensitive and much more expensive
+    # than the source-contract lane.
+    needs: [validate]
+    if: ${{ needs.validate.result == 'success' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_cold_install)) }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
