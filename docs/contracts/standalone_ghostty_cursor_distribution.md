@@ -6,7 +6,7 @@
 
 The primary flake package is `.#yazelix_cursors`. `.#ghostty_cursor_shaders` remains a compatibility package attribute for the same output because that name already existed as the first standalone cursor surface. The package exposes the standalone `yzc` binary, and the flake exposes `.#yzc` as an app for direct CLI use.
 
-The source repository is the standalone Yazelix cursor repository. Yazelix consumes that repository through explicit flake and Cargo dependency pins.
+The source repository is [`luccahuguet/yazelix-cursors`](https://github.com/luccahuguet/yazelix-cursors). Yazelix consumes that repository through explicit flake and Cargo dependency pins.
 
 ## Decision
 
@@ -47,7 +47,7 @@ Alternatives considered:
 
 ## Release Policy
 
-- `yazelix_cursors` versions independently through the standalone Yazelix cursor repository
+- `yazelix_cursors` versions independently through the `luccahuguet/yazelix-cursors` repository
 - Cursor schema changes must remain valid for the main `settings.jsonc` cursor object
 - Preset removals need a normal Yazelix upgrade note because users may have copied shader paths or config examples
 - Yazelix must pin an explicit flake input and Cargo revision when consuming `yazelix_cursors`
@@ -78,7 +78,7 @@ The package must not depend on Zellij, Yazi, Helix, Yazelix pane orchestration, 
 
 ## Provenance
 
-The shader direction is inspired by the public Ghostty cursor shader ecosystem, including `ghostty-cursor-shaders`. Yazelix-generated palette shaders are derived from `yazelix_cursors_default.toml` and the first-party Ghostty materialization code. Vendored or adapted shader files in the standalone Yazelix cursor repository must keep nearby provenance notes.
+The shader direction is inspired by the public Ghostty cursor shader ecosystem, including `ghostty-cursor-shaders`. Yazelix-generated palette shaders are derived from `yazelix_cursors_default.toml` and the first-party Ghostty materialization code. Vendored or adapted shader files in `luccahuguet/yazelix-cursors` must keep nearby provenance notes.
 
 ## Non-Goals
 

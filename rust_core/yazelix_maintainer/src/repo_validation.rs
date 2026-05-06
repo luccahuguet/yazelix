@@ -1153,10 +1153,31 @@ fn is_policy_only_contract_path(contract_path: &str) -> bool {
 }
 
 fn line_contains_bead_id(line: &str) -> bool {
-    if line.contains("yazelix-validate-") {
+    line.split(|character: char| {
+        !(character.is_ascii_alphanumeric() || character == '-' || character == '.')
+    })
+    .any(token_is_bead_id)
+}
+
+fn token_is_bead_id(token: &str) -> bool {
+    let Some(rest) = token.strip_prefix("yazelix-") else {
+        return false;
+    };
+
+    let first_segment = rest.split('.').next().unwrap_or_default();
+    if first_segment.is_empty()
+        || !first_segment
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit())
+    {
         return false;
     }
-    line.contains("yazelix-")
+
+    if rest.contains('.') {
+        return (3..=6).contains(&first_segment.len());
+    }
+
+    first_segment.len() == 4
 }
 
 fn read_lines(path: &Path) -> Result<Vec<String>, String> {
@@ -1226,6 +1247,24 @@ mod tests {
         for lane in ALLOWED_TEST_LANES {
             assert_eq!(minimum_strength_for_lane(lane), Some(8));
         }
+    }
+
+    // Regression: Yazelix component repository links stay valid contract text while Bead ids remain planning-only.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn contract_validation_allows_yazelix_component_repository_names() {
+        assert!(!line_contains_bead_id(
+            "[`luccahuguet/yazelix-cursors`](https://github.com/luccahuguet/yazelix-cursors)"
+        ));
+        assert!(!line_contains_bead_id(
+            "The source repository is `luccahuguet/yazelix-screen`."
+        ));
+
+        assert!(line_contains_bead_id("Bead: `yazelix-ak2d`"));
+        assert!(line_contains_bead_id("Child bead `yazelix-ak2d.2`"));
+        assert!(line_contains_bead_id(
+            "Legacy hierarchy `yazelix-subsys.2.1`"
+        ));
     }
 
     // Defends: canonical contracts reject issue-tracker traceability so planning state stays out.
