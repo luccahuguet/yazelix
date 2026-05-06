@@ -33,7 +33,7 @@ const GAME_OF_LIFE_RANDOM_POOL: &[&str] = &[
     "game_of_life_bloom",
 ];
 const BOIDS_RANDOM_POOL: &[&str] = &["boids_predator", "boids_schools"];
-const WELCOME_RANDOM_FAMILY_COUNT: usize = 3;
+const RANDOM_ANIMATION_FAMILY_COUNT: usize = 3;
 
 #[derive(Debug, Clone, Deserialize)]
 struct AsciiArtData {
@@ -91,7 +91,7 @@ fn style_values_for_surface(surface: &str) -> Vec<&'static str> {
         .collect()
 }
 
-fn assert_random_welcome_pool_is_allowed(allowed: &[&str]) {
+fn assert_random_animation_pool_is_allowed(allowed: &[&str]) {
     for candidate in GAME_OF_LIFE_RANDOM_POOL
         .iter()
         .chain(BOIDS_RANDOM_POOL.iter())
@@ -101,21 +101,21 @@ fn assert_random_welcome_pool_is_allowed(allowed: &[&str]) {
             .iter()
             .any(|allowed_style| allowed_style == candidate)
         {
-            panic!("missing retained random welcome style: {candidate}");
+            panic!("missing retained random animation style: {candidate}");
         }
     }
 }
 
-fn resolve_random_welcome_style(allowed: &[&str], random_index: Option<usize>) -> String {
-    assert_random_welcome_pool_is_allowed(allowed);
+fn resolve_random_animation_style(allowed: &[&str], random_index: Option<usize>) -> String {
+    assert_random_animation_pool_is_allowed(allowed);
     let subpool_width = lcm(
         GAME_OF_LIFE_RANDOM_POOL.len(),
         BOIDS_RANDOM_POOL.len().max(1),
     );
-    let slot_count = WELCOME_RANDOM_FAMILY_COUNT * subpool_width;
+    let slot_count = RANDOM_ANIMATION_FAMILY_COUNT * subpool_width;
     let selected = random_index.unwrap_or_else(|| system_random_index(slot_count)) % slot_count;
-    let family = selected % WELCOME_RANDOM_FAMILY_COUNT;
-    let family_index = (selected / WELCOME_RANDOM_FAMILY_COUNT) % subpool_width;
+    let family = selected % RANDOM_ANIMATION_FAMILY_COUNT;
+    let family_index = (selected / RANDOM_ANIMATION_FAMILY_COUNT) % subpool_width;
 
     match family {
         0 => GAME_OF_LIFE_RANDOM_POOL[family_index % GAME_OF_LIFE_RANDOM_POOL.len()].to_string(),
@@ -138,21 +138,6 @@ fn gcd(mut left: usize, mut right: usize) -> usize {
         right = remainder;
     }
     left
-}
-
-fn resolve_random_screen_style(allowed: &[&str], random_index: Option<usize>) -> String {
-    for candidate in GAME_OF_LIFE_RANDOM_POOL {
-        if !allowed
-            .iter()
-            .any(|allowed_style| allowed_style == candidate)
-        {
-            panic!("missing retained random screen style: {candidate}");
-        }
-    }
-    let selected = random_index
-        .unwrap_or_else(|| system_random_index(GAME_OF_LIFE_RANDOM_POOL.len()))
-        % GAME_OF_LIFE_RANDOM_POOL.len();
-    GAME_OF_LIFE_RANDOM_POOL[selected].to_string()
 }
 
 pub fn resolve_welcome_style(
@@ -178,7 +163,7 @@ pub fn resolve_welcome_style(
         return Ok(normalized);
     }
 
-    Ok(resolve_random_welcome_style(&allowed, random_index))
+    Ok(resolve_random_animation_style(&allowed, random_index))
 }
 
 pub fn resolve_screen_style(
@@ -201,7 +186,7 @@ pub fn resolve_screen_style(
     }
 
     if normalized == "random" {
-        return Ok(resolve_random_screen_style(&allowed, random_index));
+        return Ok(resolve_random_animation_style(&allowed, random_index));
     }
     Ok(normalized)
 }
@@ -855,14 +840,32 @@ mod tests {
     }
 
     // Test lane: default
-    // Defends: `yzx screen random` still resolves only to the retained Game of Life screen styles instead of drifting back to logo, boids, Mandelbrot, or static.
+    // Defends: `yzx screen random` rotates across retained animation families instead of getting stuck in Game of Life variants.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn random_screen_style_stays_within_retained_game_of_life_pool() {
-        for index in 0..8 {
+    fn random_screen_style_rotates_across_animation_families() {
+        let mut game_of_life_count = 0;
+        let mut boids_count = 0;
+        let mut mandelbrot_count = 0;
+
+        for index in 0..18 {
             let resolved = resolve_screen_style(Some("random"), Some(index)).unwrap();
-            assert!(GAME_OF_LIFE_RANDOM_POOL.contains(&resolved.as_str()));
+            assert_ne!(resolved, "static");
+            assert_ne!(resolved, "logo");
+            if is_game_of_life_style(&resolved) {
+                game_of_life_count += 1;
+            } else if is_boids_style(&resolved) {
+                boids_count += 1;
+            } else if resolved == "mandelbrot" {
+                mandelbrot_count += 1;
+            } else {
+                panic!("unexpected random screen style: {resolved}");
+            }
         }
+
+        assert_eq!(game_of_life_count, 6);
+        assert_eq!(boids_count, 6);
+        assert_eq!(mandelbrot_count, 6);
     }
 
     // Defends: welcome random splits selection evenly across Game of Life, boids, and Mandelbrot families while excluding static and logo.
