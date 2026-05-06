@@ -6,6 +6,7 @@
   rustCoreHelper ? null,
   runtimeVariant ? "ghostty",
   runtimeToolSources ? { },
+  components ? { },
   extraRuntimePackages ? [ ],
   extraRuntimeCommands ? [ "tu" ],
 }:
@@ -13,6 +14,10 @@
 let
   runtimeToolRegistry = import ./runtime_tool_registry.nix {
     inherit pkgs nixgl runtimeVariant runtimeToolSources;
+  };
+  runtimeComponentRegistry = import ./runtime_component_registry.nix {
+    lib = pkgs.lib;
+    inherit components;
   };
   runtimeDeps = runtimeToolRegistry.runtimePackages ++ extraRuntimePackages;
   runtimeBinDirs = map (pkg: "${pkg}/bin") runtimeDeps;
@@ -36,6 +41,7 @@ pkgs.runCommand name { } ''
   ln -s ${src}/yazelix_default.toml "$out/yazelix_default.toml"
   ln -s ${src}/yazelix_cursors_default.toml "$out/yazelix_cursors_default.toml"
   printf '%s\n' ${pkgs.lib.escapeShellArg runtimeVariant} > "$out/runtime_variant"
+  printf '%s\n' ${pkgs.lib.escapeShellArg runtimeComponentRegistry.manifestJson} > "$out/runtime_components.json"
   printf '%s\n' ${pkgs.lib.escapeShellArg runtimeToolRegistry.manifestJson} > "$out/runtime_tools.json"
 
   mkdir -p "$out/libexec"

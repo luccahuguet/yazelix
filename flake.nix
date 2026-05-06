@@ -50,6 +50,7 @@
         "x86_64-darwin"
         "aarch64-darwin"
       ];
+      lib = nixpkgs.lib;
       forAllSystems = nixpkgs.lib.genAttrs systems;
       mkPkgs = system: nixpkgs.legacyPackages.${system};
       homeManagerModule = { pkgs, ... }: {
@@ -64,6 +65,25 @@
         [
           (import ./packaging/tokenusage.nix { inherit pkgs; })
         ];
+      mkYazelix =
+        system:
+        {
+          pkgs ? mkPkgs system,
+          src ? null,
+          rust_core_src ? src,
+          runtimeVariant ? "ghostty",
+          runtimeToolSources ? { },
+          components ? { },
+          extraRuntimePackages ? [ ],
+        }:
+        import ./yazelix_package.nix (
+          {
+            inherit pkgs nixgl runtimeVariant runtimeToolSources components extraRuntimePackages;
+            fenixPkgs = fenix.packages.${pkgs.stdenv.hostPlatform.system};
+          }
+          // lib.optionalAttrs (src != null) { inherit src; }
+          // lib.optionalAttrs (rust_core_src != null) { inherit rust_core_src; }
+        );
       runtimePackage = system: pkgs: runtimeVariant: extraRuntimePackages:
         import ./yazelix_runtime_package.nix {
           inherit pkgs nixgl runtimeVariant;
@@ -71,10 +91,8 @@
           inherit extraRuntimePackages;
         };
       yazelixPackage = system: pkgs: runtimeVariant: extraRuntimePackages:
-        import ./yazelix_package.nix {
-          inherit pkgs nixgl runtimeVariant;
-          fenixPkgs = fenix.packages.${system};
-          inherit extraRuntimePackages;
+        mkYazelix system {
+          inherit pkgs runtimeVariant extraRuntimePackages;
         };
       maintainerShell =
         system: pkgs:
@@ -91,6 +109,10 @@
         };
     in
     {
+      lib = forAllSystems (system: {
+        mkYazelix = mkYazelix system;
+      });
+
       packages = forAllSystems (
         system:
         let

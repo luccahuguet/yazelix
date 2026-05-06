@@ -6,6 +6,8 @@
   metaPlatforms ? null,
   fenixPkgs ? null,
   runtimeVariant ? "ghostty",
+  runtimeToolSources ? { },
+  components ? { },
   extraRuntimePackages ? [ ],
 }:
 
@@ -15,7 +17,7 @@ let
     src = rust_core_src;
   };
   runtime = import ./mk_runtime_tree.nix {
-    inherit pkgs src nixgl rustCoreHelper runtimeVariant extraRuntimePackages;
+    inherit pkgs src nixgl rustCoreHelper runtimeVariant runtimeToolSources components extraRuntimePackages;
     name = "yazelix-runtime";
   };
 in
