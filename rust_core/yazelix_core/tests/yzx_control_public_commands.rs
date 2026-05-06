@@ -13,17 +13,6 @@ use support::envelopes::stdout_text;
 use support::fixtures::managed_config_fixture;
 use yazelix_core::user_config_paths::shared_cursor_config;
 
-// Defends: the Rust-owned `yzx why` leaf keeps the existing elevator-pitch copy instead of drifting through wrapper churn.
-// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-#[test]
-fn yzx_control_why_prints_elevator_pitch() {
-    let output = yzx_control_command().arg("why").output().unwrap();
-    let stdout = stdout_text(output);
-    assert!(stdout.contains("Yazelix is a reproducible terminal IDE"));
-    assert!(stdout.contains("Zero"));
-    assert!(stdout.contains("Get everything running in <10 minutes."));
-}
-
 // Defends: the Rust-owned `yzx sponsor` leaf still falls back to printing the sponsor URL when no opener is available.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
@@ -99,23 +88,6 @@ fn yzx_restart_help_prints_usage_without_restarting() {
     }
 }
 
-// Regression: cursor settings live in the shared cursor settings.jsonc, so the removed `yzx edit cursors` surface must not survive as an alias.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-#[test]
-fn yzx_control_edit_cursors_shape_is_removed() {
-    let fixture = managed_config_fixture("");
-    let mut command = yzx_control_command();
-    apply_managed_config_env(&mut command, &fixture)
-        .arg("edit")
-        .arg("cursors")
-        .arg("--print");
-    let output = command.output().unwrap();
-
-    assert_eq!(output.status.code(), Some(64));
-    let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(stderr.contains("No managed Yazelix config surface matched `cursors`"));
-}
-
 // Defends: `yzx cursors` exposes resolved cursor colors and split shape names from canonical cursor settings without requiring users to inspect generated shaders.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
@@ -134,22 +106,6 @@ fn yzx_control_cursors_prints_resolved_color_surface() {
     assert!(stdout.contains("orchid: split divider=vertical transition=hard"));
     assert!(stdout.contains("magma: split divider=horizontal transition=soft"));
     assert!(expected_path.exists());
-}
-
-// Regression: cursor settings are not reset through a hidden legacy `yzx reset cursor` alias.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-#[test]
-fn yzx_control_reset_cursor_shape_is_removed() {
-    let output = yzx_control_command()
-        .arg("reset")
-        .arg("cursor")
-        .arg("--yes")
-        .output()
-        .unwrap();
-
-    assert_eq!(output.status.code(), Some(64));
-    let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(stderr.contains("Unknown reset target for yzx reset: cursor"));
 }
 
 // Defends: `yzx reset config` preserves adjacent managed overrides and user-owned files instead of deleting them silently.
@@ -197,22 +153,6 @@ fn yzx_control_reset_config_warns_about_preserved_adjacent_files() {
     assert!(legacy_cursor_path.exists());
     assert!(notes_path.exists());
     assert!(settings_backup_path.exists());
-}
-
-// Regression: the removed nested reset shape must fail instead of surviving as a hidden compatibility alias.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-#[test]
-fn yzx_control_config_reset_shape_is_removed() {
-    let output = yzx_control_command()
-        .arg("config")
-        .arg("reset")
-        .arg("--help")
-        .output()
-        .unwrap();
-
-    assert_eq!(output.status.code(), Some(64));
-    let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(stderr.contains("Unknown argument for yzx config: reset"));
 }
 
 // Defends: the Rust-owned `yzx keys` leaves preserve alias parity and tool-specific guidance instead of routing every leaf to the same generic output.

@@ -880,6 +880,7 @@ enum SessionConfigOverrideKind {
     Int,
     String,
     StringList,
+    StringListMap,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1034,6 +1035,7 @@ fn load_session_config_override_fields(
             "int" => SessionConfigOverrideKind::Int,
             "string" => SessionConfigOverrideKind::String,
             "string_list" => SessionConfigOverrideKind::StringList,
+            "string_list_map" => SessionConfigOverrideKind::StringListMap,
             other => {
                 return Err(CoreError::classified(
                     ErrorClass::Internal,
@@ -1158,6 +1160,46 @@ fn parse_session_config_patch_value(
                     "invalid_session_config_override_string_list",
                     format!("Invalid string-list value for --with {path}."),
                     "Every array item must be a string.",
+                    serde_json::json!({ "path": path, "value": raw }),
+                ));
+            }
+            Ok(value)
+        }
+        SessionConfigOverrideKind::StringListMap => {
+            let value = serde_json::from_str::<JsonValue>(raw.trim()).map_err(|source| {
+                CoreError::classified(
+                    ErrorClass::Config,
+                    "invalid_session_config_override_string_list_map",
+                    format!("Invalid string-list-map value for --with {path}."),
+                    "Use a JSON object whose values are arrays of strings.",
+                    serde_json::json!({
+                        "path": path,
+                        "value": raw,
+                        "error": source.to_string(),
+                    }),
+                )
+            })?;
+            let Some(entries) = value.as_object() else {
+                return Err(CoreError::classified(
+                    ErrorClass::Config,
+                    "invalid_session_config_override_string_list_map",
+                    format!("Invalid string-list-map value for --with {path}."),
+                    "Use a JSON object whose values are arrays of strings.",
+                    serde_json::json!({ "path": path, "value": raw }),
+                ));
+            };
+            let all_values_are_string_lists = entries.values().all(|entry| {
+                entry
+                    .as_array()
+                    .map(|items| items.iter().all(JsonValue::is_string))
+                    .unwrap_or(false)
+            });
+            if !all_values_are_string_lists {
+                return Err(CoreError::classified(
+                    ErrorClass::Config,
+                    "invalid_session_config_override_string_list_map",
+                    format!("Invalid string-list-map value for --with {path}."),
+                    "Every object value must be an array of strings.",
                     serde_json::json!({ "path": path, "value": raw }),
                 ));
             }
@@ -2893,11 +2935,18 @@ mod tests {
                     kind: SessionConfigOverrideKind::StringList,
                 },
             ),
+            (
+                "zellij.keybindings".to_string(),
+                SessionConfigOverrideField {
+                    kind: SessionConfigOverrideKind::StringListMap,
+                },
+            ),
         ]);
         let mut root = serde_json::json!({
             "core": { "skip_welcome_screen": false },
             "editor": {},
-            "terminal": { "terminals": ["ghostty"] }
+            "terminal": { "terminals": ["ghostty"] },
+            "zellij": { "keybindings": { "toggle_popup": ["Alt p"] } }
         });
 
         for raw in [
@@ -2906,6 +2955,7 @@ mod tests {
             "core.welcome_duration_seconds=3.5",
             "editor.sidebar_width_percent=24",
             "terminal.terminals=[\"wezterm\", \"kitty\"]",
+            "zellij.keybindings={\"toggle_popup\":[\"Alt t\"],\"open_config\":[]}",
         ] {
             let patch = parse_session_config_patch(raw, &fields).unwrap();
             apply_session_config_patch(&mut root, &patch).unwrap();
@@ -2919,6 +2969,13 @@ mod tests {
             root["terminal"]["terminals"],
             serde_json::json!(["wezterm", "kitty"])
         );
+        assert_eq!(
+            root["zellij"]["keybindings"],
+            serde_json::json!({
+                "toggle_popup": ["Alt t"],
+                "open_config": [],
+            })
+        );
 
         let unknown = parse_session_config_patch("editor.nope=true", &fields).unwrap_err();
         assert!(
@@ -2929,6 +2986,14 @@ mod tests {
         let invalid_bool =
             parse_session_config_patch("core.skip_welcome_screen=maybe", &fields).unwrap_err();
         assert!(invalid_bool.to_string().contains("Invalid boolean value"));
+        let invalid_map =
+            parse_session_config_patch("zellij.keybindings={\"toggle_popup\":\"Alt t\"}", &fields)
+                .unwrap_err();
+        assert!(
+            invalid_map
+                .to_string()
+                .contains("Invalid string-list-map value")
+        );
     }
 
     // Defends: --with writes an ephemeral settings.jsonc snapshot and validates it through the normal config contract without mutating the user's config.

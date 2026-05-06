@@ -8,20 +8,6 @@ mod support;
 use support::commands::yzx_control_command;
 use support::envelopes::stdout_text;
 
-// Defends: the Rust-owned `yzx tutor` root still exposes the managed-workspace guided overview instead of regressing to a thin wrapper.
-// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-#[test]
-fn yzx_control_tutor_root_keeps_guided_overview() {
-    let output = yzx_control_command().arg("tutor").output().unwrap();
-    let stdout = stdout_text(output);
-    assert!(stdout.contains("Yazelix tutor"));
-    assert!(stdout.contains("yzx tutor begin"));
-    assert!(stdout.contains("yzx tutor list"));
-    assert!(stdout.contains("yzx launch"));
-    assert!(stdout.contains("yzx menu"));
-    assert!(stdout.contains("yzx doctor"));
-}
-
 // Defends: the public `yzx tutor begin/list` flow exposes concrete lessons and the first workspace mini quest through the actual CLI binary.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]

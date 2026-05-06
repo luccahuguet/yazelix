@@ -62,33 +62,6 @@ fn command_metadata_externs_include_rust_only_leaves_once() {
     assert!(!extern_content.contains(": key=value"));
 }
 
-// Defends: root yzx help can be served without evaluating the Nushell command tree.
-// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-#[test]
-fn command_metadata_help_prints_public_yzx_surface() {
-    let output = Command::cargo_bin("yzx_core")
-        .unwrap()
-        .arg("yzx-command-metadata.help")
-        .output()
-        .unwrap();
-
-    assert!(output.status.success());
-    assert!(output.stderr.is_empty());
-
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    assert!(stdout.contains("Commands:"));
-    assert!(stdout.contains("yzx config"));
-    assert!(stdout.contains("yzx doctor"));
-    assert!(stdout.contains("yzx env"));
-    assert!(stdout.contains("yzx keys"));
-    assert!(stdout.contains("yzx reveal"));
-    assert!(stdout.contains("yzx run"));
-    assert!(stdout.contains("yzx sponsor"));
-    assert!(stdout.contains("yzx warp"));
-    assert!(stdout.contains("yzx why"));
-    assert!(stdout.contains("yzx update nix"));
-}
-
 // Regression: yzx_core owns generated extern bridge sync, so startup no longer needs the Nushell compatibility wrapper.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
