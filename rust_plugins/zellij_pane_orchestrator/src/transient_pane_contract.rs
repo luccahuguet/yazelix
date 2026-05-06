@@ -14,6 +14,46 @@ pub struct TransientPaneIdentityContract {
     pub command_marker: Option<&'static str>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TransientPaneIdentityView<'a> {
+    pub pane_title: &'a str,
+    pub command_marker: Option<&'a str>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TransientPopupAction {
+    Toggle,
+    Open,
+    Focus,
+    Close,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct TransientPopupSpec {
+    pub id: String,
+    pub pane_title: String,
+    #[serde(default)]
+    pub command_marker: Option<String>,
+    pub command: Vec<String>,
+    #[serde(default)]
+    pub cwd: Option<String>,
+    pub width_percent: usize,
+    pub height_percent: usize,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct TransientPopupPipeRequest {
+    pub action: TransientPopupAction,
+    pub spec: TransientPopupSpec,
+    #[serde(default)]
+    pub args: Vec<String>,
+    #[serde(default)]
+    pub cwd: Option<String>,
+}
+
 impl TransientPaneKind {
     pub fn from_payload(payload: &str) -> Option<Self> {
         match payload.trim() {
@@ -72,6 +112,61 @@ pub struct TransientPaneLaunchPlan {
     pub geometry: TransientPaneGeometry,
 }
 
+impl TransientPaneIdentityContract {
+    pub fn as_view(&self) -> TransientPaneIdentityView<'_> {
+        TransientPaneIdentityView {
+            pane_title: self.pane_title,
+            command_marker: self.command_marker,
+        }
+    }
+}
+
+impl TransientPopupSpec {
+    pub fn identity(&self) -> TransientPaneIdentityView<'_> {
+        TransientPaneIdentityView {
+            pane_title: self.pane_title.as_str(),
+            command_marker: self.command_marker.as_deref(),
+        }
+    }
+
+    pub fn geometry(&self) -> Option<TransientPaneGeometry> {
+        if !(1..=100).contains(&self.width_percent) || !(1..=100).contains(&self.height_percent) {
+            return None;
+        }
+
+        Some(TransientPaneGeometry {
+            width_percent: self.width_percent,
+            height_percent: self.height_percent,
+        })
+    }
+}
+
+impl TransientPopupPipeRequest {
+    pub fn launch_plan(&self, fallback_cwd: &str) -> Option<TransientPaneLaunchPlan> {
+        if self.spec.id.trim().is_empty() || self.spec.pane_title.trim().is_empty() {
+            return None;
+        }
+
+        let command_path = self.spec.command.first()?.clone();
+        let mut args = self
+            .spec
+            .command
+            .iter()
+            .skip(1)
+            .cloned()
+            .collect::<Vec<_>>();
+        args.extend(self.args.iter().cloned());
+
+        resolve_transient_launch_plan(TransientPaneLaunchRequest {
+            command_path,
+            args,
+            requested_cwd: self.cwd.clone().or_else(|| self.spec.cwd.clone()),
+            fallback_cwd: fallback_cwd.to_string(),
+            geometry: self.spec.geometry()?,
+        })
+    }
+}
+
 pub fn resolve_transient_launch_plan(
     request: TransientPaneLaunchRequest,
 ) -> Option<TransientPaneLaunchPlan> {
@@ -101,6 +196,13 @@ pub fn select_transient_pane<Id: Copy>(
     panes: &[TransientPaneSnapshot<'_, Id>],
     identity: TransientPaneIdentityContract,
 ) -> Option<TransientPaneState<Id>> {
+    select_transient_pane_by_identity(panes, identity.as_view())
+}
+
+pub fn select_transient_pane_by_identity<Id: Copy>(
+    panes: &[TransientPaneSnapshot<'_, Id>],
+    identity: TransientPaneIdentityView<'_>,
+) -> Option<TransientPaneState<Id>> {
     panes
         .iter()
         .filter(|pane| {
@@ -125,7 +227,14 @@ pub fn resolve_transient_toggle_plan<Id: Copy>(
     panes: &[TransientPaneSnapshot<'_, Id>],
     identity: TransientPaneIdentityContract,
 ) -> TransientTogglePlan<Id> {
-    match select_transient_pane(panes, identity) {
+    resolve_transient_toggle_plan_by_identity(panes, identity.as_view())
+}
+
+pub fn resolve_transient_toggle_plan_by_identity<Id: Copy>(
+    panes: &[TransientPaneSnapshot<'_, Id>],
+    identity: TransientPaneIdentityView<'_>,
+) -> TransientTogglePlan<Id> {
+    match select_transient_pane_by_identity(panes, identity) {
         Some(pane) if pane.is_focused => {
             TransientTogglePlan::CloseAndHideFloatingLayer(pane.pane_id)
         }
@@ -138,9 +247,12 @@ pub fn resolve_transient_toggle_plan<Id: Copy>(
 #[cfg(test)]
 mod tests {
     use super::{
-        resolve_transient_launch_plan, resolve_transient_toggle_plan, select_transient_pane,
-        TransientPaneGeometry, TransientPaneIdentityContract, TransientPaneLaunchPlan,
-        TransientPaneLaunchRequest, TransientPaneSnapshot, TransientPaneState, TransientTogglePlan,
+        resolve_transient_launch_plan, resolve_transient_toggle_plan,
+        resolve_transient_toggle_plan_by_identity, select_transient_pane,
+        select_transient_pane_by_identity, TransientPaneGeometry, TransientPaneIdentityContract,
+        TransientPaneLaunchPlan, TransientPaneLaunchRequest, TransientPaneSnapshot,
+        TransientPaneState, TransientPopupAction, TransientPopupPipeRequest, TransientPopupSpec,
+        TransientTogglePlan,
     };
 
     const POPUP_IDENTITY: TransientPaneIdentityContract = TransientPaneIdentityContract {
@@ -377,5 +489,136 @@ mod tests {
             }),
             None
         );
+    }
+
+    fn generic_popup_spec() -> TransientPopupSpec {
+        TransientPopupSpec {
+            id: "gitui".into(),
+            pane_title: "gitui_popup".into(),
+            command_marker: Some("gitui".into()),
+            command: vec!["gitui".into(), "--watch".into()],
+            cwd: Some("/repo".into()),
+            width_percent: 82,
+            height_percent: 76,
+        }
+    }
+
+    // Defends: standalone popup specs carry pane identity without depending on Yazelix popup/menu/config kind adapters.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
+    #[test]
+    fn generic_popup_spec_drives_identity_without_yazelix_adapter() {
+        let spec = generic_popup_spec();
+        let panes = [transient_pane(
+            11,
+            "gitui_popup",
+            Some("gitui --watch"),
+            false,
+        )];
+
+        assert_eq!(
+            select_transient_pane_by_identity(&panes, spec.identity()),
+            Some(TransientPaneState {
+                pane_id: 11,
+                is_focused: false,
+            })
+        );
+        assert_eq!(
+            resolve_transient_toggle_plan_by_identity(&panes, spec.identity()),
+            TransientTogglePlan::Focus(11)
+        );
+    }
+
+    // Defends: the future plain-Zellij popup pipe schema resolves argv/cwd/geometry without Yazelix runtime wrapper paths.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn standalone_popup_pipe_request_resolves_launch_plan() {
+        let payload = r#"{
+            "action": "toggle",
+            "spec": {
+                "id": "gitui",
+                "pane_title": "gitui_popup",
+                "command_marker": "gitui",
+                "command": ["gitui", "--watch"],
+                "cwd": "/repo",
+                "width_percent": 82,
+                "height_percent": 76
+            },
+            "args": ["--log-level", "debug"],
+            "cwd": "/override"
+        }"#;
+        let request = serde_json::from_str::<TransientPopupPipeRequest>(payload).unwrap();
+
+        assert_eq!(request.action, TransientPopupAction::Toggle);
+        assert_eq!(
+            request.launch_plan("/fallback"),
+            Some(TransientPaneLaunchPlan {
+                command_path: "gitui".into(),
+                args: vec!["--watch".into(), "--log-level".into(), "debug".into()],
+                cwd: "/override".into(),
+                geometry: TransientPaneGeometry {
+                    width_percent: 82,
+                    height_percent: 76,
+                },
+            })
+        );
+    }
+
+    // Defends: the generic popup pipe schema is strict enough to reject accidental Yazelix-only adapter fields.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn standalone_popup_pipe_schema_rejects_unknown_fields() {
+        let payload = r#"{
+            "action": "toggle",
+            "runtime_dir": "/tmp/yazelix",
+            "spec": {
+                "id": "gitui",
+                "pane_title": "gitui_popup",
+                "command_marker": "gitui",
+                "command": ["gitui"],
+                "cwd": "/repo",
+                "width_percent": 90,
+                "height_percent": 85
+            }
+        }"#;
+
+        assert!(serde_json::from_str::<TransientPopupPipeRequest>(payload).is_err());
+    }
+
+    // Defends: generic popup specs fail closed when pane identity, command identity, or dimensions are not launchable.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
+    #[test]
+    fn generic_popup_launch_plan_rejects_empty_identity_command_or_invalid_geometry() {
+        let empty_identity = TransientPopupPipeRequest {
+            action: TransientPopupAction::Open,
+            spec: TransientPopupSpec {
+                id: "".into(),
+                ..generic_popup_spec()
+            },
+            args: vec![],
+            cwd: None,
+        };
+        assert_eq!(empty_identity.launch_plan("/fallback"), None);
+
+        let empty_command = TransientPopupPipeRequest {
+            action: TransientPopupAction::Open,
+            spec: TransientPopupSpec {
+                command: vec![],
+                ..generic_popup_spec()
+            },
+            args: vec![],
+            cwd: None,
+        };
+        assert_eq!(empty_command.launch_plan("/fallback"), None);
+
+        let invalid_geometry = TransientPopupPipeRequest {
+            action: TransientPopupAction::Open,
+            spec: TransientPopupSpec {
+                width_percent: 101,
+                ..generic_popup_spec()
+            },
+            args: vec![],
+            cwd: None,
+        };
+        assert_eq!(invalid_geometry.launch_plan("/fallback"), None);
     }
 }

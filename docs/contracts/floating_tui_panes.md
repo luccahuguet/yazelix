@@ -84,6 +84,38 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - That future value is not an extraction promise. Extraction is allowed only after the POP-005 gate is satisfied and examples prove the capability works without Yazelix-specific runtime paths, wrappers, config keys, or sidebar refresh hooks.
 - The current Yazelix path remains canonical while the gate is unmet: `yzx popup`, `zellij.popup_program`, the transient-pane facts surface, and the pane-orchestrator transient contract define supported behavior.
 
+## Standalone Prep Schema
+
+The extraction gate is prepared around a generic popup request shape that does not mention Yazelix runtime paths:
+
+```json
+{
+  "action": "toggle",
+  "spec": {
+    "id": "gitui",
+    "pane_title": "gitui_popup",
+    "command_marker": "gitui",
+    "command": ["gitui"],
+    "cwd": ".",
+    "width_percent": 90,
+    "height_percent": 85
+  },
+  "args": []
+}
+```
+
+- `action` is one of `toggle`, `open`, `focus`, or `close`
+- `spec.id` names the popup spec and is not tied to Yazelix `popup`, `menu`, or `config` kinds
+- `pane_title` and optional `command_marker` define managed pane identity
+- `command` is an argv list where the first element is the program path and the remaining elements are default arguments
+- `cwd` is optional; a host plugin may supply a fallback cwd when no request cwd is provided
+- `width_percent` and `height_percent` must be integers in `1..100`
+- `args` appends invocation-specific arguments to the configured command argv
+
+The plain-Zellij example lives at `docs/examples/zellij_popup_plain_zellij.kdl`. It demonstrates the intended future `MessagePlugin` payload shape for a standalone `yazelix_zellij_popup` plugin and intentionally avoids `settings.jsonc`, Home Manager, `yzx`, Yazelix runtime wrapper paths, workspace snapshots, and sidebar refresh hooks.
+
+This schema and example prepare POP-005; they do not satisfy the extraction gate by themselves. External extraction remains blocked until a distributable plugin/package, permission story, runtime-independent tests, and plain-Zellij examples are validated together.
+
 ## Non-goals
 
 - General floating-pane support for every Yazelix action
@@ -103,12 +135,14 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 7. When `Alt+Shift+M` is used, the command palette still opens separately from the popup-program flow.
 8. A proposed popup extraction is rejected unless it supplies a generic config surface, stable request schema, documented Zellij command contract, runtime-independent tests, and plain-Zellij examples.
 9. While the extraction gate is unmet, Yazelix docs and code should continue to identify the in-repo implementation as canonical.
+10. A generic popup request rejects unknown fields and invalid geometry before opening a pane.
 
 ## Verification
 
 - unit tests: popup command/cwd resolution helpers
 - unit tests: popup geometry config parsing and validation
 - unit tests: popup lifecycle contract and transient-pane discovery in the pane orchestrator
+- unit tests: generic standalone popup spec and strict pipe request schema
 - unit tests: popup-toggle wrapper decision path
 - integration tests: `yzx popup` command routing and popup geometry arguments with a fake Zellij binary
 - integration tests: generated Zellij config and permission cleanup remove stale popup-runner artifacts
@@ -120,6 +154,7 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - Defended by: `nu nushell/scripts/dev/test_yzx_commands.nu`
 - Defended by: `nu nushell/scripts/dev/test_yzx_popup_commands.nu`
 - Defended by: `nu nushell/scripts/dev/test_zellij_plugin_contracts.nu`
+- Defended by: `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml transient_pane_contract`
 - Defended by: `yzx_repo_validator validate-contracts`
 
 ## Open Questions
