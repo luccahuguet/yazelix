@@ -127,7 +127,7 @@ keybinds {
 
 Sidebar commands such as `toggle_sidebar`, `toggle_editor_sidebar_focus`, and `focus_sidebar` are the stable pane-orchestrator contract. The default keys (`Alt+y`, `Ctrl+y`) are just Yazelix's shipped policy.
 
-For full native Zellij keybinding ownership, use `keybinds clear-defaults=true` in `~/.config/yazelix/zellij.kdl`:
+For full native Zellij keybinding ownership inside Yazelix, use `keybinds clear-defaults=true` in the explicit Yazelix-managed sidecar `~/.config/yazelix/zellij.kdl`:
 ```kdl
 keybinds clear-defaults=true {
     locked {
@@ -137,6 +137,8 @@ keybinds clear-defaults=true {
 ```
 
 In this mode Yazelix preserves your `clear-defaults` block and does not append its shipped Zellij integration keybindings. Recreate any Yazelix actions you still want, such as `toggle_sidebar` or `toggle_transient_pane`, in your own keybinds block.
+
+This full-ownership mode is not inferred from the read-only native fallback `~/.config/zellij/config.kdl`. If Yazelix is only borrowing that native file because `~/.config/yazelix/zellij.kdl` is absent, Yazelix still appends its integration keybindings so managed popup/menu/sidebar focus behavior keeps working.
 
 **Simple settings** (like `theme`, `copy_command`) work perfectly - your value always wins.
 
@@ -176,7 +178,7 @@ The default launches the managed Yazi file-tree adapter. You can point the same 
 **Migrating from a native Zellij config?**
 - Preferred explicit path: run `yzx import zellij` to copy `~/.config/zellij/config.kdl` into `~/.config/yazelix/zellij.kdl`
 - If you already have a managed override and want to replace it, use `yzx import zellij --force` so Yazelix writes a backup first
-- If the managed file is missing, Yazelix can still read `~/.config/zellij/config.kdl` as the base config for that launch, but it will not move or delete it
+- If the managed file is missing, Yazelix can still read `~/.config/zellij/config.kdl` as the base config for that launch, but it will not move or delete it, and `clear-defaults=true` there does not disable Yazelix integration keybindings
 - If both files exist, Yazelix keeps using the managed `zellij.kdl` copy and leaves the native Zellij config alone for plain `zellij` launches
 - If you want changes from `~/.config/zellij/config.kdl` to become the managed Yazelix config, run `yzx import zellij` explicitly
 

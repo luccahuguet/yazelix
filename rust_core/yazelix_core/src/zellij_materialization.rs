@@ -33,6 +33,7 @@ const PANE_ORCHESTRATOR_WASM_NAME: &str = "yazelix_pane_orchestrator.wasm";
 const ZJSTATUS_PLUGIN_PREFIX: &str = "zjstatus";
 const ZJSTATUS_WASM_NAME: &str = "zjstatus.wasm";
 const GENERATION_METADATA_NAME: &str = ".yazelix_generation.json";
+const GENERATION_FINGERPRINT_SCHEMA_VERSION: u64 = 2;
 
 const PANE_ORCHESTRATOR_PLUGIN_URL_PLACEHOLDER: &str = "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__";
 const HOME_DIR_PLACEHOLDER: &str = "__YAZELIX_HOME_DIR__";
@@ -219,6 +220,7 @@ pub fn generate_zellij_materialization(
     let merged_config = render_merged_config(
         &request.runtime_dir,
         &base_config_source.content,
+        base_config_source.source == "managed",
         &render_plan,
         &pane_orchestrator_runtime_path,
     )?;
@@ -432,6 +434,7 @@ fn resolve_base_config_source() -> Result<ZellijBaseConfigSource, CoreError> {
 fn render_merged_config(
     runtime_dir: &Path,
     base_config_content: &str,
+    preserve_keybinds_clear_defaults: bool,
     render_plan: &ZellijRenderPlanData,
     pane_orchestrator_wasm_path: &Path,
 ) -> Result<String, CoreError> {
@@ -448,7 +451,7 @@ fn render_merged_config(
     let merged_keybinds = build_merged_keybinds_block(
         &extracted_blocks.keybind_lines,
         &override_keybinds,
-        extracted_blocks.keybinds_clear_defaults,
+        preserve_keybinds_clear_defaults && extracted_blocks.keybinds_clear_defaults,
     );
     let merged_ui = build_yazelix_ui_block(&extracted_blocks.ui_lines, &render_plan.rounded_value);
     let plugins_block = build_yazelix_plugins_block(
@@ -1571,7 +1574,7 @@ fn build_generation_fingerprint(
         "zellij_theme": string_config(config, "zellij_theme", "default"),
     });
     let fingerprint_payload = json!({
-        "schema_version": 1,
+        "schema_version": GENERATION_FINGERPRINT_SCHEMA_VERSION,
         "runtime_dir": runtime_dir.to_string_lossy(),
         "relevant_config": relevant_config,
         "base_config": {
@@ -1961,6 +1964,95 @@ ui { pane_frames { hide_session_name true } }
         assert!(merged.contains("Write 27"));
         assert!(!merged.contains("MessagePlugin"));
         assert!(!merged.contains("toggle_sidebar"));
+    }
+
+    // Regression: clear-defaults from the read-only native fallback must not disable Yazelix integration keybindings.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn native_fallback_clear_defaults_keeps_yazelix_keybind_overrides() {
+        let temp = tempfile::tempdir().unwrap();
+        let runtime_dir = temp.path();
+        let overrides_dir = runtime_dir.join("configs").join("zellij");
+        std::fs::create_dir_all(&overrides_dir).unwrap();
+        std::fs::write(
+            overrides_dir.join("yazelix_overrides.kdl"),
+            r#"
+keybinds {
+    normal {
+        bind "Alt Shift M" {
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                name "toggle_transient_pane"
+                payload "menu"
+            }
+        }
+    }
+}
+"#,
+        )
+        .unwrap();
+        let plan =
+            sample_render_plan_for_widgets(vec!["workspace"], "hx", "/nix/store/bin/nu", "ghostty");
+        let rendered = render_merged_config(
+            runtime_dir,
+            r#"keybinds clear-defaults=true {
+    normal { bind "Alt h" { MoveFocusOrTab "left"; } }
+}
+"#,
+            false,
+            &plan,
+            Path::new("/tmp/pane.wasm"),
+        )
+        .unwrap();
+
+        assert!(rendered.contains("keybinds {"));
+        assert!(!rendered.contains("keybinds clear-defaults=true"));
+        assert!(rendered.contains("MoveFocusOrTab"));
+        assert!(rendered.contains("Alt Shift M"));
+        assert!(rendered.contains("toggle_transient_pane"));
+    }
+
+    // Defends: explicit managed zellij.kdl clear-defaults remains the full user-owned Zellij keybinding mode.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn managed_clear_defaults_skips_yazelix_keybind_overrides() {
+        let temp = tempfile::tempdir().unwrap();
+        let runtime_dir = temp.path();
+        let overrides_dir = runtime_dir.join("configs").join("zellij");
+        std::fs::create_dir_all(&overrides_dir).unwrap();
+        std::fs::write(
+            overrides_dir.join("yazelix_overrides.kdl"),
+            r#"
+keybinds {
+    normal {
+        bind "Alt Shift M" {
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                name "toggle_transient_pane"
+                payload "menu"
+            }
+        }
+    }
+}
+"#,
+        )
+        .unwrap();
+        let plan =
+            sample_render_plan_for_widgets(vec!["workspace"], "hx", "/nix/store/bin/nu", "ghostty");
+        let rendered = render_merged_config(
+            runtime_dir,
+            r#"keybinds clear-defaults=true {
+    locked { bind "Ctrl `" { SwitchToMode "Normal"; } }
+}
+"#,
+            true,
+            &plan,
+            Path::new("/tmp/pane.wasm"),
+        )
+        .unwrap();
+
+        assert!(rendered.contains("keybinds clear-defaults=true"));
+        assert!(rendered.contains("Ctrl `"));
+        assert!(!rendered.contains("Alt Shift M"));
+        assert!(!rendered.contains("toggle_transient_pane"));
     }
 
     // Defends: ordinary Zellij keybinding customization keeps Yazelix integration bindings appended for default managed behavior.
