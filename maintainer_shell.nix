@@ -128,7 +128,23 @@ pkgs.mkShell {
       unset YAZELIX_RUNTIME_DIR
     fi
 
-    runtime_env_json="$("${rustCoreHelper}/bin/yzx_core" runtime-env.compute --from-env | ${pkgs.jq}/bin/jq -rc '.data.runtime_env')"
+    runtime_env_runtime_dir="''${YAZELIX_RUNTIME_DIR:-${repoRoot}}"
+    runtime_env_request="$(${pkgs.jq}/bin/jq -nc \
+      --arg runtime_dir "$runtime_env_runtime_dir" \
+      --arg home_dir "$HOME" \
+      --arg current_path "$PATH" \
+      --arg editor_command "''${EDITOR:-hx}" \
+      --arg helix_runtime_path "''${HELIX_RUNTIME:-}" \
+      '{
+        runtime_dir: $runtime_dir,
+        home_dir: $home_dir,
+        current_path: $current_path,
+        editor_command: $editor_command
+      } + (
+        if $helix_runtime_path == "" then {} else {helix_runtime_path: $helix_runtime_path} end
+      )'
+    )"
+    runtime_env_json="$("${rustCoreHelper}/bin/yzx_core" runtime-env.compute --request-json "$runtime_env_request" | ${pkgs.jq}/bin/jq -rc '.data.runtime_env')"
 
     export PATH="$(printf '%s' "$runtime_env_json" | ${pkgs.jq}/bin/jq -r '.PATH | join(":")')"
     export PATH="${maintainerYzx}/bin:$PATH"
@@ -164,6 +180,8 @@ pkgs.mkShell {
     export OPENSSL_LIB_DIR="${pkgs.openssl.out}/lib"
     export OPENSSL_INCLUDE_DIR="${pkgs.openssl.dev}/include"
 
-    ${pkgs.nushell}/bin/nu --no-config-file "${repoRoot}/nushell/scripts/setup/environment.nu" --skip-welcome
+    if [ -f "$YAZELIX_RUNTIME_DIR/runtime_components.json" ]; then
+      ${pkgs.nushell}/bin/nu --no-config-file "${repoRoot}/nushell/scripts/setup/environment.nu" --skip-welcome
+    fi
   '';
 }

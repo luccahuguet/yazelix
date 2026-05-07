@@ -2,11 +2,7 @@ use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use yazelix_core::active_config_surface::resolve_active_config_paths;
-use yazelix_core::control_plane::{config_dir_from_env, state_dir_from_env};
-use yazelix_core::zellij_materialization::{
-    ZellijMaterializationRequest, generate_zellij_materialization,
-};
+use yazelix_core::control_plane::state_dir_from_env;
 
 const BUILD_TARGET: &str = "wasm32-wasip1";
 const PANE_ORCHESTRATOR_WASM_NAME: &str = "yazelix_pane_orchestrator.wasm";
@@ -209,28 +205,6 @@ fn runtime_wasm_path() -> Result<PathBuf, String> {
         .join(PANE_ORCHESTRATOR_WASM_NAME))
 }
 
-fn generate_merged_zellij_config(repo_root: &Path) -> Result<String, String> {
-    let config_dir = config_dir_from_env().map_err(|error| error.message().to_string())?;
-    let config_surface = resolve_active_config_paths(repo_root, &config_dir, None)
-        .map_err(|error| error.message().to_string())?;
-    let zellij_config_dir = state_dir_from_env()
-        .map_err(|error| error.message().to_string())?
-        .join("configs")
-        .join("zellij");
-
-    let data = generate_zellij_materialization(&ZellijMaterializationRequest {
-        config_path: config_surface.config_file,
-        default_config_path: config_surface.default_config_path,
-        contract_path: config_surface.contract_path,
-        runtime_dir: repo_root.to_path_buf(),
-        zellij_config_dir,
-        seed_plugin_permissions: false,
-    })
-    .map_err(|error| error.message().to_string())?;
-
-    Ok(data.merged_config_path)
-}
-
 fn sync_built_wasm(paths: &PaneOrchestratorPaths, label: &str) -> Result<(), String> {
     println!("🔄 Syncing {label} wasm into Yazelix...");
     let repo_target = tracked_wasm_path(&paths.repo_root);
@@ -267,7 +241,6 @@ fn sync_built_wasm(paths: &PaneOrchestratorPaths, label: &str) -> Result<(), Str
         )
     })?;
 
-    let merged_config_path = generate_merged_zellij_config(&paths.repo_root)?;
     let byte_len = fs::metadata(&paths.wasm_path)
         .map_err(|error| format!("Failed to inspect built wasm size: {error}"))?
         .len();
@@ -284,7 +257,6 @@ fn sync_built_wasm(paths: &PaneOrchestratorPaths, label: &str) -> Result<(), Str
         "Updated pane orchestrator runtime wasm: {}",
         runtime_target.display()
     );
-    println!("Updated merged Zellij config: {merged_config_path}");
     println!("Size: {byte_len} bytes");
     println!();
     println!("Safest next step:");
