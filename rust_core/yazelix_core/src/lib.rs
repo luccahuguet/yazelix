@@ -3,6 +3,7 @@ pub mod active_config_surface;
 pub mod bridge;
 pub mod cli_render;
 pub mod command_metadata;
+pub mod config_apply;
 pub mod config_commands;
 pub mod config_normalize;
 pub mod config_state;

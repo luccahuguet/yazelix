@@ -3,6 +3,10 @@
 use crate::action_registry::ZELLIJ_ACTIONS;
 use crate::active_config_surface::{PrimaryConfigPaths, primary_config_paths};
 use crate::bridge::{CoreError, ErrorClass};
+use crate::config_apply::{
+    ConfigEditApplyRequest, ConfigEditApplyStatus, apply_mode_for_setting,
+    apply_status_after_config_edit, runtime_materialization_request,
+};
 use crate::config_normalize::{ConfigDiagnostic, ConfigDiagnosticReport, NormalizeConfigRequest};
 use crate::control_plane::{home_dir_from_env, state_dir_from_env};
 use crate::native_config_status::{
@@ -198,6 +202,12 @@ enum ConfigUiEditMode {
 struct ConfigUiNotice {
     text: String,
     is_error: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ConfigUiWriteOutcome {
+    mutation: SettingsJsoncPatchMutation,
+    apply_status: Option<ConfigEditApplyStatus>,
 }
 
 #[derive(Debug, Clone)]
@@ -1073,11 +1083,11 @@ impl ConfigUiApp {
             return;
         }
         match self.unset_field_value(&path) {
-            Ok(mutation) => {
-                if mutation == SettingsJsoncPatchMutation::Unchanged {
+            Ok(outcome) => {
+                if outcome.mutation == SettingsJsoncPatchMutation::Unchanged {
                     self.notice_info(format!("{path} was already unset."));
                 } else {
-                    self.notice_info(format!("Unset {path}."));
+                    self.notice_info(write_notice_text("Unset", &path, &outcome));
                 }
             }
             Err(error) => self.notice_error(error.message()),
@@ -1110,11 +1120,11 @@ impl ConfigUiApp {
     fn set_field_value(&mut self, field_index: usize, value: JsonValue) {
         let path = self.model.fields[field_index].path.clone();
         match self.write_field_value(&path, &value) {
-            Ok(mutation) => {
-                if mutation == SettingsJsoncPatchMutation::Unchanged {
+            Ok(outcome) => {
+                if outcome.mutation == SettingsJsoncPatchMutation::Unchanged {
                     self.notice_info(format!("{path} was already set."));
                 } else {
-                    self.notice_info(format!("Saved {path}."));
+                    self.notice_info(write_notice_text("Saved", &path, &outcome));
                 }
             }
             Err(error) => self.notice_error(error.message()),
@@ -1125,34 +1135,66 @@ impl ConfigUiApp {
         &mut self,
         setting_path: &str,
         value: &JsonValue,
-    ) -> Result<SettingsJsoncPatchMutation, CoreError> {
+    ) -> Result<ConfigUiWriteOutcome, CoreError> {
         self.ensure_editable_config(setting_path)?;
         let target = self.edit_target(setting_path);
         let raw = self.read_edit_target_or_default(&target)?;
         let outcome =
             set_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file, value)?;
+        let mut apply_status = None;
         if outcome.changed() {
             self.validate_patched_edit_target(&target, &outcome.text)?;
             write_settings_edit(&target.path, &outcome.text)?;
+            apply_status = Some(self.apply_after_field_write(setting_path)?);
         }
         self.reload_model_preserving_selection(setting_path)?;
-        Ok(outcome.mutation)
+        Ok(ConfigUiWriteOutcome {
+            mutation: outcome.mutation,
+            apply_status,
+        })
     }
 
-    fn unset_field_value(
-        &mut self,
-        setting_path: &str,
-    ) -> Result<SettingsJsoncPatchMutation, CoreError> {
+    fn unset_field_value(&mut self, setting_path: &str) -> Result<ConfigUiWriteOutcome, CoreError> {
         self.ensure_editable_config(setting_path)?;
         let target = self.edit_target(setting_path);
         let raw = self.read_edit_target_or_default(&target)?;
         let outcome = unset_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file)?;
+        let mut apply_status = None;
         if outcome.changed() {
             self.validate_patched_edit_target(&target, &outcome.text)?;
             write_settings_edit(&target.path, &outcome.text)?;
+            apply_status = Some(self.apply_after_field_write(setting_path)?);
         }
         self.reload_model_preserving_selection(setting_path)?;
-        Ok(outcome.mutation)
+        Ok(ConfigUiWriteOutcome {
+            mutation: outcome.mutation,
+            apply_status,
+        })
+    }
+
+    fn apply_after_field_write(
+        &self,
+        setting_path: &str,
+    ) -> Result<ConfigEditApplyStatus, CoreError> {
+        let paths = primary_config_paths(&self.request.runtime_dir, &self.request.config_dir);
+        let runtime_materialization = if apply_mode_for_setting(&paths.contract_path, setting_path)?
+            == Some(RuntimeApplyMode::GeneratedRuntimeRefresh)
+        {
+            let state_dir = state_dir_from_env()?;
+            Some(runtime_materialization_request(
+                &self.request.runtime_dir,
+                &self.request.config_dir,
+                self.request.config_override.as_deref(),
+                &state_dir,
+            )?)
+        } else {
+            None
+        };
+        apply_status_after_config_edit(&ConfigEditApplyRequest {
+            setting_path: setting_path.to_string(),
+            contract_path: paths.contract_path,
+            runtime_materialization,
+        })
     }
 
     fn reload_model_preserving_selection(&mut self, selected_path: &str) -> Result<(), CoreError> {
@@ -1552,6 +1594,21 @@ fn field_detail_lines(field: &ConfigUiField) -> Vec<Line<'static>> {
         lines.push(Line::from(field.description.clone()));
     }
     lines
+}
+
+fn write_notice_text(verb: &str, path: &str, outcome: &ConfigUiWriteOutcome) -> String {
+    let mut text = format!("{verb} {path}.");
+    if let Some(refresh) = outcome
+        .apply_status
+        .as_ref()
+        .and_then(|status| status.generated_refresh.as_ref())
+    {
+        text.push(' ');
+        text.push_str(&refresh.message);
+        text.push(' ');
+        text.push_str(&refresh.remediation);
+    }
+    text
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -3468,14 +3525,14 @@ mod tests {
             notice: None,
         };
 
-        select_field_path(&mut app, "zellij.widget_tray");
+        select_field_path(&mut app, "terminal.terminals");
         app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
 
         let edit = app.edit.clone().expect("edit");
         assert_eq!(edit.mode, ConfigUiEditMode::MultiChoice);
         let details = lines_text(&app.render_details(UiRowRef::Field(edit.field_index)));
-        assert!(details.contains("> [x] editor"));
-        assert!(details.contains("  [ ] workspace"));
+        assert!(details.contains("> [x] ghostty"));
+        assert!(details.contains("  [ ] alacritty"));
 
         app.handle_edit_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
         app.handle_edit_key(KeyEvent::new(KeyCode::Char('l'), KeyModifiers::NONE));
@@ -3490,16 +3547,7 @@ mod tests {
         let input = app.edit.as_ref().expect("edit").input.clone();
         assert_eq!(
             parse_string_list_values(&field, &input).expect("values"),
-            vec![
-                "editor",
-                "shell",
-                "term",
-                "workspace",
-                "cursor",
-                "codex_usage",
-                "cpu",
-                "ram"
-            ]
+            vec!["ghostty", "wezterm", "alacritty"]
         );
 
         app.handle_edit_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
@@ -3507,17 +3555,8 @@ mod tests {
         assert!(app.edit.is_none());
         let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
         assert_eq!(
-            get_json_path(&value, "zellij.widget_tray"),
-            Some(&json!([
-                "editor",
-                "shell",
-                "term",
-                "workspace",
-                "cursor",
-                "codex_usage",
-                "cpu",
-                "ram"
-            ]))
+            get_json_path(&value, "terminal.terminals"),
+            Some(&json!(["ghostty", "wezterm", "alacritty"]))
         );
     }
 
@@ -3623,29 +3662,29 @@ mod tests {
             notice: None,
         };
 
-        select_field_path(&mut app, "zellij.tab_label_mode");
+        select_field_path(&mut app, "terminal.config_mode");
         app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
 
         let edit = app.edit.clone().expect("edit");
         assert_eq!(edit.mode, ConfigUiEditMode::Choice);
         let details = lines_text(&app.render_details(UiRowRef::Field(edit.field_index)));
-        assert!(details.contains("> (x) full"));
-        assert!(details.contains("  ( ) compact"));
+        assert!(details.contains("> (x) yazelix"));
+        assert!(details.contains("  ( ) user"));
 
         app.handle_edit_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
         let details = lines_text(&app.render_details(UiRowRef::Field(edit.field_index)));
-        assert!(details.contains("> ( ) compact"));
+        assert!(details.contains("> ( ) user"));
         app.handle_edit_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
         let details = lines_text(&app.render_details(UiRowRef::Field(edit.field_index)));
-        assert!(details.contains("> (x) compact"));
+        assert!(details.contains("> (x) user"));
 
         app.handle_edit_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
 
         assert!(app.edit.is_none());
         let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
         assert_eq!(
-            get_json_path(&value, "zellij.tab_label_mode"),
-            Some(&json!("compact"))
+            get_json_path(&value, "terminal.config_mode"),
+            Some(&json!("user"))
         );
     }
 
@@ -3719,11 +3758,11 @@ mod tests {
             notice: None,
         };
 
-        let mutation = app
+        let outcome = app
             .write_field_value("editor.hide_sidebar_on_file_open", &json!(true))
             .expect("write");
 
-        assert_eq!(mutation, SettingsJsoncPatchMutation::Replaced);
+        assert_eq!(outcome.mutation, SettingsJsoncPatchMutation::Replaced);
         let raw = fs::read_to_string(&settings_path).expect("settings raw");
         assert!(raw.contains("// keep this comment"));
         let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");

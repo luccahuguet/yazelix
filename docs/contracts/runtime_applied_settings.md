@@ -75,6 +75,8 @@ The first live-apply mechanism should be:
 
 Generated-runtime refreshes should use existing Rust materializers and should return explicit restart guidance for the affected tool. They should not be smuggled through pane-orchestrator live state.
 
+`yzx config set`, `yzx config unset`, and config UI saves use the contract apply mode after a successful write. For `generated_runtime_refresh` settings, Yazelix regenerates managed runtime state through the existing materializers, reports the affected tool owner such as Yazi or Zellij, and tells users which running pane, tab, or session must be restarted or reopened. A materialization failure does not undo the saved setting; it is returned as a visible save/apply error with the underlying materializer code and remediation.
+
 ## Config UI Status Copy
 
 The config UI should display saved-versus-active status with these labels:

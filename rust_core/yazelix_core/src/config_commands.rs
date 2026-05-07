@@ -4,9 +4,16 @@
 use crate::active_config_surface::ActiveConfigPaths;
 use crate::active_config_surface::resolve_active_config_paths;
 use crate::bridge::{CoreError, ErrorClass};
+use crate::config_apply::{
+    ConfigEditApplyRequest, ConfigEditApplyStatus, apply_mode_for_setting,
+    apply_status_after_config_edit,
+};
 use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::config_ui::{ConfigUiRequest, run_config_ui};
-use crate::control_plane::{config_dir_from_env, config_override_from_env, runtime_dir_from_env};
+use crate::control_plane::{
+    config_dir_from_env, config_override_from_env, runtime_dir_from_env,
+    runtime_materialization_plan_request_from_env,
+};
 use crate::settings_jsonc_patch::{
     SettingsJsoncPatchMutation, set_settings_jsonc_value_text, unset_settings_jsonc_value_text,
 };
@@ -231,7 +238,9 @@ fn run_config_set(setting_path: &str, raw_value: &str) -> Result<i32, CoreError>
         validate_patched_edit_target(&paths, &target, &outcome.text)?;
     }
     write_config_edit(&target.path, &outcome.text, outcome.mutation)?;
-    print_edit_outcome(setting_path, outcome.mutation);
+    let apply_status =
+        apply_after_config_edit(setting_path, outcome.mutation, &paths.contract_path)?;
+    print_edit_outcome(setting_path, outcome.mutation, apply_status.as_ref());
     Ok(0)
 }
 
@@ -245,7 +254,9 @@ fn run_config_unset(setting_path: &str) -> Result<i32, CoreError> {
         validate_patched_edit_target(&paths, &target, &outcome.text)?;
     }
     write_config_edit(&target.path, &outcome.text, outcome.mutation)?;
-    print_edit_outcome(setting_path, outcome.mutation);
+    let apply_status =
+        apply_after_config_edit(setting_path, outcome.mutation, &paths.contract_path)?;
+    print_edit_outcome(setting_path, outcome.mutation, apply_status.as_ref());
     Ok(0)
 }
 
@@ -449,12 +460,49 @@ fn write_config_edit(
     })
 }
 
-fn print_edit_outcome(setting_path: &str, mutation: SettingsJsoncPatchMutation) {
+fn apply_after_config_edit(
+    setting_path: &str,
+    mutation: SettingsJsoncPatchMutation,
+    contract_path: &Path,
+) -> Result<Option<ConfigEditApplyStatus>, CoreError> {
+    if mutation == SettingsJsoncPatchMutation::Unchanged {
+        return Ok(None);
+    }
+    let runtime_materialization = if apply_mode_for_setting(contract_path, setting_path)?
+        == Some(crate::runtime_apply_mode::RuntimeApplyMode::GeneratedRuntimeRefresh)
+    {
+        Some(runtime_materialization_plan_request_from_env(
+            config_override_from_env().as_deref(),
+        )?)
+    } else {
+        None
+    };
+    Ok(Some(apply_status_after_config_edit(
+        &ConfigEditApplyRequest {
+            setting_path: setting_path.to_string(),
+            contract_path: contract_path.to_path_buf(),
+            runtime_materialization,
+        },
+    )?))
+}
+
+fn print_edit_outcome(
+    setting_path: &str,
+    mutation: SettingsJsoncPatchMutation,
+    apply_status: Option<&ConfigEditApplyStatus>,
+) {
     match mutation {
         SettingsJsoncPatchMutation::Inserted => println!("Inserted {setting_path}."),
         SettingsJsoncPatchMutation::Replaced => println!("Updated {setting_path}."),
         SettingsJsoncPatchMutation::Removed => println!("Removed {setting_path}."),
         SettingsJsoncPatchMutation::Unchanged => println!("{setting_path} was already unset."),
+    }
+    if let Some(status) = apply_status {
+        println!("Apply: {}.", status.apply_mode.label());
+        if let Some(refresh) = &status.generated_refresh {
+            println!("{}", refresh.message);
+            println!("{}", refresh.remediation);
+        }
     }
 }
 
