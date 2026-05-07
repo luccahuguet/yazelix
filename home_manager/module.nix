@@ -19,6 +19,8 @@ let
     "host"
     "off"
   ];
+  componentEnabled = name: cfg.components.${name} or true;
+  runtimeToolSource = name: cfg.runtime_tool_sources.${name} or "bundled";
   agentUsageProgramNames = [
     "tokenusage"
   ];
@@ -37,7 +39,7 @@ let
     inherit pkgs;
     runtimeVariant = cfg.runtime_variant;
     runtimeToolSources = cfg.runtime_tool_sources;
-    components = { };
+    components = cfg.components;
     extraRuntimePackages = selectedAgentUsagePackages;
   };
   yazelixPackage =
@@ -332,6 +334,26 @@ in
         yazi, fzf, zoxide, starship, carapace, macchina, mise, tombi, git, jq,
         fd, and ripgrep. Bootstrap tools such as Nushell, Zellij, the selected
         terminal, Nix, POSIX utilities, and graphics wrappers remain bundled.
+
+        Off mode is supported for optional helpers such as macchina, p7zip,
+        poppler, and resvg. Disabled helpers are intentionally omitted from the
+        packaged runtime and reported as disabled instead of missing.
+      '';
+    };
+
+    components = mkOption {
+      type = types.attrsOf types.bool;
+      default = { };
+      example = {
+        cursors = false;
+        screen = false;
+      };
+      description = ''
+        Optional Yazelix runtime components. Omitted components default to true.
+
+        Supported components:
+        - "cursors": Yazelix cursor shader assets and shared cursor config integration
+        - "screen": startup welcome animation and `yzx screen` renderer integration
       '';
     };
 
@@ -632,6 +654,25 @@ in
     {
       # Expose the packaged Yazelix runtime through the Home Manager profile.
       home.packages = [ yazelixPackage ];
+
+      assertions = [
+        {
+          assertion = (componentEnabled "cursors") || !cfg.manage_cursor_config;
+          message = "programs.yazelix.manage_cursor_config requires programs.yazelix.components.cursors to remain enabled";
+        }
+        {
+          assertion = (componentEnabled "screen") || cfg.skip_welcome_screen;
+          message = "programs.yazelix.components.screen = false requires programs.yazelix.skip_welcome_screen = true";
+        }
+        {
+          assertion = (componentEnabled "screen") || !cfg.screen_saver_enabled;
+          message = "programs.yazelix.components.screen = false requires programs.yazelix.screen_saver_enabled = false";
+        }
+        {
+          assertion = (runtimeToolSource "macchina") != "off" || !cfg.show_macchina_on_welcome;
+          message = "programs.yazelix.runtime_tool_sources.macchina = \"off\" requires programs.yazelix.show_macchina_on_welcome = false";
+        }
+      ];
 
       # Desktop icon integration.
       xdg.dataFile."icons/hicolor/48x48/apps/yazelix.png".source =

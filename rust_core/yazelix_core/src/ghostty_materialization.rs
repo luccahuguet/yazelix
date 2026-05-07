@@ -6,6 +6,7 @@ use crate::ghostty_cursor_registry::{
 pub use crate::ghostty_cursor_registry::{
     DEFAULT_GHOSTTY_TRAIL_DURATION, GHOSTTY_TRAIL_DURATION_MAX, GHOSTTY_TRAIL_DURATION_MIN,
 };
+use crate::runtime_component_enabled;
 use crate::user_config_paths;
 use serde::Serialize;
 use std::fs;
@@ -222,6 +223,59 @@ fn build_ghostty_cursor_render_state(
     }
 }
 
+fn build_disabled_ghostty_cursor_state() -> GhosttyCursorState {
+    GhosttyCursorState {
+        selected_color: None,
+        selected_color_hex: None,
+        selected_family: None,
+        selected_divider: None,
+        selected_primary_color_hex: None,
+        selected_secondary_color_hex: None,
+        selected_trail_effect: None,
+        selected_mode_effect: None,
+        trail_duration: DEFAULT_GHOSTTY_TRAIL_DURATION,
+        effect_color_literal: "#ffb929".to_string(),
+    }
+}
+
+fn build_ghostty_config_without_cursor(
+    request: &GhosttyMaterializationRequest,
+) -> Result<String, CoreError> {
+    let override_path = get_terminal_override_path(&request.config_dir, "ghostty")?
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_default();
+
+    Ok(format!(
+        r#"{}
+
+# Yazelix branding for desktop environment recognition
+class = {}
+x11-instance-name = {}
+title = Yazelix - Ghostty
+
+# Theme and styling
+theme = "{}"
+window-decoration = "none"
+window-padding-y = 10,0
+
+# Transparency (configurable via settings.jsonc)
+{}
+
+# Ghostty cursor color + effects
+# Yazelix cursor component disabled by this runtime
+
+# Personal Yazelix Ghostty overrides (optional, user-owned)
+config-file = ?"{}"
+"#,
+        GHOSTTY_CONFIG_HEADER,
+        YAZELIX_WINDOW_CLASS,
+        YAZELIX_X11_INSTANCE,
+        YAZELIX_THEME,
+        build_ghostty_transparency(&request.transparency),
+        override_path,
+    ))
+}
+
 fn build_ghostty_config(
     request: &GhosttyMaterializationRequest,
     cursor_state: &GhosttyCursorState,
@@ -391,11 +445,6 @@ fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io::Result
 pub fn generate_ghostty_materialization(
     request: &GhosttyMaterializationRequest,
 ) -> Result<GhosttyMaterializationData, CoreError> {
-    let registry = CursorRegistry::load(&request.cursor_config_path)?;
-    let registry_state = registry.resolve();
-    validate_ghostty_trail_duration(registry_state.duration)?;
-    let cursor_state = build_ghostty_cursor_render_state(&registry_state);
-
     let ghostty_dir = request
         .state_dir
         .join("configs")
@@ -411,6 +460,33 @@ pub fn generate_ghostty_materialization(
             source,
         )
     })?;
+
+    if !runtime_component_enabled(&request.runtime_dir, "cursors")? {
+        let generated_path = ghostty_dir.join("config");
+        fs::write(
+            &generated_path,
+            build_ghostty_config_without_cursor(request)?,
+        )
+        .map_err(|source| {
+            CoreError::io(
+                "write_ghostty_config",
+                "Could not write the managed Ghostty config",
+                "Check permissions for the Yazelix state directory and retry.",
+                generated_path.to_string_lossy(),
+                source,
+            )
+        })?;
+        return Ok(GhosttyMaterializationData {
+            generated_path: generated_path.to_string_lossy().into_owned(),
+            cursor_state: build_disabled_ghostty_cursor_state(),
+            shaders_synced: false,
+        });
+    }
+
+    let registry = CursorRegistry::load(&request.cursor_config_path)?;
+    let registry_state = registry.resolve();
+    validate_ghostty_trail_duration(registry_state.duration)?;
+    let cursor_state = build_ghostty_cursor_render_state(&registry_state);
 
     let config_content = build_ghostty_config(request, &cursor_state, &registry_state)?;
     let generated_path = ghostty_dir.join("config");

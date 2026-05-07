@@ -62,6 +62,14 @@ pub fn write_runtime_contract_assets(repo: &Path, runtime_dir: &Path) {
     .unwrap();
     fs::write(runtime_dir.join(TOML_TOOLING_CONFIG_FILENAME), "[format]\n").unwrap();
     fs::write(
+        runtime_dir.join("runtime_components.json"),
+        r#"{
+          "cursors": { "enabled": true, "disableable": true, "notes": [] },
+          "screen": { "enabled": true, "disableable": true, "notes": [] }
+        }"#,
+    )
+    .unwrap();
+    fs::write(
         runtime_dir.join("nushell/scripts/utils/constants.nu"),
         "export const YAZELIX_VERSION = \"v-test\"\n",
     )

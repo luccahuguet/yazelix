@@ -2,6 +2,7 @@
 //! Bead: yazelix-ulb2.4.3
 
 use crate::bridge::CoreError;
+use crate::runtime_components::read_runtime_component_manifest;
 use crate::runtime_contract::{
     GeneratedLayoutCheckRequest, LinuxGhosttyDesktopGraphicsRequest, RuntimeCheckData,
     RuntimeContractEvaluateRequest, RuntimeScriptCheckRequest, TerminalSupportCheckRequest,
@@ -109,9 +110,12 @@ pub fn evaluate_doctor_runtime_report(
             }],
         },
     };
-    shared_runtime_preflight.extend(build_host_runtime_tool_findings(
+    shared_runtime_preflight.extend(build_runtime_tool_source_findings(
         &request.runtime_dir,
         &runtime_tool_command_search_paths,
+    ));
+    shared_runtime_preflight.extend(build_disabled_runtime_component_findings(
+        &request.runtime_dir,
     ));
 
     DoctorRuntimeEvaluateData {
@@ -244,6 +248,69 @@ fn build_host_runtime_tool_findings(
                     owner_surface: Some("runtime_tool_sources".into()),
                 }
             }
+        })
+        .collect()
+}
+
+fn build_runtime_tool_source_findings(
+    runtime_dir: &Path,
+    command_search_paths: &[PathBuf],
+) -> Vec<DoctorRuntimeDoctorFinding> {
+    let mut findings = build_host_runtime_tool_findings(runtime_dir, command_search_paths);
+    findings.extend(build_disabled_runtime_tool_findings(runtime_dir));
+    findings
+}
+
+fn build_disabled_runtime_tool_findings(runtime_dir: &Path) -> Vec<DoctorRuntimeDoctorFinding> {
+    let manifest = match read_runtime_tool_manifest(runtime_dir) {
+        Ok(Some(manifest)) => manifest,
+        Ok(None) => return Vec::new(),
+        Err(_) => return Vec::new(),
+    };
+
+    manifest
+        .into_iter()
+        .filter(|(_, tool)| tool.source == "off")
+        .map(|(name, tool)| DoctorRuntimeDoctorFinding {
+            status: "info".into(),
+            message: format!("Runtime tool disabled: {name}"),
+            details: Some(format!(
+                "Yazelix intentionally omitted command(s): {}",
+                tool.commands.join(", ")
+            )),
+            fix_available: false,
+            fix_action: None,
+            capability_tier: None,
+            capability_mode: Some("off".into()),
+            runtime_contract_check: Some(format!("disabled_runtime_tool:{name}")),
+            owner_surface: Some("runtime_tool_sources".into()),
+        })
+        .collect()
+}
+
+fn build_disabled_runtime_component_findings(
+    runtime_dir: &Path,
+) -> Vec<DoctorRuntimeDoctorFinding> {
+    let manifest = match read_runtime_component_manifest(runtime_dir) {
+        Ok(manifest) => manifest,
+        Err(_) => return Vec::new(),
+    };
+
+    manifest
+        .into_iter()
+        .filter(|(_, component)| !component.enabled)
+        .map(|(name, _)| DoctorRuntimeDoctorFinding {
+            status: "info".into(),
+            message: format!("Runtime component disabled: {name}"),
+            details: Some(format!(
+                "Yazelix intentionally omitted or bypassed the {name} runtime component."
+            )),
+            fix_available: false,
+            fix_action: None,
+            capability_tier: None,
+            capability_mode: Some("off".into()),
+            runtime_contract_check: Some(format!("disabled_runtime_component:{name}")),
+            owner_surface: Some("components".into()),
         })
         .collect()
 }
@@ -555,5 +622,61 @@ mod tests {
         let findings = build_host_runtime_tool_findings(&runtime, &[]);
 
         assert!(findings.is_empty());
+    }
+
+    // Defends: runtime_tool_sources off mode is reported as intentional disablement instead of a missing host dependency.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn disabled_runtime_tool_reports_info_finding() {
+        let tmp = TempDir::new().unwrap();
+        let runtime = tmp.path().join("runtime");
+        std::fs::create_dir_all(&runtime).unwrap();
+        std::fs::write(
+            runtime.join("runtime_tools.json"),
+            r#"{
+              "macchina": {
+                "source": "off",
+                "commands": ["macchina"],
+                "required_commands": ["macchina"]
+              }
+            }"#,
+        )
+        .unwrap();
+
+        let findings = build_runtime_tool_source_findings(&runtime, &[]);
+
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].status, "info");
+        assert_eq!(findings[0].message, "Runtime tool disabled: macchina");
+        assert_eq!(
+            findings[0].runtime_contract_check.as_deref(),
+            Some("disabled_runtime_tool:macchina")
+        );
+    }
+
+    // Defends: component toggles appear as intentional runtime capability changes in doctor output.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn disabled_runtime_component_reports_info_finding() {
+        let tmp = TempDir::new().unwrap();
+        let runtime = tmp.path().join("runtime");
+        std::fs::create_dir_all(&runtime).unwrap();
+        std::fs::write(
+            runtime.join("runtime_components.json"),
+            r#"{
+              "cursors": { "enabled": false, "disableable": true, "notes": [] },
+              "screen": { "enabled": true, "disableable": true, "notes": [] }
+            }"#,
+        )
+        .unwrap();
+
+        let findings = build_disabled_runtime_component_findings(&runtime);
+
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].message, "Runtime component disabled: cursors");
+        assert_eq!(
+            findings[0].runtime_contract_check.as_deref(),
+            Some("disabled_runtime_component:cursors")
+        );
     }
 }

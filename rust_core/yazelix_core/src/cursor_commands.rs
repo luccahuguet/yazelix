@@ -7,6 +7,7 @@ use crate::ghostty_cursor_registry::{
     CursorDefinition, CursorFamily, CursorRegistry, SplitDivider, SplitTransition,
     YazelixCursorRegistryExt,
 };
+use crate::require_runtime_component_enabled;
 
 pub fn run_yzx_cursors(args: &[String]) -> Result<i32, CoreError> {
     if args
@@ -28,6 +29,7 @@ pub fn run_yzx_cursors(args: &[String]) -> Result<i32, CoreError> {
     }
 
     let runtime_dir = runtime_dir_from_env()?;
+    require_runtime_component_enabled(&runtime_dir, "cursors", "yzx cursors")?;
     let config_dir = config_dir_from_env()?;
     let config_override = config_override_from_env();
     let active_paths =

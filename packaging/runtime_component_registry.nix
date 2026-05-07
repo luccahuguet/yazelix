@@ -4,13 +4,19 @@ let
   componentDefaults = {
     screen = {
       enabled = true;
-      disableable = false;
-      notes = [ "Screen commands are still compiled into the Rust helper." ];
+      disableable = true;
+      notes = [
+        "Disabling removes welcome/screen runtime behavior from generated startup contracts."
+        "The Rust helper still links the screen renderer until yazelix_core gains crate-level feature gates."
+      ];
     };
     cursors = {
       enabled = true;
-      disableable = false;
-      notes = [ "Cursor commands and config UI are still compiled into the Rust helper." ];
+      disableable = true;
+      notes = [
+        "Disabling removes Yazelix cursor shader assets and default cursor config from the runtime tree."
+        "The Rust helper still links cursor registry code until yazelix_core gains crate-level feature gates."
+      ];
     };
   };
   componentNames = builtins.attrNames components;

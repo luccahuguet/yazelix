@@ -1,6 +1,7 @@
 //! Typed `yzx status` summary construction (machine-readable and human-rendered).
 
 use crate::bridge::CoreError;
+use crate::runtime_components::read_runtime_component_manifest;
 use crate::runtime_materialization::{
     RuntimeMaterializationPlanRequest, plan_runtime_materialization,
 };
@@ -23,6 +24,28 @@ fn path_to_string(path: &Path) -> String {
 
 fn default_terminals_value() -> JsonValue {
     json!(["ghostty"])
+}
+
+fn runtime_components_summary(runtime_dir: &Path) -> JsonValue {
+    match read_runtime_component_manifest(runtime_dir) {
+        Ok(manifest) => {
+            let disabled = manifest
+                .iter()
+                .filter(|(_, component)| !component.enabled)
+                .map(|(name, _)| name.clone())
+                .collect::<Vec<_>>();
+            json!({
+                "status": "ok",
+                "disabled": disabled,
+            })
+        }
+        Err(error) => json!({
+            "status": "error",
+            "error_code": error.code(),
+            "message": error.message(),
+            "remediation": error.remediation(),
+        }),
+    }
 }
 
 pub fn session_config_snapshot_summary() -> JsonValue {
@@ -111,9 +134,40 @@ pub fn compute_status_report(
         "session_config_snapshot".to_string(),
         session_config_snapshot_summary(),
     );
+    summary.insert(
+        "runtime_components".to_string(),
+        runtime_components_summary(&request.runtime_dir),
+    );
 
     Ok(StatusReportData {
         title: "Yazelix status".to_string(),
         summary,
     })
+}
+
+// Test lane: default
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    // Defends: `yzx status --json` exposes intentionally disabled runtime components for diagnostics and config UIs.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn runtime_components_summary_lists_disabled_components() {
+        let tmp = TempDir::new().unwrap();
+        std::fs::write(
+            tmp.path().join("runtime_components.json"),
+            r#"{
+              "cursors": { "enabled": false, "disableable": true, "notes": [] },
+              "screen": { "enabled": true, "disableable": true, "notes": [] }
+            }"#,
+        )
+        .unwrap();
+
+        let summary = runtime_components_summary(tmp.path());
+
+        assert_eq!(summary["status"], "ok");
+        assert_eq!(summary["disabled"], json!(["cursors"]));
+    }
 }

@@ -7,6 +7,7 @@ use crate::control_plane::{
 use crate::front_door_render::{
     GameOfLifeCellStyle, play_welcome_style_with_cell_style, run_screen_surface_with_cell_style,
 };
+use crate::require_runtime_component_enabled;
 use crate::session_facts::compute_session_facts_from_env;
 use crate::upgrade_summary::show_current_upgrade_summary;
 use std::process::Command;
@@ -113,6 +114,8 @@ pub fn run_yzx_screen(args: &[String]) -> Result<i32, CoreError> {
         print_screen_help();
         return Ok(0);
     }
+    let runtime_dir = runtime_dir_from_env()?;
+    require_runtime_component_enabled(&runtime_dir, "screen", "yzx screen")?;
     if parsed.internal_welcome {
         let style = parsed.style.as_deref().unwrap_or("logo");
         return run_internal_welcome_screen(style, Duration::from_millis(parsed.duration_ms));

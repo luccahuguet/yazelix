@@ -11,6 +11,7 @@ use crate::ghostty_cursor_registry::{
 use crate::ghostty_materialization::{
     GhosttyMaterializationRequest, generate_ghostty_materialization,
 };
+use crate::runtime_component_enabled;
 use crate::terminal_materialization::{
     TerminalGeneratedConfig, TerminalMaterializationRequest, generate_terminal_materialization,
 };
@@ -91,8 +92,16 @@ pub fn prepare_launch_materialization(
     })?
     .normalized_config;
     let cursor_config_path = request.cursor_config_path.clone();
-    let cursor_registry = CursorRegistry::load(&cursor_config_path)?;
-    let ghostty_random_requested = cursor_registry.is_random_request();
+    let cursors_enabled = runtime_component_enabled(&request.runtime_dir, "cursors")?;
+    let cursor_registry = if cursors_enabled {
+        Some(CursorRegistry::load(&cursor_config_path)?)
+    } else {
+        None
+    };
+    let ghostty_random_requested = cursor_registry
+        .as_ref()
+        .map(CursorRegistry::is_random_request)
+        .unwrap_or(false);
     let plan = build_launch_materialization_plan(
         &normalized,
         &request.selected_terminals,
@@ -147,8 +156,11 @@ pub fn prepare_launch_materialization(
         ghostty_cursor_divider = ghostty_data.cursor_state.selected_divider;
         ghostty_cursor_primary_color_hex = ghostty_data.cursor_state.selected_primary_color_hex;
         ghostty_cursor_secondary_color_hex = ghostty_data.cursor_state.selected_secondary_color_hex;
-    } else if plan_uses_yazelix_ghostty_cursor(&plan) {
-        let cursor_state = cursor_registry.resolve();
+    } else if plan_uses_yazelix_ghostty_cursor(&plan) && cursors_enabled {
+        let cursor_state = cursor_registry
+            .as_ref()
+            .expect("cursor registry is loaded when cursors are enabled")
+            .resolve();
         ghostty_cursor_name = resolved_ghostty_cursor_name(&cursor_state);
         ghostty_cursor_color_hex = resolved_ghostty_cursor_color_hex(&cursor_state);
         ghostty_cursor_family = resolved_ghostty_cursor_family(&cursor_state);

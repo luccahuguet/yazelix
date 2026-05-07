@@ -42,6 +42,14 @@ fn write_runtime_layout(runtime: &Path) {
         include_str!("../../../yazelix_cursors_default.toml"),
     )
     .expect("cursor defaults");
+    fs::write(
+        runtime.join("runtime_components.json"),
+        r#"{
+          "cursors": { "enabled": true, "disableable": true, "notes": [] },
+          "screen": { "enabled": true, "disableable": true, "notes": [] }
+        }"#,
+    )
+    .expect("runtime component manifest");
 }
 
 fn request(runtime: PathBuf, config: PathBuf) -> ConfigUiRequest {

@@ -56,12 +56,28 @@ pub fn ensure_settings_config(
     default_main_config: &Path,
     default_cursor_config: &Path,
 ) -> Result<PathBuf, CoreError> {
+    ensure_settings_config_with_cursor_component(
+        config_dir,
+        default_main_config,
+        default_cursor_config,
+        true,
+    )
+}
+
+pub fn ensure_settings_config_with_cursor_component(
+    config_dir: &Path,
+    default_main_config: &Path,
+    default_cursor_config: &Path,
+    cursor_component_enabled: bool,
+) -> Result<PathBuf, CoreError> {
     let paths = settings_surface_paths(config_dir);
 
     if paths.settings_config.exists() {
         ensure_no_old_main_inputs_next_to_settings(&paths)?;
-        migrate_embedded_cursor_settings(&paths)?;
-        ensure_shared_cursor_settings_config(&paths, default_cursor_config)?;
+        if cursor_component_enabled {
+            migrate_embedded_cursor_settings(&paths)?;
+            ensure_shared_cursor_settings_config(&paths, default_cursor_config)?;
+        }
         return Ok(paths.settings_config);
     }
 
@@ -77,7 +93,9 @@ pub fn ensure_settings_config(
             json!({ "path": default_main_config.display().to_string() }),
         ));
     }
-    ensure_default_cursor_config_exists(default_cursor_config)?;
+    if cursor_component_enabled {
+        ensure_default_cursor_config_exists(default_cursor_config)?;
+    }
 
     let main_source = migration_source(
         &paths.old_main_config,
@@ -120,21 +138,22 @@ pub fn ensure_settings_config(
     if let Some(source) = main_source {
         move_migrated_input(&source.path)?;
     }
-    ensure_shared_cursor_settings_config(&paths, default_cursor_config)?;
+    if cursor_component_enabled {
+        ensure_shared_cursor_settings_config(&paths, default_cursor_config)?;
+    }
 
     Ok(paths.settings_config)
 }
 
 pub fn render_default_settings_jsonc(
     default_main_config: &Path,
-    default_cursor_config: &Path,
+    _default_cursor_config: &Path,
 ) -> Result<String, CoreError> {
     let main_table = read_toml_table(
         default_main_config,
         "read_default_main_config",
         "Could not parse the default Yazelix main config",
     )?;
-    ensure_default_cursor_config_exists(default_cursor_config)?;
     render_settings_jsonc(&main_table)
 }
 

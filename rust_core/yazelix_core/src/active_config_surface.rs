@@ -2,8 +2,9 @@
 
 use crate::bridge::{CoreError, ErrorClass};
 use crate::ghostty_cursor_registry::DEFAULT_CURSOR_CONFIG_FILENAME;
+use crate::runtime_component_enabled;
 use crate::settings_surface::{
-    ensure_settings_config, settings_schema_path, settings_surface_paths,
+    ensure_settings_config_with_cursor_component, settings_schema_path, settings_surface_paths,
 };
 use serde::Serialize;
 use serde_json::json;
@@ -110,11 +111,13 @@ pub fn resolve_active_config_paths(
     config_override: Option<&str>,
 ) -> Result<ActiveConfigPaths, CoreError> {
     let paths = primary_config_paths(runtime_dir, config_dir);
+    let cursor_component_enabled = runtime_component_enabled(runtime_dir, "cursors")?;
 
-    ensure_settings_config(
+    ensure_settings_config_with_cursor_component(
         &paths.user_config_dir,
         &paths.default_config_path,
         &paths.default_cursor_config_path,
+        cursor_component_enabled,
     )?;
     ensure_managed_toml_tooling_config(
         &paths.runtime_toml_tooling_config,
@@ -237,6 +240,14 @@ mod tests {
             "array_auto_expand = true\n",
         )
         .expect("write TOML tooling config");
+        fs::write(
+            runtime_dir.join("runtime_components.json"),
+            r#"{
+              "cursors": { "enabled": true, "disableable": true, "notes": [] },
+              "screen": { "enabled": true, "disableable": true, "notes": [] }
+            }"#,
+        )
+        .expect("write runtime component manifest");
     }
 
     // Defends: Rust active-config-surface resolution bootstraps settings.jsonc and TOML tooling support when the canonical surface is missing.
@@ -263,6 +274,46 @@ mod tests {
             resolved.user_cursor_config,
             config.path().join("yazelix_cursors/settings.jsonc")
         );
+    }
+
+    // Defends: disabling the cursor component does not require or generate the shared cursor sidecar during config bootstrap.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn disabled_cursor_component_bootstraps_without_cursor_sidecar() {
+        let runtime = tempdir().expect("runtime dir");
+        let config = tempdir().expect("config dir");
+        fs::write(
+            runtime.path().join("yazelix_default.toml"),
+            "[core]\nwelcome_style = \"minimal\"\n",
+        )
+        .expect("write default config");
+        fs::create_dir_all(runtime.path().join("config_metadata")).expect("contract dir");
+        fs::write(
+            runtime
+                .path()
+                .join("config_metadata")
+                .join("main_config_contract.toml"),
+            "[fields]\n",
+        )
+        .expect("write contract");
+        fs::write(
+            runtime.path().join(TOML_TOOLING_CONFIG_FILENAME),
+            "array_auto_expand = true\n",
+        )
+        .expect("write TOML tooling config");
+        fs::write(
+            runtime.path().join("runtime_components.json"),
+            r#"{
+              "cursors": { "enabled": false, "disableable": true, "notes": [] },
+              "screen": { "enabled": true, "disableable": true, "notes": [] }
+            }"#,
+        )
+        .expect("write runtime component manifest");
+
+        let resolved = resolve_active_config_paths(runtime.path(), config.path(), None).unwrap();
+
+        assert!(resolved.user_config.exists());
+        assert!(!resolved.user_cursor_config.exists());
     }
 
     // Defends: Rust active-config-surface resolution rejects stale old-format inputs when settings.jsonc already exists.

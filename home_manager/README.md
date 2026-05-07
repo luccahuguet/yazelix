@@ -91,6 +91,39 @@ Omitted tools stay `bundled`. Host mode is for leaf tools such as `lazygit`, `he
 
 Run `yzx doctor` after switching. Doctor reads the runtime manifest and warns when a host-sourced command is missing from `PATH`.
 
+Optional helper tools can also be turned off when you want a smaller runtime and do not use that feature:
+
+```nix
+{
+  programs.yazelix = {
+    enable = true;
+    runtime_tool_sources = {
+      macchina = "off";
+      p7zip = "off";
+      poppler = "off";
+      resvg = "off";
+    };
+    show_macchina_on_welcome = false;
+  };
+}
+```
+
+Coarser Yazelix subsystems use `components`. Disabling `screen` requires skipping the welcome animation and screen saver; disabling `cursors` removes Yazelix cursor shader assets and cursor config ownership from the runtime
+
+```nix
+{
+  programs.yazelix = {
+    enable = true;
+    components = {
+      cursors = false;
+      screen = false;
+    };
+    skip_welcome_screen = true;
+    screen_saver_enabled = false;
+  };
+}
+```
+
 Optional: use Yazelix's public `x86_64-linux` Cachix cache for faster package builds and Home Manager switches:
 
 ```nix

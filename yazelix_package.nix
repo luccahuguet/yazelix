@@ -1,10 +1,6 @@
 {
   pkgs,
-  src ?
-    import ./packaging/repo_source.nix {
-      lib = pkgs.lib;
-      src = ./.;
-    },
+  src ? null,
   rust_core_src ? ./.,
   nixgl ? null,
   fenixPkgs ? null,
@@ -15,6 +11,15 @@
 }:
 
 let
+  runtimeSource =
+    if src == null then
+      import ./packaging/repo_source.nix {
+        lib = pkgs.lib;
+        src = ./.;
+        inherit components;
+      }
+    else
+      src;
   firstPartyPlatforms = [
     "x86_64-linux"
     "aarch64-linux"
@@ -23,6 +28,7 @@ let
   ];
 in
 import ./packaging/mk_yazelix_package.nix {
-  inherit pkgs src rust_core_src nixgl fenixPkgs runtimeVariant runtimeToolSources components extraRuntimePackages;
+  inherit pkgs rust_core_src nixgl fenixPkgs runtimeVariant runtimeToolSources components extraRuntimePackages;
+  src = runtimeSource;
   metaPlatforms = firstPartyPlatforms;
 }

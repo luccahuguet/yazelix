@@ -5,6 +5,7 @@ use crate::ghostty_cursor_registry::{CursorRegistry, YazelixCursorRegistryExt};
 use crate::ghostty_materialization::{
     GhosttyMaterializationRequest, generate_ghostty_materialization,
 };
+use crate::runtime_component_enabled;
 use crate::user_config_paths;
 use serde::Serialize;
 use std::fs;
@@ -340,7 +341,14 @@ pub fn generate_terminal_materialization(
         &config_dir,
         &request.terminals,
     )?;
-    let cursor_registry = CursorRegistry::load(&request.cursor_config_path)?;
+    let cursors_enabled = runtime_component_enabled(&request.runtime_dir, "cursors")?;
+    let kitty_enable_cursor = if cursors_enabled {
+        CursorRegistry::load(&request.cursor_config_path)?
+            .settings
+            .kitty_enable_cursor
+    } else {
+        false
+    };
     let generated_dir = request.state_dir.join("configs").join("terminal_emulators");
 
     let mut generated = Vec::new();
@@ -407,7 +415,7 @@ pub fn generate_terminal_materialization(
                     &path,
                     generate_kitty_config(
                         transparency,
-                        cursor_registry.settings.kitty_enable_cursor,
+                        kitty_enable_cursor,
                         override_path.as_deref(),
                     ),
                 )

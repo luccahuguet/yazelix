@@ -14,6 +14,7 @@ use crate::native_config_status::{
     xdg_config_home_from_env,
 };
 use crate::runtime_apply_mode::RuntimeApplyMode;
+use crate::runtime_component_enabled;
 use crate::settings_jsonc_patch::{
     SettingsJsoncPatchMutation, set_settings_jsonc_value_text, unset_settings_jsonc_value_text,
 };
@@ -152,7 +153,17 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
     let ui_metadata =
         load_config_ui_metadata(&config_ui_metadata_path(&paths.settings_schema_path))?;
     ensure_ui_metadata_tabs_match_schema(&ui_metadata.tabs, &schema_tab_order)?;
-    let tabs = ui_metadata.tabs.clone();
+    let cursor_component_enabled = runtime_component_enabled(&request.runtime_dir, "cursors")?;
+    let tabs = if cursor_component_enabled {
+        ui_metadata.tabs.clone()
+    } else {
+        ui_metadata
+            .tabs
+            .iter()
+            .filter(|tab| tab.as_str() != "cursors")
+            .cloned()
+            .collect()
+    };
     let active_config_path = active_config_path(&paths, request.config_override.as_deref());
     let active_config_exists = path_present(&active_config_path);
     let config_owner = classify_path_owner(&active_config_path, active_config_exists);
@@ -164,7 +175,11 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
     ensure_root_object(&active_config_path, &active_main_value)?;
     let active_value = compose_config_ui_value(
         active_main_value,
-        read_cursor_config_value(&paths.user_cursor_config)?,
+        if cursor_component_enabled {
+            read_cursor_config_value(&paths.user_cursor_config)?
+        } else {
+            JsonValue::Object(JsonMap::new())
+        },
     )?;
 
     let default_raw = render_default_settings_jsonc(
@@ -174,7 +189,11 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
     let default_main_value = parse_jsonc_value(&paths.default_config_path, &default_raw)?;
     let default_value = compose_config_ui_value(
         default_main_value,
-        read_default_cursor_config_value(&paths.default_cursor_config_path)?,
+        if cursor_component_enabled {
+            read_default_cursor_config_value(&paths.default_cursor_config_path)?
+        } else {
+            JsonValue::Object(JsonMap::new())
+        },
     )?;
     ensure_root_object(&paths.default_config_path, &default_value)?;
 
@@ -217,26 +236,28 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
         ));
     }
 
-    for schema_field in collect_cursor_schema_fields(&schema) {
-        if fields.iter().any(|field| field.path == schema_field.path) {
-            continue;
+    if cursor_component_enabled {
+        for schema_field in collect_cursor_schema_fields(&schema) {
+            if fields.iter().any(|field| field.path == schema_field.path) {
+                continue;
+            }
+            let metadata = field_ui_metadata(&ui_metadata, &schema_field.path)?;
+            let current = get_json_path(&active_value, &schema_field.path);
+            let default = get_json_path(&default_value, &schema_field.path);
+            fields.push(build_field_row(
+                &schema_field.path,
+                &metadata.tab,
+                &schema_field.kind,
+                current,
+                default,
+                metadata.help.clone(),
+                schema_field.allowed_values,
+                String::new(),
+                false,
+                RuntimeApplyMode::ShellTerminalRestart,
+                blocking_paths.contains(&schema_field.path),
+            ));
         }
-        let metadata = field_ui_metadata(&ui_metadata, &schema_field.path)?;
-        let current = get_json_path(&active_value, &schema_field.path);
-        let default = get_json_path(&default_value, &schema_field.path);
-        fields.push(build_field_row(
-            &schema_field.path,
-            &metadata.tab,
-            &schema_field.kind,
-            current,
-            default,
-            metadata.help.clone(),
-            schema_field.allowed_values,
-            String::new(),
-            false,
-            RuntimeApplyMode::ShellTerminalRestart,
-            blocking_paths.contains(&schema_field.path),
-        ));
     }
 
     fields.sort_by(|left, right| {
@@ -2627,6 +2648,14 @@ mod tests {
             include_str!("../../../yazelix_cursors_default.toml"),
         )
         .expect("cursor defaults");
+        fs::write(
+            runtime.join("runtime_components.json"),
+            r#"{
+              "cursors": { "enabled": true, "disableable": true, "notes": [] },
+              "screen": { "enabled": true, "disableable": true, "notes": [] }
+            }"#,
+        )
+        .expect("runtime component manifest");
     }
 
     fn test_request(runtime: &Path, config: &Path) -> ConfigUiRequest {
@@ -2734,6 +2763,36 @@ mod tests {
                 "cpu",
                 "ram"
             ])
+        );
+    }
+
+    // Defends: config UI does not expose cursor editor fields when the packaged runtime disables the cursor component.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn disabled_cursor_component_removes_cursor_editor_fields() {
+        let runtime = tempdir().expect("runtime");
+        let config = tempdir().expect("config");
+        write_runtime_layout(runtime.path());
+        fs::write(
+            runtime.path().join("runtime_components.json"),
+            r#"{
+              "cursors": { "enabled": false, "disableable": true, "notes": [] },
+              "screen": { "enabled": true, "disableable": true, "notes": [] }
+            }"#,
+        )
+        .expect("runtime component manifest");
+        fs::remove_file(runtime.path().join(DEFAULT_CURSOR_CONFIG_FILENAME))
+            .expect("remove cursor defaults");
+
+        let request = test_request(runtime.path(), config.path());
+        let model = build_config_ui_model(&request).expect("model");
+
+        assert!(!model.tabs.contains(&"cursors".to_string()));
+        assert!(
+            model
+                .fields
+                .iter()
+                .all(|field| !field.path.starts_with("cursors."))
         );
     }
 

@@ -1,6 +1,15 @@
-{ lib, src ? ../. }:
+{
+  lib,
+  src ? ../.,
+  components ? { },
+}:
 
 let
+  cursorsEnabled =
+    if builtins.hasAttr "cursors" components && builtins.isBool components.cursors then
+      components.cursors
+    else
+      true;
   includeRoots = [
     "assets"
     "config_metadata"
@@ -15,6 +24,10 @@ let
     "tombi.toml"
     "yazelix_cursors_default.toml"
     "yazelix_default.toml"
+  ];
+  cursorRuntimePaths = [
+    "yazelix_cursors_default.toml"
+    "configs/terminal_emulators/ghostty/shaders"
   ];
 in
 lib.cleanSourceWith {
@@ -34,6 +47,11 @@ lib.cleanSourceWith {
         || lib.hasPrefix "rust_core/target/" relativePath
         || relativePath == "rust_plugins/zellij_pane_orchestrator/target"
         || lib.hasPrefix "rust_plugins/zellij_pane_orchestrator/target/" relativePath;
+      disabledCursorPath =
+        !cursorsEnabled
+        && builtins.any
+          (cursorPath: relativePath == cursorPath || lib.hasPrefix "${cursorPath}/" relativePath)
+          cursorRuntimePaths;
     in
-    included && !isBuildArtifact;
+    included && !isBuildArtifact && !disabledCursorPath;
 }

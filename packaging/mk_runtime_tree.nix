@@ -19,6 +19,7 @@ let
     lib = pkgs.lib;
     inherit components;
   };
+  cursorsEnabled = runtimeComponentRegistry.manifest.cursors.enabled;
   runtimeDeps = runtimeToolRegistry.runtimePackages ++ extraRuntimePackages;
   runtimeBinDirs = map (pkg: "${pkg}/bin") runtimeDeps;
   escapedRuntimeBinDirs = pkgs.lib.escapeShellArgs runtimeBinDirs;
@@ -39,7 +40,9 @@ pkgs.runCommand name { } ''
   ln -s ${src}/CHANGELOG.md "$out/CHANGELOG.md"
   ln -s ${src}/tombi.toml "$out/tombi.toml"
   ln -s ${src}/yazelix_default.toml "$out/yazelix_default.toml"
-  ln -s ${src}/yazelix_cursors_default.toml "$out/yazelix_cursors_default.toml"
+  ${pkgs.lib.optionalString cursorsEnabled ''
+    ln -s ${src}/yazelix_cursors_default.toml "$out/yazelix_cursors_default.toml"
+  ''}
   printf '%s\n' ${pkgs.lib.escapeShellArg runtimeVariant} > "$out/runtime_variant"
   printf '%s\n' ${pkgs.lib.escapeShellArg runtimeComponentRegistry.manifestJson} > "$out/runtime_components.json"
   printf '%s\n' ${pkgs.lib.escapeShellArg runtimeToolRegistry.manifestJson} > "$out/runtime_tools.json"

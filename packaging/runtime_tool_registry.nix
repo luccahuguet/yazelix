@@ -133,6 +133,8 @@ let
         package = macchina;
         commands = [ "macchina" ];
         hostable = true;
+        disableable = true;
+        notes = [ "Optional welcome summary helper. Off mode requires welcome macchina output to be disabled." ];
       };
       mise = makeTool {
         package = mise;
@@ -179,6 +181,8 @@ let
           "7za"
           "7zr"
         ];
+        disableable = true;
+        notes = [ "Optional Yazi/archive helper. Off mode intentionally omits archive helper commands from the runtime." ];
       };
       poppler = makeTool {
         package = poppler;
@@ -188,10 +192,14 @@ let
           "pdftoppm"
           "pdftocairo"
         ];
+        disableable = true;
+        notes = [ "Optional Yazi/PDF preview helper. Off mode intentionally omits PDF helper commands from the runtime." ];
       };
       resvg = makeTool {
         package = resvg;
         commands = [ "resvg" ];
+        disableable = true;
+        notes = [ "Optional SVG preview helper. Off mode intentionally omits SVG helper commands from the runtime." ];
       };
       nix = makeTool {
         package = nixVersions.latest;

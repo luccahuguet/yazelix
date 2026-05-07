@@ -2795,11 +2795,38 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
-    fn repo_root() -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../..")
-            .canonicalize()
-            .expect("repo root")
+    fn write_runtime_layout(runtime: &Path) {
+        fs::create_dir_all(runtime.join("config_metadata")).expect("metadata dir");
+        fs::write(
+            runtime
+                .join("config_metadata")
+                .join("main_config_contract.toml"),
+            include_str!("../../../config_metadata/main_config_contract.toml"),
+        )
+        .expect("main config contract");
+        fs::write(
+            runtime.join("yazelix_default.toml"),
+            include_str!("../../../yazelix_default.toml"),
+        )
+        .expect("main defaults");
+        fs::write(
+            runtime.join(crate::ghostty_cursor_registry::DEFAULT_CURSOR_CONFIG_FILENAME),
+            include_str!("../../../yazelix_cursors_default.toml"),
+        )
+        .expect("cursor defaults");
+        fs::write(
+            runtime.join(crate::active_config_surface::TOML_TOOLING_CONFIG_FILENAME),
+            include_str!("../../../tombi.toml"),
+        )
+        .expect("tombi config");
+        fs::write(
+            runtime.join("runtime_components.json"),
+            r#"{
+              "cursors": { "enabled": true, "disableable": true, "notes": [] },
+              "screen": { "enabled": true, "disableable": true, "notes": [] }
+            }"#,
+        )
+        .expect("runtime component manifest");
     }
 
     // Defends: Rust launch arg parsing keeps the public path and terminal flag aliases after the owner cut.
@@ -3000,12 +3027,13 @@ mod tests {
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn session_config_overrides_materialize_valid_ephemeral_settings() {
-        let repo = repo_root();
+        let runtime = TempDir::new().unwrap();
+        write_runtime_layout(runtime.path());
         let config = TempDir::new().unwrap();
         let state = TempDir::new().unwrap();
 
         let session_config = materialize_session_config_override(
-            &repo,
+            runtime.path(),
             config.path(),
             state.path(),
             None,
@@ -3037,9 +3065,12 @@ mod tests {
         let user_value = read_settings_jsonc_value(&config.path().join("settings.jsonc")).unwrap();
         assert_ne!(user_value["editor"]["command"], "nvim");
 
-        let normalized =
-            load_normalized_config_for_control(&repo, config.path(), Some(&session_config))
-                .unwrap();
+        let normalized = load_normalized_config_for_control(
+            runtime.path(),
+            config.path(),
+            Some(&session_config),
+        )
+        .unwrap();
         assert_eq!(normalized.get("editor_command").unwrap(), "nvim");
         assert_eq!(normalized.get("welcome_style").unwrap(), "static");
         assert_eq!(normalized.get("zellij_pane_frames").unwrap(), "false");

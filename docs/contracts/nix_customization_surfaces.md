@@ -90,13 +90,13 @@ The current evaluated matrix is:
 | `runtime_tool_sources.<tool> = "host"` for leaf tools | bundled | Implemented: omits supported leaf tool packages and exports, then relies on host `PATH` | Runtime manifest records host source and doctor checks required commands | Keep implemented |
 | `agent_usage_programs = [ "tokenusage" ]` | off | Implemented opt-in: adds the `tokenusage` package only when selected | Agent usage widgets still need `zellij.widget_tray`; missing helper renders as unavailable/backoff, not a default failure | Keep implemented |
 | `runtime_variant = "ghostty"` or `"wezterm"` | `ghostty` | Implemented: selects one packaged terminal variant instead of bundling both as the active runtime terminal | Generated terminal config follows the selected runtime variant | Keep implemented |
-| `components.cursors` | enabled | Not disableable yet: cursor registry code is linked into `yazelix_core`, and Ghostty cursor shader assets are still shipped in the runtime source tree | Future disabled mode should skip Ghostty cursor shader/config materialization, avoid Home Manager cursor config ownership, and publish `n/a` cursor launch facts; it should not remove the standalone `#yazelix_cursors` output | Accept follow-up |
-| `components.screen` | enabled | Not disableable yet: welcome/screen rendering is linked into `yazelix_core` | Future disabled mode must require `core.skip_welcome_screen = true`, reject enabled screen saver settings, and make `yzx screen` return a clear unavailable-component error | Accept follow-up |
+| `components.cursors` | enabled | Implemented partial package omission: cursor shader assets and `yazelix_cursors_default.toml` are removed from the runtime tree; cursor registry code remains linked into `yazelix_core` until crate-level feature gates exist | Ghostty config generation omits Yazelix cursor shaders, cursor sidecar bootstrap is skipped, config UI hides cursor fields, Home Manager rejects cursor config ownership, and launch facts report `n/a` | Keep implemented |
+| `components.screen` | enabled | Implemented behavior toggle: welcome/screen rendering remains linked into `yazelix_core` until crate-level feature gates exist | Home Manager requires `core.skip_welcome_screen = true` and rejects enabled screen saver settings; Zellij materialization rejects screen saver when disabled; `yzx screen` returns a disabled-component error | Keep implemented |
 | `components.status_bar` / integrated zjstatus | enabled | Not accepted yet: `zjstatus.wasm` is a real runtime asset, but the top/status bar is part of the current Zellij layout contract | Defer until layout ownership and barless/native Zellij layout behavior are designed; hiding widgets through `zellij.widget_tray` is not a package-saving toggle | Defer |
 | `yazelix_bar` standalone package forwarding | available on demand | No Home Manager toggle needed: forwarded flake output is not installed unless the user asks for it | Integrated Yazelix consumes only the crate/API it needs for generated layouts | Reject toggle |
 | `yazelix-zellij-popup` / `yzpp` | external standalone repo | No Home Manager toggle needed: `yzpp` is outside the Yazelix runtime package | Yazelix integrated `yzx popup` remains pane-orchestrator-owned | Reject toggle |
-| Yazi preview/helper tools such as `p7zip`, `poppler`, and `resvg` | bundled | Not disableable yet: they are runtime tools, not child components | Future `off` mode must also adjust previews or doctor guidance so generated config does not point at intentionally missing helpers | Accept follow-up |
-| `macchina` welcome summary helper | bundled unless host-sourced | Host mode is available; true `off` mode is not yet supported | Future `off` mode should require or imply `core.show_macchina_on_welcome = false` | Accept follow-up |
+| Yazi preview/helper tools such as `p7zip`, `poppler`, and `resvg` | bundled | Implemented `off`: omits helper packages and exports; generated Yazelix config does not directly call these helpers | Doctor reports intentional disabled helper state instead of missing-host warnings | Keep implemented |
+| `macchina` welcome summary helper | bundled unless host-sourced | Implemented `off`: omits `macchina` from runtime packages and exports | Home Manager requires `core.show_macchina_on_welcome = false`; doctor reports intentional disabled helper state | Keep implemented |
 
 Do not add a toggle whose only effect is hiding Home Manager options or removing a forwarded flake output. A toggle must change package contents, generated runtime behavior, or validation in a way users can feel.
 
@@ -106,7 +106,7 @@ When a runtime tool is configured as `host`, `yzx doctor` must check the active 
 
 Default bundled installs must not gain new warnings from runtime-tool source diagnostics.
 
-When a future component is disabled, doctor should report the disabled state as intentional and should report only invalid references to disabled commands, assets, widgets, or config ownership surfaces.
+When a component is disabled, doctor reports the disabled state as intentional and should report only invalid references to disabled commands, assets, widgets, or config ownership surfaces.
 
 ## Public Flake Presets
 

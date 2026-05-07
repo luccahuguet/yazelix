@@ -5,6 +5,7 @@ use crate::control_plane::{
     config_dir_from_env, home_dir_from_env as home_dir_from_control_plane,
     state_dir_from_env as state_dir_from_control_plane,
 };
+use crate::runtime_component_enabled;
 use crate::user_config_paths;
 use crate::zellij_render_plan::{
     DEFAULT_SIDEBAR_YAZI_ARG, TopLevelSetting, ZellijRenderPlanData, ZellijRenderPlanRequest,
@@ -124,6 +125,17 @@ pub fn generate_zellij_materialization(
         include_missing: false,
     })?;
     let config = normalized.normalized_config;
+    if !runtime_component_enabled(&request.runtime_dir, "screen")?
+        && bool_config(&config, "screen_saver_enabled", false)
+    {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "disabled_screen_component_screen_saver",
+            "zellij.screen_saver_enabled cannot be true when the Yazelix screen component is disabled.",
+            "Enable programs.yazelix.components.screen or set zellij.screen_saver_enabled to false.",
+            json!({ "field": "zellij.screen_saver_enabled" }),
+        ));
+    }
     let state_dir = state_dir_from_env()?;
     let merged_config_path = request.zellij_config_dir.join("config.kdl");
     let layout_dir = request.zellij_config_dir.join("layouts");
