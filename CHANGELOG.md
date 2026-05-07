@@ -4,11 +4,13 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
-Post-v16.2 work in progress
+First-party child repos, standalone popup panes, and launch/config hardening
 
 Upgrade impact: manual action may be required
 
 Highlights:
+- Published first-party child repository links for `yazelix-screen`, `yazelix-cursors`, and `yazelix-zellij-popup` so the extracted projects are easier to find and use independently
+- Extracted the reusable Zellij popup pane plugin into `yazelix-zellij-popup`, with `yzpp.wasm` usable from plain Zellij layouts while Yazelix keeps its integrated `yzx popup` command
 - Desktop launch keeps its starter terminal for visible preflight and failure feedback, but defers the managed Yazelix window until after the starter exits so tiling window managers do not size the real session around the bootstrap window
 - The default Zellij status widget tray includes `codex_usage` so new configs show the Codex quota/reset widget without manual opt-in
 - Home Manager desktop-entry generation is Linux-only so Darwin Home Manager evaluations do not require Linux `xdg.desktopEntries` options
