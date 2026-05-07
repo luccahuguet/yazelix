@@ -195,6 +195,15 @@ Yazelix intentionally keeps Yazi's upstream open flow intact:
 - `Z`: keeps Yazi's native Zoxide jump behavior inside Yazi
 - `Alt+z`: runs the bundled `zoxide-editor` plugin so the selected directory becomes the managed editor/workspace target immediately
 
+To change the file-open key itself, remap Yazi's native `open` command in `yazi_keymap.toml`; do not add an `open_selected_in_editor` entry to `settings.jsonc`
+
+```toml
+[[mgr.prepend_keymap]]
+on = ["e"]
+run = "open"
+desc = "Open selected files"
+```
+
 Use `settings.jsonc` for the Yazelix-owned generated integration bindings:
 
 ```jsonc

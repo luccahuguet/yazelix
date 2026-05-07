@@ -76,7 +76,7 @@ Use semantic remaps for Yazelix-owned actions and native sidecars for the owning
 
 `zellij.keybindings` accepts owner-local action ids such as `popup`, `menu`, `toggle_sidebar`, and `open_workspace_terminal`. Shared diagnostics and docs use scoped ids such as `zellij.popup`. Omitted actions keep defaults, and `[]` disables a Yazelix-owned binding. Yazelix rejects duplicate semantic Zellij keys before launch.
 
-`yazi.keybindings` accepts owner-local action ids such as `open_directory_as_workspace_pane` and `open_zoxide_in_editor`. Values are alternate generated Yazi bindings such as `<A-p>` and `<A-z>`. Omitted actions keep defaults, and `[]` disables that generated Yazelix-owned Yazi integration binding. Arbitrary Yazi actions and native multi-key sequences remain in `~/.config/yazelix/yazi_keymap.toml`.
+`yazi.keybindings` accepts owner-local action ids such as `open_directory_as_workspace_pane` and `open_zoxide_in_editor`. Values are alternate generated Yazi bindings such as `<A-p>` and `<A-z>`. Omitted actions keep defaults, and `[]` disables that generated Yazelix-owned Yazi integration binding. Native open-selected keys such as `<Enter>` and `o` remain in `~/.config/yazelix/yazi_keymap.toml`; arbitrary Yazi actions and native multi-key sequences also belong there.
 
 ### Sidebar Commands vs Keybindings
 
@@ -100,8 +100,8 @@ You can remap the keys in your Zellij override config as long as they still send
   - `y`: Yank (copy); `Y`: Unyank (cancel copy)
   - `x`: Cut; `X`: Uncut (cancel cut)
   - `a`: Add a file (`filename.ext`) or folder (`foldername/`)
-  - `Enter`: Open selected files through Yazelix's configured editor opener
-  - `o`: Use Yazi's built-in open action for selected files
+  - `Enter`: Yazi-native `open` key; editable files route through Yazelix's managed editor opener
+  - `o`: Yazi-native `open` key for selected files
   - `O`: Open Yazi's built-in "Open with" menu for more options, including the system file manager flow when available
   - `Ctrl+y`: Toggle focus between the editor and sidebar
   - `Alt+p`: Open the selected directory in a new Zellij pane and make it the tab workspace root
