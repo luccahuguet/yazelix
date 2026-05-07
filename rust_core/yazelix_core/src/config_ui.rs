@@ -3,6 +3,12 @@
 use crate::active_config_surface::{PrimaryConfigPaths, primary_config_paths};
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_normalize::{ConfigDiagnostic, ConfigDiagnosticReport, NormalizeConfigRequest};
+use crate::control_plane::{home_dir_from_env, state_dir_from_env};
+use crate::native_config_status::{
+    NativeConfigStatusEntry, NativeConfigStatusRequest, classify_native_config_statuses,
+    current_platform_name, path_owned_by_home_manager, status_code_for_entry,
+    xdg_config_home_from_env,
+};
 use crate::settings_jsonc_patch::{
     SettingsJsoncPatchMutation, set_settings_jsonc_value_text, unset_settings_jsonc_value_text,
 };
@@ -46,7 +52,6 @@ const DEFAULT_TABS: &[&str] = &[
     "advanced",
 ];
 const CONFIG_UI_METADATA_FILENAME: &str = "config_ui_metadata.toml";
-const HOME_MANAGER_FILES_MARKER: &str = "-home-manager-files/";
 const HEADER_HORIZONTAL_PADDING: u16 = 1;
 
 #[derive(Debug, Clone)]
@@ -67,6 +72,7 @@ pub struct ConfigUiModel {
     pub tabs: Vec<String>,
     pub fields: Vec<ConfigUiField>,
     pub sidecars: Vec<ConfigUiSidecar>,
+    pub native_config_statuses: Vec<NativeConfigStatusEntry>,
     pub diagnostics: Vec<ConfigUiDiagnostic>,
 }
 
@@ -153,6 +159,7 @@ struct SchemaField {
 enum UiRowRef {
     Field(usize),
     Sidecar(usize),
+    NativeStatus(usize),
     Diagnostic(usize),
 }
 
@@ -215,6 +222,7 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
     let tabs = ui_metadata.tabs.clone();
     let active_config_path = active_config_path(&paths, request.config_override.as_deref());
     let active_config_exists = path_present(&active_config_path);
+    let config_owner = classify_path_owner(&active_config_path, active_config_exists);
     let active_main_value = if active_config_exists {
         read_active_config_value(&active_config_path)?
     } else {
@@ -297,16 +305,40 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
             .then_with(|| left.path.cmp(&right.path))
     });
 
+    let home_dir = home_dir_from_env()?;
+    let state_dir = state_dir_from_env()?;
+    let native_config_statuses = classify_native_config_statuses(&NativeConfigStatusRequest {
+        xdg_config_home: xdg_config_home_from_env(&home_dir),
+        home_dir,
+        config_dir: request.config_dir.clone(),
+        state_dir,
+        platform: current_platform_name(),
+        terminal_config_mode: effective_string_config(
+            &active_value,
+            &default_value,
+            "terminal.config_mode",
+            "yazelix",
+        ),
+        selected_terminals: effective_string_list_config(
+            &active_value,
+            &default_value,
+            "terminal.terminals",
+            &["ghostty", "wezterm"],
+        ),
+        settings_home_manager_read_only: config_owner == ConfigUiPathOwner::HomeManager,
+    });
+
     Ok(ConfigUiModel {
         active_config_path: active_config_path.clone(),
         cursor_config_path: paths.user_cursor_config.clone(),
         default_cursor_config_path: paths.default_cursor_config_path.clone(),
         active_config_exists,
-        config_owner: classify_path_owner(&active_config_path, active_config_exists),
+        config_owner,
         config_read_only: path_is_read_only(&active_config_path),
         tabs,
         fields,
         sidecars: collect_sidecars(&request.config_dir),
+        native_config_statuses,
         diagnostics,
     })
 }
@@ -1277,6 +1309,14 @@ impl ConfigUiApp {
                     .filter(|(_, sidecar)| self.matches_sidecar(sidecar))
                     .map(|(index, _)| UiRowRef::Sidecar(index)),
             );
+            rows.extend(
+                self.model
+                    .native_config_statuses
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, status)| self.matches_native_status(status))
+                    .map(|(index, _)| UiRowRef::NativeStatus(index)),
+            );
             return rows;
         }
 
@@ -1336,6 +1376,17 @@ impl ConfigUiApp {
                     Span::styled(truncate(&diagnostic.path, 42), config_key_style()),
                 ])
             }
+            UiRowRef::NativeStatus(index) => {
+                let status = &self.model.native_config_statuses[index];
+                Line::from(vec![
+                    Span::styled(fixed_label(&status.status, 24), native_status_style(status)),
+                    Span::styled(truncate(&status.surface, 36), config_key_style()),
+                    Span::styled(
+                        format!(" {}", truncate(&status.label, 42)),
+                        Style::default().fg(Color::Gray),
+                    ),
+                ])
+            }
         }
     }
 
@@ -1360,6 +1411,9 @@ impl ConfigUiApp {
             }
             UiRowRef::Sidecar(index) => sidecar_detail_lines(&self.model.sidecars[index]),
             UiRowRef::Diagnostic(index) => diagnostic_detail_lines(&self.model.diagnostics[index]),
+            UiRowRef::NativeStatus(index) => {
+                native_status_detail_lines(&self.model.native_config_statuses[index])
+            }
         }
     }
 
@@ -1385,6 +1439,16 @@ impl ConfigUiApp {
             diagnostic.path.as_str(),
             diagnostic.status.as_str(),
             diagnostic.headline.as_str(),
+        ])
+    }
+
+    fn matches_native_status(&self, status: &NativeConfigStatusEntry) -> bool {
+        self.search_matches([
+            status.surface.as_str(),
+            status.tool.as_str(),
+            status.status.as_str(),
+            status.label.as_str(),
+            status.description.as_str(),
         ])
     }
 
@@ -1635,6 +1699,39 @@ fn diagnostic_detail_lines(diagnostic: &ConfigUiDiagnostic) -> Vec<Line<'static>
     lines.push(Line::from(""));
     for detail in &diagnostic.detail_lines {
         lines.push(Line::from(detail.clone()));
+    }
+    lines
+}
+
+fn native_status_detail_lines(status: &NativeConfigStatusEntry) -> Vec<Line<'static>> {
+    let mut lines = vec![
+        Line::from(Span::styled(
+            status.label.clone(),
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        )),
+        Line::from(""),
+        detail_line("surface", &status.surface),
+        detail_line("tool", &status.tool),
+        detail_line("status", &status.status),
+        detail_line("description", &status.description),
+        detail_line("allowed action", &status.allowed_action),
+    ];
+    if let Some(path) = &status.active_path {
+        lines.push(detail_line("active path", path));
+    }
+    if let Some(path) = &status.managed_path {
+        lines.push(detail_line("managed path", path));
+    }
+    if !status.native_paths.is_empty() {
+        lines.push(detail_line("native paths", &status.native_paths.join(", ")));
+    }
+    if let Some(path) = &status.generated_path {
+        lines.push(detail_line("generated path", path));
+    }
+    if let Some(reason) = &status.read_only_reason {
+        lines.push(detail_line("read-only", reason));
     }
     lines
 }
@@ -2195,11 +2292,7 @@ fn classify_path_owner(path: &Path, present: bool) -> ConfigUiPathOwner {
     if !present {
         return ConfigUiPathOwner::Default;
     }
-    if fs::read_link(path)
-        .ok()
-        .map(|target| target.to_string_lossy().contains(HOME_MANAGER_FILES_MARKER))
-        .unwrap_or(false)
-    {
+    if path_owned_by_home_manager(path) {
         return ConfigUiPathOwner::HomeManager;
     }
     ConfigUiPathOwner::User
@@ -2221,6 +2314,52 @@ fn get_json_path<'a>(value: &'a JsonValue, path: &str) -> Option<&'a JsonValue> 
         current = current.as_object()?.get(part)?;
     }
     Some(current)
+}
+
+fn effective_json_path<'a>(
+    active: &'a JsonValue,
+    default: &'a JsonValue,
+    path: &str,
+) -> Option<&'a JsonValue> {
+    get_json_path(active, path).or_else(|| get_json_path(default, path))
+}
+
+fn effective_string_config(
+    active: &JsonValue,
+    default: &JsonValue,
+    path: &str,
+    fallback: &str,
+) -> String {
+    effective_json_path(active, default, path)
+        .and_then(JsonValue::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or(fallback)
+        .to_string()
+}
+
+fn effective_string_list_config(
+    active: &JsonValue,
+    default: &JsonValue,
+    path: &str,
+    fallback: &[&str],
+) -> Vec<String> {
+    let values = effective_json_path(active, default, path)
+        .and_then(JsonValue::as_array)
+        .map(|values| {
+            values
+                .iter()
+                .filter_map(JsonValue::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(str::to_string)
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    if values.is_empty() {
+        fallback.iter().map(|value| (*value).to_string()).collect()
+    } else {
+        values
+    }
 }
 
 fn render_json_value(value: &JsonValue) -> String {
@@ -2686,6 +2825,18 @@ fn sidecar_status_style(present: bool) -> Style {
     }
 }
 
+fn native_status_style(status: &NativeConfigStatusEntry) -> Style {
+    match status_code_for_entry(status)
+        .map(|code| code.doctor_severity())
+        .unwrap_or("info")
+    {
+        "error" => Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+        "warning" => Style::default().fg(Color::Yellow),
+        "ok" => Style::default().fg(Color::Green),
+        _ => Style::default().fg(Color::Cyan),
+    }
+}
+
 fn metadata_key_style() -> Style {
     Style::default().fg(Color::LightBlue)
 }
@@ -2930,6 +3081,33 @@ mod tests {
         );
     }
 
+    // Defends: the config UI consumes the shared native-config status labels instead of maintaining separate sidecar wording.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn model_includes_native_config_status_entries() {
+        let runtime = tempdir().expect("runtime");
+        let config = tempdir().expect("config");
+        write_runtime_layout(runtime.path());
+        let request = test_request(runtime.path(), config.path());
+
+        let model = build_config_ui_model(&request).expect("model");
+        let settings = model
+            .native_config_statuses
+            .iter()
+            .find(|status| status.surface == "settings.main")
+            .expect("settings status");
+
+        assert_eq!(settings.status, "canonical_settings");
+        assert_eq!(settings.label, "Canonical Yazelix settings");
+        assert!(
+            model
+                .native_config_statuses
+                .iter()
+                .any(|status| status.surface == "zellij.generated"
+                    && status.status == "generated_runtime")
+        );
+    }
+
     // Defends: enum-backed string lists use an enable/disable picker instead of forcing users to edit JSON arrays.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
@@ -3053,6 +3231,7 @@ mod tests {
                     ),
                 ],
                 sidecars: Vec::new(),
+                native_config_statuses: Vec::new(),
                 diagnostics: Vec::new(),
             },
             selected_tab: 0,

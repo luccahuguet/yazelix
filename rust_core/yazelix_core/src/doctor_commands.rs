@@ -11,6 +11,11 @@ use crate::doctor_runtime_report::{
     DoctorRuntimeEvaluateRequest, SharedRuntimePreflightInput, evaluate_doctor_runtime_report,
 };
 use crate::install_ownership_env::install_ownership_request_from_env_with_runtime_dir;
+use crate::native_config_status::{
+    NativeConfigStatusEntry, NativeConfigStatusRequest, classify_native_config_statuses,
+    current_platform_name, highest_doctor_severity, path_owned_by_home_manager,
+    status_code_for_entry, xdg_config_home_from_env,
+};
 use crate::runtime_materialization::{
     RuntimeMaterializationRepairEvaluateRequest, repair_runtime_materialization,
 };
@@ -245,6 +250,12 @@ fn compute_doctor_report_from_env() -> Result<DoctorReportData, CoreError> {
         normalized_config.as_ref(),
     );
     let config_findings = collect_config_doctor_findings(&runtime_dir, &config_dir);
+    let native_config_findings = collect_native_config_status_findings(
+        &home_dir,
+        &config_dir,
+        &state_dir,
+        normalized_config.as_ref(),
+    );
     let workspace_asset_findings =
         collect_workspace_asset_doctor_findings(&runtime_dir, &state_dir);
     let zellij_findings = collect_zellij_plugin_health_findings(normalized_config.as_ref());
@@ -253,6 +264,7 @@ fn compute_doctor_report_from_env() -> Result<DoctorReportData, CoreError> {
     results.extend(runtime_findings);
     results.extend(helix_findings);
     results.extend(config_findings);
+    results.extend(native_config_findings);
     results.extend(workspace_asset_findings);
     results.extend(
         install_report
@@ -462,6 +474,101 @@ fn collect_config_doctor_findings(runtime_dir: &Path, config_dir: &Path) -> Vec<
         .map(serialize_value)
         .collect::<Result<Vec<_>, _>>()
         .expect("config findings should serialize")
+}
+
+fn collect_native_config_status_findings(
+    home_dir: &Path,
+    config_dir: &Path,
+    state_dir: &Path,
+    normalized_config: Option<&serde_json::Map<String, Value>>,
+) -> Vec<Value> {
+    let settings_path = user_config_paths::main_config(config_dir);
+    let entries = classify_native_config_statuses(&NativeConfigStatusRequest {
+        home_dir: home_dir.to_path_buf(),
+        xdg_config_home: xdg_config_home_from_env(home_dir),
+        config_dir: config_dir.to_path_buf(),
+        state_dir: state_dir.to_path_buf(),
+        platform: current_platform_name(),
+        terminal_config_mode: normalized_string_config(
+            normalized_config,
+            "terminal_config_mode",
+            "yazelix",
+        ),
+        selected_terminals: normalized_string_list_config(
+            normalized_config,
+            "terminals",
+            &["ghostty", "wezterm"],
+        ),
+        settings_home_manager_read_only: path_owned_by_home_manager(&settings_path),
+    });
+    vec![native_config_status_finding(entries)]
+}
+
+fn normalized_string_config(
+    config: Option<&serde_json::Map<String, Value>>,
+    key: &str,
+    fallback: &str,
+) -> String {
+    config
+        .and_then(|config| config.get(key))
+        .and_then(Value::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or(fallback)
+        .to_string()
+}
+
+fn normalized_string_list_config(
+    config: Option<&serde_json::Map<String, Value>>,
+    key: &str,
+    fallback: &[&str],
+) -> Vec<String> {
+    let values = config
+        .and_then(|config| config.get(key))
+        .and_then(Value::as_array)
+        .map(|values| {
+            values
+                .iter()
+                .filter_map(Value::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(str::to_string)
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    if values.is_empty() {
+        fallback.iter().map(|value| (*value).to_string()).collect()
+    } else {
+        values
+    }
+}
+
+fn native_config_status_finding(entries: Vec<NativeConfigStatusEntry>) -> Value {
+    let severity = highest_doctor_severity(&entries);
+    let warning_count = entries
+        .iter()
+        .filter_map(status_code_for_entry)
+        .filter(|status| status.doctor_severity() == "warning")
+        .count();
+    let error_count = entries
+        .iter()
+        .filter_map(status_code_for_entry)
+        .filter(|status| status.doctor_severity() == "error")
+        .count();
+    let import_count = entries
+        .iter()
+        .filter(|entry| entry.status == "native_available")
+        .count();
+    let details = format!(
+        "{error_count} required native config errors; {warning_count} read-only native/Home Manager surfaces; {import_count} native config files available to import."
+    );
+
+    json!({
+        "status": severity,
+        "message": "Native config integration status",
+        "details": details,
+        "fix_available": false,
+        "native_config_statuses": entries,
+    })
 }
 
 fn collect_workspace_asset_doctor_findings(runtime_dir: &Path, state_dir: &Path) -> Vec<Value> {
@@ -1162,6 +1269,7 @@ fn build_zellij_plugin_health_findings(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::TempDir;
 
     // Defends: the Rust doctor summary keeps warnings and fixable findings from being treated as healthy.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
@@ -1178,6 +1286,35 @@ mod tests {
         assert_eq!(summary.ok_count, 1);
         assert_eq!(summary.fixable_count, 1);
         assert!(!summary.healthy);
+    }
+
+    // Defends: doctor consumes the shared native-config classifier and elevates required native terminal config misses to an error.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn native_config_status_finding_reports_terminal_user_mode_error() {
+        let tmp = TempDir::new().unwrap();
+        let mut config = serde_json::Map::new();
+        config.insert("terminal_config_mode".to_string(), json!("user"));
+        config.insert("terminals".to_string(), json!(["ghostty"]));
+
+        let findings = collect_native_config_status_findings(
+            &tmp.path().join("home"),
+            &tmp.path().join("config"),
+            &tmp.path().join("state"),
+            Some(&config),
+        );
+
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0]["status"], "error");
+        assert_eq!(findings[0]["message"], "Native config integration status");
+        assert!(
+            findings[0]["native_config_statuses"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|entry| entry["surface"] == "terminal.ghostty.input"
+                    && entry["status"] == "native_required_missing")
+        );
     }
 
     // Defends: the Rust doctor port preserves the Zellij permission-denied finding and fix action instead of dropping the live-session seam.

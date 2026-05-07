@@ -30,6 +30,7 @@ pub mod launch_commands;
 pub mod launch_materialization;
 pub mod layout_family_contract;
 pub mod managed_user_config_stubs;
+pub mod native_config_status;
 pub mod onboard_commands;
 pub mod profile_commands;
 pub mod public_command_surface;
@@ -117,6 +118,11 @@ pub use launch_commands::{run_yzx_desktop, run_yzx_enter, run_yzx_launch, run_yz
 pub use launch_materialization::{
     LaunchMaterializationData, LaunchMaterializationRequest,
     launch_materialization_request_from_env, prepare_launch_materialization,
+};
+pub use native_config_status::{
+    NativeConfigStatusCode, NativeConfigStatusEntry, NativeConfigStatusRequest,
+    classify_native_config_statuses, current_platform_name, highest_doctor_severity,
+    path_owned_by_home_manager, status_code_for_entry, xdg_config_home_from_env,
 };
 pub use onboard_commands::run_yzx_onboard;
 pub use profile_commands::{
