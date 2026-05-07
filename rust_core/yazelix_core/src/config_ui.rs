@@ -1,9 +1,6 @@
 //! Terminal UI for inspecting and editing the canonical Yazelix config surface.
 
 mod apply_adapter;
-mod editor;
-mod model;
-mod render;
 
 use crate::action_registry::ZELLIJ_ACTIONS;
 use crate::active_config_surface::{PrimaryConfigPaths, primary_config_paths};
@@ -25,6 +22,7 @@ use crate::settings_surface::{
     is_settings_config_path, parse_jsonc_value, read_settings_jsonc_value,
 };
 use crate::user_config_paths::{CURRENT_MANAGED_CONFIG_FILE_NAMES, SETTINGS_CONFIG};
+use crate::yazelix_ratconfig::{draw_config_ui, *};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{
@@ -43,13 +41,11 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use toml::Value as TomlValue;
 use yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
 
-use apply_adapter::apply_after_field_write;
-use editor::*;
-pub use model::{
+pub use crate::yazelix_ratconfig::{
     ConfigUiApplyStatus, ConfigUiDiagnostic, ConfigUiField, ConfigUiModel, ConfigUiPathOwner,
     ConfigUiRequest, ConfigUiSidecar, ConfigUiValueState,
 };
-use render::draw_config_ui;
+use apply_adapter::apply_after_field_write;
 
 const DEFAULT_TABS: &[&str] = &[
     "general",
@@ -65,7 +61,7 @@ const DEFAULT_TABS: &[&str] = &[
     "advanced",
 ];
 const CONFIG_UI_METADATA_FILENAME: &str = "config_ui_metadata.toml";
-const HEADER_HORIZONTAL_PADDING: u16 = 1;
+pub(crate) const HEADER_HORIZONTAL_PADDING: u16 = 1;
 const ZELLIJ_KEYBINDINGS_FIELD_PATH: &str = "zellij.keybindings";
 
 #[derive(Debug, Clone)]
@@ -101,28 +97,28 @@ struct SchemaField {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum UiRowRef {
+pub(crate) enum UiRowRef {
     Field(usize),
     Sidecar(usize),
     NativeStatus(usize),
     Diagnostic(usize),
 }
 
-struct ConfigUiApp {
-    request: ConfigUiRequest,
-    model: ConfigUiModel,
-    selected_tab: usize,
-    selected_row: usize,
-    search: String,
-    search_active: bool,
-    edit: Option<ConfigUiEditState>,
-    notice: Option<ConfigUiNotice>,
+pub(crate) struct ConfigUiApp {
+    pub(crate) request: ConfigUiRequest,
+    pub(crate) model: ConfigUiModel,
+    pub(crate) selected_tab: usize,
+    pub(crate) selected_row: usize,
+    pub(crate) search: String,
+    pub(crate) search_active: bool,
+    pub(crate) edit: Option<ConfigUiEditState>,
+    pub(crate) notice: Option<ConfigUiNotice>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct ConfigUiNotice {
-    text: String,
-    is_error: bool,
+pub(crate) struct ConfigUiNotice {
+    pub(crate) text: String,
+    pub(crate) is_error: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -612,7 +608,7 @@ impl ConfigUiApp {
         }
     }
 
-    fn selected_field(&self) -> Option<&ConfigUiField> {
+    pub(crate) fn selected_field(&self) -> Option<&ConfigUiField> {
         self.selected_field_index()
             .and_then(|index| self.model.fields.get(index))
     }
@@ -923,7 +919,7 @@ impl ConfigUiApp {
         });
     }
 
-    fn visible_rows(&self) -> Vec<UiRowRef> {
+    pub(crate) fn visible_rows(&self) -> Vec<UiRowRef> {
         let tab = self
             .model
             .tabs
@@ -970,7 +966,7 @@ impl ConfigUiApp {
         rows
     }
 
-    fn render_row(&self, row: UiRowRef) -> Line<'static> {
+    pub(crate) fn render_row(&self, row: UiRowRef) -> Line<'static> {
         match row {
             UiRowRef::Field(index) => {
                 let field = &self.model.fields[index];
@@ -1033,7 +1029,7 @@ impl ConfigUiApp {
         }
     }
 
-    fn render_details(&self, row: UiRowRef) -> Vec<Line<'static>> {
+    pub(crate) fn render_details(&self, row: UiRowRef) -> Vec<Line<'static>> {
         match row {
             UiRowRef::Field(index) => {
                 let field = &self.model.fields[index];
@@ -1143,7 +1139,7 @@ impl ConfigUiApp {
         self.clamp_selection_for_len(self.visible_rows().len());
     }
 
-    fn clamp_selection_for_len(&mut self, len: usize) {
+    pub(crate) fn clamp_selection_for_len(&mut self, len: usize) {
         if len == 0 {
             self.selected_row = 0;
         } else if self.selected_row >= len {
@@ -2494,19 +2490,19 @@ fn native_status_style(status: &NativeConfigStatusEntry) -> Style {
     }
 }
 
-fn metadata_key_style() -> Style {
+pub(crate) fn metadata_key_style() -> Style {
     Style::default().fg(Color::LightBlue)
 }
 
-fn metadata_value_style() -> Style {
+pub(crate) fn metadata_value_style() -> Style {
     Style::default().fg(Color::White)
 }
 
-fn config_key_style() -> Style {
+pub(crate) fn config_key_style() -> Style {
     Style::default().fg(Color::LightCyan)
 }
 
-fn owner_label(owner: ConfigUiPathOwner) -> &'static str {
+pub(crate) fn owner_label(owner: ConfigUiPathOwner) -> &'static str {
     match owner {
         ConfigUiPathOwner::Default => "default",
         ConfigUiPathOwner::HomeManager => "home-manager",
@@ -2523,7 +2519,7 @@ fn fixed_label(value: &str, width: usize) -> String {
     }
 }
 
-fn truncate(value: &str, limit: usize) -> String {
+pub(crate) fn truncate(value: &str, limit: usize) -> String {
     if value.chars().count() <= limit {
         return value.to_string();
     }
@@ -2534,7 +2530,7 @@ fn truncate(value: &str, limit: usize) -> String {
         + "..."
 }
 
-fn truncate_start(value: &str, limit: usize) -> String {
+pub(crate) fn truncate_start(value: &str, limit: usize) -> String {
     let len = value.chars().count();
     if len <= limit {
         return value.to_string();

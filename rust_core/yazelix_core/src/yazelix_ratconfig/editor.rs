@@ -3,21 +3,21 @@ use serde_json::Value as JsonValue;
 use std::collections::BTreeSet;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct ConfigUiEditState {
-    pub(super) field_index: usize,
-    pub(super) input: String,
-    pub(super) mode: ConfigUiEditMode,
-    pub(super) choice_index: usize,
+pub(crate) struct ConfigUiEditState {
+    pub(crate) field_index: usize,
+    pub(crate) input: String,
+    pub(crate) mode: ConfigUiEditMode,
+    pub(crate) choice_index: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum ConfigUiEditMode {
+pub(crate) enum ConfigUiEditMode {
     Text,
     Choice,
     MultiChoice,
 }
 
-pub(super) fn edit_input_for_field(field: &ConfigUiField) -> String {
+pub(crate) fn edit_input_for_field(field: &ConfigUiField) -> String {
     if field.current_value == "not set" {
         if is_bool_field(field) {
             return "false".to_string();
@@ -38,7 +38,7 @@ pub(super) fn edit_input_for_field(field: &ConfigUiField) -> String {
     }
 }
 
-pub(super) fn edit_mode_for_field(field: &ConfigUiField) -> ConfigUiEditMode {
+pub(crate) fn edit_mode_for_field(field: &ConfigUiField) -> ConfigUiEditMode {
     if is_enum_string_list_field(field) {
         ConfigUiEditMode::MultiChoice
     } else if is_direct_choice_field(field) {
@@ -48,7 +48,7 @@ pub(super) fn edit_mode_for_field(field: &ConfigUiField) -> ConfigUiEditMode {
     }
 }
 
-pub(super) fn initial_edit_choice_index(field: &ConfigUiField, input: &str) -> usize {
+pub(crate) fn initial_edit_choice_index(field: &ConfigUiField, input: &str) -> usize {
     if is_scalar_enum_field(field)
         && let Some(index) = field
             .allowed_values
@@ -71,7 +71,7 @@ pub(super) fn initial_edit_choice_index(field: &ConfigUiField, input: &str) -> u
     0
 }
 
-pub(super) fn parse_edit_input(field: &ConfigUiField, input: &str) -> Result<JsonValue, String> {
+pub(crate) fn parse_edit_input(field: &ConfigUiField, input: &str) -> Result<JsonValue, String> {
     let trimmed = input.trim();
     match field.kind.as_str() {
         "bool" | "boolean" => parse_bool_input(field, trimmed),
@@ -135,7 +135,7 @@ fn parse_string_list_input(field: &ConfigUiField, input: &str) -> Result<JsonVal
     ))
 }
 
-pub(super) fn parse_string_list_values(
+pub(crate) fn parse_string_list_values(
     field: &ConfigUiField,
     input: &str,
 ) -> Result<Vec<String>, String> {
@@ -172,7 +172,7 @@ fn parse_string_input(input: &str) -> Result<String, String> {
     }
 }
 
-pub(super) fn parse_rendered_json_string(value: &str) -> Option<String> {
+pub(crate) fn parse_rendered_json_string(value: &str) -> Option<String> {
     serde_json::from_str::<String>(value).ok()
 }
 
@@ -189,7 +189,7 @@ fn ensure_allowed_value(field: &ConfigUiField, value: &str) -> Result<(), String
     ))
 }
 
-pub(super) fn single_choice_status_value(
+pub(crate) fn single_choice_status_value(
     field: &ConfigUiField,
     edit: &ConfigUiEditState,
 ) -> String {
@@ -205,7 +205,7 @@ pub(super) fn single_choice_status_value(
     }
 }
 
-pub(super) fn multi_choice_status_value(field: &ConfigUiField, edit: &ConfigUiEditState) -> String {
+pub(crate) fn multi_choice_status_value(field: &ConfigUiField, edit: &ConfigUiEditState) -> String {
     let enabled = parse_string_list_values(field, &edit.input)
         .map(|values| values.len())
         .unwrap_or(0);
@@ -220,7 +220,7 @@ pub(super) fn multi_choice_status_value(field: &ConfigUiField, edit: &ConfigUiEd
     )
 }
 
-pub(super) fn toggled_string_list_input(
+pub(crate) fn toggled_string_list_input(
     field: &ConfigUiField,
     input: &str,
     choice_index: usize,
@@ -253,7 +253,7 @@ fn ordered_string_list_values(field: &ConfigUiField, values: &[String]) -> Vec<S
         .collect()
 }
 
-pub(super) fn is_bool_field(field: &ConfigUiField) -> bool {
+pub(crate) fn is_bool_field(field: &ConfigUiField) -> bool {
     matches!(field.kind.as_str(), "bool" | "boolean")
 }
 
@@ -265,15 +265,15 @@ fn is_string_field(field: &ConfigUiField) -> bool {
     field.kind == "string"
 }
 
-pub(super) fn is_scalar_enum_field(field: &ConfigUiField) -> bool {
+pub(crate) fn is_scalar_enum_field(field: &ConfigUiField) -> bool {
     is_string_field(field) && !field.allowed_values.is_empty()
 }
 
-pub(super) fn is_enum_string_list_field(field: &ConfigUiField) -> bool {
+pub(crate) fn is_enum_string_list_field(field: &ConfigUiField) -> bool {
     field.kind == "string_list" && !field.allowed_values.is_empty()
 }
 
-pub(super) fn field_bool_value(field: &ConfigUiField) -> Option<bool> {
+pub(crate) fn field_bool_value(field: &ConfigUiField) -> Option<bool> {
     match field.current_value.as_str() {
         "true" => Some(true),
         "false" => Some(false),
@@ -291,11 +291,11 @@ fn field_string_value(field: &ConfigUiField) -> Option<String> {
     })
 }
 
-pub(super) fn next_allowed_value(field: &ConfigUiField) -> String {
+pub(crate) fn next_allowed_value(field: &ConfigUiField) -> String {
     next_allowed_value_from(&field.allowed_values, field_string_value(field).as_deref())
 }
 
-pub(super) fn next_allowed_value_from(allowed_values: &[String], current: Option<&str>) -> String {
+pub(crate) fn next_allowed_value_from(allowed_values: &[String], current: Option<&str>) -> String {
     let next_index = current
         .and_then(|value| {
             allowed_values

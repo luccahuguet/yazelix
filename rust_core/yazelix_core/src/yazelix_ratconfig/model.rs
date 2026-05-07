@@ -45,7 +45,7 @@ pub struct ConfigUiField {
     pub tab: String,
     pub kind: String,
     pub current_value: String,
-    pub(super) edit_value: String,
+    pub(crate) edit_value: String,
     pub default_value: String,
     pub state: ConfigUiValueState,
     pub description: String,

@@ -14,16 +14,25 @@ Alternatives considered:
 
 ## Readiness Decision
 
-The extraction readiness state is `internal_split_ready`.
+The extraction readiness state is `private_boundary_active`.
 
-Yazelix should not publish `yazelix_ratconfig` until the in-repo config UI has a stable internal split for:
+Yazelix should not publish `yazelix_ratconfig` yet. The in-repo private boundary now lives under `rust_core/yazelix_core/src/yazelix_ratconfig/` and owns the reusable model, editor, and render modules. `rust_core/yazelix_core/src/config_ui.rs` remains the Yazelix adapter.
+
+The private boundary currently covers:
 
 - schema-backed field inventory and grouping
 - editor state and actions
 - terminal rendering
+- reusable validation-facing diagnostics
+- apply-status display data
+
+The Yazelix adapter still covers:
+
 - persistence and patch application
-- validation and diagnostics
 - ownership and apply-status adaptation
+- settings/schema/contract loading
+- Home Manager and native config status
+- generated runtime refreshes
 
 The current `rust_core/yazelix_core/src/config_ui.rs` surface is product-useful, but it is still too coupled to Yazelix settings, native-config ownership, Home Manager read-only behavior, JSONC save semantics, generated runtime refreshes, and status wording. Publishing that shape would fossilize a Yazelix adapter as if it were a reusable toolkit API.
 
@@ -31,14 +40,14 @@ The current `rust_core/yazelix_core/src/config_ui.rs` surface is product-useful,
 
 The first implementation shape should remain inside the Yazelix repository.
 
-Start with focused modules under `yazelix_core` or a private workspace crate that can still change without release promises:
+The current focused modules under `yazelix_core/src/yazelix_ratconfig/` can still change without release promises:
 
 - field and section model
 - editor action model
 - renderer helpers
 - validation diagnostic model
-- write-plan or patch-plan traits
-- Yazelix adapter for settings metadata, JSONC patching, Home Manager ownership, native config status, and runtime apply modes
+
+The still-deferred internal pieces are write-plan or patch-plan traits. Yazelix keeps settings metadata, JSONC patching, Home Manager ownership, native config status, and runtime apply modes in the adapter until those traits are proven by real saves and a second fixture.
 
 A public `yazelix_ratconfig` crate or standalone repository becomes acceptable only after Yazelix consumes that internal API for real saves and the reusable layer can be demonstrated with a small non-Yazelix fixture schema.
 
@@ -117,7 +126,7 @@ The near-term maintenance win is splitting the existing file by responsibility. 
 
 ## Migration Plan
 
-1. Split the in-repo config UI into model, editor state/actions, rendering, validation, and Yazelix adapter modules without changing behavior.
+1. Split the in-repo config UI into model, editor state/actions, rendering, validation, and Yazelix adapter modules without changing behavior. Completed as a private `yazelix_ratconfig` namespace plus `config_ui` adapter.
 2. Keep JSONC patching and apply-mode handling behind adapter-owned functions while the split settles.
 3. Add one small non-Yazelix fixture schema in tests to prove the model is not hardcoded to Yazelix settings.
 4. Keep Yazelix as the only shipped consumer until real save, read-only, diagnostics, and generated-refresh flows use the split boundary.

@@ -1,11 +1,15 @@
 use super::*;
+use crate::config_ui::{
+    ConfigUiApp, HEADER_HORIZONTAL_PADDING, UiRowRef, config_key_style, metadata_key_style,
+    metadata_value_style, owner_label, truncate, truncate_start,
+};
 use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Tabs, Wrap};
 
-pub(super) fn draw_config_ui(frame: &mut Frame<'_>, app: &mut ConfigUiApp) {
+pub(crate) fn draw_config_ui(frame: &mut Frame<'_>, app: &mut ConfigUiApp) {
     let area = frame.area();
     let root = Layout::default()
         .direction(Direction::Vertical)

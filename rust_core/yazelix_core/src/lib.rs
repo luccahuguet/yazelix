@@ -57,6 +57,7 @@ pub mod user_config_paths;
 pub mod workspace_asset_contract;
 pub mod workspace_commands;
 pub mod workspace_session;
+pub(crate) mod yazelix_ratconfig;
 pub mod yazi_materialization;
 pub mod yazi_render_plan;
 pub mod zellij_commands;
