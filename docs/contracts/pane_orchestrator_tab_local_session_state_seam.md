@@ -162,6 +162,38 @@ The seam should be assembled from the plugin's existing tab-local state:
 - `get_active_sidebar_yazi_state_snapshot(active_tab_position)`
 - `ai_pane_activity_by_tab`
 
+### Sidebar Yazi Identity Decision
+
+Yazelix must not derive the managed sidebar Yazi client id deterministically
+from Zellij pane, tab, or session identity.
+
+Yazi's `--client-id` accepts a numeric `u64` and documents that value as a
+globally unique client id. In the current Yazi DDS server, a repeated id replaces
+the previous client entry for that id. A Yazelix-side hash of
+`ZELLIJ_SESSION_NAME`, `ZELLIJ_TAB_POSITION`, and `ZELLIJ_PANE_ID` would
+therefore be a best-effort collision-avoidance scheme, not a safe ownership
+contract.
+
+Deterministic ids also do not remove the sidebar registration seam. The pane
+orchestrator needs the active Yazi `cwd`, and that value is live Yazi state that
+changes on Yazi `cd` and tab events. The current registration payload includes
+both the Yazi id and the current cwd, and the orchestrator accepts it only when
+the reported pane id is the current tab's managed sidebar pane. Reconciliation
+then drops sidebar Yazi state when the associated managed sidebar pane is no
+longer live.
+
+The supported identity model is:
+
+1. Let Yazi allocate its own globally unique `YAZI_ID`.
+2. Have the bundled sidebar-state plugin publish `{ pane_id, yazi_id, cwd }`.
+3. Store that state only after validating the pane id against the live managed
+   sidebar pane for one tab.
+4. Keep cwd updates on Yazi navigation events.
+
+If startup registration remains flaky, improve the register path with bounded
+retry, acknowledgement, or fresher event triggers. Do not replace it with a
+parallel deterministic-id derivation layer.
+
 ### Failure Shape
 
 Keep the current transport style for v1:
