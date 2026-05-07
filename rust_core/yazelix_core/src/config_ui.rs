@@ -1,12 +1,14 @@
 //! Terminal UI for inspecting and editing the canonical Yazelix config surface.
 
+mod apply_adapter;
+mod editor;
+mod model;
+mod render;
+
 use crate::action_registry::ZELLIJ_ACTIONS;
 use crate::active_config_surface::{PrimaryConfigPaths, primary_config_paths};
 use crate::bridge::{CoreError, ErrorClass};
-use crate::config_apply::{
-    ConfigEditApplyRequest, ConfigEditApplyStatus, PaneOrchestratorRuntimeRefreshRequest,
-    apply_mode_for_setting, apply_status_after_config_edit, runtime_materialization_request,
-};
+use crate::config_apply::ConfigEditApplyStatus;
 use crate::config_normalize::{ConfigDiagnostic, ConfigDiagnosticReport, NormalizeConfigRequest};
 use crate::control_plane::{home_dir_from_env, state_dir_from_env};
 use crate::native_config_status::{
@@ -28,13 +30,10 @@ use crossterm::execute;
 use crossterm::terminal::{
     EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
 };
-use ratatui::Frame;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
-use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Tabs, Wrap};
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -43,6 +42,14 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use toml::Value as TomlValue;
 use yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
+
+use apply_adapter::apply_after_field_write;
+use editor::*;
+pub use model::{
+    ConfigUiApplyStatus, ConfigUiDiagnostic, ConfigUiField, ConfigUiModel, ConfigUiPathOwner,
+    ConfigUiRequest, ConfigUiSidecar, ConfigUiValueState,
+};
+use render::draw_config_ui;
 
 const DEFAULT_TABS: &[&str] = &[
     "general",
@@ -60,86 +67,6 @@ const DEFAULT_TABS: &[&str] = &[
 const CONFIG_UI_METADATA_FILENAME: &str = "config_ui_metadata.toml";
 const HEADER_HORIZONTAL_PADDING: u16 = 1;
 const ZELLIJ_KEYBINDINGS_FIELD_PATH: &str = "zellij.keybindings";
-
-#[derive(Debug, Clone)]
-pub struct ConfigUiRequest {
-    pub runtime_dir: PathBuf,
-    pub config_dir: PathBuf,
-    pub config_override: Option<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ConfigUiModel {
-    pub active_config_path: PathBuf,
-    pub cursor_config_path: PathBuf,
-    pub default_cursor_config_path: PathBuf,
-    pub active_config_exists: bool,
-    pub config_owner: ConfigUiPathOwner,
-    pub config_read_only: bool,
-    pub tabs: Vec<String>,
-    pub fields: Vec<ConfigUiField>,
-    pub sidecars: Vec<ConfigUiSidecar>,
-    pub native_config_statuses: Vec<NativeConfigStatusEntry>,
-    pub diagnostics: Vec<ConfigUiDiagnostic>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ConfigUiPathOwner {
-    Default,
-    HomeManager,
-    User,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ConfigUiValueState {
-    Explicit,
-    Defaulted,
-    Unset,
-    Invalid,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ConfigUiField {
-    pub path: String,
-    pub tab: String,
-    pub kind: String,
-    pub current_value: String,
-    edit_value: String,
-    pub default_value: String,
-    pub state: ConfigUiValueState,
-    pub description: String,
-    pub allowed_values: Vec<String>,
-    pub validation: String,
-    pub rebuild_required: bool,
-    pub apply_mode: RuntimeApplyMode,
-    pub apply_status: ConfigUiApplyStatus,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ConfigUiApplyStatus {
-    pub summary: String,
-    pub label: String,
-    pub detail: String,
-    pub pending: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ConfigUiSidecar {
-    pub name: String,
-    pub path: PathBuf,
-    pub present: bool,
-    pub owner: ConfigUiPathOwner,
-    pub read_only: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ConfigUiDiagnostic {
-    pub path: String,
-    pub status: String,
-    pub headline: String,
-    pub blocking: bool,
-    pub detail_lines: Vec<String>,
-}
 
 #[derive(Debug, Clone)]
 struct ContractField {
@@ -190,21 +117,6 @@ struct ConfigUiApp {
     search_active: bool,
     edit: Option<ConfigUiEditState>,
     notice: Option<ConfigUiNotice>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct ConfigUiEditState {
-    field_index: usize,
-    input: String,
-    mode: ConfigUiEditMode,
-    choice_index: usize,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ConfigUiEditMode {
-    Text,
-    Choice,
-    MultiChoice,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -450,328 +362,6 @@ fn restore_terminal(
         first_error = Some(error);
     }
     first_error.map_or(Ok(()), Err)
-}
-
-fn draw_config_ui(frame: &mut Frame<'_>, app: &mut ConfigUiApp) {
-    let area = frame.area();
-    let root = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(2),
-            Constraint::Length(1),
-            Constraint::Min(8),
-            Constraint::Length(2),
-        ])
-        .split(area);
-
-    render_header(frame, app, root[0]);
-    render_tabs(frame, app, root[1]);
-    render_body(frame, app, root[2]);
-    render_footer(frame, app, root[3]);
-}
-
-fn render_header(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect) {
-    let owner = owner_label(app.model.config_owner);
-    let write_state = if app.model.config_read_only {
-        "read-only"
-    } else {
-        "writable"
-    };
-    let source = if app.model.active_config_exists {
-        app.model.active_config_path.display().to_string()
-    } else {
-        format!(
-            "{} (missing; showing shipped defaults)",
-            app.model.active_config_path.display()
-        )
-    };
-    let warning_count = app
-        .model
-        .diagnostics
-        .iter()
-        .filter(|diagnostic| diagnostic.blocking)
-        .count();
-    let diagnostic_text = if warning_count > 0 {
-        warning_count.to_string()
-    } else {
-        "ok".to_string()
-    };
-    let diagnostic_style = if warning_count > 0 {
-        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
-    } else {
-        Style::default().fg(Color::Green)
-    };
-
-    let title = Line::from(vec![Span::styled(
-        "Yazelix Config",
-        Style::default()
-            .fg(Color::Cyan)
-            .add_modifier(Modifier::BOLD),
-    )]);
-
-    frame.render_widget(Block::default().borders(Borders::BOTTOM), area);
-    let horizontal_padding = HEADER_HORIZONTAL_PADDING.min(area.width / 2);
-    let content = Rect {
-        x: area.x + horizontal_padding,
-        y: area.y,
-        width: area
-            .width
-            .saturating_sub(horizontal_padding.saturating_mul(2)),
-        height: area.height.saturating_sub(1).max(1),
-    };
-    let title_width = 15_u16.min(content.width);
-    let gap = if content.width > title_width { 1 } else { 0 };
-    let title_area = Rect {
-        x: content.x,
-        y: content.y,
-        width: title_width,
-        height: 1,
-    };
-    let metadata_area = Rect {
-        x: content.x + title_width + gap,
-        y: content.y,
-        width: content.width.saturating_sub(title_width + gap),
-        height: 1,
-    };
-
-    frame.render_widget(Paragraph::new(title).alignment(Alignment::Left), title_area);
-    if metadata_area.width > 0 {
-        frame.render_widget(
-            Paragraph::new(header_metadata_line(
-                &source,
-                owner,
-                write_state,
-                &diagnostic_text,
-                diagnostic_style,
-                metadata_area.width as usize,
-            ))
-            .alignment(Alignment::Right),
-            metadata_area,
-        );
-    }
-}
-
-fn header_metadata_line(
-    source: &str,
-    owner: &str,
-    mode: &str,
-    diagnostic: &str,
-    diagnostic_style: Style,
-    width: usize,
-) -> Line<'static> {
-    let fixed_width = "path: ".len()
-        + "  owner: ".len()
-        + owner.len()
-        + "  mode: ".len()
-        + mode.len()
-        + "  diag: ".len()
-        + diagnostic.len();
-    let path = truncate_start(source, width.saturating_sub(fixed_width));
-    Line::from(vec![
-        Span::styled("path: ", metadata_key_style()),
-        Span::styled(path, metadata_value_style()),
-        Span::raw("  "),
-        Span::styled("owner: ", metadata_key_style()),
-        Span::styled(owner.to_string(), metadata_value_style()),
-        Span::raw("  "),
-        Span::styled("mode: ", metadata_key_style()),
-        Span::styled(mode.to_string(), metadata_value_style()),
-        Span::raw("  "),
-        Span::styled("diag: ", metadata_key_style()),
-        Span::styled(diagnostic.to_string(), diagnostic_style),
-    ])
-}
-
-fn render_tabs(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect) {
-    let labels = app
-        .model
-        .tabs
-        .iter()
-        .map(|tab| Line::from(Span::raw(tab.clone())))
-        .collect::<Vec<_>>();
-    frame.render_widget(
-        Tabs::new(labels)
-            .select(app.selected_tab)
-            .style(Style::default().fg(Color::Gray))
-            .highlight_style(
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        area,
-    );
-}
-
-fn render_body(frame: &mut Frame<'_>, app: &mut ConfigUiApp, area: Rect) {
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(44), Constraint::Percentage(56)])
-        .split(area);
-    let rows = app.visible_rows();
-    app.clamp_selection_for_len(rows.len());
-    render_list(frame, app, chunks[0], &rows);
-    render_details(frame, app, chunks[1], rows.get(app.selected_row).copied());
-}
-
-fn render_list(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect, rows: &[UiRowRef]) {
-    let items = rows
-        .iter()
-        .map(|row| ListItem::new(app.render_row(*row)))
-        .collect::<Vec<_>>();
-    let mut state = ListState::default();
-    if !items.is_empty() {
-        state.select(Some(app.selected_row));
-    }
-    let title = if app.search.is_empty() {
-        "settings".to_string()
-    } else {
-        format!("settings filtered by {}", app.search)
-    };
-    frame.render_stateful_widget(
-        List::new(items)
-            .block(Block::default().title(title).borders(Borders::ALL))
-            .highlight_style(
-                Style::default()
-                    .bg(Color::DarkGray)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        area,
-        &mut state,
-    );
-}
-
-fn render_details(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect, row: Option<UiRowRef>) {
-    let lines = match row {
-        Some(row) => app.render_details(row),
-        None => vec![Line::from(Span::styled(
-            "No settings match this tab/search.",
-            Style::default().fg(Color::Gray),
-        ))],
-    };
-    frame.render_widget(
-        Paragraph::new(lines)
-            .block(Block::default().title("details").borders(Borders::ALL))
-            .wrap(Wrap { trim: false }),
-        area,
-    );
-}
-
-fn render_footer(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect) {
-    if let Some(edit) = &app.edit {
-        let field = &app.model.fields[edit.field_index];
-        let editing = edit_status_line(field, edit);
-        let status = app
-            .notice
-            .as_ref()
-            .map(|notice| {
-                let style = if notice.is_error {
-                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
-                } else {
-                    Style::default().fg(Color::Green)
-                };
-                Line::from(Span::styled(
-                    truncate(&notice.text, area.width as usize),
-                    style,
-                ))
-            })
-            .unwrap_or_else(|| edit_control_line(field, edit.mode));
-        frame.render_widget(Paragraph::new(vec![editing, status]), area);
-        return;
-    }
-
-    let notice = app
-        .notice
-        .as_ref()
-        .map(|notice| {
-            let style = if notice.is_error {
-                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
-            } else {
-                Style::default().fg(Color::Green)
-            };
-            Line::from(Span::styled(
-                truncate(&notice.text, area.width as usize),
-                style,
-            ))
-        })
-        .unwrap_or_else(|| normal_control_line(app));
-    let search = if app.search_active {
-        format!("search: {}_", app.search)
-    } else if app.search.is_empty() {
-        "/ search".to_string()
-    } else {
-        "Esc clears search".to_string()
-    };
-    let controls = Line::from(vec![
-        Span::raw("q quit  "),
-        Span::raw("Tab tabs  "),
-        Span::raw("j/k move  "),
-        Span::styled(search, Style::default().fg(Color::Yellow)),
-    ]);
-    frame.render_widget(Paragraph::new(vec![notice, controls]), area);
-}
-
-fn edit_status_line(field: &ConfigUiField, edit: &ConfigUiEditState) -> Line<'static> {
-    let value = match edit.mode {
-        ConfigUiEditMode::Text => format!("{}_", edit.input),
-        ConfigUiEditMode::Choice if is_scalar_enum_field(field) => {
-            single_choice_status_value(field, edit)
-        }
-        ConfigUiEditMode::Choice => edit.input.clone(),
-        ConfigUiEditMode::MultiChoice => multi_choice_status_value(field, edit),
-    };
-    Line::from(vec![
-        Span::styled("editing: ", Style::default().fg(Color::Yellow)),
-        Span::styled(field.path.clone(), config_key_style()),
-        Span::raw(" = "),
-        Span::styled(value, Style::default().fg(Color::White)),
-    ])
-}
-
-fn normal_control_line(app: &ConfigUiApp) -> Line<'static> {
-    match app.selected_field() {
-        Some(field) if is_bool_field(field) => Line::from(vec![
-            Span::raw("Enter/Space toggle/cycle  "),
-            Span::raw("e edit  "),
-            Span::raw("u unset"),
-        ]),
-        Some(field) if is_scalar_enum_field(field) => Line::from(vec![
-            Span::raw("Enter/e picker  "),
-            Span::raw("Space cycle  "),
-            Span::raw("u unset"),
-        ]),
-        Some(field) if is_enum_string_list_field(field) => {
-            Line::from(vec![Span::raw("Enter/e picker  "), Span::raw("u unset")])
-        }
-        Some(_) => Line::from(vec![Span::raw("Enter/e edit  "), Span::raw("u unset")]),
-        None => Line::from(Span::raw("Select a setting row to edit")),
-    }
-}
-
-fn edit_control_line(field: &ConfigUiField, mode: ConfigUiEditMode) -> Line<'static> {
-    match mode {
-        ConfigUiEditMode::Text => Line::from(vec![
-            Span::raw("Enter save  "),
-            Span::raw("Esc cancel  "),
-            Span::raw("Ctrl+u clear"),
-        ]),
-        ConfigUiEditMode::Choice if is_scalar_enum_field(field) => Line::from(vec![
-            Span::raw("hjkl/Arrows move  "),
-            Span::raw("Space select  "),
-            Span::raw("Enter save  "),
-            Span::raw("Esc cancel"),
-        ]),
-        ConfigUiEditMode::Choice => Line::from(vec![
-            Span::raw("Space toggle  "),
-            Span::raw("Enter save  "),
-            Span::raw("Esc cancel"),
-        ]),
-        ConfigUiEditMode::MultiChoice => Line::from(vec![
-            Span::raw("hjkl/Arrows move  "),
-            Span::raw("Space enable/disable  "),
-            Span::raw("Enter save  "),
-            Span::raw("Esc cancel"),
-        ]),
-    }
 }
 
 impl ConfigUiApp {
@@ -1156,7 +746,7 @@ impl ConfigUiApp {
         if outcome.changed() {
             self.validate_patched_edit_target(&target, &outcome.text)?;
             write_settings_edit(&target.path, &outcome.text)?;
-            match self.apply_after_field_write(setting_path) {
+            match apply_after_field_write(&self.request, &self.model, setting_path) {
                 Ok(status) => apply_status = Some(status),
                 Err(error) => apply_error = Some(apply_error_notice(&error)),
             }
@@ -1179,7 +769,7 @@ impl ConfigUiApp {
         if outcome.changed() {
             self.validate_patched_edit_target(&target, &outcome.text)?;
             write_settings_edit(&target.path, &outcome.text)?;
-            match self.apply_after_field_write(setting_path) {
+            match apply_after_field_write(&self.request, &self.model, setting_path) {
                 Ok(status) => apply_status = Some(status),
                 Err(error) => apply_error = Some(apply_error_notice(&error)),
             }
@@ -1189,44 +779,6 @@ impl ConfigUiApp {
             mutation: outcome.mutation,
             apply_status,
             apply_error,
-        })
-    }
-
-    fn apply_after_field_write(
-        &self,
-        setting_path: &str,
-    ) -> Result<ConfigEditApplyStatus, CoreError> {
-        let paths = primary_config_paths(&self.request.runtime_dir, &self.request.config_dir);
-        let apply_mode = apply_mode_for_setting(&paths.contract_path, setting_path)?;
-        let runtime_materialization =
-            if apply_mode == Some(RuntimeApplyMode::GeneratedRuntimeRefresh) {
-                let state_dir = state_dir_from_env()?;
-                Some(runtime_materialization_request(
-                    &self.request.runtime_dir,
-                    &self.request.config_dir,
-                    self.request.config_override.as_deref(),
-                    &state_dir,
-                )?)
-            } else {
-                None
-            };
-        let pane_orchestrator_refresh = if apply_mode == Some(RuntimeApplyMode::LiveWithPaneRefresh)
-        {
-            let state_dir = state_dir_from_env()?;
-            Some(PaneOrchestratorRuntimeRefreshRequest {
-                config_path: self.model.active_config_path.clone(),
-                default_config_path: paths.default_config_path.clone(),
-                contract_path: paths.contract_path.clone(),
-                zellij_config_dir: state_dir.join("configs").join("zellij"),
-            })
-        } else {
-            None
-        };
-        apply_status_after_config_edit(&ConfigEditApplyRequest {
-            setting_path: setting_path.to_string(),
-            contract_path: paths.contract_path,
-            runtime_materialization,
-            pane_orchestrator_refresh,
         })
     }
 
@@ -2763,290 +2315,6 @@ fn render_json_value(value: &JsonValue) -> String {
 
 fn render_json_edit_value(value: &JsonValue) -> String {
     serde_json::to_string(value).unwrap_or_else(|_| render_json_value(value))
-}
-
-fn edit_input_for_field(field: &ConfigUiField) -> String {
-    if field.current_value == "not set" {
-        if is_bool_field(field) {
-            return "false".to_string();
-        }
-        if is_scalar_enum_field(field) && !field.allowed_values.is_empty() {
-            return field.allowed_values[0].clone();
-        }
-        return String::new();
-    }
-    if is_string_field(field) || is_scalar_enum_field(field) {
-        return parse_rendered_json_string(&field.current_value)
-            .unwrap_or_else(|| field.current_value.clone());
-    }
-    if field.edit_value.is_empty() {
-        field.current_value.clone()
-    } else {
-        field.edit_value.clone()
-    }
-}
-
-fn edit_mode_for_field(field: &ConfigUiField) -> ConfigUiEditMode {
-    if is_enum_string_list_field(field) {
-        ConfigUiEditMode::MultiChoice
-    } else if is_direct_choice_field(field) {
-        ConfigUiEditMode::Choice
-    } else {
-        ConfigUiEditMode::Text
-    }
-}
-
-fn initial_edit_choice_index(field: &ConfigUiField, input: &str) -> usize {
-    if is_scalar_enum_field(field)
-        && let Some(index) = field
-            .allowed_values
-            .iter()
-            .position(|allowed| allowed == input)
-    {
-        return index;
-    }
-    if is_enum_string_list_field(field)
-        && let Ok(values) = parse_string_list_values(field, input)
-        && let Some(index) = values.first().and_then(|value| {
-            field
-                .allowed_values
-                .iter()
-                .position(|allowed| allowed == value)
-        })
-    {
-        return index;
-    }
-    0
-}
-
-fn parse_edit_input(field: &ConfigUiField, input: &str) -> Result<JsonValue, String> {
-    let trimmed = input.trim();
-    match field.kind.as_str() {
-        "bool" | "boolean" => parse_bool_input(field, trimmed),
-        "int" | "integer" => parse_i64_input(field, trimmed),
-        "float" | "number" => parse_f64_input(field, trimmed),
-        "string" => parse_string_field_input(field, input),
-        "string_list" => parse_string_list_input(field, trimmed),
-        "array" => parse_json_input(field, trimmed, "JSON array").and_then(|value| {
-            if value.is_array() {
-                Ok(value)
-            } else {
-                Err(format!("{} must be a JSON array.", field.path))
-            }
-        }),
-        "object" => parse_json_input(field, trimmed, "JSON object").and_then(|value| {
-            if value.is_object() {
-                Ok(value)
-            } else {
-                Err(format!("{} must be a JSON object.", field.path))
-            }
-        }),
-        _ => parse_json_input(field, trimmed, "JSON value"),
-    }
-}
-
-fn parse_bool_input(field: &ConfigUiField, input: &str) -> Result<JsonValue, String> {
-    match input {
-        "true" => Ok(JsonValue::Bool(true)),
-        "false" => Ok(JsonValue::Bool(false)),
-        _ => Err(format!("{} must be true or false.", field.path)),
-    }
-}
-
-fn parse_i64_input(field: &ConfigUiField, input: &str) -> Result<JsonValue, String> {
-    let value = input
-        .parse::<i64>()
-        .map_err(|_| format!("{} must be an integer.", field.path))?;
-    Ok(JsonValue::Number(value.into()))
-}
-
-fn parse_f64_input(field: &ConfigUiField, input: &str) -> Result<JsonValue, String> {
-    let value = input
-        .parse::<f64>()
-        .map_err(|_| format!("{} must be a number.", field.path))?;
-    let number = serde_json::Number::from_f64(value)
-        .ok_or_else(|| format!("{} must be a finite number.", field.path))?;
-    Ok(JsonValue::Number(number))
-}
-
-fn parse_string_field_input(field: &ConfigUiField, input: &str) -> Result<JsonValue, String> {
-    let value = parse_string_input(input)
-        .map_err(|message| format!("{} must be a string: {message}.", field.path))?;
-    ensure_allowed_value(field, &value)?;
-    Ok(JsonValue::String(value))
-}
-
-fn parse_string_list_input(field: &ConfigUiField, input: &str) -> Result<JsonValue, String> {
-    let strings = parse_string_list_values(field, input)?;
-    Ok(JsonValue::Array(
-        strings.into_iter().map(JsonValue::String).collect(),
-    ))
-}
-
-fn parse_string_list_values(field: &ConfigUiField, input: &str) -> Result<Vec<String>, String> {
-    let value = parse_json_input(field, input, "JSON string array")?;
-    let array = value
-        .as_array()
-        .ok_or_else(|| format!("{} must be a JSON string array.", field.path))?;
-    let mut strings = Vec::with_capacity(array.len());
-    for value in array {
-        let Some(value) = value.as_str() else {
-            return Err(format!("{} must contain only strings.", field.path));
-        };
-        ensure_allowed_value(field, value)?;
-        strings.push(value.to_string());
-    }
-    Ok(strings)
-}
-
-fn parse_json_input(
-    field: &ConfigUiField,
-    input: &str,
-    expected: &str,
-) -> Result<JsonValue, String> {
-    serde_json::from_str::<JsonValue>(input)
-        .map_err(|source| format!("{} must be a valid {expected}: {source}.", field.path))
-}
-
-fn parse_string_input(input: &str) -> Result<String, String> {
-    let trimmed = input.trim();
-    if trimmed.starts_with('"') {
-        serde_json::from_str::<String>(trimmed).map_err(|source| source.to_string())
-    } else {
-        Ok(input.to_string())
-    }
-}
-
-fn parse_rendered_json_string(value: &str) -> Option<String> {
-    serde_json::from_str::<String>(value).ok()
-}
-
-fn ensure_allowed_value(field: &ConfigUiField, value: &str) -> Result<(), String> {
-    if field.allowed_values.is_empty()
-        || field.allowed_values.iter().any(|allowed| allowed == value)
-    {
-        return Ok(());
-    }
-    Err(format!(
-        "{} must be one of: {}.",
-        field.path,
-        field.allowed_values.join(", ")
-    ))
-}
-
-fn single_choice_status_value(field: &ConfigUiField, edit: &ConfigUiEditState) -> String {
-    let highlighted = field
-        .allowed_values
-        .get(edit.choice_index)
-        .map(String::as_str)
-        .unwrap_or("none");
-    if highlighted == edit.input {
-        format!("selected {}", edit.input)
-    } else {
-        format!("selected {}, highlighted {highlighted}", edit.input)
-    }
-}
-
-fn multi_choice_status_value(field: &ConfigUiField, edit: &ConfigUiEditState) -> String {
-    let enabled = parse_string_list_values(field, &edit.input)
-        .map(|values| values.len())
-        .unwrap_or(0);
-    let selected = field
-        .allowed_values
-        .get(edit.choice_index)
-        .map(String::as_str)
-        .unwrap_or("none");
-    format!(
-        "{enabled}/{} enabled, selected {selected}",
-        field.allowed_values.len()
-    )
-}
-
-fn toggled_string_list_input(
-    field: &ConfigUiField,
-    input: &str,
-    choice_index: usize,
-) -> Result<String, String> {
-    let target = field
-        .allowed_values
-        .get(choice_index)
-        .ok_or_else(|| format!("{} has no value selected.", field.path))?;
-    let mut values = parse_string_list_values(field, input)?;
-    if values.iter().any(|value| value == target) {
-        values.retain(|value| value != target);
-    } else {
-        values.push(target.clone());
-    }
-    values = ordered_string_list_values(field, &values);
-    serde_json::to_string(&values)
-        .map_err(|source| format!("Could not render {} string list: {source}.", field.path))
-}
-
-fn ordered_string_list_values(field: &ConfigUiField, values: &[String]) -> Vec<String> {
-    if field.allowed_values.is_empty() {
-        return values.to_vec();
-    }
-    let selected = values.iter().cloned().collect::<BTreeSet<_>>();
-    field
-        .allowed_values
-        .iter()
-        .filter(|value| selected.contains(*value))
-        .cloned()
-        .collect()
-}
-
-fn is_bool_field(field: &ConfigUiField) -> bool {
-    matches!(field.kind.as_str(), "bool" | "boolean")
-}
-
-fn is_direct_choice_field(field: &ConfigUiField) -> bool {
-    is_bool_field(field) || is_scalar_enum_field(field)
-}
-
-fn is_string_field(field: &ConfigUiField) -> bool {
-    field.kind == "string"
-}
-
-fn is_scalar_enum_field(field: &ConfigUiField) -> bool {
-    is_string_field(field) && !field.allowed_values.is_empty()
-}
-
-fn is_enum_string_list_field(field: &ConfigUiField) -> bool {
-    field.kind == "string_list" && !field.allowed_values.is_empty()
-}
-
-fn field_bool_value(field: &ConfigUiField) -> Option<bool> {
-    match field.current_value.as_str() {
-        "true" => Some(true),
-        "false" => Some(false),
-        _ => None,
-    }
-}
-
-fn field_string_value(field: &ConfigUiField) -> Option<String> {
-    parse_rendered_json_string(&field.current_value).or_else(|| {
-        if field.current_value == "not set" {
-            None
-        } else {
-            Some(field.current_value.clone())
-        }
-    })
-}
-
-fn next_allowed_value(field: &ConfigUiField) -> String {
-    next_allowed_value_from(&field.allowed_values, field_string_value(field).as_deref())
-}
-
-fn next_allowed_value_from(allowed_values: &[String], current: Option<&str>) -> String {
-    let next_index = current
-        .and_then(|value| {
-            allowed_values
-                .iter()
-                .position(|candidate| candidate == value)
-        })
-        .map(|index| (index + 1) % allowed_values.len())
-        .unwrap_or(0);
-    allowed_values[next_index].clone()
 }
 
 fn read_settings_for_edit_or_empty(path: &Path) -> Result<String, CoreError> {
