@@ -1,8 +1,8 @@
 [contract]
-measured_total_loc = 73867
-measured_total_file_count = 139
-current_total_loc_max = 73867
-current_total_file_count_max = 139
+measured_total_loc = 73900
+measured_total_file_count = 141
+current_total_loc_max = 73900
+current_total_file_count_max = 141
 hard_target_loc = 60000
 
 [[families]]
@@ -106,16 +106,18 @@ allowed_paths = [
 id = "core_workspace_and_pane_integration"
 status = "canonical"
 owner_bead = "yazelix-w032.3"
-measured_loc = 16379
-measured_files = 15
-max_loc = 16379
+measured_loc = 16412
+measured_files = 17
+max_loc = 16412
 target_loc = 11000
-max_files = 15
+max_files = 17
 allowed_paths = [
   "rust_core/yazelix_core/src/action_registry.rs",
   "rust_core/yazelix_core/src/internal_nu_runner.rs",
   "rust_core/yazelix_core/src/keys_commands.rs",
   "rust_core/yazelix_core/src/launch_commands.rs",
+  "rust_core/yazelix_core/src/launch_commands/config_override.rs",
+  "rust_core/yazelix_core/src/launch_commands/terminal.rs",
   "rust_core/yazelix_core/src/layout_family_contract.rs",
   "rust_core/yazelix_core/src/pane_orchestrator_client.rs",
   "rust_core/yazelix_core/src/transient_pane_facts.rs",
