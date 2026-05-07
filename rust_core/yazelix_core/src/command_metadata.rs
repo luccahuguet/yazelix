@@ -462,6 +462,38 @@ mod tests {
         assert!(names.contains(&"yzx update nix"));
     }
 
+    // Defends: generated user-runtime metadata no longer advertises repo-only maintainer commands split into the maintainer shell.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn metadata_keeps_only_runtime_safe_dev_diagnostics() {
+        let names = yzx_command_metadata()
+            .into_iter()
+            .map(|command| command.name)
+            .collect::<Vec<_>>();
+
+        assert!(names.contains(&"yzx dev"));
+        assert!(names.contains(&"yzx dev inspect_session"));
+        assert!(names.contains(&"yzx dev profile"));
+
+        for repo_only in [
+            "yzx dev build_pane_orchestrator",
+            "yzx dev bump",
+            "yzx dev lint_nu",
+            "yzx dev rust",
+            "yzx dev rust fmt",
+            "yzx dev rust check",
+            "yzx dev rust test",
+            "yzx dev sync_issues",
+            "yzx dev test",
+            "yzx dev update",
+        ] {
+            assert!(
+                !names.contains(&repo_only),
+                "{repo_only} should be maintainer-only"
+            );
+        }
+    }
+
     // Defends: generated Nushell externs come from Rust metadata, including Rust-only leaves exactly once.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]

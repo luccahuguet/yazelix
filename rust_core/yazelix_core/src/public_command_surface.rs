@@ -152,34 +152,7 @@ const RESET_FLAGS: &[YzxCommandParameter] = &[switch("yes", None), switch("no-ba
 
 const POPUP_ARGS: &[YzxCommandParameter] = &[rest("program")];
 const SCREEN_ARGS: &[YzxCommandParameter] = &[positional("style", "string", true)];
-const DEV_UPDATE_FLAGS: &[YzxCommandParameter] = &[
-    switch("yes", None),
-    switch("no-canary", None),
-    named("activate", None, "string", true),
-    named("home-manager-dir", None, "string", true),
-    named("home-manager-input", None, "string", true),
-    named("home-manager-attr", None, "string", true),
-    switch("canary-only", None),
-    named("canaries", None, "string", true),
-];
-const DEV_BUMP_ARGS: &[YzxCommandParameter] = &[positional("version", "string", false)];
-const DEV_SYNC_FLAGS: &[YzxCommandParameter] = &[switch("dry-run", None)];
-const DEV_BUILD_FLAGS: &[YzxCommandParameter] = &[switch("sync", None)];
 const DEV_INSPECT_SESSION_FLAGS: &[YzxCommandParameter] = &[switch("json", None)];
-const DEV_RUST_TARGET_ARG: &[YzxCommandParameter] = &[positional("target", "string", true)];
-const DEV_RUST_FMT_ARGS: &[YzxCommandParameter] =
-    &[positional("target", "string", true), switch("check", None)];
-const DEV_RUST_TEST_ARGS: &[YzxCommandParameter] = &[rest("args")];
-const DEV_TEST_FLAGS: &[YzxCommandParameter] = &[
-    switch("verbose", Some("v")),
-    switch("new-window", Some("n")),
-    switch("lint-only", None),
-    switch("profile", None),
-    switch("sweep", None),
-    switch("visual", None),
-    switch("all", Some("a")),
-    named("delay", None, "int", true),
-];
 const DEV_PROFILE_FLAGS: &[YzxCommandParameter] = &[
     switch("cold", Some("c")),
     switch("desktop", None),
@@ -188,8 +161,6 @@ const DEV_PROFILE_FLAGS: &[YzxCommandParameter] = &[
     named("terminal", Some("t"), "string", true),
     switch("verbose", None),
 ];
-const DEV_LINT_ARGS: &[YzxCommandParameter] =
-    &[named("format", Some("f"), "string", true), rest("paths")];
 const HM_PREPARE_FLAGS: &[YzxCommandParameter] = &[switch("apply", None), switch("yes", None)];
 
 const ROOT_COMMAND: YzxCommandMetadata = metadata(
@@ -664,25 +635,9 @@ const DESKTOP_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[
 
 const DEV_ROOT_COMMAND: YzxCommandMetadata = metadata(
     "yzx dev",
-    "Development and maintainer commands",
+    "Runtime diagnostics",
     YzxCommandCategory::Development,
     &[],
-    None,
-    None,
-);
-const DEV_BUILD_COMMAND: YzxCommandMetadata = metadata(
-    "yzx dev build_pane_orchestrator",
-    "Build the Zellij pane-orchestrator wasm",
-    YzxCommandCategory::Development,
-    DEV_BUILD_FLAGS,
-    None,
-    None,
-);
-const DEV_BUMP_COMMAND: YzxCommandMetadata = metadata(
-    "yzx dev bump",
-    "Bump the tracked Yazelix version and create release metadata",
-    YzxCommandCategory::Development,
-    DEV_BUMP_ARGS,
     None,
     None,
 );
@@ -694,14 +649,6 @@ const DEV_INSPECT_SESSION_COMMAND: YzxCommandMetadata = metadata(
     None,
     None,
 );
-const DEV_LINT_COMMAND: YzxCommandMetadata = metadata(
-    "yzx dev lint_nu",
-    "Lint Nushell scripts with repo-tuned nu-lint config",
-    YzxCommandCategory::Development,
-    DEV_LINT_ARGS,
-    None,
-    None,
-);
 const DEV_PROFILE_COMMAND: YzxCommandMetadata = metadata(
     "yzx dev profile",
     "Profile launch sequence and identify bottlenecks",
@@ -710,76 +657,10 @@ const DEV_PROFILE_COMMAND: YzxCommandMetadata = metadata(
     None,
     None,
 );
-const DEV_RUST_COMMAND: YzxCommandMetadata = metadata(
-    "yzx dev rust",
-    "Show fast Rust inner-loop commands",
-    YzxCommandCategory::Development,
-    &[],
-    None,
-    None,
-);
-const DEV_RUST_FMT_COMMAND: YzxCommandMetadata = metadata(
-    "yzx dev rust fmt",
-    "Format Rust code without entering nix develop",
-    YzxCommandCategory::Development,
-    DEV_RUST_FMT_ARGS,
-    None,
-    None,
-);
-const DEV_RUST_CHECK_COMMAND: YzxCommandMetadata = metadata(
-    "yzx dev rust check",
-    "Run fast cargo check without entering nix develop",
-    YzxCommandCategory::Development,
-    DEV_RUST_TARGET_ARG,
-    None,
-    None,
-);
-const DEV_RUST_TEST_COMMAND: YzxCommandMetadata = metadata(
-    "yzx dev rust test",
-    "Run fast cargo tests without entering nix develop",
-    YzxCommandCategory::Development,
-    DEV_RUST_TEST_ARGS,
-    None,
-    None,
-);
-const DEV_SYNC_COMMAND: YzxCommandMetadata = metadata(
-    "yzx dev sync_issues",
-    "Sync GitHub issue lifecycle into Beads locally",
-    YzxCommandCategory::Development,
-    DEV_SYNC_FLAGS,
-    None,
-    None,
-);
-const DEV_TEST_COMMAND: YzxCommandMetadata = metadata(
-    "yzx dev test",
-    "Run Yazelix test suite",
-    YzxCommandCategory::Development,
-    DEV_TEST_FLAGS,
-    None,
-    None,
-);
-const DEV_UPDATE_COMMAND: YzxCommandMetadata = metadata(
-    "yzx dev update",
-    "Refresh maintainer flake inputs and run update canaries",
-    YzxCommandCategory::Development,
-    DEV_UPDATE_FLAGS,
-    None,
-    None,
-);
 const DEV_RUST_CONTROL_COMMANDS: &[YzxCommandMetadata] = &[
     DEV_ROOT_COMMAND,
-    DEV_BUILD_COMMAND,
-    DEV_BUMP_COMMAND,
     DEV_INSPECT_SESSION_COMMAND,
-    DEV_LINT_COMMAND,
     DEV_PROFILE_COMMAND,
-    DEV_RUST_COMMAND,
-    DEV_RUST_FMT_COMMAND,
-    DEV_RUST_CHECK_COMMAND,
-    DEV_RUST_TEST_COMMAND,
-    DEV_SYNC_COMMAND,
-    DEV_TEST_COMMAND,
-    DEV_UPDATE_COMMAND,
 ];
 
 const ENTER_COMMAND: YzxCommandMetadata = metadata(

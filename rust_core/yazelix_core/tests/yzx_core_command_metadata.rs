@@ -51,6 +51,11 @@ fn command_metadata_externs_include_rust_only_leaves_once() {
     assert!(extern_content.contains("export extern \"yzx sponsor\""));
     assert!(extern_content.contains("export extern \"yzx warp\""));
     assert!(extern_content.contains("export extern \"yzx why\""));
+    assert!(extern_content.contains("export extern \"yzx dev inspect_session\""));
+    assert!(extern_content.contains("export extern \"yzx dev profile\""));
+    assert!(!extern_content.contains("export extern \"yzx dev rust\""));
+    assert!(!extern_content.contains("export extern \"yzx dev update\""));
+    assert!(!extern_content.contains("export extern \"yzx dev test\""));
     assert!(extern_content.contains("--kill(-k)"));
     assert!(extern_content.contains("--path"));
     assert!(extern_content.contains("--with"));
