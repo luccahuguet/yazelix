@@ -240,6 +240,7 @@ Use this for every extraction, cleanup, refactor, validator, generated-fixture, 
 - A cleanup/refactor/extraction bead should not raise main-repo runtime, maintainer, test, generated, or packaging LOC. If product behavior justifies growth, call it budget debt and create a payback bead before closing.
 - If a change adds more than `100` main-repo code LOC outside Beads/docs while claiming to simplify, it must delete at least that much in the same bead or record an explicit debt owner.
 - Do not let validators, fixtures, docs, compatibility shims, or wrappers grow around an extraction. Delete stale local scaffolding in the same bead unless a concrete risk forces a separate follow-up.
+- Treat transitional migrations and compatibility shims as debt after their current supported window. If cleanup touches a migrated surface, delete the old migration path unless a live contract proves it is still needed.
 - When a family drops below its Rust/Nushell budget ceiling, ratchet the ceiling down in the same commit. Do not rebaseline upward for cleanup work.
 - Prefer "not doing it" over adding a configurable abstraction that preserves both old and new owners.
 
@@ -256,13 +257,8 @@ Use this for every extraction, cleanup, refactor, validator, generated-fixture, 
 - **Do not create generic `_extended` test files as overflow.** If a nondefault lane needs more coverage, use a file or lane name that reflects its actual ownership.
 - **Every new governed `def test_*` must carry a nearby `# Defends:`, `# Regression:`, or `# Invariant:` marker.**
 - **Every governed Rust `#[test]` must carry a nearby `// Defends:`, `// Regression:`, or `// Invariant:` marker.**
-- **Every new governed `def test_*` must also carry a nearby structured strength marker.** Use:
-  - `# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10`
-- **Every governed Rust `#[test]` must also carry the same nearby structured strength marker.** Use:
-  - `// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10`
-- **Governed test strength minimums are enforced mechanically.** Current default minimum is `8/10` for every governed lane (`default`, `maintainer`, `sweep`, and `manual`).
-- **Below-8 governed tests require explicit durable rationale.** Only keep one with a nearby `Strength exception:` marker that cites a Bead id or contract path; otherwise strengthen, demote, or delete it.
-- **Cosmetic or trivia assertions do not become strong tests just by scoring them as `8/10`.** Exact palette constants, help-output trivia, command-name discovery, and implementation-string checks are not enough unless they defend a documented product contract or regression.
+- **Structured strength scores are optional review notes, not mechanical metadata.** Do not keep validators, parser code, or fixture clutter whose main purpose is score arithmetic.
+- **A weak test is not rescued by scoring it.** Exact palette constants, help-output trivia, command-name discovery, and implementation-string checks are not enough unless they defend a documented product contract or regression.
 - **Do not add packaging/config-sync tests by default** just because two files should match. Only keep them when they defend a maintained source-of-truth invariant in the right lane; otherwise prefer behavior tests, contract-backed validation, or cheaper dedicated validators.
 - When in doubt, **remove or avoid low-value tests** and spend the budget on fewer, stronger assertions.
 

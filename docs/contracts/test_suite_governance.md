@@ -81,9 +81,8 @@ This contract defines:
 - Status: live
 - Owner: governed test metadata validators
 - Statement: Governed Nu and first-party Rust tests must declare a lane, a
-  nearby justification marker, and a structured strength score, and they must
-  clear the `8/10` default strength minimum mechanically or carry a durable
-  exception that cites an issue id or contract path
+  nearby justification marker, and any required contract-item traceability.
+  Strength scoring is review guidance, not a persisted metadata requirement
 - Verification: automated
   `yzx_repo_validator validate-default-test-traceability`; automated
   `yzx_repo_validator validate-rust-test-traceability`
@@ -211,7 +210,7 @@ A test is a strong demotion candidate when it is:
   - a default-suite runtime budget
   - explicit `// Test lane:` declarations on all first-party Rust files that
     contain `#[test]`
-  - universal per-test justification and strength scoring across governed lanes
+  - universal per-test justification across governed lanes
   - no new generic `_extended` overflow files
   - no new governed Nu `test_*.nu` surface without an explicit policy reversal
 
@@ -219,7 +218,7 @@ A test is a strong demotion candidate when it is:
 
 Lane placement and per-test quality are separate decisions.
 
-- Use a per-test strength score to judge whether an individual test is worth keeping.
+- Judge each test against the strength rubric when deciding whether it is worth keeping.
 - Use a separate lane-placement model to decide where the surviving test belongs.
 
 For Yazelix, lane placement should use suite-shape thinking similar to the Test Pyramid or Testing Trophy:
@@ -270,19 +269,11 @@ Every governed Rust `#[test]` must carry one nearby justification marker:
 - `// Regression: ...`
 - `// Invariant: ...`
 
-Every governed `def test_*` must also carry:
+### Test strength rubric
 
-- `# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10`
+Yazelix uses a small per-test scoring rubric during review and cleanup. The score is a human decision aid, not metadata that every test must carry or a format that validators should parse.
 
-Every governed Rust `#[test]` must also carry:
-
-- `// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10`
-
-### Governed test strength rubric
-
-Yazelix uses a small per-test scoring rubric across all governed lanes. This is intentionally closer to Google-style test-quality thinking and Tanzu's "Fast / Clean / Confidence / Freedom" goals than to suite-shape models like the Test Pyramid or Testing Trophy.
-
-Score governed tests out of 10 using five `0-2` dimensions:
+Score tests out of 10 using five `0-2` dimensions when a test is borderline or when a cleanup needs a crisp retention decision:
 
 1. `Defect signal`
    - `0`: failing would barely matter or would mostly catch noise
@@ -308,17 +299,8 @@ Score governed tests out of 10 using five `0-2` dimensions:
 Interpretation:
 
 - `0-4`: weak, remove or demote
-- `5-7`: below the governed-suite bar; keep only with an explicit durable exception
+- `5-7`: below the normal governed-suite bar; keep only with durable rationale in the relevant planning or contract surface
 - `8-10`: strong enough for a governed lane
-
-Lane minimums:
-
-- `default`: `8/10`
-- `maintainer`: `8/10`
-- `sweep`: `8/10`
-- `manual`: `8/10` if a governed `def test_*` exists there at all
-
-The validator enforces these minimums mechanically. A below-8 test must carry a nearby `Strength exception:` marker with an issue id or contract path so the exception has durable rationale outside reviewer memory.
 
 The score is not a loophole for cosmetic or trivia assertions. Exact palette constants, help-output trivia, command-name discovery, generated-text implementation details, and one-off color or glyph snapshots are not sufficient unless they defend a documented product contract or a concrete regression.
 

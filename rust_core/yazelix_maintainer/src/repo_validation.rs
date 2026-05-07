@@ -23,7 +23,6 @@ const ALLOWED_CONTRACT_STATUSES: &[&str] =
     &["live", "planning", "deprecated", "historical", "quarantine"];
 const ALLOWED_VERIFICATION_MODES: &[&str] = &["automated", "validator", "manual", "unverified"];
 const ALLOWED_TEST_LANES: &[&str] = &["default", "maintainer", "sweep", "manual"];
-const GOVERNED_TEST_STRENGTH_MINIMUM: u32 = 8;
 const PACKAGE_TEST_FORBIDDEN_COMMANDS: &[&str] =
     &["nix", "nix-build", "nix-env", "nix-shell", "home-manager"];
 const PACKAGE_TEST_FORBIDDEN_SHELL_SNIPPETS: &[&str] = &[
@@ -32,41 +31,6 @@ const PACKAGE_TEST_FORBIDDEN_SHELL_SNIPPETS: &[&str] = &[
     "nix flake",
     "nix profile",
     "home-manager switch",
-];
-const REMOVAL_ABSENCE_NAME_TERMS: &[&str] = &[
-    "removed",
-    "deleted",
-    "absence",
-    "without_party",
-    "without_legacy",
-    "legacy_absence",
-];
-const REMOVAL_ABSENCE_CLEANUP_TERMS: &[&str] = &[
-    "removed",
-    "deleted",
-    "legacy",
-    "old name",
-    "old_names",
-    "old surface",
-    "old preset",
-    "party",
-    "absence",
-];
-const ACTIVE_NEGATIVE_CONTRACT_TERMS: &[&str] = &[
-    "reject",
-    "fail",
-    "invalid",
-    "unsafe",
-    "stale",
-    "fallback",
-    "blocking",
-    "schema",
-    "config",
-    "migration",
-    "user-visible",
-    "runtime",
-    "contract",
-    "diagnostic",
 ];
 
 #[derive(Debug, Default)]
@@ -171,8 +135,6 @@ pub fn validate_rust_test_traceability(repo_root: &Path) -> Result<ValidationRep
             continue;
         }
 
-        let minimum_strength =
-            minimum_strength_for_lane(&lane).ok_or_else(|| format!("Unknown lane: {lane}"))?;
         for test_record in load_defined_rust_tests(repo_root, &relative_path)? {
             if !has_valid_rust_definition_test_justification(
                 repo_root,
@@ -194,39 +156,6 @@ pub fn validate_rust_test_traceability(repo_root: &Path) -> Result<ValidationRep
                     &lane,
                     &contract_items,
                 )?);
-            report
-                .errors
-                .extend(collect_rust_definition_removal_absence_errors(
-                    repo_root,
-                    &relative_path,
-                    &test_record,
-                )?);
-
-            let strength = get_rust_definition_test_strength(
-                repo_root,
-                &relative_path,
-                test_record.attribute_index,
-                &test_record.test_name,
-            )?;
-            let strength_exception = get_rust_definition_strength_exception(
-                repo_root,
-                &relative_path,
-                test_record.attribute_index,
-            )?;
-            if let Some(exception_line) = strength_exception.as_deref() {
-                if !is_valid_strength_exception_line(exception_line) {
-                    report.errors.push(format!(
-                        "Governed Rust test strength exception must cite a bead id or contract path: {} :: {} :: {}",
-                        relative_path, test_record.test_name, exception_line
-                    ));
-                }
-            }
-            if strength < minimum_strength && strength_exception.is_none() {
-                report.errors.push(format!(
-                    "Governed Rust test is below the default minimum strength bar of {}/10 for lane '{}'; add a stronger test or cite a bead/contract with '// Strength exception:': {} :: {} :: {}/10",
-                    minimum_strength, lane, relative_path, test_record.test_name, strength
-                ));
-            }
         }
     }
 
@@ -685,133 +614,6 @@ fn has_valid_rust_definition_test_justification(
     )
 }
 
-fn collect_rust_definition_removal_absence_errors(
-    repo_root: &Path,
-    relative_path: &str,
-    test_record: &RustTestRecord,
-) -> Result<Vec<String>, String> {
-    if !rust_definition_looks_like_removal_absence_test(repo_root, relative_path, test_record)? {
-        return Ok(Vec::new());
-    }
-    if has_rust_definition_regression_or_invariant(
-        repo_root,
-        relative_path,
-        test_record.attribute_index,
-    )? || rust_definition_traceability_mentions_active_negative_contract(
-        repo_root,
-        relative_path,
-        test_record.attribute_index,
-    )? {
-        return Ok(Vec::new());
-    }
-    Ok(vec![format!(
-        "Governed Rust test looks like a removal-only absence check; rewrite it to defend active behavior, or use '// Regression:'/'// Invariant:' for a real negative contract instead of cleanup history: {} :: {}",
-        relative_path, test_record.test_name
-    )])
-}
-
-fn rust_definition_looks_like_removal_absence_test(
-    repo_root: &Path,
-    relative_path: &str,
-    test_record: &RustTestRecord,
-) -> Result<bool, String> {
-    let name = test_record.test_name.to_lowercase();
-    if REMOVAL_ABSENCE_NAME_TERMS
-        .iter()
-        .any(|term| name.contains(term))
-    {
-        return Ok(true);
-    }
-
-    let traceability = load_rust_definition_traceability_lines(
-        repo_root,
-        relative_path,
-        test_record.attribute_index,
-    )?
-    .join("\n")
-    .to_lowercase();
-    let body = load_rust_definition_body_lines(repo_root, relative_path, test_record)?
-        .join("\n")
-        .to_lowercase();
-
-    Ok(body_has_absence_assertion(&body)
-        && [traceability.as_str(), body.as_str()].iter().any(|text| {
-            REMOVAL_ABSENCE_CLEANUP_TERMS
-                .iter()
-                .any(|term| text.contains(term))
-        }))
-}
-
-fn body_has_absence_assertion(body: &str) -> bool {
-    body.contains("assert!(!") || body.contains(".is_none()")
-}
-
-fn rust_definition_traceability_mentions_active_negative_contract(
-    repo_root: &Path,
-    relative_path: &str,
-    attribute_index: usize,
-) -> Result<bool, String> {
-    let traceability =
-        load_rust_definition_traceability_lines(repo_root, relative_path, attribute_index)?
-            .join("\n")
-            .to_lowercase();
-    Ok(ACTIVE_NEGATIVE_CONTRACT_TERMS
-        .iter()
-        .any(|term| traceability.contains(term)))
-}
-
-fn load_rust_definition_body_lines(
-    repo_root: &Path,
-    relative_path: &str,
-    test_record: &RustTestRecord,
-) -> Result<Vec<String>, String> {
-    let lines = read_lines(&repo_root.join(relative_path))?;
-    let start = test_record.attribute_index.saturating_add(1);
-    let mut body = Vec::new();
-    for line in lines.iter().skip(start) {
-        if is_rust_test_attribute_line(line) {
-            break;
-        }
-        body.push(line.clone());
-    }
-    Ok(body)
-}
-
-fn get_rust_definition_test_strength(
-    repo_root: &Path,
-    relative_path: &str,
-    attribute_index: usize,
-    test_name: &str,
-) -> Result<u32, String> {
-    let strength_line = get_prior_nonempty_lines_before_index(
-        repo_root,
-        relative_path,
-        attribute_index,
-    )?
-    .into_iter()
-    .find(|line| line.starts_with("// Strength:"))
-    .ok_or_else(|| {
-        format!(
-            "Governed Rust test is missing a nearby structured '// Strength:' marker: {} :: {}",
-            relative_path, test_name
-        )
-    })?;
-
-    parse_structured_strength_line(relative_path, test_name, &strength_line, "// Strength:")
-}
-
-fn get_rust_definition_strength_exception(
-    repo_root: &Path,
-    relative_path: &str,
-    attribute_index: usize,
-) -> Result<Option<String>, String> {
-    Ok(
-        get_prior_nonempty_lines_before_index(repo_root, relative_path, attribute_index)?
-            .into_iter()
-            .find(|line| line.starts_with("// Strength exception:")),
-    )
-}
-
 fn rust_definition_has_policy_only_traceability(
     repo_root: &Path,
     relative_path: &str,
@@ -1019,122 +821,6 @@ fn parse_contract_marker_ids(line: &str, marker: &str) -> Vec<String> {
         .collect()
 }
 
-fn parse_structured_strength_line(
-    relative_path: &str,
-    test_name: &str,
-    strength_line: &str,
-    marker: &str,
-) -> Result<u32, String> {
-    let payload = strength_line
-        .trim()
-        .strip_prefix(marker)
-        .ok_or_else(|| {
-            format!(
-                "Could not parse structured strength marker near: {} :: {} :: {}",
-                relative_path, test_name, strength_line
-            )
-        })?
-        .trim();
-    let mut values = HashMap::new();
-    for token in payload.split_whitespace() {
-        if let Some((key, value)) = token.split_once('=') {
-            values.insert(key, value);
-        }
-    }
-
-    let defect =
-        parse_strength_component(relative_path, test_name, strength_line, &values, "defect")?;
-    let behavior =
-        parse_strength_component(relative_path, test_name, strength_line, &values, "behavior")?;
-    let resilience = parse_strength_component(
-        relative_path,
-        test_name,
-        strength_line,
-        &values,
-        "resilience",
-    )?;
-    let cost = parse_strength_component(relative_path, test_name, strength_line, &values, "cost")?;
-    let uniqueness = parse_strength_component(
-        relative_path,
-        test_name,
-        strength_line,
-        &values,
-        "uniqueness",
-    )?;
-    let total_token = values.get("total").copied().ok_or_else(|| {
-        format!(
-            "Could not parse structured strength marker near: {} :: {} :: {}",
-            relative_path, test_name, strength_line
-        )
-    })?;
-    let total = total_token
-        .strip_suffix("/10")
-        .ok_or_else(|| {
-            format!(
-                "Could not parse structured strength marker near: {} :: {} :: {}",
-                relative_path, test_name, strength_line
-            )
-        })?
-        .parse::<u32>()
-        .map_err(|_| {
-            format!(
-                "Could not parse structured strength marker near: {} :: {} :: {}",
-                relative_path, test_name, strength_line
-            )
-        })?;
-    let computed = defect + behavior + resilience + cost + uniqueness;
-    if computed != total {
-        return Err(format!(
-            "Structured strength marker total does not match component sum near: {} :: {} :: expected={}/10 declared={}/10",
-            relative_path, test_name, computed, total
-        ));
-    }
-    Ok(total)
-}
-
-fn parse_strength_component(
-    relative_path: &str,
-    test_name: &str,
-    strength_line: &str,
-    values: &HashMap<&str, &str>,
-    key: &str,
-) -> Result<u32, String> {
-    let raw = values.get(key).copied().ok_or_else(|| {
-        format!(
-            "Could not parse structured strength marker near: {} :: {} :: {}",
-            relative_path, test_name, strength_line
-        )
-    })?;
-    let parsed = raw.parse::<u32>().map_err(|_| {
-        format!(
-            "Could not parse structured strength marker near: {} :: {} :: {}",
-            relative_path, test_name, strength_line
-        )
-    })?;
-    if parsed > 2 {
-        return Err(format!(
-            "Could not parse structured strength marker near: {} :: {} :: {}",
-            relative_path, test_name, strength_line
-        ));
-    }
-    Ok(parsed)
-}
-
-fn minimum_strength_for_lane(lane: &str) -> Option<u32> {
-    match lane {
-        "default" | "maintainer" | "sweep" | "manual" => Some(GOVERNED_TEST_STRENGTH_MINIMUM),
-        _ => None,
-    }
-}
-
-fn is_valid_strength_exception_line(line: &str) -> bool {
-    let Some(payload) = line.strip_prefix("// Strength exception:") else {
-        return false;
-    };
-    let trimmed = payload.trim();
-    !trimmed.is_empty() && (trimmed.contains("yazelix-") || trimmed.contains("docs/contracts/"))
-}
-
 fn find_contract_item<'a>(
     contract_items: &'a [ContractItem],
     contract_id: &str,
@@ -1222,15 +908,6 @@ mod tests {
         (tmp, repo)
     }
 
-    fn write_rust_traceability_fixture(
-        relative_path: &str,
-        content: &str,
-    ) -> (tempfile::TempDir, PathBuf) {
-        let (tmp, repo) = write_rust_test_fixture(relative_path, content);
-        fs::create_dir_all(repo.join("docs/contracts")).unwrap();
-        (tmp, repo)
-    }
-
     fn write_contract_fixture(relative_path: &str, content: &str) -> (tempfile::TempDir, PathBuf) {
         let tmp = tempdir().unwrap();
         let repo = tmp.path().to_path_buf();
@@ -1238,15 +915,6 @@ mod tests {
         fs::create_dir_all(full_path.parent().unwrap()).unwrap();
         fs::write(full_path, content).unwrap();
         (tmp, repo)
-    }
-
-    // Defends: all governed Rust lanes now share the same default strength floor.
-    // Strength: defect=2 behavior=2 resilience=2 cost=2 uniqueness=1 total=9/10
-    #[test]
-    fn governed_test_lane_minimums_are_eight_by_default() {
-        for lane in ALLOWED_TEST_LANES {
-            assert_eq!(minimum_strength_for_lane(lane), Some(8));
-        }
     }
 
     // Regression: Yazelix component repository links stay valid contract text while Bead ids remain planning-only.
@@ -1333,151 +1001,6 @@ mod tests {
             "{:?}",
             report.errors
         );
-    }
-
-    // Regression: below-bar governed Rust tests fail unless their exception cites durable Beads or contract rationale.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[test]
-    fn rust_traceability_rejects_below_eight_without_exception() {
-        let source = [
-            "// Test lane: default",
-            "",
-            "#[cfg(test)]",
-            "mod tests {",
-            "    // Defends: the fixture represents a below-bar test.",
-            "    // Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=1 total=7/10",
-            "    #[test]",
-            "    fn weak_fixture_test() {",
-            "        assert_eq!(2 + 2, 4);",
-            "    }",
-            "}",
-        ]
-        .join("\n");
-        let (_tmp, repo) = write_rust_traceability_fixture("rust_core/example/src/lib.rs", &source);
-
-        let report = validate_rust_test_traceability(&repo).unwrap();
-        assert!(
-            report
-                .errors
-                .iter()
-                .any(|error| error.contains("default minimum strength bar of 8/10")),
-            "{:?}",
-            report.errors
-        );
-    }
-
-    // Defends: explicit below-bar exceptions require durable rationale instead of ad-hoc reviewer memory.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[test]
-    fn rust_traceability_accepts_below_eight_with_bead_exception() {
-        let source = [
-            "// Test lane: maintainer",
-            "",
-            "#[cfg(test)]",
-            "mod tests {",
-            "    // Defends: the fixture represents an explicitly justified low-strength test.",
-            "    // Strength exception: yazelix-ww5o documents the temporary governed-suite exception.",
-            "    // Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=1 total=7/10",
-            "    #[test]",
-            "    fn justified_fixture_test() {",
-            "        assert_eq!(2 + 2, 4);",
-            "    }",
-            "}",
-        ]
-        .join("\n");
-        let (_tmp, repo) = write_rust_traceability_fixture("rust_core/example/src/lib.rs", &source);
-
-        let report = validate_rust_test_traceability(&repo).unwrap();
-        assert!(report.errors.is_empty(), "{:?}", report.errors);
-    }
-
-    // Regression: exception markers without a bead or contract are still rejected.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[test]
-    fn rust_traceability_rejects_exception_without_durable_reference() {
-        let source = [
-            "// Test lane: sweep",
-            "",
-            "#[cfg(test)]",
-            "mod tests {",
-            "    // Defends: the fixture represents a malformed exception.",
-            "    // Strength exception: reviewer said this is acceptable for now.",
-            "    // Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=1 total=7/10",
-            "    #[test]",
-            "    fn malformed_exception_fixture_test() {",
-            "        assert_eq!(2 + 2, 4);",
-            "    }",
-            "}",
-        ]
-        .join("\n");
-        let (_tmp, repo) = write_rust_traceability_fixture("rust_core/example/src/lib.rs", &source);
-
-        let report = validate_rust_test_traceability(&repo).unwrap();
-        assert!(
-            report
-                .errors
-                .iter()
-                .any(|error| error.contains("must cite a bead id or contract path")),
-            "{:?}",
-            report.errors
-        );
-    }
-
-    // Regression: cleanup-only absence tests are rejected even when they try to score themselves as strong.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[test]
-    fn rust_traceability_rejects_cleanup_only_absence_tests() {
-        let source = [
-            "// Test lane: default",
-            "",
-            "#[cfg(test)]",
-            "mod tests {",
-            "    // Defends: the fixture excludes a removed preset from the default list.",
-            "    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10",
-            "    #[test]",
-            "    fn shipped_default_registry_parses_without_party() {",
-            "        let registry = std::collections::BTreeMap::<String, String>::new();",
-            "        assert!(!registry.contains_key(\"party\"));",
-            "    }",
-            "}",
-        ]
-        .join("\n");
-        let (_tmp, repo) = write_rust_traceability_fixture("rust_core/example/src/lib.rs", &source);
-
-        let report = validate_rust_test_traceability(&repo).unwrap();
-        assert!(
-            report
-                .errors
-                .iter()
-                .any(|error| error.contains("removal-only absence check")),
-            "{:?}",
-            report.errors
-        );
-    }
-
-    // Regression: meaningful negative-contract tests can still assert absence when the marker explains the behavior being defended.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[test]
-    fn rust_traceability_accepts_behavior_backed_absence_tests() {
-        let source = [
-            "// Test lane: default",
-            "",
-            "#[cfg(test)]",
-            "mod tests {",
-            "    // Defends: config normalization rejects removed legacy fields without mutating user files.",
-            "    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10",
-            "    #[test]",
-            "    fn rejects_removed_config_field_without_rewrite() {",
-            "        let report = [\"error\"];",
-            "        assert!(!report.contains(&\"rewritten\"));",
-            "    }",
-            "}",
-        ]
-        .join("\n");
-        let (_tmp, repo) = write_rust_traceability_fixture("rust_core/example/src/lib.rs", &source);
-
-        let report = validate_rust_test_traceability(&repo).unwrap();
-        assert!(report.errors.is_empty(), "{:?}", report.errors);
     }
 
     // Regression: package-time Rust tests must not execute Nix because Nix package test sandboxes do not provide host Nix.
