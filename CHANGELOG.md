@@ -4,6 +4,15 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
+Post-v16.3 work in progress
+
+Upgrade impact: no user action required
+
+Highlights:
+- Reserved for post-release changes after v16.3 lands.
+
+## v16.3 - 2026-05-07
+
 First-party child repos, standalone popup panes, and launch/config hardening
 
 Upgrade impact: manual action may be required
@@ -19,6 +28,7 @@ Highlights:
 Manual action:
 - If both the old nested config path and the new flat path exist with different contents, keep the new flat path or move the old file aside before launching
 - If the old nested path is a Home Manager or Nix symlink, move that ownership to the flat path instead of relying on automatic migration
+
 
 ## v16.2 - 2026-05-02
 
