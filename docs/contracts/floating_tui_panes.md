@@ -59,16 +59,15 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - Type: boundary
 - Status: live
 - Owner: popup standalone-capability decision boundary
-- Statement: Popup must not be extracted from Yazelix until it has a generic
-  non-Yazelix config surface, a stable request schema, a documented plain
-  Zellij pipe or plugin command contract, tests that run without the full
-  Yazelix runtime, and clear examples for plain Zellij users. The first
-  supported standalone package is `.#yazelix_zellij_popup`; the in-repo
-  Yazelix pane-orchestrator path remains the source of truth for full Yazelix
+- Statement: Plain-Zellij popup behavior belongs in the external
+  `yazelix-zellij-popup` project, not in the Yazelix runtime package. Yazelix
+  Zellij Popup owns the standalone plugin, KDL-native popup specs, the
+  optional raw generated pipe contract, and plain-Zellij examples. `yzpp`
+  remains its short Zellij plugin alias and wasm artifact. The in-repo Yazelix
+  pane-orchestrator path remains the source of truth for full Yazelix
   popup/menu/config adapters
-- Verification: validator `yzx_repo_validator validate-contracts`; contract
-  `docs/contracts/standalone_yazelix_zellij_popup_distribution.md`;
-  package gate `nix build .#yazelix_zellij_popup`
+- Verification: validator `yzx_repo_validator validate-contracts`; external
+  `yazelix-zellij-popup` gates `cargo test` and `nix build`
 
 ## Behavior
 
@@ -84,48 +83,51 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - The popup closes on exit.
 - `Alt+t` opens one managed popup pane when it is missing, focuses it when it exists but is unfocused, and closes it when it is focused.
 - `Alt+Shift+M` continues to open the command-palette popup.
-- Plain Zellij users have plausible future value from this capability: a reusable floating-pane toggle for one configured TUI command, stable pane identity, and duplicate-preventing focus/close behavior.
-- The standalone `yazelix_zellij_popup` package provides this capability for plain Zellij users without Yazelix-specific runtime paths, wrappers, config keys, or sidebar refresh hooks.
+- Plain Zellij users get this capability through Yazelix Zellij Popup (`yzpp`): a reusable floating-pane toggle for configured TUI commands, stable pane identity, and duplicate-preventing focus/close behavior.
+- The external Yazelix Zellij Popup plugin provides this capability without Yazelix-specific runtime paths, wrappers, config keys, or sidebar refresh hooks.
 - The current Yazelix path remains canonical for the integrated product: `yzx popup`, `zellij.popup_program`, the transient-pane facts surface, and the pane-orchestrator transient contract define supported Yazelix behavior.
 
-## Standalone Prep Schema
+## Standalone Boundary
 
-The extraction gate is prepared around a generic popup request shape that does not mention Yazelix runtime paths:
+The external Yazelix Zellij Popup user config surface keeps popup specs in plugin config and uses short `MessagePlugin` messages:
 
-```json
-{
-  "action": "toggle",
-  "spec": {
-    "id": "gitui",
-    "pane_title": "gitui_popup",
-    "command_marker": "gitui",
-    "command": ["gitui"],
-    "cwd": ".",
-    "width_percent": 90,
-    "height_percent": 85
-  },
-  "args": []
+```kdl
+plugins {
+    yzpp location="file:/path/to/yzpp.wasm" {
+        popup {
+            command "gitui"
+            pane_title "gitui_popup"
+            command_marker "gitui"
+            cwd "."
+            width_percent 90
+            height_percent 85
+        }
+    }
+}
+
+load_plugins {
+    yzpp
+}
+
+keybinds {
+    normal {
+        bind "Alt g" {
+            MessagePlugin "yzpp" {
+                name "toggle"
+            }
+        }
+    }
 }
 ```
 
-- `action` is one of `toggle`, `open`, `focus`, or `close`
-- `spec.id` names the popup spec and is not tied to Yazelix `popup`, `menu`, or `config` kinds
-- `pane_title` and optional `command_marker` define managed pane identity
-- `command` is an argv list where the first element is the program path and the remaining elements are default arguments
-- `cwd` is optional; a host plugin may supply a fallback cwd when no request cwd is provided
-- `width_percent` and `height_percent` must be integers in `1..100`
-- `args` appends invocation-specific arguments to the configured command argv
-
-The plain-Zellij example lives at `docs/examples/zellij_popup_plain_zellij.kdl`. It demonstrates the supported `MessagePlugin` payload shape for the standalone `yazelix_zellij_popup` plugin and intentionally avoids `settings.jsonc`, Home Manager, `yzx`, Yazelix runtime wrapper paths, workspace snapshots, and sidebar refresh hooks.
-
-The package installs a substituted copy of that example with a package-local plugin `file:` URL.
+The `yzpp` raw pipe path still accepts generated JSON through `name "transient_popup"`, but that shape is not the recommended hand-written config surface.
 
 ## Non-goals
 
 - General floating-pane support for every Yazelix action
 - Converting all Yazi plugins to popup flows
 - Background daemon management for long-running AI tools
-- Splitting popup into a separate repository before the package boundary proves enough independent value
+- Reabsorbing Yazelix Zellij Popup into Yazelix runtime packaging
 - Treating Yazelix wrapper paths, runtime env, or sidebar refresh behavior as a plain-Zellij API
 
 ## Acceptance Cases
@@ -137,18 +139,18 @@ The package installs a substituted copy of that example with a package-local plu
 5. When `yzx popup` runs from a tab with an explicit workspace root, the popup uses that root as its cwd.
 6. Repeated popup-key presses do not create duplicate popup panes; they focus or close the existing managed popup instead.
 7. When `Alt+Shift+M` is used, the command palette still opens separately from the popup-program flow.
-8. A proposed popup extraction is rejected unless it supplies a generic config surface, stable request schema, documented Zellij command contract, runtime-independent tests, and plain-Zellij examples.
-9. The standalone package supports only the generic `transient_popup` contract; full Yazelix docs and code should continue to identify the integrated pane-orchestrator implementation as canonical for Yazelix adapters.
-10. A generic popup request rejects unknown fields and invalid geometry before opening a pane.
+8. The extracted `yazelix-zellij-popup` boundary stays outside Yazelix runtime packaging unless the integrated popup contract needs shared code again.
+9. The standalone plugin supports KDL-native configured popup specs and keeps raw JSON pipe requests only for generated integrations.
+10. Full Yazelix docs and code continue to identify the integrated pane-orchestrator implementation as canonical for Yazelix adapters.
 
 ## Verification
 
 - unit tests: popup command/cwd resolution helpers
 - unit tests: popup geometry config parsing and validation
 - unit tests: popup lifecycle contract and transient-pane discovery in the pane orchestrator
-- unit tests: generic standalone popup spec and strict pipe request schema
+- external `yazelix-zellij-popup` unit tests: KDL-native popup specs and raw generated pipe request compatibility
 - unit tests: popup-toggle wrapper decision path
-- package gate: `nix build .#yazelix_zellij_popup`
+- external package gate: `nix build` in `yazelix-zellij-popup`
 - integration tests: `yzx popup` command routing and popup geometry arguments with a fake Zellij binary
 - integration tests: generated Zellij config and permission cleanup remove stale popup-runner artifacts
 - CI checks: `nu nushell/scripts/dev/test_yzx_commands.nu`
@@ -165,4 +167,4 @@ The package installs a substituted copy of that example with a package-local plu
 ## Open Questions
 
 - Should Yazi’s lazygit binding eventually route through the same pane-orchestrated popup contract when inside Yazelix/Zellij?
-- If the extraction gate is eventually met, should the standalone contract target only Zellij pipe commands first, or also a distributable plugin package?
+- Should Yazelix Zellij Popup and Yazelix eventually share a small popup contract crate, or is duplication acceptable while their release cadences differ?

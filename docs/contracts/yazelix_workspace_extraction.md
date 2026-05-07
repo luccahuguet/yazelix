@@ -112,9 +112,9 @@ The pane orchestrator remains the authoritative owner for live tab-local state. 
 
 The current plugin command seam is the nearest implementation shape, but the public extraction must hide Yazelix runtime paths and debug commands.
 
-### `yazelix_zellij_popup`
+### Yazelix Zellij Popup
 
-Popup extraction is adjacent but separate.
+Popup extraction is adjacent but separate, and the standalone plain-Zellij popup plugin now lives outside the Yazelix runtime package as `yazelix-zellij-popup`. `yzpp` remains the short Zellij plugin alias and wasm artifact.
 
 The popup surface owns transient floating panes for configured commands. Workspace extraction owns persistent managed editor/sidebar/session behavior. Both may share structured Zellij plugin request conventions, geometry validation, and pane identity helpers, but neither should force the other's release schedule.
 
