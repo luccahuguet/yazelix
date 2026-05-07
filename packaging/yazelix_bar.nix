@@ -16,6 +16,7 @@ let
       in
       relativePath == "configs"
       || relativePath == "configs/yazelix_bar"
+      || relativePath == "configs/yazelix_bar/examples"
       || lib.hasPrefix "configs/yazelix_bar/" relativePath
       || relativePath == "configs/zellij"
       || relativePath == "configs/zellij/plugins"
@@ -39,6 +40,7 @@ pkgs.stdenvNoCC.mkDerivation {
     substitute configs/yazelix_bar/yazelix_bar.kdl "$out/share/yazelix_bar/yazelix_bar.kdl" \
       --replace-fail "__YAZELIX_BAR_ZJSTATUS_WASM__" "file:$out/share/yazelix_bar/zjstatus.wasm"
     install -Dm644 configs/yazelix_bar/yazelix_bar.kdl "$out/share/yazelix_bar/yazelix_bar.template.kdl"
+    cp -R configs/yazelix_bar/examples "$out/share/yazelix_bar/examples"
     install -Dm644 docs/yazelix_bar.md "$out/share/doc/yazelix_bar/README.md"
 
     runHook postInstall
@@ -47,6 +49,7 @@ pkgs.stdenvNoCC.mkDerivation {
   passthru = {
     presetPath = "share/yazelix_bar/yazelix_bar.kdl";
     templatePath = "share/yazelix_bar/yazelix_bar.template.kdl";
+    examplesPath = "share/yazelix_bar/examples";
     wasmPath = "share/yazelix_bar/zjstatus.wasm";
   };
 

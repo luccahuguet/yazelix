@@ -1,0 +1,29 @@
+// These snippets require the full Yazelix runtime and its cached status helpers.
+// They are not part of the generic standalone default.
+
+format_right "#[fg=#ff0088,bold]{session}{command_workspace}{command_cursor}{command_codex_usage}{command_cpu}{command_ram} #[fg=#00ccff,bold]YAZELIX {command_version} "
+
+command_workspace_command "yzx_control zellij status-cache-widget workspace"
+command_workspace_format "#[fg=#00ff88,bold]{stdout}"
+command_workspace_interval "1"
+
+command_cursor_command "yzx_control zellij status-cache-widget cursor"
+command_cursor_format "{stdout}"
+command_cursor_rendermode "dynamic"
+command_cursor_interval "10"
+
+command_codex_usage_command "yzx_control zellij status-cache-widget codex_usage"
+command_codex_usage_format "#[fg=#bb88ff,bold]{stdout}"
+command_codex_usage_interval "10"
+
+command_cpu_command "nu __YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/cpu_usage.nu"
+command_cpu_format " #[fg=#ff6600][cpu {stdout}]"
+command_cpu_interval "5"
+
+command_ram_command "nu __YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/ram_usage.nu"
+command_ram_format " #[fg=#ff6600][ram {stdout}]"
+command_ram_interval "5"
+
+command_version_command "nu -c 'use __YAZELIX_RUNTIME_DIR__/nushell/scripts/utils/constants.nu YAZELIX_VERSION; $YAZELIX_VERSION'"
+command_version_format "{stdout}"
+command_version_interval "3600"

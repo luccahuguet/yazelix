@@ -1,0 +1,12 @@
+// Copy selected lines into the `plugin { ... }` block in yazelix_bar.kdl.
+// Command stdout should be short plain text; keep style in the *_format values.
+
+format_right "#[fg=#ff0088,bold]{session} {datetime} {command_host} {command_status} #[fg=#00ccff,bold]YAZELIX BAR "
+
+command_host_command "hostname -s"
+command_host_format " #[fg=#00ff88,bold][{stdout}]"
+command_host_interval "30"
+
+command_status_command "sh -c 'test -f ~/.cache/yazelix_bar_status && cat ~/.cache/yazelix_bar_status'"
+command_status_format " #[fg=#bb88ff,bold]{stdout}"
+command_status_interval "10"
