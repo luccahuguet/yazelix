@@ -193,7 +193,7 @@ pub fn legacy_shell_hook(config_dir: &Path, shell: &str) -> Option<PathBuf> {
 fn io_err(code: &'static str, path: &Path, source: io::Error) -> CoreError {
     CoreError::io(
         code,
-        "Could not migrate a Yazelix config path",
+        "Could not inspect an old Yazelix config path",
         "Fix permissions or move the reported file manually, then retry.",
         path.display().to_string(),
         source,
@@ -204,102 +204,30 @@ fn optional_symlink_metadata(path: &Path) -> Result<Option<fs::Metadata>, CoreEr
     match fs::symlink_metadata(path) {
         Ok(metadata) => Ok(Some(metadata)),
         Err(source) if source.kind() == io::ErrorKind::NotFound => Ok(None),
-        Err(source) => Err(io_err("stat_config_path_for_migration", path, source)),
+        Err(source) => Err(io_err("stat_old_config_path", path, source)),
     }
 }
 
-pub fn resolve_flat_config_file(
+pub fn resolve_current_config_file(
     current_path: &Path,
     legacy_path: &Path,
     label: &str,
 ) -> Result<PathBuf, CoreError> {
-    let current_exists = current_path.exists();
-    let legacy_metadata = optional_symlink_metadata(legacy_path)?;
-    let legacy_exists = legacy_metadata.is_some();
-
-    if let Some(metadata) = legacy_metadata.as_ref() {
-        if metadata.file_type().is_symlink() {
-            return Err(CoreError::classified(
-                ErrorClass::Config,
-                "legacy_config_symlink_requires_manual_migration",
-                format!(
-                    "Yazelix found an old {label} config symlink at {}.",
-                    legacy_path.display()
-                ),
-                "Update your Home Manager or external symlink owner to write the new flat ~/.config/yazelix path, then retry.",
-                json!({
-                    "label": label,
-                    "current_path": current_path.display().to_string(),
-                    "legacy_path": legacy_path.display().to_string(),
-                }),
-            ));
-        }
-
-        if !metadata.file_type().is_file() {
-            return Err(CoreError::classified(
-                ErrorClass::Config,
-                "legacy_config_not_regular_file",
-                format!(
-                    "Yazelix found an old {label} config path that is not a regular file: {}.",
-                    legacy_path.display()
-                ),
-                "Move the old path aside or replace it with a regular file, then retry.",
-                json!({
-                    "label": label,
-                    "current_path": current_path.display().to_string(),
-                    "legacy_path": legacy_path.display().to_string(),
-                }),
-            ));
-        }
-    }
-
-    if current_exists && legacy_exists {
-        let current = fs::read(current_path).map_err(|source| {
-            io_err(
-                "read_current_flat_config_for_migration",
-                current_path,
-                source,
-            )
-        })?;
-        let legacy = fs::read(legacy_path)
-            .map_err(|source| io_err("read_legacy_config_for_migration", legacy_path, source))?;
-        if current == legacy {
-            eprintln!(
-                "ℹ️  {} already exists at {}. The old path {} has identical content and can be removed.",
-                label,
-                current_path.display(),
-                legacy_path.display()
-            );
-            return Ok(current_path.to_path_buf());
-        }
-
+    if optional_symlink_metadata(legacy_path)?.is_some() {
         return Err(CoreError::classified(
             ErrorClass::Config,
-            "duplicate_flat_config_surface",
-            format!("Yazelix found duplicate {label} config surfaces."),
-            "Keep the flat ~/.config/yazelix file or move the old user_configs file aside, then retry.",
+            "legacy_config_surface",
+            format!(
+                "Yazelix found an old {label} config surface at {}.",
+                legacy_path.display()
+            ),
+            "Move the old user_configs path aside or import it explicitly; Yazelix no longer relocates legacy config files automatically.",
             json!({
                 "label": label,
                 "current_path": current_path.display().to_string(),
                 "legacy_path": legacy_path.display().to_string(),
             }),
         ));
-    }
-
-    if !current_exists && legacy_exists {
-        if let Some(parent) = current_path.parent() {
-            fs::create_dir_all(parent).map_err(|source| {
-                io_err("create_flat_config_parent_for_migration", parent, source)
-            })?;
-        }
-        fs::rename(legacy_path, current_path)
-            .map_err(|source| io_err("rename_legacy_config_to_flat_path", legacy_path, source))?;
-        eprintln!(
-            "✅ Migrated {} from {} to {}",
-            label,
-            legacy_path.display(),
-            current_path.display()
-        );
     }
 
     Ok(current_path.to_path_buf())

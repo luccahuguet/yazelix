@@ -79,7 +79,7 @@ fn get_terminal_override_path(
     let Some(legacy) = user_config_paths::legacy_terminal_config(config_dir, terminal) else {
         return Ok(None);
     };
-    let path = user_config_paths::resolve_flat_config_file(
+    let path = user_config_paths::resolve_current_config_file(
         &current,
         &legacy,
         &format!("{terminal} terminal override"),

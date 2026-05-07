@@ -55,7 +55,7 @@ This file exists so current docs and current contracts can point at one authorit
 - Managed override directories such as Zellij, Yazi, Helix, and shell user hooks remain part of that user-owned config surface.
 - The current trimmed branch does not have a `yazelix_packs.toml` sidecar and does not expose a first-class pack graph.
 - Legacy or removed config fields fail fast instead of degrading silently.
-- Old mutable `yazelix.toml` and `cursors.toml` inputs are auto-migrated only when conversion is unambiguous and safe; unsafe or stale old inputs hard-error with actionable diagnostics.
+- Old mutable `yazelix.toml`, `cursors.toml`, `user_configs/` sidecars, and embedded cursor settings are unsupported legacy inputs; they hard-error with actionable diagnostics instead of being rewritten automatically.
 
 ### Generated State
 

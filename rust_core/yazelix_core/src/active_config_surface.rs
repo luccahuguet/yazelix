@@ -85,14 +85,14 @@ pub fn primary_config_paths(runtime_dir: &Path, config_dir: &Path) -> PrimaryCon
 }
 
 pub fn validate_primary_config_surface(paths: &PrimaryConfigPaths) -> Result<(), CoreError> {
-    if paths.user_config.exists()
-        && (paths.old_flat_user_config.exists() || paths.legacy_user_config.exists())
+    if old_config_entry_exists(&paths.old_flat_user_config)
+        || old_config_entry_exists(&paths.legacy_user_config)
     {
         return Err(CoreError::classified(
             ErrorClass::Config,
             "stale_old_settings_input",
-            "Yazelix found old settings input next to canonical settings.jsonc.",
-            "Move the old TOML config aside after confirming settings.jsonc contains the migrated values, then retry.",
+            "Yazelix found old settings input next to the canonical config surface.",
+            "Move the old TOML config aside and keep settings.jsonc as the only Yazelix settings source.",
             json!({
                 "user_config": paths.user_config.display().to_string(),
                 "old_flat_user_config": paths.old_flat_user_config.display().to_string(),
@@ -102,6 +102,10 @@ pub fn validate_primary_config_surface(paths: &PrimaryConfigPaths) -> Result<(),
     }
 
     Ok(())
+}
+
+fn old_config_entry_exists(path: &Path) -> bool {
+    fs::symlink_metadata(path).is_ok()
 }
 
 /// Canonical Rust owner for active managed-config surface resolution.
@@ -328,32 +332,26 @@ mod tests {
         assert_eq!(error.code(), "stale_old_settings_input");
     }
 
-    // Defends: old-only regular main configs are migrated to settings.jsonc before launch uses them.
+    // Defends: old-only regular main configs fail fast instead of being silently migrated.
     #[test]
-    fn migrates_old_only_regular_main_config_to_settings_jsonc() {
+    fn rejects_old_only_regular_main_config() {
         let runtime = tempdir().expect("runtime dir");
         let config = tempdir().expect("config dir");
         write_runtime_layout(runtime.path());
 
         let user_config_dir = config.path().join("user_configs");
         let legacy_config = user_config_dir.join("yazelix.toml");
-        let current_config = config.path().join("settings.jsonc");
         fs::create_dir_all(&user_config_dir).expect("user config dir");
         fs::write(&legacy_config, "[core]\nwelcome_style = \"minimal\"\n")
             .expect("write legacy config");
 
-        let resolved = resolve_active_config_paths(runtime.path(), config.path(), None).unwrap();
-
-        assert_eq!(resolved.user_config, current_config);
-        assert!(
-            fs::read_to_string(&resolved.user_config)
-                .unwrap()
-                .contains("\"welcome_style\": \"minimal\"")
-        );
-        assert!(!legacy_config.exists());
+        let error = resolve_active_config_paths(runtime.path(), config.path(), None).unwrap_err();
+        assert_eq!(error.code(), "stale_old_settings_input");
+        assert!(!config.path().join("settings.jsonc").exists());
+        assert!(legacy_config.exists());
     }
 
-    // Regression: dangling old nested symlinks still require manual owner migration instead of being ignored as missing paths.
+    // Regression: dangling old nested symlinks still block startup instead of being ignored as missing paths.
     #[cfg(unix)]
     #[test]
     fn rejects_dangling_legacy_config_symlink() {
@@ -372,9 +370,6 @@ mod tests {
         .expect("legacy symlink");
 
         let error = resolve_active_config_paths(runtime.path(), config.path(), None).unwrap_err();
-        assert_eq!(
-            error.code(),
-            "old_settings_symlink_requires_manual_migration"
-        );
+        assert_eq!(error.code(), "stale_old_settings_input");
     }
 }

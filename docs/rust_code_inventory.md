@@ -2,38 +2,38 @@
 
 This inventory is the extraction gate for reusable Yazelix components. It records the current Rust shape before moving code out of the main repository so extraction decisions start from concrete ownership rather than a raw line-count hunch.
 
-Current rebaseline measured on 2026-05-07 after extracting `yazelix-screen`, `yazelix-cursors`, and `yazelix-bar`, accepting the optional runtime component toggles, paying down the first post-v16.3 Rust budget debt, and deleting stale strength-score metadata:
+Current rebaseline measured on 2026-05-07 after extracting `yazelix-screen`, `yazelix-cursors`, and `yazelix-bar`, accepting the optional runtime component toggles, paying down the first post-v16.3 Rust budget debt, and deleting stale strength-score and migration metadata:
 
-- `tokei rust_core rust_plugins --exclude target` reports `68,517` Rust code LOC across `139` Rust files
-- the same `tokei` run reports `74,631` Rust lines including blanks and comments
-- `config_metadata/rust_ownership_budget.toml` tracks `74,749` raw Rust file lines across `139` Rust files
+- `tokei rust_core rust_plugins --exclude target` reports `68,202` Rust code LOC across `139` Rust files
+- the same `tokei` run reports `74,291` Rust lines including blanks and comments
+- `config_metadata/rust_ownership_budget.toml` tracks `74,409` raw Rust file lines across `139` Rust files
 - the remaining difference between `tokei` lines and the budget total is measurement-method noise from embedded markdown/parser classification and line-count method differences, not a separate ownership surface
 - `yzx_repo_validator validate-rust-ownership-budget` passes the no-growth budget and still warns that the tracked Rust surface is above the long-term `60,000` LOC hard target
 - `cargo-udeps` requires nightly Rust because it passes unstable `-Z` compiler flags; rerun it during explicit dependency-audit beads rather than treating this inventory as fresh unused-dependency evidence
 
 The canonical family ownership, no-growth ceilings, and long-term warning target live in `config_metadata/rust_ownership_budget.toml`. The current budget excludes extracted child crates.
 
-The latest budget-debt paydown deleted the hidden moved-Ghostty cursor-field runtime repair migration, the structured strength-score validator machinery, the stale per-test strength-score comments, and the separate default-test traceability command. Those cuts removed `1,082` Rust code LOC by `tokei` and `1,536` raw budget lines from the main repo, paying back the `650` code-LOC debt created by the optional runtime-component toggle slice.
+The latest budget-debt paydown deleted the hidden moved-Ghostty cursor-field runtime repair migration, the structured strength-score validator machinery, the stale per-test strength-score comments, the separate default-test traceability command, and the automatic legacy config rewrite paths. Those cuts removed `1,397` Rust code LOC by `tokei` and `1,876` raw budget lines from the main repo, paying back the `650` code-LOC debt created by the optional runtime-component toggle slice.
 
 ## Ownership Split
 
 | Family | Files | Raw lines | Status | Extraction pressure |
 | --- | ---: | ---: | --- | --- |
-| Product runtime source | 76 | 51,464 | canonical and extension surfaces | High: contains the largest user-facing seams |
-| Product integration tests | 19 | 6,069 | canonical tests | Medium: split by behavior family, do not delete broadly |
+| Product runtime source | 76 | 51,100 | canonical and extension surfaces | High: contains the largest user-facing seams |
+| Product integration tests | 19 | 6,093 | canonical tests | Medium: split by behavior family, do not delete broadly |
 | Maintainer tooling and tests | 17 | 11,831 | canonical maintainer | Medium: keep in repo, but split large validator files |
 | Pane orchestrator plugin | 27 | 5,385 | extension surface | High: already has a natural Zellij plugin boundary |
-| Total | 139 | 74,749 | current budget ceiling | Reduce or extract before raising ceilings |
+| Total | 139 | 74,409 | current budget ceiling | Reduce or extract before raising ceilings |
 
 Detailed budget families:
 
 | Family | Files | Raw lines | Budget target | Notes |
 | --- | ---: | ---: | ---: | --- |
 | `core_cli_and_public_surface` | 12 | 8,159 | 7,000 | Public command dispatch and front-door rendering after child CLI extractions |
-| `core_config_ui_and_materialization` | 41 | 20,990 | 14,000 | Largest product family; config UI, apply modes, runtime component manifest, ratconfig boundary, materializers, settings surfaces |
-| `core_diagnostics_and_recovery` | 8 | 5,898 | 4,500 | Doctor, install ownership, profile/status reporting |
+| `core_config_ui_and_materialization` | 41 | 20,658 | 14,000 | Largest product family; config UI, apply modes, runtime component manifest, ratconfig boundary, materializers, settings surfaces |
+| `core_diagnostics_and_recovery` | 8 | 5,866 | 4,500 | Doctor, install ownership, profile/status reporting |
 | `core_workspace_and_pane_integration` | 15 | 16,417 | 11,000 | Action registry, Zellij/session/workspace command surface, pane-orchestrator client, status/cache/widgets |
-| `core_integration_tests` | 19 | 6,069 | 4,500 | High-value tests, but several files are broad family buckets |
+| `core_integration_tests` | 19 | 6,093 | 4,500 | High-value tests, but several files are broad family buckets |
 | `maintainer_tooling_and_validators` | 16 | 11,592 | 9,000 | Keep in repo; split validators by domain before optimizing |
 | `maintainer_tests` | 1 | 239 | 239 | Small release/upgrade contract test surface |
 | `pane_orchestrator_plugin` | 27 | 5,385 | 4,500 | Extension surface; refactor runtime config, timer/status/sidebar modules before public extraction |
@@ -95,7 +95,7 @@ Transition helpers need live-contract evidence to stay, not only age:
 | --- | --- |
 | `yzx_core` machine helper | Shell/bootstrap/Home Manager/Helix/Yazi callers need another stable machine protocol |
 | `internal_nu_runner.rs` | Remaining `yzx dev`, popup/menu, and process-heavy Nu leaves need Rust replacements or explicit ownership |
-| old flat config migration helpers | Keep only the current old-TOML-to-JSONC gate while its live contract requires it; delete narrower historical field moves when touched |
+| legacy config diagnostics | Keep clear hard errors for old `yazelix.toml`, `cursors.toml`, and `user_configs/` paths; do not rebuild automatic rewrite helpers |
 | legacy wrapper/install diagnostics | Delete only after supported upgrade windows no longer need doctor recovery |
 | legacy popup-runner cleanup in Zellij materialization | Delete only after old runtime artifacts are outside the support boundary |
 | `migration_available` upgrade-note rendering | Keep for historical upgrade-note display unless old note rendering is removed |

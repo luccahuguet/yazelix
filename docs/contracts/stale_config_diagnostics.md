@@ -6,7 +6,7 @@ Yazelix should surface stale or unsupported `settings.jsonc` problems through on
 
 ## Why
 
-When a config change breaks startup, generic wrapper failures force users to guess whether Yazelix itself is broken or whether their config is stale. The live contract is narrow: auto-migrate old TOML inputs only when conversion is unambiguous and safe, otherwise detect unsupported config precisely, fail fast, and point users to manual cleanup or `yzx reset config`.
+When a config change breaks startup, generic wrapper failures force users to guess whether Yazelix itself is broken or whether their config is stale. The live contract is narrow: detect unsupported config precisely, fail fast, and point users to manual cleanup or `yzx reset config` instead of rewriting legacy inputs automatically.
 
 ## Scope
 
@@ -31,7 +31,7 @@ For unsupported config, Yazelix should fail clearly without pretending an unsafe
 - hiding unknown config problems behind generic launch or refresh wrappers
 - treating missing fields as startup blockers when Yazelix can still supply safe defaults
 - inventing migration guidance for unsupported config
-- restoring broad historical config-migration registries outside the safe old-TOML-to-JSONC gate
+- restoring broad historical config-migration registries or old-TOML-to-JSONC auto-rewrites
 
 ## Acceptance Cases
 

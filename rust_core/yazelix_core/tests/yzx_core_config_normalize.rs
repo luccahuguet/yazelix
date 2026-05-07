@@ -8,9 +8,11 @@ use std::path::{Path, PathBuf};
 use tempfile::{TempDir, tempdir};
 use yazelix_core::{
     active_config_surface::TOML_TOOLING_CONFIG_FILENAME,
+    ghostty_cursor_registry::CursorRegistry,
     settings_surface::{read_settings_jsonc_value, render_default_settings_jsonc},
     user_config_paths::shared_cursor_config,
 };
+use yazelix_cursors::render_cursor_settings_jsonc;
 
 mod support;
 
@@ -49,7 +51,7 @@ fn prepare_runtime_materialization_fixture(
     let runtime_dir = tmp.path().join("runtime");
     let config_dir = home_dir.join(".config").join("yazelix");
     let state_dir = home_dir.join(".local").join("share").join("yazelix");
-    let managed_config = config_dir.join("yazelix.toml");
+    let managed_config = config_dir.join("settings.jsonc");
     let managed_zellij_config = config_dir.join("zellij.kdl");
     let state_path = state_dir.join("state").join("rebuild_hash");
     let yazi_dir = state_dir.join("configs").join("yazi");
@@ -128,7 +130,15 @@ fn prepare_runtime_materialization_fixture(
             .join("shaders"),
         &runtime_ghostty_shader_dir,
     );
-    fs::copy(runtime_dir.join("yazelix_default.toml"), &managed_config).unwrap();
+    fs::write(
+        &managed_config,
+        render_default_settings_jsonc(
+            &runtime_dir.join("yazelix_default.toml"),
+            &runtime_dir.join("yazelix_cursors_default.toml"),
+        )
+        .unwrap(),
+    )
+    .unwrap();
     fs::write(&managed_zellij_config, "keybinds {}\n").unwrap();
     RuntimeMaterializationFixture {
         home_dir,
@@ -144,9 +154,20 @@ fn prepare_runtime_materialization_fixture(
 }
 
 fn write_cursor_sidecar(fixture: &RuntimeMaterializationFixture, raw: &str) {
-    let cursor_path = fixture.config_dir.join("cursors.toml");
+    let cursor_path = shared_cursor_config(&fixture.config_dir);
     fs::create_dir_all(cursor_path.parent().unwrap()).unwrap();
-    fs::write(cursor_path, raw).unwrap();
+    let registry = CursorRegistry::parse_str(&cursor_path, raw).unwrap();
+    fs::write(cursor_path, render_cursor_settings_jsonc(&registry)).unwrap();
+}
+
+fn write_managed_config_toml(fixture: &RuntimeMaterializationFixture, raw: &str) {
+    let value = toml::from_str::<toml::Value>(raw).unwrap();
+    let json = serde_json::to_value(value).unwrap();
+    fs::write(
+        &fixture.managed_config,
+        format!("{}\n", serde_json::to_string_pretty(&json).unwrap()),
+    )
+    .unwrap();
 }
 
 fn copy_dir_all(src: &Path, dst: &Path) {
@@ -809,11 +830,10 @@ fn runtime_materialization_repair_summary_prints_human_config_error() {
     let repo = repo_root();
     let tmp = tempdir().unwrap();
     let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
-    fs::write(
-        &fixture.managed_config,
-        ["[terminal]", "not_a_real_terminal_option = true"].join("\n"),
-    )
-    .unwrap();
+    write_managed_config_toml(
+        &fixture,
+        &["[terminal]", "not_a_real_terminal_option = true"].join("\n"),
+    );
 
     let repair_request = json!({
         "plan": runtime_materialization_request(&fixture),
@@ -1053,16 +1073,15 @@ fn terminal_materialization_generate_from_env_writes_generated_configs() {
     let tmp = tempdir().unwrap();
     let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
 
-    fs::write(
-        &fixture.managed_config,
-        [
+    write_managed_config_toml(
+        &fixture,
+        &[
             "[terminal]",
             "terminals = [\"ghostty\", \"kitty\", \"foot\"]",
             "transparency = \"low\"",
         ]
         .join("\n"),
-    )
-    .unwrap();
+    );
     let foot_override = fixture.config_dir.join("terminal_foot.ini");
     fs::write(&foot_override, "[main]\nfont=monospace:size=10\n").unwrap();
 
@@ -1121,11 +1140,10 @@ fn terminal_materialization_uses_cursor_sidecar_for_kitty_toggle() {
     let tmp = tempdir().unwrap();
     let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
 
-    fs::write(
-        &fixture.managed_config,
-        ["[terminal]", "terminals = [\"kitty\"]"].join("\n"),
-    )
-    .unwrap();
+    write_managed_config_toml(
+        &fixture,
+        &["[terminal]", "terminals = [\"kitty\"]"].join("\n"),
+    );
     write_cursor_sidecar(
         &fixture,
         r##"
@@ -1188,11 +1206,10 @@ fn ghostty_materialization_generate_from_env_uses_normalized_config() {
             .join("shaders"),
     );
 
-    fs::write(
-        &fixture.managed_config,
-        ["[terminal]", "transparency = \"high\""].join("\n"),
-    )
-    .unwrap();
+    write_managed_config_toml(
+        &fixture,
+        &["[terminal]", "transparency = \"high\""].join("\n"),
+    );
     write_cursor_sidecar(
         &fixture,
         r##"
@@ -1362,9 +1379,9 @@ fn doctor_runtime_evaluate_prints_ok_envelope() {
     );
 }
 
-// Defends: doctor-config.evaluate reports duplicate root/user config ownership as a config-surface error finding.
+// Defends: doctor-config.evaluate reports stale old config inputs as a config-surface error finding.
 #[test]
-fn doctor_config_evaluate_reports_duplicate_config_surfaces() {
+fn doctor_config_evaluate_reports_stale_old_config_inputs() {
     let repo = repo_root();
     let tmp = tempdir().unwrap();
     let runtime_dir = prepare_doctor_config_runtime_fixture(&repo, &tmp);

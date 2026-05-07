@@ -611,7 +611,7 @@ exit 99
     assert!(
         archived_paths
             .iter()
-            .any(|name| { name.starts_with("yazelix.toml.home-manager-prepare-backup-") })
+            .any(|name| { name.starts_with("settings.jsonc.home-manager-prepare-backup-") })
     );
 }
 

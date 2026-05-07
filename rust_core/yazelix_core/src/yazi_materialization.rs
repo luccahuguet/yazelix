@@ -186,7 +186,7 @@ fn resolve_managed_yazi_user_file(
         ),
         _ => unreachable!("supported Yazi override file"),
     };
-    let current_path = user_config_paths::resolve_flat_config_file(
+    let current_path = user_config_paths::resolve_current_config_file(
         &current_path,
         &old_managed_path,
         &format!("Yazi {file_name} override"),

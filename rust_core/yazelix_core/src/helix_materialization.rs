@@ -149,7 +149,7 @@ fn prepare_managed_helix_config(
         )
     })?;
 
-    let user_config_path = user_config_paths::resolve_flat_config_file(
+    let user_config_path = user_config_paths::resolve_current_config_file(
         &user_config_paths::helix_config(config_dir),
         &user_config_paths::legacy_helix_config(config_dir),
         "Helix override",

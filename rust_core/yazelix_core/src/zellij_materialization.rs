@@ -390,7 +390,7 @@ fn resolve_zellij_default_shell(runtime_dir: &Path, default_shell: &str) -> Stri
 fn resolve_base_config_source() -> Result<ZellijBaseConfigSource, CoreError> {
     let config_dir = config_dir_from_env()?;
     crate::managed_user_config_stubs::ensure_zellij_surface_stub(&config_dir)?;
-    let managed_path = user_config_paths::resolve_flat_config_file(
+    let managed_path = user_config_paths::resolve_current_config_file(
         &user_config_paths::zellij_config(&config_dir),
         &user_config_paths::legacy_zellij_config(&config_dir),
         "Zellij override",

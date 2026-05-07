@@ -23,16 +23,16 @@ If a bead becomes public, it must satisfy the GitHub/Beads shared-subset contrac
 
 ## Current Audit
 
-Reviewed on `2026-04-17` from the open backlog after queue cleanup.
+Reviewed on `2026-05-07` from the open backlog after queue cleanup.
 
-- Open beads: `73`
-- Open beads with `external_ref`: `41`
+- Open beads: `51`
+- Open beads with `external_ref`: `19`
 - Open beads without `external_ref`: `32`
 
 The `32` open beads without a GitHub issue currently split into two buckets:
 
-- `9` public-worthy backlog candidates that could justify a GitHub issue when promoted into active public discussion or implementation
-- `23` intentionally internal beads that should remain local planning items for now
+- `8` public-worthy backlog candidates that could justify a GitHub issue when promoted into active public discussion or implementation
+- `24` intentionally internal beads that should remain local planning items for now
 
 ## Public-Worthy Open Beads Without GitHub Issues Yet
 
@@ -40,7 +40,6 @@ These are reasonable candidates for future GitHub issues when they become active
 
 - `yazelix-1et` Improve Helix support for Ghostty cursor effects
 - `yazelix-8h9y` Optimize Yazi config generation on warm startup
-- `yazelix-j498` Verifiable config migration: deterministic hashes and fail-proof auto-migration for `yazelix.toml` schema changes
 - `yazelix-yho` Evaluate Pretext-inspired text-first welcome screen
 - `yazelix-232l` Clarify and verify the zsh/fish managed-shell availability boundary
 - `yazelix-3jw` Adopt Nushell-style tutor flow for `yzx tutor`

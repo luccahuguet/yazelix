@@ -2,10 +2,10 @@
 acknowledged_guarded_changes = []
 date = ""
 headline = "Post-v16.3 work in progress"
-manual_actions = []
+manual_actions = ["Move old mutable `yazelix.toml`, `cursors.toml`, `user_configs/` sidecars, or embedded cursor settings aside and keep `settings.jsonc` plus `~/.config/yazelix_cursors/settings.jsonc` as the supported config sources."]
 migration_ids = []
-summary = ["Reserved for post-release changes after v16.3 lands."]
-upgrade_impact = "no_user_action"
+summary = ["Removed the remaining automatic legacy config rewrites so old TOML and nested sidecar surfaces now fail fast with explicit cleanup guidance instead of being moved or rewritten during startup."]
+upgrade_impact = "manual_action_required"
 version = "unreleased"
 
 [releases.v12]

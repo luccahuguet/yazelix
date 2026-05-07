@@ -108,7 +108,6 @@ fn yzx_control_cursors_prints_resolved_color_surface() {
 fn yzx_control_reset_config_warns_about_preserved_adjacent_files() {
     let fixture = managed_config_fixture("");
     let settings_path = fixture.config_dir.join("settings.jsonc");
-    let old_main_path = fixture.config_dir.join("yazelix.toml");
     let legacy_cursor_path = fixture.config_dir.join("cursors.toml");
     let helix_override_path = fixture.config_dir.join("helix.toml");
     let notes_path = fixture.config_dir.join("notes.txt");
@@ -121,7 +120,6 @@ fn yzx_control_reset_config_warns_about_preserved_adjacent_files() {
     fs::write(&helix_override_path, "rainbow-brackets = true\n").unwrap();
     fs::write(&notes_path, "do not delete\n").unwrap();
     fs::write(&settings_backup_path, "old backup\n").unwrap();
-    fs::remove_file(&old_main_path).unwrap();
 
     let mut command = yzx_control_command();
     apply_managed_config_env(&mut command, &fixture)

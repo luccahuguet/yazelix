@@ -40,22 +40,6 @@ pub fn evaluate_doctor_config_report(
     let paths = primary_config_paths(&request.runtime_dir, &request.config_dir);
     let legacy_nix_config = request.config_dir.join("yazelix.nix");
 
-    if paths.legacy_user_config.exists() && !paths.user_config.exists() {
-        return DoctorConfigEvaluateData {
-            findings: vec![DoctorConfigFinding {
-                status: "warning".into(),
-                message: "Old nested settings input needs migration".into(),
-                details: Some(format!(
-                    "old nested main: {}\ncanonical settings: {}\n\nMutable TOML files auto-migrate on launch. Home Manager or Nix-store symlinks must be updated through their owner.",
-                    paths.legacy_user_config.display(),
-                    paths.user_config.display()
-                )),
-                fix_available: false,
-                config_diagnostic_report: None,
-            }],
-        };
-    }
-
     if let Err(error) = validate_primary_config_surface(&paths) {
         return DoctorConfigEvaluateData {
             findings: vec![DoctorConfigFinding {
@@ -281,22 +265,6 @@ fn format_surface_reconcile_error(error: &CoreError) -> String {
             }
             if let Some(legacy_main) = details.get("legacy_user_config").and_then(Value::as_str) {
                 lines.push(format!("old nested main: {legacy_main}"));
-            }
-        }
-        "duplicate_config_surfaces" => {
-            if let Some(user_config) = details.get("user_config").and_then(Value::as_str) {
-                lines.push(format!("flat main: {user_config}"));
-            }
-            if let Some(legacy_main) = details.get("legacy_user_config").and_then(Value::as_str) {
-                lines.push(format!("old nested main: {legacy_main}"));
-            }
-        }
-        "legacy_root_config_surface" => {
-            if let Some(legacy_main) = details.get("legacy_main").and_then(Value::as_str) {
-                lines.push(format!("legacy main: {legacy_main}"));
-            }
-            if let Some(current_main) = details.get("current_main").and_then(Value::as_str) {
-                lines.push(format!("current main: {current_main}"));
             }
         }
         "missing_runtime_toml_tooling_config" => {

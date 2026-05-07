@@ -89,7 +89,7 @@ pub(crate) fn ensure_terminal_override_stubs(
 fn ensure_stub_with_legacy(config_dir: &Path, shell: &str, content: &str) -> Result<(), CoreError> {
     let current = user_config_paths::shell_hook(config_dir, shell).expect("supported shell");
     let legacy = user_config_paths::legacy_shell_hook(config_dir, shell).expect("supported shell");
-    let path = user_config_paths::resolve_flat_config_file(
+    let path = user_config_paths::resolve_current_config_file(
         &current,
         &legacy,
         &format!("Yazelix {shell} shell hook"),
@@ -106,7 +106,7 @@ fn ensure_terminal_stub_with_legacy(
         user_config_paths::terminal_config(config_dir, terminal).expect("supported terminal");
     let legacy = user_config_paths::legacy_terminal_config(config_dir, terminal)
         .expect("supported terminal");
-    let path = user_config_paths::resolve_flat_config_file(
+    let path = user_config_paths::resolve_current_config_file(
         &current,
         &legacy,
         &format!("Yazelix {terminal} terminal override"),

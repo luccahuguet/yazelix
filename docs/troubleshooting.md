@@ -85,7 +85,7 @@ If you have an older Yazelix setup:
 **Migration steps:**
 1. It's recommended that you go through the [Installation Guide](installation.md) and install the packaged `yazelix` runtime cleanly
 2. `settings.jsonc` will be auto-created from the shipped defaults on Yazelix startup if not found
-3. Old mutable `yazelix.toml` and `cursors.toml` files are auto-migrated when safe, and block with clear diagnostics when ownership or content is ambiguous
+3. Move any old mutable `yazelix.toml`, `cursors.toml`, or `user_configs/` files aside; Yazelix no longer rewrites legacy config surfaces automatically
 4. Copy any custom settings from your old `yazelix.nix` to the new `settings.jsonc` format
 
 ## First Run: Zellij Plugin Permissions (is the top bar looking funny/weird/broken?)

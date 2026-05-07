@@ -10,7 +10,7 @@ The source repository is [`luccahuguet/yazelix-cursors`](https://github.com/lucc
 
 ## Decision
 
-Yazelix should ship `yazelix_cursors` from a separate standalone repository. The external repository owns reusable cursor registry parsing, validation, resolution, Ghostty palette/effect shader generation, shader assets, `yzc`, flake packaging, and CI. `ghostty_cursor_registry.rs` remains the Yazelix-specific loader for `~/.config/yazelix_cursors/settings.jsonc` and legacy embedded settings migration.
+Yazelix should ship `yazelix_cursors` from a separate standalone repository. The external repository owns reusable cursor registry parsing, validation, resolution, Ghostty palette/effect shader generation, shader assets, `yzc`, flake packaging, and CI. `ghostty_cursor_registry.rs` remains the Yazelix-specific loader for `~/.config/yazelix_cursors/settings.jsonc`; legacy embedded cursor settings are rejected rather than migrated in the main runtime.
 
 Selected name: `yazelix_cursors`
 

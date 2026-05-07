@@ -296,7 +296,7 @@ fn print_reset_config_adjacency_warnings(
             report.legacy_inputs.join(", ")
         );
         println!(
-            "         Move them aside after confirming settings.jsonc contains the migrated values; stale old inputs can block startup."
+            "         Move them aside; stale old inputs block startup and are not migrated automatically."
         );
     }
     if !report.unknown_entries.is_empty() {
