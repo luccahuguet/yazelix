@@ -14,10 +14,11 @@ The supported boundary is cache-first: generated zjstatus command widgets read s
 | generic `mode`, `tabs`, `session`, `datetime`, brand, tab-label, and command-placeholder rendering | `yazelix_bar` child crate | Keep child |
 | standalone preset generation and package-local `zjstatus.wasm` path substitution | `yazelix_bar` child repo | Keep child |
 | widget tray token validation and generic dynamic command placeholders such as `{command_workspace}` | `yazelix_bar` child crate | Keep child |
-| workspace, cursor, Claude, Codex, OpenCode Go, CPU, RAM, and version command definitions in the integrated template | Yazelix generated Zellij materialization | Keep adapter |
+| workspace, cursor, Claude, Codex, OpenCode Go, CPU, RAM, and version command definitions for the integrated template | Yazelix generated Zellij materialization typed command adapter | Keep adapter |
+| cursor status widget text, glyph selection, and cache hydration from Yazelix session state | Yazelix core status adapter | Keep adapter |
 | status-bus schema decode and inspect-session rendering | Yazelix core plus pane-orchestrator producer | Keep adapter |
 | window-local `status_bar_cache.json` writes, heartbeat merges, and cache path discovery | Yazelix core | Keep adapter |
-| provider usage cache refreshes and shared-cache locking | Yazelix core | Keep adapter, but split by provider before extraction |
+| provider usage cache refreshes, shared-cache locking, and agent usage widget rendering | Yazelix core `zellij_commands::status::agent_usage` module | Keep adapter |
 | live sidebar/editor/workspace facts | pane orchestrator | Keep producer |
 | direct `status-bus-workspace` zjstatus command | none | Deleted |
 
@@ -49,7 +50,21 @@ The supported boundary is cache-first: generated zjstatus command widgets read s
 - Status: live
 - Owner: Yazelix Zellij command surface
 - Statement: The old direct `status-bus-workspace` command is not part of the supported status-bar path. Generated zjstatus templates must keep using cache-widget commands for dynamic widgets
-- Verification: automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zjstatus_template_uses_cached_dynamic_widget_helpers`
+- Verification: automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zjstatus_template_delegates_integrated_command_definitions_to_adapter`
+
+#### SBO-005
+- Type: boundary
+- Status: live
+- Owner: Yazelix generated Zellij materialization
+- Statement: Integrated zjstatus command definitions are rendered from the typed Yazelix command adapter, not hand-owned by the KDL fragment. The fragment owns zjstatus layout shape and placeholders; the adapter owns runtime helper paths, widget command names, intervals, formats, and render modes
+- Verification: automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core renders_cached_zjstatus_widget_commands_with_runtime_helper_paths`
+
+#### SBO-006
+- Type: boundary
+- Status: live
+- Owner: Yazelix core status adapter
+- Statement: The cursor status widget stays in Yazelix core because it renders launch-scoped Yazelix cursor state from environment and status-cache facts. `yazelix-cursors` remains the owner of cursor schemes, assets, and non-Zellij cursor distribution, not zjstatus cache-widget output
+- Verification: automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache`
 
 ## Deletion And Extraction Plan
 
@@ -58,10 +73,10 @@ Delete-first order:
 1. Delete direct pane-orchestrator-per-paint widget commands that the generated templates no longer use
 2. Delete or demote weak tests that defend old command names instead of current cache behavior
 3. Move only generic rendering behavior to `yazelix_bar`
-4. Split provider usage refreshers into focused Yazelix-core modules before considering any public package
+4. Keep provider usage refreshers in focused Yazelix-core modules before considering any public package
 5. Keep pane-orchestrator facts and cache writes in the integrated runtime unless a future contract defines a reusable status bus
 
-Do not move provider usage polling, pane-orchestrator payloads, cache file paths, Home Manager apply semantics, or Yazelix session facts into `yazelix_bar`.
+Do not move provider usage polling, pane-orchestrator payloads, cursor status cache rendering, cache file paths, Home Manager apply semantics, or Yazelix session facts into `yazelix_bar` or `yazelix-cursors`.
 
 ## Verification
 

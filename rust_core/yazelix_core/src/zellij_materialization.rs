@@ -23,8 +23,7 @@ use yazelix_bar::{
     BarRenderError, BarRenderRequest, CUSTOM_TEXT_PLACEHOLDER, TAB_ACTIVE_FULLSCREEN_PLACEHOLDER,
     TAB_ACTIVE_PLACEHOLDER, TAB_ACTIVE_SYNC_PLACEHOLDER, TAB_NORMAL_FULLSCREEN_PLACEHOLDER,
     TAB_NORMAL_PLACEHOLDER, TAB_NORMAL_SYNC_PLACEHOLDER, TAB_RENAME_PLACEHOLDER,
-    WIDGET_TRAY_PLACEHOLDER, ZJSTATUS_NU_BIN_PLACEHOLDER, ZJSTATUS_PLUGIN_URL_PLACEHOLDER,
-    ZJSTATUS_RUNTIME_DIR_PLACEHOLDER, ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER,
+    WIDGET_TRAY_PLACEHOLDER, ZJSTATUS_PLUGIN_URL_PLACEHOLDER, ZJSTATUS_RUNTIME_DIR_PLACEHOLDER,
     render_zjstatus_bar_segments, render_zjstatus_tab_label_formats,
 };
 
@@ -39,6 +38,7 @@ const ZELLIJ_KEYBINDINGS_CONFIG_KEY: &str = "zellij_keybindings";
 const PANE_ORCHESTRATOR_PLUGIN_URL_PLACEHOLDER: &str = "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__";
 const HOME_DIR_PLACEHOLDER: &str = "__YAZELIX_HOME_DIR__";
 const RUNTIME_DIR_PLACEHOLDER: &str = ZJSTATUS_RUNTIME_DIR_PLACEHOLDER;
+const ZJSTATUS_COMMAND_DEFINITIONS_PLACEHOLDER: &str = "__YAZELIX_ZJSTATUS_COMMAND_DEFINITIONS__";
 
 const PANE_ORCHESTRATOR_REQUIRED_PERMISSIONS: &[&str] = &[
     "ReadApplicationState",
@@ -1074,6 +1074,157 @@ fn render_bar_segments(
     })
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct IntegratedZjstatusCommandWidget {
+    name: &'static str,
+    command: IntegratedZjstatusCommand,
+    format: &'static str,
+    render_mode: Option<&'static str>,
+    interval: &'static str,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum IntegratedZjstatusCommand {
+    StatusCacheWidget(&'static str),
+    RuntimeNuScript(&'static str),
+    RuntimeNuConstantsVersion,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct IntegratedZjstatusRuntimePaths {
+    nu_bin: String,
+    yzx_control_bin: String,
+    runtime_dir: String,
+}
+
+const INTEGRATED_ZJSTATUS_COMMAND_WIDGETS: &[IntegratedZjstatusCommandWidget] = &[
+    IntegratedZjstatusCommandWidget {
+        name: "workspace",
+        command: IntegratedZjstatusCommand::StatusCacheWidget("workspace"),
+        format: "#[fg=#00ff88,bold]{stdout}",
+        render_mode: None,
+        interval: "1",
+    },
+    IntegratedZjstatusCommandWidget {
+        name: "cursor",
+        command: IntegratedZjstatusCommand::StatusCacheWidget("cursor"),
+        format: "{stdout}",
+        render_mode: Some("dynamic"),
+        interval: "10",
+    },
+    IntegratedZjstatusCommandWidget {
+        name: "claude_usage",
+        command: IntegratedZjstatusCommand::StatusCacheWidget("claude_usage"),
+        format: "#[fg=#bb88ff,bold]{stdout}",
+        render_mode: None,
+        interval: "10",
+    },
+    IntegratedZjstatusCommandWidget {
+        name: "codex_usage",
+        command: IntegratedZjstatusCommand::StatusCacheWidget("codex_usage"),
+        format: "#[fg=#bb88ff,bold]{stdout}",
+        render_mode: None,
+        interval: "10",
+    },
+    IntegratedZjstatusCommandWidget {
+        name: "opencode_go_usage",
+        command: IntegratedZjstatusCommand::StatusCacheWidget("opencode_go_usage"),
+        format: "#[fg=#bb88ff,bold]{stdout}",
+        render_mode: None,
+        interval: "10",
+    },
+    IntegratedZjstatusCommandWidget {
+        name: "cpu",
+        command: IntegratedZjstatusCommand::RuntimeNuScript("configs/zellij/scripts/cpu_usage.nu"),
+        format: " #[fg=#ff6600][cpu {stdout}]",
+        render_mode: None,
+        interval: "5",
+    },
+    IntegratedZjstatusCommandWidget {
+        name: "ram",
+        command: IntegratedZjstatusCommand::RuntimeNuScript("configs/zellij/scripts/ram_usage.nu"),
+        format: " #[fg=#ff6600][ram {stdout}]",
+        render_mode: None,
+        interval: "5",
+    },
+    IntegratedZjstatusCommandWidget {
+        name: "version",
+        command: IntegratedZjstatusCommand::RuntimeNuConstantsVersion,
+        format: "{stdout}",
+        render_mode: None,
+        interval: "3600",
+    },
+];
+
+fn integrated_zjstatus_runtime_paths(runtime_dir: &Path) -> IntegratedZjstatusRuntimePaths {
+    IntegratedZjstatusRuntimePaths {
+        nu_bin: resolve_zjstatus_nu_bin(runtime_dir),
+        yzx_control_bin: resolve_zjstatus_yzx_control_bin(runtime_dir),
+        runtime_dir: runtime_dir.to_string_lossy().to_string(),
+    }
+}
+
+fn render_integrated_zjstatus_command_definitions(runtime_dir: &Path) -> String {
+    let paths = integrated_zjstatus_runtime_paths(runtime_dir);
+    INTEGRATED_ZJSTATUS_COMMAND_WIDGETS
+        .iter()
+        .map(|widget| render_integrated_zjstatus_command_definition(widget, &paths))
+        .collect::<Vec<_>>()
+        .join("\n\n")
+}
+
+fn render_integrated_zjstatus_command_definition(
+    widget: &IntegratedZjstatusCommandWidget,
+    paths: &IntegratedZjstatusRuntimePaths,
+) -> String {
+    let command = widget.command.render(paths);
+    let mut lines = vec![
+        format!(
+            "    command_{}_command {}",
+            widget.name,
+            json_quote(command)
+        ),
+        format!(
+            "    command_{}_format {}",
+            widget.name,
+            json_quote(widget.format)
+        ),
+    ];
+    if let Some(render_mode) = widget.render_mode {
+        lines.push(format!(
+            "    command_{}_rendermode {}",
+            widget.name,
+            json_quote(render_mode)
+        ));
+    }
+    lines.push(format!(
+        "    command_{}_interval {}",
+        widget.name,
+        json_quote(widget.interval)
+    ));
+    lines.join("\n")
+}
+
+impl IntegratedZjstatusCommand {
+    fn render(self, paths: &IntegratedZjstatusRuntimePaths) -> String {
+        match self {
+            Self::StatusCacheWidget(widget) => {
+                format!(
+                    "{} zellij status-cache-widget {widget}",
+                    paths.yzx_control_bin
+                )
+            }
+            Self::RuntimeNuScript(relative_path) => {
+                format!("{} {}/{relative_path}", paths.nu_bin, paths.runtime_dir)
+            }
+            Self::RuntimeNuConstantsVersion => format!(
+                "{} -c 'use {}/nushell/scripts/utils/constants.nu YAZELIX_VERSION; $YAZELIX_VERSION'",
+                paths.nu_bin, paths.runtime_dir
+            ),
+        }
+    }
+}
+
 fn render_layout_template(
     content: &str,
     static_fragments: &BTreeMap<String, String>,
@@ -1140,12 +1291,8 @@ fn render_layout_template(
             runtime_dir.to_string_lossy().to_string(),
         ),
         (
-            ZJSTATUS_NU_BIN_PLACEHOLDER,
-            resolve_zjstatus_nu_bin(runtime_dir),
-        ),
-        (
-            ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER,
-            resolve_zjstatus_yzx_control_bin(runtime_dir),
+            ZJSTATUS_COMMAND_DEFINITIONS_PLACEHOLDER,
+            render_integrated_zjstatus_command_definitions(runtime_dir),
         ),
         (
             "__YAZELIX_SIDEBAR_COMMAND__",
@@ -1210,8 +1357,7 @@ fn render_layout_template(
     }
     for placeholder in [
         WIDGET_TRAY_PLACEHOLDER,
-        ZJSTATUS_NU_BIN_PLACEHOLDER,
-        ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER,
+        ZJSTATUS_COMMAND_DEFINITIONS_PLACEHOLDER,
         TAB_NORMAL_PLACEHOLDER,
         TAB_NORMAL_FULLSCREEN_PLACEHOLDER,
         TAB_NORMAL_SYNC_PLACEHOLDER,
@@ -2412,42 +2558,26 @@ keybinds {
         assert!(!rendered.contains("launch_sidebar_yazi.nu"));
     }
 
-    // Regression: shipped zjstatus templates use cache readers for dynamic widgets and do not revive direct Zellij pipe or usage polling.
+    // Regression: shipped zjstatus templates delegate integrated command definitions to the typed adapter instead of owning helper command bodies.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn zjstatus_template_uses_cached_dynamic_widget_helpers() {
+    fn zjstatus_template_delegates_integrated_command_definitions_to_adapter() {
         let template =
             include_str!("../../../configs/zellij/layouts/fragments/zjstatus_tab_template.kdl");
+        assert!(template.contains(ZJSTATUS_COMMAND_DEFINITIONS_PLACEHOLDER));
         assert!(!template.contains("zjstatus_widget.nu"));
         assert!(!template.contains("command_editor_command"));
         assert!(!template.contains("command_shell_command"));
         assert!(!template.contains("command_term_command"));
-        assert!(template.contains(ZJSTATUS_NU_BIN_PLACEHOLDER));
-        assert!(template.contains(ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER));
-        assert!(template.contains("command_workspace_command"));
-        assert!(template.contains("status-cache-widget workspace"));
-        assert!(template.contains(r##"command_workspace_format "#[fg=#00ff88,bold]{stdout}""##));
-        assert!(template.contains(r#"command_workspace_interval "1""#));
-        assert!(template.contains("command_cursor_command"));
-        assert!(template.contains("status-cache-widget cursor"));
-        assert!(template.contains(r#"command_cursor_format "{stdout}""#));
-        assert!(template.contains(r#"command_cursor_rendermode "dynamic""#));
-        assert!(template.contains(r#"command_cursor_interval "10""#));
-        assert!(template.contains("configs/zellij/scripts/ram_usage.nu"));
+        assert!(!template.contains(yazelix_bar::ZJSTATUS_NU_BIN_PLACEHOLDER));
+        assert!(!template.contains(yazelix_bar::ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER));
+        assert!(!template.contains("command_workspace_command"));
+        assert!(!template.contains("status-cache-widget workspace"));
+        assert!(!template.contains("command_cursor_command"));
+        assert!(!template.contains("configs/zellij/scripts/ram_usage.nu"));
         assert!(!template.contains("macchina -o memory"));
         assert!(!template.contains("grep -o"));
         assert!(!template.contains("status-bus-workspace"));
-        assert!(template.contains("command_claude_usage_command"));
-        assert!(template.contains(r##"command_claude_usage_format "#[fg=#bb88ff,bold]{stdout}""##));
-        assert!(template.contains(r#"command_claude_usage_interval "10""#));
-        assert!(template.contains("command_codex_usage_command"));
-        assert!(template.contains(r##"command_codex_usage_format "#[fg=#bb88ff,bold]{stdout}""##));
-        assert!(template.contains(r#"command_codex_usage_interval "10""#));
-        assert!(template.contains("command_opencode_go_usage_command"));
-        assert!(
-            template.contains(r##"command_opencode_go_usage_format "#[fg=#bb88ff,bold]{stdout}""##)
-        );
-        assert!(template.contains(r#"command_opencode_go_usage_interval "10""#));
         assert!(!template.contains("command_amp_usage_command"));
         assert!(!template.contains("agent-usage"));
     }
@@ -2493,12 +2623,43 @@ keybinds {
             r#"command_workspace_command "{} zellij status-cache-widget workspace""#,
             expected_yzx_control
         )));
+        assert!(rendered.contains(r##"command_workspace_format "#[fg=#00ff88,bold]{stdout}""##));
+        assert!(rendered.contains(r#"command_workspace_interval "1""#));
         assert!(rendered.contains(&format!(
             r#"command_cursor_command "{} zellij status-cache-widget cursor""#,
             expected_yzx_control
         )));
-        assert!(!rendered.contains(ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER));
-        assert!(!rendered.contains(ZJSTATUS_NU_BIN_PLACEHOLDER));
+        assert!(rendered.contains(r#"command_cursor_format "{stdout}""#));
+        assert!(rendered.contains(r#"command_cursor_rendermode "dynamic""#));
+        assert!(rendered.contains(r#"command_cursor_interval "10""#));
+        assert!(rendered.contains(&format!(
+            r#"command_claude_usage_command "{} zellij status-cache-widget claude_usage""#,
+            expected_yzx_control
+        )));
+        assert!(rendered.contains(r##"command_claude_usage_format "#[fg=#bb88ff,bold]{stdout}""##));
+        assert!(rendered.contains(r#"command_claude_usage_interval "10""#));
+        assert!(rendered.contains(&format!(
+            r#"command_codex_usage_command "{} zellij status-cache-widget codex_usage""#,
+            expected_yzx_control
+        )));
+        assert!(rendered.contains(r##"command_codex_usage_format "#[fg=#bb88ff,bold]{stdout}""##));
+        assert!(rendered.contains(r#"command_codex_usage_interval "10""#));
+        assert!(rendered.contains(&format!(
+            r#"command_opencode_go_usage_command "{} zellij status-cache-widget opencode_go_usage""#,
+            expected_yzx_control
+        )));
+        assert!(
+            rendered.contains(r##"command_opencode_go_usage_format "#[fg=#bb88ff,bold]{stdout}""##)
+        );
+        assert!(rendered.contains(r#"command_opencode_go_usage_interval "10""#));
+        assert!(rendered.contains(&format!(
+            r#"command_version_command "{} -c 'use {}/nushell/scripts/utils/constants.nu YAZELIX_VERSION; $YAZELIX_VERSION'""#,
+            expected_nu,
+            runtime_dir.to_string_lossy()
+        )));
+        assert!(!rendered.contains(yazelix_bar::ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER));
+        assert!(!rendered.contains(yazelix_bar::ZJSTATUS_NU_BIN_PLACEHOLDER));
+        assert!(!rendered.contains(ZJSTATUS_COMMAND_DEFINITIONS_PLACEHOLDER));
         assert!(!rendered.contains("status-bus-workspace"));
         assert!(!rendered.contains("agent-usage"));
     }
