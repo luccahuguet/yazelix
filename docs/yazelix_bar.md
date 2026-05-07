@@ -12,14 +12,16 @@ nix build .#yazelix_bar
 
 The package installs:
 
+- `bin/yazelix_bar_generate`
 - `share/yazelix_bar/zjstatus.wasm`
 - `share/yazelix_bar/yazelix_bar.kdl`
 - `share/yazelix_bar/yazelix_bar.template.kdl`
+- `share/yazelix_bar/generated/yazelix_bar.kdl`
 - `share/yazelix_bar/examples/custom_command_widgets.kdl`
 - `share/yazelix_bar/examples/yazelix_runtime_widgets.kdl`
 - `share/doc/yazelix_bar/README.md`
 
-Use `yazelix_bar.kdl` as a Zellij layout plugin block. The template keeps `__YAZELIX_BAR_ZJSTATUS_WASM__` for users who want to substitute a different pinned `zjstatus.wasm`. The example snippets are small blocks to copy into the plugin body rather than alternate full presets.
+Use `yazelix_bar.kdl` as a Zellij layout plugin block. The template keeps `__YAZELIX_BAR_ZJSTATUS_WASM__` for users who want to substitute a different pinned `zjstatus.wasm`. The generated preset is emitted by `yazelix_bar_generate` with package-local paths. The example snippets are small blocks to copy into the plugin body rather than alternate full presets.
 
 ## Minimal Zellij Layout Snippet
 
@@ -77,6 +79,29 @@ command_host_interval "30"
 
 The packaged `share/yazelix_bar/examples/custom_command_widgets.kdl` contains a slightly larger version of this pattern.
 
+## Preset Generator
+
+Use `yazelix_bar_generate` when brand text, colors, widget order, or generic command widgets should come from structured options instead of manual KDL edits.
+
+```bash
+yazelix_bar_generate \
+  --wasm-url "file:/path/to/zjstatus.wasm" \
+  --brand-label "DEV BAR" \
+  --right "session,datetime,command:host,brand" \
+  --command "host=hostname -s"
+```
+
+The `--left`, `--center`, and `--right` flags accept comma-separated tokens:
+
+- `mode`
+- `tabs`
+- `session`
+- `datetime`
+- `brand`
+- `command:name`
+
+Command widgets use `--command name=command`, with optional `--command-format name=format` and `--command-interval name=seconds`. This covers generic provider/status widgets without making provider tools part of the default package.
+
 AI usage widgets are first-class Yazelix value, but they are provider-driven:
 
 - generic standalone users should point zjstatus command widgets at their own provider commands
@@ -93,7 +118,7 @@ Use `share/yazelix_bar/examples/yazelix_runtime_widgets.kdl` only inside a full 
 
 ## Current Limit
 
-Zellij/zjstatus presets do not currently have a native include or variables layer, so deep standalone customization still means copying `yazelix_bar.template.kdl` into a layout and editing the plugin block. The supported non-fragile path for now is to keep the base preset small, keep examples as copyable snippets, and avoid duplicating a separate generated artifact family. If this becomes too limiting, the next step should be a small generator that emits the same preset from structured options.
+Zellij/zjstatus presets do not currently have a native include or variables layer. Use the generator for structured brand, color, order, and command-widget changes; copy `yazelix_bar.template.kdl` only when editing lower-level zjstatus keys that the generator does not expose.
 
 ## Release Process
 
@@ -101,7 +126,7 @@ Maintainers update the vendored zjstatus wasm through the normal repo update flo
 
 ```bash
 nix build .#yazelix_bar
-yzx dev rust test yazelix_bar
+cargo test --manifest-path rust_core/Cargo.toml -p yazelix_bar
 ```
 
-If the standalone preset grows beyond zjstatus configuration, the next step is a generator or real plugin decision rather than forking zjstatus by default.
+If the standalone preset grows beyond zjstatus configuration, the next step is a real plugin decision rather than forking zjstatus by default.
