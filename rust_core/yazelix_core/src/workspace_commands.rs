@@ -6,8 +6,8 @@ use crate::control_plane::{home_dir_from_env, runtime_dir_from_env};
 use crate::pane_orchestrator_client::{
     YZPP_PLUGIN_ALIAS, run_pane_orchestrator_command, run_zellij_plugin_command,
 };
+use crate::popup_session_facts::compute_popup_session_facts_from_env;
 use crate::session_facts::compute_session_facts_from_env;
-use crate::transient_pane_facts::compute_transient_pane_facts_from_env;
 use crate::workspace_session::{
     SidebarState, WorkspaceRetargetResult, current_tab_workspace_root_from_json,
     parse_active_sidebar_state, parse_workspace_retarget_response,
@@ -243,7 +243,7 @@ pub fn run_yzx_popup(args: &[String]) -> Result<i32, CoreError> {
     let runtime_dir = runtime_dir_from_env()?;
     let runtime_env = current_process_runtime_env();
     let popup_program = resolve_popup_runtime_argv(&parsed.program, &runtime_env)?;
-    let popup_facts = compute_transient_pane_facts_from_env()?;
+    let popup_facts = compute_popup_session_facts_from_env()?;
     let popup_cwd = current_tab_workspace_root(true).unwrap_or_else(|| {
         env::current_dir()
             .unwrap_or_else(|_| PathBuf::from("."))

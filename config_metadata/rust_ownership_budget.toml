@@ -1,7 +1,7 @@
 [contract]
-measured_total_loc = 73542
+measured_total_loc = 73513
 measured_total_file_count = 140
-current_total_loc_max = 73542
+current_total_loc_max = 73513
 current_total_file_count_max = 140
 hard_target_loc = 60000
 
@@ -9,9 +9,9 @@ hard_target_loc = 60000
 id = "core_cli_and_public_surface"
 status = "canonical"
 owner_bead = "yazelix-ykti.1"
-measured_loc = 8172
+measured_loc = 8171
 measured_files = 12
-max_loc = 8172
+max_loc = 8171
 target_loc = 7000
 max_files = 12
 allowed_paths = [
@@ -120,7 +120,7 @@ allowed_paths = [
   "rust_core/yazelix_core/src/launch_commands/terminal.rs",
   "rust_core/yazelix_core/src/layout_family_contract.rs",
   "rust_core/yazelix_core/src/pane_orchestrator_client.rs",
-  "rust_core/yazelix_core/src/transient_pane_facts.rs",
+  "rust_core/yazelix_core/src/popup_session_facts.rs",
   "rust_core/yazelix_core/src/workspace_asset_contract.rs",
   "rust_core/yazelix_core/src/workspace_commands.rs",
   "rust_core/yazelix_core/src/workspace_session.rs",
@@ -166,9 +166,9 @@ allowed_paths = [
 id = "maintainer_tooling_and_validators"
 status = "canonical_maintainer"
 owner_bead = "yazelix-9opk.5.1"
-measured_loc = 11072
+measured_loc = 11044
 measured_files = 17
-max_loc = 11072
+max_loc = 11044
 target_loc = 9000
 max_files = 17
 allowed_paths = [

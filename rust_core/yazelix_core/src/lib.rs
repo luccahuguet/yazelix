@@ -34,6 +34,7 @@ pub mod managed_user_config_stubs;
 pub mod native_config_status;
 pub mod onboard_commands;
 pub mod pane_orchestrator_client;
+pub mod popup_session_facts;
 pub mod profile_commands;
 pub mod public_command_surface;
 pub mod reset_commands;
@@ -51,7 +52,6 @@ pub mod startup_handoff;
 pub mod status_report;
 pub mod support_commands;
 pub mod terminal_materialization;
-pub mod transient_pane_facts;
 pub mod update_commands;
 pub mod upgrade_summary;
 pub mod user_config_paths;
@@ -131,6 +131,7 @@ pub use native_config_status::{
     path_owned_by_home_manager, status_code_for_entry, xdg_config_home_from_env,
 };
 pub use onboard_commands::run_yzx_onboard;
+pub use popup_session_facts::{PopupSessionFactsData, compute_popup_session_facts_from_env};
 pub use profile_commands::{
     run_profile_compare_baseline, run_profile_compare_reports, run_profile_create_run,
     run_profile_load_report, run_profile_print_report, run_profile_record_step,
@@ -183,7 +184,6 @@ pub use terminal_materialization::{
     TerminalGeneratedConfig, TerminalMaterializationData, TerminalMaterializationRequest,
     generate_terminal_materialization,
 };
-pub use transient_pane_facts::{TransientPaneFactsData, compute_transient_pane_facts_from_env};
 pub use upgrade_summary::{
     UpgradeSummaryDisplayResult, UpgradeSummaryReport, build_upgrade_summary_report,
     current_release_headline, maybe_show_first_run_upgrade_summary, show_current_upgrade_summary,

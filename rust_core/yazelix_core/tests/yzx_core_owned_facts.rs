@@ -73,10 +73,10 @@ ghostty_trail_color = "random"
     assert_eq!(envelope["data"]["ya_command"], "cached-ya");
 }
 
-// Defends: transient-pane-facts.compute keeps popup argv and geometry under one Rust-owned facts surface for popup/menu callers.
+// Defends: popup-session-facts.compute keeps popup argv and geometry under one Rust-owned facts surface for command popup overrides.
 // Contract: POP-001, POP-002, POP-003
 #[test]
-fn transient_pane_facts_compute_reports_popup_program_and_geometry() {
+fn popup_session_facts_compute_reports_popup_program_and_geometry() {
     let fixture = managed_config_fixture(
         r#"[zellij]
 popup_program = ["gitui", "--theme", "cyan"]
@@ -85,12 +85,12 @@ popup_height_percent = 76
 "#,
     );
 
-    let output = yzx_core_command_in_fixture(&fixture, "transient-pane-facts.compute")
+    let output = yzx_core_command_in_fixture(&fixture, "popup-session-facts.compute")
         .output()
         .unwrap();
     let envelope: Value = ok_envelope(&output);
 
-    assert_eq!(envelope["command"], "transient-pane-facts.compute");
+    assert_eq!(envelope["command"], "popup-session-facts.compute");
     assert_eq!(
         envelope["data"]["popup_program"],
         serde_json::json!(["gitui", "--theme", "cyan"])
@@ -99,9 +99,9 @@ popup_height_percent = 76
     assert_eq!(envelope["data"]["popup_height_percent"], 76);
 }
 
-// Regression: transient-pane facts come from the per-session snapshot so popup/menu panes keep their launch-time config.
+// Regression: popup session facts come from the per-session snapshot so command popup overrides keep launch-time config.
 #[test]
-fn transient_pane_facts_compute_prefers_session_snapshot_over_stale_config() {
+fn popup_session_facts_compute_prefers_session_snapshot_over_stale_config() {
     let fixture = managed_config_fixture(
         r#"[zellij]
 popup_program = ["config-popup"]
@@ -124,13 +124,13 @@ ghostty_trail_color = "random"
         ],
     );
 
-    let output = yzx_core_command_in_fixture(&fixture, "transient-pane-facts.compute")
+    let output = yzx_core_command_in_fixture(&fixture, "popup-session-facts.compute")
         .env("YAZELIX_SESSION_CONFIG_PATH", snapshot)
         .output()
         .unwrap();
     let envelope: Value = ok_envelope(&output);
 
-    assert_eq!(envelope["command"], "transient-pane-facts.compute");
+    assert_eq!(envelope["command"], "popup-session-facts.compute");
     assert_eq!(
         envelope["data"]["popup_program"],
         serde_json::json!(["cached-popup", "--flag"])
@@ -141,7 +141,7 @@ ghostty_trail_color = "random"
 
 // Regression: different Yazelix windows keep the config snapshot they launched with, even after live config edits.
 #[test]
-fn transient_pane_facts_compute_uses_window_snapshot_identity() {
+fn popup_session_facts_compute_uses_window_snapshot_identity() {
     let fixture = managed_config_fixture(
         r#"[zellij]
 popup_program = ["new-live-config"]
@@ -161,11 +161,11 @@ ghostty_trail_color = "random"
         &[("popup_program", serde_json::json!(["new-window-popup"]))],
     );
 
-    let old_output = yzx_core_command_in_fixture(&fixture, "transient-pane-facts.compute")
+    let old_output = yzx_core_command_in_fixture(&fixture, "popup-session-facts.compute")
         .env("YAZELIX_SESSION_CONFIG_PATH", old_snapshot)
         .output()
         .unwrap();
-    let new_output = yzx_core_command_in_fixture(&fixture, "transient-pane-facts.compute")
+    let new_output = yzx_core_command_in_fixture(&fixture, "popup-session-facts.compute")
         .env("YAZELIX_SESSION_CONFIG_PATH", new_snapshot)
         .output()
         .unwrap();

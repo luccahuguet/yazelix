@@ -14,18 +14,17 @@ use yazelix_core::{
     ComputeConfigStateRequest, CoreError, DoctorConfigEvaluateRequest,
     DoctorRuntimeEvaluateRequest, ErrorClass, GhosttyMaterializationRequest,
     HelixDoctorEvaluateRequest, HelixMaterializationRequest, InstallOwnershipEvaluateRequest,
-    LaunchMaterializationRequest, NormalizeConfigRequest, RecordConfigStateRequest,
-    RuntimeContractEvaluateRequest, RuntimeMaterializationPlanRequest,
+    LaunchMaterializationRequest, NormalizeConfigRequest, PopupSessionFactsData,
+    RecordConfigStateRequest, RuntimeContractEvaluateRequest, RuntimeMaterializationPlanRequest,
     RuntimeMaterializationRepairEvaluateRequest, RuntimeMaterializationRepairRunData,
     RuntimeRepairDirective, SessionConfigSnapshotCreateRequest, StartupFactsData,
     StartupHandoffCaptureRequest, StartupLaunchPreflightRequest, TerminalMaterializationRequest,
-    TransientPaneFactsData, YaziMaterializationRequest, YaziRenderPlanRequest,
-    YzxExternBridgeSyncRequest, ZellijMaterializationRequest, ZellijRenderPlanRequest,
-    capture_startup_handoff_context, compute_config_state, compute_integration_facts_from_env,
+    YaziMaterializationRequest, YaziRenderPlanRequest, YzxExternBridgeSyncRequest,
+    ZellijMaterializationRequest, ZellijRenderPlanRequest, capture_startup_handoff_context,
+    compute_config_state, compute_integration_facts_from_env, compute_popup_session_facts_from_env,
     compute_runtime_env, compute_startup_facts_from_env, compute_status_report,
-    compute_transient_pane_facts_from_env, compute_yazi_render_plan, compute_zellij_render_plan,
-    current_release_headline, error_envelope, evaluate_doctor_config_report,
-    evaluate_doctor_runtime_report, evaluate_helix_doctor_report,
+    compute_yazi_render_plan, compute_zellij_render_plan, current_release_headline, error_envelope,
+    evaluate_doctor_config_report, evaluate_doctor_runtime_report, evaluate_helix_doctor_report,
     evaluate_install_ownership_report, evaluate_runtime_contract,
     evaluate_startup_launch_preflight, generate_ghostty_materialization,
     generate_helix_materialization, generate_terminal_materialization,
@@ -46,7 +45,7 @@ const RUNTIME_CONTRACT_EVALUATE_COMMAND: &str = "runtime-contract.evaluate";
 const STARTUP_LAUNCH_PREFLIGHT_EVALUATE_COMMAND: &str = "startup-launch-preflight.evaluate";
 const RUNTIME_ENV_COMPUTE_COMMAND: &str = "runtime-env.compute";
 const INTEGRATION_FACTS_COMPUTE_COMMAND: &str = "integration-facts.compute";
-const TRANSIENT_PANE_FACTS_COMPUTE_COMMAND: &str = "transient-pane-facts.compute";
+const POPUP_SESSION_FACTS_COMPUTE_COMMAND: &str = "popup-session-facts.compute";
 const STARTUP_FACTS_COMPUTE_COMMAND: &str = "startup-facts.compute";
 const STARTUP_HANDOFF_CAPTURE_COMMAND: &str = "startup-handoff.capture";
 const SESSION_CONFIG_SNAPSHOT_WRITE_COMMAND: &str = "session-config-snapshot.write";
@@ -199,9 +198,9 @@ fn run() -> Result<(), Box<CommandError>> {
             run_integration_facts_compute(parser)
                 .map_err(|error| CommandError::new(command_for_error, error))
         }
-        TRANSIENT_PANE_FACTS_COMPUTE_COMMAND => {
+        POPUP_SESSION_FACTS_COMPUTE_COMMAND => {
             let command_for_error = command.clone();
-            run_transient_pane_facts_compute(parser)
+            run_popup_session_facts_compute(parser)
                 .map_err(|error| CommandError::new(command_for_error, error))
         }
         STARTUP_FACTS_COMPUTE_COMMAND => {
@@ -1004,10 +1003,10 @@ fn run_integration_facts_compute(parser: lexopt::Parser) -> Result<(), CoreError
     write_success_envelope(INTEGRATION_FACTS_COMPUTE_COMMAND, data)
 }
 
-fn run_transient_pane_facts_compute(parser: lexopt::Parser) -> Result<(), CoreError> {
+fn run_popup_session_facts_compute(parser: lexopt::Parser) -> Result<(), CoreError> {
     ensure_no_args(parser)?;
-    let data: TransientPaneFactsData = compute_transient_pane_facts_from_env()?;
-    write_success_envelope(TRANSIENT_PANE_FACTS_COMPUTE_COMMAND, data)
+    let data: PopupSessionFactsData = compute_popup_session_facts_from_env()?;
+    write_success_envelope(POPUP_SESSION_FACTS_COMPUTE_COMMAND, data)
 }
 
 fn run_startup_facts_compute(parser: lexopt::Parser) -> Result<(), CoreError> {
