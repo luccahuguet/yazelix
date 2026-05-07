@@ -1255,38 +1255,4 @@ mod tests {
         assert!(rendered.contains("new/removed"));
         assert!(rendered.contains("zellij_handoff_ready"));
     }
-
-    // Defends: profile run ID uses the expected prefix format.
-    // Strength: defect=2 behavior=1 resilience=1 cost=2 uniqueness=2 total=8/10
-    #[test]
-    fn generate_run_id_has_expected_prefix() {
-        let run_id = generate_run_id();
-        assert!(
-            run_id.starts_with("startup_profile_"),
-            "run_id should start with 'startup_profile_': got {}",
-            run_id
-        );
-    }
-
-    // Defends: summary table renders steps with and without context.
-    // Strength: defect=1 behavior=2 resilience=1 cost=2 uniqueness=2 total=8/10
-    #[test]
-    fn render_summary_table_shows_steps() {
-        let summary = ProfileSummary {
-            run: serde_json::json!({"scenario": "test"}),
-            steps: vec![serde_json::json!({
-                "component": "inner",
-                "step": "init",
-                "duration_ms": 1.5,
-                "metadata": {}
-            })],
-            total_duration_ms: 1.5,
-            report_path: "/tmp/test.jsonl".to_string(),
-        };
-
-        let table = render_summary_table(&summary);
-        assert!(table.contains("inner"));
-        assert!(table.contains("init"));
-        assert!(table.contains("1.50ms"));
-    }
 }

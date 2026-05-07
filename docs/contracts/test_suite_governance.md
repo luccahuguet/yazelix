@@ -114,6 +114,25 @@ This contract defines:
 | CI-only or CI-focused lane | `.github/workflows/ci.yml` | Cheap, reliable branch protection checks | Can be narrower than the full local suite when that keeps CI high-signal |
 | Manual / exploratory lane | `nushell/scripts/dev/record_demo_fonts.nu`, benchmark and demo helpers | Human-observed or exploratory checks | Not part of the normal regression contract |
 
+### Canonical fast gate set
+
+Ordinary Yazelix changes should use a small, purpose-matched gate set instead
+of defaulting to every available validator. The canonical fast gates are:
+
+| Change shape | Inner-loop gate | Completion gate |
+| --- | --- | --- |
+| Rust source changes | `yzx dev rust fmt --check`; `yzx dev rust check`; focused `cargo test` or `yzx dev rust test` filter for touched behavior | `yzx dev test` for nontrivial runtime behavior, shared command routing, or test-governance changes |
+| Governed test changes | Focused test binary or filter for edited tests | `yzx_repo_validator validate-rust-test-traceability`; `yzx_repo_validator validate-default-test-traceability`; `yzx dev test` when default-suite membership or broad behavior changed |
+| Config contract, schema, Home Manager, or generated config metadata | `yzx_repo_validator validate-config-surface-contract` | `yzx dev test` when runtime materialization or config UI behavior changed |
+| Zellij layouts, pane orchestrator contracts, or workspace assets | Focused Rust/plugin tests for touched behavior | `yzx_repo_validator validate-workspace-session-contract`; `yzx_repo_validator validate-pane-orchestrator-sync` after pane-orchestrator source changes |
+| Docs front door and current prose | Direct review plus relevant docs validator | `yzx_repo_validator validate-docs-experience` for route/stale-doc changes; `yzx_repo_validator validate-readme-version` for release/version surface changes |
+| Nix package or flake API changes | Cheap `nix eval` or targeted validator for the touched API | `yzx_repo_validator validate-flake-interface`; `yzx_repo_validator validate-nix-customization-api`; heavier installed-runtime/profile validators only for release or explicit package changes |
+
+`yzx dev test` is the canonical default regression gate, not the only inner-loop
+command. Sweep, visual, cold-install, installed-runtime, and nixpkgs submission
+validators are release or change-specific gates, not routine requirements for
+small source or test cleanups.
+
 ### Current suite inventory
 
 The current repo surface should be understood roughly as:
@@ -125,6 +144,7 @@ The current repo surface should be understood roughly as:
   - `yzx_repo_validator validate-default-test-traceability`
   - `yzx_repo_validator validate-rust-test-traceability`
   - `yzx_repo_validator validate-contracts`
+  - `yzx_repo_validator validate-docs-experience`
 - Default automated lane:
   - `rust_core/Cargo.toml` `nextest` suite `yazelix_core`
   - `rust_plugins/zellij_pane_orchestrator/Cargo.toml` `nextest` suite `zellij_pane_orchestrator`
@@ -324,6 +344,11 @@ That invariant is already defended by:
 
 So the duplicate README-version assertion is removed from the governed
 regression suite instead of being run in yet another lane.
+
+The docs-experience validator owns docs front-door routes and stale markers in
+current user docs. It deliberately does not freeze individual command-reference
+markers, because command names and help copy are owned by the CLI command
+surface and docs review rather than by a second route validator.
 
 ## Non-goals
 

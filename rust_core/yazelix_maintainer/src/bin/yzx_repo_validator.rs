@@ -78,7 +78,7 @@ fn main() {
         ),
         "validate-docs-experience" => (
             validate_docs_experience(&resolved_repo_root),
-            Some("✅ Docs front door and command reference routes are valid".to_string()),
+            Some("✅ Docs front door routes are valid".to_string()),
         ),
         "validate-nushell-budget" => (
             validate_nushell_budget(&resolved_repo_root),

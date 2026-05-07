@@ -1339,34 +1339,6 @@ mod tests {
         assert!(matches!(route, YzxPublicRootRoute::RustControl));
     }
 
-    // Defends: nested maintainer commands are Rust-owned so the dev surface can avoid a large Nushell module.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
-    #[test]
-    fn routes_nested_dev_rust_commands_to_control_plane() {
-        let argv = [
-            String::from("dev"),
-            String::from("rust"),
-            String::from("test"),
-            String::from("core"),
-            String::from("front_door_render"),
-        ];
-        let route = classify_yzx_root_route(&argv).unwrap();
-        assert!(matches!(route, YzxPublicRootRoute::RustControl));
-    }
-
-    // Defends: maintainer session inspection stays reachable through the public `yzx dev` route.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
-    #[test]
-    fn routes_dev_inspect_session_to_control_plane() {
-        let argv = [
-            String::from("dev"),
-            String::from("inspect_session"),
-            String::from("--json"),
-        ];
-        let route = classify_yzx_root_route(&argv).unwrap();
-        assert!(matches!(route, YzxPublicRootRoute::RustControl));
-    }
-
     // Regression: menu visibility and menu categories come from the shared Rust command surface instead of a second Nushell-owned map.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]

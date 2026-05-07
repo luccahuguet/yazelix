@@ -1,5 +1,5 @@
 // Test lane: default
-//! Maintainer checks for the user-facing docs entrypoint and command reference.
+//! Maintainer checks for the user-facing docs entrypoint.
 
 use crate::repo_validation::ValidationReport;
 use std::fs;
@@ -28,16 +28,6 @@ const MAIN_DOC_ROUTES: &[(&str, &str)] = &[
         "Contract inventory",
         "docs/contracts/contracts_inventory.md",
     ),
-];
-
-const COMMAND_REFERENCE_MARKERS: &[&str] = &[
-    "yzx launch",
-    "yzx enter",
-    "yzx warp",
-    "yzx tutor begin",
-    "yzx cursors",
-    "yzx update upstream",
-    "yzx update home_manager",
 ];
 
 const CURRENT_USER_DOCS: &[&str] = &[
@@ -83,15 +73,6 @@ pub fn validate_docs_experience(repo_root: &Path) -> Result<ValidationReport, St
         if !docs_index.contains(&relative_link) {
             report.errors.push(format!(
                 "docs/README.md must link route `{label}` to `{relative_link}`"
-            ));
-        }
-    }
-
-    let command_reference = read_repo_text(repo_root, "docs/yzx_cli.md")?;
-    for marker in COMMAND_REFERENCE_MARKERS {
-        if !command_reference.contains(marker) {
-            report.errors.push(format!(
-                "docs/yzx_cli.md is missing current command marker `{marker}`"
             ));
         }
     }
@@ -157,15 +138,10 @@ mod tests {
         for (_, path) in MAIN_DOC_ROUTES {
             write(&repo, path, "# Doc\n");
         }
-        write(
-            &repo,
-            "docs/yzx_cli.md",
-            "yzx launch\nyzx enter\nyzx warp\nyzx tutor begin\nyzx cursors\nyzx update upstream\nyzx update home_manager\n",
-        );
         (temp, repo)
     }
 
-    // Defends: the docs validator accepts a complete front-door route map and current command reference markers.
+    // Defends: the docs validator accepts a complete front-door route map.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn docs_experience_validator_accepts_complete_route_map() {
