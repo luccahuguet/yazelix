@@ -27,6 +27,12 @@ Yazelix is built on a focused terminal-workspace stack. This catalog lists the p
 - `#ghostty_cursor_shaders` — Compatibility package attribute for the same standalone cursor output
 - `homeManagerModules.yazelix` — The Home Manager module for declarative installs, with `runtime_variant = "ghostty"` by default and `"wezterm"` available explicitly
 
+## First-Party Child Repositories
+
+- [yazelix-screen](https://github.com/luccahuguet/yazelix-screen) — Standalone terminal animation engine consumed by Yazelix welcome/screen rendering and exposed from this repo as `#yzs` and `#yazelix_screen`.
+- [yazelix-cursors](https://github.com/luccahuguet/yazelix-cursors) — Standalone Ghostty cursor preset, shader, and `yzc` CLI repository consumed by Yazelix cursor settings and exposed from this repo as `#yzc`, `#yazelix_cursors`, and `#ghostty_cursor_shaders`.
+- [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij users; its flake package `#yzpp` installs `share/yazelix_zellij_popup/yzpp.wasm`.
+
 ## Core Workspace Stack
 
 - [Zellij](https://github.com/zellij-org/zellij) — Terminal multiplexer that owns Yazelix panes, tabs, layouts, keybindings, and session context. Yazelix ships generated Zellij layouts and runtime overlays for the managed workspace.
