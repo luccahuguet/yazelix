@@ -101,9 +101,18 @@
           src = ./.;
           metaPlatforms = systems;
         };
+      yazelixZellijPopupPackage = system: pkgs:
+        import ./packaging/yazelix_zellij_popup.nix {
+          inherit pkgs;
+          src = ./.;
+          fenixPkgs = fenix.packages.${system};
+          metaPlatforms = systems;
+        };
       defaultOverlay = final: _prev: {
         yazelix = mkYazelix final.stdenv.hostPlatform.system { pkgs = final; };
         yazelix_bar = yazelixBarPackage final.stdenv.hostPlatform.system final;
+        yazelix_zellij_popup =
+          yazelixZellijPopupPackage final.stdenv.hostPlatform.system final;
       };
       maintainerShell =
         system: pkgs:
@@ -143,6 +152,7 @@
           yazelix_wezterm = yazelixPackage system pkgs "wezterm" noExtraRuntimePackages;
           yazelix_agent_tools = yazelixPackage system pkgs defaultRuntimeVariant agentUsageRuntimePackages;
           yazelix_bar = yazelixBarPackage system pkgs;
+          yazelix_zellij_popup = yazelixZellijPopupPackage system pkgs;
           yazelix_screen = yazelixScreen.packages.${system}.yzs;
           yazelix_cursors = yazelixCursors.packages.${system}.yazelix_cursors;
         in
@@ -160,6 +170,7 @@
           yazelix_ghostty = yazelix_ghostty;
           yazelix_screen = yazelix_screen;
           yazelix_wezterm = yazelix_wezterm;
+          yazelix_zellij_popup = yazelix_zellij_popup;
           yzs = yazelix_screen;
         }
       );

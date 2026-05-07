@@ -38,6 +38,7 @@ This inventory lists the canonical contracts under `docs/contracts/`. It is not 
 | `standalone_yazelix_screen_distribution.md` | Standalone Yazelix screen package and app |
 | `startup_profile_scenarios.md` | Structured startup-profile scenarios |
 | `standalone_yazelix_bar_distribution.md` | Standalone `yazelix_bar` zjstatus preset and package |
+| `standalone_yazelix_zellij_popup_distribution.md` | Standalone `yazelix_zellij_popup` Zellij floating TUI popup package |
 | `status_doctor_machine_readable_reports.md` | Machine-readable status and doctor reports |
 | `supply_chain_hardening.md` | Supply-chain hardening policy |
 | `terminal_launch_contract.md` | Terminal launch/process-boundary behavior |

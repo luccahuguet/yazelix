@@ -1,14 +1,18 @@
-// Future plain-Zellij example for the standalone yazelix_zellij_popup plugin.
-// Replace the file path with the installed plugin path from that package.
+// Plain-Zellij example for the standalone yazelix_zellij_popup plugin.
+// The packaged example replaces __YAZELIX_ZELLIJ_POPUP_WASM__ with its installed file URL.
 
 plugins {
-    yazelix_zellij_popup location="file:/path/to/yazelix_zellij_popup.wasm"
+    yazelix_zellij_popup location="__YAZELIX_ZELLIJ_POPUP_WASM__"
+}
+
+load_plugins {
+    yazelix_zellij_popup
 }
 
 keybinds {
     normal {
         bind "Alt t" {
-            MessagePlugin "file:/path/to/yazelix_zellij_popup.wasm" {
+            MessagePlugin "yazelix_zellij_popup" {
                 name "transient_popup"
                 payload "{\"action\":\"toggle\",\"spec\":{\"id\":\"gitui\",\"pane_title\":\"gitui_popup\",\"command_marker\":\"gitui\",\"command\":[\"gitui\"],\"cwd\":\".\",\"width_percent\":90,\"height_percent\":85},\"args\":[]}"
             }

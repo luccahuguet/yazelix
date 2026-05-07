@@ -62,9 +62,13 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - Statement: Popup must not be extracted from Yazelix until it has a generic
   non-Yazelix config surface, a stable request schema, a documented plain
   Zellij pipe or plugin command contract, tests that run without the full
-  Yazelix runtime, and clear examples for plain Zellij users. Until every gate
-  item is true, the in-repo Yazelix implementation remains the source of truth
-- Verification: validator `yzx_repo_validator validate-contracts`; this contract
+  Yazelix runtime, and clear examples for plain Zellij users. The first
+  supported standalone package is `.#yazelix_zellij_popup`; the in-repo
+  Yazelix pane-orchestrator path remains the source of truth for full Yazelix
+  popup/menu/config adapters
+- Verification: validator `yzx_repo_validator validate-contracts`; contract
+  `docs/contracts/standalone_yazelix_zellij_popup_distribution.md`;
+  package gate `nix build .#yazelix_zellij_popup`
 
 ## Behavior
 
@@ -81,8 +85,8 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - `Alt+t` opens one managed popup pane when it is missing, focuses it when it exists but is unfocused, and closes it when it is focused.
 - `Alt+Shift+M` continues to open the command-palette popup.
 - Plain Zellij users have plausible future value from this capability: a reusable floating-pane toggle for one configured TUI command, stable pane identity, and duplicate-preventing focus/close behavior.
-- That future value is not an extraction promise. Extraction is allowed only after the POP-005 gate is satisfied and examples prove the capability works without Yazelix-specific runtime paths, wrappers, config keys, or sidebar refresh hooks.
-- The current Yazelix path remains canonical while the gate is unmet: `yzx popup`, `zellij.popup_program`, the transient-pane facts surface, and the pane-orchestrator transient contract define supported behavior.
+- The standalone `yazelix_zellij_popup` package provides this capability for plain Zellij users without Yazelix-specific runtime paths, wrappers, config keys, or sidebar refresh hooks.
+- The current Yazelix path remains canonical for the integrated product: `yzx popup`, `zellij.popup_program`, the transient-pane facts surface, and the pane-orchestrator transient contract define supported Yazelix behavior.
 
 ## Standalone Prep Schema
 
@@ -112,16 +116,16 @@ The extraction gate is prepared around a generic popup request shape that does n
 - `width_percent` and `height_percent` must be integers in `1..100`
 - `args` appends invocation-specific arguments to the configured command argv
 
-The plain-Zellij example lives at `docs/examples/zellij_popup_plain_zellij.kdl`. It demonstrates the intended future `MessagePlugin` payload shape for a standalone `yazelix_zellij_popup` plugin and intentionally avoids `settings.jsonc`, Home Manager, `yzx`, Yazelix runtime wrapper paths, workspace snapshots, and sidebar refresh hooks.
+The plain-Zellij example lives at `docs/examples/zellij_popup_plain_zellij.kdl`. It demonstrates the supported `MessagePlugin` payload shape for the standalone `yazelix_zellij_popup` plugin and intentionally avoids `settings.jsonc`, Home Manager, `yzx`, Yazelix runtime wrapper paths, workspace snapshots, and sidebar refresh hooks.
 
-This schema and example prepare POP-005; they do not satisfy the extraction gate by themselves. External extraction remains blocked until a distributable plugin/package, permission story, runtime-independent tests, and plain-Zellij examples are validated together.
+The package installs a substituted copy of that example with a package-local plugin `file:` URL.
 
 ## Non-goals
 
 - General floating-pane support for every Yazelix action
 - Converting all Yazi plugins to popup flows
 - Background daemon management for long-running AI tools
-- Splitting popup into a standalone repository or package before the POP-005 gate is met
+- Splitting popup into a separate repository before the package boundary proves enough independent value
 - Treating Yazelix wrapper paths, runtime env, or sidebar refresh behavior as a plain-Zellij API
 
 ## Acceptance Cases
@@ -134,7 +138,7 @@ This schema and example prepare POP-005; they do not satisfy the extraction gate
 6. Repeated popup-key presses do not create duplicate popup panes; they focus or close the existing managed popup instead.
 7. When `Alt+Shift+M` is used, the command palette still opens separately from the popup-program flow.
 8. A proposed popup extraction is rejected unless it supplies a generic config surface, stable request schema, documented Zellij command contract, runtime-independent tests, and plain-Zellij examples.
-9. While the extraction gate is unmet, Yazelix docs and code should continue to identify the in-repo implementation as canonical.
+9. The standalone package supports only the generic `transient_popup` contract; full Yazelix docs and code should continue to identify the integrated pane-orchestrator implementation as canonical for Yazelix adapters.
 10. A generic popup request rejects unknown fields and invalid geometry before opening a pane.
 
 ## Verification
@@ -144,6 +148,7 @@ This schema and example prepare POP-005; they do not satisfy the extraction gate
 - unit tests: popup lifecycle contract and transient-pane discovery in the pane orchestrator
 - unit tests: generic standalone popup spec and strict pipe request schema
 - unit tests: popup-toggle wrapper decision path
+- package gate: `nix build .#yazelix_zellij_popup`
 - integration tests: `yzx popup` command routing and popup geometry arguments with a fake Zellij binary
 - integration tests: generated Zellij config and permission cleanup remove stale popup-runner artifacts
 - CI checks: `nu nushell/scripts/dev/test_yzx_commands.nu`

@@ -125,7 +125,11 @@ impl TransientPopupSpec {
     pub fn identity(&self) -> TransientPaneIdentityView<'_> {
         TransientPaneIdentityView {
             pane_title: self.pane_title.as_str(),
-            command_marker: self.command_marker.as_deref(),
+            command_marker: self
+                .command_marker
+                .as_deref()
+                .map(str::trim)
+                .filter(|marker| !marker.is_empty()),
         }
     }
 
@@ -142,6 +146,29 @@ impl TransientPopupSpec {
 }
 
 impl TransientPopupPipeRequest {
+    pub fn is_launchable_spec(&self) -> bool {
+        if self.spec.id.trim().is_empty()
+            || self.spec.pane_title.trim().is_empty()
+            || self.spec.geometry().is_none()
+        {
+            return false;
+        }
+
+        if self
+            .spec
+            .command_marker
+            .as_deref()
+            .is_some_and(|marker| marker.trim().is_empty())
+        {
+            return false;
+        }
+
+        self.spec
+            .command
+            .first()
+            .is_some_and(|command_path| !command_path.trim().is_empty())
+    }
+
     pub fn launch_plan(&self, fallback_cwd: &str) -> Option<TransientPaneLaunchPlan> {
         if self.spec.id.trim().is_empty() || self.spec.pane_title.trim().is_empty() {
             return None;
@@ -528,6 +555,22 @@ mod tests {
         );
     }
 
+    // Defends: standalone popup specs cannot use an empty command marker that would match every command pane.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
+    #[test]
+    fn generic_popup_spec_ignores_blank_command_marker() {
+        let spec = TransientPopupSpec {
+            command_marker: Some("  ".into()),
+            ..generic_popup_spec()
+        };
+        let panes = [transient_pane(11, "other", Some("gitui --watch"), false)];
+
+        assert_eq!(
+            select_transient_pane_by_identity(&panes, spec.identity()),
+            None
+        );
+    }
+
     // Defends: the future plain-Zellij popup pipe schema resolves argv/cwd/geometry without Yazelix runtime wrapper paths.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
@@ -620,5 +663,45 @@ mod tests {
             cwd: None,
         };
         assert_eq!(invalid_geometry.launch_plan("/fallback"), None);
+    }
+
+    // Defends: standalone plugin entrypoints validate the full spec before opening, focusing, or closing panes.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
+    #[test]
+    fn standalone_popup_request_validation_rejects_unlaunchable_specs() {
+        let valid = TransientPopupPipeRequest {
+            action: TransientPopupAction::Toggle,
+            spec: generic_popup_spec(),
+            args: vec![],
+            cwd: None,
+        };
+        assert!(valid.is_launchable_spec());
+
+        let blank_marker = TransientPopupPipeRequest {
+            spec: TransientPopupSpec {
+                command_marker: Some(" ".into()),
+                ..generic_popup_spec()
+            },
+            ..valid.clone()
+        };
+        assert!(!blank_marker.is_launchable_spec());
+
+        let blank_command = TransientPopupPipeRequest {
+            spec: TransientPopupSpec {
+                command: vec![" ".into()],
+                ..generic_popup_spec()
+            },
+            ..valid.clone()
+        };
+        assert!(!blank_command.is_launchable_spec());
+
+        let invalid_geometry = TransientPopupPipeRequest {
+            spec: TransientPopupSpec {
+                height_percent: 0,
+                ..generic_popup_spec()
+            },
+            ..valid
+        };
+        assert!(!invalid_geometry.is_launchable_spec());
     }
 }
