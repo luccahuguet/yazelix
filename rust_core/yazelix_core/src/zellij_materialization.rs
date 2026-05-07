@@ -1,3 +1,4 @@
+use crate::action_registry::{PANE_ORCHESTRATOR_PLUGIN_ALIAS, ZELLIJ_ACTIONS};
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::control_plane::{
@@ -27,8 +28,7 @@ use yazelix_bar::{
     render_zjstatus_bar_segments, render_zjstatus_tab_label_formats,
 };
 
-const PANE_ORCHESTRATOR_PLUGIN_ALIAS: &str = "yazelix_pane_orchestrator";
-const PANE_ORCHESTRATOR_PLUGIN_PREFIX: &str = "yazelix_pane_orchestrator";
+const PANE_ORCHESTRATOR_PLUGIN_PREFIX: &str = PANE_ORCHESTRATOR_PLUGIN_ALIAS;
 const PANE_ORCHESTRATOR_WASM_NAME: &str = "yazelix_pane_orchestrator.wasm";
 const ZJSTATUS_PLUGIN_PREFIX: &str = "zjstatus";
 const ZJSTATUS_WASM_NAME: &str = "zjstatus.wasm";
@@ -53,95 +53,6 @@ const ZJSTATUS_REQUIRED_PERMISSIONS: &[&str] = &[
     "ReadApplicationState",
     "ChangeApplicationState",
     "RunCommands",
-];
-
-#[derive(Debug, Clone, Copy)]
-struct ZellijKeybindingActionSpec {
-    id: &'static str,
-    mode: &'static str,
-    message_name: &'static str,
-    payload: Option<&'static str>,
-    default_keys: &'static [&'static str],
-}
-
-const ZELLIJ_KEYBINDING_ACTIONS: &[ZellijKeybindingActionSpec] = &[
-    ZellijKeybindingActionSpec {
-        id: "open_workspace_terminal",
-        mode: "shared",
-        message_name: "open_workspace_terminal",
-        payload: None,
-        default_keys: &["Alt m"],
-    },
-    ZellijKeybindingActionSpec {
-        id: "popup",
-        mode: "shared",
-        message_name: "toggle_transient_pane",
-        payload: Some("popup"),
-        default_keys: &["Alt t"],
-    },
-    ZellijKeybindingActionSpec {
-        id: "menu",
-        mode: "shared",
-        message_name: "toggle_transient_pane",
-        payload: Some("menu"),
-        default_keys: &["Alt Shift M"],
-    },
-    ZellijKeybindingActionSpec {
-        id: "config",
-        mode: "shared",
-        message_name: "toggle_transient_pane",
-        payload: Some("config"),
-        default_keys: &["Alt Shift C"],
-    },
-    ZellijKeybindingActionSpec {
-        id: "move_focus_left_or_tab",
-        mode: "shared_except \"locked\"",
-        message_name: "move_focus_left_or_tab",
-        payload: None,
-        default_keys: &["Alt h", "Alt Left"],
-    },
-    ZellijKeybindingActionSpec {
-        id: "move_focus_right_or_tab",
-        mode: "shared_except \"locked\"",
-        message_name: "move_focus_right_or_tab",
-        payload: None,
-        default_keys: &["Alt l", "Alt Right"],
-    },
-    ZellijKeybindingActionSpec {
-        id: "toggle_editor_sidebar_focus",
-        mode: "shared_except \"locked\"",
-        message_name: "toggle_editor_sidebar_focus",
-        payload: None,
-        default_keys: &["Ctrl y"],
-    },
-    ZellijKeybindingActionSpec {
-        id: "toggle_sidebar",
-        mode: "shared_except \"locked\"",
-        message_name: "toggle_sidebar",
-        payload: None,
-        default_keys: &["Alt y"],
-    },
-    ZellijKeybindingActionSpec {
-        id: "smart_reveal",
-        mode: "shared_except \"locked\"",
-        message_name: "smart_reveal",
-        payload: None,
-        default_keys: &["Alt r"],
-    },
-    ZellijKeybindingActionSpec {
-        id: "previous_family",
-        mode: "shared_except \"locked\"",
-        message_name: "previous_family",
-        payload: None,
-        default_keys: &["Alt ["],
-    },
-    ZellijKeybindingActionSpec {
-        id: "next_family",
-        mode: "shared_except \"locked\"",
-        message_name: "next_family",
-        payload: None,
-        default_keys: &["Alt ]"],
-    },
 ];
 
 #[derive(Debug, Clone)]
@@ -812,12 +723,13 @@ fn strip_yazelix_owned_top_level_settings(content: &str, owned_setting_names: &[
 }
 
 fn default_zellij_keybindings() -> BTreeMap<String, Vec<String>> {
-    ZELLIJ_KEYBINDING_ACTIONS
+    ZELLIJ_ACTIONS
         .iter()
         .map(|spec| {
             (
-                spec.id.to_string(),
-                spec.default_keys
+                spec.action.local_id.to_string(),
+                spec.action
+                    .default_keys
                     .iter()
                     .map(|key| (*key).to_string())
                     .collect(),
@@ -900,24 +812,26 @@ fn validate_zellij_keybindings(
     keybindings: &BTreeMap<String, Vec<String>>,
 ) -> Result<(), CoreError> {
     let mut seen = BTreeMap::<String, String>::new();
-    for spec in ZELLIJ_KEYBINDING_ACTIONS {
-        let Some(keys) = keybindings.get(spec.id) else {
+    for spec in ZELLIJ_ACTIONS {
+        let Some(keys) = keybindings.get(spec.action.local_id) else {
             continue;
         };
         for key in keys {
-            if let Some(existing_action) = seen.insert(key.clone(), spec.id.to_string()) {
+            if let Some(existing_action) =
+                seen.insert(key.clone(), spec.action.local_id.to_string())
+            {
                 return Err(CoreError::classified(
                     ErrorClass::Config,
                     "duplicate_zellij_keybinding",
                     format!(
                         "Zellij keybinding {key:?} is assigned to both {existing_action} and {}.",
-                        spec.id
+                        spec.action.local_id
                     ),
                     "Give each Yazelix Zellij action a distinct key, or set one action to an empty list to disable its binding.",
                     json!({
                         "key": key,
                         "first_action": existing_action,
-                        "second_action": spec.id,
+                        "second_action": spec.action.local_id,
                     }),
                 ));
             }
@@ -927,15 +841,15 @@ fn validate_zellij_keybindings(
 }
 
 fn is_supported_zellij_keybinding_action(action: &str) -> bool {
-    ZELLIJ_KEYBINDING_ACTIONS
+    ZELLIJ_ACTIONS
         .iter()
-        .any(|spec| spec.id == action)
+        .any(|spec| spec.action.local_id == action)
 }
 
 fn supported_zellij_keybinding_actions() -> Vec<&'static str> {
-    ZELLIJ_KEYBINDING_ACTIONS
+    ZELLIJ_ACTIONS
         .iter()
-        .map(|spec| spec.id)
+        .map(|spec| spec.action.local_id)
         .collect()
 }
 
@@ -1021,8 +935,8 @@ fn quoted_kdl_strings(line: &str) -> Vec<String> {
 
 fn build_semantic_zellij_keybind_lines(keybindings: &BTreeMap<String, Vec<String>>) -> Vec<String> {
     let mut by_mode = BTreeMap::<&str, Vec<String>>::new();
-    for spec in ZELLIJ_KEYBINDING_ACTIONS {
-        let Some(keys) = keybindings.get(spec.id) else {
+    for spec in ZELLIJ_ACTIONS {
+        let Some(keys) = keybindings.get(spec.action.local_id) else {
             continue;
         };
         if keys.is_empty() {

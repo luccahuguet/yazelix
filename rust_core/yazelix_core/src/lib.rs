@@ -1,3 +1,4 @@
+pub mod action_registry;
 pub mod active_config_surface;
 pub mod bridge;
 pub mod cli_render;
@@ -57,6 +58,11 @@ pub mod zellij_commands;
 pub mod zellij_materialization;
 pub mod zellij_render_plan;
 
+pub use action_registry::{
+    PANE_ORCHESTRATOR_PLUGIN_ALIAS, YazelixActionBackend, YazelixActionDisablePolicy,
+    YazelixActionMetadata, YazelixActionOwner, ZELLIJ_ACTIONS, ZellijActionSpec,
+    all_yazelix_actions, zellij_action_by_local_id,
+};
 pub use bridge::{CoreError, ErrorClass, error_envelope, success_envelope};
 pub use command_metadata::{
     YzxCommandMetadataData, YzxExternBridgeSyncData, YzxExternBridgeSyncRequest,

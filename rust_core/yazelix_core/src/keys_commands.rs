@@ -1,6 +1,7 @@
 // Test lane: default
 //! `yzx keys*` family implemented in Rust for `yzx_control`.
 
+use crate::action_registry::{ZELLIJ_ACTIONS, ZellijActionSpec, zellij_action_by_local_id};
 use crate::bridge::CoreError;
 use crate::cli_render::{
     accent as render_cli_accent, colors_enabled, label as render_cli_label,
@@ -206,18 +207,63 @@ fn table_row(cells: &[&str]) -> TableRow {
     }
 }
 
+fn table_row_owned(cells: Vec<String>) -> TableRow {
+    TableRow { cells }
+}
+
+fn zellij_action(local_id: &str) -> &'static ZellijActionSpec {
+    zellij_action_by_local_id(local_id)
+        .unwrap_or_else(|| panic!("missing Yazelix action registry entry for {local_id}"))
+}
+
+fn display_zellij_key(key: &str) -> String {
+    key.split_whitespace().collect::<Vec<_>>().join("+")
+}
+
+fn display_zellij_keys(keys: &[&str]) -> String {
+    keys.iter()
+        .map(|key| display_zellij_key(key))
+        .collect::<Vec<_>>()
+        .join(" / ")
+}
+
+fn display_primary_zellij_key(keys: &[&str]) -> String {
+    keys.first()
+        .map(|key| display_zellij_key(key))
+        .unwrap_or_default()
+}
+
+fn zellij_action_row(local_id: &str) -> TableRow {
+    let spec = zellij_action(local_id);
+    table_row_owned(vec![
+        display_zellij_keys(spec.action.default_keys),
+        spec.action.label.to_string(),
+    ])
+}
+
+fn paired_zellij_action_row(first_id: &str, second_id: &str, label: &str) -> TableRow {
+    let first = zellij_action(first_id);
+    let second = zellij_action(second_id);
+    table_row_owned(vec![
+        format!(
+            "{} / {}",
+            display_primary_zellij_key(first.action.default_keys),
+            display_primary_zellij_key(second.action.default_keys)
+        ),
+        label.to_string(),
+    ])
+}
+
 fn root_workspace_rows() -> Vec<TableRow> {
     vec![
-        table_row(&[
-            "Ctrl+y",
-            "Toggle focus between the managed editor and sidebar",
-        ]),
-        table_row(&["Alt+y", "Show or hide the sidebar"]),
-        table_row(&["Alt+[ / Alt+]", "Switch between Yazelix layout families"]),
-        table_row(&[
-            "Alt+m",
-            "Open a new terminal in the current tab workspace root",
-        ]),
+        zellij_action_row("toggle_editor_sidebar_focus"),
+        zellij_action_row("toggle_sidebar"),
+        paired_zellij_action_row(
+            "previous_family",
+            "next_family",
+            "Switch between Yazelix layout families",
+        ),
+        zellij_action_row("open_workspace_terminal"),
         table_row(&[
             "Alt+p",
             "In Yazi, open the selected directory in a new pane and make it the tab workspace root",
@@ -231,23 +277,37 @@ fn root_workspace_rows() -> Vec<TableRow> {
 
 fn root_command_rows() -> Vec<TableRow> {
     vec![
-        table_row(&["Alt+t", "Toggle the configured managed popup program"]),
-        table_row(&["Alt+Shift+M", "Open the yzx command palette popup"]),
-        table_row(&["Alt+Shift+C", "Open the Yazelix config UI popup"]),
+        zellij_action_row("popup"),
+        zellij_action_row("menu"),
+        zellij_action_row("config"),
     ]
 }
 
 fn root_tab_rows() -> Vec<TableRow> {
     vec![
         table_row(&["Alt+1..9", "Go directly to tab 1-9"]),
-        table_row(&[
-            "Alt+h / Alt+l",
+        paired_zellij_action_row(
+            "move_focus_left_or_tab",
+            "move_focus_right_or_tab",
             "Walk left/right across visible panes, falling back to previous/next tab",
-        ]),
+        ),
         table_row(&["Alt+w / Alt+q", "Walk next/previous tab"]),
         table_row(&["Alt+Shift+H / Alt+Shift+L", "Move current tab left/right"]),
         table_row(&["Alt+Shift+F", "Toggle pane fullscreen"]),
     ]
+}
+
+fn semantic_zellij_rows() -> Vec<TableRow> {
+    ZELLIJ_ACTIONS
+        .iter()
+        .map(|spec| {
+            table_row_owned(vec![
+                spec.action.id.to_string(),
+                display_zellij_keys(spec.action.default_keys),
+                spec.action.label.to_string(),
+            ])
+        })
+        .collect()
 }
 
 fn render_yazelix_keys(color: bool) -> String {
@@ -293,6 +353,24 @@ fn render_yazelix_keys(color: bool) -> String {
         &root_tab_rows(),
         color,
     );
+    let semantic_remaps = render_table(
+        &[
+            Column {
+                heading: "Action id",
+                width: 34,
+            },
+            Column {
+                heading: "Default",
+                width: 18,
+            },
+            Column {
+                heading: "Label",
+                width: 48,
+            },
+        ],
+        &semantic_zellij_rows(),
+        color,
+    );
 
     [
         heading("Workspace actions", color),
@@ -303,6 +381,9 @@ fn render_yazelix_keys(color: bool) -> String {
         String::new(),
         heading("Tab and pane movement", color),
         tabs,
+        String::new(),
+        heading("Semantic remaps", color),
+        semantic_remaps,
         String::new(),
         heading("More", color),
         format!(
@@ -592,9 +673,12 @@ mod tests {
         assert!(rendered.contains("Workspace actions"));
         assert!(rendered.contains("Command access"));
         assert!(rendered.contains("Tab and pane movement"));
+        assert!(rendered.contains("Semantic remaps"));
         assert!(rendered.contains("Keybinding"));
+        assert!(rendered.contains("zellij.menu"));
         assert!(rendered.contains("Alt+Shift+M"));
         assert!(rendered.contains("Alt+Shift+C"));
+        assert!(rendered.contains("Open the Yazelix command palette popup"));
         assert!(rendered.contains("yzx keys yazi"));
         assert!(!rendered.contains("╭"));
         assert!(!rendered.contains("│"));

@@ -61,7 +61,7 @@ If you find a conflict, please open an issue
   - `Ctrl+Alt+g` locked mode, `Ctrl+Alt+s` scroll mode, `Ctrl+Alt+o` session mode
 - **Helix**: See [Helix Custom Keybindings](#helix-custom-keybindings) section below
 
-You can also print these Yazelix-owned bindings directly with `yzx keys`.
+You can also print these Yazelix-owned bindings and the scoped semantic action ids directly with `yzx keys`.
 
 ### Ownership Layers
 
@@ -73,7 +73,7 @@ Use semantic remaps for Yazelix-owned actions and native sidecars for the owning
 - Helix-local bindings for managed Helix sessions: `~/.config/yazelix/helix.toml`
 - Terminal-emulator shortcuts: the terminal emulator config
 
-`zellij.keybindings` accepts action ids such as `popup`, `menu`, `toggle_sidebar`, and `open_workspace_terminal`. Omitted actions keep defaults, and `[]` disables a Yazelix-owned binding. Yazelix rejects duplicate semantic Zellij keys before launch.
+`zellij.keybindings` accepts owner-local action ids such as `popup`, `menu`, `toggle_sidebar`, and `open_workspace_terminal`. Shared diagnostics and docs use scoped ids such as `zellij.popup`. Omitted actions keep defaults, and `[]` disables a Yazelix-owned binding. Yazelix rejects duplicate semantic Zellij keys before launch.
 
 ### Sidebar Commands vs Keybindings
 

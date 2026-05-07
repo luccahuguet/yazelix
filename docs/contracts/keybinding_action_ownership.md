@@ -51,7 +51,7 @@ Rules:
 
 ## Action Registry Shape
 
-The action registry should use scoped action ids for UI, docs, diagnostics, and future generated metadata:
+The Rust action registry is the shared source for Yazelix-owned action metadata that can feed generated bindings, `yzx keys`, doctor/config UI diagnostics, and future docs metadata. Registry entries use scoped action ids:
 
 - `zellij.popup`
 - `zellij.menu`
@@ -63,9 +63,10 @@ The action registry should use scoped action ids for UI, docs, diagnostics, and 
 
 The persisted config may stay owner-scoped for compatibility, such as `zellij.keybindings.popup`, while the registry presents full ids in shared views like `yzx keys`, doctor diagnostics, and the config UI.
 
-Each action registry entry should include:
+Each action registry entry includes:
 
 - stable id
+- owner-local id used by legacy owner-scoped config maps
 - human label
 - owner subsystem
 - supported backend or backends
@@ -73,6 +74,8 @@ Each action registry entry should include:
 - generated backend command
 - whether an empty binding list is allowed
 - diagnostics Yazelix can prove reliably
+
+The current implemented registry slice is the Zellij semantic action set. Yazi and editor entries should be added only when their ownership and backend generation contracts are explicit.
 
 ## Profiles
 

@@ -140,7 +140,7 @@ For Yazelix-owned Zellij action remaps, prefer `settings.jsonc` semantic keys in
 }
 ```
 
-Supported action ids are `open_workspace_terminal`, `popup`, `menu`, `config`, `move_focus_left_or_tab`, `move_focus_right_or_tab`, `toggle_editor_sidebar_focus`, `toggle_sidebar`, `smart_reveal`, `previous_family`, and `next_family`. Omitted actions keep their defaults. Set an action to `[]` to disable Yazelix's generated binding for that action. Yazelix rejects duplicate keys across this semantic map before launch.
+Supported owner-local action ids are `open_workspace_terminal`, `popup`, `menu`, `config`, `move_focus_left_or_tab`, `move_focus_right_or_tab`, `toggle_editor_sidebar_focus`, `toggle_sidebar`, `smart_reveal`, `previous_family`, and `next_family`. `yzx keys` shows the matching scoped ids, such as `zellij.popup`. Omitted actions keep their defaults. Set an action to `[]` to disable Yazelix's generated binding for that action. Yazelix rejects duplicate keys across this semantic map before launch.
 
 For full native Zellij keybinding ownership inside Yazelix, use `keybinds clear-defaults=true` in the explicit Yazelix-managed sidecar `~/.config/yazelix/zellij.kdl`:
 ```kdl
