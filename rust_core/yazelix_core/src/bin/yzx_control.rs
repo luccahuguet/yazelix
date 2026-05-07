@@ -65,7 +65,6 @@ use yazelix_core::run_zellij_open_terminal;
 use yazelix_core::run_zellij_pipe;
 use yazelix_core::run_zellij_retarget;
 use yazelix_core::run_zellij_status_bus;
-use yazelix_core::run_zellij_status_bus_workspace;
 use yazelix_core::run_zellij_status_cache_heartbeat;
 use yazelix_core::run_zellij_status_cache_refresh_claude_usage;
 use yazelix_core::run_zellij_status_cache_refresh_codex_usage;
@@ -1574,7 +1573,6 @@ fn run_zellij(args: &[String]) -> Result<i32, CoreError> {
         "get-workspace-root" => run_zellij_get_workspace_root(&argv),
         "inspect-session" => run_zellij_inspect_session(&argv),
         "status-bus" => run_zellij_status_bus(&argv),
-        "status-bus-workspace" => run_zellij_status_bus_workspace(&argv),
         "status-cache-write" => run_zellij_status_cache_write(&argv),
         "status-cache-heartbeat" => run_zellij_status_cache_heartbeat(&argv),
         "status-cache-widget" => run_zellij_status_cache_widget(&argv),

@@ -33,10 +33,9 @@ use status::nested_bool;
 use status::*;
 pub use status::{
     probe_active_tab_session_state, run_zellij_inspect_session, run_zellij_status_bus,
-    run_zellij_status_bus_workspace, run_zellij_status_cache_heartbeat,
-    run_zellij_status_cache_refresh_claude_usage, run_zellij_status_cache_refresh_codex_usage,
-    run_zellij_status_cache_refresh_opencode_go_usage, run_zellij_status_cache_widget,
-    run_zellij_status_cache_write,
+    run_zellij_status_cache_heartbeat, run_zellij_status_cache_refresh_claude_usage,
+    run_zellij_status_cache_refresh_codex_usage, run_zellij_status_cache_refresh_opencode_go_usage,
+    run_zellij_status_cache_widget, run_zellij_status_cache_write,
 };
 #[cfg(test)]
 use std::ffi::OsStr;
@@ -53,7 +52,6 @@ pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
     "get-workspace-root",
     "inspect-session",
     "status-bus",
-    "status-bus-workspace",
     "status-cache-write",
     "status-cache-heartbeat",
     "status-cache-widget",

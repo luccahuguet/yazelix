@@ -59,11 +59,6 @@ pub(super) struct ZellijStatusBusArgs {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub(super) struct ZellijStatusBusWorkspaceArgs {
-    help: bool,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(super) struct ZellijStatusCacheWriteArgs {
     path: Option<PathBuf>,
     payload: Option<String>,
@@ -300,28 +295,6 @@ pub(super) fn print_zellij_status_bus_help() {
     println!();
     println!("Usage:");
     println!("  yzx_control zellij status-bus [--json]");
-}
-
-pub(super) fn parse_zellij_status_bus_workspace_args(
-    args: &[String],
-) -> Result<ZellijStatusBusWorkspaceArgs, CoreError> {
-    let mut parsed = ZellijStatusBusWorkspaceArgs::default();
-    for arg in args {
-        match arg.as_str() {
-            "-h" | "--help" | "help" => parsed.help = true,
-            other if other.starts_with('-') => {
-                return Err(CoreError::usage(format!(
-                    "Unknown argument for zellij status-bus-workspace: {other}"
-                )));
-            }
-            _ => {
-                return Err(CoreError::usage(
-                    "zellij status-bus-workspace accepts no positional arguments".to_string(),
-                ));
-            }
-        }
-    }
-    Ok(parsed)
 }
 
 pub(super) fn parse_zellij_status_cache_write_args(
@@ -598,13 +571,6 @@ pub(super) fn parse_zellij_status_cache_refresh_opencode_go_usage_args(
     Ok(parsed)
 }
 
-pub(super) fn print_zellij_status_bus_workspace_help() {
-    println!("Render the workspace status-bus fact for zjstatus");
-    println!();
-    println!("Usage:");
-    println!("  yzx_control zellij status-bus-workspace");
-}
-
 pub(super) fn print_zellij_status_cache_write_help() {
     println!("Write the window-local cached status-bar facts");
     println!();
@@ -733,23 +699,6 @@ pub fn run_zellij_status_bus(args: &[String]) -> Result<i32, CoreError> {
             println!("{line}");
         }
     }
-    Ok(0)
-}
-
-pub fn run_zellij_status_bus_workspace(args: &[String]) -> Result<i32, CoreError> {
-    let parsed = parse_zellij_status_bus_workspace_args(args)?;
-    if parsed.help {
-        print_zellij_status_bus_workspace_help();
-        return Ok(0);
-    }
-
-    if env::var_os("ZELLIJ").is_none() {
-        return Ok(0);
-    }
-
-    let response = run_pane_orchestrator_command("get_active_tab_session_state", "")?;
-    let value = decode_status_bus_snapshot(&response)?;
-    print_optional_zjstatus_segment(render_zjstatus_workspace_widget(&value));
     Ok(0)
 }
 

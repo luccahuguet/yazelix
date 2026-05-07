@@ -4,9 +4,9 @@ This inventory is the extraction gate for reusable Yazelix components. It record
 
 Current rebaseline measured on 2026-05-07 after extracting `yazelix-screen`, `yazelix-cursors`, and `yazelix-bar`:
 
-- `tokei rust_core rust_plugins --exclude target` reports `68,939` Rust code LOC across `137` Rust files
-- the same `tokei` run reports `75,445` Rust lines including blanks and comments
-- `config_metadata/rust_ownership_budget.toml` tracks `75,562` raw Rust file lines across `137` Rust files
+- `tokei rust_core rust_plugins --exclude target` reports `68,890` Rust code LOC across `137` Rust files
+- the same `tokei` run reports `75,390` Rust lines including blanks and comments
+- `config_metadata/rust_ownership_budget.toml` tracks `75,507` raw Rust file lines across `137` Rust files
 - the remaining difference between `tokei` lines and the budget total is measurement-method noise from embedded markdown/parser classification and line-count method differences, not a separate ownership surface
 - `yzx_repo_validator validate-rust-ownership-budget` passes the no-growth budget and still warns that the tracked Rust surface is above the long-term `60,000` LOC hard target
 - `cargo-udeps` requires nightly Rust because it passes unstable `-Z` compiler flags; rerun it during explicit dependency-audit beads rather than treating this inventory as fresh unused-dependency evidence
@@ -21,16 +21,16 @@ The canonical family ownership, no-growth ceilings, and long-term warning target
 | Product integration tests | 19 | 6,291 | canonical tests | Medium: split by behavior family, do not delete broadly |
 | Maintainer tooling and tests | 17 | 12,358 | canonical maintainer | Medium: keep in repo, but split large validator files |
 | Pane orchestrator plugin | 27 | 5,435 | extension surface | High: already has a natural Zellij plugin boundary |
-| Total | 137 | 75,562 | current budget ceiling | Reduce or extract before raising ceilings |
+| Total | 137 | 75,507 | current budget ceiling | Reduce or extract before raising ceilings |
 
 Detailed budget families:
 
 | Family | Files | Raw lines | Budget target | Notes |
 | --- | ---: | ---: | ---: | --- |
-| `core_cli_and_public_surface` | 12 | 8,189 | 7,000 | Public command dispatch and front-door rendering after child CLI extractions |
+| `core_cli_and_public_surface` | 12 | 8,187 | 7,000 | Public command dispatch and front-door rendering after child CLI extractions |
 | `core_config_ui_and_materialization` | 40 | 21,192 | 14,000 | Largest product family; config UI, apply modes, ratconfig boundary, materializers, settings surfaces |
 | `core_diagnostics_and_recovery` | 8 | 5,750 | 4,500 | Doctor, install ownership, profile/status reporting |
-| `core_workspace_and_pane_integration` | 14 | 16,347 | 11,000 | Action registry, Zellij/session/workspace command surface, pane-orchestrator client, status/cache/widgets |
+| `core_workspace_and_pane_integration` | 14 | 16,294 | 11,000 | Action registry, Zellij/session/workspace command surface, pane-orchestrator client, status/cache/widgets |
 | `core_integration_tests` | 19 | 6,291 | 4,500 | High-value tests, but several files are broad family buckets |
 | `maintainer_tooling_and_validators` | 16 | 12,114 | 9,000 | Keep in repo; split validators by domain before optimizing |
 | `maintainer_tests` | 1 | 244 | 244 | Small release/upgrade contract test surface |
@@ -41,7 +41,7 @@ Detailed budget families:
 | File | Raw lines | Disposition |
 | --- | ---: | --- |
 | `rust_core/yazelix_maintainer/src/repo_contract_validation.rs` | 4,148 | Split by validator domain, keep in maintainer crate |
-| `rust_core/yazelix_core/src/zellij_commands/status.rs` | 3,516 | Status bus/cache, AI usage widgets, cursor/workspace widget rendering; next candidate for `yazelix_bar` provider extraction |
+| `rust_core/yazelix_core/src/zellij_commands/status.rs` | 3,465 | Status bus/cache, AI usage widgets, cursor/workspace widget rendering; direct `status-bus-workspace` command deleted; next candidate is provider refresh split |
 | `rust_core/yazelix_core/src/launch_commands.rs` | 3,381 | Split terminal selection, config overrides, launch execution, desktop/macOS handling |
 | `rust_core/yazelix_core/src/config_ui.rs` | 3,205 | Continue the `yazelix_ratconfig` split and keep Yazelix adapters local |
 | `rust_core/yazelix_core/src/zellij_commands.rs` | 2,894 | Split remaining pipe primitive, workspace/editor flow, and terminal pane actions before workspace extraction |
