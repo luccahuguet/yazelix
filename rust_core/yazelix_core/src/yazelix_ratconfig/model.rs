@@ -1,13 +1,4 @@
-use crate::native_config_status::NativeConfigStatusEntry;
-use crate::runtime_apply_mode::RuntimeApplyMode;
 use std::path::PathBuf;
-
-#[derive(Debug, Clone)]
-pub struct ConfigUiRequest {
-    pub runtime_dir: PathBuf,
-    pub config_dir: PathBuf,
-    pub config_override: Option<String>,
-}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConfigUiModel {
@@ -20,7 +11,7 @@ pub struct ConfigUiModel {
     pub tabs: Vec<String>,
     pub fields: Vec<ConfigUiField>,
     pub sidecars: Vec<ConfigUiSidecar>,
-    pub native_config_statuses: Vec<NativeConfigStatusEntry>,
+    pub native_config_statuses: Vec<ConfigUiNativeStatus>,
     pub diagnostics: Vec<ConfigUiDiagnostic>,
 }
 
@@ -52,7 +43,6 @@ pub struct ConfigUiField {
     pub allowed_values: Vec<String>,
     pub validation: String,
     pub rebuild_required: bool,
-    pub apply_mode: RuntimeApplyMode,
     pub apply_status: ConfigUiApplyStatus,
 }
 
@@ -80,6 +70,22 @@ pub struct ConfigUiDiagnostic {
     pub headline: String,
     pub blocking: bool,
     pub detail_lines: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConfigUiNativeStatus {
+    pub surface: String,
+    pub tool: String,
+    pub description: String,
+    pub status: String,
+    pub label: String,
+    pub severity: String,
+    pub active_path: Option<String>,
+    pub managed_path: Option<String>,
+    pub native_paths: Vec<String>,
+    pub generated_path: Option<String>,
+    pub allowed_action: String,
+    pub read_only_reason: Option<String>,
 }
 
 // Test lane: default
@@ -110,7 +116,6 @@ mod tests {
                 allowed_values: Vec::new(),
                 validation: "1..300".to_string(),
                 rebuild_required: false,
-                apply_mode: RuntimeApplyMode::Live,
                 apply_status: ConfigUiApplyStatus {
                     summary: "live".to_string(),
                     label: "Applies now".to_string(),
@@ -125,6 +130,6 @@ mod tests {
 
         assert_eq!(model.tabs, vec!["network"]);
         assert_eq!(model.fields[0].path, "network.timeout_seconds");
-        assert_eq!(model.fields[0].apply_mode, RuntimeApplyMode::Live);
+        assert_eq!(model.fields[0].apply_status.summary, "live");
     }
 }

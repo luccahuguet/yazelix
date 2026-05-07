@@ -43,8 +43,8 @@ use toml::Value as TomlValue;
 use yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
 
 pub use crate::yazelix_ratconfig::{
-    ConfigUiApplyStatus, ConfigUiDiagnostic, ConfigUiField, ConfigUiModel, ConfigUiPathOwner,
-    ConfigUiRequest, ConfigUiSidecar, ConfigUiValueState,
+    ConfigUiApplyStatus, ConfigUiDiagnostic, ConfigUiField, ConfigUiModel, ConfigUiNativeStatus,
+    ConfigUiPathOwner, ConfigUiSidecar, ConfigUiValueState,
 };
 use apply_adapter::apply_after_field_write;
 
@@ -64,6 +64,13 @@ const DEFAULT_TABS: &[&str] = &[
 const CONFIG_UI_METADATA_FILENAME: &str = "config_ui_metadata.toml";
 pub(crate) const HEADER_HORIZONTAL_PADDING: u16 = 1;
 const ZELLIJ_KEYBINDINGS_FIELD_PATH: &str = "zellij.keybindings";
+
+#[derive(Debug, Clone)]
+pub struct ConfigUiRequest {
+    pub runtime_dir: PathBuf,
+    pub config_dir: PathBuf,
+    pub config_override: Option<String>,
+}
 
 #[derive(Debug, Clone)]
 struct ContractField {
@@ -268,26 +275,28 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
 
     let home_dir = home_dir_from_env()?;
     let state_dir = state_dir_from_env()?;
-    let native_config_statuses = classify_native_config_statuses(&NativeConfigStatusRequest {
-        xdg_config_home: xdg_config_home_from_env(&home_dir),
-        home_dir,
-        config_dir: request.config_dir.clone(),
-        state_dir,
-        platform: current_platform_name(),
-        terminal_config_mode: effective_string_config(
-            &active_value,
-            &default_value,
-            "terminal.config_mode",
-            "yazelix",
-        ),
-        selected_terminals: effective_string_list_config(
-            &active_value,
-            &default_value,
-            "terminal.terminals",
-            &["ghostty", "wezterm"],
-        ),
-        settings_home_manager_read_only: config_owner == ConfigUiPathOwner::HomeManager,
-    });
+    let native_config_statuses = map_native_statuses(&classify_native_config_statuses(
+        &NativeConfigStatusRequest {
+            xdg_config_home: xdg_config_home_from_env(&home_dir),
+            home_dir,
+            config_dir: request.config_dir.clone(),
+            state_dir,
+            platform: current_platform_name(),
+            terminal_config_mode: effective_string_config(
+                &active_value,
+                &default_value,
+                "terminal.config_mode",
+                "yazelix",
+            ),
+            selected_terminals: effective_string_list_config(
+                &active_value,
+                &default_value,
+                "terminal.terminals",
+                &["ghostty", "wezterm"],
+            ),
+            settings_home_manager_read_only: config_owner == ConfigUiPathOwner::HomeManager,
+        },
+    ));
 
     Ok(ConfigUiModel {
         active_config_path: active_config_path.clone(),
@@ -1102,7 +1111,7 @@ impl ConfigUiApp {
         ])
     }
 
-    fn matches_native_status(&self, status: &NativeConfigStatusEntry) -> bool {
+    fn matches_native_status(&self, status: &ConfigUiNativeStatus) -> bool {
         self.search_matches([
             status.surface.as_str(),
             status.tool.as_str(),
@@ -1584,7 +1593,7 @@ fn diagnostic_detail_lines(diagnostic: &ConfigUiDiagnostic) -> Vec<Line<'static>
     lines
 }
 
-fn native_status_detail_lines(status: &NativeConfigStatusEntry) -> Vec<Line<'static>> {
+fn native_status_detail_lines(status: &ConfigUiNativeStatus) -> Vec<Line<'static>> {
     let mut lines = vec![
         Line::from(Span::styled(
             status.label.clone(),
@@ -2023,6 +2032,29 @@ fn map_diagnostics(diagnostics: &[ConfigDiagnostic]) -> Vec<ConfigUiDiagnostic> 
         .collect()
 }
 
+fn map_native_statuses(statuses: &[NativeConfigStatusEntry]) -> Vec<ConfigUiNativeStatus> {
+    statuses
+        .iter()
+        .map(|status| ConfigUiNativeStatus {
+            surface: status.surface.clone(),
+            tool: status.tool.clone(),
+            description: status.description.clone(),
+            status: status.status.clone(),
+            label: status.label.clone(),
+            severity: status_code_for_entry(status)
+                .map(|code| code.doctor_severity())
+                .unwrap_or("info")
+                .to_string(),
+            active_path: status.active_path.clone(),
+            managed_path: status.managed_path.clone(),
+            native_paths: status.native_paths.clone(),
+            generated_path: status.generated_path.clone(),
+            allowed_action: status.allowed_action.clone(),
+            read_only_reason: status.read_only_reason.clone(),
+        })
+        .collect()
+}
+
 fn schema_tabs(schema: &JsonValue) -> Vec<String> {
     let mut tabs = schema
         .get("x-yazelix")
@@ -2147,7 +2179,6 @@ fn build_field_row(
         allowed_values,
         validation,
         rebuild_required,
-        apply_mode,
         apply_status: apply_status_for_mode(apply_mode),
     }
 }
@@ -2499,11 +2530,8 @@ fn sidecar_status_style(present: bool) -> Style {
     }
 }
 
-fn native_status_style(status: &NativeConfigStatusEntry) -> Style {
-    match status_code_for_entry(status)
-        .map(|code| code.doctor_severity())
-        .unwrap_or("info")
-    {
+fn native_status_style(status: &ConfigUiNativeStatus) -> Style {
+    match status.severity.as_str() {
         "error" => Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
         "warning" => Style::default().fg(Color::Yellow),
         "ok" => Style::default().fg(Color::Green),
@@ -2610,7 +2638,6 @@ mod tests {
                 .collect(),
             validation: String::new(),
             rebuild_required: false,
-            apply_mode: RuntimeApplyMode::TabSessionRestart,
             apply_status: apply_status_for_mode(RuntimeApplyMode::TabSessionRestart),
         }
     }
@@ -2747,7 +2774,7 @@ mod tests {
             .expect("widget tray");
 
         assert_eq!(field.current_value, "[7 items]");
-        assert_eq!(field.apply_mode, RuntimeApplyMode::GeneratedRuntimeRefresh);
+        assert_eq!(field.apply_status.summary, "gen refresh");
         let input = edit_input_for_field(field);
         assert!(input.starts_with("[\"editor\",\"shell\",\"term\""));
         assert_eq!(
@@ -2840,9 +2867,9 @@ mod tests {
         assert!(details.contains("unknown_action"));
     }
 
-    // Defends: machine-readable apply modes from main_config_contract.toml reach the config UI model for the first live slice and restart-scoped fields.
+    // Defends: machine-readable apply modes from main_config_contract.toml reach config UI display facts for the first live slice and restart-scoped fields.
     #[test]
-    fn model_exposes_runtime_apply_modes_from_contract() {
+    fn model_exposes_apply_statuses_from_contract() {
         let runtime = tempdir().expect("runtime");
         let config = tempdir().expect("config");
         write_runtime_layout(runtime.path());
@@ -2854,10 +2881,6 @@ mod tests {
             .iter()
             .find(|field| field.path == "zellij.popup_width_percent")
             .expect("popup width");
-        assert_eq!(
-            popup_width.apply_mode,
-            RuntimeApplyMode::LiveWithPaneRefresh
-        );
         assert_eq!(popup_width.apply_status.summary, "pane refresh");
         assert!(popup_width.apply_status.pending);
         assert!(popup_width.apply_status.detail.contains("pane or plugin"));
@@ -2867,10 +2890,6 @@ mod tests {
             .iter()
             .find(|field| field.path == "editor.command")
             .expect("editor command");
-        assert_eq!(
-            editor_command.apply_mode,
-            RuntimeApplyMode::TabSessionRestart
-        );
         assert_eq!(editor_command.apply_status.summary, "tab restart");
 
         let terminal_config_mode = model
@@ -2878,10 +2897,6 @@ mod tests {
             .iter()
             .find(|field| field.path == "terminal.config_mode")
             .expect("terminal config mode");
-        assert_eq!(
-            terminal_config_mode.apply_mode,
-            RuntimeApplyMode::ShellTerminalRestart
-        );
         assert_eq!(terminal_config_mode.apply_status.summary, "shell restart");
 
         let widget_tray = model
@@ -2921,10 +2936,6 @@ mod tests {
             .expect("popup width");
 
         assert_eq!(model.config_owner, ConfigUiPathOwner::HomeManager);
-        assert_eq!(
-            popup_width.apply_mode,
-            RuntimeApplyMode::PackageHomeManagerActivation
-        );
         assert_eq!(popup_width.apply_status.summary, "HM activate");
         assert!(
             popup_width

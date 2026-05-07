@@ -25,6 +25,7 @@ The private boundary currently covers:
 - terminal rendering
 - reusable validation-facing diagnostics
 - apply-status display data
+- native/config integration status as plain display data supplied by the Yazelix adapter
 
 The Yazelix adapter still covers:
 
@@ -33,8 +34,9 @@ The Yazelix adapter still covers:
 - settings/schema/contract loading
 - Home Manager and native config status
 - generated runtime refreshes
+- runtime/config path request handling
 
-The current `rust_core/yazelix_core/src/config_ui.rs` surface is product-useful, but it is still too coupled to Yazelix settings, native-config ownership, Home Manager read-only behavior, JSONC save semantics, generated runtime refreshes, and status wording. Publishing that shape would fossilize a Yazelix adapter as if it were a reusable toolkit API.
+The current `rust_core/yazelix_core/src/config_ui.rs` surface is product-useful, but it is still too coupled to Yazelix settings, Home Manager read-only behavior, JSONC save semantics, generated runtime refreshes, and status wording. Publishing that shape would fossilize a Yazelix adapter as if it were a reusable toolkit API.
 
 ## Crate Shape
 
@@ -46,8 +48,9 @@ The current focused modules under `yazelix_core/src/yazelix_ratconfig/` can stil
 - editor action model
 - renderer helpers
 - validation diagnostic model
+- generic native/status display rows
 
-The still-deferred internal pieces are write-plan or patch-plan traits. Yazelix keeps settings metadata, JSONC patching, Home Manager ownership, native config status, and runtime apply modes in the adapter until those traits are proven by real saves and a second fixture.
+The still-deferred internal pieces are write-plan or patch-plan traits. Yazelix keeps settings metadata, JSONC patching, Home Manager ownership, native config classification, runtime request paths, and runtime apply modes in the adapter until those traits are proven by real saves and a second fixture.
 
 A public `yazelix_ratconfig` crate or standalone repository becomes acceptable only after Yazelix consumes that internal API for real saves and the reusable layer can be demonstrated with a small non-Yazelix fixture schema.
 
