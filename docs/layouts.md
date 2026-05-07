@@ -1,12 +1,11 @@
 # Zellij Layouts
 
-Yazelix ships managed-sidebar startup layouts, one sweep-test layout, and swap-layout files:
+Yazelix ships managed-sidebar startup layouts and swap-layout files:
 
 - `configs/zellij/layouts/yzx_side.kdl` for sidebar mode
 - `configs/zellij/layouts/yzx_side_closed.kdl` for managed-sidebar mode with the sidebar hidden at startup
 - `configs/zellij/layouts/yzx_side.swap.kdl` for sidebar swap layouts
 - `configs/zellij/layouts/yzx_side_closed.swap.kdl` for hidden-start sidebar swap layouts
-- `configs/zellij/layouts/yzx_sweep_test.kdl` for terminal sweep validation
 
 Set the file-open behavior in `settings.jsonc`:
 

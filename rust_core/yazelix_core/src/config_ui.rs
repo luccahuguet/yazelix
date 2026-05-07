@@ -2693,6 +2693,14 @@ mod tests {
         }
     }
 
+    fn model_field<'a>(model: &'a ConfigUiModel, path: &str) -> &'a ConfigUiField {
+        model
+            .fields
+            .iter()
+            .find(|field| field.path == path)
+            .expect("field")
+    }
+
     fn line_text(line: &Line<'_>) -> String {
         line.spans
             .iter()
@@ -2767,11 +2775,7 @@ mod tests {
         write_runtime_layout(runtime.path());
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
-        let field = model
-            .fields
-            .iter()
-            .find(|field| field.path == "zellij.widget_tray")
-            .expect("widget tray");
+        let field = model_field(&model, "zellij.widget_tray");
 
         assert_eq!(field.current_value, "[7 items]");
         assert_eq!(field.apply_status.summary, "gen refresh");
@@ -2876,34 +2880,18 @@ mod tests {
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
 
-        let popup_width = model
-            .fields
-            .iter()
-            .find(|field| field.path == "zellij.popup_width_percent")
-            .expect("popup width");
+        let popup_width = model_field(&model, "zellij.popup_width_percent");
         assert_eq!(popup_width.apply_status.summary, "pane refresh");
         assert!(popup_width.apply_status.pending);
         assert!(popup_width.apply_status.detail.contains("pane or plugin"));
 
-        let editor_command = model
-            .fields
-            .iter()
-            .find(|field| field.path == "editor.command")
-            .expect("editor command");
+        let editor_command = model_field(&model, "editor.command");
         assert_eq!(editor_command.apply_status.summary, "tab restart");
 
-        let terminal_config_mode = model
-            .fields
-            .iter()
-            .find(|field| field.path == "terminal.config_mode")
-            .expect("terminal config mode");
+        let terminal_config_mode = model_field(&model, "terminal.config_mode");
         assert_eq!(terminal_config_mode.apply_status.summary, "shell restart");
 
-        let widget_tray = model
-            .fields
-            .iter()
-            .find(|field| field.path == "zellij.widget_tray")
-            .expect("widget tray");
+        let widget_tray = model_field(&model, "zellij.widget_tray");
         assert_eq!(widget_tray.apply_status.summary, "gen refresh");
         assert!(
             widget_tray
@@ -2929,11 +2917,7 @@ mod tests {
 
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
-        let popup_width = model
-            .fields
-            .iter()
-            .find(|field| field.path == "zellij.popup_width_percent")
-            .expect("popup width");
+        let popup_width = model_field(&model, "zellij.popup_width_percent");
 
         assert_eq!(model.config_owner, ConfigUiPathOwner::HomeManager);
         assert_eq!(popup_width.apply_status.summary, "HM activate");
@@ -3231,12 +3215,7 @@ mod tests {
             get_json_path(&value, "editor.hide_sidebar_on_file_open"),
             Some(&json!(true))
         );
-        let field = app
-            .model
-            .fields
-            .iter()
-            .find(|field| field.path == "editor.hide_sidebar_on_file_open")
-            .expect("field");
+        let field = model_field(&app.model, "editor.hide_sidebar_on_file_open");
         assert_eq!(field.state, ConfigUiValueState::Explicit);
         assert_eq!(field.current_value, "true");
     }

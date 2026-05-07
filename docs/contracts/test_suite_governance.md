@@ -46,8 +46,8 @@ This contract defines:
 - Status: live
 - Owner: maintainer test runner and validator lane entrypoints
 - Statement: Yazelix keeps a small set of named test lanes with explicit
-  entrypoints. Cheap validators, default regressions, sweep coverage, visual
-  sweeps, CI-only checks, and manual/exploratory checks stay distinct instead of
+  entrypoints. Cheap validators, default regressions, sweep coverage, CI-only
+  checks, and manual/exploratory checks stay distinct instead of
   being treated as one undifferentiated test pile
 - Verification: automated
   `yzx_repo_validator validate-contracts`
@@ -102,9 +102,8 @@ This contract defines:
 | --- | --- | --- | --- |
 | Cheap validator lane | `yzx_repo_validator validate-nushell-syntax`, `yzx_repo_validator validate-readme-version`, `yzx_repo_validator validate-config-surface-contract` | Very fast structural or source-of-truth checks | Good fit for `prek` and direct CI steps |
 | Default automated regression lane | `yzx dev test` | The normal non-sweep automated regression suite | Uses fixed Rust `nextest` suites plus explicit `cargo test` exceptions only where required |
-| Non-visual sweep lane | `yzx dev test --sweep` | Matrix coverage for config and supported shell/terminal combinations without opening windows | Environment-sensitive but still scriptable |
-| Visual sweep lane | `yzx dev test --visual` | Real terminal-window validation | Heavy, manualish, and not the default lane |
-| Full lane | `yzx dev test --all` | Default automated suite + non-visual sweep + visual sweep | For broader release confidence |
+| Sweep lane | `yzx dev test --sweep` | Matrix coverage for config and supported shell/terminal combinations without opening windows | Environment-sensitive but still scriptable |
+| Full lane | `yzx dev test --all` | Default automated suite + config/shell sweep | For broader release confidence |
 | Cheap maintainer hook lane | `prek run --all-files` | Fast always-on local hygiene | Should stay cheap enough to run often |
 | CI-only or CI-focused lane | `.github/workflows/ci.yml` | Cheap, reliable branch protection checks | Can be narrower than the full local suite when that keeps CI high-signal |
 | Manual / exploratory lane | `nushell/scripts/dev/record_demo_fonts.nu`, benchmark and demo helpers | Human-observed or exploratory checks | Not part of the normal regression contract |
@@ -124,7 +123,7 @@ of defaulting to every available validator. The canonical fast gates are:
 | Nix package or flake API changes | Cheap `nix eval` or targeted validator for the touched API | `yzx_repo_validator validate-flake-interface`; `yzx_repo_validator validate-nix-customization-api`; heavier installed-runtime/profile validators only for release or explicit package changes |
 
 `yzx dev test` is the canonical default regression gate, not the only inner-loop
-command. Sweep, visual, cold-install, installed-runtime, and nixpkgs submission
+command. Sweep, cold-install, installed-runtime, and nixpkgs submission
 validators are release or change-specific gates, not routine requirements for
 small source or test cleanups.
 
@@ -221,7 +220,7 @@ For Yazelix, lane placement should use suite-shape thinking similar to the Test 
 - cheap structural checks belong in validator lanes
 - core user-visible regressions belong in the default lane
 - cross-matrix environment coverage belongs in sweep lanes
-- heavy visual or human-observed coverage belongs in visual or manual lanes
+- heavy visual or human-observed coverage belongs in manual lanes
 
 Do not use the lane model as a substitute for judging whether a test is good. A badly chosen test can still be dead weight even if it sits in the "right" lane.
 
@@ -229,7 +228,7 @@ Do not use the lane model as a substitute for judging whether a test is good. A 
 - Keep the default automated suite small, contract-backed, and high-signal.
 - Remove weak, low-level, or packaging/config-sync checks instead of preserving them indefinitely in a public secondary lane.
 - Put cross-shell, cross-terminal, or matrix concerns in the sweep lanes.
-- Put true windowed or visual checks in the visual sweep lane or manual verification path.
+- Put true windowed or visual checks in a manual verification path.
 - Keep `prek` for checks maintainers can tolerate on frequent local runs.
 - CI may call a narrower set of high-signal commands than the full local suite if the tradeoff is explicit and documented.
 - Runtime-budget increases should be explicit. If a change needs more default-lane runtime, it should update the runtime validator budget in the same PR with a short justification.
@@ -308,7 +307,7 @@ surface and docs review rather than by a second route validator.
 
 ## Acceptance Cases
 
-1. A maintainer can tell which command to run for cheap validators, the default automated regression suite, sweep coverage, and visual coverage.
+1. A maintainer can tell which command to run for cheap validators, the default automated regression suite, sweep coverage, and manual visual coverage.
 2. A proposed new test can be accepted or rejected by pointing to a defended contract and a justified lane.
 3. At least one redundant or low-value default-suite assertion is removed, demoted, or explicitly grandfathered with justification.
 4. The current suite surface is documented at the suite or file-bucket level rather than left implicit.

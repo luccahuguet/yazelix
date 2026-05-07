@@ -23,7 +23,7 @@ In scope:
 Out of scope:
 
 - a generic subprocess DSL
-- screenshot or visual sweep helpers
+- screenshot or windowed visual helpers
 - replaying shell-only behavior through fake Rust wrappers
 - porting weak or trivia-heavy Nu tests one-to-one
 

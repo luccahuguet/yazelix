@@ -149,7 +149,6 @@ pub fn generate_zellij_materialization(
         string_config(&config, "default_shell", "nu"),
     );
     let base_config_source = resolve_base_config_source()?;
-    cleanup_legacy_popup_runner_artifacts(&state_dir)?;
     let plugin_artifacts = resolve_plugin_artifacts(&request.runtime_dir, &state_dir)?;
     let zellij_keybindings = resolve_zellij_keybindings(&config)?;
     let reuse_allowed = string_config(&config, "zellij_theme", "default") != "random";
@@ -621,13 +620,7 @@ fn push_semantic_line(
 }
 
 fn build_yazelix_load_plugins_block(existing_lines: &[String]) -> String {
-    let mut merged_lines = existing_lines
-        .iter()
-        .filter(|line| {
-            !line.contains("yazelix_popup_runner.wasm") && !line.contains("yazelix_popup_runner")
-        })
-        .cloned()
-        .collect::<Vec<_>>();
+    let mut merged_lines = existing_lines.to_vec();
     let present = merged_lines
         .iter()
         .any(|line| line.trim() == PANE_ORCHESTRATOR_PLUGIN_ALIAS);
@@ -1691,13 +1684,6 @@ fn sync_plugin_artifacts(
     Ok(())
 }
 
-fn cleanup_legacy_popup_runner_artifacts(state_dir: &Path) -> Result<(), CoreError> {
-    let plugin_dir = state_dir.join("configs").join("zellij").join("plugins");
-    remove_runtime_plugins_by_prefix_in_dir(&plugin_dir, "yazelix_popup_runner", None)?;
-    remove_permission_blocks_by_prefix("yazelix_popup_runner")?;
-    Ok(())
-}
-
 fn remove_runtime_plugins_by_prefix(
     prefix: &str,
     excluded_path: Option<&Path>,
@@ -1803,24 +1789,6 @@ fn preserve_plugin_permissions(
             .map(|permission| (*permission).to_string())
             .collect::<Vec<_>>(),
     ));
-    write_text_atomic(&permissions_cache_path, &retained.join("\n\n"))?;
-    Ok(())
-}
-
-fn remove_permission_blocks_by_prefix(prefix: &str) -> Result<(), CoreError> {
-    let permissions_cache_path = zellij_permissions_cache_path()?;
-    if !permissions_cache_path.exists() {
-        return Ok(());
-    }
-    let blocks = parse_permission_blocks(&read_text(
-        &permissions_cache_path,
-        "read_zellij_permissions_cache",
-    )?);
-    let retained = blocks
-        .into_iter()
-        .filter(|block| !plugin_name_matches_prefix(path_basename(&block.path), prefix))
-        .map(|block| build_permission_block(&block.path, &block.permissions))
-        .collect::<Vec<_>>();
     write_text_atomic(&permissions_cache_path, &retained.join("\n\n"))?;
     Ok(())
 }
@@ -2735,7 +2703,6 @@ keybinds {
         assert!(merged.contains("payload \"config\""));
         assert!(merged.contains("toggle_editor_sidebar_focus"));
         assert!(merged.contains("move_focus_left_or_tab"));
-        assert!(!merged.contains("yazelix_popup_runner.wasm"));
     }
 
     // Defends: semantic remaps replace Yazelix-owned Zellij action keys without copying the full keybind block.

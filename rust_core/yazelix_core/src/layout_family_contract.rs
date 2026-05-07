@@ -293,10 +293,6 @@ required_pane_names = ["sidebar"]
 required_launcher_placeholders = ["__YAZELIX_SIDEBAR_COMMAND__", "__YAZELIX_SIDEBAR_ARGS__"]
 swap_layouts = ["single_open", "single_closed"]
 
-[[auxiliary_layouts]]
-id = "sweep_test"
-layout_file = "yzx_sweep_test.kdl"
-purpose = "test"
 "#,
         )
         .unwrap();
@@ -310,7 +306,6 @@ purpose = "test"
             r#"swap_tiled_layout name="single_open" {} swap_tiled_layout name="single_closed" {}"#,
         )
         .unwrap();
-        fs::write(layouts_dir.join("yzx_sweep_test.kdl"), "layout {}\n").unwrap();
         (tmp, repo)
     }
 

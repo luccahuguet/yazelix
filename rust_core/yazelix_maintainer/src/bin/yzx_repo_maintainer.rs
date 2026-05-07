@@ -154,18 +154,7 @@ fn parse_run_tests_options(args: Vec<String>) -> RepoTestOptions {
             "--lint-only" => options.lint_only = true,
             "--profile" => options.profile = true,
             "--sweep" => options.sweep = true,
-            "--visual" => options.visual = true,
             "--all" | "-a" => options.all = true,
-            "--delay" => {
-                let Some(raw) = iter.next() else {
-                    eprintln!("Missing value after --delay");
-                    std::process::exit(2);
-                };
-                options.delay = raw.parse::<u64>().unwrap_or_else(|_| {
-                    eprintln!("Invalid --delay value `{raw}`");
-                    std::process::exit(2);
-                });
-            }
             _ => {
                 eprintln!("Unknown run-tests option `{arg}`");
                 std::process::exit(2);

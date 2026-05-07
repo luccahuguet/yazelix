@@ -16,9 +16,7 @@ pub struct RepoTestOptions {
     pub lint_only: bool,
     pub profile: bool,
     pub sweep: bool,
-    pub visual: bool,
     pub all: bool,
-    pub delay: u64,
 }
 
 impl Default for RepoTestOptions {
@@ -29,9 +27,7 @@ impl Default for RepoTestOptions {
             lint_only: false,
             profile: false,
             sweep: false,
-            visual: false,
             all: false,
-            delay: 3,
         }
     }
 }
@@ -85,21 +81,9 @@ pub fn run_repo_tests(repo_root: &Path, options: &RepoTestOptions) -> Result<(),
         return run_new_window(repo_root, options);
     }
 
-    let run_only_sweep = options.sweep && !options.visual && !options.all;
-    let run_only_visual = options.visual && !options.sweep && !options.all;
-    let run_only_both_sweeps = options.sweep && options.visual && !options.all;
-
-    if run_only_visual {
-        run_visual_sweep_tests(repo_root, options.verbose, options.delay)?;
-        return Ok(());
-    }
+    let run_only_sweep = options.sweep && !options.all;
     if run_only_sweep {
         run_nonvisual_sweep_tests(repo_root, options.verbose)?;
-        return Ok(());
-    }
-    if run_only_both_sweeps {
-        run_nonvisual_sweep_tests(repo_root, options.verbose)?;
-        run_visual_sweep_tests(repo_root, options.verbose, options.delay)?;
         return Ok(());
     }
 
@@ -145,10 +129,6 @@ pub fn run_repo_tests(repo_root: &Path, options: &RepoTestOptions) -> Result<(),
     if options.sweep || options.all {
         run_nonvisual_sweep_tests(repo_root, options.verbose)?;
     }
-    if options.visual || options.all {
-        run_visual_sweep_tests(repo_root, options.verbose, options.delay)?;
-    }
-
     Ok(())
 }
 
@@ -214,15 +194,8 @@ fn run_new_window(repo_root: &Path, options: &RepoTestOptions) -> Result<(), Str
     if options.sweep {
         test_args.push("--sweep".to_string());
     }
-    if options.visual {
-        test_args.push("--visual".to_string());
-    }
     if options.all {
         test_args.push("--all".to_string());
-    }
-    if options.visual || options.all {
-        test_args.push("--delay".to_string());
-        test_args.push(options.delay.to_string());
     }
     println!("💡 In the new window, run: {}", test_args.join(" "));
     println!(
@@ -510,16 +483,9 @@ fn render_suite_summary(
 
 fn run_nonvisual_sweep_tests(repo_root: &Path, verbose: bool) -> Result<(), String> {
     println!();
-    println!("=== Running Non-Visual Configuration Sweep Tests ===");
+    println!("=== Running Configuration Sweep Tests ===");
     println!();
-    run_sweep_tests(repo_root, verbose, false, 0)
-}
-
-fn run_visual_sweep_tests(repo_root: &Path, verbose: bool, delay: u64) -> Result<(), String> {
-    println!();
-    println!("=== Running Visual Terminal Sweep Tests ===");
-    println!();
-    run_sweep_tests(repo_root, verbose, true, delay)
+    run_sweep_tests(repo_root, verbose)
 }
 
 fn profiling_enabled(options: &RepoTestOptions) -> bool {

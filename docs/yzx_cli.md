@@ -186,7 +186,7 @@ Maintainer shell commands:
 - `yzx dev rust fmt [core|maintainer|pane_orchestrator|all] [--check]`: Run `cargo fmt` directly from the current maintainer environment. Default target is `all`
 - `yzx dev rust check [core|maintainer|pane_orchestrator|all]`: Run fast `cargo check` directly. Default target is `core`
 - `yzx dev rust test [core|maintainer|pane_orchestrator|all] [cargo test args...]`: Run fast `cargo test` directly. Default target is `core`; pass a focused test filter directly or after the target
-- `yzx dev test [--verbose] [--new-window] [--lint-only] [--profile] [--sweep] [--visual] [--all] [--delay SECONDS]`: Run the repo test lanes
+- `yzx dev test [--verbose] [--new-window] [--lint-only] [--profile] [--sweep] [--all]`: Run the repo test lanes
 - `yzx dev update`: Refresh repo runtime inputs, run canaries, sync pinned runtime expectations, refresh vendored runtime assets, and perform the required `--activate profile|home_manager|none` step; `--canary-only` is the only path that does not require `--activate`
 - `yzx dev build_pane_orchestrator [--sync]`: Build the Zellij pane orchestrator wasm for `wasm32-wasip1`; `--sync` also updates the tracked/runtime plugin paths after a successful build, preserves previously granted plugin permissions onto the stable runtime path when possible, and regenerates Zellij config. After syncing, prefer restarting Yazelix over reloading the plugin in place
 - `yzx dev sync_issues [--dry-run]`: Sync the GitHub/Beads public issue contract from a repo checkout
@@ -373,9 +373,8 @@ yzx dev test                  # Run the default non-sweep regression suite
 yzx dev test --verbose        # Run the default suite with detailed output
 yzx dev test --new-window     # Run tests in separate window (for debugging)
 yzx dev test --lint-only      # Run only syntax validation
-yzx dev test --sweep          # Run only the non-visual config/shell sweep
-yzx dev test --visual         # Run only the visual terminal sweep
-yzx dev test --all            # Run the default suite plus sweep + visual lanes
+yzx dev test --sweep          # Run only the config/shell sweep
+yzx dev test --all            # Run the default suite plus the config/shell sweep
 
 # Profiling
 # Note: Different launch scenarios have different performance characteristics

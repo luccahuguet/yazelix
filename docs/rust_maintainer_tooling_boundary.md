@@ -18,7 +18,7 @@ This is a separation decision, not a deletion decision. The maintainer code is r
 
 ## First-Principles Rationale
 
-Runtime users need a small, stable helper surface: `yzx`, `yzx_core`, and `yzx_control`. They do not need to understand or conceptually own release bumping, issue sync, contract validation, CI checks, visual sweep orchestration, or pane-orchestrator wasm synchronization.
+Runtime users need a small, stable helper surface: `yzx`, `yzx_core`, and `yzx_control`. They do not need to understand or conceptually own release bumping, issue sync, contract validation, CI checks, sweep orchestration, or pane-orchestrator wasm synchronization.
 
 Maintainers need those tools to live close to the repository contracts they defend. Offloading them to another repository would reduce local LOC on paper, but it would split validators from the files they validate and create version-skew risk between Yazelix, its release process, and its CI checks.
 
@@ -71,7 +71,7 @@ Maintained target state:
 | Issue sync | `yazelix_maintainer/src/repo_issue_sync.rs` | moved to `yazelix_maintainer` | reject external repo | Beads/GitHub mapping is local workflow state and should not become a separately versioned tool |
 | Nushell lint wrapper | `yazelix_maintainer/src/repo_nu_lint.rs` | moved to `yazelix_maintainer` | reject external repo | Thin repo-local maintainer command around checked-in Nu files |
 | Pane-orchestrator build/sync | `yazelix_maintainer/src/repo_plugin_build.rs` | moved to `yazelix_maintainer` | reject external repo | Sync stamp and tracked wasm are part of this repository; command depends on `yazelix_core` materialization APIs |
-| Sweep runner | `yazelix_maintainer/src/repo_sweep_runner.rs` | moved to `yazelix_maintainer` | reject external repo | Runs local runtime/config matrices and visual checks against this checkout |
+| Sweep runner | `yazelix_maintainer/src/repo_sweep_runner.rs` | moved to `yazelix_maintainer` | reject external repo | Runs local runtime/config matrices against this checkout |
 | Test runner | `yazelix_maintainer/src/repo_test_runner.rs` | moved to `yazelix_maintainer` | reject external repo | Maintainer orchestration over local validator/test surfaces, not shipped product behavior |
 | Update workflow | `yazelix_maintainer/src/repo_update_workflow.rs` | moved to `yazelix_maintainer` | reject external repo | Writes local pins, vendored plugins, README surface, and canary materialization |
 | Version bump workflow | `yazelix_maintainer/src/repo_version_bump.rs` | moved to `yazelix_maintainer` | reject external repo | Transactional release policy must stay in the repo that owns tags, changelog, and upgrade notes |
@@ -98,7 +98,7 @@ Do not split the repository until there is a concrete problem this in-repo crate
 
 Decision date: 2026-05-07
 
-Keep `yazelix_maintainer` in this repository for now. An off-repo `yazelix-dev` child repository would make the main Rust LOC inventory look cleaner by removing roughly `12,358` raw Rust lines from this checkout, but it would not reduce total maintenance. Most of that code validates or mutates files in this repository, and moving it elsewhere would add version-skew risk to CI, release bumps, Beads/GitHub sync, runtime asset refreshes, and pane-orchestrator wasm sync.
+Keep `yazelix_maintainer` in this repository for now. An off-repo `yazelix-dev` child repository would make the main Rust LOC inventory look cleaner by removing roughly `11,338` raw Rust lines from this checkout, but it would not reduce total maintenance. Most of that code validates or mutates files in this repository, and moving it elsewhere would add version-skew risk to CI, release bumps, Beads/GitHub sync, runtime asset refreshes, and pane-orchestrator wasm sync.
 
 The better next move is to shrink and split maintainer validation by domain inside this repository. Reconsider an external `yazelix-dev` only if a future pass finds a genuinely generic tool that can work against arbitrary checkouts with a stable machine contract.
 
@@ -106,23 +106,23 @@ The better next move is to shrink and split maintainer validation by domain insi
 
 | Module or binary | Raw lines | Selected residency | Off-repo LOC effect | Version-skew risk | CI/devShell impact | User-runtime impact |
 | --- | ---: | --- | --- | --- | --- | --- |
-| `src/bin/yzx_repo_validator.rs` | 261 | in-repo maintainer crate | small main-repo reduction only | high: dispatch must match local validators | CI would need a pinned external tool for every contract edit | none; not packaged for users |
-| `src/bin/yzx_repo_maintainer.rs` | 325 | in-repo maintainer crate | small main-repo reduction only | high: command routing tracks local repo workflows | maintainer shell wrapper would depend on external release cadence | none; installed `yzx dev` stays diagnostic-only |
-| `src/repo_contract_validation.rs` | 4,148 | in-repo, split by contract domain later | largest apparent LOC reduction | very high: validates README, Nix, config, release, and package contracts in this checkout | every CI contract change would require cross-repo coordination | none; repo-only validator |
+| `src/bin/yzx_repo_validator.rs` | 255 | in-repo maintainer crate | small main-repo reduction only | high: dispatch must match local validators | CI would need a pinned external tool for every contract edit | none; not packaged for users |
+| `src/bin/yzx_repo_maintainer.rs` | 313 | in-repo maintainer crate | small main-repo reduction only | high: command routing tracks local repo workflows | maintainer shell wrapper would depend on external release cadence | none; installed `yzx dev` stays diagnostic-only |
+| `src/repo_contract_validation.rs` | 4,149 | in-repo, split by contract domain later | largest apparent LOC reduction | very high: validates README, Nix, config, release, and package contracts in this checkout | every CI contract change would require cross-repo coordination | none; repo-only validator |
 | `src/repo_validation.rs` | 1,535 | in-repo, split by validation domain later | large apparent LOC reduction | high: owns local test governance and package-test policy | default gates would need external validator/schema sync | none; repo-only validator |
-| `src/repo_docs_validation.rs` | 191 | in-repo | minor | high: docs routes are local file policy | docs CI would require external tool updates for route changes | none |
-| `src/repo_issue_sync.rs` | 747 | in-repo | medium | high: Beads/GitHub contract is project-local state | sync workflow would need external release for local policy changes | none |
+| `src/repo_docs_validation.rs` | 188 | in-repo | minor | high: docs routes are local file policy | docs CI would require external tool updates for route changes | none |
+| `src/repo_issue_sync.rs` | 742 | in-repo | medium | high: Beads/GitHub contract is project-local state | sync workflow would need external release for local policy changes | none |
 | `src/repo_nu_lint.rs` | 56 | in-repo wrapper | trivial | low, but too small to justify a repo | no meaningful benefit from extraction | none |
-| `src/repo_plugin_build.rs` | 476 | in-repo | medium | high: tracked wasm, sync stamps, runtime plugin paths, and materialization APIs move together | wasm sync failures would become cross-repo failures | none for normal users; maintainer-only |
-| `src/repo_rust_budget.rs` | 379 | in-repo | medium | high: budget families and allowed paths are local | scorecard updates would need external release sync | none |
-| `src/repo_rust_commands.rs` | 228 | in-repo wrapper | small | medium: command defaults encode local workspace paths and lanes | maintainer shell convenience would depend on external routing | none |
-| `src/repo_sweep_runner.rs` | 1,068 | in-repo, shrink later if weak lanes remain | large apparent LOC reduction | high: sweeps run local runtime/config matrices | release confidence would depend on external runner matching local layout | none |
-| `src/repo_test_runner.rs` | 591 | in-repo | medium | high: test lanes and validators are local policy | default/sweep/visual lane drift likely if externalized | none |
-| `src/repo_update_workflow.rs` | 1,421 | in-repo, modularize later | large apparent LOC reduction | very high: mutates pins, vendored assets, canaries, and activation flow | release/update flow would become fragile across repos | none |
-| `src/repo_version_bump.rs` | 469 | in-repo | medium | very high: release tags, changelog, version constants, and README must move atomically | release automation must stay coupled to the repo being tagged | none |
-| `src/workspace_session_contract.rs` | 206 | in-repo | small | high: validates local layout metadata and runtime assets | workspace CI would require external schema lockstep | none |
+| `src/repo_plugin_build.rs` | 474 | in-repo | medium | high: tracked wasm, sync stamps, runtime plugin paths, and materialization APIs move together | wasm sync failures would become cross-repo failures | none for normal users; maintainer-only |
+| `src/repo_rust_budget.rs` | 378 | in-repo | medium | high: budget families and allowed paths are local | scorecard updates would need external release sync | none |
+| `src/repo_rust_commands.rs` | 226 | in-repo wrapper | small | medium: command defaults encode local workspace paths and lanes | maintainer shell convenience would depend on external routing | none |
+| `src/repo_sweep_runner.rs` | 608 | in-repo, shrink later if weak lanes remain | medium apparent LOC reduction | high: sweeps run local runtime/config matrices | release confidence would depend on external runner matching local layout | none |
+| `src/repo_test_runner.rs` | 557 | in-repo | medium | high: test lanes and validators are local policy | default/sweep lane drift likely if externalized | none |
+| `src/repo_update_workflow.rs` | 1,417 | in-repo, modularize later | large apparent LOC reduction | very high: mutates pins, vendored assets, canaries, and activation flow | release/update flow would become fragile across repos | none |
+| `src/repo_version_bump.rs` | 467 | in-repo | medium | very high: release tags, changelog, version constants, and README must move atomically | release automation must stay coupled to the repo being tagged | none |
+| `src/workspace_session_contract.rs` | 203 | in-repo | small | high: validates local layout metadata and runtime assets | workspace CI would require external schema lockstep | none |
 | `src/lib.rs` | 13 | in-repo | trivial | none by itself | no independent value | none |
-| `tests/repo_upgrade_contract.rs` | 244 | in-repo | small | high: upgrade note fixtures are local release history | release-gate test would track external crate version | none |
+| `tests/repo_upgrade_contract.rs` | 239 | in-repo | small | high: upgrade note fixtures are local release history | release-gate test would track external crate version | none |
 
 ### Repo-Only Command Matrix
 
@@ -133,7 +133,7 @@ The better next move is to shrink and split maintainer validation by domain insi
 | `yzx dev lint_nu [paths...]` | in-repo maintainer wrapper | trivial | low | small wrapper, not worth externalizing | none |
 | `yzx dev rust <fmt\|check\|test>` | in-repo maintainer wrapper | small | medium: target defaults are local workspace policy | keeps direct maintainer loop stable | none |
 | `yzx dev sync_issues [--dry-run]` | in-repo maintainer crate | medium | high: Beads/GitHub mapping is local project policy | sync policy changes land with repo changes | none |
-| `yzx dev test [options]` | in-repo maintainer crate | medium | high: test lanes and validators are local contracts | default/sweep/visual lanes stay reproducible from checkout | none |
+| `yzx dev test [options]` | in-repo maintainer crate | medium | high: test lanes and validators are local contracts | default/sweep lanes stay reproducible from checkout | none |
 | `yzx dev update [options]` | in-repo maintainer crate | large | very high: mutates lockfiles, vendored assets, canaries, and activation flow | repo update stays atomic with local package contracts | none |
 | `yzx_repo_validator validate-*` | in-repo maintainer crate | large if moved wholesale | very high: every validator is tied to current checked-in contracts | CI uses the validator compiled from the same commit it validates | none |
 
