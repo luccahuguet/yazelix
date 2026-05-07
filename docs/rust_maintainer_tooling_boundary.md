@@ -48,13 +48,15 @@ Current state:
 - `packaging/mk_runtime_tree.nix` exposes only `yzx`, `yzx_core`, and `yzx_control` from the Rust helper package
 - `packaging/rust_core_helper.nix` builds only `-p yazelix_core`
 - `yzx_repo_validator`, `yzx_repo_maintainer`, and the `repo_*` modules live in `rust_core/yazelix_maintainer`
+- the installed/runtime `yzx dev` surface keeps only runtime diagnostics: `inspect_session` and `profile`
+- the maintainer shell provides a repo-local `yzx` wrapper that routes repo-only `yzx dev` commands to `yzx_repo_maintainer`
 - package-time Rust tests are disabled for user package builds even though maintainer checks remain available from the workspace
 
 Maintained target state:
 
 - runtime/package builds should target only the product crate and shipped helper binaries
-- user package builds should not run Cargo tests; explicit `yzx dev rust test`, CI, and maintainer validators own Rust verification
-- CI and `yzx dev` should invoke maintainer commands through `yazelix_maintainer`
+- user package builds should not run Cargo tests; explicit maintainer-shell `yzx dev rust test`, CI, and maintainer validators own Rust verification
+- CI and the maintainer shell should invoke repo-only commands through `yazelix_maintainer`
 - maintainer commands may depend on `yazelix_core` for product contract APIs, but `yazelix_core` must not depend on `yazelix_maintainer`
 - package-time tests should not require host-only maintainer tools such as Nix, GitHub CLI, Beads, or Home Manager because package-time tests should not run on the user install path
 
@@ -84,7 +86,8 @@ The accepted implementation should be a mechanical crate split, not a rewrite:
 
 - keep `rust_core/yazelix_maintainer`
 - keep maintainer-only modules and bins in that crate
-- keep `yzx dev` routed through Rust-owned `yzx_control` wrappers that call `yzx_repo_validator` or `yzx_repo_maintainer`
+- keep installed/runtime `yzx dev` limited to runtime-safe diagnostics
+- keep repo-only `yzx dev` commands available through the maintainer-shell wrapper, which dispatches to `yzx_repo_maintainer`
 - keep public command names stable: `yzx_repo_validator` and `yzx_repo_maintainer`
 - update `packaging/rust_core_helper.nix` so runtime package builds only the product crate/binaries and leaves tests to explicit maintainer/CI gates
 - keep `yazelix_maintainer -> yazelix_core` as the only dependency direction

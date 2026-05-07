@@ -26,6 +26,7 @@ Yazelix uses `~/.config/yazelix/settings.jsonc` as the canonical settings surfac
 - `yzx config ui`: CLI entrypoint for the config UI; most users trigger the same popup with `Alt+Shift+C`
 - `yzx update upstream`: Upgrade the Yazelix package that owns the current runtime in the default Nix profile
 - `yzx update home_manager`: Refresh the owning Home Manager flake input, then print the `home-manager switch` step
+- `yzx dev inspect_session` and `yzx dev profile`: Runtime-safe diagnostics; repo-only development commands are available from the Yazelix maintainer shell
 
 ## Workspace Model
 
@@ -359,6 +360,7 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 - `yzx edit config` - Open the main managed Yazelix config file in your editor
 - `yzx restart [-s | --skip] [--config FILE] [--with KEY=VALUE]` - Restart Yazelix in a fresh window, optionally skipping the welcome screen, using an alternate settings file, or applying session-only settings overrides
 - `yzx doctor [--verbose] [--fix]` - Health checks and diagnostics
+- `yzx dev inspect_session [--json]` - Inspect the current Yazelix/Zellij tab session snapshot for runtime debugging
 - `yzx dev profile [--cold] [--desktop] [--launch] [--clear-cache]` - Profile current-terminal, desktop-entry, or managed new-window startup phases under `~/.local/share/yazelix/profiles/startup/`, with local saved-report comparison through `yzx dev profile compare`
 - `yzx status [--versions]` - Show current Yazelix status and optional tool versions
 

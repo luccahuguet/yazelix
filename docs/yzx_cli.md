@@ -29,17 +29,13 @@ Generate a focused first-run Yazelix config
 - `--dry-run`: Print the generated config instead of writing it
 - Generates only the current supported main config surface; it does not recreate removed pack sidecars
 
-### `yzx dev test [--verbose] [--new-window] [--lint-only] [--profile] [--sweep] [--visual] [--all] [--delay SECONDS]`
-Run Yazelix test suite
-- Default: run the normal non-sweep automated regression suite
-- `--verbose`: Show detailed test output
-- `--new-window`: Launch tests in a new Yazelix window (useful for debugging crashes)
-- `--lint-only`: Run only syntax validation
-- `--profile`: Print timing summaries for the default Rust suite inventory and any explicit shell-heavy runner lanes that still execute
-- `--sweep`: Run only the non-visual configuration sweep
-- `--visual`: Run only the visual terminal sweep (launches actual terminal windows)
-- `--all`: Run the default suite plus non-visual sweep + visual sweep
-- `--delay`: Delay between visual terminal launches in seconds (default: 3)
+### `yzx dev`
+Runtime diagnostics
+- Installed/runtime `yzx dev` intentionally exposes only runtime-safe diagnostic commands
+- `yzx dev inspect_session [--json]`: Inspect the current Yazelix/Zellij tab session snapshot from the pane orchestrator
+- `yzx dev profile [--cold] [--desktop] [--launch] [--clear-cache]`: Profile startup and launch paths from the active runtime
+- Repo-only commands such as tests, release bumps, issue sync, plugin wasm sync, Nu lint, Rust checks, and repo updates belong to the Yazelix maintainer shell
+- Running a repo-only `yzx dev` command from the installed runtime prints a maintainer-shell remediation instead of trying to execute repository tooling
 
 ### `yzx dev profile [--cold] [--desktop] [--launch] [--clear-cache]`
 Profile launch sequence and identify performance bottlenecks
@@ -55,14 +51,6 @@ Profile launch sequence and identify performance bottlenecks
 - The summary breaks out real startup phases such as preflight, config-state checks, maintainer-shell entry, shellHook setup, and inner startup work
 - Profiling works from either a repo checkout or the active installed runtime
 - Startup profile comparison is a local evidence tool, not a hosted CI timing gate
-
-### `yzx dev bump VERSION`
-Automate the version bump, release commit, and matching git tag
-- Requires a clean git worktree
-- Fails if `VERSION` is not a real Yazelix tag like `v15` or `v15.1`
-- Refuses to reuse an existing git tag
-- Rotates the current `Unreleased` release notes into the requested version, resets a fresh `Unreleased` placeholder, updates `YAZELIX_VERSION`, syncs the README title/version marker, creates a dedicated commit, and creates the matching annotated tag
-- Refuses to run if `CHANGELOG.md` or `docs/upgrade_notes.toml` still contain the untouched default `Unreleased` placeholder text
 
 ### `yzx launch [--path DIR] [--home] [--config FILE] [--with KEY=VALUE] [--terminal TERM] [--verbose]`
 Launch Yazelix with directory and mode options
@@ -198,18 +186,25 @@ Preview or remove manual-install takeover blockers before Home Manager takeover
 Upgrade Determinate Nix
 - `yzx update nix`: Upgrade Determinate Nix via `determinate-nixd` (`--yes` skips prompt, `--verbose` shows command; sudo required; only works if Determinate Nix is installed)
 
-Maintainer-only updates:
+Runtime diagnostics:
 - `yzx dev inspect_session [--json]`: Inspect the current Yazelix/Zellij tab session snapshot from the pane orchestrator; useful for debugging workspace root, focus context, layout state, managed panes, and sidebar Yazi identity
 - `yzx_control zellij status-cache-heartbeat --json`: Read the last window-local pane-orchestrator heartbeat from `status_bar_cache.json` without piping into the plugin; useful during stalls because it shows stale heartbeat age, last timer tick, last handled pipe, and recent status-refresh timestamps
-- `yzx dev rust fmt [core|maintainer|pane_orchestrator|all] [--check]`: Run `cargo fmt` directly from the current maintainer environment without entering `nix develop`. Default target is `all`
+
+Maintainer shell commands:
+- Inside `nix develop`, the maintainer-shell `yzx` wrapper routes repo-only `yzx dev` commands to `yzx_repo_maintainer`
+- `yzx dev rust fmt [core|maintainer|pane_orchestrator|all] [--check]`: Run `cargo fmt` directly from the current maintainer environment. Default target is `all`
 - `yzx dev rust check [core|maintainer|pane_orchestrator|all]`: Run fast `cargo check` directly. Default target is `core`
 - `yzx dev rust test [core|maintainer|pane_orchestrator|all] [cargo test args...]`: Run fast `cargo test` directly. Default target is `core`; pass a focused test filter directly or after the target
+- `yzx dev test [--verbose] [--new-window] [--lint-only] [--profile] [--sweep] [--visual] [--all] [--delay SECONDS]`: Run the repo test lanes
+- `yzx dev update`: Refresh repo runtime inputs, run canaries, sync pinned runtime expectations, refresh vendored runtime assets, and perform the required `--activate profile|home_manager|none` step; `--canary-only` is the only path that does not require `--activate`
+- `yzx dev build_pane_orchestrator [--sync]`: Build the Zellij pane orchestrator wasm for `wasm32-wasip1`; `--sync` also updates the tracked/runtime plugin paths after a successful build, preserves previously granted plugin permissions onto the stable runtime path when possible, and regenerates Zellij config. After syncing, prefer restarting Yazelix over reloading the plugin in place
+- `yzx dev sync_issues [--dry-run]`: Sync the GitHub/Beads public issue contract from a repo checkout
+- `yzx dev lint_nu [--format pretty|compact] [paths...]`: Run the repo Nu linter wrapper
+- `yzx dev bump VERSION`: Rotate release notes, update `YAZELIX_VERSION`, sync the README version marker, create the release commit, and create the matching annotated tag
 - `yzx_repo_validator validate-package-rust-test-purity`: Guard default/package-time Rust tests from host-only commands such as `nix` and `home-manager`; Nix-dependent checks belong in explicit validators or package gates
 - `yzx_repo_validator validate-pane-orchestrator-sync`: Check that the tracked pane-orchestrator wasm sync stamp matches the current source and wasm
 - `yzx_repo_validator validate-workspace-session-contract`: Check built-in layout metadata, workspace runtime assets, internal Zellij command routing, pane-orchestrator pipe commands, and Yazi workspace entrypoints
 - `yzx_repo_validator validate-rust-ownership-budget`: Optional manual audit for the canonical Rust ownership manifest, unexpected `.rs` files, and historical LOC/file ceilings
-- `yzx dev update`: Refresh the repo runtime inputs by updating `flake.lock` `nixpkgs`, run canary generated-state/build checks (`default`, `shell_layout`), then sync pinned runtime expectations, refresh the vendored `configs/zellij/plugins/zjstatus.wasm`, refresh vendored Yazi plugin runtime files from the pinned source map in `config_metadata/vendored_yazi_plugins.toml`, and perform one explicit activation step selected by the required `--activate profile|home_manager|none` flag (`profile` replaces older default-profile Yazelix entries with the current repo package for local dogfooding, `home_manager` refreshes the Home Manager flake input before `home-manager switch`, and `none` leaves local activation untouched). `--canary-only` is the only path that does not require `--activate`.
-- `yzx dev build_pane_orchestrator [--sync]`: Build the Zellij pane orchestrator wasm for `wasm32-wasip1`; `--sync` also updates the tracked/runtime plugin paths after a successful build, preserves previously granted plugin permissions onto the stable runtime path when possible, and regenerates Zellij config. After syncing, prefer restarting Yazelix over reloading the plugin in place. If the toolchain is missing, install a WASI-capable Rust toolchain first.
 
 ### `yzx menu [--popup]`
 Interactive command palette (fuzzy search)
@@ -374,15 +369,19 @@ yzx update home_manager       # Run nix flake update yazelix here, then print ho
 yzx home_manager prepare      # Preview manual-install takeover blockers before Home Manager switch
 yzx home_manager prepare --apply --yes  # Archive file blockers, remove standalone profile yazelix entries, then hand off to home-manager switch
 yzx update nix                # Upgrade Determinate Nix via determinate-nixd (sudo)
+yzx screen game_of_life_gliders  # Preview the glider-swarm Game of Life welcome animation in the terminal
+
+# Maintainer shell updates
+# These commands require `nix develop` from a Yazelix repo checkout
 yzx dev update --yes --activate profile  # Refresh all inputs, run canaries, sync pins, refresh vendored zjstatus and Yazi plugins, then activate the local repo package in the default profile
 yzx dev update --yes --activate none  # Refresh the repo state only and skip local activation
 yzx dev update --yes --activate home_manager --home-manager-attr 'you@host'  # Refresh the repo, update the Home Manager yazelix-hm input, then run home-manager switch
 yzx dev update --canary-only --canaries [default]  # Run only the default canary
 yzx dev update --canary-only --canaries [shell_layout]  # Run the alternate shell/layout canary
 yzx dev build_pane_orchestrator --sync  # Build and sync the pane orchestrator wasm
-yzx screen game_of_life_gliders  # Preview the glider-swarm Game of Life welcome animation in the terminal
 
-# Development verification
+# Maintainer verification
+# These commands require `nix develop` from a Yazelix repo checkout
 yzx dev test                  # Run the default non-sweep regression suite
 yzx dev test --verbose        # Run the default suite with detailed output
 yzx dev test --new-window     # Run tests in separate window (for debugging)
