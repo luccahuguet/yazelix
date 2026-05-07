@@ -227,6 +227,7 @@ pub fn generate_zellij_materialization(
         &zellij_keybindings,
         &render_plan,
         &pane_orchestrator_runtime_path,
+        &generation_fingerprint,
     )?;
     write_text_atomic(&merged_config_path, &merged_config)?;
     record_generation_fingerprint(&request.zellij_config_dir, &generation_fingerprint)?;
@@ -442,6 +443,7 @@ fn render_merged_config(
     zellij_keybindings: &BTreeMap<String, Vec<String>>,
     render_plan: &ZellijRenderPlanData,
     pane_orchestrator_wasm_path: &Path,
+    runtime_config_generation: &str,
 ) -> Result<String, CoreError> {
     let extracted_blocks = extract_semantic_config_blocks(base_config_content);
     let overrides_path = runtime_dir
@@ -469,6 +471,7 @@ fn render_merged_config(
         render_plan.screen_saver_enabled,
         render_plan.screen_saver_idle_seconds,
         &render_plan.screen_saver_style,
+        runtime_config_generation,
     );
     let load_plugins_block = build_yazelix_load_plugins_block(&extracted_blocks.load_plugin_lines);
 
@@ -631,6 +634,7 @@ fn build_yazelix_plugins_block(
     screen_saver_enabled: bool,
     screen_saver_idle_seconds: i64,
     screen_saver_style: &str,
+    runtime_config_generation: &str,
 ) -> String {
     let mut merged_lines = existing_lines.to_vec();
     let alias_present = merged_lines
@@ -653,6 +657,10 @@ fn build_yazelix_plugins_block(
             format!(
                 "        screen_saver_style {}",
                 json_quote(screen_saver_style)
+            ),
+            format!(
+                "        runtime_config_generation {}",
+                json_quote(runtime_config_generation)
             ),
             "    }".to_string(),
         ]);
@@ -2242,6 +2250,7 @@ keybinds {
             &sample_zellij_keybindings(),
             &plan,
             Path::new("/tmp/pane.wasm"),
+            "gen-test",
         )
         .unwrap();
 
@@ -2288,6 +2297,7 @@ keybinds {
             &sample_zellij_keybindings(),
             &plan,
             Path::new("/tmp/pane.wasm"),
+            "gen-test",
         )
         .unwrap();
 
@@ -2657,6 +2667,7 @@ keybinds {
             true,
             180,
             "mandelbrot",
+            "gen-test",
         );
 
         assert!(block.contains("yazelix_pane_orchestrator location=\"file:/opt/yazelix/plugins/yazelix_pane_orchestrator.wasm\""));
@@ -2666,6 +2677,7 @@ keybinds {
         assert!(block.contains("screen_saver_enabled \"true\""));
         assert!(block.contains("screen_saver_idle_seconds \"180\""));
         assert!(block.contains("screen_saver_style \"mandelbrot\""));
+        assert!(block.contains("runtime_config_generation \"gen-test\""));
         assert!(!block.contains("widget_tray_segment"));
         assert!(!block.contains("custom_text_segment"));
         assert!(!block.contains("sidebar_width_percent"));

@@ -1,6 +1,7 @@
 // Test lane: default
 
 use serde_json::json;
+use std::fs;
 use tempfile::tempdir;
 use yazelix_core::settings_surface::read_settings_jsonc_value;
 use yazelix_core::user_config_paths::shared_cursor_config;
@@ -8,7 +9,9 @@ use yazelix_core::user_config_paths::shared_cursor_config;
 mod support;
 
 use support::commands::yzx_control_command;
-use support::fixtures::{repo_root, write_runtime_contract_assets};
+use support::fixtures::{
+    prepend_path, repo_root, write_executable_script, write_runtime_contract_assets,
+};
 
 fn with_config_env(
     command: &mut assert_cmd::Command,
@@ -63,4 +66,63 @@ fn config_set_and_unset_edit_settings_jsonc() {
 
     let value = read_settings_jsonc_value(&settings_path).expect("settings after unset");
     assert!(value["editor"].get("hide_sidebar_on_file_open").is_none());
+}
+
+// Regression: live-with-pane-refresh config saves emit a versioned pane-orchestrator reload payload instead of leaving the saved value silently inactive.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn config_set_live_zellij_field_reloads_pane_orchestrator_runtime_config() {
+    let repo = repo_root();
+    let temp = tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let runtime = temp.path().join("runtime");
+    let config = temp.path().join("config");
+    let state = temp.path().join("state");
+    let fake_bin = temp.path().join("fake-bin");
+    let payload_log = temp.path().join("reload-payload.json");
+    write_runtime_contract_assets(&repo, &runtime);
+    fs::create_dir_all(state.join("configs/zellij")).unwrap();
+    fs::write(
+        state.join("configs/zellij/.yazelix_generation.json"),
+        r#"{"fingerprint":"gen-a"}"#,
+    )
+    .unwrap();
+    write_executable_script(
+        &fake_bin.join("zellij"),
+        &format!(
+            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ] && [ \"$6\" = \"reload_runtime_config\" ]; then\n  printf '%s' \"$8\" > \"{}\"\n  printf '%s\\n' 'ok'\n  exit 0\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
+            payload_log.display()
+        ),
+    );
+
+    let output = yzx_control_command()
+        .env_clear()
+        .env("HOME", &home)
+        .env("PATH", prepend_path(&fake_bin))
+        .env("YAZELIX_RUNTIME_DIR", &runtime)
+        .env("YAZELIX_CONFIG_DIR", &config)
+        .env("YAZELIX_STATE_DIR", &state)
+        .args(["config", "set", "zellij.popup_width_percent", "82"])
+        .output()
+        .unwrap();
+
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("Updated zellij.popup_width_percent."));
+    assert!(stdout.contains("Refreshed pane-orchestrator runtime config."));
+    let payload: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(payload_log).unwrap()).unwrap();
+    assert_eq!(payload["schema_version"], json!(1));
+    assert_eq!(payload["generation"], json!("gen-a"));
+    assert_eq!(payload["runtime_config"]["popup_width_percent"], json!(82));
+    assert_eq!(payload["runtime_config"]["popup_height_percent"], json!(90));
+    assert_eq!(
+        payload["runtime_config"]["screen_saver_enabled"],
+        json!(false)
+    );
 }

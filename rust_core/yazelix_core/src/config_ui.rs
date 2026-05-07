@@ -4,8 +4,8 @@ use crate::action_registry::ZELLIJ_ACTIONS;
 use crate::active_config_surface::{PrimaryConfigPaths, primary_config_paths};
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_apply::{
-    ConfigEditApplyRequest, ConfigEditApplyStatus, apply_mode_for_setting,
-    apply_status_after_config_edit, runtime_materialization_request,
+    ConfigEditApplyRequest, ConfigEditApplyStatus, PaneOrchestratorRuntimeRefreshRequest,
+    apply_mode_for_setting, apply_status_after_config_edit, runtime_materialization_request,
 };
 use crate::config_normalize::{ConfigDiagnostic, ConfigDiagnosticReport, NormalizeConfigRequest};
 use crate::control_plane::{home_dir_from_env, state_dir_from_env};
@@ -1197,16 +1197,28 @@ impl ConfigUiApp {
         setting_path: &str,
     ) -> Result<ConfigEditApplyStatus, CoreError> {
         let paths = primary_config_paths(&self.request.runtime_dir, &self.request.config_dir);
-        let runtime_materialization = if apply_mode_for_setting(&paths.contract_path, setting_path)?
-            == Some(RuntimeApplyMode::GeneratedRuntimeRefresh)
+        let apply_mode = apply_mode_for_setting(&paths.contract_path, setting_path)?;
+        let runtime_materialization =
+            if apply_mode == Some(RuntimeApplyMode::GeneratedRuntimeRefresh) {
+                let state_dir = state_dir_from_env()?;
+                Some(runtime_materialization_request(
+                    &self.request.runtime_dir,
+                    &self.request.config_dir,
+                    self.request.config_override.as_deref(),
+                    &state_dir,
+                )?)
+            } else {
+                None
+            };
+        let pane_orchestrator_refresh = if apply_mode == Some(RuntimeApplyMode::LiveWithPaneRefresh)
         {
             let state_dir = state_dir_from_env()?;
-            Some(runtime_materialization_request(
-                &self.request.runtime_dir,
-                &self.request.config_dir,
-                self.request.config_override.as_deref(),
-                &state_dir,
-            )?)
+            Some(PaneOrchestratorRuntimeRefreshRequest {
+                config_path: self.model.active_config_path.clone(),
+                default_config_path: paths.default_config_path.clone(),
+                contract_path: paths.contract_path.clone(),
+                zellij_config_dir: state_dir.join("configs").join("zellij"),
+            })
         } else {
             None
         };
@@ -1214,6 +1226,7 @@ impl ConfigUiApp {
             setting_path: setting_path.to_string(),
             contract_path: paths.contract_path,
             runtime_materialization,
+            pane_orchestrator_refresh,
         })
     }
 
@@ -1632,6 +1645,16 @@ fn write_notice_text(verb: &str, path: &str, outcome: &ConfigUiWriteOutcome) -> 
         .apply_status
         .as_ref()
         .and_then(|status| status.generated_refresh.as_ref())
+    {
+        text.push(' ');
+        text.push_str(&refresh.message);
+        text.push(' ');
+        text.push_str(&refresh.remediation);
+    }
+    if let Some(refresh) = outcome
+        .apply_status
+        .as_ref()
+        .and_then(|status| status.pane_orchestrator_refresh.as_ref())
     {
         text.push(' ');
         text.push_str(&refresh.message);

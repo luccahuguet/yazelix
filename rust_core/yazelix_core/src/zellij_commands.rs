@@ -162,6 +162,12 @@ pub(super) fn run_pane_orchestrator_command(
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
+pub(crate) fn run_pane_orchestrator_runtime_config_reload(
+    payload: &str,
+) -> Result<String, CoreError> {
+    run_pane_orchestrator_command("reload_runtime_config", payload)
+}
+
 fn parse_zellij_pipe_args(args: &[String]) -> Result<ZellijPipeArgs, CoreError> {
     let mut parsed = ZellijPipeArgs::default();
     let mut iter = args.iter();

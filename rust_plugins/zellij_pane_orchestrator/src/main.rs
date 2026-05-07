@@ -3,6 +3,7 @@ mod editor;
 mod heartbeat;
 mod layout;
 mod panes;
+mod runtime_config;
 mod screen_saver;
 mod sidebar_yazi;
 mod status_bar_cache;
@@ -32,6 +33,8 @@ pub(crate) const RESULT_DENIED: &str = "permissions_denied";
 pub(crate) const RESULT_INVALID_PAYLOAD: &str = "invalid_payload";
 pub(crate) const RESULT_UNKNOWN_LAYOUT: &str = "unknown_layout";
 pub(crate) const RESULT_UNSUPPORTED_EDITOR: &str = "unsupported_editor";
+pub(crate) const RESULT_STALE_GENERATION: &str = "stale_generation";
+pub(crate) const RESULT_VERSION_MISMATCH: &str = "version_mismatch";
 pub(crate) const COMMAND_STEP_DELAY_MS: u64 = 35;
 pub(crate) const SWAP_LAYOUT_STEP_DELAY_MS: u64 = 1;
 
@@ -64,6 +67,7 @@ struct State {
     status_bar_opencode_go_usage_next_refresh: Option<Instant>,
     orchestrator_heartbeat: heartbeat::OrchestratorHeartbeat,
     timer_armed_for: Option<Instant>,
+    runtime_config_generation: String,
     permissions_granted: bool,
 }
 
@@ -89,6 +93,10 @@ impl ZellijPlugin for State {
             &plugin_ids.initial_cwd,
         );
         self.screen_saver_config = ScreenSaverConfig::from_plugin_configuration(&configuration);
+        self.runtime_config_generation = configuration
+            .get("runtime_config_generation")
+            .map(|value| value.trim().to_string())
+            .unwrap_or_default();
         if self.screen_saver_config.enabled {
             self.screen_saver_last_input = Some(Instant::now());
         }
@@ -258,6 +266,10 @@ impl ZellijPlugin for State {
             }
             "toggle_transient_pane" => {
                 self.toggle_transient_pane(&pipe_message);
+                false
+            }
+            "reload_runtime_config" => {
+                self.reload_runtime_config(&pipe_message);
                 false
             }
             "maintainer_debug_editor_state" => {

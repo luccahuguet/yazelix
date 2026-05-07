@@ -44,8 +44,8 @@ The config UI, doctor, and future `yzx_control` save/apply flows should use one 
 | `terminal.terminals`, `terminal.config_mode`, `terminal.transparency` | `shell_terminal_restart` | Terminal config changes apply to newly launched terminal processes, or to Home Manager activation when Home Manager owns the source |
 | `zellij.disable_tips`, `zellij.pane_frames`, `zellij.rounded_corners`, `zellij.support_kitty_keyboard_protocol`, `zellij.theme`, `zellij.default_mode`, `zellij.keybindings` | `tab_session_restart` | These affect generated Zellij config or session-level behavior that is not safely reloadable in place |
 | `zellij.popup_program` | `tab_session_restart` | A future pane-orchestrator reload may narrow this, but command changes are excluded from the first live slice |
-| `zellij.popup_width_percent`, `zellij.popup_height_percent` | `live_with_pane_refresh` | Accepted first live slice once the pane-orchestrator reload pipe exists |
-| `zellij.screen_saver_enabled`, `zellij.screen_saver_idle_seconds`, `zellij.screen_saver_style` | `live_with_pane_refresh` | Accepted first live slice once the pane-orchestrator reload pipe exists |
+| `zellij.popup_width_percent`, `zellij.popup_height_percent` | `live_with_pane_refresh` | Applied to the running pane orchestrator through the versioned runtime-config reload pipe |
+| `zellij.screen_saver_enabled`, `zellij.screen_saver_idle_seconds`, `zellij.screen_saver_style` | `live_with_pane_refresh` | Applied to the running pane orchestrator through the versioned runtime-config reload pipe |
 | `zellij.widget_tray`, `zellij.tab_label_mode`, `zellij.codex_usage_display`, `zellij.claude_usage_display`, `zellij.claude_usage_periods`, `zellij.opencode_go_usage_display`, `zellij.opencode_go_usage_periods`, `zellij.custom_text` | `generated_runtime_refresh` | Can move to `live_with_pane_refresh` only after the status bar has an explicit refresh owner |
 | `yazi.command`, `yazi.ya_command`, `yazi.plugins`, `yazi.theme`, `yazi.sort_by` | `generated_runtime_refresh` | Requires managed Yazi config regeneration and a fresh Yazi/sidebar process |
 
@@ -65,11 +65,11 @@ These values are scalar or enum settings already owned by Yazelix runtime behavi
 
 ## Runtime Propagation
 
-The first live-apply mechanism should be:
+The first live-apply mechanism is:
 
 1. `yzx_control` validates the semantic settings write and computes changed field apply modes.
 2. `yzx_control` writes the canonical settings snapshot.
-3. For `live_with_pane_refresh` fields, `yzx_control` sends a versioned pane-orchestrator pipe message with the changed values and the current session/config generation.
+3. For `live_with_pane_refresh` fields, `yzx_control` sends `reload_runtime_config` to the pane orchestrator with schema version `1`, the generated Zellij config generation, and the bounded runtime config values.
 4. The pane orchestrator validates the message, updates its in-memory runtime config, and returns an explicit success or failure.
 5. The caller reports per-field status. Mixed results are visible; partial apply is not treated as success.
 
@@ -104,4 +104,7 @@ The UI should prefer specific remediation text from native-config status when a 
 - `yzx dev rust test config_ui`
 - `yzx dev rust test doctor_commands`
 - `yzx dev rust test zellij_materialization`
+- `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml`
+- `yzx dev build_pane_orchestrator --sync`
+- `yzx_repo_validator validate-pane-orchestrator-sync`
 - `yzx_repo_validator validate-contracts`

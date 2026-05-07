@@ -4,6 +4,7 @@ pub mod editor_open_contract;
 pub mod horizontal_focus_contract;
 pub mod orchestrator_heartbeat_contract;
 pub mod pane_contract;
+pub mod runtime_config_contract;
 pub mod screen_saver_contract;
 pub mod sidebar_contract;
 pub mod sidebar_state_contract;

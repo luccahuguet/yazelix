@@ -5,14 +5,14 @@ use crate::active_config_surface::ActiveConfigPaths;
 use crate::active_config_surface::resolve_active_config_paths;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_apply::{
-    ConfigEditApplyRequest, ConfigEditApplyStatus, apply_mode_for_setting,
-    apply_status_after_config_edit,
+    ConfigEditApplyRequest, ConfigEditApplyStatus, PaneOrchestratorRuntimeRefreshRequest,
+    apply_mode_for_setting, apply_status_after_config_edit,
 };
 use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::config_ui::{ConfigUiRequest, run_config_ui};
 use crate::control_plane::{
     config_dir_from_env, config_override_from_env, runtime_dir_from_env,
-    runtime_materialization_plan_request_from_env,
+    runtime_materialization_plan_request_from_env, state_dir_from_env,
 };
 use crate::settings_jsonc_patch::{
     SettingsJsoncPatchMutation, set_settings_jsonc_value_text, unset_settings_jsonc_value_text,
@@ -468,7 +468,8 @@ fn apply_after_config_edit(
     if mutation == SettingsJsoncPatchMutation::Unchanged {
         return Ok(None);
     }
-    let runtime_materialization = if apply_mode_for_setting(contract_path, setting_path)?
+    let apply_mode = apply_mode_for_setting(contract_path, setting_path)?;
+    let runtime_materialization = if apply_mode
         == Some(crate::runtime_apply_mode::RuntimeApplyMode::GeneratedRuntimeRefresh)
     {
         Some(runtime_materialization_plan_request_from_env(
@@ -477,11 +478,29 @@ fn apply_after_config_edit(
     } else {
         None
     };
+    let pane_orchestrator_refresh =
+        if apply_mode == Some(crate::runtime_apply_mode::RuntimeApplyMode::LiveWithPaneRefresh) {
+            let runtime_dir = runtime_dir_from_env()?;
+            let config_dir = config_dir_from_env()?;
+            let config_override = config_override_from_env();
+            let paths =
+                resolve_active_config_paths(&runtime_dir, &config_dir, config_override.as_deref())?;
+            let state_dir = state_dir_from_env()?;
+            Some(PaneOrchestratorRuntimeRefreshRequest {
+                config_path: paths.config_file,
+                default_config_path: paths.default_config_path,
+                contract_path: paths.contract_path,
+                zellij_config_dir: state_dir.join("configs").join("zellij"),
+            })
+        } else {
+            None
+        };
     Ok(Some(apply_status_after_config_edit(
         &ConfigEditApplyRequest {
             setting_path: setting_path.to_string(),
             contract_path: contract_path.to_path_buf(),
             runtime_materialization,
+            pane_orchestrator_refresh,
         },
     )?))
 }
@@ -500,6 +519,10 @@ fn print_edit_outcome(
     if let Some(status) = apply_status {
         println!("Apply: {}.", status.apply_mode.label());
         if let Some(refresh) = &status.generated_refresh {
+            println!("{}", refresh.message);
+            println!("{}", refresh.remediation);
+        }
+        if let Some(refresh) = &status.pane_orchestrator_refresh {
             println!("{}", refresh.message);
             println!("{}", refresh.remediation);
         }

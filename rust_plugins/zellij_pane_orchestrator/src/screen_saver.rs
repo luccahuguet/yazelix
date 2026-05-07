@@ -119,7 +119,7 @@ impl State {
         }
     }
 
-    fn restore_screen_saver_floating_layer(&mut self) {
+    pub(crate) fn restore_screen_saver_floating_layer(&mut self) {
         if self.screen_saver_restore_floating_layer {
             let _ = show_floating_panes(None);
             self.screen_saver_restore_floating_layer = false;
