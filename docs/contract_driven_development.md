@@ -108,8 +108,6 @@ Use these validators as the current contract ratchet:
 
 - `yzx_repo_validator validate-contracts`
   - validates canonical contract files, contract items, and contract-surface hygiene
-- `yzx_repo_validator validate-default-test-traceability`
-  - rejects governed Nu test files from the canonical suite
 - `yzx_repo_validator validate-rust-test-traceability`
   - validates governed Rust test metadata and nearby `Contract:` markers
 - `yzx_repo_validator validate-package-rust-test-purity`

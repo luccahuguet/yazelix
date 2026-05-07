@@ -12,7 +12,6 @@ use support::envelopes::{error_envelope, ok_envelope};
 
 // Defends: runtime-env.compute returns one machine-readable env envelope with filtered PATH entries and managed Helix wrapping.
 // Contract: CRCP-002
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn runtime_env_compute_prints_machine_readable_env_envelope() {
     let tmp = tempdir().unwrap();
@@ -104,7 +103,6 @@ fn runtime_env_compute_prints_machine_readable_env_envelope() {
 
 // Defends: runtime-env.compute rejects malformed JSON request payloads with one usage envelope.
 // Contract: CRCP-002
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
 #[test]
 fn runtime_env_compute_rejects_invalid_request_json() {
     let output = yzx_core_command()
@@ -122,7 +120,6 @@ fn runtime_env_compute_rejects_invalid_request_json() {
 
 // Defends: runtime-env.compute can build the canonical runtime env from process env plus optional config JSON without Nu request assembly.
 // Contract: CRCP-002
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn runtime_env_compute_from_env_accepts_config_json() {
     let tmp = tempdir().unwrap();

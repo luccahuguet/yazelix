@@ -441,7 +441,6 @@ mod tests {
     }
 
     // Invariant: config-state hashing stays stable for the default config when no prior state exists.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn computes_default_rebuild_hash_without_recorded_state() {
         let dir = tempdir().expect("tempdir");
@@ -463,7 +462,6 @@ mod tests {
     }
 
     // Regression: malformed legacy state cache content must be treated as missing instead of trusted.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn treats_malformed_state_cache_as_missing() {
         let dir = tempdir().expect("tempdir");
@@ -488,7 +486,6 @@ mod tests {
     }
 
     // Defends: config-state hashing ignores non-rebuild settings while still invalidating on rebuild-driving changes.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn ignores_non_rebuild_config_changes_but_flags_rebuild_changes() {
         let dir = tempdir().expect("tempdir");
@@ -543,7 +540,6 @@ mod tests {
     }
 
     // Defends: recording generated-state hashes never takes ownership of unmanaged config surfaces.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn records_only_the_managed_main_config_surface() {
         let dir = tempdir().expect("tempdir");

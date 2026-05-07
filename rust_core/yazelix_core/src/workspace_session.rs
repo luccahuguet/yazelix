@@ -131,7 +131,6 @@ mod tests {
     use super::*;
 
     // Defends: active-tab workspace parsing keeps bootstrap roots optional for callers that need only user-set/plugin roots.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn workspace_root_parser_respects_bootstrap_boundary() {
         let raw = r#"{"workspace":{"root":"/tmp/demo","source":"bootstrap"}}"#;
@@ -144,7 +143,6 @@ mod tests {
     }
 
     // Defends: retarget responses expose a typed sidebar state instead of leaking plugin wire fields into command adapters.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn retarget_response_parser_extracts_sidebar_state() {
         let parsed = parse_workspace_retarget_response(
@@ -163,7 +161,6 @@ mod tests {
     }
 
     // Defends: simple pane-orchestrator retarget status strings stay typed and do not require JSON payloads.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn retarget_response_parser_keeps_simple_status_strings() {
         assert_eq!(
@@ -177,7 +174,6 @@ mod tests {
     }
 
     // Regression: reveal and editor flows use the pane-orchestrator session snapshot as the only live sidebar identity source.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn active_sidebar_state_parser_reads_session_snapshot() {
         let state = parse_active_sidebar_state(

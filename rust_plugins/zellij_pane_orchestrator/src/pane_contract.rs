@@ -60,7 +60,6 @@ mod tests {
     };
 
     // Defends: managed-pane lookup keys off the canonical pane titles instead of editor binary names.
-    // Strength: defect=1 behavior=2 resilience=2 cost=2 uniqueness=1 total=8/10
     #[test]
     fn only_exact_editor_title_counts_as_managed_editor() {
         let panes = [
@@ -85,7 +84,6 @@ mod tests {
     }
 
     // Defends: focused managed panes win over unfocused duplicates when multiple panes share the same managed title.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn focused_managed_editor_wins_when_multiple_editor_titled_panes_exist() {
         let panes = [
@@ -109,7 +107,6 @@ mod tests {
     }
 
     // Defends: yzx helper panes preserve the previous focus context instead of hijacking focus-policy state.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn yzx_helper_panes_preserve_previous_focus_context() {
         assert_eq!(

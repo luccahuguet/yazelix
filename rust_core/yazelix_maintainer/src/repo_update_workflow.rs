@@ -1340,7 +1340,6 @@ mod tests {
     use toml::Value as TomlValue;
 
     // Defends: maintainer updates require an explicit activation mode on real updates but allow omitted activation for canary-only runs.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn real_updates_require_explicit_activation_mode() {
         let err = resolve_requested_update_activation_mode("", false).unwrap_err();
@@ -1356,7 +1355,6 @@ mod tests {
     }
 
     // Defends: the shell-layout update canary forces the maintained zsh+nvim+hide-sidebar override set instead of mutating unrelated config fields.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn shell_layout_canary_overrides_expected_fields() {
         let mut value: TomlValue = toml::from_str(
@@ -1393,7 +1391,6 @@ hide_sidebar_on_file_open = false
     }
 
     // Defends: runtime pin updates replace only the targeted constants and preserve surrounding file content.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn constant_updates_only_touch_targeted_exports() {
         let input = "export const YAZELIX_VERSION = \"v15.4\"\nexport const PINNED_NIX_VERSION = \"1.0.0\"\nexport const PINNED_NUSHELL_VERSION = \"2.0.0\"\n";
@@ -1408,7 +1405,6 @@ hide_sidebar_on_file_open = false
     }
 
     // Defends: update canary selection accepts only the maintained allowlist and deduplicates repeated requests.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn canary_selection_rejects_unknown_names_and_deduplicates() {
         assert_eq!(

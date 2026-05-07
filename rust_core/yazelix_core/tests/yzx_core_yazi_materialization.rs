@@ -93,7 +93,6 @@ desc = "Open lazygit"
 }
 
 // Defends: yazi-materialization.generate Rust-owns the generated Yazi surface, bundled assets, and runtime placeholder rendering end-to-end.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yazi_materialization_generate_writes_managed_surface_and_assets() {
     let repo = repo_root();
@@ -174,7 +173,6 @@ plugins = ["git", "starship"]
 }
 
 // Defends: semantic Yazi integration keybinding remaps replace generated Yazelix-owned bindings without editing the native yazi_keymap.toml sidecar.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yazi_materialization_generate_applies_semantic_keybinding_remaps() {
     let repo = repo_root();
@@ -252,7 +250,6 @@ open_zoxide_in_editor = ["<A-x>", "<A-s>"]
 }
 
 // Defends: duplicate semantic Yazi keys fail before a generated keymap can contain ambiguous Yazelix-owned integration bindings.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yazi_materialization_generate_rejects_duplicate_semantic_keybindings() {
     let repo = repo_root();
@@ -298,7 +295,6 @@ open_zoxide_in_editor = ["<A-x>"]
 }
 
 // Regression: user Yazi keymap sections that are absent from Yazelix's bundled base keymap still survive materialization.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yazi_materialization_generate_preserves_user_keymap_sections_beyond_mgr() {
     let repo = repo_root();
@@ -417,7 +413,6 @@ desc = "Previous completion"
 }
 
 // Defends: yazi-materialization.generate rejects legacy Yazi override ownership instead of silently adopting configs/yazi/user.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yazi_materialization_generate_rejects_legacy_override_surface() {
     let repo = repo_root();

@@ -19,7 +19,6 @@ fn yzx_control_command_in_fixture(
 }
 
 // Defends: the Rust-owned legacy workspace-retarget route syncs the plugin-owned sidebar from the active-tab session snapshot once.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_cwd_retargets_workspace_and_syncs_sidebar() {
     let fixture = managed_config_fixture(
@@ -101,7 +100,6 @@ ya_command = "config-ya"
 }
 
 // Defends: consumers can obtain the current versioned pane-orchestrator status bus without parsing ad hoc logs or generated files.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_zellij_status_bus_json_reads_versioned_snapshot() {
     let fixture = managed_config_fixture("");
@@ -131,7 +129,6 @@ fn yzx_control_zellij_status_bus_json_reads_versioned_snapshot() {
 }
 
 // Defends: hide-on-file-open keeps `yzx reveal` on the managed-sidebar path instead of reviving no-sidebar guidance.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_reveal_treats_hide_on_file_open_as_managed_sidebar_available() {
     let fixture = managed_config_fixture(
@@ -156,7 +153,6 @@ hide_sidebar_on_file_open = true
 }
 
 // Defends: the public Rust-owned `yzx reveal` route uses the pane-orchestrator session snapshot as the only sidebar identity source and then focuses the sidebar.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_reveal_uses_session_snapshot_and_focuses_sidebar() {
     let fixture = managed_config_fixture(
@@ -214,7 +210,6 @@ ya_command = "ya"
 }
 
 // Defends: the default Rust-owned `yzx popup` route uses the pane-orchestrator toggle command so repeated invocations manage one popup instead of spawning duplicates.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_popup_without_override_uses_transient_toggle_contract() {
     let fixture = managed_config_fixture("");
@@ -250,7 +245,6 @@ fn yzx_control_popup_without_override_uses_transient_toggle_contract() {
 }
 
 // Defends: popup command overrides still use an explicit open request so the pane orchestrator receives the one-shot argv, cwd, and runtime contract.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_popup_override_opens_transient_pane_with_explicit_payload() {
     let fixture = managed_config_fixture("");
@@ -302,7 +296,6 @@ fn yzx_control_popup_override_opens_transient_pane_with_explicit_payload() {
 }
 
 // Regression: a popup pane already running inside an older session does not strictly reload all user config before starting its program.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_popup_pane_tolerates_unrelated_unknown_config_fields() {
     let fixture = managed_config_fixture(
@@ -357,7 +350,6 @@ ghostty_trail_color = "random"
 }
 
 // Defends: the Rust-owned Yazi file-open route carries all selected files into the managed editor, then retargets the workspace and syncs the plugin-owned sidebar.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_zellij_open_editor_reuses_managed_editor_and_syncs_sidebar() {
     let fixture = managed_config_fixture(
@@ -458,7 +450,6 @@ ya_command = "ya"
 }
 
 // Regression: early Yazi file opens carry the active sidebar Yazi identity through the existing retarget pipe instead of waiting for startup sidebar-state registration.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_zellij_open_editor_passes_current_yazi_state_to_retarget() {
     let fixture = managed_config_fixture(
@@ -510,7 +501,6 @@ hide_sidebar_on_file_open = false
 }
 
 // Defends: hide_sidebar_on_file_open hides the managed sidebar before opening files so the editor is not visibly resized after focus.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_zellij_open_editor_hides_sidebar_when_configured() {
     let fixture = managed_config_fixture(
@@ -560,7 +550,6 @@ hide_sidebar_on_file_open = true
 }
 
 // Regression: the first single-Yazi pane cannot visibly hide until the editor pane exists, so a missing-editor open needs one post-create hide pass.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_zellij_open_editor_hides_sidebar_after_creating_first_editor_pane() {
     let fixture = managed_config_fixture(
@@ -614,7 +603,6 @@ hide_sidebar_on_file_open = true
 }
 
 // Regression: a first Yazi file open must survive transient pane-orchestrator pipe timeout/not-ready responses and still create the initial editor pane.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_open_editor_retries_orchestrator_readiness_before_first_pane() {
     let fixture = managed_config_fixture(
@@ -677,7 +665,6 @@ ya_command = "ya"
 }
 
 // Regression: nested Yazi-to-Helix file opens keep the Git workspace root instead of retargeting the tab to the file parent.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_zellij_open_editor_keeps_repo_root_for_nested_helix_file() {
     let fixture = managed_config_fixture(
@@ -772,7 +759,6 @@ ya_command = "ya"
 }
 
 // Regression: when the managed editor pane is absent, multi-file Yazi open uses the immutable session snapshot even if the live config has newer stale fields.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_zellij_open_editor_opens_missing_editor_with_all_selected_files() {
     let fixture = managed_config_fixture(
@@ -880,7 +866,6 @@ ghostty_trail_color = "random"
 }
 
 // Defends: the Rust-owned Yazi zoxide route retargets the managed editor cwd and opens a new managed pane when the editor pane is missing.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_zellij_open_editor_cwd_opens_missing_managed_editor_pane() {
     let fixture = managed_config_fixture(
@@ -961,7 +946,6 @@ ya_command = "ya"
 }
 
 // Regression: the Alt+z Yazi zoxide route must honor hide_sidebar_on_file_open before retargeting the editor cwd.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_zellij_open_editor_cwd_hides_sidebar_when_configured() {
     let fixture = managed_config_fixture(
@@ -1009,7 +993,6 @@ hide_sidebar_on_file_open = true
 }
 
 // Regression: Alt+z from the initial single-Yazi pane needs a post-create hide because the closed layout is not applicable before the editor pane exists.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_zellij_open_editor_cwd_hides_sidebar_after_creating_first_editor_pane() {
     let fixture = managed_config_fixture(
@@ -1062,7 +1045,6 @@ hide_sidebar_on_file_open = true
 }
 
 // Regression: Alt+z should still open the editor when a live/stale pane-orchestrator reports no sidebar collapsed fact.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_zellij_open_editor_cwd_continues_when_sidebar_state_unknown() {
     let fixture = managed_config_fixture(
@@ -1110,7 +1092,6 @@ hide_sidebar_on_file_open = true
 }
 
 // Defends: the public Rust-owned `yzx doctor --json` surface exposes structured findings without depending on the removed Nu omnibus suite.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_doctor_json_reports_structured_findings() {
     let fixture = managed_config_fixture("");
@@ -1160,7 +1141,6 @@ fn yzx_control_doctor_json_reports_structured_findings() {
 }
 
 // Regression: `yzx doctor --json` must surface mixed Home Manager/default-profile Yazelix ownership before Home Manager activation trips over the package collision.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_doctor_json_reports_home_manager_profile_collision() {
     let fixture = managed_config_fixture("");
@@ -1217,7 +1197,6 @@ fn yzx_control_doctor_json_reports_home_manager_profile_collision() {
 }
 
 // Defends: `yzx doctor --fix-plan --json` exposes exact recovery commands without running the mutating fix flow.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_doctor_fix_plan_json_reports_recovery_commands() {
     let fixture = managed_config_fixture("");

@@ -61,7 +61,6 @@ fn request(runtime: PathBuf, config: PathBuf) -> ConfigUiRequest {
 }
 
 // Defends: the read-only config UI inventory uses the main contract and cursor schema together, with user-intent tabs and explicit/defaulted states.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn builds_inventory_tabs_and_value_states() {
     let runtime = tempdir().expect("runtime");
@@ -155,7 +154,6 @@ fn builds_inventory_tabs_and_value_states() {
 }
 
 // Defends: config UI metadata covers every visible field and stays aligned with the schema tab order instead of relying on path-prefix guesses.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn config_ui_metadata_covers_visible_fields_and_tabs() {
     let runtime = tempdir().expect("runtime");
@@ -274,7 +272,6 @@ fn config_ui_metadata_covers_visible_fields_and_tabs() {
 }
 
 // Defends: advanced config UI state exposes sidecar presence and the Home Manager/read-only ownership signal without mutating config files.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[cfg(unix)]
 #[test]
 fn reports_sidecars_and_home_manager_read_only_state() {
@@ -317,7 +314,6 @@ fn reports_sidecars_and_home_manager_read_only_state() {
 }
 
 // Defends: malformed settings.jsonc stops the config UI before rendering stale or misleading values.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn rejects_invalid_settings_jsonc() {
     let runtime = tempdir().expect("runtime");
@@ -335,7 +331,6 @@ fn rejects_invalid_settings_jsonc() {
 }
 
 // Defends: blocking config diagnostics are visible in the config UI model instead of making the read-only browser unusable for stale configs.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn marks_blocking_diagnostics_without_aborting_model_build() {
     let runtime = tempdir().expect("runtime");

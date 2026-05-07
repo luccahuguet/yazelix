@@ -88,7 +88,6 @@ mod tests {
     use super::*;
 
     // Defends: the extracted config UI model can represent a non-Yazelix field namespace before a future ratconfig crate split.
-    // Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=2 total=8/10
     #[test]
     fn model_accepts_non_yazelix_field_namespace() {
         let model = ConfigUiModel {

@@ -14,7 +14,6 @@ use support::fixtures::managed_config_fixture;
 use yazelix_core::user_config_paths::shared_cursor_config;
 
 // Defends: the Rust-owned `yzx sponsor` leaf still falls back to printing the sponsor URL when no opener is available.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_sponsor_falls_back_to_printed_url_without_openers() {
     let empty_path = TempDir::new().unwrap();
@@ -31,7 +30,6 @@ fn yzx_control_sponsor_falls_back_to_printed_url_without_openers() {
 }
 
 // Defends: the Rust-owned `yzx keys` root keeps the sectioned discoverability output instead of collapsing into a flat dump.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_keys_root_preserves_discoverability_sections() {
     let output = yzx_control_command().arg("keys").output().unwrap();
@@ -50,7 +48,6 @@ fn yzx_control_keys_root_preserves_discoverability_sections() {
 }
 
 // Defends: the Rust-owned `yzx onboard` command exposes a non-interactive help path without entering prompt mode.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_onboard_help_prints_prompt_contract() {
     let output = yzx_control_command()
@@ -67,7 +64,6 @@ fn yzx_control_onboard_help_prints_prompt_contract() {
 }
 
 // Regression: no-argument public commands still accept help flags through the public root without reporting them as operational arguments.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_restart_help_prints_usage_without_restarting() {
     for flag in ["-h", "--help"] {
@@ -89,7 +85,6 @@ fn yzx_restart_help_prints_usage_without_restarting() {
 }
 
 // Defends: `yzx cursors` exposes resolved cursor colors and split shape names from canonical cursor settings without requiring users to inspect generated shaders.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_cursors_prints_resolved_color_surface() {
     let fixture = managed_config_fixture("");
@@ -109,7 +104,6 @@ fn yzx_control_cursors_prints_resolved_color_surface() {
 }
 
 // Defends: `yzx reset config` preserves adjacent managed overrides and user-owned files instead of deleting them silently.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_reset_config_warns_about_preserved_adjacent_files() {
     let fixture = managed_config_fixture("");
@@ -156,7 +150,6 @@ fn yzx_control_reset_config_warns_about_preserved_adjacent_files() {
 }
 
 // Defends: the Rust-owned `yzx keys` leaves preserve alias parity and tool-specific guidance instead of routing every leaf to the same generic output.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_keys_aliases_and_leaf_views_preserve_guidance() {
     let root_stdout = stdout_text(yzx_control_command().arg("keys").output().unwrap());

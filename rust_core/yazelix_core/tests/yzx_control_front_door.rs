@@ -9,7 +9,6 @@ use support::commands::yzx_control_command;
 use support::envelopes::stdout_text;
 
 // Defends: the public `yzx tutor begin/list` flow exposes concrete lessons and the first workspace mini quest through the actual CLI binary.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_tutor_begin_and_list_expose_guided_lessons() {
     let list_output = yzx_control_command()
@@ -32,7 +31,6 @@ fn yzx_control_tutor_begin_and_list_expose_guided_lessons() {
 }
 
 // Defends: the Rust-owned `yzx whats_new` command still renders the current-version summary and marks the version seen in Yazelix-managed state.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_whats_new_renders_current_summary_and_marks_seen() {
     let tmp = tempdir().unwrap();

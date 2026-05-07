@@ -354,7 +354,6 @@ mod tests {
     use crate::config_normalize::ConfigDiagnostic;
 
     // Defends: doctor config details prose matches the historical Nushell renderer shape for verbose output.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn render_doctor_config_details_matches_expected_shape() {
         let report = ConfigDiagnosticReport {
@@ -387,7 +386,6 @@ mod tests {
     }
 
     // Defends: zero-issue report must not emit a misleading multi-line “stale config” block.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn render_doctor_config_details_empty_issues_message() {
         let report = ConfigDiagnosticReport {

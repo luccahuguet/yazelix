@@ -403,7 +403,6 @@ mod tests {
     use super::*;
 
     // Defends: `yzx reset config` keeps the real reset flags while rejecting stale force-style reset shapes.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn parses_reset_surface_flags() {
         assert_eq!(
@@ -423,7 +422,6 @@ mod tests {
     }
 
     // Regression: reset backup names must stay human-readable instead of regressing to opaque epoch-only suffixes.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn formats_compact_utc_backup_timestamps() {
         assert_eq!(format_backup_timestamp_utc(0), "19700101_000000");

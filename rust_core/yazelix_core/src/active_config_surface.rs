@@ -251,7 +251,6 @@ mod tests {
     }
 
     // Defends: Rust active-config-surface resolution bootstraps settings.jsonc and TOML tooling support when the canonical surface is missing.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn bootstraps_missing_managed_config_and_toml_tooling_support() {
         let runtime = tempdir().expect("runtime dir");
@@ -277,7 +276,6 @@ mod tests {
     }
 
     // Defends: disabling the cursor component does not require or generate the shared cursor sidecar during config bootstrap.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn disabled_cursor_component_bootstraps_without_cursor_sidecar() {
         let runtime = tempdir().expect("runtime dir");
@@ -317,7 +315,6 @@ mod tests {
     }
 
     // Defends: Rust active-config-surface resolution rejects stale old-format inputs when settings.jsonc already exists.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn rejects_settings_jsonc_with_old_inputs() {
         let runtime = tempdir().expect("runtime dir");
@@ -332,7 +329,6 @@ mod tests {
     }
 
     // Defends: old-only regular main configs are migrated to settings.jsonc before launch uses them.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn migrates_old_only_regular_main_config_to_settings_jsonc() {
         let runtime = tempdir().expect("runtime dir");
@@ -358,7 +354,6 @@ mod tests {
     }
 
     // Regression: dangling old nested symlinks still require manual owner migration instead of being ignored as missing paths.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[cfg(unix)]
     #[test]
     fn rejects_dangling_legacy_config_symlink() {

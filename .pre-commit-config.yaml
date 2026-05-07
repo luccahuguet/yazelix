@@ -31,12 +31,6 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-      - id: yazelix-validate-default-test-traceability
-        name: validate default-suite traceability
-        entry: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-default-test-traceability
-        language: system
-        pass_filenames: false
-        always_run: true
       - id: yazelix-validate-rust-test-traceability
         name: validate Rust test traceability
         entry: nix develop -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-rust-test-traceability

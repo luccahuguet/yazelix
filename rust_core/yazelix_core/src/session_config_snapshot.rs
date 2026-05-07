@@ -320,7 +320,6 @@ mod tests {
     }
 
     // Defends: live windows get a complete immutable config snapshot, not only a narrow facts cache.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn session_config_snapshot_roundtrips_full_config_and_facts_projection() {
         let dir = tempdir().unwrap();
@@ -355,7 +354,6 @@ mod tests {
     }
 
     // Defends: stale or corrupt snapshot files fail clearly instead of falling back to mutable user config.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn session_config_snapshot_loader_rejects_corrupt_and_wrong_schema_files() {
         let dir = tempdir().unwrap();
@@ -388,7 +386,6 @@ mod tests {
     }
 
     // Defends: launch-time snapshot creation uses one state-scoped file per launch id and rejects path-like ids.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn session_config_snapshot_launch_writer_scopes_path_to_snapshot_id() {
         let dir = tempdir().unwrap();

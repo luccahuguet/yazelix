@@ -835,7 +835,6 @@ mod tests {
     use super::*;
 
     // Defends: the workspace owner keeps Helix wrapper detection so managed-editor cwd retargeting survives the public Rust owner cut.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn resolves_managed_editor_kind_for_supported_variants() {
         assert_eq!(
@@ -855,7 +854,6 @@ mod tests {
     }
 
     // Regression: popup pane execution resolves the editor alias from the Rust-owned runtime env instead of reviving a Nu popup wrapper.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn popup_runtime_argv_resolves_editor_alias_from_runtime_env() {
         let runtime_env = serde_json::Map::from_iter([(

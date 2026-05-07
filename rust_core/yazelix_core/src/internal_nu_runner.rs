@@ -160,7 +160,6 @@ mod tests {
     use super::*;
 
     // Defends: shared internal Nu route rendering preserves spaces, quotes, and direct module targeting for Rust-owned command handoff.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn renders_direct_nu_module_invocation_script() {
         let script = render_nu_command_script(

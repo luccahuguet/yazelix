@@ -83,7 +83,6 @@ mod tests {
     use std::time::Duration;
 
     // Defends: idle screen saver config is opt-in, so loading the pane orchestrator cannot open `yzx screen` by default.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn screen_saver_is_disabled_by_default() {
         let config = ScreenSaverConfig::from_plugin_configuration(&BTreeMap::new());
@@ -96,7 +95,6 @@ mod tests {
     }
 
     // Defends: opt-in idle policy opens the configured `yzx screen` style only after the configured threshold.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn screen_saver_waits_until_idle_threshold_then_opens_configured_style() {
         let mut raw = BTreeMap::new();

@@ -389,7 +389,6 @@ mod tests {
     }
 
     // Defends: desktop fast-path launch keeps terminal generation minimal and rerolls Ghostty only when random cursor state survives on an existing generated config.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn desktop_fast_path_rerolls_existing_random_ghostty_config_without_full_regeneration() {
         let temp = tempdir().unwrap();
@@ -422,7 +421,6 @@ mod tests {
     }
 
     // Defends: non-desktop launch materialization still regenerates the configured terminal set even after the request-assembly cut.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn full_launch_materialization_uses_configured_terminals_when_callers_do_not_override_them() {
         let temp = tempdir().unwrap();
@@ -443,7 +441,6 @@ mod tests {
     }
 
     // Defends: missing terminal config materializes Ghostty first so first-run launches use the cursor-trail runtime identity.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn full_launch_materialization_defaults_to_ghostty_then_wezterm() {
         let temp = tempdir().unwrap();

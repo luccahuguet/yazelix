@@ -449,7 +449,6 @@ mod tests {
     use tempfile::TempDir;
 
     // Defends: Rust metadata is the public source for migrated control-plane leaves that no longer live in the Nushell command tree.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn metadata_includes_rust_owned_control_plane_commands() {
         let names = yzx_command_metadata()
@@ -463,7 +462,6 @@ mod tests {
     }
 
     // Defends: generated user-runtime metadata no longer advertises repo-only maintainer commands split into the maintainer shell.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn metadata_keeps_only_runtime_safe_dev_diagnostics() {
         let names = yzx_command_metadata()
@@ -495,7 +493,6 @@ mod tests {
     }
 
     // Defends: generated Nushell externs come from Rust metadata, including Rust-only leaves exactly once.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn renders_externs_for_rust_only_leaves_once() {
         let data = yzx_command_metadata_data();
@@ -516,7 +513,6 @@ mod tests {
     }
 
     // Regression: the generated yzx extern bridge lifecycle is Rust-owned and reuses current fingerprints without a Nushell wrapper.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn sync_yzx_extern_bridge_writes_and_reuses_current_bridge() {
         let runtime = TempDir::new().unwrap();
@@ -539,7 +535,6 @@ mod tests {
     }
 
     // Regression: failed generated yzx extern refreshes must not replace a previous valid bridge with the placeholder.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn sync_yzx_extern_bridge_preserves_existing_bridge_on_invalid_runtime() {
         let runtime = TempDir::new().unwrap();

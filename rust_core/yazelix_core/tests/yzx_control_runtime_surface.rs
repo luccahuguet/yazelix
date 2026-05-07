@@ -27,7 +27,6 @@ fn write_default_profile_manifest(fixture: &support::fixtures::ManagedConfigFixt
 }
 
 // Regression: workspace startup scrubs inherited GTK/GIO loader variables so host GUI apps do not load incompatible Nix modules.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn start_yazelix_scrubs_gui_loader_env_before_control_handoff() {
     let repo = repo_root();
@@ -111,7 +110,6 @@ printf 'YAZELIX_RUNTIME_DIR=%s\n' "$YAZELIX_RUNTIME_DIR"
 }
 
 // Defends: the public Rust-owned `yzx config --path` route still bootstraps the managed config surface and returns its canonical path.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_config_path_bootstraps_missing_managed_config() {
     let fixture = managed_config_fixture("");
@@ -136,7 +134,6 @@ fn yzx_control_config_path_bootstraps_missing_managed_config() {
 }
 
 // Defends: the public Rust-owned `yzx status --json` surface keeps the typed runtime summary instead of a wrapper-shaped blob.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_status_json_reports_typed_summary() {
     let fixture = managed_config_fixture(
@@ -173,7 +170,6 @@ terminals = ["ghostty"]
 }
 
 // Regression: status stays usable from an older running window whose live config contains newer unsupported fields.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_status_json_reports_config_problem_without_aborting() {
     let fixture = managed_config_fixture(
@@ -225,7 +221,6 @@ ghostty_trail_color = "random"
 }
 
 // Regression: status reports a bad active snapshot as a readable diagnostic instead of hiding the snapshot problem.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_status_json_reports_bad_session_snapshot_diagnostic() {
     let fixture = managed_config_fixture(
@@ -268,7 +263,6 @@ terminals = ["ghostty"]
 }
 
 // Defends: `yzx inspect --json` is the canonical runtime truth report for diagnostics and agents.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_inspect_json_reports_runtime_truth_without_zellij_session() {
     let fixture = managed_config_fixture(
@@ -325,7 +319,6 @@ terminals = ["ghostty"]
 }
 
 // Regression: inspect remains the diagnostic escape hatch when config validation is what failed.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_inspect_json_embeds_config_problem_without_aborting() {
     let fixture = managed_config_fixture(
@@ -360,7 +353,6 @@ ghostty_trail_color = "random"
 }
 
 // Defends: the default human `yzx status` output groups fields into readable sections instead of leaking raw internal summary keys.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_status_human_output_groups_sections_and_human_labels() {
     let fixture = managed_config_fixture(
@@ -397,7 +389,6 @@ terminals = ["ghostty"]
 }
 
 // Defends: the public Rust-owned `yzx status --json --versions` surface still attaches the optional tool matrix under one machine-readable report.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_status_json_versions_includes_tool_matrix() {
     let fixture = managed_config_fixture(
@@ -438,7 +429,6 @@ terminals = ["ghostty"]
 }
 
 // Defends: the human `yzx status --versions` output keeps the grouped status surface plus the tool-version matrix without leaking ANSI escapes to redirected output.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_status_versions_human_output_keeps_tool_matrix() {
     let fixture = managed_config_fixture(
@@ -473,7 +463,6 @@ terminals = ["ghostty"]
 }
 
 // Defends: the Rust-owned `yzx update upstream` route still fails early for Home Manager-owned installs instead of probing the profile path.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_update_upstream_rejects_home_manager_owned_install() {
     let fixture = managed_config_fixture("");
@@ -511,7 +500,6 @@ fn yzx_control_update_upstream_rejects_home_manager_owned_install() {
 }
 
 // Regression: `yzx update upstream` must allow a plain profile-owned install instead of misclassifying ~/.nix-profile as Home Manager ownership.
-// Strength: defect=2 behavior=2 resilience=2 cost=2 uniqueness=2 total=10/10
 #[test]
 fn yzx_control_update_upstream_accepts_profile_owned_install() {
     let fixture = managed_config_fixture("");
@@ -569,7 +557,6 @@ exit 99
 }
 
 // Regression: `yzx home_manager prepare --apply` must remove standalone profile-owned Yazelix entries as part of the takeover flow instead of only archiving files.
-// Strength: defect=2 behavior=2 resilience=2 cost=2 uniqueness=2 total=10/10
 #[test]
 fn yzx_control_home_manager_prepare_apply_removes_profile_entry_blockers() {
     let fixture = managed_config_fixture("");
@@ -629,7 +616,6 @@ exit 99
 }
 
 // Regression: `yzx update home_manager` must explain that `path:` inputs are still lock-pinned in flake.lock.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_update_home_manager_mentions_path_input_locking() {
     let fixture = managed_config_fixture("");
@@ -676,7 +662,6 @@ exit 99
 }
 
 // Regression: `yzx update home_manager` must detect local git-backed `path:` inputs and print the exact safer `git+file:` replacement instead of normalizing the slow path snapshot UX.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_update_home_manager_recommends_git_file_for_local_path_input() {
     let fixture = managed_config_fixture("");
@@ -759,7 +744,6 @@ exit 99
 }
 
 // Defends: the public Rust-owned `yzx run` route preserves child dash flags end to end instead of stealing them as wrapper options.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yzx_control_run_preserves_child_dash_flags_end_to_end() {
     let fixture = managed_config_fixture("");

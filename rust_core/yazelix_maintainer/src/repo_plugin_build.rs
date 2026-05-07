@@ -444,7 +444,6 @@ mod tests {
     }
 
     // Defends: the maintainer sync guard accepts a repo whose tracked wasm and source stamp agree.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn pane_orchestrator_sync_validator_accepts_current_stamp() {
         let (_tmp, repo) = write_fixture_repo();
@@ -456,7 +455,6 @@ mod tests {
     }
 
     // Regression: pane-orchestrator source edits must not pass maintainer checks until the wasm is rebuilt and synced.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn pane_orchestrator_sync_validator_rejects_stale_source_stamp() {
         let (_tmp, repo) = write_fixture_repo();

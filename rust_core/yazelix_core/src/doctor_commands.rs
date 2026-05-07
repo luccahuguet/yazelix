@@ -1272,7 +1272,6 @@ mod tests {
     use tempfile::TempDir;
 
     // Defends: the Rust doctor summary keeps warnings and fixable findings from being treated as healthy.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn doctor_summary_tracks_fixable_warning_state() {
         let summary = summarize_doctor_results(&[
@@ -1289,7 +1288,6 @@ mod tests {
     }
 
     // Defends: doctor consumes the shared native-config classifier and elevates required native terminal config misses to an error.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn native_config_status_finding_reports_terminal_user_mode_error() {
         let tmp = TempDir::new().unwrap();
@@ -1318,7 +1316,6 @@ mod tests {
     }
 
     // Defends: the Rust doctor port preserves the Zellij permission-denied finding and fix action instead of dropping the live-session seam.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn zellij_permissions_denied_stays_fixable() {
         let findings = build_zellij_plugin_health_findings(
@@ -1342,7 +1339,6 @@ mod tests {
     }
 
     // Defends: the recovery plan maps known high-friction failures to exact non-mutating recovery commands.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn recovery_plan_maps_common_failure_states_to_exact_commands() {
         let report = DoctorReportData {

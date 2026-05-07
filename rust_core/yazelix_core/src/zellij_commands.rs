@@ -1133,7 +1133,6 @@ mod tests {
     }
 
     // Defends: Yazi selected-file expansion can pass multiple paths through the public open-editor parser in one action.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn parse_open_editor_accepts_multiple_targets() {
         let parsed = parse_zellij_open_editor_args(&[
@@ -1149,7 +1148,6 @@ mod tests {
     }
 
     // Defends: maintainer session inspection renders the stable active-tab snapshot fields used to debug workspace routing.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn session_inspection_lines_include_workspace_layout_and_sidebar_identity() {
         let value: Value = serde_json::from_str(
@@ -1165,7 +1163,6 @@ mod tests {
     }
 
     // Defends: status-bus consumers reject unsupported producer schema versions instead of parsing stale payloads optimistically.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn status_bus_decode_rejects_unsupported_schema_version() {
         let err = decode_status_bus_snapshot(
@@ -1184,7 +1181,6 @@ mod tests {
     }
 
     // Defends: the bar workspace widget formats only status-bus facts from a fixture payload.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn status_bus_workspace_widget_formats_fixture_payload() {
         let value = decode_status_bus_snapshot(
@@ -1196,7 +1192,6 @@ mod tests {
     }
 
     // Regression: zjstatus command widgets return plain text while the template owns style markup, so command stdout cannot print literal `#[fg=...]` tags.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn zjstatus_status_bus_workspace_widget_renders_plain_segment_and_hides_missing_facts() {
         let value = decode_status_bus_snapshot(
@@ -1214,7 +1209,6 @@ mod tests {
     }
 
     // Regression: zjstatus reads dynamic widgets from a local cache instead of invoking Zellij pipes from every bar command.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn status_cache_round_trip_renders_cached_workspace_fact() {
         let temp = tempfile::tempdir().unwrap();
@@ -1241,7 +1235,6 @@ mod tests {
     }
 
     // Defends: the cursor widget renders mono and split cursor previews from cached launch facts without widening the status segment.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn status_cache_cursor_widget_renders_cached_launch_fact() {
         let mono = json!({
@@ -1332,7 +1325,6 @@ mod tests {
     }
 
     // Defends: cursor status facts are copied from launch env as small terminal-scoped data, not by parsing config on every bar refresh.
-    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn cursor_status_value_uses_non_empty_launch_env_values() {
         assert_eq!(
@@ -1370,7 +1362,6 @@ mod tests {
     }
 
     // Defends: heartbeat updates merge into the window-local cache without replacing status-bus or usage facts.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn status_cache_heartbeat_merge_preserves_cached_session_facts() {
         let mut cache = build_status_bar_cache_at(status_cache_test_status_bus(), 1_000);
@@ -1432,7 +1423,6 @@ mod tests {
     }
 
     // Regression: status-bus cache rewrites must not erase heartbeat facts used to debug orchestrator stalls.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn status_cache_write_preserves_existing_heartbeat() {
         let temp = tempfile::tempdir().unwrap();
@@ -1466,7 +1456,6 @@ mod tests {
     }
 
     // Regression: usage widgets should first-paint from recent sibling/shared caches before the new window writes its status-bus cache.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn usage_widgets_render_from_existing_caches_before_status_bus_write() {
         let temp = tempfile::tempdir().unwrap();
@@ -1563,7 +1552,6 @@ mod tests {
     }
 
     // Defends: cache readers stay quiet when a launch-scoped cache has not been written yet.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn missing_status_cache_file_renders_no_widget_segment() {
         let temp = tempfile::tempdir().unwrap();
@@ -1572,7 +1560,6 @@ mod tests {
     }
 
     // Regression: zjstatus command execution can strip direct Yazelix cache env even though its Zellij parent still carries the launch env.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn status_cache_path_can_be_recovered_from_process_environ_bytes() {
         let explicit = status_bar_cache_path_from_environ_bytes(
@@ -1593,7 +1580,6 @@ mod tests {
     }
 
     // Regression: zjstatus command execution can preserve only the cache path, so usage refresh still needs the sibling config snapshot.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn session_config_path_can_be_recovered_from_cache_path() {
         assert_eq!(
@@ -1612,7 +1598,6 @@ mod tests {
     }
 
     // Regression: refresh commands receive an explicit cache path from the plugin, so they must recover the sibling config snapshot without relying on ambient env.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn usage_widget_settings_can_be_recovered_from_cache_path() {
         let temp = tempfile::tempdir().unwrap();
@@ -1654,7 +1639,6 @@ mod tests {
     }
 
     // Defends: Claude usage mirrors the compact 5h/week token/quota contract selected by claude_usage_display.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn status_cache_claude_usage_renders_5h_week_display_modes() {
         let cache = json!({
@@ -1718,7 +1702,6 @@ mod tests {
     }
 
     // Defends: Codex usage renders only the compact 5h/week token/quota contract selected by codex_usage_display.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn status_cache_codex_usage_renders_5h_week_display_modes() {
         let cache = json!({
@@ -1787,7 +1770,6 @@ mod tests {
     }
 
     // Regression: Codex window labels show current window position instead of time remaining until reset.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn codex_window_label_reports_elapsed_position() {
         assert_eq!(
@@ -1801,7 +1783,6 @@ mod tests {
     }
 
     // Regression: quota-only Codex widgets must remain visible while official quota data is temporarily unavailable.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn status_cache_codex_usage_quota_mode_renders_partial_token_cache() {
         let cache = json!({
@@ -1842,7 +1823,6 @@ mod tests {
     }
 
     // Defends: OpenCode Go usage renders configurable 5h/week/month token/quota windows with the short `go` label.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn status_cache_opencode_go_usage_renders_configured_window_display_modes() {
         let cache = json!({
@@ -1929,7 +1909,6 @@ mod tests {
     }
 
     // Defends: tokenusage JSON shape for active-block, weekly, and official quota facts maps to the compact widget contract.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn tokenusage_json_parsers_read_windows_and_official_quota() {
         let active = json!({
@@ -1983,7 +1962,6 @@ mod tests {
     }
 
     // Regression: the dedicated Codex refresh writes a shared cache that new windows hydrate before rendering.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[cfg(unix)]
     #[test]
     fn status_cache_codex_usage_refresh_writes_shared_combined_cache() {
@@ -2055,7 +2033,6 @@ exit 64
     }
 
     // Regression: a partial Codex refresh must not erase a known 5h token count while the official reset window is unchanged.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[cfg(unix)]
     #[test]
     fn codex_usage_refresh_preserves_missing_tokens_for_same_reset_window() {
@@ -2154,7 +2131,6 @@ exit 64
     }
 
     // Regression: transient official quota failures must not replace a previously good Codex widget with n/a labels.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[cfg(unix)]
     #[test]
     fn codex_usage_refresh_preserves_previous_quota_during_probe_backoff() {
@@ -2262,7 +2238,6 @@ exit 64
     }
 
     // Regression: runtime skew must not let old Codex cache writers overwrite the cache file read by a newer schema.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn status_cache_codex_usage_uses_schema_scoped_shared_cache_path() {
         let temp = tempfile::tempdir().unwrap();
@@ -2402,7 +2377,6 @@ exit 64
     }
 
     // Defends: OpenCode Go usage reads only assistant rows from OpenCode's SQLite store and converts official dollar limits to remaining percentages.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn opencode_go_sqlite_reader_filters_provider_and_computes_quota_windows() {
         let temp = tempfile::tempdir().unwrap();
@@ -2421,7 +2395,6 @@ exit 64
     }
 
     // Regression: a quiet 5h OpenCode Go window should still render quota instead of disappearing from the combined widget.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn opencode_go_sqlite_reader_keeps_empty_window_quota_facts() {
         let temp = tempfile::tempdir().unwrap();
@@ -2485,7 +2458,6 @@ exit 64
     }
 
     // Regression: the dedicated OpenCode Go refresh writes a shared cache that new windows hydrate before rendering.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn status_cache_opencode_go_usage_refresh_writes_shared_combined_cache() {
         let temp = tempfile::tempdir().unwrap();
@@ -2528,7 +2500,6 @@ exit 64
     }
 
     // Regression: old OpenCode Go shared caches without complete 5h/week/month fields must refresh instead of hiding the 5h window.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn opencode_go_usage_shared_cache_rejects_partial_fresh_shape() {
         let temp = tempfile::tempdir().unwrap();
@@ -2582,7 +2553,6 @@ exit 64
     }
 
     // Defends: shared Codex usage caches have explicit freshness and error backoff so multiple Yazelix windows do not stampede provider calls.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn codex_usage_shared_cache_respects_freshness_and_backoff() {
         let temp = tempfile::tempdir().unwrap();
@@ -2686,7 +2656,6 @@ exit 64
     }
 
     // Regression: the dedicated Claude refresh writes a shared 5h/week token/quota cache that new windows hydrate before rendering.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[cfg(unix)]
     #[test]
     fn status_cache_claude_usage_refresh_writes_shared_combined_cache() {
@@ -2755,7 +2724,6 @@ exit 64
     }
 
     // Regression: logged-out Claude quota probes must back off without stopping cheap local token refreshes.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[cfg(unix)]
     #[test]
     fn tokenusage_windowed_refresh_backs_off_missing_quota_only() {
@@ -2852,7 +2820,6 @@ exit 64
     }
 
     // Regression: hung tokenusage providers are killed quickly so the cache producer cannot recreate the CPU-spike failure mode.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[cfg(unix)]
     #[test]
     fn tokenusage_windowed_refresh_times_out_hung_provider() {

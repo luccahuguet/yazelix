@@ -202,7 +202,6 @@ mod tests {
     use serde_json::json;
 
     // Regression: the stable active-tab snapshot must prefer explicit workspace truth over bootstrap fallback.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn session_snapshot_prefers_explicit_workspace_and_keeps_typed_session_fields() {
         let snapshot = build_active_tab_session_state_v1(
@@ -277,7 +276,6 @@ mod tests {
     }
 
     // Invariant: bootstrap workspace remains the fallback only when no explicit workspace state exists for the tab.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn session_snapshot_falls_back_to_bootstrap_workspace_when_explicit_is_missing() {
         let snapshot = build_active_tab_session_state_v1(
@@ -316,7 +314,6 @@ mod tests {
     }
 
     // Defends: additive v1 fields remain readable by consumers replaying older active-tab payload fixtures.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn deserializes_older_v1_payloads_with_default_extension_fields() {
         let decoded: ActiveTabSessionStateV1 = serde_json::from_value(json!({
@@ -341,7 +338,6 @@ mod tests {
     }
 
     // Defends: the status bus exposes stable session facts without embedding bar/zjstatus formatting.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn serializes_representative_payload_without_presentation_formatting() {
         let snapshot = build_active_tab_session_state_v1(
@@ -426,7 +422,6 @@ mod tests {
     }
 
     // Defends: the AI activity extension has an explicit tab-local state taxonomy without provider UI formatting.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn ai_activity_extension_represents_tab_local_state_taxonomy() {
         let states = [

@@ -519,7 +519,6 @@ mod tests {
     use tempfile::TempDir;
 
     // Defends: doctor runtime distribution reporting still prefers Home Manager ownership over generic package shape.
-    // Strength: defect=1 behavior=2 resilience=2 cost=2 uniqueness=1 total=8/10
     #[test]
     fn distribution_prefers_home_manager_over_package_shape() {
         let tmp = TempDir::new().unwrap();
@@ -534,7 +533,6 @@ mod tests {
     }
 
     // Defends: missing managed layouts still surface the repair action in the doctor runtime report.
-    // Strength: defect=2 behavior=2 resilience=2 cost=2 uniqueness=1 total=9/10
     #[test]
     fn managed_layout_sets_repair_fix_action() {
         let tmp = TempDir::new().unwrap();
@@ -566,7 +564,6 @@ mod tests {
     }
 
     // Regression: Home Manager host-sourced tools get an actionable doctor finding when PATH does not provide them.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn missing_host_runtime_tool_reports_warning() {
         let tmp = TempDir::new().unwrap();
@@ -601,7 +598,6 @@ mod tests {
     }
 
     // Defends: default bundled runtimes do not gain host-tool warnings from the runtime manifest.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn bundled_runtime_tool_manifest_produces_no_host_findings() {
         let tmp = TempDir::new().unwrap();
@@ -625,7 +621,6 @@ mod tests {
     }
 
     // Defends: runtime_tool_sources off mode is reported as intentional disablement instead of a missing host dependency.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn disabled_runtime_tool_reports_info_finding() {
         let tmp = TempDir::new().unwrap();
@@ -655,7 +650,6 @@ mod tests {
     }
 
     // Defends: component toggles appear as intentional runtime capability changes in doctor output.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn disabled_runtime_component_reports_info_finding() {
         let tmp = TempDir::new().unwrap();

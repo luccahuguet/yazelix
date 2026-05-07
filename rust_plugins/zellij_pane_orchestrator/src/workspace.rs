@@ -310,7 +310,6 @@ mod tests {
     use std::path::PathBuf;
 
     // Defends: bootstrap workspace state starts from the initial cwd instead of probing plugin-local filesystem state.
-    // Strength: defect=1 behavior=2 resilience=2 cost=2 uniqueness=1 total=8/10
     #[test]
     fn bootstrap_workspace_root_uses_initial_cwd() {
         let initial_cwd = PathBuf::from("/tmp/restarted-project");

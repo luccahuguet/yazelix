@@ -85,7 +85,6 @@ mod tests {
     use super::*;
 
     // Defends: status-bar cache paths are launch-scoped so concurrent Yazelix windows do not share mutable bar facts.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn derives_cache_path_from_session_snapshot_when_explicit_cache_path_is_absent() {
         let mut env = BTreeMap::new();
@@ -111,7 +110,6 @@ mod tests {
     }
 
     // Defends: an explicit cache path wins, which lets startup pin each window to its own cache file.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn explicit_cache_path_wins_over_derived_snapshot_sibling() {
         let mut env = BTreeMap::new();

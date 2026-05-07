@@ -6,7 +6,6 @@ use std::fs;
 use tempfile::TempDir;
 
 // Defends: yzx_core owns public command metadata for migrated Rust-only leaves instead of requiring Nushell scope probing.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn command_metadata_externs_include_rust_only_leaves_once() {
     let output = Command::cargo_bin("yzx_core")
@@ -68,7 +67,6 @@ fn command_metadata_externs_include_rust_only_leaves_once() {
 }
 
 // Regression: yzx_core owns generated extern bridge sync, so startup no longer needs the Nushell compatibility wrapper.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn command_metadata_sync_externs_writes_generated_bridge() {
     let runtime = TempDir::new().unwrap();
@@ -102,7 +100,6 @@ fn command_metadata_sync_externs_writes_generated_bridge() {
 }
 
 // Regression: Rust-owned extern bridge sync ignores host Nushell config so migrated leaves do not get rendered twice on startup.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn command_metadata_sync_externs_ignores_host_nushell_config() {
     let runtime = TempDir::new().unwrap();

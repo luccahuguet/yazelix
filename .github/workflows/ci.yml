@@ -75,10 +75,6 @@ jobs:
         shell: bash
         run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-contracts
 
-      - name: Validate default-suite shape and traceability
-        shell: bash
-        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-default-test-traceability
-
       - name: Validate Rust test traceability
         shell: bash
         run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-rust-test-traceability

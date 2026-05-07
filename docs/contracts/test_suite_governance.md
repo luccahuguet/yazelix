@@ -50,7 +50,6 @@ This contract defines:
   sweeps, CI-only checks, and manual/exploratory checks stay distinct instead of
   being treated as one undifferentiated test pile
 - Verification: automated
-  `yzx_repo_validator validate-default-test-traceability`; automated
   `yzx_repo_validator validate-contracts`
 
 #### TEST-002
@@ -62,7 +61,7 @@ This contract defines:
   wording trivia, and checks already better owned by cheap validators do not
   belong in the default suite
 - Verification: automated
-  `yzx_repo_validator validate-default-test-traceability`
+  `yzx_repo_validator validate-rust-test-traceability`
 
 #### TEST-003
 - Type: invariant
@@ -73,7 +72,6 @@ This contract defines:
   Rust `nextest` suites plus explicit `cargo test` exceptions only where
   `nextest` is not the honest fit
 - Verification: automated
-  `yzx_repo_validator validate-default-test-traceability`; automated
   `yzx dev test`
 
 #### TEST-004
@@ -84,7 +82,6 @@ This contract defines:
   nearby justification marker, and any required contract-item traceability.
   Strength scoring is review guidance, not a persisted metadata requirement
 - Verification: automated
-  `yzx_repo_validator validate-default-test-traceability`; automated
   `yzx_repo_validator validate-rust-test-traceability`
 
 #### TEST-005
@@ -95,7 +92,6 @@ This contract defines:
   generic `_extended` overflow files. Weak/orphan tests are deleted, demoted, or
   quarantined with an explicit exit path
 - Verification: automated
-  `yzx_repo_validator validate-default-test-traceability`; automated
   `yzx_repo_validator validate-rust-test-traceability`
 
 ## Behavior
@@ -121,7 +117,7 @@ of defaulting to every available validator. The canonical fast gates are:
 | Change shape | Inner-loop gate | Completion gate |
 | --- | --- | --- |
 | Rust source changes | `yzx dev rust fmt --check`; `yzx dev rust check`; focused `cargo test` or `yzx dev rust test` filter for touched behavior | `yzx dev test` for nontrivial runtime behavior, shared command routing, or test-governance changes |
-| Governed test changes | Focused test binary or filter for edited tests | `yzx_repo_validator validate-rust-test-traceability`; `yzx_repo_validator validate-default-test-traceability`; `yzx dev test` when default-suite membership or broad behavior changed |
+| Governed test changes | Focused test binary or filter for edited tests | `yzx_repo_validator validate-rust-test-traceability`; `yzx dev test` when default-suite membership or broad behavior changed |
 | Config contract, schema, Home Manager, or generated config metadata | `yzx_repo_validator validate-config-surface-contract` | `yzx dev test` when runtime materialization or config UI behavior changed |
 | Zellij layouts, pane orchestrator contracts, or workspace assets | Focused Rust/plugin tests for touched behavior | `yzx_repo_validator validate-workspace-session-contract`; `yzx_repo_validator validate-pane-orchestrator-sync` after pane-orchestrator source changes |
 | Docs front door and current prose | Direct review plus relevant docs validator | `yzx_repo_validator validate-docs-experience` for route/stale-doc changes; `yzx_repo_validator validate-readme-version` for release/version surface changes |
@@ -140,7 +136,6 @@ The current repo surface should be understood roughly as:
   - `yzx_repo_validator validate-nushell-syntax`
   - `yzx_repo_validator validate-readme-version`
   - `yzx_repo_validator validate-config-surface-contract`
-  - `yzx_repo_validator validate-default-test-traceability`
   - `yzx_repo_validator validate-rust-test-traceability`
   - `yzx_repo_validator validate-contracts`
   - `yzx_repo_validator validate-docs-experience`
@@ -218,7 +213,7 @@ A test is a strong demotion candidate when it is:
 
 Lane placement and per-test quality are separate decisions.
 
-- Judge each test against the strength rubric when deciding whether it is worth keeping.
+- First decide whether the test protects a living behavior, regression, boundary, or invariant.
 - Use a separate lane-placement model to decide where the surviving test belongs.
 
 For Yazelix, lane placement should use suite-shape thinking similar to the Test Pyramid or Testing Trophy:
@@ -269,40 +264,11 @@ Every governed Rust `#[test]` must carry one nearby justification marker:
 - `// Regression: ...`
 - `// Invariant: ...`
 
-### Test strength rubric
-
-Yazelix uses a small per-test scoring rubric during review and cleanup. The score is a human decision aid, not metadata that every test must carry or a format that validators should parse.
-
-Score tests out of 10 using five `0-2` dimensions when a test is borderline or when a cleanup needs a crisp retention decision:
-
-1. `Defect signal`
-   - `0`: failing would barely matter or would mostly catch noise
-   - `1`: catches some real drift
-   - `2`: catches a meaningful user-visible or contract regression
-2. `Behavior closeness`
-   - `0`: mostly implementation trivia
-   - `1`: mixed
-   - `2`: clearly checks supported behavior or invariant
-3. `Refactor resilience`
-   - `0`: likely to fail on harmless internal cleanup
-   - `1`: somewhat coupled
-   - `2`: should fail only when the real contract changes
-4. `Cost`
-   - `0`: expensive, flaky, or noisy for the value
-   - `1`: acceptable
-   - `2`: cheap and high-signal
-5. `Uniqueness`
-   - `0`: redundant with a cheaper check
-   - `1`: partially overlapping
-   - `2`: distinct useful coverage
-
-Interpretation:
-
-- `0-4`: weak, remove or demote
-- `5-7`: below the normal governed-suite bar; keep only with durable rationale in the relevant planning or contract surface
-- `8-10`: strong enough for a governed lane
-
-The score is not a loophole for cosmetic or trivia assertions. Exact palette constants, help-output trivia, command-name discovery, generated-text implementation details, and one-off color or glyph snapshots are not sufficient unless they defend a documented product contract or a concrete regression.
+Test comments should explain what the test protects, not score the test itself.
+Exact palette constants, help-output trivia, command-name discovery,
+generated-text implementation details, and one-off color or glyph snapshots are
+not sufficient unless they defend a documented product contract or a concrete
+regression.
 
 ### Concrete cleanup in this change
 
@@ -354,7 +320,6 @@ surface and docs review rather than by a second route validator.
 - integration tests: `yzx dev test`
 - integration tests: `nix develop -c cargo nextest run --profile ci --manifest-path rust_core/Cargo.toml -p yazelix_core`
 - integration tests: `nix develop -c cargo nextest run --profile ci --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib`
-- CI checks: `yzx_repo_validator validate-default-test-traceability`
 - CI checks: `yzx_repo_validator validate-rust-test-traceability`
 - CI checks: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-readme-version`
 - CI checks: `yzx_repo_validator validate-config-surface-contract`
@@ -362,7 +327,6 @@ surface and docs review rather than by a second route validator.
 - manual verification: review `.github/workflows/ci.yml` and `.pre-commit-config.yaml` against the lane definitions in this contract
 
 ## Traceability
-- Defended by: `yzx_repo_validator validate-default-test-traceability`
 - Defended by: `yzx_repo_validator validate-rust-test-traceability`
 - Defended by: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-readme-version`
 - Defended by: `yzx_repo_validator validate-config-surface-contract`

@@ -94,7 +94,6 @@ mod tests {
     use tempfile::TempDir;
 
     // Defends: runtime component off mode is read from the packaged manifest instead of inferred from file presence.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn component_enabled_reads_packaged_manifest() {
         let tmp = TempDir::new().unwrap();
@@ -112,7 +111,6 @@ mod tests {
     }
 
     // Regression: disabled public runtime surfaces fail with a component-specific error instead of falling through to missing assets.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn disabled_component_reports_unavailable_surface() {
         let tmp = TempDir::new().unwrap();

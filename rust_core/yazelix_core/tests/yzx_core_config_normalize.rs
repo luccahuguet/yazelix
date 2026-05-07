@@ -215,7 +215,6 @@ fn runtime_materialization_command(
 }
 // Defends: config.normalize emits a single machine-readable success envelope for valid config input.
 // Contract: CRCP-001
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
 #[test]
 fn config_normalize_prints_one_success_json_envelope() {
     let repo = repo_root();
@@ -238,7 +237,6 @@ fn config_normalize_prints_one_success_json_envelope() {
 }
 
 // Regression: config.normalize accepts every documented widget_tray value, including the cursor widget added to the bar renderer.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn config_normalize_accepts_cursor_widget_tray_entry() {
     let repo = repo_root();
@@ -270,7 +268,6 @@ fn config_normalize_accepts_cursor_widget_tray_entry() {
 
 // Defends: config.normalize emits a single machine-readable config error envelope for invalid input.
 // Contract: CRCP-001
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
 #[test]
 fn config_normalize_prints_one_error_json_envelope() {
     let repo = repo_root();
@@ -295,7 +292,6 @@ fn config_normalize_prints_one_error_json_envelope() {
 }
 
 // Defends: moved Ghostty cursor fields fail with a sidecar-specific transition hint instead of being silently ignored.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn config_normalize_reports_moved_ghostty_cursor_fields() {
     let repo = repo_root();
@@ -331,7 +327,6 @@ fn config_normalize_reports_moved_ghostty_cursor_fields() {
 }
 
 // Defends: unknown helper commands report the requested command in the usage error envelope.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
 #[test]
 fn unsupported_command_reports_requested_command_in_error_envelope() {
     let output = Command::cargo_bin("yzx_core")
@@ -350,7 +345,6 @@ fn unsupported_command_reports_requested_command_in_error_envelope() {
 
 // Defends: config-surface.resolve bootstraps the canonical managed config and TOML tooling support through the Rust active-config owner.
 // Contract: CRCP-004
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn config_surface_resolve_bootstraps_managed_config_and_toml_tooling_support() {
     let repo = repo_root();
@@ -391,7 +385,6 @@ fn config_surface_resolve_bootstraps_managed_config_and_toml_tooling_support() {
 
 // Defends: config.normalize rejects removed config surfaces without mutating the active config file or creating backup churn.
 // Contract: CRCP-001
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn config_normalize_rejects_removed_surfaces_without_rewriting() {
     let repo = repo_root();
@@ -474,7 +467,6 @@ fn config_normalize_rejects_removed_surfaces_without_rewriting() {
 }
 
 // Defends: config-state.compute returns a machine-readable state envelope with stable hash fields.
-// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 #[test]
 fn config_state_compute_prints_machine_readable_state_envelope() {
     let repo = repo_root();
@@ -512,7 +504,6 @@ fn config_state_compute_prints_machine_readable_state_envelope() {
 }
 
 // Defends: config-state.record persists state only for the managed main config surface.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn config_state_record_writes_only_managed_surface_state() {
     let tmp = tempdir().unwrap();
@@ -548,7 +539,6 @@ fn config_state_record_writes_only_managed_surface_state() {
 }
 
 // Defends: runtime-materialization.plan reports missing artifacts without forcing refresh when hashes are current.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn runtime_materialization_plan_reports_missing_artifacts_with_current_state() {
     let repo = repo_root();
@@ -632,7 +622,6 @@ fn runtime_materialization_plan_reports_missing_artifacts_with_current_state() {
 }
 
 // Defends: startup can create a launch-scoped immutable config snapshot through the packaged Rust helper.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn session_config_snapshot_write_command_writes_launch_scoped_snapshot() {
     let repo = repo_root();
@@ -682,7 +671,6 @@ fn session_config_snapshot_write_command_writes_launch_scoped_snapshot() {
 }
 
 // Defends: runtime-materialization.materialize becomes the single Rust owner for generate-plus-record of managed runtime artifacts.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn runtime_materialization_materialize_writes_generated_artifacts_and_records_state() {
     let repo = repo_root();
@@ -750,7 +738,6 @@ fn runtime_materialization_materialize_writes_generated_artifacts_and_records_st
 }
 
 // Defends: runtime-materialization.repair repairs missing managed artifacts through the Rust lifecycle owner instead of bouncing back into a Nu coordinator.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn runtime_materialization_repair_regenerates_missing_artifacts_end_to_end() {
     let repo = repo_root();
@@ -793,7 +780,6 @@ fn runtime_materialization_repair_regenerates_missing_artifacts_end_to_end() {
 }
 
 // Defends: runtime-materialization.repair --summary keeps the Home Manager activation path human-readable instead of dumping the full JSON envelope.
-// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 #[test]
 fn runtime_materialization_repair_summary_prints_one_human_line() {
     let repo = repo_root();
@@ -818,7 +804,6 @@ fn runtime_materialization_repair_summary_prints_one_human_line() {
 }
 
 // Defends: runtime-materialization.repair --summary keeps activation failures human-readable instead of dumping the raw JSON envelope.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn runtime_materialization_repair_summary_prints_human_config_error() {
     let repo = repo_root();
@@ -854,7 +839,6 @@ fn runtime_materialization_repair_summary_prints_human_config_error() {
 }
 
 // Defends: runtime-contract.evaluate emits one machine-readable checks envelope for batched preflight requests.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn runtime_contract_evaluate_prints_machine_readable_checks_envelope() {
     let tmp = tempdir().unwrap();
@@ -910,7 +894,6 @@ fn runtime_contract_evaluate_prints_machine_readable_checks_envelope() {
 }
 
 // Defends: startup-launch-preflight.evaluate returns a single startup summary without Nu-side check selection.
-// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 #[test]
 fn startup_launch_preflight_evaluate_prints_startup_summary_envelope() {
     let tmp = tempdir().unwrap();
@@ -954,7 +937,6 @@ fn startup_launch_preflight_evaluate_prints_startup_summary_envelope() {
 }
 
 // Defends: runtime-contract.evaluate rejects malformed request JSON as a usage-surface error.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn runtime_contract_evaluate_reports_invalid_request_json_as_usage_error() {
     let output = Command::cargo_bin("yzx_core")
@@ -974,7 +956,6 @@ fn runtime_contract_evaluate_reports_invalid_request_json_as_usage_error() {
 }
 
 // Defends: install-ownership.evaluate emits one machine-readable report envelope for explicit request paths.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn install_ownership_evaluate_prints_ok_envelope() {
     let repo = repo_root();
@@ -1017,7 +998,6 @@ fn install_ownership_evaluate_prints_ok_envelope() {
 }
 
 // Defends: install-ownership.evaluate can build the env-derived request in Rust without a Nushell bridge.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn install_ownership_evaluate_from_env_resolves_stable_profile_wrapper() {
     let repo = repo_root();
@@ -1067,7 +1047,6 @@ fn install_ownership_evaluate_from_env_resolves_stable_profile_wrapper() {
 }
 
 // Defends: terminal-materialization.generate can resolve config/runtime/state request roots from process env without Nu path assembly.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn terminal_materialization_generate_from_env_writes_generated_configs() {
     let repo = repo_root();
@@ -1136,7 +1115,6 @@ fn terminal_materialization_generate_from_env_writes_generated_configs() {
 }
 
 // Defends: Kitty cursor fallback is controlled by the settings cursor registry's binary kitty_enable_cursor setting.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn terminal_materialization_uses_cursor_sidecar_for_kitty_toggle() {
     let repo = repo_root();
@@ -1191,7 +1169,6 @@ color = "#ffffff"
 }
 
 // Defends: ghostty-materialization.generate can resolve config/runtime/state request roots from process env without Nu path assembly.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn ghostty_materialization_generate_from_env_uses_normalized_config() {
     let repo = repo_root();
@@ -1297,7 +1274,6 @@ color = "#3bd17a"
 }
 
 // Defends: doctor-helix.evaluate emits one machine-readable report envelope for a minimal request.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn doctor_helix_evaluate_prints_ok_envelope() {
     let tmp = tempdir().unwrap();
@@ -1343,7 +1319,6 @@ fn doctor_helix_evaluate_prints_ok_envelope() {
 }
 
 // Defends: doctor-runtime.evaluate emits one machine-readable report envelope for a minimal request.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn doctor_runtime_evaluate_prints_ok_envelope() {
     let tmp = tempdir().unwrap();
@@ -1388,7 +1363,6 @@ fn doctor_runtime_evaluate_prints_ok_envelope() {
 }
 
 // Defends: doctor-config.evaluate reports duplicate root/user config ownership as a config-surface error finding.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn doctor_config_evaluate_reports_duplicate_config_surfaces() {
     let repo = repo_root();
@@ -1433,7 +1407,6 @@ fn doctor_config_evaluate_reports_duplicate_config_surfaces() {
 }
 
 // Defends: doctor-config.evaluate preserves the stale-schema warning contract and includes the diagnostic report payload.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn doctor_config_evaluate_reports_stale_schema_warning() {
     let repo = repo_root();
@@ -1482,7 +1455,6 @@ fn doctor_config_evaluate_reports_stale_schema_warning() {
 }
 
 // Regression: malformed JSONC must stay on the validation-error path instead of being downgraded into the stale-schema warning row.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn doctor_config_evaluate_keeps_invalid_jsonc_as_error() {
     let repo = repo_root();
@@ -1516,7 +1488,6 @@ fn doctor_config_evaluate_keeps_invalid_jsonc_as_error() {
 }
 
 // Defends: doctor-config.evaluate keeps the default-template doctor row fixable instead of bootstrapping config eagerly.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn doctor_config_evaluate_reports_default_template_as_fixable() {
     let repo = repo_root();

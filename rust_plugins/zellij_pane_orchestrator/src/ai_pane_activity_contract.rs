@@ -62,7 +62,6 @@ mod tests {
     }
 
     // Defends: legacy activity tokens map into the normalized status-bus state taxonomy.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn normalizes_legacy_ai_activity_tokens_to_status_states() {
         assert_eq!(
@@ -77,7 +76,6 @@ mod tests {
     }
 
     // Defends: repeated activity observations update a tab-local provider/pane fact instead of duplicating it.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn upserts_ai_activity_by_provider_and_pane_identity() {
         let mut facts = vec![SessionAiPaneActivity::tab_local(

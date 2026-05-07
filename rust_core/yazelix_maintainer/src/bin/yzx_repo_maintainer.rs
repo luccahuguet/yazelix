@@ -310,7 +310,6 @@ mod tests {
     use super::*;
 
     // Defends: the maintainer-only update command preserves the former `yzx dev update --canaries a,b` convenience without runtime wrapper logic.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn canary_list_parser_accepts_comma_and_bracket_forms() {
         assert_eq!(

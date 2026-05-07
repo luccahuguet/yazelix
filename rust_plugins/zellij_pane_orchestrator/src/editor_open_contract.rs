@@ -93,7 +93,6 @@ mod tests {
     use super::*;
 
     // Defends: new multi-file payloads are preferred while legacy single-file payloads remain accepted during core/plugin rollouts.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn normalize_targets_prefers_multi_file_payload_with_legacy_fallback() {
         let file_paths = vec!["/tmp/one.txt".to_string(), "/tmp/two.txt".to_string()];
@@ -108,7 +107,6 @@ mod tests {
     }
 
     // Defends: managed Helix pane reuse opens every selected Yazi file through explicit editor commands.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn helix_sequence_builds_one_open_command_per_selected_file() {
         let sequence = build_editor_command_sequence(
@@ -129,7 +127,6 @@ mod tests {
     }
 
     // Defends: managed Neovim pane reuse escapes each selected file path before sending edit commands.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn neovim_sequence_escapes_each_selected_file() {
         let sequence = build_editor_command_sequence(
@@ -153,7 +150,6 @@ mod tests {
     }
 
     // Defends: malformed open-file payloads without any selected target are rejected before editor-specific command generation.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn command_sequence_rejects_empty_target_payload() {
         assert_eq!(

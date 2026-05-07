@@ -315,7 +315,6 @@ purpose = "test"
     }
 
     // Defends: built-in Zellij layout metadata must describe the concrete tracked KDL files and their swap layouts.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn layout_family_contract_accepts_matching_files() {
         let (_tmp, repo) = write_fixture_repo();
@@ -324,7 +323,6 @@ purpose = "test"
     }
 
     // Regression: adding or renaming a top-level built-in KDL layout must update machine-readable metadata too.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn layout_family_contract_rejects_untracked_layout_file() {
         let (_tmp, repo) = write_fixture_repo();

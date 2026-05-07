@@ -534,7 +534,6 @@ mod tests {
 
     // Test lane: default
     // Defends: the Rust tutor parser preserves root/help/alias parity instead of reviving ambiguous Nu routing for the public front-door family.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn parse_tutor_args_preserves_alias_parity() {
         assert_eq!(
@@ -576,7 +575,6 @@ mod tests {
     }
 
     // Defends: the front-door tutor root still prints the managed-workspace guidance instead of drifting through wrapper churn.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn tutor_root_output_keeps_guided_overview_copy() {
         let output = render_yazelix_tutor_overview();
@@ -589,7 +587,6 @@ mod tests {
     }
 
     // Defends: the guided tutor has concrete lesson entrypoints and a workspace mini quest instead of only a flat overview.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn tutor_lessons_include_list_and_workspace_mini_quest() {
         let list = render_tutor_list();
@@ -605,7 +602,6 @@ mod tests {
     }
 
     // Defends: the Rust-owned `yzx screen` parser keeps the public one-style surface while reserving the welcome-only internal flags for startup callers.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn parse_screen_args_keeps_internal_welcome_flags_out_of_the_public_surface() {
         assert_eq!(

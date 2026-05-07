@@ -458,7 +458,6 @@ mod tests {
     }
 
     // Defends: runtime materialization stays on the repair-missing-artifacts path when hashes are current but files are absent.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn plan_marks_missing_artifacts_without_forcing_refresh_when_state_is_current() {
         let dir = tempdir().expect("tempdir");
@@ -505,7 +504,6 @@ mod tests {
     }
 
     // Defends: runtime materialization apply refuses to record success when expected generated artifacts are still missing.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn apply_rejects_missing_expected_artifacts() {
         let dir = tempdir().expect("tempdir");
@@ -546,7 +544,6 @@ mod tests {
     }
 
     // Defends: repair evaluation returns a noop directive when the plan is noop and force is false.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn repair_evaluate_is_noop_when_plan_is_noop_and_not_forced() {
         let dir = tempdir().expect("tempdir");
@@ -610,7 +607,6 @@ mod tests {
     }
 
     // Defends: repair evaluation forces regeneration when the user passes --force even if the plan is noop.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn repair_evaluate_regenerates_when_forced_even_if_plan_is_noop() {
         let dir = tempdir().expect("tempdir");

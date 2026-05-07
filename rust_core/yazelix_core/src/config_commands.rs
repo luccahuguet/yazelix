@@ -547,7 +547,6 @@ mod tests {
     use super::*;
 
     // Defends: the Rust-owned `yzx config` parser keeps the public `--path` switch while rejecting unexpected tokens.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn parses_config_root_flags() {
         assert_eq!(

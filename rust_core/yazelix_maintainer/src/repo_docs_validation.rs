@@ -145,7 +145,6 @@ mod tests {
     }
 
     // Defends: the docs validator accepts a complete front-door route map.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn docs_experience_validator_accepts_complete_route_map() {
         let (_temp, repo) = write_minimal_docs_fixture();
@@ -156,7 +155,6 @@ mod tests {
     }
 
     // Defends: docs front-door routes are end-to-end checked against real files instead of drifting into dead links.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn docs_experience_validator_rejects_missing_route_target() {
         let (_temp, repo) = write_minimal_docs_fixture();
@@ -173,7 +171,6 @@ mod tests {
     }
 
     // Regression: current user docs must not route users toward the deleted workspace navigation command.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn docs_experience_validator_rejects_stale_current_user_command_marker() {
         let (_temp, repo) = write_minimal_docs_fixture();

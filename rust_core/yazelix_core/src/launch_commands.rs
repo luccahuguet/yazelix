@@ -2830,7 +2830,6 @@ mod tests {
     }
 
     // Defends: Rust launch arg parsing keeps the public path and terminal flag aliases after the owner cut.
-    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn parse_launch_args_accepts_aliases() {
         let expected_config = resolve_config_override_path(
@@ -2860,7 +2859,6 @@ mod tests {
     }
 
     // Defends: public one-shot config file overrides resolve before launch so child terminals do not reinterpret relative paths from a different cwd.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn config_override_paths_are_invocation_scoped() {
         let cwd = Path::new("/tmp/project");
@@ -2884,7 +2882,6 @@ mod tests {
     }
 
     // Defends: restart exposes a one-shot welcome skip flag without making the config skip setting sticky.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn parse_restart_args_accepts_skip_aliases() {
         for arg in ["-s", "--skip"] {
@@ -2899,7 +2896,6 @@ mod tests {
     }
 
     // Defends: restart can replace the inherited config override for one relaunched window without mutating settings.jsonc.
-    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn parse_restart_args_accepts_config_override() {
         let expected_config = resolve_config_override_path(
@@ -2928,7 +2924,6 @@ mod tests {
     }
 
     // Defends: repeatable --with patches stay contract-typed and reject unknown settings before launch materialization.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn session_config_patches_are_contract_typed() {
         let fields = HashMap::from([
@@ -3024,7 +3019,6 @@ mod tests {
     }
 
     // Defends: --with writes an ephemeral settings.jsonc snapshot and validates it through the normal config contract without mutating the user's config.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn session_config_overrides_materialize_valid_ephemeral_settings() {
         let runtime = TempDir::new().unwrap();
@@ -3077,7 +3071,6 @@ mod tests {
     }
 
     // Defends: the Rust launch owner still filters duplicate or unsupported configured terminals before fallback logic runs.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn normalized_configured_terminals_filters_and_dedupes() {
         let mut config = JsonMap::new();
@@ -3093,7 +3086,6 @@ mod tests {
     }
 
     // Defends: missing terminal config keeps Ghostty as the default while preserving WezTerm as the first fallback.
-    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn normalized_configured_terminals_defaults_to_ghostty_then_wezterm() {
         let config = JsonMap::new();
@@ -3105,7 +3097,6 @@ mod tests {
     }
 
     // Defends: Ghostty user-mode config discovery follows upstream file-name and macOS path candidates instead of hard-coding the old config name.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn ghostty_user_config_candidates_follow_upstream_paths() {
         let home = Path::new("/Users/demo");
@@ -3134,7 +3125,6 @@ mod tests {
     }
 
     // Regression: terminal.config_mode=user accepts Ghostty's current config.ghostty name and reports every checked candidate when none exists.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn ghostty_user_config_selection_accepts_config_ghostty_and_lists_misses() {
         let tmp = TempDir::new().unwrap();
@@ -3160,7 +3150,6 @@ mod tests {
     }
 
     // Defends: launch publishes a compact current-cursor fact only for Ghostty cursor-aware sessions and a clear n/a fallback elsewhere.
-    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn launch_cursor_name_is_terminal_scoped() {
         let materialization = LaunchMaterializationData {
@@ -3232,7 +3221,6 @@ mod tests {
     }
 
     // Invariant: restart must relaunch through the stable owner without leaking old window runtime/session helper env.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn restart_launch_clears_stale_runtime_session_and_helper_env() {
         for key in [
@@ -3263,7 +3251,6 @@ mod tests {
     }
 
     // Defends: desktop entry rendering keeps a quoted launcher path so spaces do not corrupt the Exec owner surface.
-    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn render_desktop_entry_quotes_exec_path() {
         let entry = render_desktop_entry(Path::new("/tmp/with space/yzx"));
@@ -3272,7 +3259,6 @@ mod tests {
     }
 
     // Regression: desktop launch must keep its starter terminal for visible preflight, but schedule the real terminal through a deferred helper so the starter can close first.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn desktop_deferred_launch_helper_schedules_after_starter_parent_exits() {
         let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -3310,7 +3296,6 @@ mod tests {
     }
 
     // Defends: macOS preview desktop parsing keeps the opt-in nested action explicit.
-    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn parse_desktop_args_accepts_macos_preview_action() {
         let parsed = parse_desktop_args(&[
@@ -3326,7 +3311,6 @@ mod tests {
     }
 
     // Defends: the macOS preview app bundle points at a stable package profile wrapper and reports actionable package-first repair steps.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn render_macos_preview_launcher_uses_profile_yzx_and_actionable_failures() {
         let script =
@@ -3340,7 +3324,6 @@ mod tests {
     }
 
     // Defends: the macOS preview bundle carries owned app metadata instead of looking like a throwaway script bundle.
-    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn render_macos_preview_info_plist_carries_owned_app_metadata() {
         let info = render_macos_preview_info_plist();
@@ -3359,7 +3342,6 @@ mod tests {
     }
 
     // Defends: the macOS preview installer creates only a Yazelix-marked app bundle with a profile-owned launcher script.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn install_macos_preview_app_writes_managed_bundle() {
         let tmp = TempDir::new().unwrap();
@@ -3391,7 +3373,6 @@ mod tests {
     }
 
     // Regression: uninstall and refresh paths must not take ownership of an unrelated app bundle at the preview path.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn macos_preview_bundle_guard_rejects_unmarked_app_path() {
         let tmp = TempDir::new().unwrap();

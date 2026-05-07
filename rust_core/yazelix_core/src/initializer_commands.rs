@@ -511,7 +511,6 @@ mod tests {
     use super::*;
 
     // Defends: Nushell starship normalization strips the right prompt block.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn strips_nu_starship_right_prompt() {
         let input = r#"starship_prompt
@@ -528,7 +527,6 @@ PROMPT_COMMAND: {||
     }
 
     // Defends: Nushell starship normalization strips the config merge block.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn strips_nu_starship_config_merge() {
         let input = r#"before
@@ -544,7 +542,6 @@ after
     }
 
     // Defends: initializer result aggregation preserves the exact shells requested.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn shell_initializer_dirs_filters_by_name() {
         let home = Path::new("/tmp/home");

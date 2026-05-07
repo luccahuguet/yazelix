@@ -218,7 +218,6 @@ mod tests {
     }
 
     // Defends: startup handoff capture is gated to repair/materialization launches instead of logging every startup.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn handoff_capture_records_only_when_materialization_changed_state() {
         let mut noop = request("noop");
@@ -233,7 +232,6 @@ mod tests {
     }
 
     // Defends: the durable startup handoff context carries the facts needed to diagnose repair-then-Zellij crashes.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn handoff_context_contains_repair_and_zellij_handoff_facts() {
         let req = request("repair_missing_artifacts");

@@ -24,7 +24,6 @@ fn string_list(value: &toml::Value, ctx: &str) -> Vec<String> {
 }
 
 // Defends: yazi_render_plan.toml cannot drift from main_config_contract.toml for shared yazi.sort_by / yazi.plugins defaults.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yazi_render_plan_toml_matches_main_contract() {
     let render_raw = read_repo_config_metadata("yazi_render_plan.toml");

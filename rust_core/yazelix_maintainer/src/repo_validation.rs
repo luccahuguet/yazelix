@@ -95,7 +95,8 @@ pub fn validate_contracts(repo_root: &Path) -> Result<ValidationReport, String> 
     Ok(report)
 }
 
-pub fn validate_default_test_traceability(repo_root: &Path) -> Result<ValidationReport, String> {
+pub fn validate_rust_test_traceability(repo_root: &Path) -> Result<ValidationReport, String> {
+    let contract_items = load_contract_items(repo_root)?;
     let mut report = ValidationReport::default();
 
     for test_path in load_all_nu_test_file_paths(repo_root)? {
@@ -105,13 +106,6 @@ pub fn validate_default_test_traceability(repo_root: &Path) -> Result<Validation
             relative_path
         ));
     }
-
-    Ok(report)
-}
-
-pub fn validate_rust_test_traceability(repo_root: &Path) -> Result<ValidationReport, String> {
-    let contract_items = load_contract_items(repo_root)?;
-    let mut report = ValidationReport::default();
 
     for rust_path in load_rust_test_file_paths(repo_root)? {
         let relative_path = relative_to_repo(repo_root, &rust_path)?;
@@ -918,7 +912,6 @@ mod tests {
     }
 
     // Regression: Yazelix component repository links stay valid contract text while Bead ids remain planning-only.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn contract_validation_allows_yazelix_component_repository_names() {
         assert!(!line_contains_bead_id(
@@ -936,7 +929,6 @@ mod tests {
     }
 
     // Defends: canonical contracts reject issue-tracker traceability so planning state stays out.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn contract_validation_rejects_bead_traceability() {
         let source = [
@@ -968,7 +960,6 @@ mod tests {
     }
 
     // Defends: canonical contracts reject stale spec paths and planning markers.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn contract_validation_rejects_stale_spec_paths_and_planning_markers() {
         let source = [
@@ -1004,7 +995,6 @@ mod tests {
     }
 
     // Regression: package-time Rust tests must not execute Nix because Nix package test sandboxes do not provide host Nix.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn package_rust_test_purity_rejects_nix_command_in_integration_test() {
         let bad_test_source = [
@@ -1028,7 +1018,6 @@ mod tests {
     }
 
     // Defends: production command execution code can still mention Nix outside the package-time test scan region.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn package_rust_test_purity_ignores_production_code_before_cfg_test_module() {
         let production_source = [

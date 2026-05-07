@@ -81,7 +81,6 @@ fn run_git(repo_root: &Path, args: &[&str]) {
 }
 
 // Defends: the Rust-owned upgrade-contract validator still rejects unreleased `migration_available` entries after the Nu E2E runner is deleted.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn validate_upgrade_contract_rejects_unreleased_migration_available() {
     let (_tmp, fixture_root) = write_fixture_repo();
@@ -101,7 +100,6 @@ fn validate_upgrade_contract_rejects_unreleased_migration_available() {
 }
 
 // Defends: the Rust-owned CI upgrade-contract validator still rejects user-facing upgrade-note edits that skip the matching changelog update.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn validate_upgrade_contract_ci_rejects_summary_without_changelog() {
     let (_tmp, fixture_root) = write_fixture_repo();
@@ -137,7 +135,6 @@ fn validate_upgrade_contract_ci_rejects_summary_without_changelog() {
 }
 
 // Defends: the Rust-owned CI upgrade-contract validator still accepts acknowledged guarded-note updates without forcing a changelog edit.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn validate_upgrade_contract_ci_accepts_ack_only_note_updates() {
     let (_tmp, fixture_root) = write_fixture_repo();
@@ -172,7 +169,6 @@ fn validate_upgrade_contract_ci_accepts_ack_only_note_updates() {
 
 // Defends: guarded config paths use the upgrade-notes acknowledgement as the source of truth, not same-commit changelog churn.
 // Regression: a push that changed an already-acknowledged guarded file failed CI even though `unreleased` still acknowledged the path.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn validate_upgrade_contract_ci_accepts_guarded_change_with_existing_ack() {
     let (_tmp, fixture_root) = write_fixture_repo();
@@ -214,7 +210,6 @@ fn validate_upgrade_contract_ci_accepts_guarded_change_with_existing_ack() {
 }
 
 // Defends: guarded config paths still fail CI when the target release entry does not acknowledge the changed path.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn validate_upgrade_contract_ci_rejects_unacknowledged_guarded_change() {
     let (_tmp, fixture_root) = write_fixture_repo();

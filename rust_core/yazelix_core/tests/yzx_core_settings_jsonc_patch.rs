@@ -19,7 +19,6 @@ fn settings_path() -> &'static Path {
 }
 
 // Defends: scalar JSONC edits replace only the selected value while preserving surrounding comments and file shape.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn replaces_scalar_without_dropping_comments() {
     let raw = r#"{
@@ -51,7 +50,6 @@ fn replaces_scalar_without_dropping_comments() {
 }
 
 // Defends: defaulted settings can be materialized into an existing object without requiring a whole-file rewrite.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn inserts_absent_field_in_existing_section() {
     let raw = r#"{
@@ -82,7 +80,6 @@ fn inserts_absent_field_in_existing_section() {
 }
 
 // Invariant: reset-style edits can remove an explicit value while preserving the rest of the JSONC document.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn unsets_existing_field_without_rewriting_document() {
     let raw = r#"{
@@ -104,7 +101,6 @@ fn unsets_existing_field_without_rewriting_document() {
 }
 
 // Defends: unsupported structures fail clearly instead of causing an implicit pretty-print rewrite.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn rejects_unsafe_patch_shapes() {
     let unsupported_value = set_settings_jsonc_value_text(
@@ -135,7 +131,6 @@ fn rejects_unsafe_patch_shapes() {
 }
 
 // Defends: patched settings JSONC remains compatible with the existing normalized config contract.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn patched_text_round_trips_through_config_normalization() {
     let repo = repo_root();

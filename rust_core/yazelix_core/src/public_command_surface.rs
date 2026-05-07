@@ -1056,7 +1056,6 @@ mod tests {
     use super::*;
 
     // Defends: the public Rust root keeps the already migrated control-plane family on the Rust-owned path.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn classifies_rust_owned_control_family_at_root() {
         assert_eq!(
@@ -1114,7 +1113,6 @@ mod tests {
     }
 
     // Defends: the shared root classifier preserves no-arg help, help flags, and all supported version flags.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn classifies_root_help_and_version_behaviors() {
         assert_eq!(
@@ -1142,7 +1140,6 @@ mod tests {
     }
 
     // Defends: the Rust root rejects unknown top-level commands instead of reviving the old generic Nu root fallback.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn rejects_unknown_top_level_command() {
         let err = classify_yzx_root_route(&["not-a-command".into()]).unwrap_err();
@@ -1151,7 +1148,6 @@ mod tests {
     }
 
     // Defends: grouped Rust-owned families route through yzx_control instead of reviving direct Nu module ownership.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn routes_grouped_rust_family_to_control_plane() {
         let argv = [String::from("desktop"), String::from("launch")];
@@ -1160,7 +1156,6 @@ mod tests {
     }
 
     // Regression: grouped Rust-owned families route through the Rust control plane even for help aliases.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn routes_grouped_help_aliases_to_control_plane() {
         let dev_argv = [
@@ -1177,7 +1172,6 @@ mod tests {
     }
 
     // Regression: the direct route planner must preserve alias leaves and the family-specific missing-subcommand contract.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn preserves_alias_and_missing_subcommand_contracts() {
         let edit_argv = [String::from("edit"), String::from("config")];
@@ -1202,7 +1196,6 @@ mod tests {
     }
 
     // Regression: menu visibility and menu categories come from the shared Rust command surface instead of a second Nushell-owned map.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn shared_surface_carries_menu_visibility_and_category() {
         let commands = yzx_command_metadata();

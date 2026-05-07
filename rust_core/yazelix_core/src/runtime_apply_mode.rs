@@ -85,7 +85,6 @@ mod tests {
     use super::*;
 
     // Defends: the config contract and UI share one closed apply-mode vocabulary from docs/contracts/runtime_applied_settings.md.
-    // Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=2 total=8/10
     #[test]
     fn runtime_apply_modes_parse_from_their_stable_codes() {
         for mode in RuntimeApplyMode::ALL {

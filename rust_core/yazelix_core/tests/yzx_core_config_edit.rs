@@ -28,7 +28,6 @@ fn with_config_env(
 }
 
 // Defends: the public config edit command uses the lossless settings.jsonc patcher and validates the result before writing.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn config_set_and_unset_edit_settings_jsonc() {
     let repo = repo_root();
@@ -69,7 +68,6 @@ fn config_set_and_unset_edit_settings_jsonc() {
 }
 
 // Regression: live-with-pane-refresh config saves emit a versioned pane-orchestrator reload payload instead of leaving the saved value silently inactive.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn config_set_live_zellij_field_reloads_pane_orchestrator_runtime_config() {
     let repo = repo_root();

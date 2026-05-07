@@ -200,7 +200,6 @@ mod tests {
     }
 
     // Defends: generic transient panes are discoverable by either pane title or adapter-supplied command marker.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn selects_transient_pane_by_title_or_command_marker() {
         let popup_by_title = [transient_pane(7, "floating_picker", Some("nu"), false)];
@@ -228,7 +227,6 @@ mod tests {
     }
 
     // Defends: adapters may omit command matching and still get exact title-based single-instance behavior.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn supports_title_only_identity_without_command_marker() {
         let identity = TransientPaneIdentityContract {
@@ -254,7 +252,6 @@ mod tests {
     }
 
     // Defends: focused transient panes win over unfocused duplicates during transient lookup.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn prefers_focused_transient_pane_when_duplicates_exist() {
         let panes = [
@@ -272,7 +269,6 @@ mod tests {
     }
 
     // Defends: transient lookup ignores non-floating or unrelated panes instead of matching by stale titles alone.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn ignores_non_floating_or_irrelevant_panes() {
         let panes = [
@@ -292,7 +288,6 @@ mod tests {
     }
 
     // Defends: transient toggle planning distinguishes missing, present, and focused panes.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn resolves_toggle_plan_for_missing_present_and_focused_panes() {
         let missing: [TransientPaneSnapshot<'_, i32>; 0] = [];
@@ -325,7 +320,6 @@ mod tests {
     }
 
     // Regression: closing a focused popup/menu must also hide the floating layer so unrelated floating panes do not stay visible.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn close_plan_hides_floating_layer_after_managed_transient_closes() {
         let panes = [
@@ -349,7 +343,6 @@ mod tests {
     }
 
     // Defends: generic launch policy trims command/cwd inputs while preserving adapter-provided argv and geometry.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn resolves_launch_plan_from_command_cwd_and_geometry() {
         let plan = resolve_transient_launch_plan(TransientPaneLaunchRequest {
@@ -378,7 +371,6 @@ mod tests {
     }
 
     // Defends: a transient launch cannot silently open with missing adapter command or cwd data.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn rejects_launch_plan_without_command_or_cwd() {
         let geometry = TransientPaneGeometry {

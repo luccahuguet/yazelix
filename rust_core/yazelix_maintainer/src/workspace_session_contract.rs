@@ -157,14 +157,12 @@ mod tests {
     use tempfile::tempdir;
 
     // Defends: the workspace validator checks the central yzx_control zellij command list against the actual dispatcher.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn internal_zellij_control_surface_contains_session_inspector() {
         assert!(INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS.contains(&"inspect-session"));
     }
 
     // Regression: semantic keybinding validation reads the shared action registry after message metadata moved out of zellij materialization literals.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn semantic_keybinding_bound_pipe_commands_are_declared_in_action_registry() {
         for command in SEMANTIC_KEYBINDING_BOUND_PIPE_COMMANDS {
@@ -178,7 +176,6 @@ mod tests {
     }
 
     // Regression: the workspace validator must check bundled Yazi entrypoint files, not incidental Rust test fixture strings.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn yazi_workspace_entrypoint_validation_checks_bundled_yazi_config() {
         let temp = tempdir().unwrap();

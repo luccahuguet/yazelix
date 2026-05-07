@@ -1045,7 +1045,6 @@ mod tests {
     use super::*;
 
     // Defends: Rust sweep config generation keeps the requested shell and terminal first while rendering the managed toggle matrix for the sweep lane.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn renders_requested_shell_terminal_and_toggle_matrix() {
         let rendered = build_sweep_config(

@@ -1294,7 +1294,6 @@ mod tests {
     use tempfile::tempdir;
 
     // Defends: Yazi TOML merge keeps the base opener.edit while appending arrays from user overrides.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn deep_merge_preserves_base_edit_opener() {
         let base = toml::from_str::<toml::Table>(
@@ -1346,7 +1345,6 @@ id = "extra"
     }
 
     // Regression: documented Yazi keymap sections absent from the bundled base keymap must survive user keymap merging.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn keymap_merge_preserves_user_sections_absent_from_base() {
         let base = toml::from_str::<toml::Table>(
@@ -1402,7 +1400,6 @@ prepend_keymap = [{ run = "cmp-user" }]
     }
 
     // Defends: missing bundled asset targets are detected so warm Yazi generation can self-heal deleted files.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn bundled_asset_detection_flags_missing_targets() {
         let temp = tempdir().unwrap();
@@ -1424,7 +1421,6 @@ prepend_keymap = [{ run = "cmp-user" }]
     }
 
     // Regression: bundled Yazi plugin templates must render the active runtime root instead of leaking the placeholder into generated assets.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn renders_runtime_root_placeholders_in_bundled_assets() {
         let rendered = render_runtime_root_placeholders(
@@ -1437,7 +1433,6 @@ prepend_keymap = [{ run = "cmp-user" }]
     }
 
     // Regression: sidebar-state must not rely on a fixed startup delay before its only Zellij registration attempt.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn sidebar_state_registers_with_orchestrator_asynchronously_with_bounded_retry() {
         let source = include_str!("../../../configs/yazi/plugins/sidebar-state.yazi/main.lua");
@@ -1452,7 +1447,6 @@ prepend_keymap = [{ run = "cmp-user" }]
     }
 
     // Regression: the bundled Yazi Starship config must copy into the generated surface without becoming read-only or drift-prone.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn syncs_starship_config_into_generated_surface() {
         let tmp = tempdir().unwrap();

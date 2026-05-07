@@ -1677,7 +1677,6 @@ mod tests {
 
     // Test lane: default
     // Defends: public control-plane config-dir resolution still honors explicit `YAZELIX_CONFIG_DIR` with home expansion.
-    // Strength: defect=1 behavior=2 resilience=2 cost=2 uniqueness=1 total=8/10
     #[test]
     fn resolve_config_dir_prefers_explicit_and_expands_home() {
         let home = Path::new("/tmp/home");
@@ -1687,7 +1686,6 @@ mod tests {
     }
 
     // Defends: public control-plane config-dir resolution still prefers `XDG_CONFIG_HOME` before the home-default fallback.
-    // Strength: defect=1 behavior=2 resilience=2 cost=2 uniqueness=1 total=8/10
     #[test]
     fn resolve_config_dir_uses_xdg_before_home_default() {
         let home = Path::new("/tmp/home");
@@ -1696,7 +1694,6 @@ mod tests {
     }
 
     // Defends: repo-only maintainer dev commands are no longer implemented by the shipped user-runtime control helper.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn repo_only_dev_command_error_points_to_maintainer_shell() {
         let error = repo_only_dev_command_error("rust");
@@ -1706,7 +1703,6 @@ mod tests {
     }
 
     // Defends: startup config rendering still includes the blocking diagnostic details promised by the public control-plane surface.
-    // Strength: defect=2 behavior=2 resilience=2 cost=2 uniqueness=1 total=9/10
     #[test]
     fn render_startup_config_error_includes_blocking_details() {
         let report = ConfigDiagnosticReport {

@@ -190,7 +190,6 @@ mod tests {
     }
 
     // Defends: invalid yazi.sort_by values fail as structured config errors instead of slipping into generated TOML.
-    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn rejects_invalid_sort_by() {
         let mut req = sample_request();
@@ -199,7 +198,6 @@ mod tests {
     }
 
     // Defends: git fetcher stripping tracks whether the git plugin is enabled in the normalized plugin list.
-    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn git_plugin_enabled_follows_plugin_list() {
         let mut req = sample_request();
@@ -213,7 +211,6 @@ mod tests {
     }
 
     // Defends: default theme keeps theme.toml flavor empty like the historical Nushell merger.
-    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn default_theme_uses_no_flavor_block() {
         let plan = compute_yazi_render_plan(&sample_request()).unwrap();
@@ -222,7 +219,6 @@ mod tests {
     }
 
     // Defends: concrete non-default themes map to a uniform dark/light flavor block for theme.toml.
-    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn dracula_maps_to_uniform_flavor() {
         let mut req = sample_request();
@@ -237,7 +233,6 @@ mod tests {
     }
 
     // Defends: random-dark resolves to one of the maintained dark palette entries in yazi_render_plan.toml.
-    // Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=2 total=8/10
     #[test]
     fn random_dark_resolves_into_dark_palette() {
         let mut req = sample_request();
@@ -248,7 +243,6 @@ mod tests {
     }
 
     // Defends: random-light resolves to one of the maintained light palette entries in yazi_render_plan.toml.
-    // Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=2 total=8/10
     #[test]
     fn random_light_resolves_into_light_palette() {
         let mut req = sample_request();
@@ -259,7 +253,6 @@ mod tests {
     }
 
     // Defends: init.lua load order prepends core plugins and dedupes user entries in first-wins order.
-    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn init_load_order_merges_core_then_user_deduped() {
         let mut req = sample_request();

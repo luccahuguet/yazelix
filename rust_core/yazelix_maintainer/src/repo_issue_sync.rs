@@ -649,7 +649,6 @@ mod tests {
 
     // Test lane: default
     // Defends: GitHub/Beads lifecycle reconciliation still creates, reopens, and closes the expected bead actions after the Nu owner is removed.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn plan_issue_bead_reconciliation_preserves_lifecycle_contract() {
         let issue_create = github_issue(1, "OPEN", "https://example.com/1", CONTRACT_START, "");
@@ -687,7 +686,6 @@ mod tests {
     }
 
     // Defends: imported GitHub issue bodies still preserve the shared type inference mapping instead of drifting through maintainer-only aliases.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn infer_issue_type_maps_supported_and_legacy_values() {
         assert_eq!(infer_issue_type_from_body("### Issue Type\nbug\n"), "bug");
@@ -703,7 +701,6 @@ mod tests {
     }
 
     // Regression: scheduled Bead contract validation should retry transient GitHub GraphQL failures instead of failing on one 504 while reading issue comments.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn github_cli_retry_classifier_matches_transient_failures() {
         assert!(is_transient_github_cli_failure(
@@ -718,7 +715,6 @@ mod tests {
     }
 
     // Defends: permanent GitHub CLI errors stay terminal so the sync does not hide repository, issue, or authentication contract failures behind retries.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn github_cli_retry_classifier_rejects_permanent_failures() {
         assert!(!is_transient_github_cli_failure(
@@ -730,7 +726,6 @@ mod tests {
     }
 
     // Defends: canonical Beads comments still converge to one stable body instead of accumulating stale variants.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn plan_issue_comment_sync_updates_stale_comment_body() {
         let issue = github_issue(4, "OPEN", "https://example.com/4", CONTRACT_START, "");

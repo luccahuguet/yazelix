@@ -114,7 +114,6 @@ mod tests {
     use serde_json::json;
 
     // Defends: startup facts coerce retained session and welcome settings out of normalized config shapes.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn startup_fact_helpers_coerce_strings_bools_numbers_and_lists() {
         let mut config = JsonMap::new();

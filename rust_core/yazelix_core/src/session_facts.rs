@@ -352,7 +352,6 @@ mod tests {
     use serde_json::json;
 
     // Defends: generated session facts preserve the pane/runtime values used after the user config has moved on.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn session_facts_from_normalized_config_keeps_current_session_values() {
         let config = JsonMap::from_iter([

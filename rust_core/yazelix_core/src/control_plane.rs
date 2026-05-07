@@ -579,7 +579,6 @@ mod tests {
 
     // Test lane: default
     // Defends: `yzx run` must preserve child flags after the public control-plane owner cut.
-    // Strength: defect=2 behavior=2 resilience=2 cost=2 uniqueness=1 total=9/10
     #[test]
     fn run_argv_preserves_child_flags() {
         let argv = vec!["cargo".into(), "--verbose".into(), "check".into()];
@@ -589,7 +588,6 @@ mod tests {
     }
 
     // Defends: `yzx run` must reject an empty child argv instead of launching an unspecified command.
-    // Strength: defect=2 behavior=2 resilience=2 cost=2 uniqueness=1 total=9/10
     #[test]
     fn run_argv_rejects_empty() {
         let argv: Vec<String> = vec![];
@@ -597,7 +595,6 @@ mod tests {
     }
 
     // Defends: `yzx env` keeps the documented `--no-shell` alias family after the Rust control-plane owner cut.
-    // Strength: defect=1 behavior=2 resilience=2 cost=2 uniqueness=1 total=8/10
     #[test]
     fn env_cli_accepts_no_shell_aliases() {
         let a = parse_env_cli_args(&["--no-shell".into()]).unwrap();
@@ -610,7 +607,6 @@ mod tests {
 
     // Test lane: default
     // Defends: `yzx env` login Nushell uses the managed wrapper (Starship + managed config.nu).
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn shell_command_login_nu_uses_managed_wrapper() {
         let rt = Path::new("/opt/yazelix");
@@ -624,7 +620,6 @@ mod tests {
 
     // Test lane: default
     // Defends: `yzx env --no-shell` still launches plain Nushell when the invoking shell family is `nu`.
-    // Strength: defect=1 behavior=2 resilience=1 cost=2 uniqueness=2 total=8/10
     #[test]
     fn shell_command_no_login_nu_stays_plain_nu() {
         let rt = Path::new("/opt/yazelix");
@@ -633,7 +628,6 @@ mod tests {
     }
 
     // Defends: explicit `YAZELIX_CONFIG_DIR` still expands `~` before path use.
-    // Strength: defect=1 behavior=2 resilience=2 cost=2 uniqueness=1 total=8/10
     #[test]
     fn resolve_yazelix_config_dir_prefers_explicit_and_expands_home() {
         let home = Path::new("/tmp/home");
@@ -643,7 +637,6 @@ mod tests {
     }
 
     // Defends: config-dir resolution still prefers `XDG_CONFIG_HOME` before the home-default fallback.
-    // Strength: defect=1 behavior=2 resilience=2 cost=2 uniqueness=1 total=8/10
     #[test]
     fn resolve_yazelix_config_dir_uses_xdg_before_home_default() {
         let home = Path::new("/tmp/home");

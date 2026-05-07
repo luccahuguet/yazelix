@@ -564,7 +564,6 @@ mod tests {
     use super::*;
 
     // Defends: edit target filtering keeps exact id match, alias match, and token search.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn filters_edit_targets_by_exact_and_fuzzy_match() {
         let targets = get_edit_targets(Path::new("/tmp/cfg"));
@@ -601,7 +600,6 @@ mod tests {
     }
 
     // Defends: edit argument parsing keeps query tokens, --print, and rejects unknown flags.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn parses_edit_args() {
         let parsed = parse_edit_args(&["helix".into(), "--print".into()]).unwrap();
@@ -615,7 +613,6 @@ mod tests {
     }
 
     // Regression: `yzx edit config` remains a repair path when the main config is too malformed to load the configured editor.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn config_edit_recovery_is_limited_to_config_parse_errors() {
         let parse_error = CoreError::classified(
@@ -638,7 +635,6 @@ mod tests {
     }
 
     // Defends: editor normalization resolves yazelix_hx.sh relative to runtime_dir.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn normalizes_yazelix_hx_editor_path() {
         let rt = Path::new("/tmp/rt");

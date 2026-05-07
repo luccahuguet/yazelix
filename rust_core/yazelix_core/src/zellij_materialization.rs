@@ -2273,7 +2273,6 @@ mod tests {
     }
 
     // Regression: plugin permission seeding must write the same cache file that Zellij reads on each platform.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn zellij_permissions_cache_path_matches_upstream_project_dirs() {
         let expected = ProjectDirs::from("org", "Zellij Contributors", "Zellij")
@@ -2285,7 +2284,6 @@ mod tests {
     }
 
     // Regression: macOS Zellij reads plugin permissions from ProjectDirs' Library/Caches path, not ~/.cache/zellij.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[cfg(target_os = "macos")]
     #[test]
     fn zellij_permissions_cache_path_uses_macos_cache_location() {
@@ -2298,7 +2296,6 @@ mod tests {
     }
 
     // Defends: semantic block extraction removes first-class KDL blocks while preserving unrelated top-level lines.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn extracts_semantic_blocks() {
         let extracted = extract_semantic_config_blocks(
@@ -2330,7 +2327,6 @@ ui { pane_frames { hide_session_name true } }
     }
 
     // Defends: user-owned Zellij keybinding mode survives semantic block extraction instead of being reduced to an ordinary keybind body.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn extracts_keybinds_clear_defaults_ownership() {
         let extracted = extract_semantic_config_blocks(
@@ -2350,7 +2346,6 @@ ui { pane_frames { hide_session_name true } }
     }
 
     // Defends: full user-owned Zellij keybinding mode preserves the clear-defaults header and does not append Yazelix default integrations.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn clear_defaults_keybinds_skip_yazelix_overrides() {
         let existing_lines = vec![
@@ -2373,7 +2368,6 @@ ui { pane_frames { hide_session_name true } }
     }
 
     // Regression: clear-defaults from the read-only native fallback must not disable Yazelix integration keybindings.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn native_fallback_clear_defaults_keeps_yazelix_keybind_overrides() {
         let temp = tempfile::tempdir().unwrap();
@@ -2420,7 +2414,6 @@ keybinds {
     }
 
     // Defends: explicit managed zellij.kdl clear-defaults remains the full user-owned Zellij keybinding mode.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn managed_clear_defaults_skips_yazelix_keybind_overrides() {
         let temp = tempfile::tempdir().unwrap();
@@ -2466,7 +2459,6 @@ keybinds {
     }
 
     // Defends: ordinary Zellij keybinding customization keeps Yazelix integration bindings appended for default managed behavior.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn ordinary_keybinds_keep_yazelix_overrides() {
         let existing_lines = vec![r#"    normal { bind "Alt y" { Write 27; } }"#.to_string()];
@@ -2486,7 +2478,6 @@ keybinds {
     }
 
     // Regression: widget tray rendering must not leave empty command placeholders when dynamic helper scripts are unavailable.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn renders_widget_tray_segment_with_static_identity_labels() {
         let plan = sample_render_plan_for_widgets(
@@ -2507,7 +2498,6 @@ keybinds {
     }
 
     // Defends: the managed sidebar launcher is a generated config concern rather than a hardcoded Yazi script in layout templates.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn renders_configured_sidebar_launcher_placeholders() {
         let mut plan =
@@ -2537,7 +2527,6 @@ keybinds {
     }
 
     // Regression: custom sidebar apps must not receive the default Yazi launcher script from normalized config.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn renders_custom_sidebar_command_without_implicit_yazi_launcher_arg() {
         let mut config = JsonMap::new();
@@ -2571,7 +2560,6 @@ keybinds {
     }
 
     // Regression: shipped zjstatus templates delegate integrated command definitions to the typed adapter instead of owning helper command bodies.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn zjstatus_template_delegates_integrated_command_definitions_to_adapter() {
         let template =
@@ -2595,7 +2583,6 @@ keybinds {
     }
 
     // Regression: generated zjstatus command widgets use resolved runtime helpers while dynamic widgets read only the local cache.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn renders_cached_zjstatus_widget_commands_with_runtime_helper_paths() {
         let temp = tempfile::tempdir().unwrap();
@@ -2677,7 +2664,6 @@ keybinds {
     }
 
     // Invariant: compact tab-label mode shortens zjstatus tab labels in generated layout KDL without affecting rename text.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn renders_compact_tab_label_mode_in_zjstatus_template() {
         let mut plan =
@@ -2708,7 +2694,6 @@ keybinds {
     }
 
     // Regression: legacy plugin permission blocks are recognized by both stable and hashed wasm names.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn plugin_prefix_matches_stable_and_hashed_names() {
         assert!(plugin_name_matches_prefix("zjstatus.wasm", "zjstatus"));
@@ -2720,7 +2705,6 @@ keybinds {
     }
 
     // Regression: semantic keybinding generation keeps popup/menu and sidebar-focus actions on the pane orchestrator instead of reviving helper panes.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn semantic_keybinds_keep_pane_orchestrator_contract() {
         let temp = tempfile::tempdir().unwrap();
@@ -2755,7 +2739,6 @@ keybinds {
     }
 
     // Defends: semantic remaps replace Yazelix-owned Zellij action keys without copying the full keybind block.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn semantic_keybinds_honor_user_remaps_and_drop_matching_unbinds() {
         let temp = tempfile::tempdir().unwrap();
@@ -2794,7 +2777,6 @@ keybinds {
     }
 
     // Defends: generated semantic Zellij action bindings fail fast when two actions claim the same key.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn semantic_keybinds_reject_duplicate_action_keys() {
         let mut keybindings = sample_zellij_keybindings();
@@ -2808,7 +2790,6 @@ keybinds {
     }
 
     // Defends: partial settings.jsonc remaps inherit defaults for omitted Yazelix-owned Zellij actions.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn partial_zellij_keybinding_config_inherits_omitted_defaults() {
         let mut config = JsonMap::new();
@@ -2828,7 +2809,6 @@ keybinds {
     }
 
     // Regression: pane-orchestrator plugin config must carry one shared sidebar/popup/runtime contract without duplicate alias injection.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn plugin_block_carries_runtime_and_popup_contract_once() {
         let block = build_yazelix_plugins_block(

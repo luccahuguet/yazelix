@@ -334,7 +334,6 @@ mod tests {
     use super::*;
 
     // Defends: import command parsing keeps the --force switch and rejects unknown flags.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn parses_import_args() {
         let parsed = parse_import_args(&["zellij".into(), "--force".into()]).unwrap();
@@ -349,7 +348,6 @@ mod tests {
     }
 
     // Defends: import entry resolution keeps the three supported targets.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn resolves_import_entries_for_supported_targets() {
         let home = Path::new("/home/test");
@@ -374,7 +372,6 @@ mod tests {
     }
 
     // Defends: backup timestamp format stays human-readable after the Rust owner cut.
-    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn formats_import_backup_timestamp() {
         assert_eq!(format_backup_timestamp(0), "19700101_000000");

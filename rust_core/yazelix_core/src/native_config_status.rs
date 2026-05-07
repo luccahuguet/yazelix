@@ -613,7 +613,6 @@ mod tests {
     }
 
     // Defends: Zellij's native fallback is classified as read-only instead of being treated as an adopted managed override.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn zellij_native_config_is_read_only_fallback() {
         let tmp = TempDir::new().unwrap();
@@ -634,7 +633,6 @@ mod tests {
     }
 
     // Regression: terminal.config_mode=user must surface a missing native terminal config as required, not as a harmless absent sidecar.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn terminal_user_mode_reports_required_native_config_missing() {
         let tmp = TempDir::new().unwrap();
@@ -656,7 +654,6 @@ mod tests {
     }
 
     // Defends: native Yazi and Helix files are import candidates only; Yazelix does not silently read them as runtime input.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn native_yazi_and_helix_configs_are_available_to_import() {
         let tmp = TempDir::new().unwrap();
@@ -675,7 +672,6 @@ mod tests {
     }
 
     // Defends: declarative settings ownership uses the shared contract label consumed by both doctor and config UI.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn home_manager_settings_are_read_only() {
         let tmp = TempDir::new().unwrap();

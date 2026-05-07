@@ -770,7 +770,6 @@ mod tests {
     }
 
     // Defends: new installs create settings.jsonc instead of keeping the old main/cursor TOML surfaces alive.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn creates_settings_jsonc_from_defaults() {
         let runtime = tempdir().unwrap();
@@ -795,7 +794,6 @@ mod tests {
     }
 
     // Regression: JSONC parse errors should explain that TOML/Nix-style # comments are not valid settings comments.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn invalid_jsonc_error_mentions_supported_comment_syntax() {
         let err = parse_jsonc_value(Path::new("settings.jsonc"), "{\n  # comment\n}\n")
@@ -806,7 +804,6 @@ mod tests {
     }
 
     // Defends: generated settings.jsonc stays focused on main settings while cursors use their shared sidecar.
-    // Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=2 total=8/10
     #[test]
     fn renders_default_settings_without_embedded_cursors() {
         let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -824,7 +821,6 @@ mod tests {
     }
 
     // Defends: old flat TOML config inputs are one-time migration inputs, not long-lived runtime alternatives.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn auto_migrates_old_flat_inputs_and_moves_them_aside() {
         let runtime = tempdir().unwrap();
@@ -862,7 +858,6 @@ mod tests {
     }
 
     // Regression: embedded settings.jsonc cursors migrate once to the shared cursor config, then are removed from the main file.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn migrates_embedded_cursors_to_shared_cursor_settings_once() {
         let runtime = tempdir().unwrap();
@@ -893,7 +888,6 @@ mod tests {
     }
 
     // Defends: settings.jsonc plus stale old-format inputs fails fast instead of mixing config owners.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn hard_errors_when_settings_and_old_input_coexist() {
         let runtime = tempdir().unwrap();

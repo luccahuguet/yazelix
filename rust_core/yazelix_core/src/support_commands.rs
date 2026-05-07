@@ -109,7 +109,6 @@ mod tests {
     use super::*;
 
     // Defends: the Rust support leaf parser only accepts help flags and rejects accidental extra argv for the public `yzx why` and `yzx sponsor` routes.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn parses_leaf_help_flags() {
         assert_eq!(
@@ -124,7 +123,6 @@ mod tests {
     }
 
     // Regression: sponsor opening should stop at the first successful opener instead of probing extra commands after success.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn sponsor_opening_stops_at_first_successful_command() {
         let mut attempts = Vec::new();
@@ -141,7 +139,6 @@ mod tests {
     }
 
     // Regression: sponsor opening must try the macOS `open` fallback when `xdg-open` is unavailable or fails, then report failure only if neither opener works.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn sponsor_opening_tries_fallback_opener_and_reports_failure_if_needed() {
         let mut attempts = Vec::new();

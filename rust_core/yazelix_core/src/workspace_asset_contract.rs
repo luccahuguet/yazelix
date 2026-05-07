@@ -316,7 +316,6 @@ swap_layouts = ["single_open"]
     }
 
     // Defends: doctor can report a healthy generated workspace asset surface without invoking Zellij or Nix.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn workspace_asset_report_accepts_fresh_generated_state() {
         let (_tmp, runtime, state) = write_workspace_fixture();
@@ -329,7 +328,6 @@ swap_layouts = ["single_open"]
     }
 
     // Regression: stale generated plugin artifacts should become a fixable doctor finding instead of a mystery runtime failure.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn workspace_asset_report_flags_stale_generated_plugin_as_fixable() {
         let (_tmp, runtime, state) = write_workspace_fixture();

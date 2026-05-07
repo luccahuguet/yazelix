@@ -28,7 +28,6 @@ mod tests {
     use std::time::{Duration, Instant};
 
     // Regression: multiple orchestrator refresh loops must share one Zellij timeout instead of arming a timeout per non-due loop.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn arms_only_the_earliest_unarmed_deadline() {
         let now = Instant::now();
@@ -47,7 +46,6 @@ mod tests {
     }
 
     // Defends: overdue work is handled promptly without asking Zellij for sub-frame timer churn.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn clamps_overdue_deadlines_to_minimum_delay() {
         let now = Instant::now();

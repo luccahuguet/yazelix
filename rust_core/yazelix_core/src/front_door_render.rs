@@ -841,7 +841,6 @@ mod tests {
 
     // Test lane: default
     // Defends: `yzx screen random` rotates across retained animation families instead of getting stuck in Game of Life variants.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn random_screen_style_rotates_across_animation_families() {
         let mut game_of_life_count = 0;
@@ -869,7 +868,6 @@ mod tests {
     }
 
     // Defends: welcome random splits selection evenly across Game of Life, boids, and Mandelbrot families while excluding static and logo.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn random_welcome_style_rotates_evenly_across_animation_families() {
         let mut game_of_life_count = 0;
@@ -908,7 +906,6 @@ mod tests {
     }
 
     // Defends: `yzx screen` continues to reject the startup-only `static` style instead of quietly rendering a non-animated frame.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn screen_style_rejects_static() {
         let err = resolve_screen_style(Some("static"), None).unwrap_err();
@@ -916,7 +913,6 @@ mod tests {
     }
 
     // Defends: Mandelbrot is accepted for welcome playback without changing the startup-only rejection of static in `yzx screen`.
-    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=2 total=9/10
     #[test]
     fn mandelbrot_is_available_to_welcome_and_screen() {
         assert_eq!(
@@ -940,7 +936,6 @@ mod tests {
     }
 
     // Regression: wide terminals must not let the logo welcome card stretch to a near-full-width frame.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn logo_welcome_frame_keeps_wide_variant_at_designed_width() {
         let frame = get_logo_welcome_frame(110);
@@ -948,7 +943,6 @@ mod tests {
     }
 
     // Regression: crossing the wide-to-hero breakpoint must not reintroduce a sudden width jump.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn hero_breakpoint_keeps_logo_welcome_width_stable() {
         let wide = get_logo_welcome_frame(119);
@@ -968,7 +962,6 @@ mod tests {
     }
 
     // Regression: animated boids welcome renders as an unframed broad flock instead of being trapped in the logo card border.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn boids_welcome_frame_uses_unframed_broad_surface() {
         let boids = build_boids_frame(
@@ -984,7 +977,6 @@ mod tests {
     }
 
     // Regression: inline welcome playback trims trailing padding so centered frames do not trigger terminal autowrap artifacts.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn inline_printable_line_trims_right_padding() {
         assert_eq!(inline_printable_line("hello   "), "hello");

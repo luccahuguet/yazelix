@@ -107,7 +107,6 @@ mod tests {
     };
 
     // Defends: leftward focus skips a closed sidebar instead of treating it as a real target.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn closed_sidebar_is_skipped_when_walking_left() {
         let panes = [
@@ -140,7 +139,6 @@ mod tests {
     }
 
     // Defends: an open sidebar remains a valid leftward focus target.
-    // Strength: defect=1 behavior=2 resilience=2 cost=2 uniqueness=1 total=8/10
     #[test]
     fn open_sidebar_is_still_a_valid_left_target() {
         let panes = [
@@ -173,7 +171,6 @@ mod tests {
     }
 
     // Defends: the nearest visible left pane wins even when a hidden sidebar exists farther left.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn nearest_visible_left_pane_wins_over_hidden_sidebar() {
         let panes = [
@@ -216,7 +213,6 @@ mod tests {
     }
 
     // Defends: panes without horizontal overlap do not count as left or right focus targets.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn panes_without_horizontal_overlap_do_not_count_as_left_or_right_targets() {
         let panes = [

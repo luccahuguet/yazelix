@@ -62,7 +62,6 @@ mod tests {
     use serde_json::json;
 
     // Defends: pane-orchestrator heartbeat facts carry liveness timestamps without status-bar presentation markup.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn heartbeat_payload_exposes_liveness_facts_without_bar_formatting() {
         let payload = build_orchestrator_heartbeat_payload(OrchestratorHeartbeatPayload {

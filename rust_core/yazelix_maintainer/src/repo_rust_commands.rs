@@ -203,7 +203,6 @@ mod tests {
     use super::*;
 
     // Defends: maintainer-owned `yzx dev rust test` keeps the same default target and passthrough behavior after leaving the user runtime helper.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn rust_test_defaults_to_core_and_preserves_cargo_tail() {
         let parsed = parse_rust_target_and_tail(&["config_ui".to_string()], "core");
@@ -217,7 +216,6 @@ mod tests {
     }
 
     // Defends: target parsing still recognizes explicit maintainer and all-target runs in the maintainer command surface.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn rust_target_specs_accept_known_targets_only() {
         let repo_root = Path::new("/repo");

@@ -152,7 +152,6 @@ mod tests {
     use tempfile::TempDir;
 
     // Defends: `yzx status --json` exposes intentionally disabled runtime components for diagnostics and config UIs.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn runtime_components_summary_lists_disabled_components() {
         let tmp = TempDir::new().unwrap();

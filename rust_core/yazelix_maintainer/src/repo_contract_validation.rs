@@ -3975,7 +3975,6 @@ mod tests {
 
     // Test lane: maintainer
     // Regression: startup lost `YAZELIX_SESSION_CONFIG_PATH` and `YAZELIX_STATUS_BAR_CACHE_PATH` because a plain Nushell `def` swallowed env mutations before the Zellij handoff.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn startup_snapshot_env_contract_requires_env_preserving_helper() {
         let plain_def = r#"
@@ -4003,7 +4002,6 @@ def prepare_session_config_snapshot [] {
 
     // Test lane: maintainer
     // Defends: every main config contract field declares a closed runtime apply mode before config UI and doctor consume it.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn main_contract_apply_mode_validator_rejects_missing_or_unknown_modes() {
         let mut field = TomlTable::new();
@@ -4032,7 +4030,6 @@ def prepare_session_config_snapshot [] {
 
     // Test lane: maintainer
     // Defends: semantic Zellij keybinding defaults stay in one-to-one parity between the config contract and action registry.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn zellij_keybinding_registry_validator_reports_extra_missing_and_mismatched_defaults() {
         let mut contract = TomlTable::new();
@@ -4090,7 +4087,6 @@ def prepare_session_config_snapshot [] {
 
     // Test lane: maintainer
     // Defends: semantic Yazi keybinding defaults stay in one-to-one parity between the config contract and action registry.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn yazi_keybinding_registry_validator_reports_extra_missing_and_mismatched_defaults() {
         let mut contract = TomlTable::new();

@@ -824,7 +824,6 @@ mod tests {
     }
 
     // Defends: config normalization keeps the parser-owned default keys and value transforms stable.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn normalizes_default_config_with_parser_keys_and_transforms() {
         let repo = repo_root();
@@ -847,7 +846,6 @@ mod tests {
     }
 
     // Defends: compact badge text normalization trims and truncates user input consistently.
-    // Strength: defect=1 behavior=2 resilience=2 cost=2 uniqueness=1 total=8/10
     #[test]
     fn applies_compact_badge_text_behavior() {
         let path = write_user_config("[zellij]\ncustom_text = \"  [hello]  world demo  \"\n");
@@ -860,7 +858,6 @@ mod tests {
     }
 
     // Defends: compact tab-label mode flows through the main config contract as a typed Zellij setting.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn normalizes_zellij_tab_label_mode() {
         let path = write_user_config("[zellij]\ntab_label_mode = \"compact\"\n");
@@ -877,7 +874,6 @@ mod tests {
     }
 
     // Defends: semantic Zellij keybinding remaps flow through the main config contract as a typed action map.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn normalizes_zellij_keybinding_map() {
         let path = write_user_config(
@@ -899,7 +895,6 @@ toggle_sidebar = []
     }
 
     // Defends: semantic Yazi integration keybinding remaps flow through the main config contract as a typed action map.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn normalizes_yazi_keybinding_map() {
         let path = write_user_config(
@@ -921,7 +916,6 @@ open_directory_as_workspace_pane = []
     }
 
     // Defends: removed config surfaces fail as unsupported config instead of being silently accepted.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn rejects_removed_unknown_config_surfaces_without_migration() {
         let path = write_user_config("[shell]\nenable_atuin = true\n");
@@ -937,7 +931,6 @@ open_directory_as_workspace_pane = []
     }
 
     // Defends: invalid enum values produce structured diagnostics instead of generic parse failures.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn rejects_invalid_enum_values_with_structured_diagnostics() {
         let path = write_user_config("[shell]\ndefault_shell = \"powershell\"\n");
@@ -952,7 +945,6 @@ open_directory_as_workspace_pane = []
     }
 
     // Regression: doctor-style config reports can request missing fields explicitly without changing startup defaults.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn includes_missing_fields_when_requested() {
         let path = write_user_config("[shell]\ndefault_shell = \"nu\"\n");

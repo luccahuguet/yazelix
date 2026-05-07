@@ -639,7 +639,6 @@ mod tests {
     }
 
     // Defends: single-choice onboarding prompts support arrow-style navigation before confirmation.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn prompt_state_selects_single_choice_with_navigation() {
         let mut state = PromptState::single(0, 3);
@@ -654,7 +653,6 @@ mod tests {
     }
 
     // Defends: multi-select onboarding prompts support toggling choices before confirmation.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn prompt_state_toggles_multi_select_choices() {
         let mut state = PromptState::multi(vec![true, true, false]);
@@ -670,7 +668,6 @@ mod tests {
     }
 
     // Defends: interrupted onboarding exits before writing a config.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn prompt_state_reports_abort() {
         let mut state = PromptState::single(0, 2);
@@ -679,7 +676,6 @@ mod tests {
     }
 
     // Defends: onboarding emits valid settings.jsonc with current supported main config fields.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn onboard_config_is_valid_current_main_config() {
         let tmp = tempdir().unwrap();
@@ -727,7 +723,6 @@ mod tests {
     }
 
     // Defends: onboarding writes only the supported main config surface and refuses accidental overwrite by default.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn write_onboard_config_writes_main_config_only_and_requires_force() {
         let tmp = tempdir().unwrap();

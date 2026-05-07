@@ -823,7 +823,6 @@ mod tests {
     }
 
     // Defends: shared runtime-contract evaluation reports missing working-dir, script, and layout assets in one batch.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn evaluate_reports_missing_runtime_assets() {
         let temp = tempdir().unwrap();
@@ -858,7 +857,6 @@ mod tests {
     }
 
     // Defends: shared runtime-contract evaluation reports both terminal candidates and the Linux Ghostty graphics ownership warning.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn evaluate_reports_terminal_candidates_and_host_path_ghostty_warning() {
         let temp = tempdir().unwrap();
@@ -916,7 +914,6 @@ mod tests {
     }
 
     // Defends: shared runtime-contract evaluation rejects unsupported requested terminals before launch fallback logic runs.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn evaluate_rejects_unsupported_requested_terminal() {
         let data = evaluate_runtime_contract(&RuntimeContractEvaluateRequest {
@@ -946,7 +943,6 @@ mod tests {
     }
 
     // Defends: startup-launch preflight bundles startup working-dir and runtime-script checks into one ok envelope.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn startup_preflight_reports_resolved_paths_when_checks_pass() {
         let temp = tempdir().unwrap();
@@ -976,7 +972,6 @@ mod tests {
     }
 
     // Defends: startup-launch preflight rejects malformed requests that specify both startup and launch.
-    // Strength: defect=2 behavior=1 resilience=1 cost=2 uniqueness=2 total=8/10
     #[test]
     fn startup_launch_preflight_rejects_ambiguous_request() {
         let temp = tempdir().unwrap();
@@ -1003,7 +998,6 @@ mod tests {
     }
 
     // Defends: startup-launch preflight bundles launch working-dir and terminal support into one ok envelope.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn launch_preflight_returns_terminal_candidates_when_checks_pass() {
         let temp = tempdir().unwrap();

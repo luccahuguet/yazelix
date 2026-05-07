@@ -4,7 +4,6 @@ use assert_cmd::Command;
 use serde_json::Value;
 
 // Defends: yazi-render-plan.compute returns one machine-readable success envelope for a typical normalized request.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn yazi_render_plan_emits_ok_envelope() {
     let request = serde_json::json!({
@@ -37,7 +36,6 @@ fn yazi_render_plan_emits_ok_envelope() {
 }
 
 // Defends: yazi-render-plan.compute rejects invalid sort_by with a single config-class error envelope.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
 #[test]
 fn yazi_render_plan_rejects_invalid_sort_by() {
     let request = serde_json::json!({

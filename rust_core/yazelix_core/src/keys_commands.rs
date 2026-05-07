@@ -655,7 +655,6 @@ mod tests {
     use super::*;
 
     // Defends: the Rust-owned `yzx keys` family keeps the full alias set instead of collapsing discoverability leaves during the owner cut.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn parses_keys_alias_family() {
         assert_eq!(
@@ -710,7 +709,6 @@ mod tests {
     }
 
     // Regression: the Rust owner cut must preserve the table-style discoverability surface instead of flattening the keys help into plain paragraphs.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn renders_table_style_root_discoverability_surface() {
         let rendered = render_yazelix_keys(false);

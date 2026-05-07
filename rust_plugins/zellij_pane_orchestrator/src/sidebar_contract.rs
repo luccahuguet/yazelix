@@ -161,7 +161,6 @@ mod tests {
     use crate::pane_contract::FocusContextPolicy;
 
     // Defends: opening the sidebar preserves the current focus context instead of forcing a focus jump.
-    // Strength: defect=1 behavior=2 resilience=2 cost=2 uniqueness=1 total=8/10
     #[test]
     fn opening_sidebar_preserves_current_focus() {
         assert_eq!(
@@ -174,7 +173,6 @@ mod tests {
     }
 
     // Defends: closing a focused sidebar prefers the editor when that fallback exists.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn closing_focused_sidebar_prefers_editor_fallback() {
         assert_eq!(
@@ -187,7 +185,6 @@ mod tests {
     }
 
     // Defends: closing a focused sidebar falls back to a non-sidebar target when the editor is missing.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn closing_focused_sidebar_uses_non_sidebar_fallback_when_editor_missing() {
         assert_eq!(
@@ -200,7 +197,6 @@ mod tests {
     }
 
     // Regression: the programmatic hide path must move focus off the sidebar before a missing editor pane is opened.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn hide_focused_sidebar_uses_non_sidebar_fallback_when_editor_missing() {
         assert_eq!(
@@ -210,7 +206,6 @@ mod tests {
     }
 
     // Defends: hiding an already hidden sidebar is a no-op and does not inject focus motion.
-    // Strength: defect=1 behavior=2 resilience=2 cost=2 uniqueness=1 total=8/10
     #[test]
     fn hide_closed_sidebar_is_noop() {
         assert_eq!(
@@ -220,7 +215,6 @@ mod tests {
     }
 
     // Regression: closing the startup BASE layout needs two swaps because the first swap is the open single layout.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn close_from_base_layout_skips_open_single_layout() {
         assert_eq!(sidebar_close_swap_steps(true), 2);
@@ -228,7 +222,6 @@ mod tests {
     }
 
     // Defends: closing a non-focused sidebar does not inject extra focus motion.
-    // Strength: defect=1 behavior=2 resilience=2 cost=2 uniqueness=1 total=8/10
     #[test]
     fn closing_unfocused_sidebar_preserves_current_focus() {
         assert_eq!(
@@ -241,7 +234,6 @@ mod tests {
     }
 
     // Defends: explicit sidebar focus toggles reopen a closed sidebar and focus it.
-    // Strength: defect=1 behavior=2 resilience=2 cost=2 uniqueness=1 total=8/10
     #[test]
     fn explicit_focus_toggle_reopens_closed_sidebar_and_focuses_it() {
         assert_eq!(
@@ -251,7 +243,6 @@ mod tests {
     }
 
     // Defends: explicit sidebar focus toggles return from sidebar focus back to the editor.
-    // Strength: defect=1 behavior=2 resilience=2 cost=2 uniqueness=1 total=8/10
     #[test]
     fn explicit_focus_toggle_returns_from_sidebar_to_editor() {
         assert_eq!(
@@ -261,7 +252,6 @@ mod tests {
     }
 
     // Defends: the reusable sidebar contract owns the post-layout focus nudge sequence.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn post_layout_focus_nudges_are_contract_owned() {
         assert_eq!(

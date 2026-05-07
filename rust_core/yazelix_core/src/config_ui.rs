@@ -2703,7 +2703,6 @@ mod tests {
     }
 
     // Defends: the editable config UI interprets typed values from the field contract instead of guessing strings for every setting.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn parse_edit_input_uses_field_type_and_allowed_values() {
         let bool_field = test_field("editor.hide_sidebar_on_file_open", "bool", "false", &[]);
@@ -2734,7 +2733,6 @@ mod tests {
     }
 
     // Regression: summarized list displays must not become the edit buffer, because placeholders like `[7 items]` are not JSON.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn list_fields_edit_from_full_json_not_display_summary() {
         let runtime = tempdir().expect("runtime");
@@ -2767,7 +2765,6 @@ mod tests {
     }
 
     // Defends: config UI does not expose cursor editor fields when the packaged runtime disables the cursor component.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn disabled_cursor_component_removes_cursor_editor_fields() {
         let runtime = tempdir().expect("runtime");
@@ -2797,7 +2794,6 @@ mod tests {
     }
 
     // Defends: the keybinding tab renders Yazelix action registry labels, scoped ids, defaults, remaps, and disabled actions instead of an opaque JSON object.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn zellij_keybinding_details_use_action_registry_metadata() {
         let runtime = tempdir().expect("runtime");
@@ -2845,7 +2841,6 @@ mod tests {
     }
 
     // Defends: machine-readable apply modes from main_config_contract.toml reach the config UI model for the first live slice and restart-scoped fields.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn model_exposes_runtime_apply_modes_from_contract() {
         let runtime = tempdir().expect("runtime");
@@ -2904,7 +2899,6 @@ mod tests {
     }
 
     // Defends: Home Manager-owned settings are presented as activation-scoped even when the field's intrinsic apply mode is narrower.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[cfg(unix)]
     #[test]
     fn home_manager_owned_settings_use_activation_apply_mode() {
@@ -2941,7 +2935,6 @@ mod tests {
     }
 
     // Defends: the config UI consumes the shared native-config status labels instead of maintaining separate sidecar wording.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn model_includes_native_config_status_entries() {
         let runtime = tempdir().expect("runtime");
@@ -2968,7 +2961,6 @@ mod tests {
     }
 
     // Defends: enum-backed string lists use an enable/disable picker instead of forcing users to edit JSON arrays.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn enum_string_list_picker_toggles_subvalues_with_space() {
         let runtime = tempdir().expect("runtime");
@@ -3024,7 +3016,6 @@ mod tests {
     }
 
     // Defends: keyboard-oriented quick edits produce deterministic toggles/cycles from the value shown in the UI.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn quick_edit_helpers_toggle_bool_and_cycle_enum() {
         let bool_field = test_field("core.debug_mode", "bool", "true", &[]);
@@ -3043,7 +3034,6 @@ mod tests {
     }
 
     // Defends: bool edits stay direct controls while enum edit mode behaves like a single-select picker.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn choice_edit_keys_toggle_bool_and_move_enum_picker() {
         let mut app = ConfigUiApp {
@@ -3105,7 +3095,6 @@ mod tests {
     }
 
     // Defends: enum rows open a single-select picker that can be driven with hjkl and saved through the JSONC patcher.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn scalar_enum_enter_opens_single_select_picker() {
         let runtime = tempdir().expect("runtime");
@@ -3152,7 +3141,6 @@ mod tests {
     }
 
     // Defends: Enter on bool rows performs the direct control action instead of opening an edit session.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn enter_directly_applies_bool_field_without_edit_mode() {
         let runtime = tempdir().expect("runtime");
@@ -3192,7 +3180,6 @@ mod tests {
     }
 
     // Defends: UI edits use the same comment-preserving settings.jsonc patcher and validation path as `yzx config set`.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn write_field_value_patches_settings_jsonc_and_reloads_model() {
         let runtime = tempdir().expect("runtime");
@@ -3244,7 +3231,6 @@ mod tests {
     }
 
     // Regression: a save-time refresh failure remains visible as pending apply work instead of hiding the fact that the setting was already persisted.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn write_notice_keeps_saved_setting_visible_when_apply_fails() {
         let outcome = ConfigUiWriteOutcome {

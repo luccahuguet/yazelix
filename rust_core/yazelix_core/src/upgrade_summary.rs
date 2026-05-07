@@ -370,7 +370,6 @@ mod tests {
 
     // Test lane: default
     // Defends: current release headlines still trim trailing punctuation without inventing copy when the current version is missing.
-    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn current_release_headline_trims_trailing_periods() {
         let tmp = tempdir().unwrap();
@@ -394,7 +393,6 @@ headline = "Faster startup."
     }
 
     // Defends: the first-run upgrade summary still renders once, records the seen version, and keeps the current-version report available for manual reopen.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn upgrade_summary_first_run_and_manual_reopen_share_the_same_report() {
         let tmp = tempdir().unwrap();
@@ -441,7 +439,6 @@ migration_ids = ["remove_zellij_widget_tray_layout", "remove_shell_enable_atuin"
     }
 
     // Defends: the retained historical v12/v13 floor still resolves exact-version upgrade notes through the Rust-owned summary loader.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn historical_upgrade_notes_floor_stays_loadable() {
         let runtime_dir = tempdir().unwrap();

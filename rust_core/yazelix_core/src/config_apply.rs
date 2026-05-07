@@ -589,7 +589,6 @@ mod tests {
     }
 
     // Defends: save/apply handling reads generated-runtime metadata from the canonical main config contract instead of hardcoding current UI rows.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn reads_apply_mode_from_main_config_contract() {
         let contract = repo_root().join("config_metadata/main_config_contract.toml");
@@ -613,7 +612,6 @@ mod tests {
     }
 
     // Defends: generated config refresh reports the concrete affected tool boundary instead of a vague "restart later" message.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn maps_generated_settings_to_tool_specific_refresh_guidance() {
         assert_eq!(
@@ -643,7 +641,6 @@ mod tests {
     }
 
     // Regression: generated-refresh failures must report the saved field and underlying materializer error instead of pretending the saved value is active.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn generated_refresh_error_is_field_scoped_and_actionable() {
         let temp = tempdir().expect("tempdir");
@@ -687,7 +684,6 @@ apply_mode = "generated_runtime_refresh"
     }
 
     // Defends: live pane-refresh settings serialize one bounded versioned reload payload from normalized settings and generated Zellij metadata.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn builds_pane_orchestrator_runtime_reload_payload_from_saved_config() {
         let repo = repo_root();
@@ -748,7 +744,6 @@ apply_mode = "generated_runtime_refresh"
     }
 
     // Regression: stale pane-orchestrator generations stay visibly field-scoped pending work after the setting is saved.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn stale_pane_orchestrator_generation_error_is_field_scoped() {
         let error = pane_orchestrator_runtime_reload_status(

@@ -49,7 +49,6 @@ mod tests {
     use crate::transient_pane_contract::{TransientPaneIdentityContract, TransientPaneKind};
 
     // Defends: Yazelix popup and menu adapters keep wrapper identity separate from generic transient policy.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn exposes_yazelix_popup_and_menu_adapters() {
         assert_eq!(

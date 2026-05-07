@@ -433,7 +433,6 @@ mod tests {
 
     // Test lane: default
     // Defends: version bump validation still accepts the Yazelix tag grammar without reviving loose maintainer-only version aliases.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn validate_target_version_accepts_only_yazelix_tag_shape() {
         assert_eq!(validate_target_version("v14").unwrap(), "v14");
@@ -443,7 +442,6 @@ mod tests {
     }
 
     // Defends: changelog rotation still turns the unreleased section into a released heading and reinstates the post-release placeholder.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn rotate_changelog_releases_unreleased_section() {
         let raw = "\

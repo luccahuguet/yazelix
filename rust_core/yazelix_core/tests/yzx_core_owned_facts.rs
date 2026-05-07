@@ -12,7 +12,6 @@ use support::fixtures::{
 
 // Defends: integration-facts.compute returns the Rust-owned sidebar, editor-kind, and Yazi command payload directly.
 // Contract: WSS-005, SOE-004
-// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 #[test]
 fn integration_facts_compute_reports_sidebar_editor_and_yazi_payload() {
     let fixture = managed_config_fixture(
@@ -40,7 +39,6 @@ ya_command = "ya-test"
 
 // Regression: integration facts come from the per-session snapshot so an older running window survives newer config fields.
 // Contract: WSS-005, SOE-004
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn integration_facts_compute_prefers_session_snapshot_over_stale_config() {
     let fixture = managed_config_fixture(
@@ -77,7 +75,6 @@ ghostty_trail_color = "random"
 
 // Defends: transient-pane-facts.compute keeps popup argv and geometry under one Rust-owned facts surface for popup/menu callers.
 // Contract: POP-001, POP-002, POP-003
-// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 #[test]
 fn transient_pane_facts_compute_reports_popup_program_and_geometry() {
     let fixture = managed_config_fixture(
@@ -103,7 +100,6 @@ popup_height_percent = 76
 }
 
 // Regression: transient-pane facts come from the per-session snapshot so popup/menu panes keep their launch-time config.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn transient_pane_facts_compute_prefers_session_snapshot_over_stale_config() {
     let fixture = managed_config_fixture(
@@ -144,7 +140,6 @@ ghostty_trail_color = "random"
 }
 
 // Regression: different Yazelix windows keep the config snapshot they launched with, even after live config edits.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn transient_pane_facts_compute_uses_window_snapshot_identity() {
     let fixture = managed_config_fixture(
@@ -188,7 +183,6 @@ ghostty_trail_color = "random"
 }
 
 // Regression: already-open windows from the pre-snapshot implementation can still provide their legacy facts cache.
-// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn integration_facts_compute_accepts_legacy_facts_cache_for_already_open_windows() {
     let fixture = managed_config_fixture(
@@ -218,7 +212,6 @@ ghostty_trail_color = "random"
 }
 
 // Defends: startup-facts.compute returns the retained welcome, session, shell, and terminal facts without Nushell-side config parsing.
-// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 #[test]
 fn startup_facts_compute_reports_retained_startup_and_session_fields() {
     let fixture = managed_config_fixture(

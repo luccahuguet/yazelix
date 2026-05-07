@@ -833,7 +833,6 @@ mod tests {
     }
 
     // Defends: Home Manager ownership detection still recognizes the store-symlink marker path.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn home_manager_ownership_detects_store_symlink_marker() {
         let tmp = TempDir::new().unwrap();
@@ -854,7 +853,6 @@ mod tests {
     }
 
     // Regression: dangling Home Manager symlinks must still classify the install as Home Manager-owned.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn evaluate_install_ownership_keeps_home_manager_owner_for_dangling_main_config_symlink() {
         let tmp = TempDir::new().unwrap();
@@ -908,7 +906,6 @@ mod tests {
     }
 
     // Regression: profile candidate ordering must keep ~/.nix-profile ahead of /etc/profiles/per-user.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn home_manager_profile_candidates_preserve_home_profile_preference() {
         let home = PathBuf::from("/tmp/home");
@@ -923,7 +920,6 @@ mod tests {
     }
 
     // Regression: a plain profile-owned yzx path must not be misclassified as Home Manager ownership.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn evaluate_install_ownership_classifies_plain_profile_install_as_profile() {
         let tmp = TempDir::new().unwrap();
@@ -963,7 +959,6 @@ mod tests {
     }
 
     // Defends: desktop freshness still warns when a user-local desktop entry shadows the profile-owned entry.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn desktop_freshness_warns_on_shadowing_local_desktop() {
         let tmp = TempDir::new().unwrap();
@@ -1026,7 +1021,6 @@ mod tests {
     }
 
     // Regression: Home Manager prepare must surface standalone default-profile Yazelix entries as explicit removal blockers.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn prepare_artifacts_include_standalone_profile_yazelix_entry() {
         let tmp = TempDir::new().unwrap();
@@ -1071,7 +1065,6 @@ mod tests {
     }
 
     // Regression: doctor ownership diagnostics must flag mixed Home Manager/profile installs instead of leaving the collision to Home Manager's package error.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn evaluate_install_ownership_reports_home_manager_profile_collision() {
         let tmp = TempDir::new().unwrap();

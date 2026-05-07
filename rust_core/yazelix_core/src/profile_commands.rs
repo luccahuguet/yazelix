@@ -1127,7 +1127,6 @@ mod tests {
     use std::io::Write;
 
     // Defends: profile report data loads run and step records correctly.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn load_report_data_parses_run_and_steps() {
         let temp_dir = tempfile::tempdir().unwrap();
@@ -1185,7 +1184,6 @@ mod tests {
     }
 
     // Defends: startup profile comparison matches saved reports by phase/component/step and surfaces total plus per-step deltas.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn compare_profile_summaries_reports_total_and_step_deltas() {
         let baseline = ProfileSummary {

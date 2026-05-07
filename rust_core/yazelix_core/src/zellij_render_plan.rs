@@ -593,7 +593,6 @@ mod tests {
     }
 
     // Defends: layout placeholder percents stay aligned with the historical Nushell geometry helper.
-    // Strength: defect=1 behavior=2 resilience=1 cost=2 uniqueness=2 total=8/10
     #[test]
     fn layout_percentages_match_legacy_nushell() {
         let p = compute_layout_percentages(20);
@@ -607,7 +606,6 @@ mod tests {
     }
 
     // Defends: sidebar width contract bounds surface as structured config errors, not silent clamping.
-    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn rejects_sidebar_out_of_range() {
         let mut req = sample_request();
@@ -616,7 +614,6 @@ mod tests {
     }
 
     // Defends: custom side-surface launchers fail fast when the command is empty instead of generating unusable Zellij KDL.
-    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn rejects_empty_sidebar_command() {
         let mut req = sample_request();
@@ -627,7 +624,6 @@ mod tests {
     }
 
     // Regression: custom sidebar apps must not inherit the default Yazi launcher script as their first argument.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn custom_sidebar_command_drops_implicit_yazi_launcher_arg() {
         for command in ["lazygit", "opencode"] {
@@ -642,7 +638,6 @@ mod tests {
     }
 
     // Defends: explicit custom sidebar arguments still pass through after the implicit default launcher arg is removed.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn custom_sidebar_command_preserves_explicit_args() {
         let mut req = sample_request();
@@ -654,7 +649,6 @@ mod tests {
     }
 
     // Defends: widget tray entries are validated against the same allowed set as config.normalize.
-    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn rejects_invalid_tray_widget() {
         let mut req = sample_request();
@@ -663,7 +657,6 @@ mod tests {
     }
 
     // Defends: supported dynamic widgets are accepted as optional extension points while Codex usage stays in the default tray.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn accepts_dynamic_tray_widgets_with_codex_defaulted() {
         let mut req = sample_request();
@@ -701,7 +694,6 @@ mod tests {
     }
 
     // Defends: idle screen saver config is explicit and bounded before it reaches the pane-orchestrator plugin.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn screen_saver_config_is_normalized_and_bounded() {
         let mut req = sample_request();
@@ -730,7 +722,6 @@ mod tests {
     }
 
     // Defends: enforced default_layout points at the computed managed layout file for the active sidebar capability.
-    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
     #[test]
     fn enforced_default_layout_points_at_plan_layout() {
         let plan = compute_zellij_render_plan(&sample_request()).unwrap();
@@ -743,7 +734,6 @@ mod tests {
     }
 
     // Regression: omitted JSON fields use config-contract defaults so machine callers cannot drift from main_config_contract.toml.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn omitted_support_kitty_keyboard_protocol_defaults_to_contract_false() {
         let json = serde_json::json!({
@@ -762,7 +752,6 @@ mod tests {
     }
 
     // Regression: status widget labels must never be empty, even when config values are paths or omitted.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn status_widget_labels_use_basenames_and_defaults() {
         let mut req = sample_request();
@@ -778,7 +767,6 @@ mod tests {
     }
 
     // Defends: compact tab labels are explicit and normalized before layout KDL rendering.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn normalizes_tab_label_mode() {
         let mut req = sample_request();

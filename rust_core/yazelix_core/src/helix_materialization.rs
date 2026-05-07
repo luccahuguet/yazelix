@@ -329,7 +329,6 @@ mod tests {
     }
 
     // Regression: Yazi-to-Helix open sends command text through `:` after Escape, so managed Helix materialization must reclaim command mode even when user overrides remap it.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn managed_helix_reclaims_colon_command_mode_binding() {
         let tmp = TempDir::new().unwrap();

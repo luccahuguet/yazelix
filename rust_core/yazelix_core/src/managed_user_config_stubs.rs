@@ -149,7 +149,6 @@ mod tests {
     use tempfile::tempdir;
 
     // Defends: fallback-sensitive surfaces do not create live flat files that would change source selection.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn readme_stubs_preserve_zellij_and_helix_behavior_owned_files_absent() {
         let config = tempdir().expect("config");
@@ -162,7 +161,6 @@ mod tests {
     }
 
     // Defends: shell hook scaffolding follows the configured shell set instead of dumping every supported shell hook.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn shell_hook_stubs_are_limited_to_requested_shells() {
         let config = tempdir().expect("config");
@@ -176,7 +174,6 @@ mod tests {
     }
 
     // Defends: terminal override scaffolding only creates files for terminals with a live managed override contract.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn terminal_override_stubs_follow_supported_override_surfaces() {
         let config = tempdir().expect("config");
