@@ -2,6 +2,7 @@
 
 use std::fs;
 use std::path::Path;
+use yazelix_core::ZELLIJ_ACTIONS;
 use yazelix_core::workspace_asset_contract::validate_workspace_assets_for_repo;
 use yazelix_core::zellij_commands::INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS;
 
@@ -91,17 +92,11 @@ fn validate_pane_orchestrator_pipe_surface(repo_root: &Path) -> Result<Vec<Strin
         }
     }
 
-    let materialization = read_repo_file(
-        repo_root,
-        &[
-            "rust_core",
-            "yazelix_core",
-            "src",
-            "zellij_materialization.rs",
-        ],
-    )?;
     for command in SEMANTIC_KEYBINDING_BOUND_PIPE_COMMANDS {
-        if !materialization.contains(&format!("message_name: \"{command}\"")) {
+        if !ZELLIJ_ACTIONS
+            .iter()
+            .any(|action| action.message_name == *command)
+        {
             errors.push(format!(
                 "Yazelix semantic Zellij keybindings no longer generate required pane-orchestrator command `{command}`"
             ));
@@ -166,6 +161,20 @@ mod tests {
     #[test]
     fn internal_zellij_control_surface_contains_session_inspector() {
         assert!(INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS.contains(&"inspect-session"));
+    }
+
+    // Regression: semantic keybinding validation reads the shared action registry after message metadata moved out of zellij materialization literals.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn semantic_keybinding_bound_pipe_commands_are_declared_in_action_registry() {
+        for command in SEMANTIC_KEYBINDING_BOUND_PIPE_COMMANDS {
+            assert!(
+                ZELLIJ_ACTIONS
+                    .iter()
+                    .any(|action| action.message_name == *command),
+                "missing semantic Zellij action registry entry for {command}"
+            );
+        }
     }
 
     // Regression: the workspace validator must check bundled Yazi entrypoint files, not incidental Rust test fixture strings.
