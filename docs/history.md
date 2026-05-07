@@ -170,7 +170,6 @@ v14 is the final historical Yazelix Classic release. It is no longer a supported
   - Comprehensive template: `user_config.kdl` includes documented examples for themes, keybindings, plugins, and advanced options
   - Improved maintainability: Removed old static `config.kdl` system that required manual updates
   - Better user experience: Users can now easily customize Zellij by editing a single, well-documented file
-  - Reference documentation: See `configs/zellij/example_generated_config.kdl` for the complete default Zellij configuration
 - Alt+p directory opening: New Yazi keybinding for instant workspace expansion:
   - Quick pane creation: `Alt+p` in Yazi opens selected directory in new Zellij pane
   - Smart file handling: For files, opens parent directory; for directories, opens the directory itself
