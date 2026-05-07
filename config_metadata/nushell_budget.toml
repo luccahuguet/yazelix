@@ -1,20 +1,17 @@
 [contract]
-current_total_loc_max = 1517
-current_total_file_count_max = 14
+current_total_loc_max = 1351
+current_total_file_count_max = 10
 hard_target_loc = 1901
 
 [[families]]
 id = "integration_and_wrappers"
 status = "allowlisted_floor"
 owner_bead = "yazelix-uz6m"
-max_loc = 111
-target_loc = 111
-max_files = 4
+max_loc = 54
+target_loc = 54
+max_files = 1
 allowed_paths = [
   "nushell/scripts/zellij_wrappers/launch_sidebar_yazi.nu",
-  "nushell/scripts/zellij_wrappers/yzx_config_ui_popup.nu",
-  "nushell/scripts/zellij_wrappers/yzx_popup_program.nu",
-  "nushell/scripts/zellij_wrappers/yzx_menu_popup.nu",
 ]
 
 [[families]]
@@ -33,8 +30,8 @@ allowed_paths = [
 id = "front_door_presentation"
 status = "allowlisted_floor"
 owner_bead = "yazelix-pw9j.6.1"
-max_loc = 400
-target_loc = 400
+max_loc = 375
+target_loc = 375
 max_files = 2
 allowed_paths = [
   "nushell/scripts/setup/welcome.nu",
@@ -45,14 +42,13 @@ allowed_paths = [
 id = "runtime_helpers"
 status = "allowlisted_floor"
 owner_bead = "yazelix-pw9j.3"
-max_loc = 617
-target_loc = 611
-max_files = 6
+max_loc = 533
+target_loc = 533
+max_files = 5
 allowed_paths = [
   "nushell/scripts/utils/constants.nu",
   "nushell/scripts/utils/runtime_commands.nu",
   "nushell/scripts/utils/runtime_defaults.nu",
   "nushell/scripts/utils/runtime_paths.nu",
-  "nushell/scripts/utils/transient_pane_contract.nu",
   "nushell/scripts/utils/yzx_core_bridge.nu",
 ]

@@ -1,4 +1,4 @@
-use crate::action_registry::{PANE_ORCHESTRATOR_PLUGIN_ALIAS, ZELLIJ_ACTIONS};
+use crate::action_registry::{PANE_ORCHESTRATOR_PLUGIN_ALIAS, YZPP_PLUGIN_ALIAS, ZELLIJ_ACTIONS};
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::control_plane::{
@@ -32,6 +32,8 @@ const PANE_ORCHESTRATOR_PLUGIN_PREFIX: &str = PANE_ORCHESTRATOR_PLUGIN_ALIAS;
 const PANE_ORCHESTRATOR_WASM_NAME: &str = "yazelix_pane_orchestrator.wasm";
 const ZJSTATUS_PLUGIN_PREFIX: &str = "zjstatus";
 const ZJSTATUS_WASM_NAME: &str = "zjstatus.wasm";
+const YZPP_PLUGIN_PREFIX: &str = YZPP_PLUGIN_ALIAS;
+const YZPP_WASM_NAME: &str = "yzpp.wasm";
 const GENERATION_METADATA_NAME: &str = ".yazelix_generation.json";
 const GENERATION_FINGERPRINT_SCHEMA_VERSION: u64 = 3;
 const ZELLIJ_KEYBINDINGS_CONFIG_KEY: &str = "zellij_keybindings";
@@ -54,6 +56,13 @@ const ZJSTATUS_REQUIRED_PERMISSIONS: &[&str] = &[
     "ReadApplicationState",
     "ChangeApplicationState",
     "RunCommands",
+];
+const YZPP_REQUIRED_PERMISSIONS: &[&str] = &[
+    "ReadApplicationState",
+    "ChangeApplicationState",
+    "OpenTerminalsOrPlugins",
+    "RunCommands",
+    "ReadCliPipes",
 ];
 
 #[derive(Debug, Clone)]
@@ -115,6 +124,24 @@ struct PermissionBlock {
     permissions: Vec<String>,
 }
 
+fn plugin_artifact_by_name<'a>(
+    plugin_artifacts: &'a [PluginArtifact],
+    name: &str,
+) -> Result<&'a PluginArtifact, CoreError> {
+    plugin_artifacts
+        .iter()
+        .find(|artifact| artifact.name == name)
+        .ok_or_else(|| {
+            CoreError::classified(
+                ErrorClass::Runtime,
+                "missing_zellij_plugin_artifact",
+                format!("Internal Yazelix plugin artifact `{name}` was not resolved."),
+                "Reinstall Yazelix so all required plugin artifacts are available.",
+                json!({ "plugin": name }),
+            )
+        })
+}
+
 pub fn generate_zellij_materialization(
     request: &ZellijMaterializationRequest,
 ) -> Result<ZellijMaterializationData, CoreError> {
@@ -151,6 +178,7 @@ pub fn generate_zellij_materialization(
     let base_config_source = resolve_base_config_source()?;
     let plugin_artifacts = resolve_plugin_artifacts(&request.runtime_dir, &state_dir)?;
     let zellij_keybindings = resolve_zellij_keybindings(&config)?;
+    let popup_program = resolve_popup_program_config(&config);
     let reuse_allowed = string_config(&config, "zellij_theme", "default") != "random";
     let generation_fingerprint = build_generation_fingerprint(
         &config,
@@ -183,11 +211,14 @@ pub fn generate_zellij_materialization(
                 .map(|path| path.to_string_lossy().to_string())
                 .unwrap_or_default(),
             generation_fingerprint,
-            pane_orchestrator_runtime_path: plugin_artifacts[0]
-                .runtime_path
-                .to_string_lossy()
-                .to_string(),
-            zjstatus_runtime_path: plugin_artifacts[1]
+            pane_orchestrator_runtime_path: plugin_artifact_by_name(
+                &plugin_artifacts,
+                "pane_orchestrator",
+            )?
+            .runtime_path
+            .to_string_lossy()
+            .to_string(),
+            zjstatus_runtime_path: plugin_artifact_by_name(&plugin_artifacts, "zjstatus")?
                 .runtime_path
                 .to_string_lossy()
                 .to_string(),
@@ -221,8 +252,16 @@ pub fn generate_zellij_materialization(
     })?;
 
     sync_plugin_artifacts(&plugin_artifacts, request.seed_plugin_permissions)?;
-    let pane_orchestrator_runtime_path = plugin_artifacts[0].runtime_path.clone();
-    let zjstatus_runtime_path = plugin_artifacts[1].runtime_path.clone();
+    let pane_orchestrator_runtime_path =
+        plugin_artifact_by_name(&plugin_artifacts, "pane_orchestrator")?
+            .runtime_path
+            .clone();
+    let zjstatus_runtime_path = plugin_artifact_by_name(&plugin_artifacts, "zjstatus")?
+        .runtime_path
+        .clone();
+    let yzpp_runtime_path = plugin_artifact_by_name(&plugin_artifacts, "yzpp")?
+        .runtime_path
+        .clone();
     let generated_layouts = generate_all_layouts(
         &source_layouts_dir,
         &layout_dir,
@@ -237,7 +276,9 @@ pub fn generate_zellij_materialization(
         base_config_source.source == "managed",
         &zellij_keybindings,
         &render_plan,
+        &popup_program,
         &pane_orchestrator_runtime_path,
+        &yzpp_runtime_path,
         &generation_fingerprint,
     )?;
     write_text_atomic(&merged_config_path, &merged_config)?;
@@ -373,6 +414,22 @@ fn first_string_list_config(
         .unwrap_or_else(|| default.to_string())
 }
 
+fn resolve_popup_program_config(config: &JsonMap<String, JsonValue>) -> Vec<String> {
+    let mut program = string_list_config(config, "popup_program")
+        .unwrap_or_else(|| vec!["lazygit".to_string()])
+        .into_iter()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .collect::<Vec<_>>();
+    if program.is_empty() {
+        program.push("lazygit".to_string());
+    }
+    if program.first().map(String::as_str) == Some("editor") {
+        program[0] = string_config(config, "editor_command", "hx").to_string();
+    }
+    program
+}
+
 fn resolve_zellij_default_shell(runtime_dir: &Path, default_shell: &str) -> String {
     if default_shell.eq_ignore_ascii_case("nu") {
         runtime_dir
@@ -453,7 +510,9 @@ fn render_merged_config(
     preserve_keybinds_clear_defaults: bool,
     zellij_keybindings: &BTreeMap<String, Vec<String>>,
     render_plan: &ZellijRenderPlanData,
+    popup_program: &[String],
     pane_orchestrator_wasm_path: &Path,
+    yzpp_wasm_path: &Path,
     runtime_config_generation: &str,
 ) -> Result<String, CoreError> {
     let extracted_blocks = extract_semantic_config_blocks(base_config_content);
@@ -476,7 +535,9 @@ fn render_merged_config(
     let plugins_block = build_yazelix_plugins_block(
         &extracted_blocks.plugin_lines,
         pane_orchestrator_wasm_path,
+        yzpp_wasm_path,
         runtime_dir,
+        popup_program,
         render_plan.popup_width_percent,
         render_plan.popup_height_percent,
         render_plan.screen_saver_enabled,
@@ -621,11 +682,17 @@ fn push_semantic_line(
 
 fn build_yazelix_load_plugins_block(existing_lines: &[String]) -> String {
     let mut merged_lines = existing_lines.to_vec();
-    let present = merged_lines
+    let orchestrator_present = merged_lines
         .iter()
         .any(|line| line.trim() == PANE_ORCHESTRATOR_PLUGIN_ALIAS);
-    if !present {
+    if !orchestrator_present {
         merged_lines.push(format!("  {PANE_ORCHESTRATOR_PLUGIN_ALIAS}"));
+    }
+    let yzpp_present = merged_lines
+        .iter()
+        .any(|line| line.trim() == YZPP_PLUGIN_ALIAS);
+    if !yzpp_present {
+        merged_lines.push(format!("  {YZPP_PLUGIN_ALIAS}"));
     }
     block_with_lines("load_plugins", &merged_lines)
 }
@@ -633,7 +700,9 @@ fn build_yazelix_load_plugins_block(existing_lines: &[String]) -> String {
 fn build_yazelix_plugins_block(
     existing_lines: &[String],
     pane_orchestrator_wasm_path: &Path,
+    yzpp_wasm_path: &Path,
     runtime_dir: &Path,
+    popup_program: &[String],
     popup_width_percent: i64,
     popup_height_percent: i64,
     screen_saver_enabled: bool,
@@ -655,8 +724,6 @@ fn build_yazelix_plugins_block(
                 "        runtime_dir {}",
                 json_quote(&runtime_dir.to_string_lossy())
             ),
-            format!("        popup_width_percent \"{popup_width_percent}\""),
-            format!("        popup_height_percent \"{popup_height_percent}\""),
             format!("        screen_saver_enabled \"{screen_saver_enabled}\""),
             format!("        screen_saver_idle_seconds \"{screen_saver_idle_seconds}\""),
             format!(
@@ -671,11 +738,96 @@ fn build_yazelix_plugins_block(
         ]);
     }
 
+    let yzpp_present = merged_lines
+        .iter()
+        .any(|line| line.contains(&format!("{YZPP_PLUGIN_ALIAS} location=")));
+    if !yzpp_present {
+        merged_lines.extend(render_yzpp_plugin_block(
+            yzpp_wasm_path,
+            runtime_dir,
+            popup_program,
+            popup_width_percent,
+            popup_height_percent,
+        ));
+    }
+
     if merged_lines.is_empty() {
         String::new()
     } else {
         block_with_lines("plugins", &merged_lines)
     }
+}
+
+fn render_yzpp_plugin_block(
+    yzpp_wasm_path: &Path,
+    runtime_dir: &Path,
+    popup_program: &[String],
+    popup_width_percent: i64,
+    popup_height_percent: i64,
+) -> Vec<String> {
+    let yzx_cli = runtime_dir
+        .join("shells")
+        .join("posix")
+        .join("yzx_cli.sh")
+        .to_string_lossy()
+        .to_string();
+    let mut lines = vec![
+        format!(
+            "    {YZPP_PLUGIN_ALIAS} location=\"file:{}\" {{",
+            yzpp_wasm_path.to_string_lossy()
+        ),
+        "        popups {".to_string(),
+        "            popup {".to_string(),
+    ];
+    lines.extend(render_yzpp_command_fields(popup_program, 16));
+    lines.extend([
+        "                pane_title \"yzx_popup\"".to_string(),
+        format!("                width_percent \"{popup_width_percent}\""),
+        format!("                height_percent \"{popup_height_percent}\""),
+        "                on_close {".to_string(),
+        format!("                    command {}", json_quote(&yzx_cli)),
+        "                    arg_1 \"sidebar\"".to_string(),
+        "                    arg_2 \"refresh\"".to_string(),
+        "                }".to_string(),
+        "            }".to_string(),
+        "            menu {".to_string(),
+        format!("                command {}", json_quote(&yzx_cli)),
+        "                arg_1 \"menu\"".to_string(),
+        "                arg_2 \"--pane\"".to_string(),
+        "                pane_title \"yzx_menu\"".to_string(),
+        "                command_marker \"yzx menu --pane\"".to_string(),
+        format!("                width_percent \"{popup_width_percent}\""),
+        format!("                height_percent \"{popup_height_percent}\""),
+        "            }".to_string(),
+        "            config {".to_string(),
+        format!("                command {}", json_quote(&yzx_cli)),
+        "                arg_1 \"config\"".to_string(),
+        "                arg_2 \"ui\"".to_string(),
+        "                pane_title \"yzx_config\"".to_string(),
+        "                command_marker \"yzx config ui\"".to_string(),
+        format!("                width_percent \"{popup_width_percent}\""),
+        format!("                height_percent \"{popup_height_percent}\""),
+        "            }".to_string(),
+        "        }".to_string(),
+        "    }".to_string(),
+    ]);
+    lines
+}
+
+fn render_yzpp_command_fields(command: &[String], indent_spaces: usize) -> Vec<String> {
+    let indent = " ".repeat(indent_spaces);
+    let mut fields = Vec::new();
+    if let Some(command_path) = command.first() {
+        fields.push(format!("{indent}command {}", json_quote(command_path)));
+        for (index, arg) in command.iter().skip(1).enumerate() {
+            fields.push(format!("{indent}arg_{} {}", index + 1, json_quote(arg)));
+        }
+        fields.push(format!(
+            "{indent}command_marker {}",
+            json_quote(command_path)
+        ));
+    }
+    fields
 }
 
 fn build_merged_keybinds_block(
@@ -956,7 +1108,13 @@ fn build_semantic_zellij_keybind_lines(keybindings: &BTreeMap<String, Vec<String
             continue;
         }
         let mode_lines = by_mode.entry(spec.mode).or_default();
-        push_zellij_message_bind(mode_lines, keys, spec.message_name, spec.payload);
+        push_zellij_message_bind(
+            mode_lines,
+            keys,
+            spec.plugin_alias,
+            spec.message_name,
+            spec.payload,
+        );
     }
 
     let mut lines = Vec::new();
@@ -974,6 +1132,7 @@ fn build_semantic_zellij_keybind_lines(keybindings: &BTreeMap<String, Vec<String
 fn push_zellij_message_bind(
     lines: &mut Vec<String>,
     keys: &[String],
+    plugin_alias: &str,
     message_name: &str,
     payload: Option<&str>,
 ) {
@@ -981,7 +1140,7 @@ fn push_zellij_message_bind(
     lines.push(format!("        bind {key_list} {{"));
     lines.push(format!(
         "            MessagePlugin {} {{",
-        json_quote(PANE_ORCHESTRATOR_PLUGIN_ALIAS)
+        json_quote(plugin_alias)
     ));
     lines.push(format!("                name {}", json_quote(message_name)));
     if let Some(payload) = payload {
@@ -1632,6 +1791,12 @@ fn resolve_plugin_artifacts(
             ZJSTATUS_PLUGIN_PREFIX,
             ZJSTATUS_WASM_NAME,
             ZJSTATUS_REQUIRED_PERMISSIONS,
+        ),
+        (
+            "yzpp",
+            YZPP_PLUGIN_PREFIX,
+            YZPP_WASM_NAME,
+            YZPP_REQUIRED_PERMISSIONS,
         ),
     ];
     specs
@@ -2336,6 +2501,7 @@ ui { pane_frames { hide_session_name true } }
     }
 
     // Regression: clear-defaults from the read-only native fallback must not disable Yazelix integration keybindings.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn native_fallback_clear_defaults_keeps_yazelix_keybind_overrides() {
         let temp = tempfile::tempdir().unwrap();
@@ -2348,8 +2514,8 @@ ui { pane_frames { hide_session_name true } }
 keybinds {
     normal {
         bind "Alt Shift M" {
-            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
-                name "toggle_transient_pane"
+            MessagePlugin "yzpp" {
+                name "toggle"
                 payload "menu"
             }
         }
@@ -2369,7 +2535,9 @@ keybinds {
             false,
             &sample_zellij_keybindings(),
             &plan,
+            &["lazygit".to_string()],
             Path::new("/tmp/pane.wasm"),
+            Path::new("/tmp/yzpp.wasm"),
             "gen-test",
         )
         .unwrap();
@@ -2378,10 +2546,12 @@ keybinds {
         assert!(!rendered.contains("keybinds clear-defaults=true"));
         assert!(rendered.contains("MoveFocusOrTab"));
         assert!(rendered.contains("Alt Shift M"));
-        assert!(rendered.contains("toggle_transient_pane"));
+        assert!(rendered.contains("MessagePlugin \"yzpp\""));
+        assert!(rendered.contains("payload \"menu\""));
     }
 
     // Defends: explicit managed zellij.kdl clear-defaults remains the full user-owned Zellij keybinding mode.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn managed_clear_defaults_skips_yazelix_keybind_overrides() {
         let temp = tempfile::tempdir().unwrap();
@@ -2394,8 +2564,8 @@ keybinds {
 keybinds {
     normal {
         bind "Alt Shift M" {
-            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
-                name "toggle_transient_pane"
+            MessagePlugin "yzpp" {
+                name "toggle"
                 payload "menu"
             }
         }
@@ -2415,7 +2585,9 @@ keybinds {
             true,
             &sample_zellij_keybindings(),
             &plan,
+            &["lazygit".to_string()],
             Path::new("/tmp/pane.wasm"),
+            Path::new("/tmp/yzpp.wasm"),
             "gen-test",
         )
         .unwrap();
@@ -2423,7 +2595,7 @@ keybinds {
         assert!(rendered.contains("keybinds clear-defaults=true"));
         assert!(rendered.contains("Ctrl `"));
         assert!(!rendered.contains("Alt Shift M"));
-        assert!(!rendered.contains("toggle_transient_pane"));
+        assert!(!rendered.contains("payload \"menu\""));
     }
 
     // Defends: ordinary Zellij keybinding customization keeps Yazelix integration bindings appended for default managed behavior.
@@ -2672,9 +2844,9 @@ keybinds {
         assert!(!plugin_name_matches_prefix("not_zjstatus.wasm", "zjstatus"));
     }
 
-    // Regression: semantic keybinding generation keeps popup/menu and sidebar-focus actions on the pane orchestrator instead of reviving helper panes.
+    // Regression: semantic keybinding generation routes popup/menu/config to yzpp while keeping workspace actions on the pane orchestrator.
     #[test]
-    fn semantic_keybinds_keep_pane_orchestrator_contract() {
+    fn semantic_keybinds_route_popup_actions_to_yzpp() {
         let temp = tempfile::tempdir().unwrap();
         let overrides_path = temp.path().join("yazelix_overrides.kdl");
         std::fs::write(
@@ -2696,11 +2868,13 @@ keybinds {
         .unwrap();
         let merged = override_lines.join("\n");
 
-        assert!(merged.contains("toggle_transient_pane"));
+        assert!(merged.contains("MessagePlugin \"yzpp\""));
+        assert!(merged.contains("name \"toggle\""));
         assert!(merged.contains("open_workspace_terminal"));
         assert!(merged.contains("payload \"popup\""));
         assert!(merged.contains("payload \"menu\""));
         assert!(merged.contains("payload \"config\""));
+        assert!(merged.contains("MessagePlugin \"yazelix_pane_orchestrator\""));
         assert!(merged.contains("toggle_editor_sidebar_focus"));
         assert!(merged.contains("move_focus_left_or_tab"));
     }
@@ -2775,13 +2949,16 @@ keybinds {
         assert_eq!(keybindings["popup"], vec!["Alt t"]);
     }
 
-    // Regression: pane-orchestrator plugin config must carry one shared sidebar/popup/runtime contract without duplicate alias injection.
+    // Regression: generated plugin config must carry the pane-orchestrator runtime contract and yzpp popup contract without duplicate alias injection.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn plugin_block_carries_runtime_and_popup_contract_once() {
         let block = build_yazelix_plugins_block(
             &[],
             std::path::Path::new("/opt/yazelix/plugins/yazelix_pane_orchestrator.wasm"),
+            std::path::Path::new("/opt/yazelix/plugins/yzpp.wasm"),
             std::path::Path::new("/opt/yazelix"),
+            &["lazygit".to_string()],
             82,
             76,
             true,
@@ -2792,12 +2969,19 @@ keybinds {
 
         assert!(block.contains("yazelix_pane_orchestrator location=\"file:/opt/yazelix/plugins/yazelix_pane_orchestrator.wasm\""));
         assert!(block.contains("runtime_dir \"/opt/yazelix\""));
-        assert!(block.contains("popup_width_percent \"82\""));
-        assert!(block.contains("popup_height_percent \"76\""));
+        assert!(!block.contains("popup_width_percent"));
+        assert!(!block.contains("popup_height_percent"));
         assert!(block.contains("screen_saver_enabled \"true\""));
         assert!(block.contains("screen_saver_idle_seconds \"180\""));
         assert!(block.contains("screen_saver_style \"mandelbrot\""));
         assert!(block.contains("runtime_config_generation \"gen-test\""));
+        assert!(block.contains("yzpp location=\"file:/opt/yazelix/plugins/yzpp.wasm\""));
+        assert!(block.contains("command \"lazygit\""));
+        assert!(block.contains("width_percent \"82\""));
+        assert!(block.contains("height_percent \"76\""));
+        assert!(block.contains("on_close {"));
+        assert!(block.contains("arg_1 \"sidebar\""));
+        assert!(block.contains("arg_2 \"refresh\""));
         assert!(!block.contains("widget_tray_segment"));
         assert!(!block.contains("custom_text_segment"));
         assert!(!block.contains("sidebar_width_percent"));
@@ -2805,5 +2989,6 @@ keybinds {
             block.matches("yazelix_pane_orchestrator location=").count(),
             1
         );
+        assert_eq!(block.matches("yzpp location=").count(), 1);
     }
 }

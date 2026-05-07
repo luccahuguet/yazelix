@@ -42,8 +42,6 @@ impl State {
     }
 
     fn apply_runtime_config(&mut self, runtime_config: PaneOrchestratorRuntimeConfig) {
-        self.transient_pane_config.width_percent = runtime_config.popup_width_percent;
-        self.transient_pane_config.height_percent = runtime_config.popup_height_percent;
         self.apply_screen_saver_runtime_config(runtime_config);
         self.arm_next_timer();
     }

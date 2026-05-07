@@ -20,17 +20,6 @@ pub struct TransientPaneIdentityView<'a> {
     pub command_marker: Option<&'a str>,
 }
 
-impl TransientPaneKind {
-    pub fn from_payload(payload: &str) -> Option<Self> {
-        match payload.trim() {
-            "popup" => Some(Self::Popup),
-            "menu" => Some(Self::Menu),
-            "config" => Some(Self::Config),
-            _ => None,
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TransientPaneSnapshot<'a, Id> {
     pub pane_id: Id,
@@ -48,36 +37,6 @@ pub struct TransientPaneState<Id> {
     pub is_focused: bool,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum TransientTogglePlan<Id> {
-    Open,
-    Focus(Id),
-    CloseAndHideFloatingLayer(Id),
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct TransientPaneGeometry {
-    pub width_percent: usize,
-    pub height_percent: usize,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TransientPaneLaunchRequest {
-    pub command_path: String,
-    pub args: Vec<String>,
-    pub requested_cwd: Option<String>,
-    pub fallback_cwd: String,
-    pub geometry: TransientPaneGeometry,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TransientPaneLaunchPlan {
-    pub command_path: String,
-    pub args: Vec<String>,
-    pub cwd: String,
-    pub geometry: TransientPaneGeometry,
-}
-
 impl TransientPaneIdentityContract {
     pub fn as_view(&self) -> TransientPaneIdentityView<'_> {
         TransientPaneIdentityView {
@@ -87,29 +46,21 @@ impl TransientPaneIdentityContract {
     }
 }
 
-pub fn resolve_transient_launch_plan(
-    request: TransientPaneLaunchRequest,
-) -> Option<TransientPaneLaunchPlan> {
-    let command_path = request.command_path.trim();
-    if command_path.is_empty() {
-        return None;
+pub fn transient_pane_identity(kind: TransientPaneKind) -> TransientPaneIdentityContract {
+    match kind {
+        TransientPaneKind::Popup => TransientPaneIdentityContract {
+            pane_title: "yzx_popup",
+            command_marker: None,
+        },
+        TransientPaneKind::Menu => TransientPaneIdentityContract {
+            pane_title: "yzx_menu",
+            command_marker: None,
+        },
+        TransientPaneKind::Config => TransientPaneIdentityContract {
+            pane_title: "yzx_config",
+            command_marker: None,
+        },
     }
-    let cwd = request
-        .requested_cwd
-        .as_deref()
-        .map(str::trim)
-        .filter(|cwd| !cwd.is_empty())
-        .unwrap_or_else(|| request.fallback_cwd.trim());
-    if cwd.is_empty() {
-        return None;
-    }
-
-    Some(TransientPaneLaunchPlan {
-        command_path: command_path.to_string(),
-        args: request.args,
-        cwd: cwd.to_string(),
-        geometry: request.geometry,
-    })
 }
 
 pub fn select_transient_pane<Id: Copy>(
@@ -143,33 +94,12 @@ pub fn select_transient_pane_by_identity<Id: Copy>(
         })
 }
 
-pub fn resolve_transient_toggle_plan<Id: Copy>(
-    panes: &[TransientPaneSnapshot<'_, Id>],
-    identity: TransientPaneIdentityContract,
-) -> TransientTogglePlan<Id> {
-    resolve_transient_toggle_plan_by_identity(panes, identity.as_view())
-}
-
-pub fn resolve_transient_toggle_plan_by_identity<Id: Copy>(
-    panes: &[TransientPaneSnapshot<'_, Id>],
-    identity: TransientPaneIdentityView<'_>,
-) -> TransientTogglePlan<Id> {
-    match select_transient_pane_by_identity(panes, identity) {
-        Some(pane) if pane.is_focused => {
-            TransientTogglePlan::CloseAndHideFloatingLayer(pane.pane_id)
-        }
-        Some(pane) => TransientTogglePlan::Focus(pane.pane_id),
-        None => TransientTogglePlan::Open,
-    }
-}
-
 // Test lane: maintainer
 #[cfg(test)]
 mod tests {
     use super::{
-        resolve_transient_launch_plan, resolve_transient_toggle_plan, select_transient_pane,
-        TransientPaneGeometry, TransientPaneIdentityContract, TransientPaneLaunchPlan,
-        TransientPaneLaunchRequest, TransientPaneSnapshot, TransientPaneState, TransientTogglePlan,
+        select_transient_pane, transient_pane_identity, TransientPaneIdentityContract,
+        TransientPaneKind, TransientPaneSnapshot, TransientPaneState,
     };
 
     const POPUP_IDENTITY: TransientPaneIdentityContract = TransientPaneIdentityContract {
@@ -287,116 +217,30 @@ mod tests {
         assert_eq!(select_transient_pane(&panes, POPUP_IDENTITY), None);
     }
 
-    // Defends: transient toggle planning distinguishes missing, present, and focused panes.
+    // Defends: built-in Yazelix transient identity follows yzpp-managed pane titles.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
-    fn resolves_toggle_plan_for_missing_present_and_focused_panes() {
-        let missing: [TransientPaneSnapshot<'_, i32>; 0] = [];
+    fn built_in_identity_uses_yzpp_pane_titles() {
         assert_eq!(
-            resolve_transient_toggle_plan(&missing, POPUP_IDENTITY),
-            TransientTogglePlan::Open
-        );
-
-        let present = [transient_pane(
-            5,
-            "floating_picker",
-            Some("picker_wrapper"),
-            false,
-        )];
-        assert_eq!(
-            resolve_transient_toggle_plan(&present, POPUP_IDENTITY),
-            TransientTogglePlan::Focus(5)
-        );
-
-        let focused = [transient_pane(
-            6,
-            "floating_picker",
-            Some("picker_wrapper"),
-            true,
-        )];
-        assert_eq!(
-            resolve_transient_toggle_plan(&focused, POPUP_IDENTITY),
-            TransientTogglePlan::CloseAndHideFloatingLayer(6)
-        );
-    }
-
-    // Regression: closing a focused popup/menu must also hide the floating layer so unrelated floating panes do not stay visible.
-    #[test]
-    fn close_plan_hides_floating_layer_after_managed_transient_closes() {
-        let panes = [
-            transient_pane(6, "floating_picker", Some("picker_wrapper"), true),
-            transient_pane(7, "unrelated_floating_tool", Some("htop"), false),
-            TransientPaneSnapshot {
-                pane_id: 8,
-                title: "editor",
-                terminal_command: Some("hx"),
-                is_plugin: false,
-                exited: false,
-                is_floating: false,
-                is_focused: false,
-            },
-        ];
-
-        assert_eq!(
-            resolve_transient_toggle_plan(&panes, POPUP_IDENTITY),
-            TransientTogglePlan::CloseAndHideFloatingLayer(6)
-        );
-    }
-
-    // Defends: generic launch policy trims command/cwd inputs while preserving adapter-provided argv and geometry.
-    #[test]
-    fn resolves_launch_plan_from_command_cwd_and_geometry() {
-        let plan = resolve_transient_launch_plan(TransientPaneLaunchRequest {
-            command_path: " /runtime/wrapper ".into(),
-            args: vec!["lazygit".into(), "--help".into()],
-            requested_cwd: Some(" /repo ".into()),
-            fallback_cwd: "/runtime".into(),
-            geometry: TransientPaneGeometry {
-                width_percent: 80,
-                height_percent: 70,
-            },
-        });
-
-        assert_eq!(
-            plan,
-            Some(TransientPaneLaunchPlan {
-                command_path: "/runtime/wrapper".into(),
-                args: vec!["lazygit".into(), "--help".into()],
-                cwd: "/repo".into(),
-                geometry: TransientPaneGeometry {
-                    width_percent: 80,
-                    height_percent: 70,
-                },
-            })
-        );
-    }
-
-    // Defends: a transient launch cannot silently open with missing adapter command or cwd data.
-    #[test]
-    fn rejects_launch_plan_without_command_or_cwd() {
-        let geometry = TransientPaneGeometry {
-            width_percent: 90,
-            height_percent: 90,
-        };
-
-        assert_eq!(
-            resolve_transient_launch_plan(TransientPaneLaunchRequest {
-                command_path: " ".into(),
-                args: vec![],
-                requested_cwd: Some("/repo".into()),
-                fallback_cwd: "/runtime".into(),
-                geometry,
-            }),
-            None
+            transient_pane_identity(TransientPaneKind::Popup),
+            TransientPaneIdentityContract {
+                pane_title: "yzx_popup",
+                command_marker: None,
+            }
         );
         assert_eq!(
-            resolve_transient_launch_plan(TransientPaneLaunchRequest {
-                command_path: "/runtime/wrapper".into(),
-                args: vec![],
-                requested_cwd: None,
-                fallback_cwd: " ".into(),
-                geometry,
-            }),
-            None
+            transient_pane_identity(TransientPaneKind::Menu),
+            TransientPaneIdentityContract {
+                pane_title: "yzx_menu",
+                command_marker: None,
+            }
+        );
+        assert_eq!(
+            transient_pane_identity(TransientPaneKind::Config),
+            TransientPaneIdentityContract {
+                pane_title: "yzx_config",
+                command_marker: None,
+            }
         );
     }
 }

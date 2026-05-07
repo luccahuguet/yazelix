@@ -91,6 +91,12 @@ Reveal a file or directory in the managed Yazi file-tree sidebar
 - Intended as the stable editor-integration surface for Helix/Neovim keybindings
 - Errors clearly when run outside a Yazelix/Zellij session or when the managed sidebar is unavailable
 
+### `yzx sidebar refresh`
+Refresh the managed Yazi file-tree sidebar
+- Targets the active tab's managed sidebar through pane-orchestrator session state
+- Refreshes the Yazi file list and bundled git/starship sidebar status widgets when the sidebar is available
+- Used by the `yzpp` popup close hook for the managed popup program
+
 ### `yzx keys`
 Show Yazelix-owned keybindings and remaps
 - Default: print the small set of workspace-critical Yazelix bindings
@@ -200,10 +206,11 @@ Maintainer shell commands:
 ### `yzx menu [--popup]`
 Interactive command palette (fuzzy search)
 - Default: inline mode in current terminal
-- `--popup`: open in a Zellij floating pane (errors if not in Zellij)
+- `--popup`: toggle the configured `yzpp` floating pane (errors if not in Zellij)
+- `--pane`: run the popup-pane menu UI in the current pane
 - Lists most `yzx` commands while hiding maintenance-heavy or low-signal entries (`yzx dev*`, `yzx env`, `yzx run`)
 - Cancel with `Esc` before running a command
-- In popup mode after running a command: `Backspace` returns to menu and `Enter` closes the popup
+- In pane mode after running a command: `Backspace` returns to menu and `Enter` returns control to the pane
 - Keybind: `Alt Shift M` opens the popup menu in Zellij
 - Popup pane is named `yzx_menu` to avoid duplicate menu instances
 

@@ -28,7 +28,7 @@ parser_key = "debug_mode"
 home_manager_option = "debug_mode"
 parser_behavior = "direct"
 rebuild_required = false
-apply_mode = "tab_session_restart"
+apply_mode = "generated_runtime_refresh"
 
 [fields."core.skip_welcome_screen"]
 kind = "bool"
@@ -430,7 +430,7 @@ validation = "int_range"
 min = 1
 max = 100
 rebuild_required = false
-apply_mode = "live_with_pane_refresh"
+apply_mode = "generated_runtime_refresh"
 
 [fields."zellij.popup_height_percent"]
 kind = "int"
@@ -442,7 +442,7 @@ validation = "int_range"
 min = 1
 max = 100
 rebuild_required = false
-apply_mode = "live_with_pane_refresh"
+apply_mode = "generated_runtime_refresh"
 
 [fields."zellij.screen_saver_enabled"]
 kind = "bool"

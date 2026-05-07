@@ -5,17 +5,51 @@ use serde_json::json;
 use std::process::Command;
 
 pub(crate) const PANE_ORCHESTRATOR_PLUGIN_ALIAS: &str = "yazelix_pane_orchestrator";
+pub(crate) const YZPP_PLUGIN_ALIAS: &str = "yzpp";
 
 pub(crate) fn run_pane_orchestrator_command(
     command_name: &str,
     payload: &str,
+) -> Result<String, CoreError> {
+    run_zellij_plugin_command_with_error(
+        PANE_ORCHESTRATOR_PLUGIN_ALIAS,
+        command_name,
+        payload,
+        "pane_orchestrator_pipe_failed",
+        "Yazelix pane-orchestrator",
+        "Run this command inside an active Yazelix/Zellij session with the pane orchestrator loaded, then retry.",
+    )
+}
+
+pub(crate) fn run_zellij_plugin_command(
+    plugin_alias: &str,
+    command_name: &str,
+    payload: &str,
+) -> Result<String, CoreError> {
+    run_zellij_plugin_command_with_error(
+        plugin_alias,
+        command_name,
+        payload,
+        "zellij_plugin_pipe_failed",
+        "Zellij plugin",
+        "Run this command inside an active Yazelix/Zellij session with the required plugin loaded, then retry.",
+    )
+}
+
+fn run_zellij_plugin_command_with_error(
+    plugin_alias: &str,
+    command_name: &str,
+    payload: &str,
+    error_code: &'static str,
+    command_label: &'static str,
+    recovery: &'static str,
 ) -> Result<String, CoreError> {
     let output = Command::new("zellij")
         .args([
             "action",
             "pipe",
             "--plugin",
-            PANE_ORCHESTRATOR_PLUGIN_ALIAS,
+            plugin_alias,
             "--name",
             command_name,
             "--",
@@ -24,9 +58,9 @@ pub(crate) fn run_pane_orchestrator_command(
         .output()
         .map_err(|source| {
             CoreError::io(
-                "pane_orchestrator_pipe_failed",
-                format!("Failed to run the Yazelix pane-orchestrator command `{command_name}`."),
-                "Run this command inside an active Yazelix/Zellij session with the pane orchestrator loaded, then retry.",
+                error_code,
+                format!("Failed to run the {command_label} command `{command_name}`."),
+                recovery,
                 "zellij",
                 source,
             )
@@ -41,10 +75,10 @@ pub(crate) fn run_pane_orchestrator_command(
         };
         return Err(CoreError::classified(
             ErrorClass::Runtime,
-            "pane_orchestrator_pipe_failed",
-            format!("Pane orchestrator pipe failed for `{command_name}`: {details}"),
-            "Run this command inside an active Yazelix/Zellij session with the pane orchestrator loaded, then retry.",
-            json!({ "command": command_name }),
+            error_code,
+            format!("{command_label} pipe failed for `{plugin_alias}` `{command_name}`: {details}"),
+            recovery,
+            json!({ "plugin": plugin_alias, "command": command_name }),
         ));
     }
 

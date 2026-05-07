@@ -43,8 +43,8 @@ The config UI, doctor, and future `yzx_control` save/apply flows should use one 
 | `shell.default_shell` | `shell_terminal_restart` | Existing shells keep their process and startup environment |
 | `terminal.terminals`, `terminal.config_mode`, `terminal.transparency` | `shell_terminal_restart` | Terminal config changes apply to newly launched terminal processes, or to Home Manager activation when Home Manager owns the source |
 | `zellij.disable_tips`, `zellij.pane_frames`, `zellij.rounded_corners`, `zellij.support_kitty_keyboard_protocol`, `zellij.theme`, `zellij.default_mode`, `zellij.keybindings` | `tab_session_restart` | These affect generated Zellij config or session-level behavior that is not safely reloadable in place |
-| `zellij.popup_program` | `tab_session_restart` | A future pane-orchestrator reload may narrow this, but command changes are excluded from the first live slice |
-| `zellij.popup_width_percent`, `zellij.popup_height_percent` | `live_with_pane_refresh` | Applied to the running pane orchestrator through the versioned runtime-config reload pipe |
+| `zellij.popup_program` | `generated_runtime_refresh` | Applied to generated `yzpp` popup specs and active only after the generated Zellij config is refreshed and the tab/session restarts |
+| `zellij.popup_width_percent`, `zellij.popup_height_percent` | `generated_runtime_refresh` | Applied to generated `yzpp` popup specs and active only after the generated Zellij config is refreshed and the tab/session restarts |
 | `zellij.screen_saver_enabled`, `zellij.screen_saver_idle_seconds`, `zellij.screen_saver_style` | `live_with_pane_refresh` | Applied to the running pane orchestrator through the versioned runtime-config reload pipe |
 | `zellij.widget_tray`, `zellij.tab_label_mode`, `zellij.codex_usage_display`, `zellij.claude_usage_display`, `zellij.claude_usage_periods`, `zellij.opencode_go_usage_display`, `zellij.opencode_go_usage_periods`, `zellij.custom_text` | `generated_runtime_refresh` | Status-bar structure and usage rendering stay generated-runtime scoped until there is an explicit status-bar config reload owner |
 | `yazi.command`, `yazi.ya_command`, `yazi.plugins`, `yazi.theme`, `yazi.sort_by` | `generated_runtime_refresh` | Requires managed Yazi config regeneration and a fresh Yazi/sidebar process |
@@ -55,8 +55,6 @@ When Home Manager owns the active settings source, every editable semantic setti
 
 The first safe live-apply implementation slice is restricted to bounded pane-orchestrator runtime fields:
 
-- `zellij.popup_width_percent`
-- `zellij.popup_height_percent`
 - `zellij.screen_saver_enabled`
 - `zellij.screen_saver_idle_seconds`
 - `zellij.screen_saver_style`

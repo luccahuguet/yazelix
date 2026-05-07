@@ -86,10 +86,15 @@ impl State {
             return;
         }
 
-        let Some(launcher_path) = self.transient_pane_config.yzx_cli_path() else {
+        let launcher_path = self
+            .runtime_dir
+            .join("shells")
+            .join("posix")
+            .join("yzx_cli.sh");
+        if !launcher_path.exists() {
             self.schedule_initial_screen_saver_timeout();
             return;
-        };
+        }
 
         // A floating screensaver revives every hidden floating pane in the tab.
         // Use a fullscreen tiled command pane so stale popups stay hidden.
@@ -103,7 +108,9 @@ impl State {
             path: launcher_path,
             args: vec!["screen".to_string(), style.to_string()],
             cwd: Some(PathBuf::from(
-                self.transient_pane_config.default_cwd(workspace_root),
+                workspace_root
+                    .map(ToOwned::to_owned)
+                    .unwrap_or_else(|| self.runtime_dir.to_string_lossy().to_string()),
             )),
         };
 

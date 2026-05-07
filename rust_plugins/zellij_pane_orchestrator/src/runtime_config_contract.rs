@@ -8,8 +8,6 @@ pub const RUNTIME_CONFIG_RELOAD_SCHEMA_VERSION: u64 = 1;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PaneOrchestratorRuntimeConfig {
-    pub popup_width_percent: usize,
-    pub popup_height_percent: usize,
     pub screen_saver_enabled: bool,
     pub screen_saver_idle_seconds: u64,
     pub screen_saver_style: String,
@@ -61,14 +59,13 @@ mod tests {
     use super::*;
 
     // Defends: pane-orchestrator live reload accepts only the current versioned payload for the generated config generation active in the plugin.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn decodes_runtime_config_reload_for_active_generation() {
-        let payload = r#"{"schema_version":1,"generation":"gen-a","runtime_config":{"popup_width_percent":82,"popup_height_percent":76,"screen_saver_enabled":true,"screen_saver_idle_seconds":120,"screen_saver_style":"mandelbrot"}}"#;
+        let payload = r#"{"schema_version":1,"generation":"gen-a","runtime_config":{"screen_saver_enabled":true,"screen_saver_idle_seconds":120,"screen_saver_style":"mandelbrot"}}"#;
 
         let config = decode_runtime_config_reload(Some(payload), "gen-a").unwrap();
 
-        assert_eq!(config.popup_width_percent, 82);
-        assert_eq!(config.popup_height_percent, 76);
         assert_eq!(
             config.screen_saver_config(),
             ScreenSaverConfig {
@@ -80,9 +77,10 @@ mod tests {
     }
 
     // Defends: old or future control helpers cannot silently mutate pane-orchestrator runtime state with an unsupported reload schema.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn rejects_unsupported_runtime_config_reload_version() {
-        let payload = r#"{"schema_version":99,"generation":"gen-a","runtime_config":{"popup_width_percent":82,"popup_height_percent":76,"screen_saver_enabled":true,"screen_saver_idle_seconds":120,"screen_saver_style":"mandelbrot"}}"#;
+        let payload = r#"{"schema_version":99,"generation":"gen-a","runtime_config":{"screen_saver_enabled":true,"screen_saver_idle_seconds":120,"screen_saver_style":"mandelbrot"}}"#;
 
         assert_eq!(
             decode_runtime_config_reload(Some(payload), "gen-a"),
@@ -91,9 +89,10 @@ mod tests {
     }
 
     // Regression: reload requests generated against a different config generation remain pending instead of being applied to the wrong running plugin.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn rejects_stale_runtime_config_generation() {
-        let payload = r#"{"schema_version":1,"generation":"gen-new","runtime_config":{"popup_width_percent":82,"popup_height_percent":76,"screen_saver_enabled":true,"screen_saver_idle_seconds":120,"screen_saver_style":"mandelbrot"}}"#;
+        let payload = r#"{"schema_version":1,"generation":"gen-new","runtime_config":{"screen_saver_enabled":true,"screen_saver_idle_seconds":120,"screen_saver_style":"mandelbrot"}}"#;
 
         assert_eq!(
             decode_runtime_config_reload(Some(payload), "gen-old"),

@@ -1,4 +1,5 @@
 pub const PANE_ORCHESTRATOR_PLUGIN_ALIAS: &str = "yazelix_pane_orchestrator";
+pub const YZPP_PLUGIN_ALIAS: &str = "yzpp";
 
 pub const ZELLIJ_SEMANTIC_KEYBINDING_DIAGNOSTICS: &[&str] = &[
     "unsupported_zellij_keybinding_action",
@@ -37,6 +38,7 @@ impl YazelixActionOwner {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum YazelixActionBackend {
     ZellijPaneOrchestratorMessage,
+    ZellijPluginMessage,
     YaziKeymapCommand,
     EditorCommand,
 }
@@ -45,6 +47,7 @@ impl YazelixActionBackend {
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::ZellijPaneOrchestratorMessage => "zellij_pane_orchestrator_message",
+            Self::ZellijPluginMessage => "zellij_plugin_message",
             Self::YaziKeymapCommand => "yazi_keymap_command",
             Self::EditorCommand => "editor_command",
         }
@@ -83,6 +86,7 @@ pub struct YazelixActionMetadata {
 pub struct ZellijActionSpec {
     pub action: YazelixActionMetadata,
     pub mode: &'static str,
+    pub plugin_alias: &'static str,
     pub message_name: &'static str,
     pub payload: Option<&'static str>,
 }
@@ -105,19 +109,46 @@ const fn zellij_action(
     default_keys: &'static [&'static str],
     generated_command: &'static str,
 ) -> ZellijActionSpec {
+    zellij_plugin_action(
+        local_id,
+        scoped_id,
+        label,
+        mode,
+        PANE_ORCHESTRATOR_PLUGIN_ALIAS,
+        YazelixActionBackend::ZellijPaneOrchestratorMessage,
+        message_name,
+        payload,
+        default_keys,
+        generated_command,
+    )
+}
+
+const fn zellij_plugin_action(
+    local_id: &'static str,
+    scoped_id: &'static str,
+    label: &'static str,
+    mode: &'static str,
+    plugin_alias: &'static str,
+    backend: YazelixActionBackend,
+    message_name: &'static str,
+    payload: Option<&'static str>,
+    default_keys: &'static [&'static str],
+    generated_command: &'static str,
+) -> ZellijActionSpec {
     ZellijActionSpec {
         action: YazelixActionMetadata {
             id: scoped_id,
             local_id,
             label,
             owner: YazelixActionOwner::Zellij,
-            backend: YazelixActionBackend::ZellijPaneOrchestratorMessage,
+            backend,
             default_keys,
             generated_command,
             disable_policy: YazelixActionDisablePolicy::Optional,
             diagnostics: ZELLIJ_SEMANTIC_KEYBINDING_DIAGNOSTICS,
         },
         mode,
+        plugin_alias,
         message_name,
         payload,
     }
@@ -162,35 +193,41 @@ pub const ZELLIJ_ACTIONS: &[ZellijActionSpec] = &[
         &["Alt m"],
         "MessagePlugin yazelix_pane_orchestrator { name \"open_workspace_terminal\" }",
     ),
-    zellij_action(
+    zellij_plugin_action(
         "popup",
         "zellij.popup",
         "Toggle the managed popup program",
         "shared",
-        "toggle_transient_pane",
+        YZPP_PLUGIN_ALIAS,
+        YazelixActionBackend::ZellijPluginMessage,
+        "toggle",
         Some("popup"),
         &["Alt t"],
-        "MessagePlugin yazelix_pane_orchestrator { name \"toggle_transient_pane\" payload \"popup\" }",
+        "MessagePlugin yzpp { name \"toggle\" payload \"popup\" }",
     ),
-    zellij_action(
+    zellij_plugin_action(
         "menu",
         "zellij.menu",
         "Open the Yazelix command palette popup",
         "shared",
-        "toggle_transient_pane",
+        YZPP_PLUGIN_ALIAS,
+        YazelixActionBackend::ZellijPluginMessage,
+        "toggle",
         Some("menu"),
         &["Alt Shift M"],
-        "MessagePlugin yazelix_pane_orchestrator { name \"toggle_transient_pane\" payload \"menu\" }",
+        "MessagePlugin yzpp { name \"toggle\" payload \"menu\" }",
     ),
-    zellij_action(
+    zellij_plugin_action(
         "config",
         "zellij.config",
         "Open the Yazelix config UI popup",
         "shared",
-        "toggle_transient_pane",
+        YZPP_PLUGIN_ALIAS,
+        YazelixActionBackend::ZellijPluginMessage,
+        "toggle",
         Some("config"),
         &["Alt Shift C"],
-        "MessagePlugin yazelix_pane_orchestrator { name \"toggle_transient_pane\" payload \"config\" }",
+        "MessagePlugin yzpp { name \"toggle\" payload \"config\" }",
     ),
     zellij_action(
         "move_focus_left_or_tab",

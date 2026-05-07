@@ -116,7 +116,7 @@ The main overengineering risk is not one bad abstraction; it is several broad mo
 3. Continue the `zellij_commands.rs` split: status/cache/widget code now lives under `zellij_commands/status.rs`, agent usage refreshers live under `zellij_commands/status/agent_usage.rs`, and integrated bar command definitions render through a typed adapter. Next isolate workspace/editor pane flow before `yazelix_workspace`
 4. Keep `#yazelix_cursors` as the standalone cursor package; reusable registry, `yzc`, Ghostty shader generation, and packaged shader assets live in `github:luccahuguet/yazelix-cursors`, while `ghostty_cursor_registry.rs` remains the Yazelix settings adapter
 5. Split `config_ui.rs` before extracting `yazelix_ratconfig`; keep JSONC patching, schema metadata, read-only ownership, and apply-status contracts stable first
-6. Keep the external `yazelix-zellij-popup` project separate from Yazelix runtime packaging; `yzpp` remains its short Zellij plugin alias and artifact name
+6. Keep the external `yazelix-zellij-popup` source project separate while packaging `yzpp.wasm` in Yazelix for the integrated popup/menu/config UI path; `yzpp` remains its short Zellij plugin alias and artifact name
 7. Defer Yazi public extraction until the Yazi config/plugin asset pack is slimmed and the materializer has a private generic writer plus Yazelix adapter boundary
 8. Evaluate `yazelix_workspace` last; it touches launch, restart, session facts, workspace roots, Zellij layout state, and the pane orchestrator. Session persistence/resurrection remains out of scope for the extraction gate.
 

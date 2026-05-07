@@ -7,11 +7,11 @@ mod runtime_config;
 mod screen_saver;
 mod sidebar_yazi;
 mod status_bar_cache;
-mod transient;
 mod workspace;
 
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::path::PathBuf;
 
 use panes::{FocusContext, ManagedTabPanes};
 use std::time::Instant;
@@ -54,7 +54,7 @@ struct State {
     ai_pane_activity_by_tab: HashMap<usize, Vec<SessionAiPaneActivity>>,
     seen_tab_positions: HashSet<usize>,
     initial_workspace_state: Option<WorkspaceState>,
-    transient_pane_config: transient::TransientPaneConfig,
+    runtime_dir: PathBuf,
     screen_saver_config: ScreenSaverConfig,
     screen_saver_last_input: Option<Instant>,
     screen_saver_next_timeout: Option<Instant>,
@@ -88,10 +88,11 @@ impl ZellijPlugin for State {
             PermissionType::ReadCliPipes,
             PermissionType::ReadSessionEnvironmentVariables,
         ]);
-        self.transient_pane_config = transient::TransientPaneConfig::from_plugin_configuration(
-            &configuration,
-            &plugin_ids.initial_cwd,
-        );
+        self.runtime_dir = configuration
+            .get("runtime_dir")
+            .map(|value| PathBuf::from(value.trim()))
+            .filter(|path| !path.as_os_str().is_empty())
+            .unwrap_or(plugin_ids.initial_cwd);
         self.screen_saver_config = ScreenSaverConfig::from_plugin_configuration(&configuration);
         self.runtime_config_generation = configuration
             .get("runtime_config_generation")
@@ -258,14 +259,6 @@ impl ZellijPlugin for State {
             }
             "open_workspace_terminal" => {
                 self.open_workspace_terminal(&pipe_message);
-                false
-            }
-            "open_transient_pane" => {
-                self.open_transient_pane(&pipe_message);
-                false
-            }
-            "toggle_transient_pane" => {
-                self.toggle_transient_pane(&pipe_message);
                 false
             }
             "reload_runtime_config" => {

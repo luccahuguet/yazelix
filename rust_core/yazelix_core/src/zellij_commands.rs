@@ -165,7 +165,7 @@ fn print_zellij_pipe_help() {
     println!("Examples:");
     println!("  yzx_control zellij pipe focus_sidebar");
     println!("  yzx_control zellij pipe get_active_tab_session_state");
-    println!("  yzx_control zellij pipe open_transient_pane --payload '{{\"kind\":\"popup\"}}'");
+    println!("  yzx_control zellij pipe toggle_sidebar");
 }
 
 pub fn run_zellij_pipe(args: &[String]) -> Result<i32, CoreError> {
@@ -1362,6 +1362,7 @@ mod tests {
     }
 
     // Defends: heartbeat updates merge into the window-local cache without replacing status-bus or usage facts.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn status_cache_heartbeat_merge_preserves_cached_session_facts() {
         let mut cache = build_status_bar_cache_at(status_cache_test_status_bus(), 1_000);
@@ -1374,7 +1375,7 @@ mod tests {
                 "schema_version": 1,
                 "heartbeat_at_unix_seconds": 2_000,
                 "last_pipe": {
-                    "name": "toggle_transient_pane",
+                    "name": "focus_sidebar",
                     "at_unix_seconds": 1_990
                 },
                 "status_refreshes": {
@@ -1402,7 +1403,7 @@ mod tests {
             cache
                 .pointer("/orchestrator_heartbeat/last_pipe/name")
                 .and_then(Value::as_str),
-            Some("toggle_transient_pane")
+            Some("focus_sidebar")
         );
         assert_eq!(
             cache

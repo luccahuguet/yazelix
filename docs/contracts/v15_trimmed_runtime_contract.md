@@ -12,7 +12,7 @@ The product surface is now centered on:
 - explicit install/update owners
 - managed `./` configuration
 - workspace/session commands
-- helperless fast popup/menu transient panes
+- configured fast popup/menu/config UI panes through `yzpp`
 - generated-state repair instead of backend/profile orchestration
 
 It is no longer centered on:

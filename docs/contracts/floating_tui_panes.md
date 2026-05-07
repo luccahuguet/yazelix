@@ -14,15 +14,16 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - Add `zellij.popup_program` to `settings.jsonc` / Home Manager
 - Bind the configured popup to a dedicated key
 - Keep the command-palette popup as a separate flow
-- Reuse one shared floating-pane launch model for both popup surfaces
-- Define the gate that must be met before popup is extracted as a standalone Zellij plugin or external package
+- Reuse the configured `yzpp` popup model for popup, menu, and config UI panes
+- Keep Yazelix-specific side effects, such as sidebar refresh, outside the plain
+  popup contract through explicit hooks
 
 ## Contract Items
 
 #### POP-001
 - Type: behavior
 - Status: live
-- Owner: `yzx popup` plus transient-pane launch contract
+- Owner: `yzx popup` plus `yzpp` popup config
 - Statement: `yzx popup` resolves one argv list, not a shell string. The
   default popup program is `["lazygit"]`, and a per-invocation command override
   replaces that argv list for only the current popup
@@ -41,7 +42,7 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 #### POP-003
 - Type: behavior
 - Status: live
-- Owner: popup cwd resolution plus pane orchestrator contract
+- Owner: popup cwd resolution plus `yzpp` raw request adapter
 - Statement: Popup panes launch in the current tab workspace root when one is
   known, otherwise they fall back to the current shell directory
 - Verification: automated `nu nushell/scripts/dev/test_yzx_popup_commands.nu`
@@ -49,7 +50,7 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 #### POP-004
 - Type: ownership
 - Status: live
-- Owner: pane orchestrator transient-pane lifecycle
+- Owner: configured `yzpp` popup lifecycle
 - Statement: `Alt+t` toggles one managed popup pane instead of spawning
   duplicates forever, while `Alt+Shift+M` stays a separate command-palette flow
 - Verification: automated `nu nushell/scripts/dev/test_yzx_popup_commands.nu`;
@@ -58,14 +59,14 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 #### POP-005
 - Type: boundary
 - Status: live
-- Owner: popup standalone-capability decision boundary
+- Owner: popup standalone and integrated packaging boundary
 - Statement: Plain-Zellij popup behavior belongs in the external
-  `yazelix-zellij-popup` project, not in the Yazelix runtime package. Yazelix
-  Zellij Popup owns the standalone plugin, KDL-native popup specs, the
-  optional raw generated pipe contract, and plain-Zellij examples. `yzpp`
-  remains its short Zellij plugin alias and wasm artifact. The in-repo Yazelix
-  pane-orchestrator path remains the source of truth for full Yazelix
-  popup/menu/config adapters
+  `yazelix-zellij-popup` source repository. Yazelix packages the `yzpp.wasm`
+  artifact and uses configured `yzpp` specs for popup, menu, and config UI
+  panes. Yazelix Zellij Popup owns the standalone plugin, KDL-native popup
+  specs, optional command hooks, the raw generated pipe contract, and
+  plain-Zellij examples. The in-repo Yazelix pane orchestrator owns
+  workspace/sidebar/editor/session state, not popup pane opening or closing
 - Verification: validator `yzx_repo_validator validate-contracts`; external
   `yazelix-zellij-popup` gates `cargo test` and `nix build`
 
@@ -78,14 +79,24 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - Popup width and height percentages must be integers in the range `1..100`.
 - The default popup width and height are both `90`.
 - `yzx popup <command ...>` overrides the configured command for that invocation.
-- The surviving popup/menu seam is one explicit transient-pane contract: kind, pane identity, wrapper path, mode env, argv, cwd, runtime, and geometry are resolved before the plugin open request is sent.
+- The generated Yazelix `yzpp` specs own the stable pane identity, argv, cwd,
+  runtime command path, geometry, and close hook for popup/menu/config panes.
 - The popup launches in the current tab workspace root when available; otherwise it uses the current shell directory.
-- The popup closes on exit.
+- Popup pane lifecycle is controlled by the popup keybinding and explicit
+  `yzpp` `toggle` or `close` messages, not by child process exit.
 - `Alt+t` opens one managed popup pane when it is missing, focuses it when it exists but is unfocused, and closes it when it is focused.
-- `Alt+Shift+M` continues to open the command-palette popup.
+- When `Alt+t` closes the configured popup pane, Yazelix runs `yzx sidebar
+  refresh` through an `on_close` hook so lazygit-style workflows refresh the
+  managed Yazi sidebar.
+- `Alt+Shift+M` opens the command-palette popup through `yzpp`.
+- `Alt+Shift+C` opens the config UI popup through `yzpp`.
 - Plain Zellij users get this capability through Yazelix Zellij Popup (`yzpp`): a reusable floating-pane toggle for configured TUI commands, stable pane identity, and duplicate-preventing focus/close behavior.
-- The external Yazelix Zellij Popup plugin provides this capability without Yazelix-specific runtime paths, wrappers, config keys, or sidebar refresh hooks.
-- The current Yazelix path remains canonical for the integrated product: `yzx popup`, `zellij.popup_program`, the transient-pane facts surface, and the pane-orchestrator transient contract define supported Yazelix behavior.
+- The external Yazelix Zellij Popup plugin provides this capability without
+  requiring Yazelix-specific runtime paths, wrappers, config keys, or sidebar
+  refresh behavior; integrations can opt into generic `on_close` command hooks.
+- The current Yazelix path remains canonical for the integrated product: `yzx
+  popup`, `zellij.popup_program`, generated `yzpp` specs, and `yzx sidebar
+  refresh` define supported Yazelix popup behavior.
 
 ## Standalone Boundary
 
@@ -94,13 +105,15 @@ The external Yazelix Zellij Popup user config surface keeps popup specs in plugi
 ```kdl
 plugins {
     yzpp location="file:/path/to/yzpp.wasm" {
-        popup {
-            command "gitui"
-            pane_title "gitui_popup"
-            command_marker "gitui"
-            cwd "."
-            width_percent 90
-            height_percent 85
+        popups {
+            gitui {
+                command "gitui"
+                pane_title "gitui_popup"
+                command_marker "gitui"
+                cwd "."
+                width_percent 90
+                height_percent 85
+            }
         }
     }
 }
@@ -114,6 +127,7 @@ keybinds {
         bind "Alt g" {
             MessagePlugin "yzpp" {
                 name "toggle"
+                payload "gitui"
             }
         }
     }
@@ -127,7 +141,7 @@ The `yzpp` raw pipe path still accepts generated JSON through `name "transient_p
 - General floating-pane support for every Yazelix action
 - Converting all Yazi plugins to popup flows
 - Background daemon management for long-running AI tools
-- Reabsorbing Yazelix Zellij Popup into Yazelix runtime packaging
+- Reabsorbing Yazelix Zellij Popup source into Yazelix core
 - Treating Yazelix wrapper paths, runtime env, or sidebar refresh behavior as a plain-Zellij API
 
 ## Acceptance Cases
@@ -139,23 +153,26 @@ The `yzpp` raw pipe path still accepts generated JSON through `name "transient_p
 5. When `yzx popup` runs from a tab with an explicit workspace root, the popup uses that root as its cwd.
 6. Repeated popup-key presses do not create duplicate popup panes; they focus or close the existing managed popup instead.
 7. When `Alt+Shift+M` is used, the command palette still opens separately from the popup-program flow.
-8. The extracted `yazelix-zellij-popup` boundary stays outside Yazelix runtime packaging unless the integrated popup contract needs shared code again.
+8. The extracted `yazelix-zellij-popup` source stays in its child repository while Yazelix packages and integrates its `yzpp.wasm` artifact.
 9. The standalone plugin supports KDL-native configured popup specs and keeps raw JSON pipe requests only for generated integrations.
-10. Full Yazelix docs and code continue to identify the integrated pane-orchestrator implementation as canonical for Yazelix adapters.
+10. Full Yazelix docs and code identify `yzpp` as the popup/menu/config pane owner and the pane orchestrator as the workspace/sidebar/editor/session owner.
 
 ## Verification
 
 - unit tests: popup command/cwd resolution helpers
 - unit tests: popup geometry config parsing and validation
-- unit tests: popup lifecycle contract and transient-pane discovery in the pane orchestrator
-- external `yazelix-zellij-popup` unit tests: KDL-native popup specs and raw generated pipe request compatibility
-- unit tests: popup-toggle wrapper decision path
+- unit tests: popup lifecycle identity in the pane orchestrator
+- external `yazelix-zellij-popup` unit tests: KDL-native popup specs, optional
+  `on_close` hooks, and raw generated pipe request compatibility
 - external package gate: `nix build` in `yazelix-zellij-popup`
-- integration tests: `yzx popup` command routing and popup geometry arguments with a fake Zellij binary
-- integration tests: generated Zellij config and permission cleanup remove stale popup-runner artifacts
+- integration tests: `yzx popup` routes generated popup requests to `yzpp`
+  with a fake Zellij binary
+- integration tests: generated Zellij config contains the integrated `yzpp`
+  plugin block, popup/menu/config specs, and sidebar refresh hook
 - CI checks: `nu nushell/scripts/dev/test_yzx_commands.nu`
 - contract validator: `yzx_repo_validator validate-contracts`
-- manual verification: `Alt+t` toggles one managed popup and `Alt+Shift+M` still opens the menu
+- manual verification: `Alt+t` toggles one managed popup, `Alt+Shift+M`
+  opens the menu, and `Alt+Shift+C` opens the config UI
 
 ## Traceability
 - Defended by: `nu nushell/scripts/dev/test_yzx_commands.nu`
@@ -166,5 +183,6 @@ The `yzpp` raw pipe path still accepts generated JSON through `name "transient_p
 
 ## Open Questions
 
-- Should Yazi’s lazygit binding eventually route through the same pane-orchestrated popup contract when inside Yazelix/Zellij?
+- Should Yazi’s lazygit binding eventually route through the same configured
+  `yzpp` popup contract when inside Yazelix/Zellij?
 - Should Yazelix Zellij Popup and Yazelix eventually share a small popup contract crate, or is duplication acceptable while their release cadences differ?

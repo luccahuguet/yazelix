@@ -35,7 +35,7 @@ Regular Yazelix users do not need to install or wire these repositories separate
 - [yazelix-screen](https://github.com/luccahuguet/yazelix-screen) — Standalone terminal animation engine consumed by Yazelix welcome/screen rendering and exposed from this repo as `#yzs` and `#yazelix_screen`.
 - [yazelix-cursors](https://github.com/luccahuguet/yazelix-cursors) — Standalone Ghostty cursor preset, shader, and `yzc` CLI repository consumed by Yazelix cursor settings and exposed from this repo as `#yzc`, `#yazelix_cursors`, and `#ghostty_cursor_shaders`.
 - [yazelix-bar](https://github.com/luccahuguet/yazelix-bar) — Standalone Zellij/zjstatus bar preset consumed by Yazelix tab/status rendering and exposed from this repo as `#yazelix_bar`.
-- [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij users; its flake package `#yzpp` installs `share/yazelix_zellij_popup/yzpp.wasm`.
+- [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij users; its flake package `#yzpp` installs `share/yazelix_zellij_popup/yzpp.wasm`, and regular Yazelix sessions package the same `yzpp.wasm` for popup, menu, and config UI panes.
 
 ## Core Workspace Stack
 
@@ -45,7 +45,7 @@ Regular Yazelix users do not need to install or wire these repositories separate
 - [Neovim](https://neovim.io/) — First-class supported editor alternative. Yazelix supports managed editor-pane targeting and reveal/open workflows for Neovim as well.
 - [Nushell](https://www.nushell.sh) — Default shell and the remaining shell/UI core. The packaged runtime provides `nu`, the generated shell initializers, `yzx env`, and the small shell floor that still belongs in Nushell.
 - [zjstatus](https://github.com/dj95/zjstatus) — Zellij status plugin used for the Yazelix top bar, tab labels, widget tray, custom text, CPU/RAM widgets, and optional agent usage widgets.
-- [Yazelix pane orchestrator](../rust_plugins/zellij_pane_orchestrator) — First-party Zellij plugin that owns managed pane identity, editor/sidebar handoff, transient panes, status-cache facts, and workspace state.
+- [Yazelix pane orchestrator](../rust_plugins/zellij_pane_orchestrator) — First-party Zellij plugin that owns managed editor/sidebar identity, editor/sidebar handoff, status-cache facts, screen-saver launch, and workspace state.
 - [yazelix-screen](https://github.com/luccahuguet/yazelix-screen) — First-party Rust animation engine used by welcome/screen styles such as logo, boids, Mandelbrot, and Game of Life.
 
 ## Terminal Emulators

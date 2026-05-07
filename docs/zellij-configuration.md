@@ -151,7 +151,7 @@ keybinds clear-defaults=true {
 }
 ```
 
-In this mode Yazelix preserves your `clear-defaults` block and does not append its shipped Zellij integration keybindings or semantic `zellij.keybindings` remaps. Recreate any Yazelix actions you still want, such as `toggle_sidebar` or `toggle_transient_pane`, in your own keybinds block.
+In this mode Yazelix preserves your `clear-defaults` block and does not append its shipped Zellij integration keybindings or semantic `zellij.keybindings` remaps. Recreate any Yazelix actions you still want, such as pane-orchestrator `toggle_sidebar` or `yzpp` `toggle` with payload `popup`, in your own keybinds block.
 
 This full-ownership mode is not inferred from the read-only native fallback `~/.config/zellij/config.kdl`. If Yazelix is only borrowing that native file because `~/.config/yazelix/zellij.kdl` is absent, Yazelix still appends its integration keybindings so managed popup/menu/sidebar focus behavior keeps working.
 

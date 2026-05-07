@@ -1,17 +1,17 @@
 [contract]
-measured_total_loc = 73882
-measured_total_file_count = 142
-current_total_loc_max = 73882
-current_total_file_count_max = 142
+measured_total_loc = 73542
+measured_total_file_count = 140
+current_total_loc_max = 73542
+current_total_file_count_max = 140
 hard_target_loc = 60000
 
 [[families]]
 id = "core_cli_and_public_surface"
 status = "canonical"
 owner_bead = "yazelix-ykti.1"
-measured_loc = 8159
+measured_loc = 8172
 measured_files = 12
-max_loc = 8159
+max_loc = 8172
 target_loc = 7000
 max_files = 12
 allowed_paths = [
@@ -33,9 +33,9 @@ allowed_paths = [
 id = "core_config_ui_and_materialization"
 status = "canonical"
 owner_bead = "yazelix-ryx4.6"
-measured_loc = 20653
+measured_loc = 20624
 measured_files = 41
-max_loc = 20653
+max_loc = 20624
 target_loc = 14000
 max_files = 41
 allowed_paths = [
@@ -106,9 +106,9 @@ allowed_paths = [
 id = "core_workspace_and_pane_integration"
 status = "canonical"
 owner_bead = "yazelix-w032.3"
-measured_loc = 16412
+measured_loc = 16689
 measured_files = 17
-max_loc = 16412
+max_loc = 16689
 target_loc = 11000
 max_files = 17
 allowed_paths = [
@@ -135,9 +135,9 @@ allowed_paths = [
 id = "core_integration_tests"
 status = "canonical"
 owner_bead = "yazelix-9opk.4"
-measured_loc = 6093
+measured_loc = 6039
 measured_files = 19
-max_loc = 6093
+max_loc = 6039
 target_loc = 4500
 max_files = 19
 allowed_paths = [
@@ -166,9 +166,9 @@ allowed_paths = [
 id = "maintainer_tooling_and_validators"
 status = "canonical_maintainer"
 owner_bead = "yazelix-9opk.5.1"
-measured_loc = 11075
+measured_loc = 11072
 measured_files = 17
-max_loc = 11075
+max_loc = 11072
 target_loc = 9000
 max_files = 17
 allowed_paths = [
@@ -208,11 +208,11 @@ allowed_paths = [
 id = "pane_orchestrator_plugin"
 status = "extension_surface"
 owner_bead = "yazelix-subsys.2.1"
-measured_loc = 5385
-measured_files = 27
-max_loc = 5385
-target_loc = 4500
-max_files = 27
+measured_loc = 4841
+measured_files = 25
+max_loc = 4841
+target_loc = 4300
+max_files = 25
 allowed_paths = [
   "rust_plugins/zellij_pane_orchestrator/src/active_tab_session_state.rs",
   "rust_plugins/zellij_pane_orchestrator/src/ai_pane_activity.rs",
@@ -237,8 +237,6 @@ allowed_paths = [
   "rust_plugins/zellij_pane_orchestrator/src/status_bar_cache.rs",
   "rust_plugins/zellij_pane_orchestrator/src/status_bar_cache_contract.rs",
   "rust_plugins/zellij_pane_orchestrator/src/timer_schedule_contract.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/transient.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/transient_adapter_contract.rs",
   "rust_plugins/zellij_pane_orchestrator/src/transient_pane_contract.rs",
   "rust_plugins/zellij_pane_orchestrator/src/workspace.rs",
 ]

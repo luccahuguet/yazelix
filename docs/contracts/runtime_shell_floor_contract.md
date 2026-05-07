@@ -6,12 +6,12 @@ The product/runtime Nushell floor is now the measured allowlist below:
 
 | Family | Files | LOC |
 | --- | ---: | ---: |
-| Integration wrapper floor | `4` | `111` |
+| Integration wrapper floor | `1` | `54` |
 | Setup/bootstrap shell entry | `2` | `389` |
-| Front-door presentation floor | `2` | `400` |
-| Runtime helper seam | `6` | `611` |
+| Front-door presentation floor | `2` | `375` |
+| Runtime helper seam | `5` | `533` |
 
-Total tracked product/runtime Nu: `1,517` LOC across `14` files.
+Total tracked product/runtime Nu: `1,351` LOC across `10` files.
 
 ## Scope
 
@@ -28,16 +28,12 @@ Out of scope:
 
 ### Integration wrapper floor
 
-Four wrappers remain:
+One wrapper remains:
 
 - `nushell/scripts/zellij_wrappers/launch_sidebar_yazi.nu`
-- `nushell/scripts/zellij_wrappers/yzx_config_ui_popup.nu`
-- `nushell/scripts/zellij_wrappers/yzx_popup_program.nu`
-- `nushell/scripts/zellij_wrappers/yzx_menu_popup.nu`
 
-Popup and menu launch trampolines remain Nu-owned as tiny wrapper seams because
-Yazelix already depends on Nushell at that boundary and the Nu versions are the
-clearer shipped owner.
+Popup, command menu, and config UI floating panes are configured `yzpp` popups
+instead of Nu wrapper trampolines.
 
 ### Setup and bootstrap floor
 
@@ -63,7 +59,6 @@ The surviving runtime-side helper files are:
 - `nushell/scripts/utils/runtime_commands.nu`
 - `nushell/scripts/utils/runtime_defaults.nu`
 - `nushell/scripts/utils/runtime_paths.nu`
-- `nushell/scripts/utils/transient_pane_contract.nu`
 - `nushell/scripts/utils/yzx_core_bridge.nu`
 
 These survive only as the narrow remaining env/path/bridge helpers consumed by
@@ -87,7 +82,7 @@ fzf/menu process handoff, and startup-shell UX.
 
 ## Acceptance Cases
 
-1. The runtime-side wrapper floor is only the sidebar, config UI popup, popup, and menu wrappers in Nu
+1. The runtime-side wrapper floor is only the sidebar Yazi launcher
 2. `environment.nu` reads as shellhook/env setup instead of a second welcome
    owner
 3. The runtime helper allowlist matches the canonical budget exactly

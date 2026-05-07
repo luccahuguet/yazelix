@@ -2872,6 +2872,7 @@ mod tests {
     }
 
     // Defends: machine-readable apply modes from main_config_contract.toml reach config UI display facts for the first live slice and restart-scoped fields.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn model_exposes_apply_statuses_from_contract() {
         let runtime = tempdir().expect("runtime");
@@ -2880,10 +2881,10 @@ mod tests {
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
 
-        let popup_width = model_field(&model, "zellij.popup_width_percent");
-        assert_eq!(popup_width.apply_status.summary, "pane refresh");
-        assert!(popup_width.apply_status.pending);
-        assert!(popup_width.apply_status.detail.contains("pane or plugin"));
+        let screen_saver = model_field(&model, "zellij.screen_saver_enabled");
+        assert_eq!(screen_saver.apply_status.summary, "pane refresh");
+        assert!(screen_saver.apply_status.pending);
+        assert!(screen_saver.apply_status.detail.contains("pane or plugin"));
 
         let editor_command = model_field(&model, "editor.command");
         assert_eq!(editor_command.apply_status.summary, "tab restart");
@@ -2899,6 +2900,9 @@ mod tests {
                 .detail
                 .contains("managed runtime config")
         );
+
+        let popup_width = model_field(&model, "zellij.popup_width_percent");
+        assert_eq!(popup_width.apply_status.summary, "gen refresh");
     }
 
     // Defends: Home Manager-owned settings are presented as activation-scoped even when the field's intrinsic apply mode is narrower.

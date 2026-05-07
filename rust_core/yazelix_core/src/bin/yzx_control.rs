@@ -48,7 +48,6 @@ use yazelix_core::run_yzx_import;
 use yazelix_core::run_yzx_keys;
 use yazelix_core::run_yzx_launch;
 use yazelix_core::run_yzx_onboard;
-use yazelix_core::run_yzx_popup;
 use yazelix_core::run_yzx_reset;
 use yazelix_core::run_yzx_restart;
 use yazelix_core::run_yzx_reveal;
@@ -74,6 +73,7 @@ use yazelix_core::run_zellij_status_cache_write;
 use yazelix_core::update_commands::run_yzx_update;
 use yazelix_core::zellij_commands::internal_zellij_control_subcommands_usage;
 use yazelix_core::zellij_commands::probe_active_tab_session_state;
+use yazelix_core::{run_yzx_popup, run_yzx_sidebar};
 
 fn usage() -> ! {
     eprintln!("Usage: yzx_control env [--no-shell|-n]");
@@ -98,6 +98,7 @@ fn usage() -> ! {
     eprintln!("       yzx_control keys [yzx|yazi|hx|helix|nu|nushell]");
     eprintln!("       yzx_control onboard [--force] [--dry-run]");
     eprintln!("       yzx_control popup [program...]");
+    eprintln!("       yzx_control sidebar refresh");
     eprintln!("       yzx_control profile create-run <scenario> [--metadata <json>]");
     eprintln!(
         "       yzx_control profile record-step <component> <step> <started_ns> <ended_ns> [--metadata <json>]"
@@ -1642,6 +1643,7 @@ fn main() {
         "keys" => run_yzx_keys(&argv),
         "onboard" => run_yzx_onboard(&argv),
         "popup" => run_yzx_popup(&argv),
+        "sidebar" => run_yzx_sidebar(&argv),
         "profile" => run_profile(&argv),
         "zellij" => run_zellij(&argv),
         "reveal" => run_yzx_reveal(&argv),

@@ -8,7 +8,11 @@ use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const ZELLIJ_PLUGIN_WASMS: &[&str] = &["yazelix_pane_orchestrator.wasm", "zjstatus.wasm"];
+const ZELLIJ_PLUGIN_WASMS: &[&str] = &[
+    "yazelix_pane_orchestrator.wasm",
+    "zjstatus.wasm",
+    "yzpp.wasm",
+];
 const RUNTIME_WORKSPACE_ASSETS: &[&str] = &[
     "config_metadata/zellij_layout_families.toml",
     "configs/zellij/yazelix_overrides.kdl",
@@ -18,6 +22,7 @@ const RUNTIME_WORKSPACE_ASSETS: &[&str] = &[
     "configs/zellij/scripts/ram_usage.nu",
     "configs/zellij/plugins/yazelix_pane_orchestrator.wasm",
     "configs/zellij/plugins/zjstatus.wasm",
+    "configs/zellij/plugins/yzpp.wasm",
 ];
 
 #[derive(Debug, Clone, Deserialize)]

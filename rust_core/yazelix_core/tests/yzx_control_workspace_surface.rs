@@ -209,21 +209,20 @@ ya_command = "ya"
     );
 }
 
-// Defends: the default Rust-owned `yzx popup` route uses the pane-orchestrator toggle command so repeated invocations manage one popup instead of spawning duplicates.
+// Defends: the default Rust-owned `yzx popup` route uses the configured yzpp popup spec so repeated invocations manage one popup instead of spawning duplicates.
+// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 #[test]
-fn yzx_control_popup_without_override_uses_transient_toggle_contract() {
+fn yzx_control_popup_without_override_uses_yzpp_toggle_contract() {
     let fixture = managed_config_fixture("");
     let fake_bin = fixture.home_dir.join("fake-bin");
-    let zellij_commands_log = fixture.home_dir.join("zellij-commands.log");
-    let toggle_payload_log = fixture.home_dir.join("toggle-payload.log");
+    let zellij_log = fixture.home_dir.join("zellij.log");
     fs::create_dir_all(&fake_bin).unwrap();
 
     write_executable_script(
         &fake_bin.join("zellij"),
         &format!(
-            "#!/bin/sh\nprintf '%s\\n' \"$6\" >> \"{}\"\nprintf '%s' \"$8\" > \"{}\"\nif [ \"$6\" = \"toggle_transient_pane\" ]; then\n  printf '%s\\n' 'closed'\n  exit 0\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
-            zellij_commands_log.display(),
-            toggle_payload_log.display()
+            "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\nprintf 'closed\\n'\nexit 0\n",
+            zellij_log.display()
         ),
     );
 
@@ -237,67 +236,17 @@ fn yzx_control_popup_without_override_uses_transient_toggle_contract() {
     assert_eq!(output.status.code(), Some(0));
     assert!(output.stderr.is_empty());
     assert!(output.stdout.is_empty());
-    assert_eq!(
-        fs::read_to_string(zellij_commands_log).unwrap().trim(),
-        "toggle_transient_pane"
-    );
-    assert_eq!(fs::read_to_string(toggle_payload_log).unwrap(), "popup");
-}
-
-// Defends: popup command overrides still use an explicit open request so the pane orchestrator receives the one-shot argv, cwd, and runtime contract.
-#[test]
-fn yzx_control_popup_override_opens_transient_pane_with_explicit_payload() {
-    let fixture = managed_config_fixture("");
-    let fake_bin = fixture.home_dir.join("fake-bin");
-    let workspace_dir = fixture.home_dir.join("workspace");
-    let zellij_commands_log = fixture.home_dir.join("zellij-commands.log");
-    let open_payload_log = fixture.home_dir.join("open-payload.json");
-    fs::create_dir_all(&fake_bin).unwrap();
-    fs::create_dir_all(&workspace_dir).unwrap();
-
-    write_executable_script(
-        &fake_bin.join("zellij"),
-        &format!(
-            "#!/bin/sh\nprintf '%s\\n' \"$6\" >> \"{}\"\ncase \"$6\" in\n  get_active_tab_session_state)\n    printf '%s\\n' '{{\"workspace\":{{\"root\":\"{}\",\"source\":\"explicit\"}}}}'\n    exit 0\n    ;;\n  open_transient_pane)\n    printf '%s' \"$8\" > \"{}\"\n    printf '%s\\n' 'opened'\n    exit 0\n    ;;\nesac\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
-            zellij_commands_log.display(),
-            workspace_dir.display(),
-            open_payload_log.display()
-        ),
-    );
-
-    let output = yzx_control_command_in_fixture(&fixture)
-        .env("PATH", prepend_path(&fake_bin))
-        .env("ZELLIJ", "1")
-        .arg("popup")
-        .arg("lazygit")
-        .arg("status")
-        .output()
-        .unwrap();
-
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
-    assert!(output.stdout.is_empty());
-    assert_eq!(
-        fs::read_to_string(zellij_commands_log)
+    assert!(
+        fs::read_to_string(zellij_log)
             .unwrap()
-            .lines()
-            .collect::<Vec<_>>(),
-        vec!["get_active_tab_session_state", "open_transient_pane"]
-    );
-
-    let payload: Value = serde_json::from_slice(&fs::read(open_payload_log).unwrap()).unwrap();
-    assert_eq!(payload["kind"], "popup");
-    assert_eq!(payload["args"], serde_json::json!(["lazygit", "status"]));
-    assert_eq!(payload["cwd"], workspace_dir.to_string_lossy().to_string());
-    assert_eq!(
-        payload["runtime_dir"],
-        fixture.runtime_dir.to_string_lossy().to_string()
+            .contains("action pipe --plugin yzpp --name toggle -- popup")
     );
 }
 
-// Regression: a popup pane already running inside an older session does not strictly reload all user config before starting its program.
+// Defends: explicit yzx popup program requests use yzpp directly and attach the sidebar refresh close hook.
+// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 #[test]
-fn yzx_control_popup_pane_tolerates_unrelated_unknown_config_fields() {
+fn yzx_control_popup_program_opens_through_yzpp_raw_request() {
     let fixture = managed_config_fixture(
         r#"[zellij]
 popup_program = ["popup-probe", "hello"]
@@ -307,22 +256,13 @@ ghostty_trail_color = "random"
 "#,
     );
     let fake_bin = fixture.home_dir.join("fake-bin");
-    let popup_log = fixture.home_dir.join("popup.log");
     let zellij_log = fixture.home_dir.join("zellij.log");
     fs::create_dir_all(&fake_bin).unwrap();
 
     write_executable_script(
-        &fake_bin.join("popup-probe"),
-        &format!(
-            "#!/bin/sh\nprintf 'args=%s\\n' \"$*\" > \"{}\"\nprintf 'editor=%s\\n' \"$EDITOR\" >> \"{}\"\n",
-            popup_log.display(),
-            popup_log.display()
-        ),
-    );
-    write_executable_script(
         &fake_bin.join("zellij"),
         &format!(
-            "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\nexit 0\n",
+            "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\nprintf 'opened\\n'\nexit 0\n",
             zellij_log.display()
         ),
     );
@@ -330,23 +270,29 @@ ghostty_trail_color = "random"
     let output = yzx_control_command_in_fixture(&fixture)
         .env("PATH", prepend_path(&fake_bin))
         .env("ZELLIJ", "1")
-        .env("YAZELIX_POPUP_PANE", "true")
         .env("EDITOR", "runtime-editor")
-        .arg("popup")
+        .args(["popup", "popup-probe", "hello"])
         .output()
         .unwrap();
 
     assert_eq!(output.status.code(), Some(0));
     assert!(output.stderr.is_empty());
     assert!(output.stdout.is_empty());
-    assert_eq!(
-        fs::read_to_string(popup_log).unwrap(),
-        "args=hello\neditor=runtime-editor\n"
-    );
 
     let zellij_log = fs::read_to_string(zellij_log).unwrap();
-    assert!(zellij_log.contains("action rename-pane yzx_popup"));
-    assert!(zellij_log.contains("action close-pane"));
+    let yzx_cli = fixture
+        .runtime_dir
+        .join("shells")
+        .join("posix")
+        .join("yzx_cli.sh")
+        .to_string_lossy()
+        .to_string();
+    assert!(zellij_log.contains("action pipe --plugin yzpp --name transient_popup"));
+    assert!(zellij_log.contains(r#""action":"open""#));
+    assert!(zellij_log.contains(r#""pane_title":"yzx_popup""#));
+    assert!(zellij_log.contains(r#""command":["popup-probe","hello"]"#));
+    assert!(zellij_log.contains(&yzx_cli));
+    assert!(zellij_log.contains(r#""sidebar","refresh""#));
 }
 
 // Defends: the Rust-owned Yazi file-open route carries all selected files into the managed editor, then retargets the workspace and syncs the plugin-owned sidebar.

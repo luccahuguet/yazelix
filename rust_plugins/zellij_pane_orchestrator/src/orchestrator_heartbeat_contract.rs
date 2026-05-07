@@ -62,6 +62,7 @@ mod tests {
     use serde_json::json;
 
     // Defends: pane-orchestrator heartbeat facts carry liveness timestamps without status-bar presentation markup.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn heartbeat_payload_exposes_liveness_facts_without_bar_formatting() {
         let payload = build_orchestrator_heartbeat_payload(OrchestratorHeartbeatPayload {
@@ -70,7 +71,7 @@ mod tests {
             last_event_kind: Some("timer".to_string()),
             last_event_at_unix_seconds: Some(20),
             last_timer_at_unix_seconds: Some(20),
-            last_pipe_name: Some("toggle_transient_pane".to_string()),
+            last_pipe_name: Some("focus_sidebar".to_string()),
             last_pipe_at_unix_seconds: Some(19),
             last_status_cache_write_at_unix_seconds: Some(18),
             status_refresh_started_at_by_name: [("codex_usage".to_string(), 17)]
@@ -91,7 +92,7 @@ mod tests {
                 },
                 "last_timer_at_unix_seconds": 20,
                 "last_pipe": {
-                    "name": "toggle_transient_pane",
+                    "name": "focus_sidebar",
                     "at_unix_seconds": 19
                 },
                 "last_status_cache_write_at_unix_seconds": 18,

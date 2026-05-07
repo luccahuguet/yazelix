@@ -16,8 +16,6 @@ use std::path::{Path, PathBuf};
 pub const PANE_ORCHESTRATOR_RUNTIME_RELOAD_SCHEMA_VERSION: u64 = 1;
 const ZELLIJ_GENERATION_METADATA_NAME: &str = ".yazelix_generation.json";
 const LIVE_PANE_REFRESH_SETTINGS: &[&str] = &[
-    "zellij.popup_width_percent",
-    "zellij.popup_height_percent",
     "zellij.screen_saver_enabled",
     "zellij.screen_saver_idle_seconds",
     "zellij.screen_saver_style",
@@ -72,8 +70,6 @@ pub struct PaneOrchestratorRuntimeRefreshRequest {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct PaneOrchestratorRuntimeConfig {
-    pub popup_width_percent: usize,
-    pub popup_height_percent: usize,
     pub screen_saver_enabled: bool,
     pub screen_saver_idle_seconds: u64,
     pub screen_saver_style: String,
@@ -325,16 +321,6 @@ pub fn build_pane_orchestrator_runtime_reload_payload(
         schema_version: PANE_ORCHESTRATOR_RUNTIME_RELOAD_SCHEMA_VERSION,
         generation,
         runtime_config: PaneOrchestratorRuntimeConfig {
-            popup_width_percent: normalized_usize(
-                &normalized.normalized_config,
-                "popup_width_percent",
-                "zellij.popup_width_percent",
-            )?,
-            popup_height_percent: normalized_usize(
-                &normalized.normalized_config,
-                "popup_height_percent",
-                "zellij.popup_height_percent",
-            )?,
             screen_saver_enabled: normalized_bool(
                 &normalized.normalized_config,
                 "screen_saver_enabled",
@@ -398,9 +384,7 @@ fn pane_orchestrator_runtime_reload_status(
     match response {
         "ok" => Ok(PaneOrchestratorRuntimeRefreshStatus {
             message: "Refreshed pane-orchestrator runtime config.".to_string(),
-            remediation:
-                "Popup geometry and screen saver changes are active in this Yazelix session."
-                    .to_string(),
+            remediation: "Screen saver changes are active in this Yazelix session.".to_string(),
         }),
         "not_ready" => Err(pane_refresh_error(
             setting_path,
@@ -479,23 +463,6 @@ fn pane_refresh_error(
         remediation,
         details,
     )
-}
-
-fn normalized_usize(
-    config: &serde_json::Map<String, JsonValue>,
-    key: &str,
-    setting_path: &str,
-) -> Result<usize, CoreError> {
-    let value = normalized_u64(config, key, setting_path)?;
-    usize::try_from(value).map_err(|_| {
-        CoreError::classified(
-            ErrorClass::Config,
-            "invalid_pane_orchestrator_runtime_config_number",
-            format!("{setting_path} is too large for the running pane orchestrator."),
-            "Use a smaller value, then retry.",
-            json!({ "field": setting_path, "value": value }),
-        )
-    })
 }
 
 fn normalized_u64(
@@ -703,8 +670,6 @@ apply_mode = "generated_runtime_refresh"
             &config_path,
             r#"{
   "zellij": {
-    "popup_width_percent": 82,
-    "popup_height_percent": 76,
     "screen_saver_enabled": true,
     "screen_saver_idle_seconds": 120,
     "screen_saver_style": "mandelbrot"
@@ -734,8 +699,6 @@ apply_mode = "generated_runtime_refresh"
         assert_eq!(
             payload.runtime_config,
             PaneOrchestratorRuntimeConfig {
-                popup_width_percent: 82,
-                popup_height_percent: 76,
                 screen_saver_enabled: true,
                 screen_saver_idle_seconds: 120,
                 screen_saver_style: "mandelbrot".to_string()
@@ -747,7 +710,7 @@ apply_mode = "generated_runtime_refresh"
     #[test]
     fn stale_pane_orchestrator_generation_error_is_field_scoped() {
         let error = pane_orchestrator_runtime_reload_status(
-            "zellij.popup_width_percent",
+            "zellij.screen_saver_enabled",
             "stale_generation",
         )
         .unwrap_err();
@@ -756,8 +719,12 @@ apply_mode = "generated_runtime_refresh"
             error.code(),
             "pane_orchestrator_runtime_config_stale_generation"
         );
-        assert!(error.message().contains("Saved zellij.popup_width_percent"));
+        assert!(
+            error
+                .message()
+                .contains("Saved zellij.screen_saver_enabled")
+        );
         assert!(error.remediation().contains("Restart this Yazelix tab"));
-        assert_eq!(error.details()["setting"], "zellij.popup_width_percent");
+        assert_eq!(error.details()["setting"], "zellij.screen_saver_enabled");
     }
 }

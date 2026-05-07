@@ -2,12 +2,7 @@
 # yzx menu - Interactive command palette and config opener
 
 use ../utils/runtime_paths.nu get_yazelix_runtime_dir
-use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface resolve_yzx_core_helper_path run_yzx_core_json_command get_current_tab_workspace_root run_zellij_pipe]
-use ../utils/transient_pane_contract.nu [
-    build_transient_pane_open_contract
-    close_current_transient_pane
-    is_transient_pane_mode_active
-]
+use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface resolve_yzx_core_helper_path run_yzx_core_json_command]
 
 const PALETTE_CATEGORY_STYLE = {
     session: (ansi green)
@@ -166,66 +161,46 @@ def run_menu_action [cmd: string] {
     ^sh $yzx_cli ...$args
 }
 
-def resolve_menu_popup_contract [
-    transient_pane_facts: record
-    runtime_dir: string
-    workspace_root?: string
-    current_dir?: string
-] {
-    build_transient_pane_open_contract "menu" $runtime_dir ($transient_pane_facts.popup_width_percent? | default 90) ($transient_pane_facts.popup_height_percent? | default 90) $workspace_root $current_dir []
-}
-
 # Interactive command palette for Yazelix
 export def "yzx menu" [
     --popup  # Open menu in a Zellij floating pane
+    --pane  # Run the popup-pane menu UI in the current pane
 ] {
+    if $popup and $pane {
+        error make {msg: "Use either `yzx menu --popup` or `yzx menu --pane`, not both."}
+    }
+
     if $popup {
         if ($env.ZELLIJ? | is-empty) {
             error make {msg: "Not in a Zellij session; run `yzx menu` directly or start Yazelix/Zellij first."}
         }
 
-        let runtime_dir = (get_yazelix_runtime_dir | path expand)
-        let transient_pane_facts = (run_yzx_core_json_command $runtime_dir (build_default_yzx_core_error_surface) [
-            "transient-pane-facts.compute"
-        ] "Yazelix Rust transient-pane-facts helper returned invalid JSON.")
-        let popup_contract = (resolve_menu_popup_contract $transient_pane_facts $runtime_dir ((get_current_tab_workspace_root --include-bootstrap) | default "") (pwd))
-        let payload = ({
-            kind: ($popup_contract.kind? | default "" | into string | str trim)
-            args: ($popup_contract.args? | default [])
-            cwd: ($popup_contract.cwd? | default "" | into string)
-            runtime_dir: ($popup_contract.runtime_dir? | default "" | into string)
-        } | to json -r)
-        let open_response = (run_zellij_pipe "open_transient_pane" $payload)
-        let open_ok = (match ($open_response | str trim) {
+        let open_response = (^zellij action pipe --plugin yzpp --name toggle -- menu | complete)
+        if $open_response.exit_code != 0 {
+            error make {msg: ($open_response.stderr | default "" | str trim)}
+        }
+        let open_stdout = ($open_response.stdout | default "" | str trim)
+        let open_ok = (match $open_stdout {
             "ok" | "opened" => true
+            "focused" | "closed" => true
             _ => false
         })
         if not $open_ok {
-            error make {msg: $"Failed to open the Yazelix menu popup pane: ($open_response)"}
+            error make {msg: $"Failed to open the Yazelix menu popup pane: ($open_stdout)"}
         }
         return
     }
 
-    let in_popup = ($env.ZELLIJ_PANE_ID? | is-not-empty) and (is_transient_pane_mode_active "menu")
     let items = get_palette_menu_items
 
-    if $in_popup {
-        let result = (try {
-            run_popup_palette $items
-            {ok: true}
-        } catch {|err|
-            {ok: false, msg: $err.msg}
-        })
-        try { close_current_transient_pane }
-        if not $result.ok {
-            error make {msg: $result.msg}
-        }
+    if $pane {
+        run_popup_palette $items
         return
-    } else {
-        let entry = (select_with_fzf $items)
-        if $entry == null {
-            return
-        }
-        run_menu_action $entry.id
     }
+
+    let entry = (select_with_fzf $items)
+    if $entry == null {
+        return
+    }
+    run_menu_action $entry.id
 }

@@ -6,7 +6,7 @@ The Zellij pane orchestrator is an internal Yazelix component that owns session-
 
 ## Why
 
-The orchestrator now owns several high-value UX paths: popup/menu transient panes, managed editor/sidebar focus, layout-family changes, workspace retargeting, workspace terminal opening, and active sidebar Yazi identity. Those paths used to look scattered because Rust code, Nushell client wrappers, generated Zellij config, and runtime wrapper scripts each carried part of the behavior.
+The orchestrator now owns several high-value UX paths: managed editor/sidebar focus, layout-family changes, workspace retargeting, workspace terminal opening, screen-saver launch, status-cache facts, and active sidebar Yazi identity. Popup, menu, and config UI panes are owned by the integrated `yzpp` plugin instead.
 
 This contract defines the component boundary without extracting it to a separate repository. The plugin and its consumers still change together, so extraction would add versioning cost without improving the current product.
 
@@ -17,7 +17,6 @@ This contract defines the component boundary without extracting it to a separate
 - Nushell client transport in `nushell/scripts/integrations/zellij.nu`
 - Runtime wasm sync and permission-cache ownership in Rust `zellij-materialization.generate`
 - Generated Zellij keybind/config wiring in `configs/zellij/yazelix_overrides.kdl`
-- Transient-pane wrapper scripts under `nushell/scripts/zellij_wrappers/`
 - Focused tests in `nushell/scripts/dev/test_zellij_plugin_contracts.nu`, `nushell/scripts/dev/test_yzx_generated_configs.nu`, `nushell/scripts/dev/test_yzx_workspace_commands.nu`, `nushell/scripts/dev/test_yzx_popup_commands.nu`, and Rust unit tests in the orchestrator crate
 
 ## Contract Items
@@ -47,9 +46,11 @@ This contract defines the component boundary without extracting it to a separate
 - Type: invariant
 - Status: live
 - Owner: plugin pane-state model
-- Statement: Managed editor/sidebar/transient pane identity is plugin-owned.
+- Statement: Managed editor/sidebar pane identity is plugin-owned. The
+  orchestrator may recognize `yzpp`-managed popup/menu/config pane titles for
+  status classification, but it does not own their lifecycle.
   Plugin panes, exited panes, and unrelated user panes must not count as
-  managed panes
+  managed Yazelix panes
 - Verification: automated
   `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib`;
   automated `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
@@ -97,8 +98,6 @@ The orchestrator accepts these pipe command names:
 - `retarget_workspace`
 - `open_terminal_in_cwd`
 - `open_workspace_terminal`
-- `open_transient_pane`
-- `toggle_transient_pane`
 - `maintainer_debug_editor_state`
 - `debug_write_literal`
 - `debug_send_escape`
@@ -112,23 +111,19 @@ Nushell must resolve user intent before calling the plugin. For workspace change
 The plugin reads these configuration keys from Zellij plugin configuration:
 
 - `runtime_dir`
-- `popup_width_percent`
-- `popup_height_percent`
 - `screen_saver_enabled`
 - `screen_saver_idle_seconds`
 - `screen_saver_style`
 
-`runtime_dir` is session-local plugin state. The generated Zellij config must set it on the loaded pane-orchestrator plugin instance for that session, and direct `MessagePlugin` bindings or `zellij action pipe` calls must target that loaded instance by alias instead of re-supplying `runtime_dir` on each message. Transient-pane payloads may still carry an explicit runtime override when the caller intentionally wants the wrapper launch to use a different runtime root. The geometry keys are percentages and default to the Rust-side transient-pane defaults when absent or outside the accepted runtime range.
+`runtime_dir` is session-local plugin state. The generated Zellij config must set it on the loaded pane-orchestrator plugin instance for that session, and direct `MessagePlugin` bindings or `zellij action pipe` calls must target that loaded instance by alias instead of re-supplying `runtime_dir` on each message. Popup geometry belongs to the generated `yzpp` specs, not the pane-orchestrator plugin config.
 
 The screen-saver keys are opt-in. When enabled, the plugin watches Zellij-wide input activity and opens a full-tab `yzx screen` command pane after the configured idle threshold. The plugin owns only inactivity/session orchestration; the `yzx screen` process remains the single renderer and animation contract.
 
 ### Runtime And Wrapper Paths
 
-The plugin does not probe the local filesystem for wrapper discovery. It derives paths from `runtime_dir`:
+The plugin derives runtime-owned helper paths from `runtime_dir`:
 
 - launcher: `shells/posix/yzx_cli.sh`
-- popup wrapper: `nushell/scripts/zellij_wrappers/yzx_popup_program.nu`
-- menu wrapper: `nushell/scripts/zellij_wrappers/yzx_menu_popup.nu`
 
 The session-loaded plugin instance is the runtime source of truth for direct keybind messages and Nushell transport calls. Those message paths must address the pane orchestrator by alias only so multiple Yazelix sessions can stay self-contained even when they were launched from different runtime roots.
 
@@ -138,10 +133,11 @@ The plugin is authoritative for managed pane identity inside a Zellij session:
 
 - managed editor panes are terminal panes titled `editor`
 - managed sidebar panes are terminal panes titled `sidebar`
-- transient popup panes are floating terminal panes titled `yzx_popup` or launched through `yzx_popup_program.nu`
-- transient menu panes are floating terminal panes titled `yzx_menu` or launched through `yzx_menu_popup.nu`
-- Nushell and Rust share one explicit transient-pane identity contract for popup/menu title, wrapper marker, and wrapper path; wrapper-mode env ownership stays on the Nushell side of that seam
-- plugin panes, exited panes, and unrelated user panes must not count as managed editor/sidebar/transient panes
+- popup panes are `yzpp`-managed floating terminal panes titled `yzx_popup`
+- menu panes are `yzpp`-managed floating terminal panes titled `yzx_menu`
+- config UI panes are `yzpp`-managed floating terminal panes titled `yzx_config`
+- the pane orchestrator may report popup/menu pane identity for status surfaces, but it does not open or close those panes
+- plugin panes, exited panes, and unrelated user panes must not count as managed editor/sidebar/popup panes
 - workspace state is tab-local and explicit workspace retargets are stronger than bootstrap state
 - sidebar Yazi identity returned from `retarget_workspace` is active-tab state, not a session-global cache scan
 
@@ -167,8 +163,8 @@ The sync step updates the tracked wasm, the stable runtime wasm path, and the ge
 
 1. A maintainer can list the plugin pipe commands, plugin configuration keys, runtime wrapper assumptions, and pane identity invariants from this contract without searching across Rust, Nushell, and KDL files.
 2. Workspace mutation flows use `retarget_workspace` as the single live pipe command for tab workspace changes.
-3. Popup and menu transient panes use the same helperless pane-orchestrator launch/toggle model and the same geometry configuration.
-4. Sidebar/editor focus, workspace-terminal opening, transient-pane toggles, and layout-family commands remain keyed through generated Zellij `MessagePlugin` entries that target the loaded plugin alias without re-supplying `runtime_dir`.
+3. Popup, menu, and config UI panes are identified as `yzpp`-managed panes, not pane-orchestrator-opened panes.
+4. Sidebar/editor focus, workspace-terminal opening, and layout-family commands remain keyed through generated Zellij `MessagePlugin` entries that target the loaded plugin alias without re-supplying `runtime_dir`.
 5. Rust source changes are rebuilt and synced before runtime behavior is claimed fixed.
 
 ## Verification

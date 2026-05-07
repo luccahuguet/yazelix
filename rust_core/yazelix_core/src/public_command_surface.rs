@@ -546,6 +546,7 @@ const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
     rust_control_family("onboard", ONBOARD_FAMILY_COMMANDS),
     rust_control_family("run", RUN_FAMILY_COMMANDS),
     rust_control_family("popup", POPUP_FAMILY_COMMANDS),
+    rust_control_family("sidebar", SIDEBAR_FAMILY_COMMANDS),
     rust_control_family("reveal", REVEAL_FAMILY_COMMANDS),
     rust_control_family("reset", RESET_FAMILY_COMMANDS),
     rust_control_family("restart", RESTART_FAMILY_COMMANDS),
@@ -757,6 +758,16 @@ const POPUP_COMMAND: YzxCommandMetadata = metadata(
     Some("Open a floating terminal tool pane, for example `yzx popup lazygit`."),
 );
 const POPUP_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[POPUP_COMMAND];
+
+const SIDEBAR_REFRESH_COMMAND: YzxCommandMetadata = metadata(
+    "yzx sidebar refresh",
+    "Refresh the managed Yazi sidebar",
+    YzxCommandCategory::Workspace,
+    &[],
+    Some(YzxMenuCategory::Workspace),
+    Some("Refresh the managed Yazi sidebar file tree and status widgets."),
+);
+const SIDEBAR_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[SIDEBAR_REFRESH_COMMAND];
 
 const RESTART_COMMAND: YzxCommandMetadata = metadata(
     "yzx restart",

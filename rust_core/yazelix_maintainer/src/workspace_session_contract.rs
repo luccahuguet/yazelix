@@ -23,13 +23,10 @@ const REQUIRED_PANE_ORCHESTRATOR_PIPE_COMMANDS: &[&str] = &[
     "retarget_workspace",
     "open_terminal_in_cwd",
     "open_workspace_terminal",
-    "open_transient_pane",
-    "toggle_transient_pane",
 ];
 
 const SEMANTIC_KEYBINDING_BOUND_PIPE_COMMANDS: &[&str] = &[
     "open_workspace_terminal",
-    "toggle_transient_pane",
     "move_focus_left_or_tab",
     "move_focus_right_or_tab",
     "toggle_editor_sidebar_focus",

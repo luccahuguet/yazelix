@@ -11,7 +11,7 @@ Alternatives considered:
 - `yazelix_zellij_workspace`: precise about the Zellij host, but too narrow because the value also depends on Yazi and editor adapters
 - `yazelix_editor_flow`: captures the editor/sidebar feel, but misses workspace root, tab-local session state, and terminal-pane behavior
 - keeping all workspace orchestration internal: safest short term, but it would leave the most reusable managed-pane/session concepts buried in broad product modules
-- extracting popup primitives first: useful for transient panes, but not a substitute for the managed workspace/editor/sidebar contract
+- extracting popup primitives first: useful for configured floating panes, but not a substitute for the managed workspace/editor/sidebar contract
 
 ## Readiness Decision
 
@@ -132,7 +132,7 @@ The current plugin command seam is the nearest implementation shape, but the pub
 
 ### Yazelix Zellij Popup
 
-Popup extraction is adjacent but separate, and the standalone plain-Zellij popup plugin now lives outside the Yazelix runtime package as `yazelix-zellij-popup`. `yzpp` remains the short Zellij plugin alias and wasm artifact.
+Popup extraction is adjacent but separate, and the standalone plain-Zellij popup plugin source lives in the `yazelix-zellij-popup` child repository while Yazelix packages its `yzpp.wasm` artifact for integrated popup, menu, and config UI panes. `yzpp` remains the short Zellij plugin alias and wasm artifact.
 
 The popup surface owns transient floating panes for configured commands. Workspace extraction owns persistent managed editor/sidebar/session behavior. Both may share structured Zellij plugin request conventions, geometry validation, and pane identity helpers, but neither should force the other's release schedule.
 

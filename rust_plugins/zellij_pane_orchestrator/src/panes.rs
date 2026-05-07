@@ -16,9 +16,8 @@ use yazelix_pane_orchestrator::pane_contract::{
 use yazelix_pane_orchestrator::sidebar_contract::{
     resolve_sidebar_focus_toggle, SidebarFocusTogglePlan,
 };
-use yazelix_pane_orchestrator::transient_adapter_contract::yazelix_transient_adapter;
 use yazelix_pane_orchestrator::transient_pane_contract::{
-    select_transient_pane, TransientPaneKind, TransientPaneSnapshot,
+    select_transient_pane, transient_pane_identity, TransientPaneKind, TransientPaneSnapshot,
 };
 use zellij_tile::prelude::*;
 
@@ -596,8 +595,7 @@ fn build_session_transient_pane(
     snapshots: &[TransientPaneSnapshot<'_, PaneId>],
     kind: TransientPaneKind,
 ) -> Option<SessionTransientPane> {
-    let adapter = yazelix_transient_adapter(kind);
-    let transient_pane = select_transient_pane(snapshots, adapter.identity)?;
+    let transient_pane = select_transient_pane(snapshots, transient_pane_identity(kind))?;
     pane_id_to_string(Some(transient_pane.pane_id)).map(|pane_id| SessionTransientPane {
         pane_id,
         is_focused: transient_pane.is_focused,

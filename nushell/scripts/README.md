@@ -26,7 +26,6 @@ Small surviving helpers plus runtime shell adapters
 - `constants.nu` - Version constants and static metadata accessors
 - `yzx_core_bridge.nu` - Narrow Rust helper transport seam
 - `runtime_paths.nu` - Minimal runtime/state path helpers that still feed shell owners
-- `transient_pane_contract.nu` - Tiny popup/menu/sidebar shell facts
 
 ### `yzx/`
 The remaining public shell-owned surface
@@ -35,11 +34,9 @@ The remaining public shell-owned surface
 - Syntax validation is Rust-owned by `yzx_repo_validator validate-nushell-syntax`
 
 ### `zellij_wrappers/`
-Three surviving runtime wrappers
+One surviving runtime wrapper
 
 - `launch_sidebar_yazi.nu` - Sidebar Yazi launcher that still needs the shell-facing Yazi handoff
-- `yzx_popup_program.nu` - Popup launcher trampoline that sets popup mode and execs the real `yzx popup` command
-- `yzx_menu_popup.nu` - Menu launcher trampoline that sets menu mode and execs the real `yzx menu` command
 
 ## Canonical Entry Points
 
@@ -71,4 +68,4 @@ The public launch, desktop, restart, enter, popup, update, sweep, plugin-build, 
 
 ## File Naming Convention
 
-All files use underscores, for example `start_yazelix_inner.nu` and `yzx_popup_program.nu`
+All files use underscores, for example `start_yazelix_inner.nu` and `launch_sidebar_yazi.nu`

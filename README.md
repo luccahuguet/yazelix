@@ -27,14 +27,14 @@ The child repos mainly let non-Yazelix users adopt Yazelix modules and subsystem
 - [yazelix-screen](https://github.com/luccahuguet/yazelix-screen) — Terminal animation engine used by Yazelix welcome/screen styles and exposed here as `#yzs` and `#yazelix_screen`
 - [yazelix-cursors](https://github.com/luccahuguet/yazelix-cursors) — Ghostty cursor preset and shader generator with the `yzc` CLI, exposed here as `#yzc`, `#yazelix_cursors`, and `#ghostty_cursor_shaders`
 - [yazelix-bar](https://github.com/luccahuguet/yazelix-bar) — Standalone Zellij/zjstatus bar preset and `yazelix_bar_generate` binary, exposed here as `#yazelix_bar`
-- [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij floating TUI panes; its plugin alias and wasm artifact are `yzpp`, while Yazelix keeps `yzx popup` for integrated workspace behavior
+- [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij floating TUI panes; its plugin alias and wasm artifact are `yzpp`, and regular Yazelix sessions use it for the popup, command palette, and config UI panes
 
 ## Daily Workflow
 
 - `yzx launch`: Open Yazelix in a managed terminal window
 - `yzx enter`: Start Yazelix in the current terminal
 - `yzx env`: Enter the Yazelix tool environment without the UI
-- `yzx popup`: CLI entrypoint for the managed popup pane, usually `lazygit`; most users trigger the same toggle with `Alt+t`, and closing it reruns the Yazi file-tree sidebar refresh path so git state stays current
+- `yzx popup`: CLI entrypoint for the managed popup pane, usually `lazygit`; most users trigger the same toggle with `Alt+t`, and closing it through the popup keybinding reruns the Yazi file-tree sidebar refresh path so git state stays current
 - `yzx menu --popup`: CLI entrypoint for the popup command palette; most users trigger the same toggle with `Alt+Shift+M`
 - `yzx config ui`: CLI entrypoint for the config UI; most users trigger the same popup with `Alt+Shift+C`
 - `yzx update upstream`: Upgrade the Yazelix package that owns the current runtime in the default Nix profile
@@ -49,7 +49,7 @@ The child repos mainly let non-Yazelix users adopt Yazelix modules and subsystem
 - Switch between the built-in sidebar-aware workspace shapes and other workspace layouts; see [Layouts](./docs/layouts.md)
 - When you open something from the default Yazi file-tree sidebar with Helix or Neovim, Yazelix targets the managed `editor` pane through the pane orchestrator instead of relying on pane scanning heuristics
 - `yzx reveal` is the stable editor-integration surface for jumping the current file back into the managed Yazi file tree
-- `Alt+t` toggles the managed popup pane and refreshes the Yazi file-tree sidebar git view when that popup closes, while `Alt+Shift+M` toggles the popup command menu and `Alt+Shift+C` toggles the config UI on the same fast floating-pane path
+- `Alt+t` toggles the managed popup pane through `yzpp` and refreshes the Yazi file-tree sidebar git view when that popup closes, while `Alt+Shift+M` toggles the popup command menu and `Alt+Shift+C` toggles the config UI on the same configured floating-pane path
 
 ## Why Yazelix
 Yazelix is a reproducible terminal IDE that integrates Yazi + Zellij + Helix, delivering a consistent, fast "superterminal" locally or over SSH with zero manual setup through smart pane/layout orchestration, sidebar reveal/open flows, a curated built-in toolset, sane defaults, Helix/Zellij conflict cleanup, auto-configured tools like starship, zoxide, and carapace, and useful bundled tools such as `lazygit`
@@ -104,7 +104,7 @@ If Yazelix is useful to you, you can support its development on [GitHub Sponsors
 v16 Rust-forward control plane with an irreducible Nushell core
 
 - Finished the Rust owner cuts across the remaining deterministic control-plane and editor/Yazi integration surfaces, so the public `yzx` story is now much more clearly Rust-owned
-- Reduced Nushell to the explicit shell and UI core, documented the surviving floor, and kept popup/menu wrappers on Nushell where that boundary is the clearest fit
+- Reduced Nushell to the explicit shell and UI core, documented the surviving floor, and moved popup/menu/config UI panes to the configured `yzpp` plugin path
 - Moved maintainer, update, and sweep ownership further out of Nushell, including repo-maintainer flows and pane-orchestrator sync semantics, so the remaining Nu surface is much smaller and more intentional
 - Unified the human CLI rendering for `yzx status`, `yzx status --versions`, and `yzx keys` around one shared Rust styling layer with cleaner grouped output and better contrast
 
@@ -116,7 +116,7 @@ v15 trims Yazelix down to the fast workspace core
 - Dropped the out-of-scope Classic runtime-manager surface: no runtime-local `devenv`, no `yazelix_packs.toml`, no `yazelix packs` or `yzx packs`, no automatic config migrations, and no `yzx refresh`
 - Made Ghostty the first-party bundled terminal on Linux and macOS while keeping WezTerm, Kitty, Alacritty, and Foot as PATH-provided alternatives
 - Split current-terminal startup into `yzx enter`, kept `yzx launch` as the managed external-terminal entrypoint, and kept `yzx env` as the non-UI tool-environment surface
-- Made `yzx popup` and `yzx menu --popup` share the fast floating-pane path with explicit pane identity, shared toggle semantics, and no helper-pane detour
+- `yzx popup`, `yzx menu --popup`, and `yzx config ui` use the configured `yzpp` floating-pane path with explicit pane identity and shared toggle semantics
 - Kept the workspace core around layouts, managed editor/sidebar orchestration, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners through `yzx update upstream` or `yzx update home_manager`
 - Continued the delete-first trim by replacing string-built runtime wrapper commands with direct runtime scripts, making maintainer pins explicit again, and keeping the runtime lock on the declared unstable input
 
@@ -256,7 +256,7 @@ Yazelix uses a **layered configuration system** that safely merges your personal
 - **Zellij customization**: Use the built-in `zellij` settings in `settings.jsonc` for Yazelix-owned Zellij knobs, and use `~/.config/yazelix/zellij.kdl` for deeper managed Zellij overrides (see [Zellij Configuration](./docs/zellij-configuration.md))
 - **Status bar widgets**: Configure `[zellij].widget_tray` to order or hide `editor`, `shell`, `term`, `workspace`, `cursor`, usage, `cpu`, and `ram` widgets; the default cursor widget renders mono presets as colored `█ name` and split presets as one-cell split glyphs from the launch-scoped Ghostty cursor fact
 - **Standalone Ghostty cursors**: install `.#yazelix_cursors` or run `nix run .#yzc -- --help`; `yzc init` creates `~/.config/yazelix_cursors/settings.jsonc`, and `yzc generate ghostty` writes `~/.config/yazelix_cursors/ghostty.conf` for Ghostty's `config-file` include
-- **Standalone popup plugin**: use Yazelix Zellij Popup (`yzpp`) for plain-Zellij floating TUI popups; Yazelix keeps `yzx popup` for integrated workspace behavior
+- **Standalone popup plugin**: use Yazelix Zellij Popup (`yzpp`) for plain-Zellij floating TUI popups; regular Yazelix sessions package the same plugin for `yzx popup`, the command palette, and config UI
 - **Your configs persist** across Yazelix updates without git conflicts
 - **Intelligent merging**: Generated Yazi and Zellij runtime configs are rebuilt from Yazelix defaults plus your managed overrides instead of forcing you to edit tracked runtime files
 - **Launch-time config snapshots**: each Yazelix window keeps the `settings.jsonc` snapshot it launched with; edit config whenever you want, then open a new Yazelix window or run `yzx restart` to apply it to live panes. Use repeatable `--with KEY=VALUE` on `yzx launch`, `yzx enter`, or `yzx restart` for session-only settings overrides
@@ -364,7 +364,8 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 - `yzx update` - Show the supported update-owner paths
 - `yzx update upstream` - Upgrade the active default-profile Yazelix package
 - `yzx update home_manager` - Refresh the current Home Manager flake input, then print `home-manager switch`
-- `yzx popup` - Toggle the managed popup program, usually `lazygit`, and refresh the Yazi file-tree sidebar git state when it closes
+- `yzx popup` - Toggle the managed popup program, usually `lazygit`, and refresh the Yazi file-tree sidebar git state when the popup keybinding closes it
+- `yzx sidebar refresh` - Refresh the managed Yazi sidebar file tree and status widgets
 - `yzx config [--path]` - Show the active config or print its resolved path
 - `yzx config ui` - Browse and edit settings, defaults, diagnostics, and managed sidecar status in a terminal UI
 - `yzx config set PATH JSON` - Set a supported config value while preserving comments
@@ -418,7 +419,7 @@ Yazelix uses Zellij as the workspace layer, so the most important bindings are g
 | `Alt+r` | Smart reveal/focus key; forwards into the editor when appropriate |
 | `Alt+[` / `Alt+]` | Switch between layouts |
 | `Alt+m` | Open a new terminal in the current tab workspace root |
-| `Alt+t` | Toggle the configured managed popup program, usually `lazygit`, and refresh the Yazi file-tree sidebar git state when it closes |
+| `Alt+t` | Toggle the configured managed popup program, usually `lazygit`, and refresh the Yazi file-tree sidebar git state when the popup keybinding closes it |
 | `Alt+Shift+M` | Open the `yzx` command palette popup |
 | `Alt+Shift+C` | Open the Yazelix config UI popup |
 | `Alt+1..9` | Jump directly to tabs 1 through 9 |
