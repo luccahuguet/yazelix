@@ -46,7 +46,7 @@ The config UI, doctor, and future `yzx_control` save/apply flows should use one 
 | `zellij.popup_program` | `tab_session_restart` | A future pane-orchestrator reload may narrow this, but command changes are excluded from the first live slice |
 | `zellij.popup_width_percent`, `zellij.popup_height_percent` | `live_with_pane_refresh` | Applied to the running pane orchestrator through the versioned runtime-config reload pipe |
 | `zellij.screen_saver_enabled`, `zellij.screen_saver_idle_seconds`, `zellij.screen_saver_style` | `live_with_pane_refresh` | Applied to the running pane orchestrator through the versioned runtime-config reload pipe |
-| `zellij.widget_tray`, `zellij.tab_label_mode`, `zellij.codex_usage_display`, `zellij.claude_usage_display`, `zellij.claude_usage_periods`, `zellij.opencode_go_usage_display`, `zellij.opencode_go_usage_periods`, `zellij.custom_text` | `generated_runtime_refresh` | Can move to `live_with_pane_refresh` only after the status bar has an explicit refresh owner |
+| `zellij.widget_tray`, `zellij.tab_label_mode`, `zellij.codex_usage_display`, `zellij.claude_usage_display`, `zellij.claude_usage_periods`, `zellij.opencode_go_usage_display`, `zellij.opencode_go_usage_periods`, `zellij.custom_text` | `generated_runtime_refresh` | Status-bar structure and usage rendering stay generated-runtime scoped until there is an explicit status-bar config reload owner |
 | `yazi.command`, `yazi.ya_command`, `yazi.plugins`, `yazi.theme`, `yazi.sort_by` | `generated_runtime_refresh` | Requires managed Yazi config regeneration and a fresh Yazi/sidebar process |
 
 When Home Manager owns the active settings source, every editable semantic setting is effectively `package_home_manager_activation` from the config UI perspective.
@@ -76,6 +76,28 @@ The first live-apply mechanism is:
 Generated-runtime refreshes should use existing Rust materializers and should return explicit restart guidance for the affected tool. They should not be smuggled through pane-orchestrator live state.
 
 `yzx config set`, `yzx config unset`, and config UI saves use the contract apply mode after a successful write. For `generated_runtime_refresh` settings, Yazelix regenerates managed runtime state through the existing materializers, reports the affected tool owner such as Yazi or Zellij, and tells users which running pane, tab, or session must be restarted or reopened. A materialization failure does not undo the saved setting; it is returned as a visible save/apply error with the underlying materializer code and remediation.
+
+## Status Bar Refresh Decision
+
+Status-bar settings remain `generated_runtime_refresh`.
+
+| Setting family | Runtime owner | Why it is not live-applied |
+| --- | --- | --- |
+| `zellij.widget_tray` | Yazelix renders the tray segment through `rust_core/yazelix_bar`, then substitutes it into generated Zellij layout KDL before zjstatus starts | Changing the tray changes the loaded zjstatus `format_right` string and command-widget placeholders, not just command output |
+| `zellij.tab_label_mode` | Yazelix renders zjstatus tab format keys into generated layout KDL | Changing tab label mode changes loaded zjstatus tab format configuration |
+| `zellij.custom_text` | Yazelix renders a static custom-text segment into generated layout KDL | Changing the value changes a pre-rendered static segment in the plugin block |
+| `zellij.codex_usage_display`, `zellij.claude_usage_display`, `zellij.claude_usage_periods`, `zellij.opencode_go_usage_display`, `zellij.opencode_go_usage_periods` | `yzx_control` command widgets render provider/cache text from the launch session config snapshot | The command output can refresh on its interval, but the display policy and periods come from the active session snapshot; changing those settings without a new snapshot would make saved-versus-active state ambiguous |
+
+Zellij plugin configuration is supplied to a plugin at load time. The current zjstatus pipe protocol can rerun command widgets, send notifications, or update pipe-widget content, but it does not replace the loaded module config, widget map, tab formats, or command-widget definitions. The pane orchestrator also must not proxy these settings into zjstatus because that would create a hidden second owner for bar configuration.
+
+Save-time behavior for these fields is therefore:
+
+1. Save the semantic setting.
+2. Regenerate managed Zellij runtime files through the normal materializer.
+3. Report that the saved value is pending a Yazelix tab/session restart.
+4. If regeneration fails, keep the saved setting and report `generated_config_refresh_failed` with remediation.
+
+Moving any of these fields to `live_with_pane_refresh` requires a status-bar owner that can acknowledge a versioned reload and define stale-generation, permission, partial-apply, and rollback behavior. Acceptable future owners are a dedicated Yazelix status-bar plugin or an upstream-supported zjstatus configuration reload protocol; a broad Zellij reconfigure call or pane-orchestrator side effect is not sufficient.
 
 ## Config UI Status Copy
 
