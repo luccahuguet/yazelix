@@ -3015,7 +3015,7 @@ fn load_home_manager_option_declarations(
 fn build_home_manager_option_declarations_expr(repo_root: &Path) -> String {
     let module_path =
         escape_nix_string(&repo_root.join(MODULE_RELATIVE_PATH).display().to_string());
-    [
+    let mut lines = vec![
         "let".to_string(),
         "  pkgs = import <nixpkgs> {};".to_string(),
         "  lib = pkgs.lib;".to_string(),
@@ -3023,21 +3023,41 @@ fn build_home_manager_option_declarations_expr(repo_root: &Path) -> String {
         "    specialArgs = { inherit pkgs; nixgl = null; };".to_string(),
         "    modules = [".to_string(),
         format!("      (builtins.toPath \"{}\")", module_path),
+    ];
+    lines.extend(standalone_home_manager_eval_fixture_module(true, false));
+    lines.extend([
+        "    ];".to_string(),
+        "  };".to_string(),
+        "in builtins.mapAttrs (_: option: map builtins.toString option.declarations) eval.options.programs.yazelix".to_string(),
+    ]);
+    lines.join("\n")
+}
+
+fn standalone_home_manager_eval_fixture_module(
+    include_desktop_entries_option: bool,
+    enable_yazelix: bool,
+) -> Vec<String> {
+    let mut lines = vec![
         "      ({ lib, ... }: {".to_string(),
+        "        options.assertions = lib.mkOption { type = lib.types.listOf lib.types.anything; default = []; };".to_string(),
         "        options.xdg.configHome = lib.mkOption { type = lib.types.str; default = \"/tmp/config\"; };".to_string(),
         "        options.xdg.dataHome = lib.mkOption { type = lib.types.str; default = \"/tmp/data\"; };".to_string(),
         "        options.xdg.dataFile = lib.mkOption { type = lib.types.attrsOf lib.types.anything; default = {}; };".to_string(),
         "        options.xdg.configFile = lib.mkOption { type = lib.types.attrsOf lib.types.anything; default = {}; };".to_string(),
-        "        options.xdg.desktopEntries = lib.mkOption { type = lib.types.attrsOf lib.types.anything; default = {}; };".to_string(),
+    ];
+    if include_desktop_entries_option {
+        lines.push("        options.xdg.desktopEntries = lib.mkOption { type = lib.types.attrsOf lib.types.anything; default = {}; };".to_string());
+    }
+    lines.extend([
         "        options.home.packages = lib.mkOption { type = lib.types.listOf lib.types.package; default = []; };".to_string(),
         "        options.home.activation = lib.mkOption { type = lib.types.attrsOf lib.types.anything; default = {}; };".to_string(),
         "        options.home.profileDirectory = lib.mkOption { type = lib.types.str; default = \"/tmp/profile\"; };".to_string(),
-        "      })".to_string(),
-        "    ];".to_string(),
-        "  };".to_string(),
-        "in builtins.mapAttrs (_: option: map builtins.toString option.declarations) eval.options.programs.yazelix".to_string(),
-    ]
-    .join("\n")
+    ]);
+    if enable_yazelix {
+        lines.push("        config.programs.yazelix.enable = true;".to_string());
+    }
+    lines.push("      })".to_string());
+    lines
 }
 
 fn load_home_manager_desktop_entry_contract(
@@ -3053,7 +3073,7 @@ fn load_home_manager_desktop_entry_contract(
 fn build_home_manager_desktop_entry_expr(repo_root: &Path) -> String {
     let module_path =
         escape_nix_string(&repo_root.join(MODULE_RELATIVE_PATH).display().to_string());
-    [
+    let mut lines = vec![
         "let".to_string(),
         "  pkgs = import <nixpkgs> { system = \"x86_64-linux\"; };".to_string(),
         "  lib = pkgs.lib;".to_string(),
@@ -3061,17 +3081,9 @@ fn build_home_manager_desktop_entry_expr(repo_root: &Path) -> String {
         "    specialArgs = { inherit pkgs; nixgl = null; };".to_string(),
         "    modules = [".to_string(),
         format!("      (builtins.toPath \"{}\")", module_path),
-        "      ({ lib, ... }: {".to_string(),
-        "        options.xdg.configHome = lib.mkOption { type = lib.types.str; default = \"/tmp/config\"; };".to_string(),
-        "        options.xdg.dataHome = lib.mkOption { type = lib.types.str; default = \"/tmp/data\"; };".to_string(),
-        "        options.xdg.dataFile = lib.mkOption { type = lib.types.attrsOf lib.types.anything; default = {}; };".to_string(),
-        "        options.xdg.configFile = lib.mkOption { type = lib.types.attrsOf lib.types.anything; default = {}; };".to_string(),
-        "        options.xdg.desktopEntries = lib.mkOption { type = lib.types.attrsOf lib.types.anything; default = {}; };".to_string(),
-        "        options.home.packages = lib.mkOption { type = lib.types.listOf lib.types.package; default = []; };".to_string(),
-        "        options.home.activation = lib.mkOption { type = lib.types.attrsOf lib.types.anything; default = {}; };".to_string(),
-        "        options.home.profileDirectory = lib.mkOption { type = lib.types.str; default = \"/tmp/profile\"; };".to_string(),
-        "        config.programs.yazelix.enable = true;".to_string(),
-        "      })".to_string(),
+    ];
+    lines.extend(standalone_home_manager_eval_fixture_module(true, true));
+    lines.extend([
         "    ];".to_string(),
         "  };".to_string(),
         "in {".to_string(),
@@ -3079,8 +3091,8 @@ fn build_home_manager_desktop_entry_expr(repo_root: &Path) -> String {
         "  exec = eval.config.xdg.desktopEntries.yazelix.exec or \"\";".to_string(),
         "  terminal = eval.config.xdg.desktopEntries.yazelix.terminal or false;".to_string(),
         "}".to_string(),
-    ]
-    .join("\n")
+    ]);
+    lines.join("\n")
 }
 
 fn validate_home_manager_darwin_without_desktop_entry_option(
@@ -3094,7 +3106,7 @@ fn validate_home_manager_darwin_without_desktop_entry_option(
 fn build_home_manager_darwin_without_desktop_entry_option_expr(repo_root: &Path) -> String {
     let module_path =
         escape_nix_string(&repo_root.join(MODULE_RELATIVE_PATH).display().to_string());
-    [
+    let mut lines = vec![
         "let".to_string(),
         "  pkgs = import <nixpkgs> { system = \"aarch64-darwin\"; };".to_string(),
         "  lib = pkgs.lib;".to_string(),
@@ -3102,21 +3114,14 @@ fn build_home_manager_darwin_without_desktop_entry_option_expr(repo_root: &Path)
         "    specialArgs = { inherit pkgs; nixgl = null; };".to_string(),
         "    modules = [".to_string(),
         format!("      (builtins.toPath \"{}\")", module_path),
-        "      ({ lib, ... }: {".to_string(),
-        "        options.xdg.configHome = lib.mkOption { type = lib.types.str; default = \"/tmp/config\"; };".to_string(),
-        "        options.xdg.dataHome = lib.mkOption { type = lib.types.str; default = \"/tmp/data\"; };".to_string(),
-        "        options.xdg.dataFile = lib.mkOption { type = lib.types.attrsOf lib.types.anything; default = {}; };".to_string(),
-        "        options.xdg.configFile = lib.mkOption { type = lib.types.attrsOf lib.types.anything; default = {}; };".to_string(),
-        "        options.home.packages = lib.mkOption { type = lib.types.listOf lib.types.package; default = []; };".to_string(),
-        "        options.home.activation = lib.mkOption { type = lib.types.attrsOf lib.types.anything; default = {}; };".to_string(),
-        "        options.home.profileDirectory = lib.mkOption { type = lib.types.str; default = \"/tmp/profile\"; };".to_string(),
-        "        config.programs.yazelix.enable = true;".to_string(),
-        "      })".to_string(),
+    ];
+    lines.extend(standalone_home_manager_eval_fixture_module(false, true));
+    lines.extend([
         "    ];".to_string(),
         "  };".to_string(),
         "in { enabled = eval.config.programs.yazelix.enable; }".to_string(),
-    ]
-    .join("\n")
+    ]);
+    lines.join("\n")
 }
 
 fn run_nix_eval(repo_root: &Path, expr: &str) -> Result<JsonValue, String> {
