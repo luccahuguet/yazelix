@@ -35,6 +35,7 @@ pub mod onboard_commands;
 pub mod profile_commands;
 pub mod public_command_surface;
 pub mod reset_commands;
+pub mod runtime_apply_mode;
 pub mod runtime_contract;
 pub mod runtime_env;
 pub mod runtime_materialization;
@@ -136,6 +137,7 @@ pub use public_command_surface::{
     yzx_command_metadata,
 };
 pub use reset_commands::run_yzx_reset;
+pub use runtime_apply_mode::{RuntimeApplyMode, runtime_apply_mode_codes};
 pub use runtime_contract::{
     GeneratedLayoutCheckRequest, LaunchPreflightPayload, LinuxGhosttyDesktopGraphicsRequest,
     PreflightKind, RuntimeCheckData, RuntimeContractEvaluateData, RuntimeContractEvaluateRequest,

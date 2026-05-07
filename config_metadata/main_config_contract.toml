@@ -28,6 +28,7 @@ parser_key = "debug_mode"
 home_manager_option = "debug_mode"
 parser_behavior = "direct"
 rebuild_required = false
+apply_mode = "tab_session_restart"
 
 [fields."core.skip_welcome_screen"]
 kind = "bool"
@@ -36,6 +37,7 @@ parser_key = "skip_welcome_screen"
 home_manager_option = "skip_welcome_screen"
 parser_behavior = "direct"
 rebuild_required = false
+apply_mode = "tab_session_restart"
 
 [fields."core.show_macchina_on_welcome"]
 kind = "bool"
@@ -44,6 +46,7 @@ parser_key = "show_macchina_on_welcome"
 home_manager_option = "show_macchina_on_welcome"
 parser_behavior = "direct"
 rebuild_required = false
+apply_mode = "tab_session_restart"
 
 [fields."core.game_of_life_cell_style"]
 kind = "string"
@@ -57,6 +60,7 @@ allowed_values = [
   "dotted",
 ]
 rebuild_required = false
+apply_mode = "tab_session_restart"
 
 [fields."core.welcome_style"]
 kind = "string"
@@ -78,6 +82,7 @@ allowed_values = [
   "random",
 ]
 rebuild_required = false
+apply_mode = "tab_session_restart"
 
 [fields."core.welcome_duration_seconds"]
 kind = "float"
@@ -89,6 +94,7 @@ validation = "float_range"
 min = 0.2
 max = 8.0
 rebuild_required = false
+apply_mode = "tab_session_restart"
 
 [fields."helix.runtime_path"]
 kind = "string"
@@ -101,6 +107,7 @@ emit_in_default_template = false
 home_manager_default_is_null = true
 home_manager_can_omit = true
 rebuild_required = true
+apply_mode = "tab_session_restart"
 
 [fields."editor.command"]
 kind = "string"
@@ -111,6 +118,7 @@ parser_behavior = "empty_string_to_null"
 nullable = true
 home_manager_default_is_null = true
 rebuild_required = true
+apply_mode = "tab_session_restart"
 
 [fields."editor.hide_sidebar_on_file_open"]
 kind = "bool"
@@ -119,6 +127,7 @@ parser_key = "hide_sidebar_on_file_open"
 home_manager_option = "hide_sidebar_on_file_open"
 parser_behavior = "direct"
 rebuild_required = false
+apply_mode = "tab_session_restart"
 
 [fields."editor.sidebar_width_percent"]
 kind = "int"
@@ -130,6 +139,7 @@ validation = "int_range"
 min = 10
 max = 40
 rebuild_required = false
+apply_mode = "tab_session_restart"
 
 [fields."editor.sidebar_command"]
 kind = "string"
@@ -138,6 +148,7 @@ parser_key = "sidebar_command"
 home_manager_option = "sidebar_command"
 parser_behavior = "direct"
 rebuild_required = false
+apply_mode = "tab_session_restart"
 
 [fields."editor.sidebar_args"]
 kind = "string_list"
@@ -148,6 +159,7 @@ parser_key = "sidebar_args"
 home_manager_option = "sidebar_args"
 parser_behavior = "direct"
 rebuild_required = false
+apply_mode = "tab_session_restart"
 
 [fields."shell.default_shell"]
 kind = "string"
@@ -163,6 +175,7 @@ allowed_values = [
   "zsh",
 ]
 rebuild_required = false
+apply_mode = "shell_terminal_restart"
 
 [fields."terminal.terminals"]
 kind = "string_list"
@@ -182,6 +195,7 @@ allowed_values = [
   "foot",
 ]
 rebuild_required = true
+apply_mode = "shell_terminal_restart"
 
 [fields."terminal.config_mode"]
 kind = "string"
@@ -195,6 +209,7 @@ allowed_values = [
   "user",
 ]
 rebuild_required = false
+apply_mode = "shell_terminal_restart"
 
 [fields."terminal.transparency"]
 kind = "string"
@@ -213,6 +228,7 @@ allowed_values = [
   "super_high",
 ]
 rebuild_required = false
+apply_mode = "shell_terminal_restart"
 
 [fields."zellij.disable_tips"]
 kind = "bool"
@@ -221,6 +237,7 @@ parser_key = "disable_zellij_tips"
 home_manager_option = "disable_zellij_tips"
 parser_behavior = "bool_to_string"
 rebuild_required = false
+apply_mode = "tab_session_restart"
 
 [fields."zellij.pane_frames"]
 kind = "bool"
@@ -229,6 +246,7 @@ parser_key = "zellij_pane_frames"
 home_manager_option = "zellij_pane_frames"
 parser_behavior = "bool_to_string"
 rebuild_required = false
+apply_mode = "tab_session_restart"
 
 [fields."zellij.rounded_corners"]
 kind = "bool"
@@ -237,6 +255,7 @@ parser_key = "zellij_rounded_corners"
 home_manager_option = "zellij_rounded_corners"
 parser_behavior = "bool_to_string"
 rebuild_required = false
+apply_mode = "tab_session_restart"
 
 [fields."zellij.support_kitty_keyboard_protocol"]
 kind = "bool"
@@ -245,6 +264,7 @@ parser_key = "support_kitty_keyboard_protocol"
 home_manager_option = "support_kitty_keyboard_protocol"
 parser_behavior = "bool_to_string"
 rebuild_required = false
+apply_mode = "tab_session_restart"
 
 [fields."zellij.theme"]
 kind = "string"
@@ -253,6 +273,7 @@ parser_key = "zellij_theme"
 home_manager_option = "zellij_theme"
 parser_behavior = "direct"
 rebuild_required = false
+apply_mode = "tab_session_restart"
 
 [fields."zellij.widget_tray"]
 kind = "string_list"
@@ -282,6 +303,7 @@ allowed_values = [
   "ram",
 ]
 rebuild_required = false
+apply_mode = "generated_runtime_refresh"
 
 [fields."zellij.tab_label_mode"]
 kind = "string"
@@ -295,6 +317,7 @@ allowed_values = [
   "compact",
 ]
 rebuild_required = false
+apply_mode = "generated_runtime_refresh"
 
 [fields."zellij.codex_usage_display"]
 kind = "string"
@@ -309,6 +332,7 @@ allowed_values = [
   "both",
 ]
 rebuild_required = false
+apply_mode = "generated_runtime_refresh"
 
 [fields."zellij.claude_usage_display"]
 kind = "string"
@@ -323,6 +347,7 @@ allowed_values = [
   "both",
 ]
 rebuild_required = false
+apply_mode = "generated_runtime_refresh"
 
 [fields."zellij.claude_usage_periods"]
 kind = "string_list"
@@ -339,6 +364,7 @@ allowed_values = [
   "week",
 ]
 rebuild_required = false
+apply_mode = "generated_runtime_refresh"
 
 [fields."zellij.opencode_go_usage_display"]
 kind = "string"
@@ -353,6 +379,7 @@ allowed_values = [
   "both",
 ]
 rebuild_required = false
+apply_mode = "generated_runtime_refresh"
 
 [fields."zellij.opencode_go_usage_periods"]
 kind = "string_list"
@@ -371,6 +398,7 @@ allowed_values = [
   "month",
 ]
 rebuild_required = false
+apply_mode = "generated_runtime_refresh"
 
 [fields."zellij.custom_text"]
 kind = "string"
@@ -379,6 +407,7 @@ parser_key = "zellij_custom_text"
 home_manager_option = "zellij_custom_text"
 parser_behavior = "compact_badge_text"
 rebuild_required = false
+apply_mode = "generated_runtime_refresh"
 
 [fields."zellij.popup_program"]
 kind = "string_list"
@@ -389,6 +418,7 @@ parser_key = "popup_program"
 home_manager_option = "popup_program"
 parser_behavior = "direct"
 rebuild_required = false
+apply_mode = "tab_session_restart"
 
 [fields."zellij.popup_width_percent"]
 kind = "int"
@@ -400,6 +430,7 @@ validation = "int_range"
 min = 1
 max = 100
 rebuild_required = false
+apply_mode = "live_with_pane_refresh"
 
 [fields."zellij.popup_height_percent"]
 kind = "int"
@@ -411,6 +442,7 @@ validation = "int_range"
 min = 1
 max = 100
 rebuild_required = false
+apply_mode = "live_with_pane_refresh"
 
 [fields."zellij.screen_saver_enabled"]
 kind = "bool"
@@ -419,6 +451,7 @@ parser_key = "screen_saver_enabled"
 home_manager_option = "screen_saver_enabled"
 parser_behavior = "direct"
 rebuild_required = false
+apply_mode = "live_with_pane_refresh"
 
 [fields."zellij.screen_saver_idle_seconds"]
 kind = "int"
@@ -430,6 +463,7 @@ validation = "int_range"
 min = 10
 max = 86400
 rebuild_required = false
+apply_mode = "live_with_pane_refresh"
 
 [fields."zellij.screen_saver_style"]
 kind = "string"
@@ -450,6 +484,7 @@ allowed_values = [
   "random",
 ]
 rebuild_required = false
+apply_mode = "live_with_pane_refresh"
 
 [fields."zellij.default_mode"]
 kind = "string"
@@ -463,6 +498,7 @@ allowed_values = [
   "locked",
 ]
 rebuild_required = false
+apply_mode = "tab_session_restart"
 
 [fields."zellij.keybindings"]
 kind = "string_list_map"
@@ -470,6 +506,7 @@ parser_key = "zellij_keybindings"
 home_manager_option = "zellij_keybindings"
 parser_behavior = "direct"
 rebuild_required = false
+apply_mode = "tab_session_restart"
 
 [fields."zellij.keybindings".default]
 open_workspace_terminal = ["Alt m"]
@@ -493,6 +530,7 @@ parser_behavior = "empty_string_to_null"
 nullable = true
 home_manager_default_is_null = true
 rebuild_required = false
+apply_mode = "generated_runtime_refresh"
 
 [fields."yazi.ya_command"]
 kind = "string"
@@ -503,6 +541,7 @@ parser_behavior = "empty_string_to_null"
 nullable = true
 home_manager_default_is_null = true
 rebuild_required = false
+apply_mode = "generated_runtime_refresh"
 
 [fields."yazi.plugins"]
 kind = "string_list"
@@ -514,6 +553,7 @@ parser_key = "yazi_plugins"
 home_manager_option = "yazi_plugins"
 parser_behavior = "direct"
 rebuild_required = false
+apply_mode = "generated_runtime_refresh"
 
 # Random theme palettes for yazi-render-plan live in config_metadata/yazi_render_plan.toml
 # (not repeated here). Defaults for [yazi].plugins and allowed [yazi].sort_by values are parity-checked against that file in Rust tests.
@@ -524,6 +564,7 @@ parser_key = "yazi_theme"
 home_manager_option = "yazi_theme"
 parser_behavior = "direct"
 rebuild_required = false
+apply_mode = "generated_runtime_refresh"
 
 [fields."yazi.sort_by"]
 kind = "string"
@@ -540,3 +581,4 @@ allowed_values = [
   "size",
 ]
 rebuild_required = false
+apply_mode = "generated_runtime_refresh"

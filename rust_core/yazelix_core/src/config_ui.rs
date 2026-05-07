@@ -9,6 +9,7 @@ use crate::native_config_status::{
     current_platform_name, path_owned_by_home_manager, status_code_for_entry,
     xdg_config_home_from_env,
 };
+use crate::runtime_apply_mode::RuntimeApplyMode;
 use crate::settings_jsonc_patch::{
     SettingsJsoncPatchMutation, set_settings_jsonc_value_text, unset_settings_jsonc_value_text,
 };
@@ -104,6 +105,7 @@ pub struct ConfigUiField {
     pub allowed_values: Vec<String>,
     pub validation: String,
     pub rebuild_required: bool,
+    pub apply_mode: RuntimeApplyMode,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -134,6 +136,7 @@ struct ContractField {
     min: Option<f64>,
     max: Option<f64>,
     rebuild_required: bool,
+    apply_mode: RuntimeApplyMode,
 }
 
 #[derive(Debug, Clone)]
@@ -264,6 +267,11 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
         let default = get_json_path(&default_value, &field.path)
             .cloned()
             .or_else(|| field.default_value.clone());
+        let apply_mode = if config_owner == ConfigUiPathOwner::HomeManager {
+            RuntimeApplyMode::PackageHomeManagerActivation
+        } else {
+            field.apply_mode
+        };
         fields.push(build_field_row(
             &field.path,
             &metadata.tab,
@@ -274,6 +282,7 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
             field.allowed_values.clone(),
             field.validation.clone(),
             field.rebuild_required,
+            apply_mode,
             blocking_paths.contains(&field.path),
         ));
     }
@@ -295,6 +304,7 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
             schema_field.allowed_values,
             String::new(),
             false,
+            RuntimeApplyMode::ShellTerminalRestart,
             blocking_paths.contains(&schema_field.path),
         ));
     }
@@ -1520,6 +1530,7 @@ fn field_detail_lines(field: &ConfigUiField) -> Vec<Line<'static>> {
         detail_line("current", &field.current_value),
         detail_line("default", &field.default_value),
         detail_line("type", &field.kind),
+        detail_line("apply", field.apply_mode.label()),
     ];
     if !field.validation.is_empty() {
         lines.push(detail_line("validation", &field.validation));
@@ -1921,6 +1932,28 @@ fn load_contract_fields(path: &Path) -> Result<BTreeMap<String, ContractField>, 
             .get("rebuild_required")
             .and_then(TomlValue::as_bool)
             .unwrap_or(false);
+        let apply_mode = table
+            .get("apply_mode")
+            .and_then(TomlValue::as_str)
+            .ok_or_else(|| {
+                CoreError::classified(
+                    ErrorClass::Config,
+                    "missing_apply_mode",
+                    format!("Config contract field {field_path} is missing apply_mode."),
+                    "Reinstall Yazelix so the runtime includes the current config contract.",
+                    json!({ "field": field_path }),
+                )
+            })?
+            .parse::<RuntimeApplyMode>()
+            .map_err(|message| {
+                CoreError::classified(
+                    ErrorClass::Config,
+                    "invalid_apply_mode",
+                    format!("Config contract field {field_path} has {message}."),
+                    "Reinstall Yazelix so the runtime includes a valid config contract.",
+                    json!({ "field": field_path }),
+                )
+            })?;
         let default_value = table.get("default").map(toml_value_to_json).transpose()?;
         fields.insert(
             field_path.clone(),
@@ -1933,6 +1966,7 @@ fn load_contract_fields(path: &Path) -> Result<BTreeMap<String, ContractField>, 
                 min,
                 max,
                 rebuild_required,
+                apply_mode,
             },
         );
     }
@@ -2211,6 +2245,7 @@ fn build_field_row(
     allowed_values: Vec<String>,
     validation: String,
     rebuild_required: bool,
+    apply_mode: RuntimeApplyMode,
     has_blocking_diagnostic: bool,
 ) -> ConfigUiField {
     let state = if has_blocking_diagnostic {
@@ -2242,6 +2277,7 @@ fn build_field_row(
         allowed_values,
         validation,
         rebuild_required,
+        apply_mode,
     }
 }
 
@@ -2257,6 +2293,7 @@ fn field_description(field: &ContractField, metadata: &FieldUiMetadata) -> Strin
     if field.rebuild_required {
         parts.push("takes effect after runtime rebuild or rematerialization".to_string());
     }
+    parts.push(format!("apply mode: {}", field.apply_mode.label()));
     parts.join("; ")
 }
 
@@ -2936,6 +2973,7 @@ mod tests {
                 .collect(),
             validation: String::new(),
             rebuild_required: false,
+            apply_mode: RuntimeApplyMode::TabSessionRestart,
         }
     }
 
@@ -3065,6 +3103,7 @@ mod tests {
             .expect("widget tray");
 
         assert_eq!(field.current_value, "[7 items]");
+        assert_eq!(field.apply_mode, RuntimeApplyMode::GeneratedRuntimeRefresh);
         let input = edit_input_for_field(field);
         assert!(input.starts_with("[\"editor\",\"shell\",\"term\""));
         assert_eq!(
@@ -3078,6 +3117,77 @@ mod tests {
                 "cpu",
                 "ram"
             ])
+        );
+    }
+
+    // Defends: machine-readable apply modes from main_config_contract.toml reach the config UI model for the first live slice and restart-scoped fields.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn model_exposes_runtime_apply_modes_from_contract() {
+        let runtime = tempdir().expect("runtime");
+        let config = tempdir().expect("config");
+        write_runtime_layout(runtime.path());
+        let request = test_request(runtime.path(), config.path());
+        let model = build_config_ui_model(&request).expect("model");
+
+        let popup_width = model
+            .fields
+            .iter()
+            .find(|field| field.path == "zellij.popup_width_percent")
+            .expect("popup width");
+        assert_eq!(
+            popup_width.apply_mode,
+            RuntimeApplyMode::LiveWithPaneRefresh
+        );
+
+        let editor_command = model
+            .fields
+            .iter()
+            .find(|field| field.path == "editor.command")
+            .expect("editor command");
+        assert_eq!(
+            editor_command.apply_mode,
+            RuntimeApplyMode::TabSessionRestart
+        );
+
+        let terminal_config_mode = model
+            .fields
+            .iter()
+            .find(|field| field.path == "terminal.config_mode")
+            .expect("terminal config mode");
+        assert_eq!(
+            terminal_config_mode.apply_mode,
+            RuntimeApplyMode::ShellTerminalRestart
+        );
+    }
+
+    // Defends: Home Manager-owned settings are presented as activation-scoped even when the field's intrinsic apply mode is narrower.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[cfg(unix)]
+    #[test]
+    fn home_manager_owned_settings_use_activation_apply_mode() {
+        let runtime = tempdir().expect("runtime");
+        let config = tempdir().expect("config");
+        write_runtime_layout(runtime.path());
+        let hm_dir = config.path().join("profile-home-manager-files");
+        fs::create_dir_all(&hm_dir).expect("home manager dir");
+        let hm_settings = hm_dir.join("settings.jsonc");
+        fs::write(&hm_settings, "{}\n").expect("home manager settings");
+        std::os::unix::fs::symlink(&hm_settings, config.path().join("settings.jsonc"))
+            .expect("settings symlink");
+
+        let request = test_request(runtime.path(), config.path());
+        let model = build_config_ui_model(&request).expect("model");
+        let popup_width = model
+            .fields
+            .iter()
+            .find(|field| field.path == "zellij.popup_width_percent")
+            .expect("popup width");
+
+        assert_eq!(model.config_owner, ConfigUiPathOwner::HomeManager);
+        assert_eq!(
+            popup_width.apply_mode,
+            RuntimeApplyMode::PackageHomeManagerActivation
         );
     }
 

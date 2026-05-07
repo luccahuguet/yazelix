@@ -13,6 +13,7 @@ use yazelix_core::config_state::{
     record_config_state,
 };
 use yazelix_core::control_plane::read_yazelix_version_from_runtime;
+use yazelix_core::{RuntimeApplyMode, runtime_apply_mode_codes};
 
 const MAIN_TEMPLATE_RELATIVE_PATH: &str = "yazelix_default.toml";
 const MODULE_RELATIVE_PATH: &str = "home_manager/module.nix";
@@ -2431,6 +2432,7 @@ fn validate_main_contract_parity(repo_root: &Path) -> Result<Vec<String>, String
         let Some(field) = fields.get(&field_path).and_then(TomlValue::as_table) else {
             continue;
         };
+        validate_main_contract_apply_mode(&field_path, field, &mut errors);
         let hm_option = field
             .get("home_manager_option")
             .and_then(TomlValue::as_str)
@@ -2508,6 +2510,27 @@ fn validate_main_contract_parity(repo_root: &Path) -> Result<Vec<String>, String
     }
 
     Ok(errors)
+}
+
+fn validate_main_contract_apply_mode(
+    field_path: &str,
+    field: &TomlTable,
+    errors: &mut Vec<String>,
+) {
+    let Some(apply_mode) = field.get("apply_mode").and_then(TomlValue::as_str) else {
+        errors.push(format!(
+            "main_config_contract.toml field `{field_path}` is missing apply_mode"
+        ));
+        return;
+    };
+
+    if apply_mode.parse::<RuntimeApplyMode>().is_err() {
+        errors.push(format!(
+            "main_config_contract.toml field `{field_path}` has unsupported apply_mode `{}`; expected one of: {}",
+            apply_mode,
+            runtime_apply_mode_codes().join(", ")
+        ));
+    }
 }
 
 fn load_nushell_budget_manifest(repo_root: &Path) -> Result<NushellBudgetManifest, String> {
@@ -3832,5 +3855,34 @@ def prepare_session_config_snapshot [] {
             validate_startup_snapshot_env_contract_content("start_yazelix_inner.nu", &env_def)
                 .is_empty()
         );
+    }
+
+    // Test lane: maintainer
+    // Defends: every main config contract field declares a closed runtime apply mode before config UI and doctor consume it.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn main_contract_apply_mode_validator_rejects_missing_or_unknown_modes() {
+        let mut field = TomlTable::new();
+        let mut errors = Vec::new();
+        validate_main_contract_apply_mode("core.debug_mode", &field, &mut errors);
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("missing apply_mode"));
+
+        field.insert(
+            "apply_mode".to_string(),
+            TomlValue::String("restart_later".to_string()),
+        );
+        errors.clear();
+        validate_main_contract_apply_mode("core.debug_mode", &field, &mut errors);
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("unsupported apply_mode"));
+
+        field.insert(
+            "apply_mode".to_string(),
+            TomlValue::String("tab_session_restart".to_string()),
+        );
+        errors.clear();
+        validate_main_contract_apply_mode("core.debug_mode", &field, &mut errors);
+        assert!(errors.is_empty());
     }
 }
