@@ -53,6 +53,8 @@ The supported customization paths are:
 - Edit `yzx_side.swap.kdl` or `yzx_side_closed.swap.kdl` to tweak built-in swap layouts
 - Add a new top-level `.kdl` file in `configs/zellij/layouts/` if you also add it to `config_metadata/zellij_layout_families.toml`
 
+Yazelix does not currently expose a second declarative layout-profile language. Keep complex custom layout work in KDL so the generated runtime, Zellij, and the workspace contract share the same source files.
+
 ## Important Boundary
 
 Custom sidebar layout families are not fully first-class yet.

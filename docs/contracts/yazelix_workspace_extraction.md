@@ -21,6 +21,24 @@ The extraction readiness state is `internal_boundary_only`.
 
 The internal boundary may move code, but it must not change supported runtime behavior by itself.
 
+## Zellij Layout Ownership Gate
+
+The current layout ownership decision is intentionally narrow:
+
+- Yazelix core owns built-in layout family metadata, generated layout assets, runtime placeholder substitution, and startup/swap layout file selection
+- The pane orchestrator owns live tab-local layout state, sidebar collapsed/open state, and managed pane identity after Zellij starts
+- Users may customize top-level KDL layout files and sidebar launch commands, but brand-new sidebar families are not first-class until the pane orchestrator and layout metadata learn them explicitly
+- Home Manager renders the same Yazelix-owned settings surface; it does not own a second layout profile language
+- Public `yazelix_workspace` extraction remains blocked until Zellij materialization and workspace/editor/session command ownership shrink inside the main repo
+
+Rejected or deferred layout branches:
+
+- Override-layout resurrection through owned explicit-run pane creation is rejected for this pass. It would require Yazelix to replace too many native Zellij pane-creation surfaces just to make live layout transitions preserve anonymous panes
+- The bottom-bar/zen-mode POC based on override-layout is deferred. Existing Zellij fullscreen behavior remains the supported focused-work fallback, and any future barless component toggle should start from the status/layout ownership model instead of this POC
+- User-declared declarative Zellij layout profiles are deferred. The supported customization boundary remains explicit KDL files plus the existing `editor.sidebar_command` and `editor.sidebar_args` settings
+
+This gate unblocks deletion-first Zellij cleanup. `zellij_materialization.rs`, `zellij_commands.rs`, and Zellij validators should consolidate around the built-in family metadata plus copied top-level custom KDL files instead of preserving duplicate render paths for override-layout or declarative profiles that are not accepted product surfaces.
+
 ## In-Scope Flow
 
 The candidate reusable workspace surface includes:
