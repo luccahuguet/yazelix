@@ -27,6 +27,7 @@ This inventory lists the canonical contracts under `docs/contracts/`. It is not 
 | `pane_orchestrator_tab_local_session_state_seam.md` | Pane-orchestrator tab-local session state boundary |
 | `runtime_dependency_preflight_contract.md` | Runtime dependency and launch-preflight behavior |
 | `runtime_distribution_capability_tiers.md` | Runtime distribution capability tiers and update ownership |
+| `runtime_applied_settings.md` | Settings apply-mode vocabulary and runtime refresh boundary |
 | `runtime_root_contract.md` | Runtime root ownership |
 | `runtime_shell_floor_contract.md` | Surviving runtime-side shell floor |
 | `rust_nextest_harness_boundary.md` | Rust nextest harness boundary |
