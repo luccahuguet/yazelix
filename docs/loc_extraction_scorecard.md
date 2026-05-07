@@ -107,6 +107,21 @@ Creating a separate repository without reducing main-repo ownership is deferred 
 
 Adapters retained in this repo should be thin. If an extraction leaves a large adapter, generated mirror, compatibility layer, or validator here, record it under deferred deletion debt and create the owner bead immediately.
 
+## Modularity Tradeoffs
+
+Child-repo extraction can be worth a narrower integration contract, but the cost must be explicit. Do not hide the cost by adding a broad proxy in the main repo that recreates the old owner under another name.
+
+For each accepted tradeoff, record:
+
+- the capability that gets narrower, slower, restart-scoped, or less live
+- the old owner and the new owner
+- the main-repo code, generated clutter, runtime storage, or ownership that disappears
+- the remaining Yazelix adapter surface and why it is thin
+- the user-visible status text, apply mode, or doctor/config UI wording that tells the truth
+- the condition that would justify reopening the tradeoff later
+
+The popup extraction is the reference example. `zellij.popup_width_percent` and `zellij.popup_height_percent` are generated `yzpp` plugin config, so they use `generated_runtime_refresh` rather than `live_with_pane_refresh`. That is an accepted modularity cost because popup lifecycle, KDL spec parsing, duplicate prevention, and close hooks live in `yazelix-zellij-popup`, while the main repo deletes the old transient-pane adapter and keeps only a thin generated-spec integration.
+
 ## Report Template
 
 ```text
@@ -138,6 +153,7 @@ Main-repo ownership result:
 - moved:
 - still owned:
 - deferred deletion debt:
+- accepted modularity costs:
 
 Child-repo impact:
 - repo:

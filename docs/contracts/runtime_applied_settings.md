@@ -51,6 +51,14 @@ The config UI, doctor, and future `yzx_control` save/apply flows should use one 
 
 When Home Manager owns the active settings source, every editable semantic setting is effectively `package_home_manager_activation` from the config UI perspective.
 
+## Owner Boundary Tradeoffs
+
+Apply modes follow the runtime owner, not the old implementation path. A setting can use `live_with_pane_refresh` only when the running owner of that behavior exposes a bounded reload protocol and can acknowledge success or failure.
+
+Extraction and child-repo ownership can deliberately move a setting to a less-live apply mode. That is acceptable when the new owner removes main-repo lifecycle code or creates a smaller reusable boundary, but the config UI and command output must report the cost directly instead of pretending the saved value is active.
+
+The popup settings are the canonical example. `zellij.popup_width_percent` and `zellij.popup_height_percent` used to fit the pane-orchestrator live-refresh bucket when the pane orchestrator owned popup lifecycle. Popup panes are `yzpp`-managed plugin specs, so geometry changes are generated Zellij config changes and become active after generated config refresh plus tab/session restart.
+
 ## First Live Slice
 
 The first safe live-apply implementation slice is restricted to bounded pane-orchestrator runtime fields:
