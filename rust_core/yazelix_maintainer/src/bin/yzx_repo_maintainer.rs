@@ -3,6 +3,7 @@ use yazelix_maintainer::repo_contract_validation::sync_readme_surface;
 use yazelix_maintainer::repo_issue_sync::run_issue_sync;
 use yazelix_maintainer::repo_nu_lint::run_repo_nu_lint;
 use yazelix_maintainer::repo_plugin_build::build_pane_orchestrator;
+use yazelix_maintainer::repo_rust_commands::run_repo_rust_command;
 use yazelix_maintainer::repo_test_runner::{RepoTestOptions, run_repo_tests};
 use yazelix_maintainer::repo_update_workflow::{RepoUpdateOptions, run_repo_update_workflow};
 use yazelix_maintainer::repo_validation::repo_root;
@@ -120,6 +121,10 @@ fn main() {
             let (format, paths) = parse_lint_nu_args(args.collect());
             run_repo_nu_lint(&resolved_repo_root, &format, &paths)
         }
+        "rust" => {
+            let rust_args = args.collect::<Vec<_>>();
+            run_repo_rust_command(&resolved_repo_root, &rust_args)
+        }
         _ => {
             eprintln!("Unknown maintainer command `{command}`");
             print_usage_and_exit();
@@ -134,7 +139,7 @@ fn main() {
 
 fn print_usage_and_exit() -> ! {
     eprintln!(
-        "Usage: yzx_repo_maintainer [--repo-root PATH] <sync-readme-surface|run-tests|version-bump|sync-issues|build-pane-orchestrator|dev-update|lint-nu> [options]"
+        "Usage: yzx_repo_maintainer [--repo-root PATH] <sync-readme-surface|run-tests|version-bump|sync-issues|build-pane-orchestrator|dev-update|lint-nu|rust> [options]"
     );
     std::process::exit(2);
 }
@@ -254,6 +259,13 @@ fn parse_dev_update_args(args: Vec<String>) -> RepoUpdateOptions {
                 };
                 options.canaries.push(value);
             }
+            "--canaries" => {
+                let Some(value) = iter.next() else {
+                    eprintln!("Missing value after --canaries");
+                    std::process::exit(2);
+                };
+                options.canaries.extend(parse_canary_list(&value));
+            }
             _ => {
                 eprintln!("Unknown dev-update option `{arg}`");
                 std::process::exit(2);
@@ -261,6 +273,16 @@ fn parse_dev_update_args(args: Vec<String>) -> RepoUpdateOptions {
         }
     }
     options
+}
+
+fn parse_canary_list(raw: &str) -> Vec<String> {
+    raw.trim_matches(|ch| matches!(ch, '[' | ']'))
+        .split(',')
+        .map(str::trim)
+        .map(|value| value.trim_matches('"').trim_matches('\''))
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+        .collect()
 }
 
 fn parse_lint_nu_args(args: Vec<String>) -> (String, Vec<String>) {
@@ -280,4 +302,24 @@ fn parse_lint_nu_args(args: Vec<String>) -> (String, Vec<String>) {
         }
     }
     (format, paths)
+}
+
+// Test lane: maintainer
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Defends: the maintainer-only update command preserves the former `yzx dev update --canaries a,b` convenience without runtime wrapper logic.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn canary_list_parser_accepts_comma_and_bracket_forms() {
+        assert_eq!(
+            parse_canary_list(r#"["launch","doctor"]"#),
+            vec!["launch".to_string(), "doctor".to_string()]
+        );
+        assert_eq!(
+            parse_canary_list("launch, doctor"),
+            vec!["launch".to_string(), "doctor".to_string()]
+        );
+    }
 }

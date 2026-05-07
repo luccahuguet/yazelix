@@ -1116,20 +1116,6 @@ fn run_profile(args: &[String]) -> Result<i32, CoreError> {
     }
 }
 
-#[derive(Debug, Clone)]
-struct RustTargetSpec {
-    name: &'static str,
-    manifest_path: PathBuf,
-    check_args: Vec<String>,
-    test_args: Vec<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct ParsedRustTarget {
-    target: String,
-    tail: Vec<String>,
-}
-
 #[derive(Debug, Clone, serde::Deserialize)]
 struct DevProfileRun {
     report_path: PathBuf,
@@ -1137,51 +1123,14 @@ struct DevProfileRun {
 }
 
 fn print_dev_help() {
-    println!("Development and maintainer commands");
+    println!("Runtime diagnostics");
     println!();
     println!("Usage:");
     println!("  yzx dev <command>");
     println!();
     println!("Commands:");
-    println!("  yzx dev build_pane_orchestrator [--sync]");
-    println!("  yzx dev bump <version>");
     println!("  yzx dev inspect_session [--json]");
-    println!("  yzx dev lint_nu [--format pretty|compact] [paths...]");
     println!("  yzx dev profile [--cold] [--desktop] [--launch] [--clear-cache]");
-    println!("  yzx dev rust <fmt|check|test>");
-    println!("  yzx dev sync_issues [--dry-run]");
-    println!("  yzx dev test [options]");
-    println!("  yzx dev update [options]");
-}
-
-fn print_dev_rust_help() {
-    println!("Fast Rust inner-loop commands:");
-    println!("  yzx dev rust fmt [TARGET] [--check]");
-    println!("  yzx dev rust check [TARGET]");
-    println!("  yzx dev rust test [TARGET] [cargo test args...]");
-    println!();
-    println!("TARGET: core, maintainer, pane_orchestrator, or all");
-    println!("For tests, TARGET can be omitted; unmatched args are passed to core cargo test.");
-    println!(
-        "These commands run cargo directly from the current environment. Use Nix/Home Manager/package validation as explicit final gates."
-    );
-}
-
-fn command_exists(command: &str) -> bool {
-    Command::new(command).arg("--version").output().is_ok()
-}
-
-fn require_fast_cargo() -> Result<(), CoreError> {
-    if !command_exists("cargo") || !command_exists("rustc") {
-        return Err(CoreError::classified(
-            ErrorClass::Runtime,
-            "missing_fast_rust_toolchain",
-            "Fast Rust maintainer commands require cargo and rustc on PATH.",
-            "Add the maintainer Rust toolchain to the loaded Yazelix/Home Manager profile, then rerun. Use explicit Nix/package gates only for final validation.",
-            serde_json::Value::Null,
-        ));
-    }
-    Ok(())
 }
 
 fn require_yazelix_repo_root() -> Result<PathBuf, CoreError> {
@@ -1224,295 +1173,6 @@ fn require_yazelix_repo_root() -> Result<PathBuf, CoreError> {
         ));
     }
     Ok(repo_root)
-}
-
-fn repo_maintainer_command(repo_root: &Path, maintainer_args: &[String]) -> Command {
-    let mut command = Command::new("nix");
-    command
-        .current_dir(repo_root)
-        .args([
-            "develop",
-            "-c",
-            "cargo",
-            "run",
-            "--quiet",
-            "--manifest-path",
-        ])
-        .arg(repo_root.join("rust_core").join("Cargo.toml"))
-        .args([
-            "-p",
-            "yazelix_maintainer",
-            "--bin",
-            "yzx_repo_maintainer",
-            "--",
-            "--repo-root",
-        ])
-        .arg(repo_root)
-        .args(maintainer_args);
-    command
-}
-
-fn run_repo_maintainer_checked(
-    repo_root: &Path,
-    failure_message: &str,
-    maintainer_args: &[String],
-) -> Result<i32, CoreError> {
-    let status = repo_maintainer_command(repo_root, maintainer_args)
-        .status()
-        .map_err(|source| {
-            CoreError::io(
-                "dev_repo_maintainer",
-                "Could not launch the Yazelix Rust maintainer command.",
-                "Ensure nix, cargo, and the maintainer Rust toolchain are available.",
-                repo_root.display().to_string(),
-                source,
-            )
-        })?;
-    if !status.success() {
-        return Err(CoreError::classified(
-            ErrorClass::Runtime,
-            "dev_repo_maintainer_failed",
-            failure_message,
-            "Review the command output above, fix the failing maintainer gate, then retry.",
-            serde_json::Value::Null,
-        ));
-    }
-    Ok(0)
-}
-
-fn run_repo_maintainer_json_command(
-    repo_root: &Path,
-    maintainer_args: &[String],
-) -> Result<serde_json::Value, CoreError> {
-    let output = repo_maintainer_command(repo_root, maintainer_args)
-        .output()
-        .map_err(|source| {
-            CoreError::io(
-                "dev_repo_maintainer",
-                "Could not launch the Yazelix Rust maintainer command.",
-                "Ensure nix, cargo, and the maintainer Rust toolchain are available.",
-                repo_root.display().to_string(),
-                source,
-            )
-        })?;
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(CoreError::classified(
-            ErrorClass::Runtime,
-            "dev_repo_maintainer_failed",
-            format!("Yazelix Rust maintainer command failed: {}", stderr.trim()),
-            "Review the failure, fix the maintainer command, then retry.",
-            serde_json::Value::Null,
-        ));
-    }
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    if stdout.trim().is_empty() {
-        return Ok(serde_json::Value::Object(serde_json::Map::new()));
-    }
-    serde_json::from_str(stdout.trim()).map_err(|source| {
-        CoreError::classified(
-            ErrorClass::Internal,
-            "dev_repo_maintainer_invalid_json",
-            format!("Yazelix Rust maintainer command emitted invalid JSON: {source}"),
-            "This is a bug; please report it.",
-            serde_json::Value::Null,
-        )
-    })
-}
-
-fn rust_target_specs(repo_root: &Path, target: &str) -> Result<Vec<RustTargetSpec>, CoreError> {
-    let specs = vec![
-        RustTargetSpec {
-            name: "core",
-            manifest_path: repo_root.join("rust_core").join("Cargo.toml"),
-            check_args: vec!["-p".into(), "yazelix_core".into()],
-            test_args: vec!["-p".into(), "yazelix_core".into()],
-        },
-        RustTargetSpec {
-            name: "maintainer",
-            manifest_path: repo_root.join("rust_core").join("Cargo.toml"),
-            check_args: vec!["-p".into(), "yazelix_maintainer".into()],
-            test_args: vec!["-p".into(), "yazelix_maintainer".into()],
-        },
-        RustTargetSpec {
-            name: "pane_orchestrator",
-            manifest_path: repo_root
-                .join("rust_plugins")
-                .join("zellij_pane_orchestrator")
-                .join("Cargo.toml"),
-            check_args: vec!["--lib".into()],
-            test_args: vec!["--lib".into()],
-        },
-    ];
-
-    match target {
-        "all" => Ok(specs),
-        "core" | "maintainer" | "pane_orchestrator" => Ok(specs
-            .into_iter()
-            .filter(|spec| spec.name == target)
-            .collect()),
-        _ => Err(CoreError::usage(format!(
-            "Unknown Rust target '{target}'. Expected one of: core, maintainer, pane_orchestrator, all."
-        ))),
-    }
-}
-
-fn parse_rust_target_and_tail(args: &[String], default_target: &str) -> ParsedRustTarget {
-    let known_targets = ["core", "maintainer", "pane_orchestrator", "all"];
-    if let Some(first) = args.first()
-        && known_targets.contains(&first.as_str())
-    {
-        return ParsedRustTarget {
-            target: first.clone(),
-            tail: args[1..].to_vec(),
-        };
-    }
-    ParsedRustTarget {
-        target: default_target.to_string(),
-        tail: args.to_vec(),
-    }
-}
-
-fn run_fast_cargo_checked(
-    repo_root: &Path,
-    label: &str,
-    cargo_args: &[String],
-) -> Result<i32, CoreError> {
-    require_fast_cargo()?;
-    println!("Running: cargo {}", cargo_args.join(" "));
-    let status = Command::new("cargo")
-        .current_dir(repo_root)
-        .args(cargo_args)
-        .status()
-        .map_err(|source| {
-            CoreError::io(
-                "dev_fast_cargo",
-                format!("Could not run fast Rust {label}."),
-                "Ensure cargo and rustc are available in the current environment.",
-                repo_root.display().to_string(),
-                source,
-            )
-        })?;
-    if !status.success() {
-        return Err(CoreError::classified(
-            ErrorClass::Runtime,
-            "dev_fast_cargo_failed",
-            format!("Fast Rust {label} failed."),
-            "Review the cargo output above, fix the Rust error, then retry.",
-            serde_json::Value::Null,
-        ));
-    }
-    Ok(0)
-}
-
-fn run_dev_rust(args: &[String]) -> Result<i32, CoreError> {
-    if args.is_empty() || matches!(args[0].as_str(), "-h" | "--help" | "help") {
-        print_dev_rust_help();
-        return Ok(0);
-    }
-    let repo_root = require_yazelix_repo_root()?;
-    let sub = args[0].as_str();
-    let tail = &args[1..];
-    match sub {
-        "fmt" => {
-            let mut target = "all".to_string();
-            let mut check = false;
-            for arg in tail {
-                match arg.as_str() {
-                    "--check" => check = true,
-                    value if !value.starts_with('-') => target = value.to_string(),
-                    other => {
-                        return Err(CoreError::usage(format!("Unknown rust fmt option {other}")));
-                    }
-                }
-            }
-            for spec in rust_target_specs(&repo_root, &target)? {
-                let mut cargo_args = vec![
-                    "fmt".to_string(),
-                    "--manifest-path".to_string(),
-                    spec.manifest_path.display().to_string(),
-                    "--all".to_string(),
-                ];
-                if check {
-                    cargo_args.extend(["--".to_string(), "--check".to_string()]);
-                }
-                run_fast_cargo_checked(
-                    &repo_root,
-                    &format!("rust fmt ({})", spec.name),
-                    &cargo_args,
-                )?;
-            }
-            Ok(0)
-        }
-        "check" => {
-            let target = tail.first().map(String::as_str).unwrap_or("core");
-            if tail.len() > 1 {
-                return Err(CoreError::usage(
-                    "yzx dev rust check accepts at most one target".to_string(),
-                ));
-            }
-            for spec in rust_target_specs(&repo_root, target)? {
-                let mut cargo_args = vec![
-                    "check".to_string(),
-                    "--manifest-path".to_string(),
-                    spec.manifest_path.display().to_string(),
-                ];
-                cargo_args.extend(spec.check_args);
-                run_fast_cargo_checked(
-                    &repo_root,
-                    &format!("rust check ({})", spec.name),
-                    &cargo_args,
-                )?;
-            }
-            Ok(0)
-        }
-        "test" => {
-            let parsed = parse_rust_target_and_tail(tail, "core");
-            for spec in rust_target_specs(&repo_root, &parsed.target)? {
-                let mut cargo_args = vec![
-                    "test".to_string(),
-                    "--manifest-path".to_string(),
-                    spec.manifest_path.display().to_string(),
-                ];
-                cargo_args.extend(spec.test_args);
-                cargo_args.extend(parsed.tail.clone());
-                run_fast_cargo_checked(
-                    &repo_root,
-                    &format!("rust test ({})", spec.name),
-                    &cargo_args,
-                )?;
-            }
-            Ok(0)
-        }
-        other => Err(CoreError::usage(format!(
-            "Unknown yzx dev rust subcommand: {other}"
-        ))),
-    }
-}
-
-fn normalize_dev_update_args(args: &[String]) -> Result<Vec<String>, CoreError> {
-    let mut out = Vec::new();
-    let mut iter = args.iter();
-    while let Some(arg) = iter.next() {
-        match arg.as_str() {
-            "--canaries" => {
-                let value = iter.next().ok_or_else(|| {
-                    CoreError::usage("Missing value after --canaries".to_string())
-                })?;
-                for canary in value
-                    .trim_matches(|ch| matches!(ch, '[' | ']'))
-                    .split(',')
-                    .map(str::trim)
-                    .map(|value| value.trim_matches('"').trim_matches('\''))
-                    .filter(|value| !value.is_empty())
-                {
-                    out.extend(["--canary".to_string(), canary.to_string()]);
-                }
-            }
-            other => out.push(other.to_string()),
-        }
-    }
-    Ok(out)
 }
 
 fn resolve_profile_source_root() -> Result<(PathBuf, &'static str), CoreError> {
@@ -1876,77 +1536,29 @@ fn run_yzx_dev(args: &[String]) -> Result<i32, CoreError> {
     let sub = args[0].as_str();
     let tail = &args[1..];
     match sub {
-        "update" => {
-            let repo_root = require_yazelix_repo_root()?;
-            let mut maintainer_args = vec!["dev-update".to_string()];
-            maintainer_args.extend(normalize_dev_update_args(tail)?);
-            run_repo_maintainer_checked(
-                &repo_root,
-                "Yazelix Rust update workflow failed",
-                &maintainer_args,
-            )
-        }
-        "bump" => {
-            let repo_root = require_yazelix_repo_root()?;
-            let mut maintainer_args = vec!["version-bump".to_string()];
-            maintainer_args.extend(tail.to_vec());
-            let result = run_repo_maintainer_json_command(&repo_root, &maintainer_args)?;
-            println!(
-                "✅ Bumped Yazelix from {} to {}",
-                result["previous_version"].as_str().unwrap_or("unknown"),
-                result["target_version"].as_str().unwrap_or("unknown")
-            );
-            println!("   commit: {}", result["commit_sha"].as_str().unwrap_or(""));
-            println!("   tag: {}", result["tag"].as_str().unwrap_or(""));
-            Ok(0)
-        }
-        "sync_issues" => {
-            let repo_root = require_yazelix_repo_root()?;
-            let mut maintainer_args = vec!["sync-issues".to_string()];
-            maintainer_args.extend(tail.to_vec());
-            run_repo_maintainer_checked(
-                &repo_root,
-                "Yazelix Rust issue sync failed",
-                &maintainer_args,
-            )
-        }
-        "build_pane_orchestrator" => {
-            let repo_root = require_yazelix_repo_root()?;
-            let mut maintainer_args = vec!["build-pane-orchestrator".to_string()];
-            maintainer_args.extend(tail.to_vec());
-            run_repo_maintainer_checked(
-                &repo_root,
-                "Yazelix Rust pane-orchestrator build failed",
-                &maintainer_args,
-            )
-        }
         "inspect_session" => run_zellij_inspect_session(tail),
-        "rust" => run_dev_rust(tail),
-        "test" => {
-            let repo_root = require_yazelix_repo_root()?;
-            let mut maintainer_args = vec!["run-tests".to_string()];
-            maintainer_args.extend(tail.to_vec());
-            run_repo_maintainer_checked(
-                &repo_root,
-                "Yazelix Rust test runner failed",
-                &maintainer_args,
-            )
-        }
         "profile" => run_dev_profile(tail),
-        "lint_nu" => {
-            let repo_root = require_yazelix_repo_root()?;
-            let mut maintainer_args = vec!["lint-nu".to_string()];
-            maintainer_args.extend(tail.to_vec());
-            run_repo_maintainer_checked(
-                &repo_root,
-                "Yazelix Rust nu-lint runner failed",
-                &maintainer_args,
-            )
-        }
+        "build_pane_orchestrator"
+        | "bump"
+        | "lint_nu"
+        | "rust"
+        | "sync_issues"
+        | "test"
+        | "update" => Err(repo_only_dev_command_error(sub)),
         other => Err(CoreError::usage(format!(
             "Unknown yzx dev subcommand: {other}"
         ))),
     }
+}
+
+fn repo_only_dev_command_error(command: &str) -> CoreError {
+    CoreError::classified(
+        ErrorClass::Usage,
+        "repo_only_dev_command",
+        format!("`yzx dev {command}` is a repo-only maintainer command."),
+        "Enter the Yazelix maintainer shell from a repo checkout, then rerun the command there.",
+        serde_json::json!({ "command": command }),
+    )
 }
 
 fn run_zellij(args: &[String]) -> Result<i32, CoreError> {
@@ -2088,25 +1700,14 @@ mod tests {
         assert_eq!(path, home.join("xdg").join("yazelix"));
     }
 
-    // Regression: the Rust-owned yzx dev update wrapper preserves the old public --canaries list surface while calling the Rust maintainer --canary API.
+    // Defends: repo-only maintainer dev commands are no longer implemented by the shipped user-runtime control helper.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn normalize_dev_update_args_translates_public_canaries_to_maintainer_flags() {
-        let args = vec![
-            "--canary-only".to_string(),
-            "--canaries".to_string(),
-            "[default,shell_layout]".to_string(),
-        ];
-        assert_eq!(
-            normalize_dev_update_args(&args).unwrap(),
-            vec![
-                "--canary-only".to_string(),
-                "--canary".to_string(),
-                "default".to_string(),
-                "--canary".to_string(),
-                "shell_layout".to_string()
-            ]
-        );
+    fn repo_only_dev_command_error_points_to_maintainer_shell() {
+        let error = repo_only_dev_command_error("rust");
+        assert_eq!(error.class().as_str(), "usage");
+        assert!(error.message().contains("repo-only maintainer command"));
+        assert!(error.remediation().contains("maintainer shell"));
     }
 
     // Defends: startup config rendering still includes the blocking diagnostic details promised by the public control-plane surface.

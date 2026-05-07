@@ -28,7 +28,80 @@ let
     ++ [ bdPackage ]
     ++ [ rustWasiToolchain ]
     ++ [ openssl ];
-  allDeps = lib.unique (runtimeDeps ++ maintainerDeps);
+  maintainerYzx = pkgs.writeShellScriptBin "yzx" ''
+    set -eu
+
+    core_yzx="${rustCoreHelper}/bin/yzx"
+    repo_root="$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "''${YAZELIX_RUNTIME_DIR:-${repoRoot}}")"
+
+    run_maintainer() {
+      exec cargo run --quiet \
+        --manifest-path "$repo_root/rust_core/Cargo.toml" \
+        -p yazelix_maintainer \
+        --bin yzx_repo_maintainer \
+        -- \
+        --repo-root "$repo_root" \
+        "$@"
+    }
+
+    if [ "$#" -gt 0 ] && [ "$1" = "dev" ]; then
+      shift
+      if [ "$#" -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ] || [ "$1" = "help" ]; then
+        cat <<'USAGE'
+    Development and maintainer commands
+
+    Usage:
+      yzx dev <command>
+
+    Maintainer commands:
+      yzx dev build_pane_orchestrator [--sync]
+      yzx dev bump <version>
+      yzx dev lint_nu [--format pretty|compact] [paths...]
+      yzx dev rust <fmt|check|test>
+      yzx dev sync_issues [--dry-run]
+      yzx dev test [options]
+      yzx dev update [options]
+
+    Runtime diagnostics:
+      yzx dev inspect_session [--json]
+      yzx dev profile [--cold] [--desktop] [--launch] [--clear-cache]
+USAGE
+        exit 0
+      fi
+
+      subcommand="$1"
+      shift
+      case "$subcommand" in
+        build_pane_orchestrator)
+          run_maintainer build-pane-orchestrator "$@"
+          ;;
+        bump)
+          run_maintainer version-bump "$@"
+          ;;
+        lint_nu)
+          run_maintainer lint-nu "$@"
+          ;;
+        rust)
+          run_maintainer rust "$@"
+          ;;
+        sync_issues)
+          run_maintainer sync-issues "$@"
+          ;;
+        test)
+          run_maintainer run-tests "$@"
+          ;;
+        update)
+          run_maintainer dev-update "$@"
+          ;;
+        *)
+          exec "$core_yzx" dev "$subcommand" "$@"
+          ;;
+      esac
+    fi
+
+    exec "$core_yzx" "$@"
+  '';
+  allDeps = lib.unique (runtimeDeps ++ maintainerDeps ++ [ maintainerYzx ]);
 
   yazelixNixConfig = ''
     warn-dirty = false
@@ -58,6 +131,7 @@ pkgs.mkShell {
     runtime_env_json="$("${rustCoreHelper}/bin/yzx_core" runtime-env.compute --from-env | ${pkgs.jq}/bin/jq -rc '.data.runtime_env')"
 
     export PATH="$(printf '%s' "$runtime_env_json" | ${pkgs.jq}/bin/jq -r '.PATH | join(":")')"
+    export PATH="${maintainerYzx}/bin:$PATH"
     computed_runtime_dir="$(printf '%s' "$runtime_env_json" | ${pkgs.jq}/bin/jq -r '.YAZELIX_RUNTIME_DIR')"
     if [ -z "''${YAZELIX_RUNTIME_DIR:-}" ]; then
       export YAZELIX_RUNTIME_DIR="$computed_runtime_dir"
