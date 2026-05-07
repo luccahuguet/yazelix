@@ -1436,14 +1436,18 @@ prepend_keymap = [{ run = "cmp-user" }]
         assert!(!rendered.contains("__YAZELIX_RUNTIME_DIR__"));
     }
 
-    // Regression: sidebar-state must not synchronously pipe to Zellij during Yazi startup.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
+    // Regression: sidebar-state must not rely on a fixed startup delay before its only Zellij registration attempt.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
-    fn sidebar_state_registers_with_orchestrator_asynchronously() {
+    fn sidebar_state_registers_with_orchestrator_asynchronously_with_bounded_retry() {
         let source = include_str!("../../../configs/yazi/plugins/sidebar-state.yazi/main.lua");
 
         assert!(source.contains("ya.async(function()"));
-        assert!(source.contains("STARTUP_REGISTER_DELAY_SECONDS"));
+        assert!(source.contains("REGISTER_RETRY_DELAYS_SECONDS"));
+        assert!(source.contains("REGISTER_RETRYABLE_RESULTS"));
+        assert!(source.contains("pipe_sidebar_state_registration(payload)"));
+        assert!(source.contains("generation ~= sidebar_state_generation"));
+        assert!(!source.contains("STARTUP_REGISTER_DELAY_SECONDS"));
         assert!(!source.contains("os.execute"));
     }
 
