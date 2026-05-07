@@ -26,6 +26,7 @@ The child repos mainly let non-Yazelix users adopt Yazelix modules and subsystem
 
 - [yazelix-screen](https://github.com/luccahuguet/yazelix-screen) — Terminal animation engine used by Yazelix welcome/screen styles and exposed here as `#yzs` and `#yazelix_screen`
 - [yazelix-cursors](https://github.com/luccahuguet/yazelix-cursors) — Ghostty cursor preset and shader generator with the `yzc` CLI, exposed here as `#yzc`, `#yazelix_cursors`, and `#ghostty_cursor_shaders`
+- [yazelix-bar](https://github.com/luccahuguet/yazelix-bar) — Standalone Zellij/zjstatus bar preset and `yazelix_bar_generate` binary, exposed here as `#yazelix_bar`
 - [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij floating TUI panes; its plugin alias and wasm artifact are `yzpp`, while Yazelix keeps `yzx popup` for integrated workspace behavior
 
 ## Daily Workflow

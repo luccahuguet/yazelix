@@ -2,7 +2,7 @@
 
 ## Summary
 
-`yazelix_bar` is the selected standalone name for the Yazelix-branded Zellij status-bar preset.
+`yazelix_bar` is the selected standalone package and crate name for the Yazelix-branded Zellij status-bar preset. The public repository is `luccahuguet/yazelix-bar`.
 
 Alternatives considered:
 
@@ -13,7 +13,7 @@ The first supported distribution shape is a zjstatus preset and bundle, not a zj
 
 ## Package Shape
 
-The flake package is `.#yazelix_bar`.
+The child flake package is `github:luccahuguet/yazelix-bar#yazelix_bar`. The main Yazelix repo forwards the same package as `.#yazelix_bar`.
 
 It installs:
 
@@ -108,9 +108,9 @@ Inside full Yazelix, AI widgets should keep using cached status-widget commands 
 
 ## Main Runtime Consumption
 
-The full Yazelix runtime consumes the `rust_core/yazelix_bar` crate for widget-tray and tab-label rendering.
+The full Yazelix runtime consumes the `yazelix_bar` child crate for widget-tray and tab-label rendering.
 
-The standalone package consumes the same vendored `configs/zellij/plugins/zjstatus.wasm` source as the full runtime. Maintainers refresh that wasm through the normal repo update workflow rather than copying standalone artifacts manually.
+The standalone package vendors its own pinned `assets/zjstatus.wasm`. The main runtime still ships its managed `configs/zellij/plugins/zjstatus.wasm` for integrated Zellij layouts.
 
 Generated variants must go through `yazelix_bar_generate` and the shared `yazelix_bar` renderer. Do not maintain a second hand-copied generated artifact set.
 
@@ -123,7 +123,7 @@ Raw KDL remains the escape hatch for lower-level zjstatus keys that the structur
 ## Verification
 
 - `nix build .#yazelix_bar`
-- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_bar`
+- `cargo test` in `luccahuguet/yazelix-bar`
 - `yzx_repo_validator validate-contracts`
 
 ## Traceability

@@ -22,6 +22,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.fenix.follows = "fenix";
     };
+    yazelixBar = {
+      url = "github:luccahuguet/yazelix-bar";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.fenix.follows = "fenix";
+    };
     beads = {
       url = "github:steveyegge/beads/v1.0.0";
     };
@@ -40,6 +45,7 @@
       fenix,
       yazelixScreen,
       yazelixCursors,
+      yazelixBar,
       beads,
       zjstatus,
     }:
@@ -95,15 +101,9 @@
         mkYazelix system {
           inherit pkgs runtimeVariant extraRuntimePackages;
         };
-      yazelixBarPackage = system: pkgs:
-        import ./packaging/yazelix_bar.nix {
-          inherit pkgs;
-          src = ./.;
-          metaPlatforms = systems;
-        };
       defaultOverlay = final: _prev: {
         yazelix = mkYazelix final.stdenv.hostPlatform.system { pkgs = final; };
-        yazelix_bar = yazelixBarPackage final.stdenv.hostPlatform.system final;
+        yazelix_bar = yazelixBar.packages.${final.stdenv.hostPlatform.system}.yazelix_bar;
       };
       maintainerShell =
         system: pkgs:
@@ -142,7 +142,7 @@
           yazelix_ghostty = yazelixPackage system pkgs "ghostty" noExtraRuntimePackages;
           yazelix_wezterm = yazelixPackage system pkgs "wezterm" noExtraRuntimePackages;
           yazelix_agent_tools = yazelixPackage system pkgs defaultRuntimeVariant agentUsageRuntimePackages;
-          yazelix_bar = yazelixBarPackage system pkgs;
+          yazelix_bar = yazelixBar.packages.${system}.yazelix_bar;
           yazelix_screen = yazelixScreen.packages.${system}.yzs;
           yazelix_cursors = yazelixCursors.packages.${system}.yazelix_cursors;
         in

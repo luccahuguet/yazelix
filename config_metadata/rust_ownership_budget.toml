@@ -1,22 +1,9 @@
 [contract]
-measured_total_loc = 71789
-measured_total_file_count = 124
-current_total_loc_max = 71789
-current_total_file_count_max = 124
+measured_total_loc = 71468
+measured_total_file_count = 123
+current_total_loc_max = 71468
+current_total_file_count_max = 123
 hard_target_loc = 60000
-
-[[families]]
-id = "bar_runtime"
-status = "extension_surface"
-owner_bead = "yazelix-r9n1.1"
-measured_loc = 321
-measured_files = 1
-max_loc = 321
-target_loc = 300
-max_files = 1
-allowed_paths = [
-  "rust_core/yazelix_bar/src/lib.rs",
-]
 
 [[families]]
 id = "core_cli_and_public_surface"

@@ -6,7 +6,7 @@ Baseline measured on 2026-05-05 before extracting `yazelix-screen`:
 
 - `tokei rust_core rust_plugins --exclude target` reports `67,462` Rust code LOC across `128` Rust files
 - the same `tokei` run reports `74,009` Rust lines including blanks and comments
-- `config_metadata/rust_ownership_budget.toml` tracks `73,498` raw Rust file lines across `126` Rust files after extracting `yazelix-screen`, splitting status/cache/widget ownership out of `zellij_commands.rs`, isolating the reusable cursor registry/generator boundary, and adding the first standalone `yzc` CLI
+- `config_metadata/rust_ownership_budget.toml` tracks the current main-repo Rust budget after extracting `yazelix-screen`, `yazelix-cursors`, and `yazelix-bar`
 - the remaining difference between `tokei` lines and the budget total is measurement-method noise from embedded blobs and parser classification, not a separate ownership surface
 - `cargo check --workspace --all-targets` under `rust_core/` reports no warnings
 - `cargo check --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --all-targets` reports no warnings
@@ -14,7 +14,7 @@ Baseline measured on 2026-05-05 before extracting `yazelix-screen`:
 - `cargo +nightly udeps --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --all-targets` reported direct dependency `shlex` unused; this pass removed it
 - `cargo-udeps` requires nightly Rust because it passes unstable `-Z` compiler flags
 
-The canonical family ownership, no-growth ceilings, and long-term warning target live in `config_metadata/rust_ownership_budget.toml`. The current budget excludes the extracted `yazelix-screen` crate.
+The canonical family ownership, no-growth ceilings, and long-term warning target live in `config_metadata/rust_ownership_budget.toml`. The current budget excludes extracted child crates.
 
 ## Ownership Split
 
@@ -30,7 +30,6 @@ Detailed budget families:
 
 | Family | Files | Raw lines | Budget target | Notes |
 | --- | ---: | ---: | ---: | --- |
-| `bar_runtime` | 1 | 321 | 300 | Small crate; real extraction value comes from status cache/widgets in `zellij_commands.rs` |
 | `core_cli_and_public_surface` | 13 | 9,406 | 7,000 | Public command dispatch, front-door rendering, and the standalone `yzc` entrypoint |
 | `core_config_ui_and_materialization` | 33 | 19,681 | 14,000 | Largest product family; config UI, materializers, cursor registry/generator, settings surfaces |
 | `core_diagnostics_and_recovery` | 8 | 5,350 | 4,500 | Doctor, install ownership, profile/status reporting |
