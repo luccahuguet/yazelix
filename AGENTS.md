@@ -231,6 +231,18 @@ Use this as the default refactor and audit method in Yazelix, especially before 
 4. Verify the simpler contract: Test the exact user-visible behavior or subsystem contract that remains after the deletion/simplification. Prefer focused behavior checks and regressions over broad noise.
 5. Record the decision and the new seam: When the work changes future planning, capture the outcome in Beads or maintainer notes so later refactors build on the clarified boundary instead of reopening the same ambiguity.
 
+### Spartan LOC Protocol
+
+Use this for every extraction, cleanup, refactor, validator, generated-fixture, and command-surface bead.
+
+- Main-repo ownership is the score. Moving code to a child repo only counts when the main repo deletes code, stops owning a contract, or shrinks the runtime closure for users who opt out.
+- Run `shells/posix/yazelix_loc_scorecard.sh <base> HEAD` before closing meaningful refactor/extraction work, and include the result in the bead close reason or notes.
+- A cleanup/refactor/extraction bead should not raise main-repo runtime, maintainer, test, generated, or packaging LOC. If product behavior justifies growth, call it budget debt and create a payback bead before closing.
+- If a change adds more than `100` main-repo code LOC outside Beads/docs while claiming to simplify, it must delete at least that much in the same bead or record an explicit debt owner.
+- Do not let validators, fixtures, docs, compatibility shims, or wrappers grow around an extraction. Delete stale local scaffolding in the same bead unless a concrete risk forces a separate follow-up.
+- When a family drops below its Rust/Nushell budget ceiling, ratchet the ceiling down in the same commit. Do not rebaseline upward for cleanup work.
+- Prefer "not doing it" over adding a configurable abstraction that preserves both old and new owners.
+
 ## Verification Requirements
 
 - **Always test the exact functions or commands you change** before committing.

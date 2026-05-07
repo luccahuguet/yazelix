@@ -116,7 +116,7 @@ Do before extraction:
 
 Wait until after extraction:
 
-- aggressive test deletion
+- aggressive unrelated test deletion; weak tests and fixtures attached to moved or deleted surfaces should be removed in the same bead
 - public crate API polish
 - package-size optimization for extracted crates
 - cross-repo release automation
