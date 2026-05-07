@@ -2,11 +2,11 @@
 
 This inventory is the extraction gate for reusable Yazelix components. It records the current Rust shape before moving code out of the main repository so extraction decisions start from concrete ownership rather than a raw line-count hunch.
 
-Current rebaseline measured on 2026-05-07 after extracting `yazelix-screen`, `yazelix-cursors`, and `yazelix-bar`, accepting the optional runtime component toggles, paying down the first post-v16.3 Rust budget debt, deleting stale strength-score and migration metadata, and dropping the visual sweep layout lane:
+Current rebaseline measured on 2026-05-07 after extracting `yazelix-screen`, `yazelix-cursors`, `yazelix-bar`, and `yazelix-zellij-popup`, accepting the optional runtime component toggles, paying down the first post-v16.3 Rust budget debt, deleting stale strength-score and migration metadata, dropping the visual sweep layout lane, and moving popup lifecycle ownership to `yzpp`:
 
-- `tokei rust_core rust_plugins --exclude target` reports `67,711` Rust code LOC across `142` Rust files
-- the same `tokei` run reports `73,764` Rust lines including blanks and comments
-- `config_metadata/rust_ownership_budget.toml` tracks `73,882` raw Rust file lines across `142` Rust files
+- `tokei rust_core rust_plugins --exclude target` reports `67,425` Rust code LOC across `140` Rust files
+- the same `tokei` run reports `73,424` Rust lines including blanks and comments
+- `config_metadata/rust_ownership_budget.toml` tracks `73,542` raw Rust file lines across `140` Rust files
 - the remaining difference between `tokei` lines and the budget total is measurement-method noise from embedded markdown/parser classification and line-count method differences, not a separate ownership surface
 - `yzx_repo_validator validate-rust-ownership-budget` passes the no-growth budget and still warns that the tracked Rust surface is above the long-term `60,000` LOC hard target
 - `cargo-udeps` requires nightly Rust because it passes unstable `-Z` compiler flags; rerun it during explicit dependency-audit beads rather than treating this inventory as fresh unused-dependency evidence
@@ -19,24 +19,24 @@ The latest budget-debt paydown deleted the hidden moved-Ghostty cursor-field run
 
 | Family | Files | Raw lines | Status | Extraction pressure |
 | --- | ---: | ---: | --- | --- |
-| Product runtime source | 78 | 51,090 | canonical and extension surfaces | High: contains the largest user-facing seams |
-| Product integration tests | 19 | 6,093 | canonical tests | Medium: split by behavior family, do not delete broadly |
-| Maintainer tooling and tests | 18 | 11,314 | canonical maintainer | Medium: keep in repo, but split large validator files |
-| Pane orchestrator plugin | 27 | 5,385 | extension surface | High: already has a natural Zellij plugin boundary |
-| Total | 142 | 73,882 | current budget ceiling | Reduce or extract before raising ceilings |
+| Product runtime source | 78 | 51,351 | canonical and extension surfaces | High: contains the largest user-facing seams |
+| Product integration tests | 19 | 6,039 | canonical tests | Medium: split by behavior family, do not delete broadly |
+| Maintainer tooling and tests | 18 | 11,311 | canonical maintainer | Medium: keep in repo, but split large validator files |
+| Pane orchestrator plugin | 25 | 4,841 | extension surface | High: already has a natural Zellij plugin boundary |
+| Total | 140 | 73,542 | current budget ceiling | Reduce or extract before raising ceilings |
 
 Detailed budget families:
 
 | Family | Files | Raw lines | Budget target | Notes |
 | --- | ---: | ---: | ---: | --- |
-| `core_cli_and_public_surface` | 12 | 8,159 | 7,000 | Public command dispatch and front-door rendering after child CLI extractions |
-| `core_config_ui_and_materialization` | 41 | 20,653 | 14,000 | Largest product family; config UI, apply modes, runtime component manifest, ratconfig boundary, materializers, settings surfaces |
+| `core_cli_and_public_surface` | 12 | 8,172 | 7,000 | Public command dispatch and front-door rendering after child CLI extractions |
+| `core_config_ui_and_materialization` | 41 | 20,624 | 14,000 | Largest product family; config UI, apply modes, runtime component manifest, ratconfig boundary, materializers, settings surfaces |
 | `core_diagnostics_and_recovery` | 8 | 5,866 | 4,500 | Doctor, install ownership, profile/status reporting |
-| `core_workspace_and_pane_integration` | 17 | 16,412 | 11,000 | Action registry, Zellij/session/workspace command surface, pane-orchestrator client, status/cache/widgets |
-| `core_integration_tests` | 19 | 6,093 | 4,500 | High-value tests, but several files are broad family buckets |
-| `maintainer_tooling_and_validators` | 17 | 11,075 | 9,000 | Keep in repo; split validators by domain before optimizing |
+| `core_workspace_and_pane_integration` | 17 | 16,689 | 11,000 | Action registry, Zellij/session/workspace command surface, pane-orchestrator client, status/cache/widgets |
+| `core_integration_tests` | 19 | 6,039 | 4,500 | High-value tests, but several files are broad family buckets |
+| `maintainer_tooling_and_validators` | 17 | 11,072 | 9,000 | Keep in repo; split validators by domain before optimizing |
 | `maintainer_tests` | 1 | 239 | 239 | Small release/upgrade contract test surface |
-| `pane_orchestrator_plugin` | 27 | 5,385 | 4,500 | Extension surface; refactor runtime config, timer/status/sidebar modules before public extraction |
+| `pane_orchestrator_plugin` | 25 | 4,841 | 4,300 | Extension surface; refactor runtime config, timer/status/sidebar modules before public extraction |
 
 ## Largest Files
 
@@ -45,19 +45,19 @@ Detailed budget families:
 | `rust_core/yazelix_maintainer/src/repo_contract_validation.rs` | 3,856 | Split by validator domain, keep in maintainer crate |
 | `rust_core/yazelix_core/src/config_ui.rs` | 3,240 | Continue the `yazelix_ratconfig` split and keep Yazelix adapters local |
 | `rust_core/yazelix_core/src/zellij_commands.rs` | 2,859 | Split remaining pipe primitive, workspace/editor flow, and terminal pane actions before workspace extraction |
-| `rust_core/yazelix_core/src/zellij_materialization.rs` | 2,809 | Keep until keybinding ownership and layout-generation contracts settle; integrated zjstatus command definitions live behind a typed adapter |
-| `rust_core/yazelix_core/src/launch_commands.rs` | 2,626 | Top-level enter/launch/desktop/restart flow after terminal and config override split |
+| `rust_core/yazelix_core/src/zellij_materialization.rs` | 2,994 | Keep until keybinding ownership and layout-generation contracts settle; integrated zjstatus command definitions live behind a typed adapter |
+| `rust_core/yazelix_core/src/launch_commands.rs` | 2,617 | Top-level enter/launch/desktop/restart flow after terminal and config override split |
 | `rust_core/yazelix_core/src/zellij_commands/status/agent_usage.rs` | 1,933 | Provider usage cache refreshes, shared-cache locking, and agent usage widget rendering; keep Yazelix-owned unless a standalone provider usage contract appears |
-| `rust_core/yazelix_core/src/bin/yzx_control.rs` | 1,739 | Public command implementation dispatcher; split only if routing remains obvious |
+| `rust_core/yazelix_core/src/bin/yzx_control.rs` | 1,741 | Public command implementation dispatcher; split only if routing remains obvious |
 | `rust_core/yazelix_core/src/zellij_commands/status.rs` | 1,548 | Status bus/cache commands plus cursor/workspace widget rendering after agent usage split; keep cache-path and session-state ownership local |
-| `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs` | 1,516 | Split by config/materialization behavior family; do not delete without replacement coverage |
+| `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs` | 1,533 | Split by config/materialization behavior family; do not delete without replacement coverage |
 | `rust_core/yazelix_core/src/yazi_materialization.rs` | 1,464 | Keep in core; current owner map is in `docs/contracts/yazi_integration_boundary.md` |
 | `rust_core/yazelix_maintainer/src/repo_update_workflow.rs` | 1,417 | Process-heavy maintainer workflow; keep local but modularize |
 | `rust_core/yazelix_core/src/bin/yzx_core.rs` | 1,412 | Temporary machine helper; collapse only after shell callers have a stable replacement |
 | `rust_core/yazelix_core/src/doctor_commands.rs` | 1,403 | Split report rendering from fix orchestration only after doctor behavior stabilizes |
-| `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs` | 1,257 | Broad but behavior-backed; split by workspace/popup/session behaviors |
+| `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs` | 1,203 | Broad but behavior-backed; split by workspace/popup/session behaviors |
 | `rust_core/yazelix_core/src/profile_commands.rs` | 1,256 | Keep while startup profiling remains an active debugging surface |
-| `rust_core/yazelix_core/src/public_command_surface.rs` | 1,223 | Keep central registry; future action registry may absorb part of this |
+| `rust_core/yazelix_core/src/public_command_surface.rs` | 1,234 | Keep central registry; future action registry may absorb part of this |
 | `rust_core/yazelix_core/src/install_ownership_report.rs` | 1,124 | Contains live recovery and legacy install diagnostics; prune only after transition windows |
 | `rust_core/yazelix_maintainer/src/repo_validation.rs` | 1,047 | Leaner validator shell; avoid rebuilding test-metadata parsers and cleanup-history heuristics |
 | `rust_core/yazelix_core/src/runtime_contract.rs` | 1,030 | Runtime manifest and optional component ownership; keep until component opt-out behavior stabilizes |

@@ -36,6 +36,7 @@ Use this page as the docs front door. It points to current user guides first, th
 - [Rust code inventory](./rust_code_inventory.md)
 - [Subsystem code inventory](./subsystem_code_inventory.md)
 - [LOC extraction scorecard](./loc_extraction_scorecard.md)
+- [Child repo simplification audit](./child_repo_simplification_audit.md)
 - [Zed architecture lessons](./zed_architecture_lessons.md)
 - [Package sizes](./package_sizes.md)
 - [Upgrade notes data](./upgrade_notes.toml)
