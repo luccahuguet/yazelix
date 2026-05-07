@@ -4,9 +4,9 @@ This inventory is the extraction gate for reusable Yazelix components. It record
 
 Current rebaseline measured on 2026-05-07 after extracting `yazelix-screen`, `yazelix-cursors`, and `yazelix-bar`, accepting the optional runtime component toggles, paying down the first post-v16.3 Rust budget debt, deleting stale strength-score and migration metadata, and dropping the visual sweep layout lane:
 
-- `tokei rust_core rust_plugins --exclude target` reports `67,730` Rust code LOC across `141` Rust files
-- the same `tokei` run reports `73,782` Rust lines including blanks and comments
-- `config_metadata/rust_ownership_budget.toml` tracks `73,900` raw Rust file lines across `141` Rust files
+- `tokei rust_core rust_plugins --exclude target` reports `67,711` Rust code LOC across `142` Rust files
+- the same `tokei` run reports `73,764` Rust lines including blanks and comments
+- `config_metadata/rust_ownership_budget.toml` tracks `73,882` raw Rust file lines across `142` Rust files
 - the remaining difference between `tokei` lines and the budget total is measurement-method noise from embedded markdown/parser classification and line-count method differences, not a separate ownership surface
 - `yzx_repo_validator validate-rust-ownership-budget` passes the no-growth budget and still warns that the tracked Rust surface is above the long-term `60,000` LOC hard target
 - `cargo-udeps` requires nightly Rust because it passes unstable `-Z` compiler flags; rerun it during explicit dependency-audit beads rather than treating this inventory as fresh unused-dependency evidence
@@ -21,9 +21,9 @@ The latest budget-debt paydown deleted the hidden moved-Ghostty cursor-field run
 | --- | ---: | ---: | --- | --- |
 | Product runtime source | 78 | 51,090 | canonical and extension surfaces | High: contains the largest user-facing seams |
 | Product integration tests | 19 | 6,093 | canonical tests | Medium: split by behavior family, do not delete broadly |
-| Maintainer tooling and tests | 17 | 11,332 | canonical maintainer | Medium: keep in repo, but split large validator files |
+| Maintainer tooling and tests | 18 | 11,314 | canonical maintainer | Medium: keep in repo, but split large validator files |
 | Pane orchestrator plugin | 27 | 5,385 | extension surface | High: already has a natural Zellij plugin boundary |
-| Total | 141 | 73,900 | current budget ceiling | Reduce or extract before raising ceilings |
+| Total | 142 | 73,882 | current budget ceiling | Reduce or extract before raising ceilings |
 
 Detailed budget families:
 
@@ -34,7 +34,7 @@ Detailed budget families:
 | `core_diagnostics_and_recovery` | 8 | 5,866 | 4,500 | Doctor, install ownership, profile/status reporting |
 | `core_workspace_and_pane_integration` | 17 | 16,412 | 11,000 | Action registry, Zellij/session/workspace command surface, pane-orchestrator client, status/cache/widgets |
 | `core_integration_tests` | 19 | 6,093 | 4,500 | High-value tests, but several files are broad family buckets |
-| `maintainer_tooling_and_validators` | 16 | 11,093 | 9,000 | Keep in repo; split validators by domain before optimizing |
+| `maintainer_tooling_and_validators` | 17 | 11,075 | 9,000 | Keep in repo; split validators by domain before optimizing |
 | `maintainer_tests` | 1 | 239 | 239 | Small release/upgrade contract test surface |
 | `pane_orchestrator_plugin` | 27 | 5,385 | 4,500 | Extension surface; refactor runtime config, timer/status/sidebar modules before public extraction |
 
@@ -42,7 +42,7 @@ Detailed budget families:
 
 | File | Raw lines | Disposition |
 | --- | ---: | --- |
-| `rust_core/yazelix_maintainer/src/repo_contract_validation.rs` | 4,144 | Split by validator domain, keep in maintainer crate |
+| `rust_core/yazelix_maintainer/src/repo_contract_validation.rs` | 3,856 | Split by validator domain, keep in maintainer crate |
 | `rust_core/yazelix_core/src/config_ui.rs` | 3,240 | Continue the `yazelix_ratconfig` split and keep Yazelix adapters local |
 | `rust_core/yazelix_core/src/zellij_commands.rs` | 2,859 | Split remaining pipe primitive, workspace/editor flow, and terminal pane actions before workspace extraction |
 | `rust_core/yazelix_core/src/zellij_materialization.rs` | 2,809 | Keep until keybinding ownership and layout-generation contracts settle; integrated zjstatus command definitions live behind a typed adapter |
@@ -70,7 +70,7 @@ owners classify as:
 
 | Surface | Classification | Next deletion/split trigger |
 | --- | --- | --- |
-| `repo_contract_validation.rs` | keep in repo, split by validator domain | Split config-surface, flake/package, upgrade-note, installed-runtime, and helper IO groups before adding more validators |
+| `repo_contract_validation.rs` | keep in repo, split by validator domain | README/release surface moved to `repo_contract_validation/readme_surface.rs`; next split config-surface, flake/package, upgrade-note, installed-runtime, and helper IO groups before adding more validators |
 | `repo_validation.rs` | keep lean validator shell | Stale score metadata and cleanup-history heuristics are deleted; do not rebuild score parsers |
 | `repo_update_workflow.rs` | keep in repo as mutating release/update workflow | Split runtime-pin sync, vendored plugin refresh, activation, and canary materialization before considering a child repo |
 | `repo_sweep_runner.rs` | keep as explicit sweep surface | Visual terminal-window lane is deleted; keep remaining config/runtime sweep focused |
@@ -152,6 +152,7 @@ Recent accepted full-repo scorecards:
 
 | Range | Raw text diff excluding `.beads` | Tokei code LOC delta | Budget interpretation |
 | --- | --- | ---: | --- |
+| `yazelix-epiw` | split plus trivia deletion, net `-18` raw Rust lines | `-19` | Moved README/latest-release validation and sync into a private domain module, deleted duplicate generated-block heading checks, and ratcheted the maintainer budget while accepting one extra Rust file for clearer ownership |
 | `yazelix-0nvl` | mechanical move, net `+33` raw Rust lines | `+30` | Split launch terminal selection and config override logic into private modules; budget remains below the pre-gr41 ceiling but this is organization debt, not deletion |
 | `yazelix-gr41/yazelix-gr41.1` | `82` insertions, `786` deletions, net `-704` | `-502` | Deleted the visual sweep lane, its runtime-only KDL layout, and legacy popup-runner cleanup; ratcheted the Rust budget ceiling down to the measured surface |
 | `v16.3..a001fab0` | `3,550` insertions, `4,093` deletions, net `-543` | `-2` | Main repo is roughly flat after generated clutter deletion and optional component toggles |
