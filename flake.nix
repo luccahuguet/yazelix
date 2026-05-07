@@ -26,6 +26,7 @@
       url = "github:luccahuguet/yazelix-bar";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.fenix.follows = "fenix";
+      inputs.zjstatus.follows = "zjstatus";
     };
     beads = {
       url = "github:steveyegge/beads/v1.0.0";

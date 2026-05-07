@@ -265,14 +265,17 @@
         ],
         "nixpkgs": [
           "nixpkgs"
+        ],
+        "zjstatus": [
+          "zjstatus"
         ]
       },
       "locked": {
-        "lastModified": 1778169710,
-        "narHash": "sha256-O9EyuruO6IBfJ94p7G/3VB3ZScOnC/rUzoN344OY4uI=",
+        "lastModified": 1778171735,
+        "narHash": "sha256-zZ2aVcnb2a8VWWXN7IzQYRQHOllwYrO3efVT+ZX/S84=",
         "owner": "luccahuguet",
         "repo": "yazelix-bar",
-        "rev": "c71d39ba91826d5c1406c95cc12872a31a81d62d",
+        "rev": "dddd5b9cbd3e4c87ae23c207e08f83c3a87a0709",
         "type": "github"
       },
       "original": {

@@ -14,6 +14,8 @@ The child package installs:
 - `share/yazelix_bar/examples/custom_command_widgets.kdl`
 - `share/yazelix_bar/examples/yazelix_runtime_widgets.kdl`
 
+The standalone child repo installs `zjstatus.wasm` from its pinned `zjstatus` flake input. This main repo makes that child input follow Yazelix's own `zjstatus` pin when forwarding `#yazelix_bar`, while the integrated Yazelix runtime still refreshes `configs/zellij/plugins/zjstatus.wasm` through `yzx dev update`
+
 Non-Yazelix users can install the standalone bar directly:
 
 ```bash

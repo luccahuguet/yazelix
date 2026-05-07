@@ -21,7 +21,7 @@ Yazelix is built on a focused terminal-workspace stack. This catalog lists the p
 - `#yazelix_wezterm` — Explicit WezTerm runtime package for users who prefer WezTerm behavior, especially around image preview support
 - `#runtime`, `#runtime_ghostty`, `#runtime_wezterm` — Runtime-only package outputs used by the wrapper packages and validation surfaces
 - `#yazelix_agent_tools` and `#runtime_agent_tools` — Opt-in runtime variants that add agent usage helpers such as `tokenusage`
-- `#yazelix_bar` — Standalone Zellij/zjstatus bar preset forwarded from `luccahuguet/yazelix-bar`, including `yazelix_bar_generate` and the bundled `zjstatus.wasm`
+- `#yazelix_bar` — Standalone Zellij/zjstatus bar preset forwarded from `luccahuguet/yazelix-bar`, including `yazelix_bar_generate` and package-local `zjstatus.wasm`
 - `#yzs` and `#yazelix_screen` — Standalone terminal animation package forwarded from `luccahuguet/yazelix-screen` for the Yazelix screen engines outside Zellij and outside a full Yazelix session
 - `#yazelix_cursors` — Standalone Yazelix cursor package for Ghostty users, with generated GLSL files, example Ghostty config snippets, and the `yzc` CLI
 - `#yzc` — Flake app for the standalone Yazelix cursor CLI
