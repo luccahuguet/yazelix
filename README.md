@@ -16,9 +16,13 @@ The supported product in this branch is the Rust-forward v16 Yazelix line
 
 Yazelix uses `~/.config/yazelix/settings.jsonc` as the canonical settings surface, with the normal flake surface provided by the packaged `yazelix` runtime plus the top-level Home Manager module, while repo work uses the flake maintainer shell defined in `maintainer_shell.nix`
 
-## First-Party Child Repos
+## First-Party Child Repositories
 
 Yazelix keeps this repo as the integrated workspace/runtime and splits focused reusable pieces into child repositories:
+
+Regular Yazelix users do not need to install, configure, or understand these child repos separately; the normal Yazelix package already integrates the pieces it uses
+
+The child repos mainly let non-Yazelix users adopt Yazelix modules and subsystems granularly. `yazelix-screen` and `yazelix-cursors` can also be used outside Zellij entirely
 
 - [yazelix-screen](https://github.com/luccahuguet/yazelix-screen) — Terminal animation engine used by Yazelix welcome/screen styles and exposed here as `#yzs` and `#yazelix_screen`
 - [yazelix-cursors](https://github.com/luccahuguet/yazelix-cursors) — Ghostty cursor preset and shader generator with the `yzc` CLI, exposed here as `#yzc`, `#yazelix_cursors`, and `#ghostty_cursor_shaders`

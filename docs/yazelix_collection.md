@@ -29,6 +29,8 @@ Yazelix is built on a focused terminal-workspace stack. This catalog lists the p
 
 ## First-Party Child Repositories
 
+Regular Yazelix users do not need to install or wire these repositories separately. The regular Yazelix package already integrates the modules it uses, and the child repositories exist so people can use focused Yazelix subsystems without adopting the whole workspace. `yazelix-screen` and `yazelix-cursors` are also usable outside Zellij.
+
 - [yazelix-screen](https://github.com/luccahuguet/yazelix-screen) — Standalone terminal animation engine consumed by Yazelix welcome/screen rendering and exposed from this repo as `#yzs` and `#yazelix_screen`.
 - [yazelix-cursors](https://github.com/luccahuguet/yazelix-cursors) — Standalone Ghostty cursor preset, shader, and `yzc` CLI repository consumed by Yazelix cursor settings and exposed from this repo as `#yzc`, `#yazelix_cursors`, and `#ghostty_cursor_shaders`.
 - [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij users; its flake package `#yzpp` installs `share/yazelix_zellij_popup/yzpp.wasm`.
