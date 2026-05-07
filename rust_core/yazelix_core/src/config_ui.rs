@@ -1,5 +1,6 @@
 //! Terminal UI for inspecting and editing the canonical Yazelix config surface.
 
+use crate::action_registry::ZELLIJ_ACTIONS;
 use crate::active_config_surface::{PrimaryConfigPaths, primary_config_paths};
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_normalize::{ConfigDiagnostic, ConfigDiagnosticReport, NormalizeConfigRequest};
@@ -54,6 +55,7 @@ const DEFAULT_TABS: &[&str] = &[
 ];
 const CONFIG_UI_METADATA_FILENAME: &str = "config_ui_metadata.toml";
 const HEADER_HORIZONTAL_PADDING: u16 = 1;
+const ZELLIJ_KEYBINDINGS_FIELD_PATH: &str = "zellij.keybindings";
 
 #[derive(Debug, Clone)]
 pub struct ConfigUiRequest {
@@ -1520,6 +1522,10 @@ impl ConfigUiApp {
 }
 
 fn field_detail_lines(field: &ConfigUiField) -> Vec<Line<'static>> {
+    if field.path == ZELLIJ_KEYBINDINGS_FIELD_PATH {
+        return zellij_keybinding_detail_lines(field);
+    }
+
     let mut lines = vec![
         Line::from(Span::styled(
             field.path.clone(),
@@ -1546,6 +1552,181 @@ fn field_detail_lines(field: &ConfigUiField) -> Vec<Line<'static>> {
         lines.push(Line::from(field.description.clone()));
     }
     lines
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ZellijKeybindingObject {
+    entries: BTreeMap<String, Vec<String>>,
+    malformed_entries: Vec<String>,
+    malformed_object: Option<String>,
+}
+
+fn zellij_keybinding_detail_lines(field: &ConfigUiField) -> Vec<Line<'static>> {
+    let object = zellij_keybinding_object_for_field(field);
+    let supported_actions = ZELLIJ_ACTIONS
+        .iter()
+        .map(|spec| spec.action.local_id)
+        .collect::<BTreeSet<_>>();
+    let unsupported_entries = object
+        .entries
+        .keys()
+        .filter(|action| !supported_actions.contains(action.as_str()))
+        .cloned()
+        .collect::<Vec<_>>();
+
+    let mut lines = vec![
+        Line::from(Span::styled(
+            field.path.clone(),
+            config_key_style().add_modifier(Modifier::BOLD),
+        )),
+        Line::from(""),
+        detail_line("state", state_label(field.state)),
+        detail_line("current", &field.current_value),
+        detail_line("default", &field.default_value),
+        detail_line("type", &field.kind),
+        detail_line("apply", field.apply_mode.label()),
+    ];
+    if !field.validation.is_empty() {
+        lines.push(detail_line("validation", &field.validation));
+    }
+    if field.rebuild_required {
+        lines.push(detail_line("rebuild", "required"));
+    }
+    if let Some(message) = object.malformed_object {
+        lines.push(detail_line("invalid", &message));
+    }
+    if !object.malformed_entries.is_empty() {
+        lines.push(detail_line("invalid", &object.malformed_entries.join("; ")));
+    }
+    if !unsupported_entries.is_empty() {
+        lines.push(detail_line("unsupported", &unsupported_entries.join(", ")));
+    }
+
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(
+        "Yazelix Zellij actions",
+        metadata_key_style().add_modifier(Modifier::BOLD),
+    )));
+
+    for spec in ZELLIJ_ACTIONS {
+        let action = &spec.action;
+        let default_keys = action.default_keys;
+        let explicit_keys = object.entries.get(action.local_id);
+        let current_label = explicit_keys
+            .map(|keys| zellij_keybinding_keys_label(keys.as_slice()))
+            .unwrap_or_else(|| zellij_keybinding_keys_label(default_keys));
+        let source_label = if let Some(keys) = explicit_keys {
+            if keys.is_empty() {
+                "disabled"
+            } else {
+                "remapped"
+            }
+        } else {
+            "default"
+        };
+
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled(
+            action.label.to_string(),
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
+        )));
+        lines.push(detail_line("action", action.id));
+        lines.push(detail_line(
+            "current",
+            &format!("{current_label} ({source_label})"),
+        ));
+        lines.push(detail_line(
+            "default",
+            &zellij_keybinding_keys_label(default_keys),
+        ));
+        lines.push(detail_line("mode", spec.mode));
+        lines.push(detail_line("backend", action.backend.as_str()));
+        if action.disable_policy.empty_binding_list_allowed() {
+            lines.push(detail_line("disable", "empty list disables this action"));
+        } else {
+            lines.push(detail_line("disable", "binding required"));
+        }
+    }
+
+    if !field.description.is_empty() {
+        lines.push(Line::from(""));
+        lines.push(Line::from(field.description.clone()));
+    }
+
+    lines
+}
+
+fn zellij_keybinding_object_for_field(field: &ConfigUiField) -> ZellijKeybindingObject {
+    if !matches!(
+        field.state,
+        ConfigUiValueState::Explicit | ConfigUiValueState::Invalid
+    ) {
+        return ZellijKeybindingObject {
+            entries: BTreeMap::new(),
+            malformed_entries: Vec::new(),
+            malformed_object: None,
+        };
+    }
+
+    let value = match serde_json::from_str::<JsonValue>(&field.edit_value) {
+        Ok(value) => value,
+        Err(source) => {
+            return ZellijKeybindingObject {
+                entries: BTreeMap::new(),
+                malformed_entries: Vec::new(),
+                malformed_object: Some(format!("not valid JSON: {source}")),
+            };
+        }
+    };
+    let Some(object) = value.as_object() else {
+        return ZellijKeybindingObject {
+            entries: BTreeMap::new(),
+            malformed_entries: Vec::new(),
+            malformed_object: Some("must be a JSON object".to_string()),
+        };
+    };
+
+    let mut entries = BTreeMap::new();
+    let mut malformed_entries = Vec::new();
+    for (action, raw_keys) in object {
+        let Some(values) = raw_keys.as_array() else {
+            malformed_entries.push(format!("{action}: not a list"));
+            continue;
+        };
+        let mut keys = Vec::with_capacity(values.len());
+        let mut invalid = false;
+        for value in values {
+            let Some(key) = value.as_str() else {
+                invalid = true;
+                break;
+            };
+            keys.push(key.to_string());
+        }
+        if invalid {
+            malformed_entries.push(format!("{action}: contains a non-string key"));
+        } else {
+            entries.insert(action.clone(), keys);
+        }
+    }
+
+    ZellijKeybindingObject {
+        entries,
+        malformed_entries,
+        malformed_object: None,
+    }
+}
+
+fn zellij_keybinding_keys_label(keys: &[impl AsRef<str>]) -> String {
+    if keys.is_empty() {
+        "disabled".to_string()
+    } else {
+        keys.iter()
+            .map(AsRef::as_ref)
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
 }
 
 fn single_choice_detail_lines(
@@ -3118,6 +3299,54 @@ mod tests {
                 "ram"
             ])
         );
+    }
+
+    // Defends: the keybinding tab renders Yazelix action registry labels, scoped ids, defaults, remaps, and disabled actions instead of an opaque JSON object.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn zellij_keybinding_details_use_action_registry_metadata() {
+        let runtime = tempdir().expect("runtime");
+        let config = tempdir().expect("config");
+        write_runtime_layout(runtime.path());
+        fs::write(
+            config.path().join("settings.jsonc"),
+            r#"{
+  "zellij": {
+    "keybindings": {
+      "popup": ["Alt x"],
+      "menu": [],
+      "unknown_action": ["Alt z"]
+    }
+  }
+}
+"#,
+        )
+        .expect("settings");
+        let request = test_request(runtime.path(), config.path());
+        let model = build_config_ui_model(&request).expect("model");
+        let mut app = ConfigUiApp {
+            request,
+            model,
+            selected_tab: 0,
+            selected_row: 0,
+            search: String::new(),
+            search_active: false,
+            edit: None,
+            notice: None,
+        };
+
+        select_field_path(&mut app, "zellij.keybindings");
+        let details = lines_text(&app.render_details(app.visible_rows()[app.selected_row]));
+
+        assert!(details.contains("Toggle the managed popup program"));
+        assert!(details.contains("zellij.popup"));
+        assert!(details.contains("Alt x (remapped)"));
+        assert!(details.contains("Alt t"));
+        assert!(details.contains("Open the Yazelix command palette popup"));
+        assert!(details.contains("disabled (disabled)"));
+        assert!(details.contains("empty list disables this action"));
+        assert!(details.contains("unsupported"));
+        assert!(details.contains("unknown_action"));
     }
 
     // Defends: machine-readable apply modes from main_config_contract.toml reach the config UI model for the first live slice and restart-scoped fields.
