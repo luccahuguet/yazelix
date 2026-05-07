@@ -2,36 +2,38 @@
 
 This inventory is the extraction gate for reusable Yazelix components. It records the current Rust shape before moving code out of the main repository so extraction decisions start from concrete ownership rather than a raw line-count hunch.
 
-Current rebaseline measured on 2026-05-07 after extracting `yazelix-screen`, `yazelix-cursors`, and `yazelix-bar`:
+Current rebaseline measured on 2026-05-07 after extracting `yazelix-screen`, `yazelix-cursors`, and `yazelix-bar`, then accepting the optional runtime component toggles:
 
-- `tokei rust_core rust_plugins --exclude target` reports `69,056` Rust code LOC across `138` Rust files
-- the same `tokei` run reports `75,567` Rust lines including blanks and comments
-- `config_metadata/rust_ownership_budget.toml` tracks `75,684` raw Rust file lines across `138` Rust files
+- `tokei rust_core rust_plugins --exclude target` reports `69,599` Rust code LOC across `139` Rust files
+- the same `tokei` run reports `76,167` Rust lines including blanks and comments
+- `config_metadata/rust_ownership_budget.toml` tracks `76,285` raw Rust file lines across `139` Rust files
 - the remaining difference between `tokei` lines and the budget total is measurement-method noise from embedded markdown/parser classification and line-count method differences, not a separate ownership surface
 - `yzx_repo_validator validate-rust-ownership-budget` passes the no-growth budget and still warns that the tracked Rust surface is above the long-term `60,000` LOC hard target
 - `cargo-udeps` requires nightly Rust because it passes unstable `-Z` compiler flags; rerun it during explicit dependency-audit beads rather than treating this inventory as fresh unused-dependency evidence
 
 The canonical family ownership, no-growth ceilings, and long-term warning target live in `config_metadata/rust_ownership_budget.toml`. The current budget excludes extracted child crates.
 
+The latest accepted runtime-component toggle slice added one Rust file and raised the raw Rust budget by `601` lines relative to the previous `75,684` ceiling. That growth is tracked as budget debt: future extraction/refactor beads should reduce the main-repo runtime budget before raising ceilings again.
+
 ## Ownership Split
 
 | Family | Files | Raw lines | Status | Extraction pressure |
 | --- | ---: | ---: | --- | --- |
-| Product runtime source | 75 | 51,655 | canonical and extension surfaces | High: contains the largest user-facing seams |
-| Product integration tests | 19 | 6,291 | canonical tests | Medium: split by behavior family, do not delete broadly |
+| Product runtime source | 76 | 52,185 | canonical and extension surfaces | High: contains the largest user-facing seams |
+| Product integration tests | 19 | 6,307 | canonical tests | Medium: split by behavior family, do not delete broadly |
 | Maintainer tooling and tests | 17 | 12,358 | canonical maintainer | Medium: keep in repo, but split large validator files |
 | Pane orchestrator plugin | 27 | 5,435 | extension surface | High: already has a natural Zellij plugin boundary |
-| Total | 138 | 75,684 | current budget ceiling | Reduce or extract before raising ceilings |
+| Total | 139 | 76,285 | current budget ceiling | Reduce or extract before raising ceilings |
 
 Detailed budget families:
 
 | Family | Files | Raw lines | Budget target | Notes |
 | --- | ---: | ---: | ---: | --- |
-| `core_cli_and_public_surface` | 12 | 8,187 | 7,000 | Public command dispatch and front-door rendering after child CLI extractions |
-| `core_config_ui_and_materialization` | 40 | 21,192 | 14,000 | Largest product family; config UI, apply modes, ratconfig boundary, materializers, settings surfaces |
-| `core_diagnostics_and_recovery` | 8 | 5,750 | 4,500 | Doctor, install ownership, profile/status reporting |
-| `core_workspace_and_pane_integration` | 15 | 16,471 | 11,000 | Action registry, Zellij/session/workspace command surface, pane-orchestrator client, status/cache/widgets |
-| `core_integration_tests` | 19 | 6,291 | 4,500 | High-value tests, but several files are broad family buckets |
+| `core_cli_and_public_surface` | 12 | 8,195 | 7,000 | Public command dispatch and front-door rendering after child CLI extractions |
+| `core_config_ui_and_materialization` | 41 | 21,549 | 14,000 | Largest product family; config UI, apply modes, runtime component manifest, ratconfig boundary, materializers, settings surfaces |
+| `core_diagnostics_and_recovery` | 8 | 5,927 | 4,500 | Doctor, install ownership, profile/status reporting |
+| `core_workspace_and_pane_integration` | 15 | 16,514 | 11,000 | Action registry, Zellij/session/workspace command surface, pane-orchestrator client, status/cache/widgets |
+| `core_integration_tests` | 19 | 6,307 | 4,500 | High-value tests, but several files are broad family buckets |
 | `maintainer_tooling_and_validators` | 16 | 12,114 | 9,000 | Keep in repo; split validators by domain before optimizing |
 | `maintainer_tests` | 1 | 244 | 244 | Small release/upgrade contract test surface |
 | `pane_orchestrator_plugin` | 27 | 5,435 | 4,500 | Extension surface; refactor runtime config, timer/status/sidebar modules before public extraction |
@@ -41,10 +43,10 @@ Detailed budget families:
 | File | Raw lines | Disposition |
 | --- | ---: | --- |
 | `rust_core/yazelix_maintainer/src/repo_contract_validation.rs` | 4,148 | Split by validator domain, keep in maintainer crate |
-| `rust_core/yazelix_core/src/launch_commands.rs` | 3,381 | Split terminal selection, config overrides, launch execution, desktop/macOS handling |
-| `rust_core/yazelix_core/src/config_ui.rs` | 3,205 | Continue the `yazelix_ratconfig` split and keep Yazelix adapters local |
+| `rust_core/yazelix_core/src/launch_commands.rs` | 3,412 | Split terminal selection, config overrides, launch execution, desktop/macOS handling |
+| `rust_core/yazelix_core/src/config_ui.rs` | 3,264 | Continue the `yazelix_ratconfig` split and keep Yazelix adapters local |
 | `rust_core/yazelix_core/src/zellij_commands.rs` | 2,892 | Split remaining pipe primitive, workspace/editor flow, and terminal pane actions before workspace extraction |
-| `rust_core/yazelix_core/src/zellij_materialization.rs` | 2,850 | Keep until keybinding ownership and layout-generation contracts settle; integrated zjstatus command definitions live behind a typed adapter |
+| `rust_core/yazelix_core/src/zellij_materialization.rs` | 2,862 | Keep until keybinding ownership and layout-generation contracts settle; integrated zjstatus command definitions live behind a typed adapter |
 | `rust_core/yazelix_core/src/zellij_commands/status/agent_usage.rs` | 1,933 | Provider usage cache refreshes, shared-cache locking, and agent usage widget rendering; keep Yazelix-owned unless a standalone provider usage contract appears |
 | `rust_core/yazelix_core/src/bin/yzx_control.rs` | 1,743 | Public command implementation dispatcher; split only if routing remains obvious |
 | `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs` | 1,673 | Split by config/materialization behavior family; do not delete without replacement coverage |
@@ -97,7 +99,7 @@ The main overengineering risk is not one bad abstraction; it is several broad mo
 
 ## Extraction Sequence
 
-1. Finish this inventory and keep the no-growth budget current
+1. Keep this inventory and the no-growth budget current; every accepted Rust growth slice should record whether it is deletion debt or a justified new owner
 2. Keep `yazelix-screen` external and avoid reintroducing duplicated screen source into the main repo
 3. Continue the `zellij_commands.rs` split: status/cache/widget code now lives under `zellij_commands/status.rs`, agent usage refreshers live under `zellij_commands/status/agent_usage.rs`, and integrated bar command definitions render through a typed adapter. Next isolate workspace/editor pane flow before `yazelix_workspace`
 4. Keep `#yazelix_cursors` as the standalone cursor package; reusable registry, `yzc`, Ghostty shader generation, and packaged shader assets live in `github:luccahuguet/yazelix-cursors`, while `ghostty_cursor_registry.rs` remains the Yazelix settings adapter
@@ -132,6 +134,13 @@ These targets separate deletion from extraction accounting. Moving code out of t
 | `50k` | Requires moving maintainer tooling and several reusable components out of the main repo, or deleting large behavior surfaces | Not realistic as near-term true maintenance reduction; only valid if public extracted crates are independently useful and simpler |
 
 The current budget sets `hard_target_loc = 60000`. The validator intentionally warns while the repo is above that target; the warning should push deletion, simplification, or extraction before anyone raises ceilings again.
+
+Recent accepted full-repo scorecards:
+
+| Range | Raw text diff excluding `.beads` | Tokei code LOC delta | Budget interpretation |
+| --- | --- | ---: | --- |
+| `v16.3..a001fab0` | `3,550` insertions, `4,093` deletions, net `-543` | `-2` | Main repo is roughly flat after generated clutter deletion and optional component toggles |
+| `a001fab0^..a001fab0` | `804` insertions, `78` deletions, net `+726` | `+650` | Optional runtime component toggles are accepted product behavior, but they increased the cleanup debt |
 
 ## Maintainer Tooling Split
 

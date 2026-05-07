@@ -6,6 +6,8 @@ This is the measurement policy for delete-first refactors and first-party child 
 
 Use `v16.3` as the first baseline for the post-child-repo extraction cycle.
 
+The primary target is main-repo runtime ownership. Child-repo LOC, maintainer tooling, docs, tests, packaging, generated fixtures, and binary assets are reported separately so extraction does not look successful merely because code moved to another repository.
+
 For each deletion or extraction bead, report:
 
 - baseline ref, usually the previous completed bead commit or `v16.3` for the first pass
@@ -16,6 +18,8 @@ For each deletion or extraction bead, report:
 - whether main-repo ownership actually decreased
 - any child-repo LOC added outside the main repo
 - any deferred deletion debt
+
+If accepted product work raises a no-growth ceiling, refresh the relevant inventory and record the increase as budget debt unless the new owner directly replaces a larger deleted owner. Do not close an extraction bead on a repository split alone.
 
 ## Counted Surfaces
 
