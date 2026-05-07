@@ -61,9 +61,9 @@ pub mod zellij_materialization;
 pub mod zellij_render_plan;
 
 pub use action_registry::{
-    PANE_ORCHESTRATOR_PLUGIN_ALIAS, YazelixActionBackend, YazelixActionDisablePolicy,
-    YazelixActionMetadata, YazelixActionOwner, ZELLIJ_ACTIONS, ZellijActionSpec,
-    all_yazelix_actions, zellij_action_by_local_id,
+    PANE_ORCHESTRATOR_PLUGIN_ALIAS, YAZI_ACTIONS, YazelixActionBackend, YazelixActionDisablePolicy,
+    YazelixActionMetadata, YazelixActionOwner, YaziActionSpec, ZELLIJ_ACTIONS, ZellijActionSpec,
+    all_yazelix_actions, yazi_action_by_local_id, zellij_action_by_local_id,
 };
 pub use bridge::{CoreError, ErrorClass, error_envelope, success_envelope};
 pub use command_metadata::{

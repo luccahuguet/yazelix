@@ -552,6 +552,17 @@ in
       description = "Default file sorting method";
     };
 
+    yazi_keybindings = mkMainContractOption "yazi.keybindings" {
+      description = ''
+        Semantic remaps for Yazelix-owned Yazi integration actions.
+
+        Keys are action ids such as "open_directory_as_workspace_pane" and
+        "open_zoxide_in_editor"; values are lists of generated Yazi bindings
+        such as "<A-p>". Use an empty list to disable the generated binding for
+        one action.
+      '';
+    };
+
     debug_mode = mkMainContractOption "core.debug_mode" {
       description = "Enable verbose debug logging";
     };

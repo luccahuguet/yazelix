@@ -1,7 +1,10 @@
 // Test lane: default
 //! `yzx keys*` family implemented in Rust for `yzx_control`.
 
-use crate::action_registry::{ZELLIJ_ACTIONS, ZellijActionSpec, zellij_action_by_local_id};
+use crate::action_registry::{
+    YAZI_ACTIONS, YazelixActionMetadata, YazelixActionOwner, YaziActionSpec, ZELLIJ_ACTIONS,
+    ZellijActionSpec, yazi_action_by_local_id, zellij_action_by_local_id,
+};
 use crate::bridge::CoreError;
 use crate::cli_render::{
     accent as render_cli_accent, colors_enabled, label as render_cli_label,
@@ -216,13 +219,32 @@ fn zellij_action(local_id: &str) -> &'static ZellijActionSpec {
         .unwrap_or_else(|| panic!("missing Yazelix action registry entry for {local_id}"))
 }
 
+fn yazi_action(local_id: &str) -> &'static YaziActionSpec {
+    yazi_action_by_local_id(local_id)
+        .unwrap_or_else(|| panic!("missing Yazelix action registry entry for {local_id}"))
+}
+
 fn display_zellij_key(key: &str) -> String {
     key.split_whitespace().collect::<Vec<_>>().join("+")
+}
+
+fn display_yazi_key(key: &str) -> String {
+    key.strip_prefix("<A-")
+        .and_then(|key| key.strip_suffix('>'))
+        .map(|key| format!("Alt+{key}"))
+        .unwrap_or_else(|| key.to_string())
 }
 
 fn display_zellij_keys(keys: &[&str]) -> String {
     keys.iter()
         .map(|key| display_zellij_key(key))
+        .collect::<Vec<_>>()
+        .join(" / ")
+}
+
+fn display_yazi_keys(keys: &[&str]) -> String {
+    keys.iter()
+        .map(|key| display_yazi_key(key))
         .collect::<Vec<_>>()
         .join(" / ")
 }
@@ -237,6 +259,14 @@ fn zellij_action_row(local_id: &str) -> TableRow {
     let spec = zellij_action(local_id);
     table_row_owned(vec![
         display_zellij_keys(spec.action.default_keys),
+        spec.action.label.to_string(),
+    ])
+}
+
+fn yazi_action_row(local_id: &str) -> TableRow {
+    let spec = yazi_action(local_id);
+    table_row_owned(vec![
+        display_yazi_keys(spec.action.default_keys),
         spec.action.label.to_string(),
     ])
 }
@@ -264,14 +294,8 @@ fn root_workspace_rows() -> Vec<TableRow> {
             "Switch between Yazelix layout families",
         ),
         zellij_action_row("open_workspace_terminal"),
-        table_row(&[
-            "Alt+p",
-            "In Yazi, open the selected directory in a new pane and make it the tab workspace root",
-        ]),
-        table_row(&[
-            "Alt+z",
-            "In Yazi, open a Zoxide picker and retarget the managed editor/workspace to the selected directory",
-        ]),
+        yazi_action_row("open_directory_as_workspace_pane"),
+        yazi_action_row("open_zoxide_in_editor"),
     ]
 }
 
@@ -300,14 +324,34 @@ fn root_tab_rows() -> Vec<TableRow> {
 fn semantic_zellij_rows() -> Vec<TableRow> {
     ZELLIJ_ACTIONS
         .iter()
-        .map(|spec| {
-            table_row_owned(vec![
-                spec.action.id.to_string(),
-                display_zellij_keys(spec.action.default_keys),
-                spec.action.label.to_string(),
-            ])
-        })
+        .map(|spec| semantic_action_row(&spec.action))
         .collect()
+}
+
+fn semantic_yazi_rows() -> Vec<TableRow> {
+    YAZI_ACTIONS
+        .iter()
+        .map(|spec| semantic_action_row(&spec.action))
+        .collect()
+}
+
+fn semantic_remap_rows() -> Vec<TableRow> {
+    let mut rows = semantic_zellij_rows();
+    rows.extend(semantic_yazi_rows());
+    rows
+}
+
+fn semantic_action_row(action: &YazelixActionMetadata) -> TableRow {
+    let default = match action.owner {
+        YazelixActionOwner::Zellij => display_zellij_keys(action.default_keys),
+        YazelixActionOwner::Yazi => display_yazi_keys(action.default_keys),
+        YazelixActionOwner::Editor => action.default_keys.join(" / "),
+    };
+    table_row_owned(vec![
+        action.id.to_string(),
+        default,
+        action.label.to_string(),
+    ])
 }
 
 fn render_yazelix_keys(color: bool) -> String {
@@ -353,6 +397,7 @@ fn render_yazelix_keys(color: bool) -> String {
         &root_tab_rows(),
         color,
     );
+    let semantic_rows = semantic_remap_rows();
     let semantic_remaps = render_table(
         &[
             Column {
@@ -368,7 +413,7 @@ fn render_yazelix_keys(color: bool) -> String {
                 width: 48,
             },
         ],
-        &semantic_zellij_rows(),
+        &semantic_rows,
         color,
     );
 
@@ -676,7 +721,9 @@ mod tests {
         assert!(rendered.contains("Semantic remaps"));
         assert!(rendered.contains("Keybinding"));
         assert!(rendered.contains("zellij.menu"));
+        assert!(rendered.contains("yazi.open_zoxide_in_editor"));
         assert!(rendered.contains("Alt+Shift+M"));
+        assert!(rendered.contains("Alt+z"));
         assert!(rendered.contains("Alt+Shift+C"));
         assert!(rendered.contains("Open the Yazelix command palette popup"));
         assert!(rendered.contains("yzx keys yazi"));

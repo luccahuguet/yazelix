@@ -136,6 +136,7 @@ Yazelix owns the generated `[opener].edit` entry. That opener sends file opens t
 - **Git integration**: Shows git status in listings (via git plugin)
 - **Editor integration**: Opens files with yazelix's configured editor
 - **Direct zoxide jump**: `Alt+z` opens a Zoxide picker and retargets the managed editor/workspace directly to the selected directory
+- **Semantic integration remaps**: `yazi.keybindings` in `settings.jsonc` remaps Yazelix-owned Yazi integration actions such as `open_zoxide_in_editor` and `open_directory_as_workspace_pane`
 - **Auto layout**: Adjusts pane layout based on terminal width
 - **Custom status bar**: Enhanced readability for sidebar mode
 
@@ -193,6 +194,21 @@ Yazelix intentionally keeps Yazi's upstream open flow intact:
 - `O`: opens Yazi's built-in "Open with" menu for alternate handlers, including the system file manager path when available
 - `Z`: keeps Yazi's native Zoxide jump behavior inside Yazi
 - `Alt+z`: runs the bundled `zoxide-editor` plugin so the selected directory becomes the managed editor/workspace target immediately
+
+Use `settings.jsonc` for the Yazelix-owned generated integration bindings:
+
+```jsonc
+{
+  "yazi": {
+    "keybindings": {
+      "open_zoxide_in_editor": ["<A-x>"],
+      "open_directory_as_workspace_pane": []
+    }
+  }
+}
+```
+
+Omitted actions keep Yazelix defaults. Empty lists disable that generated integration binding. Multiple entries generate multiple alternate bindings for the same Yazelix-owned action. Arbitrary native Yazi actions and multi-key sequences still belong in `~/.config/yazelix/yazi_keymap.toml`.
 
 Because `O` already exposes the practical "open outside the editor" flow, Yazelix does not add a separate default keybinding for opening in the host file manager.
 

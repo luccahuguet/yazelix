@@ -69,11 +69,14 @@ Use semantic remaps for Yazelix-owned actions and native sidecars for the owning
 
 - Yazelix-owned Zellij actions: `settings.jsonc` under `zellij.keybindings`
 - Full native Zellij keymap ownership: `~/.config/yazelix/zellij.kdl`
+- Yazelix-owned Yazi integration actions: `settings.jsonc` under `yazi.keybindings`
 - Yazi-native bindings: `~/.config/yazelix/yazi_keymap.toml`
 - Helix-local bindings for managed Helix sessions: `~/.config/yazelix/helix.toml`
 - Terminal-emulator shortcuts: the terminal emulator config
 
 `zellij.keybindings` accepts owner-local action ids such as `popup`, `menu`, `toggle_sidebar`, and `open_workspace_terminal`. Shared diagnostics and docs use scoped ids such as `zellij.popup`. Omitted actions keep defaults, and `[]` disables a Yazelix-owned binding. Yazelix rejects duplicate semantic Zellij keys before launch.
+
+`yazi.keybindings` accepts owner-local action ids such as `open_directory_as_workspace_pane` and `open_zoxide_in_editor`. Values are alternate generated Yazi bindings such as `<A-p>` and `<A-z>`. Omitted actions keep defaults, and `[]` disables that generated Yazelix-owned Yazi integration binding. Arbitrary Yazi actions and native multi-key sequences remain in `~/.config/yazelix/yazi_keymap.toml`.
 
 ### Sidebar Commands vs Keybindings
 

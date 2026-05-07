@@ -1,3 +1,4 @@
+use crate::action_registry::YAZI_ACTIONS;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::control_plane::config_dir_from_env;
@@ -7,12 +8,14 @@ use crate::yazi_render_plan::{
 };
 use serde::Serialize;
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use toml::Value as TomlValue;
 
 const RUNTIME_DIR_PLACEHOLDER: &str = "__YAZELIX_RUNTIME_DIR__";
+const YAZI_KEYBINDINGS_CONFIG_KEY: &str = "yazi_keybindings";
 
 #[derive(Debug, Clone)]
 pub struct YaziMaterializationRequest {
@@ -61,6 +64,7 @@ pub fn generate_yazi_materialization(
     let render_plan = compute_yazi_render_plan(&build_yazi_render_plan_request(
         &normalized.normalized_config,
     ))?;
+    let yazi_keybindings = resolve_yazi_keybindings(&normalized.normalized_config)?;
     let config_dir = config_dir_from_env()?;
     crate::managed_user_config_stubs::ensure_yazi_surface_stub(&config_dir)?;
     let user_paths = resolve_user_override_paths(&config_dir)?;
@@ -89,6 +93,7 @@ pub fn generate_yazi_materialization(
         &request.yazi_config_dir,
         &request.runtime_dir,
         &user_paths.keymap_toml,
+        &yazi_keybindings,
     )?;
 
     let should_sync_static_assets = request.sync_static_assets
@@ -361,14 +366,16 @@ fn write_generated_keymap_toml(
     output_dir: &Path,
     runtime_dir: &Path,
     user_path: &Path,
+    yazi_keybindings: &BTreeMap<String, Vec<String>>,
 ) -> Result<YaziManagedFileStatus, CoreError> {
     let base_path = source_dir.join("yazelix_keymap.toml");
-    let base_keymap = read_required_toml_table(
+    let mut base_keymap = read_required_toml_table(
         &base_path,
         "read_yazi_keymap_base",
         "Could not read the bundled Yazi keymap config",
         "Reinstall Yazelix so the runtime includes configs/yazi/yazelix_keymap.toml.",
     )?;
+    base_keymap = merge_yazi_keymap(base_keymap, build_semantic_yazi_keymap(yazi_keybindings));
 
     let final_keymap = if user_path.exists() {
         let user_keymap = read_required_toml_table(
@@ -850,6 +857,189 @@ fn merge_yazi_keymap(base_keymap: toml::Table, user_keymap: toml::Table) -> toml
         }
     }
     merged
+}
+
+fn default_yazi_keybindings() -> BTreeMap<String, Vec<String>> {
+    YAZI_ACTIONS
+        .iter()
+        .map(|spec| {
+            (
+                spec.action.local_id.to_string(),
+                spec.action
+                    .default_keys
+                    .iter()
+                    .map(|key| (*key).to_string())
+                    .collect(),
+            )
+        })
+        .collect()
+}
+
+fn resolve_yazi_keybindings(
+    config: &JsonMap<String, JsonValue>,
+) -> Result<BTreeMap<String, Vec<String>>, CoreError> {
+    let mut resolved = default_yazi_keybindings();
+    let Some(value) = config.get(YAZI_KEYBINDINGS_CONFIG_KEY) else {
+        validate_yazi_keybindings(&resolved)?;
+        return Ok(resolved);
+    };
+    let Some(object) = value.as_object() else {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "invalid_yazi_keybindings",
+            "yazi.keybindings must be an object whose values are lists of Yazi key strings.",
+            "Use settings such as `\"open_zoxide_in_editor\": [\"<A-z>\"]`, or remove yazi.keybindings to use Yazelix defaults.",
+            json!({ "actual": value }),
+        ));
+    };
+
+    for (action, raw_keys) in object {
+        if !is_supported_yazi_keybinding_action(action) {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "unsupported_yazi_keybinding_action",
+                format!("Unsupported Yazi keybinding action: {action}."),
+                "Use one of the supported Yazelix Yazi action ids, or remove the unsupported keybinding entry.",
+                json!({
+                    "action": action,
+                    "supported_actions": supported_yazi_keybinding_actions(),
+                }),
+            ));
+        }
+        let Some(values) = raw_keys.as_array() else {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "invalid_yazi_keybinding_keys",
+                format!("yazi.keybindings.{action} must be a list of Yazi key strings."),
+                "Use a list such as `[\"<A-z>\"]`, or an empty list to disable that Yazelix action binding.",
+                json!({ "action": action, "actual": raw_keys }),
+            ));
+        };
+        let mut keys = Vec::with_capacity(values.len());
+        for value in values {
+            let Some(raw_key) = value.as_str() else {
+                return Err(CoreError::classified(
+                    ErrorClass::Config,
+                    "invalid_yazi_keybinding_key",
+                    format!("yazi.keybindings.{action} contains a non-string key."),
+                    "Use Yazi key strings such as \"<A-z>\" or \"g\".",
+                    json!({ "action": action, "actual": value }),
+                ));
+            };
+            let key = raw_key.trim();
+            if key.is_empty() || key.contains('\n') || key.contains('\r') {
+                return Err(CoreError::classified(
+                    ErrorClass::Config,
+                    "invalid_yazi_keybinding_key",
+                    format!("yazi.keybindings.{action} contains an invalid key string."),
+                    "Use a non-empty single-line Yazi key string such as \"<A-z>\".",
+                    json!({ "action": action, "actual": raw_key }),
+                ));
+            }
+            keys.push(key.to_string());
+        }
+        resolved.insert(action.clone(), keys);
+    }
+
+    validate_yazi_keybindings(&resolved)?;
+    Ok(resolved)
+}
+
+fn validate_yazi_keybindings(keybindings: &BTreeMap<String, Vec<String>>) -> Result<(), CoreError> {
+    let mut seen = BTreeMap::<String, String>::new();
+    for spec in YAZI_ACTIONS {
+        let Some(keys) = keybindings.get(spec.action.local_id) else {
+            continue;
+        };
+        if keys.is_empty() && !spec.action.disable_policy.empty_binding_list_allowed() {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "disabled_required_yazi_keybinding",
+                format!("Yazi action {} cannot be disabled.", spec.action.local_id),
+                "Remove the empty list or assign at least one Yazi key string.",
+                json!({ "action": spec.action.local_id }),
+            ));
+        }
+        for key in keys {
+            if let Some(existing_action) =
+                seen.insert(key.clone(), spec.action.local_id.to_string())
+            {
+                return Err(CoreError::classified(
+                    ErrorClass::Config,
+                    "duplicate_yazi_keybinding",
+                    format!(
+                        "Yazi keybinding {key:?} is assigned to both {existing_action} and {}.",
+                        spec.action.local_id
+                    ),
+                    "Give each Yazelix Yazi action a distinct key, or set one action to an empty list to disable its binding.",
+                    json!({
+                        "key": key,
+                        "first_action": existing_action,
+                        "second_action": spec.action.local_id,
+                    }),
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn is_supported_yazi_keybinding_action(action: &str) -> bool {
+    YAZI_ACTIONS
+        .iter()
+        .any(|spec| spec.action.local_id == action)
+}
+
+fn supported_yazi_keybinding_actions() -> Vec<&'static str> {
+    YAZI_ACTIONS
+        .iter()
+        .map(|spec| spec.action.local_id)
+        .collect()
+}
+
+fn build_semantic_yazi_keymap(yazi_keybindings: &BTreeMap<String, Vec<String>>) -> toml::Table {
+    let mut keymap = toml::Table::new();
+    for spec in YAZI_ACTIONS {
+        let Some(keys) = yazi_keybindings.get(spec.action.local_id) else {
+            continue;
+        };
+        if keys.is_empty() {
+            continue;
+        }
+        let section = keymap
+            .entry(spec.section.to_string())
+            .or_insert_with(|| TomlValue::Table(toml::Table::new()));
+        let section = section
+            .as_table_mut()
+            .expect("new semantic Yazi keymap section is a table");
+        let entries = section
+            .entry(spec.keymap_list.to_string())
+            .or_insert_with(|| TomlValue::Array(Vec::new()));
+        let entries = entries
+            .as_array_mut()
+            .expect("new semantic Yazi keymap list is an array");
+        for key in keys {
+            entries.push(TomlValue::Table(yazi_keymap_entry(spec, key)));
+        }
+    }
+    keymap
+}
+
+fn yazi_keymap_entry(spec: &crate::action_registry::YaziActionSpec, key: &str) -> toml::Table {
+    let mut entry = toml::Table::new();
+    entry.insert(
+        "on".to_string(),
+        TomlValue::Array(vec![TomlValue::String(key.to_string())]),
+    );
+    entry.insert(
+        "run".to_string(),
+        TomlValue::String(spec.action.generated_command.to_string()),
+    );
+    entry.insert(
+        "desc".to_string(),
+        TomlValue::String(spec.description.to_string()),
+    );
+    entry
 }
 
 fn read_required_toml_table(

@@ -410,7 +410,7 @@ Yazelix uses Zellij as the workspace layer, so the most important bindings are g
 | `Alt+Shift+H` / `Alt+Shift+L` | Move the current tab left or right |
 | `Alt+Shift+F` | Toggle pane fullscreen |
 
-Yazi still has its own keymap too: press `~` inside Yazi for its built-in help, and use the most useful Yazelix-specific file-tree sidebar flows such as `Enter` to open through the managed editor integration, `Alt+z` to pick a directory with zoxide and retarget the workspace, and `Alt+p` to open the selected directory in a new pane as the current tab workspace root
+Yazi still has its own keymap too: press `~` inside Yazi for its built-in help, remap Yazelix-owned Yazi integration keys with `yazi.keybindings` in `settings.jsonc`, and use the most useful file-tree sidebar flows such as `Enter` to open through the managed editor integration, `Alt+z` to pick a directory with zoxide and retarget the workspace, and `Alt+p` to open the selected directory in a new pane as the current tab workspace root
 
 Helix and Neovim integration is intentionally small: use `Ctrl+y` and `Alt+y` for workspace navigation, use `Alt+r` / `yzx reveal` when you want the editor to reveal the current file in the managed Yazi file tree, and see [docs/helix_keybindings.md](./docs/helix_keybindings.md) and [docs/neovim_keybindings.md](./docs/neovim_keybindings.md) for editor-local setup details
 

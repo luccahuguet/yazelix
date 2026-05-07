@@ -4,7 +4,7 @@
 
 Yazelix keybinding configuration is owner-scoped. Yazelix exposes semantic remaps only for actions whose behavior Yazelix owns; broader application keymaps stay in the owning tool's native config surface.
 
-The current implemented semantic surface is `zellij.keybindings` in `settings.jsonc`. It covers Yazelix-owned Zellij actions that route to the pane orchestrator or Yazelix control-plane helpers.
+The current implemented semantic surfaces are `zellij.keybindings` and `yazi.keybindings` in `settings.jsonc`. They cover Yazelix-owned integration actions that route to the pane orchestrator, generated Yazi keymap commands, or Yazelix control-plane helpers.
 
 Future Yazi and editor action remaps should use the same ownership rule without turning Yazelix into a generic cross-application keybinding DSL.
 
@@ -49,6 +49,27 @@ Rules:
 - explicit managed `keybinds clear-defaults=true` in `~/.config/yazelix/zellij.kdl` gives the user full native Zellij keybinding ownership and suppresses semantic Yazelix keybind generation
 - read-only fallback from `~/.config/zellij/config.kdl` does not imply full Yazelix keybinding ownership, even if that native file uses `clear-defaults=true`
 
+`yazi.keybindings` covers only generated Yazelix-owned Yazi integration actions:
+
+```jsonc
+{
+  "yazi": {
+    "keybindings": {
+      "open_zoxide_in_editor": ["<A-z>"],
+      "open_directory_as_workspace_pane": ["<A-p>"]
+    }
+  }
+}
+```
+
+Rules:
+
+- omitted actions keep Yazelix defaults
+- an empty list disables that generated Yazelix-owned Yazi integration binding
+- multiple entries generate multiple alternate bindings for the same Yazelix-owned action, not a native Yazi key sequence
+- duplicate keys across the semantic Yazi map are rejected before keymap generation
+- arbitrary Yazi-native keymap ownership remains in `~/.config/yazelix/yazi_keymap.toml`
+
 ## Action Registry Shape
 
 The Rust action registry is the shared source for Yazelix-owned action metadata that can feed generated bindings, `yzx keys`, doctor/config UI diagnostics, and future docs metadata. Registry entries use scoped action ids:
@@ -57,7 +78,7 @@ The Rust action registry is the shared source for Yazelix-owned action metadata 
 - `zellij.menu`
 - `zellij.toggle_sidebar`
 - `zellij.open_workspace_terminal`
-- `yazi.open_selected_in_editor`
+- `yazi.open_directory_as_workspace_pane`
 - `yazi.open_zoxide_in_editor`
 - `editor.reveal_in_sidebar`
 
@@ -75,7 +96,7 @@ Each action registry entry includes:
 - whether an empty binding list is allowed
 - diagnostics Yazelix can prove reliably
 
-The current implemented registry slice is the Zellij semantic action set. Yazi and editor entries should be added only when their ownership and backend generation contracts are explicit.
+The current implemented registry slices are the Zellij semantic action set and the generated Yazi integration action set. Editor entries should be added only when their ownership and backend generation contracts are explicit.
 
 ## Profiles
 
@@ -128,6 +149,7 @@ Yazelix should not claim to fully diagnose conflicts inside arbitrary native too
 ## Verification
 
 - `yzx dev rust test zellij_materialization`
+- `yzx dev rust test yazi_materialization`
 - `yzx dev rust test config_normalize`
 - `yzx_repo_validator validate-config-surface-contract`
 - `yzx_repo_validator validate-contracts`

@@ -8,6 +8,15 @@ pub const ZELLIJ_SEMANTIC_KEYBINDING_DIAGNOSTICS: &[&str] = &[
     "duplicate_zellij_keybinding",
 ];
 
+pub const YAZI_SEMANTIC_KEYBINDING_DIAGNOSTICS: &[&str] = &[
+    "unsupported_yazi_keybinding_action",
+    "invalid_yazi_keybindings",
+    "invalid_yazi_keybinding_keys",
+    "invalid_yazi_keybinding_key",
+    "duplicate_yazi_keybinding",
+    "disabled_required_yazi_keybinding",
+];
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum YazelixActionOwner {
     Zellij,
@@ -78,6 +87,14 @@ pub struct ZellijActionSpec {
     pub payload: Option<&'static str>,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct YaziActionSpec {
+    pub action: YazelixActionMetadata,
+    pub section: &'static str,
+    pub keymap_list: &'static str,
+    pub description: &'static str,
+}
+
 const fn zellij_action(
     local_id: &'static str,
     scoped_id: &'static str,
@@ -103,6 +120,34 @@ const fn zellij_action(
         mode,
         message_name,
         payload,
+    }
+}
+
+const fn yazi_action(
+    local_id: &'static str,
+    scoped_id: &'static str,
+    label: &'static str,
+    section: &'static str,
+    keymap_list: &'static str,
+    default_keys: &'static [&'static str],
+    generated_command: &'static str,
+    description: &'static str,
+) -> YaziActionSpec {
+    YaziActionSpec {
+        action: YazelixActionMetadata {
+            id: scoped_id,
+            local_id,
+            label,
+            owner: YazelixActionOwner::Yazi,
+            backend: YazelixActionBackend::YaziKeymapCommand,
+            default_keys,
+            generated_command,
+            disable_policy: YazelixActionDisablePolicy::Optional,
+            diagnostics: YAZI_SEMANTIC_KEYBINDING_DIAGNOSTICS,
+        },
+        section,
+        keymap_list,
+        description,
     }
 }
 
@@ -219,12 +264,44 @@ pub const ZELLIJ_ACTIONS: &[ZellijActionSpec] = &[
     ),
 ];
 
+pub const YAZI_ACTIONS: &[YaziActionSpec] = &[
+    yazi_action(
+        "open_directory_as_workspace_pane",
+        "yazi.open_directory_as_workspace_pane",
+        "Open the selected directory as a workspace pane",
+        "mgr",
+        "append_keymap",
+        &["<A-p>"],
+        "shell '__YAZELIX_RUNTIME_DIR__/libexec/yzx_control zellij open-terminal \"$0\"'",
+        "Open directory in new pane",
+    ),
+    yazi_action(
+        "open_zoxide_in_editor",
+        "yazi.open_zoxide_in_editor",
+        "Retarget the managed editor through the Yazi zoxide picker",
+        "mgr",
+        "append_keymap",
+        &["<A-z>"],
+        "plugin zoxide-editor",
+        "Zoxide jump -> open in editor",
+    ),
+];
+
 pub fn all_yazelix_actions() -> impl Iterator<Item = &'static YazelixActionMetadata> {
-    ZELLIJ_ACTIONS.iter().map(|spec| &spec.action)
+    ZELLIJ_ACTIONS
+        .iter()
+        .map(|spec| &spec.action)
+        .chain(YAZI_ACTIONS.iter().map(|spec| &spec.action))
 }
 
 pub fn zellij_action_by_local_id(local_id: &str) -> Option<&'static ZellijActionSpec> {
     ZELLIJ_ACTIONS
+        .iter()
+        .find(|spec| spec.action.local_id == local_id)
+}
+
+pub fn yazi_action_by_local_id(local_id: &str) -> Option<&'static YaziActionSpec> {
+    YAZI_ACTIONS
         .iter()
         .find(|spec| spec.action.local_id == local_id)
 }

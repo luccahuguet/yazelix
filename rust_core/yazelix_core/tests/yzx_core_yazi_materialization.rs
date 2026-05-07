@@ -52,9 +52,10 @@ run = "git"
     .unwrap();
     fs::write(
         yazi_dir.join("yazelix_keymap.toml"),
-        r#"[[mgr.append_keymap]]
-on = ["<A-p>"]
-        run = "shell '__YAZELIX_RUNTIME_DIR__/libexec/yzx_control zellij open-terminal \"$0\"'"
+        r#"[[mgr.prepend_keymap]]
+on = ["g", "l"]
+run = "plugin lazygit"
+desc = "Open lazygit"
 "#,
     )
     .unwrap();
@@ -172,6 +173,130 @@ plugins = ["git", "starship"]
     assert!(runtime_placeholder_plugin.contains(runtime_dir.to_string_lossy().as_ref()));
 }
 
+// Defends: semantic Yazi integration keybinding remaps replace generated Yazelix-owned bindings without editing the native yazi_keymap.toml sidecar.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yazi_materialization_generate_applies_semantic_keybinding_remaps() {
+    let repo = repo_root();
+    let temp = tempdir().unwrap();
+    let home = temp.path().join("home");
+    let config_root = home.join(".config").join("yazelix");
+    let output_dir = temp.path().join("state").join("configs").join("yazi");
+    let runtime_dir = temp.path().join("runtime");
+    let config_path = prepare_managed_config(
+        &config_root,
+        &repo,
+        r#"[yazi.keybindings]
+open_directory_as_workspace_pane = []
+open_zoxide_in_editor = ["<A-x>", "<A-s>"]
+"#,
+    );
+    prepare_runtime_fixture(&runtime_dir);
+
+    let output = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .env("HOME", &home)
+        .env("XDG_CONFIG_HOME", home.join(".config"))
+        .env("XDG_DATA_HOME", home.join(".local").join("share"))
+        .env("YAZELIX_CONFIG_DIR", &config_root)
+        .arg("yazi-materialization.generate")
+        .arg("--config")
+        .arg(&config_path)
+        .arg("--default-config")
+        .arg(repo.join("yazelix_default.toml"))
+        .arg("--contract")
+        .arg(repo.join("config_metadata/main_config_contract.toml"))
+        .arg("--runtime-dir")
+        .arg(&runtime_dir)
+        .arg("--yazi-config-dir")
+        .arg(&output_dir)
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let generated_keymap = fs::read_to_string(output_dir.join("keymap.toml")).unwrap();
+    let parsed_keymap: toml::Value = toml::from_str(&generated_keymap).unwrap();
+    let mgr_append = parsed_keymap
+        .get("mgr")
+        .and_then(|section| section.get("append_keymap"))
+        .and_then(toml::Value::as_array)
+        .expect("mgr append keymap");
+
+    assert_eq!(mgr_append.len(), 2);
+    assert_eq!(
+        mgr_append[0]
+            .get("on")
+            .and_then(toml::Value::as_array)
+            .and_then(|keys| keys.first())
+            .and_then(toml::Value::as_str),
+        Some("<A-x>")
+    );
+    assert_eq!(
+        mgr_append[1]
+            .get("on")
+            .and_then(toml::Value::as_array)
+            .and_then(|keys| keys.first())
+            .and_then(toml::Value::as_str),
+        Some("<A-s>")
+    );
+    assert_eq!(
+        mgr_append[0].get("run").and_then(toml::Value::as_str),
+        Some("plugin zoxide-editor")
+    );
+    assert!(!generated_keymap.contains("open-terminal"));
+    assert!(!generated_keymap.contains("<A-p>"));
+}
+
+// Defends: duplicate semantic Yazi keys fail before a generated keymap can contain ambiguous Yazelix-owned integration bindings.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn yazi_materialization_generate_rejects_duplicate_semantic_keybindings() {
+    let repo = repo_root();
+    let temp = tempdir().unwrap();
+    let home = temp.path().join("home");
+    let config_root = home.join(".config").join("yazelix");
+    let output_dir = temp.path().join("state").join("configs").join("yazi");
+    let runtime_dir = temp.path().join("runtime");
+    let config_path = prepare_managed_config(
+        &config_root,
+        &repo,
+        r#"[yazi.keybindings]
+open_directory_as_workspace_pane = ["<A-x>"]
+open_zoxide_in_editor = ["<A-x>"]
+"#,
+    );
+    prepare_runtime_fixture(&runtime_dir);
+
+    let output = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .env("HOME", &home)
+        .env("XDG_CONFIG_HOME", home.join(".config"))
+        .env("XDG_DATA_HOME", home.join(".local").join("share"))
+        .env("YAZELIX_CONFIG_DIR", &config_root)
+        .arg("yazi-materialization.generate")
+        .arg("--config")
+        .arg(&config_path)
+        .arg("--default-config")
+        .arg(repo.join("yazelix_default.toml"))
+        .arg("--contract")
+        .arg(repo.join("config_metadata/main_config_contract.toml"))
+        .arg("--runtime-dir")
+        .arg(&runtime_dir)
+        .arg("--yazi-config-dir")
+        .arg(&output_dir)
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(65));
+    let envelope: Value = serde_json::from_slice(&output.stderr).unwrap();
+    assert_eq!(envelope["error"]["code"], "duplicate_yazi_keybinding");
+    assert_eq!(envelope["error"]["details"]["key"], "<A-x>");
+}
+
 // Regression: user Yazi keymap sections that are absent from Yazelix's bundled base keymap still survive materialization.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
@@ -247,7 +372,7 @@ desc = "Previous completion"
             .and_then(toml::Value::as_array)
             .unwrap()
             .len(),
-        1
+        2
     );
     assert_eq!(
         parsed_keymap

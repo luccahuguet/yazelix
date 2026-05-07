@@ -523,6 +523,17 @@ write_support = "settings_jsonc"
 home_manager_behavior = "read_only_in_ui"
 lifecycle = "stable"
 
+[fields."yazi.keybindings"]
+tab = "keybindings"
+group = "yazi"
+label = "yazi_keybindings"
+help = "Remap Yazelix-owned Yazi integration action bindings without taking ownership of arbitrary Yazi-native keymaps or multi-key sequences"
+editor = "object"
+default_source = "yazelix_default.toml"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
 [fields."cursors.schema_version"]
 tab = "cursors"
 group = "registry"

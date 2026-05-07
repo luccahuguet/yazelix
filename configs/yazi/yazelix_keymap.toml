@@ -1,13 +1,3 @@
-[[mgr.append_keymap]]
-on = [ "<A-p>" ]
-run = "shell '__YAZELIX_RUNTIME_DIR__/libexec/yzx_control zellij open-terminal \"$0\"'"
-desc = "Open directory in new pane"
-
-[[mgr.append_keymap]]
-on = [ "<A-z>" ]
-run = "plugin zoxide-editor"
-desc = "Zoxide jump → open in editor"
-
 [[mgr.prepend_keymap]]
 on = [ "g", "l" ]
 run = "plugin lazygit"

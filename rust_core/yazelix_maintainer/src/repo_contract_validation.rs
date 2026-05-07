@@ -13,7 +13,7 @@ use yazelix_core::config_state::{
     record_config_state,
 };
 use yazelix_core::control_plane::read_yazelix_version_from_runtime;
-use yazelix_core::{RuntimeApplyMode, ZELLIJ_ACTIONS, runtime_apply_mode_codes};
+use yazelix_core::{RuntimeApplyMode, YAZI_ACTIONS, ZELLIJ_ACTIONS, runtime_apply_mode_codes};
 
 const MAIN_TEMPLATE_RELATIVE_PATH: &str = "yazelix_default.toml";
 const MODULE_RELATIVE_PATH: &str = "home_manager/module.nix";
@@ -98,6 +98,9 @@ pub fn validate_config_surface_contract(repo_root: &Path) -> Result<ValidationRe
     report
         .errors
         .extend(validate_zellij_keybinding_registry_defaults(repo_root)?);
+    report
+        .errors
+        .extend(validate_yazi_keybinding_registry_defaults(repo_root)?);
     report
         .errors
         .extend(validate_home_manager_option_declaration_contract(
@@ -2538,7 +2541,7 @@ fn validate_main_contract_apply_mode(
 
 fn validate_zellij_keybinding_registry_defaults(repo_root: &Path) -> Result<Vec<String>, String> {
     let contract = read_toml_file(&repo_root.join(MAIN_CONTRACT_RELATIVE_PATH))?;
-    let contract_defaults = load_contract_zellij_keybinding_defaults(&contract)?;
+    let contract_defaults = load_contract_keybinding_defaults(&contract, "zellij.keybindings")?;
     let registry_defaults = ZELLIJ_ACTIONS
         .iter()
         .map(|spec| {
@@ -2587,33 +2590,84 @@ fn validate_zellij_keybinding_registry_defaults(repo_root: &Path) -> Result<Vec<
     Ok(errors)
 }
 
-fn load_contract_zellij_keybinding_defaults(
+fn validate_yazi_keybinding_registry_defaults(repo_root: &Path) -> Result<Vec<String>, String> {
+    let contract = read_toml_file(&repo_root.join(MAIN_CONTRACT_RELATIVE_PATH))?;
+    let contract_defaults = load_contract_keybinding_defaults(&contract, "yazi.keybindings")?;
+    let registry_defaults = YAZI_ACTIONS
+        .iter()
+        .map(|spec| {
+            (
+                spec.action.local_id.to_string(),
+                spec.action
+                    .default_keys
+                    .iter()
+                    .map(|key| (*key).to_string())
+                    .collect::<Vec<_>>(),
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
+
+    let contract_ids = contract_defaults.keys().cloned().collect::<BTreeSet<_>>();
+    let registry_ids = registry_defaults.keys().cloned().collect::<BTreeSet<_>>();
+    let mut errors = Vec::new();
+
+    for missing in registry_ids.difference(&contract_ids) {
+        errors.push(format!(
+            "main_config_contract.toml yazi.keybindings defaults are missing action `{missing}` from the Rust action registry"
+        ));
+    }
+    for extra in contract_ids.difference(&registry_ids) {
+        errors.push(format!(
+            "main_config_contract.toml yazi.keybindings default `{extra}` is not present in the Rust action registry"
+        ));
+    }
+    for action_id in contract_ids.intersection(&registry_ids) {
+        let contract_keys = contract_defaults
+            .get(action_id)
+            .expect("intersection key exists in contract defaults");
+        let registry_keys = registry_defaults
+            .get(action_id)
+            .expect("intersection key exists in registry defaults");
+        if contract_keys != registry_keys {
+            errors.push(format!(
+                "main_config_contract.toml yazi.keybindings default mismatch for `{}`: contract=[{}], registry=[{}]",
+                action_id,
+                contract_keys.join(", "),
+                registry_keys.join(", ")
+            ));
+        }
+    }
+
+    Ok(errors)
+}
+
+fn load_contract_keybinding_defaults(
     contract: &TomlTable,
+    field_path: &str,
 ) -> Result<BTreeMap<String, Vec<String>>, String> {
     let defaults = contract
         .get("fields")
         .and_then(TomlValue::as_table)
-        .and_then(|fields| fields.get("zellij.keybindings"))
+        .and_then(|fields| fields.get(field_path))
         .and_then(TomlValue::as_table)
         .and_then(|field| field.get("default"))
         .and_then(TomlValue::as_table)
         .ok_or_else(|| {
-            "main_config_contract.toml is missing [fields.\"zellij.keybindings\".default]"
-                .to_string()
+            format!("main_config_contract.toml is missing [fields.\"{field_path}\".default]")
         })?;
 
     let mut parsed = BTreeMap::new();
     for (action_id, raw_keys) in defaults {
         let Some(keys) = raw_keys.as_array() else {
             return Err(format!(
-                "main_config_contract.toml zellij.keybindings default `{action_id}` must be an array of strings"
+                "main_config_contract.toml {field_path} default `{action_id}` must be an array of strings"
             ));
         };
         let mut parsed_keys = Vec::new();
         for key in keys {
             let Some(key) = key.as_str() else {
                 return Err(format!(
-                    "main_config_contract.toml zellij.keybindings default `{action_id}` must contain only strings"
+                    "main_config_contract.toml {field_path} default `{action_id}` must contain only strings"
                 ));
             };
             parsed_keys.push(key.to_string());
@@ -4000,7 +4054,8 @@ def prepare_session_config_snapshot [] {
         );
         contract.insert("fields".to_string(), TomlValue::Table(fields));
 
-        let contract_defaults = load_contract_zellij_keybinding_defaults(&contract).unwrap();
+        let contract_defaults =
+            load_contract_keybinding_defaults(&contract, "zellij.keybindings").unwrap();
         assert_eq!(
             contract_defaults.get("popup"),
             Some(&vec!["Alt x".to_string()])
@@ -4030,6 +4085,64 @@ def prepare_session_config_snapshot [] {
             errors
                 .iter()
                 .any(|error| error.contains("default mismatch for `popup`"))
+        );
+    }
+
+    // Test lane: maintainer
+    // Defends: semantic Yazi keybinding defaults stay in one-to-one parity between the config contract and action registry.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn yazi_keybinding_registry_validator_reports_extra_missing_and_mismatched_defaults() {
+        let mut contract = TomlTable::new();
+        let mut fields = TomlTable::new();
+        let mut keybindings = TomlTable::new();
+        let mut defaults = TomlTable::new();
+        defaults.insert(
+            "open_zoxide_in_editor".to_string(),
+            TomlValue::Array(vec![TomlValue::String("<A-x>".to_string())]),
+        );
+        defaults.insert(
+            "not_in_registry".to_string(),
+            TomlValue::Array(vec![TomlValue::String("<A-z>".to_string())]),
+        );
+        keybindings.insert("default".to_string(), TomlValue::Table(defaults));
+        fields.insert(
+            "yazi.keybindings".to_string(),
+            TomlValue::Table(keybindings),
+        );
+        contract.insert("fields".to_string(), TomlValue::Table(fields));
+
+        let contract_defaults =
+            load_contract_keybinding_defaults(&contract, "yazi.keybindings").unwrap();
+        assert_eq!(
+            contract_defaults.get("open_zoxide_in_editor"),
+            Some(&vec!["<A-x>".to_string()])
+        );
+
+        let repo = tempfile::tempdir().unwrap();
+        let metadata_dir = repo.path().join("config_metadata");
+        fs::create_dir_all(&metadata_dir).unwrap();
+        fs::write(
+            metadata_dir.join("main_config_contract.toml"),
+            toml::to_string(&contract).unwrap(),
+        )
+        .unwrap();
+
+        let errors = validate_yazi_keybinding_registry_defaults(repo.path()).unwrap();
+        assert!(
+            errors
+                .iter()
+                .any(|error| error.contains("missing action `open_directory_as_workspace_pane`"))
+        );
+        assert!(
+            errors
+                .iter()
+                .any(|error| error.contains("default `not_in_registry` is not present"))
+        );
+        assert!(
+            errors
+                .iter()
+                .any(|error| error.contains("default mismatch for `open_zoxide_in_editor`"))
         );
     }
 }

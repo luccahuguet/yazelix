@@ -898,6 +898,28 @@ toggle_sidebar = []
         assert_eq!(keybindings["toggle_sidebar"], json!([]));
     }
 
+    // Defends: semantic Yazi integration keybinding remaps flow through the main config contract as a typed action map.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn normalizes_yazi_keybinding_map() {
+        let path = write_user_config(
+            r#"
+[yazi.keybindings]
+open_zoxide_in_editor = ["<A-x>"]
+open_directory_as_workspace_pane = []
+"#,
+        );
+        let data = normalize_config(&request_for(path)).unwrap();
+        let keybindings = data
+            .normalized_config
+            .get("yazi_keybindings")
+            .and_then(JsonValue::as_object)
+            .expect("yazi keybindings");
+
+        assert_eq!(keybindings["open_zoxide_in_editor"], json!(["<A-x>"]));
+        assert_eq!(keybindings["open_directory_as_workspace_pane"], json!([]));
+    }
+
     // Defends: removed config surfaces fail as unsupported config instead of being silently accepted.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]

@@ -90,6 +90,18 @@
       "type": "object",
       "description": "Yazi theme, plugin, sorting, and command settings",
       "additionalProperties": true,
+      "properties": {
+        "keybindings": {
+          "type": "object",
+          "description": "Semantic remaps for Yazelix-owned Yazi integration actions",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "x-yazelix": {
         "tab": "file_manager"
       }
