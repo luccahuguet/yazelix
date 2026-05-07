@@ -1,6 +1,6 @@
 # Machine-readable Yazi render-plan inputs consumed by `yzx_core` (`yazi-render-plan.compute`).
 #
-# Theme palettes support `random-dark` / `random-light` in yazelix.toml. Core plugins are always
+# Theme palettes support `random-dark` / `random-light` in settings.jsonc. Core plugins are always
 # prepended to the user plugin list for generated init.lua.
 #
 # Keep `sort_by_allowed` and `default_plugins` identical to:

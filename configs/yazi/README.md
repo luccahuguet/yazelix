@@ -1,6 +1,6 @@
-# Yazelix: Yazi Configuration
+# Yazelix Yazi Configuration
 
-Yazelix provides a two-layer Yazi configuration system that prevents git conflicts when customizing Yazi settings.
+Yazelix provides a managed Yazi configuration built from `settings.jsonc`, flat sidecar overrides under `~/.config/yazelix/`, and bundled runtime assets
 
 ## Quick Start
 
@@ -13,11 +13,11 @@ Yazelix provides a two-layer Yazi configuration system that prevents git conflic
 
 ## Documentation
 
-For complete configuration guide, see: [Yazi Configuration Documentation](../../docs/yazi-configuration.md)
+For the complete configuration guide, see [Yazi Configuration Documentation](../../docs/yazi-configuration.md)
 
 ## Current Defaults
 
-- Layout ratio optimized for sidebar mode (20% terminal width)  
+- Layout ratio optimized for sidebar mode (20% terminal width)
 - Git integration showing file status
 - Editor integration with Zellij
 - Custom status bar (courtesy of Yazi's creator!)

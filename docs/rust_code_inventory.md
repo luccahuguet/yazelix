@@ -51,7 +51,7 @@ Detailed budget families:
 | `rust_core/yazelix_core/src/bin/yzx_control.rs` | 1,739 | Public command implementation dispatcher; split only if routing remains obvious |
 | `rust_core/yazelix_core/src/zellij_commands/status.rs` | 1,548 | Status bus/cache commands plus cursor/workspace widget rendering after agent usage split; keep cache-path and session-state ownership local |
 | `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs` | 1,516 | Split by config/materialization behavior family; do not delete without replacement coverage |
-| `rust_core/yazelix_core/src/yazi_materialization.rs` | 1,464 | Keep until Yazi config ownership/import mode is settled |
+| `rust_core/yazelix_core/src/yazi_materialization.rs` | 1,464 | Keep in core; current owner map is in `docs/contracts/yazi_integration_boundary.md` |
 | `rust_core/yazelix_maintainer/src/repo_update_workflow.rs` | 1,417 | Process-heavy maintainer workflow; keep local but modularize |
 | `rust_core/yazelix_core/src/bin/yzx_core.rs` | 1,412 | Temporary machine helper; collapse only after shell callers have a stable replacement |
 | `rust_core/yazelix_core/src/doctor_commands.rs` | 1,403 | Split report rendering from fix orchestration only after doctor behavior stabilizes |
@@ -106,6 +106,7 @@ The main overengineering risk is not one bad abstraction; it is several broad mo
 - `launch_commands.rs` still mixes desktop/macOS launchers, process spawning, and restart/enter behavior. Terminal selection and temporary config overrides live in private submodules; split process launch and desktop/macOS handling before workspace/session extraction.
 - `config_ui.rs` is already product-useful, but it should be split into schema model, list/editor state, rendering, write-back, and Yazelix adapter policy before `yazelix_ratconfig`. The extraction readiness state is `internal_split_ready`, not standalone-public-ready.
 - `zellij_materialization.rs` contains real generated-config ownership, but it should wait for keybinding ownership and layout-profile decisions before major extraction.
+- `yazi_materialization.rs` is smaller than the Zellij/config UI surfaces, but it mixes generic Yazi render planning with Yazelix-owned state paths, semantic keybindings, opener preservation, and legacy override rejection. The current extraction readiness state is `audit_deferred`; slim the bundled asset pack and split a private writer/adapter boundary before a public child repo.
 - `repo_contract_validation.rs` and `repo_validation.rs` are maintainer-only, but their domain split would make future cleanup safer.
 
 ## Extraction Sequence
@@ -116,7 +117,8 @@ The main overengineering risk is not one bad abstraction; it is several broad mo
 4. Keep `#yazelix_cursors` as the standalone cursor package; reusable registry, `yzc`, Ghostty shader generation, and packaged shader assets live in `github:luccahuguet/yazelix-cursors`, while `ghostty_cursor_registry.rs` remains the Yazelix settings adapter
 5. Split `config_ui.rs` before extracting `yazelix_ratconfig`; keep JSONC patching, schema metadata, read-only ownership, and apply-status contracts stable first
 6. Keep the external `yazelix-zellij-popup` project separate from Yazelix runtime packaging; `yzpp` remains its short Zellij plugin alias and artifact name
-7. Evaluate `yazelix_workspace` last; it touches launch, restart, session facts, workspace roots, Zellij layout state, and the pane orchestrator. Session persistence/resurrection remains out of scope for the extraction gate.
+7. Defer Yazi public extraction until the Yazi config/plugin asset pack is slimmed and the materializer has a private generic writer plus Yazelix adapter boundary
+8. Evaluate `yazelix_workspace` last; it touches launch, restart, session facts, workspace roots, Zellij layout state, and the pane orchestrator. Session persistence/resurrection remains out of scope for the extraction gate.
 
 Do before extraction:
 

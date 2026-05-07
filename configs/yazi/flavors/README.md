@@ -1,15 +1,17 @@
 # Yazi Flavors (Themes)
 
-This directory contains 24 bundled Yazi color themes (flavors) for use with Yazelix.
+This directory contains 24 bundled Yazi color themes for use with Yazelix
 
 ## Usage
 
-Configure your theme in `~/.config/yazelix/yazelix.toml`:
+Configure your theme in `~/.config/yazelix/settings.jsonc`:
 
-```toml
-[yazi]
-theme = "dracula"  # or any flavor name below
-# theme = "random"  # picks a different theme on each restart
+```jsonc
+{
+  "yazi": {
+    "theme": "dracula" // or "random-dark" / "random-light"
+  }
+}
 ```
 
 ## Bundled Flavors (24 Total)
@@ -42,7 +44,7 @@ theme = "dracula"  # or any flavor name below
 - synthwave84
 - tokyo-night
 
-Plus the built-in **default** theme (25 total options).
+Plus the built-in **default** theme (25 total options)
 
 ## Attribution
 
@@ -65,9 +67,9 @@ All flavors are created and maintained by their respective authors:
 - **bluloco-dark/light**: https://github.com/hankertrix/bluloco-yazi
 - **monokai**: https://github.com/Malick-Tammal/monokai.yazi
 
-These flavors are vendored with Yazelix for out-of-the-box functionality. All credit goes to the original authors.
+These flavors are vendored with Yazelix for out-of-the-box functionality
 
-**Note:** Yazelix bundles only the essential `flavor.toml` files from each theme to keep the repository lean. Preview images, licenses, and other supplementary files are omitted but available in the original repositories linked above.
+**Note:** Yazelix bundles only the essential `flavor.toml` files from each theme to keep the repository lean
 
 ## Installing Additional Flavors
 
@@ -77,4 +79,4 @@ To install additional community flavors not bundled with Yazelix:
 ya pkg add <author>/<flavor-name>
 ```
 
-Browse available flavors at: https://github.com/yazi-rs/flavors
+Browse available flavors at https://github.com/yazi-rs/flavors

@@ -241,17 +241,6 @@ yzx import yazi --force
 
 Yazelix writes backups before overwriting existing managed files. Plugin directories and other broader Yazi state are intentionally not imported by this command.
 
-### Edit Source Configs
-
-For structural changes to the base configuration:
-
-```bash
-# These are the source templates (your changes persist)
-~/.config/yazelix/configs/yazi/yazelix_yazi.toml    # Main config
-~/.config/yazelix/configs/yazi/yazelix_keymap.toml  # Keybindings
-~/.config/yazelix/configs/yazi/yazelix_theme.toml   # Theme details
-```
-
 ## Plugin Management
 
 Plugin catalog: https://github.com/yazi-rs/plugins
