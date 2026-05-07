@@ -48,6 +48,7 @@ This inventory lists the canonical contracts under `docs/contracts/`. It is not 
 | `v15_trimmed_runtime_contract.md` | Current trimmed runtime branch contract |
 | `welcome_screen_style_contract.md` | Welcome and screen style behavior |
 | `workspace_session_contract.md` | Workspace tab, sidebar, and session-truth behavior |
+| `yazelix_ratconfig_extraction.md` | Config UI extraction boundary for future `yazelix_ratconfig` |
 | `yzx_command_palette_categories.md` | Command-palette grouping and exclusion behavior |
 
 ## Inventory Rules
