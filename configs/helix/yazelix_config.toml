@@ -3,4 +3,5 @@
 # editor-local integration that should not depend on personal ~/.config/helix.
 
 [keys.normal]
+":" = "command_mode"
 A-r = ":sh yzx reveal \"%{buffer_name}\""

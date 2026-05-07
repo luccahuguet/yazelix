@@ -111,7 +111,7 @@ Yazelix may expose editor-local semantic actions only when the action invokes Ya
 
 Yazelix does not own general Helix or Neovim keymaps.
 
-Managed Helix file-open and cwd commands currently depend on Helix command mode being reachable through `:`. Remapping `:` away from command mode is unsupported until Yazelix implements an explicit backend command-mode entry setting or another robust editor command transport. Until then, Yazelix should fail visibly through doctor/config diagnostics rather than silently typing command text into the buffer.
+Managed Helix file-open and cwd commands depend on Helix command mode being reachable through `:`. Yazelix-managed Helix materialization therefore enforces `":" = "command_mode"` after merging user overrides, the same way it enforces the `A-r` reveal binding. Users may add another command-mode key, but managed sessions cannot repurpose `:` without breaking the Yazi-to-Helix command transport. Doctor should report stale generated Helix configs that do not contain this binding.
 
 ## Diagnostics
 

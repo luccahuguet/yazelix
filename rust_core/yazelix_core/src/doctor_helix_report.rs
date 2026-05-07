@@ -1,9 +1,13 @@
 //! Helix-focused doctor findings (runtime conflicts, runtime health, managed integration).
 //! Bead: yazelix-ulb2.4.2
 
-use crate::helix_materialization::{MANAGED_REVEAL_COMMAND, build_managed_helix_contract_json};
+use crate::helix_materialization::{
+    MANAGED_COMMAND_MODE_COMMAND, MANAGED_COMMAND_MODE_KEY, MANAGED_REVEAL_COMMAND, REVEAL_KEY,
+    build_managed_helix_contract_json,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -293,26 +297,37 @@ fn evaluate_runtime_health(request: &HelixDoctorEvaluateRequest) -> HelixDoctorF
     }
 }
 
-fn a_r_binding_from_json(config: &Value) -> Option<String> {
+fn normal_binding_from_json(config: &Value, key: &str) -> Option<String> {
     config
         .get("keys")?
         .get("normal")?
-        .get("A-r")?
+        .get(key)?
         .as_str()
         .map(str::to_owned)
 }
 
-fn read_a_r_binding_from_toml_file(path: &Path) -> Result<Option<String>, String> {
+fn read_normal_bindings_from_toml_file(path: &Path) -> Result<BTreeMap<String, String>, String> {
     let raw = fs::read_to_string(path)
         .map_err(|error| format!("failed to read generated config: {error}"))?;
     let v: toml::Value =
         toml::from_str(&raw).map_err(|error| format!("failed to parse TOML: {error}"))?;
 
-    Ok(v.get("keys")
+    let Some(normal) = v
+        .get("keys")
         .and_then(|keys| keys.get("normal"))
-        .and_then(|normal| normal.get("A-r"))
-        .and_then(|binding| binding.as_str())
-        .map(str::to_owned))
+        .and_then(|normal| normal.as_table())
+    else {
+        return Ok(BTreeMap::new());
+    };
+
+    Ok(normal
+        .iter()
+        .filter_map(|(key, binding)| {
+            binding
+                .as_str()
+                .map(|binding| (key.to_string(), binding.to_string()))
+        })
+        .collect())
 }
 
 fn stale_generated_config_finding(path: &Path) -> HelixDoctorFinding {
@@ -320,7 +335,7 @@ fn stale_generated_config_finding(path: &Path) -> HelixDoctorFinding {
         status: "warning".into(),
         message: "Managed Helix generated config is stale or invalid".into(),
         details: Some(format!(
-            "Generated config: {}\nExpected `A-r` to run `yzx reveal`.\nLaunch a managed Helix session again to regenerate it.",
+            "Generated config: {}\nExpected `A-r` to run `yzx reveal` and `:` to enter Helix command mode.\nLaunch a managed Helix session again to regenerate it.",
             path.display()
         )),
         fix_available: false,
@@ -410,12 +425,31 @@ fn evaluate_managed_integration(request: &HelixDoctorEvaluateRequest) -> Vec<Hel
         }
     };
 
-    if a_r_binding_from_json(&expected).as_deref() != Some(expected_reveal_binding.trim()) {
+    if normal_binding_from_json(&expected, REVEAL_KEY).as_deref()
+        != Some(expected_reveal_binding.trim())
+    {
         out.push(HelixDoctorFinding {
             status: "error".into(),
             message: "Managed Helix config contract lost the Yazelix reveal binding".into(),
             details: Some(
                 "The expected managed Helix config no longer enforces `A-r = :sh yzx reveal \"%{buffer_name}\"`."
+                    .into(),
+            ),
+            fix_available: false,
+            fix_commands: vec![],
+            conflicts: vec![],
+        });
+        return out;
+    }
+
+    if normal_binding_from_json(&expected, MANAGED_COMMAND_MODE_KEY).as_deref()
+        != Some(MANAGED_COMMAND_MODE_COMMAND)
+    {
+        out.push(HelixDoctorFinding {
+            status: "error".into(),
+            message: "Managed Helix config contract lost the command-mode binding".into(),
+            details: Some(
+                "The expected managed Helix config no longer enforces `: = command_mode`, which the Yazi-to-Helix opener requires."
                     .into(),
             ),
             fix_available: false,
@@ -441,19 +475,23 @@ fn evaluate_managed_integration(request: &HelixDoctorEvaluateRequest) -> Vec<Hel
         return out;
     }
 
-    let gen_binding = match read_a_r_binding_from_toml_file(generated) {
-        Ok(Some(binding)) => binding,
-        Ok(None) => {
-            out.push(stale_generated_config_finding(generated));
-            return out;
-        }
+    let generated_bindings = match read_normal_bindings_from_toml_file(generated) {
+        Ok(bindings) => bindings,
         Err(error) => {
             out.push(unreadable_generated_config_finding(generated, &error));
             return out;
         }
     };
 
-    if gen_binding.trim() != expected_reveal_binding.trim() {
+    if generated_bindings
+        .get(REVEAL_KEY)
+        .map(|binding| binding.trim())
+        != Some(expected_reveal_binding.trim())
+        || generated_bindings
+            .get(MANAGED_COMMAND_MODE_KEY)
+            .map(|binding| binding.trim())
+            != Some(MANAGED_COMMAND_MODE_COMMAND)
+    {
         out.push(stale_generated_config_finding(generated));
         return out;
     }
@@ -659,6 +697,7 @@ mod tests {
             expected_managed_config: Some(serde_json::json!({
                 "keys": {
                     "normal": {
+                        ":": "command_mode",
                         "A-r": ":sh yzx reveal \"%{buffer_name}\""
                     }
                 }
@@ -672,6 +711,56 @@ mod tests {
         assert_eq!(
             findings[0].message,
             "Managed Helix generated config is stale or invalid"
+        );
+    }
+
+    // Regression: stale generated Helix configs must report the missing command-mode binding before Yazi open can type commands into the buffer.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn managed_integration_treats_missing_command_mode_binding_as_stale() {
+        let tmp = TempDir::new().unwrap();
+        let generated = tmp.path().join("generated.toml");
+        fs::write(
+            &generated,
+            "[keys.normal]\n\":\" = \"no_op\"\nA-r = \":sh yzx reveal \\\"%{buffer_name}\\\"\"\n",
+        )
+        .unwrap();
+
+        let req = HelixDoctorEvaluateRequest {
+            home_dir: tmp.path().join("home"),
+            runtime_dir: tmp.path().join("runtime"),
+            config_dir: tmp.path().join("config"),
+            user_config_helix_runtime_dir: tmp.path().join("ur"),
+            hx_exe_path: None,
+            include_runtime_health: false,
+            editor_command: Some("hx".into()),
+            managed_helix_user_config_path: tmp.path().join("m.toml"),
+            native_helix_config_path: tmp.path().join("n.toml"),
+            generated_helix_config_path: generated,
+            expected_managed_config: Some(serde_json::json!({
+                "keys": {
+                    "normal": {
+                        ":": "command_mode",
+                        "A-r": ":sh yzx reveal \"%{buffer_name}\""
+                    }
+                }
+            })),
+            build_managed_config_error: None,
+            reveal_binding_expected: ":sh yzx reveal \"%{buffer_name}\"".into(),
+        };
+
+        let findings = evaluate_managed_integration(&req);
+        assert_eq!(findings.len(), 1);
+        assert_eq!(
+            findings[0].message,
+            "Managed Helix generated config is stale or invalid"
+        );
+        assert!(
+            findings[0]
+                .details
+                .as_deref()
+                .unwrap()
+                .contains("`:` to enter Helix command mode")
         );
     }
 }

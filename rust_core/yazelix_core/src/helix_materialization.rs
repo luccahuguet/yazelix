@@ -7,7 +7,9 @@ use std::path::{Path, PathBuf};
 use toml::Value as TomlValue;
 
 pub(crate) const MANAGED_REVEAL_COMMAND: &str = ":sh yzx reveal \"%{buffer_name}\"";
-const REVEAL_KEY: &str = "A-r";
+pub(crate) const MANAGED_COMMAND_MODE_KEY: &str = ":";
+pub(crate) const MANAGED_COMMAND_MODE_COMMAND: &str = "command_mode";
+pub(crate) const REVEAL_KEY: &str = "A-r";
 
 #[derive(Debug, Clone)]
 pub struct HelixMaterializationRequest {
@@ -178,7 +180,7 @@ fn prepare_managed_helix_config(
         false
     };
 
-    enforce_reveal_binding(&mut config);
+    enforce_managed_normal_bindings(&mut config);
 
     Ok(PreparedHelixConfig {
         template_path,
@@ -205,7 +207,7 @@ fn deep_merge_toml(base: &mut TomlValue, user: &TomlValue) {
     }
 }
 
-fn enforce_reveal_binding(config: &mut TomlValue) {
+fn enforce_managed_normal_bindings(config: &mut TomlValue) {
     let table = match config {
         TomlValue::Table(t) => t,
         _ => return,
@@ -224,6 +226,10 @@ fn enforce_reveal_binding(config: &mut TomlValue) {
 
     match normal_table {
         TomlValue::Table(t) => {
+            t.insert(
+                MANAGED_COMMAND_MODE_KEY.into(),
+                TomlValue::String(MANAGED_COMMAND_MODE_COMMAND.into()),
+            );
             t.insert(
                 REVEAL_KEY.into(),
                 TomlValue::String(MANAGED_REVEAL_COMMAND.into()),
@@ -305,4 +311,53 @@ fn resolve_native_helix_config_path() -> Result<PathBuf, CoreError> {
         });
 
     Ok(xdg_config_home.join("helix").join("config.toml"))
+}
+
+// Test lane: default
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    fn normal_binding(config: &TomlValue, key: &str) -> Option<String> {
+        config
+            .get("keys")?
+            .get("normal")?
+            .get(key)?
+            .as_str()
+            .map(str::to_owned)
+    }
+
+    // Regression: Yazi-to-Helix open sends command text through `:` after Escape, so managed Helix materialization must reclaim command mode even when user overrides remap it.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn managed_helix_reclaims_colon_command_mode_binding() {
+        let tmp = TempDir::new().unwrap();
+        let runtime_dir = tmp.path().join("runtime");
+        let config_dir = tmp.path().join("config");
+        let template_dir = runtime_dir.join("configs").join("helix");
+        fs::create_dir_all(&template_dir).unwrap();
+        fs::create_dir_all(&config_dir).unwrap();
+        fs::write(
+            template_dir.join("yazelix_config.toml"),
+            "[keys.normal]\n\":\" = \"command_mode\"\nA-r = \":noop\"\n",
+        )
+        .unwrap();
+        fs::write(
+            config_dir.join("helix.toml"),
+            "[keys.normal]\n\":\" = \"no_op\"\nA-r = \":noop\"\n",
+        )
+        .unwrap();
+
+        let prepared = prepare_managed_helix_config(&runtime_dir, &config_dir).unwrap();
+
+        assert_eq!(
+            normal_binding(&prepared.config, MANAGED_COMMAND_MODE_KEY).as_deref(),
+            Some(MANAGED_COMMAND_MODE_COMMAND)
+        );
+        assert_eq!(
+            normal_binding(&prepared.config, REVEAL_KEY).as_deref(),
+            Some(MANAGED_REVEAL_COMMAND)
+        );
+    }
 }
