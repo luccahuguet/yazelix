@@ -433,8 +433,8 @@ fn render_workspace_lesson() -> String {
     lines.push(String::new());
     lines.push(heading("Mini quest"));
     lines.push(format!(
-        "1. Run {} to open this directory as a fresh workspace tab.",
-        command_label("yzx warp .")
+        "1. Run {} to retarget this tab's workspace root to the current directory.",
+        command_label("yzx cwd .")
     ));
     lines.push(format!(
         "2. Run {} and check the Yazi section before opening a file from the sidebar.",
@@ -596,7 +596,7 @@ mod tests {
 
         let lesson = render_tutor_lesson(TutorLesson::Workspace);
         assert!(lesson.contains("Mini quest"));
-        assert!(lesson.contains("yzx warp ."));
+        assert!(lesson.contains("yzx cwd ."));
         assert!(lesson.contains("yzx keys yazi"));
         assert!(lesson.contains("yzx status"));
     }

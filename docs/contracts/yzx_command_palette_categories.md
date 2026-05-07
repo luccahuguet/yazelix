@@ -95,14 +95,6 @@ Included:
 - `yzx popup`
 - `yzx screen`
 
-Excluded from normal palette handling:
-
-- `yzx warp`
-
-Reason:
-
-`yzx warp` is a tab/workspace navigation command with interactive path/query input and optional tab-closing behavior. It is real user functionality, but it should not be treated as a normal palette item in the same way as simple direct commands.
-
 #### Config
 
 Commands that show, edit, import, migrate, or reset user-managed config surfaces.
@@ -185,8 +177,6 @@ These commands are outside the normal palette contract:
   - shell-ownership/control-plane command, not a palette action
 - `yzx run`
   - argument-driven shell command runner, not a palette action
-- `yzx warp`
-  - tab-scoped workspace mutation, not a normal palette item
 
 ### Relation To Runtime Ownership Buckets
 
@@ -210,7 +200,7 @@ The two models should agree on inventory, but they intentionally optimize for di
 
 1. `yzx menu` can derive grouping and eligibility from Rust-owned command metadata instead of maintaining a handwritten catalog or probing the Nushell command tree.
 2. When a new public `yzx` command is added, maintainers can decide whether it belongs in the palette by checking these eligibility rules rather than guessing from precedent.
-3. When a user asks why `yzx env`, `yzx run`, or `yzx warp` are not normal palette items, the answer is explicit and intentional.
+3. When a user asks why `yzx env` or `yzx run` are not normal palette items, the answer is explicit and intentional.
 4. When the menu surface is thinned, it can still present most public commands without treating the palette as a second shell.
 
 ## Verification

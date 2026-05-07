@@ -27,7 +27,7 @@ fn yzx_control_tutor_begin_and_list_expose_guided_lessons() {
         .unwrap();
     let begin_stdout = stdout_text(begin_output);
     assert!(begin_stdout.contains("Mini quest"));
-    assert!(begin_stdout.contains("yzx warp ."));
+    assert!(begin_stdout.contains("yzx cwd ."));
     assert!(begin_stdout.contains("yzx keys yazi"));
 }
 

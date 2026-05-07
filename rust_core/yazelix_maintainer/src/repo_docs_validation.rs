@@ -40,7 +40,10 @@ const CURRENT_USER_DOCS: &[&str] = &[
 ];
 
 const FORBIDDEN_CURRENT_DOC_MARKERS: &[(&str, &str)] = &[
-    ("yzx cwd", "Use `yzx warp` in current user docs"),
+    (
+        "yzx warp",
+        "`yzx warp` has been removed from the current command surface",
+    ),
     (
         "yazelix_packs.toml",
         "Pack sidecars are historical, not current user docs",
@@ -169,12 +172,12 @@ mod tests {
         );
     }
 
-    // Regression: current user docs must not route users toward the deleted workspace retarget command name.
+    // Regression: current user docs must not route users toward the deleted workspace navigation command.
     // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn docs_experience_validator_rejects_stale_current_user_command_marker() {
         let (_temp, repo) = write_minimal_docs_fixture();
-        write(&repo, "docs/customization.md", "Use yzx cwd here\n");
+        write(&repo, "docs/customization.md", "Use yzx warp here\n");
 
         let report = validate_docs_experience(&repo).unwrap();
 
@@ -182,7 +185,7 @@ mod tests {
             report
                 .errors
                 .iter()
-                .any(|error| error.contains("Use `yzx warp`"))
+                .any(|error| error.contains("`yzx warp` has been removed"))
         );
     }
 }

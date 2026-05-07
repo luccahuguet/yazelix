@@ -59,7 +59,7 @@ Yazelix is built on a focused terminal-workspace stack. This catalog lists the p
 ## Runtime Helper Tools
 
 - [fzf](https://github.com/junegunn/fzf) — Fuzzy finder used by Yazi and shell navigation flows.
-- [zoxide](https://github.com/ajeetdsouza/zoxide) — Directory jumper used from the shell, Yazi's native `Z` flow, Yazelix's `Alt+z` direct-open Yazi flow, and `yzx warp`.
+- [zoxide](https://github.com/ajeetdsouza/zoxide) — Directory jumper used from the shell, Yazi's native `Z` flow, and Yazelix's `Alt+z` direct-open Yazi flow.
 - [starship](https://starship.rs) — Prompt engine configured for the managed shells and surfaced inside Yazi through `starship.yazi`.
 - [lazygit](https://github.com/jesseduffield/lazygit) — Default managed popup command, normally toggled with `Alt+t`.
 - [carapace](https://github.com/rsteube/carapace-bin) — Cross-shell completion engine used by generated shell initializers.

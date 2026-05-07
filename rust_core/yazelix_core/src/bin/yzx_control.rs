@@ -55,7 +55,6 @@ use yazelix_core::run_yzx_reveal;
 use yazelix_core::run_yzx_screen;
 use yazelix_core::run_yzx_sponsor;
 use yazelix_core::run_yzx_tutor;
-use yazelix_core::run_yzx_warp;
 use yazelix_core::run_yzx_whats_new;
 use yazelix_core::run_yzx_why;
 use yazelix_core::run_zellij_get_workspace_root;
@@ -83,7 +82,6 @@ fn usage() -> ! {
     eprintln!("       yzx_control config [--path|ui|set|unset]");
     eprintln!("       yzx_control cursors");
     eprintln!("       yzx_control cwd [target]");
-    eprintln!("       yzx_control warp [target] [--kill|-k]");
     eprintln!(
         "       yzx_control desktop <install|launch|uninstall|macos_preview install|macos_preview uninstall> [args...]"
     );
@@ -1656,7 +1654,6 @@ fn main() {
         "sponsor" => run_yzx_sponsor(&argv),
         "tutor" => run_yzx_tutor(&argv),
         "update" => run_yzx_update(&argv),
-        "warp" => run_yzx_warp(&argv),
         "whats_new" => run_yzx_whats_new(&argv),
         _ => {
             eprintln!("Unknown yzx_control subcommand: {sub}");

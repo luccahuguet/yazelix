@@ -182,7 +182,7 @@ pub use upgrade_summary::{
 };
 pub use workspace_commands::{
     IntegrationFactsData, compute_integration_facts_from_env, run_yzx_cwd, run_yzx_popup,
-    run_yzx_reveal, run_yzx_warp,
+    run_yzx_reveal,
 };
 pub use yazi_materialization::{
     YaziManagedFileStatus, YaziMaterializationData, YaziMaterializationRequest,

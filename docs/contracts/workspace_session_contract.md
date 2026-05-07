@@ -34,7 +34,7 @@ This layer owns user intent and path resolution.
 
 Examples:
 
-- resolve `yzx warp foo` through `zoxide` or the filesystem
+- resolve `yzx cwd foo` through `zoxide` or the filesystem
 - decide whether a target path should become a directory or repo-root workspace
 - decide when editor and sidebar cwd should be synchronized
 - generate runtime config before launching the session
