@@ -112,6 +112,15 @@ pub struct ConfigUiField {
     pub validation: String,
     pub rebuild_required: bool,
     pub apply_mode: RuntimeApplyMode,
+    pub apply_status: ConfigUiApplyStatus,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConfigUiApplyStatus {
+    pub summary: String,
+    pub label: String,
+    pub detail: String,
+    pub pending: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -208,6 +217,7 @@ struct ConfigUiNotice {
 struct ConfigUiWriteOutcome {
     mutation: SettingsJsoncPatchMutation,
     apply_status: Option<ConfigEditApplyStatus>,
+    apply_error: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -1142,15 +1152,20 @@ impl ConfigUiApp {
         let outcome =
             set_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file, value)?;
         let mut apply_status = None;
+        let mut apply_error = None;
         if outcome.changed() {
             self.validate_patched_edit_target(&target, &outcome.text)?;
             write_settings_edit(&target.path, &outcome.text)?;
-            apply_status = Some(self.apply_after_field_write(setting_path)?);
+            match self.apply_after_field_write(setting_path) {
+                Ok(status) => apply_status = Some(status),
+                Err(error) => apply_error = Some(apply_error_notice(&error)),
+            }
         }
         self.reload_model_preserving_selection(setting_path)?;
         Ok(ConfigUiWriteOutcome {
             mutation: outcome.mutation,
             apply_status,
+            apply_error,
         })
     }
 
@@ -1160,15 +1175,20 @@ impl ConfigUiApp {
         let raw = self.read_edit_target_or_default(&target)?;
         let outcome = unset_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file)?;
         let mut apply_status = None;
+        let mut apply_error = None;
         if outcome.changed() {
             self.validate_patched_edit_target(&target, &outcome.text)?;
             write_settings_edit(&target.path, &outcome.text)?;
-            apply_status = Some(self.apply_after_field_write(setting_path)?);
+            match self.apply_after_field_write(setting_path) {
+                Ok(status) => apply_status = Some(status),
+                Err(error) => apply_error = Some(apply_error_notice(&error)),
+            }
         }
         self.reload_model_preserving_selection(setting_path)?;
         Ok(ConfigUiWriteOutcome {
             mutation: outcome.mutation,
             apply_status,
+            apply_error,
         })
     }
 
@@ -1394,9 +1414,13 @@ impl ConfigUiApp {
                         fixed_label(state_label(field.state), 9),
                         state_style(field.state),
                     ),
-                    Span::styled(truncate(&field.path, 42), config_key_style()),
                     Span::styled(
-                        format!(" {}", truncate(&field.current_value, 28)),
+                        fixed_label(&field.apply_status.summary, 13),
+                        apply_status_style(&field.apply_status),
+                    ),
+                    Span::styled(truncate(&field.path, 34), config_key_style()),
+                    Span::styled(
+                        format!(" {}", truncate(&field.current_value, 22)),
                         Style::default().fg(Color::Gray),
                     ),
                 ])
@@ -1578,7 +1602,8 @@ fn field_detail_lines(field: &ConfigUiField) -> Vec<Line<'static>> {
         detail_line("current", &field.current_value),
         detail_line("default", &field.default_value),
         detail_line("type", &field.kind),
-        detail_line("apply", field.apply_mode.label()),
+        detail_line("apply", &field.apply_status.label),
+        detail_line("active", &field.apply_status.detail),
     ];
     if !field.validation.is_empty() {
         lines.push(detail_line("validation", &field.validation));
@@ -1598,6 +1623,11 @@ fn field_detail_lines(field: &ConfigUiField) -> Vec<Line<'static>> {
 
 fn write_notice_text(verb: &str, path: &str, outcome: &ConfigUiWriteOutcome) -> String {
     let mut text = format!("{verb} {path}.");
+    if let Some(error) = &outcome.apply_error {
+        text.push(' ');
+        text.push_str(error);
+        return text;
+    }
     if let Some(refresh) = outcome
         .apply_status
         .as_ref()
@@ -1609,6 +1639,15 @@ fn write_notice_text(verb: &str, path: &str, outcome: &ConfigUiWriteOutcome) -> 
         text.push_str(&refresh.remediation);
     }
     text
+}
+
+fn apply_error_notice(error: &CoreError) -> String {
+    let remediation = error.remediation();
+    if remediation.trim().is_empty() {
+        format!("Apply pending: {}", error.message())
+    } else {
+        format!("Apply pending: {} {}", error.message(), remediation)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1641,7 +1680,8 @@ fn zellij_keybinding_detail_lines(field: &ConfigUiField) -> Vec<Line<'static>> {
         detail_line("current", &field.current_value),
         detail_line("default", &field.default_value),
         detail_line("type", &field.kind),
-        detail_line("apply", field.apply_mode.label()),
+        detail_line("apply", &field.apply_status.label),
+        detail_line("active", &field.apply_status.detail),
     ];
     if !field.validation.is_empty() {
         lines.push(detail_line("validation", &field.validation));
@@ -2516,6 +2556,49 @@ fn build_field_row(
         validation,
         rebuild_required,
         apply_mode,
+        apply_status: apply_status_for_mode(apply_mode),
+    }
+}
+
+fn apply_status_for_mode(apply_mode: RuntimeApplyMode) -> ConfigUiApplyStatus {
+    let (summary, detail, pending) = match apply_mode {
+        RuntimeApplyMode::Live => ("active", "Saved values are active in this process.", false),
+        RuntimeApplyMode::LiveWithPaneRefresh => (
+            "pane refresh",
+            "Saved changes require a Yazelix-owned pane or plugin refresh before running panes use them.",
+            true,
+        ),
+        RuntimeApplyMode::GeneratedRuntimeRefresh => (
+            "gen refresh",
+            "Saved changes regenerate managed runtime config; running tools must be restarted or reopened.",
+            true,
+        ),
+        RuntimeApplyMode::TabSessionRestart => (
+            "tab restart",
+            "Saved changes become active after a fresh Yazelix tab or session starts.",
+            true,
+        ),
+        RuntimeApplyMode::ShellTerminalRestart => (
+            "shell restart",
+            "Saved changes become active in newly launched terminal or shell processes.",
+            true,
+        ),
+        RuntimeApplyMode::PackageHomeManagerActivation => (
+            "HM activate",
+            "Edit the Home Manager source and run home-manager switch before the runtime can use this value.",
+            true,
+        ),
+        RuntimeApplyMode::NeverLive => (
+            "not live",
+            "This setting is a native/import/generated ownership boundary and is not live-applicable.",
+            true,
+        ),
+    };
+    ConfigUiApplyStatus {
+        summary: summary.to_string(),
+        label: apply_mode.label().to_string(),
+        detail: detail.to_string(),
+        pending,
     }
 }
 
@@ -2531,7 +2614,7 @@ fn field_description(field: &ContractField, metadata: &FieldUiMetadata) -> Strin
     if field.rebuild_required {
         parts.push("takes effect after runtime rebuild or rematerialization".to_string());
     }
-    parts.push(format!("apply mode: {}", field.apply_mode.label()));
+    parts.push(format!("apply: {}", field.apply_mode.label()));
     parts.join("; ")
 }
 
@@ -3092,6 +3175,14 @@ fn state_style(state: ConfigUiValueState) -> Style {
     }
 }
 
+fn apply_status_style(status: &ConfigUiApplyStatus) -> Style {
+    if status.pending {
+        Style::default().fg(Color::Yellow)
+    } else {
+        Style::default().fg(Color::Green)
+    }
+}
+
 fn sidecar_status_style(present: bool) -> Style {
     if present {
         Style::default().fg(Color::Green)
@@ -3212,6 +3303,7 @@ mod tests {
             validation: String::new(),
             rebuild_required: false,
             apply_mode: RuntimeApplyMode::TabSessionRestart,
+            apply_status: apply_status_for_mode(RuntimeApplyMode::TabSessionRestart),
         }
     }
 
@@ -3425,6 +3517,9 @@ mod tests {
             popup_width.apply_mode,
             RuntimeApplyMode::LiveWithPaneRefresh
         );
+        assert_eq!(popup_width.apply_status.summary, "pane refresh");
+        assert!(popup_width.apply_status.pending);
+        assert!(popup_width.apply_status.detail.contains("pane or plugin"));
 
         let editor_command = model
             .fields
@@ -3435,6 +3530,7 @@ mod tests {
             editor_command.apply_mode,
             RuntimeApplyMode::TabSessionRestart
         );
+        assert_eq!(editor_command.apply_status.summary, "tab restart");
 
         let terminal_config_mode = model
             .fields
@@ -3444,6 +3540,20 @@ mod tests {
         assert_eq!(
             terminal_config_mode.apply_mode,
             RuntimeApplyMode::ShellTerminalRestart
+        );
+        assert_eq!(terminal_config_mode.apply_status.summary, "shell restart");
+
+        let widget_tray = model
+            .fields
+            .iter()
+            .find(|field| field.path == "zellij.widget_tray")
+            .expect("widget tray");
+        assert_eq!(widget_tray.apply_status.summary, "gen refresh");
+        assert!(
+            widget_tray
+                .apply_status
+                .detail
+                .contains("managed runtime config")
         );
     }
 
@@ -3474,6 +3584,13 @@ mod tests {
         assert_eq!(
             popup_width.apply_mode,
             RuntimeApplyMode::PackageHomeManagerActivation
+        );
+        assert_eq!(popup_width.apply_status.summary, "HM activate");
+        assert!(
+            popup_width
+                .apply_status
+                .detail
+                .contains("home-manager switch")
         );
     }
 
@@ -3778,5 +3895,24 @@ mod tests {
             .expect("field");
         assert_eq!(field.state, ConfigUiValueState::Explicit);
         assert_eq!(field.current_value, "true");
+    }
+
+    // Regression: a save-time refresh failure remains visible as pending apply work instead of hiding the fact that the setting was already persisted.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn write_notice_keeps_saved_setting_visible_when_apply_fails() {
+        let outcome = ConfigUiWriteOutcome {
+            mutation: SettingsJsoncPatchMutation::Replaced,
+            apply_status: None,
+            apply_error: Some(
+                "Apply pending: Saved yazi.theme, but generated config refresh failed.".to_string(),
+            ),
+        };
+
+        let notice = write_notice_text("Saved", "yazi.theme", &outcome);
+
+        assert!(notice.contains("Saved yazi.theme."));
+        assert!(notice.contains("Apply pending"));
+        assert!(notice.contains("generated config refresh failed"));
     }
 }
