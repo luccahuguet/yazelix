@@ -9,8 +9,13 @@ use crate::compute_runtime_env;
 use crate::control_plane::{
     home_dir_from_env, json_map_to_child_env, runtime_dir_from_env, runtime_env_request,
 };
+use crate::pane_orchestrator_client::run_pane_orchestrator_command;
 use crate::session_facts::compute_session_facts_from_env;
 use crate::workspace_commands::{compute_integration_facts_from_env, sync_sidebar_to_directory};
+use crate::workspace_session::{
+    WorkspaceRetargetResult, current_tab_workspace_root_from_json,
+    parse_workspace_retarget_response,
+};
 use serde_json::{Value, json};
 use std::env;
 use std::ffi::OsString;
@@ -40,7 +45,6 @@ use std::fs;
 #[cfg(test)]
 use std::time::Instant;
 
-const PANE_ORCHESTRATOR_PLUGIN_ALIAS: &str = "yazelix_pane_orchestrator";
 const EDITOR_PANE_CREATE_LAYOUT_SETTLE_MS: u64 = 80;
 const OPEN_FILE_ORCHESTRATOR_RETRY_DELAYS_MS: &[u64] = &[50, 100, 200];
 const EDITOR_PANE_NAME: &str = "editor";
@@ -113,53 +117,6 @@ struct CurrentSidebarYaziRegistration {
     pane_id: String,
     yazi_id: String,
     cwd: String,
-}
-
-pub(super) fn run_pane_orchestrator_command(
-    command_name: &str,
-    payload: &str,
-) -> Result<String, CoreError> {
-    let output = Command::new("zellij")
-        .args([
-            "action",
-            "pipe",
-            "--plugin",
-            PANE_ORCHESTRATOR_PLUGIN_ALIAS,
-            "--name",
-            command_name,
-            "--",
-            payload,
-        ])
-        .output()
-        .map_err(|source| {
-            CoreError::io(
-                "pane_orchestrator_pipe_failed",
-                format!(
-                    "Failed to run the Yazelix pane-orchestrator command `{command_name}`."
-                ),
-                "Run this command inside an active Yazelix/Zellij session with the pane orchestrator loaded, then retry.",
-                "zellij",
-                source,
-            )
-        })?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        let details = if stderr.is_empty() {
-            format!("exit code {}", output.status.code().unwrap_or(1))
-        } else {
-            stderr
-        };
-        return Err(CoreError::classified(
-            ErrorClass::Runtime,
-            "pane_orchestrator_pipe_failed",
-            format!("Pane orchestrator pipe failed for `{command_name}`: {details}"),
-            "Run this command inside an active Yazelix/Zellij session with the pane orchestrator loaded, then retry.",
-            json!({ "command": command_name }),
-        ));
-    }
-
-    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
 pub(crate) fn run_pane_orchestrator_runtime_config_reload(
@@ -320,24 +277,6 @@ fn print_zellij_open_editor_cwd_help() {
     println!();
     println!("Usage:");
     println!("  yzx_control zellij open-editor-cwd <path>");
-}
-
-fn current_tab_workspace_root_from_json(raw: &str, include_bootstrap: bool) -> Option<String> {
-    let parsed: serde_json::Value = serde_json::from_str(raw).ok()?;
-    let workspace = parsed.get("workspace")?;
-    let root = workspace.get("root")?.as_str()?.trim();
-    if root.is_empty() {
-        return None;
-    }
-    let source = workspace
-        .get("source")
-        .and_then(|v| v.as_str())
-        .map(str::trim)
-        .unwrap_or("");
-    if !include_bootstrap && source == "bootstrap" {
-        return None;
-    }
-    Some(root.to_string())
 }
 
 pub fn run_zellij_get_workspace_root(args: &[String]) -> Result<i32, CoreError> {
@@ -532,70 +471,8 @@ fn workspace_tab_name(workspace_root: &std::path::Path) -> String {
         .to_string()
 }
 
-fn parse_workspace_retarget_response(raw: &str) -> serde_json::Value {
-    let trimmed = raw.trim();
-    match trimmed {
-        "missing" | "not_ready" | "permissions_denied" | "invalid_payload" => {
-            json!({"status": trimmed})
-        }
-        _ => match serde_json::from_str::<serde_json::Value>(trimmed) {
-            Ok(mut result) => {
-                let sidebar_yazi_id = result
-                    .get("sidebar_yazi_id")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.trim().to_string());
-                let sidebar_yazi_cwd = result
-                    .get("sidebar_yazi_cwd")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string())
-                    .unwrap_or_default();
-                if let Some(id) = sidebar_yazi_id.as_ref() {
-                    if !id.is_empty() {
-                        if let Some(obj) = result.as_object_mut() {
-                            obj.insert(
-                                "sidebar_state".to_string(),
-                                json!({
-                                    "yazi_id": id,
-                                    "cwd": sidebar_yazi_cwd,
-                                }),
-                            );
-                            obj.remove("sidebar_yazi_id");
-                            obj.remove("sidebar_yazi_cwd");
-                        }
-                    }
-                }
-                result
-            }
-            Err(_) => json!({"status": "error", "reason": trimmed}),
-        },
-    }
-}
-
-fn workspace_retarget_status(result: &Value) -> &str {
-    result
-        .get("status")
-        .and_then(Value::as_str)
-        .unwrap_or("error")
-}
-
-fn sidebar_state_from_retarget_response(
-    result: &Value,
-) -> Option<crate::workspace_commands::SidebarState> {
-    let sidebar = result.get("sidebar_state")?;
-    let yazi_id = sidebar.get("yazi_id")?.as_str()?.trim();
-    if yazi_id.is_empty() {
-        return None;
-    }
-    let cwd = sidebar
-        .get("cwd")
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .unwrap_or("");
-
-    Some(crate::workspace_commands::SidebarState {
-        yazi_id: yazi_id.to_string(),
-        cwd: cwd.to_string(),
-    })
+fn workspace_retarget_status(result: &WorkspaceRetargetResult) -> &str {
+    result.status()
 }
 
 fn hide_sidebar_if_visible() -> Result<(), CoreError> {
@@ -642,7 +519,7 @@ fn hide_sidebar_after_editor_pane_creation() -> Result<(), CoreError> {
 fn retarget_workspace_without_focused_cd(
     target_path: &Path,
     editor_kind: Option<&str>,
-) -> Result<Value, CoreError> {
+) -> Result<WorkspaceRetargetResult, CoreError> {
     let target_dir = if target_path.is_dir() {
         target_path.to_path_buf()
     } else {
@@ -657,7 +534,7 @@ fn retarget_workspace_without_focused_cd(
 fn retarget_workspace_dir_without_focused_cd(
     target_dir: &Path,
     editor_kind: Option<&str>,
-) -> Result<Value, CoreError> {
+) -> Result<WorkspaceRetargetResult, CoreError> {
     let payload = json!({
         "workspace_root": target_dir.display().to_string(),
         "cd_focused_pane": false,
@@ -932,10 +809,7 @@ pub fn run_zellij_retarget(args: &[String]) -> Result<i32, CoreError> {
     let response = run_pane_orchestrator_command("retarget_workspace", &payload)?;
     let result = parse_workspace_retarget_response(&response);
 
-    let status = result
-        .get("status")
-        .and_then(|v| v.as_str())
-        .unwrap_or("error");
+    let status = result.status();
     match status {
         "ok" => {
             println!(
@@ -944,8 +818,8 @@ pub fn run_zellij_retarget(args: &[String]) -> Result<i32, CoreError> {
                     "status": "ok",
                     "workspace_root": target_dir.display().to_string(),
                     "tab_name": tab_name,
-                    "editor_status": result.get("editor_status").and_then(|v| v.as_str()).unwrap_or(""),
-                    "sidebar_state": result.get("sidebar_state"),
+                    "editor_status": result.editor_status,
+                    "sidebar_state": result.sidebar_state,
                 })
             );
             Ok(0)
@@ -965,10 +839,7 @@ pub fn run_zellij_retarget(args: &[String]) -> Result<i32, CoreError> {
             Ok(1)
         }
         _ => {
-            let reason = result
-                .get("reason")
-                .and_then(|v| v.as_str())
-                .unwrap_or("unknown error");
+            let reason = result.reason.as_deref().unwrap_or("unknown error");
             eprintln!("❌ Failed to retarget workspace: {}", reason);
             Ok(1)
         }
@@ -1075,7 +946,7 @@ pub fn run_zellij_open_editor(args: &[String]) -> Result<i32, CoreError> {
         retarget_workspace_dir_without_focused_cd(&editor_working_dir, None)
     {
         if workspace_retarget_status(&retarget_result) == "ok" {
-            if let Some(sidebar_state) = sidebar_state_from_retarget_response(&retarget_result) {
+            if let Some(sidebar_state) = retarget_result.sidebar_state.as_ref() {
                 let _ = sync_sidebar_to_directory(
                     &integration_facts.ya_command,
                     &home_dir_from_env()?,
@@ -1128,10 +999,7 @@ pub fn run_zellij_open_editor_cwd(args: &[String]) -> Result<i32, CoreError> {
     let mut created_editor_pane = false;
     let status = workspace_retarget_status(&retarget_result);
     if status != "ok" {
-        let reason = retarget_result
-            .get("reason")
-            .and_then(Value::as_str)
-            .unwrap_or(status);
+        let reason = retarget_result.reason.as_deref().unwrap_or(status);
         return Err(CoreError::classified(
             ErrorClass::Runtime,
             "retarget_workspace_failed",
@@ -1141,11 +1009,7 @@ pub fn run_zellij_open_editor_cwd(args: &[String]) -> Result<i32, CoreError> {
         ));
     }
 
-    match retarget_result
-        .get("editor_status")
-        .and_then(Value::as_str)
-        .unwrap_or("")
-    {
+    match retarget_result.editor_status.as_str() {
         "missing" => {
             let (runtime_env, editor_command) = resolve_runtime_editor_launch()?;
             let yazi_id = env::var("YAZI_ID").unwrap_or_default();
@@ -1176,7 +1040,7 @@ pub fn run_zellij_open_editor_cwd(args: &[String]) -> Result<i32, CoreError> {
         _ => {}
     }
 
-    if let Some(sidebar_state) = sidebar_state_from_retarget_response(&retarget_result) {
+    if let Some(sidebar_state) = retarget_result.sidebar_state.as_ref() {
         let _ = sync_sidebar_to_directory(
             &integration_facts.ya_command,
             &home_dir_from_env()?,
@@ -1237,10 +1101,7 @@ pub fn run_zellij_open_terminal(args: &[String]) -> Result<i32, CoreError> {
 
     let retarget_response = run_pane_orchestrator_command("retarget_workspace", &retarget_payload)?;
     let retarget_result = parse_workspace_retarget_response(&retarget_response);
-    let retarget_status = retarget_result
-        .get("status")
-        .and_then(|v| v.as_str())
-        .unwrap_or("error");
+    let retarget_status = retarget_result.status();
 
     match retarget_status {
         "ok" => {
@@ -1271,61 +1132,6 @@ mod tests {
 
     fn status_cache_test_status_bus() -> Value {
         serde_json::from_str(STATUS_CACHE_TEST_PAYLOAD).unwrap()
-    }
-
-    // Defends: workspace root parsing respects the bootstrap exclusion flag.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-    #[test]
-    fn current_tab_workspace_root_excludes_bootstrap_when_requested() {
-        let json = r#"{"workspace":{"root":"/tmp/demo","source":"bootstrap"}}"#;
-        assert_eq!(current_tab_workspace_root_from_json(json, false), None);
-        assert_eq!(
-            current_tab_workspace_root_from_json(json, true),
-            Some("/tmp/demo".to_string())
-        );
-    }
-
-    // Defends: workspace root parsing includes non-bootstrap sources.
-    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
-    #[test]
-    fn current_tab_workspace_root_includes_plugin_source() {
-        let json = r#"{"workspace":{"root":"/tmp/demo","source":"plugin"}}"#;
-        assert_eq!(
-            current_tab_workspace_root_from_json(json, false),
-            Some("/tmp/demo".to_string())
-        );
-    }
-
-    // Defends: retarget response parsing extracts sidebar state correctly.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-    #[test]
-    fn parse_retarget_response_extracts_sidebar_state() {
-        let raw = r#"{"status":"ok","editor_status":"ok","sidebar_yazi_id":"yazi-123","sidebar_yazi_cwd":"/home/sidebar"}"#;
-        let parsed = parse_workspace_retarget_response(raw);
-        assert_eq!(parsed.get("status").and_then(|v| v.as_str()), Some("ok"));
-        let sidebar = parsed.get("sidebar_state").unwrap();
-        assert_eq!(
-            sidebar.get("yazi_id").and_then(|v| v.as_str()),
-            Some("yazi-123")
-        );
-        assert_eq!(
-            sidebar.get("cwd").and_then(|v| v.as_str()),
-            Some("/home/sidebar")
-        );
-    }
-
-    // Defends: retarget response parsing handles simple error strings.
-    // Strength: defect=2 behavior=2 resilience=1 cost=2 uniqueness=1 total=8/10
-    #[test]
-    fn parse_retarget_response_handles_error_strings() {
-        assert_eq!(
-            parse_workspace_retarget_response("missing"),
-            json!({"status": "missing"})
-        );
-        assert_eq!(
-            parse_workspace_retarget_response("permissions_denied"),
-            json!({"status": "permissions_denied"})
-        );
     }
 
     // Defends: Yazi selected-file expansion can pass multiple paths through the public open-editor parser in one action.

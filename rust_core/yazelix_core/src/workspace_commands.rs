@@ -3,15 +3,18 @@
 
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{home_dir_from_env, run_child_in_runtime_env, runtime_dir_from_env};
+use crate::pane_orchestrator_client::run_pane_orchestrator_command;
 use crate::session_facts::compute_session_facts_from_env;
 use crate::transient_pane_facts::compute_transient_pane_facts_from_env;
-use serde::{Deserialize, Serialize};
+use crate::workspace_session::{
+    SidebarState, WorkspaceRetargetResult, current_tab_workspace_root_from_json,
+    parse_active_sidebar_state, parse_workspace_retarget_response,
+};
+use serde::Serialize;
 use serde_json::{Value, json};
 use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-
-const PANE_ORCHESTRATOR_PLUGIN_ALIAS: &str = "yazelix_pane_orchestrator";
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct CwdArgs {
@@ -47,43 +50,6 @@ pub struct IntegrationFactsData {
     pub managed_editor_kind: String,
     pub yazi_command: String,
     pub ya_command: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct SidebarState {
-    pub(crate) yazi_id: String,
-    pub(crate) cwd: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct WorkspaceRetargetResult {
-    status: String,
-    editor_status: String,
-    sidebar_state: Option<SidebarState>,
-    reason: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct WorkspaceRetargetResponse {
-    status: String,
-    #[serde(default)]
-    editor_status: String,
-    #[serde(default)]
-    sidebar_yazi_id: Option<String>,
-    #[serde(default)]
-    sidebar_yazi_cwd: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct ActiveTabSessionStateV1 {
-    #[serde(default)]
-    sidebar_yazi: Option<SessionSidebarYazi>,
-}
-
-#[derive(Debug, Deserialize)]
-struct SessionSidebarYazi {
-    yazi_id: String,
-    cwd: String,
 }
 
 pub fn run_yzx_cwd(args: &[String]) -> Result<i32, CoreError> {
@@ -740,93 +706,6 @@ fn expand_leading_tilde(raw: &str, home_dir: &Path) -> String {
     raw.to_string()
 }
 
-fn run_pane_orchestrator_command(command_name: &str, payload: &str) -> Result<String, CoreError> {
-    let output = Command::new("zellij")
-        .args([
-            "action",
-            "pipe",
-            "--plugin",
-            PANE_ORCHESTRATOR_PLUGIN_ALIAS,
-            "--name",
-            command_name,
-            "--",
-            payload,
-        ])
-        .output()
-        .map_err(|source| {
-            CoreError::io(
-                "pane_orchestrator_pipe_failed",
-                format!(
-                    "Failed to run the Yazelix pane-orchestrator command `{command_name}`."
-                ),
-                "Run this command inside an active Yazelix/Zellij session with the pane orchestrator loaded, then retry.",
-                "zellij",
-                source,
-            )
-        })?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        let details = if stderr.is_empty() {
-            format!("exit code {}", output.status.code().unwrap_or(1))
-        } else {
-            stderr
-        };
-        return Err(CoreError::classified(
-            ErrorClass::Runtime,
-            "pane_orchestrator_pipe_failed",
-            format!("Pane orchestrator pipe failed for `{command_name}`: {details}"),
-            "Run this command inside an active Yazelix/Zellij session with the pane orchestrator loaded, then retry.",
-            json!({ "command": command_name }),
-        ));
-    }
-
-    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
-}
-
-fn parse_workspace_retarget_response(raw: &str) -> WorkspaceRetargetResult {
-    match raw.trim() {
-        "missing" | "not_ready" | "permissions_denied" | "invalid_payload" => {
-            WorkspaceRetargetResult {
-                status: raw.trim().to_string(),
-                editor_status: String::new(),
-                sidebar_state: None,
-                reason: None,
-            }
-        }
-        other => match serde_json::from_str::<WorkspaceRetargetResponse>(other) {
-            Ok(parsed) => {
-                let sidebar_state = parsed
-                    .sidebar_yazi_id
-                    .as_deref()
-                    .map(str::trim)
-                    .filter(|value| !value.is_empty())
-                    .map(|yazi_id| SidebarState {
-                        yazi_id: yazi_id.to_string(),
-                        cwd: parsed
-                            .sidebar_yazi_cwd
-                            .as_deref()
-                            .map(str::trim)
-                            .unwrap_or("")
-                            .to_string(),
-                    });
-                WorkspaceRetargetResult {
-                    status: parsed.status,
-                    editor_status: parsed.editor_status,
-                    sidebar_state,
-                    reason: None,
-                }
-            }
-            Err(_) => WorkspaceRetargetResult {
-                status: "error".to_string(),
-                editor_status: String::new(),
-                sidebar_state: None,
-                reason: Some(other.to_string()),
-            },
-        },
-    }
-}
-
 fn retarget_workspace(
     workspace_root: &Path,
     editor_kind: &str,
@@ -853,39 +732,6 @@ pub(crate) fn active_sidebar_state() -> Option<SidebarState> {
 fn current_tab_workspace_root(include_bootstrap: bool) -> Option<String> {
     let response = run_pane_orchestrator_command("get_active_tab_session_state", "").ok()?;
     current_tab_workspace_root_from_json(&response, include_bootstrap)
-}
-
-fn current_tab_workspace_root_from_json(raw: &str, include_bootstrap: bool) -> Option<String> {
-    let parsed = serde_json::from_str::<serde_json::Value>(raw).ok()?;
-    let workspace = parsed.get("workspace")?;
-    let root = workspace.get("root")?.as_str()?.trim();
-    if root.is_empty() {
-        return None;
-    }
-    let source = workspace
-        .get("source")
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .unwrap_or("");
-    if !include_bootstrap && source == "bootstrap" {
-        return None;
-    }
-    Some(root.to_string())
-}
-
-fn parse_active_sidebar_state(raw: &str) -> Option<SidebarState> {
-    let parsed = serde_json::from_str::<ActiveTabSessionStateV1>(raw).ok()?;
-    let sidebar = parsed.sidebar_yazi?;
-    let yazi_id = sidebar.yazi_id.trim();
-    let cwd = sidebar.cwd.trim();
-    if yazi_id.is_empty() || cwd.is_empty() {
-        return None;
-    }
-
-    Some(SidebarState {
-        yazi_id: yazi_id.to_string(),
-        cwd: cwd.to_string(),
-    })
 }
 
 fn focus_sidebar() -> Result<String, CoreError> {
@@ -988,25 +834,6 @@ mod tests {
     // Test lane: default
     use super::*;
 
-    // Defends: the Rust workspace retarget owner keeps plugin-owned sidebar state in the single retarget response instead of reviving separate cache reads.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[test]
-    fn parses_workspace_retarget_response_with_sidebar_state() {
-        let parsed = parse_workspace_retarget_response(
-            r#"{"status":"ok","editor_status":"ok","sidebar_yazi_id":"plugin-sidebar-yazi-123","sidebar_yazi_cwd":"/home/sidebar"}"#,
-        );
-
-        assert_eq!(parsed.status, "ok");
-        assert_eq!(parsed.editor_status, "ok");
-        assert_eq!(
-            parsed.sidebar_state,
-            Some(SidebarState {
-                yazi_id: "plugin-sidebar-yazi-123".into(),
-                cwd: "/home/sidebar".into(),
-            })
-        );
-    }
-
     // Defends: the workspace owner keeps Helix wrapper detection so managed-editor cwd retargeting survives the public Rust owner cut.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
@@ -1025,34 +852,6 @@ mod tests {
             "neovim"
         );
         assert_eq!(resolve_managed_editor_kind(None, None, Some("vim")), "");
-    }
-
-    // Regression: reveal must keep using the pane-orchestrator session snapshot as the only live sidebar identity source.
-    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-    #[test]
-    fn parses_active_sidebar_state_from_session_snapshot() {
-        let state = parse_active_sidebar_state(
-            r#"{"schema_version":1,"active_tab_position":0,"focus_context":"sidebar","managed_panes":{"editor_pane_id":null,"sidebar_pane_id":"terminal:0"},"layout":{"active_swap_layout_name":null,"sidebar_collapsed":false},"sidebar_yazi":{"yazi_id":"plugin-yazi-id","cwd":"/home/plugin"}}"#,
-        );
-
-        assert_eq!(
-            state,
-            Some(SidebarState {
-                yazi_id: "plugin-yazi-id".into(),
-                cwd: "/home/plugin".into(),
-            })
-        );
-    }
-
-    // Defends: popup routing keeps using the pane-orchestrator workspace snapshot instead of reviving a second Nu-owned workspace cache.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-    #[test]
-    fn parses_workspace_root_from_session_snapshot() {
-        let root = current_tab_workspace_root_from_json(
-            r#"{"workspace":{"root":"/tmp/demo","source":"plugin"}}"#,
-            false,
-        );
-        assert_eq!(root.as_deref(), Some("/tmp/demo"));
     }
 
     // Regression: popup pane execution resolves the editor alias from the Rust-owned runtime env instead of reviving a Nu popup wrapper.

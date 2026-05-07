@@ -1,7 +1,7 @@
 //! Status-bus, status-cache, and status-widget commands for Yazelix/Zellij.
 
-use super::run_pane_orchestrator_command;
 use crate::bridge::{CoreError, ErrorClass};
+use crate::pane_orchestrator_client::run_pane_orchestrator_command;
 use rusqlite::{Connection, OpenFlags, params};
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
