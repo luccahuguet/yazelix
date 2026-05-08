@@ -13,7 +13,8 @@ flavors and plugins through the packaged runtime; the child repo exists so
 non-Yazelix users can consume those assets without adopting the full Yazelix
 workspace.
 
-The remaining materializer still owns too much Yazelix-specific behavior for a
+The remaining materializer is split into a private Yazelix adapter and a
+private writer, but it still owns too much Yazelix-specific behavior for a
 public Yazi integration extraction: managed config roots, state-dir generation,
 semantic Yazelix keybindings, editor opener preservation, pane-orchestrator
 sidebar registration, and explicit rejection of legacy override paths.
@@ -28,7 +29,8 @@ sidebar registration, and explicit rejection of legacy override paths.
 | `yazelix-yazi-assets/plugins/git.yazi`, `lazygit.yazi`, `starship.yazi` | Bundled reusable Yazi plugin pack | Child asset package; vendored update workflow belongs with the child repo, not Yazelix core |
 | `yazelix-yazi-assets/plugins/auto-layout.yazi` | Yazelix-maintained Yazi sidebar fit behavior | Child asset package, still part of the default Yazelix runtime because the managed sidebar expects it |
 | `sidebar-status.yazi`, `sidebar-state.yazi`, `zoxide-editor.yazi` | Yazelix editor/sidebar integration | Keep in Yazelix until pane-orchestrator protocol is separately extracted |
-| `yazi_materialization.rs` generated file writes | Yazelix runtime materializer | Keep in Yazelix; it writes managed state paths and enforces Yazelix ownership errors |
+| `yazi_materialization.rs` adapter | Yazelix runtime materializer | Keep in Yazelix; it resolves settings, flat sidecars, semantic action ids, managed output paths, and legacy ownership errors |
+| `yazi_materialization/writer.rs` generated file writes | Private Yazelix writer boundary | Keep private; it writes the generated Yazi config pack from already-resolved adapter inputs |
 | `yazi_materialization.rs` semantic keymap expansion | Yazelix action registry adapter | Keep in Yazelix; it depends on Yazelix-owned action ids and generated integration commands |
 | `[opener].edit` preservation | Yazelix managed editor contract | Keep in Yazelix; native Yazi config must not replace the managed editor open path |
 | Flat sidecars under `~/.config/yazelix/` | Yazelix user config ownership | Keep in Yazelix; Home Manager, import, config UI, and JSONC patching use this vocabulary |
@@ -58,24 +60,21 @@ only Yazelix-owned base templates and sidebar/editor plugins, while the packaged
 runtime links reusable flavors, Starship config, `auto-layout.yazi`, `git.yazi`,
 `lazygit.yazi`, and `starship.yazi` from `yazelix-yazi-assets`.
 
-The next useful movement is to split the Rust materializer into:
-
-1. a generic render-plan/config-pack writer with no Yazelix paths
-2. a Yazelix adapter that owns settings normalization, flat override paths,
-   Home Manager/import vocabulary, semantic action ids, and runtime apply
-   reporting
-
-Only after that adapter is thin should a public Yazi integration repository be
+The private writer/adapter split is complete, but the writer is not yet a
+public config-pack API. It still receives Yazelix-managed output roots and
+contains runtime-placeholder rendering plus opener-preservation policy. Only
+after the adapter is thin should a public Yazi integration repository be
 considered. The asset child repo should not grow a generated mirror in this
 repository.
 
 ## LOC Scorecard
 
-Current Yazi surface measured on 2026-05-07:
+Current Yazi surface measured on 2026-05-08:
 
 | Surface | Lines | Notes |
 | --- | ---: | --- |
-| `rust_core/yazelix_core/src/yazi_materialization.rs` | 1,464 | Mixed materializer, runtime-state writer, keymap adapter, and legacy guard |
+| `rust_core/yazelix_core/src/yazi_materialization.rs` | 567 | Yazelix adapter for config normalization, managed paths, semantic keybindings, and legacy guard |
+| `rust_core/yazelix_core/src/yazi_materialization/writer.rs` | 957 | Private generated Yazi config-pack writer and asset sync boundary |
 | `rust_core/yazelix_core/src/yazi_render_plan.rs` | 276 | Small enough to keep until a config-pack writer exists |
 | `rust_core/yazelix_core/tests/yzx_core_yazi_materialization.rs` | 459 | Behavior coverage for generated files, assets, keybindings, and legacy rejection |
 | `rust_core/yazelix_core/tests/yzx_core_yazi_render_plan.rs` | 58 | Machine CLI envelope coverage |

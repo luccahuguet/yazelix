@@ -1,8 +1,8 @@
 [contract]
-measured_total_loc = 73083
-measured_total_file_count = 140
-current_total_loc_max = 73083
-current_total_file_count_max = 140
+measured_total_loc = 73143
+measured_total_file_count = 141
+current_total_loc_max = 73143
+current_total_file_count_max = 141
 hard_target_loc = 60000
 
 [[families]]
@@ -33,11 +33,11 @@ allowed_paths = [
 id = "core_config_ui_and_materialization"
 status = "canonical"
 owner_bead = "yazelix-ryx4.6"
-measured_loc = 20624
-measured_files = 41
-max_loc = 20624
+measured_loc = 20684
+measured_files = 42
+max_loc = 20684
 target_loc = 14000
-max_files = 41
+max_files = 42
 allowed_paths = [
   "rust_core/yazelix_core/src/active_config_surface.rs",
   "rust_core/yazelix_core/src/config_apply.rs",
@@ -79,6 +79,7 @@ allowed_paths = [
   "rust_core/yazelix_core/src/yazelix_ratconfig/model.rs",
   "rust_core/yazelix_core/src/yazelix_ratconfig/render.rs",
   "rust_core/yazelix_core/src/yazi_materialization.rs",
+  "rust_core/yazelix_core/src/yazi_materialization/writer.rs",
   "rust_core/yazelix_core/src/yazi_render_plan.rs",
 ]
 
