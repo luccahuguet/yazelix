@@ -1546,3 +1546,5 @@ pub(super) fn nested_bool(value: &Value, path: &[&str]) -> Option<bool> {
     }
     cursor.as_bool()
 }
+#[cfg(test)]
+mod tests;
