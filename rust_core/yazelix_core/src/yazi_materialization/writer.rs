@@ -41,22 +41,9 @@ pub(super) fn write_yazi_config_pack(
         )
     })?;
 
-    let yazi_toml_status = write_generated_yazi_toml(
-        request.source_dir,
-        request.output_dir,
-        request.runtime_dir,
-        request.render_plan,
-        request.user_yazi_config,
-    )?;
-    let theme_toml_status =
-        write_generated_theme_toml(request.source_dir, request.output_dir, request.render_plan)?;
-    let keymap_status = write_generated_keymap_toml(
-        request.source_dir,
-        request.output_dir,
-        request.runtime_dir,
-        request.user_keymap,
-        request.semantic_keymap,
-    )?;
+    let yazi_toml_status = write_generated_yazi_toml(request)?;
+    let theme_toml_status = write_generated_theme_toml(request)?;
+    let keymap_status = write_generated_keymap_toml(request)?;
 
     let should_sync_static_assets = request.sync_static_assets
         || bundled_yazi_assets_missing(request.source_dir, request.output_dir)?;
@@ -64,12 +51,7 @@ pub(super) fn write_yazi_config_pack(
         sync_bundled_yazi_assets(request.source_dir, request.output_dir, request.runtime_dir)?;
     }
 
-    let (init_status, missing_plugins, user_init_appended) = write_generated_init_lua(
-        request.output_dir,
-        request.runtime_dir,
-        request.render_plan,
-        request.user_init_lua,
-    )?;
+    let (init_status, missing_plugins, user_init_appended) = write_generated_init_lua(request)?;
 
     Ok(YaziConfigPackWriteData {
         missing_plugins,
@@ -85,13 +67,9 @@ pub(super) fn write_yazi_config_pack(
 }
 
 fn write_generated_yazi_toml(
-    source_dir: &Path,
-    output_dir: &Path,
-    runtime_dir: &Path,
-    render_plan: &YaziRenderPlanData,
-    user_config: Option<&toml::Table>,
+    request: &YaziConfigPackWriteRequest<'_>,
 ) -> Result<YaziManagedFileStatus, CoreError> {
-    let base_path = source_dir.join("yazelix_yazi.toml");
+    let base_path = request.source_dir.join("yazelix_yazi.toml");
     let base_config = read_required_toml_table(
         &base_path,
         "read_yazi_base_config",
@@ -99,24 +77,24 @@ fn write_generated_yazi_toml(
         "Reinstall Yazelix so the runtime includes configs/yazi/yazelix_yazi.toml.",
     )?;
 
-    let mut final_config = if let Some(user_config) = user_config {
+    let mut final_config = if let Some(user_config) = request.user_yazi_config {
         merge_yazi_toml_config(base_config.clone(), user_config.clone())
     } else {
         base_config.clone()
     };
 
     preserve_yazelix_edit_opener(&base_config, &mut final_config);
-    if !render_plan.git_plugin_enabled {
+    if !request.render_plan.git_plugin_enabled {
         final_config.remove("plugin");
     }
     upsert_nested_string(
         &mut final_config,
         &["manager"],
         "sort_by",
-        &render_plan.sort_by,
+        &request.render_plan.sort_by,
     );
 
-    let user_note = if user_config.is_some() {
+    let user_note = if request.user_yazi_config.is_some() {
         "User config merged from:"
     } else {
         "To add custom settings, create:"
@@ -135,18 +113,16 @@ fn write_generated_yazi_toml(
     );
     let config_content = render_runtime_root_placeholders(
         &toml_to_string_pretty(&TomlValue::Table(final_config))?,
-        runtime_dir,
+        request.runtime_dir,
     );
-    let target = output_dir.join("yazi.toml");
+    let target = request.output_dir.join("yazi.toml");
     write_managed_text_if_changed(&target, &format!("{header}{config_content}"))
 }
 
 fn write_generated_theme_toml(
-    source_dir: &Path,
-    output_dir: &Path,
-    render_plan: &YaziRenderPlanData,
+    request: &YaziConfigPackWriteRequest<'_>,
 ) -> Result<YaziManagedFileStatus, CoreError> {
-    let source_path = source_dir.join("yazelix_theme.toml");
+    let source_path = request.source_dir.join("yazelix_theme.toml");
     let mut base_theme = if source_path.exists() {
         read_required_toml_table(
             &source_path,
@@ -158,14 +134,14 @@ fn write_generated_theme_toml(
         toml::Table::new()
     };
 
-    if let ThemeFlavorPlan::Uniform { flavor } = &render_plan.theme_flavor {
+    if let ThemeFlavorPlan::Uniform { flavor } = &request.render_plan.theme_flavor {
         let mut flavor_table = toml::Table::new();
         flavor_table.insert("dark".into(), TomlValue::String(flavor.clone()));
         flavor_table.insert("light".into(), TomlValue::String(flavor.clone()));
         base_theme.insert("flavor".into(), TomlValue::Table(flavor_table));
     }
 
-    let current_theme = format!("Current theme: {}", render_plan.resolved_theme);
+    let current_theme = format!("Current theme: {}", request.render_plan.resolved_theme);
     let header = generated_header(
         "#",
         "AUTO-GENERATED YAZI THEME CONFIG",
@@ -184,27 +160,23 @@ fn write_generated_theme_toml(
     } else {
         toml_to_string_pretty(&TomlValue::Table(base_theme))?
     };
-    let target = output_dir.join("theme.toml");
+    let target = request.output_dir.join("theme.toml");
     write_managed_text_if_changed(&target, &format!("{header}{config_content}"))
 }
 
 fn write_generated_keymap_toml(
-    source_dir: &Path,
-    output_dir: &Path,
-    runtime_dir: &Path,
-    user_keymap: Option<&toml::Table>,
-    semantic_keymap: &toml::Table,
+    request: &YaziConfigPackWriteRequest<'_>,
 ) -> Result<YaziManagedFileStatus, CoreError> {
-    let base_path = source_dir.join("yazelix_keymap.toml");
+    let base_path = request.source_dir.join("yazelix_keymap.toml");
     let mut base_keymap = read_required_toml_table(
         &base_path,
         "read_yazi_keymap_base",
         "Could not read the bundled Yazi keymap config",
         "Reinstall Yazelix so the runtime includes configs/yazi/yazelix_keymap.toml.",
     )?;
-    base_keymap = merge_yazi_keymap(base_keymap, semantic_keymap.clone());
+    base_keymap = merge_yazi_keymap(base_keymap, request.semantic_keymap.clone());
 
-    let final_keymap = if let Some(user_keymap) = user_keymap {
+    let final_keymap = if let Some(user_keymap) = request.user_keymap {
         merge_yazi_keymap(base_keymap, user_keymap.clone())
     } else {
         base_keymap
@@ -222,21 +194,18 @@ fn write_generated_keymap_toml(
     );
     let keymap_content = render_runtime_root_placeholders(
         &toml_to_string_pretty(&TomlValue::Table(final_keymap))?,
-        runtime_dir,
+        request.runtime_dir,
     );
-    let target = output_dir.join("keymap.toml");
+    let target = request.output_dir.join("keymap.toml");
     write_managed_text_if_changed(&target, &format!("{header}{keymap_content}"))
 }
 
 fn write_generated_init_lua(
-    output_dir: &Path,
-    runtime_dir: &Path,
-    render_plan: &YaziRenderPlanData,
-    user_init_lua: Option<&str>,
+    request: &YaziConfigPackWriteRequest<'_>,
 ) -> Result<(YaziManagedFileStatus, Vec<String>, bool), CoreError> {
-    let plugins_dir = output_dir.join("plugins");
-    let core_plugins = &render_plan.init_lua.core_plugins;
-    let all_plugins = &render_plan.init_lua.load_order;
+    let plugins_dir = request.output_dir.join("plugins");
+    let core_plugins = &request.render_plan.init_lua.core_plugins;
+    let all_plugins = &request.render_plan.init_lua.load_order;
     let missing_plugins = all_plugins
         .iter()
         .filter(|name| !plugins_dir.join(format!("{name}.yazi")).exists())
@@ -254,7 +223,7 @@ fn write_generated_init_lua(
             if core_plugins.contains(name) {
                 format!("-- Core plugin (always loaded)\nrequire(\"{name}\"):setup()")
             } else if name == "starship" {
-                let starship_config_path = output_dir.join("yazelix_starship.toml");
+                let starship_config_path = request.output_dir.join("yazelix_starship.toml");
                 format!(
                     "-- User plugin (from settings.jsonc)\nrequire(\"starship\"):setup({{\n    config_file = \"{}\"\n}})",
                     starship_config_path.to_string_lossy()
@@ -283,10 +252,9 @@ fn write_generated_init_lua(
             "",
         ],
     );
-    let mut final_content =
-        render_runtime_root_placeholders(&format!("{header}{requires}\n"), runtime_dir);
-    let user_init_appended = user_init_lua.is_some();
-    if let Some(user_init) = user_init_lua {
+    let mut final_content = format!("{header}{requires}\n");
+    let user_init_appended = request.user_init_lua.is_some();
+    if let Some(user_init) = request.user_init_lua {
         let user_section = [
             "",
             "-- ========================================",
@@ -298,13 +266,11 @@ fn write_generated_init_lua(
             user_init,
         ]
         .join("\n");
-        final_content = render_runtime_root_placeholders(
-            &format!("{final_content}{user_section}"),
-            runtime_dir,
-        );
+        final_content.push_str(&user_section);
     }
 
-    let target = output_dir.join("init.lua");
+    let final_content = render_runtime_root_placeholders(&final_content, request.runtime_dir);
+    let target = request.output_dir.join("init.lua");
     let status = write_managed_text_if_changed(&target, &final_content)?;
     Ok((status, missing_plugins, user_init_appended))
 }
