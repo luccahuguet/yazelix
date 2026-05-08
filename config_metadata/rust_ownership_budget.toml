@@ -1,7 +1,7 @@
 [contract]
-measured_total_loc = 72597
+measured_total_loc = 72588
 measured_total_file_count = 163
-current_total_loc_max = 72597
+current_total_loc_max = 72588
 current_total_file_count_max = 163
 hard_target_loc = 60000
 
@@ -33,9 +33,9 @@ allowed_paths = [
 id = "core_config_ui_and_materialization"
 status = "canonical"
 owner_bead = "yazelix-ryx4.6"
-measured_loc = 20711
+measured_loc = 20702
 measured_files = 42
-max_loc = 20711
+max_loc = 20702
 target_loc = 14000
 max_files = 42
 allowed_paths = [

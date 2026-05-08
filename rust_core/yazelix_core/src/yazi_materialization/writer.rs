@@ -138,11 +138,7 @@ fn write_generated_yazi_toml(
         runtime_dir,
     );
     let target = output_dir.join("yazi.toml");
-    let changed = write_text_atomic_if_changed(&target, &format!("{header}{config_content}"))?;
-    Ok(YaziManagedFileStatus {
-        path: target.to_string_lossy().to_string(),
-        changed,
-    })
+    write_managed_text_if_changed(&target, &format!("{header}{config_content}"))
 }
 
 fn write_generated_theme_toml(
@@ -189,11 +185,7 @@ fn write_generated_theme_toml(
         toml_to_string_pretty(&TomlValue::Table(base_theme))?
     };
     let target = output_dir.join("theme.toml");
-    let changed = write_text_atomic_if_changed(&target, &format!("{header}{config_content}"))?;
-    Ok(YaziManagedFileStatus {
-        path: target.to_string_lossy().to_string(),
-        changed,
-    })
+    write_managed_text_if_changed(&target, &format!("{header}{config_content}"))
 }
 
 fn write_generated_keymap_toml(
@@ -233,11 +225,7 @@ fn write_generated_keymap_toml(
         runtime_dir,
     );
     let target = output_dir.join("keymap.toml");
-    let changed = write_text_atomic_if_changed(&target, &format!("{header}{keymap_content}"))?;
-    Ok(YaziManagedFileStatus {
-        path: target.to_string_lossy().to_string(),
-        changed,
-    })
+    write_managed_text_if_changed(&target, &format!("{header}{keymap_content}"))
 }
 
 fn write_generated_init_lua(
@@ -297,7 +285,7 @@ fn write_generated_init_lua(
     );
     let mut final_content =
         render_runtime_root_placeholders(&format!("{header}{requires}\n"), runtime_dir);
-    let mut user_init_appended = false;
+    let user_init_appended = user_init_lua.is_some();
     if let Some(user_init) = user_init_lua {
         let user_section = [
             "",
@@ -314,19 +302,11 @@ fn write_generated_init_lua(
             &format!("{final_content}{user_section}"),
             runtime_dir,
         );
-        user_init_appended = true;
     }
 
     let target = output_dir.join("init.lua");
-    let changed = write_text_atomic_if_changed(&target, &final_content)?;
-    Ok((
-        YaziManagedFileStatus {
-            path: target.to_string_lossy().to_string(),
-            changed,
-        },
-        missing_plugins,
-        user_init_appended,
-    ))
+    let status = write_managed_text_if_changed(&target, &final_content)?;
+    Ok((status, missing_plugins, user_init_appended))
 }
 
 fn generated_header(comment: &str, title: &str, body: &[&str]) -> String {
@@ -740,6 +720,17 @@ pub(super) fn render_runtime_root_placeholders(content: &str, runtime_dir: &Path
         RUNTIME_DIR_PLACEHOLDER,
         runtime_dir.to_string_lossy().as_ref(),
     )
+}
+
+fn write_managed_text_if_changed(
+    path: &Path,
+    content: &str,
+) -> Result<YaziManagedFileStatus, CoreError> {
+    let changed = write_text_atomic_if_changed(path, content)?;
+    Ok(YaziManagedFileStatus {
+        path: path.to_string_lossy().to_string(),
+        changed,
+    })
 }
 
 fn write_text_atomic_if_changed(path: &Path, content: &str) -> Result<bool, CoreError> {
