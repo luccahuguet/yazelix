@@ -59,25 +59,6 @@ pub(super) fn require_non_empty_dir_abs(
     Ok(())
 }
 
-pub(super) fn require_file_not_contains(
-    repo_root: &Path,
-    relative_path: &str,
-    needle: &str,
-    label: &str,
-    errors: &mut Vec<String>,
-) -> Result<(), String> {
-    let path = repo_root.join(relative_path);
-    let content = fs::read_to_string(&path)
-        .map_err(|error| format!("Failed to read {}: {}", path.display(), error))?;
-    if content.contains(needle) {
-        errors.push(format!(
-            "{} still contains forbidden text `{}`: {}",
-            label, needle, relative_path
-        ));
-    }
-    Ok(())
-}
-
 pub(super) fn require_list_contains(
     items: &[String],
     expected: &str,

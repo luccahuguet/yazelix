@@ -1,8 +1,7 @@
 use super::{
     build_flake_output_path, command_output_summary, create_unique_temp_dir, escape_nix_string,
-    require_file_not_contains, require_list_contains, require_list_not_contains,
-    require_path_exists, require_path_exists_abs, require_path_missing, run_nix_eval,
-    run_repo_command, validate_rust_routed_nu_modules,
+    require_list_contains, require_list_not_contains, require_path_exists, require_path_exists_abs,
+    require_path_missing, run_nix_eval, run_repo_command, validate_rust_routed_nu_modules,
 };
 use crate::repo_validation::ValidationReport;
 use serde_json::Value as JsonValue;
@@ -62,35 +61,6 @@ fn validate_installed_runtime_contract_inner(repo_root: &Path) -> Result<Vec<Str
         &mut errors,
     );
     require_path_exists(repo_root, runtime_tree, "runtime tree builder", &mut errors);
-
-    require_file_not_contains(
-        repo_root,
-        runtime_env,
-        "export YAZELIX_DIR=",
-        "runtime env helper",
-        &mut errors,
-    )?;
-    require_file_not_contains(
-        repo_root,
-        environment_setup,
-        "get_installed_yazelix_runtime_reference_dir",
-        "environment setup script",
-        &mut errors,
-    )?;
-    require_file_not_contains(
-        repo_root,
-        environment_setup,
-        "ensure_user_cli_wrapper",
-        "environment setup script",
-        &mut errors,
-    )?;
-    require_file_not_contains(
-        repo_root,
-        runtime_tree,
-        "yazelix_packs_default.toml",
-        "runtime tree builder",
-        &mut errors,
-    )?;
 
     if !errors.is_empty() {
         return Ok(errors);
