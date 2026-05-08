@@ -1,3 +1,5 @@
+// Test lane: maintainer
+
 use super::*;
 
 fn status_cache_path_for_temp(temp_path: &Path) -> PathBuf {

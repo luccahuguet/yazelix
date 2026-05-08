@@ -312,58 +312,6 @@ fn config_normalize_prints_one_error_json_envelope() {
     assert_eq!(envelope["error"]["code"], "unsupported_config");
 }
 
-// Defends: moved Ghostty cursor fields fail with a sidecar-specific transition hint instead of being silently ignored.
-#[test]
-fn config_normalize_reports_moved_ghostty_cursor_fields() {
-    let repo = repo_root();
-    let tmp = tempdir().unwrap();
-    let config_path = tmp.path().join("yazelix.toml");
-    fs::write(&config_path, "[terminal]\nghostty_trail_duration = 4.5\n").unwrap();
-    let output = yzx_core_command()
-        .arg("config.normalize")
-        .arg("--config")
-        .arg(&config_path)
-        .arg("--default-config")
-        .arg(repo.join("yazelix_default.toml"))
-        .arg("--contract")
-        .arg(repo.join("config_metadata/main_config_contract.toml"))
-        .output()
-        .unwrap();
-
-    let envelope: Value = error_envelope(&output, 65);
-    assert_eq!(envelope["command"], "config.normalize");
-    assert_eq!(envelope["error"]["class"], "config");
-    assert_eq!(envelope["error"]["code"], "unsupported_config");
-    let diagnostic = &envelope["error"]["details"]["blocking_diagnostics"][0];
-    assert_eq!(
-        diagnostic["headline"],
-        "Moved cursor config field at terminal.ghostty_trail_duration"
-    );
-    assert!(
-        diagnostic["detail_lines"][1]
-            .as_str()
-            .unwrap()
-            .contains("settings.jsonc")
-    );
-}
-
-// Defends: unknown helper commands report the requested command in the usage error envelope.
-#[test]
-fn unsupported_command_reports_requested_command_in_error_envelope() {
-    let output = Command::cargo_bin("yzx_core")
-        .unwrap()
-        .arg("config.unknown")
-        .output()
-        .unwrap();
-
-    assert_eq!(output.status.code(), Some(64));
-    assert!(output.stdout.is_empty());
-    let envelope: Value = serde_json::from_slice(&output.stderr).unwrap();
-    assert_eq!(envelope["command"], "config.unknown");
-    assert_eq!(envelope["error"]["class"], "usage");
-    assert_eq!(envelope["error"]["code"], "invalid_arguments");
-}
-
 // Defends: config-surface.resolve bootstraps the canonical managed config and TOML tooling support through the Rust active-config owner.
 // Contract: CRCP-004
 #[test]

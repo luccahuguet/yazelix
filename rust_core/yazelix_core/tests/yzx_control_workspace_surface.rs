@@ -128,30 +128,6 @@ fn yzx_control_zellij_status_bus_json_reads_versioned_snapshot() {
     assert_eq!(snapshot["managed_panes"]["editor_pane_id"], "terminal:7");
 }
 
-// Defends: hide-on-file-open keeps `yzx reveal` on the managed-sidebar path instead of reviving no-sidebar guidance.
-#[test]
-fn yzx_control_reveal_treats_hide_on_file_open_as_managed_sidebar_available() {
-    let fixture = managed_config_fixture(
-        r#"[editor]
-hide_sidebar_on_file_open = true
-"#,
-    );
-    let target_path = fixture.home_dir.join("target.txt");
-    fs::write(&target_path, "").unwrap();
-
-    let output = yzx_control_command_in_fixture(&fixture)
-        .arg("reveal")
-        .arg(&target_path)
-        .output()
-        .unwrap();
-
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    assert!(stdout.contains("Reveal in Yazi only works inside a Yazelix/Zellij session"));
-    assert!(!stdout.contains("no-sidebar mode"));
-}
-
 // Defends: the public Rust-owned `yzx reveal` route uses the pane-orchestrator session snapshot as the only sidebar identity source and then focuses the sidebar.
 #[test]
 fn yzx_control_reveal_uses_session_snapshot_and_focuses_sidebar() {

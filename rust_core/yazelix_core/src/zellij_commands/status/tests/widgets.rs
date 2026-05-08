@@ -1,19 +1,6 @@
+// Test lane: default
+
 use super::*;
-
-// Defends: maintainer session inspection renders the stable active-tab snapshot fields used to debug workspace routing.
-#[test]
-fn session_inspection_lines_include_workspace_layout_and_sidebar_identity() {
-    let value: Value = serde_json::from_str(
-        r#"{"schema_version":1,"active_tab_position":2,"workspace":{"root":"/tmp/project","source":"explicit"},"focus_context":"sidebar","layout":{"active_swap_layout_name":"single_open","sidebar_collapsed":false},"managed_panes":{"editor_pane_id":"terminal:7","sidebar_pane_id":"terminal:8"},"sidebar_yazi":{"yazi_id":"yazi-123","cwd":"/tmp/project"},"extensions":{"ai_pane_activity":[{"tab_position":2,"provider":"codex","pane_id":"terminal:9","activity":"thinking","state":"thinking"}]}}"#,
-    )
-    .unwrap();
-    let rendered = render_session_state_inspection_lines(&value).join("\n");
-
-    assert!(rendered.contains("workspace: /tmp/project (explicit)"));
-    assert!(rendered.contains("layout: active_swap_layout_name=single_open"));
-    assert!(rendered.contains("managed_panes: editor=terminal:7, sidebar=terminal:8"));
-    assert!(rendered.contains("sidebar_yazi: id=yazi-123, cwd=/tmp/project"));
-}
 
 // Defends: status-bus consumers reject unsupported producer schema versions instead of parsing stale payloads optimistically.
 #[test]

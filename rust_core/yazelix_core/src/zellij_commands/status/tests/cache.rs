@@ -1,3 +1,5 @@
+// Test lane: default
+
 use super::*;
 
 // Regression: zjstatus reads dynamic widgets from a local cache instead of invoking Zellij pipes from every bar command.
