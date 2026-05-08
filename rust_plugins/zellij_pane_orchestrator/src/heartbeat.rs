@@ -4,7 +4,6 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use yazelix_pane_orchestrator::orchestrator_heartbeat_contract::{
     build_orchestrator_heartbeat_payload, OrchestratorHeartbeatPayload,
 };
-use yazelix_pane_orchestrator::status_bar_cache_contract::resolve_status_bar_cache_runtime;
 use zellij_tile::prelude::*;
 
 use crate::State;
@@ -117,13 +116,9 @@ impl State {
             return;
         }
 
-        let Some(runtime) = self.status_bar_cache_runtime.clone().or_else(|| {
-            let session_env = get_session_environment_variables();
-            resolve_status_bar_cache_runtime(&session_env)
-        }) else {
+        let Some(runtime) = self.status_bar_runtime() else {
             return;
         };
-        self.status_bar_cache_runtime = Some(runtime.clone());
 
         let payload = self
             .orchestrator_heartbeat

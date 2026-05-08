@@ -1,7 +1,9 @@
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
-use yazelix_pane_orchestrator::status_bar_cache_contract::resolve_status_bar_cache_runtime;
+use yazelix_pane_orchestrator::status_bar_cache_contract::{
+    resolve_status_bar_cache_runtime, StatusBarCacheRuntime,
+};
 use zellij_tile::prelude::*;
 
 use crate::State;
@@ -38,13 +40,9 @@ impl State {
             return;
         }
 
-        let Some(runtime) = self.status_bar_cache_runtime.clone().or_else(|| {
-            let session_env = get_session_environment_variables();
-            resolve_status_bar_cache_runtime(&session_env)
-        }) else {
+        let Some(runtime) = self.status_bar_runtime() else {
             return;
         };
-        self.status_bar_cache_runtime = Some(runtime.clone());
 
         let command = [
             runtime.yzx_control_path.as_str(),
@@ -147,15 +145,19 @@ impl State {
         self.status_bar_opencode_go_usage_next_refresh = Some(Instant::now() + delay);
     }
 
+    pub(crate) fn status_bar_runtime(&mut self) -> Option<StatusBarCacheRuntime> {
+        if self.status_bar_cache_runtime.is_none() {
+            let session_env = get_session_environment_variables();
+            self.status_bar_cache_runtime = resolve_status_bar_cache_runtime(&session_env);
+        }
+        self.status_bar_cache_runtime.clone()
+    }
+
     fn refresh_status_bar_claude_usage_cache(&mut self) {
         self.record_status_refresh_start("claude_usage");
-        let Some(runtime) = self.status_bar_cache_runtime.clone().or_else(|| {
-            let session_env = get_session_environment_variables();
-            resolve_status_bar_cache_runtime(&session_env)
-        }) else {
+        let Some(runtime) = self.status_bar_runtime() else {
             return;
         };
-        self.status_bar_cache_runtime = Some(runtime.clone());
 
         let command = [
             runtime.yzx_control_path.as_str(),
@@ -175,13 +177,9 @@ impl State {
 
     fn refresh_status_bar_codex_usage_cache(&mut self) {
         self.record_status_refresh_start("codex_usage");
-        let Some(runtime) = self.status_bar_cache_runtime.clone().or_else(|| {
-            let session_env = get_session_environment_variables();
-            resolve_status_bar_cache_runtime(&session_env)
-        }) else {
+        let Some(runtime) = self.status_bar_runtime() else {
             return;
         };
-        self.status_bar_cache_runtime = Some(runtime.clone());
 
         let command = [
             runtime.yzx_control_path.as_str(),
@@ -201,13 +199,9 @@ impl State {
 
     fn refresh_status_bar_opencode_go_usage_cache(&mut self) {
         self.record_status_refresh_start("opencode_go_usage");
-        let Some(runtime) = self.status_bar_cache_runtime.clone().or_else(|| {
-            let session_env = get_session_environment_variables();
-            resolve_status_bar_cache_runtime(&session_env)
-        }) else {
+        let Some(runtime) = self.status_bar_runtime() else {
             return;
         };
-        self.status_bar_cache_runtime = Some(runtime.clone());
 
         let command = [
             runtime.yzx_control_path.as_str(),
