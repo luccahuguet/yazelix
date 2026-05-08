@@ -1110,10 +1110,7 @@ fn generate_all_layouts(
         )
     })?;
     let layout_files = list_top_level_kdl_files(source_dir)?;
-    let expected_targets = layout_files
-        .iter()
-        .map(|source| Ok(target_dir.join(Path::new(required_file_name(source)?))))
-        .collect::<Result<Vec<_>, CoreError>>()?;
+    let expected_targets = expected_layout_targets_for_dir(source_dir, target_dir)?;
     remove_stale_layouts(target_dir, &expected_targets)?;
     let static_fragments = load_static_fragments(source_dir)?;
     let bar_segments = render_bar_segments(render_plan)?;
@@ -1487,12 +1484,14 @@ fn expected_layout_targets(
     source_layouts_dir: &Path,
     merged_config_dir: &Path,
 ) -> Result<Vec<PathBuf>, CoreError> {
+    expected_layout_targets_for_dir(source_layouts_dir, &merged_config_dir.join("layouts"))
+}
+
+fn expected_layout_targets_for_dir(source_layouts_dir: &Path, target_dir: &Path) -> Result<Vec<PathBuf>, CoreError> {
     list_top_level_kdl_files(source_layouts_dir)?
         .into_iter()
         .map(|source| {
-            Ok(merged_config_dir
-                .join("layouts")
-                .join(Path::new(required_file_name(&source)?)))
+            Ok(target_dir.join(Path::new(required_file_name(&source)?)))
         })
         .collect()
 }
