@@ -73,21 +73,9 @@ pub struct YzxInternalNuRoutePlan<'a> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct YzxCommandLeaf {
-    metadata: YzxCommandMetadata,
-    module_relative_path: &'static [&'static str],
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct YzxRustControlFamily {
     root_token: &'static str,
     commands: &'static [YzxCommandMetadata],
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct YzxInternalNuFamily {
-    root_token: &'static str,
-    command: YzxCommandLeaf,
 }
 
 const VERSION_FLAGS: &[YzxCommandParameter] = &[
@@ -724,16 +712,13 @@ const LAUNCH_COMMAND: YzxCommandMetadata = metadata(
 );
 const LAUNCH_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[LAUNCH_COMMAND];
 
-const MENU_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx menu",
-        "Interactive command palette for Yazelix",
-        YzxCommandCategory::Help,
-        &[],
-        None,
-        None,
-    ),
-    YZX_MENU_RELATIVE_PATH,
+const MENU_COMMAND: YzxCommandMetadata = metadata(
+    "yzx menu",
+    "Interactive command palette for Yazelix",
+    YzxCommandCategory::Help,
+    &[],
+    None,
+    None,
 );
 
 const POPUP_COMMAND: YzxCommandMetadata = metadata(
@@ -776,16 +761,12 @@ const REVEAL_COMMAND: YzxCommandMetadata = metadata(
 );
 const REVEAL_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[REVEAL_COMMAND];
 
-const INTERNAL_NU_FAMILIES: &[YzxInternalNuFamily] = &[internal_family("menu", MENU_COMMAND)];
-
 pub fn yzx_command_metadata() -> Vec<YzxCommandMetadata> {
     let mut commands = vec![ROOT_COMMAND];
     for family in RUST_CONTROL_FAMILIES {
         commands.extend(family.commands.iter().copied());
     }
-    for family in INTERNAL_NU_FAMILIES {
-        commands.push(family.command.metadata);
-    }
+    commands.push(MENU_COMMAND);
     commands.sort_by(|left, right| left.name.cmp(right.name));
     commands
 }
@@ -810,14 +791,12 @@ pub fn classify_yzx_root_route(argv: &[String]) -> Result<YzxPublicRootRoute<'_>
         return Ok(YzxPublicRootRoute::RustControl);
     }
 
-    if let Some(family) = INTERNAL_NU_FAMILIES
-        .iter()
-        .find(|family| family.root_token == first)
-    {
-        return Ok(YzxPublicRootRoute::InternalNu(plan_internal_nu_route(
-            family,
-            &argv[1..],
-        )));
+    if first == "menu" {
+        return Ok(YzxPublicRootRoute::InternalNu(YzxInternalNuRoutePlan {
+            module_relative_path: YZX_MENU_RELATIVE_PATH,
+            command_name: MENU_COMMAND.name,
+            tail: &argv[1..],
+        }));
     }
 
     Err(CoreError::classified(
@@ -896,16 +875,6 @@ const fn rest(name: &'static str) -> YzxCommandParameter {
     }
 }
 
-const fn leaf(
-    metadata: YzxCommandMetadata,
-    module_relative_path: &'static [&'static str],
-) -> YzxCommandLeaf {
-    YzxCommandLeaf {
-        metadata,
-        module_relative_path,
-    }
-}
-
 const fn rust_control_family(
     root_token: &'static str,
     commands: &'static [YzxCommandMetadata],
@@ -913,24 +882,6 @@ const fn rust_control_family(
     YzxRustControlFamily {
         root_token,
         commands,
-    }
-}
-
-const fn internal_family(root_token: &'static str, command: YzxCommandLeaf) -> YzxInternalNuFamily {
-    YzxInternalNuFamily {
-        root_token,
-        command,
-    }
-}
-
-fn plan_internal_nu_route<'a>(
-    family: &'static YzxInternalNuFamily,
-    argv: &'a [String],
-) -> YzxInternalNuRoutePlan<'a> {
-    YzxInternalNuRoutePlan {
-        module_relative_path: family.command.module_relative_path,
-        command_name: family.command.metadata.name,
-        tail: argv,
     }
 }
 

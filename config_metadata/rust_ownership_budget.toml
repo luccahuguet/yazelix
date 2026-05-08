@@ -1,7 +1,7 @@
 [contract]
-measured_total_loc = 71983
+measured_total_loc = 71934
 measured_total_file_count = 163
-current_total_loc_max = 71983
+current_total_loc_max = 71934
 current_total_file_count_max = 163
 hard_target_loc = 60000
 
@@ -9,9 +9,9 @@ hard_target_loc = 60000
 id = "core_cli_and_public_surface"
 status = "canonical"
 owner_bead = "yazelix-ykti.1"
-measured_loc = 8038
+measured_loc = 7989
 measured_files = 12
-max_loc = 8038
+max_loc = 7989
 target_loc = 7000
 max_files = 12
 allowed_paths = [
