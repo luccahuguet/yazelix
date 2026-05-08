@@ -717,7 +717,23 @@ fn render_yzpp_plugin_block(
         "        popups {".to_string(),
         "            popup {".to_string(),
     ];
-    lines.extend(render_yzpp_command_fields(popup_program, 16));
+    if let Some(command_path) = popup_program.first() {
+        lines.push(format!(
+            "                command {}",
+            json_quote(command_path)
+        ));
+        for (index, arg) in popup_program.iter().skip(1).enumerate() {
+            lines.push(format!(
+                "                arg_{} {}",
+                index + 1,
+                json_quote(arg)
+            ));
+        }
+        lines.push(format!(
+            "                command_marker {}",
+            json_quote(command_path)
+        ));
+    }
     lines.extend([
         "                pane_title \"yzx_popup\"".to_string(),
         format!("                width_percent \"{popup_width_percent}\""),
@@ -750,22 +766,6 @@ fn render_yzpp_plugin_block(
         "    }".to_string(),
     ]);
     lines
-}
-
-fn render_yzpp_command_fields(command: &[String], indent_spaces: usize) -> Vec<String> {
-    let indent = " ".repeat(indent_spaces);
-    let mut fields = Vec::new();
-    if let Some(command_path) = command.first() {
-        fields.push(format!("{indent}command {}", json_quote(command_path)));
-        for (index, arg) in command.iter().skip(1).enumerate() {
-            fields.push(format!("{indent}arg_{} {}", index + 1, json_quote(arg)));
-        }
-        fields.push(format!(
-            "{indent}command_marker {}",
-            json_quote(command_path)
-        ));
-    }
-    fields
 }
 
 fn build_merged_keybinds_block(
@@ -1169,11 +1169,6 @@ fn integrated_zjstatus_runtime_paths(runtime_dir: &Path) -> YazelixRuntimeComman
     }
 }
 
-fn render_integrated_zjstatus_command_definitions(runtime_dir: &Path) -> String {
-    let paths = integrated_zjstatus_runtime_paths(runtime_dir);
-    render_yazelix_runtime_command_definitions(&paths)
-}
-
 fn render_layout_template(
     content: &str,
     static_fragments: &BTreeMap<String, String>,
@@ -1225,7 +1220,9 @@ fn render_layout_template(
         ),
         (
             ZJSTATUS_COMMAND_DEFINITIONS_PLACEHOLDER,
-            render_integrated_zjstatus_command_definitions(runtime_dir),
+            render_yazelix_runtime_command_definitions(&integrated_zjstatus_runtime_paths(
+                runtime_dir,
+            )),
         ),
         (
             "__YAZELIX_SIDEBAR_COMMAND__",
@@ -1743,19 +1740,10 @@ fn preserve_plugin_permissions(
         .filter(|block| !plugin_name_matches_prefix(path_basename(&block.path), prefix))
         .map(|block| build_permission_block(&block.path, &block.permissions))
         .collect::<Vec<_>>();
-    retained.push(build_permission_block(
-        &tracked_path.to_string_lossy(),
-        &required_permissions
-            .iter()
-            .map(|permission| (*permission).to_string())
-            .collect::<Vec<_>>(),
-    ));
-    retained.push(build_permission_block(
-        &runtime_path.to_string_lossy(),
-        &required_permissions
-            .iter()
-            .map(|permission| (*permission).to_string())
-            .collect::<Vec<_>>(),
+    retained.extend(required_permission_blocks(
+        tracked_path,
+        runtime_path,
+        required_permissions,
     ));
     write_text_atomic(&permissions_cache_path, &retained.join("\n\n"))?;
     Ok(())
@@ -1835,22 +1823,29 @@ fn upsert_plugin_permission_blocks(
         .collect::<Vec<_>>();
 
     for artifact in plugin_artifacts.iter() {
-        let permissions = artifact
-            .required_permissions
-            .iter()
-            .map(|permission| (*permission).to_string())
-            .collect::<Vec<_>>();
-        updated.push(build_permission_block(
-            &artifact.tracked_path.to_string_lossy(),
-            &permissions,
-        ));
-        updated.push(build_permission_block(
-            &artifact.runtime_path.to_string_lossy(),
-            &permissions,
+        updated.extend(required_permission_blocks(
+            &artifact.tracked_path,
+            &artifact.runtime_path,
+            artifact.required_permissions,
         ));
     }
 
     write_text_atomic(&permissions_cache_path, &updated.join("\n\n"))
+}
+
+fn required_permission_blocks(
+    tracked_path: &Path,
+    runtime_path: &Path,
+    required_permissions: &[&str],
+) -> [String; 2] {
+    let permissions = required_permissions
+        .iter()
+        .map(|permission| (*permission).to_string())
+        .collect::<Vec<_>>();
+    [
+        build_permission_block(&tracked_path.to_string_lossy(), &permissions),
+        build_permission_block(&runtime_path.to_string_lossy(), &permissions),
+    ]
 }
 
 fn build_generation_fingerprint(
