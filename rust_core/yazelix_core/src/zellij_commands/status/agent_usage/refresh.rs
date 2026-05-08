@@ -14,25 +14,6 @@ use std::process::{Command, Stdio};
 use std::thread;
 use std::time::{Duration, Instant, UNIX_EPOCH};
 
-pub(crate) fn refresh_codex_usage_shared_cache(
-    shared_path: &Path,
-    path_var: Option<&OsStr>,
-    now: u64,
-    max_age_seconds: u64,
-    error_backoff_seconds: u64,
-    timeout: Duration,
-) -> Result<bool, CoreError> {
-    refresh_tokenusage_windowed_usage_shared_cache(
-        shared_path,
-        TokenusageWindowedProvider::Codex,
-        path_var,
-        now,
-        max_age_seconds,
-        error_backoff_seconds,
-        timeout,
-    )
-}
-
 pub(crate) fn refresh_tokenusage_windowed_usage_shared_cache(
     shared_path: &Path,
     provider: TokenusageWindowedProvider,

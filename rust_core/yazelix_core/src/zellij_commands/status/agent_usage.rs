@@ -225,8 +225,9 @@ pub(crate) fn refresh_agent_usage_shared_cache_for_status_cache_path(
             else {
                 return Ok(());
             };
-            refresh_codex_usage_shared_cache(
+            refresh_tokenusage_windowed_usage_shared_cache(
                 &shared_path,
+                TokenusageWindowedProvider::Codex,
                 path_var,
                 now,
                 max_age_seconds,

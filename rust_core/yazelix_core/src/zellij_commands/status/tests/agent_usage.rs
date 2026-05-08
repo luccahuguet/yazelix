@@ -325,8 +325,8 @@ exit 64
     let shared_path =
         codex_usage_shared_cache_path_from_status_cache_path(&status_cache_path).unwrap();
 
-    let refreshed = refresh_codex_usage_shared_cache(
-        &shared_path,
+    let refreshed = refresh_tokenusage_windowed_usage_shared_cache(
+        &shared_path, TokenusageWindowedProvider::Codex,
         Some(bin_dir.as_os_str()),
         1_000,
         600,
@@ -403,8 +403,8 @@ exit 64
     )
     .unwrap();
 
-    let refreshed = refresh_codex_usage_shared_cache(
-        &shared_path,
+    let refreshed = refresh_tokenusage_windowed_usage_shared_cache(
+        &shared_path, TokenusageWindowedProvider::Codex,
         Some(bin_dir.as_os_str()),
         1_000,
         600,
@@ -489,8 +489,8 @@ exit 64
     )
     .unwrap();
 
-    let refreshed = refresh_codex_usage_shared_cache(
-        &shared_path,
+    let refreshed = refresh_tokenusage_windowed_usage_shared_cache(
+        &shared_path, TokenusageWindowedProvider::Codex,
         Some(bin_dir.as_os_str()),
         1_000,
         600,
