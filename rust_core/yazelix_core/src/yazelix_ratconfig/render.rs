@@ -676,14 +676,6 @@ pub(crate) fn config_key_style() -> Style {
     Style::default().fg(Color::LightCyan)
 }
 
-pub(crate) fn owner_label(owner: ConfigUiPathOwner) -> &'static str {
-    match owner {
-        ConfigUiPathOwner::Default => "default",
-        ConfigUiPathOwner::HomeManager => "home-manager",
-        ConfigUiPathOwner::User => "user",
-    }
-}
-
 pub(crate) fn fixed_label(value: &str, width: usize) -> String {
     let label = format!("{value:<width$}");
     if label.ends_with(' ') {

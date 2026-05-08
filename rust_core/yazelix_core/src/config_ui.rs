@@ -936,50 +936,7 @@ impl ConfigUiApp {
     }
 
     pub(crate) fn visible_rows(&self) -> Vec<UiRowRef> {
-        let tab = self
-            .model
-            .tabs
-            .get(self.selected_tab)
-            .map(String::as_str)
-            .unwrap_or("general");
-        let mut rows = Vec::new();
-        if tab == "advanced" {
-            rows.extend(
-                self.model
-                    .diagnostics
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, diagnostic)| self.matches_diagnostic(diagnostic))
-                    .map(|(index, _)| UiRowRef::Diagnostic(index)),
-            );
-            rows.extend(
-                self.model
-                    .sidecars
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, sidecar)| self.matches_sidecar(sidecar))
-                    .map(|(index, _)| UiRowRef::Sidecar(index)),
-            );
-            rows.extend(
-                self.model
-                    .native_config_statuses
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, status)| self.matches_native_status(status))
-                    .map(|(index, _)| UiRowRef::NativeStatus(index)),
-            );
-            return rows;
-        }
-
-        rows.extend(
-            self.model
-                .fields
-                .iter()
-                .enumerate()
-                .filter(|(_, field)| field.tab == tab && self.matches_field(field))
-                .map(|(index, _)| UiRowRef::Field(index)),
-        );
-        rows
+        visible_rows_for_tab_search(&self.model, self.selected_tab, &self.search)
     }
 
     pub(crate) fn render_details(&self, row: UiRowRef) -> Vec<Line<'static>> {
@@ -1007,51 +964,6 @@ impl ConfigUiApp {
                 native_status_detail_lines(&self.model.native_config_statuses[index])
             }
         }
-    }
-
-    fn matches_field(&self, field: &ConfigUiField) -> bool {
-        self.search_matches([
-            field.path.as_str(),
-            field.current_value.as_str(),
-            field.default_value.as_str(),
-            field.description.as_str(),
-        ])
-    }
-
-    fn matches_sidecar(&self, sidecar: &ConfigUiSidecar) -> bool {
-        self.search_matches([
-            sidecar.name.as_str(),
-            sidecar.path.to_string_lossy().as_ref(),
-            owner_label(sidecar.owner),
-        ])
-    }
-
-    fn matches_diagnostic(&self, diagnostic: &ConfigUiDiagnostic) -> bool {
-        self.search_matches([
-            diagnostic.path.as_str(),
-            diagnostic.status.as_str(),
-            diagnostic.headline.as_str(),
-        ])
-    }
-
-    fn matches_native_status(&self, status: &ConfigUiNativeStatus) -> bool {
-        self.search_matches([
-            status.surface.as_str(),
-            status.tool.as_str(),
-            status.status.as_str(),
-            status.label.as_str(),
-            status.description.as_str(),
-        ])
-    }
-
-    fn search_matches<'a>(&self, candidates: impl IntoIterator<Item = &'a str>) -> bool {
-        if self.search.is_empty() {
-            return true;
-        }
-        let needle = self.search.to_ascii_lowercase();
-        candidates
-            .into_iter()
-            .any(|candidate| candidate.to_ascii_lowercase().contains(&needle))
     }
 
     fn next_tab(&mut self) {

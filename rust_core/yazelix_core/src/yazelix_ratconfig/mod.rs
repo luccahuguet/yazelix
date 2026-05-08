@@ -9,9 +9,9 @@ pub mod model;
 pub(crate) mod render;
 
 pub(crate) use editor::*;
-pub(crate) use model::UiRowRef;
 pub use model::{
     ConfigUiApplyStatus, ConfigUiDiagnostic, ConfigUiField, ConfigUiModel, ConfigUiNativeStatus,
     ConfigUiPathOwner, ConfigUiSidecar, ConfigUiValueState,
 };
+pub(crate) use model::{UiRowRef, owner_label, visible_rows_for_tab_search};
 pub(crate) use render::*;
