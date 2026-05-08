@@ -95,10 +95,21 @@ The current evaluated matrix is:
 | `components.status_bar` / integrated zjstatus | enabled | Not accepted yet: `zjstatus.wasm` is a real runtime asset, but the top/status bar is part of the current Zellij layout contract | Defer until layout ownership and barless/native Zellij layout behavior are designed; hiding widgets through `zellij.widget_tray` is not a package-saving toggle | Defer |
 | `yazelix_bar` standalone package forwarding | available on demand | No Home Manager toggle needed: forwarded flake output is not installed unless the user asks for it | Integrated Yazelix consumes only the crate/API it needs for generated layouts | Reject toggle |
 | `yazelix-zellij-popup` / `yzpp` | enabled | Not accepted yet: Yazelix packages `yzpp.wasm` because popup, menu, and config UI panes all use the integrated popup path | Defer until popup/menu/config UI can be disabled or replaced as a coherent component | Defer |
+| `components.yazi_assets` / `yazelix-yazi-assets` | enabled | Not implemented yet: reusable flavors, reusable plugins, and the bundled Starship Yazi config are linked from the child asset pack | Candidate only after the Yazi writer can render a first-party-only profile that does not reference missing child assets, themes, or plugin commands | Evaluate next |
 | Yazi preview/helper tools such as `p7zip`, `poppler`, and `resvg` | bundled | Implemented `off`: omits helper packages and exports; generated Yazelix config does not directly call these helpers | Doctor reports intentional disabled helper state instead of missing-host warnings | Keep implemented |
 | `macchina` welcome summary helper | bundled unless host-sourced | Implemented `off`: omits `macchina` from runtime packages and exports | Home Manager requires `core.show_macchina_on_welcome = false`; doctor reports intentional disabled helper state | Keep implemented |
 
 Do not add a toggle whose only effect is hiding Home Manager options or removing a forwarded flake output. A toggle must change package contents, generated runtime behavior, or validation in a way users can feel.
+
+## Component Audit Outcome
+
+The 2026-05-08 optional child-component audit keeps the current defaults fully integrated and does not add a hot-path toggle immediately.
+
+The next plausible component toggle is the `yazelix-yazi-assets` asset pack because it is a real child repository with package contents that can be omitted. It is not ready as a direct boolean until the generated Yazi profile has a documented reduced mode that avoids child-provided flavors, reusable plugins, and `yazelix_starship.toml`.
+
+The integrated status bar remains deferred behind layout ownership and barless/native Zellij behavior. A widget-tray setting is not a storage-saving component toggle.
+
+`yzpp` remains deferred until popup, command-menu, and config-UI panes have a single coherent off or replacement mode. A toggle that only removes `yzpp.wasm` while leaving those commands and keybindings active is invalid.
 
 ## Doctor Behavior
 
