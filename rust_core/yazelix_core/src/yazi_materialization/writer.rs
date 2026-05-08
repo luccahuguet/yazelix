@@ -41,9 +41,11 @@ pub(super) fn write_yazi_config_pack(
         )
     })?;
 
-    let yazi_toml_status = write_generated_yazi_toml(request)?;
-    let theme_toml_status = write_generated_theme_toml(request)?;
-    let keymap_status = write_generated_keymap_toml(request)?;
+    let mut managed_files = vec![
+        write_generated_yazi_toml(request)?,
+        write_generated_theme_toml(request)?,
+        write_generated_keymap_toml(request)?,
+    ];
 
     let should_sync_static_assets = request.sync_static_assets
         || bundled_yazi_assets_missing(request.source_dir, request.output_dir)?;
@@ -52,17 +54,13 @@ pub(super) fn write_yazi_config_pack(
     }
 
     let (init_status, missing_plugins, user_init_appended) = write_generated_init_lua(request)?;
+    managed_files.push(init_status);
 
     Ok(YaziConfigPackWriteData {
         missing_plugins,
         synced_static_assets: should_sync_static_assets,
         user_init_appended,
-        managed_files: vec![
-            yazi_toml_status,
-            theme_toml_status,
-            keymap_status,
-            init_status,
-        ],
+        managed_files,
     })
 }
 
@@ -206,16 +204,10 @@ fn write_generated_init_lua(
     let plugins_dir = request.output_dir.join("plugins");
     let core_plugins = &request.render_plan.init_lua.core_plugins;
     let all_plugins = &request.render_plan.init_lua.load_order;
-    let missing_plugins = all_plugins
+    let (valid_plugins, missing_plugins): (Vec<_>, Vec<_>) = all_plugins
         .iter()
-        .filter(|name| !plugins_dir.join(format!("{name}.yazi")).exists())
         .cloned()
-        .collect::<Vec<_>>();
-    let valid_plugins = all_plugins
-        .iter()
-        .filter(|name| plugins_dir.join(format!("{name}.yazi")).exists())
-        .cloned()
-        .collect::<Vec<_>>();
+        .partition(|name| plugins_dir.join(format!("{name}.yazi")).exists());
 
     let requires = valid_plugins
         .iter()
@@ -388,16 +380,13 @@ fn sync_bundled_yazi_assets(
     output_dir: &Path,
     runtime_dir: &Path,
 ) -> Result<(), CoreError> {
-    sync_named_child_directories(
-        &source_dir.join("plugins"),
-        &output_dir.join("plugins"),
-        runtime_dir,
-    )?;
-    sync_named_child_directories(
-        &source_dir.join("flavors"),
-        &output_dir.join("flavors"),
-        runtime_dir,
-    )?;
+    for child in ["plugins", "flavors"] {
+        sync_named_child_directories(
+            &source_dir.join(child),
+            &output_dir.join(child),
+            runtime_dir,
+        )?;
+    }
     sync_starship_config(
         &source_dir.join("yazelix_starship.toml"),
         &output_dir.join("yazelix_starship.toml"),
