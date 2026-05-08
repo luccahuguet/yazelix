@@ -110,7 +110,6 @@ fn prepare_runtime_materialization_fixture(
     .unwrap();
     for fragment in [
         "zjstatus_tab_template.kdl",
-        "keybinds_common.kdl",
         "swap_sidebar_open.kdl",
         "swap_sidebar_closed.kdl",
     ] {

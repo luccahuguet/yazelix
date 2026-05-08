@@ -50,7 +50,7 @@ The supported boundary is cache-first: generated zjstatus command widgets read s
 - Status: live
 - Owner: Yazelix Zellij command surface
 - Statement: The old direct `status-bus-workspace` command is not part of the supported status-bar path. Generated zjstatus templates must keep using cache-widget commands for dynamic widgets
-- Verification: automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zjstatus_template_delegates_integrated_command_definitions_to_adapter`
+- Verification: automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core renders_cached_zjstatus_widget_commands_with_runtime_helper_paths`
 
 #### SBO-005
 - Type: boundary

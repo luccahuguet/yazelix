@@ -1,5 +1,3 @@
-// Shared keybinds are injected by the Rust Zellij materializer
-// from configs/zellij/layouts/fragments/keybinds_common.kdl.
 layout {
     tab_template name="ui" {
         pane size=1 borderless=true {
@@ -43,6 +41,3 @@ layout {
          }
      }
 }
-
-
-__YAZELIX_KEYBINDS_COMMON__

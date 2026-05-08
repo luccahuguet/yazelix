@@ -283,7 +283,7 @@ swap_layouts = ["single_open"]
 "#,
         )
         .unwrap();
-        fs::write(runtime_layouts.join("yzx_side.kdl"), r#"layout { pane name="sidebar" { command __YAZELIX_SIDEBAR_COMMAND__ __YAZELIX_SIDEBAR_ARGS__ } } __YAZELIX_KEYBINDS_COMMON__"#).unwrap();
+        fs::write(runtime_layouts.join("yzx_side.kdl"), r#"layout { pane name="sidebar" { command __YAZELIX_SIDEBAR_COMMAND__ __YAZELIX_SIDEBAR_ARGS__ } }"#).unwrap();
         fs::write(
             runtime_layouts.join("yzx_side.swap.kdl"),
             r#"swap_tiled_layout name="single_open" {}"#,

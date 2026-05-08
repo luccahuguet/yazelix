@@ -1,10 +1,7 @@
 use crate::action_registry::{PANE_ORCHESTRATOR_PLUGIN_ALIAS, YZPP_PLUGIN_ALIAS, ZELLIJ_ACTIONS};
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
-use crate::control_plane::{
-    config_dir_from_env, home_dir_from_env as home_dir_from_control_plane,
-    state_dir_from_env as state_dir_from_control_plane,
-};
+use crate::control_plane::{config_dir_from_env, home_dir_from_env, state_dir_from_env};
 use crate::runtime_component_enabled;
 use crate::user_config_paths;
 use crate::zellij_render_plan::{
@@ -557,7 +554,7 @@ fn render_merged_config(
         "//   2) ~/.config/zellij/config.kdl (native fallback, read-only)".to_string(),
         "//   3) zellij setup --dump-config (defaults)".to_string(),
         "//".to_string(),
-        format!("// Generated: {}", timestamp_for_header()),
+        "// Generated: 1970-01-01 00:00:00".to_string(),
         "// ========================================".to_string(),
         String::new(),
         base_config,
@@ -1221,22 +1218,7 @@ fn render_bar_segments(
         terminal_label: render_plan.terminal_label.clone(),
         custom_text: render_plan.custom_text.clone(),
     };
-    render_zjstatus_bar_segments(&request).map_err(|error| match error {
-        BarRenderError::InvalidWidgetTrayEntry { entry } => CoreError::classified(
-            ErrorClass::Config,
-            "invalid_widget_tray_entry",
-            format!("Invalid zellij.widget_tray token in layout renderer: {entry}"),
-            "Use only documented widget tray identifiers.",
-            json!({ "field": "zellij.widget_tray", "entry": entry }),
-        ),
-        BarRenderError::InvalidTabLabelMode { mode } => CoreError::classified(
-            ErrorClass::Config,
-            "invalid_tab_label_mode",
-            format!("Invalid zellij.tab_label_mode in layout renderer: {mode}"),
-            "Set zellij.tab_label_mode to `full` or `compact`.",
-            json!({ "field": "zellij.tab_label_mode", "mode": mode }),
-        ),
-    })
+    render_zjstatus_bar_segments(&request).map_err(bar_render_error)
 }
 
 fn integrated_zjstatus_runtime_paths(runtime_dir: &Path) -> YazelixRuntimeCommandPaths {
@@ -1264,24 +1246,8 @@ fn render_layout_template(
     render_plan: &ZellijRenderPlanData,
 ) -> Result<String, CoreError> {
     let mut updated = apply_static_fragments(content, static_fragments);
-    let tab_labels = render_zjstatus_tab_label_formats(&render_plan.tab_label_mode).map_err(
-        |error| match error {
-            BarRenderError::InvalidTabLabelMode { mode } => CoreError::classified(
-                ErrorClass::Config,
-                "invalid_tab_label_mode",
-                format!("Invalid zellij.tab_label_mode in layout renderer: {mode}"),
-                "Set zellij.tab_label_mode to `full` or `compact`.",
-                json!({ "field": "zellij.tab_label_mode", "mode": mode }),
-            ),
-            BarRenderError::InvalidWidgetTrayEntry { entry } => CoreError::classified(
-                ErrorClass::Config,
-                "invalid_widget_tray_entry",
-                format!("Invalid zellij.widget_tray token in layout renderer: {entry}"),
-                "Use only documented widget tray identifiers.",
-                json!({ "field": "zellij.widget_tray", "entry": entry }),
-            ),
-        },
-    )?;
+    let tab_labels =
+        render_zjstatus_tab_label_formats(&render_plan.tab_label_mode).map_err(bar_render_error)?;
     let replacements = [
         (WIDGET_TRAY_PLACEHOLDER, widget_tray_segment.to_string()),
         (CUSTOM_TEXT_PLACEHOLDER, custom_text_segment.to_string()),
@@ -1408,6 +1374,25 @@ fn render_layout_template(
     Ok(updated)
 }
 
+fn bar_render_error(error: BarRenderError) -> CoreError {
+    match error {
+        BarRenderError::InvalidWidgetTrayEntry { entry } => CoreError::classified(
+            ErrorClass::Config,
+            "invalid_widget_tray_entry",
+            format!("Invalid zellij.widget_tray token in layout renderer: {entry}"),
+            "Use only documented widget tray identifiers.",
+            json!({ "field": "zellij.widget_tray", "entry": entry }),
+        ),
+        BarRenderError::InvalidTabLabelMode { mode } => CoreError::classified(
+            ErrorClass::Config,
+            "invalid_tab_label_mode",
+            format!("Invalid zellij.tab_label_mode in layout renderer: {mode}"),
+            "Set zellij.tab_label_mode to `full` or `compact`.",
+            json!({ "field": "zellij.tab_label_mode", "mode": mode }),
+        ),
+    }
+}
+
 fn expand_runtime_placeholder(value: &str, runtime_dir: &Path) -> String {
     value.replace(
         RUNTIME_DIR_PLACEHOLDER,
@@ -1483,10 +1468,6 @@ fn load_static_fragments(source_dir: &Path) -> Result<BTreeMap<String, String>, 
         (
             "__YAZELIX_ZJSTATUS_TAB_TEMPLATE__",
             "fragments/zjstatus_tab_template.kdl",
-        ),
-        (
-            "__YAZELIX_KEYBINDS_COMMON__",
-            "fragments/keybinds_common.kdl",
         ),
         (
             "__YAZELIX_SWAP_SIDEBAR_OPEN__",
@@ -2191,14 +2172,6 @@ fn path_basename(path: &str) -> &str {
     path.rsplit('/').next().unwrap_or(path)
 }
 
-fn state_dir_from_env() -> Result<PathBuf, CoreError> {
-    state_dir_from_control_plane()
-}
-
-fn home_dir_from_env() -> Result<PathBuf, CoreError> {
-    home_dir_from_control_plane()
-}
-
 pub(crate) fn zellij_permissions_cache_path() -> Result<PathBuf, CoreError> {
     ProjectDirs::from("org", "Zellij Contributors", "Zellij")
         .map(|dirs| dirs.cache_dir().join("permissions.kdl"))
@@ -2211,10 +2184,6 @@ pub(crate) fn zellij_permissions_cache_path() -> Result<PathBuf, CoreError> {
                 json!({}),
             )
         })
-}
-
-fn timestamp_for_header() -> String {
-    "1970-01-01 00:00:00".to_string()
 }
 
 fn timestamp_for_metadata() -> String {
@@ -2266,17 +2235,6 @@ mod tests {
 
     fn sample_zellij_keybindings() -> BTreeMap<String, Vec<String>> {
         default_zellij_keybindings()
-    }
-
-    // Regression: plugin permission seeding must write the same cache file that Zellij reads on each platform.
-    #[test]
-    fn zellij_permissions_cache_path_matches_upstream_project_dirs() {
-        let expected = ProjectDirs::from("org", "Zellij Contributors", "Zellij")
-            .unwrap()
-            .cache_dir()
-            .join("permissions.kdl");
-
-        assert_eq!(zellij_permissions_cache_path().unwrap(), expected);
     }
 
     // Regression: macOS Zellij reads plugin permissions from ProjectDirs' Library/Caches path, not ~/.cache/zellij.
@@ -2560,29 +2518,6 @@ keybinds {
         assert!(rendered.contains(r#"command "lazygit""#));
         assert!(!rendered.contains("args "));
         assert!(!rendered.contains("launch_sidebar_yazi.nu"));
-    }
-
-    // Regression: shipped zjstatus templates delegate integrated command definitions to the typed adapter instead of owning helper command bodies.
-    #[test]
-    fn zjstatus_template_delegates_integrated_command_definitions_to_adapter() {
-        let template =
-            include_str!("../../../configs/zellij/layouts/fragments/zjstatus_tab_template.kdl");
-        assert!(template.contains(ZJSTATUS_COMMAND_DEFINITIONS_PLACEHOLDER));
-        assert!(!template.contains("zjstatus_widget.nu"));
-        assert!(!template.contains("command_editor_command"));
-        assert!(!template.contains("command_shell_command"));
-        assert!(!template.contains("command_term_command"));
-        assert!(!template.contains(yazelix_bar::ZJSTATUS_NU_BIN_PLACEHOLDER));
-        assert!(!template.contains(yazelix_bar::ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER));
-        assert!(!template.contains("command_workspace_command"));
-        assert!(!template.contains("status-cache-widget workspace"));
-        assert!(!template.contains("command_cursor_command"));
-        assert!(!template.contains("configs/zellij/scripts/ram_usage.nu"));
-        assert!(!template.contains("macchina -o memory"));
-        assert!(!template.contains("grep -o"));
-        assert!(!template.contains("status-bus-workspace"));
-        assert!(!template.contains("command_amp_usage_command"));
-        assert!(!template.contains("agent-usage"));
     }
 
     // Regression: generated zjstatus command widgets use resolved runtime helpers while dynamic widgets read only the local cache.

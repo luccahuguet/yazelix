@@ -1,3 +1,0 @@
-// Yazelix-owned session keybinds now live in configs/zellij/yazelix_overrides.kdl
-// and are merged into config.kdl. Layouts keep this fragment only as a no-op
-// placeholder so existing templates do not need structural churn.

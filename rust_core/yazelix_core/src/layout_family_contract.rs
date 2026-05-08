@@ -182,13 +182,6 @@ fn validate_family_files(
         }
     };
 
-    if !layout.contains("__YAZELIX_KEYBINDS_COMMON__") {
-        errors.push(format!(
-            "Zellij layout `{}` must include the shared keybind placeholder",
-            family.layout_file
-        ));
-    }
-
     for pane_name in &family.required_pane_names {
         if !layout.contains(&format!("pane name=\"{pane_name}\"")) {
             errors.push(format!(
@@ -298,7 +291,7 @@ swap_layouts = ["single_open", "single_closed"]
         .unwrap();
         fs::write(
             layouts_dir.join("yzx_side.kdl"),
-            r#"layout { pane name="sidebar" { command __YAZELIX_SIDEBAR_COMMAND__ __YAZELIX_SIDEBAR_ARGS__ } } __YAZELIX_KEYBINDS_COMMON__"#,
+            r#"layout { pane name="sidebar" { command __YAZELIX_SIDEBAR_COMMAND__ __YAZELIX_SIDEBAR_ARGS__ } }"#,
         )
         .unwrap();
         fs::write(
