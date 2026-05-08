@@ -5,9 +5,12 @@ use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::home_dir_from_env;
 use crate::pane_orchestrator_client::run_pane_orchestrator_command;
 use crate::session_facts::compute_session_facts_from_env;
-use crate::workspace_session::{WorkspaceRetargetResult, parse_workspace_retarget_response};
+use crate::workspace_session::{
+    WorkspaceRetargetResult, parse_workspace_retarget_response, workspace_dir_for_target,
+    workspace_retarget_payload, workspace_tab_name,
+};
 use serde::Serialize;
-use serde_json::{Value, json};
+use serde_json::json;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -277,24 +280,7 @@ fn resolve_existing_target_dir(target_path: &Path) -> Result<PathBuf, CoreError>
         ));
     }
 
-    if target_path.is_dir() {
-        Ok(target_path.to_path_buf())
-    } else {
-        Ok(target_path
-            .parent()
-            .map(Path::to_path_buf)
-            .unwrap_or_else(|| target_path.to_path_buf()))
-    }
-}
-
-fn workspace_tab_name(workspace_root: &Path) -> String {
-    workspace_root
-        .file_name()
-        .and_then(|name| name.to_str())
-        .map(str::trim)
-        .filter(|name| !name.is_empty())
-        .unwrap_or("unnamed")
-        .to_string()
+    Ok(workspace_dir_for_target(target_path))
 }
 
 fn resolve_path_like_input(raw: &str, current_dir: &Path, home_dir: &Path) -> PathBuf {
@@ -321,16 +307,7 @@ fn retarget_workspace(
     workspace_root: &Path,
     editor_kind: &str,
 ) -> Result<WorkspaceRetargetResult, CoreError> {
-    let payload = json!({
-        "workspace_root": workspace_root.display().to_string(),
-        "cd_focused_pane": true,
-        "editor": if editor_kind.trim().is_empty() {
-            Value::Null
-        } else {
-            Value::String(editor_kind.to_string())
-        },
-    })
-    .to_string();
+    let payload = workspace_retarget_payload(workspace_root, true, Some(editor_kind), None);
     let response = run_pane_orchestrator_command("retarget_workspace", &payload)?;
     Ok(parse_workspace_retarget_response(&response))
 }

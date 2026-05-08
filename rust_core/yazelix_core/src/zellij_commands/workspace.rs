@@ -11,8 +11,8 @@ use crate::session_facts::compute_session_facts_from_env;
 use crate::workspace_commands::{compute_integration_facts_from_env, sync_sidebar_to_directory};
 use crate::workspace_session::{
     SidebarYaziRegistration, WorkspaceRetargetResult, managed_editor_open_payload,
-    open_terminal_in_cwd_payload, parse_workspace_retarget_response, workspace_retarget_payload,
-    workspace_tab_name,
+    open_terminal_in_cwd_payload, parse_workspace_retarget_response, workspace_dir_for_target,
+    workspace_retarget_payload, workspace_tab_name,
 };
 use serde_json::{Value, json};
 use std::env;
@@ -195,14 +195,7 @@ fn resolve_target_dir(target_path: &str) -> Result<PathBuf, CoreError> {
         ));
     }
 
-    if canonical.is_dir() {
-        Ok(canonical)
-    } else {
-        Ok(canonical
-            .parent()
-            .map(Path::to_path_buf)
-            .unwrap_or_else(|| canonical.to_path_buf()))
-    }
+    Ok(workspace_dir_for_target(&canonical))
 }
 
 fn resolve_existing_target_path(target_path: &str) -> Result<PathBuf, CoreError> {
@@ -249,14 +242,7 @@ fn resolve_existing_target_paths(targets: &[String]) -> Result<Vec<PathBuf>, Cor
 }
 
 fn resolve_editor_working_dir(target_path: &Path) -> PathBuf {
-    let target_dir = if target_path.is_dir() {
-        target_path.to_path_buf()
-    } else {
-        target_path
-            .parent()
-            .map(Path::to_path_buf)
-            .unwrap_or_else(|| target_path.to_path_buf())
-    };
+    let target_dir = workspace_dir_for_target(target_path);
 
     let git_output = Command::new("git")
         .arg("-C")
@@ -321,14 +307,7 @@ fn retarget_workspace_without_focused_cd(
     target_path: &Path,
     editor_kind: Option<&str>,
 ) -> Result<WorkspaceRetargetResult, CoreError> {
-    let target_dir = if target_path.is_dir() {
-        target_path.to_path_buf()
-    } else {
-        target_path
-            .parent()
-            .map(Path::to_path_buf)
-            .unwrap_or_else(|| target_path.to_path_buf())
-    };
+    let target_dir = workspace_dir_for_target(target_path);
     retarget_workspace_dir_without_focused_cd(&target_dir, editor_kind)
 }
 

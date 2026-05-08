@@ -41,6 +41,17 @@ pub(crate) fn workspace_tab_name(workspace_root: &Path) -> String {
         .to_string()
 }
 
+pub(crate) fn workspace_dir_for_target(target_path: &Path) -> PathBuf {
+    if target_path.is_dir() {
+        target_path.to_path_buf()
+    } else {
+        target_path
+            .parent()
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|| target_path.to_path_buf())
+    }
+}
+
 pub(crate) fn workspace_retarget_payload(
     workspace_root: &Path,
     cd_focused_pane: bool,
