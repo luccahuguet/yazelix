@@ -28,6 +28,10 @@
       inputs.fenix.follows = "fenix";
       inputs.zjstatus.follows = "zjstatus";
     };
+    yazelixYaziAssets = {
+      url = "git+file:../yazelix-yazi-assets";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     beads = {
       url = "github:steveyegge/beads/v1.0.0";
     };
@@ -47,6 +51,7 @@
       yazelixScreen,
       yazelixCursors,
       yazelixBar,
+      yazelixYaziAssets,
       beads,
       zjstatus,
     }:
@@ -83,10 +88,11 @@
           runtimeToolSources ? { },
           components ? { },
           extraRuntimePackages ? [ ],
+          yaziAssets ? yazelixYaziAssets.packages.${system}.yazelix_yazi_assets,
         }:
         import ./yazelix_package.nix (
           {
-            inherit pkgs nixgl runtimeVariant runtimeToolSources components extraRuntimePackages;
+            inherit pkgs nixgl runtimeVariant runtimeToolSources components extraRuntimePackages yaziAssets;
             fenixPkgs = fenix.packages.${pkgs.stdenv.hostPlatform.system};
           }
           // lib.optionalAttrs (src != null) { inherit src; }
@@ -97,6 +103,7 @@
           inherit pkgs nixgl runtimeVariant;
           fenixPkgs = fenix.packages.${system};
           inherit extraRuntimePackages;
+          yaziAssets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
         };
       yazelixPackage = system: pkgs: runtimeVariant: extraRuntimePackages:
         mkYazelix system {
@@ -105,6 +112,8 @@
       defaultOverlay = final: _prev: {
         yazelix = mkYazelix final.stdenv.hostPlatform.system { pkgs = final; };
         yazelix_bar = yazelixBar.packages.${final.stdenv.hostPlatform.system}.yazelix_bar;
+        yazelix_yazi_assets =
+          yazelixYaziAssets.packages.${final.stdenv.hostPlatform.system}.yazelix_yazi_assets;
       };
       maintainerShell =
         system: pkgs:
@@ -146,6 +155,7 @@
           yazelix_bar = yazelixBar.packages.${system}.yazelix_bar;
           yazelix_screen = yazelixScreen.packages.${system}.yzs;
           yazelix_cursors = yazelixCursors.packages.${system}.yazelix_cursors;
+          yazelix_yazi_assets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
         in
         {
           default = yazelix_default;
@@ -161,6 +171,7 @@
           yazelix_ghostty = yazelix_ghostty;
           yazelix_screen = yazelix_screen;
           yazelix_wezterm = yazelix_wezterm;
+          yazelix_yazi_assets = yazelix_yazi_assets;
           yzs = yazelix_screen;
         }
       );

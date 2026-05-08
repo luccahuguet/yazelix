@@ -8,6 +8,7 @@
   runtimeToolSources ? { },
   components ? { },
   extraRuntimePackages ? [ ],
+  yaziAssets ? null,
 }:
 
 let
@@ -28,7 +29,17 @@ let
   ];
 in
 import ./packaging/mk_yazelix_package.nix {
-  inherit pkgs rust_core_src nixgl fenixPkgs runtimeVariant runtimeToolSources components extraRuntimePackages;
+  inherit
+    pkgs
+    rust_core_src
+    nixgl
+    fenixPkgs
+    runtimeVariant
+    runtimeToolSources
+    components
+    extraRuntimePackages
+    yaziAssets
+    ;
   src = runtimeSource;
   metaPlatforms = firstPartyPlatforms;
 }

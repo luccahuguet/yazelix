@@ -1,4 +1,8 @@
-{ pkgs, src }:
+{
+  pkgs,
+  src,
+  yazelix_yazi_assets,
+}:
 
 # Local upstream-prep draft:
 # keep src injected here so the package body stays directly testable from the
@@ -13,4 +17,5 @@
 import ../mk_yazelix_package.nix {
   inherit pkgs src;
   metaPlatforms = pkgs.lib.platforms.linux;
+  yaziAssets = yazelix_yazi_assets;
 }

@@ -10,7 +10,6 @@ include = [
   "docs/upgrade_notes.toml",
 ]
 exclude = [
-  "configs/yazi/flavors/**/*.toml",
   "rust_core/**/*.toml",
   "rust_plugins/**/*.toml",
 ]

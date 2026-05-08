@@ -88,7 +88,7 @@ Then add the plugin to `settings.jsonc`:
 }
 ```
 
-For available themes, see: https://yazi-rs.github.io/docs/flavors/overview
+Yazelix's bundled flavor catalog is packaged by `yazelix-yazi-assets`; the upstream Yazi flavor docs are at https://yazi-rs.github.io/docs/flavors/overview
 
 The curated `random-dark` / `random-light` flavor names used by Yazelix live in `config_metadata/yazi_render_plan.toml` (defaults and `sort_by` validation stay in `config_metadata/main_config_contract.toml`).
 
@@ -120,7 +120,7 @@ When yazelix starts:
 3. Merges your optional `~/.config/yazelix/yazi.toml` overrides when that file exists, while preserving Yazelix-owned `[opener].edit`
 4. Generates `init.lua` with the built-in plugin list, then appends your optional `~/.config/yazelix/yazi_init.lua`
 5. Merges your optional `~/.config/yazelix/yazi_keymap.toml` with the Yazelix keymap layer
-6. Copies bundled configs, plugins, and flavors into the generated runtime Yazi directory
+6. Copies Yazelix-owned configs plus the packaged `yazelix-yazi-assets` plugins and flavors into the generated runtime Yazi directory
 
 The generated runtime config lives under `~/.local/share/yazelix/configs/yazi/`. You customize the flat managed sidecars under `~/.config/yazelix/`, not the generated output.
 

@@ -9,6 +9,7 @@
   components ? { },
   extraRuntimePackages ? [ ],
   extraRuntimeCommands ? [ "tu" ],
+  yaziAssets ? null,
 }:
 
 let
@@ -25,13 +26,37 @@ let
   escapedRuntimeBinDirs = pkgs.lib.escapeShellArgs runtimeBinDirs;
   exportedRuntimeCommands = runtimeToolRegistry.exportedCommands ++ extraRuntimeCommands;
   escapedExportedRuntimeCommands = pkgs.lib.escapeShellArgs exportedRuntimeCommands;
+  yaziAssetsRoot =
+    if yaziAssets == null then
+      "${src}/configs/yazi"
+    else
+      "${yaziAssets}/share/yazelix_yazi_assets";
 in
 pkgs.runCommand name { } ''
   mkdir -p "$out"
 
   ln -s ${src}/assets "$out/assets"
   ln -s ${src}/config_metadata "$out/config_metadata"
-  ln -s ${src}/configs "$out/configs"
+  mkdir -p "$out/configs"
+  for config_entry in ${src}/configs/*; do
+    config_name="$(basename "$config_entry")"
+    if [ "$config_name" = "yazi" ]; then
+      continue
+    fi
+    ln -s "$config_entry" "$out/configs/$config_name"
+  done
+  mkdir -p "$out/configs/yazi/plugins"
+  for yazi_file in README.md yazelix_keymap.toml yazelix_theme.toml yazelix_yazi.toml; do
+    ln -s "${src}/configs/yazi/$yazi_file" "$out/configs/yazi/$yazi_file"
+  done
+  for yazi_plugin in sidebar-state.yazi sidebar-status.yazi zoxide-editor.yazi; do
+    ln -s "${src}/configs/yazi/plugins/$yazi_plugin" "$out/configs/yazi/plugins/$yazi_plugin"
+  done
+  ln -s "${yaziAssetsRoot}/flavors" "$out/configs/yazi/flavors"
+  ln -s "${yaziAssetsRoot}/yazelix_starship.toml" "$out/configs/yazi/yazelix_starship.toml"
+  for yazi_plugin in auto-layout.yazi git.yazi lazygit.yazi starship.yazi; do
+    ln -s "${yaziAssetsRoot}/plugins/$yazi_plugin" "$out/configs/yazi/plugins/$yazi_plugin"
+  done
   ln -s ${src}/docs "$out/docs"
   ln -s ${src}/nushell "$out/nushell"
   ln -s ${src}/rust_plugins "$out/rust_plugins"

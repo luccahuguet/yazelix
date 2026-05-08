@@ -286,7 +286,7 @@ plugins = [
 # Yazi theme (flavor) configuration
 # Special options: "random-dark" / "random-light" pick from curated palettes (counts + names) in
 # config_metadata/yazi_render_plan.toml — keep that file aligned when adding/removing bundled flavors.
-# Browse flavors: https://github.com/yazi-rs/flavors
+# Browse bundled Yazelix flavors: https://github.com/luccahuguet/yazelix-yazi-assets/tree/main/flavors
 theme = "default"
 
 # Sort files by

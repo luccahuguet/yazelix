@@ -36,6 +36,7 @@ Regular Yazelix users do not need to install or wire these repositories separate
 - [yazelix-cursors](https://github.com/luccahuguet/yazelix-cursors) — Standalone Ghostty cursor preset, shader, and `yzc` CLI repository consumed by Yazelix cursor settings and exposed from this repo as `#yzc`, `#yazelix_cursors`, and `#ghostty_cursor_shaders`.
 - [yazelix-bar](https://github.com/luccahuguet/yazelix-bar) — Standalone Zellij/zjstatus bar preset consumed by Yazelix tab/status rendering and exposed from this repo as `#yazelix_bar`.
 - [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij users; its flake package `#yzpp` installs `share/yazelix_zellij_popup/yzpp.wasm`, and regular Yazelix sessions package the same `yzpp.wasm` for popup, menu, and config UI panes.
+- [yazelix-yazi-assets](https://github.com/luccahuguet/yazelix-yazi-assets) — Standalone Yazi flavor and reusable plugin asset pack consumed by Yazelix Yazi runtime generation and exposed from this repo as `#yazelix_yazi_assets`.
 
 ## Core Workspace Stack
 
@@ -91,14 +92,14 @@ Regular Yazelix users do not need to install or wire these repositories separate
 
 Plugin catalog: https://github.com/yazi-rs/plugins
 
-- [auto-layout.yazi](https://github.com/luccahuguet/auto-layout.yazi) — Maintained Yazelix fork of the adaptive Yazi column-layout plugin, core to the sidebar fit.
+- [auto-layout.yazi](https://github.com/luccahuguet/yazelix-yazi-assets/tree/main/plugins/auto-layout.yazi) — Maintained Yazelix fork of the adaptive Yazi column-layout plugin, core to the sidebar fit.
 - [sidebar-status.yazi](../configs/yazi/plugins/sidebar-status.yazi/main.lua) — Yazelix-only plugin that removes space-hungry status content so Yazi fits cleanly as a sidebar.
 - [sidebar-state.yazi](../configs/yazi/plugins/sidebar-state.yazi/main.lua) — Yazelix-only plugin support for sidebar state and workspace coordination.
 - [zoxide-editor.yazi](../configs/yazi/plugins/zoxide-editor.yazi/main.lua) — Yazelix-only plugin behind `Alt+z`; it reuses Zoxide selection and sends the chosen directory straight to the managed editor/workspace.
-- [git.yazi](https://github.com/yazi-rs/plugins/tree/main/git.yazi) — Vendored upstream plugin with Yazelix patching for git status in the Yazi file tree.
-- [starship.yazi](https://github.com/Rolv-Apneseth/starship.yazi) — Vendored upstream plugin that displays Starship context in Yazi.
-- [lazygit.yazi](https://github.com/Lil-Dank/lazygit.yazi) — Vendored upstream plugin that launches lazygit from Yazi.
-- [Yazi flavors](../configs/yazi/flavors) — Bundled Yazi theme/flavor catalog available through the Yazelix-managed Yazi config surface.
+- [git.yazi](https://github.com/luccahuguet/yazelix-yazi-assets/tree/main/plugins/git.yazi) — Vendored upstream plugin with Yazelix patching for git status in the Yazi file tree.
+- [starship.yazi](https://github.com/luccahuguet/yazelix-yazi-assets/tree/main/plugins/starship.yazi) — Vendored upstream plugin that displays Starship context in Yazi.
+- [lazygit.yazi](https://github.com/luccahuguet/yazelix-yazi-assets/tree/main/plugins/lazygit.yazi) — Vendored upstream plugin that launches lazygit from Yazi.
+- [Yazi flavors](https://github.com/luccahuguet/yazelix-yazi-assets/tree/main/flavors) — Bundled Yazi theme/flavor catalog available through the Yazelix-managed Yazi config surface.
 
 ## User Configuration Surfaces
 

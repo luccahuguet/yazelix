@@ -8,6 +8,7 @@
   runtimeToolSources ? { },
   components ? { },
   extraRuntimePackages ? [ ],
+  yaziAssets ? null,
 }:
 
 let
@@ -27,7 +28,16 @@ let
 in
 
 import ./packaging/mk_runtime_tree.nix {
-  inherit pkgs nixgl rustCoreHelper runtimeVariant runtimeToolSources components extraRuntimePackages;
+  inherit
+    pkgs
+    nixgl
+    rustCoreHelper
+    runtimeVariant
+    runtimeToolSources
+    components
+    extraRuntimePackages
+    yaziAssets
+    ;
   src = runtimeSource;
   name = "yazelix-runtime";
 }

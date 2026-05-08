@@ -1,6 +1,5 @@
 // Test lane: maintainer
 use crate::repo_contract_validation::sync_readme_surface;
-use serde::Deserialize;
 use serde_json::Map as JsonMap;
 use serde_json::Value as JsonValue;
 use std::fs;
@@ -14,8 +13,6 @@ const DEFAULT_HOME_MANAGER_DIR: &str = "~/.config/home-manager";
 const DEFAULT_HOME_MANAGER_INPUT: &str = "yazelix-hm";
 const DEFAULT_MAIN_CONFIG_RELATIVE_PATH: &str = "yazelix_default.toml";
 const DEFAULT_CONSTANTS_RELATIVE_PATH: &str = "nushell/scripts/utils/constants.nu";
-const DEFAULT_VENDORED_YAZI_MANIFEST_RELATIVE_PATH: &str =
-    "config_metadata/vendored_yazi_plugins.toml";
 const UPDATE_CANARY_BASE_RELATIVE_PATH: &str = ".local/share/yazelix/update_canaries";
 
 #[derive(Debug, Clone)]
@@ -97,25 +94,6 @@ impl Drop for TempDirGuard {
     }
 }
 
-#[derive(Debug, Deserialize)]
-struct VendoredYaziManifest {
-    plugins: Vec<VendoredYaziPlugin>,
-}
-
-#[derive(Debug, Deserialize)]
-struct VendoredYaziPlugin {
-    name: String,
-    upstream_repo: String,
-    pinned_rev: String,
-    #[serde(default)]
-    source_subdir: String,
-    target_dir: String,
-    #[serde(default)]
-    managed_files: Vec<String>,
-    #[serde(default)]
-    patch_file: String,
-}
-
 #[derive(Debug, Clone)]
 struct ZjstatusPackage {
     flake_ref: String,
@@ -183,19 +161,18 @@ pub fn run_repo_update_workflow(
     sync_runtime_pins(repo_root)?;
     sync_readme_version_marker(repo_root)?;
     sync_vendored_zjstatus(repo_root)?;
-    sync_vendored_yazi_plugins(repo_root)?;
 
     match activation_mode {
         UpdateActivationMode::None => {
             println!("⚠️  No local activation was requested.");
             println!(
-                "✅ Inputs, canaries, runtime pins, README version marker, vendored zjstatus, and vendored Yazi plugin runtime files are in sync in the repo checkout. Review and commit the changes if everything looks good."
+                "✅ Inputs, canaries, runtime pins, README version marker, and vendored zjstatus are in sync in the repo checkout. Review and commit the changes if everything looks good."
             );
         }
         UpdateActivationMode::Profile => {
             activate_updated_profile_runtime(repo_root)?;
             println!(
-                "✅ Inputs, canaries, runtime pins, README version marker, vendored zjstatus, vendored Yazi plugin runtime files, and the local default-profile Yazelix package are in sync. Review and commit the changes if everything looks good."
+                "✅ Inputs, canaries, runtime pins, README version marker, vendored zjstatus, and the local default-profile Yazelix package are in sync. Review and commit the changes if everything looks good."
             );
         }
         UpdateActivationMode::HomeManager => {
@@ -205,7 +182,7 @@ pub fn run_repo_update_workflow(
                 options.home_manager_attr.trim(),
             )?;
             println!(
-                "✅ Inputs, canaries, runtime pins, README version marker, vendored zjstatus, vendored Yazi plugin runtime files, and the Home Manager activation at {} are in sync. Review and commit the changes if everything looks good.",
+                "✅ Inputs, canaries, runtime pins, README version marker, vendored zjstatus, and the Home Manager activation at {} are in sync. Review and commit the changes if everything looks good.",
                 activation.switch_ref
             );
         }
@@ -550,272 +527,6 @@ fn resolve_current_system() -> Result<String, String> {
         return Err("Failed to resolve current Nix system".to_string());
     }
     Ok(system)
-}
-
-fn sync_vendored_yazi_plugins(repo_root: &Path) -> Result<(), String> {
-    ensure_command_available("git", "git is not available in PATH")?;
-    println!("🔄 Refreshing vendored Yazi plugin runtime files...");
-    let manifest_path = repo_root.join(DEFAULT_VENDORED_YAZI_MANIFEST_RELATIVE_PATH);
-    let manifest = load_vendored_yazi_manifest(&manifest_path)?;
-
-    for plugin in &manifest.plugins {
-        ensure_clean_managed_targets(repo_root, plugin)?;
-        if plugin.pinned_rev.trim().is_empty() {
-            return Err(format!(
-                "Vendored Yazi plugin entry is missing a pinned revision: {}",
-                plugin.name
-            ));
-        }
-        refresh_vendored_yazi_plugin(repo_root, plugin)?;
-    }
-
-    let names = manifest
-        .plugins
-        .iter()
-        .map(|plugin| plugin.name.as_str())
-        .collect::<Vec<_>>()
-        .join(", ");
-    println!("Vendored Yazi plugin runtime files are in sync: {}", names);
-    Ok(())
-}
-
-fn load_vendored_yazi_manifest(path: &Path) -> Result<VendoredYaziManifest, String> {
-    let raw = fs::read_to_string(path)
-        .map_err(|error| format!("Failed to read {}: {}", path.display(), error))?;
-    let manifest: VendoredYaziManifest = toml::from_str(&raw)
-        .map_err(|error| format!("Invalid TOML in {}: {}", path.display(), error))?;
-    if manifest.plugins.is_empty() {
-        return Err(format!(
-            "Vendored Yazi plugin manifest has no plugin entries: {}",
-            path.display()
-        ));
-    }
-    Ok(manifest)
-}
-
-fn ensure_clean_managed_targets(
-    repo_root: &Path,
-    plugin: &VendoredYaziPlugin,
-) -> Result<(), String> {
-    if plugin.managed_files.is_empty() {
-        return Err(format!(
-            "Vendored Yazi plugin entry has no managed files: {}",
-            plugin.name
-        ));
-    }
-    let target_dir = repo_root.join(&plugin.target_dir);
-    let target_paths = plugin
-        .managed_files
-        .iter()
-        .map(|path| target_dir.join(path))
-        .collect::<Vec<_>>();
-    let mut command = Command::new("git");
-    command
-        .arg("-C")
-        .arg(repo_root)
-        .arg("status")
-        .arg("--porcelain")
-        .arg("--");
-    for path in &target_paths {
-        command.arg(path);
-    }
-    let output = command.output().map_err(|error| {
-        format!(
-            "Failed to inspect git status for managed Yazi plugin targets under {}: {}",
-            target_dir.display(),
-            error
-        )
-    })?;
-    if !output.status.success() {
-        return Err(format!(
-            "Failed to inspect git status for managed Yazi plugin targets under {}: {}",
-            target_dir.display(),
-            String::from_utf8_lossy(&output.stderr).trim()
-        ));
-    }
-    let dirty = String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty())
-        .map(str::to_string)
-        .collect::<Vec<_>>();
-    if !dirty.is_empty() {
-        return Err(format!(
-            "Local changes detected in managed vendored plugin files for {}: {}. Commit, stash, or revert them before refreshing vendored Yazi plugins.",
-            plugin.name,
-            dirty.join("; ")
-        ));
-    }
-    Ok(())
-}
-
-fn refresh_vendored_yazi_plugin(
-    repo_root: &Path,
-    plugin: &VendoredYaziPlugin,
-) -> Result<(), String> {
-    let checkout_dir = create_unique_temp_dir("yazelix_vendored_yazi_checkout")?;
-    let stage_dir = create_unique_temp_dir("yazelix_vendored_yazi_stage")?;
-
-    clone_repo_at_rev(
-        &plugin.upstream_repo,
-        &plugin.pinned_rev,
-        checkout_dir.path(),
-    )?;
-
-    let source_root = if plugin.source_subdir.trim().is_empty() || plugin.source_subdir == "." {
-        checkout_dir.path().to_path_buf()
-    } else {
-        checkout_dir.path().join(&plugin.source_subdir)
-    };
-    if !source_root.exists() {
-        return Err(format!(
-            "Source subdir missing for vendored Yazi plugin {}: {}",
-            plugin.name,
-            source_root.display()
-        ));
-    }
-
-    copy_managed_files(&source_root, stage_dir.path(), &plugin.managed_files)?;
-    apply_patch_overlay(repo_root, stage_dir.path(), &plugin.patch_file)?;
-    install_staged_files(
-        stage_dir.path(),
-        &repo_root.join(&plugin.target_dir),
-        &plugin.managed_files,
-    )?;
-
-    println!(
-        "Updated vendored Yazi plugin runtime files for {} from {}",
-        plugin.name, plugin.pinned_rev
-    );
-    Ok(())
-}
-
-fn clone_repo_at_rev(repo_url: &str, rev: &str, checkout_dir: &Path) -> Result<(), String> {
-    let clone = run_command_capture(
-        "git",
-        [
-            "clone",
-            "--quiet",
-            repo_url,
-            checkout_dir.to_string_lossy().as_ref(),
-        ],
-        None,
-    )?;
-    if !clone.status.success() {
-        return Err(format!(
-            "Failed to clone {}: {}",
-            repo_url,
-            String::from_utf8_lossy(&clone.stderr).trim()
-        ));
-    }
-
-    let checkout = run_command_capture(
-        "git",
-        [
-            "-C",
-            checkout_dir.to_string_lossy().as_ref(),
-            "checkout",
-            "--quiet",
-            rev,
-        ],
-        None,
-    )?;
-    if !checkout.status.success() {
-        return Err(format!(
-            "Failed to checkout revision {} for {}: {}",
-            rev,
-            repo_url,
-            String::from_utf8_lossy(&checkout.stderr).trim()
-        ));
-    }
-    Ok(())
-}
-
-fn copy_managed_files(
-    source_root: &Path,
-    stage_root: &Path,
-    managed_files: &[String],
-) -> Result<(), String> {
-    for relative in managed_files {
-        let source_path = source_root.join(relative);
-        if !source_path.is_file() {
-            return Err(format!(
-                "Managed vendored file not found in upstream source: {}",
-                source_path.display()
-            ));
-        }
-        let target_path = stage_root.join(relative);
-        if let Some(parent) = target_path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|error| format!("Failed to create {}: {}", parent.display(), error))?;
-        }
-        fs::copy(&source_path, &target_path).map_err(|error| {
-            format!(
-                "Failed to stage {} into {}: {}",
-                source_path.display(),
-                target_path.display(),
-                error
-            )
-        })?;
-    }
-    Ok(())
-}
-
-fn apply_patch_overlay(
-    repo_root: &Path,
-    stage_root: &Path,
-    patch_file: &str,
-) -> Result<(), String> {
-    let trimmed = patch_file.trim();
-    if trimmed.is_empty() {
-        return Ok(());
-    }
-    let patch_path = repo_root.join(trimmed);
-    if !patch_path.is_file() {
-        return Err(format!(
-            "Vendored Yazi plugin patch not found: {}",
-            patch_path.display()
-        ));
-    }
-    let output = run_command_capture(
-        "git",
-        ["apply", patch_path.to_string_lossy().as_ref()],
-        Some(stage_root),
-    )?;
-    if !output.status.success() {
-        return Err(format!(
-            "Failed to apply vendored Yazi plugin patch {}: {}",
-            patch_path.display(),
-            String::from_utf8_lossy(&output.stderr).trim()
-        ));
-    }
-    Ok(())
-}
-
-fn install_staged_files(
-    stage_root: &Path,
-    target_root: &Path,
-    managed_files: &[String],
-) -> Result<(), String> {
-    fs::create_dir_all(target_root)
-        .map_err(|error| format!("Failed to create {}: {}", target_root.display(), error))?;
-    for relative in managed_files {
-        let source_path = stage_root.join(relative);
-        let target_path = target_root.join(relative);
-        if let Some(parent) = target_path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|error| format!("Failed to create {}: {}", parent.display(), error))?;
-        }
-        fs::copy(&source_path, &target_path).map_err(|error| {
-            format!(
-                "Failed to install {} into {}: {}",
-                source_path.display(),
-                target_path.display(),
-                error
-            )
-        })?;
-    }
-    Ok(())
 }
 
 fn activate_updated_profile_runtime(repo_root: &Path) -> Result<(), String> {
@@ -1296,10 +1007,6 @@ fn expand_tilde_if_needed(path: &str) -> Result<String, String> {
         return Ok(home_dir()?.display().to_string());
     }
     Ok(path.to_string())
-}
-
-fn create_unique_temp_dir(prefix: &str) -> Result<TempDirGuard, String> {
-    create_unique_temp_dir_in(&std::env::temp_dir(), prefix)
 }
 
 fn create_unique_temp_dir_in(base: &Path, prefix: &str) -> Result<TempDirGuard, String> {
