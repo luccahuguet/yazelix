@@ -65,6 +65,24 @@ pub fn generate_yazi_materialization(
     let config_dir = config_dir_from_env()?;
     crate::managed_user_config_stubs::ensure_yazi_surface_stub(&config_dir)?;
     let user_paths = resolve_user_override_paths(&config_dir)?;
+    let user_yazi_config = read_optional_managed_toml_override(
+        &user_paths.yazi_toml,
+        "read_yazi_user_config",
+        "Could not read the managed Yazi override config",
+        "Fix the managed override file or remove it, then retry.",
+    )?;
+    let user_keymap = read_optional_managed_toml_override(
+        &user_paths.keymap_toml,
+        "read_yazi_keymap_override",
+        "Could not read the managed Yazi keymap override",
+        "Fix the managed Yazi keymap override or remove it, then retry.",
+    )?;
+    let user_init_lua = read_optional_managed_text_override(
+        &user_paths.init_lua,
+        "read_yazi_init_override",
+        "Could not read the managed Yazi init.lua override",
+        "Fix the managed Yazi init.lua override or remove it, then retry.",
+    )?;
     let source_dir = request.runtime_dir.join("configs").join("yazi");
     let semantic_keymap = build_semantic_yazi_keymap(&yazi_keybindings);
     let written = writer::write_yazi_config_pack(&writer::YaziConfigPackWriteRequest {
@@ -72,9 +90,9 @@ pub fn generate_yazi_materialization(
         output_dir: &request.yazi_config_dir,
         runtime_dir: &request.runtime_dir,
         render_plan: &render_plan,
-        user_yazi_toml: &user_paths.yazi_toml,
-        user_keymap_toml: &user_paths.keymap_toml,
-        user_init_lua: &user_paths.init_lua,
+        user_yazi_config: user_yazi_config.as_ref(),
+        user_keymap: user_keymap.as_ref(),
+        user_init_lua: user_init_lua.as_deref(),
         semantic_keymap: &semantic_keymap,
         sync_static_assets: request.sync_static_assets,
     })?;
@@ -85,8 +103,8 @@ pub fn generate_yazi_materialization(
         sort_by: render_plan.sort_by,
         missing_plugins: written.missing_plugins,
         synced_static_assets: written.synced_static_assets,
-        user_config_merged: user_paths.yazi_toml.exists(),
-        user_keymap_merged: user_paths.keymap_toml.exists(),
+        user_config_merged: user_yazi_config.is_some(),
+        user_keymap_merged: user_keymap.is_some(),
         user_init_appended: written.user_init_appended,
         managed_files: written.managed_files,
     })
@@ -201,6 +219,45 @@ fn resolve_managed_yazi_user_file(
     }
 
     Ok(current_path)
+}
+
+fn read_optional_managed_toml_override(
+    path: &Path,
+    code: &str,
+    message: &str,
+    remediation: &str,
+) -> Result<Option<toml::Table>, CoreError> {
+    if !path.exists() {
+        return Ok(None);
+    }
+    let raw = std::fs::read_to_string(path).map_err(|source| {
+        CoreError::io(code, message, remediation, path.to_string_lossy(), source)
+    })?;
+    toml::from_str::<toml::Table>(&raw)
+        .map(Some)
+        .map_err(|source| {
+            CoreError::toml(
+                "invalid_toml",
+                message,
+                remediation,
+                path.to_string_lossy(),
+                source,
+            )
+        })
+}
+
+fn read_optional_managed_text_override(
+    path: &Path,
+    code: &str,
+    message: &str,
+    remediation: &str,
+) -> Result<Option<String>, CoreError> {
+    if !path.exists() {
+        return Ok(None);
+    }
+    std::fs::read_to_string(path)
+        .map(Some)
+        .map_err(|source| CoreError::io(code, message, remediation, path.to_string_lossy(), source))
 }
 
 fn default_yazi_keybindings() -> BTreeMap<String, Vec<String>> {
@@ -445,61 +502,6 @@ id = "extra"
         );
     }
 
-    // Regression: documented Yazi keymap sections absent from the bundled base keymap must survive user keymap merging.
-    #[test]
-    fn keymap_merge_preserves_user_sections_absent_from_base() {
-        let base = toml::from_str::<toml::Table>(
-            r#"
-[mgr]
-prepend_keymap = [{ run = "base" }]
-"#,
-        )
-        .unwrap();
-        let user = toml::from_str::<toml::Table>(
-            r#"
-[mgr]
-prepend_keymap = [{ run = "user" }]
-
-[input]
-append_keymap = [{ run = "input-user" }]
-
-[cmp]
-prepend_keymap = [{ run = "cmp-user" }]
-"#,
-        )
-        .unwrap();
-
-        let merged = writer::merge_yazi_keymap(base, user);
-        let mgr = merged.get("mgr").and_then(TomlValue::as_table).unwrap();
-        assert_eq!(
-            mgr.get("prepend_keymap")
-                .and_then(TomlValue::as_array)
-                .unwrap()
-                .len(),
-            2
-        );
-        assert_eq!(
-            merged
-                .get("input")
-                .and_then(TomlValue::as_table)
-                .and_then(|input| input.get("append_keymap"))
-                .and_then(TomlValue::as_array)
-                .unwrap()
-                .len(),
-            1
-        );
-        assert_eq!(
-            merged
-                .get("cmp")
-                .and_then(TomlValue::as_table)
-                .and_then(|cmp| cmp.get("prepend_keymap"))
-                .and_then(TomlValue::as_array)
-                .unwrap()
-                .len(),
-            1
-        );
-    }
-
     // Defends: missing bundled asset targets are detected so warm Yazi generation can self-heal deleted files.
     #[test]
     fn bundled_asset_detection_flags_missing_targets() {
@@ -519,18 +521,6 @@ prepend_keymap = [{ run = "cmp-user" }]
             )
             .unwrap()
         );
-    }
-
-    // Regression: bundled Yazi plugin templates must render the active runtime root instead of leaking the placeholder into generated assets.
-    #[test]
-    fn renders_runtime_root_placeholders_in_bundled_assets() {
-        let rendered = writer::render_runtime_root_placeholders(
-            "__YAZELIX_RUNTIME_DIR__/libexec/yzx_control zellij open-editor %s",
-            std::path::Path::new("/opt/yazelix"),
-        );
-
-        assert!(rendered.contains("/opt/yazelix/libexec/yzx_control zellij open-editor"));
-        assert!(!rendered.contains("__YAZELIX_RUNTIME_DIR__"));
     }
 
     // Regression: sidebar-state must not rely on a fixed startup delay before its only Zellij registration attempt.

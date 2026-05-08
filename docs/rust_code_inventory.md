@@ -2,11 +2,11 @@
 
 This inventory is the extraction gate for reusable Yazelix components. It records the current Rust shape before moving code out of the main repository so extraction decisions start from concrete ownership rather than a raw line-count hunch.
 
-Current rebaseline measured on 2026-05-08 after extracting `yazelix-screen`, `yazelix-cursors`, `yazelix-bar`, `yazelix-zellij-popup`, and `yazelix-yazi-assets`, accepting the optional runtime component toggles, paying down the first post-v16.3 Rust budget debt, deleting stale strength-score and migration metadata, dropping the visual sweep layout lane, moving popup lifecycle ownership to `yzpp`, closing the first yzpp cleanup tail, moving reusable Yazi plugin refresh ownership out of the main repo, moving integrated zjstatus command-definition rendering into `yazelix-bar`, splitting Yazi materialization into a private Yazelix adapter plus writer boundary, splitting launch process/desktop/enter/restart adapters out of the launch parent, deleting weak command-surface integration tests, deleting the obsolete Nushell budget validator, and splitting launch fallback flow into a private adapter:
+Current rebaseline measured on 2026-05-08 after extracting `yazelix-screen`, `yazelix-cursors`, `yazelix-bar`, `yazelix-zellij-popup`, and `yazelix-yazi-assets`, accepting the optional runtime component toggles, paying down the first post-v16.3 Rust budget debt, deleting stale strength-score and migration metadata, dropping the visual sweep layout lane, moving popup lifecycle ownership to `yzpp`, closing the first yzpp cleanup tail, moving reusable Yazi plugin refresh ownership out of the main repo, moving integrated zjstatus command-definition rendering into `yazelix-bar`, splitting Yazi materialization into a private Yazelix adapter plus writer boundary, splitting launch process/desktop/enter/restart adapters out of the launch parent, deleting weak command-surface integration tests, deleting the obsolete Nushell budget validator, splitting launch fallback flow into a private adapter, and thinning Yazi writer override ownership:
 
-- `tokei rust_core rust_plugins --exclude target` reports `66,641` Rust code LOC across `146` Rust files
-- the same `tokei` run reports `72,655` Rust lines including blanks and comments
-- `config_metadata/rust_ownership_budget.toml` tracks `72,773` raw Rust file lines across `146` Rust files
+- `tokei rust_core rust_plugins --exclude target` reports `66,621` Rust code LOC across `146` Rust files
+- the same `tokei` run reports `72,632` Rust lines including blanks and comments
+- `config_metadata/rust_ownership_budget.toml` tracks `72,750` raw Rust file lines across `146` Rust files
 - the remaining difference between `tokei` lines and the budget total is measurement-method noise from embedded markdown/parser classification and line-count method differences, not a separate ownership surface
 - `yzx_repo_validator validate-rust-ownership-budget` passes the no-growth budget and still warns that the tracked Rust surface is above the long-term `60,000` LOC hard target
 - `cargo-udeps` requires nightly Rust because it passes unstable `-Z` compiler flags; rerun it during explicit dependency-audit beads rather than treating this inventory as fresh unused-dependency evidence
@@ -19,18 +19,18 @@ The latest budget-debt paydown deleted the hidden moved-Ghostty cursor-field run
 
 | Family | Files | Raw lines | Status | Extraction pressure |
 | --- | ---: | ---: | --- | --- |
-| Product runtime source | 84 | 51,359 | canonical and extension surfaces | High: contains the largest user-facing seams |
+| Product runtime source | 84 | 51,336 | canonical and extension surfaces | High: contains the largest user-facing seams |
 | Product integration tests | 19 | 5,862 | canonical tests | Medium: split by behavior family, do not delete broadly |
 | Maintainer tooling and tests | 18 | 10,711 | canonical maintainer | Medium: keep in repo, but split large validator files |
 | Pane orchestrator plugin | 25 | 4,841 | extension surface | High: already has a natural Zellij plugin boundary |
-| Total | 146 | 72,773 | current budget ceiling | Reduce or extract before raising ceilings |
+| Total | 146 | 72,750 | current budget ceiling | Reduce or extract before raising ceilings |
 
 Detailed budget families:
 
 | Family | Files | Raw lines | Budget target | Notes |
 | --- | ---: | ---: | ---: | --- |
 | `core_cli_and_public_surface` | 12 | 8,171 | 7,000 | Public command dispatch and front-door rendering after child CLI extractions |
-| `core_config_ui_and_materialization` | 42 | 20,684 | 14,000 | Largest product family; config UI, apply modes, runtime component manifest, ratconfig boundary, materializers, settings surfaces |
+| `core_config_ui_and_materialization` | 42 | 20,661 | 14,000 | Largest product family; config UI, apply modes, runtime component manifest, ratconfig boundary, materializers, settings surfaces |
 | `core_diagnostics_and_recovery` | 8 | 5,866 | 4,500 | Doctor, install ownership, profile/status reporting |
 | `core_workspace_and_pane_integration` | 22 | 16,638 | 11,000 | Action registry, launch private adapters, Zellij/session/workspace command surface, pane-orchestrator client, status/cache/widgets |
 | `core_integration_tests` | 19 | 5,862 | 4,500 | High-value tests, but several files are broad family buckets |
@@ -105,7 +105,7 @@ The main overengineering risk is not one bad abstraction; it is several broad mo
 - `launch_commands.rs` now keeps public command dispatch, desktop dispatch parsing, and the shared cwd resolver while terminal selection, temporary config overrides, process/probe execution, desktop/macOS, launch fallback, enter, and restart live in private modules. The fallback split is organization debt, but it makes workspace/session extraction easier to reason about.
 - `config_ui.rs` is already product-useful, but it should be split into schema model, list/editor state, rendering, write-back, and Yazelix adapter policy before `yazelix_ratconfig`. The extraction readiness state is `internal_split_ready`, not standalone-public-ready.
 - `zellij_materialization.rs` contains real generated-config ownership, but it should wait for keybinding ownership and layout-profile decisions before major extraction.
-- `yazi_materialization.rs` is now a private Yazelix adapter over `yazi_materialization/writer.rs`. The split separates settings/path/keybinding policy from generated file and asset writes, but public extraction remains deferred until the adapter is thinner and the writer has a reusable config-pack contract.
+- `yazi_materialization.rs` is now a private Yazelix adapter over `yazi_materialization/writer.rs`. Managed override discovery and parsing live in the adapter, while the writer receives optional overlays and writes the config pack. Public extraction remains deferred until generated-file policy and runtime placeholder ownership are thinner.
 - `repo_contract_validation.rs` and `repo_validation.rs` are maintainer-only, but their domain split would make future cleanup safer.
 
 ## Extraction Sequence
@@ -151,6 +151,7 @@ Recent accepted full-repo scorecards:
 
 | Range | Raw text diff excluding `.beads` | Tokei code LOC delta | Budget interpretation |
 | --- | --- | ---: | --- |
+| `yazelix-rhut` | `145` insertions, `168` deletions, net `-23` raw Rust lines | `-20` | Moved managed Yazi override parsing out of the writer into the Yazelix adapter, collapsed duplicated generated-file headers, and deleted duplicate writer-internal tests covered by materialization integration tests |
 | `yazelix-jklp` | `509` insertions, `483` deletions, net `+26` raw Rust lines | `+24` | Split launch parser/fallback loop/cursor facts into `launch_commands/launch.rs`; `launch_commands.rs` dropped from 1,111 to 639 lines, but this is accepted organization debt rather than deletion |
 | `yazelix-goa7` | `8` insertions, `342` deletions, net `-334` raw text lines | `-242` | Deleted the obsolete Nushell budget manifest and validator command, and removed a redundant static Home Manager activation string check now covered by live activation validation |
 | `yazelix-b8mu` | `1` insertion, `178` deletions, net `-177` raw Rust lines | `-161` | Deleted weak command-surface integration tests that pinned generated extern leaf lists, help copy, and duplicated `yzx keys` rendering already covered by source-level behavior tests |
