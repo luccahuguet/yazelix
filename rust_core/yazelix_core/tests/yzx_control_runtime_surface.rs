@@ -109,6 +109,56 @@ printf 'YAZELIX_RUNTIME_DIR=%s\n' "$YAZELIX_RUNTIME_DIR"
     )));
 }
 
+// Regression: the Ghostty launch wrapper must not expose runtime-private libexec helpers such as nix ahead of the host Nix.
+#[test]
+fn ghostty_wrapper_keeps_runtime_libexec_private_for_host_nix() {
+    let repo = repo_root();
+    let temp = tempfile::tempdir().unwrap();
+    let runtime_dir = temp.path().join("runtime");
+    let home_dir = temp.path().join("home");
+    let host_bin = home_dir.join("host-bin");
+    let posix_dir = runtime_dir.join("shells").join("posix");
+    let libexec_dir = runtime_dir.join("libexec");
+
+    fs::create_dir_all(&posix_dir).unwrap();
+    fs::create_dir_all(&libexec_dir).unwrap();
+    fs::create_dir_all(runtime_dir.join("toolbin")).unwrap();
+    fs::create_dir_all(runtime_dir.join("bin")).unwrap();
+    fs::create_dir_all(&host_bin).unwrap();
+
+    write_executable_script(
+        &posix_dir.join("yazelix_ghostty.sh"),
+        &fs::read_to_string(repo.join("shells/posix/yazelix_ghostty.sh")).unwrap(),
+    );
+    write_executable_script(&libexec_dir.join("nix"), "#!/bin/sh\nprintf 'runtime nix\\n'\n");
+    write_executable_script(&host_bin.join("nix"), "#!/bin/sh\nprintf 'host nix\\n'\n");
+
+    let capture = temp.path().join("capture_path.sh");
+    write_executable_script(
+        &capture,
+        r#"#!/bin/sh
+set -eu
+printf 'PATH=%s\n' "$PATH"
+printf 'nix=%s\n' "$(command -v nix)"
+"#,
+    );
+
+    let output = Command::new(posix_dir.join("yazelix_ghostty.sh"))
+        .env_clear()
+        .env("PATH", &host_bin)
+        .arg(&capture)
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(0));
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(
+        !stdout.contains(&format!("{}", libexec_dir.display())),
+        "runtime libexec leaked into PATH:\n{stdout}"
+    );
+    assert!(stdout.contains(&format!("nix={}", host_bin.join("nix").display())));
+}
+
 // Defends: the public Rust-owned `yzx config --path` route still bootstraps the managed config surface and returns its canonical path.
 #[test]
 fn yzx_control_config_path_bootstraps_missing_managed_config() {

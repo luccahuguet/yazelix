@@ -9,10 +9,15 @@ script_dir="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
 default_runtime_dir="$(CDPATH= cd -- "$script_dir/../.." && pwd)"
 runtime_dir="${YAZELIX_RUNTIME_DIR:-$default_runtime_dir}"
 
-if [ -d "$runtime_dir/libexec" ]; then
-  PATH="$runtime_dir/libexec:$runtime_dir/bin:$PATH"
-  export PATH
+if [ -d "$runtime_dir/toolbin" ]; then
+  PATH="$runtime_dir/toolbin:$PATH"
 fi
+
+if [ -d "$runtime_dir/bin" ]; then
+  PATH="$runtime_dir/bin:$PATH"
+fi
+
+export PATH
 
 if [ -n "${WAYLAND_DISPLAY:-}" ]; then
   use_simple_im=0
