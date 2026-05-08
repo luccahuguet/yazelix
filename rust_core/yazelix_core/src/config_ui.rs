@@ -899,10 +899,6 @@ impl ConfigUiApp {
         });
     }
 
-    pub(crate) fn visible_rows(&self) -> Vec<UiRowRef> {
-        visible_rows_for_tab_search(&self.model, self.selected_tab, &self.search)
-    }
-
     pub(crate) fn render_details(&self, row: UiRowRef) -> Vec<Line<'static>> {
         match row {
             UiRowRef::Field(index) => {
@@ -930,51 +926,6 @@ impl ConfigUiApp {
         }
     }
 
-    fn next_tab(&mut self) {
-        if self.model.tabs.is_empty() {
-            return;
-        }
-        self.selected_tab = (self.selected_tab + 1) % self.model.tabs.len();
-        self.selected_row = 0;
-    }
-
-    fn previous_tab(&mut self) {
-        if self.model.tabs.is_empty() {
-            return;
-        }
-        self.selected_tab = if self.selected_tab == 0 {
-            self.model.tabs.len() - 1
-        } else {
-            self.selected_tab - 1
-        };
-        self.selected_row = 0;
-    }
-
-    fn move_down(&mut self) {
-        let len = self.visible_rows().len();
-        if len > 0 {
-            self.selected_row = (self.selected_row + 1).min(len - 1);
-        }
-    }
-
-    fn move_up(&mut self) {
-        self.selected_row = self.selected_row.saturating_sub(1);
-    }
-
-    fn clamp_selection(&mut self) {
-        if self.selected_tab >= self.model.tabs.len() {
-            self.selected_tab = 0;
-        }
-        self.clamp_selection_for_len(self.visible_rows().len());
-    }
-
-    pub(crate) fn clamp_selection_for_len(&mut self, len: usize) {
-        if len == 0 {
-            self.selected_row = 0;
-        } else if self.selected_row >= len {
-            self.selected_row = len - 1;
-        }
-    }
 }
 
 fn field_detail_lines(field: &ConfigUiField) -> Vec<Line<'static>> {

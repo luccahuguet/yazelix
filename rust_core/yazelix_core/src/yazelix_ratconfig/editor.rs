@@ -1,4 +1,5 @@
-use super::ConfigUiField;
+use super::{ConfigUiField, UiRowRef, visible_rows_for_tab_search};
+use crate::config_ui::ConfigUiApp;
 use serde_json::Value as JsonValue;
 use std::collections::BTreeSet;
 
@@ -15,6 +16,50 @@ pub(crate) enum ConfigUiEditMode {
     Text,
     Choice,
     MultiChoice,
+}
+
+impl ConfigUiApp {
+    pub(crate) fn visible_rows(&self) -> Vec<UiRowRef> {
+        visible_rows_for_tab_search(&self.model, self.selected_tab, &self.search)
+    }
+
+    pub(crate) fn next_tab(&mut self) {
+        let len = self.model.tabs.len();
+        if len > 0 {
+            self.selected_tab = (self.selected_tab + 1) % len;
+            self.selected_row = 0;
+        }
+    }
+
+    pub(crate) fn previous_tab(&mut self) {
+        let len = self.model.tabs.len();
+        if len > 0 {
+            self.selected_tab = (self.selected_tab + len - 1) % len;
+            self.selected_row = 0;
+        }
+    }
+
+    pub(crate) fn move_down(&mut self) {
+        let len = self.visible_rows().len();
+        if len > 0 {
+            self.selected_row = (self.selected_row + 1).min(len - 1);
+        }
+    }
+
+    pub(crate) fn move_up(&mut self) {
+        self.selected_row = self.selected_row.saturating_sub(1);
+    }
+
+    pub(crate) fn clamp_selection(&mut self) {
+        if self.selected_tab >= self.model.tabs.len() {
+            self.selected_tab = 0;
+        }
+        self.clamp_selection_for_len(self.visible_rows().len());
+    }
+
+    pub(crate) fn clamp_selection_for_len(&mut self, len: usize) {
+        self.selected_row = if len == 0 { 0 } else { self.selected_row.min(len - 1) };
+    }
 }
 
 pub(crate) fn edit_input_for_field(field: &ConfigUiField) -> String {
