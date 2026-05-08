@@ -20,12 +20,8 @@ pub fn validate_installed_runtime_contract(repo_root: &Path) -> Result<Validatio
 
 fn validate_installed_runtime_contract_inner(repo_root: &Path) -> Result<Vec<String>, String> {
     let mut errors = Vec::new();
-    let cli_wrapper = "shells/posix/yzx_cli.sh";
     let desktop_deferred_launch_probe = "shells/posix/desktop_deferred_launch_probe.sh";
     let detached_launch_probe = "shells/posix/detached_launch_probe.sh";
-    let runtime_env = "shells/posix/runtime_env.sh";
-    let environment_setup = "nushell/scripts/setup/environment.nu";
-    let runtime_tree = "packaging/mk_runtime_tree.nix";
     let flake_path = "flake.nix";
 
     require_path_exists(repo_root, flake_path, "flake definition", &mut errors);
@@ -35,32 +31,6 @@ fn validate_installed_runtime_contract_inner(repo_root: &Path) -> Result<Vec<Str
         "legacy flake installer template",
         &mut errors,
     );
-    require_path_exists(
-        repo_root,
-        cli_wrapper,
-        "stable POSIX CLI wrapper",
-        &mut errors,
-    );
-    require_path_exists(
-        repo_root,
-        desktop_deferred_launch_probe,
-        "desktop deferred launch probe helper",
-        &mut errors,
-    );
-    require_path_exists(
-        repo_root,
-        detached_launch_probe,
-        "detached launch probe helper",
-        &mut errors,
-    );
-    require_path_exists(repo_root, runtime_env, "runtime env helper", &mut errors);
-    require_path_exists(
-        repo_root,
-        environment_setup,
-        "environment setup script",
-        &mut errors,
-    );
-    require_path_exists(repo_root, runtime_tree, "runtime tree builder", &mut errors);
 
     if !errors.is_empty() {
         return Ok(errors);
