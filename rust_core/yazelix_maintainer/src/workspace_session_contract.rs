@@ -6,25 +6,6 @@ use yazelix_core::ZELLIJ_ACTIONS;
 use yazelix_core::workspace_asset_contract::validate_workspace_assets_for_repo;
 use yazelix_core::zellij_commands::INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS;
 
-const REQUIRED_PANE_ORCHESTRATOR_PIPE_COMMANDS: &[&str] = &[
-    "focus_sidebar",
-    "toggle_editor_sidebar_focus",
-    "move_focus_left_or_tab",
-    "move_focus_right_or_tab",
-    "smart_reveal",
-    "open_file",
-    "set_managed_editor_cwd",
-    "next_family",
-    "previous_family",
-    "toggle_sidebar",
-    "hide_sidebar",
-    "register_sidebar_yazi_state",
-    "get_active_tab_session_state",
-    "retarget_workspace",
-    "open_terminal_in_cwd",
-    "open_workspace_terminal",
-];
-
 const SEMANTIC_KEYBINDING_BOUND_PIPE_COMMANDS: &[&str] = &[
     "open_workspace_terminal",
     "move_focus_left_or_tab",
@@ -77,18 +58,6 @@ fn validate_internal_zellij_control_surface(repo_root: &Path) -> Result<Vec<Stri
 
 fn validate_pane_orchestrator_pipe_surface(repo_root: &Path) -> Result<Vec<String>, String> {
     let mut errors = Vec::new();
-    let plugin_main = read_repo_file(
-        repo_root,
-        &["rust_plugins", "zellij_pane_orchestrator", "src", "main.rs"],
-    )?;
-    for command in REQUIRED_PANE_ORCHESTRATOR_PIPE_COMMANDS {
-        if !plugin_main.contains(&format!("\"{command}\" =>")) {
-            errors.push(format!(
-                "Pane orchestrator pipe command `{command}` is required by workspace/session tooling but has no plugin match arm"
-            ));
-        }
-    }
-
     for command in SEMANTIC_KEYBINDING_BOUND_PIPE_COMMANDS {
         if !ZELLIJ_ACTIONS
             .iter()

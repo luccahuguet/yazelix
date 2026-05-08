@@ -1,2 +1,4 @@
-source_sha256 = "25c893107a5b78bf76aa78cbcbdfb706faeea604f0dd65b50ff1cbf0fa31da8b"
-wasm_sha256 = "ecb03e17662a8eb57182efc2052ff683159c6331fa9d2621f444b7eb20dacb0b"
+source_project = "yazelix-zellij-pane-orchestrator"
+source_sha256 = "d272f80b2026843405eeb596a50c70e18a918d68b03380954bbf1d801f2a40bd"
+public_wasm_sha256 = "fc95e83c9290a356aceef801cd1de8aa58d453edb6456c58ce01c0b62cc9851e"
+tracked_wasm_sha256 = "fc95e83c9290a356aceef801cd1de8aa58d453edb6456c58ce01c0b62cc9851e"

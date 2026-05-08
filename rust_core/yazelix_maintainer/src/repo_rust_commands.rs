@@ -1,5 +1,7 @@
 // Test lane: maintainer
 
+use crate::repo_plugin_build::pane_orchestrator_source_dir;
+
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -127,10 +129,7 @@ fn rust_target_specs(repo_root: &Path, target: &str) -> Result<Vec<RustTargetSpe
         },
         RustTargetSpec {
             name: "pane_orchestrator",
-            manifest_path: repo_root
-                .join("rust_plugins")
-                .join("zellij_pane_orchestrator")
-                .join("Cargo.toml"),
+            manifest_path: pane_orchestrator_source_dir(repo_root).join("Cargo.toml"),
             check_args: vec!["--lib".into()],
             test_args: vec!["--lib".into()],
         },

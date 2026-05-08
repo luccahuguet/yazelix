@@ -1,10 +1,14 @@
 use sha2::{Digest, Sha256};
+use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use yazelix_core::control_plane::state_dir_from_env;
 
 const BUILD_TARGET: &str = "wasm32-wasip1";
+const PANE_ORCHESTRATOR_SOURCE_ENV: &str = "YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_SOURCE_DIR";
+const PANE_ORCHESTRATOR_SOURCE_PROJECT: &str = "yazelix-zellij-pane-orchestrator";
+const PANE_ORCHESTRATOR_PUBLIC_WASM_NAME: &str = "yazelix_zellij_pane_orchestrator.wasm";
 const PANE_ORCHESTRATOR_WASM_NAME: &str = "yazelix_pane_orchestrator.wasm";
 const PANE_ORCHESTRATOR_SYNC_STAMP_NAME: &str = "yazelix_pane_orchestrator.sync_stamp";
 
@@ -39,23 +43,42 @@ pub fn validate_pane_orchestrator_sync(repo_root: &Path) -> Result<Vec<String>, 
         ));
     }
 
-    let current_source_hash = pane_orchestrator_source_hash(&paths)?;
     match read_sync_stamp(&sync_stamp_path)? {
         None => errors.push(format!(
             "Missing pane-orchestrator sync stamp: {}. Run `yzx dev build_pane_orchestrator --sync`.",
             sync_stamp_path.display()
         )),
-        Some(stamp) if stamp.source_sha256 != current_source_hash => errors.push(format!(
-            "Pane-orchestrator source changed since the tracked wasm was synced. Run `yzx dev build_pane_orchestrator --sync`.\n   current source sha256: {}\n   synced source sha256:  {}",
-            current_source_hash, stamp.source_sha256
-        )),
         Some(stamp) => {
+            if stamp.source_project != PANE_ORCHESTRATOR_SOURCE_PROJECT {
+                errors.push(format!(
+                    "Pane-orchestrator sync stamp points at `{}` instead of `{}`.",
+                    stamp.source_project, PANE_ORCHESTRATOR_SOURCE_PROJECT
+                ));
+            }
+            if paths.crate_dir.is_dir() {
+                let current_source_hash = pane_orchestrator_source_hash(&paths)?;
+                if stamp.source_sha256 != current_source_hash {
+                    errors.push(format!(
+                        "Pane-orchestrator source changed since the tracked wasm was synced. Run `yzx dev build_pane_orchestrator --sync`.\n   current source sha256: {}\n   synced source sha256:  {}",
+                        current_source_hash, stamp.source_sha256
+                    ));
+                }
+            }
             if repo_wasm.is_file() {
                 let current_wasm_hash = file_sha256_hex(&repo_wasm)?;
-                if stamp.wasm_sha256 != current_wasm_hash {
+                if stamp.tracked_wasm_sha256 != current_wasm_hash {
                     errors.push(format!(
                         "Tracked pane-orchestrator wasm hash does not match its sync stamp. Run `yzx dev build_pane_orchestrator --sync`.\n   current wasm sha256: {}\n   stamped wasm sha256: {}",
-                        current_wasm_hash, stamp.wasm_sha256
+                        current_wasm_hash, stamp.tracked_wasm_sha256
+                    ));
+                }
+            }
+            if paths.wasm_path.is_file() {
+                let current_public_wasm_hash = file_sha256_hex(&paths.wasm_path)?;
+                if stamp.public_wasm_sha256 != current_public_wasm_hash {
+                    errors.push(format!(
+                        "External pane-orchestrator wasm hash does not match its sync stamp. Run `yzx dev build_pane_orchestrator --sync`.\n   current public wasm sha256: {}\n   stamped public wasm sha256: {}",
+                        current_public_wasm_hash, stamp.public_wasm_sha256
                     ));
                 }
             }
@@ -77,20 +100,29 @@ pub fn validate_pane_orchestrator_sync(repo_root: &Path) -> Result<Vec<String>, 
 }
 
 fn pane_orchestrator_paths(repo_root: &Path) -> PaneOrchestratorPaths {
-    let crate_dir = repo_root
-        .join("rust_plugins")
-        .join("zellij_pane_orchestrator");
+    let crate_dir = pane_orchestrator_source_dir(repo_root);
     let wasm_path = crate_dir
         .join("target")
         .join(BUILD_TARGET)
         .join("release")
-        .join(PANE_ORCHESTRATOR_WASM_NAME);
+        .join(PANE_ORCHESTRATOR_PUBLIC_WASM_NAME);
 
     PaneOrchestratorPaths {
         repo_root: repo_root.to_path_buf(),
         crate_dir,
         wasm_path,
     }
+}
+
+pub(crate) fn pane_orchestrator_source_dir(repo_root: &Path) -> PathBuf {
+    env::var_os(PANE_ORCHESTRATOR_SOURCE_ENV)
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            repo_root
+                .parent()
+                .unwrap_or(repo_root)
+                .join(PANE_ORCHESTRATOR_SOURCE_PROJECT)
+        })
 }
 
 fn print_rust_wasi_enable_hint() {
@@ -130,8 +162,10 @@ fn command_exists(name: &str) -> bool {
 fn run_wasm_build(paths: &PaneOrchestratorPaths, label: &str) -> Result<(), String> {
     if !paths.crate_dir.exists() {
         return Err(format!(
-            "❌ {label} crate not found: {}",
-            paths.crate_dir.display()
+            "❌ {label} source checkout not found: {}. Clone `{}` next to the Yazelix repo or set {}.",
+            paths.crate_dir.display(),
+            PANE_ORCHESTRATOR_SOURCE_PROJECT,
+            PANE_ORCHESTRATOR_SOURCE_ENV
         ));
     }
 
@@ -272,14 +306,18 @@ fn sync_built_wasm(paths: &PaneOrchestratorPaths, label: &str) -> Result<(), Str
 }
 
 struct PaneOrchestratorSyncStamp {
+    source_project: String,
     source_sha256: String,
-    wasm_sha256: String,
+    public_wasm_sha256: String,
+    tracked_wasm_sha256: String,
 }
 
 fn render_sync_stamp(paths: &PaneOrchestratorPaths, repo_wasm: &Path) -> Result<String, String> {
     Ok(format!(
-        "source_sha256 = \"{}\"\nwasm_sha256 = \"{}\"\n",
+        "source_project = \"{}\"\nsource_sha256 = \"{}\"\npublic_wasm_sha256 = \"{}\"\ntracked_wasm_sha256 = \"{}\"\n",
+        PANE_ORCHESTRATOR_SOURCE_PROJECT,
         pane_orchestrator_source_hash(paths)?,
+        file_sha256_hex(&paths.wasm_path)?,
         file_sha256_hex(repo_wasm)?,
     ))
 }
@@ -290,8 +328,10 @@ fn read_sync_stamp(path: &Path) -> Result<Option<PaneOrchestratorSyncStamp>, Str
     }
     let raw = fs::read_to_string(path)
         .map_err(|error| format!("Failed to read {}: {}", path.display(), error))?;
+    let mut source_project = None;
     let mut source_sha256 = None;
-    let mut wasm_sha256 = None;
+    let mut public_wasm_sha256 = None;
+    let mut tracked_wasm_sha256 = None;
     for line in raw.lines().map(str::trim).filter(|line| !line.is_empty()) {
         let Some((key, value)) = line.split_once('=') else {
             return Err(format!(
@@ -301,8 +341,10 @@ fn read_sync_stamp(path: &Path) -> Result<Option<PaneOrchestratorSyncStamp>, Str
         };
         let value = value.trim().trim_matches('"').to_string();
         match key.trim() {
+            "source_project" => source_project = Some(value),
             "source_sha256" => source_sha256 = Some(value),
-            "wasm_sha256" => wasm_sha256 = Some(value),
+            "public_wasm_sha256" => public_wasm_sha256 = Some(value),
+            "tracked_wasm_sha256" => tracked_wasm_sha256 = Some(value),
             other => {
                 return Err(format!(
                     "Unknown sync stamp field `{other}` in {}",
@@ -312,10 +354,14 @@ fn read_sync_stamp(path: &Path) -> Result<Option<PaneOrchestratorSyncStamp>, Str
         }
     }
     Ok(Some(PaneOrchestratorSyncStamp {
+        source_project: source_project
+            .ok_or_else(|| format!("Missing source_project in {}", path.display()))?,
         source_sha256: source_sha256
             .ok_or_else(|| format!("Missing source_sha256 in {}", path.display()))?,
-        wasm_sha256: wasm_sha256
-            .ok_or_else(|| format!("Missing wasm_sha256 in {}", path.display()))?,
+        public_wasm_sha256: public_wasm_sha256
+            .ok_or_else(|| format!("Missing public_wasm_sha256 in {}", path.display()))?,
+        tracked_wasm_sha256: tracked_wasm_sha256
+            .ok_or_else(|| format!("Missing tracked_wasm_sha256 in {}", path.display()))?,
     }))
 }
 
@@ -400,8 +446,8 @@ mod tests {
 
     fn write_fixture_repo() -> (tempfile::TempDir, PathBuf) {
         let tmp = tempdir().unwrap();
-        let repo = tmp.path().to_path_buf();
-        let crate_dir = repo.join("rust_plugins").join("zellij_pane_orchestrator");
+        let repo = tmp.path().join("yazelix");
+        let crate_dir = pane_orchestrator_source_dir(&repo);
         fs::create_dir_all(crate_dir.join("src")).unwrap();
         fs::create_dir_all(repo.join("configs").join("zellij").join("plugins")).unwrap();
         fs::write(
@@ -411,6 +457,13 @@ mod tests {
         .unwrap();
         fs::write(crate_dir.join("Cargo.lock"), "# lock\n").unwrap();
         fs::write(crate_dir.join("src").join("main.rs"), "fn main() {}\n").unwrap();
+        let public_wasm = crate_dir
+            .join("target")
+            .join(BUILD_TARGET)
+            .join("release")
+            .join(PANE_ORCHESTRATOR_PUBLIC_WASM_NAME);
+        fs::create_dir_all(public_wasm.parent().unwrap()).unwrap();
+        fs::write(public_wasm, b"wasm").unwrap();
         fs::write(tracked_wasm_path(&repo), b"wasm").unwrap();
         (tmp, repo)
     }
@@ -422,6 +475,18 @@ mod tests {
         let paths = pane_orchestrator_paths(&repo);
         let stamp = render_sync_stamp(&paths, &tracked_wasm_path(&repo)).unwrap();
         fs::write(tracked_sync_stamp_path(&repo), stamp).unwrap();
+
+        assert!(validate_pane_orchestrator_sync(&repo).unwrap().is_empty());
+    }
+
+    // Defends: ordinary Yazelix checkouts can validate the tracked artifact even when the external source checkout is absent.
+    #[test]
+    fn pane_orchestrator_sync_validator_accepts_artifact_only_checkout() {
+        let (_tmp, repo) = write_fixture_repo();
+        let paths = pane_orchestrator_paths(&repo);
+        let stamp = render_sync_stamp(&paths, &tracked_wasm_path(&repo)).unwrap();
+        fs::write(tracked_sync_stamp_path(&repo), stamp).unwrap();
+        fs::remove_dir_all(paths.crate_dir).unwrap();
 
         assert!(validate_pane_orchestrator_sync(&repo).unwrap().is_empty());
     }
