@@ -3,7 +3,7 @@ use crate::runtime_contract::TerminalCandidate;
 use serde_json::{Map as JsonMap, Value as JsonValue};
 use std::path::{Path, PathBuf};
 
-use super::find_command;
+use super::process::find_command;
 
 pub(super) const X11_INSTANCE: &str = "yazelix";
 pub(super) const WINDOW_CLASS: &str = "com.yazelix.Yazelix";

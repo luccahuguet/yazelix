@@ -1,5 +1,5 @@
+use super::launch::run_launch_flow;
 use super::process::find_command;
-use super::run_launch_flow;
 use super::terminal::{WINDOW_CLASS, current_platform_name};
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{config_override_from_env, home_dir_from_env, runtime_dir_from_env};
