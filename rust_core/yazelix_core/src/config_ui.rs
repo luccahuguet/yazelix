@@ -432,12 +432,8 @@ impl ConfigUiApp {
     fn handle_edit_key(&mut self, key: KeyEvent) {
         if let Some(mode) = self.edit.as_ref().map(|edit| edit.mode) {
             match mode {
-                ConfigUiEditMode::Choice => {
-                    self.handle_choice_edit_key(key);
-                    return;
-                }
-                ConfigUiEditMode::MultiChoice => {
-                    self.handle_multi_choice_edit_key(key);
+                ConfigUiEditMode::Choice | ConfigUiEditMode::MultiChoice => {
+                    self.handle_choice_edit_key(key, mode);
                     return;
                 }
                 ConfigUiEditMode::Text => {}
@@ -472,12 +468,13 @@ impl ConfigUiApp {
         }
     }
 
-    fn handle_choice_edit_key(&mut self, key: KeyEvent) {
+    fn handle_choice_edit_key(&mut self, key: KeyEvent, mode: ConfigUiEditMode) {
         let scalar_enum = self
             .edit
             .as_ref()
             .and_then(|edit| self.model.fields.get(edit.field_index))
             .is_some_and(is_scalar_enum_field);
+        let multi_choice = mode == ConfigUiEditMode::MultiChoice;
         match key.code {
             KeyCode::Esc => {
                 self.edit = None;
@@ -489,47 +486,30 @@ impl ConfigUiApp {
             }
             KeyCode::Enter => self.save_edit(),
             KeyCode::Up | KeyCode::Left | KeyCode::Char('k') | KeyCode::Char('h')
-                if scalar_enum =>
+                if scalar_enum || multi_choice =>
             {
                 self.notice = None;
                 self.move_choice_edit(-1);
             }
             KeyCode::Down | KeyCode::Right | KeyCode::Char('j') | KeyCode::Char('l')
-                if scalar_enum =>
+                if scalar_enum || multi_choice =>
             {
                 self.notice = None;
                 self.move_choice_edit(1);
+            }
+            KeyCode::Char(' ') if multi_choice => {
+                self.notice = None;
+                self.toggle_multi_choice_edit();
             }
             KeyCode::Char(' ') if scalar_enum => {
                 self.notice = None;
                 self.select_single_choice_edit();
             }
-            KeyCode::Up | KeyCode::Right | KeyCode::Down | KeyCode::Left | KeyCode::Char(' ') => {
+            KeyCode::Up | KeyCode::Right | KeyCode::Down | KeyCode::Left | KeyCode::Char(' ')
+                if !multi_choice =>
+            {
                 self.notice = None;
                 self.cycle_choice_edit();
-            }
-            _ => {}
-        }
-    }
-
-    fn handle_multi_choice_edit_key(&mut self, key: KeyEvent) {
-        match key.code {
-            KeyCode::Esc => {
-                self.edit = None;
-                self.notice_info("Edit canceled.");
-            }
-            KeyCode::Enter => self.save_edit(),
-            KeyCode::Up | KeyCode::Left | KeyCode::Char('k') | KeyCode::Char('h') => {
-                self.notice = None;
-                self.move_choice_edit(-1);
-            }
-            KeyCode::Down | KeyCode::Right | KeyCode::Char('j') | KeyCode::Char('l') => {
-                self.notice = None;
-                self.move_choice_edit(1);
-            }
-            KeyCode::Char(' ') => {
-                self.notice = None;
-                self.toggle_multi_choice_edit();
             }
             _ => {}
         }
