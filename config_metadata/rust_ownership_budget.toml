@@ -1,8 +1,8 @@
 [contract]
-measured_total_loc = 72751
-measured_total_file_count = 149
-current_total_loc_max = 72751
-current_total_file_count_max = 149
+measured_total_loc = 72781
+measured_total_file_count = 151
+current_total_loc_max = 72781
+current_total_file_count_max = 151
 hard_target_loc = 60000
 
 [[families]]
@@ -107,11 +107,11 @@ allowed_paths = [
 id = "core_workspace_and_pane_integration"
 status = "canonical"
 owner_bead = "yazelix-w032.3"
-measured_loc = 16558
-measured_files = 25
-max_loc = 16558
+measured_loc = 16588
+measured_files = 27
+max_loc = 16588
 target_loc = 11000
-max_files = 25
+max_files = 27
 allowed_paths = [
   "rust_core/yazelix_core/src/action_registry.rs",
   "rust_core/yazelix_core/src/internal_nu_runner.rs",
@@ -129,6 +129,8 @@ allowed_paths = [
   "rust_core/yazelix_core/src/popup_session_facts.rs",
   "rust_core/yazelix_core/src/workspace_asset_contract.rs",
   "rust_core/yazelix_core/src/workspace_commands.rs",
+  "rust_core/yazelix_core/src/workspace_commands/popup.rs",
+  "rust_core/yazelix_core/src/workspace_commands/yazi_sidebar.rs",
   "rust_core/yazelix_core/src/workspace_session.rs",
   "rust_core/yazelix_core/src/zellij_commands.rs",
   "rust_core/yazelix_core/src/zellij_commands/pipe.rs",
