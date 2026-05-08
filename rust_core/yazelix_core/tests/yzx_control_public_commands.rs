@@ -6,9 +6,7 @@ use std::fs;
 
 mod support;
 
-use support::commands::{
-    apply_managed_config_env, yzx_control_bin_path, yzx_control_command, yzx_root_command,
-};
+use support::commands::{apply_managed_config_env, yzx_control_command};
 use support::envelopes::stdout_text;
 use support::fixtures::managed_config_fixture;
 use yazelix_core::user_config_paths::shared_cursor_config;
@@ -27,61 +25,6 @@ fn yzx_control_sponsor_falls_back_to_printed_url_without_openers() {
     assert!(stdout.contains("Support Yazelix:"));
     assert!(stdout.contains("https://github.com/sponsors/luccahuguet"));
     assert!(!stdout.contains("Opened sponsor page."));
-}
-
-// Defends: the Rust-owned `yzx keys` root keeps the sectioned discoverability output instead of collapsing into a flat dump.
-#[test]
-fn yzx_control_keys_root_preserves_discoverability_sections() {
-    let output = yzx_control_command().arg("keys").output().unwrap();
-    let stdout = stdout_text(output);
-    assert!(stdout.starts_with("Workspace actions\n"));
-    assert!(stdout.contains("Workspace actions"));
-    assert!(stdout.contains("Command access"));
-    assert!(stdout.contains("Keybinding"));
-    assert!(stdout.contains("yzx keys yazi"));
-    assert!(stdout.contains("yzx keys hx"));
-    assert!(stdout.contains("yzx keys nu"));
-    assert!(!stdout.contains('\u{1b}'));
-    assert!(!stdout.contains("Yazelix keybindings"));
-    assert!(!stdout.contains("╭"));
-    assert!(!stdout.contains("│"));
-}
-
-// Defends: the Rust-owned `yzx onboard` command exposes a non-interactive help path without entering prompt mode.
-#[test]
-fn yzx_control_onboard_help_prints_prompt_contract() {
-    let output = yzx_control_command()
-        .arg("onboard")
-        .arg("--help")
-        .output()
-        .unwrap();
-    let stdout = stdout_text(output);
-
-    assert!(stdout.contains("Generate a focused first-run Yazelix config"));
-    assert!(stdout.contains("yzx onboard [--force] [--dry-run]"));
-    assert!(stdout.contains("--force"));
-    assert!(stdout.contains("--dry-run"));
-}
-
-// Regression: no-argument public commands still accept help flags through the public root without reporting them as operational arguments.
-#[test]
-fn yzx_restart_help_prints_usage_without_restarting() {
-    for flag in ["-h", "--help"] {
-        let output = yzx_root_command()
-            .arg("restart")
-            .arg(flag)
-            .env("YAZELIX_RUNTIME_DIR", std::env::temp_dir())
-            .env("YAZELIX_YZX_CONTROL_BIN", yzx_control_bin_path())
-            .output()
-            .unwrap();
-        let stdout = stdout_text(output);
-
-        assert!(stdout.contains("Restart the current Yazelix window"));
-        assert!(stdout.contains("yzx restart [-s | --skip] [--config <file>] [--with key=value]"));
-        assert!(stdout.contains("-s, --skip"));
-        assert!(stdout.contains("--config"));
-        assert!(stdout.contains("--with"));
-    }
 }
 
 // Defends: `yzx cursors` exposes resolved cursor colors and split shape names from canonical cursor settings without requiring users to inspect generated shaders.
@@ -145,63 +88,4 @@ fn yzx_control_reset_config_warns_about_preserved_adjacent_files() {
     assert!(legacy_cursor_path.exists());
     assert!(notes_path.exists());
     assert!(settings_backup_path.exists());
-}
-
-// Defends: the Rust-owned `yzx keys` leaves preserve alias parity and tool-specific guidance instead of routing every leaf to the same generic output.
-#[test]
-fn yzx_control_keys_aliases_and_leaf_views_preserve_guidance() {
-    let root_stdout = stdout_text(yzx_control_command().arg("keys").output().unwrap());
-    let yzx_stdout = stdout_text(
-        yzx_control_command()
-            .arg("keys")
-            .arg("yzx")
-            .output()
-            .unwrap(),
-    );
-    let hx_stdout = stdout_text(
-        yzx_control_command()
-            .arg("keys")
-            .arg("hx")
-            .output()
-            .unwrap(),
-    );
-    let helix_stdout = stdout_text(
-        yzx_control_command()
-            .arg("keys")
-            .arg("helix")
-            .output()
-            .unwrap(),
-    );
-    let nu_stdout = stdout_text(
-        yzx_control_command()
-            .arg("keys")
-            .arg("nu")
-            .output()
-            .unwrap(),
-    );
-    let nushell_stdout = stdout_text(
-        yzx_control_command()
-            .arg("keys")
-            .arg("nushell")
-            .output()
-            .unwrap(),
-    );
-    let yazi_stdout = stdout_text(
-        yzx_control_command()
-            .arg("keys")
-            .arg("yazi")
-            .output()
-            .unwrap(),
-    );
-
-    assert_eq!(root_stdout, yzx_stdout);
-    assert_eq!(hx_stdout, helix_stdout);
-    assert_eq!(nu_stdout, nushell_stdout);
-    assert!(yazi_stdout.contains("Yazi keybindings"));
-    assert!(yazi_stdout.contains("Alt+p"));
-    assert!(yazi_stdout.contains("Focus the Yazi pane and press `~`"));
-    assert!(hx_stdout.contains("Helix keybindings"));
-    assert!(hx_stdout.contains("Press `<space>?`"));
-    assert!(nu_stdout.contains("Nushell keybindings"));
-    assert!(nu_stdout.contains("history"));
 }
