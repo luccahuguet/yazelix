@@ -165,7 +165,12 @@ fn print_zellij_retarget_help() {
     );
 }
 
-fn resolve_target_dir(target_path: &str) -> Result<PathBuf, CoreError> {
+fn resolve_existing_target(
+    target_path: &str,
+    cwd_code: &str,
+    missing_code: &str,
+    missing_suggestion: &str,
+) -> Result<PathBuf, CoreError> {
     let path = PathBuf::from(target_path);
     let expanded = if path.is_absolute() {
         path
@@ -173,7 +178,7 @@ fn resolve_target_dir(target_path: &str) -> Result<PathBuf, CoreError> {
         env::current_dir()
             .map_err(|source| {
                 CoreError::io(
-                    "retarget_cwd",
+                    cwd_code,
                     "Could not read the current working directory.",
                     "cd into a valid directory, then retry.",
                     ".",
@@ -188,46 +193,33 @@ fn resolve_target_dir(target_path: &str) -> Result<PathBuf, CoreError> {
     if !canonical.exists() {
         return Err(CoreError::classified(
             ErrorClass::Usage,
-            "missing_workspace_target",
+            missing_code,
             format!("Path does not exist: {}", canonical.display()),
-            "Choose an existing directory or file path, then retry.",
-            json!({ "path": canonical.display().to_string() }),
-        ));
-    }
-
-    Ok(workspace_dir_for_target(&canonical))
-}
-
-fn resolve_existing_target_path(target_path: &str) -> Result<PathBuf, CoreError> {
-    let path = PathBuf::from(target_path);
-    let expanded = if path.is_absolute() {
-        path
-    } else {
-        env::current_dir()
-            .map_err(|source| {
-                CoreError::io(
-                    "editor_target_cwd",
-                    "Could not read the current working directory.",
-                    "cd into a valid directory, then retry.",
-                    ".",
-                    source,
-                )
-            })?
-            .join(path)
-    };
-
-    let canonical = std::fs::canonicalize(&expanded).unwrap_or(expanded);
-    if !canonical.exists() {
-        return Err(CoreError::classified(
-            ErrorClass::Usage,
-            "missing_editor_target",
-            format!("Path does not exist: {}", canonical.display()),
-            "Choose an existing file or directory path, then retry.",
+            missing_suggestion,
             json!({ "path": canonical.display().to_string() }),
         ));
     }
 
     Ok(canonical)
+}
+
+fn resolve_target_dir(target_path: &str) -> Result<PathBuf, CoreError> {
+    resolve_existing_target(
+        target_path,
+        "retarget_cwd",
+        "missing_workspace_target",
+        "Choose an existing directory or file path, then retry.",
+    )
+    .map(|path| workspace_dir_for_target(&path))
+}
+
+fn resolve_existing_target_path(target_path: &str) -> Result<PathBuf, CoreError> {
+    resolve_existing_target(
+        target_path,
+        "editor_target_cwd",
+        "missing_editor_target",
+        "Choose an existing file or directory path, then retry.",
+    )
 }
 
 fn resolve_existing_target_paths(targets: &[String]) -> Result<Vec<PathBuf>, CoreError> {
