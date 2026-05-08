@@ -109,7 +109,9 @@ pub fn run_repo_update_workflow(
     repo_root: &Path,
     options: &RepoUpdateOptions,
 ) -> Result<(), String> {
-    ensure_nix_available()?;
+    if !command_exists("nix") {
+        return Err("nix not found in PATH.\n   Install Nix, restart the shell, or enter an environment where `nix --version` works before running the maintainer update workflow.".to_string());
+    }
 
     if options.no_canary && options.canary_only {
         return Err("--no-canary and --canary-only cannot be used together.".to_string());
@@ -159,7 +161,12 @@ pub fn run_repo_update_workflow(
 
     println!("🔄 Syncing pinned runtime expectations...");
     sync_runtime_pins(repo_root)?;
-    sync_readme_version_marker(repo_root)?;
+    let readme_sync = sync_readme_surface(repo_root, Some(&repo_root.join("README.md")), None)?;
+    if !readme_sync.title_changed && !readme_sync.series_changed {
+        println!("✅ README version marker and generated latest-series block already up to date");
+    } else {
+        println!("✅ Synced README title/version marker and generated latest-series block");
+    }
     sync_vendored_zjstatus(repo_root)?;
 
     match activation_mode {
@@ -188,13 +195,6 @@ pub fn run_repo_update_workflow(
         }
     }
 
-    Ok(())
-}
-
-fn ensure_nix_available() -> Result<(), String> {
-    if !command_exists("nix") {
-        return Err("nix not found in PATH.\n   Install Nix, restart the shell, or enter an environment where `nix --version` works before running the maintainer update workflow.".to_string());
-    }
     Ok(())
 }
 
@@ -396,16 +396,6 @@ fn extract_version(value: &str) -> Option<String> {
         }
     }
     None
-}
-
-fn sync_readme_version_marker(repo_root: &Path) -> Result<(), String> {
-    let sync = sync_readme_surface(repo_root, Some(&repo_root.join("README.md")), None)?;
-    if !sync.title_changed && !sync.series_changed {
-        println!("✅ README version marker and generated latest-series block already up to date");
-    } else {
-        println!("✅ Synced README title/version marker and generated latest-series block");
-    }
-    Ok(())
 }
 
 fn sync_vendored_zjstatus(repo_root: &Path) -> Result<(), String> {
