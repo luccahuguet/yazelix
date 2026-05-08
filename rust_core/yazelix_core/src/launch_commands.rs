@@ -4,77 +4,30 @@
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_state::compute_config_state;
 use crate::control_plane::{
-    config_dir_from_env, config_override_from_env, config_state_compute_request_from_env,
-    home_dir_from_env, load_normalized_config_for_control, runtime_dir_from_env,
-    runtime_env_request, state_dir_from_env,
+    config_override_from_env, config_state_compute_request_from_env, home_dir_from_env,
+    runtime_dir_from_env, runtime_env_request, state_dir_from_env,
 };
-use crate::install_ownership_env::install_ownership_request_from_env_with_runtime_dir;
-use crate::install_ownership_report::evaluate_install_ownership_report;
 use crate::launch_materialization::{
     LaunchMaterializationData, launch_materialization_request_from_env,
     prepare_launch_materialization,
 };
 use crate::runtime_contract::{
-    LaunchPreflightPayload, StartupLaunchPreflightRequest, StartupPreflightPayload,
-    evaluate_startup_launch_preflight,
+    LaunchPreflightPayload, StartupLaunchPreflightRequest, evaluate_startup_launch_preflight,
 };
 use crate::runtime_env::compute_runtime_env;
-use serde_json::{Map as JsonMap, Value as JsonValue};
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::thread;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::path::PathBuf;
 
 mod config_override;
 mod desktop;
+mod enter;
 mod process;
+mod restart;
 mod terminal;
 
 use config_override::*;
 use desktop::*;
 use process::*;
 use terminal::*;
-
-const RESTART_LAUNCH_CLEARED_ENV_KEYS: &[&str] = &[
-    "IN_YAZELIX_SHELL",
-    "YAZELIX_BOOTSTRAP_RUNTIME_DIR",
-    "YAZELIX_DIR",
-    "YAZELIX_NU_BIN",
-    "YAZELIX_CURSOR_COLOR",
-    "YAZELIX_CURSOR_DIVIDER",
-    "YAZELIX_CURSOR_FAMILY",
-    "YAZELIX_CURSOR_NAME",
-    "YAZELIX_CURSOR_PRIMARY_COLOR",
-    "YAZELIX_CURSOR_SECONDARY_COLOR",
-    "YAZELIX_RUNTIME_DIR",
-    "YAZELIX_SESSION_CONFIG_PATH",
-    "YAZELIX_SESSION_FACTS_PATH",
-    "YAZELIX_STARTUP_PROFILE_SKIP_WELCOME",
-    "YAZELIX_STATUS_BAR_CACHE_PATH",
-    "YAZELIX_TERMINAL",
-    "YAZELIX_YZX_BIN",
-    "YAZELIX_YZX_CONTROL_BIN",
-    "YAZELIX_YZX_CORE_BIN",
-    "YAZI_ID",
-    "ZELLIJ",
-    "ZELLIJ_DEFAULT_LAYOUT",
-    "ZELLIJ_PANE_ID",
-    "ZELLIJ_SESSION_NAME",
-    "ZELLIJ_TAB_NAME",
-    "ZELLIJ_TAB_POSITION",
-];
-
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-struct EnterArgs {
-    path: Option<String>,
-    config: Option<String>,
-    with_overrides: Vec<String>,
-    home: bool,
-    verbose: bool,
-    setup_only: bool,
-    help: bool,
-}
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct LaunchArgs {
@@ -95,106 +48,12 @@ struct DesktopArgs {
     help: bool,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-struct RestartArgs {
-    config: Option<String>,
-    with_overrides: Vec<String>,
-    skip_welcome: bool,
-    help: bool,
+pub fn run_yzx_enter(args: &[String]) -> Result<i32, CoreError> {
+    enter::run_enter(args)
 }
 
-pub fn run_yzx_enter(args: &[String]) -> Result<i32, CoreError> {
-    let parsed = parse_enter_args(args)?;
-    if parsed.help {
-        print_enter_help();
-        return Ok(0);
-    }
-
-    let runtime_dir = runtime_dir_from_env()?;
-    let config_dir = config_dir_from_env()?;
-    let inherited_config_override = config_override_from_env();
-    let config_override = prepare_session_config_override(
-        parsed
-            .config
-            .as_deref()
-            .or(inherited_config_override.as_deref()),
-        &parsed.with_overrides,
-    )?;
-    let config_extra_env = config_override_extra_env(config_override.as_deref());
-    let normalized =
-        load_normalized_config_for_control(&runtime_dir, &config_dir, config_override.as_deref())?;
-    let req = runtime_env_request(runtime_dir.clone(), &normalized)?;
-    let runtime_data = compute_runtime_env(&req)?;
-    let runtime_env = runtime_data.runtime_env;
-    let nu_bin = resolve_nu_bin(&runtime_dir)?;
-
-    if parsed.verbose {
-        println!("🔍 start_yazelix: verbose mode enabled");
-        println!("🔍 Startup runtime env computed");
-    }
-
-    if parsed.setup_only {
-        println!("🔧 Setting up Yazelix generated environment files...");
-        run_runtime_setup(
-            &runtime_dir,
-            &nu_bin,
-            &runtime_env,
-            false,
-            &config_extra_env,
-        )?;
-        println!("✅ Setup complete.");
-        return Ok(0);
-    }
-
-    let requested_working_dir = resolve_requested_working_dir(parsed.path.as_deref(), parsed.home)?;
-    let preflight = evaluate_startup_launch_preflight(&StartupLaunchPreflightRequest {
-        startup: Some(StartupPreflightPayload {
-            working_dir: requested_working_dir.clone(),
-            runtime_script: crate::RuntimeScriptCheckRequest {
-                id: "startup_runtime_script".to_string(),
-                label: "startup script".to_string(),
-                owner_surface: "startup".to_string(),
-                path: runtime_dir
-                    .join("nushell")
-                    .join("scripts")
-                    .join("core")
-                    .join("start_yazelix_inner.nu"),
-            },
-        }),
-        launch: None,
-    })?;
-    let working_dir = PathBuf::from(preflight.working_dir);
-    let inner_script = preflight.script_path.ok_or_else(|| {
-        CoreError::classified(
-            ErrorClass::Internal,
-            "missing_inner_script",
-            "Startup preflight omitted the resolved inner startup script path.",
-            "Report this as a Yazelix internal error.",
-            serde_json::json!({}),
-        )
-    })?;
-
-    run_runtime_setup(&runtime_dir, &nu_bin, &runtime_env, true, &config_extra_env)?;
-
-    let mut argv = vec![
-        nu_bin.to_string_lossy().into_owned(),
-        "-i".to_string(),
-        inner_script,
-        working_dir.to_string_lossy().into_owned(),
-    ];
-    if parsed.verbose {
-        argv.push("--verbose".to_string());
-    }
-    let status = command_status_with_overrides(
-        &argv,
-        Some(&runtime_env),
-        &working_dir,
-        &[],
-        &config_extra_env,
-        "enter_startup",
-        "Retry from a valid Yazelix runtime or relaunch with `yzx launch`.",
-    )?;
-    Ok(status.code().unwrap_or(1))
+pub fn run_yzx_restart(args: &[String]) -> Result<i32, CoreError> {
+    restart::run_restart(args)
 }
 
 pub fn run_yzx_launch(args: &[String]) -> Result<i32, CoreError> {
@@ -249,91 +108,6 @@ pub fn run_yzx_desktop(args: &[String]) -> Result<i32, CoreError> {
         ))),
         None => unreachable!(),
     }
-}
-
-pub fn run_yzx_restart(args: &[String]) -> Result<i32, CoreError> {
-    let parsed = parse_restart_args(args)?;
-    if parsed.help {
-        print_restart_help();
-        return Ok(0);
-    }
-
-    let session_to_kill = current_zellij_session();
-    let restart_file =
-        create_restart_sidebar_bootstrap_file(&std::env::current_dir().map_err(|source| {
-            CoreError::io(
-                "restart_cwd",
-                "Could not read the current working directory.",
-                "cd into a valid directory, then retry.",
-                ".",
-                source,
-            )
-        })?)?;
-
-    let is_yazelix_terminal = std::env::var_os("YAZELIX_TERMINAL").is_some();
-    if is_yazelix_terminal {
-        println!("🔄 Restarting Yazelix...");
-    } else {
-        println!("🔄 Restarting Yazelix (opening new window)...");
-    }
-
-    let runtime_dir = runtime_dir_from_env()?;
-    let report = evaluate_install_ownership_report(
-        &install_ownership_request_from_env_with_runtime_dir(runtime_dir.clone())?,
-    );
-    let inherited_config_override = config_override_from_env();
-    let config_override = prepare_session_config_override(
-        parsed
-            .config
-            .as_deref()
-            .or(inherited_config_override.as_deref()),
-        &parsed.with_overrides,
-    )?;
-    let launcher = report
-        .stable_yzx_wrapper
-        .map(PathBuf::from)
-        .unwrap_or_else(|| runtime_dir.join("shells").join("posix").join("yzx_cli.sh"));
-    let mut restart_extra_env = vec![(
-        "YAZELIX_BOOTSTRAP_SIDEBAR_CWD_FILE".to_string(),
-        Some(restart_file.to_string_lossy().into_owned()),
-    )];
-    if parsed.skip_welcome {
-        restart_extra_env.push((
-            "YAZELIX_STARTUP_PROFILE_SKIP_WELCOME".to_string(),
-            Some("true".to_string()),
-        ));
-    }
-    restart_extra_env.extend(config_override_extra_env(config_override.as_deref()));
-
-    let output = command_output_with_overrides(
-        &[
-            launcher.to_string_lossy().into_owned(),
-            "launch".to_string(),
-        ],
-        None,
-        &std::env::current_dir().map_err(|source| {
-            CoreError::io(
-                "restart_cwd",
-                "Could not read the current working directory.",
-                "cd into a valid directory, then retry.",
-                ".",
-                source,
-            )
-        })?,
-        RESTART_LAUNCH_CLEARED_ENV_KEYS,
-        &restart_extra_env,
-        "restart_launch",
-        "Retry the restart from a working Yazelix install, or relaunch manually with `yzx launch`.",
-    )?;
-    if !output.status.success() {
-        print_completed_output(&output);
-        eprintln!("❌ Failed to relaunch Yazelix through the stable owner wrapper.");
-        return Ok(output.status.code().unwrap_or(1));
-    }
-
-    thread::sleep(Duration::from_secs(1));
-    kill_zellij_session(session_to_kill.as_deref());
-    Ok(0)
 }
 
 fn run_launch_flow(
@@ -573,62 +347,6 @@ fn launch_cursor_fact_for_terminal(value: &Option<String>, terminal: &str) -> Op
     }
 }
 
-fn parse_enter_args(args: &[String]) -> Result<EnterArgs, CoreError> {
-    let mut parsed = EnterArgs::default();
-    let mut index = 0;
-    while index < args.len() {
-        match args[index].as_str() {
-            "--help" | "-h" | "help" => parsed.help = true,
-            "--home" => parsed.home = true,
-            "--verbose" => parsed.verbose = true,
-            "--setup-only" => parsed.setup_only = true,
-            "--path" | "-p" => {
-                index += 1;
-                let value = args.get(index).ok_or_else(|| {
-                    CoreError::usage("Missing value for yzx enter --path. Try `yzx enter --help`.")
-                })?;
-                parsed.path = Some(value.clone());
-            }
-            "--config" => {
-                index += 1;
-                let value = args.get(index).ok_or_else(|| {
-                    CoreError::usage(
-                        "Missing value for yzx enter --config. Try `yzx enter --help`.",
-                    )
-                })?;
-                if parsed.config.is_some() {
-                    return Err(CoreError::usage(
-                        "yzx enter accepts at most one --config override.",
-                    ));
-                }
-                parsed.config = Some(resolve_cli_config_override(value)?);
-            }
-            "--with" => {
-                index += 1;
-                let value = args.get(index).ok_or_else(|| {
-                    CoreError::usage("Missing value for yzx enter --with. Try `yzx enter --help`.")
-                })?;
-                parsed.with_overrides.push(value.clone());
-            }
-            other if other.starts_with('-') => {
-                return Err(CoreError::usage(format!(
-                    "Unknown argument for yzx enter: {other}. Try `yzx enter --help`."
-                )));
-            }
-            other => {
-                if parsed.path.is_some() {
-                    return Err(CoreError::usage(
-                        "yzx enter accepts at most one positional cwd override.",
-                    ));
-                }
-                parsed.path = Some(other.to_string());
-            }
-        }
-        index += 1;
-    }
-    Ok(parsed)
-}
-
 fn parse_launch_args(args: &[String]) -> Result<LaunchArgs, CoreError> {
     let mut parsed = LaunchArgs::default();
     let mut index = 0;
@@ -729,61 +447,6 @@ fn parse_desktop_args(args: &[String]) -> Result<DesktopArgs, CoreError> {
     Ok(parsed)
 }
 
-fn parse_restart_args(args: &[String]) -> Result<RestartArgs, CoreError> {
-    let mut parsed = RestartArgs::default();
-    let mut index = 0;
-    while index < args.len() {
-        match args[index].as_str() {
-            "--help" | "-h" | "help" => parsed.help = true,
-            "--skip" | "-s" => parsed.skip_welcome = true,
-            "--config" => {
-                index += 1;
-                let value = args.get(index).ok_or_else(|| {
-                    CoreError::usage(
-                        "Missing value for yzx restart --config. Try `yzx restart --help`.",
-                    )
-                })?;
-                if parsed.config.is_some() {
-                    return Err(CoreError::usage(
-                        "yzx restart accepts at most one --config override.",
-                    ));
-                }
-                parsed.config = Some(resolve_cli_config_override(value)?);
-            }
-            "--with" => {
-                index += 1;
-                let value = args.get(index).ok_or_else(|| {
-                    CoreError::usage(
-                        "Missing value for yzx restart --with. Try `yzx restart --help`.",
-                    )
-                })?;
-                parsed.with_overrides.push(value.clone());
-            }
-            other if other.starts_with('-') => {
-                return Err(CoreError::usage(format!(
-                    "Unknown argument for yzx restart: {other}. Try `yzx restart --help`."
-                )));
-            }
-            other => {
-                return Err(CoreError::usage(format!(
-                    "Unknown yzx restart argument: {other}. Try `yzx restart --help`."
-                )));
-            }
-        }
-        index += 1;
-    }
-    Ok(parsed)
-}
-
-fn print_enter_help() {
-    println!("Start Yazelix in the current terminal");
-    println!();
-    println!("Usage:");
-    println!(
-        "  yzx enter [--path <dir> | --home] [--config <file>] [--with key=value] [--verbose]"
-    );
-}
-
 fn print_launch_help() {
     println!("Launch Yazelix in a new terminal window");
     println!();
@@ -791,18 +454,6 @@ fn print_launch_help() {
     println!(
         "  yzx launch [--path <dir> | --home] [--config <file>] [--with key=value] [--terminal <name>] [--verbose]"
     );
-}
-
-fn print_restart_help() {
-    println!("Restart the current Yazelix window");
-    println!();
-    println!("Usage:");
-    println!("  yzx restart [-s | --skip] [--config <file>] [--with key=value]");
-    println!();
-    println!("Options:");
-    println!("  -s, --skip    Skip the welcome screen for the restarted window");
-    println!("  --config      Use an alternate complete settings.jsonc for the restarted window");
-    println!("  --with        Apply one session-only settings override, repeatable");
 }
 
 fn print_desktop_help() {
@@ -835,80 +486,6 @@ fn resolve_requested_working_dir(path: Option<&str>, home: bool) -> Result<PathB
     })
 }
 
-fn resolve_nu_bin(runtime_dir: &Path) -> Result<PathBuf, CoreError> {
-    if let Ok(raw) = std::env::var("YAZELIX_NU_BIN") {
-        let trimmed = raw.trim();
-        if !trimmed.is_empty() {
-            let path = PathBuf::from(trimmed);
-            if path.is_file() {
-                return Ok(path);
-            }
-        }
-    }
-
-    let runtime_nu = runtime_dir.join("libexec").join("nu");
-    if runtime_nu.is_file() {
-        return Ok(runtime_nu);
-    }
-
-    if let Some(path) = find_command("nu") {
-        return Ok(path);
-    }
-
-    Err(CoreError::classified(
-        ErrorClass::Runtime,
-        "missing_nu_bin",
-        "Could not resolve a usable Nushell binary for Yazelix.",
-        "Set YAZELIX_NU_BIN, restore runtime libexec/nu, or install `nu` on PATH.",
-        serde_json::json!({}),
-    ))
-}
-
-fn run_runtime_setup(
-    runtime_dir: &Path,
-    nu_bin: &Path,
-    runtime_env: &JsonMap<String, JsonValue>,
-    quiet: bool,
-    extra_env: &[(String, Option<String>)],
-) -> Result<(), CoreError> {
-    let mut argv = vec![
-        nu_bin.to_string_lossy().into_owned(),
-        runtime_dir
-            .join("nushell")
-            .join("scripts")
-            .join("setup")
-            .join("environment.nu")
-            .to_string_lossy()
-            .into_owned(),
-    ];
-    if quiet {
-        argv.push("--skip-welcome".to_string());
-    }
-    let status = command_status_with_overrides(
-        &argv,
-        Some(runtime_env),
-        runtime_dir,
-        &[],
-        extra_env,
-        "runtime_setup",
-        "Retry from a valid Yazelix runtime or reinstall Yazelix.",
-    )?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err(CoreError::classified(
-            ErrorClass::Runtime,
-            "environment_setup_failed",
-            format!(
-                "Yazelix environment setup failed with exit code {}.",
-                status.code().unwrap_or(1)
-            ),
-            "Fix the reported setup failure, then retry.",
-            serde_json::json!({}),
-        ))
-    }
-}
-
 fn render_argv_for_display(argv: &[String]) -> String {
     argv.iter()
         .map(|arg| {
@@ -925,116 +502,19 @@ fn render_argv_for_display(argv: &[String]) -> String {
         .join(" ")
 }
 
-fn current_zellij_session() -> Option<String> {
-    if let Ok(session) = std::env::var("ZELLIJ_SESSION_NAME") {
-        let trimmed = session.trim();
-        if !trimmed.is_empty() {
-            return Some(trimmed.to_string());
-        }
-    }
-
-    let output = Command::new("zellij").arg("list-sessions").output().ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    for line in stdout.lines() {
-        if !line.contains("current") {
-            continue;
-        }
-        let cleaned_line = strip_ansi(line);
-        let clean = cleaned_line.trim_start_matches('>').trim();
-        let token = clean
-            .split_whitespace()
-            .find(|token| !token.is_empty())
-            .map(str::to_string);
-        if token.is_some() {
-            return token;
-        }
-    }
-    None
-}
-
-fn strip_ansi(text: &str) -> String {
-    let mut out = String::new();
-    let mut chars = text.chars().peekable();
-    while let Some(ch) = chars.next() {
-        if ch == '\u{1b}' {
-            if matches!(chars.peek(), Some('[')) {
-                chars.next();
-                while let Some(next) = chars.next() {
-                    if ('@'..='~').contains(&next) {
-                        break;
-                    }
-                }
-            }
-            continue;
-        }
-        out.push(ch);
-    }
-    out
-}
-
-fn create_restart_sidebar_bootstrap_file(target_dir: &Path) -> Result<PathBuf, CoreError> {
-    let state_dir = home_dir_from_env()?
-        .join(".local")
-        .join("share")
-        .join("yazelix")
-        .join("state")
-        .join("restart");
-    fs::create_dir_all(&state_dir).map_err(|source| {
-        CoreError::io(
-            "restart_state_dir",
-            format!(
-                "Could not create restart state directory {}.",
-                state_dir.display()
-            ),
-            "Fix the directory permissions, then retry.",
-            state_dir.display().to_string(),
-            source,
-        )
-    })?;
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|error| {
-            CoreError::classified(
-                ErrorClass::Internal,
-                "system_clock_error",
-                format!("System clock error while preparing restart bootstrap file: {error}"),
-                "Fix the system clock, then retry.",
-                serde_json::json!({}),
-            )
-        })?
-        .as_millis();
-    let path = state_dir.join(format!("sidebar_cwd_{timestamp}.tmp"));
-    fs::write(&path, target_dir.to_string_lossy().into_owned()).map_err(|source| {
-        CoreError::io(
-            "restart_sidebar_bootstrap",
-            format!("Could not write restart bootstrap file {}.", path.display()),
-            "Fix the directory permissions, then retry.",
-            path.display().to_string(),
-            source,
-        )
-    })?;
-    Ok(path)
-}
-
-fn kill_zellij_session(session_name: Option<&str>) {
-    let Some(session_name) = session_name.map(str::trim).filter(|name| !name.is_empty()) else {
-        println!("⚠️  No Zellij session detected to close");
-        return;
-    };
-    println!("Killing Zellij session: {session_name}");
-    let _ = Command::new("zellij")
-        .args(["kill-session", session_name])
-        .status();
-}
-
 #[cfg(test)]
 mod tests {
+    use super::restart::*;
     use super::*;
+    use crate::control_plane::load_normalized_config_for_control;
     use crate::settings_surface::read_settings_jsonc_value;
+    use serde_json::Map as JsonMap;
     use std::collections::HashMap;
+    use std::fs;
+    use std::path::Path;
+    use std::process::Command;
+    use std::thread;
+    use std::time::Duration;
     use tempfile::TempDir;
 
     fn write_runtime_layout(runtime: &Path) {
