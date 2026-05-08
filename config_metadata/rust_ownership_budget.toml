@@ -1,8 +1,8 @@
 [contract]
-measured_total_loc = 72734
-measured_total_file_count = 156
-current_total_loc_max = 72734
-current_total_file_count_max = 156
+measured_total_loc = 72730
+measured_total_file_count = 160
+current_total_loc_max = 72730
+current_total_file_count_max = 160
 hard_target_loc = 60000
 
 [[families]]
@@ -180,17 +180,21 @@ allowed_paths = [
 id = "maintainer_tooling_and_validators"
 status = "canonical_maintainer"
 owner_bead = "yazelix-9opk.5.1"
-measured_loc = 10463
-measured_files = 19
-max_loc = 10463
+measured_loc = 10459
+measured_files = 23
+max_loc = 10459
 target_loc = 9000
-max_files = 19
+max_files = 23
 allowed_paths = [
   "rust_core/yazelix_maintainer/src/bin/yzx_repo_maintainer.rs",
   "rust_core/yazelix_maintainer/src/bin/yzx_repo_validator.rs",
   "rust_core/yazelix_maintainer/src/lib.rs",
   "rust_core/yazelix_maintainer/src/repo_contract_validation.rs",
   "rust_core/yazelix_maintainer/src/repo_contract_validation/config_surface.rs",
+  "rust_core/yazelix_maintainer/src/repo_contract_validation/helpers.rs",
+  "rust_core/yazelix_maintainer/src/repo_contract_validation/installed_runtime.rs",
+  "rust_core/yazelix_maintainer/src/repo_contract_validation/nix_interface.rs",
+  "rust_core/yazelix_maintainer/src/repo_contract_validation/nix_package.rs",
   "rust_core/yazelix_maintainer/src/repo_contract_validation/readme_surface.rs",
   "rust_core/yazelix_maintainer/src/repo_contract_validation/upgrade_contract.rs",
   "rust_core/yazelix_maintainer/src/repo_docs_validation.rs",
