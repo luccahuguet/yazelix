@@ -177,7 +177,7 @@ pub fn run_repo_update_workflow(
         }
         UpdateActivationMode::HomeManager => {
             let activation = activate_updated_home_manager_runtime(
-                &expand_user_path(&options.home_manager_dir)?,
+                &PathBuf::from(expand_tilde_if_needed(&options.home_manager_dir)?),
                 options.home_manager_input.trim(),
                 options.home_manager_attr.trim(),
             )?;
@@ -195,20 +195,6 @@ fn ensure_nix_available() -> Result<(), String> {
     if !command_exists("nix") {
         return Err("nix not found in PATH.\n   Install Nix, restart the shell, or enter an environment where `nix --version` works before running the maintainer update workflow.".to_string());
     }
-
-    let version_result = run_command_capture("nix", ["--version"], None)?;
-    if !version_result.status.success() {
-        return Err(format!(
-            "nix exists in PATH, but `nix --version` failed.\n{}",
-            String::from_utf8_lossy(&version_result.stderr).trim()
-        ));
-    }
-
-    let flake_result = run_command_capture("nix", ["flake", "--help"], None)?;
-    if !flake_result.status.success() {
-        return Err("nix flakes are not available in this shell.\n   Enable `nix-command flakes` or use the Yazelix maintainer shell before running this workflow.".to_string());
-    }
-
     Ok(())
 }
 
@@ -610,10 +596,9 @@ fn activate_updated_home_manager_runtime(
     input_name: &str,
     attr: &str,
 ) -> Result<HomeManagerActivation, String> {
-    ensure_command_available(
-        "home-manager",
-        "home-manager not found in PATH.\n   Recovery: Install Home Manager first, or use `yzx dev update --activate profile` or `--activate none`.",
-    )?;
+    if !command_exists("home-manager") {
+        return Err("home-manager not found in PATH.\n   Recovery: Install Home Manager first, or use `yzx dev update --activate profile` or `--activate none`.".to_string());
+    }
     let resolved_dir = resolve_home_manager_flake_dir(flake_dir)?;
     let switch_ref = build_home_manager_switch_ref(&resolved_dir, attr);
     refresh_home_manager_input_lock(&resolved_dir, input_name)?;
@@ -764,18 +749,22 @@ fn apply_shell_layout_canary_overrides(config: &mut TomlValue) -> Result<(), Str
     let root = config
         .as_table_mut()
         .ok_or_else(|| "Default config must be a TOML table".to_string())?;
-    set_nested_toml_string(root, &["shell", "default_shell"], "zsh");
-    set_nested_toml_string(root, &["editor", "command"], "nvim");
-    set_nested_toml_bool(root, &["editor", "hide_sidebar_on_file_open"], true);
+    set_nested_toml_value(
+        root,
+        &["shell", "default_shell"],
+        TomlValue::String("zsh".to_string()),
+    );
+    set_nested_toml_value(
+        root,
+        &["editor", "command"],
+        TomlValue::String("nvim".to_string()),
+    );
+    set_nested_toml_value(
+        root,
+        &["editor", "hide_sidebar_on_file_open"],
+        TomlValue::Boolean(true),
+    );
     Ok(())
-}
-
-fn set_nested_toml_string(table: &mut toml::Table, path: &[&str], value: &str) {
-    set_nested_toml_value(table, path, TomlValue::String(value.to_string()));
-}
-
-fn set_nested_toml_bool(table: &mut toml::Table, path: &[&str], value: bool) {
-    set_nested_toml_value(table, path, TomlValue::Boolean(value));
 }
 
 fn set_nested_toml_value(table: &mut toml::Table, path: &[&str], value: TomlValue) {
@@ -911,14 +900,6 @@ fn command_exists(name: &str) -> bool {
         .unwrap_or(false)
 }
 
-fn ensure_command_available(name: &str, message: &str) -> Result<(), String> {
-    if command_exists(name) {
-        Ok(())
-    } else {
-        Err(message.to_string())
-    }
-}
-
 fn run_command_capture<I, S>(
     program: &str,
     args: I,
@@ -987,10 +968,6 @@ where
 fn home_dir() -> Result<PathBuf, String> {
     let home = std::env::var("HOME").map_err(|_| "HOME is not set".to_string())?;
     Ok(PathBuf::from(home))
-}
-
-fn expand_user_path(path: &str) -> Result<PathBuf, String> {
-    Ok(PathBuf::from(expand_tilde_if_needed(path)?))
 }
 
 fn expand_tilde_if_needed(path: &str) -> Result<String, String> {
