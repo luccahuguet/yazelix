@@ -36,7 +36,7 @@ Use three different homes for three different kinds of speed.
 
 ```bash
 cargo +nightly udeps --manifest-path rust_core/Cargo.toml --workspace --all-targets
-cargo +nightly udeps --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --all-targets
+cargo +nightly udeps --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --all-targets
 ```
 
 Do not add `cargo-udeps` to user runtime packages. Runtime users do not need Rust cleanup tools to launch Yazelix.

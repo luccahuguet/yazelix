@@ -2,17 +2,17 @@
 
 ## Summary
 
-The Zellij pane orchestrator is an internal Yazelix component that owns session-local pane behavior which cannot be represented cleanly in Nushell alone. It lives in the monorepo as Rust source plus a tracked wasm artifact, and the rest of Yazelix should talk to it through one explicit pipe-command seam.
+The Zellij pane orchestrator is a standalone Zellij plugin consumed by Yazelix through a tracked wasm artifact and sync stamp. Its source lives in the external `yazelix-zellij-pane-orchestrator` project, and the rest of Yazelix talks to it through one explicit pipe-command seam.
 
 ## Why
 
 The orchestrator now owns several high-value UX paths: managed editor/sidebar focus, layout-family changes, workspace retargeting, workspace terminal opening, screen-saver launch, status-cache facts, and active sidebar Yazi identity. Popup, menu, and config UI panes are owned by the integrated `yzpp` plugin instead.
 
-This contract defines the component boundary without extracting it to a separate repository. The plugin and its consumers still change together, so extraction would add versioning cost without improving the current product.
+This contract defines the Yazelix integration boundary for the extracted plugin. The external project owns source and standalone behavior; Yazelix owns generated layouts, runtime packaging, and integration commands.
 
 ## Scope
 
-- Rust source under `rust_plugins/zellij_pane_orchestrator/`
+- External Rust source in `yazelix-zellij-pane-orchestrator`
 - Tracked runtime artifact at `configs/zellij/plugins/yazelix_pane_orchestrator.wasm`
 - Nushell client transport in `nushell/scripts/integrations/zellij.nu`
 - Runtime wasm sync and permission-cache ownership in Rust `zellij-materialization.generate`
@@ -52,7 +52,7 @@ This contract defines the component boundary without extracting it to a separate
   Plugin panes, exited panes, and unrelated user panes must not count as
   managed Yazelix panes
 - Verification: automated
-  `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib`;
+  `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`;
   automated `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
 
 #### POC-004
@@ -153,8 +153,6 @@ The sync step updates the tracked wasm, the stable runtime wasm path, and the ge
 
 ## Non-goals
 
-- Extracting the orchestrator into a separate repository now
-- Making the wasm a public reusable plugin API
 - Reintroducing legacy workspace pipe commands for compatibility
 - Moving Yazi adapter command execution into Rust
 - Moving all generated Zellij config ownership into Rust
@@ -169,7 +167,7 @@ The sync step updates the tracked wasm, the stable runtime wasm path, and the ge
 
 ## Verification
 
-- `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib`
+- `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
 - `yzx dev build_pane_orchestrator --sync`
 - `nu nushell/scripts/dev/test_zellij_plugin_contracts.nu`
 - `nu nushell/scripts/dev/test_yzx_generated_configs.nu`

@@ -1,8 +1,8 @@
 [contract]
-measured_total_loc = 71802
-measured_total_file_count = 163
-current_total_loc_max = 71802
-current_total_file_count_max = 163
+measured_total_loc = 66989
+measured_total_file_count = 138
+current_total_loc_max = 66989
+current_total_file_count_max = 138
 hard_target_loc = 60000
 
 [[families]]
@@ -227,39 +227,3 @@ allowed_paths = [
   "rust_core/yazelix_maintainer/tests/repo_upgrade_contract.rs",
 ]
 
-[[families]]
-id = "pane_orchestrator_plugin"
-status = "extension_surface"
-owner_bead = "yazelix-subsys.2.1"
-measured_loc = 4813
-measured_files = 25
-max_loc = 4813
-target_loc = 4300
-max_files = 25
-allowed_paths = [
-  "rust_plugins/zellij_pane_orchestrator/src/active_tab_session_state.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/ai_pane_activity.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/ai_pane_activity_contract.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/editor.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/editor_open_contract.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/heartbeat.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/horizontal_focus_contract.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/layout.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/lib.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/main.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/orchestrator_heartbeat_contract.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/pane_contract.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/panes.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/runtime_config.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/runtime_config_contract.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/screen_saver.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/screen_saver_contract.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/sidebar_contract.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/sidebar_state_contract.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/sidebar_yazi.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/status_bar_cache.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/status_bar_cache_contract.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/timer_schedule_contract.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/transient_pane_contract.rs",
-  "rust_plugins/zellij_pane_orchestrator/src/workspace.rs",
-]

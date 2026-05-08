@@ -140,7 +140,7 @@ The current repo surface should be understood roughly as:
   - `yzx_repo_validator validate-docs-experience`
 - Default automated lane:
   - `rust_core/Cargo.toml` `nextest` suite `yazelix_core`
-  - `rust_plugins/zellij_pane_orchestrator/Cargo.toml` `nextest` suite `zellij_pane_orchestrator`
+  - `../yazelix-zellij-pane-orchestrator/Cargo.toml` `nextest` suite `zellij_pane_orchestrator`
 - Optional sweep coverage:
   - `config_sweep_runner.nu`
   - `shells/posix/sweep_verify.sh`
@@ -318,7 +318,7 @@ surface and docs review rather than by a second route validator.
 - unit tests: n/a
 - integration tests: `yzx dev test`
 - integration tests: `nix develop -c cargo nextest run --profile ci --manifest-path rust_core/Cargo.toml -p yazelix_core`
-- integration tests: `nix develop -c cargo nextest run --profile ci --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib`
+- integration tests: `nix develop -c cargo nextest run --profile ci --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
 - CI checks: `yzx_repo_validator validate-rust-test-traceability`
 - CI checks: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-readme-version`
 - CI checks: `yzx_repo_validator validate-config-surface-contract`

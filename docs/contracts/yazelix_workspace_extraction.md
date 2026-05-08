@@ -213,7 +213,7 @@ No-go if the candidate API still requires full Yazelix generated config, Home Ma
 
 - `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
 - `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
-- `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib`
+- `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
 - `yzx_repo_validator validate-workspace-session-contract`
 - `yzx_repo_validator validate-contracts`
 

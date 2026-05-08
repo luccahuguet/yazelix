@@ -37,7 +37,7 @@ consumers can stop depending on debug payload shape or ad-hoc re-derivation.
 
 ## Scope
 
-- pane orchestrator Rust source under `rust_plugins/zellij_pane_orchestrator/`
+- pane orchestrator Rust source in the external `yazelix-zellij-pane-orchestrator` project
 - one new pipe command for active-tab session state, with a stable typed JSON
   response
 - shared serde types in the orchestrator crate when that improves local
@@ -281,7 +281,7 @@ contract. This slice is only about the read contract.
 - contract validation:
   - `yzx_repo_validator validate-contracts`
 - Rust/plugin verification after implementation:
-  - `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib`
+  - `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
   - `yzx dev build_pane_orchestrator --sync`
 - Rust/core verification after implementation:
   - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache`
@@ -291,7 +291,7 @@ contract. This slice is only about the read contract.
 
 ## Traceability
 - Defended by: `yzx_repo_validator validate-contracts`
-- Defended by: `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib ai_activity_extension_represents_tab_local_state_taxonomy`
+- Defended by: `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib ai_activity_extension_represents_tab_local_state_taxonomy`
 - Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_round_trip_renders_cached_workspace_fact`
 - Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_claude_usage_refresh_writes_shared_combined_cache`
 - Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_codex_usage_renders_5h_week_display_modes`

@@ -387,14 +387,14 @@ If the answer is unclear, the feature is probably crossing the boundary incorrec
 
 - `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
 - `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
-- `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib`
+- `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
 - `yzx_repo_validator validate-workspace-session-contract`
 - `yzx_repo_validator validate-contracts`
 
 ## Traceability
 - Defended by: `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
 - Defended by: `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
-- Defended by: `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib`
+- Defended by: `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
 - Defended by: `yzx_repo_validator validate-workspace-session-contract`
 
 ## Open Questions

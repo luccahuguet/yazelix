@@ -73,15 +73,6 @@ pub fn validate_pane_orchestrator_sync(repo_root: &Path) -> Result<Vec<String>, 
                     ));
                 }
             }
-            if paths.wasm_path.is_file() {
-                let current_public_wasm_hash = file_sha256_hex(&paths.wasm_path)?;
-                if stamp.public_wasm_sha256 != current_public_wasm_hash {
-                    errors.push(format!(
-                        "External pane-orchestrator wasm hash does not match its sync stamp. Run `yzx dev build_pane_orchestrator --sync`.\n   current public wasm sha256: {}\n   stamped public wasm sha256: {}",
-                        current_public_wasm_hash, stamp.public_wasm_sha256
-                    ));
-                }
-            }
         }
     }
 
@@ -280,27 +271,15 @@ fn sync_built_wasm(paths: &PaneOrchestratorPaths, label: &str) -> Result<(), Str
         .len();
 
     println!(
-        "Updated pane orchestrator repo wasm: {}",
-        repo_target.display()
-    );
-    println!(
-        "Updated pane orchestrator sync stamp: {}",
-        sync_stamp_path.display()
-    );
-    println!(
-        "Updated pane orchestrator runtime wasm: {}",
+        "Updated pane orchestrator repo wasm: {}\nUpdated pane orchestrator sync stamp: {}\nUpdated pane orchestrator runtime wasm: {}\nSize: {byte_len} bytes\n\nSafest next step:\nRestart Yazelix or open a fresh Yazelix window so Zellij loads the updated plugin cleanly.",
+        repo_target.display(),
+        sync_stamp_path.display(),
         runtime_target.display()
     );
-    println!("Size: {byte_len} bytes");
-    println!();
-    println!("Safest next step:");
-    println!(
-        "Restart Yazelix or open a fresh Yazelix window so Zellij loads the updated plugin cleanly."
-    );
     println!("In-place plugin reloads can leave the current session in a broken permission state.");
-    println!();
-    println!("If you are already stuck in a blank/permission-limbo session, recover with:");
-    println!("zellij delete-all-sessions -f -y");
+    println!(
+        "\nIf you are already stuck in a blank/permission-limbo session, recover with:\nzellij delete-all-sessions -f -y"
+    );
 
     Ok(())
 }
@@ -308,7 +287,6 @@ fn sync_built_wasm(paths: &PaneOrchestratorPaths, label: &str) -> Result<(), Str
 struct PaneOrchestratorSyncStamp {
     source_project: String,
     source_sha256: String,
-    public_wasm_sha256: String,
     tracked_wasm_sha256: String,
 }
 
@@ -330,7 +308,6 @@ fn read_sync_stamp(path: &Path) -> Result<Option<PaneOrchestratorSyncStamp>, Str
         .map_err(|error| format!("Failed to read {}: {}", path.display(), error))?;
     let mut source_project = None;
     let mut source_sha256 = None;
-    let mut public_wasm_sha256 = None;
     let mut tracked_wasm_sha256 = None;
     for line in raw.lines().map(str::trim).filter(|line| !line.is_empty()) {
         let Some((key, value)) = line.split_once('=') else {
@@ -343,7 +320,7 @@ fn read_sync_stamp(path: &Path) -> Result<Option<PaneOrchestratorSyncStamp>, Str
         match key.trim() {
             "source_project" => source_project = Some(value),
             "source_sha256" => source_sha256 = Some(value),
-            "public_wasm_sha256" => public_wasm_sha256 = Some(value),
+            "public_wasm_sha256" => {}
             "tracked_wasm_sha256" => tracked_wasm_sha256 = Some(value),
             other => {
                 return Err(format!(
@@ -358,8 +335,6 @@ fn read_sync_stamp(path: &Path) -> Result<Option<PaneOrchestratorSyncStamp>, Str
             .ok_or_else(|| format!("Missing source_project in {}", path.display()))?,
         source_sha256: source_sha256
             .ok_or_else(|| format!("Missing source_sha256 in {}", path.display()))?,
-        public_wasm_sha256: public_wasm_sha256
-            .ok_or_else(|| format!("Missing public_wasm_sha256 in {}", path.display()))?,
         tracked_wasm_sha256: tracked_wasm_sha256
             .ok_or_else(|| format!("Missing tracked_wasm_sha256 in {}", path.display()))?,
     }))
@@ -457,37 +432,21 @@ mod tests {
         .unwrap();
         fs::write(crate_dir.join("Cargo.lock"), "# lock\n").unwrap();
         fs::write(crate_dir.join("src").join("main.rs"), "fn main() {}\n").unwrap();
-        let public_wasm = crate_dir
-            .join("target")
-            .join(BUILD_TARGET)
-            .join("release")
-            .join(PANE_ORCHESTRATOR_PUBLIC_WASM_NAME);
+        let public_wasm = pane_orchestrator_paths(&repo).wasm_path;
         fs::create_dir_all(public_wasm.parent().unwrap()).unwrap();
         fs::write(public_wasm, b"wasm").unwrap();
         fs::write(tracked_wasm_path(&repo), b"wasm").unwrap();
         (tmp, repo)
     }
 
-    // Defends: the maintainer sync guard accepts a repo whose tracked wasm and source stamp agree.
+    // Defends: the sync guard accepts source-present and artifact-only checkouts whose tracked wasm and stamp agree.
     #[test]
     fn pane_orchestrator_sync_validator_accepts_current_stamp() {
         let (_tmp, repo) = write_fixture_repo();
-        let paths = pane_orchestrator_paths(&repo);
-        let stamp = render_sync_stamp(&paths, &tracked_wasm_path(&repo)).unwrap();
-        fs::write(tracked_sync_stamp_path(&repo), stamp).unwrap();
+        let paths = write_fixture_sync_stamp(&repo);
 
         assert!(validate_pane_orchestrator_sync(&repo).unwrap().is_empty());
-    }
-
-    // Defends: ordinary Yazelix checkouts can validate the tracked artifact even when the external source checkout is absent.
-    #[test]
-    fn pane_orchestrator_sync_validator_accepts_artifact_only_checkout() {
-        let (_tmp, repo) = write_fixture_repo();
-        let paths = pane_orchestrator_paths(&repo);
-        let stamp = render_sync_stamp(&paths, &tracked_wasm_path(&repo)).unwrap();
-        fs::write(tracked_sync_stamp_path(&repo), stamp).unwrap();
         fs::remove_dir_all(paths.crate_dir).unwrap();
-
         assert!(validate_pane_orchestrator_sync(&repo).unwrap().is_empty());
     }
 
@@ -495,9 +454,7 @@ mod tests {
     #[test]
     fn pane_orchestrator_sync_validator_rejects_stale_source_stamp() {
         let (_tmp, repo) = write_fixture_repo();
-        let paths = pane_orchestrator_paths(&repo);
-        let stamp = render_sync_stamp(&paths, &tracked_wasm_path(&repo)).unwrap();
-        fs::write(tracked_sync_stamp_path(&repo), stamp).unwrap();
+        let paths = write_fixture_sync_stamp(&repo);
         fs::write(
             paths.crate_dir.join("src").join("main.rs"),
             "fn main() { println!(\"changed\"); }\n",
@@ -507,5 +464,15 @@ mod tests {
         let errors = validate_pane_orchestrator_sync(&repo).unwrap();
         assert_eq!(errors.len(), 1);
         assert!(errors[0].contains("source changed since the tracked wasm was synced"));
+    }
+
+    fn write_fixture_sync_stamp(repo: &Path) -> PaneOrchestratorPaths {
+        let paths = pane_orchestrator_paths(repo);
+        fs::write(
+            tracked_sync_stamp_path(repo),
+            render_sync_stamp(&paths, &tracked_wasm_path(repo)).unwrap(),
+        )
+        .unwrap();
+        paths
     }
 }

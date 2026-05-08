@@ -42,7 +42,7 @@ This contract covers:
   the managed editor by default
 - Verification: automated
   `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`; automated
-  `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib`
+  `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
 
 #### SOE-002
 - Type: non_goal
@@ -63,7 +63,7 @@ This contract covers:
   flow. Yazelix does not guess that a shell-opened editor pane should be reused
 - Verification: automated
   `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`; automated
-  `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib`
+  `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
 
 #### SOE-004
 - Type: behavior
@@ -146,7 +146,7 @@ Those may be explored later, but they are outside this contract.
   - add pane-state and routing regression coverage once the workspace/session boundary tests are expanded
 
 ## Traceability
-- Defended by: `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib`
+- Defended by: `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
 - Defended by: `nu nushell/scripts/dev/test_yzx_doctor_commands.nu`
 - Defended by: `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
 

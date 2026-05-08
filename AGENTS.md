@@ -164,7 +164,7 @@ When creating new files or directories, always use underscores to maintain consi
 
 ## Rust Plugin Workflow
 
-- **Rust pane-orchestrator source edits are not live by themselves.** Changes under `rust_plugins/zellij_pane_orchestrator/` do not affect Yazelix behavior until the wasm is rebuilt and synced into the tracked/runtime plugin paths.
+- **Rust pane-orchestrator source edits are not live by themselves.** Source lives in the sibling `../yazelix-zellij-pane-orchestrator` checkout by default, or in `` when explicitly configured. Source edits do not affect Yazelix behavior until the wasm is rebuilt and synced into the tracked/runtime plugin paths.
 - After changing the pane orchestrator, rebuild and sync it before claiming behavior is fixed:
   ```bash
   yzx dev build_pane_orchestrator --sync

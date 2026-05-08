@@ -169,7 +169,7 @@ Packaging impact:
 
 - Yazelix may keep shipping a tracked wasm artifact
 - source ownership moves to the external project
-- Yazelix Rust ownership budget must remove or ratchet the old `pane_orchestrator_plugin` source family after source deletion
+- Yazelix Rust ownership budget must remove or ratchet the old source family after source deletion
 
 ## No-go Conditions
 

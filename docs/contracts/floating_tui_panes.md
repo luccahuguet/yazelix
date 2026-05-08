@@ -178,7 +178,7 @@ The `yzpp` raw pipe path still accepts generated JSON through `name "transient_p
 - Defended by: `nu nushell/scripts/dev/test_yzx_commands.nu`
 - Defended by: `nu nushell/scripts/dev/test_yzx_popup_commands.nu`
 - Defended by: `nu nushell/scripts/dev/test_zellij_plugin_contracts.nu`
-- Defended by: `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml transient_pane_contract`
+- Defended by: `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml transient_pane_contract`
 - Defended by: `yzx_repo_validator validate-contracts`
 
 ## Open Questions

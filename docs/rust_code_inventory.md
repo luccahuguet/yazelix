@@ -36,7 +36,6 @@ Detailed budget families:
 | `core_integration_tests` | 19 | 5,709 | 4,500 | High-value tests, but several files are broad family buckets |
 | `maintainer_tooling_and_validators` | 23 | 10,387 | 9,000 | Keep in repo; config-surface, upgrade-contract, installed-runtime, Nix interface, package/profile, and helper IO validators now have private domains |
 | `maintainer_tests` | 1 | 239 | 239 | Small release/upgrade contract test surface |
-| `pane_orchestrator_plugin` | 25 | 4,841 | 4,300 | Extension surface; refactor runtime config, timer/status/sidebar modules before public extraction |
 
 ## Largest Files
 

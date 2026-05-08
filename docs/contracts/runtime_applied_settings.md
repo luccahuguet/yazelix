@@ -132,7 +132,7 @@ The UI should prefer specific remediation text from native-config status when a 
 - `yzx dev rust test config_ui`
 - `yzx dev rust test doctor_commands`
 - `yzx dev rust test zellij_materialization`
-- `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml`
+- `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml`
 - `yzx dev build_pane_orchestrator --sync`
 - `yzx_repo_validator validate-pane-orchestrator-sync`
 - `yzx_repo_validator validate-contracts`
