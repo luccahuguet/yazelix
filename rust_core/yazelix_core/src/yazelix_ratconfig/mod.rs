@@ -13,5 +13,8 @@ pub use model::{
     ConfigUiApplyStatus, ConfigUiDiagnostic, ConfigUiField, ConfigUiModel, ConfigUiNativeStatus,
     ConfigUiPathOwner, ConfigUiSidecar, ConfigUiValueState,
 };
-pub(crate) use model::{UiRowRef, owner_label, visible_rows_for_tab_search};
+pub(crate) use model::{
+    UiRowRef, effective_string_config, effective_string_list_config, get_json_path, owner_label,
+    render_json_edit_value, render_json_value, tab_index, visible_rows_for_tab_search,
+};
 pub(crate) use render::*;

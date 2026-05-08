@@ -1,3 +1,4 @@
+use serde_json::Value as JsonValue;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -55,6 +56,12 @@ pub(crate) fn visible_rows_for_tab_search(
         .map(UiRowRef::Field)
         .filter(|row| row_matches_search(model, *row, &search))
         .collect()
+}
+
+pub(crate) fn tab_index(tabs: &[String], tab: &str) -> usize {
+    tabs.iter()
+        .position(|candidate| candidate == tab)
+        .unwrap_or(tabs.len())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -189,4 +196,80 @@ fn search_matches<'a>(search: &str, candidates: impl IntoIterator<Item = &'a str
         || candidates
             .into_iter()
             .any(|candidate| candidate.to_ascii_lowercase().contains(search))
+}
+
+pub(crate) fn get_json_path<'a>(value: &'a JsonValue, path: &str) -> Option<&'a JsonValue> {
+    let mut current = value;
+    for part in path.split('.') {
+        current = current.as_object()?.get(part)?;
+    }
+    Some(current)
+}
+
+pub(crate) fn effective_json_path<'a>(
+    active: &'a JsonValue,
+    default: &'a JsonValue,
+    path: &str,
+) -> Option<&'a JsonValue> {
+    get_json_path(active, path).or_else(|| get_json_path(default, path))
+}
+
+pub(crate) fn effective_string_config(
+    active: &JsonValue,
+    default: &JsonValue,
+    path: &str,
+    fallback: &str,
+) -> String {
+    effective_json_path(active, default, path)
+        .and_then(JsonValue::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or(fallback)
+        .to_string()
+}
+
+pub(crate) fn effective_string_list_config(
+    active: &JsonValue,
+    default: &JsonValue,
+    path: &str,
+    fallback: &[&str],
+) -> Vec<String> {
+    let values = effective_json_path(active, default, path)
+        .and_then(JsonValue::as_array)
+        .map(|values| {
+            values
+                .iter()
+                .filter_map(JsonValue::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(str::to_string)
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    if values.is_empty() {
+        fallback.iter().map(|value| (*value).to_string()).collect()
+    } else {
+        values
+    }
+}
+
+pub(crate) fn render_json_value(value: &JsonValue) -> String {
+    match value {
+        JsonValue::Null => "null".to_string(),
+        JsonValue::Bool(value) => value.to_string(),
+        JsonValue::Number(value) => value.to_string(),
+        JsonValue::String(value) => format!("{value:?}"),
+        JsonValue::Array(values) => {
+            if values.len() <= 4 {
+                serde_json::to_string(values)
+                    .unwrap_or_else(|_| format!("[{} items]", values.len()))
+            } else {
+                format!("[{} items]", values.len())
+            }
+        }
+        JsonValue::Object(object) => format!("{{{} keys}}", object.len()),
+    }
+}
+
+pub(crate) fn render_json_edit_value(value: &JsonValue) -> String {
+    serde_json::to_string(value).unwrap_or_else(|_| render_json_value(value))
 }
