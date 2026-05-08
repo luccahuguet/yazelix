@@ -1,10 +1,18 @@
-//! Active-tab workspace/session state parsing shared by Yazelix command adapters.
+//! Active-tab workspace/session request and response helpers shared by Yazelix command adapters.
 
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Value, json};
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub(crate) struct SidebarState {
+    pub(crate) yazi_id: String,
+    pub(crate) cwd: String,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub(crate) struct SidebarYaziRegistration {
+    pub(crate) pane_id: String,
     pub(crate) yazi_id: String,
     pub(crate) cwd: String,
 }
@@ -21,6 +29,60 @@ impl WorkspaceRetargetResult {
     pub(crate) fn status(&self) -> &str {
         self.status.as_str()
     }
+}
+
+pub(crate) fn workspace_tab_name(workspace_root: &Path) -> String {
+    workspace_root
+        .file_name()
+        .and_then(|name| name.to_str())
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .unwrap_or("unnamed")
+        .to_string()
+}
+
+pub(crate) fn workspace_retarget_payload(
+    workspace_root: &Path,
+    cd_focused_pane: bool,
+    editor_kind: Option<&str>,
+    sidebar_yazi: Option<&SidebarYaziRegistration>,
+) -> String {
+    json!({
+        "workspace_root": workspace_root.display().to_string(),
+        "cd_focused_pane": cd_focused_pane,
+        "editor": editor_kind
+            .map(str::trim)
+            .filter(|editor| !editor.is_empty()),
+        "sidebar_yazi": sidebar_yazi,
+    })
+    .to_string()
+}
+
+pub(crate) fn managed_editor_open_payload(
+    editor_kind: &str,
+    file_paths: &[PathBuf],
+    working_dir: &Path,
+) -> String {
+    let file_path_strings = file_paths
+        .iter()
+        .map(|path| path.display().to_string())
+        .collect::<Vec<_>>();
+    let first_file_path = file_path_strings.first().cloned().unwrap_or_default();
+
+    json!({
+        "editor": editor_kind,
+        "file_path": first_file_path,
+        "file_paths": file_path_strings,
+        "working_dir": working_dir.display().to_string(),
+    })
+    .to_string()
+}
+
+pub(crate) fn open_terminal_in_cwd_payload(cwd: &Path) -> String {
+    json!({
+        "cwd": cwd.display().to_string(),
+    })
+    .to_string()
 }
 
 #[derive(Debug, Deserialize)]

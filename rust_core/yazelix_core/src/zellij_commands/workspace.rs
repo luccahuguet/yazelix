@@ -9,7 +9,11 @@ use crate::control_plane::{
 use crate::pane_orchestrator_client::run_pane_orchestrator_command;
 use crate::session_facts::compute_session_facts_from_env;
 use crate::workspace_commands::{compute_integration_facts_from_env, sync_sidebar_to_directory};
-use crate::workspace_session::{WorkspaceRetargetResult, parse_workspace_retarget_response};
+use crate::workspace_session::{
+    SidebarYaziRegistration, WorkspaceRetargetResult, managed_editor_open_payload,
+    open_terminal_in_cwd_payload, parse_workspace_retarget_response, workspace_retarget_payload,
+    workspace_tab_name,
+};
 use serde_json::{Value, json};
 use std::env;
 use std::ffi::OsString;
@@ -53,13 +57,6 @@ enum ManagedEditorOpenStatus {
     Ok,
     Missing,
     NotReady,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct CurrentSidebarYaziRegistration {
-    pane_id: String,
-    yazi_id: String,
-    cwd: String,
 }
 
 fn parse_zellij_open_editor_args(args: &[String]) -> Result<ZellijOpenEditorArgs, CoreError> {
@@ -279,20 +276,6 @@ fn resolve_editor_working_dir(target_path: &Path) -> PathBuf {
     }
 }
 
-fn workspace_tab_name(workspace_root: &std::path::Path) -> String {
-    workspace_root
-        .file_name()
-        .and_then(|name| name.to_str())
-        .map(str::trim)
-        .filter(|name| !name.is_empty())
-        .unwrap_or("unnamed")
-        .to_string()
-}
-
-fn workspace_retarget_status(result: &WorkspaceRetargetResult) -> &str {
-    result.status()
-}
-
 fn hide_sidebar_if_visible() -> Result<(), CoreError> {
     let response = run_pane_orchestrator_command("get_active_tab_session_state", "")?;
     let state = serde_json::from_str::<Value>(response.trim()).map_err(|source| {
@@ -353,30 +336,13 @@ fn retarget_workspace_dir_without_focused_cd(
     target_dir: &Path,
     editor_kind: Option<&str>,
 ) -> Result<WorkspaceRetargetResult, CoreError> {
-    let payload = json!({
-        "workspace_root": target_dir.display().to_string(),
-        "cd_focused_pane": false,
-        "editor": editor_kind
-            .map(str::trim)
-            .filter(|editor| !editor.is_empty())
-            .map(|editor| Value::String(editor.to_string()))
-            .unwrap_or(Value::Null),
-        "sidebar_yazi": current_sidebar_yazi_registration()
-            .map(|registration| {
-                json!({
-                    "pane_id": registration.pane_id,
-                    "yazi_id": registration.yazi_id,
-                    "cwd": registration.cwd,
-                })
-            })
-            .unwrap_or(Value::Null),
-    })
-    .to_string();
+    let sidebar_yazi = current_sidebar_yazi_registration();
+    let payload = workspace_retarget_payload(target_dir, false, editor_kind, sidebar_yazi.as_ref());
     let response = run_pane_orchestrator_command("retarget_workspace", &payload)?;
     Ok(parse_workspace_retarget_response(&response))
 }
 
-fn current_sidebar_yazi_registration() -> Option<CurrentSidebarYaziRegistration> {
+fn current_sidebar_yazi_registration() -> Option<SidebarYaziRegistration> {
     let yazi_id = env::var("YAZI_ID").ok()?;
     let yazi_id = yazi_id.trim();
     if yazi_id.is_empty() {
@@ -391,7 +357,7 @@ fn current_sidebar_yazi_registration() -> Option<CurrentSidebarYaziRegistration>
         return None;
     }
 
-    Some(CurrentSidebarYaziRegistration {
+    Some(SidebarYaziRegistration {
         pane_id,
         yazi_id: yazi_id.to_string(),
         cwd,
@@ -539,18 +505,7 @@ fn open_files_in_managed_editor(
     file_paths: &[PathBuf],
     working_dir: &Path,
 ) -> Result<ManagedEditorOpenStatus, CoreError> {
-    let file_path_strings = file_paths
-        .iter()
-        .map(|path| path.display().to_string())
-        .collect::<Vec<_>>();
-    let first_file_path = file_path_strings.first().cloned().unwrap_or_default();
-    let payload = json!({
-        "editor": editor_kind,
-        "file_path": first_file_path,
-        "file_paths": file_path_strings,
-        "working_dir": working_dir.display().to_string(),
-    })
-    .to_string();
+    let payload = managed_editor_open_payload(editor_kind, file_paths, working_dir);
 
     for retry_index in 0..=OPEN_FILE_ORCHESTRATOR_RETRY_DELAYS_MS.len() {
         match run_pane_orchestrator_command("open_file", &payload) {
@@ -617,12 +572,7 @@ pub fn run_zellij_retarget(args: &[String]) -> Result<i32, CoreError> {
     let target_dir = resolve_target_dir(&target)?;
     let tab_name = workspace_tab_name(&target_dir);
 
-    let payload = json!({
-        "workspace_root": target_dir.display().to_string(),
-        "cd_focused_pane": false,
-        "editor": parsed.editor.filter(|e| !e.trim().is_empty()),
-    })
-    .to_string();
+    let payload = workspace_retarget_payload(&target_dir, false, parsed.editor.as_deref(), None);
 
     let response = run_pane_orchestrator_command("retarget_workspace", &payload)?;
     let result = parse_workspace_retarget_response(&response);
@@ -763,7 +713,7 @@ pub fn run_zellij_open_editor(args: &[String]) -> Result<i32, CoreError> {
     if let Ok(retarget_result) =
         retarget_workspace_dir_without_focused_cd(&editor_working_dir, None)
     {
-        if workspace_retarget_status(&retarget_result) == "ok" {
+        if retarget_result.status() == "ok" {
             if let Some(sidebar_state) = retarget_result.sidebar_state.as_ref() {
                 let _ = sync_sidebar_to_directory(
                     &integration_facts.ya_command,
@@ -815,7 +765,7 @@ pub fn run_zellij_open_editor_cwd(args: &[String]) -> Result<i32, CoreError> {
     let retarget_result =
         retarget_workspace_without_focused_cd(&target_dir, Some(editor_kind.as_str()))?;
     let mut created_editor_pane = false;
-    let status = workspace_retarget_status(&retarget_result);
+    let status = retarget_result.status();
     if status != "ok" {
         let reason = retarget_result.reason.as_deref().unwrap_or(status);
         return Err(CoreError::classified(
@@ -890,10 +840,7 @@ pub fn run_zellij_open_terminal(args: &[String]) -> Result<i32, CoreError> {
 
     let target_dir = resolve_target_dir(&target)?;
 
-    let payload = json!({
-        "cwd": target_dir.display().to_string(),
-    })
-    .to_string();
+    let payload = open_terminal_in_cwd_payload(&target_dir);
 
     let response = run_pane_orchestrator_command("open_terminal_in_cwd", &payload)?;
     if response.trim() != "ok" {
@@ -910,12 +857,7 @@ pub fn run_zellij_open_terminal(args: &[String]) -> Result<i32, CoreError> {
         ));
     }
 
-    let retarget_payload = json!({
-        "workspace_root": target_dir.display().to_string(),
-        "cd_focused_pane": false,
-        "editor": None::<String>,
-    })
-    .to_string();
+    let retarget_payload = workspace_retarget_payload(&target_dir, false, None, None);
 
     let retarget_response = run_pane_orchestrator_command("retarget_workspace", &retarget_payload)?;
     let retarget_result = parse_workspace_retarget_response(&retarget_response);

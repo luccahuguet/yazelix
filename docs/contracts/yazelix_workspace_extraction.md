@@ -86,13 +86,13 @@ The current extraction gate is blocked by adapter thickness, not by the name or 
 
 The smallest reusable pieces are already visible:
 
-- `workspace_session.rs` owns typed parsing for active-tab workspace roots, retarget responses, and sidebar identity
+- `workspace_session.rs` owns typed parsing for active-tab workspace roots, retarget responses, sidebar identity, and pure workspace request payload shaping
 - `pane_orchestrator_client.rs` owns the Zellij plugin pipe transport and aliases
 
 Those pieces are not enough for a standalone package. The surrounding product adapters still own the behavior users actually invoke:
 
 - `zellij_commands/pipe.rs` owns Zellij pipe diagnostics and workspace-root reads, but still assumes Yazelix's pane-orchestrator alias
-- `zellij_commands/workspace.rs` owns workspace retarget, Yazi-to-editor open flow, editor pane creation, terminal pane opening, sidebar hiding, and runtime editor env construction
+- `zellij_commands/workspace.rs` owns workspace command orchestration, Yazi-to-editor open flow, editor pane creation, terminal pane opening, sidebar hiding, and runtime editor env construction while delegating pure request payload shaping to `workspace_session.rs`
 - `zellij_commands.rs` still carries the broad status/cache test surface and public command export shell
 - `workspace_commands.rs` mixes public `yzx cwd`, `yzx reveal`, `yzx popup`, sidebar refresh, zoxide/path resolution, managed editor kind detection, and Yazi `emit-to`
 - launch and restart adapters still provide the environment and session facts that workspace commands consume
@@ -143,7 +143,7 @@ The first extraction step stays inside the repository:
 
 No public package should be cut until the internal API can be used by Yazelix without exporting product-only assumptions.
 
-The next useful private split is the Zellij/workspace command boundary: keep status/cache widgets, popup commands, Yazi `emit-to`, and runtime env construction local, while isolating workspace request/response shaping and pane-orchestrator calls behind a small module that can be measured again.
+The next useful private split is the remaining status/cache and Yazelix adapter boundary: keep status/cache widgets, popup commands, Yazi `emit-to`, and runtime env construction local, while continuing to make the workspace request layer small enough to measure independently.
 
 ## Relationship To Other Components
 

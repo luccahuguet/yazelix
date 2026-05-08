@@ -1,7 +1,7 @@
 [contract]
-measured_total_loc = 72752
+measured_total_loc = 72756
 measured_total_file_count = 148
-current_total_loc_max = 72752
+current_total_loc_max = 72756
 current_total_file_count_max = 148
 hard_target_loc = 60000
 
@@ -107,9 +107,9 @@ allowed_paths = [
 id = "core_workspace_and_pane_integration"
 status = "canonical"
 owner_bead = "yazelix-w032.3"
-measured_loc = 16559
+measured_loc = 16563
 measured_files = 24
-max_loc = 16559
+max_loc = 16563
 target_loc = 11000
 max_files = 24
 allowed_paths = [
