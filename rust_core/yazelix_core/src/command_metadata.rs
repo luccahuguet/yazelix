@@ -1,8 +1,6 @@
 use crate::bridge::{CoreError, ErrorClass};
-use crate::public_command_surface::{
-    YzxCommandMetadata, YzxCommandParameter, YzxParameterKind,
-    yzx_command_metadata as public_yzx_command_metadata,
-};
+pub use crate::public_command_surface::yzx_command_metadata;
+use crate::public_command_surface::{YzxCommandMetadata, YzxCommandParameter, YzxParameterKind};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
@@ -63,10 +61,6 @@ struct YzxExternFileFingerprint {
 const YZX_EXTERN_BRIDGE_STATE_SCHEMA_VERSION: u8 = 3;
 const YZX_EXTERN_BRIDGE_RENDERER_VERSION: &str = "v3-rust-sync";
 const YZX_EXTERN_BRIDGE_PLACEHOLDER: &str = "# Yazelix generated Nushell extern bridge (empty)\n";
-
-pub fn yzx_command_metadata() -> Vec<YzxCommandMetadata> {
-    public_yzx_command_metadata()
-}
 
 pub fn yzx_command_metadata_data() -> YzxCommandMetadataData {
     let commands = yzx_command_metadata();

@@ -73,14 +73,8 @@ pub struct YzxInternalNuRoutePlan<'a> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum YzxUnknownSubcommandBehavior {
-    RouteRoot,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct YzxCommandLeaf {
     metadata: YzxCommandMetadata,
-    tokens_after_root: &'static [&'static str],
     module_relative_path: &'static [&'static str],
 }
 
@@ -93,12 +87,7 @@ struct YzxRustControlFamily {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct YzxInternalNuFamily {
     root_token: &'static str,
-    commands: &'static [YzxCommandLeaf],
-    root_command_index: Option<usize>,
-    help_token_routes_to_root_empty_tail: bool,
-    help_flags_route_to_root_with_tail: bool,
-    unknown_subcommand_behavior: YzxUnknownSubcommandBehavior,
-    required_subcommands: &'static [&'static str],
+    command: YzxCommandLeaf,
 }
 
 const VERSION_FLAGS: &[YzxCommandParameter] = &[
@@ -744,10 +733,8 @@ const MENU_COMMAND: YzxCommandLeaf = leaf(
         None,
         None,
     ),
-    &[],
     YZX_MENU_RELATIVE_PATH,
 );
-const MENU_COMMANDS: &[YzxCommandLeaf] = &[MENU_COMMAND];
 
 const POPUP_COMMAND: YzxCommandMetadata = metadata(
     "yzx popup",
@@ -789,15 +776,7 @@ const REVEAL_COMMAND: YzxCommandMetadata = metadata(
 );
 const REVEAL_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[REVEAL_COMMAND];
 
-const INTERNAL_NU_FAMILIES: &[YzxInternalNuFamily] = &[internal_family(
-    "menu",
-    MENU_COMMANDS,
-    Some(0),
-    false,
-    false,
-    YzxUnknownSubcommandBehavior::RouteRoot,
-    &[],
-)];
+const INTERNAL_NU_FAMILIES: &[YzxInternalNuFamily] = &[internal_family("menu", MENU_COMMAND)];
 
 pub fn yzx_command_metadata() -> Vec<YzxCommandMetadata> {
     let mut commands = vec![ROOT_COMMAND];
@@ -805,7 +784,7 @@ pub fn yzx_command_metadata() -> Vec<YzxCommandMetadata> {
         commands.extend(family.commands.iter().copied());
     }
     for family in INTERNAL_NU_FAMILIES {
-        commands.extend(family.commands.iter().map(|command| command.metadata));
+        commands.push(family.command.metadata);
     }
     commands.sort_by(|left, right| left.name.cmp(right.name));
     commands
@@ -838,7 +817,7 @@ pub fn classify_yzx_root_route(argv: &[String]) -> Result<YzxPublicRootRoute<'_>
         return Ok(YzxPublicRootRoute::InternalNu(plan_internal_nu_route(
             family,
             &argv[1..],
-        )?));
+        )));
     }
 
     Err(CoreError::classified(
@@ -919,12 +898,10 @@ const fn rest(name: &'static str) -> YzxCommandParameter {
 
 const fn leaf(
     metadata: YzxCommandMetadata,
-    tokens_after_root: &'static [&'static str],
     module_relative_path: &'static [&'static str],
 ) -> YzxCommandLeaf {
     YzxCommandLeaf {
         metadata,
-        tokens_after_root,
         module_relative_path,
     }
 }
@@ -939,126 +916,22 @@ const fn rust_control_family(
     }
 }
 
-const fn internal_family(
-    root_token: &'static str,
-    commands: &'static [YzxCommandLeaf],
-    root_command_index: Option<usize>,
-    help_token_routes_to_root_empty_tail: bool,
-    help_flags_route_to_root_with_tail: bool,
-    unknown_subcommand_behavior: YzxUnknownSubcommandBehavior,
-    required_subcommands: &'static [&'static str],
-) -> YzxInternalNuFamily {
+const fn internal_family(root_token: &'static str, command: YzxCommandLeaf) -> YzxInternalNuFamily {
     YzxInternalNuFamily {
         root_token,
-        commands,
-        root_command_index,
-        help_token_routes_to_root_empty_tail,
-        help_flags_route_to_root_with_tail,
-        unknown_subcommand_behavior,
-        required_subcommands,
+        command,
     }
 }
 
 fn plan_internal_nu_route<'a>(
     family: &'static YzxInternalNuFamily,
     argv: &'a [String],
-) -> Result<YzxInternalNuRoutePlan<'a>, CoreError> {
-    if let Some(command) = match_subcommand(family, argv) {
-        let tail = &argv[command.tokens_after_root.len()..];
-        return Ok(plan_route(command, tail));
-    }
-
-    if argv.is_empty() {
-        if let Some(command) = root_command(family) {
-            return Ok(plan_route(command, argv));
-        }
-        return Err(required_subcommand_error(
-            family.root_token,
-            family.required_subcommands,
-        ));
-    }
-
-    if family.help_token_routes_to_root_empty_tail && matches!(first_arg(argv), Some("help")) {
-        if let Some(command) = root_command(family) {
-            return Ok(plan_route(command, &[]));
-        }
-    }
-
-    if family.help_flags_route_to_root_with_tail
-        && matches!(first_arg(argv), Some("-h") | Some("--help"))
-    {
-        if let Some(command) = root_command(family) {
-            return Ok(plan_route(command, argv));
-        }
-    }
-
-    if !family.required_subcommands.is_empty() && root_command(family).is_none() {
-        return Err(required_subcommand_error(
-            family.root_token,
-            family.required_subcommands,
-        ));
-    }
-
-    match family.unknown_subcommand_behavior {
-        YzxUnknownSubcommandBehavior::RouteRoot => {
-            let command =
-                root_command(family).expect("route-root families must define a root command");
-            Ok(plan_route(command, argv))
-        }
-    }
-}
-
-fn root_command(family: &'static YzxInternalNuFamily) -> Option<&'static YzxCommandLeaf> {
-    family
-        .root_command_index
-        .map(|index| &family.commands[index])
-}
-
-fn match_subcommand(
-    family: &'static YzxInternalNuFamily,
-    argv: &[String],
-) -> Option<&'static YzxCommandLeaf> {
-    family
-        .commands
-        .iter()
-        .filter(|command| {
-            !command.tokens_after_root.is_empty()
-                && tokens_match_prefix(command.tokens_after_root, argv)
-        })
-        .max_by_key(|command| command.tokens_after_root.len())
-}
-
-fn tokens_match_prefix(expected: &[&str], argv: &[String]) -> bool {
-    argv.len() >= expected.len()
-        && expected
-            .iter()
-            .zip(argv.iter())
-            .all(|(expected, actual)| *expected == actual.as_str())
-}
-
-fn plan_route<'a>(
-    command: &'static YzxCommandLeaf,
-    tail: &'a [String],
 ) -> YzxInternalNuRoutePlan<'a> {
     YzxInternalNuRoutePlan {
-        module_relative_path: command.module_relative_path,
-        command_name: command.metadata.name,
-        tail,
+        module_relative_path: family.command.module_relative_path,
+        command_name: family.command.metadata.name,
+        tail: argv,
     }
-}
-
-fn first_arg(argv: &[String]) -> Option<&str> {
-    argv.first().map(String::as_str)
-}
-
-fn required_subcommand_error(route: &str, expected: &[&str]) -> CoreError {
-    CoreError::classified(
-        ErrorClass::Usage,
-        "missing_subcommand",
-        format!("yzx {route} requires one of: {}", expected.join(", ")),
-        format!("Run `yzx {route} --help` or `yzx --help` to see supported subcommands."),
-        json!({ "route": route, "expected": expected }),
-    )
 }
 
 // Test lane: default
