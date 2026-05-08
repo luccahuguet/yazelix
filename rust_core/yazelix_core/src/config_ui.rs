@@ -16,7 +16,8 @@ use crate::native_config_status::{
 use crate::runtime_apply_mode::RuntimeApplyMode;
 use crate::runtime_component_enabled;
 use crate::settings_jsonc_patch::{
-    SettingsJsoncPatchMutation, set_settings_jsonc_value_text, unset_settings_jsonc_value_text,
+    SettingsJsoncPatchMutation, SettingsJsoncPatchOutcome, set_settings_jsonc_value_text,
+    unset_settings_jsonc_value_text,
 };
 use crate::settings_surface::{SETTINGS_SCHEMA_FILENAME, render_default_settings_jsonc};
 use crate::settings_surface::{
@@ -758,22 +759,7 @@ impl ConfigUiApp {
         let raw = self.read_edit_target_or_default(&target)?;
         let outcome =
             set_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file, value)?;
-        let mut apply_status = None;
-        let mut apply_error = None;
-        if outcome.changed() {
-            self.validate_patched_edit_target(&target, &outcome.text)?;
-            write_settings_edit(&target.path, &outcome.text)?;
-            match apply_after_field_write(&self.request, &self.model, setting_path) {
-                Ok(status) => apply_status = Some(status),
-                Err(error) => apply_error = Some(apply_error_notice(&error)),
-            }
-        }
-        self.reload_model_preserving_selection(setting_path)?;
-        Ok(ConfigUiWriteOutcome {
-            mutation: outcome.mutation,
-            apply_status,
-            apply_error,
-        })
+        self.finish_field_write(setting_path, &target, outcome)
     }
 
     fn unset_field_value(&mut self, setting_path: &str) -> Result<ConfigUiWriteOutcome, CoreError> {
@@ -781,6 +767,15 @@ impl ConfigUiApp {
         let target = self.edit_target(setting_path);
         let raw = self.read_edit_target_or_default(&target)?;
         let outcome = unset_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file)?;
+        self.finish_field_write(setting_path, &target, outcome)
+    }
+
+    fn finish_field_write(
+        &mut self,
+        setting_path: &str,
+        target: &ConfigUiEditTarget,
+        outcome: SettingsJsoncPatchOutcome,
+    ) -> Result<ConfigUiWriteOutcome, CoreError> {
         let mut apply_status = None;
         let mut apply_error = None;
         if outcome.changed() {
@@ -987,69 +982,6 @@ impl ConfigUiApp {
         rows
     }
 
-    pub(crate) fn render_row(&self, row: UiRowRef) -> Line<'static> {
-        match row {
-            UiRowRef::Field(index) => {
-                let field = &self.model.fields[index];
-                Line::from(vec![
-                    Span::styled(
-                        fixed_label(state_label(field.state), 9),
-                        state_style(field.state),
-                    ),
-                    Span::styled(
-                        fixed_label(&field.apply_status.summary, 13),
-                        apply_status_style(&field.apply_status),
-                    ),
-                    Span::styled(truncate(&field.path, 34), config_key_style()),
-                    Span::styled(
-                        format!(" {}", truncate(&field.current_value, 22)),
-                        Style::default().fg(Color::Gray),
-                    ),
-                ])
-            }
-            UiRowRef::Sidecar(index) => {
-                let sidecar = &self.model.sidecars[index];
-                let status = if sidecar.present {
-                    "present"
-                } else {
-                    "missing"
-                };
-                let style = if sidecar.present {
-                    sidecar_status_style(true)
-                } else {
-                    sidecar_status_style(false)
-                };
-                Line::from(vec![
-                    Span::styled(fixed_label(status, 9), style),
-                    Span::styled(sidecar.name.clone(), config_key_style()),
-                ])
-            }
-            UiRowRef::Diagnostic(index) => {
-                let diagnostic = &self.model.diagnostics[index];
-                let style = if diagnostic.blocking {
-                    Style::default().fg(Color::Red)
-                } else {
-                    Style::default().fg(Color::Yellow)
-                };
-                Line::from(vec![
-                    Span::styled(fixed_label(&diagnostic.status, 9), style),
-                    Span::styled(truncate(&diagnostic.path, 42), config_key_style()),
-                ])
-            }
-            UiRowRef::NativeStatus(index) => {
-                let status = &self.model.native_config_statuses[index];
-                Line::from(vec![
-                    Span::styled(fixed_label(&status.status, 24), native_status_style(status)),
-                    Span::styled(truncate(&status.surface, 36), config_key_style()),
-                    Span::styled(
-                        format!(" {}", truncate(&status.label, 42)),
-                        Style::default().fg(Color::Gray),
-                    ),
-                ])
-            }
-        }
-    }
-
     pub(crate) fn render_details(&self, row: UiRowRef) -> Vec<Line<'static>> {
         match row {
             UiRowRef::Field(index) => {
@@ -1171,36 +1103,10 @@ impl ConfigUiApp {
 
 fn field_detail_lines(field: &ConfigUiField) -> Vec<Line<'static>> {
     if field.path == ZELLIJ_KEYBINDINGS_FIELD_PATH {
-        return zellij_keybinding_detail_lines(field);
+        zellij_keybinding_detail_lines(field)
+    } else {
+        default_field_detail_lines(field)
     }
-
-    let mut lines = vec![
-        Line::from(Span::styled(
-            field.path.clone(),
-            config_key_style().add_modifier(Modifier::BOLD),
-        )),
-        Line::from(""),
-        detail_line("state", state_label(field.state)),
-        detail_line("current", &field.current_value),
-        detail_line("default", &field.default_value),
-        detail_line("type", &field.kind),
-        detail_line("apply", &field.apply_status.label),
-        detail_line("active", &field.apply_status.detail),
-    ];
-    if !field.validation.is_empty() {
-        lines.push(detail_line("validation", &field.validation));
-    }
-    if !field.allowed_values.is_empty() {
-        lines.push(detail_line("allowed", &field.allowed_values.join(", ")));
-    }
-    if field.rebuild_required {
-        lines.push(detail_line("rebuild", "required"));
-    }
-    if !field.description.is_empty() {
-        lines.push(Line::from(""));
-        lines.push(Line::from(field.description.clone()));
-    }
-    lines
 }
 
 fn write_notice_text(verb: &str, path: &str, outcome: &ConfigUiWriteOutcome) -> String {
@@ -1416,205 +1322,6 @@ fn zellij_keybinding_keys_label(keys: &[impl AsRef<str>]) -> String {
             .collect::<Vec<_>>()
             .join(", ")
     }
-}
-
-fn single_choice_detail_lines(
-    field: &ConfigUiField,
-    edit: &ConfigUiEditState,
-) -> Vec<Line<'static>> {
-    let selected_value = edit.input.as_str();
-    let mut lines = vec![
-        Line::from(Span::styled(
-            field.path.clone(),
-            config_key_style().add_modifier(Modifier::BOLD),
-        )),
-        Line::from(""),
-        detail_line("selected", selected_value),
-        Line::from(""),
-    ];
-
-    for (index, value) in field.allowed_values.iter().enumerate() {
-        let highlighted = index
-            == edit
-                .choice_index
-                .min(field.allowed_values.len().saturating_sub(1));
-        let selected = value == selected_value;
-        let selector_style = if highlighted {
-            Style::default()
-                .fg(Color::Yellow)
-                .add_modifier(Modifier::BOLD)
-        } else {
-            Style::default().fg(Color::Gray)
-        };
-        let marker_style = if selected {
-            Style::default()
-                .fg(Color::Green)
-                .add_modifier(Modifier::BOLD)
-        } else {
-            Style::default().fg(Color::Gray)
-        };
-        let value_style = if highlighted {
-            Style::default()
-                .fg(Color::White)
-                .add_modifier(Modifier::BOLD)
-        } else if selected {
-            Style::default().fg(Color::White)
-        } else {
-            Style::default().fg(Color::Gray)
-        };
-        lines.push(Line::from(vec![
-            Span::styled(if highlighted { "> " } else { "  " }, selector_style),
-            Span::styled(if selected { "(x) " } else { "( ) " }, marker_style),
-            Span::styled(value.clone(), value_style),
-        ]));
-    }
-
-    lines
-}
-
-fn multi_choice_detail_lines(
-    field: &ConfigUiField,
-    edit: &ConfigUiEditState,
-) -> Vec<Line<'static>> {
-    let enabled_values = parse_string_list_values(field, &edit.input).unwrap_or_default();
-    let enabled_set = enabled_values.iter().cloned().collect::<BTreeSet<_>>();
-    let mut lines = vec![
-        Line::from(Span::styled(
-            field.path.clone(),
-            config_key_style().add_modifier(Modifier::BOLD),
-        )),
-        Line::from(""),
-        detail_line(
-            "enabled",
-            &format!("{}/{}", enabled_set.len(), field.allowed_values.len()),
-        ),
-        Line::from(""),
-    ];
-
-    for (index, value) in field.allowed_values.iter().enumerate() {
-        let selected = index
-            == edit
-                .choice_index
-                .min(field.allowed_values.len().saturating_sub(1));
-        let enabled = enabled_set.contains(value);
-        let selector_style = if selected {
-            Style::default()
-                .fg(Color::Yellow)
-                .add_modifier(Modifier::BOLD)
-        } else {
-            Style::default().fg(Color::Gray)
-        };
-        let marker_style = if enabled {
-            Style::default()
-                .fg(Color::Green)
-                .add_modifier(Modifier::BOLD)
-        } else {
-            Style::default().fg(Color::Gray)
-        };
-        let value_style = if selected {
-            Style::default()
-                .fg(Color::White)
-                .add_modifier(Modifier::BOLD)
-        } else if enabled {
-            Style::default().fg(Color::White)
-        } else {
-            Style::default().fg(Color::Gray)
-        };
-        lines.push(Line::from(vec![
-            Span::styled(if selected { "> " } else { "  " }, selector_style),
-            Span::styled(if enabled { "[x] " } else { "[ ] " }, marker_style),
-            Span::styled(value.clone(), value_style),
-        ]));
-    }
-
-    lines
-}
-
-fn sidecar_detail_lines(sidecar: &ConfigUiSidecar) -> Vec<Line<'static>> {
-    vec![
-        Line::from(Span::styled(
-            sidecar.name.clone(),
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
-        )),
-        Line::from(""),
-        detail_line("path", &sidecar.path.display().to_string()),
-        detail_line(
-            "state",
-            if sidecar.present {
-                "present"
-            } else {
-                "missing"
-            },
-        ),
-        detail_line("owner", owner_label(sidecar.owner)),
-        detail_line(
-            "write",
-            if sidecar.read_only {
-                "read-only"
-            } else {
-                "writable or absent"
-            },
-        ),
-    ]
-}
-
-fn diagnostic_detail_lines(diagnostic: &ConfigUiDiagnostic) -> Vec<Line<'static>> {
-    let mut lines = vec![
-        Line::from(Span::styled(
-            diagnostic.headline.clone(),
-            Style::default()
-                .fg(if diagnostic.blocking {
-                    Color::Red
-                } else {
-                    Color::Yellow
-                })
-                .add_modifier(Modifier::BOLD),
-        )),
-        Line::from(""),
-        detail_line("path", &diagnostic.path),
-        detail_line("status", &diagnostic.status),
-        detail_line("blocking", if diagnostic.blocking { "yes" } else { "no" }),
-    ];
-    lines.push(Line::from(""));
-    for detail in &diagnostic.detail_lines {
-        lines.push(Line::from(detail.clone()));
-    }
-    lines
-}
-
-fn native_status_detail_lines(status: &ConfigUiNativeStatus) -> Vec<Line<'static>> {
-    let mut lines = vec![
-        Line::from(Span::styled(
-            status.label.clone(),
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
-        )),
-        Line::from(""),
-        detail_line("surface", &status.surface),
-        detail_line("tool", &status.tool),
-        detail_line("status", &status.status),
-        detail_line("description", &status.description),
-        detail_line("allowed action", &status.allowed_action),
-    ];
-    if let Some(path) = &status.active_path {
-        lines.push(detail_line("active path", path));
-    }
-    if let Some(path) = &status.managed_path {
-        lines.push(detail_line("managed path", path));
-    }
-    if !status.native_paths.is_empty() {
-        lines.push(detail_line("native paths", &status.native_paths.join(", ")));
-    }
-    if let Some(path) = &status.generated_path {
-        lines.push(detail_line("generated path", path));
-    }
-    if let Some(reason) = &status.read_only_reason {
-        lines.push(detail_line("read-only", reason));
-    }
-    lines
 }
 
 fn active_config_path(paths: &PrimaryConfigPaths, config_override: Option<&str>) -> PathBuf {

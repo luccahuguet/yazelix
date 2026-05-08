@@ -5,6 +5,7 @@ use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Tabs, Wrap};
+use std::collections::BTreeSet;
 
 const HEADER_HORIZONTAL_PADDING: u16 = 1;
 
@@ -172,7 +173,7 @@ fn render_body(frame: &mut Frame<'_>, app: &mut ConfigUiApp, area: Rect) {
 fn render_list(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect, rows: &[UiRowRef]) {
     let items = rows
         .iter()
-        .map(|row| ListItem::new(app.render_row(*row)))
+        .map(|row| ListItem::new(row_line_for_model(&app.model, *row)))
         .collect::<Vec<_>>();
     let mut state = ListState::default();
     if !items.is_empty() {
@@ -210,6 +211,296 @@ fn render_details(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect, row: Opt
             .wrap(Wrap { trim: false }),
         area,
     );
+}
+
+pub(crate) fn row_line_for_model(model: &ConfigUiModel, row: UiRowRef) -> Line<'static> {
+    match row {
+        UiRowRef::Field(index) => {
+            let field = &model.fields[index];
+            Line::from(vec![
+                Span::styled(
+                    fixed_label(state_label(field.state), 9),
+                    state_style(field.state),
+                ),
+                Span::styled(
+                    fixed_label(&field.apply_status.summary, 13),
+                    apply_status_style(&field.apply_status),
+                ),
+                Span::styled(truncate(&field.path, 34), config_key_style()),
+                Span::styled(
+                    format!(" {}", truncate(&field.current_value, 22)),
+                    Style::default().fg(Color::Gray),
+                ),
+            ])
+        }
+        UiRowRef::Sidecar(index) => {
+            let sidecar = &model.sidecars[index];
+            let status = if sidecar.present {
+                "present"
+            } else {
+                "missing"
+            };
+            Line::from(vec![
+                Span::styled(
+                    fixed_label(status, 9),
+                    sidecar_status_style(sidecar.present),
+                ),
+                Span::styled(sidecar.name.clone(), config_key_style()),
+            ])
+        }
+        UiRowRef::Diagnostic(index) => {
+            let diagnostic = &model.diagnostics[index];
+            let style = if diagnostic.blocking {
+                Style::default().fg(Color::Red)
+            } else {
+                Style::default().fg(Color::Yellow)
+            };
+            Line::from(vec![
+                Span::styled(fixed_label(&diagnostic.status, 9), style),
+                Span::styled(truncate(&diagnostic.path, 42), config_key_style()),
+            ])
+        }
+        UiRowRef::NativeStatus(index) => {
+            let status = &model.native_config_statuses[index];
+            Line::from(vec![
+                Span::styled(fixed_label(&status.status, 24), native_status_style(status)),
+                Span::styled(truncate(&status.surface, 36), config_key_style()),
+                Span::styled(
+                    format!(" {}", truncate(&status.label, 42)),
+                    Style::default().fg(Color::Gray),
+                ),
+            ])
+        }
+    }
+}
+
+pub(crate) fn default_field_detail_lines(field: &ConfigUiField) -> Vec<Line<'static>> {
+    let mut lines = vec![
+        Line::from(Span::styled(
+            field.path.clone(),
+            config_key_style().add_modifier(Modifier::BOLD),
+        )),
+        Line::from(""),
+        detail_line("state", state_label(field.state)),
+        detail_line("current", &field.current_value),
+        detail_line("default", &field.default_value),
+        detail_line("type", &field.kind),
+        detail_line("apply", &field.apply_status.label),
+        detail_line("active", &field.apply_status.detail),
+    ];
+    if !field.validation.is_empty() {
+        lines.push(detail_line("validation", &field.validation));
+    }
+    if !field.allowed_values.is_empty() {
+        lines.push(detail_line("allowed", &field.allowed_values.join(", ")));
+    }
+    if field.rebuild_required {
+        lines.push(detail_line("rebuild", "required"));
+    }
+    if !field.description.is_empty() {
+        lines.push(Line::from(""));
+        lines.push(Line::from(field.description.clone()));
+    }
+    lines
+}
+
+pub(crate) fn single_choice_detail_lines(
+    field: &ConfigUiField,
+    edit: &ConfigUiEditState,
+) -> Vec<Line<'static>> {
+    let selected_value = edit.input.as_str();
+    let mut lines = vec![
+        Line::from(Span::styled(
+            field.path.clone(),
+            config_key_style().add_modifier(Modifier::BOLD),
+        )),
+        Line::from(""),
+        detail_line("selected", selected_value),
+        Line::from(""),
+    ];
+
+    for (index, value) in field.allowed_values.iter().enumerate() {
+        let highlighted = index
+            == edit
+                .choice_index
+                .min(field.allowed_values.len().saturating_sub(1));
+        let selected = value == selected_value;
+        let selector_style = if highlighted {
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::Gray)
+        };
+        let marker_style = if selected {
+            Style::default()
+                .fg(Color::Green)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::Gray)
+        };
+        let value_style = if highlighted {
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD)
+        } else if selected {
+            Style::default().fg(Color::White)
+        } else {
+            Style::default().fg(Color::Gray)
+        };
+        lines.push(Line::from(vec![
+            Span::styled(if highlighted { "> " } else { "  " }, selector_style),
+            Span::styled(if selected { "(x) " } else { "( ) " }, marker_style),
+            Span::styled(value.clone(), value_style),
+        ]));
+    }
+
+    lines
+}
+
+pub(crate) fn multi_choice_detail_lines(
+    field: &ConfigUiField,
+    edit: &ConfigUiEditState,
+) -> Vec<Line<'static>> {
+    let enabled_values = parse_string_list_values(field, &edit.input).unwrap_or_default();
+    let enabled_set = enabled_values.iter().cloned().collect::<BTreeSet<_>>();
+    let mut lines = vec![
+        Line::from(Span::styled(
+            field.path.clone(),
+            config_key_style().add_modifier(Modifier::BOLD),
+        )),
+        Line::from(""),
+        detail_line(
+            "enabled",
+            &format!("{}/{}", enabled_set.len(), field.allowed_values.len()),
+        ),
+        Line::from(""),
+    ];
+
+    for (index, value) in field.allowed_values.iter().enumerate() {
+        let selected = index
+            == edit
+                .choice_index
+                .min(field.allowed_values.len().saturating_sub(1));
+        let enabled = enabled_set.contains(value);
+        let selector_style = if selected {
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::Gray)
+        };
+        let marker_style = if enabled {
+            Style::default()
+                .fg(Color::Green)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::Gray)
+        };
+        let value_style = if selected {
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD)
+        } else if enabled {
+            Style::default().fg(Color::White)
+        } else {
+            Style::default().fg(Color::Gray)
+        };
+        lines.push(Line::from(vec![
+            Span::styled(if selected { "> " } else { "  " }, selector_style),
+            Span::styled(if enabled { "[x] " } else { "[ ] " }, marker_style),
+            Span::styled(value.clone(), value_style),
+        ]));
+    }
+
+    lines
+}
+
+pub(crate) fn sidecar_detail_lines(sidecar: &ConfigUiSidecar) -> Vec<Line<'static>> {
+    vec![
+        Line::from(Span::styled(
+            sidecar.name.clone(),
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        )),
+        Line::from(""),
+        detail_line("path", &sidecar.path.display().to_string()),
+        detail_line(
+            "state",
+            if sidecar.present {
+                "present"
+            } else {
+                "missing"
+            },
+        ),
+        detail_line("owner", owner_label(sidecar.owner)),
+        detail_line(
+            "write",
+            if sidecar.read_only {
+                "read-only"
+            } else {
+                "writable or absent"
+            },
+        ),
+    ]
+}
+
+pub(crate) fn diagnostic_detail_lines(diagnostic: &ConfigUiDiagnostic) -> Vec<Line<'static>> {
+    let mut lines = vec![
+        Line::from(Span::styled(
+            diagnostic.headline.clone(),
+            Style::default()
+                .fg(if diagnostic.blocking {
+                    Color::Red
+                } else {
+                    Color::Yellow
+                })
+                .add_modifier(Modifier::BOLD),
+        )),
+        Line::from(""),
+        detail_line("path", &diagnostic.path),
+        detail_line("status", &diagnostic.status),
+        detail_line("blocking", if diagnostic.blocking { "yes" } else { "no" }),
+    ];
+    lines.push(Line::from(""));
+    for detail in &diagnostic.detail_lines {
+        lines.push(Line::from(detail.clone()));
+    }
+    lines
+}
+
+pub(crate) fn native_status_detail_lines(status: &ConfigUiNativeStatus) -> Vec<Line<'static>> {
+    let mut lines = vec![
+        Line::from(Span::styled(
+            status.label.clone(),
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        )),
+        Line::from(""),
+        detail_line("surface", &status.surface),
+        detail_line("tool", &status.tool),
+        detail_line("status", &status.status),
+        detail_line("description", &status.description),
+        detail_line("allowed action", &status.allowed_action),
+    ];
+    if let Some(path) = &status.active_path {
+        lines.push(detail_line("active path", path));
+    }
+    if let Some(path) = &status.managed_path {
+        lines.push(detail_line("managed path", path));
+    }
+    if !status.native_paths.is_empty() {
+        lines.push(detail_line("native paths", &status.native_paths.join(", ")));
+    }
+    if let Some(path) = &status.generated_path {
+        lines.push(detail_line("generated path", path));
+    }
+    if let Some(reason) = &status.read_only_reason {
+        lines.push(detail_line("read-only", reason));
+    }
+    lines
 }
 
 fn render_footer(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect) {
