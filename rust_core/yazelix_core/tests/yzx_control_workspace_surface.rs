@@ -1,7 +1,7 @@
 // Test lane: default
 
 use serde_json::{Value, json};
-use std::fs;
+use std::{fs, path::Path, process::Output};
 
 mod support;
 
@@ -16,6 +16,38 @@ fn yzx_control_command_in_fixture(
     let mut command = yzx_control_command();
     apply_managed_config_env(&mut command, fixture);
     command
+}
+
+fn assert_success(output: &Output) {
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stderr.is_empty());
+}
+
+fn assert_silent_success(output: &Output) {
+    assert_success(output);
+    assert!(output.stdout.is_empty());
+}
+
+fn file_lines(path: impl AsRef<Path>) -> Vec<String> {
+    fs::read_to_string(path)
+        .unwrap()
+        .lines()
+        .map(str::to_owned)
+        .collect()
+}
+
+fn read_json_file(path: impl AsRef<Path>) -> Value {
+    serde_json::from_slice(&fs::read(path).unwrap()).unwrap()
+}
+
+fn write_arg_log_script(bin_dir: &Path, command_name: &str, log_path: &Path) {
+    write_executable_script(
+        &bin_dir.join(command_name),
+        &format!(
+            "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\n",
+            log_path.display()
+        ),
+    );
 }
 
 // Defends: the Rust-owned legacy workspace-retarget route syncs the plugin-owned sidebar from the active-tab session snapshot once.
@@ -56,13 +88,7 @@ ya_command = "config-ya"
             retarget_payload_log.display()
         ),
     );
-    write_executable_script(
-        &fake_bin.join("ya"),
-        &format!(
-            "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\n",
-            ya_log.display()
-        ),
-    );
+    write_arg_log_script(&fake_bin, "ya", &ya_log);
 
     let output = yzx_control_command_in_fixture(&fixture)
         .env("PATH", prepend_path(&fake_bin))
@@ -73,10 +99,9 @@ ya_command = "config-ya"
         .output()
         .unwrap();
 
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
+    assert_success(&output);
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let payload: Value = serde_json::from_slice(&fs::read(retarget_payload_log).unwrap()).unwrap();
+    let payload = read_json_file(retarget_payload_log);
     assert_eq!(
         fs::read_to_string(zellij_commands_log).unwrap().trim(),
         "retarget_workspace"
@@ -119,8 +144,7 @@ fn yzx_control_zellij_status_bus_json_reads_versioned_snapshot() {
         .output()
         .unwrap();
 
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
+    assert_success(&output);
     let snapshot: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(snapshot["schema_version"], 1);
     assert_eq!(snapshot["active_tab_position"], 4);
@@ -153,13 +177,7 @@ ya_command = "ya"
             zellij_commands_log.display()
         ),
     );
-    write_executable_script(
-        &fake_bin.join("ya"),
-        &format!(
-            "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\n",
-            ya_log.display()
-        ),
-    );
+    write_arg_log_script(&fake_bin, "ya", &ya_log);
 
     let output = yzx_control_command_in_fixture(&fixture)
         .env("PATH", prepend_path(&fake_bin))
@@ -169,14 +187,9 @@ ya_command = "ya"
         .output()
         .unwrap();
 
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
-    assert!(output.stdout.is_empty());
+    assert_silent_success(&output);
     assert_eq!(
-        fs::read_to_string(zellij_commands_log)
-            .unwrap()
-            .lines()
-            .collect::<Vec<_>>(),
+        file_lines(zellij_commands_log),
         vec!["get_active_tab_session_state", "focus_sidebar"]
     );
     assert_eq!(
@@ -209,9 +222,7 @@ fn yzx_control_popup_without_override_uses_yzpp_toggle_contract() {
         .output()
         .unwrap();
 
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
-    assert!(output.stdout.is_empty());
+    assert_silent_success(&output);
     assert!(
         fs::read_to_string(zellij_log)
             .unwrap()
@@ -251,9 +262,7 @@ ghostty_trail_color = "random"
         .output()
         .unwrap();
 
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
-    assert!(output.stdout.is_empty());
+    assert_silent_success(&output);
 
     let zellij_log = fs::read_to_string(zellij_log).unwrap();
     let yzx_cli = fixture
@@ -305,13 +314,7 @@ ya_command = "ya"
             retarget_payload_log.display()
         ),
     );
-    write_executable_script(
-        &fake_bin.join("ya"),
-        &format!(
-            "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\n",
-            ya_log.display()
-        ),
-    );
+    write_arg_log_script(&fake_bin, "ya", &ya_log);
 
     let output = yzx_control_command_in_fixture(&fixture)
         .env("PATH", prepend_path(&fake_bin))
@@ -324,19 +327,13 @@ ya_command = "ya"
         .output()
         .unwrap();
 
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
-    assert!(output.stdout.is_empty());
+    assert_silent_success(&output);
     assert_eq!(
-        fs::read_to_string(zellij_commands_log)
-            .unwrap()
-            .lines()
-            .collect::<Vec<_>>(),
+        file_lines(zellij_commands_log),
         vec!["open_file", "retarget_workspace"]
     );
 
-    let open_file_payload: Value =
-        serde_json::from_slice(&fs::read(open_file_payload_log).unwrap()).unwrap();
+    let open_file_payload = read_json_file(open_file_payload_log);
     assert_eq!(open_file_payload["editor"], "neovim");
     assert_eq!(
         open_file_payload["file_path"],
@@ -354,8 +351,7 @@ ya_command = "ya"
         target_dir.to_string_lossy().to_string()
     );
 
-    let retarget_payload: Value =
-        serde_json::from_slice(&fs::read(retarget_payload_log).unwrap()).unwrap();
+    let retarget_payload = read_json_file(retarget_payload_log);
     assert_eq!(
         retarget_payload["workspace_root"],
         target_dir.to_string_lossy().to_string()
@@ -410,10 +406,8 @@ hide_sidebar_on_file_open = false
         .output()
         .unwrap();
 
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
-    let retarget_payload: Value =
-        serde_json::from_slice(&fs::read(retarget_payload_log).unwrap()).unwrap();
+    assert_success(&output);
+    let retarget_payload = read_json_file(retarget_payload_log);
     assert_eq!(retarget_payload["sidebar_yazi"]["pane_id"], "terminal:42");
     assert_eq!(retarget_payload["sidebar_yazi"]["yazi_id"], "current-yazi");
     assert_eq!(
@@ -455,13 +449,9 @@ hide_sidebar_on_file_open = true
         .output()
         .unwrap();
 
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
+    assert_success(&output);
     assert_eq!(
-        fs::read_to_string(zellij_commands_log)
-            .unwrap()
-            .lines()
-            .collect::<Vec<_>>(),
+        file_lines(zellij_commands_log),
         vec![
             "get_active_tab_session_state",
             "hide_sidebar",
@@ -505,13 +495,9 @@ hide_sidebar_on_file_open = true
         .output()
         .unwrap();
 
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
+    assert_success(&output);
     assert_eq!(
-        fs::read_to_string(zellij_commands_log)
-            .unwrap()
-            .lines()
-            .collect::<Vec<_>>(),
+        file_lines(zellij_commands_log),
         vec![
             "get_active_tab_session_state",
             "hide_sidebar",
@@ -565,17 +551,13 @@ ya_command = "ya"
         .output()
         .unwrap();
 
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
+    assert_success(&output);
     assert_eq!(
         fs::read_to_string(open_file_attempts_log).unwrap().trim(),
         "3"
     );
     assert_eq!(
-        fs::read_to_string(zellij_commands_log)
-            .unwrap()
-            .lines()
-            .collect::<Vec<_>>(),
+        file_lines(zellij_commands_log),
         vec![
             "open_file",
             "open_file",
@@ -626,13 +608,7 @@ ya_command = "ya"
             retarget_payload_log.display()
         ),
     );
-    write_executable_script(
-        &fake_bin.join("ya"),
-        &format!(
-            "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\n",
-            ya_log.display()
-        ),
-    );
+    write_arg_log_script(&fake_bin, "ya", &ya_log);
 
     let output = yzx_control_command_in_fixture(&fixture)
         .env("PATH", prepend_path(&fake_bin))
@@ -644,27 +620,20 @@ ya_command = "ya"
         .output()
         .unwrap();
 
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
-    assert!(output.stdout.is_empty());
+    assert_silent_success(&output);
     assert_eq!(
-        fs::read_to_string(zellij_commands_log)
-            .unwrap()
-            .lines()
-            .collect::<Vec<_>>(),
+        file_lines(zellij_commands_log),
         vec!["open_file", "retarget_workspace"]
     );
 
-    let open_file_payload: Value =
-        serde_json::from_slice(&fs::read(open_file_payload_log).unwrap()).unwrap();
+    let open_file_payload = read_json_file(open_file_payload_log);
     assert_eq!(open_file_payload["editor"], "helix");
     assert_eq!(
         open_file_payload["working_dir"],
         repo_dir.to_string_lossy().to_string()
     );
 
-    let retarget_payload: Value =
-        serde_json::from_slice(&fs::read(retarget_payload_log).unwrap()).unwrap();
+    let retarget_payload = read_json_file(retarget_payload_log);
     assert_eq!(
         retarget_payload["workspace_root"],
         repo_dir.to_string_lossy().to_string()
@@ -722,13 +691,7 @@ ghostty_trail_color = "random"
             zellij_run_log.display()
         ),
     );
-    write_executable_script(
-        &fake_bin.join("ya"),
-        &format!(
-            "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\n",
-            ya_log.display()
-        ),
-    );
+    write_arg_log_script(&fake_bin, "ya", &ya_log);
 
     let output = yzx_control_command_in_fixture(&fixture)
         .env("PATH", prepend_path(&fake_bin))
@@ -742,19 +705,13 @@ ghostty_trail_color = "random"
         .output()
         .unwrap();
 
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
-    assert!(output.stdout.is_empty());
+    assert_silent_success(&output);
     assert_eq!(
-        fs::read_to_string(zellij_commands_log)
-            .unwrap()
-            .lines()
-            .collect::<Vec<_>>(),
+        file_lines(zellij_commands_log),
         vec!["open_file", "retarget_workspace"]
     );
 
-    let open_file_payload: Value =
-        serde_json::from_slice(&fs::read(open_file_payload_log).unwrap()).unwrap();
+    let open_file_payload = read_json_file(open_file_payload_log);
     assert_eq!(open_file_payload["editor"], "helix");
     assert_eq!(
         open_file_payload["file_paths"],
@@ -772,8 +729,7 @@ ghostty_trail_color = "random"
     assert!(run_log.contains(target_file.to_string_lossy().as_ref()));
     assert!(run_log.contains(second_target_file.to_string_lossy().as_ref()));
 
-    let retarget_payload: Value =
-        serde_json::from_slice(&fs::read(retarget_payload_log).unwrap()).unwrap();
+    let retarget_payload = read_json_file(retarget_payload_log);
     assert_eq!(
         retarget_payload["workspace_root"],
         target_dir.to_string_lossy().to_string()
@@ -817,13 +773,7 @@ ya_command = "ya"
             zellij_run_log.display()
         ),
     );
-    write_executable_script(
-        &fake_bin.join("ya"),
-        &format!(
-            "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\n",
-            ya_log.display()
-        ),
-    );
+    write_arg_log_script(&fake_bin, "ya", &ya_log);
 
     let output = yzx_control_command_in_fixture(&fixture)
         .env("PATH", prepend_path(&fake_bin))
@@ -835,16 +785,13 @@ ya_command = "ya"
         .output()
         .unwrap();
 
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
-    assert!(output.stdout.is_empty());
+    assert_silent_success(&output);
     assert_eq!(
         fs::read_to_string(zellij_commands_log).unwrap().trim(),
         "retarget_workspace"
     );
 
-    let retarget_payload: Value =
-        serde_json::from_slice(&fs::read(retarget_payload_log).unwrap()).unwrap();
+    let retarget_payload = read_json_file(retarget_payload_log);
     assert_eq!(
         retarget_payload["workspace_root"],
         target_dir.to_string_lossy().to_string()
@@ -899,13 +846,9 @@ hide_sidebar_on_file_open = true
         .output()
         .unwrap();
 
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
+    assert_success(&output);
     assert_eq!(
-        fs::read_to_string(zellij_commands_log)
-            .unwrap()
-            .lines()
-            .collect::<Vec<_>>(),
+        file_lines(zellij_commands_log),
         vec![
             "get_active_tab_session_state",
             "hide_sidebar",
@@ -948,13 +891,9 @@ hide_sidebar_on_file_open = true
         .output()
         .unwrap();
 
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
+    assert_success(&output);
     assert_eq!(
-        fs::read_to_string(zellij_commands_log)
-            .unwrap()
-            .lines()
-            .collect::<Vec<_>>(),
+        file_lines(zellij_commands_log),
         vec![
             "get_active_tab_session_state",
             "hide_sidebar",
@@ -998,13 +937,9 @@ hide_sidebar_on_file_open = true
         .output()
         .unwrap();
 
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
+    assert_success(&output);
     assert_eq!(
-        fs::read_to_string(zellij_commands_log)
-            .unwrap()
-            .lines()
-            .collect::<Vec<_>>(),
+        file_lines(zellij_commands_log),
         vec![
             "get_active_tab_session_state",
             "hide_sidebar",
@@ -1037,8 +972,7 @@ fn yzx_control_doctor_json_reports_structured_findings() {
         .output()
         .unwrap();
 
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
+    assert_success(&output);
     let report: Value = serde_json::from_slice(&output.stdout).unwrap();
     let stale_config_result = report["results"]
         .as_array()
@@ -1094,8 +1028,7 @@ fn yzx_control_doctor_json_reports_home_manager_profile_collision() {
         .output()
         .unwrap();
 
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
+    assert_success(&output);
     let report: Value = serde_json::from_slice(&output.stdout).unwrap();
     let ownership_result = report["results"]
         .as_array()
@@ -1151,8 +1084,7 @@ fn yzx_control_doctor_fix_plan_json_reports_recovery_commands() {
         .output()
         .unwrap();
 
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
+    assert_success(&output);
     let plan: Value = serde_json::from_slice(&output.stdout).unwrap();
     let action = plan["actions"]
         .as_array()
