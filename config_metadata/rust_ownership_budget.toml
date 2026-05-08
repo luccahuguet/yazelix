@@ -1,8 +1,8 @@
 [contract]
-measured_total_loc = 72676
-measured_total_file_count = 160
-current_total_loc_max = 72676
-current_total_file_count_max = 160
+measured_total_loc = 72664
+measured_total_file_count = 163
+current_total_loc_max = 72664
+current_total_file_count_max = 163
 hard_target_loc = 60000
 
 [[families]]
@@ -107,11 +107,11 @@ allowed_paths = [
 id = "core_workspace_and_pane_integration"
 status = "canonical"
 owner_bead = "yazelix-w032.3"
-measured_loc = 16498
-measured_files = 30
-max_loc = 16498
+measured_loc = 16486
+measured_files = 33
+max_loc = 16486
 target_loc = 11000
-max_files = 30
+max_files = 33
 allowed_paths = [
   "rust_core/yazelix_core/src/action_registry.rs",
   "rust_core/yazelix_core/src/internal_nu_runner.rs",
@@ -138,7 +138,10 @@ allowed_paths = [
   "rust_core/yazelix_core/src/zellij_commands/status/agent_usage.rs",
   "rust_core/yazelix_core/src/zellij_commands/status/agent_usage/refresh.rs",
   "rust_core/yazelix_core/src/zellij_commands/status/cache.rs",
-  "rust_core/yazelix_core/src/zellij_commands/status/tests.rs",
+  "rust_core/yazelix_core/src/zellij_commands/status/tests/agent_usage.rs",
+  "rust_core/yazelix_core/src/zellij_commands/status/tests/cache.rs",
+  "rust_core/yazelix_core/src/zellij_commands/status/tests/mod.rs",
+  "rust_core/yazelix_core/src/zellij_commands/status/tests/widgets.rs",
   "rust_core/yazelix_core/src/zellij_commands/status/widgets.rs",
   "rust_core/yazelix_core/src/zellij_commands/workspace.rs",
   "rust_core/yazelix_core/src/zellij_materialization.rs",
