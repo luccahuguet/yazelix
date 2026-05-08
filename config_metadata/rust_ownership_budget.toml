@@ -1,8 +1,8 @@
 [contract]
-measured_total_loc = 72745
-measured_total_file_count = 154
-current_total_loc_max = 72745
-current_total_file_count_max = 154
+measured_total_loc = 72736
+measured_total_file_count = 156
+current_total_loc_max = 72736
+current_total_file_count_max = 156
 hard_target_loc = 60000
 
 [[families]]
@@ -180,17 +180,19 @@ allowed_paths = [
 id = "maintainer_tooling_and_validators"
 status = "canonical_maintainer"
 owner_bead = "yazelix-9opk.5.1"
-measured_loc = 10472
-measured_files = 17
-max_loc = 10472
+measured_loc = 10463
+measured_files = 19
+max_loc = 10463
 target_loc = 9000
-max_files = 17
+max_files = 19
 allowed_paths = [
   "rust_core/yazelix_maintainer/src/bin/yzx_repo_maintainer.rs",
   "rust_core/yazelix_maintainer/src/bin/yzx_repo_validator.rs",
   "rust_core/yazelix_maintainer/src/lib.rs",
   "rust_core/yazelix_maintainer/src/repo_contract_validation.rs",
+  "rust_core/yazelix_maintainer/src/repo_contract_validation/config_surface.rs",
   "rust_core/yazelix_maintainer/src/repo_contract_validation/readme_surface.rs",
+  "rust_core/yazelix_maintainer/src/repo_contract_validation/upgrade_contract.rs",
   "rust_core/yazelix_maintainer/src/repo_docs_validation.rs",
   "rust_core/yazelix_maintainer/src/repo_issue_sync.rs",
   "rust_core/yazelix_maintainer/src/repo_nu_lint.rs",
