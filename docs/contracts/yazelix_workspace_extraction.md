@@ -19,7 +19,7 @@ The extraction readiness state is `internal_boundary_only`.
 
 `yazelix_workspace` should not become a public crate, plugin, or separate repository until the internal boundary proves smaller than the integrated product surface. Workspace orchestration is closest to Yazelix's identity, so extraction must preserve the current tab-local session model instead of exposing a half-product API.
 
-The internal boundary may move code, but it must not change supported runtime behavior by itself.
+The internal boundary may move code, but it must not change supported runtime behavior by itself. The post-launch and post-Zellij-materialization shrink evaluation keeps this as a no-go for public extraction: the reusable session types are small, but the active command adapters still depend on Yazelix runtime facts, generated Zellij config, Yazi `emit-to`, editor runtime env construction, popup cwd policy, status/cache paths, and pane-orchestrator plugin aliases.
 
 ## Zellij Layout Ownership Gate
 
@@ -29,7 +29,7 @@ The current layout ownership decision is intentionally narrow:
 - The pane orchestrator owns live tab-local layout state, sidebar collapsed/open state, and managed pane identity after Zellij starts
 - Users may customize top-level KDL layout files and sidebar launch commands, but brand-new sidebar families are not first-class until the pane orchestrator and layout metadata learn them explicitly
 - Home Manager renders the same Yazelix-owned settings surface; it does not own a second layout profile language
-- Public `yazelix_workspace` extraction remains blocked until Zellij materialization and workspace/editor/session command ownership shrink inside the main repo
+- Public `yazelix_workspace` extraction remains blocked until workspace/editor/session command ownership shrinks inside the main repo. Zellij materialization has shed stale no-op layout fragments, but it still owns generated config, plugin permission seeding, built-in layout rendering, and current status-bar integration.
 
 Rejected or deferred layout branches:
 
@@ -80,6 +80,25 @@ A future standalone `yazelix_workspace` distribution would require:
 
 Inside full Yazelix, those prerequisites are currently provided by generated Zellij config, runtime scripts, config metadata, Yazi plugins, and the pane orchestrator wasm.
 
+## Current Coupling Snapshot
+
+The current extraction gate is blocked by adapter thickness, not by the name or repository shape.
+
+The smallest reusable pieces are already visible:
+
+- `workspace_session.rs` owns typed parsing for active-tab workspace roots, retarget responses, and sidebar identity
+- `pane_orchestrator_client.rs` owns the Zellij plugin pipe transport and aliases
+
+Those pieces are not enough for a standalone package. The surrounding product adapters still own the behavior users actually invoke:
+
+- `zellij_commands.rs` mixes Zellij pipe diagnostics, workspace retarget, Yazi-to-editor open flow, editor pane creation, terminal pane opening, sidebar hiding, runtime editor env construction, and a large status/cache test surface
+- `workspace_commands.rs` mixes public `yzx cwd`, `yzx reveal`, `yzx popup`, sidebar refresh, zoxide/path resolution, managed editor kind detection, and Yazi `emit-to`
+- launch and restart adapters still provide the environment and session facts that workspace commands consume
+- `zellij_materialization.rs` still wires generated layouts, plugin artifact paths, permissions, keybindings, and status-bar command widgets
+- status cache and AI usage widgets are deliberately out of the workspace package, but their tests and command exports still pass through the same broad Zellij command surface
+
+Expected main-repo LOC movement from extracting only the small reusable parsers and pipe client would be minor and would not create a useful non-Yazelix package. Extracting the larger command surface now would pull thousands of lines of Yazelix runtime policy into a child repo and make both repos harder to maintain.
+
 ## Public API Shape
 
 If extraction eventually proceeds, the public API should be action/schema based rather than a second CLI parser.
@@ -121,6 +140,8 @@ The first extraction step stays inside the repository:
 5. Prove the boundary with existing Yazelix behavior before adding plain-Zellij examples.
 
 No public package should be cut until the internal API can be used by Yazelix without exporting product-only assumptions.
+
+The next useful private split is the Zellij/workspace command boundary: keep status/cache widgets, popup commands, Yazi `emit-to`, and runtime env construction local, while isolating workspace request/response shaping and pane-orchestrator calls behind a small module that can be measured again.
 
 ## Relationship To Other Components
 
