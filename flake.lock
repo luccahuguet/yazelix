@@ -340,15 +340,15 @@
       "locked": {
         "lastModified": 1778198140,
         "narHash": "sha256-O7//2mSMl6RuQg8R/d30CCdN3qJFpD4w7iVzG4ifvLg=",
-        "ref": "refs/heads/main",
+        "owner": "luccahuguet",
+        "repo": "yazelix-yazi-assets",
         "rev": "85f46698fd11cdef821f051da4966875de7e8ce8",
-        "revCount": 1,
-        "type": "git",
-        "url": "file:../yazelix-yazi-assets"
+        "type": "github"
       },
       "original": {
-        "type": "git",
-        "url": "file:../yazelix-yazi-assets"
+        "owner": "luccahuguet",
+        "repo": "yazelix-yazi-assets",
+        "type": "github"
       }
     },
     "zjstatus": {

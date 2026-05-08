@@ -29,7 +29,7 @@
       inputs.zjstatus.follows = "zjstatus";
     };
     yazelixYaziAssets = {
-      url = "git+file:../yazelix-yazi-assets";
+      url = "github:luccahuguet/yazelix-yazi-assets";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     beads = {
