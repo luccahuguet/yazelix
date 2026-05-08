@@ -6,6 +6,7 @@ use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::control_plane::config_dir_from_env;
 use crate::user_config_paths;
 use crate::yazi_render_plan::{YaziRenderPlanRequest, compute_yazi_render_plan};
+pub use writer::YaziManagedFileStatus;
 use serde::Serialize;
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use std::collections::BTreeMap;
@@ -22,12 +23,6 @@ pub struct YaziMaterializationRequest {
     pub runtime_dir: PathBuf,
     pub yazi_config_dir: PathBuf,
     pub sync_static_assets: bool,
-}
-
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
-pub struct YaziManagedFileStatus {
-    pub path: String,
-    pub changed: bool,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]

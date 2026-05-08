@@ -1,4 +1,3 @@
-use super::YaziManagedFileStatus;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::yazi_render_plan::{ThemeFlavorPlan, YaziRenderPlanData};
 use serde_json::json;
@@ -8,6 +7,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use toml::Value as TomlValue;
 
 const RUNTIME_DIR_PLACEHOLDER: &str = "__YAZELIX_RUNTIME_DIR__";
+
+#[derive(Debug, Clone, serde::Serialize, PartialEq, Eq)]
+pub struct YaziManagedFileStatus {
+    pub path: String,
+    pub changed: bool,
+}
 
 pub(super) struct YaziConfigPackWriteRequest<'a> {
     pub source_dir: &'a Path,
