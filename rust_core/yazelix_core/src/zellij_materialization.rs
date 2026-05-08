@@ -121,24 +121,6 @@ struct PermissionBlock {
     permissions: Vec<String>,
 }
 
-fn plugin_artifact_by_name<'a>(
-    plugin_artifacts: &'a [PluginArtifact],
-    name: &str,
-) -> Result<&'a PluginArtifact, CoreError> {
-    plugin_artifacts
-        .iter()
-        .find(|artifact| artifact.name == name)
-        .ok_or_else(|| {
-            CoreError::classified(
-                ErrorClass::Runtime,
-                "missing_zellij_plugin_artifact",
-                format!("Internal Yazelix plugin artifact `{name}` was not resolved."),
-                "Reinstall Yazelix so all required plugin artifacts are available.",
-                json!({ "plugin": name }),
-            )
-        })
-}
-
 pub fn generate_zellij_materialization(
     request: &ZellijMaterializationRequest,
 ) -> Result<ZellijMaterializationData, CoreError> {
@@ -174,6 +156,7 @@ pub fn generate_zellij_materialization(
     );
     let base_config_source = resolve_base_config_source()?;
     let plugin_artifacts = resolve_plugin_artifacts(&request.runtime_dir, &state_dir)?;
+    let [pane_orchestrator_artifact, zjstatus_artifact, yzpp_artifact] = &plugin_artifacts;
     let zellij_keybindings = resolve_zellij_keybindings(&config)?;
     let popup_program = resolve_popup_program_config(&config);
     let render_plan_request =
@@ -210,17 +193,11 @@ pub fn generate_zellij_materialization(
                 .map(|path| path.to_string_lossy().to_string())
                 .unwrap_or_default(),
             generation_fingerprint,
-            pane_orchestrator_runtime_path: plugin_artifact_by_name(
-                &plugin_artifacts,
-                "pane_orchestrator",
-            )?
-            .runtime_path
-            .to_string_lossy()
-            .to_string(),
-            zjstatus_runtime_path: plugin_artifact_by_name(&plugin_artifacts, "zjstatus")?
+            pane_orchestrator_runtime_path: pane_orchestrator_artifact
                 .runtime_path
                 .to_string_lossy()
                 .to_string(),
+            zjstatus_runtime_path: zjstatus_artifact.runtime_path.to_string_lossy().to_string(),
             permissions_cache_path: zellij_permissions_cache_path()?
                 .to_string_lossy()
                 .to_string(),
@@ -246,16 +223,9 @@ pub fn generate_zellij_materialization(
     })?;
 
     sync_plugin_artifacts(&plugin_artifacts, request.seed_plugin_permissions)?;
-    let pane_orchestrator_runtime_path =
-        plugin_artifact_by_name(&plugin_artifacts, "pane_orchestrator")?
-            .runtime_path
-            .clone();
-    let zjstatus_runtime_path = plugin_artifact_by_name(&plugin_artifacts, "zjstatus")?
-        .runtime_path
-        .clone();
-    let yzpp_runtime_path = plugin_artifact_by_name(&plugin_artifacts, "yzpp")?
-        .runtime_path
-        .clone();
+    let pane_orchestrator_runtime_path = pane_orchestrator_artifact.runtime_path.clone();
+    let zjstatus_runtime_path = zjstatus_artifact.runtime_path.clone();
+    let yzpp_runtime_path = yzpp_artifact.runtime_path.clone();
     let generated_layouts = generate_all_layouts(
         &source_layouts_dir,
         &layout_dir,
@@ -1591,9 +1561,9 @@ fn remove_stale_layouts(target_dir: &Path, expected_targets: &[PathBuf]) -> Resu
 fn resolve_plugin_artifacts(
     runtime_dir: &Path,
     state_dir: &Path,
-) -> Result<Vec<PluginArtifact>, CoreError> {
+) -> Result<[PluginArtifact; 3], CoreError> {
     let plugin_dir = state_dir.join("configs").join("zellij").join("plugins");
-    let specs = [
+    let [pane_orchestrator, zjstatus, yzpp] = [
         (
             "pane_orchestrator",
             PANE_ORCHESTRATOR_PLUGIN_PREFIX,
@@ -1612,42 +1582,61 @@ fn resolve_plugin_artifacts(
             YZPP_WASM_NAME,
             YZPP_REQUIRED_PERMISSIONS,
         ),
-    ];
-    specs
-        .into_iter()
-        .map(|(name, prefix, wasm_name, required_permissions)| {
-            let tracked_path = runtime_dir
-                .join("configs")
-                .join("zellij")
-                .join("plugins")
-                .join(wasm_name);
-            if !tracked_path.exists() {
-                return Err(CoreError::classified(
-                    ErrorClass::Io,
-                    "missing_tracked_zellij_plugin",
-                    format!("Tracked {name} wasm not found at: {}", tracked_path.to_string_lossy()),
-                    "Reinstall Yazelix so the runtime includes all tracked Zellij plugin wasm artifacts.",
-                    json!({ "path": tracked_path.to_string_lossy(), "plugin": name }),
-                ));
-            }
-            Ok(PluginArtifact {
-                name,
-                prefix,
-                wasm_name,
-                tracked_hash: hash_file(&tracked_path)?,
-                runtime_path: plugin_dir.join(wasm_name),
-                tracked_path,
-                required_permissions,
-            })
-        })
-        .collect()
+    ]
+    .map(|(name, prefix, wasm_name, permissions)| {
+        resolve_plugin_artifact(
+            runtime_dir,
+            &plugin_dir,
+            name,
+            prefix,
+            wasm_name,
+            permissions,
+        )
+    });
+    Ok([pane_orchestrator?, zjstatus?, yzpp?])
+}
+
+fn resolve_plugin_artifact(
+    runtime_dir: &Path,
+    plugin_dir: &Path,
+    name: &'static str,
+    prefix: &'static str,
+    wasm_name: &'static str,
+    required_permissions: &'static [&'static str],
+) -> Result<PluginArtifact, CoreError> {
+    let tracked_path = runtime_dir
+        .join("configs")
+        .join("zellij")
+        .join("plugins")
+        .join(wasm_name);
+    if !tracked_path.exists() {
+        return Err(CoreError::classified(
+            ErrorClass::Io,
+            "missing_tracked_zellij_plugin",
+            format!(
+                "Tracked {name} wasm not found at: {}",
+                tracked_path.to_string_lossy()
+            ),
+            "Reinstall Yazelix so the runtime includes all tracked Zellij plugin wasm artifacts.",
+            json!({ "path": tracked_path.to_string_lossy(), "plugin": name }),
+        ));
+    }
+    Ok(PluginArtifact {
+        name,
+        prefix,
+        wasm_name,
+        tracked_hash: hash_file(&tracked_path)?,
+        runtime_path: plugin_dir.join(wasm_name),
+        tracked_path,
+        required_permissions,
+    })
 }
 
 fn sync_plugin_artifacts(
-    plugin_artifacts: &[PluginArtifact],
+    plugin_artifacts: &[PluginArtifact; 3],
     seed_plugin_permissions: bool,
 ) -> Result<(), CoreError> {
-    for artifact in plugin_artifacts {
+    for artifact in plugin_artifacts.iter() {
         copy_file_atomic(&artifact.tracked_path, &artifact.runtime_path)?;
         remove_runtime_plugins_by_prefix(artifact.prefix, Some(&artifact.runtime_path))?;
         preserve_plugin_permissions(
@@ -1819,7 +1808,9 @@ fn build_permission_block(plugin_path: &str, permissions: &[String]) -> String {
         .join("\n")
 }
 
-fn upsert_plugin_permission_blocks(plugin_artifacts: &[PluginArtifact]) -> Result<(), CoreError> {
+fn upsert_plugin_permission_blocks(
+    plugin_artifacts: &[PluginArtifact; 3],
+) -> Result<(), CoreError> {
     let permissions_cache_path = zellij_permissions_cache_path()?;
     let existing_blocks = if permissions_cache_path.exists() {
         parse_permission_blocks(&read_text(
@@ -1843,7 +1834,7 @@ fn upsert_plugin_permission_blocks(plugin_artifacts: &[PluginArtifact]) -> Resul
         .map(|block| build_permission_block(&block.path, &block.permissions))
         .collect::<Vec<_>>();
 
-    for artifact in plugin_artifacts {
+    for artifact in plugin_artifacts.iter() {
         let permissions = artifact
             .required_permissions
             .iter()
@@ -1866,7 +1857,7 @@ fn build_generation_fingerprint(
     runtime_dir: &Path,
     base_config_source: &ZellijBaseConfigSource,
     source_layouts_dir: &Path,
-    plugin_artifacts: &[PluginArtifact],
+    plugin_artifacts: &[PluginArtifact; 3],
     zellij_keybindings: &BTreeMap<String, Vec<String>>,
     render_plan: &ZellijRenderPlanData,
 ) -> Result<String, CoreError> {
@@ -1883,18 +1874,6 @@ fn build_generation_fingerprint(
             }))
         })
         .collect::<Result<Vec<_>, CoreError>>()?;
-    let plugins = plugin_artifacts
-        .iter()
-        .map(|artifact| {
-            json!({
-                "name": artifact.name,
-                "tracked_path": artifact.tracked_path.to_string_lossy(),
-                "tracked_hash": artifact.tracked_hash,
-                "runtime_path": artifact.runtime_path.to_string_lossy(),
-                "wasm_name": artifact.wasm_name,
-            })
-        })
-        .collect::<Vec<_>>();
     let fingerprint_payload = json!({
         "schema_version": GENERATION_FINGERPRINT_SCHEMA_VERSION,
         "runtime_dir": runtime_dir.to_string_lossy(),
@@ -1907,7 +1886,15 @@ fn build_generation_fingerprint(
         },
         "overrides_hash": hash_text(&read_text_if_exists(&overrides_path)?),
         "layout_sources": layout_sources,
-        "plugins": plugins,
+        "plugins": plugin_artifacts.iter().map(|artifact| {
+            json!({
+                "name": artifact.name,
+                "tracked_path": artifact.tracked_path.to_string_lossy(),
+                "tracked_hash": artifact.tracked_hash,
+                "runtime_path": artifact.runtime_path.to_string_lossy(),
+                "wasm_name": artifact.wasm_name,
+            })
+        }).collect::<Vec<_>>(),
     });
     Ok(hash_text(
         &serde_json::to_string(&fingerprint_payload).map_err(|source| {
@@ -1927,7 +1914,7 @@ fn can_reuse_generated_zellij_state(
     merged_config_path: &Path,
     source_layouts_dir: &Path,
     fingerprint: &str,
-    plugin_artifacts: &[PluginArtifact],
+    plugin_artifacts: &[PluginArtifact; 3],
 ) -> Result<bool, CoreError> {
     let cached_fingerprint = load_cached_generation_fingerprint(merged_config_dir)?;
     if cached_fingerprint != fingerprint || !merged_config_path.exists() {
@@ -1938,7 +1925,7 @@ fn can_reuse_generated_zellij_state(
             return Ok(false);
         }
     }
-    for artifact in plugin_artifacts {
+    for artifact in plugin_artifacts.iter() {
         if !artifact.runtime_path.exists()
             || hash_file(&artifact.runtime_path)? != artifact.tracked_hash
         {
