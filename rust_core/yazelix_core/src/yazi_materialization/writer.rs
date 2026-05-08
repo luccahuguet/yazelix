@@ -350,7 +350,10 @@ fn generated_header(comment: &str, title: &str, body: &[&str]) -> String {
     lines.join("\n")
 }
 
-fn bundled_yazi_assets_missing(source_dir: &Path, output_dir: &Path) -> Result<bool, CoreError> {
+pub(super) fn bundled_yazi_assets_missing(
+    source_dir: &Path,
+    output_dir: &Path,
+) -> Result<bool, CoreError> {
     let source_plugins = source_dir.join("plugins");
     let output_plugins = output_dir.join("plugins");
     let source_flavors = source_dir.join("flavors");
@@ -361,8 +364,7 @@ fn bundled_yazi_assets_missing(source_dir: &Path, output_dir: &Path) -> Result<b
     Ok(
         asset_tree_missing_targets(&source_plugins, &output_plugins)?
             || asset_tree_missing_targets(&source_flavors, &output_flavors)?
-            || !source_starship.exists()
-            || !output_starship.exists(),
+            || (source_starship.exists() && !output_starship.exists()),
     )
 }
 

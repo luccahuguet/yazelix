@@ -110,6 +110,13 @@ pub fn generate_yazi_materialization(
     })
 }
 
+pub fn generated_yazi_static_assets_missing(
+    runtime_dir: &Path,
+    yazi_config_dir: &Path,
+) -> Result<bool, CoreError> {
+    writer::bundled_yazi_assets_missing(&runtime_dir.join("configs").join("yazi"), yazi_config_dir)
+}
+
 fn build_yazi_render_plan_request(
     normalized: &JsonMap<String, JsonValue>,
 ) -> YaziRenderPlanRequest {

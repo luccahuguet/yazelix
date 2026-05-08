@@ -13,6 +13,7 @@ def get_zellij_config_paths [] {
     (open $CONSTANTS_DATA_PATH).zellij_config_paths
 }
 
+const RUNTIME_MATERIALIZATION_PLAN_COMMAND = "runtime-materialization.plan"
 const RUNTIME_MATERIALIZATION_MATERIALIZE_COMMAND = "runtime-materialization.materialize"
 const STARTUP_HANDOFF_CAPTURE_COMMAND = "startup-handoff.capture"
 const SESSION_CONFIG_SNAPSHOT_WRITE_COMMAND = "session-config-snapshot.write"
@@ -46,6 +47,18 @@ def require_existing_layout [layout_path: string] {
 }
 
 def regenerate_runtime_configs [runtime_dir: string, --quiet] {
+    let plan = (profile_startup_step "materialization_orchestrator" "plan_runtime_state" {
+        (run_yzx_core_json_command
+            $runtime_dir
+            (build_default_yzx_core_error_surface)
+            [$RUNTIME_MATERIALIZATION_PLAN_COMMAND "--from-env"]
+            "Yazelix Rust runtime-materialization plan helper returned invalid JSON.")
+    })
+
+    if not ($plan.should_regenerate? | default true) {
+        return $plan
+    }
+
     let result = (profile_startup_step "materialization_orchestrator" "materialize_runtime_state" {
         (run_yzx_core_json_command
             $runtime_dir

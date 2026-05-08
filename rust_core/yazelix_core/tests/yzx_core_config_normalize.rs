@@ -122,6 +122,7 @@ fn prepare_runtime_materialization_fixture(
     )
     .unwrap();
     fs::write(runtime_plugin_dir.join("zjstatus.wasm"), b"wasm").unwrap();
+    fs::write(runtime_plugin_dir.join("yzpp.wasm"), b"wasm").unwrap();
     copy_dir_all(
         &repo
             .join("configs")
@@ -703,7 +704,11 @@ fn runtime_materialization_materialize_writes_generated_artifacts_and_records_st
         .arg(request.to_string())
         .output()
         .unwrap();
-    assert!(output.status.success());
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     assert!(output.stderr.is_empty());
     let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(envelope["command"], "runtime-materialization.materialize");
@@ -772,7 +777,11 @@ fn runtime_materialization_repair_regenerates_missing_artifacts_end_to_end() {
             .arg(request.to_string())
             .output()
             .unwrap();
-    assert!(initial_output.status.success());
+    assert!(
+        initial_output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&initial_output.stderr)
+    );
     fs::remove_file(fixture.yazi_dir.join("yazi.toml")).unwrap();
 
     let repair_request = json!({
@@ -814,7 +823,11 @@ fn runtime_materialization_repair_summary_prints_one_human_line() {
         .output()
         .unwrap();
 
-    assert!(output.status.success());
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     assert!(output.stderr.is_empty());
     assert_eq!(
         String::from_utf8(output.stdout).unwrap(),

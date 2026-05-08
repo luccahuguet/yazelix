@@ -7,6 +7,7 @@ use crate::config_state::{
 use crate::control_plane::config_dir_from_env;
 use crate::yazi_materialization::{
     YaziMaterializationData, YaziMaterializationRequest, generate_yazi_materialization,
+    generated_yazi_static_assets_missing,
 };
 use crate::zellij_materialization::{
     ZellijMaterializationData, ZellijMaterializationRequest, generate_zellij_materialization,
@@ -171,11 +172,24 @@ pub fn plan_runtime_materialization(
             path: zellij_layout_path.clone(),
         },
     ];
-    let missing_artifacts = expected_artifacts
+    let mut missing_artifacts = expected_artifacts
         .iter()
         .filter(|artifact| is_missing_file(Path::new(&artifact.path)))
         .cloned()
         .collect::<Vec<_>>();
+    if !config_state.needs_refresh
+        && missing_artifacts.is_empty()
+        && generated_yazi_static_assets_missing(&request.runtime_dir, &request.yazi_config_dir)?
+    {
+        missing_artifacts.push(RuntimeArtifact {
+            label: "generated Yazi static assets".to_string(),
+            path: request
+                .yazi_config_dir
+                .join("plugins")
+                .to_string_lossy()
+                .to_string(),
+        });
+    }
 
     let (status, reason) = if config_state.needs_refresh {
         ("refresh_required", config_state.refresh_reason.clone())
@@ -543,6 +557,97 @@ mod tests {
         }
     }
 
+    fn mirror_yazi_static_assets(runtime_dir: &Path, yazi_dir: &Path) {
+        mirror_tree(
+            &runtime_dir.join("configs/yazi/plugins"),
+            &yazi_dir.join("plugins"),
+        );
+        mirror_tree(
+            &runtime_dir.join("configs/yazi/flavors"),
+            &yazi_dir.join("flavors"),
+        );
+        let starship_source = runtime_dir.join("configs/yazi/yazelix_starship.toml");
+        if starship_source.exists() {
+            fs::create_dir_all(yazi_dir).unwrap();
+            fs::copy(starship_source, yazi_dir.join("yazelix_starship.toml")).unwrap();
+        }
+    }
+
+    fn mirror_tree(source: &Path, target: &Path) {
+        if !source.exists() {
+            return;
+        }
+        fs::create_dir_all(target).unwrap();
+        for entry in fs::read_dir(source).unwrap() {
+            let entry = entry.unwrap();
+            let source_path = entry.path();
+            let target_path = target.join(entry.file_name());
+            if entry.file_type().unwrap().is_dir() {
+                mirror_tree(&source_path, &target_path);
+            } else {
+                if let Some(parent) = target_path.parent() {
+                    fs::create_dir_all(parent).unwrap();
+                }
+                fs::copy(source_path, target_path).unwrap();
+            }
+        }
+    }
+
+    // Regression: startup can skip warm materialization only when the plan still catches missing generated Yazi asset trees.
+    #[test]
+    fn plan_marks_missing_yazi_static_assets_without_forcing_refresh() {
+        let dir = tempdir().expect("tempdir");
+        let runtime_dir = repo_root();
+        let config_path = runtime_dir.join("yazelix_default.toml");
+        let state_path = dir.path().join("state/rebuild_hash");
+        let yazi_dir = dir.path().join("configs/yazi");
+        let zellij_dir = dir.path().join("configs/zellij");
+        let zellij_layout_dir = zellij_dir.join("layouts");
+
+        fs::create_dir_all(&zellij_layout_dir).unwrap();
+        let baseline = compute_config_state(&ComputeConfigStateRequest {
+            config_path: config_path.clone(),
+            default_config_path: runtime_dir.join("yazelix_default.toml"),
+            contract_path: runtime_dir.join("config_metadata/main_config_contract.toml"),
+            runtime_dir: runtime_dir.clone(),
+            state_path: state_path.clone(),
+        })
+        .unwrap();
+        record_config_state(&RecordConfigStateRequest {
+            config_file: config_path.to_string_lossy().to_string(),
+            managed_config_path: config_path.clone(),
+            state_path: state_path.clone(),
+            config_hash: baseline.config_hash.clone(),
+            runtime_hash: baseline.runtime_hash.clone(),
+        })
+        .unwrap();
+
+        let request = plan_request_for(
+            config_path,
+            runtime_dir.clone(),
+            state_path,
+            yazi_dir.clone(),
+            zellij_dir,
+            zellij_layout_dir,
+        );
+        let initial_plan = plan_runtime_materialization(&request).unwrap();
+        touch_plan_artifacts(&initial_plan);
+        mirror_yazi_static_assets(&runtime_dir, &yazi_dir);
+        fs::remove_file(yazi_dir.join("plugins/sidebar-state.yazi/main.lua")).unwrap();
+
+        let plan = plan_runtime_materialization(&request).unwrap();
+
+        assert!(!plan.config_state.needs_refresh);
+        assert_eq!(plan.status, "repair_missing_artifacts");
+        assert_eq!(plan.should_regenerate, true);
+        assert_eq!(plan.should_sync_static_assets, false);
+        assert_eq!(plan.missing_artifacts.len(), 1);
+        assert_eq!(
+            plan.missing_artifacts[0].label,
+            "generated Yazi static assets"
+        );
+    }
+
     // Defends: repair evaluation returns a noop directive when the plan is noop and force is false.
     #[test]
     fn repair_evaluate_is_noop_when_plan_is_noop_and_not_forced() {
@@ -582,6 +687,7 @@ mod tests {
         ))
         .unwrap();
         touch_plan_artifacts(&plan);
+        mirror_yazi_static_assets(&runtime_dir, &yazi_dir);
 
         let evaluated =
             evaluate_runtime_materialization_repair(&RuntimeMaterializationRepairEvaluateRequest {
@@ -645,6 +751,7 @@ mod tests {
         ))
         .unwrap();
         touch_plan_artifacts(&plan_before);
+        mirror_yazi_static_assets(&runtime_dir, &yazi_dir);
         let plan_after = plan_runtime_materialization(&plan_request_for(
             config_path.clone(),
             runtime_dir.clone(),
