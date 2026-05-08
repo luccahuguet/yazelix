@@ -569,14 +569,18 @@ pub(super) fn first_paint_cache_for_widget(widget: &str, now: u64) -> Option<Val
     None
 }
 
-pub fn run_zellij_status_cache_refresh_codex_usage(args: &[String]) -> Result<i32, CoreError> {
+fn run_zellij_status_cache_refresh_agent_usage(
+    args: &[String],
+    target: AgentUsageRefreshTarget,
+    print_help: fn(),
+) -> Result<i32, CoreError> {
     let parsed = parse_zellij_status_cache_refresh_usage_args(
         args,
-        "status-cache-refresh-codex-usage",
-        true,
+        target.command_name(),
+        target.allow_timeout(),
     )?;
     if parsed.help {
-        print_zellij_status_cache_refresh_codex_usage_help();
+        print_help();
         return Ok(0);
     }
 
@@ -584,92 +588,43 @@ pub fn run_zellij_status_cache_refresh_codex_usage(args: &[String]) -> Result<i3
         Some(path) => path,
         None => return Ok(0),
     };
-    if !usage_widget_enabled_from_status_cache_path(&path, "codex_usage") {
-        return Ok(0);
-    }
-    let Some(shared_path) = codex_usage_shared_cache_path_from_status_cache_path(&path) else {
-        return Ok(0);
-    };
-    let timeout = Duration::from_millis(parsed.timeout_ms.unwrap_or(5_000).max(1));
-    refresh_codex_usage_shared_cache(
-        &shared_path,
+    let now = unix_time_seconds();
+    refresh_agent_usage_shared_cache_for_status_cache_path(
+        target,
+        &path,
         env::var_os("PATH").as_deref(),
-        unix_time_seconds(),
+        now,
         parsed.max_age_seconds.unwrap_or(600),
         parsed.error_backoff_seconds.unwrap_or(1_800),
-        timeout,
+        Duration::from_millis(parsed.timeout_ms.unwrap_or(5_000).max(1)),
     )?;
-    mark_status_cache_refresh_finished(&path, "codex_usage")?;
     Ok(0)
+}
+
+pub fn run_zellij_status_cache_refresh_codex_usage(args: &[String]) -> Result<i32, CoreError> {
+    run_zellij_status_cache_refresh_agent_usage(
+        args,
+        AgentUsageRefreshTarget::Codex,
+        print_zellij_status_cache_refresh_codex_usage_help,
+    )
 }
 
 pub fn run_zellij_status_cache_refresh_opencode_go_usage(
     args: &[String],
 ) -> Result<i32, CoreError> {
-    let parsed = parse_zellij_status_cache_refresh_usage_args(
+    run_zellij_status_cache_refresh_agent_usage(
         args,
-        "status-cache-refresh-opencode-go-usage",
-        false,
-    )?;
-    if parsed.help {
-        print_zellij_status_cache_refresh_opencode_go_usage_help();
-        return Ok(0);
-    }
-
-    let path = match parsed.path.or_else(status_bar_cache_path_from_env) {
-        Some(path) => path,
-        None => return Ok(0),
-    };
-    if !usage_widget_enabled_from_status_cache_path(&path, "opencode_go_usage") {
-        return Ok(0);
-    }
-    let Some(shared_path) = opencode_go_usage_shared_cache_path_from_status_cache_path(&path)
-    else {
-        return Ok(0);
-    };
-    refresh_opencode_go_usage_shared_cache(
-        &shared_path,
-        unix_time_seconds(),
-        parsed.max_age_seconds.unwrap_or(600),
-        parsed.error_backoff_seconds.unwrap_or(1_800),
-    )?;
-    mark_status_cache_refresh_finished(&path, "opencode_go_usage")?;
-    Ok(0)
+        AgentUsageRefreshTarget::OpenCodeGo,
+        print_zellij_status_cache_refresh_opencode_go_usage_help,
+    )
 }
 
 pub fn run_zellij_status_cache_refresh_claude_usage(args: &[String]) -> Result<i32, CoreError> {
-    let parsed = parse_zellij_status_cache_refresh_usage_args(
+    run_zellij_status_cache_refresh_agent_usage(
         args,
-        "status-cache-refresh-claude-usage",
-        true,
-    )?;
-    if parsed.help {
-        print_zellij_status_cache_refresh_claude_usage_help();
-        return Ok(0);
-    }
-
-    let path = match parsed.path.or_else(status_bar_cache_path_from_env) {
-        Some(path) => path,
-        None => return Ok(0),
-    };
-    if !usage_widget_enabled_from_status_cache_path(&path, "claude_usage") {
-        return Ok(0);
-    }
-    let Some(shared_path) = claude_usage_shared_cache_path_from_status_cache_path(&path) else {
-        return Ok(0);
-    };
-    let timeout = Duration::from_millis(parsed.timeout_ms.unwrap_or(5_000).max(1));
-    refresh_tokenusage_windowed_usage_shared_cache(
-        &shared_path,
-        TokenusageWindowedProvider::Claude,
-        env::var_os("PATH").as_deref(),
-        unix_time_seconds(),
-        parsed.max_age_seconds.unwrap_or(600),
-        parsed.error_backoff_seconds.unwrap_or(1_800),
-        timeout,
-    )?;
-    mark_status_cache_refresh_finished(&path, "claude_usage")?;
-    Ok(0)
+        AgentUsageRefreshTarget::Claude,
+        print_zellij_status_cache_refresh_claude_usage_help,
+    )
 }
 
 #[cfg(test)]

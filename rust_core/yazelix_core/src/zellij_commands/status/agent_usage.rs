@@ -1,12 +1,15 @@
 use super::{
-    STATUS_BUS_SCHEMA_VERSION, render_zjstatus_cursor_widget, render_zjstatus_workspace_widget,
-    session_config_path_from_env, session_config_path_from_values,
+    STATUS_BUS_SCHEMA_VERSION, mark_status_cache_refresh_finished, render_zjstatus_cursor_widget,
+    render_zjstatus_workspace_widget, session_config_path_from_env,
+    session_config_path_from_values,
 };
 use crate::bridge::CoreError;
 use serde_json::Value;
 use std::collections::BTreeSet;
+use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 pub(crate) const CLAUDE_USAGE_CACHE_SCHEMA_VERSION: i64 = 1;
 pub(crate) const CODEX_USAGE_CACHE_SCHEMA_VERSION: i64 = 2;
@@ -156,6 +159,96 @@ pub(crate) fn default_opencode_go_usage_periods() -> Vec<WindowedUsagePeriod> {
         WindowedUsagePeriod::Weekly,
         WindowedUsagePeriod::Monthly,
     ]
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum AgentUsageRefreshTarget {
+    Claude,
+    Codex,
+    OpenCodeGo,
+}
+
+impl AgentUsageRefreshTarget {
+    pub(crate) fn command_name(self) -> &'static str {
+        match self {
+            Self::Claude => "status-cache-refresh-claude-usage",
+            Self::Codex => "status-cache-refresh-codex-usage",
+            Self::OpenCodeGo => "status-cache-refresh-opencode-go-usage",
+        }
+    }
+
+    pub(crate) fn widget_name(self) -> &'static str {
+        match self {
+            Self::Claude => "claude_usage",
+            Self::Codex => "codex_usage",
+            Self::OpenCodeGo => "opencode_go_usage",
+        }
+    }
+
+    pub(crate) fn allow_timeout(self) -> bool {
+        matches!(self, Self::Claude | Self::Codex)
+    }
+}
+
+pub(crate) fn refresh_agent_usage_shared_cache_for_status_cache_path(
+    target: AgentUsageRefreshTarget,
+    status_cache_path: &Path,
+    path_var: Option<&OsStr>,
+    now: u64,
+    max_age_seconds: u64,
+    error_backoff_seconds: u64,
+    timeout: Duration,
+) -> Result<(), CoreError> {
+    if !usage_widget_enabled_from_status_cache_path(status_cache_path, target.widget_name()) {
+        return Ok(());
+    }
+    match target {
+        AgentUsageRefreshTarget::Claude => {
+            let Some(shared_path) =
+                claude_usage_shared_cache_path_from_status_cache_path(status_cache_path)
+            else {
+                return Ok(());
+            };
+            refresh_tokenusage_windowed_usage_shared_cache(
+                &shared_path,
+                TokenusageWindowedProvider::Claude,
+                path_var,
+                now,
+                max_age_seconds,
+                error_backoff_seconds,
+                timeout,
+            )?;
+        }
+        AgentUsageRefreshTarget::Codex => {
+            let Some(shared_path) =
+                codex_usage_shared_cache_path_from_status_cache_path(status_cache_path)
+            else {
+                return Ok(());
+            };
+            refresh_codex_usage_shared_cache(
+                &shared_path,
+                path_var,
+                now,
+                max_age_seconds,
+                error_backoff_seconds,
+                timeout,
+            )?;
+        }
+        AgentUsageRefreshTarget::OpenCodeGo => {
+            let Some(shared_path) =
+                opencode_go_usage_shared_cache_path_from_status_cache_path(status_cache_path)
+            else {
+                return Ok(());
+            };
+            refresh_opencode_go_usage_shared_cache(
+                &shared_path,
+                now,
+                max_age_seconds,
+                error_backoff_seconds,
+            )?;
+        }
+    }
+    mark_status_cache_refresh_finished(status_cache_path, target.widget_name())
 }
 
 pub(crate) fn codex_usage_shared_cache_path_from_status_cache_path(

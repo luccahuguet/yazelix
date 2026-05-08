@@ -4,19 +4,6 @@ use super::*;
 #[test]
 fn status_cache_claude_usage_renders_5h_week_display_modes() {
     let cache = json!({
-        "schema_version": 1,
-        "updated_at_unix_seconds": 10,
-        "status_bus": {
-            "schema_version": 1,
-            "active_tab_position": 0,
-            "workspace": null,
-            "managed_panes": {"editor_pane_id": null, "sidebar_pane_id": null},
-            "focus_context": "other",
-            "layout": {"active_swap_layout_name": null, "sidebar_collapsed": null},
-            "sidebar_yazi": null,
-            "transient_panes": {"popup": null, "menu": null},
-            "extensions": {"ai_pane_activity": []}
-        },
         "claude_usage": {
             "five_hour_tokens": 15456373u64,
             "weekly_tokens": 66610005u64,
@@ -67,19 +54,6 @@ fn status_cache_claude_usage_renders_5h_week_display_modes() {
 #[test]
 fn status_cache_codex_usage_renders_5h_week_display_modes() {
     let cache = json!({
-        "schema_version": 1,
-        "updated_at_unix_seconds": 10,
-        "status_bus": {
-            "schema_version": 1,
-            "active_tab_position": 0,
-            "workspace": null,
-            "managed_panes": {"editor_pane_id": null, "sidebar_pane_id": null},
-            "focus_context": "other",
-            "layout": {"active_swap_layout_name": null, "sidebar_collapsed": null},
-            "sidebar_yazi": null,
-            "transient_panes": {"popup": null, "menu": null},
-            "extensions": {"ai_pane_activity": []}
-        },
         "codex_usage": {
             "updated_at_unix_seconds": 10u64,
             "five_hour_tokens": 138424632u64,
@@ -148,19 +122,6 @@ fn codex_window_label_reports_elapsed_position() {
 #[test]
 fn status_cache_codex_usage_quota_mode_renders_partial_token_cache() {
     let cache = json!({
-        "schema_version": 1,
-        "updated_at_unix_seconds": 10,
-        "status_bus": {
-            "schema_version": 1,
-            "active_tab_position": 0,
-            "workspace": null,
-            "managed_panes": {"editor_pane_id": null, "sidebar_pane_id": null},
-            "focus_context": "other",
-            "layout": {"active_swap_layout_name": null, "sidebar_collapsed": null},
-            "sidebar_yazi": null,
-            "transient_panes": {"popup": null, "menu": null},
-            "extensions": {"ai_pane_activity": []}
-        },
         "codex_usage": {
             "updated_at_unix_seconds": 10u64,
             "five_hour_tokens": 4015883u64,
@@ -188,19 +149,6 @@ fn status_cache_codex_usage_quota_mode_renders_partial_token_cache() {
 #[test]
 fn status_cache_opencode_go_usage_renders_configured_window_display_modes() {
     let cache = json!({
-        "schema_version": 1,
-        "updated_at_unix_seconds": 10,
-        "status_bus": {
-            "schema_version": 1,
-            "active_tab_position": 0,
-            "workspace": null,
-            "managed_panes": {"editor_pane_id": null, "sidebar_pane_id": null},
-            "focus_context": "other",
-            "layout": {"active_swap_layout_name": null, "sidebar_collapsed": null},
-            "sidebar_yazi": null,
-            "transient_panes": {"popup": null, "menu": null},
-            "extensions": {"ai_pane_activity": []}
-        },
         "opencode_go_usage": {
             "five_hour_tokens": 138424632u64,
             "weekly_tokens": 1335519960u64,
