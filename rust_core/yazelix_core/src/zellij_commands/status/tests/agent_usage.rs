@@ -1,5 +1,26 @@
 use super::*;
 
+fn status_cache_path_for_temp(temp_path: &Path) -> PathBuf {
+    temp_path
+        .join("state")
+        .join("sessions")
+        .join("window_a")
+        .join("status_bar_cache.json")
+}
+
+#[cfg(unix)]
+fn write_tokenusage_provider_script(bin_dir: &Path, script: &str) -> PathBuf {
+    use std::os::unix::fs::PermissionsExt;
+
+    fs::create_dir_all(bin_dir).unwrap();
+    let provider = bin_dir.join("tu");
+    fs::write(&provider, script).unwrap();
+    let mut permissions = fs::metadata(&provider).unwrap().permissions();
+    permissions.set_mode(0o755);
+    fs::set_permissions(&provider, permissions).unwrap();
+    provider
+}
+
 // Defends: Claude usage mirrors the compact 5h/week token/quota contract selected by claude_usage_display.
 #[test]
 fn status_cache_claude_usage_renders_5h_week_display_modes() {
@@ -275,14 +296,10 @@ fn tokenusage_json_parsers_read_windows_and_official_quota() {
 #[cfg(unix)]
 #[test]
 fn status_cache_codex_usage_refresh_writes_shared_combined_cache() {
-    use std::os::unix::fs::PermissionsExt;
-
     let temp = tempfile::tempdir().unwrap();
     let bin_dir = temp.path().join("bin");
-    fs::create_dir_all(&bin_dir).unwrap();
-    let provider = bin_dir.join("tu");
-    fs::write(
-        &provider,
+    write_tokenusage_provider_script(
+        &bin_dir,
         r#"#!/usr/bin/env sh
 if [ "$1" = "blocks" ] && [ "$2" = "--active" ]; then
   case " $* " in
@@ -301,17 +318,8 @@ if [ "$1" = "weekly" ]; then
 fi
 exit 64
 "#,
-    )
-    .unwrap();
-    let mut permissions = fs::metadata(&provider).unwrap().permissions();
-    permissions.set_mode(0o755);
-    fs::set_permissions(&provider, permissions).unwrap();
-    let status_cache_path = temp
-        .path()
-        .join("state")
-        .join("sessions")
-        .join("window_a")
-        .join("status_bar_cache.json");
+    );
+    let status_cache_path = status_cache_path_for_temp(temp.path());
     let shared_path =
         codex_usage_shared_cache_path_from_status_cache_path(&status_cache_path).unwrap();
 
@@ -346,14 +354,10 @@ exit 64
 #[cfg(unix)]
 #[test]
 fn codex_usage_refresh_preserves_missing_tokens_for_same_reset_window() {
-    use std::os::unix::fs::PermissionsExt;
-
     let temp = tempfile::tempdir().unwrap();
     let bin_dir = temp.path().join("bin");
-    fs::create_dir_all(&bin_dir).unwrap();
-    let provider = bin_dir.join("tu");
-    fs::write(
-        &provider,
+    write_tokenusage_provider_script(
+        &bin_dir,
         r#"#!/usr/bin/env sh
 if [ "$1" = "blocks" ] && [ "$2" = "--active" ]; then
   case " $* " in
@@ -372,18 +376,9 @@ if [ "$1" = "weekly" ]; then
 fi
 exit 64
 "#,
-    )
-    .unwrap();
-    let mut permissions = fs::metadata(&provider).unwrap().permissions();
-    permissions.set_mode(0o755);
-    fs::set_permissions(&provider, permissions).unwrap();
+    );
 
-    let status_cache_path = temp
-        .path()
-        .join("state")
-        .join("sessions")
-        .join("window_a")
-        .join("status_bar_cache.json");
+    let status_cache_path = status_cache_path_for_temp(temp.path());
     let shared_path =
         codex_usage_shared_cache_path_from_status_cache_path(&status_cache_path).unwrap();
     write_json_value_atomic(
@@ -444,14 +439,10 @@ exit 64
 #[cfg(unix)]
 #[test]
 fn codex_usage_refresh_preserves_previous_quota_during_probe_backoff() {
-    use std::os::unix::fs::PermissionsExt;
-
     let temp = tempfile::tempdir().unwrap();
     let bin_dir = temp.path().join("bin");
-    fs::create_dir_all(&bin_dir).unwrap();
-    let provider = bin_dir.join("tu");
-    fs::write(
-        &provider,
+    write_tokenusage_provider_script(
+        &bin_dir,
         r#"#!/usr/bin/env sh
 if [ "$1" = "blocks" ] && [ "$2" = "--active" ]; then
   case " $* " in
@@ -470,18 +461,9 @@ if [ "$1" = "weekly" ]; then
 fi
 exit 64
 "#,
-    )
-    .unwrap();
-    let mut permissions = fs::metadata(&provider).unwrap().permissions();
-    permissions.set_mode(0o755);
-    fs::set_permissions(&provider, permissions).unwrap();
+    );
 
-    let status_cache_path = temp
-        .path()
-        .join("state")
-        .join("sessions")
-        .join("window_a")
-        .join("status_bar_cache.json");
+    let status_cache_path = status_cache_path_for_temp(temp.path());
     let shared_path =
         codex_usage_shared_cache_path_from_status_cache_path(&status_cache_path).unwrap();
     write_json_value_atomic(
@@ -551,12 +533,7 @@ exit 64
 #[test]
 fn status_cache_codex_usage_uses_schema_scoped_shared_cache_path() {
     let temp = tempfile::tempdir().unwrap();
-    let status_cache_path = temp
-        .path()
-        .join("state")
-        .join("sessions")
-        .join("window_a")
-        .join("status_bar_cache.json");
+    let status_cache_path = status_cache_path_for_temp(temp.path());
     let shared_path =
         codex_usage_shared_cache_path_from_status_cache_path(&status_cache_path).unwrap();
     assert_eq!(
@@ -774,12 +751,7 @@ fn status_cache_opencode_go_usage_refresh_writes_shared_combined_cache() {
     let db_path = temp.path().join("opencode.db");
     let now = 2_000_000;
     write_opencode_go_usage_test_db(&db_path, now);
-    let status_cache_path = temp
-        .path()
-        .join("state")
-        .join("sessions")
-        .join("window_a")
-        .join("status_bar_cache.json");
+    let status_cache_path = status_cache_path_for_temp(temp.path());
     let shared_path =
         opencode_go_usage_shared_cache_path_from_status_cache_path(&status_cache_path).unwrap();
 
@@ -969,14 +941,10 @@ fn codex_usage_shared_cache_respects_freshness_and_backoff() {
 #[cfg(unix)]
 #[test]
 fn status_cache_claude_usage_refresh_writes_shared_combined_cache() {
-    use std::os::unix::fs::PermissionsExt;
-
     let temp = tempfile::tempdir().unwrap();
     let bin_dir = temp.path().join("bin");
-    fs::create_dir_all(&bin_dir).unwrap();
-    let provider = bin_dir.join("tu");
-    fs::write(
-        &provider,
+    write_tokenusage_provider_script(
+        &bin_dir,
         r#"#!/usr/bin/env sh
 if [ "$1" = "blocks" ] && [ "$2" = "--active" ]; then
   case " $* " in
@@ -995,17 +963,8 @@ if [ "$1" = "weekly" ]; then
 fi
 exit 64
 "#,
-    )
-    .unwrap();
-    let mut permissions = fs::metadata(&provider).unwrap().permissions();
-    permissions.set_mode(0o755);
-    fs::set_permissions(&provider, permissions).unwrap();
-    let status_cache_path = temp
-        .path()
-        .join("state")
-        .join("sessions")
-        .join("window_a")
-        .join("status_bar_cache.json");
+    );
+    let status_cache_path = status_cache_path_for_temp(temp.path());
     let shared_path =
         claude_usage_shared_cache_path_from_status_cache_path(&status_cache_path).unwrap();
 
@@ -1037,16 +996,12 @@ exit 64
 #[cfg(unix)]
 #[test]
 fn tokenusage_windowed_refresh_backs_off_missing_quota_only() {
-    use std::os::unix::fs::PermissionsExt;
-
     let temp = tempfile::tempdir().unwrap();
     let bin_dir = temp.path().join("bin");
-    fs::create_dir_all(&bin_dir).unwrap();
     let calls_path = temp.path().join("tu_calls.log");
-    let provider = bin_dir.join("tu");
-    fs::write(
-        &provider,
-        format!(
+    write_tokenusage_provider_script(
+        &bin_dir,
+        &format!(
             r#"#!/usr/bin/env sh
 printf '%s\n' "$*" >> '{}'
 if [ "$1" = "blocks" ] && [ "$2" = "--active" ]; then
@@ -1068,11 +1023,7 @@ exit 64
 "#,
             calls_path.display()
         ),
-    )
-    .unwrap();
-    let mut permissions = fs::metadata(&provider).unwrap().permissions();
-    permissions.set_mode(0o755);
-    fs::set_permissions(&provider, permissions).unwrap();
+    );
     let shared_path = temp.path().join("claude_usage_cache.json");
 
     assert!(
@@ -1133,16 +1084,9 @@ exit 64
 #[cfg(unix)]
 #[test]
 fn tokenusage_windowed_refresh_times_out_hung_provider() {
-    use std::os::unix::fs::PermissionsExt;
-
     let temp = tempfile::tempdir().unwrap();
     let bin_dir = temp.path().join("bin");
-    fs::create_dir_all(&bin_dir).unwrap();
-    let provider = bin_dir.join("tu");
-    fs::write(&provider, "#!/usr/bin/env sh\nsleep 5\n").unwrap();
-    let mut permissions = fs::metadata(&provider).unwrap().permissions();
-    permissions.set_mode(0o755);
-    fs::set_permissions(&provider, permissions).unwrap();
+    write_tokenusage_provider_script(&bin_dir, "#!/usr/bin/env sh\nsleep 5\n");
     let started = Instant::now();
     let shared_path = temp.path().join("claude_usage_cache.json");
 

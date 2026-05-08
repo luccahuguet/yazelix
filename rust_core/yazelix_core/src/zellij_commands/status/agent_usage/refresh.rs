@@ -360,11 +360,11 @@ pub(crate) fn tokenusage_windowed_usage_quota_backoff_until(
         .filter(|backoff_until| now < *backoff_until)
 }
 
-pub(crate) struct TokenusageWindowedUsageCacheLock {
+pub(crate) struct AgentUsageCacheLock {
     path: PathBuf,
 }
 
-impl Drop for TokenusageWindowedUsageCacheLock {
+impl Drop for AgentUsageCacheLock {
     fn drop(&mut self) {
         let _ = fs::remove_dir(&self.path);
     }
@@ -374,80 +374,18 @@ pub(crate) fn try_acquire_tokenusage_windowed_usage_cache_lock(
     shared_path: &Path,
     provider: TokenusageWindowedProvider,
     now: u64,
-) -> Result<Option<TokenusageWindowedUsageCacheLock>, CoreError> {
-    let lock_path = shared_path.with_file_name(tokenusage_windowed_usage_lock_name(provider));
-    if let Some(parent) = lock_path.parent() {
-        fs::create_dir_all(parent).map_err(|source| {
-            CoreError::io(
-                format!(
-                    "{}_lock_parent_create_failed",
-                    tokenusage_windowed_usage_error_prefix(provider)
-                ),
-                format!(
-                    "Failed to create the Yazelix {} usage cache lock directory.",
-                    tokenusage_windowed_usage_label(provider)
-                ),
-                "Check permissions for the Yazelix state directory, then retry.",
-                &parent.display().to_string(),
-                source,
-            )
-        })?;
-    }
-    match fs::create_dir(&lock_path) {
-        Ok(()) => Ok(Some(TokenusageWindowedUsageCacheLock { path: lock_path })),
-        Err(source) if source.kind() == ErrorKind::AlreadyExists => {
-            if tokenusage_windowed_usage_cache_lock_is_stale(&lock_path, provider, now) {
-                let _ = fs::remove_dir(&lock_path);
-                return match fs::create_dir(&lock_path) {
-                    Ok(()) => Ok(Some(TokenusageWindowedUsageCacheLock { path: lock_path })),
-                    Err(source) if source.kind() == ErrorKind::AlreadyExists => Ok(None),
-                    Err(source) => Err(CoreError::io(
-                        format!(
-                            "{}_lock_create_failed",
-                            tokenusage_windowed_usage_error_prefix(provider)
-                        ),
-                        format!(
-                            "Failed to acquire the Yazelix {} usage cache lock.",
-                            tokenusage_windowed_usage_label(provider)
-                        ),
-                        "Check permissions for the Yazelix state directory, then retry.",
-                        &lock_path.display().to_string(),
-                        source,
-                    )),
-                };
-            }
-            Ok(None)
-        }
-        Err(source) => Err(CoreError::io(
-            format!(
-                "{}_lock_create_failed",
-                tokenusage_windowed_usage_error_prefix(provider)
-            ),
-            format!(
-                "Failed to acquire the Yazelix {} usage cache lock.",
-                tokenusage_windowed_usage_label(provider)
-            ),
-            "Check permissions for the Yazelix state directory, then retry.",
-            &lock_path.display().to_string(),
-            source,
-        )),
-    }
-}
-
-pub(crate) fn tokenusage_windowed_usage_cache_lock_is_stale(
-    lock_path: &Path,
-    provider: TokenusageWindowedProvider,
-    now: u64,
-) -> bool {
-    fs::metadata(lock_path)
-        .ok()
-        .and_then(|metadata| metadata.modified().ok())
-        .and_then(|modified| modified.duration_since(UNIX_EPOCH).ok())
-        .map(|duration| {
-            now.saturating_sub(duration.as_secs())
-                > tokenusage_windowed_usage_lock_stale_after_seconds(provider)
-        })
-        .unwrap_or(false)
+) -> Result<Option<AgentUsageCacheLock>, CoreError> {
+    let error_prefix = tokenusage_windowed_usage_error_prefix(provider);
+    let provider_label = tokenusage_windowed_usage_label(provider);
+    try_acquire_agent_usage_cache_lock(
+        shared_path.with_file_name(tokenusage_windowed_usage_lock_name(provider)),
+        now,
+        tokenusage_windowed_usage_lock_stale_after_seconds(provider),
+        &format!("{error_prefix}_lock_parent_create_failed"),
+        &format!("Failed to create the Yazelix {provider_label} usage cache lock directory."),
+        &format!("{error_prefix}_lock_create_failed"),
+        &format!("Failed to acquire the Yazelix {provider_label} usage cache lock."),
+    )
 }
 
 pub(crate) fn refresh_opencode_go_usage_shared_cache(
@@ -572,29 +510,40 @@ pub(crate) fn opencode_go_usage_shared_cache_is_backing_off(path: &Path, now: u6
         .is_some_and(|backoff_until| now < backoff_until)
 }
 
-pub(crate) struct OpenCodeGoUsageCacheLock {
-    path: PathBuf,
-}
-
-impl Drop for OpenCodeGoUsageCacheLock {
-    fn drop(&mut self) {
-        let _ = fs::remove_dir(&self.path);
-    }
-}
-
 pub(crate) fn try_acquire_opencode_go_usage_cache_lock(
     shared_path: &Path,
     now: u64,
-) -> Result<Option<OpenCodeGoUsageCacheLock>, CoreError> {
-    let lock_path = shared_path.with_file_name(format!(
-        ".opencode_go_usage_cache_v{}.lock",
-        OPENCODE_GO_USAGE_CACHE_SCHEMA_VERSION
-    ));
+) -> Result<Option<AgentUsageCacheLock>, CoreError> {
+    let lock_path = shared_path.with_file_name(opencode_go_usage_lock_name());
+    try_acquire_agent_usage_cache_lock(
+        lock_path,
+        now,
+        OPENCODE_GO_USAGE_LOCK_STALE_AFTER_SECONDS,
+        "opencode_go_usage_cache_lock_parent_create_failed",
+        "Failed to create the Yazelix OpenCode Go usage cache lock directory.",
+        "opencode_go_usage_cache_lock_create_failed",
+        "Failed to acquire the Yazelix OpenCode Go usage cache lock.",
+    )
+}
+
+pub(crate) fn opencode_go_usage_lock_name() -> String {
+    format!(".opencode_go_usage_cache_v{OPENCODE_GO_USAGE_CACHE_SCHEMA_VERSION}.lock")
+}
+
+pub(crate) fn try_acquire_agent_usage_cache_lock(
+    lock_path: PathBuf,
+    now: u64,
+    stale_after_seconds: u64,
+    parent_error_code: &str,
+    parent_error_message: &str,
+    create_error_code: &str,
+    create_error_message: &str,
+) -> Result<Option<AgentUsageCacheLock>, CoreError> {
     if let Some(parent) = lock_path.parent() {
         fs::create_dir_all(parent).map_err(|source| {
             CoreError::io(
-                "opencode_go_usage_cache_lock_parent_create_failed",
-                "Failed to create the Yazelix OpenCode Go usage cache lock directory.",
+                parent_error_code,
+                parent_error_message,
                 "Check permissions for the Yazelix state directory, then retry.",
                 &parent.display().to_string(),
                 source,
@@ -602,16 +551,16 @@ pub(crate) fn try_acquire_opencode_go_usage_cache_lock(
         })?;
     }
     match fs::create_dir(&lock_path) {
-        Ok(()) => Ok(Some(OpenCodeGoUsageCacheLock { path: lock_path })),
+        Ok(()) => Ok(Some(AgentUsageCacheLock { path: lock_path })),
         Err(source) if source.kind() == ErrorKind::AlreadyExists => {
-            if opencode_go_usage_cache_lock_is_stale(&lock_path, now) {
+            if agent_usage_cache_lock_is_stale(&lock_path, now, stale_after_seconds) {
                 let _ = fs::remove_dir(&lock_path);
                 return match fs::create_dir(&lock_path) {
-                    Ok(()) => Ok(Some(OpenCodeGoUsageCacheLock { path: lock_path })),
+                    Ok(()) => Ok(Some(AgentUsageCacheLock { path: lock_path })),
                     Err(source) if source.kind() == ErrorKind::AlreadyExists => Ok(None),
                     Err(source) => Err(CoreError::io(
-                        "opencode_go_usage_cache_lock_create_failed",
-                        "Failed to acquire the Yazelix OpenCode Go usage cache lock.",
+                        create_error_code,
+                        create_error_message,
                         "Check permissions for the Yazelix state directory, then retry.",
                         &lock_path.display().to_string(),
                         source,
@@ -621,8 +570,8 @@ pub(crate) fn try_acquire_opencode_go_usage_cache_lock(
             Ok(None)
         }
         Err(source) => Err(CoreError::io(
-            "opencode_go_usage_cache_lock_create_failed",
-            "Failed to acquire the Yazelix OpenCode Go usage cache lock.",
+            create_error_code,
+            create_error_message,
             "Check permissions for the Yazelix state directory, then retry.",
             &lock_path.display().to_string(),
             source,
@@ -630,14 +579,16 @@ pub(crate) fn try_acquire_opencode_go_usage_cache_lock(
     }
 }
 
-pub(crate) fn opencode_go_usage_cache_lock_is_stale(lock_path: &Path, now: u64) -> bool {
+pub(crate) fn agent_usage_cache_lock_is_stale(
+    lock_path: &Path,
+    now: u64,
+    stale_after_seconds: u64,
+) -> bool {
     fs::metadata(lock_path)
         .ok()
         .and_then(|metadata| metadata.modified().ok())
         .and_then(|modified| modified.duration_since(UNIX_EPOCH).ok())
-        .map(|duration| {
-            now.saturating_sub(duration.as_secs()) > OPENCODE_GO_USAGE_LOCK_STALE_AFTER_SECONDS
-        })
+        .map(|duration| now.saturating_sub(duration.as_secs()) > stale_after_seconds)
         .unwrap_or(false)
 }
 
