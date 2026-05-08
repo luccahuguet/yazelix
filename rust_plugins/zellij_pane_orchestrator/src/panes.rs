@@ -61,12 +61,7 @@ pub(crate) enum ManagedPaneKind {
     Sidebar,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum FocusContext {
-    Editor,
-    Sidebar,
-    Other,
-}
+pub(crate) type FocusContext = FocusContextPolicy;
 
 #[derive(Serialize)]
 struct MaintainerDebugEditorState {
@@ -127,14 +122,10 @@ pub(crate) fn build_focus_context_by_tab(
             .get(tab_position)
             .copied()
             .unwrap_or(FocusContext::Other);
-        let focus_context = match resolve_focus_context(
+        let focus_context = resolve_focus_context(
             focused_pane.map(|pane| pane.title.as_str()),
-            focus_context_to_policy(previous_focus_context),
-        ) {
-            FocusContextPolicy::Editor => FocusContext::Editor,
-            FocusContextPolicy::Sidebar => FocusContext::Sidebar,
-            FocusContextPolicy::Other => FocusContext::Other,
-        };
+            previous_focus_context,
+        );
         focus_context_by_tab.insert(*tab_position, focus_context);
     }
 
@@ -377,7 +368,7 @@ impl State {
             .unwrap_or(FocusContext::Other);
         let sidebar_is_closed = self.sidebar_is_closed(active_tab_position).unwrap_or(false);
         let plan = resolve_sidebar_focus_toggle(
-            focus_context_to_policy(focus_context),
+            focus_context,
             managed_tab_panes.sidebar.is_some(),
             sidebar_is_closed,
             managed_tab_panes.editor.is_some(),
@@ -631,13 +622,5 @@ pub(crate) fn pane_id_to_string(pane_id: Option<PaneId>) -> Option<String> {
         Some(PaneId::Terminal(id)) => Some(format!("terminal:{id}")),
         Some(PaneId::Plugin(id)) => Some(format!("plugin:{id}")),
         None => None,
-    }
-}
-
-fn focus_context_to_policy(focus_context: FocusContext) -> FocusContextPolicy {
-    match focus_context {
-        FocusContext::Editor => FocusContextPolicy::Editor,
-        FocusContext::Sidebar => FocusContextPolicy::Sidebar,
-        FocusContext::Other => FocusContextPolicy::Other,
     }
 }
