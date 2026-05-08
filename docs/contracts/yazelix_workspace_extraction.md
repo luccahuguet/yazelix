@@ -19,7 +19,7 @@ The extraction readiness state is `internal_boundary_only`.
 
 `yazelix_workspace` should not become a public crate, plugin, or separate repository until the internal boundary proves smaller than the integrated product surface. Workspace orchestration is closest to Yazelix's identity, so extraction must preserve the current tab-local session model instead of exposing a half-product API.
 
-The internal boundary may move code, but it must not change supported runtime behavior by itself. The post-launch and post-Zellij-materialization shrink evaluation keeps this as a no-go for public extraction: the reusable session types are small, but the active command adapters still depend on Yazelix runtime facts, generated Zellij config, Yazi `emit-to`, editor runtime env construction, popup cwd policy, status/cache paths, and pane-orchestrator plugin aliases.
+The internal boundary may move code, but it must not change supported runtime behavior by itself. The post-launch and post-Zellij-materialization shrink evaluation keeps this as a no-go for public extraction: the reusable session types are small, and the private Zellij command split is still surrounded by Yazelix runtime facts, generated Zellij config, Yazi `emit-to`, editor runtime env construction, popup cwd policy, status/cache paths, and pane-orchestrator plugin aliases.
 
 ## Zellij Layout Ownership Gate
 
@@ -91,7 +91,9 @@ The smallest reusable pieces are already visible:
 
 Those pieces are not enough for a standalone package. The surrounding product adapters still own the behavior users actually invoke:
 
-- `zellij_commands.rs` mixes Zellij pipe diagnostics, workspace retarget, Yazi-to-editor open flow, editor pane creation, terminal pane opening, sidebar hiding, runtime editor env construction, and a large status/cache test surface
+- `zellij_commands/pipe.rs` owns Zellij pipe diagnostics and workspace-root reads, but still assumes Yazelix's pane-orchestrator alias
+- `zellij_commands/workspace.rs` owns workspace retarget, Yazi-to-editor open flow, editor pane creation, terminal pane opening, sidebar hiding, and runtime editor env construction
+- `zellij_commands.rs` still carries the broad status/cache test surface and public command export shell
 - `workspace_commands.rs` mixes public `yzx cwd`, `yzx reveal`, `yzx popup`, sidebar refresh, zoxide/path resolution, managed editor kind detection, and Yazi `emit-to`
 - launch and restart adapters still provide the environment and session facts that workspace commands consume
 - `zellij_materialization.rs` still wires generated layouts, plugin artifact paths, permissions, keybindings, and status-bar command widgets
