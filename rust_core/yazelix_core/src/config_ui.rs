@@ -337,16 +337,7 @@ fn run_ui_loop(
     request: ConfigUiRequest,
     model: ConfigUiModel,
 ) -> Result<(), CoreError> {
-    let mut app = ConfigUiApp {
-        request,
-        model,
-        selected_tab: 0,
-        selected_row: 0,
-        search: String::new(),
-        search_active: false,
-        edit: None,
-        notice: None,
-    };
+    let mut app = ConfigUiApp::new(request, model);
 
     loop {
         app.clamp_selection();
@@ -383,6 +374,19 @@ fn restore_terminal(
 }
 
 impl ConfigUiApp {
+    pub(crate) fn new(request: ConfigUiRequest, model: ConfigUiModel) -> Self {
+        Self {
+            request,
+            model,
+            selected_tab: 0,
+            selected_row: 0,
+            search: String::new(),
+            search_active: false,
+            edit: None,
+            notice: None,
+        }
+    }
+
     fn handle_key(&mut self, key: KeyEvent) -> bool {
         if self.edit.is_some() {
             self.handle_edit_key(key);
@@ -2249,16 +2253,7 @@ mod tests {
         .expect("settings");
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
-        let mut app = ConfigUiApp {
-            request,
-            model,
-            selected_tab: 0,
-            selected_row: 0,
-            search: String::new(),
-            search_active: false,
-            edit: None,
-            notice: None,
-        };
+        let mut app = ConfigUiApp::new(request, model);
 
         select_field_path(&mut app, "zellij.keybindings");
         let details = lines_text(&app.render_details(app.visible_rows()[app.selected_row]));
@@ -2371,16 +2366,7 @@ mod tests {
         let settings_path = config.path().join("settings.jsonc");
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
-        let mut app = ConfigUiApp {
-            request,
-            model,
-            selected_tab: 0,
-            selected_row: 0,
-            search: String::new(),
-            search_active: false,
-            edit: None,
-            notice: None,
-        };
+        let mut app = ConfigUiApp::new(request, model);
 
         select_field_path(&mut app, "terminal.terminals");
         app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
@@ -2438,47 +2424,39 @@ mod tests {
     // Defends: bool edits stay direct controls while enum edit mode behaves like a single-select picker.
     #[test]
     fn choice_edit_keys_toggle_bool_and_move_enum_picker() {
-        let mut app = ConfigUiApp {
-            request: ConfigUiRequest {
-                runtime_dir: PathBuf::from("/runtime"),
-                config_dir: PathBuf::from("/home/lucca/.config/yazelix"),
-                config_override: None,
-            },
-            model: ConfigUiModel {
-                active_config_path: PathBuf::from("/home/lucca/.config/yazelix/settings.jsonc"),
-                cursor_config_path: PathBuf::from(
-                    "/home/lucca/.config/yazelix_cursors/settings.jsonc",
-                ),
-                default_cursor_config_path: PathBuf::from("/runtime/yazelix_cursors_default.toml"),
-                active_config_exists: true,
-                config_owner: ConfigUiPathOwner::User,
-                config_read_only: false,
-                tabs: vec!["general".to_string()],
-                fields: vec![
-                    test_field("core.debug_mode", "bool", "true", &[]),
-                    test_field(
-                        "zellij.tab_label_mode",
-                        "string",
-                        "\"compact\"",
-                        &["short", "compact", "full"],
-                    ),
-                ],
-                sidecars: Vec::new(),
-                native_config_statuses: Vec::new(),
-                diagnostics: Vec::new(),
-            },
-            selected_tab: 0,
-            selected_row: 0,
-            search: String::new(),
-            search_active: false,
-            edit: Some(ConfigUiEditState {
-                field_index: 0,
-                input: "true".to_string(),
-                mode: ConfigUiEditMode::Choice,
-                choice_index: 0,
-            }),
-            notice: None,
+        let request = ConfigUiRequest {
+            runtime_dir: PathBuf::from("/runtime"),
+            config_dir: PathBuf::from("/home/lucca/.config/yazelix"),
+            config_override: None,
         };
+        let model = ConfigUiModel {
+            active_config_path: PathBuf::from("/home/lucca/.config/yazelix/settings.jsonc"),
+            cursor_config_path: PathBuf::from("/home/lucca/.config/yazelix_cursors/settings.jsonc"),
+            default_cursor_config_path: PathBuf::from("/runtime/yazelix_cursors_default.toml"),
+            active_config_exists: true,
+            config_owner: ConfigUiPathOwner::User,
+            config_read_only: false,
+            tabs: vec!["general".to_string()],
+            fields: vec![
+                test_field("core.debug_mode", "bool", "true", &[]),
+                test_field(
+                    "zellij.tab_label_mode",
+                    "string",
+                    "\"compact\"",
+                    &["short", "compact", "full"],
+                ),
+            ],
+            sidecars: Vec::new(),
+            native_config_statuses: Vec::new(),
+            diagnostics: Vec::new(),
+        };
+        let mut app = ConfigUiApp::new(request, model);
+        app.edit = Some(ConfigUiEditState {
+            field_index: 0,
+            input: "true".to_string(),
+            mode: ConfigUiEditMode::Choice,
+            choice_index: 0,
+        });
 
         app.handle_edit_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
         assert_eq!(app.edit.as_ref().expect("bool edit").input, "false");
@@ -2505,16 +2483,7 @@ mod tests {
         let settings_path = config.path().join("settings.jsonc");
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
-        let mut app = ConfigUiApp {
-            request,
-            model,
-            selected_tab: 0,
-            selected_row: 0,
-            search: String::new(),
-            search_active: false,
-            edit: None,
-            notice: None,
-        };
+        let mut app = ConfigUiApp::new(request, model);
 
         select_field_path(&mut app, "terminal.config_mode");
         app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
@@ -2559,16 +2528,7 @@ mod tests {
         .expect("settings");
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
-        let mut app = ConfigUiApp {
-            request,
-            model,
-            selected_tab: 0,
-            selected_row: 0,
-            search: String::new(),
-            search_active: false,
-            edit: None,
-            notice: None,
-        };
+        let mut app = ConfigUiApp::new(request, model);
 
         select_field_path(&mut app, "editor.hide_sidebar_on_file_open");
         app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
@@ -2599,16 +2559,7 @@ mod tests {
         .expect("settings");
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
-        let mut app = ConfigUiApp {
-            request,
-            model,
-            selected_tab: 0,
-            selected_row: 0,
-            search: String::new(),
-            search_active: false,
-            edit: None,
-            notice: None,
-        };
+        let mut app = ConfigUiApp::new(request, model);
 
         let outcome = app
             .write_field_value("editor.hide_sidebar_on_file_open", &json!(true))
