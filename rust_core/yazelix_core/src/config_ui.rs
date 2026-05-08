@@ -62,7 +62,6 @@ const DEFAULT_TABS: &[&str] = &[
     "advanced",
 ];
 const CONFIG_UI_METADATA_FILENAME: &str = "config_ui_metadata.toml";
-pub(crate) const HEADER_HORIZONTAL_PADDING: u16 = 1;
 const ZELLIJ_KEYBINDINGS_FIELD_PATH: &str = "zellij.keybindings";
 
 #[derive(Debug, Clone)]
@@ -102,14 +101,6 @@ struct SchemaField {
     path: String,
     kind: String,
     allowed_values: Vec<String>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum UiRowRef {
-    Field(usize),
-    Sidecar(usize),
-    NativeStatus(usize),
-    Diagnostic(usize),
 }
 
 pub(crate) struct ConfigUiApp {
@@ -1626,13 +1617,6 @@ fn native_status_detail_lines(status: &ConfigUiNativeStatus) -> Vec<Line<'static
     lines
 }
 
-fn detail_line(label: &str, value: &str) -> Line<'static> {
-    Line::from(vec![
-        Span::styled(fixed_label(label, 11), metadata_key_style()),
-        Span::styled(value.to_string(), metadata_value_style()),
-    ])
-}
-
 fn active_config_path(paths: &PrimaryConfigPaths, config_override: Option<&str>) -> PathBuf {
     match config_override.map(str::trim).filter(|raw| !raw.is_empty()) {
         Some(raw) => PathBuf::from(raw),
@@ -2494,104 +2478,6 @@ fn toml_number_as_f64(value: &TomlValue) -> Option<f64> {
     value
         .as_float()
         .or_else(|| value.as_integer().map(|integer| integer as f64))
-}
-
-fn state_label(state: ConfigUiValueState) -> &'static str {
-    match state {
-        ConfigUiValueState::Explicit => "explicit",
-        ConfigUiValueState::Defaulted => "default",
-        ConfigUiValueState::Unset => "unset",
-        ConfigUiValueState::Invalid => "invalid",
-    }
-}
-
-fn state_style(state: ConfigUiValueState) -> Style {
-    match state {
-        ConfigUiValueState::Explicit => Style::default().fg(Color::Green),
-        ConfigUiValueState::Defaulted => Style::default().fg(Color::Cyan),
-        ConfigUiValueState::Unset => Style::default().fg(Color::Yellow),
-        ConfigUiValueState::Invalid => Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
-    }
-}
-
-fn apply_status_style(status: &ConfigUiApplyStatus) -> Style {
-    if status.pending {
-        Style::default().fg(Color::Yellow)
-    } else {
-        Style::default().fg(Color::Green)
-    }
-}
-
-fn sidecar_status_style(present: bool) -> Style {
-    if present {
-        Style::default().fg(Color::Green)
-    } else {
-        Style::default().fg(Color::Yellow)
-    }
-}
-
-fn native_status_style(status: &ConfigUiNativeStatus) -> Style {
-    match status.severity.as_str() {
-        "error" => Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
-        "warning" => Style::default().fg(Color::Yellow),
-        "ok" => Style::default().fg(Color::Green),
-        _ => Style::default().fg(Color::Cyan),
-    }
-}
-
-pub(crate) fn metadata_key_style() -> Style {
-    Style::default().fg(Color::LightBlue)
-}
-
-pub(crate) fn metadata_value_style() -> Style {
-    Style::default().fg(Color::White)
-}
-
-pub(crate) fn config_key_style() -> Style {
-    Style::default().fg(Color::LightCyan)
-}
-
-pub(crate) fn owner_label(owner: ConfigUiPathOwner) -> &'static str {
-    match owner {
-        ConfigUiPathOwner::Default => "default",
-        ConfigUiPathOwner::HomeManager => "home-manager",
-        ConfigUiPathOwner::User => "user",
-    }
-}
-
-fn fixed_label(value: &str, width: usize) -> String {
-    let label = format!("{value:<width$}");
-    if label.ends_with(' ') {
-        label
-    } else {
-        format!("{label} ")
-    }
-}
-
-pub(crate) fn truncate(value: &str, limit: usize) -> String {
-    if value.chars().count() <= limit {
-        return value.to_string();
-    }
-    value
-        .chars()
-        .take(limit.saturating_sub(3))
-        .collect::<String>()
-        + "..."
-}
-
-pub(crate) fn truncate_start(value: &str, limit: usize) -> String {
-    let len = value.chars().count();
-    if len <= limit {
-        return value.to_string();
-    }
-    if limit <= 3 {
-        return ".".repeat(limit);
-    }
-    let tail = value
-        .chars()
-        .skip(len.saturating_sub(limit - 3))
-        .collect::<String>();
-    format!("...{tail}")
 }
 
 fn tab_index(tabs: &[String], tab: &str) -> usize {

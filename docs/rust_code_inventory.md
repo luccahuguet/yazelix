@@ -2,11 +2,11 @@
 
 This inventory is the extraction gate for reusable Yazelix components. It records the current Rust shape before moving code out of the main repository so extraction decisions start from concrete ownership rather than a raw line-count hunch.
 
-Current rebaseline measured on 2026-05-08 after extracting `yazelix-screen`, `yazelix-cursors`, `yazelix-bar`, `yazelix-zellij-popup`, and `yazelix-yazi-assets`, accepting the optional runtime component toggles, paying down the first post-v16.3 Rust budget debt, deleting stale strength-score and migration metadata, dropping the visual sweep layout lane, moving popup lifecycle ownership to `yzpp`, closing the first yzpp cleanup tail, moving reusable Yazi plugin refresh ownership out of the main repo, moving integrated zjstatus command-definition rendering into `yazelix-bar`, splitting Yazi materialization into a private Yazelix adapter plus writer boundary, splitting launch process/desktop/enter/restart adapters out of the launch parent, deleting weak command-surface integration tests, deleting the obsolete Nushell budget validator, splitting launch fallback flow into a private adapter, thinning Yazi writer override ownership, and adding a warm no-op materialization plan skip:
+Current rebaseline measured on 2026-05-08 after extracting `yazelix-screen`, `yazelix-cursors`, `yazelix-bar`, `yazelix-zellij-popup`, and `yazelix-yazi-assets`, accepting the optional runtime component toggles, paying down the first post-v16.3 Rust budget debt, deleting stale strength-score and migration metadata, dropping the visual sweep layout lane, moving popup lifecycle ownership to `yzpp`, closing the first yzpp cleanup tail, moving reusable Yazi plugin refresh ownership out of the main repo, moving integrated zjstatus command-definition rendering into `yazelix-bar`, splitting Yazi materialization into a private Yazelix adapter plus writer boundary, splitting launch process/desktop/enter/restart adapters out of the launch parent, deleting weak command-surface integration tests, deleting the obsolete Nushell budget validator, splitting launch fallback flow into a private adapter, thinning Yazi writer override ownership, adding a warm no-op materialization plan skip, and tightening the private `yazelix_ratconfig` boundary:
 
-- `tokei rust_core rust_plugins --exclude target` reports `66,741` Rust code LOC across `146` Rust files
-- the same `tokei` run reports `72,761` Rust lines including blanks and comments
-- `config_metadata/rust_ownership_budget.toml` tracks `72,879` raw Rust file lines across `146` Rust files
+- `tokei rust_core rust_plugins --exclude target` reports `66,698` Rust code LOC across `146` Rust files
+- the same `tokei` run reports `72,714` Rust lines including blanks and comments
+- `config_metadata/rust_ownership_budget.toml` tracks `72,832` raw Rust file lines across `146` Rust files
 - the remaining difference between `tokei` lines and the budget total is measurement-method noise from embedded markdown/parser classification and line-count method differences, not a separate ownership surface
 - `yzx_repo_validator validate-rust-ownership-budget` passes the no-growth budget and still warns that the tracked Rust surface is above the long-term `60,000` LOC hard target
 - `cargo-udeps` requires nightly Rust because it passes unstable `-Z` compiler flags; rerun it during explicit dependency-audit beads rather than treating this inventory as fresh unused-dependency evidence
@@ -19,18 +19,18 @@ The latest budget-debt paydown deleted the hidden moved-Ghostty cursor-field run
 
 | Family | Files | Raw lines | Status | Extraction pressure |
 | --- | ---: | ---: | --- | --- |
-| Product runtime source | 84 | 51,452 | canonical and extension surfaces | High: contains the largest user-facing seams |
+| Product runtime source | 84 | 51,405 | canonical and extension surfaces | High: contains the largest user-facing seams |
 | Product integration tests | 19 | 5,875 | canonical tests | Medium: split by behavior family, do not delete broadly |
 | Maintainer tooling and tests | 18 | 10,711 | canonical maintainer | Medium: keep in repo, but split large validator files |
 | Pane orchestrator plugin | 25 | 4,841 | extension surface | High: already has a natural Zellij plugin boundary |
-| Total | 146 | 72,879 | current budget ceiling | Reduce or extract before raising ceilings |
+| Total | 146 | 72,832 | current budget ceiling | Reduce or extract before raising ceilings |
 
 Detailed budget families:
 
 | Family | Files | Raw lines | Budget target | Notes |
 | --- | ---: | ---: | ---: | --- |
 | `core_cli_and_public_surface` | 12 | 8,171 | 7,000 | Public command dispatch and front-door rendering after child CLI extractions |
-| `core_config_ui_and_materialization` | 42 | 20,777 | 14,000 | Largest product family; config UI, apply modes, runtime component manifest, ratconfig boundary, materializers, settings surfaces |
+| `core_config_ui_and_materialization` | 42 | 20,730 | 14,000 | Largest product family; config UI, apply modes, runtime component manifest, ratconfig boundary, materializers, settings surfaces |
 | `core_diagnostics_and_recovery` | 8 | 5,866 | 4,500 | Doctor, install ownership, profile/status reporting |
 | `core_workspace_and_pane_integration` | 22 | 16,638 | 11,000 | Action registry, launch private adapters, Zellij/session/workspace command surface, pane-orchestrator client, status/cache/widgets |
 | `core_integration_tests` | 19 | 5,875 | 4,500 | High-value tests, but several files are broad family buckets |
@@ -43,7 +43,7 @@ Detailed budget families:
 | File | Raw lines | Disposition |
 | --- | ---: | --- |
 | `rust_core/yazelix_maintainer/src/repo_contract_validation.rs` | 3,583 | Split by validator domain, keep in maintainer crate |
-| `rust_core/yazelix_core/src/config_ui.rs` | 3,244 | Continue the `yazelix_ratconfig` split and keep Yazelix adapters local |
+| `rust_core/yazelix_core/src/config_ui.rs` | 3,130 | Continue the `yazelix_ratconfig` split and keep Yazelix adapters local |
 | `rust_core/yazelix_core/src/zellij_commands.rs` | 2,860 | Split remaining pipe primitive, workspace/editor flow, and terminal pane actions before workspace extraction |
 | `rust_core/yazelix_core/src/zellij_materialization.rs` | 2,857 | Keep until keybinding ownership and layout-generation contracts settle; generic integrated zjstatus command-definition rendering lives in `yazelix-bar` |
 | `rust_core/yazelix_core/src/zellij_commands/status/agent_usage.rs` | 1,933 | Provider usage cache refreshes, shared-cache locking, and agent usage widget rendering; keep Yazelix-owned unless a standalone provider usage contract appears |
@@ -151,6 +151,7 @@ Recent accepted full-repo scorecards:
 
 | Range | Raw text diff excluding `.beads` | Tokei code LOC delta | Budget interpretation |
 | --- | --- | ---: | --- |
+| `yazelix-3l6p` | `118` insertions, `165` deletions, net `-47` raw Rust lines | `-43` | Moved row/render primitives into the private `yazelix_ratconfig` boundary and deleted a speculative model-only test that did not defend shipped behavior |
 | `yazelix-8h9y` | `149` insertions, `7` deletions, net `+142` raw text lines including Nu | `+120` | Added a warm no-op startup skip through `runtime-materialization.plan`, while preserving repair when generated Yazi static assets are missing; accepted performance debt |
 | `yazelix-rhut` | `145` insertions, `168` deletions, net `-23` raw Rust lines | `-20` | Moved managed Yazi override parsing out of the writer into the Yazelix adapter, collapsed duplicated generated-file headers, and deleted duplicate writer-internal tests covered by materialization integration tests |
 | `yazelix-jklp` | `509` insertions, `483` deletions, net `+26` raw Rust lines | `+24` | Split launch parser/fallback loop/cursor facts into `launch_commands/launch.rs`; `launch_commands.rs` dropped from 1,111 to 639 lines, but this is accepted organization debt rather than deletion |

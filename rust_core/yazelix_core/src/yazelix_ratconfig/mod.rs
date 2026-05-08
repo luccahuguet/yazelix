@@ -9,8 +9,9 @@ pub mod model;
 pub(crate) mod render;
 
 pub(crate) use editor::*;
+pub(crate) use model::UiRowRef;
 pub use model::{
     ConfigUiApplyStatus, ConfigUiDiagnostic, ConfigUiField, ConfigUiModel, ConfigUiNativeStatus,
     ConfigUiPathOwner, ConfigUiSidecar, ConfigUiValueState,
 };
-pub(crate) use render::draw_config_ui;
+pub(crate) use render::*;
