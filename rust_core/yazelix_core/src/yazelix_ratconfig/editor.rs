@@ -58,7 +58,11 @@ impl ConfigUiApp {
     }
 
     pub(crate) fn clamp_selection_for_len(&mut self, len: usize) {
-        self.selected_row = if len == 0 { 0 } else { self.selected_row.min(len - 1) };
+        self.selected_row = if len == 0 {
+            0
+        } else {
+            self.selected_row.min(len - 1)
+        };
     }
 }
 

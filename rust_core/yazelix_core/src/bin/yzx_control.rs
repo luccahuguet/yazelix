@@ -73,68 +73,46 @@ use yazelix_core::run_zellij_status_cache_write;
 use yazelix_core::update_commands::run_yzx_update;
 use yazelix_core::zellij_commands::internal_zellij_control_subcommands_usage;
 use yazelix_core::zellij_commands::probe_active_tab_session_state;
-use yazelix_core::{run_yzx_popup, run_yzx_sidebar};
+use yazelix_core::{YzxCommandMetadata, run_yzx_popup, run_yzx_sidebar, yzx_command_metadata};
 
 fn usage() -> ! {
-    eprintln!("Usage: yzx_control env [--no-shell|-n]");
-    eprintln!("       yzx_control run <command> [args...]");
-    eprintln!("       yzx_control config [--path|ui|set|unset]");
-    eprintln!("       yzx_control cursors");
-    eprintln!("       yzx_control cwd [target]");
-    eprintln!(
-        "       yzx_control desktop <install|launch|uninstall|macos_preview install|macos_preview uninstall> [args...]"
-    );
-    eprintln!("       yzx_control dev <subcommand> [args...]");
-    eprintln!("       yzx_control doctor [--verbose] [--fix] [--json]");
-    eprintln!("       yzx_control edit [query...] [--print]");
-    eprintln!("       yzx_control edit config [--print]");
-    eprintln!("       yzx_control generate_shell_initializers [shells...]");
-    eprintln!("       yzx_control import <zellij|yazi|helix> [--force]");
-    eprintln!("       yzx_control enter [--path <dir> | --home] [--verbose]");
-    eprintln!("       yzx_control inspect [--json]");
-    eprintln!("       yzx_control status [--versions] [--json]");
-    eprintln!("       yzx_control launch [--path <dir> | --home] [--terminal <name>] [--verbose]");
-    eprintln!("       yzx_control home_manager [prepare] [args...]");
-    eprintln!("       yzx_control keys [yzx|yazi|hx|helix|nu|nushell]");
-    eprintln!("       yzx_control onboard [--force] [--dry-run]");
-    eprintln!("       yzx_control popup [program...]");
-    eprintln!("       yzx_control sidebar refresh");
-    eprintln!("       yzx_control profile create-run <scenario> [--metadata <json>]");
-    eprintln!(
-        "       yzx_control profile record-step <component> <step> <started_ns> <ended_ns> [--metadata <json>]"
-    );
-    eprintln!("       yzx_control profile load-report <report_path>");
-    eprintln!(
-        "       yzx_control profile wait-step <report_path> <component> <step> [--timeout-ms <n>]"
-    );
-    eprintln!("       yzx_control profile print-report <report_path>");
-    eprintln!("       yzx_control profile compare-reports <baseline_report> <candidate_report>");
-    eprintln!("       yzx_control profile save-baseline <name> <report_path>");
-    eprintln!("       yzx_control profile compare-baseline <name> <candidate_report>");
-    eprintln!("       yzx_control zellij pipe <command> [--payload <json>]");
-    eprintln!("       yzx_control zellij get-workspace-root [--include-bootstrap]");
-    eprintln!("       yzx_control zellij inspect-session [--json]");
-    eprintln!("       yzx_control zellij status-cache-widget <widget>");
-    eprintln!("       yzx_control zellij status-cache-heartbeat [--json]");
-    eprintln!("       yzx_control zellij status-cache-refresh-claude-usage");
-    eprintln!("       yzx_control zellij status-cache-refresh-codex-usage");
-    eprintln!("       yzx_control zellij status-cache-refresh-opencode-go-usage");
-    eprintln!("       yzx_control zellij retarget <path> [--editor <kind>]");
-    eprintln!("       yzx_control zellij open-editor <path> [path ...]");
-    eprintln!("       yzx_control zellij open-editor-cwd <path>");
-    eprintln!("       yzx_control zellij open-terminal <path>");
-    eprintln!("       yzx_control reveal <path>");
-    eprintln!("       yzx_control reset config [--yes] [--no-backup]");
-    eprintln!("       yzx_control restart");
-    eprintln!("       yzx_control screen [style]");
-    eprintln!("       yzx_control why");
-    eprintln!("       yzx_control sponsor");
-    eprintln!(
-        "       yzx_control tutor [begin|list|workspace|discovery|tool_tutors|hx|helix|nu|nushell]"
-    );
-    eprintln!("       yzx_control update [subcommand] [args...]");
-    eprintln!("       yzx_control whats_new");
+    eprintln!("Usage:");
+    for line in usage_lines() {
+        eprintln!("  {line}");
+    }
     std::process::exit(64);
+}
+
+fn usage_lines() -> Vec<String> {
+    let mut lines = yzx_command_metadata()
+        .into_iter()
+        .filter_map(yzx_control_public_usage_line)
+        .chain(private_control_usage_lines())
+        .collect::<Vec<_>>();
+    lines.sort();
+    lines.dedup();
+    lines
+}
+
+fn yzx_control_public_usage_line(command: YzxCommandMetadata) -> Option<String> {
+    let route = command.name.strip_prefix("yzx ")?;
+    match route {
+        "menu" => None,
+        _ => Some(format!("yzx_control {route}")),
+    }
+}
+
+fn private_control_usage_lines() -> impl Iterator<Item = String> {
+    [
+        "yzx_control cwd [args...]".to_string(),
+        "yzx_control generate_shell_initializers [args...]".to_string(),
+        "yzx_control profile <create-run|record-step|load-report|wait-step|print-report|compare-reports|save-baseline|compare-baseline> [args...]".to_string(),
+        format!(
+            "yzx_control zellij <{}> [args...]",
+            internal_zellij_control_subcommands_usage()
+        ),
+    ]
+    .into_iter()
 }
 
 const YAZELIX_DESCRIPTION: &str = "Yazi + Zellij + Helix integrated terminal environment";

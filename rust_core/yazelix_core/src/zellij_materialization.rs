@@ -1487,12 +1487,13 @@ fn expected_layout_targets(
     expected_layout_targets_for_dir(source_layouts_dir, &merged_config_dir.join("layouts"))
 }
 
-fn expected_layout_targets_for_dir(source_layouts_dir: &Path, target_dir: &Path) -> Result<Vec<PathBuf>, CoreError> {
+fn expected_layout_targets_for_dir(
+    source_layouts_dir: &Path,
+    target_dir: &Path,
+) -> Result<Vec<PathBuf>, CoreError> {
     list_top_level_kdl_files(source_layouts_dir)?
         .into_iter()
-        .map(|source| {
-            Ok(target_dir.join(Path::new(required_file_name(&source)?)))
-        })
+        .map(|source| Ok(target_dir.join(Path::new(required_file_name(&source)?))))
         .collect()
 }
 

@@ -925,7 +925,6 @@ impl ConfigUiApp {
             }
         }
     }
-
 }
 
 fn field_detail_lines(field: &ConfigUiField) -> Vec<Line<'static>> {

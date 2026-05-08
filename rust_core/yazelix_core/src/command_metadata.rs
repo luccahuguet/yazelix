@@ -1,6 +1,6 @@
 use crate::bridge::{CoreError, ErrorClass};
-use crate::public_command_surface::{YzxCommandMetadata, YzxCommandParameter, YzxParameterKind};
 use crate::public_command_surface::yzx_command_metadata;
+use crate::public_command_surface::{YzxCommandMetadata, YzxCommandParameter, YzxParameterKind};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};

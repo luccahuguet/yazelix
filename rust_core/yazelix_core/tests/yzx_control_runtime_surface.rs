@@ -130,9 +130,9 @@ fn ghostty_wrapper_keeps_runtime_libexec_private_for_host_nix() {
         &posix_dir.join("yazelix_ghostty.sh"),
         &fs::read_to_string(repo.join("shells/posix/yazelix_ghostty.sh")).unwrap(),
     );
-    write_executable_script(&libexec_dir.join("nix"), "#!/bin/sh\nprintf 'runtime nix\\n'\n");
+    let runtime_nix = libexec_dir.join("nix");
+    write_executable_script(&runtime_nix, "#!/bin/sh\nprintf 'runtime nix\\n'\n");
     write_executable_script(&host_bin.join("nix"), "#!/bin/sh\nprintf 'host nix\\n'\n");
-
     let capture = temp.path().join("capture_path.sh");
     write_executable_script(
         &capture,

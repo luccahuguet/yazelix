@@ -6,12 +6,12 @@ use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::control_plane::config_dir_from_env;
 use crate::user_config_paths;
 use crate::yazi_render_plan::{YaziRenderPlanRequest, compute_yazi_render_plan};
-pub use writer::YaziManagedFileStatus;
 use serde::Serialize;
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use toml::Value as TomlValue;
+pub use writer::YaziManagedFileStatus;
 
 const YAZI_KEYBINDINGS_CONFIG_KEY: &str = "yazi_keybindings";
 
