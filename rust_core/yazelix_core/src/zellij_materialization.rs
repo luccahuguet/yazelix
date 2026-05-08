@@ -5,8 +5,7 @@ use crate::control_plane::{config_dir_from_env, home_dir_from_env, state_dir_fro
 use crate::runtime_component_enabled;
 use crate::user_config_paths;
 use crate::zellij_render_plan::{
-    DEFAULT_SIDEBAR_YAZI_ARG, TopLevelSetting, ZellijRenderPlanData, ZellijRenderPlanRequest,
-    compute_zellij_render_plan, effective_sidebar_args,
+    TopLevelSetting, ZellijRenderPlanData, ZellijRenderPlanRequest, compute_zellij_render_plan,
 };
 use directories::ProjectDirs;
 use serde::Serialize;
@@ -33,7 +32,7 @@ const ZJSTATUS_WASM_NAME: &str = "zjstatus.wasm";
 const YZPP_PLUGIN_PREFIX: &str = YZPP_PLUGIN_ALIAS;
 const YZPP_WASM_NAME: &str = "yzpp.wasm";
 const GENERATION_METADATA_NAME: &str = ".yazelix_generation.json";
-const GENERATION_FINGERPRINT_SCHEMA_VERSION: u64 = 3;
+const GENERATION_FINGERPRINT_SCHEMA_VERSION: u64 = 4;
 const ZELLIJ_KEYBINDINGS_CONFIG_KEY: &str = "zellij_keybindings";
 
 const PANE_ORCHESTRATOR_PLUGIN_URL_PLACEHOLDER: &str = "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__";
@@ -177,15 +176,17 @@ pub fn generate_zellij_materialization(
     let plugin_artifacts = resolve_plugin_artifacts(&request.runtime_dir, &state_dir)?;
     let zellij_keybindings = resolve_zellij_keybindings(&config)?;
     let popup_program = resolve_popup_program_config(&config);
+    let render_plan_request =
+        build_render_plan_request(&config, &layout_dir, &resolved_default_shell)?;
+    let render_plan = compute_zellij_render_plan(&render_plan_request)?;
     let reuse_allowed = string_config(&config, "zellij_theme", "default") != "random";
     let generation_fingerprint = build_generation_fingerprint(
-        &config,
         &request.runtime_dir,
         &base_config_source,
-        &resolved_default_shell,
         &source_layouts_dir,
         &plugin_artifacts,
         &zellij_keybindings,
+        &render_plan,
     )?;
     if reuse_allowed
         && can_reuse_generated_zellij_state(
@@ -234,11 +235,6 @@ pub fn generate_zellij_materialization(
         });
     }
 
-    let render_plan = compute_zellij_render_plan(&build_render_plan_request(
-        &config,
-        &layout_dir,
-        &resolved_default_shell,
-    ))?;
     fs::create_dir_all(&request.zellij_config_dir).map_err(|source| {
         CoreError::io(
             "create_zellij_output_dir",
@@ -311,37 +307,46 @@ fn build_render_plan_request(
     config: &JsonMap<String, JsonValue>,
     layout_dir: &Path,
     resolved_default_shell: &str,
-) -> ZellijRenderPlanRequest {
-    ZellijRenderPlanRequest {
-        sidebar_width_percent: int_config(config, "sidebar_width_percent", 20),
-        sidebar_command: string_config(config, "sidebar_command", "nu").to_string(),
-        sidebar_args: string_list_config(config, "sidebar_args")
-            .unwrap_or_else(|| vec![DEFAULT_SIDEBAR_YAZI_ARG.to_string()]),
-        popup_width_percent: int_config(config, "popup_width_percent", 90),
-        popup_height_percent: int_config(config, "popup_height_percent", 90),
-        screen_saver_enabled: bool_config(config, "screen_saver_enabled", false),
-        screen_saver_idle_seconds: int_config(config, "screen_saver_idle_seconds", 300),
-        screen_saver_style: string_config(config, "screen_saver_style", "random").to_string(),
-        zellij_widget_tray: string_list_config(config, "zellij_widget_tray"),
-        zellij_custom_text: optional_string_config(config, "zellij_custom_text"),
-        zellij_theme: string_config(config, "zellij_theme", "default").to_string(),
-        zellij_pane_frames: string_config(config, "zellij_pane_frames", "true").to_string(),
-        zellij_rounded_corners: string_config(config, "zellij_rounded_corners", "true").to_string(),
-        disable_zellij_tips: string_config(config, "disable_zellij_tips", "true").to_string(),
-        support_kitty_keyboard_protocol: string_config(
-            config,
-            "support_kitty_keyboard_protocol",
-            "false",
+) -> Result<ZellijRenderPlanRequest, CoreError> {
+    let mut request = config.clone();
+    request.insert(
+        "yazelix_layout_dir".to_string(),
+        json!(layout_dir.to_string_lossy()),
+    );
+    request.insert(
+        "resolved_default_shell".to_string(),
+        json!(resolved_default_shell),
+    );
+    request.insert(
+        "editor_label".to_string(),
+        json!(string_config(config, "editor_command", "hx")),
+    );
+    request.insert(
+        "shell_label".to_string(),
+        json!(string_config(config, "default_shell", "nu")),
+    );
+    request.insert(
+        "terminal_label".to_string(),
+        json!(
+            string_list_config(config, "terminals")
+                .and_then(|values| {
+                    values
+                        .into_iter()
+                        .map(|value| value.trim().to_string())
+                        .find(|value| !value.is_empty())
+                })
+                .unwrap_or_else(|| "wezterm".to_string())
+        ),
+    );
+    serde_json::from_value(JsonValue::Object(request)).map_err(|source| {
+        CoreError::classified(
+            ErrorClass::Config,
+            "invalid_zellij_render_plan_request",
+            format!("Could not build Zellij render plan from normalized config: {source}"),
+            "Check settings.jsonc values under editor and zellij.",
+            json!({}),
         )
-        .to_string(),
-        zellij_default_mode: string_config(config, "zellij_default_mode", "normal").to_string(),
-        zellij_tab_label_mode: string_config(config, "zellij_tab_label_mode", "full").to_string(),
-        yazelix_layout_dir: layout_dir.to_string_lossy().to_string(),
-        resolved_default_shell: resolved_default_shell.to_string(),
-        editor_label: string_config(config, "editor_command", "hx").to_string(),
-        shell_label: string_config(config, "default_shell", "nu").to_string(),
-        terminal_label: first_string_list_config(config, "terminals", "wezterm"),
-    }
+    })
 }
 
 fn bool_config(config: &JsonMap<String, JsonValue>, key: &str, default: bool) -> bool {
@@ -350,17 +355,6 @@ fn bool_config(config: &JsonMap<String, JsonValue>, key: &str, default: bool) ->
         Some(JsonValue::String(value)) => value == "true",
         _ => default,
     }
-}
-
-fn int_config(config: &JsonMap<String, JsonValue>, key: &str, default: i64) -> i64 {
-    config
-        .get(key)
-        .and_then(|value| match value {
-            JsonValue::Number(number) => number.as_i64(),
-            JsonValue::String(raw) => raw.parse::<i64>().ok(),
-            _ => None,
-        })
-        .unwrap_or(default)
 }
 
 fn string_config<'a>(
@@ -375,15 +369,6 @@ fn string_config<'a>(
         .unwrap_or(default)
 }
 
-fn optional_string_config(config: &JsonMap<String, JsonValue>, key: &str) -> Option<String> {
-    config
-        .get(key)
-        .and_then(JsonValue::as_str)
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(ToOwned::to_owned)
-}
-
 fn string_list_config(config: &JsonMap<String, JsonValue>, key: &str) -> Option<Vec<String>> {
     match config.get(key) {
         Some(JsonValue::Array(values)) => Some(
@@ -395,21 +380,6 @@ fn string_list_config(config: &JsonMap<String, JsonValue>, key: &str) -> Option<
         ),
         _ => None,
     }
-}
-
-fn first_string_list_config(
-    config: &JsonMap<String, JsonValue>,
-    key: &str,
-    default: &str,
-) -> String {
-    string_list_config(config, key)
-        .and_then(|values| {
-            values
-                .into_iter()
-                .map(|value| value.trim().to_string())
-                .find(|value| !value.is_empty())
-        })
-        .unwrap_or_else(|| default.to_string())
 }
 
 fn resolve_popup_program_config(config: &JsonMap<String, JsonValue>) -> Vec<String> {
@@ -1893,13 +1863,12 @@ fn upsert_plugin_permission_blocks(plugin_artifacts: &[PluginArtifact]) -> Resul
 }
 
 fn build_generation_fingerprint(
-    config: &JsonMap<String, JsonValue>,
     runtime_dir: &Path,
     base_config_source: &ZellijBaseConfigSource,
-    resolved_default_shell: &str,
     source_layouts_dir: &Path,
     plugin_artifacts: &[PluginArtifact],
     zellij_keybindings: &BTreeMap<String, Vec<String>>,
+    render_plan: &ZellijRenderPlanData,
 ) -> Result<String, CoreError> {
     let overrides_path = runtime_dir
         .join("configs")
@@ -1926,36 +1895,11 @@ fn build_generation_fingerprint(
             })
         })
         .collect::<Vec<_>>();
-    let sidebar_command = string_config(config, "sidebar_command", "nu");
-    let sidebar_args = string_list_config(config, "sidebar_args")
-        .unwrap_or_else(|| vec![DEFAULT_SIDEBAR_YAZI_ARG.to_string()]);
-    let relevant_config = json!({
-        "zellij_widget_tray": config.get("zellij_widget_tray").cloned().unwrap_or_else(|| json!(["editor", "shell", "term", "cursor", "codex_usage", "cpu", "ram"])),
-        "zellij_custom_text": string_config(config, "zellij_custom_text", ""),
-        "support_kitty_keyboard_protocol": string_config(config, "support_kitty_keyboard_protocol", "false"),
-        "default_shell": string_config(config, "default_shell", "nu"),
-        "resolved_default_shell": resolved_default_shell,
-        "editor_command": string_config(config, "editor_command", ""),
-        "terminals": config.get("terminals").cloned().unwrap_or_else(|| json!(["ghostty", "wezterm"])),
-        "zellij_default_mode": string_config(config, "zellij_default_mode", "normal"),
-        "sidebar_width_percent": int_config(config, "sidebar_width_percent", 20),
-        "sidebar_command": sidebar_command,
-        "sidebar_args": effective_sidebar_args(sidebar_command, &sidebar_args),
-        "popup_width_percent": int_config(config, "popup_width_percent", 90),
-        "popup_height_percent": int_config(config, "popup_height_percent", 90),
-        "screen_saver_enabled": bool_config(config, "screen_saver_enabled", false),
-        "screen_saver_idle_seconds": int_config(config, "screen_saver_idle_seconds", 300),
-        "screen_saver_style": string_config(config, "screen_saver_style", "random"),
-        "disable_zellij_tips": string_config(config, "disable_zellij_tips", "true"),
-        "zellij_pane_frames": string_config(config, "zellij_pane_frames", "true"),
-        "zellij_rounded_corners": string_config(config, "zellij_rounded_corners", "true"),
-        "zellij_theme": string_config(config, "zellij_theme", "default"),
-        "zellij_keybindings": zellij_keybindings,
-    });
     let fingerprint_payload = json!({
         "schema_version": GENERATION_FINGERPRINT_SCHEMA_VERSION,
         "runtime_dir": runtime_dir.to_string_lossy(),
-        "relevant_config": relevant_config,
+        "render_plan": render_plan,
+        "zellij_keybindings": zellij_keybindings,
         "base_config": {
             "source": base_config_source.source,
             "path": base_config_source.path.as_ref().map(|path| path.to_string_lossy().to_string()).unwrap_or_default(),
@@ -2197,6 +2141,7 @@ fn timestamp_for_metadata() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::zellij_render_plan::DEFAULT_SIDEBAR_YAZI_ARG;
 
     fn sample_render_plan_for_widgets(
         widget_tray: Vec<&str>,
@@ -2497,7 +2442,8 @@ keybinds {
             &config,
             std::path::Path::new("/tmp/yazelix/layouts"),
             "/nix/store/bin/nu",
-        );
+        )
+        .unwrap();
         let plan = compute_zellij_render_plan(&request).unwrap();
         let rendered = render_layout_template(
             r#"pane name="sidebar" {
