@@ -620,17 +620,10 @@ fn push_semantic_line(
 
 fn build_yazelix_load_plugins_block(existing_lines: &[String]) -> String {
     let mut merged_lines = existing_lines.to_vec();
-    let orchestrator_present = merged_lines
-        .iter()
-        .any(|line| line.trim() == PANE_ORCHESTRATOR_PLUGIN_ALIAS);
-    if !orchestrator_present {
-        merged_lines.push(format!("  {PANE_ORCHESTRATOR_PLUGIN_ALIAS}"));
-    }
-    let yzpp_present = merged_lines
-        .iter()
-        .any(|line| line.trim() == YZPP_PLUGIN_ALIAS);
-    if !yzpp_present {
-        merged_lines.push(format!("  {YZPP_PLUGIN_ALIAS}"));
+    for alias in [PANE_ORCHESTRATOR_PLUGIN_ALIAS, YZPP_PLUGIN_ALIAS] {
+        if !merged_lines.iter().any(|line| line.trim() == alias) {
+            merged_lines.push(format!("  {alias}"));
+        }
     }
     block_with_lines("load_plugins", &merged_lines)
 }
@@ -1494,14 +1487,14 @@ fn expected_layout_targets(
     source_layouts_dir: &Path,
     merged_config_dir: &Path,
 ) -> Result<Vec<PathBuf>, CoreError> {
-    Ok(list_top_level_kdl_files(source_layouts_dir)?
+    list_top_level_kdl_files(source_layouts_dir)?
         .into_iter()
         .map(|source| {
             Ok(merged_config_dir
                 .join("layouts")
                 .join(Path::new(required_file_name(&source)?)))
         })
-        .collect::<Result<Vec<_>, CoreError>>()?)
+        .collect()
 }
 
 fn list_source_layout_files(source_layouts_dir: &Path) -> Result<Vec<PathBuf>, CoreError> {
