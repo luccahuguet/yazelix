@@ -24,7 +24,8 @@ use yazelix_bar::{
     BarRenderError, BarRenderRequest, CUSTOM_TEXT_PLACEHOLDER, TAB_ACTIVE_FULLSCREEN_PLACEHOLDER,
     TAB_ACTIVE_PLACEHOLDER, TAB_ACTIVE_SYNC_PLACEHOLDER, TAB_NORMAL_FULLSCREEN_PLACEHOLDER,
     TAB_NORMAL_PLACEHOLDER, TAB_NORMAL_SYNC_PLACEHOLDER, TAB_RENAME_PLACEHOLDER,
-    WIDGET_TRAY_PLACEHOLDER, ZJSTATUS_PLUGIN_URL_PLACEHOLDER, ZJSTATUS_RUNTIME_DIR_PLACEHOLDER,
+    WIDGET_TRAY_PLACEHOLDER, YazelixRuntimeCommandPaths, ZJSTATUS_PLUGIN_URL_PLACEHOLDER,
+    ZJSTATUS_RUNTIME_DIR_PLACEHOLDER, render_yazelix_runtime_command_definitions,
     render_zjstatus_bar_segments, render_zjstatus_tab_label_formats,
 };
 
@@ -1238,90 +1239,8 @@ fn render_bar_segments(
     })
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct IntegratedZjstatusCommandWidget {
-    name: &'static str,
-    command: IntegratedZjstatusCommand,
-    format: &'static str,
-    render_mode: Option<&'static str>,
-    interval: &'static str,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum IntegratedZjstatusCommand {
-    StatusCacheWidget(&'static str),
-    RuntimeNuScript(&'static str),
-    RuntimeNuConstantsVersion,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct IntegratedZjstatusRuntimePaths {
-    nu_bin: String,
-    yzx_control_bin: String,
-    runtime_dir: String,
-}
-
-const INTEGRATED_ZJSTATUS_COMMAND_WIDGETS: &[IntegratedZjstatusCommandWidget] = &[
-    IntegratedZjstatusCommandWidget {
-        name: "workspace",
-        command: IntegratedZjstatusCommand::StatusCacheWidget("workspace"),
-        format: "#[fg=#00ff88,bold]{stdout}",
-        render_mode: None,
-        interval: "1",
-    },
-    IntegratedZjstatusCommandWidget {
-        name: "cursor",
-        command: IntegratedZjstatusCommand::StatusCacheWidget("cursor"),
-        format: "{stdout}",
-        render_mode: Some("dynamic"),
-        interval: "10",
-    },
-    IntegratedZjstatusCommandWidget {
-        name: "claude_usage",
-        command: IntegratedZjstatusCommand::StatusCacheWidget("claude_usage"),
-        format: "#[fg=#bb88ff,bold]{stdout}",
-        render_mode: None,
-        interval: "10",
-    },
-    IntegratedZjstatusCommandWidget {
-        name: "codex_usage",
-        command: IntegratedZjstatusCommand::StatusCacheWidget("codex_usage"),
-        format: "#[fg=#bb88ff,bold]{stdout}",
-        render_mode: None,
-        interval: "10",
-    },
-    IntegratedZjstatusCommandWidget {
-        name: "opencode_go_usage",
-        command: IntegratedZjstatusCommand::StatusCacheWidget("opencode_go_usage"),
-        format: "#[fg=#bb88ff,bold]{stdout}",
-        render_mode: None,
-        interval: "10",
-    },
-    IntegratedZjstatusCommandWidget {
-        name: "cpu",
-        command: IntegratedZjstatusCommand::RuntimeNuScript("configs/zellij/scripts/cpu_usage.nu"),
-        format: " #[fg=#ff6600][cpu {stdout}]",
-        render_mode: None,
-        interval: "5",
-    },
-    IntegratedZjstatusCommandWidget {
-        name: "ram",
-        command: IntegratedZjstatusCommand::RuntimeNuScript("configs/zellij/scripts/ram_usage.nu"),
-        format: " #[fg=#ff6600][ram {stdout}]",
-        render_mode: None,
-        interval: "5",
-    },
-    IntegratedZjstatusCommandWidget {
-        name: "version",
-        command: IntegratedZjstatusCommand::RuntimeNuConstantsVersion,
-        format: "{stdout}",
-        render_mode: None,
-        interval: "3600",
-    },
-];
-
-fn integrated_zjstatus_runtime_paths(runtime_dir: &Path) -> IntegratedZjstatusRuntimePaths {
-    IntegratedZjstatusRuntimePaths {
+fn integrated_zjstatus_runtime_paths(runtime_dir: &Path) -> YazelixRuntimeCommandPaths {
+    YazelixRuntimeCommandPaths {
         nu_bin: resolve_zjstatus_nu_bin(runtime_dir),
         yzx_control_bin: resolve_zjstatus_yzx_control_bin(runtime_dir),
         runtime_dir: runtime_dir.to_string_lossy().to_string(),
@@ -1330,63 +1249,7 @@ fn integrated_zjstatus_runtime_paths(runtime_dir: &Path) -> IntegratedZjstatusRu
 
 fn render_integrated_zjstatus_command_definitions(runtime_dir: &Path) -> String {
     let paths = integrated_zjstatus_runtime_paths(runtime_dir);
-    INTEGRATED_ZJSTATUS_COMMAND_WIDGETS
-        .iter()
-        .map(|widget| render_integrated_zjstatus_command_definition(widget, &paths))
-        .collect::<Vec<_>>()
-        .join("\n\n")
-}
-
-fn render_integrated_zjstatus_command_definition(
-    widget: &IntegratedZjstatusCommandWidget,
-    paths: &IntegratedZjstatusRuntimePaths,
-) -> String {
-    let command = widget.command.render(paths);
-    let mut lines = vec![
-        format!(
-            "    command_{}_command {}",
-            widget.name,
-            json_quote(command)
-        ),
-        format!(
-            "    command_{}_format {}",
-            widget.name,
-            json_quote(widget.format)
-        ),
-    ];
-    if let Some(render_mode) = widget.render_mode {
-        lines.push(format!(
-            "    command_{}_rendermode {}",
-            widget.name,
-            json_quote(render_mode)
-        ));
-    }
-    lines.push(format!(
-        "    command_{}_interval {}",
-        widget.name,
-        json_quote(widget.interval)
-    ));
-    lines.join("\n")
-}
-
-impl IntegratedZjstatusCommand {
-    fn render(self, paths: &IntegratedZjstatusRuntimePaths) -> String {
-        match self {
-            Self::StatusCacheWidget(widget) => {
-                format!(
-                    "{} zellij status-cache-widget {widget}",
-                    paths.yzx_control_bin
-                )
-            }
-            Self::RuntimeNuScript(relative_path) => {
-                format!("{} {}/{relative_path}", paths.nu_bin, paths.runtime_dir)
-            }
-            Self::RuntimeNuConstantsVersion => format!(
-                "{} -c 'use {}/nushell/scripts/utils/constants.nu YAZELIX_VERSION; $YAZELIX_VERSION'",
-                paths.nu_bin, paths.runtime_dir
-            ),
-        }
-    }
+    render_yazelix_runtime_command_definitions(&paths)
 }
 
 fn render_layout_template(

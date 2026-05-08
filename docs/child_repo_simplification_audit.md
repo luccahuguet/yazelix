@@ -6,7 +6,7 @@ Use this with [LOC extraction scorecard](./loc_extraction_scorecard.md) and [Rus
 
 ## Current Baseline
 
-- Rust budget ceiling: `73,220` raw tracked Rust lines across `140` files
+- Rust budget ceiling: `73,083` raw tracked Rust lines across `140` files
 - Long-term Rust hard target: `60,000` raw tracked Rust lines
 - Largest pressure families: `core_config_ui_and_materialization` at `20,624` raw lines and `core_workspace_and_pane_integration` at `16,689` raw lines
 - Current child repos already integrated: `yazelix-screen`, `yazelix-cursors`, `yazelix-bar`, `yazelix-zellij-popup`, and `yazelix-yazi-assets`
@@ -29,7 +29,7 @@ Reject a move when the main repo would still own the same behavior through a bro
 | ---: | --- | --- | --- | --- | --- |
 | 1 | Slim bundled Yazi config and plugin asset pack | Move to child repo / delete main copy | `configs/yazi`, Yazi asset sync, docs copied from upstream plugins/flavors | Main `configs/yazi/` reduced to Yazelix-owned templates/plugins while regular Yazelix still ships all flavors through `yazelix-yazi-assets` | Resolved by `yazelix-lzlg.1`; no flavor removal |
 | 2 | Finish yzpp cleanup tail | Delete-only / thin adapter | stale `transient-pane-facts.compute` and `transient_pane_facts.rs` naming | Small LOC change, high ownership clarity; closes stale popup terminology after yzpp extraction | Resolved by `yazelix-g7bs.2`: renamed to `popup-session-facts.compute` and `popup_session_facts.rs` |
-| 3 | Move remaining generic status-bar rendering into `yazelix_bar` | Move to existing child repo | `zellij_materialization.rs`, integrated zjstatus command-definition rendering | Likely `300-900` Rust lines if generic placeholders and command KDL move without duplicating Yazelix cache/session ownership | Created `yazelix-00nz` |
+| 3 | Move remaining generic status-bar rendering into `yazelix_bar` | Move to existing child repo | `zellij_materialization.rs`, integrated zjstatus command-definition rendering | Removed `137` raw Rust lines from main while adding `169` Rust lines to `yazelix-bar`; cache/session ownership stayed local | Resolved by `yazelix-00nz` |
 | 4 | Split Yazi materializer into private writer and Yazelix adapter | Thin adapter | `yazi_materialization.rs` | Medium Rust simplification after asset deletion; public extraction remains deferred until adapter is demonstrably thin | Keep `yazelix-lzlg.2` blocked by `yazelix-lzlg.1` |
 | 5 | Split launch process execution and desktop/macOS adapters | Thin adapter | `launch_commands.rs` | Mostly organization first; unlocks later workspace extraction but should not claim LOC success unless deletion follows | Keep `yazelix-0nvl.1` |
 | 6 | Split restart and enter flow after launch helper extraction | Thin adapter | `launch_commands.rs`, front-door launch dispatch | Same as rank 5; useful only if it shrinks the workspace extraction boundary | Keep `yazelix-0nvl.2` sequenced after `yazelix-0nvl.1` |
@@ -42,7 +42,7 @@ Reject a move when the main repo would still own the same behavior through a bro
 
 1. `yazelix-lzlg.1`: resolved by moving reusable Yazi flavors, reusable plugins, Starship config, and pinned upstream metadata into `yazelix-yazi-assets`, deleting the main-repo copies, and keeping Yazelix-only sidebar/editor plugins local.
 2. `yazelix-g7bs.2`: top ownership-clarity cleanup. Resolved by renaming the remaining internal helper to `popup-session-facts.compute` and `popup_session_facts.rs`, so the main repo no longer implies that popup lifecycle belongs to the pane orchestrator after `yzpp`.
-3. `yazelix-00nz`: top move-to-existing-child-repo candidate. Expected impact is `300-900` Rust lines if `yazelix_bar` absorbs only generic zjstatus rendering while Yazelix core keeps session/cache/helper ownership.
+3. `yazelix-00nz`: resolved by moving generic integrated zjstatus command-definition rendering to `yazelix-bar` while Yazelix core keeps session/cache/helper ownership.
 
 ## Explicit Rejections
 
