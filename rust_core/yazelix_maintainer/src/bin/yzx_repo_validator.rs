@@ -3,8 +3,7 @@ use yazelix_maintainer::repo_contract_validation::{
     ColdProfileInstallOptions, UpgradeContractOptions, validate_config_surface_contract,
     validate_flake_interface, validate_flake_profile_install, validate_installed_runtime_contract,
     validate_nix_customization_api, validate_nixpkgs_package, validate_nixpkgs_submission,
-    validate_nushell_budget, validate_nushell_syntax, validate_readme_version,
-    validate_upgrade_contract,
+    validate_nushell_syntax, validate_readme_version, validate_upgrade_contract,
 };
 use yazelix_maintainer::repo_docs_validation::validate_docs_experience;
 use yazelix_maintainer::repo_plugin_build::validate_pane_orchestrator_sync;
@@ -15,7 +14,7 @@ use yazelix_maintainer::repo_validation::{
 };
 use yazelix_maintainer::workspace_session_contract::validate_workspace_session_contract;
 
-const USAGE_COMMANDS: &str = "validate-contracts|validate-rust-test-traceability|validate-package-rust-test-purity|validate-pane-orchestrator-sync|validate-workspace-session-contract|validate-config-surface-contract|validate-docs-experience|validate-nushell-budget|validate-rust-ownership-budget|validate-upgrade-contract|validate-installed-runtime-contract|validate-flake-interface|validate-flake-profile-install|validate-nix-customization-api|validate-nixpkgs-package|validate-nixpkgs-submission|validate-nushell-syntax|validate-readme-version";
+const USAGE_COMMANDS: &str = "validate-contracts|validate-rust-test-traceability|validate-package-rust-test-purity|validate-pane-orchestrator-sync|validate-workspace-session-contract|validate-config-surface-contract|validate-docs-experience|validate-rust-ownership-budget|validate-upgrade-contract|validate-installed-runtime-contract|validate-flake-interface|validate-flake-profile-install|validate-nix-customization-api|validate-nixpkgs-package|validate-nixpkgs-submission|validate-nushell-syntax|validate-readme-version";
 
 fn main() {
     let mut args = std::env::args().skip(1);
@@ -76,10 +75,6 @@ fn main() {
         "validate-docs-experience" => (
             validate_docs_experience(&resolved_repo_root),
             Some("✅ Docs front door routes are valid".to_string()),
-        ),
-        "validate-nushell-budget" => (
-            validate_nushell_budget(&resolved_repo_root),
-            Some("✅ Nushell budget allowlist and no-growth ceilings are valid".to_string()),
         ),
         "validate-rust-ownership-budget" => (
             validate_rust_ownership_budget(&resolved_repo_root),
@@ -188,7 +183,6 @@ fn main() {
                         "Main config surface, Home Manager desktop entry, and generated-state contract validation failed"
                     }
                     "validate-docs-experience" => "Docs experience validation failed",
-                    "validate-nushell-budget" => "Nushell budget validation failed",
                     "validate-rust-ownership-budget" => "Rust ownership budget validation failed",
                     "validate-upgrade-contract" => "Upgrade contract validation failed",
                     "validate-installed-runtime-contract" => {

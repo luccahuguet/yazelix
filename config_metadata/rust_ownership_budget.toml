@@ -1,7 +1,7 @@
 [contract]
-measured_total_loc = 73026
+measured_total_loc = 72747
 measured_total_file_count = 145
-current_total_loc_max = 73026
+current_total_loc_max = 72747
 current_total_file_count_max = 145
 hard_target_loc = 60000
 
@@ -171,9 +171,9 @@ allowed_paths = [
 id = "maintainer_tooling_and_validators"
 status = "canonical_maintainer"
 owner_bead = "yazelix-9opk.5.1"
-measured_loc = 10751
+measured_loc = 10472
 measured_files = 17
-max_loc = 10751
+max_loc = 10472
 target_loc = 9000
 max_files = 17
 allowed_paths = [

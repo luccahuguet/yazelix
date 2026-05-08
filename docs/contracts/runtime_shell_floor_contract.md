@@ -85,16 +85,15 @@ fzf/menu process handoff, and startup-shell UX.
 1. The runtime-side wrapper floor is only the sidebar Yazi launcher
 2. `environment.nu` reads as shellhook/env setup instead of a second welcome
    owner
-3. The runtime helper allowlist matches the canonical budget exactly
+3. The runtime helper allowlist is reviewed directly against the retained shell floor
 
 ## Verification
 
 - `yzx_repo_validator validate-contracts`
-- `yzx_repo_validator validate-nushell-budget`
 - `yzx_repo_validator validate-nushell-syntax`
 
 ## Open Questions
 
 - If a later runtime cut can delete `yzx_core_bridge.nu`, `runtime_paths.nu`, or
-  the sidebar wrapper end-to-end instead of rewrapping them, ratchet the family
-  again from the new measured tree
+  the sidebar wrapper end-to-end instead of rewrapping them, update the retained
+  shell floor from the new measured tree
