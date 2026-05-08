@@ -17,6 +17,14 @@ pub(crate) struct SidebarYaziRegistration {
     pub(crate) cwd: String,
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct IntegrationFactsData {
+    pub hide_sidebar_on_file_open: bool,
+    pub managed_editor_kind: String,
+    pub yazi_command: String,
+    pub ya_command: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct WorkspaceRetargetResult {
     pub(crate) status: String,
@@ -94,6 +102,40 @@ pub(crate) fn open_terminal_in_cwd_payload(cwd: &Path) -> String {
         "cwd": cwd.display().to_string(),
     })
     .to_string()
+}
+
+pub(crate) fn resolve_managed_editor_kind(
+    managed_helix_binary: Option<&str>,
+    config_editor: Option<&str>,
+    env_editor: Option<&str>,
+) -> String {
+    if managed_helix_binary.is_some() {
+        return "helix".to_string();
+    }
+
+    let editor = config_editor.or(env_editor).unwrap_or("");
+    let normalized = editor.trim();
+    let basename = Path::new(normalized)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("");
+
+    if normalized.ends_with("/hx")
+        || normalized == "hx"
+        || normalized.ends_with("/helix")
+        || normalized == "helix"
+        || basename == "yazelix_hx.sh"
+    {
+        "helix".to_string()
+    } else if normalized.ends_with("/nvim")
+        || normalized == "nvim"
+        || normalized.ends_with("/neovim")
+        || normalized == "neovim"
+    {
+        "neovim".to_string()
+    } else {
+        String::new()
+    }
 }
 
 #[derive(Debug, Deserialize)]

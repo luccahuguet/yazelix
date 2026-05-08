@@ -189,9 +189,9 @@ pub use upgrade_summary::{
     current_release_headline, maybe_show_first_run_upgrade_summary, show_current_upgrade_summary,
 };
 pub use workspace_commands::{
-    IntegrationFactsData, compute_integration_facts_from_env, run_yzx_cwd, run_yzx_popup,
-    run_yzx_reveal, run_yzx_sidebar,
+    compute_integration_facts_from_env, run_yzx_cwd, run_yzx_popup, run_yzx_reveal, run_yzx_sidebar,
 };
+pub use workspace_session::IntegrationFactsData;
 pub use yazi_materialization::{
     YaziManagedFileStatus, YaziMaterializationData, YaziMaterializationRequest,
     generate_yazi_materialization,

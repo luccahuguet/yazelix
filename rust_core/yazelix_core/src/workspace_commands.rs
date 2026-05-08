@@ -6,10 +6,10 @@ use crate::control_plane::home_dir_from_env;
 use crate::pane_orchestrator_client::run_pane_orchestrator_command;
 use crate::session_facts::compute_session_facts_from_env;
 use crate::workspace_session::{
-    WorkspaceRetargetResult, parse_workspace_retarget_response, workspace_dir_for_target,
-    workspace_retarget_payload, workspace_tab_name,
+    IntegrationFactsData, WorkspaceRetargetResult, parse_workspace_retarget_response,
+    resolve_managed_editor_kind, workspace_dir_for_target, workspace_retarget_payload,
+    workspace_tab_name,
 };
-use serde::Serialize;
 use serde_json::json;
 use std::env;
 use std::path::{Path, PathBuf};
@@ -35,14 +35,6 @@ pub(crate) struct WorkspaceCommandConfig {
     pub(crate) yazi_command: String,
     pub(crate) ya_command: String,
     pub(crate) home_dir: PathBuf,
-}
-
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
-pub struct IntegrationFactsData {
-    pub hide_sidebar_on_file_open: bool,
-    pub managed_editor_kind: String,
-    pub yazi_command: String,
-    pub ya_command: String,
 }
 
 pub fn run_yzx_cwd(args: &[String]) -> Result<i32, CoreError> {
@@ -195,40 +187,6 @@ pub fn compute_integration_facts_from_env() -> Result<IntegrationFactsData, Core
         yazi_command: config.yazi_command,
         ya_command: config.ya_command,
     })
-}
-
-fn resolve_managed_editor_kind(
-    managed_helix_binary: Option<&str>,
-    config_editor: Option<&str>,
-    env_editor: Option<&str>,
-) -> String {
-    if managed_helix_binary.is_some() {
-        return "helix".to_string();
-    }
-
-    let editor = config_editor.or(env_editor).unwrap_or("");
-    let normalized = editor.trim();
-    let basename = Path::new(normalized)
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or("");
-
-    if normalized.ends_with("/hx")
-        || normalized == "hx"
-        || normalized.ends_with("/helix")
-        || normalized == "helix"
-        || basename == "yazelix_hx.sh"
-    {
-        "helix".to_string()
-    } else if normalized.ends_with("/nvim")
-        || normalized == "nvim"
-        || normalized.ends_with("/neovim")
-        || normalized == "neovim"
-    {
-        "neovim".to_string()
-    } else {
-        String::new()
-    }
 }
 
 fn resolve_cwd_target(target: Option<&str>, home_dir: &Path) -> Result<PathBuf, String> {
