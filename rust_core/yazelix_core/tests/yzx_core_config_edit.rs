@@ -69,7 +69,7 @@ fn config_set_and_unset_edit_settings_jsonc() {
 
 // Regression: live-with-pane-refresh config saves emit a versioned pane-orchestrator reload payload instead of leaving the saved value silently inactive.
 #[test]
-fn config_set_live_zellij_field_reloads_pane_orchestrator_runtime_config() {
+fn config_set_live_zellij_screen_saver_field_reloads_pane_orchestrator_runtime_config() {
     let repo = repo_root();
     let temp = tempdir().expect("tempdir");
     let home = temp.path().join("home");
@@ -100,7 +100,7 @@ fn config_set_live_zellij_field_reloads_pane_orchestrator_runtime_config() {
         .env("YAZELIX_RUNTIME_DIR", &runtime)
         .env("YAZELIX_CONFIG_DIR", &config)
         .env("YAZELIX_STATE_DIR", &state)
-        .args(["config", "set", "zellij.popup_width_percent", "82"])
+        .args(["config", "set", "zellij.screen_saver_idle_seconds", "120"])
         .output()
         .unwrap();
 
@@ -111,16 +111,22 @@ fn config_set_live_zellij_field_reloads_pane_orchestrator_runtime_config() {
         String::from_utf8_lossy(&output.stderr)
     );
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("Updated zellij.popup_width_percent."));
+    assert!(stdout.contains("Updated zellij.screen_saver_idle_seconds."));
     assert!(stdout.contains("Refreshed pane-orchestrator runtime config."));
     let payload: serde_json::Value =
         serde_json::from_str(&fs::read_to_string(payload_log).unwrap()).unwrap();
     assert_eq!(payload["schema_version"], json!(1));
     assert_eq!(payload["generation"], json!("gen-a"));
-    assert_eq!(payload["runtime_config"]["popup_width_percent"], json!(82));
-    assert_eq!(payload["runtime_config"]["popup_height_percent"], json!(90));
+    assert_eq!(
+        payload["runtime_config"]["screen_saver_idle_seconds"],
+        json!(120)
+    );
     assert_eq!(
         payload["runtime_config"]["screen_saver_enabled"],
         json!(false)
+    );
+    assert_eq!(
+        payload["runtime_config"]["screen_saver_style"],
+        json!("random")
     );
 }
