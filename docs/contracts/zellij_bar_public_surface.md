@@ -14,7 +14,7 @@ share/yazelix_zellij_bar/examples/yazelix_runtime_widgets.kdl
 share/doc/yazelix_zellij_bar/README.md
 ```
 
-There is no `yazelix_zellij_bar_generate` binary and no central `~/.config/yazelix_zellij_bar/config.toml`.
+There is no generator binary and no central `~/.config/yazelix_zellij_bar/config.toml`.
 
 ## Configuration model
 

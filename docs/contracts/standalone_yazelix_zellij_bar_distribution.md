@@ -27,7 +27,7 @@ It installs:
 
 The example snippets are not alternate generated presets. They are small blocks users can copy into the plugin body for command widgets or full-Yazelix cached widgets.
 
-There is no `yazelix_zellij_bar_generate` binary and no central `~/.config/yazelix_zellij_bar/config.toml`. KDL is the public configuration surface.
+There is no generator binary and no central `~/.config/yazelix_zellij_bar/config.toml`. KDL is the public configuration surface.
 
 ## Generic Default
 
