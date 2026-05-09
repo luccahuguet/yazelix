@@ -29,6 +29,21 @@ Use this page as the docs front door. It points to current user guides first, th
 - [Documentation architecture](./documentation_architecture.md)
 - [Contract inventory](./contracts/contracts_inventory.md)
 
+## Maintainer Fast Path
+
+For a small safe change, read these current-state surfaces before opening older
+audits or history:
+
+1. `AGENTS.md` for workflow, Beads, naming, verification, and push policy
+2. `bd prime` for live issue-tracker context
+3. [Architecture map](./architecture_map.md) for subsystem ownership
+4. [Current trimmed runtime contract](./contracts/v15_trimmed_runtime_contract.md) and [main config contract metadata](../config_metadata/main_config_contract.toml) for runtime/config boundaries
+5. [Test suite governance](./contracts/test_suite_governance.md) for validator and test-lane selection
+
+Historical notes, streamlining audits, extraction plans, and roadmap-style
+documents are secondary references. Use them for rationale, not as live
+behavior contracts.
+
 ## Maintainer References
 
 - [Contributing](./contributing.md)
