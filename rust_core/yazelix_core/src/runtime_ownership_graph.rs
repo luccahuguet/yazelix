@@ -1,3 +1,5 @@
+// Test lane: maintainer
+
 use crate::bridge::{CoreError, ErrorClass};
 use crate::public_command_surface::{
     YzxPublicRootRoute, classify_yzx_root_route, yzx_command_metadata,
