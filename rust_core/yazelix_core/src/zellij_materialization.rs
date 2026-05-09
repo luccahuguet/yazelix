@@ -1151,12 +1151,18 @@ fn render_bar_segments(
     render_zjstatus_bar_segments(&request).map_err(bar_render_error)
 }
 
-fn integrated_zjstatus_runtime_paths(runtime_dir: &Path) -> YazelixRuntimeCommandPaths {
+fn integrated_zjstatus_runtime_paths(
+    runtime_dir: &Path,
+    render_plan: &ZellijRenderPlanData,
+) -> YazelixRuntimeCommandPaths {
     YazelixRuntimeCommandPaths {
         nu_bin: resolve_zjstatus_nu_bin(runtime_dir),
         yzx_control_bin: resolve_zjstatus_yzx_control_bin(runtime_dir),
         yazelix_bar_widget_bin: resolve_zjstatus_yazelix_bar_widget_bin(runtime_dir),
         runtime_dir: runtime_dir.to_string_lossy().to_string(),
+        claude_usage_display: render_plan.claude_usage_display.clone(),
+        codex_usage_display: render_plan.codex_usage_display.clone(),
+        opencode_go_usage_display: render_plan.opencode_go_usage_display.clone(),
     }
 }
 
@@ -1213,6 +1219,7 @@ fn render_layout_template(
             ZJSTATUS_COMMAND_DEFINITIONS_PLACEHOLDER,
             render_yazelix_runtime_command_definitions(&integrated_zjstatus_runtime_paths(
                 runtime_dir,
+                render_plan,
             )),
         ),
         (
@@ -2156,6 +2163,9 @@ mod tests {
             support_kitty_keyboard_protocol: "false".into(),
             zellij_default_mode: "normal".into(),
             zellij_tab_label_mode: "full".into(),
+            zellij_claude_usage_display: "both".into(),
+            zellij_codex_usage_display: "quota".into(),
+            zellij_opencode_go_usage_display: "both".into(),
             yazelix_layout_dir: "/tmp/yazelix/layouts".into(),
             resolved_default_shell: shell.into(),
             editor_label: editor_label.into(),
@@ -2499,27 +2509,27 @@ keybinds {
         assert!(rendered.contains(r##"command_workspace_format "#[fg=#00ff88,bold]{stdout}""##));
         assert!(rendered.contains(r#"command_workspace_interval "1""#));
         assert!(rendered.contains(&format!(
-            r#"command_cursor_command "{} zellij status-cache-widget cursor""#,
-            expected_yzx_control
+            r#"command_cursor_command "{} cursor""#,
+            expected_bar_widget
         )));
         assert!(rendered.contains(r#"command_cursor_format "{stdout}""#));
         assert!(rendered.contains(r#"command_cursor_rendermode "dynamic""#));
         assert!(rendered.contains(r#"command_cursor_interval "10""#));
         assert!(rendered.contains(&format!(
-            r#"command_claude_usage_command "{} zellij status-cache-widget claude_usage""#,
-            expected_yzx_control
+            r#"command_claude_usage_command "{} claude_usage --display both""#,
+            expected_bar_widget
         )));
         assert!(rendered.contains(r##"command_claude_usage_format "#[fg=#bb88ff,bold]{stdout}""##));
         assert!(rendered.contains(r#"command_claude_usage_interval "10""#));
         assert!(rendered.contains(&format!(
-            r#"command_codex_usage_command "{} zellij status-cache-widget codex_usage""#,
-            expected_yzx_control
+            r#"command_codex_usage_command "{} codex_usage --display quota""#,
+            expected_bar_widget
         )));
         assert!(rendered.contains(r##"command_codex_usage_format "#[fg=#bb88ff,bold]{stdout}""##));
         assert!(rendered.contains(r#"command_codex_usage_interval "10""#));
         assert!(rendered.contains(&format!(
-            r#"command_opencode_go_usage_command "{} zellij status-cache-widget opencode_go_usage""#,
-            expected_yzx_control
+            r#"command_opencode_go_usage_command "{} opencode_go_usage --display both""#,
+            expected_bar_widget
         )));
         assert!(
             rendered.contains(r##"command_opencode_go_usage_format "#[fg=#bb88ff,bold]{stdout}""##)

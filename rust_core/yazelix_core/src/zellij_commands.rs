@@ -10,9 +10,8 @@ mod workspace;
 pub use pipe::{run_zellij_get_workspace_root, run_zellij_pipe};
 pub use status::{
     probe_active_tab_session_state, run_zellij_inspect_session, run_zellij_status_bus,
-    run_zellij_status_cache_heartbeat, run_zellij_status_cache_refresh_claude_usage,
-    run_zellij_status_cache_refresh_codex_usage, run_zellij_status_cache_refresh_opencode_go_usage,
-    run_zellij_status_cache_widget, run_zellij_status_cache_write,
+    run_zellij_status_cache_heartbeat, run_zellij_status_cache_widget,
+    run_zellij_status_cache_write,
 };
 pub use workspace::{
     run_zellij_open_editor, run_zellij_open_editor_cwd, run_zellij_open_terminal,
@@ -27,9 +26,6 @@ pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
     "status-cache-write",
     "status-cache-heartbeat",
     "status-cache-widget",
-    "status-cache-refresh-claude-usage",
-    "status-cache-refresh-codex-usage",
-    "status-cache-refresh-opencode-go-usage",
     "retarget",
     "open-editor",
     "open-editor-cwd",

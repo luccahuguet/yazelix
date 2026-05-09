@@ -5,7 +5,6 @@ use crate::pane_orchestrator_client::run_pane_orchestrator_command;
 use serde_json::{Value, json};
 use std::env;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 
 mod agent_usage;
 mod cache;
@@ -50,15 +49,6 @@ pub(super) struct ZellijStatusCacheHeartbeatArgs {
 pub(super) struct ZellijStatusCacheWidgetArgs {
     widget: Option<String>,
     path: Option<PathBuf>,
-    help: bool,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub(super) struct ZellijStatusCacheRefreshUsageArgs {
-    path: Option<PathBuf>,
-    max_age_seconds: Option<u64>,
-    error_backoff_seconds: Option<u64>,
-    timeout_ms: Option<u64>,
     help: bool,
 }
 
@@ -236,64 +226,6 @@ pub(super) fn parse_zellij_status_cache_heartbeat_args(
     Ok(parsed)
 }
 
-pub(super) fn parse_zellij_status_cache_refresh_usage_args(
-    args: &[String],
-    command_name: &str,
-    allow_timeout: bool,
-) -> Result<ZellijStatusCacheRefreshUsageArgs, CoreError> {
-    let mut parsed = ZellijStatusCacheRefreshUsageArgs::default();
-    let mut iter = args.iter();
-
-    while let Some(arg) = iter.next() {
-        match arg.as_str() {
-            "--path" => {
-                parsed.path = Some(PathBuf::from(
-                    iter.next()
-                        .ok_or_else(|| CoreError::usage("--path requires a value".to_string()))?
-                        .as_str(),
-                ));
-            }
-            "--max-age-seconds" => {
-                let raw = iter.next().ok_or_else(|| {
-                    CoreError::usage("--max-age-seconds requires a value".to_string())
-                })?;
-                parsed.max_age_seconds = Some(raw.parse::<u64>().map_err(|_| {
-                    CoreError::usage("--max-age-seconds must be an integer".to_string())
-                })?);
-            }
-            "--error-backoff-seconds" => {
-                let raw = iter.next().ok_or_else(|| {
-                    CoreError::usage("--error-backoff-seconds requires a value".to_string())
-                })?;
-                parsed.error_backoff_seconds = Some(raw.parse::<u64>().map_err(|_| {
-                    CoreError::usage("--error-backoff-seconds must be an integer".to_string())
-                })?);
-            }
-            "--timeout-ms" if allow_timeout => {
-                let raw = iter
-                    .next()
-                    .ok_or_else(|| CoreError::usage("--timeout-ms requires a value".to_string()))?;
-                parsed.timeout_ms = Some(raw.parse::<u64>().map_err(|_| {
-                    CoreError::usage("--timeout-ms must be an integer".to_string())
-                })?);
-            }
-            "-h" | "--help" | "help" => parsed.help = true,
-            other if other.starts_with('-') => {
-                return Err(CoreError::usage(format!(
-                    "Unknown argument for zellij {command_name}: {other}"
-                )));
-            }
-            _ => {
-                return Err(CoreError::usage(format!(
-                    "zellij {command_name} accepts only flags"
-                )));
-            }
-        }
-    }
-
-    Ok(parsed)
-}
-
 pub(super) fn print_zellij_status_cache_write_help() {
     println!("Write the window-local cached status-bar facts");
     println!();
@@ -313,37 +245,6 @@ pub(super) fn print_zellij_status_cache_heartbeat_help() {
     println!();
     println!("Usage:");
     println!("  yzx_control zellij status-cache-heartbeat [--json] [--path <path>]");
-}
-
-pub(super) fn print_zellij_status_cache_refresh_claude_usage_help() {
-    println!("Refresh cached Claude 5h/week usage and quota facts for status-bar widgets");
-    println!();
-    println!("Usage:");
-    println!(
-        "  yzx_control zellij status-cache-refresh-claude-usage [--path <path>] [--max-age-seconds <n>] [--error-backoff-seconds <n>] [--timeout-ms <n>]"
-    );
-}
-
-pub(super) fn print_zellij_status_cache_refresh_codex_usage_help() {
-    println!(
-        "Refresh cached Codex 5h/week usage, quota, and reset-window facts for status-bar widgets"
-    );
-    println!();
-    println!("Usage:");
-    println!(
-        "  yzx_control zellij status-cache-refresh-codex-usage [--path <path>] [--max-age-seconds <n>] [--error-backoff-seconds <n>] [--timeout-ms <n>]"
-    );
-}
-
-pub(super) fn print_zellij_status_cache_refresh_opencode_go_usage_help() {
-    println!(
-        "Refresh cached OpenCode Go 5h/week/month usage and quota facts for status-bar widgets"
-    );
-    println!();
-    println!("Usage:");
-    println!(
-        "  yzx_control zellij status-cache-refresh-opencode-go-usage [--path <path>] [--max-age-seconds <n>] [--error-backoff-seconds <n>]"
-    );
 }
 
 pub fn run_zellij_inspect_session(args: &[String]) -> Result<i32, CoreError> {
@@ -519,21 +420,11 @@ pub fn run_zellij_status_cache_widget(args: &[String]) -> Result<i32, CoreError>
         Some(path) => path,
         None => return Ok(0),
     };
-    let Some(mut cache) = status_cache_value_for_widget_path(&path, widget, unix_time_seconds())
-    else {
+    let Some(cache) = status_cache_value_for_widget_path(&path, widget, unix_time_seconds()) else {
         return Ok(0);
     };
-    if widget == "claude_usage" {
-        hydrate_status_cache_claude_usage(&mut cache, &path);
-    } else if widget == "codex_usage" {
-        hydrate_status_cache_codex_usage(&mut cache, &path);
-    } else if widget == "opencode_go_usage" {
-        hydrate_status_cache_opencode_go_usage(&mut cache, &path);
-    }
-    print_optional_zjstatus_segment(render_status_cache_widget_with_agent_usage_settings(
-        &cache,
-        widget,
-        &agent_usage_widget_settings_from_status_cache_path(&path),
+    print_optional_zjstatus_segment(render_status_cache_widget_for_yazelix_owned_widgets(
+        &cache, widget,
     )?);
     Ok(0)
 }
@@ -547,14 +438,6 @@ pub(super) fn status_cache_value_for_widget_path(
 }
 
 pub(super) fn first_paint_cache_for_widget(widget: &str, now: u64) -> Option<Value> {
-    if matches!(widget, "claude_usage" | "codex_usage" | "opencode_go_usage") {
-        return Some(json!({
-            "schema_version": STATUS_BAR_CACHE_SCHEMA_VERSION,
-            "updated_at_unix_seconds": now,
-            "agent_usage": {},
-        }));
-    }
-
     if widget == "cursor" {
         return cursor_status_value_from_env().map(|cursor| {
             json!({
@@ -567,64 +450,6 @@ pub(super) fn first_paint_cache_for_widget(widget: &str, now: u64) -> Option<Val
     }
 
     None
-}
-
-fn run_zellij_status_cache_refresh_agent_usage(
-    args: &[String],
-    target: AgentUsageRefreshTarget,
-    print_help: fn(),
-) -> Result<i32, CoreError> {
-    let parsed = parse_zellij_status_cache_refresh_usage_args(
-        args,
-        target.command_name(),
-        target.allow_timeout(),
-    )?;
-    if parsed.help {
-        print_help();
-        return Ok(0);
-    }
-
-    let path = match parsed.path.or_else(status_bar_cache_path_from_env) {
-        Some(path) => path,
-        None => return Ok(0),
-    };
-    let now = unix_time_seconds();
-    refresh_agent_usage_shared_cache_for_status_cache_path(
-        target,
-        &path,
-        env::var_os("PATH").as_deref(),
-        now,
-        parsed.max_age_seconds.unwrap_or(600),
-        parsed.error_backoff_seconds.unwrap_or(1_800),
-        Duration::from_millis(parsed.timeout_ms.unwrap_or(5_000).max(1)),
-    )?;
-    Ok(0)
-}
-
-pub fn run_zellij_status_cache_refresh_codex_usage(args: &[String]) -> Result<i32, CoreError> {
-    run_zellij_status_cache_refresh_agent_usage(
-        args,
-        AgentUsageRefreshTarget::Codex,
-        print_zellij_status_cache_refresh_codex_usage_help,
-    )
-}
-
-pub fn run_zellij_status_cache_refresh_opencode_go_usage(
-    args: &[String],
-) -> Result<i32, CoreError> {
-    run_zellij_status_cache_refresh_agent_usage(
-        args,
-        AgentUsageRefreshTarget::OpenCodeGo,
-        print_zellij_status_cache_refresh_opencode_go_usage_help,
-    )
-}
-
-pub fn run_zellij_status_cache_refresh_claude_usage(args: &[String]) -> Result<i32, CoreError> {
-    run_zellij_status_cache_refresh_agent_usage(
-        args,
-        AgentUsageRefreshTarget::Claude,
-        print_zellij_status_cache_refresh_claude_usage_help,
-    )
 }
 
 #[cfg(test)]

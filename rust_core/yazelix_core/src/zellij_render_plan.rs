@@ -120,6 +120,18 @@ fn default_tab_label_mode() -> String {
     yazelix_bar::TAB_LABEL_MODE_FULL.into()
 }
 
+fn default_claude_usage_display() -> String {
+    "both".into()
+}
+
+fn default_codex_usage_display() -> String {
+    "quota".into()
+}
+
+fn default_opencode_go_usage_display() -> String {
+    "both".into()
+}
+
 fn default_widget_tray() -> Vec<String> {
     vec![
         "editor".into(),
@@ -181,6 +193,12 @@ pub struct ZellijRenderPlanRequest {
     pub zellij_default_mode: String,
     #[serde(default = "default_tab_label_mode")]
     pub zellij_tab_label_mode: String,
+    #[serde(default = "default_claude_usage_display")]
+    pub zellij_claude_usage_display: String,
+    #[serde(default = "default_codex_usage_display")]
+    pub zellij_codex_usage_display: String,
+    #[serde(default = "default_opencode_go_usage_display")]
+    pub zellij_opencode_go_usage_display: String,
     pub yazelix_layout_dir: String,
     pub resolved_default_shell: String,
     #[serde(default = "default_editor_label")]
@@ -224,6 +242,9 @@ pub struct ZellijRenderPlanData {
     pub shell_label: String,
     pub terminal_label: String,
     pub tab_label_mode: String,
+    pub claude_usage_display: String,
+    pub codex_usage_display: String,
+    pub opencode_go_usage_display: String,
     pub custom_text: String,
     pub layout_percentages: LayoutPlaceholderPercents,
     pub rounded_value: String,
@@ -380,6 +401,23 @@ fn validate_default_mode(mode: &str) -> Result<(), CoreError> {
     }
 }
 
+fn normalize_usage_display(field: &str, raw: &str, default: &str) -> Result<String, CoreError> {
+    let trimmed = raw.trim();
+    let value = if trimmed.is_empty() { default } else { trimmed };
+    match value {
+        "both" => Ok("both".to_string()),
+        "token" | "tokens" => Ok("token".to_string()),
+        "quota" => Ok("quota".to_string()),
+        _ => Err(CoreError::classified(
+            ErrorClass::Config,
+            "invalid_zellij_usage_display",
+            format!("{field} must be one of: both, token, quota (got {raw})"),
+            "Set the usage widget display mode to both, token, or quota.",
+            serde_json::json!({ "field": field, "value": raw }),
+        )),
+    }
+}
+
 fn normalize_tab_label_mode(mode: &str) -> Result<String, CoreError> {
     let normalized = mode.trim().to_ascii_lowercase();
     if TAB_LABEL_MODE_ALLOWED.contains(&normalized.as_str()) {
@@ -456,6 +494,21 @@ pub fn compute_zellij_render_plan(
     validate_default_mode(&request.zellij_default_mode)?;
     let screen_saver_style = normalize_screen_saver_style(&request.screen_saver_style)?;
     let tab_label_mode = normalize_tab_label_mode(&request.zellij_tab_label_mode)?;
+    let claude_usage_display = normalize_usage_display(
+        "zellij.claude_usage_display",
+        &request.zellij_claude_usage_display,
+        "both",
+    )?;
+    let codex_usage_display = normalize_usage_display(
+        "zellij.codex_usage_display",
+        &request.zellij_codex_usage_display,
+        "quota",
+    )?;
+    let opencode_go_usage_display = normalize_usage_display(
+        "zellij.opencode_go_usage_display",
+        &request.zellij_opencode_go_usage_display,
+        "both",
+    )?;
 
     let widget_tray = request
         .zellij_widget_tray
@@ -548,6 +601,9 @@ pub fn compute_zellij_render_plan(
         shell_label,
         terminal_label,
         tab_label_mode,
+        claude_usage_display,
+        codex_usage_display,
+        opencode_go_usage_display,
         custom_text,
         layout_percentages,
         rounded_value: rounded_value.to_string(),
@@ -584,6 +640,9 @@ mod tests {
             support_kitty_keyboard_protocol: "false".into(),
             zellij_default_mode: "normal".into(),
             zellij_tab_label_mode: "full".into(),
+            zellij_claude_usage_display: "both".into(),
+            zellij_codex_usage_display: "quota".into(),
+            zellij_opencode_go_usage_display: "both".into(),
             yazelix_layout_dir: "/tmp/yazelix/layouts".into(),
             resolved_default_shell: "/usr/bin/nu".into(),
             editor_label: "hx".into(),

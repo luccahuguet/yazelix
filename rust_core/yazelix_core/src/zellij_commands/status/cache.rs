@@ -33,40 +33,10 @@ pub(in crate::zellij_commands) fn status_bar_cache_path_from_values(
     })
 }
 
-pub(in crate::zellij_commands) fn session_config_path_from_env() -> Option<PathBuf> {
-    session_config_path_from_values(
-        env::var_os("YAZELIX_SESSION_CONFIG_PATH")
-            .map(PathBuf::from)
-            .or_else(session_config_path_from_parent_process_env),
-        env::var_os("YAZELIX_STATUS_BAR_CACHE_PATH")
-            .map(PathBuf::from)
-            .or_else(status_bar_cache_path_from_parent_process_env),
-    )
-}
-
-pub(in crate::zellij_commands) fn session_config_path_from_values(
-    session_config_path: Option<PathBuf>,
-    cache_path: Option<PathBuf>,
-) -> Option<PathBuf> {
-    if let Some(path) = session_config_path {
-        return Some(path);
-    }
-
-    cache_path.and_then(|path| {
-        path.parent()
-            .map(|parent| parent.join("config_snapshot.json"))
-    })
-}
-
 #[cfg(target_os = "linux")]
 pub(in crate::zellij_commands) fn status_bar_cache_path_from_parent_process_env() -> Option<PathBuf>
 {
     path_from_parent_process_env(status_bar_cache_path_from_environ_bytes)
-}
-
-#[cfg(target_os = "linux")]
-pub(in crate::zellij_commands) fn session_config_path_from_parent_process_env() -> Option<PathBuf> {
-    path_from_parent_process_env(session_config_path_from_environ_bytes)
 }
 
 #[cfg(target_os = "linux")]
@@ -96,11 +66,6 @@ pub(in crate::zellij_commands) fn status_bar_cache_path_from_parent_process_env(
     None
 }
 
-#[cfg(not(target_os = "linux"))]
-pub(in crate::zellij_commands) fn session_config_path_from_parent_process_env() -> Option<PathBuf> {
-    None
-}
-
 #[cfg(target_os = "linux")]
 pub(in crate::zellij_commands) fn parent_pid(pid: u32) -> Option<u32> {
     let stat_path = PathBuf::from("/proc").join(pid.to_string()).join("stat");
@@ -116,14 +81,8 @@ pub(in crate::zellij_commands) fn status_bar_cache_path_from_environ_bytes(
 ) -> Option<PathBuf> {
     status_bar_cache_path_from_values(
         environ_path_value(raw, b"YAZELIX_STATUS_BAR_CACHE_PATH="),
-        session_config_path_from_environ_bytes(raw),
+        environ_path_value(raw, b"YAZELIX_SESSION_CONFIG_PATH="),
     )
-}
-
-pub(in crate::zellij_commands) fn session_config_path_from_environ_bytes(
-    raw: &[u8],
-) -> Option<PathBuf> {
-    environ_path_value(raw, b"YAZELIX_SESSION_CONFIG_PATH=")
 }
 
 pub(in crate::zellij_commands) fn environ_path_value(raw: &[u8], prefix: &[u8]) -> Option<PathBuf> {
@@ -255,21 +214,6 @@ pub(in crate::zellij_commands) fn merge_status_bar_cache_orchestrator_heartbeat_
     write_status_bar_cache_value(path, &cache)
 }
 
-pub(in crate::zellij_commands) fn mark_status_cache_refresh_finished(
-    path: &Path,
-    refresh_name: &str,
-) -> Result<(), CoreError> {
-    let heartbeat = json!({
-        "schema_version": ORCHESTRATOR_HEARTBEAT_SCHEMA_VERSION,
-        "status_refreshes": {
-            refresh_name: {
-                "finished_at_unix_seconds": unix_time_seconds(),
-            }
-        }
-    });
-    merge_status_bar_cache_orchestrator_heartbeat_value(path, heartbeat)
-}
-
 pub(in crate::zellij_commands) fn merge_orchestrator_heartbeat_into_cache(
     cache: &mut Value,
     incoming: Value,
@@ -330,57 +274,6 @@ pub(in crate::zellij_commands) fn merge_status_refresh_heartbeat_values(
     }
 
     Value::Object(merged)
-}
-
-pub(in crate::zellij_commands) fn write_json_value_atomic(
-    path: &Path,
-    value: &Value,
-    error_prefix: &str,
-) -> Result<(), CoreError> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|source| {
-            CoreError::io(
-                format!("{error_prefix}_parent_create_failed"),
-                "Failed to create the Yazelix cache directory.",
-                "Check permissions for the Yazelix state directory, then retry.",
-                &parent.display().to_string(),
-                source,
-            )
-        })?;
-    }
-
-    let serialized = format!(
-        "{}\n",
-        serde_json::to_string(value).map_err(|error| {
-            CoreError::classified(
-                ErrorClass::Runtime,
-                format!("{error_prefix}_serialize_failed"),
-                format!("Failed to serialize Yazelix cache payload: {error}"),
-                "Retry the command. If this persists, report the cache payload.",
-                json!({ "cache": value.clone() }),
-            )
-        })?
-    );
-    let tmp_path = temporary_status_bar_cache_path(path);
-    fs::write(&tmp_path, serialized).map_err(|source| {
-        CoreError::io(
-            format!("{error_prefix}_write_failed"),
-            "Failed to write the temporary Yazelix cache file.",
-            "Check permissions for the Yazelix state directory, then retry.",
-            &tmp_path.display().to_string(),
-            source,
-        )
-    })?;
-    fs::rename(&tmp_path, path).map_err(|source| {
-        CoreError::io(
-            format!("{error_prefix}_rename_failed"),
-            "Failed to publish the Yazelix cache file.",
-            "Check permissions for the Yazelix state directory, then retry.",
-            &path.display().to_string(),
-            source,
-        )
-    })?;
-    Ok(())
 }
 
 pub(in crate::zellij_commands) fn temporary_status_bar_cache_path(path: &Path) -> PathBuf {

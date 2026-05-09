@@ -65,9 +65,6 @@ use yazelix_core::run_zellij_pipe;
 use yazelix_core::run_zellij_retarget;
 use yazelix_core::run_zellij_status_bus;
 use yazelix_core::run_zellij_status_cache_heartbeat;
-use yazelix_core::run_zellij_status_cache_refresh_claude_usage;
-use yazelix_core::run_zellij_status_cache_refresh_codex_usage;
-use yazelix_core::run_zellij_status_cache_refresh_opencode_go_usage;
 use yazelix_core::run_zellij_status_cache_widget;
 use yazelix_core::run_zellij_status_cache_write;
 use yazelix_core::update_commands::run_yzx_update;
@@ -1555,11 +1552,6 @@ fn run_zellij(args: &[String]) -> Result<i32, CoreError> {
         "status-cache-write" => run_zellij_status_cache_write(&argv),
         "status-cache-heartbeat" => run_zellij_status_cache_heartbeat(&argv),
         "status-cache-widget" => run_zellij_status_cache_widget(&argv),
-        "status-cache-refresh-claude-usage" => run_zellij_status_cache_refresh_claude_usage(&argv),
-        "status-cache-refresh-codex-usage" => run_zellij_status_cache_refresh_codex_usage(&argv),
-        "status-cache-refresh-opencode-go-usage" => {
-            run_zellij_status_cache_refresh_opencode_go_usage(&argv)
-        }
         "retarget" => run_zellij_retarget(&argv),
         "open-editor" => run_zellij_open_editor(&argv),
         "open-editor-cwd" => run_zellij_open_editor_cwd(&argv),
