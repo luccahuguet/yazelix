@@ -942,6 +942,7 @@ fn run_launch_materialization_prepare(mut parser: lexopt::Parser) -> Result<(), 
     let request: LaunchMaterializationRequest = launch_materialization_request_from_env(
         selected_terminals,
         desktop_fast_path,
+        false,
         config_override_from_env().as_deref(),
     )?;
     let data = prepare_launch_materialization(&request)?;
