@@ -1,17 +1,17 @@
 [contract]
-measured_total_loc = 66989
-measured_total_file_count = 138
-current_total_loc_max = 66989
-current_total_file_count_max = 138
+measured_total_loc = 63217
+measured_total_file_count = 136
+current_total_loc_max = 63217
+current_total_file_count_max = 136
 hard_target_loc = 60000
 
 [[families]]
 id = "core_cli_and_public_surface"
 status = "canonical"
 owner_bead = "yazelix-ykti.1"
-measured_loc = 7967
+measured_loc = 7957
 measured_files = 12
-max_loc = 7967
+max_loc = 7957
 target_loc = 7000
 max_files = 12
 allowed_paths = [
@@ -33,9 +33,9 @@ allowed_paths = [
 id = "core_config_ui_and_materialization"
 status = "canonical"
 owner_bead = "yazelix-ryx4.6"
-measured_loc = 20587
+measured_loc = 20594
 measured_files = 42
-max_loc = 20587
+max_loc = 20594
 target_loc = 14000
 max_files = 42
 allowed_paths = [
@@ -107,11 +107,11 @@ allowed_paths = [
 id = "core_workspace_and_pane_integration"
 status = "canonical"
 owner_bead = "yazelix-w032.3"
-measured_loc = 16286
-measured_files = 33
-max_loc = 16286
+measured_loc = 12515
+measured_files = 31
+max_loc = 12515
 target_loc = 11000
-max_files = 33
+max_files = 31
 allowed_paths = [
   "rust_core/yazelix_core/src/action_registry.rs",
   "rust_core/yazelix_core/src/internal_nu_runner.rs",
@@ -136,9 +136,7 @@ allowed_paths = [
   "rust_core/yazelix_core/src/zellij_commands/pipe.rs",
   "rust_core/yazelix_core/src/zellij_commands/status.rs",
   "rust_core/yazelix_core/src/zellij_commands/status/agent_usage.rs",
-  "rust_core/yazelix_core/src/zellij_commands/status/agent_usage/refresh.rs",
   "rust_core/yazelix_core/src/zellij_commands/status/cache.rs",
-  "rust_core/yazelix_core/src/zellij_commands/status/tests/agent_usage.rs",
   "rust_core/yazelix_core/src/zellij_commands/status/tests/cache.rs",
   "rust_core/yazelix_core/src/zellij_commands/status/tests/mod.rs",
   "rust_core/yazelix_core/src/zellij_commands/status/tests/widgets.rs",
@@ -152,9 +150,9 @@ allowed_paths = [
 id = "core_integration_tests"
 status = "canonical"
 owner_bead = "yazelix-9opk.4"
-measured_loc = 5697
+measured_loc = 5699
 measured_files = 19
-max_loc = 5697
+max_loc = 5699
 target_loc = 4500
 max_files = 19
 allowed_paths = [
