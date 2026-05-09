@@ -71,9 +71,12 @@ This contract defines the Yazelix integration boundary for the extracted plugin.
 - Status: live
 - Owner: plugin build/sync workflow
 - Statement: Rust source edits are not live until the pane orchestrator wasm is
-  rebuilt and synced. `cargo test` alone does not prove live plugin behavior
-- Verification: manual `yzx dev build_pane_orchestrator --sync`; automated
-  `yzx_repo_validator validate-contracts`
+  rebuilt and synced from a clean source checkout. The tracked sync stamp records
+  the source Git commit and remote that produced the wasm. `cargo test` alone
+  does not prove live plugin behavior
+- Verification: validator
+  `yzx_repo_validator validate-pane-orchestrator-sync`; manual
+  `yzx dev build_pane_orchestrator --sync`
 
 ## Behavior
 
@@ -149,7 +152,7 @@ Rust source edits are not live until the wasm is rebuilt and synced:
 yzx dev build_pane_orchestrator --sync
 ```
 
-The sync step updates the tracked wasm, the stable runtime wasm path, and the generated Zellij config. After a synced plugin change, validate in a fresh Yazelix session or with `yzx restart`; do not treat `cargo test` alone as proof of live plugin behavior.
+The sync step refuses a dirty `yazelix-zellij-pane-orchestrator` checkout, updates the tracked wasm and stable runtime wasm path, and writes a sync stamp containing the source Git commit, source remote, source hash, build command, and wasm hash. `yzx_repo_validator validate-pane-orchestrator-sync` is the high-signal repository gate for the copied artifact. After a synced plugin change, validate in a fresh Yazelix session or with `yzx restart`; do not treat `cargo test` alone as proof of live plugin behavior.
 
 ## Non-goals
 
@@ -169,6 +172,7 @@ The sync step updates the tracked wasm, the stable runtime wasm path, and the ge
 
 - `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
 - `yzx dev build_pane_orchestrator --sync`
+- `yzx_repo_validator validate-pane-orchestrator-sync`
 - `nu nushell/scripts/dev/test_zellij_plugin_contracts.nu`
 - `nu nushell/scripts/dev/test_yzx_generated_configs.nu`
 - `nu nushell/scripts/dev/test_yzx_commands.nu`

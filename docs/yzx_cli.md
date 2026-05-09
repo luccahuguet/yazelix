@@ -194,12 +194,12 @@ Maintainer shell commands:
 - `yzx dev rust test [core|maintainer|pane_orchestrator|all] [cargo test args...]`: Run fast `cargo test` directly. Default target is `core`; pass a focused test filter directly or after the target
 - `yzx dev test [--verbose] [--new-window] [--lint-only] [--profile] [--sweep] [--all]`: Run the repo test lanes
 - `yzx dev update`: Refresh repo runtime inputs, run canaries, sync pinned runtime expectations, refresh vendored runtime assets, and perform the required `--activate profile|home_manager|none` step; `--canary-only` is the only path that does not require `--activate`
-- `yzx dev build_pane_orchestrator [--sync]`: Build the Zellij pane orchestrator wasm for `wasm32-wasip1`; `--sync` also updates the tracked/runtime plugin paths after a successful build, preserves previously granted plugin permissions onto the stable runtime path when possible, and regenerates Zellij config. After syncing, prefer restarting Yazelix over reloading the plugin in place
+- `yzx dev build_pane_orchestrator [--sync]`: Build the Zellij pane orchestrator wasm for `wasm32-wasip1`; `--sync` requires a clean source checkout, updates the tracked/runtime plugin paths after a successful build, and writes the source Git commit and remote into the tracked sync stamp. After syncing, prefer restarting Yazelix over reloading the plugin in place
 - `yzx dev sync_issues [--dry-run]`: Sync the GitHub/Beads public issue contract from a repo checkout
 - `yzx dev lint_nu [--format pretty|compact] [paths...]`: Run the repo Nu linter wrapper
 - `yzx dev bump VERSION`: Rotate release notes, update `YAZELIX_VERSION`, sync the README version marker, create the release commit, and create the matching annotated tag
 - `yzx_repo_validator validate-package-rust-test-purity`: Guard default/package-time Rust tests from host-only commands such as `nix` and `home-manager`; Nix-dependent checks belong in explicit validators or package gates
-- `yzx_repo_validator validate-pane-orchestrator-sync`: Check that the tracked pane-orchestrator wasm sync stamp matches the current source and wasm
+- `yzx_repo_validator validate-pane-orchestrator-sync`: Check that the tracked pane-orchestrator wasm sync stamp matches the current source Git commit, source hash, build command, and wasm
 - `yzx_repo_validator validate-workspace-session-contract`: Check built-in layout metadata, workspace runtime assets, internal Zellij command routing, pane-orchestrator pipe commands, and Yazi workspace entrypoints
 - `yzx_repo_validator validate-rust-ownership-budget`: Optional manual audit for the canonical Rust ownership manifest, unexpected `.rs` files, and historical LOC/file ceilings
 

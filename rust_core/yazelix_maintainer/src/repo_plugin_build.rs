@@ -11,6 +11,7 @@ const PANE_ORCHESTRATOR_SOURCE_PROJECT: &str = "yazelix-zellij-pane-orchestrator
 const PANE_ORCHESTRATOR_PUBLIC_WASM_NAME: &str = "yazelix_zellij_pane_orchestrator.wasm";
 const PANE_ORCHESTRATOR_WASM_NAME: &str = "yazelix_pane_orchestrator.wasm";
 const PANE_ORCHESTRATOR_SYNC_STAMP_NAME: &str = "yazelix_pane_orchestrator.sync_stamp";
+const PANE_ORCHESTRATOR_BUILD_COMMAND: &str = "yzx dev build_pane_orchestrator --sync";
 
 struct PaneOrchestratorPaths {
     repo_root: PathBuf,
@@ -21,10 +22,15 @@ struct PaneOrchestratorPaths {
 pub fn build_pane_orchestrator(repo_root: &Path, sync: bool) -> Result<(), String> {
     let paths = pane_orchestrator_paths(repo_root);
     ensure_build_tools_available()?;
+    let source_git = if sync {
+        Some(clean_pane_orchestrator_source_git(&paths.crate_dir)?)
+    } else {
+        None
+    };
     run_wasm_build(&paths, "pane orchestrator")?;
 
     if sync {
-        sync_built_wasm(&paths, "pane orchestrator")?;
+        sync_built_wasm(&paths, "pane orchestrator", source_git.as_ref().unwrap())?;
     }
 
     Ok(())
@@ -63,6 +69,31 @@ pub fn validate_pane_orchestrator_sync(repo_root: &Path) -> Result<Vec<String>, 
                         current_source_hash, stamp.source_sha256
                     ));
                 }
+                let source_git = pane_orchestrator_source_git(&paths.crate_dir)?;
+                if source_git.dirty {
+                    errors.push(format!(
+                        "Pane-orchestrator source checkout is dirty: {}. Commit or discard source changes before syncing the tracked wasm.",
+                        paths.crate_dir.display()
+                    ));
+                }
+                if stamp.source_git_commit != source_git.commit {
+                    errors.push(format!(
+                        "Pane-orchestrator source Git commit differs from its sync stamp. Run `yzx dev build_pane_orchestrator --sync`.\n   current source commit: {}\n   synced source commit:  {}",
+                        source_git.commit, stamp.source_git_commit
+                    ));
+                }
+                if stamp.source_git_remote != source_git.remote {
+                    errors.push(format!(
+                        "Pane-orchestrator source Git remote differs from its sync stamp.\n   current source remote: {}\n   synced source remote:  {}",
+                        source_git.remote, stamp.source_git_remote
+                    ));
+                }
+            }
+            if stamp.build_command != PANE_ORCHESTRATOR_BUILD_COMMAND {
+                errors.push(format!(
+                    "Pane-orchestrator sync stamp build command is `{}` instead of `{}`.",
+                    stamp.build_command, PANE_ORCHESTRATOR_BUILD_COMMAND
+                ));
             }
             if repo_wasm.is_file() {
                 let current_wasm_hash = file_sha256_hex(&repo_wasm)?;
@@ -230,7 +261,11 @@ fn runtime_wasm_path() -> Result<PathBuf, String> {
         .join(PANE_ORCHESTRATOR_WASM_NAME))
 }
 
-fn sync_built_wasm(paths: &PaneOrchestratorPaths, label: &str) -> Result<(), String> {
+fn sync_built_wasm(
+    paths: &PaneOrchestratorPaths,
+    label: &str,
+    source_git: &SourceGitMetadata,
+) -> Result<(), String> {
     println!("🔄 Syncing {label} wasm into Yazelix...");
     let repo_target = tracked_wasm_path(&paths.repo_root);
     let runtime_target = runtime_wasm_path()?;
@@ -257,7 +292,7 @@ fn sync_built_wasm(paths: &PaneOrchestratorPaths, label: &str) -> Result<(), Str
         )
     })?;
 
-    let sync_stamp = render_sync_stamp(paths, &repo_target)?;
+    let sync_stamp = render_sync_stamp(paths, &repo_target, source_git)?;
     let sync_stamp_path = tracked_sync_stamp_path(&paths.repo_root);
     fs::write(&sync_stamp_path, sync_stamp).map_err(|error| {
         format!(
@@ -271,10 +306,11 @@ fn sync_built_wasm(paths: &PaneOrchestratorPaths, label: &str) -> Result<(), Str
         .len();
 
     println!(
-        "Updated pane orchestrator repo wasm: {}\nUpdated pane orchestrator sync stamp: {}\nUpdated pane orchestrator runtime wasm: {}\nSize: {byte_len} bytes\n\nSafest next step:\nRestart Yazelix or open a fresh Yazelix window so Zellij loads the updated plugin cleanly.",
+        "Updated pane orchestrator repo wasm: {}\nUpdated pane orchestrator sync stamp: {}\nUpdated pane orchestrator runtime wasm: {}\nSource commit: {}\nSize: {byte_len} bytes\n\nSafest next step:\nRestart Yazelix or open a fresh Yazelix window so Zellij loads the updated plugin cleanly.",
         repo_target.display(),
         sync_stamp_path.display(),
-        runtime_target.display()
+        runtime_target.display(),
+        source_git.commit
     );
     println!("In-place plugin reloads can leave the current session in a broken permission state.");
     println!(
@@ -286,15 +322,32 @@ fn sync_built_wasm(paths: &PaneOrchestratorPaths, label: &str) -> Result<(), Str
 
 struct PaneOrchestratorSyncStamp {
     source_project: String,
+    source_git_commit: String,
+    source_git_remote: String,
     source_sha256: String,
+    build_command: String,
     tracked_wasm_sha256: String,
 }
 
-fn render_sync_stamp(paths: &PaneOrchestratorPaths, repo_wasm: &Path) -> Result<String, String> {
+#[derive(Debug)]
+struct SourceGitMetadata {
+    commit: String,
+    remote: String,
+    dirty: bool,
+}
+
+fn render_sync_stamp(
+    paths: &PaneOrchestratorPaths,
+    repo_wasm: &Path,
+    source_git: &SourceGitMetadata,
+) -> Result<String, String> {
     Ok(format!(
-        "source_project = \"{}\"\nsource_sha256 = \"{}\"\npublic_wasm_sha256 = \"{}\"\ntracked_wasm_sha256 = \"{}\"\n",
+        "source_project = \"{}\"\nsource_git_commit = \"{}\"\nsource_git_remote = \"{}\"\nsource_sha256 = \"{}\"\nbuild_command = \"{}\"\npublic_wasm_sha256 = \"{}\"\ntracked_wasm_sha256 = \"{}\"\n",
         PANE_ORCHESTRATOR_SOURCE_PROJECT,
+        source_git.commit,
+        source_git.remote,
         pane_orchestrator_source_hash(paths)?,
+        PANE_ORCHESTRATOR_BUILD_COMMAND,
         file_sha256_hex(&paths.wasm_path)?,
         file_sha256_hex(repo_wasm)?,
     ))
@@ -307,7 +360,10 @@ fn read_sync_stamp(path: &Path) -> Result<Option<PaneOrchestratorSyncStamp>, Str
     let raw = fs::read_to_string(path)
         .map_err(|error| format!("Failed to read {}: {}", path.display(), error))?;
     let mut source_project = None;
+    let mut source_git_commit = None;
+    let mut source_git_remote = None;
     let mut source_sha256 = None;
+    let mut build_command = None;
     let mut tracked_wasm_sha256 = None;
     for line in raw.lines().map(str::trim).filter(|line| !line.is_empty()) {
         let Some((key, value)) = line.split_once('=') else {
@@ -319,7 +375,10 @@ fn read_sync_stamp(path: &Path) -> Result<Option<PaneOrchestratorSyncStamp>, Str
         let value = value.trim().trim_matches('"').to_string();
         match key.trim() {
             "source_project" => source_project = Some(value),
+            "source_git_commit" => source_git_commit = Some(value),
+            "source_git_remote" => source_git_remote = Some(value),
             "source_sha256" => source_sha256 = Some(value),
+            "build_command" => build_command = Some(value),
             "public_wasm_sha256" => {}
             "tracked_wasm_sha256" => tracked_wasm_sha256 = Some(value),
             other => {
@@ -333,11 +392,63 @@ fn read_sync_stamp(path: &Path) -> Result<Option<PaneOrchestratorSyncStamp>, Str
     Ok(Some(PaneOrchestratorSyncStamp {
         source_project: source_project
             .ok_or_else(|| format!("Missing source_project in {}", path.display()))?,
+        source_git_commit: source_git_commit
+            .ok_or_else(|| format!("Missing source_git_commit in {}", path.display()))?,
+        source_git_remote: source_git_remote
+            .ok_or_else(|| format!("Missing source_git_remote in {}", path.display()))?,
         source_sha256: source_sha256
             .ok_or_else(|| format!("Missing source_sha256 in {}", path.display()))?,
+        build_command: build_command
+            .ok_or_else(|| format!("Missing build_command in {}", path.display()))?,
         tracked_wasm_sha256: tracked_wasm_sha256
             .ok_or_else(|| format!("Missing tracked_wasm_sha256 in {}", path.display()))?,
     }))
+}
+
+fn clean_pane_orchestrator_source_git(crate_dir: &Path) -> Result<SourceGitMetadata, String> {
+    let source_git = pane_orchestrator_source_git(crate_dir)?;
+    if source_git.dirty {
+        return Err(format!(
+            "Pane-orchestrator source checkout is dirty: {}. Commit or discard source changes before running `{}`.",
+            crate_dir.display(),
+            PANE_ORCHESTRATOR_BUILD_COMMAND
+        ));
+    }
+    Ok(source_git)
+}
+
+fn pane_orchestrator_source_git(crate_dir: &Path) -> Result<SourceGitMetadata, String> {
+    let inside_work_tree = git_output(crate_dir, &["rev-parse", "--is-inside-work-tree"])?;
+    if inside_work_tree.trim() != "true" {
+        return Err(format!(
+            "Pane-orchestrator source checkout is not a Git worktree: {}",
+            crate_dir.display()
+        ));
+    }
+    Ok(SourceGitMetadata {
+        commit: git_output(crate_dir, &["rev-parse", "HEAD"])?,
+        remote: git_output(crate_dir, &["remote", "get-url", "origin"])?,
+        dirty: !git_output(crate_dir, &["status", "--porcelain"])?.is_empty(),
+    })
+}
+
+fn git_output(crate_dir: &Path, args: &[&str]) -> Result<String, String> {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(crate_dir)
+        .args(args)
+        .output()
+        .map_err(|error| format!("Failed to launch git in {}: {error}", crate_dir.display()))?;
+    if !output.status.success() {
+        return Err(format!(
+            "Git command failed in {}: git -C {} {}\n{}",
+            crate_dir.display(),
+            crate_dir.display(),
+            args.join(" "),
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
 fn pane_orchestrator_source_hash(paths: &PaneOrchestratorPaths) -> Result<String, String> {
@@ -432,6 +543,8 @@ mod tests {
         .unwrap();
         fs::write(crate_dir.join("Cargo.lock"), "# lock\n").unwrap();
         fs::write(crate_dir.join("src").join("main.rs"), "fn main() {}\n").unwrap();
+        fs::write(crate_dir.join(".gitignore"), "target/\n").unwrap();
+        init_fixture_source_git(&crate_dir);
         let public_wasm = pane_orchestrator_paths(&repo).wasm_path;
         fs::create_dir_all(public_wasm.parent().unwrap()).unwrap();
         fs::write(public_wasm, b"wasm").unwrap();
@@ -462,17 +575,77 @@ mod tests {
         .unwrap();
 
         let errors = validate_pane_orchestrator_sync(&repo).unwrap();
-        assert_eq!(errors.len(), 1);
-        assert!(errors[0].contains("source changed since the tracked wasm was synced"));
+        assert!(
+            errors
+                .iter()
+                .any(|error| error.contains("source changed since the tracked wasm was synced"))
+        );
+        assert!(
+            errors
+                .iter()
+                .any(|error| error.contains("source checkout is dirty"))
+        );
+    }
+
+    // Defends: sync stamps must not be produced from uncommitted pane-orchestrator source edits.
+    #[test]
+    fn pane_orchestrator_sync_refuses_dirty_source_checkout() {
+        let (_tmp, repo) = write_fixture_repo();
+        let paths = write_fixture_sync_stamp(&repo);
+        fs::write(
+            paths.crate_dir.join("src").join("main.rs"),
+            "fn main() { println!(\"dirty\"); }\n",
+        )
+        .unwrap();
+
+        let error = clean_pane_orchestrator_source_git(&paths.crate_dir).unwrap_err();
+        assert!(error.contains("source checkout is dirty"));
     }
 
     fn write_fixture_sync_stamp(repo: &Path) -> PaneOrchestratorPaths {
         let paths = pane_orchestrator_paths(repo);
+        let source_git = clean_pane_orchestrator_source_git(&paths.crate_dir).unwrap();
         fs::write(
             tracked_sync_stamp_path(repo),
-            render_sync_stamp(&paths, &tracked_wasm_path(repo)).unwrap(),
+            render_sync_stamp(&paths, &tracked_wasm_path(repo), &source_git).unwrap(),
         )
         .unwrap();
         paths
+    }
+
+    fn init_fixture_source_git(crate_dir: &Path) {
+        run_fixture_git(crate_dir, &["init"]);
+        run_fixture_git(
+            crate_dir,
+            &["config", "user.email", "fixture@example.invalid"],
+        );
+        run_fixture_git(crate_dir, &["config", "user.name", "Fixture"]);
+        run_fixture_git(
+            crate_dir,
+            &[
+                "remote",
+                "add",
+                "origin",
+                "https://example.invalid/yazelix-zellij-pane-orchestrator.git",
+            ],
+        );
+        run_fixture_git(crate_dir, &["add", "."]);
+        run_fixture_git(crate_dir, &["commit", "-m", "initial"]);
+    }
+
+    fn run_fixture_git(crate_dir: &Path, args: &[&str]) {
+        let output = Command::new("git")
+            .arg("-C")
+            .arg(crate_dir)
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "git -C {} {} failed:\n{}",
+            crate_dir.display(),
+            args.join(" "),
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
 }
