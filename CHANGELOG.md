@@ -4,12 +4,26 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
-Post-v16.3 work in progress
+Post-v16.4 work in progress
 
 Upgrade impact: no user action required
 
 Highlights:
-- Reserved for post-release changes after v16.3 lands.
+- Reserved for post-release changes after v16.4 lands.
+
+## v16.4 - 2026-05-09
+
+Standalone bar/cursor ownership, structured config editing, and first-launch reliability
+
+Upgrade impact: no user action required
+
+Highlights:
+- `yazelix-zellij-bar` owns more of its standalone widget surface so non-Yazelix Zellij users can run the bar with its bundled fact, cursor, and usage widget helpers
+- The Ghostty cursor package is consistently named `yazelix-ghostty-cursors`, while Yazelix continues to expose the `yzc`, `yazelix_ghostty_cursors`, and `ghostty_cursor_shaders` package outputs
+- `yzx config ui` presents `zellij.keybindings` and `yazi.keybindings` as structured action rows instead of forcing one-line JSON object edits
+- Complex config arrays and objects without a dedicated structured editor no longer open unreadable raw JSON edit buffers
+- Desktop launches after a Home Manager or flake runtime update refresh terminal configs before opening the managed terminal, so the first launch does not depend on stale generated files
+- The Rust inventory describes the current code ownership shape and future extraction opportunities without bead-specific or legacy implementation notes
 
 ## v16.3 - 2026-05-07
 

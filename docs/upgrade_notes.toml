@@ -1,11 +1,11 @@
 [releases.unreleased]
 acknowledged_guarded_changes = []
 date = ""
-headline = "Post-v16.3 work in progress"
-manual_actions = ["Move old mutable `yazelix.toml`, `cursors.toml`, `user_configs/` sidecars, or embedded cursor settings aside and keep `settings.jsonc` plus `~/.config/yazelix_ghostty_cursors/settings.jsonc` as the supported config sources."]
+headline = "Post-v16.4 work in progress"
+manual_actions = []
 migration_ids = []
-summary = ["Removed the remaining automatic legacy config rewrites so old TOML and nested sidecar surfaces now fail fast with explicit cleanup guidance instead of being moved or rewritten during startup."]
-upgrade_impact = "manual_action_required"
+summary = ["Reserved for post-release changes after v16.4 lands."]
+upgrade_impact = "no_user_action"
 version = "unreleased"
 
 [releases.v12]
@@ -367,6 +367,16 @@ migration_ids = []
 summary = ["Published first-party child repository links for yazelix-screen, yazelix-ghostty-cursors, and yazelix-zellij-popup so the extracted projects are easier to find and use independently.", "Extracted the reusable Zellij popup pane plugin into yazelix-zellij-popup, with yzpp.wasm usable from plain Zellij layouts and packaged into regular Yazelix for popup, menu, and config UI panes.", "Desktop launch keeps its starter terminal for visible preflight and failure feedback, but defers the managed Yazelix window until after the starter exits so tiling window managers do not size the real session around the bootstrap window.", "The default Zellij status widget tray includes codex_usage so new configs show the Codex quota/reset widget without manual opt-in.", "Home Manager desktop-entry generation is Linux-only so Darwin Home Manager evaluations do not require Linux xdg desktop-entry options.", "User-editable config surfaces are flat under ~/.config/yazelix/, with unambiguous old regular files migrated into the flat names on first use."]
 upgrade_impact = "manual_action_required"
 version = "v16.3"
+
+[releases."v16.4"]
+acknowledged_guarded_changes = []
+date = "2026-05-09"
+headline = "Standalone bar/cursor ownership, structured config editing, and first-launch reliability"
+manual_actions = []
+migration_ids = []
+summary = ["yazelix-zellij-bar owns more of its standalone widget surface so non-Yazelix Zellij users can run the bar with its bundled fact, cursor, and usage widget helpers.", "The Ghostty cursor package is consistently named yazelix-ghostty-cursors, while Yazelix continues to expose the yzc, yazelix_ghostty_cursors, and ghostty_cursor_shaders package outputs.", "yzx config ui presents zellij.keybindings and yazi.keybindings as structured action rows instead of forcing one-line JSON object edits.", "Complex config arrays and objects without a dedicated structured editor no longer open unreadable raw JSON edit buffers.", "Desktop launches after a Home Manager or flake runtime update refresh terminal configs before opening the managed terminal, so the first launch does not depend on stale generated files.", "The Rust inventory describes the current code ownership shape and future extraction opportunities without bead-specific or legacy implementation notes."]
+upgrade_impact = "no_user_action"
+version = "v16.4"
 
 [series.v13]
 headline = "Plugin-managed workspaces, migration-aware upgrades, richer front-door UX, and the full devenv-era integration push."
