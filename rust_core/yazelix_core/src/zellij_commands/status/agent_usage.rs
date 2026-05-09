@@ -10,11 +10,14 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
+use yazelix_bar::{
+    AgentUsageDisplay as BarAgentUsageDisplay, WindowedAgentUsageFacts,
+    render_codex_usage_status_widget,
+};
 
 pub(crate) const CLAUDE_USAGE_CACHE_SCHEMA_VERSION: i64 = 1;
 pub(crate) const CODEX_USAGE_CACHE_SCHEMA_VERSION: i64 = 2;
 pub(crate) const OPENCODE_GO_USAGE_CACHE_SCHEMA_VERSION: i64 = 1;
-pub(crate) const CODEX_USAGE_WINDOW_SEPARATOR: &str = " · ";
 pub(crate) const CLAUDE_USAGE_LOCK_STALE_AFTER_SECONDS: u64 = 300;
 pub(crate) const CODEX_USAGE_LOCK_STALE_AFTER_SECONDS: u64 = 300;
 pub(crate) const OPENCODE_GO_USAGE_LOCK_STALE_AFTER_SECONDS: u64 = 300;
@@ -26,9 +29,10 @@ pub(crate) const OPENCODE_GO_FIVE_HOUR_LIMIT_USD: f64 = 12.0;
 pub(crate) const OPENCODE_GO_WEEKLY_LIMIT_USD: f64 = 30.0;
 pub(crate) const OPENCODE_GO_MONTHLY_LIMIT_USD: f64 = 60.0;
 pub(crate) const MINUTE_SECONDS: u64 = 60;
+#[cfg(test)]
 pub(crate) const HOUR_SECONDS: u64 = 60 * MINUTE_SECONDS;
+#[cfg(test)]
 pub(crate) const DAY_SECONDS: u64 = 24 * HOUR_SECONDS;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum WindowedUsageDisplay {
     Both,
@@ -98,22 +102,6 @@ impl WindowedUsageFacts {
 
     fn is_empty(&self) -> bool {
         !self.has_tokens() && !self.has_quota()
-    }
-
-    fn codex_window_reset_label(&self, period: WindowedUsagePeriod) -> Option<String> {
-        let now = self.updated_at_unix_seconds?;
-        let (reset_at, window_seconds) = match period {
-            WindowedUsagePeriod::FiveHour => (
-                self.five_hour_reset_at_unix_seconds?,
-                self.five_hour_window_seconds?,
-            ),
-            WindowedUsagePeriod::Weekly => (
-                self.weekly_reset_at_unix_seconds?,
-                self.weekly_window_seconds?,
-            ),
-            WindowedUsagePeriod::Monthly => return None,
-        };
-        format_reset_window_label(reset_at, window_seconds, now)
     }
 }
 
@@ -504,69 +492,10 @@ pub(crate) fn render_codex_usage_segment(cache: &Value, display: WindowedUsageDi
     let Some(entry) = cache.get("codex_usage") else {
         return String::new();
     };
-    let facts = windowed_usage_facts_from_cache_entry(entry);
-    let summary = render_codex_usage_summary(&facts, display);
-    if summary.is_empty() {
-        String::new()
-    } else {
-        render_agent_usage_widget("codex", &summary)
-    }
-}
-
-pub(crate) fn render_codex_usage_summary(
-    facts: &WindowedUsageFacts,
-    display: WindowedUsageDisplay,
-) -> String {
-    let mut parts = Vec::new();
-    for period in default_windowed_usage_periods() {
-        let (tokens, remaining_percent) = match period {
-            WindowedUsagePeriod::FiveHour => {
-                (facts.five_hour_tokens, facts.five_hour_remaining_percent)
-            }
-            WindowedUsagePeriod::Weekly => (facts.weekly_tokens, facts.weekly_remaining_percent),
-            WindowedUsagePeriod::Monthly => (facts.monthly_tokens, facts.monthly_remaining_percent),
-        };
-        let label = facts
-            .codex_window_reset_label(*period)
-            .unwrap_or_else(|| period.short_label().to_string());
-        if let Some(part) = render_codex_usage_window(&label, tokens, remaining_percent, display) {
-            parts.push(part);
-        }
-    }
-    parts.join(CODEX_USAGE_WINDOW_SEPARATOR)
-}
-
-pub(crate) fn render_codex_usage_window(
-    label: &str,
-    tokens: Option<u64>,
-    remaining_percent: Option<u64>,
-    display: WindowedUsageDisplay,
-) -> Option<String> {
-    let mut pieces = vec![label.to_string()];
-    match display {
-        WindowedUsageDisplay::Token => {
-            pieces.push(format_agent_usage_token_count(tokens?));
-        }
-        WindowedUsageDisplay::Quota => {
-            pieces.push(match remaining_percent {
-                Some(percent) => format_quota_percent(percent),
-                None if tokens.is_some() => "n/a".to_string(),
-                None => return None,
-            });
-        }
-        WindowedUsageDisplay::Both => {
-            if let Some(tokens) = tokens {
-                pieces.push(format_agent_usage_token_count(tokens));
-            }
-            if let Some(remaining_percent) = remaining_percent {
-                pieces.push(format_quota_percent(remaining_percent));
-            }
-            if pieces.len() == 1 {
-                return None;
-            }
-        }
-    }
-    Some(pieces.join(" "))
+    render_codex_usage_status_widget(
+        &bar_windowed_usage_facts_from_cache_entry(entry),
+        bar_agent_usage_display(display),
+    )
 }
 
 pub(crate) fn render_windowed_usage_segment(
@@ -678,6 +607,42 @@ pub(crate) fn windowed_usage_facts_from_cache_entry(entry: &Value) -> WindowedUs
     }
 }
 
+pub(crate) fn bar_windowed_usage_facts_from_cache_entry(entry: &Value) -> WindowedAgentUsageFacts {
+    WindowedAgentUsageFacts {
+        updated_at_unix_seconds: entry.get("updated_at_unix_seconds").and_then(Value::as_u64),
+        five_hour_tokens: entry.get("five_hour_tokens").and_then(Value::as_u64),
+        weekly_tokens: entry.get("weekly_tokens").and_then(Value::as_u64),
+        monthly_tokens: entry.get("monthly_tokens").and_then(Value::as_u64),
+        five_hour_remaining_percent: entry
+            .get("five_hour_remaining_percent")
+            .and_then(Value::as_u64),
+        weekly_remaining_percent: entry
+            .get("weekly_remaining_percent")
+            .and_then(Value::as_u64),
+        monthly_remaining_percent: entry
+            .get("monthly_remaining_percent")
+            .and_then(Value::as_u64),
+        five_hour_reset_at_unix_seconds: entry
+            .get("five_hour_reset_at_unix_seconds")
+            .and_then(Value::as_u64),
+        weekly_reset_at_unix_seconds: entry
+            .get("weekly_reset_at_unix_seconds")
+            .and_then(Value::as_u64),
+        five_hour_window_seconds: entry
+            .get("five_hour_window_seconds")
+            .and_then(Value::as_u64),
+        weekly_window_seconds: entry.get("weekly_window_seconds").and_then(Value::as_u64),
+    }
+}
+
+pub(crate) fn bar_agent_usage_display(display: WindowedUsageDisplay) -> BarAgentUsageDisplay {
+    match display {
+        WindowedUsageDisplay::Both => BarAgentUsageDisplay::Both,
+        WindowedUsageDisplay::Token => BarAgentUsageDisplay::Token,
+        WindowedUsageDisplay::Quota => BarAgentUsageDisplay::Quota,
+    }
+}
+
 mod refresh;
 pub(crate) use refresh::*;
 
@@ -707,82 +672,6 @@ pub(crate) fn format_scaled_agent_usage_count(value: f64, suffix: &str) -> Strin
         raw.as_str()
     };
     format!("{trimmed}{suffix}")
-}
-
-pub(crate) fn format_reset_window_label(
-    reset_at_unix_seconds: u64,
-    window_seconds: u64,
-    now_unix_seconds: u64,
-) -> Option<String> {
-    if window_seconds == 0 {
-        return None;
-    }
-    let remaining_seconds = reset_at_unix_seconds
-        .saturating_sub(now_unix_seconds)
-        .min(window_seconds);
-    let elapsed_seconds = window_seconds.saturating_sub(remaining_seconds);
-    Some(format!(
-        "{}/{}",
-        format_reset_window_position_duration(elapsed_seconds, window_seconds),
-        format_reset_window_total_duration(window_seconds)
-    ))
-}
-
-pub(crate) fn format_reset_window_position_duration(seconds: u64, window_seconds: u64) -> String {
-    if window_seconds >= DAY_SECONDS {
-        let days = seconds / DAY_SECONDS;
-        let hours = (seconds % DAY_SECONDS) / HOUR_SECONDS;
-        if days > 0 && hours > 0 {
-            format!("{days}d{hours}h")
-        } else if days > 0 {
-            format!("{days}d")
-        } else if hours > 0 {
-            format!("{hours}h")
-        } else {
-            "0h".to_string()
-        }
-    } else if window_seconds >= HOUR_SECONDS {
-        let hours = seconds / HOUR_SECONDS;
-        let minutes = elapsed_minutes_after_hour(seconds);
-        if hours > 0 && minutes > 0 {
-            format!("{hours}h{minutes}m")
-        } else if hours > 0 {
-            format!("{hours}h")
-        } else {
-            format!("{minutes}m")
-        }
-    } else if window_seconds >= MINUTE_SECONDS {
-        if seconds > 0 {
-            format!("{}m", seconds.div_ceil(MINUTE_SECONDS))
-        } else {
-            "0m".to_string()
-        }
-    } else if seconds > 0 {
-        format!("{seconds}s")
-    } else {
-        "0s".to_string()
-    }
-}
-
-pub(crate) fn elapsed_minutes_after_hour(seconds: u64) -> u64 {
-    let minutes = (seconds % HOUR_SECONDS) / MINUTE_SECONDS;
-    if seconds > 0 && seconds < HOUR_SECONDS && minutes == 0 {
-        1
-    } else {
-        minutes
-    }
-}
-
-pub(crate) fn format_reset_window_total_duration(seconds: u64) -> String {
-    if seconds % DAY_SECONDS == 0 {
-        format!("{}d", seconds / DAY_SECONDS)
-    } else if seconds % HOUR_SECONDS == 0 {
-        format!("{}h", seconds / HOUR_SECONDS)
-    } else if seconds % MINUTE_SECONDS == 0 {
-        format!("{}m", seconds / MINUTE_SECONDS)
-    } else {
-        format!("{seconds}s")
-    }
 }
 
 pub(crate) fn format_quota_percent(percent: u64) -> String {

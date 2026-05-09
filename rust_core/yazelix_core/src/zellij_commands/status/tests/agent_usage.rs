@@ -128,19 +128,6 @@ fn status_cache_codex_usage_renders_5h_week_display_modes() {
     );
 }
 
-// Regression: Codex window labels show current window position instead of time remaining until reset.
-#[test]
-fn codex_window_label_reports_elapsed_position() {
-    assert_eq!(
-        format_reset_window_label(2 * DAY_SECONDS, 7 * DAY_SECONDS, 7 * HOUR_SECONDS),
-        Some("5d7h/7d".to_string())
-    );
-    assert_eq!(
-        format_reset_window_label(5 * HOUR_SECONDS, 5 * HOUR_SECONDS, 10 * MINUTE_SECONDS),
-        Some("10m/5h".to_string())
-    );
-}
-
 // Regression: quota-only Codex widgets must remain visible while official quota data is temporarily unavailable.
 #[test]
 fn status_cache_codex_usage_quota_mode_renders_partial_token_cache() {
