@@ -100,8 +100,8 @@ pub fn validate_nix_customization_api(repo_root: &Path) -> Result<ValidationRepo
     );
     require_json_bool(
         object,
-        "invalid_component_rejected",
-        "unsupported component disabling must fail during Nix evaluation",
+        "unsupported_component_rejected",
+        "unsupported component toggles must fail during Nix evaluation",
         &mut report.errors,
     );
 
@@ -210,7 +210,7 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "    ];".to_string(),
         "  };".to_string(),
         "  invalidRuntimeTool = builtins.tryEval ((flake.lib.${system}.mkYazelix { runtimeToolSources = { zellij = \"host\"; }; }).drvPath);".to_string(),
-        "  invalidComponent = builtins.tryEval ((flake.lib.${system}.mkYazelix { components = { screen = false; }; }).drvPath);".to_string(),
+        "  unsupportedComponent = builtins.tryEval ((flake.lib.${system}.mkYazelix { components = { status_bar = false; }; }).drvPath);".to_string(),
         "in {".to_string(),
         "  has_mk_yazelix = builtins.hasAttr \"mkYazelix\" flake.lib.${system};".to_string(),
         "  default_main_program = defaultPackage.meta.mainProgram or \"\";".to_string(),
@@ -219,7 +219,7 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "  home_manager_runtime_tool_source = hm.config.programs.yazelix.runtime_tool_sources.helix or \"\";".to_string(),
         "  home_manager_has_package = builtins.length hm.config.home.packages > 0;".to_string(),
         "  invalid_runtime_tool_rejected = !invalidRuntimeTool.success;".to_string(),
-        "  invalid_component_rejected = !invalidComponent.success;".to_string(),
+        "  unsupported_component_rejected = !unsupportedComponent.success;".to_string(),
         "}".to_string(),
     ]
     .join("\n")
