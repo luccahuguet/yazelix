@@ -1161,10 +1161,6 @@ pub(crate) fn extract_json_object(raw: &str) -> Option<&str> {
     (start <= end).then_some(&raw[start..=end])
 }
 
-pub(crate) fn render_agent_usage_widget(label: &str, summary: &str) -> String {
-    format!(" [{label} {summary}]")
-}
-
 pub(crate) fn first_u64_at(value: &Value, paths: &[&[&str]]) -> Option<u64> {
     paths
         .iter()

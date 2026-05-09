@@ -128,14 +128,6 @@ impl WindowedUsagePeriod {
             _ => None,
         }
     }
-
-    fn short_label(self) -> &'static str {
-        match self {
-            Self::FiveHour => "5h",
-            Self::Weekly => "wk",
-            Self::Monthly => "mo",
-        }
-    }
 }
 
 pub(crate) fn default_windowed_usage_periods() -> &'static [WindowedUsagePeriod] {
@@ -459,13 +451,7 @@ pub(crate) fn render_status_cache_widget_with_agent_usage_settings(
         "cursor" => Ok(render_zjstatus_cursor_widget(cache)),
         "claude_usage" => Ok(render_claude_usage_segment(cache, settings)),
         "codex_usage" => Ok(render_codex_usage_segment(cache, settings.codex_display)),
-        "opencode_go_usage" => Ok(render_windowed_usage_segment(
-            cache,
-            "opencode_go_usage",
-            "go",
-            settings.opencode_go_periods.as_slice(),
-            settings.opencode_go_display,
-        )),
+        "opencode_go_usage" => Ok(render_opencode_go_usage_segment(cache, settings)),
         _ => Err(CoreError::usage(format!(
             "zellij status-cache-widget requires one of: {}",
             status_cache_widget_names().join(", ")
@@ -508,79 +494,19 @@ pub(crate) fn render_claude_usage_segment(
     )
 }
 
-pub(crate) fn render_windowed_usage_segment(
+pub(crate) fn render_opencode_go_usage_segment(
     cache: &Value,
-    cache_key: &str,
-    label: &str,
-    periods: &[WindowedUsagePeriod],
-    display: WindowedUsageDisplay,
+    settings: &AgentUsageWidgetSettings,
 ) -> String {
-    let Some(entry) = cache.get(cache_key) else {
+    let Some(entry) = cache.get("opencode_go_usage") else {
         return String::new();
     };
-    let facts = windowed_usage_facts_from_cache_entry(entry);
-    let summary = render_windowed_usage_summary(&facts, periods, display);
-    if summary.is_empty() {
-        String::new()
-    } else {
-        render_agent_usage_widget(label, &summary)
-    }
-}
-
-pub(crate) fn render_windowed_usage_summary(
-    facts: &WindowedUsageFacts,
-    periods: &[WindowedUsagePeriod],
-    display: WindowedUsageDisplay,
-) -> String {
-    let mut parts = Vec::new();
-    for period in periods {
-        let (tokens, remaining_percent) = match period {
-            WindowedUsagePeriod::FiveHour => {
-                (facts.five_hour_tokens, facts.five_hour_remaining_percent)
-            }
-            WindowedUsagePeriod::Weekly => (facts.weekly_tokens, facts.weekly_remaining_percent),
-            WindowedUsagePeriod::Monthly => (facts.monthly_tokens, facts.monthly_remaining_percent),
-        };
-        if let Some(part) =
-            render_windowed_usage_window(period.short_label(), tokens, remaining_percent, display)
-        {
-            parts.push(part);
-        }
-    }
-    parts.join(" ")
-}
-
-pub(crate) fn render_windowed_usage_window(
-    label: &str,
-    tokens: Option<u64>,
-    remaining_percent: Option<u64>,
-    display: WindowedUsageDisplay,
-) -> Option<String> {
-    let mut pieces = vec![label.to_string()];
-    match display {
-        WindowedUsageDisplay::Token => {
-            pieces.push(format_agent_usage_token_count(tokens?));
-        }
-        WindowedUsageDisplay::Quota => {
-            pieces.push(match remaining_percent {
-                Some(percent) => format_quota_percent(percent),
-                None if tokens.is_some() => "n/a".to_string(),
-                None => return None,
-            });
-        }
-        WindowedUsageDisplay::Both => {
-            if let Some(tokens) = tokens {
-                pieces.push(format_agent_usage_token_count(tokens));
-            }
-            if let Some(remaining_percent) = remaining_percent {
-                pieces.push(format_quota_percent(remaining_percent));
-            }
-            if pieces.len() == 1 {
-                return None;
-            }
-        }
-    }
-    Some(pieces.join("|"))
+    render_windowed_agent_usage_status_widget(
+        "go",
+        &bar_windowed_usage_facts_from_cache_entry(entry),
+        &bar_agent_usage_periods(settings.opencode_go_periods.as_slice()),
+        bar_agent_usage_display(settings.opencode_go_display),
+    )
 }
 
 pub(crate) fn windowed_usage_facts_from_cache_entry(entry: &Value) -> WindowedUsageFacts {
@@ -666,35 +592,3 @@ pub(crate) fn bar_agent_usage_periods(periods: &[WindowedUsagePeriod]) -> Vec<Ba
 
 mod refresh;
 pub(crate) use refresh::*;
-
-pub(crate) fn format_agent_usage_token_count(tokens: u64) -> String {
-    if tokens >= 1_000_000_000 {
-        format_scaled_agent_usage_count(tokens as f64 / 1_000_000_000.0, "B")
-    } else if tokens >= 1_000_000 {
-        format_scaled_agent_usage_count(tokens as f64 / 1_000_000.0, "M")
-    } else if tokens >= 1_000 {
-        format!("{}k", tokens / 1_000)
-    } else {
-        tokens.to_string()
-    }
-}
-
-pub(crate) fn format_scaled_agent_usage_count(value: f64, suffix: &str) -> String {
-    let raw = if value >= 100.0 {
-        format!("{value:.0}")
-    } else if value >= 10.0 {
-        format!("{value:.1}")
-    } else {
-        format!("{value:.2}")
-    };
-    let trimmed = if raw.contains('.') {
-        raw.trim_end_matches('0').trim_end_matches('.')
-    } else {
-        raw.as_str()
-    };
-    format!("{trimmed}{suffix}")
-}
-
-pub(crate) fn format_quota_percent(percent: u64) -> String {
-    format!("{}%", percent.min(100))
-}

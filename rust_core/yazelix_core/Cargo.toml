@@ -28,7 +28,7 @@ sha2 = "0.10"
 time = { version = "0.3", features = ["formatting", "local-offset", "macros"] }
 thiserror = "2.0"
 toml = "0.9"
-yazelix_bar = { git = "https://github.com/luccahuguet/yazelix-bar", rev = "3f7a61c15a9bd97b3b37dae287d57d24878ff3f2" }
+yazelix_bar = { git = "https://github.com/luccahuguet/yazelix-bar", rev = "f1959c32b3f84f977170a5b854f97ea79ecafe93" }
 yazelix_cursors = { git = "https://github.com/luccahuguet/yazelix-cursors", rev = "abc0f7f84f5a06f69a9e04a77384bd202b9f31bc" }
 yazelix_screen = { git = "https://github.com/luccahuguet/yazelix-screen", rev = "9ac6d3f62216c8200b6c9d58c85f26110666fa00" }
 rusqlite = { version = "0.39.0", features = ["bundled"] }
