@@ -1,5 +1,7 @@
 use super::{ConfigUiField, UiRowRef, visible_rows_for_tab_search};
-use crate::config_ui::ConfigUiApp;
+use crate::config_ui::{
+    ConfigUiApp, is_keybinding_map_field_path, keybinding_action_metadata_for_field_path,
+};
 use serde_json::Value as JsonValue;
 use std::collections::BTreeSet;
 
@@ -76,6 +78,9 @@ pub(crate) fn edit_input_for_field(field: &ConfigUiField) -> String {
         }
         return String::new();
     }
+    if keybinding_action_metadata_for_field_path(&field.path).is_some() {
+        return keybinding_action_edit_input(field);
+    }
     if is_string_field(field) || is_scalar_enum_field(field) {
         return parse_rendered_json_string(&field.current_value)
             .unwrap_or_else(|| field.current_value.clone());
@@ -127,6 +132,9 @@ pub(crate) fn parse_edit_input(field: &ConfigUiField, input: &str) -> Result<Jso
         "int" | "integer" => parse_i64_input(field, trimmed),
         "float" | "number" => parse_f64_input(field, trimmed),
         "string" => parse_string_field_input(field, input),
+        "string_list" if keybinding_action_metadata_for_field_path(&field.path).is_some() => {
+            parse_keybinding_string_list_input(field, trimmed)
+        }
         "string_list" => parse_string_list_input(field, trimmed),
         "array" => parse_json_input(field, trimmed, "JSON array").and_then(|value| {
             if value.is_array() {
@@ -181,6 +189,26 @@ fn parse_string_list_input(field: &ConfigUiField, input: &str) -> Result<JsonVal
     let strings = parse_string_list_values(field, input)?;
     Ok(JsonValue::Array(
         strings.into_iter().map(JsonValue::String).collect(),
+    ))
+}
+
+fn parse_keybinding_string_list_input(
+    field: &ConfigUiField,
+    input: &str,
+) -> Result<JsonValue, String> {
+    if input.starts_with('[') {
+        return parse_string_list_input(field, input);
+    }
+    if input.is_empty() || input.eq_ignore_ascii_case("disabled") {
+        return Ok(JsonValue::Array(Vec::new()));
+    }
+    Ok(JsonValue::Array(
+        input
+            .split(',')
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(|value| JsonValue::String(value.to_string()))
+            .collect(),
     ))
 }
 
@@ -320,6 +348,25 @@ pub(crate) fn is_scalar_enum_field(field: &ConfigUiField) -> bool {
 
 pub(crate) fn is_enum_string_list_field(field: &ConfigUiField) -> bool {
     field.kind == "string_list" && !field.allowed_values.is_empty()
+}
+
+pub(crate) fn structured_only_edit_notice(field: &ConfigUiField) -> Option<&'static str> {
+    if is_keybinding_map_field_path(&field.path) {
+        return Some("Select an action row below to edit one binding list.");
+    }
+    if matches!(
+        field.kind.as_str(),
+        "array" | "object" | "string_list_map"
+    ) {
+        return Some("Structured editor unavailable for this complex field; edit the source config directly.");
+    }
+    None
+}
+
+fn keybinding_action_edit_input(field: &ConfigUiField) -> String {
+    serde_json::from_str::<Vec<String>>(&field.edit_value)
+        .map(|keys| keys.join(", "))
+        .unwrap_or_else(|_| field.edit_value.clone())
 }
 
 pub(crate) fn field_bool_value(field: &ConfigUiField) -> Option<bool> {

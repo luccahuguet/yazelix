@@ -2,7 +2,7 @@
 
 mod apply_adapter;
 
-use crate::action_registry::ZELLIJ_ACTIONS;
+use crate::action_registry::{YAZI_ACTIONS, YazelixActionMetadata, ZELLIJ_ACTIONS};
 use crate::active_config_surface::{PrimaryConfigPaths, primary_config_paths};
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_apply::ConfigEditApplyStatus;
@@ -64,6 +64,7 @@ const DEFAULT_TABS: &[&str] = &[
 ];
 const CONFIG_UI_METADATA_FILENAME: &str = "config_ui_metadata.toml";
 const ZELLIJ_KEYBINDINGS_FIELD_PATH: &str = "zellij.keybindings";
+const YAZI_KEYBINDINGS_FIELD_PATH: &str = "yazi.keybindings";
 
 #[derive(Debug, Clone)]
 pub struct ConfigUiRequest {
@@ -234,6 +235,14 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
             blocking_paths.contains(&field.path),
         ));
     }
+    append_keybinding_action_fields(
+        &mut fields,
+        &contract_fields,
+        config_owner,
+        &active_value,
+        &default_value,
+        &blocking_paths,
+    );
 
     if cursor_component_enabled {
         for schema_field in collect_cursor_schema_fields(&schema) {
@@ -618,6 +627,10 @@ impl ConfigUiApp {
             self.notice_error(error.message());
             return;
         }
+        if let Some(message) = structured_only_edit_notice(field) {
+            self.notice_info(message);
+            return;
+        }
         let input = edit_input_for_field(field);
         self.edit = Some(ConfigUiEditState {
             field_index,
@@ -928,8 +941,10 @@ impl ConfigUiApp {
 }
 
 fn field_detail_lines(field: &ConfigUiField) -> Vec<Line<'static>> {
-    if field.path == ZELLIJ_KEYBINDINGS_FIELD_PATH {
-        zellij_keybinding_detail_lines(field)
+    if is_keybinding_map_field_path(&field.path) {
+        keybinding_map_detail_lines(field)
+    } else if let Some(action) = keybinding_action_metadata_for_field_path(&field.path) {
+        keybinding_action_detail_lines(field, action)
     } else {
         default_field_detail_lines(field)
     }
@@ -975,17 +990,19 @@ fn apply_error_notice(error: &CoreError) -> String {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct ZellijKeybindingObject {
+struct SemanticKeybindingObject {
     entries: BTreeMap<String, Vec<String>>,
     malformed_entries: Vec<String>,
     malformed_object: Option<String>,
 }
 
-fn zellij_keybinding_detail_lines(field: &ConfigUiField) -> Vec<Line<'static>> {
-    let object = zellij_keybinding_object_for_field(field);
-    let supported_actions = ZELLIJ_ACTIONS
+fn keybinding_map_detail_lines(field: &ConfigUiField) -> Vec<Line<'static>> {
+    let object = semantic_keybinding_object_for_field(field);
+    let parent_path = field.path.as_str();
+    let actions = keybinding_actions_for_parent_path(parent_path);
+    let supported_actions = actions
         .iter()
-        .map(|spec| spec.action.local_id)
+        .map(|action| action.local_id)
         .collect::<BTreeSet<_>>();
     let unsupported_entries = object
         .entries
@@ -1025,17 +1042,16 @@ fn zellij_keybinding_detail_lines(field: &ConfigUiField) -> Vec<Line<'static>> {
 
     lines.push(Line::from(""));
     lines.push(Line::from(Span::styled(
-        "Yazelix Zellij actions",
+        keybinding_surface_title(parent_path),
         metadata_key_style().add_modifier(Modifier::BOLD),
     )));
 
-    for spec in ZELLIJ_ACTIONS {
-        let action = &spec.action;
+    for action in actions {
         let default_keys = action.default_keys;
         let explicit_keys = object.entries.get(action.local_id);
         let current_label = explicit_keys
-            .map(|keys| zellij_keybinding_keys_label(keys.as_slice()))
-            .unwrap_or_else(|| zellij_keybinding_keys_label(default_keys));
+            .map(|keys| keybinding_keys_label(keys.as_slice()))
+            .unwrap_or_else(|| keybinding_keys_label(default_keys));
         let source_label = if let Some(keys) = explicit_keys {
             if keys.is_empty() {
                 "disabled"
@@ -1058,11 +1074,10 @@ fn zellij_keybinding_detail_lines(field: &ConfigUiField) -> Vec<Line<'static>> {
             "current",
             &format!("{current_label} ({source_label})"),
         ));
-        lines.push(detail_line(
-            "default",
-            &zellij_keybinding_keys_label(default_keys),
-        ));
-        lines.push(detail_line("mode", spec.mode));
+        lines.push(detail_line("default", &keybinding_keys_label(default_keys)));
+        for (label, value) in keybinding_action_metadata_lines(parent_path, action.local_id) {
+            lines.push(detail_line(label, &value));
+        }
         lines.push(detail_line("backend", action.backend.as_str()));
         if action.disable_policy.empty_binding_list_allowed() {
             lines.push(detail_line("disable", "empty list disables this action"));
@@ -1079,12 +1094,40 @@ fn zellij_keybinding_detail_lines(field: &ConfigUiField) -> Vec<Line<'static>> {
     lines
 }
 
-fn zellij_keybinding_object_for_field(field: &ConfigUiField) -> ZellijKeybindingObject {
+fn keybinding_action_detail_lines(
+    field: &ConfigUiField,
+    action: &'static YazelixActionMetadata,
+) -> Vec<Line<'static>> {
+    let parent_path = keybinding_parent_path_for_field_path(&field.path).unwrap_or(field.path.as_str());
+    let mut lines = default_field_detail_lines(field);
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(
+        action.label.to_string(),
+        Style::default()
+            .fg(Color::White)
+            .add_modifier(Modifier::BOLD),
+    )));
+    lines.push(detail_line("action", action.id));
+    lines.push(detail_line("keys", &keybinding_keys_label_from_field(field)));
+    for (label, value) in keybinding_action_metadata_lines(parent_path, action.local_id) {
+        lines.push(detail_line(label, &value));
+    }
+    lines.push(detail_line("backend", action.backend.as_str()));
+    lines.push(detail_line("command", action.generated_command));
+    if action.disable_policy.empty_binding_list_allowed() {
+        lines.push(detail_line("disable", "empty list disables this action"));
+    } else {
+        lines.push(detail_line("disable", "binding required"));
+    }
+    lines
+}
+
+fn semantic_keybinding_object_for_field(field: &ConfigUiField) -> SemanticKeybindingObject {
     if !matches!(
         field.state,
         ConfigUiValueState::Explicit | ConfigUiValueState::Invalid
     ) {
-        return ZellijKeybindingObject {
+        return SemanticKeybindingObject {
             entries: BTreeMap::new(),
             malformed_entries: Vec::new(),
             malformed_object: None,
@@ -1094,7 +1137,7 @@ fn zellij_keybinding_object_for_field(field: &ConfigUiField) -> ZellijKeybinding
     let value = match serde_json::from_str::<JsonValue>(&field.edit_value) {
         Ok(value) => value,
         Err(source) => {
-            return ZellijKeybindingObject {
+            return SemanticKeybindingObject {
                 entries: BTreeMap::new(),
                 malformed_entries: Vec::new(),
                 malformed_object: Some(format!("not valid JSON: {source}")),
@@ -1102,7 +1145,7 @@ fn zellij_keybinding_object_for_field(field: &ConfigUiField) -> ZellijKeybinding
         }
     };
     let Some(object) = value.as_object() else {
-        return ZellijKeybindingObject {
+        return SemanticKeybindingObject {
             entries: BTreeMap::new(),
             malformed_entries: Vec::new(),
             malformed_object: Some("must be a JSON object".to_string()),
@@ -1132,14 +1175,14 @@ fn zellij_keybinding_object_for_field(field: &ConfigUiField) -> ZellijKeybinding
         }
     }
 
-    ZellijKeybindingObject {
+    SemanticKeybindingObject {
         entries,
         malformed_entries,
         malformed_object: None,
     }
 }
 
-fn zellij_keybinding_keys_label(keys: &[impl AsRef<str>]) -> String {
+fn keybinding_keys_label(keys: &[impl AsRef<str>]) -> String {
     if keys.is_empty() {
         "disabled".to_string()
     } else {
@@ -1148,6 +1191,166 @@ fn zellij_keybinding_keys_label(keys: &[impl AsRef<str>]) -> String {
             .collect::<Vec<_>>()
             .join(", ")
     }
+}
+
+fn keybinding_keys_label_from_field(field: &ConfigUiField) -> String {
+    serde_json::from_str::<Vec<String>>(&field.edit_value)
+        .map(|keys| keybinding_keys_label(keys.as_slice()))
+        .unwrap_or_else(|_| field.current_value.clone())
+}
+
+fn append_keybinding_action_fields(
+    fields: &mut Vec<ConfigUiField>,
+    contract_fields: &BTreeMap<String, ContractField>,
+    config_owner: ConfigUiPathOwner,
+    active_value: &JsonValue,
+    default_value: &JsonValue,
+    blocking_paths: &BTreeSet<String>,
+) {
+    append_keybinding_surface_action_fields(
+        fields,
+        contract_fields,
+        config_owner,
+        active_value,
+        default_value,
+        blocking_paths,
+        ZELLIJ_KEYBINDINGS_FIELD_PATH,
+    );
+    append_keybinding_surface_action_fields(
+        fields,
+        contract_fields,
+        config_owner,
+        active_value,
+        default_value,
+        blocking_paths,
+        YAZI_KEYBINDINGS_FIELD_PATH,
+    );
+}
+
+fn append_keybinding_surface_action_fields(
+    fields: &mut Vec<ConfigUiField>,
+    contract_fields: &BTreeMap<String, ContractField>,
+    config_owner: ConfigUiPathOwner,
+    active_value: &JsonValue,
+    default_value: &JsonValue,
+    blocking_paths: &BTreeSet<String>,
+    parent_path: &'static str,
+) {
+    let Some(parent_field) = contract_fields.get(parent_path) else {
+        return;
+    };
+    let apply_mode = if config_owner == ConfigUiPathOwner::HomeManager {
+        RuntimeApplyMode::PackageHomeManagerActivation
+    } else {
+        parent_field.apply_mode
+    };
+    for action in keybinding_actions_for_parent_path(parent_path) {
+        let path = format!("{parent_path}.{}", action.local_id);
+        let default = get_json_path(default_value, &path)
+            .cloned()
+            .unwrap_or_else(|| keybinding_default_value(action));
+        fields.push(build_field_row(
+            &path,
+            "keybindings",
+            "string_list",
+            get_json_path(active_value, &path),
+            Some(&default),
+            action.label.to_string(),
+            Vec::new(),
+            parent_field.validation.clone(),
+            parent_field.rebuild_required,
+            apply_mode,
+            blocking_paths.contains(&path) || blocking_paths.contains(parent_path),
+        ));
+    }
+}
+
+fn keybinding_default_value(action: &YazelixActionMetadata) -> JsonValue {
+    JsonValue::Array(
+        action
+            .default_keys
+            .iter()
+            .map(|key| JsonValue::String((*key).to_string()))
+            .collect(),
+    )
+}
+
+fn keybinding_actions_for_parent_path(
+    parent_path: &str,
+) -> Vec<&'static YazelixActionMetadata> {
+    match parent_path {
+        ZELLIJ_KEYBINDINGS_FIELD_PATH => ZELLIJ_ACTIONS.iter().map(|spec| &spec.action).collect(),
+        YAZI_KEYBINDINGS_FIELD_PATH => YAZI_ACTIONS.iter().map(|spec| &spec.action).collect(),
+        _ => Vec::new(),
+    }
+}
+
+fn keybinding_action_metadata_lines(
+    parent_path: &str,
+    local_id: &str,
+) -> Vec<(&'static str, String)> {
+    if parent_path == ZELLIJ_KEYBINDINGS_FIELD_PATH
+        && let Some(spec) = ZELLIJ_ACTIONS
+            .iter()
+            .find(|spec| spec.action.local_id == local_id)
+    {
+        return vec![("mode", spec.mode.to_string())];
+    }
+    if parent_path == YAZI_KEYBINDINGS_FIELD_PATH
+        && let Some(spec) = YAZI_ACTIONS
+            .iter()
+            .find(|spec| spec.action.local_id == local_id)
+    {
+        return vec![
+            ("section", spec.section.to_string()),
+            ("keymap", spec.keymap_list.to_string()),
+        ];
+    }
+    Vec::new()
+}
+
+fn keybinding_surface_title(parent_path: &str) -> &'static str {
+    match parent_path {
+        ZELLIJ_KEYBINDINGS_FIELD_PATH => "Yazelix Zellij actions",
+        YAZI_KEYBINDINGS_FIELD_PATH => "Yazelix Yazi actions",
+        _ => "Yazelix actions",
+    }
+}
+
+pub(crate) fn is_keybinding_map_field_path(path: &str) -> bool {
+    matches!(
+        path,
+        ZELLIJ_KEYBINDINGS_FIELD_PATH | YAZI_KEYBINDINGS_FIELD_PATH
+    )
+}
+
+pub(crate) fn keybinding_parent_path_for_field_path(path: &str) -> Option<&'static str> {
+    for parent_path in [ZELLIJ_KEYBINDINGS_FIELD_PATH, YAZI_KEYBINDINGS_FIELD_PATH] {
+        let Some(action) = path.strip_prefix(parent_path).and_then(|rest| rest.strip_prefix('.')) else {
+            continue;
+        };
+        if keybinding_actions_for_parent_path(parent_path)
+            .iter()
+            .any(|metadata| metadata.local_id == action)
+        {
+            return Some(parent_path);
+        }
+    }
+    None
+}
+
+pub(crate) fn keybinding_action_metadata_for_field_path(
+    path: &str,
+) -> Option<&'static YazelixActionMetadata> {
+    let parent_path = keybinding_parent_path_for_field_path(path)?;
+    let action_id = path.strip_prefix(parent_path)?.strip_prefix('.')?;
+    keybinding_actions_for_parent_path(parent_path)
+        .into_iter()
+        .find(|metadata| metadata.local_id == action_id)
+}
+
+fn apply_contract_path_for_setting_path(setting_path: &str) -> &str {
+    keybinding_parent_path_for_field_path(setting_path).unwrap_or(setting_path)
 }
 
 fn active_config_path(paths: &PrimaryConfigPaths, config_override: Option<&str>) -> PathBuf {
@@ -2197,6 +2400,119 @@ mod tests {
         assert!(details.contains("empty list disables this action"));
         assert!(details.contains("unsupported"));
         assert!(details.contains("unknown_action"));
+    }
+
+    // Regression: keybinding map parents are structured overviews; pressing Enter must not open the whole map as one raw JSON editing line.
+    #[test]
+    fn keybinding_map_parent_does_not_open_raw_object_editor() {
+        let runtime = tempdir().expect("runtime");
+        let config = tempdir().expect("config");
+        write_runtime_layout(runtime.path());
+        let request = test_request(runtime.path(), config.path());
+        let model = build_config_ui_model(&request).expect("model");
+        let mut app = ConfigUiApp::new(request, model);
+
+        select_field_path(&mut app, "zellij.keybindings");
+        app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+        assert!(app.edit.is_none());
+        assert_eq!(
+            app.notice.as_ref().expect("notice").text,
+            "Select an action row below to edit one binding list."
+        );
+    }
+
+    // Defends: complex array/object fields without a dedicated structured editor do not fall back to an unreadable one-line JSON editor.
+    #[test]
+    fn complex_registry_field_does_not_open_raw_array_editor() {
+        let runtime = tempdir().expect("runtime");
+        let config = tempdir().expect("config");
+        write_runtime_layout(runtime.path());
+        let request = test_request(runtime.path(), config.path());
+        let model = build_config_ui_model(&request).expect("model");
+        let mut app = ConfigUiApp::new(request, model);
+
+        select_field_path(&mut app, "cursors.cursor");
+        app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+        assert!(app.edit.is_none());
+        assert_eq!(
+            app.notice.as_ref().expect("notice").text,
+            "Structured editor unavailable for this complex field; edit the source config directly."
+        );
+    }
+
+    // Defends: keybinding actions are editable as one semantic action row with friendly key-list input instead of forcing a full object edit.
+    #[test]
+    fn keybinding_action_row_writes_single_binding_list() {
+        let runtime = tempdir().expect("runtime");
+        let config = tempdir().expect("config");
+        write_runtime_layout(runtime.path());
+        let settings_path = config.path().join("settings.jsonc");
+        fs::write(
+            &settings_path,
+            r#"{
+  "zellij": {
+    "keybindings": {
+      "popup": ["Alt x"]
+    }
+  }
+}
+"#,
+        )
+        .expect("settings");
+        let request = test_request(runtime.path(), config.path());
+        let model = build_config_ui_model(&request).expect("model");
+        let mut app = ConfigUiApp::new(request, model);
+
+        select_field_path(&mut app, "zellij.keybindings.popup");
+        app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+        let edit = app.edit.as_mut().expect("edit");
+        assert_eq!(edit.mode, ConfigUiEditMode::Text);
+        assert_eq!(edit.input, "Alt x");
+        edit.input = "Alt Shift X".to_string();
+        app.handle_edit_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+        assert!(app.edit.is_none());
+        let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
+        assert_eq!(
+            get_json_path(&value, "zellij.keybindings.popup"),
+            Some(&json!(["Alt Shift X"]))
+        );
+    }
+
+    // Defends: the same structured keybinding map treatment covers Yazi actions instead of leaving a second raw object editor in the keybindings tab.
+    #[test]
+    fn yazi_keybinding_details_use_action_registry_metadata() {
+        let runtime = tempdir().expect("runtime");
+        let config = tempdir().expect("config");
+        write_runtime_layout(runtime.path());
+        fs::write(
+            config.path().join("settings.jsonc"),
+            r#"{
+  "yazi": {
+    "keybindings": {
+      "open_zoxide_in_editor": []
+    }
+  }
+}
+"#,
+        )
+        .expect("settings");
+        let request = test_request(runtime.path(), config.path());
+        let model = build_config_ui_model(&request).expect("model");
+        let mut app = ConfigUiApp::new(request, model);
+
+        select_field_path(&mut app, "yazi.keybindings");
+        let details = lines_text(&app.render_details(app.visible_rows()[app.selected_row]));
+
+        assert!(details.contains("Yazelix Yazi actions"));
+        assert!(details.contains("Retarget the managed editor through the Yazi zoxide picker"));
+        assert!(details.contains("yazi.open_zoxide_in_editor"));
+        assert!(details.contains("disabled (disabled)"));
+        assert!(details.contains("section"));
+        assert!(details.contains("keymap"));
     }
 
     // Defends: machine-readable apply modes from main_config_contract.toml reach config UI display facts for the first live slice and restart-scoped fields.

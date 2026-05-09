@@ -8,6 +8,7 @@ use yazelix_core::config_ui::{
 };
 use yazelix_core::ghostty_cursor_registry::DEFAULT_CURSOR_CONFIG_FILENAME;
 use yazelix_core::user_config_paths::shared_cursor_config;
+use yazelix_core::{YAZI_ACTIONS, ZELLIJ_ACTIONS};
 
 fn write_runtime_layout(runtime: &Path) {
     fs::create_dir_all(runtime.join("config_metadata")).expect("metadata dir");
@@ -217,9 +218,23 @@ fn config_ui_metadata_covers_visible_fields_and_tabs() {
         .get("fields")
         .and_then(toml::Value::as_table)
         .expect("metadata fields");
+    let mut expected_paths = metadata_fields
+        .keys()
+        .cloned()
+        .collect::<std::collections::BTreeSet<_>>();
+    expected_paths.extend(
+        ZELLIJ_ACTIONS
+            .iter()
+            .map(|spec| format!("zellij.keybindings.{}", spec.action.local_id)),
+    );
+    expected_paths.extend(
+        YAZI_ACTIONS
+            .iter()
+            .map(|spec| format!("yazi.keybindings.{}", spec.action.local_id)),
+    );
     assert_eq!(
-        metadata_fields
-            .keys()
+        expected_paths
+            .iter()
             .map(String::as_str)
             .collect::<std::collections::BTreeSet<_>>(),
         visible_paths

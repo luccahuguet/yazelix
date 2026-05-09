@@ -1,4 +1,4 @@
-use super::{ConfigUiModel, ConfigUiRequest};
+use super::{ConfigUiModel, ConfigUiRequest, apply_contract_path_for_setting_path};
 use crate::active_config_surface::primary_config_paths;
 use crate::bridge::CoreError;
 use crate::config_apply::{
@@ -14,7 +14,8 @@ pub(super) fn apply_after_field_write(
     setting_path: &str,
 ) -> Result<ConfigEditApplyStatus, CoreError> {
     let paths = primary_config_paths(&request.runtime_dir, &request.config_dir);
-    let apply_mode = apply_mode_for_setting(&paths.contract_path, setting_path)?;
+    let contract_setting_path = apply_contract_path_for_setting_path(setting_path);
+    let apply_mode = apply_mode_for_setting(&paths.contract_path, contract_setting_path)?;
     let runtime_materialization = if apply_mode == Some(RuntimeApplyMode::GeneratedRuntimeRefresh) {
         let state_dir = state_dir_from_env()?;
         Some(runtime_materialization_request(
@@ -38,7 +39,7 @@ pub(super) fn apply_after_field_write(
         None
     };
     apply_status_after_config_edit(&ConfigEditApplyRequest {
-        setting_path: setting_path.to_string(),
+        setting_path: contract_setting_path.to_string(),
         contract_path: paths.contract_path,
         runtime_materialization,
         pane_orchestrator_refresh,

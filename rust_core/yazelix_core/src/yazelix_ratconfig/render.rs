@@ -589,6 +589,9 @@ fn normal_control_line(app: &ConfigUiApp) -> Line<'static> {
         Some(field) if is_enum_string_list_field(field) => {
             Line::from(vec![Span::raw("Enter/e picker  "), Span::raw("u unset")])
         }
+        Some(field) if structured_only_edit_notice(field).is_some() => {
+            Line::from(vec![Span::raw("structured view only  "), Span::raw("u unset")])
+        }
         Some(_) => Line::from(vec![Span::raw("Enter/e edit  "), Span::raw("u unset")]),
         None => Line::from(Span::raw("Select a setting row to edit")),
     }
