@@ -15,7 +15,8 @@ use crate::bridge::{CoreError, ErrorClass};
 use crate::config_state::compute_config_state;
 use crate::control_plane::{
     config_override_from_env, config_state_compute_request_from_env, home_dir_from_env,
-    runtime_dir_from_env, runtime_env_request, state_dir_from_env,
+    runtime_dir_from_env, runtime_env_request, runtime_materialization_plan_request_from_env,
+    state_dir_from_env,
 };
 use crate::launch_materialization::{
     LaunchMaterializationData, launch_materialization_request_from_env,
@@ -25,6 +26,9 @@ use crate::runtime_contract::{
     LaunchPreflightPayload, StartupLaunchPreflightRequest, evaluate_startup_launch_preflight,
 };
 use crate::runtime_env::compute_runtime_env;
+use crate::runtime_materialization::{
+    RuntimeMaterializationRepairEvaluateRequest, repair_runtime_materialization,
+};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -64,6 +68,23 @@ pub(super) fn run_launch(args: &[String]) -> Result<i32, CoreError> {
     )
 }
 
+fn repair_desktop_runtime_state_if_required(
+    desktop_fast_path: bool,
+    needs_refresh: bool,
+    config_override: Option<&str>,
+) -> Result<(), CoreError> {
+    if !desktop_fast_path || !needs_refresh {
+        return Ok(());
+    }
+
+    let request = RuntimeMaterializationRepairEvaluateRequest {
+        plan: runtime_materialization_plan_request_from_env(config_override)?,
+        force: false,
+    };
+    repair_runtime_materialization(&request)?;
+    Ok(())
+}
+
 pub(super) fn run_launch_flow(
     requested_path: Option<&str>,
     config_override: Option<&str>,
@@ -77,6 +98,11 @@ pub(super) fn run_launch_flow(
     let state_dir = state_dir_from_env()?;
     let config_state =
         compute_config_state(&config_state_compute_request_from_env(config_override)?)?;
+    repair_desktop_runtime_state_if_required(
+        desktop_fast_path,
+        config_state.needs_refresh,
+        config_override,
+    )?;
     let configured_terminals = normalized_configured_terminals(&config_state.config);
     if configured_terminals.is_empty() {
         print_empty_terminal_error()?;
