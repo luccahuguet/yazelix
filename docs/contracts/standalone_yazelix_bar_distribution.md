@@ -18,6 +18,7 @@ The child flake package is `github:luccahuguet/yazelix-bar#yazelix_bar`. The mai
 It installs:
 
 - `bin/yazelix_bar_generate`
+- `bin/yazelix_bar_widget`
 - `share/yazelix_bar/zjstatus.wasm`
 - `share/yazelix_bar/yazelix_bar.kdl`
 - `share/yazelix_bar/yazelix_bar.template.kdl`
@@ -69,7 +70,7 @@ The generic preset keeps common zjstatus placeholders available without Yazelix:
 - `{session}`
 - `{datetime}`
 
-`yazelix_bar` also owns standalone rendering logic for widgets that can render from explicit facts or user-supplied commands without a Yazelix session:
+`yazelix_bar` also owns standalone rendering and runnable widget commands for widgets that can run from explicit facts, paths, or user-supplied provider tools without a Yazelix session:
 
 - shell
 - editor
@@ -77,9 +78,10 @@ The generic preset keeps common zjstatus placeholders available without Yazelix:
 - custom text
 - compact/full tab labels and bar layout policy
 - cursor display when supplied with `yazelix-cursors`-compatible facts
-- Claude usage display from cached usage facts
-- Codex usage display from cached usage facts
-- OpenCode Go usage display from cached usage facts
+- CPU and RAM stdout widgets
+- Claude usage display, cache, lock/backoff, and tokenusage probing from explicit cache paths
+- Codex usage display, cache, lock/backoff, and tokenusage probing from explicit cache paths
+- OpenCode Go usage display, cache, lock/backoff, and database probing from explicit cache/database paths
 
 Users configure order through `format_left`, `format_center`, and `format_right`. Users configure colors and labels by editing the inline style tags and the mode/tab format keys in the template.
 
@@ -97,16 +99,14 @@ The supported structured generator is `yazelix_bar_generate`. It emits one gener
 
 The generator's slot tokens are `mode`, `tabs`, `session`, `datetime`, `brand`, and `command:name`. It must not require full Yazelix runtime helpers.
 
-AI widgets are provider-driven widgets. A standalone user may configure command widgets for Claude, Codex, OpenCode Go, or another provider, or feed cached usage facts into `yazelix_bar` rendering helpers. Yazelix must not make provider commands mandatory in the generic preset.
+AI widgets are provider-driven widgets. A standalone user may configure command widgets for Claude, Codex, OpenCode Go, or another provider, feed cached usage facts into `yazelix_bar` rendering helpers, or run `yazelix_bar_widget` commands with explicit cache/tool paths. Yazelix must not make provider commands mandatory in the generic preset.
 
 Yazelix-specific widgets are widgets that depend on Yazelix runtime helpers, session snapshots, or cached facts:
 
 - workspace
-- Yazelix-managed cursor cache readers and first-paint environment hydration
-- Claude usage cache refreshers and Yazelix cache readers
-- Codex usage cache refreshers and Yazelix cache readers
-- OpenCode Go database/cache refreshers and Yazelix cache readers
-- CPU/RAM through Yazelix runtime scripts
+- Yazelix-managed cursor cache path selection and first-paint environment hydration
+- Yazelix-managed Claude/Codex/OpenCode Go cache path selection and session settings
+- generated full-runtime command wiring
 
 Those belong in the full Yazelix integration preset, not the generic default.
 
@@ -118,11 +118,11 @@ Expensive provider commands should be cached or throttled outside zjstatus. The 
 
 Inside full Yazelix, AI widgets should keep using cached status-widget commands such as `yzx_control zellij status-cache-widget codex_usage` so the bar does not create high-frequency provider or pane-orchestrator pressure.
 
-Standalone users can use the same display contract without Yazelix by providing short cached fact payloads or command stdout to their own zjstatus command widgets. The minimal standalone contract is facts in, styled text out; `yazelix_bar` must not require `~/.config/yazelix`, `~/.local/share/yazelix`, `yzx_control`, or launch-scoped Yazelix cache paths for core rendering behavior.
+Standalone users can use the same widget contract without Yazelix by using `yazelix_bar_widget` commands directly in zjstatus command widgets. The minimal standalone contract is explicit paths/env in, styled text out; `yazelix_bar` must not require `~/.config/yazelix`, `~/.local/share/yazelix`, `yzx_control`, or launch-scoped Yazelix cache paths for non-workspace widget behavior.
 
 ## Main Runtime Consumption
 
-The full Yazelix runtime consumes the `yazelix_bar` child crate for widget-tray rendering, tab-label rendering, simple fact widgets, cursor fact display, and cached provider usage display.
+The full Yazelix runtime consumes the `yazelix_bar` child crate and command surface for widget-tray rendering, tab-label rendering, simple fact widgets, CPU/RAM, cursor fact display, and cached provider usage widgets.
 
 The standalone package installs `zjstatus.wasm` from the child repo's pinned `zjstatus` flake input. The main Yazelix flake makes `yazelixBar.inputs.zjstatus` follow the main repo's `zjstatus` input when forwarding `.#yazelix_bar`, so the forwarded standalone package uses the same upstream pin as the integrated Yazelix runtime.
 
@@ -133,9 +133,7 @@ Generated variants must go through `yazelix_bar_generate` and the shared `yazeli
 Yazelix keeps these integration-only responsibilities:
 
 - launch-scoped status-cache paths
-- refresh scheduling and backoff
-- shared-cache locking
-- tokenusage and OpenCode Go data probing
+- refresh command scheduling
 - session snapshot hydration
 - `yzx_control` transport
 - generated layout policy for full Yazelix sessions
