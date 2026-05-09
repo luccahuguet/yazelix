@@ -176,10 +176,16 @@ fn resolve_active_yazelix_profile_entry_name(profile_json: &Value) -> Result<Str
     );
     println!("   Current runtime: {}", runtime_root.display());
     println!(
-        "   This command now updates profile-installed Yazelix packages after the legacy flake installer was removed."
+        "   The active runtime appears to be an unmanaged Nix store path, such as a `nix run` or manually installed desktop-entry runtime."
     );
     println!(
-        "   Recovery: Reinstall with `nix profile add github:luccahuguet/yazelix#yazelix`, or use `yzx update home_manager` if Home Manager owns this install."
+        "   `nix profile upgrade` can only update packages that are present in the default Nix profile."
+    );
+    println!(
+        "   Recovery: install with `nix profile add --refresh github:luccahuguet/yazelix#yazelix`, then run `yzx desktop install` if you want a profile-owned desktop entry."
+    );
+    println!(
+        "   If Home Manager owns this install, enable the module again and use `yzx update home_manager` from the owning flake."
     );
     Err(1)
 }

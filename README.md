@@ -185,7 +185,14 @@ Choose one update owner for each Yazelix install, and do not mix both update pat
 `yzx update upstream` prints and runs:
 
 ```bash
-nix profile upgrade --refresh yazelix
+nix profile upgrade --refresh <matching-yazelix-profile-entry>
+```
+
+If the active runtime comes from an unmanaged Nix store path, such as `nix run` or a manually installed desktop entry, first install Yazelix into the default profile:
+
+```bash
+nix profile add --refresh github:luccahuguet/yazelix#yazelix
+yzx desktop install
 ```
 
 `yzx update home_manager` runs in your current flake directory and refreshes the `yazelix` input with:
