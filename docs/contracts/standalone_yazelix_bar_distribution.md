@@ -69,6 +69,18 @@ The generic preset keeps common zjstatus placeholders available without Yazelix:
 - `{session}`
 - `{datetime}`
 
+`yazelix_bar` also owns standalone rendering logic for widgets that can render from explicit facts or user-supplied commands without a Yazelix session:
+
+- shell
+- editor
+- term
+- custom text
+- compact/full tab labels and bar layout policy
+- cursor display when supplied with `yazelix-cursors`-compatible facts
+- Claude usage display from cached usage facts
+- Codex usage display from cached usage facts
+- OpenCode Go usage display from cached usage facts
+
 Users configure order through `format_left`, `format_center`, and `format_right`. Users configure colors and labels by editing the inline style tags and the mode/tab format keys in the template.
 
 The supported structured generator is `yazelix_bar_generate`. It emits one generic zjstatus plugin block from:
@@ -85,15 +97,15 @@ The supported structured generator is `yazelix_bar_generate`. It emits one gener
 
 The generator's slot tokens are `mode`, `tabs`, `session`, `datetime`, `brand`, and `command:name`. It must not require full Yazelix runtime helpers.
 
-AI widgets are provider-driven widgets. A standalone user may configure command widgets for Claude, Codex, OpenCode Go, or another provider, but Yazelix must not make those commands mandatory in the generic preset.
+AI widgets are provider-driven widgets. A standalone user may configure command widgets for Claude, Codex, OpenCode Go, or another provider, or feed cached usage facts into `yazelix_bar` rendering helpers. Yazelix must not make provider commands mandatory in the generic preset.
 
 Yazelix-specific widgets are widgets that depend on Yazelix runtime helpers, session snapshots, or cached facts:
 
 - workspace
-- cursor
-- Claude usage through Yazelix cache readers
-- Codex usage through Yazelix cache readers
-- OpenCode Go usage through Yazelix cache readers
+- Yazelix-managed cursor cache readers and first-paint environment hydration
+- Claude usage cache refreshers and Yazelix cache readers
+- Codex usage cache refreshers and Yazelix cache readers
+- OpenCode Go database/cache refreshers and Yazelix cache readers
 - CPU/RAM through Yazelix runtime scripts
 
 Those belong in the full Yazelix integration preset, not the generic default.
@@ -106,15 +118,28 @@ Expensive provider commands should be cached or throttled outside zjstatus. The 
 
 Inside full Yazelix, AI widgets should keep using cached status-widget commands such as `yzx_control zellij status-cache-widget codex_usage` so the bar does not create high-frequency provider or pane-orchestrator pressure.
 
+Standalone users can use the same display contract without Yazelix by providing short cached fact payloads or command stdout to their own zjstatus command widgets. The minimal standalone contract is facts in, styled text out; `yazelix_bar` must not require `~/.config/yazelix`, `~/.local/share/yazelix`, `yzx_control`, or launch-scoped Yazelix cache paths for core rendering behavior.
+
 ## Main Runtime Consumption
 
-The full Yazelix runtime consumes the `yazelix_bar` child crate for widget-tray and tab-label rendering.
+The full Yazelix runtime consumes the `yazelix_bar` child crate for widget-tray rendering, tab-label rendering, simple fact widgets, cursor fact display, and cached provider usage display.
 
 The standalone package installs `zjstatus.wasm` from the child repo's pinned `zjstatus` flake input. The main Yazelix flake makes `yazelixBar.inputs.zjstatus` follow the main repo's `zjstatus` input when forwarding `.#yazelix_bar`, so the forwarded standalone package uses the same upstream pin as the integrated Yazelix runtime.
 
 The main runtime still ships its managed `configs/zellij/plugins/zjstatus.wasm` for integrated Zellij layouts.
 
 Generated variants must go through `yazelix_bar_generate` and the shared `yazelix_bar` renderer. Do not maintain a second hand-copied generated artifact set.
+
+Yazelix keeps these integration-only responsibilities:
+
+- launch-scoped status-cache paths
+- refresh scheduling and backoff
+- shared-cache locking
+- tokenusage and OpenCode Go data probing
+- session snapshot hydration
+- `yzx_control` transport
+- generated layout policy for full Yazelix sessions
+- workspace facts until a generic fallback exists
 
 ## Refresh Ownership
 
