@@ -1579,7 +1579,7 @@ checksum = "cfe53a6657fd280eaa890a3bc59152892ffa3e30101319d168b781ed6529b049"
 [[package]]
 name = "yazelix_bar"
 version = "0.1.0"
-source = "git+https://github.com/luccahuguet/yazelix-bar?rev=091791fa1c95ea8bd61c81b41fe9639d560d950d#091791fa1c95ea8bd61c81b41fe9639d560d950d"
+source = "git+https://github.com/luccahuguet/yazelix-bar?rev=3f7a61c15a9bd97b3b37dae287d57d24878ff3f2#3f7a61c15a9bd97b3b37dae287d57d24878ff3f2"
 
 [[package]]
 name = "yazelix_core"

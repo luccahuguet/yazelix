@@ -11,8 +11,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use yazelix_bar::{
-    AgentUsageDisplay as BarAgentUsageDisplay, WindowedAgentUsageFacts,
-    render_codex_usage_status_widget,
+    AgentUsageDisplay as BarAgentUsageDisplay, AgentUsagePeriod as BarAgentUsagePeriod,
+    WindowedAgentUsageFacts, render_codex_usage_status_widget,
+    render_windowed_agent_usage_status_widget,
 };
 
 pub(crate) const CLAUDE_USAGE_CACHE_SCHEMA_VERSION: i64 = 1;
@@ -456,13 +457,7 @@ pub(crate) fn render_status_cache_widget_with_agent_usage_settings(
             .map(render_zjstatus_workspace_widget)
             .unwrap_or_default()),
         "cursor" => Ok(render_zjstatus_cursor_widget(cache)),
-        "claude_usage" => Ok(render_windowed_usage_segment(
-            cache,
-            "claude_usage",
-            "claude",
-            settings.claude_periods.as_slice(),
-            settings.claude_display,
-        )),
+        "claude_usage" => Ok(render_claude_usage_segment(cache, settings)),
         "codex_usage" => Ok(render_codex_usage_segment(cache, settings.codex_display)),
         "opencode_go_usage" => Ok(render_windowed_usage_segment(
             cache,
@@ -495,6 +490,21 @@ pub(crate) fn render_codex_usage_segment(cache: &Value, display: WindowedUsageDi
     render_codex_usage_status_widget(
         &bar_windowed_usage_facts_from_cache_entry(entry),
         bar_agent_usage_display(display),
+    )
+}
+
+pub(crate) fn render_claude_usage_segment(
+    cache: &Value,
+    settings: &AgentUsageWidgetSettings,
+) -> String {
+    let Some(entry) = cache.get("claude_usage") else {
+        return String::new();
+    };
+    render_windowed_agent_usage_status_widget(
+        "claude",
+        &bar_windowed_usage_facts_from_cache_entry(entry),
+        &bar_agent_usage_periods(settings.claude_periods.as_slice()),
+        bar_agent_usage_display(settings.claude_display),
     )
 }
 
@@ -641,6 +651,17 @@ pub(crate) fn bar_agent_usage_display(display: WindowedUsageDisplay) -> BarAgent
         WindowedUsageDisplay::Token => BarAgentUsageDisplay::Token,
         WindowedUsageDisplay::Quota => BarAgentUsageDisplay::Quota,
     }
+}
+
+pub(crate) fn bar_agent_usage_periods(periods: &[WindowedUsagePeriod]) -> Vec<BarAgentUsagePeriod> {
+    periods
+        .iter()
+        .map(|period| match period {
+            WindowedUsagePeriod::FiveHour => BarAgentUsagePeriod::FiveHour,
+            WindowedUsagePeriod::Weekly => BarAgentUsagePeriod::Weekly,
+            WindowedUsagePeriod::Monthly => BarAgentUsagePeriod::Monthly,
+        })
+        .collect()
 }
 
 mod refresh;
