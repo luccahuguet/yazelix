@@ -4,7 +4,7 @@ use crate::bridge::{CoreError, ErrorClass};
 use crate::pane_orchestrator_client::run_pane_orchestrator_command;
 use serde_json::{Value, json};
 use std::env;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 mod agent_usage;
 mod cache;
@@ -343,16 +343,9 @@ pub fn run_zellij_status_cache_write(args: &[String]) -> Result<i32, CoreError> 
         .or_else(status_bar_cache_path_from_env)
         .ok_or_else(missing_status_bar_cache_path_error)?;
     let status_bus = decode_status_bus_snapshot(payload)?;
-    let previous_cache = read_status_bar_cache_value(&path);
     let now = unix_time_seconds();
     let mut cache = build_status_bar_cache_at(status_bus, now);
-    merge_status_bar_cache_cursor_value(
-        &mut cache,
-        previous_cache
-            .as_ref()
-            .and_then(|cache| cache.get("cursor"))
-            .cloned(),
-    );
+    let previous_cache = read_status_bar_cache_value(&path);
     if let Some(heartbeat) = previous_cache
         .as_ref()
         .and_then(|cache| cache.get("orchestrator_heartbeat"))
@@ -420,36 +413,13 @@ pub fn run_zellij_status_cache_widget(args: &[String]) -> Result<i32, CoreError>
         Some(path) => path,
         None => return Ok(0),
     };
-    let Some(cache) = status_cache_value_for_widget_path(&path, widget, unix_time_seconds()) else {
+    let Some(cache) = read_status_bar_cache_value(&path) else {
         return Ok(0);
     };
     print_optional_zjstatus_segment(render_status_cache_widget_for_yazelix_owned_widgets(
         &cache, widget,
     )?);
     Ok(0)
-}
-
-pub(super) fn status_cache_value_for_widget_path(
-    path: &Path,
-    widget: &str,
-    now: u64,
-) -> Option<Value> {
-    read_status_bar_cache_value(path).or_else(|| first_paint_cache_for_widget(widget, now))
-}
-
-pub(super) fn first_paint_cache_for_widget(widget: &str, now: u64) -> Option<Value> {
-    if widget == "cursor" {
-        return cursor_status_value_from_env().map(|cursor| {
-            json!({
-                "schema_version": STATUS_BAR_CACHE_SCHEMA_VERSION,
-                "updated_at_unix_seconds": now,
-                "agent_usage": {},
-                "cursor": cursor,
-            })
-        });
-    }
-
-    None
 }
 
 #[cfg(test)]

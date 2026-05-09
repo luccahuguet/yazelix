@@ -1,9 +1,6 @@
 //! Status-bar cache path, IO, and heartbeat ownership.
 
-use super::{
-    ORCHESTRATOR_HEARTBEAT_SCHEMA_VERSION, STATUS_BAR_CACHE_SCHEMA_VERSION,
-    cursor_status_value_from_env,
-};
+use super::{ORCHESTRATOR_HEARTBEAT_SCHEMA_VERSION, STATUS_BAR_CACHE_SCHEMA_VERSION};
 use crate::bridge::{CoreError, ErrorClass};
 use serde_json::{Value, json};
 use std::env;
@@ -109,15 +106,6 @@ pub(in crate::zellij_commands) fn build_status_bar_cache_at(status_bus: Value, n
         "status_bus": status_bus,
         "agent_usage": {},
     })
-}
-
-pub(in crate::zellij_commands) fn merge_status_bar_cache_cursor_value(
-    cache: &mut Value,
-    previous_cursor: Option<Value>,
-) {
-    if let Some(cursor) = cursor_status_value_from_env().or(previous_cursor) {
-        cache["cursor"] = cursor;
-    }
 }
 
 pub(in crate::zellij_commands) fn unix_time_seconds() -> u64 {

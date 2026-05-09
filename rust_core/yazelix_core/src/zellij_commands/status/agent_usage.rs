@@ -1,10 +1,8 @@
 //! Status-cache widget routing that remains owned by Yazelix.
 //!
-//! Provider usage widgets are runnable `yazelix_bar_widget` commands owned by yazelix-bar.
+//! Non-workspace widgets are runnable `yazelix_bar_widget` commands owned by yazelix-bar.
 
-use super::{
-    render_zjstatus_cursor_widget, render_zjstatus_workspace_widget, status_bar_cache_status_bus,
-};
+use super::{render_zjstatus_workspace_widget, status_bar_cache_status_bus};
 use crate::bridge::CoreError;
 use serde_json::Value;
 
@@ -22,7 +20,6 @@ pub(crate) fn render_status_cache_widget_for_yazelix_owned_widgets(
         "workspace" => Ok(status_bus
             .map(render_zjstatus_workspace_widget)
             .unwrap_or_default()),
-        "cursor" => Ok(render_zjstatus_cursor_widget(cache)),
         _ => Err(CoreError::usage(format!(
             "zellij status-cache-widget requires one of: {}",
             status_cache_widget_names().join(", ")
@@ -31,5 +28,5 @@ pub(crate) fn render_status_cache_widget_for_yazelix_owned_widgets(
 }
 
 pub(crate) fn status_cache_widget_names() -> Vec<&'static str> {
-    vec!["workspace", "cursor"]
+    vec!["workspace"]
 }
