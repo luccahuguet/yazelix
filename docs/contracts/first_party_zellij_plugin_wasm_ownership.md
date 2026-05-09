@@ -99,6 +99,8 @@ Pane-orchestrator migration has one prerequisite: the child repository must publ
 5. Update workspace asset validation to validate packaged plugin files instead of tracked copied first-party binaries
 6. Delete tracked first-party wasm binaries and temporary sync stamps once package consumption is the only supported path
 
+Current copied-artifact guardrails are `yzx dev build_pane_orchestrator --sync` plus `yzx_repo_validator validate-pane-orchestrator-sync` for the pane orchestrator, and `yzx dev sync_yzpp_wasm` plus `yzx_repo_validator validate-yzpp-sync` for `yzpp`
+
 ## Acceptance Cases
 
 1. A maintainer can tell which source revision produced packaged first-party plugin wasm artifacts from `flake.lock`

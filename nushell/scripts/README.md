@@ -56,6 +56,7 @@ yzx dev rust check
 yzx dev rust test <filter>
 yzx dev inspect_session
 yzx dev build_pane_orchestrator --sync
+yzx dev sync_yzpp_wasm
 yzx dev test --lint-only
 yzx dev test
 ```

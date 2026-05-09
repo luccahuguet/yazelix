@@ -6,7 +6,7 @@ use yazelix_maintainer::repo_contract_validation::{
     validate_nushell_syntax, validate_readme_version, validate_upgrade_contract,
 };
 use yazelix_maintainer::repo_docs_validation::validate_docs_experience;
-use yazelix_maintainer::repo_plugin_build::validate_pane_orchestrator_sync;
+use yazelix_maintainer::repo_plugin_build::{validate_pane_orchestrator_sync, validate_yzpp_sync};
 use yazelix_maintainer::repo_rust_budget::validate_rust_ownership_budget;
 use yazelix_maintainer::repo_validation::{
     repo_root, validate_contracts, validate_package_rust_test_purity,
@@ -14,7 +14,7 @@ use yazelix_maintainer::repo_validation::{
 };
 use yazelix_maintainer::workspace_session_contract::validate_workspace_session_contract;
 
-const USAGE_COMMANDS: &str = "validate-contracts|validate-rust-test-traceability|validate-package-rust-test-purity|validate-pane-orchestrator-sync|validate-workspace-session-contract|validate-config-surface-contract|validate-docs-experience|validate-rust-ownership-budget|validate-upgrade-contract|validate-installed-runtime-contract|validate-flake-interface|validate-flake-profile-install|validate-nix-customization-api|validate-nixpkgs-package|validate-nixpkgs-submission|validate-nushell-syntax|validate-readme-version";
+const USAGE_COMMANDS: &str = "validate-contracts|validate-rust-test-traceability|validate-package-rust-test-purity|validate-pane-orchestrator-sync|validate-yzpp-sync|validate-workspace-session-contract|validate-config-surface-contract|validate-docs-experience|validate-rust-ownership-budget|validate-upgrade-contract|validate-installed-runtime-contract|validate-flake-interface|validate-flake-profile-install|validate-nix-customization-api|validate-nixpkgs-package|validate-nixpkgs-submission|validate-nushell-syntax|validate-readme-version";
 
 fn main() {
     let mut args = std::env::args().skip(1);
@@ -55,6 +55,15 @@ fn main() {
                     errors,
                 }),
             Some("✅ Pane-orchestrator tracked wasm is synced with source".to_string()),
+        ),
+        "validate-yzpp-sync" => (
+            validate_yzpp_sync(&resolved_repo_root).map(|errors| {
+                yazelix_maintainer::repo_validation::ValidationReport {
+                    warnings: Vec::new(),
+                    errors,
+                }
+            }),
+            Some("✅ yzpp tracked wasm is synced with source".to_string()),
         ),
         "validate-workspace-session-contract" => (
             validate_workspace_session_contract(&resolved_repo_root).map(|errors| {
@@ -176,6 +185,7 @@ fn main() {
                         "Package-time Rust test purity validation failed"
                     }
                     "validate-pane-orchestrator-sync" => "Pane-orchestrator sync validation failed",
+                    "validate-yzpp-sync" => "yzpp sync validation failed",
                     "validate-workspace-session-contract" => {
                         "Workspace/session contract validation failed"
                     }

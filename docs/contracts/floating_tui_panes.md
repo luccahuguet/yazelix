@@ -68,7 +68,9 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
   plain-Zellij examples. The in-repo Yazelix pane orchestrator owns
   workspace/sidebar/editor/session state, not popup pane opening or closing
 - Verification: validator `yzx_repo_validator validate-contracts`; external
-  `yazelix-zellij-popup` gates `cargo test` and `nix build`
+  `yazelix-zellij-popup` gates `cargo test` and `nix build`; validator
+  `yzx_repo_validator validate-yzpp-sync` while `yzpp.wasm` remains a copied
+  tracked artifact
 
 #### POP-006
 - Type: boundary
@@ -174,6 +176,8 @@ The `yzpp` raw pipe path still accepts generated JSON through `name "transient_p
 - external `yazelix-zellij-popup` unit tests: KDL-native popup specs, optional
   `on_close` hooks, and raw generated pipe request compatibility
 - external package gate: `nix build` in `yazelix-zellij-popup`
+- copied artifact gate: `yzx dev sync_yzpp_wasm` and
+  `yzx_repo_validator validate-yzpp-sync`
 - integration tests: `yzx popup` routes generated popup requests to `yzpp`
   with a fake Zellij binary
 - integration tests: generated Zellij config contains the integrated `yzpp`

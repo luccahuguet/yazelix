@@ -59,6 +59,7 @@ let
       yzx dev lint_nu [--format pretty|compact] [paths...]
       yzx dev rust <fmt|check|test>
       yzx dev sync_issues [--dry-run]
+      yzx dev sync_yzpp_wasm
       yzx dev test [options]
       yzx dev update [options]
 
@@ -86,6 +87,9 @@ USAGE
           ;;
         sync_issues)
           run_maintainer sync-issues "$@"
+          ;;
+        sync_yzpp_wasm)
+          run_maintainer sync-yzpp-wasm "$@"
           ;;
         test)
           run_maintainer run-tests "$@"

@@ -476,6 +476,7 @@ mod tests {
             "yzx dev rust check",
             "yzx dev rust test",
             "yzx dev sync_issues",
+            "yzx dev sync_yzpp_wasm",
             "yzx dev test",
             "yzx dev update",
         ] {

@@ -1516,6 +1516,7 @@ fn run_yzx_dev(args: &[String]) -> Result<i32, CoreError> {
         | "lint_nu"
         | "rust"
         | "sync_issues"
+        | "sync_yzpp_wasm"
         | "test"
         | "update" => Err(repo_only_dev_command_error(sub)),
         other => Err(CoreError::usage(format!(
