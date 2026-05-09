@@ -52,12 +52,17 @@ pub fn validate_nushell_syntax(
         return Ok(report);
     }
 
+    let syntax_home = create_unique_temp_dir("yazelix_nushell_syntax_home")?;
+    prepare_nushell_syntax_home(&syntax_home)?;
+
     for path in files {
         let relative = relative_display(repo_root, &path);
         let output = Command::new("nu")
             .args(["--no-config-file", "--ide-check", "100"])
             .arg(&path)
             .current_dir(repo_root)
+            .env("HOME", &syntax_home)
+            .env("IN_YAZELIX_SHELL", "1")
             .output()
             .map_err(|error| format!("Failed to run `nu --ide-check`: {}", error))?;
         if !output.status.success() {
@@ -101,6 +106,28 @@ pub fn validate_nushell_syntax(
     Ok(report)
 }
 
+fn prepare_nushell_syntax_home(home: &Path) -> Result<(), String> {
+    let initializer_dir = home.join(".local/share/yazelix/initializers/nushell");
+    fs::create_dir_all(&initializer_dir).map_err(|error| {
+        format!(
+            "Failed to create Nushell syntax fixture dir {}: {}",
+            initializer_dir.display(),
+            error
+        )
+    })?;
+    for file_name in ["yazelix_init.nu", "yazelix_extern.nu"] {
+        let path = initializer_dir.join(file_name);
+        fs::write(&path, "").map_err(|error| {
+            format!(
+                "Failed to write Nushell syntax fixture {}: {}",
+                path.display(),
+                error
+            )
+        })?;
+    }
+    Ok(())
+}
+
 fn collect_nushell_syntax_files(repo_root: &Path) -> Result<Vec<PathBuf>, String> {
     let mut files = Vec::new();
     for relative_dir in [
@@ -135,4 +162,45 @@ fn collect_nushell_files_in_dir(dir: &Path, files: &mut Vec<PathBuf>) -> Result<
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    // Test lane: default
+
+    use super::*;
+
+    // Regression: CI syntax validation must not depend on generated files in a
+    // maintainer's real home directory.
+    #[test]
+    fn nushell_syntax_validation_stubs_generated_initializers() {
+        if Command::new("nu").arg("--version").output().is_err() {
+            return;
+        }
+
+        let repo = tempfile::tempdir().expect("temp repo");
+        let config_dir = repo.path().join("nushell/config");
+        fs::create_dir_all(&config_dir).expect("config dir");
+        fs::write(
+            config_dir.join("config.nu"),
+            r#"
+if (($env.IN_YAZELIX_SHELL? | is-empty) and ($env.YAZELIX_RUNTIME_DIR? | is-empty)) {
+    return
+}
+
+source ~/.local/share/yazelix/initializers/nushell/yazelix_init.nu
+source ~/.local/share/yazelix/initializers/nushell/yazelix_extern.nu
+
+let parsed_after_generated_sources = true
+"#,
+        )
+        .expect("config fixture");
+
+        let report = validate_nushell_syntax(repo.path(), false).expect("syntax validation");
+        assert!(
+            report.errors.is_empty(),
+            "unexpected syntax errors: {:#?}",
+            report.errors
+        );
+    }
 }
