@@ -30,8 +30,9 @@ shaders/
 
 Yazelix copies the shader sources into the runtime Ghostty shader directory, runs
 `build_shaders.nu`, and then writes data-driven cursor variants from
-`cursors.toml`. Hand-tuned variants remain in `variants/`, while `mono`
-and `split` presets are rendered from cursor registry data.
+`~/.config/yazelix_ghostty_cursors/settings.jsonc`. Hand-tuned variants remain
+in `variants/`, while `mono` and `split` presets are rendered from cursor
+registry data.
 
 ## Making Changes
 
@@ -49,7 +50,7 @@ and `split` presets are rendered from cursor registry data.
 
 1. Create a new file in `variants/` directory (e.g., `variants/new_variant.glsl`)
 2. Add your variant-specific code (constants, helper functions, mainImage)
-3. Add the cursor to `yazelix_ghostty_cursors_default.toml` or your local `~/.config/yazelix/cursors.toml`
+3. Add the cursor to `yazelix_ghostty_cursors_default.toml` or your local `~/.config/yazelix_ghostty_cursors/settings.jsonc`
 4. Shaders will be **automatically rebuilt** next time Yazelix starts or configs are regenerated
 
 ### Manual build (for testing or local preview):
@@ -77,8 +78,8 @@ The build is **fully automatic**:
 - Combines `cursor_trail_common.glsl` with each variant in `variants/`
 - Outputs complete shaders ready for Ghostty to use
 - No manual intervention needed!
-- Honors `settings.glow = none | low | medium | high` from `cursors.toml`
-- Honors `settings.duration = 0.25..4.0` from `cursors.toml` as a multiplier for movement-trail timing
+- Honors `settings.glow = none | low | medium | high` from `~/.config/yazelix_ghostty_cursors/settings.jsonc`
+- Honors `settings.duration = 0.25..4.0` from `~/.config/yazelix_ghostty_cursors/settings.jsonc` as a multiplier for movement-trail timing
 
 ## Important Notes
 

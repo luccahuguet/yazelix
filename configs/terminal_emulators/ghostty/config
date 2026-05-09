@@ -57,11 +57,11 @@ theme = "Abernathy"
 window-decoration = "none"
 window-padding-y = 10,0
 
-# Transparency (configurable via yazelix.toml)
+# Transparency (configurable via settings.jsonc)
 background-opacity = 0.85
 background-opacity-cells = true
 
-# Ghostty cursor color + effects (configurable via cursors.toml)
+# Ghostty cursor color + effects (configurable via ~/.config/yazelix_ghostty_cursors/settings.jsonc)
 # Cursor color palette: dusk
 cursor-color = #e94560
 custom-shader = ./shaders/cursor_trail_dusk.glsl
