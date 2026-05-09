@@ -70,6 +70,15 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - Verification: validator `yzx_repo_validator validate-contracts`; external
   `yazelix-zellij-popup` gates `cargo test` and `nix build`
 
+#### POP-006
+- Type: boundary
+- Status: planning
+- Owner: first-party Zellij plugin package boundary
+- Statement: The target Yazelix packaging model consumes `yzpp.wasm` from a
+  locked `yazelix-zellij-popup` package input instead of treating the copied
+  `configs/zellij/plugins/yzpp.wasm` file as the durable source of truth
+- Verification: validator `yzx_repo_validator validate-contracts`
+
 ## Behavior
 
 - `yzx popup` opens a floating Zellij pane using the configured `zellij.popup_program`.

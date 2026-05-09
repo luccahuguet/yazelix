@@ -22,10 +22,10 @@ The Yazelix runtime artifact name and internal alias remain stable for existing 
 
 The Yazelix repository consumes the plugin through a pinned external source/artifact boundary. It must not keep duplicate plugin source as a fallback.
 
-Yazelix may keep:
+Yazelix may keep as an interim copied-artifact path:
 
 - the tracked runtime wasm artifact when package/runtime distribution needs an in-repo artifact
-- a sync stamp that records the external source hash and tracked wasm hash
+- a sync stamp that records the external source Git commit, source remote, source hash, build command, and tracked wasm hash
 - validators that check the consumed artifact and Yazelix integration contract
 - integration code that sends documented pipe messages to the plugin
 
@@ -128,11 +128,14 @@ Yazelix integration may call the standalone plugin API, but standalone plugin us
 
 ## Build And Sync Contract
 
-The external source owner builds the public wasm artifact. Yazelix syncs that artifact into the tracked runtime artifact path when packaging or maintainer validation needs an in-repo wasm.
+The external source owner builds the public wasm artifact. Yazelix currently syncs that artifact into the tracked runtime artifact path when packaging or maintainer validation needs an in-repo wasm. The target package boundary is for Yazelix to consume a locked child package instead of treating the copied artifact as durable source ownership.
 
 The sync stamp must prove:
 
+- external source Git commit
+- external source remote
 - external source content hash
+- build command
 - public wasm artifact hash
 - tracked Yazelix runtime wasm hash
 - source project name

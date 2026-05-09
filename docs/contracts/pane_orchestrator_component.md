@@ -154,6 +154,8 @@ yzx dev build_pane_orchestrator --sync
 
 The sync step refuses a dirty `yazelix-zellij-pane-orchestrator` checkout, updates the tracked wasm and stable runtime wasm path, and writes a sync stamp containing the source Git commit, source remote, source hash, build command, and wasm hash. `yzx_repo_validator validate-pane-orchestrator-sync` is the high-signal repository gate for the copied artifact. After a synced plugin change, validate in a fresh Yazelix session or with `yzx restart`; do not treat `cargo test` alone as proof of live plugin behavior.
 
+The longer-term package boundary is defined in [First-Party Zellij Plugin Wasm Ownership](./first_party_zellij_plugin_wasm_ownership.md). Until the pane-orchestrator child repository publishes a package output that Yazelix can consume as a locked input, the copied wasm plus sync stamp remains the supported interim path.
+
 ## Non-goals
 
 - Reintroducing legacy workspace pipe commands for compatibility
