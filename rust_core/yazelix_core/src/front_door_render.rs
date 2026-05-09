@@ -6,7 +6,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::io;
 use std::sync::OnceLock;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 pub use yazelix_screen::GameOfLifeCellStyle;
 use yazelix_screen::{
     BoidsAnimation, BoidsVariant, GameOfLifeAnimation, MandelbrotAnimation,
@@ -412,36 +412,6 @@ fn build_boids_frame(
     frames
 }
 
-fn mandelbrot_welcome_context(width: usize, height: usize) -> ScreenAnimationContext {
-    let size_class = get_logo_welcome_variant(width);
-    let spec = game_of_life_spec(size_class);
-    ScreenAnimationContext {
-        resolved_width: width,
-        resolved_height: resolve_game_of_life_body_height(spec.welcome_minimum_body_height, height),
-        inner_width: welcome_inner_width(spec.minimum_inner_width),
-        size_class,
-    }
-}
-
-fn build_mandelbrot_welcome_frames(
-    width: usize,
-    height: usize,
-    duration: Duration,
-) -> Vec<Vec<String>> {
-    let frame_delay = Duration::from_millis(110);
-    let frame_count = ((duration.as_secs_f64() / frame_delay.as_secs_f64()).ceil() as usize).max(3);
-    let mut animation = MandelbrotAnimation::new(mandelbrot_welcome_context(width, height));
-    let mut frames = Vec::new();
-
-    for _ in 0..frame_count {
-        frames.push(animation.render_frame());
-        animation.advance_frame();
-    }
-
-    frames.push(get_logo_welcome_frame(width));
-    frames
-}
-
 fn welcome_sequence(
     resolved_style: &str,
     width: usize,
@@ -458,7 +428,6 @@ fn welcome_sequence(
             cell_style,
             BoidsVariant::from_style_name(style).expect("validated boids style"),
         ),
-        "mandelbrot" => build_mandelbrot_welcome_frames(width, height, duration),
         style if is_game_of_life_style(style) => {
             let variant = get_logo_welcome_variant(width);
             let spec = game_of_life_spec(variant);
@@ -633,6 +602,41 @@ fn render_screen_frame(frame: &[String]) -> Result<(), CoreError> {
     yazelix_screen::render_screen_frame(frame).map_err(map_front_door_flush_error)
 }
 
+fn play_mandelbrot_welcome_screen(duration: Duration) -> Result<(), CoreError> {
+    let frame_delay = Duration::from_millis(110);
+    let mut width = terminal_width();
+    let mut height = terminal_height();
+    let mut state = MandelbrotAnimation::new(mandelbrot_screen_context(width, height));
+    let started = Instant::now();
+
+    enter_screen_mode()?;
+    let result = (|| -> Result<(), CoreError> {
+        while started.elapsed() < duration {
+            render_screen_frame(&state.render_frame())?;
+
+            let remaining = duration.saturating_sub(started.elapsed());
+            if poll_for_keypress(frame_delay.min(remaining))? {
+                break;
+            }
+
+            let current_width = terminal_width();
+            let current_height = terminal_height();
+            if current_width != width || current_height != height {
+                width = current_width;
+                height = current_height;
+                state.resize(mandelbrot_screen_context(width, height));
+            } else {
+                state.advance_frame();
+            }
+        }
+        Ok(())
+    })();
+    let leave_result = leave_screen_mode();
+    result?;
+    leave_result?;
+    Ok(())
+}
+
 fn game_of_life_screen_context(width: usize, height: usize) -> ScreenAnimationContext {
     let size_class = get_logo_welcome_variant(width);
     let spec = game_of_life_spec(size_class);
@@ -687,6 +691,9 @@ pub fn play_welcome_style_with_cell_style(
         }
         println!();
         return Ok(());
+    }
+    if resolved_style == "mandelbrot" {
+        return play_mandelbrot_welcome_screen(playback_duration);
     }
 
     let frames = welcome_sequence(
