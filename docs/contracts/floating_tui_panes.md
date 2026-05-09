@@ -81,6 +81,19 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
   `configs/zellij/plugins/yzpp.wasm` file as the durable source of truth
 - Verification: validator `yzx_repo_validator validate-contracts`
 
+#### POP-007
+- Type: non_goal
+- Status: live
+- Owner: workspace/editor/sidebar popup option boundary
+- Statement: Yazelix does not add a default editor popup or Yazi popup picker
+  in the current sidebar-first workspace. Yazi-driven file opens, including
+  `open_from_yazi` flows, continue to target or create the managed `editor`
+  pane. The default Yazi file-tree sidebar remains the picker surface. A Yazi
+  popup picker can be reconsidered only with an accepted no-sidebar layout
+  contract, and an editor popup would need a separate managed-editor identity
+  design before it could replace stack insertion
+- Verification: validator `yzx_repo_validator validate-contracts`
+
 ## Behavior
 
 - `yzx popup` opens a floating Zellij pane using the configured `zellij.popup_program`.
@@ -108,6 +121,29 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - The current Yazelix path remains canonical for the integrated product: `yzx
   popup`, `zellij.popup_program`, generated `yzpp` specs, and `yzx sidebar
   refresh` define supported Yazelix popup behavior.
+
+### Adjacent Workspace Popup Decision
+
+Yazelix keeps the current editor/sidebar model instead of adding editor or Yazi
+picker popups by default.
+
+- Keeping the current model is accepted because it preserves one persistent
+  managed editor identity, one sidebar picker, and the existing `Ctrl+y`,
+  `Alt+y`, `Alt+z`, and Yazi open behaviors without adding global keys
+- A Yazi popup picker is rejected for the current sidebar-first default because
+  it duplicates the file-tree sidebar and zoxide picker without removing a
+  current pane or ownership boundary
+- A Yazi popup picker may be reconsidered only if Yazelix accepts a no-sidebar
+  layout where the popup replaces the missing persistent sidebar rather than
+  duplicating it
+- An editor popup is rejected because it creates a second editor identity,
+  makes Yazi open routing ambiguous, and weakens workspace cwd sync unless it
+  first becomes the managed `editor` pane through a separate identity contract
+- Adding both popups is rejected because it multiplies keybindings, pane states,
+  and user memory burden without deleting the existing editor/sidebar model
+- Yazi-driven opens continue to target an existing managed `editor` pane or
+  create one through the normal managed editor flow; they do not route to a
+  transient popup editor
 
 ## Standalone Boundary
 
@@ -151,6 +187,8 @@ The `yzpp` raw pipe path still accepts generated JSON through `name "transient_p
 
 - General floating-pane support for every Yazelix action
 - Converting all Yazi plugins to popup flows
+- Adding a default Yazi popup picker to the sidebar-first workspace
+- Adding a popup editor as an alternate managed editor owner
 - Background daemon management for long-running AI tools
 - Reabsorbing Yazelix Zellij Popup source into Yazelix core
 - Treating Yazelix wrapper paths, runtime env, or sidebar refresh behavior as a plain-Zellij API
@@ -167,6 +205,8 @@ The `yzpp` raw pipe path still accepts generated JSON through `name "transient_p
 8. The extracted `yazelix-zellij-popup` source stays in its child repository while Yazelix packages and integrates its `yzpp.wasm` artifact.
 9. The standalone plugin supports KDL-native configured popup specs and keeps raw JSON pipe requests only for generated integrations.
 10. Full Yazelix docs and code identify `yzpp` as the popup/menu/config pane owner and the pane orchestrator as the workspace/sidebar/editor/session owner.
+11. When a file is opened from Yazi, Yazelix targets or creates the managed `editor` pane instead of opening a transient popup editor.
+12. In the sidebar-first workspace, Yazelix does not add a separate Yazi popup picker key that duplicates the persistent Yazi file tree.
 
 ## Verification
 
