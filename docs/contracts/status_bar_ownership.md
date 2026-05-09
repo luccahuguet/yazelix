@@ -12,10 +12,10 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 | --- | --- | --- |
 | zjstatus plugin runtime, layout keys, style tags, command widget intervals, and placeholder expansion | upstream zjstatus plus Yazelix generated KDL | Keep native |
 | generic `mode`, `tabs`, `session`, `datetime`, brand, tab-label, compact/full bar, and command-placeholder rendering | `yazelix_zellij_bar` child crate | Keep child |
-| standalone preset generation and package-local `zjstatus.wasm` path substitution | `yazelix_zellij_bar` child repo | Keep child |
+| standalone preset/template packaging and package-local `zjstatus.wasm` path substitution | `yazelix_zellij_bar` child repo | Keep child |
 | widget tray token validation and generic dynamic command placeholders such as `{command_workspace}` | `yazelix_zellij_bar` child crate | Keep child |
 | workspace, cursor, Claude, Codex, OpenCode Go, CPU, RAM, and version command definitions for the integrated template | `yazelix_zellij_bar` child crate rendered from Yazelix-supplied paths | Keep child |
-| cursor status widget text, glyph display, env/fact-file reading, and standalone stdout command | `yazelix_zellij_bar` child repo | Move child |
+| cursor status widget text, glyph display, env reading, `yzc current` fallback, and standalone stdout command | `yazelix_zellij_bar` child repo plus `yazelix-cursors` facts API | Move child |
 | cursor cache path discovery and first-paint hydration from Yazelix session state | Yazelix core status adapter | Keep adapter |
 | status-bus schema decode and inspect-session rendering | Yazelix core plus pane-orchestrator producer | Keep adapter |
 | window-local `status_bar_cache.json` writes, heartbeat merges, and cache path discovery | Yazelix core | Keep adapter |
@@ -31,7 +31,7 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 - Type: boundary
 - Status: live
 - Owner: `yazelix_zellij_bar` child repo
-- Statement: Generic bar rendering, tab label rendering, widget-tray token validation, compact/full bar policy, simple fact widgets, runnable non-workspace widget commands, and standalone preset generation belong to `yazelix_zellij_bar`. The main repo should consume the child renderer/command surface rather than maintain parallel widget implementations
+- Statement: Generic bar rendering, tab label rendering, widget-tray token validation, compact/full bar policy, simple fact widgets, runnable non-workspace widget commands, and standalone preset/template packaging belong to `yazelix_zellij_bar`. The main repo should consume the child renderer/command surface rather than maintain parallel widget implementations
 - Verification: automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zellij_materialization`
 
 #### SBO-002
@@ -66,7 +66,7 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 - Type: boundary
 - Status: live
 - Owner: `yazelix_zellij_bar` child repo plus Yazelix core status adapter
-- Statement: Cursor widget implementation belongs to `yazelix_zellij_bar` when supplied with explicit cursor facts compatible with `yazelix-cursors`. This includes display rendering, env/fact-file reading, and a standalone stdout command. Yazelix core owns only launch-scoped cache path discovery, environment-derived first-paint hydration, and session integration. `yazelix-cursors` remains the owner of cursor schemes, assets, and non-Zellij cursor distribution
+- Statement: Cursor widget implementation belongs to `yazelix_zellij_bar` when supplied with cursor facts compatible with `yazelix-cursors`. This includes display rendering, env reading, automatic `yzc current --format env` fallback, and a standalone stdout command. Yazelix core owns only launch-scoped environment-derived first-paint hydration and session integration. `yazelix-cursors` remains the owner of cursor schemes, assets, and non-Zellij cursor distribution
 - Verification: automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache`
 
 #### SBO-007

@@ -53,15 +53,23 @@ $XDG_CACHE_HOME/yazelix_zellij_bar
 $HOME/.cache/yazelix_zellij_bar
 ```
 
-The optional cursor fact file may live under:
+Cursor display uses the first available public facts source:
 
 ```text
-$XDG_CONFIG_HOME/yazelix_zellij_bar/cursor.env
-$HOME/.config/yazelix_zellij_bar/cursor.env
+YAZELIX_CURSOR_* environment variables
+yzc current --format env
 ```
+
+The bar must not own a normal cursor fact file under `~/.config/yazelix_zellij_bar`. `yzc` belongs to `yazelix-cursors` and remains the cursor source of truth outside Yazelix.
 
 Do not add a central TOML config file unless a future contract replaces KDL as the public configuration model.
 
 ## Yazelix runtime integration
 
 The full Yazelix runtime may generate KDL with internal absolute helper paths because users do not author that generated runtime surface. This does not change the standalone package contract: standalone examples and package docs use readable PATH commands.
+
+## Verification
+
+- `cargo test` in `luccahuguet/yazelix-zellij-bar`
+- `nix build .#yazelix_zellij_bar`
+- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zellij_materialization`

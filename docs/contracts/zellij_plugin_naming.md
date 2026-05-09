@@ -26,7 +26,6 @@ Rust crate names, Rust module names, binaries, and installed data paths use unde
 ```text
 yazelix_zellij_bar
 yazelix_zellij_bar_widget
-yazelix_zellij_bar_generate
 share/yazelix_zellij_bar
 share/doc/yazelix_zellij_bar
 ```
@@ -67,3 +66,8 @@ Examples:
 ## Compatibility
 
 Renames should not preserve stale command surfaces by default. Keep old names only when there is a documented compatibility decision with an owner, removal condition, and verification path.
+
+## Verification
+
+- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zellij_materialization`
+- `nix build .#yazelix_zellij_bar`

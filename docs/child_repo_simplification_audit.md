@@ -48,7 +48,7 @@ Reject a move when the main repo would still own the same behavior through a bro
 
 - Do not create a standalone Yazi integration repo while the main repo still owns the same materializer paths; the existing `yazelix-yazi-assets` child repo is only the reusable asset package
 - Do not move `config_ui.rs` wholesale to `yazelix_ratconfig`; JSONC patching, Home Manager/native status, settings metadata, and runtime apply behavior are Yazelix-specific
-- Do not move provider usage polling, cursor status facts, status-cache paths, or pane-orchestrator payloads to `yazelix_zellij_bar`
+- Do not move status-cache paths or pane-orchestrator payloads to `yazelix_zellij_bar`; provider usage polling and cursor display are child-owned when they run from explicit standalone facts, provider tools, or `yazelix-cursors`
 - Do not split maintainer tooling only to call it back through wrappers from this repo; that would make the workflow worse without reducing user runtime ownership
 - Do not preserve old popup command/config names that have not been released or that have no current caller; stale aliases are budget debt
 

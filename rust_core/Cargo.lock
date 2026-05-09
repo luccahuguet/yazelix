@@ -1469,7 +1469,7 @@ dependencies = [
 [[package]]
 name = "yazelix_zellij_bar"
 version = "0.1.0"
-source = "git+https://github.com/luccahuguet/yazelix-zellij-bar?rev=2bd18a8f53dc8c5d7ab829aa7c0fcf439d7e0eb2#2bd18a8f53dc8c5d7ab829aa7c0fcf439d7e0eb2"
+source = "git+https://github.com/luccahuguet/yazelix-zellij-bar?rev=b03794a0b6c167f3c20386d309ab4cdd59a25848#b03794a0b6c167f3c20386d309ab4cdd59a25848"
 dependencies = [
  "serde_json",
 ]
