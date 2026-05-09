@@ -92,7 +92,10 @@
         }:
         import ./yazelix_package.nix (
           {
-            inherit pkgs nixgl runtimeVariant runtimeToolSources components extraRuntimePackages yaziAssets;
+            inherit pkgs nixgl runtimeVariant runtimeToolSources components yaziAssets;
+            extraRuntimePackages = [
+              yazelixBar.packages.${system}.yazelix_bar
+            ] ++ extraRuntimePackages;
             fenixPkgs = fenix.packages.${pkgs.stdenv.hostPlatform.system};
           }
           // lib.optionalAttrs (src != null) { inherit src; }
@@ -102,7 +105,9 @@
         import ./yazelix_runtime_package.nix {
           inherit pkgs nixgl runtimeVariant;
           fenixPkgs = fenix.packages.${system};
-          inherit extraRuntimePackages;
+          extraRuntimePackages = [
+            yazelixBar.packages.${system}.yazelix_bar
+          ] ++ extraRuntimePackages;
           yaziAssets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
         };
       yazelixPackage = system: pkgs: runtimeVariant: extraRuntimePackages:

@@ -1155,6 +1155,7 @@ fn integrated_zjstatus_runtime_paths(runtime_dir: &Path) -> YazelixRuntimeComman
     YazelixRuntimeCommandPaths {
         nu_bin: resolve_zjstatus_nu_bin(runtime_dir),
         yzx_control_bin: resolve_zjstatus_yzx_control_bin(runtime_dir),
+        yazelix_bar_widget_bin: resolve_zjstatus_yazelix_bar_widget_bin(runtime_dir),
         runtime_dir: runtime_dir.to_string_lossy().to_string(),
     }
 }
@@ -1364,6 +1365,17 @@ fn resolve_zjstatus_yzx_control_bin(runtime_dir: &Path) -> String {
         .join("yzx_control")
         .to_string_lossy()
         .to_string()
+}
+
+fn resolve_zjstatus_yazelix_bar_widget_bin(runtime_dir: &Path) -> String {
+    let runtime_widget = runtime_dir.join("libexec").join("yazelix_bar_widget");
+    if runtime_widget.is_file() {
+        runtime_widget.to_string_lossy().to_string()
+    } else if let Some(path) = env_path_if_file("YAZELIX_BAR_WIDGET_BIN") {
+        path.to_string_lossy().to_string()
+    } else {
+        "yazelix_bar_widget".to_string()
+    }
 }
 
 fn env_path_if_file(variable: &str) -> Option<PathBuf> {
@@ -2450,6 +2462,7 @@ keybinds {
         std::fs::create_dir_all(&libexec).unwrap();
         std::fs::write(libexec.join("nu"), "").unwrap();
         std::fs::write(libexec.join("yzx_control"), "").unwrap();
+        std::fs::write(libexec.join("yazelix_bar_widget"), "").unwrap();
         let plan =
             sample_render_plan_for_widgets(vec!["workspace"], "hx", "/nix/store/bin/nu", "ghostty");
         let rendered = render_layout_template(
@@ -2466,16 +2479,18 @@ keybinds {
         .unwrap();
         let expected_nu = libexec.join("nu").to_string_lossy().to_string();
         let expected_yzx_control = libexec.join("yzx_control").to_string_lossy().to_string();
+        let expected_bar_widget = libexec
+            .join("yazelix_bar_widget")
+            .to_string_lossy()
+            .to_string();
 
         assert!(rendered.contains(&format!(
-            r#"command_cpu_command "{} {}/configs/zellij/scripts/cpu_usage.nu""#,
-            expected_nu,
-            runtime_dir.to_string_lossy()
+            r#"command_cpu_command "{} cpu""#,
+            expected_bar_widget
         )));
         assert!(rendered.contains(&format!(
-            r#"command_ram_command "{} {}/configs/zellij/scripts/ram_usage.nu""#,
-            expected_nu,
-            runtime_dir.to_string_lossy()
+            r#"command_ram_command "{} ram""#,
+            expected_bar_widget
         )));
         assert!(rendered.contains(&format!(
             r#"command_workspace_command "{} zellij status-cache-widget workspace""#,

@@ -18,8 +18,6 @@ const RUNTIME_WORKSPACE_ASSETS: &[&str] = &[
     "configs/zellij/yazelix_overrides.kdl",
     "configs/zellij/scripts/launch_sidebar_yazi.nu",
     "configs/zellij/scripts/runtime_helper.nu",
-    "configs/zellij/scripts/cpu_usage.nu",
-    "configs/zellij/scripts/ram_usage.nu",
     "configs/zellij/plugins/yazelix_pane_orchestrator.wasm",
     "configs/zellij/plugins/zjstatus.wasm",
     "configs/zellij/plugins/yzpp.wasm",
@@ -297,12 +295,7 @@ swap_layouts = ["single_open"]
             "",
         )
         .unwrap();
-        for script in [
-            "launch_sidebar_yazi.nu",
-            "runtime_helper.nu",
-            "cpu_usage.nu",
-            "ram_usage.nu",
-        ] {
+        for script in ["launch_sidebar_yazi.nu", "runtime_helper.nu"] {
             fs::write(runtime_scripts.join(script), "").unwrap();
         }
         for wasm in ZELLIJ_PLUGIN_WASMS {
