@@ -23,17 +23,17 @@ Yazelix is built on a focused terminal-workspace stack. This catalog lists the p
 - `#yazelix_agent_tools` and `#runtime_agent_tools` — Opt-in runtime variants that add agent usage helpers such as `tokenusage`
 - `#yazelix_zellij_bar` — Standalone Zellij/zjstatus bar preset forwarded from `luccahuguet/yazelix-zellij-bar`, including `yazelix_zellij_bar_widget` and package-local `zjstatus.wasm`
 - `#yzs` and `#yazelix_screen` — Standalone terminal animation package forwarded from `luccahuguet/yazelix-screen` for the Yazelix screen engines outside Zellij and outside a full Yazelix session
-- `#yazelix_cursors` — Standalone Yazelix cursor package for Ghostty users, with generated GLSL files, example Ghostty config snippets, and the `yzc` CLI
+- `#yazelix_ghostty_cursors` — Standalone Yazelix cursor package for Ghostty users, with generated GLSL files, example Ghostty config snippets, and the `yzc` CLI
 - `#yzc` — Flake app for the standalone Yazelix cursor CLI
 - `#ghostty_cursor_shaders` — Compatibility package attribute for the same standalone cursor output
 - `homeManagerModules.yazelix` — The Home Manager module for declarative installs, with `runtime_variant = "ghostty"` by default and `"wezterm"` available explicitly
 
 ## First-Party Child Repositories
 
-Regular Yazelix users do not need to install or wire these repositories separately. The regular Yazelix package already integrates the modules it uses, and the child repositories exist so people can use focused Yazelix subsystems without adopting the whole workspace. `yazelix-screen` and `yazelix-cursors` are also usable outside Zellij.
+Regular Yazelix users do not need to install or wire these repositories separately. The regular Yazelix package already integrates the modules it uses, and the child repositories exist so people can use focused Yazelix subsystems without adopting the whole workspace. `yazelix-screen` and `yazelix-ghostty-cursors` are also usable outside Zellij.
 
 - [yazelix-screen](https://github.com/luccahuguet/yazelix-screen) — Standalone terminal animation engine consumed by Yazelix welcome/screen rendering and exposed from this repo as `#yzs` and `#yazelix_screen`.
-- [yazelix-cursors](https://github.com/luccahuguet/yazelix-cursors) — Standalone Ghostty cursor preset, shader, and `yzc` CLI repository consumed by Yazelix cursor settings and exposed from this repo as `#yzc`, `#yazelix_cursors`, and `#ghostty_cursor_shaders`.
+- [yazelix-ghostty-cursors](https://github.com/luccahuguet/yazelix-ghostty-cursors) — Standalone Ghostty cursor preset, shader, and `yzc` CLI repository consumed by Yazelix cursor settings and exposed from this repo as `#yzc`, `#yazelix_ghostty_cursors`, and `#ghostty_cursor_shaders`.
 - [yazelix-zellij-bar](https://github.com/luccahuguet/yazelix-zellij-bar) — Standalone Zellij/zjstatus bar preset consumed by Yazelix tab/status rendering and exposed from this repo as `#yazelix_zellij_bar`.
 - [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij users; its flake package `#yzpp` installs `share/yazelix_zellij_popup/yzpp.wasm`, and regular Yazelix sessions package the same `yzpp.wasm` for popup, menu, and config UI panes.
 - [yazelix-yazi-assets](https://github.com/luccahuguet/yazelix-yazi-assets) — Standalone Yazi flavor and reusable plugin asset pack consumed by Yazelix Yazi runtime generation and exposed from this repo as `#yazelix_yazi_assets`.
@@ -56,7 +56,7 @@ Regular Yazelix users do not need to install or wire these repositories separate
 - [Kitty](https://sw.kovidgoyal.net/kitty/) — Supported PATH-provided terminal choice. Yazelix can generate Kitty config and launch Kitty when it is available on the host.
 - [Alacritty](https://github.com/alacritty/alacritty) — Supported PATH-provided terminal choice with generated Yazelix config.
 - [Foot](https://codeberg.org/dnkl/foot) — Supported Linux PATH-provided terminal choice with generated Yazelix config.
-- [ghostty-cursor-shaders](https://github.com/sahaj-b/ghostty-cursor-shaders) — Upstream inspiration for the Yazelix-managed Ghostty cursor shader system. Yazelix vendors/adapts the shader direction through `settings.jsonc` cursor settings, generated config, and the standalone `#yazelix_cursors` package.
+- [ghostty-cursor-shaders](https://github.com/sahaj-b/ghostty-cursor-shaders) — Upstream inspiration for the Yazelix-managed Ghostty cursor shader system. Yazelix vendors/adapts the shader direction through `settings.jsonc` cursor settings, generated config, and the standalone `#yazelix_ghostty_cursors` package.
 
 ## Editors And Shells
 
@@ -103,7 +103,7 @@ Plugin catalog: https://github.com/yazi-rs/plugins
 
 ## User Configuration Surfaces
 
-- [`settings.jsonc`](../config_metadata/yazelix_settings.schema.json) — Canonical semantic settings inventory; main settings live under `~/.config/yazelix/settings.jsonc` and Ghostty cursor presets live under `~/.config/yazelix_cursors/settings.jsonc`
+- [`settings.jsonc`](../config_metadata/yazelix_settings.schema.json) — Canonical semantic settings inventory; main settings live under `~/.config/yazelix/settings.jsonc` and Ghostty cursor presets live under `~/.config/yazelix_ghostty_cursors/settings.jsonc`
 - [Yazi configuration](./yazi-configuration.md) — Personal Yazi config overlays under `~/.config/yazelix/`
 - [Zellij configuration](./zellij-configuration.md) — Managed Zellij user config under `~/.config/yazelix/zellij.kdl`
 - [Terminal overrides](./terminal_emulators.md) — Terminal-native override files for Ghostty, Kitty, and Alacritty

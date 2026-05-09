@@ -318,4 +318,4 @@ This module follows Yazelix's configuration structure defined by `config_metadat
 3. Test with both new and existing Yazelix installations
 4. Ensure type safety and proper defaults
 
-Ghostty cursor presets and effects live in `~/.config/yazelix_cursors/settings.jsonc`. Set `programs.yazelix.manage_cursor_config = true` only when you want Home Manager to own that cursor registry.
+Ghostty cursor presets and effects live in `~/.config/yazelix_ghostty_cursors/settings.jsonc`. Set `programs.yazelix.manage_cursor_config = true` only when you want Home Manager to own that cursor registry.

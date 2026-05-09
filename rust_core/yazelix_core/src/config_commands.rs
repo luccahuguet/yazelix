@@ -23,7 +23,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
-use yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
+use yazelix_ghostty_cursors::{CursorRegistry, render_cursor_settings_jsonc};
 
 const HOME_MANAGER_FILES_MARKER: &str = "-home-manager-files/";
 
@@ -359,7 +359,7 @@ fn read_config_for_edit_or_default(
                 CoreError::io(
                     "read_default_cursor_config_for_edit",
                     "Could not read the default Yazelix cursor settings",
-                    "Reinstall Yazelix so the runtime includes yazelix_cursors_default.toml.",
+                    "Reinstall Yazelix so the runtime includes yazelix_ghostty_cursors_default.toml.",
                     paths.default_cursor_config_path.display().to_string(),
                     source,
                 )

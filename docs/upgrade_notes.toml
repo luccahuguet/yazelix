@@ -2,7 +2,7 @@
 acknowledged_guarded_changes = []
 date = ""
 headline = "Post-v16.3 work in progress"
-manual_actions = ["Move old mutable `yazelix.toml`, `cursors.toml`, `user_configs/` sidecars, or embedded cursor settings aside and keep `settings.jsonc` plus `~/.config/yazelix_cursors/settings.jsonc` as the supported config sources."]
+manual_actions = ["Move old mutable `yazelix.toml`, `cursors.toml`, `user_configs/` sidecars, or embedded cursor settings aside and keep `settings.jsonc` plus `~/.config/yazelix_ghostty_cursors/settings.jsonc` as the supported config sources."]
 migration_ids = []
 summary = ["Removed the remaining automatic legacy config rewrites so old TOML and nested sidecar surfaces now fail fast with explicit cleanup guidance instead of being moved or rewritten during startup."]
 upgrade_impact = "manual_action_required"
@@ -364,7 +364,7 @@ date = "2026-05-07"
 headline = "First-party child repos, standalone popup panes, and launch/config hardening"
 manual_actions = ["If both the old nested config path and the new flat path exist with different contents, keep the new flat path or move the old file aside before launching.", "If the old nested path is a Home Manager or Nix symlink, move that ownership to the flat path instead of relying on automatic migration."]
 migration_ids = []
-summary = ["Published first-party child repository links for yazelix-screen, yazelix-cursors, and yazelix-zellij-popup so the extracted projects are easier to find and use independently.", "Extracted the reusable Zellij popup pane plugin into yazelix-zellij-popup, with yzpp.wasm usable from plain Zellij layouts and packaged into regular Yazelix for popup, menu, and config UI panes.", "Desktop launch keeps its starter terminal for visible preflight and failure feedback, but defers the managed Yazelix window until after the starter exits so tiling window managers do not size the real session around the bootstrap window.", "The default Zellij status widget tray includes codex_usage so new configs show the Codex quota/reset widget without manual opt-in.", "Home Manager desktop-entry generation is Linux-only so Darwin Home Manager evaluations do not require Linux xdg desktop-entry options.", "User-editable config surfaces are flat under ~/.config/yazelix/, with unambiguous old regular files migrated into the flat names on first use."]
+summary = ["Published first-party child repository links for yazelix-screen, yazelix-ghostty-cursors, and yazelix-zellij-popup so the extracted projects are easier to find and use independently.", "Extracted the reusable Zellij popup pane plugin into yazelix-zellij-popup, with yzpp.wasm usable from plain Zellij layouts and packaged into regular Yazelix for popup, menu, and config UI panes.", "Desktop launch keeps its starter terminal for visible preflight and failure feedback, but defers the managed Yazelix window until after the starter exits so tiling window managers do not size the real session around the bootstrap window.", "The default Zellij status widget tray includes codex_usage so new configs show the Codex quota/reset widget without manual opt-in.", "Home Manager desktop-entry generation is Linux-only so Darwin Home Manager evaluations do not require Linux xdg desktop-entry options.", "User-editable config surfaces are flat under ~/.config/yazelix/, with unambiguous old regular files migrated into the flat names on first use."]
 upgrade_impact = "manual_action_required"
 version = "v16.3"
 

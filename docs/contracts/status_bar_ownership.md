@@ -15,7 +15,7 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 | standalone preset/template packaging and package-local `zjstatus.wasm` path substitution | `yazelix_zellij_bar` child repo | Keep child |
 | widget tray token validation and generic dynamic command placeholders such as `{command_workspace}` | `yazelix_zellij_bar` child crate | Keep child |
 | workspace, cursor, Claude, Codex, OpenCode Go, CPU, RAM, and version command definitions for the integrated template | `yazelix_zellij_bar` child crate rendered from Yazelix-supplied paths | Keep child |
-| cursor status widget text, glyph display, env reading, `yzc current` fallback, and standalone stdout command | `yazelix_zellij_bar` child repo plus `yazelix-cursors` facts API | Move child |
+| cursor status widget text, glyph display, env reading, `yzc current` fallback, and standalone stdout command | `yazelix_zellij_bar` child repo plus `yazelix-ghostty-cursors` facts API | Move child |
 | cursor cache path discovery and first-paint hydration from Yazelix session state | Yazelix core status adapter | Keep adapter |
 | status-bus schema decode and inspect-session rendering | Yazelix core plus pane-orchestrator producer | Keep adapter |
 | window-local `status_bar_cache.json` writes, heartbeat merges, and cache path discovery | Yazelix core | Keep adapter |
@@ -66,7 +66,7 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 - Type: boundary
 - Status: live
 - Owner: `yazelix_zellij_bar` child repo plus Yazelix core status adapter
-- Statement: Cursor widget implementation belongs to `yazelix_zellij_bar` when supplied with cursor facts compatible with `yazelix-cursors`. This includes display rendering, env reading, automatic `yzc current --format env` fallback, and a standalone stdout command. Yazelix core owns only launch-scoped environment-derived first-paint hydration and session integration. `yazelix-cursors` remains the owner of cursor schemes, assets, and non-Zellij cursor distribution
+- Statement: Cursor widget implementation belongs to `yazelix_zellij_bar` when supplied with cursor facts compatible with `yazelix-ghostty-cursors`. This includes display rendering, env reading, automatic `yzc current --format env` fallback, and a standalone stdout command. Yazelix core owns only launch-scoped environment-derived first-paint hydration and session integration. `yazelix-ghostty-cursors` remains the owner of cursor schemes, assets, and non-Zellij cursor distribution
 - Verification: automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache`
 
 #### SBO-007
@@ -100,7 +100,7 @@ Delete-first order:
 4. Delete provider usage refreshers, cache schemas, lock/backoff implementation, and CPU/RAM scripts from Yazelix once the child command surface exists
 5. Keep pane-orchestrator facts, workspace rendering, generated layout integration, session-specific path selection, and runtime path discovery in the integrated runtime unless a future contract defines a reusable status bus
 
-Do not move pane-orchestrator payloads, Home Manager apply semantics, or Yazelix session facts into `yazelix_zellij_bar` or `yazelix-cursors`. Do move non-workspace widget polling/probing/cache behavior when it can be parameterized by explicit paths/env and run outside Yazelix.
+Do not move pane-orchestrator payloads, Home Manager apply semantics, or Yazelix session facts into `yazelix_zellij_bar` or `yazelix-ghostty-cursors`. Do move non-workspace widget polling/probing/cache behavior when it can be parameterized by explicit paths/env and run outside Yazelix.
 
 ## Verification
 

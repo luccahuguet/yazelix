@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 pub const SETTINGS_CONFIG: &str = "settings.jsonc";
 pub const OLD_MAIN_CONFIG: &str = "yazelix.toml";
 pub const CURSOR_CONFIG: &str = "cursors.toml";
-pub const SHARED_CURSOR_CONFIG_DIR: &str = "yazelix_cursors";
+pub const SHARED_CURSOR_CONFIG_DIR: &str = "yazelix_ghostty_cursors";
 pub const SHARED_CURSOR_SETTINGS_CONFIG: &str = "settings.jsonc";
 pub const HELIX_CONFIG: &str = "helix.toml";
 pub const ZELLIJ_CONFIG: &str = "zellij.kdl";
@@ -90,7 +90,9 @@ pub fn is_shared_cursor_config_path(path: &Path) -> bool {
 }
 
 pub fn legacy_cursor_config(config_dir: &Path) -> PathBuf {
-    config_dir.join("user_configs").join("yazelix_cursors.toml")
+    config_dir
+        .join("user_configs")
+        .join("yazelix_ghostty_cursors.toml")
 }
 
 pub fn helix_config(config_dir: &Path) -> PathBuf {

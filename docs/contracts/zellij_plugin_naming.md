@@ -59,7 +59,7 @@ Do not use `zellij` in the name when the artifact is not primarily a Zellij plug
 
 Examples:
 
-- `yazelix-cursors` stays broader than a Zellij plugin when it owns cursor facts or terminal integration outside Zellij
+- `yazelix-ghostty-cursors` stays broader than a Zellij plugin when it owns cursor facts or terminal integration outside Zellij
 - maintainer-only helper scripts stay under Yazelix-owned script paths
 - libraries that are not installable Zellij plugin packages should use their domain name rather than implying Zellij runtime ownership
 

@@ -60,7 +60,7 @@ YAZELIX_CURSOR_* environment variables
 yzc current --format env
 ```
 
-The bar must not own a normal cursor fact file under `~/.config/yazelix_zellij_bar`. `yzc` belongs to `yazelix-cursors` and remains the cursor source of truth outside Yazelix.
+The bar must not own a normal cursor fact file under `~/.config/yazelix_zellij_bar`. `yzc` belongs to `yazelix-ghostty-cursors` and remains the cursor source of truth outside Yazelix.
 
 Do not add a central TOML config file unless a future contract replaces KDL as the public configuration model.
 

@@ -422,7 +422,7 @@ Check installed tool versions: `yzx status --versions`
 Run diagnostics: `yzx doctor` - Automated health checks and fixes
 
 ### Customization
-If you followed step 5, you already have your `~/.config/yazelix/settings.jsonc` config file ready. You can modify it anytime and restart Yazelix to apply changes. Main options live in that file; Ghostty cursor presets live in `~/.config/yazelix_cursors/settings.jsonc`.
+If you followed step 5, you already have your `~/.config/yazelix/settings.jsonc` config file ready. You can modify it anytime and restart Yazelix to apply changes. Main options live in that file; Ghostty cursor presets live in `~/.config/yazelix_ghostty_cursors/settings.jsonc`.
 
 For complete customization options, see the [Customization Guide](./customization.md).
 

@@ -66,7 +66,7 @@ pkgs.runCommand name { } ''
   ln -s ${src}/tombi.toml "$out/tombi.toml"
   ln -s ${src}/yazelix_default.toml "$out/yazelix_default.toml"
   ${pkgs.lib.optionalString cursorsEnabled ''
-    ln -s ${src}/yazelix_cursors_default.toml "$out/yazelix_cursors_default.toml"
+    ln -s ${src}/yazelix_ghostty_cursors_default.toml "$out/yazelix_ghostty_cursors_default.toml"
   ''}
   printf '%s\n' ${pkgs.lib.escapeShellArg runtimeVariant} > "$out/runtime_variant"
   printf '%s\n' ${pkgs.lib.escapeShellArg runtimeComponentRegistry.manifestJson} > "$out/runtime_components.json"

@@ -228,7 +228,7 @@ mod tests {
         .expect("write default config");
         fs::write(
             runtime_dir.join(DEFAULT_CURSOR_CONFIG_FILENAME),
-            include_str!("../../../yazelix_cursors_default.toml"),
+            include_str!("../../../yazelix_ghostty_cursors_default.toml"),
         )
         .expect("write cursor config");
         fs::create_dir_all(runtime_dir.join("config_metadata")).expect("contract dir");
@@ -275,7 +275,7 @@ mod tests {
         );
         assert_eq!(
             resolved.user_cursor_config,
-            config.path().join("yazelix_cursors/settings.jsonc")
+            config.path().join("yazelix_ghostty_cursors/settings.jsonc")
         );
     }
 

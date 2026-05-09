@@ -22,10 +22,10 @@ Yazelix keeps this repo as the integrated workspace/runtime and splits focused r
 
 Regular Yazelix users do not need to install, configure, or understand these child repos separately; the normal Yazelix package already integrates the pieces it uses
 
-The child repos mainly let non-Yazelix users adopt Yazelix modules and subsystems granularly. `yazelix-screen` and `yazelix-cursors` can also be used outside Zellij entirely
+The child repos mainly let non-Yazelix users adopt Yazelix modules and subsystems granularly. `yazelix-screen` and `yazelix-ghostty-cursors` can also be used outside Zellij entirely
 
 - [yazelix-screen](https://github.com/luccahuguet/yazelix-screen) — Terminal animation engine used by Yazelix welcome/screen styles and exposed here as `#yzs` and `#yazelix_screen`
-- [yazelix-cursors](https://github.com/luccahuguet/yazelix-cursors) — Ghostty cursor preset and shader generator with the `yzc` CLI, exposed here as `#yzc`, `#yazelix_cursors`, and `#ghostty_cursor_shaders`
+- [yazelix-ghostty-cursors](https://github.com/luccahuguet/yazelix-ghostty-cursors) — Ghostty cursor preset and shader generator with the `yzc` CLI, exposed here as `#yzc`, `#yazelix_ghostty_cursors`, and `#ghostty_cursor_shaders`
 - [yazelix-zellij-bar](https://github.com/luccahuguet/yazelix-zellij-bar) — Standalone Zellij bar plugin package and `yazelix_zellij_bar_widget` command, exposed here as `#yazelix_zellij_bar`
 - [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij floating TUI panes; its plugin alias and wasm artifact are `yzpp`, and regular Yazelix sessions use it for the popup, command palette, and config UI panes
 - [yazelix-yazi-assets](https://github.com/luccahuguet/yazelix-yazi-assets) — Standalone Yazi flavor and reusable plugin asset pack, exposed here as `#yazelix_yazi_assets` and integrated into the normal Yazelix Yazi runtime
@@ -252,11 +252,11 @@ Yazelix shines over SSH: the TUI stack (Zellij, Yazi, Helix) runs cleanly withou
 
 Yazelix uses a **layered configuration system** that safely merges your personal settings with Yazelix defaults:
 
-- **Core settings**: Edit `~/.config/yazelix/settings.jsonc` for shell, editor, terminal, Zellij, and Yazi settings, edit `~/.config/yazelix_cursors/settings.jsonc` for Ghostty cursor settings, run `yzx config set/unset` for safe scalar and string-list edits, or run `yzx config ui` to inspect and edit explicit/defaulted values and stale-field diagnostics
+- **Core settings**: Edit `~/.config/yazelix/settings.jsonc` for shell, editor, terminal, Zellij, and Yazi settings, edit `~/.config/yazelix_ghostty_cursors/settings.jsonc` for Ghostty cursor settings, run `yzx config set/unset` for safe scalar and string-list edits, or run `yzx config ui` to inspect and edit explicit/defaulted values and stale-field diagnostics
 - **Yazi customization**: Use the built-in `yazi` settings in `settings.jsonc` for things like plugins, theme, sorting, and binary overrides, and use `~/.config/yazelix/yazi.toml`, `~/.config/yazelix/yazi_keymap.toml`, and `~/.config/yazelix/yazi_init.lua` for deeper merged overrides (see [Yazi Configuration](./docs/yazi-configuration.md))
 - **Zellij customization**: Use the built-in `zellij` settings in `settings.jsonc` for Yazelix-owned Zellij knobs, and use `~/.config/yazelix/zellij.kdl` for deeper managed Zellij overrides (see [Zellij Configuration](./docs/zellij-configuration.md))
 - **Status bar widgets**: Configure `[zellij].widget_tray` to order or hide `editor`, `shell`, `term`, `workspace`, `cursor`, usage, `cpu`, and `ram` widgets; the default cursor widget renders mono presets as colored `█ name` and split presets as one-cell split glyphs from the launch-scoped Ghostty cursor fact
-- **Standalone Ghostty cursors**: install `.#yazelix_cursors` or run `nix run .#yzc -- --help`; `yzc init` creates `~/.config/yazelix_cursors/settings.jsonc`, and `yzc generate ghostty` writes `~/.config/yazelix_cursors/ghostty.conf` for Ghostty's `config-file` include
+- **Standalone Ghostty cursors**: install `.#yazelix_ghostty_cursors` or run `nix run .#yzc -- --help`; `yzc init` creates `~/.config/yazelix_ghostty_cursors/settings.jsonc`, and `yzc generate ghostty` writes `~/.config/yazelix_ghostty_cursors/ghostty.conf` for Ghostty's `config-file` include
 - **Standalone popup plugin**: use Yazelix Zellij Popup (`yzpp`) for plain-Zellij floating TUI popups; regular Yazelix sessions package the same plugin for `yzx popup`, the command palette, and config UI
 - **Your configs persist** across Yazelix updates without git conflicts
 - **Intelligent merging**: Generated Yazi and Zellij runtime configs are rebuilt from Yazelix defaults plus your managed overrides instead of forcing you to edit tracked runtime files
@@ -319,7 +319,7 @@ See the full catalog of tools and integrations in the Yazelix Collection:
 - **Environment setup**: Proper paths, variables, and shell configurations
 
 **Customize Your Installation:**
-If you followed [step 4 in the installation guide](./docs/installation.md#step-4-configure-your-installation-optional), you already have your `~/.config/yazelix/settings.jsonc` config file ready, you can modify it anytime and restart Yazelix to apply changes. Main options live in that file; Ghostty cursor presets live in `~/.config/yazelix_cursors/settings.jsonc`
+If you followed [step 4 in the installation guide](./docs/installation.md#step-4-configure-your-installation-optional), you already have your `~/.config/yazelix/settings.jsonc` config file ready, you can modify it anytime and restart Yazelix to apply changes. Main options live in that file; Ghostty cursor presets live in `~/.config/yazelix_ghostty_cursors/settings.jsonc`
 
 **Terminal Emulator Selection:**
 - **Ghostty** (default packaged preference): Modern, fast terminal written in Zig with Yazelix cursor trails

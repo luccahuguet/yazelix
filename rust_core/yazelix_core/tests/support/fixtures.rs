@@ -51,8 +51,8 @@ pub fn write_runtime_contract_assets(repo: &Path, runtime_dir: &Path) {
     )
     .unwrap();
     fs::copy(
-        repo.join("yazelix_cursors_default.toml"),
-        runtime_dir.join("yazelix_cursors_default.toml"),
+        repo.join("yazelix_ghostty_cursors_default.toml"),
+        runtime_dir.join("yazelix_ghostty_cursors_default.toml"),
     )
     .unwrap();
     fs::copy(

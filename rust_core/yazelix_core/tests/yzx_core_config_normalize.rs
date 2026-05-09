@@ -12,7 +12,7 @@ use yazelix_core::{
     settings_surface::{read_settings_jsonc_value, render_default_settings_jsonc},
     user_config_paths::shared_cursor_config,
 };
-use yazelix_cursors::render_cursor_settings_jsonc;
+use yazelix_ghostty_cursors::render_cursor_settings_jsonc;
 
 mod support;
 
@@ -134,7 +134,7 @@ fn prepare_runtime_materialization_fixture(
         &managed_config,
         render_default_settings_jsonc(
             &runtime_dir.join("yazelix_default.toml"),
-            &runtime_dir.join("yazelix_cursors_default.toml"),
+            &runtime_dir.join("yazelix_ghostty_cursors_default.toml"),
         )
         .unwrap(),
     )
@@ -204,7 +204,9 @@ fn runtime_materialization_canonical_settings_request(
     let settings_path = fixture.config_dir.join("settings.jsonc");
     let rendered = render_default_settings_jsonc(
         &fixture.runtime_dir.join("yazelix_default.toml"),
-        &fixture.runtime_dir.join("yazelix_cursors_default.toml"),
+        &fixture
+            .runtime_dir
+            .join("yazelix_ghostty_cursors_default.toml"),
     )
     .unwrap();
     fs::write(&settings_path, rendered).unwrap();

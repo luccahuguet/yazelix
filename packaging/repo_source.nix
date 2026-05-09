@@ -22,11 +22,11 @@ let
   includeFiles = [
     "CHANGELOG.md"
     "tombi.toml"
-    "yazelix_cursors_default.toml"
+    "yazelix_ghostty_cursors_default.toml"
     "yazelix_default.toml"
   ];
   cursorRuntimePaths = [
-    "yazelix_cursors_default.toml"
+    "yazelix_ghostty_cursors_default.toml"
     "configs/terminal_emulators/ghostty/shaders"
   ];
 in

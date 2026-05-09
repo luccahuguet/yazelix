@@ -682,7 +682,7 @@ mod tests {
         let paths = test_paths(tmp.path());
         fs::write(
             &paths.default_cursor_config_path,
-            include_str!("../../../yazelix_cursors_default.toml"),
+            include_str!("../../../yazelix_ghostty_cursors_default.toml"),
         )
         .unwrap();
         fs::write(
@@ -729,7 +729,7 @@ mod tests {
         let paths = test_paths(tmp.path());
         fs::write(
             &paths.default_cursor_config_path,
-            include_str!("../../../yazelix_cursors_default.toml"),
+            include_str!("../../../yazelix_ghostty_cursors_default.toml"),
         )
         .unwrap();
         fs::write(

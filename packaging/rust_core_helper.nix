@@ -35,7 +35,7 @@ let
           relativePath == "rust_core"
           || relativePath == "config_metadata"
           || relativePath == "yazelix_default.toml"
-          || relativePath == "yazelix_cursors_default.toml"
+          || relativePath == "yazelix_ghostty_cursors_default.toml"
           || isZellijStatusTemplateSource
           || lib.hasPrefix "rust_core/" relativePath
           || lib.hasPrefix "config_metadata/" relativePath;
@@ -53,7 +53,7 @@ rustPlatform.buildRustPackage {
     lockFile = "${src}/rust_core/Cargo.lock";
     outputHashes = {
       "yazelix_zellij_bar-0.1.0" = "sha256-Gq3P27lrlKzxWe9qF4cRQ14Ee+tM4t941BqYZyxiujk=";
-      "yazelix_cursors-0.1.0" = "sha256-5BlGyV5ZCkpHfDvl+eMaFvsl3y51mnPR+vWFs+H4ul8=";
+      "yazelix_ghostty_cursors-0.1.0" = "sha256-pWw2UBNVdoCTJdqLASSIVkl+PUs/vpmkqsJM5DfgK4o=";
       "yazelix_screen-0.1.0" = "sha256-PkZ4ChP94XabPULG1ohd4vojF3ne/p0CZ6HdsLCtI9g=";
     };
   };

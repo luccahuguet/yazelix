@@ -54,7 +54,7 @@ let
       );
   mainConfigContract = builtins.fromTOML (builtins.readFile ../config_metadata/main_config_contract.toml);
   mainContractFields = mainConfigContract.fields;
-  defaultCursorConfig = builtins.fromTOML (builtins.readFile ../yazelix_cursors_default.toml);
+  defaultCursorConfig = builtins.fromTOML (builtins.readFile ../yazelix_ghostty_cursors_default.toml);
   mainConfigSectionOrder = [
     "core"
     "helix"
@@ -299,7 +299,7 @@ in
       type = types.bool;
       default = false;
       description = ''
-        Whether Home Manager generates ~/.config/yazelix_cursors/settings.jsonc.
+        Whether Home Manager generates ~/.config/yazelix_ghostty_cursors/settings.jsonc.
 
         Cursor settings are independent from the main Yazelix settings file so
         the standalone yzc command and full Yazelix can share one cursor source.
@@ -389,7 +389,7 @@ in
         - "yazelix": use Yazelix-managed configs in ~/.local/share/yazelix (default)
         - "user": load the terminal's native user config path and fail if it does not exist
 
-        Ghostty cursor presets and cursor effects live in ~/.config/yazelix_cursors/settings.jsonc
+        Ghostty cursor presets and cursor effects live in ~/.config/yazelix_ghostty_cursors/settings.jsonc
       '';
     };
 
@@ -719,7 +719,7 @@ in
     })
     (mkIf cfg.manage_cursor_config {
       # Generate shared Yazelix cursor settings for both Yazelix and yzc.
-      xdg.configFile."yazelix_cursors/settings.jsonc" = {
+      xdg.configFile."yazelix_ghostty_cursors/settings.jsonc" = {
         text = cursorSettingsJsonc;
       };
     })

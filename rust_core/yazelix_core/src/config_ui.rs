@@ -41,7 +41,7 @@ use std::io::{self, IsTerminal};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use toml::Value as TomlValue;
-use yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
+use yazelix_ghostty_cursors::{CursorRegistry, render_cursor_settings_jsonc};
 
 pub use crate::yazelix_ratconfig::{
     ConfigUiApplyStatus, ConfigUiDiagnostic, ConfigUiField, ConfigUiModel, ConfigUiNativeStatus,
@@ -819,7 +819,7 @@ impl ConfigUiApp {
                         CoreError::io(
                             "read_default_cursor_config_for_ui_edit",
                             "Could not read the default Yazelix cursor settings",
-                            "Reinstall Yazelix so the runtime includes yazelix_cursors_default.toml.",
+                            "Reinstall Yazelix so the runtime includes yazelix_ghostty_cursors_default.toml.",
                             self.model.default_cursor_config_path.display().to_string(),
                             source,
                         )
@@ -1208,7 +1208,7 @@ fn read_cursor_config_value(path: &Path) -> Result<JsonValue, CoreError> {
         CoreError::io(
             "read_config_ui_cursor_config",
             "Could not read the Yazelix cursor settings",
-            "Fix permissions for ~/.config/yazelix_cursors/settings.jsonc, then retry.",
+            "Fix permissions for ~/.config/yazelix_ghostty_cursors/settings.jsonc, then retry.",
             path.display().to_string(),
             source,
         )
@@ -1221,7 +1221,7 @@ fn read_default_cursor_config_value(path: &Path) -> Result<JsonValue, CoreError>
         CoreError::io(
             "read_config_ui_default_cursor_config",
             "Could not read the default Yazelix cursor settings",
-            "Reinstall Yazelix so the runtime includes yazelix_cursors_default.toml.",
+            "Reinstall Yazelix so the runtime includes yazelix_ghostty_cursors_default.toml.",
             path.display().to_string(),
             source,
         )
@@ -1777,7 +1777,7 @@ fn collect_sidecars(config_dir: &Path) -> Vec<ConfigUiSidecar> {
     let cursor_path = crate::user_config_paths::shared_cursor_config(config_dir);
     let cursor_present = fs::symlink_metadata(&cursor_path).is_ok();
     sidecars.push(ConfigUiSidecar {
-        name: "yazelix_cursors/settings.jsonc".to_string(),
+        name: "yazelix_ghostty_cursors/settings.jsonc".to_string(),
         owner: classify_path_owner(&cursor_path, cursor_present),
         read_only: path_is_read_only(&cursor_path),
         path: cursor_path,
@@ -2009,7 +2009,7 @@ mod tests {
         .expect("main defaults");
         fs::write(
             runtime.join(DEFAULT_CURSOR_CONFIG_FILENAME),
-            include_str!("../../../yazelix_cursors_default.toml"),
+            include_str!("../../../yazelix_ghostty_cursors_default.toml"),
         )
         .expect("cursor defaults");
         fs::write(
@@ -2361,8 +2361,12 @@ mod tests {
         };
         let model = ConfigUiModel {
             active_config_path: PathBuf::from("/home/lucca/.config/yazelix/settings.jsonc"),
-            cursor_config_path: PathBuf::from("/home/lucca/.config/yazelix_cursors/settings.jsonc"),
-            default_cursor_config_path: PathBuf::from("/runtime/yazelix_cursors_default.toml"),
+            cursor_config_path: PathBuf::from(
+                "/home/lucca/.config/yazelix_ghostty_cursors/settings.jsonc",
+            ),
+            default_cursor_config_path: PathBuf::from(
+                "/runtime/yazelix_ghostty_cursors_default.toml",
+            ),
             active_config_exists: true,
             config_owner: ConfigUiPathOwner::User,
             config_read_only: false,

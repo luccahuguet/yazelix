@@ -142,7 +142,7 @@ fn patched_text_round_trips_through_config_normalization() {
 
     let raw = render_default_settings_jsonc(
         &runtime.join("yazelix_default.toml"),
-        &runtime.join("yazelix_cursors_default.toml"),
+        &runtime.join("yazelix_ghostty_cursors_default.toml"),
     )
     .expect("default settings");
     let patched = set_settings_jsonc_value_text(

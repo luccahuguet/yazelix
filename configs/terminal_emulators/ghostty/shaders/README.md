@@ -49,7 +49,7 @@ and `split` presets are rendered from cursor registry data.
 
 1. Create a new file in `variants/` directory (e.g., `variants/new_variant.glsl`)
 2. Add your variant-specific code (constants, helper functions, mainImage)
-3. Add the cursor to `yazelix_cursors_default.toml` or your local `~/.config/yazelix/cursors.toml`
+3. Add the cursor to `yazelix_ghostty_cursors_default.toml` or your local `~/.config/yazelix/cursors.toml`
 4. Shaders will be **automatically rebuilt** next time Yazelix starts or configs are regenerated
 
 ### Manual build (for testing or local preview):
@@ -92,7 +92,7 @@ The build is **fully automatic**:
 
 ### Mono (6 data-driven presets)
 - `blaze`, `snow`, `sunset`, `ocean`, `forest`, `cosmic`
-- Each preset defines one base color in `yazelix_cursors_default.toml`; Yazelix derives the accent unless `accent_color` overrides it
+- Each preset defines one base color in `yazelix_ghostty_cursors_default.toml`; Yazelix derives the accent unless `accent_color` overrides it
 
 ### Split (5 data-driven presets)
 - `eclipse`, `dusk`, `orchid`, `reef`, `magma`

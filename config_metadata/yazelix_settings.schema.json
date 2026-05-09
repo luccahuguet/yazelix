@@ -2,15 +2,15 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://yazelix.com/schemas/yazelix_settings.schema.json",
   "title": "Yazelix Settings",
-  "description": "Canonical Yazelix config UI settings inventory. Main runtime settings use ~/.config/yazelix/settings.jsonc and config_metadata/main_config_contract.toml; Ghostty cursor settings use ~/.config/yazelix_cursors/settings.jsonc and are composed into the config UI under cursors.",
+  "description": "Canonical Yazelix config UI settings inventory. Main runtime settings use ~/.config/yazelix/settings.jsonc and config_metadata/main_config_contract.toml; Ghostty cursor settings use ~/.config/yazelix_ghostty_cursors/settings.jsonc and are composed into the config UI under cursors.",
   "type": "object",
   "additionalProperties": false,
   "x-yazelix": {
     "canonical_file": "settings.jsonc",
-    "cursor_file": "~/.config/yazelix_cursors/settings.jsonc",
+    "cursor_file": "~/.config/yazelix_ghostty_cursors/settings.jsonc",
     "main_contract": "config_metadata/main_config_contract.toml",
     "config_ui_metadata": "config_metadata/config_ui_metadata.toml",
-    "cursor_default_template": "yazelix_cursors_default.toml",
+    "cursor_default_template": "yazelix_ghostty_cursors_default.toml",
     "tabs": [
       "general",
       "workspace",

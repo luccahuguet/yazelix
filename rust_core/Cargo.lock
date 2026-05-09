@@ -1429,15 +1429,15 @@ dependencies = [
  "thiserror 2.0.18",
  "time",
  "toml",
- "yazelix_cursors",
+ "yazelix_ghostty_cursors",
  "yazelix_screen",
  "yazelix_zellij_bar",
 ]
 
 [[package]]
-name = "yazelix_cursors"
+name = "yazelix_ghostty_cursors"
 version = "0.1.0"
-source = "git+https://github.com/luccahuguet/yazelix-cursors?rev=abc0f7f84f5a06f69a9e04a77384bd202b9f31bc#abc0f7f84f5a06f69a9e04a77384bd202b9f31bc"
+source = "git+https://github.com/luccahuguet/yazelix-ghostty-cursors?rev=9b7224eda13ff974f318ced4cc3d3bebc64076da#9b7224eda13ff974f318ced4cc3d3bebc64076da"
 dependencies = [
  "jsonc-parser",
  "serde",

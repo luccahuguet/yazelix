@@ -39,7 +39,7 @@ fn write_runtime_layout(runtime: &Path) {
     .expect("main defaults");
     fs::write(
         runtime.join(DEFAULT_CURSOR_CONFIG_FILENAME),
-        include_str!("../../../yazelix_cursors_default.toml"),
+        include_str!("../../../yazelix_ghostty_cursors_default.toml"),
     )
     .expect("cursor defaults");
     fs::write(

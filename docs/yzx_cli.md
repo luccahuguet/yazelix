@@ -248,14 +248,14 @@ Open the terminal config browser and editor
 Set a supported config value without rewriting the whole file
 - Preserves unrelated comments and formatting
 - Accepts JSON literals such as `true`, `20`, `"bash"`, or `["ghostty"]`
-- Writes normal settings to `~/.config/yazelix/settings.jsonc` and `cursors.*` paths to `~/.config/yazelix_cursors/settings.jsonc`
+- Writes normal settings to `~/.config/yazelix/settings.jsonc` and `cursors.*` paths to `~/.config/yazelix_ghostty_cursors/settings.jsonc`
 - Validates the patched config or cursor registry before writing
 - Refuses Home Manager-owned, read-only, non-`settings.jsonc`, or unsafe object/array edits
 
 ### `yzx config unset <settings.path>`
 Remove an explicit config value so Yazelix uses the default
 - Preserves unrelated comments and formatting
-- Writes normal settings to `~/.config/yazelix/settings.jsonc` and `cursors.*` paths to `~/.config/yazelix_cursors/settings.jsonc`
+- Writes normal settings to `~/.config/yazelix/settings.jsonc` and `cursors.*` paths to `~/.config/yazelix_ghostty_cursors/settings.jsonc`
 - Validates the patched config or cursor registry before writing
 - Leaves the file unchanged when the value is already absent
 
@@ -295,7 +295,7 @@ Replace `settings.jsonc` with a fresh copy of the shipped settings template
 - Only replaces `~/.config/yazelix/settings.jsonc`
 - Preserves managed override sidecars such as `helix.toml`, `zellij.kdl`, `yazi.toml`, `yazi_keymap.toml`, `yazi_init.lua`, `terminal_*.conf|toml|ini`, and `shell_*.sh|zsh|fish|nu`
 - Preserves unknown adjacent files under `~/.config/yazelix/` and prints a warning instead of deleting or adopting them
-- Cursor presets live in `~/.config/yazelix_cursors/settings.jsonc`; `reset config` only resets the main Yazelix settings file
+- Cursor presets live in `~/.config/yazelix_ghostty_cursors/settings.jsonc`; `reset config` only resets the main Yazelix settings file
 
 ### `yzx help`
 Show command reference

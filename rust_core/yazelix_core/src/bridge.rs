@@ -167,10 +167,10 @@ impl CoreError {
     }
 }
 
-impl From<yazelix_cursors::CursorError> for CoreError {
-    fn from(error: yazelix_cursors::CursorError) -> Self {
+impl From<yazelix_ghostty_cursors::CursorError> for CoreError {
+    fn from(error: yazelix_ghostty_cursors::CursorError) -> Self {
         match error {
-            yazelix_cursors::CursorError::Classified {
+            yazelix_ghostty_cursors::CursorError::Classified {
                 class,
                 code,
                 message,
@@ -183,14 +183,14 @@ impl From<yazelix_cursors::CursorError> for CoreError {
                 remediation,
                 details,
             ),
-            yazelix_cursors::CursorError::Io {
+            yazelix_ghostty_cursors::CursorError::Io {
                 code,
                 message,
                 remediation,
                 path,
                 source,
             } => CoreError::io(code, message, remediation, path, source),
-            yazelix_cursors::CursorError::Toml {
+            yazelix_ghostty_cursors::CursorError::Toml {
                 code,
                 message,
                 remediation,
@@ -207,13 +207,13 @@ impl From<yazelix_cursors::CursorError> for CoreError {
     }
 }
 
-fn cursor_error_class_to_core(class: yazelix_cursors::CursorErrorClass) -> ErrorClass {
+fn cursor_error_class_to_core(class: yazelix_ghostty_cursors::CursorErrorClass) -> ErrorClass {
     match class {
-        yazelix_cursors::CursorErrorClass::Usage => ErrorClass::Usage,
-        yazelix_cursors::CursorErrorClass::Config => ErrorClass::Config,
-        yazelix_cursors::CursorErrorClass::Io => ErrorClass::Io,
-        yazelix_cursors::CursorErrorClass::Runtime => ErrorClass::Runtime,
-        yazelix_cursors::CursorErrorClass::Internal => ErrorClass::Internal,
+        yazelix_ghostty_cursors::CursorErrorClass::Usage => ErrorClass::Usage,
+        yazelix_ghostty_cursors::CursorErrorClass::Config => ErrorClass::Config,
+        yazelix_ghostty_cursors::CursorErrorClass::Io => ErrorClass::Io,
+        yazelix_ghostty_cursors::CursorErrorClass::Runtime => ErrorClass::Runtime,
+        yazelix_ghostty_cursors::CursorErrorClass::Internal => ErrorClass::Internal,
     }
 }
 

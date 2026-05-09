@@ -17,8 +17,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.fenix.follows = "fenix";
     };
-    yazelixCursors = {
-      url = "github:luccahuguet/yazelix-cursors";
+    yazelixGhosttyCursors = {
+      url = "github:luccahuguet/yazelix-ghostty-cursors";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.fenix.follows = "fenix";
     };
@@ -49,7 +49,7 @@
       nixgl,
       fenix,
       yazelixScreen,
-      yazelixCursors,
+      yazelixGhosttyCursors,
       yazelixZellijBar,
       yazelixYaziAssets,
       beads,
@@ -159,12 +159,12 @@
           yazelix_agent_tools = yazelixPackage system pkgs defaultRuntimeVariant agentUsageRuntimePackages;
           yazelix_zellij_bar = yazelixZellijBar.packages.${system}.yazelix_zellij_bar;
           yazelix_screen = yazelixScreen.packages.${system}.yzs;
-          yazelix_cursors = yazelixCursors.packages.${system}.yazelix_cursors;
+          yazelix_ghostty_cursors = yazelixGhosttyCursors.packages.${system}.yazelix_ghostty_cursors;
           yazelix_yazi_assets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
         in
         {
           default = yazelix_default;
-          ghostty_cursor_shaders = yazelix_cursors;
+          ghostty_cursor_shaders = yazelix_ghostty_cursors;
           runtime = runtime_default;
           runtime_agent_tools = runtime_agent_tools;
           runtime_ghostty = runtime_ghostty;
@@ -172,7 +172,7 @@
           yazelix = yazelix_default;
           yazelix_agent_tools = yazelix_agent_tools;
           yazelix_zellij_bar = yazelix_zellij_bar;
-          yazelix_cursors = yazelix_cursors;
+          yazelix_ghostty_cursors = yazelix_ghostty_cursors;
           yazelix_ghostty = yazelix_ghostty;
           yazelix_screen = yazelix_screen;
           yazelix_wezterm = yazelix_wezterm;
@@ -210,13 +210,13 @@
           type = "app";
           program = "${self.packages.${system}.yazelix_screen}/bin/yzs";
         };
-        yazelix_cursors = {
+        yazelix_ghostty_cursors = {
           type = "app";
-          program = "${self.packages.${system}.yazelix_cursors}/bin/yzc";
+          program = "${self.packages.${system}.yazelix_ghostty_cursors}/bin/yzc";
         };
         yzc = {
           type = "app";
-          program = "${self.packages.${system}.yazelix_cursors}/bin/yzc";
+          program = "${self.packages.${system}.yazelix_ghostty_cursors}/bin/yzc";
         };
       });
 

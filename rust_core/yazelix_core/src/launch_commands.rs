@@ -160,7 +160,7 @@ mod tests {
         .expect("main defaults");
         fs::write(
             runtime.join(crate::ghostty_cursor_registry::DEFAULT_CURSOR_CONFIG_FILENAME),
-            include_str!("../../../yazelix_cursors_default.toml"),
+            include_str!("../../../yazelix_ghostty_cursors_default.toml"),
         )
         .expect("cursor defaults");
         fs::write(

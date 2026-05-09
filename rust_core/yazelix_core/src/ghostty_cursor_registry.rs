@@ -1,6 +1,6 @@
 //! Yazelix-owned loader for the reusable cursor registry.
 
-pub use yazelix_cursors::{
+pub use yazelix_ghostty_cursors::{
     CursorColor, CursorDefinition, CursorFamily, CursorRegistry, CursorSettings,
     DEFAULT_CURSOR_CONFIG_FILENAME, DEFAULT_GHOSTTY_TRAIL_DURATION, GHOSTTY_TRAIL_DURATION_MAX,
     GHOSTTY_TRAIL_DURATION_MIN, ResolvedCursorRegistryState, SplitDivider, SplitTransition,
@@ -50,7 +50,7 @@ impl YazelixCursorRegistryExt for CursorRegistry {
             CoreError::io(
                 "read_cursor_settings_jsonc",
                 "Could not read Yazelix cursor settings.jsonc",
-                "Run `yzc init`, or restore ~/.config/yazelix_cursors/settings.jsonc, then retry.",
+                "Run `yzc init`, or restore ~/.config/yazelix_ghostty_cursors/settings.jsonc, then retry.",
                 path.to_string_lossy(),
                 source,
             )
@@ -65,7 +65,7 @@ impl YazelixCursorRegistryExt for CursorRegistry {
                         "Could not parse Yazelix cursor settings in {}.",
                         path.display()
                     ),
-                    "Fix ~/.config/yazelix_cursors/settings.jsonc or run `yzc init` after moving the broken file aside.",
+                    "Fix ~/.config/yazelix_ghostty_cursors/settings.jsonc or run `yzc init` after moving the broken file aside.",
                     json!({
                         "path": path.display().to_string(),
                         "error": format!("{error:?}"),
@@ -97,7 +97,7 @@ impl YazelixCursorRegistryExt for CursorRegistry {
                         "Could not parse Yazelix cursor settings in {}.",
                         path.display()
                     ),
-                    "Fix the embedded cursors object in settings.jsonc or move it to ~/.config/yazelix_cursors/settings.jsonc.",
+                    "Fix the embedded cursors object in settings.jsonc or move it to ~/.config/yazelix_ghostty_cursors/settings.jsonc.",
                     json!({
                         "path": path.display().to_string(),
                         "error": format!("{error:?}"),

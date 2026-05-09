@@ -9,7 +9,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use toml::Value as TomlValue;
-use yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
+use yazelix_ghostty_cursors::{CursorRegistry, render_cursor_settings_jsonc};
 
 pub const SETTINGS_SCHEMA_FILENAME: &str = "yazelix_settings.schema.json";
 const SETTINGS_TOP_LEVEL_ORDER: &[&str] = &[
@@ -209,7 +209,7 @@ fn ensure_default_cursor_config_exists(default_cursor_config: &Path) -> Result<(
             "Yazelix runtime is missing the default cursor registry at {}.",
             default_cursor_config.display()
         ),
-        "Reinstall Yazelix so the runtime includes yazelix_cursors_default.toml.",
+        "Reinstall Yazelix so the runtime includes yazelix_ghostty_cursors_default.toml.",
         json!({ "path": default_cursor_config.display().to_string() }),
     ))
 }
@@ -258,7 +258,7 @@ fn ensure_no_old_cursor_inputs(paths: &SettingsSurfacePaths) -> Result<(), CoreE
             &paths.shared_cursor_config,
             "stale_old_cursor_settings_input",
             "old cursor settings input",
-            "Move the old cursor TOML file aside and keep ~/.config/yazelix_cursors/settings.jsonc as the only cursor settings source.",
+            "Move the old cursor TOML file aside and keep ~/.config/yazelix_ghostty_cursors/settings.jsonc as the only cursor settings source.",
         )?;
     }
     Ok(())
@@ -273,7 +273,7 @@ fn ensure_no_embedded_cursor_settings(paths: &SettingsSurfacePaths) -> Result<()
         ErrorClass::Config,
         "embedded_cursor_settings_unsupported",
         "Yazelix found cursor settings embedded in settings.jsonc.",
-        "Move cursor settings to ~/.config/yazelix_cursors/settings.jsonc or reset cursor config with `yzc init`; Yazelix no longer rewrites embedded cursor settings automatically.",
+        "Move cursor settings to ~/.config/yazelix_ghostty_cursors/settings.jsonc or reset cursor config with `yzc init`; Yazelix no longer rewrites embedded cursor settings automatically.",
         json!({
             "settings_config": paths.settings_config.display().to_string(),
             "shared_cursor_config": paths.shared_cursor_config.display().to_string(),
@@ -303,7 +303,7 @@ fn write_shared_cursor_settings(
         io_err(
             "write_shared_cursor_settings",
             &paths.shared_cursor_config,
-            "Could not write ~/.config/yazelix_cursors/settings.jsonc",
+            "Could not write ~/.config/yazelix_ghostty_cursors/settings.jsonc",
             source,
         )
     })?;
@@ -597,9 +597,10 @@ mod tests {
             Some(true)
         );
         assert!(value.get("cursors").is_none());
-        let cursor_value =
-            read_settings_jsonc_value(&config.path().join("yazelix_cursors/settings.jsonc"))
-                .unwrap();
+        let cursor_value = read_settings_jsonc_value(
+            &config.path().join("yazelix_ghostty_cursors/settings.jsonc"),
+        )
+        .unwrap();
         assert_eq!(cursor_value["settings"]["trail"].as_str(), Some("snow"));
         assert!(!config.path().join("yazelix.toml").exists());
         assert!(!config.path().join("cursors.toml").exists());

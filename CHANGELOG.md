@@ -18,7 +18,7 @@ First-party child repos, standalone popup panes, and launch/config hardening
 Upgrade impact: manual action may be required
 
 Highlights:
-- Published first-party child repository links for `yazelix-screen`, `yazelix-cursors`, and `yazelix-zellij-popup` so the extracted projects are easier to find and use independently
+- Published first-party child repository links for `yazelix-screen`, `yazelix-ghostty-cursors`, and `yazelix-zellij-popup` so the extracted projects are easier to find and use independently
 - Extracted the reusable Zellij popup pane plugin into `yazelix-zellij-popup`, with `yzpp.wasm` usable from plain Zellij layouts while Yazelix keeps its integrated `yzx popup` command
 - Desktop launch keeps its starter terminal for visible preflight and failure feedback, but defers the managed Yazelix window until after the starter exits so tiling window managers do not size the real session around the bootstrap window
 - The default Zellij status widget tray includes `codex_usage` so new configs show the Codex quota/reset widget without manual opt-in
@@ -38,15 +38,15 @@ Upgrade impact: manual action required
 
 Highlights:
 - Changed the Home Manager module default so it installs the Yazelix package/runtime/desktop integration while leaving `~/.config/yazelix/user_configs/yazelix.toml` as a normal mutable file
-- Moved Ghostty cursor selection, effects, duration, glow, Kitty fallback, and cursor preset definitions out of `yazelix.toml` and into `~/.config/yazelix/user_configs/yazelix_cursors.toml`
+- Moved Ghostty cursor selection, effects, duration, glow, Kitty fallback, and cursor preset definitions out of `yazelix.toml` and into `~/.config/yazelix/user_configs/yazelix_ghostty_cursors.toml`
 - Simplified Ghostty cursor definitions to `mono` and `split` families with `divider`/`transition` split controls, renamed the black/red horizontal preset from inferno to magma, intensified reef's green, and added the `yzx cursors` inspection command for resolved colors
 - Replaced `editor.initial_sidebar_state` with `editor.hide_sidebar_on_file_open` so tabs start consistently and file-open behavior owns sidebar hiding
 - Restored workspace and agent-usage status-bar widgets through window-local cached facts instead of direct zjstatus pane-orchestrator or provider polling
 - Kept `programs.yazelix.manage_config = true` as the explicit opt-in for users who want Home Manager to generate and own `yazelix.toml`
 
 Manual action:
-- If your `user_configs/yazelix.toml` still contains `terminal.ghostty_*` cursor fields, move those cursor choices and effects into `user_configs/yazelix_cursors.toml` and remove the old fields
-- If your `user_configs/yazelix_cursors.toml` uses `family = "simple_dual"` or `family = "axis_gradient"`, update those cursor definitions to `family = "mono"` or `family = "split"` and replace split `direction`/`blend` with `divider`/`transition`
+- If your `user_configs/yazelix.toml` still contains `terminal.ghostty_*` cursor fields, move those cursor choices and effects into `user_configs/yazelix_ghostty_cursors.toml` and remove the old fields
+- If your `user_configs/yazelix_ghostty_cursors.toml` uses `family = "simple_dual"` or `family = "axis_gradient"`, update those cursor definitions to `family = "mono"` or `family = "split"` and replace split `direction`/`blend` with `divider`/`transition`
 - If your `user_configs/yazelix.toml` uses `editor.initial_sidebar_state`, remove it and set `editor.hide_sidebar_on_file_open = true` when you want the Yazi sidebar hidden after opening a file
 
 
