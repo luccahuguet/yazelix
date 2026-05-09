@@ -1,6 +1,6 @@
 //! Status-cache widget routing that remains owned by Yazelix.
 //!
-//! Non-workspace widgets are runnable `yazelix_bar_widget` commands owned by yazelix-bar.
+//! Non-workspace widgets are runnable `yazelix_zellij_bar_widget` commands owned by yazelix-zellij-bar.
 
 use super::{render_zjstatus_workspace_widget, status_bar_cache_status_bus};
 use crate::bridge::CoreError;

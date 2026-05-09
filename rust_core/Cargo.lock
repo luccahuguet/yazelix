@@ -1412,14 +1412,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cfe53a6657fd280eaa890a3bc59152892ffa3e30101319d168b781ed6529b049"
 
 [[package]]
-name = "yazelix_bar"
-version = "0.1.0"
-source = "git+https://github.com/luccahuguet/yazelix-bar?rev=ced78aa34b3ea2441b5dbfc1c1278e58397c9b82#ced78aa34b3ea2441b5dbfc1c1278e58397c9b82"
-dependencies = [
- "serde_json",
-]
-
-[[package]]
 name = "yazelix_core"
 version = "0.1.0"
 dependencies = [
@@ -1437,9 +1429,9 @@ dependencies = [
  "thiserror 2.0.18",
  "time",
  "toml",
- "yazelix_bar",
  "yazelix_cursors",
  "yazelix_screen",
+ "yazelix_zellij_bar",
 ]
 
 [[package]]
@@ -1472,6 +1464,14 @@ version = "0.1.0"
 source = "git+https://github.com/luccahuguet/yazelix-screen?rev=9ac6d3f62216c8200b6c9d58c85f26110666fa00#9ac6d3f62216c8200b6c9d58c85f26110666fa00"
 dependencies = [
  "crossterm",
+]
+
+[[package]]
+name = "yazelix_zellij_bar"
+version = "0.1.0"
+source = "git+https://github.com/luccahuguet/yazelix-zellij-bar?rev=2bd18a8f53dc8c5d7ab829aa7c0fcf439d7e0eb2#2bd18a8f53dc8c5d7ab829aa7c0fcf439d7e0eb2"
+dependencies = [
+ "serde_json",
 ]
 
 [[package]]

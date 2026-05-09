@@ -184,10 +184,10 @@
         "home-manager": "home-manager",
         "nixgl": "nixgl",
         "nixpkgs": "nixpkgs_3",
-        "yazelixBar": "yazelixBar",
         "yazelixCursors": "yazelixCursors",
         "yazelixScreen": "yazelixScreen",
         "yazelixYaziAssets": "yazelixYaziAssets",
+        "yazelixZellijBar": "yazelixZellijBar",
         "zjstatus": "zjstatus"
       }
     },
@@ -259,32 +259,6 @@
         "type": "github"
       }
     },
-    "yazelixBar": {
-      "inputs": {
-        "fenix": [
-          "fenix"
-        ],
-        "nixpkgs": [
-          "nixpkgs"
-        ],
-        "zjstatus": [
-          "zjstatus"
-        ]
-      },
-      "locked": {
-        "lastModified": 1778348355,
-        "narHash": "sha256-PtXsyBzC/WtqBqKWyqv+noOvDrqVZ89gwykg2nY1VPs=",
-        "owner": "luccahuguet",
-        "repo": "yazelix-bar",
-        "rev": "4bb47acb6035b3c01e38f1de83b6b1d618565a05",
-        "type": "github"
-      },
-      "original": {
-        "owner": "luccahuguet",
-        "repo": "yazelix-bar",
-        "type": "github"
-      }
-    },
     "yazelixCursors": {
       "inputs": {
         "fenix": [
@@ -348,6 +322,32 @@
       "original": {
         "owner": "luccahuguet",
         "repo": "yazelix-yazi-assets",
+        "type": "github"
+      }
+    },
+    "yazelixZellijBar": {
+      "inputs": {
+        "fenix": [
+          "fenix"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "zjstatus": [
+          "zjstatus"
+        ]
+      },
+      "locked": {
+        "lastModified": 1778349858,
+        "narHash": "sha256-eRFQznUEUoIQDK08+qJs1d41vhJPy20X0DJKcnQ5Quk=",
+        "owner": "luccahuguet",
+        "repo": "yazelix-zellij-bar",
+        "rev": "2bd18a8f53dc8c5d7ab829aa7c0fcf439d7e0eb2",
+        "type": "github"
+      },
+      "original": {
+        "owner": "luccahuguet",
+        "repo": "yazelix-zellij-bar",
         "type": "github"
       }
     },

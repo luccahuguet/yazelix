@@ -37,7 +37,7 @@ fn zjstatus_status_bus_workspace_widget_renders_plain_segment_and_hides_missing_
     assert_eq!(render_zjstatus_workspace_widget(&empty), "");
 }
 
-// Defends: non-workspace widgets are owned by yazelix_bar_widget, not by Yazelix status-cache renderers.
+// Defends: non-workspace widgets are owned by yazelix_zellij_bar_widget, not by Yazelix status-cache renderers.
 #[test]
 fn status_cache_widget_rejects_non_workspace_widgets() {
     let err = render_status_cache_widget(&json!({}), "cursor").unwrap_err();

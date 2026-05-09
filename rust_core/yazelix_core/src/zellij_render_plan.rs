@@ -69,8 +69,8 @@ const SCREEN_SAVER_STYLE_ALLOWED: &[&str] = &[
     "random",
 ];
 const TAB_LABEL_MODE_ALLOWED: &[&str] = &[
-    yazelix_bar::TAB_LABEL_MODE_FULL,
-    yazelix_bar::TAB_LABEL_MODE_COMPACT,
+    yazelix_zellij_bar::TAB_LABEL_MODE_FULL,
+    yazelix_zellij_bar::TAB_LABEL_MODE_COMPACT,
 ];
 pub const DEFAULT_SIDEBAR_COMMAND: &str = "nu";
 pub const DEFAULT_SIDEBAR_YAZI_ARG: &str =
@@ -117,7 +117,7 @@ fn default_zellij_default_mode() -> String {
 }
 
 fn default_tab_label_mode() -> String {
-    yazelix_bar::TAB_LABEL_MODE_FULL.into()
+    yazelix_zellij_bar::TAB_LABEL_MODE_FULL.into()
 }
 
 fn default_claude_usage_display() -> String {

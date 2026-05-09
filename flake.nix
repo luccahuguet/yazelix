@@ -22,8 +22,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.fenix.follows = "fenix";
     };
-    yazelixBar = {
-      url = "github:luccahuguet/yazelix-bar";
+    yazelixZellijBar = {
+      url = "github:luccahuguet/yazelix-zellij-bar";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.fenix.follows = "fenix";
       inputs.zjstatus.follows = "zjstatus";
@@ -50,7 +50,7 @@
       fenix,
       yazelixScreen,
       yazelixCursors,
-      yazelixBar,
+      yazelixZellijBar,
       yazelixYaziAssets,
       beads,
       zjstatus,
@@ -94,7 +94,7 @@
           {
             inherit pkgs nixgl runtimeVariant runtimeToolSources components yaziAssets;
             extraRuntimePackages = [
-              yazelixBar.packages.${system}.yazelix_bar
+              yazelixZellijBar.packages.${system}.yazelix_zellij_bar
             ] ++ extraRuntimePackages;
             fenixPkgs = fenix.packages.${pkgs.stdenv.hostPlatform.system};
           }
@@ -106,7 +106,7 @@
           inherit pkgs nixgl runtimeVariant;
           fenixPkgs = fenix.packages.${system};
           extraRuntimePackages = [
-            yazelixBar.packages.${system}.yazelix_bar
+            yazelixZellijBar.packages.${system}.yazelix_zellij_bar
           ] ++ extraRuntimePackages;
           yaziAssets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
         };
@@ -116,7 +116,7 @@
         };
       defaultOverlay = final: _prev: {
         yazelix = mkYazelix final.stdenv.hostPlatform.system { pkgs = final; };
-        yazelix_bar = yazelixBar.packages.${final.stdenv.hostPlatform.system}.yazelix_bar;
+        yazelix_zellij_bar = yazelixZellijBar.packages.${final.stdenv.hostPlatform.system}.yazelix_zellij_bar;
         yazelix_yazi_assets =
           yazelixYaziAssets.packages.${final.stdenv.hostPlatform.system}.yazelix_yazi_assets;
       };
@@ -157,7 +157,7 @@
           yazelix_ghostty = yazelixPackage system pkgs "ghostty" noExtraRuntimePackages;
           yazelix_wezterm = yazelixPackage system pkgs "wezterm" noExtraRuntimePackages;
           yazelix_agent_tools = yazelixPackage system pkgs defaultRuntimeVariant agentUsageRuntimePackages;
-          yazelix_bar = yazelixBar.packages.${system}.yazelix_bar;
+          yazelix_zellij_bar = yazelixZellijBar.packages.${system}.yazelix_zellij_bar;
           yazelix_screen = yazelixScreen.packages.${system}.yzs;
           yazelix_cursors = yazelixCursors.packages.${system}.yazelix_cursors;
           yazelix_yazi_assets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
@@ -171,7 +171,7 @@
           runtime_wezterm = runtime_wezterm;
           yazelix = yazelix_default;
           yazelix_agent_tools = yazelix_agent_tools;
-          yazelix_bar = yazelix_bar;
+          yazelix_zellij_bar = yazelix_zellij_bar;
           yazelix_cursors = yazelix_cursors;
           yazelix_ghostty = yazelix_ghostty;
           yazelix_screen = yazelix_screen;

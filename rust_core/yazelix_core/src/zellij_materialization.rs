@@ -16,7 +16,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
-use yazelix_bar::{
+use yazelix_zellij_bar::{
     BarRenderError, BarRenderRequest, CUSTOM_TEXT_PLACEHOLDER, TAB_ACTIVE_FULLSCREEN_PLACEHOLDER,
     TAB_ACTIVE_PLACEHOLDER, TAB_ACTIVE_SYNC_PLACEHOLDER, TAB_NORMAL_FULLSCREEN_PLACEHOLDER,
     TAB_NORMAL_PLACEHOLDER, TAB_NORMAL_SYNC_PLACEHOLDER, TAB_RENAME_PLACEHOLDER,
@@ -1140,7 +1140,7 @@ fn generate_all_layouts(
 
 fn render_bar_segments(
     render_plan: &ZellijRenderPlanData,
-) -> Result<yazelix_bar::BarRenderData, CoreError> {
+) -> Result<yazelix_zellij_bar::BarRenderData, CoreError> {
     let request = BarRenderRequest {
         widget_tray: render_plan.widget_tray.clone(),
         editor_label: render_plan.editor_label.clone(),
@@ -1158,7 +1158,7 @@ fn integrated_zjstatus_runtime_paths(
     YazelixRuntimeCommandPaths {
         nu_bin: resolve_zjstatus_nu_bin(runtime_dir),
         yzx_control_bin: resolve_zjstatus_yzx_control_bin(runtime_dir),
-        yazelix_bar_widget_bin: resolve_zjstatus_yazelix_bar_widget_bin(runtime_dir),
+        yazelix_zellij_bar_widget_bin: resolve_zjstatus_yazelix_zellij_bar_widget_bin(runtime_dir),
         runtime_dir: runtime_dir.to_string_lossy().to_string(),
         claude_usage_display: render_plan.claude_usage_display.clone(),
         codex_usage_display: render_plan.codex_usage_display.clone(),
@@ -1374,14 +1374,16 @@ fn resolve_zjstatus_yzx_control_bin(runtime_dir: &Path) -> String {
         .to_string()
 }
 
-fn resolve_zjstatus_yazelix_bar_widget_bin(runtime_dir: &Path) -> String {
-    let runtime_widget = runtime_dir.join("libexec").join("yazelix_bar_widget");
+fn resolve_zjstatus_yazelix_zellij_bar_widget_bin(runtime_dir: &Path) -> String {
+    let runtime_widget = runtime_dir
+        .join("libexec")
+        .join("yazelix_zellij_bar_widget");
     if runtime_widget.is_file() {
         runtime_widget.to_string_lossy().to_string()
     } else if let Some(path) = env_path_if_file("YAZELIX_BAR_WIDGET_BIN") {
         path.to_string_lossy().to_string()
     } else {
-        "yazelix_bar_widget".to_string()
+        "yazelix_zellij_bar_widget".to_string()
     }
 }
 
@@ -2472,7 +2474,7 @@ keybinds {
         std::fs::create_dir_all(&libexec).unwrap();
         std::fs::write(libexec.join("nu"), "").unwrap();
         std::fs::write(libexec.join("yzx_control"), "").unwrap();
-        std::fs::write(libexec.join("yazelix_bar_widget"), "").unwrap();
+        std::fs::write(libexec.join("yazelix_zellij_bar_widget"), "").unwrap();
         let plan =
             sample_render_plan_for_widgets(vec!["workspace"], "hx", "/nix/store/bin/nu", "ghostty");
         let rendered = render_layout_template(
@@ -2490,7 +2492,7 @@ keybinds {
         let expected_nu = libexec.join("nu").to_string_lossy().to_string();
         let expected_yzx_control = libexec.join("yzx_control").to_string_lossy().to_string();
         let expected_bar_widget = libexec
-            .join("yazelix_bar_widget")
+            .join("yazelix_zellij_bar_widget")
             .to_string_lossy()
             .to_string();
 
@@ -2516,19 +2518,19 @@ keybinds {
         assert!(rendered.contains(r#"command_cursor_rendermode "dynamic""#));
         assert!(rendered.contains(r#"command_cursor_interval "10""#));
         assert!(rendered.contains(&format!(
-            r#"command_claude_usage_command "{} claude_usage --display both""#,
+            r#"command_claude_usage_command "{} claude --display both""#,
             expected_bar_widget
         )));
         assert!(rendered.contains(r##"command_claude_usage_format "#[fg=#bb88ff,bold]{stdout}""##));
         assert!(rendered.contains(r#"command_claude_usage_interval "10""#));
         assert!(rendered.contains(&format!(
-            r#"command_codex_usage_command "{} codex_usage --display quota""#,
+            r#"command_codex_usage_command "{} codex --display quota""#,
             expected_bar_widget
         )));
         assert!(rendered.contains(r##"command_codex_usage_format "#[fg=#bb88ff,bold]{stdout}""##));
         assert!(rendered.contains(r#"command_codex_usage_interval "10""#));
         assert!(rendered.contains(&format!(
-            r#"command_opencode_go_usage_command "{} opencode_go_usage --display both""#,
+            r#"command_opencode_go_usage_command "{} opencode_go --display both""#,
             expected_bar_widget
         )));
         assert!(
@@ -2540,8 +2542,8 @@ keybinds {
             expected_nu,
             runtime_dir.to_string_lossy()
         )));
-        assert!(!rendered.contains(yazelix_bar::ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER));
-        assert!(!rendered.contains(yazelix_bar::ZJSTATUS_NU_BIN_PLACEHOLDER));
+        assert!(!rendered.contains(yazelix_zellij_bar::ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER));
+        assert!(!rendered.contains(yazelix_zellij_bar::ZJSTATUS_NU_BIN_PLACEHOLDER));
         assert!(!rendered.contains(ZJSTATUS_COMMAND_DEFINITIONS_PLACEHOLDER));
         assert!(!rendered.contains("status-bus-workspace"));
         assert!(!rendered.contains("agent-usage"));
