@@ -25,6 +25,16 @@ history, and Beads-owned planning state.
 | Shipped runtime data and assets | The tracked data the runtime consumes directly: layouts, themes, plugins, templates, release metadata, TOML tooling support, cursor presets, and visual assets | `configs`, `config_metadata`, `assets`, `nushell/config`, `tombi.toml`, `yazelix_default.toml`, `yazelix_ghostty_cursors_default.toml`, `docs/upgrade_notes.toml` | Version-controlled shipped files |
 | Maintainer workflow and validation | The non-user-facing machinery that keeps the other four coherent: tests, validators, release/update workflow, CI, and maintainer tooling | `nushell/scripts/dev`, `.github`, `maintainer_shell.nix`, `.nu-lint.toml` | Beads, contracts, CI policy, and maintainer command surfaces |
 
+## Validation Map
+
+| Subsystem family | Highest-signal validation |
+| --- | --- |
+| Runtime control plane and command surface | `yzx dev test`; `yzx_repo_validator validate-config-surface-contract` for config/control-plane metadata changes |
+| Workspace session orchestration | `yzx_repo_validator validate-workspace-session-contract`; `yzx_repo_validator validate-pane-orchestrator-sync` after pane-orchestrator source or wasm changes |
+| Distribution and host integration | `yzx_repo_validator validate-flake-interface`; `yzx_repo_validator validate-nix-customization-api`; installed-runtime/profile validators only for package or release gates |
+| Shipped runtime data and assets | `yzx_repo_validator validate-config-surface-contract`; `yzx_repo_validator validate-workspace-session-contract` for Zellij layout or workspace asset changes |
+| Maintainer workflow and validation | `yzx_repo_validator validate-contracts`; `yzx_repo_validator validate-rust-test-traceability`; `yzx dev test` for default-suite behavior |
+
 ## How They Fit Together
 
 The current repo shape is best read in this order:
