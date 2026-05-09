@@ -106,6 +106,7 @@ pub(super) fn run_launch_flow(
             .map(|candidate| candidate.terminal.clone())
             .collect(),
         desktop_fast_path,
+        desktop_fast_path && config_state.needs_refresh,
         config_override,
     )?;
     let materialization = prepare_launch_materialization(&req)?;

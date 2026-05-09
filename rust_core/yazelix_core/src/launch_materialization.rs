@@ -34,6 +34,7 @@ pub struct LaunchMaterializationRequest {
     pub state_dir: PathBuf,
     pub selected_terminals: Vec<String>,
     pub desktop_fast_path: bool,
+    pub force_terminal_config_generation: bool,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -61,6 +62,7 @@ struct LaunchMaterializationPlan {
 pub fn launch_materialization_request_from_env(
     selected_terminals: Vec<String>,
     desktop_fast_path: bool,
+    force_terminal_config_generation: bool,
     config_override: Option<&str>,
 ) -> Result<LaunchMaterializationRequest, CoreError> {
     let runtime_dir = runtime_dir_from_env()?;
@@ -78,6 +80,7 @@ pub fn launch_materialization_request_from_env(
         state_dir,
         selected_terminals,
         desktop_fast_path,
+        force_terminal_config_generation,
     })
 }
 
@@ -106,6 +109,7 @@ pub fn prepare_launch_materialization(
         &normalized,
         &request.selected_terminals,
         request.desktop_fast_path,
+        request.force_terminal_config_generation,
         &request.state_dir,
         ghostty_random_requested,
     );
@@ -257,6 +261,7 @@ fn build_launch_materialization_plan(
     normalized: &JsonMap<String, JsonValue>,
     requested_terminals: &[String],
     desktop_fast_path: bool,
+    force_terminal_config_generation: bool,
     state_dir: &Path,
     ghostty_random_requested: bool,
 ) -> LaunchMaterializationPlan {
@@ -302,7 +307,8 @@ fn build_launch_materialization_plan(
         };
     }
 
-    let should_generate_terminal_configs = selected_terminals
+    let should_generate_terminal_configs = force_terminal_config_generation
+        || selected_terminals
         .iter()
         .any(|terminal| !generated_terminal_config_path(state_dir, terminal).is_file());
     let should_reroll_ghostty_cursor = !should_generate_terminal_configs
@@ -405,6 +411,7 @@ mod tests {
             &config,
             &["ghostty".to_string()],
             true,
+            false,
             temp.path(),
             true,
         );
@@ -420,13 +427,46 @@ mod tests {
         );
     }
 
+    // Regression: desktop first launch after a package/runtime update must refresh existing terminal configs before opening the terminal, because stale configs can still point at old store assets.
+    #[test]
+    fn desktop_fast_path_forces_terminal_generation_when_inputs_changed() {
+        let temp = tempdir().unwrap();
+        let ghostty_dir = temp
+            .path()
+            .join("configs")
+            .join("terminal_emulators")
+            .join("ghostty");
+        std::fs::create_dir_all(&ghostty_dir).unwrap();
+        std::fs::write(ghostty_dir.join("config"), "stale existing config").unwrap();
+        let config = config_with_terminals(&["ghostty"], "yazelix");
+
+        let plan = build_launch_materialization_plan(
+            &config,
+            &["ghostty".to_string()],
+            true,
+            true,
+            temp.path(),
+            true,
+        );
+
+        assert_eq!(
+            plan,
+            LaunchMaterializationPlan {
+                terminal_config_mode: "yazelix".to_string(),
+                selected_terminals: vec!["ghostty".to_string()],
+                should_generate_terminal_configs: true,
+                should_reroll_ghostty_cursor: false,
+            }
+        );
+    }
+
     // Defends: non-desktop launch materialization still regenerates the configured terminal set even after the request-assembly cut.
     #[test]
     fn full_launch_materialization_uses_configured_terminals_when_callers_do_not_override_them() {
         let temp = tempdir().unwrap();
         let config = config_with_terminals(&["ghostty", "wezterm", ""], "user");
 
-        let plan = build_launch_materialization_plan(&config, &[], false, temp.path(), false);
+        let plan = build_launch_materialization_plan(&config, &[], false, false, temp.path(), false);
 
         assert_eq!(
             plan,
@@ -446,7 +486,7 @@ mod tests {
         let temp = tempdir().unwrap();
         let config = JsonMap::new();
 
-        let plan = build_launch_materialization_plan(&config, &[], false, temp.path(), false);
+        let plan = build_launch_materialization_plan(&config, &[], false, false, temp.path(), false);
 
         assert_eq!(
             plan.selected_terminals,
