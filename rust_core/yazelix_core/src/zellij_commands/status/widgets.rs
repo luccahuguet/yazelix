@@ -7,11 +7,8 @@ use serde_json::{Value, json};
 use std::env;
 use std::ffi::OsStr;
 use std::path::Path;
+use yazelix_bar::{CursorWidgetFacts, render_cursor_status_widget};
 
-pub(in crate::zellij_commands) const DEFAULT_CURSOR_WIDGET_COLOR: &str = "#00ff88";
-pub(in crate::zellij_commands) const CURSOR_STATUS_GLYPH: &str = "█";
-pub(in crate::zellij_commands) const CURSOR_STATUS_VERTICAL_SPLIT_GLYPH: &str = "▌";
-pub(in crate::zellij_commands) const CURSOR_STATUS_HORIZONTAL_SPLIT_GLYPH: &str = "▀";
 pub(in crate::zellij_commands) const CURSOR_NAME_ENV: &str = "YAZELIX_CURSOR_NAME";
 pub(in crate::zellij_commands) const CURSOR_COLOR_ENV: &str = "YAZELIX_CURSOR_COLOR";
 pub(in crate::zellij_commands) const CURSOR_FAMILY_ENV: &str = "YAZELIX_CURSOR_FAMILY";
@@ -121,44 +118,7 @@ pub(in crate::zellij_commands) fn render_zjstatus_workspace_widget(value: &Value
 }
 
 pub(in crate::zellij_commands) fn render_zjstatus_cursor_widget(cache: &Value) -> String {
-    let Some(name) = cache
-        .get("cursor")
-        .and_then(|cursor| cursor.get("name"))
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|name| !name.is_empty())
-        .map(sanitize_zjstatus_cursor_name)
-        .filter(|name| !name.is_empty())
-    else {
-        return String::new();
-    };
-
-    let color = cache
-        .get("cursor")
-        .and_then(|cursor| cursor.get("color"))
-        .and_then(Value::as_str)
-        .and_then(normalize_status_hex_color)
-        .unwrap_or_else(|| DEFAULT_CURSOR_WIDGET_COLOR.to_string());
-
-    if let Some((glyph, primary_color, secondary_color)) =
-        cursor_widget_split_preview(cache, &color)
-    {
-        let glyph_segment = format!("#[fg={primary_color},bg={secondary_color},bold]{glyph}");
-        return render_zjstatus_cursor_widget_frame(&color, &glyph_segment, &name);
-    }
-
-    let glyph_segment = format!("#[fg={color},bold]{CURSOR_STATUS_GLYPH}");
-    render_zjstatus_cursor_widget_frame(&color, &glyph_segment, &name)
-}
-
-pub(in crate::zellij_commands) fn render_zjstatus_cursor_widget_frame(
-    accent_color: &str,
-    glyph_segment: &str,
-    name: &str,
-) -> String {
-    format!(
-        " #[fg={accent_color},bg=default,bold][{glyph_segment}#[fg={accent_color},bg=default,bold] {name}]"
-    )
+    render_cursor_status_widget(&cursor_widget_facts_from_cache(cache))
 }
 
 pub(in crate::zellij_commands) fn normalize_status_hex_color(raw: &str) -> Option<String> {
@@ -185,38 +145,39 @@ pub(in crate::zellij_commands) fn normalize_status_cursor_divider(raw: &str) -> 
     }
 }
 
-pub(in crate::zellij_commands) fn cursor_widget_split_preview(
+pub(in crate::zellij_commands) fn cursor_widget_facts_from_cache(
     cache: &Value,
-    fallback_primary_color: &str,
-) -> Option<(&'static str, String, String)> {
-    let cursor = cache.get("cursor")?;
-    let family = cursor.get("family").and_then(Value::as_str)?.trim();
-    if family != "split" {
-        return None;
-    }
-
-    let glyph = match cursor.get("divider").and_then(Value::as_str)?.trim() {
-        "vertical" => CURSOR_STATUS_VERTICAL_SPLIT_GLYPH,
-        "horizontal" => CURSOR_STATUS_HORIZONTAL_SPLIT_GLYPH,
-        _ => return None,
+) -> CursorWidgetFacts {
+    let Some(cursor) = cache.get("cursor") else {
+        return CursorWidgetFacts::default();
     };
-    let primary_color = cursor
-        .get("primary_color")
-        .and_then(Value::as_str)
-        .and_then(normalize_status_hex_color)
-        .unwrap_or_else(|| fallback_primary_color.to_string());
-    let secondary_color = cursor
-        .get("secondary_color")
-        .and_then(Value::as_str)
-        .and_then(normalize_status_hex_color)?;
-
-    Some((glyph, primary_color, secondary_color))
-}
-
-pub(in crate::zellij_commands) fn sanitize_zjstatus_cursor_name(name: &str) -> String {
-    name.chars()
-        .filter(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-' | '/' | '.'))
-        .collect()
+    CursorWidgetFacts {
+        name: cursor
+            .get("name")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string(),
+        color: cursor
+            .get("color")
+            .and_then(Value::as_str)
+            .map(str::to_string),
+        family: cursor
+            .get("family")
+            .and_then(Value::as_str)
+            .map(str::to_string),
+        divider: cursor
+            .get("divider")
+            .and_then(Value::as_str)
+            .map(str::to_string),
+        primary_color: cursor
+            .get("primary_color")
+            .and_then(Value::as_str)
+            .map(str::to_string),
+        secondary_color: cursor
+            .get("secondary_color")
+            .and_then(Value::as_str)
+            .map(str::to_string),
+    }
 }
 
 pub(in crate::zellij_commands) fn print_optional_zjstatus_segment(segment: String) {
