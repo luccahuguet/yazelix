@@ -1,8 +1,15 @@
 # Customization Guide
 
-Yazelix is highly customizable! Here are the main ways you can tailor your experience:
+Start with this model:
 
-- **Configuration File**: Edit `~/.config/yazelix/settings.jsonc` for core Yazelix options and `~/.config/yazelix_ghostty_cursors/settings.jsonc` for Ghostty cursor settings. On first launch, Yazelix creates both from the shipped defaults; old mutable `yazelix.toml`, old `cursors.toml`, old `user_configs/` paths, and older embedded cursor settings block with a clear error instead of being rewritten automatically.
+- `~/.config/yazelix/settings.jsonc` is the main workspace settings file for shell, editor, terminal, Zellij, Yazi, popup, status, and layout behavior
+- `~/.config/yazelix_ghostty_cursors/settings.jsonc` owns standalone Ghostty cursor presets and shader settings
+- Generated runtime state lives under `~/.local/share/yazelix`; edit the config inputs, not generated runtime files
+- Home Manager installs can own the settings files declaratively; the config UI and status surfaces show read-only ownership when that applies
+
+The sections below cover the override surfaces that sit around that main model.
+
+- **Configuration File**: On first launch, Yazelix creates the main settings and Ghostty cursor settings from shipped defaults. Old mutable `yazelix.toml`, old `cursors.toml`, old `user_configs/` paths, and older embedded cursor settings blocks raise a clear error instead of being rewritten automatically.
   - Run `yzx config ui` to browse and edit settings, defaults, stale-field diagnostics, Home Manager/read-only ownership, and managed sidecar status
   - Use `yzx config set PATH JSON` and `yzx config unset PATH` for safe comment-preserving edits to supported settings and cursor fields
   - Yazelix snapshots the main config for each new window. Live popup, menu, sidebar, reveal, and editor-launch commands keep using that window snapshot, so config edits apply to the next Yazelix window or after `yzx restart`

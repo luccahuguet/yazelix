@@ -14,21 +14,18 @@ Yazelix is a workspace-focused terminal environment built around [Yazi](https://
 
 The supported product in this branch is the Rust-forward v16 Yazelix line
 
-Yazelix uses `~/.config/yazelix/settings.jsonc` as the canonical settings surface, with the normal flake surface provided by the packaged `yazelix` runtime plus the top-level Home Manager module, while repo work uses the flake maintainer shell defined in `maintainer_shell.nix`
+## Everyday Model
 
-## First-Party Child Repositories
+For normal use, keep four things in mind:
 
-Yazelix keeps this repo as the integrated workspace/runtime and splits focused reusable pieces into child repositories:
+- Install one Yazelix package, or use the top-level Home Manager module
+- Edit `~/.config/yazelix/settings.jsonc` for the main workspace settings
+- Let Yazelix generate runtime state under `~/.local/share/yazelix`
+- Update with the owner that installed the runtime: `yzx update upstream` for profile installs, `yzx update home_manager` for Home Manager installs
 
-Regular Yazelix users do not need to install, configure, or understand these child repos separately; the normal Yazelix package already integrates the pieces it uses
+Ghostty cursor presets use their own config at `~/.config/yazelix_ghostty_cursors/settings.jsonc`. Deeper Yazi, Zellij, Helix, terminal, and shell overrides also live under `~/.config/yazelix/`, but the main settings file is the first place to look
 
-The child repos mainly let non-Yazelix users adopt Yazelix modules and subsystems granularly. `yazelix-screen` and `yazelix-ghostty-cursors` can also be used outside Zellij entirely
-
-- [yazelix-screen](https://github.com/luccahuguet/yazelix-screen) — Terminal animation engine used by Yazelix welcome/screen styles and exposed here as `#yzs` and `#yazelix_screen`
-- [yazelix-ghostty-cursors](https://github.com/luccahuguet/yazelix-ghostty-cursors) — Ghostty cursor preset and shader generator with the `yzc` CLI, exposed here as `#yzc`, `#yazelix_ghostty_cursors`, and `#ghostty_cursor_shaders`
-- [yazelix-zellij-bar](https://github.com/luccahuguet/yazelix-zellij-bar) — Standalone Zellij bar plugin package and `yazelix_zellij_bar_widget` command, exposed here as `#yazelix_zellij_bar`
-- [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij floating TUI panes; its plugin alias and wasm artifact are `yzpp`, and regular Yazelix sessions use it for the popup, command palette, and config UI panes
-- [yazelix-yazi-assets](https://github.com/luccahuguet/yazelix-yazi-assets) — Standalone Yazi flavor and reusable plugin asset pack, exposed here as `#yazelix_yazi_assets` and integrated into the normal Yazelix Yazi runtime
+The normal package already includes the child-repo pieces it needs. Those projects are for standalone reuse and maintainer packaging boundaries, not extra setup steps for everyday Yazelix users
 
 ## Daily Workflow
 
@@ -51,6 +48,20 @@ The child repos mainly let non-Yazelix users adopt Yazelix modules and subsystem
 - When you open something from the default Yazi file-tree sidebar with Helix or Neovim, Yazelix targets the managed `editor` pane through the pane orchestrator instead of relying on pane scanning heuristics
 - `yzx reveal` is the stable editor-integration surface for jumping the current file back into the managed Yazi file tree
 - `Alt+t` toggles the managed popup pane through `yzpp` and refreshes the Yazi file-tree sidebar git view when that popup closes, while `Alt+Shift+M` toggles the popup command menu and `Alt+Shift+C` toggles the config UI on the same configured floating-pane path
+
+## Advanced: First-Party Child Repositories
+
+Yazelix keeps this repo as the integrated workspace/runtime and splits focused reusable pieces into child repositories:
+
+Regular Yazelix users do not need to install, configure, or understand these child repos separately; the normal Yazelix package already integrates the pieces it uses
+
+The child repos mainly let non-Yazelix users adopt Yazelix modules and subsystems granularly. `yazelix-screen` and `yazelix-ghostty-cursors` can also be used outside Zellij entirely
+
+- [yazelix-screen](https://github.com/luccahuguet/yazelix-screen) — Terminal animation engine used by Yazelix welcome/screen styles and exposed here as `#yzs` and `#yazelix_screen`
+- [yazelix-ghostty-cursors](https://github.com/luccahuguet/yazelix-ghostty-cursors) — Ghostty cursor preset and shader generator with the `yzc` CLI, exposed here as `#yzc`, `#yazelix_ghostty_cursors`, and `#ghostty_cursor_shaders`
+- [yazelix-zellij-bar](https://github.com/luccahuguet/yazelix-zellij-bar) — Standalone Zellij bar plugin package and `yazelix_zellij_bar_widget` command, exposed here as `#yazelix_zellij_bar`
+- [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij floating TUI panes; its plugin alias and wasm artifact are `yzpp`, and regular Yazelix sessions use it for the popup, command palette, and config UI panes
+- [yazelix-yazi-assets](https://github.com/luccahuguet/yazelix-yazi-assets) — Standalone Yazi flavor and reusable plugin asset pack, exposed here as `#yazelix_yazi_assets` and integrated into the normal Yazelix Yazi runtime
 
 ## Why Yazelix
 Yazelix is a reproducible terminal IDE that integrates Yazi + Zellij + Helix, delivering a consistent, fast "superterminal" locally or over SSH with zero manual setup through smart pane/layout orchestration, sidebar reveal/open flows, a curated built-in toolset, sane defaults, Helix/Zellij conflict cleanup, auto-configured tools like starship, zoxide, and carapace, and useful bundled tools such as `lazygit`
@@ -105,7 +116,7 @@ If Yazelix is useful to you, you can support its development on [GitHub Sponsors
 v16 Rust-forward control plane with an irreducible Nushell core
 
 - Finished the Rust owner cuts across the remaining deterministic control-plane and editor/Yazi integration surfaces, so the public `yzx` story is now much more clearly Rust-owned
-- Reduced Nushell to the explicit shell and UI core, documented the surviving floor, and moved popup/menu/config UI panes to the configured `yzpp` plugin path
+- Reduced Nushell to the explicit shell and UI core, documented the surviving floor, and kept popup/menu wrappers on Nushell where that boundary is the clearest fit
 - Moved maintainer, update, and sweep ownership further out of Nushell, including repo-maintainer flows and pane-orchestrator sync semantics, so the remaining Nu surface is much smaller and more intentional
 - Unified the human CLI rendering for `yzx status`, `yzx status --versions`, and `yzx keys` around one shared Rust styling layer with cleaner grouped output and better contrast
 
@@ -117,7 +128,7 @@ v15 trims Yazelix down to the fast workspace core
 - Dropped the out-of-scope Classic runtime-manager surface: no runtime-local `devenv`, no `yazelix_packs.toml`, no `yazelix packs` or `yzx packs`, no automatic config migrations, and no `yzx refresh`
 - Made Ghostty the first-party bundled terminal on Linux and macOS while keeping WezTerm, Kitty, Alacritty, and Foot as PATH-provided alternatives
 - Split current-terminal startup into `yzx enter`, kept `yzx launch` as the managed external-terminal entrypoint, and kept `yzx env` as the non-UI tool-environment surface
-- `yzx popup`, `yzx menu --popup`, and `yzx config ui` use the configured `yzpp` floating-pane path with explicit pane identity and shared toggle semantics
+- Made `yzx popup` and `yzx menu --popup` share the fast floating-pane path with explicit pane identity, shared toggle semantics, and no helper-pane detour
 - Kept the workspace core around layouts, managed editor/sidebar orchestration, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners through `yzx update upstream` or `yzx update home_manager`
 - Continued the delete-first trim by replacing string-built runtime wrapper commands with direct runtime scripts, making maintainer pins explicit again, and keeping the runtime lock on the declared unstable input
 

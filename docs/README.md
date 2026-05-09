@@ -7,6 +7,7 @@ Use this page as the docs front door. It points to current user guides first, th
 | Goal | Read |
 | --- | --- |
 | Install Yazelix | [Installation](./installation.md) |
+| Understand runtime, config, and update ownership | [README Everyday Model](../README.md#everyday-model) |
 | Learn the command surface | [yzx CLI](./yzx_cli.md) |
 | Learn keybindings | [Keybindings](./keybindings.md) |
 | Customize config, terminals, editors, and shells | [Customization](./customization.md) |
