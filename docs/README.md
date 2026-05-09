@@ -18,7 +18,7 @@ Use this page as the docs front door. It points to current user guides first, th
 - [Editor configuration](./editor_configuration.md)
 - [Yazi configuration](./yazi-configuration.md)
 - [Zellij configuration](./zellij-configuration.md)
-- [Yazelix bar](./yazelix_bar.md)
+- [Yazelix Zellij bar](./yazelix_zellij_bar.md)
 - [Layouts](./layouts.md)
 - [Styling](./styling.md)
 - [Editor terminal integration](./editor_terminal_integration.md)

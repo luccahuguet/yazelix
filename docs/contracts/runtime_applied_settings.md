@@ -89,7 +89,7 @@ Status-bar settings remain `generated_runtime_refresh`.
 
 | Setting family | Runtime owner | Why it is not live-applied |
 | --- | --- | --- |
-| `zellij.widget_tray` | Yazelix renders the tray segment through the `yazelix_bar` child crate, then substitutes it into generated Zellij layout KDL before zjstatus starts | Changing the tray changes the loaded zjstatus `format_right` string and command-widget placeholders, not just command output |
+| `zellij.widget_tray` | Yazelix renders the tray segment through the `yazelix_zellij_bar` child crate, then substitutes it into generated Zellij layout KDL before zjstatus starts | Changing the tray changes the loaded zjstatus `format_right` string and command-widget placeholders, not just command output |
 | `zellij.tab_label_mode` | Yazelix renders zjstatus tab format keys into generated layout KDL | Changing tab label mode changes loaded zjstatus tab format configuration |
 | `zellij.custom_text` | Yazelix renders a static custom-text segment into generated layout KDL | Changing the value changes a pre-rendered static segment in the plugin block |
 | `zellij.codex_usage_display`, `zellij.claude_usage_display`, `zellij.claude_usage_periods`, `zellij.opencode_go_usage_display`, `zellij.opencode_go_usage_periods` | `yzx_control` command widgets render provider/cache text from the launch session config snapshot | The command output can refresh on its interval, but the display policy and periods come from the active session snapshot; changing those settings without a new snapshot would make saved-versus-active state ambiguous |
