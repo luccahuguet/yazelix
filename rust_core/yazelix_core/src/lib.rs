@@ -43,6 +43,7 @@ pub mod runtime_components;
 pub mod runtime_contract;
 pub mod runtime_env;
 pub mod runtime_materialization;
+pub mod runtime_ownership_graph;
 pub mod session_config_snapshot;
 pub mod session_facts;
 pub mod settings_jsonc_patch;
@@ -162,6 +163,9 @@ pub use runtime_materialization::{
     RuntimeMaterializationPlanRequest, RuntimeMaterializationRepairEvaluateRequest,
     RuntimeMaterializationRepairRunData, RuntimeMaterializationRunData, RuntimeRepairDirective,
     materialize_runtime_state, plan_runtime_materialization, repair_runtime_materialization,
+};
+pub use runtime_ownership_graph::{
+    RuntimeOwnershipGraphData, RuntimeOwnershipGraphRequest, compute_runtime_ownership_graph,
 };
 pub use session_config_snapshot::{
     SESSION_CONFIG_SNAPSHOT_FILE_NAME, SESSION_CONFIG_SNAPSHOT_PATH_ENV,

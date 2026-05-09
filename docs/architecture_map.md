@@ -121,6 +121,19 @@ Useful modularity in Yazelix means:
 - thinner adapters around external systems
 - tests and validators that defend real boundaries instead of trivia
 
+For machine-readable inspection, use the Rust helper:
+
+```bash
+yzx_core runtime-ownership.graph --runtime-dir <runtime-root>
+```
+
+The graph projects the Rust-owned public command metadata, canonical config
+surfaces, generated-state owners, validation commands, and packaged runtime
+tool/component manifests when the selected runtime root contains
+`runtime_tools.json` and `runtime_components.json`. Source checkouts without
+those packaged manifests report the manifest sections as missing instead of
+inventing fallback data.
+
 It does not mean:
 
 - splitting the repo just to look cleaner

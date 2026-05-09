@@ -93,3 +93,72 @@ fn command_metadata_sync_externs_ignores_host_nushell_config() {
     assert_eq!(generated.matches("export extern \"yzx env\"").count(), 1);
     assert_eq!(generated.matches("export extern \"yzx run\"").count(), 1);
 }
+
+// Defends: the machine-readable runtime ownership graph is emitted by yzx_core from Rust command metadata and packaged manifests.
+#[test]
+fn runtime_ownership_graph_includes_command_and_manifest_owners() {
+    let runtime = TempDir::new().unwrap();
+    fs::write(
+        runtime.path().join("runtime_tools.json"),
+        r#"{
+          "yazi": {
+            "source": "host",
+            "commands": ["yazi", "ya"],
+            "required_commands": ["yazi"],
+            "hostable": true,
+            "disableable": false,
+            "notes": []
+          }
+        }"#,
+    )
+    .unwrap();
+    fs::write(
+        runtime.path().join("runtime_components.json"),
+        r#"{
+          "screen": {
+            "enabled": true,
+            "disableable": true,
+            "notes": []
+          }
+        }"#,
+    )
+    .unwrap();
+
+    let output = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .arg("runtime-ownership.graph")
+        .arg("--runtime-dir")
+        .arg(runtime.path())
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["command"], "runtime-ownership.graph");
+    assert_eq!(envelope["status"], "ok");
+    assert_eq!(envelope["data"]["runtime_tools"]["status"], "available");
+    assert_eq!(
+        envelope["data"]["runtime_tools"]["entries"][0]["name"],
+        "yazi"
+    );
+    assert_eq!(
+        envelope["data"]["runtime_components"]["entries"][0]["name"],
+        "screen"
+    );
+
+    let command_owners = envelope["data"]["command_owners"].as_array().unwrap();
+    assert!(
+        command_owners
+            .iter()
+            .any(|entry| { entry["command"] == "yzx launch" && entry["owner"] == "rust_control" })
+    );
+    assert!(
+        command_owners
+            .iter()
+            .any(|entry| entry["command"] == "yzx menu" && entry["owner"] == "nushell")
+    );
+}

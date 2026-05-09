@@ -17,13 +17,14 @@ use yazelix_core::{
     LaunchMaterializationRequest, NormalizeConfigRequest, PopupSessionFactsData,
     RecordConfigStateRequest, RuntimeContractEvaluateRequest, RuntimeMaterializationPlanRequest,
     RuntimeMaterializationRepairEvaluateRequest, RuntimeMaterializationRepairRunData,
-    RuntimeRepairDirective, SessionConfigSnapshotCreateRequest, StartupFactsData,
-    StartupHandoffCaptureRequest, StartupLaunchPreflightRequest, TerminalMaterializationRequest,
-    YaziMaterializationRequest, YaziRenderPlanRequest, YzxExternBridgeSyncRequest,
-    ZellijMaterializationRequest, ZellijRenderPlanRequest, capture_startup_handoff_context,
-    compute_config_state, compute_integration_facts_from_env, compute_popup_session_facts_from_env,
-    compute_runtime_env, compute_startup_facts_from_env, compute_status_report,
-    compute_yazi_render_plan, compute_zellij_render_plan, current_release_headline, error_envelope,
+    RuntimeOwnershipGraphRequest, RuntimeRepairDirective, SessionConfigSnapshotCreateRequest,
+    StartupFactsData, StartupHandoffCaptureRequest, StartupLaunchPreflightRequest,
+    TerminalMaterializationRequest, YaziMaterializationRequest, YaziRenderPlanRequest,
+    YzxExternBridgeSyncRequest, ZellijMaterializationRequest, ZellijRenderPlanRequest,
+    capture_startup_handoff_context, compute_config_state, compute_integration_facts_from_env,
+    compute_popup_session_facts_from_env, compute_runtime_env, compute_runtime_ownership_graph,
+    compute_startup_facts_from_env, compute_status_report, compute_yazi_render_plan,
+    compute_zellij_render_plan, current_release_headline, error_envelope,
     evaluate_doctor_config_report, evaluate_doctor_runtime_report, evaluate_helix_doctor_report,
     evaluate_install_ownership_report, evaluate_runtime_contract,
     evaluate_startup_launch_preflight, generate_ghostty_materialization,
@@ -69,6 +70,7 @@ const YZX_COMMAND_METADATA_LIST_COMMAND: &str = "yzx-command-metadata.list";
 const YZX_COMMAND_METADATA_EXTERNS_COMMAND: &str = "yzx-command-metadata.externs";
 const YZX_COMMAND_METADATA_SYNC_EXTERNS_COMMAND: &str = "yzx-command-metadata.sync-externs";
 const YZX_COMMAND_METADATA_HELP_COMMAND: &str = "yzx-command-metadata.help";
+const RUNTIME_OWNERSHIP_GRAPH_COMMAND: &str = "runtime-ownership.graph";
 const UPGRADE_SUMMARY_HEADLINE_COMMAND: &str = "upgrade-summary.headline";
 const UPGRADE_SUMMARY_FIRST_RUN_COMMAND: &str = "upgrade-summary.first-run";
 const UNKNOWN_COMMAND: &str = "unknown";
@@ -315,6 +317,11 @@ fn run() -> Result<(), Box<CommandError>> {
             run_yzx_command_metadata_help(parser)
                 .map_err(|error| CommandError::new(command_for_error, error))
         }
+        RUNTIME_OWNERSHIP_GRAPH_COMMAND => {
+            let command_for_error = command.clone();
+            run_runtime_ownership_graph(parser)
+                .map_err(|error| CommandError::new(command_for_error, error))
+        }
         UPGRADE_SUMMARY_HEADLINE_COMMAND => {
             let command_for_error = command.clone();
             run_upgrade_summary_headline(parser)
@@ -398,6 +405,29 @@ fn run_yzx_command_metadata_help(parser: lexopt::Parser) -> Result<(), CoreError
     ensure_no_args(parser)?;
     print!("{}", render_yzx_help(&yzx_command_metadata()));
     Ok(())
+}
+
+fn run_runtime_ownership_graph(mut parser: lexopt::Parser) -> Result<(), CoreError> {
+    let mut runtime_dir: Option<PathBuf> = None;
+
+    while let Some(arg) = parser
+        .next()
+        .map_err(|error| CoreError::usage(error.to_string()))?
+    {
+        match arg {
+            Long("runtime-dir") => runtime_dir = Some(parser_path_value(&mut parser)?),
+            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
+        }
+    }
+
+    let request = RuntimeOwnershipGraphRequest {
+        runtime_dir: match runtime_dir {
+            Some(path) => path,
+            None => runtime_dir_from_env()?,
+        },
+    };
+    let data = compute_runtime_ownership_graph(&request)?;
+    write_success_envelope(RUNTIME_OWNERSHIP_GRAPH_COMMAND, data)
 }
 
 fn run_config_normalize(mut parser: lexopt::Parser) -> Result<(), CoreError> {
