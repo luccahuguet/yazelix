@@ -284,7 +284,8 @@ Inspect Ghostty cursor presets and resolved colors
 
 ### `yzx edit <target> [--print]`
 Open one of the managed config surfaces through explicit or fuzzy target selection
-- Supported targets include `config`, `helix`, `zellij`, `yazi`, `yazi-keymap`, and `yazi-init`
+- Supported targets include `config`, `cursors`, `helix`, `zellij`, `yazi`, `yazi-keymap`, and `yazi-init`
+- `cursors` opens `~/.config/yazelix_ghostty_cursors/settings.jsonc` for full cursor registry edits
 - Yazi targets stay inside `./` and do not expose host-owned `~/.config/yazi/` files
 - `--print`: print the resolved managed path without opening
 
@@ -344,6 +345,7 @@ yzx config ui                 # Browse and edit config values and diagnostics
 yzx config set editor.hide_sidebar_on_file_open true # Set a config value with a JSON literal
 yzx config unset editor.hide_sidebar_on_file_open # Remove an explicit config value
 yzx cursors                   # Inspect Ghostty cursor presets and resolved colors
+yzx edit cursors              # Open the Ghostty cursor settings file
 yzx import zellij             # Import ~/.config/zellij/config.kdl into managed overrides
 yzx import yazi               # Import native Yazi override files into managed overrides
 yzx import helix              # Import ~/.config/helix/config.toml into managed overrides

@@ -43,6 +43,7 @@ fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
     let yazi_toml_path = user_config_paths::yazi_config(config_dir);
     let yazi_keymap_path = user_config_paths::yazi_keymap(config_dir);
     let yazi_init_path = user_config_paths::yazi_init(config_dir);
+    let cursor_path = user_config_paths::shared_cursor_config(config_dir);
 
     let runtime_dir = runtime_dir_from_env().unwrap_or_else(|_| PathBuf::from("."));
     let active_paths = resolve_active_config_paths(&runtime_dir, config_dir, None).ok();
@@ -57,6 +58,23 @@ fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
             path: user_config,
             aliases: &["config", "main", "settings", "settings.jsonc"],
             search: "config main yazelix settings settings.jsonc",
+        },
+        EditTarget {
+            id: "cursors",
+            label: format!(
+                "cursors  - Ghostty cursor settings → {}",
+                cursor_path.display()
+            ),
+            path: cursor_path,
+            aliases: &[
+                "cursors",
+                "cursor",
+                "ghostty-cursors",
+                "ghostty cursors",
+                "cursor settings",
+                "yazelix_ghostty_cursors",
+            ],
+            search: "cursors cursor ghostty cursor settings yazelix_ghostty_cursors settings.jsonc",
         },
         EditTarget {
             id: "helix",
@@ -546,7 +564,7 @@ fn print_edit_help() {
     println!("  --print  Print the resolved config path without opening");
     println!();
     println!("Supported surfaces:");
-    println!("  config, helix, zellij, yazi, yazi-keymap, yazi-init");
+    println!("  config, cursors, helix, zellij, yazi, yazi-keymap, yazi-init");
 }
 
 fn print_edit_config_help() {
@@ -577,7 +595,9 @@ mod tests {
         assert_eq!(hx.len(), 1);
         assert_eq!(hx[0].id, "helix");
 
-        assert!(filter_edit_targets(&targets, "cursors").is_empty());
+        let cursors = filter_edit_targets(&targets, "cursors");
+        assert_eq!(cursors.len(), 1);
+        assert_eq!(cursors[0].id, "cursors");
 
         let settings = filter_edit_targets(&targets, "settings.jsonc");
         assert_eq!(settings.len(), 1);

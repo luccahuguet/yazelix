@@ -105,6 +105,12 @@ struct SchemaField {
     allowed_values: Vec<String>,
 }
 
+#[derive(Debug, Clone, Default)]
+struct CursorChoiceValues {
+    definition_names: Vec<String>,
+    enabled_names: Vec<String>,
+}
+
 pub(crate) struct ConfigUiApp {
     pub(crate) request: ConfigUiRequest,
     pub(crate) model: ConfigUiModel,
@@ -245,10 +251,12 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
     );
 
     if cursor_component_enabled {
-        for schema_field in collect_cursor_schema_fields(&schema) {
+        let cursor_choice_values = cursor_choice_values(&active_value, &default_value);
+        for mut schema_field in collect_cursor_schema_fields(&schema) {
             if fields.iter().any(|field| field.path == schema_field.path) {
                 continue;
             }
+            enrich_cursor_schema_field(&mut schema_field, &cursor_choice_values);
             let metadata = field_ui_metadata(&ui_metadata, &schema_field.path)?;
             let current = get_json_path(&active_value, &schema_field.path);
             let default = get_json_path(&default_value, &schema_field.path);
@@ -1832,14 +1840,30 @@ fn collect_schema_fields(schema: &JsonValue, path: &str, out: &mut Vec<SchemaFie
         return;
     }
 
+    if kind == "array"
+        && let Some(items) = schema.get("items")
+        && items.get("type").and_then(JsonValue::as_str) == Some("string")
+    {
+        out.push(schema_field(schema, path, "string_list".to_string()));
+        return;
+    }
+
     out.push(schema_field(schema, path, kind));
 }
 
 fn schema_field(schema: &JsonValue, path: &str, kind: String) -> SchemaField {
+    let allowed_values = if kind == "string_list" {
+        schema
+            .get("items")
+            .map(schema_enum_values)
+            .unwrap_or_default()
+    } else {
+        schema_enum_values(schema)
+    };
     SchemaField {
         path: path.to_string(),
         kind,
-        allowed_values: schema_enum_values(schema),
+        allowed_values,
     }
 }
 
@@ -1857,6 +1881,69 @@ fn schema_enum_values(schema: &JsonValue) -> Vec<String> {
         .and_then(JsonValue::as_array)
         .into_iter()
         .flatten()
+        .filter_map(JsonValue::as_str)
+        .map(ToOwned::to_owned)
+        .collect()
+}
+
+fn enrich_cursor_schema_field(field: &mut SchemaField, values: &CursorChoiceValues) {
+    match field.path.as_str() {
+        "cursors.enabled_cursors" => {
+            field.allowed_values = values.definition_names.clone();
+        }
+        "cursors.settings.trail" => {
+            field.allowed_values = vec!["none".to_string(), "random".to_string()];
+            field.allowed_values.extend(values.enabled_names.clone());
+        }
+        _ => {}
+    }
+}
+
+fn cursor_choice_values(active: &JsonValue, default: &JsonValue) -> CursorChoiceValues {
+    let definition_names = cursor_definition_names(active, default);
+    let enabled_names = cursor_enabled_names(active, default)
+        .into_iter()
+        .filter(|name| definition_names.iter().any(|definition| definition == name))
+        .collect();
+    CursorChoiceValues {
+        definition_names,
+        enabled_names,
+    }
+}
+
+fn cursor_definition_names(active: &JsonValue, default: &JsonValue) -> Vec<String> {
+    let definitions = get_json_path(active, "cursors.cursor")
+        .and_then(JsonValue::as_array)
+        .filter(|values| !values.is_empty())
+        .or_else(|| {
+            get_json_path(default, "cursors.cursor")
+                .and_then(JsonValue::as_array)
+                .filter(|values| !values.is_empty())
+        });
+    let Some(definitions) = definitions else {
+        return Vec::new();
+    };
+    definitions
+        .iter()
+        .filter_map(|definition| definition.get("name").and_then(JsonValue::as_str))
+        .map(ToOwned::to_owned)
+        .collect()
+}
+
+fn cursor_enabled_names(active: &JsonValue, default: &JsonValue) -> Vec<String> {
+    let enabled = get_json_path(active, "cursors.enabled_cursors")
+        .and_then(JsonValue::as_array)
+        .filter(|values| !values.is_empty())
+        .or_else(|| {
+            get_json_path(default, "cursors.enabled_cursors")
+                .and_then(JsonValue::as_array)
+                .filter(|values| !values.is_empty())
+        });
+    let Some(enabled) = enabled else {
+        return Vec::new();
+    };
+    enabled
+        .iter()
         .filter_map(JsonValue::as_str)
         .map(ToOwned::to_owned)
         .collect()
@@ -2443,8 +2530,70 @@ mod tests {
         assert!(app.edit.is_none());
         assert_eq!(
             app.notice.as_ref().expect("notice").text,
-            "Structured editor unavailable for this complex field; edit the source config directly."
+            "Cursor registry definitions are edited in the source file; run `yzx edit cursors`."
         );
+    }
+
+    // Defends: cursor preset selection is a picker-backed string list, not a rejected generic JSON array.
+    #[test]
+    fn cursor_enabled_cursors_opens_multi_choice_picker_and_writes_cursor_config() {
+        let runtime = tempdir().expect("runtime");
+        let config = tempdir().expect("config");
+        write_runtime_layout(runtime.path());
+        let cursor_path = crate::user_config_paths::shared_cursor_config(config.path());
+        let request = test_request(runtime.path(), config.path());
+        let model = build_config_ui_model(&request).expect("model");
+        let field = model_field(&model, "cursors.enabled_cursors");
+
+        assert_eq!(field.kind, "string_list");
+        assert!(field.allowed_values.contains(&"blaze".to_string()));
+        assert!(field.allowed_values.contains(&"snow".to_string()));
+
+        let mut app = ConfigUiApp::new(request, model);
+        select_field_path(&mut app, "cursors.enabled_cursors");
+        app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+        let edit = app.edit.clone().expect("edit");
+        assert_eq!(edit.mode, ConfigUiEditMode::MultiChoice);
+        let details = lines_text(&app.render_details(UiRowRef::Field(edit.field_index)));
+        assert!(details.contains("> [x] blaze"));
+
+        app.handle_edit_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
+        app.handle_edit_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+        assert!(app.edit.is_none());
+        let value = read_settings_jsonc_value(&cursor_path).expect("cursor settings jsonc");
+        let enabled = get_json_path(&value, "enabled_cursors")
+            .and_then(JsonValue::as_array)
+            .expect("enabled cursors");
+        assert!(!enabled.iter().any(|value| value.as_str() == Some("blaze")));
+        assert!(enabled.iter().any(|value| value.as_str() == Some("snow")));
+    }
+
+    // Defends: dynamic cursor trail selection is a single-select picker over none, random, and enabled cursor names.
+    #[test]
+    fn cursor_trail_uses_dynamic_single_choice_picker() {
+        let runtime = tempdir().expect("runtime");
+        let config = tempdir().expect("config");
+        write_runtime_layout(runtime.path());
+        let request = test_request(runtime.path(), config.path());
+        let model = build_config_ui_model(&request).expect("model");
+        let field = model_field(&model, "cursors.settings.trail");
+
+        assert_eq!(field.kind, "string");
+        assert_eq!(field.allowed_values[0], "none");
+        assert_eq!(field.allowed_values[1], "random");
+        assert!(field.allowed_values.contains(&"blaze".to_string()));
+
+        let mut app = ConfigUiApp::new(request, model);
+        select_field_path(&mut app, "cursors.settings.trail");
+        app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+        let edit = app.edit.clone().expect("edit");
+        assert_eq!(edit.mode, ConfigUiEditMode::Choice);
+        let details = lines_text(&app.render_details(UiRowRef::Field(edit.field_index)));
+        assert!(details.contains("  ( ) none"));
+        assert!(details.contains("> (x) random"));
     }
 
     // Defends: keybinding actions are editable as one semantic action row with friendly key-list input instead of forcing a full object edit.

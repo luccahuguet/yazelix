@@ -354,6 +354,11 @@ pub(crate) fn structured_only_edit_notice(field: &ConfigUiField) -> Option<&'sta
     if is_keybinding_map_field_path(&field.path) {
         return Some("Select an action row below to edit one binding list.");
     }
+    if field.path == "cursors.cursor" {
+        return Some(
+            "Cursor registry definitions are edited in the source file; run `yzx edit cursors`.",
+        );
+    }
     if matches!(field.kind.as_str(), "array" | "object" | "string_list_map") {
         return Some(
             "Structured editor unavailable for this complex field; edit the source config directly.",
