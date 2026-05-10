@@ -309,7 +309,7 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 
 ## yzx Command Line Interface
 
-Run `yzx help` for the live command list. See [yzx CLI](./docs/yzx_cli.md) for the full command reference, examples, diagnostics, profile tools, and maintainer surfaces
+Run `yzx help` for the live command list
 
 ### Start Sessions
 
@@ -356,6 +356,8 @@ Run `yzx help` for the live command list. See [yzx CLI](./docs/yzx_cli.md) for t
 - `yzc init/list/inspect/generate ghostty` - Manage standalone Yazelix cursor presets for Ghostty users outside a full Yazelix session
 - `yzx dev inspect_session [--json]` - Inspect the current Yazelix/Zellij tab session snapshot for runtime debugging
 - `yzx dev profile [--cold] [--desktop] [--launch] [--clear-cache]` - Profile startup phases under `~/.local/share/yazelix/profiles/startup/`
+
+📖 **[Complete yzx CLI Documentation →](./docs/yzx_cli.md)** - Full examples, diagnostics, profile tools, and maintainer surfaces
 
 ## Troubleshooting
 
