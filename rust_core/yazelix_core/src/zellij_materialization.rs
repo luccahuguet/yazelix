@@ -41,6 +41,7 @@ const PANE_ORCHESTRATOR_REQUIRED_PERMISSIONS: &[&str] = &[
     "RunCommands",
     "WriteToStdin",
     "ReadCliPipes",
+    "MessageAndLaunchOtherPlugins",
     "ReadSessionEnvironmentVariables",
 ];
 const ZJSTATUS_REQUIRED_PERMISSIONS: &[&str] = &[
@@ -2206,7 +2207,7 @@ mod tests {
 
     fn sample_zjstatus_plugin_block() -> &'static str {
         r#"plugin location="file:/tmp/zjstatus.wasm" {
-    command_workspace_command "child-owned-workspace"
+    pipe_workspace_format "child-owned-workspace"
 }"#
     }
 
@@ -2537,7 +2538,7 @@ printf '%s\n' '{"schema_version":2,"plugin_block":"CHILD_PLUGIN_BLOCK"}'
         .unwrap();
 
         assert!(rendered.contains(r#"plugin location="file:/tmp/zjstatus.wasm" {"#));
-        assert!(rendered.contains(r#"command_workspace_command "child-owned-workspace""#));
+        assert!(rendered.contains(r#"pipe_workspace_format "child-owned-workspace""#));
         assert!(!rendered.contains("__YAZELIX_ZJSTATUS_TAB_TEMPLATE__"));
     }
 

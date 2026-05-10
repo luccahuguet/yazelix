@@ -37,6 +37,17 @@ fn zjstatus_status_bus_workspace_widget_renders_plain_segment_and_hides_missing_
     assert_eq!(render_zjstatus_workspace_widget(&empty), "");
 }
 
+// Regression: bootstrap workspace roots are startup fallbacks, not active-tab labels, so legacy cache widgets must not display them as authoritative.
+#[test]
+fn zjstatus_workspace_widget_hides_bootstrap_workspace_roots() {
+    let value = decode_status_bus_snapshot(
+        r#"{"schema_version":1,"active_tab_position":0,"workspace":{"root":"/tmp/evo-import","source":"bootstrap"},"managed_panes":{"editor_pane_id":null,"sidebar_pane_id":null},"focus_context":"other","layout":{"active_swap_layout_name":null,"sidebar_collapsed":null},"sidebar_yazi":null,"transient_panes":{"popup":null,"menu":null},"extensions":{"ai_pane_activity":[]}}"#,
+    )
+    .unwrap();
+
+    assert_eq!(render_zjstatus_workspace_widget(&value), "");
+}
+
 // Defends: non-workspace widgets are owned by yazelix_zellij_bar_widget, not by Yazelix status-cache renderers.
 #[test]
 fn status_cache_widget_rejects_non_workspace_widgets() {

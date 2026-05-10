@@ -18,6 +18,9 @@ pub(in crate::zellij_commands) fn render_status_bus_workspace_widget(value: &Val
 }
 
 pub(in crate::zellij_commands) fn render_zjstatus_workspace_widget(value: &Value) -> String {
+    if nested_str(value, &["workspace", "source"]) != Some("explicit") {
+        return String::new();
+    }
     if nested_str(value, &["workspace", "root"])
         .map(str::trim)
         .filter(|root| !root.is_empty())

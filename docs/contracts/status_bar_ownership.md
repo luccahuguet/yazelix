@@ -13,8 +13,8 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 | zjstatus plugin runtime, layout keys, style tags, command widget intervals, and placeholder expansion | upstream zjstatus plus Yazelix generated KDL | Keep native |
 | generic `mode`, `tabs`, `session`, `datetime`, brand, tab-label, compact/full bar, and command-placeholder rendering | `yazelix_zellij_bar` child package command surface | Keep child |
 | standalone preset/template packaging and package-local `zjstatus.wasm` path substitution | `yazelix_zellij_bar` child repo | Keep child |
-| widget tray token validation and generic dynamic command placeholders such as `{command_workspace}` | `yazelix_zellij_bar` child package command surface | Keep child |
-| integrated plugin block, including workspace, cursor, Claude, Codex, OpenCode Go, CPU, RAM, and version command definitions | `yazelix_zellij_bar_widget render-yazelix-runtime` rendered from the child runtime KDL template plus Yazelix-supplied typed config | Keep child |
+| widget tray token validation and generic dynamic placeholders such as `{pipe_workspace}` and bar-owned command placeholders | `yazelix_zellij_bar` child package command surface | Keep child |
+| integrated plugin block, including workspace pipe format, cursor, Claude, Codex, OpenCode Go, CPU, RAM, and version command definitions | `yazelix_zellij_bar_widget render-yazelix-runtime` rendered from the child runtime KDL template plus Yazelix-supplied typed config | Keep child |
 | cursor status widget text, glyph display, env reading, `yzc current` fallback, and standalone stdout command | `yazelix_zellij_bar` child repo plus `yazelix-ghostty-cursors` facts API | Move child |
 | cursor cache path discovery and first-paint hydration from Yazelix session state | Yazelix core status adapter | Keep adapter |
 | status-bus schema decode and inspect-session rendering | Yazelix core plus pane-orchestrator producer | Keep adapter |
@@ -23,6 +23,7 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 | launch-scoped provider cache path selection and session widget settings | Yazelix core status adapter | Keep adapter |
 | CPU/RAM command widgets | `yazelix_zellij_bar` child repo | Move child |
 | live sidebar/editor/workspace facts | pane orchestrator | Keep producer |
+| active-tab workspace pipe message and label content | pane orchestrator | Keep producer |
 | direct `status-bus-workspace` zjstatus command | none | Deleted |
 
 ## Contract Items
@@ -38,7 +39,7 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 - Type: behavior
 - Status: live
 - Owner: Yazelix core status adapter
-- Statement: Integrated dynamic widgets render from window-local cached facts through `yzx_control zellij status-cache-widget`, not by invoking pane-orchestrator pipes directly from every zjstatus command
+- Statement: Integrated non-workspace dynamic widgets render from window-local cached facts or child-owned commands. The active-tab workspace widget is the exception: it is pushed by the pane orchestrator into the active tab's `pipe_workspace` widget so async command results cannot display the previously focused tab
 - Verification: automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache`
 
 #### SBO-003
@@ -52,7 +53,7 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 - Type: boundary
 - Status: live
 - Owner: Yazelix Zellij command surface
-- Statement: The old direct `status-bus-workspace` command is not part of the supported status-bar path. Generated zjstatus templates must keep using cache-widget commands for dynamic widgets
+- Statement: The old direct `status-bus-workspace` command is not part of the supported status-bar path. Generated zjstatus templates must use the child-owned `pipe_workspace` widget for the active-tab workspace label and cache-widget or child command paths for the remaining dynamic widgets
 - Verification: automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core substitutes_child_zjstatus_plugin_block`
 
 #### SBO-005
@@ -80,7 +81,7 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 - Type: boundary
 - Status: live
 - Owner: Yazelix core status adapter
-- Statement: Workspace display remains Yazelix-owned until a separate contract defines a generic standalone fallback. It depends on pane-orchestrator live tab/pane facts and has no standalone non-Yazelix source of truth in SP9
+- Statement: Workspace display remains Yazelix-owned until a separate contract defines a generic standalone fallback. It depends on pane-orchestrator live tab/pane facts, is pushed to the active tab's zjstatus plugin through the `workspace` pipe, and has no standalone non-Yazelix source of truth in SP9
 - Verification: automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_bus`
 
 #### SBO-009

@@ -708,6 +708,7 @@ fn runtime_materialization_materialize_writes_generated_artifacts_and_records_st
     assert!(permissions.contains("zjstatus.wasm"));
     assert!(permissions.contains("yazelix_pane_orchestrator.wasm"));
     assert!(permissions.contains("ReadCliPipes"));
+    assert!(permissions.contains("MessageAndLaunchOtherPlugins"));
     let recorded: Value =
         serde_json::from_str(&fs::read_to_string(&fixture.state_path).unwrap()).unwrap();
     assert_eq!(
