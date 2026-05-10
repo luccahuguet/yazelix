@@ -27,12 +27,12 @@ Examples:
 - ❌ `home-manager/`
 - ✅ `yazelix_default.toml`
 - ❌ `yazelix-default.nix`
-- ✅ `start_yazelix.nu`
+- ✅ `start_yazelix_inner.nu`
 - ❌ `start-yazelix.nu`
 
 This convention is used consistently throughout:
 - Directory names: `configs/terminal_emulators/`, `nushell/scripts/core/`
-- File names: `yazelix_default.toml`, `start_yazelix.nu`, `launch_yazelix.nu`
+- File names: `yazelix_default.toml`, `start_yazelix_inner.nu`, `launch_sidebar_yazi.nu`
 - Script names: All Nushell scripts use underscores
 
 When creating new files or directories, always use underscores to maintain consistency with the existing codebase.
@@ -58,13 +58,7 @@ When creating new files or directories, always use underscores to maintain consi
 - Current expected mirrors include `/home/lucca/pjs/open_source/yazelix_related/helix`, `/home/lucca/pjs/open_source/yazelix_related/yazi`, `/home/lucca/pjs/open_source/yazelix_related/zellij`, and `/home/lucca/pjs/open_source/yazelix_related/nushell`.
 - Treat those clones as read-only reference checkouts unless the user explicitly asks to modify them.
 
-## Configuration Management Principles
-
-### Synchronization Requirements
-1. **Always sync Home Manager module with default config** - When changing `yazelix_default.toml`, update `home_manager/module.nix` to maintain identical options and defaults
-2. **Verify both configuration paths work** - Test changes through both direct config files and Home Manager integration
-
-### Code Robustness Requirements
+## Code Robustness Requirements
 1. **Avoid fallbacks** - Fallback behavior can mask underlying issues and lead to unpredictable behavior across different environments
 2. **Fail fast with clear errors** - When something is wrong, provide explicit error messages rather than degraded functionality
 3. **Universal robustness** - Yazelix must work reliably for all users, not just maintainers who can manually fix issues
@@ -76,35 +70,6 @@ When creating new files or directories, always use underscores to maintain consi
 - **No silent failures** - Every error should be visible and actionable
 - **Environment independence** - Code should work regardless of host system quirks
 - **Consistent behavior** - Same input should produce same output across all user environments
-
-## Nushell Development Notes
-
-### 🚨 MOST CRITICAL RULE: Escaping Parentheses in String Interpolation
-
-**Nushell interprets unescaped parentheses `()` in string interpolation as command substitution!**
-
-**The ONLY correct syntax is:** `\(` and `\)` (single backslash)
-- ❌ **NEVER use:** `\\(` and `\\)` (double backslash) - this will fail!
-- ❌ **NEVER use:** `()` (no backslash) - this executes commands!
-
-**Examples:**
-- ✅ Correct: `$"Checking pane \(editor\)"`
-- ❌ Wrong: `$"Checking pane \\(editor\\)"` → tries to execute command `editor\\`
-- ❌ Wrong: `$"Checking pane (editor)"` → tries to execute command `editor`
-- ✅ Correct: `log_to_file $log "Sent Escape \(27\) to enter normal mode"`
-- ❌ Wrong: `log_to_file $log "Sent Escape \\(27\\) to enter normal mode"` → fails
-
-**If you get "Command X not found" errors in string interpolation, check for incorrect parentheses escaping first!**
-
-## Python Notes
-
-- Use `python3` explicitly in all commands, scripts, and documentation.
-- Avoid `python` as it can point to Python 2 on some systems or be unset.
-- Prefer fenced code blocks with `bash` and examples like:
-  ```bash
-  python3 -m venv .venv
-  python3 script.py
-  ```
 
 ## GitHub Workflow
 
@@ -164,7 +129,7 @@ When creating new files or directories, always use underscores to maintain consi
 
 ## Rust Plugin Workflow
 
-- **Rust pane-orchestrator source edits are not live by themselves.** Source lives in the sibling `../yazelix-zellij-pane-orchestrator` checkout by default, or in `` when explicitly configured. Source edits do not affect Yazelix behavior until the wasm is rebuilt and synced into the tracked/runtime plugin paths.
+- **Rust pane-orchestrator source edits are not live by themselves.** Source lives in the public child repo `https://github.com/luccahuguet/yazelix-zellij-pane-orchestrator`, checked out as sibling `../yazelix-zellij-pane-orchestrator` by default, or in the path set by `YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_SOURCE_DIR`. Source edits do not affect Yazelix behavior until the wasm is rebuilt and synced into the tracked/runtime plugin paths.
 - After changing the pane orchestrator, rebuild and sync it before claiming behavior is fixed:
   ```bash
   yzx dev build_pane_orchestrator --sync
@@ -186,19 +151,7 @@ When creating new files or directories, always use underscores to maintain consi
 - Avoid broad frameworks or convenience crates by default, especially for private helpers. If a broad crate is chosen, explain why the narrower option is worse.
 - If the crate list changes during implementation, update the bead or linked contract before continuing so dependency drift is explicit.
 
-## Zellij Keybinding Rule
-
-- In Yazelix Zellij config, do not `unbind` a key that Yazelix then intends to `bind` for its own action in the same merged config.
-- Empirical rule for this repo: if you `unbind` a key and then try to reuse it for a Yazelix-owned action in the same merged config, that key becomes dead.
-- If Yazelix owns the key, emit only the replacement `bind`. Use `unbind` only for keys Yazelix is truly removing without reusing.
-
 ## Planning and Decision Making
-
-**ALWAYS PLAN FIRST** - Before taking significant actions (like git commits, major changes, or file operations), explicitly discuss the approach and get user approval. This includes:
-- Git operations: What files to commit, whether to include binaries, commit message strategy
-- File changes: Whether to edit, create, or delete files
-- Tool selection: Which approach to use when multiple options exist
-- Architecture decisions: How to structure or integrate new features
 
 **MANUAL TEST GATE BEFORE PUSH** - For non-trivial changes, do not push to remote before the user has manually tested the behavior and explicitly approved the push. Only trivial changes may be pushed without manual user testing.
 
@@ -210,16 +163,6 @@ When creating new files or directories, always use underscores to maintain consi
 - What are the actual risks vs. perceived risks?
 - What does the user explicitly want vs. what they implicitly expect?
 - How do similar tools handle this situation and why?
-
-### Delegation Fit
-
-After the contract, scope, and acceptance criteria are already clear, the following work is usually safe to delegate to less smart models as a first implementation pass:
-- packaging reshuffles
-- broad but well-specified path renames
-- fixture/test updates after the defended contract is already decided
-- repetitive file edits with clear acceptance targets
-
-Do not treat those models as the default owner of investigation, architecture, or subtle runtime-behavior changes. Use them for bounded execution after the smarter planning pass is already done.
 
 ### Delete-First Protocol
 

@@ -309,8 +309,8 @@ fn build_launch_materialization_plan(
 
     let should_generate_terminal_configs = force_terminal_config_generation
         || selected_terminals
-        .iter()
-        .any(|terminal| !generated_terminal_config_path(state_dir, terminal).is_file());
+            .iter()
+            .any(|terminal| !generated_terminal_config_path(state_dir, terminal).is_file());
     let should_reroll_ghostty_cursor = !should_generate_terminal_configs
         && selected_terminals
             .iter()
@@ -466,7 +466,8 @@ mod tests {
         let temp = tempdir().unwrap();
         let config = config_with_terminals(&["ghostty", "wezterm", ""], "user");
 
-        let plan = build_launch_materialization_plan(&config, &[], false, false, temp.path(), false);
+        let plan =
+            build_launch_materialization_plan(&config, &[], false, false, temp.path(), false);
 
         assert_eq!(
             plan,
@@ -486,7 +487,8 @@ mod tests {
         let temp = tempdir().unwrap();
         let config = JsonMap::new();
 
-        let plan = build_launch_materialization_plan(&config, &[], false, false, temp.path(), false);
+        let plan =
+            build_launch_materialization_plan(&config, &[], false, false, temp.path(), false);
 
         assert_eq!(
             plan.selected_terminals,

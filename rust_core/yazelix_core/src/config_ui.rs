@@ -1098,7 +1098,8 @@ fn keybinding_action_detail_lines(
     field: &ConfigUiField,
     action: &'static YazelixActionMetadata,
 ) -> Vec<Line<'static>> {
-    let parent_path = keybinding_parent_path_for_field_path(&field.path).unwrap_or(field.path.as_str());
+    let parent_path =
+        keybinding_parent_path_for_field_path(&field.path).unwrap_or(field.path.as_str());
     let mut lines = default_field_detail_lines(field);
     lines.push(Line::from(""));
     lines.push(Line::from(Span::styled(
@@ -1108,7 +1109,10 @@ fn keybinding_action_detail_lines(
             .add_modifier(Modifier::BOLD),
     )));
     lines.push(detail_line("action", action.id));
-    lines.push(detail_line("keys", &keybinding_keys_label_from_field(field)));
+    lines.push(detail_line(
+        "keys",
+        &keybinding_keys_label_from_field(field),
+    ));
     for (label, value) in keybinding_action_metadata_lines(parent_path, action.local_id) {
         lines.push(detail_line(label, &value));
     }
@@ -1275,9 +1279,7 @@ fn keybinding_default_value(action: &YazelixActionMetadata) -> JsonValue {
     )
 }
 
-fn keybinding_actions_for_parent_path(
-    parent_path: &str,
-) -> Vec<&'static YazelixActionMetadata> {
+fn keybinding_actions_for_parent_path(parent_path: &str) -> Vec<&'static YazelixActionMetadata> {
     match parent_path {
         ZELLIJ_KEYBINDINGS_FIELD_PATH => ZELLIJ_ACTIONS.iter().map(|spec| &spec.action).collect(),
         YAZI_KEYBINDINGS_FIELD_PATH => YAZI_ACTIONS.iter().map(|spec| &spec.action).collect(),
@@ -1326,7 +1328,10 @@ pub(crate) fn is_keybinding_map_field_path(path: &str) -> bool {
 
 pub(crate) fn keybinding_parent_path_for_field_path(path: &str) -> Option<&'static str> {
     for parent_path in [ZELLIJ_KEYBINDINGS_FIELD_PATH, YAZI_KEYBINDINGS_FIELD_PATH] {
-        let Some(action) = path.strip_prefix(parent_path).and_then(|rest| rest.strip_prefix('.')) else {
+        let Some(action) = path
+            .strip_prefix(parent_path)
+            .and_then(|rest| rest.strip_prefix('.'))
+        else {
             continue;
         };
         if keybinding_actions_for_parent_path(parent_path)
