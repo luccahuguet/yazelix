@@ -174,22 +174,6 @@ For exact tagged release notes, see [CHANGELOG](./CHANGELOG.md) or run `yzx what
 For the longer project story, see [Version History](./docs/history.md)
 <!-- END GENERATED README LATEST SERIES -->
 
-## Historical Context
-
-Yazelix v14 is the historical **Yazelix Classic** snapshot: the broad, heavily integrated, `devenv`-era version of the project, with `yazelix packs`, `yzx packs`, dynamic runtime management, richer terminal breadth, Home Manager and manual install support, and the widest power-user command/config surface
-
-Classic is not the active product line in this branch, and the `v14` tag remains available only as the final historical snapshot for users who specifically need that broader shape; it is not a supported line anymore
-
-v15.0 is the trimmed reboot with a narrower Rust scope, not a broad package-and-environment manager: it drops the old runtime-local `devenv` layer, trims the command and config surface, keeps the Rust pane orchestrator where it still pays for itself, and keeps a clearer core around fast workspace entry, layouts, managed workspace actions, explicit update ownership, and the popup/menu-centered workspace UX
-
-v16 carries that trimmed contract forward, expands Rust ownership across the public control plane and deterministic integrations, and keeps Nushell at the shell/UI core instead of as the default owner of general product logic
-
-On the current branch, the trimmed contract is already narrower: no `yazelix_packs.toml`, no runtime-local `devenv`, no launch-profile reuse semantics, no broad config schema migration engine, a fixed packaged runtime toolset with Ghostty as the default packaged terminal and WezTerm available through the explicit WezTerm variant, and explicit update owners through `yzx update upstream` or `yzx update home_manager`
-
-The important split is this: Yazelix Classic was both a terminal workspace and a runtime/package-environment manager, while v15 is the narrower workspace product because dynamic runtime management was not a good long-term fit for Yazelix scope
-
-For the current trimmed branch contract, see [docs/contracts/v15_trimmed_runtime_contract.md](./docs/contracts/v15_trimmed_runtime_contract.md)
-
 ## Compatibility
 - **Platform**: Linux and macOS — see the [macOS support floor contract](docs/contracts/macos_support_floor.md) for the current guaranteed macOS surfaces
 - **Terminal**: Ghostty is the default packaged terminal, WezTerm is available through the explicit WezTerm package path, while Kitty and Alacritty remain supported PATH-provided alternatives and Foot remains a Linux-only PATH-provided alternative
