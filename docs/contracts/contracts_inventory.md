@@ -8,6 +8,7 @@ This inventory lists the canonical contracts under `docs/contracts/`. It is not 
 
 | Contract | Owns |
 | --- | --- |
+| `artifact_first_child_integration.md` | Artifact-first source/runtime boundary for child repositories |
 | `backend_free_workspace_slice.md` | Backend-free workspace behavior that remains credible inside the integrated product |
 | `canonical_contract_item_schema.md` | Indexed contract-item format and test traceability rules |
 | `config_runtime_control_plane_contract.md` | Config/runtime/control-plane ownership and bridge boundaries |
