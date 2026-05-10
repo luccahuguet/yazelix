@@ -209,10 +209,6 @@ The important split is this: Yazelix Classic was both a terminal workspace and a
 
 For the current trimmed branch contract, see [docs/contracts/v15_trimmed_runtime_contract.md](./docs/contracts/v15_trimmed_runtime_contract.md)
 
-## Experiments
-
-- **Nixless (System) Mode** – Experimental work lives on the `nixless-system-mode` branch and might never land in `main`
-
 ## Compatibility
 - **Platform**: Linux and macOS — see the [macOS support floor contract](docs/contracts/macos_support_floor.md) for the current guaranteed macOS surfaces
 - **Terminal**: Ghostty is the default packaged terminal, WezTerm is available through the explicit WezTerm package path, while Kitty and Alacritty remain supported PATH-provided alternatives and Foot remains a Linux-only PATH-provided alternative
