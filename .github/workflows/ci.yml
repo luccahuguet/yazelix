@@ -44,6 +44,17 @@ jobs:
         with:
           determinate: false
 
+      - name: Cache Rust validation build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust_core/target
+          key: rust-validation-${{ runner.os }}-${{ hashFiles('rust_core/Cargo.lock', 'flake.lock') }}
+          restore-keys: |
+            rust-validation-${{ runner.os }}-
+
       # Keep the always-on lane off Magic Nix Cache. Its post-job uploads can
       # outlive the validators and turn green checks into timeout failures.
       - name: Build Rust validation helpers
