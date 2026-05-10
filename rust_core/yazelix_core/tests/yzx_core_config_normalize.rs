@@ -111,11 +111,7 @@ fn prepare_runtime_materialization_fixture(
         "swap_tiled_layout name=\"single_open\" {}\n",
     )
     .unwrap();
-    for fragment in [
-        "zjstatus_tab_template.kdl",
-        "swap_sidebar_open.kdl",
-        "swap_sidebar_closed.kdl",
-    ] {
+    for fragment in ["swap_sidebar_open.kdl", "swap_sidebar_closed.kdl"] {
         fs::write(runtime_fragment_dir.join(fragment), "").unwrap();
     }
     fs::write(
@@ -162,7 +158,7 @@ fn write_fake_zellij_bar_widget(path: &Path) {
         r#"#!/bin/sh
 [ "$1" = "render-yazelix-runtime" ] || exit 11
 [ "$2" = "--json" ] || exit 12
-printf '%s\n' '{"schema_version":1,"replacements":{"__YAZELIX_WIDGET_TRAY__":"","__YAZELIX_CUSTOM_TEXT_SEGMENT__":"","__YAZELIX_ZJSTATUS_COMMAND_DEFINITIONS__":""}}'
+printf '%s\n' '{"schema_version":2,"plugin_block":"plugin location=\"file:/fake/zjstatus.wasm\" {}"}'
 "#,
     )
     .unwrap();

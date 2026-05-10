@@ -46,7 +46,7 @@ The supported split is:
 - Type: boundary
 - Status: live
 - Owner: Integrated status-bar adapter
-- Statement: The integrated Yazelix status bar should not compile the `yazelix_zellij_bar` child crate into `yazelix_core` solely to render small KDL snippets. The child package remains the owner of standalone artifacts, runnable widget commands, and integrated zjstatus replacement rendering; the main repo owns the session-specific adapter and path selection
+- Statement: The integrated Yazelix status bar should not compile the `yazelix_zellij_bar` child crate into `yazelix_core` solely to render KDL. The child package remains the owner of standalone artifacts, runnable widget commands, and integrated zjstatus plugin-block rendering from typed config; the main repo owns the session-specific adapter and path selection
 - Verification: manual `cargo tree --manifest-path rust_core/Cargo.toml -p yazelix_core`; automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zellij_materialization`
 
 #### AFCI-005

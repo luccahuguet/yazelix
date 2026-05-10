@@ -102,7 +102,7 @@ The cursor widget does not own a normal bar-specific cursor fact file. It reads 
 
 ## Main Runtime Consumption
 
-The full Yazelix runtime consumes the `yazelix_zellij_bar` child package command surface for widget-tray rendering, tab-label rendering, simple fact widgets, CPU/RAM, cursor display, and cached provider usage widgets. Integrated layout materialization calls `yazelix_zellij_bar_widget render-yazelix-runtime` and applies the returned placeholder replacement map.
+The full Yazelix runtime consumes the `yazelix_zellij_bar` child package command surface for integrated zjstatus plugin-block rendering, simple fact widgets, CPU/RAM, cursor display, and cached provider usage widgets. Integrated layout materialization calls `yazelix_zellij_bar_widget render-yazelix-runtime` with typed runtime bar config and inserts the returned plugin block.
 
 The standalone package installs `zjstatus.wasm` from the child repo's pinned `zjstatus` flake input. The main Yazelix flake makes `yazelixZellijBar.inputs.zjstatus` follow the main repo's `zjstatus` input when forwarding `.#yazelix_zellij_bar`, so the forwarded standalone package uses the same upstream pin as the integrated Yazelix runtime.
 
