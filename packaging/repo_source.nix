@@ -16,7 +16,6 @@ let
     "configs"
     "docs"
     "nushell"
-    "rust_plugins"
     "shells"
   ];
   includeFiles = [
@@ -44,9 +43,7 @@ lib.cleanSourceWith {
           includeRoots;
       isBuildArtifact =
         relativePath == "rust_core/target"
-        || lib.hasPrefix "rust_core/target/" relativePath
-        || relativePath == "rust_plugins/zellij_pane_orchestrator/target"
-        || lib.hasPrefix "rust_plugins/zellij_pane_orchestrator/target/" relativePath;
+        || lib.hasPrefix "rust_core/target/" relativePath;
       disabledCursorPath =
         !cursorsEnabled
         && builtins.any

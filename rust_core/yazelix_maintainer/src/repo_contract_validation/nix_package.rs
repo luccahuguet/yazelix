@@ -109,6 +109,11 @@ fn verify_yazelix_package(package_root: &Path, errors: &mut Vec<String>) -> Resu
             "legacy packaged packs config",
             errors,
         );
+        require_path_absent_even_if_broken_symlink(
+            &package_root.join("rust_plugins"),
+            "packaged Rust plugin source tree",
+            errors,
+        );
         if !errors.is_empty() {
             return Ok(());
         }
@@ -180,6 +185,12 @@ fn verify_yazelix_package(package_root: &Path, errors: &mut Vec<String>) -> Resu
     })();
     let _ = fs::remove_dir_all(&temp_home);
     validation
+}
+
+fn require_path_absent_even_if_broken_symlink(path: &Path, label: &str, errors: &mut Vec<String>) {
+    if fs::symlink_metadata(path).is_ok() {
+        errors.push(format!("Unexpected {}: {}", label, path.display()));
+    }
 }
 
 fn run_profile_install(

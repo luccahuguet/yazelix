@@ -59,7 +59,6 @@ pkgs.runCommand name { } ''
   done
   ln -s ${src}/docs "$out/docs"
   ln -s ${src}/nushell "$out/nushell"
-  ln -s ${src}/rust_plugins "$out/rust_plugins"
   ln -s ${src}/shells "$out/shells"
 
   ln -s ${src}/CHANGELOG.md "$out/CHANGELOG.md"

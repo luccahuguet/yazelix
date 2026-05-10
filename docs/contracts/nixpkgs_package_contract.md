@@ -48,12 +48,14 @@ The package should ship the immutable runtime assets Yazelix executes directly:
 - `configs/`
 - `docs/` when runtime scripts depend on shipped docs/help text
 - `nushell/`
-- `rust_plugins/`
 - `shells/`
 - shipped templates such as:
   - `yazelix_default.toml`
 - `bin/yzx`
 - runtime-local `libexec/nu`
+
+Compiled first-party Zellij wasm assets ship through `configs/zellij/plugins/`.
+The package must not ship or link maintainer Rust plugin source trees such as `rust_plugins/`.
 
 It must not own or embed user config/state paths.
 
