@@ -386,7 +386,14 @@ theme = "term16_dark"  # Recommended transparent theme
 ```
 
 ## Layouts
-Yazelix includes adaptive layouts that organize your workspace; use `three_column` for Claude Code and AI tools, and see [docs/layouts.md](./docs/layouts.md) for details and customization
+
+Yazelix layouts are Zellij layouts with Yazelix-owned pane identity layered on top: a managed `sidebar` pane, a managed `editor` pane, and sidebar-aware swap layouts that can collapse, widen, or refocus panes without losing workspace state
+
+The default sidebar is a Yazi file tree. `editor.sidebar_width_percent` controls the open sidebar width, `editor.hide_sidebar_on_file_open` can collapse it after opening files, and `editor.sidebar_command` / `editor.sidebar_args` can replace the sidebar program while keeping the same managed `sidebar` slot
+
+Use `Alt+[` and `Alt+]` to cycle the built-in sidebar-aware layout shapes. Keep complex custom layouts in Zellij KDL under `configs/zellij/layouts/`; custom sidebar swap families are maintainer-level work because Yazelix family-aware controls only know the built-in sidebar families
+
+See [Layouts](./docs/layouts.md) for layout files, config keys, and customization boundaries
 
 ## Keybindings
 
