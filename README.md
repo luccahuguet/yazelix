@@ -84,18 +84,6 @@ After installation, keep three things in mind:
 
 Ghostty cursor presets use their own config at `~/.config/yazelix_ghostty_cursors/settings.jsonc`. Deeper Yazi, Zellij, Helix, terminal, and shell overrides also live under `~/.config/yazelix/`, but the main settings file is the first place to look
 
-## Daily Workflow
-
-- `yzx launch`: Open Yazelix in a managed terminal window
-- `yzx enter`: Start Yazelix in the current terminal
-- `yzx env`: Enter the Yazelix tool environment without the UI
-- `yzx popup`: CLI entrypoint for the managed popup pane, usually `lazygit`; most users trigger the same toggle with `Alt+t`, and closing it through the popup keybinding reruns the Yazi file-tree sidebar refresh path so git state stays current
-- `yzx menu --popup`: CLI entrypoint for the popup command palette; most users trigger the same toggle with `Alt+Shift+M`
-- `yzx config ui`: CLI entrypoint for the config UI; most users trigger the same popup with `Alt+Shift+C`
-- `yzx update upstream`: Upgrade the Yazelix package that owns the current runtime in the default Nix profile
-- `yzx update home_manager`: Refresh the owning Home Manager flake input, then print the `home-manager switch` step
-- `yzx dev inspect_session` and `yzx dev profile`: Runtime-safe diagnostics; repo-only development commands are available from the Yazelix maintainer shell
-
 ## Workspace Model
 
 - Zellij orchestrates the workspace, with a managed sidebar and your chosen editor in the managed `editor` pane
@@ -321,38 +309,53 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 
 ## yzx Command Line Interface
 
-🔧 **Complete CLI Reference:** `yzx help` - Shell-agnostic command suite
+Run `yzx help` for the live command list. See [yzx CLI](./docs/yzx_cli.md) for the full command reference, examples, diagnostics, profile tools, and maintainer surfaces
 
-📖 **[Complete yzx CLI Documentation →](./docs/yzx_cli.md)** - Comprehensive command reference and usage guide
+### Start Sessions
 
-**Quick Commands:**
-- `yzx launch` - Launch Yazelix in new terminal (current directory by default)
-- `yzx enter` - Start Yazelix in current terminal
-- `yzx launch --path DIR` - Launch in specific directory
-- `yzx launch --home` - Launch in home directory
-- `yzx launch --terminal ghostty` - Force a particular terminal for this launch
+- `yzx launch` - Open Yazelix in a managed terminal window from the current directory
+- `yzx enter` - Start Yazelix in the current terminal
+- `yzx launch --path DIR` - Launch from a specific directory
+- `yzx launch --home` - Launch from the home directory
+- `yzx launch --terminal ghostty` - Force a supported terminal for this launch
 - `yzx launch --config ./minimal.jsonc` - Start one window from an alternate complete settings file
 - `yzx launch --with editor.command=nvim` - Override one settings field for this window only
 - `yzx launch --verbose` - Print detailed launch diagnostics
-- `yzx env [--no-shell]` - Load Yazelix tools without UI (`--no-shell` keeps your current shell)
-- `yzx run <command> [args...]` - Run a single command inside the Yazelix environment
-- `yzx update` - Show the supported update-owner paths
-- `yzx update upstream` - Upgrade the active default-profile Yazelix package
-- `yzx update home_manager` - Refresh the current Home Manager flake input, then print `home-manager switch`
-- `yzx popup` - Toggle the managed popup program, usually `lazygit`, and refresh the Yazi file-tree sidebar git state when the popup keybinding closes it
+
+### Use Tools Without the Workspace
+
+- `yzx env [--no-shell]` - Load Yazelix tools without the UI; `--no-shell` keeps your current shell
+- `yzx run <command> [args...]` - Run one command inside the Yazelix environment
+
+### Workspace Actions
+
+- `yzx popup` - Toggle the managed popup program, usually `lazygit`; the popup keybinding refreshes Yazi sidebar git state when it closes
+- `yzx menu --popup` - Open the popup command palette, usually through `Alt+Shift+M`
+- `yzx config ui` - Browse and edit settings, defaults, diagnostics, and managed sidecar status, usually through `Alt+Shift+C`
 - `yzx sidebar refresh` - Refresh the managed Yazi sidebar file tree and status widgets
+
+### Config and Recovery
+
 - `yzx config [--path]` - Show the active config or print its resolved path
-- `yzx config ui` - Browse and edit settings, defaults, diagnostics, and managed sidecar status in a terminal UI
 - `yzx config set PATH JSON` - Set a supported config value while preserving comments
 - `yzx config unset PATH` - Remove an explicit config value so defaults apply
+- `yzx edit config` - Open the main managed Yazelix config file in your editor
+- `yzx restart [-s | --skip] [--config FILE] [--with KEY=VALUE]` - Restart Yazelix in a fresh window after config changes
+- `yzx doctor [--verbose] [--fix]` - Run health checks and diagnostics
+
+### Updates
+
+- `yzx update` - Show supported update-owner paths
+- `yzx update upstream` - Upgrade the active default-profile Yazelix package
+- `yzx update home_manager` - Refresh the current Home Manager flake input and print `home-manager switch`
+
+### Status and Extras
+
+- `yzx status [--versions]` - Show current Yazelix status and optional tool versions
 - `yzx cursors` - Inspect Ghostty cursor presets, effects, and resolved colors
 - `yzc init/list/inspect/generate ghostty` - Manage standalone Yazelix cursor presets for Ghostty users outside a full Yazelix session
-- `yzx edit config` - Open the main managed Yazelix config file in your editor
-- `yzx restart [-s | --skip] [--config FILE] [--with KEY=VALUE]` - Restart Yazelix in a fresh window, optionally skipping the welcome screen, using an alternate settings file, or applying session-only settings overrides
-- `yzx doctor [--verbose] [--fix]` - Health checks and diagnostics
 - `yzx dev inspect_session [--json]` - Inspect the current Yazelix/Zellij tab session snapshot for runtime debugging
-- `yzx dev profile [--cold] [--desktop] [--launch] [--clear-cache]` - Profile current-terminal, desktop-entry, or managed new-window startup phases under `~/.local/share/yazelix/profiles/startup/`, with local saved-report comparison through `yzx dev profile compare`
-- `yzx status [--versions]` - Show current Yazelix status and optional tool versions
+- `yzx dev profile [--cold] [--desktop] [--launch] [--clear-cache]` - Profile startup phases under `~/.local/share/yazelix/profiles/startup/`
 
 ## Troubleshooting
 
