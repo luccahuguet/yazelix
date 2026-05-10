@@ -1,43 +1,62 @@
-# POSIX/XDG Paths in Yazelix
+# POSIX/XDG Paths
 
-Yazelix follows the XDG Base Directory Specification and respects these variables:
+Yazelix separates user-edited config from generated runtime output.
 
-- `XDG_CONFIG_HOME` (default: `~/.config`)
-- `XDG_DATA_HOME`   (default: `~/.local/share`)
-- `XDG_STATE_HOME`  (default: `~/.local/state`)
-- `XDG_CACHE_HOME`  (default: `~/.cache`)
+The managed config root resolves in this order:
+
+1. `YAZELIX_CONFIG_DIR`
+2. `$XDG_CONFIG_HOME/yazelix`
+3. `~/.config/yazelix`
+
+The generated state root resolves in this order:
+
+1. `YAZELIX_STATE_DIR`
+2. `$XDG_DATA_HOME/yazelix`
+3. `~/.local/share/yazelix`
+
+Yazelix does not use `$XDG_STATE_HOME` for the main generated state root. The state root stays under the data root for the current runtime-materialization contract.
 
 ## Key Locations
 
-- Config (XDG_CONFIG_HOME)
-  - `~/.config/yazelix/settings.jsonc` – canonical user settings file (auto-created from shipped defaults on first run)
-  - `~/.config/yazelix/tombi.toml` – managed Tombi support file for formatting Yazelix TOML sidecars
-  - `~/.config/yazelix/nushell/config/config.nu` – Yazelix Nushell config sourced into your shell
+- User config root, usually `~/.config/yazelix`
+  - `settings.jsonc` - canonical user settings file
+  - `helix.toml` - managed Helix override surface
+  - `zellij.kdl` - managed Zellij override surface
+  - `yazi.toml`, `yazi_keymap.toml`, `yazi_init.lua` - managed Yazi override surfaces
+  - `terminal_ghostty.conf`, `terminal_kitty.conf`, `terminal_alacritty.toml`, `terminal_foot.ini` - managed terminal override surfaces
+  - `shell_bash.sh`, `shell_zsh.zsh`, `shell_fish.fish`, `shell_nu.nu` - managed shell hook surfaces
 
-- Data (XDG_DATA_HOME)
-  - `~/.local/share/yazelix/initializers/` – generated init scripts (nushell, starship, zoxide, carapace)
-  - `~/.local/share/yazelix/configs/yazi/` – Yazi config used by integrations (`YAZI_CONFIG_HOME`)
-  - `~/.local/share/yazelix/configs/zellij/` – generated Zellij config and layouts
-  - `~/.local/share/yazelix/logs/` – runtime setup and welcome output
+- Shared Ghostty cursor config, usually `~/.config/yazelix_ghostty_cursors`
+  - `settings.jsonc` - standalone cursor preset config used by Yazelix and `yzc`
 
-- State (XDG_STATE_HOME)
-  - `~/.local/share/yazelix/state/rebuild_hash` – generated-state freshness record used by the trimmed refresh path
+- Generated state root, usually `~/.local/share/yazelix`
+  - `configs/yazi/` - generated Yazi config used through `YAZI_CONFIG_HOME`
+  - `configs/zellij/` - generated Zellij config, layouts, and plugin artifacts
+  - `configs/helix/` - generated managed Helix config
+  - `configs/terminal_emulators/` - generated terminal config files
+  - `initializers/` - generated shell, starship, zoxide, mise, and carapace init scripts
+  - `logs/` - runtime setup, launch, and welcome output
+  - `profiles/startup/` - startup profiler reports and saved baselines
+  - `sessions/` - per-session facts used by runtime integrations
+  - `state/rebuild_hash` - generated-state freshness record
 
-- Cache (XDG_CACHE_HOME)
-  - Reserved for future use (heavy or reproducible, re‑generable artifacts)
+- Cache root, usually `~/.cache`
+  - Main Yazelix runtime paths do not currently require a top-level Yazelix cache directory
+  - Standalone child tools can use XDG cache paths where their own contracts document cache behavior
 
 ## Environment Variables
 
 Set by Yazelix entrypoints to wire integrations:
 
 - Installed/runtime-owned launch paths export `YAZELIX_RUNTIME_DIR` to point at the active Yazelix runtime root.
+- Packaged and Home Manager entrypoints may export `YAZELIX_CONFIG_DIR` and `YAZELIX_STATE_DIR` to bind Yazelix to owner-provided roots.
 - Maintained entrypoints set `IN_YAZELIX_SHELL=true` when executing inside the Yazelix runtime environment.
 - `ZELLIJ_DEFAULT_LAYOUT` – chosen layout name (`yzx_side` by default)
-- `YAZI_CONFIG_HOME` – `~/.local/share/yazelix/configs/yazi` for consistent Yazi behavior
+- `YAZI_CONFIG_HOME` – `<state-root>/configs/yazi` for consistent Yazi behavior
 - `EDITOR` – your configured editor command or Yazelix Helix
 
 Notes:
-- If you change `XDG_CONFIG_HOME`, Yazelix looks for config directly under the new `.../yazelix/` path.
-- Generated files follow `XDG_DATA_HOME`.
+- If you change `XDG_CONFIG_HOME`, Yazelix looks for config under the new `$XDG_CONFIG_HOME/yazelix` path unless `YAZELIX_CONFIG_DIR` is set.
+- Generated files follow `YAZELIX_STATE_DIR` when set, otherwise `$XDG_DATA_HOME/yazelix`.
 - The supported `yzx` command normally comes from the install owner, such as a Nix profile or Home Manager.
 - A stale legacy `~/.local/bin/yzx` wrapper may still exist on older machines, but it is no longer part of the supported install contract.

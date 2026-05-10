@@ -211,7 +211,13 @@ yzx status --versions
 
 ## POSIX/XDG Paths
 
-Yazelix respects XDG directories for config, data, state, and cache; see POSIX/XDG Paths for details: ./docs/posix_xdg.md
+Yazelix keeps user-edited config separate from generated runtime output:
+
+- User config lives under `$XDG_CONFIG_HOME/yazelix`, usually `~/.config/yazelix`, with `settings.jsonc` as the canonical main config
+- Generated runtime output lives under `$XDG_DATA_HOME/yazelix`, usually `~/.local/share/yazelix`, including generated Yazi, Zellij, Helix, terminal configs, logs, profiles, sessions, and freshness records
+- Launchers may set `YAZELIX_CONFIG_DIR` and `YAZELIX_STATE_DIR` explicitly; Home Manager uses those owner-provided paths when it manages Yazelix
+
+See [POSIX/XDG Paths](./docs/posix_xdg.md) for the full path contract
 
 ## SSH / Remote
 
