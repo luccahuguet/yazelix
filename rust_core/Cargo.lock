@@ -1431,7 +1431,6 @@ dependencies = [
  "toml",
  "yazelix_ghostty_cursors",
  "yazelix_screen",
- "yazelix_zellij_bar",
 ]
 
 [[package]]
@@ -1464,14 +1463,6 @@ version = "0.1.0"
 source = "git+https://github.com/luccahuguet/yazelix-screen?rev=9ac6d3f62216c8200b6c9d58c85f26110666fa00#9ac6d3f62216c8200b6c9d58c85f26110666fa00"
 dependencies = [
  "crossterm",
-]
-
-[[package]]
-name = "yazelix_zellij_bar"
-version = "0.1.0"
-source = "git+https://github.com/luccahuguet/yazelix-zellij-bar?rev=3ef3e5d79b7de756168363c038a6462cad2d7dd4#3ef3e5d79b7de756168363c038a6462cad2d7dd4"
-dependencies = [
- "serde_json",
 ]
 
 [[package]]

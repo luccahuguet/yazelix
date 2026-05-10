@@ -68,10 +68,9 @@ const SCREEN_SAVER_STYLE_ALLOWED: &[&str] = &[
     "game_of_life_bloom",
     "random",
 ];
-const TAB_LABEL_MODE_ALLOWED: &[&str] = &[
-    yazelix_zellij_bar::TAB_LABEL_MODE_FULL,
-    yazelix_zellij_bar::TAB_LABEL_MODE_COMPACT,
-];
+const TAB_LABEL_MODE_FULL: &str = "full";
+const TAB_LABEL_MODE_COMPACT: &str = "compact";
+const TAB_LABEL_MODE_ALLOWED: &[&str] = &[TAB_LABEL_MODE_FULL, TAB_LABEL_MODE_COMPACT];
 pub const DEFAULT_SIDEBAR_COMMAND: &str = "nu";
 pub const DEFAULT_SIDEBAR_YAZI_ARG: &str =
     "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu";
@@ -117,7 +116,7 @@ fn default_zellij_default_mode() -> String {
 }
 
 fn default_tab_label_mode() -> String {
-    yazelix_zellij_bar::TAB_LABEL_MODE_FULL.into()
+    TAB_LABEL_MODE_FULL.into()
 }
 
 fn default_claude_usage_display() -> String {

@@ -27,7 +27,7 @@ It installs:
 
 The example snippets are not alternate generated presets. They are small blocks users can copy into the plugin body for command widgets or full-Yazelix cached widgets.
 
-There is no generator binary and no central `~/.config/yazelix_zellij_bar/config.toml`. KDL is the public configuration surface.
+There is no standalone configuration generator binary and no central `~/.config/yazelix_zellij_bar/config.toml`. KDL is the public configuration surface.
 
 ## Generic Default
 
@@ -102,7 +102,7 @@ The cursor widget does not own a normal bar-specific cursor fact file. It reads 
 
 ## Main Runtime Consumption
 
-The full Yazelix runtime consumes the `yazelix_zellij_bar` child crate and command surface for widget-tray rendering, tab-label rendering, simple fact widgets, CPU/RAM, cursor display, and cached provider usage widgets.
+The full Yazelix runtime consumes the `yazelix_zellij_bar` child package command surface for widget-tray rendering, tab-label rendering, simple fact widgets, CPU/RAM, cursor display, and cached provider usage widgets. Integrated layout materialization calls `yazelix_zellij_bar_widget render-yazelix-runtime` and applies the returned placeholder replacement map.
 
 The standalone package installs `zjstatus.wasm` from the child repo's pinned `zjstatus` flake input. The main Yazelix flake makes `yazelixZellijBar.inputs.zjstatus` follow the main repo's `zjstatus` input when forwarding `.#yazelix_zellij_bar`, so the forwarded standalone package uses the same upstream pin as the integrated Yazelix runtime.
 

@@ -63,6 +63,7 @@ fn prepare_runtime_materialization_fixture(
     let runtime_fragment_dir = runtime_layout_dir.join("fragments");
     let runtime_plugin_dir = runtime_zellij_dir.join("plugins");
     let runtime_shell_dir = runtime_dir.join("shells").join("posix");
+    let runtime_libexec_dir = runtime_dir.join("libexec");
     let runtime_contract_dir = runtime_dir.join("config_metadata");
     let runtime_ghostty_shader_dir = runtime_dir
         .join("configs")
@@ -76,6 +77,7 @@ fn prepare_runtime_materialization_fixture(
     fs::create_dir_all(&runtime_fragment_dir).unwrap();
     fs::create_dir_all(&runtime_plugin_dir).unwrap();
     fs::create_dir_all(&runtime_shell_dir).unwrap();
+    fs::create_dir_all(&runtime_libexec_dir).unwrap();
     fs::create_dir_all(&runtime_contract_dir).unwrap();
     fs::create_dir_all(&runtime_ghostty_shader_dir).unwrap();
     write_runtime_contract_assets(repo, &runtime_dir);
@@ -84,6 +86,7 @@ fn prepare_runtime_materialization_fixture(
         "#!/bin/sh\nexec nu \"$@\"\n",
     )
     .unwrap();
+    write_fake_zellij_bar_widget(&runtime_libexec_dir.join("yazelix_zellij_bar_widget"));
     fs::write(
         runtime_yazi_dir.join("yazelix_yazi.toml"),
         "[manager]\nsort_by = \"alphabetical\"\n[opener]\nedit = []\n",
@@ -150,6 +153,25 @@ fn prepare_runtime_materialization_fixture(
         yazi_dir,
         zellij_dir,
         zellij_layout_dir,
+    }
+}
+
+fn write_fake_zellij_bar_widget(path: &Path) {
+    fs::write(
+        path,
+        r#"#!/bin/sh
+[ "$1" = "render-yazelix-runtime" ] || exit 11
+[ "$2" = "--json" ] || exit 12
+printf '%s\n' '{"schema_version":1,"replacements":{"__YAZELIX_WIDGET_TRAY__":"","__YAZELIX_CUSTOM_TEXT_SEGMENT__":"","__YAZELIX_ZJSTATUS_COMMAND_DEFINITIONS__":""}}'
+"#,
+    )
+    .unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut permissions = fs::metadata(path).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(path, permissions).unwrap();
     }
 }
 

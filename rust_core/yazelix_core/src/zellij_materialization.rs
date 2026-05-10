@@ -8,7 +8,7 @@ use crate::zellij_render_plan::{
     TopLevelSetting, ZellijRenderPlanData, ZellijRenderPlanRequest, compute_zellij_render_plan,
 };
 use directories::ProjectDirs;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
@@ -16,14 +16,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
-use yazelix_zellij_bar::{
-    BarRenderError, BarRenderRequest, CUSTOM_TEXT_PLACEHOLDER, TAB_ACTIVE_FULLSCREEN_PLACEHOLDER,
-    TAB_ACTIVE_PLACEHOLDER, TAB_ACTIVE_SYNC_PLACEHOLDER, TAB_NORMAL_FULLSCREEN_PLACEHOLDER,
-    TAB_NORMAL_PLACEHOLDER, TAB_NORMAL_SYNC_PLACEHOLDER, TAB_RENAME_PLACEHOLDER,
-    WIDGET_TRAY_PLACEHOLDER, YazelixRuntimeCommandPaths, ZJSTATUS_PLUGIN_URL_PLACEHOLDER,
-    ZJSTATUS_RUNTIME_DIR_PLACEHOLDER, render_yazelix_runtime_command_definitions,
-    render_zjstatus_bar_segments, render_zjstatus_tab_label_formats,
-};
 
 const PANE_ORCHESTRATOR_PLUGIN_PREFIX: &str = PANE_ORCHESTRATOR_PLUGIN_ALIAS;
 const PANE_ORCHESTRATOR_WASM_NAME: &str = "yazelix_pane_orchestrator.wasm";
@@ -37,8 +29,13 @@ const ZELLIJ_KEYBINDINGS_CONFIG_KEY: &str = "zellij_keybindings";
 
 const PANE_ORCHESTRATOR_PLUGIN_URL_PLACEHOLDER: &str = "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__";
 const HOME_DIR_PLACEHOLDER: &str = "__YAZELIX_HOME_DIR__";
-const RUNTIME_DIR_PLACEHOLDER: &str = ZJSTATUS_RUNTIME_DIR_PLACEHOLDER;
-const ZJSTATUS_COMMAND_DEFINITIONS_PLACEHOLDER: &str = "__YAZELIX_ZJSTATUS_COMMAND_DEFINITIONS__";
+const RUNTIME_DIR_PLACEHOLDER: &str = "__YAZELIX_RUNTIME_DIR__";
+const WIDGET_TRAY_PLACEHOLDER: &str = "__YAZELIX_WIDGET_TRAY__";
+const CUSTOM_TEXT_PLACEHOLDER: &str = "__YAZELIX_CUSTOM_TEXT_SEGMENT__";
+const ZJSTATUS_PLUGIN_URL_PLACEHOLDER: &str = "__YAZELIX_ZJSTATUS_PLUGIN_URL__";
+const ZJSTATUS_PLACEHOLDER_PREFIX: &str = "__YAZELIX_ZJSTATUS_";
+const ZJSTATUS_BAR_RENDER_COMMAND: &str = "render-yazelix-runtime";
+const ZJSTATUS_BAR_RENDER_SCHEMA_VERSION: u64 = 1;
 
 const PANE_ORCHESTRATOR_REQUIRED_PERMISSIONS: &[&str] = &[
     "ReadApplicationState",
@@ -119,6 +116,29 @@ struct ExtractedSemanticBlocks {
 struct PermissionBlock {
     path: String,
     permissions: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct ZellijBarRenderRequest {
+    widget_tray: Vec<String>,
+    editor_label: String,
+    shell_label: String,
+    terminal_label: String,
+    custom_text: String,
+    tab_label_mode: String,
+    nu_bin: String,
+    yzx_control_bin: String,
+    yazelix_zellij_bar_widget_bin: String,
+    runtime_dir: String,
+    claude_usage_display: String,
+    codex_usage_display: String,
+    opencode_go_usage_display: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ZellijBarReplacementEnvelope {
+    schema_version: u64,
+    replacements: BTreeMap<String, String>,
 }
 
 pub fn generate_zellij_materialization(
@@ -1113,7 +1133,7 @@ fn generate_all_layouts(
     let expected_targets = expected_layout_targets_for_dir(source_dir, target_dir)?;
     remove_stale_layouts(target_dir, &expected_targets)?;
     let static_fragments = load_static_fragments(source_dir)?;
-    let bar_segments = render_bar_segments(render_plan)?;
+    let bar_replacements = render_integrated_zjstatus_bar(runtime_dir, render_plan)?;
     let pane_orchestrator_plugin_url =
         format!("file:{}", pane_orchestrator_wasm_path.to_string_lossy());
     let zjstatus_plugin_url = format!("file:{}", zjstatus_wasm_path.to_string_lossy());
@@ -1124,8 +1144,7 @@ fn generate_all_layouts(
         let rendered = render_layout_template(
             &content,
             &static_fragments,
-            &bar_segments.widget_tray_segment,
-            &bar_segments.custom_text_segment,
+            &bar_replacements,
             &pane_orchestrator_plugin_url,
             &zjstatus_plugin_url,
             &home_dir,
@@ -1138,39 +1157,109 @@ fn generate_all_layouts(
     Ok(expected_targets)
 }
 
-fn render_bar_segments(
+fn render_integrated_zjstatus_bar(
+    runtime_dir: &Path,
     render_plan: &ZellijRenderPlanData,
-) -> Result<yazelix_zellij_bar::BarRenderData, CoreError> {
-    let request = BarRenderRequest {
+) -> Result<BTreeMap<String, String>, CoreError> {
+    let renderer = resolve_zjstatus_yazelix_zellij_bar_widget_bin(runtime_dir);
+    let request = ZellijBarRenderRequest {
         widget_tray: render_plan.widget_tray.clone(),
         editor_label: render_plan.editor_label.clone(),
         shell_label: render_plan.shell_label.clone(),
         terminal_label: render_plan.terminal_label.clone(),
         custom_text: render_plan.custom_text.clone(),
-    };
-    render_zjstatus_bar_segments(&request).map_err(bar_render_error)
-}
-
-fn integrated_zjstatus_runtime_paths(
-    runtime_dir: &Path,
-    render_plan: &ZellijRenderPlanData,
-) -> YazelixRuntimeCommandPaths {
-    YazelixRuntimeCommandPaths {
+        tab_label_mode: render_plan.tab_label_mode.clone(),
         nu_bin: resolve_zjstatus_nu_bin(runtime_dir),
         yzx_control_bin: resolve_zjstatus_yzx_control_bin(runtime_dir),
-        yazelix_zellij_bar_widget_bin: resolve_zjstatus_yazelix_zellij_bar_widget_bin(runtime_dir),
+        yazelix_zellij_bar_widget_bin: renderer.clone(),
         runtime_dir: runtime_dir.to_string_lossy().to_string(),
         claude_usage_display: render_plan.claude_usage_display.clone(),
         codex_usage_display: render_plan.codex_usage_display.clone(),
         opencode_go_usage_display: render_plan.opencode_go_usage_display.clone(),
+    };
+    let request_json = serde_json::to_string(&request).map_err(|source| {
+        CoreError::classified(
+            ErrorClass::Internal,
+            "serialize_zellij_bar_render_request",
+            "Could not serialize Yazelix Zellij bar render request.",
+            "Report this as a Yazelix internal error.",
+            json!({ "error": source.to_string() }),
+        )
+    })?;
+    let output = Command::new(&renderer)
+        .args([ZJSTATUS_BAR_RENDER_COMMAND, "--json", request_json.as_str()])
+        .output()
+        .map_err(|source| {
+            CoreError::io(
+                "run_zellij_bar_renderer",
+                "Could not run the Yazelix Zellij bar renderer",
+                "Reinstall Yazelix so the runtime includes yazelix_zellij_bar_widget.",
+                renderer.clone(),
+                source,
+            )
+        })?;
+    if !output.status.success() {
+        return Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "render_zellij_bar_replacements",
+            format!(
+                "Yazelix Zellij bar renderer failed with status {}.",
+                output.status
+            ),
+            "Check zellij bar settings or reinstall Yazelix so the bar widget matches this Yazelix build.",
+            json!({
+                "renderer": renderer,
+                "stdout": String::from_utf8_lossy(&output.stdout),
+                "stderr": String::from_utf8_lossy(&output.stderr),
+            }),
+        ));
     }
+    let envelope: ZellijBarReplacementEnvelope =
+        serde_json::from_slice(&output.stdout).map_err(|source| {
+            CoreError::classified(
+                ErrorClass::Runtime,
+                "parse_zellij_bar_replacements",
+                "Yazelix Zellij bar renderer returned invalid JSON.",
+                "Reinstall Yazelix so the bar widget matches this Yazelix build.",
+                json!({
+                    "renderer": renderer,
+                    "error": source.to_string(),
+                    "stdout": String::from_utf8_lossy(&output.stdout),
+                }),
+            )
+        })?;
+    if envelope.schema_version != ZJSTATUS_BAR_RENDER_SCHEMA_VERSION {
+        return Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "unsupported_zellij_bar_renderer_schema",
+            format!(
+                "Yazelix Zellij bar renderer returned schema version {}, expected {}.",
+                envelope.schema_version, ZJSTATUS_BAR_RENDER_SCHEMA_VERSION
+            ),
+            "Reinstall Yazelix so the bar widget matches this Yazelix build.",
+            json!({
+                "renderer": renderer,
+                "schema_version": envelope.schema_version,
+                "expected_schema_version": ZJSTATUS_BAR_RENDER_SCHEMA_VERSION,
+            }),
+        ));
+    }
+    if envelope.replacements.is_empty() {
+        return Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "empty_zellij_bar_replacements",
+            "Yazelix Zellij bar renderer returned no layout replacements.",
+            "Reinstall Yazelix so the bar widget matches this Yazelix build.",
+            json!({ "renderer": renderer }),
+        ));
+    }
+    Ok(envelope.replacements)
 }
 
 fn render_layout_template(
     content: &str,
     static_fragments: &BTreeMap<String, String>,
-    widget_tray_segment: &str,
-    custom_text_segment: &str,
+    bar_replacements: &BTreeMap<String, String>,
     pane_orchestrator_plugin_url: &str,
     zjstatus_plugin_url: &str,
     home_dir: &Path,
@@ -1178,123 +1267,92 @@ fn render_layout_template(
     render_plan: &ZellijRenderPlanData,
 ) -> Result<String, CoreError> {
     let mut updated = apply_static_fragments(content, static_fragments);
-    let tab_labels =
-        render_zjstatus_tab_label_formats(&render_plan.tab_label_mode).map_err(bar_render_error)?;
-    let replacements = [
-        (WIDGET_TRAY_PLACEHOLDER, widget_tray_segment.to_string()),
-        (CUSTOM_TEXT_PLACEHOLDER, custom_text_segment.to_string()),
-        (TAB_NORMAL_PLACEHOLDER, tab_labels.tab_normal.to_string()),
-        (
-            TAB_NORMAL_FULLSCREEN_PLACEHOLDER,
-            tab_labels.tab_normal_fullscreen.to_string(),
-        ),
-        (
-            TAB_NORMAL_SYNC_PLACEHOLDER,
-            tab_labels.tab_normal_sync.to_string(),
-        ),
-        (TAB_ACTIVE_PLACEHOLDER, tab_labels.tab_active.to_string()),
-        (
-            TAB_ACTIVE_FULLSCREEN_PLACEHOLDER,
-            tab_labels.tab_active_fullscreen.to_string(),
-        ),
-        (
-            TAB_ACTIVE_SYNC_PLACEHOLDER,
-            tab_labels.tab_active_sync.to_string(),
-        ),
-        (TAB_RENAME_PLACEHOLDER, tab_labels.tab_rename.to_string()),
-        (
-            PANE_ORCHESTRATOR_PLUGIN_URL_PLACEHOLDER,
-            pane_orchestrator_plugin_url.to_string(),
-        ),
-        (
-            ZJSTATUS_PLUGIN_URL_PLACEHOLDER,
-            zjstatus_plugin_url.to_string(),
-        ),
-        (HOME_DIR_PLACEHOLDER, home_dir.to_string_lossy().to_string()),
-        (
-            RUNTIME_DIR_PLACEHOLDER,
-            runtime_dir.to_string_lossy().to_string(),
-        ),
-        (
-            ZJSTATUS_COMMAND_DEFINITIONS_PLACEHOLDER,
-            render_yazelix_runtime_command_definitions(&integrated_zjstatus_runtime_paths(
-                runtime_dir,
-                render_plan,
-            )),
-        ),
-        (
-            "__YAZELIX_SIDEBAR_COMMAND__",
-            json_quote(expand_runtime_placeholder(
-                &render_plan.sidebar_command,
-                runtime_dir,
-            )),
-        ),
-        (
-            "__YAZELIX_SIDEBAR_ARGS__",
-            render_sidebar_args(&render_plan.sidebar_args, runtime_dir),
-        ),
-        (
-            "__YAZELIX_SIDEBAR_WIDTH_PERCENT__",
-            render_plan.layout_percentages.sidebar_width_percent.clone(),
-        ),
-        (
-            "__YAZELIX_OPEN_CONTENT_WIDTH_PERCENT__",
-            render_plan
-                .layout_percentages
-                .open_content_width_percent
-                .clone(),
-        ),
-        (
-            "__YAZELIX_OPEN_PRIMARY_WIDTH_PERCENT__",
-            render_plan
-                .layout_percentages
-                .open_primary_width_percent
-                .clone(),
-        ),
-        (
-            "__YAZELIX_OPEN_SECONDARY_WIDTH_PERCENT__",
-            render_plan
-                .layout_percentages
-                .open_secondary_width_percent
-                .clone(),
-        ),
-        (
-            "__YAZELIX_CLOSED_CONTENT_WIDTH_PERCENT__",
-            render_plan
-                .layout_percentages
-                .closed_content_width_percent
-                .clone(),
-        ),
-        (
-            "__YAZELIX_CLOSED_PRIMARY_WIDTH_PERCENT__",
-            render_plan
-                .layout_percentages
-                .closed_primary_width_percent
-                .clone(),
-        ),
-        (
-            "__YAZELIX_CLOSED_SECONDARY_WIDTH_PERCENT__",
-            render_plan
-                .layout_percentages
-                .closed_secondary_width_percent
-                .clone(),
-        ),
-    ];
+    let mut replacements = bar_replacements.clone();
+    replacements.extend(
+        [
+            (
+                PANE_ORCHESTRATOR_PLUGIN_URL_PLACEHOLDER,
+                pane_orchestrator_plugin_url.to_string(),
+            ),
+            (
+                ZJSTATUS_PLUGIN_URL_PLACEHOLDER,
+                zjstatus_plugin_url.to_string(),
+            ),
+            (HOME_DIR_PLACEHOLDER, home_dir.to_string_lossy().to_string()),
+            (
+                RUNTIME_DIR_PLACEHOLDER,
+                runtime_dir.to_string_lossy().to_string(),
+            ),
+            (
+                "__YAZELIX_SIDEBAR_COMMAND__",
+                json_quote(expand_runtime_placeholder(
+                    &render_plan.sidebar_command,
+                    runtime_dir,
+                )),
+            ),
+            (
+                "__YAZELIX_SIDEBAR_ARGS__",
+                render_sidebar_args(&render_plan.sidebar_args, runtime_dir),
+            ),
+            (
+                "__YAZELIX_SIDEBAR_WIDTH_PERCENT__",
+                render_plan.layout_percentages.sidebar_width_percent.clone(),
+            ),
+            (
+                "__YAZELIX_OPEN_CONTENT_WIDTH_PERCENT__",
+                render_plan
+                    .layout_percentages
+                    .open_content_width_percent
+                    .clone(),
+            ),
+            (
+                "__YAZELIX_OPEN_PRIMARY_WIDTH_PERCENT__",
+                render_plan
+                    .layout_percentages
+                    .open_primary_width_percent
+                    .clone(),
+            ),
+            (
+                "__YAZELIX_OPEN_SECONDARY_WIDTH_PERCENT__",
+                render_plan
+                    .layout_percentages
+                    .open_secondary_width_percent
+                    .clone(),
+            ),
+            (
+                "__YAZELIX_CLOSED_CONTENT_WIDTH_PERCENT__",
+                render_plan
+                    .layout_percentages
+                    .closed_content_width_percent
+                    .clone(),
+            ),
+            (
+                "__YAZELIX_CLOSED_PRIMARY_WIDTH_PERCENT__",
+                render_plan
+                    .layout_percentages
+                    .closed_primary_width_percent
+                    .clone(),
+            ),
+            (
+                "__YAZELIX_CLOSED_SECONDARY_WIDTH_PERCENT__",
+                render_plan
+                    .layout_percentages
+                    .closed_secondary_width_percent
+                    .clone(),
+            ),
+        ]
+        .into_iter()
+        .map(|(placeholder, value)| (placeholder.to_string(), value)),
+    );
     for (placeholder, value) in replacements {
-        updated = updated.replace(placeholder, &value);
+        updated = updated.replace(&placeholder, &value);
     }
     for placeholder in [
         WIDGET_TRAY_PLACEHOLDER,
-        ZJSTATUS_COMMAND_DEFINITIONS_PLACEHOLDER,
-        TAB_NORMAL_PLACEHOLDER,
-        TAB_NORMAL_FULLSCREEN_PLACEHOLDER,
-        TAB_NORMAL_SYNC_PLACEHOLDER,
-        TAB_ACTIVE_PLACEHOLDER,
-        TAB_ACTIVE_FULLSCREEN_PLACEHOLDER,
-        TAB_ACTIVE_SYNC_PLACEHOLDER,
-        TAB_RENAME_PLACEHOLDER,
+        CUSTOM_TEXT_PLACEHOLDER,
         "__YAZELIX_SIDEBAR_COMMAND__",
         "__YAZELIX_SIDEBAR_ARGS__",
+        ZJSTATUS_PLACEHOLDER_PREFIX,
     ] {
         if updated.contains(placeholder) {
             return Err(CoreError::classified(
@@ -1307,25 +1365,6 @@ fn render_layout_template(
         }
     }
     Ok(updated)
-}
-
-fn bar_render_error(error: BarRenderError) -> CoreError {
-    match error {
-        BarRenderError::InvalidWidgetTrayEntry { entry } => CoreError::classified(
-            ErrorClass::Config,
-            "invalid_widget_tray_entry",
-            format!("Invalid zellij.widget_tray token in layout renderer: {entry}"),
-            "Use only documented widget tray identifiers.",
-            json!({ "field": "zellij.widget_tray", "entry": entry }),
-        ),
-        BarRenderError::InvalidTabLabelMode { mode } => CoreError::classified(
-            ErrorClass::Config,
-            "invalid_tab_label_mode",
-            format!("Invalid zellij.tab_label_mode in layout renderer: {mode}"),
-            "Set zellij.tab_label_mode to `full` or `compact`.",
-            json!({ "field": "zellij.tab_label_mode", "mode": mode }),
-        ),
-    }
 }
 
 fn expand_runtime_placeholder(value: &str, runtime_dir: &Path) -> String {
@@ -2177,6 +2216,51 @@ mod tests {
         .unwrap()
     }
 
+    fn sample_bar_replacements() -> BTreeMap<String, String> {
+        BTreeMap::from([
+            (
+                "__YAZELIX_WIDGET_TRAY__".into(),
+                " #[fg=#00ff88,bold][editor: hx]{command_workspace}".into(),
+            ),
+            (
+                "__YAZELIX_CUSTOM_TEXT_SEGMENT__".into(),
+                "#[fg=#ffff00,bold][demo] ".into(),
+            ),
+            (
+                "__YAZELIX_ZJSTATUS_TAB_NORMAL__".into(),
+                r##"tab_normal   "#[fg=#ffff00] [{index}] {name} ""##.into(),
+            ),
+            (
+                "__YAZELIX_ZJSTATUS_TAB_NORMAL_FULLSCREEN__".into(),
+                r##"tab_normal_fullscreen "#[fg=#ffff00] [{index}] {name} [] ""##.into(),
+            ),
+            (
+                "__YAZELIX_ZJSTATUS_TAB_NORMAL_SYNC__".into(),
+                r##"tab_normal_sync       "#[fg=#ffff00] [{index}] {name} <> ""##.into(),
+            ),
+            (
+                "__YAZELIX_ZJSTATUS_TAB_ACTIVE__".into(),
+                r##"tab_active   "#[bg=#ff6600,fg=#000000,bold] [{index}] {name} {floating_indicator}""##.into(),
+            ),
+            (
+                "__YAZELIX_ZJSTATUS_TAB_ACTIVE_FULLSCREEN__".into(),
+                r##"tab_active_fullscreen "#[bg=#ff6600,fg=#000000,bold] [{index}] {name} {fullscreen_indicator}""##.into(),
+            ),
+            (
+                "__YAZELIX_ZJSTATUS_TAB_ACTIVE_SYNC__".into(),
+                r##"tab_active_sync       "#[bg=#ff6600,fg=#000000,bold] [{index}] {name} {sync_indicator}""##.into(),
+            ),
+            (
+                "__YAZELIX_ZJSTATUS_TAB_RENAME__".into(),
+                r##"tab_rename    "#[bg=#ff6600,fg=#000000,bold] {index} {name} {floating_indicator} ""##.into(),
+            ),
+            (
+                "__YAZELIX_ZJSTATUS_COMMAND_DEFINITIONS__".into(),
+                r#"    command_workspace_command "/runtime/libexec/yzx_control zellij status-cache-widget workspace""#.into(),
+            ),
+        ])
+    }
+
     fn sample_zellij_keybindings() -> BTreeMap<String, Vec<String>> {
         default_zellij_keybindings()
     }
@@ -2382,24 +2466,51 @@ keybinds {
         assert!(merged.contains("toggle_sidebar"));
     }
 
-    // Regression: widget tray rendering must not leave empty command placeholders when dynamic helper scripts are unavailable.
+    // Defends: integrated zjstatus layout data comes from the child widget command as opaque placeholder replacements.
     #[test]
-    fn renders_widget_tray_segment_with_static_identity_labels() {
+    fn renders_zjstatus_replacements_with_child_renderer_command() {
+        let temp = tempfile::tempdir().unwrap();
+        let runtime_dir = temp.path();
+        let libexec = runtime_dir.join("libexec");
+        std::fs::create_dir_all(&libexec).unwrap();
+        let renderer = libexec.join("yazelix_zellij_bar_widget");
+        std::fs::write(
+            &renderer,
+            r#"#!/bin/sh
+[ "$1" = "render-yazelix-runtime" ] || exit 11
+[ "$2" = "--json" ] || exit 12
+case "$3" in
+  *'"widget_tray":["editor","workspace","cpu"]'*) ;;
+  *) exit 13 ;;
+esac
+printf '%s\n' '{"schema_version":1,"replacements":{"__YAZELIX_WIDGET_TRAY__":" CHILD_WIDGETS ","__YAZELIX_ZJSTATUS_COMMAND_DEFINITIONS__":" CHILD_COMMANDS ","__YAZELIX_ZJSTATUS_TAB_NORMAL__":" CHILD_TAB "}}'
+"#,
+        )
+        .unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut permissions = std::fs::metadata(&renderer).unwrap().permissions();
+            permissions.set_mode(0o755);
+            std::fs::set_permissions(&renderer, permissions).unwrap();
+        }
         let plan = sample_render_plan_for_widgets(
-            vec!["editor", "shell", "term", "workspace", "cpu"],
-            "",
+            vec!["editor", "workspace", "cpu"],
+            "hx",
             "/nix/store/example/bin/nu",
             "ghostty",
         );
-        let rendered = render_bar_segments(&plan).unwrap().widget_tray_segment;
+        let replacements = render_integrated_zjstatus_bar(runtime_dir, &plan).unwrap();
 
-        assert!(rendered.contains("[editor: hx]"));
-        assert!(rendered.contains("[shell: nu]"));
-        assert!(rendered.contains("[term: ghostty]"));
-        assert!(rendered.contains("{command_workspace}"));
-        assert!(rendered.contains("{command_cpu}"));
-        assert!(!rendered.contains("{command_editor}"));
-        assert!(!rendered.contains("[editor: ]"));
+        assert_eq!(replacements["__YAZELIX_WIDGET_TRAY__"], " CHILD_WIDGETS ");
+        assert_eq!(
+            replacements["__YAZELIX_ZJSTATUS_COMMAND_DEFINITIONS__"],
+            " CHILD_COMMANDS "
+        );
+        assert_eq!(
+            replacements["__YAZELIX_ZJSTATUS_TAB_NORMAL__"],
+            " CHILD_TAB "
+        );
     }
 
     // Defends: the managed sidebar launcher is a generated config concern rather than a hardcoded Yazi script in layout templates.
@@ -2415,8 +2526,7 @@ keybinds {
     __YAZELIX_SIDEBAR_ARGS__
 }"#,
             &BTreeMap::new(),
-            "",
-            "",
+            &sample_bar_replacements(),
             "",
             "",
             std::path::Path::new("/home/user"),
@@ -2450,8 +2560,7 @@ keybinds {
     __YAZELIX_SIDEBAR_ARGS__
 }"#,
             &BTreeMap::new(),
-            "",
-            "",
+            &sample_bar_replacements(),
             "",
             "",
             std::path::Path::new("/home/user"),
@@ -2465,101 +2574,56 @@ keybinds {
         assert!(!rendered.contains("launch_sidebar_yazi.nu"));
     }
 
-    // Regression: generated zjstatus command widgets use resolved runtime helpers while dynamic widgets read only the local cache.
+    // Defends: generated layouts substitute child-owned zjstatus command-widget definitions as opaque data.
     #[test]
-    fn renders_cached_zjstatus_widget_commands_with_runtime_helper_paths() {
-        let temp = tempfile::tempdir().unwrap();
-        let runtime_dir = temp.path();
-        let libexec = runtime_dir.join("libexec");
-        std::fs::create_dir_all(&libexec).unwrap();
-        std::fs::write(libexec.join("nu"), "").unwrap();
-        std::fs::write(libexec.join("yzx_control"), "").unwrap();
-        std::fs::write(libexec.join("yazelix_zellij_bar_widget"), "").unwrap();
+    fn substitutes_child_zjstatus_command_definitions() {
         let plan =
             sample_render_plan_for_widgets(vec!["workspace"], "hx", "/nix/store/bin/nu", "ghostty");
+        let mut bar_replacements = sample_bar_replacements();
+        bar_replacements.insert(
+            "__YAZELIX_ZJSTATUS_COMMAND_DEFINITIONS__".into(),
+            r#"    command_workspace_command "child-owned-workspace"
+    command_cpu_command "child-owned-cpu""#
+                .into(),
+        );
         let rendered = render_layout_template(
             include_str!("../../../configs/zellij/layouts/fragments/zjstatus_tab_template.kdl"),
             &BTreeMap::new(),
-            "",
-            "",
+            &bar_replacements,
             "file:/tmp/pane.wasm",
             "file:/tmp/zjstatus.wasm",
             std::path::Path::new("/home/user"),
-            runtime_dir,
+            std::path::Path::new("/opt/yazelix"),
             &plan,
         )
         .unwrap();
-        let expected_nu = libexec.join("nu").to_string_lossy().to_string();
-        let expected_yzx_control = libexec.join("yzx_control").to_string_lossy().to_string();
-        let expected_bar_widget = libexec
-            .join("yazelix_zellij_bar_widget")
-            .to_string_lossy()
-            .to_string();
 
-        assert!(rendered.contains(&format!(
-            r#"command_cpu_command "{} cpu""#,
-            expected_bar_widget
-        )));
-        assert!(rendered.contains(&format!(
-            r#"command_ram_command "{} ram""#,
-            expected_bar_widget
-        )));
-        assert!(rendered.contains(&format!(
-            r#"command_workspace_command "{} zellij status-cache-widget workspace""#,
-            expected_yzx_control
-        )));
-        assert!(rendered.contains(r##"command_workspace_format "#[fg=#00ff88,bold]{stdout}""##));
-        assert!(rendered.contains(r#"command_workspace_interval "1""#));
-        assert!(rendered.contains(&format!(
-            r#"command_cursor_command "{} cursor""#,
-            expected_bar_widget
-        )));
-        assert!(rendered.contains(r#"command_cursor_format "{stdout}""#));
-        assert!(rendered.contains(r#"command_cursor_rendermode "dynamic""#));
-        assert!(rendered.contains(r#"command_cursor_interval "10""#));
-        assert!(rendered.contains(&format!(
-            r#"command_claude_usage_command "{} claude --display both""#,
-            expected_bar_widget
-        )));
-        assert!(rendered.contains(r##"command_claude_usage_format "#[fg=#bb88ff,bold]{stdout}""##));
-        assert!(rendered.contains(r#"command_claude_usage_interval "10""#));
-        assert!(rendered.contains(&format!(
-            r#"command_codex_usage_command "{} codex --display quota""#,
-            expected_bar_widget
-        )));
-        assert!(rendered.contains(r##"command_codex_usage_format "#[fg=#bb88ff,bold]{stdout}""##));
-        assert!(rendered.contains(r#"command_codex_usage_interval "10""#));
-        assert!(rendered.contains(&format!(
-            r#"command_opencode_go_usage_command "{} opencode_go --display both""#,
-            expected_bar_widget
-        )));
-        assert!(
-            rendered.contains(r##"command_opencode_go_usage_format "#[fg=#bb88ff,bold]{stdout}""##)
-        );
-        assert!(rendered.contains(r#"command_opencode_go_usage_interval "10""#));
-        assert!(rendered.contains(&format!(
-            r#"command_version_command "{} -c 'use {}/nushell/scripts/utils/constants.nu YAZELIX_VERSION; $YAZELIX_VERSION'""#,
-            expected_nu,
-            runtime_dir.to_string_lossy()
-        )));
-        assert!(!rendered.contains(yazelix_zellij_bar::ZJSTATUS_YZX_CONTROL_BIN_PLACEHOLDER));
-        assert!(!rendered.contains(yazelix_zellij_bar::ZJSTATUS_NU_BIN_PLACEHOLDER));
-        assert!(!rendered.contains(ZJSTATUS_COMMAND_DEFINITIONS_PLACEHOLDER));
+        assert!(rendered.contains(r#"command_workspace_command "child-owned-workspace""#));
+        assert!(rendered.contains(r#"command_cpu_command "child-owned-cpu""#));
+        assert!(!rendered.contains("__YAZELIX_ZJSTATUS_COMMAND_DEFINITIONS__"));
         assert!(!rendered.contains("status-bus-workspace"));
         assert!(!rendered.contains("agent-usage"));
     }
 
-    // Invariant: compact tab-label mode shortens zjstatus tab labels in generated layout KDL without affecting rename text.
+    // Invariant: child-provided compact tab-label replacements are applied without main-repo renderer logic.
     #[test]
-    fn renders_compact_tab_label_mode_in_zjstatus_template() {
-        let mut plan =
+    fn substitutes_child_compact_tab_label_replacements() {
+        let plan =
             sample_render_plan_for_widgets(vec!["workspace"], "hx", "/nix/store/bin/nu", "ghostty");
-        plan.tab_label_mode = "compact".into();
+        let mut bar_replacements = sample_bar_replacements();
+        bar_replacements.insert(
+            "__YAZELIX_ZJSTATUS_TAB_NORMAL__".into(),
+            r##"tab_normal   "#[fg=#ffff00] [{index}] ""##.into(),
+        );
+        bar_replacements.insert(
+            "__YAZELIX_ZJSTATUS_TAB_ACTIVE__".into(),
+            r##"tab_active   "#[bg=#ff6600,fg=#000000,bold] [{index}] {floating_indicator}""##
+                .into(),
+        );
         let rendered = render_layout_template(
             include_str!("../../../configs/zellij/layouts/fragments/zjstatus_tab_template.kdl"),
             &BTreeMap::new(),
-            "",
-            "",
+            &bar_replacements,
             "file:/tmp/pane.wasm",
             "file:/tmp/zjstatus.wasm",
             std::path::Path::new("/home/user"),
