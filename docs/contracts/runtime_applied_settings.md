@@ -89,9 +89,9 @@ Status-bar settings remain `generated_runtime_refresh`.
 
 | Setting family | Runtime owner | Why it is not live-applied |
 | --- | --- | --- |
-| `zellij.widget_tray` | Yazelix passes typed runtime bar config to `yazelix_zellij_bar_widget render-yazelix-runtime`, then inserts the child-rendered zjstatus plugin block into generated layout KDL before zjstatus starts | Changing the tray changes the loaded zjstatus `format_right` string and command-widget placeholders, not just command output |
-| `zellij.tab_label_mode` | Yazelix passes the tab-label mode to the child-rendered plugin block config | Changing tab label mode changes loaded zjstatus tab format configuration |
-| `zellij.custom_text` | Yazelix passes custom text to the child-rendered plugin block config | Changing the value changes a pre-rendered static segment in the plugin block |
+| `zellij.widget_tray` | Yazelix passes typed runtime bar config to `yazelix_zellij_bar_widget render-yazelix-runtime`, then inserts the child-rendered runtime KDL template output into generated layout KDL before zjstatus starts | Changing the tray changes the loaded zjstatus `format_right` string and command-widget placeholders, not just command output |
+| `zellij.tab_label_mode` | Yazelix passes the tab-label mode to the child runtime KDL template renderer | Changing tab label mode changes loaded zjstatus tab format configuration |
+| `zellij.custom_text` | Yazelix passes custom text to the child runtime KDL template renderer | Changing the value changes a pre-rendered static segment in the plugin block |
 | `zellij.codex_usage_display`, `zellij.claude_usage_display`, `zellij.claude_usage_periods`, `zellij.opencode_go_usage_display`, `zellij.opencode_go_usage_periods` | `yzx_control` command widgets render provider/cache text from the launch session config snapshot | The command output can refresh on its interval, but the display policy and periods come from the active session snapshot; changing those settings without a new snapshot would make saved-versus-active state ambiguous |
 
 Zellij plugin configuration is supplied to a plugin at load time. The current zjstatus pipe protocol can rerun command widgets, send notifications, or update pipe-widget content, but it does not replace the loaded module config, widget map, tab formats, or command-widget definitions. The pane orchestrator also must not proxy these settings into zjstatus because that would create a hidden second owner for bar configuration.

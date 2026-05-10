@@ -2,7 +2,7 @@
 
 `yazelix_zellij_bar` is the standalone Zellij bar plugin package extracted to [yazelix-zellij-bar](https://github.com/luccahuguet/yazelix-zellij-bar).
 
-Regular Yazelix users do not need to install it separately. The normal Yazelix package consumes the child package for integrated zjstatus plugin-block rendering and forwards the standalone package as `#yazelix_zellij_bar`.
+Regular Yazelix users do not need to install it separately. The normal Yazelix package consumes the child package for integrated zjstatus plugin-block rendering from the child runtime KDL template and forwards the standalone package as `#yazelix_zellij_bar`.
 
 The child package installs:
 
@@ -28,7 +28,7 @@ From this repo, the forwarded package remains:
 nix build .#yazelix_zellij_bar
 ```
 
-Use the child README for Zellij layout examples and custom command-widget configuration. KDL is the customization surface for standalone users. Integrated Yazelix calls `yazelix_zellij_bar_widget render-yazelix-runtime --json <config>` to get a complete child-rendered zjstatus plugin block for its generated layouts.
+Use the child README for Zellij layout examples and custom command-widget configuration. KDL is the customization surface for standalone users. Integrated Yazelix calls `yazelix_zellij_bar_widget render-yazelix-runtime --json <config>` to render the child-owned runtime KDL template into a complete zjstatus plugin block for generated layouts.
 
 The standalone non-workspace widget commands are intentionally short:
 

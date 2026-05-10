@@ -4,7 +4,7 @@
 
 Yazelix status-bar ownership is split across zjstatus, the standalone `yazelix_zellij_bar` child repo, the integrated Yazelix runtime adapter, and the pane orchestrator.
 
-The supported boundary is runnable-standalone-first for every non-workspace widget. `yazelix_zellij_bar` owns renderers, stdout widget commands, cache schemas, cache locking/backoff, provider probing, CPU/RAM commands, integrated zjstatus plugin-block rendering, and explicit path/env handling for widgets that do not require Yazelix session state. Yazelix owns session-specific path selection, generated layout integration, and workspace facts.
+The supported boundary is runnable-standalone-first for every non-workspace widget. `yazelix_zellij_bar` owns renderers, stdout widget commands, cache schemas, cache locking/backoff, provider probing, CPU/RAM commands, standalone KDL presets, integrated runtime KDL template rendering, and explicit path/env handling for widgets that do not require Yazelix session state. Yazelix owns session-specific path selection, generated layout integration, and workspace facts.
 
 ## Ownership Matrix
 
@@ -14,7 +14,7 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 | generic `mode`, `tabs`, `session`, `datetime`, brand, tab-label, compact/full bar, and command-placeholder rendering | `yazelix_zellij_bar` child package command surface | Keep child |
 | standalone preset/template packaging and package-local `zjstatus.wasm` path substitution | `yazelix_zellij_bar` child repo | Keep child |
 | widget tray token validation and generic dynamic command placeholders such as `{command_workspace}` | `yazelix_zellij_bar` child package command surface | Keep child |
-| integrated plugin block, including workspace, cursor, Claude, Codex, OpenCode Go, CPU, RAM, and version command definitions | `yazelix_zellij_bar_widget render-yazelix-runtime` rendered from Yazelix-supplied typed config | Keep child |
+| integrated plugin block, including workspace, cursor, Claude, Codex, OpenCode Go, CPU, RAM, and version command definitions | `yazelix_zellij_bar_widget render-yazelix-runtime` rendered from the child runtime KDL template plus Yazelix-supplied typed config | Keep child |
 | cursor status widget text, glyph display, env reading, `yzc current` fallback, and standalone stdout command | `yazelix_zellij_bar` child repo plus `yazelix-ghostty-cursors` facts API | Move child |
 | cursor cache path discovery and first-paint hydration from Yazelix session state | Yazelix core status adapter | Keep adapter |
 | status-bus schema decode and inspect-session rendering | Yazelix core plus pane-orchestrator producer | Keep adapter |
@@ -31,7 +31,7 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 - Type: boundary
 - Status: live
 - Owner: `yazelix_zellij_bar` child repo
-- Statement: Generic bar rendering, tab label rendering, widget-tray token validation, compact/full bar policy, simple fact widgets, runnable non-workspace widget commands, integrated plugin-block rendering, and standalone preset/template packaging belong to `yazelix_zellij_bar`. The main repo consumes the child package command surface as a typed config to rendered plugin-block boundary rather than linking the child crate or maintaining parallel widget implementations
+- Statement: Generic bar rendering, tab label rendering, widget-tray token validation, compact/full bar policy, simple fact widgets, runnable non-workspace widget commands, integrated runtime-template rendering, and standalone preset/template packaging belong to `yazelix_zellij_bar`. The main repo consumes the child package command surface as a typed config to rendered plugin-block boundary rather than linking the child crate or maintaining parallel widget implementations
 - Verification: automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zellij_materialization`
 
 #### SBO-002
@@ -59,7 +59,7 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 - Type: boundary
 - Status: live
 - Owner: `yazelix_zellij_bar` child repo plus Yazelix generated Zellij materialization
-- Statement: Integrated zjstatus command definitions are rendered by `yazelix_zellij_bar_widget render-yazelix-runtime` from typed Yazelix runtime bar config. The child command owns the zjstatus plugin block: widget command names, intervals, formats, render modes, widget tray output, custom text, and tab labels. The main adapter supplies runtime paths and inserts the returned plugin block into generated layouts
+- Statement: Integrated zjstatus command definitions are rendered by `yazelix_zellij_bar_widget render-yazelix-runtime` from the child runtime KDL template plus typed Yazelix runtime bar config. The child command owns the zjstatus plugin block: widget command names, intervals, formats, render modes, widget tray output, custom text, and tab labels. The main adapter supplies runtime paths and inserts the returned plugin block into generated layouts
 - Verification: automated `cargo test` in `luccahuguet/yazelix-zellij-bar` and `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zellij_materialization`
 
 #### SBO-006
