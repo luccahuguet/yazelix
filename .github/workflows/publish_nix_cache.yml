@@ -33,7 +33,7 @@ jobs:
           determinate: false
 
       - name: Configure Cachix
-        uses: cachix/cachix-action@v15
+        uses: cachix/cachix-action@v17
         with:
           name: yazelix
           authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
