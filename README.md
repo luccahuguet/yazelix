@@ -9,6 +9,66 @@
 
 The repo keeps one maintained static preview
 
+## Installation
+
+```bash
+nix profile add github:luccahuguet/yazelix#yazelix
+yzx launch
+```
+
+Yazelix publishes an optional `x86_64-linux` Cachix binary cache for package installs and Home Manager switches; see the [installation guide](./docs/installation.md#optional-use-the-yazelix-binary-cache) for the Nix configuration snippet
+
+> If you previously evaluated this flake, for example with `nix run` or `nix flake show`, Nix may have cached an older version. Add `--refresh` to force a fresh fetch:
+> ```bash
+> nix profile add --refresh github:luccahuguet/yazelix#yazelix
+> ```
+
+One-off use without installing also works:
+
+```bash
+nix run github:luccahuguet/yazelix#yazelix -- launch
+```
+
+Prefer declarative installs? Use the top-level Home Manager module in [home_manager/README.md](home_manager/README.md)
+
+📖 **[Complete Installation Guide →](./docs/installation.md)** - Detailed step-by-step installation instructions
+
+## Updating
+
+Choose one update owner for each Yazelix install, and do not mix both update paths for the same installed runtime
+
+- Profile installs: use `yzx update upstream`
+- Home Manager installs: use `yzx update home_manager`
+
+`yzx update upstream` prints and runs:
+
+```bash
+nix profile upgrade --refresh <matching-yazelix-profile-entry>
+```
+
+If the active runtime comes from an unmanaged Nix store path, such as `nix run` or a manually installed desktop entry, first install Yazelix into the default profile:
+
+```bash
+nix profile add --refresh github:luccahuguet/yazelix#yazelix
+yzx desktop install
+```
+
+`yzx update home_manager` runs in your current flake directory and refreshes the `yazelix` input with:
+
+```bash
+nix flake update yazelix
+```
+
+Run it only from the Home Manager flake that owns this install
+
+If your Home Manager flake uses a different Yazelix input name, run `nix flake update <your-input-name>` yourself instead
+
+This still matters for `path:` inputs because `flake.lock` pins a snapshot of that local path until you refresh it
+
+Then `yzx update home_manager` prints `home-manager switch` for you to run yourself
+
+Updating replaces the installed runtime that future launches use, while already-open Yazelix windows keep running their current live runtime until you explicitly relaunch them or run `yzx restart`; Yazelix does not silently hot-swap live sessions in place
+
 ## Overview
 Yazelix is a workspace-focused terminal environment built around [Yazi](https://github.com/sxyazi/yazi), [Zellij](https://github.com/zellij-org/zellij), and [Helix](https://helix-editor.com), with first-class [Neovim](https://neovim.io) support too
 
@@ -16,16 +76,13 @@ The supported product in this branch is the Rust-forward v16 Yazelix line
 
 ## Everyday Model
 
-For normal use, keep four things in mind:
+After installation, keep three things in mind:
 
-- Install one Yazelix package, or use the top-level Home Manager module
 - Edit `~/.config/yazelix/settings.jsonc` for the main workspace settings
-- Let Yazelix generate runtime state under `~/.local/share/yazelix`
-- Update with the owner that installed the runtime: `yzx update upstream` for profile installs, `yzx update home_manager` for Home Manager installs
+- Treat generated runtime state under `~/.local/share/yazelix` as Yazelix-owned output
+- Relaunch the window, or run `yzx restart`, after changing settings that affect live panes
 
 Ghostty cursor presets use their own config at `~/.config/yazelix_ghostty_cursors/settings.jsonc`. Deeper Yazi, Zellij, Helix, terminal, and shell overrides also live under `~/.config/yazelix/`, but the main settings file is the first place to look
-
-The normal package already includes the child-repo pieces it needs. Those projects are for standalone reuse and maintainer packaging boundaries, not extra setup steps for everyday Yazelix users
 
 ## Daily Workflow
 
@@ -161,66 +218,6 @@ For the current trimmed branch contract, see [docs/contracts/v15_trimmed_runtime
 - **Terminal**: Ghostty is the default packaged terminal, WezTerm is available through the explicit WezTerm package path, while Kitty and Alacritty remain supported PATH-provided alternatives and Foot remains a Linux-only PATH-provided alternative
 - **Editor**: Any editor works, with Helix and Neovim getting first-class support (reveal in the Yazi file tree, open buffer in a running instance, managed editor-pane targeting) and configuration through `editor.command` in `settings.jsonc`
 - **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer
-
-## Installation
-
-```bash
-nix profile add github:luccahuguet/yazelix#yazelix
-yzx launch
-```
-
-Yazelix publishes an optional `x86_64-linux` Cachix binary cache for package installs and Home Manager switches; see the [installation guide](./docs/installation.md#optional-use-the-yazelix-binary-cache) for the Nix configuration snippet
-
-> If you previously evaluated this flake (for example with `nix run` or `nix flake show`), Nix may have cached an older version. Add `--refresh` to force a fresh fetch:
-> ```bash
-> nix profile add --refresh github:luccahuguet/yazelix#yazelix
-> ```
-
-One-off use without installing also works:
-
-```bash
-nix run github:luccahuguet/yazelix#yazelix -- launch
-```
-
-Prefer declarative installs? Use the top-level Home Manager module in [home_manager/README.md](home_manager/README.md)
-
-📖 **[Complete Installation Guide →](./docs/installation.md)** - Detailed step-by-step installation instructions
-
-## Updating
-
-Choose one update owner for each Yazelix install, and do not mix both update paths for the same installed runtime
-
-- Profile installs: use `yzx update upstream`
-- Home Manager installs: use `yzx update home_manager`
-
-`yzx update upstream` prints and runs:
-
-```bash
-nix profile upgrade --refresh <matching-yazelix-profile-entry>
-```
-
-If the active runtime comes from an unmanaged Nix store path, such as `nix run` or a manually installed desktop entry, first install Yazelix into the default profile:
-
-```bash
-nix profile add --refresh github:luccahuguet/yazelix#yazelix
-yzx desktop install
-```
-
-`yzx update home_manager` runs in your current flake directory and refreshes the `yazelix` input with:
-
-```bash
-nix flake update yazelix
-```
-
-Run it only from the Home Manager flake that owns this install
-
-If your Home Manager flake uses a different Yazelix input name, run `nix flake update <your-input-name>` yourself instead
-
-This still matters for `path:` inputs because `flake.lock` pins a snapshot of that local path until you refresh it
-
-Then `yzx update home_manager` prints `home-manager switch` for you to run yourself
-
-Updating replaces the installed runtime that future launches use, while already-open Yazelix windows keep running their current live runtime until you explicitly relaunch them or run `yzx restart`; Yazelix does not silently hot-swap live sessions in place
 
 ### Helix Integration
 Helix supports optional `yzx reveal` integration through `Alt+r`, and Yazelix now reserves `Alt+r` globally: in the managed editor it forwards `Alt+r` into Helix for reveal, outside the editor it falls back to the editor/sidebar focus flow, and `Ctrl+y` and `Alt+y` remain the dedicated workspace navigation keys
