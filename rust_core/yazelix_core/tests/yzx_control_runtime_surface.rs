@@ -2,11 +2,12 @@
 
 use serde_json::Value;
 use std::fs;
-use std::process::Command;
+use std::io::{BufRead, BufReader};
+use std::process::{Command, Stdio};
 
 mod support;
 
-use support::commands::{apply_managed_config_env, yzx_control_command};
+use support::commands::{apply_managed_config_env, yzx_control_bin_path, yzx_control_command};
 use support::fixtures::{
     managed_config_fixture, prepend_path, repo_root, write_executable_script,
     write_session_config_snapshot,
@@ -604,6 +605,80 @@ exit 99
         fs::read_to_string(upgrade_log).unwrap(),
         "profile upgrade --refresh yazelix\n"
     );
+}
+
+// Regression: `yzx update upstream` must stream Nix progress while the upgrade is still running instead of buffering child output until completion.
+#[test]
+fn yzx_control_update_upstream_streams_nix_output_before_exit() {
+    let fixture = managed_config_fixture("");
+    let fake_bin = fixture.home_dir.join("fake-bin");
+    let profile_yzx = fixture
+        .home_dir
+        .join(".nix-profile")
+        .join("bin")
+        .join("yzx");
+    fs::create_dir_all(&fake_bin).unwrap();
+    fs::create_dir_all(profile_yzx.parent().unwrap()).unwrap();
+    fs::write(&profile_yzx, "#!/bin/sh\nexit 0\n").unwrap();
+
+    write_executable_script(
+        &fake_bin.join("nix"),
+        &format!(
+            "#!/bin/sh
+if [ \"$1\" = profile ] && [ \"$2\" = list ] && [ \"$3\" = --json ]; then
+  cat <<'EOF'
+{{\"elements\":{{\"yazelix\":{{\"storePaths\":[\"{}\"]}}}}}}
+EOF
+  exit 0
+fi
+if [ \"$1\" = profile ] && [ \"$2\" = upgrade ] && [ \"$3\" = --refresh ] && [ \"$4\" = yazelix ]; then
+  printf 'fake nix progress\\n'
+  sleep 1
+  printf 'fake nix done\\n'
+  exit 0
+fi
+echo unexpected nix invocation: \"$*\" >&2
+exit 99
+",
+            fixture.runtime_dir.display()
+        ),
+    );
+
+    let mut child = Command::new(yzx_control_bin_path())
+        .env_clear()
+        .env("HOME", &fixture.home_dir)
+        .env("PATH", prepend_path(&fake_bin))
+        .env("XDG_CONFIG_HOME", fixture.xdg_config_home())
+        .env("XDG_DATA_HOME", fixture.xdg_data_home())
+        .env("YAZELIX_RUNTIME_DIR", &fixture.runtime_dir)
+        .env("YAZELIX_CONFIG_DIR", &fixture.config_dir)
+        .env("YAZELIX_STATE_DIR", &fixture.state_dir)
+        .arg("update")
+        .arg("upstream")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+
+    let mut stdout = BufReader::new(child.stdout.take().unwrap());
+    let mut line = String::new();
+    loop {
+        line.clear();
+        let bytes = stdout.read_line(&mut line).unwrap();
+        assert_ne!(
+            bytes, 0,
+            "upstream update exited before streaming nix output"
+        );
+        if line.contains("fake nix progress") {
+            break;
+        }
+    }
+
+    assert!(
+        child.try_wait().unwrap().is_none(),
+        "upstream update buffered nix output until after the child process exited"
+    );
+    assert_eq!(child.wait().unwrap().code(), Some(0));
 }
 
 // Regression: `yzx home_manager prepare --apply` must remove standalone profile-owned Yazelix entries as part of the takeover flow instead of only archiving files.

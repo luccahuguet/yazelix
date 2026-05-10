@@ -195,6 +195,16 @@ fn print_exact_command(command: &str) {
     println!("  {command}");
 }
 
+fn run_command_with_live_output(
+    command: &mut Command,
+) -> std::io::Result<std::process::ExitStatus> {
+    command
+        .stdin(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status()
+}
+
 fn current_working_flake_dir() -> Result<PathBuf, i32> {
     let cwd = match std::env::current_dir() {
         Ok(cwd) => cwd,
@@ -419,23 +429,24 @@ pub fn run_yzx_update(args: &[String]) -> Result<i32, CoreError> {
             let cmd_line = format!("nix profile upgrade --refresh {profile_name}");
             print_exact_command(&cmd_line);
 
-            let output = match Command::new("nix")
-                .args(["profile", "upgrade", "--refresh", &profile_name])
-                .output()
-            {
-                Ok(o) => o,
+            let status = match run_command_with_live_output(Command::new("nix").args([
+                "profile",
+                "upgrade",
+                "--refresh",
+                &profile_name,
+            ])) {
+                Ok(status) => status,
                 Err(_) => {
                     println!("❌ Upstream Yazelix update failed.");
                     return Ok(1);
                 }
             };
 
-            print_completed_output(&output.stdout, &output.stderr);
-            if output.status.success() {
+            if status.success() {
                 Ok(0)
             } else {
                 println!("❌ Upstream Yazelix update failed.");
-                Ok(output.status.code().unwrap_or(1))
+                Ok(status.code().unwrap_or(1))
             }
         }
         "home_manager" => {
@@ -469,22 +480,21 @@ pub fn run_yzx_update(args: &[String]) -> Result<i32, CoreError> {
             println!();
             print_exact_command("nix flake update yazelix");
 
-            let output = match Command::new("nix")
-                .args(["flake", "update", "yazelix"])
-                .current_dir(&flake_dir)
-                .output()
-            {
-                Ok(o) => o,
+            let status = match run_command_with_live_output(
+                Command::new("nix")
+                    .args(["flake", "update", "yazelix"])
+                    .current_dir(&flake_dir),
+            ) {
+                Ok(status) => status,
                 Err(_) => {
                     println!("❌ Home Manager flake input update failed.");
                     return Ok(1);
                 }
             };
 
-            print_completed_output(&output.stdout, &output.stderr);
-            if !output.status.success() {
+            if !status.success() {
                 println!("❌ Home Manager flake input update failed.");
-                return Ok(output.status.code().unwrap_or(1));
+                return Ok(status.code().unwrap_or(1));
             }
 
             println!();
