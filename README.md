@@ -102,9 +102,10 @@ Ghostty cursor presets use their own config at `~/.config/yazelix_ghostty_cursor
 - In Yazelix docs, `sidebar` means the generic side-surface slot; the default sidebar is a Yazi file tree
 - Toggle focus between the sidebar and editor with `Ctrl+y`, and toggle the sidebar itself with `Alt+y`
 - Switch between the built-in sidebar-aware workspace shapes and other workspace layouts; see [Layouts](./docs/layouts.md)
-- When you open something from the default Yazi file-tree sidebar with Helix or Neovim, Yazelix targets the managed `editor` pane through the pane orchestrator instead of relying on pane scanning heuristics
+- When you open something from the default Yazi file-tree sidebar with Helix or Neovim, Yazelix targets the managed `editor` pane through the pane orchestrator instead of relying on pane scanning heuristics; it reuses that pane when present and creates one titled `editor` when needed
 - `yzx reveal` is the stable editor-integration surface for jumping the current file back into the managed Yazi file tree
 - `Alt+t` toggles the managed popup pane through `yzpp` and refreshes the Yazi file-tree sidebar git view when that popup closes, while `Alt+Shift+M` toggles the popup command menu and `Alt+Shift+C` toggles the config UI on the same configured floating-pane path
+- Configure the managed editor with `editor.command` in `settings.jsonc`
 
 ## Advanced: First-Party Child Repositories
 
@@ -207,14 +208,6 @@ Check installed tool versions:
 ```bash
 yzx status --versions
 ```
-
-## Editor Pane Orchestration
-
-When opening files from Yazi, Yazelix will:
-- Ask the Yazelix pane orchestrator plugin for the managed `editor` pane in the current tab
-- Reuse that pane directly when it exists, instead of scanning nearby panes or depending on stack position
-- Create a new pane titled `editor` when no managed editor pane exists yet
-- Use the same managed-pane flow for both Helix and Neovim; configure the editor via `editor.command` in `settings.jsonc`
 
 ## POSIX/XDG Paths
 
