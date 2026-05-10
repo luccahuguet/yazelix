@@ -2,13 +2,13 @@
 
 ## Summary
 
-Desktop entry launches must create an immediate visible surface before Yazelix runs pre-terminal launch work. If launch fails before the managed Yazelix terminal is spawned, the user must see an actionable error instead of a silent desktop no-op.
+Desktop entry launches must invoke `yzx desktop launch` directly and let Yazelix start the configured terminal. The desktop entry must not depend on the desktop environment's generic `Terminal=true` handling.
 
 ## Why
 
-Desktop environments usually run application launch commands without an attached terminal. Yazelix desktop launch does meaningful work before the managed terminal exists: runtime resolution, config parsing, terminal selection, generated terminal config repair, Ghostty cursor rerolls, and the detached terminal handoff. Any failure in that phase can otherwise disappear.
+Desktop environments usually run application launch commands without an attached terminal. Some environments also accept a `Terminal=true` desktop entry without starting the command through a usable terminal. In COSMIC/GLib-style launch paths, that can turn a valid Yazelix desktop file into a silent no-op even though `yzx desktop launch` works from a shell.
 
-The supported contract is that desktop launch uses a short-lived bootstrap terminal surface for preflight and failure feedback, but the configured Yazelix terminal must be scheduled only after that bootstrap process exits on the success path. Visible failure feedback and clean first-window geometry both matter.
+The supported contract is that desktop entries are non-terminal desktop commands. `yzx desktop launch` owns runtime resolution, config parsing, terminal selection, generated terminal config repair, Ghostty cursor rerolls, and the detached terminal handoff to the configured Yazelix terminal.
 
 ## Scope
 
@@ -19,48 +19,47 @@ The supported contract is that desktop launch uses a short-lived bootstrap termi
 
 ## Behavior
 
-- Managed Yazelix desktop entries must be terminal-backed so the launch command has a visible surface immediately.
-- User-local and Linux Home Manager desktop entries must share the same visible-feedback contract.
+- Managed Yazelix desktop entries must set `Terminal=false` so desktop environments run `yzx desktop launch` directly instead of trying to provide a generic bootstrap terminal.
+- User-local and Linux Home Manager desktop entries must share the same desktop-entry contract.
 - `yzx desktop launch` must print concise progress before invoking the fast path.
-- If the fast path succeeds, `yzx desktop launch` must schedule the managed Yazelix terminal through the deferred desktop launcher and then exit the bootstrap surface before the managed terminal appears.
-- If launch fails before terminal handoff, `yzx desktop launch` must print the actionable error in the visible surface and pause long enough for the user to read it.
+- If the fast path succeeds, `yzx desktop launch` must schedule the managed Yazelix terminal through the deferred desktop launcher.
+- If launch is invoked from a visible terminal and fails before terminal handoff, `yzx desktop launch` must print the actionable error and pause long enough for the user to read it.
 - The desktop path must preserve runtime re-anchoring and inherited-environment cleanup. It must not trust stale ambient Yazelix, Zellij, Yazi, or shell activation state.
-- Doctor must report desktop entries that still point at the expected launcher but are not terminal-backed.
+- Doctor must report desktop entries that still point at the expected launcher but set `Terminal=true`, because that delegates the first terminal launch to the desktop environment.
 
 ## Non-goals
 
 - Building a custom graphical prelaunch dialog
 - Changing terminal preference or terminal fallback policy
+- Depending on desktop-environment generic terminal launcher behavior
 - Adding a second fallback launch path after the desktop fast path fails
 - Moving desktop-specific UX into config parsing or terminal config generation
-- Solving cosmetic bootstrap-terminal window-class mismatches
+- Solving graphical failure-dialog UX
 
 ## Acceptance Cases
 
-1. When `yzx desktop install` writes the user-local desktop entry, the entry includes a terminal-backed launch surface and still points at the expected launcher.
-2. When Home Manager generates the Yazelix desktop entry on Linux, it also requests a terminal-backed launch surface.
-3. When `yzx desktop launch` fails before terminal handoff, the user sees both progress and actionable failure text in the visible bootstrap surface.
-4. When `yzx desktop launch` succeeds, the bootstrap process exits before the managed terminal command is spawned, so tiling window managers do not size the real Yazelix window around the starter terminal.
-5. When an installed desktop entry points at the expected launcher but lacks the terminal-backed contract, `yzx doctor` reports it as stale with repair guidance.
+1. When `yzx desktop install` writes the user-local desktop entry, the entry sets `Terminal=false` and still points at the expected launcher.
+2. When Home Manager generates the Yazelix desktop entry on Linux, it also sets `Terminal=false`.
+3. When `yzx desktop launch` is invoked from a visible terminal and fails before terminal handoff, the user sees both progress and actionable failure text.
+4. When `yzx desktop launch` succeeds, the managed terminal command is spawned by Yazelix rather than by desktop-entry `Terminal=true` handling.
+5. When an installed desktop entry points at the expected launcher but sets `Terminal=true`, `yzx doctor` reports it as stale with repair guidance.
 6. Desktop launch still clears inherited Yazelix, Zellij, and Yazi session variables before invoking the runtime fast path.
 
 ## Verification
 
-- `nu -c 'source nushell/scripts/dev/test_yzx_core_commands.nu; test_yzx_desktop_install_writes_entry_and_icon_assets'`
-- `nu -c 'source nushell/scripts/dev/test_yzx_workspace_commands.nu; test_yzx_desktop_launch_propagates_fast_path_failures_without_fallback'`
-- `nu -c 'source nushell/scripts/dev/test_yzx_doctor_commands.nu; test_yzx_doctor_reports_non_terminal_desktop_entry'`
-- `nu -c 'source nushell/scripts/dev/test_yzx_doctor_commands.nu; test_yzx_doctor_accepts_home_manager_install_artifacts'`
+- `yzx dev rust test launch_commands::tests::render_desktop_entry_quotes_exec_path`
+- `yzx dev rust test launch_commands::tests::desktop_deferred_launch_helper_schedules_after_starter_parent_exits`
+- `yzx dev rust test install_ownership_report::tests::desktop_freshness_accepts_terminal_false_and_warns_on_terminal_true`
 - `yzx_repo_validator validate-config-surface-contract`
 - `yzx_repo_validator validate-contracts`
 
 ## Traceability
-- Defended by: `nushell/scripts/dev/test_yzx_core_commands.nu::test_yzx_desktop_install_writes_entry_and_icon_assets`
-- Defended by: `nushell/scripts/dev/test_yzx_workspace_commands.nu::test_yzx_desktop_launch_propagates_fast_path_failures_without_fallback`
-- Defended by: `nushell/scripts/dev/test_yzx_doctor_commands.nu::test_yzx_doctor_reports_non_terminal_desktop_entry`
-- Defended by: `nushell/scripts/dev/test_yzx_doctor_commands.nu::test_yzx_doctor_accepts_home_manager_install_artifacts`
+- Defended by: `rust_core/yazelix_core/src/launch_commands.rs::render_desktop_entry_quotes_exec_path`
+- Defended by: `rust_core/yazelix_core/src/launch_commands.rs::desktop_deferred_launch_helper_schedules_after_starter_parent_exits`
+- Defended by: `rust_core/yazelix_core/src/install_ownership_report.rs::desktop_freshness_accepts_terminal_false_and_warns_on_terminal_true`
 - Defended by: `yzx_repo_validator validate-contracts`
 
 ## Open Questions
 
-- Should a future release replace the terminal-backed bootstrap surface with a purpose-built dialog or launcher helper if the terminal-window mismatch becomes distracting?
+- Should a future release add a purpose-built graphical failure dialog for desktop-launch failures that occur before the configured terminal can be spawned?
 - Should doctor eventually validate the exact rendered Home Manager desktop entry from a full Home Manager evaluation rather than only the installed profile entry contract?

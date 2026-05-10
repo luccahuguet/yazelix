@@ -704,14 +704,15 @@ fn check_desktop_entry_freshness(
         };
     }
 
-    if !desktop_entry_terminal_enabled(&dp) {
+    if desktop_entry_terminal_enabled(&dp) {
         let terminal_value =
             get_desktop_entry_terminal_value(&dp).unwrap_or_else(|| "<missing>".into());
         return DoctorInstallResult {
             status: "warning".into(),
-            message: "Yazelix desktop entry is not terminal-backed".into(),
+            message: "Yazelix desktop entry delegates terminal launch to the desktop environment"
+                .into(),
             details: Some(format!(
-                "Desktop entry: {}\nTerminal: {}\nDesktop launch failures before terminal handoff can disappear without a visible terminal surface.\n{repair_hint}",
+                "Desktop entry: {}\nTerminal: {}\nTerminal=true can fail silently on desktop environments that do not provide a compatible generic terminal launcher. Yazelix desktop entries should use Terminal=false and let yzx desktop launch start the configured terminal.\n{repair_hint}",
                 path_to_string(&dp),
                 terminal_value
             )),
@@ -958,6 +959,58 @@ mod tests {
         );
     }
 
+    // Regression: COSMIC/GLib can accept a Terminal=true desktop entry without starting Yazelix, so fresh entries must be non-terminal desktop commands.
+    #[test]
+    fn desktop_freshness_accepts_terminal_false_and_warns_on_terminal_true() {
+        let tmp = TempDir::new().unwrap();
+        let home = tmp.path().join("home");
+        let xdg_data = home.join(".local/share");
+        let apps = xdg_data.join("applications");
+        let main_config = home.join(".config/yazelix/yazelix.toml");
+        let profile_yzx = home.join(".nix-profile/bin/yzx");
+        let desktop = apps.join("com.yazelix.Yazelix.desktop");
+
+        std::fs::create_dir_all(&apps).unwrap();
+        std::fs::create_dir_all(main_config.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(profile_yzx.parent().unwrap()).unwrap();
+        std::fs::write(&main_config, "[core]\n").unwrap();
+        std::fs::write(&profile_yzx, "#!/bin/sh\n").unwrap();
+
+        let exec = format!("\"{}\" desktop launch", profile_yzx.display());
+        std::fs::write(
+            &desktop,
+            format!("[Desktop Entry]\nName=Yazelix\nTerminal=false\nExec={exec}\n"),
+        )
+        .unwrap();
+
+        let request = InstallOwnershipEvaluateRequest {
+            runtime_dir: tmp.path().join("runtime"),
+            home_dir: home.clone(),
+            user: Some("test-user".into()),
+            xdg_config_home: home.join(".config"),
+            xdg_data_home: xdg_data.clone(),
+            yazelix_state_dir: xdg_data.join("yazelix"),
+            main_config_path: main_config,
+            invoked_yzx_path: None,
+            redirected_from_stale_yzx_path: None,
+            shell_resolved_yzx_path: None,
+        };
+        let fresh = evaluate_install_ownership_report(&request);
+        assert_eq!(fresh.desktop_entry_freshness.status, "ok");
+
+        std::fs::write(
+            &desktop,
+            format!("[Desktop Entry]\nName=Yazelix\nTerminal=true\nExec={exec}\n"),
+        )
+        .unwrap();
+        let stale = evaluate_install_ownership_report(&request);
+        assert_eq!(stale.desktop_entry_freshness.status, "warning");
+        assert_eq!(
+            stale.desktop_entry_freshness.message,
+            "Yazelix desktop entry delegates terminal launch to the desktop environment"
+        );
+    }
+
     // Defends: desktop freshness still warns when a user-local desktop entry shadows the profile-owned entry.
     #[test]
     fn desktop_freshness_warns_on_shadowing_local_desktop() {
@@ -977,7 +1030,7 @@ mod tests {
         let good_exec = format!("\"{}\" desktop launch", profile_yzx.display());
         std::fs::write(
             &profile_desktop,
-            format!("[Desktop Entry]\nName=Yazelix\nTerminal=true\nExec={good_exec}\n"),
+            format!("[Desktop Entry]\nName=Yazelix\nTerminal=false\nExec={good_exec}\n"),
         )
         .unwrap();
         std::fs::write(

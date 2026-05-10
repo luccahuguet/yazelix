@@ -295,7 +295,7 @@ pub(super) fn render_desktop_entry(launcher_path: &Path) -> String {
         "Comment=Yazi + Zellij + Helix integrated terminal environment".to_string(),
         "Icon=yazelix".to_string(),
         format!("StartupWMClass={WINDOW_CLASS}"),
-        "Terminal=true".to_string(),
+        "Terminal=false".to_string(),
         "X-Yazelix-Managed=true".to_string(),
         format!(
             "Exec={} desktop launch",

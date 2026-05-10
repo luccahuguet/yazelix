@@ -704,7 +704,7 @@ in
           icon = "yazelix";
           categories = [ "Development" ];
           type = "Application";
-          terminal = true;
+          terminal = false;
           settings = {
             StartupWMClass = "com.yazelix.Yazelix";
           };

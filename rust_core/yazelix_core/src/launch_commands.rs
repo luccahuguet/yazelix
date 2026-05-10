@@ -501,10 +501,10 @@ mod tests {
     fn render_desktop_entry_quotes_exec_path() {
         let entry = render_desktop_entry(Path::new("/tmp/with space/yzx"));
         assert!(entry.contains("Exec=\"/tmp/with space/yzx\" desktop launch"));
-        assert!(entry.contains("Terminal=true"));
+        assert!(entry.contains("Terminal=false"));
     }
 
-    // Regression: desktop launch must keep its starter terminal for visible preflight, but schedule the real terminal through a deferred helper so the starter can close first.
+    // Regression: desktop launch schedules the real terminal only after the desktop-launch parent exits.
     #[test]
     fn desktop_deferred_launch_helper_schedules_after_starter_parent_exits() {
         let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"))

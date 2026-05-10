@@ -321,13 +321,13 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         errors.push("Home Manager Linux desktop entry must be generated".to_string());
     }
 
-    if !entry
+    if entry
         .get("terminal")
         .and_then(JsonValue::as_bool)
         .unwrap_or(false)
     {
         errors.push(
-            "Home Manager desktop entry must set terminal = true so desktop-launch pre-terminal failures are visible"
+            "Home Manager desktop entry must set terminal = false so Yazelix owns the configured terminal launch"
                 .to_string(),
         );
     }
