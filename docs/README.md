@@ -21,6 +21,7 @@ Use this page as the docs front door. It points to current user guides first, th
 - [Zellij configuration](./zellij-configuration.md)
 - [Yazelix Zellij bar](./yazelix_zellij_bar.md)
 - [Layouts](./layouts.md)
+- [Startup performance](./startup_performance.md)
 - [Styling](./styling.md)
 - [Editor terminal integration](./editor_terminal_integration.md)
 
