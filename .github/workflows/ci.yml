@@ -46,44 +46,40 @@ jobs:
 
       # Keep the always-on lane off Magic Nix Cache. Its post-job uploads can
       # outlive the validators and turn green checks into timeout failures.
-      - name: Build maintainer validator
-        run: nix develop -c cargo build --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator
+      - name: Build Rust validation helpers
+        run: |
+          set -euo pipefail
+          nix develop .#ci -c cargo build --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -p yazelix_core --bin yzx_core
+          echo "YAZELIX_YZX_CORE_BIN=$GITHUB_WORKSPACE/rust_core/target/debug/yzx_core" >> "$GITHUB_ENV"
 
       - name: Validate Nushell syntax
-        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-nushell-syntax
+        run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-nushell-syntax
 
       - name: Validate generated README surface
         shell: bash
-        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-readme-version
+        run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-readme-version
 
       - name: Validate upgrade contract
         shell: bash
-        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-upgrade-contract --ci
-
-      - name: Build yzx_core helper for source-checkout validators
-        shell: bash
-        run: |
-          set -euo pipefail
-          nix shell nixpkgs#cargo nixpkgs#rustc -c cargo build --manifest-path rust_core/Cargo.toml --bin yzx_core
-          echo "YAZELIX_YZX_CORE_BIN=$GITHUB_WORKSPACE/rust_core/target/debug/yzx_core" >> "$GITHUB_ENV"
+        run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-upgrade-contract --ci
 
       - name: Validate config surface and launch-profile contract
         shell: bash
-        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-config-surface-contract
+        run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-config-surface-contract
 
       - name: Validate contracts
         shell: bash
-        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-contracts
+        run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-contracts
 
       - name: Validate Rust test traceability
         shell: bash
-        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-rust-test-traceability
+        run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-rust-test-traceability
 
       - name: Validate top-level flake interface
-        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-flake-interface
+        run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-flake-interface
 
       - name: Validate Nix customization API
-        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-nix-customization-api
+        run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-nix-customization-api
 
   integration:
     # Manual maintainer gate for Home Manager/runtime activation behavior.
