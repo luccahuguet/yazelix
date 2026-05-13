@@ -2416,6 +2416,53 @@ keybinds {
         assert!(merged.contains("toggle_sidebar"));
     }
 
+    // Regression: native Zellij mode leaders remain user/Zellij-owned instead of being reasserted by Yazelix overrides after a managed remap.
+    #[test]
+    fn managed_zellij_remap_can_remove_ctrl_n_resize_leader() {
+        let temp = tempfile::tempdir().unwrap();
+        let runtime_dir = temp.path();
+        let overrides_dir = runtime_dir.join("configs").join("zellij");
+        std::fs::create_dir_all(&overrides_dir).unwrap();
+        std::fs::write(
+            overrides_dir.join("yazelix_overrides.kdl"),
+            include_str!("../../../configs/zellij/yazelix_overrides.kdl"),
+        )
+        .unwrap();
+        let plan =
+            sample_render_plan_for_widgets(vec!["workspace"], "hx", "/nix/store/bin/nu", "ghostty");
+        let rendered = render_merged_config(
+            runtime_dir,
+            r#"keybinds {
+    shared_except "resize" "locked" {
+        unbind "Ctrl n"
+        bind "Ctrl Alt n" { SwitchToMode "Resize"; }
+    }
+
+    resize {
+        unbind "Ctrl n"
+        bind "Ctrl Alt n" { SwitchToMode "Normal"; }
+    }
+}
+"#,
+            true,
+            &sample_zellij_keybindings(),
+            &plan,
+            &["lazygit".to_string()],
+            Path::new("/tmp/pane.wasm"),
+            Path::new("/tmp/yzpp.wasm"),
+            "gen-test",
+        )
+        .unwrap();
+
+        assert!(rendered.contains(r#"bind "Ctrl Alt n" { SwitchToMode "Resize"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl Alt n" { SwitchToMode "Normal"; }"#));
+        assert!(!rendered.contains(r#"bind "Ctrl n" { SwitchToMode "Resize"; }"#));
+        assert!(!rendered.contains(r#"bind "Ctrl n" { SwitchToMode "Normal"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl Alt s" { SwitchToMode "Scroll"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl Alt o" { SwitchToMode "Session"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl Alt g" { SwitchToMode "Locked"; }"#));
+    }
+
     // Defends: integrated zjstatus layout data comes from the child widget command as an opaque plugin block.
     #[test]
     fn renders_zjstatus_plugin_block_with_child_renderer_command() {

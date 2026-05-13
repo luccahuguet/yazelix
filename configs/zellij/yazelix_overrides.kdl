@@ -5,24 +5,8 @@
 // Yazelix-owned pane-orchestrator action binds are rendered from
 // settings.jsonc zellij.keybindings by rust_core/yazelix_core/src/zellij_materialization.rs.
 
-// override these in ~/.config/yazelix/zellij.kdl when needed
-
-// Use configured editor (via EDITOR env var) for viewing scrollback history
-// when pressing Ctrl+Alt+s. scrollback_editor defaults to $EDITOR when not
-// specified.
-
 keybinds {
     shared {
-        // Use original Zellij keybinding but with Ctrl+Alt modifier
-        // Original: Ctrl+O, now: Ctrl+Alt+O to avoid Helix conflicts
-        unbind "Ctrl o"
-        bind "Ctrl Alt o" { SwitchToMode "Session"; }
-
-        // Use original Zellij keybinding but with Ctrl+Alt modifier
-        // Original: Ctrl+S, now: Ctrl+Alt+S to avoid Helix conflicts
-        unbind "Ctrl s"
-        bind "Ctrl Alt s" { SwitchToMode "Scroll"; }
-
         // Previously: Alt + i (in helix: shrink_selection)
         unbind "Alt i"
         // Move tab left (new)
@@ -77,50 +61,26 @@ keybinds {
         bind "Ctrl Alt g" { SwitchToMode "Locked"; }
     }
 
-    shared_except "pane" "locked" {
-        bind "Ctrl p" { SwitchToMode "Pane"; }
-    }
-
-    shared_except "resize" "locked" {
-        bind "Ctrl n" { SwitchToMode "Resize"; }
-    }
-
     shared_except "scroll" "locked" {
+        // Use original Zellij keybinding but with Ctrl+Alt modifier
+        // Original: Ctrl+S, now: Ctrl+Alt+S to avoid terminal/editor conflicts
         unbind "Ctrl s"
         bind "Ctrl Alt s" { SwitchToMode "Scroll"; }
     }
 
     shared_except "session" "locked" {
+        // Use original Zellij keybinding but with Ctrl+Alt modifier
+        // Original: Ctrl+O, now: Ctrl+Alt+O to avoid editor conflicts
         unbind "Ctrl o"
         bind "Ctrl Alt o" { SwitchToMode "Session"; }
-    }
-
-    shared_except "tab" "locked" {
-        bind "Ctrl t" { SwitchToMode "Tab"; }
-    }
-
-    shared_except "move" "locked" {
-        bind "Ctrl h" { SwitchToMode "Move"; }
     }
 
     shared_except "locked" {
         unbind "Ctrl b"
     }
 
-    shared_except "locked" {
-        bind "Ctrl q" { Quit; }
-    }
-
     locked {
         bind "Ctrl Alt g" { SwitchToMode "Normal"; }
-    }
-
-    pane {
-        bind "Ctrl p" { SwitchToMode "Normal"; }
-    }
-
-    resize {
-        bind "Ctrl n" { SwitchToMode "Normal"; }
     }
 
     session {
@@ -133,13 +93,5 @@ keybinds {
         // Exit scroll mode
         unbind "Ctrl s"
         bind "Ctrl Alt s" { SwitchToMode "Normal"; }
-    }
-
-    tab {
-        bind "Ctrl t" { SwitchToMode "Normal"; }
-    }
-
-    move {
-        bind "Ctrl h" { SwitchToMode "Normal"; }
     }
 }
