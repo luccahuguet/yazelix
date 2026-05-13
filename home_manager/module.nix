@@ -648,6 +648,16 @@ in
       '';
     };
 
+    zellij_native_keybindings = mkMainContractOption "zellij.native_keybindings" {
+      description = ''
+        Curated native Zellij key policy remaps and unbinds managed by Yazelix.
+
+        Keys are policy ids such as "scroll_mode", "scroll_mode_unbind",
+        "move_tab_left", and "move_tab_left_unbind"; values are lists of Zellij
+        key strings. Use an empty list to disable one native policy entry.
+      '';
+    };
+
   };
 
   config = mkIf cfg.enable (mkMerge [

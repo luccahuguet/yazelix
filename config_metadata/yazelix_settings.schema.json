@@ -80,6 +80,16 @@
               "type": "string"
             }
           }
+        },
+        "native_keybindings": {
+          "type": "object",
+          "description": "Curated native Zellij key policy remaps and unbinds managed by Yazelix",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
         }
       },
       "x-yazelix": {

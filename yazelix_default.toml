@@ -233,6 +233,60 @@ screen_saver_style = "random"
 # Options: "normal", "locked"
 default_mode = "normal"
 
+[zellij.native_keybindings]
+# Curated native Zellij key policy used by Yazelix.
+# Each value is a list of Zellij key strings. Set an entry to [] to disable
+# that native bind/unbind. Arbitrary native Zellij keymaps still belong in
+# ~/.config/yazelix/zellij.kdl.
+
+# Move tab left/right away from Helix selection keys.
+move_tab_left_unbind = ["Alt i"]
+move_tab_left = ["Alt Shift H"]
+move_tab_right_unbind = ["Alt o"]
+move_tab_right = ["Alt Shift L"]
+
+# Leave Alt+n available to Helix selection flow instead of Zellij new-pane.
+new_pane_unbind = ["Alt n"]
+
+# Direct tab jumps.
+go_to_tab_1 = ["Alt 1"]
+go_to_tab_2 = ["Alt 2"]
+go_to_tab_3 = ["Alt 3"]
+go_to_tab_4 = ["Alt 4"]
+go_to_tab_5 = ["Alt 5"]
+go_to_tab_6 = ["Alt 6"]
+go_to_tab_7 = ["Alt 7"]
+go_to_tab_8 = ["Alt 8"]
+go_to_tab_9 = ["Alt 9"]
+
+# Convenience native Zellij navigation.
+toggle_focus_fullscreen = ["Alt Shift F"]
+previous_tab = ["Alt q"]
+next_tab = ["Alt w"]
+
+# Terminal-specific Helix selection-cycle conflict workaround.
+selection_cycle_unbind = ["Alt (", "Alt )"]
+
+# Move pane grouping away from Helix sibling selection.
+toggle_pane_in_group_unbind = ["Alt p"]
+toggle_pane_in_group = ["Ctrl Alt p"]
+toggle_group_marking = ["Ctrl Alt Shift P"]
+
+# Move locked mode away from Ctrl+g in normal/default modes for CLI prompt flows.
+locked_mode_unbind = ["Ctrl g"]
+locked_mode = ["Ctrl Alt g"]
+
+# Move scroll mode away from Ctrl+s because Ctrl+s is terminal/editor-hostile.
+scroll_mode_unbind = ["Ctrl s"]
+scroll_mode = ["Ctrl Alt s"]
+
+# Move session mode away from Ctrl+o because it conflicts with editor workflows.
+session_mode_unbind = ["Ctrl o"]
+session_mode = ["Ctrl Alt o"]
+
+# Keep Ctrl+b available to shells/editors instead of Zellij tmux mode.
+tmux_mode_unbind = ["Ctrl b"]
+
 [zellij.keybindings]
 # Semantic remaps for Yazelix-owned Zellij actions.
 # Each value is a list of Zellij key strings. Set an action to [] to disable

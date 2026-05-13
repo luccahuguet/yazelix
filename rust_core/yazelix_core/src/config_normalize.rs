@@ -894,6 +894,27 @@ toggle_sidebar = []
         assert_eq!(keybindings["toggle_sidebar"], json!([]));
     }
 
+    // Defends: curated native Zellij key policy remaps flow through the main config contract as a typed action map.
+    #[test]
+    fn normalizes_zellij_native_keybinding_map() {
+        let path = write_user_config(
+            r#"
+[zellij.native_keybindings]
+scroll_mode = ["Ctrl Alt x"]
+scroll_mode_unbind = []
+"#,
+        );
+        let data = normalize_config(&request_for(path)).unwrap();
+        let keybindings = data
+            .normalized_config
+            .get("zellij_native_keybindings")
+            .and_then(JsonValue::as_object)
+            .expect("zellij native keybindings");
+
+        assert_eq!(keybindings["scroll_mode"], json!(["Ctrl Alt x"]));
+        assert_eq!(keybindings["scroll_mode_unbind"], json!([]));
+    }
+
     // Defends: semantic Yazi integration keybinding remaps flow through the main config contract as a typed action map.
     #[test]
     fn normalizes_yazi_keybinding_map() {

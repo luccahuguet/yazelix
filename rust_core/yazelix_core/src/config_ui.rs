@@ -2,7 +2,9 @@
 
 mod apply_adapter;
 
-use crate::action_registry::{YAZI_ACTIONS, YazelixActionMetadata, ZELLIJ_ACTIONS};
+use crate::action_registry::{
+    YAZI_ACTIONS, YazelixActionMetadata, ZELLIJ_ACTIONS, ZELLIJ_NATIVE_KEYBINDINGS,
+};
 use crate::active_config_surface::{PrimaryConfigPaths, primary_config_paths};
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_apply::ConfigEditApplyStatus;
@@ -64,6 +66,7 @@ const DEFAULT_TABS: &[&str] = &[
 ];
 const CONFIG_UI_METADATA_FILENAME: &str = "config_ui_metadata.toml";
 const ZELLIJ_KEYBINDINGS_FIELD_PATH: &str = "zellij.keybindings";
+const ZELLIJ_NATIVE_KEYBINDINGS_FIELD_PATH: &str = "zellij.native_keybindings";
 const YAZI_KEYBINDINGS_FIELD_PATH: &str = "yazi.keybindings";
 
 #[derive(Debug, Clone)]
@@ -1290,6 +1293,10 @@ fn keybinding_default_value(action: &YazelixActionMetadata) -> JsonValue {
 fn keybinding_actions_for_parent_path(parent_path: &str) -> Vec<&'static YazelixActionMetadata> {
     match parent_path {
         ZELLIJ_KEYBINDINGS_FIELD_PATH => ZELLIJ_ACTIONS.iter().map(|spec| &spec.action).collect(),
+        ZELLIJ_NATIVE_KEYBINDINGS_FIELD_PATH => ZELLIJ_NATIVE_KEYBINDINGS
+            .iter()
+            .map(|spec| &spec.action)
+            .collect(),
         YAZI_KEYBINDINGS_FIELD_PATH => YAZI_ACTIONS.iter().map(|spec| &spec.action).collect(),
         _ => Vec::new(),
     }
@@ -1316,12 +1323,27 @@ fn keybinding_action_metadata_lines(
             ("keymap", spec.keymap_list.to_string()),
         ];
     }
+    if parent_path == ZELLIJ_NATIVE_KEYBINDINGS_FIELD_PATH
+        && let Some(spec) = ZELLIJ_NATIVE_KEYBINDINGS
+            .iter()
+            .find(|spec| spec.action.local_id == local_id)
+    {
+        return vec![(
+            "mode",
+            spec.blocks
+                .iter()
+                .map(|block| block.mode)
+                .collect::<Vec<_>>()
+                .join(", "),
+        )];
+    }
     Vec::new()
 }
 
 fn keybinding_surface_title(parent_path: &str) -> &'static str {
     match parent_path {
         ZELLIJ_KEYBINDINGS_FIELD_PATH => "Yazelix Zellij actions",
+        ZELLIJ_NATIVE_KEYBINDINGS_FIELD_PATH => "Yazelix native Zellij policy",
         YAZI_KEYBINDINGS_FIELD_PATH => "Yazelix Yazi actions",
         _ => "Yazelix actions",
     }
@@ -1330,12 +1352,18 @@ fn keybinding_surface_title(parent_path: &str) -> &'static str {
 pub(crate) fn is_keybinding_map_field_path(path: &str) -> bool {
     matches!(
         path,
-        ZELLIJ_KEYBINDINGS_FIELD_PATH | YAZI_KEYBINDINGS_FIELD_PATH
+        ZELLIJ_KEYBINDINGS_FIELD_PATH
+            | ZELLIJ_NATIVE_KEYBINDINGS_FIELD_PATH
+            | YAZI_KEYBINDINGS_FIELD_PATH
     )
 }
 
 pub(crate) fn keybinding_parent_path_for_field_path(path: &str) -> Option<&'static str> {
-    for parent_path in [ZELLIJ_KEYBINDINGS_FIELD_PATH, YAZI_KEYBINDINGS_FIELD_PATH] {
+    for parent_path in [
+        ZELLIJ_KEYBINDINGS_FIELD_PATH,
+        ZELLIJ_NATIVE_KEYBINDINGS_FIELD_PATH,
+        YAZI_KEYBINDINGS_FIELD_PATH,
+    ] {
         let Some(action) = path
             .strip_prefix(parent_path)
             .and_then(|rest| rest.strip_prefix('.'))
@@ -2492,6 +2520,43 @@ mod tests {
         assert!(details.contains("empty list disables this action"));
         assert!(details.contains("unsupported"));
         assert!(details.contains("unknown_action"));
+    }
+
+    // Defends: native Zellij policy keybindings use the same structured action-row editor as semantic Yazelix bindings.
+    #[test]
+    fn zellij_native_keybinding_details_use_policy_registry_metadata() {
+        let runtime = tempdir().expect("runtime");
+        let config = tempdir().expect("config");
+        write_runtime_layout(runtime.path());
+        fs::write(
+            config.path().join("settings.jsonc"),
+            r#"{
+  "zellij": {
+    "native_keybindings": {
+      "scroll_mode": ["Ctrl Alt x"],
+      "scroll_mode_unbind": [],
+      "unknown_policy": ["Alt z"]
+    }
+  }
+}
+"#,
+        )
+        .expect("settings");
+        let request = test_request(runtime.path(), config.path());
+        let model = build_config_ui_model(&request).expect("model");
+        let mut app = ConfigUiApp::new(request, model);
+
+        select_field_path(&mut app, "zellij.native_keybindings");
+        let details = lines_text(&app.render_details(app.visible_rows()[app.selected_row]));
+
+        assert!(details.contains("Yazelix native Zellij policy"));
+        assert!(details.contains("Toggle scroll mode"));
+        assert!(details.contains("Ctrl Alt x (remapped)"));
+        assert!(details.contains("Ctrl Alt s"));
+        assert!(details.contains("Unbind default scroll-mode key"));
+        assert!(details.contains("disabled (disabled)"));
+        assert!(details.contains("unsupported"));
+        assert!(details.contains("unknown_policy"));
     }
 
     // Regression: keybinding map parents are structured overviews; pressing Enter must not open the whole map as one raw JSON editing line.

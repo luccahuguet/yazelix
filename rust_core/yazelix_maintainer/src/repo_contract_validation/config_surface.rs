@@ -16,7 +16,8 @@ use yazelix_core::config_state::{
     record_config_state,
 };
 use yazelix_core::{
-    RuntimeApplyMode, YAZI_ACTIONS, YazelixActionMetadata, ZELLIJ_ACTIONS, runtime_apply_mode_codes,
+    RuntimeApplyMode, YAZI_ACTIONS, YazelixActionMetadata, ZELLIJ_ACTIONS,
+    ZELLIJ_NATIVE_KEYBINDINGS, runtime_apply_mode_codes,
 };
 
 pub fn validate_config_surface_contract(repo_root: &Path) -> Result<ValidationReport, String> {
@@ -24,6 +25,7 @@ pub fn validate_config_surface_contract(repo_root: &Path) -> Result<ValidationRe
     for errors in [
         validate_main_contract_parity(repo_root)?,
         validate_zellij_keybinding_registry_defaults(repo_root)?,
+        validate_zellij_native_keybinding_registry_defaults(repo_root)?,
         validate_yazi_keybinding_registry_defaults(repo_root)?,
         validate_home_manager_option_declaration_contract(repo_root)?,
         validate_home_manager_desktop_entry_contract(repo_root)?,
@@ -199,6 +201,16 @@ fn validate_zellij_keybinding_registry_defaults(repo_root: &Path) -> Result<Vec<
         repo_root,
         "zellij.keybindings",
         collect_action_registry_defaults(ZELLIJ_ACTIONS.iter().map(|spec| &spec.action)),
+    )
+}
+
+fn validate_zellij_native_keybinding_registry_defaults(
+    repo_root: &Path,
+) -> Result<Vec<String>, String> {
+    validate_keybinding_registry_defaults(
+        repo_root,
+        "zellij.native_keybindings",
+        collect_action_registry_defaults(ZELLIJ_NATIVE_KEYBINDINGS.iter().map(|spec| &spec.action)),
     )
 }
 

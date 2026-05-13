@@ -18,6 +18,13 @@ pub const YAZI_SEMANTIC_KEYBINDING_DIAGNOSTICS: &[&str] = &[
     "disabled_required_yazi_keybinding",
 ];
 
+pub const ZELLIJ_NATIVE_KEYBINDING_DIAGNOSTICS: &[&str] = &[
+    "unsupported_zellij_native_keybinding_action",
+    "invalid_zellij_native_keybindings",
+    "invalid_zellij_native_keybinding_keys",
+    "invalid_zellij_native_keybinding_key",
+];
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum YazelixActionOwner {
     Zellij,
@@ -39,6 +46,7 @@ impl YazelixActionOwner {
 pub enum YazelixActionBackend {
     ZellijPaneOrchestratorMessage,
     ZellijPluginMessage,
+    ZellijNativeAction,
     YaziKeymapCommand,
     EditorCommand,
 }
@@ -48,6 +56,7 @@ impl YazelixActionBackend {
         match self {
             Self::ZellijPaneOrchestratorMessage => "zellij_pane_orchestrator_message",
             Self::ZellijPluginMessage => "zellij_plugin_message",
+            Self::ZellijNativeAction => "zellij_native_action",
             Self::YaziKeymapCommand => "yazi_keymap_command",
             Self::EditorCommand => "editor_command",
         }
@@ -89,6 +98,18 @@ pub struct ZellijActionSpec {
     pub plugin_alias: &'static str,
     pub message_name: &'static str,
     pub payload: Option<&'static str>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ZellijNativeKeybindingBlock {
+    pub mode: &'static str,
+    pub action_lines: &'static [&'static str],
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ZellijNativeKeybindingSpec {
+    pub action: YazelixActionMetadata,
+    pub blocks: &'static [ZellijNativeKeybindingBlock],
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -179,6 +200,29 @@ const fn yazi_action(
         section,
         keymap_list,
         description,
+    }
+}
+
+const fn zellij_native_action(
+    local_id: &'static str,
+    label: &'static str,
+    default_keys: &'static [&'static str],
+    generated_command: &'static str,
+    blocks: &'static [ZellijNativeKeybindingBlock],
+) -> ZellijNativeKeybindingSpec {
+    ZellijNativeKeybindingSpec {
+        action: YazelixActionMetadata {
+            id: local_id,
+            local_id,
+            label,
+            owner: YazelixActionOwner::Zellij,
+            backend: YazelixActionBackend::ZellijNativeAction,
+            default_keys,
+            generated_command,
+            disable_policy: YazelixActionDisablePolicy::Optional,
+            diagnostics: ZELLIJ_NATIVE_KEYBINDING_DIAGNOSTICS,
+        },
+        blocks,
     }
 }
 
@@ -301,6 +345,319 @@ pub const ZELLIJ_ACTIONS: &[ZellijActionSpec] = &[
     ),
 ];
 
+pub const ZELLIJ_NATIVE_KEYBINDINGS: &[ZellijNativeKeybindingSpec] = &[
+    zellij_native_action(
+        "move_tab_left_unbind",
+        "Unbind the default move-tab-left key",
+        &["Alt i"],
+        "unbind Alt i",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared",
+            action_lines: &[],
+        }],
+    ),
+    zellij_native_action(
+        "move_tab_left",
+        "Move tab left",
+        &["Alt Shift H"],
+        "MoveTab \"Left\"",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared",
+            action_lines: &["MoveTab \"Left\""],
+        }],
+    ),
+    zellij_native_action(
+        "move_tab_right_unbind",
+        "Unbind the default move-tab-right key",
+        &["Alt o"],
+        "unbind Alt o",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared",
+            action_lines: &[],
+        }],
+    ),
+    zellij_native_action(
+        "move_tab_right",
+        "Move tab right",
+        &["Alt Shift L"],
+        "MoveTab \"Right\"",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared",
+            action_lines: &["MoveTab \"Right\""],
+        }],
+    ),
+    zellij_native_action(
+        "new_pane_unbind",
+        "Unbind the default new-pane key",
+        &["Alt n"],
+        "unbind Alt n",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared",
+            action_lines: &[],
+        }],
+    ),
+    zellij_native_action(
+        "go_to_tab_1",
+        "Go to tab 1",
+        &["Alt 1"],
+        "GoToTab 1",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared",
+            action_lines: &["GoToTab 1"],
+        }],
+    ),
+    zellij_native_action(
+        "go_to_tab_2",
+        "Go to tab 2",
+        &["Alt 2"],
+        "GoToTab 2",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared",
+            action_lines: &["GoToTab 2"],
+        }],
+    ),
+    zellij_native_action(
+        "go_to_tab_3",
+        "Go to tab 3",
+        &["Alt 3"],
+        "GoToTab 3",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared",
+            action_lines: &["GoToTab 3"],
+        }],
+    ),
+    zellij_native_action(
+        "go_to_tab_4",
+        "Go to tab 4",
+        &["Alt 4"],
+        "GoToTab 4",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared",
+            action_lines: &["GoToTab 4"],
+        }],
+    ),
+    zellij_native_action(
+        "go_to_tab_5",
+        "Go to tab 5",
+        &["Alt 5"],
+        "GoToTab 5",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared",
+            action_lines: &["GoToTab 5"],
+        }],
+    ),
+    zellij_native_action(
+        "go_to_tab_6",
+        "Go to tab 6",
+        &["Alt 6"],
+        "GoToTab 6",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared",
+            action_lines: &["GoToTab 6"],
+        }],
+    ),
+    zellij_native_action(
+        "go_to_tab_7",
+        "Go to tab 7",
+        &["Alt 7"],
+        "GoToTab 7",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared",
+            action_lines: &["GoToTab 7"],
+        }],
+    ),
+    zellij_native_action(
+        "go_to_tab_8",
+        "Go to tab 8",
+        &["Alt 8"],
+        "GoToTab 8",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared",
+            action_lines: &["GoToTab 8"],
+        }],
+    ),
+    zellij_native_action(
+        "go_to_tab_9",
+        "Go to tab 9",
+        &["Alt 9"],
+        "GoToTab 9",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared",
+            action_lines: &["GoToTab 9"],
+        }],
+    ),
+    zellij_native_action(
+        "toggle_focus_fullscreen",
+        "Toggle focused pane fullscreen",
+        &["Alt Shift F"],
+        "ToggleFocusFullscreen; SwitchToMode \"Normal\"",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared",
+            action_lines: &["ToggleFocusFullscreen", "SwitchToMode \"Normal\""],
+        }],
+    ),
+    zellij_native_action(
+        "previous_tab",
+        "Go to previous tab",
+        &["Alt q"],
+        "GoToPreviousTab",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared",
+            action_lines: &["GoToPreviousTab"],
+        }],
+    ),
+    zellij_native_action(
+        "next_tab",
+        "Go to next tab",
+        &["Alt w"],
+        "GoToNextTab",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared",
+            action_lines: &["GoToNextTab"],
+        }],
+    ),
+    zellij_native_action(
+        "selection_cycle_unbind",
+        "Unbind terminal-specific selection-cycle conflicts",
+        &["Alt (", "Alt )"],
+        "unbind Alt ( / Alt )",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared",
+            action_lines: &[],
+        }],
+    ),
+    zellij_native_action(
+        "toggle_pane_in_group_unbind",
+        "Unbind default pane grouping key",
+        &["Alt p"],
+        "unbind Alt p",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared",
+            action_lines: &[],
+        }],
+    ),
+    zellij_native_action(
+        "toggle_pane_in_group",
+        "Toggle pane grouping",
+        &["Ctrl Alt p"],
+        "TogglePaneInGroup",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared",
+            action_lines: &["TogglePaneInGroup"],
+        }],
+    ),
+    zellij_native_action(
+        "toggle_group_marking",
+        "Toggle group marking",
+        &["Ctrl Alt Shift P"],
+        "ToggleGroupMarking",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared",
+            action_lines: &["ToggleGroupMarking"],
+        }],
+    ),
+    zellij_native_action(
+        "locked_mode_unbind",
+        "Unbind default locked-mode key outside locked mode",
+        &["Ctrl g"],
+        "unbind Ctrl g",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared_except \"locked\"",
+            action_lines: &[],
+        }],
+    ),
+    zellij_native_action(
+        "locked_mode",
+        "Toggle locked mode",
+        &["Ctrl Alt g"],
+        "SwitchToMode \"Locked\" / SwitchToMode \"Normal\"",
+        &[
+            ZellijNativeKeybindingBlock {
+                mode: "shared_except \"locked\"",
+                action_lines: &["SwitchToMode \"Locked\""],
+            },
+            ZellijNativeKeybindingBlock {
+                mode: "locked",
+                action_lines: &["SwitchToMode \"Normal\""],
+            },
+        ],
+    ),
+    zellij_native_action(
+        "scroll_mode_unbind",
+        "Unbind default scroll-mode key",
+        &["Ctrl s"],
+        "unbind Ctrl s",
+        &[
+            ZellijNativeKeybindingBlock {
+                mode: "shared_except \"scroll\" \"locked\"",
+                action_lines: &[],
+            },
+            ZellijNativeKeybindingBlock {
+                mode: "scroll",
+                action_lines: &[],
+            },
+        ],
+    ),
+    zellij_native_action(
+        "scroll_mode",
+        "Toggle scroll mode",
+        &["Ctrl Alt s"],
+        "SwitchToMode \"Scroll\" / SwitchToMode \"Normal\"",
+        &[
+            ZellijNativeKeybindingBlock {
+                mode: "shared_except \"scroll\" \"locked\"",
+                action_lines: &["SwitchToMode \"Scroll\""],
+            },
+            ZellijNativeKeybindingBlock {
+                mode: "scroll",
+                action_lines: &["SwitchToMode \"Normal\""],
+            },
+        ],
+    ),
+    zellij_native_action(
+        "session_mode_unbind",
+        "Unbind default session-mode key",
+        &["Ctrl o"],
+        "unbind Ctrl o",
+        &[
+            ZellijNativeKeybindingBlock {
+                mode: "shared_except \"session\" \"locked\"",
+                action_lines: &[],
+            },
+            ZellijNativeKeybindingBlock {
+                mode: "session",
+                action_lines: &[],
+            },
+        ],
+    ),
+    zellij_native_action(
+        "session_mode",
+        "Toggle session mode",
+        &["Ctrl Alt o"],
+        "SwitchToMode \"Session\" / SwitchToMode \"Normal\"",
+        &[
+            ZellijNativeKeybindingBlock {
+                mode: "shared_except \"session\" \"locked\"",
+                action_lines: &["SwitchToMode \"Session\""],
+            },
+            ZellijNativeKeybindingBlock {
+                mode: "session",
+                action_lines: &["SwitchToMode \"Normal\""],
+            },
+        ],
+    ),
+    zellij_native_action(
+        "tmux_mode_unbind",
+        "Unbind default tmux-mode key",
+        &["Ctrl b"],
+        "unbind Ctrl b",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared_except \"locked\"",
+            action_lines: &[],
+        }],
+    ),
+];
+
 pub const YAZI_ACTIONS: &[YaziActionSpec] = &[
     yazi_action(
         "open_directory_as_workspace_pane",
@@ -328,11 +685,20 @@ pub fn all_yazelix_actions() -> impl Iterator<Item = &'static YazelixActionMetad
     ZELLIJ_ACTIONS
         .iter()
         .map(|spec| &spec.action)
+        .chain(ZELLIJ_NATIVE_KEYBINDINGS.iter().map(|spec| &spec.action))
         .chain(YAZI_ACTIONS.iter().map(|spec| &spec.action))
 }
 
 pub fn zellij_action_by_local_id(local_id: &str) -> Option<&'static ZellijActionSpec> {
     ZELLIJ_ACTIONS
+        .iter()
+        .find(|spec| spec.action.local_id == local_id)
+}
+
+pub fn zellij_native_keybinding_by_local_id(
+    local_id: &str,
+) -> Option<&'static ZellijNativeKeybindingSpec> {
+    ZELLIJ_NATIVE_KEYBINDINGS
         .iter()
         .find(|spec| spec.action.local_id == local_id)
 }

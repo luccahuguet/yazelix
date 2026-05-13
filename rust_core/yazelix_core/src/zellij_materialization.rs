@@ -1,4 +1,7 @@
-use crate::action_registry::{PANE_ORCHESTRATOR_PLUGIN_ALIAS, YZPP_PLUGIN_ALIAS, ZELLIJ_ACTIONS};
+use crate::action_registry::{
+    PANE_ORCHESTRATOR_PLUGIN_ALIAS, YZPP_PLUGIN_ALIAS, ZELLIJ_ACTIONS, ZELLIJ_NATIVE_KEYBINDINGS,
+    ZellijNativeKeybindingBlock,
+};
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::control_plane::{config_dir_from_env, home_dir_from_env, state_dir_from_env};
@@ -24,8 +27,9 @@ const ZJSTATUS_WASM_NAME: &str = "zjstatus.wasm";
 const YZPP_PLUGIN_PREFIX: &str = YZPP_PLUGIN_ALIAS;
 const YZPP_WASM_NAME: &str = "yzpp.wasm";
 const GENERATION_METADATA_NAME: &str = ".yazelix_generation.json";
-const GENERATION_FINGERPRINT_SCHEMA_VERSION: u64 = 4;
+const GENERATION_FINGERPRINT_SCHEMA_VERSION: u64 = 5;
 const ZELLIJ_KEYBINDINGS_CONFIG_KEY: &str = "zellij_keybindings";
+const ZELLIJ_NATIVE_KEYBINDINGS_CONFIG_KEY: &str = "zellij_native_keybindings";
 
 const PANE_ORCHESTRATOR_PLUGIN_URL_PLACEHOLDER: &str = "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__";
 const HOME_DIR_PLACEHOLDER: &str = "__YAZELIX_HOME_DIR__";
@@ -177,6 +181,7 @@ pub fn generate_zellij_materialization(
     let plugin_artifacts = resolve_plugin_artifacts(&request.runtime_dir, &state_dir)?;
     let [pane_orchestrator_artifact, zjstatus_artifact, yzpp_artifact] = &plugin_artifacts;
     let zellij_keybindings = resolve_zellij_keybindings(&config)?;
+    let zellij_native_keybindings = resolve_zellij_native_keybindings(&config)?;
     let popup_program = resolve_popup_program_config(&config);
     let render_plan_request =
         build_render_plan_request(&config, &layout_dir, &resolved_default_shell)?;
@@ -188,6 +193,7 @@ pub fn generate_zellij_materialization(
         &source_layouts_dir,
         &plugin_artifacts,
         &zellij_keybindings,
+        &zellij_native_keybindings,
         &render_plan,
     )?;
     if reuse_allowed
@@ -258,6 +264,7 @@ pub fn generate_zellij_materialization(
         &base_config_source.content,
         base_config_source.source == "managed",
         &zellij_keybindings,
+        &zellij_native_keybindings,
         &render_plan,
         &popup_program,
         &pane_orchestrator_runtime_path,
@@ -466,6 +473,7 @@ fn render_merged_config(
     base_config_content: &str,
     preserve_keybinds_clear_defaults: bool,
     zellij_keybindings: &BTreeMap<String, Vec<String>>,
+    zellij_native_keybindings: &BTreeMap<String, Vec<String>>,
     render_plan: &ZellijRenderPlanData,
     popup_program: &[String],
     pane_orchestrator_wasm_path: &Path,
@@ -477,8 +485,12 @@ fn render_merged_config(
         .join("configs")
         .join("zellij")
         .join("yazelix_overrides.kdl");
-    let override_keybinds =
-        read_yazelix_override_keybinds(&overrides_path, runtime_dir, zellij_keybindings)?;
+    let override_keybinds = read_yazelix_override_keybinds(
+        &overrides_path,
+        runtime_dir,
+        zellij_keybindings,
+        zellij_native_keybindings,
+    )?;
     let base_config = strip_yazelix_owned_top_level_settings(
         &extracted_blocks.config_without_semantic_blocks,
         &render_plan.owned_top_level_setting_names,
@@ -853,6 +865,22 @@ fn default_zellij_keybindings() -> BTreeMap<String, Vec<String>> {
         .collect()
 }
 
+fn default_zellij_native_keybindings() -> BTreeMap<String, Vec<String>> {
+    ZELLIJ_NATIVE_KEYBINDINGS
+        .iter()
+        .map(|spec| {
+            (
+                spec.action.local_id.to_string(),
+                spec.action
+                    .default_keys
+                    .iter()
+                    .map(|key| (*key).to_string())
+                    .collect(),
+            )
+        })
+        .collect()
+}
+
 fn resolve_zellij_keybindings(
     config: &JsonMap<String, JsonValue>,
 ) -> Result<BTreeMap<String, Vec<String>>, CoreError> {
@@ -923,6 +951,74 @@ fn resolve_zellij_keybindings(
     Ok(resolved)
 }
 
+fn resolve_zellij_native_keybindings(
+    config: &JsonMap<String, JsonValue>,
+) -> Result<BTreeMap<String, Vec<String>>, CoreError> {
+    let mut resolved = default_zellij_native_keybindings();
+    let Some(value) = config.get(ZELLIJ_NATIVE_KEYBINDINGS_CONFIG_KEY) else {
+        return Ok(resolved);
+    };
+    let Some(object) = value.as_object() else {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "invalid_zellij_native_keybindings",
+            "zellij.native_keybindings must be an object whose values are lists of Zellij key strings.",
+            "Use settings such as `\"scroll_mode\": [\"Ctrl Alt s\"]`, or remove zellij.native_keybindings to use Yazelix defaults.",
+            json!({ "actual": value }),
+        ));
+    };
+
+    for (action, raw_keys) in object {
+        if !is_supported_zellij_native_keybinding_action(action) {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "unsupported_zellij_native_keybinding_action",
+                format!("Unsupported Zellij native keybinding action: {action}."),
+                "Use one of the supported Yazelix native Zellij policy ids, or remove the unsupported entry.",
+                json!({
+                    "action": action,
+                    "supported_actions": supported_zellij_native_keybinding_actions(),
+                }),
+            ));
+        }
+        let Some(values) = raw_keys.as_array() else {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "invalid_zellij_native_keybinding_keys",
+                format!("zellij.native_keybindings.{action} must be a list of Zellij key strings."),
+                "Use a list such as `[\"Ctrl Alt s\"]`, or an empty list to disable that native policy binding.",
+                json!({ "action": action, "actual": raw_keys }),
+            ));
+        };
+        let mut keys = Vec::with_capacity(values.len());
+        for value in values {
+            let Some(raw_key) = value.as_str() else {
+                return Err(CoreError::classified(
+                    ErrorClass::Config,
+                    "invalid_zellij_native_keybinding_key",
+                    format!("zellij.native_keybindings.{action} contains a non-string key."),
+                    "Use Zellij key strings such as \"Ctrl Alt s\" or \"Alt Shift H\".",
+                    json!({ "action": action, "actual": value }),
+                ));
+            };
+            let key = raw_key.trim();
+            if key.is_empty() || key.contains('\n') || key.contains('\r') {
+                return Err(CoreError::classified(
+                    ErrorClass::Config,
+                    "invalid_zellij_native_keybinding_key",
+                    format!("zellij.native_keybindings.{action} contains an invalid key string."),
+                    "Use a non-empty single-line Zellij key string such as \"Ctrl Alt s\".",
+                    json!({ "action": action, "actual": raw_key }),
+                ));
+            }
+            keys.push(key.to_string());
+        }
+        resolved.insert(action.clone(), keys);
+    }
+
+    Ok(resolved)
+}
+
 fn validate_zellij_keybindings(
     keybindings: &BTreeMap<String, Vec<String>>,
 ) -> Result<(), CoreError> {
@@ -968,10 +1064,24 @@ fn supported_zellij_keybinding_actions() -> Vec<&'static str> {
         .collect()
 }
 
+fn is_supported_zellij_native_keybinding_action(action: &str) -> bool {
+    ZELLIJ_NATIVE_KEYBINDINGS
+        .iter()
+        .any(|spec| spec.action.local_id == action)
+}
+
+fn supported_zellij_native_keybinding_actions() -> Vec<&'static str> {
+    ZELLIJ_NATIVE_KEYBINDINGS
+        .iter()
+        .map(|spec| spec.action.local_id)
+        .collect()
+}
+
 fn read_yazelix_override_keybinds(
     overrides_path: &Path,
     runtime_dir: &Path,
     zellij_keybindings: &BTreeMap<String, Vec<String>>,
+    zellij_native_keybindings: &BTreeMap<String, Vec<String>>,
 ) -> Result<Vec<String>, CoreError> {
     if !overrides_path.exists() {
         return Err(CoreError::classified(
@@ -994,12 +1104,18 @@ fn read_yazelix_override_keybinds(
             RUNTIME_DIR_PLACEHOLDER,
             runtime_dir.to_string_lossy().as_ref(),
         );
-    let assigned_keys = assigned_zellij_keybinding_keys(zellij_keybindings);
+    let assigned_keys =
+        assigned_generated_zellij_binding_keys(zellij_keybindings, zellij_native_keybindings);
     let mut keybind_lines = extract_semantic_config_blocks(&content)
         .keybind_lines
         .into_iter()
-        .filter(|line| !unbind_line_conflicts_with_semantic_key(line, &assigned_keys))
+        .filter(|line| !unbind_line_conflicts_with_generated_key(line, &assigned_keys))
         .collect::<Vec<_>>();
+    keybind_lines.extend(
+        build_native_zellij_keybind_lines(zellij_native_keybindings)
+            .into_iter()
+            .filter(|line| !unbind_line_conflicts_with_generated_key(line, &assigned_keys)),
+    );
     keybind_lines.extend(build_semantic_zellij_keybind_lines(zellij_keybindings));
     Ok(keybind_lines)
 }
@@ -1014,7 +1130,27 @@ fn assigned_zellij_keybinding_keys(
         .collect::<BTreeSet<_>>()
 }
 
-fn unbind_line_conflicts_with_semantic_key(line: &str, assigned_keys: &BTreeSet<String>) -> bool {
+fn assigned_generated_zellij_binding_keys(
+    zellij_keybindings: &BTreeMap<String, Vec<String>>,
+    zellij_native_keybindings: &BTreeMap<String, Vec<String>>,
+) -> BTreeSet<String> {
+    let mut assigned = assigned_zellij_keybinding_keys(zellij_keybindings);
+    for spec in ZELLIJ_NATIVE_KEYBINDINGS {
+        if !spec
+            .blocks
+            .iter()
+            .any(|block| !block.action_lines.is_empty())
+        {
+            continue;
+        }
+        if let Some(keys) = zellij_native_keybindings.get(spec.action.local_id) {
+            assigned.extend(keys.iter().cloned());
+        }
+    }
+    assigned
+}
+
+fn unbind_line_conflicts_with_generated_key(line: &str, assigned_keys: &BTreeSet<String>) -> bool {
     let trimmed = line.trim();
     trimmed.starts_with("unbind ")
         && quoted_kdl_strings(trimmed)
@@ -1077,6 +1213,58 @@ fn build_semantic_zellij_keybind_lines(keybindings: &BTreeMap<String, Vec<String
         lines.push("    }".to_string());
     }
     lines
+}
+
+fn build_native_zellij_keybind_lines(keybindings: &BTreeMap<String, Vec<String>>) -> Vec<String> {
+    let mut blocks = Vec::<(&str, Vec<String>)>::new();
+    for spec in ZELLIJ_NATIVE_KEYBINDINGS {
+        let Some(keys) = keybindings.get(spec.action.local_id) else {
+            continue;
+        };
+        if keys.is_empty() {
+            continue;
+        }
+        for block in spec.blocks {
+            push_native_zellij_block_lines(&mut blocks, keys, block);
+        }
+    }
+
+    let mut lines = Vec::new();
+    for (mode, block_lines) in blocks {
+        if !lines.is_empty() {
+            lines.push(String::new());
+        }
+        lines.push(format!("    {mode} {{"));
+        lines.extend(block_lines);
+        lines.push("    }".to_string());
+    }
+    lines
+}
+
+fn push_native_zellij_block_lines(
+    blocks: &mut Vec<(&'static str, Vec<String>)>,
+    keys: &[String],
+    block: &ZellijNativeKeybindingBlock,
+) {
+    let key_list = keys.iter().map(json_quote).collect::<Vec<_>>().join(" ");
+    let block_lines = blocks
+        .iter_mut()
+        .find(|(mode, _)| *mode == block.mode)
+        .map(|(_, lines)| lines);
+    let lines = if let Some(lines) = block_lines {
+        lines
+    } else {
+        blocks.push((block.mode, Vec::new()));
+        &mut blocks.last_mut().expect("just pushed").1
+    };
+    if block.action_lines.is_empty() {
+        lines.push(format!("        unbind {key_list}"));
+    } else {
+        lines.push(format!(
+            "        bind {key_list} {{ {}; }}",
+            block.action_lines.join("; ")
+        ));
+    }
 }
 
 fn push_zellij_message_bind(
@@ -1896,6 +2084,7 @@ fn build_generation_fingerprint(
     source_layouts_dir: &Path,
     plugin_artifacts: &[PluginArtifact; 3],
     zellij_keybindings: &BTreeMap<String, Vec<String>>,
+    zellij_native_keybindings: &BTreeMap<String, Vec<String>>,
     render_plan: &ZellijRenderPlanData,
 ) -> Result<String, CoreError> {
     let overrides_path = runtime_dir
@@ -1916,6 +2105,7 @@ fn build_generation_fingerprint(
         "runtime_dir": runtime_dir.to_string_lossy(),
         "render_plan": render_plan,
         "zellij_keybindings": zellij_keybindings,
+        "zellij_native_keybindings": zellij_native_keybindings,
         "base_config": {
             "source": base_config_source.source,
             "path": base_config_source.path.as_ref().map(|path| path.to_string_lossy().to_string()).unwrap_or_default(),
@@ -2215,6 +2405,10 @@ mod tests {
         default_zellij_keybindings()
     }
 
+    fn sample_zellij_native_keybindings() -> BTreeMap<String, Vec<String>> {
+        default_zellij_native_keybindings()
+    }
+
     // Regression: macOS Zellij reads plugin permissions from ProjectDirs' Library/Caches path, not ~/.cache/zellij.
     #[cfg(target_os = "macos")]
     #[test]
@@ -2333,6 +2527,7 @@ keybinds {
 "#,
             false,
             &sample_zellij_keybindings(),
+            &sample_zellij_native_keybindings(),
             &plan,
             &["lazygit".to_string()],
             Path::new("/tmp/pane.wasm"),
@@ -2383,6 +2578,7 @@ keybinds {
 "#,
             true,
             &sample_zellij_keybindings(),
+            &sample_zellij_native_keybindings(),
             &plan,
             &["lazygit".to_string()],
             Path::new("/tmp/pane.wasm"),
@@ -2446,6 +2642,7 @@ keybinds {
 "#,
             true,
             &sample_zellij_keybindings(),
+            &sample_zellij_native_keybindings(),
             &plan,
             &["lazygit".to_string()],
             Path::new("/tmp/pane.wasm"),
@@ -2461,6 +2658,61 @@ keybinds {
         assert!(rendered.contains(r#"bind "Ctrl Alt s" { SwitchToMode "Scroll"; }"#));
         assert!(rendered.contains(r#"bind "Ctrl Alt o" { SwitchToMode "Session"; }"#));
         assert!(rendered.contains(r#"bind "Ctrl Alt g" { SwitchToMode "Locked"; }"#));
+    }
+
+    // Defends: remaining Yazelix native Zellij key policy is generated from config data rather than hardcoded KDL overrides.
+    #[test]
+    fn native_zellij_keybindings_generate_default_policy() {
+        let rendered =
+            build_native_zellij_keybind_lines(&sample_zellij_native_keybindings()).join("\n");
+
+        assert!(rendered.contains(r#"unbind "Alt i""#));
+        assert!(rendered.contains(r#"bind "Alt Shift H" { MoveTab "Left"; }"#));
+        assert!(rendered.contains(r#"unbind "Alt p""#));
+        assert!(rendered.contains(r#"bind "Ctrl Alt p" { TogglePaneInGroup; }"#));
+        assert!(rendered.contains(r#"bind "Alt 1" { GoToTab 1; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl Alt s" { SwitchToMode "Scroll"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl Alt s" { SwitchToMode "Normal"; }"#));
+        assert!(rendered.contains(r#"unbind "Ctrl b""#));
+    }
+
+    // Defends: users can remap or disable one curated native Zellij policy entry without copying the full keybind block.
+    #[test]
+    fn native_zellij_keybindings_honor_remaps_and_disabled_entries() {
+        let mut keybindings = sample_zellij_native_keybindings();
+        keybindings.insert("scroll_mode".to_string(), vec!["Ctrl Alt x".to_string()]);
+        keybindings.insert("scroll_mode_unbind".to_string(), Vec::new());
+        keybindings.insert("go_to_tab_1".to_string(), Vec::new());
+        let rendered = build_native_zellij_keybind_lines(&keybindings).join("\n");
+
+        assert!(rendered.contains(r#"bind "Ctrl Alt x" { SwitchToMode "Scroll"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl Alt x" { SwitchToMode "Normal"; }"#));
+        assert!(!rendered.contains(r#"unbind "Ctrl s""#));
+        assert!(!rendered.contains(r#"bind "Alt 1" { GoToTab 1; }"#));
+        assert!(rendered.contains(r#"bind "Alt 2" { GoToTab 2; }"#));
+    }
+
+    // Defends: native unbind defaults do not suppress a user remap that intentionally reuses the original key.
+    #[test]
+    fn native_zellij_unbinds_drop_when_remap_reuses_unbound_key() {
+        let temp = tempfile::tempdir().unwrap();
+        let overrides_path = temp.path().join("yazelix_overrides.kdl");
+        std::fs::write(&overrides_path, "").unwrap();
+        let mut keybindings = sample_zellij_native_keybindings();
+        keybindings.insert("scroll_mode".to_string(), vec!["Ctrl s".to_string()]);
+
+        let rendered = read_yazelix_override_keybinds(
+            &overrides_path,
+            std::path::Path::new("/opt/yazelix"),
+            &BTreeMap::new(),
+            &keybindings,
+        )
+        .unwrap()
+        .join("\n");
+
+        assert!(rendered.contains(r#"bind "Ctrl s" { SwitchToMode "Scroll"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl s" { SwitchToMode "Normal"; }"#));
+        assert!(!rendered.contains(r#"unbind "Ctrl s""#));
     }
 
     // Defends: integrated zjstatus layout data comes from the child widget command as an opaque plugin block.
@@ -2620,6 +2872,7 @@ keybinds {
             &overrides_path,
             std::path::Path::new("/opt/yazelix"),
             &sample_zellij_keybindings(),
+            &sample_zellij_native_keybindings(),
         )
         .unwrap();
         let merged = override_lines.join("\n");
@@ -2660,6 +2913,7 @@ keybinds {
             &overrides_path,
             std::path::Path::new("/opt/yazelix"),
             &keybindings,
+            &sample_zellij_native_keybindings(),
         )
         .unwrap()
         .join("\n");

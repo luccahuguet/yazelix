@@ -11,7 +11,7 @@
 [contract]
 version = 1
 surface = "main"
-field_count = 43
+field_count = 44
 artifact_role = "canonical_machine_metadata"
 default_template = "yazelix_default.toml"
 home_manager_module = "home_manager/module.nix"
@@ -499,6 +499,44 @@ allowed_values = [
 ]
 rebuild_required = false
 apply_mode = "tab_session_restart"
+
+[fields."zellij.native_keybindings"]
+kind = "string_list_map"
+parser_key = "zellij_native_keybindings"
+home_manager_option = "zellij_native_keybindings"
+parser_behavior = "direct"
+rebuild_required = false
+apply_mode = "tab_session_restart"
+
+[fields."zellij.native_keybindings".default]
+move_tab_left_unbind = ["Alt i"]
+move_tab_left = ["Alt Shift H"]
+move_tab_right_unbind = ["Alt o"]
+move_tab_right = ["Alt Shift L"]
+new_pane_unbind = ["Alt n"]
+go_to_tab_1 = ["Alt 1"]
+go_to_tab_2 = ["Alt 2"]
+go_to_tab_3 = ["Alt 3"]
+go_to_tab_4 = ["Alt 4"]
+go_to_tab_5 = ["Alt 5"]
+go_to_tab_6 = ["Alt 6"]
+go_to_tab_7 = ["Alt 7"]
+go_to_tab_8 = ["Alt 8"]
+go_to_tab_9 = ["Alt 9"]
+toggle_focus_fullscreen = ["Alt Shift F"]
+previous_tab = ["Alt q"]
+next_tab = ["Alt w"]
+selection_cycle_unbind = ["Alt (", "Alt )"]
+toggle_pane_in_group_unbind = ["Alt p"]
+toggle_pane_in_group = ["Ctrl Alt p"]
+toggle_group_marking = ["Ctrl Alt Shift P"]
+locked_mode_unbind = ["Ctrl g"]
+locked_mode = ["Ctrl Alt g"]
+scroll_mode_unbind = ["Ctrl s"]
+scroll_mode = ["Ctrl Alt s"]
+session_mode_unbind = ["Ctrl o"]
+session_mode = ["Ctrl Alt o"]
+tmux_mode_unbind = ["Ctrl b"]
 
 [fields."zellij.keybindings"]
 kind = "string_list_map"

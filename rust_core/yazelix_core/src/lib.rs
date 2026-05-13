@@ -68,8 +68,10 @@ pub mod zellij_render_plan;
 
 pub use action_registry::{
     PANE_ORCHESTRATOR_PLUGIN_ALIAS, YAZI_ACTIONS, YazelixActionBackend, YazelixActionDisablePolicy,
-    YazelixActionMetadata, YazelixActionOwner, YaziActionSpec, ZELLIJ_ACTIONS, ZellijActionSpec,
-    all_yazelix_actions, yazi_action_by_local_id, zellij_action_by_local_id,
+    YazelixActionMetadata, YazelixActionOwner, YaziActionSpec, ZELLIJ_ACTIONS,
+    ZELLIJ_NATIVE_KEYBINDINGS, ZellijActionSpec, ZellijNativeKeybindingBlock,
+    ZellijNativeKeybindingSpec, all_yazelix_actions, yazi_action_by_local_id,
+    zellij_action_by_local_id, zellij_native_keybinding_by_local_id,
 };
 pub use bridge::{CoreError, ErrorClass, error_envelope, success_envelope};
 pub use command_metadata::{
