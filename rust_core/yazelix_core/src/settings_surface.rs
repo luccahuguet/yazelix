@@ -103,7 +103,7 @@ pub fn ensure_settings_config_with_cursor_component(
         ensure_default_cursor_config_exists(default_cursor_config)?;
     }
 
-    let rendered = render_default_settings_jsonc(default_main_config, default_cursor_config)?;
+    let rendered = render_default_settings_jsonc(default_main_config)?;
 
     if let Some(parent) = paths.settings_config.parent() {
         fs::create_dir_all(parent).map_err(|source| {
@@ -137,47 +137,35 @@ pub fn ensure_settings_config_with_cursor_component(
     Ok(paths.settings_config)
 }
 
-pub fn render_default_settings_jsonc(
-    default_main_config: &Path,
-    _default_cursor_config: &Path,
-) -> Result<String, CoreError> {
-    if is_jsonc_config_path(default_main_config) {
-        let raw = fs::read_to_string(default_main_config).map_err(|source| {
-            io_err(
-                "read_default_main_config",
-                default_main_config,
-                "Could not read the default Yazelix settings JSONC",
-                source,
-            )
-        })?;
-        let value = parse_jsonc_value(default_main_config, &raw)?;
-        let Some(object) = value.as_object() else {
-            return Err(CoreError::classified(
-                ErrorClass::Config,
-                "default_settings_jsonc_not_object",
-                "Yazelix default settings JSONC must contain a JSON object.",
-                "Reinstall Yazelix so the runtime includes a valid settings_default.jsonc.",
-                json!({ "path": default_main_config.display().to_string() }),
-            ));
-        };
-        if object.contains_key("cursors") {
-            return Err(CoreError::classified(
-                ErrorClass::Config,
-                "embedded_default_cursor_settings_unsupported",
-                "Yazelix default main settings JSONC must not contain cursor settings.",
-                "Keep cursor defaults in the shared cursor registry default instead.",
-                json!({ "path": default_main_config.display().to_string() }),
-            ));
-        }
-        return Ok(ensure_trailing_newline(raw));
+pub fn render_default_settings_jsonc(default_main_config: &Path) -> Result<String, CoreError> {
+    let raw = fs::read_to_string(default_main_config).map_err(|source| {
+        io_err(
+            "read_default_main_config",
+            default_main_config,
+            "Could not read the default Yazelix settings JSONC",
+            source,
+        )
+    })?;
+    let value = parse_jsonc_value(default_main_config, &raw)?;
+    let Some(object) = value.as_object() else {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "default_settings_jsonc_not_object",
+            "Yazelix default settings JSONC must contain a JSON object.",
+            "Reinstall Yazelix so the runtime includes a valid settings_default.jsonc.",
+            json!({ "path": default_main_config.display().to_string() }),
+        ));
+    };
+    if object.contains_key("cursors") {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "embedded_default_cursor_settings_unsupported",
+            "Yazelix default main settings JSONC must not contain cursor settings.",
+            "Keep cursor defaults in the shared cursor registry default instead.",
+            json!({ "path": default_main_config.display().to_string() }),
+        ));
     }
-
-    let main_table = read_toml_table(
-        default_main_config,
-        "read_default_main_config",
-        "Could not parse the default Yazelix main config",
-    )?;
-    render_settings_jsonc(&main_table)
+    Ok(ensure_trailing_newline(raw))
 }
 
 pub fn read_config_table(path: &Path, code: &'static str) -> Result<toml::Table, CoreError> {
@@ -402,21 +390,6 @@ fn read_toml_table(
     })
 }
 
-fn render_settings_jsonc(main_table: &toml::Table) -> Result<String, CoreError> {
-    let mut root = toml_value_to_json(&TomlValue::Table(main_table.clone()))?;
-    let Some(root_object) = root.as_object_mut() else {
-        return Err(CoreError::classified(
-            ErrorClass::Internal,
-            "settings_render_root_not_object",
-            "Could not render settings.jsonc from the main config table.",
-            "Report this as a Yazelix internal error.",
-            json!({}),
-        ));
-    };
-    root_object.remove("cursors");
-    render_settings_jsonc_value(&root)
-}
-
 pub fn render_settings_jsonc_value(value: &JsonValue) -> Result<String, CoreError> {
     let body = match value.as_object() {
         Some(object) => render_ordered_settings_root(object)?,
@@ -490,38 +463,6 @@ fn render_ordered_settings_root(object: &JsonMap<String, JsonValue>) -> Result<S
     }
 
     Ok(format!("{{\n{}\n}}", entries.join(",\n")))
-}
-
-fn toml_value_to_json(value: &TomlValue) -> Result<JsonValue, CoreError> {
-    match value {
-        TomlValue::String(value) => Ok(JsonValue::String(value.clone())),
-        TomlValue::Integer(value) => Ok(JsonValue::Number((*value).into())),
-        TomlValue::Float(value) => serde_json::Number::from_f64(*value)
-            .map(JsonValue::Number)
-            .ok_or_else(|| {
-                CoreError::classified(
-                    ErrorClass::Config,
-                    "non_finite_toml_float",
-                    "Could not convert a TOML float to JSON.",
-                    "Use a finite number in the settings input.",
-                    json!({ "value": value.to_string() }),
-                )
-            }),
-        TomlValue::Boolean(value) => Ok(JsonValue::Bool(*value)),
-        TomlValue::Datetime(value) => Ok(JsonValue::String(value.to_string())),
-        TomlValue::Array(values) => values
-            .iter()
-            .map(toml_value_to_json)
-            .collect::<Result<Vec<_>, _>>()
-            .map(JsonValue::Array),
-        TomlValue::Table(table) => {
-            let mut object = JsonMap::new();
-            for (key, value) in table {
-                object.insert(key.clone(), toml_value_to_json(value)?);
-            }
-            Ok(JsonValue::Object(object))
-        }
-    }
 }
 
 fn json_value_to_toml_table(value: &JsonValue, path: &Path) -> Result<toml::Table, CoreError> {
@@ -669,11 +610,7 @@ mod tests {
             .join("../..")
             .canonicalize()
             .unwrap();
-        let rendered = render_default_settings_jsonc(
-            &repo.join("settings_default.jsonc"),
-            &repo.join(DEFAULT_CURSOR_CONFIG_FILENAME),
-        )
-        .unwrap();
+        let rendered = render_default_settings_jsonc(&repo.join("settings_default.jsonc")).unwrap();
 
         assert!(rendered.contains("\"yazi\""));
         assert!(!rendered.contains("\"cursors\""));

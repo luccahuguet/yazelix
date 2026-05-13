@@ -191,10 +191,7 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
         },
     )?;
 
-    let default_raw = render_default_settings_jsonc(
-        &paths.default_config_path,
-        &paths.default_cursor_config_path,
-    )?;
+    let default_raw = render_default_settings_jsonc(&paths.default_config_path)?;
     let default_main_value = parse_jsonc_value(&paths.default_config_path, &default_raw)?;
     let default_value = compose_config_ui_value(
         default_main_value,

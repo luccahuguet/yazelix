@@ -58,10 +58,7 @@ fn run_reset_config(args: &[String]) -> Result<i32, CoreError> {
     let config_dir = config_dir_from_env()?;
     let paths = primary_config_paths(&runtime_dir, &config_dir);
     let adjacency_report = reset_config_adjacency_report(&config_dir)?;
-    let content = render_default_settings_jsonc(
-        &paths.default_config_path,
-        &paths.default_cursor_config_path,
-    )?;
+    let content = render_default_settings_jsonc(&paths.default_config_path)?;
     reset_surface_with_content(
         args,
         ResetSurface {

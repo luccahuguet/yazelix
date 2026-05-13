@@ -140,11 +140,8 @@ fn patched_text_round_trips_through_config_normalization() {
     write_runtime_contract_assets(&repo, &runtime);
     fs::create_dir_all(&config).expect("config dir");
 
-    let raw = render_default_settings_jsonc(
-        &runtime.join("settings_default.jsonc"),
-        &runtime.join("yazelix_ghostty_cursors_default.toml"),
-    )
-    .expect("default settings");
+    let raw = render_default_settings_jsonc(&runtime.join("settings_default.jsonc"))
+        .expect("default settings");
     let patched = set_settings_jsonc_value_text(
         &config.join("settings.jsonc"),
         &raw,

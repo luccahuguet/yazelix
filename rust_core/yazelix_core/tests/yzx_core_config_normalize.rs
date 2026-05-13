@@ -131,11 +131,7 @@ fn prepare_runtime_materialization_fixture(
     );
     fs::write(
         &managed_config,
-        render_default_settings_jsonc(
-            &runtime_dir.join("settings_default.jsonc"),
-            &runtime_dir.join("yazelix_ghostty_cursors_default.toml"),
-        )
-        .unwrap(),
+        render_default_settings_jsonc(&runtime_dir.join("settings_default.jsonc")).unwrap(),
     )
     .unwrap();
     fs::write(&managed_zellij_config, "keybinds {}\n").unwrap();
@@ -220,13 +216,8 @@ fn runtime_materialization_canonical_settings_request(
     fixture: &RuntimeMaterializationFixture,
 ) -> Value {
     let settings_path = fixture.config_dir.join("settings.jsonc");
-    let rendered = render_default_settings_jsonc(
-        &fixture.runtime_dir.join("settings_default.jsonc"),
-        &fixture
-            .runtime_dir
-            .join("yazelix_ghostty_cursors_default.toml"),
-    )
-    .unwrap();
+    let rendered =
+        render_default_settings_jsonc(&fixture.runtime_dir.join("settings_default.jsonc")).unwrap();
     fs::write(&settings_path, rendered).unwrap();
 
     let mut request = runtime_materialization_request(fixture);

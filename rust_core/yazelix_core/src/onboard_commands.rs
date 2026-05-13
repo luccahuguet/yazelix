@@ -167,11 +167,7 @@ pub fn run_yzx_onboard(args: &[String]) -> Result<i32, CoreError> {
     let runtime_dir = runtime_dir_from_env()?;
     let config_dir = config_dir_from_env()?;
     let paths = primary_config_paths(&runtime_dir, &config_dir);
-    let generated = build_onboard_config(
-        &answers,
-        &paths.default_config_path,
-        &paths.default_cursor_config_path,
-    )?;
+    let generated = build_onboard_config(&answers, &paths.default_config_path)?;
     if parsed.dry_run {
         print!("{generated}");
         return Ok(0);
@@ -529,9 +525,8 @@ fn write_onboard_config(
 fn build_onboard_config(
     answers: &OnboardAnswers,
     default_main_config: &Path,
-    default_cursor_config: &Path,
 ) -> Result<String, CoreError> {
-    let default_jsonc = render_default_settings_jsonc(default_main_config, default_cursor_config)?;
+    let default_jsonc = render_default_settings_jsonc(default_main_config)?;
     let mut settings = parse_jsonc_value(Path::new("settings.jsonc"), &default_jsonc)?;
 
     set_settings_field(
@@ -681,11 +676,6 @@ mod tests {
         let tmp = tempdir().unwrap();
         let paths = test_paths(tmp.path());
         fs::write(
-            &paths.default_cursor_config_path,
-            include_str!("../../../yazelix_ghostty_cursors_default.toml"),
-        )
-        .unwrap();
-        fs::write(
             &paths.default_config_path,
             include_str!("../../../settings_default.jsonc"),
         )
@@ -699,7 +689,6 @@ mod tests {
                 widget_tray: vec!["editor".into(), "cpu".into()],
             },
             &paths.default_config_path,
-            &paths.default_cursor_config_path,
         )
         .unwrap();
         let parsed = parse_jsonc_value(Path::new("settings.jsonc"), &config).unwrap();
@@ -728,11 +717,6 @@ mod tests {
         let tmp = tempdir().unwrap();
         let paths = test_paths(tmp.path());
         fs::write(
-            &paths.default_cursor_config_path,
-            include_str!("../../../yazelix_ghostty_cursors_default.toml"),
-        )
-        .unwrap();
-        fs::write(
             &paths.default_config_path,
             include_str!("../../../settings_default.jsonc"),
         )
@@ -746,7 +730,6 @@ mod tests {
                 widget_tray: vec!["editor".into(), "shell".into()],
             },
             &paths.default_config_path,
-            &paths.default_cursor_config_path,
         )
         .unwrap();
 

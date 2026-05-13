@@ -191,7 +191,7 @@ fn validate_upgrade_contract_ci_accepts_guarded_change_with_existing_ack() {
         ],
     );
 
-    fs::write(fixture_root.join("settings_default.jsonc"), "[core]\n").unwrap();
+    fs::write(fixture_root.join("settings_default.jsonc"), "{}\n").unwrap();
     run_git(&fixture_root, &["add", "-A"]);
     run_git(
         &fixture_root,
@@ -213,7 +213,7 @@ fn validate_upgrade_contract_ci_accepts_guarded_change_with_existing_ack() {
 #[test]
 fn validate_upgrade_contract_ci_rejects_unacknowledged_guarded_change() {
     let (_tmp, fixture_root) = write_fixture_repo();
-    fs::write(fixture_root.join("settings_default.jsonc"), "[core]\n").unwrap();
+    fs::write(fixture_root.join("settings_default.jsonc"), "{}\n").unwrap();
     run_git(&fixture_root, &["add", "-A"]);
     run_git(
         &fixture_root,

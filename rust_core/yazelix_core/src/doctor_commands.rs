@@ -971,10 +971,7 @@ fn run_doctor_fix_flow(verbose: bool, results: &[Value]) -> Result<i32, CoreErro
                 continue;
             }
         }
-        let rendered = match render_default_settings_jsonc(
-            &paths.default_config_path,
-            &paths.default_cursor_config_path,
-        ) {
+        let rendered = match render_default_settings_jsonc(&paths.default_config_path) {
             Ok(rendered) => rendered,
             Err(err) => {
                 println!("❌ Failed to render settings.jsonc from defaults: {err}");
