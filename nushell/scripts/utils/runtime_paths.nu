@@ -40,7 +40,7 @@ def is_valid_runtime_dir [candidate?: string] {
     if $candidate_path == null {
         return false
     }
-    let sentinel = ($candidate_path | path join "yazelix_default.toml")
+    let sentinel = ($candidate_path | path join "settings_default.jsonc")
     ($candidate_path | path exists) and ($sentinel | path exists)
 }
 
@@ -49,7 +49,7 @@ def get_inferred_runtime_dir [] {
     if $candidate == null {
         return null
     }
-    let sentinel = ($candidate | path join "yazelix_default.toml")
+    let sentinel = ($candidate | path join "settings_default.jsonc")
     if ($candidate | path exists) and ($sentinel | path exists) {
         $candidate
     } else {

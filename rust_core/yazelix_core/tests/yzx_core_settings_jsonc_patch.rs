@@ -141,7 +141,7 @@ fn patched_text_round_trips_through_config_normalization() {
     fs::create_dir_all(&config).expect("config dir");
 
     let raw = render_default_settings_jsonc(
-        &runtime.join("yazelix_default.toml"),
+        &runtime.join("settings_default.jsonc"),
         &runtime.join("yazelix_ghostty_cursors_default.toml"),
     )
     .expect("default settings");
@@ -157,7 +157,7 @@ fn patched_text_round_trips_through_config_normalization() {
 
     let data = normalize_config(&NormalizeConfigRequest {
         config_path,
-        default_config_path: runtime.join("yazelix_default.toml"),
+        default_config_path: runtime.join("settings_default.jsonc"),
         contract_path: runtime
             .join("config_metadata")
             .join("main_config_contract.toml"),

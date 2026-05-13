@@ -1,6 +1,7 @@
 use crate::bridge::{CoreError, ErrorClass};
 use crate::public_command_surface::yzx_command_metadata;
 use crate::public_command_surface::{YzxCommandMetadata, YzxCommandParameter, YzxParameterKind};
+use crate::settings_surface::DEFAULT_SETTINGS_CONFIG_FILENAME;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
@@ -226,7 +227,7 @@ fn generated_yzx_extern_fingerprint_path(state_dir: &Path) -> PathBuf {
 }
 
 fn ensure_valid_runtime_dir(runtime_dir: &Path) -> Result<(), CoreError> {
-    let sentinel = runtime_dir.join("yazelix_default.toml");
+    let sentinel = runtime_dir.join(DEFAULT_SETTINGS_CONFIG_FILENAME);
     if sentinel.is_file() {
         return Ok(());
     }
@@ -244,7 +245,7 @@ fn ensure_valid_runtime_dir(runtime_dir: &Path) -> Result<(), CoreError> {
 }
 
 fn compute_yzx_extern_source_fingerprint(runtime_dir: &Path) -> Result<String, CoreError> {
-    let runtime_marker = runtime_dir.join("yazelix_default.toml");
+    let runtime_marker = runtime_dir.join(DEFAULT_SETTINGS_CONFIG_FILENAME);
     let yzx_core = std::env::current_exe().map_err(|source| {
         CoreError::io(
             "resolve_yzx_core_exe",
@@ -512,7 +513,7 @@ mod tests {
     fn sync_yzx_extern_bridge_writes_and_reuses_current_bridge() {
         let runtime = TempDir::new().unwrap();
         let state = TempDir::new().unwrap();
-        fs::write(runtime.path().join("yazelix_default.toml"), "").unwrap();
+        fs::write(runtime.path().join("settings_default.jsonc"), "").unwrap();
 
         let request = YzxExternBridgeSyncRequest {
             runtime_dir: runtime.path().to_path_buf(),
@@ -535,7 +536,7 @@ mod tests {
         let runtime = TempDir::new().unwrap();
         let invalid_runtime = TempDir::new().unwrap();
         let state = TempDir::new().unwrap();
-        fs::write(runtime.path().join("yazelix_default.toml"), "").unwrap();
+        fs::write(runtime.path().join("settings_default.jsonc"), "").unwrap();
 
         let request = YzxExternBridgeSyncRequest {
             runtime_dir: runtime.path().to_path_buf(),

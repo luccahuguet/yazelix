@@ -1135,7 +1135,7 @@ fn require_yazelix_repo_root() -> Result<PathBuf, CoreError> {
     let repo_contract_ok = output.status.success()
         && repo_root.is_dir()
         && repo_root.join("flake.nix").is_file()
-        && repo_root.join("yazelix_default.toml").is_file();
+        && repo_root.join("settings_default.jsonc").is_file();
     if !repo_contract_ok {
         return Err(CoreError::classified(
             ErrorClass::Runtime,

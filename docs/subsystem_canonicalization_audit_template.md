@@ -153,7 +153,7 @@ Additional hard rules:
 - do not rely on local-only host fixes, ambient caches, or one-off environment
   recovery as the subsystem answer
 - do not take ownership of user-managed external config files as a side effect
-- preserve the Home Manager and `yazelix_default.toml` parity contract when the
+- preserve the Home Manager and `settings_default.jsonc` parity contract when the
   subsystem touches configuration
 - preserve the shell-boundary rule: no new interpolated inline shell-script
   bodies just to call `bash -lc` or similar

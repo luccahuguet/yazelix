@@ -34,7 +34,7 @@ and stay limited to four categories:
 
 1. repo/runtime fixture setup
    - resolve repo root
-   - copy canonical runtime assets such as `yazelix_default.toml`,
+   - copy canonical runtime assets such as `settings_default.jsonc`,
      `config_metadata/main_config_contract.toml`, and minimal generated config
      fixtures into temporary test roots
 2. managed-config fixture setup

@@ -68,9 +68,9 @@ fn validate_pane_orchestrator_pipe_surface(repo_root: &Path) -> Result<Vec<Strin
             ));
         }
     }
-    let default_config = read_repo_file(repo_root, &["yazelix_default.toml"])?;
+    let default_config = read_repo_file(repo_root, &["settings_default.jsonc"])?;
     for action in REQUIRED_ZELLIJ_SEMANTIC_ACTION_IDS {
-        if !default_config.contains(&format!("{action} = [")) {
+        if !default_config.contains(&format!("\"{action}\": [")) {
             errors.push(format!(
                 "Default config no longer declares semantic Zellij keybinding action `{action}`"
             ));

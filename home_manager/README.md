@@ -313,7 +313,7 @@ Use the repo root environment and your preferred Nix formatting/lint tools as ne
 
 This module follows Yazelix's configuration structure defined by `config_metadata/main_config_contract.toml`. When adding new options:
 
-1. Add the option to `yazelix_default.toml`, `config_metadata/main_config_contract.toml`, and this module
+1. Add the option to `settings_default.jsonc`, `config_metadata/main_config_contract.toml`, and this module
 2. Update the examples and documentation
 3. Test with both new and existing Yazelix installations
 4. Ensure type safety and proper defaults

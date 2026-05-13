@@ -629,7 +629,7 @@ mod tests {
         let config = root.join("config");
         fs::create_dir_all(runtime.join("config_metadata")).unwrap();
         fs::write(runtime.join(TOML_TOOLING_CONFIG_FILENAME), "[format]\n").unwrap();
-        fs::write(runtime.join("yazelix_default.toml"), "").unwrap();
+        fs::write(runtime.join("settings_default.jsonc"), "").unwrap();
         fs::write(
             runtime.join("config_metadata/main_config_contract.toml"),
             "",
@@ -687,7 +687,7 @@ mod tests {
         .unwrap();
         fs::write(
             &paths.default_config_path,
-            include_str!("../../../yazelix_default.toml"),
+            include_str!("../../../settings_default.jsonc"),
         )
         .unwrap();
         let config = build_onboard_config(
@@ -734,7 +734,7 @@ mod tests {
         .unwrap();
         fs::write(
             &paths.default_config_path,
-            include_str!("../../../yazelix_default.toml"),
+            include_str!("../../../settings_default.jsonc"),
         )
         .unwrap();
         let config = build_onboard_config(

@@ -126,7 +126,7 @@ pkgs.mkShell {
     export YAZELIX_YZX_CONTROL_BIN="${rustCoreHelper}/bin/yzx_control"
 
     maintainer_runtime_dir="$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "$PWD")"
-    if [ -f "$maintainer_runtime_dir/flake.nix" ] && [ -f "$maintainer_runtime_dir/yazelix_default.toml" ]; then
+    if [ -f "$maintainer_runtime_dir/flake.nix" ] && [ -f "$maintainer_runtime_dir/settings_default.jsonc" ]; then
       export YAZELIX_RUNTIME_DIR="$maintainer_runtime_dir"
     else
       unset YAZELIX_RUNTIME_DIR

@@ -25,14 +25,14 @@ Use Beads (`bd`) as the agent memory and triage layer for Yazelix work.
 Examples:
 - ✅ `home_manager/`
 - ❌ `home-manager/`
-- ✅ `yazelix_default.toml`
+- ✅ `settings_default.jsonc`
 - ❌ `yazelix-default.nix`
 - ✅ `start_yazelix_inner.nu`
 - ❌ `start-yazelix.nu`
 
 This convention is used consistently throughout:
 - Directory names: `configs/terminal_emulators/`, `nushell/scripts/core/`
-- File names: `yazelix_default.toml`, `start_yazelix_inner.nu`, `launch_sidebar_yazi.nu`
+- File names: `settings_default.jsonc`, `start_yazelix_inner.nu`, `launch_sidebar_yazi.nu`
 - Script names: All Nushell scripts use underscores
 
 When creating new files or directories, always use underscores to maintain consistency with the existing codebase.
@@ -41,7 +41,7 @@ When creating new files or directories, always use underscores to maintain consi
 
 - Yazelix has packaged runtime surfaces and maintainer development-shell surfaces; keep user runtime behavior distinct from dev tooling
 - The canonical user semantic config is `~/.config/yazelix/settings.jsonc`
-- Shipped config defaults/templates feed `settings.jsonc` generation through `yazelix_default.toml`, `yazelix_ghostty_cursors_default.toml`, `config_metadata/yazelix_settings.schema.json`, and `config_metadata/main_config_contract.toml`
+- Shipped config defaults/templates feed `settings.jsonc` generation through `settings_default.jsonc`, `yazelix_ghostty_cursors_default.toml`, `config_metadata/yazelix_settings.schema.json`, and `config_metadata/main_config_contract.toml`
 - Old mutable `yazelix.toml` and `cursors.toml` files are unsupported legacy inputs, not runtime config sources or automatic migration inputs
 - All Yazelix-owned user config paths reference `~/.config/yazelix/` as the base directory unless an explicit XDG/config override is in effect
 - Scripts are organized in `nushell/scripts/` with subdirectories using underscores

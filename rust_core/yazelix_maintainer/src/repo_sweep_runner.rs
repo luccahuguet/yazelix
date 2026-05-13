@@ -449,7 +449,7 @@ fn validate_generated_config(
     let runtime_root = runtime_root(repo_root);
     let request = NormalizeConfigRequest {
         config_path: config_path.to_path_buf(),
-        default_config_path: runtime_root.join("yazelix_default.toml"),
+        default_config_path: runtime_root.join("settings_default.jsonc"),
         contract_path: runtime_root
             .join("config_metadata")
             .join("main_config_contract.toml"),

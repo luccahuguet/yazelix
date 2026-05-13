@@ -656,11 +656,11 @@ apply_mode = "generated_runtime_refresh"
         let repo = repo_root();
         let temp = tempdir().expect("tempdir");
         let config_path = temp.path().join("settings.jsonc");
-        let default_config_path = temp.path().join("yazelix_default.toml");
+        let default_config_path = temp.path().join("settings_default.jsonc");
         let contract_path = temp.path().join("main_config_contract.toml");
         let zellij_config_dir = temp.path().join("configs/zellij");
         std::fs::create_dir_all(&zellij_config_dir).unwrap();
-        std::fs::copy(repo.join("yazelix_default.toml"), &default_config_path).unwrap();
+        std::fs::copy(repo.join("settings_default.jsonc"), &default_config_path).unwrap();
         std::fs::copy(
             repo.join("config_metadata/main_config_contract.toml"),
             &contract_path,

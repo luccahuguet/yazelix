@@ -17,7 +17,7 @@ pub struct ManagedConfigFixture {
 
 impl ManagedConfigFixture {
     pub fn default_config_path(&self) -> PathBuf {
-        self.runtime_dir.join("yazelix_default.toml")
+        self.runtime_dir.join("settings_default.jsonc")
     }
 
     pub fn contract_path(&self) -> PathBuf {
@@ -46,8 +46,8 @@ pub fn write_runtime_contract_assets(repo: &Path, runtime_dir: &Path) {
     fs::create_dir_all(runtime_dir.join("config_metadata")).unwrap();
     fs::create_dir_all(runtime_dir.join("nushell/scripts/utils")).unwrap();
     fs::copy(
-        repo.join("yazelix_default.toml"),
-        runtime_dir.join("yazelix_default.toml"),
+        repo.join("settings_default.jsonc"),
+        runtime_dir.join("settings_default.jsonc"),
     )
     .unwrap();
     fs::copy(

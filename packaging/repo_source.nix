@@ -22,7 +22,7 @@ let
     "CHANGELOG.md"
     "tombi.toml"
     "yazelix_ghostty_cursors_default.toml"
-    "yazelix_default.toml"
+    "settings_default.jsonc"
   ];
   cursorRuntimePaths = [
     "yazelix_ghostty_cursors_default.toml"

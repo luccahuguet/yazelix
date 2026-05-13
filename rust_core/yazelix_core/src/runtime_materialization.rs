@@ -460,7 +460,7 @@ mod tests {
         let repo = repo_root();
         RuntimeMaterializationPlanRequest {
             config_path,
-            default_config_path: repo.join("yazelix_default.toml"),
+            default_config_path: repo.join("settings_default.jsonc"),
             contract_path: repo.join("config_metadata/main_config_contract.toml"),
             runtime_dir,
             state_path,
@@ -476,7 +476,7 @@ mod tests {
     fn plan_marks_missing_artifacts_without_forcing_refresh_when_state_is_current() {
         let dir = tempdir().expect("tempdir");
         let runtime_dir = repo_root();
-        let config_path = runtime_dir.join("yazelix_default.toml");
+        let config_path = runtime_dir.join("settings_default.jsonc");
         let state_path = dir.path().join("state/rebuild_hash");
         let yazi_dir = dir.path().join("configs/yazi");
         let zellij_dir = dir.path().join("configs/zellij");
@@ -485,7 +485,7 @@ mod tests {
         fs::create_dir_all(&zellij_layout_dir).unwrap();
         let baseline = compute_config_state(&ComputeConfigStateRequest {
             config_path: config_path.clone(),
-            default_config_path: runtime_dir.join("yazelix_default.toml"),
+            default_config_path: runtime_dir.join("settings_default.jsonc"),
             contract_path: runtime_dir.join("config_metadata/main_config_contract.toml"),
             runtime_dir: runtime_dir.clone(),
             state_path: state_path.clone(),
@@ -598,7 +598,7 @@ mod tests {
     fn plan_marks_missing_yazi_static_assets_without_forcing_refresh() {
         let dir = tempdir().expect("tempdir");
         let runtime_dir = repo_root();
-        let config_path = runtime_dir.join("yazelix_default.toml");
+        let config_path = runtime_dir.join("settings_default.jsonc");
         let state_path = dir.path().join("state/rebuild_hash");
         let yazi_dir = dir.path().join("configs/yazi");
         let zellij_dir = dir.path().join("configs/zellij");
@@ -607,7 +607,7 @@ mod tests {
         fs::create_dir_all(&zellij_layout_dir).unwrap();
         let baseline = compute_config_state(&ComputeConfigStateRequest {
             config_path: config_path.clone(),
-            default_config_path: runtime_dir.join("yazelix_default.toml"),
+            default_config_path: runtime_dir.join("settings_default.jsonc"),
             contract_path: runtime_dir.join("config_metadata/main_config_contract.toml"),
             runtime_dir: runtime_dir.clone(),
             state_path: state_path.clone(),
@@ -653,7 +653,7 @@ mod tests {
     fn repair_evaluate_is_noop_when_plan_is_noop_and_not_forced() {
         let dir = tempdir().expect("tempdir");
         let runtime_dir = repo_root();
-        let config_path = runtime_dir.join("yazelix_default.toml");
+        let config_path = runtime_dir.join("settings_default.jsonc");
         let state_path = dir.path().join("state/rebuild_hash");
         let yazi_dir = dir.path().join("configs/yazi");
         let zellij_dir = dir.path().join("configs/zellij");
@@ -662,7 +662,7 @@ mod tests {
         fs::create_dir_all(&zellij_layout_dir).unwrap();
         let baseline = compute_config_state(&ComputeConfigStateRequest {
             config_path: config_path.clone(),
-            default_config_path: runtime_dir.join("yazelix_default.toml"),
+            default_config_path: runtime_dir.join("settings_default.jsonc"),
             contract_path: runtime_dir.join("config_metadata/main_config_contract.toml"),
             runtime_dir: runtime_dir.clone(),
             state_path: state_path.clone(),
@@ -717,7 +717,7 @@ mod tests {
     fn repair_evaluate_regenerates_when_forced_even_if_plan_is_noop() {
         let dir = tempdir().expect("tempdir");
         let runtime_dir = repo_root();
-        let config_path = runtime_dir.join("yazelix_default.toml");
+        let config_path = runtime_dir.join("settings_default.jsonc");
         let state_path = dir.path().join("state/rebuild_hash");
         let yazi_dir = dir.path().join("configs/yazi");
         let zellij_dir = dir.path().join("configs/zellij");
@@ -726,7 +726,7 @@ mod tests {
         fs::create_dir_all(&zellij_layout_dir).unwrap();
         let baseline = compute_config_state(&ComputeConfigStateRequest {
             config_path: config_path.clone(),
-            default_config_path: runtime_dir.join("yazelix_default.toml"),
+            default_config_path: runtime_dir.join("settings_default.jsonc"),
             contract_path: runtime_dir.join("config_metadata/main_config_contract.toml"),
             runtime_dir: runtime_dir.clone(),
             state_path: state_path.clone(),

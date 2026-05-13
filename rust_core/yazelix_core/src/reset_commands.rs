@@ -71,7 +71,7 @@ fn run_reset_config(args: &[String]) -> Result<i32, CoreError> {
             default_path: paths.default_config_path,
             target_path: paths.user_config,
             missing_default_code: "missing_default_config",
-            missing_default_remediation: "Reinstall Yazelix or restore yazelix_default.toml in the runtime, then retry.",
+            missing_default_remediation: "Reinstall Yazelix or restore settings_default.jsonc in the runtime, then retry.",
         },
         content,
         Some(adjacency_report),

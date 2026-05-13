@@ -176,7 +176,7 @@ fn validate_upgrade_contract_ci_accepts_guarded_change_with_existing_ack() {
     let raw = fs::read_to_string(&notes_path).unwrap();
     let updated = raw.replacen(
         "acknowledged_guarded_changes = []",
-        "acknowledged_guarded_changes = [\"yazelix_default.toml\"]",
+        "acknowledged_guarded_changes = [\"settings_default.jsonc\"]",
         1,
     );
     fs::write(&notes_path, updated).unwrap();
@@ -191,7 +191,7 @@ fn validate_upgrade_contract_ci_accepts_guarded_change_with_existing_ack() {
         ],
     );
 
-    fs::write(fixture_root.join("yazelix_default.toml"), "[core]\n").unwrap();
+    fs::write(fixture_root.join("settings_default.jsonc"), "[core]\n").unwrap();
     run_git(&fixture_root, &["add", "-A"]);
     run_git(
         &fixture_root,
@@ -213,7 +213,7 @@ fn validate_upgrade_contract_ci_accepts_guarded_change_with_existing_ack() {
 #[test]
 fn validate_upgrade_contract_ci_rejects_unacknowledged_guarded_change() {
     let (_tmp, fixture_root) = write_fixture_repo();
-    fs::write(fixture_root.join("yazelix_default.toml"), "[core]\n").unwrap();
+    fs::write(fixture_root.join("settings_default.jsonc"), "[core]\n").unwrap();
     run_git(&fixture_root, &["add", "-A"]);
     run_git(
         &fixture_root,
@@ -234,6 +234,7 @@ fn validate_upgrade_contract_ci_rejects_unacknowledged_guarded_change() {
     )
     .unwrap();
     assert!(report.errors.iter().any(|error| {
-        error.contains("entry `unreleased` must acknowledge guarded change `yazelix_default.toml`")
+        error
+            .contains("entry `unreleased` must acknowledge guarded change `settings_default.jsonc`")
     }));
 }

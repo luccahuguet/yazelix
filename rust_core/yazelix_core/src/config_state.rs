@@ -427,7 +427,7 @@ mod tests {
         let repo = repo_root();
         ComputeConfigStateRequest {
             config_path,
-            default_config_path: repo.join("yazelix_default.toml"),
+            default_config_path: repo.join("settings_default.jsonc"),
             contract_path: repo.join("config_metadata/main_config_contract.toml"),
             runtime_dir,
             state_path,
@@ -446,7 +446,7 @@ mod tests {
         let dir = tempdir().expect("tempdir");
         let runtime_dir = repo_root();
         let state_path = dir.path().join("state/rebuild_hash");
-        let config_path = repo_root().join("yazelix_default.toml");
+        let config_path = repo_root().join("settings_default.jsonc");
         let state = compute_config_state(&request_for(
             config_path,
             runtime_dir.clone(),
@@ -472,7 +472,7 @@ mod tests {
         fs::write(&state_path, "legacy-raw-hash-or-garbage").unwrap();
 
         let state = compute_config_state(&request_for(
-            repo_root().join("yazelix_default.toml"),
+            repo_root().join("settings_default.jsonc"),
             runtime_dir,
             state_path,
         ))

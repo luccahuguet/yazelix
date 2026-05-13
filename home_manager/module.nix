@@ -374,7 +374,7 @@ in
       '';
     };
 
-    # Configuration options (mirrors yazelix_default.toml structure)
+    # Configuration options (mirrors settings_default.jsonc structure)
     default_shell = mkMainContractOption "shell.default_shell" {
       description = "Default shell for Zellij sessions";
     };

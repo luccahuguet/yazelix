@@ -9,12 +9,14 @@ use yazelix_core::control_plane::read_yazelix_version_from_runtime;
 
 const GUARDED_FILES: &[&str] = &[
     "nushell/scripts/utils/constants.nu",
+    "settings_default.jsonc",
+    // Historical release entries acknowledge this retired default seed.
     "yazelix_default.toml",
     "home_manager/module.nix",
     "docs/upgrade_notes.toml",
     "CHANGELOG.md",
 ];
-const ACK_REQUIRED_FILES: &[&str] = &["yazelix_default.toml", "home_manager/module.nix"];
+const ACK_REQUIRED_FILES: &[&str] = &["settings_default.jsonc", "home_manager/module.nix"];
 const IMPACT_VALUES: &[&str] = &[
     "no_user_action",
     "migration_available",

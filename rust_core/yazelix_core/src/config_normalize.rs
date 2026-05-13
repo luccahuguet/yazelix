@@ -1,5 +1,5 @@
 use crate::bridge::{CoreError, ErrorClass};
-use crate::settings_surface::{is_settings_config_path, read_config_table};
+use crate::settings_surface::{is_jsonc_config_path, read_config_table};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Number as JsonNumber, Value as JsonValue, json};
 use std::collections::BTreeMap;
@@ -81,7 +81,7 @@ pub fn normalize_config(
     request: &NormalizeConfigRequest,
 ) -> Result<NormalizeConfigData, CoreError> {
     let config = read_config_table(&request.config_path, "read_config")?;
-    let default_config = read_toml_table(&request.default_config_path, "read_default_config")?;
+    let default_config = read_config_table(&request.default_config_path, "read_default_config")?;
     let contract = read_toml_table(&request.contract_path, "read_config_contract")?;
     let fields = load_contract_fields(&contract)?;
     let config_file = request.config_path.to_string_lossy().to_string();
@@ -252,7 +252,7 @@ fn build_diagnostic_report(
     let should_validate_like_startup = config_path
         .file_name()
         .and_then(|name| name.to_str())
-        .map(|name| name == "yazelix.toml" || is_settings_config_path(config_path))
+        .map(|name| name == "yazelix.toml" || is_jsonc_config_path(config_path))
         .unwrap_or(false);
 
     let findings = if should_validate_like_startup {
@@ -810,7 +810,7 @@ mod tests {
         let repo = repo_root();
         NormalizeConfigRequest {
             config_path,
-            default_config_path: repo.join("yazelix_default.toml"),
+            default_config_path: repo.join("settings_default.jsonc"),
             contract_path: repo.join("config_metadata/main_config_contract.toml"),
             include_missing: false,
         }
@@ -827,7 +827,7 @@ mod tests {
     #[test]
     fn normalizes_default_config_with_parser_keys_and_transforms() {
         let repo = repo_root();
-        let data = normalize_config(&request_for(repo.join("yazelix_default.toml"))).unwrap();
+        let data = normalize_config(&request_for(repo.join("settings_default.jsonc"))).unwrap();
         let config = data.normalized_config;
 
         assert_eq!(config.get("default_shell").unwrap(), "nu");

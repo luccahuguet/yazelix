@@ -10,7 +10,7 @@ use tempfile::TempDir;
 fn command_metadata_sync_externs_writes_generated_bridge() {
     let runtime = TempDir::new().unwrap();
     let state = TempDir::new().unwrap();
-    fs::write(runtime.path().join("yazelix_default.toml"), "").unwrap();
+    fs::write(runtime.path().join("settings_default.jsonc"), "").unwrap();
 
     let first = Command::cargo_bin("yzx_core")
         .unwrap()
@@ -49,7 +49,7 @@ fn command_metadata_sync_externs_ignores_host_nushell_config() {
     let initializers_dir = state.path().join("initializers").join("nushell");
     fs::create_dir_all(&nushell_config_dir).unwrap();
     fs::create_dir_all(&initializers_dir).unwrap();
-    fs::write(runtime.path().join("yazelix_default.toml"), "").unwrap();
+    fs::write(runtime.path().join("settings_default.jsonc"), "").unwrap();
     fs::write(initializers_dir.join("yazelix_init.nu"), "").unwrap();
     fs::write(initializers_dir.join("yazelix_user_hook.nu"), "").unwrap();
 

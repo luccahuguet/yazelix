@@ -10,7 +10,7 @@ Keep files at the root only when they are one of:
 - repository entrypoints such as [`README.md`](../README.md), [`CHANGELOG.md`](../CHANGELOG.md), and [`AGENTS.md`](../AGENTS.md)
 - build and packaging entrypoints such as [`flake.nix`](../flake.nix), [`maintainer_shell.nix`](../maintainer_shell.nix), and the top-level package front doors
 - maintainer workflow files such as [`.pre-commit-config.yaml`](../.pre-commit-config.yaml) and [`tombi.toml`](../tombi.toml)
-- source-of-truth templates or contracts that are intentionally top-level, such as [`yazelix_default.toml`](../yazelix_default.toml)
+- source-of-truth templates or contracts that are intentionally top-level, such as [`settings_default.jsonc`](../settings_default.jsonc)
 
 If a file is exploratory, subsystem-specific, or only useful as supporting documentation, prefer a home under [`docs/`](./), [`packaging/`](../packaging), or the owning subsystem directory instead of leaving it at the root.
 ### Branch Naming Convention

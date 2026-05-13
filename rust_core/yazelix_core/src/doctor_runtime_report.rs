@@ -8,6 +8,7 @@ use crate::runtime_contract::{
     RuntimeContractEvaluateRequest, RuntimeScriptCheckRequest, TerminalSupportCheckRequest,
     evaluate_runtime_contract,
 };
+use crate::settings_surface::DEFAULT_SETTINGS_CONFIG_FILENAME;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::env;
@@ -316,7 +317,7 @@ fn build_disabled_runtime_component_findings(
 }
 
 fn is_package_runtime_root(runtime_dir: &Path) -> bool {
-    runtime_dir.join("yazelix_default.toml").exists()
+    runtime_dir.join(DEFAULT_SETTINGS_CONFIG_FILENAME).exists()
         && runtime_dir.join("bin").join("yzx").exists()
         && runtime_dir.join("libexec").join("nu").exists()
 }
@@ -524,7 +525,7 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let rt = tmp.path().join("rt");
         std::fs::create_dir_all(rt.join("bin")).unwrap();
-        std::fs::write(rt.join("yazelix_default.toml"), "").unwrap();
+        std::fs::write(rt.join("settings_default.jsonc"), "").unwrap();
         std::fs::write(rt.join("bin").join("yzx"), "").unwrap();
         std::fs::create_dir_all(rt.join("libexec").join("nu")).unwrap();
 

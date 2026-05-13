@@ -15,6 +15,7 @@ use yazelix_core::config_state::{
     ComputeConfigStateRequest, ConfigStateData, RecordConfigStateRequest, compute_config_state,
     record_config_state,
 };
+use yazelix_core::settings_surface::{read_config_table, render_settings_jsonc_value};
 use yazelix_core::{
     RuntimeApplyMode, YAZI_ACTIONS, YazelixActionMetadata, ZELLIJ_ACTIONS,
     ZELLIJ_NATIVE_KEYBINDINGS, runtime_apply_mode_codes,
@@ -57,7 +58,11 @@ pub fn validate_home_manager_option_declaration_contract(
 
 fn validate_main_contract_parity(repo_root: &Path) -> Result<Vec<String>, String> {
     let contract = read_toml_file(&repo_root.join(MAIN_CONTRACT_RELATIVE_PATH))?;
-    let template = read_toml_file(&repo_root.join(MAIN_TEMPLATE_RELATIVE_PATH))?;
+    let template = read_config_table(
+        &repo_root.join(MAIN_TEMPLATE_RELATIVE_PATH),
+        "read_main_settings_default",
+    )
+    .map_err(|error| error.message())?;
     let fields = contract
         .get("fields")
         .and_then(TomlValue::as_table)
@@ -676,7 +681,7 @@ fn setup_config_state_fixture(repo_root: &Path) -> Result<ConfigStateFixture, St
         copy_fixture_file(repo_root, &runtime_root_alt, relative_path)?;
     }
 
-    let main_config_path = config_root.join("yazelix.toml");
+    let main_config_path = config_root.join("settings.jsonc");
     fs::copy(
         repo_root.join(MAIN_TEMPLATE_RELATIVE_PATH),
         &main_config_path,
@@ -760,12 +765,13 @@ fn mutate_fixture_config(
     field_path: &str,
     value: TomlValue,
 ) -> Result<(), String> {
-    let mut table = read_toml_file(config_path)?;
+    let mut table = read_config_table(config_path, "read_generated_state_fixture_config")
+        .map_err(|error| error.message().to_string())?;
     set_nested_toml_value(&mut table, &split_field_path(field_path), value);
     fs::write(
         config_path,
-        toml::to_string(&table)
-            .map_err(|error| format!("Failed to serialize fixture config: {}", error))?,
+        render_settings_jsonc_value(&toml_to_json(&TomlValue::Table(table)))
+            .map_err(|error| error.message().to_string())?,
     )
     .map_err(|error| format!("Failed to write {}: {}", config_path.display(), error))
 }

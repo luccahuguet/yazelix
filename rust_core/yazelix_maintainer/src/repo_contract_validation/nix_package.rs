@@ -322,7 +322,7 @@ fn verify_profile_installed_runtime(
         .join("shells")
         .join("posix")
         .join("yazelix_ghostty.sh");
-    let runtime_yazelix_default = runtime_root.join("yazelix_default.toml");
+    let runtime_settings_default = runtime_root.join("settings_default.jsonc");
     let runtime_ghostty_shader_root = runtime_root
         .join("configs")
         .join("terminal_emulators")
@@ -366,7 +366,7 @@ fn verify_profile_installed_runtime(
             "runtime-local Ghostty env wrapper",
         ),
         (
-            runtime_yazelix_default.clone(),
+            runtime_settings_default.clone(),
             "runtime-local default config",
         ),
         (

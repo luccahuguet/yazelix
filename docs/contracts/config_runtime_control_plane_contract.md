@@ -29,7 +29,7 @@ of the protocol pressure points at once:
 - typed config normalization ownership
 - the explicit boundary for `runtime-env.compute`
 - `yzx_core` helper resolution and transport failure behavior
-- config-surface parity between `yazelix_default.toml` and
+- config-surface parity between `settings_default.jsonc` and
   `home_manager/module.nix`
 - pilot findings about weak traceability and duplicate-owner debt
 - no product behavior changes
@@ -106,7 +106,7 @@ of the protocol pressure points at once:
 - Status: live
 - Owner: `config_metadata/main_config_contract.toml` plus the config-surface
   validators
-- Statement: The shipped `yazelix_default.toml` template and
+- Statement: The shipped `settings_default.jsonc` template and
   `home_manager/module.nix` default-option contract must stay synchronized
   through maintained config metadata and validation, not through ad hoc
   fallbacks or divergent duplicate defaults.

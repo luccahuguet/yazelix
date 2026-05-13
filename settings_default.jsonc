@@ -1,0 +1,231 @@
+// Yazelix settings.
+// Edit your active ~/.config/yazelix/settings.jsonc directly or use `yzx config`.
+// Runtime packages seed new configs from settings_default.jsonc.
+{
+  "core": {
+    "debug_mode": false,
+    "skip_welcome_screen": false,
+    "show_macchina_on_welcome": true,
+    "welcome_style": "random",
+    "game_of_life_cell_style": "full_block",
+    "welcome_duration_seconds": 2.0
+  },
+  "editor": {
+    "command": "",
+    "hide_sidebar_on_file_open": false,
+    "sidebar_width_percent": 20,
+    "sidebar_command": "nu",
+    "sidebar_args": [
+      "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu"
+    ]
+  },
+  "shell": {
+    "default_shell": "nu"
+  },
+  "terminal": {
+    "terminals": [
+      "ghostty",
+      "wezterm"
+    ],
+    "config_mode": "yazelix",
+    "transparency": "medium"
+  },
+  "zellij": {
+    "disable_tips": true,
+    "pane_frames": true,
+    "rounded_corners": true,
+    "support_kitty_keyboard_protocol": false,
+    "theme": "default",
+    "widget_tray": [
+      "editor",
+      "shell",
+      "term",
+      "cursor",
+      "codex_usage",
+      "cpu",
+      "ram"
+    ],
+    "tab_label_mode": "full",
+    "claude_usage_display": "both",
+    "codex_usage_display": "quota",
+    "opencode_go_usage_display": "both",
+    "opencode_go_usage_periods": [
+      "5h",
+      "week",
+      "month"
+    ],
+    "claude_usage_periods": [
+      "5h",
+      "week"
+    ],
+    "custom_text": "",
+    "popup_program": [
+      "lazygit"
+    ],
+    "popup_width_percent": 90,
+    "popup_height_percent": 90,
+    "screen_saver_enabled": false,
+    "screen_saver_idle_seconds": 300,
+    "screen_saver_style": "random",
+    "default_mode": "normal",
+
+    // Curated native Zellij key policy used by Yazelix.
+    // Set any entry to [] to disable that one bind/unbind. Arbitrary native
+    // Zellij keymaps still belong in ~/.config/yazelix/zellij.kdl.
+    "native_keybindings": {
+      // Move tab left/right away from Helix selection keys.
+      "move_tab_left_unbind": [
+        "Alt i"
+      ],
+      "move_tab_left": [
+        "Alt Shift H"
+      ],
+      "move_tab_right_unbind": [
+        "Alt o"
+      ],
+      "move_tab_right": [
+        "Alt Shift L"
+      ],
+      // Leave Alt+n available to Helix selection flow instead of Zellij new-pane.
+      "new_pane_unbind": [
+        "Alt n"
+      ],
+      // Direct tab jumps.
+      "go_to_tab_1": [
+        "Alt 1"
+      ],
+      "go_to_tab_2": [
+        "Alt 2"
+      ],
+      "go_to_tab_3": [
+        "Alt 3"
+      ],
+      "go_to_tab_4": [
+        "Alt 4"
+      ],
+      "go_to_tab_5": [
+        "Alt 5"
+      ],
+      "go_to_tab_6": [
+        "Alt 6"
+      ],
+      "go_to_tab_7": [
+        "Alt 7"
+      ],
+      "go_to_tab_8": [
+        "Alt 8"
+      ],
+      "go_to_tab_9": [
+        "Alt 9"
+      ],
+      // Convenience native Zellij navigation.
+      "toggle_focus_fullscreen": [
+        "Alt Shift F"
+      ],
+      "previous_tab": [
+        "Alt q"
+      ],
+      "next_tab": [
+        "Alt w"
+      ],
+      // Terminal-specific Helix selection-cycle conflict workaround.
+      "selection_cycle_unbind": [
+        "Alt (",
+        "Alt )"
+      ],
+      // Move pane grouping away from Helix sibling selection.
+      "toggle_pane_in_group_unbind": [
+        "Alt p"
+      ],
+      "toggle_pane_in_group": [
+        "Ctrl Alt p"
+      ],
+      "toggle_group_marking": [
+        "Ctrl Alt Shift P"
+      ],
+      // Move locked mode away from Ctrl+g in normal/default modes for CLI prompt flows.
+      "locked_mode_unbind": [
+        "Ctrl g"
+      ],
+      "locked_mode": [
+        "Ctrl Alt g"
+      ],
+      // Move scroll mode away from Ctrl+s because Ctrl+s is terminal/editor-hostile.
+      "scroll_mode_unbind": [
+        "Ctrl s"
+      ],
+      "scroll_mode": [
+        "Ctrl Alt s"
+      ],
+      // Move session mode away from Ctrl+o because it conflicts with editor workflows.
+      "session_mode_unbind": [
+        "Ctrl o"
+      ],
+      "session_mode": [
+        "Ctrl Alt o"
+      ],
+      // Keep Ctrl+b available to shells/editors instead of Zellij tmux mode.
+      "tmux_mode_unbind": [
+        "Ctrl b"
+      ]
+    },
+
+    // Semantic remaps for Yazelix-owned Zellij actions.
+    // Native Zellij keybind ownership still belongs in ~/.config/yazelix/zellij.kdl.
+    "keybindings": {
+      "open_workspace_terminal": [
+        "Alt m"
+      ],
+      "popup": [
+        "Alt t"
+      ],
+      "menu": [
+        "Alt Shift M"
+      ],
+      "config": [
+        "Alt Shift C"
+      ],
+      "move_focus_left_or_tab": [
+        "Alt h",
+        "Alt Left"
+      ],
+      "move_focus_right_or_tab": [
+        "Alt l",
+        "Alt Right"
+      ],
+      "toggle_editor_sidebar_focus": [
+        "Ctrl y"
+      ],
+      "toggle_sidebar": [
+        "Alt y"
+      ],
+      "smart_reveal": [
+        "Alt r"
+      ],
+      "previous_family": [
+        "Alt ["
+      ],
+      "next_family": [
+        "Alt ]"
+      ]
+    }
+  },
+  "yazi": {
+    "command": "",
+    "ya_command": "",
+    "plugins": [
+      "git",
+      "starship"
+    ],
+    "theme": "default",
+    "sort_by": "alphabetical",
+    "keybindings": {
+      "open_directory_as_workspace_pane": [
+        "<A-p>"
+      ],
+      "open_zoxide_in_editor": [
+        "<A-z>"
+      ]
+    }
+  }
+}

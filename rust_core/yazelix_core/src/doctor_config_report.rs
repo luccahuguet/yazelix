@@ -128,7 +128,7 @@ pub fn evaluate_doctor_config_report(
         return DoctorConfigEvaluateData {
             findings: vec![DoctorConfigFinding {
                 status: "info".into(),
-                message: "Using default configuration (yazelix_default.toml)".into(),
+                message: "Using default configuration (settings_default.jsonc)".into(),
                 details: Some("Yazelix can create settings.jsonc from the shipped defaults".into()),
                 fix_available: true,
                 config_diagnostic_report: None,
@@ -140,7 +140,7 @@ pub fn evaluate_doctor_config_report(
         findings: vec![DoctorConfigFinding {
             status: "error".into(),
             message: "No configuration file found".into(),
-            details: Some("Neither settings.jsonc nor yazelix_default.toml exists".into()),
+            details: Some("Neither settings.jsonc nor settings_default.jsonc exists".into()),
             fix_available: false,
             config_diagnostic_report: None,
         }],

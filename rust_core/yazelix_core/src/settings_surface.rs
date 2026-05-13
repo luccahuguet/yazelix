@@ -12,6 +12,7 @@ use toml::Value as TomlValue;
 use yazelix_ghostty_cursors::{CursorRegistry, render_cursor_settings_jsonc};
 
 pub const SETTINGS_SCHEMA_FILENAME: &str = "yazelix_settings.schema.json";
+pub const DEFAULT_SETTINGS_CONFIG_FILENAME: &str = "settings_default.jsonc";
 const SETTINGS_TOP_LEVEL_ORDER: &[&str] = &[
     "core", "helix", "editor", "shell", "terminal", "zellij", "yazi",
 ];
@@ -48,6 +49,12 @@ pub fn is_settings_config_path(path: &Path) -> bool {
         .and_then(|name| name.to_str())
         .map(|name| name == user_config_paths::SETTINGS_CONFIG)
         .unwrap_or(false)
+}
+
+pub fn is_jsonc_config_path(path: &Path) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| extension == "jsonc")
 }
 
 pub fn ensure_settings_config(
@@ -88,7 +95,7 @@ pub fn ensure_settings_config_with_cursor_component(
                 "Yazelix runtime is missing the default main config at {}.",
                 default_main_config.display()
             ),
-            "Reinstall Yazelix so the runtime includes yazelix_default.toml.",
+            "Reinstall Yazelix so the runtime includes settings_default.jsonc.",
             json!({ "path": default_main_config.display().to_string() }),
         ));
     }
@@ -96,12 +103,7 @@ pub fn ensure_settings_config_with_cursor_component(
         ensure_default_cursor_config_exists(default_cursor_config)?;
     }
 
-    let main_table = read_toml_table(
-        default_main_config,
-        "read_default_main_config",
-        "Could not parse the default Yazelix main config",
-    )?;
-    let rendered = render_settings_jsonc(&main_table)?;
+    let rendered = render_default_settings_jsonc(default_main_config, default_cursor_config)?;
 
     if let Some(parent) = paths.settings_config.parent() {
         fs::create_dir_all(parent).map_err(|source| {
@@ -139,6 +141,37 @@ pub fn render_default_settings_jsonc(
     default_main_config: &Path,
     _default_cursor_config: &Path,
 ) -> Result<String, CoreError> {
+    if is_jsonc_config_path(default_main_config) {
+        let raw = fs::read_to_string(default_main_config).map_err(|source| {
+            io_err(
+                "read_default_main_config",
+                default_main_config,
+                "Could not read the default Yazelix settings JSONC",
+                source,
+            )
+        })?;
+        let value = parse_jsonc_value(default_main_config, &raw)?;
+        let Some(object) = value.as_object() else {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "default_settings_jsonc_not_object",
+                "Yazelix default settings JSONC must contain a JSON object.",
+                "Reinstall Yazelix so the runtime includes a valid settings_default.jsonc.",
+                json!({ "path": default_main_config.display().to_string() }),
+            ));
+        };
+        if object.contains_key("cursors") {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "embedded_default_cursor_settings_unsupported",
+                "Yazelix default main settings JSONC must not contain cursor settings.",
+                "Keep cursor defaults in the shared cursor registry default instead.",
+                json!({ "path": default_main_config.display().to_string() }),
+            ));
+        }
+        return Ok(ensure_trailing_newline(raw));
+    }
+
     let main_table = read_toml_table(
         default_main_config,
         "read_default_main_config",
@@ -148,7 +181,7 @@ pub fn render_default_settings_jsonc(
 }
 
 pub fn read_config_table(path: &Path, code: &'static str) -> Result<toml::Table, CoreError> {
-    if is_settings_config_path(path) {
+    if is_jsonc_config_path(path) {
         let value = read_settings_jsonc_value(path)?;
         json_value_to_toml_table(&value, path)
     } else {
@@ -161,7 +194,7 @@ pub fn read_settings_jsonc_value(path: &Path) -> Result<JsonValue, CoreError> {
         io_err(
             "read_settings_jsonc",
             path,
-            "Could not read Yazelix settings.jsonc",
+            "Could not read Yazelix settings JSONC",
             source,
         )
     })?;
@@ -177,7 +210,7 @@ pub fn parse_jsonc_value(path: &Path, raw: &str) -> Result<JsonValue, CoreError>
                 "Could not parse Yazelix settings JSONC at {}: {source}.",
                 path.display(),
             ),
-            "Fix the JSONC syntax in settings.jsonc and retry. Comments must use `//` or `/* ... */`, not `#`.",
+            "Fix the JSONC syntax in the reported settings file and retry. Comments must use `//` or `/* ... */`, not `#`.",
             json!({
                 "path": path.display().to_string(),
                 "error": source.to_string(),
@@ -394,6 +427,13 @@ pub fn render_settings_jsonc_value(value: &JsonValue) -> Result<String, CoreErro
     ))
 }
 
+fn ensure_trailing_newline(mut raw: String) -> String {
+    if !raw.ends_with('\n') {
+        raw.push('\n');
+    }
+    raw
+}
+
 fn serialize_settings_jsonc_fragment(value: &JsonValue) -> Result<String, CoreError> {
     serde_json::to_string_pretty(value).map_err(|source| {
         CoreError::classified(
@@ -566,11 +606,17 @@ mod tests {
     use tempfile::tempdir;
 
     fn write_defaults(root: &Path) -> (PathBuf, PathBuf) {
-        let main = root.join("yazelix_default.toml");
+        let main = root.join("settings_default.jsonc");
         let cursor = root.join(DEFAULT_CURSOR_CONFIG_FILENAME);
         fs::write(
             &main,
-            "[editor]\ncommand = \"hx\"\nhide_sidebar_on_file_open = true\n",
+            r#"{
+  "editor": {
+    "command": "hx",
+    "hide_sidebar_on_file_open": true
+  }
+}
+"#,
         )
         .unwrap();
         fs::write(
@@ -624,7 +670,7 @@ mod tests {
             .canonicalize()
             .unwrap();
         let rendered = render_default_settings_jsonc(
-            &repo.join("yazelix_default.toml"),
+            &repo.join("settings_default.jsonc"),
             &repo.join(DEFAULT_CURSOR_CONFIG_FILENAME),
         )
         .unwrap();

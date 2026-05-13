@@ -154,8 +154,8 @@ mod tests {
         )
         .expect("main config contract");
         fs::write(
-            runtime.join("yazelix_default.toml"),
-            include_str!("../../../yazelix_default.toml"),
+            runtime.join("settings_default.jsonc"),
+            include_str!("../../../settings_default.jsonc"),
         )
         .expect("main defaults");
         fs::write(

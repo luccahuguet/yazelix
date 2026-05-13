@@ -33,7 +33,7 @@ pub use nix_package::{
 pub use readme_surface::{ReadmeSyncResult, sync_readme_surface, validate_readme_version};
 pub use upgrade_contract::{UpgradeContractOptions, validate_upgrade_contract};
 
-const MAIN_TEMPLATE_RELATIVE_PATH: &str = "yazelix_default.toml";
+const MAIN_TEMPLATE_RELATIVE_PATH: &str = "settings_default.jsonc";
 const MODULE_RELATIVE_PATH: &str = "home_manager/module.nix";
 const HOME_MANAGER_MODULE_DECLARATION_PATH: &str = "yazelix/home_manager/module.nix";
 const MAIN_CONTRACT_RELATIVE_PATH: &str = "config_metadata/main_config_contract.toml";

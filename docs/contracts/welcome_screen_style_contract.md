@@ -23,7 +23,7 @@ The retained public shape is:
 
 ## Scope
 
-- `yazelix_default.toml`
+- `settings_default.jsonc`
 - `config_metadata/main_config_contract.toml`
 - `home_manager/module.nix`
 - `docs/yzx_cli.md`

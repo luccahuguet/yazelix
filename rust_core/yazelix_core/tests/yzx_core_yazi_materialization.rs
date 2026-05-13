@@ -18,10 +18,14 @@ fn prepare_managed_config(
     repo: &std::path::Path,
     body: &str,
 ) -> PathBuf {
-    let config_path = config_root.join("yazelix.toml");
+    let config_path = if body.is_empty() {
+        config_root.join("settings.jsonc")
+    } else {
+        config_root.join("yazelix.toml")
+    };
     fs::create_dir_all(config_path.parent().unwrap()).unwrap();
     if body.is_empty() {
-        fs::copy(repo.join("yazelix_default.toml"), &config_path).unwrap();
+        fs::copy(repo.join("settings_default.jsonc"), &config_path).unwrap();
     } else {
         fs::write(&config_path, body).unwrap();
     }
@@ -122,7 +126,7 @@ plugins = ["git", "starship"]
         .arg("--config")
         .arg(&config_path)
         .arg("--default-config")
-        .arg(repo.join("yazelix_default.toml"))
+        .arg(repo.join("settings_default.jsonc"))
         .arg("--contract")
         .arg(repo.join("config_metadata/main_config_contract.toml"))
         .arg("--runtime-dir")
@@ -201,7 +205,7 @@ open_zoxide_in_editor = ["<A-x>", "<A-s>"]
         .arg("--config")
         .arg(&config_path)
         .arg("--default-config")
-        .arg(repo.join("yazelix_default.toml"))
+        .arg(repo.join("settings_default.jsonc"))
         .arg("--contract")
         .arg(repo.join("config_metadata/main_config_contract.toml"))
         .arg("--runtime-dir")
@@ -278,7 +282,7 @@ open_zoxide_in_editor = ["<A-x>"]
         .arg("--config")
         .arg(&config_path)
         .arg("--default-config")
-        .arg(repo.join("yazelix_default.toml"))
+        .arg(repo.join("settings_default.jsonc"))
         .arg("--contract")
         .arg(repo.join("config_metadata/main_config_contract.toml"))
         .arg("--runtime-dir")
@@ -343,7 +347,7 @@ desc = "Previous completion"
         .arg("--config")
         .arg(&config_path)
         .arg("--default-config")
-        .arg(repo.join("yazelix_default.toml"))
+        .arg(repo.join("settings_default.jsonc"))
         .arg("--contract")
         .arg(repo.join("config_metadata/main_config_contract.toml"))
         .arg("--runtime-dir")
@@ -437,7 +441,7 @@ fn yazi_materialization_generate_rejects_legacy_override_surface() {
         .arg("--config")
         .arg(&config_path)
         .arg("--default-config")
-        .arg(repo.join("yazelix_default.toml"))
+        .arg(repo.join("settings_default.jsonc"))
         .arg("--contract")
         .arg(repo.join("config_metadata/main_config_contract.toml"))
         .arg("--runtime-dir")

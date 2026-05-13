@@ -132,7 +132,7 @@ fn prepare_runtime_materialization_fixture(
     fs::write(
         &managed_config,
         render_default_settings_jsonc(
-            &runtime_dir.join("yazelix_default.toml"),
+            &runtime_dir.join("settings_default.jsonc"),
             &runtime_dir.join("yazelix_ghostty_cursors_default.toml"),
         )
         .unwrap(),
@@ -205,7 +205,7 @@ fn copy_dir_all(src: &Path, dst: &Path) {
 fn runtime_materialization_request(fixture: &RuntimeMaterializationFixture) -> Value {
     json!({
         "config_path": fixture.managed_config,
-        "default_config_path": fixture.runtime_dir.join("yazelix_default.toml"),
+        "default_config_path": fixture.runtime_dir.join("settings_default.jsonc"),
         "contract_path": fixture.runtime_dir.join("config_metadata/main_config_contract.toml"),
         "runtime_dir": fixture.runtime_dir,
         "state_path": fixture.state_path,
@@ -221,7 +221,7 @@ fn runtime_materialization_canonical_settings_request(
 ) -> Value {
     let settings_path = fixture.config_dir.join("settings.jsonc");
     let rendered = render_default_settings_jsonc(
-        &fixture.runtime_dir.join("yazelix_default.toml"),
+        &fixture.runtime_dir.join("settings_default.jsonc"),
         &fixture
             .runtime_dir
             .join("yazelix_ghostty_cursors_default.toml"),
@@ -262,9 +262,9 @@ fn config_normalize_prints_one_success_json_envelope() {
     let output = yzx_core_command()
         .arg("config.normalize")
         .arg("--config")
-        .arg(repo.join("yazelix_default.toml"))
+        .arg(repo.join("settings_default.jsonc"))
         .arg("--default-config")
-        .arg(repo.join("yazelix_default.toml"))
+        .arg(repo.join("settings_default.jsonc"))
         .arg("--contract")
         .arg(repo.join("config_metadata/main_config_contract.toml"))
         .output()
@@ -294,7 +294,7 @@ fn config_normalize_accepts_cursor_widget_tray_entry() {
         .arg("--config")
         .arg(&config_path)
         .arg("--default-config")
-        .arg(repo.join("yazelix_default.toml"))
+        .arg(repo.join("settings_default.jsonc"))
         .arg("--contract")
         .arg(repo.join("config_metadata/main_config_contract.toml"))
         .output()
@@ -320,7 +320,7 @@ fn config_normalize_prints_one_error_json_envelope() {
         .arg("--config")
         .arg(&config_path)
         .arg("--default-config")
-        .arg(repo.join("yazelix_default.toml"))
+        .arg(repo.join("settings_default.jsonc"))
         .arg("--contract")
         .arg(repo.join("config_metadata/main_config_contract.toml"))
         .output()
@@ -424,7 +424,7 @@ fn config_normalize_rejects_removed_surfaces_without_rewriting() {
             .arg("--config")
             .arg(&config_path)
             .arg("--default-config")
-            .arg(repo.join("yazelix_default.toml"))
+            .arg(repo.join("settings_default.jsonc"))
             .arg("--contract")
             .arg(repo.join("config_metadata/main_config_contract.toml"))
             .output()
@@ -466,9 +466,9 @@ fn config_state_compute_prints_machine_readable_state_envelope() {
         .unwrap()
         .arg("config-state.compute")
         .arg("--config")
-        .arg(repo.join("yazelix_default.toml"))
+        .arg(repo.join("settings_default.jsonc"))
         .arg("--default-config")
-        .arg(repo.join("yazelix_default.toml"))
+        .arg(repo.join("settings_default.jsonc"))
         .arg("--contract")
         .arg(repo.join("config_metadata/main_config_contract.toml"))
         .arg("--runtime-dir")
@@ -496,7 +496,7 @@ fn config_state_compute_prints_machine_readable_state_envelope() {
 #[test]
 fn config_state_record_writes_only_managed_surface_state() {
     let tmp = tempdir().unwrap();
-    let managed_config = tmp.path().join("config/yazelix.toml");
+    let managed_config = tmp.path().join("config/settings.jsonc");
     let state_path = tmp.path().join("state/rebuild_hash");
 
     let output = Command::cargo_bin("yzx_core")
@@ -532,7 +532,7 @@ fn config_state_record_writes_only_managed_surface_state() {
 fn runtime_materialization_plan_reports_missing_artifacts_with_current_state() {
     let repo = repo_root();
     let tmp = tempdir().unwrap();
-    let managed_config = tmp.path().join("config/yazelix.toml");
+    let managed_config = tmp.path().join("config/settings.jsonc");
     let state_path = tmp.path().join("state/rebuild_hash");
     let yazi_dir = tmp.path().join("configs/yazi");
     let zellij_dir = tmp.path().join("configs/zellij");
@@ -540,7 +540,7 @@ fn runtime_materialization_plan_reports_missing_artifacts_with_current_state() {
 
     fs::create_dir_all(managed_config.parent().unwrap()).unwrap();
     fs::create_dir_all(&zellij_layout_dir).unwrap();
-    fs::copy(repo.join("yazelix_default.toml"), &managed_config).unwrap();
+    fs::copy(repo.join("settings_default.jsonc"), &managed_config).unwrap();
 
     let state_output = Command::cargo_bin("yzx_core")
         .unwrap()
@@ -548,7 +548,7 @@ fn runtime_materialization_plan_reports_missing_artifacts_with_current_state() {
         .arg("--config")
         .arg(&managed_config)
         .arg("--default-config")
-        .arg(repo.join("yazelix_default.toml"))
+        .arg(repo.join("settings_default.jsonc"))
         .arg("--contract")
         .arg(repo.join("config_metadata/main_config_contract.toml"))
         .arg("--runtime-dir")
@@ -579,7 +579,7 @@ fn runtime_materialization_plan_reports_missing_artifacts_with_current_state() {
 
     let request = json!({
         "config_path": managed_config,
-        "default_config_path": repo.join("yazelix_default.toml"),
+        "default_config_path": repo.join("settings_default.jsonc"),
         "contract_path": repo.join("config_metadata/main_config_contract.toml"),
         "runtime_dir": repo,
         "state_path": state_path,
@@ -1419,7 +1419,7 @@ fn doctor_config_evaluate_reports_default_template_as_fixable() {
     assert_eq!(envelope["data"]["findings"][0]["status"], "info");
     assert_eq!(
         envelope["data"]["findings"][0]["message"],
-        "Using default configuration (yazelix_default.toml)"
+        "Using default configuration (settings_default.jsonc)"
     );
     assert_eq!(envelope["data"]["findings"][0]["fix_available"], true);
 }

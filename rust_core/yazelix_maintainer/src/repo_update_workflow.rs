@@ -8,10 +8,11 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
 use toml::Value as TomlValue;
+use yazelix_core::settings_surface::read_config_table;
 
 const DEFAULT_HOME_MANAGER_DIR: &str = "~/.config/home-manager";
 const DEFAULT_HOME_MANAGER_INPUT: &str = "yazelix-hm";
-const DEFAULT_MAIN_CONFIG_RELATIVE_PATH: &str = "yazelix_default.toml";
+const DEFAULT_MAIN_CONFIG_RELATIVE_PATH: &str = "settings_default.jsonc";
 const DEFAULT_CONSTANTS_RELATIVE_PATH: &str = "nushell/scripts/utils/constants.nu";
 const UPDATE_CANARY_BASE_RELATIVE_PATH: &str = ".local/share/yazelix/update_canaries";
 
@@ -679,20 +680,10 @@ fn materialize_update_canaries(
     fs::create_dir_all(&temp_base)
         .map_err(|error| format!("Failed to create {}: {}", temp_base.display(), error))?;
     let temp_dir = create_unique_temp_dir_in(&temp_base, "update")?;
-    let template_raw = fs::read_to_string(&default_config_path).map_err(|error| {
-        format!(
-            "Failed to read {}: {}",
-            default_config_path.display(),
-            error
-        )
-    })?;
-    let template_value: TomlValue = template_raw.parse::<TomlValue>().map_err(|error| {
-        format!(
-            "Invalid TOML in {}: {}",
-            default_config_path.display(),
-            error
-        )
-    })?;
+    let template_value = TomlValue::Table(
+        read_config_table(&default_config_path, "read_update_canary_default")
+            .map_err(|error| error.message())?,
+    );
 
     let mut canaries = Vec::new();
     for name in selected {

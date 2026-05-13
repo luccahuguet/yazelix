@@ -4,7 +4,8 @@ use crate::bridge::{CoreError, ErrorClass};
 use crate::ghostty_cursor_registry::DEFAULT_CURSOR_CONFIG_FILENAME;
 use crate::runtime_component_enabled;
 use crate::settings_surface::{
-    ensure_settings_config_with_cursor_component, settings_schema_path, settings_surface_paths,
+    DEFAULT_SETTINGS_CONFIG_FILENAME, ensure_settings_config_with_cursor_component,
+    settings_schema_path, settings_surface_paths,
 };
 use serde::Serialize;
 use serde_json::json;
@@ -60,7 +61,7 @@ pub fn primary_config_paths(runtime_dir: &Path, config_dir: &Path) -> PrimaryCon
     let user_cursor_config = settings_paths.shared_cursor_config;
     let old_flat_user_config = settings_paths.old_main_config;
     let legacy_user_config = settings_paths.old_nested_main_config;
-    let default_config_path = runtime_dir.join("yazelix_default.toml");
+    let default_config_path = runtime_dir.join(DEFAULT_SETTINGS_CONFIG_FILENAME);
     let default_cursor_config_path = runtime_dir.join(DEFAULT_CURSOR_CONFIG_FILENAME);
     let contract_path = runtime_dir
         .join("config_metadata")
@@ -220,10 +221,17 @@ mod tests {
     use std::fs;
     use tempfile::tempdir;
 
+    const DEFAULT_SETTINGS_FIXTURE: &str = r#"{
+  "core": {
+    "welcome_style": "minimal"
+  }
+}
+"#;
+
     fn write_runtime_layout(runtime_dir: &Path) {
         fs::write(
-            runtime_dir.join("yazelix_default.toml"),
-            "[core]\nwelcome_style = \"minimal\"\n",
+            runtime_dir.join("settings_default.jsonc"),
+            DEFAULT_SETTINGS_FIXTURE,
         )
         .expect("write default config");
         fs::write(
@@ -285,8 +293,8 @@ mod tests {
         let runtime = tempdir().expect("runtime dir");
         let config = tempdir().expect("config dir");
         fs::write(
-            runtime.path().join("yazelix_default.toml"),
-            "[core]\nwelcome_style = \"minimal\"\n",
+            runtime.path().join("settings_default.jsonc"),
+            DEFAULT_SETTINGS_FIXTURE,
         )
         .expect("write default config");
         fs::create_dir_all(runtime.path().join("config_metadata")).expect("contract dir");
