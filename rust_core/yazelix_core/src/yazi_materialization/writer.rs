@@ -596,9 +596,6 @@ fn deep_merge_toml(base: &mut TomlValue, user: &TomlValue) {
                 }
             }
         }
-        (TomlValue::Array(base_array), TomlValue::Array(user_array)) => {
-            base_array.extend(user_array.iter().cloned());
-        }
         (base_value, user_value) => {
             *base_value = user_value.clone();
         }

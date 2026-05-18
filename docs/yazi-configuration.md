@@ -130,6 +130,8 @@ Yazelix owns the generated `[opener].edit` entry. That opener sends file opens t
 
 `~/.config/yazelix/yazi.toml` can add or override other Yazi settings, but it does not replace `[opener].edit`. Use `keymap.toml` to remap file-open keys, and use `init.lua` for custom Lua setup.
 
+When an override repeats a native Yazi array setting such as `[mgr].ratio`, the managed value replaces the Yazelix default instead of appending to it. Use this to disable the preview pane with a ratio such as `[1, 4, 0]`.
+
 ## Default Features
 
 - **Layout ratio**: `[1, 4, 3]` optimized for sidebar mode

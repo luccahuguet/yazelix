@@ -453,13 +453,16 @@ mod tests {
     use std::fs;
     use tempfile::tempdir;
 
-    // Defends: Yazi TOML merge keeps the base opener.edit while appending arrays from user overrides.
+    // Regression: Yazi TOML sidecar arrays replace generated defaults, while opener.edit stays Yazelix-owned.
     #[test]
-    fn deep_merge_preserves_base_edit_opener() {
+    fn deep_merge_replaces_arrays_and_preserves_base_edit_opener() {
         let base = toml::from_str::<toml::Table>(
             r#"
 [opener]
 edit = [{ run = "base-edit" }]
+
+[mgr]
+ratio = [1, 4, 3]
 
 [[plugin.prepend_fetchers]]
 id = "git"
@@ -471,6 +474,9 @@ id = "git"
 [opener]
 edit = [{ run = "user-edit" }]
 open = [{ run = "user-open" }]
+
+[mgr]
+ratio = [1, 4, 0]
 
 [[plugin.prepend_fetchers]]
 id = "extra"
@@ -494,13 +500,24 @@ id = "extra"
         );
         assert_eq!(
             merged
+                .get("mgr")
+                .and_then(TomlValue::as_table)
+                .and_then(|mgr| mgr.get("ratio"))
+                .and_then(TomlValue::as_array)
+                .unwrap(),
+            &vec![1.into(), 4.into(), 0.into()]
+        );
+        assert_eq!(
+            merged
                 .get("plugin")
                 .and_then(TomlValue::as_table)
                 .and_then(|plugin| plugin.get("prepend_fetchers"))
                 .and_then(TomlValue::as_array)
-                .unwrap()
-                .len(),
-            2
+                .and_then(|fetchers| fetchers.first())
+                .and_then(TomlValue::as_table)
+                .and_then(|fetcher| fetcher.get("id"))
+                .and_then(TomlValue::as_str),
+            Some("extra")
         );
     }
 

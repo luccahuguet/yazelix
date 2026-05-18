@@ -176,6 +176,61 @@ plugins = ["git", "starship"]
     assert!(runtime_placeholder_plugin.contains(runtime_dir.to_string_lossy().as_ref()));
 }
 
+// Regression: native Yazi array settings such as mgr.ratio replace Yazelix defaults instead of appending to them.
+#[test]
+fn yazi_materialization_generate_replaces_user_yazi_array_settings() {
+    let repo = repo_root();
+    let temp = tempdir().unwrap();
+    let home = temp.path().join("home");
+    let config_root = home.join(".config").join("yazelix");
+    let output_dir = temp.path().join("state").join("configs").join("yazi");
+    let runtime_dir = temp.path().join("runtime");
+    let config_path = prepare_managed_config(&config_root, &repo, "");
+    prepare_runtime_fixture(&runtime_dir);
+    fs::write(
+        config_root.join("yazi.toml"),
+        r#"[mgr]
+ratio = [1, 4, 0]
+"#,
+    )
+    .unwrap();
+
+    let output = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .env("HOME", &home)
+        .env("XDG_CONFIG_HOME", home.join(".config"))
+        .env("XDG_DATA_HOME", home.join(".local").join("share"))
+        .env("YAZELIX_CONFIG_DIR", &config_root)
+        .arg("yazi-materialization.generate")
+        .arg("--config")
+        .arg(&config_path)
+        .arg("--default-config")
+        .arg(repo.join("settings_default.jsonc"))
+        .arg("--contract")
+        .arg(repo.join("config_metadata/main_config_contract.toml"))
+        .arg("--runtime-dir")
+        .arg(&runtime_dir)
+        .arg("--yazi-config-dir")
+        .arg(&output_dir)
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let generated_yazi = fs::read_to_string(output_dir.join("yazi.toml")).unwrap();
+    let parsed_yazi: toml::Value = toml::from_str(&generated_yazi).unwrap();
+    assert_eq!(
+        parsed_yazi
+            .get("mgr")
+            .and_then(|section| section.get("ratio"))
+            .and_then(toml::Value::as_array),
+        Some(&vec![1.into(), 4.into(), 0.into()])
+    );
+}
+
 // Defends: semantic Yazi integration keybinding remaps replace generated Yazelix-owned bindings without editing the native yazi_keymap.toml sidecar.
 #[test]
 fn yazi_materialization_generate_applies_semantic_keybinding_remaps() {
