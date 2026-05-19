@@ -208,6 +208,7 @@ fn runtime_materialization_request(fixture: &RuntimeMaterializationFixture) -> V
         "yazi_config_dir": fixture.yazi_dir,
         "zellij_config_dir": fixture.zellij_dir,
         "zellij_layout_dir": fixture.zellij_layout_dir,
+        "zellij_permissions_cache_path": fixture.home_dir.join(".cache/zellij/permissions.kdl"),
         "layout_override": Value::Null,
     })
 }
@@ -577,6 +578,7 @@ fn runtime_materialization_plan_reports_missing_artifacts_with_current_state() {
         "yazi_config_dir": yazi_dir,
         "zellij_config_dir": zellij_dir,
         "zellij_layout_dir": zellij_layout_dir,
+        "zellij_permissions_cache_path": tmp.path().join("home/.cache/zellij/permissions.kdl"),
         "layout_override": Value::Null,
     });
     let output = Command::cargo_bin("yzx_core")
@@ -597,7 +599,7 @@ fn runtime_materialization_plan_reports_missing_artifacts_with_current_state() {
             .as_array()
             .unwrap()
             .len(),
-        5
+        6
     );
 }
 

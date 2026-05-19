@@ -3,6 +3,7 @@
 use crate::active_config_surface::{primary_config_paths, resolve_active_config_paths};
 use crate::bridge::{CoreError, ErrorClass};
 use crate::runtime_env::RuntimePathInput;
+use crate::zellij_materialization::zellij_permissions_cache_path;
 use crate::{
     ComputeConfigStateRequest, GhosttyMaterializationRequest, NormalizeConfigRequest,
     RecordConfigStateRequest, RuntimeEnvComputeRequest, RuntimeMaterializationPlanRequest,
@@ -207,6 +208,7 @@ pub fn runtime_materialization_plan_request_from_env(
         yazi_config_dir: state_dir.join("configs").join("yazi"),
         zellij_layout_dir: zellij_config_dir.join("layouts"),
         zellij_config_dir,
+        zellij_permissions_cache_path: Some(zellij_permissions_cache_path()?),
         layout_override: runtime_materialization_layout_override_from_env(),
     })
 }

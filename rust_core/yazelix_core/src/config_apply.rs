@@ -204,6 +204,7 @@ pub fn runtime_materialization_request(
         yazi_config_dir: state_dir.join("configs").join("yazi"),
         zellij_config_dir: zellij_config_dir.clone(),
         zellij_layout_dir: zellij_config_dir.join("layouts"),
+        zellij_permissions_cache_path: None,
         layout_override: None,
     })
 }
@@ -632,6 +633,7 @@ apply_mode = "generated_runtime_refresh"
                 yazi_config_dir: temp.path().join("configs/yazi"),
                 zellij_config_dir: temp.path().join("configs/zellij"),
                 zellij_layout_dir: temp.path().join("configs/zellij/layouts"),
+                zellij_permissions_cache_path: Some(temp.path().join("permissions.kdl")),
                 layout_override: None,
             }),
             pane_orchestrator_refresh: None,

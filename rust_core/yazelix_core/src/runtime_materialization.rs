@@ -11,6 +11,7 @@ use crate::yazi_materialization::{
 };
 use crate::zellij_materialization::{
     ZellijMaterializationData, ZellijMaterializationRequest, generate_zellij_materialization,
+    zellij_permissions_cache_path,
 };
 use crate::zellij_render_plan::MANAGED_SIDEBAR_LAYOUT_NAME;
 use serde::{Deserialize, Serialize};
@@ -28,6 +29,8 @@ pub struct RuntimeMaterializationPlanRequest {
     pub yazi_config_dir: PathBuf,
     pub zellij_config_dir: PathBuf,
     pub zellij_layout_dir: PathBuf,
+    #[serde(default)]
+    pub zellij_permissions_cache_path: Option<PathBuf>,
     pub layout_override: Option<String>,
 }
 
@@ -134,6 +137,10 @@ pub fn plan_runtime_materialization(
         &request.zellij_layout_dir,
         request.layout_override.as_deref(),
     )?;
+    let zellij_permissions_path = match &request.zellij_permissions_cache_path {
+        Some(path) => path.clone(),
+        None => zellij_permissions_cache_path()?,
+    };
     let expected_artifacts = vec![
         RuntimeArtifact {
             label: "generated Yazi config".to_string(),
@@ -170,6 +177,10 @@ pub fn plan_runtime_materialization(
         RuntimeArtifact {
             label: "generated Zellij layout".to_string(),
             path: zellij_layout_path.clone(),
+        },
+        RuntimeArtifact {
+            label: "Zellij plugin permissions cache".to_string(),
+            path: zellij_permissions_path.to_string_lossy().to_string(),
         },
     ];
     let mut missing_artifacts = expected_artifacts
@@ -463,10 +474,11 @@ mod tests {
             default_config_path: repo.join("settings_default.jsonc"),
             contract_path: repo.join("config_metadata/main_config_contract.toml"),
             runtime_dir,
-            state_path,
+            state_path: state_path.clone(),
             yazi_config_dir: yazi_dir,
             zellij_config_dir: zellij_dir,
             zellij_layout_dir,
+            zellij_permissions_cache_path: Some(state_path.with_file_name("permissions.kdl")),
             layout_override: None,
         }
     }
@@ -514,7 +526,7 @@ mod tests {
         assert_eq!(plan.status, "repair_missing_artifacts");
         assert_eq!(plan.should_regenerate, true);
         assert_eq!(plan.should_sync_static_assets, false);
-        assert_eq!(plan.missing_artifacts.len(), 5);
+        assert_eq!(plan.missing_artifacts.len(), 6);
     }
 
     // Defends: runtime materialization apply refuses to record success when expected generated artifacts are still missing.
@@ -645,6 +657,66 @@ mod tests {
         assert_eq!(
             plan.missing_artifacts[0].label,
             "generated Yazi static assets"
+        );
+    }
+
+    // Regression: deleting only Zellij's plugin permission cache must still make startup reach the materializer that re-seeds Yazelix plugin permissions.
+    #[test]
+    fn plan_marks_missing_zellij_plugin_permissions_without_forcing_refresh() {
+        let dir = tempdir().expect("tempdir");
+        let runtime_dir = repo_root();
+        let config_path = runtime_dir.join("settings_default.jsonc");
+        let state_path = dir.path().join("state/rebuild_hash");
+        let yazi_dir = dir.path().join("configs/yazi");
+        let zellij_dir = dir.path().join("configs/zellij");
+        let zellij_layout_dir = zellij_dir.join("layouts");
+
+        fs::create_dir_all(&zellij_layout_dir).unwrap();
+        let baseline = compute_config_state(&ComputeConfigStateRequest {
+            config_path: config_path.clone(),
+            default_config_path: runtime_dir.join("settings_default.jsonc"),
+            contract_path: runtime_dir.join("config_metadata/main_config_contract.toml"),
+            runtime_dir: runtime_dir.clone(),
+            state_path: state_path.clone(),
+        })
+        .unwrap();
+        record_config_state(&RecordConfigStateRequest {
+            config_file: config_path.to_string_lossy().to_string(),
+            managed_config_path: config_path.clone(),
+            state_path: state_path.clone(),
+            config_hash: baseline.config_hash.clone(),
+            runtime_hash: baseline.runtime_hash.clone(),
+        })
+        .unwrap();
+
+        let request = plan_request_for(
+            config_path,
+            runtime_dir.clone(),
+            state_path,
+            yazi_dir.clone(),
+            zellij_dir,
+            zellij_layout_dir,
+        );
+        let initial_plan = plan_runtime_materialization(&request).unwrap();
+        touch_plan_artifacts(&initial_plan);
+        mirror_yazi_static_assets(&runtime_dir, &yazi_dir);
+        let permissions_artifact = initial_plan
+            .expected_artifacts
+            .iter()
+            .find(|artifact| artifact.label == "Zellij plugin permissions cache")
+            .expect("permissions artifact");
+        fs::remove_file(&permissions_artifact.path).unwrap();
+
+        let plan = plan_runtime_materialization(&request).unwrap();
+
+        assert!(!plan.config_state.needs_refresh);
+        assert_eq!(plan.status, "repair_missing_artifacts");
+        assert_eq!(plan.should_regenerate, true);
+        assert_eq!(plan.should_sync_static_assets, false);
+        assert_eq!(plan.missing_artifacts.len(), 1);
+        assert_eq!(
+            plan.missing_artifacts[0].label,
+            "Zellij plugin permissions cache"
         );
     }
 

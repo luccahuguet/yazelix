@@ -97,7 +97,7 @@ Yazelix normally pre-seeds permissions for its bundled Zellij plugins before lau
 
 `Alt+y` and `Ctrl+y` require the Yazelix pane-orchestrator plugin permissions. `Alt+m` opens a new terminal in the current tab workspace root.
 
-If permission state gets out of sync after an update, run `yzx doctor --fix` and restart Yazelix.
+If permission state gets out of sync after an update, run `yzx doctor --fix` and restart Yazelix. If `permissions.kdl` was deleted outright, the next Yazelix launch also treats the missing permission cache as repairable generated state and re-seeds the bundled plugin permissions before Zellij starts.
 
 See the [zjstatus permissions documentation](https://github.com/dj95/zjstatus/wiki/2-%E2%80%90-Permissions) for more details.
 

@@ -1149,6 +1149,7 @@ fn run_status_compute(mut parser: lexopt::Parser) -> Result<(), CoreError> {
             .ok_or_else(|| CoreError::usage("Missing --zellij-config-dir path"))?,
         zellij_layout_dir: zellij_layout_dir
             .ok_or_else(|| CoreError::usage("Missing --zellij-layout-dir path"))?,
+        zellij_permissions_cache_path: None,
         layout_override,
     };
     let version = yazelix_version
