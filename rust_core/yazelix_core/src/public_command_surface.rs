@@ -459,7 +459,7 @@ const IMPORT_HELIX_COMMAND: YzxCommandMetadata = metadata(
 );
 const IMPORT_YAZI_COMMAND: YzxCommandMetadata = metadata(
     "yzx import yazi",
-    "Import native Yazi config files into Yazelix-managed override paths",
+    "Import native Yazi config files and plugins into Yazelix-managed override paths",
     YzxCommandCategory::Config,
     &[switch("force", None)],
     Some(YzxMenuCategory::Config),

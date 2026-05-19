@@ -240,8 +240,15 @@ fn reset_surface_with_content(
 fn reset_config_adjacency_report(
     config_dir: &Path,
 ) -> Result<ResetConfigAdjacencyReport, CoreError> {
-    let current_managed: BTreeSet<&str> =
-        CURRENT_MANAGED_CONFIG_FILE_NAMES.iter().copied().collect();
+    let current_managed: BTreeSet<String> = CURRENT_MANAGED_CONFIG_FILE_NAMES
+        .iter()
+        .filter_map(|entry| {
+            Path::new(entry)
+                .components()
+                .next()
+                .map(|component| component.as_os_str().to_string_lossy().to_string())
+        })
+        .collect();
     let legacy: BTreeSet<&str> = LEGACY_CONFIG_ENTRY_NAMES.iter().copied().collect();
     let mut report = ResetConfigAdjacencyReport::default();
 
@@ -260,7 +267,7 @@ fn reset_config_adjacency_report(
         {
             continue;
         }
-        if current_managed.contains(name.as_str()) {
+        if current_managed.contains(&name) {
             report.managed_overrides.push(name);
         } else if legacy.contains(name.as_str()) {
             report.legacy_inputs.push(name);

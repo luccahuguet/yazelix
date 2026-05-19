@@ -71,7 +71,7 @@ Use semantic remaps for Yazelix-owned actions and native sidecars for the owning
 - Yazelix curated native Zellij policy: `settings.jsonc` under `zellij.native_keybindings`
 - Full native Zellij keymap ownership: `~/.config/yazelix/zellij.kdl`
 - Yazelix-owned Yazi integration actions: `settings.jsonc` under `yazi.keybindings`
-- Yazi-native bindings: `~/.config/yazelix/yazi_keymap.toml`
+- Yazi-native bindings: `~/.config/yazelix/yazi/keymap.toml`
 - Helix-local bindings for managed Helix sessions: `~/.config/yazelix/helix.toml`
 - Terminal-emulator shortcuts: the terminal emulator config
 
@@ -79,7 +79,7 @@ Use semantic remaps for Yazelix-owned actions and native sidecars for the owning
 
 `zellij.native_keybindings` accepts curated native policy ids such as `scroll_mode`, `scroll_mode_unbind`, `move_tab_left`, and `move_tab_left_unbind`. These are Yazelix's shipped conflict-remap defaults for native Zellij commands. Omitted entries keep defaults, and `[]` disables one native policy entry. Arbitrary native Zellij actions still belong in `~/.config/yazelix/zellij.kdl`.
 
-`yazi.keybindings` accepts owner-local action ids such as `open_directory_as_workspace_pane` and `open_zoxide_in_editor`. Values are alternate generated Yazi bindings such as `<A-p>` and `<A-z>`. Omitted actions keep defaults, and `[]` disables that generated Yazelix-owned Yazi integration binding. Native open-selected keys such as `<Enter>` and `o` remain in `~/.config/yazelix/yazi_keymap.toml`; arbitrary Yazi actions and native multi-key sequences also belong there.
+`yazi.keybindings` accepts owner-local action ids such as `open_directory_as_workspace_pane` and `open_zoxide_in_editor`. Values are alternate generated Yazi bindings such as `<A-p>` and `<A-z>`. Omitted actions keep defaults, and `[]` disables that generated Yazelix-owned Yazi integration binding. Native open-selected keys such as `<Enter>` and `o` remain in `~/.config/yazelix/yazi/keymap.toml`; arbitrary Yazi actions and native multi-key sequences also belong there.
 
 ### Sidebar Commands vs Keybindings
 

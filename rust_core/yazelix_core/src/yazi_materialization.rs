@@ -42,6 +42,8 @@ struct UserOverridePaths {
     yazi_toml: PathBuf,
     keymap_toml: PathBuf,
     init_lua: PathBuf,
+    plugins_dir: PathBuf,
+    flavors_dir: PathBuf,
 }
 
 pub fn generate_yazi_materialization(
@@ -88,6 +90,8 @@ pub fn generate_yazi_materialization(
         user_yazi_config: user_yazi_config.as_ref(),
         user_keymap: user_keymap.as_ref(),
         user_init_lua: user_init_lua.as_deref(),
+        user_plugins_dir: &user_paths.plugins_dir,
+        user_flavors_dir: &user_paths.flavors_dir,
         semantic_keymap: &semantic_keymap,
         sync_static_assets: request.sync_static_assets,
     })?;
@@ -149,6 +153,13 @@ fn resolve_user_override_paths(config_dir: &Path) -> Result<UserOverridePaths, C
         yazi_toml: resolve_managed_yazi_user_file(config_dir, "yazi.toml")?,
         keymap_toml: resolve_managed_yazi_user_file(config_dir, "keymap.toml")?,
         init_lua: resolve_managed_yazi_user_file(config_dir, "init.lua")?,
+        plugins_dir: resolve_managed_yazi_user_dir(
+            config_dir,
+            user_config_paths::yazi_plugins_dir(config_dir),
+            user_config_paths::flat_yazi_plugins_dir(config_dir),
+            "Yazi plugins directory",
+        )?,
+        flavors_dir: user_config_paths::yazi_flavors_dir(config_dir),
     })
 }
 
@@ -156,17 +167,20 @@ fn resolve_managed_yazi_user_file(
     config_dir: &Path,
     file_name: &str,
 ) -> Result<PathBuf, CoreError> {
-    let (current_path, old_managed_path) = match file_name {
+    let (current_path, flat_path, old_managed_path) = match file_name {
         "yazi.toml" => (
             user_config_paths::yazi_config(config_dir),
+            user_config_paths::flat_yazi_config(config_dir),
             user_config_paths::legacy_yazi_config(config_dir),
         ),
         "keymap.toml" => (
             user_config_paths::yazi_keymap(config_dir),
+            user_config_paths::flat_yazi_keymap(config_dir),
             user_config_paths::legacy_yazi_keymap(config_dir),
         ),
         "init.lua" => (
             user_config_paths::yazi_init(config_dir),
+            user_config_paths::flat_yazi_init(config_dir),
             user_config_paths::legacy_yazi_init(config_dir),
         ),
         _ => unreachable!("supported Yazi override file"),
@@ -181,6 +195,12 @@ fn resolve_managed_yazi_user_file(
         .join("yazi")
         .join("user")
         .join(file_name);
+    reject_old_flat_yazi_path(
+        &flat_path,
+        &current_path,
+        &format!("Yazi {file_name} override"),
+    )?;
+
     let current_exists = current_path.exists();
     let legacy_exists = legacy_path.exists();
 
@@ -189,11 +209,11 @@ fn resolve_managed_yazi_user_file(
             ErrorClass::Config,
             "duplicate_yazi_user_override",
             format!(
-                "Yazelix found duplicate Yazi user config files for {file_name}.\nflat path: {}\nlegacy path: {}\n\nKeep only the flat ~/.config/yazelix copy. Move or delete the legacy configs/yazi/user file so Yazelix has one clear owner.",
+                "Yazelix found duplicate Yazi user config files for {file_name}.\nmanaged path: {}\nlegacy path: {}\n\nKeep only the managed ~/.config/yazelix/yazi/ copy. Move or delete the legacy configs/yazi/user file so Yazelix has one clear owner.",
                 current_path.to_string_lossy(),
                 legacy_path.to_string_lossy(),
             ),
-            "Keep only the flat ~/.config/yazelix copy, then retry.",
+            "Keep only the managed ~/.config/yazelix/yazi/ copy, then retry.",
             json!({
                 "file_name": file_name,
                 "current_path": current_path.to_string_lossy(),
@@ -211,7 +231,7 @@ fn resolve_managed_yazi_user_file(
                 legacy_path.to_string_lossy(),
                 current_path.to_string_lossy(),
             ),
-            "Move the override into `~/.config/yazelix/` with `yzx import yazi`, then retry.",
+            "Move the override into `~/.config/yazelix/yazi/` with `yzx import yazi`, then retry.",
             json!({
                 "file_name": file_name,
                 "current_path": current_path.to_string_lossy(),
@@ -221,6 +241,58 @@ fn resolve_managed_yazi_user_file(
     }
 
     Ok(current_path)
+}
+
+fn resolve_managed_yazi_user_dir(
+    config_dir: &Path,
+    current_path: PathBuf,
+    flat_path: PathBuf,
+    label: &str,
+) -> Result<PathBuf, CoreError> {
+    reject_old_flat_yazi_path(&flat_path, &current_path, label)?;
+    let legacy_path = config_dir.join("configs").join("yazi").join("user");
+    if legacy_path.exists() {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "legacy_yazi_user_override",
+            format!(
+                "Yazelix found a legacy Yazi user config directory.\nlegacy path: {}\nmanaged path: {}\n\nYazelix now stores Yazi-owned files under ~/.config/yazelix/yazi/.",
+                legacy_path.to_string_lossy(),
+                user_config_paths::yazi_config_dir(config_dir).to_string_lossy(),
+            ),
+            "Move the old configs/yazi/user contents into `~/.config/yazelix/yazi/`, then retry.",
+            json!({
+                "current_path": user_config_paths::yazi_config_dir(config_dir).to_string_lossy(),
+                "legacy_path": legacy_path.to_string_lossy(),
+            }),
+        ));
+    }
+    Ok(current_path)
+}
+
+fn reject_old_flat_yazi_path(
+    flat_path: &Path,
+    current_path: &Path,
+    label: &str,
+) -> Result<(), CoreError> {
+    if !flat_path.exists() {
+        return Ok(());
+    }
+    Err(CoreError::classified(
+        ErrorClass::Config,
+        "flat_yazi_user_override",
+        format!(
+            "Yazelix found an old flat {label} at {}.\nmanaged Yazi-home path: {}\n\nYazelix now stores Yazi-owned files under ~/.config/yazelix/yazi/ so package.toml, plugins/, flavors/, and native file names share one managed home.",
+            flat_path.to_string_lossy(),
+            current_path.to_string_lossy(),
+        ),
+        "Move the old flat Yazi path into `~/.config/yazelix/yazi/`, then retry.",
+        json!({
+            "current_path": current_path.to_string_lossy(),
+            "flat_path": flat_path.to_string_lossy(),
+            "label": label,
+        }),
+    ))
 }
 
 fn read_optional_managed_toml_override(

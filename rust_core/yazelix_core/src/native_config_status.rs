@@ -315,6 +315,24 @@ fn yazi_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigStatusE
             user_config_paths::yazi_init(&request.config_dir),
             request.xdg_config_home.join("yazi").join("init.lua"),
         ),
+        (
+            "yazi.package",
+            "Yazi package manifest",
+            user_config_paths::yazi_package(&request.config_dir),
+            request.xdg_config_home.join("yazi").join("package.toml"),
+        ),
+        (
+            "yazi.plugins",
+            "Yazi plugin directory",
+            user_config_paths::yazi_plugins_dir(&request.config_dir),
+            request.xdg_config_home.join("yazi").join("plugins"),
+        ),
+        (
+            "yazi.flavors",
+            "Yazi flavor directory",
+            user_config_paths::yazi_flavors_dir(&request.config_dir),
+            request.xdg_config_home.join("yazi").join("flavors"),
+        ),
     ];
     let mut entries = files
         .into_iter()
@@ -659,15 +677,21 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let req = request(&tmp);
         let yazi = req.xdg_config_home.join("yazi").join("yazi.toml");
+        let yazi_package = req.xdg_config_home.join("yazi").join("package.toml");
+        let yazi_flavors = req.xdg_config_home.join("yazi").join("flavors");
         let helix = req.xdg_config_home.join("helix").join("config.toml");
         fs::create_dir_all(yazi.parent().unwrap()).unwrap();
+        fs::create_dir_all(&yazi_flavors).unwrap();
         fs::create_dir_all(helix.parent().unwrap()).unwrap();
         fs::write(&yazi, "[manager]\n").unwrap();
+        fs::write(&yazi_package, "[plugin]\n").unwrap();
         fs::write(&helix, "[editor]\n").unwrap();
 
         let entries = classify_native_config_statuses(&req);
 
         assert_eq!(find(&entries, "yazi.config").status, "native_available");
+        assert_eq!(find(&entries, "yazi.package").status, "native_available");
+        assert_eq!(find(&entries, "yazi.flavors").status, "native_available");
         assert_eq!(find(&entries, "helix.input").status, "native_available");
     }
 

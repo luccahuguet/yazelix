@@ -29,24 +29,25 @@ sidebar registration, and explicit rejection of legacy override paths.
 | `yazelix-yazi-assets/plugins/git.yazi`, `lazygit.yazi`, `starship.yazi` | Bundled reusable Yazi plugin pack | Child asset package; vendored update workflow belongs with the child repo, not Yazelix core |
 | `yazelix-yazi-assets/plugins/auto-layout.yazi` | Yazelix-maintained Yazi sidebar fit behavior | Child asset package, still part of the default Yazelix runtime because the managed sidebar expects it |
 | `sidebar-status.yazi`, `sidebar-state.yazi`, `zoxide-editor.yazi` | Yazelix editor/sidebar integration | Keep in Yazelix until pane-orchestrator protocol is separately extracted |
-| `yazi_materialization.rs` adapter | Yazelix runtime materializer | Keep in Yazelix; it resolves settings, flat sidecars, semantic action ids, managed output paths, and legacy ownership errors |
+| `yazi_materialization.rs` adapter | Yazelix runtime materializer | Keep in Yazelix; it resolves settings, the managed Yazi home, semantic action ids, managed output paths, and legacy ownership errors |
 | `yazi_materialization/writer.rs` generated file writes | Private Yazelix writer boundary | Keep private; it writes the generated Yazi config pack from already-resolved adapter inputs |
 | `yazi_materialization.rs` semantic keymap expansion | Yazelix action registry adapter | Keep in Yazelix; it depends on Yazelix-owned action ids and generated integration commands |
 | `[opener].edit` preservation | Yazelix managed editor contract | Keep in Yazelix; native Yazi config must not replace the managed editor open path |
-| Flat sidecars under `~/.config/yazelix/` | Yazelix user config ownership | Keep in Yazelix; Home Manager, import, config UI, and JSONC patching use this vocabulary |
+| Managed Yazi home under `~/.config/yazelix/yazi/` | Yazelix user Yazi config ownership | Keep in Yazelix; import, config UI, and Yazi package state use this vocabulary |
 | Generated output under `~/.local/share/yazelix/configs/yazi/` | Yazelix runtime state | Keep in Yazelix; it is not a user-editable source tree |
 | `repo_update_workflow.rs` vendored plugin refresh | Removed from Yazelix main repo | Recreate only inside `yazelix-yazi-assets` if the child repo needs automated upstream refresh |
 
 ## Delete-First Decisions
 
 Legacy `configs/yazi/user/*` override docs are obsolete. Runtime generation now
-rejects that directory and tells users to import or move overrides into the flat
-`~/.config/yazelix/` sidecars. The stale guide should not ship because it
-advertises a path that no longer works.
+rejects that directory and tells users to import or move overrides into
+`~/.config/yazelix/yazi/`. The stale guide should not ship because it advertises
+a path that no longer works.
 
 Generated runtime files are not source templates. Documentation should not tell
 users to edit `~/.config/yazelix/configs/yazi/yazelix_*.toml`; supported
-customization lives in `settings.jsonc` plus flat managed Yazi sidecars.
+customization lives in `settings.jsonc` plus the managed Yazi home under
+`~/.config/yazelix/yazi/`.
 
 Do not delete the legacy error path in `yazi_materialization.rs` yet. It is the
 guard that prevents silent adoption of old mutable config locations.

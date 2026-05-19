@@ -85,15 +85,21 @@ Rules:
 
 Managed inputs:
 
-- `~/.config/yazelix/yazi.toml`
-- `~/.config/yazelix/yazi_keymap.toml`
-- `~/.config/yazelix/yazi_init.lua`
+- `~/.config/yazelix/yazi/yazi.toml`
+- `~/.config/yazelix/yazi/keymap.toml`
+- `~/.config/yazelix/yazi/init.lua`
+- `~/.config/yazelix/yazi/package.toml`
+- `~/.config/yazelix/yazi/plugins/`
+- `~/.config/yazelix/yazi/flavors/`
 
 Native source:
 
 - `~/.config/yazi/yazi.toml`
 - `~/.config/yazi/keymap.toml`
 - `~/.config/yazi/init.lua`
+- `~/.config/yazi/package.toml`
+- `~/.config/yazi/plugins/`
+- `~/.config/yazi/flavors/`
 
 Generated output:
 
@@ -101,15 +107,16 @@ Generated output:
 
 Statuses:
 
-- `managed_override` for existing managed Yazi sidecars
+- `managed_override` for existing managed Yazi-home inputs
 - `native_available` when native Yazi files exist but are not imported
-- `managed_default` for absent managed sidecars
+- `managed_default` for absent managed Yazi-home inputs
 - `generated_runtime` for generated Yazi config, plugins, and flavors
 
 Rules:
 
 - Yazelix does not use native Yazi config read-only at launch
 - native Yazi import is explicit through `yzx import yazi`
+- native Yazi package, plugin, and flavor state is only copied by explicit import, then materialized from the Yazelix-managed Yazi home
 - the Yazelix-managed opener remains owned by Yazelix even when user sidecars exist
 
 ### Helix

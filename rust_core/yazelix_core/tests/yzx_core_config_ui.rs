@@ -323,7 +323,7 @@ fn reports_sidecars_and_home_manager_read_only_state() {
     let yazi_keymap = model
         .sidecars
         .iter()
-        .find(|sidecar| sidecar.name == "yazi_keymap.toml")
+        .find(|sidecar| sidecar.name == "yazi/keymap.toml")
         .expect("yazi keymap sidecar");
     assert!(!yazi_keymap.present);
 }

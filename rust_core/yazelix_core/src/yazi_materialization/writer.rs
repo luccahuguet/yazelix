@@ -22,6 +22,8 @@ pub(super) struct YaziConfigPackWriteRequest<'a> {
     pub user_yazi_config: Option<&'a toml::Table>,
     pub user_keymap: Option<&'a toml::Table>,
     pub user_init_lua: Option<&'a str>,
+    pub user_plugins_dir: &'a Path,
+    pub user_flavors_dir: &'a Path,
     pub semantic_keymap: &'a toml::Table,
     pub sync_static_assets: bool,
 }
@@ -57,6 +59,16 @@ pub(super) fn write_yazi_config_pack(
     if should_sync_static_assets {
         sync_bundled_yazi_assets(request.source_dir, request.output_dir, request.runtime_dir)?;
     }
+    sync_managed_user_yazi_plugins(
+        request.user_plugins_dir,
+        &request.output_dir.join("plugins"),
+        request.runtime_dir,
+    )?;
+    sync_managed_user_yazi_flavors(
+        request.user_flavors_dir,
+        &request.output_dir.join("flavors"),
+        request.runtime_dir,
+    )?;
 
     let (init_status, missing_plugins, user_init_appended) = write_generated_init_lua(request)?;
     managed_files.push(init_status);
@@ -108,7 +120,7 @@ fn write_generated_yazi_toml(
         &[
             "",
             user_note,
-            "  ~/.config/yazelix/yazi.toml",
+            "  ~/.config/yazelix/yazi/yazi.toml",
             "Dynamic settings from ~/.config/yazelix/settings.jsonc:",
             "  [yazi] sort_by, plugins",
             "",
@@ -191,7 +203,7 @@ fn write_generated_keymap_toml(
         &[
             "",
             "To add custom keybindings, create:",
-            "  ~/.config/yazelix/yazi_keymap.toml",
+            "  ~/.config/yazelix/yazi/keymap.toml",
             "",
         ],
     );
@@ -245,7 +257,7 @@ fn write_generated_init_lua(
             "  [yazi] plugins = [...]",
             "",
             "For custom Lua code, create:",
-            "  ~/.config/yazelix/yazi_init.lua",
+            "  ~/.config/yazelix/yazi/init.lua",
             "",
         ],
     );
@@ -257,7 +269,7 @@ fn write_generated_init_lua(
             "-- ========================================",
             "-- USER CUSTOM CODE",
             "-- ========================================",
-            "-- From: ~/.config/yazelix/yazi_init.lua",
+            "-- From: ~/.config/yazelix/yazi/init.lua",
             "-- ========================================",
             "",
             user_init,
@@ -399,6 +411,22 @@ fn sync_bundled_yazi_assets(
     Ok(())
 }
 
+fn sync_managed_user_yazi_plugins(
+    source_root: &Path,
+    target_root: &Path,
+    runtime_dir: &Path,
+) -> Result<(), CoreError> {
+    sync_named_child_directories(source_root, target_root, runtime_dir)
+}
+
+fn sync_managed_user_yazi_flavors(
+    source_root: &Path,
+    target_root: &Path,
+    runtime_dir: &Path,
+) -> Result<(), CoreError> {
+    sync_named_child_directories(source_root, target_root, runtime_dir)
+}
+
 fn sync_named_child_directories(
     source_root: &Path,
     target_root: &Path,
@@ -420,8 +448,8 @@ fn sync_named_child_directories(
     for entry in fs::read_dir(source_root).map_err(|source| {
         CoreError::io(
             "read_yazi_asset_root",
-            "Could not inspect the bundled Yazi asset directory",
-            "Reinstall Yazelix so the runtime includes the bundled Yazi assets.",
+            "Could not inspect a Yazi asset directory",
+            "Check permissions for the Yazelix config and runtime directories, then retry.",
             source_root.to_string_lossy(),
             source,
         )
@@ -429,8 +457,8 @@ fn sync_named_child_directories(
         let entry = entry.map_err(|source| {
             CoreError::io(
                 "read_yazi_asset_entry",
-                "Could not inspect a bundled Yazi asset entry",
-                "Reinstall Yazelix so the runtime includes the bundled Yazi assets.",
+                "Could not inspect a Yazi asset entry",
+                "Check permissions for the Yazelix config and runtime directories, then retry.",
                 source_root.to_string_lossy(),
                 source,
             )
@@ -486,8 +514,8 @@ fn copy_path_recursive(source: &Path, target: &Path, runtime_dir: &Path) -> Resu
     let file_type = fs::symlink_metadata(source).map_err(|source_err| {
         CoreError::io(
             "inspect_yazi_asset_source",
-            "Could not inspect a bundled Yazi asset path",
-            "Reinstall Yazelix so the runtime includes a readable Yazi asset tree.",
+            "Could not inspect a Yazi asset path",
+            "Check permissions for the Yazelix config and runtime directories, then retry.",
             source.to_string_lossy(),
             source_err,
         )
@@ -506,8 +534,8 @@ fn copy_path_recursive(source: &Path, target: &Path, runtime_dir: &Path) -> Resu
         for entry in fs::read_dir(source).map_err(|source_err| {
             CoreError::io(
                 "read_yazi_asset_dir",
-                "Could not read a bundled Yazi asset directory",
-                "Reinstall Yazelix so the runtime includes a readable Yazi asset tree.",
+                "Could not read a Yazi asset directory",
+                "Check permissions for the Yazelix config and runtime directories, then retry.",
                 source.to_string_lossy(),
                 source_err,
             )
@@ -515,8 +543,8 @@ fn copy_path_recursive(source: &Path, target: &Path, runtime_dir: &Path) -> Resu
             let entry = entry.map_err(|source_err| {
                 CoreError::io(
                     "read_yazi_asset_dir_entry",
-                    "Could not read a bundled Yazi asset entry",
-                    "Reinstall Yazelix so the runtime includes a readable Yazi asset tree.",
+                    "Could not read a Yazi asset entry",
+                    "Check permissions for the Yazelix config and runtime directories, then retry.",
                     source.to_string_lossy(),
                     source_err,
                 )
@@ -529,8 +557,8 @@ fn copy_path_recursive(source: &Path, target: &Path, runtime_dir: &Path) -> Resu
     let bytes = fs::read(source).map_err(|source_err| {
         CoreError::io(
             "read_yazi_asset_file",
-            "Could not read a bundled Yazi asset file",
-            "Reinstall Yazelix so the runtime includes a readable Yazi asset tree.",
+            "Could not read a Yazi asset file",
+            "Check permissions for the Yazelix config and runtime directories, then retry.",
             source.to_string_lossy(),
             source_err,
         )

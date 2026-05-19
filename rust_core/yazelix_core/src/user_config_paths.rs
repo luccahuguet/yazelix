@@ -13,9 +13,13 @@ pub const SHARED_CURSOR_CONFIG_DIR: &str = "yazelix_ghostty_cursors";
 pub const SHARED_CURSOR_SETTINGS_CONFIG: &str = "settings.jsonc";
 pub const HELIX_CONFIG: &str = "helix.toml";
 pub const ZELLIJ_CONFIG: &str = "zellij.kdl";
-pub const YAZI_CONFIG: &str = "yazi.toml";
-pub const YAZI_KEYMAP: &str = "yazi_keymap.toml";
-pub const YAZI_INIT: &str = "yazi_init.lua";
+pub const YAZI_CONFIG_DIR: &str = "yazi";
+pub const YAZI_CONFIG: &str = "yazi/yazi.toml";
+pub const YAZI_KEYMAP: &str = "yazi/keymap.toml";
+pub const YAZI_INIT: &str = "yazi/init.lua";
+pub const YAZI_PACKAGE: &str = "yazi/package.toml";
+pub const YAZI_PLUGINS_DIR: &str = "yazi/plugins";
+pub const YAZI_FLAVORS_DIR: &str = "yazi/flavors";
 pub const TERMINAL_GHOSTTY_CONFIG: &str = "terminal_ghostty.conf";
 pub const TERMINAL_KITTY_CONFIG: &str = "terminal_kitty.conf";
 pub const TERMINAL_ALACRITTY_CONFIG: &str = "terminal_alacritty.toml";
@@ -32,6 +36,9 @@ pub const CURRENT_MANAGED_CONFIG_FILE_NAMES: &[&str] = &[
     YAZI_CONFIG,
     YAZI_KEYMAP,
     YAZI_INIT,
+    YAZI_PACKAGE,
+    YAZI_PLUGINS_DIR,
+    YAZI_FLAVORS_DIR,
     TERMINAL_GHOSTTY_CONFIG,
     TERMINAL_KITTY_CONFIG,
     TERMINAL_ALACRITTY_CONFIG,
@@ -117,8 +124,16 @@ pub fn legacy_zellij_config(config_dir: &Path) -> PathBuf {
         .join("config.kdl")
 }
 
+pub fn yazi_config_dir(config_dir: &Path) -> PathBuf {
+    config_dir.join(YAZI_CONFIG_DIR)
+}
+
 pub fn yazi_config(config_dir: &Path) -> PathBuf {
     config_dir.join(YAZI_CONFIG)
+}
+
+pub fn flat_yazi_config(config_dir: &Path) -> PathBuf {
+    config_dir.join("yazi.toml")
 }
 
 pub fn legacy_yazi_config(config_dir: &Path) -> PathBuf {
@@ -132,6 +147,10 @@ pub fn yazi_keymap(config_dir: &Path) -> PathBuf {
     config_dir.join(YAZI_KEYMAP)
 }
 
+pub fn flat_yazi_keymap(config_dir: &Path) -> PathBuf {
+    config_dir.join("yazi_keymap.toml")
+}
+
 pub fn legacy_yazi_keymap(config_dir: &Path) -> PathBuf {
     config_dir
         .join("user_configs")
@@ -141,6 +160,26 @@ pub fn legacy_yazi_keymap(config_dir: &Path) -> PathBuf {
 
 pub fn yazi_init(config_dir: &Path) -> PathBuf {
     config_dir.join(YAZI_INIT)
+}
+
+pub fn flat_yazi_init(config_dir: &Path) -> PathBuf {
+    config_dir.join("yazi_init.lua")
+}
+
+pub fn yazi_package(config_dir: &Path) -> PathBuf {
+    config_dir.join(YAZI_PACKAGE)
+}
+
+pub fn yazi_plugins_dir(config_dir: &Path) -> PathBuf {
+    config_dir.join(YAZI_PLUGINS_DIR)
+}
+
+pub fn flat_yazi_plugins_dir(config_dir: &Path) -> PathBuf {
+    config_dir.join("yazi_plugins")
+}
+
+pub fn yazi_flavors_dir(config_dir: &Path) -> PathBuf {
+    config_dir.join(YAZI_FLAVORS_DIR)
 }
 
 pub fn legacy_yazi_init(config_dir: &Path) -> PathBuf {

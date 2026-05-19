@@ -264,7 +264,7 @@ Remove an explicit config value so Yazelix uses the default
 ### `yzx import zellij|yazi|helix [--force]`
 Import native Zellij, Yazi, or Helix config into Yazelix-managed overrides
 - `yzx import zellij`: copies `~/.config/zellij/config.kdl` into `zellij.kdl`
-- `yzx import yazi`: imports `yazi.toml`, `keymap.toml`, and `init.lua` from `~/.config/yazi/` into `./`
+- `yzx import yazi`: imports `yazi.toml`, `keymap.toml`, `init.lua`, `package.toml`, `plugins/`, and `flavors/` from `~/.config/yazi/` into `~/.config/yazelix/yazi/`
 - `yzx import helix`: copies `~/.config/helix/config.toml` into `helix.toml`
 - Fails clearly when no native source files are available for the selected target
 - Refuses to overwrite existing managed destination files by default
@@ -286,7 +286,7 @@ Inspect Ghostty cursor presets and resolved colors
 Open one of the managed config surfaces through explicit or fuzzy target selection
 - Supported targets include `config`, `cursors`, `helix`, `zellij`, `yazi`, `yazi-keymap`, and `yazi-init`
 - `cursors` opens `~/.config/yazelix_ghostty_cursors/settings.jsonc` for full cursor registry edits
-- Yazi targets stay inside `./` and do not expose host-owned `~/.config/yazi/` files
+- Yazi targets stay inside `~/.config/yazelix/yazi/` and do not expose host-owned `~/.config/yazi/` files
 - `--print`: print the resolved managed path without opening
 
 ### `yzx reset config [--yes] [--no-backup]`
@@ -296,7 +296,7 @@ Replace `settings.jsonc` with a fresh copy of the shipped settings template
 - `--no-backup`: discard the previous config file instead of renaming it to a backup first
 - Use this as a blunt recovery path when `yzx doctor` reports stale config fields
 - Only replaces `~/.config/yazelix/settings.jsonc`
-- Preserves managed override sidecars such as `helix.toml`, `zellij.kdl`, `yazi.toml`, `yazi_keymap.toml`, `yazi_init.lua`, `terminal_*.conf|toml|ini`, and `shell_*.sh|zsh|fish|nu`
+- Preserves managed override sidecars such as `helix.toml`, `zellij.kdl`, `yazi/`, `terminal_*.conf|toml|ini`, and `shell_*.sh|zsh|fish|nu`
 - Preserves unknown adjacent files under `~/.config/yazelix/` and prints a warning instead of deleting or adopting them
 - Cursor presets live in `~/.config/yazelix_ghostty_cursors/settings.jsonc`; `reset config` only resets the main Yazelix settings file
 
@@ -347,7 +347,7 @@ yzx config unset editor.hide_sidebar_on_file_open # Remove an explicit config va
 yzx cursors                   # Inspect Ghostty cursor presets and resolved colors
 yzx edit cursors              # Open the Ghostty cursor settings file
 yzx import zellij             # Import ~/.config/zellij/config.kdl into managed overrides
-yzx import yazi               # Import native Yazi override files into managed overrides
+yzx import yazi               # Import native Yazi override files and plugins into managed overrides
 yzx import helix              # Import ~/.config/helix/config.toml into managed overrides
 yzx import zellij --force     # Backup and replace the managed Zellij override
 yzx edit config               # Open the main managed config

@@ -2,7 +2,7 @@
 //! `yzx import` family implemented in Rust for `yzx_control`.
 
 use crate::bridge::{CoreError, ErrorClass};
-use crate::control_plane::{config_dir_from_env, home_dir_from_env};
+use crate::control_plane::{config_dir_from_env, home_dir_from_env, state_dir_from_env};
 use crate::user_config_paths;
 use serde_json::json;
 use std::fs;
@@ -21,6 +21,13 @@ struct ImportEntry {
     name: &'static str,
     source: PathBuf,
     destination: PathBuf,
+    kind: ImportEntryKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ImportEntryKind {
+    File,
+    Directory,
 }
 
 fn get_xdg_config_home(home: &Path) -> PathBuf {
@@ -44,7 +51,7 @@ fn get_native_yazi_config_dir(home: &Path) -> PathBuf {
 }
 
 fn get_managed_yazi_config_dir(config_dir: &Path) -> PathBuf {
-    config_dir.to_path_buf()
+    user_config_paths::yazi_config_dir(config_dir)
 }
 
 fn get_native_helix_config_path(home: &Path) -> PathBuf {
@@ -65,6 +72,7 @@ fn get_import_entries(
             name: "config.kdl",
             source: get_native_zellij_config_path(home),
             destination: get_managed_zellij_config_path(config_dir),
+            kind: ImportEntryKind::File,
         }]),
         "yazi" => {
             let source_dir = get_native_yazi_config_dir(home);
@@ -73,17 +81,38 @@ fn get_import_entries(
                 ImportEntry {
                     name: "yazi.toml",
                     source: source_dir.join("yazi.toml"),
-                    destination: user_config_paths::yazi_config(&dest_dir),
+                    destination: dest_dir.join("yazi.toml"),
+                    kind: ImportEntryKind::File,
                 },
                 ImportEntry {
                     name: "keymap.toml",
                     source: source_dir.join("keymap.toml"),
-                    destination: user_config_paths::yazi_keymap(&dest_dir),
+                    destination: dest_dir.join("keymap.toml"),
+                    kind: ImportEntryKind::File,
                 },
                 ImportEntry {
                     name: "init.lua",
                     source: source_dir.join("init.lua"),
-                    destination: user_config_paths::yazi_init(&dest_dir),
+                    destination: dest_dir.join("init.lua"),
+                    kind: ImportEntryKind::File,
+                },
+                ImportEntry {
+                    name: "package.toml",
+                    source: source_dir.join("package.toml"),
+                    destination: dest_dir.join("package.toml"),
+                    kind: ImportEntryKind::File,
+                },
+                ImportEntry {
+                    name: "plugins/",
+                    source: source_dir.join("plugins"),
+                    destination: dest_dir.join("plugins"),
+                    kind: ImportEntryKind::Directory,
+                },
+                ImportEntry {
+                    name: "flavors/",
+                    source: source_dir.join("flavors"),
+                    destination: dest_dir.join("flavors"),
+                    kind: ImportEntryKind::Directory,
                 },
             ])
         }
@@ -91,6 +120,7 @@ fn get_import_entries(
             name: "config.toml",
             source: get_native_helix_config_path(home),
             destination: get_managed_helix_config_path(config_dir),
+            kind: ImportEntryKind::File,
         }]),
         other => Err(CoreError::usage(format!(
             "Unknown import target: {other}. Try `yzx import --help`."
@@ -136,6 +166,120 @@ fn civil_from_days(days_since_epoch: i64) -> (i32, u32, u32) {
     (year as i32, month as u32, day as u32)
 }
 
+fn source_matches_kind(entry: &ImportEntry) -> Result<bool, CoreError> {
+    match fs::metadata(&entry.source) {
+        Ok(metadata) => Ok(match entry.kind {
+            ImportEntryKind::File => metadata.is_file(),
+            ImportEntryKind::Directory => metadata.is_dir(),
+        }),
+        Err(source) if source.kind() == io::ErrorKind::NotFound => Ok(false),
+        Err(source) => Err(io_err(&entry.source, source, "import_source_stat")),
+    }
+}
+
+fn copy_import_entry(entry: &ImportEntry) -> Result<(), CoreError> {
+    match entry.kind {
+        ImportEntryKind::File => {
+            fs::copy(&entry.source, &entry.destination).map_err(|source| {
+                CoreError::io(
+                    "import_copy",
+                    format!(
+                        "Could not copy {} to {}.",
+                        entry.source.display(),
+                        entry.destination.display()
+                    ),
+                    "Fix permissions or restore the missing source, then retry.",
+                    entry.destination.display().to_string(),
+                    source,
+                )
+            })?;
+        }
+        ImportEntryKind::Directory => {
+            copy_directory_recursive(&entry.source, &entry.destination)?;
+        }
+    }
+    Ok(())
+}
+
+fn copy_directory_recursive(source: &Path, destination: &Path) -> Result<(), CoreError> {
+    fs::create_dir_all(destination).map_err(|source_err| {
+        CoreError::io(
+            "import_copy_directory_create",
+            format!("Could not create {}.", destination.display()),
+            "Fix permissions or choose another managed Yazelix config directory, then retry.",
+            destination.display().to_string(),
+            source_err,
+        )
+    })?;
+
+    for entry in fs::read_dir(source).map_err(|source_err| {
+        CoreError::io(
+            "import_copy_directory_read",
+            format!("Could not read {}.", source.display()),
+            "Fix permissions or restore the missing source, then retry.",
+            source.display().to_string(),
+            source_err,
+        )
+    })? {
+        let entry = entry.map_err(|source_err| {
+            CoreError::io(
+                "import_copy_directory_entry",
+                format!("Could not read an entry under {}.", source.display()),
+                "Fix permissions or restore the missing source, then retry.",
+                source.display().to_string(),
+                source_err,
+            )
+        })?;
+        let source_path = entry.path();
+        let destination_path = destination.join(entry.file_name());
+        let metadata = fs::symlink_metadata(&source_path)
+            .map_err(|source_err| io_err(&source_path, source_err, "import_copy_stat"))?;
+        if metadata.is_dir() {
+            copy_directory_recursive(&source_path, &destination_path)?;
+        } else if metadata.is_file() {
+            fs::copy(&source_path, &destination_path).map_err(|source_err| {
+                CoreError::io(
+                    "import_copy_file",
+                    format!(
+                        "Could not copy {} to {}.",
+                        source_path.display(),
+                        destination_path.display()
+                    ),
+                    "Fix permissions or restore the missing source, then retry.",
+                    destination_path.display().to_string(),
+                    source_err,
+                )
+            })?;
+        } else {
+            return Err(CoreError::classified(
+                ErrorClass::Usage,
+                "unsupported_import_source_entry",
+                format!(
+                    "Could not import unsupported source entry: {}",
+                    source_path.display()
+                ),
+                "Remove symlinks or special files from the native Yazi plugin directory, then retry.",
+                json!({ "path": source_path.to_string_lossy() }),
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+fn invalidate_generated_runtime_state() -> Result<bool, CoreError> {
+    let state_path = state_dir_from_env()?.join("state").join("rebuild_hash");
+    match fs::remove_file(&state_path) {
+        Ok(()) => Ok(true),
+        Err(source) if source.kind() == io::ErrorKind::NotFound => Ok(false),
+        Err(source) => Err(io_err(
+            &state_path,
+            source,
+            "import_invalidate_runtime_state",
+        )),
+    }
+}
+
 fn import_target(
     target: &str,
     force: bool,
@@ -144,15 +288,22 @@ fn import_target(
 ) -> Result<i32, CoreError> {
     let entries = get_import_entries(target, home, config_dir)?;
 
-    let existing_sources: Vec<_> = entries.iter().filter(|e| e.source.exists()).collect();
-    let missing_sources: Vec<_> = entries.iter().filter(|e| !e.source.exists()).collect();
+    let mut existing_sources = Vec::new();
+    let mut missing_sources = Vec::new();
+    for entry in &entries {
+        if source_matches_kind(entry)? {
+            existing_sources.push(entry);
+        } else {
+            missing_sources.push(entry);
+        }
+    }
 
     if existing_sources.is_empty() {
         return Err(CoreError::classified(
             ErrorClass::Usage,
             "no_import_sources",
-            format!("No native {target} config files found to import."),
-            &format!("Create the native {target} config files first, then retry."),
+            format!("No native {target} sources found to import."),
+            &format!("Create the native {target} config or plugin sources first, then retry."),
             json!({ "target": target }),
         ));
     }
@@ -172,7 +323,7 @@ fn import_target(
                 ErrorClass::Usage,
                 "import_conflicts",
                 format!(
-                    "Managed destination files already exist for `yzx import {target}`:\n{conflict_lines}"
+                    "Managed destinations already exist for `yzx import {target}`:\n{conflict_lines}"
                 ),
                 &format!(
                     "Use `yzx import {target} --force` to overwrite them after writing backups."
@@ -205,19 +356,7 @@ fn import_target(
             backup_records.push((entry.name, backup_path));
         }
 
-        fs::copy(&entry.source, &entry.destination).map_err(|source| {
-            CoreError::io(
-                "import_copy",
-                format!(
-                    "Could not copy {} to {}.",
-                    entry.source.display(),
-                    entry.destination.display()
-                ),
-                "Fix permissions or restore the missing source, then retry.",
-                entry.destination.display().to_string(),
-                source,
-            )
-        })?;
+        copy_import_entry(entry)?;
     }
 
     println!(
@@ -265,6 +404,10 @@ fn import_target(
             .collect::<Vec<_>>()
             .join(", ");
         println!("   Skipped missing native files: {skipped}");
+    }
+
+    if invalidate_generated_runtime_state()? {
+        println!("   Marked generated runtime state for refresh on next launch.");
     }
 
     Ok(0)
@@ -322,7 +465,7 @@ fn print_import_help() {
     println!();
     println!("Targets:");
     println!("  zellij    Import native Zellij config");
-    println!("  yazi      Import native Yazi config files");
+    println!("  yazi      Import native Yazi config files and plugin directories");
     println!("  helix     Import native Helix config");
     println!();
     println!("Flags:");
@@ -347,7 +490,7 @@ mod tests {
         assert!(parse_import_args(&["--unknown".into()]).is_err());
     }
 
-    // Defends: import entry resolution keeps the three supported targets.
+    // Defends: import entry resolution keeps the three supported targets and the native Yazi home shape.
     #[test]
     fn resolves_import_entries_for_supported_targets() {
         let home = Path::new("/home/test");
@@ -363,7 +506,35 @@ mod tests {
         );
 
         let yazi = get_import_entries("yazi", home, config).unwrap();
-        assert_eq!(yazi.len(), 3);
+        assert_eq!(yazi.len(), 6);
+        assert_eq!(
+            yazi[0].destination,
+            Path::new("/home/test/.config/yazelix/yazi/yazi.toml")
+        );
+        assert_eq!(
+            yazi[1].destination,
+            Path::new("/home/test/.config/yazelix/yazi/keymap.toml")
+        );
+        assert_eq!(
+            yazi[2].destination,
+            Path::new("/home/test/.config/yazelix/yazi/init.lua")
+        );
+        assert_eq!(
+            yazi[3].destination,
+            Path::new("/home/test/.config/yazelix/yazi/package.toml")
+        );
+        assert_eq!(yazi[4].name, "plugins/");
+        assert_eq!(yazi[4].kind, ImportEntryKind::Directory);
+        assert!(yazi[4].source.to_string_lossy().contains("yazi/plugins"));
+        assert_eq!(
+            yazi[4].destination,
+            Path::new("/home/test/.config/yazelix/yazi/plugins")
+        );
+        assert_eq!(yazi[5].name, "flavors/");
+        assert_eq!(
+            yazi[5].destination,
+            Path::new("/home/test/.config/yazelix/yazi/flavors")
+        );
 
         let helix = get_import_entries("helix", home, config).unwrap();
         assert_eq!(helix.len(), 1);

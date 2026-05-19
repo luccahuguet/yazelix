@@ -23,7 +23,7 @@ Yazelix should not provide a semantic remap when another tool owns the behavior.
 
 - native Zellij mode and pane actions belong in `~/.config/yazelix/zellij.kdl`
 - curated Yazelix native Zellij conflict policy belongs in `zellij.native_keybindings`
-- arbitrary Yazi file-manager actions belong in `~/.config/yazelix/yazi_keymap.toml`
+- arbitrary Yazi file-manager actions belong in `~/.config/yazelix/yazi/keymap.toml`
 - arbitrary Helix editor preferences belong in `~/.config/yazelix/helix.toml` for managed Helix sessions, or in the user's native Helix config outside Yazelix
 - terminal-emulator shortcuts belong in the terminal emulator config
 
@@ -94,7 +94,7 @@ Rules:
 - multiple entries generate multiple alternate bindings for the same Yazelix-owned action, not a native Yazi key sequence
 - duplicate keys across the semantic Yazi map are rejected before keymap generation
 - native open-selected keys such as `<Enter>` and `o` are not part of this map; they remain Yazi-native `open` bindings even though Yazelix owns the generated `edit` opener target
-- arbitrary Yazi-native keymap ownership remains in `~/.config/yazelix/yazi_keymap.toml`
+- arbitrary Yazi-native keymap ownership remains in `~/.config/yazelix/yazi/keymap.toml`
 
 ## Action Registry Shape
 
@@ -148,7 +148,7 @@ The `Ctrl-g`, `Ctrl-s`, `Ctrl-o`, Helix `Alt` conflict, tab jump, and pane-group
 
 Yazelix may expose semantic Yazi bindings for Yazelix-owned integration actions, such as opening a selected directory in a workspace pane or retargeting the workspace from Yazi zoxide.
 
-Yazelix should not expose semantic bindings for arbitrary Yazi-native behavior. Those stay in `~/.config/yazelix/yazi_keymap.toml`.
+Yazelix should not expose semantic bindings for arbitrary Yazi-native behavior. Those stay in `~/.config/yazelix/yazi/keymap.toml`.
 
 The generated Yazi opener remains Yazelix-owned. User `yazi.toml` overrides must not replace the managed editor opener accidentally.
 
@@ -156,9 +156,9 @@ The generated Yazi opener remains Yazelix-owned. User `yazi.toml` overrides must
 
 - setting `yazi.keybindings.open_selected_in_editor = []` could not honestly disable the native Yazi `open` defaults
 - assigning another key would leave `o` and `<Enter>` active unless Yazelix started generating native shadow/no-op bindings
-- shadowing or removing those defaults would make Yazelix own part of Yazi's native manager keymap, which is exactly what `~/.config/yazelix/yazi_keymap.toml` is for
+- shadowing or removing those defaults would make Yazelix own part of Yazi's native manager keymap, which is exactly what `~/.config/yazelix/yazi/keymap.toml` is for
 
-Users who want `e`, `<Enter>`, `o`, or another key to run Yazi's native `open` command should set that in `~/.config/yazelix/yazi_keymap.toml`. The resulting `open` behavior still routes editable files through Yazelix's managed editor opener.
+Users who want `e`, `<Enter>`, `o`, or another key to run Yazi's native `open` command should set that in `~/.config/yazelix/yazi/keymap.toml`. The resulting `open` behavior still routes editable files through Yazelix's managed editor opener.
 
 ## Editor Boundary
 

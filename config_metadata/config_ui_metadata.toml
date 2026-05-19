@@ -658,21 +658,27 @@ label = "zellij.kdl"
 action = "edit_sidecar"
 owner = "user_or_home_manager"
 
-[sidecars."yazi.toml"]
+[sidecars."yazi/yazi.toml"]
 tab = "file_manager"
-label = "yazi.toml"
+label = "yazi/yazi.toml"
 action = "edit_sidecar"
 owner = "user_or_home_manager"
 
-[sidecars."yazi_keymap.toml"]
+[sidecars."yazi/keymap.toml"]
 tab = "keybindings"
-label = "yazi_keymap.toml"
+label = "yazi/keymap.toml"
 action = "edit_sidecar"
 owner = "user_or_home_manager"
 
-[sidecars."yazi_init.lua"]
+[sidecars."yazi/init.lua"]
 tab = "file_manager"
-label = "yazi_init.lua"
+label = "yazi/init.lua"
+action = "edit_sidecar"
+owner = "user_or_home_manager"
+
+[sidecars."yazi/package.toml"]
+tab = "file_manager"
+label = "yazi/package.toml"
 action = "edit_sidecar"
 owner = "user_or_home_manager"
 

@@ -38,10 +38,11 @@ The sections below cover the override surfaces that sit around that main model.
   - **Three layers**: Your Yazelix-managed Zellij config or Zellij defaults + Yazelix dynamic settings + Yazelix enforced settings
   - **Managed input boundary**: Yazelix reads `zellij.kdl` in managed mode and regenerates the merged runtime config on startup
 - **Yazi Configuration**: Git-conflict-free two-layer configuration system:
-  - **Quick start**: create only the Yazi override files you need under `~/.config/yazelix/`
+  - **Quick start**: create only the Yazi override files you need under `~/.config/yazelix/yazi/`
     - `yazi.toml`
-    - `yazi_keymap.toml`
-    - `yazi_init.lua`
+    - `keymap.toml`
+    - `init.lua`
+    - `plugins/`
   - **Full guide**: [Yazi Configuration Documentation](./yazi-configuration.md)
   - **Two layers**: Yazelix defaults + your personal overrides (highest priority)
   - **TOML merging**: Intelligent section merging prevents duplicate keys, personal configs are git ignored
