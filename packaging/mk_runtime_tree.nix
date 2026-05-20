@@ -10,6 +10,7 @@
   extraRuntimePackages ? [ ],
   extraRuntimeCommands ? [ "tu" ],
   yaziAssets ? null,
+  zellijPluginArtifacts ? { },
 }:
 
 let
@@ -31,6 +32,14 @@ let
       "${src}/configs/yazi"
     else
       "${yaziAssets}/share/yazelix_yazi_assets";
+  paneOrchestratorWasm = zellijPluginArtifacts.pane_orchestrator or null;
+  yzppWasm = zellijPluginArtifacts.yzpp or null;
+  requirePluginArtifact =
+    name: value:
+    if value == null then
+      throw "Missing first-party Zellij plugin package artifact `${name}`"
+    else
+      value;
 in
 pkgs.runCommand name { } ''
   mkdir -p "$out"
@@ -40,11 +49,23 @@ pkgs.runCommand name { } ''
   mkdir -p "$out/configs"
   for config_entry in ${src}/configs/*; do
     config_name="$(basename "$config_entry")"
-    if [ "$config_name" = "yazi" ]; then
+    if [ "$config_name" = "yazi" ] || [ "$config_name" = "zellij" ]; then
       continue
     fi
     ln -s "$config_entry" "$out/configs/$config_name"
   done
+  mkdir -p "$out/configs/zellij/plugins"
+  for zellij_entry in ${src}/configs/zellij/*; do
+    zellij_name="$(basename "$zellij_entry")"
+    if [ "$zellij_name" = "plugins" ]; then
+      continue
+    fi
+    ln -s "$zellij_entry" "$out/configs/zellij/$zellij_name"
+  done
+  ln -s "${requirePluginArtifact "pane_orchestrator" paneOrchestratorWasm}" "$out/configs/zellij/plugins/yazelix_pane_orchestrator.wasm"
+  ln -s "${requirePluginArtifact "yzpp" yzppWasm}" "$out/configs/zellij/plugins/yzpp.wasm"
+  ln -s "${src}/configs/zellij/plugins/zjstatus.wasm" "$out/configs/zellij/plugins/zjstatus.wasm"
+
   mkdir -p "$out/configs/yazi/plugins"
   for yazi_file in README.md yazelix_keymap.toml yazelix_theme.toml yazelix_yazi.toml; do
     ln -s "${src}/configs/yazi/$yazi_file" "$out/configs/yazi/$yazi_file"

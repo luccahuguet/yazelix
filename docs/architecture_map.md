@@ -22,7 +22,7 @@ history, and Beads-owned planning state.
 | Runtime control plane and command surface | Config parsing, runtime/bootstrap behavior, generated-state repair, and the `yzx` command surface | `nushell/scripts/core`, `nushell/scripts/setup`, `nushell/scripts/utils`, `nushell/scripts/yzx` | Runtime/config/state contracts plus the surviving `yzx` command semantics |
 | Workspace session orchestration | Live Zellij/Yazi/editor session behavior: panes, tabs, sidebar identity, reveal/open flows, popup flows, and layout-family transitions | `nushell/scripts/integrations`, `nushell/scripts/zellij_wrappers`, `rust_plugins/` | Live Zellij session truth, pane-orchestrator contracts, and workspace/session contracts |
 | Distribution and host integration | How Yazelix is packaged, launched, and adapted into external owners such as Home Manager, shells, terminals, desktop integration, and profile-owned installs | `home_manager`, `packaging`, `shells`, `flake.nix`, `yazelix_package.nix`, `yazelix_runtime_package.nix` | The packaged runtime shape and explicit integration contracts |
-| Shipped runtime data and assets | The tracked data the runtime consumes directly: layouts, themes, plugins, templates, release metadata, TOML tooling support, cursor presets, and visual assets | `configs`, `config_metadata`, `assets`, `nushell/config`, `tombi.toml`, `settings_default.jsonc`, `yazelix_ghostty_cursors_default.toml`, `docs/upgrade_notes.toml` | Version-controlled shipped files |
+| Shipped runtime data and assets | The tracked data and package artifacts the runtime consumes directly: layouts, themes, plugin artifacts, templates, release metadata, TOML tooling support, cursor presets, and visual assets | `configs`, `config_metadata`, `assets`, `nushell/config`, `tombi.toml`, `settings_default.jsonc`, `yazelix_ghostty_cursors_default.toml`, `docs/upgrade_notes.toml`, first-party child package outputs | Version-controlled shipped files and locked package artifacts |
 | Maintainer workflow and validation | The non-user-facing machinery that keeps the other four coherent: tests, validators, release/update workflow, CI, and maintainer tooling | `nushell/scripts/dev`, `.github`, `maintainer_shell.nix`, `.nu-lint.toml` | Beads, contracts, CI policy, and maintainer command surfaces |
 
 ## Validation Map
@@ -30,7 +30,7 @@ history, and Beads-owned planning state.
 | Subsystem family | Highest-signal validation |
 | --- | --- |
 | Runtime control plane and command surface | `yzx dev test`; `yzx_repo_validator validate-config-surface-contract` for config/control-plane metadata changes |
-| Workspace session orchestration | `yzx_repo_validator validate-workspace-session-contract`; `yzx_repo_validator validate-pane-orchestrator-sync` after pane-orchestrator source or wasm changes |
+| Workspace session orchestration | `yzx_repo_validator validate-workspace-session-contract`; `nix build .#runtime` after first-party plugin package or runtime artifact changes |
 | Distribution and host integration | `yzx_repo_validator validate-flake-interface`; `yzx_repo_validator validate-nix-customization-api`; installed-runtime/profile validators only for package or release gates |
 | Shipped runtime data and assets | `yzx_repo_validator validate-config-surface-contract`; `yzx_repo_validator validate-workspace-session-contract` for Zellij layout or workspace asset changes |
 | Maintainer workflow and validation | `yzx_repo_validator validate-contracts`; `yzx_repo_validator validate-rust-test-traceability`; `yzx dev test` for default-suite behavior |

@@ -2,6 +2,8 @@
   pkgs,
   src,
   yazelix_yazi_assets,
+  yazelix_zellij_pane_orchestrator,
+  yazelix_zellij_popup,
 }:
 
 # Local upstream-prep draft:
@@ -18,4 +20,8 @@ import ../mk_yazelix_package.nix {
   inherit pkgs src;
   metaPlatforms = pkgs.lib.platforms.linux;
   yaziAssets = yazelix_yazi_assets;
+  zellijPluginArtifacts = {
+    pane_orchestrator = "${yazelix_zellij_pane_orchestrator}/${yazelix_zellij_pane_orchestrator.wasmPath}";
+    yzpp = "${yazelix_zellij_popup}/${yazelix_zellij_popup.wasmPath}";
+  };
 }

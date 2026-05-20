@@ -20,18 +20,12 @@ The Yazelix runtime artifact name and internal alias remain stable for existing 
 
 ## Boundary
 
-The Yazelix repository consumes the plugin through a pinned external source/artifact boundary. It must not keep duplicate plugin source as a fallback.
-
-Yazelix may keep as an interim copied-artifact path:
-
-- the tracked runtime wasm artifact when package/runtime distribution needs an in-repo artifact
-- a sync stamp that records the external source Git commit, source remote, source hash, build command, and tracked wasm hash
-- validators that check the consumed artifact and Yazelix integration contract
-- integration code that sends documented pipe messages to the plugin
+The Yazelix repository consumes the plugin through a pinned external package artifact boundary. It must not keep duplicate plugin source or copied first-party wasm as a fallback.
 
 Yazelix must not keep:
 
 - copied plugin Rust source
+- copied first-party plugin wasm as source provenance
 - duplicate contract modules that exist only to mirror extracted source internals
 - compatibility wrappers that preserve the old in-repo ownership model
 - local-only cache, path, or checkout assumptions as substitutes for a real source/artifact boundary
@@ -126,21 +120,19 @@ These behaviors remain Yazelix integration because they depend on Yazelix runtim
 
 Yazelix integration may call the standalone plugin API, but standalone plugin users must not need these integration paths for core behavior.
 
-## Build And Sync Contract
+## Package Contract
 
-The external source owner builds the public wasm artifact. Yazelix currently syncs that artifact into the tracked runtime artifact path when packaging or maintainer validation needs an in-repo wasm. The target package boundary is for Yazelix to consume a locked child package instead of treating the copied artifact as durable source ownership.
+The external source owner builds the public wasm package artifact. Yazelix consumes that package into the runtime plugin path instead of treating a copied artifact as durable source ownership.
 
-The sync stamp must prove:
+The package boundary must prove:
 
 - external source Git commit
 - external source remote
-- external source content hash
-- build command
-- public wasm artifact hash
-- tracked Yazelix runtime wasm hash
 - source project name
+- stable package artifact path
+- main runtime placement at `configs/zellij/plugins/yazelix_pane_orchestrator.wasm`
 
-If external source is unavailable, Yazelix validators may still verify the tracked wasm against the sync stamp. Commands that build or sync the plugin must fail fast with an actionable error that names the required external checkout or configured source path.
+Local development uses an explicit flake override against an adjacent checkout. The committed main repo must not use a local path input.
 
 ## Rust Dependency Gate
 
@@ -170,7 +162,7 @@ Rejected by default:
 
 Packaging impact:
 
-- Yazelix may keep shipping a tracked wasm artifact
+- Yazelix ships the packaged child wasm in its runtime tree
 - source ownership moves to the external project
 - Yazelix Rust ownership budget must remove or ratchet the old source family after source deletion
 
@@ -190,11 +182,11 @@ Standalone source owner:
 
 - `cargo fmt --check`
 - `cargo test --lib`
-- build `wasm32-wasip1` release artifact
+- `nix build .#yazelix_zellij_pane_orchestrator --no-link`
 
 Yazelix consumer:
 
-- `cargo run -p yazelix_maintainer --bin yzx_repo_validator -- validate-pane-orchestrator-sync`
+- `nix build .#runtime --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-orchestrator --no-link`
 - `cargo run -p yazelix_maintainer --bin yzx_repo_validator -- validate-rust-ownership-budget`
 - focused Yazelix workspace/session validation for pipe commands and generated layout aliases
 
@@ -202,5 +194,5 @@ Yazelix consumer:
 
 - Defended by: `docs/contracts/pane_orchestrator_component.md`
 - Defended by: `docs/contracts/pane_orchestrator_tab_local_session_state_seam.md`
-- Defended by: `rust_core/yazelix_maintainer/src/repo_plugin_build.rs`
+- Defended by: `packaging/mk_runtime_tree.nix`
 - Defended by: `rust_core/yazelix_maintainer/src/workspace_session_contract.rs`

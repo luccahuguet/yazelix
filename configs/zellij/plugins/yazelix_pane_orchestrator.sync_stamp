@@ -1,7 +1,0 @@
-source_project = "yazelix-zellij-pane-orchestrator"
-source_git_commit = "725f80fd976c17173c87b3c0d1159b373e805f7f"
-source_git_remote = "https://github.com/luccahuguet/yazelix-zellij-pane-orchestrator.git"
-source_sha256 = "4b2228b4260cf7cc4e24dc812e7a3ccb902d5a82257c23616f4b6d812a3d7151"
-build_command = "yzx dev build_pane_orchestrator --sync"
-public_wasm_sha256 = "56d108142246d01951c8382dd6a28582e30eb28298369cf8ea0dcf510e8d11a9"
-tracked_wasm_sha256 = "56d108142246d01951c8382dd6a28582e30eb28298369cf8ea0dcf510e8d11a9"

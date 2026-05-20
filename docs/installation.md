@@ -306,7 +306,7 @@ If Zellij still shows a plugin permission prompt, answer **yes**. This can happe
 
 If the top status bar looks transparent or broken, see [troubleshooting](troubleshooting.md#first-run-zellij-plugin-permissions-is-the-top-bar-looking-funnyweirdbroken) for the manual recovery path. See the [zjstatus permissions documentation](https://github.com/dj95/zjstatus/wiki/2-%E2%80%90-Permissions) for more details.
 
-If you are maintaining Yazelix and rebuild the pane-orchestrator plugin, prefer `yzx restart` after `yzx dev build_pane_orchestrator --sync` instead of reloading the plugin inside the current session.
+If you are maintaining Yazelix and test a newly packaged pane-orchestrator plugin, prefer `yzx restart` after the local override runtime build instead of reloading the plugin inside the current session.
 
 #### Quick Start Tips
 - Use `alt hjkl` to switch between Zellij panes and tabs

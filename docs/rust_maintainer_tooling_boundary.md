@@ -65,12 +65,11 @@ Maintained target state:
 | Subsystem | Current path | Decision | Offload decision | Rationale |
 | --- | --- | --- | --- | --- |
 | Validator dispatcher | `yazelix_maintainer/src/bin/yzx_repo_validator.rs` | moved to `yazelix_maintainer` | reject external repo | CI entrypoint is repo-specific and validates local files, contracts, packages, and release rules |
-| Maintainer dispatcher | `yazelix_maintainer/src/bin/yzx_repo_maintainer.rs` | moved to `yazelix_maintainer` | reject external repo | Local dev workflow wrapper for Beads/GitHub sync, tests, release bump, updates, and plugin sync |
+| Maintainer dispatcher | `yazelix_maintainer/src/bin/yzx_repo_maintainer.rs` | moved to `yazelix_maintainer` | reject external repo | Local dev workflow wrapper for Beads/GitHub sync, tests, release bump, and updates |
 | Repo contract validators | `yazelix_maintainer/src/repo_contract_validation.rs` | moved to `yazelix_maintainer` | reject external repo | Largest maintainer file; all checks are tied to this repo's Nix, README, Home Manager, release, and package contracts |
 | Generic repo validation | `yazelix_maintainer/src/repo_validation.rs` | moved to `yazelix_maintainer` | reject external repo | Contract/test traceability and package-test-purity are repo policy, not runtime product behavior |
 | Issue sync | `yazelix_maintainer/src/repo_issue_sync.rs` | moved to `yazelix_maintainer` | reject external repo | Beads/GitHub mapping is local workflow state and should not become a separately versioned tool |
 | Nushell lint wrapper | `yazelix_maintainer/src/repo_nu_lint.rs` | moved to `yazelix_maintainer` | reject external repo | Thin repo-local maintainer command around checked-in Nu files |
-| Pane-orchestrator build/sync | `yazelix_maintainer/src/repo_plugin_build.rs` | moved to `yazelix_maintainer` | reject external repo | Sync stamp and tracked wasm are part of this repository; command depends on `yazelix_core` materialization APIs |
 | Sweep runner | `yazelix_maintainer/src/repo_sweep_runner.rs` | moved to `yazelix_maintainer` | reject external repo | Runs local runtime/config matrices against this checkout |
 | Test runner | `yazelix_maintainer/src/repo_test_runner.rs` | moved to `yazelix_maintainer` | reject external repo | Maintainer orchestration over local validator/test surfaces, not shipped product behavior |
 | Update workflow | `yazelix_maintainer/src/repo_update_workflow.rs` | moved to `yazelix_maintainer` | reject external repo | Writes local pins, vendored `zjstatus.wasm`, README surface, and canary materialization |
@@ -113,7 +112,6 @@ The better next move is to shrink and split maintainer validation by domain insi
 | `src/repo_docs_validation.rs` | 188 | in-repo | minor | high: docs routes are local file policy | docs CI would require external tool updates for route changes | none |
 | `src/repo_issue_sync.rs` | 742 | in-repo | medium | high: Beads/GitHub contract is project-local state | sync workflow would need external release for local policy changes | none |
 | `src/repo_nu_lint.rs` | 56 | in-repo wrapper | trivial | low, but too small to justify a repo | no meaningful benefit from extraction | none |
-| `src/repo_plugin_build.rs` | 474 | in-repo | medium | high: tracked wasm, sync stamps, runtime plugin paths, and materialization APIs move together | wasm sync failures would become cross-repo failures | none for normal users; maintainer-only |
 | `src/repo_rust_budget.rs` | 378 | in-repo | medium | high: budget families and allowed paths are local | scorecard updates would need external release sync | none |
 | `src/repo_rust_commands.rs` | 226 | in-repo wrapper | small | medium: command defaults encode local workspace paths and lanes | maintainer shell convenience would depend on external routing | none |
 | `src/repo_sweep_runner.rs` | 608 | in-repo, shrink later if weak lanes remain | medium apparent LOC reduction | high: sweeps run local runtime/config matrices | release confidence would depend on external runner matching local layout | none |
@@ -128,7 +126,6 @@ The better next move is to shrink and split maintainer validation by domain insi
 
 | Maintainer command | Selected residency | Off-repo LOC effect | Version-skew risk | CI/devShell impact | User-runtime impact |
 | --- | --- | --- | --- | --- | --- |
-| `yzx dev build_pane_orchestrator [--sync]` | in-repo maintainer crate | medium if moved with plugin build code | very high: sync stamp and tracked wasm live here | must stay aligned with current pane-orchestrator source and runtime asset paths | none; users consume the synced artifact |
 | `yzx dev bump VERSION` | in-repo maintainer crate | medium | very high: tags, changelog, README, and version constants must be transactional | release workflow must not wait on external tool release | none |
 | `yzx dev lint_nu [paths...]` | in-repo maintainer wrapper | trivial | low | small wrapper, not worth externalizing | none |
 | `yzx dev rust <fmt\|check\|test>` | in-repo maintainer wrapper | small | medium: target defaults are local workspace policy | keeps direct maintainer loop stable | none |

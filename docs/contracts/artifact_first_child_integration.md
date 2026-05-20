@@ -39,7 +39,7 @@ The supported split is:
 - Type: boundary
 - Status: live
 - Owner: Zellij plugin packaging
-- Statement: First-party Zellij plugin code should be consumed as wasm artifacts from locked child packages. Tracked copied wasm plus sync stamps are transitional guardrails, not the target architecture
+- Statement: First-party Zellij plugin code is consumed as wasm artifacts from locked child packages. The main repo does not track copied first-party wasm or sync stamps as runtime provenance
 - Verification: manual review against [First-Party Zellij Plugin Wasm Ownership](./first_party_zellij_plugin_wasm_ownership.md)
 
 #### AFCI-004

@@ -68,17 +68,16 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
   plain-Zellij examples. The in-repo Yazelix pane orchestrator owns
   workspace/sidebar/editor/session state, not popup pane opening or closing
 - Verification: validator `yzx_repo_validator validate-contracts`; external
-  `yazelix-zellij-popup` gates `cargo test` and `nix build`; validator
-  `yzx_repo_validator validate-yzpp-sync` while `yzpp.wasm` remains a copied
-  tracked artifact
+  `yazelix-zellij-popup` gates `cargo test` and `nix build`; main package
+  gate `nix build .#runtime`
 
 #### POP-006
 - Type: boundary
-- Status: planning
+- Status: live
 - Owner: first-party Zellij plugin package boundary
-- Statement: The target Yazelix packaging model consumes `yzpp.wasm` from a
-  locked `yazelix-zellij-popup` package input instead of treating the copied
-  `configs/zellij/plugins/yzpp.wasm` file as the durable source of truth
+- Statement: Yazelix packaging consumes `yzpp.wasm` from a
+  `yazelix-zellij-popup` package input instead of treating a copied
+  `configs/zellij/plugins/yzpp.wasm` source file as the durable source of truth
 - Verification: validator `yzx_repo_validator validate-contracts`
 
 #### POP-007
@@ -216,8 +215,7 @@ The `yzpp` raw pipe path still accepts generated JSON through `name "transient_p
 - external `yazelix-zellij-popup` unit tests: KDL-native popup specs, optional
   `on_close` hooks, and raw generated pipe request compatibility
 - external package gate: `nix build` in `yazelix-zellij-popup`
-- copied artifact gate: `yzx dev sync_yzpp_wasm` and
-  `yzx_repo_validator validate-yzpp-sync`
+- package integration gate: `nix build .#runtime`
 - integration tests: `yzx popup` routes generated popup requests to `yzpp`
   with a fake Zellij binary
 - integration tests: generated Zellij config contains the integrated `yzpp`

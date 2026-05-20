@@ -26,6 +26,13 @@ const RUNTIME_WORKSPACE_ASSETS: &[&str] = &[
     "configs/zellij/plugins/zjstatus.wasm",
     "configs/zellij/plugins/yzpp.wasm",
 ];
+const REPO_WORKSPACE_ASSETS: &[&str] = &[
+    "config_metadata/zellij_layout_families.toml",
+    "configs/zellij/yazelix_overrides.kdl",
+    "configs/zellij/scripts/launch_sidebar_yazi.nu",
+    "configs/zellij/scripts/runtime_helper.nu",
+    "configs/zellij/plugins/zjstatus.wasm",
+];
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct WorkspaceAssetEvaluateRequest {
@@ -59,7 +66,7 @@ pub fn evaluate_workspace_asset_report(
 pub fn validate_workspace_assets_for_repo(repo_root: &Path) -> Result<Vec<String>, String> {
     let mut errors = Vec::new();
     errors.extend(
-        missing_runtime_workspace_assets(repo_root)
+        missing_workspace_assets(repo_root, REPO_WORKSPACE_ASSETS)
             .into_iter()
             .map(|path| {
                 format!(
@@ -73,7 +80,7 @@ pub fn validate_workspace_assets_for_repo(repo_root: &Path) -> Result<Vec<String
 }
 
 fn runtime_workspace_assets_finding(runtime_dir: &Path) -> WorkspaceAssetFinding {
-    let missing = missing_runtime_workspace_assets(runtime_dir);
+    let missing = missing_workspace_assets(runtime_dir, RUNTIME_WORKSPACE_ASSETS);
     if missing.is_empty() {
         return WorkspaceAssetFinding {
             status: "ok".into(),
@@ -284,15 +291,13 @@ fn generated_zellij_generation_fingerprint(metadata_path: &Path) -> Result<Optio
     Ok(fingerprint)
 }
 
-fn missing_runtime_workspace_assets(runtime_dir: &Path) -> Vec<PathBuf> {
-    RUNTIME_WORKSPACE_ASSETS
+fn missing_workspace_assets(root: &Path, assets: &[&str]) -> Vec<PathBuf> {
+    assets
         .iter()
         .map(|relative| {
             relative
                 .split('/')
-                .fold(runtime_dir.to_path_buf(), |path, segment| {
-                    path.join(segment)
-                })
+                .fold(root.to_path_buf(), |path, segment| path.join(segment))
         })
         .filter(|path| !path.is_file())
         .collect()

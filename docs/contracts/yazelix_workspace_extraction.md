@@ -190,7 +190,7 @@ Use the existing Yazelix suite as the first proof:
 - `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
 - `nu nushell/scripts/dev/test_zellij_plugin_contracts.nu`
 - `yzx_repo_validator validate-workspace-session-contract`
-- `yzx_repo_validator validate-pane-orchestrator-sync` after plugin source changes
+- `nix build .#runtime` after first-party plugin package changes
 - `yzx_repo_validator validate-contracts`
 
 Before public extraction, add a plain-Zellij proof that starts from structured request examples and does not require `yzx`, Home Manager, the config UI, status bar widgets, or the Yazelix runtime root.

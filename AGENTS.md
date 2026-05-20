@@ -130,18 +130,16 @@ When creating new files or directories, always use underscores to maintain consi
 
 ## Rust Plugin Workflow
 
-- **Rust pane-orchestrator source edits are not live by themselves.** Source lives in the public child repo `https://github.com/luccahuguet/yazelix-zellij-pane-orchestrator`, checked out as sibling `../yazelix-zellij-pane-orchestrator` by default, or in the path set by `YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_SOURCE_DIR`. Source edits do not affect Yazelix behavior until the wasm is rebuilt and synced into the tracked/runtime plugin paths.
-- After changing the pane orchestrator, rebuild and sync it before claiming behavior is fixed:
+- **Rust pane-orchestrator source edits are not live by themselves.** Source lives in the public child repo `https://github.com/luccahuguet/yazelix-zellij-pane-orchestrator`, checked out as sibling `../yazelix-zellij-pane-orchestrator` by default, or in the path set by `YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_SOURCE_DIR`. Normal Yazelix runtimes consume the wasm from the locked child package, not from a copied main-repo binary.
+- After changing the pane orchestrator, build the child package and test Yazelix through an explicit local flake override before claiming integrated behavior is fixed:
   ```bash
-  yzx dev build_pane_orchestrator --sync
+  nix build ../yazelix-zellij-pane-orchestrator#yazelix_zellij_pane_orchestrator --no-link
+  nix build .#runtime --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-orchestrator --no-link
   ```
-- If the current shell toolchain cannot build `wasm32-wasip1`, use the flake maintainer shell:
-  ```bash
-  nix develop -c yzx dev build_pane_orchestrator --sync
-  ```
-- **Do not treat `cargo test` or `cargo check` as sufficient verification for live plugin behavior.** They only validate the Rust source. Real behavior changes require the synced wasm plus a fresh Yazelix session.
-- After syncing a new plugin wasm, prefer `yzx restart` or a fresh Yazelix window. Avoid in-place plugin reloads as the default validation path because they can leave the current session in a broken permission state.
-- Run `yzx_repo_validator validate-pane-orchestrator-sync` or `yzx dev test` before committing pane-orchestrator work; the validator checks the tracked wasm sync stamp against the current source so stale source/wasm drift is visible before release.
+- After the child change is pushed, update the main `flake.lock` to the pushed child revision and re-run the main runtime build without local overrides.
+- **Do not treat `cargo test` or `cargo check` as sufficient verification for live plugin behavior.** They only validate the Rust source. Real behavior changes require the packaged wasm, runtime build validation, and a fresh Yazelix session.
+- After switching to a new packaged plugin wasm, prefer `yzx restart` or a fresh Yazelix window. Avoid in-place plugin reloads as the default validation path because they can leave the current session in a broken permission state.
+- Run `yzx_repo_validator validate-workspace-session-contract` or `yzx dev test` before committing pane-orchestrator integration work; the validator checks generated workspace assets against the packaged runtime shape.
 - When changing built-in Zellij layouts, update `config_metadata/zellij_layout_families.toml` and run `yzx_repo_validator validate-workspace-session-contract`; the same contract feeds workspace asset drift checks in `yzx doctor`.
 
 ## Rust Dependency Gate

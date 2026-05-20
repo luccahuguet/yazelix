@@ -469,7 +469,6 @@ mod tests {
         assert!(names.contains(&"yzx dev profile"));
 
         for repo_only in [
-            "yzx dev build_pane_orchestrator",
             "yzx dev bump",
             "yzx dev lint_nu",
             "yzx dev rust",
@@ -477,7 +476,6 @@ mod tests {
             "yzx dev rust check",
             "yzx dev rust test",
             "yzx dev sync_issues",
-            "yzx dev sync_yzpp_wasm",
             "yzx dev test",
             "yzx dev update",
         ] {

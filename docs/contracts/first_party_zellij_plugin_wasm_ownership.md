@@ -2,16 +2,14 @@
 
 ## Summary
 
-Yazelix currently consumes two first-party Zellij plugin wasm artifacts by tracking copied binaries in `configs/zellij/plugins/`:
+Yazelix consumes two first-party Zellij plugin wasm artifacts from child package outputs:
 
 - `yazelix_pane_orchestrator.wasm`, sourced from `yazelix-zellij-pane-orchestrator`
 - `yzpp.wasm`, sourced from `yazelix-zellij-popup`
 
-This copied-artifact model is acceptable only as an interim maintainer workflow. The target architecture is package ownership: each child repository builds and publishes its own wasm package, and Yazelix consumes those packages through locked flake inputs.
+Each child repository builds and publishes its own wasm package, and Yazelix consumes those packages through flake inputs and explicit local overrides during active development.
 
 ## Why
-
-The copied-artifact model creates a three-way consistency problem between child source, tracked binary, and generated runtime state. Sync stamps and validators reduce the risk, but they are guardrails around manual artifact ownership.
 
 Locked child packages make the package lock the provenance source. The child repository owns source, build target, artifact name, standalone examples, and package checks. Yazelix owns integration, aliases, generated Zellij config, runtime copy into user state, and live session validation.
 
@@ -26,80 +24,68 @@ Locked child packages make the package lock the provenance source. The child rep
 Out of scope:
 
 - `zjstatus.wasm`, which is third-party vendoring through the main repo's `zjstatus` lock and update workflow
-- `yazelix-zellij-bar`, which is a child package consumed as a runtime package rather than copied into the integrated plugin directory
+- `yazelix-zellij-bar`, which is a child package consumed as a runtime package rather than as an integrated plugin artifact
 
 ## Contract Items
 
 #### FPW-001
 - Type: ownership
-- Status: planning
+- Status: live
 - Owner: child repository package boundary
-- Statement: First-party Zellij plugin source repositories should own their
-  wasm package outputs. The Yazelix main repo should consume those outputs
-  through locked package inputs instead of treating copied binaries as source
-  artifacts
+- Statement: First-party Zellij plugin source repositories own their wasm
+  package outputs. The Yazelix main repo consumes those outputs through package
+  inputs instead of treating copied binaries as source artifacts
 - Verification: validator `nix flake metadata`; manual package inspection
 
 #### FPW-002
 - Type: boundary
-- Status: planning
+- Status: live
 - Owner: Yazelix runtime package
-- Statement: Yazelix may copy first-party plugin wasm files from locked child
-  packages into the packaged runtime tree, but the source revision and package
-  build must be represented by the lock file or equivalent package lock
+- Statement: Yazelix materializes first-party plugin wasm files from child
+  packages into the packaged runtime tree, and the source revision and package
+  build are represented by the lock file or equivalent package lock
 - Verification: automated `nix build .#runtime`
 
 #### FPW-003
 - Type: invariant
-- Status: planning
+- Status: live
 - Owner: local maintainer workflow
 - Statement: Active plugin development must keep a local override path so a
-  maintainer can test an adjacent checkout without committing copied wasm
-  drift as the durable provenance model
+  maintainer can test an adjacent checkout without committing local path inputs
+  or copied wasm drift as the durable provenance model
 - Verification: manual local flake override or path input smoke test
 
 #### FPW-004
 - Type: non_goal
-- Status: planning
+- Status: live
 - Owner: copied-wasm transition
-- Statement: Interim sync stamps for copied first-party wasm artifacts are not
-  the final architecture. They exist to make current copied artifacts auditable
-  until locked child package consumption replaces them
-- Verification: validator `yzx_repo_validator validate-pane-orchestrator-sync`
+- Statement: The Yazelix main repo does not track first-party plugin wasm
+  sync stamps as runtime provenance. Package inputs own first-party plugin wasm
+  provenance
+- Verification: manual review of `configs/zellij/plugins/`
 
 ## Target Architecture
 
-Each first-party plugin child repository should provide a package with a stable wasm path:
+Each first-party plugin child repository provides a package with a stable wasm path:
 
 - `yazelix-zellij-pane-orchestrator`: `share/yazelix_zellij_pane_orchestrator/yazelix_pane_orchestrator.wasm` or an equivalent documented package path
 - `yazelix-zellij-popup`: `share/yazelix_zellij_popup/yzpp.wasm`
 
-The main flake should consume those repositories as inputs and pass their package outputs into the runtime package builder. The runtime package builder should materialize `configs/zellij/plugins/` from package outputs instead of relying on tracked copied binaries for first-party plugins.
+The main flake consumes those repositories as inputs and passes their package outputs into the runtime package builder. The runtime package builder materializes `configs/zellij/plugins/` from package outputs instead of relying on tracked copied binaries for first-party plugins.
 
 The regular package path should be lock-driven:
 
 ```nix
 inputs.yazelixZellijPopup.url = "github:luccahuguet/yazelix-zellij-popup";
+inputs.yazelixZellijPaneOrchestrator.url = "github:luccahuguet/yazelix-zellij-pane-orchestrator";
 ```
 
 Local development should stay override-driven:
 
 ```bash
 nix build .#runtime --override-input yazelixZellijPopup ../yazelix-zellij-popup
+nix build .#runtime --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-orchestrator
 ```
-
-Pane-orchestrator migration has one prerequisite: the child repository must publish a Nix package or equivalent package output. `yazelix-zellij-popup` already publishes a `yzpp` package, so it can migrate first.
-
-## Transition
-
-1. Keep copied wasm guardrails for current releases
-2. Add a package output to `yazelix-zellij-pane-orchestrator`
-3. Add main flake inputs for `yazelix-zellij-pane-orchestrator` and `yazelix-zellij-popup`
-4. Teach the runtime package builder to place first-party plugin wasm files from package outputs into `configs/zellij/plugins/`
-5. Update workspace asset validation to validate packaged plugin files instead of tracked copied first-party binaries
-6. Delete tracked first-party wasm binaries and temporary sync stamps once package consumption is the only supported path
-
-Current copied-artifact guardrails are `yzx dev build_pane_orchestrator --sync` plus `yzx_repo_validator validate-pane-orchestrator-sync` for the pane orchestrator, and `yzx dev sync_yzpp_wasm` plus `yzx_repo_validator validate-yzpp-sync` for `yzpp`
 
 ## Acceptance Cases
 
@@ -107,14 +93,13 @@ Current copied-artifact guardrails are `yzx dev build_pane_orchestrator --sync` 
 2. Regular Yazelix package builds do not depend on adjacent mutable plugin checkouts
 3. Local plugin development uses explicit flake overrides or path inputs
 4. `zjstatus.wasm` stays on its separate third-party vendoring path
-5. Sync stamps remain only as interim copied-artifact guardrails
+5. `configs/zellij/plugins/` contains only Yazelix-owned vendored third-party artifacts, not copied first-party plugin wasm or sync stamps
 
 ## Verification
 
 - `nix flake metadata`
 - `nix build .#runtime`
 - `yzx_repo_validator validate-workspace-session-contract`
-- `yzx_repo_validator validate-pane-orchestrator-sync` while copied pane-orchestrator wasm remains tracked
 
 ## Traceability
 

@@ -2,7 +2,6 @@ use std::path::PathBuf;
 use yazelix_maintainer::repo_contract_validation::sync_readme_surface;
 use yazelix_maintainer::repo_issue_sync::run_issue_sync;
 use yazelix_maintainer::repo_nu_lint::run_repo_nu_lint;
-use yazelix_maintainer::repo_plugin_build::{build_pane_orchestrator, sync_yzpp_wasm};
 use yazelix_maintainer::repo_rust_commands::run_repo_rust_command;
 use yazelix_maintainer::repo_test_runner::{RepoTestOptions, run_repo_tests};
 use yazelix_maintainer::repo_update_workflow::{RepoUpdateOptions, run_repo_update_workflow};
@@ -109,14 +108,6 @@ fn main() {
                 );
             })
         }
-        "build-pane-orchestrator" => {
-            let sync = parse_build_pane_orchestrator_args(args.collect());
-            build_pane_orchestrator(&resolved_repo_root, sync)
-        }
-        "sync-yzpp-wasm" => {
-            reject_unexpected_args("sync-yzpp-wasm", args.collect());
-            sync_yzpp_wasm(&resolved_repo_root)
-        }
         "dev-update" => {
             let options = parse_dev_update_args(args.collect());
             run_repo_update_workflow(&resolved_repo_root, &options)
@@ -143,7 +134,7 @@ fn main() {
 
 fn print_usage_and_exit() -> ! {
     eprintln!(
-        "Usage: yzx_repo_maintainer [--repo-root PATH] <sync-readme-surface|run-tests|version-bump|sync-issues|build-pane-orchestrator|sync-yzpp-wasm|dev-update|lint-nu|rust> [options]"
+        "Usage: yzx_repo_maintainer [--repo-root PATH] <sync-readme-surface|run-tests|version-bump|sync-issues|dev-update|lint-nu|rust> [options]"
     );
     std::process::exit(2);
 }
@@ -193,27 +184,6 @@ fn parse_sync_issues_args(args: Vec<String>) -> bool {
         }
     }
     dry_run
-}
-
-fn parse_build_pane_orchestrator_args(args: Vec<String>) -> bool {
-    let mut sync = false;
-    for arg in args {
-        match arg.as_str() {
-            "--sync" => sync = true,
-            _ => {
-                eprintln!("Unknown build-pane-orchestrator option `{arg}`");
-                std::process::exit(2);
-            }
-        }
-    }
-    sync
-}
-
-fn reject_unexpected_args(command: &str, args: Vec<String>) {
-    if let Some(arg) = args.first() {
-        eprintln!("Unknown {command} option `{arg}`");
-        std::process::exit(2);
-    }
 }
 
 fn parse_dev_update_args(args: Vec<String>) -> RepoUpdateOptions {

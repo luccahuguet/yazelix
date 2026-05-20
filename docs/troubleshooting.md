@@ -101,13 +101,14 @@ If permission state gets out of sync after an update, run `yzx doctor --fix` and
 
 See the [zjstatus permissions documentation](https://github.com/dj95/zjstatus/wiki/2-%E2%80%90-Permissions) for more details.
 
-### Pane-Orchestrator Rebuild / Reload Limbo
+### Pane-Orchestrator Package / Reload Limbo
 
-If you rebuild the pane-orchestrator plugin while Yazelix is already open, avoid reloading it in place inside the live session. That can leave Zellij in a broken permission state where the permission popup is unusable and future Yazelix launches open blank tabs.
+If you switch to a newly packaged pane-orchestrator plugin while Yazelix is already open, avoid reloading it in place inside the live session. That can leave Zellij in a broken permission state where the permission popup is unusable and future Yazelix launches open blank tabs.
 
 **Safer maintainer flow:**
 ```bash
-yzx dev build_pane_orchestrator --sync
+nix build ../yazelix-zellij-pane-orchestrator#yazelix_zellij_pane_orchestrator --no-link
+nix build .#runtime --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-orchestrator --no-link
 yzx restart
 ```
 

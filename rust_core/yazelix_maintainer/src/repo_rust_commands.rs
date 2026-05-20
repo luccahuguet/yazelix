@@ -1,9 +1,11 @@
 // Test lane: maintainer
 
-use crate::repo_plugin_build::pane_orchestrator_source_dir;
-
+use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
+const PANE_ORCHESTRATOR_SOURCE_ENV: &str = "YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_SOURCE_DIR";
+const PANE_ORCHESTRATOR_SOURCE_PROJECT: &str = "yazelix-zellij-pane-orchestrator";
 
 #[derive(Debug, Clone)]
 struct RustTargetSpec {
@@ -145,6 +147,17 @@ fn rust_target_specs(repo_root: &Path, target: &str) -> Result<Vec<RustTargetSpe
             "Unknown Rust target '{target}'. Expected one of: core, maintainer, pane_orchestrator, all."
         )),
     }
+}
+
+fn pane_orchestrator_source_dir(repo_root: &Path) -> PathBuf {
+    env::var_os(PANE_ORCHESTRATOR_SOURCE_ENV)
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            repo_root
+                .parent()
+                .unwrap_or(repo_root)
+                .join(PANE_ORCHESTRATOR_SOURCE_PROJECT)
+        })
 }
 
 fn parse_rust_target_and_tail(args: &[String], default_target: &str) -> ParsedRustTarget {

@@ -1,7 +1,0 @@
-source_project = "yazelix-zellij-popup"
-source_git_commit = "d89a9fbe4f6d9f44fc1cdedd7d05832467cd9a68"
-source_git_remote = "https://github.com/luccahuguet/yazelix-zellij-popup.git"
-source_sha256 = "e6399321713e69b8fc4fb8e9b5153a3fbc3b86cbd83b7fb3641e4c1e96bde0e3"
-build_command = "yzx dev sync_yzpp_wasm"
-package_wasm_sha256 = "85eaadbd1247bc608c8f3b2bf7648a406e01d12bc5a6e1408602390231be62ed"
-tracked_wasm_sha256 = "85eaadbd1247bc608c8f3b2bf7648a406e01d12bc5a6e1408602390231be62ed"

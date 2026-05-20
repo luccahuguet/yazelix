@@ -10,6 +10,7 @@
   components ? { },
   extraRuntimePackages ? [ ],
   yaziAssets ? null,
+  zellijPluginArtifacts ? { },
 }:
 
 let
@@ -28,6 +29,7 @@ let
       components
       extraRuntimePackages
       yaziAssets
+      zellijPluginArtifacts
       ;
     name = "yazelix-runtime";
   };

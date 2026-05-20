@@ -32,6 +32,16 @@
       url = "github:luccahuguet/yazelix-yazi-assets";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    yazelixZellijPaneOrchestrator = {
+      url = "github:luccahuguet/yazelix-zellij-pane-orchestrator";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.fenix.follows = "fenix";
+    };
+    yazelixZellijPopup = {
+      url = "github:luccahuguet/yazelix-zellij-popup";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.fenix.follows = "fenix";
+    };
     beads = {
       url = "github:steveyegge/beads/v1.0.0";
     };
@@ -52,6 +62,8 @@
       yazelixGhosttyCursors,
       yazelixZellijBar,
       yazelixYaziAssets,
+      yazelixZellijPaneOrchestrator,
+      yazelixZellijPopup,
       beads,
       zjstatus,
     }:
@@ -78,6 +90,17 @@
         [
           (import ./packaging/tokenusage.nix { inherit pkgs; })
         ];
+      zellijPluginArtifactsFor =
+        system:
+        let
+          paneOrchestrator =
+            yazelixZellijPaneOrchestrator.packages.${system}.yazelix_zellij_pane_orchestrator;
+          yzpp = yazelixZellijPopup.packages.${system}.yzpp;
+        in
+        {
+          pane_orchestrator = "${paneOrchestrator}/${paneOrchestrator.wasmPath}";
+          yzpp = "${yzpp}/${yzpp.wasmPath}";
+        };
       mkYazelix =
         system:
         {
@@ -89,10 +112,19 @@
           components ? { },
           extraRuntimePackages ? [ ],
           yaziAssets ? yazelixYaziAssets.packages.${system}.yazelix_yazi_assets,
+          zellijPluginArtifacts ? zellijPluginArtifactsFor system,
         }:
         import ./yazelix_package.nix (
           {
-            inherit pkgs nixgl runtimeVariant runtimeToolSources components yaziAssets;
+            inherit
+              pkgs
+              nixgl
+              runtimeVariant
+              runtimeToolSources
+              components
+              yaziAssets
+              zellijPluginArtifacts
+              ;
             extraRuntimePackages = [
               yazelixZellijBar.packages.${system}.yazelix_zellij_bar
             ] ++ extraRuntimePackages;
@@ -109,6 +141,7 @@
             yazelixZellijBar.packages.${system}.yazelix_zellij_bar
           ] ++ extraRuntimePackages;
           yaziAssets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
+          zellijPluginArtifacts = zellijPluginArtifactsFor system;
         };
       yazelixPackage = system: pkgs: runtimeVariant: extraRuntimePackages:
         mkYazelix system {
@@ -119,6 +152,9 @@
         yazelix_zellij_bar = yazelixZellijBar.packages.${final.stdenv.hostPlatform.system}.yazelix_zellij_bar;
         yazelix_yazi_assets =
           yazelixYaziAssets.packages.${final.stdenv.hostPlatform.system}.yazelix_yazi_assets;
+        yazelix_zellij_pane_orchestrator =
+          yazelixZellijPaneOrchestrator.packages.${final.stdenv.hostPlatform.system}.yazelix_zellij_pane_orchestrator;
+        yazelix_zellij_popup = yazelixZellijPopup.packages.${final.stdenv.hostPlatform.system}.yzpp;
       };
       maintainerShell =
         system: pkgs:
@@ -177,6 +213,9 @@
           yazelix_zellij_bar = yazelixZellijBar.packages.${system}.yazelix_zellij_bar;
           yazelix_screen = yazelixScreen.packages.${system}.yzs;
           yazelix_ghostty_cursors = yazelixGhosttyCursors.packages.${system}.yazelix_ghostty_cursors;
+          yazelix_zellij_pane_orchestrator =
+            yazelixZellijPaneOrchestrator.packages.${system}.yazelix_zellij_pane_orchestrator;
+          yazelix_zellij_popup = yazelixZellijPopup.packages.${system}.yzpp;
           yazelix_yazi_assets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
         in
         {
@@ -194,6 +233,8 @@
           yazelix_screen = yazelix_screen;
           yazelix_wezterm = yazelix_wezterm;
           yazelix_yazi_assets = yazelix_yazi_assets;
+          yazelix_zellij_pane_orchestrator = yazelix_zellij_pane_orchestrator;
+          yazelix_zellij_popup = yazelix_zellij_popup;
           yzs = yazelix_screen;
         }
       );

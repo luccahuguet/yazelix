@@ -9,6 +9,7 @@
   components ? { },
   extraRuntimePackages ? [ ],
   yaziAssets ? null,
+  zellijPluginArtifacts ? { },
 }:
 
 let
@@ -37,6 +38,7 @@ import ./packaging/mk_runtime_tree.nix {
     components
     extraRuntimePackages
     yaziAssets
+    zellijPluginArtifacts
     ;
   src = runtimeSource;
   name = "yazelix-runtime";

@@ -9,6 +9,7 @@
   components ? { },
   extraRuntimePackages ? [ ],
   yaziAssets ? null,
+  zellijPluginArtifacts ? { },
 }:
 
 let
@@ -39,6 +40,7 @@ import ./packaging/mk_yazelix_package.nix {
     components
     extraRuntimePackages
     yaziAssets
+    zellijPluginArtifacts
     ;
   src = runtimeSource;
   metaPlatforms = firstPartyPlatforms;

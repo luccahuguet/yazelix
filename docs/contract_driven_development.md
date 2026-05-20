@@ -112,10 +112,6 @@ Use these validators as the current contract ratchet:
   - validates governed Rust test metadata and nearby `Contract:` markers
 - `yzx_repo_validator validate-package-rust-test-purity`
   - keeps package-time Rust tests away from host-only tools such as `nix` or `home-manager`
-- `yzx_repo_validator validate-pane-orchestrator-sync`
-  - checks tracked pane-orchestrator wasm sync metadata
-- `yzx_repo_validator validate-yzpp-sync`
-  - checks tracked yzpp wasm sync metadata while it remains a copied artifact
 - `yzx_repo_validator validate-workspace-session-contract`
   - checks built-in layout metadata, workspace runtime assets, pane-orchestrator commands, and Yazi workspace entrypoints
 

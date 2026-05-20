@@ -2,7 +2,7 @@
 
 ## Summary
 
-The Zellij pane orchestrator is a standalone Zellij plugin consumed by Yazelix through a tracked wasm artifact and sync stamp. Its source lives in the external `yazelix-zellij-pane-orchestrator` project, and the rest of Yazelix talks to it through one explicit pipe-command seam.
+The Zellij pane orchestrator is a standalone Zellij plugin consumed by Yazelix through a child package wasm artifact. Its source lives in the external `yazelix-zellij-pane-orchestrator` project, and the rest of Yazelix talks to it through one explicit pipe-command seam.
 
 ## Why
 
@@ -13,9 +13,9 @@ This contract defines the Yazelix integration boundary for the extracted plugin.
 ## Scope
 
 - External Rust source in `yazelix-zellij-pane-orchestrator`
-- Tracked runtime artifact at `configs/zellij/plugins/yazelix_pane_orchestrator.wasm`
+- Runtime package artifact at `configs/zellij/plugins/yazelix_pane_orchestrator.wasm`
 - Nushell client transport in `nushell/scripts/integrations/zellij.nu`
-- Runtime wasm sync and permission-cache ownership in Rust `zellij-materialization.generate`
+- Runtime wasm placement and permission-cache ownership in Rust `zellij-materialization.generate`
 - Generated Zellij keybind/config wiring in `configs/zellij/yazelix_overrides.kdl`
 - Focused tests in `nushell/scripts/dev/test_zellij_plugin_contracts.nu`, `nushell/scripts/dev/test_yzx_generated_configs.nu`, `nushell/scripts/dev/test_yzx_workspace_commands.nu`, `nushell/scripts/dev/test_yzx_popup_commands.nu`, and Rust unit tests in the orchestrator crate
 
@@ -69,14 +69,13 @@ This contract defines the Yazelix integration boundary for the extracted plugin.
 #### POC-005
 - Type: boundary
 - Status: live
-- Owner: plugin build/sync workflow
-- Statement: Rust source edits are not live until the pane orchestrator wasm is
-  rebuilt and synced from a clean source checkout. The tracked sync stamp records
-  the source Git commit and remote that produced the wasm. `cargo test` alone
-  does not prove live plugin behavior
-- Verification: validator
-  `yzx_repo_validator validate-pane-orchestrator-sync`; manual
-  `yzx dev build_pane_orchestrator --sync`
+- Owner: child package workflow
+- Statement: Rust source edits are not live until the pane orchestrator child
+  package is built and Yazelix is tested against that package through a lock or
+  explicit local flake override. `cargo test` alone does not prove live plugin
+  behavior
+- Verification: automated `nix build .#runtime`; manual local
+  `--override-input yazelixZellijPaneOrchestrator` smoke test
 
 ## Behavior
 
@@ -144,17 +143,16 @@ The plugin is authoritative for managed pane identity inside a Zellij session:
 - workspace state is tab-local and explicit workspace retargets are stronger than bootstrap state
 - sidebar Yazi identity returned from `retarget_workspace` is active-tab state, not a session-global cache scan
 
-### Build And Sync Ownership
+### Package Ownership
 
-Rust source edits are not live until the wasm is rebuilt and synced:
+Rust source edits are not live until the child package builds and Yazelix consumes that package:
 
 ```bash
-yzx dev build_pane_orchestrator --sync
+nix build ../yazelix-zellij-pane-orchestrator#yazelix_zellij_pane_orchestrator --no-link
+nix build .#runtime --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-orchestrator --no-link
 ```
 
-The sync step refuses a dirty `yazelix-zellij-pane-orchestrator` checkout, updates the tracked wasm and stable runtime wasm path, and writes a sync stamp containing the source Git commit, source remote, source hash, build command, and wasm hash. `yzx_repo_validator validate-pane-orchestrator-sync` is the high-signal repository gate for the copied artifact. After a synced plugin change, validate in a fresh Yazelix session or with `yzx restart`; do not treat `cargo test` alone as proof of live plugin behavior.
-
-The longer-term package boundary is defined in [First-Party Zellij Plugin Wasm Ownership](./first_party_zellij_plugin_wasm_ownership.md). Until the pane-orchestrator child repository publishes a package output that Yazelix can consume as a locked input, the copied wasm plus sync stamp remains the supported interim path.
+After the child commit is pushed, update the main Yazelix lock to that child revision and rerun the main runtime build without local overrides. After a plugin behavior change, validate in a fresh Yazelix session or with `yzx restart`; do not treat `cargo test` alone as proof of live plugin behavior.
 
 ## Non-goals
 
@@ -168,13 +166,13 @@ The longer-term package boundary is defined in [First-Party Zellij Plugin Wasm O
 2. Workspace mutation flows use `retarget_workspace` as the single live pipe command for tab workspace changes.
 3. Popup, menu, and config UI panes are identified as `yzpp`-managed panes, not pane-orchestrator-opened panes.
 4. Sidebar/editor focus, workspace-terminal opening, and layout-family commands remain keyed through generated Zellij `MessagePlugin` entries that target the loaded plugin alias without re-supplying `runtime_dir`.
-5. Rust source changes are rebuilt and synced before runtime behavior is claimed fixed.
+5. Rust source changes are packaged and consumed by the main runtime before runtime behavior is claimed fixed.
 
 ## Verification
 
 - `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
-- `yzx dev build_pane_orchestrator --sync`
-- `yzx_repo_validator validate-pane-orchestrator-sync`
+- `nix build ../yazelix-zellij-pane-orchestrator#yazelix_zellij_pane_orchestrator --no-link`
+- `nix build .#runtime --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-orchestrator --no-link`
 - `nu nushell/scripts/dev/test_zellij_plugin_contracts.nu`
 - `nu nushell/scripts/dev/test_yzx_generated_configs.nu`
 - `nu nushell/scripts/dev/test_yzx_commands.nu`

@@ -1511,14 +1511,9 @@ fn run_yzx_dev(args: &[String]) -> Result<i32, CoreError> {
     match sub {
         "inspect_session" => run_zellij_inspect_session(tail),
         "profile" => run_dev_profile(tail),
-        "build_pane_orchestrator"
-        | "bump"
-        | "lint_nu"
-        | "rust"
-        | "sync_issues"
-        | "sync_yzpp_wasm"
-        | "test"
-        | "update" => Err(repo_only_dev_command_error(sub)),
+        "bump" | "lint_nu" | "rust" | "sync_issues" | "test" | "update" => {
+            Err(repo_only_dev_command_error(sub))
+        }
         other => Err(CoreError::usage(format!(
             "Unknown yzx dev subcommand: {other}"
         ))),
