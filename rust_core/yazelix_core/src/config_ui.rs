@@ -1037,8 +1037,8 @@ fn keybinding_map_detail_lines(field: &ConfigUiField) -> Vec<Line<'static>> {
         detail_line("current", &field.current_value),
         detail_line("default", &field.default_value),
         detail_line("type", &field.kind),
-        detail_line("apply", &field.apply_status.label),
-        detail_line("active", &field.apply_status.detail),
+        detail_line("takes effect", &field.apply_status.label),
+        detail_line("after save", &field.apply_status.detail),
     ];
     if !field.validation.is_empty() {
         lines.push(detail_line("validation", &field.validation));
@@ -2024,49 +2024,61 @@ fn build_field_row(
         allowed_values,
         validation,
         rebuild_required,
-        apply_status: apply_status_for_mode(apply_mode),
+        apply_status: apply_status_for_setting(path, apply_mode),
     }
 }
 
-fn apply_status_for_mode(apply_mode: RuntimeApplyMode) -> ConfigUiApplyStatus {
+fn apply_status_for_setting(path: &str, apply_mode: RuntimeApplyMode) -> ConfigUiApplyStatus {
     let (summary, detail, pending) = match apply_mode {
-        RuntimeApplyMode::Live => ("active", "Saved values are active in this process.", false),
+        RuntimeApplyMode::Live => ("now", "Saved changes are active immediately.", false),
         RuntimeApplyMode::LiveWithPaneRefresh => (
-            "pane refresh",
-            "Saved changes require a Yazelix-owned pane or plugin refresh before running panes use them.",
-            true,
+            "now",
+            "Yazelix reloads this in the active pane owner when you save.",
+            false,
         ),
-        RuntimeApplyMode::GeneratedRuntimeRefresh => (
-            "gen refresh",
-            "Saved changes regenerate managed runtime config; running tools must be restarted or reopened.",
-            true,
-        ),
+        RuntimeApplyMode::GeneratedRuntimeRefresh => generated_runtime_effect_status(path),
         RuntimeApplyMode::TabSessionRestart => (
-            "tab restart",
-            "Saved changes become active after a fresh Yazelix tab or session starts.",
+            "after Yazelix restart",
+            "Saved changes are read from the launch snapshot when Yazelix starts.",
             true,
         ),
         RuntimeApplyMode::ShellTerminalRestart => (
-            "shell restart",
-            "Saved changes become active in newly launched terminal or shell processes.",
+            "after Yazelix restart",
+            "Saved changes affect the shell or terminal environment that Yazelix starts with.",
             true,
         ),
         RuntimeApplyMode::PackageHomeManagerActivation => (
-            "HM activate",
-            "Edit the Home Manager source and run home-manager switch before the runtime can use this value.",
+            "after Home Manager switch",
+            "Edit the Home Manager source and run home-manager switch before Yazelix can use this value.",
             true,
         ),
         RuntimeApplyMode::NeverLive => (
-            "not live",
-            "This setting is a native/import/generated ownership boundary and is not live-applicable.",
+            "not applicable",
+            "This setting is an ownership boundary and is not live-applicable.",
             true,
         ),
     };
     ConfigUiApplyStatus {
         summary: summary.to_string(),
-        label: apply_mode.label().to_string(),
+        label: summary.to_string(),
         detail: detail.to_string(),
         pending,
+    }
+}
+
+fn generated_runtime_effect_status(path: &str) -> (&'static str, &'static str, bool) {
+    if path.starts_with("yazi.") || path.starts_with("helix.") {
+        (
+            "after pane reopen",
+            "Yazelix regenerates managed config; reopen the affected pane to use it.",
+            true,
+        )
+    } else {
+        (
+            "after Yazelix restart",
+            "Yazelix regenerates managed config; restart Yazelix to use it.",
+            true,
+        )
     }
 }
 
@@ -2082,7 +2094,6 @@ fn field_description(field: &ContractField, metadata: &FieldUiMetadata) -> Strin
     if field.rebuild_required {
         parts.push("takes effect after runtime rebuild or rematerialization".to_string());
     }
-    parts.push(format!("apply: {}", field.apply_mode.label()));
     parts.join("; ")
 }
 
@@ -2323,7 +2334,7 @@ mod tests {
                 .collect(),
             validation: String::new(),
             rebuild_required: false,
-            apply_status: apply_status_for_mode(RuntimeApplyMode::TabSessionRestart),
+            apply_status: apply_status_for_setting(path, RuntimeApplyMode::TabSessionRestart),
         }
     }
 
@@ -2494,7 +2505,7 @@ mod tests {
         let field = model_field(&model, "zellij.widget_tray");
 
         assert_eq!(field.current_value, "[7 items]");
-        assert_eq!(field.apply_status.summary, "gen refresh");
+        assert_eq!(field.apply_status.summary, "after Yazelix restart");
         let input = edit_input_for_field(field);
         assert!(input.starts_with("[\"editor\",\"shell\",\"term\""));
         assert_eq!(
@@ -2754,7 +2765,7 @@ mod tests {
         assert!(details.contains("keymap"));
     }
 
-    // Defends: machine-readable apply modes from main_config_contract.toml reach config UI display facts for the first live slice and restart-scoped fields.
+    // Defends: machine-readable apply modes from main_config_contract.toml reach clear user-facing takes-effect labels.
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn model_exposes_apply_statuses_from_contract() {
@@ -2765,27 +2776,38 @@ mod tests {
         let model = build_config_ui_model(&request).expect("model");
 
         let screen_saver = model_field(&model, "zellij.screen_saver_enabled");
-        assert_eq!(screen_saver.apply_status.summary, "pane refresh");
-        assert!(screen_saver.apply_status.pending);
-        assert!(screen_saver.apply_status.detail.contains("pane or plugin"));
+        assert_eq!(screen_saver.apply_status.summary, "now");
+        assert!(!screen_saver.apply_status.pending);
+        assert!(
+            screen_saver
+                .apply_status
+                .detail
+                .contains("active pane owner")
+        );
 
         let editor_command = model_field(&model, "editor.command");
-        assert_eq!(editor_command.apply_status.summary, "tab restart");
+        assert_eq!(editor_command.apply_status.summary, "after Yazelix restart");
 
         let terminal_config_mode = model_field(&model, "terminal.config_mode");
-        assert_eq!(terminal_config_mode.apply_status.summary, "shell restart");
+        assert_eq!(
+            terminal_config_mode.apply_status.summary,
+            "after Yazelix restart"
+        );
 
         let widget_tray = model_field(&model, "zellij.widget_tray");
-        assert_eq!(widget_tray.apply_status.summary, "gen refresh");
+        assert_eq!(widget_tray.apply_status.summary, "after Yazelix restart");
         assert!(
             widget_tray
                 .apply_status
                 .detail
-                .contains("managed runtime config")
+                .contains("regenerates managed config")
         );
 
         let popup_width = model_field(&model, "zellij.popup_width_percent");
-        assert_eq!(popup_width.apply_status.summary, "gen refresh");
+        assert_eq!(popup_width.apply_status.summary, "after Yazelix restart");
+
+        let yazi_theme = model_field(&model, "yazi.theme");
+        assert_eq!(yazi_theme.apply_status.summary, "after pane reopen");
     }
 
     // Defends: Home Manager-owned settings are presented as activation-scoped even when the field's intrinsic apply mode is narrower.
@@ -2811,7 +2833,10 @@ mod tests {
         let popup_width = model_field(&model, "zellij.popup_width_percent");
 
         assert_eq!(model.config_owner, ConfigUiPathOwner::HomeManager);
-        assert_eq!(popup_width.apply_status.summary, "HM activate");
+        assert_eq!(
+            popup_width.apply_status.summary,
+            "after Home Manager switch"
+        );
         assert!(
             popup_width
                 .apply_status

@@ -36,15 +36,17 @@ impl RuntimeApplyMode {
 
     pub fn label(self) -> &'static str {
         match self {
-            RuntimeApplyMode::Live => "Applies now",
-            RuntimeApplyMode::LiveWithPaneRefresh => "Applies after pane refresh",
-            RuntimeApplyMode::GeneratedRuntimeRefresh => "Saved, refresh generated config",
-            RuntimeApplyMode::TabSessionRestart => "Saved, restart this tab/session",
-            RuntimeApplyMode::ShellTerminalRestart => "Saved, restart terminal/shell",
-            RuntimeApplyMode::PackageHomeManagerActivation => {
-                "Saved, activate package/Home Manager"
+            RuntimeApplyMode::Live => "Takes effect now",
+            RuntimeApplyMode::LiveWithPaneRefresh => "Takes effect now",
+            RuntimeApplyMode::GeneratedRuntimeRefresh => {
+                "Takes effect after generated config refresh"
             }
-            RuntimeApplyMode::NeverLive => "Not live-applicable",
+            RuntimeApplyMode::TabSessionRestart => "Takes effect after Yazelix restart",
+            RuntimeApplyMode::ShellTerminalRestart => "Takes effect after Yazelix restart",
+            RuntimeApplyMode::PackageHomeManagerActivation => {
+                "Takes effect after Home Manager switch"
+            }
+            RuntimeApplyMode::NeverLive => "Not applicable",
         }
     }
 }

@@ -40,9 +40,9 @@ impl GeneratedRuntimeTool {
 
     pub fn restart_guidance(self) -> &'static str {
         match self {
-            GeneratedRuntimeTool::Yazi => "restart or reopen the affected Yazi/sidebar pane",
-            GeneratedRuntimeTool::Zellij => "restart this Yazelix tab/session",
-            GeneratedRuntimeTool::Helix => "restart or reopen the affected Helix editor pane",
+            GeneratedRuntimeTool::Yazi => "reopen the affected Yazi/sidebar pane",
+            GeneratedRuntimeTool::Zellij => "restart this Yazelix window",
+            GeneratedRuntimeTool::Helix => "reopen the affected Helix editor pane",
         }
     }
 }
@@ -295,7 +295,7 @@ fn refresh_pane_orchestrator_runtime_config(
                 &request.setting_path,
                 "pane_orchestrator_runtime_config_pipe_failed",
                 "Yazelix could not send the pane-orchestrator runtime-config reload.",
-                "Run this from inside an active Yazelix/Zellij session with the pane orchestrator loaded, then retry or restart the tab.",
+                "Run this from inside an active Yazelix/Zellij session with the pane orchestrator loaded, then retry or restart Yazelix.",
                 json!({
                     "source_code": source.code(),
                     "source_class": source.class().as_str(),
@@ -391,7 +391,7 @@ fn pane_orchestrator_runtime_reload_status(
             setting_path,
             "pane_orchestrator_runtime_config_not_ready",
             "The pane orchestrator is not ready to reload runtime config.",
-            "Wait for the Yazelix tab to finish loading, then save again or restart the tab.",
+            "Wait for Yazelix to finish loading, then save again or restart Yazelix.",
             json!({ "response": response }),
         )),
         "permissions_denied" => Err(pane_refresh_error(
@@ -422,14 +422,14 @@ fn pane_orchestrator_runtime_reload_status(
             setting_path,
             "pane_orchestrator_runtime_config_stale_generation",
             "The active pane orchestrator was loaded from a different generated Zellij config generation.",
-            "Restart this Yazelix tab or session so the plugin and generated config are aligned.",
+            "Restart Yazelix so the plugin and generated config are aligned.",
             json!({ "response": response }),
         )),
         "" => Err(pane_refresh_error(
             setting_path,
             "pane_orchestrator_runtime_config_missing_response",
             "The pane orchestrator did not respond to the runtime-config reload.",
-            "Restart this Yazelix tab or session so the current pane orchestrator plugin is loaded.",
+            "Restart Yazelix so the current pane orchestrator plugin is loaded.",
             json!({ "response": response }),
         )),
         other => Err(pane_refresh_error(
@@ -438,7 +438,7 @@ fn pane_orchestrator_runtime_reload_status(
             format!(
                 "The pane orchestrator returned an unknown runtime-config reload response: {other}"
             ),
-            "Restart this Yazelix tab or session, then save again.",
+            "Restart Yazelix, then save again.",
             json!({ "response": other }),
         )),
     }
@@ -724,7 +724,7 @@ apply_mode = "generated_runtime_refresh"
                 .message()
                 .contains("Saved zellij.screen_saver_enabled")
         );
-        assert!(error.remediation().contains("Restart this Yazelix tab"));
+        assert!(error.remediation().contains("Restart Yazelix"));
         assert_eq!(error.details()["setting"], "zellij.screen_saver_enabled");
     }
 }

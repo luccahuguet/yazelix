@@ -9,9 +9,9 @@ use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Tab
 use std::collections::BTreeSet;
 
 const HEADER_HORIZONTAL_PADDING: u16 = 1;
-const FIELD_APPLY_COLUMN_WIDTH: usize = 13;
-const FIELD_SETTING_COLUMN_WIDTH: usize = 34;
-const FIELD_VALUE_COLUMN_WIDTH: usize = 22;
+const FIELD_TAKES_EFFECT_COLUMN_WIDTH: usize = 26;
+const FIELD_SETTING_COLUMN_WIDTH: usize = 30;
+const FIELD_VALUE_COLUMN_WIDTH: usize = 18;
 const STATUS_COLUMN_WIDTH: usize = 9;
 const STATUS_ITEM_COLUMN_WIDTH: usize = 42;
 
@@ -230,7 +230,7 @@ fn list_header_line(app: &ConfigUiApp) -> Line<'static> {
 fn field_list_header_line() -> Line<'static> {
     Line::from(vec![
         Span::styled(
-            fixed_label("apply", FIELD_APPLY_COLUMN_WIDTH),
+            fixed_label("takes effect", FIELD_TAKES_EFFECT_COLUMN_WIDTH),
             column_header_style(),
         ),
         Span::styled(
@@ -277,7 +277,7 @@ pub(crate) fn row_line_for_model(model: &ConfigUiModel, row: UiRowRef) -> Line<'
             let field = &model.fields[index];
             Line::from(vec![
                 Span::styled(
-                    fixed_label(&field.apply_status.summary, FIELD_APPLY_COLUMN_WIDTH),
+                    fixed_label(&field.apply_status.summary, FIELD_TAKES_EFFECT_COLUMN_WIDTH),
                     apply_status_style(&field.apply_status),
                 ),
                 Span::styled(
@@ -361,8 +361,8 @@ pub(crate) fn default_field_detail_lines(field: &ConfigUiField) -> Vec<Line<'sta
         detail_line("current", &field.current_value),
         detail_line("default", &field.default_value),
         detail_line("type", &field.kind),
-        detail_line("apply", &field.apply_status.label),
-        detail_line("active", &field.apply_status.detail),
+        detail_line("takes effect", &field.apply_status.label),
+        detail_line("after save", &field.apply_status.detail),
     ];
     if !field.validation.is_empty() {
         lines.push(detail_line("validation", &field.validation));
@@ -849,10 +849,10 @@ mod tests {
                 validation: String::new(),
                 rebuild_required: false,
                 apply_status: ConfigUiApplyStatus {
-                    summary: "tab restart".to_string(),
-                    label: "requires tab restart".to_string(),
-                    detail: "Restart this tab after saving".to_string(),
-                    pending: false,
+                    summary: "after Yazelix restart".to_string(),
+                    label: "after Yazelix restart".to_string(),
+                    detail: "Restart Yazelix after saving".to_string(),
+                    pending: true,
                 },
             }],
             sidecars: Vec::new(),
@@ -869,7 +869,7 @@ mod tests {
 
         assert_eq!(
             rendered_cells(&line),
-            vec!["tab restart", "core.debug_mode", "false"]
+            vec!["after Yazelix restart", "core.debug_mode", "false"]
         );
         assert!(!rendered_text(&line).contains("explicit"));
     }
@@ -879,7 +879,7 @@ mod tests {
     fn field_header_names_remaining_columns() {
         assert_eq!(
             rendered_cells(&field_list_header_line()),
-            vec!["apply", "setting", "value"]
+            vec!["takes effect", "setting", "value"]
         );
     }
 
