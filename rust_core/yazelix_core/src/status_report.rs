@@ -1,6 +1,6 @@
 //! Typed `yzx status` summary construction (machine-readable and human-rendered).
 
-use crate::bridge::CoreError;
+use crate::bridge::{CoreError, ErrorClass};
 use crate::runtime_components::read_runtime_component_manifest;
 use crate::runtime_materialization::{
     RuntimeMaterializationPlanRequest, plan_runtime_materialization,
@@ -24,6 +24,19 @@ fn path_to_string(path: &Path) -> String {
 
 fn default_terminals_value() -> JsonValue {
     json!(["ghostty"])
+}
+
+fn logs_dir_from_state_path(state_path: &Path) -> Result<String, CoreError> {
+    let state_dir = state_path.parent().and_then(Path::parent).ok_or_else(|| {
+        CoreError::classified(
+            ErrorClass::Internal,
+            "invalid_runtime_state_path_for_status",
+            "Could not derive Yazelix state directory from runtime materialization state path.",
+            "Report this as a Yazelix internal error.",
+            json!({ "state_path": path_to_string(state_path) }),
+        )
+    })?;
+    Ok(path_to_string(&state_dir.join("logs")))
 }
 
 fn runtime_components_summary(runtime_dir: &Path) -> JsonValue {
@@ -104,7 +117,7 @@ pub fn compute_status_report(
     };
 
     let runtime_dir_str = path_to_string(&request.runtime_dir);
-    let logs_dir = path_to_string(&request.runtime_dir.join("logs"));
+    let logs_dir = logs_dir_from_state_path(&request.state_path)?;
 
     let mut summary = JsonMap::new();
     summary.insert("version".to_string(), json!(yazelix_version));
@@ -168,5 +181,16 @@ mod tests {
 
         assert_eq!(summary["status"], "ok");
         assert_eq!(summary["disabled"], json!(["cursors"]));
+    }
+
+    // Defends: `yzx status` points users at the state-owned logs directory used by startup.
+    #[test]
+    fn logs_dir_comes_from_yazelix_state_path() {
+        let tmp = TempDir::new().unwrap();
+        let state_path = tmp.path().join("state").join("rebuild_hash");
+
+        let logs_dir = logs_dir_from_state_path(&state_path).unwrap();
+
+        assert_eq!(logs_dir, path_to_string(&tmp.path().join("logs")));
     }
 }

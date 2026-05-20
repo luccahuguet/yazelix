@@ -28,6 +28,11 @@ const YZPP_PLUGIN_PREFIX: &str = YZPP_PLUGIN_ALIAS;
 const YZPP_WASM_NAME: &str = "yzpp.wasm";
 const GENERATION_METADATA_NAME: &str = ".yazelix_generation.json";
 const GENERATION_FINGERPRINT_SCHEMA_VERSION: u64 = 5;
+const GENERATED_CONFIG_MARKERS: &[&str] = &[
+    "GENERATED ZELLIJ CONFIG (YAZELIX)",
+    "yazelix_pane_orchestrator",
+    "yzpp",
+];
 const ZELLIJ_KEYBINDINGS_CONFIG_KEY: &str = "zellij_keybindings";
 const ZELLIJ_NATIVE_KEYBINDINGS_CONFIG_KEY: &str = "zellij_native_keybindings";
 
@@ -75,7 +80,6 @@ pub struct ZellijMaterializationRequest {
 pub struct ZellijMaterializationData {
     pub merged_config_path: String,
     pub merged_config_dir: String,
-    pub reused: bool,
     pub base_config_source: String,
     pub base_config_path: String,
     pub generation_fingerprint: String,
@@ -186,7 +190,6 @@ pub fn generate_zellij_materialization(
     let render_plan_request =
         build_render_plan_request(&config, &layout_dir, &resolved_default_shell)?;
     let render_plan = compute_zellij_render_plan(&render_plan_request)?;
-    let reuse_allowed = string_config(&config, "zellij_theme", "default") != "random";
     let generation_fingerprint = build_generation_fingerprint(
         &request.runtime_dir,
         &base_config_source,
@@ -196,46 +199,6 @@ pub fn generate_zellij_materialization(
         &zellij_native_keybindings,
         &render_plan,
     )?;
-    if reuse_allowed
-        && can_reuse_generated_zellij_state(
-            &request.zellij_config_dir,
-            &merged_config_path,
-            &source_layouts_dir,
-            &generation_fingerprint,
-            &plugin_artifacts,
-        )?
-    {
-        if request.seed_plugin_permissions {
-            upsert_plugin_permission_blocks(&plugin_artifacts)?;
-        }
-        return Ok(ZellijMaterializationData {
-            merged_config_path: merged_config_path.to_string_lossy().to_string(),
-            merged_config_dir: request.zellij_config_dir.to_string_lossy().to_string(),
-            reused: true,
-            base_config_source: base_config_source.source,
-            base_config_path: base_config_source
-                .path
-                .map(|path| path.to_string_lossy().to_string())
-                .unwrap_or_default(),
-            generation_fingerprint,
-            pane_orchestrator_runtime_path: pane_orchestrator_artifact
-                .runtime_path
-                .to_string_lossy()
-                .to_string(),
-            zjstatus_runtime_path: zjstatus_artifact.runtime_path.to_string_lossy().to_string(),
-            permissions_cache_path: zellij_permissions_cache_path()?
-                .to_string_lossy()
-                .to_string(),
-            seeded_plugin_permissions: request.seed_plugin_permissions,
-            generated_layouts: expected_layout_targets(
-                &source_layouts_dir,
-                &request.zellij_config_dir,
-            )?
-            .into_iter()
-            .map(|path| path.to_string_lossy().to_string())
-            .collect(),
-        });
-    }
 
     fs::create_dir_all(&request.zellij_config_dir).map_err(|source| {
         CoreError::io(
@@ -277,7 +240,6 @@ pub fn generate_zellij_materialization(
     Ok(ZellijMaterializationData {
         merged_config_path: merged_config_path.to_string_lossy().to_string(),
         merged_config_dir: request.zellij_config_dir.to_string_lossy().to_string(),
-        reused: false,
         base_config_source: base_config_source.source,
         base_config_path: base_config_source
             .path
@@ -1717,13 +1679,6 @@ fn list_top_level_kdl_files(dir: &Path) -> Result<Vec<PathBuf>, CoreError> {
     Ok(files)
 }
 
-fn expected_layout_targets(
-    source_layouts_dir: &Path,
-    merged_config_dir: &Path,
-) -> Result<Vec<PathBuf>, CoreError> {
-    expected_layout_targets_for_dir(source_layouts_dir, &merged_config_dir.join("layouts"))
-}
-
 fn expected_layout_targets_for_dir(
     source_layouts_dir: &Path,
     target_dir: &Path,
@@ -1864,7 +1819,7 @@ fn sync_plugin_artifacts(
     seed_plugin_permissions: bool,
 ) -> Result<(), CoreError> {
     for artifact in plugin_artifacts.iter() {
-        copy_file_atomic(&artifact.tracked_path, &artifact.runtime_path)?;
+        sync_plugin_artifact(artifact)?;
         remove_runtime_plugins_by_prefix(artifact.prefix, Some(&artifact.runtime_path))?;
         preserve_plugin_permissions(
             artifact.prefix,
@@ -1877,6 +1832,15 @@ fn sync_plugin_artifacts(
         upsert_plugin_permission_blocks(plugin_artifacts)?;
     }
     Ok(())
+}
+
+fn sync_plugin_artifact(artifact: &PluginArtifact) -> Result<(), CoreError> {
+    if artifact.runtime_path.exists() && hash_file(&artifact.runtime_path)? == artifact.tracked_hash
+    {
+        return Ok(());
+    }
+
+    copy_file_atomic(&artifact.tracked_path, &artifact.runtime_path)
 }
 
 fn remove_runtime_plugins_by_prefix(
@@ -2136,46 +2100,6 @@ fn build_generation_fingerprint(
     ))
 }
 
-fn can_reuse_generated_zellij_state(
-    merged_config_dir: &Path,
-    merged_config_path: &Path,
-    source_layouts_dir: &Path,
-    fingerprint: &str,
-    plugin_artifacts: &[PluginArtifact; 3],
-) -> Result<bool, CoreError> {
-    let cached_fingerprint = load_cached_generation_fingerprint(merged_config_dir)?;
-    if cached_fingerprint != fingerprint || !merged_config_path.exists() {
-        return Ok(false);
-    }
-    for target in expected_layout_targets(source_layouts_dir, merged_config_dir)? {
-        if !target.exists() {
-            return Ok(false);
-        }
-    }
-    for artifact in plugin_artifacts.iter() {
-        if !artifact.runtime_path.exists()
-            || hash_file(&artifact.runtime_path)? != artifact.tracked_hash
-        {
-            return Ok(false);
-        }
-    }
-    Ok(true)
-}
-
-fn load_cached_generation_fingerprint(merged_config_dir: &Path) -> Result<String, CoreError> {
-    let metadata_path = merged_config_dir.join(GENERATION_METADATA_NAME);
-    if !metadata_path.exists() {
-        return Ok(String::new());
-    }
-    let raw = read_text(&metadata_path, "read_zellij_generation_metadata")?;
-    let parsed = serde_json::from_str::<JsonValue>(&raw).unwrap_or(JsonValue::Null);
-    Ok(parsed
-        .get("fingerprint")
-        .and_then(JsonValue::as_str)
-        .unwrap_or("")
-        .to_string())
-}
-
 fn record_generation_fingerprint(
     merged_config_dir: &Path,
     fingerprint: &str,
@@ -2195,6 +2119,21 @@ fn record_generation_fingerprint(
         )
     })?;
     write_text_atomic(&metadata_path, &content)
+}
+
+pub(crate) fn generated_zellij_config_has_yazelix_markers(path: &Path) -> Result<bool, CoreError> {
+    let content = fs::read_to_string(path).map_err(|source| {
+        CoreError::io(
+            "read_generated_zellij_config",
+            "Could not read generated Zellij config",
+            "Check permissions for the Yazelix state directory and retry.",
+            path.to_string_lossy(),
+            source,
+        )
+    })?;
+    Ok(GENERATED_CONFIG_MARKERS
+        .iter()
+        .all(|marker| content.contains(marker)))
 }
 
 fn copy_file_atomic(source: &Path, target: &Path) -> Result<(), CoreError> {

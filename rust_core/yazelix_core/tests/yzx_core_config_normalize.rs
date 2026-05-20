@@ -720,8 +720,50 @@ fn runtime_materialization_materialize_writes_generated_artifacts_and_records_st
             .unwrap();
     assert!(second_output.status.success());
     let second: Value = serde_json::from_slice(&second_output.stdout).unwrap();
-    assert_eq!(second["data"]["zellij"]["reused"], true);
     assert_eq!(second["data"]["zellij"]["seeded_plugin_permissions"], true);
+}
+
+// Regression: generated Zellij config is disposable launch state, so a plain native config in that path is overwritten even when hashes are current.
+#[test]
+fn runtime_materialization_materialize_replaces_plain_generated_zellij_config() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    let request = runtime_materialization_canonical_settings_request(&fixture);
+
+    let initial_output =
+        runtime_materialization_command(&fixture, "runtime-materialization.materialize")
+            .arg("--request-json")
+            .arg(request.to_string())
+            .output()
+            .unwrap();
+    assert!(
+        initial_output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&initial_output.stderr)
+    );
+    fs::write(
+        fixture.zellij_dir.join("config.kdl"),
+        "keybinds clear-defaults=true {\n    normal {}\n}\n",
+    )
+    .unwrap();
+
+    let repair_output =
+        runtime_materialization_command(&fixture, "runtime-materialization.materialize")
+            .arg("--request-json")
+            .arg(request.to_string())
+            .output()
+            .unwrap();
+
+    assert!(
+        repair_output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&repair_output.stderr)
+    );
+    let regenerated = fs::read_to_string(fixture.zellij_dir.join("config.kdl")).unwrap();
+    assert!(regenerated.contains("GENERATED ZELLIJ CONFIG (YAZELIX)"));
+    assert!(regenerated.contains("yazelix_pane_orchestrator"));
+    assert!(regenerated.contains("yzpp"));
 }
 
 // Defends: runtime-materialization.repair repairs missing managed artifacts through the Rust lifecycle owner instead of bouncing back into a Nu coordinator.

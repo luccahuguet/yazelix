@@ -3,6 +3,7 @@
 use crate::layout_family_contract::{
     expected_zellij_generated_layout_files, validate_zellij_layout_family_contract,
 };
+use crate::zellij_materialization::generated_zellij_config_has_yazelix_markers;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs;
@@ -140,11 +141,24 @@ fn generated_workspace_state_finding(
 ) -> WorkspaceAssetFinding {
     let mut issues = Vec::new();
     let zellij_state_dir = state_dir.join("configs").join("zellij");
-    if !zellij_state_dir.join("config.kdl").is_file() {
+    let generated_config = zellij_state_dir.join("config.kdl");
+    if !generated_config.is_file() {
         issues.push(format!(
             "missing generated Zellij config: {}",
-            zellij_state_dir.join("config.kdl").display()
+            generated_config.display()
         ));
+    } else {
+        match generated_zellij_config_has_yazelix_markers(&generated_config) {
+            Ok(true) => {}
+            Ok(false) => issues.push(format!(
+                "invalid generated Zellij config missing Yazelix overlay markers: {}",
+                generated_config.display()
+            )),
+            Err(error) => issues.push(format!(
+                "could not validate generated Zellij config: {}",
+                error.message()
+            )),
+        }
     }
     if !zellij_state_dir.join(".yazelix_generation.json").is_file() {
         issues.push(format!(
@@ -306,7 +320,11 @@ swap_layouts = ["single_open"]
             )
             .unwrap();
         }
-        fs::write(state_zellij.join("config.kdl"), "").unwrap();
+        fs::write(
+            state_zellij.join("config.kdl"),
+            "GENERATED ZELLIJ CONFIG (YAZELIX)\nyazelix_pane_orchestrator\nyzpp\n",
+        )
+        .unwrap();
         fs::write(state_zellij.join(".yazelix_generation.json"), "{}").unwrap();
         fs::write(state_zellij.join("layouts").join("yzx_side.kdl"), "").unwrap();
         fs::write(state_zellij.join("layouts").join("yzx_side.swap.kdl"), "").unwrap();
@@ -355,5 +373,39 @@ swap_layouts = ["single_open"]
             Some("repair_generated_runtime_state")
         );
         assert!(generated.details.as_ref().unwrap().contains("stale"));
+    }
+
+    // Regression: doctor should catch a native config copied into the generated Zellij config path.
+    #[test]
+    fn workspace_asset_report_flags_plain_generated_zellij_config_as_fixable() {
+        let (_tmp, runtime, state) = write_workspace_fixture();
+        fs::write(
+            state.join("configs").join("zellij").join("config.kdl"),
+            "keybinds clear-defaults=true {\n    normal {}\n}\n",
+        )
+        .unwrap();
+
+        let findings = evaluate_workspace_asset_report(&WorkspaceAssetEvaluateRequest {
+            runtime_dir: runtime,
+            state_dir: state,
+        });
+        let generated = findings
+            .iter()
+            .find(|finding| finding.workspace_asset_check == "generated_workspace_assets")
+            .unwrap();
+
+        assert_eq!(generated.status, "error");
+        assert!(generated.fix_available);
+        assert_eq!(
+            generated.fix_action.as_deref(),
+            Some("repair_generated_runtime_state")
+        );
+        assert!(
+            generated
+                .details
+                .as_ref()
+                .unwrap()
+                .contains("overlay markers")
+        );
     }
 }

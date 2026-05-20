@@ -11,7 +11,7 @@ use crate::yazi_materialization::{
 };
 use crate::zellij_materialization::{
     ZellijMaterializationData, ZellijMaterializationRequest, generate_zellij_materialization,
-    zellij_permissions_cache_path,
+    generated_zellij_config_has_yazelix_markers, zellij_permissions_cache_path,
 };
 use crate::zellij_render_plan::MANAGED_SIDEBAR_LAYOUT_NAME;
 use serde::{Deserialize, Serialize};
@@ -183,11 +183,12 @@ pub fn plan_runtime_materialization(
             path: zellij_permissions_path.to_string_lossy().to_string(),
         },
     ];
-    let mut missing_artifacts = expected_artifacts
-        .iter()
-        .filter(|artifact| is_missing_file(Path::new(&artifact.path)))
-        .cloned()
-        .collect::<Vec<_>>();
+    let mut missing_artifacts = Vec::new();
+    for artifact in &expected_artifacts {
+        if runtime_artifact_needs_repair(artifact)? {
+            missing_artifacts.push(artifact.clone());
+        }
+    }
     if !config_state.needs_refresh
         && missing_artifacts.is_empty()
         && generated_yazi_static_assets_missing(&request.runtime_dir, &request.yazi_config_dir)?
@@ -208,7 +209,7 @@ pub fn plan_runtime_materialization(
         (
             "repair_missing_artifacts",
             format!(
-                "generated runtime artifacts missing: {}",
+                "generated runtime artifacts missing or invalid: {}",
                 missing_artifacts
                     .iter()
                     .map(|artifact| artifact.label.as_str())
@@ -383,17 +384,17 @@ fn build_repair_directive(
 pub fn apply_runtime_materialization(
     request: &RuntimeMaterializationApplyRequest,
 ) -> Result<RuntimeMaterializationApplyData, CoreError> {
-    let missing_artifacts = request
-        .expected_artifacts
-        .iter()
-        .filter(|artifact| is_missing_file(Path::new(&artifact.path)))
-        .cloned()
-        .collect::<Vec<_>>();
+    let mut missing_artifacts = Vec::new();
+    for artifact in &request.expected_artifacts {
+        if runtime_artifact_needs_repair(artifact)? {
+            missing_artifacts.push(artifact.clone());
+        }
+    }
     if !missing_artifacts.is_empty() {
         return Err(CoreError::classified(
             ErrorClass::Runtime,
             "missing_generated_artifacts",
-            "Yazelix generated runtime artifacts are missing after materialization",
+            "Yazelix generated runtime artifacts are missing or invalid after materialization",
             "Regenerate the managed runtime state and retry.",
             json!({ "missing_artifacts": missing_artifacts }),
         ));
@@ -442,6 +443,17 @@ fn is_missing_file(path: &Path) -> bool {
         Ok(metadata) => !metadata.is_file(),
         Err(_) => true,
     }
+}
+
+fn runtime_artifact_needs_repair(artifact: &RuntimeArtifact) -> Result<bool, CoreError> {
+    let path = Path::new(&artifact.path);
+    if is_missing_file(path) {
+        return Ok(true);
+    }
+    if artifact.label == "generated Zellij config" {
+        return Ok(!generated_zellij_config_has_yazelix_markers(path)?);
+    }
+    Ok(false)
 }
 
 // Test lane: maintainer
@@ -565,7 +577,12 @@ mod tests {
             if let Some(parent) = path.parent() {
                 fs::create_dir_all(parent).unwrap();
             }
-            fs::write(path, "").unwrap();
+            let content = if artifact.label == "generated Zellij config" {
+                "GENERATED ZELLIJ CONFIG (YAZELIX)\nyazelix_pane_orchestrator\nyzpp\n"
+            } else {
+                ""
+            };
+            fs::write(path, content).unwrap();
         }
     }
 
@@ -718,6 +735,62 @@ mod tests {
             plan.missing_artifacts[0].label,
             "Zellij plugin permissions cache"
         );
+    }
+
+    // Regression: a plain native Zellij config in the generated path must not satisfy the generated-state contract.
+    #[test]
+    fn plan_marks_plain_native_zellij_config_for_repair_without_forcing_refresh() {
+        let dir = tempdir().expect("tempdir");
+        let runtime_dir = repo_root();
+        let config_path = runtime_dir.join("settings_default.jsonc");
+        let state_path = dir.path().join("state/rebuild_hash");
+        let yazi_dir = dir.path().join("configs/yazi");
+        let zellij_dir = dir.path().join("configs/zellij");
+        let zellij_layout_dir = zellij_dir.join("layouts");
+
+        fs::create_dir_all(&zellij_layout_dir).unwrap();
+        let baseline = compute_config_state(&ComputeConfigStateRequest {
+            config_path: config_path.clone(),
+            default_config_path: runtime_dir.join("settings_default.jsonc"),
+            contract_path: runtime_dir.join("config_metadata/main_config_contract.toml"),
+            runtime_dir: runtime_dir.clone(),
+            state_path: state_path.clone(),
+        })
+        .unwrap();
+        record_config_state(&RecordConfigStateRequest {
+            config_file: config_path.to_string_lossy().to_string(),
+            managed_config_path: config_path.clone(),
+            state_path: state_path.clone(),
+            config_hash: baseline.config_hash.clone(),
+            runtime_hash: baseline.runtime_hash.clone(),
+        })
+        .unwrap();
+
+        let request = plan_request_for(
+            config_path,
+            runtime_dir.clone(),
+            state_path,
+            yazi_dir.clone(),
+            zellij_dir.clone(),
+            zellij_layout_dir,
+        );
+        let initial_plan = plan_runtime_materialization(&request).unwrap();
+        touch_plan_artifacts(&initial_plan);
+        mirror_yazi_static_assets(&runtime_dir, &yazi_dir);
+        fs::write(
+            zellij_dir.join("config.kdl"),
+            "keybinds clear-defaults=true {\n    normal {}\n}\n",
+        )
+        .unwrap();
+
+        let plan = plan_runtime_materialization(&request).unwrap();
+
+        assert!(!plan.config_state.needs_refresh);
+        assert_eq!(plan.status, "repair_missing_artifacts");
+        assert_eq!(plan.should_regenerate, true);
+        assert_eq!(plan.should_sync_static_assets, false);
+        assert_eq!(plan.missing_artifacts.len(), 1);
+        assert_eq!(plan.missing_artifacts[0].label, "generated Zellij config");
     }
 
     // Defends: repair evaluation returns a noop directive when the plan is noop and force is false.
