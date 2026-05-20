@@ -1,5 +1,6 @@
 pub mod action_registry;
 pub mod active_config_surface;
+pub(crate) mod atomic_fs;
 pub mod bridge;
 pub mod cli_render;
 pub mod command_metadata;

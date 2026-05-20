@@ -307,7 +307,8 @@ fn build_launch_materialization_plan(
         };
     }
 
-    let should_generate_terminal_configs = force_terminal_config_generation
+    let should_generate_terminal_configs = desktop_fast_path
+        || force_terminal_config_generation
         || selected_terminals
             .iter()
             .any(|terminal| !generated_terminal_config_path(state_dir, terminal).is_file());
@@ -394,22 +395,29 @@ mod tests {
         config
     }
 
-    // Defends: desktop fast-path launch keeps terminal generation minimal and rerolls Ghostty only when random cursor state survives on an existing generated config.
+    // Regression: desktop fast-path launch regenerates existing Yazelix terminal configs before terminal handoff, because stale generated files can point at old runtime assets.
     #[test]
-    fn desktop_fast_path_rerolls_existing_random_ghostty_config_without_full_regeneration() {
+    fn desktop_fast_path_regenerates_existing_terminal_configs() {
         let temp = tempdir().unwrap();
         let ghostty_dir = temp
             .path()
             .join("configs")
             .join("terminal_emulators")
             .join("ghostty");
+        let wezterm_dir = temp
+            .path()
+            .join("configs")
+            .join("terminal_emulators")
+            .join("wezterm");
         std::fs::create_dir_all(&ghostty_dir).unwrap();
+        std::fs::create_dir_all(&wezterm_dir).unwrap();
         std::fs::write(ghostty_dir.join("config"), "existing").unwrap();
-        let config = config_with_terminals(&["ghostty"], "yazelix");
+        std::fs::write(wezterm_dir.join(".wezterm.lua"), "existing").unwrap();
+        let config = config_with_terminals(&["ghostty", "wezterm"], "yazelix");
 
         let plan = build_launch_materialization_plan(
             &config,
-            &["ghostty".to_string()],
+            &["ghostty".to_string(), "wezterm".to_string()],
             true,
             false,
             temp.path(),
@@ -420,9 +428,9 @@ mod tests {
             plan,
             LaunchMaterializationPlan {
                 terminal_config_mode: "yazelix".to_string(),
-                selected_terminals: vec!["ghostty".to_string()],
-                should_generate_terminal_configs: false,
-                should_reroll_ghostty_cursor: true,
+                selected_terminals: vec!["ghostty".to_string(), "wezterm".to_string()],
+                should_generate_terminal_configs: true,
+                should_reroll_ghostty_cursor: false,
             }
         );
     }

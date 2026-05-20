@@ -1,3 +1,4 @@
+use crate::atomic_fs::write_text_atomic;
 use crate::bridge::CoreError;
 use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::control_plane::config_dir_from_env;
@@ -384,15 +385,7 @@ pub fn generate_terminal_materialization(
                     )
                 })?;
                 let path = wezterm_dir.join(".wezterm.lua");
-                fs::write(&path, generate_wezterm_config(transparency)).map_err(|source| {
-                    CoreError::io(
-                        "write_wezterm_config",
-                        "Could not write WezTerm config",
-                        "Check permissions for the Yazelix state directory.",
-                        path.to_string_lossy(),
-                        source,
-                    )
-                })?;
+                write_text_atomic(&path, &generate_wezterm_config(transparency))?;
                 generated.push(TerminalGeneratedConfig {
                     terminal: "wezterm".to_string(),
                     path: path.to_string_lossy().into_owned(),
@@ -411,23 +404,14 @@ pub fn generate_terminal_materialization(
                 })?;
                 let override_path = get_terminal_override_path(&config_dir, "kitty")?;
                 let path = kitty_dir.join("kitty.conf");
-                fs::write(
+                write_text_atomic(
                     &path,
-                    generate_kitty_config(
+                    &generate_kitty_config(
                         transparency,
                         kitty_enable_cursor,
                         override_path.as_deref(),
                     ),
-                )
-                .map_err(|source| {
-                    CoreError::io(
-                        "write_kitty_config",
-                        "Could not write Kitty config",
-                        "Check permissions for the Yazelix state directory.",
-                        path.to_string_lossy(),
-                        source,
-                    )
-                })?;
+                )?;
                 generated.push(TerminalGeneratedConfig {
                     terminal: "kitty".to_string(),
                     path: path.to_string_lossy().into_owned(),
@@ -445,32 +429,13 @@ pub fn generate_terminal_materialization(
                     )
                 })?;
                 let base_path = alacritty_dir.join("alacritty_base.toml");
-                fs::write(&base_path, generate_alacritty_base_config(transparency)).map_err(
-                    |source| {
-                        CoreError::io(
-                            "write_alacritty_base",
-                            "Could not write Alacritty base config",
-                            "Check permissions for the Yazelix state directory.",
-                            base_path.to_string_lossy(),
-                            source,
-                        )
-                    },
-                )?;
+                write_text_atomic(&base_path, &generate_alacritty_base_config(transparency))?;
                 let override_path = get_terminal_override_path(&config_dir, "alacritty")?;
                 let entry_path = alacritty_dir.join("alacritty.toml");
-                fs::write(
+                write_text_atomic(
                     &entry_path,
-                    generate_alacritty_config(&base_path, override_path.as_deref()),
-                )
-                .map_err(|source| {
-                    CoreError::io(
-                        "write_alacritty_config",
-                        "Could not write Alacritty config",
-                        "Check permissions for the Yazelix state directory.",
-                        entry_path.to_string_lossy(),
-                        source,
-                    )
-                })?;
+                    &generate_alacritty_config(&base_path, override_path.as_deref()),
+                )?;
                 generated.push(TerminalGeneratedConfig {
                     terminal: "alacritty".to_string(),
                     path: entry_path.to_string_lossy().into_owned(),
@@ -489,17 +454,7 @@ pub fn generate_terminal_materialization(
                 })?;
                 let override_path = get_terminal_override_path(&config_dir, "foot")?;
                 let path = foot_dir.join("foot.ini");
-                fs::write(&path, generate_foot_config(transparency, override_path)).map_err(
-                    |source| {
-                        CoreError::io(
-                            "write_foot_config",
-                            "Could not write Foot config",
-                            "Check permissions for the Yazelix state directory.",
-                            path.to_string_lossy(),
-                            source,
-                        )
-                    },
-                )?;
+                write_text_atomic(&path, &generate_foot_config(transparency, override_path))?;
                 generated.push(TerminalGeneratedConfig {
                     terminal: "foot".to_string(),
                     path: path.to_string_lossy().into_owned(),

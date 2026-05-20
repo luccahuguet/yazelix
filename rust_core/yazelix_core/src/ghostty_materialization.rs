@@ -1,3 +1,4 @@
+use crate::atomic_fs::write_text_atomic;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::ghostty_cursor_registry::{
     CursorDefinition, CursorRegistry, ResolvedCursorRegistryState, YazelixCursorRegistryExt,
@@ -463,19 +464,10 @@ pub fn generate_ghostty_materialization(
 
     if !runtime_component_enabled(&request.runtime_dir, "cursors")? {
         let generated_path = ghostty_dir.join("config");
-        fs::write(
+        write_text_atomic(
             &generated_path,
-            build_ghostty_config_without_cursor(request)?,
-        )
-        .map_err(|source| {
-            CoreError::io(
-                "write_ghostty_config",
-                "Could not write the managed Ghostty config",
-                "Check permissions for the Yazelix state directory and retry.",
-                generated_path.to_string_lossy(),
-                source,
-            )
-        })?;
+            &build_ghostty_config_without_cursor(request)?,
+        )?;
         return Ok(GhosttyMaterializationData {
             generated_path: generated_path.to_string_lossy().into_owned(),
             cursor_state: build_disabled_ghostty_cursor_state(),
@@ -491,15 +483,7 @@ pub fn generate_ghostty_materialization(
     let config_content = build_ghostty_config(request, &cursor_state, &registry_state)?;
     let generated_path = ghostty_dir.join("config");
 
-    fs::write(&generated_path, config_content).map_err(|source| {
-        CoreError::io(
-            "write_ghostty_config",
-            "Could not write the managed Ghostty config",
-            "Check permissions for the Yazelix state directory and retry.",
-            generated_path.to_string_lossy(),
-            source,
-        )
-    })?;
+    write_text_atomic(&generated_path, &config_content)?;
 
     let shaders_synced = sync_ghostty_shader_assets(
         &request.runtime_dir,
