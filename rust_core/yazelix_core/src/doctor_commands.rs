@@ -318,7 +318,7 @@ fn load_optional_doctor_normalized_config(
         config_path: paths.config_file,
         default_config_path: paths.default_config_path,
         contract_path: paths.contract_path,
-        include_missing: false,
+        include_missing: true,
     })
     .ok()?;
     Some(data.normalized_config)

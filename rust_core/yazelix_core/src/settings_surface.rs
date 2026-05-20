@@ -2,6 +2,8 @@
 //! Canonical `settings.jsonc` surface and fail-fast old-format diagnostics.
 
 use crate::bridge::{CoreError, ErrorClass};
+use crate::native_config_status::path_owned_by_home_manager;
+use crate::settings_jsonc_patch::set_settings_jsonc_value_text;
 use crate::user_config_paths;
 use jsonc_parser::ParseOptions;
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
@@ -80,6 +82,7 @@ pub fn ensure_settings_config_with_cursor_component(
     ensure_no_old_main_inputs(&paths)?;
 
     if paths.settings_config.exists() {
+        repair_settings_config_missing_defaults(&paths.settings_config, default_main_config)?;
         if cursor_component_enabled {
             ensure_no_embedded_cursor_settings(&paths)?;
             ensure_shared_cursor_settings_config(&paths, default_cursor_config)?;
@@ -135,6 +138,121 @@ pub fn ensure_settings_config_with_cursor_component(
     }
 
     Ok(paths.settings_config)
+}
+
+#[derive(Debug, Clone)]
+struct MissingDefaultSetting {
+    path: String,
+    value: JsonValue,
+}
+
+fn repair_settings_config_missing_defaults(
+    settings_config: &Path,
+    default_main_config: &Path,
+) -> Result<(), CoreError> {
+    let raw = fs::read_to_string(settings_config).map_err(|source| {
+        io_err(
+            "read_settings_config_for_repair",
+            settings_config,
+            "Could not read ~/.config/yazelix/settings.jsonc for additive repair",
+            source,
+        )
+    })?;
+    let current = parse_jsonc_value(settings_config, &raw)?;
+    let defaults = read_settings_jsonc_value(default_main_config)?;
+    let mut missing = Vec::new();
+    collect_missing_default_settings(&current, &defaults, &mut Vec::new(), &mut missing);
+
+    if missing.is_empty() {
+        return Ok(());
+    }
+
+    let missing_paths = missing
+        .iter()
+        .map(|setting| setting.path.clone())
+        .collect::<Vec<_>>();
+    if path_owned_by_home_manager(settings_config) {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "home_manager_owned_settings_missing_fields",
+            "The active Yazelix settings file is missing fields and is owned by Home Manager.",
+            "Update your Home Manager module/options and run home-manager switch so the generated settings.jsonc includes the current Yazelix defaults.",
+            json!({
+                "path": settings_config.display().to_string(),
+                "missing_fields": missing_paths,
+            }),
+        ));
+    }
+    if settings_path_is_read_only(settings_config) {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "read_only_settings_missing_fields",
+            format!(
+                "The active Yazelix settings file is missing fields and is read-only: {}.",
+                settings_config.display()
+            ),
+            "Fix file permissions or edit the owning configuration source so settings.jsonc includes the current Yazelix defaults.",
+            json!({
+                "path": settings_config.display().to_string(),
+                "missing_fields": missing_paths,
+            }),
+        ));
+    }
+
+    let mut patched = raw;
+    for setting in missing {
+        patched = set_settings_jsonc_value_text(
+            settings_config,
+            &patched,
+            &setting.path,
+            &setting.value,
+        )?
+        .text;
+    }
+    fs::write(settings_config, patched).map_err(|source| {
+        io_err(
+            "write_settings_config_repair",
+            settings_config,
+            "Could not write additive settings.jsonc defaults",
+            source,
+        )
+    })
+}
+
+fn collect_missing_default_settings(
+    current: &JsonValue,
+    defaults: &JsonValue,
+    path: &mut Vec<String>,
+    missing: &mut Vec<MissingDefaultSetting>,
+) {
+    let Some(default_object) = defaults.as_object() else {
+        return;
+    };
+    let Some(current_object) = current.as_object() else {
+        return;
+    };
+
+    for (key, default_value) in default_object {
+        path.push(key.clone());
+        match current_object.get(key) {
+            Some(current_value) => {
+                collect_missing_default_settings(current_value, default_value, path, missing);
+            }
+            None => {
+                missing.push(MissingDefaultSetting {
+                    path: path.join("."),
+                    value: default_value.clone(),
+                });
+            }
+        }
+        path.pop();
+    }
+}
+
+fn settings_path_is_read_only(path: &Path) -> bool {
+    fs::metadata(path)
+        .map(|metadata| metadata.permissions().readonly())
+        .unwrap_or(false)
 }
 
 pub fn render_default_settings_jsonc(default_main_config: &Path) -> Result<String, CoreError> {
@@ -591,6 +709,34 @@ mod tests {
         assert_eq!(cursor_value["settings"]["trail"].as_str(), Some("snow"));
         assert!(!config.path().join("yazelix.toml").exists());
         assert!(!config.path().join("cursors.toml").exists());
+    }
+
+    // Regression: existing writable settings.jsonc receives newly shipped additive defaults without overwriting user values.
+    #[test]
+    fn repairs_missing_defaults_in_existing_settings_jsonc() {
+        let runtime = tempdir().unwrap();
+        let config = tempdir().unwrap();
+        let (main, cursor) = write_defaults(runtime.path());
+        fs::write(
+            config.path().join("settings.jsonc"),
+            r#"{
+  "editor": {
+    "command": "nvim"
+  }
+}
+"#,
+        )
+        .unwrap();
+
+        let path = ensure_settings_config(config.path(), &main, &cursor).unwrap();
+        let value = read_settings_jsonc_value(&path).unwrap();
+
+        assert_eq!(value["editor"]["command"].as_str(), Some("nvim"));
+        assert_eq!(
+            value["editor"]["hide_sidebar_on_file_open"].as_bool(),
+            Some(true)
+        );
+        assert!(value.get("cursors").is_none());
     }
 
     // Regression: JSONC parse errors should explain that TOML/Nix-style # comments are not valid settings comments.

@@ -80,7 +80,7 @@ pub fn evaluate_doctor_config_report(
             config_path: paths.user_config.clone(),
             default_config_path: paths.default_config_path.clone(),
             contract_path: paths.contract_path.clone(),
-            include_missing: false,
+            include_missing: true,
         };
 
         match collect_doctor_diagnostic_report(&diagnostic_request) {

@@ -103,9 +103,7 @@ parser_key = "helix_runtime_path"
 home_manager_option = "helix_runtime_path"
 parser_behavior = "empty_string_to_null"
 nullable = true
-emit_in_default_template = false
 home_manager_default_is_null = true
-home_manager_can_omit = true
 rebuild_required = true
 apply_mode = "tab_session_restart"
 

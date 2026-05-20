@@ -751,7 +751,15 @@ impl ConfigUiApp {
         self.ensure_editable_config(setting_path)?;
         let target = self.edit_target(setting_path);
         let raw = self.read_edit_target_or_default(&target)?;
-        let outcome = unset_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file)?;
+        let outcome = match target.kind {
+            ConfigUiEditTargetKind::Main => {
+                let value = default_main_setting_value_for_ui(&self.request, &target.path_in_file)?;
+                set_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file, &value)?
+            }
+            ConfigUiEditTargetKind::Cursors => {
+                unset_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file)?
+            }
+        };
         self.finish_field_write(setting_path, &target, outcome)
     }
 
@@ -830,10 +838,10 @@ impl ConfigUiApp {
         target: &ConfigUiEditTarget,
     ) -> Result<String, CoreError> {
         if target.path.exists() {
-            return read_settings_for_edit_or_empty(&target.path);
+            return read_settings_for_edit(&target.path);
         }
         match target.kind {
-            ConfigUiEditTargetKind::Main => read_settings_for_edit_or_empty(&target.path),
+            ConfigUiEditTargetKind::Main => default_main_settings_text_for_ui(&self.request),
             ConfigUiEditTargetKind::Cursors => {
                 let raw =
                     fs::read_to_string(&self.model.default_cursor_config_path).map_err(|source| {
@@ -1753,7 +1761,7 @@ fn collect_config_diagnostics(
         config_path: config_path.to_path_buf(),
         default_config_path: paths.default_config_path.clone(),
         contract_path: paths.contract_path.clone(),
-        include_missing: false,
+        include_missing: true,
     };
 
     match crate::config_normalize::normalize_config(&request) {
@@ -2126,18 +2134,38 @@ fn path_present(path: &Path) -> bool {
     fs::symlink_metadata(path).is_ok()
 }
 
-fn read_settings_for_edit_or_empty(path: &Path) -> Result<String, CoreError> {
-    match fs::read_to_string(path) {
-        Ok(raw) => Ok(raw),
-        Err(source) if source.kind() == io::ErrorKind::NotFound => Ok("{}\n".to_string()),
-        Err(source) => Err(CoreError::io(
+fn read_settings_for_edit(path: &Path) -> Result<String, CoreError> {
+    fs::read_to_string(path).map_err(|source| {
+        CoreError::io(
             "read_settings_jsonc_for_edit",
             "Could not read Yazelix settings.jsonc for editing",
             "Fix permissions or restore the settings file, then retry.",
             path.display().to_string(),
             source,
-        )),
-    }
+        )
+    })
+}
+
+fn default_main_settings_text_for_ui(request: &ConfigUiRequest) -> Result<String, CoreError> {
+    let paths = primary_config_paths(&request.runtime_dir, &request.config_dir);
+    render_default_settings_jsonc(&paths.default_config_path)
+}
+
+fn default_main_setting_value_for_ui(
+    request: &ConfigUiRequest,
+    path: &str,
+) -> Result<JsonValue, CoreError> {
+    let paths = primary_config_paths(&request.runtime_dir, &request.config_dir);
+    let defaults = read_settings_jsonc_value(&paths.default_config_path)?;
+    get_json_path(&defaults, path).cloned().ok_or_else(|| {
+        CoreError::classified(
+            ErrorClass::Usage,
+            "unsupported_settings_path",
+            format!("Cannot reset {path} because it is not part of the canonical main settings defaults."),
+            "Use a supported settings.jsonc path from the Yazelix config contract.",
+            json!({ "path": path }),
+        )
+    })
 }
 
 fn write_settings_edit(path: &Path, raw: &str) -> Result<(), CoreError> {
@@ -2350,6 +2378,37 @@ mod tests {
         }
     }
 
+    fn write_main_settings(
+        runtime: &Path,
+        config: &Path,
+        mutate: impl FnOnce(&mut JsonValue),
+    ) -> PathBuf {
+        write_main_settings_with_prefix(runtime, config, "", mutate)
+    }
+
+    fn write_main_settings_with_prefix(
+        runtime: &Path,
+        config: &Path,
+        prefix: &str,
+        mutate: impl FnOnce(&mut JsonValue),
+    ) -> PathBuf {
+        let mut value = read_settings_jsonc_value(&runtime.join("settings_default.jsonc"))
+            .expect("default settings");
+        mutate(&mut value);
+        let path = config.join("settings.jsonc");
+        fs::create_dir_all(config).expect("config dir");
+        fs::write(
+            &path,
+            format!(
+                "{}{}\n",
+                prefix,
+                serde_json::to_string_pretty(&value).expect("settings json")
+            ),
+        )
+        .expect("settings");
+        path
+    }
+
     fn model_field<'a>(model: &'a ConfigUiModel, path: &str) -> &'a ConfigUiField {
         model
             .fields
@@ -2487,20 +2546,11 @@ mod tests {
         let runtime = tempdir().expect("runtime");
         let config = tempdir().expect("config");
         write_runtime_layout(runtime.path());
-        fs::write(
-            config.path().join("settings.jsonc"),
-            r#"{
-  "zellij": {
-    "keybindings": {
-      "popup": ["Alt x"],
-      "menu": [],
-      "unknown_action": ["Alt z"]
-    }
-  }
-}
-"#,
-        )
-        .expect("settings");
+        write_main_settings(runtime.path(), config.path(), |settings| {
+            settings["zellij"]["keybindings"]["popup"] = json!(["Alt x"]);
+            settings["zellij"]["keybindings"]["menu"] = json!([]);
+            settings["zellij"]["keybindings"]["unknown_action"] = json!(["Alt z"]);
+        });
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
         let mut app = ConfigUiApp::new(request, model);
@@ -2525,20 +2575,11 @@ mod tests {
         let runtime = tempdir().expect("runtime");
         let config = tempdir().expect("config");
         write_runtime_layout(runtime.path());
-        fs::write(
-            config.path().join("settings.jsonc"),
-            r#"{
-  "zellij": {
-    "native_keybindings": {
-      "scroll_mode": ["Ctrl Alt x"],
-      "scroll_mode_unbind": [],
-      "unknown_policy": ["Alt z"]
-    }
-  }
-}
-"#,
-        )
-        .expect("settings");
+        write_main_settings(runtime.path(), config.path(), |settings| {
+            settings["zellij"]["native_keybindings"]["scroll_mode"] = json!(["Ctrl Alt x"]);
+            settings["zellij"]["native_keybindings"]["scroll_mode_unbind"] = json!([]);
+            settings["zellij"]["native_keybindings"]["unknown_policy"] = json!(["Alt z"]);
+        });
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
         let mut app = ConfigUiApp::new(request, model);
@@ -2665,18 +2706,9 @@ mod tests {
         let config = tempdir().expect("config");
         write_runtime_layout(runtime.path());
         let settings_path = config.path().join("settings.jsonc");
-        fs::write(
-            &settings_path,
-            r#"{
-  "zellij": {
-    "keybindings": {
-      "popup": ["Alt x"]
-    }
-  }
-}
-"#,
-        )
-        .expect("settings");
+        write_main_settings(runtime.path(), config.path(), |settings| {
+            settings["zellij"]["keybindings"]["popup"] = json!(["Alt x"]);
+        });
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
         let mut app = ConfigUiApp::new(request, model);
@@ -2704,18 +2736,9 @@ mod tests {
         let runtime = tempdir().expect("runtime");
         let config = tempdir().expect("config");
         write_runtime_layout(runtime.path());
-        fs::write(
-            config.path().join("settings.jsonc"),
-            r#"{
-  "yazi": {
-    "keybindings": {
-      "open_zoxide_in_editor": []
-    }
-  }
-}
-"#,
-        )
-        .expect("settings");
+        write_main_settings(runtime.path(), config.path(), |settings| {
+            settings["yazi"]["keybindings"]["open_zoxide_in_editor"] = json!([]);
+        });
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
         let mut app = ConfigUiApp::new(request, model);
@@ -2775,7 +2798,11 @@ mod tests {
         let hm_dir = config.path().join("profile-home-manager-files");
         fs::create_dir_all(&hm_dir).expect("home manager dir");
         let hm_settings = hm_dir.join("settings.jsonc");
-        fs::write(&hm_settings, "{}\n").expect("home manager settings");
+        fs::write(
+            &hm_settings,
+            render_default_settings_jsonc(&runtime.path().join("settings_default.jsonc")).unwrap(),
+        )
+        .expect("home manager settings");
         std::os::unix::fs::symlink(&hm_settings, config.path().join("settings.jsonc"))
             .expect("settings symlink");
 
@@ -2984,14 +3011,9 @@ mod tests {
         let config = tempdir().expect("config");
         write_runtime_layout(runtime.path());
         let settings_path = config.path().join("settings.jsonc");
-        fs::write(
-            &settings_path,
-            r#"{
-  "editor": { "hide_sidebar_on_file_open": false }
-}
-"#,
-        )
-        .expect("settings");
+        write_main_settings(runtime.path(), config.path(), |settings| {
+            settings["editor"]["hide_sidebar_on_file_open"] = json!(false);
+        });
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
         let mut app = ConfigUiApp::new(request, model);
@@ -3014,15 +3036,14 @@ mod tests {
         let config = tempdir().expect("config");
         write_runtime_layout(runtime.path());
         let settings_path = config.path().join("settings.jsonc");
-        fs::write(
-            &settings_path,
-            r#"{
-  // keep this comment
-  "editor": { "hide_sidebar_on_file_open": false }
-}
-"#,
-        )
-        .expect("settings");
+        write_main_settings_with_prefix(
+            runtime.path(),
+            config.path(),
+            "// keep this comment\n",
+            |settings| {
+                settings["editor"]["hide_sidebar_on_file_open"] = json!(false);
+            },
+        );
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
         let mut app = ConfigUiApp::new(request, model);

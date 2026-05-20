@@ -17,7 +17,9 @@ use crate::control_plane::{
 use crate::settings_jsonc_patch::{
     SettingsJsoncPatchMutation, set_settings_jsonc_value_text, unset_settings_jsonc_value_text,
 };
-use crate::settings_surface::{is_settings_config_path, parse_jsonc_value};
+use crate::settings_surface::{
+    is_settings_config_path, parse_jsonc_value, read_settings_jsonc_value,
+};
 use serde_json::{Value as JsonValue, json};
 use std::fs;
 use std::io;
@@ -146,7 +148,7 @@ fn print_config_help() {
     println!("Subcommands:");
     println!("  ui              Open the config browser");
     println!("  set             Set a supported config value using a JSON literal");
-    println!("  unset           Remove an explicit config value");
+    println!("  unset           Reset a main setting to default or remove a cursor setting");
 }
 
 fn io_err(path: &Path, source: io::Error) -> CoreError {
@@ -249,7 +251,15 @@ fn run_config_unset(setting_path: &str) -> Result<i32, CoreError> {
     let target = edit_target(&paths, setting_path);
     ensure_edit_target_writable(&target)?;
     let raw = read_config_for_edit_or_default(&paths, &target)?;
-    let outcome = unset_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file)?;
+    let outcome = match target.kind {
+        ConfigEditTargetKind::Main => {
+            let value = default_main_setting_value(&paths, &target)?;
+            set_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file, &value)?
+        }
+        ConfigEditTargetKind::Cursors => {
+            unset_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file)?
+        }
+    };
     if outcome.changed() {
         validate_patched_edit_target(&paths, &target, &outcome.text)?;
     }
@@ -294,6 +304,35 @@ fn edit_target(paths: &ActiveConfigPaths, setting_path: &str) -> ConfigEditTarge
             kind: ConfigEditTargetKind::Main,
         }
     }
+}
+
+fn default_main_setting_value(
+    paths: &ActiveConfigPaths,
+    target: &ConfigEditTarget,
+) -> Result<JsonValue, CoreError> {
+    let defaults = read_settings_jsonc_value(&paths.default_config_path)?;
+    get_json_path(&defaults, &target.path_in_file)
+        .cloned()
+        .ok_or_else(|| {
+            CoreError::classified(
+                ErrorClass::Usage,
+                "unsupported_settings_path",
+                format!(
+                    "Cannot reset {} because it is not part of the canonical main settings defaults.",
+                    target.path_in_file
+                ),
+                "Use a supported settings.jsonc path from the Yazelix config contract.",
+                json!({ "path": target.path_in_file }),
+            )
+        })
+}
+
+fn get_json_path<'a>(root: &'a JsonValue, path: &str) -> Option<&'a JsonValue> {
+    let mut cursor = root;
+    for part in path.split('.') {
+        cursor = cursor.as_object()?.get(part)?;
+    }
+    Some(cursor)
 }
 
 fn ensure_edit_target_writable(target: &ConfigEditTarget) -> Result<(), CoreError> {
@@ -514,7 +553,10 @@ fn print_edit_outcome(
         SettingsJsoncPatchMutation::Inserted => println!("Inserted {setting_path}."),
         SettingsJsoncPatchMutation::Replaced => println!("Updated {setting_path}."),
         SettingsJsoncPatchMutation::Removed => println!("Removed {setting_path}."),
-        SettingsJsoncPatchMutation::Unchanged => println!("{setting_path} was already unset."),
+        SettingsJsoncPatchMutation::Unchanged if setting_path.starts_with("cursors.") => {
+            println!("{setting_path} was already unset.");
+        }
+        SettingsJsoncPatchMutation::Unchanged => println!("{setting_path} was already at default."),
     }
     if let Some(status) = apply_status {
         println!("Apply: {}.", status.apply_mode.label());

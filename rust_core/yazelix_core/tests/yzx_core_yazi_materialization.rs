@@ -5,6 +5,7 @@ use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
 use tempfile::tempdir;
+use yazelix_core::settings_surface::read_settings_jsonc_value;
 
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -18,18 +19,36 @@ fn prepare_managed_config(
     repo: &std::path::Path,
     body: &str,
 ) -> PathBuf {
-    let config_path = if body.is_empty() {
-        config_root.join("settings.jsonc")
-    } else {
-        config_root.join("yazelix.toml")
-    };
+    let config_path = config_root.join("settings.jsonc");
     fs::create_dir_all(config_path.parent().unwrap()).unwrap();
-    if body.is_empty() {
-        fs::copy(repo.join("settings_default.jsonc"), &config_path).unwrap();
-    } else {
-        fs::write(&config_path, body).unwrap();
+    let mut settings = read_settings_jsonc_value(&repo.join("settings_default.jsonc")).unwrap();
+    if !body.is_empty() {
+        let overrides = toml::from_str::<toml::Value>(body).unwrap();
+        merge_json(
+            &mut settings,
+            serde_json::to_value(overrides).expect("toml overrides json"),
+        );
     }
+    fs::write(
+        &config_path,
+        format!(
+            "{}\n",
+            serde_json::to_string_pretty(&settings).expect("settings json")
+        ),
+    )
+    .unwrap();
     config_path
+}
+
+fn merge_json(target: &mut Value, source: Value) {
+    match (target, source) {
+        (Value::Object(target), Value::Object(source)) => {
+            for (key, value) in source {
+                merge_json(target.entry(key).or_insert(Value::Null), value);
+            }
+        }
+        (target, source) => *target = source,
+    }
 }
 
 fn prepare_runtime_fixture(runtime_dir: &std::path::Path) {

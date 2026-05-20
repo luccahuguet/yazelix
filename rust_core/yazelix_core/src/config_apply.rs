@@ -315,7 +315,7 @@ pub fn build_pane_orchestrator_runtime_reload_payload(
         config_path: request.config_path.clone(),
         default_config_path: request.default_config_path.clone(),
         contract_path: request.contract_path.clone(),
-        include_missing: false,
+        include_missing: true,
     })?;
     let generation = read_zellij_generation_fingerprint(&request.zellij_config_dir)?;
     Ok(PaneOrchestratorRuntimeReloadPayload {
@@ -668,16 +668,14 @@ apply_mode = "generated_runtime_refresh"
             &contract_path,
         )
         .unwrap();
+        let mut settings =
+            crate::settings_surface::read_settings_jsonc_value(&default_config_path).unwrap();
+        settings["zellij"]["screen_saver_enabled"] = json!(true);
+        settings["zellij"]["screen_saver_idle_seconds"] = json!(120);
+        settings["zellij"]["screen_saver_style"] = json!("mandelbrot");
         std::fs::write(
             &config_path,
-            r#"{
-  "zellij": {
-    "screen_saver_enabled": true,
-    "screen_saver_idle_seconds": 120,
-    "screen_saver_style": "mandelbrot"
-  }
-}
-"#,
+            format!("{}\n", serde_json::to_string_pretty(&settings).unwrap()),
         )
         .unwrap();
         std::fs::write(

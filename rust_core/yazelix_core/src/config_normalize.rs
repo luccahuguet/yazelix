@@ -271,6 +271,10 @@ fn build_diagnostic_report(
         .map(make_schema_diagnostic)
         .collect::<Vec<_>>();
     let doctor_diagnostics = schema_diagnostics.clone();
+    let fixable_count = doctor_diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.fix_available)
+        .count();
     let blocking_diagnostics = doctor_diagnostics
         .iter()
         .filter(|diagnostic| diagnostic.blocking)
@@ -281,9 +285,9 @@ fn build_diagnostic_report(
         config_path: config_path.to_string_lossy().to_string(),
         issue_count: doctor_diagnostics.len(),
         blocking_count: blocking_diagnostics.len(),
-        fixable_count: 0,
+        fixable_count,
         has_blocking: !blocking_diagnostics.is_empty(),
-        has_fixable_config_issues: false,
+        has_fixable_config_issues: fixable_count > 0,
         schema_diagnostics,
         doctor_diagnostics,
         blocking_diagnostics,
@@ -439,13 +443,14 @@ fn invalid_enum_finding(path: &str, allowed_values: &[String], value: &str) -> S
 }
 
 fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
-    let blocking = finding.kind != "missing_field";
+    let blocking = true;
+    let fix_available = finding.kind == "missing_field";
     let mut diagnostic = ConfigDiagnostic {
         category: "schema".to_string(),
         path: finding.path.clone(),
         status: finding.kind.to_string(),
         blocking,
-        fix_available: false,
+        fix_available,
         headline: String::new(),
         detail_lines: Vec::new(),
     };
@@ -507,7 +512,7 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
             diagnostic.headline = format!("Missing config field at {}", finding.path);
             diagnostic.detail_lines = vec![
                 finding.message,
-                "Next: Add the field from the current template if you want your config to stay fully in sync.".to_string(),
+                "Next: Add the field from the current template, or let Yazelix repair a writable managed settings.jsonc from the shipped defaults.".to_string(),
             ];
         }
         _ => {
@@ -823,6 +828,43 @@ mod tests {
         path
     }
 
+    fn default_settings_jsonc() -> JsonValue {
+        crate::settings_surface::read_settings_jsonc_value(
+            &repo_root().join("settings_default.jsonc"),
+        )
+        .expect("default settings")
+    }
+
+    fn write_settings_config(value: &JsonValue) -> PathBuf {
+        let dir = tempdir().expect("tempdir").keep();
+        let path = dir.join("settings.jsonc");
+        fs::write(
+            &path,
+            serde_json::to_string_pretty(value).expect("settings json"),
+        )
+        .expect("write settings");
+        path
+    }
+
+    fn strict_request_for(config_path: PathBuf) -> NormalizeConfigRequest {
+        let mut request = request_for(config_path);
+        request.include_missing = true;
+        request
+    }
+
+    fn blocking_diagnostic_for<'a>(
+        details: &'a JsonValue,
+        path: &str,
+    ) -> &'a serde_json::Map<String, JsonValue> {
+        details["blocking_diagnostics"]
+            .as_array()
+            .expect("blocking diagnostics")
+            .iter()
+            .find(|diagnostic| diagnostic["path"] == path)
+            .and_then(JsonValue::as_object)
+            .expect("diagnostic for path")
+    }
+
     // Defends: config normalization keeps the parser-owned default keys and value transforms stable.
     #[test]
     fn normalizes_default_config_with_parser_keys_and_transforms() {
@@ -843,6 +885,21 @@ mod tests {
         .unwrap();
         let fields = load_contract_fields(&contract).unwrap();
         assert_eq!(config.len(), fields.len() + 1);
+    }
+
+    // Defends: the shipped main settings template is a complete strict settings.jsonc surface.
+    #[test]
+    fn strict_default_settings_jsonc_has_no_diagnostics() {
+        let repo = repo_root();
+        let data =
+            normalize_config(&strict_request_for(repo.join("settings_default.jsonc"))).unwrap();
+
+        assert_eq!(data.diagnostic_report.issue_count, 0);
+        assert_eq!(data.diagnostic_report.blocking_count, 0);
+        assert_eq!(
+            data.normalized_config.get("helix_runtime_path").unwrap(),
+            &JsonValue::Null
+        );
     }
 
     // Defends: compact badge text normalization trims and truncates user input consistently.
@@ -965,27 +1022,68 @@ open_directory_as_workspace_pane = []
         );
     }
 
-    // Regression: doctor-style config reports can request missing fields explicitly without changing startup defaults.
+    // Regression: startup-style strict normalization rejects missing mandatory fields with a fixable diagnostic.
     #[test]
-    fn includes_missing_fields_when_requested() {
+    fn rejects_missing_fields_when_requested() {
         let path = write_user_config("[shell]\ndefault_shell = \"nu\"\n");
-        let mut request = request_for(path);
-        request.include_missing = true;
+        let request = strict_request_for(path);
 
-        let data = normalize_config(&request).unwrap();
-        let report = data.diagnostic_report;
-        let missing_field = report
-            .schema_diagnostics
-            .iter()
-            .find(|diagnostic| diagnostic.status == "missing_field")
-            .expect("missing field diagnostic");
+        let error = normalize_config(&request).unwrap_err();
+        assert_eq!(error.code(), "unsupported_config");
+        let details = error.details();
+        let diagnostic = blocking_diagnostic_for(&details, "core");
 
-        assert!(report.issue_count > 0);
-        assert_eq!(missing_field.status, "missing_field");
-        assert!(
-            missing_field
-                .headline
-                .starts_with("Missing config field at ")
-        );
+        assert_eq!(diagnostic["status"], "missing_field");
+        assert_eq!(diagnostic["blocking"], json!(true));
+        assert_eq!(diagnostic["fix_available"], json!(true));
+    }
+
+    // Regression: missing bool fields in settings.jsonc fail clearly instead of being silently defaulted by normalization.
+    #[test]
+    fn rejects_missing_settings_bool_field() {
+        let mut value = default_settings_jsonc();
+        value["core"].as_object_mut().unwrap().remove("debug_mode");
+        let request = strict_request_for(write_settings_config(&value));
+
+        let error = normalize_config(&request).unwrap_err();
+        assert_eq!(error.code(), "unsupported_config");
+        let details = error.details();
+        let diagnostic = blocking_diagnostic_for(&details, "core.debug_mode");
+
+        assert_eq!(diagnostic["status"], "missing_field");
+        assert_eq!(diagnostic["fix_available"], json!(true));
+    }
+
+    // Regression: null bool values in settings.jsonc do not masquerade as valid defaults.
+    #[test]
+    fn rejects_null_settings_bool_field() {
+        let mut value = default_settings_jsonc();
+        value["core"]["debug_mode"] = JsonValue::Null;
+        let request = strict_request_for(write_settings_config(&value));
+
+        let error = normalize_config(&request).unwrap_err();
+        assert_eq!(error.code(), "unsupported_config");
+        let details = error.details();
+        let diagnostic = blocking_diagnostic_for(&details, "core.debug_mode");
+
+        assert_eq!(diagnostic["status"], "missing_field");
+        assert_eq!(diagnostic["fix_available"], json!(true));
+    }
+
+    // Regression: wrong bool types in settings.jsonc are blocking user errors, not implicit coercions.
+    #[test]
+    fn rejects_wrong_settings_bool_type() {
+        let mut value = default_settings_jsonc();
+        value["core"]["debug_mode"] = json!("false");
+        let request = strict_request_for(write_settings_config(&value));
+
+        let error = normalize_config(&request).unwrap_err();
+        assert_eq!(error.code(), "unsupported_config");
+        let details = error.details();
+        let diagnostic = blocking_diagnostic_for(&details, "core.debug_mode");
+
+        assert_eq!(diagnostic["status"], "type_mismatch");
+        assert_eq!(diagnostic["blocking"], json!(true));
+        assert_eq!(diagnostic["fix_available"], json!(false));
     }
 }

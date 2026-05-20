@@ -479,7 +479,7 @@ fn config_state_compute_prints_machine_readable_state_envelope() {
     assert_eq!(envelope["data"]["config"]["default_shell"], "nu");
     assert_eq!(
         envelope["data"]["config_hash"],
-        "cfba8d137ac98997cbf9437838509db79f49ea26e7e1f806b2a9a1da7580f7a8"
+        "399130fea27113c91be839c5ec10bd4263b139f1bc56b5afd933ec7d85787759"
     );
     assert_eq!(envelope["data"]["needs_refresh"], true);
 }
@@ -1365,9 +1365,12 @@ fn doctor_config_evaluate_reports_stale_schema_warning() {
     let runtime_dir = prepare_doctor_config_runtime_fixture(&repo, &tmp);
     let config_dir = tmp.path().join("config");
     fs::create_dir_all(&config_dir).unwrap();
+    let mut settings =
+        read_settings_jsonc_value(&runtime_dir.join("settings_default.jsonc")).unwrap();
+    settings["editor"]["sidebar_width_percent"] = json!(99);
     fs::write(
         config_dir.join("settings.jsonc"),
-        "{ \"editor\": { \"sidebar_width_percent\": 99 } }\n",
+        format!("{}\n", serde_json::to_string_pretty(&settings).unwrap()),
     )
     .unwrap();
 

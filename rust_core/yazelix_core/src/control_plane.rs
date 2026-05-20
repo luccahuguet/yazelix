@@ -304,7 +304,7 @@ pub fn ghostty_materialization_request_from_env(
         config_path: paths.config_file.clone(),
         default_config_path: paths.default_config_path.clone(),
         contract_path: paths.contract_path.clone(),
-        include_missing: false,
+        include_missing: true,
     })?
     .normalized_config;
 
@@ -497,7 +497,7 @@ pub fn load_normalized_config_for_control(
         config_path: paths.config_file.clone(),
         default_config_path: paths.default_config_path.clone(),
         contract_path: paths.contract_path.clone(),
-        include_missing: false,
+        include_missing: true,
     })?;
     Ok(data.normalized_config)
 }

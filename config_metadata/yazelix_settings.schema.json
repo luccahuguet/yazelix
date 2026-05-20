@@ -5,6 +5,15 @@
   "description": "Canonical Yazelix config UI settings inventory. Main runtime settings use ~/.config/yazelix/settings.jsonc and config_metadata/main_config_contract.toml; Ghostty cursor settings use ~/.config/yazelix_ghostty_cursors/settings.jsonc and are composed into the config UI under cursors.",
   "type": "object",
   "additionalProperties": false,
+  "required": [
+    "core",
+    "helix",
+    "editor",
+    "shell",
+    "terminal",
+    "zellij",
+    "yazi"
+  ],
   "x-yazelix": {
     "canonical_file": "settings.jsonc",
     "cursor_file": "~/.config/yazelix_ghostty_cursors/settings.jsonc",
@@ -29,7 +38,53 @@
     "core": {
       "type": "object",
       "description": "General Yazelix runtime behavior and welcome screen settings",
-      "additionalProperties": true,
+      "required": [
+        "debug_mode",
+        "skip_welcome_screen",
+        "show_macchina_on_welcome",
+        "welcome_style",
+        "game_of_life_cell_style",
+        "welcome_duration_seconds"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "debug_mode": {
+          "type": "boolean"
+        },
+        "skip_welcome_screen": {
+          "type": "boolean"
+        },
+        "show_macchina_on_welcome": {
+          "type": "boolean"
+        },
+        "welcome_style": {
+          "type": "string",
+          "enum": [
+            "static",
+            "logo",
+            "boids",
+            "boids_predator",
+            "boids_schools",
+            "mandelbrot",
+            "game_of_life_gliders",
+            "game_of_life_oscillators",
+            "game_of_life_bloom",
+            "random"
+          ]
+        },
+        "game_of_life_cell_style": {
+          "type": "string",
+          "enum": [
+            "full_block",
+            "dotted"
+          ]
+        },
+        "welcome_duration_seconds": {
+          "type": "number",
+          "minimum": 0.2,
+          "maximum": 8.0
+        }
+      },
       "x-yazelix": {
         "tab": "general"
       }
@@ -37,7 +92,15 @@
     "helix": {
       "type": "object",
       "description": "Helix-specific runtime integration settings",
-      "additionalProperties": true,
+      "required": [
+        "runtime_path"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "runtime_path": {
+          "type": "string"
+        }
+      },
       "x-yazelix": {
         "tab": "editor"
       }
@@ -45,7 +108,36 @@
     "editor": {
       "type": "object",
       "description": "Editor command, sidebar behavior, and editor integration settings",
-      "additionalProperties": true,
+      "required": [
+        "command",
+        "hide_sidebar_on_file_open",
+        "sidebar_width_percent",
+        "sidebar_command",
+        "sidebar_args"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "string"
+        },
+        "hide_sidebar_on_file_open": {
+          "type": "boolean"
+        },
+        "sidebar_width_percent": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 40
+        },
+        "sidebar_command": {
+          "type": "string"
+        },
+        "sidebar_args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
       "x-yazelix": {
         "tab": "editor"
       }
@@ -53,7 +145,21 @@
     "shell": {
       "type": "object",
       "description": "Default shell settings for Yazelix panes",
-      "additionalProperties": true,
+      "required": [
+        "default_shell"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "default_shell": {
+          "type": "string",
+          "enum": [
+            "nu",
+            "bash",
+            "fish",
+            "zsh"
+          ]
+        }
+      },
       "x-yazelix": {
         "tab": "shell"
       }
@@ -61,7 +167,46 @@
     "terminal": {
       "type": "object",
       "description": "Terminal emulator selection, transparency, and config mode settings",
-      "additionalProperties": true,
+      "required": [
+        "terminals",
+        "config_mode",
+        "transparency"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "terminals": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "ghostty",
+              "wezterm",
+              "kitty",
+              "alacritty",
+              "foot"
+            ]
+          }
+        },
+        "config_mode": {
+          "type": "string",
+          "enum": [
+            "yazelix",
+            "user"
+          ]
+        },
+        "transparency": {
+          "type": "string",
+          "enum": [
+            "none",
+            "very_low",
+            "low",
+            "medium",
+            "high",
+            "very_high",
+            "super_high"
+          ]
+        }
+      },
       "x-yazelix": {
         "tab": "terminal"
       }
@@ -69,8 +214,165 @@
     "zellij": {
       "type": "object",
       "description": "Zellij chrome, widgets, popup, and screen-saver settings",
-      "additionalProperties": true,
+      "required": [
+        "disable_tips",
+        "pane_frames",
+        "rounded_corners",
+        "support_kitty_keyboard_protocol",
+        "theme",
+        "widget_tray",
+        "tab_label_mode",
+        "claude_usage_display",
+        "codex_usage_display",
+        "opencode_go_usage_display",
+        "opencode_go_usage_periods",
+        "claude_usage_periods",
+        "custom_text",
+        "popup_program",
+        "popup_width_percent",
+        "popup_height_percent",
+        "screen_saver_enabled",
+        "screen_saver_idle_seconds",
+        "screen_saver_style",
+        "default_mode",
+        "native_keybindings",
+        "keybindings"
+      ],
+      "additionalProperties": false,
       "properties": {
+        "disable_tips": {
+          "type": "boolean"
+        },
+        "pane_frames": {
+          "type": "boolean"
+        },
+        "rounded_corners": {
+          "type": "boolean"
+        },
+        "support_kitty_keyboard_protocol": {
+          "type": "boolean"
+        },
+        "theme": {
+          "type": "string"
+        },
+        "widget_tray": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "editor",
+              "shell",
+              "term",
+              "workspace",
+              "cursor",
+              "claude_usage",
+              "codex_usage",
+              "opencode_go_usage",
+              "cpu",
+              "ram"
+            ]
+          }
+        },
+        "tab_label_mode": {
+          "type": "string",
+          "enum": [
+            "full",
+            "compact"
+          ]
+        },
+        "claude_usage_display": {
+          "type": "string",
+          "enum": [
+            "token",
+            "quota",
+            "both"
+          ]
+        },
+        "codex_usage_display": {
+          "type": "string",
+          "enum": [
+            "token",
+            "quota",
+            "both"
+          ]
+        },
+        "opencode_go_usage_display": {
+          "type": "string",
+          "enum": [
+            "token",
+            "quota",
+            "both"
+          ]
+        },
+        "opencode_go_usage_periods": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "5h",
+              "week",
+              "month"
+            ]
+          }
+        },
+        "claude_usage_periods": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "5h",
+              "week"
+            ]
+          }
+        },
+        "custom_text": {
+          "type": "string"
+        },
+        "popup_program": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "popup_width_percent": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "popup_height_percent": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "screen_saver_enabled": {
+          "type": "boolean"
+        },
+        "screen_saver_idle_seconds": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 86400
+        },
+        "screen_saver_style": {
+          "type": "string",
+          "enum": [
+            "logo",
+            "boids",
+            "boids_predator",
+            "boids_schools",
+            "mandelbrot",
+            "game_of_life_gliders",
+            "game_of_life_oscillators",
+            "game_of_life_bloom",
+            "random"
+          ]
+        },
+        "default_mode": {
+          "type": "string",
+          "enum": [
+            "normal",
+            "locked"
+          ]
+        },
         "keybindings": {
           "type": "object",
           "description": "Semantic remaps for Yazelix-owned Zellij actions",
@@ -99,8 +401,41 @@
     "yazi": {
       "type": "object",
       "description": "Yazi theme, plugin, sorting, and command settings",
-      "additionalProperties": true,
+      "required": [
+        "command",
+        "ya_command",
+        "plugins",
+        "theme",
+        "sort_by",
+        "keybindings"
+      ],
+      "additionalProperties": false,
       "properties": {
+        "command": {
+          "type": "string"
+        },
+        "ya_command": {
+          "type": "string"
+        },
+        "plugins": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "theme": {
+          "type": "string"
+        },
+        "sort_by": {
+          "type": "string",
+          "enum": [
+            "alphabetical",
+            "natural",
+            "modified",
+            "created",
+            "size"
+          ]
+        },
         "keybindings": {
           "type": "object",
           "description": "Semantic remaps for Yazelix-owned Yazi integration actions",

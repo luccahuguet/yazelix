@@ -91,7 +91,7 @@ pub fn prepare_launch_materialization(
         config_path: request.config_path.clone(),
         default_config_path: request.default_config_path.clone(),
         contract_path: request.contract_path.clone(),
-        include_missing: false,
+        include_missing: true,
     })?
     .normalized_config;
     let cursor_config_path = request.cursor_config_path.clone();

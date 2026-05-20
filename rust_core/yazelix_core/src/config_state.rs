@@ -62,7 +62,7 @@ pub fn compute_config_state(
         config_path: request.config_path.clone(),
         default_config_path: request.default_config_path.clone(),
         contract_path: request.contract_path.clone(),
-        include_missing: false,
+        include_missing: true,
     })?;
     let raw_config = read_config_table(&request.config_path, "read_config")?;
     let contract = read_toml_table(&request.contract_path, "read_config_contract")?;
@@ -434,9 +434,23 @@ mod tests {
         }
     }
 
-    fn write_user_config(dir: &Path, contents: &str) -> PathBuf {
-        let path = dir.join("yazelix.toml");
-        fs::write(&path, contents).expect("write config");
+    fn default_settings_jsonc() -> JsonValue {
+        crate::settings_surface::read_settings_jsonc_value(
+            &repo_root().join("settings_default.jsonc"),
+        )
+        .expect("default settings")
+    }
+
+    fn write_settings_config(dir: &Path, value: &JsonValue) -> PathBuf {
+        let path = dir.join("settings.jsonc");
+        fs::write(
+            &path,
+            format!(
+                "{}\n",
+                serde_json::to_string_pretty(value).expect("settings json")
+            ),
+        )
+        .expect("write config");
         path
     }
 
@@ -456,7 +470,7 @@ mod tests {
 
         assert_eq!(
             state.config_hash,
-            "cfba8d137ac98997cbf9437838509db79f49ea26e7e1f806b2a9a1da7580f7a8"
+            "399130fea27113c91be839c5ec10bd4263b139f1bc56b5afd933ec7d85787759"
         );
         assert!(state.needs_refresh);
     }
@@ -491,10 +505,11 @@ mod tests {
         let dir = tempdir().expect("tempdir");
         let runtime_dir = repo_root();
         let state_path = dir.path().join("state/rebuild_hash");
-        let config_path = write_user_config(
-            dir.path(),
-            "[core]\nskip_welcome_screen = false\n\n[editor]\ncommand = \"hx\"\n\n[terminal]\nterminals = [\"ghostty\"]\n",
-        );
+        let mut config = default_settings_jsonc();
+        config["core"]["skip_welcome_screen"] = json!(false);
+        config["editor"]["command"] = json!("hx");
+        config["terminal"]["terminals"] = json!(["ghostty"]);
+        let config_path = write_settings_config(dir.path(), &config);
         let baseline = compute_config_state(&request_for(
             config_path.clone(),
             runtime_dir.clone(),
@@ -510,11 +525,8 @@ mod tests {
         })
         .unwrap();
 
-        fs::write(
-            &config_path,
-            "[core]\nskip_welcome_screen = true\n\n[editor]\ncommand = \"hx\"\n\n[terminal]\nterminals = [\"ghostty\"]\n",
-        )
-        .unwrap();
+        config["core"]["skip_welcome_screen"] = json!(true);
+        write_settings_config(dir.path(), &config);
         let runtime_only = compute_config_state(&request_for(
             config_path.clone(),
             runtime_dir.clone(),
@@ -524,11 +536,8 @@ mod tests {
         assert_eq!(baseline.config_hash, runtime_only.config_hash);
         assert!(!runtime_only.needs_refresh);
 
-        fs::write(
-            &config_path,
-            "[core]\nskip_welcome_screen = true\n\n[editor]\ncommand = \"nvim\"\n\n[terminal]\nterminals = [\"ghostty\"]\n",
-        )
-        .unwrap();
+        config["editor"]["command"] = json!("nvim");
+        write_settings_config(dir.path(), &config);
         let rebuild_changed =
             compute_config_state(&request_for(config_path, runtime_dir, state_path)).unwrap();
         assert_ne!(runtime_only.config_hash, rebuild_changed.config_hash);

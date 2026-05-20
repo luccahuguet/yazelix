@@ -157,7 +157,7 @@ pub fn generate_zellij_materialization(
         config_path: request.config_path.clone(),
         default_config_path: request.default_config_path.clone(),
         contract_path: request.contract_path.clone(),
-        include_missing: false,
+        include_missing: true,
     })?;
     let config = normalized.normalized_config;
     if !runtime_component_enabled(&request.runtime_dir, "screen")?
