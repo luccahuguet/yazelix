@@ -136,7 +136,7 @@ When creating new files or directories, always use underscores to maintain consi
   nix build ../yazelix-zellij-pane-orchestrator#yazelix_zellij_pane_orchestrator --no-link
   nix build .#runtime --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-orchestrator --no-link
   ```
-- After the child change is pushed, update the main `flake.lock` to the pushed child revision and re-run the main runtime build without local overrides.
+- Local `--override-input` builds can pass against unpublished child commits. Before committing, closing beads, or pushing a main-repo lock update, push the child repo first, update the main `flake.lock` to that GitHub revision, and re-run the main runtime build without overrides.
 - **Do not treat `cargo test` or `cargo check` as sufficient verification for live plugin behavior.** They only validate the Rust source. Real behavior changes require the packaged wasm, runtime build validation, and a fresh Yazelix session.
 - After switching to a new packaged plugin wasm, prefer `yzx restart` or a fresh Yazelix window. Avoid in-place plugin reloads as the default validation path because they can leave the current session in a broken permission state.
 - Run `yzx_repo_validator validate-workspace-session-contract` or `yzx dev test` before committing pane-orchestrator integration work; the validator checks generated workspace assets against the packaged runtime shape.
