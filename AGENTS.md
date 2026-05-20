@@ -128,6 +128,12 @@ When creating new files or directories, always use underscores to maintain consi
 - Do not add legacy support for command/config/API surfaces that have not been pushed yet. Amend or replace the local commits and delete the old surface instead.
 - For recently pushed surfaces, ask the maintainer before adding compatibility support. Bias toward removing the stale surface unless there is a clear release, upgrade, or user-support reason to keep it temporarily.
 
+## Cross-Repo Release Transactions
+
+- Treat a main-repo `flake.lock` update that consumes a child-repo change as a coupled release transaction, not as a local-only integration. Trivial child-only docs, tests, CI, or internal package changes can be handled in the child repo by themselves.
+- Local `--override-input` validation is only a development smoke test because it can pass against unpublished child commits. Before committing, closing beads, or pushing the main repo for a coupled change, push the child repo first, update the main `flake.lock` to that GitHub revision, and run the main validation without overrides.
+- Close Beads and run `bd dolt push` with the published main change, after manual test approval when the coupled runtime change is non-trivial. If the main lock update or no-overrides validation fails after the child push, leave the child commit published but unused unless the child repo itself needs a fix or revert.
+
 ## Rust Plugin Workflow
 
 - **Rust pane-orchestrator source edits are not live by themselves.** Source lives in the public child repo `https://github.com/luccahuguet/yazelix-zellij-pane-orchestrator`, checked out as sibling `../yazelix-zellij-pane-orchestrator` by default, or in the path set by `YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_SOURCE_DIR`. Normal Yazelix runtimes consume the wasm from the locked child package, not from a copied main-repo binary.
@@ -136,7 +142,7 @@ When creating new files or directories, always use underscores to maintain consi
   nix build ../yazelix-zellij-pane-orchestrator#yazelix_zellij_pane_orchestrator --no-link
   nix build .#runtime --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-orchestrator --no-link
   ```
-- Local `--override-input` builds can pass against unpublished child commits. Before committing, closing beads, or pushing a main-repo lock update, push the child repo first, update the main `flake.lock` to that GitHub revision, and re-run the main runtime build without overrides.
+- Follow the cross-repo release transaction rule before landing any main-repo lock update that consumes a new pane-orchestrator child commit.
 - **Do not treat `cargo test` or `cargo check` as sufficient verification for live plugin behavior.** They only validate the Rust source. Real behavior changes require the packaged wasm, runtime build validation, and a fresh Yazelix session.
 - After switching to a new packaged plugin wasm, prefer `yzx restart` or a fresh Yazelix window. Avoid in-place plugin reloads as the default validation path because they can leave the current session in a broken permission state.
 - Run `yzx_repo_validator validate-workspace-session-contract` or `yzx dev test` before committing pane-orchestrator integration work; the validator checks generated workspace assets against the packaged runtime shape.
