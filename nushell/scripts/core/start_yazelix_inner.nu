@@ -4,7 +4,7 @@
 use ../utils/runtime_paths.nu [get_yazelix_state_dir require_yazelix_runtime_dir]
 use ../utils/runtime_commands.nu [resolve_zellij_default_shell]
 use ../utils/yzx_core_bridge.nu [profile_startup_step]
-use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
+use ../utils/yzx_core_bridge.nu [run_yzx_core_json_command]
 use ../setup/welcome.nu [show_welcome build_welcome_message get_yazelix_colors]
 
 const CONSTANTS_DATA_PATH = ((path self | path dirname) | path join ".." "utils" "constants_data.json")
@@ -49,7 +49,6 @@ def regenerate_runtime_configs [runtime_dir: string, --quiet] {
     let result = (profile_startup_step "materialization_orchestrator" "materialize_runtime_state" {
         (run_yzx_core_json_command
             $runtime_dir
-            (build_default_yzx_core_error_surface)
             [$RUNTIME_MATERIALIZATION_MATERIALIZE_COMMAND "--from-env"]
             "Yazelix Rust runtime-materialization materialize helper returned invalid JSON.")
     })
@@ -74,7 +73,6 @@ def --env prepare_session_config_snapshot [runtime_dir: string, applied_runtime_
     }
     let snapshot = (run_yzx_core_json_command
         $runtime_dir
-        (build_default_yzx_core_error_surface)
         [$SESSION_CONFIG_SNAPSHOT_WRITE_COMMAND "--request-json" ($request | to json -r)]
         "Yazelix Rust session config snapshot helper returned invalid JSON.")
     let snapshot_path = ($snapshot.snapshot_path? | default "" | into string | str trim)
@@ -133,7 +131,6 @@ def capture_startup_handoff_context [
     try {
         let capture = (run_yzx_core_json_command
             $runtime_dir
-            (build_default_yzx_core_error_surface)
             [$STARTUP_HANDOFF_CAPTURE_COMMAND "--request-json" ($request | to json -r)]
             "Yazelix Rust startup-handoff capture helper returned invalid JSON.")
         if $verbose and ($capture.recorded? | default false) {
@@ -149,7 +146,6 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     let yazelix_dir = (require_existing_directory (require_yazelix_runtime_dir) "Yazelix runtime directory")
     let startup_facts = (run_yzx_core_json_command
         $yazelix_dir
-        (build_default_yzx_core_error_surface)
         ["startup-facts.compute"]
         "Yazelix Rust startup-facts helper returned invalid JSON.")
     let quiet_mode = ($env.YAZELIX_ENV_ONLY? == "true")
@@ -174,7 +170,6 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     let upgrade_summary = (try { profile_startup_step "inner" "show_upgrade_summary" {
         (run_yzx_core_json_command
             $yazelix_dir
-            (build_default_yzx_core_error_surface)
             ["upgrade-summary.first-run"]
             "Yazelix Rust first-run upgrade-summary helper returned invalid JSON.")
     } } catch {|err|

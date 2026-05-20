@@ -2,7 +2,7 @@
 # yzx menu - Interactive command palette and config opener
 
 use ../utils/runtime_paths.nu get_yazelix_runtime_dir
-use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface resolve_yzx_core_helper_path run_yzx_core_json_command]
+use ../utils/yzx_core_bridge.nu [resolve_yzx_core_helper_path]
 
 const PALETTE_CATEGORY_STYLE = {
     session: (ansi green)

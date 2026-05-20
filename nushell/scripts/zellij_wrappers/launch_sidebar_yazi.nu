@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 
 use ../utils/runtime_paths.nu [get_yazelix_runtime_dir]
-use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
+use ../utils/yzx_core_bridge.nu [run_yzx_core_json_command]
 
 def consume_bootstrap_sidebar_cwd [] {
     let cwd_file = ($env.YAZELIX_BOOTSTRAP_SIDEBAR_CWD_FILE? | default "" | str trim)
@@ -41,7 +41,7 @@ def main [] {
         pwd | path expand
     }
     let runtime_dir = (get_yazelix_runtime_dir)
-    let facts = (run_yzx_core_json_command $runtime_dir (build_default_yzx_core_error_surface) [
+    let facts = (run_yzx_core_json_command $runtime_dir [
         "integration-facts.compute"
     ] "Yazelix Rust integration-facts helper returned invalid JSON.")
     let yazi_command = (

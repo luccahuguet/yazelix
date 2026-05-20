@@ -17,7 +17,7 @@ without a concrete deletion target.
 
 ## Current Shape
 
-The tracked Nushell surface is about `1,496` lines across `12` `.nu` files:
+The tracked Nushell surface is about `1,412` lines across `12` `.nu` files:
 
 ```text
 nushell/config/config.nu
@@ -47,26 +47,25 @@ Rust-owned or outside the remaining Nushell floor.
 | `nushell/config/config.nu` | Retain | User shell config source; it wires generated initializers and externs into Nushell |
 | `nushell/config/stack_prompt_guard.nu` | Retain | Interactive prompt guard logic is shell-local and not a product control-plane owner |
 | `nushell/scripts/core/start_yazelix_inner.nu` | Retain | Owns final interactive startup handoff, welcome display sequencing, startup profiling boundaries, session snapshot env mutation, and Zellij process launch |
-| `nushell/scripts/setup/environment.nu` | Retain with follow-ups | Shellhook setup, initializer generation, extern sync, and source-checkout executable repair are shell-bound, but initializer generation and chmod repair are deterministic enough to re-evaluate |
+| `nushell/scripts/setup/environment.nu` | Retain | Shellhook setup, selected-shell initializer timing, extern sync, and state/log setup are shell-entry concerns; Rust owns initializer generation through `yzx_control`, and repository/package file modes own runtime script executability |
 | `nushell/scripts/setup/welcome.nu` | Retain | Human-facing welcome rendering and prompt gating remain a good Nushell fit |
 | `nushell/scripts/utils/constants.nu` | Retain | Tiny compatibility export for runtime version and static metadata access |
 | `nushell/scripts/utils/runtime_commands.nu` | Retain | Shell-facing default-shell resolution and command assembly support startup handoff |
 | `nushell/scripts/utils/runtime_defaults.nu` | Retain | Tiny shared constant module for shell defaults |
 | `nushell/scripts/utils/runtime_paths.nu` | Retain | Shell/env path resolution for remaining Nushell entrypoints |
-| `nushell/scripts/utils/yzx_core_bridge.nu` | Shrink later | Still contains the shared Rust-helper transport and error surface; it should collapse toward a minimal transport helper rather than grow domain policy |
+| `nushell/scripts/utils/yzx_core_bridge.nu` | Retain, keep narrow | Shared Rust-helper path resolution, JSON envelope execution, and helper-error rendering stay here until Rust owns the human error renderer; dead Zellij wrappers and caller-owned error-surface overrides are gone |
 | `nushell/scripts/yzx/menu.nu` | Retain | The command palette is the honest `fzf`/interactive menu boundary over Rust-owned command metadata |
 | `nushell/scripts/zellij_wrappers/launch_sidebar_yazi.nu` | Retain | Thin process wrapper for launching the managed Yazi sidebar at the Zellij boundary |
 
-## Follow-Up Beads
+## Resolved Follow-Up Decisions
 
-The deterministic migration candidates are split into follow-up beads instead
-of being mixed into this inventory audit:
+The deterministic migration candidates from the inventory audit resolved as:
 
-- `yazelix-6h1n.4.1` — Collapse `yzx_core_bridge.nu` to a minimal transport helper
-- `yazelix-6h1n.4.2` — Move source-checkout runtime script chmod repair out of shellhook
-- `yazelix-6h1n.4.3` — Re-evaluate `setup/environment.nu` initializer generation ownership
+- `yazelix-6h1n.4.1` — `yzx_core_bridge.nu` lost its empty caller error-surface argument and unused Zellij helper exports; it remains a narrow transport and error-envelope adapter
+- `yazelix-6h1n.4.2` — Source-checkout chmod repair was deleted from shellhook; the tracked executable bits and package metadata own script executability
+- `yazelix-6h1n.4.3` — Initializer generation stays as a shellhook-timed call into `yzx_control`; Rust owns generation, Nu owns the selected shell list, quiet mode, and startup profile boundary
 
-Those follow-ups should use the same delete-first bar: a migration only counts
+Future follow-ups should use the same delete-first bar: a migration only counts
 when the Nushell owner shrinks end-to-end or a deterministic invariant moves to
 a clearer existing owner.
 

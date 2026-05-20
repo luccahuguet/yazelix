@@ -3,7 +3,7 @@
 # Handles front-door welcome display and message generation
 
 use ../utils/runtime_paths.nu [require_yazelix_runtime_dir]
-use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
+use ../utils/yzx_core_bridge.nu [run_yzx_core_json_command]
 use ../utils/runtime_defaults.nu [DEFAULT_TERMINAL]
 use ../utils/constants.nu [YAZELIX_VERSION]
 
@@ -84,7 +84,6 @@ def get_startup_release_headline [] {
         let runtime_dir = (require_yazelix_runtime_dir)
         let data = (run_yzx_core_json_command
             $runtime_dir
-            (build_default_yzx_core_error_surface)
             ["upgrade-summary.headline"]
             "Yazelix Rust upgrade-summary headline helper returned invalid JSON.")
         ($data.headline? | default "" | into string | str trim)

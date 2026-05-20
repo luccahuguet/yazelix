@@ -1,5 +1,5 @@
 #!/usr/bin/env nu
-# Shared yzx_core helper transport and error-surface glue.
+# Shared yzx_core helper transport and JSON envelope handling.
 
 use runtime_paths.nu [get_yazelix_runtime_dir]
 
@@ -95,14 +95,7 @@ export def resolve_yzx_core_helper_path [runtime_dir: string] {
     }
 }
 
-export def build_default_yzx_core_error_surface [] {
-    {
-        display_config_path: ""
-        config_file: ""
-    }
-}
-
-export def render_yzx_core_error [error_surface: record, stderr: string] {
+export def render_yzx_core_error [stderr: string] {
     let trimmed_stderr = ($stderr | default "" | str trim)
     let envelope = (
         try {
@@ -131,18 +124,7 @@ export def render_yzx_core_error [error_surface: record, stderr: string] {
     let details = ($error.details? | default {})
 
     if ($error_class == "config") and ($code == "unsupported_config") and (($details | describe) | str contains "record") {
-        let display_config_path = (
-            $error_surface.display_config_path?
-            | default ""
-            | into string
-            | str trim
-        )
-        let report_details = if ($display_config_path | is-empty) {
-            $details
-        } else {
-            $details | upsert config_path $display_config_path
-        }
-        render_startup_config_error $report_details
+        render_startup_config_error $details
     } else {
         let failure_class = if $error_class == "config" { "config" } else { "host-dependency" }
         [
@@ -193,19 +175,18 @@ def parse_yzx_core_envelope [raw: string, invalid_json_message: string] {
 
 export def run_yzx_core_json_command [
     runtime_dir: string
-    error_surface: record
     helper_args
     invalid_json_message: string
 ] {
     let result = (execute_yzx_core_command $runtime_dir $helper_args)
     if $result.exit_code != 0 {
-        error make {msg: (render_yzx_core_error $error_surface $result.stderr)}
+        error make {msg: (render_yzx_core_error $result.stderr)}
     }
 
     let envelope = (parse_yzx_core_envelope ($result.stdout | default "") $invalid_json_message)
     let status = ($envelope | get -o status | default "")
     if $status != "ok" {
-        error make {msg: (render_yzx_core_error $error_surface ($result.stdout | default ""))}
+        error make {msg: (render_yzx_core_error ($result.stdout | default ""))}
     }
 
     $envelope | get data
@@ -269,30 +250,4 @@ export def profile_startup_step [component: string, step: string, code: closure,
     }
 
     $result
-}
-
-export def run_zellij_pipe [command: string, payload: string = ""] {
-    let yzx_control = (resolve_yzx_control_path)
-    mut args = [zellij pipe $command]
-    if ($payload | is-not-empty) {
-        $args = ($args | append [--payload $payload])
-    }
-    let result = (^$yzx_control ...$args | complete)
-    if $result.exit_code != 0 {
-        error make {msg: ($result.stderr | default "" | str trim)}
-    }
-    $result.stdout | default "" | str trim
-}
-
-export def get_current_tab_workspace_root [--include-bootstrap] {
-    let yzx_control = (resolve_yzx_control_path)
-    mut args = [zellij get-workspace-root]
-    if $include_bootstrap {
-        $args = ($args | append "--include-bootstrap")
-    }
-    let result = (^$yzx_control ...$args | complete)
-    if $result.exit_code != 0 {
-        return null
-    }
-    $result.stdout | default "" | str trim
 }

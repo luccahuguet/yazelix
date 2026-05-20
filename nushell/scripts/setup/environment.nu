@@ -5,27 +5,13 @@
 use ../utils/runtime_paths.nu [get_yazelix_runtime_dir get_yazelix_state_dir]
 use ../utils/runtime_defaults.nu DEFAULT_SHELL
 use ../utils/yzx_core_bridge.nu [profile_startup_step resolve_yzx_control_path]
-use ../utils/yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_json_command]
+use ../utils/yzx_core_bridge.nu [run_yzx_core_json_command]
 
 const YZX_COMMAND_METADATA_SYNC_EXTERNS_COMMAND = "yzx-command-metadata.sync-externs"
 
-def ensure_runtime_scripts_executable [yazelix_dir: string] {
-    let runtime_root = ($yazelix_dir | path expand)
-    if ($runtime_root | str starts-with "/nix/store/") {
-        return
-    }
-
-    chmod +x $"($runtime_root)/shells/bash/start_yazelix.sh"
-    chmod +x $"($runtime_root)/shells/posix/desktop_deferred_launch_probe.sh"
-    chmod +x $"($runtime_root)/shells/posix/detached_launch_probe.sh"
-    chmod +x $"($runtime_root)/shells/posix/start_yazelix.sh"
-    chmod +x $"($runtime_root)/shells/posix/yazelix_hx.sh"
-    chmod +x $"($runtime_root)/shells/posix/yzx_cli.sh"
-}
-
 def sync_generated_yzx_extern_bridge [runtime_root: string] {
     try {
-        run_yzx_core_json_command $runtime_root (build_default_yzx_core_error_surface) [
+        run_yzx_core_json_command $runtime_root [
             $YZX_COMMAND_METADATA_SYNC_EXTERNS_COMMAND
             "--runtime-dir"
             ($runtime_root | path expand)
@@ -41,7 +27,6 @@ def main [--skip-welcome] {
     let yazelix_dir = (get_yazelix_runtime_dir)
     let startup_facts = (run_yzx_core_json_command
         $yazelix_dir
-        (build_default_yzx_core_error_surface)
         ["startup-facts.compute"]
         "Yazelix Rust startup-facts helper returned invalid JSON.")
     let default_shell = ($startup_facts.default_shell? | default $DEFAULT_SHELL)
@@ -117,11 +102,6 @@ def main [--skip-welcome] {
     }
     profile_shellhook_step "sync_yzx_extern_bridge" {
         sync_generated_yzx_extern_bridge $yazelix_dir
-    }
-    # Editor setup is now handled in the shellHook
-
-    profile_shellhook_step "ensure_runtime_scripts_executable" {
-        ensure_runtime_scripts_executable $yazelix_dir
     }
 
     let zjstatus_target = $"($yazelix_dir)/configs/zellij/plugins/zjstatus.wasm"

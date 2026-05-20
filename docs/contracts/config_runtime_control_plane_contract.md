@@ -15,8 +15,7 @@ of the protocol pressure points at once:
 
 - Rust `yzx_core` already owns typed config normalization and runtime-env
   evaluation
-- Nushell still carries a real bridge layer in `config_parser.nu`,
-  `runtime_env.nu`, and `yzx_core_bridge.nu`
+- Nushell still carries a small bridge layer in `yzx_core_bridge.nu`
 - packaged runtime and source-checkout helper resolution must preserve a sharp
   failure contract
 - Home Manager parity with the shipped default config is a maintained invariant,
@@ -41,10 +40,9 @@ of the protocol pressure points at once:
 - Status: live
 - Owner: Rust `yzx_core config.normalize`
 - Statement: Typed normalization of the managed main Yazelix config is
-  Rust-owned. Nushell `config_parser.nu` may locate the active config surface
-  and translate helper envelopes, but it must not become a second semantic
-  owner for default merging, schema interpretation, or diagnostic
-  classification.
+  Rust-owned. Remaining Nushell callers may use helper transport, but they must
+  not become second semantic owners for default merging, schema interpretation,
+  or diagnostic classification.
 - Verification: automated
   `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`
   (`config.normalize` success and error envelope tests); automated
@@ -54,19 +52,17 @@ of the protocol pressure points at once:
   validator `yzx_repo_validator validate-contracts`
 - Source: `docs/contracts/rust_nushell_bridge_contract.md`;
   `docs/contracts/v15_trimmed_runtime_contract.md`
-- Deletion note: a future bridge collapse should delete or demote
-  `nushell/scripts/utils/config_parser.nu`, not reintroduce Nushell
+- Deletion note: future bridge collapse must not reintroduce Nushell
   normalization
 
 #### CRCP-002
 - Type: boundary
 - Status: live
-- Owner: split boundary between Nushell `runtime_env.nu` request assembly and
-  Rust `yzx_core runtime-env.compute` evaluation
-- Statement: The only surviving Nu-side responsibility for runtime env is
-  assembling an explicit request from resolved config, runtime root, home, and
-  PATH. Derived runtime-env policy stays in `runtime-env.compute` and must not
-  be re-derived by Nu callers.
+- Owner: Rust `yzx_core runtime-env.compute`
+- Statement: Runtime env evaluation is Rust-owned. Any remaining shell caller
+  must pass explicit inputs or process environment through the helper boundary;
+  derived runtime-env policy stays in `runtime-env.compute` and must not be
+  re-derived by Nu callers.
 - Verification: automated
   `rust_core/yazelix_core/tests/yzx_core_runtime_env.rs`; automated
   `nushell/scripts/dev/test_yzx_core_commands.nu`
@@ -120,36 +116,28 @@ of the protocol pressure points at once:
 #### CRCP-005
 - Type: ownership
 - Status: quarantine
-- Owner: Nushell bridge files `config_parser.nu`, `runtime_env.nu`, and
-  `yzx_core_bridge.nu`
-- Statement: The surviving Nu bridge layer is temporary transport glue around
-  Rust-owned config and runtime evaluation. These files may resolve paths, build
-  explicit requests, and render Yazelix-owned errors, but they are not allowed
-  to grow new config/runtime semantics while a bridge-collapse lane remains
-  open.
+- Owner: Nushell bridge file `yzx_core_bridge.nu`
+- Statement: The surviving Nu bridge layer is narrow transport glue around
+  Rust-owned helper commands. It may resolve helper paths, execute helpers,
+  parse JSON envelopes, and render Yazelix-owned helper errors, but it is not
+  allowed to grow new config/runtime semantics while a bridge-collapse lane
+  remains open.
 - Verification: manual review of
-  `nushell/scripts/utils/config_parser.nu`,
-  `nushell/scripts/utils/runtime_env.nu`, and
   `nushell/scripts/utils/yzx_core_bridge.nu`; manual review against
   `docs/contracts/cross_language_runtime_ownership.md`; unverified long-term exit
   tracked as bridge-collapse debt
 - Source: `docs/contracts/cross_language_runtime_ownership.md`
-- Deletion note: collapse or delete the bridge files once callers can reach the
-  Rust owner directly or a smaller caller-local adapter boundary is proven
+- Deletion note: collapse or delete the bridge once callers can reach the Rust
+  owner directly or a smaller caller-local adapter boundary is proven
 
 ## Pilot Findings
 
 ### Duplicate-owner and deletion findings
 
-- `config_parser.nu` still reads like a parser owner even though Rust already
-  owns typed normalization. That is a naming and seam smell, not a reason to
-  move config semantics back into Nushell
-- `runtime_env.nu` is a legitimate boundary only while it stays a request
-  builder. If it starts deriving editor or runtime policy locally, it becomes a
-  second owner
 - `yzx_core_bridge.nu` is a useful transport seam today, but it is still a real
-  bridge owner because helper discovery, JSON envelope parsing, and final
-  bridge-rendered failure rules live there
+  bridge owner because helper discovery, JSON envelope parsing, and helper
+  failure rendering live there. It has no caller-owned error surface and no
+  Zellij process wrappers
 
 ### Weak traceability finding
 
