@@ -33,6 +33,8 @@ const GENERATED_CONFIG_MARKERS: &[&str] = &[
     "yazelix_pane_orchestrator",
     "yzpp",
 ];
+const GENERATED_LAYOUT_MARKER: &str = "GENERATED ZELLIJ LAYOUT (YAZELIX)";
+const GENERATED_LAYOUT_FINGERPRINT_PREFIX: &str = "generation_fingerprint:";
 const ZELLIJ_KEYBINDINGS_CONFIG_KEY: &str = "zellij_keybindings";
 const ZELLIJ_NATIVE_KEYBINDINGS_CONFIG_KEY: &str = "zellij_native_keybindings";
 
@@ -221,6 +223,7 @@ pub fn generate_zellij_materialization(
         &render_plan,
         &pane_orchestrator_runtime_path,
         &zjstatus_runtime_path,
+        &generation_fingerprint,
     )?;
     let merged_config = render_merged_config(
         &request.runtime_dir,
@@ -1265,6 +1268,7 @@ fn generate_all_layouts(
     render_plan: &ZellijRenderPlanData,
     pane_orchestrator_wasm_path: &Path,
     zjstatus_wasm_path: &Path,
+    generation_fingerprint: &str,
 ) -> Result<Vec<PathBuf>, CoreError> {
     if !source_dir.exists() {
         return Ok(Vec::new());
@@ -1300,10 +1304,23 @@ fn generate_all_layouts(
             runtime_dir,
             render_plan,
         )?;
-        write_text_atomic(target, &rendered)?;
+        write_text_atomic(
+            target,
+            &format!(
+                "{}{}",
+                generated_zellij_layout_header(generation_fingerprint),
+                rendered
+            ),
+        )?;
     }
 
     Ok(expected_targets)
+}
+
+fn generated_zellij_layout_header(generation_fingerprint: &str) -> String {
+    format!(
+        "// {GENERATED_LAYOUT_MARKER}\n// {GENERATED_LAYOUT_FINGERPRINT_PREFIX} {generation_fingerprint}\n"
+    )
 }
 
 fn render_integrated_zjstatus_bar(
@@ -2134,6 +2151,29 @@ pub(crate) fn generated_zellij_config_has_yazelix_markers(path: &Path) -> Result
     Ok(GENERATED_CONFIG_MARKERS
         .iter()
         .all(|marker| content.contains(marker)))
+}
+
+pub(crate) fn generated_zellij_layout_has_yazelix_markers(
+    path: &Path,
+    expected_fingerprint: Option<&str>,
+) -> Result<bool, CoreError> {
+    let content = fs::read_to_string(path).map_err(|source| {
+        CoreError::io(
+            "read_generated_zellij_layout",
+            "Could not read generated Zellij layout",
+            "Check permissions for the Yazelix state directory and retry.",
+            path.to_string_lossy(),
+            source,
+        )
+    })?;
+    if !content.contains(GENERATED_LAYOUT_MARKER) {
+        return Ok(false);
+    }
+    if let Some(fingerprint) = expected_fingerprint {
+        let expected_line = format!("{GENERATED_LAYOUT_FINGERPRINT_PREFIX} {fingerprint}");
+        return Ok(content.contains(&expected_line));
+    }
+    Ok(true)
 }
 
 fn copy_file_atomic(source: &Path, target: &Path) -> Result<(), CoreError> {

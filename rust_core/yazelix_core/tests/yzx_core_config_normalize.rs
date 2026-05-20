@@ -696,6 +696,13 @@ fn runtime_materialization_materialize_writes_generated_artifacts_and_records_st
             .join("yzx_side_closed.swap.kdl")
             .exists()
     );
+    let generated_layout = fs::read_to_string(fixture.zellij_layout_dir.join("yzx_side.kdl"))
+        .expect("generated layout");
+    let generation_fingerprint = envelope["data"]["zellij"]["generation_fingerprint"]
+        .as_str()
+        .expect("generation fingerprint");
+    assert!(generated_layout.contains("GENERATED ZELLIJ LAYOUT (YAZELIX)"));
+    assert!(generated_layout.contains(generation_fingerprint));
     let permissions =
         fs::read_to_string(fixture.home_dir.join(".cache/zellij/permissions.kdl")).unwrap();
     assert!(permissions.contains("zjstatus.wasm"));

@@ -3,8 +3,11 @@
 use crate::layout_family_contract::{
     expected_zellij_generated_layout_files, validate_zellij_layout_family_contract,
 };
-use crate::zellij_materialization::generated_zellij_config_has_yazelix_markers;
+use crate::zellij_materialization::{
+    generated_zellij_config_has_yazelix_markers, generated_zellij_layout_has_yazelix_markers,
+};
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -142,6 +145,8 @@ fn generated_workspace_state_finding(
     let mut issues = Vec::new();
     let zellij_state_dir = state_dir.join("configs").join("zellij");
     let generated_config = zellij_state_dir.join("config.kdl");
+    let generation_metadata = zellij_state_dir.join(".yazelix_generation.json");
+    let generation_fingerprint = generated_zellij_generation_fingerprint(&generation_metadata);
     if !generated_config.is_file() {
         issues.push(format!(
             "missing generated Zellij config: {}",
@@ -160,11 +165,13 @@ fn generated_workspace_state_finding(
             )),
         }
     }
-    if !zellij_state_dir.join(".yazelix_generation.json").is_file() {
-        issues.push(format!(
+    match &generation_fingerprint {
+        Ok(Some(_)) => {}
+        Ok(None) => issues.push(format!(
             "missing Zellij generation fingerprint: {}",
-            zellij_state_dir.join(".yazelix_generation.json").display()
-        ));
+            generation_metadata.display()
+        )),
+        Err(error) => issues.push(error.clone()),
     }
 
     match expected_zellij_generated_layout_files(runtime_dir) {
@@ -177,6 +184,21 @@ fn generated_workspace_state_finding(
                         "missing generated Zellij layout: {}",
                         generated.display()
                     ));
+                    continue;
+                }
+                match generated_zellij_layout_has_yazelix_markers(
+                    &generated,
+                    generation_fingerprint.as_ref().ok().and_then(Option::as_deref),
+                ) {
+                    Ok(true) => {}
+                    Ok(false) => issues.push(format!(
+                        "invalid generated Zellij layout missing Yazelix generation markers or current fingerprint: {}",
+                        generated.display()
+                    )),
+                    Err(error) => issues.push(format!(
+                        "could not validate generated Zellij layout: {}",
+                        error.message()
+                    )),
                 }
             }
         }
@@ -235,6 +257,31 @@ fn generated_workspace_state_finding(
         owner_surface: "doctor".into(),
         workspace_asset_check: "generated_workspace_assets".into(),
     }
+}
+
+fn generated_zellij_generation_fingerprint(metadata_path: &Path) -> Result<Option<String>, String> {
+    if !metadata_path.is_file() {
+        return Ok(None);
+    }
+    let raw = fs::read_to_string(metadata_path).map_err(|error| {
+        format!(
+            "could not read Zellij generation fingerprint: {} ({error})",
+            metadata_path.display()
+        )
+    })?;
+    let parsed = serde_json::from_str::<JsonValue>(&raw).map_err(|error| {
+        format!(
+            "could not parse Zellij generation fingerprint: {} ({error})",
+            metadata_path.display()
+        )
+    })?;
+    let fingerprint = parsed
+        .get("fingerprint")
+        .and_then(JsonValue::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned);
+    Ok(fingerprint)
 }
 
 fn missing_runtime_workspace_assets(runtime_dir: &Path) -> Vec<PathBuf> {
@@ -325,9 +372,22 @@ swap_layouts = ["single_open"]
             "GENERATED ZELLIJ CONFIG (YAZELIX)\nyazelix_pane_orchestrator\nyzpp\n",
         )
         .unwrap();
-        fs::write(state_zellij.join(".yazelix_generation.json"), "{}").unwrap();
-        fs::write(state_zellij.join("layouts").join("yzx_side.kdl"), "").unwrap();
-        fs::write(state_zellij.join("layouts").join("yzx_side.swap.kdl"), "").unwrap();
+        fs::write(
+            state_zellij.join(".yazelix_generation.json"),
+            r#"{"fingerprint":"fresh-fingerprint"}"#,
+        )
+        .unwrap();
+        let generated_layout = "// GENERATED ZELLIJ LAYOUT (YAZELIX)\n// generation_fingerprint: fresh-fingerprint\nlayout {}\n";
+        fs::write(
+            state_zellij.join("layouts").join("yzx_side.kdl"),
+            generated_layout,
+        )
+        .unwrap();
+        fs::write(
+            state_zellij.join("layouts").join("yzx_side.swap.kdl"),
+            generated_layout,
+        )
+        .unwrap();
         (tmp, runtime, state)
     }
 
@@ -406,6 +466,44 @@ swap_layouts = ["single_open"]
                 .as_ref()
                 .unwrap()
                 .contains("overlay markers")
+        );
+    }
+
+    // Regression: doctor should catch stale generated Zellij layouts instead of accepting existing files blindly.
+    #[test]
+    fn workspace_asset_report_flags_stale_generated_zellij_layout_as_fixable() {
+        let (_tmp, runtime, state) = write_workspace_fixture();
+        fs::write(
+            state
+                .join("configs")
+                .join("zellij")
+                .join("layouts")
+                .join("yzx_side.kdl"),
+            "// GENERATED ZELLIJ LAYOUT (YAZELIX)\n// generation_fingerprint: stale-fingerprint\nlayout {}\n",
+        )
+        .unwrap();
+
+        let findings = evaluate_workspace_asset_report(&WorkspaceAssetEvaluateRequest {
+            runtime_dir: runtime,
+            state_dir: state,
+        });
+        let generated = findings
+            .iter()
+            .find(|finding| finding.workspace_asset_check == "generated_workspace_assets")
+            .unwrap();
+
+        assert_eq!(generated.status, "error");
+        assert!(generated.fix_available);
+        assert_eq!(
+            generated.fix_action.as_deref(),
+            Some("repair_generated_runtime_state")
+        );
+        assert!(
+            generated
+                .details
+                .as_ref()
+                .unwrap()
+                .contains("invalid generated Zellij layout")
         );
     }
 }
