@@ -96,6 +96,38 @@ desc = "Open lazygit"
     fs::write(tokyo_night.join("flavor.toml"), "[mgr]\n").unwrap();
 }
 
+fn run_yazi_materialization_generate(
+    home: &std::path::Path,
+    config_root: &std::path::Path,
+    config_path: &std::path::Path,
+    repo: &std::path::Path,
+    runtime_dir: &std::path::Path,
+    output_dir: &std::path::Path,
+    sync_static_assets: bool,
+) -> std::process::Output {
+    let mut command = Command::cargo_bin("yzx_core").unwrap();
+    command
+        .env("HOME", home)
+        .env("XDG_CONFIG_HOME", home.join(".config"))
+        .env("XDG_DATA_HOME", home.join(".local").join("share"))
+        .env("YAZELIX_CONFIG_DIR", config_root)
+        .arg("yazi-materialization.generate")
+        .arg("--config")
+        .arg(config_path)
+        .arg("--default-config")
+        .arg(repo.join("settings_default.jsonc"))
+        .arg("--contract")
+        .arg(repo.join("config_metadata/main_config_contract.toml"))
+        .arg("--runtime-dir")
+        .arg(runtime_dir)
+        .arg("--yazi-config-dir")
+        .arg(output_dir);
+    if sync_static_assets {
+        command.arg("--sync-static-assets");
+    }
+    command.output().unwrap()
+}
+
 // Defends: yazi-materialization.generate Rust-owns the generated Yazi surface, bundled assets, and runtime placeholder rendering end-to-end.
 #[test]
 fn yazi_materialization_generate_writes_managed_surface_and_assets() {
@@ -174,6 +206,87 @@ plugins = ["git", "starship"]
     );
     assert!(!runtime_placeholder_plugin.contains("__YAZELIX_RUNTIME_DIR__"));
     assert!(runtime_placeholder_plugin.contains(runtime_dir.to_string_lossy().as_ref()));
+}
+
+// Regression: warm Yazi materialization must repair stale bundled static assets without recopied assets on a clean no-op path.
+#[test]
+fn yazi_materialization_repairs_stale_bundled_assets_without_warm_recopy() {
+    let repo = repo_root();
+    let temp = tempdir().unwrap();
+    let home = temp.path().join("home");
+    let config_root = home.join(".config").join("yazelix");
+    let output_dir = temp.path().join("state").join("configs").join("yazi");
+    let runtime_dir = temp.path().join("runtime");
+    let config_path = prepare_managed_config(
+        &config_root,
+        &repo,
+        r#"[yazi]
+theme = "tokyo-night"
+"#,
+    );
+    prepare_runtime_fixture(&runtime_dir);
+
+    let first = run_yazi_materialization_generate(
+        &home,
+        &config_root,
+        &config_path,
+        &repo,
+        &runtime_dir,
+        &output_dir,
+        true,
+    );
+    assert!(
+        first.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&first.stderr)
+    );
+
+    let plugin_main = output_dir
+        .join("plugins")
+        .join("sidebar-state.yazi")
+        .join("main.lua");
+    let sentinel = output_dir
+        .join("plugins")
+        .join("sidebar-state.yazi")
+        .join("warm_skip_sentinel");
+    fs::write(&sentinel, "warm asset marker\n").unwrap();
+
+    let warm = run_yazi_materialization_generate(
+        &home,
+        &config_root,
+        &config_path,
+        &repo,
+        &runtime_dir,
+        &output_dir,
+        false,
+    );
+    assert!(
+        warm.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&warm.stderr)
+    );
+    let warm_envelope: Value = serde_json::from_slice(&warm.stdout).unwrap();
+    assert_eq!(warm_envelope["data"]["synced_static_assets"], false);
+    assert!(sentinel.exists());
+
+    fs::write(&plugin_main, "return 'stale generated plugin'\n").unwrap();
+    let repair = run_yazi_materialization_generate(
+        &home,
+        &config_root,
+        &config_path,
+        &repo,
+        &runtime_dir,
+        &output_dir,
+        false,
+    );
+    assert!(
+        repair.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&repair.stderr)
+    );
+    let repair_envelope: Value = serde_json::from_slice(&repair.stdout).unwrap();
+    assert_eq!(repair_envelope["data"]["synced_static_assets"], true);
+    assert_eq!(fs::read_to_string(plugin_main).unwrap(), "return 'ok'\n");
 }
 
 // Regression: `yzx import yazi` places native plugin directories under Yazelix-managed config, and materialization copies that managed source before generating plugin requires.

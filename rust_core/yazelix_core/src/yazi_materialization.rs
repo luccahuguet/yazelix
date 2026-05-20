@@ -113,7 +113,11 @@ pub fn generated_yazi_static_assets_missing(
     runtime_dir: &Path,
     yazi_config_dir: &Path,
 ) -> Result<bool, CoreError> {
-    writer::bundled_yazi_assets_missing(&runtime_dir.join("configs").join("yazi"), yazi_config_dir)
+    writer::bundled_yazi_assets_missing(
+        &runtime_dir.join("configs").join("yazi"),
+        yazi_config_dir,
+        runtime_dir,
+    )
 }
 
 fn build_yazi_render_plan_request(
@@ -609,6 +613,20 @@ id = "extra"
             writer::asset_tree_missing_targets(
                 &temp.path().join("runtime/configs/yazi/plugins"),
                 &target_root,
+                &temp.path().join("runtime"),
+            )
+            .unwrap()
+        );
+
+        let target_plugin = target_root.join("example.yazi");
+        fs::create_dir_all(&target_plugin).unwrap();
+        fs::write(target_plugin.join("main.lua"), "print('stale')").unwrap();
+
+        assert!(
+            writer::asset_tree_missing_targets(
+                &temp.path().join("runtime/configs/yazi/plugins"),
+                &target_root,
+                &temp.path().join("runtime"),
             )
             .unwrap()
         );

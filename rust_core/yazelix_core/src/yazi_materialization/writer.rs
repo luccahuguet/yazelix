@@ -1,9 +1,9 @@
+use crate::atomic_fs::{write_bytes_atomic, write_text_atomic};
 use crate::bridge::{CoreError, ErrorClass};
 use crate::yazi_render_plan::{ThemeFlavorPlan, YaziRenderPlanData};
 use serde_json::json;
 use std::fs;
 use std::path::Path;
-use std::time::{SystemTime, UNIX_EPOCH};
 use toml::Value as TomlValue;
 
 const RUNTIME_DIR_PLACEHOLDER: &str = "__YAZELIX_RUNTIME_DIR__";
@@ -55,7 +55,11 @@ pub(super) fn write_yazi_config_pack(
     ];
 
     let should_sync_static_assets = request.sync_static_assets
-        || bundled_yazi_assets_missing(request.source_dir, request.output_dir)?;
+        || bundled_yazi_assets_missing(
+            request.source_dir,
+            request.output_dir,
+            request.runtime_dir,
+        )?;
     if should_sync_static_assets {
         sync_bundled_yazi_assets(request.source_dir, request.output_dir, request.runtime_dir)?;
     }
@@ -308,6 +312,7 @@ fn generated_header(comment: &str, title: &str, body: &[&str]) -> String {
 pub(super) fn bundled_yazi_assets_missing(
     source_dir: &Path,
     output_dir: &Path,
+    runtime_dir: &Path,
 ) -> Result<bool, CoreError> {
     let source_plugins = source_dir.join("plugins");
     let output_plugins = output_dir.join("plugins");
@@ -317,15 +322,17 @@ pub(super) fn bundled_yazi_assets_missing(
     let output_starship = output_dir.join("yazelix_starship.toml");
 
     Ok(
-        asset_tree_missing_targets(&source_plugins, &output_plugins)?
-            || asset_tree_missing_targets(&source_flavors, &output_flavors)?
-            || (source_starship.exists() && !output_starship.exists()),
+        asset_tree_missing_targets(&source_plugins, &output_plugins, runtime_dir)?
+            || asset_tree_missing_targets(&source_flavors, &output_flavors, runtime_dir)?
+            || (source_starship.exists()
+                && asset_file_needs_sync(&source_starship, &output_starship, runtime_dir)?),
     )
 }
 
 pub(super) fn asset_tree_missing_targets(
     source_root: &Path,
     target_root: &Path,
+    runtime_dir: &Path,
 ) -> Result<bool, CoreError> {
     if !source_root.exists() {
         return Ok(false);
@@ -380,16 +387,41 @@ pub(super) fn asset_tree_missing_targets(
                 )
             })?;
             let target_path = target_root.join(relative);
-            if !target_path.exists() {
-                return Ok(true);
-            }
             if file_type.is_dir() {
+                if !target_path.is_dir() {
+                    return Ok(true);
+                }
                 stack.push(source_path);
+            } else if asset_file_needs_sync(&source_path, &target_path, runtime_dir)? {
+                return Ok(true);
             }
         }
     }
 
     Ok(false)
+}
+
+fn asset_file_needs_sync(
+    source_path: &Path,
+    target_path: &Path,
+    runtime_dir: &Path,
+) -> Result<bool, CoreError> {
+    if !target_path.is_file() {
+        return Ok(true);
+    }
+    let source_content = fs::read(source_path).map_err(|source| {
+        CoreError::io(
+            "read_yazi_asset_file",
+            "Could not read a bundled Yazi asset file",
+            "Reinstall Yazelix so the runtime includes readable Yazi assets.",
+            source_path.to_string_lossy(),
+            source,
+        )
+    })?;
+    let expected = render_asset_content(&source_content, runtime_dir);
+    Ok(fs::read(target_path)
+        .map(|actual| actual != expected)
+        .unwrap_or(true))
 }
 
 fn sync_bundled_yazi_assets(
@@ -563,12 +595,16 @@ fn copy_path_recursive(source: &Path, target: &Path, runtime_dir: &Path) -> Resu
             source_err,
         )
     })?;
-    let rendered = match String::from_utf8(bytes) {
-        Ok(text) => render_runtime_root_placeholders(&text, runtime_dir).into_bytes(),
-        Err(non_utf8) => non_utf8.into_bytes(),
-    };
+    let rendered = render_asset_content(&bytes, runtime_dir);
     write_bytes_atomic(target, &rendered)?;
     Ok(())
+}
+
+fn render_asset_content(bytes: &[u8], runtime_dir: &Path) -> Vec<u8> {
+    match std::str::from_utf8(bytes) {
+        Ok(text) => render_runtime_root_placeholders(text, runtime_dir).into_bytes(),
+        Err(_) => bytes.to_vec(),
+    }
 }
 
 pub(super) fn preserve_yazelix_edit_opener(base: &toml::Table, merged: &mut toml::Table) {
@@ -722,60 +758,8 @@ fn write_text_atomic_if_changed(path: &Path, content: &str) -> Result<bool, Core
     if fs::read_to_string(path).ok().as_deref() == Some(content) {
         return Ok(false);
     }
-    write_bytes_atomic(path, content.as_bytes())?;
+    write_text_atomic(path, content)?;
     Ok(true)
-}
-
-fn write_bytes_atomic(path: &Path, content: &[u8]) -> Result<(), CoreError> {
-    let parent = path.parent().ok_or_else(|| {
-        CoreError::classified(
-            ErrorClass::Internal,
-            "invalid_yazi_output_path",
-            "Generated Yazi output path has no parent directory",
-            "Report this as a Yazelix internal error.",
-            json!({ "path": path.to_string_lossy() }),
-        )
-    })?;
-    fs::create_dir_all(parent).map_err(|source| {
-        CoreError::io(
-            "create_yazi_output_parent",
-            "Could not create the parent directory for generated Yazi output",
-            "Check permissions for the Yazelix state directory and retry.",
-            parent.to_string_lossy(),
-            source,
-        )
-    })?;
-    let temporary_path = path.with_file_name(format!(
-        ".{}.yazelix-tmp-{}-{}",
-        path.file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or("yazi"),
-        std::process::id(),
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|duration| duration.as_nanos())
-            .unwrap_or(0)
-    ));
-    fs::write(&temporary_path, content).map_err(|source| {
-        CoreError::io(
-            "write_yazi_output_temp",
-            "Could not write temporary generated Yazi output",
-            "Check permissions for the Yazelix state directory and retry.",
-            temporary_path.to_string_lossy(),
-            source,
-        )
-    })?;
-    fs::rename(&temporary_path, path).map_err(|source| {
-        CoreError::io(
-            "rename_yazi_output_temp",
-            "Could not replace generated Yazi output",
-            "Check permissions for the Yazelix state directory and retry.",
-            path.to_string_lossy(),
-            source,
-        )
-    })?;
-    set_writable(path, false)?;
-    Ok(())
 }
 
 fn remove_path_recursively(path: &Path) -> Result<(), CoreError> {

@@ -590,19 +590,23 @@ mod tests {
         mirror_tree(
             &runtime_dir.join("configs/yazi/plugins"),
             &yazi_dir.join("plugins"),
+            runtime_dir,
         );
         mirror_tree(
             &runtime_dir.join("configs/yazi/flavors"),
             &yazi_dir.join("flavors"),
+            runtime_dir,
         );
         let starship_source = runtime_dir.join("configs/yazi/yazelix_starship.toml");
         if starship_source.exists() {
             fs::create_dir_all(yazi_dir).unwrap();
-            fs::copy(starship_source, yazi_dir.join("yazelix_starship.toml")).unwrap();
+            let bytes = fs::read(starship_source).unwrap();
+            let rendered = render_test_yazi_asset_content(&bytes, runtime_dir);
+            fs::write(yazi_dir.join("yazelix_starship.toml"), rendered).unwrap();
         }
     }
 
-    fn mirror_tree(source: &Path, target: &Path) {
+    fn mirror_tree(source: &Path, target: &Path, runtime_dir: &Path) {
         if !source.exists() {
             return;
         }
@@ -612,19 +616,33 @@ mod tests {
             let source_path = entry.path();
             let target_path = target.join(entry.file_name());
             if entry.file_type().unwrap().is_dir() {
-                mirror_tree(&source_path, &target_path);
+                mirror_tree(&source_path, &target_path, runtime_dir);
             } else {
                 if let Some(parent) = target_path.parent() {
                     fs::create_dir_all(parent).unwrap();
                 }
-                fs::copy(source_path, target_path).unwrap();
+                let bytes = fs::read(source_path).unwrap();
+                let rendered = render_test_yazi_asset_content(&bytes, runtime_dir);
+                fs::write(target_path, rendered).unwrap();
             }
         }
     }
 
-    // Regression: startup can skip warm materialization only when the plan still catches missing generated Yazi asset trees.
+    fn render_test_yazi_asset_content(bytes: &[u8], runtime_dir: &Path) -> Vec<u8> {
+        match std::str::from_utf8(bytes) {
+            Ok(text) => text
+                .replace(
+                    "__YAZELIX_RUNTIME_DIR__",
+                    runtime_dir.to_string_lossy().as_ref(),
+                )
+                .into_bytes(),
+            Err(_) => bytes.to_vec(),
+        }
+    }
+
+    // Regression: startup can skip warm materialization only when the plan still catches missing or stale generated Yazi asset trees.
     #[test]
-    fn plan_marks_missing_yazi_static_assets_without_forcing_refresh() {
+    fn plan_marks_missing_or_stale_yazi_static_assets_without_forcing_refresh() {
         let dir = tempdir().expect("tempdir");
         let runtime_dir = repo_root();
         let config_path = runtime_dir.join("settings_default.jsonc");
@@ -673,6 +691,25 @@ mod tests {
         assert_eq!(plan.missing_artifacts.len(), 1);
         assert_eq!(
             plan.missing_artifacts[0].label,
+            "generated Yazi static assets"
+        );
+
+        mirror_yazi_static_assets(&runtime_dir, &yazi_dir);
+        fs::write(
+            yazi_dir.join("plugins/sidebar-state.yazi/main.lua"),
+            "return 'stale generated plugin'\n",
+        )
+        .unwrap();
+
+        let stale_plan = plan_runtime_materialization(&request).unwrap();
+
+        assert!(!stale_plan.config_state.needs_refresh);
+        assert_eq!(stale_plan.status, "repair_missing_artifacts");
+        assert_eq!(stale_plan.should_regenerate, true);
+        assert_eq!(stale_plan.should_sync_static_assets, false);
+        assert_eq!(stale_plan.missing_artifacts.len(), 1);
+        assert_eq!(
+            stale_plan.missing_artifacts[0].label,
             "generated Yazi static assets"
         );
     }
