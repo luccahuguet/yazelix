@@ -1,3 +1,4 @@
+// Test lane: default
 use super::*;
 use crate::config_ui::ConfigUiApp;
 use ratatui::Frame;
@@ -8,6 +9,11 @@ use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Tab
 use std::collections::BTreeSet;
 
 const HEADER_HORIZONTAL_PADDING: u16 = 1;
+const FIELD_APPLY_COLUMN_WIDTH: usize = 13;
+const FIELD_SETTING_COLUMN_WIDTH: usize = 34;
+const FIELD_VALUE_COLUMN_WIDTH: usize = 22;
+const STATUS_COLUMN_WIDTH: usize = 9;
+const STATUS_ITEM_COLUMN_WIDTH: usize = 42;
 
 pub(crate) fn draw_config_ui(frame: &mut Frame<'_>, app: &mut ConfigUiApp) {
     let area = frame.area();
@@ -184,17 +190,69 @@ fn render_list(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect, rows: &[UiR
     } else {
         format!("settings filtered by {}", app.search)
     };
+    let block = Block::default().title(title).borders(Borders::ALL);
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+    if inner.height == 0 {
+        return;
+    }
+
+    let list_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(1), Constraint::Min(0)])
+        .split(inner);
+    frame.render_widget(
+        Paragraph::new(list_header_line(app)).alignment(Alignment::Left),
+        list_chunks[0],
+    );
+    if list_chunks[1].height == 0 {
+        return;
+    }
+
     frame.render_stateful_widget(
-        List::new(items)
-            .block(Block::default().title(title).borders(Borders::ALL))
-            .highlight_style(
-                Style::default()
-                    .bg(Color::DarkGray)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        area,
+        List::new(items).highlight_style(
+            Style::default()
+                .bg(Color::DarkGray)
+                .add_modifier(Modifier::BOLD),
+        ),
+        list_chunks[1],
         &mut state,
     );
+}
+
+fn list_header_line(app: &ConfigUiApp) -> Line<'static> {
+    match app.model.tabs.get(app.selected_tab).map(String::as_str) {
+        Some("advanced") => status_list_header_line(),
+        _ => field_list_header_line(),
+    }
+}
+
+fn field_list_header_line() -> Line<'static> {
+    Line::from(vec![
+        Span::styled(
+            fixed_label("apply", FIELD_APPLY_COLUMN_WIDTH),
+            column_header_style(),
+        ),
+        Span::styled(
+            fixed_label("setting", FIELD_SETTING_COLUMN_WIDTH),
+            column_header_style(),
+        ),
+        Span::styled("value", column_header_style()),
+    ])
+}
+
+fn status_list_header_line() -> Line<'static> {
+    Line::from(vec![
+        Span::styled(
+            fixed_label("status", STATUS_COLUMN_WIDTH),
+            column_header_style(),
+        ),
+        Span::styled(
+            fixed_label("item", STATUS_ITEM_COLUMN_WIDTH),
+            column_header_style(),
+        ),
+        Span::styled("detail", column_header_style()),
+    ])
 }
 
 fn render_details(frame: &mut Frame<'_>, app: &ConfigUiApp, area: Rect, row: Option<UiRowRef>) {
@@ -219,17 +277,19 @@ pub(crate) fn row_line_for_model(model: &ConfigUiModel, row: UiRowRef) -> Line<'
             let field = &model.fields[index];
             Line::from(vec![
                 Span::styled(
-                    fixed_label(state_label(field.state), 9),
-                    state_style(field.state),
-                ),
-                Span::styled(
-                    fixed_label(&field.apply_status.summary, 13),
+                    fixed_label(&field.apply_status.summary, FIELD_APPLY_COLUMN_WIDTH),
                     apply_status_style(&field.apply_status),
                 ),
-                Span::styled(truncate(&field.path, 34), config_key_style()),
                 Span::styled(
-                    format!(" {}", truncate(&field.current_value, 22)),
-                    Style::default().fg(Color::Gray),
+                    fixed_label(
+                        &truncate(&field.path, FIELD_SETTING_COLUMN_WIDTH),
+                        FIELD_SETTING_COLUMN_WIDTH,
+                    ),
+                    field_key_style(field),
+                ),
+                Span::styled(
+                    truncate(&field.current_value, FIELD_VALUE_COLUMN_WIDTH),
+                    field_value_style(field),
                 ),
             ])
         }
@@ -271,6 +331,22 @@ pub(crate) fn row_line_for_model(model: &ConfigUiModel, row: UiRowRef) -> Line<'
                 ),
             ])
         }
+    }
+}
+
+fn field_key_style(field: &ConfigUiField) -> Style {
+    if field.state == ConfigUiValueState::Invalid {
+        state_style(field.state)
+    } else {
+        config_key_style()
+    }
+}
+
+fn field_value_style(field: &ConfigUiField) -> Style {
+    if field.state == ConfigUiValueState::Invalid {
+        state_style(field.state)
+    } else {
+        Style::default().fg(Color::Gray)
     }
 }
 
@@ -668,6 +744,12 @@ pub(crate) fn native_status_style(status: &ConfigUiNativeStatus) -> Style {
     }
 }
 
+pub(crate) fn column_header_style() -> Style {
+    Style::default()
+        .fg(Color::Yellow)
+        .add_modifier(Modifier::BOLD)
+}
+
 pub(crate) fn metadata_key_style() -> Style {
     Style::default().fg(Color::LightBlue)
 }
@@ -720,4 +802,100 @@ pub(crate) fn truncate_start(value: &str, limit: usize) -> String {
         .skip(len.saturating_sub(limit - 3))
         .collect::<String>();
     format!("...{tail}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    fn rendered_cells(line: &Line<'_>) -> Vec<String> {
+        line.spans
+            .iter()
+            .map(|span| span.content.trim().to_string())
+            .collect()
+    }
+
+    fn rendered_text(line: &Line<'_>) -> String {
+        line.spans
+            .iter()
+            .map(|span| span.content.as_ref())
+            .collect()
+    }
+
+    fn test_model(state: ConfigUiValueState) -> ConfigUiModel {
+        ConfigUiModel {
+            active_config_path: PathBuf::from("/home/lucca/.config/yazelix/settings.jsonc"),
+            cursor_config_path: PathBuf::from(
+                "/home/lucca/.config/yazelix_ghostty_cursors/settings.jsonc",
+            ),
+            default_cursor_config_path: PathBuf::from(
+                "/runtime/yazelix_ghostty_cursors_default.toml",
+            ),
+            active_config_exists: true,
+            config_owner: ConfigUiPathOwner::User,
+            config_read_only: false,
+            tabs: vec!["general".to_string()],
+            fields: vec![ConfigUiField {
+                path: "core.debug_mode".to_string(),
+                tab: "general".to_string(),
+                kind: "bool".to_string(),
+                current_value: "false".to_string(),
+                edit_value: "false".to_string(),
+                default_value: "false".to_string(),
+                state,
+                description: String::new(),
+                allowed_values: Vec::new(),
+                validation: String::new(),
+                rebuild_required: false,
+                apply_status: ConfigUiApplyStatus {
+                    summary: "tab restart".to_string(),
+                    label: "requires tab restart".to_string(),
+                    detail: "Restart this tab after saving".to_string(),
+                    pending: false,
+                },
+            }],
+            sidecars: Vec::new(),
+            native_config_statuses: Vec::new(),
+            diagnostics: Vec::new(),
+        }
+    }
+
+    // Defends: settings rows expose apply/setting/value without repeating complete-config explicit state.
+    #[test]
+    fn field_row_omits_explicit_state_column() {
+        let model = test_model(ConfigUiValueState::Explicit);
+        let line = row_line_for_model(&model, UiRowRef::Field(0));
+
+        assert_eq!(
+            rendered_cells(&line),
+            vec!["tab restart", "core.debug_mode", "false"]
+        );
+        assert!(!rendered_text(&line).contains("explicit"));
+    }
+
+    // Defends: removing the state column still leaves visible names for the remaining settings columns.
+    #[test]
+    fn field_header_names_remaining_columns() {
+        assert_eq!(
+            rendered_cells(&field_list_header_line()),
+            vec!["apply", "setting", "value"]
+        );
+    }
+
+    // Defends: invalid field rows remain visibly exceptional even without the normal state column.
+    #[test]
+    fn invalid_field_row_keeps_error_style_on_setting_and_value() {
+        let model = test_model(ConfigUiValueState::Invalid);
+        let line = row_line_for_model(&model, UiRowRef::Field(0));
+
+        assert_eq!(
+            line.spans[1].style,
+            state_style(ConfigUiValueState::Invalid)
+        );
+        assert_eq!(
+            line.spans[2].style,
+            state_style(ConfigUiValueState::Invalid)
+        );
+    }
 }
