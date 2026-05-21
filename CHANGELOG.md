@@ -4,12 +4,17 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
-Post-v16.4 work in progress
+Managed JSONC settings, Codex sidebars, and strict Zellij ownership
 
 Upgrade impact: no user action required
 
 Highlights:
-- Reserved for post-release changes after v16.4 lands.
+- `settings.jsonc` is the canonical Yazelix settings file, with a complete `settings_default.jsonc` template, schema coverage, strict unknown-field diagnostics, and additive repair for missing supported fields
+- Home Manager renders complete managed `settings.jsonc` files while still letting users keep tiny declarative Yazelix settings in Nix
+- Yazelix ships a host-installed Codex agent path with a managed right sidebar, directional sidebar/popup keybindings, top and bottom popup defaults, and editor/right-agent focus switching
+- Generated Zellij runtime state is re-rendered and validated before launch, so stale configs, missing plugin permissions, and copied native config files are detected or repaired deterministically
+- Managed `~/.config/yazelix/zellij.kdl` is reserved for native Zellij settings that Yazelix does not render; Yazelix-owned keybindings, theme, pane frames, and rounded corners stay in `settings.jsonc`
+- The pane-orchestrator and popup wasm artifacts are consumed from locked first-party child packages instead of copied main-repo binaries
 
 ## v16.4 - 2026-05-09
 
