@@ -3,7 +3,7 @@
 
 use crate::bridge::{CoreError, ErrorClass};
 use crate::native_config_status::path_owned_by_home_manager;
-use crate::settings_jsonc_patch::set_settings_jsonc_value_text;
+use crate::settings_jsonc_patch::{set_settings_jsonc_value_text, unset_settings_jsonc_value_text};
 use crate::user_config_paths;
 use jsonc_parser::ParseOptions;
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
@@ -24,6 +24,14 @@ const SETTINGS_TOP_LEVEL_ORDER: &[&str] = &[
     "terminal",
     "zellij",
     "yazi",
+];
+const LEGACY_SIDEBAR_SETTING_RENAMES: &[(&str, &str)] = &[
+    ("editor.sidebar_command", "workspace.left_sidebar.command"),
+    ("editor.sidebar_args", "workspace.left_sidebar.args"),
+    (
+        "editor.sidebar_width_percent",
+        "workspace.left_sidebar.width_percent",
+    ),
 ];
 
 #[derive(Debug, Clone)]
@@ -165,8 +173,10 @@ fn repair_settings_config_missing_defaults(
             source,
         )
     })?;
-    let current = parse_jsonc_value(settings_config, &raw)?;
     let defaults = read_settings_jsonc_value(default_main_config)?;
+    let current = parse_jsonc_value(settings_config, &raw)?;
+    let raw = repair_legacy_sidebar_settings(settings_config, raw, &current, &defaults)?;
+    let current = parse_jsonc_value(settings_config, &raw)?;
     let mut missing = Vec::new();
     collect_missing_default_settings(&current, &defaults, &mut Vec::new(), &mut missing);
 
@@ -224,6 +234,103 @@ fn repair_settings_config_missing_defaults(
             source,
         )
     })
+}
+
+fn repair_legacy_sidebar_settings(
+    settings_config: &Path,
+    raw: String,
+    current: &JsonValue,
+    defaults: &JsonValue,
+) -> Result<String, CoreError> {
+    let legacy_values = LEGACY_SIDEBAR_SETTING_RENAMES
+        .iter()
+        .filter_map(|(old_path, new_path)| {
+            json_value_at_path(current, old_path).map(|value| (*old_path, *new_path, value.clone()))
+        })
+        .collect::<Vec<_>>();
+    if legacy_values.is_empty() {
+        return Ok(raw);
+    }
+
+    let mut conflicts = Vec::new();
+    for (old_path, new_path, old_value) in &legacy_values {
+        let Some(new_value) = json_value_at_path(current, new_path) else {
+            continue;
+        };
+        let new_is_default = json_value_at_path(defaults, new_path)
+            .map(|default_value| new_value == default_value)
+            .unwrap_or(false);
+        if new_value != old_value && !new_is_default {
+            conflicts.push(json!({
+                "old_path": old_path,
+                "new_path": new_path,
+            }));
+        }
+    }
+    if !conflicts.is_empty() {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "legacy_sidebar_settings_conflict",
+            "Yazelix found old sidebar settings and conflicting workspace left-sidebar settings.",
+            "Choose one value, remove the old editor.sidebar_* entries, and keep the workspace.left_sidebar.* settings.",
+            json!({
+                "path": settings_config.display().to_string(),
+                "conflicts": conflicts,
+            }),
+        ));
+    }
+
+    if path_owned_by_home_manager(settings_config) {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "home_manager_owned_legacy_sidebar_settings",
+            "The active Yazelix settings file uses old sidebar fields and is owned by Home Manager.",
+            "Update your Home Manager options from editor.sidebar_* to workspace.left_sidebar.* and run home-manager switch.",
+            json!({
+                "path": settings_config.display().to_string(),
+                "legacy_fields": legacy_values
+                    .iter()
+                    .map(|(old_path, _, _)| old_path)
+                    .collect::<Vec<_>>(),
+            }),
+        ));
+    }
+    if settings_path_is_read_only(settings_config) {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "read_only_legacy_sidebar_settings",
+            format!(
+                "The active Yazelix settings file uses old sidebar fields and is read-only: {}.",
+                settings_config.display()
+            ),
+            "Make settings.jsonc writable or update the owning configuration source from editor.sidebar_* to workspace.left_sidebar.*.",
+            json!({
+                "path": settings_config.display().to_string(),
+                "legacy_fields": legacy_values
+                    .iter()
+                    .map(|(old_path, _, _)| old_path)
+                    .collect::<Vec<_>>(),
+            }),
+        ));
+    }
+
+    let mut patched = raw;
+    for (_, new_path, old_value) in &legacy_values {
+        patched =
+            set_settings_jsonc_value_text(settings_config, &patched, new_path, old_value)?.text;
+    }
+    for (old_path, _, _) in legacy_values {
+        patched = unset_settings_jsonc_value_text(settings_config, &patched, old_path)?.text;
+    }
+    Ok(patched)
+}
+
+fn json_value_at_path<'a>(value: &'a JsonValue, path: &str) -> Option<&'a JsonValue> {
+    let mut current = value;
+    for part in path.split('.') {
+        current = current.as_object()?.get(part)?;
+    }
+    Some(current)
 }
 
 fn collect_missing_default_settings(
@@ -680,6 +787,18 @@ mod tests {
   "editor": {
     "command": "hx",
     "hide_sidebar_on_file_open": true
+  },
+  "workspace": {
+    "left_sidebar": {
+      "command": "yzx",
+      "args": ["sidebar", "yazi"],
+      "width_percent": 20
+    },
+    "right_sidebar": {
+      "command": "codex",
+      "args": [],
+      "width_percent": 40
+    }
   }
 }
 "#,
@@ -744,6 +863,115 @@ mod tests {
             Some(true)
         );
         assert!(value.get("cursors").is_none());
+    }
+
+    // Regression: the v16.5 sidebar rename is lossless, so writable user configs should repair before strict unknown-field validation.
+    #[test]
+    fn migrates_legacy_sidebar_fields_to_workspace_left_sidebar() {
+        let runtime = tempdir().unwrap();
+        let config = tempdir().unwrap();
+        let (main, cursor) = write_defaults(runtime.path());
+        fs::write(
+            config.path().join("settings.jsonc"),
+            r#"{
+  "editor": {
+    "command": "hx",
+    "sidebar_command": "lazygit",
+    "sidebar_args": ["status"],
+    "sidebar_width_percent": 30
+  }
+}
+"#,
+        )
+        .unwrap();
+
+        let path = ensure_settings_config(config.path(), &main, &cursor).unwrap();
+        let raw = fs::read_to_string(&path).unwrap();
+        let value = read_settings_jsonc_value(&path).unwrap();
+
+        assert!(!raw.contains("sidebar_command"));
+        assert!(!raw.contains("sidebar_args"));
+        assert!(!raw.contains("sidebar_width_percent"));
+        assert_eq!(
+            value["workspace"]["left_sidebar"]["command"].as_str(),
+            Some("lazygit")
+        );
+        assert_eq!(
+            value["workspace"]["left_sidebar"]["args"]
+                .as_array()
+                .unwrap()[0]
+                .as_str(),
+            Some("status")
+        );
+        assert_eq!(
+            value["workspace"]["left_sidebar"]["width_percent"].as_i64(),
+            Some(30)
+        );
+        assert_eq!(
+            value["workspace"]["right_sidebar"]["command"].as_str(),
+            Some("codex")
+        );
+    }
+
+    // Regression: a previous failed launch may have already added default workspace fields before old sidebar fields blocked validation.
+    #[test]
+    fn migrates_legacy_sidebar_fields_over_default_workspace_destination() {
+        let runtime = tempdir().unwrap();
+        let config = tempdir().unwrap();
+        let (main, cursor) = write_defaults(runtime.path());
+        fs::write(
+            config.path().join("settings.jsonc"),
+            r#"{
+  "editor": {
+    "command": "hx",
+    "sidebar_width_percent": 28
+  },
+  "workspace": {
+    "left_sidebar": {
+      "command": "yzx",
+      "args": ["sidebar", "yazi"],
+      "width_percent": 20
+    }
+  }
+}
+"#,
+        )
+        .unwrap();
+
+        let path = ensure_settings_config(config.path(), &main, &cursor).unwrap();
+        let value = read_settings_jsonc_value(&path).unwrap();
+
+        assert_eq!(
+            value["workspace"]["left_sidebar"]["width_percent"].as_i64(),
+            Some(28)
+        );
+    }
+
+    // Defends: automatic repair does not guess when old and new sidebar fields both carry custom values.
+    #[test]
+    fn rejects_legacy_sidebar_conflict_with_custom_workspace_destination() {
+        let runtime = tempdir().unwrap();
+        let config = tempdir().unwrap();
+        let (main, cursor) = write_defaults(runtime.path());
+        fs::write(
+            config.path().join("settings.jsonc"),
+            r#"{
+  "editor": {
+    "sidebar_width_percent": 28
+  },
+  "workspace": {
+    "left_sidebar": {
+      "width_percent": 30
+    }
+  }
+}
+"#,
+        )
+        .unwrap();
+
+        let err = ensure_settings_config(config.path(), &main, &cursor).unwrap_err();
+
+        assert_eq!(err.code(), "legacy_sidebar_settings_conflict");
     }
 
     // Regression: JSONC parse errors should explain that TOML/Nix-style # comments are not valid settings comments.
