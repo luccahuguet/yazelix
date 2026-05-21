@@ -7,13 +7,12 @@
 // Copy the parts you want into your real managed config file.
 //
 // Configuration layers (in order of precedence):
-//   1. Zellij defaults (from `zellij setup --dump-config`)
-//   2. Yazelix overrides (yazelix_overrides.kdl) 
-//   3. Your managed settings (~/.config/yazelix/zellij.kdl) - HIGHEST PRIORITY
+//   1. Your managed native settings (~/.config/yazelix/zellij.kdl)
+//   2. Yazelix generated keybindings, plugins, dynamic settings, and enforced settings
 //
-// IMPORTANT: Merging uses simple concatenation. Zellij uses the last occurrence
-// of any setting. For nested blocks (ui, keybinds, themes), avoid duplicates
-// by overriding the entire section rather than adding partial blocks.
+// IMPORTANT: This sidecar is for native non-keybinding Zellij settings.
+// Do not put keybinds blocks here. Yazelix rejects managed keybinds blocks
+// because settings.jsonc owns Yazelix-session keybinding remaps.
 //
 // Documentation: https://zellij.dev/documentation/
 // ========================================
@@ -69,22 +68,12 @@ theme "dracula"
 // Enable Zellij session serialization for its own internal state
 // session_serialization true
 
-// === CUSTOM KEYBINDINGS ===
-// RECOMMENDED: For small keybinding changes, edit the layout files directly:
-//   - configs/zellij/layouts/yzx_side.kdl
-//   - configs/zellij/layouts/yzx_side_closed.kdl
+// === KEYBINDINGS ===
+// Configure Yazelix-session keybindings in settings.jsonc:
+//   - zellij.keybindings for Yazelix-owned actions
+//   - zellij.native_keybindings for Yazelix's curated native Zellij policy
 //
-// Only use this section if you want to completely replace all keybindings:
-
-// keybinds {
-//     normal {
-//         // Example: Add custom binding for floating panes
-//         bind "Alt t" { ToggleFloatingPanes; }
-//         
-//         // NOTE: This replaces ALL keybindings, including Yazelix defaults
-//         // You'll need to redefine any bindings you want to keep
-//     }
-// }
+// Full native Zellij keymap ownership belongs in plain zellij outside Yazelix.
 
 // === CUSTOM THEMES ===
 // Define your own color schemes. Safe to uncomment - adds new themes

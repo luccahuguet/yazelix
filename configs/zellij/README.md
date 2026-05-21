@@ -1,11 +1,11 @@
 # Yazelix: Zellij Configuration
 
-Yazelix uses `~/.config/yazelix/zellij.kdl` when present, then layers Yazelix requirements on top.
+Yazelix uses `settings.jsonc` for managed workspace behavior and `~/.config/yazelix/zellij.kdl` for advanced native Zellij settings that do not include keybindings.
 
 ## Quick Start
 
 ```bash
-# Edit your Yazelix-managed Zellij config
+# Edit advanced non-keybinding Zellij settings
 ~/.config/yazelix/zellij.kdl
 ```
 
@@ -15,7 +15,7 @@ For complete configuration guide, see: [Zellij Configuration Documentation](../.
 
 ## Current Defaults
 
-- Three-layer merging: Zellij defaults + Yazelix overrides + your managed settings
+- Layered merging: native Zellij settings + Yazelix generated keybindings, plugins, dynamic settings, and enforced settings
 - Default layout optimized for sidebar/no-sidebar modes
 - Wayland clipboard integration (`wl-copy`)
 - Helix editor integration for scrollback

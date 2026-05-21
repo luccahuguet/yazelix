@@ -45,7 +45,7 @@ Zed's strongest lesson for `yazelix-hg3a` is that keybindings should hang from a
 - define Yazelix-owned actions first, such as `workspace.toggle_left_sidebar`, `workspace.focus_sidebar`, `workspace.open_selected_in_editor`, `workspace.zoxide_to_editor`, `workspace.bottom_popup`, `workspace.top_popup`, `workspace.toggle_menu`, and `zellij.unlock`
 - give every action a stable id, label, description, owning subsystem, native backend steps, default binding, and optional arguments
 - generate Zellij, Yazi, and Helix-facing bindings from semantic actions where possible
-- keep native sidecars as escape hatches, including Zellij `keybinds clear-defaults=true`
+- keep native sidecars as settings escape hatches, but keep Yazelix-session keybindings in the action registry instead of allowing Zellij `keybinds clear-defaults=true`
 - expose conflicts as product diagnostics: duplicate key, shadowed key, missing required backend action, context mismatch, and backend unsupported
 - add a small context/debug view before broad editing, showing which Yazelix pane/tool/context owns the currently focused keybinding layer
 

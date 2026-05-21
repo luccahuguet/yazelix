@@ -76,7 +76,8 @@ Use semantic remaps for Yazelix-owned actions and native sidecars for the owning
 
 - Yazelix-owned Zellij actions: `settings.jsonc` under `zellij.keybindings`
 - Yazelix curated native Zellij policy: `settings.jsonc` under `zellij.native_keybindings`
-- Full native Zellij keymap ownership: `~/.config/yazelix/zellij.kdl`
+- Advanced native Zellij settings without keybinds: `~/.config/yazelix/zellij.kdl`
+- Full native Zellij keymap ownership: plain `zellij` outside Yazelix
 - Yazelix-owned Yazi integration actions: `settings.jsonc` under `yazi.keybindings`
 - Yazi-native bindings: `~/.config/yazelix/yazi/keymap.toml`
 - Helix-local bindings for managed Helix sessions: `~/.config/yazelix/helix.toml`
@@ -86,7 +87,7 @@ Use semantic remaps for Yazelix-owned actions and native sidecars for the owning
 
 `zellij.popup_commands` sets the command argv for named popup surfaces. Defaults are `bottom_popup = ["lazygit"]`, `top_popup = ["yzx", "config", "ui"]`, and `menu = ["yzx", "menu"]`.
 
-`zellij.native_keybindings` accepts curated native policy ids such as `scroll_mode`, `scroll_mode_unbind`, `move_tab_left`, `move_pane_down`, and `move_tab_left_unbind`. These are Yazelix's shipped conflict-remap and validation defaults for native Zellij commands. Omitted entries keep defaults, and `[]` disables one native policy entry. Arbitrary native Zellij actions still belong in `~/.config/yazelix/zellij.kdl`.
+`zellij.native_keybindings` accepts curated native policy ids such as `scroll_mode`, `scroll_mode_unbind`, `move_tab_left`, `move_pane_down`, and `move_tab_left_unbind`. These are Yazelix's shipped conflict-remap and validation defaults for native Zellij commands. Omitted entries keep defaults, and `[]` disables one native policy entry. Managed `~/.config/yazelix/zellij.kdl` rejects `keybinds` blocks so it cannot bypass generated workspace controls.
 
 `yazi.keybindings` accepts owner-local action ids such as `open_directory_as_workspace_pane` and `open_zoxide_in_editor`. Values are alternate generated Yazi bindings such as `<A-p>` and `<A-z>`. Omitted actions keep defaults, and `[]` disables that generated Yazelix-owned Yazi integration binding. Native open-selected keys such as `<Enter>` and `o` remain in `~/.config/yazelix/yazi/keymap.toml`; arbitrary Yazi actions and native multi-key sequences also belong there.
 

@@ -78,7 +78,8 @@ Statuses:
 Rules:
 
 - native read-only fallback does not mean full keybinding ownership
-- `keybinds clear-defaults=true` suppresses Yazelix semantic keybind generation only in explicit managed `~/.config/yazelix/zellij.kdl`
+- managed `~/.config/yazelix/zellij.kdl` rejects `keybinds` blocks, including `keybinds clear-defaults=true`
+- `clear-defaults=true` in read-only native fallback does not disable Yazelix semantic keybind generation
 - `yzx import zellij` is the explicit adoption path
 
 ### Yazi

@@ -267,10 +267,11 @@ Remove an explicit config value so Yazelix uses the default
 
 ### `yzx import zellij|yazi|helix [--force]`
 Import native Zellij, Yazi, or Helix config into Yazelix-managed overrides
-- `yzx import zellij`: copies `~/.config/zellij/config.kdl` into `zellij.kdl`
+- `yzx import zellij`: copies `~/.config/zellij/config.kdl` into `zellij.kdl` only when the source has no `keybinds` blocks
 - `yzx import yazi`: imports `yazi.toml`, `keymap.toml`, `init.lua`, `package.toml`, `plugins/`, and `flavors/` from `~/.config/yazi/` into `~/.config/yazelix/yazi/`
 - `yzx import helix`: copies `~/.config/helix/config.toml` into `helix.toml`
 - Fails clearly when no native source files are available for the selected target
+- Fails clearly for `yzx import zellij` when the native file contains `keybinds` blocks; Yazelix-session keybindings belong in `settings.jsonc`
 - Refuses to overwrite existing managed destination files by default
 - `--force`: writes `*.backup-<timestamp>` backups before replacing managed destination files
 
@@ -350,7 +351,7 @@ yzx config set editor.hide_sidebar_on_file_open true # Set a config value with a
 yzx config unset editor.hide_sidebar_on_file_open # Remove an explicit config value
 yzx cursors                   # Inspect Ghostty cursor presets and resolved colors
 yzx edit cursors              # Open the Ghostty cursor settings file
-yzx import zellij             # Import ~/.config/zellij/config.kdl into managed overrides
+yzx import zellij             # Import ~/.config/zellij/config.kdl when it has no keybinds blocks
 yzx import yazi               # Import native Yazi override files and plugins into managed overrides
 yzx import helix              # Import ~/.config/helix/config.toml into managed overrides
 yzx import zellij --force     # Backup and replace the managed Zellij override

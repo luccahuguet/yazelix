@@ -1,16 +1,18 @@
 # Zellij Configuration
 
-Yazelix uses a three-layer Zellij configuration system centered on its managed user config surface.
+Yazelix uses a layered Zellij configuration system centered on `settings.jsonc` for Yazelix-owned behavior and a managed native sidecar for advanced non-keybinding Zellij settings.
 
 ## Quick Start
 
-Edit your Yazelix-managed Zellij config:
+Use `settings.jsonc` for Yazelix-owned Zellij behavior, including workspace keybindings, popup commands, sidebars, widgets, and layout settings.
+
+For advanced native Zellij settings that Yazelix does not model, edit:
 
 ```bash
 ~/.config/yazelix/zellij.kdl
 ```
 
-If you already have a native Zellij config, import it into the managed path first:
+If you already have a native Zellij config without `keybinds` blocks, import it into the managed path first:
 
 ```bash
 yzx import zellij
@@ -20,7 +22,7 @@ yzx import zellij
 
 The merger prefers your **Yazelix-managed Zellij config** when present, then falls back to your native Zellij config, then forcibly layers Yazelix requirements on top:
 
-1. **User config**: `~/.config/yazelix/zellij.kdl` (if it exists). If missing, Yazelix reads `~/.config/zellij/config.kdl` as a read-only fallback. If neither exists, Yazelix falls back to `zellij setup --dump-config`.
+1. **User config**: `~/.config/yazelix/zellij.kdl` (if it exists). This managed sidecar is for native non-keybinding Zellij settings. If missing, Yazelix reads `~/.config/zellij/config.kdl` as a read-only fallback. If neither exists, Yazelix falls back to `zellij setup --dump-config`.
 2. **Dynamic Yazelix settings**: Generated from `settings.jsonc` (e.g., rounded corners) and appended after the user config so they win.
 3. **Enforced Yazelix settings**: Always appended last to guarantee required behavior:
    - `pane_frames false` (needed for `zjstatus`)
@@ -30,6 +32,8 @@ The merger prefers your **Yazelix-managed Zellij config** when present, then fal
    - `layout_dir` set to Yazelix’s generated layouts directory
 
 Layouts are copied into `~/.local/share/yazelix/configs/zellij/layouts`, and the merged config is written to `~/.local/share/yazelix/configs/zellij/config.kdl` on every launch. Yazelix also passes `--pane-frames false` and an absolute `--default-layout` at launch for extra safety.
+
+`~/.config/yazelix/zellij.kdl` must not contain a `keybinds` block. Yazelix rejects managed `keybinds` blocks, including `keybinds clear-defaults=true`, because they create a second keybinding owner and can bypass managed workspace controls. Use `zellij.keybindings` and `zellij.native_keybindings` in `settings.jsonc` for Yazelix sessions. Use plain `zellij` outside Yazelix if you want full native keybinding ownership.
 
 ## Common Customizations
 
@@ -112,7 +116,7 @@ ui {
 }
 ```
 
-**For keybindings**, prefer `settings.jsonc` semantic keys for Yazelix-owned Zellij action remaps instead of copying the whole Zellij `keybinds` block:
+**For keybindings**, use `settings.jsonc` semantic keys for Yazelix-owned Zellij action remaps instead of copying a Zellij `keybinds` block:
 ```jsonc
 "zellij": {
   "popup_commands": {
@@ -138,18 +142,7 @@ Use `zellij.popup_commands` to change the command argv behind the named popup su
 
 For Yazelix's curated native Zellij key policy, use `zellij.native_keybindings` in `settings.jsonc`. This covers shipped remaps such as `scroll_mode` / `scroll_mode_unbind`, `session_mode` / `session_mode_unbind`, tab movement, tab jumps, pane grouping, and related Zellij-native conflict cleanup. Omitted entries keep defaults; set an entry to `[]` to disable that one bind or unbind.
 
-For full native Zellij keybinding ownership inside Yazelix, use `keybinds clear-defaults=true` in the explicit Yazelix-managed sidecar `~/.config/yazelix/zellij.kdl`:
-```kdl
-keybinds clear-defaults=true {
-    locked {
-        bind "Ctrl `" { SwitchToMode "Normal"; }
-    }
-}
-```
-
-In this mode Yazelix preserves your `clear-defaults` block and does not append its shipped Zellij integration keybindings or semantic `zellij.keybindings` remaps. Recreate any Yazelix actions you still want, such as pane-orchestrator sidebar messages or `yzpp` popup toggles, in your own keybinds block.
-
-This full-ownership mode is not inferred from the read-only native fallback `~/.config/zellij/config.kdl`. If Yazelix is only borrowing that native file because `~/.config/yazelix/zellij.kdl` is absent, Yazelix still appends its integration keybindings so managed popup/menu/sidebar focus behavior keeps working.
+Managed `~/.config/yazelix/zellij.kdl` rejects all `keybinds` blocks. A read-only native fallback from `~/.config/zellij/config.kdl` can still contain native keybinds, but Yazelix strips `clear-defaults=true` semantics in that fallback path and appends its generated integration keybindings so popup/menu/sidebar focus behavior keeps working.
 
 **Simple settings** (like `theme`, `copy_command`) work perfectly - your value always wins.
 
@@ -180,15 +173,16 @@ The default launches the managed Yazi file-tree adapter. You can point the same 
 **Settings not working as expected?**
 - Check `~/.local/share/yazelix/configs/zellij/config.kdl` for duplicate sections
 - Look for your setting - it should appear last to take effect
-- For nested blocks (ui, keybinds), you may need to override the entire section
+- For nested blocks such as `ui`, you may need to override the entire section
 
 **KDL syntax errors?**
 - Check your managed Zellij config syntax against examples in the template
 - Zellij will show parsing errors on startup if KDL is invalid
 
 **Migrating from a native Zellij config?**
-- Preferred explicit path: run `yzx import zellij` to copy `~/.config/zellij/config.kdl` into `~/.config/yazelix/zellij.kdl`
+- Preferred explicit path: run `yzx import zellij` to copy `~/.config/zellij/config.kdl` into `~/.config/yazelix/zellij.kdl` when the source has no `keybinds` blocks
 - If you already have a managed override and want to replace it, use `yzx import zellij --force` so Yazelix writes a backup first
+- `yzx import zellij` rejects native files that contain `keybinds` blocks; move Yazelix-session remaps to `settings.jsonc` first
 - If the managed file is missing, Yazelix can still read `~/.config/zellij/config.kdl` as the base config for that launch, but it will not move or delete it, and `clear-defaults=true` there does not disable Yazelix integration keybindings
 - If both files exist, Yazelix keeps using the managed `zellij.kdl` copy and leaves the native Zellij config alone for plain `zellij` launches
 - If you want changes from `~/.config/zellij/config.kdl` to become the managed Yazelix config, run `yzx import zellij` explicitly

@@ -4,6 +4,7 @@
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{config_dir_from_env, home_dir_from_env, state_dir_from_env};
 use crate::user_config_paths;
+use crate::zellij_materialization::zellij_config_contains_keybinds_block;
 use serde_json::json;
 use std::fs;
 use std::io;
@@ -201,6 +202,37 @@ fn copy_import_entry(entry: &ImportEntry) -> Result<(), CoreError> {
     Ok(())
 }
 
+fn validate_import_entry_source(target: &str, entry: &ImportEntry) -> Result<(), CoreError> {
+    if target != "zellij" {
+        return Ok(());
+    }
+
+    let content = fs::read_to_string(&entry.source).map_err(|source| {
+        CoreError::io(
+            "import_read_zellij_source",
+            format!("Could not read {}.", entry.source.display()),
+            "Fix permissions or restore the native Zellij config, then retry.",
+            entry.source.display().to_string(),
+            source,
+        )
+    })?;
+
+    if zellij_config_contains_keybinds_block(&content) {
+        return Err(CoreError::classified(
+            ErrorClass::Usage,
+            "import_zellij_keybinds_unsupported",
+            format!(
+                "Cannot import native Zellij keybinds into Yazelix-managed config: {}",
+                entry.source.display()
+            ),
+            "Remove the keybinds block before importing, or keep full native Zellij keybinding ownership in plain zellij. Use zellij.keybindings and zellij.native_keybindings in settings.jsonc for Yazelix sessions.",
+            json!({ "source": entry.source.to_string_lossy() }),
+        ));
+    }
+
+    Ok(())
+}
+
 fn copy_directory_recursive(source: &Path, destination: &Path) -> Result<(), CoreError> {
     fs::create_dir_all(destination).map_err(|source_err| {
         CoreError::io(
@@ -306,6 +338,10 @@ fn import_target(
             &format!("Create the native {target} config or plugin sources first, then retry."),
             json!({ "target": target }),
         ));
+    }
+
+    for entry in &existing_sources {
+        validate_import_entry_source(target, entry)?;
     }
 
     if !force {
@@ -464,7 +500,7 @@ fn print_import_help() {
     println!("  yzx import <target> [--force]");
     println!();
     println!("Targets:");
-    println!("  zellij    Import native Zellij config");
+    println!("  zellij    Import native Zellij config without keybinds blocks");
     println!("  yazi      Import native Yazi config files and plugin directories");
     println!("  helix     Import native Helix config");
     println!();
@@ -540,6 +576,36 @@ mod tests {
         assert_eq!(helix.len(), 1);
 
         assert!(get_import_entries("unknown", home, config).is_err());
+    }
+
+    // Defends: import cannot create a managed zellij.kdl that later bypasses generated Yazelix keybindings.
+    #[test]
+    fn rejects_importing_zellij_keybind_blocks() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = tmp.path().join("config.kdl");
+        fs::write(
+            &source,
+            "keybinds { normal { bind \"Alt t\" { ToggleFloatingPanes; } } }\n",
+        )
+        .unwrap();
+        let entry = ImportEntry {
+            name: "config.kdl",
+            source,
+            destination: tmp.path().join("zellij.kdl"),
+            kind: ImportEntryKind::File,
+        };
+
+        let err = validate_import_entry_source("zellij", &entry).unwrap_err();
+
+        match err {
+            CoreError::Classified {
+                code, remediation, ..
+            } => {
+                assert_eq!(code, "import_zellij_keybinds_unsupported");
+                assert!(remediation.contains("settings.jsonc"));
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
     }
 
     // Defends: backup timestamp format stays human-readable after the Rust owner cut.

@@ -27,7 +27,7 @@ const ZJSTATUS_WASM_NAME: &str = "zjstatus.wasm";
 const YZPP_PLUGIN_PREFIX: &str = YZPP_PLUGIN_ALIAS;
 const YZPP_WASM_NAME: &str = "yzpp.wasm";
 const GENERATION_METADATA_NAME: &str = ".yazelix_generation.json";
-const GENERATION_FINGERPRINT_SCHEMA_VERSION: u64 = 6;
+const GENERATION_FINGERPRINT_SCHEMA_VERSION: u64 = 7;
 const GENERATED_CONFIG_MARKERS: &[&str] = &[
     "GENERATED ZELLIJ CONFIG (YAZELIX)",
     "yazelix_pane_orchestrator",
@@ -120,6 +120,7 @@ struct ExtractedSemanticBlocks {
     load_plugin_lines: Vec<String>,
     plugin_lines: Vec<String>,
     keybind_lines: Vec<String>,
+    keybinds_block_present: bool,
     keybinds_clear_defaults: bool,
     ui_lines: Vec<String>,
 }
@@ -188,6 +189,7 @@ pub fn generate_zellij_materialization(
         string_config(&config, "default_shell", "nu"),
     );
     let base_config_source = resolve_base_config_source()?;
+    validate_base_config_keybinding_policy(&base_config_source)?;
     let plugin_artifacts = resolve_plugin_artifacts(&request.runtime_dir, &state_dir)?;
     let [pane_orchestrator_artifact, zjstatus_artifact, yzpp_artifact] = &plugin_artifacts;
     let zellij_keybindings = resolve_zellij_keybindings(&config)?;
@@ -235,7 +237,6 @@ pub fn generate_zellij_materialization(
     let merged_config = render_merged_config(
         &request.runtime_dir,
         &base_config_source.content,
-        base_config_source.source == "managed",
         &zellij_keybindings,
         &zellij_native_keybindings,
         &render_plan,
@@ -538,7 +539,6 @@ fn resolve_base_config_source() -> Result<ZellijBaseConfigSource, CoreError> {
 fn render_merged_config(
     runtime_dir: &Path,
     base_config_content: &str,
-    preserve_keybinds_clear_defaults: bool,
     zellij_keybindings: &BTreeMap<String, Vec<String>>,
     zellij_native_keybindings: &BTreeMap<String, Vec<String>>,
     render_plan: &ZellijRenderPlanData,
@@ -563,11 +563,8 @@ fn render_merged_config(
         &extracted_blocks.config_without_semantic_blocks,
         &render_plan.owned_top_level_setting_names,
     );
-    let merged_keybinds = build_merged_keybinds_block(
-        &extracted_blocks.keybind_lines,
-        &override_keybinds,
-        preserve_keybinds_clear_defaults && extracted_blocks.keybinds_clear_defaults,
-    );
+    let merged_keybinds =
+        build_merged_keybinds_block(&extracted_blocks.keybind_lines, &override_keybinds);
     let merged_ui = build_yazelix_ui_block(&extracted_blocks.ui_lines, &render_plan.rounded_value);
     let plugins_block = build_yazelix_plugins_block(
         &extracted_blocks.plugin_lines,
@@ -626,6 +623,7 @@ fn extract_semantic_config_blocks(config_content: &str) -> ExtractedSemanticBloc
     let mut load_plugin_lines = Vec::new();
     let mut plugin_lines = Vec::new();
     let mut keybind_lines = Vec::new();
+    let mut keybinds_block_present = false;
     let mut keybinds_clear_defaults = false;
     let mut ui_lines = Vec::new();
     let mut active_block = String::new();
@@ -641,8 +639,11 @@ fn extract_semantic_config_blocks(config_content: &str) -> ExtractedSemanticBloc
                 .into_iter()
                 .find(|block| trimmed.starts_with(block));
             if let Some(block) = matched_block {
-                if block == "keybinds" && keybinds_declares_clear_defaults(trimmed) {
-                    keybinds_clear_defaults = true;
+                if block == "keybinds" {
+                    keybinds_block_present = true;
+                    if keybinds_declares_clear_defaults(trimmed) {
+                        keybinds_clear_defaults = true;
+                    }
                 }
                 active_block = block.to_string();
                 brace_depth = open_braces - close_braces;
@@ -691,9 +692,49 @@ fn extract_semantic_config_blocks(config_content: &str) -> ExtractedSemanticBloc
         load_plugin_lines,
         plugin_lines,
         keybind_lines,
+        keybinds_block_present,
         keybinds_clear_defaults,
         ui_lines,
     }
+}
+
+pub(crate) fn zellij_config_contains_keybinds_block(config_content: &str) -> bool {
+    extract_semantic_config_blocks(config_content).keybinds_block_present
+}
+
+fn validate_base_config_keybinding_policy(
+    base_config_source: &ZellijBaseConfigSource,
+) -> Result<(), CoreError> {
+    if base_config_source.source != "managed" {
+        return Ok(());
+    }
+
+    let extracted = extract_semantic_config_blocks(&base_config_source.content);
+    if !extracted.keybinds_block_present {
+        return Ok(());
+    }
+
+    let block = if extracted.keybinds_clear_defaults {
+        "keybinds clear-defaults=true"
+    } else {
+        "keybinds"
+    };
+    let path = base_config_source
+        .path
+        .as_ref()
+        .map(|path| path.to_string_lossy().to_string())
+        .unwrap_or_else(|| "~/.config/yazelix/zellij.kdl".to_string());
+
+    Err(CoreError::classified(
+        ErrorClass::Config,
+        "managed_zellij_keybinds_unsupported",
+        format!("Managed Zellij config cannot contain a `{block}` block: {path}"),
+        "Remove that keybinds block from ~/.config/yazelix/zellij.kdl. Use zellij.keybindings and zellij.native_keybindings in settings.jsonc for Yazelix key remaps; use plain zellij outside Yazelix for full native keybinding ownership.",
+        json!({
+            "path": path,
+            "block": block,
+        }),
+    ))
 }
 
 fn keybinds_declares_clear_defaults(line: &str) -> bool {
@@ -940,18 +981,10 @@ fn append_generated_popup_spec(
     lines.push("            }".to_string());
 }
 
-fn build_merged_keybinds_block(
-    existing_lines: &[String],
-    override_lines: &[String],
-    clear_defaults: bool,
-) -> String {
+fn build_merged_keybinds_block(existing_lines: &[String], override_lines: &[String]) -> String {
     let mut merged = existing_lines.to_vec();
-    if !clear_defaults {
-        merged.extend_from_slice(override_lines);
-    }
-    if clear_defaults {
-        block_with_lines("keybinds clear-defaults=true", &merged)
-    } else if merged.is_empty() {
+    merged.extend_from_slice(override_lines);
+    if merged.is_empty() {
         String::new()
     } else {
         block_with_lines("keybinds", &merged)
@@ -2629,6 +2662,7 @@ ui { pane_frames { hide_session_name true } }
                 .iter()
                 .any(|line| line.contains("Ctrl y"))
         );
+        assert!(extracted.keybinds_block_present);
         assert!(
             extracted
                 .ui_lines
@@ -2638,7 +2672,7 @@ ui { pane_frames { hide_session_name true } }
         assert!(!extracted.keybinds_clear_defaults);
     }
 
-    // Defends: user-owned Zellij keybinding mode survives semantic block extraction instead of being reduced to an ordinary keybind body.
+    // Defends: clear-defaults remains detectable so managed config can reject the strongest keybinding bypass explicitly.
     #[test]
     fn extracts_keybinds_clear_defaults_ownership() {
         let extracted = extract_semantic_config_blocks(
@@ -2649,6 +2683,7 @@ ui { pane_frames { hide_session_name true } }
         );
 
         assert!(extracted.keybinds_clear_defaults);
+        assert!(extracted.keybinds_block_present);
         assert!(
             extracted
                 .keybind_lines
@@ -2657,26 +2692,57 @@ ui { pane_frames { hide_session_name true } }
         );
     }
 
-    // Defends: full user-owned Zellij keybinding mode preserves the clear-defaults header and does not append Yazelix default integrations.
+    // Defends: managed zellij.kdl remains a native settings sidecar, not a second keybinding owner.
     #[test]
-    fn clear_defaults_keybinds_skip_yazelix_overrides() {
-        let existing_lines = vec![
-            r#"    locked { bind "Ctrl `" { SwitchToMode "Normal"; } }"#.to_string(),
-            r#"    normal { bind "Alt Shift H" { Write 27; } }"#.to_string(),
-        ];
-        let override_lines = vec![
-            r#"    shared_except "locked" {"#.to_string(),
-            r#"        bind "Alt Shift H" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_sidebar" } }"#.to_string(),
-            r#"    }"#.to_string(),
-        ];
+    fn managed_zellij_keybind_blocks_are_rejected() {
+        let err = validate_base_config_keybinding_policy(&ZellijBaseConfigSource {
+            source: "managed".to_string(),
+            path: Some(PathBuf::from("/home/user/.config/yazelix/zellij.kdl")),
+            content: r#"keybinds clear-defaults=true {
+    locked { bind "Ctrl `" { SwitchToMode "Normal"; } }
+}
+"#
+            .to_string(),
+        })
+        .unwrap_err();
 
-        let merged = build_merged_keybinds_block(&existing_lines, &override_lines, true);
+        match err {
+            CoreError::Classified {
+                code,
+                message,
+                remediation,
+                ..
+            } => {
+                assert_eq!(code, "managed_zellij_keybinds_unsupported");
+                assert!(message.contains("keybinds clear-defaults=true"));
+                assert!(remediation.contains("zellij.keybindings"));
+                assert!(remediation.contains("settings.jsonc"));
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
 
-        assert!(merged.starts_with("keybinds clear-defaults=true {"));
-        assert!(merged.contains("Ctrl `"));
-        assert!(merged.contains("Write 27"));
-        assert!(!merged.contains("MessagePlugin"));
-        assert!(!merged.contains("toggle_sidebar"));
+    // Defends: even ordinary managed keybinds blocks are rejected so managed config cannot bypass generated workspace controls.
+    #[test]
+    fn managed_zellij_plain_keybind_blocks_are_rejected() {
+        let err = validate_base_config_keybinding_policy(&ZellijBaseConfigSource {
+            source: "managed".to_string(),
+            path: Some(PathBuf::from("/home/user/.config/yazelix/zellij.kdl")),
+            content: r#"keybinds {
+    normal { bind "Alt t" { ToggleFloatingPanes; } }
+}
+"#
+            .to_string(),
+        })
+        .unwrap_err();
+
+        match err {
+            CoreError::Classified { code, message, .. } => {
+                assert_eq!(code, "managed_zellij_keybinds_unsupported");
+                assert!(message.contains("`keybinds` block"));
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
     }
 
     // Regression: clear-defaults from the read-only native fallback must not disable Yazelix integration keybindings.
@@ -2711,7 +2777,6 @@ keybinds {
     normal { bind "Alt h" { MoveFocusOrTab "left"; } }
 }
 "#,
-            false,
             &sample_zellij_keybindings(),
             &sample_zellij_native_keybindings(),
             &plan,
@@ -2731,57 +2796,7 @@ keybinds {
         assert!(rendered.contains("payload \"menu\""));
     }
 
-    // Defends: explicit managed zellij.kdl clear-defaults remains the full user-owned Zellij keybinding mode.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-    #[test]
-    fn managed_clear_defaults_skips_yazelix_keybind_overrides() {
-        let temp = tempfile::tempdir().unwrap();
-        let runtime_dir = temp.path();
-        let overrides_dir = runtime_dir.join("configs").join("zellij");
-        std::fs::create_dir_all(&overrides_dir).unwrap();
-        std::fs::write(
-            overrides_dir.join("yazelix_overrides.kdl"),
-            r#"
-keybinds {
-    normal {
-        bind "Alt Shift M" {
-            MessagePlugin "yzpp" {
-                name "toggle"
-                payload "menu"
-            }
-        }
-    }
-}
-"#,
-        )
-        .unwrap();
-        let plan =
-            sample_render_plan_for_widgets(vec!["workspace"], "hx", "/nix/store/bin/nu", "ghostty");
-        let rendered = render_merged_config(
-            runtime_dir,
-            r#"keybinds clear-defaults=true {
-    locked { bind "Ctrl `" { SwitchToMode "Normal"; } }
-}
-"#,
-            true,
-            &sample_zellij_keybindings(),
-            &sample_zellij_native_keybindings(),
-            &plan,
-            &["lazygit".to_string()],
-            &default_popup_commands(),
-            Path::new("/tmp/pane.wasm"),
-            Path::new("/tmp/yzpp.wasm"),
-            "gen-test",
-        )
-        .unwrap();
-
-        assert!(rendered.contains("keybinds clear-defaults=true"));
-        assert!(rendered.contains("Ctrl `"));
-        assert!(!rendered.contains("Alt Shift M"));
-        assert!(!rendered.contains("payload \"menu\""));
-    }
-
-    // Defends: ordinary Zellij keybinding customization keeps Yazelix integration bindings appended for default managed behavior.
+    // Defends: ordinary native/default Zellij keybinding customization keeps Yazelix integration bindings appended.
     #[test]
     fn ordinary_keybinds_keep_yazelix_overrides() {
         let existing_lines = vec![r#"    normal { bind "Alt Shift H" { Write 27; } }"#.to_string()];
@@ -2791,7 +2806,7 @@ keybinds {
             r#"    }"#.to_string(),
         ];
 
-        let merged = build_merged_keybinds_block(&existing_lines, &override_lines, false);
+        let merged = build_merged_keybinds_block(&existing_lines, &override_lines);
 
         assert!(merged.starts_with("keybinds {"));
         assert!(!merged.starts_with("keybinds clear-defaults=true"));
@@ -2800,9 +2815,9 @@ keybinds {
         assert!(merged.contains("toggle_sidebar"));
     }
 
-    // Regression: native Zellij mode leaders remain user/Zellij-owned instead of being reasserted by Yazelix overrides after a managed remap.
+    // Regression: native Zellij mode leaders remain user/Zellij-owned instead of being reasserted by Yazelix overrides after a native fallback remap.
     #[test]
-    fn managed_zellij_remap_can_remove_ctrl_n_resize_leader() {
+    fn native_fallback_zellij_remap_can_remove_ctrl_n_resize_leader() {
         let temp = tempfile::tempdir().unwrap();
         let runtime_dir = temp.path();
         let overrides_dir = runtime_dir.join("configs").join("zellij");
@@ -2828,7 +2843,6 @@ keybinds {
     }
 }
 "#,
-            true,
             &sample_zellij_keybindings(),
             &sample_zellij_native_keybindings(),
             &plan,
