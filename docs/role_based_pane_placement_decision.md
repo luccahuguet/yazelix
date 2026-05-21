@@ -172,9 +172,10 @@ Do not grow a rich Git subsystem yet. The first pass only needs launch, focus,
 close, cwd, and command configuration. Diff/rebase/editor handoff behavior
 should wait for a real workflow need.
 
-## Deferred Decisions
+## Directional Keymap
 
-The directional keymap decision remains separate.
+The directional keymap decision is recorded in
+[`directional_placement_keymap_decision.md`](./directional_placement_keymap_decision.md).
 
 The user-facing config shape remains separate. It must decide schema,
 `settings.jsonc`, Home Manager representation, compatibility policy, validation
