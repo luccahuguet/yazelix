@@ -20,7 +20,7 @@ Set the file-open behavior in `settings.jsonc`:
 }
 ```
 
-`editor.hide_sidebar_on_file_open = true` hides the managed sidebar after opening a file from Yazi while keeping new tabs on the normal managed-sidebar startup layout. `Alt+Shift+H`, `Ctrl+y`, and `yzx reveal` remain available because the sidebar pane still exists.
+`editor.hide_sidebar_on_file_open = true` hides the managed sidebar after opening a file from Yazi while keeping new tabs on the normal managed-sidebar startup layout. `Alt+Shift+H`, `Ctrl+y`, `Ctrl+Shift+Y`, and `yzx reveal` remain available because the managed side panes still exist.
 
 `editor.sidebar_width_percent` controls the open sidebar width as a percentage of the tab. With the default launcher, that sidebar is the Yazi file tree. Valid range: `10` to `40`.
 

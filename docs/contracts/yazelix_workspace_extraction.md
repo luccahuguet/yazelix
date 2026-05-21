@@ -45,7 +45,7 @@ The candidate reusable workspace surface includes:
 
 - tab-local workspace root tracking with `bootstrap` versus `explicit` source
 - managed editor and sidebar pane identity
-- focus transitions between editor, sidebar, and ordinary panes
+- focus transitions between editor, sidebars, and ordinary panes
 - sidebar show, hide, and focus-toggle policy
 - workspace retargeting through one mutation seam
 - opening files into a managed editor pane
@@ -114,6 +114,7 @@ Candidate request families:
 - `focus_editor`
 - `focus_sidebar`
 - `toggle_editor_sidebar_focus`
+- `toggle_editor_right_sidebar_focus`
 - `toggle_sidebar`
 - `hide_sidebar`
 - `open_file`

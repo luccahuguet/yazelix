@@ -1196,7 +1196,7 @@ fn build_zellij_plugin_health_findings(
         results.push(json!({
             "status": "error",
             "message": "Yazelix pane-orchestrator plugin permissions not granted",
-            "details": "Yazelix normally pre-seeds bundled Zellij plugin permissions before launch. If the cache was deleted or Zellij is already prompting, run `yzx doctor --fix` and restart Yazelix; if a live prompt remains, focus the top zjstatus bar and press `y`, and answer yes to the Yazelix orchestrator popup. Yazelix workspace bindings like `Alt+m`, `Alt+Shift+H`, `Ctrl+y`, `Alt+r`, `Alt+[`, and `Alt+]` depend on the orchestrator.",
+            "details": "Yazelix normally pre-seeds bundled Zellij plugin permissions before launch. If the cache was deleted or Zellij is already prompting, run `yzx doctor --fix` and restart Yazelix; if a live prompt remains, focus the top zjstatus bar and press `y`, and answer yes to the Yazelix orchestrator popup. Yazelix workspace bindings like `Alt+m`, `Alt+Shift+H`, `Ctrl+y`, `Ctrl+Shift+Y`, `Alt+r`, `Alt+[`, and `Alt+]` depend on the orchestrator.",
             "fix_available": true,
             "fix_action": "seed_zellij_plugin_permissions"
         }));
@@ -1224,7 +1224,7 @@ fn build_zellij_plugin_health_findings(
             results.push(json!({
                 "status": "warning",
                 "message": "Managed sidebar pane not detected in the current tab",
-                "details": "`Alt+Shift+H`, `Ctrl+y`, and reveal flows may not work until the current tab uses a Yazelix managed-sidebar layout.",
+                "details": "`Alt+Shift+H`, `Ctrl+y`, `Ctrl+Shift+Y`, and reveal flows may not work until the current tab uses a Yazelix managed-sidebar layout.",
                 "fix_available": false
             }));
         } else {

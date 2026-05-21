@@ -46,6 +46,7 @@ Current Yazelix default semantic bindings:
 - `Alt+Shift+M`: `menu`
 - `Alt+Shift+C`: `config`
 - `Ctrl+y`: `toggle_editor_sidebar_focus`
+- `Ctrl+Shift+Y`: `toggle_editor_right_sidebar_focus`
 - `Alt+Shift+H`: `toggle_left_sidebar`
 - `Alt+Shift+L`: `open_codex_agent_right`
 - `popup`: unbound by default and still configurable
@@ -127,20 +128,20 @@ config.enable_kitty_keyboard = true
 Do not enable Zellij's kitty-keyboard setting globally just to make this keymap
 work until the normal Yazelix terminal matrix proves it is stable.
 
-## Ctrl+Shift+y
+## Ctrl+Shift+Y
 
-Do not ship `Ctrl+Shift+y` as an unconditional default for right-sidebar focus.
+Ship `Ctrl+Shift+Y` as the default trial binding for right-sidebar focus.
 
 Without the Kitty keyboard protocol, Ctrl+Shift-letter chords may be
 indistinguishable from Ctrl-letter chords in terminal input. Since Yazelix's
-current default is `zellij.support_kitty_keyboard_protocol = false`, a default
-`Ctrl+Shift+y` would risk colliding with the existing `Ctrl+y` left
-sidebar/editor focus action.
+current default is `zellij.support_kitty_keyboard_protocol = false`, this may
+collide with the existing `Ctrl+y` left sidebar/editor focus action in some
+terminal paths.
 
-The right-sidebar focus action should remain semantic and remappable. A default
-may be added only after the first-class terminal matrix proves it is distinct
-from `Ctrl+y`, or if the key is gated behind a profile that enables the needed
-keyboard protocol support.
+The right-sidebar focus action remains semantic and remappable through
+`zellij.keybindings.toggle_editor_right_sidebar_focus`. If the default aliases
+to `Ctrl+y` in a user's terminal, they can remap or disable it without changing
+the underlying pane-orchestrator command.
 
 ## AltGr And International Layouts
 

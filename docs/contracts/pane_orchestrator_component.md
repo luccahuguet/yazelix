@@ -6,7 +6,7 @@ The Zellij pane orchestrator is a standalone Zellij plugin consumed by Yazelix t
 
 ## Why
 
-The orchestrator now owns several high-value UX paths: managed editor/sidebar focus, layout-family changes, workspace retargeting, workspace terminal opening, screen-saver launch, status-cache facts, and active sidebar Yazi identity. Popup, menu, and config UI panes are owned by the integrated `yzpp` plugin instead.
+The orchestrator owns several high-value UX paths: managed editor/left-sidebar focus, editor/right-agent focus, layout-family changes, workspace retargeting, workspace terminal opening, screen-saver launch, status-cache facts, and active sidebar Yazi identity. Popup, menu, and config UI panes are owned by the integrated `yzpp` plugin instead.
 
 This contract defines the Yazelix integration boundary for the extracted plugin. The external project owns source and standalone behavior; Yazelix owns generated layouts, runtime packaging, and integration commands.
 
@@ -86,6 +86,7 @@ The orchestrator accepts these pipe command names:
 - `focus_editor`
 - `focus_sidebar`
 - `toggle_editor_sidebar_focus`
+- `toggle_editor_right_sidebar_focus`
 - `move_focus_left_or_tab`
 - `move_focus_right_or_tab`
 - `smart_reveal`
@@ -104,7 +105,7 @@ The orchestrator accepts these pipe command names:
 - `debug_write_literal`
 - `debug_send_escape`
 
-These command names are the plugin API. Keybindings are not plugin semantics; they are generated Zellij policy that sends `MessagePlugin` calls to the loaded `yazelix_pane_orchestrator` instance. Yazelix ships `Ctrl+y` for `toggle_editor_sidebar_focus` and `Alt+Shift+H` for the `toggle_left_sidebar` action, which sends the plugin command `toggle_sidebar`; users may remap those keys without changing the plugin contract as long as they keep sending the same command names.
+These command names are the plugin API. Keybindings are not plugin semantics; they are generated Zellij policy that sends `MessagePlugin` calls to the loaded `yazelix_pane_orchestrator` instance. Yazelix ships `Ctrl+y` for `toggle_editor_sidebar_focus`, `Ctrl+Shift+Y` for `toggle_editor_right_sidebar_focus`, and `Alt+Shift+H` for the `toggle_left_sidebar` action, which sends the plugin command `toggle_sidebar`; users may remap those keys without changing the plugin contract as long as they keep sending the same command names.
 
 Nushell must resolve user intent before calling the plugin. For workspace changes, the surviving mutation command is `retarget_workspace`; older split commands for "set workspace root" and "set workspace root plus focused pane cd" are intentionally not part of the component contract.
 

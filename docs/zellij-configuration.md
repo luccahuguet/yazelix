@@ -123,7 +123,8 @@ ui {
   "keybindings": {
     "bottom_popup": ["Alt Shift J"],
     "top_popup": ["Alt Shift K"],
-    "menu": ["Alt Space"],
+    "menu": ["Alt Shift M"],
+    "toggle_editor_right_sidebar_focus": ["Ctrl Shift Y"],
     "toggle_left_sidebar": ["Alt Shift H"],
     "move_focus_left_or_tab": ["Alt h", "Alt Left"],
     "move_focus_right_or_tab": ["Alt l", "Alt Right"]
@@ -131,11 +132,11 @@ ui {
 }
 ```
 
-Supported owner-local action ids are `open_workspace_terminal`, `popup`, `bottom_popup`, `top_popup`, `menu`, `config`, `move_focus_left_or_tab`, `move_focus_right_or_tab`, `toggle_editor_sidebar_focus`, `toggle_left_sidebar`, `open_codex_agent_right`, `smart_reveal`, `previous_family`, and `next_family`. `yzx keys` shows the matching scoped ids, such as `zellij.popup`. Omitted actions keep their defaults. Set an action to `[]` to disable Yazelix's generated binding for that action. Yazelix rejects duplicate keys across this semantic map before launch.
+Supported owner-local action ids are `open_workspace_terminal`, `popup`, `bottom_popup`, `top_popup`, `menu`, `config`, `move_focus_left_or_tab`, `move_focus_right_or_tab`, `toggle_editor_sidebar_focus`, `toggle_editor_right_sidebar_focus`, `toggle_left_sidebar`, `open_codex_agent_right`, `smart_reveal`, `previous_family`, and `next_family`. `yzx keys` shows the matching scoped ids, such as `zellij.popup`. Omitted actions keep their defaults. Set an action to `[]` to disable Yazelix's generated binding for that action. Yazelix rejects duplicate keys across this semantic map before launch.
 
 Use `zellij.popup_commands` to change the command argv behind the named popup surfaces. The built-in defaults are bottom popup `lazygit`, top popup `yzx config ui`, and menu `yzx menu`.
 
-For Yazelix's curated native Zellij key policy, use `zellij.native_keybindings` in `settings.jsonc`. This covers shipped remaps such as `scroll_mode` / `scroll_mode_unbind`, `session_mode` / `session_mode_unbind`, tab movement, tab jumps, pane grouping, and the hardcoded Codex right-pane validation binding. Omitted entries keep defaults; set an entry to `[]` to disable that one bind or unbind.
+For Yazelix's curated native Zellij key policy, use `zellij.native_keybindings` in `settings.jsonc`. This covers shipped remaps such as `scroll_mode` / `scroll_mode_unbind`, `session_mode` / `session_mode_unbind`, tab movement, tab jumps, pane grouping, and related Zellij-native conflict cleanup. Omitted entries keep defaults; set an entry to `[]` to disable that one bind or unbind.
 
 For full native Zellij keybinding ownership inside Yazelix, use `keybinds clear-defaults=true` in the explicit Yazelix-managed sidecar `~/.config/yazelix/zellij.kdl`:
 ```kdl

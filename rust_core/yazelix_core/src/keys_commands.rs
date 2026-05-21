@@ -287,6 +287,7 @@ fn paired_zellij_action_row(first_id: &str, second_id: &str, label: &str) -> Tab
 fn root_workspace_rows() -> Vec<TableRow> {
     vec![
         zellij_action_row("toggle_editor_sidebar_focus"),
+        zellij_action_row("toggle_editor_right_sidebar_focus"),
         zellij_action_row("toggle_left_sidebar"),
         paired_zellij_action_row(
             "previous_family",
@@ -542,7 +543,7 @@ fn helix_topic_rows() -> Vec<TableRow> {
 fn helix_caveat_rows() -> Vec<TableRow> {
     vec![table_row(&[
         "No default Helix-local Yazi binding in Yazelix",
-        "Use Zellij-level `Ctrl+y` and `Alt+Shift+H` for managed workspace navigation",
+        "Use Zellij-level `Ctrl+y`, `Ctrl+Shift+Y`, and `Alt+Shift+H` for managed workspace navigation",
     ])]
 }
 

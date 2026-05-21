@@ -930,7 +930,7 @@ mod tests {
         assert_eq!(error.code(), "unsupported_config");
     }
 
-    // Defends: semantic Zellij keybinding remaps flow through the main config contract as a typed action map.
+    // Defends: semantic Zellij keybinding remaps flow through the main config contract as a typed action map without taking over default merging from Zellij materialization.
     #[test]
     fn normalizes_zellij_keybinding_map() {
         let path = write_user_config(
@@ -949,6 +949,7 @@ toggle_left_sidebar = []
 
         assert_eq!(keybindings["menu"], json!(["Alt Space"]));
         assert_eq!(keybindings["toggle_left_sidebar"], json!([]));
+        assert!(!keybindings.contains_key("toggle_editor_right_sidebar_focus"));
     }
 
     // Defends: curated native Zellij key policy remaps flow through the main config contract as a typed action map.

@@ -2877,6 +2877,8 @@ keybinds {
         assert!(rendered.contains(r#"bind "Alt Shift L" {"#));
         assert!(rendered.contains(r#"MessagePlugin "yazelix_pane_orchestrator" {"#));
         assert!(rendered.contains(r#"name "toggle_agent_sidebar""#));
+        assert!(rendered.contains(r#"bind "Ctrl Shift Y" {"#));
+        assert!(rendered.contains(r#"name "toggle_editor_right_sidebar_focus""#));
         assert!(rendered.contains(r#"bind "Alt Shift J" {"#));
         assert!(rendered.contains(r#"payload "bottom_popup""#));
         assert!(rendered.contains(r#"bind "Alt Shift K" {"#));
@@ -3094,6 +3096,7 @@ keybinds {
         assert!(merged.contains("payload \"config\""));
         assert!(merged.contains("MessagePlugin \"yazelix_pane_orchestrator\""));
         assert!(merged.contains("toggle_editor_sidebar_focus"));
+        assert!(merged.contains("toggle_editor_right_sidebar_focus"));
         assert!(merged.contains("move_focus_left_or_tab"));
     }
 
@@ -3168,6 +3171,10 @@ keybinds {
         assert_eq!(keybindings["popup"], Vec::<String>::new());
         assert_eq!(keybindings["bottom_popup"], vec!["Alt Shift J"]);
         assert_eq!(keybindings["top_popup"], vec!["Alt Shift K"]);
+        assert_eq!(
+            keybindings["toggle_editor_right_sidebar_focus"],
+            vec!["Ctrl Shift Y"]
+        );
     }
 
     // Defends: named popup surfaces can use distinct commands without changing the generic `yzx popup` program.

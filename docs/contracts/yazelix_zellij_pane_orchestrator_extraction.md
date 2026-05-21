@@ -63,6 +63,7 @@ Core standalone commands:
 - `focus_editor`
 - `focus_sidebar`
 - `toggle_editor_sidebar_focus`
+- `toggle_editor_right_sidebar_focus`
 - `move_focus_left_or_tab`
 - `move_focus_right_or_tab`
 - `next_family`
@@ -97,7 +98,7 @@ The plugin must support these behaviors without Yazelix installed:
 
 - tracking tab-local editor/sidebar pane identity from Zellij pane state
 - focusing editor and sidebar panes
-- toggling editor/sidebar focus
+- toggling editor/left-sidebar and editor/right-agent focus
 - moving horizontal focus or crossing tab boundaries
 - switching layout families through Zellij layout state
 - opening a terminal in the current tab/workspace when no Yazelix wrapper is required

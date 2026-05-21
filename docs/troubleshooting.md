@@ -95,7 +95,7 @@ Yazelix normally pre-seeds permissions for its bundled Zellij plugins before lau
 - **zjstatus**: its permission prompt can look like an "invisible pane" at the very top where the status bar should be. Navigate to that top bar area either by keyboard shortcuts (`alt h/j/k/l`) or by clicking it, then press `y`.
 - **Yazelix pane-orchestrator plugin**: Yazelix should also open a popup asking for permission for its own orchestrator plugin. You need to answer **yes** to that popup too.
 
-`Alt+Shift+H` and `Ctrl+y` require the Yazelix pane-orchestrator plugin permissions. `Alt+m` opens a new terminal in the current tab workspace root.
+`Alt+Shift+H`, `Ctrl+y`, and `Ctrl+Shift+Y` require the Yazelix pane-orchestrator plugin permissions. `Alt+m` opens a new terminal in the current tab workspace root.
 
 If permission state gets out of sync after an update, run `yzx doctor --fix` and restart Yazelix. If `permissions.kdl` was deleted outright, the next Yazelix launch also treats the missing permission cache as repairable generated state and re-seeds the bundled plugin permissions before Zellij starts.
 

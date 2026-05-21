@@ -320,12 +320,22 @@ pub const ZELLIJ_ACTIONS: &[ZellijActionSpec] = &[
     zellij_action(
         "toggle_editor_sidebar_focus",
         "zellij.toggle_editor_sidebar_focus",
-        "Toggle focus between the managed editor and sidebar",
+        "Toggle focus between the managed editor and left sidebar",
         "shared_except \"locked\"",
         "toggle_editor_sidebar_focus",
         None,
         &["Ctrl y"],
         "MessagePlugin yazelix_pane_orchestrator { name \"toggle_editor_sidebar_focus\" }",
+    ),
+    zellij_action(
+        "toggle_editor_right_sidebar_focus",
+        "zellij.toggle_editor_right_sidebar_focus",
+        "Toggle focus between the managed editor and right agent sidebar",
+        "shared_except \"locked\"",
+        "toggle_editor_right_sidebar_focus",
+        None,
+        &["Ctrl Shift Y"],
+        "MessagePlugin yazelix_pane_orchestrator { name \"toggle_editor_right_sidebar_focus\" }",
     ),
     zellij_action(
         "toggle_left_sidebar",

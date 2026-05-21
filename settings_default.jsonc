@@ -223,6 +223,9 @@
       "toggle_editor_sidebar_focus": [
         "Ctrl y"
       ],
+      "toggle_editor_right_sidebar_focus": [
+        "Ctrl Shift Y"
+      ],
       "toggle_left_sidebar": [
         "Alt Shift H"
       ],

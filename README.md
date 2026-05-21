@@ -88,7 +88,7 @@ Ghostty cursor presets use their own config at `~/.config/yazelix_ghostty_cursor
 
 - Zellij orchestrates the workspace, with a managed sidebar and your chosen editor in the managed `editor` pane
 - In Yazelix docs, `sidebar` means the generic side-surface slot; the default sidebar is a Yazi file tree
-- Toggle focus between the sidebar and editor with `Ctrl+y`, and toggle the sidebar itself with `Alt+Shift+H`
+- Toggle focus between the left sidebar and editor with `Ctrl+y`, toggle focus between the editor and right agent sidebar with `Ctrl+Shift+Y`, and toggle the left sidebar itself with `Alt+Shift+H`
 - Switch between the built-in sidebar-aware workspace shapes and other workspace layouts; see [Layouts](./docs/layouts.md)
 - When you open something from the default Yazi file-tree sidebar with Helix or Neovim, Yazelix targets the managed `editor` pane through the pane orchestrator instead of relying on pane scanning heuristics; it reuses that pane when present and creates one titled `editor` when needed
 - `yzx reveal` is the stable editor-integration surface for jumping the current file back into the managed Yazi file tree
@@ -171,7 +171,7 @@ For the longer project story, see [Version History](./docs/history.md)
 - **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer
 
 ### Helix Integration
-Helix supports optional `yzx reveal` integration through `Alt+r`, and Yazelix reserves `Alt+r` globally: in the managed editor it forwards `Alt+r` into Helix for reveal, outside the editor it falls back to the editor/sidebar focus flow, and `Ctrl+y` plus `Alt+Shift+H` remain the dedicated workspace navigation keys
+Helix supports optional `yzx reveal` integration through `Alt+r`, and Yazelix reserves `Alt+r` globally: in the managed editor it forwards `Alt+r` into Helix for reveal, outside the editor it falls back to the editor/left-sidebar focus flow, and `Ctrl+y`, `Ctrl+Shift+Y`, plus `Alt+Shift+H` remain the dedicated workspace navigation keys
 
 📖 **[Complete Helix Keybindings Guide →](./docs/helix_keybindings.md)** - Recommended keybindings for enhanced editing experience
 
@@ -402,8 +402,9 @@ Yazelix uses Zellij as the workspace layer, so the most important bindings are g
 
 | Keybinding | What It Does |
 |------------|--------------|
-| `Ctrl+y` | Toggle focus between the managed editor and sidebar, which defaults to a Yazi file tree |
-| `Alt+Shift+H` | Show or hide the sidebar |
+| `Ctrl+y` | Toggle focus between the managed editor and left sidebar, which defaults to a Yazi file tree |
+| `Ctrl+Shift+Y` | Toggle focus between the managed editor and right Codex agent sidebar |
+| `Alt+Shift+H` | Show or hide the left sidebar |
 | `Alt+r` | Smart reveal/focus key; forwards into the editor when appropriate |
 | `Alt+[` / `Alt+]` | Switch between layouts |
 | `Alt+m` | Open a new terminal in the current tab workspace root |
@@ -420,7 +421,7 @@ Yazelix uses Zellij as the workspace layer, so the most important bindings are g
 
 Yazi still has its own keymap too: press `~` inside Yazi for its built-in help, remap Yazelix-owned Yazi integration keys with `yazi.keybindings` in `settings.jsonc`, and use the most useful file-tree sidebar flows such as `Enter` to open through the managed editor integration, `Alt+z` to pick a directory with zoxide and retarget the workspace, and `Alt+p` to open the selected directory in a new pane as the current tab workspace root
 
-Helix and Neovim integration is intentionally small: use `Ctrl+y` and `Alt+Shift+H` for workspace navigation, use `Alt+r` / `yzx reveal` when you want the editor to reveal the current file in the managed Yazi file tree, and see [docs/helix_keybindings.md](./docs/helix_keybindings.md) and [docs/neovim_keybindings.md](./docs/neovim_keybindings.md) for editor-local setup details
+Helix and Neovim integration is intentionally small: use `Ctrl+y`, `Ctrl+Shift+Y`, and `Alt+Shift+H` for workspace navigation, use `Alt+r` / `yzx reveal` when you want the editor to reveal the current file in the managed Yazi file tree, and see [docs/helix_keybindings.md](./docs/helix_keybindings.md) and [docs/neovim_keybindings.md](./docs/neovim_keybindings.md) for editor-local setup details
 
 ## I'm Lost! Too Much Information
 Start by learning Zellij on its own, then optionally Yazi, and re-read this README afterwards
