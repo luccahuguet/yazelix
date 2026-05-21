@@ -22,6 +22,7 @@ Highlights:
 - Writable configs that still contain the old `editor.sidebar_command`, `editor.sidebar_args`, or `editor.sidebar_width_percent` fields are repaired once into `workspace.left_sidebar.*` before strict validation
 - Generated Zellij runtime state is re-rendered and validated before launch, so stale configs, missing plugin permissions, and copied native config files are detected or repaired deterministically
 - Managed `~/.config/yazelix/zellij.kdl` is reserved for native Zellij settings that Yazelix does not render; Yazelix-owned keybindings, theme, pane frames, and rounded corners stay in `settings.jsonc`
+- `yzx config ui` renders scalar select fields as single-choice option lists; `Space` opens the picker for selects and remains a direct toggle only for booleans
 - The pane-orchestrator and popup wasm artifacts are consumed from locked first-party child packages instead of copied main-repo binaries
 
 

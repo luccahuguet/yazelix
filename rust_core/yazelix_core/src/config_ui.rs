@@ -536,17 +536,10 @@ impl ConfigUiApp {
         let Some(edit) = self.edit.clone() else {
             return;
         };
-        let field = &self.model.fields[edit.field_index];
-        let next = if is_bool_field(field) {
-            if edit.input.trim() == "true" {
-                "false".to_string()
-            } else {
-                "true".to_string()
-            }
-        } else if is_scalar_enum_field(field) && !field.allowed_values.is_empty() {
-            next_allowed_value_from(&field.allowed_values, Some(edit.input.as_str()))
+        let next = if edit.input.trim() == "true" {
+            "false".to_string()
         } else {
-            return;
+            "true".to_string()
         };
         if let Some(edit) = &mut self.edit {
             edit.input = next;
@@ -655,19 +648,12 @@ impl ConfigUiApp {
             return;
         };
         let field = &self.model.fields[field_index];
-        if let Err(error) = self.ensure_editable_config(&field.path) {
-            self.notice_error(error.message());
-            return;
-        }
-        let value = if is_bool_field(field) {
-            Some(JsonValue::Bool(!field_bool_value(field).unwrap_or(false)))
-        } else if is_scalar_enum_field(field) && !field.allowed_values.is_empty() {
-            Some(JsonValue::String(next_allowed_value(field)))
-        } else {
-            None
-        };
-
-        if let Some(value) = value {
+        if is_bool_field(field) {
+            if let Err(error) = self.ensure_editable_config(&field.path) {
+                self.notice_error(error.message());
+                return;
+            }
+            let value = JsonValue::Bool(!field_bool_value(field).unwrap_or(false));
             self.set_field_value(field_index, value);
         } else {
             self.begin_edit_selected_field();
@@ -944,6 +930,9 @@ impl ConfigUiApp {
                     && edit.mode == ConfigUiEditMode::MultiChoice
                 {
                     return multi_choice_detail_lines(field, edit);
+                }
+                if is_scalar_enum_field(field) {
+                    return single_choice_field_detail_lines(field);
                 }
                 field_detail_lines(field)
             }
@@ -2702,6 +2691,11 @@ mod tests {
 
         let mut app = ConfigUiApp::new(request, model);
         select_field_path(&mut app, "cursors.settings.trail");
+        let details = lines_text(&app.render_details(app.visible_rows()[app.selected_row]));
+        assert!(details.contains("  ( ) none"));
+        assert!(details.contains("  (x) random"));
+        assert!(!details.contains("> (x) random"));
+
         app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
 
         let edit = app.edit.clone().expect("edit");
@@ -2918,9 +2912,9 @@ mod tests {
         );
     }
 
-    // Defends: keyboard-oriented quick edits produce deterministic toggles/cycles from the value shown in the UI.
+    // Defends: bools keep direct choice edits while scalar enums use the single-select picker mode.
     #[test]
-    fn quick_edit_helpers_toggle_bool_and_cycle_enum() {
+    fn edit_helpers_use_choice_modes_for_bool_and_enum() {
         let bool_field = test_field("core.debug_mode", "bool", "true", &[]);
         assert_eq!(field_bool_value(&bool_field), Some(true));
         assert_eq!(edit_mode_for_field(&bool_field), ConfigUiEditMode::Choice);
@@ -2933,7 +2927,6 @@ mod tests {
         );
         assert_eq!(edit_input_for_field(&enum_field), "compact");
         assert_eq!(edit_mode_for_field(&enum_field), ConfigUiEditMode::Choice);
-        assert_eq!(next_allowed_value(&enum_field), "full");
     }
 
     // Defends: bool edits stay direct controls while enum edit mode behaves like a single-select picker.
@@ -3028,6 +3021,27 @@ mod tests {
             get_json_path(&value, "terminal.config_mode"),
             Some(&json!("user"))
         );
+    }
+
+    // Defends: Space remains a direct toggle for bools, but scalar selects open the picker instead of cycling blindly.
+    #[test]
+    fn scalar_enum_space_opens_picker_without_writing() {
+        let runtime = tempdir().expect("runtime");
+        let config = tempdir().expect("config");
+        write_runtime_layout(runtime.path());
+        let settings_path = config.path().join("settings.jsonc");
+        let request = test_request(runtime.path(), config.path());
+        let model = build_config_ui_model(&request).expect("model");
+        let mut app = ConfigUiApp::new(request, model);
+
+        select_field_path(&mut app, "terminal.config_mode");
+        app.handle_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
+
+        let edit = app.edit.clone().expect("edit");
+        assert_eq!(edit.mode, ConfigUiEditMode::Choice);
+        let details = lines_text(&app.render_details(UiRowRef::Field(edit.field_index)));
+        assert!(details.contains("> (x) yazelix"));
+        assert!(!settings_path.exists());
     }
 
     // Defends: Enter on bool rows performs the direct control action instead of opening an edit session.

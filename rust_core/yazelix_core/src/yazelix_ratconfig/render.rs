@@ -367,7 +367,7 @@ pub(crate) fn default_field_detail_lines(field: &ConfigUiField) -> Vec<Line<'sta
     if !field.validation.is_empty() {
         lines.push(detail_line("validation", &field.validation));
     }
-    if !field.allowed_values.is_empty() {
+    if !field.allowed_values.is_empty() && !is_scalar_enum_field(field) {
         lines.push(detail_line("allowed", &field.allowed_values.join(", ")));
     }
     if field.rebuild_required {
@@ -377,6 +377,15 @@ pub(crate) fn default_field_detail_lines(field: &ConfigUiField) -> Vec<Line<'sta
         lines.push(Line::from(""));
         lines.push(Line::from(field.description.clone()));
     }
+    lines
+}
+
+pub(crate) fn single_choice_field_detail_lines(field: &ConfigUiField) -> Vec<Line<'static>> {
+    let selected_value = parse_rendered_json_string(&field.current_value)
+        .unwrap_or_else(|| field.current_value.clone());
+    let mut lines = default_field_detail_lines(field);
+    lines.push(Line::from(""));
+    append_single_choice_options(&mut lines, field, &selected_value, None);
     lines
 }
 
@@ -395,11 +404,27 @@ pub(crate) fn single_choice_detail_lines(
         Line::from(""),
     ];
 
+    append_single_choice_options(
+        &mut lines,
+        field,
+        selected_value,
+        Some(
+            edit.choice_index
+                .min(field.allowed_values.len().saturating_sub(1)),
+        ),
+    );
+
+    lines
+}
+
+fn append_single_choice_options(
+    lines: &mut Vec<Line<'static>>,
+    field: &ConfigUiField,
+    selected_value: &str,
+    highlighted_index: Option<usize>,
+) {
     for (index, value) in field.allowed_values.iter().enumerate() {
-        let highlighted = index
-            == edit
-                .choice_index
-                .min(field.allowed_values.len().saturating_sub(1));
+        let highlighted = highlighted_index == Some(index);
         let selected = value == selected_value;
         let selector_style = if highlighted {
             Style::default()
@@ -430,8 +455,6 @@ pub(crate) fn single_choice_detail_lines(
             Span::styled(value.clone(), value_style),
         ]));
     }
-
-    lines
 }
 
 pub(crate) fn multi_choice_detail_lines(
@@ -653,13 +676,12 @@ fn edit_status_line(field: &ConfigUiField, edit: &ConfigUiEditState) -> Line<'st
 fn normal_control_line(app: &ConfigUiApp) -> Line<'static> {
     match app.selected_field() {
         Some(field) if is_bool_field(field) => Line::from(vec![
-            Span::raw("Enter/Space toggle/cycle  "),
+            Span::raw("Enter/Space toggle  "),
             Span::raw("e edit  "),
             Span::raw("u unset"),
         ]),
         Some(field) if is_scalar_enum_field(field) => Line::from(vec![
-            Span::raw("Enter/e picker  "),
-            Span::raw("Space cycle  "),
+            Span::raw("Enter/e/Space picker  "),
             Span::raw("u unset"),
         ]),
         Some(field) if is_enum_string_list_field(field) => {

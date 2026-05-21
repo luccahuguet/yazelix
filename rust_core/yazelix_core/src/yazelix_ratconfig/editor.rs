@@ -380,29 +380,3 @@ pub(crate) fn field_bool_value(field: &ConfigUiField) -> Option<bool> {
         _ => None,
     }
 }
-
-fn field_string_value(field: &ConfigUiField) -> Option<String> {
-    parse_rendered_json_string(&field.current_value).or_else(|| {
-        if field.current_value == "not set" {
-            None
-        } else {
-            Some(field.current_value.clone())
-        }
-    })
-}
-
-pub(crate) fn next_allowed_value(field: &ConfigUiField) -> String {
-    next_allowed_value_from(&field.allowed_values, field_string_value(field).as_deref())
-}
-
-pub(crate) fn next_allowed_value_from(allowed_values: &[String], current: Option<&str>) -> String {
-    let next_index = current
-        .and_then(|value| {
-            allowed_values
-                .iter()
-                .position(|candidate| candidate == value)
-        })
-        .map(|index| (index + 1) % allowed_values.len())
-        .unwrap_or(0);
-    allowed_values[next_index].clone()
-}
