@@ -1,6 +1,6 @@
 # Zellij Configuration
 
-Yazelix uses a layered Zellij configuration system centered on `settings.jsonc` for Yazelix-owned behavior and a managed native sidecar for advanced non-keybinding Zellij settings.
+Yazelix uses a layered Zellij configuration system centered on `settings.jsonc` for Yazelix-owned behavior and a managed native sidecar for advanced Zellij settings that Yazelix does not render.
 
 ## Quick Start
 
@@ -22,16 +22,14 @@ yzx import zellij
 
 The merger prefers your **Yazelix-managed Zellij config** when present, then falls back to your native Zellij config, then forcibly layers Yazelix requirements on top:
 
-1. **User config**: `~/.config/yazelix/zellij.kdl` (if it exists). This managed sidecar is for native non-keybinding Zellij settings. If missing, Yazelix reads `~/.config/zellij/config.kdl` as a read-only fallback. If neither exists, Yazelix falls back to `zellij setup --dump-config`.
-2. **Dynamic Yazelix settings**: Generated from `settings.jsonc` (e.g., rounded corners) and appended after the user config so they win.
+1. **User config**: `~/.config/yazelix/zellij.kdl` (if it exists). This managed sidecar is for native Zellij settings that Yazelix does not render from `settings.jsonc`. If missing, Yazelix reads `~/.config/zellij/config.kdl` as a read-only fallback. If neither exists, Yazelix falls back to `zellij setup --dump-config`.
+2. **Dynamic Yazelix settings**: Generated from `settings.jsonc` (e.g., `zellij.theme`, `zellij.rounded_corners`, and `zellij.pane_frames`) and appended after the user config so they win.
 3. **Enforced Yazelix settings**: Always appended last to guarantee required behavior:
-   - `pane_frames false` (needed for `zjstatus`)
    - `support_kitty_keyboard_protocol` set from `settings.jsonc` (default: false)
-   - `on_force_close` set to `quit` so closed windows do not leave detached Yazelix sessions behind
    - `default_layout` set to Yazelix’s layout file (absolute path)
    - `layout_dir` set to Yazelix’s generated layouts directory
 
-Layouts are copied into `~/.local/share/yazelix/configs/zellij/layouts`, and the merged config is written to `~/.local/share/yazelix/configs/zellij/config.kdl` on every launch. Yazelix also passes `--pane-frames false` and an absolute `--default-layout` at launch for extra safety.
+Layouts are copied into `~/.local/share/yazelix/configs/zellij/layouts`, and the merged config is written to `~/.local/share/yazelix/configs/zellij/config.kdl` on every launch. Yazelix also passes an absolute `--default-layout` at launch for extra safety.
 
 `~/.config/yazelix/zellij.kdl` must not contain a `keybinds` block. Yazelix rejects managed `keybinds` blocks, including `keybinds clear-defaults=true`, because they create a second keybinding owner and can bypass managed workspace controls. Use `zellij.keybindings` and `zellij.native_keybindings` in `settings.jsonc` for Yazelix sessions. Use plain `zellij` outside Yazelix if you want full native keybinding ownership.
 
@@ -42,9 +40,10 @@ Yazelix manages the Zellij behavior needed for its workspace contract:
 - semantic workspace keybindings rendered from `zellij.keybindings`
 - curated native Zellij conflict policy rendered from `zellij.native_keybindings`
 - popup command wiring rendered from `zellij.popup_commands`
+- appearance settings rendered from `settings.jsonc`, including `zellij.theme`, `zellij.rounded_corners`, and `zellij.pane_frames`
 - built-in layout directory/default layout selection
 - bundled plugin wiring for the pane orchestrator, popup plugin, and status bar
-- enforced launch settings such as `pane_frames`, `on_force_close`, and the generated `layout_dir`
+- enforced launch settings such as the generated `layout_dir`
 
 Yazelix does not manage these Zellij surfaces:
 
@@ -55,18 +54,25 @@ Yazelix does not manage these Zellij surfaces:
 - custom Zellij layouts as a supported Yazelix layout family
 - third-party plugin behavior beyond preserving native `plugins` and `load_plugins` blocks while adding Yazelix's required plugins
 
-Use plain `zellij` for full native keymap and layout ownership. Use `settings.jsonc` for Yazelix-session behavior. Use `~/.config/yazelix/zellij.kdl` only for native non-keybinding preferences that are safe to merge into Yazelix sessions.
+Use plain `zellij` for full native keymap and layout ownership. Use `settings.jsonc` for Yazelix-session behavior and managed appearance. Use `~/.config/yazelix/zellij.kdl` only for native preferences that are safe to merge into Yazelix sessions and are not already rendered by Yazelix.
 
 ## Common Customizations
 
 For complete examples and documentation, see the [user config template](../configs/zellij/user/user_config.kdl).
 
-**Themes and UI:**
-```kdl
-theme "dracula"
-// theme "nord"
-// theme "tokyo-night"
+**Themes and UI (`settings.jsonc`):**
+```jsonc
+{
+  "zellij": {
+    "theme": "dracula",
+    "rounded_corners": true,
+    "pane_frames": true
+  }
+}
+```
 
+**Native Zellij preferences (`~/.config/yazelix/zellij.kdl`):**
+```kdl
 // Disable mouse mode if it interferes with terminal selection
 mouse_mode false
 
@@ -133,7 +139,7 @@ scroll_buffer_size 50000
 ```kdl
 ui {
     pane_frames {
-        rounded_corners true  # Yazelix may override via settings.jsonc
+        hide_session_name true
     }
 }
 ```
@@ -166,7 +172,7 @@ For Yazelix's curated native Zellij key policy, use `zellij.native_keybindings` 
 
 Managed `~/.config/yazelix/zellij.kdl` rejects all `keybinds` blocks. A read-only native fallback from `~/.config/zellij/config.kdl` can still contain native keybinds, but Yazelix strips `clear-defaults=true` semantics in that fallback path and appends its generated integration keybindings so popup/menu/sidebar focus behavior keeps working.
 
-**Simple settings** (like `theme`, `copy_command`) work perfectly - your value always wins.
+**Simple native settings** that Yazelix does not render from `settings.jsonc`, such as `copy_command`, are safe in `~/.config/yazelix/zellij.kdl`.
 
 **For the sidebar launcher**, prefer Yazelix config instead of editing layout templates:
 ```toml

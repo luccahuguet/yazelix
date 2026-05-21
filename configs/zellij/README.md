@@ -1,11 +1,11 @@
 # Yazelix: Zellij Configuration
 
-Yazelix uses `settings.jsonc` for managed workspace behavior and `~/.config/yazelix/zellij.kdl` for advanced native Zellij settings that do not include keybindings.
+Yazelix uses `settings.jsonc` for managed workspace behavior and managed Zellij appearance such as theme and rounded corners. Use `~/.config/yazelix/zellij.kdl` only for advanced native Zellij settings that Yazelix does not render.
 
 ## Quick Start
 
 ```bash
-# Edit advanced non-keybinding Zellij settings
+# Edit advanced native Zellij settings that Yazelix does not render
 ~/.config/yazelix/zellij.kdl
 ```
 

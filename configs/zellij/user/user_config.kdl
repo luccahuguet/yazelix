@@ -10,9 +10,9 @@
 //   1. Your managed native settings (~/.config/yazelix/zellij.kdl)
 //   2. Yazelix generated keybindings, plugins, dynamic settings, and enforced settings
 //
-// IMPORTANT: This sidecar is for native non-keybinding Zellij settings.
-// Do not put keybinds blocks here. Yazelix rejects managed keybinds blocks
-// because settings.jsonc owns Yazelix-session keybinding remaps.
+// IMPORTANT: This sidecar is for native Zellij settings that Yazelix does not
+// render from settings.jsonc. Do not put keybinds, theme, pane_frames, or
+// rounded_corners ownership here.
 //
 // Documentation: https://zellij.dev/documentation/
 // ========================================
@@ -23,11 +23,11 @@
 // Uncomment and modify the sections you want to customize.
 // Remove the '//' at the beginning of lines to enable them.
 
-// === THEME AND UI ===
-// Choose a built-in theme or define your own
-theme "dracula"
-// theme "nord"
-// theme "tokyo-night"
+// === THEME AND PANE FRAME UI ===
+// Configure these in settings.jsonc:
+//   - zellij.theme
+//   - zellij.pane_frames
+//   - zellij.rounded_corners
 
 // Disable mouse support if it interferes with terminal selection
 // mouse_mode false
@@ -39,10 +39,10 @@ theme "dracula"
 // simplified_ui true
 
 // === UI CUSTOMIZATION ===
-// Yazelix doesn't define UI settings, so you can safely add them here:
+// Yazelix renders pane frame rounded corners from settings.jsonc. Keep only
+// native UI settings here that Yazelix does not already render:
 // ui {
 //     pane_frames {
-//         rounded_corners true
 //         hide false
 //     }
 // }
@@ -59,11 +59,9 @@ theme "dracula"
 // copy_command "pbcopy"                      // For macOS
 
 // === SESSION BEHAVIOR ===
-// Show startup tips when Zellij starts (controlled by zellij.disable_tips in settings.jsonc)
-// show_startup_tips false  // Uncomment to override the generated setting
+// Show startup tips is controlled by zellij.disable_tips in settings.jsonc
 
-// What to do when terminal is closed: "detach" or "quit"
-// on_force_close "quit"
+// What to do when terminal is closed is controlled by Yazelix session policy
 
 // Enable Zellij session serialization for its own internal state
 // session_serialization true
@@ -76,8 +74,8 @@ theme "dracula"
 // Full native Zellij keymap ownership belongs in plain zellij outside Yazelix.
 
 // === CUSTOM THEMES ===
-// Define your own color schemes. Safe to uncomment - adds new themes
-// without conflicting with existing ones.
+// Define your own color schemes here and select them with zellij.theme in
+// settings.jsonc.
 
 // themes {
 //     my_custom_theme {
