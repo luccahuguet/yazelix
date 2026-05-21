@@ -215,6 +215,7 @@ Use this for every extraction, cleanup, refactor, validator, generated-fixture, 
 - Follow the current project versioning scheme used in tags/releases
 - When referencing versions in documentation or migration notes, only use actual version numbers that exist
 - **Keep `YAZELIX_VERSION` in sync with git tags**: When creating a new git tag, update `nushell/scripts/utils/constants.nu` to match (e.g., `export const YAZELIX_VERSION = "v12.3"`). This version is displayed in the zjstatus bar.
+- **Release notes must name keybindings explicitly**: If a release changes, adds, removes, or meaningfully clarifies default keybindings, `CHANGELOG.md` and `docs/upgrade_notes.toml` must list the concrete key combinations and their actions. Do not hide keybinding changes behind vague wording like "keybinding polish" or "directional keybindings".
 
 ## Beads Workflow Integration
 
