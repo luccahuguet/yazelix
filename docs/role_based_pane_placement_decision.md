@@ -177,9 +177,6 @@ should wait for a real workflow need.
 The directional keymap decision is recorded in
 [`directional_placement_keymap_decision.md`](./directional_placement_keymap_decision.md).
 
-The user-facing config decision is recorded in
-[`role_placement_config_decision.md`](./role_placement_config_decision.md).
-
 Implementation details remain separate. The accepted architecture does not yet
 choose how much belongs in generated Zellij layouts, `yzpp` specs, pane
 orchestrator commands, or Rust adapter code.
