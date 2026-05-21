@@ -89,6 +89,8 @@ Use semantic remaps for Yazelix-owned actions and native sidecars for the owning
 
 `zellij.native_keybindings` accepts curated native policy ids such as `scroll_mode`, `scroll_mode_unbind`, `move_tab_left`, `move_pane_down`, and `move_tab_left_unbind`. These are Yazelix's shipped conflict-remap and validation defaults for native Zellij commands. Omitted entries keep defaults, and `[]` disables one native policy entry. Managed `~/.config/yazelix/zellij.kdl` rejects `keybinds` blocks so it cannot bypass generated workspace controls.
 
+Yazelix does not manage arbitrary Zellij keymaps, full Zellij mode binding ownership, or generated runtime config edits. Use plain `zellij` and `~/.config/zellij/config.kdl` for that level of native keymap control.
+
 `yazi.keybindings` accepts owner-local action ids such as `open_directory_as_workspace_pane` and `open_zoxide_in_editor`. Values are alternate generated Yazi bindings such as `<A-p>` and `<A-z>`. Omitted actions keep defaults, and `[]` disables that generated Yazelix-owned Yazi integration binding. Native open-selected keys such as `<Enter>` and `o` remain in `~/.config/yazelix/yazi/keymap.toml`; arbitrary Yazi actions and native multi-key sequences also belong there.
 
 ### Sidebar Commands vs Keybindings

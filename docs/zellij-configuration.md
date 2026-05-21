@@ -35,6 +35,28 @@ Layouts are copied into `~/.local/share/yazelix/configs/zellij/layouts`, and the
 
 `~/.config/yazelix/zellij.kdl` must not contain a `keybinds` block. Yazelix rejects managed `keybinds` blocks, including `keybinds clear-defaults=true`, because they create a second keybinding owner and can bypass managed workspace controls. Use `zellij.keybindings` and `zellij.native_keybindings` in `settings.jsonc` for Yazelix sessions. Use plain `zellij` outside Yazelix if you want full native keybinding ownership.
 
+## Managed Boundaries
+
+Yazelix manages the Zellij behavior needed for its workspace contract:
+
+- semantic workspace keybindings rendered from `zellij.keybindings`
+- curated native Zellij conflict policy rendered from `zellij.native_keybindings`
+- popup command wiring rendered from `zellij.popup_commands`
+- built-in layout directory/default layout selection
+- bundled plugin wiring for the pane orchestrator, popup plugin, and status bar
+- enforced launch settings such as `pane_frames`, `on_force_close`, and the generated `layout_dir`
+
+Yazelix does not manage these Zellij surfaces:
+
+- arbitrary Zellij native keymaps or mode bindings
+- full `keybinds` ownership inside Yazelix sessions
+- the user's plain Zellij config at `~/.config/zellij/config.kdl`, except as a read-only fallback or explicit import source
+- manual edits to generated runtime files under `~/.local/share/yazelix/configs/zellij/`
+- custom Zellij layouts as a supported Yazelix layout family
+- third-party plugin behavior beyond preserving native `plugins` and `load_plugins` blocks while adding Yazelix's required plugins
+
+Use plain `zellij` for full native keymap and layout ownership. Use `settings.jsonc` for Yazelix-session behavior. Use `~/.config/yazelix/zellij.kdl` only for native non-keybinding preferences that are safe to merge into Yazelix sessions.
+
 ## Common Customizations
 
 For complete examples and documentation, see the [user config template](../configs/zellij/user/user_config.kdl).

@@ -151,6 +151,8 @@ Yazelix does not own arbitrary Zellij native mode bindings. Managed `~/.config/y
 
 The `Ctrl-g`, `Ctrl-s`, `Ctrl-o`, Helix `Alt` conflict, tab jump, and pane-grouping defaults are handled as curated native Zellij policy in `zellij.native_keybindings`, not as semantic Yazelix actions. Native keybinding behavior outside that curated policy is not a managed Yazelix session surface.
 
+Yazelix does not manage arbitrary Zellij keymaps, full Zellij mode binding ownership, or generated runtime config edits. `~/.config/zellij/config.kdl` belongs to plain Zellij and is only a read-only fallback or explicit import source for Yazelix.
+
 ## Yazi Boundary
 
 Yazelix may expose semantic Yazi bindings for Yazelix-owned integration actions, such as opening a selected directory in a workspace pane or retargeting the workspace from Yazi zoxide.
