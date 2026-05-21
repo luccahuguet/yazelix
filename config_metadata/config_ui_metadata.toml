@@ -391,6 +391,17 @@ write_support = "settings_jsonc"
 home_manager_behavior = "read_only_in_ui"
 lifecycle = "stable"
 
+[fields."zellij.popup_commands"]
+tab = "workspace"
+group = "popup"
+label = "popup_commands"
+help = "Set commands for the named Yazelix popup surfaces"
+editor = "object"
+default_source = "settings_default.jsonc"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
 [fields."zellij.popup_width_percent"]
 tab = "workspace"
 group = "popup"

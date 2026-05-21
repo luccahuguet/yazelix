@@ -523,9 +523,17 @@ in
 
     popup_program = mkMainContractOption "zellij.popup_program" {
       description = ''
-        Default transient popup command for `yzx popup` and the default popup keybinding.
+        Default transient popup command for `yzx popup`.
         Use an argv-style list, eg. [ "lazygit" ], [ "editor" ] to reuse `editor.command`,
         or [ "codex" ].
+      '';
+    };
+
+    popup_commands = mkMainContractOption "zellij.popup_commands" {
+      description = ''
+        Commands for named Yazelix popup surfaces.
+        Defaults: bottom_popup = [ "lazygit" ], top_popup = [ "yzx" "config" "ui" ],
+        menu = [ "yzx" "menu" ].
       '';
     };
 
@@ -642,9 +650,10 @@ in
       description = ''
         Semantic remaps for Yazelix-owned Zellij actions.
 
-        Keys are action ids such as "popup", "menu", "toggle_sidebar", and
-        "move_focus_left_or_tab"; values are lists of Zellij key strings. Use an
-        empty list to disable the generated binding for one action.
+        Keys are action ids such as "bottom_popup", "top_popup", "menu",
+        "toggle_left_sidebar", and "move_focus_left_or_tab"; values are lists of
+        Zellij key strings. Use an empty list to disable the generated binding
+        for one action.
       '';
     };
 
@@ -653,8 +662,9 @@ in
         Curated native Zellij key policy remaps and unbinds managed by Yazelix.
 
         Keys are policy ids such as "scroll_mode", "scroll_mode_unbind",
-        "move_tab_left", and "move_tab_left_unbind"; values are lists of Zellij
-        key strings. Use an empty list to disable one native policy entry.
+        "move_tab_left", "move_pane_down", and "move_tab_left_unbind"; values
+        are lists of Zellij key strings. Use an empty list to disable one native
+        policy entry.
       '';
     };
 

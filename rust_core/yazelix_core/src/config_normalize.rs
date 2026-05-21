@@ -937,7 +937,7 @@ mod tests {
             r#"
 [zellij.keybindings]
 menu = ["Alt Space"]
-toggle_sidebar = []
+toggle_left_sidebar = []
 "#,
         );
         let data = normalize_config(&request_for(path)).unwrap();
@@ -948,7 +948,7 @@ toggle_sidebar = []
             .expect("zellij keybindings");
 
         assert_eq!(keybindings["menu"], json!(["Alt Space"]));
-        assert_eq!(keybindings["toggle_sidebar"], json!([]));
+        assert_eq!(keybindings["toggle_left_sidebar"], json!([]));
     }
 
     // Defends: curated native Zellij key policy remaps flow through the main config contract as a typed action map.

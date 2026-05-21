@@ -288,7 +288,7 @@ mod tests {
             "core": { "skip_welcome_screen": false },
             "editor": {},
             "terminal": { "terminals": ["ghostty"] },
-            "zellij": { "keybindings": { "toggle_popup": ["Alt p"] } }
+            "zellij": { "keybindings": { "bottom_popup": ["Alt p"] } }
         });
 
         for raw in [
@@ -297,7 +297,7 @@ mod tests {
             "core.welcome_duration_seconds=3.5",
             "editor.sidebar_width_percent=24",
             "terminal.terminals=[\"wezterm\", \"kitty\"]",
-            "zellij.keybindings={\"toggle_popup\":[\"Alt t\"],\"open_config\":[]}",
+            "zellij.keybindings={\"bottom_popup\":[\"Alt Shift J\"],\"config\":[]}",
         ] {
             let patch = parse_session_config_patch(raw, &fields).unwrap();
             apply_session_config_patch(&mut root, &patch).unwrap();
@@ -314,8 +314,8 @@ mod tests {
         assert_eq!(
             root["zellij"]["keybindings"],
             serde_json::json!({
-                "toggle_popup": ["Alt t"],
-                "open_config": [],
+                "bottom_popup": ["Alt Shift J"],
+                "config": [],
             })
         );
 
@@ -328,9 +328,11 @@ mod tests {
         let invalid_bool =
             parse_session_config_patch("core.skip_welcome_screen=maybe", &fields).unwrap_err();
         assert!(invalid_bool.to_string().contains("Invalid boolean value"));
-        let invalid_map =
-            parse_session_config_patch("zellij.keybindings={\"toggle_popup\":\"Alt t\"}", &fields)
-                .unwrap_err();
+        let invalid_map = parse_session_config_patch(
+            "zellij.keybindings={\"bottom_popup\":\"Alt Shift J\"}",
+            &fields,
+        )
+        .unwrap_err();
         assert!(
             invalid_map
                 .to_string()

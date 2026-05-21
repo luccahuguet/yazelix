@@ -20,7 +20,7 @@ Set the file-open behavior in `settings.jsonc`:
 }
 ```
 
-`editor.hide_sidebar_on_file_open = true` hides the managed sidebar after opening a file from Yazi while keeping new tabs on the normal managed-sidebar startup layout. `Alt+y`, `Ctrl+y`, and `yzx reveal` remain available because the sidebar pane still exists.
+`editor.hide_sidebar_on_file_open = true` hides the managed sidebar after opening a file from Yazi while keeping new tabs on the normal managed-sidebar startup layout. `Alt+Shift+H`, `Ctrl+y`, and `yzx reveal` remain available because the sidebar pane still exists.
 
 `editor.sidebar_width_percent` controls the open sidebar width as a percentage of the tab. With the default launcher, that sidebar is the Yazi file tree. Valid range: `10` to `40`.
 
@@ -58,7 +58,7 @@ Yazelix does not currently expose a second declarative layout-profile language. 
 
 Custom sidebar layout families are not fully first-class yet.
 
-The sidebar-aware controls `Alt+y`, `Alt+[`, and `Alt+]` still understand only the built-in sidebar visible/hidden families defined by Yazelix. If you add a brand-new sidebar family, Zellij can still parse the layout file, but Yazelix family-aware switching and sidebar toggling will not automatically learn it.
+The sidebar-aware controls `Alt+Shift+H`, `Alt+[`, and `Alt+]` still understand only the built-in sidebar visible/hidden families defined by Yazelix. If you add a brand-new sidebar family, Zellij can still parse the layout file, but Yazelix family-aware switching and sidebar toggling will not automatically learn it.
 
 So the current rule is:
 

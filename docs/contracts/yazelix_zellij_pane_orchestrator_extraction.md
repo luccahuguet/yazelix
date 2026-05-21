@@ -45,7 +45,7 @@ plugins {
 Standalone users can then target that alias from keybindings or pipes:
 
 ```kdl
-bind "Alt y" {
+bind "Alt Shift H" {
     MessagePlugin "yazelix-zellij-pane-orchestrator" {
         name "toggle_sidebar"
     }

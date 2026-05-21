@@ -10,17 +10,21 @@ Yazelix uses **selective remapping** - only conflicting Zellij keybindings are c
 | Alt+number (1-9)         | Go to tab 1-9                 |
 | Alt+w                    | Walk to next tab (focus)      |
 | Alt+q                    | Walk to previous tab (focus)  |
-| Alt+Shift+H              | Move tab left                 |
-| Alt+Shift+L              | Move tab right                |
+| Ctrl+Shift+H             | Move tab left                 |
+| Ctrl+Shift+L             | Move tab right                |
+| Ctrl+Shift+J             | Move pane down                |
+| Ctrl+Shift+K             | Move pane up                  |
 | Alt+Shift+F              | Toggle pane fullscreen        |
-| Alt+Shift+A              | Open Codex agent pane on the right |
-| Alt+t                    | Toggle the configured popup program |
+| Alt+Shift+H              | Toggle the left sidebar       |
+| Alt+Shift+J              | Toggle the bottom popup       |
+| Alt+Shift+K              | Toggle the top popup          |
+| Alt+Shift+L              | Toggle the right Codex agent sidebar |
 
 ### Zellij Modes (Helix-Compatible)
 | Keybinding                | Action                        | Notes |
 |--------------------------|-------------------------------|-------|
 | **Alt+Shift+M**          | **Yazelix menu**              | opens yzx command palette popup |
-| **Alt+t**                | **Popup program**             | opens, focuses, or closes the managed popup command |
+| **Alt+Shift+J/K**        | **Bottom/top popup**          | opens, focuses, or closes the configured named popup command |
 | **Ctrl+Alt+g**           | **Locked mode**               | ⚠️ Remapped (was Ctrl+g) |
 | Ctrl+p                   | Pane mode                     | ✅ Original (no conflict) |
 | Ctrl+n                   | Resize mode                   | ✅ Original (no conflict) |
@@ -31,7 +35,8 @@ Yazelix uses **selective remapping** - only conflicting Zellij keybindings are c
 | **Ctrl+Alt+o**           | **Session mode**              | ⚠️ Remapped (was Ctrl+o) |
 
 - **Tab walking**: Alt+w/q walks (focuses) next/previous tab, like browser tab switching.
-- **Tab moving**: Alt+Shift+H/L moves the current tab left/right.
+- **Tab moving**: Ctrl+Shift+H/L moves the current tab left/right.
+- **Pane moving**: Ctrl+Shift+J/K moves the current pane down/up.
 - **Direct tab access**: Alt+1 through Alt+9 jumps directly to a tab.
 
 If you find a conflict, please open an issue
@@ -51,13 +56,11 @@ If you find a conflict, please open an issue
 ## Yazelix Custom Keybindings
 - **Zellij**:
   - `Alt+Shift+F` toggles pane fullscreen
-  - `Alt+Shift+A` opens host-installed Codex in a right-side agent pane
-  - `Alt+t` toggles the configured managed popup program (defaults to `lazygit`)
-  - `Alt+Shift+H` moves the current tab left
-  - `Alt+Shift+L` moves the current tab right
+  - `Alt+Shift+H/J/K/L` toggles the left sidebar, bottom popup, top popup, and right Codex agent sidebar
+  - `Ctrl+Shift+H/L` moves the current tab left/right
+  - `Ctrl+Shift+J/K` moves the current pane down/up
   - `Alt+w/q` walks left/right (focus tabs)
   - `Ctrl+y` toggles focus between the managed sidebar and editor
-  - `Alt+y` shows or hides the sidebar
   - `Alt+m` opens a new terminal in the current tab workspace root
   - `Alt+r` is the smart reveal key: in the editor it forwards `Alt+r` into the editor, and outside the editor it falls back to the editor/sidebar focus flow
   - `Ctrl+Alt+g` locked mode, `Ctrl+Alt+s` scroll mode, `Ctrl+Alt+o` session mode
@@ -77,26 +80,28 @@ Use semantic remaps for Yazelix-owned actions and native sidecars for the owning
 - Helix-local bindings for managed Helix sessions: `~/.config/yazelix/helix.toml`
 - Terminal-emulator shortcuts: the terminal emulator config
 
-`zellij.keybindings` accepts owner-local action ids such as `popup`, `menu`, `toggle_sidebar`, and `open_workspace_terminal`. Shared diagnostics and docs use scoped ids such as `zellij.popup`. Omitted actions keep defaults, and `[]` disables a Yazelix-owned binding. Yazelix rejects duplicate semantic Zellij keys before launch.
+`zellij.keybindings` accepts owner-local action ids such as `bottom_popup`, `top_popup`, `menu`, `toggle_left_sidebar`, and `open_workspace_terminal`. Shared diagnostics and docs use scoped ids such as `zellij.bottom_popup`. Omitted actions keep defaults, and `[]` disables a Yazelix-owned binding. Yazelix rejects duplicate semantic Zellij keys before launch.
 
-`zellij.native_keybindings` accepts curated native policy ids such as `scroll_mode`, `scroll_mode_unbind`, `move_tab_left`, `move_tab_left_unbind`, and `open_codex_agent_right`. These are Yazelix's shipped conflict-remap and validation defaults for native Zellij commands. Omitted entries keep defaults, and `[]` disables one native policy entry. Arbitrary native Zellij actions still belong in `~/.config/yazelix/zellij.kdl`.
+`zellij.popup_commands` sets the command argv for named popup surfaces. Defaults are `bottom_popup = ["lazygit"]`, `top_popup = ["yzx", "config", "ui"]`, and `menu = ["yzx", "menu"]`.
+
+`zellij.native_keybindings` accepts curated native policy ids such as `scroll_mode`, `scroll_mode_unbind`, `move_tab_left`, `move_pane_down`, and `move_tab_left_unbind`. These are Yazelix's shipped conflict-remap and validation defaults for native Zellij commands. Omitted entries keep defaults, and `[]` disables one native policy entry. Arbitrary native Zellij actions still belong in `~/.config/yazelix/zellij.kdl`.
 
 `yazi.keybindings` accepts owner-local action ids such as `open_directory_as_workspace_pane` and `open_zoxide_in_editor`. Values are alternate generated Yazi bindings such as `<A-p>` and `<A-z>`. Omitted actions keep defaults, and `[]` disables that generated Yazelix-owned Yazi integration binding. Native open-selected keys such as `<Enter>` and `o` remain in `~/.config/yazelix/yazi/keymap.toml`; arbitrary Yazi actions and native multi-key sequences also belong there.
 
 ### Sidebar Commands vs Keybindings
 
-The stable sidebar API is the pane-orchestrator command surface, not the default keys:
+The stable sidebar action surface is the semantic keybinding map, not the default keys:
 
-| Command | Default key | Meaning |
+| Action id | Default key | Meaning |
 |---------|-------------|---------|
 | `toggle_editor_sidebar_focus` | `Ctrl y` | Move focus between the managed editor and managed sidebar |
-| `toggle_sidebar` | `Alt y` | Show or hide the managed sidebar layout slot |
+| `toggle_left_sidebar` | `Alt Shift H` | Show or hide the managed left sidebar layout slot |
 | `focus_sidebar` | none | Focus the managed sidebar from commands such as `yzx reveal` |
 
-You can remap the keys in your Zellij override config as long as they still send the same `MessagePlugin` command names to the loaded `yazelix_pane_orchestrator` plugin. The plugin does not know or require Yazelix's default key choices.
+Prefer `zellij.keybindings` for remaps. Native Zellij KDL remains the escape hatch for full keymap ownership.
 
 ## Keybinding Tips
-- **Zellij**: `Alt+number` for tab, `Alt+w/q` for tab walk, `Alt+Shift+H/L` for tab move
+- **Zellij**: `Alt+number` for tab, `Alt+w/q` for tab walk, `Ctrl+Shift+H/L` for tab move, `Alt+Shift+H/J/K/L` for directional Yazelix surfaces
 - **Yazi**: 
   - `Z`: Use Yazi's built-in Zoxide jump and stay inside Yazi
   - `Alt+z`: Use Yazelix's direct-open Zoxide jump to retarget the managed editor and workspace immediately
@@ -128,7 +133,7 @@ The shipped workspace keys are:
 | Keybinding | Action |
 |------------|--------|
 | `Ctrl y` | Toggle focus between the managed editor and sidebar |
-| `Alt y` | Show or hide the sidebar |
+| `Alt Shift H` | Show or hide the sidebar |
 | `Alt r` | Smart reveal key: forwards `Alt+r` into the editor, otherwise falls back to the editor/sidebar focus toggle |
 
-If you add a Helix-local reveal binding, treat it as optional editor customization rather than part of the default Yazelix keymap. The recommended split is `Alt+r` for reveal, `Ctrl+y` for editor/sidebar focus, and `Alt+y` for sidebar show/hide. Yazelix now also binds `Alt+r` at the Zellij layer so it behaves like `Ctrl+y` outside the editor.
+If you add a Helix-local reveal binding, treat it as optional editor customization rather than part of the default Yazelix keymap. The recommended split is `Alt+r` for reveal, `Ctrl+y` for editor/sidebar focus, and `Alt Shift H` for sidebar show/hide. Yazelix also binds `Alt+r` at the Zellij layer so it behaves like `Ctrl+y` outside the editor.

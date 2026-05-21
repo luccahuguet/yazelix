@@ -112,35 +112,28 @@ ui {
 }
 ```
 
-**For keybindings**, use your managed Zellij override config. Layout files define panes and swap layouts; keybindings are policy:
-```kdl
-keybinds {
-    shared_except "locked" {
-        bind "Alt Shift Y" {
-            MessagePlugin "yazelix_pane_orchestrator" {
-                name "toggle_sidebar"
-            }
-        }
-    }
-}
-```
-
-Sidebar commands such as `toggle_sidebar`, `toggle_editor_sidebar_focus`, and `focus_sidebar` are the stable pane-orchestrator contract. The default keys (`Alt+y`, `Ctrl+y`) are just Yazelix's shipped policy.
-
-For Yazelix-owned Zellij action remaps, prefer `settings.jsonc` semantic keys instead of copying the whole Zellij `keybinds` block:
+**For keybindings**, prefer `settings.jsonc` semantic keys for Yazelix-owned Zellij action remaps instead of copying the whole Zellij `keybinds` block:
 ```jsonc
 "zellij": {
+  "popup_commands": {
+    "bottom_popup": ["lazygit"],
+    "top_popup": ["yzx", "config", "ui"],
+    "menu": ["yzx", "menu"]
+  },
   "keybindings": {
-    "popup": ["Alt p"],
+    "bottom_popup": ["Alt Shift J"],
+    "top_popup": ["Alt Shift K"],
     "menu": ["Alt Space"],
-    "toggle_sidebar": ["Alt y"],
+    "toggle_left_sidebar": ["Alt Shift H"],
     "move_focus_left_or_tab": ["Alt h", "Alt Left"],
     "move_focus_right_or_tab": ["Alt l", "Alt Right"]
   }
 }
 ```
 
-Supported owner-local action ids are `open_workspace_terminal`, `popup`, `menu`, `config`, `move_focus_left_or_tab`, `move_focus_right_or_tab`, `toggle_editor_sidebar_focus`, `toggle_sidebar`, `smart_reveal`, `previous_family`, and `next_family`. `yzx keys` shows the matching scoped ids, such as `zellij.popup`. Omitted actions keep their defaults. Set an action to `[]` to disable Yazelix's generated binding for that action. Yazelix rejects duplicate keys across this semantic map before launch.
+Supported owner-local action ids are `open_workspace_terminal`, `popup`, `bottom_popup`, `top_popup`, `menu`, `config`, `move_focus_left_or_tab`, `move_focus_right_or_tab`, `toggle_editor_sidebar_focus`, `toggle_left_sidebar`, `open_codex_agent_right`, `smart_reveal`, `previous_family`, and `next_family`. `yzx keys` shows the matching scoped ids, such as `zellij.popup`. Omitted actions keep their defaults. Set an action to `[]` to disable Yazelix's generated binding for that action. Yazelix rejects duplicate keys across this semantic map before launch.
+
+Use `zellij.popup_commands` to change the command argv behind the named popup surfaces. The built-in defaults are bottom popup `lazygit`, top popup `yzx config ui`, and menu `yzx menu`.
 
 For Yazelix's curated native Zellij key policy, use `zellij.native_keybindings` in `settings.jsonc`. This covers shipped remaps such as `scroll_mode` / `scroll_mode_unbind`, `session_mode` / `session_mode_unbind`, tab movement, tab jumps, pane grouping, and the hardcoded Codex right-pane validation binding. Omitted entries keep defaults; set an entry to `[]` to disable that one bind or unbind.
 
@@ -153,7 +146,7 @@ keybinds clear-defaults=true {
 }
 ```
 
-In this mode Yazelix preserves your `clear-defaults` block and does not append its shipped Zellij integration keybindings or semantic `zellij.keybindings` remaps. Recreate any Yazelix actions you still want, such as pane-orchestrator `toggle_sidebar` or `yzpp` `toggle` with payload `popup`, in your own keybinds block.
+In this mode Yazelix preserves your `clear-defaults` block and does not append its shipped Zellij integration keybindings or semantic `zellij.keybindings` remaps. Recreate any Yazelix actions you still want, such as pane-orchestrator sidebar messages or `yzpp` popup toggles, in your own keybinds block.
 
 This full-ownership mode is not inferred from the read-only native fallback `~/.config/zellij/config.kdl`. If Yazelix is only borrowing that native file because `~/.config/yazelix/zellij.kdl` is absent, Yazelix still appends its integration keybindings so managed popup/menu/sidebar focus behavior keeps working.
 

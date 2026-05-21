@@ -26,7 +26,7 @@ const REQUIRED_ZELLIJ_SEMANTIC_ACTION_IDS: &[&str] = &[
     "move_focus_left_or_tab",
     "move_focus_right_or_tab",
     "toggle_editor_sidebar_focus",
-    "toggle_sidebar",
+    "toggle_left_sidebar",
     "open_codex_agent_right",
     "smart_reveal",
     "previous_family",

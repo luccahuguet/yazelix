@@ -72,7 +72,7 @@ With Neovim configured for Yazelix, you get:
 
 1. **Check the managed sidebar state:**
    - `yzx reveal` targets the managed sidebar in the current tab
-   - If the sidebar is hidden, show it with `Alt+y` before retrying
+   - If the sidebar is hidden, show it with `Alt+Shift+H` before retrying
 
 2. **Verify you're inside Yazelix/Zellij with a visible sidebar:**
    - `yzx reveal` targets the managed sidebar in the current tab

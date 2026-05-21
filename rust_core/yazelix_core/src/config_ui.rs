@@ -2572,7 +2572,8 @@ mod tests {
         assert!(details.contains("Toggle the managed popup program"));
         assert!(details.contains("zellij.popup"));
         assert!(details.contains("Alt x (remapped)"));
-        assert!(details.contains("Alt t"));
+        assert!(details.contains("Alt Shift J"));
+        assert!(details.contains("Alt Shift K"));
         assert!(details.contains("Open the Yazelix command palette popup"));
         assert!(details.contains("disabled (disabled)"));
         assert!(details.contains("empty list disables this action"));

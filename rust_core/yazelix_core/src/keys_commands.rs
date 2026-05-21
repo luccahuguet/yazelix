@@ -287,7 +287,7 @@ fn paired_zellij_action_row(first_id: &str, second_id: &str, label: &str) -> Tab
 fn root_workspace_rows() -> Vec<TableRow> {
     vec![
         zellij_action_row("toggle_editor_sidebar_focus"),
-        zellij_action_row("toggle_sidebar"),
+        zellij_action_row("toggle_left_sidebar"),
         paired_zellij_action_row(
             "previous_family",
             "next_family",
@@ -301,7 +301,8 @@ fn root_workspace_rows() -> Vec<TableRow> {
 
 fn root_command_rows() -> Vec<TableRow> {
     vec![
-        zellij_action_row("popup"),
+        zellij_action_row("bottom_popup"),
+        zellij_action_row("top_popup"),
         zellij_action_row("menu"),
         zellij_action_row("config"),
     ]
@@ -316,7 +317,8 @@ fn root_tab_rows() -> Vec<TableRow> {
             "Walk left/right across visible panes, falling back to previous/next tab",
         ),
         table_row(&["Alt+w / Alt+q", "Walk next/previous tab"]),
-        table_row(&["Alt+Shift+H / Alt+Shift+L", "Move current tab left/right"]),
+        table_row(&["Ctrl+Shift+H / Ctrl+Shift+L", "Move current tab left/right"]),
+        table_row(&["Ctrl+Shift+J / Ctrl+Shift+K", "Move current pane down/up"]),
         table_row(&["Alt+Shift+F", "Toggle pane fullscreen"]),
     ]
 }
@@ -540,7 +542,7 @@ fn helix_topic_rows() -> Vec<TableRow> {
 fn helix_caveat_rows() -> Vec<TableRow> {
     vec![table_row(&[
         "No default Helix-local Yazi binding in Yazelix",
-        "Use Zellij-level `Ctrl+y` and `Alt+y` for managed workspace navigation",
+        "Use Zellij-level `Ctrl+y` and `Alt+Shift+H` for managed workspace navigation",
     ])]
 }
 

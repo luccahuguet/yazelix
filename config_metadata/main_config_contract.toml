@@ -11,7 +11,7 @@
 [contract]
 version = 1
 surface = "main"
-field_count = 44
+field_count = 45
 artifact_role = "canonical_machine_metadata"
 default_template = "settings_default.jsonc"
 home_manager_module = "home_manager/module.nix"
@@ -418,6 +418,19 @@ parser_behavior = "direct"
 rebuild_required = false
 apply_mode = "tab_session_restart"
 
+[fields."zellij.popup_commands"]
+kind = "string_list_map"
+parser_key = "popup_commands"
+home_manager_option = "popup_commands"
+parser_behavior = "direct"
+rebuild_required = false
+apply_mode = "tab_session_restart"
+
+[fields."zellij.popup_commands".default]
+bottom_popup = ["lazygit"]
+top_popup = ["yzx", "config", "ui"]
+menu = ["yzx", "menu"]
+
 [fields."zellij.popup_width_percent"]
 kind = "int"
 default = 90
@@ -508,9 +521,9 @@ apply_mode = "tab_session_restart"
 
 [fields."zellij.native_keybindings".default]
 move_tab_left_unbind = ["Alt i"]
-move_tab_left = ["Alt Shift H"]
+move_tab_left = ["Ctrl Shift H"]
 move_tab_right_unbind = ["Alt o"]
-move_tab_right = ["Alt Shift L"]
+move_tab_right = ["Ctrl Shift L"]
 new_pane_unbind = ["Alt n"]
 go_to_tab_1 = ["Alt 1"]
 go_to_tab_2 = ["Alt 2"]
@@ -524,6 +537,8 @@ go_to_tab_9 = ["Alt 9"]
 toggle_focus_fullscreen = ["Alt Shift F"]
 previous_tab = ["Alt q"]
 next_tab = ["Alt w"]
+move_pane_down = ["Ctrl Shift J"]
+move_pane_up = ["Ctrl Shift K"]
 selection_cycle_unbind = ["Alt (", "Alt )"]
 toggle_pane_in_group_unbind = ["Alt p"]
 toggle_pane_in_group = ["Ctrl Alt p"]
@@ -546,14 +561,16 @@ apply_mode = "tab_session_restart"
 
 [fields."zellij.keybindings".default]
 open_workspace_terminal = ["Alt m"]
-popup = ["Alt t"]
+popup = []
+bottom_popup = ["Alt Shift J"]
+top_popup = ["Alt Shift K"]
 menu = ["Alt Shift M"]
 config = ["Alt Shift C"]
 move_focus_left_or_tab = ["Alt h", "Alt Left"]
 move_focus_right_or_tab = ["Alt l", "Alt Right"]
 toggle_editor_sidebar_focus = ["Ctrl y"]
-toggle_sidebar = ["Alt y"]
-open_codex_agent_right = ["Alt Shift A"]
+toggle_left_sidebar = ["Alt Shift H"]
+open_codex_agent_right = ["Alt Shift L"]
 smart_reveal = ["Alt r"]
 previous_family = ["Alt ["]
 next_family = ["Alt ]"]

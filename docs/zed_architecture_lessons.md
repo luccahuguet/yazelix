@@ -42,7 +42,7 @@ This maps directly to `yazelix-ryx4.1`, `yazelix-ryx4.2`, and `yazelix-ryx4.3`.
 
 Zed's strongest lesson for `yazelix-hg3a` is that keybindings should hang from an action registry:
 
-- define Yazelix-owned actions first, such as `workspace.toggle_sidebar`, `workspace.focus_sidebar`, `workspace.open_selected_in_editor`, `workspace.zoxide_to_editor`, `workspace.toggle_popup`, `workspace.toggle_menu`, and `zellij.unlock`
+- define Yazelix-owned actions first, such as `workspace.toggle_left_sidebar`, `workspace.focus_sidebar`, `workspace.open_selected_in_editor`, `workspace.zoxide_to_editor`, `workspace.bottom_popup`, `workspace.top_popup`, `workspace.toggle_menu`, and `zellij.unlock`
 - give every action a stable id, label, description, owning subsystem, native backend steps, default binding, and optional arguments
 - generate Zellij, Yazi, and Helix-facing bindings from semantic actions where possible
 - keep native sidecars as escape hatches, including Zellij `keybinds clear-defaults=true`

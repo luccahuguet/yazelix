@@ -27,7 +27,7 @@ const ZJSTATUS_WASM_NAME: &str = "zjstatus.wasm";
 const YZPP_PLUGIN_PREFIX: &str = YZPP_PLUGIN_ALIAS;
 const YZPP_WASM_NAME: &str = "yzpp.wasm";
 const GENERATION_METADATA_NAME: &str = ".yazelix_generation.json";
-const GENERATION_FINGERPRINT_SCHEMA_VERSION: u64 = 5;
+const GENERATION_FINGERPRINT_SCHEMA_VERSION: u64 = 6;
 const GENERATED_CONFIG_MARKERS: &[&str] = &[
     "GENERATED ZELLIJ CONFIG (YAZELIX)",
     "yazelix_pane_orchestrator",
@@ -37,6 +37,10 @@ const GENERATED_LAYOUT_MARKER: &str = "GENERATED ZELLIJ LAYOUT (YAZELIX)";
 const GENERATED_LAYOUT_FINGERPRINT_PREFIX: &str = "generation_fingerprint:";
 const ZELLIJ_KEYBINDINGS_CONFIG_KEY: &str = "zellij_keybindings";
 const ZELLIJ_NATIVE_KEYBINDINGS_CONFIG_KEY: &str = "zellij_native_keybindings";
+const POPUP_COMMANDS_CONFIG_KEY: &str = "popup_commands";
+const BOTTOM_POPUP_COMMAND_KEY: &str = "bottom_popup";
+const TOP_POPUP_COMMAND_KEY: &str = "top_popup";
+const MENU_POPUP_COMMAND_KEY: &str = "menu";
 
 const PANE_ORCHESTRATOR_PLUGIN_URL_PLACEHOLDER: &str = "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__";
 const HOME_DIR_PLACEHOLDER: &str = "__YAZELIX_HOME_DIR__";
@@ -189,6 +193,7 @@ pub fn generate_zellij_materialization(
     let zellij_keybindings = resolve_zellij_keybindings(&config)?;
     let zellij_native_keybindings = resolve_zellij_native_keybindings(&config)?;
     let popup_program = resolve_popup_program_config(&config);
+    let popup_commands = resolve_popup_commands_config(&config)?;
     let render_plan_request =
         build_render_plan_request(&config, &layout_dir, &resolved_default_shell)?;
     let render_plan = compute_zellij_render_plan(&render_plan_request)?;
@@ -199,6 +204,8 @@ pub fn generate_zellij_materialization(
         &plugin_artifacts,
         &zellij_keybindings,
         &zellij_native_keybindings,
+        &popup_program,
+        &popup_commands,
         &render_plan,
     )?;
 
@@ -233,6 +240,7 @@ pub fn generate_zellij_materialization(
         &zellij_native_keybindings,
         &render_plan,
         &popup_program,
+        &popup_commands,
         &pane_orchestrator_runtime_path,
         &yzpp_runtime_path,
         &generation_fingerprint,
@@ -359,6 +367,100 @@ fn resolve_popup_program_config(config: &JsonMap<String, JsonValue>) -> Vec<Stri
     program
 }
 
+fn default_popup_commands() -> BTreeMap<String, Vec<String>> {
+    BTreeMap::from([
+        (
+            BOTTOM_POPUP_COMMAND_KEY.to_string(),
+            vec!["lazygit".to_string()],
+        ),
+        (
+            TOP_POPUP_COMMAND_KEY.to_string(),
+            vec!["yzx".to_string(), "config".to_string(), "ui".to_string()],
+        ),
+        (
+            MENU_POPUP_COMMAND_KEY.to_string(),
+            vec!["yzx".to_string(), "menu".to_string()],
+        ),
+    ])
+}
+
+fn resolve_popup_commands_config(
+    config: &JsonMap<String, JsonValue>,
+) -> Result<BTreeMap<String, Vec<String>>, CoreError> {
+    let mut resolved = default_popup_commands();
+    let Some(raw_commands) = config.get(POPUP_COMMANDS_CONFIG_KEY) else {
+        return Ok(resolved);
+    };
+    let Some(command_map) = raw_commands.as_object() else {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "invalid_popup_commands",
+            "zellij.popup_commands must be an object whose values are argv lists.",
+            "Use settings such as `\"bottom_popup\": [\"lazygit\"]`.",
+            json!({ "field": "zellij.popup_commands" }),
+        ));
+    };
+
+    for (name, raw_command) in command_map {
+        if !resolved.contains_key(name) {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "unknown_popup_command",
+                format!("Unsupported zellij.popup_commands entry: {name}."),
+                "Use one of: bottom_popup, top_popup, menu.",
+                json!({ "field": format!("zellij.popup_commands.{name}") }),
+            ));
+        }
+        let Some(items) = raw_command.as_array() else {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "invalid_popup_command",
+                format!("zellij.popup_commands.{name} must be an argv list."),
+                "Use a JSON array of strings, such as [\"lazygit\"].",
+                json!({ "field": format!("zellij.popup_commands.{name}") }),
+            ));
+        };
+        let mut command = Vec::with_capacity(items.len());
+        for item in items {
+            let Some(raw_item) = item.as_str() else {
+                return Err(CoreError::classified(
+                    ErrorClass::Config,
+                    "invalid_popup_command_arg",
+                    format!("zellij.popup_commands.{name} contains a non-string argv item."),
+                    "Use command argv strings, such as [\"yzx\", \"config\", \"ui\"].",
+                    json!({ "field": format!("zellij.popup_commands.{name}"), "actual": item }),
+                ));
+            };
+            let item = raw_item.trim();
+            if item.is_empty() || item.contains('\n') || item.contains('\r') {
+                return Err(CoreError::classified(
+                    ErrorClass::Config,
+                    "invalid_popup_command_arg",
+                    format!("zellij.popup_commands.{name} contains an invalid argv item."),
+                    "Use non-empty single-line command argv strings.",
+                    json!({ "field": format!("zellij.popup_commands.{name}"), "actual": raw_item }),
+                ));
+            }
+            command.push(item.to_string());
+        }
+        if command.is_empty() {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "empty_popup_command",
+                format!("zellij.popup_commands.{name} cannot be empty."),
+                "Set a real command argv list, such as [\"lazygit\"], or remove the entry to use the Yazelix default.",
+                json!({ "field": format!("zellij.popup_commands.{name}") }),
+            ));
+        }
+        if command.first().map(String::as_str) == Some("editor") {
+            command[0] = string_config(config, "editor_command", "hx").to_string();
+        }
+        resolved.insert(name.clone(), command);
+    }
+
+    Ok(resolved)
+}
+
 fn resolve_zellij_default_shell(runtime_dir: &Path, default_shell: &str) -> String {
     if default_shell.eq_ignore_ascii_case("nu") {
         runtime_dir
@@ -441,6 +543,7 @@ fn render_merged_config(
     zellij_native_keybindings: &BTreeMap<String, Vec<String>>,
     render_plan: &ZellijRenderPlanData,
     popup_program: &[String],
+    popup_commands: &BTreeMap<String, Vec<String>>,
     pane_orchestrator_wasm_path: &Path,
     yzpp_wasm_path: &Path,
     runtime_config_generation: &str,
@@ -472,6 +575,7 @@ fn render_merged_config(
         yzpp_wasm_path,
         runtime_dir,
         popup_program,
+        popup_commands,
         render_plan.popup_width_percent,
         render_plan.popup_height_percent,
         render_plan.screen_saver_enabled,
@@ -630,6 +734,7 @@ fn build_yazelix_plugins_block(
     yzpp_wasm_path: &Path,
     runtime_dir: &Path,
     popup_program: &[String],
+    popup_commands: &BTreeMap<String, Vec<String>>,
     popup_width_percent: i64,
     popup_height_percent: i64,
     screen_saver_enabled: bool,
@@ -673,6 +778,7 @@ fn build_yazelix_plugins_block(
             yzpp_wasm_path,
             runtime_dir,
             popup_program,
+            popup_commands,
             popup_width_percent,
             popup_height_percent,
         ));
@@ -689,6 +795,7 @@ fn render_yzpp_plugin_block(
     yzpp_wasm_path: &Path,
     runtime_dir: &Path,
     popup_program: &[String],
+    popup_commands: &BTreeMap<String, Vec<String>>,
     popup_width_percent: i64,
     popup_height_percent: i64,
 ) -> Vec<String> {
@@ -698,50 +805,61 @@ fn render_yzpp_plugin_block(
         .join("yzx_cli.sh")
         .to_string_lossy()
         .to_string();
+    let popup_program = resolve_generated_popup_argv(popup_program, &yzx_cli);
+    let bottom_popup_program =
+        generated_popup_command(popup_commands, BOTTOM_POPUP_COMMAND_KEY, &yzx_cli);
+    let top_popup_program =
+        generated_popup_command(popup_commands, TOP_POPUP_COMMAND_KEY, &yzx_cli);
+    let menu_program = generated_popup_command(popup_commands, MENU_POPUP_COMMAND_KEY, &yzx_cli);
     let mut lines = vec![
         format!(
             "    {YZPP_PLUGIN_ALIAS} location=\"file:{}\" {{",
             yzpp_wasm_path.to_string_lossy()
         ),
         "        popups {".to_string(),
-        "            popup {".to_string(),
     ];
-    if let Some(command_path) = popup_program.first() {
-        lines.push(format!(
-            "                command {}",
-            json_quote(command_path)
-        ));
-        for (index, arg) in popup_program.iter().skip(1).enumerate() {
-            lines.push(format!(
-                "                arg_{} {}",
-                index + 1,
-                json_quote(arg)
-            ));
-        }
-        lines.push(format!(
-            "                command_marker {}",
-            json_quote(command_path)
-        ));
-    }
+
+    append_generated_popup_spec(
+        &mut lines,
+        "popup",
+        "yzx_popup",
+        None,
+        &popup_program,
+        popup_width_percent,
+        popup_height_percent,
+        Some(&yzx_cli),
+    );
+    append_generated_popup_spec(
+        &mut lines,
+        "bottom_popup",
+        "yzx_bottom_popup",
+        Some("yzx_bottom_popup"),
+        &bottom_popup_program,
+        popup_width_percent,
+        popup_height_percent,
+        Some(&yzx_cli),
+    );
+    append_generated_popup_spec(
+        &mut lines,
+        "top_popup",
+        "yzx_top_popup",
+        Some("yzx_top_popup"),
+        &top_popup_program,
+        popup_width_percent,
+        popup_height_percent,
+        None,
+    );
+    append_generated_popup_spec(
+        &mut lines,
+        "menu",
+        "yzx_menu",
+        Some("yzx menu"),
+        &menu_program,
+        popup_width_percent,
+        popup_height_percent,
+        None,
+    );
     lines.extend([
-        "                pane_title \"yzx_popup\"".to_string(),
-        format!("                width_percent \"{popup_width_percent}\""),
-        format!("                height_percent \"{popup_height_percent}\""),
-        "                on_close {".to_string(),
-        format!("                    command {}", json_quote(&yzx_cli)),
-        "                    arg_1 \"sidebar\"".to_string(),
-        "                    arg_2 \"refresh\"".to_string(),
-        "                }".to_string(),
-        "            }".to_string(),
-        "            menu {".to_string(),
-        format!("                command {}", json_quote(&yzx_cli)),
-        "                arg_1 \"menu\"".to_string(),
-        "                arg_2 \"--pane\"".to_string(),
-        "                pane_title \"yzx_menu\"".to_string(),
-        "                command_marker \"yzx menu --pane\"".to_string(),
-        format!("                width_percent \"{popup_width_percent}\""),
-        format!("                height_percent \"{popup_height_percent}\""),
-        "            }".to_string(),
         "            config {".to_string(),
         format!("                command {}", json_quote(&yzx_cli)),
         "                arg_1 \"config\"".to_string(),
@@ -755,6 +873,71 @@ fn render_yzpp_plugin_block(
         "    }".to_string(),
     ]);
     lines
+}
+
+fn generated_popup_command(
+    popup_commands: &BTreeMap<String, Vec<String>>,
+    key: &str,
+    yzx_cli: &str,
+) -> Vec<String> {
+    let command = popup_commands
+        .get(key)
+        .expect("popup command defaults must cover generated popup specs");
+    resolve_generated_popup_argv(command, yzx_cli)
+}
+
+fn resolve_generated_popup_argv(command: &[String], yzx_cli: &str) -> Vec<String> {
+    let mut resolved = command.to_vec();
+    if resolved.first().map(String::as_str) == Some("yzx") {
+        resolved[0] = yzx_cli.to_string();
+    }
+    resolved
+}
+
+fn append_generated_popup_spec(
+    lines: &mut Vec<String>,
+    id: &str,
+    pane_title: &str,
+    command_marker: Option<&str>,
+    popup_program: &[String],
+    popup_width_percent: i64,
+    popup_height_percent: i64,
+    on_close_yzx_cli: Option<&str>,
+) {
+    lines.push(format!("            {id} {{"));
+    if let Some(command_path) = popup_program.first() {
+        lines.push(format!(
+            "                command {}",
+            json_quote(command_path)
+        ));
+        for (index, arg) in popup_program.iter().skip(1).enumerate() {
+            lines.push(format!(
+                "                arg_{} {}",
+                index + 1,
+                json_quote(arg)
+            ));
+        }
+        let marker = command_marker.unwrap_or(command_path);
+        lines.push(format!(
+            "                command_marker {}",
+            json_quote(marker)
+        ));
+    }
+    lines.extend([
+        format!("                pane_title {}", json_quote(pane_title)),
+        format!("                width_percent \"{popup_width_percent}\""),
+        format!("                height_percent \"{popup_height_percent}\""),
+    ]);
+    if let Some(yzx_cli) = on_close_yzx_cli {
+        lines.extend([
+            "                on_close {".to_string(),
+            format!("                    command {}", json_quote(yzx_cli)),
+            "                    arg_1 \"sidebar\"".to_string(),
+            "                    arg_2 \"refresh\"".to_string(),
+            "                }".to_string(),
+        ]);
+    }
+    lines.push("            }".to_string());
 }
 
 fn build_merged_keybinds_block(
@@ -859,7 +1042,7 @@ fn resolve_zellij_keybindings(
             ErrorClass::Config,
             "invalid_zellij_keybindings",
             "zellij.keybindings must be an object whose values are lists of Zellij key strings.",
-            "Use settings such as `\"popup\": [\"Alt t\"]`, or remove zellij.keybindings to use Yazelix defaults.",
+            "Use settings such as `\"bottom_popup\": [\"Alt Shift J\"]`, or remove zellij.keybindings to use Yazelix defaults.",
             json!({ "actual": value }),
         ));
     };
@@ -882,7 +1065,7 @@ fn resolve_zellij_keybindings(
                 ErrorClass::Config,
                 "invalid_zellij_keybinding_keys",
                 format!("zellij.keybindings.{action} must be a list of Zellij key strings."),
-                "Use a list such as `[\"Alt t\"]`, or an empty list to disable that Yazelix action binding.",
+                "Use a list such as `[\"Alt Shift J\"]`, or an empty list to disable that Yazelix action binding.",
                 json!({ "action": action, "actual": raw_keys }),
             ));
         };
@@ -893,7 +1076,7 @@ fn resolve_zellij_keybindings(
                     ErrorClass::Config,
                     "invalid_zellij_keybinding_key",
                     format!("zellij.keybindings.{action} contains a non-string key."),
-                    "Use Zellij key strings such as \"Alt t\" or \"Ctrl y\".",
+                    "Use Zellij key strings such as \"Alt Shift J\" or \"Ctrl y\".",
                     json!({ "action": action, "actual": value }),
                 ));
             };
@@ -903,7 +1086,7 @@ fn resolve_zellij_keybindings(
                     ErrorClass::Config,
                     "invalid_zellij_keybinding_key",
                     format!("zellij.keybindings.{action} contains an invalid key string."),
-                    "Use a non-empty single-line Zellij key string such as \"Alt t\".",
+                    "Use a non-empty single-line Zellij key string such as \"Alt Shift J\".",
                     json!({ "action": action, "actual": raw_key }),
                 ));
             }
@@ -962,7 +1145,7 @@ fn resolve_zellij_native_keybindings(
                     ErrorClass::Config,
                     "invalid_zellij_native_keybinding_key",
                     format!("zellij.native_keybindings.{action} contains a non-string key."),
-                    "Use Zellij key strings such as \"Ctrl Alt s\" or \"Alt Shift H\".",
+                    "Use Zellij key strings such as \"Ctrl Alt s\" or \"Ctrl Shift H\".",
                     json!({ "action": action, "actual": value }),
                 ));
             };
@@ -2086,6 +2269,8 @@ fn build_generation_fingerprint(
     plugin_artifacts: &[PluginArtifact; 3],
     zellij_keybindings: &BTreeMap<String, Vec<String>>,
     zellij_native_keybindings: &BTreeMap<String, Vec<String>>,
+    popup_program: &[String],
+    popup_commands: &BTreeMap<String, Vec<String>>,
     render_plan: &ZellijRenderPlanData,
 ) -> Result<String, CoreError> {
     let overrides_path = runtime_dir
@@ -2107,6 +2292,8 @@ fn build_generation_fingerprint(
         "render_plan": render_plan,
         "zellij_keybindings": zellij_keybindings,
         "zellij_native_keybindings": zellij_native_keybindings,
+        "popup_program": popup_program,
+        "popup_commands": popup_commands,
         "base_config": {
             "source": base_config_source.source,
             "path": base_config_source.path.as_ref().map(|path| path.to_string_lossy().to_string()).unwrap_or_default(),
@@ -2475,11 +2662,11 @@ ui { pane_frames { hide_session_name true } }
     fn clear_defaults_keybinds_skip_yazelix_overrides() {
         let existing_lines = vec![
             r#"    locked { bind "Ctrl `" { SwitchToMode "Normal"; } }"#.to_string(),
-            r#"    normal { bind "Alt y" { Write 27; } }"#.to_string(),
+            r#"    normal { bind "Alt Shift H" { Write 27; } }"#.to_string(),
         ];
         let override_lines = vec![
             r#"    shared_except "locked" {"#.to_string(),
-            r#"        bind "Alt y" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_sidebar" } }"#.to_string(),
+            r#"        bind "Alt Shift H" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_sidebar" } }"#.to_string(),
             r#"    }"#.to_string(),
         ];
 
@@ -2529,6 +2716,7 @@ keybinds {
             &sample_zellij_native_keybindings(),
             &plan,
             &["lazygit".to_string()],
+            &default_popup_commands(),
             Path::new("/tmp/pane.wasm"),
             Path::new("/tmp/yzpp.wasm"),
             "gen-test",
@@ -2580,6 +2768,7 @@ keybinds {
             &sample_zellij_native_keybindings(),
             &plan,
             &["lazygit".to_string()],
+            &default_popup_commands(),
             Path::new("/tmp/pane.wasm"),
             Path::new("/tmp/yzpp.wasm"),
             "gen-test",
@@ -2595,10 +2784,10 @@ keybinds {
     // Defends: ordinary Zellij keybinding customization keeps Yazelix integration bindings appended for default managed behavior.
     #[test]
     fn ordinary_keybinds_keep_yazelix_overrides() {
-        let existing_lines = vec![r#"    normal { bind "Alt y" { Write 27; } }"#.to_string()];
+        let existing_lines = vec![r#"    normal { bind "Alt Shift H" { Write 27; } }"#.to_string()];
         let override_lines = vec![
             r#"    shared_except "locked" {"#.to_string(),
-            r#"        bind "Alt y" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_sidebar" } }"#.to_string(),
+            r#"        bind "Alt Shift H" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_sidebar" } }"#.to_string(),
             r#"    }"#.to_string(),
         ];
 
@@ -2644,6 +2833,7 @@ keybinds {
             &sample_zellij_native_keybindings(),
             &plan,
             &["lazygit".to_string()],
+            &default_popup_commands(),
             Path::new("/tmp/pane.wasm"),
             Path::new("/tmp/yzpp.wasm"),
             "gen-test",
@@ -2666,11 +2856,13 @@ keybinds {
             build_native_zellij_keybind_lines(&sample_zellij_native_keybindings()).join("\n");
 
         assert!(rendered.contains(r#"unbind "Alt i""#));
-        assert!(rendered.contains(r#"bind "Alt Shift H" { MoveTab "Left"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl Shift H" { MoveTab "Left"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl Shift L" { MoveTab "Right"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl Shift J" { MovePane "Down"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl Shift K" { MovePane "Up"; }"#));
         assert!(rendered.contains(r#"unbind "Alt p""#));
         assert!(rendered.contains(r#"bind "Ctrl Alt p" { TogglePaneInGroup; }"#));
         assert!(rendered.contains(r#"bind "Alt 1" { GoToTab 1; }"#));
-        assert!(!rendered.contains("Alt Shift A"));
         assert!(!rendered.contains(r#"Run "yzx" "agent""#));
         assert!(rendered.contains(r#"bind "Ctrl Alt s" { SwitchToMode "Scroll"; }"#));
         assert!(rendered.contains(r#"bind "Ctrl Alt s" { SwitchToMode "Normal"; }"#));
@@ -2682,9 +2874,13 @@ keybinds {
     fn semantic_zellij_keybindings_generate_agent_toggle() {
         let rendered = build_semantic_zellij_keybind_lines(&sample_zellij_keybindings()).join("\n");
 
-        assert!(rendered.contains(r#"bind "Alt Shift A" {"#));
+        assert!(rendered.contains(r#"bind "Alt Shift L" {"#));
         assert!(rendered.contains(r#"MessagePlugin "yazelix_pane_orchestrator" {"#));
         assert!(rendered.contains(r#"name "toggle_agent_sidebar""#));
+        assert!(rendered.contains(r#"bind "Alt Shift J" {"#));
+        assert!(rendered.contains(r#"payload "bottom_popup""#));
+        assert!(rendered.contains(r#"bind "Alt Shift K" {"#));
+        assert!(rendered.contains(r#"payload "top_popup""#));
     }
 
     // Defends: users can remap or disable one curated native Zellij policy entry without copying the full keybind block.
@@ -2891,7 +3087,9 @@ keybinds {
         assert!(merged.contains("MessagePlugin \"yzpp\""));
         assert!(merged.contains("name \"toggle\""));
         assert!(merged.contains("open_workspace_terminal"));
-        assert!(merged.contains("payload \"popup\""));
+        assert!(!merged.contains("payload \"popup\""));
+        assert!(merged.contains("payload \"bottom_popup\""));
+        assert!(merged.contains("payload \"top_popup\""));
         assert!(merged.contains("payload \"menu\""));
         assert!(merged.contains("payload \"config\""));
         assert!(merged.contains("MessagePlugin \"yazelix_pane_orchestrator\""));
@@ -2959,15 +3157,65 @@ keybinds {
             ZELLIJ_KEYBINDINGS_CONFIG_KEY.to_string(),
             json!({
                 "menu": ["Alt Space"],
-                "toggle_sidebar": [],
+                "toggle_left_sidebar": [],
             }),
         );
 
         let keybindings = resolve_zellij_keybindings(&config).unwrap();
 
         assert_eq!(keybindings["menu"], vec!["Alt Space"]);
-        assert_eq!(keybindings["toggle_sidebar"], Vec::<String>::new());
-        assert_eq!(keybindings["popup"], vec!["Alt t"]);
+        assert_eq!(keybindings["toggle_left_sidebar"], Vec::<String>::new());
+        assert_eq!(keybindings["popup"], Vec::<String>::new());
+        assert_eq!(keybindings["bottom_popup"], vec!["Alt Shift J"]);
+        assert_eq!(keybindings["top_popup"], vec!["Alt Shift K"]);
+    }
+
+    // Defends: named popup surfaces can use distinct commands without changing the generic `yzx popup` program.
+    #[test]
+    fn popup_commands_config_inherits_defaults_and_resolves_editor_token() {
+        let mut config = JsonMap::new();
+        config.insert("editor_command".into(), json!("nvim"));
+        config.insert(
+            POPUP_COMMANDS_CONFIG_KEY.to_string(),
+            json!({
+                "top_popup": ["editor", "settings.md"],
+            }),
+        );
+
+        let popup_commands = resolve_popup_commands_config(&config).unwrap();
+
+        assert_eq!(popup_commands[BOTTOM_POPUP_COMMAND_KEY], vec!["lazygit"]);
+        assert_eq!(
+            popup_commands[TOP_POPUP_COMMAND_KEY],
+            vec!["nvim", "settings.md"]
+        );
+        assert_eq!(popup_commands[MENU_POPUP_COMMAND_KEY], vec!["yzx", "menu"]);
+    }
+
+    // Regression: generated popup specs must route bundled `yzx` commands through the runtime wrapper instead of relying on host PATH.
+    #[test]
+    fn yzpp_popup_specs_use_distinct_popup_commands() {
+        let block = render_yzpp_plugin_block(
+            std::path::Path::new("/opt/yazelix/plugins/yzpp.wasm"),
+            std::path::Path::new("/opt/yazelix"),
+            &["gitui".to_string()],
+            &default_popup_commands(),
+            82,
+            76,
+        )
+        .join("\n");
+
+        assert!(block.contains("bottom_popup {"));
+        assert!(block.contains("command \"lazygit\""));
+        assert!(block.contains("top_popup {"));
+        assert!(block.contains("command \"/opt/yazelix/shells/posix/yzx_cli.sh\""));
+        assert!(block.contains("arg_1 \"config\""));
+        assert!(block.contains("arg_2 \"ui\""));
+        assert!(block.contains("menu {"));
+        assert!(block.contains("arg_1 \"menu\""));
+        assert!(!block.contains("arg_2 \"--pane\""));
+        assert!(block.contains("popup {"));
+        assert!(block.contains("command \"gitui\""));
     }
 
     // Regression: generated plugin config must carry the pane-orchestrator runtime contract and yzpp popup contract without duplicate alias injection.
@@ -2980,6 +3228,7 @@ keybinds {
             std::path::Path::new("/opt/yazelix/plugins/yzpp.wasm"),
             std::path::Path::new("/opt/yazelix"),
             &["lazygit".to_string()],
+            &default_popup_commands(),
             82,
             76,
             true,
@@ -2997,6 +3246,12 @@ keybinds {
         assert!(block.contains("screen_saver_style \"mandelbrot\""));
         assert!(block.contains("runtime_config_generation \"gen-test\""));
         assert!(block.contains("yzpp location=\"file:/opt/yazelix/plugins/yzpp.wasm\""));
+        assert!(block.contains("bottom_popup {"));
+        assert!(block.contains("pane_title \"yzx_bottom_popup\""));
+        assert!(block.contains("command_marker \"yzx_bottom_popup\""));
+        assert!(block.contains("top_popup {"));
+        assert!(block.contains("pane_title \"yzx_top_popup\""));
+        assert!(block.contains("command_marker \"yzx_top_popup\""));
         assert!(block.contains("command \"lazygit\""));
         assert!(block.contains("width_percent \"82\""));
         assert!(block.contains("height_percent \"76\""));

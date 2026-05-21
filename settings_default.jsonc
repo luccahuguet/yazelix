@@ -65,6 +65,20 @@
     "popup_program": [
       "lazygit"
     ],
+    "popup_commands": {
+      "bottom_popup": [
+        "lazygit"
+      ],
+      "top_popup": [
+        "yzx",
+        "config",
+        "ui"
+      ],
+      "menu": [
+        "yzx",
+        "menu"
+      ]
+    },
     "popup_width_percent": 90,
     "popup_height_percent": 90,
     "screen_saver_enabled": false,
@@ -81,13 +95,13 @@
         "Alt i"
       ],
       "move_tab_left": [
-        "Alt Shift H"
+        "Ctrl Shift H"
       ],
       "move_tab_right_unbind": [
         "Alt o"
       ],
       "move_tab_right": [
-        "Alt Shift L"
+        "Ctrl Shift L"
       ],
       // Leave Alt+n available to Helix selection flow instead of Zellij new-pane.
       "new_pane_unbind": [
@@ -130,6 +144,12 @@
       ],
       "next_tab": [
         "Alt w"
+      ],
+      "move_pane_down": [
+        "Ctrl Shift J"
+      ],
+      "move_pane_up": [
+        "Ctrl Shift K"
       ],
       // Terminal-specific Helix selection-cycle conflict workaround.
       "selection_cycle_unbind": [
@@ -179,8 +199,12 @@
       "open_workspace_terminal": [
         "Alt m"
       ],
-      "popup": [
-        "Alt t"
+      "popup": [],
+      "bottom_popup": [
+        "Alt Shift J"
+      ],
+      "top_popup": [
+        "Alt Shift K"
       ],
       "menu": [
         "Alt Shift M"
@@ -199,11 +223,11 @@
       "toggle_editor_sidebar_focus": [
         "Ctrl y"
       ],
-      "toggle_sidebar": [
-        "Alt y"
+      "toggle_left_sidebar": [
+        "Alt Shift H"
       ],
       "open_codex_agent_right": [
-        "Alt Shift A"
+        "Alt Shift L"
       ],
       "smart_reveal": [
         "Alt r"

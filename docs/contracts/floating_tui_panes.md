@@ -11,8 +11,8 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 ## Scope
 
 - Add `yzx popup`
-- Add `zellij.popup_program` to `settings.jsonc` / Home Manager
-- Bind the configured popup to a dedicated key
+- Add `zellij.popup_program` and `zellij.popup_commands` to `settings.jsonc` / Home Manager
+- Bind named popup commands to semantic bottom, top, and menu popup defaults
 - Keep the command-palette popup as a separate flow
 - Reuse the configured `yzpp` popup model for popup, menu, and config UI panes
 - Keep Yazelix-specific side effects, such as sidebar refresh, outside the plain
@@ -51,8 +51,9 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - Type: ownership
 - Status: live
 - Owner: configured `yzpp` popup lifecycle
-- Statement: `Alt+t` toggles one managed popup pane instead of spawning
-  duplicates forever, while `Alt+Shift+M` stays a separate command-palette flow
+- Statement: `Alt+Shift+J` toggles the default bottom managed popup pane
+  instead of spawning duplicates forever, while `Alt+Shift+M` toggles the
+  configured `menu` popup command
 - Verification: automated `nu nushell/scripts/dev/test_yzx_popup_commands.nu`;
   automated `nu nushell/scripts/dev/test_zellij_plugin_contracts.nu`
 
@@ -98,28 +99,37 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - `yzx popup` opens a floating Zellij pane using the configured `zellij.popup_program`.
 - `zellij.popup_program` is an argv list, not a shell string.
 - The default popup program is `["lazygit"]`.
+- `zellij.popup_commands` is a map of named popup argv lists.
+- The default named popup commands are `bottom_popup = ["lazygit"]`,
+  `top_popup = ["yzx", "config", "ui"]`, and `menu = ["yzx", "menu"]`.
 - Popup geometry is user-configurable through `zellij.popup_width_percent` and `zellij.popup_height_percent`.
 - Popup width and height percentages must be integers in the range `1..100`.
 - The default popup width and height are both `90`.
 - `yzx popup <command ...>` overrides the configured command for that invocation.
 - The generated Yazelix `yzpp` specs own the stable pane identity, argv, cwd,
   runtime command path, geometry, and close hook for popup/menu/config panes.
+- Yazelix generates `popup`, `bottom_popup`, `top_popup`, and `menu` specs.
+  `popup` uses `zellij.popup_program`; the named specs use
+  `zellij.popup_commands` with the shared popup geometry.
 - The popup launches in the current tab workspace root when available; otherwise it uses the current shell directory.
 - Popup pane lifecycle is controlled by the popup keybinding and explicit
   `yzpp` `toggle` or `close` messages, not by child process exit.
-- `Alt+t` opens one managed popup pane when it is missing, focuses it when it exists but is unfocused, and closes it when it is focused.
-- When `Alt+t` closes the configured popup pane, Yazelix runs `yzx sidebar
+- `Alt+Shift+J` opens one managed bottom popup pane when it is missing, focuses it when it exists but is unfocused, and closes it when it is focused.
+- `Alt+Shift+K` does the same for the semantic top popup slot, which defaults
+  to `yzx config ui`.
+- The unplaced `popup` action remains configurable and unbound by default.
+- When `Alt+Shift+J` closes the configured popup pane, Yazelix runs `yzx sidebar
   refresh` through an `on_close` hook so lazygit-style workflows refresh the
   managed Yazi sidebar.
-- `Alt+Shift+M` opens the command-palette popup through `yzpp`.
+- `Alt+Shift+M` opens the configured `menu` popup command through `yzpp`.
 - `Alt+Shift+C` opens the config UI popup through `yzpp`.
 - Plain Zellij users get this capability through Yazelix Zellij Popup (`yzpp`): a reusable floating-pane toggle for configured TUI commands, stable pane identity, and duplicate-preventing focus/close behavior.
 - The external Yazelix Zellij Popup plugin provides this capability without
   requiring Yazelix-specific runtime paths, wrappers, config keys, or sidebar
   refresh behavior; integrations can opt into generic `on_close` command hooks.
 - The current Yazelix path remains canonical for the integrated product: `yzx
-  popup`, `zellij.popup_program`, generated `yzpp` specs, and `yzx sidebar
-  refresh` define supported Yazelix popup behavior.
+  popup`, `zellij.popup_program`, `zellij.popup_commands`, generated `yzpp`
+  specs, and `yzx sidebar refresh` define supported Yazelix popup behavior.
 
 ### Adjacent Workspace Popup Decision
 
@@ -128,7 +138,7 @@ picker popups by default.
 
 - Keeping the current model is accepted because it preserves one persistent
   managed editor identity, one sidebar picker, and the existing `Ctrl+y`,
-  `Alt+y`, `Alt+z`, and Yazi open behaviors without adding global keys
+  `Alt+Shift+H`, `Alt+z`, and Yazi open behaviors without adding global keys
 - A Yazi popup picker is rejected for the current sidebar-first default because
   it duplicates the file-tree sidebar and zoxide picker without removing a
   current pane or ownership boundary
@@ -194,18 +204,19 @@ The `yzpp` raw pipe path still accepts generated JSON through `name "transient_p
 
 ## Acceptance Cases
 
-1. When a user presses `Alt+t` inside Yazelix, the configured popup program opens in one managed floating pane instead of replacing an existing workspace pane.
+1. When a user presses `Alt+Shift+J` inside Yazelix, `zellij.popup_commands.bottom_popup` opens in one managed floating pane instead of replacing an existing workspace pane.
 2. When `zellij.popup_program` is changed to another argv list, `yzx popup` launches that program without requiring shell-string parsing.
 3. When `zellij.popup_width_percent` and `zellij.popup_height_percent` are set to valid values from `1` to `100`, `yzx popup` launches the popup with those dimensions.
 4. When popup width or height is configured outside the valid `1..100` range, Yazelix fails fast with a clear config error.
 5. When `yzx popup` runs from a tab with an explicit workspace root, the popup uses that root as its cwd.
 6. Repeated popup-key presses do not create duplicate popup panes; they focus or close the existing managed popup instead.
 7. When `Alt+Shift+M` is used, the command palette still opens separately from the popup-program flow.
-8. The extracted `yazelix-zellij-popup` source stays in its child repository while Yazelix packages and integrates its `yzpp.wasm` artifact.
-9. The standalone plugin supports KDL-native configured popup specs and keeps raw JSON pipe requests only for generated integrations.
-10. Full Yazelix docs and code identify `yzpp` as the popup/menu/config pane owner and the pane orchestrator as the workspace/sidebar/editor/session owner.
-11. When a file is opened from Yazi, Yazelix targets or creates the managed `editor` pane instead of opening a transient popup editor.
-12. In the sidebar-first workspace, Yazelix does not add a separate Yazi popup picker key that duplicates the persistent Yazi file tree.
+8. When `Alt+Shift+K` is used, `zellij.popup_commands.top_popup` opens through the same duplicate-preventing lifecycle as the bottom popup slot.
+9. The extracted `yazelix-zellij-popup` source stays in its child repository while Yazelix packages and integrates its `yzpp.wasm` artifact.
+10. The standalone plugin supports KDL-native configured popup specs and keeps raw JSON pipe requests only for generated integrations.
+11. Full Yazelix docs and code identify `yzpp` as the popup/menu/config pane owner and the pane orchestrator as the workspace/sidebar/editor/session owner.
+12. When a file is opened from Yazi, Yazelix targets or creates the managed `editor` pane instead of opening a transient popup editor.
+13. In the sidebar-first workspace, Yazelix does not add a separate Yazi popup picker key that duplicates the persistent Yazi file tree.
 
 ## Verification
 
@@ -219,11 +230,13 @@ The `yzpp` raw pipe path still accepts generated JSON through `name "transient_p
 - integration tests: `yzx popup` routes generated popup requests to `yzpp`
   with a fake Zellij binary
 - integration tests: generated Zellij config contains the integrated `yzpp`
-  plugin block, popup/menu/config specs, and sidebar refresh hook
+  plugin block, popup/bottom_popup/top_popup/menu/config specs, and sidebar
+  refresh hook
 - CI checks: `nu nushell/scripts/dev/test_yzx_commands.nu`
 - contract validator: `yzx_repo_validator validate-contracts`
-- manual verification: `Alt+t` toggles one managed popup, `Alt+Shift+M`
-  opens the menu, and `Alt+Shift+C` opens the config UI
+- manual verification: `Alt+Shift+J` toggles the bottom managed popup,
+  `Alt+Shift+K` toggles the top managed popup, `Alt+Shift+M` opens the menu,
+  and `Alt+Shift+C` opens the config UI
 
 ## Traceability
 - Defended by: `nu nushell/scripts/dev/test_yzx_commands.nu`

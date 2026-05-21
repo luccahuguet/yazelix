@@ -302,7 +302,7 @@ That is now the advanced/maintainer path, not the primary install story.
 
 If Zellij still shows a plugin permission prompt, answer **yes**. This can happen after manually deleting `~/.cache/zellij/permissions.kdl`, revoking permissions, or using a Zellij/plugin state Yazelix cannot safely infer.
 
-`Alt+y` and `Ctrl+y` require the Yazelix pane-orchestrator plugin permissions. `Alt+m` opens a new terminal in the current tab workspace root.
+`Alt+Shift+H` and `Ctrl+y` require the Yazelix pane-orchestrator plugin permissions. `Alt+m` opens a new terminal in the current tab workspace root.
 
 If the top status bar looks transparent or broken, see [troubleshooting](troubleshooting.md#first-run-zellij-plugin-permissions-is-the-top-bar-looking-funnyweirdbroken) for the manual recovery path. See the [zjstatus permissions documentation](https://github.com/dj95/zjstatus/wiki/2-%E2%80%90-Permissions) for more details.
 
@@ -316,7 +316,7 @@ If you are maintaining Yazelix and test a newly packaged pane-orchestrator plugi
 
 ### Step 9: Configure Helix Integration (Optional)
 
-If you want a Helix-local reveal action, bind `yzx reveal` to any editor-local shortcut that fits your setup. Yazelix recommends `Alt+r` for this; `Ctrl+y` and `Alt+y` are reserved for workspace navigation in Zellij.
+If you want a Helix-local reveal action, bind `yzx reveal` to any editor-local shortcut that fits your setup. Yazelix recommends `Alt+r` for this; `Ctrl+y` and `Alt+Shift+H` are reserved for workspace navigation in Zellij.
 
 For additional recommended Helix keybindings that enhance your editing experience with Yazelix, see [Helix Keybindings Configuration](./helix_keybindings.md).
 

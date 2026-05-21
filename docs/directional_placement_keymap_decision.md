@@ -2,12 +2,7 @@
 
 ## Status
 
-Accepted for the next role-placement implementation, with a manual terminal
-gate before release.
-
-This is a planning decision, not a live keybinding contract. Current Yazelix
-defaults stay unchanged until the role-placement implementation updates the
-generated keybinding metadata and docs.
+Accepted and implemented as the default Yazelix directional surface map.
 
 ## Decision
 
@@ -18,12 +13,12 @@ Use `Alt+Shift+h/j/k/l` as the placement-surface layer:
 - `Alt+Shift+k`: toggle or summon `top_popup` / `config_ui`
 - `Alt+Shift+l`: toggle or summon `right_sidebar` / `agent`
 
-Use `Ctrl+Alt` for lower-frequency structural movement:
+Use `Ctrl+Shift` for lower-frequency structural movement:
 
-- `Ctrl+Alt+h`: move current tab left
-- `Ctrl+Alt+l`: move current tab right
-- `Ctrl+Alt+j`: move current pane down
-- `Ctrl+Alt+k`: move current pane up
+- `Ctrl+Shift+h`: move current tab left
+- `Ctrl+Shift+l`: move current tab right
+- `Ctrl+Shift+j`: move current pane down
+- `Ctrl+Shift+k`: move current pane up
 
 Keep plain `Alt+h/l` on the existing focus/walk layer. Do not use plain
 `Alt+h/j/k/l` for placement because those keys already overlap Zellij's normal
@@ -34,14 +29,11 @@ Keep `Alt+Shift+M` as the command palette/menu key. Do not assign
 
 ## Default Status
 
-The `Alt+Shift+h/j/k/l` placement layer should become default-on when the
-role-placement implementation lands.
+The `Alt+Shift+h/j/k/l` placement layer is default-on.
 
-The `Ctrl+Alt+h/j/k/l` structural movement layer is accepted as the replacement
-target for tab and pane movement, but it needs a manual terminal gate in the
-first-class Ghostty and WezTerm variants before release. If that gate fails for
-either first-class terminal, the movement layer should remain remappable or
-opt-in rather than blocking the placement layer.
+The `Ctrl+Shift+h/j/k/l` structural movement layer is default-on for tab and
+pane movement. These bindings remain remappable through
+`zellij.native_keybindings`.
 
 ## Current Conflict Check
 
@@ -49,30 +41,36 @@ Current Yazelix default semantic bindings:
 
 - `Alt+h` / `Alt+Left`: `move_focus_left_or_tab`
 - `Alt+l` / `Alt+Right`: `move_focus_right_or_tab`
-- `Alt+t`: `popup`
+- `Alt+Shift+J`: `bottom_popup`
+- `Alt+Shift+K`: `top_popup`
 - `Alt+Shift+M`: `menu`
 - `Alt+Shift+C`: `config`
 - `Ctrl+y`: `toggle_editor_sidebar_focus`
-- `Alt+y`: `toggle_sidebar`
+- `Alt+Shift+H`: `toggle_left_sidebar`
+- `Alt+Shift+L`: `open_codex_agent_right`
+- `popup`: unbound by default and still configurable
 
 Current Yazelix native Zellij policy:
 
-- `Alt+Shift+H`: move tab left
-- `Alt+Shift+L`: move tab right
+- `Ctrl+Shift+H`: move tab left
+- `Ctrl+Shift+L`: move tab right
+- `Ctrl+Shift+J`: move pane down
+- `Ctrl+Shift+K`: move pane up
 - `Alt+Shift+F`: toggle focused pane fullscreen
 - `Ctrl+Alt+p`: toggle pane in group
 - `Ctrl+Alt+Shift+P`: toggle group marking
 - `Ctrl+Alt+g`, `Ctrl+Alt+s`, `Ctrl+Alt+o`: moved mode keys
 
-Required changes:
+Implemented changes:
 
-- move tab movement from `Alt+Shift+H/L` to `Ctrl+Alt+h/l`
-- move config UI from `Alt+Shift+C` to `Alt+Shift+k` when config UI becomes
-  the `top_popup` role
-- move git popup behavior from `Alt+t` to `Alt+Shift+j` when `git_client`
-  becomes the `bottom_popup` role
-- move sidebar visibility from `Alt+y` to `Alt+Shift+h` when `file_tree`
-  becomes the `left_sidebar` role
+- moved tab movement from `Alt+Shift+H/L` to `Ctrl+Shift+H/L`
+- added pane movement on `Ctrl+Shift+J/K`
+- moved the default popup-program flow from `Alt+t` to `bottom_popup` on
+  `Alt+Shift+J`
+- added `top_popup` on `Alt+Shift+K`
+- moved sidebar visibility from `Alt+y` to `Alt+Shift+H`
+- moved the managed Codex agent sidebar to `Alt+Shift+L`
+- freed `Alt+t`
 
 Do not keep legacy aliases by default. Users can still remap semantic actions
 through `zellij.keybindings` and native Zellij actions through
@@ -100,7 +98,7 @@ native actions:
 - `MovePane "Up"`
 
 Yazelix already unbinds upstream `Alt+i` and `Alt+o`, so moving tab movement to
-`Ctrl+Alt+h/l` keeps Yazelix's curated tab-move layer instead of reviving the
+`Ctrl+Shift+h/l` keeps Yazelix's curated tab-move layer instead of reviving the
 upstream keys.
 
 ## Terminal Behavior
@@ -109,10 +107,9 @@ upstream keys.
 ASCII ambiguity and has prior runtime feedback as the more reliable layer while
 `zellij.support_kitty_keyboard_protocol = false`.
 
-`Ctrl+Alt+h/j/k/l` is lower confidence because legacy terminal encodings can
-collapse Ctrl-letter chords to control bytes, and Alt can be represented as an
-escape prefix. This is acceptable for lower-frequency movement only if manual
-validation passes in first-class terminals.
+`Ctrl+Shift+h/j/k/l` is accepted for structural movement because it preserves
+the same hjkl direction language without consuming the `Alt+Shift` placement
+surface.
 
 Ghostty supports the Kitty keyboard protocol. No extra Ghostty setting is
 required by this decision, but the implementation should test both
@@ -148,26 +145,25 @@ keyboard protocol support.
 ## AltGr And International Layouts
 
 `Ctrl+Alt` is commonly equivalent to AltGr on international keyboard layouts.
-That is another reason to keep `Ctrl+Alt+h/j/k/l` on lower-frequency structural
-movement instead of core placement.
+That is why the accepted structural movement layer uses `Ctrl+Shift` instead of
+`Ctrl+Alt`.
 
 Placement visibility stays on `Alt+Shift` because it is more likely to be
 usable on non-US layouts. All accepted actions must remain remappable through
 semantic config so users with AltGr conflicts can choose local keys.
 
-## Follow-On Implementation Notes
+## Implementation Notes
 
-When this decision is implemented:
-
-- add semantic placement actions instead of overloading old sidebar/popup names
-- add native movement actions for `Ctrl+Alt+h/l/j/k`
-- remove old default `Alt+Shift+H/L`, `Alt+Shift+C`, `Alt+t`, and `Alt+y`
-  bindings unless the maintainer explicitly asks for compatibility aliases
-- update `yzx keys`, README/docs keybinding surfaces, config UI descriptions,
-  and Home Manager defaults together
-- manually test Ghostty and WezTerm with
-  `zellij.support_kitty_keyboard_protocol = false` and `true`
-- for WezTerm plus kitty-keyboard mode, test with `enable_kitty_keyboard = true`
+- `bottom_popup` and `top_popup` are semantic names over distinct configured
+  entries in `zellij.popup_commands` and shared popup geometry for now. They
+  are excellent remap defaults, not separate placement engines yet.
+- Old default `Alt+Shift+H/L`, `Alt+t`, and `Alt+y` bindings are not kept as
+  compatibility aliases.
+- `yzx keys`, README/docs keybinding surfaces, config UI descriptions, and
+  Home Manager defaults should stay aligned with the action registry.
+- Manual terminal testing should still cover Ghostty and WezTerm with
+  `zellij.support_kitty_keyboard_protocol = false` and `true`.
+- For WezTerm plus kitty-keyboard mode, test with `enable_kitty_keyboard = true`.
 
 ## Evidence Checked
 

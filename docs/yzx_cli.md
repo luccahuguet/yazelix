@@ -86,7 +86,7 @@ Run a single command in the Yazelix environment and exit
 
 ### `yzx agent`
 Launch host-installed Codex
-- Used by the `Alt+Shift+A` right-side agent pane binding
+- Used by the `Alt+Shift+L` right-side agent pane binding
 - Fails clearly when `codex` is missing from `PATH`
 - Does not bundle Codex or fall back to another agent
 
@@ -210,7 +210,7 @@ Maintainer shell commands:
 ### `yzx menu [--popup]`
 Interactive command palette (fuzzy search)
 - Default: inline mode in current terminal
-- `--popup`: toggle the configured `yzpp` floating pane (errors if not in Zellij)
+- `--popup`: toggle the `zellij.popup_commands.menu` `yzpp` floating pane (errors if not in Zellij)
 - `--pane`: run the popup-pane menu UI in the current pane
 - Lists most `yzx` commands while hiding maintenance-heavy or low-signal entries (`yzx dev*`, `yzx env`, `yzx run`)
 - Cancel with `Esc` before running a command
@@ -233,8 +233,10 @@ Open a transient floating-pane command inside Zellij
 - `COMMAND ...`: override the configured popup command for one invocation
 - Uses the current tab workspace root as cwd when available; otherwise uses the current shell cwd
 - Errors if not in Zellij
-- Default keybind: `Alt t`
-- Popup pane is named `yzx_popup`
+- Named generated popup specs use `zellij.popup_commands`: `bottom_popup` defaults to `["lazygit"]`, `top_popup` defaults to `["yzx", "config", "ui"]`, and `menu` defaults to `["yzx", "menu"]`
+- Default surface keys: `Alt Shift J` for `bottom_popup` and `Alt Shift K` for `top_popup`
+- The unplaced `popup` action remains configurable and unbound by default
+- Popup panes are named `yzx_popup`, `yzx_bottom_popup`, `yzx_top_popup`, and `yzx_menu`
 
 ### `yzx config [--path]`
 Show the active Yazelix configuration through the Rust-owned control path

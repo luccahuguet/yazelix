@@ -229,6 +229,7 @@
         "claude_usage_periods",
         "custom_text",
         "popup_program",
+        "popup_commands",
         "popup_width_percent",
         "popup_height_percent",
         "screen_saver_enabled",
@@ -332,6 +333,36 @@
           "type": "array",
           "items": {
             "type": "string"
+          }
+        },
+        "popup_commands": {
+          "type": "object",
+          "description": "Commands for named Yazelix popup surfaces",
+          "required": [
+            "bottom_popup",
+            "top_popup",
+            "menu"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "bottom_popup": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "top_popup": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "menu": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
           }
         },
         "popup_width_percent": {

@@ -35,9 +35,12 @@ Yazelix should not provide a semantic remap when another tool owns the behavior.
 {
   "zellij": {
     "keybindings": {
-      "popup": ["Alt t"],
+      "popup": [],
+      "bottom_popup": ["Alt Shift J"],
+      "top_popup": ["Alt Shift K"],
       "menu": ["Alt Shift M"],
-      "toggle_sidebar": ["Alt y"]
+      "toggle_left_sidebar": ["Alt Shift H"],
+      "open_codex_agent_right": ["Alt Shift L"]
     }
   }
 }
@@ -101,8 +104,10 @@ Rules:
 The Rust action registry is the shared source for Yazelix-owned action metadata that can feed generated bindings, `yzx keys`, doctor/config UI diagnostics, and future docs metadata. Registry entries use scoped action ids:
 
 - `zellij.popup`
+- `zellij.bottom_popup`
+- `zellij.top_popup`
 - `zellij.menu`
-- `zellij.toggle_sidebar`
+- `zellij.toggle_left_sidebar`
 - `zellij.open_workspace_terminal`
 - `yazi.open_directory_as_workspace_pane`
 - `yazi.open_zoxide_in_editor`

@@ -246,8 +246,32 @@ pub const ZELLIJ_ACTIONS: &[ZellijActionSpec] = &[
         YazelixActionBackend::ZellijPluginMessage,
         "toggle",
         Some("popup"),
-        &["Alt t"],
+        &[],
         "MessagePlugin yzpp { name \"toggle\" payload \"popup\" }",
+    ),
+    zellij_plugin_action(
+        "bottom_popup",
+        "zellij.bottom_popup",
+        "Toggle the bottom popup slot",
+        "shared",
+        YZPP_PLUGIN_ALIAS,
+        YazelixActionBackend::ZellijPluginMessage,
+        "toggle",
+        Some("bottom_popup"),
+        &["Alt Shift J"],
+        "MessagePlugin yzpp { name \"toggle\" payload \"bottom_popup\" }",
+    ),
+    zellij_plugin_action(
+        "top_popup",
+        "zellij.top_popup",
+        "Toggle the top popup slot",
+        "shared",
+        YZPP_PLUGIN_ALIAS,
+        YazelixActionBackend::ZellijPluginMessage,
+        "toggle",
+        Some("top_popup"),
+        &["Alt Shift K"],
+        "MessagePlugin yzpp { name \"toggle\" payload \"top_popup\" }",
     ),
     zellij_plugin_action(
         "menu",
@@ -304,13 +328,13 @@ pub const ZELLIJ_ACTIONS: &[ZellijActionSpec] = &[
         "MessagePlugin yazelix_pane_orchestrator { name \"toggle_editor_sidebar_focus\" }",
     ),
     zellij_action(
-        "toggle_sidebar",
-        "zellij.toggle_sidebar",
-        "Show or hide the managed sidebar",
+        "toggle_left_sidebar",
+        "zellij.toggle_left_sidebar",
+        "Show or hide the managed left sidebar",
         "shared_except \"locked\"",
         "toggle_sidebar",
         None,
-        &["Alt y"],
+        &["Alt Shift H"],
         "MessagePlugin yazelix_pane_orchestrator { name \"toggle_sidebar\" }",
     ),
     zellij_action(
@@ -320,7 +344,7 @@ pub const ZELLIJ_ACTIONS: &[ZellijActionSpec] = &[
         "shared_except \"locked\"",
         "toggle_agent_sidebar",
         None,
-        &["Alt Shift A"],
+        &["Alt Shift L"],
         "MessagePlugin yazelix_pane_orchestrator { name \"toggle_agent_sidebar\" }",
     ),
     zellij_action(
@@ -369,7 +393,7 @@ pub const ZELLIJ_NATIVE_KEYBINDINGS: &[ZellijNativeKeybindingSpec] = &[
     zellij_native_action(
         "move_tab_left",
         "Move tab left",
-        &["Alt Shift H"],
+        &["Ctrl Shift H"],
         "MoveTab \"Left\"",
         &[ZellijNativeKeybindingBlock {
             mode: "shared",
@@ -389,7 +413,7 @@ pub const ZELLIJ_NATIVE_KEYBINDINGS: &[ZellijNativeKeybindingSpec] = &[
     zellij_native_action(
         "move_tab_right",
         "Move tab right",
-        &["Alt Shift L"],
+        &["Ctrl Shift L"],
         "MoveTab \"Right\"",
         &[ZellijNativeKeybindingBlock {
             mode: "shared",
@@ -524,6 +548,26 @@ pub const ZELLIJ_NATIVE_KEYBINDINGS: &[ZellijNativeKeybindingSpec] = &[
         &[ZellijNativeKeybindingBlock {
             mode: "shared",
             action_lines: &["GoToNextTab"],
+        }],
+    ),
+    zellij_native_action(
+        "move_pane_down",
+        "Move pane down",
+        &["Ctrl Shift J"],
+        "MovePane \"Down\"",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared_except \"locked\"",
+            action_lines: &["MovePane \"Down\""],
+        }],
+    ),
+    zellij_native_action(
+        "move_pane_up",
+        "Move pane up",
+        &["Ctrl Shift K"],
+        "MovePane \"Up\"",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared_except \"locked\"",
+            action_lines: &["MovePane \"Up\""],
         }],
     ),
     zellij_native_action(
