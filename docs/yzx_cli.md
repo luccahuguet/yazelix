@@ -354,7 +354,7 @@ yzx edit cursors              # Open the Ghostty cursor settings file
 yzx import zellij             # Import ~/.config/zellij/config.kdl when it has no keybinds blocks
 yzx import yazi               # Import native Yazi override files and plugins into managed overrides
 yzx import helix              # Import ~/.config/helix/config.toml into managed overrides
-yzx import zellij --force     # Backup and replace the managed Zellij override
+yzx import zellij --force     # Backup and replace zellij.kdl when the source has no keybinds blocks
 yzx edit config               # Open the main managed config
 yzx edit keymap               # Open managed Yazi keymap.toml
 yzx edit init                 # Open managed Yazi init.lua

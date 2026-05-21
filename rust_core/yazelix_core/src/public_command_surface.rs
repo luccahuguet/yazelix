@@ -477,7 +477,7 @@ const IMPORT_YAZI_COMMAND: YzxCommandMetadata = metadata(
 );
 const IMPORT_ZELLIJ_COMMAND: YzxCommandMetadata = metadata(
     "yzx import zellij",
-    "Import the native Zellij config into Yazelix-managed overrides",
+    "Import native Zellij config without keybinds blocks into zellij.kdl",
     YzxCommandCategory::Config,
     &[switch("force", None)],
     Some(YzxMenuCategory::Config),

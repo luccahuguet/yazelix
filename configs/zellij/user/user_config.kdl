@@ -54,17 +54,14 @@
 // Use primary clipboard instead of system clipboard (Linux/X11)
 // copy_clipboard "primary"
 
-// Custom copy command (overrides Yazelix default of "wl-copy")
+// Custom copy command
 // copy_command "xclip -selection clipboard"  // For X11
 // copy_command "pbcopy"                      // For macOS
 
 // === SESSION BEHAVIOR ===
 // Show startup tips is controlled by zellij.disable_tips in settings.jsonc
-
 // What to do when terminal is closed is controlled by Yazelix session policy
-
-// Enable Zellij session serialization for its own internal state
-// session_serialization true
+// Session serialization is enabled by Yazelix
 
 // === KEYBINDINGS ===
 // Configure Yazelix-session keybindings in settings.jsonc:
@@ -112,11 +109,9 @@
 // ========================================
 
 // === LAYOUT SETTINGS ===
-// Override the default layout (Yazelix sets this to "yazelix")
-// default_layout "compact"
-
-// Disable automatic layout management
-// auto_layout false
+// Yazelix owns default_layout and layout_dir for managed sessions. Custom
+// layout family ownership belongs to plain Zellij or maintainer-level Yazelix
+// layout work.
 
 // === EDITOR INTEGRATION ===
 // Override scrollback editor (Yazelix sets this to "hx")

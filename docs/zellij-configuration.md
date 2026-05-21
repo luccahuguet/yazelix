@@ -122,14 +122,11 @@ The Codex usage widget includes quota-window position and official quota percent
 ```
 When enabled, the pane orchestrator opens `yzx screen` after the configured idle threshold. The screen uses the same renderer and styles as the manual `yzx screen` command.
 
-**Session behavior:**
+**Native clipboard and scrollback preferences (`~/.config/yazelix/zellij.kdl`):**
 ```kdl
-// Show startup tips (Yazelix disables by default)
-show_startup_tips true
-
-// Copy/paste settings
 copy_on_select false
 copy_clipboard "primary"
+copy_command "wl-copy"
 scroll_buffer_size 50000
 ```
 
@@ -186,8 +183,9 @@ The default launches the managed Yazi file-tree adapter. You can point the same 
 ## Current Yazelix Defaults
 
 - Default layout: `yzx_side` for the managed-sidebar startup surface
-- Copy command: `wl-copy` (Wayland clipboard)
-- Scrollback editor: `hx` (Helix)
+- Theme: `default`, or a random Zellij theme when `zellij.theme = "random"`
+- Pane frames: enabled by default through `zellij.pane_frames`
+- Rounded pane frame corners: enabled by default through `zellij.rounded_corners`
 - Session serialization: enabled for Zellij's own session state
 - `on_force_close`: `quit`
 - Startup tips: disabled

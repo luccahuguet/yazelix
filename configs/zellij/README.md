@@ -17,6 +17,5 @@ For complete configuration guide, see: [Zellij Configuration Documentation](../.
 
 - Layered merging: native Zellij settings + Yazelix generated keybindings, plugins, dynamic settings, and enforced settings
 - Default layout optimized for sidebar/no-sidebar modes
-- Wayland clipboard integration (`wl-copy`)
-- Helix editor integration for scrollback
+- Managed theme, pane frame, and rounded-corner settings
 - Session persistence and Helix-friendly keybindings

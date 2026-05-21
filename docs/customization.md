@@ -34,7 +34,7 @@ The sections below cover the override surfaces that sit around that main model.
 - **Native config status**: Yazelix treats native tool configs as user-owned unless you explicitly import them or select a supported native read-only mode. The shared status words are `managed_default`, `managed_override`, `imported_override`, `native_read_only`, `native_available`, `native_required_missing`, `home_manager_read_only`, and `generated_runtime`.
 - **Zellij Configuration**: `settings.jsonc` for Yazelix-owned behavior plus generated runtime overlays and an advanced native sidecar:
   - **Quick start**: edit `settings.jsonc` for keybindings, popup commands, widgets, and layout settings
-  - **Advanced native settings**: edit `~/.config/yazelix/zellij.kdl` for non-keybinding Zellij settings
+  - **Advanced native settings**: edit `~/.config/yazelix/zellij.kdl` for Zellij settings Yazelix does not render
   - **Full guide**: [Zellij Configuration Documentation](./zellij-configuration.md)
   - **Managed input boundary**: Yazelix rejects `keybinds` blocks in managed `zellij.kdl` and regenerates the merged runtime config on startup
 - **Yazi Configuration**: Git-conflict-free two-layer configuration system:
