@@ -57,6 +57,7 @@ const WIDGET_TRAY_ALLOWED: &[&str] = &[
     "cpu",
     "ram",
 ];
+const DEFAULT_AGENT_WIDTH_PERCENT: i64 = 30;
 const SCREEN_SAVER_STYLE_ALLOWED: &[&str] = &[
     "logo",
     "boids",
@@ -211,12 +212,13 @@ pub struct ZellijRenderPlanRequest {
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct LayoutPlaceholderPercents {
     pub sidebar_width_percent: String,
+    pub agent_width_percent: String,
     pub open_content_width_percent: String,
-    pub open_primary_width_percent: String,
-    pub open_secondary_width_percent: String,
     pub closed_content_width_percent: String,
-    pub closed_primary_width_percent: String,
-    pub closed_secondary_width_percent: String,
+    pub open_agent_open_content_width_percent: String,
+    pub open_agent_closed_content_width_percent: String,
+    pub closed_agent_open_content_width_percent: String,
+    pub closed_agent_closed_content_width_percent: String,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -257,22 +259,29 @@ fn bool_setting_from_string(raw: &str) -> bool {
 }
 
 fn compute_layout_percentages(sidebar_width_percent: i64) -> LayoutPlaceholderPercents {
+    let agent_width_percent = DEFAULT_AGENT_WIDTH_PERCENT;
     let open_content_width_percent = 100 - sidebar_width_percent;
-    let open_primary_width_percent = (open_content_width_percent * 3) / 5;
-    let open_secondary_width_percent = open_content_width_percent - open_primary_width_percent;
     let closed_content_width_percent = 99;
-    let closed_primary_width_percent = (closed_content_width_percent * 3) / 5;
-    let closed_secondary_width_percent =
-        closed_content_width_percent - closed_primary_width_percent;
+    let open_agent_open_content_width_percent = 100 - sidebar_width_percent - agent_width_percent;
+    let open_agent_closed_content_width_percent = 99 - sidebar_width_percent;
+    let closed_agent_open_content_width_percent = 99 - agent_width_percent;
+    let closed_agent_closed_content_width_percent = 98;
 
     LayoutPlaceholderPercents {
         sidebar_width_percent: format!("{sidebar_width_percent}%"),
+        agent_width_percent: format!("{agent_width_percent}%"),
         open_content_width_percent: format!("{open_content_width_percent}%"),
-        open_primary_width_percent: format!("{open_primary_width_percent}%"),
-        open_secondary_width_percent: format!("{open_secondary_width_percent}%"),
         closed_content_width_percent: format!("{closed_content_width_percent}%"),
-        closed_primary_width_percent: format!("{closed_primary_width_percent}%"),
-        closed_secondary_width_percent: format!("{closed_secondary_width_percent}%"),
+        open_agent_open_content_width_percent: format!("{open_agent_open_content_width_percent}%"),
+        open_agent_closed_content_width_percent: format!(
+            "{open_agent_closed_content_width_percent}%"
+        ),
+        closed_agent_open_content_width_percent: format!(
+            "{closed_agent_open_content_width_percent}%"
+        ),
+        closed_agent_closed_content_width_percent: format!(
+            "{closed_agent_closed_content_width_percent}%"
+        ),
     }
 }
 
@@ -655,12 +664,13 @@ mod tests {
     fn layout_percentages_match_legacy_nushell() {
         let p = compute_layout_percentages(20);
         assert_eq!(p.sidebar_width_percent, "20%");
+        assert_eq!(p.agent_width_percent, "30%");
         assert_eq!(p.open_content_width_percent, "80%");
-        assert_eq!(p.open_primary_width_percent, "48%");
-        assert_eq!(p.open_secondary_width_percent, "32%");
         assert_eq!(p.closed_content_width_percent, "99%");
-        assert_eq!(p.closed_primary_width_percent, "59%");
-        assert_eq!(p.closed_secondary_width_percent, "40%");
+        assert_eq!(p.open_agent_open_content_width_percent, "50%");
+        assert_eq!(p.open_agent_closed_content_width_percent, "79%");
+        assert_eq!(p.closed_agent_open_content_width_percent, "69%");
+        assert_eq!(p.closed_agent_closed_content_width_percent, "98%");
     }
 
     // Defends: sidebar width contract bounds surface as structured config errors, not silent clamping.

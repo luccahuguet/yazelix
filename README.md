@@ -406,7 +406,7 @@ Yazelix uses Zellij as the workspace layer, so the most important bindings are g
 | `Alt+r` | Smart reveal/focus key; forwards into the editor when appropriate |
 | `Alt+[` / `Alt+]` | Switch between layouts |
 | `Alt+m` | Open a new terminal in the current tab workspace root |
-| `Alt+Shift+A` | Open host-installed Codex in a right-side agent pane |
+| `Alt+Shift+A` | Toggle the managed Codex agent sidebar |
 | `Alt+t` | Toggle the configured managed popup program, usually `lazygit`, and refresh the Yazi file-tree sidebar git state when the popup keybinding closes it |
 | `Alt+Shift+M` | Open the `yzx` command palette popup |
 | `Alt+Shift+C` | Open the Yazelix config UI popup |

@@ -39,8 +39,12 @@ fn zellij_render_plan_emits_ok_envelope() {
     assert_eq!(envelope["status"], "ok");
     assert_eq!(envelope["data"]["default_layout_name"], "yzx_side");
     assert_eq!(
-        envelope["data"]["layout_percentages"]["open_primary_width_percent"],
-        "48%"
+        envelope["data"]["layout_percentages"]["agent_width_percent"],
+        "30%"
+    );
+    assert_eq!(
+        envelope["data"]["layout_percentages"]["open_agent_open_content_width_percent"],
+        "50%"
     );
     assert_eq!(envelope["data"]["tab_label_mode"], "full");
     let kitty = envelope["data"]["enforced_top_level_settings"]

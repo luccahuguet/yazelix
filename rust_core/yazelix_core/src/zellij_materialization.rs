@@ -1472,24 +1472,14 @@ fn render_layout_template(
             render_plan.layout_percentages.sidebar_width_percent.clone(),
         ),
         (
+            "__YAZELIX_AGENT_WIDTH_PERCENT__",
+            render_plan.layout_percentages.agent_width_percent.clone(),
+        ),
+        (
             "__YAZELIX_OPEN_CONTENT_WIDTH_PERCENT__",
             render_plan
                 .layout_percentages
                 .open_content_width_percent
-                .clone(),
-        ),
-        (
-            "__YAZELIX_OPEN_PRIMARY_WIDTH_PERCENT__",
-            render_plan
-                .layout_percentages
-                .open_primary_width_percent
-                .clone(),
-        ),
-        (
-            "__YAZELIX_OPEN_SECONDARY_WIDTH_PERCENT__",
-            render_plan
-                .layout_percentages
-                .open_secondary_width_percent
                 .clone(),
         ),
         (
@@ -1500,17 +1490,31 @@ fn render_layout_template(
                 .clone(),
         ),
         (
-            "__YAZELIX_CLOSED_PRIMARY_WIDTH_PERCENT__",
+            "__YAZELIX_OPEN_AGENT_OPEN_CONTENT_WIDTH_PERCENT__",
             render_plan
                 .layout_percentages
-                .closed_primary_width_percent
+                .open_agent_open_content_width_percent
                 .clone(),
         ),
         (
-            "__YAZELIX_CLOSED_SECONDARY_WIDTH_PERCENT__",
+            "__YAZELIX_OPEN_AGENT_CLOSED_CONTENT_WIDTH_PERCENT__",
             render_plan
                 .layout_percentages
-                .closed_secondary_width_percent
+                .open_agent_closed_content_width_percent
+                .clone(),
+        ),
+        (
+            "__YAZELIX_CLOSED_AGENT_OPEN_CONTENT_WIDTH_PERCENT__",
+            render_plan
+                .layout_percentages
+                .closed_agent_open_content_width_percent
+                .clone(),
+        ),
+        (
+            "__YAZELIX_CLOSED_AGENT_CLOSED_CONTENT_WIDTH_PERCENT__",
+            render_plan
+                .layout_percentages
+                .closed_agent_closed_content_width_percent
                 .clone(),
         ),
     ];
@@ -1627,6 +1631,14 @@ fn load_static_fragments(source_dir: &Path) -> Result<BTreeMap<String, String>, 
         (
             "__YAZELIX_SWAP_SIDEBAR_CLOSED__",
             "fragments/swap_sidebar_closed.kdl",
+        ),
+        (
+            "__YAZELIX_SWAP_AGENT_OPEN__",
+            "fragments/swap_agent_open.kdl",
+        ),
+        (
+            "__YAZELIX_SWAP_AGENT_CLOSED__",
+            "fragments/swap_agent_closed.kdl",
         ),
     ];
     let mut fragments = BTreeMap::new();
@@ -2658,16 +2670,21 @@ keybinds {
         assert!(rendered.contains(r#"unbind "Alt p""#));
         assert!(rendered.contains(r#"bind "Ctrl Alt p" { TogglePaneInGroup; }"#));
         assert!(rendered.contains(r#"bind "Alt 1" { GoToTab 1; }"#));
-        assert!(rendered.contains(
-            r#"bind "Alt Shift A" {
-            Run "yzx" "agent" {
-                direction "right"
-            }
-        }"#
-        ));
+        assert!(!rendered.contains("Alt Shift A"));
+        assert!(!rendered.contains(r#"Run "yzx" "agent""#));
         assert!(rendered.contains(r#"bind "Ctrl Alt s" { SwitchToMode "Scroll"; }"#));
         assert!(rendered.contains(r#"bind "Ctrl Alt s" { SwitchToMode "Normal"; }"#));
         assert!(rendered.contains(r#"unbind "Ctrl b""#));
+    }
+
+    // Defends: the Codex agent key is orchestrator-managed so it can avoid duplicate panes and preserve layout state.
+    #[test]
+    fn semantic_zellij_keybindings_generate_agent_toggle() {
+        let rendered = build_semantic_zellij_keybind_lines(&sample_zellij_keybindings()).join("\n");
+
+        assert!(rendered.contains(r#"bind "Alt Shift A" {"#));
+        assert!(rendered.contains(r#"MessagePlugin "yazelix_pane_orchestrator" {"#));
+        assert!(rendered.contains(r#"name "toggle_agent_sidebar""#));
     }
 
     // Defends: users can remap or disable one curated native Zellij policy entry without copying the full keybind block.

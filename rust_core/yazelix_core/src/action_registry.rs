@@ -314,6 +314,16 @@ pub const ZELLIJ_ACTIONS: &[ZellijActionSpec] = &[
         "MessagePlugin yazelix_pane_orchestrator { name \"toggle_sidebar\" }",
     ),
     zellij_action(
+        "open_codex_agent_right",
+        "zellij.open_codex_agent_right",
+        "Toggle the managed Codex agent sidebar",
+        "shared_except \"locked\"",
+        "toggle_agent_sidebar",
+        None,
+        &["Alt Shift A"],
+        "MessagePlugin yazelix_pane_orchestrator { name \"toggle_agent_sidebar\" }",
+    ),
+    zellij_action(
         "smart_reveal",
         "zellij.smart_reveal",
         "Reveal the editor path in the managed sidebar",
@@ -494,16 +504,6 @@ pub const ZELLIJ_NATIVE_KEYBINDINGS: &[ZellijNativeKeybindingSpec] = &[
         &[ZellijNativeKeybindingBlock {
             mode: "shared",
             action_lines: &["ToggleFocusFullscreen", "SwitchToMode \"Normal\""],
-        }],
-    ),
-    zellij_native_action(
-        "open_codex_agent_right",
-        "Open host-installed Codex in a right-side agent pane",
-        &["Alt Shift A"],
-        "Run \"yzx\" \"agent\" { direction \"right\" }",
-        &[ZellijNativeKeybindingBlock {
-            mode: "shared_except \"locked\"",
-            action_lines: &["Run \"yzx\" \"agent\" {\n    direction \"right\"\n}"],
         }],
     ),
     zellij_native_action(

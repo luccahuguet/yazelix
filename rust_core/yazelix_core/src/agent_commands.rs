@@ -17,7 +17,7 @@ pub fn run_yzx_agent(args: &[String]) -> Result<i32, CoreError> {
             ErrorClass::Usage,
             "unexpected_agent_argument",
             format!("Unexpected argument for yzx agent: {}", args[0]),
-            "Run `yzx agent` without arguments for the hardcoded Codex validation pane.",
+            "Run `yzx agent` without arguments for the managed Codex agent pane.",
             json!({ "argument": args[0] }),
         ));
     }
@@ -41,7 +41,7 @@ pub fn run_yzx_agent(args: &[String]) -> Result<i32, CoreError> {
 }
 
 fn print_agent_help() {
-    println!("Open the hardcoded Codex agent command");
+    println!("Open the host-installed Codex agent command");
     println!();
     println!("Usage:");
     println!("  yzx agent");
@@ -54,7 +54,7 @@ fn missing_codex_error(path: &OsStr) -> CoreError {
         ErrorClass::Runtime,
         "missing_codex_agent",
         "Codex is the default Yazelix agent, but `codex` is not on PATH.",
-        "Install Codex on the host, or add it through Home Manager, then restart Yazelix. This validation slice is hardcoded to Codex and does not fall back to another agent.",
+        "Install Codex on the host, or add it through Home Manager, then restart Yazelix. This slice is hardcoded to Codex and does not fall back to another agent.",
         json!({
             "command": CODEX_AGENT_COMMAND,
             "path": path.to_string_lossy(),

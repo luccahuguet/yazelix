@@ -147,11 +147,11 @@ const ROOT_COMMAND: YzxCommandMetadata = metadata(
 
 const AGENT_COMMAND: YzxCommandMetadata = metadata(
     "yzx agent",
-    "Open the hardcoded Codex agent command",
+    "Open the host-installed Codex agent command",
     YzxCommandCategory::Workspace,
     &[],
     Some(YzxMenuCategory::Workspace),
-    Some("Launch host-installed Codex for the right-side agent pane validation slice."),
+    Some("Launch host-installed Codex for the managed right-side agent pane."),
 );
 const AGENT_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[AGENT_COMMAND];
 
