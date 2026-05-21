@@ -65,7 +65,7 @@ fn zellij_render_plan_emits_ok_envelope() {
 #[test]
 fn zellij_render_plan_rejects_bad_sidebar_width() {
     let request = serde_json::json!({
-        "left_sidebar_width_percent": 5,
+        "left_sidebar_width_percent": 0,
         "popup_width_percent": 90,
         "popup_height_percent": 90,
         "yazelix_layout_dir": "/tmp/y/layouts",

@@ -31,9 +31,9 @@ Set the file-open behavior in `settings.jsonc`:
 
 `editor.hide_sidebar_on_file_open = true` hides the managed sidebar after opening a file from Yazi while keeping new tabs on the normal managed-sidebar startup layout. `Alt+Shift+H`, `Ctrl+y`, `Ctrl+Shift+Y`, and `yzx reveal` remain available because the managed side panes still exist.
 
-`workspace.left_sidebar.width_percent` controls the open left sidebar width as a percentage of the tab. With the default launcher, that sidebar is the Yazi file tree. Valid range: `10` to `40`.
+`workspace.left_sidebar.width_percent` controls the open left sidebar width as a percentage of the tab. With the default launcher, that sidebar is the Yazi file tree. Valid range: `1` to `48`.
 
-`workspace.right_sidebar.width_percent` controls the open right sidebar width as a percentage of the tab. The default right sidebar launches `codex` from the host `PATH`; Yazelix does not install Codex by default.
+`workspace.right_sidebar.width_percent` controls the open right sidebar width as a percentage of the tab. The default right sidebar launches `codex` from the host `PATH`; Yazelix does not install Codex by default. Valid range: `1` to `48`.
 
 `workspace.left_sidebar.command` / `args` and `workspace.right_sidebar.command` / `args` control the terminal side surfaces launched in the managed sidebar slots. Set `args` explicitly for tools that need them, such as `["status"]` for `lazygit status`. Custom launchers still run inside managed panes named `sidebar` and `agent`; the pane orchestrator keeps owning sidebar identity, focus, and layout state.
 

@@ -111,7 +111,12 @@ fn prepare_runtime_materialization_fixture(
         "swap_tiled_layout name=\"single_open\" {}\n",
     )
     .unwrap();
-    for fragment in ["swap_sidebar_open.kdl", "swap_sidebar_closed.kdl"] {
+    for fragment in [
+        "swap_sidebar_open.kdl",
+        "swap_sidebar_closed.kdl",
+        "swap_agent_open.kdl",
+        "swap_agent_closed.kdl",
+    ] {
         fs::write(runtime_fragment_dir.join(fragment), "").unwrap();
     }
     fs::write(
@@ -134,7 +139,7 @@ fn prepare_runtime_materialization_fixture(
         render_default_settings_jsonc(&runtime_dir.join("settings_default.jsonc")).unwrap(),
     )
     .unwrap();
-    fs::write(&managed_zellij_config, "keybinds {}\n").unwrap();
+    fs::write(&managed_zellij_config, "theme \"default\"\n").unwrap();
     RuntimeMaterializationFixture {
         home_dir,
         runtime_dir,

@@ -18,7 +18,7 @@ Highlights:
 - `settings.jsonc` is the canonical Yazelix settings file, with a complete `settings_default.jsonc` template, schema coverage, strict unknown-field diagnostics, and additive repair for missing supported fields
 - Home Manager renders complete managed `settings.jsonc` files while still letting users keep tiny declarative Yazelix settings in Nix
 - Yazelix ships a host-installed Codex agent path with a managed right sidebar and explicit directional defaults: `Alt Shift H/J/K/L` toggle the left sidebar, bottom popup, top popup, and right Codex sidebar; `Ctrl Shift Y` switches focus between editor and right sidebar
-- Sidebar launchers are configured symmetrically through `workspace.left_sidebar.*` and `workspace.right_sidebar.*`; the left sidebar defaults to `yzx sidebar yazi`, and the right Codex sidebar defaults to `40%` width
+- Sidebar launchers are configured symmetrically through `workspace.left_sidebar.*` and `workspace.right_sidebar.*`; the left sidebar defaults to `yzx sidebar yazi`, the right Codex sidebar defaults to `40%` width, and both sidebar widths accept `1` to `48`
 - Writable configs that still contain the old `editor.sidebar_command`, `editor.sidebar_args`, or `editor.sidebar_width_percent` fields are repaired once into `workspace.left_sidebar.*` before strict validation
 - Generated Zellij runtime state is re-rendered and validated before launch, so stale configs, missing plugin permissions, and copied native config files are detected or repaired deterministically
 - Managed `~/.config/yazelix/zellij.kdl` is reserved for native Zellij settings that Yazelix does not render; Yazelix-owned keybindings, theme, pane frames, and rounded corners stay in `settings.jsonc`

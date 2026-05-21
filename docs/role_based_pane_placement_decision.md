@@ -126,8 +126,8 @@ data-driven model, but multiple live default roles in the same placement are
 deferred.
 
 Sizing should be placement-specific. The left file-tree sidebar can stay
-narrower, while the right agent sidebar should support a wider ceiling, likely
-up to the current 40 percent maximum.
+narrower, while the right agent sidebar should support a wider ceiling, up to
+the current 48 percent maximum.
 
 ## Agent Role
 

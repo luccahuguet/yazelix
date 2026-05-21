@@ -155,8 +155,8 @@ parser_key = "left_sidebar_width_percent"
 home_manager_option = "left_sidebar_width_percent"
 parser_behavior = "direct"
 validation = "int_range"
-min = 10
-max = 40
+min = 1
+max = 48
 rebuild_required = false
 apply_mode = "tab_session_restart"
 
@@ -185,8 +185,8 @@ parser_key = "right_sidebar_width_percent"
 home_manager_option = "right_sidebar_width_percent"
 parser_behavior = "direct"
 validation = "int_range"
-min = 10
-max = 40
+min = 1
+max = 48
 rebuild_required = false
 apply_mode = "tab_session_restart"
 

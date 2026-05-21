@@ -316,13 +316,13 @@ fn compute_layout_percentages(
 }
 
 fn validate_sidebar_width(field: &str, value: i64) -> Result<(), CoreError> {
-    if (10..=40).contains(&value) {
+    if (1..=48).contains(&value) {
         Ok(())
     } else {
         Err(CoreError::classified(
             ErrorClass::Config,
             "invalid_sidebar_width_percent",
-            format!("{field} must be between 10 and 40 (got {value})"),
+            format!("{field} must be between 1 and 48 (got {value})"),
             "Set the sidebar width_percent within the documented range.",
             serde_json::json!({ "field": field }),
         ))
@@ -732,8 +732,25 @@ mod tests {
     #[test]
     fn rejects_sidebar_out_of_range() {
         let mut req = sample_request();
-        req.left_sidebar_width_percent = 9;
+        req.left_sidebar_width_percent = 0;
         assert!(compute_zellij_render_plan(&req).is_err());
+    }
+
+    // Defends: sidebar widths allow narrow launchers and wider side surfaces without clamping.
+    #[test]
+    fn accepts_sidebar_width_boundaries() {
+        let mut req = sample_request();
+        req.left_sidebar_width_percent = 1;
+        req.right_sidebar_width_percent = 48;
+        let plan = compute_zellij_render_plan(&req).expect("boundary widths");
+
+        assert_eq!(plan.layout_percentages.left_sidebar_width_percent, "1%");
+        assert_eq!(plan.layout_percentages.right_sidebar_width_percent, "48%");
+        assert_eq!(
+            plan.layout_percentages
+                .left_open_right_open_content_width_percent,
+            "51%"
+        );
     }
 
     // Defends: custom side-surface launchers fail fast when the command is empty instead of generating unusable Zellij KDL.
