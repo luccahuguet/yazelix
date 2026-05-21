@@ -33,8 +33,7 @@ Yazelix sets your configured editor as the `EDITOR` environment variable through
 ```jsonc
 {
   "editor": {
-    "command": "",
-    "sidebar_width_percent": 20
+    "command": ""
   },
   "helix": {
     // "runtime_path": "/path/to/runtime"

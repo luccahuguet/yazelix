@@ -26,7 +26,7 @@ help = "Pane, popup, and Zellij workspace behavior"
 
 [tabs.editor]
 label = "editor"
-help = "Editor command, sidebar behavior, and Helix integration"
+help = "Editor command and Helix integration"
 
 [tabs.terminal]
 label = "terminal"
@@ -160,34 +160,67 @@ write_support = "settings_jsonc"
 home_manager_behavior = "read_only_in_ui"
 lifecycle = "stable"
 
-[fields."editor.sidebar_width_percent"]
-tab = "editor"
-group = "sidebar"
-label = "sidebar_width_percent"
-help = "Set the sidebar pane width as a percentage of the tab"
-editor = "integer"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
-
-[fields."editor.sidebar_command"]
-tab = "editor"
-group = "sidebar"
-label = "sidebar_command"
-help = "Set the command used to start the sidebar pane"
+[fields."workspace.left_sidebar.command"]
+tab = "workspace"
+group = "left_sidebar"
+label = "left_sidebar.command"
+help = "Set the command used to start the left sidebar pane"
 editor = "text"
 default_source = "settings_default.jsonc"
 write_support = "settings_jsonc"
 home_manager_behavior = "read_only_in_ui"
 lifecycle = "stable"
 
-[fields."editor.sidebar_args"]
-tab = "editor"
-group = "sidebar"
-label = "sidebar_args"
-help = "Set the arguments passed to the sidebar command"
+[fields."workspace.left_sidebar.args"]
+tab = "workspace"
+group = "left_sidebar"
+label = "left_sidebar.args"
+help = "Set the arguments passed to the left sidebar command"
 editor = "string_list"
+default_source = "settings_default.jsonc"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."workspace.left_sidebar.width_percent"]
+tab = "workspace"
+group = "left_sidebar"
+label = "left_sidebar.width_percent"
+help = "Set the left sidebar pane width as a percentage of the tab"
+editor = "integer"
+default_source = "settings_default.jsonc"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."workspace.right_sidebar.command"]
+tab = "workspace"
+group = "right_sidebar"
+label = "right_sidebar.command"
+help = "Set the command used to start the right sidebar pane"
+editor = "text"
+default_source = "settings_default.jsonc"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."workspace.right_sidebar.args"]
+tab = "workspace"
+group = "right_sidebar"
+label = "right_sidebar.args"
+help = "Set the arguments passed to the right sidebar command"
+editor = "string_list"
+default_source = "settings_default.jsonc"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
+[fields."workspace.right_sidebar.width_percent"]
+tab = "workspace"
+group = "right_sidebar"
+label = "right_sidebar.width_percent"
+help = "Set the right sidebar pane width as a percentage of the tab"
+editor = "integer"
 default_source = "settings_default.jsonc"
 write_support = "settings_jsonc"
 home_manager_behavior = "read_only_in_ui"

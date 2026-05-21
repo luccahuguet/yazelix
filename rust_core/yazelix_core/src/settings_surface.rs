@@ -16,7 +16,14 @@ use yazelix_ghostty_cursors::{CursorRegistry, render_cursor_settings_jsonc};
 pub const SETTINGS_SCHEMA_FILENAME: &str = "yazelix_settings.schema.json";
 pub const DEFAULT_SETTINGS_CONFIG_FILENAME: &str = "settings_default.jsonc";
 const SETTINGS_TOP_LEVEL_ORDER: &[&str] = &[
-    "core", "helix", "editor", "shell", "terminal", "zellij", "yazi",
+    "core",
+    "helix",
+    "editor",
+    "workspace",
+    "shell",
+    "terminal",
+    "zellij",
+    "yazi",
 ];
 
 #[derive(Debug, Clone)]

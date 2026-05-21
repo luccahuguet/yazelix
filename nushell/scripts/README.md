@@ -34,9 +34,8 @@ The remaining public shell-owned surface
 - Syntax validation is Rust-owned by `yzx_repo_validator validate-nushell-syntax`
 
 ### `zellij_wrappers/`
-One surviving runtime wrapper
-
-- `launch_sidebar_yazi.nu` - Sidebar Yazi launcher that still needs the shell-facing Yazi handoff
+No runtime wrapper remains. The managed Yazi sidebar is launched by the
+Rust-owned `yzx sidebar yazi` command
 
 ## Canonical Entry Points
 
@@ -69,4 +68,4 @@ The public launch, desktop, restart, enter, popup, update, sweep, plugin-build, 
 
 ## File Naming Convention
 
-All files use underscores, for example `start_yazelix_inner.nu` and `launch_sidebar_yazi.nu`
+All files use underscores, for example `start_yazelix_inner.nu` and `runtime_commands.nu`

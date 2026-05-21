@@ -172,13 +172,24 @@ Managed `~/.config/yazelix/zellij.kdl` rejects all `keybinds` blocks. A read-onl
 **Simple native settings** that Yazelix does not render from `settings.jsonc`, such as `copy_command`, are safe in `~/.config/yazelix/zellij.kdl`.
 
 **For the sidebar launcher**, prefer Yazelix config instead of editing layout templates:
-```toml
-[editor]
-sidebar_command = "nu"
-sidebar_args = ["__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu"]
+```jsonc
+{
+  "workspace": {
+    "left_sidebar": {
+      "command": "yzx",
+      "args": ["sidebar", "yazi"],
+      "width_percent": 20
+    },
+    "right_sidebar": {
+      "command": "codex",
+      "args": [],
+      "width_percent": 40
+    }
+  }
+}
 ```
 
-The default launches the managed Yazi file-tree adapter. You can point the same managed sidebar slot at another terminal side surface; if `sidebar_args` remains at the default Yazi adapter path, Yazelix renders the custom command with no inherited args. The pane remains named `sidebar` so the pane orchestrator keeps one owner for focus and layout state.
+The default left sidebar launches the managed Yazi file-tree adapter through `yzx sidebar yazi`. The default right sidebar launches host-installed `codex`. You can point either managed sidebar slot at another terminal side surface by changing its `command` and `args`. The panes remain managed so the pane orchestrator keeps one owner for focus and layout state.
 
 ## Current Yazelix Defaults
 

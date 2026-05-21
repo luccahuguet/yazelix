@@ -15,12 +15,22 @@
   },
   "editor": {
     "command": "",
-    "hide_sidebar_on_file_open": false,
-    "sidebar_width_percent": 20,
-    "sidebar_command": "nu",
-    "sidebar_args": [
-      "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu"
-    ]
+    "hide_sidebar_on_file_open": false
+  },
+  "workspace": {
+    "left_sidebar": {
+      "command": "yzx",
+      "args": [
+        "sidebar",
+        "yazi"
+      ],
+      "width_percent": 20
+    },
+    "right_sidebar": {
+      "command": "codex",
+      "args": [],
+      "width_percent": 40
+    }
   },
   "shell": {
     "default_shell": "nu"

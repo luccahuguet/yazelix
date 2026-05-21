@@ -1367,7 +1367,7 @@ fn doctor_config_evaluate_reports_stale_schema_warning() {
     fs::create_dir_all(&config_dir).unwrap();
     let mut settings =
         read_settings_jsonc_value(&runtime_dir.join("settings_default.jsonc")).unwrap();
-    settings["editor"]["sidebar_width_percent"] = json!(99);
+    settings["workspace"]["left_sidebar"]["width_percent"] = json!(99);
     fs::write(
         config_dir.join("settings.jsonc"),
         format!("{}\n", serde_json::to_string_pretty(&settings).unwrap()),
@@ -1400,12 +1400,12 @@ fn doctor_config_evaluate_reports_stale_schema_warning() {
     );
     assert_eq!(
         envelope["data"]["findings"][1]["config_diagnostic_report"]["doctor_diagnostics"][0]["headline"],
-        "Invalid config value at editor.sidebar_width_percent"
+        "Invalid config value at workspace.left_sidebar.width_percent"
     );
     let details = envelope["data"]["findings"][1]["details"].as_str().unwrap();
     assert!(details.contains("Config report for:"));
     assert!(details.contains("Issues: 1"));
-    assert!(details.contains("Invalid config value at editor.sidebar_width_percent"));
+    assert!(details.contains("Invalid config value at workspace.left_sidebar.width_percent"));
 }
 
 // Regression: malformed JSONC must stay on the validation-error path instead of being downgraded into the stale-schema warning row.

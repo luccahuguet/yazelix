@@ -313,7 +313,7 @@ fn build_render_plan_request(
             ErrorClass::Config,
             "invalid_zellij_render_plan_request",
             format!("Could not build Zellij render plan from normalized config: {source}"),
-            "Check settings.jsonc values under editor and zellij.",
+            "Check settings.jsonc values under workspace, editor, and zellij.",
             json!({}),
         )
     })
@@ -578,6 +578,8 @@ fn render_merged_config(
         render_plan.screen_saver_enabled,
         render_plan.screen_saver_idle_seconds,
         &render_plan.screen_saver_style,
+        &render_plan.right_sidebar_command,
+        &render_plan.right_sidebar_args,
         runtime_config_generation,
     );
     let load_plugins_block = build_yazelix_load_plugins_block(&extracted_blocks.load_plugin_lines);
@@ -781,6 +783,8 @@ fn build_yazelix_plugins_block(
     screen_saver_enabled: bool,
     screen_saver_idle_seconds: i64,
     screen_saver_style: &str,
+    right_sidebar_command: &str,
+    right_sidebar_args: &[String],
     runtime_config_generation: &str,
 ) -> String {
     let mut merged_lines = existing_lines.to_vec();
@@ -807,8 +811,22 @@ fn build_yazelix_plugins_block(
                 "        runtime_config_generation {}",
                 json_quote(runtime_config_generation)
             ),
-            "    }".to_string(),
         ]);
+        merged_lines.push(format!(
+            "        right_sidebar_command {}",
+            json_quote(expand_runtime_placeholder(
+                right_sidebar_command,
+                runtime_dir
+            ))
+        ));
+        for (index, arg) in right_sidebar_args.iter().enumerate() {
+            merged_lines.push(format!(
+                "        right_sidebar_arg_{} {}",
+                index + 1,
+                json_quote(expand_runtime_placeholder(arg, runtime_dir))
+            ));
+        }
+        merged_lines.push("    }".to_string());
     }
 
     let yzpp_present = merged_lines
@@ -1675,21 +1693,27 @@ fn render_layout_template(
         (
             "__YAZELIX_SIDEBAR_COMMAND__",
             json_quote(expand_runtime_placeholder(
-                &render_plan.sidebar_command,
+                &render_plan.left_sidebar_command,
                 runtime_dir,
             )),
         ),
         (
             "__YAZELIX_SIDEBAR_ARGS__",
-            render_sidebar_args(&render_plan.sidebar_args, runtime_dir),
+            render_sidebar_args(&render_plan.left_sidebar_args, runtime_dir),
         ),
         (
             "__YAZELIX_SIDEBAR_WIDTH_PERCENT__",
-            render_plan.layout_percentages.sidebar_width_percent.clone(),
+            render_plan
+                .layout_percentages
+                .left_sidebar_width_percent
+                .clone(),
         ),
         (
             "__YAZELIX_AGENT_WIDTH_PERCENT__",
-            render_plan.layout_percentages.agent_width_percent.clone(),
+            render_plan
+                .layout_percentages
+                .right_sidebar_width_percent
+                .clone(),
         ),
         (
             "__YAZELIX_OPEN_CONTENT_WIDTH_PERCENT__",
@@ -1709,28 +1733,28 @@ fn render_layout_template(
             "__YAZELIX_OPEN_AGENT_OPEN_CONTENT_WIDTH_PERCENT__",
             render_plan
                 .layout_percentages
-                .open_agent_open_content_width_percent
+                .left_open_right_open_content_width_percent
                 .clone(),
         ),
         (
             "__YAZELIX_OPEN_AGENT_CLOSED_CONTENT_WIDTH_PERCENT__",
             render_plan
                 .layout_percentages
-                .open_agent_closed_content_width_percent
+                .left_open_right_closed_content_width_percent
                 .clone(),
         ),
         (
             "__YAZELIX_CLOSED_AGENT_OPEN_CONTENT_WIDTH_PERCENT__",
             render_plan
                 .layout_percentages
-                .closed_agent_open_content_width_percent
+                .left_closed_right_open_content_width_percent
                 .clone(),
         ),
         (
             "__YAZELIX_CLOSED_AGENT_CLOSED_CONTENT_WIDTH_PERCENT__",
             render_plan
                 .layout_percentages
-                .closed_agent_closed_content_width_percent
+                .left_closed_right_closed_content_width_percent
                 .clone(),
         ),
     ];
@@ -2574,7 +2598,7 @@ fn timestamp_for_metadata() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::zellij_render_plan::DEFAULT_SIDEBAR_YAZI_ARG;
+    use crate::zellij_render_plan::DEFAULT_LEFT_SIDEBAR_YAZI_ARGS;
 
     fn sample_render_plan_for_widgets(
         widget_tray: Vec<&str>,
@@ -2583,11 +2607,12 @@ mod tests {
         terminal_label: &str,
     ) -> ZellijRenderPlanData {
         compute_zellij_render_plan(&ZellijRenderPlanRequest {
-            sidebar_width_percent: 20,
-            sidebar_command: "nu".into(),
-            sidebar_args: vec![
-                "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu".into(),
-            ],
+            left_sidebar_width_percent: 20,
+            left_sidebar_command: "yzx".into(),
+            left_sidebar_args: vec!["sidebar".into(), "yazi".into()],
+            right_sidebar_width_percent: 40,
+            right_sidebar_command: "codex".into(),
+            right_sidebar_args: Vec::new(),
             popup_width_percent: 90,
             popup_height_percent: 90,
             screen_saver_enabled: false,
@@ -2987,8 +3012,8 @@ printf '%s\n' '{"schema_version":2,"plugin_block":"CHILD_PLUGIN_BLOCK"}'
     fn renders_configured_sidebar_launcher_placeholders() {
         let mut plan =
             sample_render_plan_for_widgets(vec!["editor"], "hx", "/nix/store/bin/nu", "ghostty");
-        plan.sidebar_command = "__YAZELIX_RUNTIME_DIR__/bin/custom-sidebar".into();
-        plan.sidebar_args = vec!["--root".into(), "__YAZELIX_RUNTIME_DIR__/side".into()];
+        plan.left_sidebar_command = "__YAZELIX_RUNTIME_DIR__/bin/custom-sidebar".into();
+        plan.left_sidebar_args = vec!["--root".into(), "__YAZELIX_RUNTIME_DIR__/side".into()];
         let rendered = render_layout_template(
             r#"pane name="sidebar" {
     command __YAZELIX_SIDEBAR_COMMAND__
@@ -3009,12 +3034,15 @@ printf '%s\n' '{"schema_version":2,"plugin_block":"CHILD_PLUGIN_BLOCK"}'
         assert!(!rendered.contains("__YAZELIX_SIDEBAR_ARGS__"));
     }
 
-    // Regression: custom sidebar apps must not receive the default Yazi launcher script from normalized config.
+    // Regression: custom sidebar apps must not receive the default Yazi launcher args from normalized config.
     #[test]
-    fn renders_custom_sidebar_command_without_implicit_yazi_launcher_arg() {
+    fn renders_custom_sidebar_command_without_implicit_yazi_launcher_args() {
         let mut config = JsonMap::new();
-        config.insert("sidebar_command".into(), json!("lazygit"));
-        config.insert("sidebar_args".into(), json!([DEFAULT_SIDEBAR_YAZI_ARG]));
+        config.insert("left_sidebar_command".into(), json!("lazygit"));
+        config.insert(
+            "left_sidebar_args".into(),
+            json!(DEFAULT_LEFT_SIDEBAR_YAZI_ARGS),
+        );
         let request = build_render_plan_request(
             &config,
             std::path::Path::new("/tmp/yazelix/layouts"),
@@ -3038,7 +3066,7 @@ printf '%s\n' '{"schema_version":2,"plugin_block":"CHILD_PLUGIN_BLOCK"}'
 
         assert!(rendered.contains(r#"command "lazygit""#));
         assert!(!rendered.contains("args "));
-        assert!(!rendered.contains("launch_sidebar_yazi.nu"));
+        assert!(!rendered.contains(r#"args "sidebar" "yazi""#));
     }
 
     // Defends: generated layouts insert the child-owned zjstatus plugin block without inspecting its internals.
@@ -3255,6 +3283,8 @@ keybinds {
             true,
             180,
             "mandelbrot",
+            "codex",
+            &["--model".to_string(), "gpt-5.5".to_string()],
             "gen-test",
         );
 
@@ -3266,6 +3296,9 @@ keybinds {
         assert!(block.contains("screen_saver_idle_seconds \"180\""));
         assert!(block.contains("screen_saver_style \"mandelbrot\""));
         assert!(block.contains("runtime_config_generation \"gen-test\""));
+        assert!(block.contains("right_sidebar_command \"codex\""));
+        assert!(block.contains("right_sidebar_arg_1 \"--model\""));
+        assert!(block.contains("right_sidebar_arg_2 \"gpt-5.5\""));
         assert!(block.contains("yzpp location=\"file:/opt/yazelix/plugins/yzpp.wasm\""));
         assert!(block.contains("bottom_popup {"));
         assert!(block.contains("pane_title \"yzx_bottom_popup\""));

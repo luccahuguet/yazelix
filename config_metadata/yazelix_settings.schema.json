@@ -9,6 +9,7 @@
     "core",
     "helix",
     "editor",
+    "workspace",
     "shell",
     "terminal",
     "zellij",
@@ -107,13 +108,10 @@
     },
     "editor": {
       "type": "object",
-      "description": "Editor command, sidebar behavior, and editor integration settings",
+      "description": "Editor command and editor integration settings",
       "required": [
         "command",
-        "hide_sidebar_on_file_open",
-        "sidebar_width_percent",
-        "sidebar_command",
-        "sidebar_args"
+        "hide_sidebar_on_file_open"
       ],
       "additionalProperties": false,
       "properties": {
@@ -122,24 +120,74 @@
         },
         "hide_sidebar_on_file_open": {
           "type": "boolean"
-        },
-        "sidebar_width_percent": {
-          "type": "integer",
-          "minimum": 10,
-          "maximum": 40
-        },
-        "sidebar_command": {
-          "type": "string"
-        },
-        "sidebar_args": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       },
       "x-yazelix": {
         "tab": "editor"
+      }
+    },
+    "workspace": {
+      "type": "object",
+      "description": "Workspace sidebars and pane placement settings",
+      "required": [
+        "left_sidebar",
+        "right_sidebar"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "left_sidebar": {
+          "type": "object",
+          "required": [
+            "command",
+            "args",
+            "width_percent"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "type": "string"
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "width_percent": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 40
+            }
+          }
+        },
+        "right_sidebar": {
+          "type": "object",
+          "required": [
+            "command",
+            "args",
+            "width_percent"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "type": "string"
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "width_percent": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 40
+            }
+          }
+        }
+      },
+      "x-yazelix": {
+        "tab": "workspace"
       }
     },
     "shell": {

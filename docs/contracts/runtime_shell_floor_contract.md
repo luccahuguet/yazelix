@@ -28,12 +28,10 @@ Out of scope:
 
 ### Integration wrapper floor
 
-One wrapper remains:
-
-- `nushell/scripts/zellij_wrappers/launch_sidebar_yazi.nu`
-
-Popup, command menu, and config UI floating panes are configured `yzpp` popups
-instead of Nu wrapper trampolines.
+No Zellij integration wrapper remains in Nushell. The managed left Yazi sidebar
+is launched through the Rust-owned `yzx sidebar yazi` command, and popup, command
+menu, and config UI floating panes are configured `yzpp` popups instead of Nu
+wrapper trampolines.
 
 ### Setup and bootstrap floor
 

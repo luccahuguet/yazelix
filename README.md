@@ -390,7 +390,7 @@ theme = "term16_dark"  # Recommended transparent theme
 
 Yazelix layouts are Zellij layouts with Yazelix-owned pane identity layered on top: a managed `sidebar` pane, a managed `editor` pane, and sidebar-aware swap layouts that can collapse, widen, or refocus panes without losing workspace state
 
-The default sidebar is a Yazi file tree. `editor.sidebar_width_percent` controls the open sidebar width, `editor.hide_sidebar_on_file_open` can collapse it after opening files, and `editor.sidebar_command` / `editor.sidebar_args` can replace the sidebar program while keeping the same managed `sidebar` slot
+The default left sidebar is a Yazi file tree launched by `yzx sidebar yazi`, and the default right sidebar launches host-installed `codex`. `workspace.left_sidebar.*` and `workspace.right_sidebar.*` control each side pane command, args, and width; `editor.hide_sidebar_on_file_open` can collapse the left sidebar after opening files
 
 Use `Alt+[` and `Alt+]` to cycle the built-in sidebar-aware layout shapes. Keep complex custom layouts in Zellij KDL under `configs/zellij/layouts/`; custom sidebar swap families are maintainer-level work because Yazelix family-aware controls only know the built-in sidebar families
 

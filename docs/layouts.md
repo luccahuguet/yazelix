@@ -12,19 +12,30 @@ Set the file-open behavior in `settings.jsonc`:
 ```jsonc
 {
   "editor": {
-    "hide_sidebar_on_file_open": false,
-    "sidebar_width_percent": 20,
-    "sidebar_command": "nu",
-    "sidebar_args": ["__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu"]
+    "hide_sidebar_on_file_open": false
+  },
+  "workspace": {
+    "left_sidebar": {
+      "command": "yzx",
+      "args": ["sidebar", "yazi"],
+      "width_percent": 20
+    },
+    "right_sidebar": {
+      "command": "codex",
+      "args": [],
+      "width_percent": 40
+    }
   }
 }
 ```
 
 `editor.hide_sidebar_on_file_open = true` hides the managed sidebar after opening a file from Yazi while keeping new tabs on the normal managed-sidebar startup layout. `Alt+Shift+H`, `Ctrl+y`, `Ctrl+Shift+Y`, and `yzx reveal` remain available because the managed side panes still exist.
 
-`editor.sidebar_width_percent` controls the open sidebar width as a percentage of the tab. With the default launcher, that sidebar is the Yazi file tree. Valid range: `10` to `40`.
+`workspace.left_sidebar.width_percent` controls the open left sidebar width as a percentage of the tab. With the default launcher, that sidebar is the Yazi file tree. Valid range: `10` to `40`.
 
-`editor.sidebar_command` and `editor.sidebar_args` control the terminal side-surface launched in the managed sidebar slot. The default remains the Yazelix-managed Yazi file-tree adapter. When `sidebar_command` changes and `sidebar_args` is left at the default Yazi adapter path, Yazelix renders the custom sidebar command with no inherited args. Set `sidebar_args` explicitly for tools that need them, such as `["status"]` for `lazygit status`. Custom launchers still run inside the pane named `sidebar`; the pane orchestrator keeps owning sidebar identity, focus, and layout state.
+`workspace.right_sidebar.width_percent` controls the open right sidebar width as a percentage of the tab. The default right sidebar launches `codex` from the host `PATH`; Yazelix does not install Codex by default.
+
+`workspace.left_sidebar.command` / `args` and `workspace.right_sidebar.command` / `args` control the terminal side surfaces launched in the managed sidebar slots. Set `args` explicitly for tools that need them, such as `["status"]` for `lazygit status`. Custom launchers still run inside managed panes named `sidebar` and `agent`; the pane orchestrator keeps owning sidebar identity, focus, and layout state.
 
 ## Layout Metadata
 
@@ -47,7 +58,7 @@ Yazelix now copies every top-level `.kdl` file in `configs/zellij/layouts/` into
 
 The supported customization paths are:
 
-- Use `editor.sidebar_command` and `editor.sidebar_args` for custom side-surface launchers
+- Use `workspace.left_sidebar.*` and `workspace.right_sidebar.*` for custom side-surface launchers
 - Edit `yzx_side.kdl` or `yzx_side_closed.kdl` to change startup panes
 - Edit `yzx_side.swap.kdl` or `yzx_side_closed.swap.kdl` to tweak built-in swap layouts
 - Add a new top-level `.kdl` file in `configs/zellij/layouts/` if you also add it to `config_metadata/zellij_layout_families.toml`

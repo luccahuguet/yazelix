@@ -39,7 +39,7 @@ The config UI, doctor, and future `yzx_control` save/apply flows should use one 
 | `helix.runtime_path` | `tab_session_restart` | Existing editor panes keep their launched runtime |
 | `editor.command` | `tab_session_restart` | Existing editor panes keep their launched command |
 | `editor.hide_sidebar_on_file_open` | `tab_session_restart` | Can move to `live_with_pane_refresh` only after the opener/session owner supports config reload |
-| `editor.sidebar_width_percent`, `editor.sidebar_command`, `editor.sidebar_args` | `tab_session_restart` | Sidebar layout and command are pane-startup inputs |
+| `workspace.left_sidebar.command`, `workspace.left_sidebar.args`, `workspace.left_sidebar.width_percent`, `workspace.right_sidebar.command`, `workspace.right_sidebar.args`, `workspace.right_sidebar.width_percent` | `tab_session_restart` | Sidebar layout and command are pane-startup inputs |
 | `shell.default_shell` | `shell_terminal_restart` | Existing shells keep their process and startup environment |
 | `terminal.terminals`, `terminal.config_mode`, `terminal.transparency` | `shell_terminal_restart` | Terminal config changes apply to newly launched terminal processes, or to Home Manager activation when Home Manager owns the source |
 | `zellij.disable_tips`, `zellij.pane_frames`, `zellij.rounded_corners`, `zellij.support_kitty_keyboard_protocol`, `zellij.theme`, `zellij.default_mode`, `zellij.keybindings`, `zellij.native_keybindings` | `tab_session_restart` | These affect generated Zellij config or session-level behavior that is not safely reloadable in place |

@@ -20,8 +20,6 @@ const ZELLIJ_PLUGIN_WASMS: &[&str] = &[
 const RUNTIME_WORKSPACE_ASSETS: &[&str] = &[
     "config_metadata/zellij_layout_families.toml",
     "configs/zellij/yazelix_overrides.kdl",
-    "configs/zellij/scripts/launch_sidebar_yazi.nu",
-    "configs/zellij/scripts/runtime_helper.nu",
     "configs/zellij/plugins/yazelix_pane_orchestrator.wasm",
     "configs/zellij/plugins/zjstatus.wasm",
     "configs/zellij/plugins/yzpp.wasm",
@@ -29,8 +27,6 @@ const RUNTIME_WORKSPACE_ASSETS: &[&str] = &[
 const REPO_WORKSPACE_ASSETS: &[&str] = &[
     "config_metadata/zellij_layout_families.toml",
     "configs/zellij/yazelix_overrides.kdl",
-    "configs/zellij/scripts/launch_sidebar_yazi.nu",
-    "configs/zellij/scripts/runtime_helper.nu",
     "configs/zellij/plugins/zjstatus.wasm",
 ];
 
@@ -85,7 +81,7 @@ fn runtime_workspace_assets_finding(runtime_dir: &Path) -> WorkspaceAssetFinding
         return WorkspaceAssetFinding {
             status: "ok".into(),
             message: "Workspace runtime assets are present".into(),
-            details: Some("Zellij layouts, scripts, plugin artifacts, and layout metadata are available in the active runtime.".into()),
+            details: Some("Zellij layouts, plugin artifacts, and layout metadata are available in the active runtime.".into()),
             fix_available: false,
             fix_action: None,
             owner_surface: "doctor".into(),
@@ -322,12 +318,10 @@ mod tests {
         let state = root.join("state");
         let runtime_layouts = runtime.join("configs").join("zellij").join("layouts");
         let runtime_plugins = runtime.join("configs").join("zellij").join("plugins");
-        let runtime_scripts = runtime.join("configs").join("zellij").join("scripts");
         let state_zellij = state.join("configs").join("zellij");
         fs::create_dir_all(runtime.join("config_metadata")).unwrap();
         fs::create_dir_all(&runtime_layouts).unwrap();
         fs::create_dir_all(&runtime_plugins).unwrap();
-        fs::create_dir_all(&runtime_scripts).unwrap();
         fs::create_dir_all(state_zellij.join("layouts")).unwrap();
         fs::create_dir_all(state_zellij.join("plugins")).unwrap();
         fs::write(
@@ -361,9 +355,6 @@ swap_layouts = ["single_open"]
             "",
         )
         .unwrap();
-        for script in ["launch_sidebar_yazi.nu", "runtime_helper.nu"] {
-            fs::write(runtime_scripts.join(script), "").unwrap();
-        }
         for wasm in ZELLIJ_PLUGIN_WASMS {
             fs::write(runtime_plugins.join(wasm), format!("{wasm}-bytes")).unwrap();
             fs::write(

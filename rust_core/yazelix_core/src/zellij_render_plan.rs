@@ -57,7 +57,8 @@ const WIDGET_TRAY_ALLOWED: &[&str] = &[
     "cpu",
     "ram",
 ];
-const DEFAULT_AGENT_WIDTH_PERCENT: i64 = 40;
+const DEFAULT_LEFT_SIDEBAR_WIDTH_PERCENT: i64 = 20;
+const DEFAULT_RIGHT_SIDEBAR_WIDTH_PERCENT: i64 = 40;
 const SCREEN_SAVER_STYLE_ALLOWED: &[&str] = &[
     "logo",
     "boids",
@@ -72,20 +73,35 @@ const SCREEN_SAVER_STYLE_ALLOWED: &[&str] = &[
 const TAB_LABEL_MODE_FULL: &str = "full";
 const TAB_LABEL_MODE_COMPACT: &str = "compact";
 const TAB_LABEL_MODE_ALLOWED: &[&str] = &[TAB_LABEL_MODE_FULL, TAB_LABEL_MODE_COMPACT];
-pub const DEFAULT_SIDEBAR_COMMAND: &str = "nu";
-pub const DEFAULT_SIDEBAR_YAZI_ARG: &str =
-    "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu";
+pub const DEFAULT_LEFT_SIDEBAR_COMMAND: &str = "yzx";
+pub const DEFAULT_LEFT_SIDEBAR_YAZI_ARGS: &[&str] = &["sidebar", "yazi"];
+pub const DEFAULT_RIGHT_SIDEBAR_COMMAND: &str = "codex";
 
-fn default_sidebar_width_percent() -> i64 {
-    20
+fn default_left_sidebar_width_percent() -> i64 {
+    DEFAULT_LEFT_SIDEBAR_WIDTH_PERCENT
 }
 
-fn default_sidebar_command() -> String {
-    DEFAULT_SIDEBAR_COMMAND.into()
+fn default_right_sidebar_width_percent() -> i64 {
+    DEFAULT_RIGHT_SIDEBAR_WIDTH_PERCENT
 }
 
-fn default_sidebar_args() -> Vec<String> {
-    vec![DEFAULT_SIDEBAR_YAZI_ARG.into()]
+fn default_left_sidebar_command() -> String {
+    DEFAULT_LEFT_SIDEBAR_COMMAND.into()
+}
+
+fn default_right_sidebar_command() -> String {
+    DEFAULT_RIGHT_SIDEBAR_COMMAND.into()
+}
+
+fn default_left_sidebar_args() -> Vec<String> {
+    DEFAULT_LEFT_SIDEBAR_YAZI_ARGS
+        .iter()
+        .map(|arg| (*arg).to_string())
+        .collect()
+}
+
+fn default_right_sidebar_args() -> Vec<String> {
+    Vec::new()
 }
 
 fn default_popup_percent() -> i64 {
@@ -158,12 +174,18 @@ fn default_shell_label() -> String {
 
 #[derive(Debug, Deserialize)]
 pub struct ZellijRenderPlanRequest {
-    #[serde(default = "default_sidebar_width_percent")]
-    pub sidebar_width_percent: i64,
-    #[serde(default = "default_sidebar_command")]
-    pub sidebar_command: String,
-    #[serde(default = "default_sidebar_args")]
-    pub sidebar_args: Vec<String>,
+    #[serde(default = "default_left_sidebar_width_percent")]
+    pub left_sidebar_width_percent: i64,
+    #[serde(default = "default_left_sidebar_command")]
+    pub left_sidebar_command: String,
+    #[serde(default = "default_left_sidebar_args")]
+    pub left_sidebar_args: Vec<String>,
+    #[serde(default = "default_right_sidebar_width_percent")]
+    pub right_sidebar_width_percent: i64,
+    #[serde(default = "default_right_sidebar_command")]
+    pub right_sidebar_command: String,
+    #[serde(default = "default_right_sidebar_args")]
+    pub right_sidebar_args: Vec<String>,
     #[serde(default = "default_popup_percent")]
     pub popup_width_percent: i64,
     #[serde(default = "default_popup_percent")]
@@ -211,14 +233,14 @@ pub struct ZellijRenderPlanRequest {
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct LayoutPlaceholderPercents {
-    pub sidebar_width_percent: String,
-    pub agent_width_percent: String,
+    pub left_sidebar_width_percent: String,
+    pub right_sidebar_width_percent: String,
     pub open_content_width_percent: String,
     pub closed_content_width_percent: String,
-    pub open_agent_open_content_width_percent: String,
-    pub open_agent_closed_content_width_percent: String,
-    pub closed_agent_open_content_width_percent: String,
-    pub closed_agent_closed_content_width_percent: String,
+    pub left_open_right_open_content_width_percent: String,
+    pub left_open_right_closed_content_width_percent: String,
+    pub left_closed_right_open_content_width_percent: String,
+    pub left_closed_right_closed_content_width_percent: String,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -230,9 +252,12 @@ pub struct TopLevelSetting {
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct ZellijRenderPlanData {
     pub default_layout_name: String,
-    pub sidebar_width_percent: i64,
-    pub sidebar_command: String,
-    pub sidebar_args: Vec<String>,
+    pub left_sidebar_width_percent: i64,
+    pub left_sidebar_command: String,
+    pub left_sidebar_args: Vec<String>,
+    pub right_sidebar_width_percent: i64,
+    pub right_sidebar_command: String,
+    pub right_sidebar_args: Vec<String>,
     pub popup_width_percent: i64,
     pub popup_height_percent: i64,
     pub screen_saver_enabled: bool,
@@ -258,78 +283,83 @@ fn bool_setting_from_string(raw: &str) -> bool {
     !raw.trim_start().starts_with("false")
 }
 
-fn compute_layout_percentages(sidebar_width_percent: i64) -> LayoutPlaceholderPercents {
-    let agent_width_percent = DEFAULT_AGENT_WIDTH_PERCENT;
-    let open_content_width_percent = 100 - sidebar_width_percent;
+fn compute_layout_percentages(
+    left_sidebar_width_percent: i64,
+    right_sidebar_width_percent: i64,
+) -> LayoutPlaceholderPercents {
+    let open_content_width_percent = 100 - left_sidebar_width_percent;
     let closed_content_width_percent = 99;
-    let open_agent_open_content_width_percent = 100 - sidebar_width_percent - agent_width_percent;
-    let open_agent_closed_content_width_percent = 99 - sidebar_width_percent;
-    let closed_agent_open_content_width_percent = 99 - agent_width_percent;
-    let closed_agent_closed_content_width_percent = 98;
+    let left_open_right_open_content_width_percent =
+        100 - left_sidebar_width_percent - right_sidebar_width_percent;
+    let left_open_right_closed_content_width_percent = 99 - left_sidebar_width_percent;
+    let left_closed_right_open_content_width_percent = 99 - right_sidebar_width_percent;
+    let left_closed_right_closed_content_width_percent = 98;
 
     LayoutPlaceholderPercents {
-        sidebar_width_percent: format!("{sidebar_width_percent}%"),
-        agent_width_percent: format!("{agent_width_percent}%"),
+        left_sidebar_width_percent: format!("{left_sidebar_width_percent}%"),
+        right_sidebar_width_percent: format!("{right_sidebar_width_percent}%"),
         open_content_width_percent: format!("{open_content_width_percent}%"),
         closed_content_width_percent: format!("{closed_content_width_percent}%"),
-        open_agent_open_content_width_percent: format!("{open_agent_open_content_width_percent}%"),
-        open_agent_closed_content_width_percent: format!(
-            "{open_agent_closed_content_width_percent}%"
+        left_open_right_open_content_width_percent: format!(
+            "{left_open_right_open_content_width_percent}%"
         ),
-        closed_agent_open_content_width_percent: format!(
-            "{closed_agent_open_content_width_percent}%"
+        left_open_right_closed_content_width_percent: format!(
+            "{left_open_right_closed_content_width_percent}%"
         ),
-        closed_agent_closed_content_width_percent: format!(
-            "{closed_agent_closed_content_width_percent}%"
+        left_closed_right_open_content_width_percent: format!(
+            "{left_closed_right_open_content_width_percent}%"
+        ),
+        left_closed_right_closed_content_width_percent: format!(
+            "{left_closed_right_closed_content_width_percent}%"
         ),
     }
 }
 
-fn validate_sidebar_width(value: i64) -> Result<(), CoreError> {
+fn validate_sidebar_width(field: &str, value: i64) -> Result<(), CoreError> {
     if (10..=40).contains(&value) {
         Ok(())
     } else {
         Err(CoreError::classified(
             ErrorClass::Config,
             "invalid_sidebar_width_percent",
-            format!("sidebar_width_percent must be between 10 and 40 (got {value})"),
-            "Set editor.sidebar_width_percent within the documented range.",
-            serde_json::json!({ "field": "editor.sidebar_width_percent" }),
+            format!("{field} must be between 10 and 40 (got {value})"),
+            "Set the sidebar width_percent within the documented range.",
+            serde_json::json!({ "field": field }),
         ))
     }
 }
 
-fn validate_sidebar_launcher(command: &str) -> Result<(), CoreError> {
+fn validate_sidebar_launcher(field: &str, command: &str) -> Result<(), CoreError> {
     if !command.trim().is_empty() {
         Ok(())
     } else {
         Err(CoreError::classified(
             ErrorClass::Config,
             "invalid_sidebar_command",
-            "editor.sidebar_command must not be empty",
-            "Set editor.sidebar_command to a terminal command such as `nu`, `yazi`, or your side-surface launcher.",
-            serde_json::json!({ "field": "editor.sidebar_command" }),
+            format!("{field} must not be empty"),
+            "Set the sidebar command to a terminal command such as `nu`, `yazi`, `codex`, or another side-surface launcher.",
+            serde_json::json!({ "field": field }),
         ))
     }
 }
 
-pub fn effective_sidebar_args(command: &str, args: &[String]) -> Vec<String> {
-    if !is_default_sidebar_command(command) && args == default_sidebar_args().as_slice() {
+pub fn effective_left_sidebar_args(command: &str, args: &[String]) -> Vec<String> {
+    if !is_default_left_sidebar_command(command) && args == default_left_sidebar_args().as_slice() {
         Vec::new()
     } else {
         args.to_vec()
     }
 }
 
-fn is_default_sidebar_command(command: &str) -> bool {
+fn is_default_left_sidebar_command(command: &str) -> bool {
     let trimmed = command.trim();
-    if trimmed == DEFAULT_SIDEBAR_COMMAND {
+    if trimmed == DEFAULT_LEFT_SIDEBAR_COMMAND {
         return true;
     }
     Path::new(trimmed)
         .file_name()
         .and_then(|name| name.to_str())
-        .map(|name| name == DEFAULT_SIDEBAR_COMMAND)
+        .map(|name| name == DEFAULT_LEFT_SIDEBAR_COMMAND)
         .unwrap_or(false)
 }
 
@@ -494,8 +524,22 @@ fn status_label(raw: &str, default: &str) -> String {
 pub fn compute_zellij_render_plan(
     request: &ZellijRenderPlanRequest,
 ) -> Result<ZellijRenderPlanData, CoreError> {
-    validate_sidebar_width(request.sidebar_width_percent)?;
-    validate_sidebar_launcher(&request.sidebar_command)?;
+    validate_sidebar_width(
+        "workspace.left_sidebar.width_percent",
+        request.left_sidebar_width_percent,
+    )?;
+    validate_sidebar_width(
+        "workspace.right_sidebar.width_percent",
+        request.right_sidebar_width_percent,
+    )?;
+    validate_sidebar_launcher(
+        "workspace.left_sidebar.command",
+        &request.left_sidebar_command,
+    )?;
+    validate_sidebar_launcher(
+        "workspace.right_sidebar.command",
+        &request.right_sidebar_command,
+    )?;
     validate_popup_percent("zellij.popup_width_percent", request.popup_width_percent)?;
     validate_popup_percent("zellij.popup_height_percent", request.popup_height_percent)?;
     validate_screen_saver_idle_seconds(request.screen_saver_idle_seconds)?;
@@ -536,7 +580,10 @@ pub fn compute_zellij_render_plan(
 
     let default_layout_name = MANAGED_SIDEBAR_LAYOUT_NAME.to_string();
 
-    let layout_percentages = compute_layout_percentages(request.sidebar_width_percent);
+    let layout_percentages = compute_layout_percentages(
+        request.left_sidebar_width_percent,
+        request.right_sidebar_width_percent,
+    );
 
     let theme = pick_theme(&request.zellij_theme);
     let pane_frames_value = if bool_setting_from_string(&request.zellij_pane_frames) {
@@ -596,9 +643,15 @@ pub fn compute_zellij_render_plan(
 
     Ok(ZellijRenderPlanData {
         default_layout_name,
-        sidebar_width_percent: request.sidebar_width_percent,
-        sidebar_command: request.sidebar_command.trim().to_string(),
-        sidebar_args: effective_sidebar_args(&request.sidebar_command, &request.sidebar_args),
+        left_sidebar_width_percent: request.left_sidebar_width_percent,
+        left_sidebar_command: request.left_sidebar_command.trim().to_string(),
+        left_sidebar_args: effective_left_sidebar_args(
+            &request.left_sidebar_command,
+            &request.left_sidebar_args,
+        ),
+        right_sidebar_width_percent: request.right_sidebar_width_percent,
+        right_sidebar_command: request.right_sidebar_command.trim().to_string(),
+        right_sidebar_args: request.right_sidebar_args.clone(),
         popup_width_percent: request.popup_width_percent,
         popup_height_percent: request.popup_height_percent,
         screen_saver_enabled: request.screen_saver_enabled,
@@ -624,16 +677,18 @@ pub fn compute_zellij_render_plan(
 pub const MANAGED_SIDEBAR_LAYOUT_NAME: &str = "yzx_side";
 
 // Test lane: maintainer
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn sample_request() -> ZellijRenderPlanRequest {
         ZellijRenderPlanRequest {
-            sidebar_width_percent: 20,
-            sidebar_command: "nu".into(),
-            sidebar_args: default_sidebar_args(),
+            left_sidebar_width_percent: 20,
+            left_sidebar_command: "yzx".into(),
+            left_sidebar_args: default_left_sidebar_args(),
+            right_sidebar_width_percent: 40,
+            right_sidebar_command: "codex".into(),
+            right_sidebar_args: default_right_sidebar_args(),
             popup_width_percent: 90,
             popup_height_percent: 90,
             screen_saver_enabled: false,
@@ -662,22 +717,22 @@ mod tests {
     // Defends: layout placeholder percents stay aligned with the historical Nushell geometry helper.
     #[test]
     fn layout_percentages_match_legacy_nushell() {
-        let p = compute_layout_percentages(20);
-        assert_eq!(p.sidebar_width_percent, "20%");
-        assert_eq!(p.agent_width_percent, "40%");
+        let p = compute_layout_percentages(20, 40);
+        assert_eq!(p.left_sidebar_width_percent, "20%");
+        assert_eq!(p.right_sidebar_width_percent, "40%");
         assert_eq!(p.open_content_width_percent, "80%");
         assert_eq!(p.closed_content_width_percent, "99%");
-        assert_eq!(p.open_agent_open_content_width_percent, "40%");
-        assert_eq!(p.open_agent_closed_content_width_percent, "79%");
-        assert_eq!(p.closed_agent_open_content_width_percent, "59%");
-        assert_eq!(p.closed_agent_closed_content_width_percent, "98%");
+        assert_eq!(p.left_open_right_open_content_width_percent, "40%");
+        assert_eq!(p.left_open_right_closed_content_width_percent, "79%");
+        assert_eq!(p.left_closed_right_open_content_width_percent, "59%");
+        assert_eq!(p.left_closed_right_closed_content_width_percent, "98%");
     }
 
     // Defends: sidebar width contract bounds surface as structured config errors, not silent clamping.
     #[test]
     fn rejects_sidebar_out_of_range() {
         let mut req = sample_request();
-        req.sidebar_width_percent = 9;
+        req.left_sidebar_width_percent = 9;
         assert!(compute_zellij_render_plan(&req).is_err());
     }
 
@@ -685,23 +740,23 @@ mod tests {
     #[test]
     fn rejects_empty_sidebar_command() {
         let mut req = sample_request();
-        req.sidebar_command = "   ".into();
+        req.left_sidebar_command = "   ".into();
         let error = compute_zellij_render_plan(&req).unwrap_err();
 
         assert_eq!(error.code(), "invalid_sidebar_command");
     }
 
-    // Regression: custom sidebar apps must not inherit the default Yazi launcher script as their first argument.
+    // Regression: custom sidebar apps must not inherit the default Yazi launcher args.
     #[test]
     fn custom_sidebar_command_drops_implicit_yazi_launcher_arg() {
         for command in ["lazygit", "opencode"] {
             let mut req = sample_request();
-            req.sidebar_command = command.into();
-            req.sidebar_args = default_sidebar_args();
+            req.left_sidebar_command = command.into();
+            req.left_sidebar_args = default_left_sidebar_args();
             let plan = compute_zellij_render_plan(&req).unwrap();
 
-            assert_eq!(plan.sidebar_command, command);
-            assert!(plan.sidebar_args.is_empty());
+            assert_eq!(plan.left_sidebar_command, command);
+            assert!(plan.left_sidebar_args.is_empty());
         }
     }
 
@@ -709,11 +764,11 @@ mod tests {
     #[test]
     fn custom_sidebar_command_preserves_explicit_args() {
         let mut req = sample_request();
-        req.sidebar_command = "lazygit".into();
-        req.sidebar_args = vec!["status".into()];
+        req.left_sidebar_command = "lazygit".into();
+        req.left_sidebar_args = vec!["status".into()];
         let plan = compute_zellij_render_plan(&req).unwrap();
 
-        assert_eq!(plan.sidebar_args, vec!["status"]);
+        assert_eq!(plan.left_sidebar_args, vec!["status"]);
     }
 
     // Defends: widget tray entries are validated against the same allowed set as config.normalize.

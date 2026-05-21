@@ -35,7 +35,7 @@ Rejected or deferred layout branches:
 
 - Override-layout resurrection through owned explicit-run pane creation is rejected for this pass. It would require Yazelix to replace too many native Zellij pane-creation surfaces just to make live layout transitions preserve anonymous panes
 - The bottom-bar/zen-mode POC based on override-layout is deferred. Existing Zellij fullscreen behavior remains the supported focused-work fallback, and any future barless component toggle should start from the status/layout ownership model instead of this POC
-- User-declared declarative Zellij layout profiles are deferred. The supported customization boundary remains explicit KDL files plus the existing `editor.sidebar_command` and `editor.sidebar_args` settings
+- User-declared declarative Zellij layout profiles are deferred. The supported customization boundary remains explicit KDL files plus the `workspace.left_sidebar.*` and `workspace.right_sidebar.*` settings
 
 This gate unblocks deletion-first Zellij cleanup. `zellij_materialization.rs`, `zellij_commands.rs`, and Zellij validators should consolidate around the built-in family metadata plus copied top-level custom KDL files instead of preserving duplicate render paths for override-layout or declarative profiles that are not accepted product surfaces.
 

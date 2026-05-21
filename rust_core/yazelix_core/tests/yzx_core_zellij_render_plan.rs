@@ -7,7 +7,12 @@ use serde_json::Value;
 #[test]
 fn zellij_render_plan_emits_ok_envelope() {
     let request = serde_json::json!({
-        "sidebar_width_percent": 20,
+        "left_sidebar_width_percent": 20,
+        "left_sidebar_command": "yzx",
+        "left_sidebar_args": ["sidebar", "yazi"],
+        "right_sidebar_width_percent": 40,
+        "right_sidebar_command": "codex",
+        "right_sidebar_args": [],
         "popup_width_percent": 90,
         "popup_height_percent": 90,
         "zellij_theme": "default",
@@ -39,11 +44,11 @@ fn zellij_render_plan_emits_ok_envelope() {
     assert_eq!(envelope["status"], "ok");
     assert_eq!(envelope["data"]["default_layout_name"], "yzx_side");
     assert_eq!(
-        envelope["data"]["layout_percentages"]["agent_width_percent"],
+        envelope["data"]["layout_percentages"]["right_sidebar_width_percent"],
         "40%"
     );
     assert_eq!(
-        envelope["data"]["layout_percentages"]["open_agent_open_content_width_percent"],
+        envelope["data"]["layout_percentages"]["left_open_right_open_content_width_percent"],
         "40%"
     );
     assert_eq!(envelope["data"]["tab_label_mode"], "full");
@@ -60,7 +65,7 @@ fn zellij_render_plan_emits_ok_envelope() {
 #[test]
 fn zellij_render_plan_rejects_bad_sidebar_width() {
     let request = serde_json::json!({
-        "sidebar_width_percent": 5,
+        "left_sidebar_width_percent": 5,
         "popup_width_percent": 90,
         "popup_height_percent": 90,
         "yazelix_layout_dir": "/tmp/y/layouts",

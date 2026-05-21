@@ -266,7 +266,7 @@ mod tests {
                 },
             ),
             (
-                "editor.sidebar_width_percent".to_string(),
+                "workspace.left_sidebar.width_percent".to_string(),
                 SessionConfigOverrideField {
                     kind: SessionConfigOverrideKind::Int,
                 },
@@ -287,6 +287,7 @@ mod tests {
         let mut root = serde_json::json!({
             "core": { "skip_welcome_screen": false },
             "editor": {},
+            "workspace": { "left_sidebar": {} },
             "terminal": { "terminals": ["ghostty"] },
             "zellij": { "keybindings": { "bottom_popup": ["Alt p"] } }
         });
@@ -295,7 +296,7 @@ mod tests {
             "editor.command=nvim",
             "core.skip_welcome_screen=true",
             "core.welcome_duration_seconds=3.5",
-            "editor.sidebar_width_percent=24",
+            "workspace.left_sidebar.width_percent=24",
             "terminal.terminals=[\"wezterm\", \"kitty\"]",
             "zellij.keybindings={\"bottom_popup\":[\"Alt Shift J\"],\"config\":[]}",
         ] {
@@ -306,7 +307,7 @@ mod tests {
         assert_eq!(root["editor"]["command"], "nvim");
         assert_eq!(root["core"]["skip_welcome_screen"], true);
         assert_eq!(root["core"]["welcome_duration_seconds"], 3.5);
-        assert_eq!(root["editor"]["sidebar_width_percent"], 24);
+        assert_eq!(root["workspace"]["left_sidebar"]["width_percent"], 24);
         assert_eq!(
             root["terminal"]["terminals"],
             serde_json::json!(["wezterm", "kitty"])

@@ -4,10 +4,10 @@
 
 Accepted for the next role-placement implementation.
 
-This is a planning decision, not a live config contract. Current Yazelix still
-uses `editor.sidebar_*`, `editor.hide_sidebar_on_file_open`,
-`zellij.popup_*`, and the current keybinding maps until the implementation
-beads land.
+This is a planning decision. The live config contract keeps side-surface
+launcher settings under `workspace.left_sidebar.*` and
+`workspace.right_sidebar.*`, with `editor.hide_sidebar_on_file_open` reserved
+for editor/Yazi file-open behavior.
 
 ## Core Decision
 
@@ -230,12 +230,10 @@ semantic actions through `zellij.keybindings`.
 
 ## Compatibility Policy
 
-The role-placement implementation should replace these old settings:
-
-- `editor.sidebar_width_percent`
-- `editor.sidebar_command`
-- `editor.sidebar_args`
-- `editor.hide_sidebar_on_file_open`
+The role-placement implementation should keep side-surface launchers under
+`workspace.left_sidebar.*` and `workspace.right_sidebar.*`, while
+`editor.hide_sidebar_on_file_open` remains the editor/Yazi file-open behavior
+setting.
 - `zellij.popup_program`
 - `zellij.popup_width_percent`
 - `zellij.popup_height_percent`

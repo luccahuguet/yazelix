@@ -750,7 +750,16 @@ const SIDEBAR_REFRESH_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Workspace),
     Some("Refresh the managed Yazi sidebar file tree and status widgets."),
 );
-const SIDEBAR_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[SIDEBAR_REFRESH_COMMAND];
+const SIDEBAR_YAZI_COMMAND: YzxCommandMetadata = metadata(
+    "yzx sidebar yazi",
+    "Launch the managed Yazi sidebar",
+    YzxCommandCategory::Workspace,
+    &[],
+    Some(YzxMenuCategory::Workspace),
+    Some("Launch the managed Yazi file-tree sidebar."),
+);
+const SIDEBAR_FAMILY_COMMANDS: &[YzxCommandMetadata] =
+    &[SIDEBAR_YAZI_COMMAND, SIDEBAR_REFRESH_COMMAND];
 
 const RESTART_COMMAND: YzxCommandMetadata = metadata(
     "yzx restart",

@@ -543,20 +543,6 @@ fn build_onboard_config(
     )?;
     set_settings_field(
         &mut settings,
-        "editor",
-        "sidebar_command",
-        JsonValue::String("nu".to_string()),
-    )?;
-    set_settings_field(
-        &mut settings,
-        "editor",
-        "sidebar_args",
-        JsonValue::Array(vec![JsonValue::String(
-            "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu".to_string(),
-        )]),
-    )?;
-    set_settings_field(
-        &mut settings,
         "shell",
         "default_shell",
         JsonValue::String(answers.shell.clone()),
@@ -698,10 +684,23 @@ mod tests {
             parsed["editor"]["hide_sidebar_on_file_open"].as_bool(),
             Some(true)
         );
-        assert_eq!(parsed["editor"]["sidebar_command"].as_str(), Some("nu"));
         assert_eq!(
-            parsed["editor"]["sidebar_args"].as_array().unwrap()[0].as_str(),
-            Some("__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu")
+            parsed["workspace"]["left_sidebar"]["command"].as_str(),
+            Some("yzx")
+        );
+        assert_eq!(
+            parsed["workspace"]["left_sidebar"]["args"]
+                .as_array()
+                .unwrap()[0]
+                .as_str(),
+            Some("sidebar")
+        );
+        assert_eq!(
+            parsed["workspace"]["left_sidebar"]["args"]
+                .as_array()
+                .unwrap()[1]
+                .as_str(),
+            Some("yazi")
         );
         assert_eq!(parsed["shell"]["default_shell"].as_str(), Some("bash"));
         assert_eq!(

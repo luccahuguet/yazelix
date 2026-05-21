@@ -4,12 +4,9 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
-Right agent sidebar width polish
+No unreleased changes
 
 Upgrade impact: no user action required
-
-Highlights:
-- The managed right Codex agent sidebar now opens at `40%` width instead of `30%`, giving Codex more room for conversation, diffs, and tool output
 
 ## v16.5 - 2026-05-21
 
@@ -21,6 +18,7 @@ Highlights:
 - `settings.jsonc` is the canonical Yazelix settings file, with a complete `settings_default.jsonc` template, schema coverage, strict unknown-field diagnostics, and additive repair for missing supported fields
 - Home Manager renders complete managed `settings.jsonc` files while still letting users keep tiny declarative Yazelix settings in Nix
 - Yazelix ships a host-installed Codex agent path with a managed right sidebar and explicit directional defaults: `Alt Shift H/J/K/L` toggle the left sidebar, bottom popup, top popup, and right Codex sidebar; `Ctrl Shift Y` switches focus between editor and right sidebar
+- Sidebar launchers are configured symmetrically through `workspace.left_sidebar.*` and `workspace.right_sidebar.*`; the left sidebar defaults to `yzx sidebar yazi`, and the right Codex sidebar defaults to `40%` width
 - Generated Zellij runtime state is re-rendered and validated before launch, so stale configs, missing plugin permissions, and copied native config files are detected or repaired deterministically
 - Managed `~/.config/yazelix/zellij.kdl` is reserved for native Zellij settings that Yazelix does not render; Yazelix-owned keybindings, theme, pane frames, and rounded corners stay in `settings.jsonc`
 - The pane-orchestrator and popup wasm artifacts are consumed from locked first-party child packages instead of copied main-repo binaries

@@ -59,6 +59,7 @@ let
     "core"
     "helix"
     "editor"
+    "workspace"
     "shell"
     "terminal"
     "zellij"
@@ -238,6 +239,7 @@ let
     "core"
     "helix"
     "editor"
+    "workspace"
     "shell"
     "terminal"
     "zellij"
@@ -435,22 +437,32 @@ in
       '';
     };
 
-    sidebar_width_percent = mkMainContractOption "editor.sidebar_width_percent" {
-      description = "Width of the open sidebar as a percentage of the tab; the default sidebar is a Yazi file tree.";
+    left_sidebar_command = mkMainContractOption "workspace.left_sidebar.command" {
+      description = "Terminal command used for the managed left sidebar pane. Defaults to `yzx`.";
     };
 
-    sidebar_command = mkMainContractOption "editor.sidebar_command" {
-      description = "Terminal command used for the managed sidebar pane. Defaults to Nu running the Yazelix Yazi file-tree adapter.";
-    };
-
-    sidebar_args = mkMainContractOption "editor.sidebar_args" {
+    left_sidebar_args = mkMainContractOption "workspace.left_sidebar.args" {
       description = ''
-        Arguments passed to the managed sidebar command.
+        Arguments passed to the managed left sidebar command.
 
-        The default launches Yazelix's managed Yazi file-tree adapter with the default Nu command.
-        When sidebar_command is changed and sidebar_args remains at that default adapter
-        path, Yazelix renders the custom sidebar command with no inherited Yazi argument.
+        The default launches Yazelix's managed Yazi file-tree adapter with `yzx sidebar yazi`.
       '';
+    };
+
+    left_sidebar_width_percent = mkMainContractOption "workspace.left_sidebar.width_percent" {
+      description = "Width of the open left sidebar as a percentage of the tab.";
+    };
+
+    right_sidebar_command = mkMainContractOption "workspace.right_sidebar.command" {
+      description = "Terminal command used for the managed right sidebar pane. Defaults to host-installed Codex.";
+    };
+
+    right_sidebar_args = mkMainContractOption "workspace.right_sidebar.args" {
+      description = "Arguments passed to the managed right sidebar command.";
+    };
+
+    right_sidebar_width_percent = mkMainContractOption "workspace.right_sidebar.width_percent" {
+      description = "Width of the open right sidebar as a percentage of the tab.";
     };
 
     disable_zellij_tips = mkMainContractOption "zellij.disable_tips" {

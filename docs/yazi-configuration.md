@@ -42,7 +42,7 @@ Leave both empty to use `yazi` and `ya` from `PATH`.
 
 Use this only when Yazelix-managed Yazi launches and file-tree sidebar actions need a specific binary. Custom plugin initialization should still go in `~/.config/yazelix/yazi/init.lua`.
 
-The Zellij sidebar launcher itself is controlled by `editor.sidebar_command` and `editor.sidebar_args` in `settings.jsonc`. Leave those at their defaults unless you intentionally want the managed sidebar slot to run something other than Yazelix's Yazi file-tree adapter. Custom commands do not inherit the default Yazi adapter arg when `sidebar_args` is left unchanged.
+The Zellij left-sidebar launcher itself is controlled by `workspace.left_sidebar.command` and `workspace.left_sidebar.args` in `settings.jsonc`. Leave those at their defaults unless you intentionally want the managed left sidebar slot to run something other than Yazelix's Yazi file-tree adapter.
 
 ### Plugins
 

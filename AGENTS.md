@@ -32,7 +32,7 @@ Examples:
 
 This convention is used consistently throughout:
 - Directory names: `configs/terminal_emulators/`, `nushell/scripts/core/`
-- File names: `settings_default.jsonc`, `start_yazelix_inner.nu`, `launch_sidebar_yazi.nu`
+- File names: `settings_default.jsonc`, `start_yazelix_inner.nu`, `runtime_commands.nu`
 - Script names: All Nushell scripts use underscores
 
 When creating new files or directories, always use underscores to maintain consistency with the existing codebase.

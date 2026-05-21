@@ -28,7 +28,7 @@ fn replaces_scalar_without_dropping_comments() {
     "debug_mode": false
   },
   "editor": {
-    "sidebar_width_percent": 20
+    "command": "hx"
   }
 }
 "#;
@@ -54,8 +54,8 @@ fn replaces_scalar_without_dropping_comments() {
 fn inserts_absent_field_in_existing_section() {
     let raw = r#"{
   "editor": {
-    // Width stays documented
-    "sidebar_width_percent": 20
+    // Editor command stays documented
+    "command": "hx"
   }
 }
 "#;
@@ -69,7 +69,7 @@ fn inserts_absent_field_in_existing_section() {
     .expect("patch");
 
     assert_eq!(outcome.mutation, SettingsJsoncPatchMutation::Inserted);
-    assert!(outcome.text.contains("// Width stays documented"));
+    assert!(outcome.text.contains("// Editor command stays documented"));
     assert!(
         outcome
             .text

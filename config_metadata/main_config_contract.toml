@@ -11,7 +11,7 @@
 [contract]
 version = 1
 surface = "main"
-field_count = 45
+field_count = 48
 artifact_role = "canonical_machine_metadata"
 default_template = "settings_default.jsonc"
 home_manager_module = "home_manager/module.nix"
@@ -127,11 +127,32 @@ parser_behavior = "direct"
 rebuild_required = false
 apply_mode = "tab_session_restart"
 
-[fields."editor.sidebar_width_percent"]
+[fields."workspace.left_sidebar.command"]
+kind = "string"
+default = "yzx"
+parser_key = "left_sidebar_command"
+home_manager_option = "left_sidebar_command"
+parser_behavior = "direct"
+rebuild_required = false
+apply_mode = "tab_session_restart"
+
+[fields."workspace.left_sidebar.args"]
+kind = "string_list"
+default = [
+  "sidebar",
+  "yazi",
+]
+parser_key = "left_sidebar_args"
+home_manager_option = "left_sidebar_args"
+parser_behavior = "direct"
+rebuild_required = false
+apply_mode = "tab_session_restart"
+
+[fields."workspace.left_sidebar.width_percent"]
 kind = "int"
 default = 20
-parser_key = "sidebar_width_percent"
-home_manager_option = "sidebar_width_percent"
+parser_key = "left_sidebar_width_percent"
+home_manager_option = "left_sidebar_width_percent"
 parser_behavior = "direct"
 validation = "int_range"
 min = 10
@@ -139,23 +160,33 @@ max = 40
 rebuild_required = false
 apply_mode = "tab_session_restart"
 
-[fields."editor.sidebar_command"]
+[fields."workspace.right_sidebar.command"]
 kind = "string"
-default = "nu"
-parser_key = "sidebar_command"
-home_manager_option = "sidebar_command"
+default = "codex"
+parser_key = "right_sidebar_command"
+home_manager_option = "right_sidebar_command"
 parser_behavior = "direct"
 rebuild_required = false
 apply_mode = "tab_session_restart"
 
-[fields."editor.sidebar_args"]
+[fields."workspace.right_sidebar.args"]
 kind = "string_list"
-default = [
-  "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu",
-]
-parser_key = "sidebar_args"
-home_manager_option = "sidebar_args"
+default = []
+parser_key = "right_sidebar_args"
+home_manager_option = "right_sidebar_args"
 parser_behavior = "direct"
+rebuild_required = false
+apply_mode = "tab_session_restart"
+
+[fields."workspace.right_sidebar.width_percent"]
+kind = "int"
+default = 40
+parser_key = "right_sidebar_width_percent"
+home_manager_option = "right_sidebar_width_percent"
+parser_behavior = "direct"
+validation = "int_range"
+min = 10
+max = 40
 rebuild_required = false
 apply_mode = "tab_session_restart"
 

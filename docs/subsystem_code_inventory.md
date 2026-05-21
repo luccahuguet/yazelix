@@ -31,7 +31,6 @@ nushell/scripts/utils/runtime_defaults.nu
 nushell/scripts/utils/runtime_paths.nu
 nushell/scripts/utils/yzx_core_bridge.nu
 nushell/scripts/yzx/menu.nu
-nushell/scripts/zellij_wrappers/launch_sidebar_yazi.nu
 ```
 
 The old broad product-side Nushell owner set is gone. Root help, command
@@ -55,7 +54,6 @@ Rust-owned or outside the remaining Nushell floor.
 | `nushell/scripts/utils/runtime_paths.nu` | Retain | Shell/env path resolution for remaining Nushell entrypoints |
 | `nushell/scripts/utils/yzx_core_bridge.nu` | Retain, keep narrow | Shared Rust-helper path resolution, JSON envelope execution, and helper-error rendering stay here until Rust owns the human error renderer; dead Zellij wrappers and caller-owned error-surface overrides are gone |
 | `nushell/scripts/yzx/menu.nu` | Retain | The command palette is the honest `fzf`/interactive menu boundary over Rust-owned command metadata |
-| `nushell/scripts/zellij_wrappers/launch_sidebar_yazi.nu` | Retain | Thin process wrapper for launching the managed Yazi sidebar at the Zellij boundary |
 
 ## Resolved Follow-Up Decisions
 

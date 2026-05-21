@@ -6,6 +6,7 @@ use crate::pane_orchestrator_client::run_pane_orchestrator_command;
 use crate::workspace_session::{SidebarState, parse_active_sidebar_state};
 use serde_json::json;
 use std::env;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -94,6 +95,7 @@ pub fn run_yzx_sidebar(args: &[String]) -> Result<i32, CoreError> {
     }
 
     match parsed.action.as_deref() {
+        Some("yazi") => launch_yazi_sidebar(),
         Some("refresh") => {
             refresh_managed_yazi_sidebar()?;
             Ok(0)
@@ -102,13 +104,76 @@ pub fn run_yzx_sidebar(args: &[String]) -> Result<i32, CoreError> {
             ErrorClass::Usage,
             "unknown_sidebar_action",
             format!("Unknown yzx sidebar action: {action}."),
-            "Use `yzx sidebar refresh`.",
+            "Use `yzx sidebar yazi` or `yzx sidebar refresh`.",
             json!({ "action": action }),
         )),
         None => {
             print_sidebar_help();
             Ok(0)
         }
+    }
+}
+
+fn launch_yazi_sidebar() -> Result<i32, CoreError> {
+    let config = load_workspace_command_config()?;
+    if !command_is_available(&config.yazi_command, &config.home_dir) {
+        return Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "missing_yazi_sidebar_command",
+            format!(
+                "The configured Yazi command `{}` is not available in this environment.",
+                config.yazi_command
+            ),
+            "Install Yazi, fix yazi.command in settings.jsonc, or restart Yazelix so the runtime PATH is active.",
+            json!({ "command": config.yazi_command }),
+        ));
+    }
+
+    let target_dir = consume_bootstrap_sidebar_cwd(&config.home_dir)
+        .or_else(|| env::current_dir().ok())
+        .unwrap_or_else(|| config.home_dir.clone());
+    let command_path = resolve_command_path(&config.yazi_command, &config.home_dir);
+    let status = Command::new(&command_path)
+        .arg(target_dir)
+        .status()
+        .map_err(|source| {
+            CoreError::io(
+                "launch_yazi_sidebar",
+                "Could not launch the configured Yazi sidebar command",
+                "Check yazi.command and the Yazelix runtime PATH, then retry.",
+                command_path,
+                source,
+            )
+        })?;
+    Ok(status.code().unwrap_or(1))
+}
+
+fn consume_bootstrap_sidebar_cwd(home_dir: &Path) -> Option<PathBuf> {
+    let cwd_file = env::var("YAZELIX_BOOTSTRAP_SIDEBAR_CWD_FILE")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())?;
+    let cwd_file = PathBuf::from(cwd_file);
+    if !cwd_file.is_file() {
+        return None;
+    }
+
+    let requested = fs::read_to_string(&cwd_file).ok()?;
+    let _ = fs::remove_file(&cwd_file);
+    let requested = requested.trim();
+    if requested.is_empty() {
+        return None;
+    }
+
+    let expanded = expand_leading_tilde(requested, home_dir);
+    let path = PathBuf::from(expanded);
+    if !path.exists() {
+        return None;
+    }
+    if path.is_dir() {
+        Some(path)
+    } else {
+        path.parent().map(Path::to_path_buf)
     }
 }
 
@@ -211,7 +276,7 @@ fn parse_sidebar_args(args: &[String]) -> Result<SidebarArgs, CoreError> {
                     ErrorClass::Usage,
                     "unknown_sidebar_argument",
                     format!("Unknown argument for yzx sidebar: {other}."),
-                    "Use `yzx sidebar refresh`.",
+                    "Use `yzx sidebar yazi` or `yzx sidebar refresh`.",
                     json!({ "argument": other }),
                 ));
             }
@@ -224,6 +289,7 @@ fn print_sidebar_help() {
     println!("Manage the Yazelix sidebar");
     println!();
     println!("Usage:");
+    println!("  yzx sidebar yazi");
     println!("  yzx sidebar refresh");
 }
 
