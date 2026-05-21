@@ -4,6 +4,15 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
+Post-v16.5 work in progress
+
+Upgrade impact: no user action required
+
+Highlights:
+- Reserved for post-release changes after v16.5 lands.
+
+## v16.5 - 2026-05-21
+
 Managed JSONC settings, Codex sidebars, and strict Zellij ownership
 
 Upgrade impact: no user action required
@@ -15,6 +24,7 @@ Highlights:
 - Generated Zellij runtime state is re-rendered and validated before launch, so stale configs, missing plugin permissions, and copied native config files are detected or repaired deterministically
 - Managed `~/.config/yazelix/zellij.kdl` is reserved for native Zellij settings that Yazelix does not render; Yazelix-owned keybindings, theme, pane frames, and rounded corners stay in `settings.jsonc`
 - The pane-orchestrator and popup wasm artifacts are consumed from locked first-party child packages instead of copied main-repo binaries
+
 
 ## v16.4 - 2026-05-09
 

@@ -1,10 +1,10 @@
 [releases.unreleased]
-acknowledged_guarded_changes = ["settings_default.jsonc"]
+acknowledged_guarded_changes = []
 date = ""
-headline = "Managed JSONC settings, Codex sidebars, and strict Zellij ownership"
+headline = "Post-v16.5 work in progress"
 manual_actions = []
 migration_ids = []
-summary = ["settings.jsonc is the canonical Yazelix settings file, with a complete settings_default.jsonc template, schema coverage, strict unknown-field diagnostics, and additive repair for missing supported fields.", "Home Manager renders complete managed settings.jsonc files while still letting users keep tiny declarative Yazelix settings in Nix.", "Yazelix ships a host-installed Codex agent path with a managed right sidebar, directional sidebar/popup keybindings, top and bottom popup defaults, and editor/right-agent focus switching.", "Generated Zellij runtime state is re-rendered and validated before launch, so stale configs, missing plugin permissions, and copied native config files are detected or repaired deterministically.", "Managed ~/.config/yazelix/zellij.kdl is reserved for native Zellij settings that Yazelix does not render; Yazelix-owned keybindings, theme, pane frames, and rounded corners stay in settings.jsonc.", "The pane-orchestrator and popup wasm artifacts are consumed from locked first-party child packages instead of copied main-repo binaries."]
+summary = ["Reserved for post-release changes after v16.5 lands."]
 upgrade_impact = "no_user_action"
 version = "unreleased"
 
@@ -377,6 +377,16 @@ migration_ids = []
 summary = ["yazelix-zellij-bar owns more of its standalone widget surface so non-Yazelix Zellij users can run the bar with its bundled fact, cursor, and usage widget helpers.", "The Ghostty cursor package is consistently named yazelix-ghostty-cursors, while Yazelix continues to expose the yzc, yazelix_ghostty_cursors, and ghostty_cursor_shaders package outputs.", "yzx config ui presents zellij.keybindings and yazi.keybindings as structured action rows instead of forcing one-line JSON object edits.", "Complex config arrays and objects without a dedicated structured editor no longer open unreadable raw JSON edit buffers.", "Desktop launches after a Home Manager or flake runtime update refresh terminal configs before opening the managed terminal, so the first launch does not depend on stale generated files.", "The Rust inventory describes the current code ownership shape and future extraction opportunities without bead-specific or legacy implementation notes."]
 upgrade_impact = "no_user_action"
 version = "v16.4"
+
+[releases."v16.5"]
+acknowledged_guarded_changes = ["settings_default.jsonc"]
+date = "2026-05-21"
+headline = "Managed JSONC settings, Codex sidebars, and strict Zellij ownership"
+manual_actions = []
+migration_ids = []
+summary = ["settings.jsonc is the canonical Yazelix settings file, with a complete settings_default.jsonc template, schema coverage, strict unknown-field diagnostics, and additive repair for missing supported fields.", "Home Manager renders complete managed settings.jsonc files while still letting users keep tiny declarative Yazelix settings in Nix.", "Yazelix ships a host-installed Codex agent path with a managed right sidebar, directional sidebar/popup keybindings, top and bottom popup defaults, and editor/right-agent focus switching.", "Generated Zellij runtime state is re-rendered and validated before launch, so stale configs, missing plugin permissions, and copied native config files are detected or repaired deterministically.", "Managed ~/.config/yazelix/zellij.kdl is reserved for native Zellij settings that Yazelix does not render; Yazelix-owned keybindings, theme, pane frames, and rounded corners stay in settings.jsonc.", "The pane-orchestrator and popup wasm artifacts are consumed from locked first-party child packages instead of copied main-repo binaries."]
+upgrade_impact = "no_user_action"
+version = "v16.5"
 
 [series.v13]
 headline = "Plugin-managed workspaces, migration-aware upgrades, richer front-door UX, and the full devenv-era integration push."
