@@ -57,7 +57,7 @@ const WIDGET_TRAY_ALLOWED: &[&str] = &[
     "cpu",
     "ram",
 ];
-const DEFAULT_AGENT_WIDTH_PERCENT: i64 = 30;
+const DEFAULT_AGENT_WIDTH_PERCENT: i64 = 40;
 const SCREEN_SAVER_STYLE_ALLOWED: &[&str] = &[
     "logo",
     "boids",
@@ -664,12 +664,12 @@ mod tests {
     fn layout_percentages_match_legacy_nushell() {
         let p = compute_layout_percentages(20);
         assert_eq!(p.sidebar_width_percent, "20%");
-        assert_eq!(p.agent_width_percent, "30%");
+        assert_eq!(p.agent_width_percent, "40%");
         assert_eq!(p.open_content_width_percent, "80%");
         assert_eq!(p.closed_content_width_percent, "99%");
-        assert_eq!(p.open_agent_open_content_width_percent, "50%");
+        assert_eq!(p.open_agent_open_content_width_percent, "40%");
         assert_eq!(p.open_agent_closed_content_width_percent, "79%");
-        assert_eq!(p.closed_agent_open_content_width_percent, "69%");
+        assert_eq!(p.closed_agent_open_content_width_percent, "59%");
         assert_eq!(p.closed_agent_closed_content_width_percent, "98%");
     }
 

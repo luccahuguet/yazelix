@@ -4,12 +4,12 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
-Post-v16.5 work in progress
+Right agent sidebar width polish
 
 Upgrade impact: no user action required
 
 Highlights:
-- Reserved for post-release changes after v16.5 lands.
+- The managed right Codex agent sidebar now opens at `40%` width instead of `30%`, giving Codex more room for conversation, diffs, and tool output
 
 ## v16.5 - 2026-05-21
 

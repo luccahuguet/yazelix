@@ -1,10 +1,10 @@
 [releases.unreleased]
 acknowledged_guarded_changes = []
 date = ""
-headline = "Post-v16.5 work in progress"
+headline = "Right agent sidebar width polish"
 manual_actions = []
 migration_ids = []
-summary = ["Reserved for post-release changes after v16.5 lands."]
+summary = ["The managed right Codex agent sidebar now opens at 40% width instead of 30%, giving Codex more room for conversation, diffs, and tool output."]
 upgrade_impact = "no_user_action"
 version = "unreleased"
 
