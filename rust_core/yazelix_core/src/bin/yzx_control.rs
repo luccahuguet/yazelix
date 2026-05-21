@@ -35,6 +35,7 @@ use yazelix_core::run_profile_print_report;
 use yazelix_core::run_profile_record_step;
 use yazelix_core::run_profile_save_baseline;
 use yazelix_core::run_profile_wait_step;
+use yazelix_core::run_yzx_agent;
 use yazelix_core::run_yzx_config;
 use yazelix_core::run_yzx_cursors;
 use yazelix_core::run_yzx_cwd;
@@ -1586,6 +1587,7 @@ fn main() {
                 run_run(&argv)
             }
         }
+        "agent" => run_yzx_agent(&argv),
         "config" => run_yzx_config(&argv),
         "cursors" => run_yzx_cursors(&argv),
         "cwd" => run_yzx_cwd(&argv),

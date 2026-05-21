@@ -13,6 +13,7 @@ Yazelix uses **selective remapping** - only conflicting Zellij keybindings are c
 | Alt+Shift+H              | Move tab left                 |
 | Alt+Shift+L              | Move tab right                |
 | Alt+Shift+F              | Toggle pane fullscreen        |
+| Alt+Shift+A              | Open Codex agent pane on the right |
 | Alt+t                    | Toggle the configured popup program |
 
 ### Zellij Modes (Helix-Compatible)
@@ -50,6 +51,7 @@ If you find a conflict, please open an issue
 ## Yazelix Custom Keybindings
 - **Zellij**:
   - `Alt+Shift+F` toggles pane fullscreen
+  - `Alt+Shift+A` opens host-installed Codex in a right-side agent pane
   - `Alt+t` toggles the configured managed popup program (defaults to `lazygit`)
   - `Alt+Shift+H` moves the current tab left
   - `Alt+Shift+L` moves the current tab right
@@ -77,7 +79,7 @@ Use semantic remaps for Yazelix-owned actions and native sidecars for the owning
 
 `zellij.keybindings` accepts owner-local action ids such as `popup`, `menu`, `toggle_sidebar`, and `open_workspace_terminal`. Shared diagnostics and docs use scoped ids such as `zellij.popup`. Omitted actions keep defaults, and `[]` disables a Yazelix-owned binding. Yazelix rejects duplicate semantic Zellij keys before launch.
 
-`zellij.native_keybindings` accepts curated native policy ids such as `scroll_mode`, `scroll_mode_unbind`, `move_tab_left`, and `move_tab_left_unbind`. These are Yazelix's shipped conflict-remap defaults for native Zellij commands. Omitted entries keep defaults, and `[]` disables one native policy entry. Arbitrary native Zellij actions still belong in `~/.config/yazelix/zellij.kdl`.
+`zellij.native_keybindings` accepts curated native policy ids such as `scroll_mode`, `scroll_mode_unbind`, `move_tab_left`, `move_tab_left_unbind`, and `open_codex_agent_right`. These are Yazelix's shipped conflict-remap and validation defaults for native Zellij commands. Omitted entries keep defaults, and `[]` disables one native policy entry. Arbitrary native Zellij actions still belong in `~/.config/yazelix/zellij.kdl`.
 
 `yazi.keybindings` accepts owner-local action ids such as `open_directory_as_workspace_pane` and `open_zoxide_in_editor`. Values are alternate generated Yazi bindings such as `<A-p>` and `<A-z>`. Omitted actions keep defaults, and `[]` disables that generated Yazelix-owned Yazi integration binding. Native open-selected keys such as `<Enter>` and `o` remain in `~/.config/yazelix/yazi/keymap.toml`; arbitrary Yazi actions and native multi-key sequences also belong there.
 

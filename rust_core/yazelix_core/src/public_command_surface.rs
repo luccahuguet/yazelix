@@ -145,6 +145,16 @@ const ROOT_COMMAND: YzxCommandMetadata = metadata(
     None,
 );
 
+const AGENT_COMMAND: YzxCommandMetadata = metadata(
+    "yzx agent",
+    "Open the hardcoded Codex agent command",
+    YzxCommandCategory::Workspace,
+    &[],
+    Some(YzxMenuCategory::Workspace),
+    Some("Launch host-installed Codex for the right-side agent pane validation slice."),
+);
+const AGENT_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[AGENT_COMMAND];
+
 const ENV_COMMAND: YzxCommandMetadata = metadata(
     "yzx env",
     "Load the Yazelix environment without UI",
@@ -510,6 +520,7 @@ const ONBOARD_COMMAND: YzxCommandMetadata = metadata(
 const ONBOARD_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[ONBOARD_COMMAND];
 
 const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
+    rust_control_family("agent", AGENT_FAMILY_COMMANDS),
     rust_control_family("config", CONFIG_FAMILY_COMMANDS),
     rust_control_family("cursors", CURSORS_FAMILY_COMMANDS),
     rust_control_family("desktop", DESKTOP_FAMILY_COMMANDS),
@@ -911,6 +922,10 @@ mod tests {
         );
         assert_eq!(
             classify_yzx_root_route(&["run".into(), "rg".into()]).unwrap(),
+            YzxPublicRootRoute::RustControl
+        );
+        assert_eq!(
+            classify_yzx_root_route(&["agent".into()]).unwrap(),
             YzxPublicRootRoute::RustControl
         );
         assert_eq!(

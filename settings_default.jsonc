@@ -125,6 +125,9 @@
       "toggle_focus_fullscreen": [
         "Alt Shift F"
       ],
+      "open_codex_agent_right": [
+        "Alt Shift A"
+      ],
       "previous_tab": [
         "Alt q"
       ],

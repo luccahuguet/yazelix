@@ -497,6 +497,16 @@ pub const ZELLIJ_NATIVE_KEYBINDINGS: &[ZellijNativeKeybindingSpec] = &[
         }],
     ),
     zellij_native_action(
+        "open_codex_agent_right",
+        "Open host-installed Codex in a right-side agent pane",
+        &["Alt Shift A"],
+        "Run \"yzx\" \"agent\" { direction \"right\" }",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared_except \"locked\"",
+            action_lines: &["Run \"yzx\" \"agent\" {\n    direction \"right\"\n}"],
+        }],
+    ),
+    zellij_native_action(
         "previous_tab",
         "Go to previous tab",
         &["Alt q"],

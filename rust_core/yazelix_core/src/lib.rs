@@ -1,5 +1,6 @@
 pub mod action_registry;
 pub mod active_config_surface;
+pub mod agent_commands;
 pub(crate) mod atomic_fs;
 pub mod bridge;
 pub mod cli_render;
@@ -74,6 +75,7 @@ pub use action_registry::{
     ZellijNativeKeybindingSpec, all_yazelix_actions, yazi_action_by_local_id,
     zellij_action_by_local_id, zellij_native_keybinding_by_local_id,
 };
+pub use agent_commands::run_yzx_agent;
 pub use bridge::{CoreError, ErrorClass, error_envelope, success_envelope};
 pub use command_metadata::{
     YzxCommandMetadataData, YzxExternBridgeSyncData, YzxExternBridgeSyncRequest,

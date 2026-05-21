@@ -84,6 +84,12 @@ Run a single command in the Yazelix environment and exit
 - Dash-prefixed child args do not need special quoting just to avoid Yazelix flag parsing
 - If you want shell parsing, call the shell explicitly, for example: `yzx run bash -lc "lazygit"`
 
+### `yzx agent`
+Launch host-installed Codex
+- Used by the `Alt+Shift+A` right-side agent pane binding
+- Fails clearly when `codex` is missing from `PATH`
+- Does not bundle Codex or fall back to another agent
+
 ### `yzx reveal PATH`
 Reveal a file or directory in the managed Yazi file-tree sidebar
 - Targets the managed sidebar in the current Zellij tab

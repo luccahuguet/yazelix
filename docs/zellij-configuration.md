@@ -142,7 +142,7 @@ For Yazelix-owned Zellij action remaps, prefer `settings.jsonc` semantic keys in
 
 Supported owner-local action ids are `open_workspace_terminal`, `popup`, `menu`, `config`, `move_focus_left_or_tab`, `move_focus_right_or_tab`, `toggle_editor_sidebar_focus`, `toggle_sidebar`, `smart_reveal`, `previous_family`, and `next_family`. `yzx keys` shows the matching scoped ids, such as `zellij.popup`. Omitted actions keep their defaults. Set an action to `[]` to disable Yazelix's generated binding for that action. Yazelix rejects duplicate keys across this semantic map before launch.
 
-For Yazelix's curated native Zellij key policy, use `zellij.native_keybindings` in `settings.jsonc`. This covers shipped remaps such as `scroll_mode` / `scroll_mode_unbind`, `session_mode` / `session_mode_unbind`, tab movement, tab jumps, and pane grouping. Omitted entries keep defaults; set an entry to `[]` to disable that one bind or unbind.
+For Yazelix's curated native Zellij key policy, use `zellij.native_keybindings` in `settings.jsonc`. This covers shipped remaps such as `scroll_mode` / `scroll_mode_unbind`, `session_mode` / `session_mode_unbind`, tab movement, tab jumps, pane grouping, and the hardcoded Codex right-pane validation binding. Omitted entries keep defaults; set an entry to `[]` to disable that one bind or unbind.
 
 For full native Zellij keybinding ownership inside Yazelix, use `keybinds clear-defaults=true` in the explicit Yazelix-managed sidecar `~/.config/yazelix/zellij.kdl`:
 ```kdl

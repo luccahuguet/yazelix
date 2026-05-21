@@ -1224,6 +1224,14 @@ fn push_native_zellij_block_lines(
     };
     if block.action_lines.is_empty() {
         lines.push(format!("        unbind {key_list}"));
+    } else if block.action_lines.iter().any(|line| line.contains('\n')) {
+        lines.push(format!("        bind {key_list} {{"));
+        for action_line in block.action_lines {
+            for line in action_line.lines() {
+                lines.push(format!("            {line}"));
+            }
+        }
+        lines.push("        }".to_string());
     } else {
         lines.push(format!(
             "        bind {key_list} {{ {}; }}",
@@ -2650,6 +2658,13 @@ keybinds {
         assert!(rendered.contains(r#"unbind "Alt p""#));
         assert!(rendered.contains(r#"bind "Ctrl Alt p" { TogglePaneInGroup; }"#));
         assert!(rendered.contains(r#"bind "Alt 1" { GoToTab 1; }"#));
+        assert!(rendered.contains(
+            r#"bind "Alt Shift A" {
+            Run "yzx" "agent" {
+                direction "right"
+            }
+        }"#
+        ));
         assert!(rendered.contains(r#"bind "Ctrl Alt s" { SwitchToMode "Scroll"; }"#));
         assert!(rendered.contains(r#"bind "Ctrl Alt s" { SwitchToMode "Normal"; }"#));
         assert!(rendered.contains(r#"unbind "Ctrl b""#));
