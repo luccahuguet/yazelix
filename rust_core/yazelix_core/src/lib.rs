@@ -36,6 +36,7 @@ pub mod managed_user_config_stubs;
 pub mod native_config_status;
 pub mod onboard_commands;
 pub mod pane_orchestrator_client;
+pub(crate) mod popup_runtime_command;
 pub mod popup_session_facts;
 pub mod profile_commands;
 pub mod public_command_surface;

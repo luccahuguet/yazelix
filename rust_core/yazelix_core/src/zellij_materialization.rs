@@ -5,6 +5,7 @@ use crate::action_registry::{
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::control_plane::{config_dir_from_env, home_dir_from_env, state_dir_from_env};
+use crate::popup_runtime_command::popup_command_argv_for_yazelix_runtime;
 use crate::runtime_component_enabled;
 use crate::user_config_paths;
 use crate::zellij_render_plan::{
@@ -882,7 +883,7 @@ fn render_yzpp_plugin_block(
         &mut lines,
         "popup",
         "yzx_popup",
-        None,
+        Some("yzx_popup"),
         &popup_program,
         popup_width_percent,
         popup_height_percent,
@@ -946,11 +947,7 @@ fn generated_popup_command(
 }
 
 fn resolve_generated_popup_argv(command: &[String], yzx_cli: &str) -> Vec<String> {
-    let mut resolved = command.to_vec();
-    if resolved.first().map(String::as_str) == Some("yzx") {
-        resolved[0] = yzx_cli.to_string();
-    }
-    resolved
+    popup_command_argv_for_yazelix_runtime(command, yzx_cli)
 }
 
 fn append_generated_popup_spec(
@@ -3241,7 +3238,7 @@ keybinds {
         assert_eq!(popup_commands[MENU_POPUP_COMMAND_KEY], vec!["yzx", "menu"]);
     }
 
-    // Regression: generated popup specs must route bundled `yzx` commands through the runtime wrapper instead of relying on host PATH.
+    // Regression: generated popup specs must route external tools through `yzx run` so they inherit the canonical EDITOR/VISUAL runtime env.
     #[test]
     fn yzpp_popup_specs_use_distinct_popup_commands() {
         let block = render_yzpp_plugin_block(
@@ -3255,16 +3252,18 @@ keybinds {
         .join("\n");
 
         assert!(block.contains("bottom_popup {"));
-        assert!(block.contains("command \"lazygit\""));
-        assert!(block.contains("top_popup {"));
         assert!(block.contains("command \"/opt/yazelix/shells/posix/yzx_cli.sh\""));
+        assert!(block.contains("arg_1 \"run\""));
+        assert!(block.contains("arg_2 \"lazygit\""));
+        assert!(block.contains("top_popup {"));
         assert!(block.contains("arg_1 \"config\""));
         assert!(block.contains("arg_2 \"ui\""));
         assert!(block.contains("menu {"));
         assert!(block.contains("arg_1 \"menu\""));
         assert!(!block.contains("arg_2 \"--pane\""));
         assert!(block.contains("popup {"));
-        assert!(block.contains("command \"gitui\""));
+        assert!(block.contains("arg_2 \"gitui\""));
+        assert!(block.contains("command_marker \"yzx_popup\""));
     }
 
     // Regression: generated plugin config must carry the pane-orchestrator runtime contract and yzpp popup contract without duplicate alias injection.
@@ -3306,7 +3305,8 @@ keybinds {
         assert!(block.contains("top_popup {"));
         assert!(block.contains("pane_title \"yzx_top_popup\""));
         assert!(block.contains("command_marker \"yzx_top_popup\""));
-        assert!(block.contains("command \"lazygit\""));
+        assert!(block.contains("arg_1 \"run\""));
+        assert!(block.contains("arg_2 \"lazygit\""));
         assert!(block.contains("width_percent \"82\""));
         assert!(block.contains("height_percent \"76\""));
         assert!(block.contains("on_close {"));

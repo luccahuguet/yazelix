@@ -230,7 +230,7 @@ fn yzx_control_popup_without_override_uses_yzpp_toggle_contract() {
     );
 }
 
-// Defends: explicit yzx popup program requests use yzpp directly and attach the sidebar refresh close hook.
+// Defends: explicit yzx popup program requests run through the Yazelix runtime wrapper and attach the sidebar refresh close hook.
 // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 #[test]
 fn yzx_control_popup_program_opens_through_yzpp_raw_request() {
@@ -275,7 +275,11 @@ ghostty_trail_color = "random"
     assert!(zellij_log.contains("action pipe --plugin yzpp --name transient_popup"));
     assert!(zellij_log.contains(r#""action":"open""#));
     assert!(zellij_log.contains(r#""pane_title":"yzx_popup""#));
-    assert!(zellij_log.contains(r#""command":["popup-probe","hello"]"#));
+    assert!(zellij_log.contains(&format!(
+        r#""command":["{}","run","popup-probe","hello"]"#,
+        yzx_cli
+    )));
+    assert!(zellij_log.contains(r#""command_marker":"popup-probe""#));
     assert!(zellij_log.contains(&yzx_cli));
     assert!(zellij_log.contains(r#""sidebar","refresh""#));
 }

@@ -5,6 +5,7 @@ use crate::control_plane::runtime_dir_from_env;
 use crate::pane_orchestrator_client::{
     YZPP_PLUGIN_ALIAS, run_pane_orchestrator_command, run_zellij_plugin_command,
 };
+use crate::popup_runtime_command::popup_command_argv_for_yazelix_runtime;
 use crate::popup_session_facts::compute_popup_session_facts_from_env;
 use crate::workspace_session::current_tab_workspace_root_from_json;
 use serde_json::{Value, json};
@@ -60,20 +61,23 @@ pub fn run_yzx_popup(args: &[String]) -> Result<i32, CoreError> {
             .to_string()
     });
     let yzx_cli = runtime_dir.join("shells").join("posix").join("yzx_cli.sh");
+    let yzx_cli_text = yzx_cli.to_string_lossy().to_string();
+    let command_marker = popup_program[0].clone();
+    let popup_command = popup_command_argv_for_yazelix_runtime(&popup_program, &yzx_cli_text);
 
     let payload = json!({
         "action": "open",
         "spec": {
             "id": "popup",
             "pane_title": "yzx_popup",
-            "command_marker": popup_program[0],
-            "command": popup_program,
+            "command_marker": command_marker,
+            "command": popup_command,
             "cwd": popup_cwd,
             "width_percent": popup_facts.popup_width_percent,
             "height_percent": popup_facts.popup_height_percent,
             "on_close": {
                 "command": [
-                    yzx_cli.to_string_lossy().to_string(),
+                    yzx_cli_text,
                     "sidebar",
                     "refresh"
                 ]
