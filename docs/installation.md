@@ -159,7 +159,7 @@ Host prerequisite contract:
 - **Host prerequisite**: Nix with flakes enabled
 - **Package-provided**: the Yazelix runtime, including runtime-local `nu`, `zellij`, `yazi`, `helix`, shells, a curated interactive tool surface, and the internal helper closure behind the runtime root
 - **Not package-provided**: a separate host Nushell install for your everyday shell outside Yazelix, or PATH-provided alternative terminals outside the selected Ghostty/WezTerm runtime variant
-- **Nushell version ownership**: Yazelix uses the Nushell packaged by the locked `nixpkgs` input for the runtime and bootstrap path. The maintainer update workflow records that as `PINNED_NUSHELL_VERSION`; it does not chase a newer upstream Nushell release until Nixpkgs packages it.
+- **Nushell version ownership**: Yazelix uses the Nushell packaged by the locked `nixpkgs-unstable` input for the runtime and bootstrap path. The maintainer update workflow records that as `PINNED_NUSHELL_VERSION`; it does not chase a newer upstream Nushell release until Nixpkgs packages it.
 
 ### Step 3: Configure Your Installation (Optional)
 
