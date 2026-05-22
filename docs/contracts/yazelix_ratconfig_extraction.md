@@ -2,159 +2,126 @@
 
 ## Summary
 
-`yazelix_ratconfig` is the selected future name for a reusable Ratatui config editor toolkit proven first inside Yazelix.
+`yazelix-ratconfig` is a first-party Rust child repository for reusable Ratatui config editing.
 
-The extraction is not ready for a standalone repository or public crate yet. The current correct step is an internal boundary split that separates reusable config-editing concepts from Yazelix-specific ownership, materialization, and apply policy.
+The child repo owns the project-agnostic config UI core: model, navigation, edit state, rendering, JSONC patch primitives, and deterministic migration primitives. Yazelix remains the first consumer and keeps only the adapter code that knows about Yazelix settings, Home Manager ownership, runtime refreshes, and generated config behavior.
 
-Alternatives considered:
+JSONC is the first supported persistence adapter because `settings.jsonc` is Yazelix's canonical user config format. A TOML adapter is a future decision, not part of the initial extraction contract.
 
-- `yazelix_config_ui`: accurate for the current product surface, but too tied to Yazelix as an application instead of a reusable Ratatui toolkit
-- `ratconfig`: concise and generic, but too likely to conflict with unrelated projects and less clearly connected to the Yazelix extraction family
-- keeping the config UI internal indefinitely: acceptable as a fallback, but it leaves a large reusable Ratatui/schema editing surface trapped in `yazelix_core`
+## Extraction State
 
-## Readiness Decision
+The extraction state is `active_extraction`.
 
-The extraction readiness state is `private_boundary_active`.
+The in-repo `rust_core/yazelix_core/src/yazelix_ratconfig/` namespace is the staging area. If the staging code is not ready to move, Yazelix refactors it until it is ready; readiness is not a reason to defer the extraction goal.
 
-Yazelix should not publish `yazelix_ratconfig` yet. The in-repo private boundary now lives under `rust_core/yazelix_core/src/yazelix_ratconfig/` and owns the reusable model, editor, and render modules. `rust_core/yazelix_core/src/config_ui.rs` remains the Yazelix adapter.
+The extraction is complete only when:
 
-The private boundary currently covers:
+- a separate `yazelix-ratconfig` repository exists
+- the reusable code and tests live in that repository
+- Yazelix consumes the child repo through the normal dependency path
+- the main repo deletes moved implementation code instead of carrying a duplicate copy
+- focused tests pass in both repositories
 
-- schema-backed field inventory and grouping
-- editor state and actions
-- terminal rendering
-- reusable validation-facing diagnostics
-- apply-status display data
-- native/config integration status as plain display data supplied by the Yazelix adapter
+## Child Repo Ownership
 
-The Yazelix adapter still covers:
+The child repo owns reusable behavior that another project can use without importing Yazelix:
 
-- persistence and patch application
-- ownership and apply-status adaptation
-- settings/schema/contract loading
-- Home Manager and native config status
-- generated runtime refreshes
-- runtime/config path request handling
+- config document and field model
+- tabs, rows, search, selection, and edit state
+- bool toggle, scalar text/number parsing, single-select, and multiselect controls
+- generic detail/list rendering
+- project-supplied display rows and diagnostics
+- JSONC set/unset/rename/delete/add-default patch primitives
+- deterministic migration operation semantics
+- project-agnostic errors that adapters can map into application-specific errors
+- examples and tests that do not mention Yazelix paths or actions
 
-The current `rust_core/yazelix_core/src/config_ui.rs` surface is product-useful, but it is still too coupled to Yazelix settings, Home Manager read-only behavior, JSONC save semantics, generated runtime refreshes, and status wording. Publishing that shape would fossilize a Yazelix adapter as if it were a reusable toolkit API.
+The child repo must not own:
 
-## Crate Shape
-
-The first implementation shape should remain inside the Yazelix repository.
-
-The current focused modules under `yazelix_core/src/yazelix_ratconfig/` can still change without release promises:
-
-- field and section model
-- editor action model
-- renderer helpers
-- validation diagnostic model
-- generic native/status display rows
-
-The still-deferred internal pieces are write-plan or patch-plan traits. Yazelix keeps settings metadata, JSONC patching, Home Manager ownership, native config classification, runtime request paths, and runtime apply modes in the adapter until those traits are proven by real saves and a second fixture.
-
-A public `yazelix_ratconfig` crate or standalone repository becomes acceptable only after Yazelix consumes that internal API for real saves and the reusable layer can be demonstrated with a small non-Yazelix fixture schema.
-
-## Reusable Boundary
-
-The reusable layer may own:
-
-- typed field metadata such as id, label, description, type, default, allowed values, grouping, and read-only state
-- section, tab, and search indexing models
-- scalar editors for strings, numbers, booleans, enums, lists, and enum-list enablement
-- editor navigation and edit actions independent of Yazelix command text
-- validation diagnostics with severity, field id, message, and optional remediation text
-- theming hooks that do not encode Yazelix colors as a mandatory palette
-- a persistence interface that reports changed fields and write/apply outcomes
-
-The reusable layer must not own:
-
-- the Yazelix `settings.jsonc` schema
+- Yazelix `settings.jsonc` schema or `main_config_contract.toml`
 - Home Manager ownership rules
 - generated runtime materialization
-- native Helix, Yazi, Zellij, or Ghostty config integration status
+- native Helix, Yazi, Zellij, or Ghostty integration policy
 - pane-orchestrator runtime reloads
-- Yazelix command names, docs text, or sidecar file semantics
+- Yazelix action registries, command names, docs text, or sidecar semantics
 
-## Yazelix Adapter Boundary
+## Yazelix Adapter Ownership
 
-Yazelix remains responsible for translating product state into the reusable model.
+Yazelix remains responsible for translating product state into the reusable ratconfig model.
 
-The adapter owns:
+The main repo owns:
 
-- loading `~/.config/yazelix/settings.jsonc`
-- mapping `main_config_contract.toml` and schema metadata into fields
-- preserving JSONC comments when saving supported edits
-- displaying Home Manager-owned settings as read-only
-- displaying native, managed, imported, generated, and read-only status vocabulary
-- attaching apply-mode metadata and saved-versus-active status
-- running generated runtime refreshes after saves
-- deciding when a running pane, tab, or session must be restarted
+- locating `~/.config/yazelix/settings.jsonc` and related runtime metadata
+- loading defaults, schema metadata, and `main_config_contract.toml`
+- composing Yazelix-specific cursor settings into the visible model
+- marking Home Manager-owned settings as read-only
+- expanding Yazelix keybinding action registries into structured field/detail data
+- classifying native, managed, imported, generated, and read-only config status
+- mapping generic ratconfig errors into `CoreError`
+- validating patched settings against Yazelix normalization
+- running generated runtime refreshes and pane-owner refreshes after saves
+- deciding which saved settings require pane reopen, Yazelix restart, or Home Manager switch
 
-The reusable toolkit should receive those facts as data. It should not rediscover Yazelix paths or infer Yazelix runtime policy.
+The reusable child repo receives these facts as data. It does not rediscover Yazelix paths or infer Yazelix runtime policy.
 
-## Config Format Assumptions
+## Public API Shape
 
-JSONC is the first real persistence backend because it is Yazelix's canonical user config format.
+The first public crate shape should be small and data-driven.
 
-The reusable API should not be permanently JSONC-only. It should model writes as field changes and backend-specific patch plans. A JSONC backend can be the first implementation, but the core editor model should be able to work with TOML, YAML, or application-owned serializers later.
+Expected modules:
 
-When a backend cannot preserve comments or ordering, that must be visible in the write plan or save result. Silent rewrites are not acceptable as a default.
+- `model`: document, tab, row, field, value state, diagnostics, and display metadata
+- `editor`: navigation, search, edit modes, input parsing, and control actions
+- `render`: Ratatui rendering for the generic model
+- `jsonc`: comment-preserving JSONC patch primitives
+- `migration`: deterministic config migration operations
 
-## Editing And Validation Guarantees
+The generic editor should emit write intents such as set, unset, or migrate. The application adapter owns file IO, validation, atomic writes, model reload, and post-save apply behavior.
 
-The extraction must preserve Yazelix's current safety expectations:
+Project-specific rich detail sections are supplied as data. The renderer may display them, but it must not know about Yazelix keybindings, Zellij, Yazi, Home Manager, or generated config ownership.
 
-- invalid edits fail before writing when validation can catch them locally
-- write failures are visible and actionable
-- read-only fields are not editable through keyboard shortcuts or save actions
-- generated-runtime refresh failures are reported after the setting is saved
-- no fallback should make a failed save look successful
-- unknown fields in user config are not discarded by ordinary supported edits
+## JSONC Contract
 
-The reusable layer may provide generic diagnostics, but Yazelix owns product-specific remediation text.
+The initial JSONC backend must preserve comments and surrounding document shape for supported edits.
 
-## Maintenance Cost
+Supported first operations:
 
-Extraction is worthwhile only if it reduces the main repo's long-term coupling.
+- set a dotted field path
+- unset a dotted field path
+- rename a dotted field path
+- delete stale fields
+- add missing defaults
+- run narrow, deterministic value transforms supplied by the caller
 
-The extraction is not worthwhile if it creates:
+Unsupported patch shapes must fail clearly instead of silently rewriting the whole document. When a project wants a whole-file rewrite, that must be an explicit adapter decision.
 
-- a second schema language beside the existing Yazelix config contract
-- duplicated JSONC patching logic
-- duplicated validation messages in the config UI and CLI
-- public compatibility promises for unstable Yazelix-specific editing flows
-- extra release automation before a non-Yazelix consumer exists
+## Migration Contract
 
-The near-term maintenance win is splitting the existing file by responsibility. Public packaging comes later.
+Ratconfig migrations are config arithmetic over a document.
 
-## Migration Plan
+The first migration engine should support simple deterministic operations:
 
-1. Split the in-repo config UI into model, editor state/actions, rendering, validation, and Yazelix adapter modules without changing behavior. Completed as a private `yazelix_ratconfig` namespace plus `config_ui` adapter.
-2. Keep JSONC patching and apply-mode handling behind adapter-owned functions while the split settles.
-3. Add one small non-Yazelix fixture schema in tests to prove the model is not hardcoded to Yazelix settings.
-4. Keep Yazelix as the only shipped consumer until real save, read-only, diagnostics, and generated-refresh flows use the split boundary.
-5. Re-evaluate a public `yazelix_ratconfig` crate or repository after the internal boundary survives normal Yazelix config UI changes.
+- rename
+- delete
+- add default
+- narrow value transform
 
-## Proof Plan
+The engine owns operation semantics and ordering. The application owns which migrations apply to its config version and how to write the result atomically.
 
-The first proof remains Yazelix itself:
-
-- edit ordinary scalar settings in the config UI
-- edit enum and enum-list settings
-- preserve JSONC comments on supported saves
-- show Home Manager-owned settings as read-only
-- show saved-versus-active apply status
-- surface generated-runtime refresh failures as save/apply errors
-
-The second proof should be a small synthetic config fixture that uses the same reusable model but no Yazelix paths, contracts, or runtime concepts.
+More complex array reshaping, broad type migrations, cross-file migrations, and TOML support are future decisions.
 
 ## Verification
 
-- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core config_ui`
-- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core settings_jsonc_patch`
-- `yzx_repo_validator validate-config-surface-contract`
-- `yzx_repo_validator validate-contracts`
+Before extraction:
 
-## Traceability
+- generic ratconfig tests prove model/edit/render behavior without Yazelix dependencies
+- JSONC patch tests prove comment-preserving set/unset behavior
+- one non-Yazelix fixture exercises bool, scalar select, multiselect, diagnostics, and JSONC editing
 
-- Defended by: `yzx_repo_validator validate-contracts`
+After extraction:
+
+- child repo Rust tests pass
+- Yazelix config UI tests pass against the child dependency
+- `yzx_repo_validator validate-config-surface-contract` passes
+- `yzx_repo_validator validate-contracts` passes
+- the main-repo LOC scorecard records deleted ownership
