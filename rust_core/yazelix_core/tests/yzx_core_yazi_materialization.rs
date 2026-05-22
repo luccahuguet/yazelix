@@ -67,9 +67,9 @@ edit = [
 ]
 
 [[plugin.prepend_fetchers]]
-id = "git"
-name = "*"
+url = "*"
 run = "git"
+group = "git"
 "#,
     )
     .unwrap();
@@ -215,6 +215,9 @@ plugins = ["git", "starship"]
     assert!(yazi_toml.contains("sort_by = \"modified\""));
     assert!(yazi_toml.contains(runtime_dir.to_string_lossy().as_ref()));
     assert!(yazi_toml.contains("yzx_control zellij open-editor %s"));
+    assert!(yazi_toml.contains("url = \"*\""));
+    assert!(yazi_toml.contains("group = \"git\""));
+    assert!(!yazi_toml.contains("name = \"*\""));
     assert!(
         init_lua.contains(
             output_dir

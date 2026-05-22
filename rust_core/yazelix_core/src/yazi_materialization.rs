@@ -541,7 +541,9 @@ edit = [{ run = "base-edit" }]
 ratio = [1, 4, 3]
 
 [[plugin.prepend_fetchers]]
-id = "git"
+url = "*"
+run = "git"
+group = "git"
 "#,
         )
         .unwrap();
@@ -555,7 +557,9 @@ open = [{ run = "user-open" }]
 ratio = [1, 4, 0]
 
 [[plugin.prepend_fetchers]]
-id = "extra"
+url = "*/"
+run = "extra"
+group = "extra"
 "#,
         )
         .unwrap();
@@ -591,7 +595,7 @@ id = "extra"
                 .and_then(TomlValue::as_array)
                 .and_then(|fetchers| fetchers.first())
                 .and_then(TomlValue::as_table)
-                .and_then(|fetcher| fetcher.get("id"))
+                .and_then(|fetcher| fetcher.get("group"))
                 .and_then(TomlValue::as_str),
             Some("extra")
         );
