@@ -1,4 +1,5 @@
 use super::*;
+use std::collections::BTreeMap;
 
 pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel, CoreError> {
     let paths = primary_config_paths(&request.runtime_dir, &request.config_dir);
@@ -7,7 +8,7 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
         "read_settings_schema",
         "Could not read the Yazelix settings schema",
     )?;
-    let schema_tab_order = schema_tabs(&schema);
+    let schema_tab_order = schema_tabs(&schema, DEFAULT_TABS);
     let ui_metadata =
         load_config_ui_metadata(&config_ui_metadata_path(&paths.settings_schema_path))?;
     ensure_ui_metadata_tabs_match_schema(&ui_metadata.tabs, &schema_tab_order)?;
@@ -74,7 +75,7 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
         let apply_mode = if config_owner == ConfigUiPathOwner::HomeManager {
             RuntimeApplyMode::PackageHomeManagerActivation
         } else {
-            field.apply_mode
+            apply_mode_for_contract_field(field)?
         };
         fields.push(build_field_row(
             &field.path,
@@ -98,7 +99,7 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
         &active_value,
         &default_value,
         &blocking_paths,
-    );
+    )?;
 
     if cursor_component_enabled {
         let cursor_choice_values = cursor_choice_values(&active_value, &default_value);
@@ -207,7 +208,15 @@ fn read_active_config_value(path: &Path) -> Result<JsonValue, CoreError> {
             source,
         )
     })?;
-    toml_value_to_json(&TomlValue::Table(table))
+    toml_value_to_json(&toml::Value::Table(table)).map_err(|message| {
+        CoreError::classified(
+            ErrorClass::Config,
+            "invalid_toml_value",
+            format!("Could not convert active Yazelix config TOML to JSON: {message}."),
+            "Fix the TOML value in the reported file and retry.",
+            json!({ "path": path.display().to_string() }),
+        )
+    })
 }
 
 fn compose_config_ui_value(
@@ -295,7 +304,7 @@ fn read_json_file(path: &Path, code: &'static str, message: &str) -> Result<Json
     })
 }
 
-fn load_contract_fields(path: &Path) -> Result<BTreeMap<String, ContractField>, CoreError> {
+fn load_contract_fields(path: &Path) -> Result<BTreeMap<String, ConfigUiContractField>, CoreError> {
     let raw = fs::read_to_string(path).map_err(|source| {
         CoreError::io(
             "read_config_ui_contract",
@@ -314,87 +323,35 @@ fn load_contract_fields(path: &Path) -> Result<BTreeMap<String, ContractField>, 
             source,
         )
     })?;
-    let fields_table = contract
-        .get("fields")
-        .and_then(TomlValue::as_table)
-        .ok_or_else(|| {
-            CoreError::classified(
-                ErrorClass::Config,
-                "missing_contract_fields",
-                "The Yazelix config contract is missing its fields table.",
-                "Reinstall Yazelix so the runtime includes the current config contract.",
-                json!({ "path": path.display().to_string() }),
-            )
-        })?;
+    config_contract_fields_from_toml(&contract).map_err(|message| {
+        CoreError::classified(
+            ErrorClass::Config,
+            "invalid_config_contract",
+            format!(
+                "Invalid Yazelix config contract at {}: {message}.",
+                path.display()
+            ),
+            "Reinstall Yazelix so the runtime includes the current config contract.",
+            json!({ "path": path.display().to_string() }),
+        )
+    })
+}
 
-    let mut fields = BTreeMap::new();
-    for (field_path, value) in fields_table {
-        let table = value.as_table().ok_or_else(|| {
+pub(super) fn apply_mode_for_contract_field(
+    field: &ConfigUiContractField,
+) -> Result<RuntimeApplyMode, CoreError> {
+    field
+        .apply_mode
+        .parse::<RuntimeApplyMode>()
+        .map_err(|message| {
             CoreError::classified(
                 ErrorClass::Config,
-                "invalid_contract_field",
-                format!("Config contract field {field_path} must be a TOML table."),
+                "invalid_apply_mode",
+                format!("Config contract field {} has {message}.", field.path),
                 "Reinstall Yazelix so the runtime includes a valid config contract.",
-                json!({ "field": field_path }),
+                json!({ "field": field.path }),
             )
-        })?;
-        let kind = table
-            .get("kind")
-            .and_then(TomlValue::as_str)
-            .unwrap_or("unknown")
-            .to_string();
-        let validation = table
-            .get("validation")
-            .and_then(TomlValue::as_str)
-            .unwrap_or("")
-            .to_string();
-        let allowed_values = string_array(table.get("allowed_values"));
-        let min = table.get("min").and_then(toml_number_as_f64);
-        let max = table.get("max").and_then(toml_number_as_f64);
-        let rebuild_required = table
-            .get("rebuild_required")
-            .and_then(TomlValue::as_bool)
-            .unwrap_or(false);
-        let apply_mode = table
-            .get("apply_mode")
-            .and_then(TomlValue::as_str)
-            .ok_or_else(|| {
-                CoreError::classified(
-                    ErrorClass::Config,
-                    "missing_apply_mode",
-                    format!("Config contract field {field_path} is missing apply_mode."),
-                    "Reinstall Yazelix so the runtime includes the current config contract.",
-                    json!({ "field": field_path }),
-                )
-            })?
-            .parse::<RuntimeApplyMode>()
-            .map_err(|message| {
-                CoreError::classified(
-                    ErrorClass::Config,
-                    "invalid_apply_mode",
-                    format!("Config contract field {field_path} has {message}."),
-                    "Reinstall Yazelix so the runtime includes a valid config contract.",
-                    json!({ "field": field_path }),
-                )
-            })?;
-        let default_value = table.get("default").map(toml_value_to_json).transpose()?;
-        fields.insert(
-            field_path.clone(),
-            ContractField {
-                path: field_path.clone(),
-                kind,
-                default_value,
-                validation,
-                allowed_values,
-                min,
-                max,
-                rebuild_required,
-                apply_mode,
-            },
-        );
-    }
-
-    Ok(fields)
+        })
 }
 
 fn config_ui_metadata_path(settings_schema_path: &Path) -> PathBuf {
@@ -420,80 +377,18 @@ fn load_config_ui_metadata(path: &Path) -> Result<ConfigUiMetadata, CoreError> {
             source,
         )
     })?;
-
-    let tabs = metadata
-        .get("tab_order")
-        .and_then(TomlValue::as_array)
-        .into_iter()
-        .flatten()
-        .filter_map(TomlValue::as_str)
-        .map(ToOwned::to_owned)
-        .collect::<Vec<_>>();
-    if tabs.is_empty() {
-        return Err(CoreError::classified(
+    config_ui_metadata_from_toml(&metadata).map_err(|message| {
+        CoreError::classified(
             ErrorClass::Config,
-            "missing_config_ui_tabs",
-            "The Yazelix config UI metadata is missing tab_order.",
+            "invalid_config_ui_metadata",
+            format!(
+                "Invalid Yazelix config UI metadata at {}: {message}.",
+                path.display()
+            ),
             "Reinstall Yazelix so the runtime includes current config UI metadata.",
             json!({ "path": path.display().to_string() }),
-        ));
-    }
-
-    let fields_table = metadata
-        .get("fields")
-        .and_then(TomlValue::as_table)
-        .ok_or_else(|| {
-            CoreError::classified(
-                ErrorClass::Config,
-                "missing_config_ui_fields",
-                "The Yazelix config UI metadata is missing its fields table.",
-                "Reinstall Yazelix so the runtime includes current config UI metadata.",
-                json!({ "path": path.display().to_string() }),
-            )
-        })?;
-
-    let mut fields = BTreeMap::new();
-    for (field_path, value) in fields_table {
-        let table = value.as_table().ok_or_else(|| {
-            CoreError::classified(
-                ErrorClass::Config,
-                "invalid_config_ui_field",
-                format!("Config UI metadata field {field_path} must be a TOML table."),
-                "Reinstall Yazelix so the runtime includes valid config UI metadata.",
-                json!({ "field": field_path }),
-            )
-        })?;
-        fields.insert(
-            field_path.clone(),
-            FieldUiMetadata {
-                tab: required_toml_string(table, field_path, "tab")?,
-                help: required_toml_string(table, field_path, "help")?,
-            },
-        );
-    }
-
-    Ok(ConfigUiMetadata { tabs, fields })
-}
-
-fn required_toml_string(
-    table: &toml::Table,
-    field_path: &str,
-    key: &str,
-) -> Result<String, CoreError> {
-    table
-        .get(key)
-        .and_then(TomlValue::as_str)
-        .filter(|value| !value.trim().is_empty())
-        .map(ToOwned::to_owned)
-        .ok_or_else(|| {
-            CoreError::classified(
-                ErrorClass::Config,
-                "invalid_config_ui_field_metadata",
-                format!("Config UI metadata field {field_path} is missing {key}."),
-                "Reinstall Yazelix so the runtime includes complete config UI metadata.",
-                json!({ "field": field_path, "key": key }),
-            )
-        })
+        )
+    })
 }
 
 fn ensure_ui_metadata_tabs_match_schema(
@@ -519,7 +414,7 @@ fn ensure_ui_metadata_tabs_match_schema(
 fn field_ui_metadata<'a>(
     metadata: &'a ConfigUiMetadata,
     path: &str,
-) -> Result<&'a FieldUiMetadata, CoreError> {
+) -> Result<&'a ConfigUiFieldMetadata, CoreError> {
     metadata.fields.get(path).ok_or_else(|| {
         CoreError::classified(
             ErrorClass::Config,
@@ -599,105 +494,17 @@ fn map_native_statuses(statuses: &[NativeConfigStatusEntry]) -> Vec<ConfigUiNati
         .collect()
 }
 
-fn schema_tabs(schema: &JsonValue) -> Vec<String> {
-    let mut tabs = schema
-        .get("x-yazelix")
-        .and_then(|value| value.get("tabs"))
-        .and_then(JsonValue::as_array)
-        .into_iter()
-        .flatten()
-        .filter_map(JsonValue::as_str)
-        .map(ToOwned::to_owned)
-        .collect::<Vec<_>>();
-    if tabs.is_empty() {
-        tabs = DEFAULT_TABS.iter().map(|tab| (*tab).to_string()).collect();
-    }
-    if !tabs.iter().any(|tab| tab == "advanced") {
-        tabs.push("advanced".to_string());
-    }
-    tabs
-}
-
-fn collect_cursor_schema_fields(schema: &JsonValue) -> Vec<SchemaField> {
-    let mut fields = Vec::new();
+fn collect_cursor_schema_fields(schema: &JsonValue) -> Vec<ConfigUiSchemaField> {
     let Some(cursors) = schema
         .get("properties")
         .and_then(|properties| properties.get("cursors"))
     else {
-        return fields;
+        return Vec::new();
     };
-    collect_schema_fields(cursors, "cursors", &mut fields);
-    fields
+    collect_config_ui_schema_fields(cursors, "cursors")
 }
 
-fn collect_schema_fields(schema: &JsonValue, path: &str, out: &mut Vec<SchemaField>) {
-    let kind = schema_type(schema);
-    if kind == "object" {
-        let Some(properties) = schema.get("properties").and_then(JsonValue::as_object) else {
-            out.push(schema_field(schema, path, kind));
-            return;
-        };
-        for (name, property) in properties {
-            collect_schema_fields(property, &format!("{path}.{name}"), out);
-        }
-        return;
-    }
-
-    if kind == "array"
-        && let Some(items) = schema.get("items")
-        && items.get("type").and_then(JsonValue::as_str) == Some("object")
-    {
-        out.push(schema_field(schema, path, kind));
-        return;
-    }
-
-    if kind == "array"
-        && let Some(items) = schema.get("items")
-        && items.get("type").and_then(JsonValue::as_str) == Some("string")
-    {
-        out.push(schema_field(schema, path, "string_list".to_string()));
-        return;
-    }
-
-    out.push(schema_field(schema, path, kind));
-}
-
-fn schema_field(schema: &JsonValue, path: &str, kind: String) -> SchemaField {
-    let allowed_values = if kind == "string_list" {
-        schema
-            .get("items")
-            .map(schema_enum_values)
-            .unwrap_or_default()
-    } else {
-        schema_enum_values(schema)
-    };
-    SchemaField {
-        path: path.to_string(),
-        kind,
-        allowed_values,
-    }
-}
-
-fn schema_type(schema: &JsonValue) -> String {
-    schema
-        .get("type")
-        .and_then(JsonValue::as_str)
-        .unwrap_or("unknown")
-        .to_string()
-}
-
-fn schema_enum_values(schema: &JsonValue) -> Vec<String> {
-    schema
-        .get("enum")
-        .and_then(JsonValue::as_array)
-        .into_iter()
-        .flatten()
-        .filter_map(JsonValue::as_str)
-        .map(ToOwned::to_owned)
-        .collect()
-}
-
-fn enrich_cursor_schema_field(field: &mut SchemaField, values: &CursorChoiceValues) {
+fn enrich_cursor_schema_field(field: &mut ConfigUiSchemaField, values: &CursorChoiceValues) {
     match field.path.as_str() {
         "cursors.enabled_cursors" => {
             field.allowed_values = values.definition_names.clone();
@@ -774,38 +581,20 @@ pub(super) fn build_field_row(
     has_blocking_diagnostic: bool,
     edit_behavior: ConfigUiEditBehavior,
 ) -> ConfigUiField {
-    let state = if has_blocking_diagnostic {
-        ConfigUiValueState::Invalid
-    } else if current.is_some() {
-        ConfigUiValueState::Explicit
-    } else if default.is_some() {
-        ConfigUiValueState::Defaulted
-    } else {
-        ConfigUiValueState::Unset
-    };
-    ConfigUiField {
-        path: path.to_string(),
-        tab: tab.to_string(),
-        kind: kind.to_string(),
-        current_value: current
-            .or(default)
-            .map(render_json_value)
-            .unwrap_or_else(|| "not set".to_string()),
-        edit_value: current
-            .or(default)
-            .map(render_json_edit_value)
-            .unwrap_or_default(),
-        default_value: default
-            .map(render_json_value)
-            .unwrap_or_else(|| "no default".to_string()),
-        state,
+    build_config_ui_field(ConfigUiFieldRowSpec {
+        path,
+        tab,
+        kind,
+        current,
+        default,
         description,
         allowed_values,
         validation,
         rebuild_required,
         apply_status: apply_status_for_setting(path, apply_mode),
+        has_blocking_diagnostic,
         edit_behavior,
-    }
+    })
 }
 
 fn edit_behavior_for_field_path(path: &str) -> ConfigUiEditBehavior {
@@ -881,7 +670,7 @@ fn generated_runtime_effect_status(path: &str) -> (&'static str, &'static str, b
     }
 }
 
-fn field_description(field: &ContractField, metadata: &FieldUiMetadata) -> String {
+fn field_description(field: &ConfigUiContractField, metadata: &ConfigUiFieldMetadata) -> String {
     let mut parts = Vec::new();
     parts.push(metadata.help.clone());
     if !field.validation.is_empty() {
@@ -1050,52 +839,4 @@ fn monotonic_suffix() -> u128 {
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_nanos())
         .unwrap_or(0)
-}
-
-fn toml_value_to_json(value: &TomlValue) -> Result<JsonValue, CoreError> {
-    match value {
-        TomlValue::String(value) => Ok(JsonValue::String(value.clone())),
-        TomlValue::Integer(value) => Ok(JsonValue::Number((*value).into())),
-        TomlValue::Float(value) => serde_json::Number::from_f64(*value)
-            .map(JsonValue::Number)
-            .ok_or_else(|| {
-                CoreError::classified(
-                    ErrorClass::Config,
-                    "non_finite_toml_float",
-                    "Could not convert a TOML float to JSON.",
-                    "Use a finite number in the settings input.",
-                    json!({ "value": value.to_string() }),
-                )
-            }),
-        TomlValue::Boolean(value) => Ok(JsonValue::Bool(*value)),
-        TomlValue::Datetime(value) => Ok(JsonValue::String(value.to_string())),
-        TomlValue::Array(values) => values
-            .iter()
-            .map(toml_value_to_json)
-            .collect::<Result<Vec<_>, _>>()
-            .map(JsonValue::Array),
-        TomlValue::Table(table) => {
-            let mut object = JsonMap::new();
-            for (key, value) in table {
-                object.insert(key.clone(), toml_value_to_json(value)?);
-            }
-            Ok(JsonValue::Object(object))
-        }
-    }
-}
-
-fn string_array(value: Option<&TomlValue>) -> Vec<String> {
-    value
-        .and_then(TomlValue::as_array)
-        .into_iter()
-        .flatten()
-        .filter_map(TomlValue::as_str)
-        .map(ToOwned::to_owned)
-        .collect()
-}
-
-fn toml_number_as_f64(value: &TomlValue) -> Option<f64> {
-    value
-        .as_float()
-        .or_else(|| value.as_integer().map(|integer| integer as f64))
 }

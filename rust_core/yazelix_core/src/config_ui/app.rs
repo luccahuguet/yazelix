@@ -77,292 +77,44 @@ impl YazelixConfigUiApp {
     }
 
     pub(super) fn handle_key(&mut self, key: KeyEvent) -> bool {
-        if self.edit.is_some() {
-            self.handle_edit_key(key);
+        let Some(key) = key_event_to_ratconfig_key(key) else {
             return false;
-        }
+        };
+        let intent = self.ui.handle_key(key);
+        self.handle_ratconfig_intent(intent)
+    }
 
-        if self.search_active {
-            match key.code {
-                KeyCode::Esc | KeyCode::Enter => self.search_active = false,
-                KeyCode::Backspace => {
-                    self.search.pop();
+    fn handle_ratconfig_intent(&mut self, intent: ConfigUiIntent) -> bool {
+        match intent {
+            ConfigUiIntent::None => false,
+            ConfigUiIntent::Exit => true,
+            ConfigUiIntent::BeginEdit { field_index, path } => {
+                match self.ensure_editable_config(&path) {
+                    Ok(()) => self.ui.begin_edit_field(field_index),
+                    Err(error) => self.notice_error(error.message()),
                 }
-                KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                    self.search.clear();
+                false
+            }
+            ConfigUiIntent::SetField {
+                field_index, value, ..
+            } => {
+                self.set_field_value(field_index, value);
+                self.ui.finish_successful_write();
+                false
+            }
+            ConfigUiIntent::UnsetField { path, .. } => {
+                match self.unset_field_value(&path) {
+                    Ok(outcome) => {
+                        if outcome.mutation == SettingsJsoncPatchMutation::Unchanged {
+                            self.notice_info(format!("{path} was already unset."));
+                        } else {
+                            self.notice_info(write_notice_text("Unset", &path, &outcome));
+                        }
+                    }
+                    Err(error) => self.notice_error(error.message()),
                 }
-                KeyCode::Char(ch) => {
-                    self.search.push(ch);
-                    self.selected_row = 0;
-                }
-                _ => {}
+                false
             }
-            return false;
-        }
-
-        match key.code {
-            KeyCode::Char('q') | KeyCode::Esc => return true,
-            KeyCode::Char('/') => self.search_active = true,
-            KeyCode::Char('j') | KeyCode::Down => self.move_down(),
-            KeyCode::Char('k') | KeyCode::Up => self.move_up(),
-            KeyCode::Enter => self.activate_selected_field(),
-            KeyCode::Char('e') => self.begin_edit_selected_field(),
-            KeyCode::Char(' ') => self.quick_edit_selected_field(),
-            KeyCode::Char('u') => self.unset_selected_field(),
-            KeyCode::Tab | KeyCode::Right | KeyCode::Char('l') => self.next_tab(),
-            KeyCode::BackTab | KeyCode::Left | KeyCode::Char('h') => self.previous_tab(),
-            KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => return true,
-            _ => {}
-        }
-
-        false
-    }
-
-    pub(super) fn handle_edit_key(&mut self, key: KeyEvent) {
-        if let Some(mode) = self.edit.as_ref().map(|edit| edit.mode) {
-            match mode {
-                ConfigUiEditMode::Choice | ConfigUiEditMode::MultiChoice => {
-                    self.handle_choice_edit_key(key, mode);
-                    return;
-                }
-                ConfigUiEditMode::Text => {}
-            }
-        }
-
-        match key.code {
-            KeyCode::Esc => {
-                self.edit = None;
-                self.notice_info("Edit canceled.");
-            }
-            KeyCode::Enter => self.save_edit(),
-            KeyCode::Backspace => {
-                self.notice = None;
-                if let Some(edit) = &mut self.edit {
-                    edit.input.pop();
-                }
-            }
-            KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                self.notice = None;
-                if let Some(edit) = &mut self.edit {
-                    edit.input.clear();
-                }
-            }
-            KeyCode::Char(ch) => {
-                self.notice = None;
-                if let Some(edit) = &mut self.edit {
-                    edit.input.push(ch);
-                }
-            }
-            _ => {}
-        }
-    }
-
-    fn handle_choice_edit_key(&mut self, key: KeyEvent, mode: ConfigUiEditMode) {
-        let scalar_enum = self
-            .edit
-            .as_ref()
-            .and_then(|edit| self.model.fields.get(edit.field_index))
-            .is_some_and(is_scalar_enum_field);
-        let multi_choice = mode == ConfigUiEditMode::MultiChoice;
-        match key.code {
-            KeyCode::Esc => {
-                self.edit = None;
-                self.notice_info("Edit canceled.");
-            }
-            KeyCode::Enter if scalar_enum => {
-                self.select_single_choice_edit();
-                self.save_edit();
-            }
-            KeyCode::Enter => self.save_edit(),
-            KeyCode::Up | KeyCode::Left | KeyCode::Char('k') | KeyCode::Char('h')
-                if scalar_enum || multi_choice =>
-            {
-                self.notice = None;
-                self.move_choice_edit(-1);
-            }
-            KeyCode::Down | KeyCode::Right | KeyCode::Char('j') | KeyCode::Char('l')
-                if scalar_enum || multi_choice =>
-            {
-                self.notice = None;
-                self.move_choice_edit(1);
-            }
-            KeyCode::Char(' ') if multi_choice => {
-                self.notice = None;
-                self.toggle_multi_choice_edit();
-            }
-            KeyCode::Char(' ') if scalar_enum => {
-                self.notice = None;
-                self.select_single_choice_edit();
-            }
-            KeyCode::Up | KeyCode::Right | KeyCode::Down | KeyCode::Left | KeyCode::Char(' ')
-                if !multi_choice =>
-            {
-                self.notice = None;
-                self.cycle_choice_edit();
-            }
-            _ => {}
-        }
-    }
-
-    fn cycle_choice_edit(&mut self) {
-        let Some(edit) = self.edit.clone() else {
-            return;
-        };
-        let next = if edit.input.trim() == "true" {
-            "false".to_string()
-        } else {
-            "true".to_string()
-        };
-        if let Some(edit) = &mut self.edit {
-            edit.input = next;
-        }
-    }
-
-    fn move_choice_edit(&mut self, delta: isize) {
-        let Some(edit) = self.edit.clone() else {
-            return;
-        };
-        let field = &self.model.fields[edit.field_index];
-        let len = field.allowed_values.len();
-        if len == 0 {
-            return;
-        }
-        let index = edit.choice_index.min(len - 1);
-        let next = if delta < 0 {
-            index.checked_sub(1).unwrap_or(len - 1)
-        } else {
-            (index + 1) % len
-        };
-        if let Some(edit) = &mut self.edit {
-            edit.choice_index = next;
-        }
-    }
-
-    fn select_single_choice_edit(&mut self) {
-        let Some(edit) = self.edit.clone() else {
-            return;
-        };
-        let field = &self.model.fields[edit.field_index];
-        let Some(value) = field.allowed_values.get(edit.choice_index) else {
-            return;
-        };
-        let value = value.clone();
-        if let Some(edit) = &mut self.edit {
-            edit.input = value;
-        }
-    }
-
-    fn toggle_multi_choice_edit(&mut self) {
-        let Some(edit) = self.edit.clone() else {
-            return;
-        };
-        let field = &self.model.fields[edit.field_index];
-        let next = match toggled_string_list_input(field, &edit.input, edit.choice_index) {
-            Ok(next) => next,
-            Err(message) => {
-                self.notice_error(message);
-                return;
-            }
-        };
-        if let Some(edit) = &mut self.edit {
-            edit.input = next;
-        }
-    }
-
-    fn activate_selected_field(&mut self) {
-        if self.selected_field().is_some_and(is_bool_field) {
-            self.quick_edit_selected_field();
-        } else {
-            self.begin_edit_selected_field();
-        }
-    }
-
-    fn begin_edit_selected_field(&mut self) {
-        self.notice = None;
-        let Some(field_index) = self.selected_field_index() else {
-            self.notice_error("Only settings rows can be edited.");
-            return;
-        };
-        let field = &self.model.fields[field_index];
-        if let Err(error) = self.ensure_editable_config(&field.path) {
-            self.notice_error(error.message());
-            return;
-        }
-        if let Some(message) = structured_only_edit_notice(field).map(str::to_string) {
-            self.notice_info(message);
-            return;
-        }
-        let input = edit_input_for_field(field);
-        self.edit = Some(ConfigUiEditState {
-            field_index,
-            choice_index: initial_edit_choice_index(field, &input),
-            input,
-            mode: edit_mode_for_field(field),
-        });
-    }
-
-    fn quick_edit_selected_field(&mut self) {
-        self.notice = None;
-        let Some(field_index) = self.selected_field_index() else {
-            self.notice_error("Only settings rows can be edited.");
-            return;
-        };
-        let field = &self.model.fields[field_index];
-        if is_bool_field(field) {
-            if let Err(error) = self.ensure_editable_config(&field.path) {
-                self.notice_error(error.message());
-                return;
-            }
-            let value = JsonValue::Bool(!field_bool_value(field).unwrap_or(false));
-            self.set_field_value(field_index, value);
-        } else {
-            self.begin_edit_selected_field();
-        }
-    }
-
-    fn unset_selected_field(&mut self) {
-        self.notice = None;
-        let Some(field_index) = self.selected_field_index() else {
-            self.notice_error("Only settings rows can be unset.");
-            return;
-        };
-        let path = self.model.fields[field_index].path.clone();
-        if let Err(error) = self.ensure_editable_config(&path) {
-            self.notice_error(error.message());
-            return;
-        }
-        match self.unset_field_value(&path) {
-            Ok(outcome) => {
-                if outcome.mutation == SettingsJsoncPatchMutation::Unchanged {
-                    self.notice_info(format!("{path} was already unset."));
-                } else {
-                    self.notice_info(write_notice_text("Unset", &path, &outcome));
-                }
-            }
-            Err(error) => self.notice_error(error.message()),
-        }
-    }
-
-    fn save_edit(&mut self) {
-        let Some(edit) = self.edit.clone() else {
-            return;
-        };
-        let field = self.model.fields[edit.field_index].clone();
-        let value = match parse_edit_input(&field, &edit.input) {
-            Ok(value) => value,
-            Err(message) => {
-                self.notice_error(message);
-                return;
-            }
-        };
-        self.set_field_value(edit.field_index, value);
-        if self
-            .notice
-            .as_ref()
-            .map(|notice| !notice.is_error)
-            .unwrap_or(false)
-        {
-            self.edit = None;
         }
     }
 
@@ -558,6 +310,25 @@ impl YazelixConfigUiApp {
             ));
         }
         Ok(())
+    }
+}
+
+fn key_event_to_ratconfig_key(key: KeyEvent) -> Option<ConfigUiKey> {
+    match key.code {
+        KeyCode::Esc => Some(ConfigUiKey::Esc),
+        KeyCode::Enter => Some(ConfigUiKey::Enter),
+        KeyCode::Backspace => Some(ConfigUiKey::Backspace),
+        KeyCode::Tab => Some(ConfigUiKey::Tab),
+        KeyCode::BackTab => Some(ConfigUiKey::BackTab),
+        KeyCode::Up => Some(ConfigUiKey::Up),
+        KeyCode::Down => Some(ConfigUiKey::Down),
+        KeyCode::Left => Some(ConfigUiKey::Left),
+        KeyCode::Right => Some(ConfigUiKey::Right),
+        KeyCode::Char(ch) if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            Some(ConfigUiKey::Ctrl(ch))
+        }
+        KeyCode::Char(ch) => Some(ConfigUiKey::Char(ch)),
+        _ => None,
     }
 }
 

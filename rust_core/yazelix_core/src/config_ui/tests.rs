@@ -3,32 +3,6 @@ use super::*;
 use crate::ghostty_cursor_registry::DEFAULT_CURSOR_CONFIG_FILENAME;
 use tempfile::tempdir;
 
-fn test_field(
-    path: &str,
-    kind: &str,
-    current_value: &str,
-    allowed_values: &[&str],
-) -> ConfigUiField {
-    ConfigUiField {
-        path: path.to_string(),
-        tab: "general".to_string(),
-        kind: kind.to_string(),
-        current_value: current_value.to_string(),
-        edit_value: current_value.to_string(),
-        default_value: "no default".to_string(),
-        state: ConfigUiValueState::Explicit,
-        description: String::new(),
-        allowed_values: allowed_values
-            .iter()
-            .map(|value| (*value).to_string())
-            .collect(),
-        validation: String::new(),
-        rebuild_required: false,
-        apply_status: apply_status_for_setting(path, RuntimeApplyMode::TabSessionRestart),
-        edit_behavior: ConfigUiEditBehavior::Default,
-    }
-}
-
 fn write_runtime_layout(runtime: &Path) {
     fs::create_dir_all(runtime.join("config_metadata")).expect("metadata dir");
     fs::write(
@@ -153,36 +127,6 @@ fn select_field_path(app: &mut ConfigUiApp, path: &str) {
             )
         })
         .expect("row");
-}
-
-// Defends: the editable config UI interprets typed values from the field contract instead of guessing strings for every setting.
-#[test]
-fn parse_edit_input_uses_field_type_and_allowed_values() {
-    let bool_field = test_field("editor.hide_sidebar_on_file_open", "bool", "false", &[]);
-    assert_eq!(
-        parse_edit_input(&bool_field, "true").expect("bool"),
-        json!(true)
-    );
-    assert!(parse_edit_input(&bool_field, "yes").is_err());
-
-    let enum_field = test_field(
-        "zellij.tab_label_mode",
-        "string",
-        "\"short\"",
-        &["short", "compact", "full"],
-    );
-    assert_eq!(
-        parse_edit_input(&enum_field, "compact").expect("enum"),
-        json!("compact")
-    );
-    assert!(parse_edit_input(&enum_field, "wide").is_err());
-
-    let list_field = test_field("yazi.plugins", "string_list", "[\"git\"]", &["git", "ouch"]);
-    assert_eq!(
-        parse_edit_input(&list_field, r#"["git","ouch"]"#).expect("list"),
-        json!(["git", "ouch"])
-    );
-    assert!(parse_edit_input(&list_field, r#"["unknown"]"#).is_err());
 }
 
 // Regression: summarized list displays must not become the edit buffer, because placeholders like `[7 items]` are not JSON.
@@ -370,8 +314,8 @@ fn cursor_enabled_cursors_opens_multi_choice_picker_and_writes_cursor_config() {
     let details = lines_text(&render_details(&app.ui, UiRowRef::Field(edit.field_index)));
     assert!(details.contains("> [x] blaze"));
 
-    app.handle_edit_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
-    app.handle_edit_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    app.handle_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
 
     assert!(app.edit.is_none());
     let value = read_settings_jsonc_value(&cursor_path).expect("cursor settings jsonc");
@@ -437,7 +381,7 @@ fn keybinding_action_row_writes_single_binding_list() {
     assert_eq!(edit.mode, ConfigUiEditMode::Text);
     assert_eq!(edit.input, "Alt x");
     edit.input = "Alt Shift X".to_string();
-    app.handle_edit_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
 
     assert!(app.edit.is_none());
     let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
@@ -600,14 +544,14 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
     assert!(details.contains("> [x] ghostty"));
     assert!(details.contains("  [ ] alacritty"));
 
-    app.handle_edit_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
-    app.handle_edit_key(KeyEvent::new(KeyCode::Char('l'), KeyModifiers::NONE));
-    app.handle_edit_key(KeyEvent::new(KeyCode::Char('k'), KeyModifiers::NONE));
-    app.handle_edit_key(KeyEvent::new(KeyCode::Char('h'), KeyModifiers::NONE));
-    app.handle_edit_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
-    app.handle_edit_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
-    app.handle_edit_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
-    app.handle_edit_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
+    app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+    app.handle_key(KeyEvent::new(KeyCode::Char('l'), KeyModifiers::NONE));
+    app.handle_key(KeyEvent::new(KeyCode::Char('k'), KeyModifiers::NONE));
+    app.handle_key(KeyEvent::new(KeyCode::Char('h'), KeyModifiers::NONE));
+    app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+    app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+    app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+    app.handle_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
 
     let field = app.model.fields[edit.field_index].clone();
     let input = app.edit.as_ref().expect("edit").input.clone();
@@ -616,7 +560,7 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
         vec!["ghostty", "wezterm", "alacritty"]
     );
 
-    app.handle_edit_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
 
     assert!(app.edit.is_none());
     let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
@@ -624,78 +568,6 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
         get_json_path(&value, "terminal.terminals"),
         Some(&json!(["ghostty", "wezterm", "alacritty"]))
     );
-}
-
-// Defends: bools keep direct choice edits while scalar enums use the single-select picker mode.
-#[test]
-fn edit_helpers_use_choice_modes_for_bool_and_enum() {
-    let bool_field = test_field("core.debug_mode", "bool", "true", &[]);
-    assert_eq!(field_bool_value(&bool_field), Some(true));
-    assert_eq!(edit_mode_for_field(&bool_field), ConfigUiEditMode::Choice);
-
-    let enum_field = test_field(
-        "zellij.tab_label_mode",
-        "string",
-        "\"compact\"",
-        &["short", "compact", "full"],
-    );
-    assert_eq!(edit_input_for_field(&enum_field), "compact");
-    assert_eq!(edit_mode_for_field(&enum_field), ConfigUiEditMode::Choice);
-}
-
-// Defends: bool edits stay direct controls while enum edit mode behaves like a single-select picker.
-#[test]
-fn choice_edit_keys_toggle_bool_and_move_enum_picker() {
-    let request = ConfigUiRequest {
-        runtime_dir: PathBuf::from("/runtime"),
-        config_dir: PathBuf::from("/home/lucca/.config/yazelix"),
-        config_override: None,
-    };
-    let model = ConfigUiModel {
-        active_config_path: PathBuf::from("/home/lucca/.config/yazelix/settings.jsonc"),
-        cursor_config_path: PathBuf::from(
-            "/home/lucca/.config/yazelix_ghostty_cursors/settings.jsonc",
-        ),
-        default_cursor_config_path: PathBuf::from("/runtime/yazelix_ghostty_cursors_default.toml"),
-        active_config_exists: true,
-        config_owner: ConfigUiPathOwner::User,
-        config_read_only: false,
-        tabs: vec!["general".to_string()],
-        fields: vec![
-            test_field("core.debug_mode", "bool", "true", &[]),
-            test_field(
-                "zellij.tab_label_mode",
-                "string",
-                "\"compact\"",
-                &["short", "compact", "full"],
-            ),
-        ],
-        sidecars: Vec::new(),
-        native_config_statuses: Vec::new(),
-        diagnostics: Vec::new(),
-    };
-    let mut app = YazelixConfigUiApp::new(request, model);
-    app.edit = Some(ConfigUiEditState {
-        field_index: 0,
-        input: "true".to_string(),
-        mode: ConfigUiEditMode::Choice,
-        choice_index: 0,
-    });
-
-    app.handle_edit_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
-    assert_eq!(app.edit.as_ref().expect("bool edit").input, "false");
-
-    app.edit = Some(ConfigUiEditState {
-        field_index: 1,
-        input: "compact".to_string(),
-        mode: ConfigUiEditMode::Choice,
-        choice_index: 1,
-    });
-    app.handle_edit_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
-    assert_eq!(app.edit.as_ref().expect("enum edit").choice_index, 2);
-    assert_eq!(app.edit.as_ref().expect("enum edit").input, "compact");
-    app.handle_edit_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
-    assert_eq!(app.edit.as_ref().expect("enum edit").input, "full");
 }
 
 // Defends: enum rows open a single-select picker that can be driven with hjkl and saved through the JSONC patcher.
@@ -718,14 +590,14 @@ fn scalar_enum_enter_opens_single_select_picker() {
     assert!(details.contains("> (x) yazelix"));
     assert!(details.contains("  ( ) user"));
 
-    app.handle_edit_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+    app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
     let details = lines_text(&render_details(&app.ui, UiRowRef::Field(edit.field_index)));
     assert!(details.contains("> ( ) user"));
-    app.handle_edit_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
+    app.handle_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
     let details = lines_text(&render_details(&app.ui, UiRowRef::Field(edit.field_index)));
     assert!(details.contains("> (x) user"));
 
-    app.handle_edit_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
 
     assert!(app.edit.is_none());
     let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");

@@ -1,4 +1,5 @@
 use super::*;
+use std::collections::BTreeMap;
 
 pub(super) const ZELLIJ_KEYBINDINGS_FIELD_PATH: &str = "zellij.keybindings";
 pub(super) const ZELLIJ_NATIVE_KEYBINDINGS_FIELD_PATH: &str = "zellij.native_keybindings";
@@ -222,12 +223,12 @@ pub(super) fn keybinding_keys_label_from_field(field: &ConfigUiField) -> String 
 
 pub(super) fn append_keybinding_action_fields(
     fields: &mut Vec<ConfigUiField>,
-    contract_fields: &BTreeMap<String, ContractField>,
+    contract_fields: &BTreeMap<String, ConfigUiContractField>,
     config_owner: ConfigUiPathOwner,
     active_value: &JsonValue,
     default_value: &JsonValue,
     blocking_paths: &BTreeSet<String>,
-) {
+) -> Result<(), CoreError> {
     append_keybinding_surface_action_fields(
         fields,
         contract_fields,
@@ -236,7 +237,7 @@ pub(super) fn append_keybinding_action_fields(
         default_value,
         blocking_paths,
         ZELLIJ_KEYBINDINGS_FIELD_PATH,
-    );
+    )?;
     append_keybinding_surface_action_fields(
         fields,
         contract_fields,
@@ -245,25 +246,26 @@ pub(super) fn append_keybinding_action_fields(
         default_value,
         blocking_paths,
         YAZI_KEYBINDINGS_FIELD_PATH,
-    );
+    )?;
+    Ok(())
 }
 
 pub(super) fn append_keybinding_surface_action_fields(
     fields: &mut Vec<ConfigUiField>,
-    contract_fields: &BTreeMap<String, ContractField>,
+    contract_fields: &BTreeMap<String, ConfigUiContractField>,
     config_owner: ConfigUiPathOwner,
     active_value: &JsonValue,
     default_value: &JsonValue,
     blocking_paths: &BTreeSet<String>,
     parent_path: &'static str,
-) {
+) -> Result<(), CoreError> {
     let Some(parent_field) = contract_fields.get(parent_path) else {
-        return;
+        return Ok(());
     };
     let apply_mode = if config_owner == ConfigUiPathOwner::HomeManager {
         RuntimeApplyMode::PackageHomeManagerActivation
     } else {
-        parent_field.apply_mode
+        apply_mode_for_contract_field(parent_field)?
     };
     for action in keybinding_actions_for_parent_path(parent_path) {
         let path = format!("{parent_path}.{}", action.local_id);
@@ -285,6 +287,7 @@ pub(super) fn append_keybinding_surface_action_fields(
             ConfigUiEditBehavior::FriendlyStringList,
         ));
     }
+    Ok(())
 }
 
 pub(super) fn keybinding_default_value(action: &YazelixActionMetadata) -> JsonValue {

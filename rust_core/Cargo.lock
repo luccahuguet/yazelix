@@ -1414,11 +1414,12 @@ checksum = "cfe53a6657fd280eaa890a3bc59152892ffa3e30101319d168b781ed6529b049"
 [[package]]
 name = "yazelix-ratconfig"
 version = "0.1.0"
-source = "git+https://github.com/luccahuguet/yazelix-ratconfig?rev=653e41f2338a46285cd6b25603390d5cea28a491#653e41f2338a46285cd6b25603390d5cea28a491"
+source = "git+https://github.com/luccahuguet/yazelix-ratconfig?rev=90b0609333b9c03395cff40366d1efec058a0ff1#90b0609333b9c03395cff40366d1efec058a0ff1"
 dependencies = [
  "jsonc-parser",
  "ratatui",
  "serde_json",
+ "toml",
 ]
 
 [[package]]

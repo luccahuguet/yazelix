@@ -40,13 +40,12 @@ use ratatui::backend::CrosstermBackend;
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::fs;
 use std::io::{self, IsTerminal};
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use toml::Value as TomlValue;
 use yazelix_ghostty_cursors::{CursorRegistry, render_cursor_settings_jsonc};
 
 pub use app::run_config_ui;
@@ -55,17 +54,17 @@ use app::write_notice_text;
 use apply_adapter::apply_after_field_write;
 use details::render_details;
 use keybindings::*;
-#[cfg(test)]
-use model_builder::apply_status_for_setting;
 pub use model_builder::build_config_ui_model;
 use model_builder::{
-    apply_contract_path_for_setting_path, build_field_row, classify_path_owner,
-    default_main_setting_value_for_ui, default_main_settings_text_for_ui, path_is_read_only,
-    path_present, read_settings_for_edit, validate_patched_settings_for_ui, write_settings_edit,
+    apply_contract_path_for_setting_path, apply_mode_for_contract_field, build_field_row,
+    classify_path_owner, default_main_setting_value_for_ui, default_main_settings_text_for_ui,
+    path_is_read_only, path_present, read_settings_for_edit, validate_patched_settings_for_ui,
+    write_settings_edit,
 };
 pub use yazelix_ratconfig::{
-    ConfigUiApplyStatus, ConfigUiDiagnostic, ConfigUiField, ConfigUiModel, ConfigUiNativeStatus,
-    ConfigUiPathOwner, ConfigUiSidecar, ConfigUiValueState,
+    ConfigUiApplyStatus, ConfigUiContractField, ConfigUiDiagnostic, ConfigUiField,
+    ConfigUiFieldMetadata, ConfigUiMetadata, ConfigUiModel, ConfigUiNativeStatus,
+    ConfigUiPathOwner, ConfigUiSchemaField, ConfigUiSidecar, ConfigUiValueState,
 };
 use yazelix_ratconfig::{draw_config_ui_with_details, *};
 
@@ -89,38 +88,6 @@ pub struct ConfigUiRequest {
     pub runtime_dir: PathBuf,
     pub config_dir: PathBuf,
     pub config_override: Option<String>,
-}
-
-#[derive(Debug, Clone)]
-struct ContractField {
-    path: String,
-    kind: String,
-    default_value: Option<JsonValue>,
-    validation: String,
-    allowed_values: Vec<String>,
-    min: Option<f64>,
-    max: Option<f64>,
-    rebuild_required: bool,
-    apply_mode: RuntimeApplyMode,
-}
-
-#[derive(Debug, Clone)]
-struct FieldUiMetadata {
-    tab: String,
-    help: String,
-}
-
-#[derive(Debug, Clone)]
-struct ConfigUiMetadata {
-    tabs: Vec<String>,
-    fields: BTreeMap<String, FieldUiMetadata>,
-}
-
-#[derive(Debug, Clone)]
-struct SchemaField {
-    path: String,
-    kind: String,
-    allowed_values: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default)]
