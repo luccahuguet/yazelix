@@ -9,7 +9,7 @@ The current runtime includes:
 - helper tools: `fzf`, `zoxide`, `starship`, `lazygit`, `carapace`, `macchina`, `mise`, `tombi`
 - preview/search helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
 - system helpers required by the runtime wrappers and validators: `git`, `nix`, `coreutils`, `findutils`, `gnugrep`, `gnused`, `util-linux`
-- one packaged terminal variant: Ghostty in the `#yazelix` default and `#yazelix_ghostty`, or WezTerm in `#yazelix_wezterm`
+- one packaged terminal variant: Ghostty in the `#yazelix` default and `#yazelix_ghostty`, WezTerm in `#yazelix_wezterm`, or experimental Linux Ratty in `#yazelix_ratty`
 - opt-in agent usage tools in `#yazelix_agent_tools`: `tokenusage`
 
 It does not ship:
@@ -26,9 +26,11 @@ Use `nix path-info -S` on the actual package outputs you care about:
 ```bash
 nix path-info -S .#runtime --extra-experimental-features "nix-command flakes"
 nix path-info -S .#runtime_wezterm --extra-experimental-features "nix-command flakes"
+nix path-info -S .#runtime_ratty --extra-experimental-features "nix-command flakes"
 nix path-info -S .#yazelix --extra-experimental-features "nix-command flakes"
 nix path-info -S .#yazelix_agent_tools --extra-experimental-features "nix-command flakes"
 nix path-info -S .#yazelix_wezterm --extra-experimental-features "nix-command flakes"
+nix path-info -S .#yazelix_ratty --extra-experimental-features "nix-command flakes"
 ```
 
 That gives you the current store size for the exact runtime/package shape on your machine and channel.

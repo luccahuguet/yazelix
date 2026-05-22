@@ -1105,7 +1105,7 @@ fn terminal_materialization_generate_from_env_writes_generated_configs() {
         &fixture,
         &[
             "[terminal]",
-            "terminals = [\"ghostty\", \"kitty\", \"foot\"]",
+            "terminals = [\"ghostty\", \"ratty\", \"kitty\", \"foot\"]",
             "transparency = \"low\"",
         ]
         .join("\n"),
@@ -1116,7 +1116,7 @@ fn terminal_materialization_generate_from_env_writes_generated_configs() {
     let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
         .arg("--from-env")
         .arg("--terminals-json")
-        .arg(json!(["ghostty", "kitty", "foot"]).to_string())
+        .arg(json!(["ghostty", "ratty", "kitty", "foot"]).to_string())
         .output()
         .unwrap();
 
@@ -1140,6 +1140,17 @@ fn terminal_materialization_generate_from_env_writes_generated_configs() {
             .join("ghostty")
             .exists()
     );
+    let ratty_config = fs::read_to_string(
+        fixture
+            .state_dir
+            .join("configs")
+            .join("terminal_emulators")
+            .join("ratty")
+            .join("ratty.toml"),
+    )
+    .unwrap();
+    assert!(ratty_config.contains("opacity = 0.90"));
+    assert!(ratty_config.contains("visible = false"));
     assert!(
         fixture
             .state_dir

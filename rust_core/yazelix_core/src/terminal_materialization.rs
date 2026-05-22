@@ -63,6 +63,7 @@ fn get_terminal_title(terminal: &str) -> String {
         "ghostty" => "Ghostty",
         "kitty" => "Kitty",
         "wezterm" => "WezTerm",
+        "ratty" => "Ratty",
         "alacritty" => "Alacritty",
         "foot" => "Foot",
         _ => terminal,
@@ -130,6 +131,81 @@ config.enable_tab_bar = false
 return config"##,
         YAZELIX_THEME,
         build_transparency(transparency, "lua", ""),
+    )
+}
+
+fn generate_ratty_config(transparency: &str) -> String {
+    format!(
+        r##"# Ratty configuration for Yazelix
+
+[window]
+width = 960
+height = 620
+scale_factor = 1.0
+
+# Transparency (configurable via settings.jsonc)
+{}
+
+[terminal]
+default_cols = 104
+default_rows = 32
+scrollback = 2000
+
+[env]
+TERM = "xterm-256color"
+
+[font]
+family = "{}"
+style = "Regular"
+size = 18
+
+[cursor.model]
+visible = false
+
+[bindings]
+keys = [
+  {{ key = "C", with = "Control | alt", action = "Copy" }},
+  {{ key = "V", with = "Control | alt", action = "Paste" }},
+  {{ key = "PageUp", with = "alt", action = "ScrollPageUp" }},
+  {{ key = "PageDown", with = "alt", action = "ScrollPageDown" }},
+  {{ key = "Up", with = "alt", action = "ScrollUp" }},
+  {{ key = "Down", with = "alt", action = "ScrollDown" }},
+  {{ key = "Equal", with = "Control", action = "IncreaseFontSize" }},
+  {{ key = "Minus", with = "Control", action = "DecreaseFontSize" }},
+  {{ key = "Digit0", with = "Control | alt", action = "ResetFontSize" }},
+  {{ key = "Enter", with = "Control | alt", action = "Toggle3DMode" }},
+  {{ key = "M", with = "Control | alt", action = "ToggleMobiusMode" }},
+  {{ key = "Up", with = "Control | alt", action = "IncreaseWarp" }},
+  {{ key = "Down", with = "Control | alt", action = "DecreaseWarp" }},
+]
+
+[theme]
+foreground = "#dcd7ba"
+background = "#1f1f28"
+cursor = "#7e9cd8"
+
+[theme.normal]
+black = "#000000"
+red = "#cd3131"
+green = "#0dbc79"
+yellow = "#e5e510"
+blue = "#2472c8"
+magenta = "#bc3fbc"
+cyan = "#11a8cd"
+white = "#e5e5e5"
+
+[theme.bright]
+black = "#666666"
+red = "#f14c4c"
+green = "#23d18b"
+yellow = "#f5f543"
+blue = "#3b8eea"
+magenta = "#d670d6"
+cyan = "#29b8db"
+white = "#ffffff"
+"##,
+        build_transparency(transparency, "toml", ""),
+        FONT_FIRACODE,
     )
 }
 
@@ -388,6 +464,24 @@ pub fn generate_terminal_materialization(
                 write_text_atomic(&path, &generate_wezterm_config(transparency))?;
                 generated.push(TerminalGeneratedConfig {
                     terminal: "wezterm".to_string(),
+                    path: path.to_string_lossy().into_owned(),
+                });
+            }
+            "ratty" => {
+                let ratty_dir = generated_dir.join("ratty");
+                fs::create_dir_all(&ratty_dir).map_err(|source| {
+                    CoreError::io(
+                        "create_ratty_dir",
+                        "Could not create Ratty output directory",
+                        "Check permissions for the Yazelix state directory.",
+                        ratty_dir.to_string_lossy(),
+                        source,
+                    )
+                })?;
+                let path = ratty_dir.join("ratty.toml");
+                write_text_atomic(&path, &generate_ratty_config(transparency))?;
+                generated.push(TerminalGeneratedConfig {
+                    terminal: "ratty".to_string(),
                     path: path.to_string_lossy().into_owned(),
                 });
             }

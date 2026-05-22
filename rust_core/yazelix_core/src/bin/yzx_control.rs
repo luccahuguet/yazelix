@@ -125,6 +125,7 @@ const STATUS_VERSION_TOOLS: &[(&str, &str)] = &[
     ("fzf", "fzf"),
     ("wezterm", "wezterm"),
     ("ghostty", "ghostty"),
+    ("ratty", "ratty"),
     ("nix", "nix"),
     ("kitty", "kitty"),
     ("foot", "foot"),

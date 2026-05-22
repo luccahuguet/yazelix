@@ -412,6 +412,7 @@ fn terminal_question() -> SingleQuestion {
         &[
             ("Ghostty (recommended)", "ghostty"),
             ("WezTerm", "wezterm"),
+            ("Ratty (Linux experimental)", "ratty"),
             ("Kitty", "kitty"),
             ("Alacritty", "alacritty"),
             ("Foot", "foot"),

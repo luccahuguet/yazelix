@@ -7,7 +7,7 @@ use super::process::find_command;
 
 pub(super) const X11_INSTANCE: &str = "yazelix";
 pub(super) const WINDOW_CLASS: &str = "com.yazelix.Yazelix";
-const SUPPORTED_TERMINALS: &[&str] = &["ghostty", "wezterm", "kitty", "alacritty", "foot"];
+const SUPPORTED_TERMINALS: &[&str] = &["ghostty", "wezterm", "ratty", "kitty", "alacritty", "foot"];
 const DEFAULT_TERMINALS: &[&str] = &["ghostty", "wezterm"];
 pub(super) fn normalized_configured_terminals(config: &JsonMap<String, JsonValue>) -> Vec<String> {
     let raw = match config.get("terminals") {
@@ -58,6 +58,7 @@ pub(super) fn generated_terminal_config_path(state_dir: &Path, terminal: &str) -
     match terminal {
         "ghostty" => root.join("ghostty").join("config"),
         "wezterm" => root.join("wezterm").join(".wezterm.lua"),
+        "ratty" => root.join("ratty").join("ratty.toml"),
         "kitty" => root.join("kitty").join("kitty.conf"),
         "alacritty" => root.join("alacritty").join("alacritty.toml"),
         "foot" => root.join("foot").join("foot.ini"),
@@ -114,6 +115,7 @@ pub(super) fn user_terminal_config_candidates_for_platform(
             home_dir.join(".wezterm.lua"),
             home_dir.join(".config").join("wezterm").join("wezterm.lua"),
         ]),
+        "ratty" => Ok(vec![xdg_config_home.join("ratty").join("ratty.toml")]),
         "alacritty" => Ok(vec![
             home_dir
                 .join(".config")
@@ -175,6 +177,7 @@ pub(super) fn terminal_display_name(terminal: &str) -> String {
     match terminal {
         "ghostty" => "Ghostty".to_string(),
         "wezterm" => "WezTerm".to_string(),
+        "ratty" => "Ratty".to_string(),
         "kitty" => "Kitty".to_string(),
         "alacritty" => "Alacritty".to_string(),
         "foot" => "Foot".to_string(),
@@ -187,6 +190,7 @@ pub(super) fn get_working_dir_args(terminal: &str, working_dir: &Path) -> Vec<St
     match terminal {
         "ghostty" => vec![format!("--working-directory={wd}")],
         "wezterm" => vec!["--cwd".to_string(), wd],
+        "ratty" => vec![],
         "kitty" => vec![format!("--directory={wd}")],
         "alacritty" => vec!["--working-directory".to_string(), wd],
         "foot" => vec![format!("--working-directory={wd}")],
@@ -310,6 +314,19 @@ pub(super) fn build_launch_command_argv(
             wezterm.push("--".to_string());
             wezterm.push(startup_script.to_string_lossy().into_owned());
             maybe_prepend(wezterm, nixgl)
+        }
+        "ratty" => {
+            let mut ratty = vec![
+                terminal.command.clone(),
+                "--config-file".to_string(),
+                config_string,
+                "--title".to_string(),
+                title,
+            ];
+            ratty.extend(working_dir_args);
+            ratty.push("-e".to_string());
+            ratty.push(startup_script.to_string_lossy().into_owned());
+            maybe_prepend(ratty, nixgl)
         }
         "kitty" => {
             let mut kitty = vec![

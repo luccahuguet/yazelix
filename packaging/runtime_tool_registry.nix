@@ -22,6 +22,11 @@ let
       ghosttyPackage
     else if runtimeVariant == "wezterm" then
       pkgs.wezterm
+    else if runtimeVariant == "ratty" then
+      if pkgs.stdenv.hostPlatform.isLinux then
+        pkgs.ratty
+      else
+        throw "Yazelix runtimeVariant ratty is only supported on Linux"
     else
       throw "Unsupported Yazelix runtimeVariant: ${runtimeVariant}";
   terminalCommands =
@@ -29,6 +34,8 @@ let
       [ "ghostty" ]
     else if runtimeVariant == "wezterm" then
       [ "wezterm" ]
+    else if runtimeVariant == "ratty" then
+      [ "ratty" ]
     else
       [ ];
   linuxGlWrapperPackage =

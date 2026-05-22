@@ -399,12 +399,54 @@ mod tests {
         let mut config = JsonMap::new();
         config.insert(
             "terminals".into(),
-            serde_json::json!(["ghostty", "", "warp", "ghostty", "kitty"]),
+            serde_json::json!(["ghostty", "", "warp", "ratty", "ghostty", "kitty"]),
         );
 
         assert_eq!(
             normalized_configured_terminals(&config),
-            vec!["ghostty".to_string(), "kitty".to_string()]
+            vec![
+                "ghostty".to_string(),
+                "ratty".to_string(),
+                "kitty".to_string()
+            ]
+        );
+    }
+
+    // Defends: Ratty's clap command parser requires -e/--command to be the last option before the startup script.
+    #[test]
+    fn ratty_launch_command_keeps_command_last() {
+        let runtime = TempDir::new().unwrap();
+        let startup = runtime
+            .path()
+            .join("shells")
+            .join("posix")
+            .join("start_yazelix.sh");
+        fs::create_dir_all(startup.parent().unwrap()).unwrap();
+        fs::write(&startup, "#!/bin/sh\n").unwrap();
+        let config_path = runtime.path().join("ratty.toml");
+        let argv = build_launch_command_argv(
+            runtime.path(),
+            &crate::runtime_contract::TerminalCandidate {
+                terminal: "ratty".to_string(),
+                name: "Ratty".to_string(),
+                command: "ratty".to_string(),
+            },
+            &config_path,
+            Path::new("/tmp"),
+        )
+        .unwrap();
+
+        let ratty_index = argv.iter().position(|arg| arg == "ratty").unwrap_or(0);
+        let ratty_args = &argv[ratty_index..];
+        assert_eq!(ratty_args[0], "ratty");
+        assert_eq!(ratty_args[1], "--config-file");
+        assert_eq!(ratty_args[2], config_path.to_string_lossy().as_ref());
+        assert_eq!(ratty_args[3], "--title");
+        assert_eq!(ratty_args[4], "Yazelix - Ratty");
+        assert_eq!(ratty_args[ratty_args.len() - 2], "-e");
+        assert_eq!(
+            ratty_args[ratty_args.len() - 1],
+            startup.to_string_lossy().as_ref()
         );
     }
 

@@ -557,6 +557,7 @@ pub fn generated_terminal_config_path(state_dir: &Path, terminal: &str) -> PathB
     match terminal {
         "ghostty" => root.join("ghostty").join("config"),
         "wezterm" => root.join("wezterm").join(".wezterm.lua"),
+        "ratty" => root.join("ratty").join("ratty.toml"),
         "kitty" => root.join("kitty").join("kitty.conf"),
         "alacritty" => root.join("alacritty").join("alacritty.toml"),
         "foot" => root.join("foot").join("foot.ini"),
@@ -592,6 +593,7 @@ pub fn user_terminal_config_candidates(
             home_dir.join(".wezterm.lua"),
             xdg_config_home.join("wezterm").join("wezterm.lua"),
         ]),
+        "ratty" => Ok(vec![xdg_config_home.join("ratty").join("ratty.toml")]),
         "alacritty" => Ok(vec![
             xdg_config_home.join("alacritty").join("alacritty.toml"),
         ]),

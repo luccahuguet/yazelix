@@ -19,6 +19,28 @@ let
     "host"
     "off"
   ];
+  runtimeVariants = [
+    "ghostty"
+    "wezterm"
+  ] ++ lib.optional pkgs.stdenv.hostPlatform.isLinux "ratty";
+  runtimeDefaultTerminals =
+    runtimeVariant:
+    if runtimeVariant == "wezterm" then
+      [
+        "wezterm"
+        "ghostty"
+      ]
+    else if runtimeVariant == "ratty" then
+      [
+        "ratty"
+        "ghostty"
+        "wezterm"
+      ]
+    else
+      [
+        "ghostty"
+        "wezterm"
+      ];
   componentEnabled = name: cfg.components.${name} or true;
   runtimeToolSource = name: cfg.runtime_tool_sources.${name} or "bundled";
   agentUsageProgramNames = [
@@ -324,13 +346,14 @@ in
     };
 
     runtime_variant = mkOption {
-      type = types.enum [ "ghostty" "wezterm" ];
+      type = types.enum runtimeVariants;
       default = defaultRuntimeVariant;
       description = ''
         Packaged terminal runtime variant.
 
         - "ghostty": default packaged runtime with Yazelix cursor trails, Ghostty config effects, and Yazi image previews through Zellij
         - "wezterm": explicit alternate packaged runtime
+        - "ratty": experimental Linux packaged runtime with Ratty and the Yazelix Zellij/Yazi Kitty graphics bridge
       '';
     };
 
@@ -699,6 +722,8 @@ in
     {
       # Expose the packaged Yazelix runtime through the Home Manager profile.
       home.packages = [ yazelixPackage ];
+
+      programs.yazelix.terminals = mkDefault (runtimeDefaultTerminals cfg.runtime_variant);
 
       assertions = [
         {

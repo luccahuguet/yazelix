@@ -96,5 +96,19 @@ Out of scope:
   validator `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-installed-runtime-contract`
 - Source: `docs/contracts/startup_profile_scenarios.md`
 
+#### TLAUNCH-005
+- Type: behavior
+- Status: live
+- Owner: `terminal_launcher.nu` and Rust terminal materialization
+- Statement: Ratty launch uses a generated `ratty.toml` config, passes it with
+  `--config-file`, sets the Yazelix window title, and keeps Ratty's `-e`
+  command delimiter as the final flag before the startup script
+- Verification: automated Rust tests in
+  `rust_core/yazelix_core/src/launch_commands.rs`
+  (`ratty_launch_command_keeps_command_last`) and
+  `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`
+  (`terminal_materialization_generate_from_env_writes_generated_configs`)
+- Source: `docs/installation.md`; `docs/terminal_emulators.md`
+
 ## Traceability
 - Defended by: `yzx_repo_validator validate-contracts`

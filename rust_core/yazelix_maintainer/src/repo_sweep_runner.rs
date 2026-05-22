@@ -373,7 +373,15 @@ fn build_sweep_config(
     test_id: &str,
 ) -> String {
     let mut terminals = Vec::new();
-    for candidate in [terminal, "ghostty", "wezterm", "kitty", "alacritty", "foot"] {
+    for candidate in [
+        terminal,
+        "ghostty",
+        "wezterm",
+        "ratty",
+        "kitty",
+        "alacritty",
+        "foot",
+    ] {
         if !terminals.contains(&candidate) {
             terminals.push(candidate);
         }

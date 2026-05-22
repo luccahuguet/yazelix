@@ -8,7 +8,7 @@ const SPONSOR_URL: &str = "https://github.com/sponsors/luccahuguet";
 const WHY_LINES: &[&str] = &[
     "Yazelix is a reproducible terminal IDE (Yazi + Zellij + Helix) with:",
     "• Zero‑conflict keybindings, zjstatus, smooth Yazi↔editor flows",
-    "• Top terminals (Ghostty/WezTerm/Kitty/Alacritty) and shells (Bash/Zsh/Fish/Nushell)",
+    "• Top terminals (Ghostty/WezTerm/Ratty/Kitty/Alacritty) and shells (Bash/Zsh/Fish/Nushell)",
     "• One‑file config (Nix) with sane defaults and curated packs",
     "• Remote‑ready over SSH; same superterminal on barebones hosts",
     "• Git and tooling preconfigured (lazygit, starship, zoxide, carapace)",

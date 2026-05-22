@@ -330,7 +330,7 @@ pub(super) fn parse_session_config_patch_value(
                     ErrorClass::Config,
                     "invalid_session_config_override_string_list",
                     format!("Invalid string-list value for --with {path}."),
-                    "Use a JSON array of strings, for example `[\"ghostty\", \"wezterm\"]`.",
+                    "Use a JSON array of strings, for example `[\"ghostty\", \"wezterm\", \"ratty\"]`.",
                     serde_json::json!({
                         "path": path,
                         "value": raw,
@@ -343,7 +343,7 @@ pub(super) fn parse_session_config_patch_value(
                     ErrorClass::Config,
                     "invalid_session_config_override_string_list",
                     format!("Invalid string-list value for --with {path}."),
-                    "Use a JSON array of strings, for example `[\"ghostty\", \"wezterm\"]`.",
+                    "Use a JSON array of strings, for example `[\"ghostty\", \"wezterm\", \"ratty\"]`.",
                     serde_json::json!({ "path": path, "value": raw }),
                 ));
             };

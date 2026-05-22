@@ -7,11 +7,12 @@ A Home Manager module for [Yazelix](https://github.com/luccahuguet/yazelix) that
 - **Leaves `settings.jsonc` mutable by default** so users can edit it directly
 - **Can generate `settings.jsonc`** from Home Manager options when `manage_config = true`
 - **Adds `yzx` to the Home Manager profile** through the packaged Yazelix runtime
-- **Selects the packaged terminal runtime variant** with Ghostty by default and WezTerm available through `runtime_variant`
+- **Selects the packaged terminal runtime variant** with Ghostty by default, WezTerm as the stable alternate, and Ratty as an experimental Linux option through `runtime_variant`
 - **Installs icons and, on Linux, a desktop entry** that target the managed runtime
 - **Keeps the config surface type-safe** with Home Manager validation
 
 Config ownership is configurable: set `programs.yazelix.manage_config = true` only if you want Home Manager to generate and own `~/.config/yazelix/settings.jsonc`
+When `manage_config = true`, the module defaults `programs.yazelix.terminals` to the selected `runtime_variant` first unless you set an explicit ordered terminal list
 
 ## What This Module Does NOT Do
 
@@ -63,7 +64,7 @@ If you already have your own Home Manager flake, the minimal setup is:
 {
   programs.yazelix = {
     enable = true;
-    runtime_variant = "ghostty"; # Default; use "wezterm" for the alternate packaged terminal path
+    runtime_variant = "ghostty"; # Default; use "wezterm" or Linux-only "ratty" for alternate packaged terminal paths
     # Customize other options as needed - see example.nix
     # Set manage_config = true if you want Home Manager to own settings.jsonc
   };

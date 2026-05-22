@@ -129,7 +129,10 @@
             inherit nixgl runtimeVariant runtimeToolSources components yaziAssets zellijPluginArtifacts;
             pkgs = runtimePkgs;
             enableZellijKittyPassthrough =
-              enableZellijKittyPassthrough || runtimeVariant == "ghostty";
+              enableZellijKittyPassthrough || builtins.elem runtimeVariant [
+                "ghostty"
+                "ratty"
+              ];
             extraRuntimePackages = [
               yazelixZellijBar.packages.${system}.yazelix_zellij_bar
             ] ++ extraRuntimePackages;
@@ -148,7 +151,10 @@
           ] ++ extraRuntimePackages;
           yaziAssets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
           zellijPluginArtifacts = zellijPluginArtifactsFor system;
-          enableZellijKittyPassthrough = runtimeVariant == "ghostty";
+          enableZellijKittyPassthrough = builtins.elem runtimeVariant [
+            "ghostty"
+            "ratty"
+          ];
         };
       yazelixPackage = system: pkgs: runtimeVariant: extraRuntimePackages:
         mkYazelix system {
@@ -156,7 +162,10 @@
         };
       runtimePkgsFor =
         system: pkgs: runtimeVariant:
-        if runtimeVariant == "ghostty" then
+        if builtins.elem runtimeVariant [
+          "ghostty"
+          "ratty"
+        ] then
           yazelixGraphicsPkgs system pkgs
         else
           pkgs;
@@ -251,6 +260,10 @@
           defaultRuntimeVariant = "ghostty";
           noExtraRuntimePackages = [ ];
           agentUsageRuntimePackages = agentUsagePackages system;
+          rattyPackages = lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+            runtime_ratty = runtimePackage system pkgs "ratty" noExtraRuntimePackages;
+            yazelix_ratty = yazelixPackage system pkgs "ratty" noExtraRuntimePackages;
+          };
           runtime_default = runtimePackage system pkgs defaultRuntimeVariant noExtraRuntimePackages;
           runtime_ghostty = runtimePackage system pkgs "ghostty" noExtraRuntimePackages;
           runtime_wezterm = runtimePackage system pkgs "wezterm" noExtraRuntimePackages;
@@ -268,7 +281,7 @@
           yazelix_yazi_assets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
           beads_rust = beadsRustPackage system pkgs;
         in
-        {
+        ({
           br = beads_rust;
           beads_rust = beads_rust;
           default = yazelix_default;
@@ -288,47 +301,59 @@
           yazelix_zellij_pane_orchestrator = yazelix_zellij_pane_orchestrator;
           yazelix_zellij_popup = yazelix_zellij_popup;
           yzs = yazelix_screen;
-        }
+        } // rattyPackages)
       );
 
-      apps = forAllSystems (system: {
-        default = {
-          type = "app";
-          program = "${self.packages.${system}.yazelix}/bin/yzx";
-        };
-        yazelix = {
-          type = "app";
-          program = "${self.packages.${system}.yazelix}/bin/yzx";
-        };
-        yazelix_ghostty = {
-          type = "app";
-          program = "${self.packages.${system}.yazelix_ghostty}/bin/yzx";
-        };
-        yazelix_wezterm = {
-          type = "app";
-          program = "${self.packages.${system}.yazelix_wezterm}/bin/yzx";
-        };
-        yazelix_agent_tools = {
-          type = "app";
-          program = "${self.packages.${system}.yazelix_agent_tools}/bin/yzx";
-        };
-        yazelix_screen = {
-          type = "app";
-          program = "${self.packages.${system}.yazelix_screen}/bin/yzs";
-        };
-        yzs = {
-          type = "app";
-          program = "${self.packages.${system}.yazelix_screen}/bin/yzs";
-        };
-        yazelix_ghostty_cursors = {
-          type = "app";
-          program = "${self.packages.${system}.yazelix_ghostty_cursors}/bin/yzc";
-        };
-        yzc = {
-          type = "app";
-          program = "${self.packages.${system}.yazelix_ghostty_cursors}/bin/yzc";
-        };
-      });
+      apps = forAllSystems (
+        system:
+        let
+          pkgs = mkPkgs system;
+        in
+        {
+          default = {
+            type = "app";
+            program = "${self.packages.${system}.yazelix}/bin/yzx";
+          };
+          yazelix = {
+            type = "app";
+            program = "${self.packages.${system}.yazelix}/bin/yzx";
+          };
+          yazelix_ghostty = {
+            type = "app";
+            program = "${self.packages.${system}.yazelix_ghostty}/bin/yzx";
+          };
+          yazelix_wezterm = {
+            type = "app";
+            program = "${self.packages.${system}.yazelix_wezterm}/bin/yzx";
+          };
+          yazelix_agent_tools = {
+            type = "app";
+            program = "${self.packages.${system}.yazelix_agent_tools}/bin/yzx";
+          };
+          yazelix_screen = {
+            type = "app";
+            program = "${self.packages.${system}.yazelix_screen}/bin/yzs";
+          };
+          yzs = {
+            type = "app";
+            program = "${self.packages.${system}.yazelix_screen}/bin/yzs";
+          };
+          yazelix_ghostty_cursors = {
+            type = "app";
+            program = "${self.packages.${system}.yazelix_ghostty_cursors}/bin/yzc";
+          };
+          yzc = {
+            type = "app";
+            program = "${self.packages.${system}.yazelix_ghostty_cursors}/bin/yzc";
+          };
+        }
+        // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+          yazelix_ratty = {
+            type = "app";
+            program = "${self.packages.${system}.yazelix_ratty}/bin/yzx";
+          };
+        }
+      );
 
       devShells = forAllSystems (
         system:

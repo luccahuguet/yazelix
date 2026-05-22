@@ -59,7 +59,7 @@ Launch Yazelix with directory and mode options
 - `--home`: Start in home directory
 - `--config FILE`: Use an alternate complete `settings.jsonc` for this window
 - `--with KEY=VALUE`: Apply a repeatable session-only settings override, such as `--with editor.command=nvim`
-- `--terminal TERM`: Override terminal selection (e.g., ghostty, wezterm, kitty)
+- `--terminal TERM`: Override terminal selection (e.g., ghostty, wezterm, ratty, kitty)
 - `--verbose`: Print detailed launch diagnostics
 
 ### `yzx enter [--path DIR] [--home] [--config FILE] [--with KEY=VALUE] [--verbose]`

@@ -5,7 +5,7 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const SUPPORTED_TERMINALS: &[&str] = &["ghostty", "wezterm", "kitty", "alacritty", "foot"];
+const SUPPORTED_TERMINALS: &[&str] = &["ghostty", "wezterm", "ratty", "kitty", "alacritty", "foot"];
 const NIXGL_WRAPPER_CANDIDATES: &[(&str, &[&str])] = &[
     ("nixGL", &["libexec", "nixGL"]),
     ("nixGLDefault", &["libexec", "nixGLDefault"]),
@@ -566,7 +566,7 @@ fn check_terminal_support(request: &TerminalSupportCheckRequest) -> RuntimeCheck
             "None of the configured terminal binaries are available in the active Yazelix runtime or PATH.".to_string(),
             None,
             Some(
-                "Use Ghostty from the active Yazelix runtime, install one of the other configured terminals on PATH, or adjust [terminal].terminals to match what is available."
+                "Use the terminal shipped by the active Yazelix runtime, install one of the other configured terminals on PATH, or adjust [terminal].terminals to match what is available."
                     .to_string(),
             ),
             Some("host-dependency".to_string()),
@@ -766,6 +766,7 @@ fn terminal_display_name(terminal: &str) -> String {
     match terminal {
         "ghostty" => "Ghostty".to_string(),
         "wezterm" => "WezTerm".to_string(),
+        "ratty" => "Ratty".to_string(),
         "kitty" => "Kitty".to_string(),
         "alacritty" => "Alacritty".to_string(),
         "foot" => "Foot".to_string(),
@@ -938,7 +939,7 @@ mod tests {
                 .details
                 .as_deref()
                 .unwrap_or_default()
-                .contains("Supported terminals: ghostty, wezterm, kitty, alacritty, foot")
+                .contains("Supported terminals: ghostty, wezterm, ratty, kitty, alacritty, foot")
         );
     }
 
