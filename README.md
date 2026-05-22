@@ -237,8 +237,6 @@ Yazelix uses a **layered configuration system** that safely merges your personal
 - **Yazi customization**: Use the built-in `yazi` settings in `settings.jsonc` for things like plugins, theme, sorting, and binary overrides, and use the managed Yazi home at `~/.config/yazelix/yazi/` for `yazi.toml`, `keymap.toml`, `init.lua`, packages, plugins, and flavors (see [Yazi Configuration](./docs/yazi-configuration.md))
 - **Zellij customization**: Use the built-in `zellij` settings in `settings.jsonc` for Yazelix-owned Zellij knobs, keybindings, theme, and rounded corners, and use `~/.config/yazelix/zellij.kdl` for deeper native Zellij settings that Yazelix does not render (see [Zellij Configuration](./docs/zellij-configuration.md))
 - **Status bar widgets**: Configure `[zellij].widget_tray` to order or hide `editor`, `shell`, `term`, `workspace`, `cursor`, usage, `cpu`, and `ram` widgets; the default cursor widget renders mono presets as colored `█ name` and split presets as one-cell split glyphs from the launch-scoped Ghostty cursor fact
-- **Standalone Ghostty cursors**: install `.#yazelix_ghostty_cursors` or run `nix run .#yzc -- --help`; `yzc init` creates `~/.config/yazelix_ghostty_cursors/settings.jsonc`, and `yzc generate ghostty` writes `~/.config/yazelix_ghostty_cursors/ghostty.conf` for Ghostty's `config-file` include
-- **Standalone popup plugin**: use Yazelix Zellij Popup (`yzpp`) for plain-Zellij floating TUI popups; regular Yazelix sessions package the same plugin for `yzx popup`, the command palette, and config UI
 - **Your configs persist** across Yazelix updates without git conflicts
 - **Intelligent merging**: Generated Yazi and Zellij runtime configs are rebuilt from Yazelix defaults plus your managed overrides instead of forcing you to edit tracked runtime files
 - **Launch-time config snapshots**: each Yazelix window keeps the `settings.jsonc` snapshot it launched with; edit config whenever you want, then open a new Yazelix window or run `yzx restart` to apply it to live panes. Use repeatable `--with KEY=VALUE` on `yzx launch`, `yzx enter`, or `yzx restart` for session-only settings overrides
@@ -371,7 +369,6 @@ Run `yzx help` for the live command list
 
 - `yzx status [--versions]` - Show current Yazelix status and optional tool versions
 - `yzx cursors` - Inspect Ghostty cursor presets, effects, and resolved colors
-- `yzc init/list/inspect/generate ghostty` - Manage standalone Yazelix cursor presets for Ghostty users outside a full Yazelix session
 - `yzx dev inspect_session [--json]` - Inspect the current Yazelix/Zellij tab session snapshot for runtime debugging
 - `yzx dev profile [--cold] [--desktop] [--launch] [--clear-cache]` - Profile startup phases under `~/.local/share/yazelix/profiles/startup/`
 

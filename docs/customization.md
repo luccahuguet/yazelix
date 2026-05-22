@@ -3,7 +3,7 @@
 Start with this model:
 
 - `~/.config/yazelix/settings.jsonc` is the main workspace settings file for shell, editor, terminal, Zellij, Yazi, popup, status, and layout behavior
-- `~/.config/yazelix_ghostty_cursors/settings.jsonc` owns standalone Ghostty cursor presets and shader settings
+- `~/.config/yazelix_ghostty_cursors/settings.jsonc` owns Ghostty cursor presets and shader settings
 - Generated runtime state lives under `~/.local/share/yazelix`; edit the config inputs, not generated runtime files
 - Home Manager installs can own the settings files declaratively; the config UI and status surfaces show read-only ownership when that applies
 
@@ -18,7 +18,6 @@ The sections below cover the override surfaces that sit around that main model.
 - **Terminal Configurations**:
   - **Bundled terminals** (yazelix-ghostty, etc.): Configs generated dynamically from your yazelix settings
     - **Ghostty cursor shaders**: Edit `~/.config/yazelix_ghostty_cursors/settings.jsonc` to choose the cursor trail, enabled cursor list, global effects, duration, glow, and Kitty fallback toggle. `yzx cursors` shows the active settings path and resolved preset colors. `settings.trail = "random"` picks from `enabled_cursors`, `settings.trail = "none"` disables the Ghostty palette shader, and `settings.kitty_enable_cursor = false` disables Kitty's simple fallback trail. Cursor definitions use `family = "mono"` for one base color with a derived accent, `family = "split"` for two colors split by `divider = "vertical" | "horizontal"` with `transition = "soft" | "hard"`, or `family = "curated_template"` for hand-tuned shaders.
-    - **Standalone Yazelix Ghostty cursors**: Build or install `.#yazelix_ghostty_cursors` to get the generated Yazelix Ghostty cursor shaders without launching Yazelix. Run `yzc init`, edit `~/.config/yazelix_ghostty_cursors/settings.jsonc`, then run `yzc generate ghostty` to write `~/.config/yazelix_ghostty_cursors/ghostty.conf` and generated shaders. Add `config-file = ~/.config/yazelix_ghostty_cursors/ghostty.conf` to Ghostty. `nix run .#yzc -- --help` exposes the same CLI as a flake app, and `.#ghostty_cursor_shaders` remains available as a compatibility package attribute for the same output.
     - **Transparency**: Configure `transparency = "none"`, `"low"`, `"medium"`, or `"high"`
     - **Yazelix-specific terminal overrides**: Add personal terminal-native settings under `~/.config/yazelix/`
       - `terminal_ghostty.conf`
