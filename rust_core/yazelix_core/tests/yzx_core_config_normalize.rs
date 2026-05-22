@@ -1150,7 +1150,9 @@ fn terminal_materialization_generate_from_env_writes_generated_configs() {
     )
     .unwrap();
     assert!(ratty_config.contains("opacity = 0.90"));
-    assert!(ratty_config.contains("visible = false"));
+    assert!(ratty_config.contains("path = \"CairoSpinyMouse.obj\""));
+    assert!(ratty_config.contains("visible = true"));
+    assert!(ratty_config.contains("spin_speed = 1.4"));
     assert!(
         fixture
             .state_dir

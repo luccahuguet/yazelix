@@ -160,7 +160,17 @@ style = "Regular"
 size = 18
 
 [cursor.model]
-visible = false
+path = "CairoSpinyMouse.obj"
+scale_factor = 6.0
+brightness = 0.5
+x_offset = 0.5
+plane_offset = 18.0
+visible = true
+
+[cursor.animation]
+spin_speed = 1.4
+bob_speed = 2.2
+bob_amplitude = 0.08
 
 [bindings]
 keys = [
