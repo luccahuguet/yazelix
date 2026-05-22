@@ -9,7 +9,7 @@ Use this with [LOC extraction scorecard](./loc_extraction_scorecard.md) and [Rus
 - Rust budget ceiling: `73,083` raw tracked Rust lines across `140` files
 - Long-term Rust hard target: `60,000` raw tracked Rust lines
 - Largest pressure families: `core_config_ui_and_materialization` at `20,624` raw lines and `core_workspace_and_pane_integration` at `16,689` raw lines
-- Current child repos already integrated: `yazelix-screen`, `yazelix-ghostty-cursors`, `yazelix-zellij-bar`, `yazelix-zellij-popup`, and `yazelix-yazi-assets`
+- Current child repos already integrated: `yazelix-screen`, `yazelix-ghostty-cursors`, `yazelix-ratconfig`, `yazelix-zellij-bar`, `yazelix-zellij-popup`, and `yazelix-yazi-assets`
 - Popup lifecycle ownership has moved to `yazelix-zellij-popup`; remaining main-repo popup work should be thin generated-spec/config integration plus Yazelix-specific close hooks
 
 ## Ranking Rules
@@ -34,7 +34,7 @@ Reject a move when the main repo would still own the same behavior through a bro
 | 5 | Split launch process execution and desktop/macOS adapters | Thin adapter | `launch_commands.rs` | Mostly organization first; unlocks later workspace extraction but should not claim LOC success unless deletion follows | Keep `yazelix-0nvl.1` |
 | 6 | Split restart and enter flow after launch helper extraction | Thin adapter | `launch_commands.rs`, front-door launch dispatch | Same as rank 5; useful only if it shrinks the workspace extraction boundary | Keep `yazelix-0nvl.2` sequenced after `yazelix-0nvl.1` |
 | 7 | Evaluate barless/native status component toggle | Defer | Zellij layout families, `zjstatus.wasm`, Home Manager component toggles | Real package/storage impact if accepted, but risky before layout ownership is stable | Keep `yazelix-jhu5` deferred |
-| 8 | Public `yazelix_ratconfig` extraction | Defer | `config_ui.rs`, `yazelix_ratconfig/*` | Potentially large, but only after the private adapter survives real saves and Yazelix-specific apply/status logic stays local | Defer public repo; continue private boundary work only |
+| 8 | Public `yazelix-ratconfig` extraction | Move to child repo / thin adapter | `config_ui.rs`, deleted `yazelix_ratconfig/*` staging module | Reusable model/editor/render, JSONC patching, and migration primitives moved to child while Yazelix-specific schema, Home Manager/native status, validation, and apply behavior stayed local | Resolved by `yazelix-ylt4` |
 | 9 | Move maintainer tooling to a child repo | Defer / reject now | `yazelix_maintainer`, validators, release/update workflow | Would likely harm maintainer workflow and add cross-repo validator coupling before deleting code | Keep in repo; split validator domains and delete trivia first |
 | 10 | Extract `yazelix_workspace` publicly | Defer | `zellij_commands.rs`, `launch_commands.rs`, workspace/session state, pane orchestrator client | Highest theoretical LOC impact, highest coupling | Defer until launch, layout ownership, and Zellij materialization shrinkage land |
 
@@ -47,7 +47,7 @@ Reject a move when the main repo would still own the same behavior through a bro
 ## Explicit Rejections
 
 - Do not create a standalone Yazi integration repo while the main repo still owns the same materializer paths; the existing `yazelix-yazi-assets` child repo is only the reusable asset package
-- Do not move `config_ui.rs` wholesale to `yazelix_ratconfig`; JSONC patching, Home Manager/native status, settings metadata, and runtime apply behavior are Yazelix-specific
+- Do not move `config_ui.rs` wholesale to `yazelix-ratconfig`; Home Manager/native status, settings metadata, action registry detail text, validation, file writes, and runtime apply behavior are Yazelix-specific
 - Do not move status-cache paths or pane-orchestrator payloads to `yazelix_zellij_bar`; provider usage polling and cursor display are child-owned when they run from explicit standalone facts, provider tools, or `yazelix-ghostty-cursors`
 - Do not split maintainer tooling only to call it back through wrappers from this repo; that would make the workflow worse without reducing user runtime ownership
 - Do not preserve old popup command/config names that have not been released or that have no current caller; stale aliases are budget debt

@@ -10,17 +10,11 @@ JSONC is the first supported persistence adapter because `settings.jsonc` is Yaz
 
 ## Extraction State
 
-The extraction state is `active_extraction`.
+The extraction state is `complete_jsonc_first`.
 
-The in-repo `rust_core/yazelix_core/src/yazelix_ratconfig/` namespace is the staging area. If the staging code is not ready to move, Yazelix refactors it until it is ready; readiness is not a reason to defer the extraction goal.
+The separate `yazelix-ratconfig` repository owns the reusable code and tests. Yazelix consumes the published child crate through Cargo/Nix dependency metadata, and the old in-repo reusable `rust_core/yazelix_core/src/yazelix_ratconfig/` implementation has been deleted instead of kept as a duplicate copy.
 
-The extraction is complete only when:
-
-- a separate `yazelix-ratconfig` repository exists
-- the reusable code and tests live in that repository
-- Yazelix consumes the child repo through the normal dependency path
-- the main repo deletes moved implementation code instead of carrying a duplicate copy
-- focused tests pass in both repositories
+Future work should treat the child crate as the reusable owner and the main repo as a Yazelix adapter. If the boundary is painful, improve the child API or revise the contract; do not recreate a local mirror in the main repo.
 
 ## Child Repo Ownership
 
@@ -66,9 +60,9 @@ The reusable child repo receives these facts as data. It does not rediscover Yaz
 
 ## Public API Shape
 
-The first public crate shape should be small and data-driven.
+The public crate shape is small and data-driven.
 
-Expected modules:
+Current modules:
 
 - `model`: document, tab, row, field, value state, diagnostics, and display metadata
 - `editor`: navigation, search, edit modes, input parsing, and control actions
@@ -76,7 +70,7 @@ Expected modules:
 - `jsonc`: comment-preserving JSONC patch primitives
 - `migration`: deterministic config migration operations
 
-The generic editor should emit write intents such as set, unset, or migrate. The application adapter owns file IO, validation, atomic writes, model reload, and post-save apply behavior.
+The application adapter owns file IO, validation, atomic writes, model reload, and post-save apply behavior.
 
 Project-specific rich detail sections are supplied as data. The renderer may display them, but it must not know about Yazelix keybindings, Zellij, Yazi, Home Manager, or generated config ownership.
 
