@@ -220,7 +220,7 @@ Interactive command palette (fuzzy search)
 
 ### `yzx screen [STYLE]`
 Preview the animated welcome screen directly in the current terminal
-- `STYLE`: one of `logo`, `boids`, `boids_predator`, `boids_schools`, `mandelbrot`, `game_of_life_gliders`, `game_of_life_oscillators`, `game_of_life_bloom`, or `random`
+- `STYLE`: one of `logo`, `boids`, `boids_predator`, `boids_schools`, `mandelbrot`, `magician`, `game_of_life_gliders`, `game_of_life_oscillators`, `game_of_life_bloom`, or `random`
 - `random`: rotates across the retained Game of Life, boids, and Mandelbrot animation families
 - Runs until a key is pressed
 - Requires an interactive terminal that supports timed keypress reads via bash

@@ -658,6 +658,7 @@ in
         - "boids_predator": show boids with predator/prey motion
         - "boids_schools": show species-separated boids schools
         - "mandelbrot": show the Seahorse/Misiurewicz Mandelbrot zoom
+        - "magician": show the 1mposter ASCII magician GIF animation
         - "game_of_life_gliders": show the glider-swarm Game of Life style
         - "game_of_life_oscillators": show the oscillator-garden Game of Life style
         - "game_of_life_bloom": show the bloom-field Game of Life style

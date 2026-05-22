@@ -12,12 +12,12 @@ welcome/startup callers.
 The retained public shape is:
 
 - welcome keeps `static`, `logo`, `boids`, `boids_predator`,
-  `boids_schools`, `mandelbrot`,
+  `boids_schools`, `mandelbrot`, `magician`,
   `game_of_life_gliders`, `game_of_life_oscillators`,
   `game_of_life_bloom`, and `random`
 - `yzx screen` keeps the same animated surface except `static`
 - welcome `random` splits evenly across Game of Life, boids, and Mandelbrot
-  families while never choosing `static` or `logo`
+  families while never choosing `static`, `logo`, or `magician`
 - `yzx screen random` remains the direct Game of Life preview selector
 - `boids` remains an alias for `boids_predator`
 
@@ -50,6 +50,7 @@ Out of scope:
 | `boids_schools` | yes | yes | live | species-separated flocking variant |
 | `boids_flow` | no | no | deleted | removed after the flow-field variant looked odd in the welcome surface |
 | `mandelbrot` | yes | yes | live | Seahorse/Misiurewicz spiral zoom |
+| `magician` | yes | yes | live | attributed 1mposter ASCII magician GIF-derived animation |
 | `game_of_life_gliders` | yes | yes | live | retained default-family live simulation variant |
 | `game_of_life_oscillators` | yes | yes | live | retained default-family live simulation variant |
 | `game_of_life_bloom` | yes | yes | live | retained default-family live simulation variant |
@@ -64,7 +65,7 @@ Out of scope:
 - Owner: config metadata plus Rust style resolution in
   `front_door_render.rs` and `front_door_commands.rs`
 - Statement: The retained public style surface is exactly `static`, `logo`,
-  `boids`, `boids_predator`, `boids_schools`, `mandelbrot`,
+  `boids`, `boids_predator`, `boids_schools`, `mandelbrot`, `magician`,
   `game_of_life_gliders`, `game_of_life_oscillators`, `game_of_life_bloom`,
   and `random` for welcome, and the same minus `static` for `yzx screen`
 - Verification: `yzx_repo_validator validate-config-surface-contract`;
@@ -80,7 +81,7 @@ Out of scope:
   `game_of_life_gliders`, `game_of_life_oscillators`, and
   `game_of_life_bloom`; the boids family rotates through `boids_predator`,
   and `boids_schools`; the Mandelbrot family resolves to
-  `mandelbrot`. It is not a bucket over `static` or `logo`
+  `mandelbrot`. It is not a bucket over `static`, `logo`, or `magician`
 - Verification: automated Rust `front_door_render` tests;
   validator `yzx_repo_validator validate-contracts`
 

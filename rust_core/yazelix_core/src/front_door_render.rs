@@ -18,6 +18,8 @@ use yazelix_screen::{
 };
 
 const ASCII_ART_DATA_JSON: &str = include_str!("../assets/ascii_art_data.json");
+const ASCII_MAGICIAN_RGB: &[u8] =
+    include_bytes!("../assets/third_party/ascii_magician_1mposter_96.rgb");
 
 const ANSI_RED: &str = "\u{1b}[31m";
 const ANSI_GREEN: &str = "\u{1b}[32m";
@@ -26,6 +28,11 @@ const ANSI_BLUE: &str = "\u{1b}[34m";
 const ANSI_PURPLE: &str = "\u{1b}[35m";
 const ANSI_RESET: &str = "\u{1b}[0m";
 const ANSI_FAINT: &str = "\u{1b}[2m";
+const ASCII_MAGICIAN_ATTRIBUTION: &str = "ascii magician GIF by 1mposter";
+const ASCII_MAGICIAN_SOURCE_WIDTH: usize = 96;
+const ASCII_MAGICIAN_SOURCE_HEIGHT: usize = 96;
+const ASCII_MAGICIAN_FRAME_COUNT: usize = 40;
+const RGB_BYTES_PER_PIXEL: usize = 3;
 
 const GAME_OF_LIFE_RANDOM_POOL: &[&str] = &[
     "game_of_life_gliders",
@@ -196,6 +203,7 @@ fn screen_frame_delay(resolved_style: &str) -> Duration {
         style if is_game_of_life_style(style) => Duration::from_millis(160),
         style if is_boids_style(style) => Duration::from_millis(70),
         "mandelbrot" => mandelbrot_frame_delay(),
+        "magician" => ascii_magician_frame_delay(),
         _ => Duration::from_millis(120),
     }
 }
@@ -421,6 +429,125 @@ fn boids_welcome_body_height(spec: &BoidsWelcomeSpec, terminal_height: usize) ->
         .max(1)
 }
 
+fn ascii_magician_frame_delay() -> Duration {
+    Duration::from_millis(100)
+}
+
+fn ascii_magician_frame_stride() -> usize {
+    ASCII_MAGICIAN_SOURCE_WIDTH * ASCII_MAGICIAN_SOURCE_HEIGHT * RGB_BYTES_PER_PIXEL
+}
+
+fn ascii_magician_frame_count() -> usize {
+    debug_assert_eq!(
+        ASCII_MAGICIAN_RGB.len(),
+        ascii_magician_frame_stride() * ASCII_MAGICIAN_FRAME_COUNT
+    );
+    ASCII_MAGICIAN_RGB.len() / ascii_magician_frame_stride()
+}
+
+fn ascii_magician_art_dimensions(width: usize, height: usize) -> (usize, usize) {
+    let available_width = width
+        .saturating_sub(2)
+        .clamp(1, ASCII_MAGICIAN_SOURCE_WIDTH);
+    let available_rows = height.saturating_sub(3).max(1);
+    let width_from_height = available_rows
+        .saturating_mul(2)
+        .clamp(1, ASCII_MAGICIAN_SOURCE_WIDTH);
+    let art_width = available_width.min(width_from_height).max(1);
+    let art_rows = art_width.div_ceil(2).min(available_rows).max(1);
+    (art_width, art_rows)
+}
+
+fn ascii_magician_rgb(frame_index: usize, x: usize, y: usize) -> (u8, u8, u8) {
+    let stride = ascii_magician_frame_stride();
+    let frame_offset = (frame_index % ascii_magician_frame_count()) * stride;
+    let pixel_offset = frame_offset + (y * ASCII_MAGICIAN_SOURCE_WIDTH + x) * RGB_BYTES_PER_PIXEL;
+    (
+        ASCII_MAGICIAN_RGB[pixel_offset],
+        ASCII_MAGICIAN_RGB[pixel_offset + 1],
+        ASCII_MAGICIAN_RGB[pixel_offset + 2],
+    )
+}
+
+fn ascii_magician_scaled_coord(target: usize, target_len: usize, source_len: usize) -> usize {
+    (target.saturating_mul(source_len) / target_len.max(1)).min(source_len.saturating_sub(1))
+}
+
+fn build_ascii_magician_frame(
+    width: usize,
+    height: usize,
+    source_frame_index: usize,
+    fill_height: bool,
+) -> Vec<String> {
+    let (art_width, art_rows) = ascii_magician_art_dimensions(width, height);
+    let art_pixel_height = art_rows * 2;
+    let content_height = art_rows + 1;
+    let top_padding = height.saturating_sub(content_height) / 2;
+    let mut lines = vec![String::new(); top_padding];
+
+    for row in 0..art_rows {
+        let mut line = String::new();
+        for column in 0..art_width {
+            let source_x =
+                ascii_magician_scaled_coord(column, art_width, ASCII_MAGICIAN_SOURCE_WIDTH);
+            let upper_y = ascii_magician_scaled_coord(
+                row * 2,
+                art_pixel_height,
+                ASCII_MAGICIAN_SOURCE_HEIGHT,
+            );
+            let lower_y = ascii_magician_scaled_coord(
+                row * 2 + 1,
+                art_pixel_height,
+                ASCII_MAGICIAN_SOURCE_HEIGHT,
+            );
+            let (upper_r, upper_g, upper_b) =
+                ascii_magician_rgb(source_frame_index, source_x, upper_y);
+            let (lower_r, lower_g, lower_b) =
+                ascii_magician_rgb(source_frame_index, source_x, lower_y);
+            line.push_str(&format!(
+                "\u{1b}[38;2;{upper_r};{upper_g};{upper_b}m\
+                 \u{1b}[48;2;{lower_r};{lower_g};{lower_b}m▀"
+            ));
+        }
+        line.push_str(ANSI_RESET);
+        lines.push(center_text(&line, width));
+    }
+
+    lines.push(center_text(
+        &format!("{ANSI_FAINT}{ANSI_PURPLE}{ASCII_MAGICIAN_ATTRIBUTION}{ANSI_RESET}"),
+        width,
+    ));
+
+    if fill_height {
+        while lines.len() < height {
+            lines.push(String::new());
+        }
+    }
+
+    lines
+}
+
+fn build_ascii_magician_welcome_frames(
+    width: usize,
+    height: usize,
+    duration: Duration,
+) -> Vec<Vec<String>> {
+    let frame_count = ((duration.as_secs_f64() / ascii_magician_frame_delay().as_secs_f64()).ceil()
+        as usize)
+        .max(3);
+    let mut frames = (0..frame_count)
+        .map(|index| build_ascii_magician_frame(width, height, index, false))
+        .collect::<Vec<_>>();
+    frames.push(get_logo_welcome_frame(width));
+    frames
+}
+
+fn build_ascii_magician_screen_frames(width: usize, height: usize) -> Vec<Vec<String>> {
+    (0..ascii_magician_frame_count())
+        .map(|index| build_ascii_magician_frame(width, height, index, true))
+        .collect()
+}
+
 fn welcome_sequence(
     resolved_style: &str,
     width: usize,
@@ -431,6 +558,7 @@ fn welcome_sequence(
     match resolved_style {
         "static" => vec![get_logo_welcome_frame(width)],
         "logo" => get_logo_animation_frames(width),
+        "magician" => build_ascii_magician_welcome_frames(width, height, duration),
         style if is_boids_style(style) => build_boids_frame(
             width,
             height,
@@ -486,9 +614,11 @@ fn trim_resting_frame(mut frames: Vec<Vec<String>>) -> Vec<Vec<String>> {
 fn screen_cycle_frames_non_game_of_life(
     resolved_style: &str,
     width: usize,
+    height: usize,
 ) -> Result<Vec<Vec<String>>, CoreError> {
     match resolved_style {
         "logo" => Ok(trim_resting_frame(get_logo_animation_frames(width))),
+        "magician" => Ok(build_ascii_magician_screen_frames(width, height)),
         other => Err(CoreError::classified(
             ErrorClass::Internal,
             "unsupported_screen_style",
@@ -717,6 +847,7 @@ pub fn play_welcome_style_with_cell_style(
         style if is_game_of_life_style(style) => Duration::from_millis(220),
         style if is_boids_style(style) => Duration::from_millis(70),
         "mandelbrot" => mandelbrot_frame_delay(),
+        "magician" => ascii_magician_frame_delay(),
         _ => {
             let divisor = frames.len().max(1) as u32;
             playback_duration
@@ -747,7 +878,7 @@ pub fn run_screen_surface_with_cell_style(
     let mut frames = if is_game_of_life || is_boids || is_mandelbrot {
         Vec::new()
     } else {
-        screen_cycle_frames_non_game_of_life(&resolved_style, width)?
+        screen_cycle_frames_non_game_of_life(&resolved_style, width, height)?
     };
     let mut frame_index = 0usize;
     let mut game_of_life_state = if is_game_of_life {
@@ -820,7 +951,7 @@ pub fn run_screen_surface_with_cell_style(
                         state.resize(mandelbrot_screen_context(width, height));
                     }
                 } else {
-                    frames = screen_cycle_frames_non_game_of_life(&resolved_style, width)?;
+                    frames = screen_cycle_frames_non_game_of_life(&resolved_style, width, height)?;
                     frame_index = 0;
                 }
                 continue;
@@ -868,6 +999,7 @@ mod tests {
             let resolved = resolve_screen_style(Some("random"), Some(index)).unwrap();
             assert_ne!(resolved, "static");
             assert_ne!(resolved, "logo");
+            assert_ne!(resolved, "magician");
             if is_game_of_life_style(&resolved) {
                 game_of_life_count += 1;
             } else if is_boids_style(&resolved) {
@@ -884,7 +1016,7 @@ mod tests {
         assert_eq!(mandelbrot_count, 6);
     }
 
-    // Defends: welcome random splits selection evenly across Game of Life, boids, and Mandelbrot families while excluding static and logo.
+    // Defends: welcome random splits selection evenly across Game of Life, boids, and Mandelbrot families while excluding explicit non-random styles.
     #[test]
     fn random_welcome_style_rotates_evenly_across_animation_families() {
         let mut game_of_life_count = 0;
@@ -896,6 +1028,7 @@ mod tests {
             let resolved = resolve_welcome_style("random", Some(index)).unwrap();
             assert_ne!(resolved, "static");
             assert_ne!(resolved, "logo");
+            assert_ne!(resolved, "magician");
             if is_game_of_life_style(&resolved) {
                 game_of_life_count += 1;
             } else if is_boids_style(&resolved) {
@@ -952,6 +1085,26 @@ mod tests {
         }
     }
 
+    // Defends: the attributed GIF-derived magician style is an explicit welcome and screen style, not an implicit random pick.
+    #[test]
+    fn magician_is_available_to_welcome_and_screen() {
+        assert_eq!(
+            resolve_screen_style(Some("magician"), None).unwrap(),
+            "magician"
+        );
+        assert_eq!(resolve_welcome_style("magician", None).unwrap(), "magician");
+        for index in 0..18 {
+            assert_ne!(
+                resolve_screen_style(Some("random"), Some(index)).unwrap(),
+                "magician"
+            );
+            assert_ne!(
+                resolve_welcome_style("random", Some(index)).unwrap(),
+                "magician"
+            );
+        }
+    }
+
     // Regression: wide terminals must not let the logo welcome card stretch to a near-full-width frame.
     #[test]
     fn logo_welcome_frame_keeps_wide_variant_at_designed_width() {
@@ -1002,6 +1155,29 @@ mod tests {
 
         assert_eq!(boids_welcome_body_height(spec, 60), 58);
         assert_eq!(boids_welcome_body_height(spec, 4), spec.body_height);
+    }
+
+    // Defends: the magician renderer uses the committed GIF-derived RGB pack and keeps visible attribution in-frame.
+    #[test]
+    fn magician_frames_use_asset_pack_and_visible_attribution() {
+        assert_eq!(
+            ASCII_MAGICIAN_RGB.len(),
+            ASCII_MAGICIAN_SOURCE_WIDTH
+                * ASCII_MAGICIAN_SOURCE_HEIGHT
+                * RGB_BYTES_PER_PIXEL
+                * ASCII_MAGICIAN_FRAME_COUNT
+        );
+
+        let frames = build_ascii_magician_welcome_frames(120, 40, Duration::from_millis(300));
+        assert_eq!(frames.len(), 4);
+        assert!(frames[0].len() >= 30);
+        assert!(frames[0].iter().all(|line| visible_line_width(line) <= 120));
+        assert!(
+            frames[0]
+                .iter()
+                .any(|line| line.contains(ASCII_MAGICIAN_ATTRIBUTION))
+        );
+        assert!(frames[0].iter().any(|line| line.contains("\u{1b}[38;2;")));
     }
 
     // Regression: inline welcome playback trims trailing padding so centered frames do not trigger terminal autowrap artifacts.
