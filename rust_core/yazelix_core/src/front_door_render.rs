@@ -13,8 +13,8 @@ use yazelix_screen::{
     RawModeGuard as ScreenRawModeGuard, ScreenAnimationContext, ScreenFrameProducer,
     build_game_of_life_screen_lines, build_live_game_of_life_seed, center_frame_lines, center_text,
     game_of_life_grid_height, game_of_life_grid_width, game_of_life_spec, is_boids_style,
-    is_game_of_life_style, resolve_game_of_life_body_height, step_game_of_life_cells,
-    terminal_height, terminal_width, visible_line_width,
+    is_game_of_life_style, mandelbrot_frame_delay, resolve_game_of_life_body_height,
+    step_game_of_life_cells, terminal_height, terminal_width, visible_line_width,
 };
 
 const ASCII_ART_DATA_JSON: &str = include_str!("../assets/ascii_art_data.json");
@@ -195,7 +195,7 @@ fn screen_frame_delay(resolved_style: &str) -> Duration {
     match resolved_style {
         style if is_game_of_life_style(style) => Duration::from_millis(160),
         style if is_boids_style(style) => Duration::from_millis(70),
-        "mandelbrot" => Duration::from_millis(110),
+        "mandelbrot" => mandelbrot_frame_delay(),
         _ => Duration::from_millis(120),
     }
 }
@@ -603,7 +603,7 @@ fn render_screen_frame(frame: &[String]) -> Result<(), CoreError> {
 }
 
 fn play_mandelbrot_welcome_screen(duration: Duration) -> Result<(), CoreError> {
-    let frame_delay = Duration::from_millis(110);
+    let frame_delay = mandelbrot_frame_delay();
     let mut width = terminal_width();
     let mut height = terminal_height();
     let mut state = MandelbrotAnimation::new(mandelbrot_screen_context(width, height));
@@ -706,7 +706,7 @@ pub fn play_welcome_style_with_cell_style(
     let frame_delay = match resolved_style.as_str() {
         style if is_game_of_life_style(style) => Duration::from_millis(220),
         style if is_boids_style(style) => Duration::from_millis(70),
-        "mandelbrot" => Duration::from_millis(110),
+        "mandelbrot" => mandelbrot_frame_delay(),
         _ => {
             let divisor = frames.len().max(1) as u32;
             playback_duration
