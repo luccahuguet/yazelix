@@ -13,16 +13,26 @@ Highlights:
 
 ## v17 - 2026-05-22
 
-Ghostty graphics default, ratconfig extraction, and Beads Rust planning
+First-party child repos, Ghostty image previews, and JSONC workspace config
 
 Upgrade impact: no user action required
 
 Highlights:
-- Promoted the Ghostty Kitty graphics passthrough runtime to the default Yazelix package, using first-party Zellij/Yazi forks to restore image previews in Ghostty while upstream Zellij support is still pending
+- Established the first-party child-repo architecture across `yazelix-screen`, `yazelix-ghostty-cursors`, `yazelix-zellij-popup`, `yazelix-zellij-bar`, `yazelix-zellij-pane-orchestrator`, `yazelix-yazi-assets`, and `yazelix-ratconfig`
+- Replaced copied source, copied wasm, duplicated widget code, and vendored Yazi assets with locked child-owned packages and artifacts consumed by the main runtime
+- Promoted Ghostty back to the default packaged terminal, with Yazi image previews restored through temporary first-party `yazelix-zellij` and `yazelix-yazi` Kitty-graphics passthrough forks while upstream Zellij support is still pending
 - Switched the package baseline to nixpkgs-unstable and pulled in newer Yazi/Chafa behavior that avoids the Chafa terminal-probe ghost-keypress regression
-- Extracted the generic config editor, model, and rendering machinery into the `yazelix-ratconfig` child crate, leaving the main repo focused on Yazelix-specific settings adapters
-- Kept `yzx config ui` on the existing user-facing JSONC settings model while deleting the old in-repo ratconfig implementation and consuming the locked child crate instead
+- Made `settings.jsonc` the canonical user config, backed by `settings_default.jsonc`, JSON schema coverage, strict unknown-field diagnostics, additive repair, and complete Home Manager rendering
+- Upgraded `yzx config ui` into a structured JSONC settings editor with scalar pickers, keybinding rows, safer parse-error behavior, popup launch through `Alt Shift C`, and generic config UI machinery owned by `yazelix-ratconfig`
+- Added the directional workspace keymap: `Alt Shift H` toggles the left sidebar, `Alt Shift J` opens the bottom popup, `Alt Shift K` opens the top popup, `Alt Shift L` opens the right Codex agent sidebar, and `Alt Shift M` opens the menu popup
+- Added managed focus/reveal keys: `Ctrl y` switches between editor and left sidebar, `Ctrl Shift Y` switches between editor and right sidebar, and `Alt r` smart-reveals in the editor or falls back to editor/left-sidebar focus
+- Made Yazelix and native Zellij key policies data-driven through `settings.jsonc`, including remappable native defaults such as `Ctrl Alt g/s/o` for locked/scroll/session modes, `Ctrl Shift H/L` for tab movement, `Alt 1..9` for tab jumps, `Ctrl Alt p` for pane groups, and `Alt Shift F` for focus fullscreen
+- Converged generated runtime state before launch so stale Zellij layouts, plugin permission caches, terminal configs, copied native config files, and Yazi static assets are repaired or diagnosed deterministically
+- Moved status-bar and widget ownership into `yazelix-zellij-bar`, including Codex, Claude, OpenCode Go, CPU/RAM, cursor, cached facts, throttled refresh, and first-paint hydration
+- Exposed standalone subsystem packages for screen rendering, Ghostty cursors, popup panes, the Zellij bar, and Yazi assets while keeping normal Yazelix installs wired automatically
+- Matured public Nix customization with `mkYazelix`, overlays, runtime tool sources, component toggles, child package outputs, Home Manager integration, and Cachix publishing
 - Migrated maintainer issue tracking from Go/Dolt `bd` to Rust `br`, with tracked JSONL state, ignored local SQLite cache, Nix packaging, CI initialization, and GitHub issue sync support
+- Users jumping straight from early v16 should still read the v16.2 and v16.3 notes for cursor-sidecar and flat-config-path manual actions
 
 
 ## v16.5 - 2026-05-21
