@@ -99,24 +99,28 @@ Ghostty cursor presets use their own config at `~/.config/yazelix_ghostty_cursor
 
 ## Advanced: First-Party Child Repositories
 
-Yazelix keeps this repo as the integrated workspace/runtime and splits focused reusable pieces into child repositories:
+Yazelix keeps this repo as the integrated workspace/runtime and splits focused subsystems into child repositories when they are reusable outside the full workspace or need their own build/release boundary
 
 Regular Yazelix users do not need to install, configure, or understand these child repos separately; the normal Yazelix package already integrates the pieces it uses
 
-The child repos mainly let non-Yazelix users adopt Yazelix modules and subsystems granularly. `yazelix-screen` and `yazelix-ghostty-cursors` can also be used outside Zellij entirely
+Reusable child repos:
 
 - [yazelix-screen](https://github.com/luccahuguet/yazelix-screen) — Terminal animation engine used by Yazelix welcome/screen styles and exposed here as `#yzs` and `#yazelix_screen`
 - [yazelix-ghostty-cursors](https://github.com/luccahuguet/yazelix-ghostty-cursors) — Ghostty cursor preset and shader generator with the `yzc` CLI, exposed here as `#yzc`, `#yazelix_ghostty_cursors`, and `#ghostty_cursor_shaders`
 - [yazelix-zellij-bar](https://github.com/luccahuguet/yazelix-zellij-bar) — Standalone Zellij bar plugin package and `yazelix_zellij_bar_widget` command, exposed here as `#yazelix_zellij_bar`
-- [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij floating TUI panes; its plugin alias and wasm artifact are `yzpp`, and regular Yazelix sessions use it for the popup, command palette, and config UI panes
+- [yazelix-zellij-pane-orchestrator](https://github.com/luccahuguet/yazelix-zellij-pane-orchestrator) — First-party Zellij plugin wasm that owns managed pane identity, editor/sidebar handoff, focus actions, and layout-family commands, exposed here as `#yazelix_zellij_pane_orchestrator`
+- [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij floating TUI panes, exposed here as `#yazelix_zellij_popup`; its plugin alias and wasm artifact are `yzpp`, and regular Yazelix sessions use it for the popup, command palette, and config UI panes
 - [yazelix-yazi-assets](https://github.com/luccahuguet/yazelix-yazi-assets) — Standalone Yazi flavor and reusable plugin asset pack, exposed here as `#yazelix_yazi_assets` and integrated into the normal Yazelix Yazi runtime
+- [yazelix-ratconfig](https://github.com/luccahuguet/yazelix-ratconfig) — Reusable Ratatui JSONC config editor crate consumed by `yzx config ui`; Yazelix keeps settings schema, Home Manager ownership, validation, and runtime apply behavior in this repo
 
-The default Ghostty runtime also pins temporary Yazelix forks of Zellij and Yazi so Yazi image previews can use Kitty graphics through Zellij. Those forks are expected to be dropped and archived once upstream Zellij supports the required Kitty graphics path directly enough for Yazelix to return to upstream packages
+Temporary integration forks:
+
+- [yazelix-zellij](https://github.com/luccahuguet/yazelix-zellij) and [yazelix-yazi](https://github.com/luccahuguet/yazelix-yazi) — Default Ghostty-runtime source forks that restore Yazi image previews through Kitty graphics passthrough in Zellij; these forks are expected to be dropped and archived once upstream Zellij supports the required path directly enough for Yazelix to return to upstream packages
 
 ## Why Yazelix
 Yazelix is a reproducible terminal IDE that integrates Yazi + Zellij + Helix, delivering a consistent, fast "superterminal" locally or over SSH with zero manual setup through smart pane/layout orchestration, sidebar reveal/open flows, a curated built-in toolset, sane defaults, Helix/Zellij conflict cleanup, auto-configured tools like starship, zoxide, and carapace, and useful bundled tools such as `lazygit`
 
-It already ships with Zellij and Yazi plugins, some maintained in this repo, including the pane orchestrator and Yazi file-tree sidebar flows
+It ships first-party Zellij and Yazi integrations through child packages, including the pane orchestrator, popup plugin, status bar, and Yazi file-tree assets
 
 It has features like `reveal in Yazi` from Helix or Neovim, opening files from Yazi in your configured editor, and switching workspace layouts without leaving the workspace
 
