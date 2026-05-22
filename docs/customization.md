@@ -10,7 +10,7 @@ Start with this model:
 The sections below cover the override surfaces that sit around that main model.
 
 - **Configuration File**: On first launch, Yazelix creates the main settings and Ghostty cursor settings from shipped defaults. Old mutable `yazelix.toml`, old `cursors.toml`, old `user_configs/` paths, and older embedded cursor settings blocks raise a clear error instead of being rewritten automatically.
-  - Run `yzx config ui` to browse and edit settings, defaults, stale-field diagnostics, Home Manager/read-only ownership, and managed sidecar status
+  - Run `yzx config ui`, Yazelix's ratconfig-backed JSONC settings editor, to browse and edit settings, defaults, stale-field diagnostics, Home Manager/read-only ownership, and managed sidecar status
   - Use `yzx config set PATH JSON` and `yzx config unset PATH` for safe comment-preserving edits to supported settings and cursor fields
   - Yazelix snapshots the main config for each new window. Live popup, menu, sidebar, reveal, and editor-launch commands keep using that window snapshot, so config edits apply to the next Yazelix window or after `yzx restart`
   - For temporary changes, use repeatable `--with KEY=VALUE` on `yzx launch`, `yzx enter`, or `yzx restart`; Yazelix writes an ephemeral settings snapshot and does not mutate your config file

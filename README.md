@@ -94,7 +94,7 @@ Ghostty cursor presets use their own config at `~/.config/yazelix_ghostty_cursor
 - When you open something from the default Yazi file-tree sidebar with Helix or Neovim, Yazelix targets the managed `editor` pane through the pane orchestrator instead of relying on pane scanning heuristics; it reuses that pane when present and creates one titled `editor` when needed
 - `yzx reveal` is the stable editor-integration surface for jumping the current file back into the managed Yazi file tree
 - `Alt+Shift+J` toggles the bottom managed popup pane through `yzpp` and refreshes the Yazi file-tree sidebar git view when that popup closes; `Alt+Shift+K` toggles the top popup slot, `Alt+Shift+M` toggles the popup command menu, and `Alt+Shift+C` toggles the config UI popup
-- Named popup commands live in `zellij.popup_commands`: bottom defaults to `lazygit`, top defaults to `yzx config ui`, and menu defaults to `yzx menu`
+- Named popup commands live in `zellij.popup_commands`: bottom defaults to `lazygit`, top defaults to `yzx config ui` for Yazelix's ratconfig-backed JSONC settings editor, and menu defaults to `yzx menu`; the extra unbound personal popup slot uses `zellij.popup_program` plus the `zellij.keybindings.popup` action
 - Configure the managed editor with `editor.command` in `settings.jsonc`
 
 ## Advanced: First-Party Child Repositories
@@ -155,7 +155,7 @@ First-party child repos, Ghostty image previews, and JSONC workspace config
 - Promoted Ghostty back to the default packaged terminal, with Yazi image previews restored through temporary first-party yazelix-zellij and yazelix-yazi Kitty-graphics passthrough forks while upstream Zellij support is still pending
 - Switched the package baseline to nixpkgs-unstable and pulled in newer Yazi/Chafa behavior that avoids the Chafa terminal-probe ghost-keypress regression
 - Made settings.jsonc the canonical user config, backed by settings_default.jsonc, JSON schema coverage, strict unknown-field diagnostics, additive repair, and complete Home Manager rendering
-- Upgraded yzx config ui into a structured JSONC settings editor with scalar pickers, keybinding rows, safer parse-error behavior, popup launch through Alt Shift C, and generic config UI machinery owned by yazelix-ratconfig
+- `yzx config ui` is Yazelix's ratconfig-backed JSONC settings editor, with scalar pickers, keybinding rows, safer parse-error behavior, and popup launch through Alt Shift C
 - Added the directional workspace keymap: Alt Shift H toggles the left sidebar, Alt Shift J opens the bottom popup, Alt Shift K opens the top popup, Alt Shift L opens the right Codex agent sidebar, and Alt Shift M opens the menu popup
 - Added managed focus/reveal keys: Ctrl y switches between editor and left sidebar, Ctrl Shift Y switches between editor and right sidebar, and Alt r smart-reveals in the editor or falls back to editor/left-sidebar focus
 - Made Yazelix and native Zellij key policies data-driven through settings.jsonc, including remappable native defaults such as Ctrl Alt g/s/o for locked/scroll/session modes, Ctrl Shift H/L for tab movement, Alt 1..9 for tab jumps, Ctrl Alt p for pane groups, and Alt Shift F for focus fullscreen

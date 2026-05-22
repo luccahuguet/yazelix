@@ -110,6 +110,48 @@ Comment out any line to hide that widget. Order matters. Restart Yazelix to rege
 
 The Codex usage widget includes quota-window position and official quota percentages by default, for example `[codex 2h20m/5h 49% · 4d5h/7d 80%]`; with `codex_usage_display = "both"` it also shows token totals as `[codex 2h20m/5h 138M 49% · 4d5h/7d 1.34B 80%]`. The Claude usage widget combines local token totals with official quota percentages, for example `[claude 5h|15.5M|75% wk|66.6M|65%]`. The OpenCode Go widget reads OpenCode's local SQLite database directly and renders the compact 5h/week/month shape with the `go` label. Claude and Codex widgets use `tu` from tokenusage. Standalone flake users can install `.#yazelix_agent_tools`; Home Manager users can set `programs.yazelix.agent_usage_programs = [ "tokenusage" ]`.
 
+**Popup commands (`settings.jsonc`):**
+
+Yazelix exposes three named popup command slots and one extra unbound personal popup slot:
+
+- `bottom_popup` uses `zellij.popup_commands.bottom_popup` and defaults to `lazygit` on `Alt+Shift+J`
+- `top_popup` uses `zellij.popup_commands.top_popup` and defaults to `yzx config ui`, Yazelix's ratconfig-backed JSONC settings editor, on `Alt+Shift+K`
+- `menu` uses `zellij.popup_commands.menu` and defaults to `yzx menu` on `Alt+Shift+M`
+- `popup` uses `zellij.popup_program`, is unbound by default, and is available for one additional personal popup keybinding
+
+For example, keep the default bottom/top/menu surfaces and bind a personal monitor popup on `Alt+Shift+Y`:
+
+```jsonc
+{
+  "zellij": {
+    "popup_program": ["btop"],
+    "popup_width_percent": 90,
+    "popup_height_percent": 90,
+    "keybindings": {
+      "popup": ["Alt Shift Y"]
+    }
+  }
+}
+```
+
+To change the built-in named surfaces, edit only the supported `popup_commands` entries:
+
+```jsonc
+{
+  "zellij": {
+    "popup_commands": {
+      "bottom_popup": ["lazygit"],
+      "top_popup": ["yzx", "config", "ui"],
+      "menu": ["yzx", "menu"]
+    }
+  }
+}
+```
+
+`zellij.popup_commands` accepts only `bottom_popup`, `top_popup`, and `menu`. Unsupported entries such as `extra_popup` fail fast. The config UI popup is a separate `config` action on `Alt+Shift+C`, and it opens the same ratconfig-backed `yzx config ui` editor. Popup command and geometry changes apply after Yazelix regenerates the Zellij config, so restart the window after editing them.
+
+For one-off commands inside an active Yazelix tab, run `yzx popup <program> [args...]`. That opens the same generic `popup` slot without changing `settings.jsonc`.
+
 **Idle screen saver (`settings.jsonc`):**
 ```jsonc
 {
@@ -163,7 +205,7 @@ ui {
 
 Supported owner-local action ids are `open_workspace_terminal`, `popup`, `bottom_popup`, `top_popup`, `menu`, `config`, `move_focus_left_or_tab`, `move_focus_right_or_tab`, `toggle_editor_sidebar_focus`, `toggle_editor_right_sidebar_focus`, `toggle_left_sidebar`, `open_codex_agent_right`, `smart_reveal`, `previous_family`, and `next_family`. `yzx keys` shows the matching scoped ids, such as `zellij.popup`. Omitted actions keep their defaults. Set an action to `[]` to disable Yazelix's generated binding for that action. Yazelix rejects duplicate keys across this semantic map before launch.
 
-Use `zellij.popup_commands` to change the command argv behind the named popup surfaces. The built-in defaults are bottom popup `lazygit`, top popup `yzx config ui`, and menu `yzx menu`.
+Use `zellij.popup_commands` to change the command argv behind the named popup surfaces. The built-in defaults are bottom popup `lazygit`, top popup `yzx config ui` for Yazelix's ratconfig-backed config editor, and menu `yzx menu`. Use `zellij.popup_program` plus the `popup` keybinding action for one extra unbound personal popup slot.
 
 For Yazelix's curated native Zellij key policy, use `zellij.native_keybindings` in `settings.jsonc`. This covers shipped remaps such as `scroll_mode` / `scroll_mode_unbind`, `session_mode` / `session_mode_unbind`, tab movement, tab jumps, pane grouping, and related Zellij-native conflict cleanup. Omitted entries keep defaults; set an entry to `[]` to disable that one bind or unbind.
 
