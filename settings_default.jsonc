@@ -8,7 +8,7 @@
     "show_macchina_on_welcome": true,
     "welcome_style": "random",
     "game_of_life_cell_style": "full_block",
-    "welcome_duration_seconds": 3.0
+    "welcome_duration_seconds": 4.0
   },
   "helix": {
     "runtime_path": ""

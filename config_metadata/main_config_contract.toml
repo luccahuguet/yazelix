@@ -86,7 +86,7 @@ apply_mode = "tab_session_restart"
 
 [fields."core.welcome_duration_seconds"]
 kind = "float"
-default = 3.0
+default = 4.0
 parser_key = "welcome_duration_seconds"
 home_manager_option = "welcome_duration_seconds"
 parser_behavior = "direct"

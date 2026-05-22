@@ -44,7 +44,7 @@ pub fn compute_startup_facts_from_env() -> Result<StartupFactsData, CoreError> {
             "game_of_life_cell_style",
             DEFAULT_GAME_OF_LIFE_CELL_STYLE,
         ),
-        welcome_duration_seconds: float_config(&normalized, "welcome_duration_seconds", 3.0),
+        welcome_duration_seconds: float_config(&normalized, "welcome_duration_seconds", 4.0),
         show_macchina_on_welcome: bool_config(&normalized, "show_macchina_on_welcome", false),
         terminals: string_list_config(&normalized, "terminals", &["ghostty"]),
         terminal_config_mode: string_config(
