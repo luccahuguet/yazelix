@@ -1,6 +1,5 @@
 // Test lane: default
 use super::*;
-use crate::config_ui::ConfigUiApp;
 use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};

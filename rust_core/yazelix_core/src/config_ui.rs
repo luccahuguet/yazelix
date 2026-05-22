@@ -40,6 +40,7 @@ use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::io::{self, IsTerminal};
+use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use toml::Value as TomlValue;
@@ -114,21 +115,9 @@ struct CursorChoiceValues {
     enabled_names: Vec<String>,
 }
 
-pub(crate) struct ConfigUiApp {
+pub(crate) struct YazelixConfigUiApp {
     pub(crate) request: ConfigUiRequest,
-    pub(crate) model: ConfigUiModel,
-    pub(crate) selected_tab: usize,
-    pub(crate) selected_row: usize,
-    pub(crate) search: String,
-    pub(crate) search_active: bool,
-    pub(crate) edit: Option<ConfigUiEditState>,
-    pub(crate) notice: Option<ConfigUiNotice>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ConfigUiNotice {
-    pub(crate) text: String,
-    pub(crate) is_error: bool,
+    pub(crate) ui: ConfigUiApp,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -149,6 +138,20 @@ struct ConfigUiEditTarget {
 enum ConfigUiEditTargetKind {
     Main,
     Cursors,
+}
+
+impl Deref for YazelixConfigUiApp {
+    type Target = ConfigUiApp;
+
+    fn deref(&self) -> &Self::Target {
+        &self.ui
+    }
+}
+
+impl DerefMut for YazelixConfigUiApp {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.ui
+    }
 }
 
 pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel, CoreError> {
@@ -354,12 +357,12 @@ fn run_ui_loop(
     request: ConfigUiRequest,
     model: ConfigUiModel,
 ) -> Result<(), CoreError> {
-    let mut app = ConfigUiApp::new(request, model);
+    let mut app = YazelixConfigUiApp::new(request, model);
 
     loop {
         app.clamp_selection();
         terminal
-            .draw(|frame| draw_config_ui(frame, &mut app))
+            .draw(|frame| draw_config_ui(frame, &mut app.ui))
             .map_err(terminal_err)?;
         if event::poll(Duration::from_millis(200)).map_err(terminal_err)?
             && let Event::Key(key) = event::read().map_err(terminal_err)?
@@ -390,17 +393,11 @@ fn restore_terminal(
     first_error.map_or(Ok(()), Err)
 }
 
-impl ConfigUiApp {
+impl YazelixConfigUiApp {
     pub(crate) fn new(request: ConfigUiRequest, model: ConfigUiModel) -> Self {
         Self {
             request,
-            model,
-            selected_tab: 0,
-            selected_row: 0,
-            search: String::new(),
-            search_active: false,
-            edit: None,
-            notice: None,
+            ui: ConfigUiApp::new(model),
         }
     }
 
@@ -574,8 +571,9 @@ impl ConfigUiApp {
         let Some(value) = field.allowed_values.get(edit.choice_index) else {
             return;
         };
+        let value = value.clone();
         if let Some(edit) = &mut self.edit {
-            edit.input = value.clone();
+            edit.input = value;
         }
     }
 
@@ -594,19 +592,6 @@ impl ConfigUiApp {
         if let Some(edit) = &mut self.edit {
             edit.input = next;
         }
-    }
-
-    fn selected_field_index(&self) -> Option<usize> {
-        let row = self.visible_rows().get(self.selected_row).copied()?;
-        match row {
-            UiRowRef::Field(index) => Some(index),
-            _ => None,
-        }
-    }
-
-    pub(crate) fn selected_field(&self) -> Option<&ConfigUiField> {
-        self.selected_field_index()
-            .and_then(|index| self.model.fields.get(index))
     }
 
     fn activate_selected_field(&mut self) {
@@ -899,21 +884,9 @@ impl ConfigUiApp {
         }
         Ok(())
     }
+}
 
-    fn notice_info(&mut self, text: impl Into<String>) {
-        self.notice = Some(ConfigUiNotice {
-            text: text.into(),
-            is_error: false,
-        });
-    }
-
-    fn notice_error(&mut self, text: impl Into<String>) {
-        self.notice = Some(ConfigUiNotice {
-            text: text.into(),
-            is_error: true,
-        });
-    }
-
+impl ConfigUiApp {
     pub(crate) fn render_details(&self, row: UiRowRef) -> Vec<Line<'static>> {
         match row {
             UiRowRef::Field(index) => {
@@ -2553,7 +2526,7 @@ mod tests {
         });
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
-        let mut app = ConfigUiApp::new(request, model);
+        let mut app = YazelixConfigUiApp::new(request, model);
 
         select_field_path(&mut app, "zellij.keybindings");
         let details = lines_text(&app.render_details(app.visible_rows()[app.selected_row]));
@@ -2583,7 +2556,7 @@ mod tests {
         });
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
-        let mut app = ConfigUiApp::new(request, model);
+        let mut app = YazelixConfigUiApp::new(request, model);
 
         select_field_path(&mut app, "zellij.native_keybindings");
         let details = lines_text(&app.render_details(app.visible_rows()[app.selected_row]));
@@ -2606,7 +2579,7 @@ mod tests {
         write_runtime_layout(runtime.path());
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
-        let mut app = ConfigUiApp::new(request, model);
+        let mut app = YazelixConfigUiApp::new(request, model);
 
         select_field_path(&mut app, "zellij.keybindings");
         app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
@@ -2626,7 +2599,7 @@ mod tests {
         write_runtime_layout(runtime.path());
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
-        let mut app = ConfigUiApp::new(request, model);
+        let mut app = YazelixConfigUiApp::new(request, model);
 
         select_field_path(&mut app, "cursors.cursor");
         app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
@@ -2653,7 +2626,7 @@ mod tests {
         assert!(field.allowed_values.contains(&"blaze".to_string()));
         assert!(field.allowed_values.contains(&"snow".to_string()));
 
-        let mut app = ConfigUiApp::new(request, model);
+        let mut app = YazelixConfigUiApp::new(request, model);
         select_field_path(&mut app, "cursors.enabled_cursors");
         app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
 
@@ -2689,7 +2662,7 @@ mod tests {
         assert_eq!(field.allowed_values[1], "random");
         assert!(field.allowed_values.contains(&"blaze".to_string()));
 
-        let mut app = ConfigUiApp::new(request, model);
+        let mut app = YazelixConfigUiApp::new(request, model);
         select_field_path(&mut app, "cursors.settings.trail");
         let details = lines_text(&app.render_details(app.visible_rows()[app.selected_row]));
         assert!(details.contains("  ( ) none"));
@@ -2717,7 +2690,7 @@ mod tests {
         });
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
-        let mut app = ConfigUiApp::new(request, model);
+        let mut app = YazelixConfigUiApp::new(request, model);
 
         select_field_path(&mut app, "zellij.keybindings.popup");
         app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
@@ -2747,7 +2720,7 @@ mod tests {
         });
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
-        let mut app = ConfigUiApp::new(request, model);
+        let mut app = YazelixConfigUiApp::new(request, model);
 
         select_field_path(&mut app, "yazi.keybindings");
         let details = lines_text(&app.render_details(app.visible_rows()[app.selected_row]));
@@ -2875,7 +2848,7 @@ mod tests {
         let settings_path = config.path().join("settings.jsonc");
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
-        let mut app = ConfigUiApp::new(request, model);
+        let mut app = YazelixConfigUiApp::new(request, model);
 
         select_field_path(&mut app, "terminal.terminals");
         app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
@@ -2962,7 +2935,7 @@ mod tests {
             native_config_statuses: Vec::new(),
             diagnostics: Vec::new(),
         };
-        let mut app = ConfigUiApp::new(request, model);
+        let mut app = YazelixConfigUiApp::new(request, model);
         app.edit = Some(ConfigUiEditState {
             field_index: 0,
             input: "true".to_string(),
@@ -2995,7 +2968,7 @@ mod tests {
         let settings_path = config.path().join("settings.jsonc");
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
-        let mut app = ConfigUiApp::new(request, model);
+        let mut app = YazelixConfigUiApp::new(request, model);
 
         select_field_path(&mut app, "terminal.config_mode");
         app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
@@ -3032,7 +3005,7 @@ mod tests {
         let settings_path = config.path().join("settings.jsonc");
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
-        let mut app = ConfigUiApp::new(request, model);
+        let mut app = YazelixConfigUiApp::new(request, model);
 
         select_field_path(&mut app, "terminal.config_mode");
         app.handle_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
@@ -3056,7 +3029,7 @@ mod tests {
         });
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
-        let mut app = ConfigUiApp::new(request, model);
+        let mut app = YazelixConfigUiApp::new(request, model);
 
         select_field_path(&mut app, "editor.hide_sidebar_on_file_open");
         app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
@@ -3086,7 +3059,7 @@ mod tests {
         );
         let request = test_request(runtime.path(), config.path());
         let model = build_config_ui_model(&request).expect("model");
-        let mut app = ConfigUiApp::new(request, model);
+        let mut app = YazelixConfigUiApp::new(request, model);
 
         let outcome = app
             .write_field_value("editor.hide_sidebar_on_file_open", &json!(true))

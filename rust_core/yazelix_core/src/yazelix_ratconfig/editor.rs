@@ -1,9 +1,23 @@
-use super::{ConfigUiField, UiRowRef, visible_rows_for_tab_search};
-use crate::config_ui::{
-    ConfigUiApp, is_keybinding_map_field_path, keybinding_action_metadata_for_field_path,
-};
+use super::{ConfigUiField, ConfigUiModel, UiRowRef, visible_rows_for_tab_search};
+use crate::config_ui::{is_keybinding_map_field_path, keybinding_action_metadata_for_field_path};
 use serde_json::Value as JsonValue;
 use std::collections::BTreeSet;
+
+pub(crate) struct ConfigUiApp {
+    pub(crate) model: ConfigUiModel,
+    pub(crate) selected_tab: usize,
+    pub(crate) selected_row: usize,
+    pub(crate) search: String,
+    pub(crate) search_active: bool,
+    pub(crate) edit: Option<ConfigUiEditState>,
+    pub(crate) notice: Option<ConfigUiNotice>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ConfigUiNotice {
+    pub(crate) text: String,
+    pub(crate) is_error: bool,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ConfigUiEditState {
@@ -21,6 +35,18 @@ pub(crate) enum ConfigUiEditMode {
 }
 
 impl ConfigUiApp {
+    pub(crate) fn new(model: ConfigUiModel) -> Self {
+        Self {
+            model,
+            selected_tab: 0,
+            selected_row: 0,
+            search: String::new(),
+            search_active: false,
+            edit: None,
+            notice: None,
+        }
+    }
+
     pub(crate) fn visible_rows(&self) -> Vec<UiRowRef> {
         visible_rows_for_tab_search(&self.model, self.selected_tab, &self.search)
     }
@@ -65,6 +91,33 @@ impl ConfigUiApp {
         } else {
             self.selected_row.min(len - 1)
         };
+    }
+
+    pub(crate) fn selected_field_index(&self) -> Option<usize> {
+        let row = self.visible_rows().get(self.selected_row).copied()?;
+        match row {
+            UiRowRef::Field(index) => Some(index),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn selected_field(&self) -> Option<&ConfigUiField> {
+        self.selected_field_index()
+            .and_then(|index| self.model.fields.get(index))
+    }
+
+    pub(crate) fn notice_info(&mut self, text: impl Into<String>) {
+        self.notice = Some(ConfigUiNotice {
+            text: text.into(),
+            is_error: false,
+        });
+    }
+
+    pub(crate) fn notice_error(&mut self, text: impl Into<String>) {
+        self.notice = Some(ConfigUiNotice {
+            text: text.into(),
+            is_error: true,
+        });
     }
 }
 
