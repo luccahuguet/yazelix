@@ -4,9 +4,16 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
-No unreleased changes
+Ghostty graphics default, ratconfig extraction, and Beads Rust planning
 
 Upgrade impact: no user action required
+
+Highlights:
+- Promoted the Ghostty Kitty graphics passthrough runtime to the default Yazelix package, using first-party Zellij/Yazi forks to restore image previews in Ghostty while upstream Zellij support is still pending
+- Switched the package baseline to nixpkgs-unstable and pulled in newer Yazi/Chafa behavior that avoids the Chafa terminal-probe ghost-keypress regression
+- Extracted the generic config editor, model, and rendering machinery into the `yazelix-ratconfig` child crate, leaving the main repo focused on Yazelix-specific settings adapters
+- Kept `yzx config ui` on the existing user-facing JSONC settings model while deleting the old in-repo ratconfig implementation and consuming the locked child crate instead
+- Migrated maintainer issue tracking from Go/Dolt `bd` to Rust `br`, with tracked JSONL state, ignored local SQLite cache, Nix packaging, CI initialization, and GitHub issue sync support
 
 ## v16.5 - 2026-05-21
 
