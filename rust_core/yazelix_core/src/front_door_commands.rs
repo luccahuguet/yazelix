@@ -5,7 +5,7 @@ use crate::control_plane::{
     read_yazelix_version_from_runtime, runtime_dir_from_env, state_dir_from_env,
 };
 use crate::front_door_render::{
-    GameOfLifeCellStyle, play_welcome_style_with_cell_style, run_screen_surface_with_cell_style,
+    GameOfLifeCellStyle, play_welcome_style_with_runtime_dir, run_screen_surface_with_runtime_dir,
 };
 use crate::require_runtime_component_enabled;
 use crate::session_facts::compute_session_facts_from_env;
@@ -118,16 +118,30 @@ pub fn run_yzx_screen(args: &[String]) -> Result<i32, CoreError> {
     require_runtime_component_enabled(&runtime_dir, "screen", "yzx screen")?;
     if parsed.internal_welcome {
         let style = parsed.style.as_deref().unwrap_or("logo");
-        return run_internal_welcome_screen(style, Duration::from_millis(parsed.duration_ms));
+        return run_internal_welcome_screen(
+            style,
+            Duration::from_millis(parsed.duration_ms),
+            &runtime_dir,
+        );
     }
-    run_screen_surface_with_cell_style(
+    run_screen_surface_with_runtime_dir(
         parsed.style.as_deref(),
         configured_game_of_life_cell_style()?,
+        &runtime_dir,
     )
 }
 
-pub fn run_internal_welcome_screen(style: &str, duration: Duration) -> Result<i32, CoreError> {
-    play_welcome_style_with_cell_style(style, duration, configured_game_of_life_cell_style()?)?;
+pub fn run_internal_welcome_screen(
+    style: &str,
+    duration: Duration,
+    runtime_dir: &std::path::Path,
+) -> Result<i32, CoreError> {
+    play_welcome_style_with_runtime_dir(
+        style,
+        duration,
+        configured_game_of_life_cell_style()?,
+        runtime_dir,
+    )?;
     Ok(0)
 }
 

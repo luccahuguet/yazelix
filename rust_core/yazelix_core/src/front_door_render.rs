@@ -5,6 +5,8 @@ use crossterm::event::{self, Event};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::io;
+use std::path::{Path, PathBuf};
+use std::process;
 use std::sync::OnceLock;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 pub use yazelix_screen::GameOfLifeCellStyle;
@@ -18,8 +20,6 @@ use yazelix_screen::{
 };
 
 const ASCII_ART_DATA_JSON: &str = include_str!("../assets/ascii_art_data.json");
-const ASCII_MAGICIAN_RGB: &[u8] =
-    include_bytes!("../assets/third_party/ascii_magician_1mposter_96.rgb");
 
 const ANSI_RED: &str = "\u{1b}[31m";
 const ANSI_GREEN: &str = "\u{1b}[32m";
@@ -29,11 +29,10 @@ const ANSI_PURPLE: &str = "\u{1b}[35m";
 const ANSI_RESET: &str = "\u{1b}[0m";
 const ANSI_FAINT: &str = "\u{1b}[2m";
 const ASCII_MAGICIAN_ATTRIBUTION: &str = "ascii magician GIF by 1mposter";
-const ASCII_MAGICIAN_SOURCE_WIDTH: usize = 96;
-const ASCII_MAGICIAN_SOURCE_HEIGHT: usize = 96;
-const ASCII_MAGICIAN_FRAME_COUNT: usize = 40;
-const ASCII_MAGICIAN_TRANSPARENT_THRESHOLD: u8 = 18;
-const RGB_BYTES_PER_PIXEL: usize = 3;
+const ASCII_MAGICIAN_FRAME_COUNT: usize = 66;
+const ASCII_MAGICIAN_FRAME_DELAY_MS: u64 = 90;
+const ASCII_MAGICIAN_FRAME_DIR: &str = "assets/third_party/ascii_magician_1mposter_frames";
+const KITTY_MAGICIAN_IMAGE_ID_BASE: u32 = 7_930_000;
 
 const GAME_OF_LIFE_RANDOM_POOL: &[&str] = &[
     "game_of_life_gliders",
@@ -431,149 +430,219 @@ fn boids_welcome_body_height(spec: &BoidsWelcomeSpec, terminal_height: usize) ->
 }
 
 fn ascii_magician_frame_delay() -> Duration {
-    Duration::from_millis(100)
+    Duration::from_millis(ASCII_MAGICIAN_FRAME_DELAY_MS)
 }
 
-fn ascii_magician_frame_stride() -> usize {
-    ASCII_MAGICIAN_SOURCE_WIDTH * ASCII_MAGICIAN_SOURCE_HEIGHT * RGB_BYTES_PER_PIXEL
+fn ascii_magician_image_id() -> u32 {
+    KITTY_MAGICIAN_IMAGE_ID_BASE + process::id() % 10_000
 }
 
-fn ascii_magician_frame_count() -> usize {
-    debug_assert_eq!(
-        ASCII_MAGICIAN_RGB.len(),
-        ascii_magician_frame_stride() * ASCII_MAGICIAN_FRAME_COUNT
-    );
-    ASCII_MAGICIAN_RGB.len() / ascii_magician_frame_stride()
+fn ascii_magician_frame_path(runtime_dir: &Path, frame_index: usize) -> PathBuf {
+    runtime_dir.join(ASCII_MAGICIAN_FRAME_DIR).join(format!(
+        "frame_{:03}.png",
+        frame_index % ASCII_MAGICIAN_FRAME_COUNT
+    ))
 }
 
-fn ascii_magician_art_dimensions(width: usize, height: usize) -> (usize, usize) {
-    let available_width = width
-        .saturating_sub(2)
-        .clamp(1, ASCII_MAGICIAN_SOURCE_WIDTH);
-    let available_rows = height.saturating_sub(3).max(1);
-    let width_from_height = available_rows
-        .saturating_mul(2)
-        .clamp(1, ASCII_MAGICIAN_SOURCE_WIDTH);
-    let art_width = available_width.min(width_from_height).max(1);
-    let art_rows = art_width.div_ceil(2).min(available_rows).max(1);
-    (art_width, art_rows)
-}
-
-fn ascii_magician_rgb(frame_index: usize, x: usize, y: usize) -> (u8, u8, u8) {
-    let stride = ascii_magician_frame_stride();
-    let frame_offset = (frame_index % ascii_magician_frame_count()) * stride;
-    let pixel_offset = frame_offset + (y * ASCII_MAGICIAN_SOURCE_WIDTH + x) * RGB_BYTES_PER_PIXEL;
-    (
-        ASCII_MAGICIAN_RGB[pixel_offset],
-        ASCII_MAGICIAN_RGB[pixel_offset + 1],
-        ASCII_MAGICIAN_RGB[pixel_offset + 2],
-    )
-}
-
-fn ascii_magician_visible_rgb(rgb: (u8, u8, u8)) -> Option<(u8, u8, u8)> {
-    let brightest = rgb.0.max(rgb.1).max(rgb.2);
-    if brightest <= ASCII_MAGICIAN_TRANSPARENT_THRESHOLD {
-        None
-    } else {
-        Some(rgb)
-    }
-}
-
-fn ascii_magician_scaled_coord(target: usize, target_len: usize, source_len: usize) -> usize {
-    (target.saturating_mul(source_len) / target_len.max(1)).min(source_len.saturating_sub(1))
-}
-
-fn render_ascii_magician_cell(upper: Option<(u8, u8, u8)>, lower: Option<(u8, u8, u8)>) -> String {
-    match (upper, lower) {
-        (Some((upper_r, upper_g, upper_b)), Some((lower_r, lower_g, lower_b))) => {
-            format!(
-                "\u{1b}[38;2;{upper_r};{upper_g};{upper_b}m\
-                 \u{1b}[48;2;{lower_r};{lower_g};{lower_b}m▀"
-            )
-        }
-        (Some((upper_r, upper_g, upper_b)), None) => {
-            format!("{ANSI_RESET}\u{1b}[38;2;{upper_r};{upper_g};{upper_b}m▀")
-        }
-        (None, Some((lower_r, lower_g, lower_b))) => {
-            format!("{ANSI_RESET}\u{1b}[38;2;{lower_r};{lower_g};{lower_b}m▄")
-        }
-        (None, None) => format!("{ANSI_RESET} "),
-    }
-}
-
-fn build_ascii_magician_frame(
-    width: usize,
-    height: usize,
-    source_frame_index: usize,
-    fill_height: bool,
-) -> Vec<String> {
-    let (art_width, art_rows) = ascii_magician_art_dimensions(width, height);
-    let art_pixel_height = art_rows * 2;
-    let content_height = art_rows + 1;
-    let top_padding = height.saturating_sub(content_height) / 2;
-    let mut lines = vec![String::new(); top_padding];
-
-    for row in 0..art_rows {
-        let mut line = String::new();
-        for column in 0..art_width {
-            let source_x =
-                ascii_magician_scaled_coord(column, art_width, ASCII_MAGICIAN_SOURCE_WIDTH);
-            let upper_y = ascii_magician_scaled_coord(
-                row * 2,
-                art_pixel_height,
-                ASCII_MAGICIAN_SOURCE_HEIGHT,
-            );
-            let lower_y = ascii_magician_scaled_coord(
-                row * 2 + 1,
-                art_pixel_height,
-                ASCII_MAGICIAN_SOURCE_HEIGHT,
-            );
-            let (upper_r, upper_g, upper_b) =
-                ascii_magician_rgb(source_frame_index, source_x, upper_y);
-            let (lower_r, lower_g, lower_b) =
-                ascii_magician_rgb(source_frame_index, source_x, lower_y);
-            line.push_str(&render_ascii_magician_cell(
-                ascii_magician_visible_rgb((upper_r, upper_g, upper_b)),
-                ascii_magician_visible_rgb((lower_r, lower_g, lower_b)),
+fn require_ascii_magician_assets(runtime_dir: &Path) -> Result<(), CoreError> {
+    for frame_index in [0, ASCII_MAGICIAN_FRAME_COUNT - 1] {
+        let frame_path = ascii_magician_frame_path(runtime_dir, frame_index);
+        if !frame_path.is_file() {
+            return Err(CoreError::classified(
+                ErrorClass::Runtime,
+                "missing_magician_frame_asset",
+                format!("Missing magician GIF frame asset: {}", frame_path.display()),
+                "Reinstall Yazelix so the runtime includes assets/third_party/ascii_magician_1mposter_frames.",
+                serde_json::json!({ "path": frame_path }),
             ));
         }
-        line.push_str(ANSI_RESET);
-        lines.push(center_text(&line, width));
+    }
+    Ok(())
+}
+
+fn kitty_graphics_supported() -> bool {
+    let zellij_passthrough = std::env::var("YAZELIX_ZELLIJ_KITTY_PASSTHROUGH")
+        .map(|value| value == "1" || value.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+    let in_zellij =
+        std::env::var_os("ZELLIJ").is_some() || std::env::var_os("ZELLIJ_SESSION_NAME").is_some();
+
+    if in_zellij {
+        return zellij_passthrough;
     }
 
-    lines.push(center_text(
-        &format!("{ANSI_FAINT}{ANSI_PURPLE}{ASCII_MAGICIAN_ATTRIBUTION}{ANSI_RESET}"),
-        width,
-    ));
+    zellij_passthrough
+        || std::env::var_os("KITTY_WINDOW_ID").is_some()
+        || std::env::var("TERM")
+            .map(|value| value.contains("kitty"))
+            .unwrap_or(false)
+        || std::env::var("TERM_PROGRAM")
+            .map(|value| {
+                value.eq_ignore_ascii_case("ghostty") || value.eq_ignore_ascii_case("ratty")
+            })
+            .unwrap_or(false)
+}
 
-    if fill_height {
-        while lines.len() < height {
-            lines.push(String::new());
+fn require_kitty_graphics_for_magician() -> Result<(), CoreError> {
+    if kitty_graphics_supported() {
+        return Ok(());
+    }
+
+    Err(CoreError::classified(
+        ErrorClass::Runtime,
+        "magician_requires_kitty_graphics",
+        "The magician style requires Kitty graphics protocol support.",
+        "Run Yazelix in the packaged Ghostty/Ratty runtime with Zellij Kitty passthrough, or choose a non-image welcome style.",
+        serde_json::json!({}),
+    ))
+}
+
+fn base64_encode_bytes(bytes: &[u8]) -> String {
+    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut encoded = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for chunk in bytes.chunks(3) {
+        let first = chunk[0];
+        let second = *chunk.get(1).unwrap_or(&0);
+        let third = *chunk.get(2).unwrap_or(&0);
+        let packed = ((first as u32) << 16) | ((second as u32) << 8) | third as u32;
+
+        encoded.push(TABLE[((packed >> 18) & 0x3f) as usize] as char);
+        encoded.push(TABLE[((packed >> 12) & 0x3f) as usize] as char);
+        if chunk.len() > 1 {
+            encoded.push(TABLE[((packed >> 6) & 0x3f) as usize] as char);
+        } else {
+            encoded.push('=');
+        }
+        if chunk.len() > 2 {
+            encoded.push(TABLE[(packed & 0x3f) as usize] as char);
+        } else {
+            encoded.push('=');
         }
     }
-
-    lines
+    encoded
 }
 
-fn build_ascii_magician_welcome_frames(
+fn kitty_png_file_command(image_id: u32, columns: usize, rows: usize, path: &Path) -> String {
+    let payload = base64_encode_bytes(path.to_string_lossy().as_bytes());
+    format!("\u{1b}_Ga=T,f=100,t=f,i={image_id},p=1,c={columns},r={rows},C=1,q=2;{payload}\u{1b}\\")
+}
+
+fn kitty_delete_image_command(image_id: u32) -> String {
+    format!("\u{1b}_Ga=d,d=I,i={image_id},q=2;\u{1b}\\")
+}
+
+fn ascii_magician_graphics_layout(width: usize, height: usize) -> (usize, usize, usize, usize) {
+    let available_rows = height.saturating_sub(5).max(1);
+    let rows = available_rows
+        .min(width.saturating_sub(2).max(1) / 2)
+        .max(1);
+    let columns = rows.saturating_mul(2).min(width.saturating_sub(2).max(1));
+    let top_padding = height.saturating_sub(rows + 1) / 2;
+    let left_padding = width.saturating_sub(columns) / 2;
+    (columns, rows, top_padding, left_padding)
+}
+
+fn draw_ascii_magician_graphics_frame(
+    runtime_dir: &Path,
     width: usize,
     height: usize,
-    duration: Duration,
-) -> Vec<Vec<String>> {
-    let frame_count = ((duration.as_secs_f64() / ascii_magician_frame_delay().as_secs_f64()).ceil()
-        as usize)
-        .max(3);
-    let mut frames = (0..frame_count)
-        .map(|index| build_ascii_magician_frame(width, height, index, false))
-        .collect::<Vec<_>>();
-    frames.push(get_logo_welcome_frame(width));
-    frames
+    frame_index: usize,
+    image_id: u32,
+) -> Result<(), CoreError> {
+    let (columns, rows, top_padding, left_padding) = ascii_magician_graphics_layout(width, height);
+    let frame_path = ascii_magician_frame_path(runtime_dir, frame_index);
+
+    print!("\u{1b}[H\u{1b}[2J");
+    for _ in 0..top_padding {
+        println!();
+    }
+    if left_padding > 0 {
+        print!("{}", " ".repeat(left_padding));
+    }
+    print!(
+        "{}",
+        kitty_png_file_command(image_id, columns, rows, &frame_path)
+    );
+    for _ in 0..rows {
+        println!();
+    }
+    println!(
+        "{}",
+        center_text(
+            &format!("{ANSI_FAINT}{ANSI_PURPLE}{ASCII_MAGICIAN_ATTRIBUTION}{ANSI_RESET}"),
+            width
+        )
+    );
+    flush_stdout()
 }
 
-fn build_ascii_magician_screen_frames(width: usize, height: usize) -> Vec<Vec<String>> {
-    (0..ascii_magician_frame_count())
-        .map(|index| build_ascii_magician_frame(width, height, index, true))
-        .collect()
+fn cleanup_ascii_magician_graphics(image_id: u32) -> Result<(), CoreError> {
+    print!("{}\u{1b}[H\u{1b}[2J", kitty_delete_image_command(image_id));
+    flush_stdout()
+}
+
+fn play_ascii_magician_graphics_welcome(
+    runtime_dir: &Path,
+    duration: Duration,
+) -> Result<(), CoreError> {
+    require_kitty_graphics_for_magician()?;
+    require_ascii_magician_assets(runtime_dir)?;
+
+    let image_id = ascii_magician_image_id();
+    let frame_delay = ascii_magician_frame_delay();
+    let started_at = Instant::now();
+    let mut frame_index = 0usize;
+
+    while started_at.elapsed() < duration.max(frame_delay) {
+        draw_ascii_magician_graphics_frame(
+            runtime_dir,
+            terminal_width(),
+            terminal_height(),
+            frame_index,
+            image_id,
+        )?;
+        if poll_for_keypress(frame_delay)? {
+            break;
+        }
+        frame_index += 1;
+    }
+
+    cleanup_ascii_magician_graphics(image_id)?;
+    for line in get_logo_welcome_frame(terminal_width()) {
+        println!("{line}");
+    }
+    flush_stdout()
+}
+
+fn run_ascii_magician_graphics_screen(runtime_dir: &Path) -> Result<i32, CoreError> {
+    require_kitty_graphics_for_magician()?;
+    require_ascii_magician_assets(runtime_dir)?;
+
+    let image_id = ascii_magician_image_id();
+    enter_screen_mode()?;
+    let result = (|| -> Result<(), CoreError> {
+        let mut frame_index = 0usize;
+        loop {
+            draw_ascii_magician_graphics_frame(
+                runtime_dir,
+                terminal_width(),
+                terminal_height(),
+                frame_index,
+                image_id,
+            )?;
+            if poll_for_keypress(ascii_magician_frame_delay())? {
+                break;
+            }
+            frame_index += 1;
+        }
+        Ok(())
+    })();
+    let cleanup_result = cleanup_ascii_magician_graphics(image_id);
+    let leave_result = leave_screen_mode();
+    result?;
+    cleanup_result?;
+    leave_result?;
+    Ok(0)
 }
 
 fn welcome_sequence(
@@ -586,7 +655,6 @@ fn welcome_sequence(
     match resolved_style {
         "static" => vec![get_logo_welcome_frame(width)],
         "logo" => get_logo_animation_frames(width),
-        "magician" => build_ascii_magician_welcome_frames(width, height, duration),
         style if is_boids_style(style) => build_boids_frame(
             width,
             height,
@@ -642,11 +710,10 @@ fn trim_resting_frame(mut frames: Vec<Vec<String>>) -> Vec<Vec<String>> {
 fn screen_cycle_frames_non_game_of_life(
     resolved_style: &str,
     width: usize,
-    height: usize,
+    _height: usize,
 ) -> Result<Vec<Vec<String>>, CoreError> {
     match resolved_style {
         "logo" => Ok(trim_resting_frame(get_logo_animation_frames(width))),
-        "magician" => Ok(build_ascii_magician_screen_frames(width, height)),
         other => Err(CoreError::classified(
             ErrorClass::Internal,
             "unsupported_screen_style",
@@ -843,6 +910,34 @@ pub fn play_welcome_style_with_cell_style(
     duration: Duration,
     cell_style: GameOfLifeCellStyle,
 ) -> Result<(), CoreError> {
+    play_welcome_style_inner(style, duration, cell_style, None)
+}
+
+pub fn play_welcome_style_with_runtime_dir(
+    style: &str,
+    duration: Duration,
+    cell_style: GameOfLifeCellStyle,
+    runtime_dir: &Path,
+) -> Result<(), CoreError> {
+    play_welcome_style_inner(style, duration, cell_style, Some(runtime_dir))
+}
+
+fn missing_magician_runtime_dir() -> CoreError {
+    CoreError::classified(
+        ErrorClass::Runtime,
+        "missing_magician_runtime_dir",
+        "The magician style requires the Yazelix runtime asset directory.",
+        "Run this command through the packaged `yzx` launcher so YAZELIX_RUNTIME_DIR is available.",
+        serde_json::json!({}),
+    )
+}
+
+fn play_welcome_style_inner(
+    style: &str,
+    duration: Duration,
+    cell_style: GameOfLifeCellStyle,
+    runtime_dir: Option<&Path>,
+) -> Result<(), CoreError> {
     let _raw = raw_mode_guard()?;
     let width = terminal_width();
     let height = terminal_height();
@@ -863,6 +958,10 @@ pub fn play_welcome_style_with_cell_style(
     if resolved_style == "mandelbrot" {
         return play_mandelbrot_welcome_screen(playback_duration);
     }
+    if resolved_style == "magician" {
+        let runtime_dir = runtime_dir.ok_or_else(missing_magician_runtime_dir)?;
+        return play_ascii_magician_graphics_welcome(runtime_dir, playback_duration);
+    }
 
     let frames = welcome_sequence(
         &resolved_style,
@@ -875,7 +974,6 @@ pub fn play_welcome_style_with_cell_style(
         style if is_game_of_life_style(style) => Duration::from_millis(220),
         style if is_boids_style(style) => Duration::from_millis(70),
         "mandelbrot" => mandelbrot_frame_delay(),
-        "magician" => ascii_magician_frame_delay(),
         _ => {
             let divisor = frames.len().max(1) as u32;
             playback_duration
@@ -894,8 +992,29 @@ pub fn run_screen_surface_with_cell_style(
     style: Option<&str>,
     cell_style: GameOfLifeCellStyle,
 ) -> Result<i32, CoreError> {
+    run_screen_surface_inner(style, cell_style, None)
+}
+
+pub fn run_screen_surface_with_runtime_dir(
+    style: Option<&str>,
+    cell_style: GameOfLifeCellStyle,
+    runtime_dir: &Path,
+) -> Result<i32, CoreError> {
+    run_screen_surface_inner(style, cell_style, Some(runtime_dir))
+}
+
+fn run_screen_surface_inner(
+    style: Option<&str>,
+    cell_style: GameOfLifeCellStyle,
+    runtime_dir: Option<&Path>,
+) -> Result<i32, CoreError> {
     let _raw = raw_mode_guard()?;
     let resolved_style = resolve_screen_style(style, None)?;
+    if resolved_style == "magician" {
+        let runtime_dir = runtime_dir.ok_or_else(missing_magician_runtime_dir)?;
+        return run_ascii_magician_graphics_screen(runtime_dir);
+    }
+
     let frame_delay = screen_frame_delay(&resolved_style);
     let is_game_of_life = is_game_of_life_style(&resolved_style);
     let boids_variant = BoidsVariant::from_style_name(&resolved_style);
@@ -1185,47 +1304,33 @@ mod tests {
         assert_eq!(boids_welcome_body_height(spec, 4), spec.body_height);
     }
 
-    // Defends: the magician renderer uses the committed GIF-derived RGB pack and keeps visible attribution in-frame.
+    // Defends: the magician renderer addresses runtime GIF-derived PNG frames through Kitty file payloads instead of lossy ANSI pixel blocks.
     #[test]
-    fn magician_frames_use_asset_pack_and_visible_attribution() {
+    fn magician_graphics_uses_runtime_assets_and_kitty_file_payloads() {
+        let runtime_dir = Path::new("/runtime");
         assert_eq!(
-            ASCII_MAGICIAN_RGB.len(),
-            ASCII_MAGICIAN_SOURCE_WIDTH
-                * ASCII_MAGICIAN_SOURCE_HEIGHT
-                * RGB_BYTES_PER_PIXEL
-                * ASCII_MAGICIAN_FRAME_COUNT
+            ascii_magician_frame_path(runtime_dir, 0),
+            PathBuf::from(
+                "/runtime/assets/third_party/ascii_magician_1mposter_frames/frame_000.png"
+            )
         );
+        assert_eq!(
+            ascii_magician_frame_path(runtime_dir, ASCII_MAGICIAN_FRAME_COUNT),
+            ascii_magician_frame_path(runtime_dir, 0)
+        );
+        assert_eq!(base64_encode_bytes(b"hello"), "aGVsbG8=");
 
-        let frames = build_ascii_magician_welcome_frames(120, 40, Duration::from_millis(300));
-        assert_eq!(frames.len(), 4);
-        assert!(frames[0].len() >= 30);
-        assert!(frames[0].iter().all(|line| visible_line_width(line) <= 120));
-        assert!(
-            frames[0]
-                .iter()
-                .any(|line| line.contains(ASCII_MAGICIAN_ATTRIBUTION))
-        );
-        assert!(frames[0].iter().any(|line| line.contains("\u{1b}[38;2;")));
+        let command = kitty_png_file_command(123, 80, 40, Path::new("/tmp/frame.png"));
+        assert!(command.starts_with("\u{1b}_Ga=T,f=100,t=f,i=123,p=1,c=80,r=40,C=1,q=2;"));
+        assert!(command.contains("L3RtcC9mcmFtZS5wbmc="));
+        assert!(command.ends_with("\u{1b}\\"));
     }
 
-    // Regression: the source GIF has a black matte; rendering that matte as real pixels creates a heavy black card and scanline bands.
+    // Regression: the magician GIF must stay close to the original square bitmap proportions in a full pane.
     #[test]
-    fn magician_renderer_treats_black_matte_as_transparent() {
-        assert_eq!(ascii_magician_visible_rgb((0, 0, 0)), None);
-        assert_eq!(ascii_magician_visible_rgb((12, 8, 17)), None);
-        assert_eq!(ascii_magician_visible_rgb((0, 80, 86)), Some((0, 80, 86)));
-        assert_eq!(
-            render_ascii_magician_cell(None, None),
-            format!("{ANSI_RESET} ")
-        );
-        assert_eq!(
-            render_ascii_magician_cell(Some((4, 120, 128)), None),
-            format!("{ANSI_RESET}\u{1b}[38;2;4;120;128m▀")
-        );
-        assert_eq!(
-            render_ascii_magician_cell(None, Some((4, 120, 128))),
-            format!("{ANSI_RESET}\u{1b}[38;2;4;120;128m▄")
-        );
+    fn magician_graphics_layout_preserves_square_image_shape() {
+        assert_eq!(ascii_magician_graphics_layout(120, 40), (70, 35, 2, 25));
+        assert_eq!(ascii_magician_graphics_layout(190, 60), (110, 55, 2, 40));
     }
 
     // Regression: inline welcome playback trims trailing padding so centered frames do not trigger terminal autowrap artifacts.

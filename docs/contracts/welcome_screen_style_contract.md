@@ -50,7 +50,7 @@ Out of scope:
 | `boids_schools` | yes | yes | live | species-separated flocking variant |
 | `boids_flow` | no | no | deleted | removed after the flow-field variant looked odd in the welcome surface |
 | `mandelbrot` | yes | yes | live | Seahorse/Misiurewicz spiral zoom |
-| `magician` | yes | yes | live | attributed 1mposter ASCII magician GIF-derived animation |
+| `magician` | yes | yes | live | attributed 1mposter ASCII magician GIF-derived animation rendered through Kitty graphics |
 | `game_of_life_gliders` | yes | yes | live | retained default-family live simulation variant |
 | `game_of_life_oscillators` | yes | yes | live | retained default-family live simulation variant |
 | `game_of_life_bloom` | yes | yes | live | retained default-family live simulation variant |
@@ -95,6 +95,19 @@ Out of scope:
   `front_door_commands` tests; validator `yzx_repo_validator validate-contracts`
 
 #### FRONT-004
+- Type: boundary
+- Status: live
+- Owner: Rust magician renderer in `front_door_render.rs` plus runtime assets
+  under `assets/third_party/`
+- Statement: `magician` renders the attributed GIF-derived PNG frame assets
+  through Kitty graphics. Missing runtime assets or unavailable Kitty graphics
+  support produce explicit errors instead of falling back to a degraded ANSI
+  block renderer
+- Verification: automated Rust `front_door_render` tests; manual `yzx screen
+  magician` or `yzx screen --internal-welcome magician` review in the packaged
+  Ghostty/Ratty runtime
+
+#### FRONT-005
 - Type: behavior
 - Status: live
 - Owner: Rust Game of Life engine in `front_door_render.rs`
@@ -103,7 +116,7 @@ Out of scope:
 - Verification: automated Rust `front_door_render` tests;
   validator `yzx_repo_validator validate-contracts`
 
-#### FRONT-005
+#### FRONT-006
 - Type: boundary
 - Status: live
 - Owner: Nu startup-shell gating in `setup/welcome.nu` plus the tiny runtime
