@@ -6,7 +6,8 @@ use std::path::Path;
 use tempfile::tempdir;
 use yazelix_core::config_normalize::{NormalizeConfigRequest, normalize_config};
 use yazelix_core::settings_jsonc_patch::{
-    SettingsJsoncPatchMutation, set_settings_jsonc_value_text, unset_settings_jsonc_value_text,
+    SettingsJsoncPatchError, SettingsJsoncPatchMutation, set_jsonc_value_text,
+    set_settings_jsonc_value_text, unset_settings_jsonc_value_text,
 };
 use yazelix_core::settings_surface::{parse_jsonc_value, render_default_settings_jsonc};
 
@@ -128,6 +129,19 @@ fn rejects_unsafe_patch_shapes() {
         set_settings_jsonc_value_text(settings_path(), "{}", "editor[0]", &json!(true))
             .expect_err("invalid path");
     assert_eq!(invalid_path.code(), "invalid_settings_path");
+}
+
+// Defends: reusable JSONC patch primitives report project-agnostic errors before Yazelix maps them into CoreError.
+#[test]
+fn generic_patch_uses_project_agnostic_error_type() {
+    let error = set_jsonc_value_text("{}", "editor[0]", &json!(true)).expect_err("invalid path");
+
+    assert_eq!(
+        error,
+        SettingsJsoncPatchError::InvalidPath {
+            path: "editor[0]".to_string()
+        }
+    );
 }
 
 // Defends: patched settings JSONC remains compatible with the existing normalized config contract.

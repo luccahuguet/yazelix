@@ -3,9 +3,10 @@
 
 use crate::bridge::{CoreError, ErrorClass};
 use crate::native_config_status::path_owned_by_home_manager;
-use crate::settings_jsonc_patch::{set_settings_jsonc_value_text, unset_settings_jsonc_value_text};
+use crate::settings_jsonc_patch::{
+    jsonc_parse_options, set_settings_jsonc_value_text, unset_settings_jsonc_value_text,
+};
 use crate::user_config_paths;
-use jsonc_parser::ParseOptions;
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use std::fs;
 use std::io;
@@ -437,18 +438,6 @@ pub fn parse_jsonc_value(path: &Path, raw: &str) -> Result<JsonValue, CoreError>
             }),
         )
     })
-}
-
-pub(crate) fn jsonc_parse_options() -> ParseOptions {
-    ParseOptions {
-        allow_comments: true,
-        allow_loose_object_property_names: false,
-        allow_trailing_commas: true,
-        allow_missing_commas: false,
-        allow_single_quoted_strings: false,
-        allow_hexadecimal_numbers: false,
-        allow_unary_plus_numbers: false,
-    }
 }
 
 fn ensure_default_cursor_config_exists(default_cursor_config: &Path) -> Result<(), CoreError> {

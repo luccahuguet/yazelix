@@ -1,7 +1,7 @@
 //! Comment-preserving edits for the canonical Yazelix settings JSONC file.
 
 use crate::bridge::{CoreError, ErrorClass};
-use crate::settings_surface::{jsonc_parse_options, parse_jsonc_value};
+use jsonc_parser::ParseOptions;
 use jsonc_parser::cst::{CstInputValue, CstObject, CstRootNode};
 use serde_json::{Value as JsonValue, json};
 use std::path::Path;
@@ -26,19 +26,26 @@ impl SettingsJsoncPatchOutcome {
     }
 }
 
-pub fn set_settings_jsonc_value_text(
-    source_path: &Path,
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SettingsJsoncPatchError {
+    InvalidJsonc { source: String },
+    InvalidPath { path: String },
+    RewriteRequired { path: String, detail: String },
+    UnsupportedValue { path: String, detail: String },
+}
+
+pub fn set_jsonc_value_text(
     raw: &str,
     setting_path: &str,
     value: &JsonValue,
-) -> Result<SettingsJsoncPatchOutcome, CoreError> {
+) -> Result<SettingsJsoncPatchOutcome, SettingsJsoncPatchError> {
     let parts = split_setting_path(setting_path)?;
     let replacement = cst_input_from_json_value(value, setting_path)?;
-    let root = parse_cst(source_path, raw)?;
+    let root = parse_cst(raw)?;
     let root_object = root.object_value_or_create().ok_or_else(|| {
         rewrite_required(
             setting_path,
-            "The settings root is not a JSON object, so Yazelix cannot patch it without rewriting the file.",
+            "The settings root is not a JSON object, so this patch cannot be applied without rewriting the file.",
         )
     })?;
     let parent = parent_object_or_create(root_object, &parts, setting_path)?;
@@ -59,17 +66,16 @@ pub fn set_settings_jsonc_value_text(
     } else {
         mutation
     };
-    parse_jsonc_value(source_path, &text)?;
+    validate_jsonc(&text)?;
     Ok(SettingsJsoncPatchOutcome { text, mutation })
 }
 
-pub fn unset_settings_jsonc_value_text(
-    source_path: &Path,
+pub fn unset_jsonc_value_text(
     raw: &str,
     setting_path: &str,
-) -> Result<SettingsJsoncPatchOutcome, CoreError> {
+) -> Result<SettingsJsoncPatchOutcome, SettingsJsoncPatchError> {
     let parts = split_setting_path(setting_path)?;
-    let root = parse_cst(source_path, raw)?;
+    let root = parse_cst(raw)?;
     let Some(root_object) = root.object_value() else {
         return Ok(SettingsJsoncPatchOutcome {
             text: raw.to_string(),
@@ -91,32 +97,61 @@ pub fn unset_settings_jsonc_value_text(
     };
     prop.remove();
     let text = root.to_string();
-    parse_jsonc_value(source_path, &text)?;
+    validate_jsonc(&text)?;
     Ok(SettingsJsoncPatchOutcome {
         text,
         mutation: SettingsJsoncPatchMutation::Removed,
     })
 }
 
-fn parse_cst(source_path: &Path, raw: &str) -> Result<CstRootNode, CoreError> {
+pub fn set_settings_jsonc_value_text(
+    source_path: &Path,
+    raw: &str,
+    setting_path: &str,
+    value: &JsonValue,
+) -> Result<SettingsJsoncPatchOutcome, CoreError> {
+    set_jsonc_value_text(raw, setting_path, value)
+        .map_err(|error| patch_error_to_core_error(source_path, error))
+}
+
+pub fn unset_settings_jsonc_value_text(
+    source_path: &Path,
+    raw: &str,
+    setting_path: &str,
+) -> Result<SettingsJsoncPatchOutcome, CoreError> {
+    unset_jsonc_value_text(raw, setting_path)
+        .map_err(|error| patch_error_to_core_error(source_path, error))
+}
+
+pub(crate) fn jsonc_parse_options() -> ParseOptions {
+    ParseOptions {
+        allow_comments: true,
+        allow_loose_object_property_names: false,
+        allow_trailing_commas: true,
+        allow_missing_commas: false,
+        allow_single_quoted_strings: false,
+        allow_hexadecimal_numbers: false,
+        allow_unary_plus_numbers: false,
+    }
+}
+
+fn parse_cst(raw: &str) -> Result<CstRootNode, SettingsJsoncPatchError> {
     CstRootNode::parse(raw, &jsonc_parse_options()).map_err(|source| {
-        CoreError::classified(
-            ErrorClass::Config,
-            "invalid_settings_jsonc",
-            format!(
-                "Could not parse Yazelix settings JSONC at {}: {source}.",
-                source_path.display(),
-            ),
-            "Fix the JSONC syntax in settings.jsonc and retry. Comments must use `//` or `/* ... */`, not `#`.",
-            json!({
-                "path": source_path.display().to_string(),
-                "error": source.to_string(),
-            }),
-        )
+        SettingsJsoncPatchError::InvalidJsonc {
+            source: source.to_string(),
+        }
     })
 }
 
-fn split_setting_path(path: &str) -> Result<Vec<String>, CoreError> {
+fn validate_jsonc(raw: &str) -> Result<(), SettingsJsoncPatchError> {
+    jsonc_parser::parse_to_serde_value::<JsonValue>(raw, &jsonc_parse_options())
+        .map(|_| ())
+        .map_err(|source| SettingsJsoncPatchError::InvalidJsonc {
+            source: source.to_string(),
+        })
+}
+
+fn split_setting_path(path: &str) -> Result<Vec<String>, SettingsJsoncPatchError> {
     let parts = path
         .split('.')
         .map(str::trim)
@@ -132,13 +167,9 @@ fn split_setting_path(path: &str) -> Result<Vec<String>, CoreError> {
                     .all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
         })
     {
-        return Err(CoreError::classified(
-            ErrorClass::Usage,
-            "invalid_settings_path",
-            format!("Invalid Yazelix settings path: {path}."),
-            "Use a dotted settings path such as editor.hide_sidebar_on_file_open.",
-            json!({ "path": path }),
-        ));
+        return Err(SettingsJsoncPatchError::InvalidPath {
+            path: path.to_string(),
+        });
     }
     Ok(parts)
 }
@@ -147,7 +178,7 @@ fn parent_object_or_create(
     root_object: CstObject,
     parts: &[String],
     setting_path: &str,
-) -> Result<CstObject, CoreError> {
+) -> Result<CstObject, SettingsJsoncPatchError> {
     let mut current = root_object;
     for part in &parts[..parts.len().saturating_sub(1)] {
         current = current.object_value_or_create(part).ok_or_else(|| {
@@ -164,7 +195,7 @@ fn parent_object_if_present(
     root_object: CstObject,
     parts: &[String],
     setting_path: &str,
-) -> Result<Option<CstObject>, CoreError> {
+) -> Result<Option<CstObject>, SettingsJsoncPatchError> {
     let mut current = root_object;
     for part in &parts[..parts.len().saturating_sub(1)] {
         let Some(prop) = current.get(part) else {
@@ -190,7 +221,7 @@ fn parent_object_if_present(
 fn cst_input_from_json_value(
     value: &JsonValue,
     setting_path: &str,
-) -> Result<CstInputValue, CoreError> {
+) -> Result<CstInputValue, SettingsJsoncPatchError> {
     match value {
         JsonValue::Null => Ok(CstInputValue::Null),
         JsonValue::Bool(value) => Ok(CstInputValue::Bool(*value)),
@@ -219,22 +250,55 @@ fn cst_input_from_json_value(
     }
 }
 
-fn unsupported_value(setting_path: &str, detail: &str) -> CoreError {
-    CoreError::classified(
-        ErrorClass::Config,
-        "unsupported_settings_jsonc_patch_value",
-        format!("Yazelix cannot safely patch {setting_path}."),
-        detail,
-        json!({ "path": setting_path }),
-    )
+fn unsupported_value(setting_path: &str, detail: &str) -> SettingsJsoncPatchError {
+    SettingsJsoncPatchError::UnsupportedValue {
+        path: setting_path.to_string(),
+        detail: detail.to_string(),
+    }
 }
 
-fn rewrite_required(setting_path: &str, detail: &str) -> CoreError {
-    CoreError::classified(
-        ErrorClass::Config,
-        "settings_jsonc_rewrite_required",
-        format!("Yazelix cannot safely patch {setting_path} without rewriting settings.jsonc."),
-        detail,
-        json!({ "path": setting_path }),
-    )
+fn rewrite_required(setting_path: &str, detail: &str) -> SettingsJsoncPatchError {
+    SettingsJsoncPatchError::RewriteRequired {
+        path: setting_path.to_string(),
+        detail: detail.to_string(),
+    }
+}
+
+fn patch_error_to_core_error(source_path: &Path, error: SettingsJsoncPatchError) -> CoreError {
+    match error {
+        SettingsJsoncPatchError::InvalidJsonc { source } => CoreError::classified(
+            ErrorClass::Config,
+            "invalid_settings_jsonc",
+            format!(
+                "Could not parse Yazelix settings JSONC at {}: {source}.",
+                source_path.display(),
+            ),
+            "Fix the JSONC syntax in settings.jsonc and retry. Comments must use `//` or `/* ... */`, not `#`.",
+            json!({
+                "path": source_path.display().to_string(),
+                "error": source,
+            }),
+        ),
+        SettingsJsoncPatchError::InvalidPath { path } => CoreError::classified(
+            ErrorClass::Usage,
+            "invalid_settings_path",
+            format!("Invalid Yazelix settings path: {path}."),
+            "Use a dotted settings path such as editor.hide_sidebar_on_file_open.",
+            json!({ "path": path }),
+        ),
+        SettingsJsoncPatchError::RewriteRequired { path, detail } => CoreError::classified(
+            ErrorClass::Config,
+            "settings_jsonc_rewrite_required",
+            format!("Yazelix cannot safely patch {path} without rewriting settings.jsonc."),
+            detail,
+            json!({ "path": path }),
+        ),
+        SettingsJsoncPatchError::UnsupportedValue { path, detail } => CoreError::classified(
+            ErrorClass::Config,
+            "unsupported_settings_jsonc_patch_value",
+            format!("Yazelix cannot safely patch {path}."),
+            detail,
+            json!({ "path": path }),
+        ),
+    }
 }
