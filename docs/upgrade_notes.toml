@@ -1,10 +1,10 @@
 [releases.unreleased]
-acknowledged_guarded_changes = ["settings_default.jsonc", "home_manager/module.nix"]
+acknowledged_guarded_changes = []
 date = ""
-headline = "Ghostty graphics default, ratconfig extraction, and Beads Rust planning"
+headline = "Post-v17 work in progress"
 manual_actions = []
 migration_ids = []
-summary = ["Promoted the Ghostty Kitty graphics passthrough runtime to the default Yazelix package, using first-party Zellij/Yazi forks to restore image previews in Ghostty while upstream Zellij support is still pending.", "Switched the package baseline to nixpkgs-unstable and pulled in newer Yazi/Chafa behavior that avoids the Chafa terminal-probe ghost-keypress regression.", "Extracted the generic config editor, model, and rendering machinery into the yazelix-ratconfig child crate, leaving the main repo focused on Yazelix-specific settings adapters.", "Kept yzx config ui on the existing user-facing JSONC settings model while deleting the old in-repo ratconfig implementation and consuming the locked child crate instead.", "Migrated maintainer issue tracking from Go/Dolt bd to Rust br, with tracked JSONL state, ignored local SQLite cache, Nix packaging, CI initialization, and GitHub issue sync support."]
+summary = ["Reserved for post-release changes after v17 lands."]
 upgrade_impact = "no_user_action"
 version = "unreleased"
 
@@ -387,6 +387,16 @@ migration_ids = []
 summary = ["settings.jsonc is the canonical Yazelix settings file, with a complete settings_default.jsonc template, schema coverage, strict unknown-field diagnostics, and additive repair for missing supported fields.", "Home Manager renders complete managed settings.jsonc files while still letting users keep tiny declarative Yazelix settings in Nix.", "Yazelix ships a host-installed Codex agent path with a managed right sidebar and explicit directional defaults: Alt Shift H/J/K/L toggle the left sidebar, bottom popup, top popup, and right Codex sidebar; Ctrl Shift Y switches focus between editor and right sidebar.", "Sidebar launchers are configured symmetrically through workspace.left_sidebar.* and workspace.right_sidebar.*; the left sidebar defaults to yzx sidebar yazi, the right Codex sidebar defaults to 40% width, and both sidebar widths accept 1 to 48.", "Writable configs that still contain the old editor.sidebar_command, editor.sidebar_args, or editor.sidebar_width_percent fields are repaired once into workspace.left_sidebar.* before strict validation.", "Generated Zellij runtime state is re-rendered and validated before launch, so stale configs, missing plugin permissions, and copied native config files are detected or repaired deterministically.", "Managed ~/.config/yazelix/zellij.kdl is reserved for native Zellij settings that Yazelix does not render; Yazelix-owned keybindings, theme, pane frames, and rounded corners stay in settings.jsonc.", "yzx config ui renders scalar select fields as single-choice option lists; Space opens the picker for selects and remains a direct toggle only for booleans.", "The pane-orchestrator and popup wasm artifacts are consumed from locked first-party child packages instead of copied main-repo binaries."]
 upgrade_impact = "no_user_action"
 version = "v16.5"
+
+[releases.v17]
+acknowledged_guarded_changes = ["settings_default.jsonc", "home_manager/module.nix"]
+date = "2026-05-22"
+headline = "Ghostty graphics default, ratconfig extraction, and Beads Rust planning"
+manual_actions = []
+migration_ids = []
+summary = ["Promoted the Ghostty Kitty graphics passthrough runtime to the default Yazelix package, using first-party Zellij/Yazi forks to restore image previews in Ghostty while upstream Zellij support is still pending.", "Switched the package baseline to nixpkgs-unstable and pulled in newer Yazi/Chafa behavior that avoids the Chafa terminal-probe ghost-keypress regression.", "Extracted the generic config editor, model, and rendering machinery into the yazelix-ratconfig child crate, leaving the main repo focused on Yazelix-specific settings adapters.", "Kept yzx config ui on the existing user-facing JSONC settings model while deleting the old in-repo ratconfig implementation and consuming the locked child crate instead.", "Migrated maintainer issue tracking from Go/Dolt bd to Rust br, with tracked JSONL state, ignored local SQLite cache, Nix packaging, CI initialization, and GitHub issue sync support."]
+upgrade_impact = "no_user_action"
+version = "v17"
 
 [series.v13]
 headline = "Plugin-managed workspaces, migration-aware upgrades, richer front-door UX, and the full devenv-era integration push."

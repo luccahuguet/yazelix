@@ -1,4 +1,4 @@
-# Yazelix v16.5
+# Yazelix v17
 
 <div align="center">
   <img src="assets/logo.png" alt="Yazelix Logo" width="200"/>
@@ -141,6 +141,16 @@ If Yazelix is useful to you, you can support its development on [GitHub Sponsors
 <!-- BEGIN GENERATED README LATEST SERIES -->
 ## Latest Tagged Releases
 
+### v17
+
+Ghostty graphics default, ratconfig extraction, and Beads Rust planning
+
+- Promoted the Ghostty Kitty graphics passthrough runtime to the default Yazelix package, using first-party Zellij/Yazi forks to restore image previews in Ghostty while upstream Zellij support is still pending
+- Switched the package baseline to nixpkgs-unstable and pulled in newer Yazi/Chafa behavior that avoids the Chafa terminal-probe ghost-keypress regression
+- Extracted the generic config editor, model, and rendering machinery into the yazelix-ratconfig child crate, leaving the main repo focused on Yazelix-specific settings adapters
+- Kept yzx config ui on the existing user-facing JSONC settings model while deleting the old in-repo ratconfig implementation and consuming the locked child crate instead
+- Migrated maintainer issue tracking from Go/Dolt bd to Rust br, with tracked JSONL state, ignored local SQLite cache, Nix packaging, CI initialization, and GitHub issue sync support
+
 ### v16
 
 v16 Rust-forward control plane with an irreducible Nushell core
@@ -149,18 +159,6 @@ v16 Rust-forward control plane with an irreducible Nushell core
 - Reduced Nushell to the explicit shell and UI core, documented the surviving floor, and kept popup/menu wrappers on Nushell where that boundary is the clearest fit
 - Moved maintainer, update, and sweep ownership further out of Nushell, including repo-maintainer flows and pane-orchestrator sync semantics, so the remaining Nu surface is much smaller and more intentional
 - Unified the human CLI rendering for `yzx status`, `yzx status --versions`, and `yzx keys` around one shared Rust styling layer with cleaner grouped output and better contrast
-
-### v15
-
-v15 trims Yazelix down to the fast workspace core
-
-- v15 is the only supported Yazelix line now, and v14 is the final historical Classic snapshot rather than a maintained fallback
-- Dropped the out-of-scope Classic runtime-manager surface: no runtime-local `devenv`, no `yazelix_packs.toml`, no `yazelix packs` or `yzx packs`, no automatic config migrations, and no `yzx refresh`
-- Made Ghostty the first-party bundled terminal on Linux and macOS while keeping WezTerm, Kitty, Alacritty, and Foot as PATH-provided alternatives
-- Split current-terminal startup into `yzx enter`, kept `yzx launch` as the managed external-terminal entrypoint, and kept `yzx env` as the non-UI tool-environment surface
-- Made `yzx popup` and `yzx menu --popup` share the fast floating-pane path with explicit pane identity, shared toggle semantics, and no helper-pane detour
-- Kept the workspace core around layouts, managed editor/sidebar orchestration, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners through `yzx update upstream` or `yzx update home_manager`
-- Continued the delete-first trim by replacing string-built runtime wrapper commands with direct runtime scripts, making maintainer pins explicit again, and keeping the runtime lock on the declared unstable input
 
 For exact tagged release notes, see [CHANGELOG](./CHANGELOG.md) or run `yzx whats_new` after installing that release
 For the longer project story, see [Version History](./docs/history.md)

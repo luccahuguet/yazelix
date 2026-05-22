@@ -4,6 +4,15 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
+Post-v17 work in progress
+
+Upgrade impact: no user action required
+
+Highlights:
+- Reserved for post-release changes after v17 lands.
+
+## v17 - 2026-05-22
+
 Ghostty graphics default, ratconfig extraction, and Beads Rust planning
 
 Upgrade impact: no user action required
@@ -14,6 +23,7 @@ Highlights:
 - Extracted the generic config editor, model, and rendering machinery into the `yazelix-ratconfig` child crate, leaving the main repo focused on Yazelix-specific settings adapters
 - Kept `yzx config ui` on the existing user-facing JSONC settings model while deleting the old in-repo ratconfig implementation and consuming the locked child crate instead
 - Migrated maintainer issue tracking from Go/Dolt `bd` to Rust `br`, with tracked JSONL state, ignored local SQLite cache, Nix packaging, CI initialization, and GitHub issue sync support
+
 
 ## v16.5 - 2026-05-21
 
