@@ -30,7 +30,6 @@ use crate::settings_surface::{
     is_settings_config_path, parse_jsonc_value, read_settings_jsonc_value,
 };
 use crate::user_config_paths::{CURRENT_MANAGED_CONFIG_FILE_NAMES, SETTINGS_CONFIG};
-use crate::yazelix_ratconfig::{draw_config_ui, *};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{
@@ -50,14 +49,11 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use toml::Value as TomlValue;
 use yazelix_ghostty_cursors::{CursorRegistry, render_cursor_settings_jsonc};
 
-pub use crate::yazelix_ratconfig::{
-    ConfigUiApplyStatus, ConfigUiDiagnostic, ConfigUiField, ConfigUiModel, ConfigUiNativeStatus,
-    ConfigUiPathOwner, ConfigUiSidecar, ConfigUiValueState,
-};
 pub use app::run_config_ui;
 #[cfg(test)]
 use app::write_notice_text;
 use apply_adapter::apply_after_field_write;
+use details::render_details;
 use keybindings::*;
 #[cfg(test)]
 use model_builder::apply_status_for_setting;
@@ -67,6 +63,11 @@ use model_builder::{
     default_main_setting_value_for_ui, default_main_settings_text_for_ui, path_is_read_only,
     path_present, read_settings_for_edit, validate_patched_settings_for_ui, write_settings_edit,
 };
+pub use yazelix_ratconfig::{
+    ConfigUiApplyStatus, ConfigUiDiagnostic, ConfigUiField, ConfigUiModel, ConfigUiNativeStatus,
+    ConfigUiPathOwner, ConfigUiSidecar, ConfigUiValueState,
+};
+use yazelix_ratconfig::{draw_config_ui_with_details, *};
 
 const DEFAULT_TABS: &[&str] = &[
     "general",

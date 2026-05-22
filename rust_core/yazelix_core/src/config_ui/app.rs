@@ -37,7 +37,7 @@ fn run_ui_loop(
     loop {
         app.clamp_selection();
         terminal
-            .draw(|frame| draw_config_ui(frame, &mut app.ui))
+            .draw(|frame| draw_config_ui_with_details(frame, &mut app.ui, render_details))
             .map_err(terminal_err)?;
         if event::poll(Duration::from_millis(200)).map_err(terminal_err)?
             && let Event::Key(key) = event::read().map_err(terminal_err)?

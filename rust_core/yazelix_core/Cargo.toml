@@ -29,6 +29,7 @@ time = { version = "0.3", features = ["formatting", "local-offset", "macros"] }
 thiserror = "2.0"
 toml = "0.9"
 yazelix_ghostty_cursors = { git = "https://github.com/luccahuguet/yazelix-ghostty-cursors", rev = "9b7224eda13ff974f318ced4cc3d3bebc64076da" }
+yazelix_ratconfig = { package = "yazelix-ratconfig", git = "https://github.com/luccahuguet/yazelix-ratconfig", rev = "653e41f2338a46285cd6b25603390d5cea28a491" }
 yazelix_screen = { git = "https://github.com/luccahuguet/yazelix-screen", rev = "9ac6d3f62216c8200b6c9d58c85f26110666fa00" }
 
 [dev-dependencies]

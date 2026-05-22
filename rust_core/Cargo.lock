@@ -1412,6 +1412,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cfe53a6657fd280eaa890a3bc59152892ffa3e30101319d168b781ed6529b049"
 
 [[package]]
+name = "yazelix-ratconfig"
+version = "0.1.0"
+source = "git+https://github.com/luccahuguet/yazelix-ratconfig?rev=653e41f2338a46285cd6b25603390d5cea28a491#653e41f2338a46285cd6b25603390d5cea28a491"
+dependencies = [
+ "jsonc-parser",
+ "ratatui",
+ "serde_json",
+]
+
+[[package]]
 name = "yazelix_core"
 version = "0.1.0"
 dependencies = [
@@ -1429,6 +1439,7 @@ dependencies = [
  "thiserror 2.0.18",
  "time",
  "toml",
+ "yazelix-ratconfig",
  "yazelix_ghostty_cursors",
  "yazelix_screen",
 ]

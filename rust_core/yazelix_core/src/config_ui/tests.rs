@@ -258,7 +258,10 @@ fn zellij_keybinding_details_use_action_registry_metadata() {
     let mut app = YazelixConfigUiApp::new(request, model);
 
     select_field_path(&mut app, "zellij.keybindings");
-    let details = lines_text(&app.render_details(app.visible_rows()[app.selected_row]));
+    let details = lines_text(&render_details(
+        &app.ui,
+        app.visible_rows()[app.selected_row],
+    ));
 
     assert!(details.contains("Toggle the managed popup program"));
     assert!(details.contains("zellij.popup"));
@@ -288,7 +291,10 @@ fn zellij_native_keybinding_details_use_policy_registry_metadata() {
     let mut app = YazelixConfigUiApp::new(request, model);
 
     select_field_path(&mut app, "zellij.native_keybindings");
-    let details = lines_text(&app.render_details(app.visible_rows()[app.selected_row]));
+    let details = lines_text(&render_details(
+        &app.ui,
+        app.visible_rows()[app.selected_row],
+    ));
 
     assert!(details.contains("Yazelix native Zellij policy"));
     assert!(details.contains("Toggle scroll mode"));
@@ -361,7 +367,7 @@ fn cursor_enabled_cursors_opens_multi_choice_picker_and_writes_cursor_config() {
 
     let edit = app.edit.clone().expect("edit");
     assert_eq!(edit.mode, ConfigUiEditMode::MultiChoice);
-    let details = lines_text(&app.render_details(UiRowRef::Field(edit.field_index)));
+    let details = lines_text(&render_details(&app.ui, UiRowRef::Field(edit.field_index)));
     assert!(details.contains("> [x] blaze"));
 
     app.handle_edit_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
@@ -393,7 +399,10 @@ fn cursor_trail_uses_dynamic_single_choice_picker() {
 
     let mut app = YazelixConfigUiApp::new(request, model);
     select_field_path(&mut app, "cursors.settings.trail");
-    let details = lines_text(&app.render_details(app.visible_rows()[app.selected_row]));
+    let details = lines_text(&render_details(
+        &app.ui,
+        app.visible_rows()[app.selected_row],
+    ));
     assert!(details.contains("  ( ) none"));
     assert!(details.contains("  (x) random"));
     assert!(!details.contains("> (x) random"));
@@ -402,7 +411,7 @@ fn cursor_trail_uses_dynamic_single_choice_picker() {
 
     let edit = app.edit.clone().expect("edit");
     assert_eq!(edit.mode, ConfigUiEditMode::Choice);
-    let details = lines_text(&app.render_details(UiRowRef::Field(edit.field_index)));
+    let details = lines_text(&render_details(&app.ui, UiRowRef::Field(edit.field_index)));
     assert!(details.contains("  ( ) none"));
     assert!(details.contains("> (x) random"));
 }
@@ -452,7 +461,10 @@ fn yazi_keybinding_details_use_action_registry_metadata() {
     let mut app = YazelixConfigUiApp::new(request, model);
 
     select_field_path(&mut app, "yazi.keybindings");
-    let details = lines_text(&app.render_details(app.visible_rows()[app.selected_row]));
+    let details = lines_text(&render_details(
+        &app.ui,
+        app.visible_rows()[app.selected_row],
+    ));
 
     assert!(details.contains("Yazelix Yazi actions"));
     assert!(details.contains("Retarget the managed editor through the Yazi zoxide picker"));
@@ -584,7 +596,7 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
 
     let edit = app.edit.clone().expect("edit");
     assert_eq!(edit.mode, ConfigUiEditMode::MultiChoice);
-    let details = lines_text(&app.render_details(UiRowRef::Field(edit.field_index)));
+    let details = lines_text(&render_details(&app.ui, UiRowRef::Field(edit.field_index)));
     assert!(details.contains("> [x] ghostty"));
     assert!(details.contains("  [ ] alacritty"));
 
@@ -702,15 +714,15 @@ fn scalar_enum_enter_opens_single_select_picker() {
 
     let edit = app.edit.clone().expect("edit");
     assert_eq!(edit.mode, ConfigUiEditMode::Choice);
-    let details = lines_text(&app.render_details(UiRowRef::Field(edit.field_index)));
+    let details = lines_text(&render_details(&app.ui, UiRowRef::Field(edit.field_index)));
     assert!(details.contains("> (x) yazelix"));
     assert!(details.contains("  ( ) user"));
 
     app.handle_edit_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
-    let details = lines_text(&app.render_details(UiRowRef::Field(edit.field_index)));
+    let details = lines_text(&render_details(&app.ui, UiRowRef::Field(edit.field_index)));
     assert!(details.contains("> ( ) user"));
     app.handle_edit_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
-    let details = lines_text(&app.render_details(UiRowRef::Field(edit.field_index)));
+    let details = lines_text(&render_details(&app.ui, UiRowRef::Field(edit.field_index)));
     assert!(details.contains("> (x) user"));
 
     app.handle_edit_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
@@ -739,7 +751,7 @@ fn scalar_enum_space_opens_picker_without_writing() {
 
     let edit = app.edit.clone().expect("edit");
     assert_eq!(edit.mode, ConfigUiEditMode::Choice);
-    let details = lines_text(&app.render_details(UiRowRef::Field(edit.field_index)));
+    let details = lines_text(&render_details(&app.ui, UiRowRef::Field(edit.field_index)));
     assert!(details.contains("> (x) yazelix"));
     assert!(!settings_path.exists());
 }
