@@ -10,6 +10,7 @@
   extraRuntimePackages ? [ ],
   yaziAssets ? null,
   zellijPluginArtifacts ? { },
+  enableZellijKittyPassthrough ? false,
 }:
 
 let
@@ -39,6 +40,7 @@ import ./packaging/mk_runtime_tree.nix {
     extraRuntimePackages
     yaziAssets
     zellijPluginArtifacts
+    enableZellijKittyPassthrough
     ;
   src = runtimeSource;
   name = "yazelix-runtime";

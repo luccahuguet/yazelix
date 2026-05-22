@@ -11,6 +11,7 @@
   extraRuntimePackages ? [ ],
   yaziAssets ? null,
   zellijPluginArtifacts ? { },
+  enableZellijKittyPassthrough ? false,
 }:
 
 let
@@ -30,6 +31,7 @@ let
       extraRuntimePackages
       yaziAssets
       zellijPluginArtifacts
+      enableZellijKittyPassthrough
       ;
     name = "yazelix-runtime";
   };

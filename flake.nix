@@ -32,6 +32,14 @@
       url = "github:luccahuguet/yazelix-yazi-assets";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    yazelixZellij = {
+      url = "github:luccahuguet/yazelix-zellij/yazelix-kgp-preview-0";
+      flake = false;
+    };
+    yazelixYazi = {
+      url = "github:luccahuguet/yazelix-yazi/yazelix-kgp-preview-0";
+      flake = false;
+    };
     yazelixZellijPaneOrchestrator = {
       url = "github:luccahuguet/yazelix-zellij-pane-orchestrator";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -62,6 +70,8 @@
       yazelixGhosttyCursors,
       yazelixZellijBar,
       yazelixYaziAssets,
+      yazelixZellij,
+      yazelixYazi,
       yazelixZellijPaneOrchestrator,
       yazelixZellijPopup,
       beads,
@@ -113,6 +123,7 @@
           extraRuntimePackages ? [ ],
           yaziAssets ? yazelixYaziAssets.packages.${system}.yazelix_yazi_assets,
           zellijPluginArtifacts ? zellijPluginArtifactsFor system,
+          enableZellijKittyPassthrough ? false,
         }:
         import ./yazelix_package.nix (
           {
@@ -124,6 +135,7 @@
               components
               yaziAssets
               zellijPluginArtifacts
+              enableZellijKittyPassthrough
               ;
             extraRuntimePackages = [
               yazelixZellijBar.packages.${system}.yazelix_zellij_bar
@@ -143,10 +155,49 @@
           yaziAssets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
           zellijPluginArtifacts = zellijPluginArtifactsFor system;
         };
+      runtimePackageWith = system: pkgs: args:
+        import ./yazelix_runtime_package.nix ({
+          inherit pkgs nixgl;
+          fenixPkgs = fenix.packages.${system};
+          yaziAssets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
+          zellijPluginArtifacts = zellijPluginArtifactsFor system;
+        } // args // {
+          extraRuntimePackages = [
+            yazelixZellijBar.packages.${system}.yazelix_zellij_bar
+          ] ++ (args.extraRuntimePackages or [ ]);
+        });
       yazelixPackage = system: pkgs: runtimeVariant: extraRuntimePackages:
         mkYazelix system {
           inherit pkgs runtimeVariant extraRuntimePackages;
         };
+      kgpPreviewPkgs =
+        system: pkgs:
+        let
+          yaziCodeSrc = builtins.path {
+            path = yazelixYazi;
+            name = "yazi-yazelix-kgp-preview-src";
+          };
+        in
+        pkgs.extend (final: prev: {
+          zellij = prev.zellij.overrideAttrs (_old: {
+            src = yazelixZellij;
+          });
+          yazi-unwrapped = prev.yazi-unwrapped.overrideAttrs (old: {
+            srcs = [
+              yaziCodeSrc
+              old.passthru.srcs.man_src
+            ];
+            sourceRoot = "yazi-yazelix-kgp-preview-src";
+            passthru = old.passthru // {
+              srcs = old.passthru.srcs // {
+                code_src = yaziCodeSrc;
+              };
+            };
+          });
+          yazi = prev.yazi.override {
+            yazi-unwrapped = final.yazi-unwrapped;
+          };
+        });
       defaultOverlay = final: _prev: {
         yazelix = mkYazelix final.stdenv.hostPlatform.system { pkgs = final; };
         yazelix_zellij_bar = yazelixZellijBar.packages.${final.stdenv.hostPlatform.system}.yazelix_zellij_bar;
@@ -205,10 +256,32 @@
           runtime_default = runtimePackage system pkgs defaultRuntimeVariant noExtraRuntimePackages;
           runtime_ghostty = runtimePackage system pkgs "ghostty" noExtraRuntimePackages;
           runtime_wezterm = runtimePackage system pkgs "wezterm" noExtraRuntimePackages;
+          runtime_ghostty_kgp_preview = runtimePackageWith system (kgpPreviewPkgs system pkgs) {
+            runtimeVariant = "ghostty";
+            extraRuntimePackages = noExtraRuntimePackages;
+            enableZellijKittyPassthrough = true;
+          };
+          runtime_ghostty_kgp_preview_agent_tools = runtimePackageWith system (kgpPreviewPkgs system pkgs) {
+            runtimeVariant = "ghostty";
+            extraRuntimePackages = agentUsageRuntimePackages;
+            enableZellijKittyPassthrough = true;
+          };
           runtime_agent_tools = runtimePackage system pkgs defaultRuntimeVariant agentUsageRuntimePackages;
           yazelix_default = yazelixPackage system pkgs defaultRuntimeVariant noExtraRuntimePackages;
           yazelix_ghostty = yazelixPackage system pkgs "ghostty" noExtraRuntimePackages;
           yazelix_wezterm = yazelixPackage system pkgs "wezterm" noExtraRuntimePackages;
+          yazelix_ghostty_kgp_preview = mkYazelix system {
+            pkgs = kgpPreviewPkgs system pkgs;
+            runtimeVariant = "ghostty";
+            extraRuntimePackages = noExtraRuntimePackages;
+            enableZellijKittyPassthrough = true;
+          };
+          yazelix_ghostty_kgp_preview_agent_tools = mkYazelix system {
+            pkgs = kgpPreviewPkgs system pkgs;
+            runtimeVariant = "ghostty";
+            extraRuntimePackages = agentUsageRuntimePackages;
+            enableZellijKittyPassthrough = true;
+          };
           yazelix_agent_tools = yazelixPackage system pkgs defaultRuntimeVariant agentUsageRuntimePackages;
           yazelix_zellij_bar = yazelixZellijBar.packages.${system}.yazelix_zellij_bar;
           yazelix_screen = yazelixScreen.packages.${system}.yzs;
@@ -224,12 +297,16 @@
           runtime = runtime_default;
           runtime_agent_tools = runtime_agent_tools;
           runtime_ghostty = runtime_ghostty;
+          runtime_ghostty_kgp_preview = runtime_ghostty_kgp_preview;
+          runtime_ghostty_kgp_preview_agent_tools = runtime_ghostty_kgp_preview_agent_tools;
           runtime_wezterm = runtime_wezterm;
           yazelix = yazelix_default;
           yazelix_agent_tools = yazelix_agent_tools;
           yazelix_zellij_bar = yazelix_zellij_bar;
           yazelix_ghostty_cursors = yazelix_ghostty_cursors;
           yazelix_ghostty = yazelix_ghostty;
+          yazelix_ghostty_kgp_preview = yazelix_ghostty_kgp_preview;
+          yazelix_ghostty_kgp_preview_agent_tools = yazelix_ghostty_kgp_preview_agent_tools;
           yazelix_screen = yazelix_screen;
           yazelix_wezterm = yazelix_wezterm;
           yazelix_yazi_assets = yazelix_yazi_assets;
@@ -251,6 +328,14 @@
         yazelix_ghostty = {
           type = "app";
           program = "${self.packages.${system}.yazelix_ghostty}/bin/yzx";
+        };
+        yazelix_ghostty_kgp_preview = {
+          type = "app";
+          program = "${self.packages.${system}.yazelix_ghostty_kgp_preview}/bin/yzx";
+        };
+        yazelix_ghostty_kgp_preview_agent_tools = {
+          type = "app";
+          program = "${self.packages.${system}.yazelix_ghostty_kgp_preview_agent_tools}/bin/yzx";
         };
         yazelix_wezterm = {
           type = "app";

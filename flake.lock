@@ -222,7 +222,9 @@
         "nixpkgs": "nixpkgs_3",
         "yazelixGhosttyCursors": "yazelixGhosttyCursors",
         "yazelixScreen": "yazelixScreen",
+        "yazelixYazi": "yazelixYazi",
         "yazelixYaziAssets": "yazelixYaziAssets",
+        "yazelixZellij": "yazelixZellij",
         "yazelixZellijBar": "yazelixZellijBar",
         "yazelixZellijPaneOrchestrator": "yazelixZellijPaneOrchestrator",
         "yazelixZellijPopup": "yazelixZellijPopup",
@@ -373,6 +375,23 @@
         "type": "github"
       }
     },
+    "yazelixYazi": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1779432435,
+        "narHash": "sha256-x3i/TU1cKGny+KUoyLKbESNaqCnKTKCy9Kj4pJnL//8=",
+        "owner": "luccahuguet",
+        "repo": "yazelix-yazi",
+        "rev": "f6db84cf6e8e1da531377c4f382c531c9c03aca8",
+        "type": "github"
+      },
+      "original": {
+        "owner": "luccahuguet",
+        "ref": "yazelix-kgp-preview-0",
+        "repo": "yazelix-yazi",
+        "type": "github"
+      }
+    },
     "yazelixYaziAssets": {
       "inputs": {
         "nixpkgs": [
@@ -390,6 +409,23 @@
       "original": {
         "owner": "luccahuguet",
         "repo": "yazelix-yazi-assets",
+        "type": "github"
+      }
+    },
+    "yazelixZellij": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1779429316,
+        "narHash": "sha256-P9dlqsfiT5/3lXXONX+6cWk5Qm6QWocvdN4rjdxwTXc=",
+        "owner": "luccahuguet",
+        "repo": "yazelix-zellij",
+        "rev": "c10aad0dd657d7df0e2c39762df0daba404a564b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "luccahuguet",
+        "ref": "yazelix-kgp-preview-0",
+        "repo": "yazelix-zellij",
         "type": "github"
       }
     },

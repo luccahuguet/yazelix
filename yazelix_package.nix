@@ -10,6 +10,7 @@
   extraRuntimePackages ? [ ],
   yaziAssets ? null,
   zellijPluginArtifacts ? { },
+  enableZellijKittyPassthrough ? false,
 }:
 
 let
@@ -41,6 +42,7 @@ import ./packaging/mk_yazelix_package.nix {
     extraRuntimePackages
     yaziAssets
     zellijPluginArtifacts
+    enableZellijKittyPassthrough
     ;
   src = runtimeSource;
   metaPlatforms = firstPartyPlatforms;

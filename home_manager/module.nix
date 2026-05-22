@@ -43,7 +43,9 @@ let
     extraRuntimePackages = selectedAgentUsagePackages;
   };
   yazelixPackage =
-    if mkYazelixPackage != null then
+    if cfg.package != null then
+      cfg.package
+    else if mkYazelixPackage != null then
       mkYazelixPackage packageBuilderArgs
     else
       import ../yazelix_package.nix (
@@ -281,6 +283,18 @@ in
 
   options.programs.yazelix = {
     enable = mkEnableOption "Yazelix terminal environment";
+
+    package = mkOption {
+      type = types.nullOr types.package;
+      default = null;
+      description = ''
+        Yazelix package to expose through the Home Manager profile.
+
+        The default builds Yazelix from this module's runtime options. Set this
+        only when selecting a prebuilt package output such as an experimental
+        runtime variant.
+      '';
+    };
 
     manage_config = mkOption {
       type = types.bool;

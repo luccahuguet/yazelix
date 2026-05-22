@@ -11,6 +11,7 @@
   extraRuntimeCommands ? [ "tu" ],
   yaziAssets ? null,
   zellijPluginArtifacts ? { },
+  enableZellijKittyPassthrough ? false,
 }:
 
 let
@@ -91,6 +92,10 @@ pkgs.runCommand name { } ''
   printf '%s\n' ${pkgs.lib.escapeShellArg runtimeVariant} > "$out/runtime_variant"
   printf '%s\n' ${pkgs.lib.escapeShellArg runtimeComponentRegistry.manifestJson} > "$out/runtime_components.json"
   printf '%s\n' ${pkgs.lib.escapeShellArg runtimeToolRegistry.manifestJson} > "$out/runtime_tools.json"
+  ${pkgs.lib.optionalString enableZellijKittyPassthrough ''
+    mkdir -p "$out/runtime_features"
+    touch "$out/runtime_features/zellij_kitty_passthrough"
+  ''}
 
   mkdir -p "$out/libexec"
   for bin_dir in ${escapedRuntimeBinDirs}; do
