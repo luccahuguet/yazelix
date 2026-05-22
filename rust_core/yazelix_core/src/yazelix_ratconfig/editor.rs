@@ -1,3 +1,5 @@
+// Test lane: default
+
 use super::{
     ConfigUiEditBehavior, ConfigUiField, ConfigUiModel, UiRowRef, visible_rows_for_tab_search,
 };
@@ -427,5 +429,100 @@ pub(crate) fn field_bool_value(field: &ConfigUiField) -> Option<bool> {
         "true" => Some(true),
         "false" => Some(false),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::settings_jsonc_patch::{SettingsJsoncPatchMutation, set_jsonc_value_text};
+    use crate::yazelix_ratconfig::{
+        ConfigUiApplyStatus, ConfigUiPathOwner, ConfigUiValueState, row_line_for_model,
+    };
+    use serde_json::json;
+    use std::path::PathBuf;
+
+    fn field(path: &str, kind: &str, value: &str, allowed: &[&str]) -> ConfigUiField {
+        ConfigUiField {
+            path: path.to_string(),
+            tab: "general".to_string(),
+            kind: kind.to_string(),
+            current_value: value.to_string(),
+            edit_value: value.to_string(),
+            default_value: value.to_string(),
+            state: ConfigUiValueState::Explicit,
+            description: String::new(),
+            allowed_values: allowed.iter().map(|value| (*value).to_string()).collect(),
+            validation: String::new(),
+            rebuild_required: false,
+            apply_status: ConfigUiApplyStatus {
+                summary: "after save".to_string(),
+                label: "after save".to_string(),
+                detail: "The host application applies this field after saving.".to_string(),
+                pending: true,
+            },
+            edit_behavior: ConfigUiEditBehavior::Default,
+        }
+    }
+
+    // Defends: the reusable ratconfig layer can drive a non-Yazelix config fixture with bool, select, multiselect, rendering, and JSONC patching.
+    #[test]
+    fn non_yazelix_fixture_uses_generic_model_editor_render_and_jsonc_patch() {
+        let model = ConfigUiModel {
+            active_config_path: PathBuf::from("/tmp/acme/settings.jsonc"),
+            cursor_config_path: PathBuf::from("/tmp/acme/cursors.jsonc"),
+            default_cursor_config_path: PathBuf::from("/tmp/acme/default_cursors.jsonc"),
+            active_config_exists: true,
+            config_owner: ConfigUiPathOwner::User,
+            config_read_only: false,
+            tabs: vec!["general".to_string()],
+            fields: vec![
+                field("server.enabled", "bool", "false", &[]),
+                field("ui.theme", "string", "\"light\"", &["light", "dark"]),
+                field(
+                    "plugins.enabled",
+                    "string_list",
+                    r#"["git"]"#,
+                    &["git", "search"],
+                ),
+            ],
+            sidecars: Vec::new(),
+            native_config_statuses: Vec::new(),
+            diagnostics: Vec::new(),
+        };
+        let app = ConfigUiApp::new(model);
+
+        assert_eq!(app.visible_rows().len(), 3);
+        assert_eq!(
+            row_line_for_model(&app.model, app.visible_rows()[0])
+                .spans
+                .iter()
+                .map(|span| span.content.trim().to_string())
+                .collect::<Vec<_>>(),
+            vec!["after save", "server.enabled", "false"]
+        );
+        assert_eq!(
+            parse_edit_input(&app.model.fields[0], "true").expect("bool"),
+            json!(true)
+        );
+        assert_eq!(
+            parse_edit_input(&app.model.fields[1], "dark").expect("select"),
+            json!("dark")
+        );
+        assert_eq!(
+            toggled_string_list_input(&app.model.fields[2], r#"["git"]"#, 1).expect("toggle"),
+            r#"["git","search"]"#
+        );
+
+        let raw = r#"{
+  // host-owned config
+  "ui": { "theme": "light" }
+}
+"#;
+        let patched =
+            set_jsonc_value_text(raw, "ui.theme", &json!("dark")).expect("generic jsonc patch");
+        assert_eq!(patched.mutation, SettingsJsoncPatchMutation::Replaced);
+        assert!(patched.text.contains("// host-owned config"));
+        assert!(patched.text.contains(r#""theme": "dark""#));
     }
 }
