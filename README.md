@@ -110,6 +110,8 @@ The child repos mainly let non-Yazelix users adopt Yazelix modules and subsystem
 - [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij floating TUI panes; its plugin alias and wasm artifact are `yzpp`, and regular Yazelix sessions use it for the popup, command palette, and config UI panes
 - [yazelix-yazi-assets](https://github.com/luccahuguet/yazelix-yazi-assets) — Standalone Yazi flavor and reusable plugin asset pack, exposed here as `#yazelix_yazi_assets` and integrated into the normal Yazelix Yazi runtime
 
+The default Ghostty runtime also pins temporary Yazelix forks of Zellij and Yazi so Yazi image previews can use Kitty graphics through Zellij. Those forks are expected to be dropped and archived once upstream Zellij supports the required Kitty graphics path directly enough for Yazelix to return to upstream packages
+
 ## Why Yazelix
 Yazelix is a reproducible terminal IDE that integrates Yazi + Zellij + Helix, delivering a consistent, fast "superterminal" locally or over SSH with zero manual setup through smart pane/layout orchestration, sidebar reveal/open flows, a curated built-in toolset, sane defaults, Helix/Zellij conflict cleanup, auto-configured tools like starship, zoxide, and carapace, and useful bundled tools such as `lazygit`
 
@@ -117,7 +119,7 @@ It already ships with Zellij and Yazi plugins, some maintained in this repo, inc
 
 It has features like `reveal in Yazi` from Helix or Neovim, opening files from Yazi in your configured editor, and switching workspace layouts without leaving the workspace
 
-Supports top terminals and popular shells, with Ghostty as the default packaged terminal for Yazelix cursor trails, WezTerm as the explicit image-compatible packaged variant, Kitty, Alacritty, and Foot as supported alternatives when present on the host `PATH`, and everything configured through `settings.jsonc` while the packaged runtime provides the fixed Yazelix toolset
+Supports top terminals and popular shells, with Ghostty as the default packaged terminal for Yazelix cursor trails and Yazi image previews, WezTerm as an explicit alternate packaged variant, Kitty, Alacritty, and Foot as supported alternatives when present on the host `PATH`, and everything configured through `settings.jsonc` while the packaged runtime provides the fixed Yazelix toolset
 
 Get everything running in less than 10 minutes with no extra dependencies beyond Nix
 
@@ -166,7 +168,7 @@ For the longer project story, see [Version History](./docs/history.md)
 
 ## Compatibility
 - **Platform**: Linux and macOS — see the [macOS support floor contract](docs/contracts/macos_support_floor.md) for the current guaranteed macOS surfaces
-- **Terminal**: Ghostty is the default packaged terminal, WezTerm is available through the explicit WezTerm package path, while Kitty and Alacritty remain supported PATH-provided alternatives and Foot remains a Linux-only PATH-provided alternative
+- **Terminal**: Ghostty is the default packaged terminal with Yazelix cursor trails and Yazi image previews, WezTerm is available through the explicit WezTerm package path, while Kitty and Alacritty remain supported PATH-provided alternatives and Foot remains a Linux-only PATH-provided alternative
 - **Editor**: Any editor works, with Helix and Neovim getting first-class support (reveal in the Yazi file tree, open buffer in a running instance, managed editor-pane targeting) and configuration through `editor.command` in `settings.jsonc`
 - **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer
 
@@ -285,8 +287,8 @@ See the full catalog of tools and integrations in the Yazelix Collection:
 If you followed [step 4 in the installation guide](./docs/installation.md#step-4-configure-your-installation-optional), you already have your `~/.config/yazelix/settings.jsonc` config file ready, you can modify it anytime and restart Yazelix to apply changes. Main options live in that file; Ghostty cursor presets live in `~/.config/yazelix_ghostty_cursors/settings.jsonc`
 
 **Terminal Emulator Selection:**
-- **Ghostty** (default packaged preference): Modern, fast terminal written in Zig with Yazelix cursor trails
-- **WezTerm** (explicit packaged compatibility path): Best image preview support in Yazi
+- **Ghostty** (default packaged preference): Modern, fast terminal written in Zig with Yazelix cursor trails and Yazi image previews
+- **WezTerm** (explicit packaged alternate path): Rust terminal with strong graphics support and Sixel compatibility
 - **Kitty**: Fast, feature-rich, GPU-accelerated terminal
 - **Alacritty**: Fast, GPU-accelerated terminal written in Rust
 - **Foot**: Wayland-native terminal (Linux-only)

@@ -17,7 +17,9 @@ It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij,
 **Important**: You don't need to learn Nix or Nushell to use Yazelix. Nix with flakes is the only real host prerequisite. The normal product surface is the `yazelix` package or the top-level Home Manager module.
 
 ## Supported Terminal Emulators
-Yazelix provides one packaged terminal runtime variant at a time. The default `#yazelix` package uses Ghostty so Yazelix cursor trails and Ghostty config effects are present on first run. WezTerm remains available through `#yazelix_wezterm` or `programs.yazelix.runtime_variant = "wezterm"` for users who prefer its image-preview behavior. Kitty, Alacritty, and Foot remain supported terminal choices, but you provide those binaries yourself and then list them in `terminal.terminals` in `settings.jsonc`.
+Yazelix provides one packaged terminal runtime variant at a time. The default `#yazelix` package uses Ghostty so Yazelix cursor trails, Ghostty config effects, and Yazi image previews through Zellij are present on first run. WezTerm remains available through `#yazelix_wezterm` or `programs.yazelix.runtime_variant = "wezterm"` for users who prefer the explicit alternate packaged terminal path. Kitty, Alacritty, and Foot remain supported terminal choices, but you provide those binaries yourself and then list them in `terminal.terminals` in `settings.jsonc`.
+
+The Ghostty image-preview path pins temporary Yazelix forks of Zellij and Yazi. Those forks are expected to be dropped and archived once upstream Zellij supports the required Kitty graphics path directly enough for Yazelix to return to upstream packages.
 
 See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed breakdown of strengths, gaps, and platform support.
 
@@ -30,7 +32,6 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 - Modern, fast, written in Zig, newer
 - Provided by the default `yazelix` package runtime and by `yazelix_ghostty`
 - Download page: https://ghostty.org/download
-- **Note**: Due to a [Zellij/Yazi/Ghostty interaction](https://github.com/zellij-org/zellij/issues/2814#issuecomment-2965117327), image previews in Yazi may not display properly, for now. If this is a problem for you, use WezTerm instead
 
 **Kitty**
 - Fast, feature-rich, GPU-accelerated terminal
@@ -175,7 +176,7 @@ The trimmed v15 packaged runtime ships a fixed toolset instead of configurable d
 - the core Yazelix stack: `zellij`, `yazi`, `helix`, `nu`, `bash`, `fish`, `zsh`
 - the default CLI helpers: `fzf`, `zoxide`, `starship`, `lazygit`, `mise`, `carapace`, `macchina`
 - the default Yazi preview helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
-- one packaged terminal variant: Ghostty by default, or either variant explicitly through `#yazelix_ghostty`, `#yazelix_wezterm`, or `programs.yazelix.runtime_variant`
+- one packaged terminal variant: Ghostty by default with the Yazelix Zellij/Yazi graphics bridge, or either variant explicitly through `#yazelix_ghostty`, `#yazelix_wezterm`, or `programs.yazelix.runtime_variant`
 
 When you enter `yzx env`, Yazelix exports that curated tool surface to your shell. Runtime-private helpers stay under `libexec/` so host apps launched from Yazelix do not inherit shadowing tools like `dirname` ahead of the system PATH.
 
@@ -188,7 +189,7 @@ What it does not ship anymore:
 #### Configuration Options
 - **Custom shells**: Set `default_shell` to your preference (`"nu"`, `"bash"`, `"fish"`, `"zsh"`)
 - **Terminal preference**: Set `terminals` (`["ghostty", "wezterm", "kitty", "alacritty", "foot"]`, ordered)
-- **Terminal launch**: Ghostty is first in the default terminal list for Yazelix cursor trails; WezTerm remains available through the WezTerm runtime variant or host `PATH`; other configured terminals are launched from `PATH` in the order you configure
+- **Terminal launch**: Ghostty is first in the default terminal list for Yazelix cursor trails and Yazi image previews; WezTerm remains available through the WezTerm runtime variant or host `PATH`; other configured terminals are launched from `PATH` in the order you configure
 - **Editor choice**: Configure your editor (see [Editor Configuration](./editor_configuration.md))
 
 ### Step 4: Install Fonts (Required for Kitty and Alacritty)

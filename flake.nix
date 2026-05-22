@@ -125,18 +125,15 @@
           zellijPluginArtifacts ? zellijPluginArtifactsFor system,
           enableZellijKittyPassthrough ? false,
         }:
+        let
+          runtimePkgs = runtimePkgsFor system pkgs runtimeVariant;
+        in
         import ./yazelix_package.nix (
           {
-            inherit
-              pkgs
-              nixgl
-              runtimeVariant
-              runtimeToolSources
-              components
-              yaziAssets
-              zellijPluginArtifacts
-              enableZellijKittyPassthrough
-              ;
+            inherit nixgl runtimeVariant runtimeToolSources components yaziAssets zellijPluginArtifacts;
+            pkgs = runtimePkgs;
+            enableZellijKittyPassthrough =
+              enableZellijKittyPassthrough || runtimeVariant == "ghostty";
             extraRuntimePackages = [
               yazelixZellijBar.packages.${system}.yazelix_zellij_bar
             ] ++ extraRuntimePackages;
@@ -147,35 +144,32 @@
         );
       runtimePackage = system: pkgs: runtimeVariant: extraRuntimePackages:
         import ./yazelix_runtime_package.nix {
-          inherit pkgs nixgl runtimeVariant;
+          inherit nixgl runtimeVariant;
+          pkgs = runtimePkgsFor system pkgs runtimeVariant;
           fenixPkgs = fenix.packages.${system};
           extraRuntimePackages = [
             yazelixZellijBar.packages.${system}.yazelix_zellij_bar
           ] ++ extraRuntimePackages;
           yaziAssets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
           zellijPluginArtifacts = zellijPluginArtifactsFor system;
+          enableZellijKittyPassthrough = runtimeVariant == "ghostty";
         };
-      runtimePackageWith = system: pkgs: args:
-        import ./yazelix_runtime_package.nix ({
-          inherit pkgs nixgl;
-          fenixPkgs = fenix.packages.${system};
-          yaziAssets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
-          zellijPluginArtifacts = zellijPluginArtifactsFor system;
-        } // args // {
-          extraRuntimePackages = [
-            yazelixZellijBar.packages.${system}.yazelix_zellij_bar
-          ] ++ (args.extraRuntimePackages or [ ]);
-        });
       yazelixPackage = system: pkgs: runtimeVariant: extraRuntimePackages:
         mkYazelix system {
           inherit pkgs runtimeVariant extraRuntimePackages;
         };
-      kgpPreviewPkgs =
+      runtimePkgsFor =
+        system: pkgs: runtimeVariant:
+        if runtimeVariant == "ghostty" then
+          yazelixGraphicsPkgs system pkgs
+        else
+          pkgs;
+      yazelixGraphicsPkgs =
         system: pkgs:
         let
           yaziCodeSrc = builtins.path {
             path = yazelixYazi;
-            name = "yazi-yazelix-kgp-preview-src";
+            name = "yazi-yazelix-kgp-src";
           };
         in
         pkgs.extend (final: prev: {
@@ -187,7 +181,7 @@
               yaziCodeSrc
               old.passthru.srcs.man_src
             ];
-            sourceRoot = "yazi-yazelix-kgp-preview-src";
+            sourceRoot = "yazi-yazelix-kgp-src";
             passthru = old.passthru // {
               srcs = old.passthru.srcs // {
                 code_src = yaziCodeSrc;
@@ -198,15 +192,19 @@
             yazi-unwrapped = final.yazi-unwrapped;
           };
         });
-      defaultOverlay = final: _prev: {
-        yazelix = mkYazelix final.stdenv.hostPlatform.system { pkgs = final; };
-        yazelix_zellij_bar = yazelixZellijBar.packages.${final.stdenv.hostPlatform.system}.yazelix_zellij_bar;
-        yazelix_yazi_assets =
-          yazelixYaziAssets.packages.${final.stdenv.hostPlatform.system}.yazelix_yazi_assets;
-        yazelix_zellij_pane_orchestrator =
-          yazelixZellijPaneOrchestrator.packages.${final.stdenv.hostPlatform.system}.yazelix_zellij_pane_orchestrator;
-        yazelix_zellij_popup = yazelixZellijPopup.packages.${final.stdenv.hostPlatform.system}.yzpp;
-      };
+      defaultOverlay =
+        final: _prev:
+        let
+          system = final.stdenv.hostPlatform.system;
+        in
+        {
+          yazelix = mkYazelix system { pkgs = final; };
+          yazelix_zellij_bar = yazelixZellijBar.packages.${system}.yazelix_zellij_bar;
+          yazelix_yazi_assets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
+          yazelix_zellij_pane_orchestrator =
+            yazelixZellijPaneOrchestrator.packages.${system}.yazelix_zellij_pane_orchestrator;
+          yazelix_zellij_popup = yazelixZellijPopup.packages.${system}.yzpp;
+        };
       maintainerShell =
         system: pkgs:
         import ./maintainer_shell.nix {
@@ -256,32 +254,10 @@
           runtime_default = runtimePackage system pkgs defaultRuntimeVariant noExtraRuntimePackages;
           runtime_ghostty = runtimePackage system pkgs "ghostty" noExtraRuntimePackages;
           runtime_wezterm = runtimePackage system pkgs "wezterm" noExtraRuntimePackages;
-          runtime_ghostty_kgp_preview = runtimePackageWith system (kgpPreviewPkgs system pkgs) {
-            runtimeVariant = "ghostty";
-            extraRuntimePackages = noExtraRuntimePackages;
-            enableZellijKittyPassthrough = true;
-          };
-          runtime_ghostty_kgp_preview_agent_tools = runtimePackageWith system (kgpPreviewPkgs system pkgs) {
-            runtimeVariant = "ghostty";
-            extraRuntimePackages = agentUsageRuntimePackages;
-            enableZellijKittyPassthrough = true;
-          };
           runtime_agent_tools = runtimePackage system pkgs defaultRuntimeVariant agentUsageRuntimePackages;
           yazelix_default = yazelixPackage system pkgs defaultRuntimeVariant noExtraRuntimePackages;
           yazelix_ghostty = yazelixPackage system pkgs "ghostty" noExtraRuntimePackages;
           yazelix_wezterm = yazelixPackage system pkgs "wezterm" noExtraRuntimePackages;
-          yazelix_ghostty_kgp_preview = mkYazelix system {
-            pkgs = kgpPreviewPkgs system pkgs;
-            runtimeVariant = "ghostty";
-            extraRuntimePackages = noExtraRuntimePackages;
-            enableZellijKittyPassthrough = true;
-          };
-          yazelix_ghostty_kgp_preview_agent_tools = mkYazelix system {
-            pkgs = kgpPreviewPkgs system pkgs;
-            runtimeVariant = "ghostty";
-            extraRuntimePackages = agentUsageRuntimePackages;
-            enableZellijKittyPassthrough = true;
-          };
           yazelix_agent_tools = yazelixPackage system pkgs defaultRuntimeVariant agentUsageRuntimePackages;
           yazelix_zellij_bar = yazelixZellijBar.packages.${system}.yazelix_zellij_bar;
           yazelix_screen = yazelixScreen.packages.${system}.yzs;
@@ -297,16 +273,12 @@
           runtime = runtime_default;
           runtime_agent_tools = runtime_agent_tools;
           runtime_ghostty = runtime_ghostty;
-          runtime_ghostty_kgp_preview = runtime_ghostty_kgp_preview;
-          runtime_ghostty_kgp_preview_agent_tools = runtime_ghostty_kgp_preview_agent_tools;
           runtime_wezterm = runtime_wezterm;
           yazelix = yazelix_default;
           yazelix_agent_tools = yazelix_agent_tools;
           yazelix_zellij_bar = yazelix_zellij_bar;
           yazelix_ghostty_cursors = yazelix_ghostty_cursors;
           yazelix_ghostty = yazelix_ghostty;
-          yazelix_ghostty_kgp_preview = yazelix_ghostty_kgp_preview;
-          yazelix_ghostty_kgp_preview_agent_tools = yazelix_ghostty_kgp_preview_agent_tools;
           yazelix_screen = yazelix_screen;
           yazelix_wezterm = yazelix_wezterm;
           yazelix_yazi_assets = yazelix_yazi_assets;
@@ -328,14 +300,6 @@
         yazelix_ghostty = {
           type = "app";
           program = "${self.packages.${system}.yazelix_ghostty}/bin/yzx";
-        };
-        yazelix_ghostty_kgp_preview = {
-          type = "app";
-          program = "${self.packages.${system}.yazelix_ghostty_kgp_preview}/bin/yzx";
-        };
-        yazelix_ghostty_kgp_preview_agent_tools = {
-          type = "app";
-          program = "${self.packages.${system}.yazelix_ghostty_kgp_preview_agent_tools}/bin/yzx";
         };
         yazelix_wezterm = {
           type = "app";

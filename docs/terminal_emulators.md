@@ -34,6 +34,8 @@ Score rubric (1–10):
 - Strengths: Exceptional performance; native tabs/splits; Kitty graphics protocol; low latency. (tmuxai)
 - Gaps: No Windows support; no Sixel; newer project (less ecosystem). (tmuxai)
 
+Yazelix uses Ghostty as the default packaged terminal and pins temporary Zellij/Yazi forks so Yazi image previews can use Kitty graphics through Zellij. Those forks should be dropped and archived once upstream Zellij supports the required Kitty graphics path directly enough for the normal upstream packages to replace them.
+
 ## WezTerm
 - Platforms: Linux, macOS, Windows (TerminalTrove)
 - Language: Rust (TerminalTrove)

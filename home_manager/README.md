@@ -63,7 +63,7 @@ If you already have your own Home Manager flake, the minimal setup is:
 {
   programs.yazelix = {
     enable = true;
-    runtime_variant = "ghostty"; # Default; use "wezterm" when you prefer WezTerm image-preview behavior
+    runtime_variant = "ghostty"; # Default; use "wezterm" for the alternate packaged terminal path
     # Customize other options as needed - see example.nix
     # Set manage_config = true if you want Home Manager to own settings.jsonc
   };

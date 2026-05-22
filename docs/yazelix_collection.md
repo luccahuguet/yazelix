@@ -18,7 +18,7 @@ Yazelix is built on a focused terminal-workspace stack. This catalog lists the p
 
 - `#yazelix` — The default flake package and app, backed by the Ghostty runtime variant
 - `#yazelix_ghostty` — Explicit Ghostty runtime package, equivalent to the default packaged terminal variant
-- `#yazelix_wezterm` — Explicit WezTerm runtime package for users who prefer WezTerm behavior, especially around image preview support
+- `#yazelix_wezterm` — Explicit WezTerm runtime package for users who prefer WezTerm terminal behavior
 - `#runtime`, `#runtime_ghostty`, `#runtime_wezterm` — Runtime-only package outputs used by the wrapper packages and validation surfaces
 - `#yazelix_agent_tools` and `#runtime_agent_tools` — Opt-in runtime variants that add agent usage helpers such as `tokenusage`
 - `#yazelix_zellij_bar` — Standalone Zellij/zjstatus bar preset forwarded from `luccahuguet/yazelix-zellij-bar`, including `yazelix_zellij_bar_widget` and package-local `zjstatus.wasm`
@@ -38,6 +38,7 @@ Regular Yazelix users do not need to install or wire these repositories separate
 - [yazelix-ratconfig](https://github.com/luccahuguet/yazelix-ratconfig) — Reusable Ratatui config editor crate for JSONC-backed settings, consumed by Yazelix config UI while Yazelix keeps settings schema, Home Manager ownership, validation, and runtime apply behavior in this repo.
 - [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij users; its flake package `#yzpp` installs `share/yazelix_zellij_popup/yzpp.wasm`, and regular Yazelix sessions package the same `yzpp.wasm` for popup, menu, and config UI panes.
 - [yazelix-yazi-assets](https://github.com/luccahuguet/yazelix-yazi-assets) — Standalone Yazi flavor and reusable plugin asset pack consumed by Yazelix Yazi runtime generation and exposed from this repo as `#yazelix_yazi_assets`.
+- [yazelix-zellij](https://github.com/luccahuguet/yazelix-zellij) and [yazelix-yazi](https://github.com/luccahuguet/yazelix-yazi) — Temporary product integration forks consumed by the default Ghostty runtime so Yazi image previews can use Kitty graphics through Zellij; these forks should be dropped and archived once upstream Zellij supports the required Kitty graphics path directly enough for Yazelix to return to upstream packages.
 
 ## Core Workspace Stack
 
@@ -52,8 +53,8 @@ Regular Yazelix users do not need to install or wire these repositories separate
 
 ## Terminal Emulators
 
-- [Ghostty](https://ghostty.org/) — Default packaged terminal runtime. Yazelix uses Ghostty for the first-party cursor trail and mode-change shader experience.
-- [WezTerm](https://wezfurlong.org/wezterm/) — Packaged alternate runtime through `#yazelix_wezterm` and `runtime_variant = "wezterm"`, useful for users who prefer WezTerm terminal behavior and image-preview compatibility.
+- [Ghostty](https://ghostty.org/) — Default packaged terminal runtime. Yazelix uses Ghostty for the first-party cursor trail, mode-change shader experience, and Yazi image previews through Zellij.
+- [WezTerm](https://wezfurlong.org/wezterm/) — Packaged alternate runtime through `#yazelix_wezterm` and `runtime_variant = "wezterm"`, useful for users who prefer WezTerm terminal behavior.
 - [Kitty](https://sw.kovidgoyal.net/kitty/) — Supported PATH-provided terminal choice. Yazelix can generate Kitty config and launch Kitty when it is available on the host.
 - [Alacritty](https://github.com/alacritty/alacritty) — Supported PATH-provided terminal choice with generated Yazelix config.
 - [Foot](https://codeberg.org/dnkl/foot) — Supported Linux PATH-provided terminal choice with generated Yazelix config.

@@ -291,8 +291,7 @@ in
         Yazelix package to expose through the Home Manager profile.
 
         The default builds Yazelix from this module's runtime options. Set this
-        only when selecting a prebuilt package output such as an experimental
-        runtime variant.
+        only when selecting a specific prebuilt package output instead.
       '';
     };
 
@@ -330,8 +329,8 @@ in
       description = ''
         Packaged terminal runtime variant.
 
-        - "ghostty": default packaged runtime with Yazelix cursor trails and Ghostty config effects
-        - "wezterm": explicit compatibility runtime, especially for users who prefer WezTerm image-preview behavior
+        - "ghostty": default packaged runtime with Yazelix cursor trails, Ghostty config effects, and Yazi image previews through Zellij
+        - "wezterm": explicit alternate packaged runtime
       '';
     };
 
