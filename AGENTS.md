@@ -17,6 +17,7 @@ Use Beads (`bd`) as the agent memory and triage layer for Yazelix work.
   - `bd` updates issue state.
   - Coordination between multiple agents should use a separate coordination layer, not ad-hoc issue comments or long prompt memory.
 - Keep agent guidance short. Do not copy large issue graphs, long triage dumps, or project history into `AGENTS.md`; store dynamic state in Beads and regenerate it when needed.
+- For reusable Codex workflows, prefer the official Agent Skills model and OpenAI skills catalog (`https://github.com/openai/skills`) over copying large third-party guideline packs into this file.
 
 ## File Naming Conventions
 
