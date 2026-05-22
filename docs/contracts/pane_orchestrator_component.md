@@ -14,10 +14,10 @@ This contract defines the Yazelix integration boundary for the extracted plugin.
 
 - External Rust source in `yazelix-zellij-pane-orchestrator`
 - Runtime package artifact at `configs/zellij/plugins/yazelix_pane_orchestrator.wasm`
-- Nushell client transport in `nushell/scripts/integrations/zellij.nu`
-- Runtime wasm placement and permission-cache ownership in Rust `zellij-materialization.generate`
-- Generated Zellij keybind/config wiring in `configs/zellij/yazelix_overrides.kdl`
-- Focused tests in `nushell/scripts/dev/test_zellij_plugin_contracts.nu`, `nushell/scripts/dev/test_yzx_generated_configs.nu`, `nushell/scripts/dev/test_yzx_workspace_commands.nu`, `nushell/scripts/dev/test_yzx_popup_commands.nu`, and Rust unit tests in the orchestrator crate
+- Yazelix control transport in `rust_core/yazelix_core/src/pane_orchestrator_client.rs` and `rust_core/yazelix_core/src/zellij_commands/pipe.rs`
+- Runtime wasm placement and permission-cache ownership in `rust_core/yazelix_core/src/zellij_materialization.rs`
+- Generated Zellij keybinding/config wiring from `rust_core/yazelix_core/src/action_registry.rs` and `zellij_materialization.rs`
+- Focused tests in `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs`, `rust_core/yazelix_core/src/zellij_materialization.rs`, and Rust unit tests in the orchestrator crate
 
 ## Contract Items
 
@@ -26,11 +26,11 @@ This contract defines the Yazelix integration boundary for the extracted plugin.
 - Status: live
 - Owner: pane orchestrator pipe-command seam
 - Statement: The pane orchestrator is an internal component reached through one
-  explicit pipe-command seam. Nushell resolves user intent first; the plugin is
+  explicit pipe-command seam. Yazelix resolves user intent first; the plugin is
   not a second CLI/parser surface
 - Verification: automated
-  `nu nushell/scripts/dev/test_zellij_plugin_contracts.nu`; automated
-  `nu nushell/scripts/dev/test_yzx_commands.nu`
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`; automated
+  `yzx_repo_validator validate-workspace-session-contract`
 
 #### POC-002
 - Type: ownership
@@ -40,7 +40,7 @@ This contract defines the Yazelix integration boundary for the extracted plugin.
   plugin instance, and direct keybind messages or `zellij action pipe` calls
   target that alias instead of re-supplying runtime identity on each message
 - Verification: automated
-  `nu nushell/scripts/dev/test_yzx_generated_configs.nu`
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core plugin_block_carries_runtime_and_popup_contract_once`
 
 #### POC-003
 - Type: invariant
@@ -53,7 +53,7 @@ This contract defines the Yazelix integration boundary for the extracted plugin.
   managed Yazelix panes
 - Verification: automated
   `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`;
-  automated `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
+  automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
 
 #### POC-004
 - Type: ownership
@@ -63,8 +63,8 @@ This contract defines the Yazelix integration boundary for the extracted plugin.
   mutation, and any returned sidebar Yazi identity is active-tab state rather
   than a cache scan or session-global guess
 - Verification: automated
-  `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`; automated
-  `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core yzx_control_cwd_retargets_workspace_and_syncs_sidebar`; automated
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core workspace_session::tests`
 
 #### POC-005
 - Type: boundary
@@ -107,7 +107,7 @@ The orchestrator accepts these pipe command names:
 
 These command names are the plugin API. Keybindings are not plugin semantics; they are generated Zellij policy that sends `MessagePlugin` calls to the loaded `yazelix_pane_orchestrator` instance. Yazelix ships `Ctrl+y` for `toggle_editor_sidebar_focus`, `Ctrl+Shift+Y` for `toggle_editor_right_sidebar_focus`, and `Alt+Shift+H` for the `toggle_left_sidebar` action, which sends the plugin command `toggle_sidebar`; users may remap those keys without changing the plugin contract as long as they keep sending the same command names.
 
-Nushell must resolve user intent before calling the plugin. For workspace changes, the surviving mutation command is `retarget_workspace`; older split commands for "set workspace root" and "set workspace root plus focused pane cd" are intentionally not part of the component contract.
+Yazelix control code must resolve user intent before calling the plugin. For workspace changes, the surviving mutation command is `retarget_workspace`; older split commands for "set workspace root" and "set workspace root plus focused pane cd" are intentionally not part of the component contract.
 
 ### Plugin Configuration
 
@@ -128,7 +128,7 @@ The plugin derives runtime-owned helper paths from `runtime_dir`:
 
 - launcher: `shells/posix/yzx_cli.sh`
 
-The session-loaded plugin instance is the runtime source of truth for direct keybind messages and Nushell transport calls. Those message paths must address the pane orchestrator by alias only so multiple Yazelix sessions can stay self-contained even when they were launched from different runtime roots.
+The session-loaded plugin instance is the runtime source of truth for direct keybind messages and Yazelix control transport calls. Those message paths must address the pane orchestrator by alias only so multiple Yazelix sessions can stay self-contained even when they were launched from different runtime roots.
 
 ### Pane Identity Invariants
 
@@ -174,15 +174,14 @@ After the child commit is pushed, update the main Yazelix lock to that child rev
 - `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
 - `nix build ../yazelix-zellij-pane-orchestrator#yazelix_zellij_pane_orchestrator --no-link`
 - `nix build .#runtime --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-orchestrator --no-link`
-- `nu nushell/scripts/dev/test_zellij_plugin_contracts.nu`
-- `nu nushell/scripts/dev/test_yzx_generated_configs.nu`
-- `nu nushell/scripts/dev/test_yzx_commands.nu`
+- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
+- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zellij_materialization`
 - `yzx_repo_validator validate-contracts`
 
 ## Traceability
-- Defended by: `nu nushell/scripts/dev/test_zellij_plugin_contracts.nu`
-- Defended by: `nu nushell/scripts/dev/test_yzx_generated_configs.nu`
-- Defended by: `nu nushell/scripts/dev/test_yzx_commands.nu`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zellij_materialization`
+- Defended by: `yzx_repo_validator validate-workspace-session-contract`
 
 ## Open Questions
 

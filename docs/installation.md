@@ -172,7 +172,7 @@ hx ~/.config/yazelix/settings.jsonc
 
 #### Runtime Surface
 
-The trimmed v15 packaged runtime ships a fixed toolset instead of configurable dependency groups. The package includes:
+The packaged runtime ships a fixed toolset instead of configurable dependency groups. The package includes:
 - the core Yazelix stack: `zellij`, `yazi`, `helix`, `nu`, `bash`, `fish`, `zsh`
 - the default CLI helpers: `fzf`, `zoxide`, `starship`, `lazygit`, `mise`, `carapace`, `macchina`
 - the default Yazi preview helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`

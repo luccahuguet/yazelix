@@ -2,7 +2,7 @@
 
 ## Summary
 
-Yazelix should support one explicit popup flow for terminal UIs that are useful temporarily but do not deserve a persistent split. The first supported surface is `yzx popup`, backed by a user-configured `zellij.popup_program` that defaults to `lazygit`. The popup key should behave like a managed session surface rather than spawning disposable duplicates forever.
+Yazelix supports explicit popup flows for terminal UIs that are useful temporarily but do not deserve a persistent split. The generic surface is `yzx popup`, backed by `zellij.popup_program` and unbound by default. Named generated surfaces use `zellij.popup_commands`: `bottom_popup`, `top_popup`, and `menu`. Popup keys behave like managed session surfaces rather than spawning disposable duplicates forever.
 
 ## Why
 
@@ -27,7 +27,7 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - Statement: `yzx popup` resolves one argv list, not a shell string. The
   default popup program is `["lazygit"]`, and a per-invocation command override
   replaces that argv list for only the current popup
-- Verification: automated `nu nushell/scripts/dev/test_yzx_popup_commands.nu`
+- Verification: automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core yzx_control_popup_program_opens_through_yzpp_raw_request`
 
 #### POP-002
 - Type: failure_mode
@@ -36,7 +36,7 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - Statement: `zellij.popup_width_percent` and
   `zellij.popup_height_percent` must be integers in the range `1..100`.
   Invalid values fail fast as config errors instead of being coerced silently
-- Verification: automated `nu nushell/scripts/dev/test_yzx_popup_commands.nu`;
+- Verification: automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zellij_render_plan`;
   validator `yzx_repo_validator validate-contracts`
 
 #### POP-003
@@ -45,7 +45,7 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - Owner: popup cwd resolution plus `yzpp` raw request adapter
 - Statement: Popup panes launch in the current tab workspace root when one is
   known, otherwise they fall back to the current shell directory
-- Verification: automated `nu nushell/scripts/dev/test_yzx_popup_commands.nu`
+- Verification: automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core yzx_control_popup_program_opens_through_yzpp_raw_request`
 
 #### POP-004
 - Type: ownership
@@ -54,8 +54,8 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - Statement: `Alt+Shift+J` toggles the default bottom managed popup pane
   instead of spawning duplicates forever, while `Alt+Shift+M` toggles the
   configured `menu` popup command
-- Verification: automated `nu nushell/scripts/dev/test_yzx_popup_commands.nu`;
-  automated `nu nushell/scripts/dev/test_zellij_plugin_contracts.nu`
+- Verification: automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core yzx_control_popup_without_override_uses_yzpp_toggle_contract`;
+  automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core semantic_keybinds_route_popup_actions_to_yzpp`
 
 #### POP-005
 - Type: boundary
@@ -101,7 +101,8 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - The default popup program is `["lazygit"]`.
 - `zellij.popup_commands` is a map of named popup argv lists.
 - The default named popup commands are `bottom_popup = ["lazygit"]`,
-  `top_popup = ["yzx", "config", "ui"]`, and `menu = ["yzx", "menu"]`.
+  `top_popup = ["yzx", "config", "ui"]` for Yazelix's ratconfig-backed config
+  editor, and `menu = ["yzx", "menu"]`.
 - Popup geometry is user-configurable through `zellij.popup_width_percent` and `zellij.popup_height_percent`.
 - Popup width and height percentages must be integers in the range `1..100`.
 - The default popup width and height are both `90`.
@@ -116,7 +117,7 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
   `yzpp` `toggle` or `close` messages, not by child process exit.
 - `Alt+Shift+J` opens one managed bottom popup pane when it is missing, focuses it when it exists but is unfocused, and closes it when it is focused.
 - `Alt+Shift+K` does the same for the semantic top popup slot, which defaults
-  to `yzx config ui`.
+  to `yzx config ui`, Yazelix's ratconfig-backed JSONC settings editor.
 - The unplaced `popup` action remains configurable and unbound by default.
 - When `Alt+Shift+J` closes the configured popup pane, Yazelix runs `yzx sidebar
   refresh` through an `on_close` hook so lazygit-style workflows refresh the
@@ -232,16 +233,15 @@ The `yzpp` raw pipe path still accepts generated JSON through `name "transient_p
 - integration tests: generated Zellij config contains the integrated `yzpp`
   plugin block, popup/bottom_popup/top_popup/menu/config specs, and sidebar
   refresh hook
-- CI checks: `nu nushell/scripts/dev/test_yzx_commands.nu`
+- CI checks: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
 - contract validator: `yzx_repo_validator validate-contracts`
 - manual verification: `Alt+Shift+J` toggles the bottom managed popup,
   `Alt+Shift+K` toggles the top managed popup, `Alt+Shift+M` opens the menu,
   and `Alt+Shift+C` opens the config UI
 
 ## Traceability
-- Defended by: `nu nushell/scripts/dev/test_yzx_commands.nu`
-- Defended by: `nu nushell/scripts/dev/test_yzx_popup_commands.nu`
-- Defended by: `nu nushell/scripts/dev/test_zellij_plugin_contracts.nu`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zellij_materialization`
 - Defended by: `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml transient_pane_contract`
 - Defended by: `yzx_repo_validator validate-contracts`
 

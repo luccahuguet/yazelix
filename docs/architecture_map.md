@@ -20,7 +20,7 @@ history, and Beads-owned planning state.
 | Subsystem family | What it owns | Main paths | Main source of truth |
 | --- | --- | --- | --- |
 | Runtime control plane and command surface | Config parsing, runtime/bootstrap behavior, generated-state repair, and the `yzx` command surface | `nushell/scripts/core`, `nushell/scripts/setup`, `nushell/scripts/utils`, `nushell/scripts/yzx` | Runtime/config/state contracts plus the surviving `yzx` command semantics |
-| Workspace session orchestration | Live Zellij/Yazi/editor session behavior: panes, tabs, sidebar identity, reveal/open flows, popup flows, and layout-family transitions | `nushell/scripts/integrations`, `nushell/scripts/zellij_wrappers`, `rust_plugins/` | Live Zellij session truth, pane-orchestrator contracts, and workspace/session contracts |
+| Workspace session orchestration | Live Zellij/Yazi/editor session behavior: panes, tabs, sidebar identity, reveal/open flows, popup flows, and layout-family transitions | `rust_core/yazelix_core/src/workspace_commands.rs`, `rust_core/yazelix_core/src/zellij_commands.rs`, `rust_core/yazelix_core/src/zellij_materialization.rs`, `rust_core/yazelix_core/src/action_registry.rs`, `yazelix-zellij-pane-orchestrator` | Live Zellij session truth, pane-orchestrator contracts, and workspace/session contracts |
 | Distribution and host integration | How Yazelix is packaged, launched, and adapted into external owners such as Home Manager, shells, terminals, desktop integration, and profile-owned installs | `home_manager`, `packaging`, `shells`, `flake.nix`, `yazelix_package.nix`, `yazelix_runtime_package.nix` | The packaged runtime shape and explicit integration contracts |
 | Shipped runtime data and assets | The tracked data and package artifacts the runtime consumes directly: layouts, themes, plugin artifacts, templates, release metadata, TOML tooling support, cursor presets, and visual assets | `configs`, `config_metadata`, `assets`, `nushell/config`, `tombi.toml`, `settings_default.jsonc`, `yazelix_ghostty_cursors_default.toml`, `docs/upgrade_notes.toml`, first-party child package outputs | Version-controlled shipped files and locked package artifacts |
 | Maintainer workflow and validation | The non-user-facing machinery that keeps the other four coherent: tests, validators, release/update workflow, CI, and maintainer tooling | `nushell/scripts/dev`, `.github`, `maintainer_shell.nix`, `.nu-lint.toml` | Beads, contracts, CI policy, and maintainer command surfaces |
@@ -45,7 +45,7 @@ The current repo shape is best read in this order:
 4. Distribution and host integration expose that runtime/workspace behavior through package, install, shell, terminal, and Home Manager entrypoints.
 5. The maintainer workflow guards the contracts of the other four so they do not drift.
 
-That means Yazelix is no longer best described as just "workspace plus runtime." The current v16 repo has a real data/config payload, a real maintainer/validation payload, and a small but important distribution layer.
+That means Yazelix is not best described as just "workspace plus runtime." The current repo has a real data/config payload, a real maintainer/validation payload, and a small but important distribution layer.
 
 ## Subsystem Notes
 
@@ -58,7 +58,7 @@ This subsystem answers questions like:
 - What does `yzx launch`, `yzx env`, `yzx doctor`, or `yzx update` mean now?
 - Which paths are config-owned, runtime-owned, or generated-state-owned?
 
-This is still the single largest shipped logic surface in the repo. If Yazelix is too heavy, this is still the first place to look before blaming Nix glue or Rust plugins.
+This is still the single largest shipped logic surface in the repo. If Yazelix is too heavy, this is still the first place to look before blaming Nix glue or first-party Zellij plugins.
 
 Related contracts:
 
@@ -76,7 +76,7 @@ This subsystem answers questions like:
 - When should reveal/open target the existing editor pane versus create one?
 - How should layout-family changes, popup flows, and workspace roots behave?
 
-This is where the Rust plugins matter. They are not "extra integration code"; they are part of the live workspace owner.
+This is where the first-party Zellij plugins matter. They are not "extra integration code"; they are part of the live workspace owner.
 
 Related contracts:
 
@@ -153,7 +153,7 @@ It does not mean:
 
 ## Current Working Model
 
-For current v16 work, the right mental model is:
+For current work, the right mental model is:
 
 1. Runtime control plane owns command/runtime semantics.
 2. Workspace session orchestration owns live pane/tab/sidebar behavior.

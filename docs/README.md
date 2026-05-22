@@ -58,9 +58,4 @@ behavior contracts.
 - [Package sizes](./package_sizes.md)
 - [Upgrade notes data](./upgrade_notes.toml)
 
-## Historical Context
-
-- [Version history](./history.md)
-- [The start](./the_start.md)
-
 Planning status and implementation sequencing belong in Beads, not in docs. Contracts under `docs/contracts/` describe current Yazelix behavior and boundaries.

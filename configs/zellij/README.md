@@ -16,6 +16,6 @@ For complete configuration guide, see: [Zellij Configuration Documentation](../.
 ## Current Defaults
 
 - Layered merging: native Zellij settings + Yazelix generated keybindings, plugins, dynamic settings, and enforced settings
-- Default layout optimized for sidebar/no-sidebar modes
+- Default layout optimized for the managed sidebar family
 - Managed theme, pane frame, and rounded-corner settings
 - Session persistence and Helix-friendly keybindings

@@ -204,7 +204,7 @@
     },
 
     // Semantic remaps for Yazelix-owned Zellij actions.
-    // Native Zellij keybind ownership still belongs in ~/.config/yazelix/zellij.kdl.
+    // Full native Zellij keymap ownership belongs in plain zellij outside Yazelix.
     "keybindings": {
       "open_workspace_terminal": [
         "Alt m"

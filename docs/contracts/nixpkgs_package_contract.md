@@ -55,7 +55,8 @@ The package should ship the immutable runtime assets Yazelix executes directly:
 - runtime-local `libexec/nu`
 
 Compiled first-party Zellij wasm assets ship through `configs/zellij/plugins/`.
-The package must not ship or link maintainer Rust plugin source trees such as `rust_plugins/`.
+The package must not ship or link maintainer source trees for first-party wasm
+plugins; Yazelix consumes those artifacts from locked child packages.
 
 It must not own or embed user config/state paths.
 

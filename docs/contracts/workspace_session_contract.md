@@ -1,6 +1,6 @@
 # Workspace Session Contract
 
-This document defines the current contract between Yazelix's Nushell layer and the Zellij pane orchestrator plugin.
+This document defines the current contract between Yazelix's control layer and the Zellij pane orchestrator plugin.
 
 The goal is not to describe every implementation detail. The goal is to make clear:
 
@@ -24,11 +24,11 @@ Those bugs happen when the workspace model is implicit. This contract makes the 
 
 There are three relevant actors:
 
-1. Nushell command and integration layer
+1. Yazelix control and integration layer
 2. Zellij pane orchestrator plugin
 3. Sidebar Yazi adapter plugin
 
-### 1. Nushell Layer
+### 1. Yazelix Control Layer
 
 This layer owns user intent and path resolution.
 
@@ -39,7 +39,7 @@ Examples:
 - decide when editor and sidebar cwd should be synchronized
 - generate runtime config before launching the session
 
-The Nushell layer should not guess or duplicate per-tab managed-pane state when the plugin already owns it.
+The control layer should not guess or duplicate per-tab managed-pane state when the plugin already owns it.
 
 ### 2. Pane Orchestrator Plugin
 
@@ -70,12 +70,12 @@ The adapter does not own durable workspace state. It publishes observations, and
 - Status: live
 - Owner: pane orchestrator active-tab session seam
 - Statement: `get_active_tab_session_state` is the stable read seam for
-  active-tab workspace/session truth. Nushell must not reconstruct managed
+  active-tab workspace/session truth. Yazelix callers must not reconstruct managed
   editor/sidebar identity or tab-local workspace state from separate cache scans
   or pane heuristics
 - Verification: automated
-  `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`; automated
-  `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core yzx_control_reveal_uses_session_snapshot_and_focuses_sidebar`; automated
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core workspace_session::tests`
 
 #### WSS-002
 - Type: ownership
@@ -85,20 +85,20 @@ The adapter does not own durable workspace state. It publishes observations, and
   pane identity. Sidebar Yazi identity and cwd come from adapter events stored
   in the pane orchestrator, not from filesystem cache scans or recency guesses
 - Verification: automated
-  `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`; automated
-  `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core yzx_control_zellij_open_editor_passes_current_yazi_state_to_retarget`; automated
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core workspace_session::tests`
 
 #### WSS-003
 - Type: boundary
 - Status: live
 - Owner: `retarget_workspace` plus caller-local follow-on sync
 - Statement: `retarget_workspace` is the single live workspace-mutation seam.
-  Nushell resolves the path and follow-on Yazi/editor adapter actions, while
+  The control layer resolves the path and follow-on Yazi/editor adapter actions, while
   the plugin stores the explicit workspace root, owns tab naming, and returns
   current-tab sidebar identity in the mutation response
 - Verification: automated
-  `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`; automated
-  `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core yzx_control_cwd_retargets_workspace_and_syncs_sidebar`; automated
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core workspace_session::tests`
 
 #### WSS-004
 - Type: behavior
@@ -108,8 +108,8 @@ The adapter does not own durable workspace state. It publishes observations, and
   current tab's sidebar identity from the session snapshot or retarget response,
   not from a session-global "most recent" cache guess
 - Verification: automated
-  `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`; automated
-  `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core yzx_control_reveal_uses_session_snapshot_and_focuses_sidebar`; automated
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core yzx_control_cwd_retargets_workspace_and_syncs_sidebar`
 
 #### WSS-005
 - Type: boundary
@@ -121,8 +121,8 @@ The adapter does not own durable workspace state. It publishes observations, and
   and startup/session toggles instead of reparsing the full config in each
   command or wrapper path
 - Verification: automated
-  `nu nushell/scripts/dev/test_yzx_popup_commands.nu`; automated
-  `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`; automated
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core popup_session_facts`; automated
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core integration_facts`; automated
   `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_core_owned_facts`
 
 #### WSS-006
@@ -162,7 +162,7 @@ The adapter does not own durable workspace state. It publishes observations, and
 
 ## Ownership Rules
 
-### Nushell Owns
+### Control Layer Owns
 
 - resolving user input into an explicit target directory
 - repo-root derivation for workspace targeting
@@ -170,7 +170,7 @@ The adapter does not own durable workspace state. It publishes observations, and
 - synchronization of external tools after workspace changes
 - generated config and pre-launch setup
 
-Concretely, Nushell owns logic like:
+Concretely, the Rust control surface and remaining shell integration own logic like:
 
 - `get_workspace_root`
 - `resolve_tab_cwd_target`
@@ -242,7 +242,7 @@ The plugin tracks whether focus is currently in:
 - sidebar
 - other
 
-This is what powers actions like managed focus toggling. Nushell should not reimplement this with pane scanning heuristics.
+This is what powers actions like managed focus toggling. Yazelix callers should not reimplement this with pane scanning heuristics.
 
 ## Command Contract
 
@@ -250,7 +250,7 @@ This is what powers actions like managed focus toggling. Nushell should not reim
 
 Input:
 
-- explicit workspace root from Nushell
+- explicit workspace root from the control layer
 - whether the currently focused terminal pane should also receive `cd`
 - optional managed editor kind to sync against the active tab
 
@@ -260,7 +260,7 @@ Plugin responsibilities:
 - rename the tab from that root
 - optionally `cd` the currently focused pane
 - optionally `cd` the managed editor pane if it exists and the editor kind is supported
-- return the active tab's current sidebar Yazi identity so Nushell can emit sidebar adapter commands without re-deriving target pane truth
+- return the active tab's current sidebar Yazi identity so the control layer can emit sidebar adapter commands without re-deriving target pane truth
 
 Plugin does not:
 
@@ -268,7 +268,7 @@ Plugin does not:
 - infer repo roots
 - execute `ya emit-to` itself
 
-Nushell still owns path resolution and the actual Yazi adapter commands, but it should consume the plugin's retarget response instead of recomputing active editor/sidebar targeting through separate state lookups.
+The control layer still owns path resolution and the actual Yazi adapter commands, but it should consume the plugin's retarget response instead of recomputing active editor/sidebar targeting through separate state lookups.
 
 ### `open_file`
 
@@ -294,7 +294,7 @@ Input:
 
 Contract:
 
-- Nushell decides when this sync is needed
+- the control layer decides when this sync is needed
 - the plugin applies it to the managed editor pane
 
 ### `open_workspace_terminal`
@@ -314,7 +314,7 @@ Changing one tab's workspace root must not retarget another tab.
 
 ### 2. Managed Pane Identity Is Plugin-Owned
 
-Nushell can request managed editor/sidebar actions, but it should not become the authority on which pane is "the editor" or "the sidebar".
+The control layer can request managed editor/sidebar actions, but it should not become the authority on which pane is "the editor" or "the sidebar".
 
 ### 3. Explicit Workspace Changes Are Stronger Than Bootstrap
 
@@ -359,7 +359,7 @@ That seam carries:
 - layout/sidebar-collapsed state
 - validated current-tab sidebar Yazi identity
 
-Nushell and later sidebar/Yazi consumers should prefer this seam over
+Yazelix control code and later sidebar/Yazi consumers should prefer this seam over
 `maintainer_debug_editor_state` when they need contract-level tab-local truth.
 
 ### Sidebar Yazi State Is Plugin Memory, Not Filesystem Truth
@@ -378,22 +378,22 @@ When adding or changing a workspace feature, answer these questions first:
 
 1. Is this changing workspace root, pane identity, focus context, or external-tool sync?
 2. Which subsystem should own that state?
-3. Is the change a plugin state mutation, a Nushell intent-resolution change, or an integration-layer sync?
+3. Is the change a plugin state mutation, a control-layer intent-resolution change, or an integration-layer sync?
 4. Which invariant from this contract is being relied on?
 
 If the answer is unclear, the feature is probably crossing the boundary incorrectly.
 
 ## Verification
 
-- `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
-- `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
+- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
+- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_core_owned_facts`
 - `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
 - `yzx_repo_validator validate-workspace-session-contract`
 - `yzx_repo_validator validate-contracts`
 
 ## Traceability
-- Defended by: `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
-- Defended by: `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_core_owned_facts`
 - Defended by: `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
 - Defended by: `yzx_repo_validator validate-workspace-session-contract`
 

@@ -72,7 +72,7 @@ Updating replaces the installed runtime that future launches use, while already-
 ## Overview
 Yazelix is a workspace-focused terminal environment built around [Yazi](https://github.com/sxyazi/yazi), [Zellij](https://github.com/zellij-org/zellij), and [Helix](https://helix-editor.com), with first-class [Neovim](https://neovim.io) support too
 
-The supported product in this branch is the Rust-forward v16 Yazelix line
+The supported product in this branch is the v17 Yazelix line
 
 ## Everyday Model
 
@@ -128,7 +128,9 @@ First-party child packages own focused pieces of the stack: screen rendering, Gh
 
 Ghostty is the default packaged terminal for cursor trails and Yazi image previews, with temporary Yazelix Zellij/Yazi forks carrying the Kitty graphics passthrough until upstream support is enough to drop them. WezTerm is an explicit packaged alternate, and Kitty, Alacritty, and Foot remain supported when present on the host `PATH`
 
-Install once with Nix, get the same managed workspace everywhere
+Get everything running in less than 10 minutes with no extra dependencies beyond Nix
+
+Install once, get the same managed workspace everywhere
 
 Want the docs front door? See [Yazelix Docs](./docs/README.md)
 
@@ -231,7 +233,7 @@ Yazelix shines over SSH: the TUI stack (Zellij, Yazi, Helix) runs cleanly withou
 
 Yazelix uses a **layered configuration system** that safely merges your personal settings with Yazelix defaults:
 
-- **Core settings**: Edit `~/.config/yazelix/settings.jsonc` for shell, editor, terminal, Zellij, and Yazi settings, edit `~/.config/yazelix_ghostty_cursors/settings.jsonc` for Ghostty cursor settings, run `yzx config set/unset` for safe scalar and string-list edits, or run `yzx config ui` to inspect and edit explicit/defaulted values and stale-field diagnostics
+- **Core settings**: Edit `~/.config/yazelix/settings.jsonc` for shell, editor, terminal, Zellij, and Yazi settings, edit `~/.config/yazelix_ghostty_cursors/settings.jsonc` for Ghostty cursor settings, run `yzx config set/unset` for safe scalar and string-list edits, or run `yzx config ui`, Yazelix's ratconfig-backed JSONC settings editor, to inspect and edit explicit/defaulted values and stale-field diagnostics
 - **Yazi customization**: Use the built-in `yazi` settings in `settings.jsonc` for things like plugins, theme, sorting, and binary overrides, and use the managed Yazi home at `~/.config/yazelix/yazi/` for `yazi.toml`, `keymap.toml`, `init.lua`, packages, plugins, and flavors (see [Yazi Configuration](./docs/yazi-configuration.md))
 - **Zellij customization**: Use the built-in `zellij` settings in `settings.jsonc` for Yazelix-owned Zellij knobs, keybindings, theme, and rounded corners, and use `~/.config/yazelix/zellij.kdl` for deeper native Zellij settings that Yazelix does not render (see [Zellij Configuration](./docs/zellij-configuration.md))
 - **Status bar widgets**: Configure `[zellij].widget_tray` to order or hide `editor`, `shell`, `term`, `workspace`, `cursor`, usage, `cpu`, and `ram` widgets; the default cursor widget renders mono presets as colored `█ name` and split presets as one-cell split glyphs from the launch-scoped Ghostty cursor fact
@@ -292,12 +294,12 @@ yzx env --no-shell
 See the full catalog of tools and integrations in the Yazelix Collection:
 [docs/yazelix_collection.md](./docs/yazelix_collection.md)
 - **Essential tools**: [Yazi](https://github.com/sxyazi/yazi) (file manager), [Zellij](https://github.com/zellij-org/zellij) (terminal multiplexer), [Helix](https://helix-editor.com) (editor), shells (bash/nushell, plus your preferred shell), [fzf](https://github.com/junegunn/fzf), [zoxide](https://github.com/ajeetdsouza/zoxide), [Starship](https://starship.rs)
-- **Bundled helpers**: [lazygit](https://github.com/jesseduffield/lazygit) (or `lg`), [mise](https://github.com/jdx/mise), [carapace](https://github.com/carapace-sh/carapace-bin), [macchina](https://github.com/Macchina-CLI/macchina), and the fixed helper tooling behind the trimmed v15 core
+- **Bundled helpers**: [lazygit](https://github.com/jesseduffield/lazygit) (or `lg`), [mise](https://github.com/jdx/mise), [carapace](https://github.com/carapace-sh/carapace-bin), [macchina](https://github.com/Macchina-CLI/macchina), and the fixed helper tooling behind the packaged runtime
 - **Yazi preview helpers**: `p7zip`, `jq`, `poppler`, `fd`, `ripgrep` are part of the fixed runtime surface
 - **Environment setup**: Proper paths, variables, and shell configurations
 
 **Customize Your Installation:**
-If you followed [step 4 in the installation guide](./docs/installation.md#step-4-configure-your-installation-optional), you already have your `~/.config/yazelix/settings.jsonc` config file ready, you can modify it anytime and restart Yazelix to apply changes. Main options live in that file; Ghostty cursor presets live in `~/.config/yazelix_ghostty_cursors/settings.jsonc`
+If you followed [step 3 in the installation guide](./docs/installation.md#step-3-configure-your-installation-optional), you already have your `~/.config/yazelix/settings.jsonc` config file ready, you can modify it anytime and restart Yazelix to apply changes. Main options live in that file; Ghostty cursor presets live in `~/.config/yazelix_ghostty_cursors/settings.jsonc`
 
 **Terminal Emulator Selection:**
 - **Ghostty** (default packaged preference): Modern, fast terminal written in Zig with Yazelix cursor trails and Yazi image previews
@@ -307,7 +309,7 @@ If you followed [step 4 in the installation guide](./docs/installation.md#step-4
 - **Foot**: Wayland-native terminal (Linux-only)
 - **Auto-detection**: Fallback order follows your configured terminal list
 - Configure your preference in `settings.jsonc` with `terminal.terminals = ["ghostty", "wezterm", ...]` (first item is primary)
-- **v15 terminal contract**: Yazelix ships one packaged terminal variant at a time; Ghostty is the default, and explicit Ghostty/WezTerm variants remain available
+- **Terminal package contract**: Yazelix ships one packaged terminal variant at a time; Ghostty is the default, and explicit Ghostty/WezTerm variants remain available
 
 [See the full Customization Guide here.](./docs/customization.md)
 
@@ -347,7 +349,7 @@ Run `yzx help` for the live command list
 
 - `yzx popup` - Toggle the managed popup program, usually `lazygit`; the popup keybinding refreshes Yazi sidebar git state when it closes
 - `yzx menu --popup` - Open the popup command palette, usually through `Alt+Shift+M`
-- `yzx config ui` - Browse and edit settings, defaults, diagnostics, and managed sidecar status, usually through `Alt+Shift+C`
+- `yzx config ui` - Open Yazelix's ratconfig-backed JSONC settings editor, usually through `Alt+Shift+C`
 - `yzx sidebar refresh` - Refresh the managed Yazi sidebar file tree and status widgets
 
 ### Config and Recovery
@@ -427,7 +429,7 @@ Yazelix uses Zellij as the workspace layer, so the most important bindings are g
 | `Alt+m` | Open a new terminal in the current tab workspace root |
 | `Alt+Shift+L` | Toggle the managed Codex agent sidebar |
 | `Alt+Shift+J` | Toggle the bottom managed popup command, usually `lazygit`, and refresh the Yazi file-tree sidebar git state when the popup keybinding closes it |
-| `Alt+Shift+K` | Toggle the top managed popup command, usually `yzx config ui` |
+| `Alt+Shift+K` | Toggle the top managed popup command, usually `yzx config ui`, Yazelix's ratconfig-backed settings editor |
 | `Alt+Shift+M` | Open the `yzx` command palette popup |
 | `Alt+Shift+C` | Open the Yazelix config UI popup |
 | `Alt+1..9` | Jump directly to tabs 1 through 9 |

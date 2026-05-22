@@ -244,10 +244,11 @@ Show the active Yazelix configuration through the Rust-owned control path
 - `--path`: print the resolved config path
 
 ### `yzx config ui`
-Open the terminal config browser and editor
+Open Yazelix's ratconfig-backed JSONC settings browser and editor
 - Lists schema-known settings by user-intent tab
 - Shows explicit, defaulted, unset, and invalid values
 - Shows stale-field diagnostics and managed sidecar status under the Advanced tab
+- Usually opens as the config UI popup through `Alt+Shift+C`; the top popup defaults to the same command through `Alt+Shift+K`
 - Edits writable main settings and cursor settings while preserving unrelated comments and formatting
 
 ### `yzx config set <settings.path> <json-value>`
@@ -346,7 +347,7 @@ yzx restart --with core.welcome_style=static # Reopen with a one-shot config ove
 yzx doctor --fix              # Health check with auto-fix
 yzx config                    # Show active config
 yzx config --path             # Print the active config path
-yzx config ui                 # Browse and edit config values and diagnostics
+yzx config ui                 # Open the ratconfig-backed JSONC settings editor
 yzx config set editor.hide_sidebar_on_file_open true # Set a config value with a JSON literal
 yzx config unset editor.hide_sidebar_on_file_open # Remove an explicit config value
 yzx cursors                   # Inspect Ghostty cursor presets and resolved colors

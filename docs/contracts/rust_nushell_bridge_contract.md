@@ -109,7 +109,7 @@ The bridge must not turn Rust into a second public CLI owner for surfaces that a
 
 ### Repo Layout
 
-New helper-oriented Rust code should live under `rust_core/`, not under `rust_plugins/`.
+Helper-oriented Rust code lives under `rust_core/`, not under `rust_plugins/`.
 
 Recommended first layout:
 
@@ -124,7 +124,7 @@ rust_core/
         yzx_core.rs
 ```
 
-`rust_plugins/` remains the home for Zellij wasm plugin components. The existing pane-orchestrator build/sync workflow is not the pattern for the Rust core helper.
+First-party Zellij wasm plugin source lives in child repositories such as `yazelix-zellij-pane-orchestrator` and `yazelix-zellij-popup`. The main repo consumes their packaged artifacts through flake inputs; local `rust_plugins/` build leftovers are not a durable source tree for Yazelix behavior.
 
 The `yazelix_core` library contains pure typed behavior. The `yzx_core` binary is the private bridge executable invoked by Nushell. The binary may use a small argument parser, but it is not the beginning of a public clap replacement for `yzx`.
 
@@ -313,4 +313,4 @@ Source-checkout development may invoke a locally built helper, but installed run
 
 - Should the helper binary stay named `yzx_core`, or should implementation choose a narrower name once the first slice lands?
 - Should `runtime_materialization.apply` write files directly in Rust, or should the first Rust slice emit only a plan that Nushell applies?
-- Should a root Cargo workspace eventually include both `rust_core/` and `rust_plugins/`, or should those build flows stay separate because one produces native helpers and the other produces wasm?
+- Should the main repo's Cargo workspace stay focused on `rust_core/`, or should future first-party plugin experiments get temporary in-repo prototypes before extraction?

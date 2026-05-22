@@ -5,7 +5,7 @@
 Define one narrow, versioned, plugin-owned read seam for the **active tab's**
 workspace/session truth inside Zellij.
 
-The seam should let Nushell and later sidebar/Yazi consumers ask the pane
+The seam should let Yazelix control code and later sidebar/Yazi consumers ask the pane
 orchestrator for a typed snapshot instead of combining the maintainer-only
 debug payload, the old sidebar-only read seam, and local derivation paths.
 
@@ -29,8 +29,8 @@ But the current read surface is still fragmented:
   stable contract
 - the old `get_active_sidebar_yazi_state` command was a second read seam just
   for sidebar Yazi
-- Nushell still carries some non-authoritative derivation around workspace roots
-  and tab-local targeting
+- Yazelix control code should not carry non-authoritative derivation around
+  workspace roots and tab-local targeting
 
 The pane orchestrator should expose one explicit typed read seam so future
 consumers can stop depending on debug payload shape or ad-hoc re-derivation.
@@ -42,7 +42,7 @@ consumers can stop depending on debug payload shape or ad-hoc re-derivation.
   response
 - shared serde types in the orchestrator crate when that improves local
   correctness or test clarity
-- Nushell transport/client helpers that should consume the new seam first
+- Yazelix control transport/client helpers that should consume the new seam first
 - docs that define the owner boundary and bootstrap policy
 - AI activity extension facts remain plugin-internal until they have a reliable
   product surface; this contract does not expose an AI bar widget
@@ -203,7 +203,7 @@ Keep the current transport style for v1:
 - `missing`
 - `invalid_payload` only if the command later accepts a payload and validation fails
 
-That avoids forcing a larger Nushell transport rewrite in the same slice.
+That avoids forcing a larger control-transport rewrite in the same slice.
 
 ### Bootstrap Policy
 
@@ -215,14 +215,18 @@ This seam must preserve the plugin's **actual** bootstrap policy:
 The docs should say this explicitly so the acceptance criteria match the real
 implementation.
 
-## First Consumers
+## Current Consumers
 
-Composer 2 should prepare to switch these read paths first:
+Current read paths include:
 
-- `nushell/scripts/integrations/zellij.nu`
-  - `read_current_tab_workspace_root`
-  - `get_current_tab_workspace_root_including_bootstrap`
-  - any helper that currently parses `maintainer_debug_editor_state`
+- `rust_core/yazelix_core/src/zellij_commands/status.rs`
+  - active-tab status-bus and inspect-session reads
+- `rust_core/yazelix_core/src/zellij_commands/workspace.rs`
+  - active-tab workspace root and sidebar-state probes
+- `rust_core/yazelix_core/src/workspace_commands.rs`
+  - workspace retargeting through `retarget_workspace`
+- `rust_core/yazelix_core/src/workspace_commands/yazi_sidebar.rs`
+  - sidebar refresh and reveal state
 - sidebar/Yazi-facing integrations that need active-tab identity rather than a
   session-global cache view
 - diagnostics that currently read `maintainer_debug_editor_state` for tab-local
@@ -255,8 +259,8 @@ contract. This slice is only about the read contract.
    from a session-global cache scan.
 4. The documented bootstrap policy matches the real plugin behavior
    (`initial_cwd`).
-5. Composer 2 can identify the exact Rust fields/functions and the first Nushell
-   consumers to change without redoing architecture discovery.
+5. Maintainers can identify the exact Rust fields/functions and current control
+   consumers without redoing architecture discovery.
 6. AI pane activity facts remain tab-local and can represent inactive,
    active/thinking, stale, and unknown states.
 7. The pane orchestrator writes active-tab status facts to a launch-scoped
@@ -287,8 +291,8 @@ contract. This slice is only about the read contract.
 - Rust/core verification after implementation:
   - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache`
   - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core agent_usage`
-- focused Nushell verification after implementation:
-  - `nu -c 'source nushell/scripts/dev/test_yzx_workspace_commands.nu; [(test_run_pane_orchestrator_command_raw_targets_session_plugin_without_plugin_configuration) (test_retarget_workspace_for_path_returns_plugin_owned_sidebar_state_and_editor_status)]'`
+- focused Yazelix control verification after implementation:
+  - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
 
 ## Traceability
 - Defended by: `yzx_repo_validator validate-contracts`
@@ -298,7 +302,7 @@ contract. This slice is only about the read contract.
 - Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_codex_usage_renders_5h_week_display_modes`
 - Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_codex_usage_refresh_writes_shared_combined_cache`
 - Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache_claude_usage_renders_5h_week_display_modes`
-- Defended by: `nu -c 'source nushell/scripts/dev/test_yzx_workspace_commands.nu; [(test_run_pane_orchestrator_command_raw_targets_session_plugin_without_plugin_configuration) (test_retarget_workspace_for_path_returns_plugin_owned_sidebar_state_and_editor_status)]'`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
 
 ## Open Questions
 
