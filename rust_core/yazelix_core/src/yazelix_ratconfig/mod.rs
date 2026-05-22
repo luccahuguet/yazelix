@@ -10,8 +10,8 @@ pub(crate) mod render;
 
 pub(crate) use editor::*;
 pub use model::{
-    ConfigUiApplyStatus, ConfigUiDiagnostic, ConfigUiField, ConfigUiModel, ConfigUiNativeStatus,
-    ConfigUiPathOwner, ConfigUiSidecar, ConfigUiValueState,
+    ConfigUiApplyStatus, ConfigUiDiagnostic, ConfigUiEditBehavior, ConfigUiField, ConfigUiModel,
+    ConfigUiNativeStatus, ConfigUiPathOwner, ConfigUiSidecar, ConfigUiValueState,
 };
 pub(crate) use model::{
     UiRowRef, effective_string_config, effective_string_list_config, get_json_path, owner_label,

@@ -1,5 +1,6 @@
-use super::{ConfigUiField, ConfigUiModel, UiRowRef, visible_rows_for_tab_search};
-use crate::config_ui::{is_keybinding_map_field_path, keybinding_action_metadata_for_field_path};
+use super::{
+    ConfigUiEditBehavior, ConfigUiField, ConfigUiModel, UiRowRef, visible_rows_for_tab_search,
+};
 use serde_json::Value as JsonValue;
 use std::collections::BTreeSet;
 
@@ -131,8 +132,8 @@ pub(crate) fn edit_input_for_field(field: &ConfigUiField) -> String {
         }
         return String::new();
     }
-    if keybinding_action_metadata_for_field_path(&field.path).is_some() {
-        return keybinding_action_edit_input(field);
+    if field.edit_behavior == ConfigUiEditBehavior::FriendlyStringList {
+        return friendly_string_list_edit_input(field);
     }
     if is_string_field(field) || is_scalar_enum_field(field) {
         return parse_rendered_json_string(&field.current_value)
@@ -185,8 +186,8 @@ pub(crate) fn parse_edit_input(field: &ConfigUiField, input: &str) -> Result<Jso
         "int" | "integer" => parse_i64_input(field, trimmed),
         "float" | "number" => parse_f64_input(field, trimmed),
         "string" => parse_string_field_input(field, input),
-        "string_list" if keybinding_action_metadata_for_field_path(&field.path).is_some() => {
-            parse_keybinding_string_list_input(field, trimmed)
+        "string_list" if field.edit_behavior == ConfigUiEditBehavior::FriendlyStringList => {
+            parse_friendly_string_list_input(field, trimmed)
         }
         "string_list" => parse_string_list_input(field, trimmed),
         "array" => parse_json_input(field, trimmed, "JSON array").and_then(|value| {
@@ -245,7 +246,7 @@ fn parse_string_list_input(field: &ConfigUiField, input: &str) -> Result<JsonVal
     ))
 }
 
-fn parse_keybinding_string_list_input(
+fn parse_friendly_string_list_input(
     field: &ConfigUiField,
     input: &str,
 ) -> Result<JsonValue, String> {
@@ -403,14 +404,9 @@ pub(crate) fn is_enum_string_list_field(field: &ConfigUiField) -> bool {
     field.kind == "string_list" && !field.allowed_values.is_empty()
 }
 
-pub(crate) fn structured_only_edit_notice(field: &ConfigUiField) -> Option<&'static str> {
-    if is_keybinding_map_field_path(&field.path) {
-        return Some("Select an action row below to edit one binding list.");
-    }
-    if field.path == "cursors.cursor" {
-        return Some(
-            "Cursor registry definitions are edited in the source file; run `yzx edit cursors`.",
-        );
+pub(crate) fn structured_only_edit_notice(field: &ConfigUiField) -> Option<&str> {
+    if let ConfigUiEditBehavior::StructuredOnly { notice } = &field.edit_behavior {
+        return Some(notice.as_str());
     }
     if matches!(field.kind.as_str(), "array" | "object" | "string_list_map") {
         return Some(
@@ -420,7 +416,7 @@ pub(crate) fn structured_only_edit_notice(field: &ConfigUiField) -> Option<&'sta
     None
 }
 
-fn keybinding_action_edit_input(field: &ConfigUiField) -> String {
+fn friendly_string_list_edit_input(field: &ConfigUiField) -> String {
     serde_json::from_str::<Vec<String>>(&field.edit_value)
         .map(|keys| keys.join(", "))
         .unwrap_or_else(|_| field.edit_value.clone())

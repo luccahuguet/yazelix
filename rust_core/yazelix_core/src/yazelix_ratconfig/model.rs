@@ -86,6 +86,14 @@ pub struct ConfigUiField {
     pub validation: String,
     pub rebuild_required: bool,
     pub apply_status: ConfigUiApplyStatus,
+    pub edit_behavior: ConfigUiEditBehavior,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ConfigUiEditBehavior {
+    Default,
+    FriendlyStringList,
+    StructuredOnly { notice: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

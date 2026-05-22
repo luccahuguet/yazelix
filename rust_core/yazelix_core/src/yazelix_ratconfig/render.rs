@@ -875,6 +875,7 @@ mod tests {
                     detail: "Restart Yazelix after saving".to_string(),
                     pending: true,
                 },
+                edit_behavior: ConfigUiEditBehavior::Default,
             }],
             sidecars: Vec::new(),
             native_config_statuses: Vec::new(),

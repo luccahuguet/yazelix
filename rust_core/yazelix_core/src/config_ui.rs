@@ -242,6 +242,7 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
             field.rebuild_required,
             apply_mode,
             blocking_paths.contains(&field.path),
+            edit_behavior_for_field_path(&field.path),
         ));
     }
     append_keybinding_action_fields(
@@ -275,6 +276,7 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
                 false,
                 RuntimeApplyMode::ShellTerminalRestart,
                 blocking_paths.contains(&schema_field.path),
+                edit_behavior_for_field_path(&schema_field.path),
             ));
         }
     }
@@ -613,7 +615,7 @@ impl YazelixConfigUiApp {
             self.notice_error(error.message());
             return;
         }
-        if let Some(message) = structured_only_edit_notice(field) {
+        if let Some(message) = structured_only_edit_notice(field).map(str::to_string) {
             self.notice_info(message);
             return;
         }
@@ -1243,6 +1245,7 @@ fn append_keybinding_surface_action_fields(
             parent_field.rebuild_required,
             apply_mode,
             blocking_paths.contains(&path) || blocking_paths.contains(parent_path),
+            ConfigUiEditBehavior::FriendlyStringList,
         ));
     }
 }
@@ -1956,6 +1959,7 @@ fn build_field_row(
     rebuild_required: bool,
     apply_mode: RuntimeApplyMode,
     has_blocking_diagnostic: bool,
+    edit_behavior: ConfigUiEditBehavior,
 ) -> ConfigUiField {
     let state = if has_blocking_diagnostic {
         ConfigUiValueState::Invalid
@@ -1987,7 +1991,24 @@ fn build_field_row(
         validation,
         rebuild_required,
         apply_status: apply_status_for_setting(path, apply_mode),
+        edit_behavior,
     }
+}
+
+fn edit_behavior_for_field_path(path: &str) -> ConfigUiEditBehavior {
+    if is_keybinding_map_field_path(path) {
+        return ConfigUiEditBehavior::StructuredOnly {
+            notice: "Select an action row below to edit one binding list.".to_string(),
+        };
+    }
+    if path == "cursors.cursor" {
+        return ConfigUiEditBehavior::StructuredOnly {
+            notice:
+                "Cursor registry definitions are edited in the source file; run `yzx edit cursors`."
+                    .to_string(),
+        };
+    }
+    ConfigUiEditBehavior::Default
 }
 
 fn apply_status_for_setting(path: &str, apply_mode: RuntimeApplyMode) -> ConfigUiApplyStatus {
@@ -2297,6 +2318,7 @@ mod tests {
             validation: String::new(),
             rebuild_required: false,
             apply_status: apply_status_for_setting(path, RuntimeApplyMode::TabSessionRestart),
+            edit_behavior: ConfigUiEditBehavior::Default,
         }
     }
 
