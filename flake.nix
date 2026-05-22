@@ -232,7 +232,6 @@
           packages = [
             rustToolchain
             pkgs.git
-            pkgs.nix
             pkgs.nushell
           ];
         };
