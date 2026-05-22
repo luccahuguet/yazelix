@@ -381,6 +381,7 @@ fn get_logo_animation_frames(width: usize) -> Vec<Vec<String>> {
 
 fn build_boids_frame(
     width: usize,
+    height: usize,
     duration: Duration,
     cell_style: GameOfLifeCellStyle,
     variant: BoidsVariant,
@@ -388,12 +389,13 @@ fn build_boids_frame(
     let size_class = get_logo_welcome_variant(width);
     let spec = boids_spec(size_class);
     let inner_width = width.saturating_sub(1).max(1);
+    let body_height = boids_welcome_body_height(spec, height);
     let frame_delay = Duration::from_millis(70);
     let frame_count = ((duration.as_secs_f64() / frame_delay.as_secs_f64()).ceil() as usize).max(3);
     let mut animation = BoidsAnimation::with_variant(
         ScreenAnimationContext {
             resolved_width: inner_width,
-            resolved_height: spec.body_height,
+            resolved_height: body_height,
             inner_width,
             size_class,
         },
@@ -412,6 +414,13 @@ fn build_boids_frame(
     frames
 }
 
+fn boids_welcome_body_height(spec: &BoidsWelcomeSpec, terminal_height: usize) -> usize {
+    terminal_height
+        .saturating_sub(2)
+        .max(spec.body_height)
+        .max(1)
+}
+
 fn welcome_sequence(
     resolved_style: &str,
     width: usize,
@@ -424,6 +433,7 @@ fn welcome_sequence(
         "logo" => get_logo_animation_frames(width),
         style if is_boids_style(style) => build_boids_frame(
             width,
+            height,
             duration,
             cell_style,
             BoidsVariant::from_style_name(style).expect("validated boids style"),
@@ -973,14 +983,25 @@ mod tests {
     fn boids_welcome_frame_uses_unframed_broad_surface() {
         let boids = build_boids_frame(
             120,
+            40,
             Duration::from_millis(360),
             GameOfLifeCellStyle::FullBlock,
             BoidsVariant::Predator,
         );
+        assert_eq!(boids[0].len(), 38);
         assert!(boids[0].iter().all(|line| visible_line_width(line) == 119));
         assert!(boids[0].iter().all(|line| !contains_vertical_border(line)));
         assert!(boids[0].iter().all(|line| !line.contains('╭')));
         assert!(boids[0].iter().all(|line| !line.contains('╯')));
+    }
+
+    // Regression: welcome boids use the actual pane height instead of staying pinned to the tiny catalog minimum at the top of the terminal.
+    #[test]
+    fn boids_welcome_body_height_tracks_pane_height() {
+        let spec = boids_spec("hero");
+
+        assert_eq!(boids_welcome_body_height(spec, 60), 58);
+        assert_eq!(boids_welcome_body_height(spec, 4), spec.body_height);
     }
 
     // Regression: inline welcome playback trims trailing padding so centered frames do not trigger terminal autowrap artifacts.
