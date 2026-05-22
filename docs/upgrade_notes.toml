@@ -1,10 +1,10 @@
 [releases.unreleased]
-acknowledged_guarded_changes = []
+acknowledged_guarded_changes = ["settings_default.jsonc"]
 date = ""
 headline = "Post-v17 work in progress"
 manual_actions = []
 migration_ids = []
-summary = ["Reserved for post-release changes after v17 lands."]
+summary = ["Moved native tab and pane movement defaults to `Ctrl Alt H/L` and `Ctrl Alt J/K` so Ghostty does not intercept pane-down movement through its `Ctrl Shift J` screen-file shortcut."]
 upgrade_impact = "no_user_action"
 version = "unreleased"
 

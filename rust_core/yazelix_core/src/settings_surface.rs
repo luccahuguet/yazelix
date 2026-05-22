@@ -34,6 +34,18 @@ const LEGACY_SIDEBAR_SETTING_RENAMES: &[(&str, &str)] = &[
         "workspace.left_sidebar.width_percent",
     ),
 ];
+const REPLACED_DEFAULT_SETTING_VALUES: &[(&str, &[&str])] = &[
+    ("zellij.native_keybindings.move_tab_left", &["Ctrl Shift H"]),
+    (
+        "zellij.native_keybindings.move_tab_right",
+        &["Ctrl Shift L"],
+    ),
+    (
+        "zellij.native_keybindings.move_pane_down",
+        &["Ctrl Shift J"],
+    ),
+    ("zellij.native_keybindings.move_pane_up", &["Ctrl Shift K"]),
+];
 
 #[derive(Debug, Clone)]
 pub struct SettingsSurfacePaths {
@@ -178,6 +190,8 @@ fn repair_settings_config_missing_defaults(
     let current = parse_jsonc_value(settings_config, &raw)?;
     let raw = repair_legacy_sidebar_settings(settings_config, raw, &current, &defaults)?;
     let current = parse_jsonc_value(settings_config, &raw)?;
+    let raw = repair_replaced_default_settings(settings_config, raw, &current, &defaults)?;
+    let current = parse_jsonc_value(settings_config, &raw)?;
     let mut missing = Vec::new();
     collect_missing_default_settings(&current, &defaults, &mut Vec::new(), &mut missing);
 
@@ -235,6 +249,80 @@ fn repair_settings_config_missing_defaults(
             source,
         )
     })
+}
+
+fn repair_replaced_default_settings(
+    settings_config: &Path,
+    raw: String,
+    current: &JsonValue,
+    defaults: &JsonValue,
+) -> Result<String, CoreError> {
+    let replaced = REPLACED_DEFAULT_SETTING_VALUES
+        .iter()
+        .filter_map(|(path, old_keys)| {
+            let old_value = JsonValue::Array(
+                old_keys
+                    .iter()
+                    .map(|key| JsonValue::String((*key).to_string()))
+                    .collect(),
+            );
+            let current_value = json_value_at_path(current, path)?;
+            let default_value = json_value_at_path(defaults, path)?;
+            (current_value == &old_value && default_value != &old_value).then(|| {
+                MissingDefaultSetting {
+                    path: (*path).to_string(),
+                    value: default_value.clone(),
+                }
+            })
+        })
+        .collect::<Vec<_>>();
+    if replaced.is_empty() {
+        return Ok(raw);
+    }
+
+    let replaced_paths = replaced
+        .iter()
+        .map(|setting| setting.path.clone())
+        .collect::<Vec<_>>();
+    if path_owned_by_home_manager(settings_config) {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "home_manager_owned_settings_replaced_defaults",
+            "The active Yazelix settings file uses older generated defaults and is owned by Home Manager.",
+            "Update your Home Manager module/options and run home-manager switch so the generated settings.jsonc includes the current Yazelix defaults.",
+            json!({
+                "path": settings_config.display().to_string(),
+                "replaced_fields": replaced_paths,
+            }),
+        ));
+    }
+    if settings_path_is_read_only(settings_config) {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "read_only_settings_replaced_defaults",
+            format!(
+                "The active Yazelix settings file uses older generated defaults and is read-only: {}.",
+                settings_config.display()
+            ),
+            "Fix file permissions or edit the owning configuration source so settings.jsonc includes the current Yazelix defaults.",
+            json!({
+                "path": settings_config.display().to_string(),
+                "replaced_fields": replaced_paths,
+            }),
+        ));
+    }
+
+    let mut patched = raw;
+    for setting in replaced {
+        patched = set_settings_jsonc_value_text(
+            settings_config,
+            &patched,
+            &setting.path,
+            &setting.value,
+        )?
+        .text;
+    }
+    Ok(patched)
 }
 
 fn repair_legacy_sidebar_settings(
@@ -788,6 +876,14 @@ mod tests {
       "args": [],
       "width_percent": 40
     }
+  },
+  "zellij": {
+    "native_keybindings": {
+      "move_tab_left": ["Ctrl Alt H"],
+      "move_tab_right": ["Ctrl Alt L"],
+      "move_pane_down": ["Ctrl Alt J"],
+      "move_pane_up": ["Ctrl Alt K"]
+    }
   }
 }
 "#,
@@ -852,6 +948,49 @@ mod tests {
             Some(true)
         );
         assert!(value.get("cursors").is_none());
+    }
+
+    // Regression: writable settings generated before the Ctrl+Alt movement policy receive the new non-Ghostty-conflicting defaults without overwriting user remaps.
+    #[test]
+    fn repairs_replaced_native_movement_defaults_in_existing_settings_jsonc() {
+        let runtime = tempdir().unwrap();
+        let config = tempdir().unwrap();
+        let (main, cursor) = write_defaults(runtime.path());
+        fs::write(
+            config.path().join("settings.jsonc"),
+            r#"{
+  "zellij": {
+    "native_keybindings": {
+      "move_tab_left": ["Ctrl Shift H"],
+      "move_tab_right": ["Alt l"],
+      "move_pane_down": ["Alt j"],
+      "move_pane_up": ["Ctrl Shift K"]
+    }
+  }
+}
+"#,
+        )
+        .unwrap();
+
+        let path = ensure_settings_config(config.path(), &main, &cursor).unwrap();
+        let value = read_settings_jsonc_value(&path).unwrap();
+
+        assert_eq!(
+            value["zellij"]["native_keybindings"]["move_tab_left"],
+            json!(["Ctrl Alt H"])
+        );
+        assert_eq!(
+            value["zellij"]["native_keybindings"]["move_tab_right"],
+            json!(["Alt l"])
+        );
+        assert_eq!(
+            value["zellij"]["native_keybindings"]["move_pane_down"],
+            json!(["Alt j"])
+        );
+        assert_eq!(
+            value["zellij"]["native_keybindings"]["move_pane_up"],
+            json!(["Ctrl Alt K"])
+        );
     }
 
     // Regression: the v16.5 sidebar rename is lossless, so writable user configs should repair before strict unknown-field validation.

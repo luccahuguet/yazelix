@@ -318,8 +318,8 @@ fn root_tab_rows() -> Vec<TableRow> {
             "Walk left/right across visible panes, falling back to previous/next tab",
         ),
         table_row(&["Alt+w / Alt+q", "Walk next/previous tab"]),
-        table_row(&["Ctrl+Shift+H / Ctrl+Shift+L", "Move current tab left/right"]),
-        table_row(&["Ctrl+Shift+J / Ctrl+Shift+K", "Move current pane down/up"]),
+        table_row(&["Ctrl+Alt+H / Ctrl+Alt+L", "Move current tab left/right"]),
+        table_row(&["Ctrl+Alt+J / Ctrl+Alt+K", "Move current pane down/up"]),
         table_row(&["Alt+Shift+F", "Toggle pane fullscreen"]),
     ]
 }

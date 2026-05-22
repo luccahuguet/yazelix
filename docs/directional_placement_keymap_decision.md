@@ -53,10 +53,10 @@ Current Yazelix default semantic bindings:
 
 Current Yazelix native Zellij policy:
 
-- `Ctrl+Shift+H`: move tab left
-- `Ctrl+Shift+L`: move tab right
-- `Ctrl+Shift+J`: move pane down
-- `Ctrl+Shift+K`: move pane up
+- `Ctrl+Alt+H`: move tab left
+- `Ctrl+Alt+L`: move tab right
+- `Ctrl+Alt+J`: move pane down
+- `Ctrl+Alt+K`: move pane up
 - `Alt+Shift+F`: toggle focused pane fullscreen
 - `Ctrl+Alt+p`: toggle pane in group
 - `Ctrl+Alt+Shift+P`: toggle group marking
@@ -64,8 +64,9 @@ Current Yazelix native Zellij policy:
 
 Implemented changes:
 
-- moved tab movement from `Alt+Shift+H/L` to `Ctrl+Shift+H/L`
-- added pane movement on `Ctrl+Shift+J/K`
+- moved tab movement from `Alt+Shift+H/L` to `Ctrl+Alt+H/L`
+- added pane movement on `Ctrl+Alt+J/K`
+- rejected `Ctrl+Shift+J/K` because Ghostty reserves `Ctrl+Shift+J` for `write_screen_file:paste,plain`
 - moved the default popup-program flow from `Alt+t` to `bottom_popup` on
   `Alt+Shift+J`
 - added `top_popup` on `Alt+Shift+K`

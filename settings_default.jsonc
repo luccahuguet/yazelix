@@ -105,13 +105,13 @@
         "Alt i"
       ],
       "move_tab_left": [
-        "Ctrl Shift H"
+        "Ctrl Alt H"
       ],
       "move_tab_right_unbind": [
         "Alt o"
       ],
       "move_tab_right": [
-        "Ctrl Shift L"
+        "Ctrl Alt L"
       ],
       // Leave Alt+n available to Helix selection flow instead of Zellij new-pane.
       "new_pane_unbind": [
@@ -156,10 +156,10 @@
         "Alt w"
       ],
       "move_pane_down": [
-        "Ctrl Shift J"
+        "Ctrl Alt J"
       ],
       "move_pane_up": [
-        "Ctrl Shift K"
+        "Ctrl Alt K"
       ],
       // Terminal-specific Helix selection-cycle conflict workaround.
       "selection_cycle_unbind": [

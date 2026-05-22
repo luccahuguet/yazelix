@@ -1193,7 +1193,7 @@ fn resolve_zellij_native_keybindings(
                     ErrorClass::Config,
                     "invalid_zellij_native_keybinding_key",
                     format!("zellij.native_keybindings.{action} contains a non-string key."),
-                    "Use Zellij key strings such as \"Ctrl Alt s\" or \"Ctrl Shift H\".",
+                    "Use Zellij key strings such as \"Ctrl Alt s\" or \"Ctrl Alt H\".",
                     json!({ "action": action, "actual": value }),
                 ));
             };
@@ -2892,10 +2892,10 @@ keybinds {
             build_native_zellij_keybind_lines(&sample_zellij_native_keybindings()).join("\n");
 
         assert!(rendered.contains(r#"unbind "Alt i""#));
-        assert!(rendered.contains(r#"bind "Ctrl Shift H" { MoveTab "Left"; }"#));
-        assert!(rendered.contains(r#"bind "Ctrl Shift L" { MoveTab "Right"; }"#));
-        assert!(rendered.contains(r#"bind "Ctrl Shift J" { MovePane "Down"; }"#));
-        assert!(rendered.contains(r#"bind "Ctrl Shift K" { MovePane "Up"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl Alt H" { MoveTab "Left"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl Alt L" { MoveTab "Right"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl Alt J" { MovePane "Down"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl Alt K" { MovePane "Up"; }"#));
         assert!(rendered.contains(r#"unbind "Alt p""#));
         assert!(rendered.contains(r#"bind "Ctrl Alt p" { TogglePaneInGroup; }"#));
         assert!(rendered.contains(r#"bind "Alt 1" { GoToTab 1; }"#));

@@ -12,10 +12,10 @@ The `Alt+Shift+H/J/K/L` layer follows Vim-style spatial placement: `H` is the le
 | Alt+number (1-9)         | Go to tab 1-9                 |
 | Alt+w                    | Walk to next tab (focus)      |
 | Alt+q                    | Walk to previous tab (focus)  |
-| Ctrl+Shift+H             | Move tab left                 |
-| Ctrl+Shift+L             | Move tab right                |
-| Ctrl+Shift+J             | Move pane down                |
-| Ctrl+Shift+K             | Move pane up                  |
+| Ctrl+Alt+H               | Move tab left                 |
+| Ctrl+Alt+L               | Move tab right                |
+| Ctrl+Alt+J               | Move pane down                |
+| Ctrl+Alt+K               | Move pane up                  |
 | Alt+Shift+F              | Toggle pane fullscreen        |
 | Alt+Shift+H              | Toggle the left sidebar       |
 | Alt+Shift+J              | Toggle the bottom popup       |
@@ -40,8 +40,8 @@ The `Alt+Shift+H/J/K/L` layer follows Vim-style spatial placement: `H` is the le
 | **Ctrl+Alt+o**           | **Session mode**              | ⚠️ Remapped (was Ctrl+o) |
 
 - **Tab walking**: Alt+w/q walks (focuses) next/previous tab, like browser tab switching.
-- **Tab moving**: Ctrl+Shift+H/L moves the current tab left/right.
-- **Pane moving**: Ctrl+Shift+J/K moves the current pane down/up.
+- **Tab moving**: Ctrl+Alt+H/L moves the current tab left/right.
+- **Pane moving**: Ctrl+Alt+J/K moves the current pane down/up.
 - **Surface toggles**: Alt+Shift+H/J/K/L maps to left sidebar, bottom popup, top popup, and right sidebar.
 - **Direct tab access**: Alt+1 through Alt+9 jumps directly to a tab.
 
@@ -64,8 +64,8 @@ If you find a conflict, please open an issue
   - `Alt+Shift+F` toggles pane fullscreen
   - `Alt+Shift+H/J/K/L` toggles the left sidebar, bottom popup, top popup, and right Codex agent sidebar
   - `Alt+[` / `Alt+]` selects the previous/next layout family; with the packaged single managed sidebar family, those keys usually keep the visible layout unchanged
-  - `Ctrl+Shift+H/L` moves the current tab left/right
-  - `Ctrl+Shift+J/K` moves the current pane down/up
+  - `Ctrl+Alt+H/L` moves the current tab left/right
+  - `Ctrl+Alt+J/K` moves the current pane down/up
   - `Alt+w/q` walks left/right (focus tabs)
   - `Ctrl+y` toggles focus between the managed left sidebar and editor
   - `Ctrl+Shift+Y` toggles focus between the managed editor and right agent sidebar
@@ -113,7 +113,7 @@ The stable sidebar action surface is the semantic keybinding map, not the defaul
 Prefer `zellij.keybindings` for remaps. Native Zellij KDL remains the escape hatch for full keymap ownership.
 
 ## Keybinding Tips
-- **Zellij**: `Alt+number` for tab, `Alt+w/q` for tab walk, `Ctrl+Shift+H/L` for tab move, `Alt+Shift+H/J/K/L` for directional Yazelix surfaces
+- **Zellij**: `Alt+number` for tab, `Alt+w/q` for tab walk, `Ctrl+Alt+H/L` for tab move, `Ctrl+Alt+J/K` for pane move, `Alt+Shift+H/J/K/L` for directional Yazelix surfaces
 - **Yazi**: 
   - `Z`: Use Yazi's built-in Zoxide jump and stay inside Yazi
   - `Alt+z`: Use Yazelix's direct-open Zoxide jump to retarget the managed editor and workspace immediately

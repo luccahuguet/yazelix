@@ -403,7 +403,7 @@ pub const ZELLIJ_NATIVE_KEYBINDINGS: &[ZellijNativeKeybindingSpec] = &[
     zellij_native_action(
         "move_tab_left",
         "Move tab left",
-        &["Ctrl Shift H"],
+        &["Ctrl Alt H"],
         "MoveTab \"Left\"",
         &[ZellijNativeKeybindingBlock {
             mode: "shared",
@@ -423,7 +423,7 @@ pub const ZELLIJ_NATIVE_KEYBINDINGS: &[ZellijNativeKeybindingSpec] = &[
     zellij_native_action(
         "move_tab_right",
         "Move tab right",
-        &["Ctrl Shift L"],
+        &["Ctrl Alt L"],
         "MoveTab \"Right\"",
         &[ZellijNativeKeybindingBlock {
             mode: "shared",
@@ -563,7 +563,7 @@ pub const ZELLIJ_NATIVE_KEYBINDINGS: &[ZellijNativeKeybindingSpec] = &[
     zellij_native_action(
         "move_pane_down",
         "Move pane down",
-        &["Ctrl Shift J"],
+        &["Ctrl Alt J"],
         "MovePane \"Down\"",
         &[ZellijNativeKeybindingBlock {
             mode: "shared_except \"locked\"",
@@ -573,7 +573,7 @@ pub const ZELLIJ_NATIVE_KEYBINDINGS: &[ZellijNativeKeybindingSpec] = &[
     zellij_native_action(
         "move_pane_up",
         "Move pane up",
-        &["Ctrl Shift K"],
+        &["Ctrl Alt K"],
         "MovePane \"Up\"",
         &[ZellijNativeKeybindingBlock {
             mode: "shared_except \"locked\"",

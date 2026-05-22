@@ -431,8 +431,8 @@ Yazelix uses Zellij as the workspace layer, so the most important bindings are g
 | `Alt+Shift+C` | Open the Yazelix config UI popup |
 | `Alt+1..9` | Jump directly to tabs 1 through 9 |
 | `Alt+w` / `Alt+q` | Move to the next or previous tab |
-| `Ctrl+Shift+H` / `Ctrl+Shift+L` | Move the current tab left or right |
-| `Ctrl+Shift+J` / `Ctrl+Shift+K` | Move the current pane down or up |
+| `Ctrl+Alt+H` / `Ctrl+Alt+L` | Move the current tab left or right |
+| `Ctrl+Alt+J` / `Ctrl+Alt+K` | Move the current pane down or up |
 | `Alt+Shift+F` | Toggle pane fullscreen |
 
 Yazi still has its own keymap too: press `~` inside Yazi for its built-in help, remap Yazelix-owned Yazi integration keys with `yazi.keybindings` in `settings.jsonc`, and use the most useful file-tree sidebar flows such as `Enter` to open through the managed editor integration, `Alt+z` to pick a directory with zoxide and retarget the workspace, and `Alt+p` to open the selected directory in a new pane as the current tab workspace root

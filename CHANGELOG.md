@@ -9,7 +9,7 @@ Post-v17 work in progress
 Upgrade impact: no user action required
 
 Highlights:
-- Reserved for post-release changes after v17 lands.
+- Moved native tab and pane movement defaults to `Ctrl Alt H/L` and `Ctrl Alt J/K` so Ghostty does not intercept pane-down movement through its `Ctrl Shift J` screen-file shortcut
 
 ## v17 - 2026-05-22
 
