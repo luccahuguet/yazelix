@@ -38,7 +38,15 @@ fn start_yazelix_scrubs_gui_loader_env_before_control_handoff() {
 
     fs::create_dir_all(&posix_dir).unwrap();
     fs::create_dir_all(runtime_dir.join("libexec")).unwrap();
+    fs::create_dir_all(runtime_dir.join("runtime_features")).unwrap();
     fs::create_dir_all(&home_dir).unwrap();
+    fs::write(
+        runtime_dir
+            .join("runtime_features")
+            .join("zellij_kitty_passthrough"),
+        "",
+    )
+    .unwrap();
 
     write_executable_script(
         &posix_dir.join("start_yazelix.sh"),
@@ -62,6 +70,7 @@ for key in GIO_EXTRA_MODULES GIO_MODULE_DIR GSETTINGS_SCHEMA_DIR GI_TYPELIB_PATH
   printf '%s=%s\n' "$key" "$value"
 done
 printf 'YAZELIX_RUNTIME_DIR=%s\n' "$YAZELIX_RUNTIME_DIR"
+printf 'YAZELIX_ZELLIJ_KITTY_PASSTHROUGH=%s\n' "${YAZELIX_ZELLIJ_KITTY_PASSTHROUGH-unset}"
 "#,
     );
 
@@ -108,6 +117,7 @@ printf 'YAZELIX_RUNTIME_DIR=%s\n' "$YAZELIX_RUNTIME_DIR"
         "YAZELIX_RUNTIME_DIR={}",
         runtime_dir.to_string_lossy()
     )));
+    assert!(stdout.contains("YAZELIX_ZELLIJ_KITTY_PASSTHROUGH=1"));
 }
 
 // Regression: the Ghostty launch wrapper must not expose runtime-private libexec helpers such as nix ahead of the host Nix.

@@ -15,6 +15,10 @@ export YAZELIX_CONFIG_DIR="${YAZELIX_CONFIG_DIR:-$xdg_config_home/yazelix}"
 export YAZELIX_STATE_DIR="${YAZELIX_STATE_DIR:-$xdg_data_home/yazelix}"
 export YAZELIX_LOGS_DIR="${YAZELIX_LOGS_DIR:-$YAZELIX_STATE_DIR/logs}"
 
+if [ -f "$runtime_dir/runtime_features/zellij_kitty_passthrough" ]; then
+  export YAZELIX_ZELLIJ_KITTY_PASSTHROUGH=1
+fi
+
 scrub_yazelix_workspace_child_gui_env() {
   unset GIO_EXTRA_MODULES
   unset GIO_MODULE_DIR
