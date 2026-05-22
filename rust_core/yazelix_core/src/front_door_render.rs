@@ -32,6 +32,7 @@ const ASCII_MAGICIAN_ATTRIBUTION: &str = "ascii magician GIF by 1mposter";
 const ASCII_MAGICIAN_SOURCE_WIDTH: usize = 96;
 const ASCII_MAGICIAN_SOURCE_HEIGHT: usize = 96;
 const ASCII_MAGICIAN_FRAME_COUNT: usize = 40;
+const ASCII_MAGICIAN_TRANSPARENT_THRESHOLD: u8 = 18;
 const RGB_BYTES_PER_PIXEL: usize = 3;
 
 const GAME_OF_LIFE_RANDOM_POOL: &[&str] = &[
@@ -469,8 +470,35 @@ fn ascii_magician_rgb(frame_index: usize, x: usize, y: usize) -> (u8, u8, u8) {
     )
 }
 
+fn ascii_magician_visible_rgb(rgb: (u8, u8, u8)) -> Option<(u8, u8, u8)> {
+    let brightest = rgb.0.max(rgb.1).max(rgb.2);
+    if brightest <= ASCII_MAGICIAN_TRANSPARENT_THRESHOLD {
+        None
+    } else {
+        Some(rgb)
+    }
+}
+
 fn ascii_magician_scaled_coord(target: usize, target_len: usize, source_len: usize) -> usize {
     (target.saturating_mul(source_len) / target_len.max(1)).min(source_len.saturating_sub(1))
+}
+
+fn render_ascii_magician_cell(upper: Option<(u8, u8, u8)>, lower: Option<(u8, u8, u8)>) -> String {
+    match (upper, lower) {
+        (Some((upper_r, upper_g, upper_b)), Some((lower_r, lower_g, lower_b))) => {
+            format!(
+                "\u{1b}[38;2;{upper_r};{upper_g};{upper_b}m\
+                 \u{1b}[48;2;{lower_r};{lower_g};{lower_b}m▀"
+            )
+        }
+        (Some((upper_r, upper_g, upper_b)), None) => {
+            format!("{ANSI_RESET}\u{1b}[38;2;{upper_r};{upper_g};{upper_b}m▀")
+        }
+        (None, Some((lower_r, lower_g, lower_b))) => {
+            format!("{ANSI_RESET}\u{1b}[38;2;{lower_r};{lower_g};{lower_b}m▄")
+        }
+        (None, None) => format!("{ANSI_RESET} "),
+    }
 }
 
 fn build_ascii_magician_frame(
@@ -504,9 +532,9 @@ fn build_ascii_magician_frame(
                 ascii_magician_rgb(source_frame_index, source_x, upper_y);
             let (lower_r, lower_g, lower_b) =
                 ascii_magician_rgb(source_frame_index, source_x, lower_y);
-            line.push_str(&format!(
-                "\u{1b}[38;2;{upper_r};{upper_g};{upper_b}m\
-                 \u{1b}[48;2;{lower_r};{lower_g};{lower_b}m▀"
+            line.push_str(&render_ascii_magician_cell(
+                ascii_magician_visible_rgb((upper_r, upper_g, upper_b)),
+                ascii_magician_visible_rgb((lower_r, lower_g, lower_b)),
             ));
         }
         line.push_str(ANSI_RESET);
@@ -1178,6 +1206,26 @@ mod tests {
                 .any(|line| line.contains(ASCII_MAGICIAN_ATTRIBUTION))
         );
         assert!(frames[0].iter().any(|line| line.contains("\u{1b}[38;2;")));
+    }
+
+    // Regression: the source GIF has a black matte; rendering that matte as real pixels creates a heavy black card and scanline bands.
+    #[test]
+    fn magician_renderer_treats_black_matte_as_transparent() {
+        assert_eq!(ascii_magician_visible_rgb((0, 0, 0)), None);
+        assert_eq!(ascii_magician_visible_rgb((12, 8, 17)), None);
+        assert_eq!(ascii_magician_visible_rgb((0, 80, 86)), Some((0, 80, 86)));
+        assert_eq!(
+            render_ascii_magician_cell(None, None),
+            format!("{ANSI_RESET} ")
+        );
+        assert_eq!(
+            render_ascii_magician_cell(Some((4, 120, 128)), None),
+            format!("{ANSI_RESET}\u{1b}[38;2;4;120;128m▀")
+        );
+        assert_eq!(
+            render_ascii_magician_cell(None, Some((4, 120, 128))),
+            format!("{ANSI_RESET}\u{1b}[38;2;4;120;128m▄")
+        );
     }
 
     // Regression: inline welcome playback trims trailing padding so centered frames do not trigger terminal autowrap artifacts.
