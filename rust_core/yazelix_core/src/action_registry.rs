@@ -370,7 +370,7 @@ pub const ZELLIJ_ACTIONS: &[ZellijActionSpec] = &[
     zellij_action(
         "previous_family",
         "zellij.previous_family",
-        "Switch to the previous Yazelix layout family",
+        "Select the previous Yazelix layout family; usually unchanged with the packaged single family",
         "shared_except \"locked\"",
         "previous_family",
         None,
@@ -380,7 +380,7 @@ pub const ZELLIJ_ACTIONS: &[ZellijActionSpec] = &[
     zellij_action(
         "next_family",
         "zellij.next_family",
-        "Switch to the next Yazelix layout family",
+        "Select the next Yazelix layout family; usually unchanged with the packaged single family",
         "shared_except \"locked\"",
         "next_family",
         None,

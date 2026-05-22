@@ -88,11 +88,12 @@ Ghostty cursor presets use their own config at `~/.config/yazelix_ghostty_cursor
 
 - Zellij orchestrates the workspace, with a managed sidebar and your chosen editor in the managed `editor` pane
 - In Yazelix docs, `sidebar` means the generic side-surface slot; the default sidebar is a Yazi file tree
-- Toggle focus between the left sidebar and editor with `Ctrl+y`, toggle focus between the editor and right agent sidebar with `Ctrl+Shift+Y`, and toggle the left sidebar itself with `Alt+Shift+H`
-- Switch between the built-in sidebar-aware workspace shapes and other workspace layouts; see [Layouts](./docs/layouts.md)
+- `Alt+Shift+H/J/K/L` is the spatial surface layer: `H` toggles the left sidebar, `J` toggles the bottom popup, `K` toggles the top popup, and `L` toggles the right agent sidebar
+- Use `Ctrl+y` to toggle focus between the left sidebar and editor, and `Ctrl+Shift+Y` to toggle focus between the editor and right agent sidebar
+- `Alt+[` and `Alt+]` are reserved for previous/next layout-family cycling, but the packaged runtime ships one managed sidebar family, so those bindings usually keep the visible layout unchanged; see [Layouts](./docs/layouts.md)
 - When you open something from the default Yazi file-tree sidebar with Helix or Neovim, Yazelix targets the managed `editor` pane through the pane orchestrator instead of relying on pane scanning heuristics; it reuses that pane when present and creates one titled `editor` when needed
 - `yzx reveal` is the stable editor-integration surface for jumping the current file back into the managed Yazi file tree
-- `Alt+Shift+J` toggles the bottom managed popup pane through `yzpp` and refreshes the Yazi file-tree sidebar git view when that popup closes; `Alt+Shift+K` toggles the top popup slot, while `Alt+Shift+M` toggles the popup command menu and `Alt+Shift+C` toggles the config UI popup
+- `Alt+Shift+J` toggles the bottom managed popup pane through `yzpp` and refreshes the Yazi file-tree sidebar git view when that popup closes; `Alt+Shift+K` toggles the top popup slot, `Alt+Shift+M` toggles the popup command menu, and `Alt+Shift+C` toggles the config UI popup
 - Named popup commands live in `zellij.popup_commands`: bottom defaults to `lazygit`, top defaults to `yzx config ui`, and menu defaults to `yzx menu`
 - Configure the managed editor with `editor.command` in `settings.jsonc`
 
@@ -402,7 +403,9 @@ Yazelix layouts are Zellij layouts with Yazelix-owned pane identity layered on t
 
 The default left sidebar is a Yazi file tree launched by `yzx sidebar yazi`, and the default right sidebar launches host-installed `codex`. `workspace.left_sidebar.*` and `workspace.right_sidebar.*` control each side pane command, args, and width; `editor.hide_sidebar_on_file_open` can collapse the left sidebar after opening files
 
-Use `Alt+[` and `Alt+]` to cycle the built-in sidebar-aware layout shapes. Keep complex custom layouts in Zellij KDL under `configs/zellij/layouts/`; custom sidebar swap families are maintainer-level work because Yazelix family-aware controls only know the built-in sidebar families
+The packaged runtime ships one managed sidebar family. `Alt+[` and `Alt+]` are still bound to previous/next layout-family cycling, but with one family they usually leave the visible layout unchanged. Use `Alt+Shift+H/J/K/L` for everyday surface toggles and `Ctrl+y` / `Ctrl+Shift+Y` for sidebar/editor focus
+
+Keep complex custom layouts in Zellij KDL under `configs/zellij/layouts/`; custom sidebar swap families are maintainer-level work because Yazelix family-aware controls only know the built-in sidebar family
 
 See [Layouts](./docs/layouts.md) for layout files, config keys, and customization boundaries
 
@@ -416,7 +419,7 @@ Yazelix uses Zellij as the workspace layer, so the most important bindings are g
 | `Ctrl+Shift+Y` | Toggle focus between the managed editor and right Codex agent sidebar |
 | `Alt+Shift+H` | Show or hide the left sidebar |
 | `Alt+r` | Smart reveal/focus key; forwards into the editor when appropriate |
-| `Alt+[` / `Alt+]` | Switch between layouts |
+| `Alt+[` / `Alt+]` | Previous/next layout family; with the packaged single family this usually has no visible effect |
 | `Alt+m` | Open a new terminal in the current tab workspace root |
 | `Alt+Shift+L` | Toggle the managed Codex agent sidebar |
 | `Alt+Shift+J` | Toggle the bottom managed popup command, usually `lazygit`, and refresh the Yazi file-tree sidebar git state when the popup keybinding closes it |

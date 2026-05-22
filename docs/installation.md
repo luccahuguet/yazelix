@@ -303,14 +303,14 @@ That is now the advanced/maintainer path, not the primary install story.
 
 If Zellij still shows a plugin permission prompt, answer **yes**. This can happen after manually deleting `~/.cache/zellij/permissions.kdl`, revoking permissions, or using a Zellij/plugin state Yazelix cannot safely infer.
 
-`Alt+Shift+H`, `Ctrl+y`, and `Ctrl+Shift+Y` require the Yazelix pane-orchestrator plugin permissions. `Alt+m` opens a new terminal in the current tab workspace root.
+`Alt+Shift+H/J/K/L`, `Ctrl+y`, and `Ctrl+Shift+Y` require the Yazelix pane-orchestrator plugin permissions. `Alt+m` opens a new terminal in the current tab workspace root.
 
 If the top status bar looks transparent or broken, see [troubleshooting](troubleshooting.md#first-run-zellij-plugin-permissions-is-the-top-bar-looking-funnyweirdbroken) for the manual recovery path. See the [zjstatus permissions documentation](https://github.com/dj95/zjstatus/wiki/2-%E2%80%90-Permissions) for more details.
 
 If you are maintaining Yazelix and test a newly packaged pane-orchestrator plugin, prefer `yzx restart` after the local override runtime build instead of reloading the plugin inside the current session.
 
 #### Quick Start Tips
-- Use `alt hjkl` to switch between Zellij panes and tabs
+- Use `Alt+Shift+H/J/K/L` for the left sidebar, bottom popup, top popup, and right sidebar
 - Press `Enter` in Yazi to open files in your configured editor
 - Use `yzx help` to see all available management commands
 - Use `Alt+Shift+F` to toggle fullscreen on the current pane

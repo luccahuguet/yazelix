@@ -1,6 +1,6 @@
 # Zellij Layouts
 
-Yazelix ships managed-sidebar startup layouts and swap-layout files:
+Yazelix ships one managed sidebar family plus hidden-start auxiliary layouts and swap-layout files:
 
 - `configs/zellij/layouts/yzx_side.kdl` for sidebar mode
 - `configs/zellij/layouts/yzx_side_closed.kdl` for managed-sidebar mode with the sidebar hidden at startup
@@ -30,6 +30,8 @@ Set the file-open behavior in `settings.jsonc`:
 ```
 
 `editor.hide_sidebar_on_file_open = true` hides the managed sidebar after opening a file from Yazi while keeping new tabs on the normal managed-sidebar startup layout. `Alt+Shift+H`, `Ctrl+y`, `Ctrl+Shift+Y`, and `yzx reveal` remain available because the managed side panes still exist.
+
+The directional surface layer follows HJKL placement: `Alt+Shift+H` toggles the left sidebar, `Alt+Shift+J` toggles the bottom popup, `Alt+Shift+K` toggles the top popup, and `Alt+Shift+L` toggles the right agent sidebar.
 
 `workspace.left_sidebar.width_percent` controls the open left sidebar width as a percentage of the tab. With the default launcher, that sidebar is the Yazi file tree. Valid range: `1` to `48`.
 
@@ -69,7 +71,9 @@ Yazelix does not currently expose a second declarative layout-profile language. 
 
 Custom sidebar layout families are not fully first-class yet.
 
-The sidebar-aware controls `Alt+Shift+H`, `Alt+[`, and `Alt+]` still understand only the built-in sidebar visible/hidden families defined by Yazelix. If you add a brand-new sidebar family, Zellij can still parse the layout file, but Yazelix family-aware switching and sidebar toggling will not automatically learn it.
+The sidebar-aware controls understand the packaged built-in sidebar family defined by Yazelix. If you add a brand-new sidebar family, Zellij can still parse the layout file, but Yazelix family-aware switching and sidebar toggling will not automatically learn it.
+
+`Alt+[` and `Alt+]` are reserved for previous/next layout-family cycling. Because the packaged runtime ships one managed sidebar family, pressing those bindings usually keeps the visible layout unchanged.
 
 So the current rule is:
 

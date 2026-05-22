@@ -5,6 +5,8 @@
 Yazelix uses **selective remapping** - only conflicting Zellij keybindings are changed, preserving muscle memory where possible.
 
 ### Core Navigation
+The `Alt+Shift+H/J/K/L` layer follows Vim-style spatial placement: `H` is the left sidebar, `J` is the bottom popup, `K` is the top popup, and `L` is the right sidebar.
+
 | Keybinding                | Action                        |
 |--------------------------|-------------------------------|
 | Alt+number (1-9)         | Go to tab 1-9                 |
@@ -19,7 +21,9 @@ Yazelix uses **selective remapping** - only conflicting Zellij keybindings are c
 | Alt+Shift+J              | Toggle the bottom popup       |
 | Alt+Shift+K              | Toggle the top popup          |
 | Alt+Shift+L              | Toggle the right Codex agent sidebar |
+| Ctrl+y                   | Toggle editor/left sidebar focus |
 | Ctrl+Shift+Y             | Toggle editor/right agent focus |
+| Alt+[ / Alt+]            | Previous/next layout family; usually no visible effect with the packaged single family |
 
 ### Zellij Modes (Helix-Compatible)
 | Keybinding                | Action                        | Notes |
@@ -38,6 +42,7 @@ Yazelix uses **selective remapping** - only conflicting Zellij keybindings are c
 - **Tab walking**: Alt+w/q walks (focuses) next/previous tab, like browser tab switching.
 - **Tab moving**: Ctrl+Shift+H/L moves the current tab left/right.
 - **Pane moving**: Ctrl+Shift+J/K moves the current pane down/up.
+- **Surface toggles**: Alt+Shift+H/J/K/L maps to left sidebar, bottom popup, top popup, and right sidebar.
 - **Direct tab access**: Alt+1 through Alt+9 jumps directly to a tab.
 
 If you find a conflict, please open an issue
@@ -58,6 +63,7 @@ If you find a conflict, please open an issue
 - **Zellij**:
   - `Alt+Shift+F` toggles pane fullscreen
   - `Alt+Shift+H/J/K/L` toggles the left sidebar, bottom popup, top popup, and right Codex agent sidebar
+  - `Alt+[` / `Alt+]` selects the previous/next layout family; with the packaged single managed sidebar family, those keys usually keep the visible layout unchanged
   - `Ctrl+Shift+H/L` moves the current tab left/right
   - `Ctrl+Shift+J/K` moves the current pane down/up
   - `Alt+w/q` walks left/right (focus tabs)
