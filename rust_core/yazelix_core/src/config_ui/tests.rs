@@ -1,0 +1,824 @@
+// Test lane: default
+use super::*;
+use crate::ghostty_cursor_registry::DEFAULT_CURSOR_CONFIG_FILENAME;
+use tempfile::tempdir;
+
+fn test_field(
+    path: &str,
+    kind: &str,
+    current_value: &str,
+    allowed_values: &[&str],
+) -> ConfigUiField {
+    ConfigUiField {
+        path: path.to_string(),
+        tab: "general".to_string(),
+        kind: kind.to_string(),
+        current_value: current_value.to_string(),
+        edit_value: current_value.to_string(),
+        default_value: "no default".to_string(),
+        state: ConfigUiValueState::Explicit,
+        description: String::new(),
+        allowed_values: allowed_values
+            .iter()
+            .map(|value| (*value).to_string())
+            .collect(),
+        validation: String::new(),
+        rebuild_required: false,
+        apply_status: apply_status_for_setting(path, RuntimeApplyMode::TabSessionRestart),
+        edit_behavior: ConfigUiEditBehavior::Default,
+    }
+}
+
+fn write_runtime_layout(runtime: &Path) {
+    fs::create_dir_all(runtime.join("config_metadata")).expect("metadata dir");
+    fs::write(
+        runtime
+            .join("config_metadata")
+            .join("main_config_contract.toml"),
+        include_str!("../../../../config_metadata/main_config_contract.toml"),
+    )
+    .expect("main config contract");
+    fs::write(
+        runtime
+            .join("config_metadata")
+            .join("yazelix_settings.schema.json"),
+        include_str!("../../../../config_metadata/yazelix_settings.schema.json"),
+    )
+    .expect("settings schema");
+    fs::write(
+        runtime
+            .join("config_metadata")
+            .join("config_ui_metadata.toml"),
+        include_str!("../../../../config_metadata/config_ui_metadata.toml"),
+    )
+    .expect("config ui metadata");
+    fs::write(
+        runtime.join("settings_default.jsonc"),
+        include_str!("../../../../settings_default.jsonc"),
+    )
+    .expect("main defaults");
+    fs::write(
+        runtime.join(DEFAULT_CURSOR_CONFIG_FILENAME),
+        include_str!("../../../../yazelix_ghostty_cursors_default.toml"),
+    )
+    .expect("cursor defaults");
+    fs::write(
+        runtime.join("runtime_components.json"),
+        r#"{
+              "cursors": { "enabled": true, "disableable": true, "notes": [] },
+              "screen": { "enabled": true, "disableable": true, "notes": [] }
+            }"#,
+    )
+    .expect("runtime component manifest");
+}
+
+fn test_request(runtime: &Path, config: &Path) -> ConfigUiRequest {
+    ConfigUiRequest {
+        runtime_dir: runtime.to_path_buf(),
+        config_dir: config.to_path_buf(),
+        config_override: None,
+    }
+}
+
+fn write_main_settings(
+    runtime: &Path,
+    config: &Path,
+    mutate: impl FnOnce(&mut JsonValue),
+) -> PathBuf {
+    write_main_settings_with_prefix(runtime, config, "", mutate)
+}
+
+fn write_main_settings_with_prefix(
+    runtime: &Path,
+    config: &Path,
+    prefix: &str,
+    mutate: impl FnOnce(&mut JsonValue),
+) -> PathBuf {
+    let mut value = read_settings_jsonc_value(&runtime.join("settings_default.jsonc"))
+        .expect("default settings");
+    mutate(&mut value);
+    let path = config.join("settings.jsonc");
+    fs::create_dir_all(config).expect("config dir");
+    fs::write(
+        &path,
+        format!(
+            "{}{}\n",
+            prefix,
+            serde_json::to_string_pretty(&value).expect("settings json")
+        ),
+    )
+    .expect("settings");
+    path
+}
+
+fn model_field<'a>(model: &'a ConfigUiModel, path: &str) -> &'a ConfigUiField {
+    model
+        .fields
+        .iter()
+        .find(|field| field.path == path)
+        .expect("field")
+}
+
+fn line_text(line: &Line<'_>) -> String {
+    line.spans
+        .iter()
+        .map(|span| span.content.as_ref())
+        .collect()
+}
+
+fn lines_text(lines: &[Line<'_>]) -> String {
+    lines.iter().map(line_text).collect::<Vec<_>>().join("\n")
+}
+
+fn select_field_path(app: &mut ConfigUiApp, path: &str) {
+    let field = app
+        .model
+        .fields
+        .iter()
+        .find(|field| field.path == path)
+        .expect("field");
+    app.selected_tab = app
+        .model
+        .tabs
+        .iter()
+        .position(|tab| tab == &field.tab)
+        .expect("tab");
+    app.selected_row = app
+        .visible_rows()
+        .iter()
+        .position(|row| {
+            matches!(
+                row,
+                UiRowRef::Field(index) if app.model.fields[*index].path == path
+            )
+        })
+        .expect("row");
+}
+
+// Defends: the editable config UI interprets typed values from the field contract instead of guessing strings for every setting.
+#[test]
+fn parse_edit_input_uses_field_type_and_allowed_values() {
+    let bool_field = test_field("editor.hide_sidebar_on_file_open", "bool", "false", &[]);
+    assert_eq!(
+        parse_edit_input(&bool_field, "true").expect("bool"),
+        json!(true)
+    );
+    assert!(parse_edit_input(&bool_field, "yes").is_err());
+
+    let enum_field = test_field(
+        "zellij.tab_label_mode",
+        "string",
+        "\"short\"",
+        &["short", "compact", "full"],
+    );
+    assert_eq!(
+        parse_edit_input(&enum_field, "compact").expect("enum"),
+        json!("compact")
+    );
+    assert!(parse_edit_input(&enum_field, "wide").is_err());
+
+    let list_field = test_field("yazi.plugins", "string_list", "[\"git\"]", &["git", "ouch"]);
+    assert_eq!(
+        parse_edit_input(&list_field, r#"["git","ouch"]"#).expect("list"),
+        json!(["git", "ouch"])
+    );
+    assert!(parse_edit_input(&list_field, r#"["unknown"]"#).is_err());
+}
+
+// Regression: summarized list displays must not become the edit buffer, because placeholders like `[7 items]` are not JSON.
+#[test]
+fn list_fields_edit_from_full_json_not_display_summary() {
+    let runtime = tempdir().expect("runtime");
+    let config = tempdir().expect("config");
+    write_runtime_layout(runtime.path());
+    let request = test_request(runtime.path(), config.path());
+    let model = build_config_ui_model(&request).expect("model");
+    let field = model_field(&model, "zellij.widget_tray");
+
+    assert_eq!(field.current_value, "[7 items]");
+    assert_eq!(field.apply_status.summary, "after Yazelix restart");
+    let input = edit_input_for_field(field);
+    assert!(input.starts_with("[\"editor\",\"shell\",\"term\""));
+    assert_eq!(
+        parse_edit_input(field, &input).expect("string list"),
+        json!([
+            "editor",
+            "shell",
+            "term",
+            "cursor",
+            "codex_usage",
+            "cpu",
+            "ram"
+        ])
+    );
+}
+
+// Defends: config UI does not expose cursor editor fields when the packaged runtime disables the cursor component.
+#[test]
+fn disabled_cursor_component_removes_cursor_editor_fields() {
+    let runtime = tempdir().expect("runtime");
+    let config = tempdir().expect("config");
+    write_runtime_layout(runtime.path());
+    fs::write(
+        runtime.path().join("runtime_components.json"),
+        r#"{
+              "cursors": { "enabled": false, "disableable": true, "notes": [] },
+              "screen": { "enabled": true, "disableable": true, "notes": [] }
+            }"#,
+    )
+    .expect("runtime component manifest");
+    fs::remove_file(runtime.path().join(DEFAULT_CURSOR_CONFIG_FILENAME))
+        .expect("remove cursor defaults");
+
+    let request = test_request(runtime.path(), config.path());
+    let model = build_config_ui_model(&request).expect("model");
+
+    assert!(!model.tabs.contains(&"cursors".to_string()));
+    assert!(
+        model
+            .fields
+            .iter()
+            .all(|field| !field.path.starts_with("cursors."))
+    );
+}
+
+// Defends: the keybinding tab renders Yazelix action registry labels, scoped ids, defaults, remaps, and disabled actions instead of an opaque JSON object.
+#[test]
+fn zellij_keybinding_details_use_action_registry_metadata() {
+    let runtime = tempdir().expect("runtime");
+    let config = tempdir().expect("config");
+    write_runtime_layout(runtime.path());
+    write_main_settings(runtime.path(), config.path(), |settings| {
+        settings["zellij"]["keybindings"]["popup"] = json!(["Alt x"]);
+        settings["zellij"]["keybindings"]["menu"] = json!([]);
+        settings["zellij"]["keybindings"]["unknown_action"] = json!(["Alt z"]);
+    });
+    let request = test_request(runtime.path(), config.path());
+    let model = build_config_ui_model(&request).expect("model");
+    let mut app = YazelixConfigUiApp::new(request, model);
+
+    select_field_path(&mut app, "zellij.keybindings");
+    let details = lines_text(&app.render_details(app.visible_rows()[app.selected_row]));
+
+    assert!(details.contains("Toggle the managed popup program"));
+    assert!(details.contains("zellij.popup"));
+    assert!(details.contains("Alt x (remapped)"));
+    assert!(details.contains("Alt Shift J"));
+    assert!(details.contains("Alt Shift K"));
+    assert!(details.contains("Open the Yazelix command palette popup"));
+    assert!(details.contains("disabled (disabled)"));
+    assert!(details.contains("empty list disables this action"));
+    assert!(details.contains("unsupported"));
+    assert!(details.contains("unknown_action"));
+}
+
+// Defends: native Zellij policy keybindings use the same structured action-row editor as semantic Yazelix bindings.
+#[test]
+fn zellij_native_keybinding_details_use_policy_registry_metadata() {
+    let runtime = tempdir().expect("runtime");
+    let config = tempdir().expect("config");
+    write_runtime_layout(runtime.path());
+    write_main_settings(runtime.path(), config.path(), |settings| {
+        settings["zellij"]["native_keybindings"]["scroll_mode"] = json!(["Ctrl Alt x"]);
+        settings["zellij"]["native_keybindings"]["scroll_mode_unbind"] = json!([]);
+        settings["zellij"]["native_keybindings"]["unknown_policy"] = json!(["Alt z"]);
+    });
+    let request = test_request(runtime.path(), config.path());
+    let model = build_config_ui_model(&request).expect("model");
+    let mut app = YazelixConfigUiApp::new(request, model);
+
+    select_field_path(&mut app, "zellij.native_keybindings");
+    let details = lines_text(&app.render_details(app.visible_rows()[app.selected_row]));
+
+    assert!(details.contains("Yazelix native Zellij policy"));
+    assert!(details.contains("Toggle scroll mode"));
+    assert!(details.contains("Ctrl Alt x (remapped)"));
+    assert!(details.contains("Ctrl Alt s"));
+    assert!(details.contains("Unbind default scroll-mode key"));
+    assert!(details.contains("disabled (disabled)"));
+    assert!(details.contains("unsupported"));
+    assert!(details.contains("unknown_policy"));
+}
+
+// Regression: keybinding map parents are structured overviews; pressing Enter must not open the whole map as one raw JSON editing line.
+#[test]
+fn keybinding_map_parent_does_not_open_raw_object_editor() {
+    let runtime = tempdir().expect("runtime");
+    let config = tempdir().expect("config");
+    write_runtime_layout(runtime.path());
+    let request = test_request(runtime.path(), config.path());
+    let model = build_config_ui_model(&request).expect("model");
+    let mut app = YazelixConfigUiApp::new(request, model);
+
+    select_field_path(&mut app, "zellij.keybindings");
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+    assert!(app.edit.is_none());
+    assert_eq!(
+        app.notice.as_ref().expect("notice").text,
+        "Select an action row below to edit one binding list."
+    );
+}
+
+// Defends: complex array/object fields without a dedicated structured editor do not fall back to an unreadable one-line JSON editor.
+#[test]
+fn complex_registry_field_does_not_open_raw_array_editor() {
+    let runtime = tempdir().expect("runtime");
+    let config = tempdir().expect("config");
+    write_runtime_layout(runtime.path());
+    let request = test_request(runtime.path(), config.path());
+    let model = build_config_ui_model(&request).expect("model");
+    let mut app = YazelixConfigUiApp::new(request, model);
+
+    select_field_path(&mut app, "cursors.cursor");
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+    assert!(app.edit.is_none());
+    assert_eq!(
+        app.notice.as_ref().expect("notice").text,
+        "Cursor registry definitions are edited in the source file; run `yzx edit cursors`."
+    );
+}
+
+// Defends: cursor preset selection is a picker-backed string list, not a rejected generic JSON array.
+#[test]
+fn cursor_enabled_cursors_opens_multi_choice_picker_and_writes_cursor_config() {
+    let runtime = tempdir().expect("runtime");
+    let config = tempdir().expect("config");
+    write_runtime_layout(runtime.path());
+    let cursor_path = crate::user_config_paths::shared_cursor_config(config.path());
+    let request = test_request(runtime.path(), config.path());
+    let model = build_config_ui_model(&request).expect("model");
+    let field = model_field(&model, "cursors.enabled_cursors");
+
+    assert_eq!(field.kind, "string_list");
+    assert!(field.allowed_values.contains(&"blaze".to_string()));
+    assert!(field.allowed_values.contains(&"snow".to_string()));
+
+    let mut app = YazelixConfigUiApp::new(request, model);
+    select_field_path(&mut app, "cursors.enabled_cursors");
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+    let edit = app.edit.clone().expect("edit");
+    assert_eq!(edit.mode, ConfigUiEditMode::MultiChoice);
+    let details = lines_text(&app.render_details(UiRowRef::Field(edit.field_index)));
+    assert!(details.contains("> [x] blaze"));
+
+    app.handle_edit_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
+    app.handle_edit_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+    assert!(app.edit.is_none());
+    let value = read_settings_jsonc_value(&cursor_path).expect("cursor settings jsonc");
+    let enabled = get_json_path(&value, "enabled_cursors")
+        .and_then(JsonValue::as_array)
+        .expect("enabled cursors");
+    assert!(!enabled.iter().any(|value| value.as_str() == Some("blaze")));
+    assert!(enabled.iter().any(|value| value.as_str() == Some("snow")));
+}
+
+// Defends: dynamic cursor trail selection is a single-select picker over none, random, and enabled cursor names.
+#[test]
+fn cursor_trail_uses_dynamic_single_choice_picker() {
+    let runtime = tempdir().expect("runtime");
+    let config = tempdir().expect("config");
+    write_runtime_layout(runtime.path());
+    let request = test_request(runtime.path(), config.path());
+    let model = build_config_ui_model(&request).expect("model");
+    let field = model_field(&model, "cursors.settings.trail");
+
+    assert_eq!(field.kind, "string");
+    assert_eq!(field.allowed_values[0], "none");
+    assert_eq!(field.allowed_values[1], "random");
+    assert!(field.allowed_values.contains(&"blaze".to_string()));
+
+    let mut app = YazelixConfigUiApp::new(request, model);
+    select_field_path(&mut app, "cursors.settings.trail");
+    let details = lines_text(&app.render_details(app.visible_rows()[app.selected_row]));
+    assert!(details.contains("  ( ) none"));
+    assert!(details.contains("  (x) random"));
+    assert!(!details.contains("> (x) random"));
+
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+    let edit = app.edit.clone().expect("edit");
+    assert_eq!(edit.mode, ConfigUiEditMode::Choice);
+    let details = lines_text(&app.render_details(UiRowRef::Field(edit.field_index)));
+    assert!(details.contains("  ( ) none"));
+    assert!(details.contains("> (x) random"));
+}
+
+// Defends: keybinding actions are editable as one semantic action row with friendly key-list input instead of forcing a full object edit.
+#[test]
+fn keybinding_action_row_writes_single_binding_list() {
+    let runtime = tempdir().expect("runtime");
+    let config = tempdir().expect("config");
+    write_runtime_layout(runtime.path());
+    let settings_path = config.path().join("settings.jsonc");
+    write_main_settings(runtime.path(), config.path(), |settings| {
+        settings["zellij"]["keybindings"]["popup"] = json!(["Alt x"]);
+    });
+    let request = test_request(runtime.path(), config.path());
+    let model = build_config_ui_model(&request).expect("model");
+    let mut app = YazelixConfigUiApp::new(request, model);
+
+    select_field_path(&mut app, "zellij.keybindings.popup");
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+    let edit = app.edit.as_mut().expect("edit");
+    assert_eq!(edit.mode, ConfigUiEditMode::Text);
+    assert_eq!(edit.input, "Alt x");
+    edit.input = "Alt Shift X".to_string();
+    app.handle_edit_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+    assert!(app.edit.is_none());
+    let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
+    assert_eq!(
+        get_json_path(&value, "zellij.keybindings.popup"),
+        Some(&json!(["Alt Shift X"]))
+    );
+}
+
+// Defends: the same structured keybinding map treatment covers Yazi actions instead of leaving a second raw object editor in the keybindings tab.
+#[test]
+fn yazi_keybinding_details_use_action_registry_metadata() {
+    let runtime = tempdir().expect("runtime");
+    let config = tempdir().expect("config");
+    write_runtime_layout(runtime.path());
+    write_main_settings(runtime.path(), config.path(), |settings| {
+        settings["yazi"]["keybindings"]["open_zoxide_in_editor"] = json!([]);
+    });
+    let request = test_request(runtime.path(), config.path());
+    let model = build_config_ui_model(&request).expect("model");
+    let mut app = YazelixConfigUiApp::new(request, model);
+
+    select_field_path(&mut app, "yazi.keybindings");
+    let details = lines_text(&app.render_details(app.visible_rows()[app.selected_row]));
+
+    assert!(details.contains("Yazelix Yazi actions"));
+    assert!(details.contains("Retarget the managed editor through the Yazi zoxide picker"));
+    assert!(details.contains("yazi.open_zoxide_in_editor"));
+    assert!(details.contains("disabled (disabled)"));
+    assert!(details.contains("section"));
+    assert!(details.contains("keymap"));
+}
+
+// Defends: machine-readable apply modes from main_config_contract.toml reach clear user-facing takes-effect labels.
+// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+#[test]
+fn model_exposes_apply_statuses_from_contract() {
+    let runtime = tempdir().expect("runtime");
+    let config = tempdir().expect("config");
+    write_runtime_layout(runtime.path());
+    let request = test_request(runtime.path(), config.path());
+    let model = build_config_ui_model(&request).expect("model");
+
+    let screen_saver = model_field(&model, "zellij.screen_saver_enabled");
+    assert_eq!(screen_saver.apply_status.summary, "now");
+    assert!(!screen_saver.apply_status.pending);
+    assert!(
+        screen_saver
+            .apply_status
+            .detail
+            .contains("active pane owner")
+    );
+
+    let editor_command = model_field(&model, "editor.command");
+    assert_eq!(editor_command.apply_status.summary, "after Yazelix restart");
+
+    let terminal_config_mode = model_field(&model, "terminal.config_mode");
+    assert_eq!(
+        terminal_config_mode.apply_status.summary,
+        "after Yazelix restart"
+    );
+
+    let widget_tray = model_field(&model, "zellij.widget_tray");
+    assert_eq!(widget_tray.apply_status.summary, "after Yazelix restart");
+    assert!(
+        widget_tray
+            .apply_status
+            .detail
+            .contains("regenerates managed config")
+    );
+
+    let popup_width = model_field(&model, "zellij.popup_width_percent");
+    assert_eq!(popup_width.apply_status.summary, "after Yazelix restart");
+
+    let yazi_theme = model_field(&model, "yazi.theme");
+    assert_eq!(yazi_theme.apply_status.summary, "after pane reopen");
+}
+
+// Defends: Home Manager-owned settings are presented as activation-scoped even when the field's intrinsic apply mode is narrower.
+#[cfg(unix)]
+#[test]
+fn home_manager_owned_settings_use_activation_apply_mode() {
+    let runtime = tempdir().expect("runtime");
+    let config = tempdir().expect("config");
+    write_runtime_layout(runtime.path());
+    let hm_dir = config.path().join("profile-home-manager-files");
+    fs::create_dir_all(&hm_dir).expect("home manager dir");
+    let hm_settings = hm_dir.join("settings.jsonc");
+    fs::write(
+        &hm_settings,
+        render_default_settings_jsonc(&runtime.path().join("settings_default.jsonc")).unwrap(),
+    )
+    .expect("home manager settings");
+    std::os::unix::fs::symlink(&hm_settings, config.path().join("settings.jsonc"))
+        .expect("settings symlink");
+
+    let request = test_request(runtime.path(), config.path());
+    let model = build_config_ui_model(&request).expect("model");
+    let popup_width = model_field(&model, "zellij.popup_width_percent");
+
+    assert_eq!(model.config_owner, ConfigUiPathOwner::HomeManager);
+    assert_eq!(
+        popup_width.apply_status.summary,
+        "after Home Manager switch"
+    );
+    assert!(
+        popup_width
+            .apply_status
+            .detail
+            .contains("home-manager switch")
+    );
+}
+
+// Defends: the config UI consumes the shared native-config status labels instead of maintaining separate sidecar wording.
+#[test]
+fn model_includes_native_config_status_entries() {
+    let runtime = tempdir().expect("runtime");
+    let config = tempdir().expect("config");
+    write_runtime_layout(runtime.path());
+    let request = test_request(runtime.path(), config.path());
+
+    let model = build_config_ui_model(&request).expect("model");
+    let settings = model
+        .native_config_statuses
+        .iter()
+        .find(|status| status.surface == "settings.main")
+        .expect("settings status");
+
+    assert_eq!(settings.status, "canonical_settings");
+    assert_eq!(settings.label, "Canonical Yazelix settings");
+    assert!(
+        model
+            .native_config_statuses
+            .iter()
+            .any(|status| status.surface == "zellij.generated"
+                && status.status == "generated_runtime")
+    );
+}
+
+// Defends: enum-backed string lists use an enable/disable picker instead of forcing users to edit JSON arrays.
+#[test]
+fn enum_string_list_picker_toggles_subvalues_with_space() {
+    let runtime = tempdir().expect("runtime");
+    let config = tempdir().expect("config");
+    write_runtime_layout(runtime.path());
+    let settings_path = config.path().join("settings.jsonc");
+    let request = test_request(runtime.path(), config.path());
+    let model = build_config_ui_model(&request).expect("model");
+    let mut app = YazelixConfigUiApp::new(request, model);
+
+    select_field_path(&mut app, "terminal.terminals");
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+    let edit = app.edit.clone().expect("edit");
+    assert_eq!(edit.mode, ConfigUiEditMode::MultiChoice);
+    let details = lines_text(&app.render_details(UiRowRef::Field(edit.field_index)));
+    assert!(details.contains("> [x] ghostty"));
+    assert!(details.contains("  [ ] alacritty"));
+
+    app.handle_edit_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+    app.handle_edit_key(KeyEvent::new(KeyCode::Char('l'), KeyModifiers::NONE));
+    app.handle_edit_key(KeyEvent::new(KeyCode::Char('k'), KeyModifiers::NONE));
+    app.handle_edit_key(KeyEvent::new(KeyCode::Char('h'), KeyModifiers::NONE));
+    app.handle_edit_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+    app.handle_edit_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+    app.handle_edit_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+    app.handle_edit_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
+
+    let field = app.model.fields[edit.field_index].clone();
+    let input = app.edit.as_ref().expect("edit").input.clone();
+    assert_eq!(
+        parse_string_list_values(&field, &input).expect("values"),
+        vec!["ghostty", "wezterm", "alacritty"]
+    );
+
+    app.handle_edit_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+    assert!(app.edit.is_none());
+    let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
+    assert_eq!(
+        get_json_path(&value, "terminal.terminals"),
+        Some(&json!(["ghostty", "wezterm", "alacritty"]))
+    );
+}
+
+// Defends: bools keep direct choice edits while scalar enums use the single-select picker mode.
+#[test]
+fn edit_helpers_use_choice_modes_for_bool_and_enum() {
+    let bool_field = test_field("core.debug_mode", "bool", "true", &[]);
+    assert_eq!(field_bool_value(&bool_field), Some(true));
+    assert_eq!(edit_mode_for_field(&bool_field), ConfigUiEditMode::Choice);
+
+    let enum_field = test_field(
+        "zellij.tab_label_mode",
+        "string",
+        "\"compact\"",
+        &["short", "compact", "full"],
+    );
+    assert_eq!(edit_input_for_field(&enum_field), "compact");
+    assert_eq!(edit_mode_for_field(&enum_field), ConfigUiEditMode::Choice);
+}
+
+// Defends: bool edits stay direct controls while enum edit mode behaves like a single-select picker.
+#[test]
+fn choice_edit_keys_toggle_bool_and_move_enum_picker() {
+    let request = ConfigUiRequest {
+        runtime_dir: PathBuf::from("/runtime"),
+        config_dir: PathBuf::from("/home/lucca/.config/yazelix"),
+        config_override: None,
+    };
+    let model = ConfigUiModel {
+        active_config_path: PathBuf::from("/home/lucca/.config/yazelix/settings.jsonc"),
+        cursor_config_path: PathBuf::from(
+            "/home/lucca/.config/yazelix_ghostty_cursors/settings.jsonc",
+        ),
+        default_cursor_config_path: PathBuf::from("/runtime/yazelix_ghostty_cursors_default.toml"),
+        active_config_exists: true,
+        config_owner: ConfigUiPathOwner::User,
+        config_read_only: false,
+        tabs: vec!["general".to_string()],
+        fields: vec![
+            test_field("core.debug_mode", "bool", "true", &[]),
+            test_field(
+                "zellij.tab_label_mode",
+                "string",
+                "\"compact\"",
+                &["short", "compact", "full"],
+            ),
+        ],
+        sidecars: Vec::new(),
+        native_config_statuses: Vec::new(),
+        diagnostics: Vec::new(),
+    };
+    let mut app = YazelixConfigUiApp::new(request, model);
+    app.edit = Some(ConfigUiEditState {
+        field_index: 0,
+        input: "true".to_string(),
+        mode: ConfigUiEditMode::Choice,
+        choice_index: 0,
+    });
+
+    app.handle_edit_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+    assert_eq!(app.edit.as_ref().expect("bool edit").input, "false");
+
+    app.edit = Some(ConfigUiEditState {
+        field_index: 1,
+        input: "compact".to_string(),
+        mode: ConfigUiEditMode::Choice,
+        choice_index: 1,
+    });
+    app.handle_edit_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+    assert_eq!(app.edit.as_ref().expect("enum edit").choice_index, 2);
+    assert_eq!(app.edit.as_ref().expect("enum edit").input, "compact");
+    app.handle_edit_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
+    assert_eq!(app.edit.as_ref().expect("enum edit").input, "full");
+}
+
+// Defends: enum rows open a single-select picker that can be driven with hjkl and saved through the JSONC patcher.
+#[test]
+fn scalar_enum_enter_opens_single_select_picker() {
+    let runtime = tempdir().expect("runtime");
+    let config = tempdir().expect("config");
+    write_runtime_layout(runtime.path());
+    let settings_path = config.path().join("settings.jsonc");
+    let request = test_request(runtime.path(), config.path());
+    let model = build_config_ui_model(&request).expect("model");
+    let mut app = YazelixConfigUiApp::new(request, model);
+
+    select_field_path(&mut app, "terminal.config_mode");
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+    let edit = app.edit.clone().expect("edit");
+    assert_eq!(edit.mode, ConfigUiEditMode::Choice);
+    let details = lines_text(&app.render_details(UiRowRef::Field(edit.field_index)));
+    assert!(details.contains("> (x) yazelix"));
+    assert!(details.contains("  ( ) user"));
+
+    app.handle_edit_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+    let details = lines_text(&app.render_details(UiRowRef::Field(edit.field_index)));
+    assert!(details.contains("> ( ) user"));
+    app.handle_edit_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
+    let details = lines_text(&app.render_details(UiRowRef::Field(edit.field_index)));
+    assert!(details.contains("> (x) user"));
+
+    app.handle_edit_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+    assert!(app.edit.is_none());
+    let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
+    assert_eq!(
+        get_json_path(&value, "terminal.config_mode"),
+        Some(&json!("user"))
+    );
+}
+
+// Defends: Space remains a direct toggle for bools, but scalar selects open the picker instead of cycling blindly.
+#[test]
+fn scalar_enum_space_opens_picker_without_writing() {
+    let runtime = tempdir().expect("runtime");
+    let config = tempdir().expect("config");
+    write_runtime_layout(runtime.path());
+    let settings_path = config.path().join("settings.jsonc");
+    let request = test_request(runtime.path(), config.path());
+    let model = build_config_ui_model(&request).expect("model");
+    let mut app = YazelixConfigUiApp::new(request, model);
+
+    select_field_path(&mut app, "terminal.config_mode");
+    app.handle_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
+
+    let edit = app.edit.clone().expect("edit");
+    assert_eq!(edit.mode, ConfigUiEditMode::Choice);
+    let details = lines_text(&app.render_details(UiRowRef::Field(edit.field_index)));
+    assert!(details.contains("> (x) yazelix"));
+    assert!(!settings_path.exists());
+}
+
+// Defends: Enter on bool rows performs the direct control action instead of opening an edit session.
+#[test]
+fn enter_directly_applies_bool_field_without_edit_mode() {
+    let runtime = tempdir().expect("runtime");
+    let config = tempdir().expect("config");
+    write_runtime_layout(runtime.path());
+    let settings_path = config.path().join("settings.jsonc");
+    write_main_settings(runtime.path(), config.path(), |settings| {
+        settings["editor"]["hide_sidebar_on_file_open"] = json!(false);
+    });
+    let request = test_request(runtime.path(), config.path());
+    let model = build_config_ui_model(&request).expect("model");
+    let mut app = YazelixConfigUiApp::new(request, model);
+
+    select_field_path(&mut app, "editor.hide_sidebar_on_file_open");
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+    assert!(app.edit.is_none());
+    let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
+    assert_eq!(
+        get_json_path(&value, "editor.hide_sidebar_on_file_open"),
+        Some(&json!(true))
+    );
+}
+
+// Defends: UI edits use the same comment-preserving settings.jsonc patcher and validation path as `yzx config set`.
+#[test]
+fn write_field_value_patches_settings_jsonc_and_reloads_model() {
+    let runtime = tempdir().expect("runtime");
+    let config = tempdir().expect("config");
+    write_runtime_layout(runtime.path());
+    let settings_path = config.path().join("settings.jsonc");
+    write_main_settings_with_prefix(
+        runtime.path(),
+        config.path(),
+        "// keep this comment\n",
+        |settings| {
+            settings["editor"]["hide_sidebar_on_file_open"] = json!(false);
+        },
+    );
+    let request = test_request(runtime.path(), config.path());
+    let model = build_config_ui_model(&request).expect("model");
+    let mut app = YazelixConfigUiApp::new(request, model);
+
+    let outcome = app
+        .write_field_value("editor.hide_sidebar_on_file_open", &json!(true))
+        .expect("write");
+
+    assert_eq!(outcome.mutation, SettingsJsoncPatchMutation::Replaced);
+    let raw = fs::read_to_string(&settings_path).expect("settings raw");
+    assert!(raw.contains("// keep this comment"));
+    let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
+    assert_eq!(
+        get_json_path(&value, "editor.hide_sidebar_on_file_open"),
+        Some(&json!(true))
+    );
+    let field = model_field(&app.model, "editor.hide_sidebar_on_file_open");
+    assert_eq!(field.state, ConfigUiValueState::Explicit);
+    assert_eq!(field.current_value, "true");
+}
+
+// Regression: a save-time refresh failure remains visible as pending apply work instead of hiding the fact that the setting was already persisted.
+#[test]
+fn write_notice_keeps_saved_setting_visible_when_apply_fails() {
+    let outcome = ConfigUiWriteOutcome {
+        mutation: SettingsJsoncPatchMutation::Replaced,
+        apply_status: None,
+        apply_error: Some(
+            "Apply pending: Saved yazi.theme, but generated config refresh failed.".to_string(),
+        ),
+    };
+
+    let notice = write_notice_text("Saved", "yazi.theme", &outcome);
+
+    assert!(notice.contains("Saved yazi.theme."));
+    assert!(notice.contains("Apply pending"));
+    assert!(notice.contains("generated config refresh failed"));
+}
