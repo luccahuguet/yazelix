@@ -102,10 +102,13 @@ Out of scope:
 - Owner: `terminal_launcher.nu` and Rust terminal materialization
 - Statement: Ratty launch uses a generated `ratty.toml` config, passes it with
   `--config-file`, sets the Yazelix window title, and keeps Ratty's `-e`
-  command delimiter as the final flag before the startup script
+  command delimiter as the final flag before the startup script. On Linux,
+  packaged Ratty launches prefer the runtime-owned nixGL Vulkan wrapper because
+  Ratty's Bevy/wgpu renderer requires a Vulkan-capable adapter.
 - Verification: automated Rust tests in
   `rust_core/yazelix_core/src/launch_commands.rs`
-  (`ratty_launch_command_keeps_command_last`) and
+  (`ratty_launch_command_keeps_command_last`,
+  `ratty_launch_command_prefers_runtime_vulkan_wrapper`) and
   `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`
   (`terminal_materialization_generate_from_env_writes_generated_configs`)
 - Source: `docs/installation.md`; `docs/terminal_emulators.md`

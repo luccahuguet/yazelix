@@ -314,6 +314,7 @@ fn verify_profile_installed_runtime(
         .unwrap_or_else(|| "unknown".to_string());
     let runtime_terminal = match runtime_variant.as_str() {
         "wezterm" => "wezterm",
+        "ratty" => "ratty",
         _ => "ghostty",
     };
     let runtime_yzx_cli = runtime_root.join("shells").join("posix").join("yzx_cli.sh");
@@ -429,6 +430,15 @@ fn verify_profile_installed_runtime(
             "runtime tool `nixGLMesa`",
             errors,
         );
+        if runtime_terminal == "ratty"
+            && !runtime_libexec.join("nixVulkanMesa").exists()
+            && !runtime_libexec.join("nixVulkanIntel").exists()
+        {
+            errors.push(format!(
+                "Missing runtime tool `nixVulkanMesa` or `nixVulkanIntel`: {}",
+                runtime_libexec.display()
+            ));
+        }
         require_path_exists_abs(
             &runtime_libexec.join("pgrep"),
             "runtime tool `pgrep`",

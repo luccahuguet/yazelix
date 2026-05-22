@@ -9,6 +9,23 @@ pub(super) const X11_INSTANCE: &str = "yazelix";
 pub(super) const WINDOW_CLASS: &str = "com.yazelix.Yazelix";
 const SUPPORTED_TERMINALS: &[&str] = &["ghostty", "wezterm", "ratty", "kitty", "alacritty", "foot"];
 const DEFAULT_TERMINALS: &[&str] = &["ghostty", "wezterm"];
+const NIXGL_WRAPPER_CANDIDATES: &[&[&str]] = &[
+    &["libexec", "nixGL"],
+    &["libexec", "nixGLDefault"],
+    &["libexec", "nixGLMesa"],
+    &["libexec", "nixGLIntel"],
+    &["bin", "nixGLMesa"],
+    &["bin", "nixGLIntel"],
+];
+const NIX_VULKAN_WRAPPER_CANDIDATES: &[&[&str]] = &[
+    &["libexec", "nixVulkanMesa"],
+    &["libexec", "nixVulkanIntel"],
+    &["bin", "nixVulkanMesa"],
+    &["bin", "nixVulkanIntel"],
+];
+const HOST_NIXGL_COMMANDS: &[&str] = &["nixGL", "nixGLDefault", "nixGLMesa", "nixGLIntel"];
+const HOST_NIX_VULKAN_COMMANDS: &[&str] = &["nixVulkanMesa", "nixVulkanIntel"];
+
 pub(super) fn normalized_configured_terminals(config: &JsonMap<String, JsonValue>) -> Vec<String> {
     let raw = match config.get("terminals") {
         Some(JsonValue::Array(items)) => items
@@ -206,27 +223,43 @@ pub(super) fn current_platform_name() -> String {
         .unwrap_or_else(|| std::env::consts::OS.to_string())
 }
 
-pub(super) fn resolve_nixgl_wrapper(runtime_dir: &Path) -> Option<String> {
-    for relative in [
-        ["libexec", "nixGL"].as_slice(),
-        ["libexec", "nixGLDefault"].as_slice(),
-        ["libexec", "nixGLMesa"].as_slice(),
-        ["libexec", "nixGLIntel"].as_slice(),
-        ["bin", "nixGLMesa"].as_slice(),
-        ["bin", "nixGLIntel"].as_slice(),
-    ] {
+fn resolve_runtime_or_host_wrapper(
+    runtime_dir: &Path,
+    runtime_candidates: &[&[&str]],
+    host_commands: &[&str],
+) -> Option<String> {
+    for relative in runtime_candidates {
         let path = runtime_dir.join(relative.iter().collect::<PathBuf>());
         if path.is_file() {
             return Some(path.to_string_lossy().into_owned());
         }
     }
 
-    for command in ["nixGL", "nixGLDefault", "nixGLMesa", "nixGLIntel"] {
+    for command in host_commands {
         if find_command(command).is_some() {
-            return Some(command.to_string());
+            return Some((*command).to_string());
         }
     }
     None
+}
+
+pub(super) fn resolve_nixgl_wrapper(runtime_dir: &Path) -> Option<String> {
+    resolve_runtime_or_host_wrapper(runtime_dir, NIXGL_WRAPPER_CANDIDATES, HOST_NIXGL_COMMANDS)
+}
+
+fn resolve_nix_vulkan_wrapper(runtime_dir: &Path) -> Option<String> {
+    resolve_runtime_or_host_wrapper(
+        runtime_dir,
+        NIX_VULKAN_WRAPPER_CANDIDATES,
+        HOST_NIX_VULKAN_COMMANDS,
+    )
+}
+
+fn resolve_graphics_wrapper(runtime_dir: &Path, terminal: &str) -> Option<String> {
+    if terminal == "ratty" {
+        return resolve_nix_vulkan_wrapper(runtime_dir);
+    }
+    resolve_nixgl_wrapper(runtime_dir)
 }
 
 pub(super) fn maybe_prepend(argv: Vec<String>, wrapper: Option<String>) -> Vec<String> {
@@ -265,7 +298,7 @@ pub(super) fn build_launch_command_argv(
 
     let title = format!("Yazelix - {}", terminal_display_name(&terminal.terminal));
     let config_string = config_path.to_string_lossy().into_owned();
-    let nixgl = resolve_nixgl_wrapper(runtime_dir);
+    let graphics_wrapper = resolve_graphics_wrapper(runtime_dir, &terminal.terminal);
 
     let argv = match terminal.terminal.as_str() {
         "ghostty" => {
@@ -290,7 +323,7 @@ pub(super) fn build_launch_command_argv(
             ghostty.extend(working_dir_args);
             ghostty.push("-e".to_string());
             ghostty.push(startup_script.to_string_lossy().into_owned());
-            let ghostty = maybe_prepend(ghostty, nixgl);
+            let ghostty = maybe_prepend(ghostty, graphics_wrapper);
             let ghostty_wrapper = runtime_dir
                 .join("shells")
                 .join("posix")
@@ -313,7 +346,7 @@ pub(super) fn build_launch_command_argv(
             wezterm.extend(working_dir_args);
             wezterm.push("--".to_string());
             wezterm.push(startup_script.to_string_lossy().into_owned());
-            maybe_prepend(wezterm, nixgl)
+            maybe_prepend(wezterm, graphics_wrapper)
         }
         "ratty" => {
             let mut ratty = vec![
@@ -326,7 +359,7 @@ pub(super) fn build_launch_command_argv(
             ratty.extend(working_dir_args);
             ratty.push("-e".to_string());
             ratty.push(startup_script.to_string_lossy().into_owned());
-            maybe_prepend(ratty, nixgl)
+            maybe_prepend(ratty, graphics_wrapper)
         }
         "kitty" => {
             let mut kitty = vec![
@@ -337,7 +370,7 @@ pub(super) fn build_launch_command_argv(
             ];
             kitty.extend(working_dir_args);
             kitty.push(startup_script.to_string_lossy().into_owned());
-            maybe_prepend(kitty, nixgl)
+            maybe_prepend(kitty, graphics_wrapper)
         }
         "alacritty" => {
             let mut alacritty = vec![
@@ -352,7 +385,7 @@ pub(super) fn build_launch_command_argv(
             alacritty.extend(working_dir_args);
             alacritty.push("-e".to_string());
             alacritty.push(startup_script.to_string_lossy().into_owned());
-            maybe_prepend(alacritty, nixgl)
+            maybe_prepend(alacritty, graphics_wrapper)
         }
         "foot" => {
             let mut foot = vec![
@@ -364,7 +397,7 @@ pub(super) fn build_launch_command_argv(
             ];
             foot.extend(working_dir_args);
             foot.push(startup_script.to_string_lossy().into_owned());
-            maybe_prepend(foot, nixgl)
+            maybe_prepend(foot, graphics_wrapper)
         }
         other => {
             return Err(CoreError::usage(format!("Unknown terminal: {other}")));

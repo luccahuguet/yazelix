@@ -450,6 +450,48 @@ mod tests {
         );
     }
 
+    // Defends: Ratty's Bevy/wgpu renderer gets a Vulkan-capable nixGL wrapper instead of the OpenGL-only wrapper used by Ghostty.
+    #[test]
+    fn ratty_launch_command_prefers_runtime_vulkan_wrapper() {
+        let runtime = TempDir::new().unwrap();
+        let startup = runtime
+            .path()
+            .join("shells")
+            .join("posix")
+            .join("start_yazelix.sh");
+        let libexec = runtime.path().join("libexec");
+        fs::create_dir_all(startup.parent().unwrap()).unwrap();
+        fs::create_dir_all(&libexec).unwrap();
+        fs::write(&startup, "#!/bin/sh\n").unwrap();
+        fs::write(libexec.join("nixGLMesa"), "#!/bin/sh\n").unwrap();
+        fs::write(libexec.join("nixVulkanIntel"), "#!/bin/sh\n").unwrap();
+        let config_path = runtime.path().join("ratty.toml");
+
+        let argv = build_launch_command_argv(
+            runtime.path(),
+            &crate::runtime_contract::TerminalCandidate {
+                terminal: "ratty".to_string(),
+                name: "Ratty".to_string(),
+                command: "ratty".to_string(),
+            },
+            &config_path,
+            Path::new("/tmp"),
+        )
+        .unwrap();
+
+        let expected_wrapper = libexec
+            .join("nixVulkanIntel")
+            .to_string_lossy()
+            .into_owned();
+        assert_eq!(
+            argv.first().map(String::as_str),
+            Some(expected_wrapper.as_str())
+        );
+        assert_eq!(argv[1], "ratty");
+        assert_eq!(argv[argv.len() - 2], "-e");
+        assert_eq!(argv[argv.len() - 1], startup.to_string_lossy().as_ref());
+    }
+
     // Defends: missing terminal config keeps Ghostty as the default while preserving WezTerm as the first fallback.
     #[test]
     fn normalized_configured_terminals_defaults_to_ghostty_then_wezterm() {

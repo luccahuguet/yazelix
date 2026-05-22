@@ -38,15 +38,23 @@ let
       [ "ratty" ]
     else
       [ ];
-  linuxGlWrapperPackage =
+  linuxGraphicsWrappers =
     if pkgs.stdenv.hostPlatform.isLinux && (nixgl != null) then
-      (
-        import "${nixgl}/default.nix" {
-          pkgs = pkgs;
-          enable32bits = pkgs.stdenv.hostPlatform.isx86_64;
-          enableIntelX86Extensions = pkgs.stdenv.hostPlatform.isx86_64;
-        }
-      ).nixGLMesa
+      import "${nixgl}/default.nix" {
+        pkgs = pkgs;
+        enable32bits = pkgs.stdenv.hostPlatform.isx86_64;
+        enableIntelX86Extensions = pkgs.stdenv.hostPlatform.isx86_64;
+      }
+    else
+      null;
+  linuxGlWrapperPackage =
+    if linuxGraphicsWrappers != null then
+      linuxGraphicsWrappers.nixGLMesa
+    else
+      null;
+  linuxVulkanWrapperPackage =
+    if linuxGraphicsWrappers != null && runtimeVariant == "ratty" then
+      linuxGraphicsWrappers.nixVulkanMesa
     else
       null;
   makeTool =
@@ -236,6 +244,12 @@ let
     // lib.optionalAttrs (linuxGlWrapperPackage != null) {
       nixgl_mesa = makeTool {
         package = linuxGlWrapperPackage;
+        commands = [ ];
+      };
+    }
+    // lib.optionalAttrs (linuxVulkanWrapperPackage != null) {
+      nixvulkan_mesa = makeTool {
+        package = linuxVulkanWrapperPackage;
         commands = [ ];
       };
     }
