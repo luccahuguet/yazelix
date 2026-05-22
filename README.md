@@ -118,17 +118,17 @@ Temporary integration forks:
 - [yazelix-zellij](https://github.com/luccahuguet/yazelix-zellij) and [yazelix-yazi](https://github.com/luccahuguet/yazelix-yazi) — Default Ghostty-runtime source forks that restore Yazi image previews through Kitty graphics passthrough in Zellij; these forks are expected to be dropped and archived once upstream Zellij supports the required path directly enough for Yazelix to return to upstream packages
 
 ## Why Yazelix
-Yazelix is a reproducible terminal IDE that integrates Yazi + Zellij + Helix, delivering a consistent, fast "superterminal" locally or over SSH with zero manual setup through smart pane/layout orchestration, sidebar reveal/open flows, a curated built-in toolset, sane defaults, Helix/Zellij conflict cleanup, auto-configured tools like starship, zoxide, and carapace, and useful bundled tools such as `lazygit`
+Yazelix is a reproducible terminal IDE built around Zellij, Yazi, and your configured editor. It gives you one packaged workspace with a managed Yazi file tree, a stable editor pane, optional right agent sidebar, directional popup surfaces, and a fixed runtime toolset that behaves the same locally or over SSH
 
-It ships first-party Zellij and Yazi integrations through child packages, including the pane orchestrator, popup plugin, status bar, and Yazi file-tree assets
+The workspace is managed by pane identity instead of pane-scanning guesses. Opening from Yazi targets the managed editor, `yzx reveal` jumps the current file back into the file tree, and the `Alt+Shift+H/J/K/L` layer maps naturally to left sidebar, bottom popup, top popup, and right sidebar
 
-It has features like `reveal in Yazi` from Helix or Neovim, opening files from Yazi in your configured editor, and switching workspace layouts without leaving the workspace
+Configuration lives in JSONC at `~/.config/yazelix/settings.jsonc`, with `yzx config ui` providing Yazelix's ratconfig-backed settings editor for inspecting defaults, editing values, and understanding stale-field diagnostics
 
-Supports top terminals and popular shells, with Ghostty as the default packaged terminal for Yazelix cursor trails and Yazi image previews, WezTerm as an explicit alternate packaged variant, Kitty, Alacritty, and Foot as supported alternatives when present on the host `PATH`, and everything configured through `settings.jsonc` while the packaged runtime provides the fixed Yazelix toolset
+First-party child packages own focused pieces of the stack: screen rendering, Ghostty cursors, the Zellij bar, the popup plugin, the pane orchestrator wasm, and Yazi assets. The normal Yazelix package wires them together automatically
 
-Get everything running in less than 10 minutes with no extra dependencies beyond Nix
+Ghostty is the default packaged terminal for cursor trails and Yazi image previews, with temporary Yazelix Zellij/Yazi forks carrying the Kitty graphics passthrough until upstream support is enough to drop them. WezTerm is an explicit packaged alternate, and Kitty, Alacritty, and Foot remain supported when present on the host `PATH`
 
-Install once, get the same environment everywhere
+Install once with Nix, get the same managed workspace everywhere
 
 Want the docs front door? See [Yazelix Docs](./docs/README.md)
 
