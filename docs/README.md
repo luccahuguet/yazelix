@@ -37,7 +37,7 @@ For a small safe change, read these current-state surfaces before opening older
 audits or history:
 
 1. `AGENTS.md` for workflow, Beads, naming, verification, and push policy
-2. `bd prime` for live issue-tracker context
+2. `br ready` and `br show <id>` for live issue-tracker context
 3. [Architecture map](./architecture_map.md) for subsystem ownership
 4. [Current trimmed runtime contract](./contracts/v15_trimmed_runtime_contract.md) and [main config contract metadata](../config_metadata/main_config_contract.toml) for runtime/config boundaries
 5. [Test suite governance](./contracts/test_suite_governance.md) for validator and test-lane selection

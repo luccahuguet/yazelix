@@ -9,6 +9,7 @@ use std::time::Duration;
 
 const CONTRACT_START: &str = "2026-03-22T00:00:00Z";
 const GITHUB_TRANSIENT_RETRY_DELAY_MS: [u64; 3] = [250, 750, 1500];
+const BEADS_COMMAND: &str = "br";
 
 #[derive(Debug, Clone, Deserialize)]
 struct GithubIssue {
@@ -77,7 +78,7 @@ struct CommandFailure {
 
 pub fn run_issue_sync(repo_root: &Path, dry_run: bool) -> Result<IssueSyncSummary, String> {
     let github_issues = load_contract_github_issues()?;
-    let beads = load_contract_beads()?;
+    let beads = load_contract_beads(repo_root)?;
     let (actions, errors) = plan_issue_bead_reconciliation(&github_issues, &beads);
     if !errors.is_empty() {
         return Err(format!(
@@ -134,13 +135,13 @@ pub fn run_issue_sync(repo_root: &Path, dry_run: bool) -> Result<IssueSyncSummar
     for action in &mutating_actions {
         match action.kind.as_str() {
             "create" => {
-                let created = create_bead_from_github_issue(&action.issue)?;
+                let created = create_bead_from_github_issue(repo_root, &action.issue)?;
                 println!(
                     "  ✅ Created {} for GitHub issue #{}",
                     created.id, action.issue.number
                 );
                 if action.issue.state != "OPEN" {
-                    close_bead(&created.id, "Closed on GitHub")?;
+                    close_bead(repo_root, &created.id, "Closed on GitHub")?;
                     println!(
                         "  ✅ Closed {} to match GitHub issue #{}",
                         created.id, action.issue.number
@@ -148,7 +149,7 @@ pub fn run_issue_sync(repo_root: &Path, dry_run: bool) -> Result<IssueSyncSummar
                 }
             }
             "reopen" => {
-                reopen_bead(action.bead.as_ref().unwrap())?;
+                reopen_bead(repo_root, action.bead.as_ref().unwrap())?;
                 println!(
                     "  ✅ Reopened {} for GitHub issue #{}",
                     action.bead.as_ref().unwrap().id,
@@ -156,7 +157,11 @@ pub fn run_issue_sync(repo_root: &Path, dry_run: bool) -> Result<IssueSyncSummar
                 );
             }
             "close" => {
-                close_bead(&action.bead.as_ref().unwrap().id, "Closed on GitHub")?;
+                close_bead(
+                    repo_root,
+                    &action.bead.as_ref().unwrap().id,
+                    "Closed on GitHub",
+                )?;
                 println!(
                     "  ✅ Closed {} for GitHub issue #{}",
                     action.bead.as_ref().unwrap().id,
@@ -170,7 +175,7 @@ pub fn run_issue_sync(repo_root: &Path, dry_run: bool) -> Result<IssueSyncSummar
     export_beads_jsonl(repo_root)?;
 
     let refreshed_issues = load_contract_github_issues()?;
-    let refreshed_beads = load_contract_beads()?;
+    let refreshed_beads = load_contract_beads(repo_root)?;
     let comment_actions = collect_issue_comment_actions(&refreshed_issues, &refreshed_beads)?;
     let mutating_comment_actions = comment_actions
         .iter()
@@ -221,8 +226,33 @@ fn run_command_once(program: &str, args: &[&str]) -> Result<String, CommandFailu
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
+fn run_command_once_in_dir(
+    program: &str,
+    args: &[&str],
+    current_dir: &Path,
+) -> Result<String, CommandFailure> {
+    let output = Command::new(program)
+        .args(args)
+        .current_dir(current_dir)
+        .output()
+        .map_err(|error| CommandFailure {
+            message: format!("Failed to run {} {}: {}", program, args.join(" "), error),
+        })?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        return Err(CommandFailure {
+            message: format!("{} {} failed\n{}", program, args.join(" "), stderr),
+        });
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
 fn run_command(program: &str, args: &[&str]) -> Result<String, String> {
     run_command_once(program, args).map_err(|failure| failure.message)
+}
+
+fn run_beads_command(repo_root: &Path, args: &[&str]) -> Result<String, String> {
+    run_command_once_in_dir(BEADS_COMMAND, args, repo_root).map_err(|failure| failure.message)
 }
 
 fn run_github_read_command(args: &[&str]) -> Result<String, String> {
@@ -284,8 +314,8 @@ fn load_contract_github_issues() -> Result<Vec<GithubIssue>, String> {
         .map_err(|error| format!("Failed to parse GitHub issues JSON: {error}"))
 }
 
-fn load_contract_beads() -> Result<Vec<BeadIssue>, String> {
-    let raw = run_command("bd", &["list", "--all", "--limit", "0", "--json"])?;
+fn load_contract_beads(repo_root: &Path) -> Result<Vec<BeadIssue>, String> {
+    let raw = run_beads_command(repo_root, &["list", "--all", "--limit", "0", "--json"])?;
     let value: Value = serde_json::from_str(&raw)
         .map_err(|error| format!("Failed to parse Beads JSON: {error}"))?;
     let issues = value.get("issues").cloned().unwrap_or(value);
@@ -469,11 +499,14 @@ fn collect_issue_comment_actions(
     Ok(actions)
 }
 
-fn create_bead_from_github_issue(issue: &GithubIssue) -> Result<BeadIssue, String> {
+fn create_bead_from_github_issue(
+    repo_root: &Path,
+    issue: &GithubIssue,
+) -> Result<BeadIssue, String> {
     let issue_type = infer_issue_type_from_body(&issue.body);
     let description = build_imported_issue_description(issue);
-    let raw = run_command(
-        "bd",
+    let raw = run_beads_command(
+        repo_root,
         &[
             "create",
             &issue.title,
@@ -492,12 +525,16 @@ fn create_bead_from_github_issue(issue: &GithubIssue) -> Result<BeadIssue, Strin
         .map_err(|error| format!("Failed to parse created bead JSON: {error}"))
 }
 
-fn reopen_bead(bead: &BeadIssue) -> Result<(), String> {
-    run_command("bd", &["update", &bead.id, "--status", "open", "--json"]).map(|_| ())
+fn reopen_bead(repo_root: &Path, bead: &BeadIssue) -> Result<(), String> {
+    run_beads_command(
+        repo_root,
+        &["update", &bead.id, "--status", "open", "--json"],
+    )
+    .map(|_| ())
 }
 
-fn close_bead(bead_id: &str, reason: &str) -> Result<(), String> {
-    run_command("bd", &["close", bead_id, "--reason", reason, "--json"]).map(|_| ())
+fn close_bead(repo_root: &Path, bead_id: &str, reason: &str) -> Result<(), String> {
+    run_beads_command(repo_root, &["close", bead_id, "--reason", reason, "--json"]).map(|_| ())
 }
 
 fn create_issue_comment(action: &IssueCommentAction) -> Result<(), String> {
@@ -534,8 +571,19 @@ fn update_issue_comment(action: &IssueCommentAction) -> Result<(), String> {
 }
 
 fn export_beads_jsonl(repo_root: &Path) -> Result<(), String> {
-    let export_path = repo_root.join(".beads/issues.jsonl");
-    run_command("bd", &["export", "-o", export_path.to_str().unwrap()]).map(|_| ())
+    let beads_dir = repo_root.join(".beads");
+    let db_path = beads_dir.join("beads.db").to_string_lossy().to_string();
+    run_beads_command(
+        repo_root,
+        &[
+            "sync",
+            "--flush-only",
+            "--manifest",
+            "--db",
+            db_path.as_str(),
+        ],
+    )
+    .map(|_| ())
 }
 
 fn validate_issue_bead_contract(repo_root: &Path) -> Result<(), String> {

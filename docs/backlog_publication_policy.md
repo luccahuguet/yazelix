@@ -91,7 +91,7 @@ This file is a reviewed policy snapshot, not an auto-generated index. Refresh th
 Useful audit commands:
 
 ```bash
-bd list --status=open --limit 0 --json
+br list --status open --limit 0 --json
 nu .github/scripts/validate_issue_bead_contract.nu
 yzx dev sync_issues --dry-run
 ```

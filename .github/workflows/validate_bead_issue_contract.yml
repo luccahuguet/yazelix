@@ -13,7 +13,7 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     env:
-      BD_VERSION: v1.0.0
+      BR_VERSION: 0.2.11
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     steps:
       - name: Check out repository
@@ -26,39 +26,34 @@ jobs:
         with:
           version: "0.111.0"
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: "stable"
-          cache: false
-
-      - name: Cache bd tooling
+      - name: Cache br tooling
         uses: actions/cache@v5
         with:
           path: |
-            ~/go/bin/bd
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: bd-${{ runner.os }}-${{ env.BD_VERSION }}
+            ~/.cargo/bin/br
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: br-${{ runner.os }}-${{ env.BR_VERSION }}
           restore-keys: |
-            bd-${{ runner.os }}-
+            br-${{ runner.os }}-
 
-      - name: Install bd
+      - name: Install br
         run: |
           set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y libicu-dev
-          go_bin="$(go env GOPATH)/bin"
-          mkdir -p "$go_bin"
-          export PATH="$go_bin:$PATH"
-          if ! command -v bd >/dev/null 2>&1; then
-            go install github.com/steveyegge/beads/cmd/bd@${BD_VERSION}
+          rustup toolchain install nightly --profile minimal
+          cargo_bin="${CARGO_HOME:-$HOME/.cargo}/bin"
+          mkdir -p "$cargo_bin"
+          export PATH="$cargo_bin:$PATH"
+          nightly_cargo="$(rustup which --toolchain nightly cargo)"
+          nightly_rustc="$(rustup which --toolchain nightly rustc)"
+          if ! command -v br >/dev/null 2>&1 || ! br version --json | grep -q "\"version\":\"${BR_VERSION}\""; then
+            CARGO="$nightly_cargo" RUSTC="$nightly_rustc" "$nightly_cargo" install beads_rust --version "${BR_VERSION}" --locked --no-default-features
           fi
-          echo "$go_bin" >> "$GITHUB_PATH"
-          bd --version
+          echo "$cargo_bin" >> "$GITHUB_PATH"
+          br version
 
       - name: Initialize Beads database
-        run: bd init --from-jsonl --non-interactive --skip-agents --skip-hooks --quiet
+        run: br sync --import-only --rebuild --json
 
       - name: Validate contract
         env:

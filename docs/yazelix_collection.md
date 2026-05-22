@@ -129,7 +129,7 @@ Repo maintenance uses a broader maintainer toolchain than the end-user runtime s
 
 - [gh](https://cli.github.com/) — GitHub CLI for issues, PRs, and repo workflow.
 - [prek](https://github.com/j178/prek) — Fast local pre-commit hook runner used with the root [`.pre-commit-config.yaml`](../.pre-commit-config.yaml).
-- [Beads](https://github.com/steveyegge/beads) — Local issue tracker exposed through `bd` for planning, Beads/GitHub lifecycle sync, and durable agent context.
+- [Beads Rust](https://github.com/Dicklesworthstone/beads_rust) — Local issue tracker exposed through `br` for planning, Beads/GitHub lifecycle sync, and durable agent context.
 - [nu-lint](https://github.com/nushell/nu-lint) — Optional Nushell linter for explicit maintainer lint runs.
 - [fenix](https://github.com/nix-community/fenix) — Rust toolchain input used by the flake packages and maintainer shell.
 

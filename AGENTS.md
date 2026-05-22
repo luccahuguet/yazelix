@@ -4,17 +4,17 @@ This file is the single source of truth for agent workflow, coding conventions, 
 
 ## Beads Workflow
 
-Use Beads (`bd`) as the agent memory and triage layer for Yazelix work.
+Use Beads Rust (`br`) as the agent memory and triage layer for Yazelix work.
 
 - Use `AGENTS.md` as the single durable source of agent workflow rules and command-surface policy.
-- Use `bd ready` to find unblocked work and `bd prime` for agent-optimized context instead of manually reconstructing project state from `.beads`.
-- Use `bd` for all issue mutations: create, update, close, dependency management.
-- bd uses embedded Dolt (`.beads/embeddeddolt/`) as its storage backend — there is no separate DB/JSONL sync cycle. `bd export` and `bd import` handle JSONL interchange when needed.
-- Never fire `bd` write commands in parallel from multiple tools or subshells at once; bd uses file-level locking and a single-writer model.
-- Treat embedded-`bd` access as one-at-a-time in practice: even parallel read commands can trip the embedded Dolt lock. Serialize `bd` reads/writes unless you intentionally switch to a backend that supports concurrent access.
+- Use `br ready` to find unblocked work and `br show <id>` for detailed issue context instead of manually reconstructing project state from `.beads`.
+- Use `br` for all issue mutations: create, update, close, dependency management.
+- `br` uses `.beads/issues.jsonl` as the tracked durable interchange file and a local ignored SQLite database at `.beads/beads.db`.
+- Run `br sync --import-only --rebuild` after a fresh checkout or suspicious local database state, and `br sync --flush-only` before committing if you need an explicit JSONL refresh.
+- Never fire `br` write commands in parallel from multiple tools or subshells at once; serialize issue mutations and sync operations.
 - Treat scope boundaries strictly:
-  - `bd ready` and `bd prime` decide what to work on.
-  - `bd` updates issue state.
+  - `br ready`, `br list`, and `br show` decide what to work on.
+  - `br` updates issue state.
   - Coordination between multiple agents should use a separate coordination layer, not ad-hoc issue comments or long prompt memory.
 - Keep agent guidance short. Do not copy large issue graphs, long triage dumps, or project history into `AGENTS.md`; store dynamic state in Beads and regenerate it when needed.
 - For reusable Codex workflows, prefer the official Agent Skills model and OpenAI skills catalog (`https://github.com/openai/skills`) over copying large third-party guideline packs into this file.
@@ -89,8 +89,8 @@ When creating new files or directories, always use underscores to maintain consi
 - Keep the current publication boundary and reviewed internal-only backlog list in `docs/backlog_publication_policy.md`.
 - GitHub Actions must stay read-only with respect to Beads. Do not let CI mutate or commit `.beads/issues.jsonl`.
 - Sync GitHub issue state into Beads locally during normal maintainer work with `yzx dev sync_issues`; that command is also responsible for creating or repairing the canonical Beads comment on GitHub issues. Then commit the Beads changes on your branch.
-- Do not block on `yzx dev sync_issues` when it is slow or hanging. Prefer `bd` for Beads mutations whenever possible, continue the implementation work, and repair the GitHub/Beads contract afterward.
-- Use `bd export` and `bd import` for JSONL interchange when needed. bd uses embedded Dolt as its storage backend — there is no separate DB/JSONL sync cycle.
+- Do not block on `yzx dev sync_issues` when it is slow or hanging. Prefer `br` for Beads mutations whenever possible, continue the implementation work, and repair the GitHub/Beads contract afterward.
+- Use `br sync --flush-only`, `br sync --import-only --rebuild`, and `br sync --merge` for JSONL interchange when needed.
 
 ## Contract Workflow
 
@@ -133,7 +133,7 @@ When creating new files or directories, always use underscores to maintain consi
 
 - Treat a main-repo `flake.lock` update that consumes a child-repo change as a coupled release transaction, not as a local-only integration. Trivial child-only docs, tests, CI, or internal package changes can be handled in the child repo by themselves.
 - Local `--override-input` validation is only a development smoke test because it can pass against unpublished child commits. Before committing, closing beads, or pushing the main repo for a coupled change, push the child repo first, update the main `flake.lock` to that GitHub revision, and run the main validation without overrides.
-- Close Beads and run `bd dolt push` with the published main change, after manual test approval when the coupled runtime change is non-trivial. If the main lock update or no-overrides validation fails after the child push, leave the child commit published but unused unless the child repo itself needs a fix or revert.
+- Close Beads and flush `.beads/issues.jsonl` with the published main change, after manual test approval when the coupled runtime change is non-trivial. If the main lock update or no-overrides validation fails after the child push, leave the child commit published but unused unless the child repo itself needs a fix or revert.
 
 ## Rust Plugin Workflow
 
@@ -220,77 +220,74 @@ Use this for every extraction, cleanup, refactor, validator, generated-fixture, 
 
 ## Beads Workflow Integration
 
-This project uses [gastownhall/beads](https://github.com/gastownhall/beads) (`bd`) for issue tracking. Issues are stored in `.beads/` and tracked in git via Dolt's versioned storage.
+This project uses [beads_rust](https://github.com/Dicklesworthstone/beads_rust) (`br`) for issue tracking. Issues are stored in `.beads/issues.jsonl`; the local SQLite database is ignored and can be regenerated.
 
-### bd Commands for Issue Management
+### br Commands for Issue Management
 
 ```bash
-bd ready              # Show issues ready to work (no blockers)
-bd ready --explain    # Show WHY issues are or aren't ready
-bd list --status=open  # All open issues
-bd show <id>          # Full issue details with dependencies
-bd create "Title" -p 0 -t task    # Create a P0 task
-bd create "Title" --parent <id>   # Create child with parent
-bd update <id> --status=in_progress --claim   # Claim and start work
-bd close <id> --reason="Completed"
-bd close <id1> <id2>  # Close multiple issues at once
-bd dep add <child> <parent> --type parent-child  # Add dependency
-bd dep add <blocked> --blocked-by <blocker>     # Add blocks dep
-bd prime              # Agent-optimized workflow context
-bd graph <id>         # Dependency graph for an issue
-bd stale              # Show stale issues
-bd blocked            # Show blocked issues
-bd export              # Export issues to JSONL
-bd import <file>       # Import issues from JSONL
+br ready              # Show issues ready to work (no blockers)
+br list --status open  # All open issues
+br show <id>          # Full issue details with dependencies
+br create "Title" -p 0 -t task    # Create a P0 task
+br create "Title" --parent <id>   # Create child with parent
+br update <id> --status in_progress --claim   # Claim and start work
+br close <id> --reason "Completed"
+br close <id1> <id2>  # Close multiple issues at once
+br dep add <child> <parent> --type parent-child  # Add dependency
+br graph <id>         # Dependency graph for an issue
+br stale              # Show stale issues
+br blocked            # Show blocked issues
+br sync --flush-only  # Export local SQLite state to issues.jsonl
+br sync --import-only --rebuild  # Rebuild local SQLite from issues.jsonl
 ```
 
 ### Workflow Pattern
 
-1. **Triage**: Run `bd ready` to find unblocked work, `bd prime` for agent context
-2. **Claim**: Use `bd update <id> --status=in_progress --claim`
+1. **Triage**: Run `br ready` to find unblocked work and `br show <id>` for issue context
+2. **Claim**: Use `br update <id> --status in_progress --claim`
 3. **Work**: Implement the task
-4. **Complete**: Use `bd close <id> --reason="Completed"`
+4. **Complete**: Use `br close <id> --reason "Completed"`
 5. **Commit immediately**: After finishing a bead or a local fix, commit the completed change before starting unrelated work. Include `.beads/` changes with the code/docs/config changes they describe.
-6. **Sync**: `git add .beads/ && git commit` — Dolt versioning handles the rest
+6. **Sync**: `br sync --flush-only`, then `git add .beads/issues.jsonl .beads/metadata.json .beads/config.yaml .beads/.gitignore .beads/README.md`
 
 ### Key Concepts
 
-- **Dependencies**: Issues can block other issues. `bd ready` shows only unblocked work. `bd dep add <blocked> --blocked-by <blocker>` adds blocking deps.
+- **Dependencies**: Issues can block other issues. `br ready` shows only unblocked work. `br dep add <blocked> <blocker>` adds blocking deps.
 - **Priority**: P0=critical, P1=high, P2=medium, P3=low, P4=backlog (use numbers 0-4 or P0-P4 strings)
 - **Types**: task, bug, feature, epic, chore, decision
-- **Dotted IDs**: bd natively supports hierarchical IDs (e.g., `yazelix-qgj7.4.3.5`)
+- **Dotted IDs**: Beads supports hierarchical IDs (e.g., `yazelix-qgj7.4.3.5`)
 
 ### Session Protocol
 
 ```bash
 git status              # Check what changed
-git add .beads/         # Stage beads changes (Dolt auto-commits internally)
+git add .beads/         # Stage tracked Beads JSONL/config changes
 git add <files>         # Stage code changes
 git commit -m "..."     # Commit everything
 git push                # Push to remote
 ```
 
-<!-- end-bd-workflow -->
+<!-- end-br-workflow -->
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
 ## Beads Issue Tracker
 
-This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
+This project uses **br (beads_rust)** for issue tracking. Run `br ready` and `br show <id>` for workflow context.
 
 ### Quick Reference
 
 ```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --claim  # Claim work
-bd close <id>         # Complete work
+br ready              # Find available work
+br show <id>          # View issue details
+br update <id> --claim  # Claim work
+br close <id>         # Complete work
 ```
 
 ### Rules
 
-- Use `bd` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
-- Run `bd prime` for detailed command reference and session close protocol
-- Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
+- Use `br` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
+- Run `br ready`, `br list`, and `br show` for issue context
+- Use Beads notes/comments for persistent project knowledge — do NOT use MEMORY.md files
 
 ## Session Completion
 
@@ -304,7 +301,6 @@ bd close <id>         # Complete work
 4. **PUSH TO REMOTE** - Required only after the user has manually tested non-trivial changes, or immediately for trivial changes / when the user explicitly asks to push:
    ```bash
    git pull --rebase
-   bd dolt push
    git push
    git status  # MUST show "up to date with origin"
    ```
@@ -315,7 +311,7 @@ bd close <id>         # Complete work
 **CRITICAL RULES:**
 - Do not push non-trivial changes before user manual testing and explicit approval
 - Commit after finishing each bead or local fix before moving to unrelated work
-- Once a push is approved or otherwise required, finish it fully: `git pull --rebase`, `bd dolt push`, `git push`, then verify status
+- Once a push is approved or otherwise required, finish it fully: `git pull --rebase`, `git push`, then verify status. If Beads changed after the last commit, run `br sync --flush-only` and commit the JSONL before pushing.
 - Do not claim remote completion for unpushed work
 - If an approved push fails, resolve and retry until it succeeds
 <!-- END BEADS INTEGRATION -->

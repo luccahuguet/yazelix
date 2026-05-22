@@ -2,7 +2,7 @@
   pkgs,
   lib,
   fenixPkgs,
-  bdPackage,
+  brPackage,
   repoRoot,
   nixgl ? null,
 }:
@@ -25,7 +25,7 @@ let
     [ pkgs.github-cli ]
     ++ [ pkgs.nu-lint ]
     ++ [ pkgs.cargo-nextest ]
-    ++ [ bdPackage ]
+    ++ [ brPackage ]
     ++ [ rustWasiToolchain ]
     ++ [ openssl ];
   maintainerYzx = pkgs.writeShellScriptBin "yzx" ''

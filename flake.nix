@@ -50,9 +50,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.fenix.follows = "fenix";
     };
-    beads = {
-      url = "github:steveyegge/beads/v1.0.0";
-    };
     zjstatus = {
       url = "github:dj95/zjstatus";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -74,7 +71,6 @@
       yazelixYazi,
       yazelixZellijPaneOrchestrator,
       yazelixZellijPopup,
-      beads,
       zjstatus,
     }:
     let
@@ -205,17 +201,22 @@
             yazelixZellijPaneOrchestrator.packages.${system}.yazelix_zellij_pane_orchestrator;
           yazelix_zellij_popup = yazelixZellijPopup.packages.${system}.yzpp;
         };
+      beadsRustPackage =
+        system: pkgs:
+        import ./packaging/beads_rust.nix {
+          inherit pkgs;
+          rustPlatform = pkgs.makeRustPlatform {
+            cargo = fenix.packages.${system}.latest.cargo;
+            rustc = fenix.packages.${system}.latest.rustc;
+          };
+        };
       maintainerShell =
         system: pkgs:
         import ./maintainer_shell.nix {
           inherit pkgs nixgl;
           lib = nixpkgs.lib;
           fenixPkgs = fenix.packages.${system};
-          bdPackage = (pkgs.callPackage "${beads}/default.nix" { self = beads; }).overrideAttrs (old: {
-            vendorHash = "sha256-7DJgqJX2HDa9gcGD8fLNHLIXvGAEivYeDYx3snCUyCE=";
-            nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ pkgs.pkg-config ];
-            buildInputs = (old.buildInputs or [ ]) ++ [ pkgs.icu ];
-          });
+          brPackage = beadsRustPackage system pkgs;
           repoRoot = ./.;
         };
       ciValidationShell =
@@ -266,8 +267,11 @@
             yazelixZellijPaneOrchestrator.packages.${system}.yazelix_zellij_pane_orchestrator;
           yazelix_zellij_popup = yazelixZellijPopup.packages.${system}.yzpp;
           yazelix_yazi_assets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
+          beads_rust = beadsRustPackage system pkgs;
         in
         {
+          br = beads_rust;
+          beads_rust = beads_rust;
           default = yazelix_default;
           ghostty_cursor_shaders = yazelix_ghostty_cursors;
           runtime = runtime_default;

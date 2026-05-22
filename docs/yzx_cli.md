@@ -326,8 +326,8 @@ yzx env                       # Drop into configured shell with Yazelix tools
 yzx env --no-shell            # Load tools but stay in current shell
 yzx run lazygit              # Run single command and exit
 yzx run bash -lc "lazygit"   # Run through a shell
-yzx run bd ready             # Outside-shell fallback for Beads issue triage
-yzx run bd prime             # Outside-shell fallback for agent-oriented Beads context
+yzx run br ready             # Outside-shell fallback for Beads issue triage
+yzx run br show <issue-id>   # Outside-shell fallback for agent-oriented Beads context
 yzx keys                      # Show Yazelix-owned bindings and remaps
 yzx keys yazi                 # How to view Yazi's own bindings
 yzx keys hx                   # How to discover Helix bindings

@@ -55,7 +55,7 @@ rust_core/target/
 result
 result-*
 
-# Beads / Dolt files (added by bd init)
+# Local issue-tracker caches
 .dolt/
 *.db
 .beads-credential-key
