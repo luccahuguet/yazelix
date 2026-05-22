@@ -550,7 +550,7 @@ fn yzx_control_update_upstream_rejects_home_manager_owned_install() {
     assert!(stdout.contains("home-manager switch"));
 }
 
-// Regression: `yzx update upstream` must allow a plain profile-owned install instead of misclassifying ~/.nix-profile as Home Manager ownership.
+// Regression: `yzx update upstream` must allow a plain profile-owned install and report no-op upgrades instead of silently returning.
 #[test]
 fn yzx_control_update_upstream_accepts_profile_owned_install() {
     let fixture = managed_config_fixture("");
@@ -600,6 +600,7 @@ exit 99
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("Requested update path: default Nix profile."));
     assert!(stdout.contains("nix profile upgrade --refresh yazelix"));
+    assert!(stdout.contains("Yazelix is already up to date."));
     assert!(!stdout.contains("appears to be Home Manager-owned"));
     assert_eq!(
         fs::read_to_string(upgrade_log).unwrap(),

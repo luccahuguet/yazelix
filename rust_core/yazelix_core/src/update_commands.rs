@@ -190,6 +190,31 @@ fn resolve_active_yazelix_profile_entry_name(profile_json: &Value) -> Result<Str
     Err(1)
 }
 
+fn profile_entry_update_fingerprint(
+    profile_json: &Value,
+    profile_name: &str,
+) -> Option<(Option<String>, Vec<String>)> {
+    let entry = profile_json
+        .get("elements")?
+        .as_object()?
+        .get(profile_name)?;
+    let url = entry
+        .get("url")
+        .and_then(|value| value.as_str())
+        .map(str::to_owned);
+    let store_paths = entry
+        .get("storePaths")
+        .and_then(|value| value.as_array())
+        .map(|paths| {
+            paths
+                .iter()
+                .filter_map(|path| path.as_str().map(str::to_owned))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    Some((url, store_paths))
+}
+
 fn print_exact_command(command: &str) {
     println!("Running:");
     println!("  {command}");
@@ -426,6 +451,8 @@ pub fn run_yzx_update(args: &[String]) -> Result<i32, CoreError> {
                 Ok(n) => n,
                 Err(code) => return Ok(code),
             };
+            let before_update =
+                profile_entry_update_fingerprint(&profile_json, profile_name.as_str());
             let cmd_line = format!("nix profile upgrade --refresh {profile_name}");
             print_exact_command(&cmd_line);
 
@@ -443,6 +470,17 @@ pub fn run_yzx_update(args: &[String]) -> Result<i32, CoreError> {
             };
 
             if status.success() {
+                let after_profile_json = match load_default_profile_elements_json() {
+                    Ok(v) => v,
+                    Err(code) => return Ok(code),
+                };
+                let after_update =
+                    profile_entry_update_fingerprint(&after_profile_json, profile_name.as_str());
+                if before_update.is_some() && before_update == after_update {
+                    println!("✅ Yazelix is already up to date.");
+                } else {
+                    println!("✅ Yazelix profile updated.");
+                }
                 Ok(0)
             } else {
                 println!("❌ Upstream Yazelix update failed.");
