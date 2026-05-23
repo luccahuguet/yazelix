@@ -16,9 +16,16 @@ pub struct CanarySessionOptions {
 #[derive(Debug, Clone)]
 struct CanarySessionPlan {
     session_name: String,
+    temp_root: PathBuf,
     temp_home: PathBuf,
     workspace_dir: PathBuf,
     evidence_dir: PathBuf,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum CanaryLaunchOutcome {
+    SpawnFailed(String),
+    Exited { success: bool, code: Option<i32> },
 }
 
 pub fn run_disposable_canary_session(
@@ -41,24 +48,8 @@ pub fn run_disposable_canary_session(
     }
 
     let package_root = build_packaged_yazelix(repo_root)?;
-    fs::create_dir_all(&plan.temp_home).map_err(|error| {
-        format!(
-            "Failed to create canary HOME {}: {error}",
-            plan.temp_home.display()
-        )
-    })?;
-    fs::create_dir_all(&plan.workspace_dir).map_err(|error| {
-        format!(
-            "Failed to create canary workspace {}: {error}",
-            plan.workspace_dir.display()
-        )
-    })?;
-    fs::create_dir_all(&plan.evidence_dir).map_err(|error| {
-        format!(
-            "Failed to create canary evidence dir {}: {error}",
-            plan.evidence_dir.display()
-        )
-    })?;
+    kill_zellij_session(&package_root, &plan.session_name)?;
+    prepare_clean_canary_temp_root(&plan)?;
 
     println!("Canary session: {}", plan.session_name);
     println!("Temporary HOME: {}", plan.temp_home.display());
@@ -67,9 +58,8 @@ pub fn run_disposable_canary_session(
         "Quit Yazelix normally when the session has opened and the sidebar/editor are visible."
     );
 
-    kill_zellij_session(&package_root, &plan.session_name)?;
     let workspace_arg = plan.workspace_dir.to_string_lossy().into_owned();
-    let status = Command::new(package_root.join("bin").join("yzx"))
+    let launch = match Command::new(package_root.join("bin").join("yzx"))
         .args([
             "enter",
             "--path",
@@ -87,26 +77,26 @@ pub fn run_disposable_canary_session(
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
-        .map_err(|error| format!("Failed to launch packaged Yazelix canary session: {error}"))?;
-
-    capture_canary_doctor(&package_root, &plan)?;
-    validate_canary_generated_evidence(&plan)?;
-    if !options.keep_session {
-        kill_zellij_session(&package_root, &plan.session_name)?;
-    }
-    if status.success() {
-        println!(
-            "Canary completed. Evidence kept at {}",
-            plan.evidence_dir.display()
-        );
+    {
+        Ok(status) => CanaryLaunchOutcome::Exited {
+            success: status.success(),
+            code: status.code(),
+        },
+        Err(error) => CanaryLaunchOutcome::SpawnFailed(format!(
+            "Failed to launch packaged Yazelix canary session: {error}"
+        )),
+    };
+    let post_session_result = if matches!(launch, CanaryLaunchOutcome::Exited { .. }) {
+        run_canary_post_session_checks(&package_root, &plan)
+    } else {
+        Ok(())
+    };
+    let cleanup_result = if options.keep_session {
         Ok(())
     } else {
-        Err(format!(
-            "Canary session exited with status {}. Evidence kept at {}",
-            status.code().unwrap_or(1),
-            plan.evidence_dir.display()
-        ))
-    }
+        kill_zellij_session(&package_root, &plan.session_name)
+    };
+    finish_canary_session(&plan, launch, post_session_result, cleanup_result)
 }
 
 fn build_canary_session_plan(options: &CanarySessionOptions) -> Result<CanarySessionPlan, String> {
@@ -122,12 +112,60 @@ fn build_canary_session_plan(options: &CanarySessionOptions) -> Result<CanarySes
             "Invalid canary session name `{session_name}`. Use only ASCII letters, digits, `_`, or `-`."
         ));
     }
-    let temp_root = std::env::temp_dir().join(&session_name);
+    let temp_root = std::env::temp_dir()
+        .join("yazelix_canary_sessions")
+        .join(&session_name);
     Ok(CanarySessionPlan {
         session_name,
+        temp_root: temp_root.clone(),
         temp_home: temp_root.join("home"),
         workspace_dir: temp_root.join("workspace"),
         evidence_dir: temp_root.join("evidence"),
+    })
+}
+
+fn prepare_clean_canary_temp_root(plan: &CanarySessionPlan) -> Result<(), String> {
+    match fs::symlink_metadata(&plan.temp_root) {
+        Ok(metadata) if metadata.is_dir() => {
+            fs::remove_dir_all(&plan.temp_root).map_err(|error| {
+                format!(
+                    "Failed to remove stale canary temp root {}: {error}",
+                    plan.temp_root.display()
+                )
+            })?
+        }
+        Ok(_) => fs::remove_file(&plan.temp_root).map_err(|error| {
+            format!(
+                "Failed to remove stale canary temp root file {}: {error}",
+                plan.temp_root.display()
+            )
+        })?,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => {
+            return Err(format!(
+                "Failed to inspect canary temp root {}: {error}",
+                plan.temp_root.display()
+            ));
+        }
+    }
+
+    fs::create_dir_all(&plan.temp_home).map_err(|error| {
+        format!(
+            "Failed to create canary HOME {}: {error}",
+            plan.temp_home.display()
+        )
+    })?;
+    fs::create_dir_all(&plan.workspace_dir).map_err(|error| {
+        format!(
+            "Failed to create canary workspace {}: {error}",
+            plan.workspace_dir.display()
+        )
+    })?;
+    fs::create_dir_all(&plan.evidence_dir).map_err(|error| {
+        format!(
+            "Failed to create canary evidence dir {}: {error}",
+            plan.evidence_dir.display()
+        )
     })
 }
 
@@ -180,6 +218,69 @@ fn capture_canary_doctor(package_root: &Path, plan: &CanarySessionPlan) -> Resul
         ));
     }
     Ok(())
+}
+
+fn run_canary_post_session_checks(
+    package_root: &Path,
+    plan: &CanarySessionPlan,
+) -> Result<(), String> {
+    let mut errors = Vec::new();
+    if let Err(error) = capture_canary_doctor(package_root, plan) {
+        errors.push(error);
+    }
+    if let Err(error) = validate_canary_generated_evidence(plan) {
+        errors.push(error);
+    }
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors.join("\n"))
+    }
+}
+
+fn finish_canary_session(
+    plan: &CanarySessionPlan,
+    launch: CanaryLaunchOutcome,
+    post_session_result: Result<(), String>,
+    cleanup_result: Result<(), String>,
+) -> Result<(), String> {
+    let mut details = Vec::new();
+    if let Err(error) = post_session_result {
+        details.push(format!("Post-session validation failed: {error}"));
+    }
+    if let Err(error) = cleanup_result {
+        details.push(format!("Canary Zellij cleanup failed: {error}"));
+    }
+
+    let mut message = match launch {
+        CanaryLaunchOutcome::SpawnFailed(error) => {
+            format!("{error}. Evidence kept at {}", plan.evidence_dir.display())
+        }
+        CanaryLaunchOutcome::Exited { success: true, .. } if details.is_empty() => {
+            println!(
+                "Canary completed. Evidence kept at {}",
+                plan.evidence_dir.display()
+            );
+            return Ok(());
+        }
+        CanaryLaunchOutcome::Exited { success: true, .. } => format!(
+            "Canary session exited normally, but validation or cleanup failed. Evidence kept at {}",
+            plan.evidence_dir.display()
+        ),
+        CanaryLaunchOutcome::Exited {
+            success: false,
+            code,
+        } => format!(
+            "Canary session exited with status {}. Evidence kept at {}",
+            code.unwrap_or(1),
+            plan.evidence_dir.display()
+        ),
+    };
+    if !details.is_empty() {
+        message.push('\n');
+        message.push_str(&details.join("\n"));
+    }
+    Err(message)
 }
 
 fn validate_canary_generated_evidence(plan: &CanarySessionPlan) -> Result<(), String> {
@@ -316,6 +417,17 @@ fn kill_zellij_session(package_root: &Path, session_name: &str) -> Result<(), St
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::tempdir;
+
+    fn test_canary_plan(temp_root: &Path) -> CanarySessionPlan {
+        CanarySessionPlan {
+            session_name: "yazelix-canary-test".to_string(),
+            temp_root: temp_root.to_path_buf(),
+            temp_home: temp_root.join("home"),
+            workspace_dir: temp_root.join("workspace"),
+            evidence_dir: temp_root.join("evidence"),
+        }
+    }
 
     // Defends: the disposable session canary uses a named Zellij session so cleanup cannot target the user's active session.
     #[test]
@@ -328,6 +440,10 @@ mod tests {
         .unwrap();
 
         assert_eq!(plan.session_name, "yazelix-canary-test");
+        assert!(
+            plan.temp_root
+                .ends_with("yazelix_canary_sessions/yazelix-canary-test")
+        );
         assert!(plan.temp_home.ends_with("yazelix-canary-test/home"));
     }
 
@@ -342,6 +458,67 @@ mod tests {
         .unwrap_err();
 
         assert!(err.contains("Invalid canary session name"));
+    }
+
+    // Regression: reusing an explicit canary session name must not let stale generated evidence satisfy a later run.
+    #[test]
+    fn prepare_clean_canary_temp_root_removes_stale_evidence() {
+        let temp = tempdir().unwrap();
+        let root = temp.path().join("canary");
+        let plan = test_canary_plan(&root);
+        fs::create_dir_all(&plan.evidence_dir).unwrap();
+        let stale_evidence = plan.evidence_dir.join("generated_assets.txt");
+        fs::write(&stale_evidence, "stale").unwrap();
+
+        prepare_clean_canary_temp_root(&plan).unwrap();
+
+        assert!(!stale_evidence.exists());
+        assert!(plan.temp_home.is_dir());
+        assert!(plan.workspace_dir.is_dir());
+        assert!(plan.evidence_dir.is_dir());
+    }
+
+    // Regression: a failed launch must remain the primary error even when later evidence checks also fail.
+    #[test]
+    fn canary_finish_reports_launch_status_before_post_session_errors() {
+        let temp = tempdir().unwrap();
+        let plan = test_canary_plan(temp.path());
+
+        let err = finish_canary_session(
+            &plan,
+            CanaryLaunchOutcome::Exited {
+                success: false,
+                code: Some(23),
+            },
+            Err("missing generated assets".to_string()),
+            Ok(()),
+        )
+        .unwrap_err();
+
+        assert!(err.starts_with("Canary session exited with status 23."));
+        assert!(err.contains("Post-session validation failed: missing generated assets"));
+    }
+
+    // Regression: post-session validation failures must not hide cleanup failures.
+    #[test]
+    fn canary_finish_reports_cleanup_failure_after_validation_failure() {
+        let temp = tempdir().unwrap();
+        let plan = test_canary_plan(temp.path());
+
+        let err = finish_canary_session(
+            &plan,
+            CanaryLaunchOutcome::Exited {
+                success: true,
+                code: Some(0),
+            },
+            Err("doctor failed".to_string()),
+            Err("cleanup failed".to_string()),
+        )
+        .unwrap_err();
+
+        assert!(err.starts_with("Canary session exited normally"));
+        assert!(err.contains("Post-session validation failed: doctor failed"));
+        assert!(err.contains("Canary Zellij cleanup failed: cleanup failed"));
     }
 
     // Defends: canary evidence checks cover the generated plugin, popup, sidebar, and Yazi editor contracts instead of only checking files exist.
