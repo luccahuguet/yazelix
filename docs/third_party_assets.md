@@ -9,6 +9,6 @@
 - Yazelix style: `magician`
 - Permission: maintainer confirmed Yazelix may use the GIF with attribution on 2026-05-22
 
-The runtime derivative is generated from the source GIF as sampled PNG frames so
-Yazelix can render the animation through Kitty graphics without network access,
-an external image converter, or a GIF decoder dependency at startup.
+The runtime derivative is generated from the source GIF as coalesced PNG frames
+so Yazelix can render the animation through Kitty graphics without network
+access, an external image converter, or a GIF decoder dependency at startup.

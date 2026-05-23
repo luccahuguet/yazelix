@@ -29,9 +29,11 @@ const ANSI_PURPLE: &str = "\u{1b}[35m";
 const ANSI_RESET: &str = "\u{1b}[0m";
 const ANSI_FAINT: &str = "\u{1b}[2m";
 const ASCII_MAGICIAN_ATTRIBUTION: &str = "ascii magician GIF by 1mposter";
-const ASCII_MAGICIAN_FRAME_COUNT: usize = 66;
+const ASCII_MAGICIAN_FRAME_COUNT: usize = 198;
 const ASCII_MAGICIAN_FRAME_DELAY_MS: u64 = 90;
 const ASCII_MAGICIAN_FRAME_DIR: &str = "assets/third_party/ascii_magician_1mposter_frames";
+const ASCII_MAGICIAN_EDGE_INSET_COLUMNS: usize = 4;
+const ASCII_MAGICIAN_EDGE_INSET_ROWS: usize = 4;
 const KITTY_MAGICIAN_IMAGE_ID_BASE: u32 = 7_930_000;
 
 const GAME_OF_LIFE_RANDOM_POOL: &[&str] = &[
@@ -524,19 +526,27 @@ fn base64_encode_bytes(bytes: &[u8]) -> String {
 
 fn kitty_png_file_command(image_id: u32, columns: usize, rows: usize, path: &Path) -> String {
     let payload = base64_encode_bytes(path.to_string_lossy().as_bytes());
-    format!("\u{1b}_Ga=T,f=100,t=f,i={image_id},p=1,c={columns},r={rows},C=1,q=2;{payload}\u{1b}\\")
+    format!(
+        "\u{1b}_Ga=T,f=100,t=f,i={image_id},p=1,c={columns},r={rows},C=1,z=-1,q=2;{payload}\u{1b}\\"
+    )
 }
 
 fn kitty_delete_image_command(image_id: u32) -> String {
-    format!("\u{1b}_Ga=d,d=I,i={image_id},q=2;\u{1b}\\")
+    format!(
+        "\u{1b}_Ga=d,d=i,i={image_id},p=1,q=2;\u{1b}\\\
+         \u{1b}_Ga=d,d=I,i={image_id},q=2;\u{1b}\\"
+    )
 }
 
 fn ascii_magician_graphics_layout(width: usize, height: usize) -> (usize, usize, usize, usize) {
-    let available_rows = height.saturating_sub(5).max(1);
-    let rows = available_rows
-        .min(width.saturating_sub(2).max(1) / 2)
+    let available_rows = height
+        .saturating_sub(ASCII_MAGICIAN_EDGE_INSET_ROWS.saturating_mul(2) + 1)
         .max(1);
-    let columns = rows.saturating_mul(2).min(width.saturating_sub(2).max(1));
+    let available_columns = width
+        .saturating_sub(ASCII_MAGICIAN_EDGE_INSET_COLUMNS.saturating_mul(2))
+        .max(1);
+    let rows = available_rows.min(available_columns.max(2) / 2).max(1);
+    let columns = rows.saturating_mul(2).min(available_columns);
     let top_padding = height.saturating_sub(rows + 1) / 2;
     let left_padding = width.saturating_sub(columns) / 2;
     (columns, rows, top_padding, left_padding)
@@ -637,11 +647,13 @@ fn run_ascii_magician_graphics_screen(runtime_dir: &Path) -> Result<i32, CoreErr
         }
         Ok(())
     })();
-    let cleanup_result = cleanup_ascii_magician_graphics(image_id);
+    let cleanup_before_leave = cleanup_ascii_magician_graphics(image_id);
     let leave_result = leave_screen_mode();
+    let cleanup_after_leave = cleanup_ascii_magician_graphics(image_id);
     result?;
-    cleanup_result?;
+    cleanup_before_leave?;
     leave_result?;
+    cleanup_after_leave?;
     Ok(0)
 }
 
@@ -1318,19 +1330,55 @@ mod tests {
             ascii_magician_frame_path(runtime_dir, ASCII_MAGICIAN_FRAME_COUNT),
             ascii_magician_frame_path(runtime_dir, 0)
         );
+        assert_eq!(
+            ascii_magician_frame_path(runtime_dir, ASCII_MAGICIAN_FRAME_COUNT - 1),
+            PathBuf::from(
+                "/runtime/assets/third_party/ascii_magician_1mposter_frames/frame_197.png"
+            )
+        );
         assert_eq!(base64_encode_bytes(b"hello"), "aGVsbG8=");
 
         let command = kitty_png_file_command(123, 80, 40, Path::new("/tmp/frame.png"));
-        assert!(command.starts_with("\u{1b}_Ga=T,f=100,t=f,i=123,p=1,c=80,r=40,C=1,q=2;"));
+        assert!(command.starts_with("\u{1b}_Ga=T,f=100,t=f,i=123,p=1,c=80,r=40,C=1,z=-1,q=2;"));
         assert!(command.contains("L3RtcC9mcmFtZS5wbmc="));
         assert!(command.ends_with("\u{1b}\\"));
+
+        let delete_command = kitty_delete_image_command(123);
+        assert!(delete_command.contains("\u{1b}_Ga=d,d=i,i=123,p=1,q=2;\u{1b}\\"));
+        assert!(delete_command.contains("\u{1b}_Ga=d,d=I,i=123,q=2;\u{1b}\\"));
+    }
+
+    // Regression: the checked-in magician derivative must keep the full coalesced GIF motion instead of collapsing to a handful of repeated frames.
+    #[test]
+    fn magician_derivative_keeps_all_unique_gif_frames() {
+        let frame_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join(ASCII_MAGICIAN_FRAME_DIR);
+        let mut unique_frames = std::collections::HashSet::new();
+
+        for frame_index in 0..ASCII_MAGICIAN_FRAME_COUNT {
+            let frame_path = frame_dir.join(format!("frame_{frame_index:03}.png"));
+            assert!(frame_path.is_file(), "missing {}", frame_path.display());
+            unique_frames
+                .insert(std::fs::read(&frame_path).unwrap_or_else(|err| {
+                    panic!("failed to read {}: {err}", frame_path.display())
+                }));
+        }
+
+        assert_eq!(unique_frames.len(), ASCII_MAGICIAN_FRAME_COUNT);
+        assert!(
+            !frame_dir
+                .join(format!("frame_{ASCII_MAGICIAN_FRAME_COUNT:03}.png"))
+                .exists()
+        );
     }
 
     // Regression: the magician GIF must stay close to the original square bitmap proportions in a full pane.
     #[test]
     fn magician_graphics_layout_preserves_square_image_shape() {
-        assert_eq!(ascii_magician_graphics_layout(120, 40), (70, 35, 2, 25));
-        assert_eq!(ascii_magician_graphics_layout(190, 60), (110, 55, 2, 40));
+        assert_eq!(ascii_magician_graphics_layout(120, 40), (62, 31, 4, 29));
+        assert_eq!(ascii_magician_graphics_layout(190, 60), (102, 51, 4, 44));
     }
 
     // Regression: inline welcome playback trims trailing padding so centered frames do not trigger terminal autowrap artifacts.
