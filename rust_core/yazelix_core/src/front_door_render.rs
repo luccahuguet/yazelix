@@ -42,7 +42,7 @@ const GAME_OF_LIFE_RANDOM_POOL: &[&str] = &[
     "game_of_life_bloom",
 ];
 const BOIDS_RANDOM_POOL: &[&str] = &["boids_predator", "boids_schools"];
-const RANDOM_ANIMATION_FAMILY_COUNT: usize = 3;
+const RANDOM_ANIMATION_FAMILY_COUNT: usize = 4;
 
 #[derive(Debug, Clone, Deserialize)]
 struct AsciiArtData {
@@ -105,6 +105,7 @@ fn assert_random_animation_pool_is_allowed(allowed: &[&str]) {
         .iter()
         .chain(BOIDS_RANDOM_POOL.iter())
         .chain(["mandelbrot"].iter())
+        .chain(["magician"].iter())
     {
         if !allowed
             .iter()
@@ -129,7 +130,8 @@ fn resolve_random_animation_style(allowed: &[&str], random_index: Option<usize>)
     match family {
         0 => GAME_OF_LIFE_RANDOM_POOL[family_index % GAME_OF_LIFE_RANDOM_POOL.len()].to_string(),
         1 => BOIDS_RANDOM_POOL[family_index % BOIDS_RANDOM_POOL.len()].to_string(),
-        _ => "mandelbrot".to_string(),
+        2 => "mandelbrot".to_string(),
+        _ => "magician".to_string(),
     }
 }
 
@@ -1147,24 +1149,26 @@ mod tests {
     }
 
     // Test lane: default
-    // Defends: `yzx screen random` rotates across retained animation families instead of getting stuck in Game of Life variants.
+    // Defends: `yzx screen random` rotates through the same retained animation pool as welcome random.
     #[test]
     fn random_screen_style_rotates_across_animation_families() {
         let mut game_of_life_count = 0;
         let mut boids_count = 0;
         let mut mandelbrot_count = 0;
+        let mut magician_count = 0;
 
-        for index in 0..18 {
+        for index in 0..24 {
             let resolved = resolve_screen_style(Some("random"), Some(index)).unwrap();
             assert_ne!(resolved, "static");
             assert_ne!(resolved, "logo");
-            assert_ne!(resolved, "magician");
             if is_game_of_life_style(&resolved) {
                 game_of_life_count += 1;
             } else if is_boids_style(&resolved) {
                 boids_count += 1;
             } else if resolved == "mandelbrot" {
                 mandelbrot_count += 1;
+            } else if resolved == "magician" {
+                magician_count += 1;
             } else {
                 panic!("unexpected random screen style: {resolved}");
             }
@@ -1173,21 +1177,22 @@ mod tests {
         assert_eq!(game_of_life_count, 6);
         assert_eq!(boids_count, 6);
         assert_eq!(mandelbrot_count, 6);
+        assert_eq!(magician_count, 6);
     }
 
-    // Defends: welcome random splits selection evenly across Game of Life, boids, and Mandelbrot families while excluding explicit non-random styles.
+    // Defends: welcome random splits selection evenly across Game of Life, boids, Mandelbrot, and magician families while excluding static/logo.
     #[test]
     fn random_welcome_style_rotates_evenly_across_animation_families() {
         let mut game_of_life_count = 0;
         let mut boids_count = 0;
         let mut mandelbrot_count = 0;
+        let mut magician_count = 0;
         let mut boids_styles = Vec::new();
 
-        for index in 0..18 {
+        for index in 0..24 {
             let resolved = resolve_welcome_style("random", Some(index)).unwrap();
             assert_ne!(resolved, "static");
             assert_ne!(resolved, "logo");
-            assert_ne!(resolved, "magician");
             if is_game_of_life_style(&resolved) {
                 game_of_life_count += 1;
             } else if is_boids_style(&resolved) {
@@ -1195,6 +1200,8 @@ mod tests {
                 boids_styles.push(resolved);
             } else if resolved == "mandelbrot" {
                 mandelbrot_count += 1;
+            } else if resolved == "magician" {
+                magician_count += 1;
             } else {
                 panic!("unexpected random welcome style: {resolved}");
             }
@@ -1203,6 +1210,7 @@ mod tests {
         assert_eq!(game_of_life_count, 6);
         assert_eq!(boids_count, 6);
         assert_eq!(mandelbrot_count, 6);
+        assert_eq!(magician_count, 6);
         assert_eq!(
             boids_styles,
             BOIDS_RANDOM_POOL
@@ -1244,7 +1252,7 @@ mod tests {
         }
     }
 
-    // Defends: the attributed GIF-derived magician style is an explicit welcome and screen style, not an implicit random pick.
+    // Defends: the attributed GIF-derived magician style is explicit and participates in the shared random pool.
     #[test]
     fn magician_is_available_to_welcome_and_screen() {
         assert_eq!(
@@ -1252,16 +1260,16 @@ mod tests {
             "magician"
         );
         assert_eq!(resolve_welcome_style("magician", None).unwrap(), "magician");
-        for index in 0..18 {
-            assert_ne!(
-                resolve_screen_style(Some("random"), Some(index)).unwrap(),
-                "magician"
-            );
-            assert_ne!(
-                resolve_welcome_style("random", Some(index)).unwrap(),
-                "magician"
-            );
+        let mut welcome_random_included_magician = false;
+        let mut screen_random_included_magician = false;
+        for index in 0..24 {
+            screen_random_included_magician |=
+                resolve_screen_style(Some("random"), Some(index)).unwrap() == "magician";
+            welcome_random_included_magician |=
+                resolve_welcome_style("random", Some(index)).unwrap() == "magician";
         }
+        assert!(screen_random_included_magician);
+        assert!(welcome_random_included_magician);
     }
 
     // Regression: wide terminals must not let the logo welcome card stretch to a near-full-width frame.

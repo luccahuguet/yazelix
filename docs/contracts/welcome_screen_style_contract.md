@@ -16,9 +16,10 @@ The retained public shape is:
   `game_of_life_gliders`, `game_of_life_oscillators`,
   `game_of_life_bloom`, and `random`
 - `yzx screen` keeps the same animated surface except `static`
-- welcome `random` splits evenly across Game of Life, boids, and Mandelbrot
-  families while never choosing `static`, `logo`, or `magician`
-- `yzx screen random` remains the direct Game of Life preview selector
+- welcome `random` splits evenly across Game of Life, boids, Mandelbrot, and
+  magician families while never choosing `static` or `logo`
+- `yzx screen random` uses the same animation-family pool as welcome `random`
+  while never choosing `static` or `logo`
 - `boids` remains an alias for `boids_predator`
 
 ## Scope
@@ -54,7 +55,7 @@ Out of scope:
 | `game_of_life_gliders` | yes | yes | live | retained default-family live simulation variant |
 | `game_of_life_oscillators` | yes | yes | live | retained default-family live simulation variant |
 | `game_of_life_bloom` | yes | yes | live | retained default-family live simulation variant |
-| `random` | yes | yes | live | welcome picks one retained animation family; `yzx screen` picks one retained Game of Life variant |
+| `random` | yes | yes | live | welcome and `yzx screen` pick from the same retained animation-family pool including `magician` |
 | `game_of_life` | no | no | deleted compatibility alias | do not revive without an explicit contract change |
 
 ## Contract Items
@@ -76,12 +77,14 @@ Out of scope:
 - Type: behavior
 - Status: live
 - Owner: Rust random-pool policy in `front_door_render.rs`
-- Statement: welcome `random` splits evenly across the Game of Life, boids,
-  and Mandelbrot families. The Game of Life family rotates through
+- Statement: welcome `random` and `yzx screen random` split evenly across the
+  same Game of Life, boids, Mandelbrot, and magician families. The Game of Life
+  family rotates through
   `game_of_life_gliders`, `game_of_life_oscillators`, and
   `game_of_life_bloom`; the boids family rotates through `boids_predator`,
   and `boids_schools`; the Mandelbrot family resolves to
-  `mandelbrot`. It is not a bucket over `static`, `logo`, or `magician`
+  `mandelbrot`; the magician family resolves to `magician`. It is not a
+  bucket over `static` or `logo`
 - Verification: automated Rust `front_door_render` tests;
   validator `yzx_repo_validator validate-contracts`
 
