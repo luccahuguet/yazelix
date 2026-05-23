@@ -200,24 +200,6 @@ pub(super) fn build_nix_file_output_path(
     Ok(path)
 }
 
-pub(super) fn validate_rust_routed_nu_modules(
-    runtime_root: &Path,
-    label: &str,
-    errors: &mut Vec<String>,
-) {
-    let scripts_dir = runtime_root.join("nushell").join("scripts");
-    for relative_path in [["yzx", "menu.nu"]] {
-        let path = scripts_dir.join(relative_path.iter().collect::<PathBuf>());
-        if !path.exists() {
-            errors.push(format!(
-                "Missing {} Rust-routed Nu module: {}",
-                label,
-                path.display()
-            ));
-        }
-    }
-}
-
 fn command_stderr(output: &Output) -> String {
     String::from_utf8_lossy(&output.stderr).trim().to_string()
 }

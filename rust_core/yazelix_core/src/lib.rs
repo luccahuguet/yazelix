@@ -27,12 +27,12 @@ pub mod import_commands;
 pub mod initializer_commands;
 pub mod install_ownership_env;
 pub mod install_ownership_report;
-pub mod internal_nu_runner;
 pub mod keys_commands;
 pub mod launch_commands;
 pub mod launch_materialization;
 pub mod layout_family_contract;
 pub mod managed_user_config_stubs;
+pub mod menu_commands;
 pub mod native_config_status;
 pub mod onboard_commands;
 pub mod pane_orchestrator_client;
@@ -131,6 +131,7 @@ pub use launch_materialization::{
     LaunchMaterializationData, LaunchMaterializationRequest,
     launch_materialization_request_from_env, prepare_launch_materialization,
 };
+pub use menu_commands::run_yzx_menu;
 pub use native_config_status::{
     NativeConfigStatusCode, NativeConfigStatusEntry, NativeConfigStatusRequest,
     classify_native_config_statuses, current_platform_name, highest_doctor_severity,
@@ -144,9 +145,8 @@ pub use profile_commands::{
     run_profile_save_baseline, run_profile_wait_step,
 };
 pub use public_command_surface::{
-    YzxCommandCategory, YzxCommandMetadata, YzxCommandParameter, YzxInternalNuRoutePlan,
-    YzxMenuCategory, YzxParameterKind, YzxPublicRootRoute, classify_yzx_root_route,
-    yzx_command_metadata,
+    YzxCommandCategory, YzxCommandMetadata, YzxCommandParameter, YzxMenuCategory, YzxParameterKind,
+    YzxPublicRootRoute, classify_yzx_root_route, yzx_command_metadata,
 };
 pub use reset_commands::run_yzx_reset;
 pub use runtime_apply_mode::{RuntimeApplyMode, runtime_apply_mode_codes};

@@ -127,7 +127,6 @@ fn command_owners() -> Vec<CommandOwnerEntry> {
                 Ok(YzxPublicRootRoute::Help) => ("rust_root", "help"),
                 Ok(YzxPublicRootRoute::Version) => ("rust_root", "version"),
                 Ok(YzxPublicRootRoute::RustControl) => ("rust_control", "rust_control"),
-                Ok(YzxPublicRootRoute::InternalNu(_)) => ("nushell", "internal_nu"),
                 Err(_) => ("unknown", "unclassified"),
             };
             CommandOwnerEntry {
@@ -356,7 +355,9 @@ mod tests {
                 && entry.route == "rust_control"
         }));
         assert!(graph.command_owners.iter().any(|entry| {
-            entry.command == "yzx menu" && entry.owner == "nushell" && entry.route == "internal_nu"
+            entry.command == "yzx menu"
+                && entry.owner == "rust_control"
+                && entry.route == "rust_control"
         }));
     }
 

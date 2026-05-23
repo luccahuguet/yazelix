@@ -6,19 +6,18 @@ The product/runtime Nushell floor is now the measured allowlist below:
 
 | Family | Files | LOC |
 | --- | ---: | ---: |
-| Integration wrapper floor | `1` | `54` |
-| Setup/bootstrap shell entry | `2` | `389` |
-| Front-door presentation floor | `2` | `375` |
-| Runtime helper seam | `5` | `533` |
+| Setup/bootstrap shell entry | `2` | `366` |
+| Front-door presentation floor | `1` | `168` |
+| Runtime helper seam | `5` | `488` |
 
-Total tracked product/runtime Nu: `1,351` LOC across `10` files.
+Total tracked product/runtime Nu: `1,022` LOC across `8` files.
 
 ## Scope
 
 In scope:
 
-- the remaining runtime-side Nushell owners under `core/`, `setup/`, `utils/`,
-  `yzx/`, and `zellij_wrappers/`
+- the remaining runtime-side Nushell owners under `core/`, `setup/`, and
+  `utils/`
 
 Out of scope:
 
@@ -64,13 +63,13 @@ the runtime shell owners above.
 
 ### Front-door presentation floor
 
-The surviving presentation files are:
+The surviving presentation file is:
 
 - `nushell/scripts/setup/welcome.nu`
-- `nushell/scripts/yzx/menu.nu`
 
-These remain Nu-owned while they are mostly human-facing terminal presentation,
-fzf/menu process handoff, and startup-shell UX.
+This remains Nu-owned while it is mostly human-facing terminal presentation and
+startup-shell UX. `yzx menu` moved to the Rust control plane, with `fzf`
+remaining an external selector process.
 
 ## Non-goals
 
@@ -80,7 +79,7 @@ fzf/menu process handoff, and startup-shell UX.
 
 ## Acceptance Cases
 
-1. The runtime-side wrapper floor is only the sidebar Yazi launcher
+1. No runtime-side Nushell wrapper file remains
 2. `environment.nu` reads as shellhook/env setup instead of a second welcome
    owner
 3. The runtime helper allowlist is reviewed directly against the retained shell floor

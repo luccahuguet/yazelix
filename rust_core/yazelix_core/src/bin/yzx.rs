@@ -5,7 +5,6 @@ use std::path::Path;
 use std::process::Command;
 use yazelix_core::bridge::{CoreError, ErrorClass};
 use yazelix_core::control_plane::{read_yazelix_version_from_runtime, runtime_dir_from_env};
-use yazelix_core::internal_nu_runner::run_internal_nu_module_command;
 use yazelix_core::{
     YzxPublicRootRoute, classify_yzx_root_route, render_yzx_help, yzx_command_metadata,
 };
@@ -41,7 +40,6 @@ fn run() -> Result<i32, CoreError> {
             Ok(0)
         }
         YzxPublicRootRoute::RustControl => run_rust_control(&runtime_dir, &argv),
-        YzxPublicRootRoute::InternalNu(plan) => run_internal_nu_route(&runtime_dir, &plan),
     }
 }
 
@@ -110,19 +108,6 @@ fn resolve_rust_control_path(runtime_dir: &Path) -> Result<std::path::PathBuf, C
 fn run_rust_control(runtime_dir: &Path, argv: &[String]) -> Result<i32, CoreError> {
     let control_bin = resolve_rust_control_path(runtime_dir)?;
     run_child(Command::new(control_bin).args(argv), "yzx_control")
-}
-
-fn run_internal_nu_route(
-    runtime_dir: &Path,
-    plan: &yazelix_core::YzxInternalNuRoutePlan<'_>,
-) -> Result<i32, CoreError> {
-    run_internal_nu_module_command(
-        runtime_dir,
-        plan.module_relative_path,
-        plan.command_name,
-        plan.tail,
-        &[],
-    )
 }
 
 fn run_child(command: &mut Command, owner: &str) -> Result<i32, CoreError> {

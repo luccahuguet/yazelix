@@ -14,7 +14,7 @@ does not replace them.
 
 ## Why
 
-The stale `yzx menu` pattern in `nushell/scripts/yzx/menu.nu` was a handwritten public command catalog with a few ad hoc exclusions layered on top. That had two problems:
+The stale `yzx menu` pattern was a handwritten public command catalog with a few ad hoc exclusions layered on top. That had two problems:
 
 1. palette eligibility is implicit and fragile
 2. command grouping is mixed with implementation ownership
@@ -22,10 +22,10 @@ The stale `yzx menu` pattern in `nushell/scripts/yzx/menu.nu` was a handwritten 
 Recent command-surface cleanup made the problem more obvious:
 
 - `yzx enter` is now distinct from `yzx launch`
-- `yzx menu` itself is due for a thin-wrapper refactor
+- `yzx menu` is a Rust control-plane command over an `fzf` selector
 - the public `yzx` surface is already documented elsewhere by backend ownership, but not by palette UX
 
-Without a palette-specific contract, `menu.nu` will keep accreting one-off filters.
+Without a palette-specific contract, the menu renderer will keep accreting one-off filters.
 
 ## Scope
 

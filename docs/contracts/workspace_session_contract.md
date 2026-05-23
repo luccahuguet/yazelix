@@ -158,7 +158,7 @@ The adapter does not own durable workspace state. It publishes observations, and
   sidebar Yazi identity
 - Verification: automated
   `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zellij_commands::tests::session_inspection_lines_include_workspace_layout_and_sidebar_identity`; automated
-  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core public_command_surface::tests::routes_dev_inspect_session_to_internal_nu_leaf`
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core public_command_surface::tests::routes_grouped_rust_family_to_control_plane`
 
 ## Ownership Rules
 

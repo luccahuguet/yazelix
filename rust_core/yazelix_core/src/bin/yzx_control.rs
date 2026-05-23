@@ -48,6 +48,7 @@ use yazelix_core::run_yzx_home_manager;
 use yazelix_core::run_yzx_import;
 use yazelix_core::run_yzx_keys;
 use yazelix_core::run_yzx_launch;
+use yazelix_core::run_yzx_menu;
 use yazelix_core::run_yzx_onboard;
 use yazelix_core::run_yzx_reset;
 use yazelix_core::run_yzx_restart;
@@ -94,10 +95,7 @@ fn usage_lines() -> Vec<String> {
 
 fn yzx_control_public_usage_line(command: YzxCommandMetadata) -> Option<String> {
     let route = command.name.strip_prefix("yzx ")?;
-    match route {
-        "menu" => None,
-        _ => Some(format!("yzx_control {route}")),
-    }
+    Some(format!("yzx_control {route}"))
 }
 
 fn private_control_usage_lines() -> impl Iterator<Item = String> {
@@ -1610,6 +1608,7 @@ fn main() {
         "home_manager" => run_yzx_home_manager(&argv),
         "import" => run_yzx_import(&argv),
         "keys" => run_yzx_keys(&argv),
+        "menu" => run_yzx_menu(&argv),
         "onboard" => run_yzx_onboard(&argv),
         "popup" => run_yzx_popup(&argv),
         "sidebar" => run_yzx_sidebar(&argv),

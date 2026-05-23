@@ -17,7 +17,7 @@ without a concrete deletion target.
 
 ## Current Shape
 
-The tracked Nushell surface is about `1,412` lines across `12` `.nu` files:
+The tracked Nushell surface is about `1,154` lines across `10` `.nu` files:
 
 ```text
 nushell/config/config.nu
@@ -30,7 +30,6 @@ nushell/scripts/utils/runtime_commands.nu
 nushell/scripts/utils/runtime_defaults.nu
 nushell/scripts/utils/runtime_paths.nu
 nushell/scripts/utils/yzx_core_bridge.nu
-nushell/scripts/yzx/menu.nu
 ```
 
 The old broad product-side Nushell owner set is gone. Root help, command
@@ -53,7 +52,9 @@ Rust-owned or outside the remaining Nushell floor.
 | `nushell/scripts/utils/runtime_defaults.nu` | Retain | Tiny shared constant module for shell defaults |
 | `nushell/scripts/utils/runtime_paths.nu` | Retain | Shell/env path resolution for remaining Nushell entrypoints |
 | `nushell/scripts/utils/yzx_core_bridge.nu` | Retain, keep narrow | Shared Rust-helper path resolution, JSON envelope execution, and helper-error rendering stay here until Rust owns the human error renderer; dead Zellij wrappers and caller-owned error-surface overrides are gone |
-| `nushell/scripts/yzx/menu.nu` | Retain | The command palette is the honest `fzf`/interactive menu boundary over Rust-owned command metadata |
+
+No public `yzx/` Nushell module remains. `yzx menu` is Rust-owned and still uses
+`fzf` as the interactive selection process.
 
 ## Resolved Follow-Up Decisions
 

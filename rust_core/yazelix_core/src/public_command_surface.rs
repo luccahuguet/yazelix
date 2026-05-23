@@ -2,8 +2,6 @@ use crate::bridge::{CoreError, ErrorClass};
 use serde::Serialize;
 use serde_json::json;
 
-const YZX_MENU_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "menu.nu"];
-
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum YzxCommandCategory {
@@ -58,18 +56,10 @@ pub struct YzxCommandMetadata {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum YzxPublicRootRoute<'a> {
+pub enum YzxPublicRootRoute {
     Help,
     Version,
     RustControl,
-    InternalNu(YzxInternalNuRoutePlan<'a>),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct YzxInternalNuRoutePlan<'a> {
-    pub module_relative_path: &'static [&'static str],
-    pub command_name: &'static str,
-    pub tail: &'a [String],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -531,6 +521,7 @@ const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
     rust_control_family("import", IMPORT_FAMILY_COMMANDS),
     rust_control_family("inspect", INSPECT_FAMILY_COMMANDS),
     rust_control_family("launch", LAUNCH_FAMILY_COMMANDS),
+    rust_control_family("menu", MENU_FAMILY_COMMANDS),
     rust_control_family("onboard", ONBOARD_FAMILY_COMMANDS),
     rust_control_family("run", RUN_FAMILY_COMMANDS),
     rust_control_family("popup", POPUP_FAMILY_COMMANDS),
@@ -731,6 +722,7 @@ const MENU_COMMAND: YzxCommandMetadata = metadata(
     None,
     None,
 );
+const MENU_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[MENU_COMMAND];
 
 const POPUP_COMMAND: YzxCommandMetadata = metadata(
     "yzx popup",
@@ -786,12 +778,11 @@ pub fn yzx_command_metadata() -> Vec<YzxCommandMetadata> {
     for family in RUST_CONTROL_FAMILIES {
         commands.extend(family.commands.iter().copied());
     }
-    commands.push(MENU_COMMAND);
     commands.sort_by(|left, right| left.name.cmp(right.name));
     commands
 }
 
-pub fn classify_yzx_root_route(argv: &[String]) -> Result<YzxPublicRootRoute<'_>, CoreError> {
+pub fn classify_yzx_root_route(argv: &[String]) -> Result<YzxPublicRootRoute, CoreError> {
     let Some(first) = argv.first().map(|value| value.as_str()) else {
         return Ok(YzxPublicRootRoute::Help);
     };
@@ -809,14 +800,6 @@ pub fn classify_yzx_root_route(argv: &[String]) -> Result<YzxPublicRootRoute<'_>
         .any(|family| family.root_token == first)
     {
         return Ok(YzxPublicRootRoute::RustControl);
-    }
-
-    if first == "menu" {
-        return Ok(YzxPublicRootRoute::InternalNu(YzxInternalNuRoutePlan {
-            module_relative_path: YZX_MENU_RELATIVE_PATH,
-            command_name: MENU_COMMAND.name,
-            tail: &argv[1..],
-        }));
     }
 
     Err(CoreError::classified(
@@ -1011,6 +994,10 @@ mod tests {
     fn routes_grouped_rust_family_to_control_plane() {
         let argv = [String::from("desktop"), String::from("launch")];
         let route = classify_yzx_root_route(&argv).unwrap();
+        assert!(matches!(route, YzxPublicRootRoute::RustControl));
+
+        let menu_argv = [String::from("menu")];
+        let route = classify_yzx_root_route(&menu_argv).unwrap();
         assert!(matches!(route, YzxPublicRootRoute::RustControl));
     }
 

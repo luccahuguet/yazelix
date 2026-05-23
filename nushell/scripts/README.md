@@ -28,10 +28,8 @@ Small surviving helpers plus runtime shell adapters
 - `runtime_paths.nu` - Minimal runtime/state path helpers that still feed shell owners
 
 ### `yzx/`
-The remaining public shell-owned surface
-
-- `menu.nu` - Interactive command palette
-- Syntax validation is Rust-owned by `yzx_repo_validator validate-nushell-syntax`
+No public shell-owned `yzx` modules remain. Syntax validation is Rust-owned by
+`yzx_repo_validator validate-nushell-syntax`
 
 ### `zellij_wrappers/`
 No runtime wrapper remains. The managed Yazi sidebar is launched by the

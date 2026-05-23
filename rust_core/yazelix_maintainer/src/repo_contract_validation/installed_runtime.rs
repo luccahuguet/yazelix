@@ -1,7 +1,7 @@
 use super::{
     build_flake_output_path, command_output_summary, create_unique_temp_dir, escape_nix_string,
     require_list_contains, require_list_not_contains, require_path_exists, require_path_exists_abs,
-    require_path_missing, run_nix_eval, run_repo_command, validate_rust_routed_nu_modules,
+    require_path_missing, run_nix_eval, run_repo_command,
 };
 use crate::repo_validation::ValidationReport;
 use serde_json::Value as JsonValue;
@@ -85,7 +85,6 @@ fn validate_installed_runtime_contract_inner(repo_root: &Path) -> Result<Vec<Str
         "runtime",
         "building runtime package for installed-runtime validation",
     )?;
-    validate_rust_routed_nu_modules(&runtime_out, "built runtime package", &mut errors);
     require_path_exists_abs(
         &runtime_out.join(desktop_deferred_launch_probe),
         "built runtime desktop deferred launch probe helper",
@@ -102,7 +101,6 @@ fn validate_installed_runtime_contract_inner(repo_root: &Path) -> Result<Vec<Str
         "yazelix",
         "building yazelix package for installed-runtime validation",
     )?;
-    validate_rust_routed_nu_modules(&yazelix_out, "built yazelix package", &mut errors);
     require_path_exists_abs(
         &yazelix_out.join(desktop_deferred_launch_probe),
         "built yazelix desktop deferred launch probe helper",

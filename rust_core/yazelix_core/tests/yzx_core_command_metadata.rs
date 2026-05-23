@@ -159,6 +159,6 @@ fn runtime_ownership_graph_includes_command_and_manifest_owners() {
     assert!(
         command_owners
             .iter()
-            .any(|entry| entry["command"] == "yzx menu" && entry["owner"] == "nushell")
+            .any(|entry| entry["command"] == "yzx menu" && entry["owner"] == "rust_control")
     );
 }
