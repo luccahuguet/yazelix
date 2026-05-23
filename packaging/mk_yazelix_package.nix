@@ -9,6 +9,7 @@
   runtimeToolSources ? { },
   components ? { },
   extraRuntimePackages ? [ ],
+  screenAssets,
   yaziAssets ? null,
   zellijPluginArtifacts ? { },
   enableZellijKittyPassthrough ? false,
@@ -29,6 +30,7 @@ let
       runtimeToolSources
       components
       extraRuntimePackages
+      screenAssets
       yaziAssets
       zellijPluginArtifacts
       enableZellijKittyPassthrough

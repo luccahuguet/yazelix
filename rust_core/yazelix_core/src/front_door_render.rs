@@ -8,14 +8,18 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process;
 use std::sync::OnceLock;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant};
 pub use yazelix_screen::GameOfLifeCellStyle;
 use yazelix_screen::{
-    BoidsAnimation, BoidsVariant, GameOfLifeAnimation, MandelbrotAnimation,
-    RawModeGuard as ScreenRawModeGuard, ScreenAnimationContext, ScreenFrameProducer,
-    build_game_of_life_screen_lines, build_live_game_of_life_seed, center_frame_lines, center_text,
-    game_of_life_grid_height, game_of_life_grid_width, game_of_life_spec, is_boids_style,
-    is_game_of_life_style, mandelbrot_frame_delay, resolve_game_of_life_body_height,
+    BoidsAnimation, BoidsVariant, GameOfLifeAnimation, KITTY_FRAME_SEQUENCE_STYLE,
+    MAGICIAN_ATTRIBUTION, MAGICIAN_FRAME_DELAY, MAGICIAN_FRAME_DIR_NAME, MANDELBROT_STYLE,
+    MandelbrotAnimation, RawModeGuard as ScreenRawModeGuard, ScreenAnimationContext,
+    ScreenFrameProducer, build_game_of_life_screen_lines, build_live_game_of_life_seed,
+    center_frame_lines, center_text, cleanup_kitty_image, game_of_life_grid_height,
+    game_of_life_grid_width, game_of_life_spec, is_boids_style, is_game_of_life_style,
+    magician_frame_sequence, mandelbrot_frame_delay, play_kitty_png_frame_sequence,
+    random_animation_styles, require_magician_frame_assets, resolve_game_of_life_body_height,
+    resolve_random_animation_style as resolve_shared_random_animation_style,
     step_game_of_life_cells, terminal_height, terminal_width, visible_line_width,
 };
 
@@ -28,21 +32,8 @@ const ANSI_BLUE: &str = "\u{1b}[34m";
 const ANSI_PURPLE: &str = "\u{1b}[35m";
 const ANSI_RESET: &str = "\u{1b}[0m";
 const ANSI_FAINT: &str = "\u{1b}[2m";
-const ASCII_MAGICIAN_ATTRIBUTION: &str = "ascii magician GIF by 1mposter";
-const ASCII_MAGICIAN_FRAME_COUNT: usize = 198;
-const ASCII_MAGICIAN_FRAME_DELAY_MS: u64 = 90;
-const ASCII_MAGICIAN_FRAME_DIR: &str = "assets/third_party/ascii_magician_1mposter_frames";
-const ASCII_MAGICIAN_EDGE_INSET_COLUMNS: usize = 4;
-const ASCII_MAGICIAN_EDGE_INSET_ROWS: usize = 4;
+const ASCII_MAGICIAN_ASSET_PARENT_DIR: &str = "assets/third_party";
 const KITTY_MAGICIAN_IMAGE_ID_BASE: u32 = 7_930_000;
-
-const GAME_OF_LIFE_RANDOM_POOL: &[&str] = &[
-    "game_of_life_gliders",
-    "game_of_life_oscillators",
-    "game_of_life_bloom",
-];
-const BOIDS_RANDOM_POOL: &[&str] = &["boids_predator", "boids_schools"];
-const RANDOM_ANIMATION_FAMILY_COUNT: usize = 4;
 
 #[derive(Debug, Clone, Deserialize)]
 struct AsciiArtData {
@@ -79,14 +70,6 @@ fn ascii_art_data() -> &'static AsciiArtData {
     DATA.get_or_init(|| serde_json::from_str(ASCII_ART_DATA_JSON).expect("valid ascii_art_data"))
 }
 
-fn system_random_index(max_len: usize) -> usize {
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .subsec_nanos() as usize;
-    nanos % max_len
-}
-
 fn style_values_for_surface(surface: &str) -> Vec<&'static str> {
     ascii_art_data()
         .style_catalog
@@ -101,15 +84,10 @@ fn style_values_for_surface(surface: &str) -> Vec<&'static str> {
 }
 
 fn assert_random_animation_pool_is_allowed(allowed: &[&str]) {
-    for candidate in GAME_OF_LIFE_RANDOM_POOL
-        .iter()
-        .chain(BOIDS_RANDOM_POOL.iter())
-        .chain(["mandelbrot"].iter())
-        .chain(["magician"].iter())
-    {
+    for candidate in random_animation_styles() {
         if !allowed
             .iter()
-            .any(|allowed_style| allowed_style == candidate)
+            .any(|allowed_style| *allowed_style == candidate)
         {
             panic!("missing retained random animation style: {candidate}");
         }
@@ -118,37 +96,7 @@ fn assert_random_animation_pool_is_allowed(allowed: &[&str]) {
 
 fn resolve_random_animation_style(allowed: &[&str], random_index: Option<usize>) -> String {
     assert_random_animation_pool_is_allowed(allowed);
-    let subpool_width = lcm(
-        GAME_OF_LIFE_RANDOM_POOL.len(),
-        BOIDS_RANDOM_POOL.len().max(1),
-    );
-    let slot_count = RANDOM_ANIMATION_FAMILY_COUNT * subpool_width;
-    let selected = random_index.unwrap_or_else(|| system_random_index(slot_count)) % slot_count;
-    let family = selected % RANDOM_ANIMATION_FAMILY_COUNT;
-    let family_index = (selected / RANDOM_ANIMATION_FAMILY_COUNT) % subpool_width;
-
-    match family {
-        0 => GAME_OF_LIFE_RANDOM_POOL[family_index % GAME_OF_LIFE_RANDOM_POOL.len()].to_string(),
-        1 => BOIDS_RANDOM_POOL[family_index % BOIDS_RANDOM_POOL.len()].to_string(),
-        2 => "mandelbrot".to_string(),
-        _ => "magician".to_string(),
-    }
-}
-
-fn lcm(left: usize, right: usize) -> usize {
-    if left == 0 || right == 0 {
-        return 0;
-    }
-    left / gcd(left, right) * right
-}
-
-fn gcd(mut left: usize, mut right: usize) -> usize {
-    while right != 0 {
-        let remainder = left % right;
-        left = right;
-        right = remainder;
-    }
-    left
+    resolve_shared_random_animation_style(random_index).to_string()
 }
 
 pub fn resolve_welcome_style(
@@ -206,8 +154,8 @@ fn screen_frame_delay(resolved_style: &str) -> Duration {
     match resolved_style {
         style if is_game_of_life_style(style) => Duration::from_millis(160),
         style if is_boids_style(style) => Duration::from_millis(70),
-        "mandelbrot" => mandelbrot_frame_delay(),
-        "magician" => ascii_magician_frame_delay(),
+        MANDELBROT_STYLE => mandelbrot_frame_delay(),
+        KITTY_FRAME_SEQUENCE_STYLE => ascii_magician_frame_delay(),
         _ => Duration::from_millis(120),
     }
 }
@@ -434,34 +382,34 @@ fn boids_welcome_body_height(spec: &BoidsWelcomeSpec, terminal_height: usize) ->
 }
 
 fn ascii_magician_frame_delay() -> Duration {
-    Duration::from_millis(ASCII_MAGICIAN_FRAME_DELAY_MS)
+    MAGICIAN_FRAME_DELAY
 }
 
 fn ascii_magician_image_id() -> u32 {
     KITTY_MAGICIAN_IMAGE_ID_BASE + process::id() % 10_000
 }
 
-fn ascii_magician_frame_path(runtime_dir: &Path, frame_index: usize) -> PathBuf {
-    runtime_dir.join(ASCII_MAGICIAN_FRAME_DIR).join(format!(
-        "frame_{:03}.png",
-        frame_index % ASCII_MAGICIAN_FRAME_COUNT
-    ))
+fn ascii_magician_frame_dir(runtime_dir: &Path) -> PathBuf {
+    runtime_dir
+        .join(ASCII_MAGICIAN_ASSET_PARENT_DIR)
+        .join(MAGICIAN_FRAME_DIR_NAME)
+}
+
+#[cfg(test)]
+fn ascii_magician_frame_path(runtime_dir: &Path, frame_index: usize) -> std::path::PathBuf {
+    yazelix_screen::magician_frame_path(&ascii_magician_frame_dir(runtime_dir), frame_index)
 }
 
 fn require_ascii_magician_assets(runtime_dir: &Path) -> Result<(), CoreError> {
-    for frame_index in [0, ASCII_MAGICIAN_FRAME_COUNT - 1] {
-        let frame_path = ascii_magician_frame_path(runtime_dir, frame_index);
-        if !frame_path.is_file() {
-            return Err(CoreError::classified(
-                ErrorClass::Runtime,
-                "missing_magician_frame_asset",
-                format!("Missing magician GIF frame asset: {}", frame_path.display()),
-                "Reinstall Yazelix so the runtime includes assets/third_party/ascii_magician_1mposter_frames.",
-                serde_json::json!({ "path": frame_path }),
-            ));
-        }
-    }
-    Ok(())
+    require_magician_frame_assets(&ascii_magician_frame_dir(runtime_dir)).map_err(|source| {
+        CoreError::classified(
+            ErrorClass::Runtime,
+            "missing_magician_frame_asset",
+            source.to_string(),
+            "Reinstall Yazelix so the runtime includes child-owned yazelix-screen magician frame assets.",
+            serde_json::json!({ "path": ascii_magician_frame_dir(runtime_dir) }),
+        )
+    })
 }
 
 fn kitty_graphics_supported() -> bool {
@@ -501,96 +449,39 @@ fn require_kitty_graphics_for_magician() -> Result<(), CoreError> {
     ))
 }
 
-fn base64_encode_bytes(bytes: &[u8]) -> String {
-    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut encoded = String::with_capacity(bytes.len().div_ceil(3) * 4);
-    for chunk in bytes.chunks(3) {
-        let first = chunk[0];
-        let second = *chunk.get(1).unwrap_or(&0);
-        let third = *chunk.get(2).unwrap_or(&0);
-        let packed = ((first as u32) << 16) | ((second as u32) << 8) | third as u32;
-
-        encoded.push(TABLE[((packed >> 18) & 0x3f) as usize] as char);
-        encoded.push(TABLE[((packed >> 12) & 0x3f) as usize] as char);
-        if chunk.len() > 1 {
-            encoded.push(TABLE[((packed >> 6) & 0x3f) as usize] as char);
-        } else {
-            encoded.push('=');
-        }
-        if chunk.len() > 2 {
-            encoded.push(TABLE[(packed & 0x3f) as usize] as char);
-        } else {
-            encoded.push('=');
-        }
-    }
-    encoded
-}
-
-fn kitty_png_file_command(image_id: u32, columns: usize, rows: usize, path: &Path) -> String {
-    let payload = base64_encode_bytes(path.to_string_lossy().as_bytes());
-    format!(
-        "\u{1b}_Ga=T,f=100,t=f,i={image_id},p=1,c={columns},r={rows},C=1,z=-1,q=2;{payload}\u{1b}\\"
-    )
-}
-
-fn kitty_delete_image_command(image_id: u32) -> String {
-    format!(
-        "\u{1b}_Ga=d,d=i,i={image_id},p=1,q=2;\u{1b}\\\
-         \u{1b}_Ga=d,d=I,i={image_id},q=2;\u{1b}\\"
-    )
-}
-
-fn ascii_magician_graphics_layout(width: usize, height: usize) -> (usize, usize, usize, usize) {
-    let available_rows = height
-        .saturating_sub(ASCII_MAGICIAN_EDGE_INSET_ROWS.saturating_mul(2) + 1)
-        .max(1);
-    let available_columns = width
-        .saturating_sub(ASCII_MAGICIAN_EDGE_INSET_COLUMNS.saturating_mul(2))
-        .max(1);
-    let rows = available_rows.min(available_columns.max(2) / 2).max(1);
-    let columns = rows.saturating_mul(2).min(available_columns);
-    let top_padding = height.saturating_sub(rows + 1) / 2;
-    let left_padding = width.saturating_sub(columns) / 2;
-    (columns, rows, top_padding, left_padding)
-}
-
-fn draw_ascii_magician_graphics_frame(
-    runtime_dir: &Path,
-    width: usize,
-    height: usize,
-    frame_index: usize,
-    image_id: u32,
-) -> Result<(), CoreError> {
-    let (columns, rows, top_padding, left_padding) = ascii_magician_graphics_layout(width, height);
-    let frame_path = ascii_magician_frame_path(runtime_dir, frame_index);
-
-    print!("\u{1b}[H\u{1b}[2J");
-    for _ in 0..top_padding {
-        println!();
-    }
-    if left_padding > 0 {
-        print!("{}", " ".repeat(left_padding));
-    }
-    print!(
-        "{}",
-        kitty_png_file_command(image_id, columns, rows, &frame_path)
-    );
-    for _ in 0..rows {
-        println!();
-    }
-    println!(
-        "{}",
-        center_text(
-            &format!("{ANSI_FAINT}{ANSI_PURPLE}{ASCII_MAGICIAN_ATTRIBUTION}{ANSI_RESET}"),
-            width
-        )
-    );
-    flush_stdout()
-}
-
 fn cleanup_ascii_magician_graphics(image_id: u32) -> Result<(), CoreError> {
-    print!("{}\u{1b}[H\u{1b}[2J", kitty_delete_image_command(image_id));
-    flush_stdout()
+    cleanup_kitty_image(image_id).map_err(|source| {
+        CoreError::io(
+            "front_door_kitty_cleanup",
+            "Failed to clean up front-door Kitty graphics.",
+            "Restart the terminal pane if the old image remains visible.",
+            ".",
+            source,
+        )
+    })
+}
+
+fn map_kitty_frame_sequence_error(source: io::Error) -> CoreError {
+    CoreError::io(
+        "front_door_kitty_frame_sequence",
+        "Failed to render front-door Kitty frame sequence.",
+        "Run Yazelix in the packaged Ghostty/Ratty runtime with Zellij Kitty passthrough.",
+        ".",
+        source,
+    )
+}
+
+fn ascii_magician_frame_sequence(
+    runtime_dir: &Path,
+    image_id: u32,
+) -> yazelix_screen::KittyFrameSequence {
+    magician_frame_sequence(
+        &ascii_magician_frame_dir(runtime_dir),
+        image_id,
+        Some(format!(
+            "{ANSI_FAINT}{ANSI_PURPLE}{MAGICIAN_ATTRIBUTION}{ANSI_RESET}"
+        )),
+    )
 }
 
 fn play_ascii_magician_graphics_welcome(
@@ -601,25 +492,9 @@ fn play_ascii_magician_graphics_welcome(
     require_ascii_magician_assets(runtime_dir)?;
 
     let image_id = ascii_magician_image_id();
-    let frame_delay = ascii_magician_frame_delay();
-    let started_at = Instant::now();
-    let mut frame_index = 0usize;
-
-    while started_at.elapsed() < duration.max(frame_delay) {
-        draw_ascii_magician_graphics_frame(
-            runtime_dir,
-            terminal_width(),
-            terminal_height(),
-            frame_index,
-            image_id,
-        )?;
-        if poll_for_keypress(frame_delay)? {
-            break;
-        }
-        frame_index += 1;
-    }
-
-    cleanup_ascii_magician_graphics(image_id)?;
+    let sequence = ascii_magician_frame_sequence(runtime_dir, image_id);
+    play_kitty_png_frame_sequence(&sequence, Some(duration), terminal_width, terminal_height)
+        .map_err(map_kitty_frame_sequence_error)?;
     for line in get_logo_welcome_frame(terminal_width()) {
         println!("{line}");
     }
@@ -631,24 +506,10 @@ fn run_ascii_magician_graphics_screen(runtime_dir: &Path) -> Result<i32, CoreErr
     require_ascii_magician_assets(runtime_dir)?;
 
     let image_id = ascii_magician_image_id();
+    let sequence = ascii_magician_frame_sequence(runtime_dir, image_id);
     enter_screen_mode()?;
-    let result = (|| -> Result<(), CoreError> {
-        let mut frame_index = 0usize;
-        loop {
-            draw_ascii_magician_graphics_frame(
-                runtime_dir,
-                terminal_width(),
-                terminal_height(),
-                frame_index,
-                image_id,
-            )?;
-            if poll_for_keypress(ascii_magician_frame_delay())? {
-                break;
-            }
-            frame_index += 1;
-        }
-        Ok(())
-    })();
+    let result = play_kitty_png_frame_sequence(&sequence, None, terminal_width, terminal_height)
+        .map_err(map_kitty_frame_sequence_error);
     let cleanup_before_leave = cleanup_ascii_magician_graphics(image_id);
     let leave_result = leave_screen_mode();
     let cleanup_after_leave = cleanup_ascii_magician_graphics(image_id);
@@ -969,10 +830,10 @@ fn play_welcome_style_inner(
         println!();
         return Ok(());
     }
-    if resolved_style == "mandelbrot" {
+    if resolved_style == MANDELBROT_STYLE {
         return play_mandelbrot_welcome_screen(playback_duration);
     }
-    if resolved_style == "magician" {
+    if resolved_style == KITTY_FRAME_SEQUENCE_STYLE {
         let runtime_dir = runtime_dir.ok_or_else(missing_magician_runtime_dir)?;
         return play_ascii_magician_graphics_welcome(runtime_dir, playback_duration);
     }
@@ -987,7 +848,7 @@ fn play_welcome_style_inner(
     let frame_delay = match resolved_style.as_str() {
         style if is_game_of_life_style(style) => Duration::from_millis(220),
         style if is_boids_style(style) => Duration::from_millis(70),
-        "mandelbrot" => mandelbrot_frame_delay(),
+        MANDELBROT_STYLE => mandelbrot_frame_delay(),
         _ => {
             let divisor = frames.len().max(1) as u32;
             playback_duration
@@ -1024,7 +885,7 @@ fn run_screen_surface_inner(
 ) -> Result<i32, CoreError> {
     let _raw = raw_mode_guard()?;
     let resolved_style = resolve_screen_style(style, None)?;
-    if resolved_style == "magician" {
+    if resolved_style == KITTY_FRAME_SEQUENCE_STYLE {
         let runtime_dir = runtime_dir.ok_or_else(missing_magician_runtime_dir)?;
         return run_ascii_magician_graphics_screen(runtime_dir);
     }
@@ -1033,7 +894,7 @@ fn run_screen_surface_inner(
     let is_game_of_life = is_game_of_life_style(&resolved_style);
     let boids_variant = BoidsVariant::from_style_name(&resolved_style);
     let is_boids = boids_variant.is_some();
-    let is_mandelbrot = resolved_style == "mandelbrot";
+    let is_mandelbrot = resolved_style == MANDELBROT_STYLE;
     let mut width = terminal_width();
     let mut height = terminal_height();
     let mut frames = if is_game_of_life || is_boids || is_mandelbrot {
@@ -1157,7 +1018,7 @@ mod tests {
         let mut mandelbrot_count = 0;
         let mut magician_count = 0;
 
-        for index in 0..24 {
+        for index in 0..yazelix_screen::random_animation_slot_count() {
             let resolved = resolve_screen_style(Some("random"), Some(index)).unwrap();
             assert_ne!(resolved, "static");
             assert_ne!(resolved, "logo");
@@ -1165,9 +1026,9 @@ mod tests {
                 game_of_life_count += 1;
             } else if is_boids_style(&resolved) {
                 boids_count += 1;
-            } else if resolved == "mandelbrot" {
+            } else if resolved == MANDELBROT_STYLE {
                 mandelbrot_count += 1;
-            } else if resolved == "magician" {
+            } else if resolved == KITTY_FRAME_SEQUENCE_STYLE {
                 magician_count += 1;
             } else {
                 panic!("unexpected random screen style: {resolved}");
@@ -1189,7 +1050,7 @@ mod tests {
         let mut magician_count = 0;
         let mut boids_styles = Vec::new();
 
-        for index in 0..24 {
+        for index in 0..yazelix_screen::random_animation_slot_count() {
             let resolved = resolve_welcome_style("random", Some(index)).unwrap();
             assert_ne!(resolved, "static");
             assert_ne!(resolved, "logo");
@@ -1198,9 +1059,9 @@ mod tests {
             } else if is_boids_style(&resolved) {
                 boids_count += 1;
                 boids_styles.push(resolved);
-            } else if resolved == "mandelbrot" {
+            } else if resolved == MANDELBROT_STYLE {
                 mandelbrot_count += 1;
-            } else if resolved == "magician" {
+            } else if resolved == KITTY_FRAME_SEQUENCE_STYLE {
                 magician_count += 1;
             } else {
                 panic!("unexpected random welcome style: {resolved}");
@@ -1213,7 +1074,7 @@ mod tests {
         assert_eq!(magician_count, 6);
         assert_eq!(
             boids_styles,
-            BOIDS_RANDOM_POOL
+            yazelix_screen::BOIDS_RANDOM_STYLES
                 .iter()
                 .cycle()
                 .take(6)
@@ -1233,12 +1094,12 @@ mod tests {
     #[test]
     fn mandelbrot_is_available_to_welcome_and_screen() {
         assert_eq!(
-            resolve_screen_style(Some("mandelbrot"), None).unwrap(),
-            "mandelbrot"
+            resolve_screen_style(Some(MANDELBROT_STYLE), None).unwrap(),
+            MANDELBROT_STYLE
         );
         assert_eq!(
-            resolve_welcome_style("mandelbrot", None).unwrap(),
-            "mandelbrot"
+            resolve_welcome_style(MANDELBROT_STYLE, None).unwrap(),
+            MANDELBROT_STYLE
         );
         for index in 0..8 {
             assert_ne!(
@@ -1256,17 +1117,21 @@ mod tests {
     #[test]
     fn magician_is_available_to_welcome_and_screen() {
         assert_eq!(
-            resolve_screen_style(Some("magician"), None).unwrap(),
-            "magician"
+            resolve_screen_style(Some(KITTY_FRAME_SEQUENCE_STYLE), None).unwrap(),
+            KITTY_FRAME_SEQUENCE_STYLE
         );
-        assert_eq!(resolve_welcome_style("magician", None).unwrap(), "magician");
+        assert_eq!(
+            resolve_welcome_style(KITTY_FRAME_SEQUENCE_STYLE, None).unwrap(),
+            KITTY_FRAME_SEQUENCE_STYLE
+        );
         let mut welcome_random_included_magician = false;
         let mut screen_random_included_magician = false;
-        for index in 0..24 {
-            screen_random_included_magician |=
-                resolve_screen_style(Some("random"), Some(index)).unwrap() == "magician";
+        for index in 0..yazelix_screen::random_animation_slot_count() {
+            screen_random_included_magician |= resolve_screen_style(Some("random"), Some(index))
+                .unwrap()
+                == KITTY_FRAME_SEQUENCE_STYLE;
             welcome_random_included_magician |=
-                resolve_welcome_style("random", Some(index)).unwrap() == "magician";
+                resolve_welcome_style("random", Some(index)).unwrap() == KITTY_FRAME_SEQUENCE_STYLE;
         }
         assert!(screen_random_included_magician);
         assert!(welcome_random_included_magician);
@@ -1324,9 +1189,9 @@ mod tests {
         assert_eq!(boids_welcome_body_height(spec, 4), spec.body_height);
     }
 
-    // Defends: the magician renderer addresses runtime GIF-derived PNG frames through Kitty file payloads instead of lossy ANSI pixel blocks.
+    // Defends: Yazelix consumes child-owned magician assets and Kitty frame sequence metadata through the runtime asset tree.
     #[test]
-    fn magician_graphics_uses_runtime_assets_and_kitty_file_payloads() {
+    fn magician_graphics_uses_runtime_assets_and_child_kitty_sequence() {
         let runtime_dir = Path::new("/runtime");
         assert_eq!(
             ascii_magician_frame_path(runtime_dir, 0),
@@ -1335,58 +1200,81 @@ mod tests {
             )
         );
         assert_eq!(
-            ascii_magician_frame_path(runtime_dir, ASCII_MAGICIAN_FRAME_COUNT),
+            ascii_magician_frame_path(runtime_dir, yazelix_screen::MAGICIAN_FRAME_COUNT),
             ascii_magician_frame_path(runtime_dir, 0)
         );
         assert_eq!(
-            ascii_magician_frame_path(runtime_dir, ASCII_MAGICIAN_FRAME_COUNT - 1),
+            ascii_magician_frame_path(runtime_dir, yazelix_screen::MAGICIAN_FRAME_COUNT - 1),
             PathBuf::from(
                 "/runtime/assets/third_party/ascii_magician_1mposter_frames/frame_197.png"
             )
         );
-        assert_eq!(base64_encode_bytes(b"hello"), "aGVsbG8=");
 
-        let command = kitty_png_file_command(123, 80, 40, Path::new("/tmp/frame.png"));
+        let sequence = ascii_magician_frame_sequence(runtime_dir, 123);
+        assert_eq!(
+            sequence.frame_paths.len(),
+            yazelix_screen::MAGICIAN_FRAME_COUNT
+        );
+        assert_eq!(
+            sequence.frame_paths[0],
+            ascii_magician_frame_path(runtime_dir, 0)
+        );
+        assert_eq!(
+            sequence.frame_paths[yazelix_screen::MAGICIAN_FRAME_COUNT - 1],
+            ascii_magician_frame_path(runtime_dir, yazelix_screen::MAGICIAN_FRAME_COUNT - 1)
+        );
+        assert_eq!(sequence.frame_delay, ascii_magician_frame_delay());
+        assert_eq!(sequence.image_id, 123);
+        assert_eq!(
+            sequence.edge_inset_columns,
+            yazelix_screen::MAGICIAN_EDGE_INSET_COLUMNS
+        );
+        assert_eq!(
+            sequence.edge_inset_rows,
+            yazelix_screen::MAGICIAN_EDGE_INSET_ROWS
+        );
+        assert!(
+            sequence
+                .attribution
+                .as_deref()
+                .is_some_and(|attribution| attribution.contains(MAGICIAN_ATTRIBUTION))
+        );
+
+        let command =
+            yazelix_screen::kitty_png_file_command(123, 80, 40, Path::new("/tmp/frame.png"));
         assert!(command.starts_with("\u{1b}_Ga=T,f=100,t=f,i=123,p=1,c=80,r=40,C=1,z=-1,q=2;"));
         assert!(command.contains("L3RtcC9mcmFtZS5wbmc="));
         assert!(command.ends_with("\u{1b}\\"));
 
-        let delete_command = kitty_delete_image_command(123);
+        let delete_command = yazelix_screen::kitty_delete_image_command(123);
         assert!(delete_command.contains("\u{1b}_Ga=d,d=i,i=123,p=1,q=2;\u{1b}\\"));
         assert!(delete_command.contains("\u{1b}_Ga=d,d=I,i=123,q=2;\u{1b}\\"));
-    }
-
-    // Regression: the checked-in magician derivative must keep the full coalesced GIF motion instead of collapsing to a handful of repeated frames.
-    #[test]
-    fn magician_derivative_keeps_all_unique_gif_frames() {
-        let frame_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("..")
-            .join("..")
-            .join(ASCII_MAGICIAN_FRAME_DIR);
-        let mut unique_frames = std::collections::HashSet::new();
-
-        for frame_index in 0..ASCII_MAGICIAN_FRAME_COUNT {
-            let frame_path = frame_dir.join(format!("frame_{frame_index:03}.png"));
-            assert!(frame_path.is_file(), "missing {}", frame_path.display());
-            unique_frames
-                .insert(std::fs::read(&frame_path).unwrap_or_else(|err| {
-                    panic!("failed to read {}: {err}", frame_path.display())
-                }));
-        }
-
-        assert_eq!(unique_frames.len(), ASCII_MAGICIAN_FRAME_COUNT);
-        assert!(
-            !frame_dir
-                .join(format!("frame_{ASCII_MAGICIAN_FRAME_COUNT:03}.png"))
-                .exists()
-        );
     }
 
     // Regression: the magician GIF must stay close to the original square bitmap proportions in a full pane.
     #[test]
     fn magician_graphics_layout_preserves_square_image_shape() {
-        assert_eq!(ascii_magician_graphics_layout(120, 40), (62, 31, 4, 29));
-        assert_eq!(ascii_magician_graphics_layout(190, 60), (102, 51, 4, 44));
+        let full_hd = yazelix_screen::kitty_frame_layout(
+            120,
+            40,
+            yazelix_screen::MAGICIAN_EDGE_INSET_COLUMNS,
+            yazelix_screen::MAGICIAN_EDGE_INSET_ROWS,
+        );
+        assert_eq!(full_hd.columns, 62);
+        assert_eq!(full_hd.rows, 31);
+        assert_eq!(full_hd.top_padding, 4);
+        assert_eq!(full_hd.left_padding, 29);
+
+        let wide = yazelix_screen::kitty_frame_layout(
+            190,
+            60,
+            yazelix_screen::MAGICIAN_EDGE_INSET_COLUMNS,
+            yazelix_screen::MAGICIAN_EDGE_INSET_ROWS,
+        );
+        assert_eq!(wide.columns, 102);
+        assert_eq!(wide.rows, 51);
+        assert_eq!(wide.top_padding, 4);
+        assert_eq!(wide.left_padding, 44);
     }
 
     // Regression: inline welcome playback trims trailing padding so centered frames do not trigger terminal autowrap artifacts.

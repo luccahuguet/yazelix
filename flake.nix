@@ -118,6 +118,7 @@
           components ? { },
           extraRuntimePackages ? [ ],
           yaziAssets ? yazelixYaziAssets.packages.${system}.yazelix_yazi_assets,
+          screenAssets ? yazelixScreen.packages.${system}.yzs,
           zellijPluginArtifacts ? zellijPluginArtifactsFor system,
           enableZellijKittyPassthrough ? false,
         }:
@@ -127,6 +128,7 @@
         import ./yazelix_package.nix (
           {
             inherit nixgl runtimeVariant runtimeToolSources components yaziAssets zellijPluginArtifacts;
+            inherit screenAssets;
             pkgs = runtimePkgs;
             enableZellijKittyPassthrough =
               enableZellijKittyPassthrough || builtins.elem runtimeVariant [
@@ -149,6 +151,7 @@
           extraRuntimePackages = [
             yazelixZellijBar.packages.${system}.yazelix_zellij_bar
           ] ++ extraRuntimePackages;
+          screenAssets = yazelixScreen.packages.${system}.yzs;
           yaziAssets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
           zellijPluginArtifacts = zellijPluginArtifactsFor system;
           enableZellijKittyPassthrough = builtins.elem runtimeVariant [

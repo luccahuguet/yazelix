@@ -8,6 +8,7 @@
   runtimeToolSources ? { },
   components ? { },
   extraRuntimePackages ? [ ],
+  screenAssets,
   yaziAssets ? null,
   zellijPluginArtifacts ? { },
   enableZellijKittyPassthrough ? false,
@@ -40,6 +41,7 @@ import ./packaging/mk_yazelix_package.nix {
     runtimeToolSources
     components
     extraRuntimePackages
+    screenAssets
     yaziAssets
     zellijPluginArtifacts
     enableZellijKittyPassthrough

@@ -9,6 +9,7 @@
   components ? { },
   extraRuntimePackages ? [ ],
   extraRuntimeCommands ? [ "tu" ],
+  screenAssets,
   yaziAssets ? null,
   zellijPluginArtifacts ? { },
   enableZellijKittyPassthrough ? false,
@@ -54,11 +55,26 @@ let
       throw "Missing first-party Zellij plugin package artifact `${name}`"
     else
       value;
+  requireScreenAssets =
+    if screenAssets == null then
+      throw "Missing yazelix-screen package for child-owned screen assets"
+    else
+      screenAssets;
 in
 pkgs.runCommand name { } ''
   mkdir -p "$out"
 
-  ln -s ${src}/assets "$out/assets"
+  mkdir -p "$out/assets"
+  for asset_entry in ${src}/assets/*; do
+    asset_name="$(basename "$asset_entry")"
+    if [ "$asset_name" = "third_party" ]; then
+      continue
+    fi
+    ln -s "$asset_entry" "$out/assets/$asset_name"
+  done
+  mkdir -p "$out/assets/third_party"
+  ln -s "${requireScreenAssets}/share/yazelix_screen/ascii_magician_1mposter_frames" \
+    "$out/assets/third_party/ascii_magician_1mposter_frames"
   ln -s ${src}/config_metadata "$out/config_metadata"
   mkdir -p "$out/configs"
   for config_entry in ${src}/configs/*; do

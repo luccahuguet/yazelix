@@ -58,7 +58,7 @@ The screen repo has a real standalone product surface: the `yzs` command, termin
 
 The main cost is release friction because Yazelix consumes it through both a flake input and a Cargo git dependency with a package hash. That is acceptable because the implementation is small, strongly testable, and reusable outside the workspace.
 
-Boundary rule: animation engines and terminal frame primitives stay in the child. Yazelix-specific welcome copy, settings, skip behavior, startup logging, and session integration stay in the main repo.
+Boundary rule: animation engines, automata, generation logic, random animation-family policy, terminal frame primitives, and generated screen assets stay in the child. Yazelix-specific welcome copy, settings, skip behavior, startup logging, package linking, and session integration stay in the main repo.
 
 ### `yazelix-ghostty-cursors`
 

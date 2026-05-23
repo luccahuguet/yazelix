@@ -5,9 +5,12 @@
 This contract defines the retained front-door style surface for the Yazelix
 welcome screen and `yzx screen`.
 
-The renderer, style resolution, and Game of Life engine are now Rust-owned.
-Nu keeps only the startup-shell sequencing and the tiny runtime handoff used by
-welcome/startup callers.
+The renderer and style resolution are Rust-owned. The main repo owns Yazelix
+product policy and runtime integration; the `yazelix_screen` child crate owns
+terminal animation engines, automata, generation logic, shared random
+animation-family resolution, file-backed Kitty frame sequence playback, and the
+generated magician frame assets. Nu keeps only the startup-shell sequencing and
+the tiny runtime handoff used by welcome/startup callers.
 
 The retained public shape is:
 
@@ -31,6 +34,7 @@ The retained public shape is:
 - `rust_core/yazelix_core/src/front_door_render.rs`
 - `rust_core/yazelix_core/src/front_door_commands.rs`
 - `rust_core/yazelix_core/src/upgrade_summary.rs`
+- `https://github.com/luccahuguet/yazelix-screen`
 - `nushell/scripts/setup/welcome.nu`
 - `nushell/scripts/utils/front_door_runtime.nu`
 - Rust front-door tests under `rust_core/yazelix_core`
@@ -76,7 +80,8 @@ Out of scope:
 #### FRONT-002
 - Type: behavior
 - Status: live
-- Owner: Rust random-pool policy in `front_door_render.rs`
+- Owner: shared random-pool policy in `yazelix_screen`, consumed by
+  `front_door_render.rs`
 - Statement: welcome `random` and `yzx screen random` split evenly across the
   same Game of Life, boids, Mandelbrot, and magician families. The Game of Life
   family rotates through
@@ -100,12 +105,14 @@ Out of scope:
 #### FRONT-004
 - Type: boundary
 - Status: live
-- Owner: Rust magician renderer in `front_door_render.rs` plus runtime assets
-  under `assets/third_party/`
+- Owner: `yazelix_screen` owns the magician source GIF, generated runtime
+  frames, and reusable Kitty frame sequence rendering; Yazelix packaging links
+  those child-owned frames into the runtime asset tree and `front_door_render.rs`
+  owns product-specific gating and error classification
 - Statement: `magician` renders the attributed GIF-derived PNG frame assets
-  through Kitty graphics. Missing runtime assets or unavailable Kitty graphics
-  support produce explicit errors instead of falling back to a degraded ANSI
-  block renderer
+  through Kitty graphics. Missing child-owned runtime assets or unavailable
+  Kitty graphics support produce explicit errors instead of falling back to a
+  degraded ANSI block renderer
 - Verification: automated Rust `front_door_render` tests; manual `yzx screen
   magician` or `yzx screen --internal-welcome magician` review in the packaged
   Ghostty/Ratty runtime
@@ -147,6 +154,7 @@ should either:
 
 - Do not revive the plain `game_of_life` alias
 - Do not reintroduce a second renderer or style-policy owner in Nu
+- Do not fork the random animation-family pool back into `front_door_render.rs`
 - Do not move shell-local prompt/keypress gating into a fake Rust wrapper just
   to say the file moved
 
