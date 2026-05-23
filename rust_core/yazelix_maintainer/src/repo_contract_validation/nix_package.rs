@@ -573,6 +573,15 @@ fn verify_profile_installed_runtime(
             errors,
         );
     }
+    if errors.is_empty() {
+        verify_profile_desktop_install_path(
+            repo_root,
+            temp_home,
+            &yzx_path,
+            &desktop_entry,
+            errors,
+        )?;
+    }
     Ok(())
 }
 
@@ -614,6 +623,64 @@ fn run_installed_yzx(repo_root: &Path, temp_home: &Path, args: &[&str]) -> Resul
         .env_remove("YAZELIX_STATE_DIR")
         .output()
         .map_err(|error| format!("Failed to run profile-installed yzx: {}", error))
+}
+
+fn verify_profile_desktop_install_path(
+    repo_root: &Path,
+    temp_home: &Path,
+    yzx_path: &Path,
+    desktop_entry: &Path,
+    errors: &mut Vec<String>,
+) -> Result<(), String> {
+    let desktop_install = run_installed_yzx(repo_root, temp_home, &["desktop", "install"])?;
+    if !desktop_install.status.success() {
+        errors.push(format!(
+            "Profile-installed yzx desktop install failed during cold profile-install validation\n{}",
+            command_output_summary(&desktop_install)
+        ));
+        return Ok(());
+    }
+
+    require_path_exists_abs(desktop_entry, "profile-installed desktop entry", errors);
+    if desktop_entry.exists() {
+        validate_profile_desktop_entry_contents(desktop_entry, yzx_path, errors)?;
+    }
+    Ok(())
+}
+
+fn validate_profile_desktop_entry_contents(
+    desktop_entry: &Path,
+    yzx_path: &Path,
+    errors: &mut Vec<String>,
+) -> Result<(), String> {
+    let raw = fs::read_to_string(desktop_entry).map_err(|error| {
+        format!(
+            "Failed to read profile-installed desktop entry {}: {}",
+            desktop_entry.display(),
+            error
+        )
+    })?;
+    let exec_line = raw
+        .lines()
+        .find(|line| line.trim().starts_with("Exec="))
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    let expected_exec = format!("Exec=\"{}\" desktop launch", yzx_path.display());
+    for required in ["Name=Yazelix", "Terminal=false", "X-Yazelix-Managed=true"] {
+        if !raw.lines().any(|line| line.trim() == required) {
+            errors.push(format!(
+                "Profile-installed desktop entry is missing `{required}`: {}",
+                desktop_entry.display()
+            ));
+        }
+    }
+    if exec_line != expected_exec {
+        errors.push(format!(
+            "Profile-installed desktop entry Exec should target the profile yzx wrapper. Expected `{expected_exec}`, got `{exec_line}`"
+        ));
+    }
+    Ok(())
 }
 
 fn run_runtime_posix_launcher_minimal_env(
@@ -758,4 +825,58 @@ fn require_ghostty_shader_references_exist(
         );
     }
     Ok(())
+}
+
+// Test lane: maintainer
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    // Defends: cold profile-install validation checks the explicit desktop-entry install path shape without relying on a maintainer's real profile.
+    #[test]
+    fn desktop_entry_validation_accepts_profile_owned_exec() {
+        let temp = tempdir().unwrap();
+        let yzx = temp.path().join(".nix-profile").join("bin").join("yzx");
+        let desktop = temp.path().join("com.yazelix.Yazelix.desktop");
+        fs::create_dir_all(yzx.parent().unwrap()).unwrap();
+        fs::write(&yzx, "").unwrap();
+        fs::write(
+            &desktop,
+            format!(
+                "[Desktop Entry]\nName=Yazelix\nTerminal=false\nX-Yazelix-Managed=true\nExec=\"{}\" desktop launch\n",
+                yzx.display()
+            ),
+        )
+        .unwrap();
+
+        let mut errors = Vec::new();
+        validate_profile_desktop_entry_contents(&desktop, &yzx, &mut errors).unwrap();
+
+        assert!(errors.is_empty(), "{errors:?}");
+    }
+
+    // Regression: the profile smoke must reject desktop entries that point at an unrelated local wrapper.
+    #[test]
+    fn desktop_entry_validation_rejects_wrong_exec_owner() {
+        let temp = tempdir().unwrap();
+        let yzx = temp.path().join(".nix-profile").join("bin").join("yzx");
+        let desktop = temp.path().join("com.yazelix.Yazelix.desktop");
+        fs::create_dir_all(yzx.parent().unwrap()).unwrap();
+        fs::write(&yzx, "").unwrap();
+        fs::write(
+            &desktop,
+            "[Desktop Entry]\nName=Yazelix\nTerminal=false\nX-Yazelix-Managed=true\nExec=\"/old/bin/yzx\" desktop launch\n",
+        )
+        .unwrap();
+
+        let mut errors = Vec::new();
+        validate_profile_desktop_entry_contents(&desktop, &yzx, &mut errors).unwrap();
+
+        assert!(
+            errors
+                .iter()
+                .any(|error| error.contains("profile yzx wrapper"))
+        );
+    }
 }

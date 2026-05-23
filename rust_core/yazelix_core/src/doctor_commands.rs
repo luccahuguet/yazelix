@@ -273,6 +273,7 @@ fn compute_doctor_report_from_env() -> Result<DoctorReportData, CoreError> {
             .map(serialize_value)
             .collect::<Result<Vec<_>, _>>()?,
     );
+    results.push(serialize_value(&install_report.install_owner_diagnostic)?);
     if let Some(collision) = install_report.home_manager_profile_collision.as_ref() {
         results.push(serialize_value(collision)?);
     }

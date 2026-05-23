@@ -382,6 +382,9 @@ yzx dev update --yes --activate none  # Refresh the repo state only and skip loc
 yzx dev update --yes --activate home_manager --home-manager-attr 'you@host'  # Refresh the repo, update the Home Manager yazelix-hm input, then run home-manager switch
 yzx dev update --canary-only --canaries [default]  # Run only the default canary
 yzx dev update --canary-only --canaries [shell_layout]  # Run the alternate shell/layout canary
+yzx_repo_maintainer canary-session --dry-run  # Preview the disposable packaged-runtime Zellij canary
+yzx_repo_maintainer canary-session --session-name yazelix-canary-manual  # Open an isolated canary session and keep evidence under /tmp
+yzx_repo_validator validate-child-release-transaction  # Verify locked first-party child commits are published before landing a main lock update
 nix build ../yazelix-zellij-pane-orchestrator#yazelix_zellij_pane_orchestrator --no-link  # Build the local pane-orchestrator package
 
 # Maintainer verification

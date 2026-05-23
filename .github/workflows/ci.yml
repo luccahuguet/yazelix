@@ -82,6 +82,10 @@ jobs:
         shell: bash
         run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-contracts
 
+      - name: Validate docs experience
+        shell: bash
+        run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-docs-experience
+
       - name: Validate Rust test traceability
         shell: bash
         run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-rust-test-traceability

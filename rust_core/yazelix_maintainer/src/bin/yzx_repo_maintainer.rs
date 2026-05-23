@@ -1,4 +1,7 @@
 use std::path::PathBuf;
+use yazelix_maintainer::repo_canary_session::{
+    CanarySessionOptions, run_disposable_canary_session,
+};
 use yazelix_maintainer::repo_contract_validation::sync_readme_surface;
 use yazelix_maintainer::repo_issue_sync::run_issue_sync;
 use yazelix_maintainer::repo_nu_lint::run_repo_nu_lint;
@@ -120,6 +123,10 @@ fn main() {
             let rust_args = args.collect::<Vec<_>>();
             run_repo_rust_command(&resolved_repo_root, &rust_args)
         }
+        "canary-session" => {
+            let options = parse_canary_session_args(args.collect());
+            run_disposable_canary_session(&resolved_repo_root, &options)
+        }
         _ => {
             eprintln!("Unknown maintainer command `{command}`");
             print_usage_and_exit();
@@ -134,7 +141,7 @@ fn main() {
 
 fn print_usage_and_exit() -> ! {
     eprintln!(
-        "Usage: yzx_repo_maintainer [--repo-root PATH] <sync-readme-surface|run-tests|version-bump|sync-issues|dev-update|lint-nu|rust> [options]"
+        "Usage: yzx_repo_maintainer [--repo-root PATH] <sync-readme-surface|run-tests|version-bump|sync-issues|dev-update|lint-nu|rust|canary-session> [options]"
     );
     std::process::exit(2);
 }
@@ -272,6 +279,29 @@ fn parse_lint_nu_args(args: Vec<String>) -> (String, Vec<String>) {
         }
     }
     (format, paths)
+}
+
+fn parse_canary_session_args(args: Vec<String>) -> CanarySessionOptions {
+    let mut options = CanarySessionOptions::default();
+    let mut iter = args.into_iter();
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "--dry-run" => options.dry_run = true,
+            "--keep-session" => options.keep_session = true,
+            "--session-name" => {
+                let Some(value) = iter.next() else {
+                    eprintln!("Missing value after --session-name");
+                    std::process::exit(2);
+                };
+                options.session_name = Some(value);
+            }
+            _ => {
+                eprintln!("Unknown canary-session option `{arg}`");
+                std::process::exit(2);
+            }
+        }
+    }
+    options
 }
 
 // Test lane: maintainer

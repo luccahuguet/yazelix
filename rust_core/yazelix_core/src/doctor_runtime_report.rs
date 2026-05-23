@@ -15,6 +15,10 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+const ZELLIJ_KITTY_PASSTHROUGH_FEATURE: &str = "zellij_kitty_passthrough";
+const CHAFA_PROBE_SAFE_FEATURE: &str = "chafa_probe_safe";
+const CHAFA_PROBE_UNSAFE_FEATURE: &str = "chafa_probe_unsafe";
+
 #[derive(Debug, Deserialize)]
 pub struct SharedRuntimePreflightInput {
     pub zellij_layout_path: PathBuf,
@@ -111,6 +115,12 @@ pub fn evaluate_doctor_runtime_report(
             }],
         },
     };
+    if let Some(shared) = &request.shared_runtime {
+        shared_runtime_preflight.extend(build_runtime_graphics_findings(
+            shared,
+            &request.runtime_dir,
+        ));
+    }
     shared_runtime_preflight.extend(build_runtime_tool_source_findings(
         &request.runtime_dir,
         &runtime_tool_command_search_paths,
@@ -512,12 +522,197 @@ fn build_shared_preflight_findings(
         .collect())
 }
 
+fn build_runtime_graphics_findings(
+    shared: &SharedRuntimePreflightInput,
+    runtime_dir: &Path,
+) -> Vec<DoctorRuntimeDoctorFinding> {
+    vec![
+        build_graphics_preview_strategy_finding(shared, runtime_dir),
+        build_chafa_probe_safety_finding(runtime_dir),
+    ]
+}
+
+fn runtime_feature_path(runtime_dir: &Path, feature: &str) -> PathBuf {
+    runtime_dir.join("runtime_features").join(feature)
+}
+
+fn runtime_feature_enabled(runtime_dir: &Path, feature: &str) -> bool {
+    runtime_feature_path(runtime_dir, feature).exists()
+}
+
+fn runtime_command_present(runtime_dir: &Path, command: &str) -> bool {
+    runtime_dir.join("libexec").join(command).is_file()
+        || runtime_dir.join("toolbin").join(command).is_file()
+}
+
+fn first_configured_terminal(terminals: &[String]) -> String {
+    terminals
+        .iter()
+        .map(|terminal| terminal.trim())
+        .find(|terminal| !terminal.is_empty())
+        .unwrap_or("unknown")
+        .to_string()
+}
+
+fn terminal_uses_yazelix_kitty_bridge(terminal: &str) -> bool {
+    matches!(terminal, "ghostty" | "ratty")
+}
+
+fn build_graphics_preview_strategy_finding(
+    shared: &SharedRuntimePreflightInput,
+    runtime_dir: &Path,
+) -> DoctorRuntimeDoctorFinding {
+    let terminal = first_configured_terminal(&shared.terminals);
+    let bridge_marker = runtime_feature_enabled(runtime_dir, ZELLIJ_KITTY_PASSTHROUGH_FEATURE);
+    let zellij_present = runtime_command_present(runtime_dir, "zellij");
+    let yazi_present = runtime_command_present(runtime_dir, "yazi");
+    let details = vec![
+        format!("First configured terminal: {terminal}"),
+        format!(
+            "Runtime Kitty passthrough marker: {}",
+            if bridge_marker { "present" } else { "missing" }
+        ),
+        format!(
+            "Runtime Zellij command: {}",
+            if zellij_present {
+                "present"
+            } else {
+                "missing"
+            }
+        ),
+        format!(
+            "Runtime Yazi command: {}",
+            if yazi_present { "present" } else { "missing" }
+        ),
+        "Chafa probing is reported separately and is not treated as proof of high-quality image-preview support.".into(),
+    ];
+
+    if terminal_uses_yazelix_kitty_bridge(&terminal) {
+        if bridge_marker && zellij_present && yazi_present {
+            return DoctorRuntimeDoctorFinding {
+                status: "ok".into(),
+                message: "Graphics previews: Yazelix Kitty passthrough bridge is active".into(),
+                details: Some(format!(
+                    "{}\nPreview strategy: Yazi image previews use Kitty graphics through the packaged Zellij/Yazi bridge.",
+                    details.join("\n")
+                )),
+                fix_available: false,
+                fix_action: None,
+                capability_tier: Some("full".into()),
+                capability_mode: Some("kitty_passthrough_bridge".into()),
+                runtime_contract_check: Some("runtime_graphics_preview_strategy".into()),
+                owner_surface: Some("runtime_graphics".into()),
+            };
+        }
+
+        return DoctorRuntimeDoctorFinding {
+            status: "warning".into(),
+            message:
+                "Graphics previews: configured terminal expects the Yazelix Kitty bridge, but the runtime is incomplete"
+                    .into(),
+            details: Some(format!(
+                "{}\nExpected combination: Ghostty or Ratty plus runtime-owned Zellij/Yazi Kitty passthrough marker.",
+                details.join("\n")
+            )),
+            fix_available: false,
+            fix_action: None,
+            capability_tier: Some("degraded".into()),
+            capability_mode: Some("kitty_passthrough_bridge_incomplete".into()),
+            runtime_contract_check: Some("runtime_graphics_preview_strategy".into()),
+            owner_surface: Some("runtime_graphics".into()),
+        };
+    }
+
+    DoctorRuntimeDoctorFinding {
+        status: "info".into(),
+        message: "Graphics previews: no Yazelix Kitty passthrough bridge is expected".into(),
+        details: Some(format!(
+            "{}\nPreview strategy: this diagnostic only validates the Ghostty/Ratty Kitty bridge path. Other terminal preview behavior is terminal-native or outside the current Yazelix graphics contract.",
+            details.join("\n")
+        )),
+        fix_available: false,
+        fix_action: None,
+        capability_tier: Some("unknown".into()),
+        capability_mode: Some("terminal_native_or_unmanaged".into()),
+        runtime_contract_check: Some("runtime_graphics_preview_strategy".into()),
+        owner_surface: Some("runtime_graphics".into()),
+    }
+}
+
+fn build_chafa_probe_safety_finding(runtime_dir: &Path) -> DoctorRuntimeDoctorFinding {
+    if runtime_feature_enabled(runtime_dir, CHAFA_PROBE_UNSAFE_FEATURE) {
+        return DoctorRuntimeDoctorFinding {
+            status: "warning".into(),
+            message: "Chafa probe safety: unsafe probe marker present".into(),
+            details: Some(
+                "This is separate from Kitty graphics capability. Do not use Chafa probing as proof that Zellij/Yazi image previews are supported in this runtime."
+                    .into(),
+            ),
+            fix_available: false,
+            fix_action: None,
+            capability_tier: None,
+            capability_mode: Some("chafa_probe_unsafe".into()),
+            runtime_contract_check: Some("runtime_chafa_probe_safety".into()),
+            owner_surface: Some("runtime_graphics".into()),
+        };
+    }
+
+    if runtime_feature_enabled(runtime_dir, CHAFA_PROBE_SAFE_FEATURE) {
+        return DoctorRuntimeDoctorFinding {
+            status: "ok".into(),
+            message: "Chafa probe safety: safe probe marker present".into(),
+            details: Some(
+                "This only means Chafa probing is safe to run. Kitty graphics bridge support is reported separately."
+                    .into(),
+            ),
+            fix_available: false,
+            fix_action: None,
+            capability_tier: None,
+            capability_mode: Some("chafa_probe_safe".into()),
+            runtime_contract_check: Some("runtime_chafa_probe_safety".into()),
+            owner_surface: Some("runtime_graphics".into()),
+        };
+    }
+
+    DoctorRuntimeDoctorFinding {
+        status: "info".into(),
+        message: "Chafa probe safety: no Chafa probe is active".into(),
+        details: Some(
+            "Yazelix is not using a Chafa ghost-keypress probe for this runtime. Kitty graphics support is determined from the terminal and runtime bridge markers instead."
+                .into(),
+        ),
+        fix_available: false,
+        fix_action: None,
+        capability_tier: None,
+        capability_mode: Some("chafa_probe_not_used".into()),
+        runtime_contract_check: Some("runtime_chafa_probe_safety".into()),
+        owner_surface: Some("runtime_graphics".into()),
+    }
+}
+
 // Test lane: default
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use tempfile::TempDir;
+
+    fn write_runtime_command(runtime: &Path, command: &str) {
+        let path = runtime.join("libexec").join(command);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, "").unwrap();
+    }
+
+    fn shared_with_terminal(terminal: &str) -> SharedRuntimePreflightInput {
+        SharedRuntimePreflightInput {
+            zellij_layout_path: PathBuf::from("layout.kdl"),
+            terminals: vec![terminal.to_string()],
+            startup_script_path: PathBuf::from("startup.nu"),
+            launch_script_path: PathBuf::from("launch.sh"),
+            command_search_paths: Vec::new(),
+            platform_name: "linux".to_string(),
+        }
+    }
 
     // Defends: doctor runtime distribution reporting still prefers Home Manager ownership over generic package shape.
     #[test]
@@ -672,6 +867,90 @@ mod tests {
         assert_eq!(
             findings[0].runtime_contract_check.as_deref(),
             Some("disabled_runtime_component:cursors")
+        );
+    }
+
+    // Defends: runtime graphics diagnostics recognize the packaged Ghostty/Ratty Kitty bridge from runtime-owned markers instead of terminal name alone.
+    #[test]
+    fn graphics_strategy_reports_active_kitty_bridge_for_ghostty_runtime() {
+        let tmp = TempDir::new().unwrap();
+        let runtime = tmp.path().join("runtime");
+        std::fs::create_dir_all(runtime.join("runtime_features")).unwrap();
+        std::fs::write(
+            runtime_feature_path(&runtime, ZELLIJ_KITTY_PASSTHROUGH_FEATURE),
+            "",
+        )
+        .unwrap();
+        write_runtime_command(&runtime, "zellij");
+        write_runtime_command(&runtime, "yazi");
+
+        let findings = build_runtime_graphics_findings(&shared_with_terminal("ghostty"), &runtime);
+
+        assert_eq!(findings[0].status, "ok");
+        assert_eq!(
+            findings[0].message,
+            "Graphics previews: Yazelix Kitty passthrough bridge is active"
+        );
+        assert_eq!(
+            findings[0].capability_mode.as_deref(),
+            Some("kitty_passthrough_bridge")
+        );
+        assert_eq!(
+            findings[1].message,
+            "Chafa probe safety: no Chafa probe is active"
+        );
+    }
+
+    // Regression: Ghostty/Ratty graphics diagnostics must warn on an incomplete bridge instead of claiming support from terminal identity alone.
+    #[test]
+    fn graphics_strategy_warns_for_ratty_without_bridge_marker() {
+        let tmp = TempDir::new().unwrap();
+        let runtime = tmp.path().join("runtime");
+        write_runtime_command(&runtime, "zellij");
+        write_runtime_command(&runtime, "yazi");
+
+        let findings = build_runtime_graphics_findings(&shared_with_terminal("ratty"), &runtime);
+
+        assert_eq!(findings[0].status, "warning");
+        assert_eq!(
+            findings[0].capability_mode.as_deref(),
+            Some("kitty_passthrough_bridge_incomplete")
+        );
+        assert!(
+            findings[0]
+                .details
+                .as_deref()
+                .unwrap_or_default()
+                .contains("Runtime Kitty passthrough marker: missing")
+        );
+    }
+
+    // Defends: Chafa probe safety is a separate doctor finding and cannot masquerade as Kitty graphics bridge capability.
+    #[test]
+    fn chafa_probe_safety_is_reported_separately_from_graphics_capability() {
+        let tmp = TempDir::new().unwrap();
+        let runtime = tmp.path().join("runtime");
+        std::fs::create_dir_all(runtime.join("runtime_features")).unwrap();
+        std::fs::write(
+            runtime_feature_path(&runtime, ZELLIJ_KITTY_PASSTHROUGH_FEATURE),
+            "",
+        )
+        .unwrap();
+        std::fs::write(
+            runtime_feature_path(&runtime, CHAFA_PROBE_UNSAFE_FEATURE),
+            "",
+        )
+        .unwrap();
+        write_runtime_command(&runtime, "zellij");
+        write_runtime_command(&runtime, "yazi");
+
+        let findings = build_runtime_graphics_findings(&shared_with_terminal("ghostty"), &runtime);
+
+        assert_eq!(findings[0].status, "ok");
+        assert_eq!(findings[1].status, "warning");
+        assert_eq!(
+            findings[1].capability_mode.as_deref(),
+            Some("chafa_probe_unsafe")
         );
     }
 }

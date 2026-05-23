@@ -244,5 +244,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
         return
     }
 
-    ^zellij --config-dir $merged_zellij_dir options --default-cwd $session_default_cwd --default-layout $layout_path --default-shell $zellij_default_shell
+    let zellij_session_name = ($env.YAZELIX_ZELLIJ_SESSION_NAME? | default "" | str trim)
+    let zellij_session_args = if ($zellij_session_name | is-empty) { [] } else { [--session $zellij_session_name] }
+    ^zellij ...$zellij_session_args --config-dir $merged_zellij_dir options --default-cwd $session_default_cwd --default-layout $layout_path --default-shell $zellij_default_shell
 }

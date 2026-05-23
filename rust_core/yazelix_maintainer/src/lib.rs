@@ -1,3 +1,5 @@
+pub mod repo_canary_session;
+pub mod repo_child_release;
 pub mod repo_contract_validation;
 pub mod repo_docs_validation;
 pub mod repo_issue_sync;

@@ -70,6 +70,8 @@ Maintained target state:
 | Generic repo validation | `yazelix_maintainer/src/repo_validation.rs` | moved to `yazelix_maintainer` | reject external repo | Contract/test traceability and package-test-purity are repo policy, not runtime product behavior |
 | Issue sync | `yazelix_maintainer/src/repo_issue_sync.rs` | moved to `yazelix_maintainer` | reject external repo | Beads/GitHub mapping is local workflow state and should not become a separately versioned tool |
 | Nushell lint wrapper | `yazelix_maintainer/src/repo_nu_lint.rs` | moved to `yazelix_maintainer` | reject external repo | Thin repo-local maintainer command around checked-in Nu files |
+| Child release transaction check | `yazelix_maintainer/src/repo_child_release.rs` | in-repo maintainer crate | reject external repo | Verifies first-party child flake pins are published before the main repo consumes them |
+| Disposable session canary | `yazelix_maintainer/src/repo_canary_session.rs` | in-repo maintainer crate | reject external repo | Launches a packaged-runtime Zellij canary with isolated HOME/session state and records local evidence |
 | Sweep runner | `yazelix_maintainer/src/repo_sweep_runner.rs` | moved to `yazelix_maintainer` | reject external repo | Runs local runtime/config matrices against this checkout |
 | Test runner | `yazelix_maintainer/src/repo_test_runner.rs` | moved to `yazelix_maintainer` | reject external repo | Maintainer orchestration over local validator/test surfaces, not shipped product behavior |
 | Update workflow | `yazelix_maintainer/src/repo_update_workflow.rs` | moved to `yazelix_maintainer` | reject external repo | Writes local pins, vendored `zjstatus.wasm`, README surface, and canary materialization |

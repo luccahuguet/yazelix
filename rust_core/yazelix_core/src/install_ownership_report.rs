@@ -75,6 +75,7 @@ pub struct InstallOwnershipEvaluateData {
     pub prepare_artifacts: Vec<HomeManagerPrepareArtifact>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub home_manager_profile_collision: Option<DoctorInstallResult>,
+    pub install_owner_diagnostic: DoctorInstallResult,
     pub desktop_entry_freshness: DoctorInstallResult,
     pub wrapper_shadowing: Vec<DoctorInstallResult>,
 }
@@ -102,6 +103,14 @@ pub fn evaluate_install_ownership_report(
     );
     let home_manager_profile_collision =
         check_home_manager_profile_collision(has_hm, &standalone_profile_yazelix_entries);
+    let install_owner_diagnostic = build_install_owner_diagnostic(
+        request,
+        &install_owner,
+        stable.as_deref(),
+        existing_profile.as_ref(),
+        &desktop_launcher_str,
+        is_manual_runtime_ref,
+    );
     let desktop_entry_freshness = check_desktop_entry_freshness(
         request,
         &install_owner,
@@ -124,6 +133,7 @@ pub fn evaluate_install_ownership_report(
         standalone_profile_yazelix_entries,
         prepare_artifacts,
         home_manager_profile_collision,
+        install_owner_diagnostic,
         desktop_entry_freshness,
         wrapper_shadowing,
     }
@@ -522,6 +532,58 @@ fn check_home_manager_profile_collision(
         details: Some(details),
         fix_available: false,
     })
+}
+
+fn build_install_owner_diagnostic(
+    request: &InstallOwnershipEvaluateRequest,
+    install_owner: &str,
+    stable_yzx_wrapper: Option<&Path>,
+    existing_profile_yzx: Option<&PathBuf>,
+    desktop_launcher: &str,
+    is_manual_runtime_reference_path: bool,
+) -> DoctorInstallResult {
+    let mut details = vec![
+        format!("Runtime root: {}", path_to_string(&request.runtime_dir)),
+        format!("Desktop launcher target: {desktop_launcher}"),
+    ];
+    if let Some(wrapper) = stable_yzx_wrapper {
+        details.push(format!("Stable yzx wrapper: {}", path_to_string(wrapper)));
+    }
+    if let Some(profile) = existing_profile_yzx {
+        details.push(format!(
+            "Profile yzx candidate: {}",
+            path_to_string(profile)
+        ));
+    }
+    if is_manual_runtime_reference_path {
+        details.push(
+            "Legacy runtime/current points at a manual runtime reference; reinstall into a profile or move to Home Manager before relying on owner updates."
+                .into(),
+        );
+    }
+
+    let (message, update_detail) = match install_owner {
+        "home-manager" => (
+            "Install owner: Home Manager",
+            "Owner update command: `yzx update home_manager` from the owning Home Manager flake, then run the printed `home-manager switch` command.",
+        ),
+        "profile" => (
+            "Install owner: default Nix profile",
+            "Owner update command: `yzx update upstream`.",
+        ),
+        _ => (
+            "Install owner: unmanaged runtime root",
+            "No package owner was detected. Install with `nix profile add --refresh github:luccahuguet/yazelix#yazelix`, or enable the Home Manager module and use `yzx update home_manager` afterward.",
+        ),
+    };
+    details.push(update_detail.into());
+
+    DoctorInstallResult {
+        status: "info".into(),
+        message: message.into(),
+        details: Some(details.join("\n")),
+        fix_available: false,
+    }
 }
 
 fn get_desktop_entry_exec(desktop_path: &Path) -> Option<String> {
@@ -957,6 +1019,18 @@ mod tests {
             report.stable_yzx_wrapper,
             Some(path_to_string(&profile_yzx))
         );
+        assert_eq!(
+            report.install_owner_diagnostic.message,
+            "Install owner: default Nix profile"
+        );
+        assert!(
+            report
+                .install_owner_diagnostic
+                .details
+                .as_deref()
+                .unwrap_or_default()
+                .contains("yzx update upstream")
+        );
     }
 
     // Regression: COSMIC/GLib can accept a Terminal=true desktop entry without starting Yazelix, so fresh entries must be non-terminal desktop commands.
@@ -1067,6 +1141,17 @@ mod tests {
         };
         let r = evaluate_install_ownership_report(&req);
         assert_eq!(r.install_owner, "home-manager");
+        assert_eq!(
+            r.install_owner_diagnostic.message,
+            "Install owner: Home Manager"
+        );
+        assert!(
+            r.install_owner_diagnostic
+                .details
+                .as_deref()
+                .unwrap_or_default()
+                .contains("yzx update home_manager")
+        );
         assert_eq!(
             r.desktop_entry_freshness.message,
             "A stale user-local Yazelix desktop entry shadows the Home Manager desktop entry"

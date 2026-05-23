@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use yazelix_maintainer::repo_child_release::validate_child_release_transaction;
 use yazelix_maintainer::repo_contract_validation::{
     ColdProfileInstallOptions, UpgradeContractOptions, validate_config_surface_contract,
     validate_flake_interface, validate_flake_profile_install, validate_installed_runtime_contract,
@@ -13,7 +14,7 @@ use yazelix_maintainer::repo_validation::{
 };
 use yazelix_maintainer::workspace_session_contract::validate_workspace_session_contract;
 
-const USAGE_COMMANDS: &str = "validate-contracts|validate-rust-test-traceability|validate-package-rust-test-purity|validate-workspace-session-contract|validate-config-surface-contract|validate-docs-experience|validate-rust-ownership-budget|validate-upgrade-contract|validate-installed-runtime-contract|validate-flake-interface|validate-flake-profile-install|validate-nix-customization-api|validate-nixpkgs-package|validate-nixpkgs-submission|validate-nushell-syntax|validate-readme-version";
+const USAGE_COMMANDS: &str = "validate-contracts|validate-rust-test-traceability|validate-package-rust-test-purity|validate-workspace-session-contract|validate-config-surface-contract|validate-docs-experience|validate-rust-ownership-budget|validate-child-release-transaction|validate-upgrade-contract|validate-installed-runtime-contract|validate-flake-interface|validate-flake-profile-install|validate-nix-customization-api|validate-nixpkgs-package|validate-nixpkgs-submission|validate-nushell-syntax|validate-readme-version";
 
 fn main() {
     let mut args = std::env::args().skip(1);
@@ -65,11 +66,15 @@ fn main() {
         ),
         "validate-docs-experience" => (
             validate_docs_experience(&resolved_repo_root),
-            Some("✅ Docs front door routes are valid".to_string()),
+            Some("✅ Docs links, keybindings, and config examples are valid".to_string()),
         ),
         "validate-rust-ownership-budget" => (
             validate_rust_ownership_budget(&resolved_repo_root),
             Some("✅ Rust ownership budget and no-growth ceilings are valid".to_string()),
+        ),
+        "validate-child-release-transaction" => (
+            validate_child_release_transaction(&resolved_repo_root),
+            Some("✅ First-party child input revisions are published".to_string()),
         ),
         "validate-installed-runtime-contract" => (
             validate_installed_runtime_contract(&resolved_repo_root),
@@ -174,6 +179,9 @@ fn main() {
                     }
                     "validate-docs-experience" => "Docs experience validation failed",
                     "validate-rust-ownership-budget" => "Rust ownership budget validation failed",
+                    "validate-child-release-transaction" => {
+                        "Child release transaction validation failed"
+                    }
                     "validate-upgrade-contract" => "Upgrade contract validation failed",
                     "validate-installed-runtime-contract" => {
                         "Installed-runtime contract validation failed"
