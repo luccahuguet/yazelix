@@ -10,6 +10,7 @@ Upgrade impact: no user action required
 
 Highlights:
 - Moved native tab and pane movement defaults to `Ctrl Alt H/L` and `Ctrl Alt J/K` so Ghostty does not intercept pane-down movement through its `Ctrl Shift J` screen-file shortcut
+- Added `zellij.codex_usage_periods` with a default Codex 5h/week status window and bundled `tokenusage` in packaged runtimes so default Codex and Claude usage widgets have their helper available
 
 ## v17 - 2026-05-22
 
