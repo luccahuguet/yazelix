@@ -21,7 +21,7 @@ Yazelix is built on a focused terminal-workspace stack. This catalog lists the p
 - `#yazelix_wezterm` — Explicit WezTerm runtime package for users who prefer WezTerm terminal behavior
 - `#yazelix_ratty` — Experimental Linux Ratty runtime package for users who want Ratty terminal behavior
 - `#runtime`, `#runtime_ghostty`, `#runtime_wezterm`, `#runtime_ratty` — Runtime-only package outputs used by the wrapper packages and validation surfaces
-- `#yazelix_agent_tools` and `#runtime_agent_tools` — Opt-in runtime variants that add agent usage helpers such as `tokenusage`
+- `#yazelix_agent_tools` and `#runtime_agent_tools` — Compatibility runtime variants for the default package shape with bundled agent usage helpers
 - `#yazelix_zellij_bar` — Standalone Zellij/zjstatus bar preset forwarded from `luccahuguet/yazelix-zellij-bar`, including `yazelix_zellij_bar_widget` and package-local `zjstatus.wasm`
 - `#yzs` and `#yazelix_screen` — Standalone terminal animation package forwarded from `luccahuguet/yazelix-screen` for the Yazelix screen engines outside Zellij and outside a full Yazelix session
 - `#yazelix_ghostty_cursors` — Standalone Yazelix cursor package for Ghostty users, with generated GLSL files, example Ghostty config snippets, and the `yzc` CLI
@@ -91,7 +91,7 @@ Regular Yazelix users do not need to install or wire these repositories separate
 - [Nix](https://nixos.org/) — Package/runtime owner for Yazelix installs, updates, and Home Manager integration.
 - [nixGL](https://github.com/guibou/nixGL) — Optional Linux GL wrapper used by packaged terminal runtime paths when needed.
 - [xclip](https://github.com/astrand/xclip), [wl-clipboard](https://github.com/bugaevc/wl-clipboard), and [xsel](https://github.com/kfish/xsel) — Linux clipboard helpers available to Zellij and the managed runtime.
-- [tokenusage](https://github.com/hanbu97/tokenusage) — Optional agent-usage helper included by `#yazelix_agent_tools` and Home Manager `agent_usage_programs = [ "tokenusage" ]`.
+- [tokenusage](https://github.com/hanbu97/tokenusage) — Agent-usage helper included in the packaged runtime for the default Codex and Claude status widgets.
 
 ## Yazi Plugins And Extensions
 

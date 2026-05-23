@@ -358,6 +358,17 @@ write_support = "settings_jsonc"
 home_manager_behavior = "read_only_in_ui"
 lifecycle = "stable"
 
+[fields."zellij.codex_usage_periods"]
+tab = "status_bar"
+group = "ai_usage"
+label = "codex_usage_periods"
+help = "Choose which Codex quota periods appear in the status bar"
+editor = "multi_select"
+default_source = "settings_default.jsonc"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "stable"
+
 [fields."zellij.claude_usage_display"]
 tab = "status_bar"
 group = "ai_usage"

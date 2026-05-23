@@ -116,7 +116,7 @@
           runtimeVariant ? "ghostty",
           runtimeToolSources ? { },
           components ? { },
-          extraRuntimePackages ? [ ],
+          extraRuntimePackages ? agentUsagePackages system,
           yaziAssets ? yazelixYaziAssets.packages.${system}.yazelix_yazi_assets,
           screenAssets ? yazelixScreen.packages.${system}.yzs,
           zellijPluginArtifacts ? zellijPluginArtifactsFor system,
@@ -261,19 +261,19 @@
         let
           pkgs = mkPkgs system;
           defaultRuntimeVariant = "ghostty";
-          noExtraRuntimePackages = [ ];
+          defaultRuntimePackages = agentUsagePackages system;
           agentUsageRuntimePackages = agentUsagePackages system;
           rattyPackages = lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
-            runtime_ratty = runtimePackage system pkgs "ratty" noExtraRuntimePackages;
-            yazelix_ratty = yazelixPackage system pkgs "ratty" noExtraRuntimePackages;
+            runtime_ratty = runtimePackage system pkgs "ratty" defaultRuntimePackages;
+            yazelix_ratty = yazelixPackage system pkgs "ratty" defaultRuntimePackages;
           };
-          runtime_default = runtimePackage system pkgs defaultRuntimeVariant noExtraRuntimePackages;
-          runtime_ghostty = runtimePackage system pkgs "ghostty" noExtraRuntimePackages;
-          runtime_wezterm = runtimePackage system pkgs "wezterm" noExtraRuntimePackages;
+          runtime_default = runtimePackage system pkgs defaultRuntimeVariant defaultRuntimePackages;
+          runtime_ghostty = runtimePackage system pkgs "ghostty" defaultRuntimePackages;
+          runtime_wezterm = runtimePackage system pkgs "wezterm" defaultRuntimePackages;
           runtime_agent_tools = runtimePackage system pkgs defaultRuntimeVariant agentUsageRuntimePackages;
-          yazelix_default = yazelixPackage system pkgs defaultRuntimeVariant noExtraRuntimePackages;
-          yazelix_ghostty = yazelixPackage system pkgs "ghostty" noExtraRuntimePackages;
-          yazelix_wezterm = yazelixPackage system pkgs "wezterm" noExtraRuntimePackages;
+          yazelix_default = yazelixPackage system pkgs defaultRuntimeVariant defaultRuntimePackages;
+          yazelix_ghostty = yazelixPackage system pkgs "ghostty" defaultRuntimePackages;
+          yazelix_wezterm = yazelixPackage system pkgs "wezterm" defaultRuntimePackages;
           yazelix_agent_tools = yazelixPackage system pkgs defaultRuntimeVariant agentUsageRuntimePackages;
           yazelix_zellij_bar = yazelixZellijBar.packages.${system}.yazelix_zellij_bar;
           yazelix_screen = yazelixScreen.packages.${system}.yzs;

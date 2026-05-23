@@ -74,6 +74,8 @@ const SCREEN_SAVER_STYLE_ALLOWED: &[&str] = &[
 const TAB_LABEL_MODE_FULL: &str = "full";
 const TAB_LABEL_MODE_COMPACT: &str = "compact";
 const TAB_LABEL_MODE_ALLOWED: &[&str] = &[TAB_LABEL_MODE_FULL, TAB_LABEL_MODE_COMPACT];
+const CLAUDE_CODEX_USAGE_PERIODS_ALLOWED: &[&str] = &["5h", "week"];
+const OPENCODE_GO_USAGE_PERIODS_ALLOWED: &[&str] = &["5h", "week", "month"];
 pub const DEFAULT_LEFT_SIDEBAR_COMMAND: &str = "yzx";
 pub const DEFAULT_LEFT_SIDEBAR_YAZI_ARGS: &[&str] = &["sidebar", "yazi"];
 pub const DEFAULT_RIGHT_SIDEBAR_COMMAND: &str = "codex";
@@ -149,6 +151,18 @@ fn default_opencode_go_usage_display() -> String {
     "both".into()
 }
 
+fn default_claude_usage_periods() -> Vec<String> {
+    vec!["5h".into(), "week".into()]
+}
+
+fn default_codex_usage_periods() -> Vec<String> {
+    vec!["5h".into(), "week".into()]
+}
+
+fn default_opencode_go_usage_periods() -> Vec<String> {
+    vec!["5h".into(), "week".into(), "month".into()]
+}
+
 fn default_widget_tray() -> Vec<String> {
     vec![
         "editor".into(),
@@ -222,6 +236,12 @@ pub struct ZellijRenderPlanRequest {
     pub zellij_codex_usage_display: String,
     #[serde(default = "default_opencode_go_usage_display")]
     pub zellij_opencode_go_usage_display: String,
+    #[serde(default = "default_claude_usage_periods")]
+    pub zellij_claude_usage_periods: Vec<String>,
+    #[serde(default = "default_codex_usage_periods")]
+    pub zellij_codex_usage_periods: Vec<String>,
+    #[serde(default = "default_opencode_go_usage_periods")]
+    pub zellij_opencode_go_usage_periods: Vec<String>,
     pub yazelix_layout_dir: String,
     pub resolved_default_shell: String,
     #[serde(default = "default_editor_label")]
@@ -272,6 +292,9 @@ pub struct ZellijRenderPlanData {
     pub claude_usage_display: String,
     pub codex_usage_display: String,
     pub opencode_go_usage_display: String,
+    pub claude_usage_periods: Vec<String>,
+    pub codex_usage_periods: Vec<String>,
+    pub opencode_go_usage_periods: Vec<String>,
     pub custom_text: String,
     pub layout_percentages: LayoutPlaceholderPercents,
     pub rounded_value: String,
@@ -457,6 +480,44 @@ fn normalize_usage_display(field: &str, raw: &str, default: &str) -> Result<Stri
     }
 }
 
+fn normalize_usage_periods(
+    field: &str,
+    raw: &[String],
+    allowed: &[&str],
+) -> Result<Vec<String>, CoreError> {
+    if raw.is_empty() {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "invalid_zellij_usage_periods",
+            format!("{field} must include at least one period"),
+            "Select at least one supported usage period, or remove the usage widget from zellij.widget_tray.",
+            serde_json::json!({ "field": field }),
+        ));
+    }
+
+    let mut periods = Vec::new();
+    for value in raw {
+        let normalized = value.trim().to_ascii_lowercase();
+        if !allowed.contains(&normalized.as_str()) {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "invalid_zellij_usage_periods",
+                format!(
+                    "{field} contains unsupported period `{}`. Expected one of: {}",
+                    value,
+                    allowed.join(", ")
+                ),
+                "Use only supported usage period identifiers.",
+                serde_json::json!({ "field": field, "value": value }),
+            ));
+        }
+        if !periods.contains(&normalized) {
+            periods.push(normalized);
+        }
+    }
+    Ok(periods)
+}
+
 fn normalize_tab_label_mode(mode: &str) -> Result<String, CoreError> {
     let normalized = mode.trim().to_ascii_lowercase();
     if TAB_LABEL_MODE_ALLOWED.contains(&normalized.as_str()) {
@@ -562,6 +623,21 @@ pub fn compute_zellij_render_plan(
         &request.zellij_opencode_go_usage_display,
         "both",
     )?;
+    let claude_usage_periods = normalize_usage_periods(
+        "zellij.claude_usage_periods",
+        &request.zellij_claude_usage_periods,
+        CLAUDE_CODEX_USAGE_PERIODS_ALLOWED,
+    )?;
+    let codex_usage_periods = normalize_usage_periods(
+        "zellij.codex_usage_periods",
+        &request.zellij_codex_usage_periods,
+        CLAUDE_CODEX_USAGE_PERIODS_ALLOWED,
+    )?;
+    let opencode_go_usage_periods = normalize_usage_periods(
+        "zellij.opencode_go_usage_periods",
+        &request.zellij_opencode_go_usage_periods,
+        OPENCODE_GO_USAGE_PERIODS_ALLOWED,
+    )?;
 
     let widget_tray = request
         .zellij_widget_tray
@@ -666,6 +742,9 @@ pub fn compute_zellij_render_plan(
         claude_usage_display,
         codex_usage_display,
         opencode_go_usage_display,
+        claude_usage_periods,
+        codex_usage_periods,
+        opencode_go_usage_periods,
         custom_text,
         layout_percentages,
         rounded_value: rounded_value.to_string(),
@@ -707,6 +786,9 @@ mod tests {
             zellij_claude_usage_display: "both".into(),
             zellij_codex_usage_display: "quota".into(),
             zellij_opencode_go_usage_display: "both".into(),
+            zellij_claude_usage_periods: default_claude_usage_periods(),
+            zellij_codex_usage_periods: default_codex_usage_periods(),
+            zellij_opencode_go_usage_periods: default_opencode_go_usage_periods(),
             yazelix_layout_dir: "/tmp/yazelix/layouts".into(),
             resolved_default_shell: "/usr/bin/nu".into(),
             editor_label: "hx".into(),
@@ -831,6 +913,32 @@ mod tests {
                 "cpu",
                 "ram"
             ]
+        );
+    }
+
+    // Regression: Codex period selection is a generated status-bar contract, not a child command default hidden from settings.
+    #[test]
+    fn normalizes_agent_usage_periods() {
+        let mut req = sample_request();
+        req.zellij_codex_usage_periods = vec!["week".into(), "5h".into(), "week".into()];
+        req.zellij_opencode_go_usage_periods = vec!["month".into(), "5h".into()];
+
+        let plan = compute_zellij_render_plan(&req).unwrap();
+
+        assert_eq!(plan.codex_usage_periods, vec!["week", "5h"]);
+        assert_eq!(plan.claude_usage_periods, vec!["5h", "week"]);
+        assert_eq!(plan.opencode_go_usage_periods, vec!["month", "5h"]);
+
+        req.zellij_codex_usage_periods = vec!["month".into()];
+        assert_eq!(
+            compute_zellij_render_plan(&req).unwrap_err().code(),
+            "invalid_zellij_usage_periods"
+        );
+
+        req.zellij_codex_usage_periods.clear();
+        assert_eq!(
+            compute_zellij_render_plan(&req).unwrap_err().code(),
+            "invalid_zellij_usage_periods"
         );
     }
 

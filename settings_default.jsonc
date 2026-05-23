@@ -62,6 +62,10 @@
     "claude_usage_display": "both",
     "codex_usage_display": "quota",
     "opencode_go_usage_display": "both",
+    "codex_usage_periods": [
+      "5h",
+      "week"
+    ],
     "opencode_go_usage_periods": [
       "5h",
       "week",

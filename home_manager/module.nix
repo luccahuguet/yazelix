@@ -397,9 +397,9 @@ in
 
     agent_usage_programs = mkOption {
       type = types.listOf (types.enum agentUsageProgramNames);
-      default = [ ];
+      default = [ "tokenusage" ];
       description = ''
-        Opt-in usage binaries to include in the Yazelix runtime.
+        Usage binaries to include in the Yazelix runtime.
 
         These support zellij.widget_tray usage entries:
         - "tokenusage": claude_usage, codex_usage
@@ -407,8 +407,12 @@ in
         codex_usage is a combined 5h/week token and quota widget.
         claude_usage is a combined 5h/week token and quota widget.
         opencode_go_usage reads OpenCode's local SQLite database directly and does
-        not require an extra usage binary. Configure its rendered windows with
+        not require an extra usage binary. Configure rendered windows with
+        zellij_codex_usage_periods, zellij_claude_usage_periods, and
         zellij_opencode_go_usage_periods.
+
+        Set this to [] only if the Claude and Codex usage widgets are removed
+        from zellij_widget_tray or intentionally host-provided.
       '';
     };
 
@@ -547,6 +551,10 @@ in
 
     zellij_codex_usage_display = mkMainContractOption "zellij.codex_usage_display" {
       description = "Codex usage widget display mode: token, quota, or both";
+    };
+
+    zellij_codex_usage_periods = mkMainContractOption "zellij.codex_usage_periods" {
+      description = "Periods shown by the codex_usage widget: 5h, week";
     };
 
     zellij_claude_usage_display = mkMainContractOption "zellij.claude_usage_display" {

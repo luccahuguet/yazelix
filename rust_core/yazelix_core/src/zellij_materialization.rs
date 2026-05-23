@@ -148,6 +148,9 @@ struct ZellijBarRenderRequest {
     claude_usage_display: String,
     codex_usage_display: String,
     opencode_go_usage_display: String,
+    claude_usage_periods: Vec<String>,
+    codex_usage_periods: Vec<String>,
+    opencode_go_usage_periods: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -1583,6 +1586,9 @@ fn render_integrated_zjstatus_bar(
         claude_usage_display: render_plan.claude_usage_display.clone(),
         codex_usage_display: render_plan.codex_usage_display.clone(),
         opencode_go_usage_display: render_plan.opencode_go_usage_display.clone(),
+        claude_usage_periods: render_plan.claude_usage_periods.clone(),
+        codex_usage_periods: render_plan.codex_usage_periods.clone(),
+        opencode_go_usage_periods: render_plan.opencode_go_usage_periods.clone(),
     };
     let request_json = serde_json::to_string(&request).map_err(|source| {
         CoreError::classified(
@@ -2627,6 +2633,9 @@ mod tests {
             zellij_claude_usage_display: "both".into(),
             zellij_codex_usage_display: "quota".into(),
             zellij_opencode_go_usage_display: "both".into(),
+            zellij_claude_usage_periods: vec!["5h".into(), "week".into()],
+            zellij_codex_usage_periods: vec!["5h".into(), "week".into()],
+            zellij_opencode_go_usage_periods: vec!["5h".into(), "week".into(), "month".into()],
             yazelix_layout_dir: "/tmp/yazelix/layouts".into(),
             resolved_default_shell: shell.into(),
             editor_label: editor_label.into(),
@@ -2980,6 +2989,10 @@ esac
 case "$3" in
   *'"zjstatus_plugin_url":"file:/tmp/zjstatus.wasm"'*) ;;
   *) exit 14 ;;
+esac
+case "$3" in
+  *'"codex_usage_periods":["5h","week"]'*) ;;
+  *) exit 15 ;;
 esac
 printf '%s\n' '{"schema_version":2,"plugin_block":"CHILD_PLUGIN_BLOCK"}'
 "#,

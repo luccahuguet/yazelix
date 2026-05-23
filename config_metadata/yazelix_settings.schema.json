@@ -275,6 +275,7 @@
         "claude_usage_display",
         "codex_usage_display",
         "opencode_go_usage_display",
+        "codex_usage_periods",
         "opencode_go_usage_periods",
         "claude_usage_periods",
         "custom_text",
@@ -346,6 +347,16 @@
             "quota",
             "both"
           ]
+        },
+        "codex_usage_periods": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "5h",
+              "week"
+            ]
+          }
         },
         "opencode_go_usage_display": {
           "type": "string",
