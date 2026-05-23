@@ -6,11 +6,11 @@ The product/runtime Nushell floor is now the measured allowlist below:
 
 | Family | Files | LOC |
 | --- | ---: | ---: |
-| Setup/bootstrap shell entry | `2` | `366` |
+| Setup/bootstrap shell entry | `1` | `250` |
 | Front-door presentation floor | `1` | `168` |
 | Runtime helper seam | `5` | `488` |
 
-Total tracked product/runtime Nu: `1,022` LOC across `8` files.
+Total tracked product/runtime Nu: `906` LOC across `7` files.
 
 ## Scope
 
@@ -37,16 +37,16 @@ wrapper trampolines.
 The remaining shell entry files are:
 
 - `nushell/scripts/core/start_yazelix_inner.nu`
-- `nushell/scripts/setup/environment.nu`
 
-They still own:
+It still owns:
 
-- shellhook env mutation and initializer generation
 - welcome/startup sequencing
 - the final `zellij` exec boundary
 
-They no longer own the extra welcome/display path that had drifted back into
-`environment.nu`.
+Normal launch/setup preflight is Rust-owned by `yzx enter`: it prepares
+generated shell initializers, refreshes the generated `yzx` extern bridge,
+ensures Yazelix-owned state/log directories, and validates required runtime
+assets before the Nushell startup handoff.
 
 ### Runtime helper seam
 
@@ -80,8 +80,8 @@ remaining an external selector process.
 ## Acceptance Cases
 
 1. No runtime-side Nushell wrapper file remains
-2. `environment.nu` reads as shellhook/env setup instead of a second welcome
-   owner
+2. Normal launch/setup does not call a product shellhook or runtime
+   `environment.nu` script
 3. The runtime helper allowlist is reviewed directly against the retained shell floor
 
 ## Verification

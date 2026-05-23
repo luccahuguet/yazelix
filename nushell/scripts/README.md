@@ -15,9 +15,8 @@ entrypoint cut. The surviving shell boundary is the sidebar Yazi launcher wrappe
 under `zellij_wrappers/`
 
 ### `setup/`
-Shell bootstrap, shellhook env mutation, and welcome sequencing
+Welcome sequencing and human-facing startup presentation
 
-- `environment.nu` - Shellhook env setup and initializer generation
 - `welcome.nu` - Interactive welcome display and prompt gating
 
 ### `utils/`

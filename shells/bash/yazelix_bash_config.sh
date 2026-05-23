@@ -23,7 +23,7 @@ if [ -f "$YAZELIX_BASH_INITIALIZERS_DIR/zoxide_init.sh" ] && [ -s "$YAZELIX_BASH
   source "$YAZELIX_BASH_INITIALIZERS_DIR/zoxide_init.sh"
 fi
 
-# mise_init.sh is generated conditionally by the shellHook.
+# mise_init.sh is generated conditionally by Yazelix setup preflight.
 # Source it if it exists and is non-empty.
 if [ -f "$YAZELIX_BASH_INITIALIZERS_DIR/mise_init.sh" ] && [ -s "$YAZELIX_BASH_INITIALIZERS_DIR/mise_init.sh" ]; then
   source "$YAZELIX_BASH_INITIALIZERS_DIR/mise_init.sh"

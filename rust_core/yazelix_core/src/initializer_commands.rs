@@ -39,6 +39,11 @@ struct InitializerResult {
     file: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ShellInitializerRun {
+    pub messages: Vec<String>,
+}
+
 fn shell_initializer_dirs(home: &Path) -> Vec<ShellConfig> {
     let base = home
         .join(".local")
@@ -421,6 +426,61 @@ fn generate_initializers(
     Ok(all_results)
 }
 
+pub(crate) fn generate_shell_initializers_for_env(
+    shells_to_configure: &[String],
+    quiet: bool,
+) -> Result<ShellInitializerRun, CoreError> {
+    let config_dir = crate::control_plane::config_dir_from_env()?;
+    crate::managed_user_config_stubs::ensure_shell_hook_stubs(&config_dir, shells_to_configure)?;
+
+    let home = crate::control_plane::home_dir_from_env()?;
+    let results = generate_initializers(&home, shells_to_configure)?;
+    Ok(ShellInitializerRun {
+        messages: initializer_messages(&results, quiet),
+    })
+}
+
+fn initializer_messages(results: &[InitializerResult], quiet: bool) -> Vec<String> {
+    if quiet {
+        return Vec::new();
+    }
+
+    let success_count = results.iter().filter(|r| r.status == "success").count();
+    let failed: Vec<_> = results.iter().filter(|r| r.status == "failed").collect();
+    let mut missing: Vec<_> = results
+        .iter()
+        .filter(|r| r.status == "missing")
+        .map(|r| r.tool.clone())
+        .collect::<std::collections::HashSet<_>>()
+        .into_iter()
+        .collect();
+    missing.sort();
+
+    let mut messages = Vec::new();
+    if failed.is_empty() && missing.is_empty() {
+        messages.push(format!(
+            "✅ Generated {success_count} shell initializers successfully"
+        ));
+    } else {
+        messages.push(format!("✅ Generated {success_count} shell initializers"));
+        if !missing.is_empty() {
+            messages.push(format!("⚠️  Tools not found: {}", missing.join(", ")));
+        }
+        if !failed.is_empty() {
+            messages.push("❌ Failed to generate:".to_string());
+            for f in &failed {
+                messages.push(format!(
+                    "   {} for {}: {}",
+                    f.tool,
+                    f.shell,
+                    f.error.as_deref().unwrap_or("")
+                ));
+            }
+        }
+    }
+    messages
+}
+
 pub fn run_generate_shell_initializers(args: &[String]) -> Result<i32, CoreError> {
     let mut shells_to_configure: Vec<String> = Vec::new();
     let mut help = false;
@@ -464,43 +524,10 @@ pub fn run_generate_shell_initializers(args: &[String]) -> Result<i32, CoreError
         ];
     }
 
-    let config_dir = crate::control_plane::config_dir_from_env()?;
-    crate::managed_user_config_stubs::ensure_shell_hook_stubs(&config_dir, &shells_to_configure)?;
-
-    let home = crate::control_plane::home_dir_from_env()?;
-    let results = generate_initializers(&home, &shells_to_configure)?;
-
     let quiet = std::env::var("YAZELIX_QUIET_MODE").as_deref() == Ok("true");
-    if !quiet {
-        let success_count = results.iter().filter(|r| r.status == "success").count();
-        let failed: Vec<_> = results.iter().filter(|r| r.status == "failed").collect();
-        let missing: Vec<_> = results
-            .iter()
-            .filter(|r| r.status == "missing")
-            .map(|r| r.tool.clone())
-            .collect::<std::collections::HashSet<_>>()
-            .into_iter()
-            .collect();
-
-        if failed.is_empty() && missing.is_empty() {
-            println!("✅ Generated {success_count} shell initializers successfully");
-        } else {
-            println!("✅ Generated {success_count} shell initializers");
-            if !missing.is_empty() {
-                println!("⚠️  Tools not found: {}", missing.join(", "));
-            }
-            if !failed.is_empty() {
-                println!("❌ Failed to generate:");
-                for f in &failed {
-                    println!(
-                        "   {} for {}: {}",
-                        f.tool,
-                        f.shell,
-                        f.error.as_deref().unwrap_or("")
-                    );
-                }
-            }
-        }
+    let report = generate_shell_initializers_for_env(&shells_to_configure, quiet)?;
+    for message in report.messages {
+        println!("{message}");
     }
 
     Ok(0)

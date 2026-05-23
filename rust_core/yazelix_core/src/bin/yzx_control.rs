@@ -1282,10 +1282,6 @@ fn profile_env(profile_run: &DevProfileRun, source_root: &Path) -> Vec<(String, 
             "YAZELIX_STARTUP_PROFILE_EXIT_BEFORE_ZELLIJ".to_string(),
             "true".to_string(),
         ),
-        (
-            "YAZELIX_SHELLHOOK_SKIP_WELCOME".to_string(),
-            "true".to_string(),
-        ),
     ]);
     vars
 }

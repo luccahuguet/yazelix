@@ -202,7 +202,6 @@ fn run_new_window(repo_root: &Path, options: &RepoTestOptions) -> Result<(), Str
     let status = Command::new(repo_root.join("shells").join("posix").join("yzx_cli.sh"))
         .arg("launch")
         .current_dir(repo_root)
-        .env("YAZELIX_SHELLHOOK_SKIP_WELCOME", "true")
         .status()
         .map_err(|error| format!("Failed to launch Yazelix test window: {error}"))?;
     if !status.success() {

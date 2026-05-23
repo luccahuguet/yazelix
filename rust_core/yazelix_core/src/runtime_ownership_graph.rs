@@ -190,8 +190,8 @@ fn generated_state_owners() -> Vec<SurfaceOwnerEntry> {
         },
         SurfaceOwnerEntry {
             surface: "~/.local/share/yazelix/initializers".to_string(),
-            owner: "Nushell environment setup with Rust runtime-env facts".to_string(),
-            source: "nushell/scripts/setup/environment.nu".to_string(),
+            owner: "Rust launch/setup preflight and initializer generation".to_string(),
+            source: "rust_core/yazelix_core/src/launch_commands/enter.rs".to_string(),
             validation: vec![
                 "yzx_repo_validator validate-nushell-syntax".to_string(),
                 "yzx dev test".to_string(),

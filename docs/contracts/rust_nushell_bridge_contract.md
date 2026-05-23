@@ -61,10 +61,10 @@ The bridge also limits new Nushell rewrite debt. Complex deterministic work can 
 #### BRIDGE-004
 - Type: ownership
 - Status: live
-- Owner: Rust metadata/extern lifecycle plus shellhook sync boundary
+- Owner: Rust metadata/extern lifecycle plus launch/setup sync boundary
 - Statement: Warm startup reuses a current generated `yzx` extern bridge without
-  rerendering metadata. When stale, refresh runs
-  `yzx_core yzx-command-metadata.sync-externs` and must not probe a second
+  rerendering metadata. When stale, Rust launch/setup preflight refreshes the
+  generated bridge from Rust-owned command metadata and must not probe a second
   Nushell command registry
 - Verification: automated
   `nushell/scripts/dev/test_shell_managed_config_contracts.nu`; validator
@@ -249,11 +249,11 @@ Rust may return optional metrics inside the success `data`, but those metrics ar
 
 ### Extern Bridge Timing
 
-The generated Nushell `yzx` extern bridge is startup-owned glue, not command business logic. It remains inside the existing `shellhook` / `sync_yzx_extern_bridge` profile step so startup reports stay comparable while the bridge implementation changes.
+The generated Nushell `yzx` extern bridge is startup-owned glue, not command business logic. Normal launch/setup refreshes it from the Rust-owned setup preflight before the Nushell startup handoff.
 
 Warm startup must not pay command metadata rendering when the generated extern bridge is already current. The Rust-owned sync command should perform only cheap generated-state checks, such as a Rust helper fingerprint and generated-file hash, before reusing the existing bridge.
 
-When the command metadata is missing or stale, the sync path runs `yzx_core yzx-command-metadata.sync-externs`, which renders generated extern content from Rust-owned metadata and updates the bridge plus fingerprint. It must not spawn Nushell to inspect `core/yazelix.nu` or reconstitute a second command registry. Successful regeneration updates the generated bridge and its fingerprint atomically enough that a later warm startup can skip rendering and writes.
+When the command metadata is missing or stale, the Rust sync path renders generated extern content from Rust-owned metadata and updates the bridge plus fingerprint; the same behavior remains exposed through `yzx_core yzx-command-metadata.sync-externs` for explicit helper use. It must not spawn Nushell to inspect `core/yazelix.nu` or reconstitute a second command registry. Successful regeneration updates the generated bridge and its fingerprint atomically enough that a later warm startup can skip rendering and writes.
 
 Refresh failure must be non-destructive. If a previous generated bridge exists, keep it instead of replacing it with an empty placeholder. If no bridge exists yet, create a minimal placeholder so managed Nushell config can still source the file and show the generation warning.
 

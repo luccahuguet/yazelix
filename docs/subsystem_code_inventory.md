@@ -17,13 +17,12 @@ without a concrete deletion target.
 
 ## Current Shape
 
-The tracked Nushell surface is about `1,154` lines across `10` `.nu` files:
+The tracked Nushell surface is `1,038` lines across `9` `.nu` files:
 
 ```text
 nushell/config/config.nu
 nushell/config/stack_prompt_guard.nu
 nushell/scripts/core/start_yazelix_inner.nu
-nushell/scripts/setup/environment.nu
 nushell/scripts/setup/welcome.nu
 nushell/scripts/utils/constants.nu
 nushell/scripts/utils/runtime_commands.nu
@@ -44,8 +43,7 @@ Rust-owned or outside the remaining Nushell floor.
 | --- | --- | --- |
 | `nushell/config/config.nu` | Retain | User shell config source; it wires generated initializers and externs into Nushell |
 | `nushell/config/stack_prompt_guard.nu` | Retain | Interactive prompt guard logic is shell-local and not a product control-plane owner |
-| `nushell/scripts/core/start_yazelix_inner.nu` | Retain | Owns final interactive startup handoff, welcome display sequencing, startup profiling boundaries, session snapshot env mutation, and Zellij process launch |
-| `nushell/scripts/setup/environment.nu` | Retain | Shellhook setup, selected-shell initializer timing, extern sync, and state/log setup are shell-entry concerns; Rust owns initializer generation through `yzx_control`, and repository/package file modes own runtime script executability |
+| `nushell/scripts/core/start_yazelix_inner.nu` | Retain | Owns final interactive startup handoff, welcome display sequencing, startup profiling boundaries, session snapshot env mutation, and Zellij process launch after Rust setup preflight |
 | `nushell/scripts/setup/welcome.nu` | Retain | Human-facing welcome rendering and prompt gating remain a good Nushell fit |
 | `nushell/scripts/utils/constants.nu` | Retain | Tiny compatibility export for runtime version and static metadata access |
 | `nushell/scripts/utils/runtime_commands.nu` | Retain | Shell-facing default-shell resolution and command assembly support startup handoff |
@@ -61,8 +59,8 @@ No public `yzx/` Nushell module remains. `yzx menu` is Rust-owned and still uses
 The deterministic migration candidates from the inventory audit resolved as:
 
 - `yazelix-6h1n.4.1` — `yzx_core_bridge.nu` lost its empty caller error-surface argument and unused Zellij helper exports; it remains a narrow transport and error-envelope adapter
-- `yazelix-6h1n.4.2` — Source-checkout chmod repair was deleted from shellhook; the tracked executable bits and package metadata own script executability
-- `yazelix-6h1n.4.3` — Initializer generation stays as a shellhook-timed call into `yzx_control`; Rust owns generation, Nu owns the selected shell list, quiet mode, and startup profile boundary
+- `yazelix-6h1n.4.2` — Source-checkout chmod repair was deleted from startup setup; the tracked executable bits and package metadata own script executability
+- `yazelix-6h1n.4.3` — Initializer generation moved behind Rust-owned setup preflight; Rust owns selected-shell list, quiet mode, and generated extern refresh for normal launch/setup
 
 Future follow-ups should use the same delete-first bar: a migration only counts
 when the Nushell owner shrinks end-to-end or a deterministic invariant moves to
@@ -73,7 +71,7 @@ a clearer existing owner.
 - Rewriting all shell glue into Rust
 - Reintroducing deleted Nushell command registries or materialization wrappers
 - Adding Rust helpers that leave the same Nushell owner in place
-- Treating interactive presentation, shellhook behavior, or Zellij/Yazi process
+- Treating interactive presentation, current-shell behavior, or Zellij/Yazi process
   handoff as Rust targets without a concrete deletion payoff
 
 ## Verification

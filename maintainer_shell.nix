@@ -185,7 +185,7 @@ pkgs.mkShell {
     export OPENSSL_INCLUDE_DIR="${pkgs.openssl.dev}/include"
 
     if [ -f "$YAZELIX_RUNTIME_DIR/runtime_components.json" ]; then
-      ${pkgs.nushell}/bin/nu --no-config-file "${repoRoot}/nushell/scripts/setup/environment.nu" --skip-welcome
+      "${rustCoreHelper}/bin/yzx_control" enter --setup-only >/dev/null
     fi
   '';
 }

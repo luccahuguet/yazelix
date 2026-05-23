@@ -149,10 +149,8 @@ That means:
 Not everything should migrate:
 
 - remaining public CLI command-body UX for intentionally Nu-owned command families
-- startup profile schema and process orchestration
-- shell initializer generation and shellhook environment setup after the
-  `runtime-env.compute` cut
-- shell and terminal host integration
+- startup profile schema and final process orchestration
+- current-shell and terminal host integration that must remain sourceable
 - final human-facing remediation text and interactive UX
 - explicit integration glue around external tools when the hard part is host
   behavior rather than typed domain modeling

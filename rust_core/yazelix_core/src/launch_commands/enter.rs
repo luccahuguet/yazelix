@@ -4,15 +4,18 @@ use super::config_override::{
 use super::process::{command_status_with_overrides, find_command};
 use super::resolve_requested_working_dir;
 use crate::bridge::{CoreError, ErrorClass};
+use crate::command_metadata::{YzxExternBridgeSyncRequest, sync_yzx_extern_bridge};
 use crate::control_plane::{
-    config_dir_from_env, config_override_from_env, load_normalized_config_for_control,
-    runtime_dir_from_env, runtime_env_request,
+    config_dir_from_env, config_override_from_env, default_shell_from_config, expand_user_path,
+    home_dir_from_env, load_normalized_config_for_control, runtime_dir_from_env,
+    runtime_env_request, state_dir_from_env,
 };
+use crate::initializer_commands::generate_shell_initializers_for_env;
 use crate::runtime_contract::{
     StartupLaunchPreflightRequest, StartupPreflightPayload, evaluate_startup_launch_preflight,
 };
 use crate::runtime_env::compute_runtime_env;
-use serde_json::{Map as JsonMap, Value as JsonValue};
+use std::fs;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -49,7 +52,7 @@ pub(super) fn run_enter(args: &[String]) -> Result<i32, CoreError> {
     let req = runtime_env_request(runtime_dir.clone(), &normalized)?;
     let runtime_data = compute_runtime_env(&req)?;
     let runtime_env = runtime_data.runtime_env;
-    let nu_bin = resolve_nu_bin(&runtime_dir)?;
+    let default_shell = default_shell_from_config(&normalized);
 
     if parsed.verbose {
         println!("🔍 start_yazelix: verbose mode enabled");
@@ -58,17 +61,12 @@ pub(super) fn run_enter(args: &[String]) -> Result<i32, CoreError> {
 
     if parsed.setup_only {
         println!("🔧 Setting up Yazelix generated environment files...");
-        run_runtime_setup(
-            &runtime_dir,
-            &nu_bin,
-            &runtime_env,
-            false,
-            &config_extra_env,
-        )?;
+        run_runtime_setup(&runtime_dir, &default_shell, false)?;
         println!("✅ Setup complete.");
         return Ok(0);
     }
 
+    let nu_bin = resolve_nu_bin(&runtime_dir)?;
     let requested_working_dir = resolve_requested_working_dir(parsed.path.as_deref(), parsed.home)?;
     let preflight = evaluate_startup_launch_preflight(&StartupLaunchPreflightRequest {
         startup: Some(StartupPreflightPayload {
@@ -97,7 +95,7 @@ pub(super) fn run_enter(args: &[String]) -> Result<i32, CoreError> {
         )
     })?;
 
-    run_runtime_setup(&runtime_dir, &nu_bin, &runtime_env, true, &config_extra_env)?;
+    run_runtime_setup(&runtime_dir, &default_shell, true)?;
 
     let mut argv = vec![
         nu_bin.to_string_lossy().into_owned(),
@@ -216,45 +214,88 @@ fn resolve_nu_bin(runtime_dir: &Path) -> Result<PathBuf, CoreError> {
 
 fn run_runtime_setup(
     runtime_dir: &Path,
-    nu_bin: &Path,
-    runtime_env: &JsonMap<String, JsonValue>,
+    default_shell: &str,
     quiet: bool,
-    extra_env: &[(String, Option<String>)],
 ) -> Result<(), CoreError> {
-    let mut argv = vec![
-        nu_bin.to_string_lossy().into_owned(),
-        runtime_dir
-            .join("nushell")
-            .join("scripts")
-            .join("setup")
-            .join("environment.nu")
-            .to_string_lossy()
-            .into_owned(),
-    ];
-    if quiet {
-        argv.push("--skip-welcome".to_string());
-    }
-    let status = command_status_with_overrides(
-        &argv,
-        Some(runtime_env),
-        runtime_dir,
-        &[],
-        extra_env,
-        "runtime_setup",
-        "Retry from a valid Yazelix runtime or reinstall Yazelix.",
-    )?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err(CoreError::classified(
-            ErrorClass::Runtime,
-            "environment_setup_failed",
+    let state_dir = state_dir_from_env()?;
+    let log_dir = setup_log_dir(&state_dir)?;
+    fs::create_dir_all(&state_dir).map_err(|source| {
+        CoreError::io(
+            "runtime_setup_state_dir",
             format!(
-                "Yazelix environment setup failed with exit code {}.",
-                status.code().unwrap_or(1)
+                "Cannot create Yazelix state directory {}.",
+                state_dir.display()
             ),
-            "Fix the reported setup failure, then retry.",
-            serde_json::json!({}),
-        ))
+            "Fix permissions or set YAZELIX_STATE_DIR to a writable path.",
+            state_dir.display().to_string(),
+            source,
+        )
+    })?;
+    fs::create_dir_all(&log_dir).map_err(|source| {
+        CoreError::io(
+            "runtime_setup_log_dir",
+            format!("Cannot create Yazelix log directory {}.", log_dir.display()),
+            "Fix permissions or set YAZELIX_LOGS_DIR to a writable path.",
+            log_dir.display().to_string(),
+            source,
+        )
+    })?;
+
+    let shells_to_configure = setup_shells(default_shell);
+    let initializer_run = generate_shell_initializers_for_env(&shells_to_configure, quiet)?;
+    for message in initializer_run.messages {
+        println!("{message}");
     }
+
+    if let Err(error) = sync_yzx_extern_bridge(&YzxExternBridgeSyncRequest {
+        runtime_dir: runtime_dir.to_path_buf(),
+        state_dir: state_dir.clone(),
+    }) {
+        eprintln!(
+            "⚠️  Could not sync generated yzx extern bridge: {}",
+            error.message()
+        );
+    }
+
+    let zjstatus_target = runtime_dir
+        .join("configs")
+        .join("zellij")
+        .join("plugins")
+        .join("zjstatus.wasm");
+    if !zjstatus_target.is_file() {
+        return Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "missing_zjstatus_plugin",
+            format!(
+                "Expected packaged zjstatus plugin at {}, but it was not found.",
+                zjstatus_target.display()
+            ),
+            "Reinstall Yazelix or run from a packaged runtime that includes zjstatus.wasm.",
+            serde_json::json!({"path": zjstatus_target.display().to_string()}),
+        ));
+    }
+
+    Ok(())
+}
+
+fn setup_shells(default_shell: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    for shell in ["nu", "bash", default_shell] {
+        let trimmed = shell.trim().to_lowercase();
+        if !trimmed.is_empty() && !out.contains(&trimmed) {
+            out.push(trimmed);
+        }
+    }
+    out
+}
+
+fn setup_log_dir(state_dir: &Path) -> Result<PathBuf, CoreError> {
+    let Some(raw) = std::env::var("YAZELIX_LOGS_DIR")
+        .ok()
+        .map(|raw| raw.trim().to_string())
+        .filter(|raw| !raw.is_empty())
+    else {
+        return Ok(state_dir.join("logs"));
+    };
+    Ok(expand_user_path(&raw, &home_dir_from_env()?))
 }

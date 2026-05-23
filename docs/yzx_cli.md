@@ -48,7 +48,7 @@ Profile launch sequence and identify performance bottlenecks
 - `yzx dev profile compare <baseline-report> <candidate-report>`: Compare two saved reports without rerunning startup, including total and per-step deltas
 - `yzx dev profile save-baseline <name> <report>`: Copy a saved report into the local baseline directory
 - `yzx dev profile compare-baseline <name> <candidate-report>`: Compare a named local baseline with another saved report
-- The summary breaks out real startup phases such as preflight, config-state checks, maintainer-shell entry, shellHook setup, and inner startup work
+- The summary breaks out real startup phases such as preflight, config-state checks, maintainer-shell entry, Rust setup preflight, and inner startup work
 - Profiling works from either a repo checkout or the active installed runtime
 - Startup profile comparison is a local evidence tool, not a hosted CI timing gate
 

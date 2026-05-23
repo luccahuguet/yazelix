@@ -194,6 +194,63 @@ fn yzx_control_config_path_bootstraps_missing_managed_config() {
     assert!(stderr.is_empty());
 }
 
+// Defends: setup-only launch preflight preserves managed-pane shell UX without invoking the deleted Nushell setup script.
+#[test]
+fn yzx_enter_setup_only_generates_managed_initializers_and_extern_bridge() {
+    let fixture = managed_config_fixture(
+        r#"[shell]
+default_shell = "fish"
+"#,
+    );
+    let plugin_path = fixture
+        .runtime_dir
+        .join("configs/zellij/plugins/zjstatus.wasm");
+    fs::create_dir_all(plugin_path.parent().unwrap()).unwrap();
+    fs::write(&plugin_path, "").unwrap();
+
+    let empty_path = fixture.home_dir.join("empty-path");
+    fs::create_dir_all(&empty_path).unwrap();
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .env("PATH", &empty_path)
+        .arg("enter")
+        .arg("--setup-only")
+        .output()
+        .unwrap();
+
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "stderr:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(output.stderr.is_empty());
+
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("Setting up Yazelix generated environment files"));
+    assert!(stdout.contains("Generated 0 shell initializers"));
+    assert!(stdout.contains("Setup complete"));
+
+    assert!(fixture.config_dir.join("shell_nu.nu").exists());
+    assert!(fixture.config_dir.join("shell_bash.sh").exists());
+    assert!(fixture.config_dir.join("shell_fish.fish").exists());
+    assert!(!fixture.config_dir.join("shell_zsh.zsh").exists());
+
+    let generated = fixture.home_dir.join(".local/share/yazelix/initializers");
+    assert!(generated.join("nushell/yazelix_init.nu").exists());
+    assert!(generated.join("bash/yazelix_init.sh").exists());
+    assert!(generated.join("fish/yazelix_init.fish").exists());
+    assert!(!generated.join("zsh/yazelix_init.zsh").exists());
+
+    assert!(
+        fixture
+            .state_dir
+            .join("initializers/nushell/yazelix_extern.nu")
+            .exists()
+    );
+    assert!(fixture.state_dir.join("logs").is_dir());
+}
+
 // Defends: the public Rust-owned `yzx status --json` surface keeps the typed runtime summary instead of a wrapper-shaped blob.
 #[test]
 fn yzx_control_status_json_reports_typed_summary() {
@@ -909,4 +966,43 @@ fn yzx_control_run_preserves_child_dash_flags_end_to_end() {
         fs::read_to_string(command_log).unwrap().trim(),
         "--verbose check"
     );
+}
+
+// Defends: `yzx env --no-shell` remains an explicit current-shell-style runtime environment command, not a launch setup hook.
+#[test]
+fn yzx_control_env_no_shell_launches_invoking_shell_with_runtime_env() {
+    let fixture = managed_config_fixture(
+        r#"[shell]
+default_shell = "bash"
+"#,
+    );
+    let fake_bin = fixture.home_dir.join("fake-bin");
+    fs::create_dir_all(&fake_bin).unwrap();
+    write_executable_script(
+        &fake_bin.join("bash"),
+        "#!/bin/sh\nprintf 'argv=%s\\n' \"$*\"\nprintf 'SHELL=%s\\n' \"$SHELL\"\nprintf 'YAZELIX_RUNTIME_DIR=%s\\n' \"$YAZELIX_RUNTIME_DIR\"\n",
+    );
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .env("PATH", prepend_path(&fake_bin))
+        .env("SHELL", "/bin/bash")
+        .arg("env")
+        .arg("--no-shell")
+        .output()
+        .unwrap();
+
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "stderr:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(output.stderr.is_empty());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("argv="));
+    assert!(stdout.contains("SHELL=bash"));
+    assert!(stdout.contains(&format!(
+        "YAZELIX_RUNTIME_DIR={}",
+        fixture.runtime_dir.display()
+    )));
 }
