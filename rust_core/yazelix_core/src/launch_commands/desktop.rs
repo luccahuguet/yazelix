@@ -12,6 +12,7 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+// Test lane: default
 const DESKTOP_ICON_SIZES: &[&str] = &["48x48", "64x64", "128x128", "256x256"];
 pub(super) const MACOS_PREVIEW_APP_DIR_NAME: &str = "Yazelix Preview.app";
 const MACOS_PREVIEW_APP_NAME: &str = "Yazelix Preview";
@@ -609,6 +610,22 @@ fn install_desktop_icons(runtime_dir: &Path, icons_root: &Path) -> Result<(), Co
                 )
             })?;
         }
+        match fs::remove_file(&destination) {
+            Ok(()) => {}
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(error) => {
+                return Err(CoreError::io(
+                    "desktop_icon_replace",
+                    format!(
+                        "Could not replace existing desktop icon {}.",
+                        destination.display()
+                    ),
+                    "Fix the file or directory permissions, then retry.",
+                    destination.display().to_string(),
+                    error,
+                ));
+            }
+        }
         fs::copy(&source, &destination).map_err(|error| {
             CoreError::io(
                 "desktop_icon_copy",
@@ -690,4 +707,51 @@ fn acknowledge_desktop_failure(error_text: &str) {
     let _ = io::stdout().flush();
     let mut line = String::new();
     let _ = io::stdin().read_line(&mut line);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(unix)]
+    fn set_read_only(path: &Path) {
+        use std::os::unix::fs::PermissionsExt;
+        let mut permissions = fs::metadata(path).unwrap().permissions();
+        permissions.set_mode(0o444);
+        fs::set_permissions(path, permissions).unwrap();
+    }
+
+    // Regression: desktop reinstall must replace icons copied from the read-only Nix store instead of failing on the next install.
+    #[test]
+    fn install_desktop_icons_replaces_read_only_existing_icons() {
+        let temp = tempfile::tempdir().unwrap();
+        let runtime_dir = temp.path().join("runtime");
+        let icons_root = temp.path().join("icons").join("hicolor");
+
+        for size in DESKTOP_ICON_SIZES {
+            let source = runtime_dir
+                .join("assets")
+                .join("icons")
+                .join(size)
+                .join("yazelix.png");
+            fs::create_dir_all(source.parent().unwrap()).unwrap();
+            fs::write(&source, format!("new {size}")).unwrap();
+
+            let destination = icons_root.join(size).join("apps").join("yazelix.png");
+            fs::create_dir_all(destination.parent().unwrap()).unwrap();
+            fs::write(&destination, format!("old {size}")).unwrap();
+            #[cfg(unix)]
+            set_read_only(&destination);
+        }
+
+        install_desktop_icons(&runtime_dir, &icons_root).unwrap();
+
+        for size in DESKTOP_ICON_SIZES {
+            let destination = icons_root.join(size).join("apps").join("yazelix.png");
+            assert_eq!(
+                fs::read_to_string(destination).unwrap(),
+                format!("new {size}")
+            );
+        }
+    }
 }
