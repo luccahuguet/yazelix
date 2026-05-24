@@ -50,7 +50,7 @@ Regular Yazelix users do not need to install or wire these repositories separate
 - [Neovim](https://neovim.io/) — First-class supported editor alternative. Yazelix supports managed editor-pane targeting and reveal/open workflows for Neovim as well.
 - [Nushell](https://www.nushell.sh) — Default shell and the remaining shell/UI core. The packaged runtime provides `nu`, the generated shell initializers, `yzx env`, and the small shell floor that still belongs in Nushell.
 - [zjstatus](https://github.com/dj95/zjstatus) — Zellij status plugin used for the Yazelix top bar, tab labels, widget tray, custom text, CPU/RAM widgets, and optional agent usage widgets.
-- [Yazelix Zellij pane orchestrator](../../yazelix-zellij-pane-orchestrator) — First-party Zellij plugin that owns managed editor/sidebar identity, editor/sidebar handoff, status-cache facts, screen-saver launch, and workspace state.
+- [Yazelix Zellij pane orchestrator](https://github.com/luccahuguet/yazelix-zellij-pane-orchestrator) — First-party Zellij plugin that owns managed editor/sidebar identity, editor/sidebar handoff, status-cache facts, screen-saver launch, and workspace state.
 - [yazelix-screen](https://github.com/luccahuguet/yazelix-screen) — First-party Rust animation engine used by welcome/screen styles such as logo, boids, Mandelbrot, and Game of Life.
 
 ## Terminal Emulators
