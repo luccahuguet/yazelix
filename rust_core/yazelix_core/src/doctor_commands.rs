@@ -35,6 +35,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::env;
 use std::fs;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -91,6 +92,8 @@ struct RecoveryPlanReport {
     summary: RecoveryPlanSummary,
     actions: Vec<RecoveryPlanAction>,
 }
+
+const CREATE_DEFAULT_SETTINGS_CONFIG_FIX_ACTION: &str = "create_default_settings_config";
 
 #[derive(Debug, Deserialize)]
 struct SessionManagedPanes {
@@ -654,6 +657,75 @@ fn result_details(result: &Value) -> Option<&str> {
     result.get("details").and_then(Value::as_str)
 }
 
+fn result_fix_action(result: &Value) -> Option<&str> {
+    result.get("fix_action").and_then(Value::as_str)
+}
+
+fn needs_default_settings_config_creation(results: &[Value]) -> bool {
+    results
+        .iter()
+        .any(|result| result_fix_action(result) == Some(CREATE_DEFAULT_SETTINGS_CONFIG_FIX_ACTION))
+}
+
+fn create_default_settings_config_from_template(
+    runtime_dir: &Path,
+    config_dir: &Path,
+) -> Result<bool, CoreError> {
+    let paths = primary_config_paths(runtime_dir, config_dir);
+    if paths.user_config.exists() {
+        return Ok(false);
+    }
+
+    if let Some(parent) = paths.user_config.parent() {
+        fs::create_dir_all(parent).map_err(|source| {
+            CoreError::io(
+                "doctor_create_config_parent",
+                "Could not create settings.jsonc parent directory.",
+                "Fix permissions for the Yazelix config directory, then rerun `yzx doctor --fix`.",
+                parent.to_string_lossy().into_owned(),
+                source,
+            )
+        })?;
+    }
+
+    let rendered = render_default_settings_jsonc(&paths.default_config_path)?;
+    let mut file = match fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&paths.user_config)
+    {
+        Ok(file) => file,
+        Err(source) if source.kind() == io::ErrorKind::AlreadyExists => return Ok(false),
+        Err(source) => {
+            return Err(CoreError::io(
+                "doctor_create_settings_jsonc",
+                "Could not create settings.jsonc from shipped defaults.",
+                "Fix permissions for the Yazelix config directory, then rerun `yzx doctor --fix`.",
+                paths.user_config.to_string_lossy().into_owned(),
+                source,
+            ));
+        }
+    };
+
+    file.write_all(rendered.as_bytes()).map_err(|source| {
+        CoreError::io(
+            "doctor_write_settings_jsonc",
+            "Could not write settings.jsonc from shipped defaults.",
+            "Fix permissions for the Yazelix config directory, then rerun `yzx doctor --fix`.",
+            paths.user_config.to_string_lossy().into_owned(),
+            source,
+        )
+    })?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(&paths.user_config, fs::Permissions::from_mode(0o644));
+    }
+
+    Ok(true)
+}
+
 fn build_recovery_plan(report: &DoctorReportData) -> RecoveryPlanReport {
     let mut actions = Vec::new();
     for result in &report.results {
@@ -695,10 +767,7 @@ fn build_recovery_plan(report: &DoctorReportData) -> RecoveryPlanReport {
 fn recovery_action_for_doctor_result(result: &Value) -> Option<RecoveryPlanAction> {
     let message = result_message(result);
     let details = result_details(result).unwrap_or("");
-    let fix_action = result
-        .get("fix_action")
-        .and_then(Value::as_str)
-        .unwrap_or("");
+    let fix_action = result_fix_action(result).unwrap_or("");
     let evidence = evidence_lines(message, details);
 
     if fix_action == "repair_generated_runtime_state"
@@ -956,45 +1025,20 @@ fn run_doctor_fix_flow(verbose: bool, results: &[Value]) -> Result<i32, CoreErro
     }
 
     // 2. Config creation from template
-    for result in results {
-        let status = result.get("status").and_then(Value::as_str).unwrap_or("");
-        let message = result.get("message").and_then(Value::as_str).unwrap_or("");
-        if status != "info" || !message.contains("default") {
-            continue;
-        }
+    if needs_default_settings_config_creation(results) {
         let runtime_dir = runtime_dir_from_env()?;
         let config_dir = config_dir_from_env()?;
-        let paths = primary_config_paths(&runtime_dir, &config_dir);
-        if let Some(parent) = paths.user_config.parent() {
-            if let Err(err) = fs::create_dir_all(parent) {
-                println!("❌ Failed to create config parent directory: {err}");
-                any_failed = true;
-                continue;
-            }
-        }
-        let rendered = match render_default_settings_jsonc(&paths.default_config_path) {
-            Ok(rendered) => rendered,
-            Err(err) => {
-                println!("❌ Failed to render settings.jsonc from defaults: {err}");
-                any_failed = true;
-                continue;
-            }
-        };
-        match fs::write(&paths.user_config, rendered) {
-            Ok(_) => {
-                #[cfg(unix)]
-                {
-                    use std::os::unix::fs::PermissionsExt;
-                    if let Err(err) =
-                        fs::set_permissions(&paths.user_config, fs::Permissions::from_mode(0o644))
-                    {
-                        println!("⚠️  Could not set permissions on created config: {err}");
-                    }
-                }
-                println!("✅ Created settings.jsonc from shipped defaults");
+        match create_default_settings_config_from_template(&runtime_dir, &config_dir) {
+            Ok(true) => println!("✅ Created settings.jsonc from shipped defaults"),
+            Ok(false) => {
+                let paths = primary_config_paths(&runtime_dir, &config_dir);
+                println!(
+                    "⚠️  Skipped settings.jsonc creation because {} already exists",
+                    paths.user_config.display()
+                );
             }
             Err(err) => {
-                println!("❌ Failed to create settings.jsonc: {err}");
+                println!("❌ Failed to create settings.jsonc: {}", err.message());
                 any_failed = true;
             }
         }
@@ -1269,6 +1313,11 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
+    fn write_runtime_default_settings(runtime_dir: &Path, body: &str) {
+        fs::create_dir_all(runtime_dir).unwrap();
+        fs::write(runtime_dir.join("settings_default.jsonc"), body).unwrap();
+    }
+
     // Defends: the Rust doctor summary keeps warnings and fixable findings from being treated as healthy.
     #[test]
     fn doctor_summary_tracks_fixable_warning_state() {
@@ -1283,6 +1332,59 @@ mod tests {
         assert_eq!(summary.ok_count, 1);
         assert_eq!(summary.fixable_count, 1);
         assert!(!summary.healthy);
+    }
+
+    // Regression: install-owner prose mentioning the default Nix profile must not trigger config creation.
+    #[test]
+    fn doctor_fix_ignores_default_profile_info_for_config_creation() {
+        let results = vec![json!({
+            "status": "info",
+            "message": "Install owner: default Nix profile",
+            "fix_available": false
+        })];
+
+        assert!(!needs_default_settings_config_creation(&results));
+    }
+
+    // Defends: stale or repeated doctor findings cannot overwrite an existing managed settings.jsonc.
+    #[test]
+    fn default_settings_config_creation_does_not_overwrite_existing_file() {
+        let tmp = TempDir::new().unwrap();
+        let runtime_dir = tmp.path().join("runtime");
+        let config_dir = tmp.path().join("config");
+        write_runtime_default_settings(
+            &runtime_dir,
+            "{ \"core\": { \"welcome_style\": \"logo\" } }\n",
+        );
+        fs::create_dir_all(&config_dir).unwrap();
+        let user_config = config_dir.join("settings.jsonc");
+        let original = "{ \"core\": { \"welcome_style\": \"magician\" } }\n";
+        fs::write(&user_config, original).unwrap();
+
+        let created = create_default_settings_config_from_template(&runtime_dir, &config_dir)
+            .expect("stale create finding should be harmless");
+
+        assert!(!created);
+        assert_eq!(fs::read_to_string(user_config).unwrap(), original);
+    }
+
+    // Defends: the explicit config-creation fix action still bootstraps first-run settings.jsonc.
+    #[test]
+    fn default_settings_config_creation_writes_missing_file() {
+        let tmp = TempDir::new().unwrap();
+        let runtime_dir = tmp.path().join("runtime");
+        let config_dir = tmp.path().join("config");
+        let default_settings = "{ \"core\": { \"welcome_style\": \"logo\" } }\n";
+        write_runtime_default_settings(&runtime_dir, default_settings);
+
+        let created = create_default_settings_config_from_template(&runtime_dir, &config_dir)
+            .expect("missing settings should be created");
+
+        assert!(created);
+        assert_eq!(
+            fs::read_to_string(config_dir.join("settings.jsonc")).unwrap(),
+            default_settings
+        );
     }
 
     // Defends: doctor consumes the shared native-config classifier and elevates required native terminal config misses to an error.

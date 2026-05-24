@@ -26,6 +26,8 @@ pub struct DoctorConfigFinding {
     pub details: Option<String>,
     pub fix_available: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub fix_action: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub config_diagnostic_report: Option<ConfigDiagnosticReport>,
 }
 
@@ -47,6 +49,7 @@ pub fn evaluate_doctor_config_report(
                 message: "Could not reconcile Yazelix config surfaces".into(),
                 details: Some(format_surface_reconcile_error(&error)),
                 fix_available: false,
+                fix_action: None,
                 config_diagnostic_report: None,
             }],
         };
@@ -62,6 +65,7 @@ pub fn evaluate_doctor_config_report(
                 message: "Could not reconcile Yazelix config surfaces".into(),
                 details: Some(format_surface_reconcile_error(&error)),
                 fix_available: false,
+                fix_action: None,
                 config_diagnostic_report: None,
             }],
         };
@@ -73,6 +77,7 @@ pub fn evaluate_doctor_config_report(
             message: "Using custom settings.jsonc configuration".into(),
             details: Some(path_to_string(&paths.user_config)),
             fix_available: false,
+            fix_action: None,
             config_diagnostic_report: None,
         }];
 
@@ -94,6 +99,7 @@ pub fn evaluate_doctor_config_report(
                     ),
                     details: Some(details),
                     fix_available: false,
+                    fix_action: None,
                     config_diagnostic_report: Some(report),
                 });
             }
@@ -104,6 +110,7 @@ pub fn evaluate_doctor_config_report(
                     message: "Could not validate settings.jsonc against the current schema".into(),
                     details: Some(format_validation_error(&error)),
                     fix_available: false,
+                    fix_action: None,
                     config_diagnostic_report: None,
                 });
             }
@@ -119,6 +126,7 @@ pub fn evaluate_doctor_config_report(
                 message: "Legacy yazelix.nix configuration detected".into(),
                 details: Some(path_to_string(&legacy_nix_config)),
                 fix_available: false,
+                fix_action: None,
                 config_diagnostic_report: None,
             }],
         };
@@ -131,6 +139,7 @@ pub fn evaluate_doctor_config_report(
                 message: "Using default configuration (settings_default.jsonc)".into(),
                 details: Some("Yazelix can create settings.jsonc from the shipped defaults".into()),
                 fix_available: true,
+                fix_action: Some("create_default_settings_config".into()),
                 config_diagnostic_report: None,
             }],
         };
@@ -142,6 +151,7 @@ pub fn evaluate_doctor_config_report(
             message: "No configuration file found".into(),
             details: Some("Neither settings.jsonc nor settings_default.jsonc exists".into()),
             fix_available: false,
+            fix_action: None,
             config_diagnostic_report: None,
         }],
     }
@@ -320,6 +330,34 @@ fn path_to_string(path: &Path) -> String {
 mod tests {
     use super::*;
     use crate::config_normalize::ConfigDiagnostic;
+    use tempfile::TempDir;
+
+    // Defends: missing user settings advertise an explicit fix action instead of relying on prose matching.
+    #[test]
+    fn missing_user_settings_report_explicit_create_fix_action() {
+        let tmp = TempDir::new().unwrap();
+        let runtime_dir = tmp.path().join("runtime");
+        let config_dir = tmp.path().join("config");
+        std::fs::create_dir_all(&runtime_dir).unwrap();
+        std::fs::write(
+            runtime_dir.join("settings_default.jsonc"),
+            "{ \"core\": {} }\n",
+        )
+        .unwrap();
+        std::fs::write(runtime_dir.join("tombi.toml"), "").unwrap();
+
+        let report = evaluate_doctor_config_report(&DoctorConfigEvaluateRequest {
+            config_dir,
+            runtime_dir,
+        });
+
+        assert_eq!(report.findings.len(), 1);
+        assert_eq!(report.findings[0].fix_available, true);
+        assert_eq!(
+            report.findings[0].fix_action.as_deref(),
+            Some("create_default_settings_config")
+        );
+    }
 
     // Defends: doctor config details prose matches the historical Nushell renderer shape for verbose output.
     #[test]

@@ -32,6 +32,9 @@ const ANSI_BLUE: &str = "\u{1b}[34m";
 const ANSI_PURPLE: &str = "\u{1b}[35m";
 const ANSI_RESET: &str = "\u{1b}[0m";
 const ANSI_FAINT: &str = "\u{1b}[2m";
+const ANSI_NORMAL_FOREGROUND: &str = "\u{1b}[22;39m";
+const ANSI_BACKGROUND_BLACK: &str = "\u{1b}[40m";
+const ANSI_BACKGROUND_DEFAULT: &str = "\u{1b}[49m";
 const ASCII_MAGICIAN_ASSET_PARENT_DIR: &str = "assets/third_party";
 const KITTY_MAGICIAN_IMAGE_ID_BASE: u32 = 7_930_000;
 
@@ -479,9 +482,27 @@ fn ascii_magician_frame_sequence(
         &ascii_magician_frame_dir(runtime_dir),
         image_id,
         Some(format!(
-            "{ANSI_FAINT}{ANSI_PURPLE}{MAGICIAN_ATTRIBUTION}{ANSI_RESET}"
+            "{ANSI_FAINT}{ANSI_PURPLE}{MAGICIAN_ATTRIBUTION}{ANSI_NORMAL_FOREGROUND}"
         )),
     )
+}
+
+fn play_kitty_png_frame_sequence_on_black_background(
+    sequence: &yazelix_screen::KittyFrameSequence,
+    duration: Option<Duration>,
+) -> io::Result<()> {
+    print!("{ANSI_BACKGROUND_BLACK}");
+    yazelix_screen::flush_stdout()?;
+    let play_result =
+        play_kitty_png_frame_sequence(sequence, duration, terminal_width, terminal_height);
+    print!("{ANSI_BACKGROUND_DEFAULT}");
+    let reset_result = yazelix_screen::flush_stdout();
+
+    match (play_result, reset_result) {
+        (Err(error), _) => Err(error),
+        (Ok(()), Err(error)) => Err(error),
+        (Ok(()), Ok(())) => Ok(()),
+    }
 }
 
 fn play_ascii_magician_graphics_welcome(
@@ -493,7 +514,7 @@ fn play_ascii_magician_graphics_welcome(
 
     let image_id = ascii_magician_image_id();
     let sequence = ascii_magician_frame_sequence(runtime_dir, image_id);
-    play_kitty_png_frame_sequence(&sequence, Some(duration), terminal_width, terminal_height)
+    play_kitty_png_frame_sequence_on_black_background(&sequence, Some(duration))
         .map_err(map_kitty_frame_sequence_error)?;
     for line in get_logo_welcome_frame(terminal_width()) {
         println!("{line}");
@@ -508,7 +529,7 @@ fn run_ascii_magician_graphics_screen(runtime_dir: &Path) -> Result<i32, CoreErr
     let image_id = ascii_magician_image_id();
     let sequence = ascii_magician_frame_sequence(runtime_dir, image_id);
     enter_screen_mode()?;
-    let result = play_kitty_png_frame_sequence(&sequence, None, terminal_width, terminal_height)
+    let result = play_kitty_png_frame_sequence_on_black_background(&sequence, None)
         .map_err(map_kitty_frame_sequence_error);
     let cleanup_before_leave = cleanup_ascii_magician_graphics(image_id);
     let leave_result = leave_screen_mode();
@@ -1233,12 +1254,10 @@ mod tests {
             sequence.edge_inset_rows,
             yazelix_screen::MAGICIAN_EDGE_INSET_ROWS
         );
-        assert!(
-            sequence
-                .attribution
-                .as_deref()
-                .is_some_and(|attribution| attribution.contains(MAGICIAN_ATTRIBUTION))
-        );
+        let attribution = sequence.attribution.as_deref().unwrap();
+        assert!(attribution.contains(MAGICIAN_ATTRIBUTION));
+        assert!(!attribution.contains(ANSI_RESET));
+        assert!(attribution.ends_with(ANSI_NORMAL_FOREGROUND));
 
         let command =
             yazelix_screen::kitty_png_file_command(123, 80, 40, Path::new("/tmp/frame.png"));
