@@ -181,8 +181,15 @@
           };
         in
         pkgs.extend (final: prev: {
-          zellij = prev.zellij.overrideAttrs (_old: {
+          zellij = prev.zellij.overrideAttrs (old: {
+            version = "0.44.3";
             src = yazelixZellij;
+            cargoDeps = final.rustPlatform.fetchCargoVendor {
+              pname = old.pname;
+              version = "0.44.3";
+              src = yazelixZellij;
+              hash = "sha256-966FpfSsF9I10SrYe3+YNsfM2kLLv+gd0/Aw8vLp4Lk=";
+            };
           });
           yazi-unwrapped = prev.yazi-unwrapped.overrideAttrs (old: {
             srcs = [
