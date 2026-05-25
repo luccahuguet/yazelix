@@ -104,6 +104,12 @@ pub fn validate_nix_customization_api(repo_root: &Path) -> Result<ValidationRepo
         "unsupported component toggles must fail during Nix evaluation",
         &mut report.errors,
     );
+    require_json_bool(
+        object,
+        "kgp_zellij_owns_cargo_deps",
+        "KGP Zellij package must own source-coupled Cargo vendor deps instead of inheriting consumer pkgs.zellij cargoDeps",
+        &mut report.errors,
+    );
 
     Ok(report)
 }
@@ -188,6 +194,7 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "path:{}",
         escape_nix_string(&repo_root.display().to_string())
     );
+    let repo_root_literal = escape_nix_string(&repo_root.display().to_string());
     [
         "let".to_string(),
         format!("  flake = builtins.getFlake \"{}\";", flake_ref),
@@ -211,6 +218,26 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "  };".to_string(),
         "  invalidRuntimeTool = builtins.tryEval ((flake.lib.${system}.mkYazelix { runtimeToolSources = { zellij = \"host\"; }; }).drvPath);".to_string(),
         "  unsupportedComponent = builtins.tryEval ((flake.lib.${system}.mkYazelix { components = { status_bar = false; }; }).drvPath);".to_string(),
+        "  poisonedConsumerPkgs = import flake.inputs.nixpkgs {".to_string(),
+        "    inherit system;".to_string(),
+        "    overlays = [".to_string(),
+        "      (_final: prev: {".to_string(),
+        "        zellij = prev.zellij.overrideAttrs (_old: {".to_string(),
+        "          __intentionallyOverridingVersion = true;".to_string(),
+        "          version = \"0.44.1\";".to_string(),
+        "          cargoDeps = throw \"consumer pkgs.zellij cargoDeps leaked into Yazelix graphics runtime\";".to_string(),
+        "        });".to_string(),
+        "      })".to_string(),
+        "    ];".to_string(),
+        "  };".to_string(),
+        format!(
+            "  kgpZellij = import \"{}/packaging/yazelix_kgp_zellij.nix\" {{",
+            repo_root_literal
+        ),
+        "    pkgs = poisonedConsumerPkgs;".to_string(),
+        "    baseZellij = poisonedConsumerPkgs.zellij;".to_string(),
+        "    src = flake.inputs.yazelixZellij;".to_string(),
+        "  };".to_string(),
         "in {".to_string(),
         "  has_mk_yazelix = builtins.hasAttr \"mkYazelix\" flake.lib.${system};".to_string(),
         "  default_main_program = defaultPackage.meta.mainProgram or \"\";".to_string(),
@@ -220,6 +247,7 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "  home_manager_has_package = builtins.length hm.config.home.packages > 0;".to_string(),
         "  invalid_runtime_tool_rejected = !invalidRuntimeTool.success;".to_string(),
         "  unsupported_component_rejected = !unsupportedComponent.success;".to_string(),
+        "  kgp_zellij_owns_cargo_deps = (kgpZellij.version or \"\") == \"0.44.3\" && (kgpZellij.cargoDeps.name or \"\") == \"zellij-0.44.3-vendor\";".to_string(),
         "}".to_string(),
     ]
     .join("\n")

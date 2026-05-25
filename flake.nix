@@ -172,6 +172,12 @@
           yazelixGraphicsPkgs system pkgs
         else
           pkgs;
+      yazelixKgpZellij =
+        pkgs: baseZellij:
+        import ./packaging/yazelix_kgp_zellij.nix {
+          inherit pkgs baseZellij;
+          src = yazelixZellij;
+        };
       yazelixGraphicsPkgs =
         system: pkgs:
         let
@@ -181,16 +187,7 @@
           };
         in
         pkgs.extend (final: prev: {
-          zellij = prev.zellij.overrideAttrs (old: {
-            version = "0.44.3";
-            src = yazelixZellij;
-            cargoDeps = final.rustPlatform.fetchCargoVendor {
-              pname = old.pname;
-              version = "0.44.3";
-              src = yazelixZellij;
-              hash = "sha256-966FpfSsF9I10SrYe3+YNsfM2kLLv+gd0/Aw8vLp4Lk=";
-            };
-          });
+          zellij = yazelixKgpZellij final prev.zellij;
           yazi-unwrapped = prev.yazi-unwrapped.overrideAttrs (old: {
             srcs = [
               yaziCodeSrc
