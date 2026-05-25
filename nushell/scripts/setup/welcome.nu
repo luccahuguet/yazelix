@@ -16,8 +16,8 @@ export def get_yazelix_colors [] {
         green: (ansi green)
         yellow: (ansi yellow)
         reset: (ansi reset)
-        faint: "\u{1b}[2m"
-        bold: "\u{1b}[1m"
+        faint: (ansi attr_dimmed)
+        bold: (ansi attr_bold)
     }
 }
 

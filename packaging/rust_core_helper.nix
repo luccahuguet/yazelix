@@ -54,7 +54,7 @@ rustPlatform.buildRustPackage {
     outputHashes = {
       "yazelix_ghostty_cursors-0.1.0" = "sha256-pWw2UBNVdoCTJdqLASSIVkl+PUs/vpmkqsJM5DfgK4o=";
       "yazelix-ratconfig-0.1.0" = "sha256-oN9UDnzZXloopc1F3+noDJEPcBoRH3keUf0wD7J5Eho=";
-      "yazelix_screen-0.1.0" = "sha256-32IFghPcogB+sxxKYJsw6w1+GiAwZnDt9IFSTv2doEw=";
+      "yazelix_screen-0.1.0" = "sha256-y74Zv5pqnObZYpv9vo9YX2ceIHFEsvhHdxg2ctF26IY=";
     };
   };
   buildAndTestSubdir = "rust_core";

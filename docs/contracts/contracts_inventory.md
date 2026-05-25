@@ -42,6 +42,7 @@ This inventory lists the canonical contracts under `docs/contracts/`. It is not 
 | `status_bar_ownership.md` | Status-bar ownership across zjstatus, `yazelix_zellij_bar`, Yazelix core, and pane orchestrator |
 | `status_doctor_machine_readable_reports.md` | Machine-readable status and doctor reports |
 | `supply_chain_hardening.md` | Supply-chain hardening policy |
+| `terminal_control_boundary.md` | Typed terminal control APIs versus raw protocol strings |
 | `terminal_launch_contract.md` | Terminal launch/process-boundary behavior |
 | `terminal_override_layers.md` | Terminal override layers |
 | `test_suite_governance.md` | Governed test lane, strength, and retention rules |

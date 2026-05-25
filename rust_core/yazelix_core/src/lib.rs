@@ -55,6 +55,7 @@ pub mod startup_facts;
 pub mod startup_handoff;
 pub mod status_report;
 pub mod support_commands;
+pub(crate) mod terminal_control;
 pub mod terminal_materialization;
 pub mod update_commands;
 pub mod upgrade_summary;

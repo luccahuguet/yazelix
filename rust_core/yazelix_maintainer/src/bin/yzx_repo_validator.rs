@@ -74,7 +74,10 @@ fn main() {
         ),
         "validate-child-release-transaction" => (
             validate_child_release_transaction(&resolved_repo_root),
-            Some("✅ First-party child input revisions are published".to_string()),
+            Some(
+                "✅ First-party child input revisions are published and Cargo source hashes match"
+                    .to_string(),
+            ),
         ),
         "validate-installed-runtime-contract" => (
             validate_installed_runtime_contract(&resolved_repo_root),

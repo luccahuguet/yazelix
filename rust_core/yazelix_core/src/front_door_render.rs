@@ -1,7 +1,11 @@
 //! Front-door rendering and screen playback for Rust-owned welcome/tutor/report UX.
 
 use crate::bridge::{CoreError, ErrorClass};
-use crossterm::event::{self, Event};
+use crate::terminal_control;
+use crossterm::{
+    event::{self, Event},
+    style::Color,
+};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::io;
@@ -25,17 +29,6 @@ use yazelix_screen::{
 
 const ASCII_ART_DATA_JSON: &str = include_str!("../assets/ascii_art_data.json");
 
-const ANSI_RED: &str = "\u{1b}[31m";
-const ANSI_GREEN: &str = "\u{1b}[32m";
-const ANSI_YELLOW: &str = "\u{1b}[33m";
-const ANSI_BLUE: &str = "\u{1b}[34m";
-const ANSI_PURPLE: &str = "\u{1b}[35m";
-const ANSI_RESET: &str = "\u{1b}[0m";
-const ANSI_FAINT: &str = "\u{1b}[2m";
-const ANSI_NORMAL_FOREGROUND: &str = "\u{1b}[22;39m";
-const ANSI_BACKGROUND_TRUE_BLACK: &str = "\u{1b}[48;2;0;0;0m";
-const ANSI_BACKGROUND_DEFAULT: &str = "\u{1b}[49m";
-const ANSI_CLEAR_SCREEN_FROM_HOME: &str = "\u{1b}[H\u{1b}[2J";
 const ASCII_MAGICIAN_ASSET_PARENT_DIR: &str = "assets/third_party";
 const KITTY_MAGICIAN_IMAGE_ID_BASE: u32 = 7_930_000;
 
@@ -197,14 +190,20 @@ fn welcome_inner_width(designed_width: usize) -> usize {
 }
 
 fn colorize_logo_text(text: &str) -> String {
-    let palette = [ANSI_RED, ANSI_GREEN, ANSI_YELLOW, ANSI_BLUE, ANSI_PURPLE];
+    let palette = [
+        Color::Red,
+        Color::Green,
+        Color::Yellow,
+        Color::Blue,
+        Color::Magenta,
+    ];
     text.chars()
         .enumerate()
         .map(|(index, ch)| {
             if ch == ' ' {
                 " ".to_string()
             } else {
-                format!("{}{}{}", palette[index % palette.len()], ch, ANSI_RESET)
+                terminal_control::styled(ch, palette[index % palette.len()])
             }
         })
         .collect::<Vec<_>>()
@@ -212,10 +211,7 @@ fn colorize_logo_text(text: &str) -> String {
 }
 
 fn colorize_body_line(text: &str) -> String {
-    let base_color = ANSI_GREEN;
-    let accent_color = ANSI_BLUE;
-    let base = format!("{base_color}{text}{ANSI_RESET}");
-    [
+    const ACCENTS: &[&str] = &[
         "reproducible",
         "declarative",
         "helix",
@@ -224,15 +220,36 @@ fn colorize_body_line(text: &str) -> String {
         "shells",
         "packs",
         "SSH",
-    ]
-    .into_iter()
-    .fold(base, |acc, needle| {
-        acc.replace(needle, &format!("{accent_color}{needle}{base_color}"))
-    })
+    ];
+    let mut out = String::new();
+    let mut remaining = text;
+
+    while !remaining.is_empty() {
+        let Some((index, needle)) = ACCENTS
+            .iter()
+            .filter_map(|needle| remaining.find(needle).map(|index| (index, *needle)))
+            .min_by_key(|(index, _)| *index)
+        else {
+            out.push_str(&terminal_control::styled(remaining, Color::Green));
+            break;
+        };
+
+        if index > 0 {
+            let (plain, rest) = remaining.split_at(index);
+            out.push_str(&terminal_control::styled(plain, Color::Green));
+            remaining = rest;
+            continue;
+        }
+
+        out.push_str(&terminal_control::styled(needle, Color::Blue));
+        remaining = &remaining[needle.len()..];
+    }
+
+    out
 }
 
 fn colorize_footer_text(text: &str) -> String {
-    format!("{ANSI_YELLOW}{text}{ANSI_RESET}")
+    terminal_control::styled(text, Color::Yellow)
 }
 
 fn make_border(inner_width: usize) -> String {
@@ -273,7 +290,7 @@ fn build_logo_card_frame(
     };
     let title_plain = center_text(title_text, content_width);
     let title_colored = if accent == "hint" {
-        format!("{ANSI_FAINT}{ANSI_PURPLE}{title_plain}{ANSI_RESET}")
+        terminal_control::styled_dim(title_plain, Color::Magenta)
     } else {
         colorize_logo_text(&title_plain)
     };
@@ -292,28 +309,25 @@ fn build_logo_card_frame(
             if index < shown_body_count {
                 colorize_body_line(&aligned)
             } else {
-                format!(
-                    "{ANSI_FAINT}{}{ANSI_RESET}",
-                    pad_text_right("", content_width)
-                )
+                terminal_control::styled_dim_default(pad_text_right("", content_width))
             }
         })
         .collect::<Vec<_>>();
 
     let footer = colorize_footer_text(&center_text(&spec.footer, content_width));
     let mut out = Vec::new();
-    out.push(format!(
-        "{ANSI_PURPLE}╭{}╮{ANSI_RESET}",
-        make_border(inner_width)
+    out.push(terminal_control::styled(
+        format!("╭{}╮", make_border(inner_width)),
+        Color::Magenta,
     ));
     out.push(title_colored);
     for line in body_lines {
         out.push(line);
     }
     out.push(footer);
-    out.push(format!(
-        "{ANSI_PURPLE}╰{}╯{ANSI_RESET}",
-        make_border(inner_width)
+    out.push(terminal_control::styled(
+        format!("╰{}╯", make_border(inner_width)),
+        Color::Magenta,
     ));
     out
 }
@@ -482,27 +496,27 @@ fn ascii_magician_frame_sequence(
     magician_frame_sequence(
         &ascii_magician_frame_dir(runtime_dir),
         image_id,
-        Some(format!(
-            "{ANSI_FAINT}{ANSI_PURPLE}{MAGICIAN_ATTRIBUTION}{ANSI_NORMAL_FOREGROUND}"
+        Some(terminal_control::styled_dim_no_reset(
+            MAGICIAN_ATTRIBUTION,
+            Color::Magenta,
         )),
     )
 }
 
+#[cfg(test)]
 fn magician_default_background_clear_sequence() -> String {
-    format!("{ANSI_BACKGROUND_DEFAULT}{ANSI_CLEAR_SCREEN_FROM_HOME}")
+    terminal_control::default_background_clear_sequence()
 }
 
 fn clear_magician_cells_with_default_background() -> io::Result<()> {
-    print!("{}", magician_default_background_clear_sequence());
-    yazelix_screen::flush_stdout()
+    terminal_control::clear_screen_with_default_background_now()
 }
 
 fn play_kitty_png_frame_sequence_on_black_background(
     sequence: &yazelix_screen::KittyFrameSequence,
     duration: Option<Duration>,
 ) -> io::Result<()> {
-    print!("{ANSI_BACKGROUND_TRUE_BLACK}");
-    yazelix_screen::flush_stdout()?;
+    terminal_control::set_true_black_background_now()?;
     let play_result =
         play_kitty_png_frame_sequence(sequence, duration, terminal_width, terminal_height);
     let reset_result = clear_magician_cells_with_default_background();
@@ -703,22 +717,31 @@ fn play_inline_frames(
         }
 
         for line in &padded {
-            print!("\r\u{1b}[2K{}\n", inline_printable_line(line));
+            print!(
+                "{}",
+                terminal_control::clear_current_line_println_sequence(inline_printable_line(line))
+            );
         }
         flush_stdout()?;
 
         if index < last_index {
             if poll_for_keypress(frame_delay)? {
-                print!("\u{1b}[H\u{1b}[2J\n");
+                print!("{}", terminal_control::clear_screen_newline_sequence());
                 for line in &resting_logo {
                     println!("{line}");
                 }
                 flush_stdout()?;
                 return Ok(());
             }
-            print!("\u{1b}[{}A", max_frame_height + 1);
+            print!(
+                "{}",
+                terminal_control::move_up_sequence(max_frame_height + 1)
+            );
         } else {
-            print!("\u{1b}[{}A", max_frame_height.saturating_sub(frame.len()));
+            print!(
+                "{}",
+                terminal_control::move_up_sequence(max_frame_height.saturating_sub(frame.len()))
+            );
         }
         flush_stdout()?;
     }
@@ -1265,8 +1288,8 @@ mod tests {
         );
         let attribution = sequence.attribution.as_deref().unwrap();
         assert!(attribution.contains(MAGICIAN_ATTRIBUTION));
-        assert!(!attribution.contains(ANSI_RESET));
-        assert!(attribution.ends_with(ANSI_NORMAL_FOREGROUND));
+        assert!(!attribution.contains(&terminal_control::reset_style_sequence()));
+        assert!(attribution.ends_with(&terminal_control::normal_foreground_sequence()));
 
         let command =
             yazelix_screen::kitty_png_file_command(123, 80, 40, Path::new("/tmp/frame.png"));
@@ -1310,14 +1333,19 @@ mod tests {
     fn magician_cleanup_clears_after_restoring_default_background() {
         assert_eq!(
             magician_default_background_clear_sequence(),
-            "\u{1b}[49m\u{1b}[H\u{1b}[2J"
+            terminal_control::default_background_clear_sequence()
         );
     }
 
     // Regression: the magician wrapper must use true black instead of terminal palette black, which can be lighter than the GIF background.
     #[test]
     fn magician_background_uses_true_black() {
-        assert_eq!(ANSI_BACKGROUND_TRUE_BLACK, "\u{1b}[48;2;0;0;0m");
+        let sequence = terminal_control::true_black_background_sequence();
+        assert!(sequence.contains("48;2;0;0;0"));
+        assert_ne!(
+            sequence,
+            terminal_control::default_background_clear_sequence()
+        );
     }
 
     // Regression: inline welcome playback trims trailing padding so centered frames do not trigger terminal autowrap artifacts.

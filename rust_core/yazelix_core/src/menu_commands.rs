@@ -1,6 +1,8 @@
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::runtime_dir_from_env;
 use crate::public_command_surface::{YzxCommandMetadata, YzxMenuCategory, yzx_command_metadata};
+use crate::terminal_control;
+use crossterm::style::Color;
 use serde_json::json;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -75,13 +77,13 @@ fn category_name(category: YzxMenuCategory) -> &'static str {
     }
 }
 
-fn category_color(category: YzxMenuCategory) -> &'static str {
+fn category_color(category: YzxMenuCategory) -> Color {
     match category {
-        YzxMenuCategory::Session => "\x1b[32m",
-        YzxMenuCategory::Workspace => "\x1b[36m",
-        YzxMenuCategory::Config => "\x1b[34m",
-        YzxMenuCategory::System => "\x1b[33m",
-        YzxMenuCategory::Help => "\x1b[35m",
+        YzxMenuCategory::Session => Color::Green,
+        YzxMenuCategory::Workspace => Color::Cyan,
+        YzxMenuCategory::Config => Color::Blue,
+        YzxMenuCategory::System => Color::Yellow,
+        YzxMenuCategory::Help => Color::Magenta,
     }
 }
 
@@ -94,16 +96,19 @@ fn palette_description(command: &YzxCommandMetadata) -> &'static str {
 
 fn palette_entry(command: &YzxCommandMetadata) -> Option<PaletteEntry> {
     let category = command.menu_category?;
-    let tag = format!(
-        "{}[{}]\x1b[0m",
+    let tag = terminal_control::styled(
+        format!("[{}]", category_name(category)),
         category_color(category),
-        category_name(category)
     );
     let description = palette_description(command).trim();
     let label = if description.is_empty() {
         format!("{}  {tag}", command.name)
     } else {
-        format!("{}  {tag}  \x1b[90m- {}\x1b[0m", command.name, description)
+        format!(
+            "{}  {tag}  {}",
+            command.name,
+            terminal_control::styled(format!("- {description}"), Color::DarkGrey)
+        )
     };
     Some(PaletteEntry {
         command: command.name.to_string(),
@@ -286,8 +291,7 @@ fn popup_post_action_decision() -> Result<PopupDecision, CoreError> {
 }
 
 fn clear_screen() {
-    print!("\x1b[2J\x1b[H");
-    let _ = std::io::stdout().flush();
+    let _ = terminal_control::clear_screen_now();
 }
 
 fn selected_entry<'a>(
@@ -417,12 +421,13 @@ mod tests {
     // Defends: fzf label matching remains stable when labels include ANSI category styling.
     #[test]
     fn selected_entry_matches_command_prefix_before_ansi_label_content() {
+        let styled_system = terminal_control::styled("[system]", Color::Yellow);
         let entries = vec![PaletteEntry {
             command: "yzx status".to_string(),
-            label: "yzx status  \u{1b}[33m[system]\u{1b}[0m".to_string(),
+            label: format!("yzx status  {styled_system}"),
         }];
         assert_eq!(
-            select_matching_entry(&entries, "yzx status  \u{1b}[33m[system]\u{1b}[0m")
+            select_matching_entry(&entries, &format!("yzx status  {styled_system}"))
                 .unwrap()
                 .command,
             "yzx status"

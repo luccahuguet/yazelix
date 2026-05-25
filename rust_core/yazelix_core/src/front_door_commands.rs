@@ -9,14 +9,11 @@ use crate::front_door_render::{
 };
 use crate::require_runtime_component_enabled;
 use crate::session_facts::compute_session_facts_from_env;
+use crate::terminal_control;
 use crate::upgrade_summary::show_current_upgrade_summary;
+use crossterm::style::Color;
 use std::process::Command;
 use std::time::Duration;
-
-const ANSI_RESET: &str = "\u{1b}[0m";
-const ANSI_CYAN_BOLD: &str = "\u{1b}[1;36m";
-const ANSI_YELLOW_BOLD: &str = "\u{1b}[1;33m";
-const ANSI_WHITE: &str = "\u{1b}[37m";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum TutorView {
@@ -300,15 +297,15 @@ fn print_whats_new_help() {
 }
 
 fn heading(text: &str) -> String {
-    format!("{ANSI_CYAN_BOLD}{text}{ANSI_RESET}")
+    terminal_control::styled_bold(text, Color::Cyan)
 }
 
 fn accent(text: &str) -> String {
-    format!("{ANSI_YELLOW_BOLD}{text}{ANSI_RESET}")
+    terminal_control::styled_bold(text, Color::Yellow)
 }
 
 fn command_label(text: &str) -> String {
-    format!("{ANSI_WHITE}{text}{ANSI_RESET}")
+    terminal_control::styled(text, Color::White)
 }
 
 fn render_yazelix_tutor_overview() -> String {
