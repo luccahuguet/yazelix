@@ -21,8 +21,9 @@ use yazelix_screen::{
     ScreenFrameProducer, build_game_of_life_screen_lines, build_live_game_of_life_seed,
     center_frame_lines, center_text, cleanup_kitty_image, game_of_life_grid_height,
     game_of_life_grid_width, game_of_life_spec, is_boids_style, is_game_of_life_style,
-    magician_frame_sequence, mandelbrot_frame_delay, play_kitty_png_frame_sequence,
-    random_animation_styles, require_magician_frame_assets, resolve_game_of_life_body_height,
+    magician_frame_sequence_with_edge_insets, mandelbrot_frame_delay,
+    play_kitty_png_frame_sequence, random_animation_styles, require_magician_frame_assets,
+    resolve_game_of_life_body_height,
     resolve_random_animation_style as resolve_shared_random_animation_style,
     step_game_of_life_cells, terminal_height, terminal_width, visible_line_width,
 };
@@ -31,6 +32,8 @@ const ASCII_ART_DATA_JSON: &str = include_str!("../assets/ascii_art_data.json");
 
 const ASCII_MAGICIAN_ASSET_PARENT_DIR: &str = "assets/third_party";
 const KITTY_MAGICIAN_IMAGE_ID_BASE: u32 = 7_930_000;
+const YAZELIX_MAGICIAN_EDGE_INSET_COLUMNS: usize = 12;
+const YAZELIX_MAGICIAN_EDGE_INSET_ROWS: usize = 12;
 
 #[derive(Debug, Clone, Deserialize)]
 struct AsciiArtData {
@@ -493,13 +496,15 @@ fn ascii_magician_frame_sequence(
     runtime_dir: &Path,
     image_id: u32,
 ) -> yazelix_screen::KittyFrameSequence {
-    magician_frame_sequence(
+    magician_frame_sequence_with_edge_insets(
         &ascii_magician_frame_dir(runtime_dir),
         image_id,
         Some(terminal_control::styled_dim_no_reset(
             MAGICIAN_ATTRIBUTION,
             Color::Magenta,
         )),
+        YAZELIX_MAGICIAN_EDGE_INSET_COLUMNS,
+        YAZELIX_MAGICIAN_EDGE_INSET_ROWS,
     )
 }
 
@@ -1280,12 +1285,9 @@ mod tests {
         assert_eq!(sequence.image_id, 123);
         assert_eq!(
             sequence.edge_inset_columns,
-            yazelix_screen::MAGICIAN_EDGE_INSET_COLUMNS
+            YAZELIX_MAGICIAN_EDGE_INSET_COLUMNS
         );
-        assert_eq!(
-            sequence.edge_inset_rows,
-            yazelix_screen::MAGICIAN_EDGE_INSET_ROWS
-        );
+        assert_eq!(sequence.edge_inset_rows, YAZELIX_MAGICIAN_EDGE_INSET_ROWS);
         let attribution = sequence.attribution.as_deref().unwrap();
         assert!(attribution.contains(MAGICIAN_ATTRIBUTION));
         assert!(!attribution.contains(&terminal_control::reset_style_sequence()));
@@ -1308,24 +1310,24 @@ mod tests {
         let full_hd = yazelix_screen::kitty_frame_layout(
             120,
             40,
-            yazelix_screen::MAGICIAN_EDGE_INSET_COLUMNS,
-            yazelix_screen::MAGICIAN_EDGE_INSET_ROWS,
+            YAZELIX_MAGICIAN_EDGE_INSET_COLUMNS,
+            YAZELIX_MAGICIAN_EDGE_INSET_ROWS,
         );
-        assert_eq!(full_hd.columns, 46);
-        assert_eq!(full_hd.rows, 23);
-        assert_eq!(full_hd.top_padding, 8);
-        assert_eq!(full_hd.left_padding, 37);
+        assert_eq!(full_hd.columns, 30);
+        assert_eq!(full_hd.rows, 15);
+        assert_eq!(full_hd.top_padding, 12);
+        assert_eq!(full_hd.left_padding, 45);
 
         let wide = yazelix_screen::kitty_frame_layout(
             190,
             60,
-            yazelix_screen::MAGICIAN_EDGE_INSET_COLUMNS,
-            yazelix_screen::MAGICIAN_EDGE_INSET_ROWS,
+            YAZELIX_MAGICIAN_EDGE_INSET_COLUMNS,
+            YAZELIX_MAGICIAN_EDGE_INSET_ROWS,
         );
-        assert_eq!(wide.columns, 86);
-        assert_eq!(wide.rows, 43);
-        assert_eq!(wide.top_padding, 8);
-        assert_eq!(wide.left_padding, 52);
+        assert_eq!(wide.columns, 70);
+        assert_eq!(wide.rows, 35);
+        assert_eq!(wide.top_padding, 12);
+        assert_eq!(wide.left_padding, 60);
     }
 
     // Regression: the welcome magician must repaint cells with the terminal default background after black playback.
