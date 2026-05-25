@@ -35,6 +35,7 @@ const ANSI_FAINT: &str = "\u{1b}[2m";
 const ANSI_NORMAL_FOREGROUND: &str = "\u{1b}[22;39m";
 const ANSI_BACKGROUND_BLACK: &str = "\u{1b}[40m";
 const ANSI_BACKGROUND_DEFAULT: &str = "\u{1b}[49m";
+const ANSI_CLEAR_SCREEN_FROM_HOME: &str = "\u{1b}[H\u{1b}[2J";
 const ASCII_MAGICIAN_ASSET_PARENT_DIR: &str = "assets/third_party";
 const KITTY_MAGICIAN_IMAGE_ID_BASE: u32 = 7_930_000;
 
@@ -487,6 +488,15 @@ fn ascii_magician_frame_sequence(
     )
 }
 
+fn magician_default_background_clear_sequence() -> String {
+    format!("{ANSI_BACKGROUND_DEFAULT}{ANSI_CLEAR_SCREEN_FROM_HOME}")
+}
+
+fn clear_magician_cells_with_default_background() -> io::Result<()> {
+    print!("{}", magician_default_background_clear_sequence());
+    yazelix_screen::flush_stdout()
+}
+
 fn play_kitty_png_frame_sequence_on_black_background(
     sequence: &yazelix_screen::KittyFrameSequence,
     duration: Option<Duration>,
@@ -495,8 +505,7 @@ fn play_kitty_png_frame_sequence_on_black_background(
     yazelix_screen::flush_stdout()?;
     let play_result =
         play_kitty_png_frame_sequence(sequence, duration, terminal_width, terminal_height);
-    print!("{ANSI_BACKGROUND_DEFAULT}");
-    let reset_result = yazelix_screen::flush_stdout();
+    let reset_result = clear_magician_cells_with_default_background();
 
     match (play_result, reset_result) {
         (Err(error), _) => Err(error),
@@ -1294,6 +1303,15 @@ mod tests {
         assert_eq!(wide.rows, 51);
         assert_eq!(wide.top_padding, 4);
         assert_eq!(wide.left_padding, 44);
+    }
+
+    // Regression: the welcome magician must repaint cells with the terminal default background after black playback.
+    #[test]
+    fn magician_cleanup_clears_after_restoring_default_background() {
+        assert_eq!(
+            magician_default_background_clear_sequence(),
+            "\u{1b}[49m\u{1b}[H\u{1b}[2J"
+        );
     }
 
     // Regression: inline welcome playback trims trailing padding so centered frames do not trigger terminal autowrap artifacts.
