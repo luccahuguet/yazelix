@@ -33,7 +33,7 @@ const ANSI_PURPLE: &str = "\u{1b}[35m";
 const ANSI_RESET: &str = "\u{1b}[0m";
 const ANSI_FAINT: &str = "\u{1b}[2m";
 const ANSI_NORMAL_FOREGROUND: &str = "\u{1b}[22;39m";
-const ANSI_BACKGROUND_BLACK: &str = "\u{1b}[40m";
+const ANSI_BACKGROUND_TRUE_BLACK: &str = "\u{1b}[48;2;0;0;0m";
 const ANSI_BACKGROUND_DEFAULT: &str = "\u{1b}[49m";
 const ANSI_CLEAR_SCREEN_FROM_HOME: &str = "\u{1b}[H\u{1b}[2J";
 const ASCII_MAGICIAN_ASSET_PARENT_DIR: &str = "assets/third_party";
@@ -501,7 +501,7 @@ fn play_kitty_png_frame_sequence_on_black_background(
     sequence: &yazelix_screen::KittyFrameSequence,
     duration: Option<Duration>,
 ) -> io::Result<()> {
-    print!("{ANSI_BACKGROUND_BLACK}");
+    print!("{ANSI_BACKGROUND_TRUE_BLACK}");
     yazelix_screen::flush_stdout()?;
     let play_result =
         play_kitty_png_frame_sequence(sequence, duration, terminal_width, terminal_height);
@@ -1288,10 +1288,10 @@ mod tests {
             yazelix_screen::MAGICIAN_EDGE_INSET_COLUMNS,
             yazelix_screen::MAGICIAN_EDGE_INSET_ROWS,
         );
-        assert_eq!(full_hd.columns, 62);
-        assert_eq!(full_hd.rows, 31);
-        assert_eq!(full_hd.top_padding, 4);
-        assert_eq!(full_hd.left_padding, 29);
+        assert_eq!(full_hd.columns, 46);
+        assert_eq!(full_hd.rows, 23);
+        assert_eq!(full_hd.top_padding, 8);
+        assert_eq!(full_hd.left_padding, 37);
 
         let wide = yazelix_screen::kitty_frame_layout(
             190,
@@ -1299,10 +1299,10 @@ mod tests {
             yazelix_screen::MAGICIAN_EDGE_INSET_COLUMNS,
             yazelix_screen::MAGICIAN_EDGE_INSET_ROWS,
         );
-        assert_eq!(wide.columns, 102);
-        assert_eq!(wide.rows, 51);
-        assert_eq!(wide.top_padding, 4);
-        assert_eq!(wide.left_padding, 44);
+        assert_eq!(wide.columns, 86);
+        assert_eq!(wide.rows, 43);
+        assert_eq!(wide.top_padding, 8);
+        assert_eq!(wide.left_padding, 52);
     }
 
     // Regression: the welcome magician must repaint cells with the terminal default background after black playback.
@@ -1312,6 +1312,12 @@ mod tests {
             magician_default_background_clear_sequence(),
             "\u{1b}[49m\u{1b}[H\u{1b}[2J"
         );
+    }
+
+    // Regression: the magician wrapper must use true black instead of terminal palette black, which can be lighter than the GIF background.
+    #[test]
+    fn magician_background_uses_true_black() {
+        assert_eq!(ANSI_BACKGROUND_TRUE_BLACK, "\u{1b}[48;2;0;0;0m");
     }
 
     // Regression: inline welcome playback trims trailing padding so centered frames do not trigger terminal autowrap artifacts.
