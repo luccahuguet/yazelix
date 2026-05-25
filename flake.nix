@@ -178,6 +178,11 @@
           inherit pkgs baseZellij;
           src = yazelixZellij;
         };
+      yazelixKgpYazi =
+        pkgs: baseYaziUnwrapped: codeSrc:
+        import ./packaging/yazelix_kgp_yazi.nix {
+          inherit pkgs baseYaziUnwrapped codeSrc;
+        };
       yazelixGraphicsPkgs =
         system: pkgs:
         let
@@ -188,18 +193,7 @@
         in
         pkgs.extend (final: prev: {
           zellij = yazelixKgpZellij final prev.zellij;
-          yazi-unwrapped = prev.yazi-unwrapped.overrideAttrs (old: {
-            srcs = [
-              yaziCodeSrc
-              old.passthru.srcs.man_src
-            ];
-            sourceRoot = "yazi-yazelix-kgp-src";
-            passthru = old.passthru // {
-              srcs = old.passthru.srcs // {
-                code_src = yaziCodeSrc;
-              };
-            };
-          });
+          yazi-unwrapped = yazelixKgpYazi final prev.yazi-unwrapped yaziCodeSrc;
           yazi = prev.yazi.override {
             yazi-unwrapped = final.yazi-unwrapped;
           };

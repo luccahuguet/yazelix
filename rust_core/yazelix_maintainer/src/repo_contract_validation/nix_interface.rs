@@ -110,6 +110,12 @@ pub fn validate_nix_customization_api(repo_root: &Path) -> Result<ValidationRepo
         "KGP Zellij package must own source-coupled Cargo vendor deps instead of inheriting consumer pkgs.zellij cargoDeps",
         &mut report.errors,
     );
+    require_json_bool(
+        object,
+        "kgp_yazi_owns_cargo_deps",
+        "KGP Yazi package must own source-coupled Cargo vendor deps instead of inheriting consumer pkgs.yazi-unwrapped cargoDeps",
+        &mut report.errors,
+    );
 
     Ok(report)
 }
@@ -227,8 +233,15 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "          version = \"0.44.1\";".to_string(),
         "          cargoDeps = throw \"consumer pkgs.zellij cargoDeps leaked into Yazelix graphics runtime\";".to_string(),
         "        });".to_string(),
+        "        yazi-unwrapped = prev.yazi-unwrapped.overrideAttrs (_old: {".to_string(),
+        "          cargoDeps = throw \"consumer pkgs.yazi-unwrapped cargoDeps leaked into Yazelix graphics runtime\";".to_string(),
+        "        });".to_string(),
         "      })".to_string(),
         "    ];".to_string(),
+        "  };".to_string(),
+        "  yaziCodeSrc = builtins.path {".to_string(),
+        "    path = flake.inputs.yazelixYazi;".to_string(),
+        "    name = \"yazi-yazelix-kgp-src\";".to_string(),
         "  };".to_string(),
         format!(
             "  kgpZellij = import \"{}/packaging/yazelix_kgp_zellij.nix\" {{",
@@ -237,6 +250,14 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "    pkgs = poisonedConsumerPkgs;".to_string(),
         "    baseZellij = poisonedConsumerPkgs.zellij;".to_string(),
         "    src = flake.inputs.yazelixZellij;".to_string(),
+        "  };".to_string(),
+        format!(
+            "  kgpYazi = import \"{}/packaging/yazelix_kgp_yazi.nix\" {{",
+            repo_root_literal
+        ),
+        "    pkgs = poisonedConsumerPkgs;".to_string(),
+        "    baseYaziUnwrapped = poisonedConsumerPkgs.yazi-unwrapped;".to_string(),
+        "    codeSrc = yaziCodeSrc;".to_string(),
         "  };".to_string(),
         "in {".to_string(),
         "  has_mk_yazelix = builtins.hasAttr \"mkYazelix\" flake.lib.${system};".to_string(),
@@ -248,6 +269,7 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "  invalid_runtime_tool_rejected = !invalidRuntimeTool.success;".to_string(),
         "  unsupported_component_rejected = !unsupportedComponent.success;".to_string(),
         "  kgp_zellij_owns_cargo_deps = (kgpZellij.version or \"\") == \"0.44.3\" && (kgpZellij.cargoDeps.name or \"\") == \"zellij-0.44.3-vendor\";".to_string(),
+        "  kgp_yazi_owns_cargo_deps = (kgpYazi.version or \"\") == \"26.5.6\" && (kgpYazi.cargoDeps.name or \"\") == \"yazi-26.5.6-vendor\";".to_string(),
         "}".to_string(),
     ]
     .join("\n")
