@@ -4,6 +4,15 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
+Post-v17.1 work in progress
+
+Upgrade impact: no user action required
+
+Highlights:
+- Reserved for post-release changes after v17.1 lands.
+
+## v17.1 - 2026-05-30
+
 Pre-Steel escape hatch, Rust-owned runtime polish, and terminal/VFX planning
 
 Upgrade impact: no user action required
@@ -18,6 +27,7 @@ Highlights:
 - Recorded the Rio-based `yazelix-terminal` direction, including cursor-shader parity as the first gate, protocol parity planning, and Rio/Yazi image-preview risk
 - Verified that stock Helix and the Steel branch still lack a true config-dir override, recorded the scoped-XDG caveat, and planned the bundled Yazelix Helix Steel fork plus external binary/runtime-pair escape hatch
 - Treat `v17.1` as the pre-Steel pin for users who are not ready to move to the future bundled Yazelix Helix Steel editor line
+
 
 ## v17 - 2026-05-22
 
