@@ -20,7 +20,7 @@ Upgrade impact: no user action required
 Highlights:
 - Moved native tab and pane movement defaults to `Ctrl Alt H/L` and `Ctrl Alt J/K` so Ghostty does not intercept pane-down movement through its `Ctrl Shift J` screen-file shortcut
 - Added `zellij.codex_usage_periods` with a default Codex 5h/week status window and bundled `tokenusage` in packaged runtimes so default Codex and Claude usage widgets have their helper available
-- Restored popup editor runtime environment propagation, fixed sidebar runtime helper packaging, and added runtime diagnostics plus maintainer validators for packaged-runtime behavior
+- Restored popup editor runtime environment propagation, fixed sidebar runtime helper packaging, reported no-op `yzx update upstream` runs clearly, repaired desktop icon reinstalls over read-only copied icons, and added runtime diagnostics plus maintainer validators for packaged-runtime behavior
 - Rust-owned `yzx menu`, launch setup preflight, canary session validation, and guarded doctor config repair while continuing to shrink shell-owned runtime paths
 - Updated `yzx screen` and welcome visuals after v17, including recursive Mandelbrot work, the magician GIF/Kitty-graphics renderer, a four-second welcome default, boids height fixes, and experimental Ratty runtime/cursor probes
 - Added Yazelix-owned `yazelix-zellij` and `yazelix-yazi` package forks after `v17` specifically to carry the Kitty Graphics Protocol passthrough path that restores Yazi image previews through Zellij; then tightened their KGP package boundaries, Cargo hash validation, typed terminal controls, terminal launch contracts, and follow-up planning for cursor placement
