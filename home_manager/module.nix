@@ -500,6 +500,18 @@ in
       '';
     };
 
+    helix_plugin_recentf = mkMainContractOption "helix.plugins.recentf" {
+      description = "Enable the bundled Helix Steel recent file picker.";
+    };
+
+    helix_plugin_splash = mkMainContractOption "helix.plugins.splash" {
+      description = "Enable the bundled Helix Steel splash screen.";
+    };
+
+    helix_plugin_spacemacs_theme = mkMainContractOption "helix.plugins.spacemacs_theme" {
+      description = "Register the bundled Spacemacs Helix Steel theme.";
+    };
+
     hide_sidebar_on_file_open = mkMainContractOption "editor.hide_sidebar_on_file_open" {
       description = ''
         Whether Yazelix should hide the managed sidebar after opening a file from

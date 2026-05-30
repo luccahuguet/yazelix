@@ -11,7 +11,12 @@
     "welcome_duration_seconds": 4.0
   },
   "helix": {
-    "external": null
+    "external": null,
+    "plugins": {
+      "recentf": true,
+      "splash": true,
+      "spacemacs_theme": false
+    }
   },
   "editor": {
     "command": "",

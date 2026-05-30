@@ -95,7 +95,8 @@
       "type": "object",
       "description": "Helix-specific runtime integration settings",
       "required": [
-        "external"
+        "external",
+        "plugins"
       ],
       "additionalProperties": false,
       "properties": {
@@ -121,6 +122,27 @@
               }
             }
           ]
+        },
+        "plugins": {
+          "type": "object",
+          "description": "Declarative toggles for curated Helix Steel plugins",
+          "required": [
+            "recentf",
+            "splash",
+            "spacemacs_theme"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "recentf": {
+              "type": "boolean"
+            },
+            "splash": {
+              "type": "boolean"
+            },
+            "spacemacs_theme": {
+              "type": "boolean"
+            }
+          }
         }
       },
       "x-yazelix": {
