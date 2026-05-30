@@ -1,10 +1,20 @@
 [releases.unreleased]
 acknowledged_guarded_changes = ["settings_default.jsonc", "home_manager/module.nix"]
 date = ""
-headline = "Post-v17 work in progress"
+headline = "Pre-Steel escape hatch, Rust-owned runtime polish, and terminal/VFX planning"
 manual_actions = []
 migration_ids = []
-summary = ["Moved native tab and pane movement defaults to `Ctrl Alt H/L` and `Ctrl Alt J/K` so Ghostty does not intercept pane-down movement through its `Ctrl Shift J` screen-file shortcut.", "Added `zellij.codex_usage_periods` with a default Codex 5h/week status window and bundled `tokenusage` in packaged runtimes so default Codex and Claude usage widgets have their helper available."]
+summary = [
+  "Moved native tab and pane movement defaults to `Ctrl Alt H/L` and `Ctrl Alt J/K` so Ghostty does not intercept pane-down movement through its `Ctrl Shift J` screen-file shortcut.",
+  "Added `zellij.codex_usage_periods` with a default Codex 5h/week status window and bundled `tokenusage` in packaged runtimes so default Codex and Claude usage widgets have their helper available.",
+  "Restored popup editor runtime environment propagation, fixed sidebar runtime helper packaging, and added runtime diagnostics plus maintainer validators for packaged-runtime behavior.",
+  "Rust-owned `yzx menu`, launch setup preflight, canary session validation, and guarded doctor config repair while continuing to shrink shell-owned runtime paths.",
+  "Updated `yzx screen` and welcome visuals after v17, including recursive Mandelbrot work, the magician GIF/Kitty-graphics renderer, a four-second welcome default, boids height fixes, and experimental Ratty runtime/cursor probes.",
+  "Tightened KGP Zellij/Yazi package boundaries, cargo hash validation, typed terminal controls, terminal launch contracts, and follow-up planning for Zellij Kitty placement.",
+  "Recorded the Rio-based `yazelix-terminal` direction, including cursor-shader parity as the first gate, protocol parity planning, and Rio/Yazi image-preview risk.",
+  "Verified that stock Helix and the Steel branch still lack a true config-dir override, recorded the scoped-XDG caveat, and planned the bundled Yazelix Helix Steel fork plus external binary/runtime-pair escape hatch.",
+  "Treat `v17.1` as the pre-Steel pin for users who are not ready to move to the future bundled Yazelix Helix Steel editor line.",
+]
 upgrade_impact = "no_user_action"
 version = "unreleased"
 
