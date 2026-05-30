@@ -18,6 +18,10 @@ in
 baseYaziUnwrapped.overrideAttrs (old: {
   inherit pname version srcs sourceRoot;
 
+  # Keep KGP Yazi source-coupled metadata owned here.  The consumer
+  # yazi-unwrapped postPatch may target a different upstream source shape.
+  postPatch = "";
+
   cargoDeps = pkgs.rustPlatform.fetchCargoVendor {
     inherit pname version srcs sourceRoot;
     hash = cargoHash;
