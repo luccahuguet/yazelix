@@ -10,6 +10,7 @@ use crate::doctor_helix_report::{HelixDoctorEvaluateRequest, evaluate_helix_doct
 use crate::doctor_runtime_report::{
     DoctorRuntimeEvaluateRequest, SharedRuntimePreflightInput, evaluate_doctor_runtime_report,
 };
+use crate::helix_external::HelixExternalPair;
 use crate::install_ownership_env::install_ownership_request_from_env_with_runtime_dir;
 use crate::native_config_status::{
     NativeConfigStatusEntry, NativeConfigStatusRequest, classify_native_config_statuses,
@@ -431,16 +432,26 @@ fn collect_helix_doctor_findings(
             .unwrap_or("")
             .to_string()
     });
+    let helix_external = normalized_config
+        .and_then(|cfg| cfg.get("helix_external"))
+        .and_then(HelixExternalPair::from_json);
+    let hx_exe_path = helix_external
+        .as_ref()
+        .map(|external| PathBuf::from(&external.binary))
+        .or_else(|| find_external_command("hx"));
+    let include_runtime_health = helix_external.is_some()
+        || env::var("EDITOR")
+            .ok()
+            .map(|value| value.contains("hx"))
+            .unwrap_or(false);
     let request = HelixDoctorEvaluateRequest {
         home_dir: home_dir.to_path_buf(),
         runtime_dir: runtime_dir.to_path_buf(),
         config_dir: config_dir.to_path_buf(),
         user_config_helix_runtime_dir: home_dir.join(".config").join("helix").join("runtime"),
-        hx_exe_path: find_external_command("hx"),
-        include_runtime_health: env::var("EDITOR")
-            .ok()
-            .map(|value| value.contains("hx"))
-            .unwrap_or(false),
+        hx_exe_path,
+        helix_external,
+        include_runtime_health,
         editor_command,
         managed_helix_user_config_path: user_config_paths::helix_config(config_dir),
         native_helix_config_path: xdg_config_home(home_dir).join("helix").join("config.toml"),
@@ -457,6 +468,11 @@ fn collect_helix_doctor_findings(
     if let Some(runtime_health) = &data.runtime_health {
         results
             .push(serialize_value(runtime_health).expect("helix runtime health should serialize"));
+    }
+    if let Some(external_pair) = &data.external_pair {
+        results.push(
+            serialize_value(external_pair).expect("helix external pair finding should serialize"),
+        );
     }
     results.extend(
         data.managed_integration

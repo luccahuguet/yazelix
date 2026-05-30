@@ -27,9 +27,12 @@
 
     # Editor configuration
     # editor_command = null;       # Optional: Use Yazelix's Helix (recommended)
-    editor_command = "hx"; # Optional: Use system Helix from PATH
+    editor_command = "hx"; # Optional: Use the packaged Helix command from the Yazelix runtime
     # editor_command = "nvim";     # Optional: Use other editor (loses Helix features)
-    # helix_runtime_path = "/home/user/helix/runtime";  # Optional: only for custom/nonstandard Helix runtimes
+    # helix_external = {
+    #   binary = "/home/user/helix/target/release/hx";
+    #   runtime_path = "/home/user/helix/runtime";
+    # }; # Optional: custom Helix fork binary/runtime pair
     # yazi_command = "/path/to/custom/yazi";            # Optional: managed Yazi binary override
     # yazi_ya_command = "/path/to/custom/ya";           # Optional: managed Yazi CLI override
 

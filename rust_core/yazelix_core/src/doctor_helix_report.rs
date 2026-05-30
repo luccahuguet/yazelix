@@ -1,6 +1,7 @@
 //! Helix-focused doctor findings (runtime conflicts, runtime health, managed integration).
 //! Bead: yazelix-ulb2.4.2
 
+use crate::helix_external::HelixExternalPair;
 use crate::helix_materialization::{
     MANAGED_COMMAND_MODE_COMMAND, MANAGED_COMMAND_MODE_KEY, MANAGED_REVEAL_COMMAND, REVEAL_KEY,
     build_managed_helix_contract_json,
@@ -9,6 +10,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::fs;
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -24,6 +27,8 @@ pub struct HelixDoctorEvaluateRequest {
     pub user_config_helix_runtime_dir: PathBuf,
     #[serde(default)]
     pub hx_exe_path: Option<PathBuf>,
+    #[serde(default)]
+    pub helix_external: Option<HelixExternalPair>,
     pub include_runtime_health: bool,
     /// When `None`, managed Helix integration checks are skipped (e.g. settings.jsonc could not be parsed).
     #[serde(default)]
@@ -63,6 +68,8 @@ pub struct HelixDoctorEvaluateData {
     pub runtime_conflicts: HelixDoctorFinding,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub runtime_health: Option<HelixDoctorFinding>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub external_pair: Option<HelixDoctorFinding>,
     pub managed_integration: Vec<HelixDoctorFinding>,
 }
 
@@ -75,11 +82,13 @@ pub fn evaluate_helix_doctor_report(
     } else {
         None
     };
+    let external_pair = evaluate_external_pair(request);
     let managed_integration = evaluate_managed_integration(request);
 
     HelixDoctorEvaluateData {
         runtime_conflicts,
         runtime_health,
+        external_pair,
         managed_integration,
     }
 }
@@ -91,6 +100,18 @@ fn is_helix_editor_command(editor: &str) -> bool {
 
 fn path_to_string(path: &Path) -> String {
     path.to_string_lossy().into_owned()
+}
+
+#[cfg(unix)]
+fn is_executable_file(path: &Path) -> bool {
+    fs::metadata(path)
+        .map(|meta| meta.is_file() && meta.permissions().mode() & 0o111 != 0)
+        .unwrap_or(false)
+}
+
+#[cfg(not(unix))]
+fn is_executable_file(path: &Path) -> bool {
+    path.is_file()
 }
 
 fn helix_health_runtime_directories(request: &HelixDoctorEvaluateRequest) -> Vec<PathBuf> {
@@ -295,6 +316,61 @@ fn evaluate_runtime_health(request: &HelixDoctorEvaluateRequest) -> HelixDoctorF
         fix_commands: vec![],
         conflicts: vec![],
     }
+}
+
+fn evaluate_external_pair(request: &HelixDoctorEvaluateRequest) -> Option<HelixDoctorFinding> {
+    let external = request.helix_external.as_ref()?;
+    let binary = Path::new(&external.binary);
+    let runtime = Path::new(&external.runtime_path);
+    let mut problems = Vec::new();
+
+    if !binary.exists() {
+        problems.push(format!("binary does not exist: {}", binary.display()));
+    } else if !is_executable_file(binary) {
+        problems.push(format!("binary is not executable: {}", binary.display()));
+    }
+
+    if !runtime.exists() {
+        problems.push(format!(
+            "runtime_path does not exist: {}",
+            runtime.display()
+        ));
+    } else if !runtime.is_dir() {
+        problems.push(format!(
+            "runtime_path is not a directory: {}",
+            runtime.display()
+        ));
+    }
+
+    if !problems.is_empty() {
+        return Some(HelixDoctorFinding {
+            status: "error".into(),
+            message: "External Helix binary/runtime pair is invalid".into(),
+            details: Some(format!(
+                "Binary: {}\nRuntime: {}\nProblems:\n- {}\nNext: set helix.external to a matching Helix binary and runtime_path, or null to use the bundled Yazelix Helix.",
+                binary.display(),
+                runtime.display(),
+                problems.join("\n- ")
+            )),
+            fix_available: false,
+            fix_commands: vec![],
+            conflicts: vec![],
+        });
+    }
+
+    Some(HelixDoctorFinding {
+        status: "warning".into(),
+        message: "External Helix binary/runtime pair is user-owned".into(),
+        details: Some(format!(
+            "Binary: {}\nRuntime: {}\nYazelix will launch this binary with HELIX_RUNTIME set to this runtime path, but cannot prove both came from the same Helix revision. Binary/runtime mismatches are user-owned risk; run `{} --health` after changing either path.",
+            binary.display(),
+            runtime.display(),
+            binary.display()
+        )),
+        fix_available: false,
+        fix_commands: vec![],
+        conflicts: vec![],
+    })
 }
 
 fn normal_binding_from_json(config: &Value, key: &str) -> Option<String> {
@@ -537,6 +613,7 @@ mod tests {
             config_dir: tmp.path().join("config"),
             user_config_helix_runtime_dir: ur.clone(),
             hx_exe_path: None,
+            helix_external: None,
             include_runtime_health: false,
             editor_command: Some("nvim".into()),
             managed_helix_user_config_path: home.join("m.toml"),
@@ -578,6 +655,7 @@ mod tests {
             config_dir: tmp.path().join("config"),
             user_config_helix_runtime_dir: tmp.path().join("norun"),
             hx_exe_path: Some(fake_hx),
+            helix_external: None,
             include_runtime_health: true,
             editor_command: Some("hx".into()),
             managed_helix_user_config_path: tmp.path().join("m.toml"),
@@ -592,6 +670,82 @@ mod tests {
         assert_eq!(h.status, "ok");
     }
 
+    // Defends: doctor rejects external Helix pairs whose binary or runtime path cannot be used.
+    #[test]
+    fn external_pair_reports_missing_paths_as_error() {
+        let tmp = TempDir::new().unwrap();
+        let req = HelixDoctorEvaluateRequest {
+            home_dir: tmp.path().join("home"),
+            runtime_dir: tmp.path().join("runtime"),
+            config_dir: tmp.path().join("config"),
+            user_config_helix_runtime_dir: tmp.path().join("ur"),
+            hx_exe_path: None,
+            helix_external: Some(HelixExternalPair {
+                binary: tmp.path().join("missing-hx").display().to_string(),
+                runtime_path: tmp.path().join("missing-runtime").display().to_string(),
+            }),
+            include_runtime_health: false,
+            editor_command: Some("hx".into()),
+            managed_helix_user_config_path: tmp.path().join("m.toml"),
+            native_helix_config_path: tmp.path().join("n.toml"),
+            generated_helix_config_path: tmp.path().join("g.toml"),
+            expected_managed_config: None,
+            build_managed_config_error: None,
+            reveal_binding_expected: ":sh yzx reveal \"%{buffer_name}\"".into(),
+        };
+
+        let finding = evaluate_external_pair(&req).unwrap();
+        assert_eq!(finding.status, "error");
+        assert!(
+            finding
+                .details
+                .as_deref()
+                .unwrap()
+                .contains("runtime_path does not exist")
+        );
+    }
+
+    // Defends: complete external Helix pairs are reported with the user-owned binary/runtime mismatch warning.
+    #[test]
+    fn external_pair_reports_user_owned_mismatch_risk() {
+        let tmp = TempDir::new().unwrap();
+        let fake_hx = tmp.path().join("hx");
+        let runtime = tmp.path().join("runtime");
+        write_executable(&fake_hx, "#!/bin/sh\nexit 0\n");
+        fs::create_dir_all(&runtime).unwrap();
+
+        let req = HelixDoctorEvaluateRequest {
+            home_dir: tmp.path().join("home"),
+            runtime_dir: tmp.path().join("runtime-root"),
+            config_dir: tmp.path().join("config"),
+            user_config_helix_runtime_dir: tmp.path().join("ur"),
+            hx_exe_path: Some(fake_hx.clone()),
+            helix_external: Some(HelixExternalPair {
+                binary: fake_hx.display().to_string(),
+                runtime_path: runtime.display().to_string(),
+            }),
+            include_runtime_health: false,
+            editor_command: Some("hx".into()),
+            managed_helix_user_config_path: tmp.path().join("m.toml"),
+            native_helix_config_path: tmp.path().join("n.toml"),
+            generated_helix_config_path: tmp.path().join("g.toml"),
+            expected_managed_config: None,
+            build_managed_config_error: None,
+            reveal_binding_expected: ":sh yzx reveal \"%{buffer_name}\"".into(),
+        };
+
+        let data = evaluate_helix_doctor_report(&req);
+        let finding = data.external_pair.unwrap();
+        assert_eq!(finding.status, "warning");
+        assert!(
+            finding
+                .details
+                .as_deref()
+                .unwrap()
+                .contains("Binary/runtime mismatches are user-owned risk")
+        );
+    }
+
     // Defends: managed Helix integration skips non-Helix editor commands instead of fabricating findings.
     #[test]
     fn managed_integration_skips_non_helix_editor() {
@@ -602,6 +756,7 @@ mod tests {
             config_dir: tmp.path().join("config"),
             user_config_helix_runtime_dir: tmp.path().join("ur"),
             hx_exe_path: None,
+            helix_external: None,
             include_runtime_health: false,
             editor_command: Some("nvim".into()),
             managed_helix_user_config_path: tmp.path().join("m.toml"),
@@ -624,6 +779,7 @@ mod tests {
             config_dir: tmp.path().join("config"),
             user_config_helix_runtime_dir: tmp.path().join("ur"),
             hx_exe_path: None,
+            helix_external: None,
             include_runtime_health: false,
             editor_command: None,
             managed_helix_user_config_path: tmp.path().join("m.toml"),
@@ -654,6 +810,7 @@ mod tests {
             config_dir: tmp.path().join("config"),
             user_config_helix_runtime_dir: tmp.path().join("ur"),
             hx_exe_path: Some(fake_hx),
+            helix_external: None,
             include_runtime_health: false,
             editor_command: None,
             managed_helix_user_config_path: tmp.path().join("m.toml"),
@@ -683,6 +840,7 @@ mod tests {
             config_dir: tmp.path().join("config"),
             user_config_helix_runtime_dir: tmp.path().join("ur"),
             hx_exe_path: None,
+            helix_external: None,
             include_runtime_health: false,
             editor_command: Some("hx".into()),
             managed_helix_user_config_path: tmp.path().join("m.toml"),
@@ -725,6 +883,7 @@ mod tests {
             config_dir: tmp.path().join("config"),
             user_config_helix_runtime_dir: tmp.path().join("ur"),
             hx_exe_path: None,
+            helix_external: None,
             include_runtime_health: false,
             editor_command: Some("hx".into()),
             managed_helix_user_config_path: tmp.path().join("m.toml"),

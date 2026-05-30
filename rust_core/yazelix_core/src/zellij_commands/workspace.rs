@@ -353,8 +353,8 @@ fn resolve_runtime_editor_launch() -> Result<(serde_json::Map<String, Value>, St
     if let Some(editor_command) = facts.editor_command {
         normalized.insert("editor_command".to_string(), json!(editor_command));
     }
-    if let Some(helix_runtime_path) = facts.helix_runtime_path {
-        normalized.insert("helix_runtime_path".to_string(), json!(helix_runtime_path));
+    if let Some(helix_external) = facts.helix_external {
+        normalized.insert("helix_external".to_string(), helix_external.as_json());
     }
     let runtime_env =
         compute_runtime_env(&runtime_env_request(runtime_dir, &normalized)?)?.runtime_env;

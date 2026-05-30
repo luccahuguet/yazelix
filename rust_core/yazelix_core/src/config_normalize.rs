@@ -1,4 +1,7 @@
 use crate::bridge::{CoreError, ErrorClass};
+use crate::helix_external::{
+    HelixExternalPair, is_custom_helix_binary_command, is_helix_command, non_empty_string,
+};
 use crate::settings_surface::{is_jsonc_config_path, read_config_table};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Number as JsonNumber, Value as JsonValue, json};
@@ -17,6 +20,8 @@ const MOVED_CURSOR_CONFIG_FIELDS: &[&str] = &[
 ];
 const REMOVED_PERSISTENT_SESSION_FIELDS: &[&str] =
     &["zellij.persistent_sessions", "zellij.session_name"];
+const OPTIONAL_MISSING_CONFIG_PATH_PREFIXES: &[&str] = &["helix.external"];
+const REPLACED_HELIX_RUNTIME_FIELDS: &[&str] = &["helix.runtime_path"];
 
 #[derive(Debug, Clone)]
 pub struct NormalizeConfigRequest {
@@ -187,7 +192,6 @@ fn load_contract_fields(
             .and_then(TomlValue::as_str)
             .unwrap_or("")
             .to_string();
-
         let allowed_values = string_array(field_table.get("allowed_values"));
         let allowed_symbols = string_array(field_table.get("allowed_symbols"));
         let min = field_table.get("min").and_then(toml_number_as_f64);
@@ -256,11 +260,18 @@ fn build_diagnostic_report(
         .unwrap_or(false);
 
     let findings = if should_validate_like_startup {
-        let mut findings = compare_configs(&reference, &TomlValue::Table(user_config.clone()), &[]);
+        let mut findings = compare_configs(
+            &reference,
+            &TomlValue::Table(user_config.clone()),
+            &[],
+            fields,
+        );
         if !include_missing {
             findings.retain(|finding| finding.kind != "missing_field");
         }
+        findings.retain(|finding| !is_optional_missing_config_finding(finding));
         findings.extend(validate_enum_values(user_config, fields));
+        findings.extend(validate_helix_external_pair(user_config));
         findings
     } else {
         Vec::new()
@@ -306,7 +317,12 @@ fn classify_value(value: &TomlValue) -> &'static str {
     }
 }
 
-fn compare_configs(default: &TomlValue, user: &TomlValue, path: &[&str]) -> Vec<SchemaFinding> {
+fn compare_configs(
+    default: &TomlValue,
+    user: &TomlValue,
+    path: &[&str],
+    fields: &BTreeMap<String, ContractField>,
+) -> Vec<SchemaFinding> {
     let default_kind = classify_value(default);
     let user_kind = classify_value(user);
     let formatted_path = format_config_path(path);
@@ -331,6 +347,9 @@ fn compare_configs(default: &TomlValue, user: &TomlValue, path: &[&str]) -> Vec<
                 let mut finding_path = path.to_vec();
                 finding_path.push(key);
                 let formatted = format_config_path(&finding_path);
+                if contract_allows_config_path(&formatted, fields) {
+                    continue;
+                }
                 findings.push(SchemaFinding {
                     kind: "unknown_field",
                     path: formatted.clone(),
@@ -356,7 +375,12 @@ fn compare_configs(default: &TomlValue, user: &TomlValue, path: &[&str]) -> Vec<
             if let Some(user_value) = user_table.get(key) {
                 let mut nested_path = path.to_vec();
                 nested_path.push(key);
-                findings.extend(compare_configs(default_value, user_value, &nested_path));
+                findings.extend(compare_configs(
+                    default_value,
+                    user_value,
+                    &nested_path,
+                    fields,
+                ));
             }
         }
         return findings;
@@ -378,6 +402,19 @@ fn compare_configs(default: &TomlValue, user: &TomlValue, path: &[&str]) -> Vec<
     }
 
     Vec::new()
+}
+
+fn contract_allows_config_path(path: &str, fields: &BTreeMap<String, ContractField>) -> bool {
+    fields
+        .keys()
+        .any(|field_path| field_path == path || field_path.starts_with(&format!("{path}.")))
+}
+
+fn is_optional_missing_config_finding(finding: &SchemaFinding) -> bool {
+    finding.kind == "missing_field"
+        && OPTIONAL_MISSING_CONFIG_PATH_PREFIXES.iter().any(|prefix| {
+            finding.path == *prefix || finding.path.starts_with(&format!("{prefix}."))
+        })
 }
 
 fn validate_enum_values(
@@ -431,6 +468,92 @@ fn validate_enum_values(
     findings
 }
 
+fn validate_helix_external_pair(user_config: &toml::Table) -> Vec<SchemaFinding> {
+    let mut findings = Vec::new();
+    let root = TomlValue::Table(user_config.clone());
+    let editor_command = get_nested_value(&root, &["editor", "command"])
+        .and_then(TomlValue::as_str)
+        .and_then(non_empty_string);
+    let external = get_nested_value(&root, &["helix", "external"]);
+
+    if let Some(external) = external {
+        let Some(table) = external.as_table() else {
+            findings.push(SchemaFinding {
+                kind: "type_mismatch",
+                path: "helix.external".to_string(),
+                message: "Type mismatch at helix.external: expected record, found non-record"
+                    .to_string(),
+            });
+            return findings;
+        };
+
+        for key in table.keys() {
+            if key != "binary" && key != "runtime_path" {
+                findings.push(SchemaFinding {
+                    kind: "unknown_field",
+                    path: format!("helix.external.{key}"),
+                    message: format!("Unknown config field: helix.external.{key}"),
+                });
+            }
+        }
+
+        let binary = table
+            .get("binary")
+            .and_then(TomlValue::as_str)
+            .and_then(non_empty_string);
+        let runtime_path = table
+            .get("runtime_path")
+            .and_then(TomlValue::as_str)
+            .and_then(non_empty_string);
+
+        match (binary.as_deref(), runtime_path.as_deref()) {
+            (Some(_), Some(_)) => {}
+            (Some(_), None) => findings.push(helix_external_pair_finding(
+                "helix.external.runtime_path",
+                "helix.external.binary is set, so helix.external.runtime_path is required.",
+            )),
+            (None, Some(_)) => findings.push(helix_external_pair_finding(
+                "helix.external.binary",
+                "helix.external.runtime_path is set, so helix.external.binary is required.",
+            )),
+            (None, None) => findings.push(helix_external_pair_finding(
+                "helix.external",
+                "helix.external must be null or contain both binary and runtime_path.",
+            )),
+        }
+
+        if binary.is_some()
+            && runtime_path.is_some()
+            && editor_command
+                .as_deref()
+                .is_some_and(|editor| !is_helix_command(editor))
+        {
+            findings.push(helix_external_pair_finding(
+                "editor.command",
+                "helix.external is set but editor.command points at a non-Helix editor.",
+            ));
+        }
+    } else if editor_command
+        .as_deref()
+        .is_some_and(is_custom_helix_binary_command)
+    {
+        findings.push(helix_external_pair_finding(
+            "editor.command",
+            "A custom Helix binary requires helix.external with both binary and runtime_path.",
+        ));
+    }
+
+    findings
+}
+
+fn helix_external_pair_finding(path: &str, message: &str) -> SchemaFinding {
+    SchemaFinding {
+        kind: "invalid_helix_external_pair",
+        path: path.to_string(),
+        message: message.to_string(),
+    }
+}
+
 fn invalid_enum_finding(path: &str, allowed_values: &[String], value: &str) -> SchemaFinding {
     SchemaFinding {
         kind: "invalid_enum",
@@ -464,6 +587,17 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
                     "Next: Move this cursor setting into ~/.config/yazelix_ghostty_cursors/settings.jsonc."
                         .to_string(),
                     "Next: Remove the old terminal.ghostty_* field from ~/.config/yazelix/settings.jsonc."
+                        .to_string(),
+                    "Next: Run `yzx doctor --verbose` to review the full config report."
+                        .to_string(),
+                ];
+            } else if REPLACED_HELIX_RUNTIME_FIELDS.contains(&finding.path.as_str()) {
+                diagnostic.headline =
+                    format!("Replaced Helix runtime config field at {}", finding.path);
+                diagnostic.detail_lines = vec![
+                    finding.message,
+                    "Next: Replace helix.runtime_path with helix.external = { binary = \"/path/to/hx\", runtime_path = \"/path/to/helix/runtime\" }.".to_string(),
+                    "Next: Leave helix.external as null to use Yazelix's bundled Helix."
                         .to_string(),
                     "Next: Run `yzx doctor --verbose` to review the full config report."
                         .to_string(),
@@ -515,6 +649,15 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
                 "Next: Add the field from the current template, or let Yazelix repair a writable managed settings.jsonc from the shipped defaults.".to_string(),
             ];
         }
+        "invalid_helix_external_pair" => {
+            diagnostic.headline = format!("Invalid Helix external pair at {}", finding.path);
+            diagnostic.detail_lines = vec![
+                finding.message,
+                "Next: Set helix.external to null, or provide both binary and runtime_path."
+                    .to_string(),
+                "Next: Do not set a custom Helix binary through editor.command alone.".to_string(),
+            ];
+        }
         _ => {
             diagnostic.headline = format!("Config issue at {}", finding.path);
             diagnostic.detail_lines = vec![finding.message];
@@ -528,6 +671,10 @@ fn normalize_field(
     field: &ContractField,
     raw_config: &toml::Table,
 ) -> Result<JsonValue, CoreError> {
+    if field.parser_behavior == "helix_external_pair" {
+        return normalize_helix_external_field(field, raw_config);
+    }
+
     let value = get_nested_value(
         &TomlValue::Table(raw_config.clone()),
         &field.path.split('.').collect::<Vec<_>>(),
@@ -560,6 +707,42 @@ fn normalize_field(
         }
         _ => normalize_direct_field(field, &value),
     }
+}
+
+fn normalize_helix_external_field(
+    field: &ContractField,
+    raw_config: &toml::Table,
+) -> Result<JsonValue, CoreError> {
+    let root = TomlValue::Table(raw_config.clone());
+    let value = get_nested_value(&root, &field.path.split('.').collect::<Vec<_>>());
+    let Some(value) = value else {
+        return Ok(JsonValue::Null);
+    };
+    let Some(table) = value.as_table() else {
+        return Err(invalid_value_error(
+            &field.path,
+            &toml_value_to_lossy_string(value),
+            "null or an object with binary and runtime_path",
+        ));
+    };
+    let pair = HelixExternalPair::normalized(
+        table
+            .get("binary")
+            .and_then(TomlValue::as_str)
+            .unwrap_or(""),
+        table
+            .get("runtime_path")
+            .and_then(TomlValue::as_str)
+            .unwrap_or(""),
+    )
+    .ok_or_else(|| {
+        invalid_value_error(
+            &field.path,
+            &toml_value_to_lossy_string(value),
+            "null or an object with both binary and runtime_path",
+        )
+    })?;
+    Ok(pair.as_json())
 }
 
 fn normalize_direct_field(
@@ -873,7 +1056,7 @@ mod tests {
         let config = data.normalized_config;
 
         assert_eq!(config.get("default_shell").unwrap(), "nu");
-        assert_eq!(config.get("helix_runtime_path").unwrap(), &JsonValue::Null);
+        assert_eq!(config.get("helix_external").unwrap(), &JsonValue::Null);
         assert_eq!(config.get("zellij_pane_frames").unwrap(), "true");
         assert_eq!(config.get("game_of_life_cell_style").unwrap(), "full_block");
         assert_eq!(config.get("welcome_duration_seconds").unwrap(), 4.0);
@@ -897,8 +1080,69 @@ mod tests {
         assert_eq!(data.diagnostic_report.issue_count, 0);
         assert_eq!(data.diagnostic_report.blocking_count, 0);
         assert_eq!(
-            data.normalized_config.get("helix_runtime_path").unwrap(),
+            data.normalized_config.get("helix_external").unwrap(),
             &JsonValue::Null
+        );
+    }
+
+    // Defends: custom Helix forks must be configured as one binary/runtime pair, not as a bare runtime path or bare editor binary.
+    #[test]
+    fn rejects_incomplete_helix_external_pair_and_old_runtime_field() {
+        let mut binary_only_config = default_settings_jsonc();
+        binary_only_config["helix"]["external"] = json!({ "binary": "/tmp/hx" });
+        let binary_only = write_settings_config(&binary_only_config);
+        let error = normalize_config(&request_for(binary_only)).unwrap_err();
+        assert_eq!(error.code(), "unsupported_config");
+        let details = error.details();
+        let diagnostic = blocking_diagnostic_for(&details, "helix.external.runtime_path");
+        assert_eq!(diagnostic["status"], "invalid_helix_external_pair");
+
+        let mut old_runtime_config = default_settings_jsonc();
+        old_runtime_config["helix"]["external"] = JsonValue::Null;
+        old_runtime_config["helix"]["runtime_path"] = json!("/tmp/runtime");
+        let old_runtime = write_settings_config(&old_runtime_config);
+        let error = normalize_config(&request_for(old_runtime)).unwrap_err();
+        assert_eq!(error.code(), "unsupported_config");
+        let details = error.details();
+        let diagnostic = blocking_diagnostic_for(&details, "helix.runtime_path");
+        assert!(
+            diagnostic["detail_lines"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|line| line.as_str().unwrap().contains("helix.external = { binary"))
+        );
+
+        let mut conflicting_editor_config = default_settings_jsonc();
+        conflicting_editor_config["editor"]["command"] = json!("nvim");
+        conflicting_editor_config["helix"]["external"] = json!({
+            "binary": "/tmp/hx",
+            "runtime_path": "/tmp/runtime"
+        });
+        let conflicting_editor = write_settings_config(&conflicting_editor_config);
+        let error = normalize_config(&request_for(conflicting_editor)).unwrap_err();
+        assert_eq!(error.code(), "unsupported_config");
+        let details = error.details();
+        let diagnostic = blocking_diagnostic_for(&details, "editor.command");
+        assert_eq!(diagnostic["status"], "invalid_helix_external_pair");
+    }
+
+    // Defends: a complete external Helix pair normalizes as one object for runtime env consumers.
+    #[test]
+    fn normalizes_helix_external_pair() {
+        let mut config = default_settings_jsonc();
+        config["helix"]["external"] = json!({
+            "binary": "/tmp/hx",
+            "runtime_path": "/tmp/runtime"
+        });
+        let path = write_settings_config(&config);
+        let data = normalize_config(&request_for(path)).unwrap();
+        assert_eq!(
+            data.normalized_config.get("helix_external").unwrap(),
+            &json!({
+                "binary": "/tmp/hx",
+                "runtime_path": "/tmp/runtime",
+            })
         );
     }
 

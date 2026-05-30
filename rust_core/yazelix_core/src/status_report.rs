@@ -110,11 +110,10 @@ pub fn compute_status_report(
         _ => default_terminals_value(),
     };
 
-    let helix_runtime = match cfg.get("helix_runtime_path") {
-        None => JsonValue::Null,
-        Some(JsonValue::Null) => JsonValue::Null,
-        Some(v) => v.clone(),
-    };
+    let helix_external = cfg
+        .get("helix_external")
+        .cloned()
+        .unwrap_or(JsonValue::Null);
 
     let runtime_dir_str = path_to_string(&request.runtime_dir);
     let logs_dir = logs_dir_from_state_path(&request.state_path)?;
@@ -142,7 +141,7 @@ pub fn compute_status_report(
     );
     summary.insert("default_shell".to_string(), default_shell);
     summary.insert("terminals".to_string(), terminals);
-    summary.insert("helix_runtime".to_string(), helix_runtime);
+    summary.insert("helix_external".to_string(), helix_external);
     summary.insert(
         "session_config_snapshot".to_string(),
         session_config_snapshot_summary(),

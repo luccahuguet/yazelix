@@ -126,12 +126,12 @@ write_support = "settings_jsonc"
 home_manager_behavior = "read_only_in_ui"
 lifecycle = "stable"
 
-[fields."helix.runtime_path"]
+[fields."helix.external"]
 tab = "advanced"
 group = "runtime_paths"
-label = "helix_runtime_path"
-help = "Override the Helix runtime path used by Yazelix materialization"
-editor = "text"
+label = "helix_external"
+help = "Use a custom Helix binary together with its matching runtime path"
+editor = "object"
 default_source = "settings_default.jsonc"
 write_support = "settings_jsonc"
 home_manager_behavior = "read_only_in_ui"

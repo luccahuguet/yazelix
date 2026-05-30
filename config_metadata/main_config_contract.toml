@@ -97,12 +97,11 @@ max = 8.0
 rebuild_required = false
 apply_mode = "tab_session_restart"
 
-[fields."helix.runtime_path"]
-kind = "string"
-default = ""
-parser_key = "helix_runtime_path"
-home_manager_option = "helix_runtime_path"
-parser_behavior = "empty_string_to_null"
+[fields."helix.external"]
+kind = "helix_external"
+parser_key = "helix_external"
+home_manager_option = "helix_external"
+parser_behavior = "helix_external_pair"
 nullable = true
 home_manager_default_is_null = true
 rebuild_required = true

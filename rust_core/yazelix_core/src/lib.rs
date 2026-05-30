@@ -21,6 +21,7 @@ pub mod front_door_commands;
 pub mod front_door_render;
 pub mod ghostty_cursor_registry;
 pub mod ghostty_materialization;
+pub mod helix_external;
 pub mod helix_materialization;
 pub mod home_manager_commands;
 pub mod import_commands;
@@ -112,6 +113,7 @@ pub use ghostty_materialization::{
     GhosttyCursorState, GhosttyMaterializationData, GhosttyMaterializationRequest,
     generate_ghostty_materialization,
 };
+pub use helix_external::{HelixExternalPair, is_custom_helix_binary_command, is_helix_command};
 pub use helix_materialization::{
     HelixImportNotice, HelixMaterializationData, HelixMaterializationRequest,
     generate_helix_materialization,

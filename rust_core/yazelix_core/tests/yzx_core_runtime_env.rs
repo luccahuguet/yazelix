@@ -35,8 +35,10 @@ fn runtime_env_compute_prints_machine_readable_env_envelope() {
             runtime_toolbin.to_string_lossy(),
             runtime_bin.to_string_lossy(),
         ),
-        "editor_command": "hx",
-        "helix_runtime_path": "/tmp/helix-runtime",
+        "helix_external": {
+            "binary": "/tmp/custom/bin/hx",
+            "runtime_path": "/tmp/helix-runtime"
+        },
     });
 
     let output = yzx_core_command()
@@ -85,7 +87,7 @@ fn runtime_env_compute_prints_machine_readable_env_envelope() {
     assert_eq!(envelope["data"]["runtime_env"]["VISUAL"], expected_wrapper);
     assert_eq!(
         envelope["data"]["runtime_env"]["YAZELIX_MANAGED_HELIX_BINARY"],
-        "hx"
+        "/tmp/custom/bin/hx"
     );
     assert_eq!(
         envelope["data"]["runtime_env"]["HELIX_RUNTIME"],
@@ -118,6 +120,30 @@ fn runtime_env_compute_rejects_invalid_request_json() {
     assert_eq!(envelope["error"]["code"], "invalid_request_json");
 }
 
+// Defends: custom Helix binaries cannot bypass the required binary/runtime pair contract at runtime-env assembly.
+// Contract: CRCP-002
+#[test]
+fn runtime_env_compute_rejects_bare_custom_helix_binary() {
+    let tmp = tempdir().unwrap();
+    let request = json!({
+        "runtime_dir": tmp.path().join("runtime"),
+        "home_dir": tmp.path().join("home"),
+        "editor_command": "/tmp/custom/bin/hx"
+    });
+
+    let output = yzx_core_command()
+        .arg("runtime-env.compute")
+        .arg("--request-json")
+        .arg(request.to_string())
+        .output()
+        .unwrap();
+
+    let envelope: Value = error_envelope(&output, 65);
+    assert_eq!(envelope["command"], "runtime-env.compute");
+    assert_eq!(envelope["error"]["class"], "config");
+    assert_eq!(envelope["error"]["code"], "helix_external_required");
+}
+
 // Defends: runtime-env.compute can build the canonical runtime env from process env plus optional config JSON without Nu request assembly.
 // Contract: CRCP-002
 #[test]
@@ -133,8 +159,10 @@ fn runtime_env_compute_from_env_accepts_config_json() {
     let runtime_toolbin = runtime_dir.join("toolbin");
     let runtime_bin = runtime_dir.join("bin");
     let config_json = json!({
-        "editor_command": "hx",
-        "helix_runtime_path": "/tmp/managed-helix-runtime",
+        "helix_external": {
+            "binary": "/tmp/managed/bin/hx",
+            "runtime_path": "/tmp/managed-helix-runtime"
+        },
     });
 
     let output = yzx_core_command()
@@ -171,6 +199,10 @@ fn runtime_env_compute_from_env_accepts_config_json() {
     );
     assert_eq!(envelope["data"]["runtime_env"]["EDITOR"], expected_wrapper);
     assert_eq!(envelope["data"]["runtime_env"]["VISUAL"], expected_wrapper);
+    assert_eq!(
+        envelope["data"]["runtime_env"]["YAZELIX_MANAGED_HELIX_BINARY"],
+        "/tmp/managed/bin/hx"
+    );
     assert_eq!(
         envelope["data"]["runtime_env"]["ZELLIJ_DEFAULT_LAYOUT"],
         "yzx_side"

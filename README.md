@@ -258,13 +258,10 @@ Yazelix uses a **layered configuration system** that safely merges your personal
   [editor]
   command = "nvim"
   ```
-- **System Helix**:
+- **Custom Helix fork**:
   ```toml
-  [editor]
-  command = "hx"
-
   [helix]
-  runtime_path = "/path/to/runtime"  # Only when your Helix runtime is outside normal discovery paths
+  external = { binary = "/path/to/hx", runtime_path = "/path/to/helix/runtime" }
   ```
 - **Other editors**:
   ```toml

@@ -95,12 +95,32 @@
       "type": "object",
       "description": "Helix-specific runtime integration settings",
       "required": [
-        "runtime_path"
+        "external"
       ],
       "additionalProperties": false,
       "properties": {
-        "runtime_path": {
-          "type": "string"
+        "external": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "binary",
+                "runtime_path"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "binary": {
+                  "type": "string"
+                },
+                "runtime_path": {
+                  "type": "string"
+                }
+              }
+            }
+          ]
         }
       },
       "x-yazelix": {

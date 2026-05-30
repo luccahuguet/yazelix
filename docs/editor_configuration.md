@@ -14,7 +14,7 @@ Yazelix provides smart editor configuration to avoid conflicts with existing ins
 ```
 
 **If you have specific needs:**
-- Existing Helix setup → [Using Your Existing Helix](#using-your-existing-helix)
+- Custom Helix fork → [Using A Custom Helix Fork](#using-a-custom-helix-fork)
 - Prefer other editors → [Using Other Editors](#using-other-editors)  
 - Runtime conflicts → See [Troubleshooting](#troubleshooting)
 
@@ -36,7 +36,7 @@ Yazelix sets your configured editor as the `EDITOR` environment variable through
     "command": ""
   },
   "helix": {
-    // "runtime_path": "/path/to/runtime"
+    "external": null
   }
 }
 ```
@@ -52,29 +52,30 @@ Yazelix sets your configured editor as the `EDITOR` environment variable through
 - Runtime is automatically set to the matching version (`/nix/store/.../share/helix/runtime`)
 - No interference with your system's Helix installation
 
-### Using Your Existing Helix
+### Using A Custom Helix Fork
 
 ```jsonc
 {
-  "editor": {
-    "command": "hx"
-  },
   "helix": {
-    // "runtime_path": "/home/user/helix/runtime"
+    "external": {
+      "binary": "/home/user/helix/target/release/hx",
+      "runtime_path": "/home/user/helix/runtime"
+    }
   }
 }
 ```
 
 **Benefits:**
-- ✅ **Full integration** - All yazelix features work if runtime matches
+- ✅ **Full integration** - All yazelix features work if the binary and runtime match
 - ✅ **Use your custom build** - Great for Helix developers
 
 **Notes:**
-- Standard packaged Helix installs usually do not need `helix.runtime_path`
-- Set `helix.runtime_path` only when your Helix runtime lives outside Helix's normal discovery paths
-- If you set it, it MUST match your Helix binary version
+- Leave `helix.external` as `null` to use Yazelix's bundled Helix
+- Set `helix.external` only when you need a user-owned Helix fork
+- Both `binary` and `runtime_path` are required together
+- `yzx doctor` reports both paths and warns that binary/runtime revision mismatches are user-owned risk
 - ⚠️ **Requires matching runtime** - Version mismatch causes startup errors
-- ⚠️ **Manual configuration** - You must specify the correct runtime path
+- ⚠️ **Manual configuration** - You must specify the correct binary and runtime path
 
 **Finding your runtime path:**
 ```bash
@@ -210,11 +211,11 @@ If you have multiple Helix installations:
 
 ```jsonc
 {
-  "editor": {
-    "command": "/opt/helix-custom/bin/hx"
-  },
   "helix": {
-    "runtime_path": "/opt/helix-custom/share/helix/runtime"
+    "external": {
+      "binary": "/opt/helix-custom/bin/hx",
+      "runtime_path": "/opt/helix-custom/share/helix/runtime"
+    }
   }
 }
 ```
@@ -225,18 +226,18 @@ For Helix development:
 
 ```jsonc
 {
-  "editor": {
-    "command": "/home/user/helix/target/release/hx"
-  },
   "helix": {
-    "runtime_path": "/home/user/helix/runtime"
+    "external": {
+      "binary": "/home/user/helix/target/release/hx",
+      "runtime_path": "/home/user/helix/runtime"
+    }
   }
 }
 ```
 
-### Fallback Configuration
+### Bundled Helix Configuration
 
-For maximum reliability:
+For maximum reliability, keep the default managed Helix path:
 
 ```jsonc
 {
@@ -256,11 +257,13 @@ programs.yazelix = {
   
   # Editor configuration
   editor_command = null;        # Default: yazelix's Helix
-  helix_runtime_path = null;    # Default: matching runtime
+  helix_external = null;        # Default: bundled matching binary/runtime
   
   # Or custom:
-  # editor_command = "hx";
-  # helix_runtime_path = "/home/user/helix/runtime";
+  # helix_external = {
+  #   binary = "/home/user/helix/target/release/hx";
+  #   runtime_path = "/home/user/helix/runtime";
+  # };
 };
 ```
 
@@ -274,18 +277,20 @@ See `home_manager/examples/example.nix` for complete configuration examples.
   "editor": {
     "command": ""
   },
-  "helix": {}
+  "helix": {
+    "external": null
+  }
 }
 ```
 
 ### Helix Developer
 ```jsonc
 {
-  "editor": {
-    "command": "/home/user/helix/target/release/hx"
-  },
   "helix": {
-    "runtime_path": "/home/user/helix/runtime"
+    "external": {
+      "binary": "/home/user/helix/target/release/hx",
+      "runtime_path": "/home/user/helix/runtime"
+    }
   }
 }
 ```
@@ -310,14 +315,14 @@ See `home_manager/examples/example.nix` for complete configuration examples.
 }
 ```
 
-### System Helix User (Advanced)
+### Custom Helix User (Advanced)
 ```jsonc
 {
-  "editor": {
-    "command": "hx"
-  },
   "helix": {
-    "runtime_path": "/usr/share/helix/runtime"
+    "external": {
+      "binary": "/usr/bin/hx",
+      "runtime_path": "/usr/share/helix/runtime"
+    }
   }
 }
 ```
@@ -327,8 +332,8 @@ See `home_manager/examples/example.nix` for complete configuration examples.
 | Editor Type | File Opening | Reveal in Sidebar | Same Instance | File Picker | Tab Naming |
 |-------------|--------------|-------------------|---------------|-------------|------------|
 | Yazelix Helix (null) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| System Helix ("hx") | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Custom Helix (path) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Bundled Helix ("hx") | ✅ | ✅ | ✅ | ✅ | ✅ |
+| External Helix pair | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Neovim ("nvim") | ✅ | ✅ (with setup) | ✅ | ✅ (Telescope) | ✅ |
 | Vim | ✅ | ❌ | ❌ | ❌ | ✅ |
 | Other Editors | ✅ | ❌ | ❌ | ❌ | ✅ |

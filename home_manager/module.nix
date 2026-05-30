@@ -154,6 +154,19 @@ let
           types.int
         else if field.kind == "float" then
           types.either types.int types.float
+        else if field.kind == "helix_external" then
+          types.submodule {
+            options = {
+              binary = mkOption {
+                type = types.str;
+                description = "Custom Helix binary path";
+              };
+              runtime_path = mkOption {
+                type = types.str;
+                description = "Runtime path matching the custom Helix binary";
+              };
+            };
+          }
         else
           throw "Unsupported main config contract kind for Home Manager: ${field.kind}";
     in
@@ -241,6 +254,8 @@ let
     if value == null then
       if attrOr field "home_manager_can_omit" false then
         null
+      else if field.kind == "helix_external" then
+        null
       else if (attrOr field "parser_behavior" "") == "empty_string_to_null" then
         ""
       else
@@ -248,8 +263,16 @@ let
     else
       value;
 
+  mainConfigSettingsFieldIncluded =
+    fieldPath:
+    let
+      field = getMainField fieldPath;
+      value = mainConfigValueForSettings fieldPath;
+    in
+    value != null || field.kind == "helix_external";
+
   mainConfigSettingsFieldPaths =
-    builtins.filter (fieldPath: mainConfigValueForSettings fieldPath != null) mainConfigFieldPaths;
+    builtins.filter mainConfigSettingsFieldIncluded mainConfigFieldPaths;
 
   mainConfigSettingsValue =
     lib.foldl' (
@@ -456,17 +479,24 @@ in
 
         - null (default): Use yazelix's Nix-provided Helix - full integration
         - "nvim": Use Neovim - first-class support with full integration
-        - "hx": Use system Helix from PATH (set helix_runtime_path only when your runtime lives outside Helix's normal discovery paths)
+        - "hx": Use the packaged Helix command from the Yazelix runtime
         - Other editors: "vim", "nano", "emacs", etc. (basic integration only)
       '';
     };
 
-    helix_runtime_path = mkMainContractOption "helix.runtime_path" {
+    helix_external = mkMainContractOption "helix.external" {
       description = ''
-        Custom Helix runtime path - only set this if editor_command points to a custom Helix build.
+        Custom Helix binary/runtime pair.
 
-        IMPORTANT: The runtime MUST match your Helix binary version to avoid startup errors.
-        Example: "/home/user/helix/runtime" for a custom Helix build in ~/helix
+        Set this only when running a user-owned Helix fork. Both binary and
+        runtime_path are required because the runtime MUST match the Helix
+        binary version.
+
+        Example:
+          {
+            binary = "/home/user/helix/target/release/hx";
+            runtime_path = "/home/user/helix/runtime";
+          }
       '';
     };
 

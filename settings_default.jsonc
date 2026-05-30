@@ -11,7 +11,7 @@
     "welcome_duration_seconds": 4.0
   },
   "helix": {
-    "runtime_path": ""
+    "external": null
   },
   "editor": {
     "command": "",
