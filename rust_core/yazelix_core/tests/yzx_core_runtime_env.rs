@@ -268,6 +268,7 @@ fn managed_helix_wrapper_passes_generated_config_dir() {
     let state_dir = tmp.path().join("state").join("yazelix");
     let generated_dir = state_dir.join("configs").join("helix");
     let generated_config = generated_dir.join("config.toml");
+    let managed_helix_config_dir = config_dir.join("helix");
     let log_path = tmp.path().join("hx.log");
     let core_log_path = tmp.path().join("yzx_core.log");
     let stale_core_log_path = tmp.path().join("stale_yzx_core.log");
@@ -292,7 +293,7 @@ fn managed_helix_wrapper_passes_generated_config_dir() {
     fs::write(
         runtime_dir.join("libexec/yzx_core"),
         format!(
-            "#!/bin/sh\n: > '{}'\nfor arg in \"$@\"; do printf 'core-arg=%s\\n' \"$arg\" >> '{}'; done\nprintf '%s\\n' '{{\"data\":{{\"import_notice\":{{\"lines\":[]}},\"generated_path\":\"ignored-by-fake-jq\",\"generated_steel_config_dir\":\"ignored-by-fake-jq\"}}}}'\n",
+            "#!/bin/sh\n: > '{}'\nfor arg in \"$@\"; do printf 'core-arg=%s\\n' \"$arg\" >> '{}'; done\nprintf '%s\\n' '{{\"data\":{{\"import_notice\":{{\"lines\":[]}},\"generated_path\":\"ignored-by-fake-jq\",\"managed_helix_config_dir\":\"ignored-by-fake-jq\",\"generated_steel_config_dir\":\"ignored-by-fake-jq\"}}}}'\n",
             core_log_path.display(),
             core_log_path.display()
         ),
@@ -314,8 +315,9 @@ fn managed_helix_wrapper_passes_generated_config_dir() {
     fs::write(
         runtime_dir.join("toolbin/jq"),
         format!(
-            "#!/bin/sh\ncase \"$2\" in\n  '.data.import_notice.lines[]?') exit 0 ;;\n  '.data.generated_path // \"\"') printf '%s\\n' '{}' ;;\n  '.data.generated_steel_config_dir // \"\"') printf '%s\\n' '{}' ;;\n  *) exit 1 ;;\nesac\n",
+            "#!/bin/sh\ncase \"$2\" in\n  '.data.import_notice.lines[]?') exit 0 ;;\n  '.data.generated_path // \"\"') printf '%s\\n' '{}' ;;\n  '.data.managed_helix_config_dir // \"\"') printf '%s\\n' '{}' ;;\n  '.data.generated_steel_config_dir // \"\"') printf '%s\\n' '{}' ;;\n  *) exit 1 ;;\nesac\n",
             generated_config.display(),
+            managed_helix_config_dir.display(),
             generated_dir.display()
         ),
     )
@@ -357,7 +359,7 @@ fn managed_helix_wrapper_passes_generated_config_dir() {
         format!(
             "HELIX_STEEL_CONFIG={}\narg=--config-dir\narg={}\narg=-c\narg={}\narg=README.md\n",
             generated_dir.display(),
-            generated_dir.display(),
+            managed_helix_config_dir.display(),
             generated_config.display()
         )
     );
@@ -389,7 +391,7 @@ fn managed_helix_wrapper_passes_generated_config_dir() {
         format!(
             "HELIX_STEEL_CONFIG={}\narg=--config-dir\narg={}\narg=-c\narg={}\n",
             generated_dir.display(),
-            generated_dir.display(),
+            managed_helix_config_dir.display(),
             generated_config.display()
         )
     );
@@ -423,7 +425,7 @@ fn managed_helix_wrapper_passes_generated_config_dir() {
         format!(
             "HELIX_STEEL_CONFIG={}\narg=--config-dir\narg={}\narg=-c\narg={}\narg={}\n",
             generated_dir.display(),
-            generated_dir.display(),
+            managed_helix_config_dir.display(),
             generated_config.display(),
             project_dir.display()
         )

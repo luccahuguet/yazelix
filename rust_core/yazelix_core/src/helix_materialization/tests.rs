@@ -78,14 +78,14 @@ fn managed_helix_reclaims_colon_command_mode_binding() {
     let config_dir = tmp.path().join("config");
     let template_dir = runtime_dir.join("configs").join("helix");
     fs::create_dir_all(&template_dir).unwrap();
-    fs::create_dir_all(&config_dir).unwrap();
+    fs::create_dir_all(config_dir.join("helix")).unwrap();
     fs::write(
         template_dir.join("yazelix_config.toml"),
         "[keys.normal]\n\":\" = \"command_mode\"\nA-r = \":noop\"\n",
     )
     .unwrap();
     fs::write(
-        config_dir.join("helix.toml"),
+        config_dir.join("helix/config.toml"),
         "[keys.normal]\n\":\" = \"no_op\"\nA-r = \":noop\"\n",
     )
     .unwrap();
@@ -102,6 +102,39 @@ fn managed_helix_reclaims_colon_command_mode_binding() {
     );
 }
 
+// Defends: the durable managed Helix source config lives under helix/config.toml; the old flat helix.toml surface must fail fast instead of silently winning.
+#[test]
+fn managed_helix_rejects_flat_legacy_helix_toml() {
+    let tmp = TempDir::new().unwrap();
+    let runtime_dir = tmp.path().join("runtime");
+    let config_dir = tmp.path().join("config");
+    let template_dir = runtime_dir.join("configs").join("helix");
+    fs::create_dir_all(&template_dir).unwrap();
+    fs::create_dir_all(&config_dir).unwrap();
+    fs::write(
+        template_dir.join("yazelix_config.toml"),
+        "theme = \"default\"\n",
+    )
+    .unwrap();
+    fs::write(config_dir.join("helix.toml"), "theme = \"legacy\"\n").unwrap();
+
+    let error = match prepare_managed_helix_config(&runtime_dir, &config_dir) {
+        Ok(_) => panic!("flat legacy helix.toml unexpectedly accepted"),
+        Err(error) => error,
+    };
+
+    assert!(
+        error
+            .message()
+            .contains("old Helix override config surface")
+    );
+    assert!(
+        error
+            .remediation()
+            .contains("Move ~/.config/yazelix/helix.toml to ~/.config/yazelix/helix/config.toml")
+    );
+}
+
 // Defends: Helix materialization creates Steel entrypoint files and loads the default curated Steel plugins from runtime-owned sources.
 #[test]
 fn helix_materialization_writes_default_steel_entrypoints() {
@@ -114,7 +147,7 @@ fn helix_materialization_writes_default_steel_entrypoints() {
 
     let data = generate_helix_materialization(&HelixMaterializationRequest {
         runtime_dir,
-        config_dir,
+        config_dir: config_dir.clone(),
         state_dir: state_dir.clone(),
         show_splash: true,
     })
@@ -129,6 +162,11 @@ fn helix_materialization_writes_default_steel_entrypoints() {
         data.generated_steel_config_dir,
         steel_dir.to_string_lossy().to_string()
     );
+    assert_eq!(
+        data.managed_helix_config_dir,
+        config_dir.join("helix").to_string_lossy().to_string()
+    );
+    assert!(config_dir.join("helix").exists());
     assert!(steel_dir.join("cogs/recentf.scm").exists());
     assert!(steel_dir.join("splash.scm").exists());
     assert!(steel_dir.join("cogs/themes/spacemacs.scm").exists());

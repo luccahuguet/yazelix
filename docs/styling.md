@@ -13,7 +13,7 @@ Edit `~/.wezterm.lua` to customize (1.0 = opaque, 0.5 = very transparent, etc).
 
 Recommended transparent theme:
 ```toml
-# ~/.config/yazelix/helix.toml
+# ~/.config/yazelix/helix/config.toml
 theme = "term16_dark"
 ```
 

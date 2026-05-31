@@ -7,6 +7,7 @@ mod tests;
 
 use crate::atomic_fs::write_text_atomic;
 use crate::bridge::{CoreError, ErrorClass};
+use crate::user_config_paths;
 use helix_config::prepare_managed_helix_config;
 use import_notice::build_import_notice;
 use serde::Serialize;
@@ -49,6 +50,7 @@ pub struct SteelCommandMetadata {
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct HelixMaterializationData {
     pub generated_path: String,
+    pub managed_helix_config_dir: String,
     pub generated_steel_config_dir: String,
     pub generated_steel_module_path: String,
     pub generated_steel_init_path: String,
@@ -84,6 +86,16 @@ pub fn generate_helix_materialization(
     request: &HelixMaterializationRequest,
 ) -> Result<HelixMaterializationData, CoreError> {
     crate::managed_user_config_stubs::ensure_helix_surface_stub(&request.config_dir)?;
+    let managed_helix_config_dir = user_config_paths::helix_config_dir(&request.config_dir);
+    fs::create_dir_all(&managed_helix_config_dir).map_err(|source| {
+        CoreError::io(
+            "create_managed_helix_config_dir",
+            "Could not create the managed Helix config directory",
+            "Check permissions for ~/.config/yazelix/helix and retry.",
+            managed_helix_config_dir.to_string_lossy(),
+            source,
+        )
+    })?;
     let prepared = prepare_managed_helix_config(&request.runtime_dir, &request.config_dir)?;
     let plugin_selection = load_steel_plugin_selection(&request.runtime_dir, &request.config_dir)?;
 
@@ -122,6 +134,7 @@ pub fn generate_helix_materialization(
 
     Ok(HelixMaterializationData {
         generated_path: generated_path.to_string_lossy().into_owned(),
+        managed_helix_config_dir: managed_helix_config_dir.to_string_lossy().into_owned(),
         generated_steel_config_dir: steel.config_dir.to_string_lossy().into_owned(),
         generated_steel_module_path: steel.helix_module_path.to_string_lossy().into_owned(),
         generated_steel_init_path: steel.init_path.to_string_lossy().into_owned(),

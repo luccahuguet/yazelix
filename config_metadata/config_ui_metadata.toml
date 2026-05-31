@@ -713,9 +713,9 @@ home_manager_behavior = "read_only_in_ui"
 lifecycle = "stable"
 advanced = true
 
-[sidecars."helix.toml"]
+[sidecars."helix/config.toml"]
 tab = "editor"
-label = "helix.toml"
+label = "helix/config.toml"
 action = "edit_sidecar"
 owner = "user_or_home_manager"
 

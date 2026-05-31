@@ -111,7 +111,13 @@ if [ -z "$managed_steel_config_dir" ]; then
   exit 1
 fi
 
+managed_helix_config_dir="$("$jq_bin" -r '.data.managed_helix_config_dir // ""' "$stdout_file")"
+if [ -z "$managed_helix_config_dir" ]; then
+  printf '%s\n' "Error: failed to resolve the managed Helix config directory" >&2
+  exit 1
+fi
+
 HELIX_STEEL_CONFIG="$managed_steel_config_dir"
 export HELIX_STEEL_CONFIG
 
-exec "$helix_binary" --config-dir "$managed_steel_config_dir" -c "$managed_config" "$@"
+exec "$helix_binary" --config-dir "$managed_helix_config_dir" -c "$managed_config" "$@"

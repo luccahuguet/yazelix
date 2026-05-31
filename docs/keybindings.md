@@ -86,7 +86,7 @@ Use semantic remaps for Yazelix-owned actions and native sidecars for the owning
 - Full native Zellij keymap ownership: plain `zellij` outside Yazelix
 - Yazelix-owned Yazi integration actions: `settings.jsonc` under `yazi.keybindings`
 - Yazi-native bindings: `~/.config/yazelix/yazi/keymap.toml`
-- Helix-local bindings for managed Helix sessions: `~/.config/yazelix/helix.toml`
+- Helix-local bindings for managed Helix sessions: `~/.config/yazelix/helix/config.toml`
 - Terminal-emulator shortcuts: the terminal emulator config
 
 `zellij.keybindings` accepts owner-local action ids such as `bottom_popup`, `top_popup`, `menu`, `toggle_left_sidebar`, `toggle_editor_right_sidebar_focus`, and `open_workspace_terminal`. Shared diagnostics and docs use scoped ids such as `zellij.bottom_popup`. Omitted actions keep defaults, and `[]` disables a Yazelix-owned binding. Yazelix rejects duplicate semantic Zellij keys before launch.

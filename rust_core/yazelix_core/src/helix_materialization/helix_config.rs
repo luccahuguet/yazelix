@@ -57,9 +57,12 @@ pub(super) fn prepare_managed_helix_config(
         )
     })?;
 
-    let user_config_path = user_config_paths::resolve_current_config_file(
-        &user_config_paths::helix_config(config_dir),
-        &user_config_paths::legacy_helix_config(config_dir),
+    let current_config_path = user_config_paths::helix_config(config_dir);
+    let flat_config_path = user_config_paths::flat_helix_config(config_dir);
+    let legacy_config_path = user_config_paths::legacy_helix_config(config_dir);
+    let user_config_path = user_config_paths::resolve_current_config_file_against_legacy_paths(
+        &current_config_path,
+        &[&flat_config_path, &legacy_config_path],
         "Helix override",
     )?;
 
@@ -68,7 +71,7 @@ pub(super) fn prepare_managed_helix_config(
             CoreError::io(
                 "read_helix_user_config",
                 "Could not read the user Helix config override",
-                "Check permissions for ~/.config/yazelix/helix.toml and retry.",
+                "Check permissions for ~/.config/yazelix/helix/config.toml and retry.",
                 user_config_path.to_string_lossy(),
                 source,
             )
@@ -77,7 +80,7 @@ pub(super) fn prepare_managed_helix_config(
             CoreError::toml(
                 "parse_helix_user_config",
                 "Could not parse the user Helix config override as TOML",
-                "Fix the TOML syntax in ~/.config/yazelix/helix.toml and retry.",
+                "Fix the TOML syntax in ~/.config/yazelix/helix/config.toml and retry.",
                 user_config_path.to_string_lossy(),
                 source,
             )

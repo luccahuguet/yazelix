@@ -11,7 +11,9 @@ pub const OLD_MAIN_CONFIG: &str = "yazelix.toml";
 pub const CURSOR_CONFIG: &str = "cursors.toml";
 pub const SHARED_CURSOR_CONFIG_DIR: &str = "yazelix_ghostty_cursors";
 pub const SHARED_CURSOR_SETTINGS_CONFIG: &str = "settings.jsonc";
-pub const HELIX_CONFIG: &str = "helix.toml";
+pub const HELIX_CONFIG_DIR: &str = "helix";
+pub const HELIX_CONFIG: &str = "helix/config.toml";
+pub const FLAT_HELIX_CONFIG: &str = "helix.toml";
 pub const ZELLIJ_CONFIG: &str = "zellij.kdl";
 pub const YAZI_CONFIG_DIR: &str = "yazi";
 pub const YAZI_CONFIG: &str = "yazi/yazi.toml";
@@ -49,7 +51,12 @@ pub const CURRENT_MANAGED_CONFIG_FILE_NAMES: &[&str] = &[
     SHELL_NU_HOOK,
 ];
 
-pub const LEGACY_CONFIG_ENTRY_NAMES: &[&str] = &[OLD_MAIN_CONFIG, CURSOR_CONFIG, "user_configs"];
+pub const LEGACY_CONFIG_ENTRY_NAMES: &[&str] = &[
+    OLD_MAIN_CONFIG,
+    CURSOR_CONFIG,
+    FLAT_HELIX_CONFIG,
+    "user_configs",
+];
 
 pub fn main_config(config_dir: &Path) -> PathBuf {
     config_dir.join(SETTINGS_CONFIG)
@@ -104,6 +111,14 @@ pub fn legacy_cursor_config(config_dir: &Path) -> PathBuf {
 
 pub fn helix_config(config_dir: &Path) -> PathBuf {
     config_dir.join(HELIX_CONFIG)
+}
+
+pub fn helix_config_dir(config_dir: &Path) -> PathBuf {
+    config_dir.join(HELIX_CONFIG_DIR)
+}
+
+pub fn flat_helix_config(config_dir: &Path) -> PathBuf {
+    config_dir.join(FLAT_HELIX_CONFIG)
 }
 
 pub fn legacy_helix_config(config_dir: &Path) -> PathBuf {
@@ -254,7 +269,27 @@ pub fn resolve_current_config_file(
     legacy_path: &Path,
     label: &str,
 ) -> Result<PathBuf, CoreError> {
-    if optional_symlink_metadata(legacy_path)?.is_some() {
+    resolve_current_config_file_against_legacy_paths(current_path, &[legacy_path], label)
+}
+
+pub fn resolve_current_config_file_against_legacy_paths(
+    current_path: &Path,
+    legacy_paths: &[&Path],
+    label: &str,
+) -> Result<PathBuf, CoreError> {
+    for legacy_path in legacy_paths {
+        if optional_symlink_metadata(legacy_path)?.is_none() {
+            continue;
+        }
+        let remediation = if legacy_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name == FLAT_HELIX_CONFIG)
+        {
+            "Move ~/.config/yazelix/helix.toml to ~/.config/yazelix/helix/config.toml manually if you want to keep that Helix override."
+        } else {
+            "Move the old user_configs path aside or import it explicitly; Yazelix no longer relocates legacy config files automatically."
+        };
         return Err(CoreError::classified(
             ErrorClass::Config,
             "legacy_config_surface",
@@ -262,7 +297,7 @@ pub fn resolve_current_config_file(
                 "Yazelix found an old {label} config surface at {}.",
                 legacy_path.display()
             ),
-            "Move the old user_configs path aside or import it explicitly; Yazelix no longer relocates legacy config files automatically.",
+            remediation,
             json!({
                 "label": label,
                 "current_path": current_path.display().to_string(),
