@@ -346,11 +346,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1780200137,
-        "narHash": "sha256-lnWHuh0R50nuTfuoCYGi4aI90HABoDkTpFohhtNyMq0=",
+        "lastModified": 1780257199,
+        "narHash": "sha256-JW9neXwCNXBoL6EdPZIXsq67nUPaNl+FhvuMD7MlrHA=",
         "owner": "luccahuguet",
         "repo": "yazelix-helix",
-        "rev": "bfc7bac20d504023a479adaf13fb3ddb2ac9af9b",
+        "rev": "0b2cde5bb166736dc705feb364067f1a689b0a97",
         "type": "github"
       },
       "original": {
