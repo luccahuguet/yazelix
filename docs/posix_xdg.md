@@ -20,7 +20,7 @@ Yazelix does not use `$XDG_STATE_HOME` for the main generated state root. The st
 
 - User config root, usually `~/.config/yazelix`
   - `settings.jsonc` - canonical user settings file
-  - `helix.toml` - managed Helix override surface
+  - `helix/config.toml` - managed Helix override surface
   - `zellij.kdl` - managed native Zellij sidecar for settings Yazelix does not render
   - `yazi/` - managed Yazi home containing `yazi.toml`, `keymap.toml`, `init.lua`, `package.toml`, `plugins/`, and `flavors/`
   - `terminal_ghostty.conf`, `terminal_kitty.conf`, `terminal_alacritty.toml`, `terminal_foot.ini` - managed terminal override surfaces

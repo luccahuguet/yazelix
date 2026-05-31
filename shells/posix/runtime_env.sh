@@ -116,3 +116,8 @@ runtime_yzx_control="$runtime_dir/libexec/yzx_control"
 if [ -x "$runtime_yzx_control" ]; then
   export YAZELIX_YZX_CONTROL_BIN="$runtime_yzx_control"
 fi
+
+runtime_hx="$runtime_dir/libexec/hx"
+if [ -x "$runtime_hx" ]; then
+  export YAZELIX_MANAGED_HELIX_BINARY="$runtime_hx"
+fi

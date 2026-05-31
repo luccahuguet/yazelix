@@ -126,16 +126,28 @@ write_support = "settings_jsonc"
 home_manager_behavior = "read_only_in_ui"
 lifecycle = "stable"
 
-[fields."helix.runtime_path"]
+[fields."helix.external"]
 tab = "advanced"
 group = "runtime_paths"
-label = "helix_runtime_path"
-help = "Override the Helix runtime path used by Yazelix materialization"
-editor = "text"
+label = "helix_external"
+help = "Use a custom Helix binary together with its matching runtime path"
+editor = "object"
 default_source = "settings_default.jsonc"
 write_support = "settings_jsonc"
 home_manager_behavior = "read_only_in_ui"
 lifecycle = "stable"
+advanced = true
+
+[fields."helix.steel_plugins"]
+tab = "editor"
+group = "helix_plugins"
+label = "steel_plugins"
+help = "Choose bundled Helix Steel plugins and declare extra user-owned plugin manifests"
+editor = "object"
+default_source = "settings_default.jsonc"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "experimental"
 advanced = true
 
 [fields."editor.command"]
@@ -701,9 +713,9 @@ home_manager_behavior = "read_only_in_ui"
 lifecycle = "stable"
 advanced = true
 
-[sidecars."helix.toml"]
+[sidecars."helix/config.toml"]
 tab = "editor"
-label = "helix.toml"
+label = "helix/config.toml"
 action = "edit_sidecar"
 owner = "user_or_home_manager"
 

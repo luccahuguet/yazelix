@@ -1,4 +1,5 @@
-use crate::bridge::CoreError;
+use crate::bridge::{CoreError, ErrorClass};
+use crate::helix_external::{HelixExternalPair, is_custom_helix_binary_command, is_helix_command};
 use crate::zellij_render_plan::MANAGED_SIDEBAR_LAYOUT_NAME;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Value as JsonValue};
@@ -14,7 +15,7 @@ pub struct RuntimeEnvComputeRequest {
     #[serde(default)]
     pub editor_command: Option<String>,
     #[serde(default)]
-    pub helix_runtime_path: Option<String>,
+    pub helix_external: Option<HelixExternalPair>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -55,6 +56,7 @@ pub fn compute_runtime_env(
         )
     };
 
+    validate_helix_editor_runtime_pair(request)?;
     let resolved_editor_command = resolve_editor_command(request);
     let editor_kind = resolve_editor_kind(&resolved_editor_command);
     let editor_command = if editor_kind == "helix" {
@@ -113,7 +115,10 @@ pub fn compute_runtime_env(
     if editor_kind == "helix" {
         runtime_env.insert(
             "YAZELIX_MANAGED_HELIX_BINARY".to_string(),
-            JsonValue::String(resolved_editor_command),
+            JsonValue::String(resolve_managed_helix_binary(
+                request,
+                &resolved_editor_command,
+            )),
         );
     }
 
@@ -195,6 +200,9 @@ fn stable_dedupe(entries: Vec<String>) -> Vec<String> {
 }
 
 fn resolve_editor_command(request: &RuntimeEnvComputeRequest) -> String {
+    if let Some(external) = &request.helix_external {
+        return external.binary.clone();
+    }
     request
         .editor_command
         .as_deref()
@@ -216,19 +224,26 @@ fn resolve_editor_kind(editor: &str) -> String {
 
 fn resolve_helix_runtime(request: &RuntimeEnvComputeRequest) -> Option<String> {
     request
-        .helix_runtime_path
-        .as_deref()
-        .map(str::trim)
-        .filter(|runtime| !runtime.is_empty())
-        .map(ToOwned::to_owned)
+        .helix_external
+        .as_ref()
+        .map(|external| external.runtime_path.clone())
+}
+
+fn resolve_managed_helix_binary(
+    request: &RuntimeEnvComputeRequest,
+    resolved_editor_command: &str,
+) -> String {
+    if let Some(external) = &request.helix_external {
+        return external.binary.clone();
+    }
+    if matches!(resolved_editor_command.trim(), "hx" | "helix") {
+        return path_to_string(&request.runtime_dir.join("libexec").join("hx"));
+    }
+    resolved_editor_command.to_string()
 }
 
 fn is_helix_editor_command(editor: &str) -> bool {
-    let normalized = editor.trim();
-    normalized.ends_with("/hx")
-        || normalized == "hx"
-        || normalized.ends_with("/helix")
-        || normalized == "helix"
+    is_helix_command(editor)
 }
 
 fn is_neovim_editor_command(editor: &str) -> bool {
@@ -241,4 +256,41 @@ fn is_neovim_editor_command(editor: &str) -> bool {
 
 fn path_to_string(path: &Path) -> String {
     path.to_string_lossy().to_string()
+}
+
+fn validate_helix_editor_runtime_pair(request: &RuntimeEnvComputeRequest) -> Result<(), CoreError> {
+    let Some(editor_command) = request
+        .editor_command
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    else {
+        return Ok(());
+    };
+    if request.helix_external.is_some() {
+        if is_helix_command(editor_command) {
+            return Ok(());
+        }
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "helix_external_conflicts_with_editor",
+            "helix.external is set while editor.command points at a non-Helix editor.",
+            "Remove helix.external for non-Helix editors, or leave editor.command empty to use the external Helix pair.",
+            serde_json::json!({
+                "editor_command": editor_command,
+            }),
+        ));
+    }
+    if is_custom_helix_binary_command(editor_command) {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "helix_external_required",
+            "A custom Helix binary must be configured as a binary/runtime pair.",
+            "Set helix.external = { binary = \"/path/to/hx\", runtime_path = \"/path/to/helix/runtime\" } instead of setting only editor.command.",
+            serde_json::json!({
+                "editor_command": editor_command,
+            }),
+        ));
+    }
+    Ok(())
 }

@@ -1,4 +1,4 @@
-# Yazelix v17
+# Yazelix v17.2
 
 <div align="center">
   <img src="assets/logo.png" alt="Yazelix Logo" width="200"/>
@@ -154,7 +154,7 @@ First-party child repos, Ghostty image previews, and JSONC workspace config
 
 - Established the first-party child-repo architecture across `yazelix-screen`, `yazelix-ghostty-cursors`, `yazelix-zellij-popup`, `yazelix-zellij-bar`, `yazelix-zellij-pane-orchestrator`, `yazelix-yazi-assets`, and `yazelix-ratconfig`
 - Replaced copied source, copied wasm, duplicated widget code, and vendored Yazi assets with locked child-owned packages and artifacts consumed by the main runtime
-- Promoted Ghostty back to the default packaged terminal, with Yazi image previews restored through temporary first-party `yazelix-zellij` and `yazelix-yazi` Kitty-graphics passthrough forks while upstream Zellij support is still pending
+- Promoted Ghostty back to the default packaged terminal and made restored Yazi image previews through Zellij the default-terminal goal; the temporary first-party `yazelix-zellij` and `yazelix-yazi` Kitty-graphics passthrough forks landed after this tag and are documented in `v17.1`
 - Switched the package baseline to `nixpkgs-unstable` and pulled in newer Yazi/Chafa behavior that avoids the Chafa terminal-probe ghost-keypress regression
 - Made `settings.jsonc` the canonical user config, backed by `settings_default.jsonc`, JSON schema coverage, strict unknown-field diagnostics, additive repair, and complete Home Manager rendering
 - Upgraded `yzx config ui` into a structured JSONC settings editor with scalar pickers, keybinding rows, safer parse-error behavior, popup launch through `Alt Shift C`, and generic config UI machinery owned by `yazelix-ratconfig`
@@ -189,6 +189,8 @@ For the longer project story, see [Version History](./docs/history.md)
 
 ### Helix Integration
 Helix supports optional `yzx reveal` integration through `Alt+r`, and Yazelix reserves `Alt+r` globally: in the managed editor it forwards `Alt+r` into Helix for reveal, outside the editor it falls back to the editor/left-sidebar focus flow, and `Ctrl+y`, `Ctrl+Shift+Y`, plus `Alt+Shift+H` remain the dedicated workspace navigation keys
+
+Yazelix's bundled Helix is the thin [yazelix-helix](https://github.com/luccahuguet/yazelix-helix) Steel fork: it tracks Helix Steel and carries the small `--config-dir` override Yazelix needs to point managed sessions at the generated Helix config directory without taking over `~/.config/helix`
 
 📖 **[Complete Helix Keybindings Guide →](./docs/helix_keybindings.md)** - Recommended keybindings for enhanced editing experience
 
@@ -258,13 +260,10 @@ Yazelix uses a **layered configuration system** that safely merges your personal
   [editor]
   command = "nvim"
   ```
-- **System Helix**:
+- **Custom Helix fork**:
   ```toml
-  [editor]
-  command = "hx"
-
   [helix]
-  runtime_path = "/path/to/runtime"  # Only when your Helix runtime is outside normal discovery paths
+  external = { binary = "/path/to/hx", runtime_path = "/path/to/helix/runtime" }
   ```
 - **Other editors**:
   ```toml

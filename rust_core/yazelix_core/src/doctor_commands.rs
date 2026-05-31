@@ -10,6 +10,7 @@ use crate::doctor_helix_report::{HelixDoctorEvaluateRequest, evaluate_helix_doct
 use crate::doctor_runtime_report::{
     DoctorRuntimeEvaluateRequest, SharedRuntimePreflightInput, evaluate_doctor_runtime_report,
 };
+use crate::helix_external::HelixExternalPair;
 use crate::install_ownership_env::install_ownership_request_from_env_with_runtime_dir;
 use crate::native_config_status::{
     NativeConfigStatusEntry, NativeConfigStatusRequest, classify_native_config_statuses,
@@ -39,8 +40,16 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+enum DoctorTarget {
+    #[default]
+    All,
+    HelixSteel,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct DoctorCliArgs {
+    target: DoctorTarget,
     verbose: bool,
     fix: bool,
     fix_plan: bool,
@@ -152,7 +161,10 @@ pub fn run_yzx_doctor(args: &[String]) -> Result<i32, CoreError> {
         ));
     }
 
-    let report = compute_doctor_report_from_env()?;
+    let report = match parsed.target {
+        DoctorTarget::All => compute_doctor_report_from_env()?,
+        DoctorTarget::HelixSteel => compute_helix_steel_doctor_report_from_env()?,
+    };
     if parsed.fix_plan {
         let recovery = build_recovery_plan(&report);
         if parsed.json {
@@ -197,6 +209,7 @@ fn print_doctor_help() {
     println!();
     println!("Usage:");
     println!("  yzx doctor [--verbose] [--json]");
+    println!("  yzx doctor helix-steel [--verbose] [--json]");
     println!("  yzx doctor --fix-plan [--json]");
     println!("  yzx doctor --fix [--verbose]");
     println!();
@@ -215,6 +228,18 @@ fn parse_doctor_cli_args(args: &[String]) -> Result<DoctorCliArgs, CoreError> {
             "--fix" | "-f" => out.fix = true,
             "--fix-plan" => out.fix_plan = true,
             "--json" => out.json = true,
+            "helix-steel" => {
+                if out.target != DoctorTarget::All {
+                    return Err(CoreError::classified(
+                        ErrorClass::Usage,
+                        "duplicate_doctor_target",
+                        "Only one yzx doctor target can be selected.",
+                        "Run `yzx doctor helix-steel` or `yzx doctor`, not both target forms.",
+                        json!({}),
+                    ));
+                }
+                out.target = DoctorTarget::HelixSteel;
+            }
             "--help" | "-h" | "help" => out.help = true,
             other => {
                 return Err(CoreError::classified(
@@ -228,6 +253,27 @@ fn parse_doctor_cli_args(args: &[String]) -> Result<DoctorCliArgs, CoreError> {
         }
     }
     Ok(out)
+}
+
+fn compute_helix_steel_doctor_report_from_env() -> Result<DoctorReportData, CoreError> {
+    let runtime_dir = runtime_dir_from_env()?;
+    let config_dir = config_dir_from_env()?;
+    let state_dir = state_dir_from_env()?;
+    let home_dir = home_dir_from_env()?;
+    let normalized_config = load_optional_doctor_normalized_config(&runtime_dir, &config_dir);
+    let results = collect_helix_doctor_findings(
+        &runtime_dir,
+        &config_dir,
+        &state_dir,
+        &home_dir,
+        normalized_config.as_ref(),
+    );
+    let summary = summarize_doctor_results(&results);
+    Ok(DoctorReportData {
+        title: "Yazelix Helix Steel Checks".to_string(),
+        results,
+        summary,
+    })
 }
 
 fn compute_doctor_report_from_env() -> Result<DoctorReportData, CoreError> {
@@ -431,16 +477,26 @@ fn collect_helix_doctor_findings(
             .unwrap_or("")
             .to_string()
     });
+    let helix_external = normalized_config
+        .and_then(|cfg| cfg.get("helix_external"))
+        .and_then(HelixExternalPair::from_json);
+    let hx_exe_path = helix_external
+        .as_ref()
+        .map(|external| PathBuf::from(&external.binary))
+        .or_else(|| find_external_command("hx"));
+    let include_runtime_health = helix_external.is_some()
+        || env::var("EDITOR")
+            .ok()
+            .map(|value| value.contains("hx"))
+            .unwrap_or(false);
     let request = HelixDoctorEvaluateRequest {
         home_dir: home_dir.to_path_buf(),
         runtime_dir: runtime_dir.to_path_buf(),
         config_dir: config_dir.to_path_buf(),
         user_config_helix_runtime_dir: home_dir.join(".config").join("helix").join("runtime"),
-        hx_exe_path: find_external_command("hx"),
-        include_runtime_health: env::var("EDITOR")
-            .ok()
-            .map(|value| value.contains("hx"))
-            .unwrap_or(false),
+        hx_exe_path,
+        helix_external,
+        include_runtime_health,
         editor_command,
         managed_helix_user_config_path: user_config_paths::helix_config(config_dir),
         native_helix_config_path: xdg_config_home(home_dir).join("helix").join("config.toml"),
@@ -457,6 +513,11 @@ fn collect_helix_doctor_findings(
     if let Some(runtime_health) = &data.runtime_health {
         results
             .push(serialize_value(runtime_health).expect("helix runtime health should serialize"));
+    }
+    if let Some(external_pair) = &data.external_pair {
+        results.push(
+            serialize_value(external_pair).expect("helix external pair finding should serialize"),
+        );
     }
     results.extend(
         data.managed_integration
@@ -1332,6 +1393,15 @@ mod tests {
         assert_eq!(summary.ok_count, 1);
         assert_eq!(summary.fixable_count, 1);
         assert!(!summary.healthy);
+    }
+
+    // Defends: `yzx doctor helix-steel` is a first-class targeted doctor surface, not an unexpected argument.
+    #[test]
+    fn doctor_args_accept_helix_steel_target() {
+        let parsed = parse_doctor_cli_args(&["helix-steel".into(), "--json".into()]).unwrap();
+
+        assert_eq!(parsed.target, DoctorTarget::HelixSteel);
+        assert!(parsed.json);
     }
 
     // Regression: install-owner prose mentioning the default Nix profile must not trigger config creation.

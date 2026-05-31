@@ -36,7 +36,7 @@ The config UI, doctor, and future `yzx_control` save/apply flows should use one 
 | --- | --- | --- |
 | `core.debug_mode` | `tab_session_restart` | Active scripts and plugins do not share a live debug flag owner |
 | `core.skip_welcome_screen`, `core.show_macchina_on_welcome`, `core.game_of_life_cell_style`, `core.welcome_style`, `core.welcome_duration_seconds` | `tab_session_restart` | Welcome behavior is launch-time behavior |
-| `helix.runtime_path` | `tab_session_restart` | Existing editor panes keep their launched runtime |
+| `helix.external` | `tab_session_restart` | Existing editor panes keep their launched Helix binary/runtime pair |
 | `editor.command` | `tab_session_restart` | Existing editor panes keep their launched command |
 | `editor.hide_sidebar_on_file_open` | `tab_session_restart` | Can move to `live_with_pane_refresh` only after the opener/session owner supports config reload |
 | `workspace.left_sidebar.command`, `workspace.left_sidebar.args`, `workspace.left_sidebar.width_percent`, `workspace.right_sidebar.command`, `workspace.right_sidebar.args`, `workspace.right_sidebar.width_percent` | `tab_session_restart` | Sidebar layout and command are pane-startup inputs |

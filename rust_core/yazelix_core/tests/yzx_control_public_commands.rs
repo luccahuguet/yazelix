@@ -52,7 +52,8 @@ fn yzx_control_reset_config_warns_about_preserved_adjacent_files() {
     let fixture = managed_config_fixture("");
     let settings_path = fixture.config_dir.join("settings.jsonc");
     let legacy_cursor_path = fixture.config_dir.join("cursors.toml");
-    let helix_override_path = fixture.config_dir.join("helix.toml");
+    let helix_override_path = fixture.config_dir.join("helix/config.toml");
+    let legacy_helix_path = fixture.config_dir.join("helix.toml");
     let notes_path = fixture.config_dir.join("notes.txt");
     let settings_backup_path = fixture
         .config_dir
@@ -60,7 +61,9 @@ fn yzx_control_reset_config_warns_about_preserved_adjacent_files() {
 
     fs::write(&settings_path, "{\"editor\": {\"command\": \"nvim\"}}\n").unwrap();
     fs::write(&legacy_cursor_path, "legacy cursor data").unwrap();
+    fs::create_dir_all(helix_override_path.parent().unwrap()).unwrap();
     fs::write(&helix_override_path, "rainbow-brackets = true\n").unwrap();
+    fs::write(&legacy_helix_path, "legacy helix data\n").unwrap();
     fs::write(&notes_path, "do not delete\n").unwrap();
     fs::write(&settings_backup_path, "old backup\n").unwrap();
 
@@ -74,8 +77,11 @@ fn yzx_control_reset_config_warns_about_preserved_adjacent_files() {
     let reset = fs::read_to_string(&settings_path).unwrap();
 
     assert!(stdout.contains("only replaces settings.jsonc"));
-    assert!(stdout.contains("helix.toml"));
-    assert!(stdout.contains("legacy Yazelix config inputs were left untouched: cursors.toml"));
+    assert!(stdout.contains("Managed override files were left untouched: helix"));
+    assert!(
+        stdout
+            .contains("legacy Yazelix config inputs were left untouched: cursors.toml, helix.toml")
+    );
     assert!(
         stdout.contains(
             "unknown adjacent entries in ~/.config/yazelix were left untouched: notes.txt"

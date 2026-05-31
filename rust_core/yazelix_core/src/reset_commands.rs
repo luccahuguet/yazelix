@@ -275,6 +275,9 @@ fn reset_config_adjacency_report(
             report.unknown_entries.push(name);
         }
     }
+    report.managed_overrides.sort();
+    report.legacy_inputs.sort();
+    report.unknown_entries.sort();
 
     Ok(report)
 }

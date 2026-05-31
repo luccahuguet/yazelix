@@ -24,7 +24,7 @@ Yazelix should not provide a semantic remap when another tool owns the behavior.
 - curated Yazelix native Zellij conflict policy belongs in `zellij.native_keybindings`
 - full native Zellij keymap ownership belongs to plain `zellij` outside Yazelix
 - arbitrary Yazi file-manager actions belong in `~/.config/yazelix/yazi/keymap.toml`
-- arbitrary Helix editor preferences belong in `~/.config/yazelix/helix.toml` for managed Helix sessions, or in the user's native Helix config outside Yazelix
+- arbitrary Helix editor preferences belong in `~/.config/yazelix/helix/config.toml` for managed Helix sessions, or in the user's native Helix config outside Yazelix
 - terminal-emulator shortcuts belong in the terminal emulator config
 
 ## Current Implemented Surface

@@ -100,7 +100,7 @@ This contract keeps those boundaries explicit.
   - Canonical environment variable: `YAZELIX_CONFIG_DIR`
   - Contents include:
     - `settings.jsonc`
-    - user-managed overrides such as `zellij.kdl`, `helix.toml`, the `yazi/` managed home, `terminal_*`, and `shell_*`
+    - user-managed overrides such as `zellij.kdl`, `helix/`, the `yazi/` managed home, `terminal_*`, and `shell_*`
   - The current trimmed line does not treat `yazelix_packs.toml` as part of the current config contract.
 - The runtime root is the shipped Yazelix asset tree used at runtime.
   - Canonical environment variable: `YAZELIX_RUNTIME_DIR`

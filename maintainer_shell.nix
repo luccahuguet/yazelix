@@ -138,15 +138,12 @@ pkgs.mkShell {
       --arg home_dir "$HOME" \
       --arg current_path "$PATH" \
       --arg editor_command "''${EDITOR:-hx}" \
-      --arg helix_runtime_path "''${HELIX_RUNTIME:-}" \
       '{
         runtime_dir: $runtime_dir,
         home_dir: $home_dir,
         current_path: $current_path,
         editor_command: $editor_command
-      } + (
-        if $helix_runtime_path == "" then {} else {helix_runtime_path: $helix_runtime_path} end
-      )'
+      }'
     )"
     runtime_env_json="$("${rustCoreHelper}/bin/yzx_core" runtime-env.compute --request-json "$runtime_env_request" | ${pkgs.jq}/bin/jq -rc '.data.runtime_env')"
 

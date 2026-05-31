@@ -4,13 +4,51 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
-Post-v17 work in progress
+Post-v17.2 work in progress
+
+Upgrade impact: no user action required
+
+Highlights:
+- Reserved for post-release changes after v17.2 lands.
+
+## v17.2 - 2026-05-31
+
+Steel-backed Helix, managed Helix config tree, and plugin manifests
+
+Upgrade impact: manual action may be required
+
+Highlights:
+- Made bundled Helix the thin first-party `yazelix-helix` Steel fork with `--config-dir`, consumed as a child-owned package, so managed sessions can use Yazelix's Helix config root without taking over `~/.config/helix`
+- Moved the managed Helix source config to `~/.config/yazelix/helix/config.toml` and made `~/.config/yazelix/helix/` the root for languages, themes, ignore, Steel plugin files, and future managed Helix surfaces; the old flat `~/.config/yazelix/helix.toml` path is unsupported
+- Added `helix.steel_plugins` with bundled `recentf`, `splash`, and `spacemacs_theme` defaults plus `extra` manifests for user-owned Steel plugins under `~/.config/yazelix/helix/steel_plugins`
+- Added `helix.external` for users who intentionally run their own Helix fork, requiring both `binary` and `runtime_path` so binary/runtime mismatches stay explicit
+- Added the `:yzx-new-shell` Helix Steel command for opening a new Yazelix shell pane from the current editor context
+- Added `yzx import helix`, Steel-focused doctor/config checks, and documentation for the `v17.1` tag as the pre-Steel escape hatch
+- Kept the default keybinding story stable: `Alt+r` remains the managed Helix reveal binding, and `Ctrl+y`, `Ctrl+Shift+Y`, plus `Alt+Shift+H/J/K/L` remain the workspace navigation layer
+
+Manual action:
+- If you keep custom Yazelix-managed Helix config in `~/.config/yazelix/helix.toml`, move it to `~/.config/yazelix/helix/config.toml` before launching v17.2
+- If you use a custom Helix fork, configure both `helix.external.binary` and `helix.external.runtime_path`; bare binary-only custom Helix config is rejected
+- If you are not ready for the bundled Steel-backed Helix line, pin `v17.1` temporarily
+
+
+## v17.1 - 2026-05-30
+
+Pre-Steel escape hatch, Rust-owned runtime polish, and terminal/VFX planning
 
 Upgrade impact: no user action required
 
 Highlights:
 - Moved native tab and pane movement defaults to `Ctrl Alt H/L` and `Ctrl Alt J/K` so Ghostty does not intercept pane-down movement through its `Ctrl Shift J` screen-file shortcut
 - Added `zellij.codex_usage_periods` with a default Codex 5h/week status window and bundled `tokenusage` in packaged runtimes so default Codex and Claude usage widgets have their helper available
+- Restored popup editor runtime environment propagation, fixed sidebar runtime helper packaging, reported no-op `yzx update upstream` runs clearly, repaired desktop icon reinstalls over read-only copied icons, and added runtime diagnostics plus maintainer validators for packaged-runtime behavior
+- Rust-owned `yzx menu`, launch setup preflight, canary session validation, and guarded doctor config repair while continuing to shrink shell-owned runtime paths
+- Updated `yzx screen` and welcome visuals after v17, including recursive Mandelbrot work, the magician GIF/Kitty-graphics renderer, a four-second welcome default, boids height fixes, and experimental Ratty runtime/cursor probes
+- Added Yazelix-owned `yazelix-zellij` and `yazelix-yazi` package forks after `v17` specifically to carry the Kitty Graphics Protocol passthrough path that restores Yazi image previews through Zellij; then tightened their KGP package boundaries, Cargo hash validation, typed terminal controls, terminal launch contracts, and follow-up planning for cursor placement
+- Recorded the Rio-based `yazelix-terminal` direction, including cursor-shader parity as the first gate, protocol parity planning, and Rio/Yazi image-preview risk
+- Verified that stock Helix and the Steel branch still lack a true config-dir override, recorded the scoped-XDG caveat, and planned the bundled Yazelix Helix Steel fork plus external binary/runtime-pair escape hatch
+- Treat `v17.1` as the pre-Steel pin for users who are not ready to move to the future bundled Yazelix Helix Steel editor line
+
 
 ## v17 - 2026-05-22
 
@@ -21,7 +59,7 @@ Upgrade impact: no user action required
 Highlights:
 - Established the first-party child-repo architecture across `yazelix-screen`, `yazelix-ghostty-cursors`, `yazelix-zellij-popup`, `yazelix-zellij-bar`, `yazelix-zellij-pane-orchestrator`, `yazelix-yazi-assets`, and `yazelix-ratconfig`
 - Replaced copied source, copied wasm, duplicated widget code, and vendored Yazi assets with locked child-owned packages and artifacts consumed by the main runtime
-- Promoted Ghostty back to the default packaged terminal, with Yazi image previews restored through temporary first-party `yazelix-zellij` and `yazelix-yazi` Kitty-graphics passthrough forks while upstream Zellij support is still pending
+- Promoted Ghostty back to the default packaged terminal and made restored Yazi image previews through Zellij the default-terminal goal; the temporary first-party `yazelix-zellij` and `yazelix-yazi` Kitty-graphics passthrough forks landed after this tag and are documented in `v17.1`
 - Switched the package baseline to `nixpkgs-unstable` and pulled in newer Yazi/Chafa behavior that avoids the Chafa terminal-probe ghost-keypress regression
 - Made `settings.jsonc` the canonical user config, backed by `settings_default.jsonc`, JSON schema coverage, strict unknown-field diagnostics, additive repair, and complete Home Manager rendering
 - Upgraded `yzx config ui` into a structured JSONC settings editor with scalar pickers, keybinding rows, safer parse-error behavior, popup launch through `Alt Shift C`, and generic config UI machinery owned by `yazelix-ratconfig`

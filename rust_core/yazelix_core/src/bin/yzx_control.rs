@@ -550,7 +550,10 @@ fn build_status_sections(data: &yazelix_core::StatusReportData) -> Vec<StatusSec
                     value: status_summary_value(data, "terminals"),
                     tone: StatusTone::Default,
                 },
-                maybe_muted_row("Helix runtime", status_summary_value(data, "helix_runtime")),
+                maybe_muted_row(
+                    "Helix external",
+                    status_summary_value(data, "helix_external"),
+                ),
             ],
         },
     ]
@@ -809,10 +812,10 @@ fn config_problem_status_report(
     );
     summary.insert("terminals".to_string(), serde_json::json!(facts.terminals));
     summary.insert(
-        "helix_runtime".to_string(),
+        "helix_external".to_string(),
         facts
-            .helix_runtime_path
-            .map(serde_json::Value::String)
+            .helix_external
+            .map(|external| external.as_json())
             .unwrap_or(serde_json::Value::Null),
     );
     summary.insert(

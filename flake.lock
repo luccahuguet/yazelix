@@ -185,6 +185,7 @@
         "nixgl": "nixgl",
         "nixpkgs": "nixpkgs_2",
         "yazelixGhosttyCursors": "yazelixGhosttyCursors",
+        "yazelixHelix": "yazelixHelix",
         "yazelixScreen": "yazelixScreen",
         "yazelixYazi": "yazelixYazi",
         "yazelixYaziAssets": "yazelixYaziAssets",
@@ -213,6 +214,27 @@
       }
     },
     "rust-overlay": {
+      "inputs": {
+        "nixpkgs": [
+          "yazelixHelix",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1775358767,
+        "narHash": "sha256-f2eC+WIfhjevCPQILuV08i/kmKZzYZpUvkom/33VxCA=",
+        "owner": "oxalica",
+        "repo": "rust-overlay",
+        "rev": "20fd44bc663daa53a2575e01293e24e681d62244",
+        "type": "github"
+      },
+      "original": {
+        "owner": "oxalica",
+        "repo": "rust-overlay",
+        "type": "github"
+      }
+    },
+    "rust-overlay_2": {
       "inputs": {
         "nixpkgs": [
           "zjstatus",
@@ -313,6 +335,27 @@
       "original": {
         "owner": "luccahuguet",
         "repo": "yazelix-ghostty-cursors",
+        "type": "github"
+      }
+    },
+    "yazelixHelix": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "rust-overlay": "rust-overlay"
+      },
+      "locked": {
+        "lastModified": 1780200137,
+        "narHash": "sha256-lnWHuh0R50nuTfuoCYGi4aI90HABoDkTpFohhtNyMq0=",
+        "owner": "luccahuguet",
+        "repo": "yazelix-helix",
+        "rev": "bfc7bac20d504023a479adaf13fb3ddb2ac9af9b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "luccahuguet",
+        "repo": "yazelix-helix",
         "type": "github"
       }
     },
@@ -474,7 +517,7 @@
         "nixpkgs": [
           "nixpkgs"
         ],
-        "rust-overlay": "rust-overlay"
+        "rust-overlay": "rust-overlay_2"
       },
       "locked": {
         "lastModified": 1775885119,

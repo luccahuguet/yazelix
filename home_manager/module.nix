@@ -109,7 +109,7 @@ let
 
   listToToml =
     values:
-    if values == [ ] then "[]" else "[ " + (concatStringsSep ", " (map escapeString values)) + " ]";
+    if values == [ ] then "[]" else "[ " + (concatStringsSep ", " (map renderTomlValue values)) + " ]";
 
   attrOr =
     attrs: name: fallback:
@@ -154,6 +154,79 @@ let
           types.int
         else if field.kind == "float" then
           types.either types.int types.float
+        else if field.kind == "helix_steel_plugins" then
+          types.submodule {
+            options = {
+              enabled = mkOption {
+                type = types.listOf types.str;
+                default = [
+                  "recentf"
+                  "splash"
+                  "spacemacs_theme"
+                ];
+                description = "Bundled Helix Steel plugin ids to load from the Yazelix plugin repository";
+              };
+              extra = mkOption {
+                type = types.listOf (types.submodule {
+                  options = {
+                    id = mkOption {
+                      type = types.str;
+                      description = "Stable Yazelix Helix Steel plugin id";
+                    };
+                    source = mkOption {
+                      type = types.str;
+                      description = "Plugin source path below ~/.config/yazelix/helix/steel_plugins";
+                    };
+                    support_files = mkOption {
+                      type = types.listOf types.str;
+                      default = [ ];
+                      description = "Additional Steel source files required by this plugin";
+                    };
+                    public_commands = mkOption {
+                      type = types.listOf types.str;
+                      default = [ ];
+                      description = "Commands exposed through Helix command completion";
+                    };
+                    internal_commands = mkOption {
+                      type = types.listOf types.str;
+                      default = [ ];
+                      description = "Commands imported for plugin use but kept out of completion";
+                    };
+                    startup_commands = mkOption {
+                      type = types.listOf types.str;
+                      default = [ ];
+                      description = "Declared commands to run when the generated Steel module loads";
+                    };
+                    startup_condition = mkOption {
+                      type = types.nullOr (types.enum [ "show_splash" ]);
+                      default = null;
+                      description = "Optional Yazelix condition required before startup_commands run";
+                    };
+                    command_descriptions = mkOption {
+                      type = types.attrsOf types.str;
+                      default = { };
+                      description = "Descriptions for public and internal commands";
+                    };
+                  };
+                });
+                default = [ ];
+                description = "User-owned Helix Steel plugin manifests";
+              };
+            };
+          }
+        else if field.kind == "helix_external" then
+          types.submodule {
+            options = {
+              binary = mkOption {
+                type = types.str;
+                description = "Custom Helix binary path";
+              };
+              runtime_path = mkOption {
+                type = types.str;
+                description = "Runtime path matching the custom Helix binary";
+              };
+            };
+          }
         else
           throw "Unsupported main config contract kind for Home Manager: ${field.kind}";
     in
@@ -198,11 +271,13 @@ let
     else if builtins.isList value then
       listToToml value
     else if builtins.isAttrs value then
+      let
+        nonNullNames =
+          builtins.filter (name: builtins.getAttr name value != null) (builtins.attrNames value);
+      in
       "{ "
       + concatStringsSep ", " (
-        map (name: "${name} = ${renderTomlValue (builtins.getAttr name value)}") (
-          builtins.attrNames value
-        )
+        map (name: "${name} = ${renderTomlValue (builtins.getAttr name value)}") nonNullNames
       )
       + " }"
     else
@@ -241,6 +316,8 @@ let
     if value == null then
       if attrOr field "home_manager_can_omit" false then
         null
+      else if field.kind == "helix_external" then
+        null
       else if (attrOr field "parser_behavior" "") == "empty_string_to_null" then
         ""
       else
@@ -248,8 +325,16 @@ let
     else
       value;
 
+  mainConfigSettingsFieldIncluded =
+    fieldPath:
+    let
+      field = getMainField fieldPath;
+      value = mainConfigValueForSettings fieldPath;
+    in
+    value != null || field.kind == "helix_external";
+
   mainConfigSettingsFieldPaths =
-    builtins.filter (fieldPath: mainConfigValueForSettings fieldPath != null) mainConfigFieldPaths;
+    builtins.filter mainConfigSettingsFieldIncluded mainConfigFieldPaths;
 
   mainConfigSettingsValue =
     lib.foldl' (
@@ -456,17 +541,35 @@ in
 
         - null (default): Use yazelix's Nix-provided Helix - full integration
         - "nvim": Use Neovim - first-class support with full integration
-        - "hx": Use system Helix from PATH (set helix_runtime_path only when your runtime lives outside Helix's normal discovery paths)
+        - "hx": Use the packaged Helix command from the Yazelix runtime
         - Other editors: "vim", "nano", "emacs", etc. (basic integration only)
       '';
     };
 
-    helix_runtime_path = mkMainContractOption "helix.runtime_path" {
+    helix_external = mkMainContractOption "helix.external" {
       description = ''
-        Custom Helix runtime path - only set this if editor_command points to a custom Helix build.
+        Custom Helix binary/runtime pair.
 
-        IMPORTANT: The runtime MUST match your Helix binary version to avoid startup errors.
-        Example: "/home/user/helix/runtime" for a custom Helix build in ~/helix
+        Set this only when running a user-owned Helix fork. Both binary and
+        runtime_path are required because the runtime MUST match the Helix
+        binary version.
+
+        Example:
+          {
+            binary = "/home/user/helix/target/release/hx";
+            runtime_path = "/home/user/helix/runtime";
+          }
+      '';
+    };
+
+    helix_steel_plugins = mkMainContractOption "helix.steel_plugins" {
+      description = ''
+        Helix Steel plugin selection.
+
+        enabled selects bundled plugin ids from Yazelix's packaged plugin
+        repository. extra declares user-owned plugin manifests whose source
+        files are resolved below ~/.config/yazelix/helix/steel_plugins and
+        copied into the generated Yazelix Helix runtime config.
       '';
     };
 

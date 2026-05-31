@@ -440,7 +440,6 @@ fn editor_question() -> SingleQuestion {
         &[
             ("Yazelix Helix (recommended)", ""),
             ("Neovim", "nvim"),
-            ("System Helix", "hx"),
             ("Vim", "vim"),
         ],
     )
@@ -655,6 +654,19 @@ mod tests {
         let mut state = PromptState::single(0, 2);
 
         assert_eq!(state.apply(PromptEvent::Abort), PromptOutcome::Aborted);
+    }
+
+    // Defends: onboarding keeps Helix selection simple; custom forks use helix.external instead of a duplicate editor choice.
+    #[test]
+    fn editor_question_does_not_offer_system_helix_mode() {
+        let question = editor_question();
+        let labels = question
+            .choices
+            .iter()
+            .map(|choice| choice.label)
+            .collect::<Vec<_>>();
+
+        assert_eq!(labels, vec!["Yazelix Helix (recommended)", "Neovim", "Vim"]);
     }
 
     // Defends: onboarding emits valid settings.jsonc with current supported main config fields.

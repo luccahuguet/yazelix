@@ -15,7 +15,9 @@ use yazelix_core::config_state::{
     ComputeConfigStateRequest, ConfigStateData, RecordConfigStateRequest, compute_config_state,
     record_config_state,
 };
-use yazelix_core::settings_surface::{read_config_table, render_settings_jsonc_value};
+use yazelix_core::settings_surface::{
+    read_config_table, read_settings_jsonc_value, render_settings_jsonc_value,
+};
 use yazelix_core::{
     RuntimeApplyMode, YAZI_ACTIONS, YazelixActionMetadata, ZELLIJ_ACTIONS,
     ZELLIJ_NATIVE_KEYBINDINGS, runtime_apply_mode_codes,
@@ -58,6 +60,8 @@ pub fn validate_home_manager_option_declaration_contract(
 
 fn validate_main_contract_parity(repo_root: &Path) -> Result<Vec<String>, String> {
     let contract = read_toml_file(&repo_root.join(MAIN_CONTRACT_RELATIVE_PATH))?;
+    let template_json = read_settings_jsonc_value(&repo_root.join(MAIN_TEMPLATE_RELATIVE_PATH))
+        .map_err(|error| error.message())?;
     let template = read_config_table(
         &repo_root.join(MAIN_TEMPLATE_RELATIVE_PATH),
         "read_main_settings_default",
@@ -157,6 +161,32 @@ fn validate_main_contract_parity(repo_root: &Path) -> Result<Vec<String>, String
             continue;
         }
 
+        if field
+            .get("home_manager_default_is_null")
+            .and_then(TomlValue::as_bool)
+            .unwrap_or(false)
+            && field.get("kind").and_then(TomlValue::as_str) == Some("helix_external")
+        {
+            match get_nested_json_value(&template_json, &split_field_path(&field_path)) {
+                Some(JsonValue::Null) => continue,
+                Some(value) => {
+                    errors.push(format!(
+                        "Default template mismatch for `{}`: expected null, got {}",
+                        field_path,
+                        format_json_value(value)
+                    ));
+                    continue;
+                }
+                None => {
+                    errors.push(format!(
+                        "Default template is missing required field `{}`",
+                        field_path
+                    ));
+                    continue;
+                }
+            }
+        }
+
         let Some(template_value) = template_value else {
             errors.push(format!(
                 "Default template is missing required field `{}`",
@@ -178,6 +208,14 @@ fn validate_main_contract_parity(repo_root: &Path) -> Result<Vec<String>, String
     }
 
     Ok(errors)
+}
+
+fn get_nested_json_value<'a>(value: &'a JsonValue, path: &[&str]) -> Option<&'a JsonValue> {
+    let mut current = value;
+    for segment in path {
+        current = current.as_object()?.get(*segment)?;
+    }
+    Some(current)
 }
 
 fn validate_main_contract_apply_mode(

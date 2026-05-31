@@ -95,12 +95,163 @@
       "type": "object",
       "description": "Helix-specific runtime integration settings",
       "required": [
-        "runtime_path"
+        "external",
+        "steel_plugins"
       ],
       "additionalProperties": false,
       "properties": {
-        "runtime_path": {
-          "type": "string"
+        "external": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "binary",
+                "runtime_path"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "binary": {
+                  "type": "string"
+                },
+                "runtime_path": {
+                  "type": "string"
+                }
+              }
+            }
+          ]
+        },
+        "steel_plugins": {
+          "type": "object",
+          "description": "Bundled Helix Steel plugin ids plus user-owned plugin manifests copied from ~/.config/yazelix/helix/steel_plugins",
+          "required": [
+            "enabled",
+            "extra"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_.-]+$"
+              },
+              "uniqueItems": true
+            },
+            "extra": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "source"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^[A-Za-z0-9_.-]+$"
+                  },
+                  "source": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^[A-Za-z0-9_./-]+\\.scm$",
+                    "not": {
+                      "anyOf": [
+                        {
+                          "pattern": "^/"
+                        },
+                        {
+                          "pattern": "\\\\"
+                        },
+                        {
+                          "pattern": "(^|/)\\.\\.?(/|$)"
+                        },
+                        {
+                          "pattern": "//"
+                        }
+                      ]
+                    }
+                  },
+                  "support_files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "^[A-Za-z0-9_./-]+\\.scm$",
+                      "not": {
+                        "anyOf": [
+                          {
+                            "pattern": "^/"
+                          },
+                          {
+                            "pattern": "\\\\"
+                          },
+                          {
+                            "pattern": "(^|/)\\.\\.?(/|$)"
+                          },
+                          {
+                            "pattern": "//"
+                          }
+                        ]
+                      }
+                    },
+                    "uniqueItems": true
+                  },
+                  "public_commands": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "^[A-Za-z0-9_.!?+*/<=>-]+$"
+                    }
+                  },
+                  "internal_commands": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "^[A-Za-z0-9_.!?+*/<=>-]+$"
+                    }
+                  },
+                  "startup_commands": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "^[A-Za-z0-9_.!?+*/<=>-]+$"
+                    }
+                  },
+                  "command_descriptions": {
+                    "type": "object",
+                    "propertyNames": {
+                      "pattern": "^[A-Za-z0-9_.!?+*/<=>-]+$"
+                    },
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  "startup_condition": {
+                    "anyOf": [
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "show_splash"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
         }
       },
       "x-yazelix": {

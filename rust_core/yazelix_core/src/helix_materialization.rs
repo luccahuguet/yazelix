@@ -1,21 +1,36 @@
+mod helix_config;
+mod import_notice;
+mod steel;
+
+#[cfg(test)]
+mod tests;
+
+use crate::atomic_fs::write_text_atomic;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::user_config_paths;
+use helix_config::prepare_managed_helix_config;
+use import_notice::build_import_notice;
 use serde::Serialize;
 use serde_json::Value as JsonValue;
-use std::fs;
-use std::path::{Path, PathBuf};
-use toml::Value as TomlValue;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
+use steel::{load_steel_plugin_selection, materialize_steel_config};
 
 pub(crate) const MANAGED_REVEAL_COMMAND: &str = ":sh yzx reveal \"%{buffer_name}\"";
 pub(crate) const MANAGED_COMMAND_MODE_KEY: &str = ":";
 pub(crate) const MANAGED_COMMAND_MODE_COMMAND: &str = "command_mode";
 pub(crate) const REVEAL_KEY: &str = "A-r";
+pub(crate) const STEEL_CONFIG_MODULE: &str = "helix.scm";
+pub(crate) const STEEL_INIT_MODULE: &str = "init.scm";
 
 #[derive(Debug, Clone)]
 pub struct HelixMaterializationRequest {
     pub runtime_dir: PathBuf,
     pub config_dir: PathBuf,
     pub state_dir: PathBuf,
+    pub show_splash: bool,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -25,19 +40,27 @@ pub struct HelixImportNotice {
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct SteelCommandMetadata {
+    pub name: String,
+    pub owner: String,
+    pub description: String,
+    pub visibility: String,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct HelixMaterializationData {
     pub generated_path: String,
+    pub managed_helix_config_dir: String,
+    pub generated_steel_config_dir: String,
+    pub generated_steel_module_path: String,
+    pub generated_steel_init_path: String,
     pub template_path: String,
     pub user_config_merged: bool,
     pub reveal_binding_enforced: bool,
+    pub enabled_steel_plugins: Vec<String>,
+    pub steel_plugin_files: Vec<String>,
+    pub steel_commands: Vec<SteelCommandMetadata>,
     pub import_notice: Option<HelixImportNotice>,
-}
-
-struct PreparedHelixConfig {
-    template_path: PathBuf,
-    user_config_path: PathBuf,
-    config: TomlValue,
-    user_config_merged: bool,
 }
 
 pub(crate) fn build_managed_helix_contract_json(
@@ -63,7 +86,18 @@ pub fn generate_helix_materialization(
     request: &HelixMaterializationRequest,
 ) -> Result<HelixMaterializationData, CoreError> {
     crate::managed_user_config_stubs::ensure_helix_surface_stub(&request.config_dir)?;
+    let managed_helix_config_dir = user_config_paths::helix_config_dir(&request.config_dir);
+    fs::create_dir_all(&managed_helix_config_dir).map_err(|source| {
+        CoreError::io(
+            "create_managed_helix_config_dir",
+            "Could not create the managed Helix config directory",
+            "Check permissions for ~/.config/yazelix/helix and retry.",
+            managed_helix_config_dir.to_string_lossy(),
+            source,
+        )
+    })?;
     let prepared = prepare_managed_helix_config(&request.runtime_dir, &request.config_dir)?;
+    let plugin_selection = load_steel_plugin_selection(&request.runtime_dir, &request.config_dir)?;
 
     let generated_dir = request.state_dir.join("configs").join("helix");
     fs::create_dir_all(&generated_dir).map_err(|source| {
@@ -87,276 +121,29 @@ pub fn generate_helix_materialization(
         )
     })?;
 
-    fs::write(&generated_path, output).map_err(|source| {
-        CoreError::io(
-            "write_helix_config",
-            "Could not write the managed Helix config",
-            "Check permissions for the Yazelix state directory and retry.",
-            generated_path.to_string_lossy(),
-            source,
-        )
-    })?;
+    write_text_atomic(&generated_path, &output)?;
 
     let import_notice = build_import_notice(request, &prepared.user_config_path)?;
+    let steel = materialize_steel_config(
+        &request.runtime_dir,
+        &request.config_dir,
+        &generated_dir,
+        &plugin_selection,
+        request.show_splash,
+    )?;
 
     Ok(HelixMaterializationData {
         generated_path: generated_path.to_string_lossy().into_owned(),
+        managed_helix_config_dir: managed_helix_config_dir.to_string_lossy().into_owned(),
+        generated_steel_config_dir: steel.config_dir.to_string_lossy().into_owned(),
+        generated_steel_module_path: steel.helix_module_path.to_string_lossy().into_owned(),
+        generated_steel_init_path: steel.init_path.to_string_lossy().into_owned(),
         template_path: prepared.template_path.to_string_lossy().into_owned(),
         user_config_merged: prepared.user_config_merged,
         reveal_binding_enforced: true,
+        enabled_steel_plugins: steel.enabled_plugins,
+        steel_plugin_files: steel.copied_plugin_files,
+        steel_commands: steel.commands,
         import_notice,
     })
-}
-
-fn prepare_managed_helix_config(
-    runtime_dir: &Path,
-    config_dir: &Path,
-) -> Result<PreparedHelixConfig, CoreError> {
-    let template_path = runtime_dir
-        .join("configs")
-        .join("helix")
-        .join("yazelix_config.toml");
-    if !template_path.exists() {
-        return Err(CoreError::classified(
-            ErrorClass::Io,
-            "missing_helix_template",
-            format!(
-                "Missing Yazelix Helix template at: {}",
-                template_path.display()
-            ),
-            "Reinstall Yazelix so the runtime includes configs/helix/yazelix_config.toml.",
-            serde_json::json!({ "template_path": template_path.to_string_lossy() }),
-        ));
-    }
-
-    let template_content = fs::read_to_string(&template_path).map_err(|source| {
-        CoreError::io(
-            "read_helix_template",
-            "Could not read the Yazelix Helix config template",
-            "Check permissions for the Yazelix runtime directory and retry.",
-            template_path.to_string_lossy(),
-            source,
-        )
-    })?;
-
-    let mut config: TomlValue = toml::from_str(&template_content).map_err(|source| {
-        CoreError::toml(
-            "parse_helix_template",
-            "Could not parse the Yazelix Helix config template as TOML",
-            "Reinstall Yazelix so the runtime includes a valid Helix config template.",
-            template_path.to_string_lossy(),
-            source,
-        )
-    })?;
-
-    let user_config_path = user_config_paths::resolve_current_config_file(
-        &user_config_paths::helix_config(config_dir),
-        &user_config_paths::legacy_helix_config(config_dir),
-        "Helix override",
-    )?;
-
-    let user_config_merged = if user_config_path.exists() {
-        let user_content = fs::read_to_string(&user_config_path).map_err(|source| {
-            CoreError::io(
-                "read_helix_user_config",
-                "Could not read the user Helix config override",
-                "Check permissions for ~/.config/yazelix/helix.toml and retry.",
-                user_config_path.to_string_lossy(),
-                source,
-            )
-        })?;
-        let user_config: TomlValue = toml::from_str(&user_content).map_err(|source| {
-            CoreError::toml(
-                "parse_helix_user_config",
-                "Could not parse the user Helix config override as TOML",
-                "Fix the TOML syntax in ~/.config/yazelix/helix.toml and retry.",
-                user_config_path.to_string_lossy(),
-                source,
-            )
-        })?;
-        deep_merge_toml(&mut config, &user_config);
-        true
-    } else {
-        false
-    };
-
-    enforce_managed_normal_bindings(&mut config);
-
-    Ok(PreparedHelixConfig {
-        template_path,
-        user_config_path,
-        config,
-        user_config_merged,
-    })
-}
-
-fn deep_merge_toml(base: &mut TomlValue, user: &TomlValue) {
-    match (base, user) {
-        (TomlValue::Table(base_map), TomlValue::Table(user_map)) => {
-            for (key, user_val) in user_map {
-                if let Some(base_val) = base_map.get_mut(key) {
-                    deep_merge_toml(base_val, user_val);
-                } else {
-                    base_map.insert(key.clone(), user_val.clone());
-                }
-            }
-        }
-        (base_val, user_val) => {
-            *base_val = user_val.clone();
-        }
-    }
-}
-
-fn enforce_managed_normal_bindings(config: &mut TomlValue) {
-    let table = match config {
-        TomlValue::Table(t) => t,
-        _ => return,
-    };
-
-    let keys_table = table
-        .entry("keys")
-        .or_insert_with(|| TomlValue::Table(toml::map::Map::new()));
-
-    let normal_table = match keys_table {
-        TomlValue::Table(t) => t
-            .entry("normal")
-            .or_insert_with(|| TomlValue::Table(toml::map::Map::new())),
-        _ => return,
-    };
-
-    match normal_table {
-        TomlValue::Table(t) => {
-            t.insert(
-                MANAGED_COMMAND_MODE_KEY.into(),
-                TomlValue::String(MANAGED_COMMAND_MODE_COMMAND.into()),
-            );
-            t.insert(
-                REVEAL_KEY.into(),
-                TomlValue::String(MANAGED_REVEAL_COMMAND.into()),
-            );
-        }
-        _ => {}
-    }
-}
-
-fn build_import_notice(
-    request: &HelixMaterializationRequest,
-    user_config_path: &Path,
-) -> Result<Option<HelixImportNotice>, CoreError> {
-    let native_config_path = resolve_native_helix_config_path()?;
-
-    if !native_config_path.exists() {
-        return Ok(None);
-    }
-
-    if user_config_path.exists() {
-        return Ok(None);
-    }
-
-    let notice_dir = request.state_dir.join("state").join("helix");
-    fs::create_dir_all(&notice_dir).map_err(|source| {
-        CoreError::io(
-            "create_helix_notice_dir",
-            "Could not create the Helix notice state directory",
-            "Check permissions for the Yazelix state directory and retry.",
-            notice_dir.to_string_lossy(),
-            source,
-        )
-    })?;
-
-    let marker_path = notice_dir.join("import_notice_seen");
-    if marker_path.exists() {
-        return Ok(None);
-    }
-
-    fs::write(&marker_path, "").map_err(|source| {
-        CoreError::io(
-            "write_helix_notice_marker",
-            "Could not write the Helix import notice marker",
-            "Check permissions for the Yazelix state directory and retry.",
-            marker_path.to_string_lossy(),
-            source,
-        )
-    })?;
-
-    Ok(Some(HelixImportNotice {
-        marker_path: marker_path.to_string_lossy().into_owned(),
-        lines: vec![
-            "ℹ️  Yazelix is using its managed Helix config.".into(),
-            format!(
-                "   Personal Helix config detected at: {}",
-                native_config_path.display()
-            ),
-            "   If you want Yazelix-managed Helix sessions to reuse it, run: yzx import helix"
-                .into(),
-        ],
-    }))
-}
-
-fn resolve_native_helix_config_path() -> Result<PathBuf, CoreError> {
-    let xdg_config_home = std::env::var("XDG_CONFIG_HOME")
-        .ok()
-        .and_then(|v| {
-            let trimmed = v.trim();
-            if trimmed.is_empty() {
-                None
-            } else {
-                Some(trimmed.into())
-            }
-        })
-        .unwrap_or_else(|| {
-            std::env::var("HOME")
-                .map(|h| PathBuf::from(h).join(".config"))
-                .unwrap_or_else(|_| PathBuf::from("."))
-        });
-
-    Ok(xdg_config_home.join("helix").join("config.toml"))
-}
-
-// Test lane: default
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use tempfile::TempDir;
-
-    fn normal_binding(config: &TomlValue, key: &str) -> Option<String> {
-        config
-            .get("keys")?
-            .get("normal")?
-            .get(key)?
-            .as_str()
-            .map(str::to_owned)
-    }
-
-    // Regression: Yazi-to-Helix open sends command text through `:` after Escape, so managed Helix materialization must reclaim command mode even when user overrides remap it.
-    #[test]
-    fn managed_helix_reclaims_colon_command_mode_binding() {
-        let tmp = TempDir::new().unwrap();
-        let runtime_dir = tmp.path().join("runtime");
-        let config_dir = tmp.path().join("config");
-        let template_dir = runtime_dir.join("configs").join("helix");
-        fs::create_dir_all(&template_dir).unwrap();
-        fs::create_dir_all(&config_dir).unwrap();
-        fs::write(
-            template_dir.join("yazelix_config.toml"),
-            "[keys.normal]\n\":\" = \"command_mode\"\nA-r = \":noop\"\n",
-        )
-        .unwrap();
-        fs::write(
-            config_dir.join("helix.toml"),
-            "[keys.normal]\n\":\" = \"no_op\"\nA-r = \":noop\"\n",
-        )
-        .unwrap();
-
-        let prepared = prepare_managed_helix_config(&runtime_dir, &config_dir).unwrap();
-
-        assert_eq!(
-            normal_binding(&prepared.config, MANAGED_COMMAND_MODE_KEY).as_deref(),
-            Some(MANAGED_COMMAND_MODE_COMMAND)
-        );
-        assert_eq!(
-            normal_binding(&prepared.config, REVEAL_KEY).as_deref(),
-            Some(MANAGED_REVEAL_COMMAND)
-        );
-    }
 }

@@ -2,6 +2,8 @@
 # This file is intentionally narrow: it only contains Yazelix-owned
 # editor-local integration that should not depend on personal ~/.config/helix.
 
+theme = "ayu_evolve"
+
 [keys.normal]
 ":" = "command_mode"
 A-r = ":sh yzx reveal \"%{buffer_name}\""

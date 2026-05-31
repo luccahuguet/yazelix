@@ -6,13 +6,13 @@ This guide covers recommended Helix keybindings that enhance your editing experi
 
 The default workspace bindings live in Zellij: `Ctrl+y` toggles focus between the managed editor and left sidebar, `Ctrl+Shift+Y` toggles focus between the managed editor and right agent sidebar, and `Alt+Shift+H/J/K/L` maps to the left sidebar, bottom popup, top popup, and right agent sidebar.
 
-Yazelix-managed Helix sessions ship the `Alt+r` reveal binding through the managed Helix config surface and keep `:` bound to `command_mode` so Yazi can open files in the running Helix pane. If you want to start from an existing personal Helix `config.toml`, run `yzx import helix` to copy it into `~/.config/yazelix/helix.toml`.
+Yazelix-managed Helix sessions ship the `Alt+r` reveal binding through the managed Helix config surface and keep `:` bound to `command_mode` so Yazi can open files in the running Helix pane. If you want to start from an existing personal Helix `config.toml`, run `yzx import helix` to copy it into `~/.config/yazelix/helix/config.toml`.
 
 This assumes `yzx` is on your editor `PATH`.
 
 ## Additional Recommended Keybindings
 
-If you want additional Helix-local keybindings beyond the built-in reveal binding, add them to `~/.config/yazelix/helix.toml`:
+If you want additional Helix-local keybindings beyond the built-in reveal binding, add them to `~/.config/yazelix/helix/config.toml`:
 
 ```toml
 [keys.normal]

@@ -96,6 +96,7 @@ let
         ];
         requiredCommands = [ "hx" ];
         hostable = true;
+        notes = [ "Bundled mode uses the Yazelix-owned Helix Steel fork with --config-dir support." ];
       };
       neovim = makeTool {
         package = neovim;

@@ -4,6 +4,7 @@
 use crate::active_config_surface::resolve_active_config_paths;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{config_dir_from_env, config_override_from_env, runtime_dir_from_env};
+use crate::helix_external::HelixExternalPair;
 use crate::session_config_snapshot::{
     load_session_facts_from_snapshot_path, session_config_snapshot_path_from_env,
 };
@@ -22,8 +23,8 @@ pub struct SessionFactsData {
     pub hide_sidebar_on_file_open: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub editor_command: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub helix_runtime_path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub helix_external: Option<HelixExternalPair>,
     pub yazi_command: String,
     pub ya_command: String,
     pub popup_program: Vec<String>,
@@ -49,7 +50,7 @@ impl Default for SessionFactsData {
         Self {
             hide_sidebar_on_file_open: false,
             editor_command: None,
-            helix_runtime_path: None,
+            helix_external: None,
             yazi_command: "yazi".to_string(),
             ya_command: "ya".to_string(),
             popup_program: vec!["lazygit".to_string()],
@@ -71,7 +72,7 @@ impl SessionFactsData {
                 .and_then(JsonValue::as_bool)
                 .unwrap_or(defaults.hide_sidebar_on_file_open),
             editor_command: normalized_string(config, "editor_command"),
-            helix_runtime_path: normalized_string(config, "helix_runtime_path"),
+            helix_external: normalized_helix_external(config),
             yazi_command: normalized_string(config, "yazi_command")
                 .unwrap_or(defaults.yazi_command),
             ya_command: normalized_string(config, "yazi_ya_command").unwrap_or(defaults.ya_command),
@@ -126,9 +127,9 @@ impl SessionFactsData {
         self.editor_command = self
             .editor_command
             .and_then(|value| non_empty_string(value.as_str()));
-        self.helix_runtime_path = self
-            .helix_runtime_path
-            .and_then(|value| non_empty_string(value.as_str()));
+        self.helix_external = self.helix_external.and_then(|external| {
+            HelixExternalPair::normalized(&external.binary, &external.runtime_path)
+        });
         self
     }
 }
@@ -229,7 +230,7 @@ impl SessionFactsData {
         }
 
         if let Some(helix) = toml_section(config, "helix") {
-            self.helix_runtime_path = toml_optional_string(helix.get("runtime_path"));
+            self.helix_external = toml_helix_external_pair(helix.get("external"));
         }
 
         if let Some(editor) = toml_section(config, "editor") {
@@ -271,6 +272,20 @@ fn normalized_string(config: &JsonMap<String, JsonValue>, key: &str) -> Option<S
         .get(key)
         .and_then(JsonValue::as_str)
         .and_then(non_empty_string)
+}
+
+fn normalized_helix_external(config: &JsonMap<String, JsonValue>) -> Option<HelixExternalPair> {
+    config
+        .get("helix_external")
+        .and_then(HelixExternalPair::from_json)
+}
+
+fn toml_helix_external_pair(value: Option<&TomlValue>) -> Option<HelixExternalPair> {
+    let table = value?.as_table()?;
+    HelixExternalPair::normalized(
+        table.get("binary")?.as_str()?,
+        table.get("runtime_path")?.as_str()?,
+    )
 }
 
 fn normalized_string_list(config: &JsonMap<String, JsonValue>, key: &str) -> Option<Vec<String>> {

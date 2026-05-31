@@ -124,7 +124,7 @@ Rules:
 
 Managed input:
 
-- `~/.config/yazelix/helix.toml`
+- `~/.config/yazelix/helix/config.toml`
 
 Native source:
 

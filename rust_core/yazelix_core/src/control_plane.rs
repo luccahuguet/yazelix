@@ -2,6 +2,7 @@
 
 use crate::active_config_surface::{primary_config_paths, resolve_active_config_paths};
 use crate::bridge::{CoreError, ErrorClass};
+use crate::helix_external::HelixExternalPair;
 use crate::runtime_env::RuntimePathInput;
 use crate::zellij_materialization::zellij_permissions_cache_path;
 use crate::{
@@ -452,17 +453,16 @@ pub fn runtime_env_request(
         .get("editor_command")
         .and_then(|v| v.as_str())
         .map(String::from);
-    let helix_runtime_path = normalized
-        .get("helix_runtime_path")
-        .and_then(|v| v.as_str())
-        .map(String::from);
+    let helix_external = normalized
+        .get("helix_external")
+        .and_then(HelixExternalPair::from_json);
 
     Ok(RuntimeEnvComputeRequest {
         runtime_dir,
         home_dir,
         current_path: RuntimePathInput::String(current_path),
         editor_command,
-        helix_runtime_path,
+        helix_external,
     })
 }
 

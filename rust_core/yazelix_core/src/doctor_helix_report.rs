@@ -1,14 +1,17 @@
 //! Helix-focused doctor findings (runtime conflicts, runtime health, managed integration).
 //! Bead: yazelix-ulb2.4.2
 
+use crate::helix_external::HelixExternalPair;
 use crate::helix_materialization::{
     MANAGED_COMMAND_MODE_COMMAND, MANAGED_COMMAND_MODE_KEY, MANAGED_REVEAL_COMMAND, REVEAL_KEY,
-    build_managed_helix_contract_json,
+    STEEL_CONFIG_MODULE, STEEL_INIT_MODULE, build_managed_helix_contract_json,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::fs;
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -24,6 +27,8 @@ pub struct HelixDoctorEvaluateRequest {
     pub user_config_helix_runtime_dir: PathBuf,
     #[serde(default)]
     pub hx_exe_path: Option<PathBuf>,
+    #[serde(default)]
+    pub helix_external: Option<HelixExternalPair>,
     pub include_runtime_health: bool,
     /// When `None`, managed Helix integration checks are skipped (e.g. settings.jsonc could not be parsed).
     #[serde(default)]
@@ -63,6 +68,8 @@ pub struct HelixDoctorEvaluateData {
     pub runtime_conflicts: HelixDoctorFinding,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub runtime_health: Option<HelixDoctorFinding>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub external_pair: Option<HelixDoctorFinding>,
     pub managed_integration: Vec<HelixDoctorFinding>,
 }
 
@@ -75,11 +82,13 @@ pub fn evaluate_helix_doctor_report(
     } else {
         None
     };
+    let external_pair = evaluate_external_pair(request);
     let managed_integration = evaluate_managed_integration(request);
 
     HelixDoctorEvaluateData {
         runtime_conflicts,
         runtime_health,
+        external_pair,
         managed_integration,
     }
 }
@@ -91,6 +100,18 @@ fn is_helix_editor_command(editor: &str) -> bool {
 
 fn path_to_string(path: &Path) -> String {
     path.to_string_lossy().into_owned()
+}
+
+#[cfg(unix)]
+fn is_executable_file(path: &Path) -> bool {
+    fs::metadata(path)
+        .map(|meta| meta.is_file() && meta.permissions().mode() & 0o111 != 0)
+        .unwrap_or(false)
+}
+
+#[cfg(not(unix))]
+fn is_executable_file(path: &Path) -> bool {
+    path.is_file()
 }
 
 fn helix_health_runtime_directories(request: &HelixDoctorEvaluateRequest) -> Vec<PathBuf> {
@@ -297,6 +318,61 @@ fn evaluate_runtime_health(request: &HelixDoctorEvaluateRequest) -> HelixDoctorF
     }
 }
 
+fn evaluate_external_pair(request: &HelixDoctorEvaluateRequest) -> Option<HelixDoctorFinding> {
+    let external = request.helix_external.as_ref()?;
+    let binary = Path::new(&external.binary);
+    let runtime = Path::new(&external.runtime_path);
+    let mut problems = Vec::new();
+
+    if !binary.exists() {
+        problems.push(format!("binary does not exist: {}", binary.display()));
+    } else if !is_executable_file(binary) {
+        problems.push(format!("binary is not executable: {}", binary.display()));
+    }
+
+    if !runtime.exists() {
+        problems.push(format!(
+            "runtime_path does not exist: {}",
+            runtime.display()
+        ));
+    } else if !runtime.is_dir() {
+        problems.push(format!(
+            "runtime_path is not a directory: {}",
+            runtime.display()
+        ));
+    }
+
+    if !problems.is_empty() {
+        return Some(HelixDoctorFinding {
+            status: "error".into(),
+            message: "External Helix binary/runtime pair is invalid".into(),
+            details: Some(format!(
+                "Binary: {}\nRuntime: {}\nProblems:\n- {}\nNext: set helix.external to a matching Helix binary and runtime_path, or null to use the bundled Yazelix Helix.",
+                binary.display(),
+                runtime.display(),
+                problems.join("\n- ")
+            )),
+            fix_available: false,
+            fix_commands: vec![],
+            conflicts: vec![],
+        });
+    }
+
+    Some(HelixDoctorFinding {
+        status: "warning".into(),
+        message: "External Helix binary/runtime pair is user-owned".into(),
+        details: Some(format!(
+            "Binary: {}\nRuntime: {}\nYazelix will launch this binary with HELIX_RUNTIME set to this runtime path, but cannot prove both came from the same Helix revision. Binary/runtime mismatches are user-owned risk; run `{} --health` after changing either path.",
+            binary.display(),
+            runtime.display(),
+            binary.display()
+        )),
+        fix_available: false,
+        fix_commands: vec![],
+        conflicts: vec![],
+    })
+}
+
 fn normal_binding_from_json(config: &Value, key: &str) -> Option<String> {
     config
         .get("keys")?
@@ -353,6 +429,218 @@ fn unreadable_generated_config_finding(path: &Path, error: &str) -> HelixDoctorF
             path.display(),
             error
         )),
+        fix_available: false,
+        fix_commands: vec![],
+        conflicts: vec![],
+    }
+}
+
+fn provided_steel_symbols(module: &str) -> Vec<String> {
+    module
+        .lines()
+        .filter_map(|line| {
+            let trimmed = line.trim();
+            trimmed
+                .strip_prefix("(provide ")
+                .and_then(|rest| rest.strip_suffix(')'))
+        })
+        .flat_map(|symbols| symbols.split_whitespace().map(str::to_string))
+        .collect()
+}
+
+fn steel_command_metadata_lines(module: &str) -> Vec<String> {
+    module
+        .lines()
+        .filter_map(|line| line.trim().strip_prefix(";; - ").map(str::to_string))
+        .collect()
+}
+
+fn generated_steel_dir(request: &HelixDoctorEvaluateRequest) -> Option<PathBuf> {
+    request
+        .generated_helix_config_path
+        .parent()
+        .map(Path::to_path_buf)
+}
+
+fn evaluate_managed_steel_surface(request: &HelixDoctorEvaluateRequest) -> HelixDoctorFinding {
+    let Some(steel_dir) = generated_steel_dir(request) else {
+        return HelixDoctorFinding {
+            status: "warning".into(),
+            message: "Managed Helix Steel config path could not be resolved".into(),
+            details: Some(format!(
+                "Generated Helix config path has no parent directory: {}",
+                request.generated_helix_config_path.display()
+            )),
+            fix_available: false,
+            fix_commands: vec![],
+            conflicts: vec![],
+        };
+    };
+
+    let raw_hx = request.runtime_dir.join("libexec").join("hx");
+    let helix_module_path = steel_dir.join(STEEL_CONFIG_MODULE);
+    let init_module_path = steel_dir.join(STEEL_INIT_MODULE);
+
+    if !helix_module_path.exists() || !init_module_path.exists() {
+        let mut missing = Vec::new();
+        if !helix_module_path.exists() {
+            missing.push(helix_module_path.display().to_string());
+        }
+        if !init_module_path.exists() {
+            missing.push(init_module_path.display().to_string());
+        }
+        return HelixDoctorFinding {
+            status: "warning".into(),
+            message: "Managed Helix Steel entrypoints are missing".into(),
+            details: Some(format!(
+                "Missing files:\n- {}\nLaunch a managed Helix session again to regenerate the Steel config surface.",
+                missing.join("\n- ")
+            )),
+            fix_available: false,
+            fix_commands: vec![],
+            conflicts: vec![],
+        };
+    }
+
+    let helix_module = match fs::read_to_string(&helix_module_path) {
+        Ok(raw) => raw,
+        Err(error) => {
+            return HelixDoctorFinding {
+                status: "warning".into(),
+                message: "Managed Helix Steel command module could not be read".into(),
+                details: Some(format!(
+                    "Steel module: {}\nUnderlying error: {}",
+                    helix_module_path.display(),
+                    error
+                )),
+                fix_available: false,
+                fix_commands: vec![],
+                conflicts: vec![],
+            };
+        }
+    };
+    let init_module = match fs::read_to_string(&init_module_path) {
+        Ok(raw) => raw,
+        Err(error) => {
+            return HelixDoctorFinding {
+                status: "warning".into(),
+                message: "Managed Helix Steel init module could not be read".into(),
+                details: Some(format!(
+                    "Steel init: {}\nUnderlying error: {}",
+                    init_module_path.display(),
+                    error
+                )),
+                fix_available: false,
+                fix_commands: vec![],
+                conflicts: vec![],
+            };
+        }
+    };
+
+    let provided = provided_steel_symbols(&helix_module);
+    let metadata = steel_command_metadata_lines(&helix_module);
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+
+    if !raw_hx.exists() {
+        errors.push(format!(
+            "bundled raw Helix binary is missing: {}",
+            raw_hx.display()
+        ));
+    } else if !is_executable_file(&raw_hx) {
+        errors.push(format!(
+            "bundled raw Helix binary is not executable: {}",
+            raw_hx.display()
+        ));
+    }
+
+    for required in ["eval-buffer", "evalp", "yzx-new-shell"] {
+        if !provided.iter().any(|name| name == required) {
+            errors.push(format!("public Steel command is missing: {required}"));
+        }
+    }
+
+    if helix_module.contains("cogs/recentf.scm")
+        && !provided.iter().any(|name| name == "recentf-open-files")
+    {
+        errors.push("recentf is loaded but recentf-open-files is not public".into());
+    }
+
+    for internal in [
+        "recentf-snapshot",
+        "show-splash",
+        "refresh-files",
+        "flush-recent-files",
+        "get-recent-files",
+        "set-recent-file-location!",
+    ] {
+        if provided.iter().any(|name| name == internal) {
+            warnings.push(format!(
+                "internal Steel command leaked publicly: {internal}"
+            ));
+        }
+    }
+
+    if provided.iter().any(|name| name.starts_with("yazelix.")) {
+        warnings.push("module-prefixed yazelix.* Steel commands leaked publicly".into());
+    }
+
+    if init_module.contains("prefix-in")
+        || init_module.contains("yazelix.")
+        || init_module.contains("show-splash")
+    {
+        warnings.push(
+            "init.scm contains command-surface bindings that should stay in helix.scm".into(),
+        );
+    }
+
+    if !helix_module.contains("yzx-new-shell-command")
+        || !helix_module.contains("yzx_control\\\" zellij open-terminal")
+    {
+        errors.push("yzx-new-shell is not wired to the Yazelix terminal opener".into());
+    }
+
+    if errors.is_empty() && warnings.is_empty() {
+        return HelixDoctorFinding {
+            status: "ok".into(),
+            message: "Managed Helix Steel command surface is healthy".into(),
+            details: Some(format!(
+                "Steel module: {}\nSteel init: {}\nPublic commands: {}\nCommand metadata:\n- {}",
+                helix_module_path.display(),
+                init_module_path.display(),
+                provided.join(", "),
+                metadata.join("\n- ")
+            )),
+            fix_available: false,
+            fix_commands: vec![],
+            conflicts: vec![],
+        };
+    }
+
+    let status = if errors.is_empty() {
+        "warning"
+    } else {
+        "error"
+    };
+    let mut details = Vec::new();
+    if !errors.is_empty() {
+        details.push(format!("Errors:\n- {}", errors.join("\n- ")));
+    }
+    if !warnings.is_empty() {
+        details.push(format!("Warnings:\n- {}", warnings.join("\n- ")));
+    }
+    details.push(format!(
+        "Steel module: {}\nSteel init: {}\nPublic commands: {}\nCommand metadata:\n- {}",
+        helix_module_path.display(),
+        init_module_path.display(),
+        provided.join(", "),
+        metadata.join("\n- ")
+    ));
+
+    HelixDoctorFinding {
+        status: status.into(),
+        message: "Managed Helix Steel command surface is unhealthy".into(),
+        details: Some(details.join("\n\n")),
         fix_available: false,
         fix_commands: vec![],
         conflicts: vec![],
@@ -504,6 +792,7 @@ fn evaluate_managed_integration(request: &HelixDoctorEvaluateRequest) -> Vec<Hel
         fix_commands: vec![],
         conflicts: vec![],
     });
+    out.push(evaluate_managed_steel_surface(request));
 
     out
 }
@@ -537,6 +826,7 @@ mod tests {
             config_dir: tmp.path().join("config"),
             user_config_helix_runtime_dir: ur.clone(),
             hx_exe_path: None,
+            helix_external: None,
             include_runtime_health: false,
             editor_command: Some("nvim".into()),
             managed_helix_user_config_path: home.join("m.toml"),
@@ -578,6 +868,7 @@ mod tests {
             config_dir: tmp.path().join("config"),
             user_config_helix_runtime_dir: tmp.path().join("norun"),
             hx_exe_path: Some(fake_hx),
+            helix_external: None,
             include_runtime_health: true,
             editor_command: Some("hx".into()),
             managed_helix_user_config_path: tmp.path().join("m.toml"),
@@ -592,6 +883,82 @@ mod tests {
         assert_eq!(h.status, "ok");
     }
 
+    // Defends: doctor rejects external Helix pairs whose binary or runtime path cannot be used.
+    #[test]
+    fn external_pair_reports_missing_paths_as_error() {
+        let tmp = TempDir::new().unwrap();
+        let req = HelixDoctorEvaluateRequest {
+            home_dir: tmp.path().join("home"),
+            runtime_dir: tmp.path().join("runtime"),
+            config_dir: tmp.path().join("config"),
+            user_config_helix_runtime_dir: tmp.path().join("ur"),
+            hx_exe_path: None,
+            helix_external: Some(HelixExternalPair {
+                binary: tmp.path().join("missing-hx").display().to_string(),
+                runtime_path: tmp.path().join("missing-runtime").display().to_string(),
+            }),
+            include_runtime_health: false,
+            editor_command: Some("hx".into()),
+            managed_helix_user_config_path: tmp.path().join("m.toml"),
+            native_helix_config_path: tmp.path().join("n.toml"),
+            generated_helix_config_path: tmp.path().join("g.toml"),
+            expected_managed_config: None,
+            build_managed_config_error: None,
+            reveal_binding_expected: ":sh yzx reveal \"%{buffer_name}\"".into(),
+        };
+
+        let finding = evaluate_external_pair(&req).unwrap();
+        assert_eq!(finding.status, "error");
+        assert!(
+            finding
+                .details
+                .as_deref()
+                .unwrap()
+                .contains("runtime_path does not exist")
+        );
+    }
+
+    // Defends: complete external Helix pairs are reported with the user-owned binary/runtime mismatch warning.
+    #[test]
+    fn external_pair_reports_user_owned_mismatch_risk() {
+        let tmp = TempDir::new().unwrap();
+        let fake_hx = tmp.path().join("hx");
+        let runtime = tmp.path().join("runtime");
+        write_executable(&fake_hx, "#!/bin/sh\nexit 0\n");
+        fs::create_dir_all(&runtime).unwrap();
+
+        let req = HelixDoctorEvaluateRequest {
+            home_dir: tmp.path().join("home"),
+            runtime_dir: tmp.path().join("runtime-root"),
+            config_dir: tmp.path().join("config"),
+            user_config_helix_runtime_dir: tmp.path().join("ur"),
+            hx_exe_path: Some(fake_hx.clone()),
+            helix_external: Some(HelixExternalPair {
+                binary: fake_hx.display().to_string(),
+                runtime_path: runtime.display().to_string(),
+            }),
+            include_runtime_health: false,
+            editor_command: Some("hx".into()),
+            managed_helix_user_config_path: tmp.path().join("m.toml"),
+            native_helix_config_path: tmp.path().join("n.toml"),
+            generated_helix_config_path: tmp.path().join("g.toml"),
+            expected_managed_config: None,
+            build_managed_config_error: None,
+            reveal_binding_expected: ":sh yzx reveal \"%{buffer_name}\"".into(),
+        };
+
+        let data = evaluate_helix_doctor_report(&req);
+        let finding = data.external_pair.unwrap();
+        assert_eq!(finding.status, "warning");
+        assert!(
+            finding
+                .details
+                .as_deref()
+                .unwrap()
+                .contains("Binary/runtime mismatches are user-owned risk")
+        );
+    }
+
     // Defends: managed Helix integration skips non-Helix editor commands instead of fabricating findings.
     #[test]
     fn managed_integration_skips_non_helix_editor() {
@@ -602,6 +969,7 @@ mod tests {
             config_dir: tmp.path().join("config"),
             user_config_helix_runtime_dir: tmp.path().join("ur"),
             hx_exe_path: None,
+            helix_external: None,
             include_runtime_health: false,
             editor_command: Some("nvim".into()),
             managed_helix_user_config_path: tmp.path().join("m.toml"),
@@ -624,6 +992,7 @@ mod tests {
             config_dir: tmp.path().join("config"),
             user_config_helix_runtime_dir: tmp.path().join("ur"),
             hx_exe_path: None,
+            helix_external: None,
             include_runtime_health: false,
             editor_command: None,
             managed_helix_user_config_path: tmp.path().join("m.toml"),
@@ -654,6 +1023,7 @@ mod tests {
             config_dir: tmp.path().join("config"),
             user_config_helix_runtime_dir: tmp.path().join("ur"),
             hx_exe_path: Some(fake_hx),
+            helix_external: None,
             include_runtime_health: false,
             editor_command: None,
             managed_helix_user_config_path: tmp.path().join("m.toml"),
@@ -683,6 +1053,7 @@ mod tests {
             config_dir: tmp.path().join("config"),
             user_config_helix_runtime_dir: tmp.path().join("ur"),
             hx_exe_path: None,
+            helix_external: None,
             include_runtime_health: false,
             editor_command: Some("hx".into()),
             managed_helix_user_config_path: tmp.path().join("m.toml"),
@@ -725,6 +1096,7 @@ mod tests {
             config_dir: tmp.path().join("config"),
             user_config_helix_runtime_dir: tmp.path().join("ur"),
             hx_exe_path: None,
+            helix_external: None,
             include_runtime_health: false,
             editor_command: Some("hx".into()),
             managed_helix_user_config_path: tmp.path().join("m.toml"),
@@ -755,5 +1127,121 @@ mod tests {
                 .unwrap()
                 .contains("`:` to enter Helix command mode")
         );
+    }
+
+    // Defends: doctor verifies the generated Steel public command surface, including the Yazelix shell action, after managed Helix materialization.
+    #[test]
+    fn managed_integration_reports_healthy_steel_surface() {
+        let tmp = TempDir::new().unwrap();
+        let runtime_dir = tmp.path().join("runtime");
+        let generated_dir = tmp.path().join("state/configs/helix");
+        let generated = generated_dir.join("config.toml");
+        fs::create_dir_all(runtime_dir.join("libexec")).unwrap();
+        fs::create_dir_all(&generated_dir).unwrap();
+        write_executable(&runtime_dir.join("libexec/hx"), "#!/bin/sh\nexit 0\n");
+        fs::write(
+            &generated,
+            "[keys.normal]\n\":\" = \"command_mode\"\nA-r = ':sh yzx reveal \"%{buffer_name}\"'\n",
+        )
+        .unwrap();
+        fs::write(
+            generated_dir.join("helix.scm"),
+            r#"(provide eval-buffer evalp yzx-new-shell recentf-open-files)
+(require (only-in "cogs/recentf.scm" recentf-open-files recentf-snapshot))
+(define (yzx-new-shell-command target)
+  (string-append "\"$YAZELIX_RUNTIME_DIR/libexec/yzx_control\" zellij open-terminal '" target "'"))
+"#,
+        )
+        .unwrap();
+        fs::write(generated_dir.join("init.scm"), ";; generated\n").unwrap();
+
+        let req = HelixDoctorEvaluateRequest {
+            home_dir: tmp.path().join("home"),
+            runtime_dir,
+            config_dir: tmp.path().join("config"),
+            user_config_helix_runtime_dir: tmp.path().join("ur"),
+            hx_exe_path: None,
+            helix_external: None,
+            include_runtime_health: false,
+            editor_command: Some("hx".into()),
+            managed_helix_user_config_path: tmp.path().join("m.toml"),
+            native_helix_config_path: tmp.path().join("n.toml"),
+            generated_helix_config_path: generated,
+            expected_managed_config: Some(serde_json::json!({
+                "keys": {
+                    "normal": {
+                        ":": "command_mode",
+                        "A-r": ":sh yzx reveal \"%{buffer_name}\""
+                    }
+                }
+            })),
+            build_managed_config_error: None,
+            reveal_binding_expected: ":sh yzx reveal \"%{buffer_name}\"".into(),
+        };
+
+        let findings = evaluate_managed_integration(&req);
+        assert_eq!(findings.len(), 2);
+        assert_eq!(
+            findings[0].message,
+            "Managed Helix reveal integration is healthy"
+        );
+        assert_eq!(
+            findings[1].message,
+            "Managed Helix Steel command surface is healthy"
+        );
+    }
+
+    // Regression: internal Steel plugin helpers should not leak back into Helix command completion.
+    #[test]
+    fn managed_integration_flags_leaky_steel_surface() {
+        let tmp = TempDir::new().unwrap();
+        let runtime_dir = tmp.path().join("runtime");
+        let generated_dir = tmp.path().join("state/configs/helix");
+        let generated = generated_dir.join("config.toml");
+        fs::create_dir_all(runtime_dir.join("libexec")).unwrap();
+        fs::create_dir_all(&generated_dir).unwrap();
+        write_executable(&runtime_dir.join("libexec/hx"), "#!/bin/sh\nexit 0\n");
+        fs::write(
+            &generated,
+            "[keys.normal]\n\":\" = \"command_mode\"\nA-r = ':sh yzx reveal \"%{buffer_name}\"'\n",
+        )
+        .unwrap();
+        fs::write(
+            generated_dir.join("helix.scm"),
+            "(provide eval-buffer evalp show-splash)\n",
+        )
+        .unwrap();
+        fs::write(generated_dir.join("init.scm"), ";; generated\n").unwrap();
+
+        let req = HelixDoctorEvaluateRequest {
+            home_dir: tmp.path().join("home"),
+            runtime_dir,
+            config_dir: tmp.path().join("config"),
+            user_config_helix_runtime_dir: tmp.path().join("ur"),
+            hx_exe_path: None,
+            helix_external: None,
+            include_runtime_health: false,
+            editor_command: Some("hx".into()),
+            managed_helix_user_config_path: tmp.path().join("m.toml"),
+            native_helix_config_path: tmp.path().join("n.toml"),
+            generated_helix_config_path: generated,
+            expected_managed_config: Some(serde_json::json!({
+                "keys": {
+                    "normal": {
+                        ":": "command_mode",
+                        "A-r": ":sh yzx reveal \"%{buffer_name}\""
+                    }
+                }
+            })),
+            build_managed_config_error: None,
+            reveal_binding_expected: ":sh yzx reveal \"%{buffer_name}\"".into(),
+        };
+
+        let findings = evaluate_managed_integration(&req);
+        assert_eq!(findings.len(), 2);
+        assert_eq!(findings[1].status, "error");
+        let details = findings[1].details.as_deref().unwrap();
+        assert!(details.contains("public Steel command is missing: yzx-new-shell"));
+        assert!(details.contains("internal Steel command leaked publicly: show-splash"));
     }
 }
