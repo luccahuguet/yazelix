@@ -20,11 +20,13 @@ let
     inherit pkgs fenixPkgs;
     src = repoRoot;
   };
+  cargoCrap = import ./packaging/cargo_crap.nix { inherit pkgs; };
   openssl = pkgs.openssl;
   maintainerDeps =
     [ pkgs.github-cli ]
     ++ [ pkgs.nu-lint ]
     ++ [ pkgs.cargo-nextest ]
+    ++ [ cargoCrap ]
     ++ [ brPackage ]
     ++ [ rustWasiToolchain ]
     ++ [ openssl ];

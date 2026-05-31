@@ -30,6 +30,7 @@ Use three different homes for three different kinds of speed.
 
 - Personal Home Manager owns frequently used command-line tools that are not part of the shipped Yazelix runtime: `cargo-nextest`, `cargo-udeps`, `tokei`, `gh`, `jq`, `nu-lint`, Beads, and similar maintainer binaries
 - The Yazelix maintainer shell owns reproducible repo gates and runtime-adjacent tools that should be available to contributors from the flake
+- The Yazelix maintainer shell also packages focused Rust audit tools when nixpkgs does not, such as `cargo-crap` for optional CRAP/change-risk metric reviews
 - Cargo compilation outputs, incremental state, and `target/` directories stay project-local; moving those into Home Manager would not make builds cleaner and would make cache ownership harder to reason about
 
 `cargo-udeps` is a manual cleanup audit, not a default gate. It requires a nightly Rust compiler because it uses unstable compiler flags, so it is best run from a loaded maintainer profile that provides both the `cargo-udeps` binary and a nightly toolchain, for example:
@@ -40,6 +41,8 @@ cargo +nightly udeps --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.t
 ```
 
 Do not add `cargo-udeps` to user runtime packages. Runtime users do not need Rust cleanup tools to launch Yazelix.
+
+`cargo-crap` is a maintainer audit tool for optional change-risk/complexity reviews. It belongs in the maintainer shell, not in user runtime packages or default package-time tests.
 
 ## Runtime Package Impact
 
