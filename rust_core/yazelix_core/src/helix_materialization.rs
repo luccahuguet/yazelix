@@ -2,9 +2,14 @@ use crate::active_config_surface::primary_config_paths;
 use crate::atomic_fs::{write_bytes_atomic, write_text_atomic};
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
+use crate::helix_steel_plugins::{
+    SteelPluginManifest, SteelPluginManifestCommand, SteelPluginManifestError,
+    parse_steel_plugin_manifests,
+};
 use crate::user_config_paths;
 use serde::Serialize;
 use serde_json::{Map as JsonMap, Value as JsonValue};
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use toml::Value as TomlValue;
@@ -85,18 +90,37 @@ impl SteelCommandVisibility {
     }
 }
 
-impl SteelCommandSpec {
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ActiveSteelCommand {
+    name: String,
+    owner: String,
+    description: String,
+    visibility: SteelCommandVisibility,
+}
+
+impl ActiveSteelCommand {
     fn metadata(self) -> SteelCommandMetadata {
         SteelCommandMetadata {
-            name: self.name.to_string(),
-            owner: self.owner.to_string(),
-            description: self.description.to_string(),
+            name: self.name,
+            owner: self.owner,
+            description: self.description,
             visibility: self.visibility.as_str().to_string(),
         }
     }
 
-    fn is_public(self) -> bool {
+    fn is_public(&self) -> bool {
         self.visibility == SteelCommandVisibility::Public
+    }
+}
+
+impl SteelCommandSpec {
+    fn active(self) -> ActiveSteelCommand {
+        ActiveSteelCommand {
+            name: self.name.to_string(),
+            owner: self.owner.to_string(),
+            description: self.description.to_string(),
+            visibility: self.visibility,
+        }
     }
 }
 
@@ -114,6 +138,7 @@ struct SteelPluginSelection {
     recentf: bool,
     splash: bool,
     spacemacs_theme: bool,
+    custom_plugins: Vec<SteelPluginManifest>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -294,7 +319,25 @@ fn load_steel_plugin_selection(
         recentf: normalized_bool(&normalized, "helix_plugin_recentf"),
         splash: normalized_bool(&normalized, "helix_plugin_splash"),
         spacemacs_theme: normalized_bool(&normalized, "helix_plugin_spacemacs_theme"),
+        custom_plugins: parse_steel_plugin_manifests(normalized.get("helix_steel_plugins"))
+            .map_err(helix_steel_plugin_manifest_error)?,
     })
+}
+
+fn helix_steel_plugin_manifest_error(error: SteelPluginManifestError) -> CoreError {
+    CoreError::classified(
+        ErrorClass::Config,
+        "invalid_helix_steel_plugin_manifest",
+        format!(
+            "Invalid Helix Steel plugin manifest at {}: {}",
+            error.path, error.message
+        ),
+        "Fix helix.steel_plugins in ~/.config/yazelix/settings.jsonc and retry.",
+        serde_json::json!({
+            "path": error.path,
+            "message": error.message,
+        }),
+    )
 }
 
 fn normalized_bool(config: &JsonMap<String, JsonValue>, key: &str) -> bool {
@@ -443,6 +486,7 @@ fn materialize_steel_config(
     show_splash: bool,
 ) -> Result<SteelMaterializationData, CoreError> {
     let selected = selected_steel_plugins(selection);
+    validate_active_steel_plugins(&selected, &selection.custom_plugins)?;
     let mut copied_plugin_files = Vec::new();
 
     for relative_path in STEEL_SUPPORT_FILES {
@@ -459,11 +503,18 @@ fn materialize_steel_config(
         copied_plugin_files.push(target.to_string_lossy().into_owned());
     }
 
+    for spec in &selection.custom_plugins {
+        let source = resolve_custom_steel_plugin_source(config_dir, spec)?;
+        let target = generated_dir.join(&spec.source_relative_path);
+        copy_steel_plugin_file(&source, &target)?;
+        copied_plugin_files.push(target.to_string_lossy().into_owned());
+    }
+
     let helix_module_path = generated_dir.join(STEEL_CONFIG_MODULE);
     let init_path = generated_dir.join(STEEL_INIT_MODULE);
     write_text_atomic(
         &helix_module_path,
-        &render_steel_helix_module(&selected, show_splash),
+        &render_steel_helix_module(&selected, &selection.custom_plugins, show_splash),
     )?;
     write_text_atomic(
         &init_path,
@@ -477,9 +528,10 @@ fn materialize_steel_config(
         enabled_plugins: selected
             .iter()
             .map(|spec| spec.id.to_string())
+            .chain(selection.custom_plugins.iter().map(|spec| spec.id.clone()))
             .collect::<Vec<_>>(),
         copied_plugin_files,
-        commands: active_steel_commands(&selected),
+        commands: active_steel_commands(&selected, &selection.custom_plugins),
     })
 }
 
@@ -495,18 +547,116 @@ fn selected_steel_plugins(selection: &SteelPluginSelection) -> Vec<&'static Stee
         .collect()
 }
 
-fn active_steel_command_specs(selected: &[&SteelPluginSpec]) -> Vec<SteelCommandSpec> {
-    let mut commands = BASE_STEEL_COMMANDS.to_vec();
+fn validate_active_steel_plugins(
+    selected: &[&SteelPluginSpec],
+    custom_plugins: &[SteelPluginManifest],
+) -> Result<(), CoreError> {
+    let mut plugin_ids = BTreeSet::new();
+    for spec in STEEL_PLUGIN_SPECS {
+        plugin_ids.insert(spec.id.to_string());
+    }
+    for spec in custom_plugins {
+        if !plugin_ids.insert(spec.id.clone()) {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "duplicate_helix_steel_plugin_id",
+                format!(
+                    "Helix Steel plugin id `{}` conflicts with another plugin.",
+                    spec.id
+                ),
+                "Choose a unique id in helix.steel_plugins and retry.",
+                serde_json::json!({ "plugin_id": &spec.id }),
+            ));
+        }
+    }
+
+    let mut source_paths = BTreeSet::new();
+    for relative_path in STEEL_SUPPORT_FILES {
+        source_paths.insert((*relative_path).to_string());
+    }
     for spec in selected {
-        commands.extend(spec.commands.iter().copied());
+        source_paths.insert(spec.source_relative_path.to_string());
+    }
+    for spec in custom_plugins {
+        if !source_paths.insert(spec.source_relative_path.clone()) {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "duplicate_helix_steel_plugin_source",
+                format!(
+                    "Helix Steel plugin source `{}` is already loaded by another active plugin.",
+                    spec.source_relative_path
+                ),
+                "Use a distinct source path for each active Helix Steel plugin and retry.",
+                serde_json::json!({
+                    "plugin_id": &spec.id,
+                    "source_relative_path": &spec.source_relative_path,
+                }),
+            ));
+        }
+    }
+
+    let mut command_names = BTreeSet::new();
+    for command in active_steel_command_specs(selected, custom_plugins) {
+        if !command_names.insert(command.name.clone()) {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "duplicate_helix_steel_plugin_command",
+                format!(
+                    "Helix Steel command `{}` is declared more than once.",
+                    command.name
+                ),
+                "Keep every public and internal Helix Steel command name unique across built-in and custom plugins.",
+                serde_json::json!({ "command": command.name }),
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+fn active_steel_command_specs(
+    selected: &[&SteelPluginSpec],
+    custom_plugins: &[SteelPluginManifest],
+) -> Vec<ActiveSteelCommand> {
+    let mut commands = BASE_STEEL_COMMANDS
+        .iter()
+        .copied()
+        .map(SteelCommandSpec::active)
+        .collect::<Vec<_>>();
+    for spec in selected {
+        commands.extend(spec.commands.iter().copied().map(SteelCommandSpec::active));
+    }
+    for spec in custom_plugins {
+        commands.extend(spec.public_commands.iter().map(|command| {
+            active_custom_steel_command(spec, command, SteelCommandVisibility::Public)
+        }));
+        commands.extend(spec.internal_commands.iter().map(|command| {
+            active_custom_steel_command(spec, command, SteelCommandVisibility::Internal)
+        }));
     }
     commands
 }
 
-fn active_steel_commands(selected: &[&SteelPluginSpec]) -> Vec<SteelCommandMetadata> {
-    active_steel_command_specs(selected)
+fn active_custom_steel_command(
+    plugin: &SteelPluginManifest,
+    command: &SteelPluginManifestCommand,
+    visibility: SteelCommandVisibility,
+) -> ActiveSteelCommand {
+    ActiveSteelCommand {
+        name: command.name.clone(),
+        owner: plugin.id.clone(),
+        description: command.description.clone(),
+        visibility,
+    }
+}
+
+fn active_steel_commands(
+    selected: &[&SteelPluginSpec],
+    custom_plugins: &[SteelPluginManifest],
+) -> Vec<SteelCommandMetadata> {
+    active_steel_command_specs(selected, custom_plugins)
         .into_iter()
-        .map(SteelCommandSpec::metadata)
+        .map(ActiveSteelCommand::metadata)
         .collect()
 }
 
@@ -557,12 +707,44 @@ fn resolve_steel_file_source(
     ))
 }
 
+fn resolve_custom_steel_plugin_source(
+    config_dir: &Path,
+    spec: &SteelPluginManifest,
+) -> Result<PathBuf, CoreError> {
+    let source = config_dir
+        .join("helix")
+        .join(STEEL_PLUGIN_ROOT)
+        .join(&spec.source_relative_path);
+    if source.is_file() {
+        return Ok(source);
+    }
+
+    Err(CoreError::classified(
+        ErrorClass::Config,
+        "missing_helix_steel_plugin_manifest_source",
+        format!(
+            "Helix Steel plugin `{}` declares missing source `{}`.",
+            spec.id, spec.source_relative_path
+        ),
+        format!(
+            "Create {} below {}, or remove the manifest from helix.steel_plugins.",
+            spec.source_relative_path,
+            config_dir.join("helix").join(STEEL_PLUGIN_ROOT).display()
+        ),
+        serde_json::json!({
+            "plugin_id": &spec.id,
+            "source_relative_path": &spec.source_relative_path,
+            "source": source.to_string_lossy(),
+        }),
+    ))
+}
+
 fn copy_steel_plugin_file(source: &Path, target: &Path) -> Result<(), CoreError> {
     let bytes = fs::read(source).map_err(|source_error| {
         CoreError::io(
             "read_helix_steel_plugin",
             "Could not read a managed Helix Steel plugin source file",
-            "Reinstall Yazelix so the runtime includes readable Helix Steel plugin files.",
+            "Check permissions for the source plugin file, or reinstall Yazelix if it is runtime-owned.",
             source.to_string_lossy(),
             source_error,
         )
@@ -570,18 +752,21 @@ fn copy_steel_plugin_file(source: &Path, target: &Path) -> Result<(), CoreError>
     write_bytes_atomic(target, &bytes)
 }
 
-fn render_steel_helix_module(selected: &[&SteelPluginSpec], show_splash: bool) -> String {
-    let commands = active_steel_command_specs(selected);
+fn render_steel_helix_module(
+    selected: &[&SteelPluginSpec],
+    custom_plugins: &[SteelPluginManifest],
+    show_splash: bool,
+) -> String {
+    let commands = active_steel_command_specs(selected, custom_plugins);
     let public_commands = commands
         .iter()
-        .copied()
         .filter(|command| command.is_public())
         .collect::<Vec<_>>();
     let provide_line = format!(
         "(provide {})",
         public_commands
             .iter()
-            .map(|command| command.name)
+            .map(|command| command.name.as_str())
             .collect::<Vec<_>>()
             .join(" ")
     );
@@ -639,7 +824,32 @@ fn render_steel_helix_module(selected: &[&SteelPluginSpec], show_splash: bool) -
         }
         lines.push("".to_string());
     }
+    for spec in custom_plugins {
+        lines.push(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;".to_string());
+        lines.push("".to_string());
+        lines.extend(render_custom_steel_plugin_module_lines(spec));
+        lines.push("".to_string());
+    }
     lines.join("\n") + "\n"
+}
+
+fn render_custom_steel_plugin_module_lines(spec: &SteelPluginManifest) -> Vec<String> {
+    let command_names = spec.command_names();
+    let mut lines = if command_names.is_empty() {
+        vec![format!("(require \"{}\")", spec.source_relative_path)]
+    } else {
+        vec![format!(
+            "(require (only-in \"{}\" {}))",
+            spec.source_relative_path,
+            command_names.join(" ")
+        )]
+    };
+    lines.extend(
+        spec.startup_commands
+            .iter()
+            .map(|command| format!("({command})")),
+    );
+    lines
 }
 
 fn render_steel_init_module(_selected: &[&SteelPluginSpec], _show_splash: bool) -> String {
@@ -745,6 +955,18 @@ mod tests {
             .iter()
             .filter(|command| command.visibility == visibility)
             .map(|command| command.name.clone())
+            .collect()
+    }
+
+    fn provided_symbols(module: &str) -> Vec<String> {
+        module
+            .lines()
+            .filter_map(|line| {
+                line.trim()
+                    .strip_prefix("(provide ")
+                    .and_then(|rest| rest.strip_suffix(')'))
+            })
+            .flat_map(|symbols| symbols.split_whitespace().map(str::to_string))
             .collect()
     }
 
@@ -1036,5 +1258,174 @@ mod tests {
         );
         assert!(!generated_helix.contains("(provide recentf-snapshot)"));
         assert!(!generated_helix.contains("show-splash"));
+    }
+
+    // Defends: custom Helix Steel manifests copy user-owned plugin files, expose only public commands, and run declared startup commands from helix.scm.
+    #[test]
+    fn helix_materialization_loads_custom_steel_plugin_manifest() {
+        let tmp = TempDir::new().unwrap();
+        let runtime_dir = tmp.path().join("runtime");
+        let config_dir = tmp.path().join("config");
+        let state_dir = tmp.path().join("state");
+        write_runtime_layout(&runtime_dir);
+        fs::create_dir_all(config_dir.join("helix/steel_plugins/custom")).unwrap();
+        fs::write(
+            config_dir.join("settings.jsonc"),
+            r#"{
+  "helix": {
+    "plugins": {
+      "recentf": false,
+      "splash": false,
+      "spacemacs_theme": false
+    },
+    "steel_plugins": [
+      {
+        "id": "custom_picker",
+        "source": "custom/picker.scm",
+        "public_commands": ["custom-open"],
+        "internal_commands": ["custom-refresh"],
+        "startup_commands": ["custom-refresh"],
+        "command_descriptions": {
+          "custom-open": "Open the custom picker",
+          "custom-refresh": "Refresh custom picker state"
+        }
+      }
+    ]
+  }
+}
+"#,
+        )
+        .unwrap();
+        fs::write(
+            config_dir.join("helix/steel_plugins/custom/picker.scm"),
+            "(provide custom-open custom-refresh)\n",
+        )
+        .unwrap();
+
+        let data = generate_helix_materialization(&HelixMaterializationRequest {
+            runtime_dir,
+            config_dir,
+            state_dir: state_dir.clone(),
+            show_splash: false,
+        })
+        .unwrap();
+
+        let generated_plugin = state_dir.join("configs/helix/custom/picker.scm");
+        let generated_helix =
+            fs::read_to_string(state_dir.join("configs/helix/helix.scm")).unwrap();
+        let symbols = provided_symbols(&generated_helix);
+
+        assert_eq!(data.enabled_steel_plugins, vec!["custom_picker"]);
+        assert_eq!(
+            fs::read_to_string(&generated_plugin).unwrap(),
+            "(provide custom-open custom-refresh)\n"
+        );
+        assert!(
+            generated_helix
+                .contains("(require (only-in \"custom/picker.scm\" custom-open custom-refresh))")
+        );
+        assert!(generated_helix.contains("(custom-refresh)"));
+        assert!(
+            generated_helix.contains(";; - custom-open [custom_picker]: Open the custom picker")
+        );
+        assert!(symbols.contains(&"custom-open".to_string()));
+        assert!(!symbols.contains(&"custom-refresh".to_string()));
+        assert_eq!(
+            steel_command_names(&data, "public"),
+            vec![
+                "eval-buffer".to_string(),
+                "evalp".to_string(),
+                "yazelix-open-shell-here".to_string(),
+                "custom-open".to_string()
+            ]
+        );
+        assert_eq!(
+            steel_command_names(&data, "internal"),
+            vec!["custom-refresh".to_string()]
+        );
+    }
+
+    // Defends: custom manifests fail before writing generated Steel files when they collide with public or internal command names.
+    #[test]
+    fn helix_materialization_rejects_duplicate_custom_steel_command() {
+        let tmp = TempDir::new().unwrap();
+        let runtime_dir = tmp.path().join("runtime");
+        let config_dir = tmp.path().join("config");
+        let state_dir = tmp.path().join("state");
+        write_runtime_layout(&runtime_dir);
+        fs::create_dir_all(&config_dir).unwrap();
+        fs::write(
+            config_dir.join("settings.jsonc"),
+            r#"{
+  "helix": {
+    "plugins": {
+      "recentf": false,
+      "splash": false,
+      "spacemacs_theme": false
+    },
+    "steel_plugins": [
+      {
+        "id": "bad_commands",
+        "source": "bad_commands.scm",
+        "public_commands": ["evalp"]
+      }
+    ]
+  }
+}
+"#,
+        )
+        .unwrap();
+
+        let error = generate_helix_materialization(&HelixMaterializationRequest {
+            runtime_dir,
+            config_dir,
+            state_dir,
+            show_splash: false,
+        })
+        .unwrap_err();
+
+        assert_eq!(error.code(), "duplicate_helix_steel_plugin_command");
+    }
+
+    // Defends: declared custom plugin files must exist below the Yazelix-owned helix/steel_plugins directory.
+    #[test]
+    fn helix_materialization_rejects_missing_custom_steel_plugin_source() {
+        let tmp = TempDir::new().unwrap();
+        let runtime_dir = tmp.path().join("runtime");
+        let config_dir = tmp.path().join("config");
+        let state_dir = tmp.path().join("state");
+        write_runtime_layout(&runtime_dir);
+        fs::create_dir_all(&config_dir).unwrap();
+        fs::write(
+            config_dir.join("settings.jsonc"),
+            r#"{
+  "helix": {
+    "plugins": {
+      "recentf": false,
+      "splash": false,
+      "spacemacs_theme": false
+    },
+    "steel_plugins": [
+      {
+        "id": "missing_file",
+        "source": "missing_file.scm",
+        "public_commands": ["missing-open"]
+      }
+    ]
+  }
+}
+"#,
+        )
+        .unwrap();
+
+        let error = generate_helix_materialization(&HelixMaterializationRequest {
+            runtime_dir,
+            config_dir,
+            state_dir,
+            show_splash: false,
+        })
+        .unwrap_err();
+
+        assert_eq!(error.code(), "missing_helix_steel_plugin_manifest_source");
     }
 }

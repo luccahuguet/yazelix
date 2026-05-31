@@ -96,7 +96,8 @@
       "description": "Helix-specific runtime integration settings",
       "required": [
         "external",
-        "plugins"
+        "plugins",
+        "steel_plugins"
       ],
       "additionalProperties": false,
       "properties": {
@@ -141,6 +142,79 @@
             },
             "spacemacs_theme": {
               "type": "boolean"
+            }
+          }
+        },
+        "steel_plugins": {
+          "type": "array",
+          "description": "Declarative manifests for user-owned Helix Steel plugins copied from ~/.config/yazelix/helix/steel_plugins",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "source"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_.-]+$"
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_./-]+\\.scm$",
+                "not": {
+                  "anyOf": [
+                    {
+                      "pattern": "^/"
+                    },
+                    {
+                      "pattern": "\\\\"
+                    },
+                    {
+                      "pattern": "(^|/)\\.\\.?(/|$)"
+                    },
+                    {
+                      "pattern": "//"
+                    }
+                  ]
+                }
+              },
+              "public_commands": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9_.!?+*/<=>-]+$"
+                }
+              },
+              "internal_commands": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9_.!?+*/<=>-]+$"
+                }
+              },
+              "startup_commands": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9_.!?+*/<=>-]+$"
+                }
+              },
+              "command_descriptions": {
+                "type": "object",
+                "propertyNames": {
+                  "pattern": "^[A-Za-z0-9_.!?+*/<=>-]+$"
+                },
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
             }
           }
         }

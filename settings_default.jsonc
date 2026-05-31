@@ -16,7 +16,8 @@
       "recentf": true,
       "splash": false,
       "spacemacs_theme": false
-    }
+    },
+    "steel_plugins": []
   },
   "editor": {
     "command": "",

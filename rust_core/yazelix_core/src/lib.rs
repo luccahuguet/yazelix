@@ -23,6 +23,7 @@ pub mod ghostty_cursor_registry;
 pub mod ghostty_materialization;
 pub mod helix_external;
 pub mod helix_materialization;
+pub(crate) mod helix_steel_plugins;
 pub mod home_manager_commands;
 pub mod import_commands;
 pub mod initializer_commands;

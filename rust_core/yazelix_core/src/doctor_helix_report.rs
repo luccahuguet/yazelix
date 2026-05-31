@@ -448,6 +448,13 @@ fn provided_steel_symbols(module: &str) -> Vec<String> {
         .collect()
 }
 
+fn steel_command_metadata_lines(module: &str) -> Vec<String> {
+    module
+        .lines()
+        .filter_map(|line| line.trim().strip_prefix(";; - ").map(str::to_string))
+        .collect()
+}
+
 fn generated_steel_dir(request: &HelixDoctorEvaluateRequest) -> Option<PathBuf> {
     request
         .generated_helix_config_path
@@ -531,6 +538,7 @@ fn evaluate_managed_steel_surface(request: &HelixDoctorEvaluateRequest) -> Helix
     };
 
     let provided = provided_steel_symbols(&helix_module);
+    let metadata = steel_command_metadata_lines(&helix_module);
     let mut errors = Vec::new();
     let mut warnings = Vec::new();
 
@@ -597,10 +605,11 @@ fn evaluate_managed_steel_surface(request: &HelixDoctorEvaluateRequest) -> Helix
             status: "ok".into(),
             message: "Managed Helix Steel command surface is healthy".into(),
             details: Some(format!(
-                "Steel module: {}\nSteel init: {}\nPublic commands: {}",
+                "Steel module: {}\nSteel init: {}\nPublic commands: {}\nCommand metadata:\n- {}",
                 helix_module_path.display(),
                 init_module_path.display(),
-                provided.join(", ")
+                provided.join(", "),
+                metadata.join("\n- ")
             )),
             fix_available: false,
             fix_commands: vec![],
@@ -621,9 +630,11 @@ fn evaluate_managed_steel_surface(request: &HelixDoctorEvaluateRequest) -> Helix
         details.push(format!("Warnings:\n- {}", warnings.join("\n- ")));
     }
     details.push(format!(
-        "Steel module: {}\nSteel init: {}",
+        "Steel module: {}\nSteel init: {}\nPublic commands: {}\nCommand metadata:\n- {}",
         helix_module_path.display(),
-        init_module_path.display()
+        init_module_path.display(),
+        provided.join(", "),
+        metadata.join("\n- ")
     ));
 
     HelixDoctorFinding {

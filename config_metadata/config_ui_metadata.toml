@@ -171,6 +171,18 @@ write_support = "settings_jsonc"
 home_manager_behavior = "read_only_in_ui"
 lifecycle = "experimental"
 
+[fields."helix.steel_plugins"]
+tab = "editor"
+group = "helix_plugins"
+label = "steel_plugins"
+help = "Declare user-owned Helix Steel plugins from ~/.config/yazelix/helix/steel_plugins"
+editor = "object_list"
+default_source = "settings_default.jsonc"
+write_support = "settings_jsonc"
+home_manager_behavior = "read_only_in_ui"
+lifecycle = "experimental"
+advanced = true
+
 [fields."editor.command"]
 tab = "editor"
 group = "command"

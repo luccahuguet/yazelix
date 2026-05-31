@@ -11,7 +11,7 @@
 [contract]
 version = 1
 surface = "main"
-field_count = 52
+field_count = 53
 artifact_role = "canonical_machine_metadata"
 default_template = "settings_default.jsonc"
 home_manager_module = "home_manager/module.nix"
@@ -130,6 +130,15 @@ kind = "bool"
 default = false
 parser_key = "helix_plugin_spacemacs_theme"
 home_manager_option = "helix_plugin_spacemacs_theme"
+parser_behavior = "direct"
+rebuild_required = false
+apply_mode = "tab_session_restart"
+
+[fields."helix.steel_plugins"]
+kind = "helix_steel_plugins"
+default = []
+parser_key = "helix_steel_plugins"
+home_manager_option = "helix_steel_plugins"
 parser_behavior = "direct"
 rebuild_required = false
 apply_mode = "tab_session_restart"

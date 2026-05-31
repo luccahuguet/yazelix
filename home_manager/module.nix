@@ -154,6 +154,39 @@ let
           types.int
         else if field.kind == "float" then
           types.either types.int types.float
+        else if field.kind == "helix_steel_plugins" then
+          types.listOf (types.submodule {
+            options = {
+              id = mkOption {
+                type = types.str;
+                description = "Stable Yazelix Helix Steel plugin id";
+              };
+              source = mkOption {
+                type = types.str;
+                description = "Plugin source path below ~/.config/yazelix/helix/steel_plugins";
+              };
+              public_commands = mkOption {
+                type = types.listOf types.str;
+                default = [ ];
+                description = "Commands exposed through Helix command completion";
+              };
+              internal_commands = mkOption {
+                type = types.listOf types.str;
+                default = [ ];
+                description = "Commands imported for plugin use but kept out of completion";
+              };
+              startup_commands = mkOption {
+                type = types.listOf types.str;
+                default = [ ];
+                description = "Declared commands to run when the generated Steel module loads";
+              };
+              command_descriptions = mkOption {
+                type = types.attrsOf types.str;
+                default = { };
+                description = "Descriptions for public and internal commands";
+              };
+            };
+          })
         else if field.kind == "helix_external" then
           types.submodule {
             options = {
@@ -510,6 +543,17 @@ in
 
     helix_plugin_spacemacs_theme = mkMainContractOption "helix.plugins.spacemacs_theme" {
       description = "Register the bundled Spacemacs Helix Steel theme.";
+    };
+
+    helix_steel_plugins = mkMainContractOption "helix.steel_plugins" {
+      description = ''
+        User-owned Helix Steel plugin manifests.
+
+        Each source is resolved below ~/.config/yazelix/helix/steel_plugins
+        and copied into the generated Yazelix Helix runtime config. Only
+        public_commands appear in Helix command completion; internal_commands
+        and startup_commands remain private to the generated module.
+      '';
     };
 
     hide_sidebar_on_file_open = mkMainContractOption "editor.hide_sidebar_on_file_open" {
