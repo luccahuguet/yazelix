@@ -4,6 +4,15 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
+Post-v17.2 work in progress
+
+Upgrade impact: no user action required
+
+Highlights:
+- Reserved for post-release changes after v17.2 lands.
+
+## v17.2 - 2026-05-31
+
 Steel-backed Helix, managed Helix config tree, and plugin manifests
 
 Upgrade impact: manual action may be required
@@ -21,6 +30,7 @@ Manual action:
 - If you keep custom Yazelix-managed Helix config in `~/.config/yazelix/helix.toml`, move it to `~/.config/yazelix/helix/config.toml` before launching v17.2
 - If you use a custom Helix fork, configure both `helix.external.binary` and `helix.external.runtime_path`; bare binary-only custom Helix config is rejected
 - If you are not ready for the bundled Steel-backed Helix line, pin `v17.1` temporarily
+
 
 ## v17.1 - 2026-05-30
 
