@@ -185,6 +185,7 @@
         "nixgl": "nixgl",
         "nixpkgs": "nixpkgs_2",
         "yazelixGhosttyCursors": "yazelixGhosttyCursors",
+        "yazelixHelix": "yazelixHelix",
         "yazelixScreen": "yazelixScreen",
         "yazelixYazi": "yazelixYazi",
         "yazelixYaziAssets": "yazelixYaziAssets",
@@ -313,6 +314,22 @@
       "original": {
         "owner": "luccahuguet",
         "repo": "yazelix-ghostty-cursors",
+        "type": "github"
+      }
+    },
+    "yazelixHelix": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780152743,
+        "narHash": "sha256-JQE7RzIywkNov3fpmKEjBWdoiCkoU+1IneGdxtoYhA8=",
+        "owner": "luccahuguet",
+        "repo": "yazelix-helix",
+        "rev": "745e2bb6da9fc78644a73e145e35d4c8bddfecf5",
+        "type": "github"
+      },
+      "original": {
+        "owner": "luccahuguet",
+        "repo": "yazelix-helix",
         "type": "github"
       }
     },
