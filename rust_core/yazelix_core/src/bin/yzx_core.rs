@@ -803,6 +803,7 @@ fn run_helix_materialization_generate(mut parser: lexopt::Parser) -> Result<(), 
     let mut runtime_dir: Option<PathBuf> = None;
     let mut config_dir: Option<PathBuf> = None;
     let mut state_dir: Option<PathBuf> = None;
+    let mut show_splash = false;
 
     while let Some(arg) = parser
         .next()
@@ -812,6 +813,7 @@ fn run_helix_materialization_generate(mut parser: lexopt::Parser) -> Result<(), 
             Long("runtime-dir") => runtime_dir = Some(parser_path_value(&mut parser)?),
             Long("config-dir") => config_dir = Some(parser_path_value(&mut parser)?),
             Long("state-dir") => state_dir = Some(parser_path_value(&mut parser)?),
+            Long("show-splash") => show_splash = parser_bool_value(&mut parser)?,
             _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
         }
     }
@@ -820,6 +822,7 @@ fn run_helix_materialization_generate(mut parser: lexopt::Parser) -> Result<(), 
         runtime_dir: runtime_dir.ok_or_else(|| CoreError::usage("Missing --runtime-dir path"))?,
         config_dir: config_dir.ok_or_else(|| CoreError::usage("Missing --config-dir path"))?,
         state_dir: state_dir.ok_or_else(|| CoreError::usage("Missing --state-dir path"))?,
+        show_splash,
     };
     let data = generate_helix_materialization(&request)?;
     write_success_envelope(HELIX_MATERIALIZATION_GENERATE_COMMAND, data)
@@ -1294,6 +1297,16 @@ fn parser_string_value(parser: &mut lexopt::Parser) -> Result<String, CoreError>
         .map_err(|error| CoreError::usage(error.to_string()))?
         .into_string()
         .map_err(|_| CoreError::usage("Argument value must be valid UTF-8"))
+}
+
+fn parser_bool_value(parser: &mut lexopt::Parser) -> Result<bool, CoreError> {
+    match parser_string_value(parser)?.as_str() {
+        "true" | "1" => Ok(true),
+        "false" | "0" => Ok(false),
+        other => Err(CoreError::usage(format!(
+            "Boolean argument value must be true or false, got `{other}`"
+        ))),
+    }
 }
 
 fn write_success_envelope<T: serde::Serialize>(command: &str, data: T) -> Result<(), CoreError> {

@@ -118,7 +118,7 @@ apply_mode = "tab_session_restart"
 
 [fields."helix.plugins.splash"]
 kind = "bool"
-default = true
+default = false
 parser_key = "helix_plugin_splash"
 home_manager_option = "helix_plugin_splash"
 parser_behavior = "direct"

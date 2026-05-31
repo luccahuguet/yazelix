@@ -3,6 +3,10 @@
 use pretty_assertions::assert_eq;
 use serde_json::{Value, json};
 use std::fs;
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+#[cfg(unix)]
+use std::process::Command;
 use tempfile::tempdir;
 
 mod support;
@@ -211,4 +215,229 @@ fn runtime_env_compute_from_env_accepts_config_json() {
         envelope["data"]["runtime_env"]["HELIX_RUNTIME"],
         "/tmp/managed-helix-runtime"
     );
+}
+
+// Defends: default bundled Helix uses the private raw binary behind the public managed `hx` wrapper.
+#[test]
+fn runtime_env_compute_points_default_helix_wrapper_at_private_binary() {
+    let tmp = tempdir().unwrap();
+    let runtime_dir = tmp.path().join("runtime");
+    let home_dir = tmp.path().join("home");
+    fs::create_dir_all(runtime_dir.join("toolbin")).unwrap();
+    fs::create_dir_all(runtime_dir.join("bin")).unwrap();
+    fs::create_dir_all(runtime_dir.join("libexec")).unwrap();
+    fs::create_dir_all(&home_dir).unwrap();
+
+    let output = yzx_core_command()
+        .arg("runtime-env.compute")
+        .arg("--request-json")
+        .arg(
+            json!({
+                "runtime_dir": runtime_dir,
+                "home_dir": home_dir
+            })
+            .to_string(),
+        )
+        .output()
+        .unwrap();
+
+    let envelope: Value = ok_envelope(&output);
+    assert_eq!(
+        envelope["data"]["runtime_env"]["EDITOR"],
+        tmp.path()
+            .join("runtime/shells/posix/yazelix_hx.sh")
+            .to_string_lossy()
+            .to_string()
+    );
+    assert_eq!(
+        envelope["data"]["runtime_env"]["YAZELIX_MANAGED_HELIX_BINARY"],
+        tmp.path()
+            .join("runtime/libexec/hx")
+            .to_string_lossy()
+            .to_string()
+    );
+}
+
+#[cfg(unix)]
+// Defends: the managed Helix wrapper passes Yazelix's generated config directory to Helix, so native ~/.config/helix cannot win.
+#[test]
+fn managed_helix_wrapper_passes_generated_config_dir() {
+    let tmp = tempdir().unwrap();
+    let runtime_dir = tmp.path().join("runtime");
+    let config_dir = tmp.path().join("config").join("yazelix");
+    let state_dir = tmp.path().join("state").join("yazelix");
+    let generated_dir = state_dir.join("configs").join("helix");
+    let generated_config = generated_dir.join("config.toml");
+    let log_path = tmp.path().join("hx.log");
+    let core_log_path = tmp.path().join("yzx_core.log");
+    let stale_core_log_path = tmp.path().join("stale_yzx_core.log");
+
+    fs::create_dir_all(runtime_dir.join("shells/posix")).unwrap();
+    fs::create_dir_all(runtime_dir.join("libexec")).unwrap();
+    fs::create_dir_all(runtime_dir.join("toolbin")).unwrap();
+    fs::create_dir_all(&generated_dir).unwrap();
+    fs::write(&generated_config, "theme = \"default\"\n").unwrap();
+
+    let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(std::path::Path::parent)
+        .expect("repo root");
+    fs::copy(
+        repo_root.join("shells/posix/yazelix_hx.sh"),
+        runtime_dir.join("shells/posix/yazelix_hx.sh"),
+    )
+    .unwrap();
+    make_executable(&runtime_dir.join("shells/posix/yazelix_hx.sh"));
+
+    fs::write(
+        runtime_dir.join("libexec/yzx_core"),
+        format!(
+            "#!/bin/sh\n: > '{}'\nfor arg in \"$@\"; do printf 'core-arg=%s\\n' \"$arg\" >> '{}'; done\nprintf '%s\\n' '{{\"data\":{{\"import_notice\":{{\"lines\":[]}},\"generated_path\":\"ignored-by-fake-jq\",\"generated_steel_config_dir\":\"ignored-by-fake-jq\"}}}}'\n",
+            core_log_path.display(),
+            core_log_path.display()
+        ),
+    )
+    .unwrap();
+    make_executable(&runtime_dir.join("libexec/yzx_core"));
+
+    let stale_yzx_core = tmp.path().join("stale_yzx_core");
+    fs::write(
+        &stale_yzx_core,
+        format!(
+            "#!/bin/sh\nprintf 'used stale core\\n' > '{}'\nexit 99\n",
+            stale_core_log_path.display()
+        ),
+    )
+    .unwrap();
+    make_executable(&stale_yzx_core);
+
+    fs::write(
+        runtime_dir.join("toolbin/jq"),
+        format!(
+            "#!/bin/sh\ncase \"$2\" in\n  '.data.import_notice.lines[]?') exit 0 ;;\n  '.data.generated_path // \"\"') printf '%s\\n' '{}' ;;\n  '.data.generated_steel_config_dir // \"\"') printf '%s\\n' '{}' ;;\n  *) exit 1 ;;\nesac\n",
+            generated_config.display(),
+            generated_dir.display()
+        ),
+    )
+    .unwrap();
+    make_executable(&runtime_dir.join("toolbin/jq"));
+
+    let fake_hx = tmp.path().join("hx");
+    fs::write(
+        &fake_hx,
+        format!(
+            "#!/bin/sh\nprintf 'HELIX_STEEL_CONFIG=%s\\n' \"$HELIX_STEEL_CONFIG\" > '{}'\nprintf 'arg=%s\\n' \"$@\" >> '{}'\n",
+            log_path.display(),
+            log_path.display()
+        ),
+    )
+    .unwrap();
+    make_executable(&fake_hx);
+
+    let output = Command::new(runtime_dir.join("shells/posix/yazelix_hx.sh"))
+        .env_clear()
+        .env("HOME", tmp.path().join("home"))
+        .env("PATH", "/usr/bin:/bin")
+        .env("YAZELIX_RUNTIME_DIR", &runtime_dir)
+        .env("YAZELIX_CONFIG_DIR", &config_dir)
+        .env("YAZELIX_STATE_DIR", &state_dir)
+        .env("YAZELIX_MANAGED_HELIX_BINARY", &fake_hx)
+        .env("YAZELIX_YZX_CORE_BIN", &stale_yzx_core)
+        .arg("README.md")
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "wrapper failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        fs::read_to_string(&log_path).unwrap(),
+        format!(
+            "HELIX_STEEL_CONFIG={}\narg=--config-dir\narg={}\narg=-c\narg={}\narg=README.md\n",
+            generated_dir.display(),
+            generated_dir.display(),
+            generated_config.display()
+        )
+    );
+    assert!(
+        fs::read_to_string(&core_log_path)
+            .unwrap()
+            .contains("core-arg=--show-splash\ncore-arg=false\n")
+    );
+    assert!(!stale_core_log_path.exists());
+
+    let output = Command::new(runtime_dir.join("shells/posix/yazelix_hx.sh"))
+        .env_clear()
+        .env("HOME", tmp.path().join("home"))
+        .env("PATH", "/usr/bin:/bin")
+        .env("YAZELIX_RUNTIME_DIR", &runtime_dir)
+        .env("YAZELIX_CONFIG_DIR", &config_dir)
+        .env("YAZELIX_STATE_DIR", &state_dir)
+        .env("YAZELIX_MANAGED_HELIX_BINARY", &fake_hx)
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "wrapper failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        fs::read_to_string(&log_path).unwrap(),
+        format!(
+            "HELIX_STEEL_CONFIG={}\narg=--config-dir\narg={}\narg=-c\narg={}\n",
+            generated_dir.display(),
+            generated_dir.display(),
+            generated_config.display()
+        )
+    );
+    assert!(
+        fs::read_to_string(&core_log_path)
+            .unwrap()
+            .contains("core-arg=--show-splash\ncore-arg=true\n")
+    );
+
+    let project_dir = tmp.path().join("project");
+    fs::create_dir_all(&project_dir).unwrap();
+    let output = Command::new(runtime_dir.join("shells/posix/yazelix_hx.sh"))
+        .env_clear()
+        .env("HOME", tmp.path().join("home"))
+        .env("PATH", "/usr/bin:/bin")
+        .env("YAZELIX_RUNTIME_DIR", &runtime_dir)
+        .env("YAZELIX_CONFIG_DIR", &config_dir)
+        .env("YAZELIX_STATE_DIR", &state_dir)
+        .env("YAZELIX_MANAGED_HELIX_BINARY", &fake_hx)
+        .arg(&project_dir)
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "wrapper failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        fs::read_to_string(&log_path).unwrap(),
+        format!(
+            "HELIX_STEEL_CONFIG={}\narg=--config-dir\narg={}\narg=-c\narg={}\narg={}\n",
+            generated_dir.display(),
+            generated_dir.display(),
+            generated_config.display(),
+            project_dir.display()
+        )
+    );
+    assert!(
+        fs::read_to_string(&core_log_path)
+            .unwrap()
+            .contains("core-arg=--show-splash\ncore-arg=false\n")
+    );
+}
+
+#[cfg(unix)]
+fn make_executable(path: &std::path::Path) {
+    let mut permissions = fs::metadata(path).unwrap().permissions();
+    permissions.set_mode(0o755);
+    fs::set_permissions(path, permissions).unwrap();
 }

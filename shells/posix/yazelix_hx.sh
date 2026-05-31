@@ -23,9 +23,11 @@ if [ -z "$helix_binary" ]; then
   exit 1
 fi
 
-yzx_core_bin="${YAZELIX_YZX_CORE_BIN:-$runtime_dir/libexec/yzx_core}"
+yzx_core_bin="$runtime_dir/libexec/yzx_core"
 if [ ! -x "$yzx_core_bin" ]; then
-  if [ -x "$runtime_dir/rust_core/target/release/yzx_core" ]; then
+  if [ -n "${YAZELIX_YZX_CORE_BIN:-}" ] && [ -x "$YAZELIX_YZX_CORE_BIN" ]; then
+    yzx_core_bin="$YAZELIX_YZX_CORE_BIN"
+  elif [ -x "$runtime_dir/rust_core/target/release/yzx_core" ]; then
     yzx_core_bin="$runtime_dir/rust_core/target/release/yzx_core"
   elif [ -x "$runtime_dir/rust_core/target/debug/yzx_core" ]; then
     yzx_core_bin="$runtime_dir/rust_core/target/debug/yzx_core"
@@ -52,6 +54,11 @@ config_dir="${YAZELIX_CONFIG_DIR:-$config_home/yazelix}"
 data_home="${XDG_DATA_HOME:-${HOME:-}/.local/share}"
 state_dir="${YAZELIX_STATE_DIR:-$data_home/yazelix}"
 
+show_splash=false
+if [ "$#" -eq 0 ]; then
+  show_splash=true
+fi
+
 stdout_file="$(mktemp)"
 stderr_file="$(mktemp)"
 cleanup() {
@@ -62,7 +69,8 @@ trap cleanup EXIT HUP INT TERM
 if ! "$yzx_core_bin" helix-materialization.generate \
   --runtime-dir "$runtime_dir" \
   --config-dir "$config_dir" \
-  --state-dir "$state_dir" >"$stdout_file" 2>"$stderr_file"; then
+  --state-dir "$state_dir" \
+  --show-splash "$show_splash" >"$stdout_file" 2>"$stderr_file"; then
   if [ -s "$stderr_file" ] && "$jq_bin" -e '.status == "error"' "$stderr_file" >/dev/null 2>&1; then
     error_message="$("$jq_bin" -r '.error.message // ""' "$stderr_file")"
     error_remediation="$("$jq_bin" -r '.error.remediation // ""' "$stderr_file")"
@@ -106,4 +114,4 @@ fi
 HELIX_STEEL_CONFIG="$managed_steel_config_dir"
 export HELIX_STEEL_CONFIG
 
-exec "$helix_binary" -c "$managed_config" "$@"
+exec "$helix_binary" --config-dir "$managed_steel_config_dir" -c "$managed_config" "$@"

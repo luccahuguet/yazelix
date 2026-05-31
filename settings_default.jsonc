@@ -14,7 +14,7 @@
     "external": null,
     "plugins": {
       "recentf": true,
-      "splash": true,
+      "splash": false,
       "spacemacs_theme": false
     }
   },

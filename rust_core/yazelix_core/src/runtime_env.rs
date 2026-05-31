@@ -115,7 +115,10 @@ pub fn compute_runtime_env(
     if editor_kind == "helix" {
         runtime_env.insert(
             "YAZELIX_MANAGED_HELIX_BINARY".to_string(),
-            JsonValue::String(resolved_editor_command),
+            JsonValue::String(resolve_managed_helix_binary(
+                request,
+                &resolved_editor_command,
+            )),
         );
     }
 
@@ -224,6 +227,19 @@ fn resolve_helix_runtime(request: &RuntimeEnvComputeRequest) -> Option<String> {
         .helix_external
         .as_ref()
         .map(|external| external.runtime_path.clone())
+}
+
+fn resolve_managed_helix_binary(
+    request: &RuntimeEnvComputeRequest,
+    resolved_editor_command: &str,
+) -> String {
+    if let Some(external) = &request.helix_external {
+        return external.binary.clone();
+    }
+    if matches!(resolved_editor_command.trim(), "hx" | "helix") {
+        return path_to_string(&request.runtime_dir.join("libexec").join("hx"));
+    }
+    resolved_editor_command.to_string()
 }
 
 fn is_helix_editor_command(editor: &str) -> bool {

@@ -40,6 +40,10 @@
       url = "github:luccahuguet/yazelix-yazi/yazelix-kgp-preview-0";
       flake = false;
     };
+    yazelixHelix = {
+      url = "github:luccahuguet/yazelix-helix";
+      flake = false;
+    };
     yazelixZellijPaneOrchestrator = {
       url = "github:luccahuguet/yazelix-zellij-pane-orchestrator";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -69,6 +73,7 @@
       yazelixYaziAssets,
       yazelixZellij,
       yazelixYazi,
+      yazelixHelix,
       yazelixZellijPaneOrchestrator,
       yazelixZellijPopup,
       zjstatus,
@@ -165,13 +170,16 @@
         };
       runtimePkgsFor =
         system: pkgs: runtimeVariant:
+        let
+          helixPkgs = yazelixHelixPkgs system pkgs;
+        in
         if builtins.elem runtimeVariant [
           "ghostty"
           "ratty"
         ] then
-          yazelixGraphicsPkgs system pkgs
+          yazelixGraphicsPkgs system helixPkgs
         else
-          pkgs;
+          helixPkgs;
       yazelixKgpZellij =
         pkgs: baseZellij:
         import ./packaging/yazelix_kgp_zellij.nix {
@@ -183,6 +191,23 @@
         import ./packaging/yazelix_kgp_yazi.nix {
           inherit pkgs baseYaziUnwrapped codeSrc;
         };
+      yazelixHelixPackage =
+        pkgs: baseHelix: baseHelixUnwrapped:
+        let
+          helixSrc = builtins.path {
+            path = yazelixHelix;
+            name = "yazelix-helix-src";
+          };
+        in
+        import ./packaging/yazelix_helix.nix {
+          inherit pkgs baseHelix baseHelixUnwrapped;
+          src = helixSrc;
+        };
+      yazelixHelixPkgs =
+        _system: pkgs:
+        pkgs.extend (final: prev: {
+          helix = yazelixHelixPackage final prev.helix prev.helix-unwrapped;
+        });
       yazelixGraphicsPkgs =
         system: pkgs:
         let
@@ -207,6 +232,7 @@
           yazelix = mkYazelix system { pkgs = final; };
           yazelix_zellij_bar = yazelixZellijBar.packages.${system}.yazelix_zellij_bar;
           yazelix_yazi_assets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
+          yazelix_helix = (yazelixHelixPkgs system final).helix;
           yazelix_zellij_pane_orchestrator =
             yazelixZellijPaneOrchestrator.packages.${system}.yazelix_zellij_pane_orchestrator;
           yazelix_zellij_popup = yazelixZellijPopup.packages.${system}.yzpp;
@@ -276,6 +302,7 @@
           yazelix_zellij_bar = yazelixZellijBar.packages.${system}.yazelix_zellij_bar;
           yazelix_screen = yazelixScreen.packages.${system}.yzs;
           yazelix_ghostty_cursors = yazelixGhosttyCursors.packages.${system}.yazelix_ghostty_cursors;
+          yazelix_helix = (yazelixHelixPkgs system pkgs).helix;
           yazelix_zellij_pane_orchestrator =
             yazelixZellijPaneOrchestrator.packages.${system}.yazelix_zellij_pane_orchestrator;
           yazelix_zellij_popup = yazelixZellijPopup.packages.${system}.yzpp;
@@ -297,6 +324,7 @@
           yazelix_ghostty_cursors = yazelix_ghostty_cursors;
           yazelix_ghostty = yazelix_ghostty;
           yazelix_screen = yazelix_screen;
+          yazelix_helix = yazelix_helix;
           yazelix_wezterm = yazelix_wezterm;
           yazelix_yazi_assets = yazelix_yazi_assets;
           yazelix_zellij_pane_orchestrator = yazelix_zellij_pane_orchestrator;

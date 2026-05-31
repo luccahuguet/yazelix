@@ -147,6 +147,12 @@ pkgs.runCommand name { } ''
       ln -sfn "$out/libexec/$command_name" "$out/toolbin/$command_name"
     fi
   done
+  if [ -x "$out/shells/posix/yazelix_hx.sh" ] && [ -e "$out/libexec/hx" ]; then
+    ln -sfn "$out/shells/posix/yazelix_hx.sh" "$out/toolbin/hx"
+    if [ -e "$out/toolbin/helix" ]; then
+      ln -sfn "$out/shells/posix/yazelix_hx.sh" "$out/toolbin/helix"
+    fi
+  fi
 
   mkdir -p "$out/bin"
   cat > "$out/bin/yzx" <<EOF

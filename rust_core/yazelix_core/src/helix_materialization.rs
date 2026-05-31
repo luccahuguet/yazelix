@@ -13,8 +13,8 @@ pub(crate) const MANAGED_REVEAL_COMMAND: &str = ":sh yzx reveal \"%{buffer_name}
 pub(crate) const MANAGED_COMMAND_MODE_KEY: &str = ":";
 pub(crate) const MANAGED_COMMAND_MODE_COMMAND: &str = "command_mode";
 pub(crate) const REVEAL_KEY: &str = "A-r";
-const STEEL_CONFIG_MODULE: &str = "helix.scm";
-const STEEL_INIT_MODULE: &str = "init.scm";
+pub(crate) const STEEL_CONFIG_MODULE: &str = "helix.scm";
+pub(crate) const STEEL_INIT_MODULE: &str = "init.scm";
 const STEEL_PLUGIN_ROOT: &str = "steel_plugins";
 const STEEL_SUPPORT_FILES: &[&str] = &["cogs/keymaps.scm", "cogs/labelled-buffers.scm"];
 
@@ -23,12 +23,21 @@ pub struct HelixMaterializationRequest {
     pub runtime_dir: PathBuf,
     pub config_dir: PathBuf,
     pub state_dir: PathBuf,
+    pub show_splash: bool,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct HelixImportNotice {
     pub marker_path: String,
     pub lines: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct SteelCommandMetadata {
+    pub name: String,
+    pub owner: String,
+    pub description: String,
+    pub visibility: String,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -42,6 +51,7 @@ pub struct HelixMaterializationData {
     pub reveal_binding_enforced: bool,
     pub enabled_steel_plugins: Vec<String>,
     pub steel_plugin_files: Vec<String>,
+    pub steel_commands: Vec<SteelCommandMetadata>,
     pub import_notice: Option<HelixImportNotice>,
 }
 
@@ -53,12 +63,50 @@ struct PreparedHelixConfig {
 }
 
 #[derive(Debug, Clone, Copy)]
+struct SteelCommandSpec {
+    name: &'static str,
+    owner: &'static str,
+    description: &'static str,
+    visibility: SteelCommandVisibility,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SteelCommandVisibility {
+    Public,
+    Internal,
+}
+
+impl SteelCommandVisibility {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Public => "public",
+            Self::Internal => "internal",
+        }
+    }
+}
+
+impl SteelCommandSpec {
+    fn metadata(self) -> SteelCommandMetadata {
+        SteelCommandMetadata {
+            name: self.name.to_string(),
+            owner: self.owner.to_string(),
+            description: self.description.to_string(),
+            visibility: self.visibility.as_str().to_string(),
+        }
+    }
+
+    fn is_public(self) -> bool {
+        self.visibility == SteelCommandVisibility::Public
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 struct SteelPluginSpec {
     id: &'static str,
     normalized_config_key: &'static str,
     source_relative_path: &'static str,
+    commands: &'static [SteelCommandSpec],
     helix_module_lines: &'static [&'static str],
-    init_lines: &'static [&'static str],
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -75,19 +123,62 @@ struct SteelMaterializationData {
     init_path: PathBuf,
     enabled_plugins: Vec<String>,
     copied_plugin_files: Vec<String>,
+    commands: Vec<SteelCommandMetadata>,
 }
+
+const BASE_STEEL_COMMANDS: &[SteelCommandSpec] = &[
+    SteelCommandSpec {
+        name: "eval-buffer",
+        owner: "helix/ext",
+        description: "Evaluate the current Steel buffer",
+        visibility: SteelCommandVisibility::Public,
+    },
+    SteelCommandSpec {
+        name: "evalp",
+        owner: "helix/ext",
+        description: "Evaluate one Steel expression",
+        visibility: SteelCommandVisibility::Public,
+    },
+    SteelCommandSpec {
+        name: "yazelix-open-shell-here",
+        owner: "yazelix",
+        description: "Open a Yazelix terminal pane at the current Helix file or workspace",
+        visibility: SteelCommandVisibility::Public,
+    },
+];
+
+const RECENTF_STEEL_COMMANDS: &[SteelCommandSpec] = &[
+    SteelCommandSpec {
+        name: "recentf-open-files",
+        owner: "recentf",
+        description: "Open a picker for recently visited Helix files",
+        visibility: SteelCommandVisibility::Public,
+    },
+    SteelCommandSpec {
+        name: "recentf-snapshot",
+        owner: "recentf",
+        description: "Refresh and persist the recent-file cache",
+        visibility: SteelCommandVisibility::Internal,
+    },
+];
+
+const SPLASH_STEEL_COMMANDS: &[SteelCommandSpec] = &[SteelCommandSpec {
+    name: "show-splash",
+    owner: "splash",
+    description: "Render the optional Yazelix splash overlay",
+    visibility: SteelCommandVisibility::Internal,
+}];
+
+const SPACEMACS_THEME_STEEL_COMMANDS: &[SteelCommandSpec] = &[];
 
 const STEEL_PLUGIN_SPECS: &[SteelPluginSpec] = &[
     SteelPluginSpec {
         id: "recentf",
         normalized_config_key: "helix_plugin_recentf",
         source_relative_path: "cogs/recentf.scm",
+        commands: RECENTF_STEEL_COMMANDS,
         helix_module_lines: &[
-            "(require (only-in \"cogs/recentf.scm\" recentf-open-files))",
-            "(provide recentf-open-files)",
-        ],
-        init_lines: &[
-            "(require (only-in \"cogs/recentf.scm\" recentf-snapshot))",
+            "(require (only-in \"cogs/recentf.scm\" recentf-open-files recentf-snapshot))",
             "(recentf-snapshot)",
         ],
     },
@@ -95,22 +186,15 @@ const STEEL_PLUGIN_SPECS: &[SteelPluginSpec] = &[
         id: "splash",
         normalized_config_key: "helix_plugin_splash",
         source_relative_path: "splash.scm",
-        helix_module_lines: &[
-            "(require (only-in \"splash.scm\" show-splash))",
-            "(provide show-splash)",
-        ],
-        init_lines: &[
-            "(require (only-in \"splash.scm\" show-splash))",
-            "(when (equal? (command-line) '(\"hx\"))",
-            "  (show-splash))",
-        ],
+        commands: SPLASH_STEEL_COMMANDS,
+        helix_module_lines: &["(require (only-in \"splash.scm\" show-splash))"],
     },
     SteelPluginSpec {
         id: "spacemacs_theme",
         normalized_config_key: "helix_plugin_spacemacs_theme",
         source_relative_path: "cogs/themes/spacemacs.scm",
-        helix_module_lines: &[],
-        init_lines: &["(require \"cogs/themes/spacemacs.scm\")"],
+        commands: SPACEMACS_THEME_STEEL_COMMANDS,
+        helix_module_lines: &["(require \"cogs/themes/spacemacs.scm\")"],
     },
 ];
 
@@ -170,6 +254,7 @@ pub fn generate_helix_materialization(
         &request.config_dir,
         &generated_dir,
         &plugin_selection,
+        request.show_splash,
     )?;
 
     Ok(HelixMaterializationData {
@@ -182,6 +267,7 @@ pub fn generate_helix_materialization(
         reveal_binding_enforced: true,
         enabled_steel_plugins: steel.enabled_plugins,
         steel_plugin_files: steel.copied_plugin_files,
+        steel_commands: steel.commands,
         import_notice,
     })
 }
@@ -354,6 +440,7 @@ fn materialize_steel_config(
     config_dir: &Path,
     generated_dir: &Path,
     selection: &SteelPluginSelection,
+    show_splash: bool,
 ) -> Result<SteelMaterializationData, CoreError> {
     let selected = selected_steel_plugins(selection);
     let mut copied_plugin_files = Vec::new();
@@ -374,8 +461,14 @@ fn materialize_steel_config(
 
     let helix_module_path = generated_dir.join(STEEL_CONFIG_MODULE);
     let init_path = generated_dir.join(STEEL_INIT_MODULE);
-    write_text_atomic(&helix_module_path, &render_steel_helix_module(&selected))?;
-    write_text_atomic(&init_path, &render_steel_init_module(&selected))?;
+    write_text_atomic(
+        &helix_module_path,
+        &render_steel_helix_module(&selected, show_splash),
+    )?;
+    write_text_atomic(
+        &init_path,
+        &render_steel_init_module(&selected, show_splash),
+    )?;
 
     Ok(SteelMaterializationData {
         config_dir: generated_dir.to_path_buf(),
@@ -386,6 +479,7 @@ fn materialize_steel_config(
             .map(|spec| spec.id.to_string())
             .collect::<Vec<_>>(),
         copied_plugin_files,
+        commands: active_steel_commands(&selected),
     })
 }
 
@@ -398,6 +492,21 @@ fn selected_steel_plugins(selection: &SteelPluginSelection) -> Vec<&'static Stee
             "helix_plugin_spacemacs_theme" => selection.spacemacs_theme,
             _ => false,
         })
+        .collect()
+}
+
+fn active_steel_command_specs(selected: &[&SteelPluginSpec]) -> Vec<SteelCommandSpec> {
+    let mut commands = BASE_STEEL_COMMANDS.to_vec();
+    for spec in selected {
+        commands.extend(spec.commands.iter().copied());
+    }
+    commands
+}
+
+fn active_steel_commands(selected: &[&SteelPluginSpec]) -> Vec<SteelCommandMetadata> {
+    active_steel_command_specs(selected)
+        .into_iter()
+        .map(SteelCommandSpec::metadata)
         .collect()
 }
 
@@ -461,33 +570,84 @@ fn copy_steel_plugin_file(source: &Path, target: &Path) -> Result<(), CoreError>
     write_bytes_atomic(target, &bytes)
 }
 
-fn render_steel_helix_module(selected: &[&SteelPluginSpec]) -> String {
+fn render_steel_helix_module(selected: &[&SteelPluginSpec], show_splash: bool) -> String {
+    let commands = active_steel_command_specs(selected);
+    let public_commands = commands
+        .iter()
+        .copied()
+        .filter(|command| command.is_public())
+        .collect::<Vec<_>>();
+    let provide_line = format!(
+        "(provide {})",
+        public_commands
+            .iter()
+            .map(|command| command.name)
+            .collect::<Vec<_>>()
+            .join(" ")
+    );
+
     let mut lines = vec![
-        ";; Yazelix-managed Helix Steel command module.",
-        ";; Generated at launch from settings.jsonc.",
-        "",
+        ";; Yazelix-managed Helix Steel command module.".to_string(),
+        ";; Generated at launch from settings.jsonc.".to_string(),
+        "".to_string(),
+        ";; Public commands:".to_string(),
     ];
+    for command in &public_commands {
+        lines.push(format!(
+            ";; - {} [{}]: {}",
+            command.name, command.owner, command.description
+        ));
+    }
+    lines.extend([
+        "".to_string(),
+        "(require (only-in \"helix/ext.scm\" eval-buffer evalp))".to_string(),
+        "(require (only-in \"helix/static.scm\" cx->current-file get-helix-cwd))".to_string(),
+        "(require (only-in \"helix/commands.scm\" run-shell-command))".to_string(),
+        "(require (only-in \"helix/misc.scm\" set-error!))".to_string(),
+        "".to_string(),
+    ]);
+    lines.push(provide_line);
+    lines.extend([
+        "".to_string(),
+        "(define (yazelix-posix-quote value)".to_string(),
+        "  (string-append \"'\" (string-replace value \"'\" \"'\\\\''\") \"'\"))".to_string(),
+        "".to_string(),
+        "(define (yazelix-open-shell-here-command target)".to_string(),
+        "  (string-append \"\\\"$YAZELIX_RUNTIME_DIR/libexec/yzx_control\\\" zellij open-terminal \" (yazelix-posix-quote target)))".to_string(),
+        "".to_string(),
+        ";;@doc".to_string(),
+        ";;Open a Yazelix terminal pane at the current Helix file or workspace.".to_string(),
+        "(define (yazelix-open-shell-here)".to_string(),
+        "  (let ([current-file (cx->current-file)]".to_string(),
+        "        [current-workspace (get-helix-cwd)])".to_string(),
+        "    (cond".to_string(),
+        "      [(string? current-file)".to_string(),
+        "       (run-shell-command (yazelix-open-shell-here-command current-file))]".to_string(),
+        "      [(string? current-workspace)".to_string(),
+        "       (run-shell-command (yazelix-open-shell-here-command current-workspace))]".to_string(),
+        "      [else".to_string(),
+        "       (set-error! \"Yazelix could not resolve a target path for opening a shell\")])))"
+            .to_string(),
+        "".to_string(),
+    ]);
     for spec in selected {
-        lines.push(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;");
-        lines.push("");
-        lines.extend(spec.helix_module_lines.iter().copied());
-        lines.push("");
+        lines.push(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;".to_string());
+        lines.push("".to_string());
+        lines.extend(spec.helix_module_lines.iter().map(|line| line.to_string()));
+        if spec.id == "splash" && show_splash {
+            lines.push("(show-splash)".to_string());
+        }
+        lines.push("".to_string());
     }
     lines.join("\n") + "\n"
 }
 
-fn render_steel_init_module(selected: &[&SteelPluginSpec]) -> String {
-    let mut lines = vec![
+fn render_steel_init_module(_selected: &[&SteelPluginSpec], _show_splash: bool) -> String {
+    let lines = vec![
         ";; Yazelix-managed Helix Steel init file.",
         ";; Generated at launch from settings.jsonc.",
         "",
     ];
-    for spec in selected {
-        lines.push(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;");
-        lines.push("");
-        lines.extend(spec.init_lines.iter().copied());
-        lines.push("");
-    }
     lines.join("\n") + "\n"
 }
 
@@ -578,6 +738,14 @@ mod tests {
             .get(key)?
             .as_str()
             .map(str::to_owned)
+    }
+
+    fn steel_command_names(data: &HelixMaterializationData, visibility: &str) -> Vec<String> {
+        data.steel_commands
+            .iter()
+            .filter(|command| command.visibility == visibility)
+            .map(|command| command.name.clone())
+            .collect()
     }
 
     fn write_runtime_layout(runtime_dir: &Path) {
@@ -675,22 +843,140 @@ mod tests {
             runtime_dir,
             config_dir,
             state_dir: state_dir.clone(),
+            show_splash: true,
         })
         .unwrap();
 
         let steel_dir = state_dir.join("configs/helix");
-        assert_eq!(data.enabled_steel_plugins, vec!["recentf", "splash"]);
+        assert_eq!(data.enabled_steel_plugins, vec!["recentf"]);
         assert_eq!(
             data.generated_steel_config_dir,
             steel_dir.to_string_lossy().to_string()
         );
         assert!(steel_dir.join("cogs/recentf.scm").exists());
-        assert!(steel_dir.join("splash.scm").exists());
+        assert!(!steel_dir.join("splash.scm").exists());
         assert!(steel_dir.join("cogs/keymaps.scm").exists());
         assert!(steel_dir.join("cogs/labelled-buffers.scm").exists());
+
+        let generated_helix =
+            fs::read_to_string(state_dir.join("configs/helix/helix.scm")).unwrap();
+        assert!(
+            generated_helix.contains("(require (only-in \"helix/ext.scm\" eval-buffer evalp))")
+        );
+        assert!(
+            generated_helix
+                .contains("(provide eval-buffer evalp yazelix-open-shell-here recentf-open-files)")
+        );
+        assert!(
+            generated_helix.contains(
+                "(require (only-in \"helix/static.scm\" cx->current-file get-helix-cwd))"
+            )
+        );
+        assert!(
+            generated_helix
+                .contains("(require (only-in \"helix/commands.scm\" run-shell-command))")
+        );
+        assert!(generated_helix.contains("yazelix-open-shell-here"));
+        assert!(
+            generated_helix
+                .contains("(string-append \"'\" (string-replace value \"'\" \"'\\\\''\") \"'\"))")
+        );
+        assert!(generated_helix.contains("yzx_control\\\" zellij open-terminal"));
+        assert!(generated_helix.contains(
+            "(require (only-in \"cogs/recentf.scm\" recentf-open-files recentf-snapshot))"
+        ));
+        assert!(generated_helix.contains("(recentf-snapshot)"));
+        assert!(!generated_helix.contains("show-splash"));
+        assert_eq!(
+            steel_command_names(&data, "public"),
+            vec![
+                "eval-buffer".to_string(),
+                "evalp".to_string(),
+                "yazelix-open-shell-here".to_string(),
+                "recentf-open-files".to_string()
+            ]
+        );
+        assert_eq!(
+            steel_command_names(&data, "internal"),
+            vec!["recentf-snapshot".to_string()]
+        );
+
+        let generated_init = fs::read_to_string(state_dir.join("configs/helix/init.scm")).unwrap();
+        assert!(!generated_init.contains("prefix-in"));
+        assert!(!generated_init.contains("yazelix."));
+        assert!(!generated_init.contains("show-splash"));
     }
 
-    // Defends: declarative helix.plugins toggles copy selected Steel plugin files into the generated Helix config directory and load them from init.scm.
+    // Defends: the borrowed splash plugin remains opt-in and only renders when the wrapper classifies the launch as splash-eligible.
+    #[test]
+    fn helix_materialization_loads_opt_in_splash_only_when_requested() {
+        let tmp = TempDir::new().unwrap();
+        let runtime_dir = tmp.path().join("runtime");
+        let config_dir = tmp.path().join("config");
+        let visible_state_dir = tmp.path().join("visible-state");
+        let hidden_state_dir = tmp.path().join("hidden-state");
+        write_runtime_layout(&runtime_dir);
+        fs::create_dir_all(&config_dir).unwrap();
+        fs::write(
+            config_dir.join("settings.jsonc"),
+            r#"{
+  "helix": {
+    "plugins": {
+      "recentf": false,
+      "splash": true,
+      "spacemacs_theme": false
+    }
+  }
+}
+"#,
+        )
+        .unwrap();
+
+        let visible = generate_helix_materialization(&HelixMaterializationRequest {
+            runtime_dir: runtime_dir.clone(),
+            config_dir: config_dir.clone(),
+            state_dir: visible_state_dir.clone(),
+            show_splash: true,
+        })
+        .unwrap();
+        let visible_helix =
+            fs::read_to_string(visible_state_dir.join("configs/helix/helix.scm")).unwrap();
+
+        assert_eq!(visible.enabled_steel_plugins, vec!["splash"]);
+        assert_eq!(
+            steel_command_names(&visible, "public"),
+            vec![
+                "eval-buffer".to_string(),
+                "evalp".to_string(),
+                "yazelix-open-shell-here".to_string()
+            ]
+        );
+        assert_eq!(
+            steel_command_names(&visible, "internal"),
+            vec!["show-splash".to_string()]
+        );
+        assert!(visible_state_dir.join("configs/helix/splash.scm").exists());
+        assert!(visible_helix.contains("(require (only-in \"splash.scm\" show-splash))"));
+        assert!(!visible_helix.contains("(provide show-splash)"));
+        assert!(visible_helix.contains("(show-splash)"));
+
+        let hidden = generate_helix_materialization(&HelixMaterializationRequest {
+            runtime_dir,
+            config_dir,
+            state_dir: hidden_state_dir.clone(),
+            show_splash: false,
+        })
+        .unwrap();
+        let hidden_helix =
+            fs::read_to_string(hidden_state_dir.join("configs/helix/helix.scm")).unwrap();
+
+        assert_eq!(hidden.enabled_steel_plugins, vec!["splash"]);
+        assert!(hidden_state_dir.join("configs/helix/splash.scm").exists());
+        assert!(hidden_helix.contains("(require (only-in \"splash.scm\" show-splash))"));
+        assert!(!hidden_helix.contains("(show-splash)"));
+    }
+
+    // Defends: declarative helix.plugins toggles copy selected Steel plugin files into the generated Helix config directory and load them from the public command module.
     #[test]
     fn helix_materialization_copies_enabled_user_steel_plugin() {
         let tmp = TempDir::new().unwrap();
@@ -722,6 +1008,7 @@ mod tests {
             runtime_dir,
             config_dir,
             state_dir: state_dir.clone(),
+            show_splash: false,
         })
         .unwrap();
 
@@ -737,8 +1024,17 @@ mod tests {
             fs::read_to_string(&generated_recentf).unwrap(),
             "(provide recentf-open-files recentf-snapshot)\n"
         );
-        assert!(generated_init.contains("(recentf-snapshot)"));
+        assert!(!generated_init.contains("recentf-snapshot"));
         assert!(!generated_init.contains("show-splash"));
-        assert!(generated_helix.contains("(provide recentf-open-files)"));
+        assert!(generated_helix.contains(
+            "(require (only-in \"cogs/recentf.scm\" recentf-open-files recentf-snapshot))"
+        ));
+        assert!(generated_helix.contains("(recentf-snapshot)"));
+        assert!(
+            generated_helix
+                .contains("(provide eval-buffer evalp yazelix-open-shell-here recentf-open-files)")
+        );
+        assert!(!generated_helix.contains("(provide recentf-snapshot)"));
+        assert!(!generated_helix.contains("show-splash"));
     }
 }
