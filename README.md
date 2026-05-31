@@ -190,6 +190,8 @@ For the longer project story, see [Version History](./docs/history.md)
 ### Helix Integration
 Helix supports optional `yzx reveal` integration through `Alt+r`, and Yazelix reserves `Alt+r` globally: in the managed editor it forwards `Alt+r` into Helix for reveal, outside the editor it falls back to the editor/left-sidebar focus flow, and `Ctrl+y`, `Ctrl+Shift+Y`, plus `Alt+Shift+H` remain the dedicated workspace navigation keys
 
+Yazelix's bundled Helix is the thin [yazelix-helix](https://github.com/luccahuguet/yazelix-helix) Steel fork: it tracks Helix Steel and carries the small `--config-dir` override Yazelix needs to point managed sessions at the generated Helix config directory without taking over `~/.config/helix`
+
 📖 **[Complete Helix Keybindings Guide →](./docs/helix_keybindings.md)** - Recommended keybindings for enhanced editing experience
 
 ### Neovim Integration

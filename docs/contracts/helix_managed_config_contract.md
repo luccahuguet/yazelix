@@ -77,14 +77,26 @@ That means:
 
 The redirection should be scoped to Helix itself, not leaked globally into the whole Yazelix environment.
 
+## Bundled Helix Fork Boundary
+
+Yazelix's bundled Helix is `luccahuguet/yazelix-helix`, a thin Helix Steel fork.
+
+The fork tracks Helix Steel and carries only the minimal Yazelix-owned config-directory launch support:
+
+- `hx --config-dir <path>`
+- loader resolution from that directory for Helix config files and Steel module search
+
+The fork is not a product fork for editor behavior, default keymaps, UI policy, Steel plugin APIs, language behavior, or Yazelix-specific editor features. Those should remain upstream Steel work, Yazelix runtime configuration, or Yazelix-owned Steel plugins unless a separate contract explicitly changes that boundary.
+
 ## Important Constraint
 
-Helix supports `-c/--config <file>` for `config.toml`, but it does not offer an equivalent `languages.toml` flag or a full config-dir override surface in the same way.
+Vanilla Helix and the upstream Steel branch support `-c/--config <file>` for `config.toml`, but they do not offer the full config-directory override surface Yazelix needs for a self-contained managed Helix session.
 
-Because of that, phase 1 must stay narrow:
+Because of that, Yazelix's bundled Helix uses the thin fork boundary above:
 
-- support a Yazelix-managed `config.toml`
-- do not claim full Helix config-directory ownership yet
+- support a Yazelix-managed Helix config directory for Yazelix-managed sessions
+- keep personal `~/.config/helix` untouched unless the user explicitly imports it
+- keep the fork limited to config-directory launch support
 
 If Yazelix later wants a managed `languages.toml` story, that needs a separate design decision and likely a stronger Helix launch wrapper boundary.
 

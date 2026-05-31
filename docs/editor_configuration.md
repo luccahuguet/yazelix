@@ -50,6 +50,8 @@ Yazelix sets your configured editor as the `EDITOR` environment variable through
 **How it works:**
 - Yazelix uses its own Nix-provided Helix binary (`/nix/store/.../bin/hx`)
 - Runtime is automatically set to the matching version (`/nix/store/.../share/helix/runtime`)
+- The bundled editor is the thin `luccahuguet/yazelix-helix` Steel fork
+- That fork tracks Helix Steel and carries the small `--config-dir` override Yazelix needs for managed sessions
 - No interference with your system's Helix installation
 
 ### Using A Custom Helix Fork
