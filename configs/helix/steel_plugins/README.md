@@ -15,3 +15,6 @@ The supported user-facing config surface is:
 
 User-owned plugin files are resolved below
 `~/.config/yazelix/helix/steel_plugins/`
+
+See `docs/examples/helix_steel_plugins/` for a minimal user-owned plugin and
+matching `helix.steel_plugins.extra` entry

@@ -163,6 +163,7 @@ hx --health | head -n 5
 - Only `public_commands` appear in Helix command completion
 - `internal_commands` can be imported for plugin use without leaking into completion
 - `startup_commands` run when the generated Yazelix Steel module loads
+- Minimal example: [hello_yazelix.scm](./examples/helix_steel_plugins/hello_yazelix.scm)
 
 ```jsonc
 {
@@ -186,6 +187,9 @@ hx --health | head -n 5
   }
 }
 ```
+
+For a complete teaching example with the matching manifest entry, see
+[docs/examples/helix_steel_plugins](./examples/helix_steel_plugins/README.md).
 
 **Smart Instance Management:**
 - Opening files from Yazi reuses existing Helix instance when possible
