@@ -45,7 +45,7 @@ The sections below cover the override surfaces that sit around that main model.
   - **Full guide**: [Yazi Configuration Documentation](./yazi-configuration.md)
   - **Two layers**: Yazelix defaults + your personal overrides (highest priority)
   - **TOML merging**: Intelligent section merging prevents duplicate keys, personal configs are git ignored
-- **Helix Themes & Keybindings**: For Yazelix-managed Helix sessions, change Helix themes and keybindings in `~/.config/yazelix/helix/config.toml`. If you want to start from an existing personal Helix config, run `yzx import helix`. See [Styling and Themes](./styling.md) and [Keybindings](./keybindings.md).
+- **Helix Themes & Keybindings**: For Yazelix-managed Helix sessions, change Helix themes and keybindings in `~/.config/yazelix/helix/config.toml`, and place custom theme TOML files under `~/.config/yazelix/helix/themes/`. Native `~/.config/helix/themes/` is for plain Helix outside Yazelix, and old `~/.config/yazelix/user_conf/helix/themes/` files are unsupported legacy state. If you want to start from an existing personal Helix config, run `yzx import helix`. See [Styling and Themes](./styling.md) and [Keybindings](./keybindings.md).
 - **Managed Shell Hooks**: Add Yazelix-only shell customizations under `~/.config/yazelix/` instead of personal dotfiles. Supported hook files are `shell_bash.sh`, `shell_zsh.zsh`, `shell_fish.fish`, and `shell_nu.nu`, and they are sourced at the end of the corresponding managed Yazelix shell startup.
 - **Keybindings**: Yazelix remaps conflicting keybindings and provides discoverable shortcuts. See [keybindings.md](./keybindings.md) for all details.
 - **Styling & Transparency**: Adjust terminal and editor appearance. See [styling.md](./styling.md).

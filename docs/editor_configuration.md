@@ -53,6 +53,7 @@ Yazelix sets your configured editor as the `EDITOR` environment variable through
 - The bundled editor is the thin `luccahuguet/yazelix-helix` Steel fork
 - That fork tracks Helix Steel and carries the small `--config-dir` override Yazelix needs for managed sessions
 - Managed Helix source files live under `~/.config/yazelix/helix/`, including `config.toml`, `languages.toml`, `themes/`, and custom Steel plugin files
+- Custom Yazelix-managed themes belong in `~/.config/yazelix/helix/themes/`; native `~/.config/helix/themes/` remains outside Yazelix, and `~/.config/yazelix/user_conf/helix/themes/` is unsupported legacy state
 - No interference with your system's Helix installation
 
 ### Using A Custom Helix Fork
