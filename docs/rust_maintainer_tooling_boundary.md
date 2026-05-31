@@ -29,7 +29,7 @@ The pragmatic split is therefore an in-repo crate boundary. It makes runtime own
 Use three different homes for three different kinds of speed.
 
 - Personal Home Manager owns frequently used command-line tools that are not part of the shipped Yazelix runtime: `cargo-nextest`, `cargo-udeps`, `tokei`, `gh`, `jq`, `nu-lint`, Beads, and similar maintainer binaries
-- The Yazelix maintainer shell owns reproducible repo gates and runtime-adjacent tools that should be available to contributors from the flake
+- The Yazelix maintainer shell owns reproducible repo gates and runtime-adjacent tools that should be available to contributors from the flake, including `cargo-nextest`, `cargo-llvm-cov`, and `cargo-mutants`
 - The Yazelix maintainer shell also packages focused Rust audit tools when nixpkgs does not, such as `cargo-crap` for optional CRAP/change-risk metric reviews
 - Cargo compilation outputs, incremental state, and `target/` directories stay project-local; moving those into Home Manager would not make builds cleaner and would make cache ownership harder to reason about
 
@@ -43,6 +43,10 @@ cargo +nightly udeps --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.t
 Do not add `cargo-udeps` to user runtime packages. Runtime users do not need Rust cleanup tools to launch Yazelix.
 
 `cargo-crap` is a maintainer audit tool for optional change-risk/complexity reviews. It belongs in the maintainer shell, not in user runtime packages or default package-time tests.
+
+`cargo-llvm-cov` is the coverage producer for meaningful `cargo-crap --lcov` runs and for targeted coverage reports. Run it explicitly from the maintainer shell when coverage evidence is needed; do not make user package builds depend on coverage generation.
+
+`cargo-mutants` is a manual or sweep-lane mutation-testing audit. It answers whether existing tests catch behavior changes, but it is intentionally heavier than default checks. Do not add it to user runtime packages, package-time tests, or the default fast Rust lane.
 
 ## Runtime Package Impact
 

@@ -26,6 +26,8 @@ let
     [ pkgs.github-cli ]
     ++ [ pkgs.nu-lint ]
     ++ [ pkgs.cargo-nextest ]
+    ++ [ pkgs.cargo-llvm-cov ]
+    ++ [ pkgs.cargo-mutants ]
     ++ [ cargoCrap ]
     ++ [ brPackage ]
     ++ [ rustWasiToolchain ]
