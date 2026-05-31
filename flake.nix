@@ -212,6 +212,57 @@
             yazi-unwrapped = final.yazi-unwrapped;
           };
         });
+      kgpPackageContractCheck =
+        system:
+        let
+          pkgs = mkPkgs system;
+          poisonedConsumerPkgs = import nixpkgs {
+            inherit system;
+            overlays = [
+              (_final: prev: {
+                zellij = prev.zellij.overrideAttrs (_old: {
+                  __intentionallyOverridingVersion = true;
+                  version = "0.44.1";
+                  cargoDeps = throw "consumer pkgs.zellij cargoDeps leaked into Yazelix KGP Zellij";
+                  patches = throw "consumer pkgs.zellij patches leaked into Yazelix KGP Zellij";
+                  prePatch = throw "consumer pkgs.zellij prePatch leaked into Yazelix KGP Zellij";
+                  postPatch = throw "consumer pkgs.zellij postPatch leaked into Yazelix KGP Zellij";
+                  installCheckPhase =
+                    throw "consumer pkgs.zellij installCheckPhase leaked into Yazelix KGP Zellij";
+                });
+                yazi-unwrapped = prev.yazi-unwrapped.overrideAttrs (_old: {
+                  cargoDeps = throw "consumer pkgs.yazi-unwrapped cargoDeps leaked into Yazelix KGP Yazi";
+                  patches = throw "consumer pkgs.yazi-unwrapped patches leaked into Yazelix KGP Yazi";
+                  prePatch = throw "consumer pkgs.yazi-unwrapped prePatch leaked into Yazelix KGP Yazi";
+                  postPatch = throw "consumer pkgs.yazi-unwrapped postPatch leaked into Yazelix KGP Yazi";
+                });
+              })
+            ];
+          };
+          yaziCodeSrc = builtins.path {
+            path = yazelixYazi;
+            name = "yazi-yazelix-kgp-src";
+          };
+          kgpZellij = yazelixKgpZellij poisonedConsumerPkgs poisonedConsumerPkgs.zellij;
+          kgpYazi = yazelixKgpYazi poisonedConsumerPkgs poisonedConsumerPkgs.yazi-unwrapped yaziCodeSrc;
+        in
+        assert (kgpZellij.version or "") == "0.44.3";
+        assert (kgpZellij.cargoDeps.name or "") == "zellij-0.44.3-vendor";
+        assert (kgpZellij.patches or [ ]) == [ ];
+        assert (kgpZellij.prePatch or "") == "";
+        assert (kgpZellij.postPatch or "") == "";
+        assert (kgpZellij.installCheckPhase or "") == ''
+          runHook preInstallCheck
+          runHook postInstallCheck
+        '';
+        assert (kgpYazi.version or "") == "26.5.6";
+        assert (kgpYazi.cargoDeps.name or "") == "yazi-26.5.6-vendor";
+        assert (kgpYazi.patches or [ ]) == [ ];
+        assert (kgpYazi.prePatch or "") == "";
+        assert (kgpYazi.postPatch or "") == "";
+        pkgs.runCommand "yazelix-kgp-package-contracts" { } ''
+          touch "$out"
+        '';
       defaultOverlay =
         final: _prev:
         let
@@ -284,6 +335,7 @@
           runtime_ghostty = runtimePackage system pkgs "ghostty" defaultRuntimePackages;
           runtime_wezterm = runtimePackage system pkgs "wezterm" defaultRuntimePackages;
           runtime_agent_tools = runtimePackage system pkgs defaultRuntimeVariant agentUsageRuntimePackages;
+          graphicsPkgs = yazelixGraphicsPkgs system pkgs;
           yazelix_default = yazelixPackage system pkgs defaultRuntimeVariant defaultRuntimePackages;
           yazelix_ghostty = yazelixPackage system pkgs "ghostty" defaultRuntimePackages;
           yazelix_wezterm = yazelixPackage system pkgs "wezterm" defaultRuntimePackages;
@@ -314,6 +366,8 @@
           yazelix_ghostty = yazelix_ghostty;
           yazelix_screen = yazelix_screen;
           yazelix_helix = yazelix_helix;
+          yazelix_kgp_yazi = graphicsPkgs.yazi-unwrapped;
+          yazelix_kgp_zellij = graphicsPkgs.zellij;
           yazelix_wezterm = yazelix_wezterm;
           yazelix_yazi_assets = yazelix_yazi_assets;
           yazelix_zellij_pane_orchestrator = yazelix_zellij_pane_orchestrator;
@@ -383,6 +437,10 @@
           default = maintainerShell system pkgs;
         }
       );
+
+      checks = forAllSystems (system: {
+        kgp_package_contracts = kgpPackageContractCheck system;
+      });
 
       homeManagerModules.default = homeManagerModule;
       homeManagerModules.yazelix = homeManagerModule;

@@ -38,9 +38,11 @@ jobs:
           name: yazelix
           authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
 
-      - name: Build user-facing packages
+      - name: Build cache package outputs
         run: |
           nix build --no-link --print-out-paths \
+            .#packages.x86_64-linux.yazelix_kgp_yazi \
+            .#packages.x86_64-linux.yazelix_kgp_zellij \
             .#packages.x86_64-linux.yazelix \
             .#packages.x86_64-linux.yazelix_ghostty \
             .#packages.x86_64-linux.yazelix_wezterm \

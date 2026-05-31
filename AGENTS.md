@@ -111,6 +111,12 @@ When creating new files or directories, always use underscores to maintain consi
   These commands require `cargo` and `rustc` on `PATH` and intentionally avoid re-entering `nix develop`. Treat Nix builds, Home Manager switches, and package validators as explicit final gates, not the default edit-check loop.
 - For agent-driven Yazelix invocations, always suppress the welcome/UI path by default. Prefer entrypoints that already do this, such as `yzx run ...`, or pass the equivalent `--skip-welcome` flow when calling Yazelix bootstrap/runtime scripts through `nix develop -c ...`. Do not launch the interactive welcome screen or its animations unless the task is explicitly about validating that UX.
 - Be careful with heavyweight Nix probes during investigation. Prefer cheap read-only commands such as `nix eval`, `nix flake show`, `nix path-info`, `rg`, or repo-local code inspection before running `nix build` on large external inputs. Do not casually launch expensive build jobs just to inspect metadata, and if a diagnostic build is truly needed, say so explicitly and clean it up if it is no longer needed.
+- For runtime packaging work, use the verification ladder instead of starting with a full runtime build:
+  1. Run focused Rust checks/tests for touched code, such as `yzx dev rust check core` or `yzx dev rust test <filter>`.
+  2. Run eval-fast package contracts such as `nix build .#checks.$(nix eval --raw --impure --expr builtins.currentSystem).kgp_package_contracts --no-link --no-write-lock-file` for KGP override metadata changes.
+  3. Build only the touched package output when needed, such as `nix build .#yazelix_kgp_yazi --no-link --no-write-lock-file` or `nix build .#yazelix_kgp_zellij --no-link --no-write-lock-file`.
+  4. Run `nix build .#runtime_ghostty --no-link --no-write-lock-file` once as the final package gate after the smaller checks pass.
+- Avoid launching multiple `nix develop`, `nix eval`, or package-build commands in parallel during validation. They contend on Nix eval caches, store locks, and Cargo/Nix build directories, which makes the session slower and noisier than serialized checks.
 
 ## Shell Boundary Rule
 

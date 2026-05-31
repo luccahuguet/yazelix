@@ -108,7 +108,7 @@ Set `eval-cores` to 0 to use all cores, or 1 to disable.
 
 ### Optional: Use the Yazelix Binary Cache
 
-Yazelix publishes `x86_64-linux` package builds to the public Cachix cache at `https://yazelix.cachix.org`. The cache is optional: Nix still builds from source when the cache is unavailable or does not contain the requested output.
+Yazelix publishes `x86_64-linux` package builds to the public Cachix cache at `https://yazelix.cachix.org`. The cache includes the expensive KGP Yazi and KGP Zellij runtime packages when CI has published the current revision. The cache is optional: Nix still builds from source when the cache is unavailable or does not contain the requested output.
 
 Add the cache to your Nix settings before installing or updating Yazelix:
 
@@ -127,6 +127,16 @@ Add the cache to your Nix settings before installing or updating Yazelix:
 ```
 
 If another cache is already configured, keep it in the same lists. For example, a Home Manager user can place those `nix.settings` entries in their Home Manager configuration, then run `home-manager switch`. Standalone Home Manager users should also set `nix.package = pkgs.nix` when Home Manager generates `~/.config/nix/nix.conf`.
+
+Check that Nix sees the cache and that the current KGP Zellij output is present in the public cache:
+
+```bash
+nix config show | grep -E 'https://yazelix\.cachix\.org|yazelix\.cachix\.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM='
+kgp_zellij_out="$(nix eval --raw github:luccahuguet/yazelix#yazelix_kgp_zellij.outPath)"
+nix path-info --store https://yazelix.cachix.org "$kgp_zellij_out"
+```
+
+If the first command does not print both the cache URL and key, reload the Nix configuration that owns your `nix.settings`. If `nix path-info` cannot find the output, the requested Yazelix revision has not been published to the cache yet, and Nix will build it from source.
 
 ### Step 2: Install Yazelix
 

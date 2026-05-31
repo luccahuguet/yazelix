@@ -31,7 +31,7 @@ history, and Beads-owned planning state.
 | --- | --- |
 | Runtime control plane and command surface | `yzx dev test`; `yzx_repo_validator validate-config-surface-contract` for config/control-plane metadata changes |
 | Workspace session orchestration | `yzx_repo_validator validate-workspace-session-contract`; `nix build .#runtime` after first-party plugin package or runtime artifact changes |
-| Distribution and host integration | `yzx_repo_validator validate-flake-interface`; `yzx_repo_validator validate-nix-customization-api`; installed-runtime/profile validators only for package or release gates |
+| Distribution and host integration | `yzx_repo_validator validate-flake-interface`; `yzx_repo_validator validate-nix-customization-api`; `nix build .#checks.$system.kgp_package_contracts --no-link` for KGP package override metadata; installed-runtime/profile validators only for package or release gates |
 | Shipped runtime data and assets | `yzx_repo_validator validate-config-surface-contract`; `yzx_repo_validator validate-workspace-session-contract` for Zellij layout or workspace asset changes |
 | Maintainer workflow and validation | `yzx_repo_validator validate-contracts`; `yzx_repo_validator validate-rust-test-traceability`; `yzx dev test` for default-suite behavior |
 
