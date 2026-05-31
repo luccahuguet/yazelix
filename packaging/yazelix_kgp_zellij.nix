@@ -12,6 +12,16 @@ in
 baseZellij.overrideAttrs (_old: {
   inherit pname version src;
 
+  # Keep KGP Zellij source-coupled patch and install-check metadata owned
+  # here. Consumer zellij hooks may target a different upstream source shape.
+  patches = [ ];
+  prePatch = "";
+  postPatch = "";
+  installCheckPhase = ''
+    runHook preInstallCheck
+    runHook postInstallCheck
+  '';
+
   cargoDeps = pkgs.rustPlatform.fetchCargoVendor {
     inherit pname version src;
     hash = cargoHash;

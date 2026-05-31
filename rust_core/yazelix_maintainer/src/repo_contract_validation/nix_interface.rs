@@ -112,8 +112,26 @@ pub fn validate_nix_customization_api(repo_root: &Path) -> Result<ValidationRepo
     );
     require_json_bool(
         object,
+        "kgp_zellij_clears_consumer_patches",
+        "KGP Zellij package must clear consumer pkgs.zellij patch hooks when it swaps to the KGP source",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
+        "kgp_zellij_owns_install_check",
+        "KGP Zellij package must own install checks coupled to its patch policy",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
         "kgp_yazi_owns_cargo_deps",
         "KGP Yazi package must own source-coupled Cargo vendor deps instead of inheriting consumer pkgs.yazi-unwrapped cargoDeps",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
+        "kgp_yazi_clears_consumer_patches",
+        "KGP Yazi package must clear consumer pkgs.yazi-unwrapped patch hooks when it swaps to the KGP source",
         &mut report.errors,
     );
 
@@ -232,9 +250,16 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "          __intentionallyOverridingVersion = true;".to_string(),
         "          version = \"0.44.1\";".to_string(),
         "          cargoDeps = throw \"consumer pkgs.zellij cargoDeps leaked into Yazelix graphics runtime\";".to_string(),
+        "          patches = throw \"consumer pkgs.zellij patches leaked into Yazelix graphics runtime\";".to_string(),
+        "          prePatch = throw \"consumer pkgs.zellij prePatch leaked into Yazelix graphics runtime\";".to_string(),
+        "          postPatch = throw \"consumer pkgs.zellij postPatch leaked into Yazelix graphics runtime\";".to_string(),
+        "          installCheckPhase = throw \"consumer pkgs.zellij installCheckPhase leaked into Yazelix graphics runtime\";".to_string(),
         "        });".to_string(),
         "        yazi-unwrapped = prev.yazi-unwrapped.overrideAttrs (_old: {".to_string(),
         "          cargoDeps = throw \"consumer pkgs.yazi-unwrapped cargoDeps leaked into Yazelix graphics runtime\";".to_string(),
+        "          patches = throw \"consumer pkgs.yazi-unwrapped patches leaked into Yazelix graphics runtime\";".to_string(),
+        "          prePatch = throw \"consumer pkgs.yazi-unwrapped prePatch leaked into Yazelix graphics runtime\";".to_string(),
+        "          postPatch = throw \"consumer pkgs.yazi-unwrapped postPatch leaked into Yazelix graphics runtime\";".to_string(),
         "        });".to_string(),
         "      })".to_string(),
         "    ];".to_string(),
@@ -269,7 +294,10 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "  invalid_runtime_tool_rejected = !invalidRuntimeTool.success;".to_string(),
         "  unsupported_component_rejected = !unsupportedComponent.success;".to_string(),
         "  kgp_zellij_owns_cargo_deps = (kgpZellij.version or \"\") == \"0.44.3\" && (kgpZellij.cargoDeps.name or \"\") == \"zellij-0.44.3-vendor\";".to_string(),
+        "  kgp_zellij_clears_consumer_patches = (kgpZellij.patches or []) == [] && (kgpZellij.prePatch or \"\") == \"\" && (kgpZellij.postPatch or \"\") == \"\";".to_string(),
+        "  kgp_zellij_owns_install_check = (kgpZellij.installCheckPhase or \"\") == \"runHook preInstallCheck\\nrunHook postInstallCheck\\n\";".to_string(),
         "  kgp_yazi_owns_cargo_deps = (kgpYazi.version or \"\") == \"26.5.6\" && (kgpYazi.cargoDeps.name or \"\") == \"yazi-26.5.6-vendor\";".to_string(),
+        "  kgp_yazi_clears_consumer_patches = (kgpYazi.patches or []) == [] && (kgpYazi.prePatch or \"\") == \"\" && (kgpYazi.postPatch or \"\") == \"\";".to_string(),
         "}".to_string(),
     ]
     .join("\n")
