@@ -119,6 +119,7 @@ pub fn evaluate_doctor_runtime_report(
         shared_runtime_preflight.extend(build_runtime_graphics_findings(
             shared,
             &request.runtime_dir,
+            &runtime_tool_command_search_paths,
         ));
     }
     shared_runtime_preflight.extend(build_runtime_tool_source_findings(
@@ -152,7 +153,22 @@ fn effective_command_search_paths(configured_paths: &[PathBuf]) -> Vec<PathBuf> 
 fn command_exists_in_paths(command: &str, command_search_paths: &[PathBuf]) -> bool {
     command_search_paths
         .iter()
-        .any(|dir| dir.join(command).is_file())
+        .any(|dir| is_executable_command(&dir.join(command)))
+}
+
+#[cfg(unix)]
+fn is_executable_command(path: &Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+
+    let Ok(metadata) = fs::metadata(path) else {
+        return false;
+    };
+    metadata.is_file() && metadata.permissions().mode() & 0o111 != 0
+}
+
+#[cfg(not(unix))]
+fn is_executable_command(path: &Path) -> bool {
+    path.is_file()
 }
 
 fn read_runtime_tool_manifest(
@@ -176,6 +192,14 @@ fn read_runtime_tool_manifest(
             manifest_path.display()
         )
     })
+}
+
+fn runtime_tool_required_commands(tool: &RuntimeToolManifestEntry) -> &[String] {
+    if tool.required_commands.is_empty() {
+        &tool.commands
+    } else {
+        &tool.required_commands
+    }
 }
 
 fn format_path_list(command_search_paths: &[PathBuf]) -> String {
@@ -216,11 +240,7 @@ fn build_host_runtime_tool_findings(
         .into_iter()
         .filter(|(_, tool)| tool.source == "host")
         .map(|(name, tool)| {
-            let required_commands = if tool.required_commands.is_empty() {
-                tool.commands
-            } else {
-                tool.required_commands
-            };
+            let required_commands = runtime_tool_required_commands(&tool);
             let missing_commands = required_commands
                 .iter()
                 .filter(|command| !command_exists_in_paths(command, command_search_paths))
@@ -525,9 +545,10 @@ fn build_shared_preflight_findings(
 fn build_runtime_graphics_findings(
     shared: &SharedRuntimePreflightInput,
     runtime_dir: &Path,
+    command_search_paths: &[PathBuf],
 ) -> Vec<DoctorRuntimeDoctorFinding> {
     vec![
-        build_graphics_preview_strategy_finding(shared, runtime_dir),
+        build_graphics_preview_strategy_finding(shared, runtime_dir, command_search_paths),
         build_chafa_probe_safety_finding(runtime_dir),
     ]
 }
@@ -558,14 +579,35 @@ fn terminal_uses_yazelix_kitty_bridge(terminal: &str) -> bool {
     matches!(terminal, "ghostty" | "ratty")
 }
 
+fn host_runtime_yazi_available(runtime_dir: &Path, command_search_paths: &[PathBuf]) -> bool {
+    let manifest = match read_runtime_tool_manifest(runtime_dir) {
+        Ok(Some(manifest)) => manifest,
+        Ok(None) | Err(_) => return false,
+    };
+    let Some(tool) = manifest.get("yazi") else {
+        return false;
+    };
+    if tool.source != "host" {
+        return false;
+    }
+
+    let required_commands = runtime_tool_required_commands(tool);
+    !required_commands.is_empty()
+        && required_commands
+            .iter()
+            .all(|command| command_exists_in_paths(command, command_search_paths))
+}
+
 fn build_graphics_preview_strategy_finding(
     shared: &SharedRuntimePreflightInput,
     runtime_dir: &Path,
+    command_search_paths: &[PathBuf],
 ) -> DoctorRuntimeDoctorFinding {
     let terminal = first_configured_terminal(&shared.terminals);
     let bridge_marker = runtime_feature_enabled(runtime_dir, ZELLIJ_KITTY_PASSTHROUGH_FEATURE);
     let zellij_present = runtime_command_present(runtime_dir, "zellij");
     let yazi_present = runtime_command_present(runtime_dir, "yazi");
+    let host_yazi_present = host_runtime_yazi_available(runtime_dir, command_search_paths);
     let details = vec![
         format!("First configured terminal: {terminal}"),
         format!(
@@ -582,7 +624,13 @@ fn build_graphics_preview_strategy_finding(
         ),
         format!(
             "Runtime Yazi command: {}",
-            if yazi_present { "present" } else { "missing" }
+            if yazi_present {
+                "present"
+            } else if host_yazi_present {
+                "host PATH"
+            } else {
+                "missing"
+            }
         ),
         "Chafa probing is reported separately and is not treated as proof of high-quality image-preview support.".into(),
     ];
@@ -600,6 +648,23 @@ fn build_graphics_preview_strategy_finding(
                 fix_action: None,
                 capability_tier: Some("full".into()),
                 capability_mode: Some("kitty_passthrough_bridge".into()),
+                runtime_contract_check: Some("runtime_graphics_preview_strategy".into()),
+                owner_surface: Some("runtime_graphics".into()),
+            };
+        }
+
+        if bridge_marker && zellij_present && host_yazi_present {
+            return DoctorRuntimeDoctorFinding {
+                status: "warning".into(),
+                message: "Graphics previews: host-sourced Yazi is available, but bundled Yazelix Yazi is the fully supported Kitty bridge path".into(),
+                details: Some(format!(
+                    "{}\nPreview strategy: Ghostty/Ratty can use the packaged Zellij bridge, but host-sourced Yazi is not treated as equivalent to bundled Yazelix KGP Yazi without a capability check.",
+                    details.join("\n")
+                )),
+                fix_available: false,
+                fix_action: None,
+                capability_tier: Some("degraded".into()),
+                capability_mode: Some("kitty_passthrough_bridge_host_yazi".into()),
                 runtime_contract_check: Some("runtime_graphics_preview_strategy".into()),
                 owner_surface: Some("runtime_graphics".into()),
             };
@@ -703,6 +768,25 @@ mod tests {
         std::fs::write(path, "").unwrap();
     }
 
+    fn write_path_command(path_dir: &Path, command: &str) {
+        let path = path_dir.join(command);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, "").unwrap();
+        make_executable(&path);
+    }
+
+    #[cfg(unix)]
+    fn make_executable(path: &Path) {
+        use std::os::unix::fs::PermissionsExt;
+
+        let mut permissions = std::fs::metadata(path).unwrap().permissions();
+        permissions.set_mode(permissions.mode() | 0o755);
+        std::fs::set_permissions(path, permissions).unwrap();
+    }
+
+    #[cfg(not(unix))]
+    fn make_executable(_path: &Path) {}
+
     fn shared_with_terminal(terminal: &str) -> SharedRuntimePreflightInput {
         SharedRuntimePreflightInput {
             zellij_layout_path: PathBuf::from("layout.kdl"),
@@ -784,6 +868,39 @@ mod tests {
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].status, "warning");
         assert_eq!(findings[0].message, "Host runtime tool missing: lazygit");
+        assert!(
+            findings[0]
+                .details
+                .as_deref()
+                .unwrap()
+                .contains("Missing required command(s): lazygit")
+        );
+    }
+
+    // Regression: host runtime commands must be executable, not merely present as files on PATH.
+    #[test]
+    fn host_runtime_tool_file_must_be_executable() {
+        let tmp = TempDir::new().unwrap();
+        let runtime = tmp.path().join("runtime");
+        let path_dir = tmp.path().join("host_path");
+        std::fs::create_dir_all(&runtime).unwrap();
+        std::fs::create_dir_all(&path_dir).unwrap();
+        std::fs::write(path_dir.join("lazygit"), "").unwrap();
+        std::fs::write(
+            runtime.join("runtime_tools.json"),
+            r#"{
+              "lazygit": {
+                "source": "host",
+                "commands": ["lazygit", "lg"],
+                "required_commands": ["lazygit"]
+              }
+            }"#,
+        )
+        .unwrap();
+
+        let findings = build_host_runtime_tool_findings(&runtime, &[path_dir]);
+
+        assert_eq!(findings[0].status, "warning");
         assert!(
             findings[0]
                 .details
@@ -884,7 +1001,8 @@ mod tests {
         write_runtime_command(&runtime, "zellij");
         write_runtime_command(&runtime, "yazi");
 
-        let findings = build_runtime_graphics_findings(&shared_with_terminal("ghostty"), &runtime);
+        let findings =
+            build_runtime_graphics_findings(&shared_with_terminal("ghostty"), &runtime, &[]);
 
         assert_eq!(findings[0].status, "ok");
         assert_eq!(
@@ -901,6 +1019,98 @@ mod tests {
         );
     }
 
+    // Regression: host-sourced Yazi is allowed, but it is not equivalent to bundled Yazelix KGP Yazi for Ghostty/Ratty graphics support.
+    #[test]
+    fn graphics_strategy_warns_for_host_sourced_yazi() {
+        let tmp = TempDir::new().unwrap();
+        let runtime = tmp.path().join("runtime");
+        let path_dir = tmp.path().join("host_path");
+        std::fs::create_dir_all(runtime.join("runtime_features")).unwrap();
+        std::fs::write(
+            runtime_feature_path(&runtime, ZELLIJ_KITTY_PASSTHROUGH_FEATURE),
+            "",
+        )
+        .unwrap();
+        std::fs::write(
+            runtime.join("runtime_tools.json"),
+            r#"{
+              "yazi": {
+                "source": "host",
+                "commands": ["yazi", "ya"],
+                "required_commands": ["yazi"]
+              }
+            }"#,
+        )
+        .unwrap();
+        write_runtime_command(&runtime, "zellij");
+        write_path_command(&path_dir, "yazi");
+
+        let findings = build_runtime_graphics_findings(
+            &shared_with_terminal("ghostty"),
+            &runtime,
+            &[path_dir],
+        );
+
+        assert_eq!(findings[0].status, "warning");
+        assert_eq!(
+            findings[0].capability_mode.as_deref(),
+            Some("kitty_passthrough_bridge_host_yazi")
+        );
+        assert!(
+            findings[0]
+                .details
+                .as_deref()
+                .unwrap_or_default()
+                .contains("Runtime Yazi command: host PATH")
+        );
+    }
+
+    // Regression: declaring host-sourced Yazi is not enough for graphics diagnostics when the host command is missing.
+    #[test]
+    fn graphics_strategy_warns_when_host_sourced_yazi_is_missing() {
+        let tmp = TempDir::new().unwrap();
+        let runtime = tmp.path().join("runtime");
+        let path_dir = tmp.path().join("empty_path");
+        std::fs::create_dir_all(runtime.join("runtime_features")).unwrap();
+        std::fs::create_dir_all(&path_dir).unwrap();
+        std::fs::write(
+            runtime_feature_path(&runtime, ZELLIJ_KITTY_PASSTHROUGH_FEATURE),
+            "",
+        )
+        .unwrap();
+        std::fs::write(
+            runtime.join("runtime_tools.json"),
+            r#"{
+              "yazi": {
+                "source": "host",
+                "commands": ["yazi", "ya"],
+                "required_commands": ["yazi"]
+              }
+            }"#,
+        )
+        .unwrap();
+        write_runtime_command(&runtime, "zellij");
+
+        let findings = build_runtime_graphics_findings(
+            &shared_with_terminal("ghostty"),
+            &runtime,
+            &[path_dir],
+        );
+
+        assert_eq!(findings[0].status, "warning");
+        assert_eq!(
+            findings[0].capability_mode.as_deref(),
+            Some("kitty_passthrough_bridge_incomplete")
+        );
+        assert!(
+            findings[0]
+                .details
+                .as_deref()
+                .unwrap_or_default()
+                .contains("Runtime Yazi command: missing")
+        );
+    }
+
     // Regression: Ghostty/Ratty graphics diagnostics must warn on an incomplete bridge instead of claiming support from terminal identity alone.
     #[test]
     fn graphics_strategy_warns_for_ratty_without_bridge_marker() {
@@ -909,7 +1119,8 @@ mod tests {
         write_runtime_command(&runtime, "zellij");
         write_runtime_command(&runtime, "yazi");
 
-        let findings = build_runtime_graphics_findings(&shared_with_terminal("ratty"), &runtime);
+        let findings =
+            build_runtime_graphics_findings(&shared_with_terminal("ratty"), &runtime, &[]);
 
         assert_eq!(findings[0].status, "warning");
         assert_eq!(
@@ -944,7 +1155,8 @@ mod tests {
         write_runtime_command(&runtime, "zellij");
         write_runtime_command(&runtime, "yazi");
 
-        let findings = build_runtime_graphics_findings(&shared_with_terminal("ghostty"), &runtime);
+        let findings =
+            build_runtime_graphics_findings(&shared_with_terminal("ghostty"), &runtime, &[]);
 
         assert_eq!(findings[0].status, "ok");
         assert_eq!(findings[1].status, "warning");
