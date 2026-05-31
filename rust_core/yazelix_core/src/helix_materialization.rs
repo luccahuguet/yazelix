@@ -1025,13 +1025,17 @@ mod tests {
         .unwrap();
 
         let steel_dir = state_dir.join("configs/helix");
-        assert_eq!(data.enabled_steel_plugins, vec!["recentf"]);
+        assert_eq!(
+            data.enabled_steel_plugins,
+            vec!["recentf", "splash", "spacemacs_theme"]
+        );
         assert_eq!(
             data.generated_steel_config_dir,
             steel_dir.to_string_lossy().to_string()
         );
         assert!(steel_dir.join("cogs/recentf.scm").exists());
-        assert!(!steel_dir.join("splash.scm").exists());
+        assert!(steel_dir.join("splash.scm").exists());
+        assert!(steel_dir.join("cogs/themes/spacemacs.scm").exists());
         assert!(!steel_dir.join("cogs/keymaps.scm").exists());
         assert!(!steel_dir.join("cogs/labelled-buffers.scm").exists());
 
@@ -1063,7 +1067,9 @@ mod tests {
             "(require (only-in \"cogs/recentf.scm\" recentf-open-files recentf-snapshot))"
         ));
         assert!(generated_helix.contains("(recentf-snapshot)"));
-        assert!(!generated_helix.contains("show-splash"));
+        assert!(generated_helix.contains("(require (only-in \"splash.scm\" show-splash))"));
+        assert!(generated_helix.contains("(show-splash)"));
+        assert!(generated_helix.contains("(require \"cogs/themes/spacemacs.scm\")"));
         assert_eq!(
             steel_command_names(&data, "public"),
             vec![
@@ -1075,7 +1081,7 @@ mod tests {
         );
         assert_eq!(
             steel_command_names(&data, "internal"),
-            vec!["recentf-snapshot".to_string()]
+            vec!["recentf-snapshot".to_string(), "show-splash".to_string()]
         );
 
         let generated_init = fs::read_to_string(state_dir.join("configs/helix/init.scm")).unwrap();
@@ -1084,7 +1090,7 @@ mod tests {
         assert!(!generated_init.contains("show-splash"));
     }
 
-    // Defends: the borrowed splash plugin remains opt-in and only renders when the wrapper classifies the launch as splash-eligible.
+    // Defends: the borrowed splash plugin only renders when the wrapper classifies the launch as splash-eligible.
     #[test]
     fn helix_materialization_loads_opt_in_splash_only_when_requested() {
         let tmp = TempDir::new().unwrap();

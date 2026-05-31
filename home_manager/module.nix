@@ -159,7 +159,11 @@ let
             options = {
               enabled = mkOption {
                 type = types.listOf types.str;
-                default = [ "recentf" ];
+                default = [
+                  "recentf"
+                  "splash"
+                  "spacemacs_theme"
+                ];
                 description = "Bundled Helix Steel plugin ids to load from the Yazelix plugin repository";
               };
               extra = mkOption {
