@@ -125,7 +125,7 @@ Coarser Yazelix subsystems use `components`. Disabling `screen` requires skippin
 }
 ```
 
-Optional: use Yazelix's public `x86_64-linux` Cachix cache for faster package builds and Home Manager switches:
+Optional: use Yazelix's public `x86_64-linux` Cachix cache for faster package builds and Home Manager switches. The cache includes the expensive Yazelix Helix, KGP Yazi, and KGP Zellij runtime packages when CI has published the current revision:
 
 ```nix
 { pkgs, ... }: {

@@ -43,6 +43,7 @@ jobs:
           nix build --no-link --print-out-paths \
             .#packages.x86_64-linux.yazelix_kgp_yazi \
             .#packages.x86_64-linux.yazelix_kgp_zellij \
+            .#packages.x86_64-linux.yazelix_helix \
             .#packages.x86_64-linux.yazelix \
             .#packages.x86_64-linux.yazelix_ghostty \
             .#packages.x86_64-linux.yazelix_wezterm \
