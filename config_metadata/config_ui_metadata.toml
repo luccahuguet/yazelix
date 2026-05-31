@@ -138,45 +138,12 @@ home_manager_behavior = "read_only_in_ui"
 lifecycle = "stable"
 advanced = true
 
-[fields."helix.plugins.recentf"]
-tab = "editor"
-group = "helix_plugins"
-label = "recentf"
-help = "Enable the bundled Helix Steel recent file picker"
-editor = "toggle"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "experimental"
-
-[fields."helix.plugins.splash"]
-tab = "editor"
-group = "helix_plugins"
-label = "splash"
-help = "Enable the bundled Helix Steel splash screen"
-editor = "toggle"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "experimental"
-
-[fields."helix.plugins.spacemacs_theme"]
-tab = "editor"
-group = "helix_plugins"
-label = "spacemacs_theme"
-help = "Register the bundled Spacemacs Helix Steel theme"
-editor = "toggle"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "experimental"
-
 [fields."helix.steel_plugins"]
 tab = "editor"
 group = "helix_plugins"
 label = "steel_plugins"
-help = "Declare user-owned Helix Steel plugins from ~/.config/yazelix/helix/steel_plugins"
-editor = "object_list"
+help = "Choose bundled Helix Steel plugins and declare extra user-owned plugin manifests"
+editor = "object"
 default_source = "settings_default.jsonc"
 write_support = "settings_jsonc"
 home_manager_behavior = "read_only_in_ui"

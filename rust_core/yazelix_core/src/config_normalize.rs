@@ -2,7 +2,7 @@ use crate::bridge::{CoreError, ErrorClass};
 use crate::helix_external::{
     HelixExternalPair, is_custom_helix_binary_command, is_helix_command, non_empty_string,
 };
-use crate::helix_steel_plugins::parse_steel_plugin_manifests;
+use crate::helix_steel_plugins::parse_steel_plugin_config;
 use crate::settings_surface::{is_jsonc_config_path, read_config_table};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Number as JsonNumber, Value as JsonValue, json};
@@ -561,7 +561,7 @@ fn validate_helix_steel_plugins(user_config: &toml::Table) -> Vec<SchemaFinding>
     let Some(value) = get_nested_value(&root, &["helix", "steel_plugins"]) else {
         return Vec::new();
     };
-    match parse_steel_plugin_manifests(Some(&toml_to_json(value))) {
+    match parse_steel_plugin_config(Some(&toml_to_json(value))) {
         Ok(_) => Vec::new(),
         Err(error) => vec![SchemaFinding {
             kind: "invalid_helix_steel_plugins",
@@ -680,7 +680,7 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
                 format!("Invalid Helix Steel plugin manifest at {}", finding.path);
             diagnostic.detail_lines = vec![
                 finding.message,
-                "Next: Keep helix.steel_plugins as a list of objects with id, source, public_commands, internal_commands, startup_commands, and command_descriptions.".to_string(),
+                "Next: Keep helix.steel_plugins as an object with enabled bundled ids and extra plugin manifests.".to_string(),
                 "Next: Source paths must be relative .scm files below ~/.config/yazelix/helix/steel_plugins.".to_string(),
             ];
         }
@@ -1176,18 +1176,19 @@ mod tests {
     #[test]
     fn rejects_invalid_helix_steel_plugin_manifest_shape() {
         let mut config = default_settings_jsonc();
-        config["helix"]["steel_plugins"] = json!([
-            {
+        config["helix"]["steel_plugins"] = json!({
+            "enabled": ["recentf"],
+            "extra": [{
                 "id": "bad_plugin",
                 "source": "../bad.scm",
                 "public_commands": ["bad-open"]
-            }
-        ]);
+            }]
+        });
         let path = write_settings_config(&config);
         let error = normalize_config(&request_for(path)).unwrap_err();
         assert_eq!(error.code(), "unsupported_config");
         let details = error.details();
-        let diagnostic = blocking_diagnostic_for(&details, "helix.steel_plugins[0].source");
+        let diagnostic = blocking_diagnostic_for(&details, "helix.steel_plugins.extra[0].source");
         assert_eq!(diagnostic["status"], "invalid_helix_steel_plugins");
     }
 

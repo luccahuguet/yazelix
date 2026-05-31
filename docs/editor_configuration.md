@@ -158,7 +158,8 @@ hx --health | head -n 5
 
 **Steel plugins:**
 - Place custom Steel files below `~/.config/yazelix/helix/steel_plugins`
-- Declare each plugin in `helix.steel_plugins`
+- Select bundled plugins with `helix.steel_plugins.enabled`
+- Declare custom plugins in `helix.steel_plugins.extra`
 - Only `public_commands` appear in Helix command completion
 - `internal_commands` can be imported for plugin use without leaking into completion
 - `startup_commands` run when the generated Yazelix Steel module loads
@@ -166,19 +167,22 @@ hx --health | head -n 5
 ```jsonc
 {
   "helix": {
-    "steel_plugins": [
-      {
-        "id": "my_picker",
-        "source": "my_picker.scm",
-        "public_commands": ["my-picker-open"],
-        "internal_commands": ["my-picker-refresh"],
-        "startup_commands": ["my-picker-refresh"],
-        "command_descriptions": {
-          "my-picker-open": "Open my custom picker",
-          "my-picker-refresh": "Refresh my custom picker state"
+    "steel_plugins": {
+      "enabled": ["recentf"],
+      "extra": [
+        {
+          "id": "my_picker",
+          "source": "my_picker.scm",
+          "public_commands": ["my-picker-open"],
+          "internal_commands": ["my-picker-refresh"],
+          "startup_commands": ["my-picker-refresh"],
+          "command_descriptions": {
+            "my-picker-open": "Open my custom picker",
+            "my-picker-refresh": "Refresh my custom picker state"
+          }
         }
-      }
-    ]
+      ]
+    }
   }
 }
 ```
@@ -285,7 +289,10 @@ programs.yazelix = {
   # Editor configuration
   editor_command = null;        # Default: yazelix's Helix
   helix_external = null;        # Default: bundled matching binary/runtime
-  helix_steel_plugins = [];     # User-owned Helix Steel plugin manifests
+  helix_steel_plugins = {
+    enabled = [ "recentf" ];
+    extra = [ ];
+  };
   
   # Or custom:
   # helix_external = {

@@ -6,14 +6,12 @@ The initial bundled files come from `mattwparas/helix-config` and are loaded
 through the generated Yazelix Steel config when their corresponding settings are
 enabled
 
-The supported user-facing config keys are:
+The bundled plugin repository is declared in `manifest.toml`
 
-- `helix.plugins.recentf`
-- `helix.plugins.splash`
-- `helix.plugins.spacemacs_theme`
+The supported user-facing config surface is:
 
-`cogs/keymaps.scm` and `cogs/labelled-buffers.scm` are bundled helper modules,
-not separate settings
+- `helix.steel_plugins.enabled`: bundled plugin ids to load from this repository
+- `helix.steel_plugins.extra`: user-owned plugin manifests
 
-Users can override or test the same file contract locally by placing matching
-files under `~/.config/yazelix/helix/steel_plugins/`
+User-owned plugin files are resolved below
+`~/.config/yazelix/helix/steel_plugins/`

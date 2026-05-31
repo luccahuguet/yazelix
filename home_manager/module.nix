@@ -109,7 +109,7 @@ let
 
   listToToml =
     values:
-    if values == [ ] then "[]" else "[ " + (concatStringsSep ", " (map escapeString values)) + " ]";
+    if values == [ ] then "[]" else "[ " + (concatStringsSep ", " (map renderTomlValue values)) + " ]";
 
   attrOr =
     attrs: name: fallback:
@@ -155,38 +155,61 @@ let
         else if field.kind == "float" then
           types.either types.int types.float
         else if field.kind == "helix_steel_plugins" then
-          types.listOf (types.submodule {
+          types.submodule {
             options = {
-              id = mkOption {
-                type = types.str;
-                description = "Stable Yazelix Helix Steel plugin id";
-              };
-              source = mkOption {
-                type = types.str;
-                description = "Plugin source path below ~/.config/yazelix/helix/steel_plugins";
-              };
-              public_commands = mkOption {
+              enabled = mkOption {
                 type = types.listOf types.str;
-                default = [ ];
-                description = "Commands exposed through Helix command completion";
+                default = [ "recentf" ];
+                description = "Bundled Helix Steel plugin ids to load from the Yazelix plugin repository";
               };
-              internal_commands = mkOption {
-                type = types.listOf types.str;
+              extra = mkOption {
+                type = types.listOf (types.submodule {
+                  options = {
+                    id = mkOption {
+                      type = types.str;
+                      description = "Stable Yazelix Helix Steel plugin id";
+                    };
+                    source = mkOption {
+                      type = types.str;
+                      description = "Plugin source path below ~/.config/yazelix/helix/steel_plugins";
+                    };
+                    support_files = mkOption {
+                      type = types.listOf types.str;
+                      default = [ ];
+                      description = "Additional Steel source files required by this plugin";
+                    };
+                    public_commands = mkOption {
+                      type = types.listOf types.str;
+                      default = [ ];
+                      description = "Commands exposed through Helix command completion";
+                    };
+                    internal_commands = mkOption {
+                      type = types.listOf types.str;
+                      default = [ ];
+                      description = "Commands imported for plugin use but kept out of completion";
+                    };
+                    startup_commands = mkOption {
+                      type = types.listOf types.str;
+                      default = [ ];
+                      description = "Declared commands to run when the generated Steel module loads";
+                    };
+                    startup_condition = mkOption {
+                      type = types.nullOr (types.enum [ "show_splash" ]);
+                      default = null;
+                      description = "Optional Yazelix condition required before startup_commands run";
+                    };
+                    command_descriptions = mkOption {
+                      type = types.attrsOf types.str;
+                      default = { };
+                      description = "Descriptions for public and internal commands";
+                    };
+                  };
+                });
                 default = [ ];
-                description = "Commands imported for plugin use but kept out of completion";
-              };
-              startup_commands = mkOption {
-                type = types.listOf types.str;
-                default = [ ];
-                description = "Declared commands to run when the generated Steel module loads";
-              };
-              command_descriptions = mkOption {
-                type = types.attrsOf types.str;
-                default = { };
-                description = "Descriptions for public and internal commands";
+                description = "User-owned Helix Steel plugin manifests";
               };
             };
-          })
+          }
         else if field.kind == "helix_external" then
           types.submodule {
             options = {
@@ -244,11 +267,13 @@ let
     else if builtins.isList value then
       listToToml value
     else if builtins.isAttrs value then
+      let
+        nonNullNames =
+          builtins.filter (name: builtins.getAttr name value != null) (builtins.attrNames value);
+      in
       "{ "
       + concatStringsSep ", " (
-        map (name: "${name} = ${renderTomlValue (builtins.getAttr name value)}") (
-          builtins.attrNames value
-        )
+        map (name: "${name} = ${renderTomlValue (builtins.getAttr name value)}") nonNullNames
       )
       + " }"
     else
@@ -533,26 +558,14 @@ in
       '';
     };
 
-    helix_plugin_recentf = mkMainContractOption "helix.plugins.recentf" {
-      description = "Enable the bundled Helix Steel recent file picker.";
-    };
-
-    helix_plugin_splash = mkMainContractOption "helix.plugins.splash" {
-      description = "Enable the bundled Helix Steel splash screen.";
-    };
-
-    helix_plugin_spacemacs_theme = mkMainContractOption "helix.plugins.spacemacs_theme" {
-      description = "Register the bundled Spacemacs Helix Steel theme.";
-    };
-
     helix_steel_plugins = mkMainContractOption "helix.steel_plugins" {
       description = ''
-        User-owned Helix Steel plugin manifests.
+        Helix Steel plugin selection.
 
-        Each source is resolved below ~/.config/yazelix/helix/steel_plugins
-        and copied into the generated Yazelix Helix runtime config. Only
-        public_commands appear in Helix command completion; internal_commands
-        and startup_commands remain private to the generated module.
+        enabled selects bundled plugin ids from Yazelix's packaged plugin
+        repository. extra declares user-owned plugin manifests whose source
+        files are resolved below ~/.config/yazelix/helix/steel_plugins and
+        copied into the generated Yazelix Helix runtime config.
       '';
     };
 

@@ -12,12 +12,12 @@
   },
   "helix": {
     "external": null,
-    "plugins": {
-      "recentf": true,
-      "splash": false,
-      "spacemacs_theme": false
-    },
-    "steel_plugins": []
+    "steel_plugins": {
+      "enabled": [
+        "recentf"
+      ],
+      "extra": []
+    }
   },
   "editor": {
     "command": "",
