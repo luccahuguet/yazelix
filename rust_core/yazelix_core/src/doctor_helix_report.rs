@@ -554,7 +554,7 @@ fn evaluate_managed_steel_surface(request: &HelixDoctorEvaluateRequest) -> Helix
         ));
     }
 
-    for required in ["eval-buffer", "evalp", "yazelix-open-shell-here"] {
+    for required in ["eval-buffer", "evalp", "yzx-new-shell"] {
         if !provided.iter().any(|name| name == required) {
             errors.push(format!("public Steel command is missing: {required}"));
         }
@@ -594,10 +594,10 @@ fn evaluate_managed_steel_surface(request: &HelixDoctorEvaluateRequest) -> Helix
         );
     }
 
-    if !helix_module.contains("yazelix-open-shell-here-command")
+    if !helix_module.contains("yzx-new-shell-command")
         || !helix_module.contains("yzx_control\\\" zellij open-terminal")
     {
-        errors.push("yazelix-open-shell-here is not wired to the Yazelix terminal opener".into());
+        errors.push("yzx-new-shell is not wired to the Yazelix terminal opener".into());
     }
 
     if errors.is_empty() && warnings.is_empty() {
@@ -1146,9 +1146,9 @@ mod tests {
         .unwrap();
         fs::write(
             generated_dir.join("helix.scm"),
-            r#"(provide eval-buffer evalp yazelix-open-shell-here recentf-open-files)
+            r#"(provide eval-buffer evalp yzx-new-shell recentf-open-files)
 (require (only-in "cogs/recentf.scm" recentf-open-files recentf-snapshot))
-(define (yazelix-open-shell-here-command target)
+(define (yzx-new-shell-command target)
   (string-append "\"$YAZELIX_RUNTIME_DIR/libexec/yzx_control\" zellij open-terminal '" target "'"))
 "#,
         )
@@ -1241,7 +1241,7 @@ mod tests {
         assert_eq!(findings.len(), 2);
         assert_eq!(findings[1].status, "error");
         let details = findings[1].details.as_deref().unwrap();
-        assert!(details.contains("public Steel command is missing: yazelix-open-shell-here"));
+        assert!(details.contains("public Steel command is missing: yzx-new-shell"));
         assert!(details.contains("internal Steel command leaked publicly: show-splash"));
     }
 }

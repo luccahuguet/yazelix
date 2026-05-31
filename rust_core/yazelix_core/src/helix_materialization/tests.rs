@@ -138,8 +138,7 @@ fn helix_materialization_writes_default_steel_entrypoints() {
     let generated_helix = fs::read_to_string(state_dir.join("configs/helix/helix.scm")).unwrap();
     assert!(generated_helix.contains("(require (only-in \"helix/ext.scm\" eval-buffer evalp))"));
     assert!(
-        generated_helix
-            .contains("(provide eval-buffer evalp yazelix-open-shell-here recentf-open-files)")
+        generated_helix.contains("(provide eval-buffer evalp yzx-new-shell recentf-open-files)")
     );
     assert!(
         generated_helix
@@ -148,7 +147,7 @@ fn helix_materialization_writes_default_steel_entrypoints() {
     assert!(
         generated_helix.contains("(require (only-in \"helix/commands.scm\" run-shell-command))")
     );
-    assert!(generated_helix.contains("yazelix-open-shell-here"));
+    assert!(generated_helix.contains("yzx-new-shell"));
     assert!(
         generated_helix
             .contains("(string-append \"'\" (string-replace value \"'\" \"'\\\\''\") \"'\"))")
@@ -168,7 +167,7 @@ fn helix_materialization_writes_default_steel_entrypoints() {
         vec![
             "eval-buffer".to_string(),
             "evalp".to_string(),
-            "yazelix-open-shell-here".to_string(),
+            "yzx-new-shell".to_string(),
             "recentf-open-files".to_string()
         ]
     );
@@ -223,7 +222,7 @@ fn helix_materialization_loads_opt_in_splash_only_when_requested() {
         vec![
             "eval-buffer".to_string(),
             "evalp".to_string(),
-            "yazelix-open-shell-here".to_string()
+            "yzx-new-shell".to_string()
         ]
     );
     assert_eq!(
@@ -295,7 +294,7 @@ fn helix_materialization_loads_enabled_bundled_plugin_support_files() {
     assert!(!generated_init.contains("recentf-snapshot"));
     assert!(!generated_init.contains("show-splash"));
     assert!(generated_helix.contains("(require \"cogs/labelled-buffers.scm\")"));
-    assert!(generated_helix.contains("(provide eval-buffer evalp yazelix-open-shell-here)"));
+    assert!(generated_helix.contains("(provide eval-buffer evalp yzx-new-shell)"));
     assert!(!generated_helix.contains("show-splash"));
 }
 
@@ -372,7 +371,7 @@ fn helix_materialization_loads_custom_steel_plugin_manifest() {
         vec![
             "eval-buffer".to_string(),
             "evalp".to_string(),
-            "yazelix-open-shell-here".to_string(),
+            "yzx-new-shell".to_string(),
             "custom-open".to_string()
         ]
     );
