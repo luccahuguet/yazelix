@@ -33,6 +33,20 @@
     #   binary = "/home/user/helix/target/release/hx";
     #   runtime_path = "/home/user/helix/runtime";
     # }; # Optional: custom Helix fork binary/runtime pair
+    helix_steel_plugins = {
+      enabled = [
+        "recentf"
+        "splash"
+        "spacemacs_theme"
+      ];
+      extra = [
+        # {
+        #   id = "hello_yazelix";
+        #   source = "hello_yazelix.scm"; # Below ~/.config/yazelix/helix/steel_plugins
+        #   public_commands = [ "hello-yazelix" ];
+        # }
+      ];
+    };
     # yazi_command = "/path/to/custom/yazi";            # Optional: managed Yazi binary override
     # yazi_ya_command = "/path/to/custom/ya";           # Optional: managed Yazi CLI override
 
