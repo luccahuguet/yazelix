@@ -26,6 +26,15 @@ const GHOSTTY_OVERRIDE: &str = r#"# Yazelix-managed Ghostty overrides
 # Add terminal-native Ghostty settings for Yazelix windows here
 "#;
 
+const HELIX_STEEL_PLUGINS_README: &str = r#"# Yazelix-managed Helix Steel plugins
+
+Place custom Steel plugin source files below this directory, then declare them in
+helix.steel_plugins.extra inside ~/.config/yazelix/settings.jsonc.
+
+Bundled Yazelix Steel plugins live in the packaged runtime and are selected with
+helix.steel_plugins.enabled.
+"#;
+
 const KITTY_OVERRIDE: &str = r#"# Yazelix-managed Kitty overrides
 # Add terminal-native Kitty settings for Yazelix windows here
 "#;
@@ -38,8 +47,14 @@ pub(crate) fn ensure_zellij_surface_stub(_config_dir: &Path) -> Result<(), CoreE
     Ok(())
 }
 
-pub(crate) fn ensure_helix_surface_stub(_config_dir: &Path) -> Result<(), CoreError> {
-    Ok(())
+pub(crate) fn ensure_helix_surface_stub(config_dir: &Path) -> Result<(), CoreError> {
+    write_stub_if_missing(
+        &config_dir
+            .join("helix")
+            .join("steel_plugins")
+            .join("README.md"),
+        HELIX_STEEL_PLUGINS_README,
+    )
 }
 
 pub(crate) fn ensure_yazi_surface_stub(_config_dir: &Path) -> Result<(), CoreError> {
@@ -150,7 +165,7 @@ mod tests {
 
     // Defends: fallback-sensitive surfaces do not create live flat files that would change source selection.
     #[test]
-    fn readme_stubs_preserve_zellij_and_helix_behavior_owned_files_absent() {
+    fn readme_stubs_preserve_behavior_owned_files_absent() {
         let config = tempdir().expect("config");
 
         ensure_zellij_surface_stub(config.path()).unwrap();
@@ -158,6 +173,12 @@ mod tests {
 
         assert!(!config.path().join("zellij.kdl").exists());
         assert!(!config.path().join("helix.toml").exists());
+        assert!(!config.path().join("helix/config.toml").exists());
+        assert!(
+            fs::read_to_string(config.path().join("helix/steel_plugins/README.md"))
+                .unwrap()
+                .contains("helix.steel_plugins.extra")
+        );
     }
 
     // Defends: shell hook scaffolding follows the configured shell set instead of dumping every supported shell hook.
