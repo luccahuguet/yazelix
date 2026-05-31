@@ -323,9 +323,9 @@ If you are maintaining Yazelix and test a newly packaged pane-orchestrator plugi
 
 ### Step 9: Configure Helix Integration (Optional)
 
-If you want a Helix-local reveal action, bind `yzx reveal` to any editor-local shortcut that fits your setup. Yazelix recommends `Alt+r` for this; `Ctrl+y`, `Ctrl+Shift+Y`, and `Alt+Shift+H` are reserved for workspace navigation in Zellij.
+Yazelix-managed Helix sessions ship a curated Helix-local config with `Alt+r` bound to reveal the current buffer in Yazi. `Ctrl+y`, `Ctrl+Shift+Y`, and `Alt+Shift+H` remain reserved for workspace navigation in Zellij.
 
-For additional recommended Helix keybindings that enhance your editing experience with Yazelix, see [Helix Keybindings Configuration](./helix_keybindings.md).
+To override or remove the managed Helix defaults, edit `~/.config/yazelix/helix/config.toml`. For the default keybinding list, see [Helix Keybindings Configuration](./helix_keybindings.md).
 
 ## Alternative Installation Methods
 

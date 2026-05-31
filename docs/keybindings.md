@@ -137,9 +137,9 @@ Prefer `zellij.keybindings` for remaps. Native Zellij KDL remains the escape hat
   - `P`: Pull changes
   - `s`: Stage/unstage files
 
-## Helix Custom Keybindings
+## Helix Managed Keybindings
 
-Yazelix does not ship a built-in Helix-local Yazi keybinding. If you want an editor-local reveal action, bind `yzx reveal` to any Helix shortcut that fits your setup and does not conflict with your own editor bindings. `Alt+r` is the recommended choice.
+Yazelix-managed Helix sessions ship curated Helix-local defaults through `~/.config/yazelix/helix/config.toml`. The default editor-local reveal action is `Alt+r`, which runs `yzx reveal` for the current buffer.
 
 The shipped workspace keys are:
 
@@ -150,4 +150,4 @@ The shipped workspace keys are:
 | `Alt Shift H` | Show or hide the left sidebar |
 | `Alt r` | Smart reveal key: forwards `Alt+r` into the editor, otherwise falls back to the editor/left-sidebar focus toggle |
 
-If you add a Helix-local reveal binding, treat it as optional editor customization rather than part of the default Yazelix keymap. The recommended split is `Alt+r` for reveal, `Ctrl+y` for editor/left-sidebar focus, `Ctrl Shift Y` for editor/right-sidebar focus, and `Alt Shift H` for sidebar show/hide. Yazelix also binds `Alt+r` at the Zellij layer so it behaves like `Ctrl+y` outside the editor.
+The recommended split is `Alt+r` for reveal inside Helix, `Ctrl+y` for editor/left-sidebar focus, `Ctrl Shift Y` for editor/right-sidebar focus, and `Alt Shift H` for sidebar show/hide. Yazelix also binds `Alt+r` at the Zellij layer so it behaves like `Ctrl+y` outside the editor.

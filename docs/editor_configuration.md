@@ -202,6 +202,15 @@ For a complete teaching example with the matching manifest entry, see
 **Buffer Navigation:**
 - Yazelix tracks Helix buffers for navigation features
 
+### Helix Wishlist
+
+These are desired managed-Helix improvements, not current Yazelix support guarantees:
+
+- **Code folding**: a real fold/unfold UI for syntax and LSP folding ranges, with clear indicators and keybindings that fit Helix's modal model
+- **Sticky headers**: pinned context lines for the current function, type, module, or section while scrolling through larger files
+- **Copilot**: a first-class AI completion path that works inside managed Helix without requiring users to assemble their own plugin/runtime setup
+- **Inline git blame**: commit and author context rendered inline in the editor, beyond the default `A-g.b` shell shortcut
+
 ### Neovim-Specific Features (when using Neovim)
 
 **Reveal in Yazi (custom binding):**

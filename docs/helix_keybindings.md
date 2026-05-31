@@ -2,17 +2,17 @@
 
 This guide covers recommended Helix keybindings that enhance your editing experience when using Yazelix.
 
-## Basic Yazelix Integration
+## Managed Yazelix Defaults
 
 The default workspace bindings live in Zellij: `Ctrl+y` toggles focus between the managed editor and left sidebar, `Ctrl+Shift+Y` toggles focus between the managed editor and right agent sidebar, and `Alt+Shift+H/J/K/L` maps to the left sidebar, bottom popup, top popup, and right agent sidebar.
 
-Yazelix-managed Helix sessions ship the `Alt+r` reveal binding through the managed Helix config surface and keep `:` bound to `command_mode` so Yazi can open files in the running Helix pane. If you want to start from an existing personal Helix `config.toml`, run `yzx import helix` to copy it into `~/.config/yazelix/helix/config.toml`.
+Yazelix-managed Helix sessions ship a curated Helix-local default config through the managed Helix config surface. The generated defaults keep `Alt+r` bound to reveal the current buffer in Yazi and keep `:` bound to `command_mode` so Yazi can open files in the running Helix pane. If you want to start from an existing personal Helix `config.toml`, run `yzx import helix` to copy it into `~/.config/yazelix/helix/config.toml`.
 
 This assumes `yzx` is on your editor `PATH`.
 
-## Additional Recommended Keybindings
+## Default Keybindings
 
-If you want additional Helix-local keybindings beyond the built-in reveal binding, add them to `~/.config/yazelix/helix/config.toml`:
+Managed Helix sessions include these Helix-local keybindings by default. To change them, override or remove the relevant entries in `~/.config/yazelix/helix/config.toml`:
 
 ```toml
 [keys.normal]
@@ -46,7 +46,7 @@ A-g.l = ":sh git log --oneline -10 %{buffer_name}"
 backspace.d = ":yank-diagnostic"
 backspace.h = ":toggle-option file-picker.hidden"
 backspace.i = ":toggle-option file-picker.git-ignore"
-backspace.l = ":o ~/.config/helix/languages.toml"
+backspace.l = ":o ~/.config/yazelix/helix/languages.toml"
 backspace.c = ":config-open"
 ```
 
@@ -76,7 +76,7 @@ backspace.c = ":config-open"
 - `backspace.d`: Yank diagnostic messages
 - `backspace.h`: Toggle hidden files in file picker
 - `backspace.i`: Toggle git-ignore filtering in file picker
-- `backspace.l`: Open Helix languages.toml
+- `backspace.l`: Open the managed Helix languages.toml
 - `backspace.c`: Open main Helix configuration
 
 ## Usage Tips

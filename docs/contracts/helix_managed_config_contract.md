@@ -4,7 +4,7 @@
 
 Yazelix makes managed Helix sessions self-contained through a Yazelix-owned Helix config tree under `~/.config/yazelix/helix/`.
 
-The goal is to stop depending on ad hoc edits to the user's personal Helix config just to make `yzx reveal` work inside Yazelix.
+The goal is to stop depending on ad hoc edits to the user's personal Helix config while still giving managed Yazelix Helix sessions a curated editor default.
 
 ## Why
 
@@ -56,6 +56,7 @@ Yazelix owns the managed Helix config tree needed for Yazelix-specific editor in
 - the `yzx reveal` binding
 - Yazelix-managed Steel plugin loading
 - managed Helix language/theme lookup under `~/.config/yazelix/helix/`
+- curated managed-session defaults for Helix visuals, diagnostics, statusline, and editor-local helper keybindings
 
 ### What Yazelix does not own
 
