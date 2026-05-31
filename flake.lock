@@ -422,16 +422,16 @@
     "yazelixZellij": {
       "flake": false,
       "locked": {
-        "lastModified": 1779429316,
-        "narHash": "sha256-P9dlqsfiT5/3lXXONX+6cWk5Qm6QWocvdN4rjdxwTXc=",
+        "lastModified": 1780269902,
+        "narHash": "sha256-srCoomOVte13ISMFC/SlNOKXVH0qBRov6+MmvMw7Nx8=",
         "owner": "luccahuguet",
         "repo": "yazelix-zellij",
-        "rev": "c10aad0dd657d7df0e2c39762df0daba404a564b",
+        "rev": "bfbd06d5737ab4dffcc5cfb2ae3cd5fe1bda24f9",
         "type": "github"
       },
       "original": {
         "owner": "luccahuguet",
-        "ref": "yazelix-kgp-preview-0",
+        "ref": "yazelix-kgp-preview-1",
         "repo": "yazelix-zellij",
         "type": "github"
       }
