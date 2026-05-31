@@ -10,10 +10,13 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::fs;
+use std::io::{self, Read};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
+const STEEL_BINARY_MARKER: &[u8] = b"HELIX_STEEL_CONFIG";
 
 fn default_reveal_binding_expected() -> String {
     MANAGED_REVEAL_COMMAND.into()
@@ -455,6 +458,33 @@ fn steel_command_metadata_lines(module: &str) -> Vec<String> {
         .collect()
 }
 
+fn file_contains_bytes(path: &Path, needle: &[u8]) -> io::Result<bool> {
+    let mut reader = io::BufReader::new(fs::File::open(path)?);
+    let mut buffer = [0; 8192];
+    let mut carry = Vec::new();
+
+    loop {
+        let read = reader.read(&mut buffer)?;
+        if read == 0 {
+            return Ok(false);
+        }
+
+        let mut window = Vec::with_capacity(carry.len() + read);
+        window.extend_from_slice(&carry);
+        window.extend_from_slice(&buffer[..read]);
+        if window
+            .windows(needle.len())
+            .any(|candidate| candidate == needle)
+        {
+            return Ok(true);
+        }
+
+        let keep = needle.len().saturating_sub(1).min(window.len());
+        carry.clear();
+        carry.extend_from_slice(&window[window.len() - keep..]);
+    }
+}
+
 fn generated_steel_dir(request: &HelixDoctorEvaluateRequest) -> Option<PathBuf> {
     request
         .generated_helix_config_path
@@ -552,6 +582,19 @@ fn evaluate_managed_steel_surface(request: &HelixDoctorEvaluateRequest) -> Helix
             "bundled raw Helix binary is not executable: {}",
             raw_hx.display()
         ));
+    } else {
+        match file_contains_bytes(&raw_hx, STEEL_BINARY_MARKER) {
+            Ok(true) => {}
+            Ok(false) => errors.push(format!(
+                "bundled raw Helix binary is not built with Steel support: {}; update or rebuild the Yazelix runtime",
+                raw_hx.display()
+            )),
+            Err(error) => errors.push(format!(
+                "bundled raw Helix binary could not be inspected for Steel support: {}; underlying error: {}",
+                raw_hx.display(),
+                error
+            )),
+        }
     }
 
     for required in ["eval-buffer", "evalp", "yzx-new-shell"] {
@@ -1138,7 +1181,10 @@ mod tests {
         let generated = generated_dir.join("config.toml");
         fs::create_dir_all(runtime_dir.join("libexec")).unwrap();
         fs::create_dir_all(&generated_dir).unwrap();
-        write_executable(&runtime_dir.join("libexec/hx"), "#!/bin/sh\nexit 0\n");
+        write_executable(
+            &runtime_dir.join("libexec/hx"),
+            "#!/bin/sh\n# HELIX_STEEL_CONFIG\nexit 0\n",
+        );
         fs::write(
             &generated,
             "[keys.normal]\n\":\" = \"command_mode\"\nA-r = ':sh yzx reveal \"%{buffer_name}\"'\n",
@@ -1191,6 +1237,64 @@ mod tests {
         );
     }
 
+    // Regression: generated Steel config is not enough; the managed Helix binary must be built with Steel support too.
+    #[test]
+    fn managed_integration_flags_non_steel_managed_hx() {
+        let tmp = TempDir::new().unwrap();
+        let runtime_dir = tmp.path().join("runtime");
+        let generated_dir = tmp.path().join("state/configs/helix");
+        let generated = generated_dir.join("config.toml");
+        fs::create_dir_all(runtime_dir.join("libexec")).unwrap();
+        fs::create_dir_all(&generated_dir).unwrap();
+        write_executable(&runtime_dir.join("libexec/hx"), "#!/bin/sh\nexit 0\n");
+        fs::write(
+            &generated,
+            "[keys.normal]\n\":\" = \"command_mode\"\nA-r = ':sh yzx reveal \"%{buffer_name}\"'\n",
+        )
+        .unwrap();
+        fs::write(
+            generated_dir.join("helix.scm"),
+            r#"(provide eval-buffer evalp yzx-new-shell recentf-open-files)
+(require (only-in "cogs/recentf.scm" recentf-open-files recentf-snapshot))
+(define (yzx-new-shell-command target)
+  (string-append "\"$YAZELIX_RUNTIME_DIR/libexec/yzx_control\" zellij open-terminal '" target "'"))
+"#,
+        )
+        .unwrap();
+        fs::write(generated_dir.join("init.scm"), ";; generated\n").unwrap();
+
+        let req = HelixDoctorEvaluateRequest {
+            home_dir: tmp.path().join("home"),
+            runtime_dir,
+            config_dir: tmp.path().join("config"),
+            user_config_helix_runtime_dir: tmp.path().join("ur"),
+            hx_exe_path: None,
+            helix_external: None,
+            include_runtime_health: false,
+            editor_command: Some("hx".into()),
+            managed_helix_user_config_path: tmp.path().join("m.toml"),
+            native_helix_config_path: tmp.path().join("n.toml"),
+            generated_helix_config_path: generated,
+            expected_managed_config: Some(serde_json::json!({
+                "keys": {
+                    "normal": {
+                        ":": "command_mode",
+                        "A-r": ":sh yzx reveal \"%{buffer_name}\""
+                    }
+                }
+            })),
+            build_managed_config_error: None,
+            reveal_binding_expected: ":sh yzx reveal \"%{buffer_name}\"".into(),
+        };
+
+        let findings = evaluate_managed_integration(&req);
+        assert_eq!(findings.len(), 2);
+        assert_eq!(findings[1].status, "error");
+        let details = findings[1].details.as_deref().unwrap();
+        assert!(details.contains("not built with Steel support"));
+        assert!(details.contains("update or rebuild the Yazelix runtime"));
+    }
+
     // Regression: internal Steel plugin helpers should not leak back into Helix command completion.
     #[test]
     fn managed_integration_flags_leaky_steel_surface() {
@@ -1200,7 +1304,10 @@ mod tests {
         let generated = generated_dir.join("config.toml");
         fs::create_dir_all(runtime_dir.join("libexec")).unwrap();
         fs::create_dir_all(&generated_dir).unwrap();
-        write_executable(&runtime_dir.join("libexec/hx"), "#!/bin/sh\nexit 0\n");
+        write_executable(
+            &runtime_dir.join("libexec/hx"),
+            "#!/bin/sh\n# HELIX_STEEL_CONFIG\nexit 0\n",
+        );
         fs::write(
             &generated,
             "[keys.normal]\n\":\" = \"command_mode\"\nA-r = ':sh yzx reveal \"%{buffer_name}\"'\n",
