@@ -4,12 +4,23 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
-Post-v17.1 work in progress
+Steel-backed Helix, managed Helix config tree, and plugin manifests
 
-Upgrade impact: no user action required
+Upgrade impact: manual action may be required
 
 Highlights:
-- Reserved for post-release changes after v17.1 lands.
+- Made bundled Helix the thin first-party `yazelix-helix` Steel fork with `--config-dir`, consumed as a child-owned package, so managed sessions can use Yazelix's Helix config root without taking over `~/.config/helix`
+- Moved the managed Helix source config to `~/.config/yazelix/helix/config.toml` and made `~/.config/yazelix/helix/` the root for languages, themes, ignore, Steel plugin files, and future managed Helix surfaces; the old flat `~/.config/yazelix/helix.toml` path is unsupported
+- Added `helix.steel_plugins` with bundled `recentf`, `splash`, and `spacemacs_theme` defaults plus `extra` manifests for user-owned Steel plugins under `~/.config/yazelix/helix/steel_plugins`
+- Added `helix.external` for users who intentionally run their own Helix fork, requiring both `binary` and `runtime_path` so binary/runtime mismatches stay explicit
+- Added the `:yzx-new-shell` Helix Steel command for opening a new Yazelix shell pane from the current editor context
+- Added `yzx import helix`, Steel-focused doctor/config checks, and documentation for the `v17.1` tag as the pre-Steel escape hatch
+- Kept the default keybinding story stable: `Alt+r` remains the managed Helix reveal binding, and `Ctrl+y`, `Ctrl+Shift+Y`, plus `Alt+Shift+H/J/K/L` remain the workspace navigation layer
+
+Manual action:
+- If you keep custom Yazelix-managed Helix config in `~/.config/yazelix/helix.toml`, move it to `~/.config/yazelix/helix/config.toml` before launching v17.2
+- If you use a custom Helix fork, configure both `helix.external.binary` and `helix.external.runtime_path`; bare binary-only custom Helix config is rejected
+- If you are not ready for the bundled Steel-backed Helix line, pin `v17.1` temporarily
 
 ## v17.1 - 2026-05-30
 
