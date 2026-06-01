@@ -28,9 +28,7 @@ Yazelix is built on a focused terminal-workspace stack. This catalog lists the p
 - `#yazelix_zellij_bar` — Standalone Zellij/zjstatus bar preset forwarded from `luccahuguet/yazelix-zellij-bar`, including `yazelix_zellij_bar_widget` and package-local `zjstatus.wasm`
 - `#yzs` and `#yazelix_screen` — Standalone terminal animation package forwarded from `luccahuguet/yazelix-screen` for the Yazelix screen engines outside Zellij and outside a full Yazelix session
 - `#yazelix_cursors` — Standalone Yazelix cursor package, with generated GLSL files, example Ghostty config snippets, and the `yzc` CLI
-- `#yazelix_ghostty_cursors` — Compatibility package attribute for the same standalone cursor output
 - `#yzc` — Flake app for the standalone Yazelix cursor CLI
-- `#ghostty_cursor_shaders` — Compatibility package attribute for the same standalone cursor output
 - `homeManagerModules.yazelix` — The Home Manager module for declarative installs, with `runtime_variant = "ghostty"` by default, `"yzxterm"`, `"wezterm"`, and `"kitty"` available explicitly, Linux-only `"ratty"` available experimentally, and `extra_terminal_variants` for installing additional bundled terminal emulators beside the primary runtime
 
 ## First-Party Child Repositories
@@ -38,7 +36,7 @@ Yazelix is built on a focused terminal-workspace stack. This catalog lists the p
 Regular Yazelix users do not need to install or wire these repositories separately. The regular Yazelix package already integrates the modules it uses, and the child repositories exist so people can use focused Yazelix subsystems without adopting the whole workspace. `yazelix-screen` and `yazelix-cursors` are also usable outside Zellij.
 
 - [yazelix-screen](https://github.com/luccahuguet/yazelix-screen) — Standalone terminal animation engine consumed by Yazelix welcome/screen rendering and exposed from this repo as `#yzs` and `#yazelix_screen`.
-- [yazelix-cursors](https://github.com/luccahuguet/yazelix-cursors) — Standalone cursor preset, Ghostty-compatible shader, and `yzc` CLI repository consumed by Yazelix cursor settings and exposed from this repo as `#yzc`, `#yazelix_cursors`, `#yazelix_ghostty_cursors`, and `#ghostty_cursor_shaders`.
+- [yazelix-cursors](https://github.com/luccahuguet/yazelix-cursors) — Standalone cursor preset, Ghostty-compatible shader, and `yzc` CLI repository consumed by Yazelix cursor settings and exposed from this repo as `#yzc` and `#yazelix_cursors`.
 - [yazelix-terminal](https://github.com/luccahuguet/yazelix-terminal) — Experimental Rio-derived terminal emulator consumed by the opt-in Yazelix Terminal runtime and exposed from this repo as `#yzxterm` and `#runtime_yzxterm`.
 - [yazelix-zellij-bar](https://github.com/luccahuguet/yazelix-zellij-bar) — Standalone Zellij/zjstatus bar preset consumed by Yazelix tab/status rendering and exposed from this repo as `#yazelix_zellij_bar`.
 - [yazelix-zellij-pane-orchestrator](https://github.com/luccahuguet/yazelix-zellij-pane-orchestrator) — First-party Zellij plugin wasm that owns managed pane identity, editor/sidebar handoff, focus actions, and layout-family commands, exposed from this repo as `#yazelix_zellij_pane_orchestrator`.

@@ -13,15 +13,20 @@ Highlights:
 
 ## v17.3 - 2026-06-01
 
-Shared cursor package, terminal variants, and Kitty runtime packaging
+Helix Steel plugins, Yazelix Terminal runtime, and shared cursors
 
 Upgrade impact: no user action required
 
 Highlights:
-- Renamed the standalone cursor child repository from `yazelix-ghostty-cursors` to `yazelix-cursors` now that Yazelix Terminal consumes the same cursor shader package; the old `#yazelix_ghostty_cursors` and `#ghostty_cursor_shaders` outputs remain compatibility aliases
-- Updated the Yazelix Terminal runtime input and cursor materialization so `yzxterm` consumes the shared cursor settings path for shader/trail behavior
+- Added the experimental packaged Yazelix Terminal runtime as `#yzxterm` and `#runtime_yzxterm`, backed by the `yazelix-terminal` child repo and exposed through `programs.yazelix.runtime_variant = "yzxterm"`
+- Renamed the standalone cursor child repository from `yazelix-ghostty-cursors` to `yazelix-cursors` now that Yazelix Terminal consumes the same cursor shader package; the old cursor flake output names are not kept as aliases
+- Updated the Yazelix Terminal runtime input, split terminal cursor materialization, and made `yzxterm` honor the shared cursor settings path for shader/trail behavior
+- Dropped Alacritty and Foot from the maintained terminal set, polished Yazelix Terminal docs wording, and refreshed the terminal emulator comparison matrix around protocols, packaging, and 3D graphics
 - Added `programs.yazelix.extra_terminal_variants` for Home Manager users who want to install additional bundled terminal emulator packages, such as Ghostty beside a `yzxterm` primary runtime, without adding duplicate `yzx` wrappers
 - Added Kitty as a packaged runtime variant through `#yazelix_kitty`, `#runtime_kitty`, and `programs.yazelix.runtime_variant = "kitty"`
+- Repaired the KGP graphics runtime path with wrapped nixpkgs Zellij support, KGP Zellij/Yazi package-base and hook fixes, Zellij cursor replay consumption, and clearer host-Yazi graphics diagnostics
+- Added the Helix Steel plugin system through the `yazelix-helix` fork, including the managed Steel plugin surface, curated managed Helix defaults, bundled Steel authoring tools, steel-enabled Helix pinning, and non-Steel managed-Helix diagnostics
+- Improved maintainer and repo tooling with the Rust 1.96 toolchain bump, guarded doctor repair framework, split update/validator/core dispatch, cargo-crap and mutation/coverage tooling, and stale shell-initializer runtime repair tracking
 
 ## v17.2 - 2026-05-31
 
@@ -112,7 +117,7 @@ Upgrade impact: no user action required
 
 Highlights:
 - `yazelix-zellij-bar` owns more of its standalone widget surface so non-Yazelix Zellij users can run the bar with its bundled fact, cursor, and usage widget helpers
-- The Ghostty cursor package is consistently named `yazelix-ghostty-cursors`, while Yazelix continues to expose the `yzc`, `yazelix_ghostty_cursors`, and `ghostty_cursor_shaders` package outputs
+- The Ghostty cursor package was consistently named `yazelix-ghostty-cursors`, and that release exposed the `yzc`, `yazelix_ghostty_cursors`, and `ghostty_cursor_shaders` package outputs
 - `yzx config ui` presents `zellij.keybindings` and `yazi.keybindings` as structured action rows instead of forcing one-line JSON object edits
 - Complex config arrays and objects without a dedicated structured editor no longer open unreadable raw JSON edit buffers
 - Desktop launches after a Home Manager or flake runtime update refresh terminal configs before opening the managed terminal, so the first launch does not depend on stale generated files

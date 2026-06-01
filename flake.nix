@@ -377,7 +377,6 @@
           yazelix_zellij_bar = yazelixZellijBar.packages.${system}.yazelix_zellij_bar;
           yazelix_screen = yazelixScreen.packages.${system}.yzs;
           yazelix_cursors = yazelixCursors.packages.${system}.yazelix_cursors;
-          yazelix_ghostty_cursors = yazelix_cursors;
           yazelix_helix = yazelixHelixPackage system;
           yazelix_zellij_pane_orchestrator =
             yazelixZellijPaneOrchestrator.packages.${system}.yazelix_zellij_pane_orchestrator;
@@ -389,7 +388,6 @@
           br = beads_rust;
           beads_rust = beads_rust;
           default = yazelix_default;
-          ghostty_cursor_shaders = yazelix_ghostty_cursors;
           runtime = runtime_default;
           runtime_agent_tools = runtime_agent_tools;
           runtime_ghostty = runtime_ghostty;
@@ -400,7 +398,6 @@
           yazelix_agent_tools = yazelix_agent_tools;
           yazelix_zellij_bar = yazelix_zellij_bar;
           yazelix_cursors = yazelix_cursors;
-          yazelix_ghostty_cursors = yazelix_ghostty_cursors;
           yazelix_ghostty = yazelix_ghostty;
           yazelix_kitty = yazelix_kitty;
           yazelix_screen = yazelix_screen;
@@ -457,10 +454,6 @@
           yzs = {
             type = "app";
             program = "${self.packages.${system}.yazelix_screen}/bin/yzs";
-          };
-          yazelix_ghostty_cursors = {
-            type = "app";
-            program = "${self.packages.${system}.yazelix_ghostty_cursors}/bin/yzc";
           };
           yazelix_cursors = {
             type = "app";

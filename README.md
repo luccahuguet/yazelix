@@ -106,7 +106,7 @@ Regular Yazelix users do not need to install, configure, or understand these chi
 Reusable child repos:
 
 - [yazelix-screen](https://github.com/luccahuguet/yazelix-screen) — Terminal animation engine used by Yazelix welcome/screen styles and exposed here as `#yzs` and `#yazelix_screen`
-- [yazelix-cursors](https://github.com/luccahuguet/yazelix-cursors) — Cursor preset and Ghostty-compatible shader generator with the `yzc` CLI, exposed here as `#yzc`, `#yazelix_cursors`, `#yazelix_ghostty_cursors`, and `#ghostty_cursor_shaders`
+- [yazelix-cursors](https://github.com/luccahuguet/yazelix-cursors) — Cursor preset and Ghostty-compatible shader generator with the `yzc` CLI, exposed here as `#yzc` and `#yazelix_cursors`
 - [yazelix-terminal](https://github.com/luccahuguet/yazelix-terminal) — Experimental Rio-derived terminal path, exposed here as `#yzxterm` and `#runtime_yzxterm` for opt-in first-party terminal testing
 - [yazelix-zellij-bar](https://github.com/luccahuguet/yazelix-zellij-bar) — Standalone Zellij bar plugin package and `yazelix_zellij_bar_widget` command, exposed here as `#yazelix_zellij_bar`
 - [yazelix-zellij-pane-orchestrator](https://github.com/luccahuguet/yazelix-zellij-pane-orchestrator) — First-party Zellij plugin wasm that owns managed pane identity, editor/sidebar handoff, focus actions, and layout-family commands, exposed here as `#yazelix_zellij_pane_orchestrator`

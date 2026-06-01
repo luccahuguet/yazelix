@@ -223,6 +223,7 @@ Use this for every extraction, cleanup, refactor, validator, generated-fixture, 
 - When referencing versions in documentation or migration notes, only use actual version numbers that exist
 - **Keep `YAZELIX_VERSION` in sync with git tags**: When creating a new git tag, update `nushell/scripts/utils/constants.nu` to match (e.g., `export const YAZELIX_VERSION = "v12.3"`). This version is displayed in the zjstatus bar.
 - **Release notes must name keybindings explicitly**: If a release changes, adds, removes, or meaningfully clarifies default keybindings, `CHANGELOG.md` and `docs/upgrade_notes.toml` must list the concrete key combinations and their actions. Do not hide keybinding changes behind vague wording like "keybinding polish" or "directional keybindings".
+- **Audit the full release range before cutting a tag**: Before writing release notes, inspect the complete commit range from the previous tag to the new tag candidate (for example `git log --oneline v17.2..HEAD` and a diff stat). `CHANGELOG.md` and `docs/upgrade_notes.toml` must summarize every user-visible feature, behavioral change, packaging/runtime change, migration or escape hatch, and important maintainer/CI/runtime-infrastructure change in that range. Do not rely on memory or only document the most recent commits.
 
 ## Beads Workflow Integration
 

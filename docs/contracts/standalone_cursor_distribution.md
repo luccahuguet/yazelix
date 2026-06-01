@@ -4,7 +4,7 @@
 
 `yazelix_cursors` is the standalone Yazelix cursor package for terminal users who want the Yazelix cursor shader look without adopting the full Yazelix workspace runtime.
 
-The primary flake package is `.#yazelix_cursors`. `.#yazelix_ghostty_cursors` and `.#ghostty_cursor_shaders` remain compatibility package attributes for the same output because those names already existed as standalone cursor surfaces. The package exposes the standalone `yzc` binary, and the flake exposes `.#yzc` as an app for direct CLI use.
+The primary flake package is `.#yazelix_cursors`. The package exposes the standalone `yzc` binary, and the flake exposes `.#yzc` as an app for direct CLI use. Old cursor package names are not kept as compatibility aliases.
 
 The source repository is [`luccahuguet/yazelix-cursors`](https://github.com/luccahuguet/yazelix-cursors). Yazelix consumes that repository through explicit flake and Cargo dependency pins.
 
@@ -23,7 +23,6 @@ Previous alternatives considered:
 ## Scope
 
 - `.#yazelix_cursors` flake package
-- compatibility `.#ghostty_cursor_shaders` flake package attribute
 - generated cursor palette shaders from the extracted `yazelix_ghostty_cursors_default.toml`
 - generated Ghostty-compatible cursor effect shaders
 - example Ghostty config snippets under the package output
@@ -37,7 +36,6 @@ Previous alternatives considered:
 
 - The package output contains complete GLSL files under `share/yazelix/yazelix_cursors/shaders/`
 - The package output contains examples under `share/yazelix/yazelix_cursors/examples/`
-- The package output keeps `share/yazelix/ghostty_cursor_shaders` as a compatibility path pointing at the branded package root
 - The package output contains `bin/yzc`
 - Users opt in by running `yzc init`, `yzc generate ghostty`, then adding `config-file = ~/.config/yazelix_ghostty_cursors/ghostty.conf` to their Ghostty config
 - `yzc init` creates `~/.config/yazelix_ghostty_cursors/settings.jsonc` and does not overwrite an existing config
@@ -101,18 +99,16 @@ Do not add another terminal target to `yazelix_cursors` until all of these are t
 ## Acceptance Cases
 
 1. `nix build .#yazelix_cursors` produces a package output with complete cursor palette shaders.
-2. `nix build .#ghostty_cursor_shaders` resolves to the same standalone cursor package for compatibility.
-3. The package output includes generated effect shaders such as `generated_effects/tail.glsl`.
-4. The package output includes `bin/yzc`.
-5. `nix run .#yzc -- --help` shows the standalone command surface.
-6. A package-installed `yzc --config-dir <tmp> init` creates standalone JSONC cursor settings.
-7. A package-installed `yzc --config-dir <tmp> generate ghostty` writes a Ghostty include and generated shader files under `<tmp>`.
-8. The exported shaders come from the extracted `yazelix_cursors` shader generator instead of a parallel hand-maintained package list.
+2. The package output includes generated effect shaders such as `generated_effects/tail.glsl`.
+3. The package output includes `bin/yzc`.
+4. `nix run .#yzc -- --help` shows the standalone command surface.
+5. A package-installed `yzc --config-dir <tmp> init` creates standalone JSONC cursor settings.
+6. A package-installed `yzc --config-dir <tmp> generate ghostty` writes a Ghostty include and generated shader files under `<tmp>`.
+7. The exported shaders come from the extracted `yazelix_cursors` shader generator instead of a parallel hand-maintained package list.
 
 ## Verification
 
 - `nix build .#yazelix_cursors`
-- `nix build .#ghostty_cursor_shaders`
 - `nix run .#yzc -- --help`
 - package-installed `yzc --config-dir <tmp> init`
 - package-installed `yzc --config-dir <tmp> generate ghostty`
