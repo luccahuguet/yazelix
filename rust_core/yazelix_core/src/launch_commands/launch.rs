@@ -29,7 +29,9 @@ use crate::runtime_env::compute_runtime_env;
 use crate::runtime_materialization::{
     RuntimeMaterializationRepairEvaluateRequest, repair_runtime_materialization,
 };
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+const YAZELIX_TERMINAL_CHILD_ENV_SANITIZE: &str = "YAZELIX_TERMINAL_CHILD_ENV_SANITIZE";
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct LaunchArgs {
@@ -229,22 +231,7 @@ pub(super) fn run_launch_flow(
             ),
         ];
         if candidate.terminal == "yzxterm" {
-            let config_dir = config_path.parent().ok_or_else(|| {
-                CoreError::classified(
-                    ErrorClass::Runtime,
-                    "invalid_yzxterm_config_path",
-                    format!(
-                        "Generated Yazelix Terminal config path has no parent directory: {}.",
-                        config_path.display()
-                    ),
-                    "Regenerate Yazelix runtime state with `yzx refresh`, then retry.",
-                    serde_json::json!({}),
-                )
-            })?;
-            extra_env.push((
-                "YAZELIX_TERMINAL_CONFIG".to_string(),
-                Some(config_dir.to_string_lossy().into_owned()),
-            ));
+            extra_env.extend(yzxterm_process_boundary_env(&config_path)?);
         }
         if let Ok(value) = std::env::var("YAZELIX_SWEEP_TEST_ID") {
             if !value.trim().is_empty() {
@@ -313,6 +300,35 @@ pub(super) fn run_launch_flow(
         "Install a supported terminal or adjust [terminal].terminals to match what is available.",
         serde_json::json!({}),
     ))
+}
+
+fn yzxterm_process_boundary_env(
+    config_path: &Path,
+) -> Result<Vec<(String, Option<String>)>, CoreError> {
+    let config_dir = config_path.parent().ok_or_else(|| {
+        CoreError::classified(
+            ErrorClass::Runtime,
+            "invalid_yzxterm_config_path",
+            format!(
+                "Generated Yazelix Terminal config path has no parent directory: {}.",
+                config_path.display()
+            ),
+            "Regenerate Yazelix runtime state with `yzx refresh`, then retry.",
+            serde_json::json!({}),
+        )
+    })?;
+
+    Ok(vec![
+        ("RIO_CONFIG_HOME".to_string(), None),
+        (
+            "YAZELIX_TERMINAL_CONFIG".to_string(),
+            Some(config_dir.to_string_lossy().into_owned()),
+        ),
+        (
+            YAZELIX_TERMINAL_CHILD_ENV_SANITIZE.to_string(),
+            Some("1".to_string()),
+        ),
+    ])
 }
 
 fn launch_cursor_name_for_terminal(
@@ -475,6 +491,30 @@ mod tests {
         assert_eq!(parsed.with_overrides, vec!["editor.command=nvim"]);
         assert_eq!(parsed.terminal.as_deref(), Some("kitty"));
         assert!(parsed.verbose);
+    }
+
+    // Defends: yzxterm gets Yazelix config only at the terminal process boundary, while ambient host Rio config is cleared.
+    #[test]
+    fn yzxterm_process_boundary_env_clears_host_rio_config() {
+        let env = yzxterm_process_boundary_env(Path::new(
+            "/state/configs/terminal_emulators/yzxterm/config.toml",
+        ))
+        .unwrap();
+
+        assert_eq!(
+            env,
+            vec![
+                ("RIO_CONFIG_HOME".to_string(), None),
+                (
+                    "YAZELIX_TERMINAL_CONFIG".to_string(),
+                    Some("/state/configs/terminal_emulators/yzxterm".to_string())
+                ),
+                (
+                    YAZELIX_TERMINAL_CHILD_ENV_SANITIZE.to_string(),
+                    Some("1".to_string())
+                ),
+            ]
+        );
     }
 
     // Defends: launch publishes compact current-cursor facts for terminals that consume Yazelix cursor shaders and a clear n/a fallback elsewhere.

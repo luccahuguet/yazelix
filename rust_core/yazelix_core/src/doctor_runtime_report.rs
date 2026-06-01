@@ -12,6 +12,7 @@ use crate::settings_surface::DEFAULT_SETTINGS_CONFIG_FILENAME;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::env;
+use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -129,6 +130,9 @@ pub fn evaluate_doctor_runtime_report(
     shared_runtime_preflight.extend(build_disabled_runtime_component_findings(
         &request.runtime_dir,
     ));
+    if let Some(finding) = build_host_rio_env_isolation_finding() {
+        shared_runtime_preflight.push(finding);
+    }
 
     DoctorRuntimeEvaluateData {
         distribution,
@@ -553,6 +557,56 @@ fn build_runtime_graphics_findings(
     ]
 }
 
+fn build_host_rio_env_isolation_finding() -> Option<DoctorRuntimeDoctorFinding> {
+    build_host_rio_env_isolation_finding_from_values(
+        env::var_os("RIO_CONFIG_HOME"),
+        env::var_os("YAZELIX_TERMINAL_CONFIG"),
+        env::var_os("YAZELIX_TERMINAL_LD_LIBRARY_PATH_PREFIX"),
+        env::var_os("YAZELIX_TERMINAL_HOST_LD_LIBRARY_PATH"),
+    )
+}
+
+fn build_host_rio_env_isolation_finding_from_values(
+    rio_config_home: Option<OsString>,
+    yazelix_terminal_config: Option<OsString>,
+    loader_prefix: Option<OsString>,
+    host_loader_snapshot: Option<OsString>,
+) -> Option<DoctorRuntimeDoctorFinding> {
+    let mut details = Vec::new();
+
+    if let Some(value) = rio_config_home {
+        let value = value.to_string_lossy();
+        if value.contains("terminal_emulators/yzxterm") || yazelix_terminal_config.is_some() {
+            details.push(format!("RIO_CONFIG_HOME={value}"));
+        }
+    }
+    if let Some(value) = yazelix_terminal_config {
+        details.push(format!(
+            "YAZELIX_TERMINAL_CONFIG={}",
+            value.to_string_lossy()
+        ));
+    }
+    if loader_prefix.is_some() || host_loader_snapshot.is_some() {
+        details.push("Yazelix Terminal package loader environment is present in the shell.".into());
+    }
+
+    if details.is_empty() {
+        return None;
+    }
+
+    Some(DoctorRuntimeDoctorFinding {
+        status: "warning".into(),
+        message: "Host Rio environment may be contaminated by Yazelix Terminal launch state".into(),
+        details: Some(details.join("\n")),
+        fix_available: false,
+        fix_action: None,
+        capability_tier: None,
+        capability_mode: Some("host_rio_env_contamination".into()),
+        runtime_contract_check: Some("host_rio_env_isolation".into()),
+        owner_surface: Some("terminal_runtime_env".into()),
+    })
+}
+
 fn runtime_feature_path(runtime_dir: &Path, feature: &str) -> PathBuf {
     runtime_dir.join("runtime_features").join(feature)
 }
@@ -796,6 +850,31 @@ mod tests {
             command_search_paths: Vec::new(),
             platform_name: "linux".to_string(),
         }
+    }
+
+    // Defends: doctor reports when a Yazelix shell would make plain host Rio read the generated yzxterm config.
+    #[test]
+    fn host_rio_env_isolation_reports_yzxterm_contamination() {
+        let finding = build_host_rio_env_isolation_finding_from_values(
+            Some("/home/user/.local/share/yazelix/configs/terminal_emulators/yzxterm".into()),
+            Some("/home/user/.local/share/yazelix/configs/terminal_emulators/yzxterm".into()),
+            None,
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(finding.status, "warning");
+        assert_eq!(
+            finding.runtime_contract_check.as_deref(),
+            Some("host_rio_env_isolation")
+        );
+        assert!(
+            finding
+                .details
+                .as_deref()
+                .unwrap()
+                .contains("terminal_emulators/yzxterm")
+        );
     }
 
     // Defends: doctor runtime distribution reporting still prefers Home Manager ownership over generic package shape.
