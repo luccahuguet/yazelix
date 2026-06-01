@@ -192,8 +192,8 @@ Use this for every extraction, cleanup, refactor, validator, generated-fixture, 
 
 - Main-repo ownership is the score. Moving code to a child repo only counts when the main repo deletes code, stops owning a contract, or shrinks the runtime closure for users who opt out.
 - Run `shells/posix/yazelix_loc_scorecard.sh <base> HEAD` before closing meaningful refactor/extraction work, and include the result in the bead close reason or notes.
-- A cleanup/refactor/extraction bead should not raise main-repo runtime, maintainer, test, generated, or packaging LOC. If product behavior justifies growth, call it budget debt and create a payback bead before closing.
-- If a change adds more than `100` main-repo code LOC outside Beads/docs while claiming to simplify, it must delete at least that much in the same bead or record an explicit debt owner.
+- A cleanup/refactor/extraction bead should not raise main-repo runtime, maintainer, test, generated, or packaging LOC. If product behavior justifies growth, record the rationale and LOC scorecard in the close reason or notes.
+- If a change adds more than `100` main-repo code LOC outside Beads/docs while claiming to simplify, it must delete at least that much in the same bead or record an explicit rationale and affected owner.
 - Do not let validators, fixtures, docs, compatibility shims, or wrappers grow around an extraction. Delete stale local scaffolding in the same bead unless a concrete risk forces a separate follow-up.
 - Treat transitional migrations and compatibility shims as debt after their current supported window. If cleanup touches a migrated surface, delete the old migration path unless a live contract proves it is still needed.
 - When a family drops below its Rust budget ceiling, ratchet the ceiling down in the same commit. Do not rebaseline upward for cleanup work.

@@ -19,7 +19,7 @@ For each deletion or extraction bead, report:
 - any child-repo LOC added outside the main repo
 - any deferred deletion debt
 
-If accepted product work raises a no-growth ceiling, refresh the relevant inventory and record the increase as budget debt unless the new owner directly replaces a larger deleted owner. Do not close an extraction bead on a repository split alone.
+If accepted product work raises a no-growth ceiling, refresh the relevant inventory and record the increase and rationale unless the new owner directly replaces a larger deleted owner. Do not close an extraction bead on a repository split alone.
 
 ## Spartan Protocol
 
@@ -30,7 +30,7 @@ For extraction, cleanup, refactor, validator, generated-fixture, and command-sur
 - the default success metric is lower main-repo ownership, not total work performed
 - a child repo split is incomplete until the main repo deletes code, stops owning a contract, or reduces runtime closure/storage for users who opt out
 - a bead that claims cleanup/refactor/extraction should not increase main-repo runtime, maintainer, tests, generated, or packaging LOC
-- any accepted growth above `100` main-repo code LOC must name a payback bead before the work is closed
+- any accepted growth above `100` main-repo code LOC must record the rationale and affected owner before the work is closed
 - validators, generated fixtures, docs, wrappers, compatibility shims, and adapters are part of the cost, not free bookkeeping
 - stale scaffolding created for an extraction should be deleted in the same bead unless there is a concrete risk that needs a separate follow-up
 - when a budget family shrinks, lower the ceiling in the same commit so future work cannot spend the savings silently
@@ -40,7 +40,7 @@ Use these labels in Beads when recording the result:
 
 - `net_shrink`: main-repo ownership decreased and the budget ceiling was ratcheted down if applicable
 - `flat`: behavior or ownership improved but main-repo LOC did not materially change
-- `budget_debt`: accepted product behavior increased main-repo LOC and has a named payback bead
+- `budget_debt`: accepted product behavior increased main-repo LOC with the rationale and affected owner recorded
 - `paper_extraction`: code moved out but main-repo ownership did not decrease enough; this is not complete extraction success
 
 ## Counted Surfaces
