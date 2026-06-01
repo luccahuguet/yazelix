@@ -216,7 +216,7 @@
           };
         in
         pkgs.extend (final: prev: {
-          zellij = yazelixKgpZellij final prev.zellij;
+          zellij = yazelixKgpZellij final prev.zellij.unwrapped;
           yazi-unwrapped = yazelixKgpYazi final prev.yazi-unwrapped yaziCodeSrc;
           yazi = prev.yazi.override {
             yazi-unwrapped = final.yazi-unwrapped;
@@ -233,12 +233,16 @@
                 zellij = prev.zellij.overrideAttrs (_old: {
                   __intentionallyOverridingVersion = true;
                   version = "0.44.1";
-                  cargoDeps = throw "consumer pkgs.zellij cargoDeps leaked into Yazelix KGP Zellij";
-                  patches = throw "consumer pkgs.zellij patches leaked into Yazelix KGP Zellij";
-                  prePatch = throw "consumer pkgs.zellij prePatch leaked into Yazelix KGP Zellij";
-                  postPatch = throw "consumer pkgs.zellij postPatch leaked into Yazelix KGP Zellij";
-                  installCheckPhase =
-                    throw "consumer pkgs.zellij installCheckPhase leaked into Yazelix KGP Zellij";
+                  passthru = (prev.zellij.passthru or { }) // {
+                    unwrapped = prev.zellij.unwrapped.overrideAttrs (_oldUnwrapped: {
+                      cargoDeps = throw "consumer pkgs.zellij.unwrapped cargoDeps leaked into Yazelix KGP Zellij";
+                      patches = throw "consumer pkgs.zellij.unwrapped patches leaked into Yazelix KGP Zellij";
+                      prePatch = throw "consumer pkgs.zellij.unwrapped prePatch leaked into Yazelix KGP Zellij";
+                      postPatch = throw "consumer pkgs.zellij.unwrapped postPatch leaked into Yazelix KGP Zellij";
+                      installCheckPhase =
+                        throw "consumer pkgs.zellij.unwrapped installCheckPhase leaked into Yazelix KGP Zellij";
+                    });
+                  };
                 });
                 yazi-unwrapped = prev.yazi-unwrapped.overrideAttrs (_old: {
                   cargoDeps = throw "consumer pkgs.yazi-unwrapped cargoDeps leaked into Yazelix KGP Yazi";
