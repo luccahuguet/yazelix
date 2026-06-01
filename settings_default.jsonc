@@ -14,7 +14,6 @@
     "external": null,
     "steel_plugins": {
       "enabled": [
-        "recentf",
         "splash",
         "spacemacs_theme"
       ],

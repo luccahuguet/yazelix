@@ -25,7 +25,7 @@ Config entry:
 {
   "helix": {
     "steel_plugins": {
-      "enabled": ["recentf", "splash", "spacemacs_theme"],
+      "enabled": ["splash", "spacemacs_theme"],
       "extra": [
         {
           "id": "hello_yazelix",

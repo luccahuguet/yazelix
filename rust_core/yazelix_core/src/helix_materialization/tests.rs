@@ -135,7 +135,7 @@ fn managed_helix_rejects_flat_legacy_helix_toml() {
     );
 }
 
-// Defends: Helix materialization creates Steel entrypoint files and loads the default curated Steel plugins from runtime-owned sources.
+// Defends: Helix materialization creates Steel entrypoint files and loads only the default non-history-writing Steel plugins from runtime-owned sources.
 #[test]
 fn helix_materialization_writes_default_steel_entrypoints() {
     let tmp = TempDir::new().unwrap();
@@ -156,7 +156,7 @@ fn helix_materialization_writes_default_steel_entrypoints() {
     let steel_dir = state_dir.join("configs/helix");
     assert_eq!(
         data.enabled_steel_plugins,
-        vec!["recentf", "splash", "spacemacs_theme"]
+        vec!["splash", "spacemacs_theme"]
     );
     assert_eq!(
         data.generated_steel_config_dir,
@@ -167,7 +167,7 @@ fn helix_materialization_writes_default_steel_entrypoints() {
         config_dir.join("helix").to_string_lossy().to_string()
     );
     assert!(config_dir.join("helix").exists());
-    assert!(steel_dir.join("cogs/recentf.scm").exists());
+    assert!(!steel_dir.join("cogs/recentf.scm").exists());
     assert!(steel_dir.join("splash.scm").exists());
     assert!(steel_dir.join("cogs/themes/spacemacs.scm").exists());
     assert!(!steel_dir.join("cogs/keymaps.scm").exists());
@@ -175,9 +175,7 @@ fn helix_materialization_writes_default_steel_entrypoints() {
 
     let generated_helix = fs::read_to_string(state_dir.join("configs/helix/helix.scm")).unwrap();
     assert!(generated_helix.contains("(require (only-in \"helix/ext.scm\" eval-buffer evalp))"));
-    assert!(
-        generated_helix.contains("(provide eval-buffer evalp yzx-new-shell recentf-open-files)")
-    );
+    assert!(generated_helix.contains("(provide eval-buffer evalp yzx-new-shell)"));
     assert!(
         generated_helix
             .contains("(require (only-in \"helix/static.scm\" cx->current-file get-helix-cwd))")
@@ -191,12 +189,8 @@ fn helix_materialization_writes_default_steel_entrypoints() {
             .contains("(string-append \"'\" (string-replace value \"'\" \"'\\\\''\") \"'\"))")
     );
     assert!(generated_helix.contains("yzx_control\\\" zellij open-terminal"));
-    assert!(
-        generated_helix.contains(
-            "(require (only-in \"cogs/recentf.scm\" recentf-open-files recentf-snapshot))"
-        )
-    );
-    assert!(generated_helix.contains("(recentf-snapshot)"));
+    assert!(!generated_helix.contains("recentf-open-files"));
+    assert!(!generated_helix.contains("recentf-snapshot"));
     assert!(generated_helix.contains("(require (only-in \"splash.scm\" show-splash))"));
     assert!(generated_helix.contains("(show-splash)"));
     assert!(generated_helix.contains("(require \"cogs/themes/spacemacs.scm\")"));
@@ -205,13 +199,12 @@ fn helix_materialization_writes_default_steel_entrypoints() {
         vec![
             "eval-buffer".to_string(),
             "evalp".to_string(),
-            "yzx-new-shell".to_string(),
-            "recentf-open-files".to_string()
+            "yzx-new-shell".to_string()
         ]
     );
     assert_eq!(
         steel_command_names(&data, "internal"),
-        vec!["recentf-snapshot".to_string(), "show-splash".to_string()]
+        vec!["show-splash".to_string()]
     );
 
     let generated_init = fs::read_to_string(state_dir.join("configs/helix/init.scm")).unwrap();

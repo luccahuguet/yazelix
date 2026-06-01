@@ -173,7 +173,7 @@ hx --health | head -n 5
 {
   "helix": {
     "steel_plugins": {
-      "enabled": ["recentf", "splash", "spacemacs_theme"],
+      "enabled": ["splash", "spacemacs_theme"],
       "extra": [
         {
           "id": "my_picker",
@@ -307,7 +307,7 @@ programs.yazelix = {
   editor_command = null;        # Default: yazelix's Helix
   helix_external = null;        # Default: bundled matching binary/runtime
   helix_steel_plugins = {
-    enabled = [ "recentf" "splash" "spacemacs_theme" ];
+    enabled = [ "splash" "spacemacs_theme" ];
     extra = [ ];
   };
   

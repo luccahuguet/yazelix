@@ -109,7 +109,7 @@ apply_mode = "tab_session_restart"
 
 [fields."helix.steel_plugins"]
 kind = "helix_steel_plugins"
-default = { enabled = ["recentf", "splash", "spacemacs_theme"], extra = [] }
+default = { enabled = ["splash", "spacemacs_theme"], extra = [] }
 parser_key = "helix_steel_plugins"
 home_manager_option = "helix_steel_plugins"
 parser_behavior = "direct"
