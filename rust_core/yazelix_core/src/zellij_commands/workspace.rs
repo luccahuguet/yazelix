@@ -550,6 +550,16 @@ fn open_files_in_helix_bridge_managed_editor(
     Ok(ManagedEditorOpenStatus::NotReady)
 }
 
+fn open_directory_in_helix_bridge_managed_editor(
+    working_dir: &Path,
+) -> Result<ManagedEditorOpenStatus, CoreError> {
+    let status = set_helix_bridge_managed_editor_cwd(working_dir)?;
+    if status == ManagedEditorOpenStatus::Ok {
+        focus_managed_editor_pane()?;
+    }
+    Ok(status)
+}
+
 fn active_managed_editor_pane_target() -> Result<ManagedEditorPaneTarget, CoreError> {
     let response = run_pane_orchestrator_command("get_active_tab_session_state", "")?;
     match response.trim() {
@@ -771,7 +781,11 @@ pub fn run_zellij_open_editor(args: &[String]) -> Result<i32, CoreError> {
     let (runtime_env, editor_command) = resolve_runtime_editor_launch()?;
     let editor_kind = integration_facts.managed_editor_kind.trim().to_string();
     let yazi_id = env::var("YAZI_ID").unwrap_or_default();
-    let editor_working_dir = resolve_editor_working_dir(primary_target_path);
+    let editor_working_dir = if primary_target_path.is_dir() {
+        primary_target_path.to_path_buf()
+    } else {
+        resolve_editor_working_dir(primary_target_path)
+    };
     let mut created_editor_pane = false;
 
     if integration_facts.hide_sidebar_on_file_open {
@@ -780,7 +794,11 @@ pub fn run_zellij_open_editor(args: &[String]) -> Result<i32, CoreError> {
 
     if editor_kind == "helix" || editor_kind == "neovim" {
         let open_status =
-            open_files_in_managed_editor(&editor_kind, &target_paths, &editor_working_dir)?;
+            if editor_kind == "helix" && target_paths.len() == 1 && primary_target_path.is_dir() {
+                open_directory_in_helix_bridge_managed_editor(&editor_working_dir)?
+            } else {
+                open_files_in_managed_editor(&editor_kind, &target_paths, &editor_working_dir)?
+            };
         if matches!(
             open_status,
             ManagedEditorOpenStatus::Missing | ManagedEditorOpenStatus::NotReady
