@@ -58,6 +58,7 @@ pub mod startup_handoff;
 pub mod status_report;
 pub mod support_commands;
 pub(crate) mod terminal_control;
+pub mod terminal_cursor_materialization;
 pub mod terminal_materialization;
 pub mod update_commands;
 pub mod upgrade_summary;
@@ -111,8 +112,7 @@ pub use ghostty_cursor_registry::{
     DEFAULT_GHOSTTY_TRAIL_DURATION, GHOSTTY_TRAIL_DURATION_MAX, GHOSTTY_TRAIL_DURATION_MIN,
 };
 pub use ghostty_materialization::{
-    GhosttyCursorState, GhosttyMaterializationData, GhosttyMaterializationRequest,
-    generate_ghostty_materialization,
+    GhosttyMaterializationData, GhosttyMaterializationRequest, generate_ghostty_materialization,
 };
 pub use helix_external::{HelixExternalPair, is_custom_helix_binary_command, is_helix_command};
 pub use helix_materialization::{
@@ -193,6 +193,10 @@ pub use startup_handoff::{
 };
 pub use status_report::{StatusReportData, compute_status_report, session_config_snapshot_summary};
 pub use support_commands::{run_yzx_sponsor, run_yzx_why};
+pub use terminal_cursor_materialization::{
+    TerminalCursorMaterializationData, TerminalCursorMaterializationRequest, TerminalCursorState,
+    generate_terminal_cursor_materialization,
+};
 pub use terminal_materialization::{
     TerminalGeneratedConfig, TerminalMaterializationData, TerminalMaterializationRequest,
     generate_terminal_materialization,

@@ -1,18 +1,18 @@
 use crate::atomic_fs::write_text_atomic;
-use crate::bridge::{CoreError, ErrorClass};
-use crate::ghostty_cursor_registry::{
-    CursorDefinition, CursorRegistry, ResolvedCursorRegistryState, YazelixCursorRegistryExt,
-    format_ghostty_trail_duration, write_ghostty_cursor_palette_shaders,
-};
+use crate::bridge::CoreError;
+use crate::ghostty_cursor_registry::format_ghostty_trail_duration;
 pub use crate::ghostty_cursor_registry::{
     DEFAULT_GHOSTTY_TRAIL_DURATION, GHOSTTY_TRAIL_DURATION_MAX, GHOSTTY_TRAIL_DURATION_MIN,
 };
 use crate::runtime_component_enabled;
+use crate::terminal_cursor_materialization::{
+    TerminalCursorMaterializationRequest, TerminalCursorState, disabled_terminal_cursor_state,
+    generate_terminal_cursor_materialization,
+};
 use crate::user_config_paths;
 use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 const YAZELIX_WINDOW_CLASS: &str = "com.yazelix.Yazelix";
 const YAZELIX_X11_INSTANCE: &str = "yazelix";
@@ -46,63 +46,10 @@ pub struct GhosttyMaterializationRequest {
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
-pub struct GhosttyCursorState {
-    pub selected_color: Option<String>,
-    pub selected_color_hex: Option<String>,
-    pub selected_family: Option<String>,
-    pub selected_divider: Option<String>,
-    pub selected_primary_color_hex: Option<String>,
-    pub selected_secondary_color_hex: Option<String>,
-    pub selected_trail_effect: Option<String>,
-    pub selected_mode_effect: Option<String>,
-    pub trail_duration: f64,
-    pub effect_color_literal: String,
-}
-
-#[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct GhosttyMaterializationData {
     pub generated_path: String,
-    pub cursor_state: GhosttyCursorState,
+    pub cursor_state: TerminalCursorState,
     pub shaders_synced: bool,
-}
-
-pub fn cursor_shader_paths_for_state(
-    state_dir: &Path,
-    cursor_state: &GhosttyCursorState,
-) -> Vec<PathBuf> {
-    let shaders_dir = state_dir
-        .join("configs")
-        .join("terminal_emulators")
-        .join("ghostty")
-        .join("shaders");
-    let mut paths = Vec::new();
-
-    if let Some(name) = cursor_state
-        .selected_color
-        .as_deref()
-        .map(str::trim)
-        .filter(|name| !name.is_empty() && *name != "none")
-    {
-        paths.push(shaders_dir.join(format!("cursor_trail_{name}.glsl")));
-    }
-
-    for effect in [
-        cursor_state.selected_trail_effect.as_deref(),
-        cursor_state.selected_mode_effect.as_deref(),
-    ]
-    .into_iter()
-    .flatten()
-    .map(str::trim)
-    .filter(|effect| !effect.is_empty() && *effect != "none")
-    {
-        paths.push(
-            shaders_dir
-                .join("generated_effects")
-                .join(format!("{effect}.glsl")),
-        );
-    }
-
-    paths
 }
 
 fn get_opacity_value(transparency: &str) -> &str {
@@ -150,29 +97,6 @@ fn build_ghostty_transparency(transparency: &str) -> String {
     }
 }
 
-fn validate_ghostty_trail_duration(duration: f64) -> Result<(), CoreError> {
-    if !duration.is_finite()
-        || !(GHOSTTY_TRAIL_DURATION_MIN..=GHOSTTY_TRAIL_DURATION_MAX).contains(&duration)
-    {
-        return Err(CoreError::classified(
-            ErrorClass::Config,
-            "invalid_ghostty_trail_duration",
-            format!(
-                "Invalid cursor settings.duration value '{}'. Expected a number from {} to {}.",
-                duration, GHOSTTY_TRAIL_DURATION_MIN, GHOSTTY_TRAIL_DURATION_MAX
-            ),
-            "Update ~/.config/yazelix_ghostty_cursors/settings.jsonc with a supported Ghostty trail duration multiplier, then retry.",
-            serde_json::json!({
-                "field": "settings.duration",
-                "actual": duration.to_string(),
-                "min": GHOSTTY_TRAIL_DURATION_MIN,
-                "max": GHOSTTY_TRAIL_DURATION_MAX,
-            }),
-        ));
-    }
-    Ok(())
-}
-
 fn build_ghostty_trail_duration(duration: f64) -> String {
     format!(
         "# Ghostty trail duration multiplier: {}",
@@ -180,20 +104,21 @@ fn build_ghostty_trail_duration(duration: f64) -> String {
     )
 }
 
-fn build_ghostty_cursor_palette(cursor_state: &ResolvedCursorRegistryState) -> String {
-    if cursor_state.trail_disabled {
+fn build_ghostty_cursor_palette(cursor_state: &TerminalCursorState) -> String {
+    if cursor_state.selected_color.as_deref() == Some("none") {
         return "# Cursor color palette: none (disabled in settings.jsonc)".to_string();
     }
 
-    let Some(cursor) = &cursor_state.selected_cursor else {
+    let Some(name) = cursor_state.selected_color.as_deref() else {
+        return "# cursor-color = #ffb929".to_string();
+    };
+    let Some(color_hex) = cursor_state.selected_color_hex.as_deref() else {
         return "# cursor-color = #ffb929".to_string();
     };
 
     format!(
         "# Cursor color palette: {}\ncursor-color = {}\ncustom-shader = {}",
-        cursor.name,
-        cursor.cursor_color_hex(),
-        cursor.shader_path()
+        name, color_hex, "./shaders/cursor_trail_{name}.glsl"
     )
 }
 
@@ -227,55 +152,6 @@ fn build_ghostty_cursor_effects(
     }
 
     lines.join("\n")
-}
-
-fn build_ghostty_cursor_render_state(
-    registry_state: &ResolvedCursorRegistryState,
-) -> GhosttyCursorState {
-    let selected_cursor = registry_state.selected_cursor.as_ref();
-    let selected_color = if registry_state.trail_disabled {
-        Some("none".to_string())
-    } else {
-        selected_cursor.map(|cursor| cursor.name.clone())
-    };
-    let selected_color_hex = selected_cursor.map(|cursor| cursor.cursor_color_hex().to_string());
-
-    GhosttyCursorState {
-        selected_color,
-        selected_color_hex,
-        selected_family: selected_cursor.map(|cursor| cursor.family_name().to_string()),
-        selected_divider: selected_cursor
-            .and_then(|cursor| cursor.divider_name().map(|divider| divider.to_string())),
-        selected_primary_color_hex: selected_cursor
-            .and_then(CursorDefinition::split_primary_color_hex)
-            .map(str::to_string),
-        selected_secondary_color_hex: selected_cursor
-            .and_then(CursorDefinition::split_secondary_color_hex)
-            .map(str::to_string),
-        selected_trail_effect: registry_state.selected_trail_effect.clone(),
-        selected_mode_effect: registry_state.selected_mode_effect.clone(),
-        trail_duration: registry_state.duration,
-        effect_color_literal: registry_state
-            .selected_cursor
-            .as_ref()
-            .map(CursorDefinition::cursor_color_literal)
-            .unwrap_or_else(|| "iCurrentCursorColor".to_string()),
-    }
-}
-
-fn build_disabled_ghostty_cursor_state() -> GhosttyCursorState {
-    GhosttyCursorState {
-        selected_color: None,
-        selected_color_hex: None,
-        selected_family: None,
-        selected_divider: None,
-        selected_primary_color_hex: None,
-        selected_secondary_color_hex: None,
-        selected_trail_effect: None,
-        selected_mode_effect: None,
-        trail_duration: DEFAULT_GHOSTTY_TRAIL_DURATION,
-        effect_color_literal: "#ffb929".to_string(),
-    }
 }
 
 fn build_ghostty_config_without_cursor(
@@ -318,8 +194,7 @@ config-file = ?"{}"
 
 fn build_ghostty_config(
     request: &GhosttyMaterializationRequest,
-    cursor_state: &GhosttyCursorState,
-    registry_state: &ResolvedCursorRegistryState,
+    cursor_state: &TerminalCursorState,
 ) -> Result<String, CoreError> {
     let override_path = get_terminal_override_path(&request.config_dir, "ghostty")?
         .map(|p| p.to_string_lossy().into_owned())
@@ -354,7 +229,7 @@ config-file = ?"{}"
         YAZELIX_X11_INSTANCE,
         YAZELIX_THEME,
         build_ghostty_transparency(&request.transparency),
-        build_ghostty_cursor_palette(registry_state),
+        build_ghostty_cursor_palette(cursor_state),
         build_ghostty_trail_duration(cursor_state.trail_duration),
         build_ghostty_cursor_effects(
             &cursor_state.selected_trail_effect,
@@ -362,124 +237,6 @@ config-file = ?"{}"
         ),
         override_path,
     ))
-}
-
-fn sync_ghostty_shader_assets(
-    runtime_dir: &Path,
-    ghostty_dir: &Path,
-    glow_level: &str,
-    effect_color_literal: &str,
-    trail_duration: f64,
-    registry: &CursorRegistry,
-) -> Result<bool, CoreError> {
-    let shaders_src = runtime_dir
-        .join("configs")
-        .join("terminal_emulators")
-        .join("ghostty")
-        .join("shaders");
-    let shaders_dest = ghostty_dir.join("shaders");
-
-    if shaders_dest.exists() {
-        // Make writable before removing
-        let _ = Command::new("chmod")
-            .args(["-R", "u+w", &shaders_dest.to_string_lossy()])
-            .output();
-
-        fs::remove_dir_all(&shaders_dest).map_err(|source| {
-            CoreError::io(
-                "remove_ghostty_shaders",
-                "Failed to remove previous Ghostty shader assets",
-                "Check permissions for the Yazelix state directory and retry.",
-                shaders_dest.to_string_lossy(),
-                source,
-            )
-        })?;
-    }
-
-    fs::create_dir_all(&shaders_dest).map_err(|source| {
-        CoreError::io(
-            "create_ghostty_shaders",
-            "Could not create the Ghostty shader output directory",
-            "Check permissions for the Yazelix state directory and retry.",
-            shaders_dest.to_string_lossy(),
-            source,
-        )
-    })?;
-
-    if shaders_src.exists() {
-        // Copy shaders directory recursively
-        copy_dir_all(&shaders_src, &shaders_dest).map_err(|source| {
-            CoreError::io(
-                "copy_ghostty_shaders",
-                "Failed to copy Ghostty shader assets",
-                "Check permissions and disk space, then retry.",
-                format!("{} -> {}", shaders_src.display(), shaders_dest.display()),
-                source,
-            )
-        })?;
-
-        // Make writable
-        let _ = Command::new("chmod")
-            .args(["-R", "u+w", &shaders_dest.to_string_lossy()])
-            .output();
-    }
-
-    // Run the shader build script if it exists
-    let build_script = shaders_src.join("build_shaders.nu");
-    if build_script.exists() {
-        let build_script_name = build_script
-            .file_name()
-            .map(|s| s.to_string_lossy().into_owned())
-            .unwrap_or_else(|| "build_shaders.nu".to_string());
-        let output = Command::new("nu")
-            .arg(&build_script_name)
-            .arg(glow_level)
-            .arg(&shaders_dest)
-            .arg(effect_color_literal)
-            .arg(format_ghostty_trail_duration(trail_duration))
-            .current_dir(&shaders_src)
-            .output()
-            .map_err(|source| {
-                CoreError::io(
-                    "run_ghostty_shader_build",
-                    "Failed to run Ghostty shader build script",
-                    "Ensure Nushell is installed and accessible on PATH.",
-                    build_script.to_string_lossy(),
-                    source,
-                )
-            })?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(CoreError::classified(
-                ErrorClass::Runtime,
-                "ghostty_shader_build_failed",
-                format!("Ghostty shader build script failed: {}", stderr.trim()),
-                "Check the shader build script for errors and retry.",
-                serde_json::json!({"script": build_script.to_string_lossy()}),
-            ));
-        }
-    }
-
-    write_ghostty_cursor_palette_shaders(&shaders_dest, registry, glow_level, trail_duration)?;
-
-    Ok(true)
-}
-
-fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io::Result<()> {
-    fs::create_dir_all(&dst)?;
-    for entry in fs::read_dir(src)? {
-        let entry = entry?;
-        let ty = entry.file_type()?;
-        let src_path = entry.path();
-        let dst_path = dst.as_ref().join(entry.file_name());
-        if ty.is_dir() {
-            copy_dir_all(&src_path, &dst_path)?;
-        } else {
-            fs::copy(&src_path, &dst_path)?;
-        }
-    }
-    Ok(())
 }
 
 pub fn generate_ghostty_materialization(
@@ -509,33 +266,26 @@ pub fn generate_ghostty_materialization(
         )?;
         return Ok(GhosttyMaterializationData {
             generated_path: generated_path.to_string_lossy().into_owned(),
-            cursor_state: build_disabled_ghostty_cursor_state(),
+            cursor_state: disabled_terminal_cursor_state(),
             shaders_synced: false,
         });
     }
 
-    let registry = CursorRegistry::load(&request.cursor_config_path)?;
-    let registry_state = registry.resolve();
-    validate_ghostty_trail_duration(registry_state.duration)?;
-    let cursor_state = build_ghostty_cursor_render_state(&registry_state);
-
-    let config_content = build_ghostty_config(request, &cursor_state, &registry_state)?;
+    let cursor_data =
+        generate_terminal_cursor_materialization(&TerminalCursorMaterializationRequest {
+            runtime_dir: request.runtime_dir.clone(),
+            state_dir: request.state_dir.clone(),
+            cursor_config_path: request.cursor_config_path.clone(),
+        })?;
+    let cursor_state = cursor_data.cursor_state;
+    let config_content = build_ghostty_config(request, &cursor_state)?;
     let generated_path = ghostty_dir.join("config");
 
     write_text_atomic(&generated_path, &config_content)?;
 
-    let shaders_synced = sync_ghostty_shader_assets(
-        &request.runtime_dir,
-        &ghostty_dir,
-        &registry_state.glow,
-        &cursor_state.effect_color_literal,
-        registry_state.duration,
-        &registry,
-    )?;
-
     Ok(GhosttyMaterializationData {
         generated_path: generated_path.to_string_lossy().into_owned(),
         cursor_state,
-        shaders_synced,
+        shaders_synced: cursor_data.shaders_synced,
     })
 }

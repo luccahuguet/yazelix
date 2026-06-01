@@ -4,10 +4,13 @@ use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::control_plane::config_dir_from_env;
 use crate::ghostty_cursor_registry::{CursorRegistry, YazelixCursorRegistryExt};
 use crate::ghostty_materialization::{
-    GhosttyCursorState, GhosttyMaterializationData, GhosttyMaterializationRequest,
-    cursor_shader_paths_for_state, generate_ghostty_materialization,
+    GhosttyMaterializationData, GhosttyMaterializationRequest, generate_ghostty_materialization,
 };
 use crate::runtime_component_enabled;
+use crate::terminal_cursor_materialization::{
+    TerminalCursorMaterializationData, TerminalCursorMaterializationRequest, TerminalCursorState,
+    cursor_shader_paths_for_state, generate_terminal_cursor_materialization,
+};
 use crate::user_config_paths;
 use serde::Serialize;
 use std::fs;
@@ -47,6 +50,7 @@ pub struct TerminalGeneratedConfig {
 pub struct TerminalMaterializationData {
     pub generated: Vec<TerminalGeneratedConfig>,
     pub ghostty: Option<crate::ghostty_materialization::GhosttyMaterializationData>,
+    pub cursor: Option<TerminalCursorMaterializationData>,
 }
 
 fn get_opacity_value(transparency: &str) -> &str {
@@ -220,7 +224,7 @@ white = "#ffffff"
 fn generate_yzxterm_config(
     runtime_dir: &Path,
     transparency: &str,
-    cursor_state: Option<&GhosttyCursorState>,
+    cursor_state: Option<&TerminalCursorState>,
     custom_shader_paths: &[PathBuf],
 ) -> Result<String, CoreError> {
     let package_config = runtime_dir
@@ -373,6 +377,32 @@ fn ensure_ghostty_materialization<'a>(
         .expect("ghostty materialization data was just initialized"))
 }
 
+fn ensure_terminal_cursor_materialization<'a>(
+    data: &'a mut Option<TerminalCursorMaterializationData>,
+    request: &TerminalCursorMaterializationRequest,
+) -> Result<&'a TerminalCursorMaterializationData, CoreError> {
+    if data.is_none() {
+        *data = Some(generate_terminal_cursor_materialization(request)?);
+    }
+    Ok(data
+        .as_ref()
+        .expect("terminal cursor materialization data was just initialized"))
+}
+
+fn cursor_data_from_ghostty(
+    state_dir: &Path,
+    data: &GhosttyMaterializationData,
+) -> TerminalCursorMaterializationData {
+    TerminalCursorMaterializationData {
+        cursor_state: data.cursor_state.clone(),
+        shader_paths: cursor_shader_paths_for_state(state_dir, &data.cursor_state)
+            .into_iter()
+            .map(|path| path.to_string_lossy().into_owned())
+            .collect(),
+        shaders_synced: data.shaders_synced,
+    }
+}
+
 fn build_kitty_cursor(kitty_enable_cursor: bool) -> String {
     if kitty_enable_cursor {
         "cursor_shape block\ncursor_trail 3\ncursor_trail_decay 0.1 0.4".to_string()
@@ -475,14 +505,23 @@ pub fn generate_terminal_materialization(
         transparency: transparency.to_string(),
         cursor_config_path: request.cursor_config_path.clone(),
     };
+    let cursor_request = TerminalCursorMaterializationRequest {
+        runtime_dir: request.runtime_dir.clone(),
+        state_dir: request.state_dir.clone(),
+        cursor_config_path: request.cursor_config_path.clone(),
+    };
 
     let mut generated = Vec::new();
     let mut ghostty_data = None;
+    let mut cursor_data = None;
 
     for terminal in &request.terminals {
         match terminal.as_str() {
             "ghostty" => {
                 let data = ensure_ghostty_materialization(&mut ghostty_data, &ghostty_request)?;
+                if cursor_data.is_none() {
+                    cursor_data = Some(cursor_data_from_ghostty(&request.state_dir, data));
+                }
                 let path = data.generated_path.clone();
                 generated.push(TerminalGeneratedConfig {
                     terminal: "ghostty".to_string(),
@@ -538,10 +577,11 @@ pub fn generate_terminal_materialization(
                 })?;
                 let path = yzxterm_dir.join("config.toml");
                 let (cursor_state, custom_shader_paths) = if cursors_enabled {
-                    let data = ensure_ghostty_materialization(&mut ghostty_data, &ghostty_request)?;
+                    let data =
+                        ensure_terminal_cursor_materialization(&mut cursor_data, &cursor_request)?;
                     (
                         Some(&data.cursor_state),
-                        cursor_shader_paths_for_state(&request.state_dir, &data.cursor_state),
+                        data.shader_paths.iter().map(PathBuf::from).collect(),
                     )
                 } else {
                     (None, Vec::new())
@@ -593,5 +633,6 @@ pub fn generate_terminal_materialization(
     Ok(TerminalMaterializationData {
         generated,
         ghostty: ghostty_data,
+        cursor: cursor_data,
     })
 }

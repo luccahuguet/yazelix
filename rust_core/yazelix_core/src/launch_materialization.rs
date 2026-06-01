@@ -132,14 +132,14 @@ pub fn prepare_launch_materialization(
             terminals: plan.selected_terminals.clone(),
         })?;
         if plan_uses_yazelix_ghostty_cursor(&plan) {
-            if let Some(ghostty_data) = terminal_data.ghostty.as_ref() {
-                ghostty_cursor_name = ghostty_data.cursor_state.selected_color.clone();
-                ghostty_cursor_color_hex = ghostty_data.cursor_state.selected_color_hex.clone();
-                ghostty_cursor_family = ghostty_data.cursor_state.selected_family.clone();
-                ghostty_cursor_divider = ghostty_data.cursor_state.selected_divider.clone();
+            if let Some(cursor_data) = terminal_data.cursor.as_ref() {
+                ghostty_cursor_name = cursor_data.cursor_state.selected_color.clone();
+                ghostty_cursor_color_hex = cursor_data.cursor_state.selected_color_hex.clone();
+                ghostty_cursor_family = cursor_data.cursor_state.selected_family.clone();
+                ghostty_cursor_divider = cursor_data.cursor_state.selected_divider.clone();
                 ghostty_cursor_primary_color_hex =
-                    ghostty_data.cursor_state.selected_primary_color_hex.clone();
-                ghostty_cursor_secondary_color_hex = ghostty_data
+                    cursor_data.cursor_state.selected_primary_color_hex.clone();
+                ghostty_cursor_secondary_color_hex = cursor_data
                     .cursor_state
                     .selected_secondary_color_hex
                     .clone();

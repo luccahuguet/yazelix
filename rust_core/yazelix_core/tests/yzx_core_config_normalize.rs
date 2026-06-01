@@ -1274,7 +1274,7 @@ color = "#ffffff"
     assert_eq!(envelope["command"], "terminal-materialization.generate");
     assert_eq!(envelope["status"], "ok");
     assert_eq!(
-        envelope["data"]["ghostty"]["cursor_state"]["selected_color"],
+        envelope["data"]["cursor"]["cursor_state"]["selected_color"],
         "snow"
     );
 
