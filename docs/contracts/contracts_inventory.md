@@ -17,6 +17,7 @@ This inventory lists the canonical contracts under `docs/contracts/`. It is not 
 | `desktop_launch_visible_feedback.md` | Desktop launch visible-feedback behavior |
 | `first_run_upgrade_summary.md` | First-run and `yzx whats_new` summary behavior |
 | `floating_tui_panes.md` | Popup, menu, and transient floating-pane behavior |
+| `helix_action_bridge_contract.md` | Planned typed Yazelix-to-Helix action bridge |
 | `helix_managed_config_contract.md` | Managed Helix config ownership |
 | `keybinding_action_ownership.md` | Semantic keybinding action ownership and native keymap boundaries |
 | `macos_support_floor.md` | First-party macOS support floor |

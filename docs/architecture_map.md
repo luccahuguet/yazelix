@@ -81,6 +81,7 @@ This is where the first-party Zellij plugins matter. They are not "extra integra
 Related contracts:
 
 - [Workspace Session Contract](./contracts/workspace_session_contract.md)
+- [Helix Action Bridge Contract](./contracts/helix_action_bridge_contract.md)
 - [Backend-Free Workspace Slice](./contracts/backend_free_workspace_slice.md)
 - [Cross-Language Runtime Ownership](./contracts/cross_language_runtime_ownership.md)
 
