@@ -133,8 +133,142 @@ fn main() {
     }
 }
 
+type StandardCommandHandlerFn = fn(lexopt::Parser) -> Result<(), CoreError>;
+
+struct StandardCommandHandler {
+    name: &'static str,
+    run: StandardCommandHandlerFn,
+}
+
+enum HelperCommand {
+    Standard(&'static StandardCommandHandler),
+    RuntimeMaterializationRepair,
+    Unsupported(String),
+}
+
+macro_rules! standard_command_handlers {
+    ($(($name:expr, $run:path)),+ $(,)?) => {
+        const STANDARD_COMMAND_HANDLERS: &[StandardCommandHandler] = &[
+            $(StandardCommandHandler { name: $name, run: $run },)+
+        ];
+    };
+}
+
+standard_command_handlers!(
+    (CONFIG_NORMALIZE_COMMAND, run_config_normalize),
+    (CONFIG_SURFACE_RESOLVE_COMMAND, run_config_surface_resolve),
+    (CONFIG_STATE_COMPUTE_COMMAND, run_config_state_compute),
+    (CONFIG_STATE_RECORD_COMMAND, run_config_state_record),
+    (
+        RUNTIME_CONTRACT_EVALUATE_COMMAND,
+        run_runtime_contract_evaluate
+    ),
+    (
+        STARTUP_LAUNCH_PREFLIGHT_EVALUATE_COMMAND,
+        run_startup_launch_preflight_evaluate
+    ),
+    (RUNTIME_ENV_COMPUTE_COMMAND, run_runtime_env_compute),
+    (
+        INTEGRATION_FACTS_COMPUTE_COMMAND,
+        run_integration_facts_compute
+    ),
+    (
+        POPUP_SESSION_FACTS_COMPUTE_COMMAND,
+        run_popup_session_facts_compute
+    ),
+    (STARTUP_FACTS_COMPUTE_COMMAND, run_startup_facts_compute),
+    (STARTUP_HANDOFF_CAPTURE_COMMAND, run_startup_handoff_capture),
+    (
+        SESSION_CONFIG_SNAPSHOT_WRITE_COMMAND,
+        run_session_config_snapshot_write
+    ),
+    (
+        RUNTIME_MATERIALIZATION_PLAN_COMMAND,
+        run_runtime_materialization_plan
+    ),
+    (
+        RUNTIME_MATERIALIZATION_MATERIALIZE_COMMAND,
+        run_runtime_materialization_materialize
+    ),
+    (STATUS_COMPUTE_COMMAND, run_status_compute),
+    (
+        INSTALL_OWNERSHIP_EVALUATE_COMMAND,
+        run_install_ownership_evaluate
+    ),
+    (DOCTOR_CONFIG_EVALUATE_COMMAND, run_doctor_config_evaluate),
+    (DOCTOR_HELIX_EVALUATE_COMMAND, run_doctor_helix_evaluate),
+    (DOCTOR_RUNTIME_EVALUATE_COMMAND, run_doctor_runtime_evaluate),
+    (
+        ZELLIJ_RENDER_PLAN_COMPUTE_COMMAND,
+        run_zellij_render_plan_compute
+    ),
+    (
+        YAZI_RENDER_PLAN_COMPUTE_COMMAND,
+        run_yazi_render_plan_compute
+    ),
+    (
+        YAZI_MATERIALIZATION_GENERATE_COMMAND,
+        run_yazi_materialization_generate
+    ),
+    (
+        ZELLIJ_MATERIALIZATION_GENERATE_COMMAND,
+        run_zellij_materialization_generate
+    ),
+    (
+        HELIX_MATERIALIZATION_GENERATE_COMMAND,
+        run_helix_materialization_generate
+    ),
+    (
+        GHOSTTY_MATERIALIZATION_GENERATE_COMMAND,
+        run_ghostty_materialization_generate
+    ),
+    (
+        TERMINAL_MATERIALIZATION_GENERATE_COMMAND,
+        run_terminal_materialization_generate
+    ),
+    (
+        LAUNCH_MATERIALIZATION_PREPARE_COMMAND,
+        run_launch_materialization_prepare
+    ),
+    (
+        YZX_COMMAND_METADATA_LIST_COMMAND,
+        run_yzx_command_metadata_list
+    ),
+    (
+        YZX_COMMAND_METADATA_EXTERNS_COMMAND,
+        run_yzx_command_metadata_externs
+    ),
+    (
+        YZX_COMMAND_METADATA_SYNC_EXTERNS_COMMAND,
+        run_yzx_command_metadata_sync_externs
+    ),
+    (
+        YZX_COMMAND_METADATA_HELP_COMMAND,
+        run_yzx_command_metadata_help
+    ),
+    (RUNTIME_OWNERSHIP_GRAPH_COMMAND, run_runtime_ownership_graph),
+    (
+        UPGRADE_SUMMARY_HEADLINE_COMMAND,
+        run_upgrade_summary_headline
+    ),
+    (
+        UPGRADE_SUMMARY_FIRST_RUN_COMMAND,
+        run_upgrade_summary_first_run
+    ),
+);
+
 fn run() -> Result<(), Box<CommandError>> {
     let mut parser = lexopt::Parser::from_env();
+    let command = parse_helper_command(&mut parser)?;
+    dispatch_helper_command(command, parser)
+}
+
+fn parse_helper_command(parser: &mut lexopt::Parser) -> Result<HelperCommand, Box<CommandError>> {
+    let command_name = take_helper_command_name(parser)?;
+    Ok(classify_helper_command(command_name))
+}
+
+fn take_helper_command_name(parser: &mut lexopt::Parser) -> Result<String, Box<CommandError>> {
     let Some(arg) = parser
         .next()
         .map_err(|error| CommandError::new(UNKNOWN_COMMAND, CoreError::usage(error.to_string())))?
@@ -144,197 +278,52 @@ fn run() -> Result<(), Box<CommandError>> {
             CoreError::usage("Missing helper command"),
         ));
     };
-    let command = match arg {
+
+    match arg {
         Value(value) => value.into_string().map_err(|_| {
             CommandError::new(
                 UNKNOWN_COMMAND,
                 CoreError::usage("Helper command must be valid UTF-8"),
             )
-        })?,
-        _ => {
-            return Err(CommandError::new(
-                UNKNOWN_COMMAND,
-                CoreError::usage("First argument must be a helper command"),
-            ));
-        }
-    };
-
-    match command.as_str() {
-        CONFIG_NORMALIZE_COMMAND => {
-            let command_for_error = command.clone();
-            run_config_normalize(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        CONFIG_SURFACE_RESOLVE_COMMAND => {
-            let command_for_error = command.clone();
-            run_config_surface_resolve(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        CONFIG_STATE_COMPUTE_COMMAND => {
-            let command_for_error = command.clone();
-            run_config_state_compute(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        CONFIG_STATE_RECORD_COMMAND => {
-            let command_for_error = command.clone();
-            run_config_state_record(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        RUNTIME_CONTRACT_EVALUATE_COMMAND => {
-            let command_for_error = command.clone();
-            run_runtime_contract_evaluate(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        STARTUP_LAUNCH_PREFLIGHT_EVALUATE_COMMAND => {
-            let command_for_error = command.clone();
-            run_startup_launch_preflight_evaluate(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        RUNTIME_ENV_COMPUTE_COMMAND => {
-            let command_for_error = command.clone();
-            run_runtime_env_compute(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        INTEGRATION_FACTS_COMPUTE_COMMAND => {
-            let command_for_error = command.clone();
-            run_integration_facts_compute(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        POPUP_SESSION_FACTS_COMPUTE_COMMAND => {
-            let command_for_error = command.clone();
-            run_popup_session_facts_compute(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        STARTUP_FACTS_COMPUTE_COMMAND => {
-            let command_for_error = command.clone();
-            run_startup_facts_compute(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        STARTUP_HANDOFF_CAPTURE_COMMAND => {
-            let command_for_error = command.clone();
-            run_startup_handoff_capture(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        SESSION_CONFIG_SNAPSHOT_WRITE_COMMAND => {
-            let command_for_error = command.clone();
-            run_session_config_snapshot_write(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        RUNTIME_MATERIALIZATION_PLAN_COMMAND => {
-            let command_for_error = command.clone();
-            run_runtime_materialization_plan(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        RUNTIME_MATERIALIZATION_MATERIALIZE_COMMAND => {
-            let command_for_error = command.clone();
-            run_runtime_materialization_materialize(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        RUNTIME_MATERIALIZATION_REPAIR_COMMAND => {
-            run_runtime_materialization_repair(parser, command.clone())
-        }
-        STATUS_COMPUTE_COMMAND => {
-            let command_for_error = command.clone();
-            run_status_compute(parser).map_err(|error| CommandError::new(command_for_error, error))
-        }
-        INSTALL_OWNERSHIP_EVALUATE_COMMAND => {
-            let command_for_error = command.clone();
-            run_install_ownership_evaluate(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        DOCTOR_CONFIG_EVALUATE_COMMAND => {
-            let command_for_error = command.clone();
-            run_doctor_config_evaluate(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        DOCTOR_HELIX_EVALUATE_COMMAND => {
-            let command_for_error = command.clone();
-            run_doctor_helix_evaluate(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        DOCTOR_RUNTIME_EVALUATE_COMMAND => {
-            let command_for_error = command.clone();
-            run_doctor_runtime_evaluate(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        ZELLIJ_RENDER_PLAN_COMPUTE_COMMAND => {
-            let command_for_error = command.clone();
-            run_zellij_render_plan_compute(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        YAZI_RENDER_PLAN_COMPUTE_COMMAND => {
-            let command_for_error = command.clone();
-            run_yazi_render_plan_compute(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        YAZI_MATERIALIZATION_GENERATE_COMMAND => {
-            let command_for_error = command.clone();
-            run_yazi_materialization_generate(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        ZELLIJ_MATERIALIZATION_GENERATE_COMMAND => {
-            let command_for_error = command.clone();
-            run_zellij_materialization_generate(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        HELIX_MATERIALIZATION_GENERATE_COMMAND => {
-            let command_for_error = command.clone();
-            run_helix_materialization_generate(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        GHOSTTY_MATERIALIZATION_GENERATE_COMMAND => {
-            let command_for_error = command.clone();
-            run_ghostty_materialization_generate(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        TERMINAL_MATERIALIZATION_GENERATE_COMMAND => {
-            let command_for_error = command.clone();
-            run_terminal_materialization_generate(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        LAUNCH_MATERIALIZATION_PREPARE_COMMAND => {
-            let command_for_error = command.clone();
-            run_launch_materialization_prepare(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        YZX_COMMAND_METADATA_LIST_COMMAND => {
-            let command_for_error = command.clone();
-            run_yzx_command_metadata_list(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        YZX_COMMAND_METADATA_EXTERNS_COMMAND => {
-            let command_for_error = command.clone();
-            run_yzx_command_metadata_externs(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        YZX_COMMAND_METADATA_SYNC_EXTERNS_COMMAND => {
-            let command_for_error = command.clone();
-            run_yzx_command_metadata_sync_externs(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        YZX_COMMAND_METADATA_HELP_COMMAND => {
-            let command_for_error = command.clone();
-            run_yzx_command_metadata_help(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        RUNTIME_OWNERSHIP_GRAPH_COMMAND => {
-            let command_for_error = command.clone();
-            run_runtime_ownership_graph(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        UPGRADE_SUMMARY_HEADLINE_COMMAND => {
-            let command_for_error = command.clone();
-            run_upgrade_summary_headline(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
-        UPGRADE_SUMMARY_FIRST_RUN_COMMAND => {
-            let command_for_error = command.clone();
-            run_upgrade_summary_first_run(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
-        }
+        }),
         _ => Err(CommandError::new(
-            command.clone(),
-            CoreError::usage(format!("Unsupported helper command: {command}")),
+            UNKNOWN_COMMAND,
+            CoreError::usage("First argument must be a helper command"),
+        )),
+    }
+}
+
+fn classify_helper_command(command_name: String) -> HelperCommand {
+    if command_name == RUNTIME_MATERIALIZATION_REPAIR_COMMAND {
+        return HelperCommand::RuntimeMaterializationRepair;
+    }
+
+    find_standard_command_handler(&command_name)
+        .map(HelperCommand::Standard)
+        .unwrap_or(HelperCommand::Unsupported(command_name))
+}
+
+fn find_standard_command_handler(command_name: &str) -> Option<&'static StandardCommandHandler> {
+    STANDARD_COMMAND_HANDLERS
+        .iter()
+        .find(|handler| handler.name == command_name)
+}
+
+fn dispatch_helper_command(
+    command: HelperCommand,
+    parser: lexopt::Parser,
+) -> Result<(), Box<CommandError>> {
+    match command {
+        HelperCommand::Standard(handler) => {
+            (handler.run)(parser).map_err(|error| CommandError::new(handler.name, error))
+        }
+        HelperCommand::RuntimeMaterializationRepair => run_runtime_materialization_repair(
+            parser,
+            RUNTIME_MATERIALIZATION_REPAIR_COMMAND.to_string(),
+        ),
+        HelperCommand::Unsupported(command_name) => Err(CommandError::new(
+            command_name.clone(),
+            CoreError::usage(format!("Unsupported helper command: {command_name}")),
         )),
     }
 }
@@ -1453,4 +1442,57 @@ fn clean_human_error_line(value: &str) -> String {
         cleaned.pop();
     }
     cleaned
+}
+
+// Test lane: default
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Defends: private bridge command parsing maps a known helper name to the typed standard dispatcher path.
+    #[test]
+    fn parses_standard_helper_command() {
+        let mut parser = lexopt::Parser::from_args([STATUS_COMPUTE_COMMAND]);
+        let command = match parse_helper_command(&mut parser) {
+            Ok(command) => command,
+            Err(error) => panic!("unexpected parse error: {}", error.error.message()),
+        };
+
+        match command {
+            HelperCommand::Standard(handler) => assert_eq!(handler.name, STATUS_COMPUTE_COMMAND),
+            HelperCommand::RuntimeMaterializationRepair | HelperCommand::Unsupported(_) => {
+                panic!("expected standard helper command")
+            }
+        }
+    }
+
+    // Defends: runtime materialization repair keeps its summary-aware error-output path outside the standard JSON dispatcher.
+    #[test]
+    fn classifies_runtime_repair_as_special_dispatch() {
+        match classify_helper_command(RUNTIME_MATERIALIZATION_REPAIR_COMMAND.to_string()) {
+            HelperCommand::RuntimeMaterializationRepair => {}
+            HelperCommand::Standard(_) | HelperCommand::Unsupported(_) => {
+                panic!("expected runtime repair special dispatch")
+            }
+        }
+    }
+
+    // Defends: unsupported helper commands preserve the raw command name in the command error envelope.
+    #[test]
+    fn unsupported_helper_command_preserves_error_command() {
+        let error = match dispatch_helper_command(
+            classify_helper_command("missing.helper".to_string()),
+            lexopt::Parser::from_args(Vec::<&str>::new()),
+        ) {
+            Ok(()) => panic!("unsupported helper unexpectedly succeeded"),
+            Err(error) => error,
+        };
+
+        assert_eq!(error.command, "missing.helper");
+        assert_eq!(error.error.class().as_str(), "usage");
+        assert_eq!(
+            error.error.message(),
+            "Unsupported helper command: missing.helper"
+        );
+    }
 }
