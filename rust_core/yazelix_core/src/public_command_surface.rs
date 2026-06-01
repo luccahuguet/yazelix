@@ -288,7 +288,7 @@ const RESET_CONFIG_COMMAND: YzxCommandMetadata = metadata(
 const RESET_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[RESET_ROOT_COMMAND, RESET_CONFIG_COMMAND];
 const CURSORS_COMMAND: YzxCommandMetadata = metadata(
     "yzx cursors",
-    "Inspect Ghostty cursor presets and resolved colors",
+    "Inspect Yazelix cursor presets and resolved colors",
     YzxCommandCategory::Config,
     &[],
     Some(YzxMenuCategory::Config),

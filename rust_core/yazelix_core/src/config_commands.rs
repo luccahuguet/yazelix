@@ -25,7 +25,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
-use yazelix_ghostty_cursors::{CursorRegistry, render_cursor_settings_jsonc};
+use yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
 
 const HOME_MANAGER_FILES_MARKER: &str = "-home-manager-files/";
 

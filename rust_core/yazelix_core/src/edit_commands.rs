@@ -62,7 +62,7 @@ fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
         EditTarget {
             id: "cursors",
             label: format!(
-                "cursors  - Ghostty cursor settings → {}",
+                "cursors  - Yazelix cursor settings → {}",
                 cursor_path.display()
             ),
             path: cursor_path,

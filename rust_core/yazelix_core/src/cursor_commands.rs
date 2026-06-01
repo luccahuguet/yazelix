@@ -1,4 +1,4 @@
-//! `yzx cursors` inspection command for the shared Ghostty cursor registry.
+//! `yzx cursors` inspection command for the shared Yazelix cursor registry.
 
 use crate::active_config_surface::resolve_active_config_paths;
 use crate::bridge::CoreError;
@@ -44,14 +44,14 @@ pub fn run_yzx_cursors(args: &[String]) -> Result<i32, CoreError> {
 }
 
 fn print_cursors_help() {
-    println!("Inspect Ghostty cursor presets and resolved colors");
+    println!("Inspect Yazelix cursor presets and resolved colors");
     println!();
     println!("Usage:");
     println!("  yzx cursors");
 }
 
 fn print_cursor_report(config_path: &str, registry: &CursorRegistry) {
-    println!("Ghostty cursors");
+    println!("Yazelix cursors");
     println!("Config: {config_path}");
     println!("Trail: {}", trail_summary(registry));
     println!("Trail effect: {}", registry.settings.trail_effect);

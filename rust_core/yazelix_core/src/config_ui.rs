@@ -46,7 +46,7 @@ use std::io::{self, IsTerminal};
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use yazelix_ghostty_cursors::{CursorRegistry, render_cursor_settings_jsonc};
+use yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
 
 pub use app::run_config_ui;
 #[cfg(test)]

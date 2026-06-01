@@ -98,7 +98,7 @@ Expensive provider commands should be cached or throttled outside zjstatus. The 
 
 Standalone users can use the same widget contract without Yazelix by using `yazelix_zellij_bar_widget` commands directly in zjstatus command widgets. The minimal standalone contract is explicit paths/env in, styled text out; `yazelix_zellij_bar` must not require `~/.config/yazelix`, `~/.local/share/yazelix`, `yzx_control`, or launch-scoped Yazelix cache paths for non-workspace widget behavior.
 
-The cursor widget does not own a normal bar-specific cursor fact file. It reads `YAZELIX_CURSOR_*` env facts first, then uses `yzc current --format env` when `yazelix-ghostty-cursors` is available on `PATH`. `yazelix-ghostty-cursors` remains the cursor source of truth outside Yazelix.
+The cursor widget does not own a normal bar-specific cursor fact file. It reads `YAZELIX_CURSOR_*` env facts first, then uses `yzc current --format env` when `yazelix-cursors` is available on `PATH`. `yazelix-cursors` remains the cursor source of truth outside Yazelix.
 
 ## Main Runtime Consumption
 

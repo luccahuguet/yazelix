@@ -3,13 +3,13 @@
 Start with this model:
 
 - `~/.config/yazelix/settings.jsonc` is the main workspace settings file for shell, editor, terminal, Zellij, Yazi, popup, status, and layout behavior
-- `~/.config/yazelix_ghostty_cursors/settings.jsonc` owns Ghostty cursor presets and shader settings
+- `~/.config/yazelix_ghostty_cursors/settings.jsonc` owns Yazelix cursor presets and shader settings
 - Generated runtime state lives under `~/.local/share/yazelix`; edit the config inputs, not generated runtime files
 - Home Manager installs can own the settings files declaratively; the config UI and status surfaces show read-only ownership when that applies
 
 The sections below cover the override surfaces that sit around that main model.
 
-- **Configuration File**: On first launch, Yazelix creates the main settings and Ghostty cursor settings from shipped defaults. Old mutable `yazelix.toml`, old `cursors.toml`, old `user_configs/` paths, and older embedded cursor settings blocks raise a clear error instead of being rewritten automatically.
+- **Configuration File**: On first launch, Yazelix creates the main settings and cursor settings from shipped defaults. Old mutable `yazelix.toml`, old `cursors.toml`, old `user_configs/` paths, and older embedded cursor settings blocks raise a clear error instead of being rewritten automatically.
   - Run `yzx config ui`, Yazelix's ratconfig-backed JSONC settings editor, to browse and edit settings, defaults, stale-field diagnostics, Home Manager/read-only ownership, and managed sidecar status
   - Use `yzx config set PATH JSON` and `yzx config unset PATH` for safe comment-preserving edits to supported settings and cursor fields
   - Yazelix snapshots the main config for each new window. Live popup, menu, sidebar, reveal, and editor-launch commands keep using that window snapshot, so config edits apply to the next Yazelix window or after `yzx restart`
@@ -17,7 +17,7 @@ The sections below cover the override surfaces that sit around that main model.
   - `yzx status --json` and `yzx inspect --json` include `session_config_snapshot` with the active snapshot path, source config, and readable snapshot errors
 - **Terminal Configurations**:
   - **Bundled terminals** (yazelix-ghostty, yazelix-terminal, etc.): Configs generated dynamically from your yazelix settings
-    - **Ghostty cursor shaders**: Edit `~/.config/yazelix_ghostty_cursors/settings.jsonc` to choose the cursor trail, enabled cursor list, global effects, duration, glow, and Kitty fallback toggle. `yzx cursors` shows the active settings path and resolved preset colors. `settings.trail = "random"` picks from `enabled_cursors`, `settings.trail = "none"` disables the Ghostty palette shader, and `settings.kitty_enable_cursor = false` disables Kitty's simple fallback trail. Cursor definitions use `family = "mono"` for one base color with a derived accent, `family = "split"` for two colors split by `divider = "vertical" | "horizontal"` with `transition = "soft" | "hard"`, or `family = "curated_template"` for hand-tuned shaders.
+    - **Yazelix cursor shaders**: Edit `~/.config/yazelix_ghostty_cursors/settings.jsonc` to choose the cursor trail, enabled cursor list, global effects, duration, glow, and Kitty fallback toggle. `yzx cursors` shows the active settings path and resolved preset colors. `settings.trail = "random"` picks from `enabled_cursors`, `settings.trail = "none"` disables the Ghostty-compatible palette shader, and `settings.kitty_enable_cursor = false` disables Kitty's simple fallback trail. Cursor definitions use `family = "mono"` for one base color with a derived accent, `family = "split"` for two colors split by `divider = "vertical" | "horizontal"` with `transition = "soft" | "hard"`, or `family = "curated_template"` for hand-tuned shaders.
     - **Yazelix Terminal**: The experimental `runtime_variant = "yzxterm"` path reads the child package's bundled `config.toml`, writes a generated Yazelix-owned copy under `~/.local/share/yazelix/configs/terminal_emulators/yzxterm/config.toml`, and passes that directory through `YAZELIX_TERMINAL_CONFIG`
     - **Transparency**: Configure `transparency = "none"`, `"low"`, `"medium"`, or `"high"`; Yazelix maps that setting into Ghostty, Ratty, Kitty, WezTerm, and Yazelix Terminal generated configs
     - **Yazelix-specific terminal overrides**: Add personal terminal-native settings under `~/.config/yazelix/`

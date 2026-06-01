@@ -88,7 +88,7 @@ The main repo intentionally consumes these child projects instead of owning thei
 | Child project | Main repo relationship |
 | --- | --- |
 | `yazelix-screen` | terminal animation package consumed by welcome/screen surfaces |
-| `yazelix-ghostty-cursors` | reusable cursor registry, `yzc`, Ghostty shader generation, and packaged shader assets |
+| `yazelix-cursors` | reusable cursor registry, `yzc`, Ghostty-compatible shader generation, and packaged shader assets |
 | `yazelix-ratconfig` | reusable Ratatui config editor model/editor/render, JSONC patching, and migration primitives consumed by the Yazelix config UI adapter |
 | `yazelix-zellij-bar` | reusable Zellij bar renderers, non-workspace widget commands, provider probing/cache behavior, CPU/RAM, and packaged standalone bar |
 | `yazelix-zellij-popup` | `yzpp` popup plugin wasm and plain-Zellij popup behavior |

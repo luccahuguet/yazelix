@@ -12,7 +12,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use toml::Value as TomlValue;
-use yazelix_ghostty_cursors::{CursorRegistry, render_cursor_settings_jsonc};
+use yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
 
 pub const SETTINGS_SCHEMA_FILENAME: &str = "yazelix_settings.schema.json";
 pub const DEFAULT_SETTINGS_CONFIG_FILENAME: &str = "settings_default.jsonc";

@@ -37,7 +37,7 @@ fn yzx_control_cursors_prints_resolved_color_surface() {
 
     let stdout = stdout_text(command.output().unwrap());
 
-    assert!(stdout.contains("Ghostty cursors"));
+    assert!(stdout.contains("Yazelix cursors"));
     assert!(stdout.contains(&format!("Config: {}", expected_path.display())));
     assert!(stdout.contains("Trail: random from"));
     assert!(stdout.contains("blaze: mono base=#ffb929 accent="));

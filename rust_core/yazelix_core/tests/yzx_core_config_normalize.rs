@@ -12,7 +12,7 @@ use yazelix_core::{
     settings_surface::{read_settings_jsonc_value, render_default_settings_jsonc},
     user_config_paths::shared_cursor_config,
 };
-use yazelix_ghostty_cursors::render_cursor_settings_jsonc;
+use yazelix_cursors::render_cursor_settings_jsonc;
 
 mod support;
 

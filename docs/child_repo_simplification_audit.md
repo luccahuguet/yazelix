@@ -9,7 +9,7 @@ Use this with [LOC extraction scorecard](./loc_extraction_scorecard.md) and [Rus
 - Rust budget ceiling: `73,083` raw tracked Rust lines across `140` files
 - Long-term Rust hard target: `60,000` raw tracked Rust lines
 - Largest pressure families: `core_config_ui_and_materialization` at `20,624` raw lines and `core_workspace_and_pane_integration` at `16,689` raw lines
-- Current child repos already integrated: `yazelix-screen`, `yazelix-ghostty-cursors`, `yazelix-terminal`, `yazelix-ratconfig`, `yazelix-zellij-bar`, `yazelix-zellij-popup`, and `yazelix-yazi-assets`
+- Current child repos already integrated: `yazelix-screen`, `yazelix-cursors`, `yazelix-terminal`, `yazelix-ratconfig`, `yazelix-zellij-bar`, `yazelix-zellij-popup`, and `yazelix-yazi-assets`
 - Popup lifecycle ownership has moved to `yazelix-zellij-popup`; remaining main-repo popup work should be thin generated-spec/config integration plus Yazelix-specific close hooks
 
 ## Ranking Rules
@@ -48,7 +48,7 @@ Reject a move when the main repo would still own the same behavior through a bro
 
 - Do not create a standalone Yazi integration repo while the main repo still owns the same materializer paths; the existing `yazelix-yazi-assets` child repo is only the reusable asset package
 - Do not move `config_ui.rs` wholesale to `yazelix-ratconfig`; Home Manager/native status, settings metadata, action registry detail text, validation, file writes, and runtime apply behavior are Yazelix-specific
-- Do not move status-cache paths or pane-orchestrator payloads to `yazelix_zellij_bar`; provider usage polling and cursor display are child-owned when they run from explicit standalone facts, provider tools, or `yazelix-ghostty-cursors`
+- Do not move status-cache paths or pane-orchestrator payloads to `yazelix_zellij_bar`; provider usage polling and cursor display are child-owned when they run from explicit standalone facts, provider tools, or `yazelix-cursors`
 - Do not split maintainer tooling only to call it back through wrappers from this repo; that would make the workflow worse without reducing user runtime ownership
 - Do not preserve old popup command/config names that have not been released or that have no current caller; stale aliases are budget debt
 

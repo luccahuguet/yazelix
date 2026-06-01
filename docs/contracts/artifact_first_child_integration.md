@@ -16,7 +16,7 @@ The supported split is:
 | first-party Zellij plugins | `.wasm` artifact | plugin child repo | locked consumption, generated Zellij integration, runtime placement |
 | `zjstatus.wasm` | `.wasm` artifact | upstream `zjstatus` through the current lock | vendoring path and generated Zellij integration |
 | `yazelix_screen` | Rust library plus standalone `yzs` package | `yazelix-screen` child repo | integrated welcome and `yzx screen` behavior |
-| `yazelix_ghostty_cursors` | Rust library plus standalone `yzc` package | `yazelix-ghostty-cursors` child repo | config UI, settings generation, Ghostty materialization |
+| `yazelix_cursors` | Rust library plus standalone `yzc` package | `yazelix-cursors` child repo | config UI, settings generation, Ghostty materialization, Yazelix Terminal cursor shaders |
 | `yazelix-terminal` | standalone terminal package and desktop wrapper | `yazelix-terminal` child repo | opt-in runtime selection, generated config path, transparency injection |
 | `yazelix_zellij_bar` | standalone package artifacts and widget binary | `yazelix-zellij-bar` child repo | integrated status-bar adapter and runtime path selection |
 
@@ -67,5 +67,5 @@ The supported split is:
 
 - Defended by: [First-Party Zellij Plugin Wasm Ownership](./first_party_zellij_plugin_wasm_ownership.md)
 - Defended by: [Standalone Yazelix Screen Distribution](./standalone_yazelix_screen_distribution.md)
-- Defended by: [Standalone Ghostty Cursor Distribution](./standalone_ghostty_cursor_distribution.md)
+- Defended by: [Standalone Cursor Distribution](./standalone_cursor_distribution.md)
 - Defended by: [Status Bar Ownership](./status_bar_ownership.md)

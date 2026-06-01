@@ -35,7 +35,7 @@ This inventory lists the canonical contracts under `docs/contracts/`. It is not 
 | `rust_nushell_bridge_contract.md` | Rust/Nushell bridge behavior |
 | `shell_opened_editors.md` | Managed-editor versus shell-opened editor boundary |
 | `stale_config_diagnostics.md` | Unsupported/stale config diagnostics |
-| `standalone_ghostty_cursor_distribution.md` | Standalone `yazelix_ghostty_cursors` package for Ghostty cursor shaders |
+| `standalone_cursor_distribution.md` | Standalone `yazelix_cursors` package for Yazelix cursor presets and terminal shader outputs |
 | `standalone_yazelix_screen_distribution.md` | Standalone Yazelix screen package and app |
 | `startup_profile_scenarios.md` | Structured startup-profile scenarios |
 | `standalone_yazelix_zellij_bar_distribution.md` | Standalone `yazelix_zellij_bar` zjstatus preset and package |

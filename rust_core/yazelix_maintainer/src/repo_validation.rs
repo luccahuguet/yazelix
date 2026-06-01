@@ -915,7 +915,7 @@ mod tests {
     #[test]
     fn contract_validation_allows_yazelix_component_repository_names() {
         assert!(!line_contains_bead_id(
-            "[`luccahuguet/yazelix-ghostty-cursors`](https://github.com/luccahuguet/yazelix-ghostty-cursors)"
+            "[`luccahuguet/yazelix-cursors`](https://github.com/luccahuguet/yazelix-cursors)"
         ));
         assert!(!line_contains_bead_id(
             "The source repository is `luccahuguet/yazelix-screen`."

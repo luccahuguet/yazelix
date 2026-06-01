@@ -17,13 +17,13 @@ The pane orchestrator is the highest-risk boundary because it owns real workspac
 - `docs/contracts/artifact_first_child_integration.md`
 - `docs/contracts/first_party_zellij_plugin_wasm_ownership.md`
 - `docs/contracts/standalone_yazelix_screen_distribution.md`
-- `docs/contracts/standalone_ghostty_cursor_distribution.md`
+- `docs/contracts/standalone_cursor_distribution.md`
 - `docs/contracts/standalone_yazelix_zellij_bar_distribution.md`
 - `docs/contracts/status_bar_ownership.md`
 - `docs/contracts/floating_tui_panes.md`
 - `docs/contracts/yazelix_zellij_pane_orchestrator_extraction.md`
 - `docs/contracts/yazi_integration_boundary.md`
-- Adjacent checkouts for `yazelix-screen`, `yazelix-ghostty-cursors`, `yazelix-terminal`, `yazelix-ratconfig`, `yazelix-zellij-bar`, `yazelix-zellij-pane-orchestrator`, `yazelix-zellij-popup`, and `yazelix-yazi-assets`
+- Adjacent checkouts for `yazelix-screen`, `yazelix-cursors`, `yazelix-terminal`, `yazelix-ratconfig`, `yazelix-zellij-bar`, `yazelix-zellij-pane-orchestrator`, `yazelix-zellij-popup`, and `yazelix-yazi-assets`
 
 ## Scoring
 
@@ -41,7 +41,7 @@ Scores use `1..5`, where `5` is the healthier result for a separate child reposi
 | Child repo | Standalone value | Low coupling | Artifact clarity | Low duplicate risk | Low release friction | Local testability | Recommendation |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | `yazelix-screen` | 4 | 5 | 4 | 4 | 3 | 5 | Keep separate |
-| `yazelix-ghostty-cursors` | 5 | 4 | 4 | 4 | 3 | 5 | Keep separate |
+| `yazelix-cursors` | 5 | 4 | 4 | 4 | 3 | 5 | Keep separate |
 | `yazelix-terminal` | 4 | 3 | 4 | 4 | 2 | 4 | Keep separate while experimental |
 | `yazelix-ratconfig` | 4 | 4 | 3 | 5 | 3 | 5 | Keep separate with Yazelix adapter discipline |
 | `yazelix-zellij-bar` | 4 | 3 | 4 | 4 | 3 | 4 | Keep separate with adapter discipline |
@@ -61,15 +61,15 @@ The main cost is release friction because Yazelix consumes it through both a fla
 
 Boundary rule: animation engines, automata, generation logic, random animation-family policy, terminal frame primitives, and generated screen assets stay in the child. Yazelix-specific welcome copy, settings, skip behavior, startup logging, package linking, and session integration stay in the main repo.
 
-### `yazelix-ghostty-cursors`
+### `yazelix-cursors`
 
 Recommendation: keep separate.
 
-This is one of the strongest standalone boundaries. It owns a real Ghostty-specific user workflow through `yzc init`, `yzc generate ghostty`, generated shader assets, standalone JSONC settings, and examples. Yazelix consumes the same registry and shader logic for config UI, settings rendering, Ghostty materialization, and `yzx cursors`.
+This is one of the strongest standalone boundaries. It owns a real cursor workflow through `yzc init`, `yzc generate ghostty`, generated shader assets, standalone JSONC settings, and examples. Yazelix consumes the same registry and shader logic for config UI, settings rendering, Ghostty materialization, Yazelix Terminal shader assets, and `yzx cursors`.
 
 The main risks are dual consumption through flake and Cargo, plus the fact that cursor facts also feed the status bar. Those are manageable because the ownership line is clear: cursor schemes, shader generation, standalone cursor config, and `yzc` belong to the child; Yazelix owns per-window randomization, integrated terminal materialization, and config UI composition.
 
-Boundary rule: do not broaden this repo into generic terminal config. Keep it Ghostty cursor owned until another terminal has an equally concrete cursor-effect surface.
+Boundary rule: do not broaden this repo into generic terminal config. Keep it cursor-preset and shader-output owned; terminal launch, windowing, and config materialization stay in the terminal-specific owners.
 
 ### `yazelix-ratconfig`
 
@@ -131,7 +131,7 @@ This risk is highest for `yazelix-zellij-pane-orchestrator` and `yazelix-zellij-
 
 ### Dual-Pin Rust Crate Risk
 
-`yazelix-screen` and `yazelix-ghostty-cursors` are consumed as Rust git dependencies and flake inputs. That means a release can involve Cargo lock updates, Nix output hashes, and flake lock updates. This friction is acceptable because both have real standalone value, but it should stay explicit in review.
+`yazelix-screen` and `yazelix-cursors` are consumed as Rust git dependencies and flake inputs. That means a release can involve Cargo lock updates, Nix output hashes, and flake lock updates. This friction is acceptable because both have real standalone value, but it should stay explicit in review.
 
 ### Boundary Creep Risk
 
@@ -151,5 +151,5 @@ Use this priority order for future boundary pressure:
 2. Keep `yazelix-ratconfig` as a reusable config editor crate and prevent Yazelix schema/apply policy from leaking into it.
 3. Keep `yazelix-zellij-bar` as a command/artifact boundary and prevent widget implementation from returning to the main repo.
 4. Keep `yazelix-yazi-assets` asset-only unless a real config-pack API emerges.
-5. Treat `yazelix-screen`, `yazelix-ghostty-cursors`, and Rust git child crates as release transactions, not local cleanup.
+5. Treat `yazelix-screen`, `yazelix-cursors`, and Rust git child crates as release transactions, not local cleanup.
 6. Keep `yazelix-zellij-popup` narrow and generic; it is the model child boundary.

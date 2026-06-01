@@ -1,6 +1,6 @@
 //! Yazelix-owned loader for the reusable cursor registry.
 
-pub use yazelix_ghostty_cursors::{
+pub use yazelix_cursors::{
     CursorColor, CursorDefinition, CursorFamily, CursorRegistry, CursorSettings,
     DEFAULT_CURSOR_CONFIG_FILENAME, DEFAULT_GHOSTTY_TRAIL_DURATION, GHOSTTY_TRAIL_DURATION_MAX,
     GHOSTTY_TRAIL_DURATION_MIN, ResolvedCursorRegistryState, SplitDivider, SplitTransition,

@@ -283,7 +283,7 @@ Open the main Yazelix config file in your editor
 - `--print`: print the resolved config path without opening
 
 ### `yzx cursors`
-Inspect Ghostty cursor presets and resolved colors
+Inspect Yazelix cursor presets and resolved colors
 - Shows the active cursor `settings.jsonc` path
 - Shows global trail, effect, glow, duration, and Kitty fallback settings
 - Shows resolved colors for enabled presets, including derived mono accents
@@ -351,8 +351,8 @@ yzx config --path             # Print the active config path
 yzx config ui                 # Open the ratconfig-backed JSONC settings editor
 yzx config set editor.hide_sidebar_on_file_open true # Set a config value with a JSON literal
 yzx config unset editor.hide_sidebar_on_file_open # Remove an explicit config value
-yzx cursors                   # Inspect Ghostty cursor presets and resolved colors
-yzx edit cursors              # Open the Ghostty cursor settings file
+yzx cursors                   # Inspect Yazelix cursor presets and resolved colors
+yzx edit cursors              # Open the cursor settings file
 yzx import zellij             # Import ~/.config/zellij/config.kdl when it has no keybinds blocks
 yzx import yazi               # Import native Yazi override files and plugins into managed overrides
 yzx import helix              # Import ~/.config/helix/config.toml into helix/config.toml

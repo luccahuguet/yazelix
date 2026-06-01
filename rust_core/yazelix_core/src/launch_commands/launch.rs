@@ -148,8 +148,8 @@ pub(super) fn run_launch_flow(
         println!("📋 Static example configs for other terminals in configs/terminal_emulators/");
     }
     if materialization.rerolled_ghostty_cursor && verbose {
-        println!("🎲 Rerolling Ghostty random cursor settings for this Yazelix window...");
-        println!("✓ Rerolled Ghostty cursor settings");
+        println!("🎲 Rerolling Yazelix random cursor settings for this window...");
+        println!("✓ Rerolled Yazelix cursor settings");
     }
 
     let runtime_data = compute_runtime_env(&runtime_env_request(

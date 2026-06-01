@@ -17,8 +17,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.fenix.follows = "fenix";
     };
-    yazelixGhosttyCursors = {
-      url = "github:luccahuguet/yazelix-ghostty-cursors";
+    yazelixCursors = {
+      url = "github:luccahuguet/yazelix-cursors";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.fenix.follows = "fenix";
     };
@@ -72,7 +72,7 @@
       nixgl,
       fenix,
       yazelixScreen,
-      yazelixGhosttyCursors,
+      yazelixCursors,
       yazelixZellijBar,
       yazelixYaziAssets,
       yazelixZellij,
@@ -355,7 +355,8 @@
           yazelix_agent_tools = yazelixPackage system pkgs defaultRuntimeVariant agentUsageRuntimePackages;
           yazelix_zellij_bar = yazelixZellijBar.packages.${system}.yazelix_zellij_bar;
           yazelix_screen = yazelixScreen.packages.${system}.yzs;
-          yazelix_ghostty_cursors = yazelixGhosttyCursors.packages.${system}.yazelix_ghostty_cursors;
+          yazelix_cursors = yazelixCursors.packages.${system}.yazelix_cursors;
+          yazelix_ghostty_cursors = yazelix_cursors;
           yazelix_helix = yazelixHelixPackage system;
           yazelix_zellij_pane_orchestrator =
             yazelixZellijPaneOrchestrator.packages.${system}.yazelix_zellij_pane_orchestrator;
@@ -376,6 +377,7 @@
           yazelix = yazelix_default;
           yazelix_agent_tools = yazelix_agent_tools;
           yazelix_zellij_bar = yazelix_zellij_bar;
+          yazelix_cursors = yazelix_cursors;
           yazelix_ghostty_cursors = yazelix_ghostty_cursors;
           yazelix_ghostty = yazelix_ghostty;
           yazelix_screen = yazelix_screen;
@@ -433,9 +435,13 @@
             type = "app";
             program = "${self.packages.${system}.yazelix_ghostty_cursors}/bin/yzc";
           };
+          yazelix_cursors = {
+            type = "app";
+            program = "${self.packages.${system}.yazelix_cursors}/bin/yzc";
+          };
           yzc = {
             type = "app";
-            program = "${self.packages.${system}.yazelix_ghostty_cursors}/bin/yzc";
+            program = "${self.packages.${system}.yazelix_cursors}/bin/yzc";
           };
         }
         // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {

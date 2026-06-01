@@ -217,7 +217,7 @@
         "home-manager": "home-manager",
         "nixgl": "nixgl",
         "nixpkgs": "nixpkgs_2",
-        "yazelixGhosttyCursors": "yazelixGhosttyCursors",
+        "yazelixCursors": "yazelixCursors",
         "yazelixHelix": "yazelixHelix",
         "yazelixScreen": "yazelixScreen",
         "yazelixTerminal": "yazelixTerminal",
@@ -385,7 +385,7 @@
         "type": "github"
       }
     },
-    "yazelixGhosttyCursors": {
+    "yazelixCursors": {
       "inputs": {
         "fenix": [
           "fenix"
@@ -395,16 +395,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1778354064,
-        "narHash": "sha256-pWw2UBNVdoCTJdqLASSIVkl+PUs/vpmkqsJM5DfgK4o=",
+        "lastModified": 1780293181,
+        "narHash": "sha256-8IRD7cSz4kMl0rE8dM6H9OwC3e4sm+MgmsKSTdLcuVs=",
         "owner": "luccahuguet",
-        "repo": "yazelix-ghostty-cursors",
-        "rev": "9b7224eda13ff974f318ced4cc3d3bebc64076da",
+        "repo": "yazelix-cursors",
+        "rev": "03951fe0961327c7582a97395316cb3f8444b039",
         "type": "github"
       },
       "original": {
         "owner": "luccahuguet",
-        "repo": "yazelix-ghostty-cursors",
+        "repo": "yazelix-cursors",
         "type": "github"
       }
     },

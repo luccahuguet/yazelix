@@ -38,7 +38,7 @@ help = "Theme, chrome, transparency, and screen saver presentation"
 
 [tabs.cursors]
 label = "cursors"
-help = "Ghostty cursor presets, effects, and cursor registry"
+help = "Cursor presets, effects, and cursor registry"
 
 [tabs.status_bar]
 label = "status_bar"
@@ -628,7 +628,7 @@ advanced = true
 tab = "cursors"
 group = "active_cursors"
 label = "enabled_cursors"
-help = "Choose which Ghostty cursor presets are generated"
+help = "Choose which Yazelix cursor presets are generated"
 editor = "string_list"
 default_source = "yazelix_ghostty_cursors_default.toml"
 write_support = "settings_jsonc"

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://yazelix.com/schemas/yazelix_settings.schema.json",
   "title": "Yazelix Settings",
-  "description": "Canonical Yazelix config UI settings inventory. Main runtime settings use ~/.config/yazelix/settings.jsonc and config_metadata/main_config_contract.toml; Ghostty cursor settings use ~/.config/yazelix_ghostty_cursors/settings.jsonc and are composed into the config UI under cursors.",
+  "description": "Canonical Yazelix config UI settings inventory. Main runtime settings use ~/.config/yazelix/settings.jsonc and config_metadata/main_config_contract.toml; cursor settings use the existing ~/.config/yazelix_ghostty_cursors/settings.jsonc compatibility path and are composed into the config UI under cursors.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -696,7 +696,7 @@
     },
     "cursors": {
       "type": "object",
-      "description": "Ghostty cursor preset, effect, and cursor definition registry",
+      "description": "Cursor preset, effect, and cursor definition registry",
       "required": [
         "schema_version",
         "enabled_cursors",

@@ -524,7 +524,7 @@ in
         - "yazelix": use Yazelix-managed configs in ~/.local/share/yazelix (default)
         - "user": load the terminal's native user config path and fail if it does not exist
 
-        Ghostty cursor presets and cursor effects live in ~/.config/yazelix_ghostty_cursors/settings.jsonc
+        Cursor presets and cursor effects live in ~/.config/yazelix_ghostty_cursors/settings.jsonc
       '';
     };
 

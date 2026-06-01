@@ -41,6 +41,6 @@ yazelix_zellij_bar_widget cpu
 yazelix_zellij_bar_widget ram
 ```
 
-The cursor widget reads `YAZELIX_CURSOR_*` environment facts first. Outside Yazelix it then asks `yzc current --format env` when `yazelix-ghostty-cursors` is installed on `PATH`. If neither source exists, it prints nothing instead of failing the bar.
+The cursor widget reads `YAZELIX_CURSOR_*` environment facts first. Outside Yazelix it then asks `yzc current --format env` when `yazelix-cursors` is installed on `PATH`. If neither source exists, it prints nothing instead of failing the bar.
 
 Workspace remains Yazelix-only. The other widgets run without `yzx`, `yzx_control`, Nushell, Yazelix runtime cache paths, or Yazelix session state.
