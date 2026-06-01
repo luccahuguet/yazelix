@@ -307,7 +307,7 @@ If you followed [step 3 in the installation guide](./docs/installation.md#step-3
 - **Kitty**: Fast, feature-rich, GPU-accelerated terminal
 - **Auto-detection**: Fallback order follows your configured terminal list
 - Configure your preference in `settings.jsonc` with `terminal.terminals = ["ghostty", "yzxterm", "wezterm", ...]` (first item is primary)
-- **Terminal package contract**: Yazelix ships one packaged terminal variant at a time; Ghostty is the default, Yazelix Terminal is the experimental first-party path, WezTerm is the stable alternate, and Ratty is available as an experimental Linux variant
+- **Terminal package contract**: Yazelix runtimes still choose one primary packaged terminal variant at a time; Home Manager installs can add more bundled terminal emulator packages with `programs.yazelix.extra_terminal_variants`
 
 [See the full Customization Guide here.](./docs/customization.md)
 

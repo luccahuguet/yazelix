@@ -12,6 +12,7 @@
     enable = true;
     manage_config = true; # Opt into declarative Home Manager ownership of settings.jsonc for this example
     runtime_variant = "ghostty"; # Optional: "ghostty", "yzxterm", "wezterm", or Linux-only "ratty"
+    extra_terminal_variants = [ "yzxterm" ]; # Optional: install additional bundled terminal emulator packages without duplicate yzx wrappers
 
     # Shell entry
     default_shell = "zsh";

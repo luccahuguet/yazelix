@@ -6,6 +6,7 @@
   mkYazelixPackage ? null,
   nixgl ? null,
   pkgs,
+  yazelixTerminalPackage ? null,
   ...
 }:
 
@@ -24,30 +25,56 @@ let
     "yzxterm"
     "wezterm"
   ] ++ lib.optional pkgs.stdenv.hostPlatform.isLinux "ratty";
+  terminalPackageFor =
+    runtimeVariant:
+    if runtimeVariant == "ghostty" then
+      if pkgs.stdenv.hostPlatform.isDarwin then pkgs."ghostty-bin" else pkgs.ghostty
+    else if runtimeVariant == "wezterm" then
+      pkgs.wezterm
+    else if runtimeVariant == "ratty" then
+      if pkgs.stdenv.hostPlatform.isLinux then
+        pkgs.ratty
+      else
+        throw "programs.yazelix.extra_terminal_variants ratty is only supported on Linux"
+    else if runtimeVariant == "yzxterm" then
+      if yazelixTerminalPackage != null then
+        yazelixTerminalPackage
+      else
+        throw "programs.yazelix.extra_terminal_variants yzxterm requires the yazelix-terminal child package"
+    else
+      throw "Unsupported Yazelix terminal variant: ${runtimeVariant}";
   runtimeDefaultTerminals =
     runtimeVariant:
-    if runtimeVariant == "wezterm" then
-      [
-        "wezterm"
-        "ghostty"
-      ]
-    else if runtimeVariant == "ratty" then
-      [
-        "ratty"
-        "ghostty"
-        "wezterm"
-      ]
-    else if runtimeVariant == "yzxterm" then
-      [
-        "yzxterm"
-        "ghostty"
-        "wezterm"
-      ]
-    else
-      [
-        "ghostty"
-        "wezterm"
-      ];
+    extraTerminalVariants:
+    lib.unique (
+      [ runtimeVariant ]
+      ++ extraTerminalVariants
+      ++ (
+        if runtimeVariant == "wezterm" then
+          [
+            "ghostty"
+          ]
+        else if runtimeVariant == "ratty" then
+          [
+            "ghostty"
+            "wezterm"
+          ]
+        else if runtimeVariant == "yzxterm" then
+          [
+            "ghostty"
+            "wezterm"
+          ]
+        else
+          [
+            "wezterm"
+          ]
+      )
+    );
+  extraTerminalVariantPackages =
+    let
+      variants = lib.filter (variant: variant != cfg.runtime_variant) cfg.extra_terminal_variants;
+    in
+    lib.unique (map terminalPackageFor variants);
   componentEnabled = name: cfg.components.${name} or true;
   runtimeToolSource = name: cfg.runtime_tool_sources.${name} or "bundled";
   agentUsageProgramNames = [
@@ -450,6 +477,24 @@ in
       '';
     };
 
+    extra_terminal_variants = mkOption {
+      type = types.listOf (types.enum runtimeVariants);
+      default = [ ];
+      example = [
+        "ghostty"
+      ];
+      description = ''
+        Additional bundled terminal emulator packages to install beside the primary runtime variant.
+
+        This is for users who want, for example, `runtime_variant = "yzxterm"` as the primary
+        Yazelix runtime while also keeping Ghostty available to `yzx launch --terminal ghostty`.
+
+        These packages install only the terminal emulator commands into the Home Manager profile.
+        They do not install additional Yazelix `yzx` wrappers, so they avoid profile collisions
+        with the selected primary runtime package.
+      '';
+    };
+
     runtime_tool_sources = mkOption {
       type = types.attrsOf (types.enum runtimeToolSourceModes);
       default = { };
@@ -841,9 +886,11 @@ in
   config = mkIf cfg.enable (mkMerge [
     {
       # Expose the packaged Yazelix runtime through the Home Manager profile.
-      home.packages = [ yazelixPackage ];
+      home.packages = [ yazelixPackage ] ++ extraTerminalVariantPackages;
 
-      programs.yazelix.terminals = mkDefault (runtimeDefaultTerminals cfg.runtime_variant);
+      programs.yazelix.terminals = mkDefault (
+        runtimeDefaultTerminals cfg.runtime_variant cfg.extra_terminal_variants
+      );
 
       assertions = [
         {

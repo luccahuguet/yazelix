@@ -4,7 +4,7 @@ date = ""
 headline = "Post-v17.2 work in progress"
 manual_actions = []
 migration_ids = []
-summary = ["Renamed the standalone cursor child repository from yazelix-ghostty-cursors to yazelix-cursors now that Yazelix Terminal consumes the same cursor shader package; the old #yazelix_ghostty_cursors and #ghostty_cursor_shaders outputs remain compatibility aliases."]
+summary = ["Renamed the standalone cursor child repository from yazelix-ghostty-cursors to yazelix-cursors now that Yazelix Terminal consumes the same cursor shader package; the old #yazelix_ghostty_cursors and #ghostty_cursor_shaders outputs remain compatibility aliases.", "Added the Home Manager programs.yazelix.extra_terminal_variants option so users can install additional bundled terminal emulator packages such as Ghostty beside a yzxterm primary runtime without adding duplicate yzx wrappers."]
 upgrade_impact = "no_user_action"
 version = "unreleased"
 

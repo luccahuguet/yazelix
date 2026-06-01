@@ -8,11 +8,12 @@ A Home Manager module for [Yazelix](https://github.com/luccahuguet/yazelix) that
 - **Can generate `settings.jsonc`** from Home Manager options when `manage_config = true`
 - **Adds `yzx` to the Home Manager profile** through the packaged Yazelix runtime
 - **Selects the packaged terminal runtime variant** with Ghostty by default, Yazelix Terminal as the experimental Rio-derived path, WezTerm as the stable alternate, and Ratty as an experimental Linux option through `runtime_variant`
+- **Can install additional bundled terminal emulators** through `extra_terminal_variants` without installing duplicate `yzx` wrappers
 - **Installs icons and, on Linux, a desktop entry** that target the managed runtime
 - **Keeps the config surface type-safe** with Home Manager validation
 
 Config ownership is configurable: set `programs.yazelix.manage_config = true` only if you want Home Manager to generate and own `~/.config/yazelix/settings.jsonc`
-When `manage_config = true`, the module defaults `programs.yazelix.terminals` to the selected `runtime_variant` first unless you set an explicit ordered terminal list
+When `manage_config = true`, the module defaults `programs.yazelix.terminals` to the selected `runtime_variant` first, then `extra_terminal_variants`, then normal fallbacks unless you set an explicit ordered terminal list
 
 ## What This Module Does NOT Do
 
@@ -65,11 +66,33 @@ If you already have your own Home Manager flake, the minimal setup is:
   programs.yazelix = {
     enable = true;
     runtime_variant = "ghostty"; # Default; use "yzxterm", "wezterm", or Linux-only "ratty" for alternate packaged terminal paths
+    extra_terminal_variants = [ ]; # Optional: install additional terminal packages such as "yzxterm" or "ghostty"
     # Customize other options as needed - see example.nix
     # Set manage_config = true if you want Home Manager to own settings.jsonc
   };
 }
 ```
+
+To keep Yazelix Terminal as the primary runtime while also installing Ghostty as a bundled fallback:
+
+```nix
+{
+  programs.yazelix = {
+    enable = true;
+    runtime_variant = "yzxterm";
+    extra_terminal_variants = [ "ghostty" ];
+
+    # Only needed when manage_config = true and you want an explicit order
+    terminals = [
+      "yzxterm"
+      "ghostty"
+      "wezterm"
+    ];
+  };
+}
+```
+
+`runtime_variant` controls the primary packaged Yazelix runtime. `extra_terminal_variants` installs only additional terminal emulator commands into the Home Manager profile, so it does not collide with the profile-owned `yzx` wrapper
 
 To save space by using tools you already manage on your host, set runtime tool sources per tool:
 

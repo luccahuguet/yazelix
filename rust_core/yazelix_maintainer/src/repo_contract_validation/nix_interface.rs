@@ -113,6 +113,18 @@ pub fn validate_nix_customization_api(repo_root: &Path) -> Result<ValidationRepo
     );
     require_json_bool(
         object,
+        "home_manager_extra_terminal_installs_package",
+        "Home Manager extra_terminal_variants must install additional terminal packages without replacing the Yazelix package",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
+        "home_manager_extra_terminal_order",
+        "Home Manager extra_terminal_variants must be inserted after the primary runtime terminal in default terminal order",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
         "invalid_runtime_tool_rejected",
         "invalid runtimeToolSources host modes must fail during Nix evaluation",
         &mut report.errors,
@@ -260,6 +272,21 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "      }".to_string(),
         "    ];".to_string(),
         "  };".to_string(),
+        "  hmExtraTerminals = flake.inputs.home-manager.lib.homeManagerConfiguration {".to_string(),
+        "    inherit pkgs;".to_string(),
+        "    modules = [".to_string(),
+        "      flake.homeManagerModules.yazelix".to_string(),
+        "      {".to_string(),
+        "        home.username = \"validator\";".to_string(),
+        "        home.homeDirectory = \"/home/validator\";".to_string(),
+        "        home.stateVersion = \"24.11\";".to_string(),
+        "        programs.yazelix.enable = true;".to_string(),
+        "        programs.yazelix.manage_config = true;".to_string(),
+        "        programs.yazelix.runtime_variant = \"yzxterm\";".to_string(),
+        "        programs.yazelix.extra_terminal_variants = [ \"ghostty\" ];".to_string(),
+        "      }".to_string(),
+        "    ];".to_string(),
+        "  };".to_string(),
         format!(
             "  steelBundledRegistry = import \"{}/packaging/runtime_tool_registry.nix\" {{",
             repo_root_literal
@@ -328,6 +355,8 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "  steel_bundled_exports_authoring_commands = builtins.all (command: builtins.elem command steelBundledRegistry.exportedCommands) steelAuthoringCommands;".to_string(),
         "  steel_off_omits_authoring_commands = steelOffRegistry.manifest.steel.source == \"off\" && builtins.all (command: !(builtins.elem command steelOffRegistry.exportedCommands)) steelAuthoringCommands;".to_string(),
         "  home_manager_has_package = builtins.length hm.config.home.packages > 0;".to_string(),
+        "  home_manager_extra_terminal_installs_package = builtins.any (pkg: (pkg.meta.mainProgram or \"\") == \"yzx\") hmExtraTerminals.config.home.packages && builtins.any (pkg: pkgs.lib.hasPrefix \"ghostty-\" (pkg.name or \"\")) hmExtraTerminals.config.home.packages;".to_string(),
+        "  home_manager_extra_terminal_order = hmExtraTerminals.config.programs.yazelix.terminals == [ \"yzxterm\" \"ghostty\" \"wezterm\" ];".to_string(),
         "  invalid_runtime_tool_rejected = !invalidRuntimeTool.success;".to_string(),
         "  unsupported_component_rejected = !unsupportedComponent.success;".to_string(),
         "  kgp_zellij_owns_cargo_deps = (kgpZellij.version or \"\") == \"0.44.3\" && (kgpZellij.cargoDeps.name or \"\") == \"zellij-0.44.3-vendor\";".to_string(),

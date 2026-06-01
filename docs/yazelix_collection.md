@@ -30,7 +30,7 @@ Yazelix is built on a focused terminal-workspace stack. This catalog lists the p
 - `#yazelix_ghostty_cursors` — Compatibility package attribute for the same standalone cursor output
 - `#yzc` — Flake app for the standalone Yazelix cursor CLI
 - `#ghostty_cursor_shaders` — Compatibility package attribute for the same standalone cursor output
-- `homeManagerModules.yazelix` — The Home Manager module for declarative installs, with `runtime_variant = "ghostty"` by default, `"yzxterm"` and `"wezterm"` available explicitly, and Linux-only `"ratty"` available experimentally
+- `homeManagerModules.yazelix` — The Home Manager module for declarative installs, with `runtime_variant = "ghostty"` by default, `"yzxterm"` and `"wezterm"` available explicitly, Linux-only `"ratty"` available experimentally, and `extra_terminal_variants` for installing additional bundled terminal emulators beside the primary runtime
 
 ## First-Party Child Repositories
 
