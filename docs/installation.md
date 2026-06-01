@@ -41,7 +41,7 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 **Yazelix Terminal**
 - Experimental Rio-derived first-party terminal path
 - Provided by `yazelix_terminal` and by `programs.yazelix.runtime_variant = "yazelix_terminal"`
-- Uses the child-owned `yazelix-terminal-desktop` wrapper, generated Yazelix config, Ghostty-style cursor shaders, and `terminal.transparency`
+- Uses the packaged `yazelix-terminal-desktop` wrapper, generated Yazelix config, Ghostty-style cursor shaders, and `terminal.transparency`
 - Reference: https://github.com/luccahuguet/yazelix-terminal
 
 **Kitty**
