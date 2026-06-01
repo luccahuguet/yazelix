@@ -117,6 +117,42 @@ if [ -z "$managed_helix_config_dir" ]; then
   exit 1
 fi
 
+if [ -n "${YAZELIX_SESSION_CONFIG_PATH:-}" ]; then
+  if [ ! -r "$YAZELIX_SESSION_CONFIG_PATH" ]; then
+    printf '%s\n' "Error: Helix bridge session snapshot is not readable: $YAZELIX_SESSION_CONFIG_PATH" >&2
+    exit 1
+  fi
+  bridge_session_id="$("$jq_bin" -r '.snapshot_id // ""' "$YAZELIX_SESSION_CONFIG_PATH")"
+  case "$bridge_session_id" in
+    ""|*[!abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-]*)
+      printf '%s\n' "Error: Helix bridge session snapshot has an invalid snapshot_id" >&2
+      exit 1
+      ;;
+  esac
+  if ! command -v od >/dev/null 2>&1 || ! command -v tr >/dev/null 2>&1; then
+    printf '%s\n' "Error: Helix bridge token generation requires od and tr" >&2
+    exit 1
+  fi
+  bridge_instance_id="hx-$$_$(date +%s)"
+  bridge_auth_token="$(od -An -N32 -tx1 /dev/urandom | tr -d ' \n')"
+  case "$bridge_auth_token" in
+    ""|*[!0123456789abcdef]*)
+      printf '%s\n' "Error: failed to generate a Helix bridge auth token" >&2
+      exit 1
+      ;;
+  esac
+  YAZELIX_HELIX_BRIDGE=1
+  YAZELIX_HELIX_BRIDGE_SESSION_ID="$bridge_session_id"
+  YAZELIX_HELIX_BRIDGE_INSTANCE_ID="$bridge_instance_id"
+  YAZELIX_HELIX_BRIDGE_AUTH_TOKEN="$bridge_auth_token"
+  YAZELIX_HELIX_MANAGED_CONFIG_PATH="$managed_config"
+  export YAZELIX_HELIX_BRIDGE
+  export YAZELIX_HELIX_BRIDGE_SESSION_ID
+  export YAZELIX_HELIX_BRIDGE_INSTANCE_ID
+  export YAZELIX_HELIX_BRIDGE_AUTH_TOKEN
+  export YAZELIX_HELIX_MANAGED_CONFIG_PATH
+fi
+
 HELIX_STEEL_CONFIG="$managed_steel_config_dir"
 export HELIX_STEEL_CONFIG
 

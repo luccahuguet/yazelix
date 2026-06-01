@@ -26,6 +26,7 @@ use yazelix_core::control_plane::{
 };
 use yazelix_core::evaluate_install_ownership_report;
 use yazelix_core::install_ownership_request_from_env_with_runtime_dir;
+use yazelix_core::internal_helix_control_subcommands_usage;
 use yazelix_core::run_generate_shell_initializers;
 use yazelix_core::run_profile_compare_baseline;
 use yazelix_core::run_profile_compare_reports;
@@ -44,6 +45,7 @@ use yazelix_core::run_yzx_doctor;
 use yazelix_core::run_yzx_edit;
 use yazelix_core::run_yzx_edit_config;
 use yazelix_core::run_yzx_enter;
+use yazelix_core::run_yzx_helix;
 use yazelix_core::run_yzx_home_manager;
 use yazelix_core::run_yzx_import;
 use yazelix_core::run_yzx_keys;
@@ -102,6 +104,10 @@ fn private_control_usage_lines() -> impl Iterator<Item = String> {
     [
         "yzx_control cwd [args...]".to_string(),
         "yzx_control generate_shell_initializers [args...]".to_string(),
+        format!(
+            "yzx_control helix <{}> [args...]",
+            internal_helix_control_subcommands_usage()
+        ),
         "yzx_control profile <create-run|record-step|load-report|wait-step|print-report|compare-reports|save-baseline|compare-baseline> [args...]".to_string(),
         format!(
             "yzx_control zellij <{}> [args...]",
@@ -1600,6 +1606,7 @@ fn main() {
         }
         "enter" => run_yzx_enter(&argv),
         "generate_shell_initializers" => run_generate_shell_initializers(&argv),
+        "helix" => run_yzx_helix(&argv),
         "inspect" => run_inspect(&argv),
         "status" => run_status(&argv),
         "launch" => run_yzx_launch(&argv),

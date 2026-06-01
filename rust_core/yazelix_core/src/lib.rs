@@ -21,6 +21,7 @@ pub mod front_door_commands;
 pub mod front_door_render;
 pub mod ghostty_cursor_registry;
 pub mod ghostty_materialization;
+pub mod helix_bridge_client;
 pub mod helix_external;
 pub mod helix_materialization;
 pub(crate) mod helix_steel_plugins;
@@ -114,6 +115,7 @@ pub use ghostty_cursor_registry::{
 pub use ghostty_materialization::{
     GhosttyMaterializationData, GhosttyMaterializationRequest, generate_ghostty_materialization,
 };
+pub use helix_bridge_client::{internal_helix_control_subcommands_usage, run_yzx_helix};
 pub use helix_external::{HelixExternalPair, is_custom_helix_binary_command, is_helix_command};
 pub use helix_materialization::{
     HelixImportNotice, HelixMaterializationData, HelixMaterializationRequest,
