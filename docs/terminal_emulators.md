@@ -1,83 +1,178 @@
-# Terminal Emulator Compatibility
+# Terminal Emulator Comparison
+
+This document compares the terminal emulators Yazelix currently supports or
+evaluates: Ghostty, Yazelix Terminal, WezTerm, Ratty, and Kitty.
 
 Data summarized from:
-- https://tmuxai.dev/terminal-compatibility/
-- https://terminaltrove.com/terminals/
+
 - https://github.com/luccahuguet/yazelix-terminal
+- https://github.com/luccahuguet/yazelix-terminal/blob/main/docs/yazelix/fork_feature_verification.md
+- https://github.com/luccahuguet/yazelix-terminal/blob/main/docs/yazelix/frontier_kitty_protocols.md
+- https://ghostty.org/docs/config/reference
+- https://wezterm.org/features.html
+- https://sw.kovidgoyal.net/kitty/protocol-extensions/
+- https://sw.kovidgoyal.net/kitty/graphics-protocol/
+- https://sw.kovidgoyal.net/kitty/keyboard-protocol/
 - https://github.com/orhun/ratty
+- Local reference clones under `/home/lucca/pjs/open_source/yazelix_related/`
 
-## Summary Table
+Alacritty and Foot are intentionally omitted from the current comparison. They
+are no longer part of the maintained Yazelix terminal set.
 
-Score rubric (1–10):
-- Platforms: +0 to +3 (one point each for Linux/macOS/Windows)
-- GPU acceleration: +1 if Yes
-- Image protocol support: +1 if Yes
-- Sixel support: +1 if Yes
-- Open source: +1 if Yes
-- Graphics protocol coverage: +1 if tmuxai lists Kitty graphics or “all image protocols”
-- Implementation: +1 if written in Rust or Zig
-- Ligature support: +1 if tmuxai strengths mention ligatures
+## Scoring
 
-| Terminal | Platforms (TerminalTrove) | Language (TerminalTrove) | GPU accel | Image protocol | Sixel | Source | Score |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Ghostty | macOS, Linux | Zig | Yes | Yes | No | Open Source (MIT) | 7 |
-| Yazelix Terminal | Linux, macOS | Rust | Yes | Yes | Yes | Open Source | 8 |
-| WezTerm | Linux, macOS, Windows | Rust | Yes | Yes | Yes | Open Source (MIT) | 9 |
-| Ratty | Linux | Rust | Yes | Yes | No | Open Source | 5 |
-| Kitty | Linux, macOS | Python | Yes | Yes | No | Open Source (GPL-3) | 7 |
+The comparison score is 100 points total.
 
-## Ghostty
-- Platforms: macOS, Linux (TerminalTrove)
-- Language: Zig (TerminalTrove)
-- Hardware acceleration: Yes (TerminalTrove)
-- Image protocol support: Yes; Sixel: No (TerminalTrove)
-- Source: Open Source (MIT) (TerminalTrove)
-- Summary: Fast, feature-rich GPU-accelerated terminal written in Zig with native platform integration. (tmuxai)
-- Strengths: Exceptional performance; native tabs/splits; Kitty graphics protocol; low latency. (tmuxai)
-- Gaps: No Windows support; no Sixel; newer project (less ecosystem). (tmuxai)
+- 25 criteria
+- 4 points per criterion (`100 / 25 = 4`)
+- `Yes` = 4 points
+- `Partial` = 2 points
+- `No` or unknown = 0 points
 
-Yazelix uses Ghostty as the default packaged terminal and pins temporary Zellij/Yazi forks so Yazi image previews can use Kitty graphics through Zellij. Those forks should be dropped and archived once upstream Zellij supports the required Kitty graphics path directly enough for the normal upstream packages to replace them.
+Implementation language and terminal-native multiplexer overlap are deliberately
+out of the score. They can matter when maintaining or packaging a terminal, but
+they are not feature/protocol capabilities by themselves.
 
-## Yazelix Terminal
-- Platforms: Linux and macOS through the Nix flake systems; Windows remains outside the Yazelix package path
-- Language: Rust
-- Hardware acceleration: Yes; Rio-derived renderer stack
-- Image protocol support: Yes, including Kitty graphics and other modern protocol work carried by the fork
-- Source: Open Source
-- Summary: Experimental first-party Yazelix terminal path based on Rio, packaged through the `yazelix-terminal` child repository.
-- Strengths: Ghostty-style cursor shader presets; generated Yazelix config; `terminal.transparency` support; child-owned launcher wrapper; intended as the long-term terminal Yazelix can evolve directly.
-- Gaps: Experimental; smaller real-world validation than Ghostty and WezTerm; Yazelix still treats it as opt-in until event-mode responsiveness, graphics previews, and cursor shader behavior have more soak time.
+| Terminal | Score | Full | Partial | No | Read |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Yazelix Terminal | 94 | 23 | 1 | 1 | Best feature/protocol coverage and first-party control; still experimental |
+| Kitty | 68 | 16 | 2 | 7 | Strong protocol reference; not packaged as a Yazelix runtime variant |
+| Ghostty | 60 | 15 | 0 | 10 | Best mature default today; strongest shader story; fewer Kitty frontier protocols |
+| WezTerm | 48 | 11 | 2 | 12 | Stable alternate with broad image support; fewer modern Kitty extensions |
+| Ratty | 28 | 6 | 2 | 17 | Experimental but uniquely interesting because of inline 3D graphics |
 
-Yazelix exposes Yazelix Terminal as `#yazelix_terminal`, `#runtime_yazelix_terminal`, and `programs.yazelix.runtime_variant = "yazelix_terminal"`. Launch goes through the child-owned `yazelix-terminal-desktop` wrapper. Yazelix materializes a generated `config.toml` from the packaged child config and injects the selected `terminal.transparency` value before launch.
+## Criteria
 
-## WezTerm
-- Platforms: Linux, macOS, Windows (TerminalTrove)
-- Language: Rust (TerminalTrove)
-- Hardware acceleration: Yes (TerminalTrove)
-- Image protocol support: Yes; Sixel: Yes (TerminalTrove)
-- Source: Open Source (MIT) (TerminalTrove)
-- Summary: GPU-accelerated terminal with built-in multiplexer and powerful Lua scripting configuration. (tmuxai)
-- Strengths: Supports all image protocols; Lua scripting config; built-in multiplexer; cross-platform. (tmuxai)
-- Gaps: Higher memory usage; steep config learning curve; larger binary size. (tmuxai)
+| ID | Criterion | Weight | What Counts |
+| --- | --- | ---: | --- |
+| C1 | Packaged Yazelix runtime | 4 | Available as a first-class Yazelix package/runtime variant |
+| C2 | First-party control path | 4 | Yazelix owns the fork or can directly evolve the terminal behavior |
+| C3 | Generated config and transparency | 4 | Yazelix can materialize config and map `terminal.transparency` into it |
+| C4 | Runtime launcher integration | 4 | Launch path is modeled by Yazelix rather than only PATH discovery |
+| C5 | GPU renderer | 4 | Terminal renders through a GPU-accelerated stack |
+| C6 | Production confidence | 4 | Mature enough to recommend broadly as a daily driver |
+| C7 | Yazelix stack validation | 4 | Evidence exists for Yazelix/Zellij/Yazi/Helix behavior, especially graphics |
+| C8 | Ghostty-style cursor shaders | 4 | Supports Ghostty-compatible shader/trail behavior, not just cursor color |
+| C9 | Kitty graphics | 4 | Supports Kitty Graphics Protocol image placement |
+| C10 | Sixel | 4 | Supports Sixel image rendering |
+| C11 | iTerm2 images | 4 | Supports OSC 1337 iTerm2-style inline images |
+| C12 | Kitty keyboard | 4 | Supports Kitty keyboard protocol |
+| C13 | OSC 8 hyperlinks | 4 | Supports terminal hyperlinks |
+| C14 | OSC 52 clipboard | 4 | Supports clipboard read/write policy through OSC 52 |
+| C15 | OSC 133 semantic prompts | 4 | Supports prompt/input/output region markers |
+| C16 | OSC 21 color control | 4 | Supports Kitty color control |
+| C17 | OSC 22 pointer shapes | 4 | Supports Kitty pointer shape control |
+| C18 | OSC 66 text sizing | 4 | Supports Kitty text sizing |
+| C19 | OSC 99 notifications | 4 | Supports Kitty desktop notification protocol, not only OSC 9/777 |
+| C20 | Kitty multiple cursors | 4 | Supports the Kitty multiple-cursor protocol |
+| C21 | Kitty file transfer | 4 | Supports a safe OSC 5113 file-transfer runtime path |
+| C22 | OSC 5522 text clipboard | 4 | Supports the text/plain slice of Kitty rich clipboard |
+| C23 | Kitty DECCARA | 4 | Supports Kitty's all-SGR rectangular styling extension |
+| C24 | Kitty unscrolling | 4 | Supports Kitty unscrolling |
+| C25 | Inline 3D graphics | 4 | Supports terminal-native inline 3D, such as Ratty Graphics Protocol |
 
-## Ratty
-- Platforms: Linux in nixpkgs
-- Language: Rust
-- Hardware acceleration: Yes; built on Bevy and wgpu
-- Image protocol support: Yes, via Kitty Graphics Protocol
-- Source: Open Source
-- Summary: Experimental GPU-rendered terminal emulator with inline 3D graphics and a 2D/3D mode toggle
-- Strengths: Kitty graphics support; generated TOML config; distinctive inline 3D workflow; available as `#yazelix_ratty` on Linux
-- Gaps: Linux-only in nixpkgs; young terminal with a smaller production track record; Yazelix does not claim Ratty Graphics Protocol passthrough inside Zellij
+## Runtime And Integration
 
-Yazelix exposes Ratty as an experimental Linux packaged runtime. Ratty can use the same Yazelix Zellij/Yazi Kitty graphics bridge as Ghostty for image previews, but Ratty's own 3D object protocol remains terminal-native behavior outside the current Zellij integration contract.
+| Criterion | Ghostty | Yazelix Terminal | WezTerm | Ratty | Kitty |
+| --- | --- | --- | --- | --- | --- |
+| C1 Packaged Yazelix runtime | Yes | Yes | Yes | Yes | No |
+| C2 First-party control path | No | Yes | No | No | No |
+| C3 Generated config and transparency | Yes | Yes | Yes | Yes | Yes |
+| C4 Runtime launcher integration | Yes | Yes | Yes | Yes | No |
+| C5 GPU renderer | Yes | Yes | Yes | Yes | Yes |
+| C6 Production confidence | Yes | Partial | Yes | Partial | Yes |
+| C7 Yazelix stack validation | Yes | Yes | Partial | Partial | Partial |
 
-## Kitty
-- Platforms: Linux, macOS (TerminalTrove)
-- Language: Python (TerminalTrove)
-- Hardware acceleration: Yes (TerminalTrove)
-- Image protocol support: Yes; Sixel: No (TerminalTrove)
-- Source: Open Source (GPL-3) (TerminalTrove)
-- Summary: Fast, feature-rich GPU-based terminal with its own superior graphics protocol. (tmuxai)
-- Strengths: Kitty graphics protocol (best for images); GPU-accelerated; extensible via kittens; full ligatures. (tmuxai)
-- Gaps: No Windows support; no Sixel (uses own protocol); learning curve for config. (tmuxai)
+## Rendering And Images
+
+| Criterion | Ghostty | Yazelix Terminal | WezTerm | Ratty | Kitty |
+| --- | --- | --- | --- | --- | --- |
+| C8 Ghostty-style cursor shaders | Yes | Yes | No | No | Partial |
+| C9 Kitty graphics | Yes | Yes | Yes | Yes | Yes |
+| C10 Sixel | No | Yes | Yes | No | No |
+| C11 iTerm2 images | No | Yes | Yes | No | No |
+| C25 Inline 3D graphics | No | No | No | Yes | No |
+
+Kitty receives partial credit for C8 because it has cursor trails, but not the
+Ghostty-compatible shader ABI Yazelix wants. Ratty receives full credit for C25
+because Ratty Graphics Protocol supports inline `.obj` and `.glb` objects.
+
+## Core Protocols
+
+| Criterion | Ghostty | Yazelix Terminal | WezTerm | Ratty | Kitty |
+| --- | --- | --- | --- | --- | --- |
+| C12 Kitty keyboard | Yes | Yes | Partial | No | Yes |
+| C13 OSC 8 hyperlinks | Yes | Yes | Yes | No | Yes |
+| C14 OSC 52 clipboard | Yes | Yes | Yes | No | Yes |
+| C15 OSC 133 semantic prompts | Yes | Yes | Yes | No | No |
+| C16 OSC 21 color control | Yes | Yes | No | No | Yes |
+| C17 OSC 22 pointer shapes | Yes | Yes | No | No | Yes |
+| C18 OSC 66 text sizing | Yes | Yes | No | No | Yes |
+| C19 OSC 99 notifications | No | Yes | No | No | Yes |
+
+WezTerm receives partial credit for C12 because Kitty keyboard support exists but
+is opt-in through `enable_kitty_keyboard`. Ghostty supports notification escape
+paths, but not the Kitty OSC 99 protocol surface scored here.
+
+## Frontier Kitty Protocols
+
+| Criterion | Ghostty | Yazelix Terminal | WezTerm | Ratty | Kitty |
+| --- | --- | --- | --- | --- | --- |
+| C20 Kitty multiple cursors | No | Yes | No | No | Yes |
+| C21 Kitty file transfer | No | Yes | No | No | Yes |
+| C22 OSC 5522 text clipboard | No | Yes | No | No | Yes |
+| C23 Kitty DECCARA | No | Yes | No | No | Yes |
+| C24 Kitty unscrolling | No | Yes | No | No | Yes |
+
+Yazelix Terminal intentionally scores only the text/plain OSC 5522 clipboard
+slice. Full arbitrary-MIME OSC 5522 remains frontier work because it needs a
+real platform clipboard provider that preserves MIME types. The current Ghostty
+source parses OSC 5522, but Yazelix Terminal's verification ledger treats
+parser-only behavior as no runtime support.
+
+## Terminal Notes
+
+### Ghostty
+
+Ghostty remains the best mature default for Yazelix today. It has excellent
+shader support, strong Kitty graphics support, OSC 133 shell integration, Kitty
+keyboard, and a stable daily-driver posture. Its lower score comes from this
+comparison weighting Sixel, iTerm2 images, OSC 99, and newer Kitty frontier
+protocols heavily.
+
+### Yazelix Terminal
+
+Yazelix Terminal is the protocol-forward path. It starts from Rio and adds or
+validates Ghostty-compatible cursor shaders, Yazelix host mode, event-mode
+cursor animation, Kitty graphics, Sixel, iTerm2 images, OSC 133, OSC 66, OSC 99,
+OSC 52, OSC 21, OSC 22, Kitty keyboard, Kitty multiple cursors, safe Kitty file
+transfer, OSC 5522 text clipboard, DECCARA, and unscrolling.
+
+Its main weakness is not protocol ambition. The risk is release maturity:
+Wayland/windowing/GPU behavior, packaged desktop launch, input responsiveness,
+graphics previews, and cursor shader alignment need continued soak time.
+
+### WezTerm
+
+WezTerm is the conservative stable alternate. It is packaged, cross-platform,
+has strong image support across Kitty graphics, Sixel, and iTerm2 images, and is
+a proven daily terminal. Its weaker score reflects the newer Kitty protocol
+extensions it does not expose today and the lack of Ghostty-style cursor shader
+parity.
+
+### Ratty
+
+Ratty is not trying to be the safest all-purpose terminal in this comparison.
+Its value is that it proves a different frontier: GPU-rendered terminal UI plus
+inline 3D objects through Ratty Graphics Protocol. Yazelix packages it on Linux
+as an experimental runtime and can use the Yazelix Zellij/Yazi Kitty graphics
+bridge, but Yazelix does not claim RGP passthrough inside Zellij.
+
+### Kitty
+
+Kitty is the protocol reference. It leads on Kitty graphics, keyboard handling,
+desktop notifications, multiple cursors, file transfer, text sizing, pointer
+shape, unscrolling, rich clipboard, and related protocol extensions. Its lower
+score than Yazelix Terminal comes from Yazelix packaging/control surfaces, not
+from terminal capability. Kitty remains PATH-provided in Yazelix rather than a
+packaged runtime variant.
