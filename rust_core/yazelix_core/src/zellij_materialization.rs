@@ -42,6 +42,7 @@ const POPUP_COMMANDS_CONFIG_KEY: &str = "popup_commands";
 const BOTTOM_POPUP_COMMAND_KEY: &str = "bottom_popup";
 const TOP_POPUP_COMMAND_KEY: &str = "top_popup";
 const MENU_POPUP_COMMAND_KEY: &str = "menu";
+const BTM_POPUP_COMMAND_KEY: &str = "btm";
 
 const PANE_ORCHESTRATOR_PLUGIN_URL_PLACEHOLDER: &str = "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__";
 const HOME_DIR_PLACEHOLDER: &str = "__YAZELIX_HOME_DIR__";
@@ -386,6 +387,7 @@ fn default_popup_commands() -> BTreeMap<String, Vec<String>> {
             MENU_POPUP_COMMAND_KEY.to_string(),
             vec!["yzx".to_string(), "menu".to_string()],
         ),
+        (BTM_POPUP_COMMAND_KEY.to_string(), vec!["btm".to_string()]),
     ])
 }
 
@@ -412,7 +414,7 @@ fn resolve_popup_commands_config(
                 ErrorClass::Config,
                 "unknown_popup_command",
                 format!("Unsupported zellij.popup_commands entry: {name}."),
-                "Use one of: bottom_popup, top_popup, menu.",
+                "Use one of: bottom_popup, top_popup, menu, btm.",
                 json!({ "field": format!("zellij.popup_commands.{name}") }),
             ));
         }
@@ -874,6 +876,7 @@ fn render_yzpp_plugin_block(
     let top_popup_program =
         generated_popup_command(popup_commands, TOP_POPUP_COMMAND_KEY, &yzx_cli);
     let menu_program = generated_popup_command(popup_commands, MENU_POPUP_COMMAND_KEY, &yzx_cli);
+    let btm_program = generated_popup_command(popup_commands, BTM_POPUP_COMMAND_KEY, &yzx_cli);
     let mut lines = vec![
         format!(
             "    {YZPP_PLUGIN_ALIAS} location=\"file:{}\" {{",
@@ -918,6 +921,16 @@ fn render_yzpp_plugin_block(
         "yzx_menu",
         Some("yzx menu"),
         &menu_program,
+        popup_width_percent,
+        popup_height_percent,
+        None,
+    );
+    append_generated_popup_spec(
+        &mut lines,
+        "btm",
+        "yzx_btm",
+        Some("yzx_btm"),
+        &btm_program,
         popup_width_percent,
         popup_height_percent,
         None,
@@ -3145,6 +3158,7 @@ keybinds {
         assert!(merged.contains("payload \"bottom_popup\""));
         assert!(merged.contains("payload \"top_popup\""));
         assert!(merged.contains("payload \"menu\""));
+        assert!(merged.contains("payload \"btm\""));
         assert!(merged.contains("payload \"config\""));
         assert!(merged.contains("MessagePlugin \"yazelix_pane_orchestrator\""));
         assert!(merged.contains("toggle_editor_sidebar_focus"));
@@ -3223,6 +3237,7 @@ keybinds {
         assert_eq!(keybindings["popup"], Vec::<String>::new());
         assert_eq!(keybindings["bottom_popup"], vec!["Alt Shift J"]);
         assert_eq!(keybindings["top_popup"], vec!["Alt Shift K"]);
+        assert_eq!(keybindings["btm"], vec!["Alt Shift B"]);
         assert_eq!(
             keybindings["toggle_editor_right_sidebar_focus"],
             vec!["Ctrl Shift Y"]
@@ -3249,6 +3264,7 @@ keybinds {
             vec!["nvim", "settings.md"]
         );
         assert_eq!(popup_commands[MENU_POPUP_COMMAND_KEY], vec!["yzx", "menu"]);
+        assert_eq!(popup_commands[BTM_POPUP_COMMAND_KEY], vec!["btm"]);
     }
 
     // Regression: generated popup specs must route external tools through `yzx run` so they inherit the canonical EDITOR/VISUAL runtime env.
@@ -3273,6 +3289,10 @@ keybinds {
         assert!(block.contains("arg_2 \"ui\""));
         assert!(block.contains("menu {"));
         assert!(block.contains("arg_1 \"menu\""));
+        assert!(block.contains("btm {"));
+        assert!(block.contains("pane_title \"yzx_btm\""));
+        assert!(block.contains("command_marker \"yzx_btm\""));
+        assert!(block.contains("arg_2 \"btm\""));
         assert!(!block.contains("arg_2 \"--pane\""));
         assert!(block.contains("popup {"));
         assert!(block.contains("arg_2 \"gitui\""));
@@ -3318,6 +3338,10 @@ keybinds {
         assert!(block.contains("top_popup {"));
         assert!(block.contains("pane_title \"yzx_top_popup\""));
         assert!(block.contains("command_marker \"yzx_top_popup\""));
+        assert!(block.contains("btm {"));
+        assert!(block.contains("pane_title \"yzx_btm\""));
+        assert!(block.contains("command_marker \"yzx_btm\""));
+        assert!(block.contains("arg_2 \"btm\""));
         assert!(block.contains("arg_1 \"run\""));
         assert!(block.contains("arg_2 \"lazygit\""));
         assert!(block.contains("width_percent \"82\""));

@@ -305,6 +305,7 @@ fn root_command_rows() -> Vec<TableRow> {
         zellij_action_row("bottom_popup"),
         zellij_action_row("top_popup"),
         zellij_action_row("menu"),
+        zellij_action_row("btm"),
         zellij_action_row("config"),
     ]
 }
@@ -722,8 +723,10 @@ mod tests {
         assert!(rendered.contains("Semantic remaps"));
         assert!(rendered.contains("Keybinding"));
         assert!(rendered.contains("zellij.menu"));
+        assert!(rendered.contains("zellij.btm"));
         assert!(rendered.contains("yazi.open_zoxide_in_editor"));
         assert!(rendered.contains("Alt+Shift+M"));
+        assert!(rendered.contains("Alt+Shift+B"));
         assert!(rendered.contains("Alt+z"));
         assert!(rendered.contains("Alt+Shift+C"));
         assert!(rendered.contains("Open the Yazelix command palette popup"));

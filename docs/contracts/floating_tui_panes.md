@@ -2,7 +2,7 @@
 
 ## Summary
 
-Yazelix supports explicit popup flows for terminal UIs that are useful temporarily but do not deserve a persistent split. The generic surface is `yzx popup`, backed by `zellij.popup_program` and unbound by default. Named generated surfaces use `zellij.popup_commands`: `bottom_popup`, `top_popup`, and `menu`. Popup keys behave like managed session surfaces rather than spawning disposable duplicates forever.
+Yazelix supports explicit popup flows for terminal UIs that are useful temporarily but do not deserve a persistent split. The generic surface is `yzx popup`, backed by `zellij.popup_program` and unbound by default. Named generated surfaces use `zellij.popup_commands`: `bottom_popup`, `top_popup`, `menu`, and `btm`. Popup keys behave like managed session surfaces rather than spawning disposable duplicates forever.
 
 ## Why
 
@@ -12,7 +12,7 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 
 - Add `yzx popup`
 - Add `zellij.popup_program` and `zellij.popup_commands` to `settings.jsonc` / Home Manager
-- Bind named popup commands to semantic bottom, top, and menu popup defaults
+- Bind named popup commands to semantic bottom, top, menu, and btm popup defaults
 - Keep the command-palette popup as a separate flow
 - Reuse the configured `yzpp` popup model for popup, menu, and config UI panes
 - Keep Yazelix-specific side effects, such as sidebar refresh, outside the plain
@@ -102,14 +102,14 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - `zellij.popup_commands` is a map of named popup argv lists.
 - The default named popup commands are `bottom_popup = ["lazygit"]`,
   `top_popup = ["yzx", "config", "ui"]` for Yazelix's ratconfig-backed config
-  editor, and `menu = ["yzx", "menu"]`.
+  editor, `menu = ["yzx", "menu"]`, and `btm = ["btm"]`.
 - Popup geometry is user-configurable through `zellij.popup_width_percent` and `zellij.popup_height_percent`.
 - Popup width and height percentages must be integers in the range `1..100`.
 - The default popup width and height are both `90`.
 - `yzx popup <command ...>` overrides the configured command for that invocation.
 - The generated Yazelix `yzpp` specs own the stable pane identity, argv, cwd,
   runtime command path, geometry, and close hook for popup/menu/config panes.
-- Yazelix generates `popup`, `bottom_popup`, `top_popup`, and `menu` specs.
+- Yazelix generates `popup`, `bottom_popup`, `top_popup`, `menu`, and `btm` specs.
   `popup` uses `zellij.popup_program`; the named specs use
   `zellij.popup_commands` with the shared popup geometry.
 - The popup launches in the current tab workspace root when available; otherwise it uses the current shell directory.
@@ -118,6 +118,8 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - `Alt+Shift+J` opens one managed bottom popup pane when it is missing, focuses it when it exists but is unfocused, and closes it when it is focused.
 - `Alt+Shift+K` does the same for the semantic top popup slot, which defaults
   to `yzx config ui`, Yazelix's ratconfig-backed JSONC settings editor.
+- `Alt+Shift+B` does the same for the semantic btm popup slot, which defaults
+  to the bundled `btm` process viewer.
 - The unplaced `popup` action remains configurable and unbound by default.
 - When `Alt+Shift+J` closes the configured popup pane, Yazelix runs `yzx sidebar
   refresh` through an `on_close` hook so lazygit-style workflows refresh the
@@ -231,13 +233,14 @@ The `yzpp` raw pipe path still accepts generated JSON through `name "transient_p
 - integration tests: `yzx popup` routes generated popup requests to `yzpp`
   with a fake Zellij binary
 - integration tests: generated Zellij config contains the integrated `yzpp`
-  plugin block, popup/bottom_popup/top_popup/menu/config specs, and sidebar
+  plugin block, popup/bottom_popup/top_popup/menu/btm/config specs, and sidebar
   refresh hook
 - CI checks: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
 - contract validator: `yzx_repo_validator validate-contracts`
 - manual verification: `Alt+Shift+J` toggles the bottom managed popup,
   `Alt+Shift+K` toggles the top managed popup, `Alt+Shift+M` opens the menu,
-  and `Alt+Shift+C` opens the config UI
+  `Alt+Shift+B` toggles the btm process viewer, and `Alt+Shift+C` opens the
+  config UI
 
 ## Traceability
 - Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`

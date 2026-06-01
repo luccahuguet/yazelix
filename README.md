@@ -93,8 +93,8 @@ Cursor presets use their own config at `~/.config/yazelix_ghostty_cursors/settin
 - `Alt+[` and `Alt+]` are reserved for previous/next layout-family cycling, but the packaged runtime ships one managed sidebar family, so those bindings usually keep the visible layout unchanged; see [Layouts](./docs/layouts.md)
 - When you open something from the default Yazi file-tree sidebar with Helix or Neovim, Yazelix targets the managed `editor` pane through the pane orchestrator instead of relying on pane scanning heuristics; it reuses that pane when present and creates one titled `editor` when needed
 - `yzx reveal` is the stable editor-integration surface for jumping the current file back into the managed Yazi file tree
-- `Alt+Shift+J` toggles the bottom managed popup pane through `yzpp` and refreshes the Yazi file-tree sidebar git view when that popup closes; `Alt+Shift+K` toggles the top popup slot, `Alt+Shift+M` toggles the popup command menu, and `Alt+Shift+C` toggles the config UI popup
-- Named popup commands live in `zellij.popup_commands`: bottom defaults to `lazygit`, top defaults to `yzx config ui` for Yazelix's ratconfig-backed JSONC settings editor, and menu defaults to `yzx menu`; the extra unbound personal popup slot uses `zellij.popup_program` plus the `zellij.keybindings.popup` action
+- `Alt+Shift+J` toggles the bottom managed popup pane through `yzpp` and refreshes the Yazi file-tree sidebar git view when that popup closes; `Alt+Shift+K` toggles the top popup slot, `Alt+Shift+M` toggles the popup command menu, `Alt+Shift+B` toggles the btm process viewer, and `Alt+Shift+C` toggles the config UI popup
+- Named popup commands live in `zellij.popup_commands`: bottom defaults to `lazygit`, top defaults to `yzx config ui` for Yazelix's ratconfig-backed JSONC settings editor, menu defaults to `yzx menu`, and btm defaults to `btm`; the extra unbound personal popup slot uses `zellij.popup_program` plus the `zellij.keybindings.popup` action
 - Configure the managed editor with `editor.command` in `settings.jsonc`
 
 ## Advanced: First-Party Child Repositories
@@ -292,7 +292,7 @@ yzx env --no-shell
 See the full catalog of tools and integrations in the Yazelix Collection:
 [docs/yazelix_collection.md](./docs/yazelix_collection.md)
 - **Essential tools**: [Yazi](https://github.com/sxyazi/yazi) (file manager), [Zellij](https://github.com/zellij-org/zellij) (terminal multiplexer), [Helix](https://helix-editor.com) (editor), shells (bash/nushell, plus your preferred shell), [fzf](https://github.com/junegunn/fzf), [zoxide](https://github.com/ajeetdsouza/zoxide), [Starship](https://starship.rs)
-- **Bundled helpers**: [lazygit](https://github.com/jesseduffield/lazygit) (or `lg`), [mise](https://github.com/jdx/mise), [carapace](https://github.com/carapace-sh/carapace-bin), [macchina](https://github.com/Macchina-CLI/macchina), and the fixed helper tooling behind the packaged runtime
+- **Bundled helpers**: [lazygit](https://github.com/jesseduffield/lazygit) (or `lg`), [bottom](https://github.com/ClementTsang/bottom) (`btm`), [mise](https://github.com/jdx/mise), [carapace](https://github.com/carapace-sh/carapace-bin), [macchina](https://github.com/Macchina-CLI/macchina), and the fixed helper tooling behind the packaged runtime
 - **Yazi preview helpers**: `p7zip`, `jq`, `poppler`, `fd`, `ripgrep` are part of the fixed runtime surface
 - **Environment setup**: Proper paths, variables, and shell configurations
 
@@ -349,6 +349,7 @@ Run `yzx help` for the live command list
 - `yzx popup` - Toggle the managed popup program, usually `lazygit`; the popup keybinding refreshes Yazi sidebar git state when it closes
 - `yzx menu --popup` - Open the popup command palette, usually through `Alt+Shift+M`
 - `yzx config ui` - Open Yazelix's ratconfig-backed JSONC settings editor, usually through `Alt+Shift+C`
+- `Alt+Shift+B` - Open the bundled `btm` process viewer popup
 - `yzx sidebar refresh` - Refresh the managed Yazi sidebar file tree and status widgets
 
 ### Config and Recovery
@@ -429,6 +430,7 @@ Yazelix uses Zellij as the workspace layer, so the most important bindings are g
 | `Alt+Shift+J` | Toggle the bottom managed popup command, usually `lazygit`, and refresh the Yazi file-tree sidebar git state when the popup keybinding closes it |
 | `Alt+Shift+K` | Toggle the top managed popup command, usually `yzx config ui`, Yazelix's ratconfig-backed settings editor |
 | `Alt+Shift+M` | Open the `yzx` command palette popup |
+| `Alt+Shift+B` | Toggle the `btm` process viewer popup |
 | `Alt+Shift+C` | Open the Yazelix config UI popup |
 | `Alt+1..9` | Jump directly to tabs 1 through 9 |
 | `Alt+w` / `Alt+q` | Move to the next or previous tab |

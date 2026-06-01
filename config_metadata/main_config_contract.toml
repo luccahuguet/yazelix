@@ -487,6 +487,7 @@ apply_mode = "tab_session_restart"
 bottom_popup = ["lazygit"]
 top_popup = ["yzx", "config", "ui"]
 menu = ["yzx", "menu"]
+btm = ["btm"]
 
 [fields."zellij.popup_width_percent"]
 kind = "int"
@@ -623,6 +624,7 @@ popup = []
 bottom_popup = ["Alt Shift J"]
 top_popup = ["Alt Shift K"]
 menu = ["Alt Shift M"]
+btm = ["Alt Shift B"]
 config = ["Alt Shift C"]
 move_focus_left_or_tab = ["Alt h", "Alt Left"]
 move_focus_right_or_tab = ["Alt l", "Alt Right"]

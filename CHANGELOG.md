@@ -9,7 +9,7 @@ Post-v17.3 work in progress
 Upgrade impact: no user action required
 
 Highlights:
-- Reserved for post-release changes after v17.3 lands.
+- Added a first-class `btm` process viewer popup on `Alt Shift B`, backed by the bundled `bottom` runtime tool and configurable through `zellij.popup_commands.btm` plus `zellij.keybindings.btm`
 
 ## v17.3 - 2026-06-01
 

@@ -26,6 +26,7 @@ It may expose typed options such as:
 
 ```nix
 programs.yazelix.runtime_tool_sources.lazygit = "host";
+programs.yazelix.runtime_tool_sources.bottom = "host";
 ```
 
 Home Manager options should translate into the same package-builder arguments used by non-Home-Manager users.
@@ -41,6 +42,7 @@ inputs.yazelix.lib.${system}.mkYazelix {
   inherit pkgs;
   runtimeToolSources = {
     lazygit = "host";
+    bottom = "host";
   };
   components = {
     screen = true;

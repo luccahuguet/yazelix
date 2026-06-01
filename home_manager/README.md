@@ -103,6 +103,7 @@ To save space by using tools you already manage on your host, set runtime tool s
     enable = true;
     runtime_tool_sources = {
       lazygit = "host";
+      bottom = "host";
       helix = "host";
       steel = "host";
       yazi = "host";
@@ -113,7 +114,7 @@ To save space by using tools you already manage on your host, set runtime tool s
 }
 ```
 
-Omitted tools stay `bundled`. Host mode is for leaf tools such as `lazygit`, `helix`, `steel`, `neovim`, `yazi`, `fzf`, `zoxide`, `starship`, `carapace`, `macchina`, `mise`, `tombi`, `git`, `jq`, `fd`, and `ripgrep`. Bootstrap tools such as Nushell, Zellij, the selected terminal, Nix, POSIX utilities, and graphics wrappers remain bundled.
+Omitted tools stay `bundled`. Host mode is for leaf tools such as `lazygit`, `bottom`, `helix`, `steel`, `neovim`, `yazi`, `fzf`, `zoxide`, `starship`, `carapace`, `macchina`, `mise`, `tombi`, `git`, `jq`, `fd`, and `ripgrep`. Bootstrap tools such as Nushell, Zellij, the selected terminal, Nix, POSIX utilities, and graphics wrappers remain bundled.
 
 Run `yzx doctor` after switching. Doctor reads the runtime manifest and warns when a host-sourced command is missing from `PATH`.
 

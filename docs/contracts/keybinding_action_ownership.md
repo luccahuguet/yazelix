@@ -39,6 +39,7 @@ Yazelix should not provide a semantic remap when another tool owns the behavior.
       "bottom_popup": ["Alt Shift J"],
       "top_popup": ["Alt Shift K"],
       "menu": ["Alt Shift M"],
+      "btm": ["Alt Shift B"],
       "toggle_editor_right_sidebar_focus": ["Ctrl Shift Y"],
       "toggle_left_sidebar": ["Alt Shift H"],
       "open_codex_agent_right": ["Alt Shift L"]
@@ -108,6 +109,7 @@ The Rust action registry is the shared source for Yazelix-owned action metadata 
 - `zellij.bottom_popup`
 - `zellij.top_popup`
 - `zellij.menu`
+- `zellij.btm`
 - `zellij.toggle_editor_right_sidebar_focus`
 - `zellij.toggle_left_sidebar`
 - `zellij.open_workspace_terminal`

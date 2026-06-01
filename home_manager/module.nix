@@ -516,7 +516,7 @@ in
         - "host": omit the package/export and rely on the inherited host PATH
         - "off": omit the package/export when the tool explicitly supports disabling
 
-        Host mode is supported for leaf tools such as lazygit, helix, steel,
+        Host mode is supported for leaf tools such as lazygit, bottom, helix, steel,
         neovim, yazi, fzf, zoxide, starship, carapace, macchina, mise, tombi, git, jq,
         fd, and ripgrep. Bootstrap tools such as Nushell, Zellij, the selected
         terminal, Nix, POSIX utilities, and graphics wrappers remain bundled.
@@ -755,7 +755,7 @@ in
       description = ''
         Commands for named Yazelix popup surfaces.
         Defaults: bottom_popup = [ "lazygit" ], top_popup = [ "yzx" "config" "ui" ],
-        menu = [ "yzx" "menu" ].
+        menu = [ "yzx" "menu" ], btm = [ "btm" ].
       '';
     };
 
@@ -873,7 +873,7 @@ in
       description = ''
         Semantic remaps for Yazelix-owned Zellij actions.
 
-        Keys are action ids such as "bottom_popup", "top_popup", "menu",
+        Keys are action ids such as "bottom_popup", "top_popup", "menu", "btm",
         "toggle_left_sidebar", and "move_focus_left_or_tab"; values are lists of
         Zellij key strings. Use an empty list to disable the generated binding
         for one action.

@@ -191,7 +191,7 @@ hx ~/.config/yazelix/settings.jsonc
 The packaged runtime ships a fixed toolset instead of configurable dependency groups. The package includes:
 - the core Yazelix stack: `zellij`, `yazi`, `helix`, `nu`, `bash`, `fish`, `zsh`
 - Helix Steel authoring helpers: `steel`, `steel-language-server`, `forge`, `cargo-steel-lib`, `repl-connect`
-- the default CLI helpers: `fzf`, `zoxide`, `starship`, `lazygit`, `mise`, `carapace`, `macchina`
+- the default CLI helpers: `fzf`, `zoxide`, `starship`, `lazygit`, `btm`, `mise`, `carapace`, `macchina`
 - the default Yazi preview helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
 - one packaged terminal variant: Ghostty by default with the Yazelix Zellij/Yazi graphics bridge, experimental Yazelix Terminal through `#yzxterm`, WezTerm through `#yazelix_wezterm`, Kitty through `#yazelix_kitty`, or experimental Linux Ratty through `#yazelix_ratty`
 
@@ -367,6 +367,7 @@ Home Manager is the recommended granular path:
     enable = true;
     runtime_tool_sources = {
       lazygit = "host";
+      bottom = "host";
       helix = "host";
       yazi = "host";
       ripgrep = "host";
@@ -387,6 +388,7 @@ inputs.yazelix.lib.${system}.mkYazelix {
   inherit pkgs;
   runtimeToolSources = {
     lazygit = "host";
+    bottom = "host";
     helix = "host";
   };
 }
@@ -417,6 +419,7 @@ Home Manager and `mkYazelix` also accept component toggles for `cursors` and `sc
 
 ### Recommended Tools (~350MB, enabled by default)
 - [lazygit](https://github.com/jesseduffield/lazygit) (or `lg`)
+- [bottom](https://github.com/ClementTsang/bottom) (`btm`)
 - [mise](https://github.com/jdx/mise)
 - [cargo-update](https://github.com/nabijaczleweli/cargo-update)
 - [ouch](https://github.com/ouch-org/ouch)

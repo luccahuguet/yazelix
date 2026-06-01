@@ -286,6 +286,18 @@ pub const ZELLIJ_ACTIONS: &[ZellijActionSpec] = &[
         "MessagePlugin yzpp { name \"toggle\" payload \"menu\" }",
     ),
     zellij_plugin_action(
+        "btm",
+        "zellij.btm",
+        "Toggle the btm process viewer popup",
+        "shared",
+        YZPP_PLUGIN_ALIAS,
+        YazelixActionBackend::ZellijPluginMessage,
+        "toggle",
+        Some("btm"),
+        &["Alt Shift B"],
+        "MessagePlugin yzpp { name \"toggle\" payload \"btm\" }",
+    ),
+    zellij_plugin_action(
         "config",
         "zellij.config",
         "Open the Yazelix config UI popup",

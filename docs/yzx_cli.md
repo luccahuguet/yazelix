@@ -233,10 +233,10 @@ Open a transient floating-pane command inside Zellij
 - `COMMAND ...`: override the configured popup command for one invocation
 - Uses the current tab workspace root as cwd when available; otherwise uses the current shell cwd
 - Errors if not in Zellij
-- Named generated popup specs use `zellij.popup_commands`: `bottom_popup` defaults to `["lazygit"]`, `top_popup` defaults to `["yzx", "config", "ui"]`, and `menu` defaults to `["yzx", "menu"]`
-- Default surface keys: `Alt Shift J` for `bottom_popup` and `Alt Shift K` for `top_popup`
+- Named generated popup specs use `zellij.popup_commands`: `bottom_popup` defaults to `["lazygit"]`, `top_popup` defaults to `["yzx", "config", "ui"]`, `menu` defaults to `["yzx", "menu"]`, and `btm` defaults to `["btm"]`
+- Default surface keys: `Alt Shift J` for `bottom_popup`, `Alt Shift K` for `top_popup`, and `Alt Shift B` for `btm`
 - The unplaced `popup` action remains configurable and unbound by default
-- Popup panes are named `yzx_popup`, `yzx_bottom_popup`, `yzx_top_popup`, and `yzx_menu`
+- Popup panes are named `yzx_popup`, `yzx_bottom_popup`, `yzx_top_popup`, `yzx_menu`, and `yzx_btm`
 
 ### `yzx config [--path]`
 Show the active Yazelix configuration through the Rust-owned control path

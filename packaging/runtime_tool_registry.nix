@@ -169,6 +169,12 @@ let
         requiredCommands = [ "lazygit" ];
         hostable = true;
       };
+      bottom = makeTool {
+        package = pkgs.bottom;
+        commands = [ "btm" ];
+        requiredCommands = [ "btm" ];
+        hostable = true;
+      };
       carapace = makeTool {
         package = carapace;
         commands = [ "carapace" ];

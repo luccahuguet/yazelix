@@ -7,7 +7,7 @@ The current trimmed line no longer exposes dependency-group toggles like `recomm
 The current runtime includes:
 - the core stack: `nu`, `bash`, `fish`, `zsh`, `zellij`, `yazi`, `helix`, `neovim`
 - Helix Steel authoring tools: `steel`, `steel-language-server`, `forge`, `cargo-steel-lib`, `repl-connect`
-- helper tools: `fzf`, `zoxide`, `starship`, `lazygit`, `carapace`, `macchina`, `mise`, `tombi`
+- helper tools: `fzf`, `zoxide`, `starship`, `lazygit`, `btm`, `carapace`, `macchina`, `mise`, `tombi`
 - preview/search helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
 - system helpers required by the runtime wrappers and validators: `git`, `nix`, `coreutils`, `findutils`, `gnugrep`, `gnused`, `util-linux`
 - one packaged terminal variant: Ghostty in the `#yazelix` default and `#yazelix_ghostty`, experimental Yazelix Terminal in `#yzxterm`, WezTerm in `#yazelix_wezterm`, Kitty in `#yazelix_kitty`, or experimental Linux Ratty in `#yazelix_ratty`

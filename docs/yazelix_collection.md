@@ -80,6 +80,7 @@ Regular Yazelix users do not need to install or wire these repositories separate
 - [zoxide](https://github.com/ajeetdsouza/zoxide) — Directory jumper used from the shell, Yazi's native `Z` flow, and Yazelix's `Alt+z` direct-open Yazi flow.
 - [starship](https://starship.rs) — Prompt engine configured for the managed shells and surfaced inside Yazi through `starship.yazi`.
 - [lazygit](https://github.com/jesseduffield/lazygit) — Default managed popup command, normally toggled with `Alt+Shift+J`.
+- [bottom](https://github.com/ClementTsang/bottom) — Bundled `btm` process viewer for the managed process popup, normally toggled with `Alt+Shift+B`.
 - [Steel](https://github.com/mattwparas/steel) — Scheme runtime and authoring tools for Yazelix-managed Helix Steel plugins.
 - [carapace](https://github.com/rsteube/carapace-bin) — Cross-shell completion engine used by generated shell initializers.
 - [mise](https://mise.jdx.dev/) — Runtime/version manager integration loaded by the generated shell initializers.

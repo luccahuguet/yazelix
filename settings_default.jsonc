@@ -99,6 +99,9 @@
       "menu": [
         "yzx",
         "menu"
+      ],
+      "btm": [
+        "btm"
       ]
     },
     "popup_width_percent": 90,
@@ -230,6 +233,9 @@
       ],
       "menu": [
         "Alt Shift M"
+      ],
+      "btm": [
+        "Alt Shift B"
       ],
       "config": [
         "Alt Shift C"
