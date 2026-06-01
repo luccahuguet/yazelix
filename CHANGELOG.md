@@ -11,6 +11,7 @@ Upgrade impact: no user action required
 Highlights:
 - Renamed the standalone cursor child repository from `yazelix-ghostty-cursors` to `yazelix-cursors` now that Yazelix Terminal consumes the same cursor shader package; the old `#yazelix_ghostty_cursors` and `#ghostty_cursor_shaders` outputs remain compatibility aliases
 - Added `programs.yazelix.extra_terminal_variants` for Home Manager users who want to install additional bundled terminal emulator packages, such as Ghostty beside a `yzxterm` primary runtime, without adding duplicate `yzx` wrappers
+- Added Kitty as a packaged runtime variant through `#yazelix_kitty`, `#runtime_kitty`, and `programs.yazelix.runtime_variant = "kitty"`
 
 ## v17.2 - 2026-05-31
 

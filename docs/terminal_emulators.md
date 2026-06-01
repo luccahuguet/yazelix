@@ -36,7 +36,7 @@ they are not feature/protocol capabilities by themselves.
 | Terminal | Score | Full | Partial | No | Read |
 | --- | ---: | ---: | ---: | ---: | --- |
 | Yazelix Terminal | 94 | 23 | 1 | 1 | Best feature/protocol coverage and first-party control; still experimental |
-| Kitty | 68 | 16 | 2 | 7 | Strong protocol reference; not packaged as a Yazelix runtime variant |
+| Kitty | 76 | 18 | 2 | 5 | Strong protocol reference and packaged alternate; no first-party control |
 | Ghostty | 60 | 15 | 0 | 10 | Best mature default today; strongest shader story; fewer Kitty frontier protocols |
 | WezTerm | 48 | 11 | 2 | 12 | Stable alternate with broad image support; fewer modern Kitty extensions |
 | Ratty | 28 | 6 | 2 | 17 | Experimental but uniquely interesting because of inline 3D graphics |
@@ -75,10 +75,10 @@ they are not feature/protocol capabilities by themselves.
 
 | Criterion | Ghostty | Yazelix Terminal | WezTerm | Ratty | Kitty |
 | --- | --- | --- | --- | --- | --- |
-| C1 Packaged Yazelix runtime | Yes | Yes | Yes | Yes | No |
+| C1 Packaged Yazelix runtime | Yes | Yes | Yes | Yes | Yes |
 | C2 First-party control path | No | Yes | No | No | No |
 | C3 Generated config and transparency | Yes | Yes | Yes | Yes | Yes |
-| C4 Runtime launcher integration | Yes | Yes | Yes | Yes | No |
+| C4 Runtime launcher integration | Yes | Yes | Yes | Yes | Yes |
 | C5 GPU renderer | Yes | Yes | Yes | Yes | Yes |
 | C6 Production confidence | Yes | Partial | Yes | Partial | Yes |
 | C7 Yazelix stack validation | Yes | Yes | Partial | Partial | Partial |
@@ -173,6 +173,7 @@ bridge, but Yazelix does not claim RGP passthrough inside Zellij.
 Kitty is the protocol reference. It leads on Kitty graphics, keyboard handling,
 desktop notifications, multiple cursors, file transfer, text sizing, pointer
 shape, unscrolling, rich clipboard, and related protocol extensions. Its lower
-score than Yazelix Terminal comes from Yazelix packaging/control surfaces, not
-from terminal capability. Kitty remains PATH-provided in Yazelix rather than a
-packaged runtime variant.
+score than Yazelix Terminal comes from first-party control and Yazelix-owned
+cursor shader behavior, not from terminal capability. Yazelix can package Kitty
+as the `#yazelix_kitty` runtime variant while still supporting host
+PATH-provided Kitty.

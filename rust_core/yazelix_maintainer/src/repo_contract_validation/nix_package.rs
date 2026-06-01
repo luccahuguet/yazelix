@@ -313,6 +313,7 @@ fn verify_profile_installed_runtime(
         .filter(|value| !value.is_empty())
         .unwrap_or_else(|| "unknown".to_string());
     let runtime_terminal = match runtime_variant.as_str() {
+        "kitty" => "kitty",
         "wezterm" => "wezterm",
         "ratty" => "ratty",
         "yzxterm" => "yzxterm",
@@ -353,6 +354,14 @@ fn verify_profile_installed_runtime(
         .join("terminal_emulators")
         .join("wezterm")
         .join(".wezterm.lua");
+    let generated_kitty_config = temp_home
+        .join(".local")
+        .join("share")
+        .join("yazelix")
+        .join("configs")
+        .join("terminal_emulators")
+        .join("kitty")
+        .join("kitty.conf");
     let generated_yzxterm_config = temp_home
         .join(".local")
         .join("share")
@@ -609,6 +618,12 @@ fn verify_profile_installed_runtime(
             "generated Ghostty cursor effect shaders directory",
             errors,
         )?;
+    } else if runtime_terminal == "kitty" {
+        require_path_exists_abs(
+            &generated_kitty_config,
+            "generated Kitty config for selected runtime variant",
+            errors,
+        );
     } else if runtime_terminal == "wezterm" {
         require_path_exists_abs(
             &generated_wezterm_config,

@@ -33,6 +33,8 @@ let
   defaultTerminalList =
     if runtimeVariant == "wezterm" then
       "      \"wezterm\",\n      \"ghostty\""
+    else if runtimeVariant == "kitty" then
+      "      \"kitty\",\n      \"ghostty\",\n      \"yzxterm\",\n      \"wezterm\""
     else if runtimeVariant == "ratty" then
       "      \"ratty\",\n      \"ghostty\",\n      \"wezterm\""
     else if runtimeVariant == "yzxterm" then

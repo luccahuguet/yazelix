@@ -127,7 +127,7 @@ Configuration lives in JSONC at `~/.config/yazelix/settings.jsonc`, with `yzx co
 
 First-party child packages own focused pieces of the stack: screen rendering, Ghostty cursors, the Zellij bar, the popup plugin, the pane orchestrator wasm, and Yazi assets. The normal Yazelix package wires them together automatically
 
-Ghostty is the default packaged terminal for cursor trails and Yazi image previews, with temporary Yazelix Zellij/Yazi forks carrying the Kitty graphics passthrough until upstream support is enough to drop them. Yazelix Terminal is the experimental first-party terminal path, with generated transparency config and packaged Ghostty-style cursor shader support. WezTerm is the stable packaged alternate, Ratty is an experimental Linux packaged alternate, and Kitty remains supported when present on the host `PATH`
+Ghostty is the default packaged terminal for cursor trails and Yazi image previews, with temporary Yazelix Zellij/Yazi forks carrying the Kitty graphics passthrough until upstream support is enough to drop them. Yazelix Terminal is the experimental first-party terminal path, with generated transparency config and packaged Ghostty-style cursor shader support. WezTerm is the stable packaged alternate, Ratty is an experimental Linux packaged alternate, and Kitty is available as a packaged runtime variant or as a host `PATH` terminal
 
 Get everything running in less than 10 minutes with no extra dependencies beyond Nix
 
@@ -184,7 +184,7 @@ For the longer project story, see [Version History](./docs/history.md)
 
 ## Compatibility
 - **Platform**: Linux and macOS — see the [macOS support floor contract](docs/contracts/macos_support_floor.md) for the current guaranteed macOS surfaces
-- **Terminal**: Ghostty is the default packaged terminal with Yazelix cursor trails and Yazi image previews, Yazelix Terminal is available through the experimental first-party package path, WezTerm is available through the stable alternate package path, Ratty is available through the experimental Linux package path, and Kitty remains the supported PATH-provided alternative
+- **Terminal**: Ghostty is the default packaged terminal with Yazelix cursor trails and Yazi image previews, Yazelix Terminal is available through the experimental first-party package path, WezTerm is available through the stable alternate package path, Ratty is available through the experimental Linux package path, and Kitty is available through a packaged runtime variant or host `PATH`
 - **Editor**: Any editor works, with Helix and Neovim getting first-class support (reveal in the Yazi file tree, open buffer in a running instance, managed editor-pane targeting) and configuration through `editor.command` in `settings.jsonc`
 - **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer
 
@@ -304,9 +304,9 @@ If you followed [step 3 in the installation guide](./docs/installation.md#step-3
 - **Yazelix Terminal** (experimental first-party packaged path): Rio-derived Rust terminal with generated transparency config and packaged Ghostty-style cursor shader support
 - **WezTerm** (explicit packaged alternate path): Rust terminal with strong graphics support and Sixel compatibility
 - **Ratty** (experimental Linux packaged path): GPU-rendered terminal with Kitty graphics support and inline 3D graphics
-- **Kitty**: Fast, feature-rich, GPU-accelerated terminal
+- **Kitty** (explicit packaged alternate path): Fast, feature-rich, GPU-accelerated terminal with generated Kitty config and the Yazelix Zellij/Yazi Kitty graphics bridge
 - **Auto-detection**: Fallback order follows your configured terminal list
-- Configure your preference in `settings.jsonc` with `terminal.terminals = ["ghostty", "yzxterm", "wezterm", ...]` (first item is primary)
+- Configure your preference in `settings.jsonc` with `terminal.terminals = ["ghostty", "yzxterm", "wezterm", "kitty", ...]` (first item is primary)
 - **Terminal package contract**: Yazelix runtimes still choose one primary packaged terminal variant at a time; Home Manager installs can add more bundled terminal emulator packages with `programs.yazelix.extra_terminal_variants`
 
 [See the full Customization Guide here.](./docs/customization.md)

@@ -7,7 +7,7 @@ A Home Manager module for [Yazelix](https://github.com/luccahuguet/yazelix) that
 - **Leaves `settings.jsonc` mutable by default** so users can edit it directly
 - **Can generate `settings.jsonc`** from Home Manager options when `manage_config = true`
 - **Adds `yzx` to the Home Manager profile** through the packaged Yazelix runtime
-- **Selects the packaged terminal runtime variant** with Ghostty by default, Yazelix Terminal as the experimental Rio-derived path, WezTerm as the stable alternate, and Ratty as an experimental Linux option through `runtime_variant`
+- **Selects the packaged terminal runtime variant** with Ghostty by default, Yazelix Terminal as the experimental Rio-derived path, WezTerm and Kitty as stable alternates, and Ratty as an experimental Linux option through `runtime_variant`
 - **Can install additional bundled terminal emulators** through `extra_terminal_variants` without installing duplicate `yzx` wrappers
 - **Installs icons and, on Linux, a desktop entry** that target the managed runtime
 - **Keeps the config surface type-safe** with Home Manager validation
@@ -65,8 +65,8 @@ If you already have your own Home Manager flake, the minimal setup is:
 {
   programs.yazelix = {
     enable = true;
-    runtime_variant = "ghostty"; # Default; use "yzxterm", "wezterm", or Linux-only "ratty" for alternate packaged terminal paths
-    extra_terminal_variants = [ ]; # Optional: install additional terminal packages such as "yzxterm" or "ghostty"
+    runtime_variant = "ghostty"; # Default; use "kitty", "yzxterm", "wezterm", or Linux-only "ratty" for alternate packaged terminal paths
+    extra_terminal_variants = [ ]; # Optional: install additional terminal packages such as "yzxterm", "ghostty", or "kitty"
     # Customize other options as needed - see example.nix
     # Set manage_config = true if you want Home Manager to own settings.jsonc
   };
@@ -80,12 +80,13 @@ To keep Yazelix Terminal as the primary runtime while also installing Ghostty as
   programs.yazelix = {
     enable = true;
     runtime_variant = "yzxterm";
-    extra_terminal_variants = [ "ghostty" ];
+    extra_terminal_variants = [ "ghostty" "kitty" ];
 
     # Only needed when manage_config = true and you want an explicit order
     terminals = [
       "yzxterm"
       "ghostty"
+      "kitty"
       "wezterm"
     ];
   };

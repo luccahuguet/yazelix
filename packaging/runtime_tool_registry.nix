@@ -21,6 +21,8 @@ let
   terminalPackage =
     if runtimeVariant == "ghostty" then
       ghosttyPackage
+    else if runtimeVariant == "kitty" then
+      pkgs.kitty
     else if runtimeVariant == "wezterm" then
       pkgs.wezterm
     else if runtimeVariant == "ratty" then
@@ -38,6 +40,8 @@ let
   terminalCommands =
     if runtimeVariant == "ghostty" then
       [ "ghostty" ]
+    else if runtimeVariant == "kitty" then
+      [ "kitty" ]
     else if runtimeVariant == "wezterm" then
       [ "wezterm" ]
     else if runtimeVariant == "ratty" then

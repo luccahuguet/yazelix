@@ -20,8 +20,9 @@ Yazelix is built on a focused terminal-workspace stack. This catalog lists the p
 - `#yazelix_ghostty` — Explicit Ghostty runtime package, equivalent to the default packaged terminal variant
 - `#yzxterm` — Experimental Yazelix Terminal runtime package backed by the `yazelix-terminal` child repository
 - `#yazelix_wezterm` — Explicit WezTerm runtime package for users who prefer WezTerm terminal behavior
+- `#yazelix_kitty` — Explicit Kitty runtime package for users who prefer Kitty terminal behavior
 - `#yazelix_ratty` — Experimental Linux Ratty runtime package for users who want Ratty terminal behavior
-- `#runtime`, `#runtime_ghostty`, `#runtime_yzxterm`, `#runtime_wezterm`, `#runtime_ratty` — Runtime-only package outputs used by the wrapper packages and validation surfaces
+- `#runtime`, `#runtime_ghostty`, `#runtime_yzxterm`, `#runtime_wezterm`, `#runtime_kitty`, `#runtime_ratty` — Runtime-only package outputs used by the wrapper packages and validation surfaces
 - `#yazelix_kgp_yazi` and `#yazelix_kgp_zellij` — KGP-enabled Yazi and Zellij package outputs used by the Ghostty runtime and cache publication workflow
 - `#yazelix_agent_tools` and `#runtime_agent_tools` — Compatibility runtime variants for the default package shape with bundled agent usage helpers
 - `#yazelix_zellij_bar` — Standalone Zellij/zjstatus bar preset forwarded from `luccahuguet/yazelix-zellij-bar`, including `yazelix_zellij_bar_widget` and package-local `zjstatus.wasm`
@@ -30,7 +31,7 @@ Yazelix is built on a focused terminal-workspace stack. This catalog lists the p
 - `#yazelix_ghostty_cursors` — Compatibility package attribute for the same standalone cursor output
 - `#yzc` — Flake app for the standalone Yazelix cursor CLI
 - `#ghostty_cursor_shaders` — Compatibility package attribute for the same standalone cursor output
-- `homeManagerModules.yazelix` — The Home Manager module for declarative installs, with `runtime_variant = "ghostty"` by default, `"yzxterm"` and `"wezterm"` available explicitly, Linux-only `"ratty"` available experimentally, and `extra_terminal_variants` for installing additional bundled terminal emulators beside the primary runtime
+- `homeManagerModules.yazelix` — The Home Manager module for declarative installs, with `runtime_variant = "ghostty"` by default, `"yzxterm"`, `"wezterm"`, and `"kitty"` available explicitly, Linux-only `"ratty"` available experimentally, and `extra_terminal_variants` for installing additional bundled terminal emulators beside the primary runtime
 
 ## First-Party Child Repositories
 
@@ -63,7 +64,7 @@ Regular Yazelix users do not need to install or wire these repositories separate
 - [Yazelix Terminal](https://github.com/luccahuguet/yazelix-terminal) — Experimental packaged first-party runtime through `#yzxterm` and `runtime_variant = "yzxterm"`, with generated config, transparency mapping, and packaged Ghostty-style cursor shader behavior.
 - [WezTerm](https://wezfurlong.org/wezterm/) — Packaged alternate runtime through `#yazelix_wezterm` and `runtime_variant = "wezterm"`, useful for users who prefer WezTerm terminal behavior.
 - [Ratty](https://github.com/orhun/ratty) — Experimental Linux packaged runtime through `#yazelix_ratty` and `runtime_variant = "ratty"`, with generated Yazelix config and the Yazelix Zellij/Yazi Kitty graphics bridge. Yazelix does not claim Ratty Graphics Protocol passthrough inside Zellij.
-- [Kitty](https://sw.kovidgoyal.net/kitty/) — Supported PATH-provided terminal choice. Yazelix can generate Kitty config and launch Kitty when it is available on the host.
+- [Kitty](https://sw.kovidgoyal.net/kitty/) — Packaged alternate runtime through `#yazelix_kitty` and `runtime_variant = "kitty"`, with generated Yazelix config and the Yazelix Zellij/Yazi Kitty graphics bridge. Kitty can also remain a host `PATH` terminal choice.
 - [ghostty-cursor-shaders](https://github.com/sahaj-b/ghostty-cursor-shaders) — Upstream inspiration for the Yazelix-managed Ghostty-compatible cursor shader system. Yazelix vendors/adapts the shader direction through `settings.jsonc` cursor settings, generated config, and the standalone `#yazelix_cursors` package.
 
 ## Editors And Shells
