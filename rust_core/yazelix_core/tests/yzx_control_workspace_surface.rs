@@ -767,9 +767,9 @@ ya_command = "ya"
     );
 }
 
-// Regression: selecting a directory in Yazi must update the existing Helix cwd instead of sending the directory through helix.open_files.
+// Regression: selecting a directory in Yazi must open Helix's file picker at that directory instead of sending the directory through helix.open_files.
 #[test]
-fn yzx_control_zellij_open_editor_sets_helix_cwd_for_directory_target() {
+fn yzx_control_zellij_open_editor_opens_helix_picker_for_directory_target() {
     let fixture = managed_config_fixture(
         r#"[editor]
 command = "hx"
@@ -840,7 +840,7 @@ ya_command = "ya"
     );
 
     let bridge_request = read_json_file(helix_bridge_request_log);
-    assert_eq!(bridge_request["action"], "helix.set_cwd");
+    assert_eq!(bridge_request["action"], "helix.open_directory");
     assert_eq!(
         bridge_request["payload"]["working_dir"],
         target_dir.to_string_lossy().to_string()

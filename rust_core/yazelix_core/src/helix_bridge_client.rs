@@ -418,6 +418,14 @@ fn validate_action_payload(action: &str, payload: &Value) -> Result<(), CoreErro
             };
             require_absolute_payload_path("payload.working_dir", working_dir)?;
         }
+        "helix.open_directory" => {
+            let Some(working_dir) = payload.get("working_dir").and_then(Value::as_str) else {
+                return Err(invalid_payload(
+                    "helix.open_directory requires payload.working_dir",
+                ));
+            };
+            require_absolute_payload_path("payload.working_dir", working_dir)?;
+        }
         "helix.open_files" => {
             let Some(file_paths) = payload.get("file_paths").and_then(Value::as_array) else {
                 return Err(invalid_payload(
@@ -1234,6 +1242,18 @@ mod tests {
         let error = validate_action_payload(
             "helix.open_files",
             &json!({ "file_paths": ["relative.rs"] }),
+        )
+        .unwrap_err();
+        assert_eq!(error.code(), "invalid_helix_action_payload");
+        assert!(error.message().contains("absolute"));
+    }
+
+    // Defends: directory picker bridge actions fail before IPC when the target directory path is not absolute.
+    #[test]
+    fn validate_open_directory_requires_absolute_working_dir() {
+        let error = validate_action_payload(
+            "helix.open_directory",
+            &json!({ "working_dir": "relative-project" }),
         )
         .unwrap_err();
         assert_eq!(error.code(), "invalid_helix_action_payload");

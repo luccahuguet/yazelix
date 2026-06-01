@@ -105,7 +105,7 @@ native local IPC protocol described here.
 - Status: live
 - Owner: first Helix action slice
 - Statement: The first migrated action slice is `helix.open_files`,
-  `helix.set_cwd`, and `helix.get_context`
+  `helix.open_directory`, `helix.set_cwd`, and `helix.get_context`
 - Verification: automated behavior tests in the `yazelix-helix` bridge and
   `yzx_control helix` client
 
@@ -264,6 +264,19 @@ Payload:
 
 Helix owns buffer creation and path handling. Zellij may focus the pane, but it
 must not send `:open` text for this action once migrated.
+
+### `helix.open_directory`
+
+Set the addressed Helix instance cwd and open Helix's native file picker rooted
+at that directory.
+
+Payload:
+
+- `working_dir`: absolute directory path
+
+This is the directory-target counterpart to `helix.open_files`. Zellij still
+owns pane focus, workspace retargeting, and sidebar state; the bridge owns the
+editor-local cwd update and picker layer.
 
 ### `helix.set_cwd`
 

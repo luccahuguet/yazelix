@@ -553,11 +553,37 @@ fn open_files_in_helix_bridge_managed_editor(
 fn open_directory_in_helix_bridge_managed_editor(
     working_dir: &Path,
 ) -> Result<ManagedEditorOpenStatus, CoreError> {
-    let status = set_helix_bridge_managed_editor_cwd(working_dir)?;
-    if status == ManagedEditorOpenStatus::Ok {
-        focus_managed_editor_pane()?;
+    for retry_index in 0..=OPEN_FILE_ORCHESTRATOR_RETRY_DELAYS_MS.len() {
+        match active_managed_editor_pane_target() {
+            Ok(ManagedEditorPaneTarget::Ready(zellij_pane_id)) => {
+                focus_managed_editor_pane()?;
+                let payload = json!({
+                    "working_dir": working_dir.display().to_string(),
+                });
+                send_helix_bridge_action_to_target(
+                    HelixBridgeActionTarget {
+                        session_id: None,
+                        instance_id: None,
+                        zellij_pane_id: Some(zellij_pane_id),
+                    },
+                    "helix.open_directory",
+                    payload,
+                    5_000,
+                )?;
+                return Ok(ManagedEditorOpenStatus::Ok);
+            }
+            Ok(ManagedEditorPaneTarget::Missing) => return Ok(ManagedEditorOpenStatus::Missing),
+            Ok(ManagedEditorPaneTarget::NotReady) => {}
+            Err(error) if is_transient_orchestrator_pipe_error(&error) => {}
+            Err(error) => return Err(error),
+        }
+
+        if let Some(delay_ms) = OPEN_FILE_ORCHESTRATOR_RETRY_DELAYS_MS.get(retry_index) {
+            thread::sleep(Duration::from_millis(*delay_ms));
+        }
     }
-    Ok(status)
+
+    Ok(ManagedEditorOpenStatus::NotReady)
 }
 
 fn active_managed_editor_pane_target() -> Result<ManagedEditorPaneTarget, CoreError> {
