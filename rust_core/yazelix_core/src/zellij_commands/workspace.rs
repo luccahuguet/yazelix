@@ -1,11 +1,12 @@
 //! Workspace/editor/session Zellij commands for `yzx_control`.
 
-use super::status::nested_bool;
+use super::status::{decode_status_bus_snapshot, nested_bool, nested_str};
 use crate::bridge::{CoreError, ErrorClass};
 use crate::compute_runtime_env;
 use crate::control_plane::{
     home_dir_from_env, json_map_to_child_env, runtime_dir_from_env, runtime_env_request,
 };
+use crate::helix_bridge_client::{HelixBridgeActionTarget, send_helix_bridge_action_to_target};
 use crate::pane_orchestrator_client::run_pane_orchestrator_command;
 use crate::session_facts::compute_session_facts_from_env;
 use crate::workspace_commands::{compute_integration_facts_from_env, sync_sidebar_to_directory};
@@ -55,6 +56,13 @@ struct ZellijOpenEditorCwdArgs {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ManagedEditorOpenStatus {
     Ok,
+    Missing,
+    NotReady,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ManagedEditorPaneTarget {
+    Ready(String),
     Missing,
     NotReady,
 }
@@ -476,6 +484,10 @@ fn open_files_in_managed_editor(
     file_paths: &[PathBuf],
     working_dir: &Path,
 ) -> Result<ManagedEditorOpenStatus, CoreError> {
+    if editor_kind == "helix" {
+        return open_files_in_helix_bridge_managed_editor(file_paths, working_dir);
+    }
+
     let payload = managed_editor_open_payload(editor_kind, file_paths, working_dir);
 
     for retry_index in 0..=OPEN_FILE_ORCHESTRATOR_RETRY_DELAYS_MS.len() {
@@ -494,6 +506,95 @@ fn open_files_in_managed_editor(
     }
 
     Ok(ManagedEditorOpenStatus::NotReady)
+}
+
+fn open_files_in_helix_bridge_managed_editor(
+    file_paths: &[PathBuf],
+    working_dir: &Path,
+) -> Result<ManagedEditorOpenStatus, CoreError> {
+    for retry_index in 0..=OPEN_FILE_ORCHESTRATOR_RETRY_DELAYS_MS.len() {
+        match active_managed_editor_pane_target() {
+            Ok(ManagedEditorPaneTarget::Ready(zellij_pane_id)) => {
+                focus_managed_editor_pane()?;
+                let payload = json!({
+                    "working_dir": working_dir.display().to_string(),
+                    "file_paths": file_paths
+                        .iter()
+                        .map(|path| path.display().to_string())
+                        .collect::<Vec<_>>(),
+                    "focus": true,
+                });
+                send_helix_bridge_action_to_target(
+                    HelixBridgeActionTarget {
+                        session_id: None,
+                        instance_id: None,
+                        zellij_pane_id: Some(zellij_pane_id),
+                    },
+                    "helix.open_files",
+                    payload,
+                    5_000,
+                )?;
+                return Ok(ManagedEditorOpenStatus::Ok);
+            }
+            Ok(ManagedEditorPaneTarget::Missing) => return Ok(ManagedEditorOpenStatus::Missing),
+            Ok(ManagedEditorPaneTarget::NotReady) => {}
+            Err(error) if is_transient_orchestrator_pipe_error(&error) => {}
+            Err(error) => return Err(error),
+        }
+
+        if let Some(delay_ms) = OPEN_FILE_ORCHESTRATOR_RETRY_DELAYS_MS.get(retry_index) {
+            thread::sleep(Duration::from_millis(*delay_ms));
+        }
+    }
+
+    Ok(ManagedEditorOpenStatus::NotReady)
+}
+
+fn active_managed_editor_pane_target() -> Result<ManagedEditorPaneTarget, CoreError> {
+    let response = run_pane_orchestrator_command("get_active_tab_session_state", "")?;
+    match response.trim() {
+        "not_ready" => return Ok(ManagedEditorPaneTarget::NotReady),
+        "missing" => return Ok(ManagedEditorPaneTarget::Missing),
+        "permissions_denied" => {
+            return Err(CoreError::classified(
+                ErrorClass::Runtime,
+                "managed_editor_state_permissions_denied",
+                "Pane orchestrator permissions are not granted for managed editor state.",
+                "Run `yzx doctor --fix`, restart Yazelix, and retry.",
+                json!({}),
+            ));
+        }
+        _ => {}
+    }
+
+    let state = decode_status_bus_snapshot(&response)?;
+    Ok(
+        match nested_str(&state, &["managed_panes", "editor_pane_id"]) {
+            Some(pane_id) => ManagedEditorPaneTarget::Ready(pane_id.to_string()),
+            None => ManagedEditorPaneTarget::Missing,
+        },
+    )
+}
+
+fn focus_managed_editor_pane() -> Result<(), CoreError> {
+    let response = run_pane_orchestrator_command("focus_editor", "")?;
+    match response.trim() {
+        "ok" | "focused" => Ok(()),
+        "missing" => Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "managed_editor_focus_missing",
+            "The managed editor pane disappeared before Yazelix could focus it.",
+            "Retry after the Yazelix layout settles.",
+            json!({ "response": response }),
+        )),
+        other => Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "managed_editor_focus_failed",
+            format!("Could not focus the managed editor pane: {other}"),
+            "Ensure the pane orchestrator plugin is loaded, then retry.",
+            json!({ "response": response }),
+        )),
+    }
 }
 
 fn parse_managed_editor_open_response(

@@ -33,6 +33,13 @@ struct HelixActionArgs {
     timeout_ms: u64,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct HelixBridgeActionTarget {
+    pub session_id: Option<String>,
+    pub instance_id: Option<String>,
+    pub zellij_pane_id: Option<String>,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 struct HelixBridgeRegistry {
     schema_version: u64,
@@ -111,6 +118,37 @@ pub fn run_yzx_helix(args: &[String]) -> Result<i32, CoreError> {
 
 pub fn internal_helix_control_subcommands_usage() -> &'static str {
     "action|status"
+}
+
+pub fn send_helix_bridge_action_to_target(
+    target: HelixBridgeActionTarget,
+    action: &str,
+    payload: Value,
+    timeout_ms: u64,
+) -> Result<Value, CoreError> {
+    validate_target_args(&HelixTargetArgs {
+        session_id: target.session_id.clone(),
+        instance_id: target.instance_id.clone(),
+        zellij_pane_id: target.zellij_pane_id.clone(),
+        json: false,
+    })?;
+    validate_action_payload(action, &payload)?;
+
+    let state_dir = state_dir_from_env()?;
+    let session_id = resolve_session_id(target.session_id.as_deref())?;
+    let target = resolve_bridge_target(
+        &state_dir,
+        &BridgeTargetSelector {
+            session_id,
+            instance_id: target.instance_id,
+            zellij_pane_id: target.zellij_pane_id,
+        },
+    )?;
+    let response = send_bridge_action(&target, action, &payload, timeout_ms)?;
+    if response.status == "error" {
+        return Err(bridge_response_error_to_core(action, response));
+    }
+    Ok(response.data.unwrap_or_else(|| json!({})))
 }
 
 fn run_helix_action(args: &[String]) -> Result<i32, CoreError> {

@@ -1,13 +1,21 @@
 // Test lane: default
 
 use serde_json::{Value, json};
-use std::{fs, path::Path, process::Output};
+use std::{
+    fs,
+    io::{BufRead, BufReader, Write},
+    os::unix::net::UnixListener,
+    path::Path,
+    process::Output,
+    thread,
+};
 
 mod support;
 
 use support::commands::{apply_managed_config_env, yzx_control_command};
 use support::fixtures::{
     managed_config_fixture, prepend_path, write_executable_script, write_session_config_snapshot,
+    write_session_config_snapshot_with_id,
 };
 
 fn yzx_control_command_in_fixture(
@@ -19,7 +27,13 @@ fn yzx_control_command_in_fixture(
 }
 
 fn assert_success(output: &Output) {
-    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "stdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
     assert!(output.stderr.is_empty());
 }
 
@@ -38,6 +52,60 @@ fn file_lines(path: impl AsRef<Path>) -> Vec<String> {
 
 fn read_json_file(path: impl AsRef<Path>) -> Value {
     serde_json::from_slice(&fs::read(path).unwrap()).unwrap()
+}
+
+fn write_helix_bridge_registry(
+    state_dir: &Path,
+    session_id: &str,
+    instance_id: &str,
+    zellij_pane_id: &str,
+    socket_path: &Path,
+    token_path: &Path,
+) {
+    let registry_dir = state_dir.join("helix_bridge").join(session_id);
+    fs::create_dir_all(&registry_dir).unwrap();
+    fs::write(token_path, "secret").unwrap();
+    fs::write(
+        registry_dir.join(format!("{instance_id}.json")),
+        serde_json::to_string_pretty(&json!({
+            "schema_version": 1,
+            "session_id": session_id,
+            "instance_id": instance_id,
+            "socket_path": socket_path.to_string_lossy(),
+            "auth_token_path": token_path.to_string_lossy(),
+            "pid": std::process::id(),
+            "zellij_session_name": null,
+            "zellij_tab_position": null,
+            "zellij_pane_id": zellij_pane_id,
+            "started_at_unix_ms": 1,
+            "managed_config_path": "/tmp/yazelix/helix/config.toml"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+}
+
+fn spawn_helix_bridge_request_logger(
+    socket_path: &Path,
+    request_log: &Path,
+) -> thread::JoinHandle<()> {
+    let listener = UnixListener::bind(socket_path).unwrap();
+    let request_log = request_log.to_path_buf();
+    thread::spawn(move || {
+        let (mut stream, _) = listener.accept().unwrap();
+        let mut line = String::new();
+        let mut reader = BufReader::new(stream.try_clone().unwrap());
+        reader.read_line(&mut line).unwrap();
+        fs::write(&request_log, &line).unwrap();
+        let request: Value = serde_json::from_str(&line).unwrap();
+        let response = json!({
+            "schema_version": 1,
+            "request_id": request["request_id"],
+            "status": "ok",
+            "data": {"opened": request["payload"]["file_paths"]}
+        });
+        writeln!(stream, "{response}").unwrap();
+    })
 }
 
 fn write_arg_log_script(bin_dir: &Path, command_name: &str, log_path: &Path) {
@@ -538,7 +606,7 @@ ya_command = "ya"
     write_executable_script(
         &fake_bin.join("zellij"),
         &format!(
-            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    open_file)\n      count_file=\"{}\"\n      count=0\n      if [ -f \"$count_file\" ]; then\n        count=$(cat \"$count_file\")\n      fi\n      count=$((count + 1))\n      printf '%s\\n' \"$count\" > \"$count_file\"\n      case \"$count\" in\n        1)\n          printf '%s\\n' 'Timed out waiting for response from plugin' >&2\n          exit 1\n          ;;\n        2)\n          printf '%s\\n' 'not_ready'\n          exit 0\n          ;;\n        *)\n          printf '%s\\n' 'missing'\n          exit 0\n          ;;\n      esac\n      ;;\n    retarget_workspace)\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"skipped\"}}'\n      exit 0\n      ;;\n  esac\nfi\nif [ \"$1\" = \"run\" ]; then\n  printf '%s\\n' 'run_editor' >> \"{}\"\n  exit 0\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
+            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    get_active_tab_session_state)\n      count_file=\"{}\"\n      count=0\n      if [ -f \"$count_file\" ]; then\n        count=$(cat \"$count_file\")\n      fi\n      count=$((count + 1))\n      printf '%s\\n' \"$count\" > \"$count_file\"\n      case \"$count\" in\n        1)\n          printf '%s\\n' 'Timed out waiting for response from plugin' >&2\n          exit 1\n          ;;\n        2)\n          printf '%s\\n' 'not_ready'\n          exit 0\n          ;;\n        *)\n          printf '%s\\n' '{{\"schema_version\":1,\"managed_panes\":{{\"editor_pane_id\":null,\"sidebar_pane_id\":null}},\"layout\":{{\"sidebar_collapsed\":false}}}}'\n          exit 0\n          ;;\n      esac\n      ;;\n    retarget_workspace)\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"skipped\"}}'\n      exit 0\n      ;;\n  esac\nfi\nif [ \"$1\" = \"run\" ]; then\n  printf '%s\\n' 'run_editor' >> \"{}\"\n  exit 0\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
             zellij_commands_log.display(),
             open_file_attempts_log.display(),
             zellij_commands_log.display(),
@@ -563,9 +631,9 @@ ya_command = "ya"
     assert_eq!(
         file_lines(zellij_commands_log),
         vec![
-            "open_file",
-            "open_file",
-            "open_file",
+            "get_active_tab_session_state",
+            "get_active_tab_session_state",
+            "get_active_tab_session_state",
             "run_editor",
             "retarget_workspace",
         ]
@@ -589,12 +657,31 @@ ya_command = "ya"
     let nested_dir = repo_dir.join("crates").join("app").join("src");
     let target_file = nested_dir.join("main.rs");
     let zellij_commands_log = fixture.home_dir.join("zellij-commands.log");
-    let open_file_payload_log = fixture.home_dir.join("open-file-payload.json");
+    let helix_bridge_request_log = fixture.home_dir.join("helix-bridge-request.json");
     let retarget_payload_log = fixture.home_dir.join("retarget-payload.json");
     let ya_log = fixture.home_dir.join("ya.log");
+    let session_id = "open-editor-bridge-session";
+    let snapshot = write_session_config_snapshot_with_id(
+        &fixture,
+        session_id,
+        &[("editor_command", json!("hx"))],
+    );
+    let bridge_dir = fixture.state_dir.join("helix_bridge").join(session_id);
+    let socket_path = bridge_dir.join("inst-1.sock");
+    let token_path = bridge_dir.join("inst-1.token");
     fs::create_dir_all(&fake_bin).unwrap();
     fs::create_dir_all(&nested_dir).unwrap();
     fs::write(&target_file, "").unwrap();
+    fs::create_dir_all(&bridge_dir).unwrap();
+    let bridge = spawn_helix_bridge_request_logger(&socket_path, &helix_bridge_request_log);
+    write_helix_bridge_registry(
+        &fixture.state_dir,
+        session_id,
+        "inst-1",
+        "terminal:7",
+        &socket_path,
+        &token_path,
+    );
 
     write_executable_script(
         &fake_bin.join("git"),
@@ -606,9 +693,8 @@ ya_command = "ya"
     write_executable_script(
         &fake_bin.join("zellij"),
         &format!(
-            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    open_file)\n      printf '%s' \"$8\" > \"{}\"\n      printf '%s\\n' 'ok'\n      exit 0\n      ;;\n    retarget_workspace)\n      printf '%s' \"$8\" > \"{}\"\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"skipped\",\"sidebar_yazi_id\":\"plugin-sidebar-yazi-123\",\"sidebar_yazi_cwd\":\"/home/sidebar\"}}'\n      exit 0\n      ;;\n  esac\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
+            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    get_active_tab_session_state)\n      printf '%s\\n' '{{\"schema_version\":1,\"managed_panes\":{{\"editor_pane_id\":\"terminal:7\",\"sidebar_pane_id\":\"terminal:8\"}},\"layout\":{{\"sidebar_collapsed\":false}},\"sidebar_yazi\":{{\"yazi_id\":\"plugin-sidebar-yazi-123\",\"cwd\":\"/home/sidebar\"}}}}'\n      exit 0\n      ;;\n    focus_editor)\n      printf '%s\\n' 'ok'\n      exit 0\n      ;;\n    retarget_workspace)\n      printf '%s' \"$8\" > \"{}\"\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"skipped\",\"sidebar_yazi_id\":\"plugin-sidebar-yazi-123\",\"sidebar_yazi_cwd\":\"/home/sidebar\"}}'\n      exit 0\n      ;;\n  esac\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
             zellij_commands_log.display(),
-            open_file_payload_log.display(),
             retarget_payload_log.display()
         ),
     );
@@ -618,6 +704,7 @@ ya_command = "ya"
         .env("PATH", prepend_path(&fake_bin))
         .env("ZELLIJ", "1")
         .env("YAZI_ID", "current-yazi")
+        .env("YAZELIX_SESSION_CONFIG_PATH", snapshot)
         .arg("zellij")
         .arg("open-editor")
         .arg(&target_file)
@@ -625,16 +712,25 @@ ya_command = "ya"
         .unwrap();
 
     assert_silent_success(&output);
+    bridge.join().unwrap();
     assert_eq!(
         file_lines(zellij_commands_log),
-        vec!["open_file", "retarget_workspace"]
+        vec![
+            "get_active_tab_session_state",
+            "focus_editor",
+            "retarget_workspace"
+        ]
     );
 
-    let open_file_payload = read_json_file(open_file_payload_log);
-    assert_eq!(open_file_payload["editor"], "helix");
+    let bridge_request = read_json_file(helix_bridge_request_log);
+    assert_eq!(bridge_request["action"], "helix.open_files");
     assert_eq!(
-        open_file_payload["working_dir"],
+        bridge_request["payload"]["working_dir"],
         repo_dir.to_string_lossy().to_string()
+    );
+    assert_eq!(
+        bridge_request["payload"]["file_paths"],
+        json!([target_file.to_string_lossy().to_string()])
     );
 
     let retarget_payload = read_json_file(retarget_payload_log);
@@ -676,7 +772,6 @@ ghostty_trail_color = "random"
     let target_file = target_dir.join("notes.txt");
     let second_target_file = target_dir.join("tasks.txt");
     let zellij_commands_log = fixture.home_dir.join("zellij-commands.log");
-    let open_file_payload_log = fixture.home_dir.join("open-file-payload.json");
     let retarget_payload_log = fixture.home_dir.join("retarget-payload.json");
     let zellij_run_log = fixture.home_dir.join("zellij-run.log");
     let ya_log = fixture.home_dir.join("ya.log");
@@ -688,9 +783,8 @@ ghostty_trail_color = "random"
     write_executable_script(
         &fake_bin.join("zellij"),
         &format!(
-            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    open_file)\n      printf '%s' \"$8\" > \"{}\"\n      printf '%s\\n' 'missing'\n      exit 0\n      ;;\n    retarget_workspace)\n      printf '%s' \"$8\" > \"{}\"\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"skipped\",\"sidebar_yazi_id\":\"plugin-sidebar-yazi-123\",\"sidebar_yazi_cwd\":\"/home/sidebar\"}}'\n      exit 0\n      ;;\n  esac\nfi\nif [ \"$1\" = \"run\" ]; then\n  printf '%s\\n' \"$*\" >> \"{}\"\n  exit 0\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
+            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    get_active_tab_session_state)\n      printf '%s\\n' '{{\"schema_version\":1,\"managed_panes\":{{\"editor_pane_id\":null,\"sidebar_pane_id\":\"terminal:8\"}},\"layout\":{{\"sidebar_collapsed\":false}},\"sidebar_yazi\":{{\"yazi_id\":\"plugin-sidebar-yazi-123\",\"cwd\":\"/home/sidebar\"}}}}'\n      exit 0\n      ;;\n    retarget_workspace)\n      printf '%s' \"$8\" > \"{}\"\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"skipped\",\"sidebar_yazi_id\":\"plugin-sidebar-yazi-123\",\"sidebar_yazi_cwd\":\"/home/sidebar\"}}'\n      exit 0\n      ;;\n  esac\nfi\nif [ \"$1\" = \"run\" ]; then\n  printf '%s\\n' \"$*\" >> \"{}\"\n  exit 0\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
             zellij_commands_log.display(),
-            open_file_payload_log.display(),
             retarget_payload_log.display(),
             zellij_run_log.display()
         ),
@@ -712,17 +806,7 @@ ghostty_trail_color = "random"
     assert_silent_success(&output);
     assert_eq!(
         file_lines(zellij_commands_log),
-        vec!["open_file", "retarget_workspace"]
-    );
-
-    let open_file_payload = read_json_file(open_file_payload_log);
-    assert_eq!(open_file_payload["editor"], "helix");
-    assert_eq!(
-        open_file_payload["file_paths"],
-        serde_json::json!([
-            target_file.to_string_lossy().to_string(),
-            second_target_file.to_string_lossy().to_string()
-        ])
+        vec!["get_active_tab_session_state", "retarget_workspace"]
     );
 
     let run_log = fs::read_to_string(zellij_run_log).unwrap();
