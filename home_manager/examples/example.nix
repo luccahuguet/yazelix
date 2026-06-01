@@ -11,7 +11,7 @@
   programs.yazelix = {
     enable = true;
     manage_config = true; # Opt into declarative Home Manager ownership of settings.jsonc for this example
-    runtime_variant = "ghostty"; # Optional: "ghostty", "wezterm", or Linux-only "ratty"
+    runtime_variant = "ghostty"; # Optional: "ghostty", "yzxterm", "wezterm", or Linux-only "ratty"
 
     # Shell entry
     default_shell = "zsh";
@@ -19,6 +19,7 @@
     # Terminal preference
     terminals = [
       "ghostty"
+      "yzxterm"
       "wezterm"
     ];
     terminal_config_mode = "yazelix"; # Optional: "yazelix" or "user"

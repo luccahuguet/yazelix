@@ -59,7 +59,7 @@ Launch Yazelix with directory and mode options
 - `--home`: Start in home directory
 - `--config FILE`: Use an alternate complete `settings.jsonc` for this window
 - `--with KEY=VALUE`: Apply a repeatable session-only settings override, such as `--with editor.command=nvim`
-- `--terminal TERM`: Override terminal selection (e.g., ghostty, wezterm, ratty, kitty)
+- `--terminal TERM`: Override terminal selection (e.g., ghostty, yzxterm, wezterm, ratty, kitty)
 - `--verbose`: Print detailed launch diagnostics
 
 ### `yzx enter [--path DIR] [--home] [--config FILE] [--with KEY=VALUE] [--verbose]`
@@ -318,6 +318,7 @@ yzx enter                     # Start in current terminal
 yzx launch --home             # New terminal in home directory
 yzx enter --path ~/project    # Current terminal, specific directory
 yzx launch --terminal wezterm # Force WezTerm for this launch
+yzx launch --terminal yzxterm # Force Yazelix Terminal for this launch
 yzx launch --verbose          # Detailed launch diagnostics
 yzx launch --config ./minimal.jsonc # Use an alternate complete settings file
 yzx launch --with editor.command=nvim # Override one setting for this window

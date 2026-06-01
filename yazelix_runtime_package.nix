@@ -10,6 +10,7 @@
   extraRuntimePackages ? [ ],
   screenAssets,
   yaziAssets ? null,
+  yazelixTerminalPackage ? null,
   zellijPluginArtifacts ? { },
   enableZellijKittyPassthrough ? false,
 }:
@@ -41,6 +42,7 @@ import ./packaging/mk_runtime_tree.nix {
     extraRuntimePackages
     screenAssets
     yaziAssets
+    yazelixTerminalPackage
     zellijPluginArtifacts
     enableZellijKittyPassthrough
     ;

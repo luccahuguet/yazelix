@@ -228,6 +228,24 @@ pub(super) fn run_launch_flow(
                 ),
             ),
         ];
+        if candidate.terminal == "yzxterm" {
+            let config_dir = config_path.parent().ok_or_else(|| {
+                CoreError::classified(
+                    ErrorClass::Runtime,
+                    "invalid_yzxterm_config_path",
+                    format!(
+                        "Generated Yazelix Terminal config path has no parent directory: {}.",
+                        config_path.display()
+                    ),
+                    "Regenerate Yazelix runtime state with `yzx refresh`, then retry.",
+                    serde_json::json!({}),
+                )
+            })?;
+            extra_env.push((
+                "YAZELIX_TERMINAL_CONFIG".to_string(),
+                Some(config_dir.to_string_lossy().into_owned()),
+            ));
+        }
         if let Ok(value) = std::env::var("YAZELIX_SWEEP_TEST_ID") {
             if !value.trim().is_empty() {
                 extra_env.push(("YAZELIX_SWEEP_TEST_ID".to_string(), Some(value)));

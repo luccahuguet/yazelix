@@ -399,17 +399,62 @@ mod tests {
         let mut config = JsonMap::new();
         config.insert(
             "terminals".into(),
-            serde_json::json!(["ghostty", "", "warp", "ratty", "ghostty", "kitty"]),
+            serde_json::json!([
+                "ghostty", "", "warp", "yzxterm", "ratty", "ghostty", "kitty"
+            ]),
         );
 
         assert_eq!(
             normalized_configured_terminals(&config),
             vec![
                 "ghostty".to_string(),
+                "yzxterm".to_string(),
                 "ratty".to_string(),
                 "kitty".to_string()
             ]
         );
+    }
+
+    // Defends: Yazelix Terminal launch is child-wrapper owned, while Yazelix still supplies cwd, title, host mode, and the startup command.
+    #[test]
+    fn yzxterm_launch_command_uses_child_wrapper_without_outer_graphics_wrapper() {
+        let runtime = TempDir::new().unwrap();
+        let startup = runtime
+            .path()
+            .join("shells")
+            .join("posix")
+            .join("start_yazelix.sh");
+        let libexec = runtime.path().join("libexec");
+        fs::create_dir_all(startup.parent().unwrap()).unwrap();
+        fs::create_dir_all(&libexec).unwrap();
+        fs::write(&startup, "#!/bin/sh\n").unwrap();
+        fs::write(libexec.join("nixVulkanMesa"), "#!/bin/sh\n").unwrap();
+        let config_path = runtime.path().join("config.toml");
+
+        let argv = build_launch_command_argv(
+            runtime.path(),
+            &crate::runtime_contract::TerminalCandidate {
+                terminal: "yzxterm".to_string(),
+                name: "Yazelix Terminal".to_string(),
+                command: "yazelix-terminal-desktop".to_string(),
+            },
+            &config_path,
+            Path::new("/tmp/project"),
+        )
+        .unwrap();
+
+        assert_eq!(argv[0], "yazelix-terminal-desktop");
+        assert_eq!(argv[1], "--title-placeholder");
+        assert_eq!(argv[2], "Yazelix - Yazelix Terminal");
+        assert!(argv.iter().any(|arg| arg == "--yazelix"));
+        assert_eq!(
+            argv.windows(2)
+                .find(|pair| pair[0] == "--working-dir")
+                .map(|pair| pair[1].as_str()),
+            Some("/tmp/project")
+        );
+        assert_eq!(argv[argv.len() - 2], "-e");
+        assert_eq!(argv[argv.len() - 1], startup.to_string_lossy().as_ref());
     }
 
     // Defends: Ratty's clap command parser requires -e/--command to be the last option before the startup script.

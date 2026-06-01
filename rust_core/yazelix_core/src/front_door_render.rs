@@ -451,7 +451,10 @@ fn kitty_graphics_supported() -> bool {
             .unwrap_or(false)
         || std::env::var("TERM_PROGRAM")
             .map(|value| {
-                value.eq_ignore_ascii_case("ghostty") || value.eq_ignore_ascii_case("ratty")
+                value.eq_ignore_ascii_case("ghostty")
+                    || value.eq_ignore_ascii_case("ratty")
+                    || value.eq_ignore_ascii_case("yazelix-terminal")
+                    || value.eq_ignore_ascii_case("yzxterm")
             })
             .unwrap_or(false)
 }
@@ -465,7 +468,7 @@ fn require_kitty_graphics_for_magician() -> Result<(), CoreError> {
         ErrorClass::Runtime,
         "magician_requires_kitty_graphics",
         "The magician style requires Kitty graphics protocol support.",
-        "Run Yazelix in the packaged Ghostty/Ratty runtime with Zellij Kitty passthrough, or choose a non-image welcome style.",
+        "Run Yazelix in the packaged Ghostty/Yazelix Terminal/Ratty runtime with Zellij Kitty passthrough, or choose a non-image welcome style.",
         serde_json::json!({}),
     ))
 }

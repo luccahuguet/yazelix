@@ -11,13 +11,14 @@
   extraRuntimeCommands ? [ "tu" ],
   screenAssets,
   yaziAssets ? null,
+  yazelixTerminalPackage ? null,
   zellijPluginArtifacts ? { },
   enableZellijKittyPassthrough ? false,
 }:
 
 let
   runtimeToolRegistry = import ./runtime_tool_registry.nix {
-    inherit pkgs nixgl runtimeVariant runtimeToolSources;
+    inherit pkgs nixgl runtimeVariant runtimeToolSources yazelixTerminalPackage;
   };
   runtimeComponentRegistry = import ./runtime_component_registry.nix {
     lib = pkgs.lib;
@@ -34,6 +35,8 @@ let
       "      \"wezterm\",\n      \"ghostty\""
     else if runtimeVariant == "ratty" then
       "      \"ratty\",\n      \"ghostty\",\n      \"wezterm\""
+    else if runtimeVariant == "yzxterm" then
+      "      \"yzxterm\",\n      \"ghostty\",\n      \"wezterm\""
     else
       "      \"ghostty\",\n      \"wezterm\"";
   runtimeSettingsDefault = pkgs.writeText "settings_default.jsonc" (
@@ -124,6 +127,11 @@ pkgs.runCommand name { } ''
   ${pkgs.lib.optionalString enableZellijKittyPassthrough ''
     mkdir -p "$out/runtime_features"
     touch "$out/runtime_features/zellij_kitty_passthrough"
+  ''}
+  ${pkgs.lib.optionalString (runtimeVariant == "yzxterm" && yazelixTerminalPackage != null) ''
+    mkdir -p "$out/share"
+    ln -sfn "${yazelixTerminalPackage}/share/yazelix-terminal" \
+      "$out/share/yazelix-terminal"
   ''}
 
   mkdir -p "$out/libexec"

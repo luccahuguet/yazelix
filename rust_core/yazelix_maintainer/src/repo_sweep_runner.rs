@@ -365,14 +365,7 @@ fn build_sweep_config(
     test_id: &str,
 ) -> String {
     let mut terminals = Vec::new();
-    for candidate in [
-        terminal,
-        "ghostty",
-        "yazelix_terminal",
-        "wezterm",
-        "ratty",
-        "kitty",
-    ] {
+    for candidate in [terminal, "ghostty", "yzxterm", "wezterm", "ratty", "kitty"] {
         if !terminals.contains(&candidate) {
             terminals.push(candidate);
         }
@@ -591,9 +584,11 @@ mod tests {
         );
 
         assert!(rendered.contains("default_shell = \"zsh\""));
-        assert!(rendered.contains(
-            "terminals = [\"kitty\", \"ghostty\", \"yazelix_terminal\", \"wezterm\", \"ratty\"]"
-        ));
+        assert!(
+            rendered.contains(
+                "terminals = [\"kitty\", \"ghostty\", \"yzxterm\", \"wezterm\", \"ratty\"]"
+            )
+        );
         assert!(rendered.contains("hide_sidebar_on_file_open = true"));
         assert!(rendered.contains("persistent_sessions = true"));
     }

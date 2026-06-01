@@ -67,8 +67,8 @@ pub(super) fn run_restart(args: &[String]) -> Result<i32, CoreError> {
             )
         })?)?;
 
-    let is_yazelix_terminal = std::env::var_os("YAZELIX_TERMINAL").is_some();
-    if is_yazelix_terminal {
+    let is_yzxterm = std::env::var_os("YAZELIX_TERMINAL").is_some();
+    if is_yzxterm {
         println!("🔄 Restarting Yazelix...");
     } else {
         println!("🔄 Restarting Yazelix (opening new window)...");

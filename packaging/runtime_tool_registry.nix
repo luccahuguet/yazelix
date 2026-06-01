@@ -3,6 +3,7 @@
   nixgl ? null,
   runtimeVariant ? "ghostty",
   runtimeToolSources ? { },
+  yazelixTerminalPackage ? null,
 }:
 
 let
@@ -27,6 +28,11 @@ let
         pkgs.ratty
       else
         throw "Yazelix runtimeVariant ratty is only supported on Linux"
+    else if runtimeVariant == "yzxterm" then
+      if yazelixTerminalPackage != null then
+        yazelixTerminalPackage
+      else
+        throw "Yazelix runtimeVariant yzxterm requires the yazelix-terminal child package"
     else
       throw "Unsupported Yazelix runtimeVariant: ${runtimeVariant}";
   terminalCommands =
@@ -36,6 +42,8 @@ let
       [ "wezterm" ]
     else if runtimeVariant == "ratty" then
       [ "ratty" ]
+    else if runtimeVariant == "yzxterm" then
+      [ "yazelix-terminal-desktop" ]
     else
       [ ];
   linuxGraphicsWrappers =
@@ -53,7 +61,7 @@ let
     else
       null;
   linuxVulkanWrapperPackage =
-    if linuxGraphicsWrappers != null && runtimeVariant == "ratty" then
+    if linuxGraphicsWrappers != null && builtins.elem runtimeVariant [ "ratty" "yzxterm" ] then
       linuxGraphicsWrappers.nixVulkanMesa
     else
       null;

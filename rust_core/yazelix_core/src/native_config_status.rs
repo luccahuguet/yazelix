@@ -557,7 +557,7 @@ pub fn generated_terminal_config_path(state_dir: &Path, terminal: &str) -> PathB
     match terminal {
         "ghostty" => root.join("ghostty").join("config"),
         "wezterm" => root.join("wezterm").join(".wezterm.lua"),
-        "yazelix_terminal" => root.join("yazelix_terminal").join("config.toml"),
+        "yzxterm" => root.join("yzxterm").join("config.toml"),
         "ratty" => root.join("ratty").join("ratty.toml"),
         "kitty" => root.join("kitty").join("kitty.conf"),
         other => root.join(other),
@@ -592,7 +592,7 @@ pub fn user_terminal_config_candidates(
             home_dir.join(".wezterm.lua"),
             xdg_config_home.join("wezterm").join("wezterm.lua"),
         ]),
-        "yazelix_terminal" => Ok(vec![
+        "yzxterm" => Ok(vec![
             xdg_config_home.join("yazelix-terminal").join("config.toml"),
         ]),
         "ratty" => Ok(vec![xdg_config_home.join("ratty").join("ratty.toml")]),
@@ -673,14 +673,14 @@ mod tests {
 
     // Defends: Yazelix Terminal's native user-mode lookup points at its child-owned config directory.
     #[test]
-    fn yazelix_terminal_user_mode_uses_child_native_config_path() {
+    fn yzxterm_user_mode_uses_child_native_config_path() {
         let tmp = TempDir::new().unwrap();
         let mut req = request(&tmp);
         req.terminal_config_mode = "user".to_string();
-        req.selected_terminals = vec!["yazelix_terminal".to_string()];
+        req.selected_terminals = vec!["yzxterm".to_string()];
 
         let entries = classify_native_config_statuses(&req);
-        let terminal = find(&entries, "terminal.yazelix_terminal.input");
+        let terminal = find(&entries, "terminal.yzxterm.input");
 
         assert_eq!(terminal.status, "native_required_missing");
         assert!(

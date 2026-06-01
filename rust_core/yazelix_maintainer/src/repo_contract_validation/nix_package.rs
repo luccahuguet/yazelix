@@ -315,7 +315,12 @@ fn verify_profile_installed_runtime(
     let runtime_terminal = match runtime_variant.as_str() {
         "wezterm" => "wezterm",
         "ratty" => "ratty",
+        "yzxterm" => "yzxterm",
         _ => "ghostty",
+    };
+    let runtime_terminal_command = match runtime_terminal {
+        "yzxterm" => "yazelix-terminal-desktop",
+        other => other,
     };
     let runtime_yzx_cli = runtime_root.join("shells").join("posix").join("yzx_cli.sh");
     let runtime_yzx_core = runtime_libexec.join("yzx_core");
@@ -348,6 +353,22 @@ fn verify_profile_installed_runtime(
         .join("terminal_emulators")
         .join("wezterm")
         .join(".wezterm.lua");
+    let generated_yzxterm_config = temp_home
+        .join(".local")
+        .join("share")
+        .join("yazelix")
+        .join("configs")
+        .join("terminal_emulators")
+        .join("yzxterm")
+        .join("config.toml");
+    let generated_ratty_config = temp_home
+        .join(".local")
+        .join("share")
+        .join("yazelix")
+        .join("configs")
+        .join("terminal_emulators")
+        .join("ratty")
+        .join("ratty.toml");
 
     for (path, label) in [
         (runtime_toolbin.clone(), "runtime toolbin"),
@@ -389,10 +410,20 @@ fn verify_profile_installed_runtime(
     ] {
         require_path_exists_abs(&path, label, errors);
     }
+    if runtime_terminal == "yzxterm" {
+        require_path_exists_abs(
+            &runtime_root
+                .join("share")
+                .join("yazelix-terminal")
+                .join("config.toml"),
+            "runtime-local Yazelix Terminal packaged config",
+            errors,
+        );
+    }
 
     for expected_tool in [
         "zellij",
-        runtime_terminal,
+        runtime_terminal_command,
         "yazi",
         "hx",
         "steel",
@@ -442,7 +473,7 @@ fn verify_profile_installed_runtime(
             "runtime tool `nixGLMesa`",
             errors,
         );
-        if runtime_terminal == "ratty"
+        if (runtime_terminal == "ratty" || runtime_terminal == "yzxterm")
             && !runtime_libexec.join("nixVulkanMesa").exists()
             && !runtime_libexec.join("nixVulkanIntel").exists()
         {
@@ -578,10 +609,22 @@ fn verify_profile_installed_runtime(
             "generated Ghostty cursor effect shaders directory",
             errors,
         )?;
-    } else {
+    } else if runtime_terminal == "wezterm" {
         require_path_exists_abs(
             &generated_wezterm_config,
             "generated WezTerm config for selected runtime variant",
+            errors,
+        );
+    } else if runtime_terminal == "ratty" {
+        require_path_exists_abs(
+            &generated_ratty_config,
+            "generated Ratty config for selected runtime variant",
+            errors,
+        );
+    } else if runtime_terminal == "yzxterm" {
+        require_path_exists_abs(
+            &generated_yzxterm_config,
+            "generated Yazelix Terminal config for selected runtime variant",
             errors,
         );
     }

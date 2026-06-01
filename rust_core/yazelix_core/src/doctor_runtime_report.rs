@@ -576,7 +576,7 @@ fn first_configured_terminal(terminals: &[String]) -> String {
 }
 
 fn terminal_uses_yazelix_kitty_bridge(terminal: &str) -> bool {
-    matches!(terminal, "ghostty" | "ratty")
+    matches!(terminal, "ghostty" | "yzxterm" | "ratty")
 }
 
 fn host_runtime_yazi_available(runtime_dir: &Path, command_search_paths: &[PathBuf]) -> bool {

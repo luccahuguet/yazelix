@@ -13,8 +13,8 @@
       "user_main": "~/.wezterm.lua",
       "user_alt": "~/.config/wezterm/wezterm.lua"
     },
-    "yazelix_terminal": {
-      "yazelix": "~/.local/share/yazelix/configs/terminal_emulators/yazelix_terminal/config.toml",
+    "yzxterm": {
+      "yazelix": "~/.local/share/yazelix/configs/terminal_emulators/yzxterm/config.toml",
       "user": "~/.config/yazelix-terminal/config.toml"
     }
   },
@@ -22,7 +22,7 @@
     "ghostty": { "name": "Ghostty" },
     "kitty": { "name": "Kitty" },
     "wezterm": { "name": "WezTerm" },
-    "yazelix_terminal": { "name": "Yazelix Terminal" }
+    "yzxterm": { "name": "Yazelix Terminal" }
   },
   "cursor_trail_shaders": {
     "blaze": "./shaders/cursor_trail_blaze.glsl",

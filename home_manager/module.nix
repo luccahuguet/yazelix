@@ -21,6 +21,7 @@ let
   ];
   runtimeVariants = [
     "ghostty"
+    "yzxterm"
     "wezterm"
   ] ++ lib.optional pkgs.stdenv.hostPlatform.isLinux "ratty";
   runtimeDefaultTerminals =
@@ -33,6 +34,12 @@ let
     else if runtimeVariant == "ratty" then
       [
         "ratty"
+        "ghostty"
+        "wezterm"
+      ]
+    else if runtimeVariant == "yzxterm" then
+      [
+        "yzxterm"
         "ghostty"
         "wezterm"
       ]
@@ -438,6 +445,7 @@ in
 
         - "ghostty": default packaged runtime with Yazelix cursor trails, Ghostty config effects, and Yazi image previews through Zellij
         - "wezterm": explicit alternate packaged runtime
+        - "yzxterm": experimental Yazelix-owned Rio fork with Ghostty-style cursor shaders
         - "ratty": experimental Linux packaged runtime with Ratty and the Yazelix Zellij/Yazi Kitty graphics bridge
       '';
     };

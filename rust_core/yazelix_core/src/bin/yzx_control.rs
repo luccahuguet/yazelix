@@ -123,7 +123,7 @@ const STATUS_VERSION_TOOLS: &[(&str, &str)] = &[
     ("fzf", "fzf"),
     ("wezterm", "wezterm"),
     ("ghostty", "ghostty"),
-    ("yazelix_terminal", "yazelix-terminal-desktop"),
+    ("yzxterm", "yazelix-terminal-desktop"),
     ("ratty", "ratty"),
     ("nix", "nix"),
     ("kitty", "kitty"),

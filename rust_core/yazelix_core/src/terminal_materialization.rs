@@ -59,7 +59,7 @@ fn get_opacity_value(transparency: &str) -> &str {
 fn get_terminal_title(terminal: &str) -> String {
     let name = match terminal {
         "ghostty" => "Ghostty",
-        "yazelix_terminal" => "Yazelix Terminal",
+        "yzxterm" => "Yazelix Terminal",
         "kitty" => "Kitty",
         "wezterm" => "WezTerm",
         "ratty" => "Ratty",
@@ -216,17 +216,14 @@ white = "#ffffff"
     )
 }
 
-fn generate_yazelix_terminal_config(
-    runtime_dir: &Path,
-    transparency: &str,
-) -> Result<String, CoreError> {
+fn generate_yzxterm_config(runtime_dir: &Path, transparency: &str) -> Result<String, CoreError> {
     let package_config = runtime_dir
         .join("share")
         .join("yazelix-terminal")
         .join("config.toml");
     let raw = fs::read_to_string(&package_config).map_err(|source| {
         CoreError::io(
-            "read_yazelix_terminal_package_config",
+            "read_yzxterm_package_config",
             "Could not read the packaged Yazelix Terminal config",
             "Reinstall the Yazelix runtime so the yazelix-terminal child package is present.",
             package_config.to_string_lossy(),
@@ -236,7 +233,7 @@ fn generate_yazelix_terminal_config(
     let mut table = toml::from_str::<toml::Table>(&raw).map_err(|source| {
         CoreError::classified(
             crate::bridge::ErrorClass::Runtime,
-            "parse_yazelix_terminal_package_config",
+            "parse_yzxterm_package_config",
             format!(
                 "The packaged Yazelix Terminal config at {} is not valid TOML.",
                 package_config.display()
@@ -250,7 +247,7 @@ fn generate_yazelix_terminal_config(
         .map_err(|source| {
             CoreError::classified(
                 crate::bridge::ErrorClass::Internal,
-                "parse_yazelix_terminal_opacity",
+                "parse_yzxterm_opacity",
                 format!(
                     "Could not parse Yazelix Terminal opacity for transparency '{transparency}'."
                 ),
@@ -265,7 +262,7 @@ fn generate_yazelix_terminal_config(
         .ok_or_else(|| {
             CoreError::classified(
                 crate::bridge::ErrorClass::Runtime,
-                "invalid_yazelix_terminal_window_config",
+                "invalid_yzxterm_window_config",
                 format!(
                     "The packaged Yazelix Terminal config at {} has a non-table [window] value.",
                     package_config.display()
@@ -282,7 +279,7 @@ fn generate_yazelix_terminal_config(
     toml::to_string_pretty(&toml::Value::Table(table)).map_err(|source| {
         CoreError::classified(
             crate::bridge::ErrorClass::Internal,
-            "render_yazelix_terminal_config",
+            "render_yzxterm_config",
             "Could not render the generated Yazelix Terminal config.",
             "Report this Yazelix bug with the current settings.jsonc.",
             serde_json::json!({ "error": source.to_string() }),
@@ -443,24 +440,24 @@ pub fn generate_terminal_materialization(
                     path: path.to_string_lossy().into_owned(),
                 });
             }
-            "yazelix_terminal" => {
-                let yazelix_terminal_dir = generated_dir.join("yazelix_terminal");
-                fs::create_dir_all(&yazelix_terminal_dir).map_err(|source| {
+            "yzxterm" => {
+                let yzxterm_dir = generated_dir.join("yzxterm");
+                fs::create_dir_all(&yzxterm_dir).map_err(|source| {
                     CoreError::io(
-                        "create_yazelix_terminal_dir",
+                        "create_yzxterm_dir",
                         "Could not create Yazelix Terminal output directory",
                         "Check permissions for the Yazelix state directory.",
-                        yazelix_terminal_dir.to_string_lossy(),
+                        yzxterm_dir.to_string_lossy(),
                         source,
                     )
                 })?;
-                let path = yazelix_terminal_dir.join("config.toml");
+                let path = yzxterm_dir.join("config.toml");
                 write_text_atomic(
                     &path,
-                    &generate_yazelix_terminal_config(&request.runtime_dir, transparency)?,
+                    &generate_yzxterm_config(&request.runtime_dir, transparency)?,
                 )?;
                 generated.push(TerminalGeneratedConfig {
-                    terminal: "yazelix_terminal".to_string(),
+                    terminal: "yzxterm".to_string(),
                     path: path.to_string_lossy().into_owned(),
                 });
             }

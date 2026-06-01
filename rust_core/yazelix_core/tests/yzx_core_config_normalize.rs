@@ -70,7 +70,7 @@ fn prepare_runtime_materialization_fixture(
         .join("terminal_emulators")
         .join("ghostty")
         .join("shaders");
-    let runtime_yazelix_terminal_package_dir = runtime_dir.join("share").join("yazelix-terminal");
+    let runtime_yzxterm_package_dir = runtime_dir.join("share").join("yazelix-terminal");
     fs::create_dir_all(managed_config.parent().unwrap()).unwrap();
     fs::create_dir_all(managed_zellij_config.parent().unwrap()).unwrap();
     fs::create_dir_all(&zellij_layout_dir).unwrap();
@@ -81,7 +81,7 @@ fn prepare_runtime_materialization_fixture(
     fs::create_dir_all(&runtime_libexec_dir).unwrap();
     fs::create_dir_all(&runtime_contract_dir).unwrap();
     fs::create_dir_all(&runtime_ghostty_shader_dir).unwrap();
-    fs::create_dir_all(&runtime_yazelix_terminal_package_dir).unwrap();
+    fs::create_dir_all(&runtime_yzxterm_package_dir).unwrap();
     write_runtime_contract_assets(repo, &runtime_dir);
     fs::write(
         runtime_shell_dir.join("yazelix_nu.sh"),
@@ -137,7 +137,7 @@ fn prepare_runtime_materialization_fixture(
         &runtime_ghostty_shader_dir,
     );
     fs::write(
-        runtime_yazelix_terminal_package_dir.join("config.toml"),
+        runtime_yzxterm_package_dir.join("config.toml"),
         r##"confirm-before-quit = false
 
 [renderer]
@@ -1123,7 +1123,7 @@ fn terminal_materialization_generate_from_env_writes_generated_configs() {
         &fixture,
         &[
             "[terminal]",
-            "terminals = [\"ghostty\", \"yazelix_terminal\", \"ratty\", \"kitty\"]",
+            "terminals = [\"ghostty\", \"yzxterm\", \"ratty\", \"kitty\"]",
             "transparency = \"low\"",
         ]
         .join("\n"),
@@ -1132,7 +1132,7 @@ fn terminal_materialization_generate_from_env_writes_generated_configs() {
     let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
         .arg("--from-env")
         .arg("--terminals-json")
-        .arg(json!(["ghostty", "yazelix_terminal", "ratty", "kitty"]).to_string())
+        .arg(json!(["ghostty", "yzxterm", "ratty", "kitty"]).to_string())
         .output()
         .unwrap();
 
@@ -1169,19 +1169,19 @@ fn terminal_materialization_generate_from_env_writes_generated_configs() {
     assert!(ratty_config.contains("path = \"CairoSpinyMouse.obj\""));
     assert!(ratty_config.contains("visible = true"));
     assert!(ratty_config.contains("spin_speed = 1.4"));
-    let yazelix_terminal_config = fs::read_to_string(
+    let yzxterm_config = fs::read_to_string(
         fixture
             .state_dir
             .join("configs")
             .join("terminal_emulators")
-            .join("yazelix_terminal")
+            .join("yzxterm")
             .join("config.toml"),
     )
     .unwrap();
-    assert!(yazelix_terminal_config.contains("backend = \"Webgpu\""));
-    assert!(yazelix_terminal_config.contains("opacity = 0.9"));
-    assert!(yazelix_terminal_config.contains("opacity-cells = true"));
-    assert!(yazelix_terminal_config.contains("custom-shader"));
+    assert!(yzxterm_config.contains("backend = \"Webgpu\""));
+    assert!(yzxterm_config.contains("opacity = 0.9"));
+    assert!(yzxterm_config.contains("opacity-cells = true"));
+    assert!(yzxterm_config.contains("custom-shader"));
     assert!(
         fixture
             .state_dir

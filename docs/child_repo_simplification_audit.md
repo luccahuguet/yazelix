@@ -9,7 +9,7 @@ Use this with [LOC extraction scorecard](./loc_extraction_scorecard.md) and [Rus
 - Rust budget ceiling: `73,083` raw tracked Rust lines across `140` files
 - Long-term Rust hard target: `60,000` raw tracked Rust lines
 - Largest pressure families: `core_config_ui_and_materialization` at `20,624` raw lines and `core_workspace_and_pane_integration` at `16,689` raw lines
-- Current child repos already integrated: `yazelix-screen`, `yazelix-ghostty-cursors`, `yazelix-ratconfig`, `yazelix-zellij-bar`, `yazelix-zellij-popup`, and `yazelix-yazi-assets`
+- Current child repos already integrated: `yazelix-screen`, `yazelix-ghostty-cursors`, `yazelix-terminal`, `yazelix-ratconfig`, `yazelix-zellij-bar`, `yazelix-zellij-popup`, and `yazelix-yazi-assets`
 - Popup lifecycle ownership has moved to `yazelix-zellij-popup`; remaining main-repo popup work should be thin generated-spec/config integration plus Yazelix-specific close hooks
 
 ## Ranking Rules

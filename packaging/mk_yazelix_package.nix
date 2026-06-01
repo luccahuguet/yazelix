@@ -11,6 +11,7 @@
   extraRuntimePackages ? [ ],
   screenAssets,
   yaziAssets ? null,
+  yazelixTerminalPackage ? null,
   zellijPluginArtifacts ? { },
   enableZellijKittyPassthrough ? false,
 }:
@@ -32,6 +33,7 @@ let
       extraRuntimePackages
       screenAssets
       yaziAssets
+      yazelixTerminalPackage
       zellijPluginArtifacts
       enableZellijKittyPassthrough
       ;

@@ -107,7 +107,7 @@ Reusable child repos:
 
 - [yazelix-screen](https://github.com/luccahuguet/yazelix-screen) — Terminal animation engine used by Yazelix welcome/screen styles and exposed here as `#yzs` and `#yazelix_screen`
 - [yazelix-ghostty-cursors](https://github.com/luccahuguet/yazelix-ghostty-cursors) — Ghostty cursor preset and shader generator with the `yzc` CLI, exposed here as `#yzc`, `#yazelix_ghostty_cursors`, and `#ghostty_cursor_shaders`
-- [yazelix-terminal](https://github.com/luccahuguet/yazelix-terminal) — Experimental Rio-derived terminal path, exposed here as `#yazelix_terminal` and `#runtime_yazelix_terminal` for opt-in first-party terminal testing
+- [yazelix-terminal](https://github.com/luccahuguet/yazelix-terminal) — Experimental Rio-derived terminal path, exposed here as `#yzxterm` and `#runtime_yzxterm` for opt-in first-party terminal testing
 - [yazelix-zellij-bar](https://github.com/luccahuguet/yazelix-zellij-bar) — Standalone Zellij bar plugin package and `yazelix_zellij_bar_widget` command, exposed here as `#yazelix_zellij_bar`
 - [yazelix-zellij-pane-orchestrator](https://github.com/luccahuguet/yazelix-zellij-pane-orchestrator) — First-party Zellij plugin wasm that owns managed pane identity, editor/sidebar handoff, focus actions, and layout-family commands, exposed here as `#yazelix_zellij_pane_orchestrator`
 - [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij floating TUI panes, exposed here as `#yazelix_zellij_popup`; its plugin alias and wasm artifact are `yzpp`, and regular Yazelix sessions use it for the popup, command palette, and config UI panes
@@ -306,7 +306,7 @@ If you followed [step 3 in the installation guide](./docs/installation.md#step-3
 - **Ratty** (experimental Linux packaged path): GPU-rendered terminal with Kitty graphics support and inline 3D graphics
 - **Kitty**: Fast, feature-rich, GPU-accelerated terminal
 - **Auto-detection**: Fallback order follows your configured terminal list
-- Configure your preference in `settings.jsonc` with `terminal.terminals = ["ghostty", "yazelix_terminal", "wezterm", ...]` (first item is primary)
+- Configure your preference in `settings.jsonc` with `terminal.terminals = ["ghostty", "yzxterm", "wezterm", ...]` (first item is primary)
 - **Terminal package contract**: Yazelix ships one packaged terminal variant at a time; Ghostty is the default, Yazelix Terminal is the experimental first-party path, WezTerm is the stable alternate, and Ratty is available as an experimental Linux variant
 
 [See the full Customization Guide here.](./docs/customization.md)
@@ -334,7 +334,7 @@ Run `yzx help` for the live command list
 - `yzx launch --path DIR` - Launch from a specific directory
 - `yzx launch --home` - Launch from the home directory
 - `yzx launch --terminal ghostty` - Force a supported terminal for this launch
-- `yzx launch --terminal yazelix_terminal` - Force the experimental Yazelix Terminal path when available
+- `yzx launch --terminal yzxterm` - Force the experimental Yazelix Terminal path when available
 - `yzx launch --config ./minimal.jsonc` - Start one window from an alternate complete settings file
 - `yzx launch --with editor.command=nvim` - Override one settings field for this window only
 - `yzx launch --verbose` - Print detailed launch diagnostics

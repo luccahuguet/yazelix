@@ -114,5 +114,27 @@ Out of scope:
   (`terminal_materialization_generate_from_env_writes_generated_configs`)
 - Source: `docs/installation.md`; `docs/terminal_emulators.md`
 
+#### TLAUNCH-006
+- Type: behavior
+- Status: live
+- Owner: Rust terminal materialization, Rust launch preflight, and the
+  `yazelix-terminal` child wrapper
+- Statement: Yazelix Terminal launch uses the config id
+  `yzxterm`, resolves the executable command as the child-owned
+  `yazelix-terminal-desktop` wrapper, passes the generated config directory
+  with `YAZELIX_TERMINAL_CONFIG`, and does not add an outer Yazelix graphics
+  wrapper around the child wrapper. Generated Yazelix Terminal config is
+  derived from the packaged child `config.toml` and injects the current
+  `terminal.transparency` as `[window].opacity` with cell opacity enabled
+  whenever transparency is not `none`.
+- Verification: automated Rust tests in
+  `rust_core/yazelix_core/src/runtime_contract.rs`
+  (`launch_preflight_maps_yzxterm_to_child_wrapper_command`),
+  `rust_core/yazelix_core/src/launch_commands.rs`
+  (`yzxterm_launch_command_uses_child_wrapper_without_outer_graphics_wrapper`),
+  and `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`
+  (`terminal_materialization_generate_from_env_writes_generated_configs`)
+- Source: `docs/installation.md`; `docs/terminal_emulators.md`
+
 ## Traceability
 - Defended by: `yzx_repo_validator validate-contracts`

@@ -380,7 +380,7 @@
             "type": "string",
             "enum": [
               "ghostty",
-              "yazelix_terminal",
+              "yzxterm",
               "wezterm",
               "ratty",
               "kitty"

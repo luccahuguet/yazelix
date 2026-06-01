@@ -23,7 +23,7 @@ The pane orchestrator is the highest-risk boundary because it owns real workspac
 - `docs/contracts/floating_tui_panes.md`
 - `docs/contracts/yazelix_zellij_pane_orchestrator_extraction.md`
 - `docs/contracts/yazi_integration_boundary.md`
-- Adjacent checkouts for `yazelix-screen`, `yazelix-ghostty-cursors`, `yazelix-ratconfig`, `yazelix-zellij-bar`, `yazelix-zellij-pane-orchestrator`, `yazelix-zellij-popup`, and `yazelix-yazi-assets`
+- Adjacent checkouts for `yazelix-screen`, `yazelix-ghostty-cursors`, `yazelix-terminal`, `yazelix-ratconfig`, `yazelix-zellij-bar`, `yazelix-zellij-pane-orchestrator`, `yazelix-zellij-popup`, and `yazelix-yazi-assets`
 
 ## Scoring
 
@@ -42,6 +42,7 @@ Scores use `1..5`, where `5` is the healthier result for a separate child reposi
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | `yazelix-screen` | 4 | 5 | 4 | 4 | 3 | 5 | Keep separate |
 | `yazelix-ghostty-cursors` | 5 | 4 | 4 | 4 | 3 | 5 | Keep separate |
+| `yazelix-terminal` | 4 | 3 | 4 | 4 | 2 | 4 | Keep separate while experimental |
 | `yazelix-ratconfig` | 4 | 4 | 3 | 5 | 3 | 5 | Keep separate with Yazelix adapter discipline |
 | `yazelix-zellij-bar` | 4 | 3 | 4 | 4 | 3 | 4 | Keep separate with adapter discipline |
 | `yazelix-zellij-pane-orchestrator` | 3 | 2 | 5 | 3 | 2 | 4 | Keep separate, revise boundary discipline |
