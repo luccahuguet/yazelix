@@ -395,6 +395,8 @@ fn verify_profile_installed_runtime(
         runtime_terminal,
         "yazi",
         "hx",
+        "steel",
+        "steel-language-server",
         "nvim",
         "fish",
         "zsh",
@@ -411,7 +413,17 @@ fn verify_profile_installed_runtime(
         );
     }
     for expected_exported_tool in [
-        "nu", "zellij", "yazi", "hx", "nvim", "bash", "jq", "fd", "rg",
+        "nu",
+        "zellij",
+        "yazi",
+        "hx",
+        "steel",
+        "steel-language-server",
+        "nvim",
+        "bash",
+        "jq",
+        "fd",
+        "rg",
     ] {
         require_path_exists_abs(
             &runtime_toolbin.join(expected_exported_tool),

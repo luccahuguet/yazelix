@@ -192,6 +192,7 @@ hx ~/.config/yazelix/settings.jsonc
 
 The packaged runtime ships a fixed toolset instead of configurable dependency groups. The package includes:
 - the core Yazelix stack: `zellij`, `yazi`, `helix`, `nu`, `bash`, `fish`, `zsh`
+- Helix Steel authoring helpers: `steel`, `steel-language-server`, `forge`, `cargo-steel-lib`, `repl-connect`
 - the default CLI helpers: `fzf`, `zoxide`, `starship`, `lazygit`, `mise`, `carapace`, `macchina`
 - the default Yazi preview helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
 - one packaged terminal variant: Ghostty by default with the Yazelix Zellij/Yazi graphics bridge, WezTerm explicitly through `#yazelix_wezterm`, or experimental Linux Ratty through `#yazelix_ratty`
@@ -405,7 +406,7 @@ Package-set users can also use the default overlay:
 
 `host` mode removes that tool from the Yazelix runtime export and lets the inherited `PATH` provide the required command. Run `yzx doctor` after switching; it reports missing host-sourced commands from the runtime manifest.
 
-`off` mode is supported for the first optional helper slice: `macchina`, `p7zip`, `poppler`, and `resvg`. Disabled helpers are omitted from the runtime package/export and reported by `yzx doctor` as intentional disablement. If `macchina = "off"`, set `show_macchina_on_welcome = false`.
+`off` mode is supported for the first optional helper slice: `steel`, `macchina`, `p7zip`, `poppler`, and `resvg`. Disabled helpers are omitted from the runtime package/export and reported by `yzx doctor` as intentional disablement. If `macchina = "off"`, set `show_macchina_on_welcome = false`.
 
 Home Manager and `mkYazelix` also accept component toggles for `cursors` and `screen`. `components.cursors = false` removes Yazelix cursor shader assets and the default cursor sidecar from the runtime tree; Ghostty config generation skips Yazelix cursor shaders and cursor facts report `n/a`. `components.screen = false` requires `skip_welcome_screen = true` and `screen_saver_enabled = false`; `yzx screen` then fails with a disabled-component error instead of looking for missing screen assets.
 
@@ -425,6 +426,9 @@ Home Manager and `mkYazelix` also accept component toggles for `cursors` and `sc
 
 ### Yazi Extensions (~125MB, enabled by default)
 - `p7zip`, `jq`, `poppler`, `fd`, `ripgrep` (for archives, search, document previews)
+
+### Helix Steel Authoring Tools (~117MB, enabled by default)
+- `steel`, `steel-language-server`, `forge`, `cargo-steel-lib`, `repl-connect` from the bundled Steel package
 
 ### Yazi Media Helpers
 Yazelix does not ship `ffmpeg` or ImageMagick in the runtime variants. Install them outside Yazelix if you want heavy media previews.

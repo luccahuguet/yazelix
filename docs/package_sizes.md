@@ -6,6 +6,7 @@ The current trimmed line no longer exposes dependency-group toggles like `recomm
 
 The current runtime includes:
 - the core stack: `nu`, `bash`, `fish`, `zsh`, `zellij`, `yazi`, `helix`, `neovim`
+- Helix Steel authoring tools: `steel`, `steel-language-server`, `forge`, `cargo-steel-lib`, `repl-connect`
 - helper tools: `fzf`, `zoxide`, `starship`, `lazygit`, `carapace`, `macchina`, `mise`, `tombi`
 - preview/search helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
 - system helpers required by the runtime wrappers and validators: `git`, `nix`, `coreutils`, `findutils`, `gnugrep`, `gnused`, `util-linux`

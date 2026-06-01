@@ -86,6 +86,25 @@ pub fn validate_nix_customization_api(repo_root: &Path) -> Result<ValidationRepo
         "Home Manager runtime_tool_sources must pass typed host values through evaluation",
         &mut report.errors,
     );
+    require_json_string(
+        object,
+        "home_manager_steel_tool_source",
+        "off",
+        "Home Manager runtime_tool_sources must pass typed Steel off values through evaluation",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
+        "steel_bundled_exports_authoring_commands",
+        "bundled Steel runtime tools must export Steel authoring commands",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
+        "steel_off_omits_authoring_commands",
+        "runtimeToolSources.steel = off must omit Steel authoring commands from exports",
+        &mut report.errors,
+    );
     require_json_bool(
         object,
         "home_manager_has_package",
@@ -237,9 +256,24 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "        home.stateVersion = \"24.11\";".to_string(),
         "        programs.yazelix.enable = true;".to_string(),
         "        programs.yazelix.runtime_tool_sources.helix = \"host\";".to_string(),
+        "        programs.yazelix.runtime_tool_sources.steel = \"off\";".to_string(),
         "      }".to_string(),
         "    ];".to_string(),
         "  };".to_string(),
+        format!(
+            "  steelBundledRegistry = import \"{}/packaging/runtime_tool_registry.nix\" {{",
+            repo_root_literal
+        ),
+        "    inherit pkgs;".to_string(),
+        "  };".to_string(),
+        format!(
+            "  steelOffRegistry = import \"{}/packaging/runtime_tool_registry.nix\" {{",
+            repo_root_literal
+        ),
+        "    inherit pkgs;".to_string(),
+        "    runtimeToolSources = { steel = \"off\"; };".to_string(),
+        "  };".to_string(),
+        "  steelAuthoringCommands = [ \"steel\" \"steel-language-server\" \"forge\" \"cargo-steel-lib\" \"repl-connect\" ];".to_string(),
         "  invalidRuntimeTool = builtins.tryEval ((flake.lib.${system}.mkYazelix { runtimeToolSources = { zellij = \"host\"; }; }).drvPath);".to_string(),
         "  unsupportedComponent = builtins.tryEval ((flake.lib.${system}.mkYazelix { components = { status_bar = false; }; }).drvPath);".to_string(),
         "  poisonedConsumerPkgs = import flake.inputs.nixpkgs {".to_string(),
@@ -290,6 +324,9 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "  mk_default_main_program = mkDefaultPackage.meta.mainProgram or \"\";".to_string(),
         "  overlay_main_program = overlayPkgs.yazelix.meta.mainProgram or \"\";".to_string(),
         "  home_manager_runtime_tool_source = hm.config.programs.yazelix.runtime_tool_sources.helix or \"\";".to_string(),
+        "  home_manager_steel_tool_source = hm.config.programs.yazelix.runtime_tool_sources.steel or \"\";".to_string(),
+        "  steel_bundled_exports_authoring_commands = builtins.all (command: builtins.elem command steelBundledRegistry.exportedCommands) steelAuthoringCommands;".to_string(),
+        "  steel_off_omits_authoring_commands = steelOffRegistry.manifest.steel.source == \"off\" && builtins.all (command: !(builtins.elem command steelOffRegistry.exportedCommands)) steelAuthoringCommands;".to_string(),
         "  home_manager_has_package = builtins.length hm.config.home.packages > 0;".to_string(),
         "  invalid_runtime_tool_rejected = !invalidRuntimeTool.success;".to_string(),
         "  unsupported_component_rejected = !unsupportedComponent.success;".to_string(),

@@ -98,6 +98,23 @@ let
         hostable = true;
         notes = [ "Bundled mode uses the Yazelix-owned Helix Steel fork with --config-dir support." ];
       };
+      steel = makeTool {
+        package = steel;
+        commands = [
+          "steel"
+          "steel-language-server"
+          "forge"
+          "cargo-steel-lib"
+          "repl-connect"
+        ];
+        requiredCommands = [
+          "steel"
+          "steel-language-server"
+        ];
+        hostable = true;
+        disableable = true;
+        notes = [ "Optional Helix Steel plugin authoring tools. Managed plugin execution does not depend on these commands." ];
+      };
       neovim = makeTool {
         package = neovim;
         commands = [

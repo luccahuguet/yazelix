@@ -453,12 +453,12 @@ in
         - "host": omit the package/export and rely on the inherited host PATH
         - "off": omit the package/export when the tool explicitly supports disabling
 
-        Host mode is supported for leaf tools such as lazygit, helix, neovim,
-        yazi, fzf, zoxide, starship, carapace, macchina, mise, tombi, git, jq,
+        Host mode is supported for leaf tools such as lazygit, helix, steel,
+        neovim, yazi, fzf, zoxide, starship, carapace, macchina, mise, tombi, git, jq,
         fd, and ripgrep. Bootstrap tools such as Nushell, Zellij, the selected
         terminal, Nix, POSIX utilities, and graphics wrappers remain bundled.
 
-        Off mode is supported for optional helpers such as macchina, p7zip,
+        Off mode is supported for optional helpers such as steel, macchina, p7zip,
         poppler, and resvg. Disabled helpers are intentionally omitted from the
         packaged runtime and reported as disabled instead of missing.
       '';
