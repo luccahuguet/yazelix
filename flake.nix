@@ -196,6 +196,29 @@
           inherit pkgs baseZellij;
           src = yazelixZellij;
         };
+      zellijBuildBase =
+        zellij:
+        if zellij ? unwrapped then zellij.unwrapped else zellij;
+      poisonZellijBuildBase =
+        zellij:
+        let
+          poisonAttrs = {
+            cargoDeps = throw "consumer pkgs.zellij build-base cargoDeps leaked into Yazelix KGP Zellij";
+            patches = throw "consumer pkgs.zellij build-base patches leaked into Yazelix KGP Zellij";
+            prePatch = throw "consumer pkgs.zellij build-base prePatch leaked into Yazelix KGP Zellij";
+            postPatch = throw "consumer pkgs.zellij build-base postPatch leaked into Yazelix KGP Zellij";
+            installCheckPhase =
+              throw "consumer pkgs.zellij build-base installCheckPhase leaked into Yazelix KGP Zellij";
+          };
+        in
+        if zellij ? unwrapped then
+          zellij.overrideAttrs (_old: {
+            passthru = (zellij.passthru or { }) // {
+              unwrapped = zellij.unwrapped.overrideAttrs (_oldUnwrapped: poisonAttrs);
+            };
+          })
+        else
+          zellij.overrideAttrs (_old: poisonAttrs);
       yazelixKgpYazi =
         pkgs: baseYaziUnwrapped: codeSrc:
         import ./packaging/yazelix_kgp_yazi.nix {
@@ -216,7 +239,7 @@
           };
         in
         pkgs.extend (final: prev: {
-          zellij = yazelixKgpZellij final prev.zellij.unwrapped;
+          zellij = yazelixKgpZellij final (zellijBuildBase prev.zellij);
           yazi-unwrapped = yazelixKgpYazi final prev.yazi-unwrapped yaziCodeSrc;
           yazi = prev.yazi.override {
             yazi-unwrapped = final.yazi-unwrapped;
@@ -230,20 +253,7 @@
             inherit system;
             overlays = [
               (_final: prev: {
-                zellij = prev.zellij.overrideAttrs (_old: {
-                  __intentionallyOverridingVersion = true;
-                  version = "0.44.1";
-                  passthru = (prev.zellij.passthru or { }) // {
-                    unwrapped = prev.zellij.unwrapped.overrideAttrs (_oldUnwrapped: {
-                      cargoDeps = throw "consumer pkgs.zellij.unwrapped cargoDeps leaked into Yazelix KGP Zellij";
-                      patches = throw "consumer pkgs.zellij.unwrapped patches leaked into Yazelix KGP Zellij";
-                      prePatch = throw "consumer pkgs.zellij.unwrapped prePatch leaked into Yazelix KGP Zellij";
-                      postPatch = throw "consumer pkgs.zellij.unwrapped postPatch leaked into Yazelix KGP Zellij";
-                      installCheckPhase =
-                        throw "consumer pkgs.zellij.unwrapped installCheckPhase leaked into Yazelix KGP Zellij";
-                    });
-                  };
-                });
+                zellij = poisonZellijBuildBase prev.zellij;
                 yazi-unwrapped = prev.yazi-unwrapped.overrideAttrs (_old: {
                   cargoDeps = throw "consumer pkgs.yazi-unwrapped cargoDeps leaked into Yazelix KGP Yazi";
                   patches = throw "consumer pkgs.yazi-unwrapped patches leaked into Yazelix KGP Yazi";
@@ -257,7 +267,7 @@
             path = yazelixYazi;
             name = "yazi-yazelix-kgp-src";
           };
-          kgpZellij = yazelixKgpZellij poisonedConsumerPkgs poisonedConsumerPkgs.zellij;
+          kgpZellij = yazelixKgpZellij poisonedConsumerPkgs (zellijBuildBase poisonedConsumerPkgs.zellij);
           kgpYazi = yazelixKgpYazi poisonedConsumerPkgs poisonedConsumerPkgs.yazi-unwrapped yaziCodeSrc;
         in
         assert (kgpZellij.version or "") == "0.44.3";
