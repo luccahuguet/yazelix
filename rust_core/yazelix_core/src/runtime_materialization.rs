@@ -241,7 +241,7 @@ pub fn plan_runtime_materialization(
 pub fn evaluate_runtime_materialization_repair(
     request: &RuntimeMaterializationRepairEvaluateRequest,
 ) -> Result<RuntimeMaterializationRepairEvaluateData, CoreError> {
-    let plan = plan_runtime_materialization(&request.plan)?;
+    let plan = plan_runtime_materialization_for_repair(request)?;
     let repair = build_repair_directive(&plan, request.force);
     Ok(RuntimeMaterializationRepairEvaluateData { plan, repair })
 }
@@ -256,7 +256,7 @@ pub fn materialize_runtime_state(
 pub fn repair_runtime_materialization(
     request: &RuntimeMaterializationRepairEvaluateRequest,
 ) -> Result<RuntimeMaterializationRepairRunData, CoreError> {
-    let plan = plan_runtime_materialization(&request.plan)?;
+    let plan = plan_runtime_materialization_for_repair(request)?;
     let repair = build_repair_directive(&plan, request.force);
 
     match &repair {
@@ -276,6 +276,16 @@ pub fn repair_runtime_materialization(
             })
         }
     }
+}
+
+fn plan_runtime_materialization_for_repair(
+    request: &RuntimeMaterializationRepairEvaluateRequest,
+) -> Result<RuntimeMaterializationPlanData, CoreError> {
+    let mut plan = plan_runtime_materialization(&request.plan)?;
+    if request.force {
+        plan.should_sync_static_assets = true;
+    }
+    Ok(plan)
 }
 
 fn materialize_runtime_state_from_plan(
@@ -959,6 +969,7 @@ mod tests {
             })
             .unwrap();
 
+        assert!(evaluated.plan.should_sync_static_assets);
         match evaluated.repair {
             RuntimeRepairDirective::Regenerate {
                 reason,

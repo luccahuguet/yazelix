@@ -636,6 +636,31 @@ group = "extra"
         );
     }
 
+    // Regression: Nix may expose bundled plugin directories as source-side symlinks, and warm repair must still detect drift behind those links.
+    #[cfg(unix)]
+    #[test]
+    fn bundled_asset_detection_follows_symlinked_plugin_dirs() {
+        use std::os::unix::fs::symlink;
+
+        let temp = tempdir().unwrap();
+        let runtime_dir = temp.path().join("runtime");
+        let real_plugin = temp.path().join("package_source/example.yazi");
+        let source_root = runtime_dir.join("configs/yazi/plugins");
+        let target_root = temp.path().join("state/configs/yazi/plugins");
+        fs::create_dir_all(&real_plugin).unwrap();
+        fs::write(real_plugin.join("main.lua"), "print('current')").unwrap();
+        fs::create_dir_all(&source_root).unwrap();
+        symlink(&real_plugin, source_root.join("example.yazi")).unwrap();
+
+        let target_plugin = target_root.join("example.yazi");
+        fs::create_dir_all(&target_plugin).unwrap();
+        fs::write(target_plugin.join("main.lua"), "print('stale')").unwrap();
+
+        assert!(
+            writer::asset_tree_missing_targets(&source_root, &target_root, &runtime_dir).unwrap()
+        );
+    }
+
     // Regression: sidebar-state must not rely on a fixed startup delay before its only Zellij registration attempt.
     #[test]
     fn sidebar_state_registers_with_orchestrator_asynchronously_with_bounded_retry() {

@@ -110,6 +110,14 @@ fn validate_yazi_workspace_entrypoints(repo_root: &Path) -> Result<Vec<String>, 
                 .to_string(),
         );
     }
+    if !zoxide_editor_plugin.contains(r#"os.getenv("YAZELIX_RUNTIME_DIR")"#)
+        || zoxide_editor_plugin.contains("__YAZELIX_RUNTIME_DIR__/libexec/yzx_control")
+    {
+        errors.push(
+            "Yazi zoxide-editor plugin must resolve yzx_control from YAZELIX_RUNTIME_DIR at runtime instead of baking a generated store path"
+                .to_string(),
+        );
+    }
     Ok(errors)
 }
 
@@ -161,7 +169,8 @@ edit = [{ run = "hx \"$1\"" }]
         .unwrap();
         fs::write(
             plugin_dir.join("main.lua"),
-            r#"Command("yzx_control"):arg({ "zellij", "open-editor-cwd", target_dir })"#,
+            r#"local runtime_dir = os.getenv("YAZELIX_RUNTIME_DIR")
+Command(runtime_dir .. "/libexec/yzx_control"):arg({ "zellij", "open-editor-cwd", target_dir })"#,
         )
         .unwrap();
 

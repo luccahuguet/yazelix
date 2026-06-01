@@ -147,6 +147,18 @@ fn run_yazi_materialization_generate(
     command.output().unwrap()
 }
 
+// Regression: the zoxide editor plugin must not bake a generated Nix store path to yzx_control into copied Lua assets.
+#[test]
+fn bundled_zoxide_editor_resolves_yzx_control_from_runtime_env() {
+    let plugin =
+        fs::read_to_string(repo_root().join("configs/yazi/plugins/zoxide-editor.yazi/main.lua"))
+            .unwrap();
+
+    assert!(plugin.contains(r#"os.getenv("YAZELIX_RUNTIME_DIR")"#));
+    assert!(plugin.contains(r#""open-editor-cwd""#));
+    assert!(!plugin.contains("__YAZELIX_RUNTIME_DIR__/libexec/yzx_control"));
+}
+
 // Defends: yazi-materialization.generate Rust-owns the generated Yazi surface, bundled assets, and runtime placeholder rendering end-to-end.
 #[test]
 fn yazi_materialization_generate_writes_managed_surface_and_assets() {
@@ -309,6 +321,58 @@ theme = "tokyo-night"
     let repair_envelope: Value = serde_json::from_slice(&repair.stdout).unwrap();
     assert_eq!(repair_envelope["data"]["synced_static_assets"], true);
     assert_eq!(fs::read_to_string(plugin_main).unwrap(), "return 'ok'\n");
+}
+
+// Regression: Nix-packaged bundled plugin directories can be symlinks into the package source, and static sync must copy their real contents.
+#[cfg(unix)]
+#[test]
+fn yazi_materialization_syncs_symlinked_bundled_plugin_dirs() {
+    use std::os::unix::fs::symlink;
+
+    let repo = repo_root();
+    let temp = tempdir().unwrap();
+    let home = temp.path().join("home");
+    let config_root = home.join(".config").join("yazelix");
+    let output_dir = temp.path().join("state").join("configs").join("yazi");
+    let runtime_dir = temp.path().join("runtime");
+    let config_path = prepare_managed_config(&config_root, &repo, "");
+    prepare_runtime_fixture(&runtime_dir);
+
+    let source_plugins = runtime_dir.join("configs/yazi/plugins");
+    let source_plugin = source_plugins.join("sidebar-state.yazi");
+    let real_plugin = temp.path().join("package_source/sidebar-state.yazi");
+    fs::remove_dir_all(&source_plugin).unwrap();
+    fs::create_dir_all(&real_plugin).unwrap();
+    fs::write(
+        real_plugin.join("main.lua"),
+        "return 'current symlinked plugin'\n",
+    )
+    .unwrap();
+    symlink(&real_plugin, &source_plugin).unwrap();
+
+    let target_plugin = output_dir.join("plugins/sidebar-state.yazi");
+    fs::create_dir_all(&target_plugin).unwrap();
+    fs::write(target_plugin.join("main.lua"), "return 'stale plugin'\n").unwrap();
+
+    let output = run_yazi_materialization_generate(
+        &home,
+        &config_root,
+        &config_path,
+        &repo,
+        &runtime_dir,
+        &output_dir,
+        true,
+    );
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    assert_eq!(
+        fs::read_to_string(target_plugin.join("main.lua")).unwrap(),
+        "return 'current symlinked plugin'\n"
+    );
 }
 
 // Regression: `yzx import yazi` places native plugin directories under Yazelix-managed config, and materialization copies that managed source before generating plugin requires.

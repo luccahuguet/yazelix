@@ -361,7 +361,8 @@ pub(super) fn asset_tree_missing_targets(
                     source,
                 )
             })?;
-            let file_type = entry.file_type().map_err(|source| {
+            let source_path = entry.path();
+            let source_metadata = fs::metadata(&source_path).map_err(|source| {
                 CoreError::io(
                     "inspect_yazi_asset_source_entry",
                     "Could not inspect a bundled Yazi asset entry",
@@ -370,10 +371,9 @@ pub(super) fn asset_tree_missing_targets(
                     source,
                 )
             })?;
-            if path == source_root && !file_type.is_dir() {
+            if path == source_root && !source_metadata.is_dir() {
                 continue;
             }
-            let source_path = entry.path();
             let relative = source_path.strip_prefix(source_root).map_err(|_| {
                 CoreError::classified(
                     ErrorClass::Internal,
@@ -387,7 +387,7 @@ pub(super) fn asset_tree_missing_targets(
                 )
             })?;
             let target_path = target_root.join(relative);
-            if file_type.is_dir() {
+            if source_metadata.is_dir() {
                 if !target_path.is_dir() {
                     return Ok(true);
                 }
@@ -496,7 +496,16 @@ fn sync_named_child_directories(
             )
         })?;
         let source_path = entry.path();
-        if !entry.file_type().map(|kind| kind.is_dir()).unwrap_or(false) {
+        let source_metadata = fs::metadata(&source_path).map_err(|source| {
+            CoreError::io(
+                "inspect_yazi_asset_entry",
+                "Could not inspect a Yazi asset entry",
+                "Check permissions for the Yazelix config and runtime directories, then retry.",
+                source_path.to_string_lossy(),
+                source,
+            )
+        })?;
+        if !source_metadata.is_dir() {
             continue;
         }
         let target_path = target_root.join(entry.file_name());
@@ -543,7 +552,7 @@ pub(super) fn sync_starship_config(
 }
 
 fn copy_path_recursive(source: &Path, target: &Path, runtime_dir: &Path) -> Result<(), CoreError> {
-    let file_type = fs::symlink_metadata(source).map_err(|source_err| {
+    let source_metadata = fs::metadata(source).map_err(|source_err| {
         CoreError::io(
             "inspect_yazi_asset_source",
             "Could not inspect a Yazi asset path",
@@ -553,7 +562,7 @@ fn copy_path_recursive(source: &Path, target: &Path, runtime_dir: &Path) -> Resu
         )
     })?;
 
-    if file_type.is_dir() {
+    if source_metadata.is_dir() {
         fs::create_dir_all(target).map_err(|source_err| {
             CoreError::io(
                 "create_yazi_asset_dir",

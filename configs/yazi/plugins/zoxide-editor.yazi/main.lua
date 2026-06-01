@@ -40,7 +40,13 @@ function M:entry()
 end
 
 function M.open_in_editor(target_dir)
-	local child, err = Command("__YAZELIX_RUNTIME_DIR__/libexec/yzx_control")
+	local yzx_control, runtime_err = M.yzx_control_bin()
+	if not yzx_control then
+		ya.notify { title = "Zoxide Editor", content = runtime_err, timeout = 5, level = "error" }
+		return
+	end
+
+	local child, err = Command(yzx_control)
 		:arg({ "zellij", "open-editor-cwd", target_dir })
 		:stdout(Command.PIPED)
 		:stderr(Command.PIPED)
@@ -57,6 +63,14 @@ function M.open_in_editor(target_dir)
 	elseif not output.status.success then
 		ya.notify { title = "Zoxide Editor", content = "Script failed: " .. output.stderr, timeout = 5, level = "error" }
 	end
+end
+
+function M.yzx_control_bin()
+	local runtime_dir = os.getenv("YAZELIX_RUNTIME_DIR")
+	if not runtime_dir or runtime_dir == "" then
+		return nil, "YAZELIX_RUNTIME_DIR is not set. Launch Yazi through Yazelix so the current runtime is available."
+	end
+	return runtime_dir .. "/libexec/yzx_control", nil
 end
 
 --- Reuse upstream zoxide fzf options
