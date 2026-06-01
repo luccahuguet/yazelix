@@ -85,7 +85,7 @@ The shader direction is inspired by the public Ghostty cursor shader ecosystem, 
 
 - Installing or editing a user's Ghostty config
 - Exporting Yazelix terminal launcher behavior
-- Supporting Kitty, WezTerm, Alacritty, or Foot through this package
+- Supporting Kitty, WezTerm, or other terminal launch paths through this package
 - Exporting Yazelix config UI, Home Manager ownership, or runtime orchestration into the cursor repository
 
 ## Non-Ghostty Criteria

@@ -414,8 +414,6 @@ fn terminal_question() -> SingleQuestion {
             ("WezTerm", "wezterm"),
             ("Ratty (Linux experimental)", "ratty"),
             ("Kitty", "kitty"),
-            ("Alacritty", "alacritty"),
-            ("Foot", "foot"),
         ],
     )
 }

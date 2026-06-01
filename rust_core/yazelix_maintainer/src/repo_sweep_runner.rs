@@ -273,15 +273,7 @@ fn run_nonvisual_sweep_test(
             ));
         }
 
-        let env_result = if combo.terminal == "foot" && platform_name() != "linux" {
-            StepResult::new(
-                SweepStatus::Skip,
-                "Foot only supported on Linux".to_string(),
-                None,
-            )
-        } else {
-            validate_environment(repo_root, &config_path)
-        };
+        let env_result = validate_environment(repo_root, &config_path);
 
         let overall = if config_result.status == SweepStatus::Pass
             && matches!(env_result.status, SweepStatus::Pass | SweepStatus::Skip)
@@ -376,11 +368,10 @@ fn build_sweep_config(
     for candidate in [
         terminal,
         "ghostty",
+        "yazelix_terminal",
         "wezterm",
         "ratty",
         "kitty",
-        "alacritty",
-        "foot",
     ] {
         if !terminals.contains(&candidate) {
             terminals.push(candidate);
@@ -575,13 +566,6 @@ fn validate_environment(repo_root: &Path, config_path: &Path) -> StepResult {
     )
 }
 
-fn platform_name() -> String {
-    std::env::var("YAZELIX_TEST_OS")
-        .unwrap_or_else(|_| std::env::consts::OS.to_string())
-        .trim()
-        .to_ascii_lowercase()
-}
-
 fn runtime_root(repo_root: &Path) -> PathBuf {
     std::env::var_os("YAZELIX_RUNTIME_DIR")
         .map(PathBuf::from)
@@ -608,7 +592,7 @@ mod tests {
 
         assert!(rendered.contains("default_shell = \"zsh\""));
         assert!(rendered.contains(
-            "terminals = [\"kitty\", \"ghostty\", \"wezterm\", \"alacritty\", \"foot\"]"
+            "terminals = [\"kitty\", \"ghostty\", \"yazelix_terminal\", \"wezterm\", \"ratty\"]"
         ));
         assert!(rendered.contains("hide_sidebar_on_file_open = true"));
         assert!(rendered.contains("persistent_sessions = true"));

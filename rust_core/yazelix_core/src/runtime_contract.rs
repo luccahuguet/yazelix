@@ -5,7 +5,7 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const SUPPORTED_TERMINALS: &[&str] = &["ghostty", "wezterm", "ratty", "kitty", "alacritty", "foot"];
+const SUPPORTED_TERMINALS: &[&str] = &["ghostty", "yazelix_terminal", "wezterm", "ratty", "kitty"];
 const NIXGL_WRAPPER_CANDIDATES: &[(&str, &[&str])] = &[
     ("nixGL", &["libexec", "nixGL"]),
     ("nixGLDefault", &["libexec", "nixGLDefault"]),
@@ -661,13 +661,20 @@ fn detect_terminal_candidates(
 
     ordered_terminals
         .into_iter()
-        .filter(|terminal| command_exists(terminal, command_search_paths))
+        .filter(|terminal| command_exists(terminal_command_name(terminal), command_search_paths))
         .map(|terminal| TerminalCandidate {
             name: terminal_display_name(&terminal).to_string(),
-            command: terminal.clone(),
+            command: terminal_command_name(&terminal).to_string(),
             terminal,
         })
         .collect()
+}
+
+fn terminal_command_name(terminal: &str) -> &str {
+    match terminal {
+        "yazelix_terminal" => "yazelix-terminal-desktop",
+        other => other,
+    }
 }
 
 fn command_exists(command: &str, command_search_paths: &[PathBuf]) -> bool {
@@ -766,10 +773,9 @@ fn terminal_display_name(terminal: &str) -> String {
     match terminal {
         "ghostty" => "Ghostty".to_string(),
         "wezterm" => "WezTerm".to_string(),
+        "yazelix_terminal" => "Yazelix Terminal".to_string(),
         "ratty" => "Ratty".to_string(),
         "kitty" => "Kitty".to_string(),
-        "alacritty" => "Alacritty".to_string(),
-        "foot" => "Foot".to_string(),
         _ => terminal.to_string(),
     }
 }
@@ -939,7 +945,7 @@ mod tests {
                 .details
                 .as_deref()
                 .unwrap_or_default()
-                .contains("Supported terminals: ghostty, wezterm, ratty, kitty, alacritty, foot")
+                .contains("Supported terminals: ghostty, yazelix_terminal, wezterm, ratty, kitty")
         );
     }
 
@@ -1027,5 +1033,36 @@ mod tests {
             candidates.first().map(|c| c.terminal.as_str()),
             Some("ghostty")
         );
+    }
+
+    // Defends: yazelix_terminal is a config id whose executable command is the child-owned desktop wrapper.
+    #[test]
+    fn launch_preflight_maps_yazelix_terminal_to_child_wrapper_command() {
+        let temp = tempdir().unwrap();
+        let work = temp.path().join("work");
+        fs::create_dir_all(&work).unwrap();
+        let host_bin = temp.path().join("host-bin");
+        fs::create_dir_all(&host_bin).unwrap();
+        write_executable(&host_bin.join("yazelix-terminal-desktop"));
+
+        let data = evaluate_startup_launch_preflight(&StartupLaunchPreflightRequest {
+            startup: None,
+            launch: Some(LaunchPreflightPayload {
+                working_dir: work.clone(),
+                requested_terminal: "yazelix_terminal".to_string(),
+                terminals: vec!["ghostty".to_string()],
+                command_search_paths: vec![host_bin],
+            }),
+        })
+        .unwrap();
+
+        let candidate = data
+            .terminal_candidates
+            .as_ref()
+            .and_then(|candidates| candidates.first())
+            .unwrap();
+        assert_eq!(candidate.terminal, "yazelix_terminal");
+        assert_eq!(candidate.command, "yazelix-terminal-desktop");
+        assert_eq!(candidate.name, "Yazelix Terminal");
     }
 }

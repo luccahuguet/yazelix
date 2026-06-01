@@ -12,8 +12,6 @@ use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const YAZELIX_WINDOW_CLASS: &str = "com.yazelix.Yazelix";
-const YAZELIX_X11_INSTANCE: &str = "yazelix";
 const YAZELIX_THEME: &str = "Abernathy";
 const FONT_FIRACODE: &str = "FiraCode Nerd Font";
 
@@ -61,11 +59,10 @@ fn get_opacity_value(transparency: &str) -> &str {
 fn get_terminal_title(terminal: &str) -> String {
     let name = match terminal {
         "ghostty" => "Ghostty",
+        "yazelix_terminal" => "Yazelix Terminal",
         "kitty" => "Kitty",
         "wezterm" => "WezTerm",
         "ratty" => "Ratty",
-        "alacritty" => "Alacritty",
-        "foot" => "Foot",
         _ => terminal,
     };
     format!("Yazelix - {}", name)
@@ -219,6 +216,80 @@ white = "#ffffff"
     )
 }
 
+fn generate_yazelix_terminal_config(
+    runtime_dir: &Path,
+    transparency: &str,
+) -> Result<String, CoreError> {
+    let package_config = runtime_dir
+        .join("share")
+        .join("yazelix-terminal")
+        .join("config.toml");
+    let raw = fs::read_to_string(&package_config).map_err(|source| {
+        CoreError::io(
+            "read_yazelix_terminal_package_config",
+            "Could not read the packaged Yazelix Terminal config",
+            "Reinstall the Yazelix runtime so the yazelix-terminal child package is present.",
+            package_config.to_string_lossy(),
+            source,
+        )
+    })?;
+    let mut table = toml::from_str::<toml::Table>(&raw).map_err(|source| {
+        CoreError::classified(
+            crate::bridge::ErrorClass::Runtime,
+            "parse_yazelix_terminal_package_config",
+            format!(
+                "The packaged Yazelix Terminal config at {} is not valid TOML.",
+                package_config.display()
+            ),
+            "Reinstall the Yazelix runtime or rebuild it from a valid yazelix-terminal package.",
+            serde_json::json!({ "error": source.to_string() }),
+        )
+    })?;
+    let opacity = get_opacity_value(transparency)
+        .parse::<f64>()
+        .map_err(|source| {
+            CoreError::classified(
+                crate::bridge::ErrorClass::Internal,
+                "parse_yazelix_terminal_opacity",
+                format!(
+                    "Could not parse Yazelix Terminal opacity for transparency '{transparency}'."
+                ),
+                "Report this Yazelix bug with the active settings.jsonc.",
+                serde_json::json!({ "error": source.to_string() }),
+            )
+        })?;
+    let window = table
+        .entry("window")
+        .or_insert_with(|| toml::Value::Table(toml::map::Map::new()))
+        .as_table_mut()
+        .ok_or_else(|| {
+            CoreError::classified(
+                crate::bridge::ErrorClass::Runtime,
+                "invalid_yazelix_terminal_window_config",
+                format!(
+                    "The packaged Yazelix Terminal config at {} has a non-table [window] value.",
+                    package_config.display()
+                ),
+                "Reinstall the Yazelix runtime or rebuild it from a valid yazelix-terminal package.",
+                serde_json::json!({}),
+            )
+        })?;
+    window.insert("opacity".to_string(), toml::Value::Float(opacity));
+    window.insert(
+        "opacity-cells".to_string(),
+        toml::Value::Boolean(transparency != "none"),
+    );
+    toml::to_string_pretty(&toml::Value::Table(table)).map_err(|source| {
+        CoreError::classified(
+            crate::bridge::ErrorClass::Internal,
+            "render_yazelix_terminal_config",
+            "Could not render the generated Yazelix Terminal config.",
+            "Report this Yazelix bug with the current settings.jsonc.",
+            serde_json::json!({ "error": source.to_string() }),
+        )
+    })
+}
+
 fn build_kitty_cursor(kitty_enable_cursor: bool) -> String {
     if kitty_enable_cursor {
         "cursor_shape block\ncursor_trail 3\ncursor_trail_decay 0.1 0.4".to_string()
@@ -281,129 +352,6 @@ sync_to_monitor yes
         FONT_FIRACODE,
         build_kitty_cursor(kitty_enable_cursor),
         override_section,
-    )
-}
-
-fn generate_alacritty_base_config(transparency: &str) -> String {
-    format!(
-        r##"# Alacritty base configuration for Yazelix
-
-[env]
-TERM = "xterm-256color"
-
-[window]
-decorations = "None"
-padding = {{ x = 0, y = 10 }}
-class = {{ instance = "{}", general = "{}" }}
-title = "{}"
-
-# Transparency (configurable via settings.jsonc)
-{}
-
-# Cursor trails: Not supported in Alacritty
-
-[font]
-normal = {{ family = "{}", style = "Regular" }}
-bold = {{ family = "{}", style = "Bold" }}
-italic = {{ family = "{}", style = "Italic" }}
-bold_italic = {{ family = "{}", style = "Bold Italic" }}
-builtin_box_drawing = true
-size = 12
-
-[colors]
-primary = {{ background = "#000000", foreground = "#ffffff" }}"##,
-        YAZELIX_X11_INSTANCE,
-        YAZELIX_WINDOW_CLASS,
-        get_terminal_title("alacritty"),
-        build_transparency(transparency, "toml", ""),
-        FONT_FIRACODE,
-        FONT_FIRACODE,
-        FONT_FIRACODE,
-        FONT_FIRACODE,
-    )
-}
-
-fn generate_alacritty_config(base_path: &Path, override_path: Option<&Path>) -> String {
-    let imports: Vec<String> = match override_path {
-        Some(path) if path.exists() => {
-            vec![
-                format!("\"{}\"", base_path.display()),
-                format!("\"{}\"", path.display()),
-            ]
-        }
-        _ => {
-            vec![format!("\"{}\"", base_path.display())]
-        }
-    };
-
-    let override_comment = match override_path {
-        Some(path) => format!(
-            "# Create {} if you want terminal-native Alacritty tweaks.",
-            path.display()
-        ),
-        None => {
-            "# Create a user override if you want terminal-native Alacritty tweaks.".to_string()
-        }
-    };
-
-    format!(
-        r##"# Alacritty configuration entrypoint for Yazelix
-
-[general]
-import = [{}]
-
-# Personal Yazelix Alacritty overrides (optional, user-owned)
-{}
-"##,
-        imports.join(", "),
-        override_comment,
-    )
-}
-
-fn generate_foot_config(transparency: &str, override_path: Option<PathBuf>) -> String {
-    let override_include = match override_path {
-        Some(path) => format!(
-            r#"
-# Personal Yazelix Foot overrides (optional, user-owned)
-[main]
-include={}
-"#,
-            path.display()
-        ),
-        None => r#"
-# Create a user override if you want terminal-native Foot tweaks.
-"#
-        .to_string(),
-    };
-
-    format!(
-        r##"# Foot configuration for Yazelix
-
-[colors-dark]
-# Transparency (configurable via settings.jsonc)
-{}
-
-[main]
-app-id={}
-title={}
-locked-title=yes
-font={}:size=12
-pad=6x6 center
-
-[csd]
-preferred=client
-size=0
-border-width=0
-
-[cursor]
-style=block
-blink=false
-{}"##,
-        build_transparency(transparency, "ini", "alpha"),
-        YAZELIX_WINDOW_CLASS,
-        get_terminal_title("foot"),
-        FONT_FIRACODE,
-        override_include,
     )
 }
 
@@ -495,6 +443,27 @@ pub fn generate_terminal_materialization(
                     path: path.to_string_lossy().into_owned(),
                 });
             }
+            "yazelix_terminal" => {
+                let yazelix_terminal_dir = generated_dir.join("yazelix_terminal");
+                fs::create_dir_all(&yazelix_terminal_dir).map_err(|source| {
+                    CoreError::io(
+                        "create_yazelix_terminal_dir",
+                        "Could not create Yazelix Terminal output directory",
+                        "Check permissions for the Yazelix state directory.",
+                        yazelix_terminal_dir.to_string_lossy(),
+                        source,
+                    )
+                })?;
+                let path = yazelix_terminal_dir.join("config.toml");
+                write_text_atomic(
+                    &path,
+                    &generate_yazelix_terminal_config(&request.runtime_dir, transparency)?,
+                )?;
+                generated.push(TerminalGeneratedConfig {
+                    terminal: "yazelix_terminal".to_string(),
+                    path: path.to_string_lossy().into_owned(),
+                });
+            }
             "kitty" => {
                 let kitty_dir = generated_dir.join("kitty");
                 fs::create_dir_all(&kitty_dir).map_err(|source| {
@@ -518,49 +487,6 @@ pub fn generate_terminal_materialization(
                 )?;
                 generated.push(TerminalGeneratedConfig {
                     terminal: "kitty".to_string(),
-                    path: path.to_string_lossy().into_owned(),
-                });
-            }
-            "alacritty" => {
-                let alacritty_dir = generated_dir.join("alacritty");
-                fs::create_dir_all(&alacritty_dir).map_err(|source| {
-                    CoreError::io(
-                        "create_alacritty_dir",
-                        "Could not create Alacritty output directory",
-                        "Check permissions for the Yazelix state directory.",
-                        alacritty_dir.to_string_lossy(),
-                        source,
-                    )
-                })?;
-                let base_path = alacritty_dir.join("alacritty_base.toml");
-                write_text_atomic(&base_path, &generate_alacritty_base_config(transparency))?;
-                let override_path = get_terminal_override_path(&config_dir, "alacritty")?;
-                let entry_path = alacritty_dir.join("alacritty.toml");
-                write_text_atomic(
-                    &entry_path,
-                    &generate_alacritty_config(&base_path, override_path.as_deref()),
-                )?;
-                generated.push(TerminalGeneratedConfig {
-                    terminal: "alacritty".to_string(),
-                    path: entry_path.to_string_lossy().into_owned(),
-                });
-            }
-            "foot" => {
-                let foot_dir = generated_dir.join("foot");
-                fs::create_dir_all(&foot_dir).map_err(|source| {
-                    CoreError::io(
-                        "create_foot_dir",
-                        "Could not create Foot output directory",
-                        "Check permissions for the Yazelix state directory.",
-                        foot_dir.to_string_lossy(),
-                        source,
-                    )
-                })?;
-                let override_path = get_terminal_override_path(&config_dir, "foot")?;
-                let path = foot_dir.join("foot.ini");
-                write_text_atomic(&path, &generate_foot_config(transparency, override_path))?;
-                generated.push(TerminalGeneratedConfig {
-                    terminal: "foot".to_string(),
                     path: path.to_string_lossy().into_owned(),
                 });
             }

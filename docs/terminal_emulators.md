@@ -3,6 +3,7 @@
 Data summarized from:
 - https://tmuxai.dev/terminal-compatibility/
 - https://terminaltrove.com/terminals/
+- https://github.com/luccahuguet/yazelix-terminal
 - https://github.com/orhun/ratty
 
 ## Summary Table
@@ -20,11 +21,10 @@ Score rubric (1–10):
 | Terminal | Platforms (TerminalTrove) | Language (TerminalTrove) | GPU accel | Image protocol | Sixel | Source | Score |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Ghostty | macOS, Linux | Zig | Yes | Yes | No | Open Source (MIT) | 7 |
+| Yazelix Terminal | Linux, macOS | Rust | Yes | Yes | Yes | Open Source | 8 |
 | WezTerm | Linux, macOS, Windows | Rust | Yes | Yes | Yes | Open Source (MIT) | 9 |
 | Ratty | Linux | Rust | Yes | Yes | No | Open Source | 5 |
 | Kitty | Linux, macOS | Python | Yes | Yes | No | Open Source (GPL-3) | 7 |
-| Alacritty | Linux, macOS, Windows | Rust | Yes | Yes | No | Open Source (Apache 2.0) | 7 |
-| Foot | Linux | C | No | Yes | Yes | Open Source (MIT) | 4 |
 
 ## Ghostty
 - Platforms: macOS, Linux (TerminalTrove)
@@ -37,6 +37,18 @@ Score rubric (1–10):
 - Gaps: No Windows support; no Sixel; newer project (less ecosystem). (tmuxai)
 
 Yazelix uses Ghostty as the default packaged terminal and pins temporary Zellij/Yazi forks so Yazi image previews can use Kitty graphics through Zellij. Those forks should be dropped and archived once upstream Zellij supports the required Kitty graphics path directly enough for the normal upstream packages to replace them.
+
+## Yazelix Terminal
+- Platforms: Linux and macOS through the Nix flake systems; Windows remains outside the Yazelix package path
+- Language: Rust
+- Hardware acceleration: Yes; Rio-derived renderer stack
+- Image protocol support: Yes, including Kitty graphics and other modern protocol work carried by the fork
+- Source: Open Source
+- Summary: Experimental first-party Yazelix terminal path based on Rio, packaged through the `yazelix-terminal` child repository.
+- Strengths: Ghostty-style cursor shader presets; generated Yazelix config; `terminal.transparency` support; child-owned launcher wrapper; intended as the long-term terminal Yazelix can evolve directly.
+- Gaps: Experimental; smaller real-world validation than Ghostty and WezTerm; Yazelix still treats it as opt-in until event-mode responsiveness, graphics previews, and cursor shader behavior have more soak time.
+
+Yazelix exposes Yazelix Terminal as `#yazelix_terminal`, `#runtime_yazelix_terminal`, and `programs.yazelix.runtime_variant = "yazelix_terminal"`. Launch goes through the child-owned `yazelix-terminal-desktop` wrapper. Yazelix materializes a generated `config.toml` from the packaged child config and injects the selected `terminal.transparency` value before launch.
 
 ## WezTerm
 - Platforms: Linux, macOS, Windows (TerminalTrove)
@@ -69,20 +81,3 @@ Yazelix exposes Ratty as an experimental Linux packaged runtime. Ratty can use t
 - Summary: Fast, feature-rich GPU-based terminal with its own superior graphics protocol. (tmuxai)
 - Strengths: Kitty graphics protocol (best for images); GPU-accelerated; extensible via kittens; full ligatures. (tmuxai)
 - Gaps: No Windows support; no Sixel (uses own protocol); learning curve for config. (tmuxai)
-
-## Alacritty
-- Platforms: Linux, macOS, Windows (TerminalTrove)
-- Language: Rust (TerminalTrove)
-- Hardware acceleration: Yes (TerminalTrove)
-- Image protocol support: Yes; Sixel: No (TerminalTrove)
-- Source: Open Source (Apache 2.0) (TerminalTrove)
-- Summary: Minimalist, blazing fast GPU-accelerated terminal emulator focused on performance and simplicity. (tmuxai)
-- Strengths: Fastest terminal emulator; minimal resource usage (~30MB); cross-platform; simple TOML config. (tmuxai)
-- Gaps: No ligatures (by design); no graphics protocols; no built-in tabs/splits. (tmuxai)
-
-## Foot
-- Platforms: Linux (TerminalTrove)
-- Language: C (TerminalTrove)
-- Hardware acceleration: No (TerminalTrove)
-- Image protocol support: Yes; Sixel: Yes (TerminalTrove)
-- Source: Open Source (MIT) (TerminalTrove)

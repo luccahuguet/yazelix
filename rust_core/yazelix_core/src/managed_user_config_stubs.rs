@@ -39,10 +39,6 @@ const KITTY_OVERRIDE: &str = r#"# Yazelix-managed Kitty overrides
 # Add terminal-native Kitty settings for Yazelix windows here
 "#;
 
-const ALACRITTY_OVERRIDE: &str = r#"# Yazelix-managed Alacritty overrides
-# Add terminal-native Alacritty settings for Yazelix windows here
-"#;
-
 pub(crate) fn ensure_zellij_surface_stub(_config_dir: &Path) -> Result<(), CoreError> {
     Ok(())
 }
@@ -86,14 +82,6 @@ pub(crate) fn ensure_terminal_override_stubs(
         match terminal.as_str() {
             "ghostty" => ensure_terminal_stub_with_legacy(config_dir, terminal, GHOSTTY_OVERRIDE)?,
             "kitty" => ensure_terminal_stub_with_legacy(config_dir, terminal, KITTY_OVERRIDE)?,
-            "alacritty" => {
-                ensure_terminal_stub_with_legacy(config_dir, terminal, ALACRITTY_OVERRIDE)?
-            }
-            "foot" => ensure_terminal_stub_with_legacy(
-                config_dir,
-                terminal,
-                "# Yazelix-managed Foot overrides\n# Add terminal-native Foot settings for Yazelix windows here\n",
-            )?,
             _ => {}
         }
     }
@@ -205,14 +193,12 @@ mod tests {
                 "ghostty".to_string(),
                 "kitty".to_string(),
                 "wezterm".to_string(),
-                "alacritty".to_string(),
             ],
         )
         .unwrap();
 
         assert!(config.path().join("terminal_ghostty.conf").exists());
         assert!(config.path().join("terminal_kitty.conf").exists());
-        assert!(config.path().join("terminal_alacritty.toml").exists());
         assert!(!config.path().join("terminal_wezterm.lua").exists());
         assert!(
             fs::read_to_string(config.path().join("terminal_ghostty.conf"))

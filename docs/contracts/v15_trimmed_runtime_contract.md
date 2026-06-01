@@ -45,10 +45,10 @@ This file exists so current docs and current contracts can point at one authorit
 - That runtime ships a fixed toolset rather than a user-managed package graph, but interactive shells only export the curated user-facing tool surface instead of the full helper closure.
 - Runtime tool versions come from the locked `nixpkgs` input, and the first-party flake intentionally tracks `github:NixOS/nixpkgs/nixpkgs-unstable`. Yazelix is an application/runtime distribution for fast-moving terminal and TUI integrations, so fresher package availability is more important than the extra NixOS system-gating from `nixos-unstable`.
 - Maintainer update pins record the Nix helper version and the Nixpkgs-provided Nushell version, so upstream Nushell releases only become runtime bumps after they land in the locked Nixpkgs input or Yazelix deliberately changes that ownership model.
-- The packaged runtime ships one terminal variant at a time: Ghostty by default, with explicit `yazelix_wezterm`, Linux-only `yazelix_ratty`, and `yazelix_ghostty` variants for users who want a specific first-party path.
+- The packaged runtime ships one terminal variant at a time: Ghostty by default, with explicit `yazelix_terminal`, `yazelix_wezterm`, Linux-only `yazelix_ratty`, and `yazelix_ghostty` variants for users who want a specific first-party path.
 - The default Ghostty path uses Yazelix-pinned Zellij and Yazi forks so Yazi image previews can use Kitty graphics through Zellij.
 - The Zellij and Yazi forks are temporary product integration forks. Once upstream Zellij supports the required Kitty graphics path directly enough for Yazelix to return to upstream packages, those forks should be dropped from the default runtime and archived.
-- Kitty, Alacritty, and Foot remain supported alternatives when the user provides those binaries on `PATH`.
+- Kitty remains a supported alternative when the user provides that binary on `PATH`.
 - The runtime does not ship a runtime-local `devenv`.
 
 ### Config Surface
@@ -58,7 +58,7 @@ This file exists so current docs and current contracts can point at one authorit
 - Managed override directories such as Zellij, Yazi, Helix, and shell user hooks remain part of that user-owned config surface.
 - The current trimmed branch does not have a `yazelix_packs.toml` sidecar and does not expose a first-class pack graph.
 - Legacy or removed config fields fail fast instead of degrading silently.
-- Old mutable `yazelix.toml`, `cursors.toml`, `user_configs/` sidecars, and embedded cursor settings are unsupported legacy inputs; they hard-error with actionable diagnostics instead of being rewritten automatically.
+- Old mutable `yazelix.toml`, `cursors.toml`, `user_configs/` sidecars, and embedded cursor settings are unsupported legacy inputs; they hard-error with actionable diagnostics instead of being rewritten automatically. Removed terminal sidecars are ignored by the current runtime and reported as legacy adjacency when reset/config-maintenance commands inspect the config root.
 
 ### Generated State
 

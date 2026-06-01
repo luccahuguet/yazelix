@@ -557,10 +557,9 @@ pub fn generated_terminal_config_path(state_dir: &Path, terminal: &str) -> PathB
     match terminal {
         "ghostty" => root.join("ghostty").join("config"),
         "wezterm" => root.join("wezterm").join(".wezterm.lua"),
+        "yazelix_terminal" => root.join("yazelix_terminal").join("config.toml"),
         "ratty" => root.join("ratty").join("ratty.toml"),
         "kitty" => root.join("kitty").join("kitty.conf"),
-        "alacritty" => root.join("alacritty").join("alacritty.toml"),
-        "foot" => root.join("foot").join("foot.ini"),
         other => root.join(other),
     }
 }
@@ -593,11 +592,10 @@ pub fn user_terminal_config_candidates(
             home_dir.join(".wezterm.lua"),
             xdg_config_home.join("wezterm").join("wezterm.lua"),
         ]),
-        "ratty" => Ok(vec![xdg_config_home.join("ratty").join("ratty.toml")]),
-        "alacritty" => Ok(vec![
-            xdg_config_home.join("alacritty").join("alacritty.toml"),
+        "yazelix_terminal" => Ok(vec![
+            xdg_config_home.join("yazelix-terminal").join("config.toml"),
         ]),
-        "foot" => Ok(vec![xdg_config_home.join("foot").join("foot.ini")]),
+        "ratty" => Ok(vec![xdg_config_home.join("ratty").join("ratty.toml")]),
         other => Err(format!("Unsupported terminal config lookup: {other}")),
     }
 }
@@ -670,6 +668,26 @@ mod tests {
                 .native_paths
                 .iter()
                 .any(|path| path.ends_with("config.ghostty"))
+        );
+    }
+
+    // Defends: Yazelix Terminal's native user-mode lookup points at its child-owned config directory.
+    #[test]
+    fn yazelix_terminal_user_mode_uses_child_native_config_path() {
+        let tmp = TempDir::new().unwrap();
+        let mut req = request(&tmp);
+        req.terminal_config_mode = "user".to_string();
+        req.selected_terminals = vec!["yazelix_terminal".to_string()];
+
+        let entries = classify_native_config_statuses(&req);
+        let terminal = find(&entries, "terminal.yazelix_terminal.input");
+
+        assert_eq!(terminal.status, "native_required_missing");
+        assert!(
+            terminal
+                .native_paths
+                .iter()
+                .any(|path| path.ends_with("yazelix-terminal/config.toml"))
         );
     }
 

@@ -17,7 +17,7 @@ It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij,
 **Important**: You don't need to learn Nix or Nushell to use Yazelix. Nix with flakes is the only real host prerequisite. The normal product surface is the `yazelix` package or the top-level Home Manager module.
 
 ## Supported Terminal Emulators
-Yazelix provides one packaged terminal runtime variant at a time. The default `#yazelix` package uses Ghostty so Yazelix cursor trails, Ghostty config effects, and Yazi image previews through Zellij are present on first run. WezTerm remains available through `#yazelix_wezterm` or `programs.yazelix.runtime_variant = "wezterm"` for users who prefer the stable alternate packaged terminal path. Ratty is available on Linux through `#yazelix_ratty` or `programs.yazelix.runtime_variant = "ratty"` as an experimental packaged terminal path. Each packaged variant seeds new configs with its terminal first in `terminal.terminals`. Kitty, Alacritty, and Foot remain supported terminal choices, but you provide those binaries yourself and then list them in `terminal.terminals` in `settings.jsonc`.
+Yazelix provides one packaged terminal runtime variant at a time. The default `#yazelix` package uses Ghostty so Yazelix cursor trails, Ghostty config effects, and Yazi image previews through Zellij are present on first run. Yazelix Terminal is available through `#yazelix_terminal` or `programs.yazelix.runtime_variant = "yazelix_terminal"` as the experimental Rio-derived path for the future first-party terminal. WezTerm remains available through `#yazelix_wezterm` or `programs.yazelix.runtime_variant = "wezterm"` for users who prefer the stable alternate packaged terminal path. Ratty is available on Linux through `#yazelix_ratty` or `programs.yazelix.runtime_variant = "ratty"` as an experimental packaged terminal path. Each packaged variant seeds new configs with its terminal first in `terminal.terminals`. Kitty remains supported as a PATH-provided terminal choice when you list it in `terminal.terminals` in `settings.jsonc`.
 
 The Ghostty image-preview path pins temporary Yazelix forks of Zellij and Yazi. Those forks are expected to be dropped and archived once upstream Zellij supports the required Kitty graphics path directly enough for Yazelix to return to upstream packages.
 
@@ -38,20 +38,16 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 - Provided by the default `yazelix` package runtime and by `yazelix_ghostty`
 - Download page: https://ghostty.org/download
 
+**Yazelix Terminal**
+- Experimental Rio-derived first-party terminal path
+- Provided by `yazelix_terminal` and by `programs.yazelix.runtime_variant = "yazelix_terminal"`
+- Uses the child-owned `yazelix-terminal-desktop` wrapper, generated Yazelix config, Ghostty-style cursor shaders, and `terminal.transparency`
+- Reference: https://github.com/luccahuguet/yazelix-terminal
+
 **Kitty**
 - Fast, feature-rich, GPU-accelerated terminal
 - Supported as a PATH-provided alternative terminal
 - Reference: https://sw.kovidgoyal.net/kitty/binary/
-
-**Alacritty**
-- Fast, GPU-accelerated terminal written in Rust
-- Supported as a PATH-provided alternative terminal
-- Reference: https://github.com/alacritty/alacritty/blob/master/INSTALL.md
-
-**Foot**
-- Fast, simple, written in C
-- Supported as a PATH-provided Linux-only alternative terminal
-- Reference: https://codeberg.org/dnkl/foot/src/branch/master/INSTALL.md
 
 ## Quickstart
 
@@ -62,7 +58,7 @@ nix profile add github:luccahuguet/yazelix#yazelix
 yzx launch
 ```
 
-Use `#yazelix_wezterm` instead if you intentionally want the package-provided WezTerm runtime variant, or `#yazelix_ratty` on Linux if you want the experimental Ratty runtime variant.
+Use `#yazelix_terminal` instead if you intentionally want the experimental Yazelix Terminal runtime variant, `#yazelix_wezterm` for WezTerm, or `#yazelix_ratty` on Linux if you want the experimental Ratty runtime variant.
 
 One-off use without installing also works:
 
@@ -148,9 +144,10 @@ Install the Yazelix package exposed by the top-level flake:
 nix profile add github:luccahuguet/yazelix#yazelix
 ```
 
-The default package is the Ghostty variant. To install the package-provided WezTerm or Linux Ratty variants explicitly:
+The default package is the Ghostty variant. To install the package-provided Yazelix Terminal, WezTerm, or Linux Ratty variants explicitly:
 
 ```bash
+nix profile add github:luccahuguet/yazelix#yazelix_terminal
 nix profile add github:luccahuguet/yazelix#yazelix_wezterm
 nix profile add github:luccahuguet/yazelix#yazelix_ratty
 ```
@@ -177,7 +174,7 @@ Normal usage relies on the package-provided `yzx` entrypoint or the Home Manager
 Host prerequisite contract:
 - **Host prerequisite**: Nix with flakes enabled
 - **Package-provided**: the Yazelix runtime, including runtime-local `nu`, `zellij`, `yazi`, `helix`, shells, a curated interactive tool surface, and the internal helper closure behind the runtime root
-- **Not package-provided**: a separate host Nushell install for your everyday shell outside Yazelix, or PATH-provided alternative terminals outside the selected Ghostty/WezTerm/Ratty runtime variant
+- **Not package-provided**: a separate host Nushell install for your everyday shell outside Yazelix, or PATH-provided alternative terminals outside the selected Ghostty/Yazelix Terminal/WezTerm/Ratty runtime variant
 - **Nushell version ownership**: Yazelix uses the Nushell packaged by the locked `nixpkgs-unstable` input for the runtime and bootstrap path. The maintainer update workflow records that as `PINNED_NUSHELL_VERSION`; it does not chase a newer upstream Nushell release until Nixpkgs packages it.
 
 ### Step 3: Configure Your Installation (Optional)
@@ -195,25 +192,25 @@ The packaged runtime ships a fixed toolset instead of configurable dependency gr
 - Helix Steel authoring helpers: `steel`, `steel-language-server`, `forge`, `cargo-steel-lib`, `repl-connect`
 - the default CLI helpers: `fzf`, `zoxide`, `starship`, `lazygit`, `mise`, `carapace`, `macchina`
 - the default Yazi preview helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
-- one packaged terminal variant: Ghostty by default with the Yazelix Zellij/Yazi graphics bridge, WezTerm explicitly through `#yazelix_wezterm`, or experimental Linux Ratty through `#yazelix_ratty`
+- one packaged terminal variant: Ghostty by default with the Yazelix Zellij/Yazi graphics bridge, experimental Yazelix Terminal through `#yazelix_terminal`, WezTerm through `#yazelix_wezterm`, or experimental Linux Ratty through `#yazelix_ratty`
 
 When you enter `yzx env`, Yazelix exports that curated tool surface to your shell. Runtime-private helpers stay under `libexec/` so host apps launched from Yazelix do not inherit shadowing tools like `dirname` ahead of the system PATH.
 
 What it does not ship anymore:
 - a runtime-local `devenv` binary
 - dynamic packs or `user_packages`
-- non-selected terminal binaries; install Kitty, Alacritty, or Foot yourself if you choose them, and use the Linux Ratty variant when you want bundled Ratty
+- non-selected terminal binaries; install Kitty yourself if you choose it, and use the Linux Ratty variant when you want bundled Ratty
 - heavyweight media helpers such as `ffmpeg` or ImageMagick
 
 #### Configuration Options
 - **Custom shells**: Set `default_shell` to your preference (`"nu"`, `"bash"`, `"fish"`, `"zsh"`)
-- **Terminal preference**: Set `terminals` (`["ghostty", "wezterm", "ratty", "kitty", "alacritty", "foot"]`, ordered)
-- **Terminal launch**: Ghostty is first in the default terminal list for Yazelix cursor trails and Yazi image previews; WezTerm and Ratty remain available through explicit runtime variants or host `PATH`; other configured terminals are launched from `PATH` in the order you configure
+- **Terminal preference**: Set `terminals` (`["ghostty", "yazelix_terminal", "wezterm", "ratty", "kitty"]`, ordered)
+- **Terminal launch**: Ghostty is first in the default terminal list for Yazelix cursor trails and Yazi image previews; Yazelix Terminal, WezTerm, and Ratty remain available through explicit runtime variants or host `PATH`; Kitty is launched from `PATH` when configured
 - **Editor choice**: Configure your editor (see [Editor Configuration](./editor_configuration.md))
 
-### Step 4: Install Fonts (Required for Kitty and Alacritty)
+### Step 4: Install Fonts (Required for Kitty)
 
-If you're using Kitty or Alacritty, install Nerd Fonts for proper icon display using modern Nix commands:
+If you're using Kitty, install Nerd Fonts for proper icon display using modern Nix commands:
 
 **Option A: Using nix profile (recommended - modern replacement for nix-env):**
 ```bash
@@ -229,7 +226,7 @@ home.packages = with pkgs; [
 ];
 ```
 
-**Note**: WezTerm and Ghostty have better font fallback and don't require this step.
+**Note**: WezTerm, Ghostty, and Yazelix Terminal have better font fallback and don't require this step.
 
 ### Step 5: Launch and Shell Integration
 
@@ -459,6 +456,6 @@ For complete customization options, see the [Customization Guide](./customizatio
 
 - The `--impure` flag in `nix develop` allows access to the HOME environment variable, necessary for config paths
 - Tweak configs to make them yours; this is just a starting point!
-- For extra configuration, see: [WezTerm Docs](https://wezfurlong.org/wezterm/config/files.html) and [Ratty config](https://github.com/orhun/ratty/blob/main/config/ratty.toml)
+- For extra configuration, see: [Yazelix Terminal](https://github.com/luccahuguet/yazelix-terminal), [WezTerm Docs](https://wezfurlong.org/wezterm/config/files.html), and [Ratty config](https://github.com/orhun/ratty/blob/main/config/ratty.toml)
 - Add more swap layouts as needed using the KDL files in `configs/zellij/layouts`
 - Use `lazygit`, it's great

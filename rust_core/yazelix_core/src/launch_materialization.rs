@@ -19,7 +19,7 @@ use serde::Serialize;
 use serde_json::{Map as JsonMap, Value as JsonValue};
 use std::path::{Path, PathBuf};
 
-const SUPPORTED_TERMINALS: &[&str] = &["ghostty", "wezterm", "ratty", "kitty", "alacritty", "foot"];
+const SUPPORTED_TERMINALS: &[&str] = &["ghostty", "yazelix_terminal", "wezterm", "ratty", "kitty"];
 const DEFAULT_TERMINAL_CONFIG_MODE: &str = "yazelix";
 const DEFAULT_TERMINALS: &[&str] = &["ghostty", "wezterm"];
 
@@ -344,11 +344,10 @@ fn generated_terminal_config_path(state_dir: &Path, terminal: &str) -> PathBuf {
     let root = state_dir.join("configs").join("terminal_emulators");
     match terminal {
         "ghostty" => root.join("ghostty").join("config"),
+        "yazelix_terminal" => root.join("yazelix_terminal").join("config.toml"),
         "wezterm" => root.join("wezterm").join(".wezterm.lua"),
         "ratty" => root.join("ratty").join("ratty.toml"),
         "kitty" => root.join("kitty").join("kitty.conf"),
-        "alacritty" => root.join("alacritty").join("alacritty.toml"),
-        "foot" => root.join("foot").join("foot.ini"),
         _ => root.join(terminal),
     }
 }

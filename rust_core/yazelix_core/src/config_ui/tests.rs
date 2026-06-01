@@ -542,7 +542,7 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
     assert_eq!(edit.mode, ConfigUiEditMode::MultiChoice);
     let details = lines_text(&render_details(&app.ui, UiRowRef::Field(edit.field_index)));
     assert!(details.contains("> [x] ghostty"));
-    assert!(details.contains("  [ ] alacritty"));
+    assert!(details.contains("  [ ] kitty"));
 
     app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
     app.handle_key(KeyEvent::new(KeyCode::Char('l'), KeyModifiers::NONE));
@@ -557,7 +557,7 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
     let input = app.edit.as_ref().expect("edit").input.clone();
     assert_eq!(
         parse_string_list_values(&field, &input).expect("values"),
-        vec!["ghostty", "wezterm", "kitty"]
+        vec!["ghostty", "wezterm", "ratty"]
     );
 
     app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
@@ -566,7 +566,7 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
     let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
     assert_eq!(
         get_json_path(&value, "terminal.terminals"),
-        Some(&json!(["ghostty", "wezterm", "kitty"]))
+        Some(&json!(["ghostty", "wezterm", "ratty"]))
     );
 }
 

@@ -761,18 +761,6 @@ label = "terminal_kitty.conf"
 action = "edit_sidecar"
 owner = "user_or_home_manager"
 
-[sidecars."terminal_alacritty.toml"]
-tab = "terminal"
-label = "terminal_alacritty.toml"
-action = "edit_sidecar"
-owner = "user_or_home_manager"
-
-[sidecars."terminal_foot.ini"]
-tab = "terminal"
-label = "terminal_foot.ini"
-action = "edit_sidecar"
-owner = "user_or_home_manager"
-
 [sidecars."shell_bash.sh"]
 tab = "shell"
 label = "shell_bash.sh"

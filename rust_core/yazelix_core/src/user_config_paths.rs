@@ -24,8 +24,6 @@ pub const YAZI_PLUGINS_DIR: &str = "yazi/plugins";
 pub const YAZI_FLAVORS_DIR: &str = "yazi/flavors";
 pub const TERMINAL_GHOSTTY_CONFIG: &str = "terminal_ghostty.conf";
 pub const TERMINAL_KITTY_CONFIG: &str = "terminal_kitty.conf";
-pub const TERMINAL_ALACRITTY_CONFIG: &str = "terminal_alacritty.toml";
-pub const TERMINAL_FOOT_CONFIG: &str = "terminal_foot.ini";
 pub const SHELL_BASH_HOOK: &str = "shell_bash.sh";
 pub const SHELL_ZSH_HOOK: &str = "shell_zsh.zsh";
 pub const SHELL_FISH_HOOK: &str = "shell_fish.fish";
@@ -43,8 +41,6 @@ pub const CURRENT_MANAGED_CONFIG_FILE_NAMES: &[&str] = &[
     YAZI_FLAVORS_DIR,
     TERMINAL_GHOSTTY_CONFIG,
     TERMINAL_KITTY_CONFIG,
-    TERMINAL_ALACRITTY_CONFIG,
-    TERMINAL_FOOT_CONFIG,
     SHELL_BASH_HOOK,
     SHELL_ZSH_HOOK,
     SHELL_FISH_HOOK,
@@ -55,6 +51,8 @@ pub const LEGACY_CONFIG_ENTRY_NAMES: &[&str] = &[
     OLD_MAIN_CONFIG,
     CURSOR_CONFIG,
     FLAT_HELIX_CONFIG,
+    "terminal_alacritty.toml",
+    "terminal_foot.ini",
     "user_configs",
 ];
 
@@ -208,8 +206,6 @@ pub fn terminal_config(config_dir: &Path, terminal: &str) -> Option<PathBuf> {
     match terminal {
         "ghostty" => Some(config_dir.join(TERMINAL_GHOSTTY_CONFIG)),
         "kitty" => Some(config_dir.join(TERMINAL_KITTY_CONFIG)),
-        "alacritty" => Some(config_dir.join(TERMINAL_ALACRITTY_CONFIG)),
-        "foot" => Some(config_dir.join(TERMINAL_FOOT_CONFIG)),
         _ => None,
     }
 }
@@ -219,8 +215,6 @@ pub fn legacy_terminal_config(config_dir: &Path, terminal: &str) -> Option<PathB
     match terminal {
         "ghostty" => Some(root.join("ghostty")),
         "kitty" => Some(root.join("kitty.conf")),
-        "alacritty" => Some(root.join("alacritty.toml")),
-        "foot" => Some(root.join("foot.ini")),
         _ => None,
     }
 }

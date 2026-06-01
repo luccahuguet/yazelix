@@ -16,14 +16,13 @@ The sections below cover the override surfaces that sit around that main model.
   - For temporary changes, use repeatable `--with KEY=VALUE` on `yzx launch`, `yzx enter`, or `yzx restart`; Yazelix writes an ephemeral settings snapshot and does not mutate your config file
   - `yzx status --json` and `yzx inspect --json` include `session_config_snapshot` with the active snapshot path, source config, and readable snapshot errors
 - **Terminal Configurations**:
-  - **Bundled terminals** (yazelix-ghostty, etc.): Configs generated dynamically from your yazelix settings
+  - **Bundled terminals** (yazelix-ghostty, yazelix-terminal, etc.): Configs generated dynamically from your yazelix settings
     - **Ghostty cursor shaders**: Edit `~/.config/yazelix_ghostty_cursors/settings.jsonc` to choose the cursor trail, enabled cursor list, global effects, duration, glow, and Kitty fallback toggle. `yzx cursors` shows the active settings path and resolved preset colors. `settings.trail = "random"` picks from `enabled_cursors`, `settings.trail = "none"` disables the Ghostty palette shader, and `settings.kitty_enable_cursor = false` disables Kitty's simple fallback trail. Cursor definitions use `family = "mono"` for one base color with a derived accent, `family = "split"` for two colors split by `divider = "vertical" | "horizontal"` with `transition = "soft" | "hard"`, or `family = "curated_template"` for hand-tuned shaders.
-    - **Transparency**: Configure `transparency = "none"`, `"low"`, `"medium"`, or `"high"`
+    - **Yazelix Terminal**: The experimental `runtime_variant = "yazelix_terminal"` path reads the child package's bundled `config.toml`, writes a generated Yazelix-owned copy under `~/.local/share/yazelix/configs/terminal_emulators/yazelix_terminal/config.toml`, and passes that directory through `YAZELIX_TERMINAL_CONFIG`
+    - **Transparency**: Configure `transparency = "none"`, `"low"`, `"medium"`, or `"high"`; Yazelix maps that setting into Ghostty, Ratty, Kitty, WezTerm, and Yazelix Terminal generated configs
     - **Yazelix-specific terminal overrides**: Add personal terminal-native settings under `~/.config/yazelix/`
       - `terminal_ghostty.conf`
       - `terminal_kitty.conf`
-      - `terminal_alacritty.toml`
-      - `terminal_foot.ini`
       Yazelix owns startup/integration-critical behavior; these override files are for terminal-local preferences such as theme, fonts, opacity, padding, and cursor style.
     - **Config ownership switch**: `terminal.config_mode = "yazelix"` keeps using Yazelix-managed configs; `"user"` loads the terminal's native config file instead and fails if it is missing
     - **No manual copying required** - generated automatically when launching Yazelix

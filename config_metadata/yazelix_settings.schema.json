@@ -380,11 +380,10 @@
             "type": "string",
             "enum": [
               "ghostty",
+              "yazelix_terminal",
               "wezterm",
               "ratty",
-              "kitty",
-              "alacritty",
-              "foot"
+              "kitty"
             ]
           }
         },

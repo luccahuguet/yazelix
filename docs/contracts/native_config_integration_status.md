@@ -156,7 +156,7 @@ Managed inputs:
 
 Native sources:
 
-- terminal-specific native config paths, such as Ghostty, Ratty, Kitty, Alacritty, or Foot config files
+- terminal-specific native config paths, such as Ghostty, Yazelix Terminal, WezTerm, Ratty, or Kitty config files
 
 Generated output:
 

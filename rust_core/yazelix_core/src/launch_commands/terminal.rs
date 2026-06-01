@@ -7,7 +7,7 @@ use super::process::find_command;
 
 pub(super) const X11_INSTANCE: &str = "yazelix";
 pub(super) const WINDOW_CLASS: &str = "com.yazelix.Yazelix";
-const SUPPORTED_TERMINALS: &[&str] = &["ghostty", "wezterm", "ratty", "kitty", "alacritty", "foot"];
+const SUPPORTED_TERMINALS: &[&str] = &["ghostty", "yazelix_terminal", "wezterm", "ratty", "kitty"];
 const DEFAULT_TERMINALS: &[&str] = &["ghostty", "wezterm"];
 const NIXGL_WRAPPER_CANDIDATES: &[&[&str]] = &[
     &["libexec", "nixGL"],
@@ -56,7 +56,7 @@ pub(super) fn normalized_configured_terminals(config: &JsonMap<String, JsonValue
 pub(super) fn print_empty_terminal_error() -> Result<(), CoreError> {
     let available = SUPPORTED_TERMINALS
         .iter()
-        .filter(|terminal| find_command(terminal).is_some())
+        .filter(|terminal| find_command(terminal_command_name(terminal)).is_some())
         .copied()
         .collect::<Vec<_>>();
     let available_text = if available.is_empty() {
@@ -75,10 +75,9 @@ pub(super) fn generated_terminal_config_path(state_dir: &Path, terminal: &str) -
     match terminal {
         "ghostty" => root.join("ghostty").join("config"),
         "wezterm" => root.join("wezterm").join(".wezterm.lua"),
+        "yazelix_terminal" => root.join("yazelix_terminal").join("config.toml"),
         "ratty" => root.join("ratty").join("ratty.toml"),
         "kitty" => root.join("kitty").join("kitty.conf"),
-        "alacritty" => root.join("alacritty").join("alacritty.toml"),
-        "foot" => root.join("foot").join("foot.ini"),
         other => root.join(other),
     }
 }
@@ -132,14 +131,10 @@ pub(super) fn user_terminal_config_candidates_for_platform(
             home_dir.join(".wezterm.lua"),
             home_dir.join(".config").join("wezterm").join("wezterm.lua"),
         ]),
-        "ratty" => Ok(vec![xdg_config_home.join("ratty").join("ratty.toml")]),
-        "alacritty" => Ok(vec![
-            home_dir
-                .join(".config")
-                .join("alacritty")
-                .join("alacritty.toml"),
+        "yazelix_terminal" => Ok(vec![
+            xdg_config_home.join("yazelix-terminal").join("config.toml"),
         ]),
-        "foot" => Ok(vec![home_dir.join(".config").join("foot").join("foot.ini")]),
+        "ratty" => Ok(vec![xdg_config_home.join("ratty").join("ratty.toml")]),
         other => Err(format!("Unsupported terminal config lookup: {other}")),
     }
 }
@@ -194,10 +189,9 @@ pub(super) fn terminal_display_name(terminal: &str) -> String {
     match terminal {
         "ghostty" => "Ghostty".to_string(),
         "wezterm" => "WezTerm".to_string(),
+        "yazelix_terminal" => "Yazelix Terminal".to_string(),
         "ratty" => "Ratty".to_string(),
         "kitty" => "Kitty".to_string(),
-        "alacritty" => "Alacritty".to_string(),
-        "foot" => "Foot".to_string(),
         other => other.to_string(),
     }
 }
@@ -207,11 +201,17 @@ pub(super) fn get_working_dir_args(terminal: &str, working_dir: &Path) -> Vec<St
     match terminal {
         "ghostty" => vec![format!("--working-directory={wd}")],
         "wezterm" => vec!["--cwd".to_string(), wd],
+        "yazelix_terminal" => vec!["--working-dir".to_string(), wd],
         "ratty" => vec![],
         "kitty" => vec![format!("--directory={wd}")],
-        "alacritty" => vec!["--working-directory".to_string(), wd],
-        "foot" => vec![format!("--working-directory={wd}")],
         _ => vec![],
+    }
+}
+
+pub(super) fn terminal_command_name(terminal: &str) -> &str {
+    match terminal {
+        "yazelix_terminal" => "yazelix-terminal-desktop",
+        other => other,
     }
 }
 
@@ -348,6 +348,18 @@ pub(super) fn build_launch_command_argv(
             wezterm.push(startup_script.to_string_lossy().into_owned());
             maybe_prepend(wezterm, graphics_wrapper)
         }
+        "yazelix_terminal" => {
+            let mut yazelix_terminal = vec![
+                terminal.command.clone(),
+                "--title-placeholder".to_string(),
+                title,
+                "--yazelix".to_string(),
+            ];
+            yazelix_terminal.extend(working_dir_args);
+            yazelix_terminal.push("-e".to_string());
+            yazelix_terminal.push(startup_script.to_string_lossy().into_owned());
+            yazelix_terminal
+        }
         "ratty" => {
             let mut ratty = vec![
                 terminal.command.clone(),
@@ -371,33 +383,6 @@ pub(super) fn build_launch_command_argv(
             kitty.extend(working_dir_args);
             kitty.push(startup_script.to_string_lossy().into_owned());
             maybe_prepend(kitty, graphics_wrapper)
-        }
-        "alacritty" => {
-            let mut alacritty = vec![
-                terminal.command.clone(),
-                "--config-file".to_string(),
-                config_string,
-                "--class".to_string(),
-                WINDOW_CLASS.to_string(),
-                "--title".to_string(),
-                title,
-            ];
-            alacritty.extend(working_dir_args);
-            alacritty.push("-e".to_string());
-            alacritty.push(startup_script.to_string_lossy().into_owned());
-            maybe_prepend(alacritty, graphics_wrapper)
-        }
-        "foot" => {
-            let mut foot = vec![
-                terminal.command.clone(),
-                "--config".to_string(),
-                config_string,
-                "--app-id".to_string(),
-                WINDOW_CLASS.to_string(),
-            ];
-            foot.extend(working_dir_args);
-            foot.push(startup_script.to_string_lossy().into_owned());
-            maybe_prepend(foot, graphics_wrapper)
         }
         other => {
             return Err(CoreError::usage(format!("Unknown terminal: {other}")));
