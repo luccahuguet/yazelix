@@ -352,200 +352,324 @@ fn parse_nix_subcommand_flags(args: &[String]) -> Result<(bool, bool), CoreError
     Ok((yes, verbose))
 }
 
-/// `args` are tokens after `yzx_control update` (e.g. `["upstream"]`, `["nix", "--yes"]`).
-pub fn run_yzx_update(args: &[String]) -> Result<i32, CoreError> {
-    if args.is_empty() || matches!(args[0].as_str(), "--help" | "-h" | "help") {
-        print_update_owner_warning();
-        println!();
-        println!("Available update commands:");
-        println!(
-            "  yzx update upstream      Upgrade the active Yazelix package in the default Nix profile"
-        );
-        println!(
-            "  yzx update home_manager  Refresh the current Home Manager flake input, then print `home-manager switch`"
-        );
-        println!("  yzx update nix           Upgrade Determinate Nix (if installed)");
-        return Ok(0);
-    }
+#[derive(Debug, PartialEq, Eq)]
+enum YzxUpdateCommand {
+    Help,
+    Nix { yes: bool, verbose: bool },
+    Upstream,
+    HomeManager,
+}
 
-    match args[0].as_str() {
+impl YzxUpdateCommand {
+    fn run(self) -> Result<i32, CoreError> {
+        match self {
+            Self::Help => {
+                print_update_help();
+                Ok(0)
+            }
+            Self::Nix { yes, verbose } => run_nix_update(yes, verbose),
+            Self::Upstream => run_upstream_update(),
+            Self::HomeManager => run_home_manager_update(),
+        }
+    }
+}
+
+fn parse_yzx_update_command(args: &[String]) -> Result<YzxUpdateCommand, CoreError> {
+    let Some(command) = args.first() else {
+        return Ok(YzxUpdateCommand::Help);
+    };
+
+    match command.as_str() {
+        "--help" | "-h" | "help" => Ok(YzxUpdateCommand::Help),
         "nix" => {
             let (yes, verbose) = parse_nix_subcommand_flags(&args[1..])?;
-            if !command_exists("determinate-nixd") {
-                println!("❌ determinate-nixd not found in PATH.");
-                println!("   Install Determinate Nix or check your PATH, then try again.");
-                return Ok(1);
-            }
-
-            if !yes {
-                println!("⚠️  This upgrades Determinate Nix using determinate-nixd.");
-                println!(
-                    "   If your Nix install is not based on Determinate Nix, this will not work."
-                );
-                println!("   It requires sudo and may prompt for your password.");
-                print!("Continue? [y/N]: ");
-                let _ = std::io::stdout().flush();
-                let mut line = String::new();
-                let _ = std::io::stdin().lock().read_line(&mut line);
-                let confirm = line.trim().to_lowercase();
-                if confirm != "y" && confirm != "yes" {
-                    println!("Aborted.");
-                    return Ok(0);
-                }
-            }
-
-            if verbose {
-                println!("⚙️ Running: sudo determinate-nixd upgrade");
-            } else {
-                println!("🔄 Upgrading Determinate Nix...");
-            }
-
-            let status = Command::new("sudo")
-                .args(["determinate-nixd", "upgrade"])
-                .stdin(Stdio::inherit())
-                .stdout(Stdio::inherit())
-                .stderr(Stdio::inherit())
-                .status();
-
-            match status {
-                Ok(s) if s.success() => {
-                    println!("✅ Determinate Nix upgraded.");
-                    Ok(0)
-                }
-                Ok(s) => {
-                    println!("❌ Determinate Nix upgrade failed.");
-                    Ok(s.code().unwrap_or(1))
-                }
-                Err(err) => {
-                    println!("❌ Determinate Nix upgrade failed: {err}");
-                    Ok(1)
-                }
-            }
+            Ok(YzxUpdateCommand::Nix { yes, verbose })
         }
-        "upstream" => {
-            if args.len() != 1 {
-                return Err(CoreError::usage(
-                    "yzx update upstream does not take additional arguments.",
-                ));
-            }
-            if !command_exists("nix") {
-                println!("❌ nix not found in PATH.");
-                println!("   Install Nix first, then try again.");
-                return Ok(1);
-            }
-
-            if let Err(e) = fail_if_home_manager_owned_upstream_update() {
-                if matches!(e.class(), ErrorClass::Runtime) && e.code() == "hm_owned_upstream" {
-                    return Ok(1);
-                }
-                return Err(e);
-            }
-
-            print_update_path_confirmation("upstream")?;
-            println!();
-            let profile_json = match load_default_profile_elements_json() {
-                Ok(v) => v,
-                Err(code) => return Ok(code),
-            };
-            let profile_name = match resolve_active_yazelix_profile_entry_name(&profile_json) {
-                Ok(n) => n,
-                Err(code) => return Ok(code),
-            };
-            let before_update =
-                profile_entry_update_fingerprint(&profile_json, profile_name.as_str());
-            let cmd_line = format!("nix profile upgrade --refresh {profile_name}");
-            print_exact_command(&cmd_line);
-
-            let status = match run_command_with_live_output(Command::new("nix").args([
-                "profile",
-                "upgrade",
-                "--refresh",
-                &profile_name,
-            ])) {
-                Ok(status) => status,
-                Err(_) => {
-                    println!("❌ Upstream Yazelix update failed.");
-                    return Ok(1);
-                }
-            };
-
-            if status.success() {
-                let after_profile_json = match load_default_profile_elements_json() {
-                    Ok(v) => v,
-                    Err(code) => return Ok(code),
-                };
-                let after_update =
-                    profile_entry_update_fingerprint(&after_profile_json, profile_name.as_str());
-                if before_update.is_some() && before_update == after_update {
-                    println!("✅ Yazelix is already up to date.");
-                } else {
-                    println!("✅ Yazelix profile updated.");
-                }
-                Ok(0)
-            } else {
-                println!("❌ Upstream Yazelix update failed.");
-                Ok(status.code().unwrap_or(1))
-            }
-        }
-        "home_manager" => {
-            if args.len() != 1 {
-                return Err(CoreError::usage(
-                    "yzx update home_manager does not take additional arguments.",
-                ));
-            }
-            if !command_exists("nix") {
-                println!("❌ nix not found in PATH.");
-                println!("   Install Nix first, then try again.");
-                return Ok(1);
-            }
-
-            let flake_dir = match current_working_flake_dir() {
-                Ok(dir) => dir,
-                Err(code) => return Ok(code),
-            };
-            print_update_path_confirmation("home_manager")?;
-            println!();
-            println!(
-                "⚠️  `yzx update home_manager` updates the `yazelix` input in the current flake directory."
-            );
-            println!("   Run it only from the Home Manager flake that owns this install.");
-            println!(
-                "   If your Yazelix input uses a different name, run `nix flake update <your-input-name>` yourself."
-            );
-            println!(
-                "   This still matters for `path:` inputs because `flake.lock` pins a snapshot of that local path until you refresh it."
-            );
-            println!();
-            print_exact_command("nix flake update yazelix");
-
-            let status = match run_command_with_live_output(
-                Command::new("nix")
-                    .args(["flake", "update", "yazelix"])
-                    .current_dir(&flake_dir),
-            ) {
-                Ok(status) => status,
-                Err(_) => {
-                    println!("❌ Home Manager flake input update failed.");
-                    return Ok(1);
-                }
-            };
-
-            if !status.success() {
-                println!("❌ Home Manager flake input update failed.");
-                return Ok(status.code().unwrap_or(1));
-            }
-
-            println!();
-            print_home_manager_local_path_input_guidance(&flake_dir, "yazelix");
-            if local_path_input_git_migration_url(&flake_dir, "yazelix").is_some() {
-                println!();
-            }
-            println!("Next step:");
-            println!("  home-manager switch");
-            Ok(0)
-        }
+        "upstream" => parse_no_arg_update_command(args, YzxUpdateCommand::Upstream),
+        "home_manager" => parse_no_arg_update_command(args, YzxUpdateCommand::HomeManager),
         other => Err(CoreError::usage(format!(
             "Unknown yzx update subcommand: {other}. Try `yzx update` for a list."
         ))),
+    }
+}
+
+fn parse_no_arg_update_command(
+    args: &[String],
+    command: YzxUpdateCommand,
+) -> Result<YzxUpdateCommand, CoreError> {
+    if args.len() == 1 {
+        return Ok(command);
+    }
+
+    let command_name = match command {
+        YzxUpdateCommand::Upstream => "upstream",
+        YzxUpdateCommand::HomeManager => "home_manager",
+        YzxUpdateCommand::Help | YzxUpdateCommand::Nix { .. } => unreachable!(),
+    };
+    Err(CoreError::usage(format!(
+        "yzx update {command_name} does not take additional arguments."
+    )))
+}
+
+/// `args` are tokens after `yzx_control update` (e.g. `["upstream"]`, `["nix", "--yes"]`).
+pub fn run_yzx_update(args: &[String]) -> Result<i32, CoreError> {
+    parse_yzx_update_command(args)?.run()
+}
+
+fn print_update_help() {
+    print_update_owner_warning();
+    println!();
+    println!("Available update commands:");
+    println!(
+        "  yzx update upstream      Upgrade the active Yazelix package in the default Nix profile"
+    );
+    println!(
+        "  yzx update home_manager  Refresh the current Home Manager flake input, then print `home-manager switch`"
+    );
+    println!("  yzx update nix           Upgrade Determinate Nix (if installed)");
+}
+
+fn run_nix_update(yes: bool, verbose: bool) -> Result<i32, CoreError> {
+    if !command_exists("determinate-nixd") {
+        println!("❌ determinate-nixd not found in PATH.");
+        println!("   Install Determinate Nix or check your PATH, then try again.");
+        return Ok(1);
+    }
+
+    if !yes && !confirm_determinate_nix_upgrade() {
+        println!("Aborted.");
+        return Ok(0);
+    }
+
+    print_determinate_nix_upgrade_start(verbose);
+    let status = Command::new("sudo")
+        .args(["determinate-nixd", "upgrade"])
+        .stdin(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status();
+
+    match status {
+        Ok(s) if s.success() => {
+            println!("✅ Determinate Nix upgraded.");
+            Ok(0)
+        }
+        Ok(s) => {
+            println!("❌ Determinate Nix upgrade failed.");
+            Ok(s.code().unwrap_or(1))
+        }
+        Err(err) => {
+            println!("❌ Determinate Nix upgrade failed: {err}");
+            Ok(1)
+        }
+    }
+}
+
+fn confirm_determinate_nix_upgrade() -> bool {
+    println!("⚠️  This upgrades Determinate Nix using determinate-nixd.");
+    println!("   If your Nix install is not based on Determinate Nix, this will not work.");
+    println!("   It requires sudo and may prompt for your password.");
+    print!("Continue? [y/N]: ");
+    let _ = std::io::stdout().flush();
+    let mut line = String::new();
+    let _ = std::io::stdin().lock().read_line(&mut line);
+    let confirm = line.trim().to_lowercase();
+    confirm == "y" || confirm == "yes"
+}
+
+fn print_determinate_nix_upgrade_start(verbose: bool) {
+    if verbose {
+        println!("⚙️ Running: sudo determinate-nixd upgrade");
+    } else {
+        println!("🔄 Upgrading Determinate Nix...");
+    }
+}
+
+fn run_upstream_update() -> Result<i32, CoreError> {
+    if !ensure_nix_command_available() {
+        return Ok(1);
+    }
+
+    if let Err(e) = fail_if_home_manager_owned_upstream_update() {
+        if matches!(e.class(), ErrorClass::Runtime) && e.code() == "hm_owned_upstream" {
+            return Ok(1);
+        }
+        return Err(e);
+    }
+
+    print_update_path_confirmation("upstream")?;
+    println!();
+    let profile_json = match load_default_profile_elements_json() {
+        Ok(v) => v,
+        Err(code) => return Ok(code),
+    };
+    let profile_name = match resolve_active_yazelix_profile_entry_name(&profile_json) {
+        Ok(n) => n,
+        Err(code) => return Ok(code),
+    };
+    run_profile_package_update(profile_name, profile_json)
+}
+
+fn ensure_nix_command_available() -> bool {
+    if command_exists("nix") {
+        return true;
+    }
+    println!("❌ nix not found in PATH.");
+    println!("   Install Nix first, then try again.");
+    false
+}
+
+fn run_profile_package_update(profile_name: String, profile_json: Value) -> Result<i32, CoreError> {
+    let before_update = profile_entry_update_fingerprint(&profile_json, profile_name.as_str());
+    let cmd_line = format!("nix profile upgrade --refresh {profile_name}");
+    print_exact_command(&cmd_line);
+
+    let status = match run_command_with_live_output(Command::new("nix").args([
+        "profile",
+        "upgrade",
+        "--refresh",
+        &profile_name,
+    ])) {
+        Ok(status) => status,
+        Err(_) => {
+            println!("❌ Upstream Yazelix update failed.");
+            return Ok(1);
+        }
+    };
+
+    if !status.success() {
+        println!("❌ Upstream Yazelix update failed.");
+        return Ok(status.code().unwrap_or(1));
+    }
+
+    print_profile_update_result(profile_name.as_str(), before_update)
+}
+
+fn print_profile_update_result(
+    profile_name: &str,
+    before_update: Option<(Option<String>, Vec<String>)>,
+) -> Result<i32, CoreError> {
+    let after_profile_json = match load_default_profile_elements_json() {
+        Ok(v) => v,
+        Err(code) => return Ok(code),
+    };
+    let after_update = profile_entry_update_fingerprint(&after_profile_json, profile_name);
+    if before_update.is_some() && before_update == after_update {
+        println!("✅ Yazelix is already up to date.");
+    } else {
+        println!("✅ Yazelix profile updated.");
+    }
+    Ok(0)
+}
+
+fn run_home_manager_update() -> Result<i32, CoreError> {
+    if !ensure_nix_command_available() {
+        return Ok(1);
+    }
+
+    let flake_dir = match current_working_flake_dir() {
+        Ok(dir) => dir,
+        Err(code) => return Ok(code),
+    };
+    print_home_manager_update_intro()?;
+    let status = match run_command_with_live_output(
+        Command::new("nix")
+            .args(["flake", "update", "yazelix"])
+            .current_dir(&flake_dir),
+    ) {
+        Ok(status) => status,
+        Err(_) => {
+            println!("❌ Home Manager flake input update failed.");
+            return Ok(1);
+        }
+    };
+
+    if !status.success() {
+        println!("❌ Home Manager flake input update failed.");
+        return Ok(status.code().unwrap_or(1));
+    }
+
+    print_home_manager_update_next_steps(&flake_dir);
+    Ok(0)
+}
+
+fn print_home_manager_update_intro() -> Result<(), CoreError> {
+    print_update_path_confirmation("home_manager")?;
+    println!();
+    println!(
+        "⚠️  `yzx update home_manager` updates the `yazelix` input in the current flake directory."
+    );
+    println!("   Run it only from the Home Manager flake that owns this install.");
+    println!(
+        "   If your Yazelix input uses a different name, run `nix flake update <your-input-name>` yourself."
+    );
+    println!(
+        "   This still matters for `path:` inputs because `flake.lock` pins a snapshot of that local path until you refresh it."
+    );
+    println!();
+    print_exact_command("nix flake update yazelix");
+    Ok(())
+}
+
+fn print_home_manager_update_next_steps(flake_dir: &Path) {
+    println!();
+    print_home_manager_local_path_input_guidance(flake_dir, "yazelix");
+    if local_path_input_git_migration_url(flake_dir, "yazelix").is_some() {
+        println!();
+    }
+    println!("Next step:");
+    println!("  home-manager switch");
+}
+
+// Test lane: default
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn strings(values: &[&str]) -> Vec<String> {
+        values.iter().map(|value| value.to_string()).collect()
+    }
+
+    // Defends: an empty `yzx update` remains the owner-selection help path.
+    #[test]
+    fn parses_empty_update_as_help() {
+        assert_eq!(
+            parse_yzx_update_command(&[]).unwrap(),
+            YzxUpdateCommand::Help
+        );
+    }
+
+    // Defends: Determinate Nix update flags remain accepted after workflow extraction.
+    #[test]
+    fn parses_nix_update_flags() {
+        assert_eq!(
+            parse_yzx_update_command(&strings(&["nix", "--yes", "--verbose"])).unwrap(),
+            YzxUpdateCommand::Nix {
+                yes: true,
+                verbose: true
+            }
+        );
+    }
+
+    // Regression: upstream update keeps rejecting stray args before it touches profile state.
+    #[test]
+    fn rejects_extra_upstream_update_args() {
+        let error = parse_yzx_update_command(&strings(&["upstream", "--yes"])).unwrap_err();
+
+        assert_eq!(
+            error.message(),
+            "yzx update upstream does not take additional arguments."
+        );
+    }
+
+    // Regression: unknown update subcommands keep the public help hint in the usage error.
+    #[test]
+    fn rejects_unknown_update_subcommand() {
+        let error = parse_yzx_update_command(&strings(&["profile"])).unwrap_err();
+
+        assert_eq!(
+            error.message(),
+            "Unknown yzx update subcommand: profile. Try `yzx update` for a list."
+        );
     }
 }
