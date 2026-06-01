@@ -696,7 +696,7 @@ ya_command = "ya"
         &fixture.state_dir,
         session_id,
         "inst-1",
-        "terminal:7",
+        "7",
         &socket_path,
         &token_path,
     );
@@ -998,7 +998,7 @@ hide_sidebar_on_file_open = true
         &fixture.state_dir,
         session_id,
         "inst-1",
-        "terminal:7",
+        "7",
         &socket_path,
         &token_path,
     );

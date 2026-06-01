@@ -593,11 +593,28 @@ fn registry_matches_selector(
         return false;
     }
     if let Some(zellij_pane_id) = &selector.zellij_pane_id
-        && registry.zellij_pane_id.as_ref() != Some(zellij_pane_id)
+        && !zellij_pane_ids_match(registry.zellij_pane_id.as_deref(), zellij_pane_id)
     {
         return false;
     }
     true
+}
+
+fn zellij_pane_ids_match(registry_pane_id: Option<&str>, selector_pane_id: &str) -> bool {
+    let Some(registry_pane_id) = registry_pane_id else {
+        return false;
+    };
+    normalize_zellij_terminal_pane_id(registry_pane_id)
+        == normalize_zellij_terminal_pane_id(selector_pane_id)
+}
+
+fn normalize_zellij_terminal_pane_id(raw: &str) -> String {
+    let trimmed = raw.trim();
+    if trimmed.contains(':') {
+        trimmed.to_string()
+    } else {
+        format!("terminal:{trimmed}")
+    }
 }
 
 fn load_bridge_registries(
@@ -1221,6 +1238,25 @@ mod tests {
         .unwrap_err();
         assert_eq!(error.code(), "invalid_helix_action_payload");
         assert!(error.message().contains("absolute"));
+    }
+
+    // Regression: Helix receives Zellij's raw numeric `ZELLIJ_PANE_ID`, while the pane orchestrator exposes typed `terminal:<id>` ids.
+    #[test]
+    fn registry_selector_accepts_raw_terminal_pane_id_from_helix() {
+        let tmp = tempfile::tempdir().unwrap();
+        let socket_path = tmp.path().join("inst-1.sock");
+        fs::create_dir_all(tmp.path().join("helix_bridge").join("session-1")).unwrap();
+        let mut entry = registry(tmp.path(), "session-1", "inst-1", &socket_path);
+        entry.zellij_pane_id = Some("1".to_string());
+
+        assert!(registry_matches_selector(
+            &entry,
+            &BridgeTargetSelector {
+                session_id: "session-1".to_string(),
+                instance_id: None,
+                zellij_pane_id: Some("terminal:1".to_string()),
+            },
+        ));
     }
 
     // Defends: target discovery does not guess when more than one live Helix bridge matches.
