@@ -103,6 +103,32 @@ struct RecoveryPlanReport {
 }
 
 const CREATE_DEFAULT_SETTINGS_CONFIG_FIX_ACTION: &str = "create_default_settings_config";
+const HELIX_RUNTIME_CONFLICT_REPAIR_ACTION: &str = "backup_helix_runtime_conflicts";
+const REPAIR_GENERATED_RUNTIME_STATE_FIX_ACTION: &str = "repair_generated_runtime_state";
+const SEED_ZELLIJ_PLUGIN_PERMISSIONS_FIX_ACTION: &str = "seed_zellij_plugin_permissions";
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+struct DoctorRepairPlan {
+    schema_version: u8,
+    consent: DoctorRepairConsent,
+    actions: Vec<DoctorRepairAction>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+struct DoctorRepairConsent {
+    mode: &'static str,
+    required_flag: &'static str,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+struct DoctorRepairAction {
+    id: &'static str,
+    summary: &'static str,
+    preflight: Vec<&'static str>,
+    backup_or_rollback_evidence: Vec<&'static str>,
+    idempotence_checks: Vec<&'static str>,
+    stable_json_event: &'static str,
+}
 
 #[derive(Debug, Deserialize)]
 struct SessionManagedPanes {
@@ -728,6 +754,128 @@ fn needs_default_settings_config_creation(results: &[Value]) -> bool {
         .any(|result| result_fix_action(result) == Some(CREATE_DEFAULT_SETTINGS_CONFIG_FIX_ACTION))
 }
 
+fn has_fix_action(results: &[Value], action: &str) -> bool {
+    results
+        .iter()
+        .any(|result| result_fix_action(result) == Some(action))
+}
+
+fn needs_helix_runtime_conflict_backup(results: &[Value]) -> bool {
+    results.iter().any(|result| {
+        matches!(result_status(result), "error" | "warning")
+            && result_message(result).contains("runtime")
+            && result_fix_available(result)
+            && result
+                .get("conflicts")
+                .and_then(Value::as_array)
+                .map(|conflicts| {
+                    conflicts.iter().any(|conflict| {
+                        conflict
+                            .get("severity")
+                            .and_then(Value::as_str)
+                            .unwrap_or("")
+                            == "error"
+                            && conflict
+                                .get("path")
+                                .and_then(Value::as_str)
+                                .map(|path| !path.is_empty())
+                                .unwrap_or(false)
+                    })
+                })
+                .unwrap_or(false)
+    })
+}
+
+fn build_doctor_repair_plan(results: &[Value]) -> DoctorRepairPlan {
+    let mut actions = Vec::new();
+    if needs_helix_runtime_conflict_backup(results) {
+        actions.push(DoctorRepairAction {
+            id: HELIX_RUNTIME_CONFLICT_REPAIR_ACTION,
+            summary: "Move conflicting Helix runtime paths aside with .backup suffixes",
+            preflight: vec![
+                "doctor finding status is error or warning",
+                "finding message names a runtime conflict",
+                "conflict entry has severity error and a non-empty path",
+            ],
+            backup_or_rollback_evidence: vec![
+                "the original path is renamed to the same path with a .backup suffix",
+                "rollback is renaming the .backup path back to the original path",
+            ],
+            idempotence_checks: vec![
+                "only conflicts still reported by the current doctor result are moved",
+                "missing or already-moved paths fail visibly instead of being ignored",
+            ],
+            stable_json_event: "doctor_repair.helix_runtime_conflict.backup",
+        });
+    }
+    if needs_default_settings_config_creation(results) {
+        actions.push(DoctorRepairAction {
+            id: CREATE_DEFAULT_SETTINGS_CONFIG_FIX_ACTION,
+            summary: "Create missing settings.jsonc from shipped defaults",
+            preflight: vec![
+                "doctor finding declares create_default_settings_config",
+                "runtime and config directories resolve from the active environment",
+            ],
+            backup_or_rollback_evidence: vec![
+                "settings.jsonc is created with create_new and never overwrites an existing file",
+                "rollback is removing the newly created settings.jsonc",
+            ],
+            idempotence_checks: vec![
+                "skip when settings.jsonc already exists",
+                "render defaults from the active runtime template before writing",
+            ],
+            stable_json_event: "doctor_repair.config.create_default_settings",
+        });
+    }
+    if has_fix_action(results, REPAIR_GENERATED_RUNTIME_STATE_FIX_ACTION) {
+        actions.push(DoctorRepairAction {
+            id: REPAIR_GENERATED_RUNTIME_STATE_FIX_ACTION,
+            summary: "Repair Yazelix-owned generated runtime state",
+            preflight: vec![
+                "doctor finding declares repair_generated_runtime_state",
+                "runtime materialization plan resolves from the active environment",
+            ],
+            backup_or_rollback_evidence: vec![
+                "repair operates only on Yazelix-owned generated runtime state",
+                "rollback is rerunning materialization from the active runtime and config",
+            ],
+            idempotence_checks: vec![
+                "runtime repair directive can return Noop when generated state is current",
+                "repair runs without force so unrelated state is not regenerated",
+            ],
+            stable_json_event: "doctor_repair.runtime_state.repair",
+        });
+    }
+    if has_fix_action(results, SEED_ZELLIJ_PLUGIN_PERMISSIONS_FIX_ACTION) {
+        actions.push(DoctorRepairAction {
+            id: SEED_ZELLIJ_PLUGIN_PERMISSIONS_FIX_ACTION,
+            summary: "Seed bundled Zellij plugin permissions",
+            preflight: vec![
+                "doctor finding declares seed_zellij_plugin_permissions",
+                "active config paths resolve before materialization",
+            ],
+            backup_or_rollback_evidence: vec![
+                "materialization updates the Zellij permissions cache for Yazelix-owned bundled plugins",
+                "rollback is removing the Yazelix plugin permission cache entry and restarting Zellij",
+            ],
+            idempotence_checks: vec![
+                "permission seeding is derived from the active runtime and config paths",
+                "rerunning the action rewrites the same Yazelix-owned permission state",
+            ],
+            stable_json_event: "doctor_repair.zellij_permissions.seed",
+        });
+    }
+
+    DoctorRepairPlan {
+        schema_version: 1,
+        consent: DoctorRepairConsent {
+            mode: "explicit_cli_flag",
+            required_flag: "yzx doctor --fix",
+        },
+        actions,
+    }
+}
+
 fn create_default_settings_config_from_template(
     runtime_dir: &Path,
     config_dir: &Path,
@@ -1047,8 +1195,39 @@ fn run_doctor_fix_flow(verbose: bool, results: &[Value]) -> Result<i32, CoreErro
     println!("\n🔧 Attempting to auto-fix issues...\n");
 
     let mut any_failed = false;
+    let repair_plan = build_doctor_repair_plan(results);
+    for action in &repair_plan.actions {
+        if run_doctor_repair_action(action.id, verbose, results)? {
+            any_failed = true;
+        }
+    }
 
-    // 1. Helix runtime conflicts
+    println!("\n✅ Auto-fix completed. Run 'yzx doctor' again to verify.");
+    Ok(if any_failed { 1 } else { 0 })
+}
+
+fn run_doctor_repair_action(
+    action_id: &str,
+    verbose: bool,
+    results: &[Value],
+) -> Result<bool, CoreError> {
+    match action_id {
+        HELIX_RUNTIME_CONFLICT_REPAIR_ACTION => repair_helix_runtime_conflicts(results),
+        CREATE_DEFAULT_SETTINGS_CONFIG_FIX_ACTION => create_missing_default_settings_config(),
+        REPAIR_GENERATED_RUNTIME_STATE_FIX_ACTION => repair_generated_runtime_state(verbose),
+        SEED_ZELLIJ_PLUGIN_PERMISSIONS_FIX_ACTION => seed_zellij_plugin_permissions(),
+        _ => Err(CoreError::classified(
+            ErrorClass::Internal,
+            "unknown_doctor_repair_action",
+            format!("Unsupported doctor repair action: {action_id}"),
+            "Report this as a Yazelix bug.",
+            json!({ "action_id": action_id }),
+        )),
+    }
+}
+
+fn repair_helix_runtime_conflicts(results: &[Value]) -> Result<bool, CoreError> {
+    let mut any_failed = false;
     for result in results {
         let status = result.get("status").and_then(Value::as_str).unwrap_or("");
         let message = result.get("message").and_then(Value::as_str).unwrap_or("");
@@ -1084,124 +1263,110 @@ fn run_doctor_fix_flow(verbose: bool, results: &[Value]) -> Result<i32, CoreErro
             }
         }
     }
+    Ok(any_failed)
+}
 
-    // 2. Config creation from template
-    if needs_default_settings_config_creation(results) {
-        let runtime_dir = runtime_dir_from_env()?;
-        let config_dir = config_dir_from_env()?;
-        match create_default_settings_config_from_template(&runtime_dir, &config_dir) {
-            Ok(true) => println!("✅ Created settings.jsonc from shipped defaults"),
-            Ok(false) => {
-                let paths = primary_config_paths(&runtime_dir, &config_dir);
-                println!(
-                    "⚠️  Skipped settings.jsonc creation because {} already exists",
-                    paths.user_config.display()
-                );
-            }
-            Err(err) => {
-                println!("❌ Failed to create settings.jsonc: {}", err.message());
-                any_failed = true;
-            }
+fn create_missing_default_settings_config() -> Result<bool, CoreError> {
+    let runtime_dir = runtime_dir_from_env()?;
+    let config_dir = config_dir_from_env()?;
+    match create_default_settings_config_from_template(&runtime_dir, &config_dir) {
+        Ok(true) => println!("✅ Created settings.jsonc from shipped defaults"),
+        Ok(false) => {
+            let paths = primary_config_paths(&runtime_dir, &config_dir);
+            println!(
+                "⚠️  Skipped settings.jsonc creation because {} already exists",
+                paths.user_config.display()
+            );
+        }
+        Err(err) => {
+            println!("❌ Failed to create settings.jsonc: {}", err.message());
+            return Ok(true);
         }
     }
+    Ok(false)
+}
 
-    // 3. Generated runtime state repair
-    let needs_runtime_repair = results.iter().any(|r| {
-        r.get("fix_action")
-            .and_then(Value::as_str)
-            .map(|a| a == "repair_generated_runtime_state")
-            .unwrap_or(false)
-    });
-    if needs_runtime_repair {
-        let plan_request =
-            runtime_materialization_plan_request_from_env(config_override_from_env().as_deref())?;
-        let repair_req = RuntimeMaterializationRepairEvaluateRequest {
-            plan: plan_request,
-            force: false,
-        };
-        match repair_runtime_materialization(&repair_req) {
-            Ok(data) => match &data.repair {
-                crate::runtime_materialization::RuntimeRepairDirective::Noop { lines } => {
-                    if verbose {
-                        for line in lines {
-                            println!("{line}");
-                        }
-                    }
-                }
-                crate::runtime_materialization::RuntimeRepairDirective::Regenerate {
-                    progress_message,
-                    missing_artifacts_detail_line,
-                    success_lines,
-                    ..
-                } => {
-                    if verbose {
-                        if !progress_message.is_empty() {
-                            println!("{progress_message}");
-                        }
-                        if let Some(detail) = missing_artifacts_detail_line {
-                            println!("{detail}");
-                        }
-                    }
-                    for line in success_lines {
+fn repair_generated_runtime_state(verbose: bool) -> Result<bool, CoreError> {
+    let plan_request =
+        runtime_materialization_plan_request_from_env(config_override_from_env().as_deref())?;
+    let repair_req = RuntimeMaterializationRepairEvaluateRequest {
+        plan: plan_request,
+        force: false,
+    };
+    match repair_runtime_materialization(&repair_req) {
+        Ok(data) => match &data.repair {
+            crate::runtime_materialization::RuntimeRepairDirective::Noop { lines } => {
+                if verbose {
+                    for line in lines {
                         println!("{line}");
                     }
                 }
-            },
-            Err(err) => {
-                println!(
-                    "❌ Failed to repair generated runtime state: {}",
-                    err.message()
-                );
-                any_failed = true;
             }
+            crate::runtime_materialization::RuntimeRepairDirective::Regenerate {
+                progress_message,
+                missing_artifacts_detail_line,
+                success_lines,
+                ..
+            } => {
+                if verbose {
+                    if !progress_message.is_empty() {
+                        println!("{progress_message}");
+                    }
+                    if let Some(detail) = missing_artifacts_detail_line {
+                        println!("{detail}");
+                    }
+                }
+                for line in success_lines {
+                    println!("{line}");
+                }
+            }
+        },
+        Err(err) => {
+            println!(
+                "❌ Failed to repair generated runtime state: {}",
+                err.message()
+            );
+            return Ok(true);
         }
     }
+    Ok(false)
+}
 
-    // 4. Zellij plugin permission seeding
-    let needs_plugin_seed = results.iter().any(|r| {
-        r.get("fix_action")
-            .and_then(Value::as_str)
-            .map(|a| a == "seed_zellij_plugin_permissions")
-            .unwrap_or(false)
-    });
-    if needs_plugin_seed {
-        let runtime_dir = runtime_dir_from_env()?;
-        let config_dir = config_dir_from_env()?;
-        let state_dir = state_dir_from_env()?;
-        let paths = resolve_active_config_paths(
-            &runtime_dir,
-            &config_dir,
-            config_override_from_env().as_deref(),
-        )?;
-        let zellij_config_dir = state_dir.join("configs").join("zellij");
-        let req = ZellijMaterializationRequest {
-            config_path: paths.config_file,
-            default_config_path: paths.default_config_path,
-            contract_path: paths.contract_path,
-            runtime_dir: runtime_dir.clone(),
-            zellij_config_dir,
-            seed_plugin_permissions: true,
-        };
-        match generate_zellij_materialization(&req) {
-            Ok(_) => {
-                let cache_path = zellij_permissions_cache_path()?;
-                println!(
-                    "✅ Seeded Yazelix plugin permissions in: {}",
-                    cache_path.display()
-                );
-            }
-            Err(err) => {
-                println!(
-                    "❌ Failed to seed Yazelix plugin permissions: {}",
-                    err.message()
-                );
-                any_failed = true;
-            }
+fn seed_zellij_plugin_permissions() -> Result<bool, CoreError> {
+    let runtime_dir = runtime_dir_from_env()?;
+    let config_dir = config_dir_from_env()?;
+    let state_dir = state_dir_from_env()?;
+    let paths = resolve_active_config_paths(
+        &runtime_dir,
+        &config_dir,
+        config_override_from_env().as_deref(),
+    )?;
+    let zellij_config_dir = state_dir.join("configs").join("zellij");
+    let req = ZellijMaterializationRequest {
+        config_path: paths.config_file,
+        default_config_path: paths.default_config_path,
+        contract_path: paths.contract_path,
+        runtime_dir: runtime_dir.clone(),
+        zellij_config_dir,
+        seed_plugin_permissions: true,
+    };
+    match generate_zellij_materialization(&req) {
+        Ok(_) => {
+            let cache_path = zellij_permissions_cache_path()?;
+            println!(
+                "✅ Seeded Yazelix plugin permissions in: {}",
+                cache_path.display()
+            );
+        }
+        Err(err) => {
+            println!(
+                "❌ Failed to seed Yazelix plugin permissions: {}",
+                err.message()
+            );
+            return Ok(true);
         }
     }
-
-    println!("\n✅ Auto-fix completed. Run 'yzx doctor' again to verify.");
-    Ok(if any_failed { 1 } else { 0 })
+    Ok(false)
 }
 
 fn collect_zellij_plugin_health_findings(
@@ -1455,6 +1620,81 @@ mod tests {
             fs::read_to_string(config_dir.join("settings.jsonc")).unwrap(),
             default_settings
         );
+    }
+
+    // Defends: every automatic doctor mutation has stable consent, preflight, rollback, and idempotence metadata.
+    #[test]
+    fn repair_plan_records_guardrails_for_automatic_actions() {
+        let results = vec![
+            json!({
+                "status": "error",
+                "message": "Helix runtime conflict",
+                "fix_available": true,
+                "conflicts": [{
+                    "severity": "error",
+                    "path": "/tmp/helix/runtime",
+                    "name": "runtime"
+                }]
+            }),
+            json!({
+                "status": "error",
+                "message": "Missing generated config",
+                "fix_available": true,
+                "fix_action": CREATE_DEFAULT_SETTINGS_CONFIG_FIX_ACTION
+            }),
+            json!({
+                "status": "error",
+                "message": "Generated workspace assets are missing or stale",
+                "fix_available": true,
+                "fix_action": REPAIR_GENERATED_RUNTIME_STATE_FIX_ACTION
+            }),
+            json!({
+                "status": "error",
+                "message": "Yazelix pane-orchestrator plugin permissions not granted",
+                "fix_available": true,
+                "fix_action": SEED_ZELLIJ_PLUGIN_PERMISSIONS_FIX_ACTION
+            }),
+        ];
+
+        let plan = build_doctor_repair_plan(&results);
+        let ids = plan
+            .actions
+            .iter()
+            .map(|action| action.id)
+            .collect::<Vec<_>>();
+
+        assert_eq!(plan.schema_version, 1);
+        assert_eq!(plan.consent.required_flag, "yzx doctor --fix");
+        assert_eq!(
+            ids,
+            vec![
+                HELIX_RUNTIME_CONFLICT_REPAIR_ACTION,
+                CREATE_DEFAULT_SETTINGS_CONFIG_FIX_ACTION,
+                REPAIR_GENERATED_RUNTIME_STATE_FIX_ACTION,
+                SEED_ZELLIJ_PLUGIN_PERMISSIONS_FIX_ACTION,
+            ]
+        );
+        for action in &plan.actions {
+            assert!(!action.preflight.is_empty());
+            assert!(!action.backup_or_rollback_evidence.is_empty());
+            assert!(!action.idempotence_checks.is_empty());
+            assert!(action.stable_json_event.starts_with("doctor_repair."));
+        }
+
+        let serialized = serde_json::to_value(&plan).unwrap();
+        assert_eq!(serialized["schema_version"], 1);
+        assert_eq!(
+            serialized["consent"]["mode"],
+            serde_json::Value::String("explicit_cli_flag".into())
+        );
+    }
+
+    // Defends: guarded repair metadata does not accidentally publish the unsupported JSON mutation path.
+    #[test]
+    fn json_fix_remains_unsupported() {
+        let error = run_yzx_doctor(&["--json".into(), "--fix".into()]).unwrap_err();
+
+        assert_eq!(error.code(), "doctor_json_fix_unsupported");
     }
 
     // Defends: doctor consumes the shared native-config classifier and elevates required native terminal config misses to an error.
