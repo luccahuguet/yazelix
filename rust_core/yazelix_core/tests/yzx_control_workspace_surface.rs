@@ -83,10 +83,13 @@ fn write_helix_bridge_registry(
     fs::write(
         registry_dir.join(format!("{instance_id}.json")),
         serde_json::to_string_pretty(&json!({
-            "schema_version": 1,
+            "schema_version": 2,
             "session_id": session_id,
             "instance_id": instance_id,
-            "socket_path": socket_path.to_string_lossy(),
+            "transport": {
+                "kind": "unix_socket",
+                "path": socket_path.to_string_lossy()
+            },
             "auth_token_path": token_path.to_string_lossy(),
             "pid": std::process::id(),
             "zellij_session_name": null,
@@ -114,7 +117,7 @@ fn spawn_helix_bridge_request_logger(
         fs::write(&request_log, &line).unwrap();
         let request: Value = serde_json::from_str(&line).unwrap();
         let response = json!({
-            "schema_version": 1,
+            "schema_version": 2,
             "request_id": request["request_id"],
             "status": "ok",
             "data": {"opened": request["payload"]["file_paths"]}

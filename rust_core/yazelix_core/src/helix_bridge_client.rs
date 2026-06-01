@@ -9,11 +9,11 @@ use crate::session_config_snapshot::{
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::fs;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::path::Path;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-const BRIDGE_SCHEMA_VERSION: u64 = 1;
+const BRIDGE_SCHEMA_VERSION: u64 = 2;
 const DEFAULT_TIMEOUT_MS: u64 = 1_500;
 const MAX_TIMEOUT_MS: u64 = 10_000;
 
@@ -45,7 +45,7 @@ struct HelixBridgeRegistry {
     schema_version: u64,
     session_id: String,
     instance_id: String,
-    socket_path: String,
+    transport: BridgeTransport,
     auth_token_path: String,
     pid: u32,
     zellij_session_name: Option<String>,
@@ -53,6 +53,13 @@ struct HelixBridgeRegistry {
     zellij_pane_id: Option<String>,
     started_at_unix_ms: u128,
     managed_config_path: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+enum BridgeTransport {
+    UnixSocket { path: String },
+    WindowsNamedPipe { name: String },
 }
 
 #[derive(Debug, Clone)]
@@ -84,7 +91,7 @@ pub struct HelixBridgeError {
 struct HelixBridgeStatusData {
     session_id: String,
     instance_id: String,
-    socket_path: String,
+    transport: BridgeTransport,
     zellij_pane_id: Option<String>,
     managed_config_path: Option<String>,
 }
@@ -202,7 +209,7 @@ fn run_helix_status(args: &[String]) -> Result<i32, CoreError> {
     let data = HelixBridgeStatusData {
         session_id: target.registry.session_id,
         instance_id: target.registry.instance_id,
-        socket_path: target.registry.socket_path,
+        transport: target.registry.transport,
         zellij_pane_id: target.registry.zellij_pane_id,
         managed_config_path: target.registry.managed_config_path,
     };
@@ -533,7 +540,7 @@ fn resolve_bridge_target(
     let mut live = Vec::new();
     let mut stale = Vec::new();
     for registry in candidates {
-        if registry_socket_is_live(&registry) {
+        if registry_transport_is_live(&registry) {
             live.push(registry);
         } else {
             stale.push(registry);
@@ -633,7 +640,7 @@ fn load_bridge_registries(
                 source,
             )
         })?;
-        let registry = serde_json::from_str::<HelixBridgeRegistry>(&raw).map_err(|source| {
+        let raw_registry = serde_json::from_str::<Value>(&raw).map_err(|source| {
             CoreError::classified(
                 ErrorClass::Runtime,
                 "helix_bridge_registry_parse",
@@ -645,23 +652,52 @@ fn load_bridge_registries(
                 json!({ "path": path.to_string_lossy() }),
             )
         })?;
-        if registry.schema_version != BRIDGE_SCHEMA_VERSION {
+        let Some(schema_version) = raw_registry.get("schema_version").and_then(Value::as_u64)
+        else {
             return Err(CoreError::classified(
                 ErrorClass::Runtime,
                 "helix_bridge_registry_schema",
                 format!(
-                    "Unsupported Helix bridge registry schema {} for {}.",
-                    registry.schema_version,
+                    "Helix bridge registry {} is missing a numeric schema_version.",
                     path.display()
                 ),
                 "Update Yazelix and the bundled yazelix-helix fork together.",
                 json!({
                     "path": path.to_string_lossy(),
                     "expected_schema_version": BRIDGE_SCHEMA_VERSION,
-                    "actual_schema_version": registry.schema_version,
+                }),
+            ));
+        };
+        if schema_version != BRIDGE_SCHEMA_VERSION {
+            return Err(CoreError::classified(
+                ErrorClass::Runtime,
+                "helix_bridge_registry_schema",
+                format!(
+                    "Unsupported Helix bridge registry schema {} for {}.",
+                    schema_version,
+                    path.display()
+                ),
+                "Update Yazelix and the bundled yazelix-helix fork together.",
+                json!({
+                    "path": path.to_string_lossy(),
+                    "expected_schema_version": BRIDGE_SCHEMA_VERSION,
+                    "actual_schema_version": schema_version,
                 }),
             ));
         }
+        let registry =
+            serde_json::from_value::<HelixBridgeRegistry>(raw_registry).map_err(|source| {
+                CoreError::classified(
+                    ErrorClass::Runtime,
+                    "helix_bridge_registry_parse",
+                    format!(
+                        "Could not parse Helix bridge registry {}: {source}",
+                        path.display()
+                    ),
+                    "Restart the managed Helix pane so it recreates its registry.",
+                    json!({ "path": path.to_string_lossy() }),
+                )
+            })?;
         if registry.session_id != session_id {
             return Err(CoreError::classified(
                 ErrorClass::Runtime,
@@ -686,16 +722,27 @@ fn load_bridge_registries(
 }
 
 #[cfg(unix)]
-fn registry_socket_is_live(registry: &HelixBridgeRegistry) -> bool {
+fn registry_transport_is_live(registry: &HelixBridgeRegistry) -> bool {
     use std::os::unix::fs::FileTypeExt;
 
-    fs::metadata(&registry.socket_path)
-        .map(|metadata| metadata.file_type().is_socket())
-        .unwrap_or(false)
+    match &registry.transport {
+        BridgeTransport::UnixSocket { path } => fs::metadata(path)
+            .map(|metadata| metadata.file_type().is_socket())
+            .unwrap_or(false),
+        BridgeTransport::WindowsNamedPipe { .. } => false,
+    }
 }
 
-#[cfg(not(unix))]
-fn registry_socket_is_live(_registry: &HelixBridgeRegistry) -> bool {
+#[cfg(windows)]
+fn registry_transport_is_live(registry: &HelixBridgeRegistry) -> bool {
+    match &registry.transport {
+        BridgeTransport::WindowsNamedPipe { name } => wait_for_named_pipe(name, 0).is_ok(),
+        BridgeTransport::UnixSocket { .. } => false,
+    }
+}
+
+#[cfg(not(any(unix, windows)))]
+fn registry_transport_is_live(_registry: &HelixBridgeRegistry) -> bool {
     false
 }
 
@@ -730,7 +777,10 @@ fn send_bridge_action(
 ) -> Result<HelixBridgeResponse, CoreError> {
     use std::os::unix::net::UnixStream;
 
-    let socket_path = Path::new(&target.registry.socket_path);
+    let BridgeTransport::UnixSocket { path } = &target.registry.transport else {
+        return Err(unsupported_bridge_transport(&target.registry.transport));
+    };
+    let socket_path = Path::new(path);
     let mut stream = UnixStream::connect(socket_path).map_err(|source| {
         CoreError::io(
             "helix_bridge_socket_connect",
@@ -763,6 +813,64 @@ fn send_bridge_action(
         )
     })?;
 
+    send_bridge_action_over_stream(
+        &mut stream,
+        json!({ "unix_socket_path": socket_path.to_string_lossy() }),
+        target,
+        action,
+        payload,
+        timeout_ms,
+    )
+}
+
+#[cfg(windows)]
+fn send_bridge_action(
+    target: &BridgeTarget,
+    action: &str,
+    payload: &Value,
+    timeout_ms: u64,
+) -> Result<HelixBridgeResponse, CoreError> {
+    let BridgeTransport::WindowsNamedPipe { name } = &target.registry.transport else {
+        return Err(unsupported_bridge_transport(&target.registry.transport));
+    };
+    let mut pipe = open_named_pipe(name, timeout_ms)?;
+    send_bridge_action_over_stream(
+        &mut pipe,
+        json!({ "windows_named_pipe": name }),
+        target,
+        action,
+        payload,
+        timeout_ms,
+    )
+}
+
+#[cfg(not(any(unix, windows)))]
+fn send_bridge_action(
+    _target: &BridgeTarget,
+    _action: &str,
+    _payload: &Value,
+    _timeout_ms: u64,
+) -> Result<HelixBridgeResponse, CoreError> {
+    Err(CoreError::classified(
+        ErrorClass::Runtime,
+        "helix_bridge_unsupported_platform",
+        "The Helix bridge requires Unix sockets or Windows named pipes.",
+        "Use Yazelix on a platform with native local IPC support for Helix bridge actions.",
+        json!({}),
+    ))
+}
+
+fn send_bridge_action_over_stream<S>(
+    stream: &mut S,
+    endpoint: Value,
+    target: &BridgeTarget,
+    action: &str,
+    payload: &Value,
+    timeout_ms: u64,
+) -> Result<HelixBridgeResponse, CoreError>
+where
+    S: Read + Write,
+{
     let request = HelixBridgeRequest {
         schema_version: BRIDGE_SCHEMA_VERSION,
         request_id: request_id(),
@@ -777,15 +885,15 @@ fn send_bridge_action(
             "helix_bridge_request_encode",
             format!("Could not encode Helix bridge request: {source}"),
             "Report this Yazelix bug.",
-            json!({ "action": action }),
+            json!({ "action": action, "endpoint": endpoint.clone() }),
         )
     })?;
     writeln!(stream, "{encoded}").map_err(|source| {
         CoreError::io(
-            "helix_bridge_socket_write",
+            "helix_bridge_transport_write",
             "Could not write Helix bridge request.",
             "Retry from a fresh Yazelix session.",
-            socket_path.to_string_lossy(),
+            endpoint.to_string(),
             source,
         )
     })?;
@@ -794,10 +902,10 @@ fn send_bridge_action(
     let mut raw_response = String::new();
     reader.read_line(&mut raw_response).map_err(|source| {
         CoreError::io(
-            "helix_bridge_socket_read",
+            "helix_bridge_transport_read",
             "Could not read Helix bridge response.",
             "Retry from a fresh Yazelix session.",
-            socket_path.to_string_lossy(),
+            endpoint.to_string(),
             source,
         )
     })?;
@@ -807,7 +915,7 @@ fn send_bridge_action(
             "helix_bridge_empty_response",
             "Helix bridge returned an empty response.",
             "Restart the managed Helix pane, then retry.",
-            json!({ "socket_path": socket_path.to_string_lossy() }),
+            json!({ "endpoint": endpoint.clone() }),
         ));
     }
     let response =
@@ -817,7 +925,7 @@ fn send_bridge_action(
                 "helix_bridge_response_parse",
                 format!("Could not parse Helix bridge response: {source}"),
                 "Update Yazelix and the bundled yazelix-helix fork together.",
-                json!({ "socket_path": socket_path.to_string_lossy() }),
+                json!({ "endpoint": endpoint.clone() }),
             )
         })?;
     if response.schema_version != BRIDGE_SCHEMA_VERSION {
@@ -838,20 +946,132 @@ fn send_bridge_action(
     Ok(response)
 }
 
-#[cfg(not(unix))]
-fn send_bridge_action(
-    _target: &BridgeTarget,
-    _action: &str,
-    _payload: &Value,
-    _timeout_ms: u64,
-) -> Result<HelixBridgeResponse, CoreError> {
-    Err(CoreError::classified(
+fn unsupported_bridge_transport(transport: &BridgeTransport) -> CoreError {
+    CoreError::classified(
         ErrorClass::Runtime,
-        "helix_bridge_unsupported_platform",
-        "The Helix bridge currently requires Unix sockets.",
-        "Use Yazelix on a Unix-like platform for Helix bridge actions.",
-        json!({}),
-    ))
+        "unsupported_helix_bridge_transport",
+        "This platform cannot use the Helix bridge transport advertised by the registry.",
+        "Update Yazelix and the bundled yazelix-helix fork together, then restart the managed Helix pane.",
+        json!({ "transport": transport }),
+    )
+}
+
+#[cfg(windows)]
+fn open_named_pipe(name: &str, timeout_ms: u64) -> Result<WindowsPipeHandle, CoreError> {
+    use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
+    use windows_sys::Win32::Storage::FileSystem::{
+        CreateFileW, FILE_ATTRIBUTE_NORMAL, GENERIC_READ, GENERIC_WRITE, OPEN_EXISTING,
+    };
+
+    wait_for_named_pipe(name, timeout_ms)?;
+    let wide_name = windows_wide(name);
+    let handle = unsafe {
+        CreateFileW(
+            wide_name.as_ptr(),
+            GENERIC_READ | GENERIC_WRITE,
+            0,
+            std::ptr::null(),
+            OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL,
+            0,
+        )
+    };
+    if handle == INVALID_HANDLE_VALUE {
+        return Err(CoreError::io(
+            "helix_bridge_named_pipe_connect",
+            format!("Could not connect to Helix bridge named pipe {name}."),
+            "Restart the managed Helix pane, then retry.",
+            name,
+            std::io::Error::last_os_error(),
+        ));
+    }
+    Ok(WindowsPipeHandle(handle))
+}
+
+#[cfg(windows)]
+fn wait_for_named_pipe(name: &str, timeout_ms: u64) -> Result<(), CoreError> {
+    use windows_sys::Win32::System::Pipes::WaitNamedPipeW;
+
+    let wide_name = windows_wide(name);
+    let ok = unsafe { WaitNamedPipeW(wide_name.as_ptr(), timeout_ms.min(u32::MAX as u64) as u32) };
+    if ok == 0 {
+        return Err(CoreError::io(
+            "helix_bridge_named_pipe_wait",
+            format!("Timed out waiting for Helix bridge named pipe {name}."),
+            "Restart the managed Helix pane, then retry.",
+            name,
+            std::io::Error::last_os_error(),
+        ));
+    }
+    Ok(())
+}
+
+#[cfg(windows)]
+struct WindowsPipeHandle(windows_sys::Win32::Foundation::HANDLE);
+
+#[cfg(windows)]
+impl Drop for WindowsPipeHandle {
+    fn drop(&mut self) {
+        unsafe {
+            windows_sys::Win32::Foundation::CloseHandle(self.0);
+        }
+    }
+}
+
+#[cfg(windows)]
+impl Read for WindowsPipeHandle {
+    fn read(&mut self, buffer: &mut [u8]) -> std::io::Result<usize> {
+        use windows_sys::Win32::Storage::FileSystem::ReadFile;
+
+        let mut bytes_read = 0u32;
+        let ok = unsafe {
+            ReadFile(
+                self.0,
+                buffer.as_mut_ptr().cast(),
+                buffer.len().min(u32::MAX as usize) as u32,
+                &mut bytes_read,
+                std::ptr::null_mut(),
+            )
+        };
+        if ok == 0 {
+            return Err(std::io::Error::last_os_error());
+        }
+        Ok(bytes_read as usize)
+    }
+}
+
+#[cfg(windows)]
+impl Write for WindowsPipeHandle {
+    fn write(&mut self, buffer: &[u8]) -> std::io::Result<usize> {
+        use windows_sys::Win32::Storage::FileSystem::WriteFile;
+
+        let mut bytes_written = 0u32;
+        let ok = unsafe {
+            WriteFile(
+                self.0,
+                buffer.as_ptr().cast(),
+                buffer.len().min(u32::MAX as usize) as u32,
+                &mut bytes_written,
+                std::ptr::null_mut(),
+            )
+        };
+        if ok == 0 {
+            return Err(std::io::Error::last_os_error());
+        }
+        Ok(bytes_written as usize)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+#[cfg(windows)]
+fn windows_wide(value: &str) -> Vec<u16> {
+    use std::ffi::OsStr;
+    use std::os::windows::ffi::OsStrExt;
+
+    OsStr::new(value).encode_wide().chain(Some(0)).collect()
 }
 
 fn bridge_response_error_to_core(action: &str, response: HelixBridgeResponse) -> CoreError {
@@ -920,7 +1140,9 @@ mod tests {
             schema_version: BRIDGE_SCHEMA_VERSION,
             session_id: session_id.to_string(),
             instance_id: instance_id.to_string(),
-            socket_path: socket_path.to_string_lossy().to_string(),
+            transport: BridgeTransport::UnixSocket {
+                path: socket_path.to_string_lossy().to_string(),
+            },
             auth_token_path: token_path.to_string_lossy().to_string(),
             pid: std::process::id(),
             zellij_session_name: None,
@@ -939,6 +1161,41 @@ mod tests {
             serde_json::to_string(registry).unwrap(),
         )
         .unwrap();
+    }
+
+    // Regression: v1 registries used socket_path and should fail as a schema mismatch, not as an opaque missing-field parse error.
+    #[test]
+    fn load_bridge_registries_rejects_v1_socket_path_registry_as_schema_mismatch() {
+        let tmp = tempfile::tempdir().unwrap();
+        let session_id = "session-1";
+        let bridge_dir = tmp.path().join("helix_bridge").join(session_id);
+        fs::create_dir_all(&bridge_dir).unwrap();
+        fs::write(
+            bridge_dir.join("inst-1.json"),
+            serde_json::to_string(&json!({
+                "schema_version": 1,
+                "session_id": session_id,
+                "instance_id": "inst-1",
+                "socket_path": "/tmp/old.sock",
+                "auth_token_path": "/tmp/old.token",
+                "pid": std::process::id(),
+                "zellij_session_name": null,
+                "zellij_tab_position": null,
+                "zellij_pane_id": null,
+                "started_at_unix_ms": 1,
+                "managed_config_path": null
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+
+        let error = load_bridge_registries(&bridge_dir, session_id).unwrap_err();
+        assert_eq!(error.code(), "helix_bridge_registry_schema");
+        assert!(
+            error
+                .message()
+                .contains("Unsupported Helix bridge registry schema 1")
+        );
     }
 
     // Defends: the client rejects unsafe instance/session path components before filesystem lookup.

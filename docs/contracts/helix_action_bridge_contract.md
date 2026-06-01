@@ -5,9 +5,8 @@
 Yazelix-to-Helix automation should become typed editor actions instead of
 simulated terminal input.
 
-The bridge is a planning contract for the next managed Helix integration slice.
-It is not the current shipped behavior until the `yazelix-helix` fork and
-Yazelix control client implement it.
+The bridge is the managed Helix integration seam for typed editor actions in
+the `yazelix-helix` fork and Yazelix control client.
 
 ## Why
 
@@ -31,81 +30,84 @@ The bridge should keep the useful ownership split:
 
 ## Decision
 
-The first bridge should be a Helix-native local IPC endpoint in
-`luccahuguet/yazelix-helix`, transported over a per-instance Unix socket under
-the Yazelix state root.
+The bridge is a Helix-native local IPC endpoint in
+`luccahuguet/yazelix-helix`, transported over native per-instance local IPC:
+Unix sockets on Unix-like systems and best-effort named pipes on native
+Windows.
 
-Rejected first-slice transports:
+Rejected transports:
 
 - Zellij pipe routing: it can find the managed editor pane, but it still cannot
   execute editor actions without sending terminal input to Helix
 - state-dir action queue: it avoids key injection but adds polling, stale
   response files, and unclear timeout ownership
 - generic terminal keystroke helper: it preserves the bug class under a new name
+- loopback TCP: it is cross-platform, but it adds firewall prompts, port
+  allocation, bind-address policy, and a broader network-facing threat model for
+  a same-user local editor control plane
 
 The bridge may be implemented inside the Yazelix Helix fork directly, or behind
 a thin Helix extension module in that fork, but the supported public seam is the
-Unix socket protocol described here.
+native local IPC protocol described here.
 
 ## Contract Items
 
 #### HAB-001
 - Type: boundary
-- Status: planning
+- Status: live
 - Owner: `yazelix-helix` action bridge endpoint
 - Statement: Yazelix-to-Helix editor actions use a Helix-owned local IPC endpoint
   instead of Zellij terminal input for migrated Helix actions
-- Verification: unverified until the Helix endpoint lands; planned automated
-  tests in `yazelix-helix` plus `yzx_repo_validator validate-contracts`
+- Verification: automated Linux behavior tests in `yazelix-helix` plus
+  `rust_core/yazelix_core` bridge tests and `yzx_repo_validator
+  validate-contracts`
 
 #### HAB-002
 - Type: ownership
-- Status: planning
+- Status: live
 - Owner: Yazelix state root and Helix wrapper
-- Statement: Each managed Helix process gets one opaque instance id, one Unix
-  socket path, and one registry record under `YAZELIX_STATE_DIR`; no bridge
+- Statement: Each managed Helix process gets one opaque instance id, one native
+  IPC transport, and one registry record under `YAZELIX_STATE_DIR`; no bridge
   client may target a global "current hx"
-- Verification: unverified until implementation; planned automated tests for
-  wrapper materialization and `yzx_control helix` address resolution
+- Verification: automated tests for wrapper materialization and `yzx_control
+  helix` address resolution
 
 #### HAB-003
 - Type: invariant
-- Status: planning
+- Status: live
 - Owner: Helix bridge client
 - Statement: A bridge request identifies the target instance explicitly or by a
   Zellij pane id resolved through the current Yazelix session; ambiguous or stale
   matches are typed errors, not best-effort guesses
-- Verification: unverified until the bridge client lands; planned automated
-  tests in `rust_core/yazelix_core`
+- Verification: automated tests in `rust_core/yazelix_core`
 
 #### HAB-004
 - Type: boundary
-- Status: planning
+- Status: live
 - Owner: pane orchestrator plus Helix bridge client
 - Statement: Zellij remains the owner of panes, tabs, focus, layout, and
   workspace routing; the Helix bridge owns only editor-local actions after the
   managed Helix instance has been selected
-- Verification: unverified until implementation; planned automated tests across
-  `yzx_control_workspace_surface` and pane-orchestrator command tests
+- Verification: automated tests across `yzx_control_workspace_surface` and
+  pane-orchestrator command tests
 
 #### HAB-005
 - Type: failure_mode
-- Status: planning
+- Status: live
 - Owner: migrated Helix action callers
 - Statement: After a Helix action migrates to the bridge, bridge-missing,
   unsupported-action, timeout, authorization, and stale-instance failures are
   reported directly and must not fall back to simulated keystrokes
-- Verification: unverified until implementation; planned automated tests for
-  each failure class
+- Verification: automated bridge client and workspace surface tests
 
 #### HAB-006
 - Type: behavior
-- Status: planning
+- Status: live
 - Owner: first Helix action slice
 - Statement: The first migrated action slice is `helix.open_files`,
   `helix.set_cwd`, and `helix.get_context`
-- Verification: unverified until implementation; planned behavior tests in the
-  `yazelix-helix` bridge and `yzx_control helix` client
+- Verification: automated behavior tests in the `yazelix-helix` bridge and
+  `yzx_control helix` client
 
 #### HAB-007
 - Type: failure_mode
@@ -119,13 +121,23 @@ Unix socket protocol described here.
 
 ## Transport
 
-Transport is a Unix stream socket.
+Transport is native local IPC, never terminal input and never loopback TCP by
+default.
 
-Socket files live below:
+Unix-like systems use Unix stream sockets. Socket files live below:
 
 ```text
 $YAZELIX_STATE_DIR/helix_bridge/<session_id>/<instance_id>.sock
 ```
+
+Native Windows uses named pipes:
+
+```text
+\\.\pipe\yazelix-helix-<session_id>-<instance_id>
+```
+
+Windows support is best effort until Windows CI or a native Windows maintainer
+smoke proves the named-pipe backend.
 
 The bridge directory should be owned by the current user and mode `0700`.
 Registry records should be owned by the current user and mode `0600`.
@@ -138,9 +150,9 @@ The Helix wrapper generates:
 - `auth_token`: opaque random token used to reject accidental cross-instance
   requests
 
-The Helix process owns the socket lifecycle. It creates the socket after the
-editor action loop is ready, removes it on graceful exit, and treats failed
-cleanup as stale state for doctor to report.
+The Helix process owns the transport lifecycle. It creates the transport after
+the editor action loop is ready, removes Unix socket files on graceful exit, and
+treats failed cleanup as stale state for doctor to report.
 
 ## Addressing
 
@@ -148,10 +160,13 @@ Every registry record contains:
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "session_id": "opaque-session",
   "instance_id": "opaque-instance",
-  "socket_path": "/home/user/.local/share/yazelix/helix_bridge/opaque-session/opaque-instance.sock",
+  "transport": {
+    "kind": "unix_socket",
+    "path": "/home/user/.local/share/yazelix/helix_bridge/opaque-session/opaque-instance.sock"
+  },
   "auth_token_path": "/home/user/.local/share/yazelix/helix_bridge/opaque-session/opaque-instance.token",
   "pid": 12345,
   "zellij_session_name": "optional",
@@ -181,7 +196,7 @@ Requests are newline-delimited JSON:
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "request_id": "uuid-or-random-id",
   "auth_token": "opaque-token",
   "action": "helix.open_files",
@@ -198,7 +213,7 @@ Responses are newline-delimited JSON on the same connection:
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "request_id": "uuid-or-random-id",
   "status": "ok",
   "data": {}
@@ -209,7 +224,7 @@ Errors use a typed envelope:
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "request_id": "uuid-or-random-id",
   "status": "error",
   "error": {

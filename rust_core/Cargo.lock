@@ -1440,6 +1440,7 @@ dependencies = [
  "thiserror 2.0.18",
  "time",
  "toml",
+ "windows-sys 0.61.2",
  "yazelix-ratconfig",
  "yazelix_cursors",
  "yazelix_screen",
