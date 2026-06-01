@@ -597,6 +597,31 @@ fn focus_managed_editor_pane() -> Result<(), CoreError> {
     }
 }
 
+fn set_helix_bridge_managed_editor_cwd(
+    working_dir: &Path,
+) -> Result<ManagedEditorOpenStatus, CoreError> {
+    match active_managed_editor_pane_target()? {
+        ManagedEditorPaneTarget::Ready(zellij_pane_id) => {
+            let payload = json!({
+                "working_dir": working_dir.display().to_string(),
+            });
+            send_helix_bridge_action_to_target(
+                HelixBridgeActionTarget {
+                    session_id: None,
+                    instance_id: None,
+                    zellij_pane_id: Some(zellij_pane_id),
+                },
+                "helix.set_cwd",
+                payload,
+                5_000,
+            )?;
+            Ok(ManagedEditorOpenStatus::Ok)
+        }
+        ManagedEditorPaneTarget::Missing => Ok(ManagedEditorOpenStatus::Missing),
+        ManagedEditorPaneTarget::NotReady => Ok(ManagedEditorOpenStatus::NotReady),
+    }
+}
+
 fn parse_managed_editor_open_response(
     response: &str,
 ) -> Result<ManagedEditorOpenStatus, CoreError> {
@@ -834,8 +859,15 @@ pub fn run_zellij_open_editor_cwd(args: &[String]) -> Result<i32, CoreError> {
         hide_sidebar_if_visible()?;
     }
 
-    let retarget_result =
-        retarget_workspace_without_focused_cd(&target_dir, Some(editor_kind.as_str()))?;
+    let bridge_updates_helix_cwd = editor_kind == "helix";
+    let retarget_result = retarget_workspace_without_focused_cd(
+        &target_dir,
+        if bridge_updates_helix_cwd {
+            None
+        } else {
+            Some(editor_kind.as_str())
+        },
+    )?;
     let mut created_editor_pane = false;
     let status = retarget_result.status();
     if status != "ok" {
@@ -849,8 +881,29 @@ pub fn run_zellij_open_editor_cwd(args: &[String]) -> Result<i32, CoreError> {
         ));
     }
 
-    match retarget_result.editor_status.as_str() {
-        "missing" => {
+    let editor_status = if bridge_updates_helix_cwd {
+        set_helix_bridge_managed_editor_cwd(&target_dir)?
+    } else {
+        match retarget_result.editor_status.as_str() {
+            "missing" => ManagedEditorOpenStatus::Missing,
+            "unsupported_editor" => {
+                return Err(CoreError::classified(
+                    ErrorClass::Runtime,
+                    "unsupported_managed_editor",
+                    format!(
+                        "Unsupported managed editor kind for workspace retarget: {}",
+                        editor_kind
+                    ),
+                    "Configure Helix or Neovim as the managed editor, then retry.",
+                    json!({ "editor_kind": editor_kind }),
+                ));
+            }
+            _ => ManagedEditorOpenStatus::Ok,
+        }
+    };
+
+    match editor_status {
+        ManagedEditorOpenStatus::Missing | ManagedEditorOpenStatus::NotReady => {
             let (runtime_env, editor_command) = resolve_runtime_editor_launch()?;
             let yazi_id = env::var("YAZI_ID").unwrap_or_default();
             let mut editor_argv = vec![editor_command];
@@ -865,19 +918,7 @@ pub fn run_zellij_open_editor_cwd(args: &[String]) -> Result<i32, CoreError> {
             )?;
             created_editor_pane = true;
         }
-        "unsupported_editor" => {
-            return Err(CoreError::classified(
-                ErrorClass::Runtime,
-                "unsupported_managed_editor",
-                format!(
-                    "Unsupported managed editor kind for workspace retarget: {}",
-                    editor_kind
-                ),
-                "Configure Helix or Neovim as the managed editor, then retry.",
-                json!({ "editor_kind": editor_kind }),
-            ));
-        }
-        _ => {}
+        ManagedEditorOpenStatus::Ok => {}
     }
 
     if let Some(sidebar_state) = retarget_result.sidebar_state.as_ref() {

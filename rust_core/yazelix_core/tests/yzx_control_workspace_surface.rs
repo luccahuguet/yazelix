@@ -37,6 +37,21 @@ fn assert_success(output: &Output) {
     assert!(output.stderr.is_empty());
 }
 
+fn assert_failure_contains(output: &Output, expected_stderr: &str) {
+    assert_ne!(
+        output.status.code(),
+        Some(0),
+        "stdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains(expected_stderr),
+        "expected stderr to contain {expected_stderr:?}, got:\n{stderr}"
+    );
+}
+
 fn assert_silent_success(output: &Output) {
     assert_success(output);
     assert!(output.stdout.is_empty());
@@ -855,7 +870,7 @@ ya_command = "ya"
     write_executable_script(
         &fake_bin.join("zellij"),
         &format!(
-            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  if [ \"$6\" = \"retarget_workspace\" ]; then\n    printf '%s' \"$8\" > \"{}\"\n    printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"missing\",\"sidebar_yazi_id\":\"plugin-sidebar-yazi-123\",\"sidebar_yazi_cwd\":\"/home/sidebar\"}}'\n    exit 0\n  fi\nfi\nif [ \"$1\" = \"run\" ]; then\n  printf '%s\\n' \"$*\" >> \"{}\"\n  exit 0\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
+            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    retarget_workspace)\n      printf '%s' \"$8\" > \"{}\"\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"skipped\",\"sidebar_yazi_id\":\"plugin-sidebar-yazi-123\",\"sidebar_yazi_cwd\":\"/home/sidebar\"}}'\n      exit 0\n      ;;\n    get_active_tab_session_state)\n      printf '%s\\n' '{{\"schema_version\":1,\"managed_panes\":{{\"editor_pane_id\":null,\"sidebar_pane_id\":\"terminal:8\"}},\"layout\":{{\"sidebar_collapsed\":false}}}}'\n      exit 0\n      ;;\n  esac\nfi\nif [ \"$1\" = \"run\" ]; then\n  printf '%s\\n' \"$*\" >> \"{}\"\n  exit 0\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
             zellij_commands_log.display(),
             retarget_payload_log.display(),
             zellij_run_log.display()
@@ -875,8 +890,8 @@ ya_command = "ya"
 
     assert_silent_success(&output);
     assert_eq!(
-        fs::read_to_string(zellij_commands_log).unwrap().trim(),
-        "retarget_workspace"
+        file_lines(zellij_commands_log),
+        vec!["retarget_workspace", "get_active_tab_session_state"]
     );
 
     let retarget_payload = read_json_file(retarget_payload_log);
@@ -885,7 +900,7 @@ ya_command = "ya"
         target_dir.to_string_lossy().to_string()
     );
     assert_eq!(retarget_payload["cd_focused_pane"], false);
-    assert_eq!(retarget_payload["editor"], "helix");
+    assert!(retarget_payload["editor"].is_null());
 
     let run_log = fs::read_to_string(zellij_run_log).unwrap();
     assert!(run_log.contains("--name editor"));
@@ -902,26 +917,28 @@ ya_command = "ya"
     );
 }
 
-// Regression: the Alt+z Yazi zoxide route must honor hide_sidebar_on_file_open before retargeting the editor cwd.
+// Defends: Neovim cwd retargeting stays on the pane-orchestrator command path until it has its own bridge contract.
 #[test]
-fn yzx_control_zellij_open_editor_cwd_hides_sidebar_when_configured() {
+fn yzx_control_zellij_open_editor_cwd_keeps_neovim_on_orchestrator_path() {
     let fixture = managed_config_fixture(
         r#"[editor]
-command = "hx"
-hide_sidebar_on_file_open = true
+command = "nvim"
+hide_sidebar_on_file_open = false
 "#,
     );
     let fake_bin = fixture.home_dir.join("fake-bin");
     let target_dir = fixture.home_dir.join("workspace");
     let zellij_commands_log = fixture.home_dir.join("zellij-commands.log");
+    let retarget_payload_log = fixture.home_dir.join("retarget-payload.json");
     fs::create_dir_all(&fake_bin).unwrap();
     fs::create_dir_all(&target_dir).unwrap();
 
     write_executable_script(
         &fake_bin.join("zellij"),
         &format!(
-            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    get_active_tab_session_state)\n      printf '%s\\n' '{{\"schema_version\":1,\"layout\":{{\"sidebar_collapsed\":false}}}}'\n      exit 0\n      ;;\n    hide_sidebar)\n      printf '%s\\n' 'ok'\n      exit 0\n      ;;\n    retarget_workspace)\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"ok\"}}'\n      exit 0\n      ;;\n  esac\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
+            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    retarget_workspace)\n      printf '%s' \"$8\" > \"{}\"\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"ok\"}}'\n      exit 0\n      ;;\n  esac\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
             zellij_commands_log.display(),
+            retarget_payload_log.display(),
         ),
     );
 
@@ -934,14 +951,135 @@ hide_sidebar_on_file_open = true
         .output()
         .unwrap();
 
+    assert_silent_success(&output);
+    assert_eq!(file_lines(zellij_commands_log), vec!["retarget_workspace"]);
+    let retarget_payload = read_json_file(retarget_payload_log);
+    assert_eq!(
+        retarget_payload["workspace_root"],
+        target_dir.to_string_lossy().to_string()
+    );
+    assert_eq!(retarget_payload["cd_focused_pane"], false);
+    assert_eq!(retarget_payload["editor"], "neovim");
+}
+
+// Regression: the Alt+z Yazi zoxide route must honor hide_sidebar_on_file_open before retargeting the editor cwd.
+#[test]
+fn yzx_control_zellij_open_editor_cwd_hides_sidebar_when_configured() {
+    let fixture = managed_config_fixture(
+        r#"[editor]
+command = "hx"
+hide_sidebar_on_file_open = true
+"#,
+    );
+    let fake_bin = fixture.home_dir.join("fake-bin");
+    let target_dir = fixture.home_dir.join("workspace");
+    let zellij_commands_log = fixture.home_dir.join("zellij-commands.log");
+    let helix_bridge_request_log = fixture.home_dir.join("helix-cwd-bridge-request.json");
+    let session_id = "cwd-bridge-session";
+    let snapshot = write_session_config_snapshot_with_id(
+        &fixture,
+        session_id,
+        &[
+            ("editor_command", json!("hx")),
+            ("hide_sidebar_on_file_open", json!(true)),
+        ],
+    );
+    let bridge_dir = fixture.state_dir.join("helix_bridge").join(session_id);
+    let socket_path = bridge_dir.join("inst-1.sock");
+    let token_path = bridge_dir.join("inst-1.token");
+    fs::create_dir_all(&fake_bin).unwrap();
+    fs::create_dir_all(&target_dir).unwrap();
+    fs::create_dir_all(&bridge_dir).unwrap();
+    let bridge = spawn_helix_bridge_request_logger(&socket_path, &helix_bridge_request_log);
+    write_helix_bridge_registry(
+        &fixture.state_dir,
+        session_id,
+        "inst-1",
+        "terminal:7",
+        &socket_path,
+        &token_path,
+    );
+
+    write_executable_script(
+        &fake_bin.join("zellij"),
+        &format!(
+            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    get_active_tab_session_state)\n      printf '%s\\n' '{{\"schema_version\":1,\"managed_panes\":{{\"editor_pane_id\":\"terminal:7\",\"sidebar_pane_id\":\"terminal:8\"}},\"layout\":{{\"sidebar_collapsed\":false}}}}'\n      exit 0\n      ;;\n    hide_sidebar)\n      printf '%s\\n' 'ok'\n      exit 0\n      ;;\n    retarget_workspace)\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"skipped\"}}'\n      exit 0\n      ;;\n  esac\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
+            zellij_commands_log.display(),
+        ),
+    );
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .env("PATH", prepend_path(&fake_bin))
+        .env("ZELLIJ", "1")
+        .env("YAZELIX_SESSION_CONFIG_PATH", snapshot)
+        .arg("zellij")
+        .arg("open-editor-cwd")
+        .arg(&target_dir)
+        .output()
+        .unwrap();
+
     assert_success(&output);
+    bridge.join().unwrap();
     assert_eq!(
         file_lines(zellij_commands_log),
         vec![
             "get_active_tab_session_state",
             "hide_sidebar",
-            "retarget_workspace"
+            "retarget_workspace",
+            "get_active_tab_session_state"
         ]
+    );
+    let bridge_request = read_json_file(helix_bridge_request_log);
+    assert_eq!(bridge_request["action"], "helix.set_cwd");
+    assert_eq!(
+        bridge_request["payload"]["working_dir"],
+        target_dir.to_string_lossy().to_string()
+    );
+}
+
+// Regression: an existing managed Helix pane must fail clearly when its action bridge is unavailable instead of falling back to terminal text injection.
+#[test]
+fn yzx_control_zellij_open_editor_cwd_fails_when_existing_helix_bridge_is_missing() {
+    let fixture = managed_config_fixture(
+        r#"[editor]
+command = "hx"
+hide_sidebar_on_file_open = false
+"#,
+    );
+    let fake_bin = fixture.home_dir.join("fake-bin");
+    let target_dir = fixture.home_dir.join("workspace");
+    let zellij_commands_log = fixture.home_dir.join("zellij-commands.log");
+    let session_id = "missing-cwd-bridge-session";
+    let snapshot = write_session_config_snapshot_with_id(
+        &fixture,
+        session_id,
+        &[("editor_command", json!("hx"))],
+    );
+    fs::create_dir_all(&fake_bin).unwrap();
+    fs::create_dir_all(&target_dir).unwrap();
+
+    write_executable_script(
+        &fake_bin.join("zellij"),
+        &format!(
+            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    retarget_workspace)\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"skipped\"}}'\n      exit 0\n      ;;\n    get_active_tab_session_state)\n      printf '%s\\n' '{{\"schema_version\":1,\"managed_panes\":{{\"editor_pane_id\":\"terminal:7\",\"sidebar_pane_id\":\"terminal:8\"}},\"layout\":{{\"sidebar_collapsed\":false}}}}'\n      exit 0\n      ;;\n  esac\nfi\nif [ \"$1\" = \"run\" ]; then\n  printf 'unexpected editor pane creation\\n' >&2\n  exit 1\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
+            zellij_commands_log.display(),
+        ),
+    );
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .env("PATH", prepend_path(&fake_bin))
+        .env("ZELLIJ", "1")
+        .env("YAZELIX_SESSION_CONFIG_PATH", snapshot)
+        .arg("zellij")
+        .arg("open-editor-cwd")
+        .arg(&target_dir)
+        .output()
+        .unwrap();
+
+    assert_failure_contains(&output, "Could not read Helix bridge registry directory");
+    assert_eq!(
+        file_lines(zellij_commands_log),
+        vec!["retarget_workspace", "get_active_tab_session_state"]
     );
 }
 
@@ -986,6 +1124,7 @@ hide_sidebar_on_file_open = true
             "get_active_tab_session_state",
             "hide_sidebar",
             "retarget_workspace",
+            "get_active_tab_session_state",
             "run_editor",
             "get_active_tab_session_state",
             "hide_sidebar",
@@ -1011,7 +1150,8 @@ hide_sidebar_on_file_open = true
     write_executable_script(
         &fake_bin.join("zellij"),
         &format!(
-            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    get_active_tab_session_state)\n      printf '%s\\n' '{{\"schema_version\":1,\"layout\":{{\"active_swap_layout_name\":null,\"sidebar_collapsed\":null}}}}'\n      exit 0\n      ;;\n    hide_sidebar)\n      printf '%s\\n' 'unknown_layout'\n      exit 0\n      ;;\n    retarget_workspace)\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"ok\"}}'\n      exit 0\n      ;;\n  esac\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
+            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    get_active_tab_session_state)\n      printf '%s\\n' '{{\"schema_version\":1,\"layout\":{{\"active_swap_layout_name\":null,\"sidebar_collapsed\":null}},\"managed_panes\":{{\"editor_pane_id\":null,\"sidebar_pane_id\":null}}}}'\n      exit 0\n      ;;\n    hide_sidebar)\n      printf '%s\\n' 'unknown_layout'\n      exit 0\n      ;;\n    retarget_workspace)\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"skipped\"}}'\n      exit 0\n      ;;\n  esac\nfi\nif [ \"$1\" = \"run\" ]; then\n  printf '%s\\n' 'run_editor' >> \"{}\"\n  exit 0\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
+            zellij_commands_log.display(),
             zellij_commands_log.display(),
         ),
     );
@@ -1031,7 +1171,11 @@ hide_sidebar_on_file_open = true
         vec![
             "get_active_tab_session_state",
             "hide_sidebar",
-            "retarget_workspace"
+            "retarget_workspace",
+            "get_active_tab_session_state",
+            "run_editor",
+            "get_active_tab_session_state",
+            "hide_sidebar",
         ]
     );
 }
