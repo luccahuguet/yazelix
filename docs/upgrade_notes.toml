@@ -1,12 +1,22 @@
 [releases.unreleased]
-acknowledged_guarded_changes = ["home_manager/module.nix"]
+acknowledged_guarded_changes = []
 date = ""
-headline = "Post-v17.2 work in progress"
+headline = "Post-v17.3 work in progress"
 manual_actions = []
 migration_ids = []
-summary = ["Renamed the standalone cursor child repository from yazelix-ghostty-cursors to yazelix-cursors now that Yazelix Terminal consumes the same cursor shader package; the old #yazelix_ghostty_cursors and #ghostty_cursor_shaders outputs remain compatibility aliases.", "Added the Home Manager programs.yazelix.extra_terminal_variants option so users can install additional bundled terminal emulator packages such as Ghostty beside a yzxterm primary runtime without adding duplicate yzx wrappers.", "Added Kitty as a packaged runtime variant through #yazelix_kitty, #runtime_kitty, and programs.yazelix.runtime_variant = \"kitty\"."]
+summary = ["Reserved for post-release changes after v17.3 lands."]
 upgrade_impact = "no_user_action"
 version = "unreleased"
+
+[releases."v17.3"]
+acknowledged_guarded_changes = ["home_manager/module.nix"]
+date = "2026-06-01"
+headline = "Shared cursor package, terminal variants, and Kitty runtime packaging"
+manual_actions = []
+migration_ids = []
+summary = ["Renamed the standalone cursor child repository from yazelix-ghostty-cursors to yazelix-cursors now that Yazelix Terminal consumes the same cursor shader package; the old #yazelix_ghostty_cursors and #ghostty_cursor_shaders outputs remain compatibility aliases.", "Updated the Yazelix Terminal runtime input and cursor materialization so yzxterm consumes the shared cursor settings path for shader/trail behavior.", "Added the Home Manager programs.yazelix.extra_terminal_variants option so users can install additional bundled terminal emulator packages such as Ghostty beside a yzxterm primary runtime without adding duplicate yzx wrappers.", "Added Kitty as a packaged runtime variant through #yazelix_kitty, #runtime_kitty, and programs.yazelix.runtime_variant = \"kitty\"."]
+upgrade_impact = "no_user_action"
+version = "v17.3"
 
 [releases.v12]
 acknowledged_guarded_changes = []
