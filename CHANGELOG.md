@@ -9,7 +9,7 @@ Post-v17.2 work in progress
 Upgrade impact: no user action required
 
 Highlights:
-- Reserved for post-release changes after v17.2 lands.
+- Renamed the standalone cursor child repository from `yazelix-ghostty-cursors` to `yazelix-cursors` now that Yazelix Terminal consumes the same cursor shader package; the old `#yazelix_ghostty_cursors` and `#ghostty_cursor_shaders` outputs remain compatibility aliases
 
 ## v17.2 - 2026-05-31
 
