@@ -8,10 +8,11 @@ const REPO_ROOT = (
 )
 
 export def main [] {
+    let cargo = ($env.CARGO? | default "cargo")
     let result = (
         do {
             cd $REPO_ROOT
-            ^cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_maintainer -- sync-issues --dry-run
+            ^$cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_maintainer -- sync-issues --dry-run
         } | complete
     )
 

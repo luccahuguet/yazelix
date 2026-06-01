@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       BR_VERSION: 0.2.11
+      RUST_TOOLCHAIN: "1.96"
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     steps:
       - name: Check out repository
@@ -37,18 +38,25 @@ jobs:
           restore-keys: |
             br-${{ runner.os }}-
 
-      - name: Install br
+      - name: Install Rust toolchains and br
         run: |
           set -euo pipefail
+          rustup toolchain install "${RUST_TOOLCHAIN}" --profile minimal
           rustup toolchain install nightly --profile minimal
           cargo_bin="${CARGO_HOME:-$HOME/.cargo}/bin"
           mkdir -p "$cargo_bin"
           export PATH="$cargo_bin:$PATH"
+          stable_cargo="$(rustup which --toolchain "${RUST_TOOLCHAIN}" cargo)"
+          stable_rustc="$(rustup which --toolchain "${RUST_TOOLCHAIN}" rustc)"
           nightly_cargo="$(rustup which --toolchain nightly cargo)"
           nightly_rustc="$(rustup which --toolchain nightly rustc)"
           if ! command -v br >/dev/null 2>&1 || ! br version --json | grep -q "\"version\":\"${BR_VERSION}\""; then
             CARGO="$nightly_cargo" RUSTC="$nightly_rustc" "$nightly_cargo" install beads_rust --version "${BR_VERSION}" --locked --no-default-features
           fi
+          {
+            echo "CARGO=$stable_cargo"
+            echo "RUSTC=$stable_rustc"
+          } >> "$GITHUB_ENV"
           echo "$cargo_bin" >> "$GITHUB_PATH"
           br version
 
