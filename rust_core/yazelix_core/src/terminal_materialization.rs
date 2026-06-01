@@ -4,7 +4,8 @@ use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::control_plane::config_dir_from_env;
 use crate::ghostty_cursor_registry::{CursorRegistry, YazelixCursorRegistryExt};
 use crate::ghostty_materialization::{
-    GhosttyMaterializationRequest, generate_ghostty_materialization,
+    GhosttyCursorState, GhosttyMaterializationData, GhosttyMaterializationRequest,
+    cursor_shader_paths_for_state, generate_ghostty_materialization,
 };
 use crate::runtime_component_enabled;
 use crate::user_config_paths;
@@ -216,7 +217,12 @@ white = "#ffffff"
     )
 }
 
-fn generate_yzxterm_config(runtime_dir: &Path, transparency: &str) -> Result<String, CoreError> {
+fn generate_yzxterm_config(
+    runtime_dir: &Path,
+    transparency: &str,
+    cursor_state: Option<&GhosttyCursorState>,
+    custom_shader_paths: &[PathBuf],
+) -> Result<String, CoreError> {
     let package_config = runtime_dir
         .join("share")
         .join("yazelix-terminal")
@@ -276,6 +282,74 @@ fn generate_yzxterm_config(runtime_dir: &Path, transparency: &str) -> Result<Str
         "opacity-cells".to_string(),
         toml::Value::Boolean(transparency != "none"),
     );
+
+    let renderer = table
+        .entry("renderer")
+        .or_insert_with(|| toml::Value::Table(toml::map::Map::new()))
+        .as_table_mut()
+        .ok_or_else(|| {
+            CoreError::classified(
+                crate::bridge::ErrorClass::Runtime,
+                "invalid_yzxterm_renderer_config",
+                format!(
+                    "The packaged Yazelix Terminal config at {} has a non-table [renderer] value.",
+                    package_config.display()
+                ),
+                "Reinstall the Yazelix runtime or rebuild it from a valid yazelix-terminal package.",
+                serde_json::json!({}),
+            )
+        })?;
+    if custom_shader_paths.is_empty() {
+        renderer.remove("custom-shader");
+    } else {
+        for shader_path in custom_shader_paths {
+            if !shader_path.is_file() {
+                return Err(CoreError::classified(
+                    crate::bridge::ErrorClass::Runtime,
+                    "missing_yzxterm_cursor_shader",
+                    format!(
+                        "The generated Yazelix Terminal cursor shader does not exist: {}.",
+                        shader_path.display()
+                    ),
+                    "Regenerate terminal configs with `yzx refresh` or relaunch Yazelix so cursor shader assets are rebuilt.",
+                    serde_json::json!({ "path": shader_path.to_string_lossy() }),
+                ));
+            }
+        }
+        renderer.insert(
+            "custom-shader".to_string(),
+            toml::Value::Array(
+                custom_shader_paths
+                    .iter()
+                    .map(|path| toml::Value::String(path.to_string_lossy().into_owned()))
+                    .collect(),
+            ),
+        );
+    }
+
+    if let Some(color_hex) = cursor_state.and_then(|state| state.selected_color_hex.as_deref()) {
+        let colors = table
+            .entry("colors")
+            .or_insert_with(|| toml::Value::Table(toml::map::Map::new()))
+            .as_table_mut()
+            .ok_or_else(|| {
+                CoreError::classified(
+                    crate::bridge::ErrorClass::Runtime,
+                    "invalid_yzxterm_colors_config",
+                    format!(
+                        "The packaged Yazelix Terminal config at {} has a non-table [colors] value.",
+                        package_config.display()
+                    ),
+                    "Reinstall the Yazelix runtime or rebuild it from a valid yazelix-terminal package.",
+                    serde_json::json!({}),
+                )
+            })?;
+        colors.insert(
+            "cursor".to_string(),
+            toml::Value::String(color_hex.to_string()),
+        );
+    }
+
     toml::to_string_pretty(&toml::Value::Table(table)).map_err(|source| {
         CoreError::classified(
             crate::bridge::ErrorClass::Internal,
@@ -285,6 +359,18 @@ fn generate_yzxterm_config(runtime_dir: &Path, transparency: &str) -> Result<Str
             serde_json::json!({ "error": source.to_string() }),
         )
     })
+}
+
+fn ensure_ghostty_materialization<'a>(
+    data: &'a mut Option<GhosttyMaterializationData>,
+    request: &GhosttyMaterializationRequest,
+) -> Result<&'a GhosttyMaterializationData, CoreError> {
+    if data.is_none() {
+        *data = Some(generate_ghostty_materialization(request)?);
+    }
+    Ok(data
+        .as_ref()
+        .expect("ghostty materialization data was just initialized"))
 }
 
 fn build_kitty_cursor(kitty_enable_cursor: bool) -> String {
@@ -382,6 +468,13 @@ pub fn generate_terminal_materialization(
         false
     };
     let generated_dir = request.state_dir.join("configs").join("terminal_emulators");
+    let ghostty_request = GhosttyMaterializationRequest {
+        runtime_dir: request.runtime_dir.clone(),
+        config_dir: config_dir.clone(),
+        state_dir: request.state_dir.clone(),
+        transparency: transparency.to_string(),
+        cursor_config_path: request.cursor_config_path.clone(),
+    };
 
     let mut generated = Vec::new();
     let mut ghostty_data = None;
@@ -389,16 +482,8 @@ pub fn generate_terminal_materialization(
     for terminal in &request.terminals {
         match terminal.as_str() {
             "ghostty" => {
-                let ghostty_request = GhosttyMaterializationRequest {
-                    runtime_dir: request.runtime_dir.clone(),
-                    config_dir: config_dir.clone(),
-                    state_dir: request.state_dir.clone(),
-                    transparency: transparency.to_string(),
-                    cursor_config_path: request.cursor_config_path.clone(),
-                };
-                let data = generate_ghostty_materialization(&ghostty_request)?;
+                let data = ensure_ghostty_materialization(&mut ghostty_data, &ghostty_request)?;
                 let path = data.generated_path.clone();
-                ghostty_data = Some(data);
                 generated.push(TerminalGeneratedConfig {
                     terminal: "ghostty".to_string(),
                     path,
@@ -452,9 +537,23 @@ pub fn generate_terminal_materialization(
                     )
                 })?;
                 let path = yzxterm_dir.join("config.toml");
+                let (cursor_state, custom_shader_paths) = if cursors_enabled {
+                    let data = ensure_ghostty_materialization(&mut ghostty_data, &ghostty_request)?;
+                    (
+                        Some(&data.cursor_state),
+                        cursor_shader_paths_for_state(&request.state_dir, &data.cursor_state),
+                    )
+                } else {
+                    (None, Vec::new())
+                };
                 write_text_atomic(
                     &path,
-                    &generate_yzxterm_config(&request.runtime_dir, transparency)?,
+                    &generate_yzxterm_config(
+                        &request.runtime_dir,
+                        transparency,
+                        cursor_state,
+                        &custom_shader_paths,
+                    )?,
                 )?;
                 generated.push(TerminalGeneratedConfig {
                     terminal: "yzxterm".to_string(),

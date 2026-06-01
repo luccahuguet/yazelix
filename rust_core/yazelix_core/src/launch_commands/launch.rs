@@ -319,7 +319,7 @@ fn launch_cursor_name_for_terminal(
     materialization: &LaunchMaterializationData,
     terminal: &str,
 ) -> String {
-    if terminal == "ghostty" {
+    if terminal_uses_yazelix_cursor(terminal) {
         materialization
             .ghostty_cursor_name
             .as_deref()
@@ -339,11 +339,15 @@ fn launch_cursor_color_for_terminal(
 }
 
 fn launch_cursor_fact_for_terminal(value: &Option<String>, terminal: &str) -> Option<String> {
-    if terminal == "ghostty" {
+    if terminal_uses_yazelix_cursor(terminal) {
         value.clone()
     } else {
         None
     }
+}
+
+fn terminal_uses_yazelix_cursor(terminal: &str) -> bool {
+    matches!(terminal, "ghostty" | "yzxterm")
 }
 
 fn parse_launch_args(args: &[String]) -> Result<LaunchArgs, CoreError> {
@@ -473,7 +477,7 @@ mod tests {
         assert!(parsed.verbose);
     }
 
-    // Defends: launch publishes a compact current-cursor fact only for Ghostty cursor-aware sessions and a clear n/a fallback elsewhere.
+    // Defends: launch publishes compact current-cursor facts for terminals that consume Yazelix cursor shaders and a clear n/a fallback elsewhere.
     #[test]
     fn launch_cursor_name_is_terminal_scoped() {
         let materialization = LaunchMaterializationData {
@@ -503,12 +507,21 @@ mod tests {
             "reef"
         );
         assert_eq!(
+            launch_cursor_name_for_terminal(&materialization, "yzxterm"),
+            "reef"
+        );
+        assert_eq!(
             launch_cursor_name_for_terminal(&materialization, "wezterm"),
             "n/a"
         );
         assert_eq!(launch_cursor_name_for_terminal(&missing, "ghostty"), "n/a");
+        assert_eq!(launch_cursor_name_for_terminal(&missing, "yzxterm"), "n/a");
         assert_eq!(
             launch_cursor_color_for_terminal(&materialization, "ghostty"),
+            Some("#00ff66".to_string())
+        );
+        assert_eq!(
+            launch_cursor_color_for_terminal(&materialization, "yzxterm"),
             Some("#00ff66".to_string())
         );
         assert_eq!(
@@ -518,6 +531,10 @@ mod tests {
         assert_eq!(launch_cursor_color_for_terminal(&missing, "ghostty"), None);
         assert_eq!(
             launch_cursor_fact_for_terminal(&materialization.ghostty_cursor_family, "ghostty"),
+            Some("split".to_string())
+        );
+        assert_eq!(
+            launch_cursor_fact_for_terminal(&materialization.ghostty_cursor_family, "yzxterm"),
             Some("split".to_string())
         );
         assert_eq!(

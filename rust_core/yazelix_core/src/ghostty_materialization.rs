@@ -66,6 +66,45 @@ pub struct GhosttyMaterializationData {
     pub shaders_synced: bool,
 }
 
+pub fn cursor_shader_paths_for_state(
+    state_dir: &Path,
+    cursor_state: &GhosttyCursorState,
+) -> Vec<PathBuf> {
+    let shaders_dir = state_dir
+        .join("configs")
+        .join("terminal_emulators")
+        .join("ghostty")
+        .join("shaders");
+    let mut paths = Vec::new();
+
+    if let Some(name) = cursor_state
+        .selected_color
+        .as_deref()
+        .map(str::trim)
+        .filter(|name| !name.is_empty() && *name != "none")
+    {
+        paths.push(shaders_dir.join(format!("cursor_trail_{name}.glsl")));
+    }
+
+    for effect in [
+        cursor_state.selected_trail_effect.as_deref(),
+        cursor_state.selected_mode_effect.as_deref(),
+    ]
+    .into_iter()
+    .flatten()
+    .map(str::trim)
+    .filter(|effect| !effect.is_empty() && *effect != "none")
+    {
+        paths.push(
+            shaders_dir
+                .join("generated_effects")
+                .join(format!("{effect}.glsl")),
+        );
+    }
+
+    paths
+}
+
 fn get_opacity_value(transparency: &str) -> &str {
     TRANSPARENCY_VALUES
         .iter()

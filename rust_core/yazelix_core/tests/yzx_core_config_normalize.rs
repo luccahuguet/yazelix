@@ -1128,6 +1128,26 @@ fn terminal_materialization_generate_from_env_writes_generated_configs() {
         ]
         .join("\n"),
     );
+    write_cursor_sidecar(
+        &fixture,
+        r##"
+schema_version = 1
+enabled_cursors = ["forest"]
+
+[settings]
+trail = "forest"
+trail_effect = "tail"
+mode_effect = "ripple"
+glow = "high"
+duration = 1.5
+kitty_enable_cursor = true
+
+[[cursor]]
+name = "forest"
+family = "mono"
+color = "#3bd17a"
+"##,
+    );
 
     let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
         .arg("--from-env")
@@ -1181,7 +1201,11 @@ fn terminal_materialization_generate_from_env_writes_generated_configs() {
     assert!(yzxterm_config.contains("backend = \"Webgpu\""));
     assert!(yzxterm_config.contains("opacity = 0.9"));
     assert!(yzxterm_config.contains("opacity-cells = true"));
-    assert!(yzxterm_config.contains("custom-shader"));
+    assert!(yzxterm_config.contains("cursor = \"#3bd17a\""));
+    assert!(yzxterm_config.contains("cursor_trail_forest.glsl"));
+    assert!(yzxterm_config.contains("generated_effects/tail.glsl"));
+    assert!(yzxterm_config.contains("generated_effects/ripple.glsl"));
+    assert!(!yzxterm_config.contains("/nix/store/demo/cursor_trail_dusk.glsl"));
     assert!(
         fixture
             .state_dir
@@ -1191,6 +1215,83 @@ fn terminal_materialization_generate_from_env_writes_generated_configs() {
             .join("kitty.conf")
             .exists()
     );
+}
+
+// Regression: yzxterm-only sessions must still materialize Yazelix cursor shader assets instead of inheriting packaged default shaders.
+#[test]
+fn terminal_materialization_yzxterm_only_uses_active_cursor_shaders() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+
+    write_managed_config_toml(
+        &fixture,
+        &[
+            "[terminal]",
+            "terminals = [\"yzxterm\"]",
+            "transparency = \"none\"",
+        ]
+        .join("\n"),
+    );
+    write_cursor_sidecar(
+        &fixture,
+        r##"
+schema_version = 1
+enabled_cursors = ["snow"]
+
+[settings]
+trail = "snow"
+trail_effect = "warp"
+mode_effect = "ripple_rectangle"
+glow = "medium"
+duration = 1.0
+kitty_enable_cursor = false
+
+[[cursor]]
+name = "snow"
+family = "mono"
+color = "#ffffff"
+"##,
+    );
+
+    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
+        .arg("--from-env")
+        .arg("--terminals-json")
+        .arg(json!(["yzxterm"]).to_string())
+        .output()
+        .unwrap();
+
+    if !output.status.success() {
+        panic!(
+            "stdout={}\nstderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    assert!(output.stderr.is_empty());
+
+    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["command"], "terminal-materialization.generate");
+    assert_eq!(envelope["status"], "ok");
+    assert_eq!(
+        envelope["data"]["ghostty"]["cursor_state"]["selected_color"],
+        "snow"
+    );
+
+    let yzxterm_config = fs::read_to_string(
+        fixture
+            .state_dir
+            .join("configs")
+            .join("terminal_emulators")
+            .join("yzxterm")
+            .join("config.toml"),
+    )
+    .unwrap();
+    assert!(yzxterm_config.contains("cursor_trail_snow.glsl"));
+    assert!(yzxterm_config.contains("generated_effects/warp.glsl"));
+    assert!(yzxterm_config.contains("generated_effects/ripple_rectangle.glsl"));
+    assert!(yzxterm_config.contains("cursor = \"#ffffff\""));
+    assert!(!yzxterm_config.contains("cursor_trail_dusk.glsl"));
 }
 
 // Defends: Kitty cursor fallback is controlled by the settings cursor registry's binary kitty_enable_cursor setting.

@@ -201,7 +201,11 @@ fn plan_uses_yazelix_ghostty_cursor(plan: &LaunchMaterializationPlan) -> bool {
         && plan
             .selected_terminals
             .iter()
-            .any(|terminal| terminal == "ghostty")
+            .any(|terminal| terminal_uses_yazelix_cursor(terminal))
+}
+
+fn terminal_uses_yazelix_cursor(terminal: &str) -> bool {
+    matches!(terminal, "ghostty" | "yzxterm")
 }
 
 fn resolved_ghostty_cursor_name(state: &ResolvedCursorRegistryState) -> Option<String> {
@@ -315,7 +319,7 @@ fn build_launch_materialization_plan(
     let should_reroll_ghostty_cursor = !should_generate_terminal_configs
         && selected_terminals
             .iter()
-            .any(|terminal| terminal == "ghostty")
+            .any(|terminal| terminal_uses_yazelix_cursor(terminal))
         && ghostty_random_requested;
 
     LaunchMaterializationPlan {
@@ -502,6 +506,19 @@ mod tests {
             plan.selected_terminals,
             vec!["ghostty".to_string(), "wezterm".to_string()]
         );
+        assert!(plan_uses_yazelix_ghostty_cursor(&plan));
+    }
+
+    // Regression: yzxterm consumes the same Yazelix cursor materialization facts as Ghostty.
+    #[test]
+    fn yzxterm_launch_materialization_uses_yazelix_cursor() {
+        let temp = tempdir().unwrap();
+        let config = config_with_terminals(&["yzxterm"], "yazelix");
+
+        let plan =
+            build_launch_materialization_plan(&config, &[], false, false, temp.path(), false);
+
+        assert_eq!(plan.selected_terminals, vec!["yzxterm".to_string()]);
         assert!(plan_uses_yazelix_ghostty_cursor(&plan));
     }
 }
