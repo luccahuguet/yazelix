@@ -46,6 +46,18 @@ fn yzx_control_whats_new_renders_current_summary_and_marks_seen() {
     )
     .unwrap();
     fs::write(
+        runtime_dir.join("runtime_identity.json"),
+        r#"{
+          "schema_version": 1,
+          "runtime_variant": "ghostty",
+          "source": {
+            "revision": "0123456789abcdef0123456789abcdef01234567",
+            "short_revision": "0123456"
+          }
+        }"#,
+    )
+    .unwrap();
+    fs::write(
         runtime_dir.join("docs/upgrade_notes.toml"),
         r#"
 [releases."v15.4"]

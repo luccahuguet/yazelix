@@ -2,7 +2,8 @@
 
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{
-    read_yazelix_version_from_runtime, runtime_dir_from_env, state_dir_from_env,
+    read_runtime_identity_from_runtime, read_yazelix_version_from_runtime, runtime_dir_from_env,
+    state_dir_from_env,
 };
 use crate::front_door_render::{
     GameOfLifeCellStyle, play_welcome_style_with_runtime_dir, run_screen_surface_with_runtime_dir,
@@ -10,7 +11,7 @@ use crate::front_door_render::{
 use crate::require_runtime_component_enabled;
 use crate::session_facts::compute_session_facts_from_env;
 use crate::terminal_control;
-use crate::upgrade_summary::show_current_upgrade_summary;
+use crate::upgrade_summary::{RuntimeSnapshotContext, show_known_changes_since_installed_runtime};
 use crossterm::style::Color;
 use std::process::Command;
 use std::time::Duration;
@@ -152,7 +153,15 @@ pub fn run_yzx_whats_new(args: &[String]) -> Result<i32, CoreError> {
     let runtime_dir = runtime_dir_from_env()?;
     let state_dir = state_dir_from_env()?;
     let version = read_yazelix_version_from_runtime(&runtime_dir)?;
-    let report = show_current_upgrade_summary(&runtime_dir, &state_dir, &version, true)?;
+    let runtime_identity = read_runtime_identity_from_runtime(&runtime_dir)?;
+    let snapshot = RuntimeSnapshotContext::from_runtime_identity(&runtime_identity);
+    let report = show_known_changes_since_installed_runtime(
+        &runtime_dir,
+        &state_dir,
+        &version,
+        Some(&snapshot),
+        true,
+    )?;
     println!("{}", report.report.output);
     Ok(0)
 }
@@ -290,7 +299,7 @@ fn print_screen_help() {
 }
 
 fn print_whats_new_help() {
-    println!("Show the current Yazelix upgrade summary");
+    println!("Show Yazelix changes since the installed runtime");
     println!();
     println!("Usage:");
     println!("  yzx whats_new");

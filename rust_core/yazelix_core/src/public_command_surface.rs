@@ -436,11 +436,11 @@ const TUTOR_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[
 ];
 const WHATS_NEW_COMMAND: YzxCommandMetadata = metadata(
     "yzx whats_new",
-    "Show the current Yazelix upgrade summary",
+    "Show Yazelix changes since the installed runtime",
     YzxCommandCategory::Help,
     &[],
     Some(YzxMenuCategory::Help),
-    Some("Show the latest release notes."),
+    Some("Show bundled release notes newer than the installed runtime."),
 );
 const WHATS_NEW_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[WHATS_NEW_COMMAND];
 const IMPORT_ROOT_COMMAND: YzxCommandMetadata = metadata(

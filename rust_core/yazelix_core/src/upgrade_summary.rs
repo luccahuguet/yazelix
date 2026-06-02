@@ -1,6 +1,6 @@
 //! Rust-owned upgrade-summary loading, rendering, and state tracking.
 
-use crate::bridge::CoreError;
+use crate::bridge::{CoreError, ErrorClass};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
@@ -51,8 +51,60 @@ pub struct UpgradeSummaryDisplayResult {
     pub reason: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RuntimeSnapshotContext {
+    pub short_revision: Option<String>,
+    pub dirty_or_dev: bool,
+    pub unknown: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct ReleaseVersion(Vec<u64>);
+
 fn default_upgrade_impact() -> String {
     "no_user_action".to_string()
+}
+
+impl RuntimeSnapshotContext {
+    pub fn from_runtime_identity(identity: &serde_json::Value) -> Self {
+        let source = identity.get("source").and_then(|value| value.as_object());
+        let revision = source
+            .and_then(|value| value.get("revision"))
+            .and_then(|value| value.as_str())
+            .map(str::trim)
+            .filter(|value| !value.is_empty());
+        let short_revision = source
+            .and_then(|value| value.get("short_revision"))
+            .and_then(|value| value.as_str())
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(ToOwned::to_owned);
+        let dirty_or_dev = [revision, short_revision.as_deref()]
+            .into_iter()
+            .flatten()
+            .any(|value| value.contains("dirty") || value.contains("unknown"));
+        let unknown = revision.is_none() && short_revision.is_none();
+        Self {
+            short_revision,
+            dirty_or_dev,
+            unknown,
+        }
+    }
+}
+
+fn parse_release_version(version: &str) -> Option<ReleaseVersion> {
+    let raw = version.trim().strip_prefix('v')?;
+    if raw.is_empty() {
+        return None;
+    }
+    let mut parts = Vec::new();
+    for part in raw.split('.') {
+        if part.is_empty() || !part.bytes().all(|byte| byte.is_ascii_digit()) {
+            return None;
+        }
+        parts.push(part.parse::<u64>().ok()?);
+    }
+    Some(ReleaseVersion(parts))
 }
 
 fn upgrade_notes_path(runtime_dir: &Path) -> PathBuf {
@@ -105,6 +157,55 @@ fn normalize_string_list(values: &[String]) -> Vec<String> {
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
         .collect()
+}
+
+fn note_has_content(entry: &UpgradeNoteEntry) -> bool {
+    !entry.headline.trim().is_empty()
+        || !normalize_string_list(&entry.summary).is_empty()
+        || !normalize_string_list(&entry.manual_actions).is_empty()
+}
+
+fn newer_release_entries(
+    registry: &UpgradeNotesRegistry,
+    version: &str,
+) -> Result<Vec<UpgradeNoteEntry>, CoreError> {
+    let current = parse_release_version(version).ok_or_else(|| {
+        CoreError::classified(
+            ErrorClass::Runtime,
+            "unknown_runtime_release",
+            format!("Yazelix runtime version `{version}` is not a tagged release version."),
+            "Run `yzx --version-full` to inspect the runtime. Release-note comparison is supported for versions like v17.3.",
+            serde_json::json!({ "version": version }),
+        )
+    })?;
+
+    let mut entries = registry
+        .releases
+        .iter()
+        .filter_map(|(key, entry)| {
+            let parsed = parse_release_version(key)?;
+            if parsed <= current {
+                return None;
+            }
+            let mut entry = entry.clone();
+            entry.version = key.to_string();
+            Some((parsed, entry))
+        })
+        .collect::<Vec<_>>();
+    entries.sort_by(|left, right| left.0.cmp(&right.0));
+
+    let mut selected = entries
+        .into_iter()
+        .map(|(_, entry)| entry)
+        .collect::<Vec<_>>();
+    if let Some(unreleased) = registry.releases.get("unreleased") {
+        if note_has_content(unreleased) {
+            let mut entry = unreleased.clone();
+            entry.version = "unreleased".to_string();
+            selected.push(entry);
+        }
+    }
+    Ok(selected)
 }
 
 fn read_last_seen_upgrade_version(state_dir: &Path) -> Result<Option<String>, CoreError> {
@@ -165,32 +266,13 @@ fn write_last_seen_upgrade_version(state_dir: &Path, version: &str) -> Result<Pa
     Ok(state_path)
 }
 
-fn render_upgrade_summary(entry: &UpgradeNoteEntry, changelog_path: &Path) -> String {
-    let release_date = entry.date.trim();
-    let headline = entry.headline.trim();
-    let summary_items = normalize_string_list(&entry.summary);
-    let migration_ids = normalize_string_list(&entry.migration_ids);
-    let manual_actions = normalize_string_list(&entry.manual_actions);
-
-    let mut lines = vec![
-        String::new(),
-        format!("=== What's New In Yazelix {} ===", entry.version),
-        format!("Released: {release_date}"),
-    ];
-
-    if !headline.is_empty() {
-        lines.push(headline.to_string());
-    }
-
-    if !summary_items.is_empty() {
-        lines.push(String::new());
-        lines.push("Highlights:".to_string());
-        for item in summary_items {
-            lines.push(format!("- {item}"));
-        }
-    }
-
-    match entry.upgrade_impact.trim() {
+fn push_upgrade_impact_lines(
+    lines: &mut Vec<String>,
+    upgrade_impact: &str,
+    migration_ids: &[String],
+    manual_actions: &[String],
+) {
+    match upgrade_impact.trim() {
         "migration_available" => {
             lines.push(String::new());
             lines.push(
@@ -222,6 +304,124 @@ fn render_upgrade_summary(entry: &UpgradeNoteEntry, changelog_path: &Path) -> St
                 ));
             }
         }
+    }
+}
+
+fn render_upgrade_summary(entry: &UpgradeNoteEntry, changelog_path: &Path) -> String {
+    let release_date = entry.date.trim();
+    let headline = entry.headline.trim();
+    let summary_items = normalize_string_list(&entry.summary);
+    let migration_ids = normalize_string_list(&entry.migration_ids);
+    let manual_actions = normalize_string_list(&entry.manual_actions);
+
+    let mut lines = vec![
+        String::new(),
+        format!("=== What's New In Yazelix {} ===", entry.version),
+        format!("Released: {release_date}"),
+    ];
+
+    if !headline.is_empty() {
+        lines.push(headline.to_string());
+    }
+
+    if !summary_items.is_empty() {
+        lines.push(String::new());
+        lines.push("Highlights:".to_string());
+        for item in summary_items {
+            lines.push(format!("- {item}"));
+        }
+    }
+
+    push_upgrade_impact_lines(
+        &mut lines,
+        &entry.upgrade_impact,
+        &migration_ids,
+        &manual_actions,
+    );
+
+    lines.push(String::new());
+    lines.push("Reopen later: `yzx whats_new`".to_string());
+    lines.push(format!("Full notes: {}", changelog_path.display()));
+    lines.join("\n")
+}
+
+fn render_release_entry_block(entry: &UpgradeNoteEntry) -> Vec<String> {
+    let headline = entry.headline.trim();
+    let summary_items = normalize_string_list(&entry.summary);
+    let migration_ids = normalize_string_list(&entry.migration_ids);
+    let manual_actions = normalize_string_list(&entry.manual_actions);
+    let title = if headline.is_empty() {
+        entry.version.clone()
+    } else {
+        format!("{} - {headline}", entry.version)
+    };
+    let mut lines = vec![format!("--- {title} ---")];
+    let date = entry.date.trim();
+    if !date.is_empty() {
+        lines.push(format!("Released: {date}"));
+    } else if entry.version == "unreleased" {
+        lines.push("Status: unreleased notes bundled with this runtime".to_string());
+    }
+    if !summary_items.is_empty() {
+        lines.push(String::new());
+        lines.push("Highlights:".to_string());
+        for item in summary_items {
+            lines.push(format!("- {item}"));
+        }
+    }
+    push_upgrade_impact_lines(
+        &mut lines,
+        &entry.upgrade_impact,
+        &migration_ids,
+        &manual_actions,
+    );
+    lines
+}
+
+fn render_snapshot_line(snapshot: Option<&RuntimeSnapshotContext>) -> String {
+    let Some(snapshot) = snapshot else {
+        return "Runtime source: not reported".to_string();
+    };
+    if snapshot.unknown {
+        return "Runtime source: unknown; release-note comparison uses YAZELIX_VERSION only"
+            .to_string();
+    }
+    let label = snapshot
+        .short_revision
+        .as_deref()
+        .unwrap_or("revision not reported");
+    if snapshot.dirty_or_dev {
+        format!(
+            "Runtime source: {label} (dirty/dev snapshot; release-note comparison uses YAZELIX_VERSION only)"
+        )
+    } else {
+        format!("Runtime source: {label}")
+    }
+}
+
+fn render_known_changes_since_installed_runtime(
+    version: &str,
+    entries: &[UpgradeNoteEntry],
+    changelog_path: &Path,
+    snapshot: Option<&RuntimeSnapshotContext>,
+) -> String {
+    let latest = entries
+        .last()
+        .map(|entry| entry.version.as_str())
+        .unwrap_or(version);
+    let mut lines = vec![
+        String::new(),
+        format!("=== Changes Since Installed Yazelix {version} ==="),
+        format!("Installed runtime: {version}"),
+        render_snapshot_line(snapshot),
+        format!("Latest known notes: {latest}"),
+        "Source: docs/upgrade_notes.toml bundled with this runtime; no network access is used."
+            .to_string(),
+    ];
+
+    for entry in entries {
+        lines.push(String::new());
+        lines.extend(render_release_entry_block(entry));
     }
 
     lines.push(String::new());
@@ -360,6 +560,56 @@ pub fn show_current_upgrade_summary(
             reason: "displayed".to_string(),
         })
     }
+}
+
+pub fn show_known_changes_since_installed_runtime(
+    runtime_dir: &Path,
+    state_dir: &Path,
+    version: &str,
+    snapshot: Option<&RuntimeSnapshotContext>,
+    mark_seen: bool,
+) -> Result<UpgradeSummaryDisplayResult, CoreError> {
+    let Some(registry) = load_upgrade_notes_registry(runtime_dir)? else {
+        return show_current_upgrade_summary(runtime_dir, state_dir, version, mark_seen);
+    };
+    let newer_entries = newer_release_entries(&registry, version)?;
+    if newer_entries.is_empty() {
+        return show_current_upgrade_summary(runtime_dir, state_dir, version, mark_seen);
+    }
+
+    let notes_path = upgrade_notes_path(runtime_dir);
+    let changelog_path = changelog_path(runtime_dir);
+    let state_path = summary_state_path(state_dir);
+    let last_seen_version = read_last_seen_upgrade_version(state_dir)?;
+    let output = render_known_changes_since_installed_runtime(
+        version,
+        &newer_entries,
+        &changelog_path,
+        snapshot,
+    );
+    let mut report = UpgradeSummaryReport {
+        found: true,
+        version: version.to_string(),
+        notes_path: notes_path.display().to_string(),
+        changelog_path: changelog_path.display().to_string(),
+        state_path: state_path.display().to_string(),
+        last_seen_version,
+        matching_migrations: Vec::new(),
+        matching_migration_ids: Vec::new(),
+        output,
+    };
+
+    if mark_seen {
+        let written_state_path = write_last_seen_upgrade_version(state_dir, version)?;
+        report.state_path = written_state_path.display().to_string();
+        report.last_seen_version = Some(version.to_string());
+    }
+
+    Ok(UpgradeSummaryDisplayResult {
+        report,
+        shown: true,
+        reason: "displayed".to_string(),
+    })
 }
 
 #[cfg(test)]
@@ -505,5 +755,120 @@ manual_actions = []
                 "missing historical upgrade-note entry for {version}"
             );
         }
+    }
+
+    // Defends: `yzx whats_new` can select newer release notes and the bundled `unreleased` entry without network access when the installed runtime version is behind the notes data.
+    #[test]
+    fn known_changes_since_installed_runtime_selects_newer_entries() {
+        let tmp = tempdir().unwrap();
+        let runtime_dir = tmp.path().join("runtime");
+        let state_dir = tmp.path().join("state");
+        fs::create_dir_all(runtime_dir.join("docs")).unwrap();
+        fs::create_dir_all(&state_dir).unwrap();
+        fs::write(runtime_dir.join("CHANGELOG.md"), "# Changelog\n").unwrap();
+        fs::write(
+            runtime_dir.join("docs").join("upgrade_notes.toml"),
+            r#"
+[releases.unreleased]
+version = "unreleased"
+date = ""
+headline = "Post-release work"
+summary = ["Added a runtime status polish item."]
+upgrade_impact = "no_user_action"
+migration_ids = []
+manual_actions = []
+
+[releases."v17.2"]
+version = "v17.2"
+date = "2026-05-15"
+headline = "Previous release"
+summary = ["Old runtime baseline."]
+upgrade_impact = "no_user_action"
+migration_ids = []
+manual_actions = []
+
+[releases."v17.3"]
+version = "v17.3"
+date = "2026-06-01"
+headline = "Current release"
+summary = ["Added the Yazelix Terminal runtime."]
+upgrade_impact = "manual_action_required"
+migration_ids = []
+manual_actions = ["Review the terminal runtime variant before switching defaults."]
+"#,
+        )
+        .unwrap();
+
+        let snapshot = RuntimeSnapshotContext {
+            short_revision: Some("abc1234".to_string()),
+            dirty_or_dev: false,
+            unknown: false,
+        };
+        let report = show_known_changes_since_installed_runtime(
+            &runtime_dir,
+            &state_dir,
+            "v17.2",
+            Some(&snapshot),
+            false,
+        )
+        .unwrap();
+
+        assert!(
+            report
+                .report
+                .output
+                .contains("Changes Since Installed Yazelix v17.2")
+        );
+        assert!(report.report.output.contains("v17.3 - Current release"));
+        assert!(
+            report
+                .report
+                .output
+                .contains("Review the terminal runtime variant")
+        );
+        assert!(
+            report
+                .report
+                .output
+                .contains("unreleased - Post-release work")
+        );
+        assert!(!report.report.output.contains("v17.2 - Previous release"));
+        assert!(report.report.output.contains("Runtime source: abc1234"));
+    }
+
+    // Regression: dev-only version strings must not be treated as sortable tagged releases when selecting newer release-note ranges.
+    #[test]
+    fn known_changes_since_installed_runtime_rejects_unknown_release_versions() {
+        let tmp = tempdir().unwrap();
+        let runtime_dir = tmp.path().join("runtime");
+        let state_dir = tmp.path().join("state");
+        fs::create_dir_all(runtime_dir.join("docs")).unwrap();
+        fs::create_dir_all(&state_dir).unwrap();
+        fs::write(runtime_dir.join("CHANGELOG.md"), "# Changelog\n").unwrap();
+        fs::write(
+            runtime_dir.join("docs").join("upgrade_notes.toml"),
+            r#"
+[releases."v17.3"]
+version = "v17.3"
+date = "2026-06-01"
+headline = "Current release"
+summary = ["Added the Yazelix Terminal runtime."]
+upgrade_impact = "no_user_action"
+migration_ids = []
+manual_actions = []
+"#,
+        )
+        .unwrap();
+
+        let error = show_known_changes_since_installed_runtime(
+            &runtime_dir,
+            &state_dir,
+            "dev",
+            None,
+            false,
+        )
+        .unwrap_err();
+        assert_eq!(error.code(), "unknown_runtime_release");
+        assert!(error.message().contains("not a tagged release version"));
     }
 }

@@ -148,8 +148,10 @@ Open the Yazelix GitHub Sponsors page
 - Falls back to printing the URL if no opener is available
 
 ### `yzx whats_new`
-Show the current Yazelix release summary on demand
-- Prints the current version entry from `docs/upgrade_notes.toml`
+- Show Yazelix changes since the installed runtime
+- Prints newer release entries and populated `unreleased` notes from `docs/upgrade_notes.toml` when the active runtime carries them
+- Falls back to the current version entry when no newer structured notes are available
+- Names dirty, dev, or unknown runtime snapshots explicitly instead of mapping them silently to a tagged release
 - Marks the current version as seen so startup does not need to repeat the same note
 - Reuses the same migration-aware guidance shown on first interactive run after an upgrade
 
