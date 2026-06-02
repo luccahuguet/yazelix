@@ -96,6 +96,9 @@ jobs:
       - name: Validate Nix customization API
         run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-nix-customization-api
 
+      - name: Validate child release transaction
+        run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-child-release-transaction
+
   integration:
     # Manual maintainer gate for Home Manager/runtime activation behavior.
     # Routine pushes stay on the faster source-contract lane, while Nix CI and
