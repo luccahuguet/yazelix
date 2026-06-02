@@ -64,6 +64,16 @@ Out of scope:
   provenance
 - Verification: manual review of `configs/zellij/plugins/`
 
+#### FPW-005
+- Type: invariant
+- Status: live
+- Owner: child release transaction
+- Statement: First-party Zellij plugin child packages consumed by Yazelix must
+  instantiate on `aarch64-darwin` with an explicit wasm-capable Rust toolchain:
+  exported `CARGO` and `RUSTC`, a `rustc --print target-libdir --target
+  wasm32-wasip1` preflight, and a `--target wasm32-wasip1` Cargo build
+- Verification: validator `yzx_repo_validator validate-child-release-transaction`
+
 ## Target Architecture
 
 Each first-party plugin child repository provides a package with a stable wasm path:
@@ -100,6 +110,7 @@ nix build .#runtime --override-input yazelixZellijPaneOrchestrator ../yazelix-ze
 - `nix flake metadata`
 - `nix build .#runtime`
 - `yzx_repo_validator validate-workspace-session-contract`
+- `yzx_repo_validator validate-child-release-transaction`
 
 ## Traceability
 

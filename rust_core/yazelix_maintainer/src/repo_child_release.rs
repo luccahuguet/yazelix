@@ -24,6 +24,23 @@ struct FirstPartyCargoGitDependency {
     rev: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ZellijPluginWasmPackageContract {
+    package_attr: &'static str,
+    system: &'static str,
+}
+
+const ZELLIJ_PLUGIN_WASM_PACKAGE_CONTRACTS: &[ZellijPluginWasmPackageContract] = &[
+    ZellijPluginWasmPackageContract {
+        package_attr: "yazelix_zellij_pane_orchestrator",
+        system: "aarch64-darwin",
+    },
+    ZellijPluginWasmPackageContract {
+        package_attr: "yazelix_zellij_popup",
+        system: "aarch64-darwin",
+    },
+];
+
 pub fn validate_child_release_transaction(repo_root: &Path) -> Result<ValidationReport, String> {
     let mut report = ValidationReport::default();
     let lock_path = repo_root.join("flake.lock");
@@ -52,6 +69,9 @@ pub fn validate_child_release_transaction(repo_root: &Path) -> Result<Validation
     report
         .errors
         .extend(validate_cargo_git_output_hashes(repo_root)?);
+    report
+        .errors
+        .extend(validate_zellij_plugin_wasm_package_contracts(repo_root)?);
 
     Ok(report)
 }
@@ -355,6 +375,169 @@ fn prefetch_source_hash(dependency: &FirstPartyCargoGitDependency) -> Result<Str
         .ok_or_else(|| format!("`nix flake prefetch --json {flake_ref}` did not report `hash`"))
 }
 
+fn validate_zellij_plugin_wasm_package_contracts(repo_root: &Path) -> Result<Vec<String>, String> {
+    let mut errors = Vec::new();
+    for contract in ZELLIJ_PLUGIN_WASM_PACKAGE_CONTRACTS {
+        let metadata = zellij_plugin_wasm_derivation_metadata(repo_root, contract)?;
+        errors.extend(validate_zellij_plugin_wasm_derivation_with(
+            contract, &metadata,
+        )?);
+    }
+    Ok(errors)
+}
+
+fn zellij_plugin_wasm_derivation_metadata(
+    repo_root: &Path,
+    contract: &ZellijPluginWasmPackageContract,
+) -> Result<String, String> {
+    let flake_attr = format!(
+        ".#packages.{}.{}.drvPath",
+        contract.system, contract.package_attr
+    );
+    let eval = Command::new("nix")
+        .current_dir(repo_root)
+        .args(["eval", "--raw", &flake_attr, "--accept-flake-config"])
+        .output()
+        .map_err(|error| format!("Failed to run `nix eval --raw {flake_attr}`: {error}"))?;
+    if !eval.status.success() {
+        return Err(format!(
+            "Failed to instantiate child wasm package derivation `{flake_attr}`\n{}",
+            String::from_utf8_lossy(&eval.stderr).trim()
+        ));
+    }
+
+    let drv_path = String::from_utf8_lossy(&eval.stdout).trim().to_string();
+    if drv_path.is_empty() {
+        return Err(format!(
+            "`nix eval --raw {flake_attr}` returned an empty drv path"
+        ));
+    }
+
+    let show = Command::new("nix")
+        .args(["derivation", "show", &drv_path])
+        .output()
+        .map_err(|error| format!("Failed to run `nix derivation show {drv_path}`: {error}"))?;
+    if !show.status.success() {
+        return Err(format!(
+            "Failed to inspect child wasm package derivation `{drv_path}`\n{}",
+            String::from_utf8_lossy(&show.stderr).trim()
+        ));
+    }
+
+    String::from_utf8(show.stdout)
+        .map_err(|error| format!("Invalid UTF-8 from `nix derivation show {drv_path}`: {error}"))
+}
+
+fn validate_zellij_plugin_wasm_derivation_with(
+    contract: &ZellijPluginWasmPackageContract,
+    raw_metadata: &str,
+) -> Result<Vec<String>, String> {
+    let env = single_derivation_env(raw_metadata)?;
+    let mut errors = Vec::new();
+
+    let system = env.get("system").map(String::as_str);
+    if system != Some(contract.system) {
+        errors.push(format!(
+            "`{}` derivation metadata has system {:?}; expected `{}`.",
+            contract.package_attr, system, contract.system
+        ));
+    }
+
+    let Some(build_phase) = env.get("buildPhase") else {
+        errors.push(format!(
+            "`{}` {} derivation metadata has no buildPhase.",
+            contract.package_attr, contract.system
+        ));
+        return Ok(errors);
+    };
+
+    require_build_phase_marker(
+        &mut errors,
+        contract,
+        build_phase,
+        "export CARGO=",
+        "export explicit CARGO from the combined wasm-capable Rust toolchain",
+    );
+    require_build_phase_marker(
+        &mut errors,
+        contract,
+        build_phase,
+        "export RUSTC=",
+        "export explicit RUSTC from the combined wasm-capable Rust toolchain",
+    );
+    require_build_phase_marker(
+        &mut errors,
+        contract,
+        build_phase,
+        "--print target-libdir --target wasm32-wasip1",
+        "check that the selected Rust toolchain has wasm32-wasip1 rust-std",
+    );
+    require_build_phase_marker(
+        &mut errors,
+        contract,
+        build_phase,
+        "\"$CARGO\" build",
+        "invoke Cargo through the explicit CARGO variable",
+    );
+    require_build_phase_marker(
+        &mut errors,
+        contract,
+        build_phase,
+        "--target wasm32-wasip1",
+        "build the plugin for wasm32-wasip1",
+    );
+
+    Ok(errors)
+}
+
+fn single_derivation_env(raw_metadata: &str) -> Result<HashMap<String, String>, String> {
+    let parsed: JsonValue = serde_json::from_str(raw_metadata)
+        .map_err(|error| format!("Invalid JSON from `nix derivation show`: {error}"))?;
+    let derivations = parsed
+        .get("derivations")
+        .and_then(JsonValue::as_object)
+        .ok_or_else(|| {
+            "`nix derivation show` output is missing object `derivations`".to_string()
+        })?;
+    if derivations.len() != 1 {
+        return Err(format!(
+            "`nix derivation show` returned {} derivations; expected exactly one",
+            derivations.len()
+        ));
+    }
+    let derivation = derivations
+        .values()
+        .next()
+        .ok_or_else(|| "`nix derivation show` returned no derivation entries".to_string())?;
+    let env = derivation
+        .get("env")
+        .and_then(JsonValue::as_object)
+        .ok_or_else(|| {
+            "`nix derivation show` derivation entry is missing object `env`".to_string()
+        })?;
+
+    Ok(env
+        .iter()
+        .filter_map(|(key, value)| value.as_str().map(|value| (key.clone(), value.to_string())))
+        .collect())
+}
+
+fn require_build_phase_marker(
+    errors: &mut Vec<String>,
+    contract: &ZellijPluginWasmPackageContract,
+    build_phase: &str,
+    marker: &str,
+    description: &str,
+) {
+    if build_phase.contains(marker) {
+        return;
+    }
+    errors.push(format!(
+        "`{}` {} buildPhase must {}. Missing marker `{}`.",
+        contract.package_attr, contract.system, description, marker
+    ));
+}
+
 // Test lane: maintainer
 #[cfg(test)]
 mod tests {
@@ -460,5 +643,95 @@ mod tests {
         assert!(!fetch_failure_means_missing_revision(
             "fatal: unable to access 'https://github.com/example/repo.git/': Could not resolve host: github.com"
         ));
+    }
+
+    // Regression: first-party Zellij plugin child packages must keep the explicit wasm-capable toolchain hardening that fixed macOS issue 604.
+    #[test]
+    fn zellij_plugin_wasm_contract_accepts_hardened_build_phase() {
+        let contract = ZellijPluginWasmPackageContract {
+            package_attr: "yazelix_zellij_popup",
+            system: "aarch64-darwin",
+        };
+        let metadata = derivation_metadata_json(
+            "aarch64-darwin",
+            r#"
+            export CARGO="/nix/store/toolchain/bin/cargo"
+            export RUSTC="/nix/store/toolchain/bin/rustc"
+            wasm_target_libdir="$("$RUSTC" --print target-libdir --target wasm32-wasip1)"
+            "$CARGO" build --profile release --target wasm32-wasip1
+            "#,
+        );
+
+        let errors = validate_zellij_plugin_wasm_derivation_with(&contract, &metadata).unwrap();
+
+        assert!(errors.is_empty());
+    }
+
+    // Regression: a child package that falls back to plain cargo must fail before another Darwin wasm target build reaches users.
+    #[test]
+    fn zellij_plugin_wasm_contract_rejects_plain_cargo_build_phase() {
+        let contract = ZellijPluginWasmPackageContract {
+            package_attr: "yazelix_zellij_popup",
+            system: "aarch64-darwin",
+        };
+        let metadata = derivation_metadata_json(
+            "aarch64-darwin",
+            r#"
+            cargo build --profile release --target wasm32-wasip1
+            "#,
+        );
+
+        let errors = validate_zellij_plugin_wasm_derivation_with(&contract, &metadata).unwrap();
+
+        assert_eq!(errors.len(), 4);
+        assert!(errors.iter().any(|error| error.contains("export CARGO=")));
+        assert!(errors.iter().any(|error| error.contains("export RUSTC=")));
+        assert!(
+            errors
+                .iter()
+                .any(|error| error.contains("--print target-libdir --target wasm32-wasip1"))
+        );
+        assert!(
+            errors
+                .iter()
+                .any(|error| error.contains("\"$CARGO\" build"))
+        );
+    }
+
+    // Defends: the derivation metadata gate checks the evaluated system instead of assuming the flake attr path returned the requested platform.
+    #[test]
+    fn zellij_plugin_wasm_contract_rejects_wrong_derivation_system() {
+        let contract = ZellijPluginWasmPackageContract {
+            package_attr: "yazelix_zellij_popup",
+            system: "aarch64-darwin",
+        };
+        let metadata = derivation_metadata_json(
+            "x86_64-linux",
+            r#"
+            export CARGO="/nix/store/toolchain/bin/cargo"
+            export RUSTC="/nix/store/toolchain/bin/rustc"
+            wasm_target_libdir="$("$RUSTC" --print target-libdir --target wasm32-wasip1)"
+            "$CARGO" build --profile release --target wasm32-wasip1
+            "#,
+        );
+
+        let errors = validate_zellij_plugin_wasm_derivation_with(&contract, &metadata).unwrap();
+
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("expected `aarch64-darwin`"));
+    }
+
+    fn derivation_metadata_json(system: &str, build_phase: &str) -> String {
+        serde_json::json!({
+            "derivations": {
+                "sample.drv": {
+                    "env": {
+                        "system": system,
+                        "buildPhase": build_phase,
+                    },
+                },
+            },
+        })
+        .to_string()
     }
 }
