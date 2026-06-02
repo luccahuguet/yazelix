@@ -71,6 +71,9 @@ fn prepare_runtime_materialization_fixture(
         .join("ghostty")
         .join("shaders");
     let runtime_yzxterm_package_dir = runtime_dir.join("share").join("yazelix-terminal");
+    let runtime_yzxterm_baseline_dir = runtime_yzxterm_package_dir.join("baseline");
+    let runtime_yzxterm_shader_profile_dir =
+        runtime_yzxterm_package_dir.join("profiles").join("shaders");
     fs::create_dir_all(managed_config.parent().unwrap()).unwrap();
     fs::create_dir_all(managed_zellij_config.parent().unwrap()).unwrap();
     fs::create_dir_all(&zellij_layout_dir).unwrap();
@@ -82,6 +85,8 @@ fn prepare_runtime_materialization_fixture(
     fs::create_dir_all(&runtime_contract_dir).unwrap();
     fs::create_dir_all(&runtime_ghostty_shader_dir).unwrap();
     fs::create_dir_all(&runtime_yzxterm_package_dir).unwrap();
+    fs::create_dir_all(&runtime_yzxterm_baseline_dir).unwrap();
+    fs::create_dir_all(&runtime_yzxterm_shader_profile_dir).unwrap();
     write_runtime_contract_assets(repo, &runtime_dir);
     fs::write(
         runtime_shell_dir.join("yazelix_nu.sh"),
@@ -138,6 +143,34 @@ fn prepare_runtime_materialization_fixture(
     );
     fs::write(
         runtime_yzxterm_package_dir.join("config.toml"),
+        r##"confirm-before-quit = false
+
+[renderer]
+backend = "Webgpu"
+custom-shader = ["/nix/store/demo/cursor_trail_dusk.glsl"]
+
+[window]
+decorations = "Disabled"
+
+[effects]
+trail-cursor = true
+"##,
+    )
+    .unwrap();
+    fs::write(
+        runtime_yzxterm_baseline_dir.join("config.toml"),
+        r##"confirm-before-quit = false
+
+[renderer]
+backend = "Webgpu"
+
+[window]
+decorations = "Disabled"
+"##,
+    )
+    .unwrap();
+    fs::write(
+        runtime_yzxterm_shader_profile_dir.join("config.toml"),
         r##"confirm-before-quit = false
 
 [renderer]
@@ -1294,6 +1327,85 @@ color = "#ffffff"
     assert!(!yzxterm_config.contains("generated_effects/warp.glsl"));
     assert!(!yzxterm_config.contains("generated_effects/ripple_rectangle.glsl"));
     assert!(!yzxterm_config.contains("cursor_trail_dusk.glsl"));
+}
+
+// Regression: Yazelix-managed yzxterm launches pass YAZELIX_TERMINAL_CONFIG, so the runtime must materialize the requested shader profile itself.
+#[test]
+fn terminal_materialization_yzxterm_shader_profile_injects_generated_cursor_shaders() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+
+    write_managed_config_toml(
+        &fixture,
+        &[
+            "[terminal]",
+            "terminals = [\"yzxterm\"]",
+            "transparency = \"medium\"",
+        ]
+        .join("\n"),
+    );
+    write_cursor_sidecar(
+        &fixture,
+        r##"
+schema_version = 1
+enabled_cursors = ["forest"]
+
+[settings]
+trail = "forest"
+trail_effect = "tail"
+mode_effect = "ripple"
+glow = "high"
+duration = 1.5
+kitty_enable_cursor = true
+
+[[cursor]]
+name = "forest"
+family = "mono"
+color = "#3bd17a"
+"##,
+    );
+
+    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
+        .env("YAZELIX_TERMINAL_PROFILE", "shaders")
+        .arg("--from-env")
+        .arg("--terminals-json")
+        .arg(json!(["yzxterm"]).to_string())
+        .output()
+        .unwrap();
+
+    if !output.status.success() {
+        panic!(
+            "stdout={}\nstderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    assert!(output.stderr.is_empty());
+
+    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["command"], "terminal-materialization.generate");
+    assert_eq!(envelope["status"], "ok");
+
+    let yzxterm_config = fs::read_to_string(
+        fixture
+            .state_dir
+            .join("configs")
+            .join("terminal_emulators")
+            .join("yzxterm")
+            .join("config.toml"),
+    )
+    .unwrap();
+    assert!(yzxterm_config.contains("backend = \"Webgpu\""));
+    assert!(yzxterm_config.contains("opacity = 0.85"));
+    assert!(yzxterm_config.contains("opacity-cells = true"));
+    assert!(yzxterm_config.contains("trail-cursor = true"));
+    assert!(yzxterm_config.contains("cursor = \"#3bd17a\""));
+    assert!(yzxterm_config.contains("custom-shader = ["));
+    assert!(yzxterm_config.contains("cursor_trail_forest.glsl"));
+    assert!(yzxterm_config.contains("generated_effects/tail.glsl"));
+    assert!(yzxterm_config.contains("generated_effects/ripple.glsl"));
+    assert!(!yzxterm_config.contains("/nix/store/demo/cursor_trail_dusk.glsl"));
 }
 
 // Defends: Kitty cursor fallback is controlled by the settings cursor registry's binary kitty_enable_cursor setting.

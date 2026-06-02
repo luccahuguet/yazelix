@@ -4,6 +4,7 @@ use crate::active_config_surface::{primary_config_paths, resolve_active_config_p
 use crate::bridge::{CoreError, ErrorClass};
 use crate::helix_external::HelixExternalPair;
 use crate::runtime_env::RuntimePathInput;
+use crate::terminal_materialization::yzxterm_profile_from_env;
 use crate::zellij_materialization::zellij_permissions_cache_path;
 use crate::{
     ComputeConfigStateRequest, GhosttyMaterializationRequest, NormalizeConfigRequest,
@@ -337,6 +338,7 @@ pub fn terminal_materialization_request_from_env(
         runtime_dir,
         state_dir,
         terminals,
+        yzxterm_profile: yzxterm_profile_from_env()?,
     })
 }
 

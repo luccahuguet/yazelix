@@ -38,6 +38,14 @@ pub struct TerminalMaterializationRequest {
     pub runtime_dir: PathBuf,
     pub state_dir: PathBuf,
     pub terminals: Vec<String>,
+    pub yzxterm_profile: YzxtermProfile,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum YzxtermProfile {
+    Full,
+    Baseline,
+    Shaders,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -221,15 +229,62 @@ white = "#ffffff"
     )
 }
 
+pub fn yzxterm_profile_from_env() -> Result<YzxtermProfile, CoreError> {
+    let raw = std::env::var("YAZELIX_TERMINAL_PROFILE")
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .or_else(|| {
+            std::env::var("YAZELIX_TERMINAL_EFFECTS")
+                .ok()
+                .filter(|value| !value.trim().is_empty())
+        })
+        .unwrap_or_else(|| "full".to_string());
+    parse_yzxterm_profile(&raw)
+}
+
+fn parse_yzxterm_profile(raw: &str) -> Result<YzxtermProfile, CoreError> {
+    match raw.trim() {
+        "" | "full" | "Full" | "FULL" | "effects" | "Effects" | "EFFECTS" | "default"
+        | "Default" | "DEFAULT" => Ok(YzxtermProfile::Full),
+        "baseline" | "Baseline" | "BASELINE" | "no-effects" | "no_effects" | "none" | "None"
+        | "NONE" | "0" => Ok(YzxtermProfile::Baseline),
+        "shader" | "Shader" | "SHADER" | "shaders" | "Shaders" | "SHADERS" | "cursor-shaders"
+        | "cursor_shaders" | "ghostty-shaders" | "ghostty_shaders" => Ok(YzxtermProfile::Shaders),
+        other => Err(CoreError::usage(format!(
+            "Unsupported YAZELIX_TERMINAL_PROFILE/YAZELIX_TERMINAL_EFFECTS: {other}. Use full, default, baseline, no-effects, shaders, none, or 0."
+        ))),
+    }
+}
+
+fn yzxterm_package_config_path(runtime_dir: &Path, profile: YzxtermProfile) -> PathBuf {
+    let package_root = runtime_dir.join("share").join("yazelix-terminal");
+    match profile {
+        YzxtermProfile::Full => package_root.join("config.toml"),
+        YzxtermProfile::Baseline => package_root.join("baseline").join("config.toml"),
+        YzxtermProfile::Shaders => package_root
+            .join("profiles")
+            .join("shaders")
+            .join("config.toml"),
+    }
+}
+
+fn shader_paths_to_toml(shader_paths: &[String]) -> toml::Value {
+    toml::Value::Array(
+        shader_paths
+            .iter()
+            .map(|path| toml::Value::String(path.clone()))
+            .collect(),
+    )
+}
+
 fn generate_yzxterm_config(
     runtime_dir: &Path,
     transparency: &str,
     cursor_state: Option<&TerminalCursorState>,
+    shader_paths: &[String],
+    profile: YzxtermProfile,
 ) -> Result<String, CoreError> {
-    let package_config = runtime_dir
-        .join("share")
-        .join("yazelix-terminal")
-        .join("config.toml");
+    let package_config = yzxterm_package_config_path(runtime_dir, profile);
     let raw = fs::read_to_string(&package_config).map_err(|source| {
         CoreError::io(
             "read_yzxterm_package_config",
@@ -302,7 +357,21 @@ fn generate_yzxterm_config(
                 serde_json::json!({}),
             )
         })?;
-    renderer.remove("custom-shader");
+    match profile {
+        YzxtermProfile::Full | YzxtermProfile::Baseline => {
+            renderer.remove("custom-shader");
+        }
+        YzxtermProfile::Shaders => {
+            if shader_paths.is_empty() {
+                renderer.remove("custom-shader");
+            } else {
+                renderer.insert(
+                    "custom-shader".to_string(),
+                    shader_paths_to_toml(shader_paths),
+                );
+            }
+        }
+    }
 
     if let Some(color_hex) = cursor_state.and_then(|state| state.selected_color_hex.as_deref()) {
         let colors = table
@@ -549,16 +618,27 @@ pub fn generate_terminal_materialization(
                     )
                 })?;
                 let path = yzxterm_dir.join("config.toml");
-                let cursor_state = if cursors_enabled {
-                    let data =
-                        ensure_terminal_cursor_materialization(&mut cursor_data, &cursor_request)?;
-                    Some(&data.cursor_state)
+                let yzxterm_cursor_data = if cursors_enabled {
+                    Some(ensure_terminal_cursor_materialization(
+                        &mut cursor_data,
+                        &cursor_request,
+                    )?)
                 } else {
                     None
                 };
+                let cursor_state = yzxterm_cursor_data.map(|data| &data.cursor_state);
+                let shader_paths = yzxterm_cursor_data
+                    .map(|data| data.shader_paths.as_slice())
+                    .unwrap_or_default();
                 write_text_atomic(
                     &path,
-                    &generate_yzxterm_config(&request.runtime_dir, transparency, cursor_state)?,
+                    &generate_yzxterm_config(
+                        &request.runtime_dir,
+                        transparency,
+                        cursor_state,
+                        shader_paths,
+                        request.yzxterm_profile,
+                    )?,
                 )?;
                 generated.push(TerminalGeneratedConfig {
                     terminal: "yzxterm".to_string(),

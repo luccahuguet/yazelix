@@ -13,7 +13,8 @@ use crate::ghostty_materialization::{
 };
 use crate::runtime_component_enabled;
 use crate::terminal_materialization::{
-    TerminalGeneratedConfig, TerminalMaterializationRequest, generate_terminal_materialization,
+    TerminalGeneratedConfig, TerminalMaterializationRequest, YzxtermProfile,
+    generate_terminal_materialization, yzxterm_profile_from_env,
 };
 use serde::Serialize;
 use serde_json::{Map as JsonMap, Value as JsonValue};
@@ -35,6 +36,7 @@ pub struct LaunchMaterializationRequest {
     pub selected_terminals: Vec<String>,
     pub desktop_fast_path: bool,
     pub force_terminal_config_generation: bool,
+    pub yzxterm_profile: YzxtermProfile,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -81,6 +83,7 @@ pub fn launch_materialization_request_from_env(
         selected_terminals,
         desktop_fast_path,
         force_terminal_config_generation,
+        yzxterm_profile: yzxterm_profile_from_env()?,
     })
 }
 
@@ -130,6 +133,7 @@ pub fn prepare_launch_materialization(
             runtime_dir: request.runtime_dir.clone(),
             state_dir: request.state_dir.clone(),
             terminals: plan.selected_terminals.clone(),
+            yzxterm_profile: request.yzxterm_profile,
         })?;
         if plan_uses_yazelix_ghostty_cursor(&plan) {
             if let Some(cursor_data) = terminal_data.cursor.as_ref() {

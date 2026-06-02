@@ -10,6 +10,7 @@ use yazelix_core::control_plane::{
     runtime_materialization_plan_request_from_env, state_dir_from_env,
     terminal_materialization_request_from_env,
 };
+use yazelix_core::terminal_materialization::YzxtermProfile;
 use yazelix_core::{
     ComputeConfigStateRequest, CoreError, DoctorConfigEvaluateRequest,
     DoctorRuntimeEvaluateRequest, ErrorClass, GhosttyMaterializationRequest,
@@ -924,6 +925,7 @@ fn run_terminal_materialization_generate(mut parser: lexopt::Parser) -> Result<(
                 .ok_or_else(|| CoreError::usage("Missing --runtime-dir path"))?,
             state_dir: state_dir.ok_or_else(|| CoreError::usage("Missing --state-dir path"))?,
             terminals,
+            yzxterm_profile: YzxtermProfile::Full,
         }
     };
     let data = generate_terminal_materialization(&request)?;
