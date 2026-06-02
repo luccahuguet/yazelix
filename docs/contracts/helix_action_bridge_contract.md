@@ -267,16 +267,22 @@ must not send `:open` text for this action once migrated.
 
 ### `helix.open_directory`
 
-Set the addressed Helix instance cwd and open Helix's native file picker rooted
-at that directory.
+Set the addressed Helix instance cwd and open Helix's native file picker. When
+the caller provides a separate picker directory, cwd and picker context are
+allowed to differ.
 
 Payload:
 
-- `working_dir`: absolute directory path
+- `working_dir`: absolute directory path used as Helix cwd
+- `picker_dir`: optional absolute directory path used as the file-picker root
 
 This is the directory-target counterpart to `helix.open_files`. Zellij still
 owns pane focus, workspace retargeting, and sidebar state; the bridge owns the
 editor-local cwd update and picker layer.
+
+For Yazi zoxide handoff inside a Git repository, Yazelix sends the repository
+root as `working_dir` and the selected subdirectory as `picker_dir`, so workspace
+cwd stays rooted while the picker opens in the user's local context.
 
 ### `helix.set_cwd`
 

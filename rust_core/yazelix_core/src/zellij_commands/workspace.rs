@@ -303,14 +303,6 @@ fn hide_sidebar_after_editor_pane_creation() -> Result<(), CoreError> {
     hide_sidebar_if_visible()
 }
 
-fn retarget_workspace_without_focused_cd(
-    target_path: &Path,
-    editor_kind: Option<&str>,
-) -> Result<WorkspaceRetargetResult, CoreError> {
-    let target_dir = workspace_dir_for_target(target_path);
-    retarget_workspace_dir_without_focused_cd(&target_dir, editor_kind)
-}
-
 fn retarget_workspace_dir_without_focused_cd(
     target_dir: &Path,
     editor_kind: Option<&str>,
@@ -552,6 +544,7 @@ fn open_files_in_helix_bridge_managed_editor(
 
 fn open_directory_in_helix_bridge_managed_editor(
     working_dir: &Path,
+    picker_dir: &Path,
 ) -> Result<ManagedEditorOpenStatus, CoreError> {
     for retry_index in 0..=OPEN_FILE_ORCHESTRATOR_RETRY_DELAYS_MS.len() {
         match active_managed_editor_pane_target() {
@@ -559,6 +552,7 @@ fn open_directory_in_helix_bridge_managed_editor(
                 focus_managed_editor_pane()?;
                 let payload = json!({
                     "working_dir": working_dir.display().to_string(),
+                    "picker_dir": picker_dir.display().to_string(),
                 });
                 send_helix_bridge_action_to_target(
                     HelixBridgeActionTarget {
@@ -630,31 +624,6 @@ fn focus_managed_editor_pane() -> Result<(), CoreError> {
             "Ensure the pane orchestrator plugin is loaded, then retry.",
             json!({ "response": response }),
         )),
-    }
-}
-
-fn set_helix_bridge_managed_editor_cwd(
-    working_dir: &Path,
-) -> Result<ManagedEditorOpenStatus, CoreError> {
-    match active_managed_editor_pane_target()? {
-        ManagedEditorPaneTarget::Ready(zellij_pane_id) => {
-            let payload = json!({
-                "working_dir": working_dir.display().to_string(),
-            });
-            send_helix_bridge_action_to_target(
-                HelixBridgeActionTarget {
-                    session_id: None,
-                    instance_id: None,
-                    zellij_pane_id: Some(zellij_pane_id),
-                },
-                "helix.set_cwd",
-                payload,
-                5_000,
-            )?;
-            Ok(ManagedEditorOpenStatus::Ok)
-        }
-        ManagedEditorPaneTarget::Missing => Ok(ManagedEditorOpenStatus::Missing),
-        ManagedEditorPaneTarget::NotReady => Ok(ManagedEditorOpenStatus::NotReady),
     }
 }
 
@@ -819,12 +788,14 @@ pub fn run_zellij_open_editor(args: &[String]) -> Result<i32, CoreError> {
     }
 
     if editor_kind == "helix" || editor_kind == "neovim" {
-        let open_status =
-            if editor_kind == "helix" && target_paths.len() == 1 && primary_target_path.is_dir() {
-                open_directory_in_helix_bridge_managed_editor(&editor_working_dir)?
-            } else {
-                open_files_in_managed_editor(&editor_kind, &target_paths, &editor_working_dir)?
-            };
+        let open_status = if editor_kind == "helix"
+            && target_paths.len() == 1
+            && primary_target_path.is_dir()
+        {
+            open_directory_in_helix_bridge_managed_editor(&editor_working_dir, primary_target_path)?
+        } else {
+            open_files_in_managed_editor(&editor_kind, &target_paths, &editor_working_dir)?
+        };
         if matches!(
             open_status,
             ManagedEditorOpenStatus::Missing | ManagedEditorOpenStatus::NotReady
@@ -887,6 +858,7 @@ pub fn run_zellij_open_editor_cwd(args: &[String]) -> Result<i32, CoreError> {
         )
     })?;
     let target_dir = resolve_target_dir(&target)?;
+    let workspace_root = resolve_editor_working_dir(&target_dir);
     let integration_facts = compute_integration_facts_from_env()?;
     let editor_kind = integration_facts.managed_editor_kind.trim().to_string();
     if editor_kind.is_empty() {
@@ -904,8 +876,8 @@ pub fn run_zellij_open_editor_cwd(args: &[String]) -> Result<i32, CoreError> {
     }
 
     let bridge_updates_helix_cwd = editor_kind == "helix";
-    let retarget_result = retarget_workspace_without_focused_cd(
-        &target_dir,
+    let retarget_result = retarget_workspace_dir_without_focused_cd(
+        &workspace_root,
         if bridge_updates_helix_cwd {
             None
         } else {
@@ -926,7 +898,7 @@ pub fn run_zellij_open_editor_cwd(args: &[String]) -> Result<i32, CoreError> {
     }
 
     let editor_status = if bridge_updates_helix_cwd {
-        set_helix_bridge_managed_editor_cwd(&target_dir)?
+        open_directory_in_helix_bridge_managed_editor(&workspace_root, &target_dir)?
     } else {
         match retarget_result.editor_status.as_str() {
             "missing" => ManagedEditorOpenStatus::Missing,
@@ -955,7 +927,7 @@ pub fn run_zellij_open_editor_cwd(args: &[String]) -> Result<i32, CoreError> {
                 editor_argv.push(target_dir.display().to_string());
             }
             run_zellij_editor_pane(
-                &target_dir,
+                &workspace_root,
                 &runtime_env,
                 Some(yazi_id.as_str()),
                 &editor_argv,

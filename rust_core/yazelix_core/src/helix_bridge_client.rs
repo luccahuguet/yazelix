@@ -425,6 +425,14 @@ fn validate_action_payload(action: &str, payload: &Value) -> Result<(), CoreErro
                 ));
             };
             require_absolute_payload_path("payload.working_dir", working_dir)?;
+            if let Some(picker_dir) = payload.get("picker_dir") {
+                let Some(path) = picker_dir.as_str() else {
+                    return Err(invalid_payload(
+                        "helix.open_directory payload.picker_dir must be a string",
+                    ));
+                };
+                require_absolute_payload_path("payload.picker_dir", path)?;
+            }
         }
         "helix.open_files" => {
             let Some(file_paths) = payload.get("file_paths").and_then(Value::as_array) else {
@@ -1254,6 +1262,18 @@ mod tests {
         let error = validate_action_payload(
             "helix.open_directory",
             &json!({ "working_dir": "relative-project" }),
+        )
+        .unwrap_err();
+        assert_eq!(error.code(), "invalid_helix_action_payload");
+        assert!(error.message().contains("absolute"));
+    }
+
+    // Defends: split directory picker bridge actions validate picker_dir before IPC instead of letting Helix receive a relative path.
+    #[test]
+    fn validate_open_directory_requires_absolute_picker_dir() {
+        let error = validate_action_payload(
+            "helix.open_directory",
+            &json!({ "working_dir": "/repo", "picker_dir": "relative-project" }),
         )
         .unwrap_err();
         assert_eq!(error.code(), "invalid_helix_action_payload");
