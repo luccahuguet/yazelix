@@ -146,25 +146,34 @@ Out of scope:
 - Type: behavior
 - Status: live
 - Owner: Rust desktop launch plus
-  `shells/posix/desktop_deferred_launch_probe.sh`; inner Rio/child process
-  evidence belongs to the `yazelix-terminal` child wrapper
+  `shells/posix/desktop_deferred_launch_probe.sh`; inner child-process PID
+  evidence beyond the terminal process belongs to the `yazelix-terminal` child
+  wrapper
 - Statement: Desktop-deferred Yazelix Terminal launches write bounded per-launch
   logs under `YAZELIX_STATE_DIR/logs/terminal_launch`. The log name is based on
   the executable basename, so yzxterm logs use
   `yazelix_terminal_desktop_*.log`. Each fresh log records timestamps, argv,
   config environment, helper PID, terminal-or-wrapper PID, captured
-  stdout/stderr, and any early exit status observable by the desktop helper.
-  The main runtime records `child_pid=not_observable_by_desktop_probe` when the
-  child-owned wrapper is the only process boundary that can observe the inner
-  Rio child PID. Doctor reports recent metadata-bearing yzxterm launch logs,
-  stale/missing metadata, or no captured launch evidence for active yzxterm
-  runtimes without warning unrelated terminal variants.
+  stdout/stderr, any early exit status observable by the desktop helper, and
+  terminal lifetime evidence. After the short startup probe, the detached helper
+  records `lifetime_status=watching`, waits for the terminal-or-wrapper PID,
+  and appends `final_exit_status` plus `final_exit_kind=exit`/`final_exit_code`
+  or `final_exit_kind=signal`/`final_signal`. The main runtime records
+  `child_pid=not_observable_by_desktop_probe` when the child-owned wrapper is
+  the only process boundary that can observe the inner Rio child PID. Doctor
+  reports final lifetime evidence, active lifetime watchers, metadata-only
+  logs, stale/missing metadata, or no captured launch evidence for active
+  yzxterm runtimes without warning unrelated terminal variants. A log ending
+  after short-probe metadata such as
+  `exit_status=not_observed_after_probe_window` is not sufficient crash
+  observability.
 - Verification: automated Rust tests in
   `rust_core/yazelix_core/src/launch_commands.rs`
-  (`desktop_deferred_launch_helper_schedules_after_starter_parent_exits`,
+  (`desktop_deferred_launch_helper_records_lifetime_status`,
   `launch_probe_log_path_uses_command_basename`) and
   `rust_core/yazelix_core/src/doctor_runtime_report.rs`
-  (`yzxterm_launch_log_finding_reports_metadata_logs`,
+  (`yzxterm_launch_log_finding_reports_lifetime_logs`,
+  `yzxterm_launch_log_finding_warns_on_metadata_only_logs`,
   `yzxterm_launch_log_finding_is_scoped_to_yzxterm_runtime`)
 
 ## Traceability

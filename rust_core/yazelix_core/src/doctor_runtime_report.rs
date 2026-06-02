@@ -513,7 +513,26 @@ fn build_shell_initializer_findings(state_dir: &Path) -> Vec<DoctorRuntimeDoctor
 struct LaunchLogSummary {
     path: PathBuf,
     modified_seconds: u64,
-    has_metadata: bool,
+    status: LaunchLogStatus,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LaunchLogStatus {
+    LifetimeCaptured,
+    LifetimeWatching,
+    MetadataOnly,
+    LegacyOrMissingMetadata,
+}
+
+impl LaunchLogStatus {
+    fn label(self) -> &'static str {
+        match self {
+            Self::LifetimeCaptured => "lifetime_captured",
+            Self::LifetimeWatching => "lifetime_watching",
+            Self::MetadataOnly => "metadata_only",
+            Self::LegacyOrMissingMetadata => "legacy_or_missing_metadata",
+        }
+    }
 }
 
 fn yzxterm_launch_log_dir(state_dir: &Path) -> PathBuf {
@@ -545,12 +564,27 @@ fn launch_log_modified_seconds(path: &Path) -> u64 {
         .unwrap_or(0)
 }
 
-fn launch_log_has_metadata(path: &Path) -> bool {
-    fs::read_to_string(path).is_ok_and(|raw| {
-        raw.contains("desktop deferred launch")
-            && raw.contains("argv:")
-            && raw.contains("terminal_or_wrapper_pid")
-    })
+fn classify_launch_log(path: &Path) -> LaunchLogStatus {
+    let Ok(raw) = fs::read_to_string(path) else {
+        return LaunchLogStatus::LegacyOrMissingMetadata;
+    };
+
+    let has_metadata = raw.contains("desktop deferred launch")
+        && raw.contains("argv:")
+        && raw.contains("terminal_or_wrapper_pid");
+    if !has_metadata {
+        return LaunchLogStatus::LegacyOrMissingMetadata;
+    }
+
+    if raw.contains("final_exit_status=") && raw.contains("final_exit_kind=") {
+        return LaunchLogStatus::LifetimeCaptured;
+    }
+
+    if raw.contains("lifetime_status=watching") {
+        return LaunchLogStatus::LifetimeWatching;
+    }
+
+    LaunchLogStatus::MetadataOnly
 }
 
 fn collect_yzxterm_launch_logs(state_dir: &Path) -> Vec<LaunchLogSummary> {
@@ -564,7 +598,7 @@ fn collect_yzxterm_launch_logs(state_dir: &Path) -> Vec<LaunchLogSummary> {
         .filter(|path| path.is_file() && is_yzxterm_launch_log(path))
         .map(|path| LaunchLogSummary {
             modified_seconds: launch_log_modified_seconds(&path),
-            has_metadata: launch_log_has_metadata(&path),
+            status: classify_launch_log(&path),
             path,
         })
         .collect::<Vec<_>>();
@@ -582,14 +616,10 @@ fn render_launch_log_summaries(logs: &[LaunchLogSummary]) -> String {
         .take(5)
         .map(|log| {
             format!(
-                "{} (modified_unix_seconds={}, metadata={})",
+                "{} (modified_unix_seconds={}, evidence={})",
                 log.path.display(),
                 log.modified_seconds,
-                if log.has_metadata {
-                    "present"
-                } else {
-                    "missing"
-                }
+                log.status.label()
             )
         })
         .collect::<Vec<_>>()
@@ -624,15 +654,54 @@ fn build_yzxterm_launch_log_findings(
     }
 
     let details = render_launch_log_summaries(&logs);
-    if logs.iter().any(|log| log.has_metadata) {
+    if logs
+        .iter()
+        .any(|log| log.status == LaunchLogStatus::LifetimeCaptured)
+    {
         return vec![DoctorRuntimeDoctorFinding {
             status: "ok".into(),
-            message: "Yazelix Terminal desktop launch logs are available".into(),
+            message: "Yazelix Terminal desktop launch lifetime evidence is available".into(),
             details: Some(details),
             fix_available: false,
             fix_action: None,
             capability_tier: None,
-            capability_mode: Some("yzxterm_launch_logs_available".into()),
+            capability_mode: Some("yzxterm_launch_lifetime_captured".into()),
+            runtime_contract_check: Some("yzxterm_launch_logs".into()),
+            owner_surface: Some("terminal_launch_logs".into()),
+        }];
+    }
+
+    if logs
+        .iter()
+        .any(|log| log.status == LaunchLogStatus::LifetimeWatching)
+    {
+        return vec![DoctorRuntimeDoctorFinding {
+            status: "ok".into(),
+            message: "Yazelix Terminal desktop launch lifetime watcher is active".into(),
+            details: Some(details),
+            fix_available: false,
+            fix_action: None,
+            capability_tier: None,
+            capability_mode: Some("yzxterm_launch_lifetime_watching".into()),
+            runtime_contract_check: Some("yzxterm_launch_logs".into()),
+            owner_surface: Some("terminal_launch_logs".into()),
+        }];
+    }
+
+    if logs
+        .iter()
+        .any(|log| log.status == LaunchLogStatus::MetadataOnly)
+    {
+        return vec![DoctorRuntimeDoctorFinding {
+            status: "warning".into(),
+            message: "Yazelix Terminal desktop launch logs lack lifetime evidence".into(),
+            details: Some(format!(
+                "{details}\nRelaunch yzxterm from the desktop entry to start the lifetime watcher; metadata-only logs cannot prove final exit status or signal."
+            )),
+            fix_available: false,
+            fix_action: None,
+            capability_tier: None,
+            capability_mode: Some("yzxterm_launch_logs_metadata_only".into()),
             runtime_contract_check: Some("yzxterm_launch_logs".into()),
             owner_surface: Some("terminal_launch_logs".into()),
         }];
@@ -1184,9 +1253,9 @@ mod tests {
         assert!(details.contains("yzx_control generate_shell_initializers"));
     }
 
-    // Defends: doctor can point users at concrete yzxterm desktop launch evidence after a window disappears.
+    // Defends: doctor can point users at concrete yzxterm desktop lifetime evidence after a window disappears.
     #[test]
-    fn yzxterm_launch_log_finding_reports_metadata_logs() {
+    fn yzxterm_launch_log_finding_reports_lifetime_logs() {
         let tmp = TempDir::new().unwrap();
         let state = tmp.path().join("state");
         let runtime = tmp.path().join("runtime");
@@ -1197,7 +1266,7 @@ mod tests {
         std::fs::create_dir_all(log.parent().unwrap()).unwrap();
         std::fs::write(
             &log,
-            "[2026-06-02T00:00:00-0300] desktop deferred launch\nargv:\n  yazelix-terminal-desktop\n[2026-06-02T00:00:01-0300] spawned terminal_or_wrapper_pid=123\n",
+            "[2026-06-02T00:00:00-0300] desktop deferred launch\nargv:\n  yazelix-terminal-desktop\n[2026-06-02T00:00:01-0300] spawned terminal_or_wrapper_pid=123\n[2026-06-02T00:00:02-0300] final_exit_status=0\nfinal_exit_kind=exit\nfinal_exit_code=0\n",
         )
         .unwrap();
 
@@ -1209,13 +1278,47 @@ mod tests {
             findings[0].runtime_contract_check.as_deref(),
             Some("yzxterm_launch_logs")
         );
+        assert_eq!(
+            findings[0].capability_mode.as_deref(),
+            Some("yzxterm_launch_lifetime_captured")
+        );
         assert!(
             findings[0]
                 .details
                 .as_deref()
                 .unwrap_or_default()
-                .contains("yazelix_terminal_desktop_123.log")
+                .contains("evidence=lifetime_captured")
         );
+    }
+
+    // Regression: old short-probe metadata is not enough to diagnose a vanished yzxterm window.
+    #[test]
+    fn yzxterm_launch_log_finding_warns_on_metadata_only_logs() {
+        let tmp = TempDir::new().unwrap();
+        let state = tmp.path().join("state");
+        let runtime = tmp.path().join("runtime");
+        let log = state
+            .join("logs")
+            .join("terminal_launch")
+            .join("yazelix_terminal_desktop_123.log");
+        std::fs::create_dir_all(log.parent().unwrap()).unwrap();
+        std::fs::write(
+            &log,
+            "[2026-06-02T00:00:00-0300] desktop deferred launch\nargv:\n  yazelix-terminal-desktop\n[2026-06-02T00:00:01-0300] spawned terminal_or_wrapper_pid=123\n[2026-06-02T00:00:02-0300] exit_status=not_observed_after_probe_window\n",
+        )
+        .unwrap();
+
+        let findings = build_yzxterm_launch_log_findings(&state, &runtime);
+
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].status, "warning");
+        assert_eq!(
+            findings[0].capability_mode.as_deref(),
+            Some("yzxterm_launch_logs_metadata_only")
+        );
+        let details = findings[0].details.as_deref().unwrap_or_default();
+        assert!(details.contains("evidence=metadata_only"));
+        assert!(details.contains("cannot prove final exit status or signal"));
     }
 
     // Defends: non-yzxterm runtimes do not receive irrelevant missing-log doctor findings.

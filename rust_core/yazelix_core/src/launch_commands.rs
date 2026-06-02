@@ -658,7 +658,7 @@ mod tests {
 
     // Regression: desktop launch schedules the real terminal only after the desktop-launch parent exits.
     #[test]
-    fn desktop_deferred_launch_helper_schedules_after_starter_parent_exits() {
+    fn desktop_deferred_launch_helper_records_lifetime_status() {
         let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"))
             .parent()
             .and_then(Path::parent)
@@ -698,10 +698,8 @@ mod tests {
         );
 
         let mut raw_log = std::fs::read_to_string(&launch_log).unwrap();
-        for _ in 0..20 {
-            if raw_log.contains("early_exit_status=")
-                || raw_log.contains("exit_status=not_observed_after_probe_window")
-            {
+        for _ in 0..40 {
+            if raw_log.contains("final_exit_status=") {
                 break;
             }
             thread::sleep(Duration::from_millis(50));
@@ -710,10 +708,10 @@ mod tests {
         assert!(raw_log.contains("desktop deferred launch"));
         assert!(raw_log.contains("argv:"));
         assert!(raw_log.contains("terminal_or_wrapper_pid="));
-        assert!(
-            raw_log.contains("early_exit_status=")
-                || raw_log.contains("exit_status=not_observed_after_probe_window")
-        );
+        assert!(raw_log.contains("early_exit_status=0"));
+        assert!(raw_log.contains("final_exit_status=0"));
+        assert!(raw_log.contains("final_exit_kind=exit"));
+        assert!(raw_log.contains("final_exit_code=0"));
     }
 
     // Defends: macOS preview desktop parsing keeps the opt-in nested action explicit.

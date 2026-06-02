@@ -45,6 +45,24 @@ log_timestamp() {
   date '+%Y-%m-%dT%H:%M:%S%z'
 }
 
+log_wait_status() {
+  status="$1"
+  if [ "$status" -gt 128 ] && [ "$status" -lt 256 ]; then
+    signal=$((status - 128))
+    {
+      printf '[%s] final_exit_status=%s\n' "$(log_timestamp)" "$status"
+      printf 'final_exit_kind=signal\n'
+      printf 'final_signal=%s\n' "$signal"
+    } >>"$launch_log"
+  else
+    {
+      printf '[%s] final_exit_status=%s\n' "$(log_timestamp)" "$status"
+      printf 'final_exit_kind=exit\n'
+      printf 'final_exit_code=%s\n' "$status"
+    } >>"$launch_log"
+  fi
+}
+
 prune_launch_logs() {
   log_dir="$(dirname "$launch_log")"
   log_base="$(basename "$launch_log" .log)"
@@ -113,12 +131,18 @@ while [ "$i" -lt 6 ]; do
     wait "$pid"
     status=$?
     printf '[%s] early_exit_status=%s\n' "$(log_timestamp)" "$status" >>"$launch_log"
+    log_wait_status "$status"
     prune_launch_logs
     exit "$status"
   fi
   i=$((i + 1))
 done
 
-printf '[%s] exit_status=not_observed_after_probe_window\n' "$(log_timestamp)" >>"$launch_log"
+printf '[%s] lifetime_status=watching\n' "$(log_timestamp)" >>"$launch_log"
 prune_launch_logs
-exit 0
+
+wait "$pid"
+status=$?
+log_wait_status "$status"
+prune_launch_logs
+exit "$status"

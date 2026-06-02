@@ -30,7 +30,8 @@ Yazelix status and doctor surfaces must explain which runtime is active, who own
 - Home Manager activation regenerates shell initializers from the active Home Manager runtime after linking the generation
 - Doctor reports deleted transient initializer references with a clear regeneration command
 - Yazelix Terminal desktop launches leave bounded per-launch logs under `~/.local/share/yazelix/logs/terminal_launch`
-- Doctor reports recent yzxterm launch logs or explains that no yzxterm launch evidence has been captured
+- yzxterm launch logs record launch metadata first, then either an active lifetime watcher or final terminal exit/signal evidence
+- Doctor reports recent yzxterm lifetime evidence, active lifetime watchers, metadata-only logs, or explains that no yzxterm launch evidence has been captured
 
 ## Non-Goals
 
@@ -43,9 +44,10 @@ Yazelix status and doctor surfaces must explain which runtime is active, who own
 
 - `yzx dev rust test install_ownership_report::tests::evaluate_install_ownership_detects_home_manager_profile_without_managed_config`
 - `yzx dev rust test doctor_runtime_report::tests::shell_initializer_finding_warns_on_deleted_transient_runtime_path`
-- `yzx dev rust test doctor_runtime_report::tests::yzxterm_launch_log_finding_reports_metadata_logs`
+- `yzx dev rust test doctor_runtime_report::tests::yzxterm_launch_log_finding_reports_lifetime_logs`
+- `yzx dev rust test doctor_runtime_report::tests::yzxterm_launch_log_finding_warns_on_metadata_only_logs`
 - `yzx dev rust test doctor_runtime_report::tests::yzxterm_launch_log_finding_is_scoped_to_yzxterm_runtime`
-- `yzx dev rust test launch_commands::tests::desktop_deferred_launch_helper_schedules_after_starter_parent_exits`
+- `yzx dev rust test launch_commands::tests::desktop_deferred_launch_helper_records_lifetime_status`
 - `yzx dev rust test launch_commands::tests::launch_probe_log_path_uses_command_basename`
 - `yzx_repo_validator validate-contracts`
 

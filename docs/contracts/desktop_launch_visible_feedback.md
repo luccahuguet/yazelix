@@ -48,14 +48,14 @@ The supported contract is that desktop entries are non-terminal desktop commands
 ## Verification
 
 - `yzx dev rust test launch_commands::tests::render_desktop_entry_quotes_exec_path`
-- `yzx dev rust test launch_commands::tests::desktop_deferred_launch_helper_schedules_after_starter_parent_exits`
+- `yzx dev rust test launch_commands::tests::desktop_deferred_launch_helper_records_lifetime_status`
 - `yzx dev rust test install_ownership_report::tests::desktop_freshness_accepts_terminal_false_and_warns_on_terminal_true`
 - `yzx_repo_validator validate-config-surface-contract`
 - `yzx_repo_validator validate-contracts`
 
 ## Traceability
 - Defended by: `rust_core/yazelix_core/src/launch_commands.rs::render_desktop_entry_quotes_exec_path`
-- Defended by: `rust_core/yazelix_core/src/launch_commands.rs::desktop_deferred_launch_helper_schedules_after_starter_parent_exits`
+- Defended by: `rust_core/yazelix_core/src/launch_commands.rs::desktop_deferred_launch_helper_records_lifetime_status`
 - Defended by: `rust_core/yazelix_core/src/install_ownership_report.rs::desktop_freshness_accepts_terminal_false_and_warns_on_terminal_true`
 - Defended by: `yzx_repo_validator validate-contracts`
 
