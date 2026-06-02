@@ -74,7 +74,9 @@ use yazelix_core::run_zellij_status_cache_write;
 use yazelix_core::update_commands::run_yzx_update;
 use yazelix_core::zellij_commands::internal_zellij_control_subcommands_usage;
 use yazelix_core::zellij_commands::probe_active_tab_session_state;
-use yazelix_core::{YzxCommandMetadata, run_yzx_popup, run_yzx_sidebar, yzx_command_metadata};
+use yazelix_core::{
+    YzxCommandMetadata, run_yzx_popup, run_yzx_popup_run, run_yzx_sidebar, yzx_command_metadata,
+};
 
 fn usage() -> ! {
     eprintln!("Usage:");
@@ -109,6 +111,7 @@ fn private_control_usage_lines() -> impl Iterator<Item = String> {
             internal_helix_control_subcommands_usage()
         ),
         "yzx_control profile <create-run|record-step|load-report|wait-step|print-report|compare-reports|save-baseline|compare-baseline> [args...]".to_string(),
+        "yzx_control popup_run <program> [args...]".to_string(),
         format!(
             "yzx_control zellij <{}> [args...]",
             internal_zellij_control_subcommands_usage()
@@ -1616,6 +1619,7 @@ fn main() {
         "menu" => run_yzx_menu(&argv),
         "onboard" => run_yzx_onboard(&argv),
         "popup" => run_yzx_popup(&argv),
+        "popup_run" => run_yzx_popup_run(&argv),
         "sidebar" => run_yzx_sidebar(&argv),
         "profile" => run_profile(&argv),
         "zellij" => run_zellij(&argv),

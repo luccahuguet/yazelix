@@ -362,7 +362,7 @@ ghostty_trail_color = "random"
     assert!(zellij_log.contains(r#""action":"open""#));
     assert!(zellij_log.contains(r#""pane_title":"yzx_popup""#));
     assert!(zellij_log.contains(&format!(
-        r#""command":["{}","run","popup-probe","hello"]"#,
+        r#""command":["{}","popup_run","popup-probe","hello"]"#,
         yzx_cli
     )));
     assert!(zellij_log.contains(r#""command_marker":"popup-probe""#));

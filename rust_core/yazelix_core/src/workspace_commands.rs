@@ -18,7 +18,7 @@ use std::process::Command;
 mod popup;
 mod yazi_sidebar;
 
-pub use popup::run_yzx_popup;
+pub use popup::{run_yzx_popup, run_yzx_popup_run};
 pub(crate) use yazi_sidebar::sync_sidebar_to_directory;
 pub use yazi_sidebar::{run_yzx_reveal, run_yzx_sidebar};
 

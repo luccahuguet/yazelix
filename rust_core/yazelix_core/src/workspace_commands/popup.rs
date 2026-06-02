@@ -1,13 +1,19 @@
 //! yzpp-backed workspace popup command adapter.
 
 use crate::bridge::{CoreError, ErrorClass};
-use crate::control_plane::runtime_dir_from_env;
+use crate::compute_runtime_env;
+use crate::control_plane::{
+    config_dir_from_env, config_override_from_env, load_normalized_config_for_control,
+    run_child_in_runtime_env, runtime_dir_from_env, runtime_env_request,
+};
 use crate::pane_orchestrator_client::{
     YZPP_PLUGIN_ALIAS, run_pane_orchestrator_command, run_zellij_plugin_command,
 };
 use crate::popup_runtime_command::popup_command_argv_for_yazelix_runtime;
 use crate::popup_session_facts::compute_popup_session_facts_from_env;
-use crate::workspace_session::current_tab_workspace_root_from_json;
+use crate::workspace_session::{
+    current_tab_workspace_root_from_json, sidebar_focused_cwd_from_json,
+};
 use serde_json::{Value, json};
 use std::env;
 use std::path::PathBuf;
@@ -101,6 +107,36 @@ pub fn run_yzx_popup(args: &[String]) -> Result<i32, CoreError> {
     ))
 }
 
+pub fn run_yzx_popup_run(args: &[String]) -> Result<i32, CoreError> {
+    if args.len() == 1 && matches!(args[0].as_str(), "--help" | "-h" | "help") {
+        print_popup_run_help();
+        return Ok(0);
+    }
+    if args.is_empty() {
+        return Err(CoreError::usage(
+            "yzx popup_run expects a command to run inside a Yazelix popup pane.",
+        ));
+    }
+
+    let runtime_dir = runtime_dir_from_env()?;
+    let config_dir = config_dir_from_env()?;
+    let normalized = load_normalized_config_for_control(
+        &runtime_dir,
+        &config_dir,
+        config_override_from_env().as_deref(),
+    )?;
+    let req = runtime_env_request(runtime_dir, &normalized)?;
+    let data = compute_runtime_env(&req)?;
+    let cwd = popup_run_cwd().unwrap_or_else(|| {
+        env::current_dir()
+            .unwrap_or_else(|_| PathBuf::from("."))
+            .to_string_lossy()
+            .to_string()
+    });
+    let status = run_child_in_runtime_env(args, &data.runtime_env, &PathBuf::from(cwd))?;
+    Ok(status.code().unwrap_or(1))
+}
+
 fn current_process_runtime_env() -> serde_json::Map<String, serde_json::Value> {
     [
         "PATH",
@@ -178,6 +214,11 @@ fn current_tab_workspace_root(include_bootstrap: bool) -> Option<String> {
     current_tab_workspace_root_from_json(&response, include_bootstrap)
 }
 
+fn popup_run_cwd() -> Option<String> {
+    let response = run_pane_orchestrator_command("get_active_tab_session_state", "").ok()?;
+    sidebar_focused_cwd_from_json(&response)
+}
+
 fn parse_popup_args(args: &[String]) -> Result<PopupArgs, CoreError> {
     let mut parsed = PopupArgs::default();
     for arg in args {
@@ -199,6 +240,13 @@ fn print_popup_help() {
     println!();
     println!("Usage:");
     println!("  yzx popup [program...]");
+}
+
+fn print_popup_run_help() {
+    println!("Run an internal Yazelix popup command with context-aware cwd");
+    println!();
+    println!("Usage:");
+    println!("  yzx popup_run <program> [args...]");
 }
 
 #[cfg(test)]

@@ -17,7 +17,7 @@ pub(crate) fn popup_command_argv_for_yazelix_runtime(
     }
 
     std::iter::once(yzx_cli.to_string())
-        .chain(std::iter::once("run".to_string()))
+        .chain(std::iter::once("popup_run".to_string()))
         .chain(command.iter().cloned())
         .collect()
 }
@@ -27,9 +27,9 @@ mod tests {
     // Test lane: default
     use super::*;
 
-    // Regression: yzpp popup specs launch external TUI tools through `yzx run` so nested editor flows inherit EDITOR/VISUAL.
+    // Regression: yzpp popup specs launch external TUI tools through `popup_run` so they inherit runtime env and Yazi-sidebar cwd.
     #[test]
-    fn wraps_external_commands_through_yzx_run() {
+    fn wraps_external_commands_through_popup_run() {
         assert_eq!(
             popup_command_argv_for_yazelix_runtime(
                 &["lazygit".to_string(), "status".to_string()],
@@ -37,14 +37,14 @@ mod tests {
             ),
             vec![
                 "/opt/yazelix/shells/posix/yzx_cli.sh".to_string(),
-                "run".to_string(),
+                "popup_run".to_string(),
                 "lazygit".to_string(),
                 "status".to_string(),
             ]
         );
     }
 
-    // Invariant: Yazelix-owned commands route directly through the stable CLI wrapper instead of nesting `yzx run yzx`.
+    // Invariant: Yazelix-owned commands route directly through the stable CLI wrapper instead of nesting `yzx popup_run yzx`.
     #[test]
     fn routes_yzx_commands_directly_through_wrapper() {
         assert_eq!(

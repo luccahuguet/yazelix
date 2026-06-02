@@ -152,6 +152,8 @@ struct WorkspaceRetargetResponse {
 #[derive(Debug, Deserialize)]
 struct ActiveTabSessionStateV1 {
     #[serde(default)]
+    focus_context: String,
+    #[serde(default)]
     sidebar_yazi: Option<SessionSidebarYazi>,
 }
 
@@ -240,6 +242,21 @@ pub(crate) fn parse_active_sidebar_state(raw: &str) -> Option<SidebarState> {
     })
 }
 
+pub(crate) fn sidebar_focused_cwd_from_json(raw: &str) -> Option<String> {
+    let parsed = serde_json::from_str::<ActiveTabSessionStateV1>(raw).ok()?;
+    if parsed.focus_context.trim() != "sidebar" {
+        return None;
+    }
+
+    let sidebar = parsed.sidebar_yazi?;
+    let cwd = sidebar.cwd.trim();
+    if cwd.is_empty() {
+        return None;
+    }
+
+    Some(cwd.to_string())
+}
+
 // Test lane: default
 #[cfg(test)]
 mod tests {
@@ -302,5 +319,18 @@ mod tests {
                 cwd: "/home/plugin".into(),
             })
         );
+    }
+
+    // Regression: popup commands launched from the Yazi sidebar use Yazi's active directory, not the sidebar process cwd.
+    #[test]
+    fn sidebar_focused_cwd_parser_requires_sidebar_focus() {
+        let sidebar_focused = r#"{"schema_version":1,"focus_context":"sidebar","sidebar_yazi":{"yazi_id":"plugin-yazi-id","cwd":"/repo/subdir"},"workspace":{"root":"/repo","source":"explicit"}}"#;
+        let editor_focused = r#"{"schema_version":1,"focus_context":"editor","sidebar_yazi":{"yazi_id":"plugin-yazi-id","cwd":"/repo/subdir"},"workspace":{"root":"/repo","source":"explicit"}}"#;
+
+        assert_eq!(
+            sidebar_focused_cwd_from_json(sidebar_focused),
+            Some("/repo/subdir".to_string())
+        );
+        assert_eq!(sidebar_focused_cwd_from_json(editor_focused), None);
     }
 }

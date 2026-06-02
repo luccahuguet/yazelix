@@ -3267,7 +3267,7 @@ keybinds {
         assert_eq!(popup_commands[BTM_POPUP_COMMAND_KEY], vec!["btm"]);
     }
 
-    // Regression: generated popup specs must route external tools through `yzx run` so they inherit the canonical EDITOR/VISUAL runtime env.
+    // Regression: generated popup specs must route external tools through `popup_run` so they inherit runtime env and Yazi-sidebar cwd.
     #[test]
     fn yzpp_popup_specs_use_distinct_popup_commands() {
         let block = render_yzpp_plugin_block(
@@ -3282,7 +3282,7 @@ keybinds {
 
         assert!(block.contains("bottom_popup {"));
         assert!(block.contains("command \"/opt/yazelix/shells/posix/yzx_cli.sh\""));
-        assert!(block.contains("arg_1 \"run\""));
+        assert!(block.contains("arg_1 \"popup_run\""));
         assert!(block.contains("arg_2 \"lazygit\""));
         assert!(block.contains("top_popup {"));
         assert!(block.contains("arg_1 \"config\""));
@@ -3342,7 +3342,7 @@ keybinds {
         assert!(block.contains("pane_title \"yzx_btm\""));
         assert!(block.contains("command_marker \"yzx_btm\""));
         assert!(block.contains("arg_2 \"btm\""));
-        assert!(block.contains("arg_1 \"run\""));
+        assert!(block.contains("arg_1 \"popup_run\""));
         assert!(block.contains("arg_2 \"lazygit\""));
         assert!(block.contains("width_percent \"82\""));
         assert!(block.contains("height_percent \"76\""));
