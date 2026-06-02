@@ -225,6 +225,7 @@ fn resolve_lazygit_config_file(
                 .split(',')
                 .map(str::trim)
                 .filter(|path| !path.is_empty())
+                .filter(|path| !is_yazelix_lazygit_runtime_config(path))
                 .map(ToOwned::to_owned),
         );
     } else {
@@ -240,6 +241,11 @@ fn resolve_lazygit_config_file(
     }
 
     Some(files.join(","))
+}
+
+fn is_yazelix_lazygit_runtime_config(path: &str) -> bool {
+    path.trim_end_matches('/')
+        .ends_with("/configs/lazygit/yazelix_config.yml")
 }
 
 fn stable_dedupe(entries: Vec<String>) -> Vec<String> {

@@ -316,6 +316,60 @@ fn runtime_env_compute_preserves_existing_lazygit_config_file_list() {
     );
 }
 
+// Defends: updated runtimes must not inherit stale Yazelix LazyGit config files from already-open shells.
+#[test]
+fn runtime_env_compute_strips_inherited_yazelix_lazygit_configs() {
+    let tmp = tempdir().unwrap();
+    let runtime_dir = tmp.path().join("runtime");
+    let old_runtime_dir = tmp.path().join("old_runtime");
+    let home_dir = tmp.path().join("home");
+    let runtime_lazygit_config = runtime_dir
+        .join("configs")
+        .join("lazygit")
+        .join("yazelix_config.yml");
+    let old_runtime_lazygit_config = old_runtime_dir
+        .join("configs")
+        .join("lazygit")
+        .join("yazelix_config.yml");
+    let user_lazygit_config = home_dir.join(".config").join("lazygit").join("config.yml");
+
+    fs::create_dir_all(runtime_lazygit_config.parent().unwrap()).unwrap();
+    fs::create_dir_all(old_runtime_lazygit_config.parent().unwrap()).unwrap();
+    fs::create_dir_all(user_lazygit_config.parent().unwrap()).unwrap();
+    fs::write(&runtime_lazygit_config, YAZELIX_LAZYGIT_CONFIG).unwrap();
+    fs::write(&old_runtime_lazygit_config, "os:\n  editPreset: helix\n").unwrap();
+    fs::write(&user_lazygit_config, "gui:\n  showIcons: true\n").unwrap();
+
+    let output = yzx_core_command()
+        .arg("runtime-env.compute")
+        .arg("--request-json")
+        .arg(
+            json!({
+                "runtime_dir": runtime_dir,
+                "home_dir": home_dir,
+                "current_lazygit_config_file": format!(
+                    "{},{},{}",
+                    old_runtime_lazygit_config.to_string_lossy(),
+                    old_runtime_lazygit_config.to_string_lossy(),
+                    user_lazygit_config.to_string_lossy(),
+                )
+            })
+            .to_string(),
+        )
+        .output()
+        .unwrap();
+
+    let envelope: Value = ok_envelope(&output);
+    assert_eq!(
+        envelope["data"]["runtime_env"]["LG_CONFIG_FILE"],
+        format!(
+            "{},{}",
+            runtime_lazygit_config.to_string_lossy(),
+            user_lazygit_config.to_string_lossy()
+        )
+    );
+}
+
 // Defends: non-Helix editor.command values must not be overridden by Yazelix's LazyGit Helix preset.
 #[test]
 fn runtime_env_compute_does_not_force_lazygit_helix_for_neovim() {
