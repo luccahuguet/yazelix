@@ -527,6 +527,7 @@ const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
     rust_control_family("onboard", ONBOARD_FAMILY_COMMANDS),
     rust_control_family("run", RUN_FAMILY_COMMANDS),
     rust_control_family("popup", POPUP_FAMILY_COMMANDS),
+    rust_control_family("popup_run", &[]),
     rust_control_family("sidebar", SIDEBAR_FAMILY_COMMANDS),
     rust_control_family("reveal", REVEAL_FAMILY_COMMANDS),
     rust_control_family("reset", RESET_FAMILY_COMMANDS),
@@ -1008,6 +1009,10 @@ mod tests {
 
         let menu_argv = [String::from("menu")];
         let route = classify_yzx_root_route(&menu_argv).unwrap();
+        assert!(matches!(route, YzxPublicRootRoute::RustControl));
+
+        let popup_run_argv = [String::from("popup_run"), String::from("--help")];
+        let route = classify_yzx_root_route(&popup_run_argv).unwrap();
         assert!(matches!(route, YzxPublicRootRoute::RustControl));
     }
 
