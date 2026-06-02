@@ -57,28 +57,28 @@ The current `git+file://` default Ghostty package measured:
 
 | Shape | Build target | Closure size | Paths | Notes |
 | --- | --- | ---: | ---: | --- |
-| Default `#yazelix` | `git+file://...#packages.x86_64-linux.yazelix` | 4.1 GiB | 884 | Full bundled runtime |
-| Lean package-builder profile | `lib.${system}.mkYazelix` | 3.2 GiB | 509 | Host-sources editor/sidebar/helper tools, disables optional helpers, omits cursor and screen components |
+| Default `#yazelix` | `.#packages.x86_64-linux.yazelix` | 3.1 GiB | 820 | Full bundled runtime with 64-bit-only nixGL wrappers |
+| Lean package-builder profile | `lib.${system}.mkYazelix` | 2.2 GiB | 445 | Host-sources editor/sidebar/helper tools, disables optional helpers, omits cursor and screen components |
 
-The lean profile saved about 898 MiB of local closure compared with the measured default package. It still includes about 2.0 GiB of Linux `nixGLMesa` closure, so graphics wrapper ownership remains the largest unresolved Linux storage question.
+The lean profile saved about 898 MiB of local closure compared with the measured default package. It still includes about 1.1 GiB of Linux `nixGLMesa` closure, so graphics wrapper ownership remains a major remaining Linux storage question.
 
 Largest default direct references by closure:
 
 | Direct reference | Closure |
 | --- | ---: |
-| runtime tree | 4.1 GiB |
-| `nixGLMesa` | 2.0 GiB |
+| runtime tree | 3.1 GiB |
 | Ghostty | 1.1 GiB |
+| `nixGLMesa` | 1.1 GiB |
 | Yazi wrapper | 504 MiB |
 | `mise` | 498 MiB |
 | `git` | 374 MiB |
 | Yazelix Helix | 328 MiB |
 
-The installed `yzx` on the maintainer host measured 3.7 GiB with the same dominant duplicate families: two LLVM libs at about 1.1 GiB together, two Mesa outputs at about 537 MiB together, and two Python outputs at about 201 MiB together.
+Disabling 32-bit nixGL support removes the large duplicate Mesa/LLVM families from the default package closure. The remaining duplicate store basenames in the measured default package are small compared with the old 32-bit wrapper duplication.
 
 ## Linux Graphics Wrappers
 
-The Linux runtime registry currently imports `nixGL` when the platform is Linux and the flake input is present. It adds `nixgl_mesa` for Linux runtimes and `nixvulkan_mesa` for Ratty and Yazelix Terminal package variants.
+The Linux runtime registry currently imports `nixGL` when the platform is Linux and the flake input is present, with `enable32bits = false` and `enableIntelX86Extensions = false`. It adds 64-bit-only `nixgl_mesa` for Linux runtimes and 64-bit-only `nixvulkan_mesa` for Ratty and Yazelix Terminal package variants.
 
 Current launch behavior:
 
@@ -90,8 +90,9 @@ Measured yzxterm runtime:
 
 | Shape | Closure |
 | --- | ---: |
-| Default yzxterm package | 3.7 GiB |
-| Combined direct `nixGLMesa` plus `nixVulkanIntel` wrapper closures | 2.1 GiB |
+| Previous combined GL plus Vulkan wrappers with 32-bit support | 2.1 GiB |
+| Current combined 64-bit-only GL plus Vulkan wrappers | 1.1 GiB |
+| Current default yzxterm package | 2.7 GiB |
 | Approximate no-wrapper yzxterm closure if both wrapper closures were host-sourced | 1.7 GiB |
 
 The option surface should be explicit instead of hidden behind `runtime_tool_sources`: a future package option should choose a graphics wrapper source such as bundled, host, or none, with launch rendering and doctor diagnostics tested per terminal variant. Default behavior should not change until desktop launch reliability is preserved.
@@ -133,13 +134,10 @@ The publish workflow builds selected `x86_64-linux` outputs. Local incremental N
 | `yazelix_kgp_yazi` | 77 MiB | 77 MiB | Keep publishing explicitly for the expensive KGP Yazi output |
 | `yazelix_kgp_zellij` | 102 MiB | 56 MiB | Keep publishing explicitly for the expensive KGP Zellij output |
 | `yazelix_helix` | 328 MiB | 282 MiB | Keep publishing explicitly for the expensive Helix fork output |
-| `yazelix` | 4.1 GiB | 3.7 GiB | Keep: main supported install path |
-| `yazelix_ghostty` | 4.1 GiB | 0 B | Remove from explicit publish list; same output as `yazelix` in the measured revision |
-| `yazelix_wezterm` | 3.8 GiB | 232 MiB | Keep: supported alternate runtime with real unique closure |
-| `yazelix_agent_tools` | 4.1 GiB | 0 B | Remove from explicit publish list; same output as `yazelix` in the measured revision |
-| `yazelix_screen` | 48 MiB | 0 B | Remove from explicit publish list; already in the default `yazelix` closure in the measured order |
+| `yazelix` | 3.1 GiB | 2.7 GiB | Keep: main supported install path |
+| `yazelix_wezterm` | 2.8 GiB | 232 MiB | Keep: supported alternate runtime with real unique closure |
 
-The resulting workflow trim reduces redundant CI declarations and repeated output builds, not measured unique storage for the current revision. Further storage relief should come from shrinking the default runtime closure, especially `nixGL` wrappers and large host-tool-manager references, and from Cachix retention policy.
+The previous workflow also listed `yazelix_ghostty`, `yazelix_agent_tools`, and `yazelix_screen`; those measured as zero incremental unique NAR in workflow order and are no longer explicit publish targets. Further storage relief should come from shrinking the default runtime closure, especially host-tool-manager references, and from Cachix retention policy.
 
 Cachix-side policy from the current docs:
 

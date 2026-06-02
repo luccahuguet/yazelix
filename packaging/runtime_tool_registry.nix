@@ -54,8 +54,8 @@ let
     if pkgs.stdenv.hostPlatform.isLinux && (nixgl != null) then
       import "${nixgl}/default.nix" {
         pkgs = pkgs;
-        enable32bits = pkgs.stdenv.hostPlatform.isx86_64;
-        enableIntelX86Extensions = pkgs.stdenv.hostPlatform.isx86_64;
+        enable32bits = false;
+        enableIntelX86Extensions = false;
       }
     else
       null;

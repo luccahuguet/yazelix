@@ -208,7 +208,7 @@ For a smaller advanced Home Manager install, host-source tools you already manag
 
 This profile keeps the packaged terminal, Nushell, Zellij, Nix, POSIX helpers, and Linux graphics wrappers bundled. It expects host `PATH` to provide every `host` command, and `yzx doctor` reports missing host-sourced commands after `home-manager switch`
 
-Measured on `x86_64-linux` on June 2, 2026, this package-builder shape reduced the default Ghostty package closure from about 4.1 GiB to about 3.2 GiB. It still carries the bundled Linux `nixGLMesa` wrapper closure, so graphics wrapper ownership remains the largest remaining Linux storage cost
+Measured on `x86_64-linux` on June 2, 2026, this package-builder shape reduced the default Ghostty package closure from about 3.1 GiB to about 2.2 GiB. It still carries the bundled Linux `nixGLMesa` wrapper closure, so graphics wrapper ownership remains a major remaining Linux storage cost
 
 Feature tradeoffs:
 
