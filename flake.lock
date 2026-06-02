@@ -462,11 +462,11 @@
         "systems": "systems_2"
       },
       "locked": {
-        "lastModified": 1780352534,
-        "narHash": "sha256-4RG0VKYmOh9R6GAeN8YWwnJ9w8ai3BiOTg0mkdKxk2s=",
+        "lastModified": 1780358624,
+        "narHash": "sha256-yneAeyNTUHNfa2jiwroe4x4tN9ChyfClaL9fy08P+6U=",
         "owner": "luccahuguet",
         "repo": "yazelix-terminal",
-        "rev": "0bc85ba96d82a2d986e50c879425ef606c29163e",
+        "rev": "0a59f9846d86fde06f60ebba8d8387f821d6ee23",
         "type": "github"
       },
       "original": {
