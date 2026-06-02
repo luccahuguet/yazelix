@@ -26,6 +26,11 @@ let
     "yzxterm"
     "wezterm"
   ] ++ lib.optional pkgs.stdenv.hostPlatform.isLinux "ratty";
+  yzxtermProfiles = [
+    "full"
+    "baseline"
+    "shaders"
+  ];
   terminalPackageFor =
     runtimeVariant:
     if runtimeVariant == "ghostty" then
@@ -86,6 +91,14 @@ let
     lib.unique (map terminalPackageFor variants);
   componentEnabled = name: cfg.components.${name} or true;
   runtimeToolSource = name: cfg.runtime_tool_sources.${name} or "bundled";
+  yzxtermProfileEnv =
+    lib.optionalString (cfg.yzxterm_profile != "full")
+      "YAZELIX_TERMINAL_PROFILE=${cfg.yzxterm_profile}";
+  yzxtermProfileExport =
+    lib.optionalString (cfg.yzxterm_profile != "full")
+      "export ${yzxtermProfileEnv}";
+  yzxtermDesktopExec =
+    "${lib.optionalString (cfg.yzxterm_profile != "full") "env ${yzxtermProfileEnv} "}${config.home.profileDirectory}/bin/yzx desktop launch";
   agentUsageProgramNames = [
     "tokenusage"
   ];
@@ -485,6 +498,19 @@ in
         - "wezterm": explicit alternate packaged runtime
         - "yzxterm": experimental Yazelix-owned Rio fork with Rio trail cursor defaults and opt-in shader support
         - "ratty": experimental Linux packaged runtime with Ratty and the Yazelix Zellij/Yazi Kitty graphics bridge
+      '';
+    };
+
+    yzxterm_profile = mkOption {
+      type = types.enum yzxtermProfiles;
+      default = "full";
+      description = ''
+        Yazelix Terminal profile used by generated runtime configs and the
+        Linux desktop entry.
+
+        - "full": Rio trail cursor defaults without custom shaders
+        - "baseline": no cursor effects
+        - "shaders": Rio trail cursor plus generated Yazelix cursor shaders
       '';
     };
 
@@ -939,6 +965,7 @@ in
         export YAZELIX_CONFIG_DIR="${managedConfigRoot}"
         export YAZELIX_STATE_DIR="${stateRoot}"
         export YAZELIX_LOGS_DIR="${logsPath}"
+        ${yzxtermProfileExport}
 
         $DRY_RUN_CMD ${runtimeYzxCore} runtime-materialization.repair --from-env --force --summary
         $DRY_RUN_CMD env YAZELIX_QUIET_MODE=true ${runtimeYzxControl} generate_shell_initializers
@@ -950,7 +977,7 @@ in
         xdg.desktopEntries.yazelix = {
           name = "Yazelix";
           comment = "Yazi + Zellij + Helix integrated terminal environment";
-          exec = "${config.home.profileDirectory}/bin/yzx desktop launch";
+          exec = yzxtermDesktopExec;
           icon = "yazelix";
           categories = [ "Development" ];
           type = "Application";

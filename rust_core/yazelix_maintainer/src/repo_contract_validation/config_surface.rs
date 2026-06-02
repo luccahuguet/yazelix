@@ -362,6 +362,7 @@ fn load_contract_keybinding_defaults(
 
 fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<String>, String> {
     let entry = load_home_manager_desktop_entry_contract(repo_root)?;
+    let shader_entry = load_home_manager_desktop_entry_contract_with_profile(repo_root, "shaders")?;
     let is_present = entry
         .get("present")
         .and_then(JsonValue::as_bool)
@@ -391,6 +392,16 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         errors.push(format!(
             "Home Manager desktop entry Exec mismatch: expected /tmp/profile/bin/yzx desktop launch, got {}",
             format_json_value(&JsonValue::String(actual_exec.to_string()))
+        ));
+    }
+    let shader_exec = shader_entry
+        .get("exec")
+        .and_then(JsonValue::as_str)
+        .unwrap_or_default();
+    if shader_exec != "env YAZELIX_TERMINAL_PROFILE=shaders /tmp/profile/bin/yzx desktop launch" {
+        errors.push(format!(
+            "Home Manager shader yzxterm profile desktop entry Exec mismatch: expected env YAZELIX_TERMINAL_PROFILE=shaders /tmp/profile/bin/yzx desktop launch, got {}",
+            format_json_value(&JsonValue::String(shader_exec.to_string()))
         ));
     }
 
@@ -624,14 +635,28 @@ fn standalone_home_manager_eval_fixture_module(
 fn load_home_manager_desktop_entry_contract(
     repo_root: &Path,
 ) -> Result<JsonMap<String, JsonValue>, String> {
-    let expr = build_home_manager_desktop_entry_expr(repo_root);
+    let expr = build_home_manager_desktop_entry_expr(repo_root, None);
     let result = run_nix_eval(repo_root, &expr)?;
     result.as_object().cloned().ok_or_else(|| {
         "Home Manager desktop-entry evaluation did not return a JSON object".to_string()
     })
 }
 
-fn build_home_manager_desktop_entry_expr(repo_root: &Path) -> String {
+fn load_home_manager_desktop_entry_contract_with_profile(
+    repo_root: &Path,
+    yzxterm_profile: &str,
+) -> Result<JsonMap<String, JsonValue>, String> {
+    let expr = build_home_manager_desktop_entry_expr(repo_root, Some(yzxterm_profile));
+    let result = run_nix_eval(repo_root, &expr)?;
+    result.as_object().cloned().ok_or_else(|| {
+        "Home Manager desktop-entry evaluation did not return a JSON object".to_string()
+    })
+}
+
+fn build_home_manager_desktop_entry_expr(
+    repo_root: &Path,
+    yzxterm_profile: Option<&str>,
+) -> String {
     let module_path =
         escape_nix_string(&repo_root.join(MODULE_RELATIVE_PATH).display().to_string());
     let mut lines = vec![
@@ -644,6 +669,12 @@ fn build_home_manager_desktop_entry_expr(repo_root: &Path) -> String {
         format!("      (builtins.toPath \"{}\")", module_path),
     ];
     lines.extend(standalone_home_manager_eval_fixture_module(true, true));
+    if let Some(profile) = yzxterm_profile {
+        lines.push(format!(
+            "      {{ config.programs.yazelix.yzxterm_profile = \"{}\"; }}",
+            escape_nix_string(profile)
+        ));
+    }
     lines.extend([
         "    ];".to_string(),
         "  };".to_string(),

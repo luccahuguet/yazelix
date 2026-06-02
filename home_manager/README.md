@@ -66,6 +66,7 @@ If you already have your own Home Manager flake, the minimal setup is:
   programs.yazelix = {
     enable = true;
     runtime_variant = "ghostty"; # Default; use "kitty", "yzxterm", "wezterm", or Linux-only "ratty" for alternate packaged terminal paths
+    yzxterm_profile = "full"; # Default; use "baseline" or "shaders" for Yazelix Terminal profile selection
     extra_terminal_variants = [ ]; # Optional: install additional terminal packages such as "yzxterm", "ghostty", or "kitty"
     # Customize other options as needed - see example.nix
     # Set manage_config = true if you want Home Manager to own settings.jsonc
@@ -80,6 +81,7 @@ To keep Yazelix Terminal as the primary runtime while also installing Ghostty as
   programs.yazelix = {
     enable = true;
     runtime_variant = "yzxterm";
+    yzxterm_profile = "shaders";
     extra_terminal_variants = [ "ghostty" "kitty" ];
 
     # Only needed when manage_config = true and you want an explicit order
@@ -93,7 +95,7 @@ To keep Yazelix Terminal as the primary runtime while also installing Ghostty as
 }
 ```
 
-`runtime_variant` controls the primary packaged Yazelix runtime. `extra_terminal_variants` installs only additional terminal emulator commands into the Home Manager profile, so it does not collide with the profile-owned `yzx` wrapper
+`runtime_variant` controls the primary packaged Yazelix runtime. `yzxterm_profile` controls Yazelix Terminal's generated profile for activation and desktop launches: `full` keeps Rio trail cursor without custom shaders, `baseline` disables effects, and `shaders` enables the generated Yazelix cursor shader chain. `extra_terminal_variants` installs only additional terminal emulator commands into the Home Manager profile, so it does not collide with the profile-owned `yzx` wrapper
 
 To save space by using tools you already manage on your host, set runtime tool sources per tool:
 
