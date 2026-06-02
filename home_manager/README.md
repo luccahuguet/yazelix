@@ -152,6 +152,76 @@ Coarser Yazelix subsystems use `components`. Disabling `screen` requires skippin
 }
 ```
 
+### Lean Runtime Profile
+
+For a smaller advanced Home Manager install, host-source tools you already manage outside Yazelix and disable optional helpers you do not use:
+
+```nix
+{
+  programs.yazelix = {
+    enable = true;
+    manage_config = true;
+
+    runtime_tool_sources = {
+      helix = "host";
+      steel = "off";
+      neovim = "host";
+      yazi = "host";
+      fzf = "host";
+      zoxide = "host";
+      starship = "host";
+      carapace = "host";
+      macchina = "off";
+      mise = "host";
+      tombi = "host";
+      git = "host";
+      jq = "host";
+      fd = "host";
+      ripgrep = "host";
+      lazygit = "host";
+      bottom = "host";
+      p7zip = "off";
+      poppler = "off";
+      resvg = "off";
+    };
+
+    components = {
+      cursors = false;
+      screen = false;
+    };
+
+    show_macchina_on_welcome = false;
+    skip_welcome_screen = true;
+    screen_saver_enabled = false;
+
+    zellij_widget_tray = [
+      "editor"
+      "shell"
+      "term"
+      "cpu"
+      "ram"
+    ];
+    agent_usage_programs = [ ];
+  };
+}
+```
+
+This profile keeps the packaged terminal, Nushell, Zellij, Nix, POSIX helpers, and Linux graphics wrappers bundled. It expects host `PATH` to provide every `host` command, and `yzx doctor` reports missing host-sourced commands after `home-manager switch`
+
+Measured on `x86_64-linux` on June 2, 2026, this package-builder shape reduced the default Ghostty package closure from about 4.1 GiB to about 3.2 GiB. It still carries the bundled Linux `nixGLMesa` wrapper closure, so graphics wrapper ownership remains the largest remaining Linux storage cost
+
+Feature tradeoffs:
+
+- Host Yazi may not preserve Yazelix's bundled KGP image-preview behavior
+- Host Helix may not match the Yazelix Steel fork behavior
+- `steel = "off"` removes Steel authoring commands
+- `p7zip`, `poppler`, and `resvg` disable archive, PDF, and SVG preview helpers
+- `components.screen = false` removes `yzx screen` and requires welcome and screen-saver behavior to stay disabled
+- `components.cursors = false` removes Yazelix cursor shader assets and cursor facts report `n/a`
+- `agent_usage_programs = [ ]` is correct only when `claude_usage` and `codex_usage` are removed from `zellij_widget_tray` or intentionally host-provided
+
+See [Package sizes](../docs/package_sizes.md) for the reporter command and current closure measurements
+
 Optional: use Yazelix's public `x86_64-linux` Cachix cache for faster package builds and Home Manager switches. The cache includes the expensive Yazelix Helix, KGP Yazi, and KGP Zellij runtime packages when CI has published the current revision:
 
 ```nix

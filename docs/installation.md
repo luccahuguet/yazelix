@@ -377,6 +377,8 @@ Home Manager is the recommended granular path:
 }
 ```
 
+For a validated advanced storage-saving profile, see the [Home Manager lean runtime profile](../home_manager/README.md#lean-runtime-profile). It keeps the packaged terminal and bootstrap runtime bundled while host-sourcing large leaf tools and disabling optional preview/helper components.
+
 Advanced flake users can build the same shape directly:
 
 ```nix
