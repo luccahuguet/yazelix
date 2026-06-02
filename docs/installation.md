@@ -102,11 +102,17 @@ eval-cores = 0
 
 Set `eval-cores` to 0 to use all cores, or 1 to disable.
 
-### Optional: Use the Yazelix Binary Cache
+### Use the Yazelix Binary Cache
 
-Yazelix publishes `x86_64-linux` package builds to the public Cachix cache at `https://yazelix.cachix.org`. The cache includes the expensive Yazelix Helix, KGP Yazi, and KGP Zellij runtime packages when CI has published the current revision. The cache is optional: Nix still builds from source when the cache is unavailable or does not contain the requested output.
+Yazelix publishes `x86_64-linux` package builds to the public Cachix cache at `https://yazelix.cachix.org`. The cache includes the expensive Yazelix Helix, KGP Yazi, and KGP Zellij runtime packages when CI has published the current revision. The flake advertises this cache through `nixConfig`, so interactive Nix commands can prompt you to accept the substituter and trusted public key. After you accept it, Nix uses the cache automatically for matching store paths. The cache is optional: Nix still builds from source when the cache is unavailable or does not contain the requested output.
 
-Add the cache to your Nix settings before installing or updating Yazelix:
+For noninteractive installs, pass `--accept-flake-config` to the Nix command that evaluates the Yazelix flake:
+
+```bash
+nix profile add --accept-flake-config github:luccahuguet/yazelix#yazelix
+```
+
+For persistent system or Home Manager configuration, add the cache to your Nix settings:
 
 ```nix
 {

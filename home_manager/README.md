@@ -220,7 +220,7 @@ Feature tradeoffs:
 
 See [Package sizes](../docs/package_sizes.md) for the reporter command and current closure measurements
 
-Optional: use Yazelix's public `x86_64-linux` Cachix cache for faster package builds and Home Manager switches. The cache includes the expensive Yazelix Helix, KGP Yazi, and KGP Zellij runtime packages when CI has published the current revision:
+Yazelix's public `x86_64-linux` Cachix cache speeds up package builds and Home Manager switches when CI has published the current revision. The flake advertises the cache through `nixConfig`, so interactive Nix commands can prompt you to accept it. For persistent Home Manager-managed Nix configuration, add the cache explicitly:
 
 ```nix
 { pkgs, ... }: {

@@ -1,6 +1,15 @@
 {
   description = "Yazelix flake interface";
 
+  nixConfig = {
+    extra-substituters = [
+      "https://yazelix.cachix.org"
+    ];
+    extra-trusted-public-keys = [
+      "yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM="
+    ];
+  };
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     home-manager = {
