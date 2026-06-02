@@ -297,6 +297,44 @@ fn runtime_env_compute_preserves_existing_lazygit_config_file_list() {
     );
 }
 
+// Defends: non-Helix editor.command values must not be overridden by Yazelix's LazyGit Helix preset.
+#[test]
+fn runtime_env_compute_does_not_force_lazygit_helix_for_neovim() {
+    let tmp = tempdir().unwrap();
+    let runtime_dir = tmp.path().join("runtime");
+    let home_dir = tmp.path().join("home");
+    let runtime_lazygit_config = runtime_dir
+        .join("configs")
+        .join("lazygit")
+        .join("yazelix_config.yml");
+    let user_lazygit_config = home_dir.join(".config").join("lazygit").join("config.yml");
+
+    fs::create_dir_all(runtime_lazygit_config.parent().unwrap()).unwrap();
+    fs::create_dir_all(user_lazygit_config.parent().unwrap()).unwrap();
+    fs::write(&runtime_lazygit_config, "os:\n  editPreset: helix\n").unwrap();
+    fs::write(&user_lazygit_config, "gui:\n  showIcons: true\n").unwrap();
+
+    let output = yzx_core_command()
+        .arg("runtime-env.compute")
+        .arg("--request-json")
+        .arg(
+            json!({
+                "runtime_dir": runtime_dir,
+                "home_dir": home_dir,
+                "editor_command": "nvim"
+            })
+            .to_string(),
+        )
+        .output()
+        .unwrap();
+
+    let envelope: Value = ok_envelope(&output);
+    assert_eq!(envelope["data"]["editor_kind"], "neovim");
+    assert_eq!(envelope["data"]["runtime_env"]["EDITOR"], "nvim");
+    assert_eq!(envelope["data"]["runtime_env"]["VISUAL"], "nvim");
+    assert!(envelope["data"]["runtime_env"]["LG_CONFIG_FILE"].is_null());
+}
+
 // Defends: default bundled Helix uses the private raw binary behind the public managed `hx` wrapper.
 #[test]
 fn runtime_env_compute_points_default_helix_wrapper_at_private_binary() {

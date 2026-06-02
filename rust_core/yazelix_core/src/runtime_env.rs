@@ -110,7 +110,7 @@ pub fn compute_runtime_env(
                 .join("yazi"),
         )),
     );
-    if let Some(lazygit_config_file) = resolve_lazygit_config_file(request) {
+    if let Some(lazygit_config_file) = resolve_lazygit_config_file(request, &editor_kind) {
         runtime_env.insert(
             "LG_CONFIG_FILE".to_string(),
             JsonValue::String(lazygit_config_file),
@@ -196,7 +196,14 @@ fn existing_runtime_path_entries(runtime_dir: &Path) -> Vec<String> {
         .collect()
 }
 
-fn resolve_lazygit_config_file(request: &RuntimeEnvComputeRequest) -> Option<String> {
+fn resolve_lazygit_config_file(
+    request: &RuntimeEnvComputeRequest,
+    editor_kind: &str,
+) -> Option<String> {
+    if editor_kind != "helix" {
+        return None;
+    }
+
     let runtime_config = request
         .runtime_dir
         .join("configs")
