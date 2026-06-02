@@ -452,22 +452,20 @@ fn render_lesson_header(lesson: TutorLesson) -> Vec<String> {
 fn render_workspace_lesson() -> String {
     let mut lines = render_lesson_header(TutorLesson::Workspace);
     lines.push(heading("Learn"));
-    lines.push("The current tab has a workspace root. Yazelix uses that root for new panes, popup commands, and managed editor/sidebar coordination.".to_string());
+    lines.push("Start Yazelix from the folder you want to work in. That folder becomes the current tab workspace root for new panes, popup commands, and managed editor/sidebar coordination.".to_string());
     lines.push("Opening a file from Yazi into the managed editor also moves that tab's workspace root to the file's directory.".to_string());
     lines.push(String::new());
     lines.push(heading("Mini quest"));
     lines.push(format!(
-        "1. Run {} to retarget this tab's workspace root to the current directory.",
-        command_label("yzx cwd .")
+        "1. If this session is not in the folder you want, leave it and start again from that folder with {}, or use {}.",
+        command_label("yzx enter"),
+        command_label("yzx launch --path <dir>")
     ));
     lines.push(format!(
-        "2. Run {} and check the Yazi section before opening a file from the sidebar.",
-        command_label("yzx keys yazi")
+        "2. Run {} and find the workspace actions.",
+        command_label("yzx keys")
     ));
-    lines.push(format!(
-        "3. Run {} and confirm the workspace facts match the tab you expect.",
-        command_label("yzx status")
-    ));
+    lines.push("3. Use the managed Yazi sidebar to open a file in the editor.".to_string());
     lines.push(String::new());
     lines.push(format!(
         "Next lesson: {}.",
@@ -534,9 +532,15 @@ fn render_tool_tutors_lesson() -> String {
 fn run_external_command(command: &str, args: &[&str], label: &str) -> Result<i32, CoreError> {
     let status = Command::new(command).args(args).status().map_err(|_| {
         let remediation = match command {
-            "hx" => "Install Helix in the active Yazelix environment, then retry `yzx tutor hx`.",
-            "nu" => "Install Nushell in the active Yazelix environment, then retry `yzx tutor nu`.",
-            _ => "Install the required command, then retry.",
+            "hx" => format!(
+                "Install Helix in the active Yazelix environment, then retry {}.",
+                command_label("yzx tutor hx")
+            ),
+            "nu" => format!(
+                "Install Nushell in the active Yazelix environment, then retry {}.",
+                command_label("yzx tutor nu")
+            ),
+            _ => "Install the required command, then retry.".to_string(),
         };
         CoreError::classified(
             ErrorClass::Runtime,
@@ -617,9 +621,10 @@ mod tests {
 
         let lesson = render_tutor_lesson(TutorLesson::Workspace);
         assert!(lesson.contains("Mini quest"));
-        assert!(lesson.contains("yzx cwd ."));
-        assert!(lesson.contains("yzx keys yazi"));
-        assert!(lesson.contains("yzx status"));
+        assert!(lesson.contains("yzx enter"));
+        assert!(lesson.contains("yzx launch --path <dir>"));
+        assert!(lesson.contains("yzx keys"));
+        assert!(!lesson.contains("yzx cwd"));
     }
 
     // Defends: the Rust-owned `yzx screen` parser keeps the public one-style surface while reserving the welcome-only internal flags for startup callers.

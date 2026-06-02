@@ -111,7 +111,7 @@ export def build_welcome_message [
         $session_info,
         $terminal_info,
         $"($colors.yellow)⚠️  First run: Yazelix pre-seeds bundled Zellij plugin permissions before launch. If Zellij still prompts, answer yes; troubleshooting covers cache-reset recovery.($colors.reset)",
-        $"($colors.cyan)💡 Quick tips: Use Alt+Shift+H/J/K/L for the left sidebar, bottom popup, top popup, and right sidebar; use Ctrl+y and Ctrl+Shift+Y for sidebar/editor focus($colors.reset)"
+        $"($colors.cyan)💡 Quick tips: Use Alt+Shift+H/J/K/L for the left sidebar, bottom popup, top popup, and right sidebar; use Ctrl+Y and Ctrl+Shift+Y for sidebar/editor focus($colors.reset)"
     ] | where $it != ""
 }
 
