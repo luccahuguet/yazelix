@@ -1202,9 +1202,10 @@ color = "#3bd17a"
     assert!(yzxterm_config.contains("opacity = 0.9"));
     assert!(yzxterm_config.contains("opacity-cells = true"));
     assert!(yzxterm_config.contains("cursor = \"#3bd17a\""));
-    assert!(yzxterm_config.contains("cursor_trail_forest.glsl"));
-    assert!(yzxterm_config.contains("generated_effects/tail.glsl"));
-    assert!(yzxterm_config.contains("generated_effects/ripple.glsl"));
+    assert!(!yzxterm_config.contains("custom-shader"));
+    assert!(!yzxterm_config.contains("cursor_trail_forest.glsl"));
+    assert!(!yzxterm_config.contains("generated_effects/tail.glsl"));
+    assert!(!yzxterm_config.contains("generated_effects/ripple.glsl"));
     assert!(!yzxterm_config.contains("/nix/store/demo/cursor_trail_dusk.glsl"));
     assert!(
         fixture
@@ -1217,9 +1218,9 @@ color = "#3bd17a"
     );
 }
 
-// Regression: yzxterm-only sessions must still materialize Yazelix cursor shader assets instead of inheriting packaged default shaders.
+// Regression: yzxterm-only sessions keep active cursor color without injecting cursor shaders.
 #[test]
-fn terminal_materialization_yzxterm_only_uses_active_cursor_shaders() {
+fn terminal_materialization_yzxterm_only_uses_rio_trail_without_cursor_shaders() {
     let repo = repo_root();
     let tmp = tempdir().unwrap();
     let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
@@ -1287,10 +1288,11 @@ color = "#ffffff"
             .join("config.toml"),
     )
     .unwrap();
-    assert!(yzxterm_config.contains("cursor_trail_snow.glsl"));
-    assert!(yzxterm_config.contains("generated_effects/warp.glsl"));
-    assert!(yzxterm_config.contains("generated_effects/ripple_rectangle.glsl"));
     assert!(yzxterm_config.contains("cursor = \"#ffffff\""));
+    assert!(!yzxterm_config.contains("custom-shader"));
+    assert!(!yzxterm_config.contains("cursor_trail_snow.glsl"));
+    assert!(!yzxterm_config.contains("generated_effects/warp.glsl"));
+    assert!(!yzxterm_config.contains("generated_effects/ripple_rectangle.glsl"));
     assert!(!yzxterm_config.contains("cursor_trail_dusk.glsl"));
 }
 

@@ -483,7 +483,7 @@ in
         - "ghostty": default packaged runtime with Yazelix cursor trails, Ghostty config effects, and Yazi image previews through Zellij
         - "kitty": packaged Kitty runtime with generated Kitty config and the Yazelix Zellij/Yazi Kitty graphics bridge
         - "wezterm": explicit alternate packaged runtime
-        - "yzxterm": experimental Yazelix-owned Rio fork with Ghostty-style cursor shaders
+        - "yzxterm": experimental Yazelix-owned Rio fork with Rio trail cursor defaults and opt-in shader support
         - "ratty": experimental Linux packaged runtime with Ratty and the Yazelix Zellij/Yazi Kitty graphics bridge
       '';
     };

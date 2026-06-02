@@ -127,10 +127,12 @@ Out of scope:
   process boundary, marks the child environment for Yazelix Terminal
   sanitization, and does not add an outer Yazelix graphics wrapper around the
   child wrapper. Generated Yazelix Terminal config is derived from the packaged
-  child `config.toml` and injects the current `terminal.transparency` as
-  `[window].opacity` with cell opacity enabled whenever transparency is not
-  `none`. The generated yzxterm config is Yazelix-owned state; it must not
-  become the host Rio config for plain `rio` launches.
+  child `config.toml`, strips `custom-shader` entries from the generated
+  default so Rio trail cursor remains the default cursor animation, and injects
+  the current `terminal.transparency` as `[window].opacity` with cell opacity
+  enabled whenever transparency is not `none`. The generated yzxterm config is
+  Yazelix-owned state; it must not become the host Rio config for plain `rio`
+  launches.
 - Verification: automated Rust tests in
   `rust_core/yazelix_core/src/runtime_contract.rs`
   (`launch_preflight_maps_yzxterm_to_child_wrapper_command`),

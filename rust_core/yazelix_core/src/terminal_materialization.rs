@@ -225,7 +225,6 @@ fn generate_yzxterm_config(
     runtime_dir: &Path,
     transparency: &str,
     cursor_state: Option<&TerminalCursorState>,
-    custom_shader_paths: &[PathBuf],
 ) -> Result<String, CoreError> {
     let package_config = runtime_dir
         .join("share")
@@ -303,33 +302,7 @@ fn generate_yzxterm_config(
                 serde_json::json!({}),
             )
         })?;
-    if custom_shader_paths.is_empty() {
-        renderer.remove("custom-shader");
-    } else {
-        for shader_path in custom_shader_paths {
-            if !shader_path.is_file() {
-                return Err(CoreError::classified(
-                    crate::bridge::ErrorClass::Runtime,
-                    "missing_yzxterm_cursor_shader",
-                    format!(
-                        "The generated Yazelix Terminal cursor shader does not exist: {}.",
-                        shader_path.display()
-                    ),
-                    "Regenerate terminal configs with `yzx refresh` or relaunch Yazelix so cursor shader assets are rebuilt.",
-                    serde_json::json!({ "path": shader_path.to_string_lossy() }),
-                ));
-            }
-        }
-        renderer.insert(
-            "custom-shader".to_string(),
-            toml::Value::Array(
-                custom_shader_paths
-                    .iter()
-                    .map(|path| toml::Value::String(path.to_string_lossy().into_owned()))
-                    .collect(),
-            ),
-        );
-    }
+    renderer.remove("custom-shader");
 
     if let Some(color_hex) = cursor_state.and_then(|state| state.selected_color_hex.as_deref()) {
         let colors = table
@@ -576,24 +549,16 @@ pub fn generate_terminal_materialization(
                     )
                 })?;
                 let path = yzxterm_dir.join("config.toml");
-                let (cursor_state, custom_shader_paths) = if cursors_enabled {
+                let cursor_state = if cursors_enabled {
                     let data =
                         ensure_terminal_cursor_materialization(&mut cursor_data, &cursor_request)?;
-                    (
-                        Some(&data.cursor_state),
-                        data.shader_paths.iter().map(PathBuf::from).collect(),
-                    )
+                    Some(&data.cursor_state)
                 } else {
-                    (None, Vec::new())
+                    None
                 };
                 write_text_atomic(
                     &path,
-                    &generate_yzxterm_config(
-                        &request.runtime_dir,
-                        transparency,
-                        cursor_state,
-                        &custom_shader_paths,
-                    )?,
+                    &generate_yzxterm_config(&request.runtime_dir, transparency, cursor_state)?,
                 )?;
                 generated.push(TerminalGeneratedConfig {
                     terminal: "yzxterm".to_string(),

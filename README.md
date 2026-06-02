@@ -127,7 +127,7 @@ Configuration lives in JSONC at `~/.config/yazelix/settings.jsonc`, with `yzx co
 
 First-party child packages own focused pieces of the stack: screen rendering, Ghostty cursors, the Zellij bar, the popup plugin, the pane orchestrator wasm, and Yazi assets. The normal Yazelix package wires them together automatically
 
-Ghostty is the default packaged terminal for cursor trails and Yazi image previews, with temporary Yazelix Zellij/Yazi forks carrying the Kitty graphics passthrough until upstream support is enough to drop them. Yazelix Terminal is the experimental first-party terminal path, with generated transparency config and packaged Ghostty-style cursor shader support. WezTerm is the stable packaged alternate, Ratty is an experimental Linux packaged alternate, and Kitty is available as a packaged runtime variant or as a host `PATH` terminal
+Ghostty is the default packaged terminal for cursor trails and Yazi image previews, with temporary Yazelix Zellij/Yazi forks carrying the Kitty graphics passthrough until upstream support is enough to drop them. Yazelix Terminal is the experimental first-party terminal path, with generated transparency config, Rio trail cursor defaults, and opt-in Ghostty-compatible shader support. WezTerm is the stable packaged alternate, Ratty is an experimental Linux packaged alternate, and Kitty is available as a packaged runtime variant or as a host `PATH` terminal
 
 Get everything running in less than 10 minutes with no extra dependencies beyond Nix
 
@@ -302,7 +302,7 @@ If you followed [step 3 in the installation guide](./docs/installation.md#step-3
 
 **Terminal Emulator Selection:**
 - **Ghostty** (default packaged preference): Modern, fast terminal written in Zig with Yazelix cursor trails and Yazi image previews
-- **Yazelix Terminal** (experimental first-party packaged path): Rio-derived Rust terminal with generated transparency config and packaged Ghostty-style cursor shader support
+- **Yazelix Terminal** (experimental first-party packaged path): Rio-derived Rust terminal with generated transparency config, Rio trail cursor defaults, and opt-in Ghostty-compatible shader support
 - **WezTerm** (explicit packaged alternate path): Rust terminal with strong graphics support and Sixel compatibility
 - **Ratty** (experimental Linux packaged path): GPU-rendered terminal with Kitty graphics support and inline 3D graphics
 - **Kitty** (explicit packaged alternate path): Fast, feature-rich, GPU-accelerated terminal with generated Kitty config and the Yazelix Zellij/Yazi Kitty graphics bridge
