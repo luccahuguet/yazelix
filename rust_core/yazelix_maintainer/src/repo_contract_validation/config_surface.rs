@@ -398,10 +398,20 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         .get("exec")
         .and_then(JsonValue::as_str)
         .unwrap_or_default();
+    let shader_session_profile = shader_entry
+        .get("sessionProfile")
+        .and_then(JsonValue::as_str)
+        .unwrap_or_default();
     if shader_exec != "env YAZELIX_TERMINAL_PROFILE=shaders /tmp/profile/bin/yzx desktop launch" {
         errors.push(format!(
             "Home Manager shader yzxterm profile desktop entry Exec mismatch: expected env YAZELIX_TERMINAL_PROFILE=shaders /tmp/profile/bin/yzx desktop launch, got {}",
             format_json_value(&JsonValue::String(shader_exec.to_string()))
+        ));
+    }
+    if shader_session_profile != "shaders" {
+        errors.push(format!(
+            "Home Manager shader yzxterm profile session variable mismatch: expected shaders, got {}",
+            format_json_value(&JsonValue::String(shader_session_profile.to_string()))
         ));
     }
 
@@ -624,6 +634,7 @@ fn standalone_home_manager_eval_fixture_module(
         "        options.home.packages = lib.mkOption { type = lib.types.listOf lib.types.package; default = []; };".to_string(),
         "        options.home.activation = lib.mkOption { type = lib.types.attrsOf lib.types.anything; default = {}; };".to_string(),
         "        options.home.profileDirectory = lib.mkOption { type = lib.types.str; default = \"/tmp/profile\"; };".to_string(),
+        "        options.home.sessionVariables = lib.mkOption { type = lib.types.attrsOf lib.types.str; default = {}; };".to_string(),
     ]);
     if enable_yazelix {
         lines.push("        config.programs.yazelix.enable = true;".to_string());
@@ -682,6 +693,8 @@ fn build_home_manager_desktop_entry_expr(
         "  present = builtins.hasAttr \"yazelix\" eval.config.xdg.desktopEntries;".to_string(),
         "  exec = eval.config.xdg.desktopEntries.yazelix.exec or \"\";".to_string(),
         "  terminal = eval.config.xdg.desktopEntries.yazelix.terminal or false;".to_string(),
+        "  sessionProfile = eval.config.home.sessionVariables.YAZELIX_TERMINAL_PROFILE or \"\";"
+            .to_string(),
         "}".to_string(),
     ]);
     lines.join("\n")

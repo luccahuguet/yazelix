@@ -925,6 +925,9 @@ in
     {
       # Expose the packaged Yazelix runtime through the Home Manager profile.
       home.packages = [ yazelixPackage ] ++ extraTerminalVariantPackages;
+      home.sessionVariables = mkIf (cfg.yzxterm_profile != "full") {
+        YAZELIX_TERMINAL_PROFILE = mkDefault cfg.yzxterm_profile;
+      };
 
       programs.yazelix.terminals = mkDefault (
         runtimeDefaultTerminals cfg.runtime_variant cfg.extra_terminal_variants
