@@ -14,6 +14,8 @@ mod support;
 use support::commands::yzx_core_command;
 use support::envelopes::{error_envelope, ok_envelope};
 
+const YAZELIX_LAZYGIT_CONFIG: &str = "os:\n  edit: '$EDITOR -- {{filename}}'\n  editAtLine: '$EDITOR -- {{filename}}:{{line}}'\n  editAtLineAndWait: '$EDITOR -- {{filename}}:{{line}}'\n  editInTerminal: true\n  openDirInEditor: '$EDITOR -- {{dir}}'\n";
+
 // Defends: runtime-env.compute returns one machine-readable env envelope with filtered PATH entries and managed Helix wrapping.
 // Contract: CRCP-002
 #[test]
@@ -217,7 +219,24 @@ fn runtime_env_compute_from_env_accepts_config_json() {
     );
 }
 
-// Defends: built-in Lazygit gets Yazelix's Helix edit preset without replacing the user's Lazygit config.
+// Defends: the shipped Lazygit config uses Yazelix's exported editor command instead of the literal `helix` preset command.
+#[test]
+fn shipped_lazygit_config_uses_runtime_editor_not_helix_preset() {
+    let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(std::path::Path::parent)
+        .expect("repo root");
+    let config = fs::read_to_string(repo_root.join("configs/lazygit/yazelix_config.yml")).unwrap();
+
+    assert!(config.contains("edit: '$EDITOR -- {{filename}}'"));
+    assert!(config.contains("editAtLine: '$EDITOR -- {{filename}}:{{line}}'"));
+    assert!(config.contains("editAtLineAndWait: '$EDITOR -- {{filename}}:{{line}}'"));
+    assert!(config.contains("editInTerminal: true"));
+    assert!(!config.contains("editPreset"));
+    assert!(!config.contains("helix"));
+}
+
+// Defends: built-in Lazygit gets Yazelix's runtime editor config without replacing the user's Lazygit config.
 #[test]
 fn runtime_env_compute_adds_lazygit_base_config_before_user_config() {
     let tmp = tempdir().unwrap();
@@ -231,7 +250,7 @@ fn runtime_env_compute_adds_lazygit_base_config_before_user_config() {
 
     fs::create_dir_all(runtime_lazygit_config.parent().unwrap()).unwrap();
     fs::create_dir_all(user_lazygit_config.parent().unwrap()).unwrap();
-    fs::write(&runtime_lazygit_config, "os:\n  editPreset: helix\n").unwrap();
+    fs::write(&runtime_lazygit_config, YAZELIX_LAZYGIT_CONFIG).unwrap();
     fs::write(&user_lazygit_config, "gui:\n  showIcons: true\n").unwrap();
 
     let output = yzx_core_command()
@@ -271,7 +290,7 @@ fn runtime_env_compute_preserves_existing_lazygit_config_file_list() {
 
     fs::create_dir_all(runtime_lazygit_config.parent().unwrap()).unwrap();
     fs::create_dir_all(&home_dir).unwrap();
-    fs::write(&runtime_lazygit_config, "os:\n  editPreset: helix\n").unwrap();
+    fs::write(&runtime_lazygit_config, YAZELIX_LAZYGIT_CONFIG).unwrap();
 
     let output = yzx_core_command()
         .arg("runtime-env.compute")
@@ -311,7 +330,7 @@ fn runtime_env_compute_does_not_force_lazygit_helix_for_neovim() {
 
     fs::create_dir_all(runtime_lazygit_config.parent().unwrap()).unwrap();
     fs::create_dir_all(user_lazygit_config.parent().unwrap()).unwrap();
-    fs::write(&runtime_lazygit_config, "os:\n  editPreset: helix\n").unwrap();
+    fs::write(&runtime_lazygit_config, YAZELIX_LAZYGIT_CONFIG).unwrap();
     fs::write(&user_lazygit_config, "gui:\n  showIcons: true\n").unwrap();
 
     let output = yzx_core_command()

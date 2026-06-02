@@ -1,2 +1,6 @@
 os:
-  editPreset: helix
+  edit: '$EDITOR -- {{filename}}'
+  editAtLine: '$EDITOR -- {{filename}}:{{line}}'
+  editAtLineAndWait: '$EDITOR -- {{filename}}:{{line}}'
+  editInTerminal: true
+  openDirInEditor: '$EDITOR -- {{dir}}'
