@@ -107,6 +107,30 @@ pub fn validate_nix_customization_api(repo_root: &Path) -> Result<ValidationRepo
     );
     require_json_bool(
         object,
+        "mise_defaults_to_host",
+        "runtimeToolSources.mise must default to host mode",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
+        "tombi_defaults_to_host",
+        "runtimeToolSources.tombi must default to host mode",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
+        "host_default_tools_not_exported",
+        "default host-sourced mise and tombi commands must not be exported from the runtime",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
+        "host_default_tools_can_be_bundled",
+        "mise and tombi must remain explicitly bundlable through runtimeToolSources",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
         "home_manager_has_package",
         "Home Manager evaluation must install a Yazelix package",
         &mut report.errors,
@@ -300,6 +324,13 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "    inherit pkgs;".to_string(),
         "    runtimeToolSources = { steel = \"off\"; };".to_string(),
         "  };".to_string(),
+        format!(
+            "  hostDefaultToolsBundledRegistry = import \"{}/packaging/runtime_tool_registry.nix\" {{",
+            repo_root_literal
+        ),
+        "    inherit pkgs;".to_string(),
+        "    runtimeToolSources = { mise = \"bundled\"; tombi = \"bundled\"; };".to_string(),
+        "  };".to_string(),
         "  steelAuthoringCommands = [ \"steel\" \"steel-language-server\" \"forge\" \"cargo-steel-lib\" \"repl-connect\" ];".to_string(),
         "  invalidRuntimeTool = builtins.tryEval ((flake.lib.${system}.mkYazelix { runtimeToolSources = { zellij = \"host\"; }; }).drvPath);".to_string(),
         "  unsupportedComponent = builtins.tryEval ((flake.lib.${system}.mkYazelix { components = { status_bar = false; }; }).drvPath);".to_string(),
@@ -354,6 +385,10 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "  home_manager_steel_tool_source = hm.config.programs.yazelix.runtime_tool_sources.steel or \"\";".to_string(),
         "  steel_bundled_exports_authoring_commands = builtins.all (command: builtins.elem command steelBundledRegistry.exportedCommands) steelAuthoringCommands;".to_string(),
         "  steel_off_omits_authoring_commands = steelOffRegistry.manifest.steel.source == \"off\" && builtins.all (command: !(builtins.elem command steelOffRegistry.exportedCommands)) steelAuthoringCommands;".to_string(),
+        "  mise_defaults_to_host = steelBundledRegistry.manifest.mise.source == \"host\";".to_string(),
+        "  tombi_defaults_to_host = steelBundledRegistry.manifest.tombi.source == \"host\";".to_string(),
+        "  host_default_tools_not_exported = !(builtins.elem \"mise\" steelBundledRegistry.exportedCommands) && !(builtins.elem \"tombi\" steelBundledRegistry.exportedCommands);".to_string(),
+        "  host_default_tools_can_be_bundled = hostDefaultToolsBundledRegistry.manifest.mise.source == \"bundled\" && hostDefaultToolsBundledRegistry.manifest.tombi.source == \"bundled\" && builtins.elem \"mise\" hostDefaultToolsBundledRegistry.exportedCommands && builtins.elem \"tombi\" hostDefaultToolsBundledRegistry.exportedCommands;".to_string(),
         "  home_manager_has_package = builtins.length hm.config.home.packages > 0;".to_string(),
         "  home_manager_extra_terminal_installs_package = builtins.any (pkg: (pkg.meta.mainProgram or \"\") == \"yzx\") hmExtraTerminals.config.home.packages && builtins.any (pkg: pkgs.lib.hasPrefix \"ghostty-\" (pkg.name or \"\")) hmExtraTerminals.config.home.packages && builtins.any (pkg: pkgs.lib.hasPrefix \"kitty-\" (pkg.name or \"\")) hmExtraTerminals.config.home.packages;".to_string(),
         "  home_manager_extra_terminal_order = hmExtraTerminals.config.programs.yazelix.terminals == [ \"yzxterm\" \"ghostty\" \"kitty\" \"wezterm\" ];".to_string(),

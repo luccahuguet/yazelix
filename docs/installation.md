@@ -191,7 +191,8 @@ hx ~/.config/yazelix/settings.jsonc
 The packaged runtime ships a fixed toolset instead of configurable dependency groups. The package includes:
 - the core Yazelix stack: `zellij`, `yazi`, `helix`, `nu`, `bash`, `fish`, `zsh`
 - Helix Steel authoring helpers: `steel`, `steel-language-server`, `forge`, `cargo-steel-lib`, `repl-connect`
-- the default CLI helpers: `fzf`, `zoxide`, `starship`, `lazygit`, `btm`, `mise`, `carapace`, `macchina`
+- the default CLI helpers: `fzf`, `zoxide`, `starship`, `lazygit`, `btm`, `carapace`, `macchina`
+- host-managed helper integrations: `mise` and `tombi`
 - the default Yazi preview helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
 - one packaged terminal variant: Ghostty by default with the Yazelix Zellij/Yazi graphics bridge, experimental Yazelix Terminal through `#yzxterm`, WezTerm through `#yazelix_wezterm`, Kitty through `#yazelix_kitty`, or experimental Linux Ratty through `#yazelix_ratty`
 
@@ -406,7 +407,7 @@ Package-set users can also use the default overlay:
 }
 ```
 
-`host` mode removes that tool from the Yazelix runtime export and lets the inherited `PATH` provide the required command. Run `yzx doctor` after switching; it reports missing host-sourced commands from the runtime manifest.
+`host` mode removes that tool from the Yazelix runtime export and lets the inherited `PATH` provide the required command. Run `yzx doctor` after switching; it reports missing host-sourced commands from the runtime manifest, warning for required commands and treating default optional integrations such as `mise` and `tombi` as informational when absent.
 
 `off` mode is supported for the first optional helper slice: `steel`, `macchina`, `p7zip`, `poppler`, and `resvg`. Disabled helpers are omitted from the runtime package/export and reported by `yzx doctor` as intentional disablement. If `macchina = "off"`, set `show_macchina_on_welcome = false`.
 
@@ -419,13 +420,18 @@ Home Manager and `mkYazelix` also accept component toggles for `cursors` and `sc
 - **Shells**: bash/nushell, plus your preferred shell
 - **Navigation**: [fzf](https://github.com/junegunn/fzf), [zoxide](https://github.com/ajeetdsouza/zoxide), [Starship](https://starship.rs)
 
-### Recommended Tools (~350MB, enabled by default)
+### Recommended Tools (enabled by default)
 - [lazygit](https://github.com/jesseduffield/lazygit) (or `lg`)
 - [bottom](https://github.com/ClementTsang/bottom) (`btm`)
-- [mise](https://github.com/jdx/mise)
 - [cargo-update](https://github.com/nabijaczleweli/cargo-update)
 - [ouch](https://github.com/ouch-org/ouch)
 - [atuin](https://github.com/atuinsh/atuin) (shell history manager)
+
+### Host-Managed Helper Integrations
+- [mise](https://github.com/jdx/mise)
+- [tombi](https://tombi-toml.github.io/tombi/)
+
+Yazelix configures or uses these integrations when the command is available from the host `PATH`; they are not bundled by default.
 
 ### Yazi Extensions (~125MB, enabled by default)
 - `p7zip`, `jq`, `poppler`, `fd`, `ripgrep` (for archives, search, document previews)

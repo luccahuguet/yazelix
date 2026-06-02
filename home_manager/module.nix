@@ -133,6 +133,7 @@ let
     "yazi"
   ];
   runtimeYzxCore = "${yazelixPackage}/libexec/yzx_core";
+  runtimeYzxControl = "${yazelixPackage}/libexec/yzx_control";
   stateRoot = "${config.xdg.dataHome}/yazelix";
   logsPath = "${stateRoot}/logs";
   managedConfigRoot = "${config.xdg.configHome}/yazelix";
@@ -509,7 +510,8 @@ in
       type = types.attrsOf (types.enum runtimeToolSourceModes);
       default = { };
       description = ''
-        Per-tool runtime source modes. Omitted tools default to "bundled".
+        Per-tool runtime source modes. Omitted tools default to "bundled",
+        except mise and tombi, which default to "host".
 
         Supported values:
         - "bundled": include the Yazelix-packaged tool and export its commands
@@ -932,13 +934,14 @@ in
         ../assets/icons/256x256/yazelix.png;
 
       home.activation.yazelixGeneratedRuntimeConfigs = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-        export PATH="${runtimeConfigGenerationPath}:$PATH"
+        export PATH="${yazelixPackage}/toolbin:${yazelixPackage}/libexec:${yazelixPackage}/bin:${runtimeConfigGenerationPath}:$PATH"
         export YAZELIX_RUNTIME_DIR="${yazelixPackage}"
         export YAZELIX_CONFIG_DIR="${managedConfigRoot}"
         export YAZELIX_STATE_DIR="${stateRoot}"
         export YAZELIX_LOGS_DIR="${logsPath}"
 
         $DRY_RUN_CMD ${runtimeYzxCore} runtime-materialization.repair --from-env --force --summary
+        $DRY_RUN_CMD env YAZELIX_QUIET_MODE=true ${runtimeYzxControl} generate_shell_initializers
       '';
     }
     (mkIf pkgs.stdenv.hostPlatform.isLinux (

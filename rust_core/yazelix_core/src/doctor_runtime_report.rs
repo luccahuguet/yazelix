@@ -15,10 +15,12 @@ use std::env;
 use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::UNIX_EPOCH;
 
 const ZELLIJ_KITTY_PASSTHROUGH_FEATURE: &str = "zellij_kitty_passthrough";
 const CHAFA_PROBE_SAFE_FEATURE: &str = "chafa_probe_safe";
 const CHAFA_PROBE_UNSAFE_FEATURE: &str = "chafa_probe_unsafe";
+const OPTIONAL_HOST_INTEGRATION_NOTE: &str = "optional_host_integration";
 
 #[derive(Debug, Deserialize)]
 pub struct SharedRuntimePreflightInput {
@@ -74,6 +76,8 @@ struct RuntimeToolManifestEntry {
     pub commands: Vec<String>,
     #[serde(default)]
     pub required_commands: Vec<String>,
+    #[serde(default)]
+    pub notes: Vec<String>,
 }
 
 pub fn evaluate_doctor_runtime_report(
@@ -128,6 +132,11 @@ pub fn evaluate_doctor_runtime_report(
         &runtime_tool_command_search_paths,
     ));
     shared_runtime_preflight.extend(build_disabled_runtime_component_findings(
+        &request.runtime_dir,
+    ));
+    shared_runtime_preflight.extend(build_shell_initializer_findings(&request.yazelix_state_dir));
+    shared_runtime_preflight.extend(build_yzxterm_launch_log_findings(
+        &request.yazelix_state_dir,
         &request.runtime_dir,
     ));
     if let Some(finding) = build_host_rio_env_isolation_finding() {
@@ -206,6 +215,12 @@ fn runtime_tool_required_commands(tool: &RuntimeToolManifestEntry) -> &[String] 
     }
 }
 
+fn runtime_tool_is_optional_host_integration(tool: &RuntimeToolManifestEntry) -> bool {
+    tool.notes
+        .iter()
+        .any(|note| note == OPTIONAL_HOST_INTEGRATION_NOTE)
+}
+
 fn format_path_list(command_search_paths: &[PathBuf]) -> String {
     if command_search_paths.is_empty() {
         return "No command search paths were available.".into();
@@ -263,6 +278,22 @@ fn build_host_runtime_tool_findings(
                     fix_action: None,
                     capability_tier: None,
                     capability_mode: None,
+                    runtime_contract_check: Some(format!("host_runtime_tool:{name}")),
+                    owner_surface: Some("runtime_tool_sources".into()),
+                }
+            } else if runtime_tool_is_optional_host_integration(&tool) {
+                DoctorRuntimeDoctorFinding {
+                    status: "info".into(),
+                    message: format!("Optional host runtime tool unavailable: {name}"),
+                    details: Some(format!(
+                        "Missing optional command(s): {}\nInstall the command on the host if you use this integration.\nSearched PATH entries:\n{}",
+                        missing_commands.join(", "),
+                        format_path_list(command_search_paths)
+                    )),
+                    fix_available: false,
+                    fix_action: None,
+                    capability_tier: None,
+                    capability_mode: Some("optional_host_runtime_tool_missing".into()),
                     runtime_contract_check: Some(format!("host_runtime_tool:{name}")),
                     owner_surface: Some("runtime_tool_sources".into()),
                 }
@@ -348,6 +379,278 @@ fn build_disabled_runtime_component_findings(
             owner_surface: Some("components".into()),
         })
         .collect()
+}
+
+fn shell_initializers_root(state_dir: &Path) -> PathBuf {
+    state_dir.join("initializers")
+}
+
+fn collect_initializer_files(root: &Path) -> Vec<PathBuf> {
+    let mut files = Vec::new();
+    collect_initializer_files_into(root, &mut files);
+    files.sort();
+    files
+}
+
+fn collect_initializer_files_into(path: &Path, files: &mut Vec<PathBuf>) {
+    let Ok(entries) = fs::read_dir(path) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            collect_initializer_files_into(&path, files);
+        } else if path.is_file() {
+            files.push(path);
+        }
+    }
+}
+
+fn trim_path_token(token: &str) -> &str {
+    token.trim_matches(|ch: char| {
+        matches!(
+            ch,
+            '"' | '\'' | '`' | ',' | ';' | ':' | ')' | '(' | ']' | '[' | '}' | '{' | '<' | '>'
+        )
+    })
+}
+
+fn extract_absolute_path_tokens(raw: &str) -> Vec<String> {
+    raw.split(|ch: char| {
+        ch.is_whitespace()
+            || matches!(
+                ch,
+                '"' | '\'' | '`' | '$' | '(' | ')' | '[' | ']' | '{' | '}' | '<' | '>'
+            )
+    })
+    .map(trim_path_token)
+    .filter(|token| token.starts_with('/'))
+    .map(ToString::to_string)
+    .collect()
+}
+
+fn looks_like_transient_runtime_reference(path: &str) -> bool {
+    path.split('/')
+        .any(|component| component == "result" || component.starts_with("result_"))
+}
+
+fn deleted_transient_paths_in_initializer(path: &Path) -> Vec<String> {
+    let Ok(raw) = fs::read_to_string(path) else {
+        return Vec::new();
+    };
+    let mut out = extract_absolute_path_tokens(&raw)
+        .into_iter()
+        .filter(|candidate| looks_like_transient_runtime_reference(candidate))
+        .filter(|candidate| !Path::new(candidate).exists())
+        .collect::<Vec<_>>();
+    out.sort();
+    out.dedup();
+    out
+}
+
+fn build_shell_initializer_findings(state_dir: &Path) -> Vec<DoctorRuntimeDoctorFinding> {
+    let root = shell_initializers_root(state_dir);
+    if !root.exists() {
+        return vec![DoctorRuntimeDoctorFinding {
+            status: "info".into(),
+            message: "Shell initializers have not been generated yet".into(),
+            details: Some(format!(
+                "Expected generated initializers under {}. They are created by `yzx enter` and by Home Manager activation.",
+                root.display()
+            )),
+            fix_available: false,
+            fix_action: None,
+            capability_tier: None,
+            capability_mode: Some("missing_generated_initializers".into()),
+            runtime_contract_check: Some("shell_initializer_stale_paths".into()),
+            owner_surface: Some("shell_initializers".into()),
+        }];
+    }
+
+    let stale = collect_initializer_files(&root)
+        .into_iter()
+        .flat_map(|file| {
+            deleted_transient_paths_in_initializer(&file)
+                .into_iter()
+                .map(move |path| format!("{} -> {path}", file.display()))
+        })
+        .collect::<Vec<_>>();
+
+    if stale.is_empty() {
+        return vec![DoctorRuntimeDoctorFinding {
+            status: "ok".into(),
+            message: "Shell initializers do not reference deleted transient runtime paths".into(),
+            details: Some(format!(
+                "Checked generated initializers under {}",
+                root.display()
+            )),
+            fix_available: false,
+            fix_action: None,
+            capability_tier: None,
+            capability_mode: Some("generated_initializers_current".into()),
+            runtime_contract_check: Some("shell_initializer_stale_paths".into()),
+            owner_surface: Some("shell_initializers".into()),
+        }];
+    }
+
+    vec![DoctorRuntimeDoctorFinding {
+        status: "warning".into(),
+        message: "Shell initializers reference deleted transient runtime paths".into(),
+        details: Some(format!(
+            "{}\nRepair: run `yzx_control generate_shell_initializers` from the active profile runtime, or reapply Home Manager so activation regenerates them.",
+            stale.join("\n")
+        )),
+        fix_available: false,
+        fix_action: None,
+        capability_tier: None,
+        capability_mode: Some("stale_generated_initializers".into()),
+        runtime_contract_check: Some("shell_initializer_stale_paths".into()),
+        owner_surface: Some("shell_initializers".into()),
+    }]
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct LaunchLogSummary {
+    path: PathBuf,
+    modified_seconds: u64,
+    has_metadata: bool,
+}
+
+fn yzxterm_launch_log_dir(state_dir: &Path) -> PathBuf {
+    state_dir.join("logs").join("terminal_launch")
+}
+
+fn runtime_variant_path(runtime_dir: &Path) -> PathBuf {
+    runtime_dir.join("runtime_variant")
+}
+
+fn runtime_variant_is_yzxterm(runtime_dir: &Path) -> bool {
+    fs::read_to_string(runtime_variant_path(runtime_dir))
+        .map(|raw| raw.trim() == "yzxterm")
+        .unwrap_or(false)
+}
+
+fn is_yzxterm_launch_log(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name.starts_with("yazelix_terminal_desktop_") && name.ends_with(".log"))
+}
+
+fn launch_log_modified_seconds(path: &Path) -> u64 {
+    fs::metadata(path)
+        .and_then(|metadata| metadata.modified())
+        .ok()
+        .and_then(|modified| modified.duration_since(UNIX_EPOCH).ok())
+        .map(|duration| duration.as_secs())
+        .unwrap_or(0)
+}
+
+fn launch_log_has_metadata(path: &Path) -> bool {
+    fs::read_to_string(path).is_ok_and(|raw| {
+        raw.contains("desktop deferred launch")
+            && raw.contains("argv:")
+            && raw.contains("terminal_or_wrapper_pid")
+    })
+}
+
+fn collect_yzxterm_launch_logs(state_dir: &Path) -> Vec<LaunchLogSummary> {
+    let log_dir = yzxterm_launch_log_dir(state_dir);
+    let mut logs = fs::read_dir(log_dir)
+        .ok()
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| path.is_file() && is_yzxterm_launch_log(path))
+        .map(|path| LaunchLogSummary {
+            modified_seconds: launch_log_modified_seconds(&path),
+            has_metadata: launch_log_has_metadata(&path),
+            path,
+        })
+        .collect::<Vec<_>>();
+    logs.sort_by(|left, right| {
+        right
+            .modified_seconds
+            .cmp(&left.modified_seconds)
+            .then_with(|| left.path.cmp(&right.path))
+    });
+    logs
+}
+
+fn render_launch_log_summaries(logs: &[LaunchLogSummary]) -> String {
+    logs.iter()
+        .take(5)
+        .map(|log| {
+            format!(
+                "{} (modified_unix_seconds={}, metadata={})",
+                log.path.display(),
+                log.modified_seconds,
+                if log.has_metadata {
+                    "present"
+                } else {
+                    "missing"
+                }
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn build_yzxterm_launch_log_findings(
+    state_dir: &Path,
+    runtime_dir: &Path,
+) -> Vec<DoctorRuntimeDoctorFinding> {
+    let log_dir = yzxterm_launch_log_dir(state_dir);
+    let logs = collect_yzxterm_launch_logs(state_dir);
+    if logs.is_empty() {
+        if !runtime_variant_is_yzxterm(runtime_dir) {
+            return Vec::new();
+        }
+
+        return vec![DoctorRuntimeDoctorFinding {
+            status: "info".into(),
+            message: "Yazelix Terminal desktop launch logs have not been captured yet".into(),
+            details: Some(format!(
+                "Expected yzxterm desktop launch logs under {} after launching the yzxterm runtime from a desktop entry.",
+                log_dir.display()
+            )),
+            fix_available: false,
+            fix_action: None,
+            capability_tier: None,
+            capability_mode: Some("no_yzxterm_launch_logs".into()),
+            runtime_contract_check: Some("yzxterm_launch_logs".into()),
+            owner_surface: Some("terminal_launch_logs".into()),
+        }];
+    }
+
+    let details = render_launch_log_summaries(&logs);
+    if logs.iter().any(|log| log.has_metadata) {
+        return vec![DoctorRuntimeDoctorFinding {
+            status: "ok".into(),
+            message: "Yazelix Terminal desktop launch logs are available".into(),
+            details: Some(details),
+            fix_available: false,
+            fix_action: None,
+            capability_tier: None,
+            capability_mode: Some("yzxterm_launch_logs_available".into()),
+            runtime_contract_check: Some("yzxterm_launch_logs".into()),
+            owner_surface: Some("terminal_launch_logs".into()),
+        }];
+    }
+
+    vec![DoctorRuntimeDoctorFinding {
+        status: "warning".into(),
+        message: "Yazelix Terminal desktop launch logs are stale or missing metadata".into(),
+        details: Some(format!(
+            "{details}\nRelaunch yzxterm from the desktop entry to capture argv, config environment, terminal PID, and early exit status."
+        )),
+        fix_available: false,
+        fix_action: None,
+        capability_tier: None,
+        capability_mode: Some("yzxterm_launch_logs_legacy".into()),
+        runtime_contract_check: Some("yzxterm_launch_logs".into()),
+        owner_surface: Some("terminal_launch_logs".into()),
+    }]
 }
 
 fn is_package_runtime_root(runtime_dir: &Path) -> bool {
@@ -852,6 +1155,83 @@ mod tests {
         }
     }
 
+    // Regression: generated shell initializers must expose deleted local result-runtime references before user shells fail during startup.
+    #[test]
+    fn shell_initializer_finding_warns_on_deleted_transient_runtime_path() {
+        let tmp = TempDir::new().unwrap();
+        let state = tmp.path().join("state");
+        let init = state
+            .join("initializers")
+            .join("nushell")
+            .join("yazelix_init.nu");
+        std::fs::create_dir_all(init.parent().unwrap()).unwrap();
+        std::fs::write(
+            &init,
+            "source /home/demo/pjs/yazelix/result_yazelix_runtime/libexec/mise\n",
+        )
+        .unwrap();
+
+        let findings = build_shell_initializer_findings(&state);
+
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].status, "warning");
+        assert_eq!(
+            findings[0].runtime_contract_check.as_deref(),
+            Some("shell_initializer_stale_paths")
+        );
+        let details = findings[0].details.as_deref().unwrap_or_default();
+        assert!(details.contains("result_yazelix_runtime"));
+        assert!(details.contains("yzx_control generate_shell_initializers"));
+    }
+
+    // Defends: doctor can point users at concrete yzxterm desktop launch evidence after a window disappears.
+    #[test]
+    fn yzxterm_launch_log_finding_reports_metadata_logs() {
+        let tmp = TempDir::new().unwrap();
+        let state = tmp.path().join("state");
+        let runtime = tmp.path().join("runtime");
+        let log = state
+            .join("logs")
+            .join("terminal_launch")
+            .join("yazelix_terminal_desktop_123.log");
+        std::fs::create_dir_all(log.parent().unwrap()).unwrap();
+        std::fs::write(
+            &log,
+            "[2026-06-02T00:00:00-0300] desktop deferred launch\nargv:\n  yazelix-terminal-desktop\n[2026-06-02T00:00:01-0300] spawned terminal_or_wrapper_pid=123\n",
+        )
+        .unwrap();
+
+        let findings = build_yzxterm_launch_log_findings(&state, &runtime);
+
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].status, "ok");
+        assert_eq!(
+            findings[0].runtime_contract_check.as_deref(),
+            Some("yzxterm_launch_logs")
+        );
+        assert!(
+            findings[0]
+                .details
+                .as_deref()
+                .unwrap_or_default()
+                .contains("yazelix_terminal_desktop_123.log")
+        );
+    }
+
+    // Defends: non-yzxterm runtimes do not receive irrelevant missing-log doctor findings.
+    #[test]
+    fn yzxterm_launch_log_finding_is_scoped_to_yzxterm_runtime() {
+        let tmp = TempDir::new().unwrap();
+        let state = tmp.path().join("state");
+        let runtime = tmp.path().join("runtime");
+        std::fs::create_dir_all(&runtime).unwrap();
+        std::fs::write(runtime.join("runtime_variant"), "ghostty\n").unwrap();
+
+        let findings = build_yzxterm_launch_log_findings(&state, &runtime);
+
+        assert!(findings.is_empty());
+    }
+
     // Defends: doctor reports when a Yazelix shell would make plain host Rio read the generated yzxterm config.
     #[test]
     fn host_rio_env_isolation_reports_yzxterm_contamination() {
@@ -953,6 +1333,44 @@ mod tests {
                 .as_deref()
                 .unwrap()
                 .contains("Missing required command(s): lazygit")
+        );
+    }
+
+    // Defends: default host-managed integrations do not turn doctor red when unused commands are absent.
+    #[test]
+    fn optional_host_runtime_tool_reports_info_when_missing() {
+        let tmp = TempDir::new().unwrap();
+        let runtime = tmp.path().join("runtime");
+        let path_dir = tmp.path().join("empty_path");
+        std::fs::create_dir_all(&runtime).unwrap();
+        std::fs::create_dir_all(&path_dir).unwrap();
+        std::fs::write(
+            runtime.join("runtime_tools.json"),
+            r#"{
+              "mise": {
+                "source": "host",
+                "commands": ["mise"],
+                "required_commands": ["mise"],
+                "notes": ["optional_host_integration"]
+              }
+            }"#,
+        )
+        .unwrap();
+
+        let findings = build_host_runtime_tool_findings(&runtime, &[path_dir]);
+
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].status, "info");
+        assert_eq!(
+            findings[0].message,
+            "Optional host runtime tool unavailable: mise"
+        );
+        assert!(
+            findings[0]
+                .details
+                .as_deref()
+                .unwrap()
+                .contains("Install the command on the host if you use this integration")
         );
     }
 

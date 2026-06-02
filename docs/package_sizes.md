@@ -8,7 +8,8 @@ The default runtime includes:
 
 - the core stack: `nu`, `bash`, `fish`, `zsh`, `zellij`, `yazi`, `helix`, `neovim`
 - Helix Steel authoring tools: `steel`, `steel-language-server`, `forge`, `cargo-steel-lib`, `repl-connect`
-- helper tools: `fzf`, `zoxide`, `starship`, `lazygit`, `btm`, `carapace`, `macchina`, `mise`, `tombi`
+- helper tools: `fzf`, `zoxide`, `starship`, `lazygit`, `btm`, `carapace`, `macchina`
+- host-managed helper integrations: `mise`, `tombi`
 - preview/search helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`, `resvg`
 - system helpers required by runtime wrappers and validators: `git`, `nix`, `coreutils`, `findutils`, `gnugrep`, `gnused`, `util-linux`
 - one packaged terminal variant: Ghostty in `#yazelix` and `#yazelix_ghostty`, experimental Yazelix Terminal in `#yzxterm`, WezTerm in `#yazelix_wezterm`, Kitty in `#yazelix_kitty`, or experimental Linux Ratty in `#yazelix_ratty`
@@ -57,10 +58,10 @@ The current `git+file://` default Ghostty package measured:
 
 | Shape | Build target | Closure size | Paths | Notes |
 | --- | --- | ---: | ---: | --- |
-| Default `#yazelix` | `.#packages.x86_64-linux.yazelix` | 3.1 GiB | 820 | Full bundled runtime with 64-bit-only nixGL wrappers |
+| Default `#yazelix` | `.#packages.x86_64-linux.yazelix` | 3.0 GiB | 816 | Full runtime with 64-bit-only nixGL wrappers; `mise` and `tombi` are host-sourced by default |
 | Lean package-builder profile | `lib.${system}.mkYazelix` | 2.2 GiB | 445 | Host-sources editor/sidebar/helper tools, disables optional helpers, omits cursor and screen components |
 
-The lean profile saved about 898 MiB of local closure compared with the measured default package. It still includes about 1.1 GiB of Linux `nixGLMesa` closure, so graphics wrapper ownership remains a major remaining Linux storage question.
+The lean profile measurement predates the default host-sourcing of `mise` and `tombi`, but still represents the smaller supported shape for users who want a profile-owned runtime. It includes about 1.1 GiB of Linux `nixGLMesa` closure, so graphics wrapper ownership remains a major remaining Linux storage question.
 
 Largest default direct references by closure:
 
@@ -70,9 +71,12 @@ Largest default direct references by closure:
 | Ghostty | 1.1 GiB |
 | `nixGLMesa` | 1.1 GiB |
 | Yazi wrapper | 504 MiB |
-| `mise` | 498 MiB |
 | `git` | 374 MiB |
 | Yazelix Helix | 328 MiB |
+| `fish` | 302 MiB |
+| `neovim` | 254 MiB |
+
+`mise` and `tombi` no longer appear as direct references in the measured default runtime because their default source mode is `host`.
 
 Disabling 32-bit nixGL support removes the large duplicate Mesa/LLVM families from the default package closure. The remaining duplicate store basenames in the measured default package are small compared with the old 32-bit wrapper duplication.
 

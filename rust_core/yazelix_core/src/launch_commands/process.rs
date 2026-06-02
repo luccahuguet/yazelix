@@ -7,7 +7,10 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-fn get_launch_probe_log_path(state_dir: &Path, terminal_name: &str) -> Result<PathBuf, CoreError> {
+pub(super) fn get_launch_probe_log_path(
+    state_dir: &Path,
+    terminal_name: &str,
+) -> Result<PathBuf, CoreError> {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_err(|error| {
@@ -20,7 +23,11 @@ fn get_launch_probe_log_path(state_dir: &Path, terminal_name: &str) -> Result<Pa
             )
         })?
         .as_millis();
-    let sanitized = terminal_name
+    let terminal_label = Path::new(terminal_name)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or(terminal_name);
+    let sanitized = terminal_label
         .chars()
         .map(|ch| {
             if ch.is_ascii_alphanumeric() {

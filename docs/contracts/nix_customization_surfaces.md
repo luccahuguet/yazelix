@@ -67,7 +67,7 @@ Runtime tools may support these source modes:
 - `host`: Yazelix omits the package/export and lets the inherited host `PATH` provide the commands
 - `off`: Yazelix omits the package/export and treats dependent features as unavailable or warning-worthy
 
-Only tools marked hostable may use `host`. Only tools marked disableable may use `off`.
+Only tools marked hostable may use `host`. Only tools marked disableable may use `off`. `mise` and `tombi` default to `host`; other omitted tools default to `bundled`.
 
 Bootstrap-critical tools such as Nushell, Zellij, the selected terminal package, Nix, graphics wrappers, and core POSIX utilities remain bundled until a separate contract says otherwise.
 
@@ -90,6 +90,7 @@ The current evaluated matrix is:
 | Component or surface | Default | Current package impact | Generated-config impact when disabled | Decision |
 | --- | --- | --- | --- | --- |
 | `runtime_tool_sources.<tool> = "host"` for leaf tools | bundled | Implemented: omits supported leaf tool packages and exports, then relies on host `PATH` | Runtime manifest records host source and doctor checks required commands | Keep implemented |
+| `runtime_tool_sources.mise` and `runtime_tool_sources.tombi` | host | Implemented default omission: these host/maintainer-adjacent tools are not bundled unless explicitly set to `bundled` | Runtime manifest records host source; generated shell initializers omit `mise` cleanly when absent, TOML tooling keeps the shipped `tombi.toml` config, and doctor reports missing default optional integrations as informational | Keep implemented |
 | `agent_usage_programs = [ "tokenusage" ]` | on | Implemented opt-out: includes `tokenusage` for the default Codex/Claude status widgets, and omits it only when the list is set to `[]` | Agent usage widgets in the default tray have their helper available; users who remove those widgets can omit the helper explicitly | Keep implemented |
 | `runtime_variant = "ghostty"`, `"kitty"`, `"yzxterm"`, `"wezterm"`, or Linux-only `"ratty"` | `ghostty` | Implemented: selects one packaged terminal variant instead of bundling every terminal as the active runtime terminal | Generated terminal config follows the selected runtime variant; Yazelix Terminal additionally reuses the child package config and injects `terminal.transparency` | Keep implemented |
 | `extra_terminal_variants = [ "yzxterm" ]` | `[]` | Implemented in Home Manager: installs additional terminal emulator packages beside the primary runtime without adding duplicate `yzx` wrappers | Home Manager default terminal order keeps the primary runtime first, then extra variants, then normal fallbacks | Keep implemented |

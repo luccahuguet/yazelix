@@ -292,7 +292,8 @@ yzx env --no-shell
 See the full catalog of tools and integrations in the Yazelix Collection:
 [docs/yazelix_collection.md](./docs/yazelix_collection.md)
 - **Essential tools**: [Yazi](https://github.com/sxyazi/yazi) (file manager), [Zellij](https://github.com/zellij-org/zellij) (terminal multiplexer), [Helix](https://helix-editor.com) (editor), shells (bash/nushell, plus your preferred shell), [fzf](https://github.com/junegunn/fzf), [zoxide](https://github.com/ajeetdsouza/zoxide), [Starship](https://starship.rs)
-- **Bundled helpers**: [lazygit](https://github.com/jesseduffield/lazygit) (or `lg`), [bottom](https://github.com/ClementTsang/bottom) (`btm`), [mise](https://github.com/jdx/mise), [carapace](https://github.com/carapace-sh/carapace-bin), [macchina](https://github.com/Macchina-CLI/macchina), and the fixed helper tooling behind the packaged runtime
+- **Bundled helpers**: [lazygit](https://github.com/jesseduffield/lazygit) (or `lg`), [bottom](https://github.com/ClementTsang/bottom) (`btm`), [carapace](https://github.com/carapace-sh/carapace-bin), [macchina](https://github.com/Macchina-CLI/macchina), and the fixed helper tooling behind the packaged runtime
+- **Host-managed helpers**: `mise` and `tombi` are expected from the host `PATH` by default when those integrations are used
 - **Yazi preview helpers**: `p7zip`, `jq`, `poppler`, `fd`, `ripgrep` are part of the fixed runtime surface
 - **Environment setup**: Proper paths, variables, and shell configurations
 

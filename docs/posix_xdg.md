@@ -34,7 +34,7 @@ Yazelix does not use `$XDG_STATE_HOME` for the main generated state root. The st
   - `configs/zellij/` - generated Zellij config, layouts, and plugin artifacts
   - `configs/helix/` - generated managed Helix config
   - `configs/terminal_emulators/` - generated terminal config files
-  - `initializers/` - generated shell, starship, zoxide, mise, and carapace init scripts
+  - `initializers/` - generated shell, starship, zoxide, optional host `mise`, and carapace init scripts
   - `logs/` - runtime setup, launch, and welcome output
   - `profiles/startup/` - startup profiler reports and saved baselines
   - `sessions/` - per-session facts used by runtime integrations

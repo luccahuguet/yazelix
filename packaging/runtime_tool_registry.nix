@@ -191,11 +191,13 @@ let
         package = mise;
         commands = [ "mise" ];
         hostable = true;
+        notes = [ "optional_host_integration" ];
       };
       tombi = makeTool {
         package = tombi;
         commands = [ "tombi" ];
         hostable = true;
+        notes = [ "optional_host_integration" ];
       };
       fish = makeTool {
         package = fish;
@@ -322,7 +324,16 @@ let
   disallowedOffNames = lib.filter (
     name: runtimeToolSources.${name} == "off" && !(tools.${name}.disableable or false)
   ) runtimeToolNames;
-  sourceFor = name: runtimeToolSources.${name} or "bundled";
+  defaultSourceFor =
+    name:
+    if builtins.elem name [
+      "mise"
+      "tombi"
+    ] then
+      "host"
+    else
+      "bundled";
+  sourceFor = name: runtimeToolSources.${name} or (defaultSourceFor name);
   bundledToolNames = lib.filter (name: sourceFor name == "bundled") (builtins.attrNames tools);
   bundledTools = map (name: tools.${name}) bundledToolNames;
   runtimePackages = lib.unique (map (tool: tool.package) bundledTools);

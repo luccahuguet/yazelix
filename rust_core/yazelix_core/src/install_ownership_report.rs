@@ -83,10 +83,11 @@ pub struct InstallOwnershipEvaluateData {
 pub fn evaluate_install_ownership_report(
     request: &InstallOwnershipEvaluateRequest,
 ) -> InstallOwnershipEvaluateData {
-    let has_hm = has_home_manager_managed_install(&request.main_config_path);
     let profile_candidates =
         home_manager_yzx_profile_paths(&request.home_dir, request.user.as_deref());
     let existing_profile = first_existing_profile_yzx(&profile_candidates);
+    let has_hm = has_home_manager_managed_install(&request.main_config_path)
+        || has_home_manager_profile_yazelix(&request.home_dir, existing_profile.as_ref());
     let stable = resolve_stable_yzx_wrapper_path(&request.home_dir, has_hm, &existing_profile);
     let desktop_launcher = resolve_desktop_launcher_path(&request.runtime_dir, stable.as_deref());
     let desktop_launcher_str = path_to_string(&desktop_launcher);
@@ -344,6 +345,46 @@ fn default_profile_manifest_paths(home_dir: &Path) -> Vec<PathBuf> {
             .join("profile")
             .join("manifest.json"),
     ]
+}
+
+fn read_default_profile_manifest(home_dir: &Path) -> Option<JsonValue> {
+    default_profile_manifest_paths(home_dir)
+        .into_iter()
+        .find_map(|manifest_path| {
+            let raw = fs::read_to_string(manifest_path).ok()?;
+            serde_json::from_str::<JsonValue>(&raw).ok()
+        })
+}
+
+fn default_profile_has_active_home_manager_path(home_dir: &Path) -> bool {
+    let Some(parsed) = read_default_profile_manifest(home_dir) else {
+        return false;
+    };
+    parsed
+        .get("elements")
+        .and_then(JsonValue::as_object)
+        .and_then(|elements| elements.get("home-manager-path"))
+        .is_some_and(|entry| {
+            entry
+                .get("active")
+                .and_then(JsonValue::as_bool)
+                .unwrap_or(true)
+        })
+}
+
+fn has_home_manager_profile_yazelix(
+    home_dir: &Path,
+    existing_profile_yzx: Option<&PathBuf>,
+) -> bool {
+    if existing_profile_yzx.is_none() || !default_profile_has_active_home_manager_path(home_dir) {
+        return false;
+    }
+    home_dir
+        .join(".nix-profile")
+        .join("share")
+        .join("applications")
+        .join("yazelix.desktop")
+        .exists()
 }
 
 fn is_yazelix_profile_entry(name: &str, entry: &JsonValue) -> bool {
@@ -1030,6 +1071,60 @@ mod tests {
                 .as_deref()
                 .unwrap_or_default()
                 .contains("yzx update upstream")
+        );
+    }
+
+    // Regression: Home Manager owns the Yazelix runtime even when manage_config=false leaves settings.jsonc mutable.
+    #[test]
+    fn evaluate_install_ownership_detects_home_manager_profile_without_managed_config() {
+        let tmp = TempDir::new().unwrap();
+        let home = tmp.path().join("home");
+        let xdg_data = home.join(".local/share");
+        let main_config = home.join(".config/yazelix/settings.jsonc");
+        let profile_yzx = home.join(".nix-profile/bin/yzx");
+        let profile_desktop = home
+            .join(".nix-profile/share/applications")
+            .join("yazelix.desktop");
+
+        std::fs::create_dir_all(main_config.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(profile_yzx.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(profile_desktop.parent().unwrap()).unwrap();
+        std::fs::write(&main_config, "{}\n").unwrap();
+        std::fs::write(&profile_yzx, "#!/bin/sh\n").unwrap();
+        std::fs::write(
+            &profile_desktop,
+            format!(
+                "[Desktop Entry]\nName=Yazelix\nTerminal=false\nExec={} desktop launch\n",
+                profile_yzx.display()
+            ),
+        )
+        .unwrap();
+        write_default_profile_manifest(
+            &home,
+            r#"{"elements":{"home-manager-path":{"active":true,"storePaths":["/nix/store/test-home-manager-path"]}},"version":3}"#,
+        );
+
+        let report = evaluate_install_ownership_report(&InstallOwnershipEvaluateRequest {
+            runtime_dir: tmp.path().join("runtime"),
+            home_dir: home.clone(),
+            user: Some("test-user".into()),
+            xdg_config_home: home.join(".config"),
+            xdg_data_home: xdg_data.clone(),
+            yazelix_state_dir: xdg_data.join("yazelix"),
+            main_config_path: main_config,
+            invoked_yzx_path: None,
+            redirected_from_stale_yzx_path: None,
+            shell_resolved_yzx_path: None,
+        });
+
+        assert!(!has_home_manager_managed_install(
+            &home.join(".config/yazelix/settings.jsonc")
+        ));
+        assert!(report.has_home_manager_managed_install);
+        assert_eq!(report.install_owner, "home-manager");
+        assert_eq!(
+            report.install_owner_diagnostic.message,
+            "Install owner: Home Manager"
         );
     }
 

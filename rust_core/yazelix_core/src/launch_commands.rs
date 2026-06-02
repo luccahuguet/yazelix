@@ -457,6 +457,26 @@ mod tests {
         assert_eq!(argv[argv.len() - 1], startup.to_string_lossy().as_ref());
     }
 
+    // Defends: desktop launch logs use the terminal executable basename, so yzxterm diagnostics can find them reliably.
+    #[test]
+    fn launch_probe_log_path_uses_command_basename() {
+        let state = TempDir::new().unwrap();
+
+        let log = get_launch_probe_log_path(
+            state.path(),
+            "/nix/store/test-yazelix/bin/yazelix-terminal-desktop",
+        )
+        .unwrap();
+
+        assert!(log.starts_with(state.path().join("logs/terminal_launch")));
+        assert!(
+            log.file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or_default()
+                .starts_with("yazelix_terminal_desktop_")
+        );
+    }
+
     // Defends: Ratty's clap command parser requires -e/--command to be the last option before the startup script.
     #[test]
     fn ratty_launch_command_keeps_command_last() {
@@ -664,13 +684,36 @@ mod tests {
             launch_log.display().to_string()
         );
 
+        let mut launched = false;
         for _ in 0..20 {
             if marker.is_file() {
-                return;
+                launched = true;
+                break;
             }
             thread::sleep(Duration::from_millis(50));
         }
-        panic!("deferred desktop helper did not launch scheduled command");
+        assert!(
+            launched,
+            "deferred desktop helper did not launch scheduled command"
+        );
+
+        let mut raw_log = std::fs::read_to_string(&launch_log).unwrap();
+        for _ in 0..20 {
+            if raw_log.contains("early_exit_status=")
+                || raw_log.contains("exit_status=not_observed_after_probe_window")
+            {
+                break;
+            }
+            thread::sleep(Duration::from_millis(50));
+            raw_log = std::fs::read_to_string(&launch_log).unwrap();
+        }
+        assert!(raw_log.contains("desktop deferred launch"));
+        assert!(raw_log.contains("argv:"));
+        assert!(raw_log.contains("terminal_or_wrapper_pid="));
+        assert!(
+            raw_log.contains("early_exit_status=")
+                || raw_log.contains("exit_status=not_observed_after_probe_window")
+        );
     }
 
     // Defends: macOS preview desktop parsing keeps the opt-in nested action explicit.

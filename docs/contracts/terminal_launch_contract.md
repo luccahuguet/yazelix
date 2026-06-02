@@ -19,6 +19,7 @@ materialization.
 - `nushell/scripts/core/launch_yazelix.nu`
 - `nushell/scripts/utils/constants.nu` terminal metadata used by launch
 - `shells/posix/detached_launch_probe.sh`
+- `shells/posix/desktop_deferred_launch_probe.sh`
 - terminal launch and detached-launch tests in
   `nushell/scripts/dev/test_yzx_generated_configs.nu`,
   `nushell/scripts/dev/test_yzx_maintainer.nu`, and
@@ -140,6 +141,31 @@ Out of scope:
   and `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`
   (`terminal_materialization_generate_from_env_writes_generated_configs`)
 - Source: `docs/installation.md`; `docs/terminal_emulators.md`
+
+#### TLAUNCH-007
+- Type: behavior
+- Status: live
+- Owner: Rust desktop launch plus
+  `shells/posix/desktop_deferred_launch_probe.sh`; inner Rio/child process
+  evidence belongs to the `yazelix-terminal` child wrapper
+- Statement: Desktop-deferred Yazelix Terminal launches write bounded per-launch
+  logs under `YAZELIX_STATE_DIR/logs/terminal_launch`. The log name is based on
+  the executable basename, so yzxterm logs use
+  `yazelix_terminal_desktop_*.log`. Each fresh log records timestamps, argv,
+  config environment, helper PID, terminal-or-wrapper PID, captured
+  stdout/stderr, and any early exit status observable by the desktop helper.
+  The main runtime records `child_pid=not_observable_by_desktop_probe` when the
+  child-owned wrapper is the only process boundary that can observe the inner
+  Rio child PID. Doctor reports recent metadata-bearing yzxterm launch logs,
+  stale/missing metadata, or no captured launch evidence for active yzxterm
+  runtimes without warning unrelated terminal variants.
+- Verification: automated Rust tests in
+  `rust_core/yazelix_core/src/launch_commands.rs`
+  (`desktop_deferred_launch_helper_schedules_after_starter_parent_exits`,
+  `launch_probe_log_path_uses_command_basename`) and
+  `rust_core/yazelix_core/src/doctor_runtime_report.rs`
+  (`yzxterm_launch_log_finding_reports_metadata_logs`,
+  `yzxterm_launch_log_finding_is_scoped_to_yzxterm_runtime`)
 
 ## Traceability
 - Defended by: `yzx_repo_validator validate-contracts`
