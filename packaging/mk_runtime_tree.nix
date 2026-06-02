@@ -6,6 +6,7 @@
   rustCoreHelper ? null,
   runtimeVariant ? "ghostty",
   runtimeToolSources ? { },
+  runtimeIdentity ? { },
   components ? { },
   extraRuntimePackages ? [ ],
   extraRuntimeCommands ? [ "tu" ],
@@ -26,6 +27,12 @@ let
   };
   cursorsEnabled = runtimeComponentRegistry.manifest.cursors.enabled;
   runtimeDeps = runtimeToolRegistry.runtimePackages ++ extraRuntimePackages;
+  runtimeIdentityJson = builtins.toJSON (
+    {
+      schema_version = 1;
+      runtime_variant = runtimeVariant;
+    } // runtimeIdentity
+  );
   runtimeBinDirs = map (pkg: "${pkg}/bin") runtimeDeps;
   escapedRuntimeBinDirs = pkgs.lib.escapeShellArgs runtimeBinDirs;
   exportedRuntimeCommands = runtimeToolRegistry.exportedCommands ++ extraRuntimeCommands;
@@ -124,6 +131,7 @@ pkgs.runCommand name { } ''
     ln -s ${src}/yazelix_ghostty_cursors_default.toml "$out/yazelix_ghostty_cursors_default.toml"
   ''}
   printf '%s\n' ${pkgs.lib.escapeShellArg runtimeVariant} > "$out/runtime_variant"
+  printf '%s\n' ${pkgs.lib.escapeShellArg runtimeIdentityJson} > "$out/runtime_identity.json"
   printf '%s\n' ${pkgs.lib.escapeShellArg runtimeComponentRegistry.manifestJson} > "$out/runtime_components.json"
   printf '%s\n' ${pkgs.lib.escapeShellArg runtimeToolRegistry.manifestJson} > "$out/runtime_tools.json"
   ${pkgs.lib.optionalString enableZellijKittyPassthrough ''

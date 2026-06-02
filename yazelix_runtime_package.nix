@@ -6,6 +6,7 @@
   fenixPkgs ? null,
   runtimeVariant ? "ghostty",
   runtimeToolSources ? { },
+  runtimeIdentity ? { },
   components ? { },
   extraRuntimePackages ? [ ],
   screenAssets,
@@ -38,6 +39,7 @@ import ./packaging/mk_runtime_tree.nix {
     rustCoreHelper
     runtimeVariant
     runtimeToolSources
+    runtimeIdentity
     components
     extraRuntimePackages
     screenAssets

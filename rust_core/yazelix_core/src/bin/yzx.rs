@@ -4,7 +4,9 @@ use serde_json::json;
 use std::path::Path;
 use std::process::Command;
 use yazelix_core::bridge::{CoreError, ErrorClass};
-use yazelix_core::control_plane::{read_yazelix_version_from_runtime, runtime_dir_from_env};
+use yazelix_core::control_plane::{
+    read_runtime_identity_from_runtime, read_yazelix_version_from_runtime, runtime_dir_from_env,
+};
 use yazelix_core::{
     YzxPublicRootRoute, classify_yzx_root_route, render_yzx_help, yzx_command_metadata,
 };
@@ -39,8 +41,29 @@ fn run() -> Result<i32, CoreError> {
             );
             Ok(0)
         }
+        YzxPublicRootRoute::VersionFull => print_full_version(&runtime_dir),
         YzxPublicRootRoute::RustControl => run_rust_control(&runtime_dir, &argv),
     }
+}
+
+fn print_full_version(runtime_dir: &Path) -> Result<i32, CoreError> {
+    let payload = json!({
+        "schema_version": 1,
+        "version": read_yazelix_version_from_runtime(runtime_dir)?,
+        "runtime_dir": runtime_dir.to_string_lossy(),
+        "runtime_identity": read_runtime_identity_from_runtime(runtime_dir)?,
+    });
+    serde_json::to_writer_pretty(std::io::stdout(), &payload).map_err(|source| {
+        CoreError::classified(
+            ErrorClass::Internal,
+            "version_full_render_failed",
+            "Failed to render Yazelix full version output.",
+            "Retry the command and report this as a Yazelix internal error if it persists.",
+            json!({ "error": source.to_string() }),
+        )
+    })?;
+    println!();
+    Ok(0)
 }
 
 fn require_executable(

@@ -140,6 +140,52 @@ pub fn read_yazelix_version_from_runtime(runtime_dir: &Path) -> Result<String, C
     ))
 }
 
+pub fn read_runtime_identity_from_runtime(runtime_dir: &Path) -> Result<JsonValue, CoreError> {
+    let identity_path = runtime_dir.join("runtime_identity.json");
+    let contents = std::fs::read_to_string(&identity_path).map_err(|source| {
+        CoreError::io(
+            "runtime_identity",
+            format!(
+                "Failed to read Yazelix runtime identity from {}.",
+                identity_path.display()
+            ),
+            "Reinstall Yazelix from a current package so runtime_identity.json is present.",
+            identity_path.display().to_string(),
+            source,
+        )
+    })?;
+    let identity = serde_json::from_str::<JsonValue>(&contents).map_err(|source| {
+        CoreError::classified(
+            ErrorClass::Runtime,
+            "invalid_runtime_identity",
+            format!(
+                "Yazelix runtime identity is invalid JSON at {}.",
+                identity_path.display()
+            ),
+            "Reinstall Yazelix from a current package so runtime_identity.json is valid.",
+            serde_json::json!({
+                "path": identity_path.display().to_string(),
+                "error": source.to_string(),
+            }),
+        )
+    })?;
+
+    if !identity.is_object() {
+        return Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "invalid_runtime_identity_shape",
+            format!(
+                "Yazelix runtime identity must be a JSON object at {}.",
+                identity_path.display()
+            ),
+            "Reinstall Yazelix from a current package so runtime_identity.json has the supported shape.",
+            serde_json::json!({ "path": identity_path.display().to_string() }),
+        ));
+    }
+
+    Ok(identity)
+}
+
 pub fn home_dir_from_env() -> Result<PathBuf, CoreError> {
     std::env::var_os("HOME").map(PathBuf::from).ok_or_else(|| {
         CoreError::classified(

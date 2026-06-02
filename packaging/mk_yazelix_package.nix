@@ -7,6 +7,7 @@
   fenixPkgs ? null,
   runtimeVariant ? "ghostty",
   runtimeToolSources ? { },
+  runtimeIdentity ? { },
   components ? { },
   extraRuntimePackages ? [ ],
   screenAssets,
@@ -29,6 +30,7 @@ let
       rustCoreHelper
       runtimeVariant
       runtimeToolSources
+      runtimeIdentity
       components
       extraRuntimePackages
       screenAssets

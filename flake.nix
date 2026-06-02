@@ -93,6 +93,31 @@
       lib = nixpkgs.lib;
       forAllSystems = nixpkgs.lib.genAttrs systems;
       mkPkgs = system: nixpkgs.legacyPackages.${system};
+      inputIdentity = input: {
+        revision = input.rev or null;
+        short_revision = input.shortRev or null;
+        last_modified_date = input.lastModifiedDate or null;
+      };
+      defaultRuntimeIdentity = {
+        source = {
+          revision = self.rev or self.dirtyRev or null;
+          short_revision = self.shortRev or self.dirtyShortRev or null;
+          last_modified_date = self.lastModifiedDate or null;
+        };
+        inputs = {
+          nixpkgs = inputIdentity nixpkgs;
+          home_manager = inputIdentity home-manager;
+          fenix = inputIdentity fenix;
+          yazelix_screen = inputIdentity yazelixScreen;
+          yazelix_cursors = inputIdentity yazelixCursors;
+          yazelix_zellij_bar = inputIdentity yazelixZellijBar;
+          yazelix_yazi_assets = inputIdentity yazelixYaziAssets;
+          yazelix_helix = inputIdentity yazelixHelix;
+          yazelix_terminal = inputIdentity yazelixTerminal;
+          yazelix_zellij_pane_orchestrator = inputIdentity yazelixZellijPaneOrchestrator;
+          yazelix_zellij_popup = inputIdentity yazelixZellijPopup;
+        };
+      };
       homeManagerModule = { pkgs, ... }: {
         _module.args.nixgl = nixgl;
         _module.args.fenixPkgs = fenix.packages.${pkgs.stdenv.hostPlatform.system};
@@ -127,6 +152,7 @@
           rust_core_src ? src,
           runtimeVariant ? "ghostty",
           runtimeToolSources ? { },
+          runtimeIdentity ? defaultRuntimeIdentity,
           components ? { },
           extraRuntimePackages ? agentUsagePackages system,
           yaziAssets ? yazelixYaziAssets.packages.${system}.yazelix_yazi_assets,
@@ -141,6 +167,7 @@
         import ./yazelix_package.nix (
           {
             inherit nixgl runtimeVariant runtimeToolSources components yaziAssets zellijPluginArtifacts;
+            inherit runtimeIdentity;
             inherit screenAssets yazelixTerminalPackage;
             pkgs = runtimePkgs;
             enableZellijKittyPassthrough =
@@ -161,6 +188,7 @@
       runtimePackage = system: pkgs: runtimeVariant: extraRuntimePackages:
         import ./yazelix_runtime_package.nix {
           inherit nixgl runtimeVariant;
+          runtimeIdentity = defaultRuntimeIdentity;
           pkgs = runtimePkgsFor system pkgs runtimeVariant;
           fenixPkgs = fenix.packages.${system};
           extraRuntimePackages = [

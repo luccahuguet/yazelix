@@ -138,7 +138,7 @@ pub fn render_yzx_help(commands: &[YzxCommandMetadata]) -> String {
         "Show Yazelix help or version information".to_string(),
         String::new(),
         "Usage:".to_string(),
-        "  yzx [--version]".to_string(),
+        "  yzx [--version | --version-full]".to_string(),
         "  yzx <command> [args...]".to_string(),
         String::new(),
         "Commands:".to_string(),
@@ -148,6 +148,7 @@ pub fn render_yzx_help(commands: &[YzxCommandMetadata]) -> String {
         "  -h, --help           Display help for this command".to_string(),
         "  -V, --version        Show Yazelix version".to_string(),
         "  -v, --version-short  Show Yazelix version".to_string(),
+        "      --version-full   Show detailed Yazelix runtime identity".to_string(),
     ]
     .join("\n")
 }

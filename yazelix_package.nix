@@ -6,6 +6,7 @@
   fenixPkgs ? null,
   runtimeVariant ? "ghostty",
   runtimeToolSources ? { },
+  runtimeIdentity ? { },
   components ? { },
   extraRuntimePackages ? [ ],
   screenAssets,
@@ -40,6 +41,7 @@ import ./packaging/mk_yazelix_package.nix {
     fenixPkgs
     runtimeVariant
     runtimeToolSources
+    runtimeIdentity
     components
     extraRuntimePackages
     screenAssets

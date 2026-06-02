@@ -2,6 +2,22 @@ name: Issue
 description: Report a bug, request a feature, or note something that needs work.
 body:
   - type: textarea
+    id: version_full
+    attributes:
+      label: Yazelix version diagnostics
+      description: Run `yzx --version-full` and paste the full output. If the command is unavailable, paste `yzx --version` and the Yazelix install command or flake revision you used.
+      placeholder: |
+        {
+          "schema_version": 1,
+          "version": "v17.3",
+          "runtime_dir": "/nix/store/...",
+          "runtime_identity": {
+            "runtime_variant": "ghostty"
+          }
+        }
+    validations:
+      required: false
+  - type: textarea
     id: details
     attributes:
       label: Details

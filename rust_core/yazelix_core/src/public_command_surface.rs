@@ -59,6 +59,7 @@ pub struct YzxCommandMetadata {
 pub enum YzxPublicRootRoute {
     Help,
     Version,
+    VersionFull,
     RustControl,
 }
 
@@ -71,6 +72,7 @@ struct YzxRustControlFamily {
 const VERSION_FLAGS: &[YzxCommandParameter] = &[
     switch("version", Some("V")),
     switch("version-short", Some("v")),
+    switch("version-full", None),
 ];
 const ENV_FLAGS: &[YzxCommandParameter] = &[switch("no-shell", Some("n"))];
 const RUN_REST: &[YzxCommandParameter] = &[rest("argv")];
@@ -795,6 +797,10 @@ pub fn classify_yzx_root_route(argv: &[String]) -> Result<YzxPublicRootRoute, Co
         return Ok(YzxPublicRootRoute::Version);
     }
 
+    if first == "--version-full" {
+        return Ok(YzxPublicRootRoute::VersionFull);
+    }
+
     if RUST_CONTROL_FAMILIES
         .iter()
         .any(|family| family.root_token == first)
@@ -979,6 +985,10 @@ mod tests {
                 YzxPublicRootRoute::Version
             );
         }
+        assert_eq!(
+            classify_yzx_root_route(&[String::from("--version-full")]).unwrap(),
+            YzxPublicRootRoute::VersionFull
+        );
     }
 
     // Defends: the Rust root rejects unknown top-level commands instead of reviving the old generic Nu root fallback.

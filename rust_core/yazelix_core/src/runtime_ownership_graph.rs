@@ -126,6 +126,7 @@ fn command_owners() -> Vec<CommandOwnerEntry> {
             let (owner, route) = match classify_yzx_root_route(&tail) {
                 Ok(YzxPublicRootRoute::Help) => ("rust_root", "help"),
                 Ok(YzxPublicRootRoute::Version) => ("rust_root", "version"),
+                Ok(YzxPublicRootRoute::VersionFull) => ("rust_root", "version_full"),
                 Ok(YzxPublicRootRoute::RustControl) => ("rust_control", "rust_control"),
                 Err(_) => ("unknown", "unclassified"),
             };
