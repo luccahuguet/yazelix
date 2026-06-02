@@ -177,6 +177,8 @@ Refresh the current Home Manager flake input, then print the manual switch step
 - If your flake uses a different input name, run `nix flake update <your-input-name>` yourself
 - This still matters for `path:` inputs because `flake.lock` pins a snapshot of that local path until you refresh it
 - Prints `home-manager switch` for the user to copy and run manually
+- To reduce CPU pressure during activation, run the printed switch command with per-invocation Nix limits, such as `NIX_CONFIG=$'max-jobs = 1\ncores = 8\neval-cores = 8' home-manager switch`
+- Changing global Nix daemon defaults for every Nix command still requires root-owned Nix configuration
 - After `home-manager switch`, fresh launches and `yzx restart` use the profile-owned wrapper; already-open windows do not hot-swap invisibly
 
 ### `yzx home_manager prepare [--apply] [--yes]`

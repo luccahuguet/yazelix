@@ -268,7 +268,17 @@ For a Home Manager-owned Yazelix install, use:
 yzx update home_manager
 ```
 
-That command prints the exact `nix flake update yazelix` command it runs in the current flake directory, then prints `home-manager switch` for you to copy and run yourself.
+That command prints the exact `nix flake update yazelix` command it runs in the current flake directory, then prints `home-manager switch` for you to copy and run yourself
+
+If activation makes your machine throttle, run the printed switch command with per-invocation Nix limits
+
+```bash
+NIX_CONFIG=$'max-jobs = 1\ncores = 8\neval-cores = 8' home-manager switch
+```
+
+Choose the `cores` and `eval-cores` values as a percentage of your logical CPU count, such as `8` on a 16-thread machine for roughly half the CPU budget
+`max-jobs = 1` keeps concurrent derivations from multiplying that budget during activation
+Changing the global defaults for every Nix command still requires root-owned Nix configuration
 
 This still matters for `path:` inputs because `flake.lock` pins a snapshot of that local path until you refresh it
 If you point Home Manager at a local Yazelix git checkout, prefer `git+file:///absolute/path/to/yazelix` over `path:/absolute/path/to/yazelix` so Nix uses the Git working tree instead of snapshotting the whole directory
