@@ -11,7 +11,11 @@ pub struct RuntimeEnvComputeRequest {
     pub runtime_dir: PathBuf,
     pub home_dir: PathBuf,
     #[serde(default)]
+    pub xdg_config_home: Option<PathBuf>,
+    #[serde(default)]
     pub current_path: RuntimePathInput,
+    #[serde(default)]
+    pub current_lazygit_config_file: Option<String>,
     #[serde(default)]
     pub editor_command: Option<String>,
     #[serde(default)]
@@ -106,6 +110,12 @@ pub fn compute_runtime_env(
                 .join("yazi"),
         )),
     );
+    if let Some(lazygit_config_file) = resolve_lazygit_config_file(request) {
+        runtime_env.insert(
+            "LG_CONFIG_FILE".to_string(),
+            JsonValue::String(lazygit_config_file),
+        );
+    }
     runtime_env.insert(
         "EDITOR".to_string(),
         JsonValue::String(editor_command.clone()),
@@ -184,6 +194,45 @@ fn existing_runtime_path_entries(runtime_dir: &Path) -> Vec<String> {
         .filter(|path| path.exists())
         .map(|path| path_to_string(&path))
         .collect()
+}
+
+fn resolve_lazygit_config_file(request: &RuntimeEnvComputeRequest) -> Option<String> {
+    let runtime_config = request
+        .runtime_dir
+        .join("configs")
+        .join("lazygit")
+        .join("yazelix_config.yml");
+    if !runtime_config.is_file() {
+        return None;
+    }
+
+    let mut files = vec![path_to_string(&runtime_config)];
+    if let Some(config_file) = request
+        .current_lazygit_config_file
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        files.extend(
+            config_file
+                .split(',')
+                .map(str::trim)
+                .filter(|path| !path.is_empty())
+                .map(ToOwned::to_owned),
+        );
+    } else {
+        let user_config = request
+            .xdg_config_home
+            .clone()
+            .unwrap_or_else(|| request.home_dir.join(".config"))
+            .join("lazygit")
+            .join("config.yml");
+        if user_config.is_file() {
+            files.push(path_to_string(&user_config));
+        }
+    }
+
+    Some(files.join(","))
 }
 
 fn stable_dedupe(entries: Vec<String>) -> Vec<String> {

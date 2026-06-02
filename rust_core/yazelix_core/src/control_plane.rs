@@ -506,7 +506,9 @@ pub fn runtime_env_request(
     Ok(RuntimeEnvComputeRequest {
         runtime_dir,
         home_dir,
+        xdg_config_home: std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from),
         current_path: RuntimePathInput::String(current_path),
+        current_lazygit_config_file: std::env::var("LG_CONFIG_FILE").ok(),
         editor_command,
         helix_external,
     })
