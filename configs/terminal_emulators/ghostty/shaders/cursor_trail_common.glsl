@@ -99,38 +99,9 @@ float trailCoreMask(float sdf, float offset) {
     return step(sdf + (offset * YAZELIX_TRAIL_CORE_OFFSET_SCALE), 0.0);
 }
 
-float yazelixTerminalRioTrailShaderFactor() {
+float yazelixRioTrailAnimatingFactor() {
 #if defined(YAZELIX_TERMINAL_RIO_TRAIL)
-    return 1.0;
-#else
-    return 0.0;
-#endif
-}
-
-float yazelixRioAuraMask(vec2 point, vec2 center, vec2 cursorSize, float active, float spread) {
-    float radius = max(length(cursorSize) * spread * YAZELIX_TRAIL_GLOW_WIDTH_SCALE, 0.075);
-    float distanceToCenter = distance(point, center);
-    return active * YAZELIX_TRAIL_GLOW_STRENGTH * (1.0 - smoothstep(radius * 0.12, radius, distanceToCenter));
-}
-
-float yazelixRioAuraCoreMask(vec2 point, vec2 center, vec2 cursorSize, float active, float spread) {
-    float radius = max(length(cursorSize) * spread * YAZELIX_TRAIL_GLOW_WIDTH_SCALE, 0.075);
-    float distanceToCenter = distance(point, center);
-    return active * YAZELIX_TRAIL_GLOW_STRENGTH * (1.0 - smoothstep(radius * 0.04, radius * 0.40, distanceToCenter));
-}
-
-vec4 applyYazelixTerminalRioAura(vec4 color, vec2 point, vec2 center, vec2 cursorSize, vec4 outerColor, vec4 coreColor) {
-    float active = yazelixTerminalRioTrailShaderFactor();
-    float aura = yazelixRioAuraMask(point, center, cursorSize, active, 3.6);
-    float core = yazelixRioAuraCoreMask(point, center, cursorSize, active, 3.6);
-    color = applyTrailLayer(color, outerColor, aura * 0.90);
-    color = applyTrailLayer(color, coreColor, core * 0.80);
-    return color;
-}
-
-float yazelixRioTrailActiveFactor() {
-#if defined(YAZELIX_TERMINAL_RIO_TRAIL)
-    return iYazelixRioTrailActive == 0 ? 0.0 : 1.0;
+    return iYazelixRioTrailAnimating == 0 ? 0.0 : 1.0;
 #else
     return 0.0;
 #endif
@@ -144,9 +115,21 @@ vec4 yazelixRioTrailAnimatedRect() {
 #endif
 }
 
+vec4 yazelixRioTrailCursorRect(vec4 fallback) {
+#if defined(YAZELIX_TERMINAL_RIO_TRAIL)
+    if (iYazelixRioTrailAnimating == 0) {
+        return fallback;
+    }
+
+    return yazelixRioTrailAnimatedRect();
+#else
+    return fallback;
+#endif
+}
+
 vec2 yazelixRioTrailCenter(vec2 fallback) {
 #if defined(YAZELIX_TERMINAL_RIO_TRAIL)
-    if (iYazelixRioTrailActive == 0) {
+    if (iYazelixRioTrailAnimating == 0) {
         return fallback;
     }
 
@@ -154,6 +137,32 @@ vec2 yazelixRioTrailCenter(vec2 fallback) {
 #else
     return fallback;
 #endif
+}
+
+float yazelixRioTrailCursorSdf(in vec2 vu, vec4 fallbackCursor, in vec2 offsetFactor) {
+    vec4 cursor = yazelixRioTrailCursorRect(fallbackCursor);
+    return getSdfRectangle(vu, cursor.xy - (cursor.zw * offsetFactor), cursor.zw * 0.5);
+}
+
+float yazelixRioAuraMask(vec2 point, vec2 center, vec2 cursorSize, float active, float spread) {
+    float radius = max(length(cursorSize) * spread * YAZELIX_TRAIL_GLOW_WIDTH_SCALE, 0.032);
+    float distanceToCenter = distance(point, center);
+    return active * YAZELIX_TRAIL_GLOW_STRENGTH * (1.0 - smoothstep(radius * 0.20, radius, distanceToCenter));
+}
+
+float yazelixRioAuraCoreMask(vec2 point, vec2 center, vec2 cursorSize, float active, float spread) {
+    float radius = max(length(cursorSize) * spread * YAZELIX_TRAIL_GLOW_WIDTH_SCALE, 0.032);
+    float distanceToCenter = distance(point, center);
+    return active * YAZELIX_TRAIL_GLOW_STRENGTH * (1.0 - smoothstep(radius * 0.06, radius * 0.34, distanceToCenter));
+}
+
+vec4 applyYazelixTerminalRioAura(vec4 color, vec2 point, vec2 center, vec2 cursorSize, vec4 outerColor, vec4 coreColor) {
+    float active = yazelixRioTrailAnimatingFactor();
+    float aura = yazelixRioAuraMask(point, center, cursorSize, active, 0.90);
+    float core = yazelixRioAuraCoreMask(point, center, cursorSize, active, 0.90);
+    color = applyTrailLayer(color, outerColor, aura * 0.18);
+    color = applyTrailLayer(color, coreColor, core * 0.24);
+    return color;
 }
 
 float yazelixRioTrailSdf(in vec2 vu, in vec2 offsetFactor) {
@@ -201,18 +210,19 @@ void renderMonoColorTrail(
     vec2 v2 = vec2(previousCursor.x + currentCursor.z * invertedVertexFactor, previousCursor.y);
     vec2 v3 = vec2(previousCursor.x + currentCursor.z * vertexFactor, previousCursor.y - previousCursor.w);
 
-    float sdfCurrentCursor = getSdfRectangle(vu, currentCursor.xy - (currentCursor.zw * offsetFactor), currentCursor.zw * 0.5);
+    vec4 animatedCursor = yazelixRioTrailCursorRect(currentCursor);
+    float sdfCurrentCursor = yazelixRioTrailCursorSdf(vu, currentCursor, offsetFactor);
     float sdfTrail = getSdfParallelogram(vu, v0, v1, v2, v3);
-    float rioTrailActive = yazelixRioTrailActiveFactor();
-    sdfTrail = mix(sdfTrail, yazelixRioTrailSdf(vu, offsetFactor), rioTrailActive);
-    float trailGlowOffset = mix(mod + 0.010, -0.010, rioTrailActive);
-    float trailGlowWidth = mix(0.035, 0.220, rioTrailActive);
-    float trailEdgeOffset = mix(mod, -0.004, rioTrailActive);
-    float trailEdgeWidth = mix(0.006, 0.022, rioTrailActive);
-    float trailCoreOffset = mix(mod, -0.002, rioTrailActive);
-    float trailSaturation = mix(1.5, 2.2, rioTrailActive);
-    float cursorGlowWidth = mix(0.004, 0.012, rioTrailActive);
-    float cursorEdgeWidth = mix(0.004, 0.010, rioTrailActive);
+    float rioTrailAnimating = yazelixRioTrailAnimatingFactor();
+    sdfTrail = mix(sdfTrail, yazelixRioTrailSdf(vu, offsetFactor), rioTrailAnimating);
+    float trailGlowOffset = mix(mod + 0.010, -0.010, rioTrailAnimating);
+    float trailGlowWidth = mix(0.035, 0.055, rioTrailAnimating);
+    float trailEdgeOffset = mix(mod, -0.004, rioTrailAnimating);
+    float trailEdgeWidth = mix(0.006, 0.022, rioTrailAnimating);
+    float trailCoreOffset = mix(mod, -0.002, rioTrailAnimating);
+    float trailSaturation = mix(1.5, 2.2, rioTrailAnimating);
+    float cursorGlowWidth = mix(0.004, 0.007, rioTrailAnimating);
+    float cursorEdgeWidth = mix(0.004, 0.010, rioTrailAnimating);
 
     float progress = clamp((iTime - iTimeCursorChange) / duration, 0.0, 1.0);
     float easedProgress = ease(progress);
@@ -221,18 +231,18 @@ void renderMonoColorTrail(
     vec4 trail = fragColor;
     trail = applyTrailLayer(trail, saturate(accentColor, trailSaturation), trailGlowMask(sdfTrail, trailGlowOffset, trailGlowWidth));
     trail = applyTrailLayer(trail, saturate(trailColor, trailSaturation), trailEdgeMask(sdfTrail, trailEdgeOffset, trailEdgeWidth));
-    trail = mix(trail, saturate(trailColor, mix(coreSaturation, 1.8, rioTrailActive)), trailCoreMask(sdfTrail, trailCoreOffset));
+    trail = mix(trail, saturate(trailColor, mix(coreSaturation, 1.8, rioTrailAnimating)), trailCoreMask(sdfTrail, trailCoreOffset));
     trail = applyTrailLayer(trail, saturate(accentColor, trailSaturation), cursorGlowMask(sdfCurrentCursor, .002, cursorGlowWidth));
     trail = applyTrailLayer(trail, saturate(trailColor, trailSaturation), cursorEdgeMask(sdfCurrentCursor, .002, cursorEdgeWidth));
     float revealMix = 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength);
-    fragColor = mix(trail, fragColor, mix(revealMix, 0.0, rioTrailActive));
+    fragColor = mix(trail, fragColor, mix(revealMix, 0.0, rioTrailAnimating));
     fragColor = applyYazelixTerminalRioAura(
         fragColor,
         vu,
-        centerCC,
-        currentCursor.zw,
+        getRectangleCenter(animatedCursor),
+        animatedCursor.zw,
         saturate(accentColor, trailSaturation),
-        saturate(trailColor, mix(coreSaturation, 1.8, rioTrailActive))
+        saturate(trailColor, mix(coreSaturation, 1.8, rioTrailAnimating))
     );
 }
 
@@ -264,10 +274,11 @@ void renderSplitColorTrail(
     vec2 v2 = vec2(previousCursor.x + currentCursor.z * invertedVertexFactor, previousCursor.y);
     vec2 v3 = vec2(previousCursor.x + currentCursor.z * vertexFactor, previousCursor.y - previousCursor.w);
 
-    float sdfCurrentCursor = getSdfRectangle(vu, currentCursor.xy - (currentCursor.zw * offsetFactor), currentCursor.zw * 0.5);
+    vec4 animatedCursor = yazelixRioTrailCursorRect(currentCursor);
+    float sdfCurrentCursor = yazelixRioTrailCursorSdf(vu, currentCursor, offsetFactor);
     float sdfTrail = getSdfParallelogram(vu, v0, v1, v2, v3);
-    float rioTrailActive = yazelixRioTrailActiveFactor();
-    sdfTrail = mix(sdfTrail, yazelixRioTrailSdf(vu, offsetFactor), rioTrailActive);
+    float rioTrailAnimating = yazelixRioTrailAnimatingFactor();
+    sdfTrail = mix(sdfTrail, yazelixRioTrailSdf(vu, offsetFactor), rioTrailAnimating);
 
     float progress = clamp((iTime - iTimeCursorChange) / duration, 0.0, 1.0);
     float easedProgress = ease(progress);
@@ -282,33 +293,33 @@ void renderSplitColorTrail(
     float splitMix = mix(hardMix, softMix, clamp(blendEnabled, 0.0, 1.0));
     float pulse = 0.05 * sin(iTime * 1.6) * clamp(blendEnabled, 0.0, 1.0);
     float edgeMix = clamp(splitMix + pulse * 0.45, 0.0, 1.0);
-    float trailGlowOffset = mix(mod + 0.010, -0.010, rioTrailActive);
-    float trailGlowWidth = mix(0.035, 0.220, rioTrailActive);
-    float trailEdgeOffset = mix(mod, -0.004, rioTrailActive);
-    float trailEdgeWidth = mix(0.006, 0.022, rioTrailActive);
-    float trailCoreOffset = mix(mod, -0.002, rioTrailActive);
-    float trailSaturation = mix(1.45, 2.2, rioTrailActive);
-    float cursorGlowWidth = mix(0.004, 0.012, rioTrailActive);
-    float cursorEdgeWidth = mix(0.004, 0.010, rioTrailActive);
+    float trailGlowOffset = mix(mod + 0.010, -0.010, rioTrailAnimating);
+    float trailGlowWidth = mix(0.035, 0.055, rioTrailAnimating);
+    float trailEdgeOffset = mix(mod, -0.004, rioTrailAnimating);
+    float trailEdgeWidth = mix(0.006, 0.022, rioTrailAnimating);
+    float trailCoreOffset = mix(mod, -0.002, rioTrailAnimating);
+    float trailSaturation = mix(1.45, 2.2, rioTrailAnimating);
+    float cursorGlowWidth = mix(0.004, 0.007, rioTrailAnimating);
+    float cursorEdgeWidth = mix(0.004, 0.010, rioTrailAnimating);
 
     vec4 base = mix(color0, color1, splitMix);
     vec4 edge = mix(color0, color1, edgeMix);
 
     vec4 trail = fragColor;
     trail = applyTrailLayer(trail, saturate(base, trailSaturation), trailGlowMask(sdfTrail, trailGlowOffset, trailGlowWidth));
-    trail = applyTrailLayer(trail, saturate(edge, mix(1.55, 2.25, rioTrailActive)), trailEdgeMask(sdfTrail, trailEdgeOffset, trailEdgeWidth));
+    trail = applyTrailLayer(trail, saturate(edge, mix(1.55, 2.25, rioTrailAnimating)), trailEdgeMask(sdfTrail, trailEdgeOffset, trailEdgeWidth));
     trail = mix(trail, saturate(base, trailSaturation), trailCoreMask(sdfTrail, trailCoreOffset));
 
-    trail = applyTrailLayer(trail, saturate(edge, mix(1.55, 2.25, rioTrailActive)), cursorGlowMask(sdfCurrentCursor, .002, cursorGlowWidth));
+    trail = applyTrailLayer(trail, saturate(edge, mix(1.55, 2.25, rioTrailAnimating)), cursorGlowMask(sdfCurrentCursor, .002, cursorGlowWidth));
     trail = applyTrailLayer(trail, saturate(base, trailSaturation), cursorEdgeMask(sdfCurrentCursor, .002, cursorEdgeWidth));
     float revealMix = 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength);
-    fragColor = mix(trail, fragColor, mix(revealMix, 0.0, rioTrailActive));
+    fragColor = mix(trail, fragColor, mix(revealMix, 0.0, rioTrailAnimating));
     fragColor = applyYazelixTerminalRioAura(
         fragColor,
         vu,
-        centerCC,
-        currentCursor.zw,
-        saturate(edge, mix(1.55, 2.25, rioTrailActive)),
+        getRectangleCenter(animatedCursor),
+        animatedCursor.zw,
+        saturate(edge, mix(1.55, 2.25, rioTrailAnimating)),
         saturate(base, trailSaturation)
     );
 }
