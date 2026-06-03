@@ -162,6 +162,9 @@
           runtimeVariant ? "ghostty",
           runtimeToolSources ? { },
           runtimeIdentity ? defaultRuntimeIdentity,
+          name ? "yazelix",
+          runtimeName ? "yazelix-runtime",
+          skipStableWrapperRedirect ? false,
           components ? { },
           extraRuntimePackages ? agentUsagePackages system,
           yaziAssets ? yazelixYaziAssets.packages.${system}.yazelix_yazi_assets,
@@ -177,7 +180,7 @@
           {
             inherit nixgl runtimeVariant runtimeToolSources components yaziAssets zellijPluginArtifacts;
             inherit runtimeIdentity;
-            inherit screenAssets yazelixTerminalPackage;
+            inherit name runtimeName screenAssets skipStableWrapperRedirect yazelixTerminalPackage;
             pkgs = runtimePkgs;
             enableZellijKittyPassthrough =
               enableZellijKittyPassthrough || builtins.elem runtimeVariant [
@@ -194,10 +197,15 @@
           // lib.optionalAttrs (src != null) { inherit src; }
           // lib.optionalAttrs (rust_core_src != null) { inherit rust_core_src; }
         );
-      runtimePackage = system: pkgs: runtimeVariant: extraRuntimePackages:
+      runtimePackageWith =
+        system: pkgs: runtimeVariant: extraRuntimePackages:
+        {
+          name ? "yazelix-runtime",
+          runtimeIdentity ? defaultRuntimeIdentity,
+          yazelixTerminalPackage ? yazelixTerminal.packages.${system}.yazelix-terminal,
+        }:
         import ./yazelix_runtime_package.nix {
-          inherit nixgl runtimeVariant;
-          runtimeIdentity = defaultRuntimeIdentity;
+          inherit nixgl name runtimeIdentity runtimeVariant yazelixTerminalPackage;
           pkgs = runtimePkgsFor system pkgs runtimeVariant;
           fenixPkgs = fenix.packages.${system};
           extraRuntimePackages = [
@@ -205,7 +213,6 @@
           ] ++ extraRuntimePackages;
           screenAssets = yazelixScreen.packages.${system}.yzs;
           yaziAssets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
-          yazelixTerminalPackage = yazelixTerminal.packages.${system}.yazelix-terminal;
           zellijPluginArtifacts = zellijPluginArtifactsFor system;
           enableZellijKittyPassthrough = builtins.elem runtimeVariant [
             "ghostty"
@@ -214,6 +221,8 @@
             "yzxterm"
           ];
         };
+      runtimePackage = system: pkgs: runtimeVariant: extraRuntimePackages:
+        runtimePackageWith system pkgs runtimeVariant extraRuntimePackages { };
       yazelixPackage = system: pkgs: runtimeVariant: extraRuntimePackages:
         mkYazelix system {
           inherit pkgs runtimeVariant extraRuntimePackages;
@@ -403,6 +412,16 @@
           runtime_wezterm = runtimePackage system pkgs "wezterm" defaultRuntimePackages;
           runtime_yzxterm =
             runtimePackage system pkgs "yzxterm" defaultRuntimePackages;
+          yzxtermFastRuntimeIdentity = defaultRuntimeIdentity // {
+            package_profile = "yzxterm-fast";
+            yzxterm_terminal_package = "yazelix-terminal-fast";
+          };
+          yzxtermFastTerminalPackage = yazelixTerminal.packages.${system}.yazelix-terminal-fast;
+          runtime_yzxterm_fast = runtimePackageWith system pkgs "yzxterm" defaultRuntimePackages {
+            name = "yazelix-runtime-yzxterm-fast";
+            runtimeIdentity = yzxtermFastRuntimeIdentity;
+            yazelixTerminalPackage = yzxtermFastTerminalPackage;
+          };
           runtime_agent_tools = runtimePackage system pkgs defaultRuntimeVariant agentUsageRuntimePackages;
           graphicsPkgs = yazelixGraphicsPkgs system pkgs;
           yazelix_default = yazelixPackage system pkgs defaultRuntimeVariant defaultRuntimePackages;
@@ -410,6 +429,16 @@
           yazelix_kitty = yazelixPackage system pkgs "kitty" defaultRuntimePackages;
           yazelix_wezterm = yazelixPackage system pkgs "wezterm" defaultRuntimePackages;
           yzxterm = yazelixPackage system pkgs "yzxterm" defaultRuntimePackages;
+          yzxterm_fast = mkYazelix system {
+            pkgs = pkgs;
+            name = "yazelix-yzxterm-fast";
+            runtimeName = "yazelix-runtime-yzxterm-fast";
+            runtimeVariant = "yzxterm";
+            runtimeIdentity = yzxtermFastRuntimeIdentity;
+            extraRuntimePackages = defaultRuntimePackages;
+            skipStableWrapperRedirect = true;
+            yazelixTerminalPackage = yzxtermFastTerminalPackage;
+          };
           yazelix_agent_tools = yazelixPackage system pkgs defaultRuntimeVariant agentUsageRuntimePackages;
           yazelix_zellij_bar = yazelixZellijBar.packages.${system}.yazelix_zellij_bar;
           yazelix_screen = yazelixScreen.packages.${system}.yzs;
@@ -431,6 +460,7 @@
           runtime_kitty = runtime_kitty;
           runtime_wezterm = runtime_wezterm;
           runtime_yzxterm = runtime_yzxterm;
+          runtime_yzxterm_fast = runtime_yzxterm_fast;
           yazelix = yazelix_default;
           yazelix_agent_tools = yazelix_agent_tools;
           yazelix_zellij_bar = yazelix_zellij_bar;
@@ -443,6 +473,7 @@
           yazelix_kgp_zellij = graphicsPkgs.zellij;
           yazelix_wezterm = yazelix_wezterm;
           yzxterm = yzxterm;
+          yzxterm_fast = yzxterm_fast;
           yazelix_yazi_assets = yazelix_yazi_assets;
           yazelix_zellij_pane_orchestrator = yazelix_zellij_pane_orchestrator;
           yazelix_zellij_popup = yazelix_zellij_popup;
@@ -479,6 +510,10 @@
           yzxterm = {
             type = "app";
             program = "${self.packages.${system}.yzxterm}/bin/yzx";
+          };
+          yzxterm_fast = {
+            type = "app";
+            program = "${self.packages.${system}.yzxterm_fast}/bin/yzx";
           };
           yazelix_agent_tools = {
             type = "app";

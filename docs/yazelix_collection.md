@@ -19,10 +19,11 @@ Yazelix is built on a focused terminal-workspace stack. This catalog lists the p
 - `#yazelix` — The default flake package and app, backed by the Ghostty runtime variant
 - `#yazelix_ghostty` — Explicit Ghostty runtime package, equivalent to the default packaged terminal variant
 - `#yzxterm` — Experimental Yazelix Terminal runtime package backed by the `yazelix-terminal` child repository
+- `#yzxterm_fast` — Maintainer-only Yazelix Terminal dogfooding package that uses the child fork's fast profile; not release evidence
 - `#yazelix_wezterm` — Explicit WezTerm runtime package for users who prefer WezTerm terminal behavior
 - `#yazelix_kitty` — Explicit Kitty runtime package for users who prefer Kitty terminal behavior
 - `#yazelix_ratty` — Experimental Linux Ratty runtime package for users who want Ratty terminal behavior
-- `#runtime`, `#runtime_ghostty`, `#runtime_yzxterm`, `#runtime_wezterm`, `#runtime_kitty`, `#runtime_ratty` — Runtime-only package outputs used by the wrapper packages and validation surfaces
+- `#runtime`, `#runtime_ghostty`, `#runtime_yzxterm`, `#runtime_yzxterm_fast`, `#runtime_wezterm`, `#runtime_kitty`, `#runtime_ratty` — Runtime-only package outputs used by the wrapper packages, validation surfaces, and maintainer yzxterm dogfooding
 - `#yazelix_kgp_yazi` and `#yazelix_kgp_zellij` — KGP-enabled Yazi and Zellij package outputs used by the Ghostty runtime and cache publication workflow
 - `#yazelix_agent_tools` and `#runtime_agent_tools` — Compatibility runtime variants for the default package shape with bundled agent usage helpers
 - `#yazelix_zellij_bar` — Standalone Zellij/zjstatus bar preset forwarded from `luccahuguet/yazelix-zellij-bar`, including `yazelix_zellij_bar_widget` and package-local `zjstatus.wasm`
@@ -37,7 +38,7 @@ Regular Yazelix users do not need to install or wire these repositories separate
 
 - [yazelix-screen](https://github.com/luccahuguet/yazelix-screen) — Standalone terminal animation engine consumed by Yazelix welcome/screen rendering and exposed from this repo as `#yzs` and `#yazelix_screen`.
 - [yazelix-cursors](https://github.com/luccahuguet/yazelix-cursors) — Standalone cursor preset, Ghostty-compatible shader, and `yzc` CLI repository consumed by Yazelix cursor settings and exposed from this repo as `#yzc` and `#yazelix_cursors`.
-- [yazelix-terminal](https://github.com/luccahuguet/yazelix-terminal) — Experimental Rio-derived terminal emulator consumed by the opt-in Yazelix Terminal runtime and exposed from this repo as `#yzxterm` and `#runtime_yzxterm`.
+- [yazelix-terminal](https://github.com/luccahuguet/yazelix-terminal) — Experimental Rio-derived terminal emulator consumed by the opt-in Yazelix Terminal runtime and exposed from this repo as `#yzxterm` and `#runtime_yzxterm`; maintainer fast dogfooding outputs are `#yzxterm_fast` and `#runtime_yzxterm_fast`.
 - [yazelix-zellij-bar](https://github.com/luccahuguet/yazelix-zellij-bar) — Standalone Zellij/zjstatus bar preset consumed by Yazelix tab/status rendering and exposed from this repo as `#yazelix_zellij_bar`.
 - [yazelix-zellij-pane-orchestrator](https://github.com/luccahuguet/yazelix-zellij-pane-orchestrator) — First-party Zellij plugin wasm that owns managed pane identity, editor/sidebar handoff, focus actions, and layout-family commands, exposed from this repo as `#yazelix_zellij_pane_orchestrator`.
 - [yazelix-ratconfig](https://github.com/luccahuguet/yazelix-ratconfig) — Reusable Ratatui config editor crate for JSONC-backed settings, consumed by Yazelix config UI while Yazelix keeps settings schema, Home Manager ownership, validation, and runtime apply behavior in this repo.

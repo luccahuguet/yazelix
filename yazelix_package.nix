@@ -7,6 +7,9 @@
   runtimeVariant ? "ghostty",
   runtimeToolSources ? { },
   runtimeIdentity ? { },
+  name ? "yazelix",
+  runtimeName ? "yazelix-runtime",
+  skipStableWrapperRedirect ? false,
   components ? { },
   extraRuntimePackages ? [ ],
   screenAssets,
@@ -42,6 +45,9 @@ import ./packaging/mk_yazelix_package.nix {
     runtimeVariant
     runtimeToolSources
     runtimeIdentity
+    name
+    runtimeName
+    skipStableWrapperRedirect
     components
     extraRuntimePackages
     screenAssets

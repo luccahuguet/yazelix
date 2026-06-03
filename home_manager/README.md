@@ -97,6 +97,18 @@ To keep Yazelix Terminal as the primary runtime while also installing Ghostty as
 
 `runtime_variant` controls the primary packaged Yazelix runtime. `yzxterm_profile` controls Yazelix Terminal's generated profile for activation, desktop launches, and new shell sessions: `full` keeps Rio trail cursor without custom shaders, `baseline` disables effects, and `shaders` enables the generated Yazelix cursor shader chain. `extra_terminal_variants` installs only additional terminal emulator commands into the Home Manager profile, so it does not collide with the profile-owned `yzx` wrapper
 
+Maintainers dogfooding local Yazelix Terminal changes can temporarily point the
+module at the fast yzxterm package while keeping `runtime_variant = "yzxterm"`:
+
+```nix
+{
+  programs.yazelix.package = inputs.yazelix.packages.${pkgs.stdenv.hostPlatform.system}.yzxterm_fast;
+}
+```
+
+Remove this package override before final release validation; the normal module
+path uses the checked `yazelix-terminal` child package.
+
 To save space by using tools you already manage on your host, set runtime tool sources per tool:
 
 ```nix

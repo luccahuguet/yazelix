@@ -7,6 +7,7 @@
   runtimeVariant ? "ghostty",
   runtimeToolSources ? { },
   runtimeIdentity ? { },
+  name ? "yazelix-runtime",
   components ? { },
   extraRuntimePackages ? [ ],
   screenAssets,
@@ -49,5 +50,5 @@ import ./packaging/mk_runtime_tree.nix {
     enableZellijKittyPassthrough
     ;
   src = runtimeSource;
-  name = "yazelix-runtime";
+  inherit name;
 }

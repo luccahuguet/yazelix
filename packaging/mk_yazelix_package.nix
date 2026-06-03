@@ -8,6 +8,9 @@
   runtimeVariant ? "ghostty",
   runtimeToolSources ? { },
   runtimeIdentity ? { },
+  name ? "yazelix",
+  runtimeName ? "yazelix-runtime",
+  skipStableWrapperRedirect ? false,
   components ? { },
   extraRuntimePackages ? [ ],
   screenAssets,
@@ -39,11 +42,11 @@ let
       zellijPluginArtifacts
       enableZellijKittyPassthrough
       ;
-    name = "yazelix-runtime";
+    name = runtimeName;
   };
 in
 pkgs.symlinkJoin {
-  name = "yazelix";
+  inherit name;
   paths = [ runtime ];
 
   nativeBuildInputs = [ pkgs.makeWrapper ];
@@ -58,7 +61,7 @@ pkgs.symlinkJoin {
 
     rm -f "$out/bin/yzx"
     makeWrapper "$out/shells/posix/yzx_cli.sh" "$out/bin/yzx" \
-      --run 'export YAZELIX_INVOKED_YZX_PATH="$0"'
+      --run 'export YAZELIX_INVOKED_YZX_PATH="$0"'${pkgs.lib.optionalString skipStableWrapperRedirect " \\\n      --run 'export YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1'"}
   '';
 
   meta = {
