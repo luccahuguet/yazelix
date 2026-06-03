@@ -7,7 +7,7 @@ A Home Manager module for [Yazelix](https://github.com/luccahuguet/yazelix) that
 - **Leaves `settings.jsonc` mutable by default** so users can edit it directly
 - **Can generate `settings.jsonc`** from Home Manager options when `manage_config = true`
 - **Adds `yzx` to the Home Manager profile** through the packaged Yazelix runtime
-- **Selects one packaged terminal** with Ghostty by default, Yazelix Terminal as the experimental Rio-derived path, WezTerm and Kitty as stable alternates, and Ratty as an experimental Linux option through `terminal`
+- **Selects one packaged terminal** with Ghostty by default, vanilla Rio, WezTerm, and Kitty as alternates, Yazelix Terminal as the experimental Rio-derived path, and Ratty as an experimental Linux option through `terminal`
 - **Installs icons and, on Linux, a desktop entry** that target the managed runtime
 - **Keeps the config surface type-safe** with Home Manager validation
 
@@ -64,7 +64,7 @@ If you already have your own Home Manager flake, the minimal setup is:
 {
   programs.yazelix = {
     enable = true;
-    terminal = "ghostty"; # Default; use "kitty", "yzxterm", "wezterm", or Linux-only "ratty" for alternate packaged terminal paths
+    terminal = "ghostty"; # Default; use "kitty", "rio", "yzxterm", "wezterm", or Linux-only "ratty" for alternate packaged terminal paths
     yzxterm_profile = "full"; # Default; use "baseline" or "shaders" for Yazelix Terminal profile selection
     # Customize other options as needed - see example.nix
     # Set manage_config = true if you want Home Manager to own settings.jsonc
@@ -80,14 +80,14 @@ To use Yazelix Terminal as the packaged terminal:
     enable = true;
     terminal = "yzxterm";
     yzxterm_profile = "shaders";
-    extra_terminal_launchers = [ "ghostty" "wezterm" ];
+    extra_terminal_launchers = [ "ghostty" "rio" "wezterm" ];
   };
 }
 ```
 
 `terminal` controls the packaged terminal Yazelix launches. There is no fallback to another packaged terminal when this option is selected; a missing or mispackaged terminal fails clearly. `yzxterm_profile` controls Yazelix Terminal's generated profile for activation, desktop launches, and new shell sessions: `full` keeps Rio trail cursor without custom shaders, `baseline` disables effects, and `shaders` enables the generated Yazelix cursor shader chain
 
-`extra_terminal_launchers` installs additional Linux desktop entries such as `Yazelix - Ghostty` and `Yazelix - WezTerm` without changing the active runtime identity. These entries point directly at their terminal variant packages in the Nix store, so their dependencies stay available without adding duplicate `bin/yzx` commands to the Home Manager profile. Do not include the active `terminal` value in this list; the active terminal already gets the profile-owned launcher
+`extra_terminal_launchers` installs additional Linux desktop entries such as `Yazelix - Ghostty`, `Yazelix - Rio`, and `Yazelix - WezTerm` without changing the active runtime identity. These entries point directly at their terminal variant packages in the Nix store, so their dependencies stay available without adding duplicate `bin/yzx` commands to the Home Manager profile. Do not include the active `terminal` value in this list; the active terminal already gets the profile-owned launcher
 
 Maintainers dogfooding local Yazelix Terminal changes can temporarily point the
 module at the fast yzxterm package while keeping `terminal = "yzxterm"`:

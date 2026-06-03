@@ -314,6 +314,7 @@ fn verify_profile_installed_runtime(
         .unwrap_or_else(|| "unknown".to_string());
     let runtime_terminal = match runtime_variant.as_str() {
         "kitty" => "kitty",
+        "rio" => "rio",
         "wezterm" => "wezterm",
         "ratty" => "ratty",
         "yzxterm" => "yzxterm",
@@ -362,6 +363,14 @@ fn verify_profile_installed_runtime(
         .join("terminal_emulators")
         .join("kitty")
         .join("kitty.conf");
+    let generated_rio_config = temp_home
+        .join(".local")
+        .join("share")
+        .join("yazelix")
+        .join("configs")
+        .join("terminal_emulators")
+        .join("rio")
+        .join("config.toml");
     let generated_yzxterm_config = temp_home
         .join(".local")
         .join("share")
@@ -619,6 +628,12 @@ fn verify_profile_installed_runtime(
         require_path_exists_abs(
             &generated_kitty_config,
             "generated Kitty config for selected runtime variant",
+            errors,
+        );
+    } else if runtime_terminal == "rio" {
+        require_path_exists_abs(
+            &generated_rio_config,
+            "generated Rio config for selected runtime variant",
             errors,
         );
     } else if runtime_terminal == "wezterm" {

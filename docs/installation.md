@@ -17,7 +17,7 @@ It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij,
 **Important**: You don't need to learn Nix or Nushell to use Yazelix. Nix with flakes is the only real host prerequisite. The normal product surface is the `yazelix` package or the top-level Home Manager module.
 
 ## Supported Terminal Emulators
-Yazelix provides one packaged terminal at a time. The default `#yazelix` package uses Ghostty so Yazelix cursor trails, Ghostty config effects, and Yazi image previews through Zellij are present on first run. Yazelix Terminal is available through `#yzxterm` or `programs.yazelix.terminal = "yzxterm"` as the experimental Rio-derived path for the future first-party terminal. WezTerm remains available through `#yazelix_wezterm` or `programs.yazelix.terminal = "wezterm"` for users who prefer the stable alternate packaged terminal path. Kitty is available through `#yazelix_kitty` or `programs.yazelix.terminal = "kitty"` for users who want the reference Kitty protocol terminal as a packaged runtime. Ratty is available on Linux through `#yazelix_ratty` or `programs.yazelix.terminal = "ratty"` as an experimental packaged terminal path. Yazelix does not fall back to another terminal when a selected variant is missing or mispackaged.
+Yazelix provides one packaged terminal at a time. The default `#yazelix` package uses Ghostty so Yazelix cursor trails, Ghostty config effects, and Yazi image previews through Zellij are present on first run. Yazelix Terminal is available through `#yzxterm` or `programs.yazelix.terminal = "yzxterm"` as the experimental Rio-derived path for the future first-party terminal. Vanilla Rio is available through `#yazelix_rio` or `programs.yazelix.terminal = "rio"` for users who prefer upstream Rio terminal behavior. WezTerm remains available through `#yazelix_wezterm` or `programs.yazelix.terminal = "wezterm"` for users who prefer the stable alternate packaged terminal path. Kitty is available through `#yazelix_kitty` or `programs.yazelix.terminal = "kitty"` for users who want the reference Kitty protocol terminal as a packaged runtime. Ratty is available on Linux through `#yazelix_ratty` or `programs.yazelix.terminal = "ratty"` as an experimental packaged terminal path. Yazelix does not fall back to another terminal when a selected variant is missing or mispackaged.
 
 The Ghostty image-preview path pins temporary Yazelix forks of Zellij and Yazi. Those forks are expected to be dropped and archived once upstream Zellij supports the required Kitty graphics path directly enough for Yazelix to return to upstream packages.
 
@@ -44,6 +44,12 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 - Uses the packaged `yazelix-terminal-desktop` wrapper, generated Yazelix config, Rio trail cursor defaults, opt-in Ghostty-compatible shader support through `programs.yazelix.yzxterm_profile = "shaders"`, and `terminal.transparency`
 - Reference: https://github.com/luccahuguet/yazelix-terminal
 
+**Rio**
+- Upstream Rio terminal packaged as a Yazelix runtime
+- Provided by `#yazelix_rio` or by `programs.yazelix.terminal = "rio"`
+- Uses generated Rio config, `terminal.transparency`, and the Yazelix Zellij/Yazi Kitty graphics bridge
+- Reference: https://github.com/raphamorim/rio
+
 **Kitty**
 - Fast, feature-rich, GPU-accelerated terminal
 - Provided by `#yazelix_kitty` or by `programs.yazelix.terminal = "kitty"`
@@ -58,7 +64,7 @@ nix profile add github:luccahuguet/yazelix#yazelix
 yzx launch
 ```
 
-Use `#yzxterm` instead if you intentionally want the experimental Yazelix Terminal runtime variant, `#yazelix_wezterm` for WezTerm, `#yazelix_kitty` for Kitty, or `#yazelix_ratty` on Linux if you want the experimental Ratty runtime variant.
+Use `#yzxterm` instead if you intentionally want the experimental Yazelix Terminal runtime variant, `#yazelix_rio` for vanilla Rio, `#yazelix_wezterm` for WezTerm, `#yazelix_kitty` for Kitty, or `#yazelix_ratty` on Linux if you want the experimental Ratty runtime variant.
 
 One-off use without installing also works:
 
@@ -200,7 +206,7 @@ The packaged runtime ships a fixed toolset instead of configurable dependency gr
 - the default CLI helpers: `fzf`, `zoxide`, `starship`, `lazygit`, `btm`, `carapace`, `macchina`
 - host-managed helper integrations: `mise` and `tombi`
 - the default Yazi preview helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
-- one packaged terminal variant: Ghostty by default with the Yazelix Zellij/Yazi graphics bridge, experimental Yazelix Terminal through `#yzxterm`, WezTerm through `#yazelix_wezterm`, Kitty through `#yazelix_kitty`, or experimental Linux Ratty through `#yazelix_ratty`
+- one packaged terminal variant: Ghostty by default with the Yazelix Zellij/Yazi graphics bridge, experimental Yazelix Terminal through `#yzxterm`, vanilla Rio through `#yazelix_rio`, WezTerm through `#yazelix_wezterm`, Kitty through `#yazelix_kitty`, or experimental Linux Ratty through `#yazelix_ratty`
 
 When you enter `yzx env`, Yazelix exports that curated tool surface to your shell. Runtime-private helpers stay under `libexec/` so host apps launched from Yazelix do not inherit shadowing tools like `dirname` ahead of the system PATH.
 
@@ -212,8 +218,8 @@ What it does not ship anymore:
 
 #### Configuration Options
 - **Custom shells**: Set `default_shell` to your preference (`"nu"`, `"bash"`, `"fish"`, `"zsh"`)
-- **Terminal package**: choose a flake output such as `#yazelix`, `#yzxterm`, `#yazelix_wezterm`, `#yazelix_kitty`, or set Home Manager `programs.yazelix.terminal`
-- **Terminal launch**: Ghostty is first in the default terminal list for Yazelix cursor trails and Yazi image previews; Yazelix Terminal, WezTerm, Kitty, and Ratty remain available through explicit runtime variants or host `PATH`
+- **Terminal package**: choose a flake output such as `#yazelix`, `#yzxterm`, `#yazelix_rio`, `#yazelix_wezterm`, `#yazelix_kitty`, or set Home Manager `programs.yazelix.terminal`
+- **Terminal launch**: Ghostty is first in the default terminal list for Yazelix cursor trails and Yazi image previews; Yazelix Terminal, Rio, WezTerm, Kitty, and Ratty remain available through explicit runtime variants or host `PATH`
 - **Editor choice**: Configure your editor (see [Editor Configuration](./editor_configuration.md))
 
 ### Step 4: Install Fonts (Required for Kitty)

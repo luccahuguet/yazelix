@@ -11,7 +11,7 @@
   programs.yazelix = {
     enable = true;
     manage_config = true; # Opt into declarative Home Manager ownership of settings.jsonc for this example
-    terminal = "ghostty"; # Optional: "ghostty", "kitty", "yzxterm", "wezterm", or Linux-only "ratty"
+    terminal = "ghostty"; # Optional: "ghostty", "kitty", "rio", "yzxterm", "wezterm", or Linux-only "ratty"
     extra_terminal_launchers = [ "wezterm" ]; # Optional: extra Linux desktop entries; do not include the active terminal
 
     # Shell entry

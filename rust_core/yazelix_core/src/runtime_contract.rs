@@ -934,7 +934,7 @@ mod tests {
                 .details
                 .as_deref()
                 .unwrap_or_default()
-                .contains("Supported terminals: ghostty, yzxterm, wezterm, ratty, kitty")
+                .contains("Supported terminals: ghostty, yzxterm, rio, wezterm, ratty, kitty")
         );
     }
 

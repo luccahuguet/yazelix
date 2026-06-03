@@ -447,6 +447,7 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
     }
     for (terminal, expected_name) in [
         ("ghostty", "Yazelix - Ghostty"),
+        ("rio", "Yazelix - Rio"),
         ("wezterm", "Yazelix - WezTerm"),
     ] {
         let entry = extra_entry
@@ -481,6 +482,12 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         if !exec.ends_with("/bin/yzx desktop launch") || exec.contains("/tmp/profile/bin/yzx") {
             errors.push(format!(
                 "Home Manager extra {terminal} desktop entry Exec must point at the terminal package store yzx, got {}",
+                format_json_value(&JsonValue::String(exec.to_string()))
+            ));
+        }
+        if !exec.starts_with("env YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1 ") {
+            errors.push(format!(
+                "Home Manager extra {terminal} desktop entry Exec must disable stable-profile redirects for intentional variant package launches, got {}",
                 format_json_value(&JsonValue::String(exec.to_string()))
             ));
         }
@@ -738,8 +745,11 @@ fn load_home_manager_desktop_entry_contract_with_profile(
 fn load_home_manager_extra_terminal_launchers_contract(
     repo_root: &Path,
 ) -> Result<JsonMap<String, JsonValue>, String> {
-    let expr =
-        build_home_manager_desktop_entry_expr(repo_root, Some("shaders"), &["ghostty", "wezterm"]);
+    let expr = build_home_manager_desktop_entry_expr(
+        repo_root,
+        Some("shaders"),
+        &["ghostty", "rio", "wezterm"],
+    );
     let result = run_nix_eval(repo_root, &expr)?;
     result.as_object().cloned().ok_or_else(|| {
         "Home Manager desktop-entry evaluation did not return a JSON object".to_string()
@@ -790,10 +800,12 @@ fn build_home_manager_desktop_entry_expr(
         "  };".to_string(),
         format!("  entryKey = \"{}\";", entry_key),
         "  ghosttyKey = \"com.yazelix.Yazelix.Ghostty\";".to_string(),
+        "  rioKey = \"com.yazelix.Yazelix.Rio\";".to_string(),
         "  weztermKey = \"com.yazelix.Yazelix.WezTerm\";".to_string(),
         "  entries = eval.config.xdg.desktopEntries;".to_string(),
         "  entry = if builtins.hasAttr entryKey entries then builtins.getAttr entryKey entries else {};".to_string(),
         "  ghosttyEntry = if builtins.hasAttr ghosttyKey entries then builtins.getAttr ghosttyKey entries else {};".to_string(),
+        "  rioEntry = if builtins.hasAttr rioKey entries then builtins.getAttr rioKey entries else {};".to_string(),
         "  weztermEntry = if builtins.hasAttr weztermKey entries then builtins.getAttr weztermKey entries else {};".to_string(),
         "in {".to_string(),
         "  present = builtins.hasAttr entryKey entries;".to_string(),
@@ -804,6 +816,7 @@ fn build_home_manager_desktop_entry_expr(
             .to_string(),
         "  packageCount = builtins.length eval.config.home.packages;".to_string(),
         "  ghostty = { present = builtins.hasAttr ghosttyKey entries; name = ghosttyEntry.name or \"\"; exec = ghosttyEntry.exec or \"\"; };".to_string(),
+        "  rio = { present = builtins.hasAttr rioKey entries; name = rioEntry.name or \"\"; exec = rioEntry.exec or \"\"; };".to_string(),
         "  wezterm = { present = builtins.hasAttr weztermKey entries; name = weztermEntry.name or \"\"; exec = weztermEntry.exec or \"\"; };".to_string(),
         "}".to_string(),
     ]);

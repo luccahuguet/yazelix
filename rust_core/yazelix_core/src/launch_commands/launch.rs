@@ -222,6 +222,9 @@ pub(super) fn run_launch_flow(
         if candidate.terminal == "yzxterm" {
             extra_env.extend(yzxterm_process_boundary_env(&config_path)?);
         }
+        if candidate.terminal == "rio" {
+            extra_env.extend(rio_process_boundary_env(&config_path)?);
+        }
         if let Ok(value) = std::env::var("YAZELIX_SWEEP_TEST_ID") {
             if !value.trim().is_empty() {
                 extra_env.push(("YAZELIX_SWEEP_TEST_ID".to_string(), Some(value)));
@@ -312,6 +315,28 @@ fn yzxterm_process_boundary_env(
             Some("1".to_string()),
         ),
     ])
+}
+
+fn rio_process_boundary_env(
+    config_path: &Path,
+) -> Result<Vec<(String, Option<String>)>, CoreError> {
+    let config_dir = config_path.parent().ok_or_else(|| {
+        CoreError::classified(
+            ErrorClass::Runtime,
+            "invalid_rio_config_path",
+            format!(
+                "Generated Rio config path has no parent directory: {}.",
+                config_path.display()
+            ),
+            "Regenerate Yazelix runtime state with `yzx refresh`, then retry.",
+            serde_json::json!({}),
+        )
+    })?;
+
+    Ok(vec![(
+        "RIO_CONFIG_HOME".to_string(),
+        Some(config_dir.to_string_lossy().into_owned()),
+    )])
 }
 
 fn resolve_materialized_terminal_config_path(
@@ -499,6 +524,65 @@ mod tests {
                     YAZELIX_TERMINAL_CHILD_ENV_SANITIZE.to_string(),
                     Some("1".to_string())
                 ),
+            ]
+        );
+    }
+
+    // Defends: vanilla Rio uses Rio's supported RIO_CONFIG_HOME lookup instead of ambient host config or yzxterm-only env.
+    #[test]
+    fn rio_process_boundary_env_points_at_selected_config_dir() {
+        let env = rio_process_boundary_env(Path::new(
+            "/state/configs/terminal_emulators/rio/config.toml",
+        ))
+        .unwrap();
+
+        assert_eq!(
+            env,
+            vec![(
+                "RIO_CONFIG_HOME".to_string(),
+                Some("/state/configs/terminal_emulators/rio".to_string())
+            )]
+        );
+    }
+
+    // Defends: vanilla Rio launches through Rio's own CLI shape instead of yzxterm-only flags.
+    #[test]
+    fn rio_launch_argv_uses_selected_config_and_working_dir() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let runtime_dir = tmp.path().join("runtime");
+        let posix_dir = runtime_dir.join("shells").join("posix");
+        std::fs::create_dir_all(&posix_dir).unwrap();
+        let startup_script = posix_dir.join("start_yazelix.sh");
+        std::fs::write(&startup_script, "#!/bin/sh\n").unwrap();
+        let config_path = tmp
+            .path()
+            .join("state/configs/terminal_emulators/rio/config.toml");
+        let working_dir = tmp.path().join("workspace");
+        std::fs::create_dir_all(config_path.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(&working_dir).unwrap();
+
+        let argv = build_launch_command_argv(
+            &runtime_dir,
+            &crate::runtime_contract::TerminalCandidate {
+                terminal: "rio".to_string(),
+                name: "Rio".to_string(),
+                command: "rio".to_string(),
+            },
+            &config_path,
+            &working_dir,
+        )
+        .unwrap();
+
+        assert_eq!(
+            argv,
+            vec![
+                "rio".to_string(),
+                "--title-placeholder".to_string(),
+                "Yazelix - Rio".to_string(),
+                "--working-dir".to_string(),
+                working_dir.to_string_lossy().into_owned(),
+                "-e".to_string(),
+                startup_script.to_string_lossy().into_owned(),
             ]
         );
     }

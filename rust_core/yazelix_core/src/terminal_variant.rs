@@ -2,7 +2,8 @@ use crate::bridge::{CoreError, ErrorClass};
 use std::fs;
 use std::path::Path;
 
-pub const SUPPORTED_TERMINALS: &[&str] = &["ghostty", "yzxterm", "wezterm", "ratty", "kitty"];
+pub const SUPPORTED_TERMINALS: &[&str] =
+    &["ghostty", "yzxterm", "rio", "wezterm", "ratty", "kitty"];
 
 pub fn normalize_terminal_id(raw: &str) -> Option<String> {
     let trimmed = raw.trim().to_ascii_lowercase();
@@ -22,6 +23,7 @@ pub fn terminal_command_name(terminal: &str) -> &str {
 pub fn terminal_display_name(terminal: &str) -> String {
     match terminal {
         "ghostty" => "Ghostty".to_string(),
+        "rio" => "Rio".to_string(),
         "wezterm" => "WezTerm".to_string(),
         "yzxterm" => "Yazelix Terminal".to_string(),
         "ratty" => "Ratty".to_string(),
@@ -33,6 +35,7 @@ pub fn terminal_display_name(terminal: &str) -> String {
 pub fn terminal_desktop_label(terminal: &str) -> String {
     match terminal {
         "ghostty" => "Ghostty".to_string(),
+        "rio" => "Rio".to_string(),
         "wezterm" => "WezTerm".to_string(),
         "yzxterm" => "yzxterm".to_string(),
         "ratty" => "Ratty".to_string(),
@@ -44,6 +47,7 @@ pub fn terminal_desktop_label(terminal: &str) -> String {
 pub fn terminal_desktop_id_suffix(terminal: &str) -> String {
     match terminal {
         "ghostty" => "Ghostty".to_string(),
+        "rio" => "Rio".to_string(),
         "wezterm" => "WezTerm".to_string(),
         "yzxterm" => "Yzxterm".to_string(),
         "ratty" => "Ratty".to_string(),

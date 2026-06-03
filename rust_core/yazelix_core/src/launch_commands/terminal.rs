@@ -30,6 +30,7 @@ pub(super) fn generated_terminal_config_path(state_dir: &Path, terminal: &str) -
         "ghostty" => root.join("ghostty").join("config"),
         "wezterm" => root.join("wezterm").join(".wezterm.lua"),
         "yzxterm" => root.join("yzxterm").join("config.toml"),
+        "rio" => root.join("rio").join("config.toml"),
         "ratty" => root.join("ratty").join("ratty.toml"),
         "kitty" => root.join("kitty").join("kitty.conf"),
         other => root.join(other),
@@ -88,6 +89,7 @@ pub(super) fn user_terminal_config_candidates_for_platform(
         "yzxterm" => Ok(vec![
             xdg_config_home.join("yazelix-terminal").join("config.toml"),
         ]),
+        "rio" => Ok(vec![xdg_config_home.join("rio").join("config.toml")]),
         "ratty" => Ok(vec![xdg_config_home.join("ratty").join("ratty.toml")]),
         other => Err(format!("Unsupported terminal config lookup: {other}")),
     }
@@ -145,6 +147,7 @@ pub(super) fn get_working_dir_args(terminal: &str, working_dir: &Path) -> Vec<St
         "ghostty" => vec![format!("--working-directory={wd}")],
         "wezterm" => vec!["--cwd".to_string(), wd],
         "yzxterm" => vec!["--working-dir".to_string(), wd],
+        "rio" => vec!["--working-dir".to_string(), wd],
         "ratty" => vec![],
         "kitty" => vec![format!("--directory={wd}")],
         _ => vec![],
@@ -295,6 +298,17 @@ pub(super) fn build_launch_command_argv(
             yzxterm.push("-e".to_string());
             yzxterm.push(startup_script.to_string_lossy().into_owned());
             yzxterm
+        }
+        "rio" => {
+            let mut rio = vec![
+                terminal.command.clone(),
+                "--title-placeholder".to_string(),
+                title,
+            ];
+            rio.extend(working_dir_args);
+            rio.push("-e".to_string());
+            rio.push(startup_script.to_string_lossy().into_owned());
+            maybe_prepend(rio, graphics_wrapper)
         }
         "ratty" => {
             let mut ratty = vec![

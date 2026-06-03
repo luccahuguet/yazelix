@@ -12,7 +12,7 @@ The default runtime includes:
 - host-managed helper integrations: `mise`, `tombi`
 - preview/search helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`, `resvg`
 - system helpers required by runtime wrappers and validators: `git`, `nix`, `coreutils`, `findutils`, `gnugrep`, `gnused`, `util-linux`
-- one packaged terminal variant: Ghostty in `#yazelix` and `#yazelix_ghostty`, experimental Yazelix Terminal in `#yzxterm`, WezTerm in `#yazelix_wezterm`, Kitty in `#yazelix_kitty`, or experimental Linux Ratty in `#yazelix_ratty`
+- one packaged terminal variant: Ghostty in `#yazelix` and `#yazelix_ghostty`, experimental Yazelix Terminal in `#yzxterm`, vanilla Rio in `#yazelix_rio`, WezTerm in `#yazelix_wezterm`, Kitty in `#yazelix_kitty`, or experimental Linux Ratty in `#yazelix_ratty`
 - `tokenusage` for the default Codex and Claude status widgets
 
 It does not ship:
@@ -45,6 +45,7 @@ For a quick total-only check, `nix path-info -S` is still useful:
 ```bash
 nix path-info -S .#yazelix --extra-experimental-features "nix-command flakes"
 nix path-info -S .#yzxterm --extra-experimental-features "nix-command flakes"
+nix path-info -S .#yazelix_rio --extra-experimental-features "nix-command flakes"
 nix path-info -S .#yazelix_wezterm --extra-experimental-features "nix-command flakes"
 nix path-info -S .#yazelix_kitty --extra-experimental-features "nix-command flakes"
 nix path-info -S .#yazelix_ratty --extra-experimental-features "nix-command flakes"

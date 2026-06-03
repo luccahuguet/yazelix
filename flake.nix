@@ -188,6 +188,7 @@
               enableZellijKittyPassthrough || builtins.elem runtimeVariant [
                 "ghostty"
                 "kitty"
+                "rio"
                 "ratty"
                 "yzxterm"
               ];
@@ -219,6 +220,7 @@
           enableZellijKittyPassthrough = builtins.elem runtimeVariant [
             "ghostty"
             "kitty"
+            "rio"
             "ratty"
             "yzxterm"
           ];
@@ -237,6 +239,7 @@
         if builtins.elem runtimeVariant [
           "ghostty"
           "kitty"
+          "rio"
           "ratty"
           "yzxterm"
         ] then
@@ -411,6 +414,7 @@
           runtime_default = runtimePackage system pkgs defaultRuntimeVariant defaultRuntimePackages;
           runtime_ghostty = runtimePackage system pkgs "ghostty" defaultRuntimePackages;
           runtime_kitty = runtimePackage system pkgs "kitty" defaultRuntimePackages;
+          runtime_rio = runtimePackage system pkgs "rio" defaultRuntimePackages;
           runtime_wezterm = runtimePackage system pkgs "wezterm" defaultRuntimePackages;
           runtime_yzxterm =
             runtimePackage system pkgs "yzxterm" defaultRuntimePackages;
@@ -429,6 +433,7 @@
           yazelix_default = yazelixPackage system pkgs defaultRuntimeVariant defaultRuntimePackages;
           yazelix_ghostty = yazelixPackage system pkgs "ghostty" defaultRuntimePackages;
           yazelix_kitty = yazelixPackage system pkgs "kitty" defaultRuntimePackages;
+          yazelix_rio = yazelixPackage system pkgs "rio" defaultRuntimePackages;
           yazelix_wezterm = yazelixPackage system pkgs "wezterm" defaultRuntimePackages;
           yzxterm = yazelixPackage system pkgs "yzxterm" defaultRuntimePackages;
           yzxterm_fast = mkYazelix system {
@@ -460,6 +465,7 @@
           runtime_agent_tools = runtime_agent_tools;
           runtime_ghostty = runtime_ghostty;
           runtime_kitty = runtime_kitty;
+          runtime_rio = runtime_rio;
           runtime_wezterm = runtime_wezterm;
           runtime_yzxterm = runtime_yzxterm;
           runtime_yzxterm_fast = runtime_yzxterm_fast;
@@ -469,6 +475,7 @@
           yazelix_cursors = yazelix_cursors;
           yazelix_ghostty = yazelix_ghostty;
           yazelix_kitty = yazelix_kitty;
+          yazelix_rio = yazelix_rio;
           yazelix_screen = yazelix_screen;
           yazelix_helix = yazelix_helix;
           yazelix_kgp_yazi = graphicsPkgs.yazi-unwrapped;
@@ -508,6 +515,10 @@
           yazelix_kitty = {
             type = "app";
             program = "${self.packages.${system}.yazelix_kitty}/bin/yzx";
+          };
+          yazelix_rio = {
+            type = "app";
+            program = "${self.packages.${system}.yazelix_rio}/bin/yzx";
           };
           yzxterm = {
             type = "app";

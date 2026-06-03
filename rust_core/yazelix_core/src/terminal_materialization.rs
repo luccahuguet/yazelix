@@ -17,6 +17,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 const YAZELIX_THEME: &str = "Abernathy";
+const RIO_BACKGROUND: &str = "#1f1f28";
+const RIO_FOREGROUND: &str = "#dcd7ba";
 const FONT_FIRACODE: &str = "FiraCode Nerd Font";
 
 const TRANSPARENCY_VALUES: &[(&str, &str)] = &[
@@ -73,6 +75,7 @@ fn get_terminal_title(terminal: &str) -> String {
     let name = match terminal {
         "ghostty" => "Ghostty",
         "yzxterm" => "Yazelix Terminal",
+        "rio" => "Rio",
         "kitty" => "Kitty",
         "wezterm" => "WezTerm",
         "ratty" => "Ratty",
@@ -226,6 +229,47 @@ white = "#ffffff"
 "##,
         build_transparency(transparency, "toml", ""),
         FONT_FIRACODE,
+    )
+}
+
+fn generate_rio_config(transparency: &str) -> String {
+    let opacity = get_opacity_value(transparency);
+    format!(
+        r##"# Rio configuration for Yazelix
+
+confirm-before-quit = false
+
+[title]
+placeholder = "{}"
+content = "{{{{ TITLE || RELATIVE_PATH }}}}"
+
+[window]
+width = 960
+height = 620
+decorations = "Disabled"
+opacity = {}
+opacity-cells = {}
+
+[fonts]
+family = "{}"
+size = 18.0
+
+[colors]
+background = "{}"
+foreground = "{}"
+
+[navigation]
+mode = "Plain"
+
+[renderer]
+backend = "Webgpu"
+"##,
+        get_terminal_title("rio"),
+        opacity,
+        transparency != "none",
+        FONT_FIRACODE,
+        RIO_BACKGROUND,
+        RIO_FOREGROUND,
     )
 }
 
@@ -585,6 +629,24 @@ pub fn generate_terminal_materialization(
                 write_text_atomic(&path, &generate_wezterm_config(transparency))?;
                 generated.push(TerminalGeneratedConfig {
                     terminal: "wezterm".to_string(),
+                    path: path.to_string_lossy().into_owned(),
+                });
+            }
+            "rio" => {
+                let rio_dir = generated_dir.join("rio");
+                fs::create_dir_all(&rio_dir).map_err(|source| {
+                    CoreError::io(
+                        "create_rio_dir",
+                        "Could not create Rio output directory",
+                        "Check permissions for the Yazelix state directory.",
+                        rio_dir.to_string_lossy(),
+                        source,
+                    )
+                })?;
+                let path = rio_dir.join("config.toml");
+                write_text_atomic(&path, &generate_rio_config(transparency))?;
+                generated.push(TerminalGeneratedConfig {
+                    terminal: "rio".to_string(),
                     path: path.to_string_lossy().into_owned(),
                 });
             }

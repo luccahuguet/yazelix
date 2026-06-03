@@ -24,6 +24,7 @@ let
   terminalVariants = [
     "ghostty"
     "kitty"
+    "rio"
     "yzxterm"
     "wezterm"
   ] ++ lib.optional pkgs.stdenv.hostPlatform.isLinux "ratty";
@@ -37,6 +38,7 @@ let
     {
       ghostty = "Ghostty";
       kitty = "Kitty";
+      rio = "Rio";
       yzxterm = "yzxterm";
       wezterm = "WezTerm";
       ratty = "Ratty";
@@ -46,6 +48,7 @@ let
     {
       ghostty = "Ghostty";
       kitty = "Kitty";
+      rio = "Rio";
       yzxterm = "Yzxterm";
       wezterm = "WezTerm";
       ratty = "Ratty";
@@ -63,8 +66,13 @@ let
     lib.optionalString yzxtermProfileActive
       "export ${yzxtermProfileEnv}";
   desktopExecFor =
-    terminal: yzxPath:
-    "${lib.optionalString (yzxtermProfileActiveFor terminal) "env YAZELIX_TERMINAL_PROFILE=${cfg.yzxterm_profile} "}${yzxPath} desktop launch";
+    terminal: yzxPath: skipStableWrapperRedirect:
+    let
+      envVars =
+        lib.optional skipStableWrapperRedirect "YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1"
+        ++ lib.optional (yzxtermProfileActiveFor terminal) "YAZELIX_TERMINAL_PROFILE=${cfg.yzxterm_profile}";
+    in
+    "${lib.optionalString (envVars != [ ]) "env ${lib.concatStringsSep " " envVars} "}${yzxPath} desktop launch";
   agentUsageProgramNames = [
     "tokenusage"
   ];
@@ -121,11 +129,11 @@ let
       );
   extraTerminalLaunchers = lib.unique cfg.extra_terminal_launchers;
   desktopEntryFor =
-    terminal: yzxPath:
+    terminal: yzxPath: skipStableWrapperRedirect:
     {
       name = desktopEntryName terminal;
       comment = "Yazi + Zellij + Helix integrated terminal environment";
-      exec = desktopExecFor terminal yzxPath;
+      exec = desktopExecFor terminal yzxPath skipStableWrapperRedirect;
       icon = "yazelix";
       categories = [ "Development" ];
       type = "Application";
@@ -137,7 +145,7 @@ let
   extraDesktopEntries = lib.listToAttrs (
     map (terminal: {
       name = desktopEntryKey terminal;
-      value = desktopEntryFor terminal "${yazelixPackageForTerminal terminal}/bin/yzx";
+      value = desktopEntryFor terminal "${yazelixPackageForTerminal terminal}/bin/yzx" true;
     }) extraTerminalLaunchers
   );
   mainConfigContract = builtins.fromTOML (builtins.readFile ../config_metadata/main_config_contract.toml);
@@ -515,6 +523,7 @@ in
 
         - "ghostty": default packaged terminal with Yazelix cursor trails, Ghostty config effects, and Yazi image previews through Zellij
         - "kitty": packaged Kitty terminal with generated Kitty config and the Yazelix Zellij/Yazi Kitty graphics bridge
+        - "rio": packaged vanilla Rio terminal with generated Rio config and the Yazelix Zellij/Yazi Kitty graphics bridge
         - "wezterm": explicit alternate packaged terminal
         - "yzxterm": experimental Yazelix-owned Rio fork with Rio trail cursor defaults and opt-in shader support
         - "ratty": experimental Linux packaged terminal with Ratty and the Yazelix Zellij/Yazi Kitty graphics bridge
@@ -1002,7 +1011,7 @@ ${cursorGeneratorActivation}
         xdg.desktopEntries =
           {
             ${desktopEntryKey cfg.terminal} =
-              desktopEntryFor cfg.terminal "${config.home.profileDirectory}/bin/yzx";
+              desktopEntryFor cfg.terminal "${config.home.profileDirectory}/bin/yzx" false;
           }
           // extraDesktopEntries;
       }
