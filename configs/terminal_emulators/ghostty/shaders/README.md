@@ -34,6 +34,13 @@ Yazelix copies the shader sources into the runtime Ghostty shader directory, run
 in `variants/`, while `mono` and `split` presets are rendered from cursor
 registry data.
 
+When the same generated cursor trail shaders run in `yzxterm`, the Yazelix
+Terminal shader wrapper defines `YAZELIX_TERMINAL_RIO_TRAIL` and exposes Rio's
+trail geometry uniforms. The guarded branch decorates Rio's native trail with a
+wider spread, stronger color, and split-color center based on Rio's animated
+trail rectangle. Ghostty does not define that macro, so it keeps the standard
+Ghostty-compatible cursor trail path.
+
 ## Making Changes
 
 ### To modify shared functions:

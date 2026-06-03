@@ -117,8 +117,8 @@ fn build_ghostty_cursor_palette(cursor_state: &TerminalCursorState) -> String {
     };
 
     format!(
-        "# Cursor color palette: {}\ncursor-color = {}\ncustom-shader = {}",
-        name, color_hex, "./shaders/cursor_trail_{name}.glsl"
+        "# Cursor color palette: {}\ncursor-color = {}\ncustom-shader = ./shaders/cursor_trail_{}.glsl",
+        name, color_hex, name
     )
 }
 
