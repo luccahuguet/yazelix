@@ -50,19 +50,21 @@ let
       wezterm = "WezTerm";
       ratty = "Ratty";
     }.${terminal};
-  desktopEntryKey = "com.yazelix.Yazelix.${terminalDesktopIdSuffix cfg.terminal}";
-  desktopEntryName = "Yazelix - ${terminalDesktopLabel cfg.terminal}";
+  desktopEntryKey = terminal: "com.yazelix.Yazelix.${terminalDesktopIdSuffix terminal}";
+  desktopEntryName = terminal: "Yazelix - ${terminalDesktopLabel terminal}";
   componentEnabled = name: cfg.components.${name} or true;
   runtimeToolSource = name: cfg.runtime_tool_sources.${name} or "bundled";
-  yzxtermProfileActive = cfg.terminal == "yzxterm" && cfg.yzxterm_profile != "full";
+  yzxtermProfileActiveFor = terminal: terminal == "yzxterm" && cfg.yzxterm_profile != "full";
+  yzxtermProfileActive = yzxtermProfileActiveFor cfg.terminal;
   yzxtermProfileEnv =
     lib.optionalString yzxtermProfileActive
       "YAZELIX_TERMINAL_PROFILE=${cfg.yzxterm_profile}";
   yzxtermProfileExport =
     lib.optionalString yzxtermProfileActive
       "export ${yzxtermProfileEnv}";
-  yzxtermDesktopExec =
-    "${lib.optionalString yzxtermProfileActive "env ${yzxtermProfileEnv} "}${config.home.profileDirectory}/bin/yzx desktop launch";
+  desktopExecFor =
+    terminal: yzxPath:
+    "${lib.optionalString (yzxtermProfileActiveFor terminal) "env YAZELIX_TERMINAL_PROFILE=${cfg.yzxterm_profile} "}${yzxPath} desktop launch";
   agentUsageProgramNames = [
     "tokenusage"
   ];
@@ -96,6 +98,48 @@ let
           inherit fenixPkgs nixgl;
         }
       );
+  packageArgsForTerminal =
+    terminal:
+    packageBuilderArgs
+    // {
+      runtimeVariant = terminal;
+      name = "yazelix-${terminal}";
+      runtimeName = "yazelix-runtime-${terminal}";
+    };
+  yazelixPackageForTerminal =
+    terminal:
+    if terminal == cfg.terminal then
+      yazelixPackage
+    else if mkYazelixPackage != null then
+      mkYazelixPackage (packageArgsForTerminal terminal)
+    else
+      import ../yazelix_package.nix (
+        packageArgsForTerminal terminal
+        // {
+          inherit fenixPkgs nixgl;
+        }
+      );
+  extraTerminalLaunchers = lib.unique cfg.extra_terminal_launchers;
+  desktopEntryFor =
+    terminal: yzxPath:
+    {
+      name = desktopEntryName terminal;
+      comment = "Yazi + Zellij + Helix integrated terminal environment";
+      exec = desktopExecFor terminal yzxPath;
+      icon = "yazelix";
+      categories = [ "Development" ];
+      type = "Application";
+      terminal = false;
+      settings = {
+        StartupWMClass = "com.yazelix.Yazelix";
+      };
+    };
+  extraDesktopEntries = lib.listToAttrs (
+    map (terminal: {
+      name = desktopEntryKey terminal;
+      value = desktopEntryFor terminal "${yazelixPackageForTerminal terminal}/bin/yzx";
+    }) extraTerminalLaunchers
+  );
   mainConfigContract = builtins.fromTOML (builtins.readFile ../config_metadata/main_config_contract.toml);
   mainContractFields = mainConfigContract.fields;
   defaultCursorConfig = builtins.fromTOML (builtins.readFile ../yazelix_ghostty_cursors_default.toml);
@@ -474,6 +518,20 @@ in
         - "wezterm": explicit alternate packaged terminal
         - "yzxterm": experimental Yazelix-owned Rio fork with Rio trail cursor defaults and opt-in shader support
         - "ratty": experimental Linux packaged terminal with Ratty and the Yazelix Zellij/Yazi Kitty graphics bridge
+      '';
+    };
+
+    extra_terminal_launchers = mkOption {
+      type = types.listOf (types.enum terminalVariants);
+      default = [ ];
+      description = ''
+        Additional terminal-specific Yazelix desktop launchers to install.
+
+        These launchers do not change the active Yazelix runtime identity and do
+        not install extra `bin/yzx` commands into the Home Manager profile. Each
+        generated desktop entry points directly at the selected terminal
+        variant package in the Nix store, keeping its runtime closure available
+        without conflicting with the profile-owned `yzx` command.
       '';
     };
 
@@ -900,6 +958,18 @@ in
           assertion = (runtimeToolSource "macchina") != "off" || !cfg.show_macchina_on_welcome;
           message = "programs.yazelix.runtime_tool_sources.macchina = \"off\" requires programs.yazelix.show_macchina_on_welcome = false";
         }
+        {
+          assertion = (builtins.length cfg.extra_terminal_launchers) == (builtins.length extraTerminalLaunchers);
+          message = "programs.yazelix.extra_terminal_launchers must not contain duplicate terminal variants";
+        }
+        {
+          assertion = !(builtins.elem cfg.terminal cfg.extra_terminal_launchers);
+          message = "programs.yazelix.extra_terminal_launchers must not include programs.yazelix.terminal; the active terminal already gets a desktop launcher";
+        }
+        {
+          assertion = pkgs.stdenv.hostPlatform.isLinux || cfg.extra_terminal_launchers == [ ];
+          message = "programs.yazelix.extra_terminal_launchers is only supported on Linux desktop environments";
+        }
       ];
 
       # Desktop icon integration.
@@ -929,18 +999,12 @@ ${cursorGeneratorActivation}
     (mkIf pkgs.stdenv.hostPlatform.isLinux (
       lib.optionalAttrs (lib.hasAttrByPath [ "xdg" "desktopEntries" ] options) {
         # Linux desktop entry for application launchers.
-        xdg.desktopEntries.${desktopEntryKey} = {
-          name = desktopEntryName;
-          comment = "Yazi + Zellij + Helix integrated terminal environment";
-          exec = yzxtermDesktopExec;
-          icon = "yazelix";
-          categories = [ "Development" ];
-          type = "Application";
-          terminal = false;
-          settings = {
-            StartupWMClass = "com.yazelix.Yazelix";
-          };
-        };
+        xdg.desktopEntries =
+          {
+            ${desktopEntryKey cfg.terminal} =
+              desktopEntryFor cfg.terminal "${config.home.profileDirectory}/bin/yzx";
+          }
+          // extraDesktopEntries;
       }
     ))
     (mkIf cfg.manage_config {

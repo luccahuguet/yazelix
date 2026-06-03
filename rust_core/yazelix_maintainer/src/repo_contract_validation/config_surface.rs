@@ -363,6 +363,7 @@ fn load_contract_keybinding_defaults(
 fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<String>, String> {
     let entry = load_home_manager_desktop_entry_contract(repo_root)?;
     let shader_entry = load_home_manager_desktop_entry_contract_with_profile(repo_root, "shaders")?;
+    let extra_entry = load_home_manager_extra_terminal_launchers_contract(repo_root)?;
     let is_present = entry
         .get("present")
         .and_then(JsonValue::as_bool)
@@ -434,6 +435,55 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
             "Home Manager shader yzxterm profile session variable mismatch: expected shaders, got {}",
             format_json_value(&JsonValue::String(shader_session_profile.to_string()))
         ));
+    }
+    let package_count = extra_entry
+        .get("packageCount")
+        .and_then(JsonValue::as_i64)
+        .unwrap_or_default();
+    if package_count != 1 {
+        errors.push(format!(
+            "Home Manager extra terminal launchers must not add duplicate profile packages: expected 1 active package, got {package_count}"
+        ));
+    }
+    for (terminal, expected_name) in [
+        ("ghostty", "Yazelix - Ghostty"),
+        ("wezterm", "Yazelix - WezTerm"),
+    ] {
+        let entry = extra_entry
+            .get(terminal)
+            .and_then(JsonValue::as_object)
+            .cloned()
+            .unwrap_or_default();
+        if !entry
+            .get("present")
+            .and_then(JsonValue::as_bool)
+            .unwrap_or(false)
+        {
+            errors.push(format!(
+                "Home Manager extra {terminal} desktop entry must be generated"
+            ));
+            continue;
+        }
+        let name = entry
+            .get("name")
+            .and_then(JsonValue::as_str)
+            .unwrap_or_default();
+        if name != expected_name {
+            errors.push(format!(
+                "Home Manager extra {terminal} desktop entry name mismatch: expected {expected_name}, got {}",
+                format_json_value(&JsonValue::String(name.to_string()))
+            ));
+        }
+        let exec = entry
+            .get("exec")
+            .and_then(JsonValue::as_str)
+            .unwrap_or_default();
+        if !exec.ends_with("/bin/yzx desktop launch") || exec.contains("/tmp/profile/bin/yzx") {
+            errors.push(format!(
+                "Home Manager extra {terminal} desktop entry Exec must point at the terminal package store yzx, got {}",
+                format_json_value(&JsonValue::String(exec.to_string()))
+            ));
+        }
     }
 
     validate_home_manager_darwin_without_desktop_entry_option(repo_root)?;
@@ -667,7 +717,7 @@ fn standalone_home_manager_eval_fixture_module(
 fn load_home_manager_desktop_entry_contract(
     repo_root: &Path,
 ) -> Result<JsonMap<String, JsonValue>, String> {
-    let expr = build_home_manager_desktop_entry_expr(repo_root, None);
+    let expr = build_home_manager_desktop_entry_expr(repo_root, None, &[]);
     let result = run_nix_eval(repo_root, &expr)?;
     result.as_object().cloned().ok_or_else(|| {
         "Home Manager desktop-entry evaluation did not return a JSON object".to_string()
@@ -678,7 +728,18 @@ fn load_home_manager_desktop_entry_contract_with_profile(
     repo_root: &Path,
     yzxterm_profile: &str,
 ) -> Result<JsonMap<String, JsonValue>, String> {
-    let expr = build_home_manager_desktop_entry_expr(repo_root, Some(yzxterm_profile));
+    let expr = build_home_manager_desktop_entry_expr(repo_root, Some(yzxterm_profile), &[]);
+    let result = run_nix_eval(repo_root, &expr)?;
+    result.as_object().cloned().ok_or_else(|| {
+        "Home Manager desktop-entry evaluation did not return a JSON object".to_string()
+    })
+}
+
+fn load_home_manager_extra_terminal_launchers_contract(
+    repo_root: &Path,
+) -> Result<JsonMap<String, JsonValue>, String> {
+    let expr =
+        build_home_manager_desktop_entry_expr(repo_root, Some("shaders"), &["ghostty", "wezterm"]);
     let result = run_nix_eval(repo_root, &expr)?;
     result.as_object().cloned().ok_or_else(|| {
         "Home Manager desktop-entry evaluation did not return a JSON object".to_string()
@@ -688,6 +749,7 @@ fn load_home_manager_desktop_entry_contract_with_profile(
 fn build_home_manager_desktop_entry_expr(
     repo_root: &Path,
     yzxterm_profile: Option<&str>,
+    extra_launchers: &[&str],
 ) -> String {
     let module_path =
         escape_nix_string(&repo_root.join(MODULE_RELATIVE_PATH).display().to_string());
@@ -696,7 +758,7 @@ fn build_home_manager_desktop_entry_expr(
         "  pkgs = import <nixpkgs> { system = \"x86_64-linux\"; };".to_string(),
         "  lib = pkgs.lib;".to_string(),
         "  eval = lib.evalModules {".to_string(),
-        "    specialArgs = { inherit pkgs; nixgl = null; };".to_string(),
+        "    specialArgs = { inherit pkgs; nixgl = null; yazelixCursorsPackage = null; yazelixTerminalPackage = null; mkYazelixPackage = args: pkgs.runCommand (args.name or \"yazelix\") {} \"mkdir -p $out/bin; touch $out/bin/yzx\"; };".to_string(),
         "    modules = [".to_string(),
         format!("      (builtins.toPath \"{}\")", module_path),
     ];
@@ -708,6 +770,16 @@ fn build_home_manager_desktop_entry_expr(
         ));
         lines.push("      { config.programs.yazelix.terminal = \"yzxterm\"; }".to_string());
     }
+    if !extra_launchers.is_empty() {
+        let launchers = extra_launchers
+            .iter()
+            .map(|terminal| format!("\"{}\"", escape_nix_string(terminal)))
+            .collect::<Vec<_>>()
+            .join(" ");
+        lines.push(format!(
+            "      {{ config.programs.yazelix.extra_terminal_launchers = [ {launchers} ]; }}"
+        ));
+    }
     let entry_key = if yzxterm_profile.is_some() {
         "com.yazelix.Yazelix.Yzxterm"
     } else {
@@ -717,8 +789,12 @@ fn build_home_manager_desktop_entry_expr(
         "    ];".to_string(),
         "  };".to_string(),
         format!("  entryKey = \"{}\";", entry_key),
+        "  ghosttyKey = \"com.yazelix.Yazelix.Ghostty\";".to_string(),
+        "  weztermKey = \"com.yazelix.Yazelix.WezTerm\";".to_string(),
         "  entries = eval.config.xdg.desktopEntries;".to_string(),
         "  entry = if builtins.hasAttr entryKey entries then builtins.getAttr entryKey entries else {};".to_string(),
+        "  ghosttyEntry = if builtins.hasAttr ghosttyKey entries then builtins.getAttr ghosttyKey entries else {};".to_string(),
+        "  weztermEntry = if builtins.hasAttr weztermKey entries then builtins.getAttr weztermKey entries else {};".to_string(),
         "in {".to_string(),
         "  present = builtins.hasAttr entryKey entries;".to_string(),
         "  name = entry.name or \"\";".to_string(),
@@ -726,6 +802,9 @@ fn build_home_manager_desktop_entry_expr(
         "  terminal = entry.terminal or false;".to_string(),
         "  sessionProfile = eval.config.home.sessionVariables.YAZELIX_TERMINAL_PROFILE or \"\";"
             .to_string(),
+        "  packageCount = builtins.length eval.config.home.packages;".to_string(),
+        "  ghostty = { present = builtins.hasAttr ghosttyKey entries; name = ghosttyEntry.name or \"\"; exec = ghosttyEntry.exec or \"\"; };".to_string(),
+        "  wezterm = { present = builtins.hasAttr weztermKey entries; name = weztermEntry.name or \"\"; exec = weztermEntry.exec or \"\"; };".to_string(),
         "}".to_string(),
     ]);
     lines.join("\n")
