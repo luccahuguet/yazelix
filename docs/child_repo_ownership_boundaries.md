@@ -127,11 +127,13 @@ Boundary rule: reusable flavors and reusable plugins stay in the child. Sidebar 
 
 The main risk is using a child commit locally before it is pushed and then updating the main lock to a revision other machines cannot fetch. The AGENTS.md cross-repo release transaction rule is correct: push the child first, update the main lock to the published GitHub revision, validate without overrides, then close beads and push main.
 
-This risk is highest for `yazelix-zellij-pane-orchestrator` and `yazelix-zellij-popup`, because missing or unpublished wasm artifacts break runtime packaging directly.
+This risk is highest for `yazelix-zellij-pane-orchestrator` and `yazelix-zellij-popup`, because missing or unpublished wasm artifacts break runtime packaging directly. Before landing any main lock update that consumes those packages, run `yzx_repo_validator validate-child-release-transaction`; it instantiates their `aarch64-darwin` package derivations and rejects package shapes where `cargoBuildHook` can run before the Fenix `wasm32-wasip1` toolchain is exported.
 
 ### Dual-Pin Rust Crate Risk
 
 `yazelix-screen` and `yazelix-cursors` are consumed as Rust git dependencies and flake inputs. That means a release can involve Cargo lock updates, Nix output hashes, and flake lock updates. This friction is acceptable because both have real standalone value, but it should stay explicit in review.
+
+For `yazelix-screen`, `validate-child-release-transaction` is also the main Darwin smoke gate after a lock update: it rejects `aarch64-darwin` screen package derivations that reintroduce package-time ImageMagick or expanded magician frame generation.
 
 ### Boundary Creep Risk
 

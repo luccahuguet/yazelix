@@ -30,6 +30,12 @@ struct ZellijPluginWasmPackageContract {
     system: &'static str,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ScreenPackageContract {
+    package_attr: &'static str,
+    system: &'static str,
+}
+
 const ZELLIJ_PLUGIN_WASM_PACKAGE_CONTRACTS: &[ZellijPluginWasmPackageContract] = &[
     ZellijPluginWasmPackageContract {
         package_attr: "yazelix_zellij_pane_orchestrator",
@@ -40,6 +46,11 @@ const ZELLIJ_PLUGIN_WASM_PACKAGE_CONTRACTS: &[ZellijPluginWasmPackageContract] =
         system: "aarch64-darwin",
     },
 ];
+
+const SCREEN_PACKAGE_CONTRACTS: &[ScreenPackageContract] = &[ScreenPackageContract {
+    package_attr: "yazelix_screen",
+    system: "aarch64-darwin",
+}];
 
 pub fn validate_child_release_transaction(repo_root: &Path) -> Result<ValidationReport, String> {
     let mut report = ValidationReport::default();
@@ -72,6 +83,9 @@ pub fn validate_child_release_transaction(repo_root: &Path) -> Result<Validation
     report
         .errors
         .extend(validate_zellij_plugin_wasm_package_contracts(repo_root)?);
+    report
+        .errors
+        .extend(validate_screen_package_contracts(repo_root)?);
 
     Ok(report)
 }
@@ -378,7 +392,8 @@ fn prefetch_source_hash(dependency: &FirstPartyCargoGitDependency) -> Result<Str
 fn validate_zellij_plugin_wasm_package_contracts(repo_root: &Path) -> Result<Vec<String>, String> {
     let mut errors = Vec::new();
     for contract in ZELLIJ_PLUGIN_WASM_PACKAGE_CONTRACTS {
-        let metadata = zellij_plugin_wasm_derivation_metadata(repo_root, contract)?;
+        let metadata =
+            package_derivation_metadata(repo_root, contract.system, contract.package_attr)?;
         errors.extend(validate_zellij_plugin_wasm_derivation_with(
             contract, &metadata,
         )?);
@@ -386,14 +401,22 @@ fn validate_zellij_plugin_wasm_package_contracts(repo_root: &Path) -> Result<Vec
     Ok(errors)
 }
 
-fn zellij_plugin_wasm_derivation_metadata(
+fn validate_screen_package_contracts(repo_root: &Path) -> Result<Vec<String>, String> {
+    let mut errors = Vec::new();
+    for contract in SCREEN_PACKAGE_CONTRACTS {
+        let metadata =
+            package_derivation_metadata(repo_root, contract.system, contract.package_attr)?;
+        errors.extend(validate_screen_derivation_with(contract, &metadata)?);
+    }
+    Ok(errors)
+}
+
+fn package_derivation_metadata(
     repo_root: &Path,
-    contract: &ZellijPluginWasmPackageContract,
+    system: &str,
+    package_attr: &str,
 ) -> Result<String, String> {
-    let flake_attr = format!(
-        ".#packages.{}.{}.drvPath",
-        contract.system, contract.package_attr
-    );
+    let flake_attr = format!(".#packages.{system}.{package_attr}.drvPath");
     let eval = Command::new("nix")
         .current_dir(repo_root)
         .args(["eval", "--raw", &flake_attr, "--accept-flake-config"])
@@ -401,7 +424,7 @@ fn zellij_plugin_wasm_derivation_metadata(
         .map_err(|error| format!("Failed to run `nix eval --raw {flake_attr}`: {error}"))?;
     if !eval.status.success() {
         return Err(format!(
-            "Failed to instantiate child wasm package derivation `{flake_attr}`\n{}",
+            "Failed to instantiate child package derivation `{flake_attr}`\n{}",
             String::from_utf8_lossy(&eval.stderr).trim()
         ));
     }
@@ -419,7 +442,7 @@ fn zellij_plugin_wasm_derivation_metadata(
         .map_err(|error| format!("Failed to run `nix derivation show {drv_path}`: {error}"))?;
     if !show.status.success() {
         return Err(format!(
-            "Failed to inspect child wasm package derivation `{drv_path}`\n{}",
+            "Failed to inspect child package derivation `{drv_path}`\n{}",
             String::from_utf8_lossy(&show.stderr).trim()
         ));
     }
@@ -435,13 +458,16 @@ fn validate_zellij_plugin_wasm_derivation_with(
     let env = single_derivation_env(raw_metadata)?;
     let mut errors = Vec::new();
 
-    let system = env.get("system").map(String::as_str);
-    if system != Some(contract.system) {
-        errors.push(format!(
-            "`{}` derivation metadata has system {:?}; expected `{}`.",
-            contract.package_attr, system, contract.system
-        ));
-    }
+    require_derivation_system(&mut errors, contract.package_attr, contract.system, &env);
+    require_derivation_env_value(
+        &mut errors,
+        contract.package_attr,
+        contract.system,
+        &env,
+        "dontCargoBuild",
+        "1",
+        "disable cargoBuildHook for the manual wasm package build",
+    );
 
     let Some(build_phase) = env.get("buildPhase") else {
         errors.push(format!(
@@ -457,6 +483,13 @@ fn validate_zellij_plugin_wasm_derivation_with(
         build_phase,
         "export CARGO=",
         "export explicit CARGO from the combined wasm-capable Rust toolchain",
+    );
+    require_build_phase_marker(
+        &mut errors,
+        contract,
+        build_phase,
+        "export PATH=",
+        "put the combined wasm-capable Rust toolchain on PATH",
     );
     require_build_phase_marker(
         &mut errors,
@@ -486,6 +519,89 @@ fn validate_zellij_plugin_wasm_derivation_with(
         "--target wasm32-wasip1",
         "build the plugin for wasm32-wasip1",
     );
+    require_build_phase_order(
+        &mut errors,
+        contract,
+        build_phase,
+        "export CARGO=",
+        "runHook preBuild",
+        "export the wasm-capable Cargo before preBuild hooks can run",
+    );
+    require_build_phase_order(
+        &mut errors,
+        contract,
+        build_phase,
+        "export RUSTC=",
+        "runHook preBuild",
+        "export the wasm-capable Rust compiler before preBuild hooks can run",
+    );
+    require_build_phase_order(
+        &mut errors,
+        contract,
+        build_phase,
+        "--print target-libdir --target wasm32-wasip1",
+        "runHook preBuild",
+        "verify wasm32-wasip1 rust-std before preBuild hooks can run",
+    );
+    require_build_phase_order(
+        &mut errors,
+        contract,
+        build_phase,
+        "runHook preBuild",
+        "\"$CARGO\" build",
+        "run the manual wasm build after preBuild hooks",
+    );
+
+    Ok(errors)
+}
+
+fn validate_screen_derivation_with(
+    contract: &ScreenPackageContract,
+    raw_metadata: &str,
+) -> Result<Vec<String>, String> {
+    let env = single_derivation_env(raw_metadata)?;
+    let mut errors = Vec::new();
+    require_derivation_system(&mut errors, contract.package_attr, contract.system, &env);
+
+    let native_build_inputs = env
+        .get("nativeBuildInputs")
+        .map(String::as_str)
+        .unwrap_or("");
+    reject_screen_phase_marker(
+        &mut errors,
+        contract,
+        "nativeBuildInputs",
+        native_build_inputs,
+        "imagemagick",
+    );
+    reject_screen_phase_marker(
+        &mut errors,
+        contract,
+        "nativeBuildInputs",
+        native_build_inputs,
+        "magick",
+    );
+
+    for phase_name in ["buildPhase", "postInstall"] {
+        let phase = env.get(phase_name).map(String::as_str).unwrap_or("");
+        reject_screen_phase_marker(&mut errors, contract, phase_name, phase, "magick");
+        reject_screen_phase_marker(
+            &mut errors,
+            contract,
+            phase_name,
+            phase,
+            "ascii_magician_1mposter_frames",
+        );
+        reject_screen_phase_marker(&mut errors, contract, phase_name, phase, "frame_%03d");
+    }
+
+    let post_install = env.get("postInstall").map(String::as_str).unwrap_or("");
+    if !post_install.contains("ascii_magician_1mposter.gif") {
+        errors.push(format!(
+            "`{}` {} postInstall must install the magician source GIF instead of generating package-time PNG frames.",
+            contract.package_attr, contract.system
+        ));
+    }
 
     Ok(errors)
 }
@@ -522,6 +638,40 @@ fn single_derivation_env(raw_metadata: &str) -> Result<HashMap<String, String>, 
         .collect())
 }
 
+fn require_derivation_system(
+    errors: &mut Vec<String>,
+    package_attr: &str,
+    expected_system: &str,
+    env: &HashMap<String, String>,
+) {
+    let system = env.get("system").map(String::as_str);
+    if system != Some(expected_system) {
+        errors.push(format!(
+            "`{package_attr}` derivation metadata has system {:?}; expected `{expected_system}`.",
+            system
+        ));
+    }
+}
+
+fn require_derivation_env_value(
+    errors: &mut Vec<String>,
+    package_attr: &str,
+    system: &str,
+    env: &HashMap<String, String>,
+    key: &str,
+    expected: &str,
+    description: &str,
+) {
+    let actual = env.get(key).map(String::as_str);
+    if actual == Some(expected) {
+        return;
+    }
+    errors.push(format!(
+        "`{package_attr}` {system} derivation metadata must {description}. Expected env `{key}` = `{expected}`, found {:?}.",
+        actual
+    ));
+}
+
 fn require_build_phase_marker(
     errors: &mut Vec<String>,
     contract: &ZellijPluginWasmPackageContract,
@@ -535,6 +685,44 @@ fn require_build_phase_marker(
     errors.push(format!(
         "`{}` {} buildPhase must {}. Missing marker `{}`.",
         contract.package_attr, contract.system, description, marker
+    ));
+}
+
+fn require_build_phase_order(
+    errors: &mut Vec<String>,
+    contract: &ZellijPluginWasmPackageContract,
+    build_phase: &str,
+    before: &str,
+    after: &str,
+    description: &str,
+) {
+    let before_index = build_phase.find(before);
+    let after_index = build_phase.find(after);
+    if matches!((before_index, after_index), (Some(left), Some(right)) if left < right) {
+        return;
+    }
+    errors.push(format!(
+        "`{}` {} buildPhase must {}. Expected marker `{}` before `{}`.",
+        contract.package_attr, contract.system, description, before, after
+    ));
+}
+
+fn reject_screen_phase_marker(
+    errors: &mut Vec<String>,
+    contract: &ScreenPackageContract,
+    field_name: &str,
+    field_value: &str,
+    forbidden_marker: &str,
+) {
+    if !field_value
+        .to_ascii_lowercase()
+        .contains(&forbidden_marker.to_ascii_lowercase())
+    {
+        return;
+    }
+    errors.push(format!(
+        "`{}` {} {field_name} must not contain `{forbidden_marker}`; screen packages must not run ImageMagick or generate magician PNG frames during user builds.",
+        contract.package_attr, contract.system
     ));
 }
 
@@ -657,9 +845,13 @@ mod tests {
             r#"
             export CARGO="/nix/store/toolchain/bin/cargo"
             export RUSTC="/nix/store/toolchain/bin/rustc"
+            export PATH="/nix/store/toolchain/bin:$PATH"
             wasm_target_libdir="$("$RUSTC" --print target-libdir --target wasm32-wasip1)"
+            runHook preBuild
             "$CARGO" build --profile release --target wasm32-wasip1
+            runHook postBuild
             "#,
+            &[("dontCargoBuild", "1")],
         );
 
         let errors = validate_zellij_plugin_wasm_derivation_with(&contract, &metadata).unwrap();
@@ -679,13 +871,16 @@ mod tests {
             r#"
             cargo build --profile release --target wasm32-wasip1
             "#,
+            &[],
         );
 
         let errors = validate_zellij_plugin_wasm_derivation_with(&contract, &metadata).unwrap();
 
-        assert_eq!(errors.len(), 4);
+        assert!(errors.len() >= 7);
+        assert!(errors.iter().any(|error| error.contains("dontCargoBuild")));
         assert!(errors.iter().any(|error| error.contains("export CARGO=")));
         assert!(errors.iter().any(|error| error.contains("export RUSTC=")));
+        assert!(errors.iter().any(|error| error.contains("export PATH=")));
         assert!(
             errors
                 .iter()
@@ -696,6 +891,105 @@ mod tests {
                 .iter()
                 .any(|error| error.contains("\"$CARGO\" build"))
         );
+    }
+
+    // Regression: issue 604 reproduced when runHook preBuild ran before the Fenix exports, because cargoBuildHook could use the wrong Darwin Rust.
+    #[test]
+    fn zellij_plugin_wasm_contract_rejects_prebuild_before_toolchain_setup() {
+        let contract = ZellijPluginWasmPackageContract {
+            package_attr: "yazelix_zellij_popup",
+            system: "aarch64-darwin",
+        };
+        let metadata = derivation_metadata_json(
+            "aarch64-darwin",
+            r#"
+            runHook preBuild
+            export CARGO="/nix/store/toolchain/bin/cargo"
+            export RUSTC="/nix/store/toolchain/bin/rustc"
+            export PATH="/nix/store/toolchain/bin:$PATH"
+            wasm_target_libdir="$("$RUSTC" --print target-libdir --target wasm32-wasip1)"
+            "$CARGO" build --profile release --target wasm32-wasip1
+            runHook postBuild
+            "#,
+            &[("dontCargoBuild", "1")],
+        );
+
+        let errors = validate_zellij_plugin_wasm_derivation_with(&contract, &metadata).unwrap();
+
+        assert_eq!(errors.len(), 3);
+        assert!(
+            errors
+                .iter()
+                .any(|error| error.contains("export CARGO=") && error.contains("runHook preBuild"))
+        );
+        assert!(
+            errors
+                .iter()
+                .any(|error| error.contains("export RUSTC=") && error.contains("runHook preBuild"))
+        );
+        assert!(errors.iter().any(|error| {
+            error.contains("--print target-libdir --target wasm32-wasip1")
+                && error.contains("runHook preBuild")
+        }));
+    }
+
+    // Defends: the screen package can install the source GIF on Darwin without package-time ImageMagick or expanded magician frames.
+    #[test]
+    fn screen_contract_accepts_gif_only_package_install() {
+        let contract = ScreenPackageContract {
+            package_attr: "yazelix_screen",
+            system: "aarch64-darwin",
+        };
+        let metadata = derivation_metadata_json(
+            "aarch64-darwin",
+            "",
+            &[
+                (
+                    "nativeBuildInputs",
+                    "/nix/store/rust-mixed /nix/store/cargo-install-hook.sh",
+                ),
+                (
+                    "postInstall",
+                    "install -Dm644 assets/third_party/ascii_magician_1mposter.gif \"$out/share/yazelix_screen/ascii_magician_1mposter.gif\"",
+                ),
+            ],
+        );
+
+        let errors = validate_screen_derivation_with(&contract, &metadata).unwrap();
+
+        assert!(errors.is_empty());
+    }
+
+    // Regression: issue 604 showed package-time ImageMagick frame generation can break Darwin user builds through native library loading policy.
+    #[test]
+    fn screen_contract_rejects_package_time_imagemagick_frames() {
+        let contract = ScreenPackageContract {
+            package_attr: "yazelix_screen",
+            system: "aarch64-darwin",
+        };
+        let metadata = derivation_metadata_json(
+            "aarch64-darwin",
+            "",
+            &[
+                ("nativeBuildInputs", "/nix/store/imagemagick-7.1.2-23"),
+                (
+                    "postInstall",
+                    "mkdir -p \"$out/share/yazelix_screen/ascii_magician_1mposter_frames\"\nmagick assets/third_party/ascii_magician_1mposter.gif -coalesce \"$out/share/yazelix_screen/ascii_magician_1mposter_frames/frame_%03d.png\"",
+                ),
+            ],
+        );
+
+        let errors = validate_screen_derivation_with(&contract, &metadata).unwrap();
+
+        assert!(errors.len() >= 4);
+        assert!(errors.iter().any(|error| error.contains("imagemagick")));
+        assert!(errors.iter().any(|error| error.contains("magick")));
+        assert!(
+            errors
+                .iter()
+                .any(|error| error.contains("ascii_magician_1mposter_frames"))
+        );
+        assert!(errors.iter().any(|error| error.contains("frame_%03d")));
     }
 
     // Defends: the derivation metadata gate checks the evaluated system instead of assuming the flake attr path returned the requested platform.
@@ -710,9 +1004,13 @@ mod tests {
             r#"
             export CARGO="/nix/store/toolchain/bin/cargo"
             export RUSTC="/nix/store/toolchain/bin/rustc"
+            export PATH="/nix/store/toolchain/bin:$PATH"
             wasm_target_libdir="$("$RUSTC" --print target-libdir --target wasm32-wasip1)"
+            runHook preBuild
             "$CARGO" build --profile release --target wasm32-wasip1
+            runHook postBuild
             "#,
+            &[("dontCargoBuild", "1")],
         );
 
         let errors = validate_zellij_plugin_wasm_derivation_with(&contract, &metadata).unwrap();
@@ -721,14 +1019,24 @@ mod tests {
         assert!(errors[0].contains("expected `aarch64-darwin`"));
     }
 
-    fn derivation_metadata_json(system: &str, build_phase: &str) -> String {
+    fn derivation_metadata_json(
+        system: &str,
+        build_phase: &str,
+        extra_env: &[(&str, &str)],
+    ) -> String {
+        let mut env = serde_json::json!({
+            "system": system,
+            "buildPhase": build_phase,
+        });
+        let env = env.as_object_mut().expect("fixture env is object");
+        for (key, value) in extra_env {
+            env.insert((*key).to_string(), serde_json::json!(value));
+        }
+
         serde_json::json!({
             "derivations": {
                 "sample.drv": {
-                    "env": {
-                        "system": system,
-                        "buildPhase": build_phase,
-                    },
+                    "env": env,
                 },
             },
         })

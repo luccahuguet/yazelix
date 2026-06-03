@@ -25,6 +25,8 @@ The screen renderer is a reusable terminal animation crate. Keeping it in an ext
 - The binary supports the animation-engine styles available in the screen crate: `boids`, `boids_predator`, `boids_schools`, `mandelbrot`, `magician`, `game_of_life_gliders`, `game_of_life_oscillators`, `game_of_life_bloom`, and `random`.
 - Explicit `magician` uses Kitty graphics and existing or host-generated PNG frames from the packaged source GIF; the package does not bundle ImageMagick or expanded magician frames.
 - No explicit style means `random`, which skips `magician` unless those frame assets can be resolved or generated.
+- The `aarch64-darwin` package derivation must install the source GIF without
+  package-time ImageMagick or expanded magician frame generation.
 - Library examples in the external crate run without Yazelix runtime/session/config state and demonstrate one-frame rendering plus bounded style playback.
 - Yazelix users keep using `yzx screen`; standalone users can run `yzs` directly from a vanilla terminal.
 - `yazelix_core` consumes `yazelix_screen` as an external Rust dependency instead of owning duplicate source.
@@ -44,7 +46,10 @@ The screen renderer is a reusable terminal animation crate. Keeping it in an ext
 3. In the external screen repository, `cargo run --example render_once` prints one frame without entering a Yazelix session.
 4. In the external screen repository, `nix build .#yzs` produces a package with `bin/yzs`.
 5. In Yazelix, `nix run .#yzs -- --help` prints the forwarded standalone CLI without launching a Yazelix session.
-6. Existing `yzx screen` behavior remains owned by `yazelix_core` and unchanged by the standalone package.
+6. In Yazelix, `yzx_repo_validator validate-child-release-transaction` rejects
+   a locked screen package that reintroduces package-time ImageMagick or
+   expanded magician frame generation on `aarch64-darwin`.
+7. Existing `yzx screen` behavior remains owned by `yazelix_core` and unchanged by the standalone package.
 
 ## Release Policy
 
@@ -60,3 +65,5 @@ Publishing to crates.io is optional until the standalone audience and release pr
 - `cargo run --example render_once` in the external screen repository
 - `nix build .#yzs` in the external screen repository
 - `nix run .#yzs -- --help`
+- `yzx_repo_validator validate-child-release-transaction` in Yazelix after
+  updating the locked `yazelixScreen` input

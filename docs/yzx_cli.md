@@ -390,7 +390,7 @@ yzx dev update --canary-only --canaries [default]  # Run only the default canary
 yzx dev update --canary-only --canaries [shell_layout]  # Run the alternate shell/layout canary
 yzx_repo_maintainer canary-session --dry-run  # Preview the disposable packaged-runtime Zellij canary
 yzx_repo_maintainer canary-session --session-name yazelix-canary-manual  # Open an isolated canary session and keep evidence under /tmp
-yzx_repo_validator validate-child-release-transaction  # Verify locked first-party child commits are published, Cargo git source hashes match, and child wasm package toolchains satisfy the release contract before landing a main lock update
+yzx_repo_validator validate-child-release-transaction  # Verify locked child commits are published, Cargo git source hashes match, and Darwin child package smoke contracts hold before landing a main lock update
 nix build ../yazelix-zellij-pane-orchestrator#yazelix_zellij_pane_orchestrator --no-link  # Build the local pane-orchestrator package
 
 # Maintainer verification

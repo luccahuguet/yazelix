@@ -106,7 +106,7 @@ jobs:
       - name: Validate Nix customization API
         run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-nix-customization-api
 
-      - name: Validate child release transaction
+      - name: Validate child release transaction and Darwin child package smoke contracts
         run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-child-release-transaction
 
   integration:

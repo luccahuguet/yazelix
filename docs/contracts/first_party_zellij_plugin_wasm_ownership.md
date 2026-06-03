@@ -69,9 +69,11 @@ Out of scope:
 - Status: live
 - Owner: child release transaction
 - Statement: First-party Zellij plugin child packages consumed by Yazelix must
-  instantiate on `aarch64-darwin` with an explicit wasm-capable Rust toolchain:
-  exported `CARGO` and `RUSTC`, a `rustc --print target-libdir --target
-  wasm32-wasip1` preflight, and a `--target wasm32-wasip1` Cargo build
+  instantiate on `aarch64-darwin` with `cargoBuildHook` disabled for the
+  manual wasm build and an explicit wasm-capable Rust toolchain exported before
+  `runHook preBuild`: exported `CARGO`, `RUSTC`, and `PATH`, a
+  `rustc --print target-libdir --target wasm32-wasip1` preflight before
+  preBuild hooks can run, and a later `--target wasm32-wasip1` Cargo build
 - Verification: validator `yzx_repo_validator validate-child-release-transaction`
 
 ## Target Architecture
