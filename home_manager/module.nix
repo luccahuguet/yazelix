@@ -971,6 +971,7 @@ in
         ${yzxtermProfileExport}
 
         $DRY_RUN_CMD ${runtimeYzxCore} runtime-materialization.repair --from-env --force --summary
+        $DRY_RUN_CMD ${runtimeYzxCore} terminal-materialization.generate --from-env --terminals-json ${lib.escapeShellArg (builtins.toJSON cfg.terminals)} >/dev/null
         $DRY_RUN_CMD env YAZELIX_QUIET_MODE=true ${runtimeYzxControl} generate_shell_initializers
       '';
     }
