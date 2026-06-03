@@ -131,7 +131,7 @@ Out of scope:
   `YAZELIX_TERMINAL_EFFECTS`: `full` keeps Rio trail cursor and strips packaged
   `custom-shader` entries, `baseline` uses the packaged no-effects profile, and
   `shaders` uses the packaged shader profile while replacing packaged shader
-  references with generated Yazelix cursor shader paths from the active cursor
+  references with the generated Rio decoration shader for the active cursor
   settings. The generated config injects the current `terminal.transparency` as
   `[window].opacity` with cell opacity enabled whenever transparency is not
   `none`. The generated yzxterm config is Yazelix-owned state; it must not
@@ -145,7 +145,7 @@ Out of scope:
   (`yzxterm_process_boundary_env_clears_host_rio_config`),
   and `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`
   (`terminal_materialization_generate_from_env_writes_generated_configs`,
-  `terminal_materialization_yzxterm_shader_profile_injects_generated_cursor_shaders`)
+  `terminal_materialization_yzxterm_shader_profile_injects_rio_decoration_shader`)
 - Source: `docs/installation.md`; `docs/terminal_emulators.md`
 
 #### TLAUNCH-007

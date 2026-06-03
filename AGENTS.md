@@ -118,6 +118,7 @@ When creating new files or directories, always use underscores to maintain consi
   4. Run `nix build .#runtime_ghostty --no-link --no-write-lock-file` once as the final package gate after the smaller checks pass.
 - Avoid launching multiple `nix develop`, `nix eval`, or package-build commands in parallel during validation. They contend on Nix eval caches, store locks, and Cargo/Nix build directories, which makes the session slower and noisier than serialized checks.
 - For yzxterm runtime updates, expect `nix build .#runtime_yzxterm --no-link --no-write-lock-file` and the normal Home Manager switch to build the terminal through release LTO and package tests when the terminal input changes. Treat that path as a final runtime gate. Use focused terminal-repo Rust checks and builds before switching, and when improving this path, research current Rust/Nix build-speed tools instead of assuming the bottleneck is only one command.
+- Do not run yzxterm-related compile-heavy commands (`cargo`, `nix build`, or Home Manager switch) again until the rebuild-speed optimization beads are addressed, unless the maintainer explicitly overrides this gate for a specific command.
 
 ## Shell Boundary Rule
 

@@ -58,22 +58,6 @@ pub fn cursor_shader_paths_for_state(
         paths.push(shaders_dir.join(format!("cursor_trail_{name}.glsl")));
     }
 
-    for effect in [
-        cursor_state.selected_trail_effect.as_deref(),
-        cursor_state.selected_mode_effect.as_deref(),
-    ]
-    .into_iter()
-    .flatten()
-    .map(str::trim)
-    .filter(|effect| !effect.is_empty() && *effect != "none")
-    {
-        paths.push(
-            shaders_dir
-                .join("generated_effects")
-                .join(format!("{effect}.glsl")),
-        );
-    }
-
     paths
 }
 

@@ -1333,9 +1333,9 @@ color = "#ffffff"
     assert!(!yzxterm_config.contains("cursor_trail_dusk.glsl"));
 }
 
-// Regression: Yazelix-managed yzxterm launches pass YAZELIX_TERMINAL_CONFIG, so the runtime must materialize the requested shader profile itself.
+// Regression: Yazelix-managed yzxterm launches pass YAZELIX_TERMINAL_CONFIG, so the runtime must materialize the requested Rio decoration shader itself.
 #[test]
-fn terminal_materialization_yzxterm_shader_profile_injects_generated_cursor_shaders() {
+fn terminal_materialization_yzxterm_shader_profile_injects_rio_decoration_shader() {
     let repo = repo_root();
     let tmp = tempdir().unwrap();
     let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
@@ -1407,8 +1407,8 @@ color = "#3bd17a"
     assert!(yzxterm_config.contains("cursor = \"#3bd17a\""));
     assert!(yzxterm_config.contains("custom-shader = ["));
     assert!(yzxterm_config.contains("cursor_trail_forest.glsl"));
-    assert!(yzxterm_config.contains("generated_effects/tail.glsl"));
-    assert!(yzxterm_config.contains("generated_effects/ripple.glsl"));
+    assert!(!yzxterm_config.contains("generated_effects/tail.glsl"));
+    assert!(!yzxterm_config.contains("generated_effects/ripple.glsl"));
     assert!(!yzxterm_config.contains("/nix/store/demo/cursor_trail_dusk.glsl"));
 }
 
