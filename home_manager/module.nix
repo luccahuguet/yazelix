@@ -149,12 +149,16 @@ let
   runtimeYzxCore = "${yazelixPackage}/libexec/yzx_core";
   runtimeYzxControl = "${yazelixPackage}/libexec/yzx_control";
   cursorGeneratorPackage =
-    if cfg.manage_cursor_config && componentEnabled "cursors" && yazelixCursorsPackage != null then
+    if componentEnabled "cursors" && yazelixCursorsPackage != null then
       [ yazelixCursorsPackage ]
     else
       [ ];
+  cursorConfigRoot = "${config.xdg.configHome}/yazelix_ghostty_cursors";
+  cursorConfigPath = "${cursorConfigRoot}/settings.jsonc";
   cursorGeneratorActivation = lib.optionalString (cursorGeneratorPackage != [ ]) ''
-        $DRY_RUN_CMD ${yazelixCursorsPackage}/bin/yzc --config-dir ${lib.escapeShellArg "${config.xdg.configHome}/yazelix_ghostty_cursors"} generate ghostty >/dev/null
+        if [ -f ${lib.escapeShellArg cursorConfigPath} ]; then
+          $DRY_RUN_CMD ${yazelixCursorsPackage}/bin/yzc --config-dir ${lib.escapeShellArg cursorConfigRoot} generate ghostty >/dev/null
+        fi
   '';
   stateRoot = "${config.xdg.dataHome}/yazelix";
   logsPath = "${stateRoot}/logs";
