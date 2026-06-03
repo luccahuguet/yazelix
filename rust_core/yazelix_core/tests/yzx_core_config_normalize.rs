@@ -1547,7 +1547,14 @@ color = "#3bd17a"
         .join("ghostty");
     let generated_config = fs::read_to_string(ghostty_dir.join("config")).unwrap();
     assert!(generated_config.contains("# Ghostty trail duration multiplier: 1.5"));
-    assert!(generated_config.contains("custom-shader = ./shaders/cursor_trail_forest.glsl"));
+    assert!(generated_config.contains(&format!(
+        "custom-shader = {}",
+        ghostty_dir
+            .join("shaders")
+            .join("cursor_trail_forest.glsl")
+            .display()
+    )));
+    assert!(!generated_config.contains("custom-shader = ./shaders/"));
     assert!(!generated_config.contains("{name}"));
     let forest_shader =
         fs::read_to_string(ghostty_dir.join("shaders").join("cursor_trail_forest.glsl")).unwrap();

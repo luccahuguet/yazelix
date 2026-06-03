@@ -104,7 +104,15 @@ fn build_ghostty_trail_duration(duration: f64) -> String {
     )
 }
 
-fn build_ghostty_cursor_palette(cursor_state: &TerminalCursorState) -> String {
+fn ghostty_shader_path(ghostty_dir: &Path, relative_path: impl AsRef<Path>) -> String {
+    ghostty_dir
+        .join("shaders")
+        .join(relative_path)
+        .to_string_lossy()
+        .into_owned()
+}
+
+fn build_ghostty_cursor_palette(ghostty_dir: &Path, cursor_state: &TerminalCursorState) -> String {
     if cursor_state.selected_color.as_deref() == Some("none") {
         return "# Cursor color palette: none (disabled in settings.jsonc)".to_string();
     }
@@ -116,13 +124,15 @@ fn build_ghostty_cursor_palette(cursor_state: &TerminalCursorState) -> String {
         return "# cursor-color = #ffb929".to_string();
     };
 
+    let shader_path = ghostty_shader_path(ghostty_dir, format!("cursor_trail_{}.glsl", name));
     format!(
-        "# Cursor color palette: {}\ncursor-color = {}\ncustom-shader = ./shaders/cursor_trail_{}.glsl",
-        name, color_hex, name
+        "# Cursor color palette: {}\ncursor-color = {}\ncustom-shader = {}",
+        name, color_hex, shader_path
     )
 }
 
 fn build_ghostty_cursor_effects(
+    ghostty_dir: &Path,
     trail_effect: &Option<String>,
     mode_effect: &Option<String>,
 ) -> String {
@@ -133,7 +143,10 @@ fn build_ghostty_cursor_effects(
         .collect();
 
     if selected_effects.is_empty() {
-        return "# custom-shader = ./shaders/generated_effects/tail.glsl".to_string();
+        return format!(
+            "# custom-shader = {}",
+            ghostty_shader_path(ghostty_dir, "generated_effects/tail.glsl")
+        );
     }
 
     let mut lines = vec![format!("# Cursor effects: {}", selected_effects.join(", "))];
@@ -146,8 +159,8 @@ fn build_ghostty_cursor_effects(
 
     for effect in selected_effects {
         lines.push(format!(
-            "custom-shader = ./shaders/generated_effects/{}.glsl",
-            effect
+            "custom-shader = {}",
+            ghostty_shader_path(ghostty_dir, format!("generated_effects/{effect}.glsl"))
         ));
     }
 
@@ -194,6 +207,7 @@ config-file = ?"{}"
 
 fn build_ghostty_config(
     request: &GhosttyMaterializationRequest,
+    ghostty_dir: &Path,
     cursor_state: &TerminalCursorState,
 ) -> Result<String, CoreError> {
     let override_path = get_terminal_override_path(&request.config_dir, "ghostty")?
@@ -229,9 +243,10 @@ config-file = ?"{}"
         YAZELIX_X11_INSTANCE,
         YAZELIX_THEME,
         build_ghostty_transparency(&request.transparency),
-        build_ghostty_cursor_palette(cursor_state),
+        build_ghostty_cursor_palette(ghostty_dir, cursor_state),
         build_ghostty_trail_duration(cursor_state.trail_duration),
         build_ghostty_cursor_effects(
+            ghostty_dir,
             &cursor_state.selected_trail_effect,
             &cursor_state.selected_mode_effect
         ),
@@ -278,7 +293,7 @@ pub fn generate_ghostty_materialization(
             cursor_config_path: request.cursor_config_path.clone(),
         })?;
     let cursor_state = cursor_data.cursor_state;
-    let config_content = build_ghostty_config(request, &cursor_state)?;
+    let config_content = build_ghostty_config(request, &ghostty_dir, &cursor_state)?;
     let generated_path = ghostty_dir.join("config");
 
     write_text_atomic(&generated_path, &config_content)?;

@@ -19,6 +19,7 @@ use crate::terminal_materialization::{
 use serde::Serialize;
 use serde_json::{Map as JsonMap, Value as JsonValue};
 use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 const SUPPORTED_TERMINALS: &[&str] = &["ghostty", "yzxterm", "wezterm", "ratty", "kitty"];
 const DEFAULT_TERMINAL_CONFIG_MODE: &str = "yazelix";
@@ -125,13 +126,18 @@ pub fn prepare_launch_materialization(
     let mut ghostty_cursor_primary_color_hex = None;
     let mut ghostty_cursor_secondary_color_hex = None;
     if plan.should_generate_terminal_configs {
+        let terminal_state_dir = terminal_materialization_state_dir_for_launch(
+            &plan,
+            &request.state_dir,
+            ghostty_random_requested,
+        );
         let terminal_data = generate_terminal_materialization(&TerminalMaterializationRequest {
             config_path: request.config_path.clone(),
             cursor_config_path: request.cursor_config_path.clone(),
             default_config_path: request.default_config_path.clone(),
             contract_path: request.contract_path.clone(),
             runtime_dir: request.runtime_dir.clone(),
-            state_dir: request.state_dir.clone(),
+            state_dir: terminal_state_dir,
             terminals: plan.selected_terminals.clone(),
             yzxterm_profile: request.yzxterm_profile,
         })?;
@@ -178,13 +184,7 @@ pub fn prepare_launch_materialization(
             resolved_ghostty_cursor_secondary_color_hex(&cursor_state);
     }
 
-    let rerolled_ghostty_cursor = plan.should_reroll_ghostty_cursor
-        || (plan.should_generate_terminal_configs
-            && plan
-                .selected_terminals
-                .iter()
-                .any(|terminal| terminal == "ghostty")
-            && ghostty_random_requested);
+    let rerolled_ghostty_cursor = launch_rerolled_yazelix_cursor(&plan, ghostty_random_requested);
 
     Ok(LaunchMaterializationData {
         terminal_config_mode: plan.terminal_config_mode,
@@ -210,6 +210,45 @@ fn plan_uses_yazelix_ghostty_cursor(plan: &LaunchMaterializationPlan) -> bool {
 
 fn terminal_uses_yazelix_cursor(terminal: &str) -> bool {
     matches!(terminal, "ghostty" | "yzxterm")
+}
+
+fn launch_rerolled_yazelix_cursor(
+    plan: &LaunchMaterializationPlan,
+    ghostty_random_requested: bool,
+) -> bool {
+    plan.should_reroll_ghostty_cursor
+        || (plan.should_generate_terminal_configs
+            && plan
+                .selected_terminals
+                .iter()
+                .any(|terminal| terminal_uses_yazelix_cursor(terminal))
+            && ghostty_random_requested)
+}
+
+fn terminal_materialization_state_dir_for_launch(
+    plan: &LaunchMaterializationPlan,
+    state_dir: &Path,
+    ghostty_random_requested: bool,
+) -> PathBuf {
+    if plan.should_generate_terminal_configs
+        && ghostty_random_requested
+        && plan_uses_yazelix_ghostty_cursor(plan)
+    {
+        return launch_scoped_terminal_state_dir(state_dir);
+    }
+
+    state_dir.to_path_buf()
+}
+
+fn launch_scoped_terminal_state_dir(state_dir: &Path) -> PathBuf {
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+
+    state_dir
+        .join("terminal_launches")
+        .join(format!("{}-{nanos}", std::process::id()))
 }
 
 fn resolved_ghostty_cursor_name(state: &ResolvedCursorRegistryState) -> Option<String> {
@@ -524,5 +563,63 @@ mod tests {
 
         assert_eq!(plan.selected_terminals, vec!["yzxterm".to_string()]);
         assert!(plan_uses_yazelix_ghostty_cursor(&plan));
+    }
+
+    // Regression: yzxterm random cursor launches reroll the same Yazelix cursor state as Ghostty, so launch facts and verbose reporting stay accurate.
+    #[test]
+    fn yzxterm_random_cursor_launch_reports_reroll() {
+        let temp = tempdir().unwrap();
+        let config = config_with_terminals(&["yzxterm"], "yazelix");
+        let plan = build_launch_materialization_plan(
+            &config,
+            &["yzxterm".to_string()],
+            false,
+            false,
+            temp.path(),
+            true,
+        );
+
+        assert!(launch_rerolled_yazelix_cursor(&plan, true));
+    }
+
+    // Regression: random cursor launches use a launch-scoped terminal config root so opening a new window cannot rewrite config watched by existing Ghostty/yzxterm windows.
+    #[test]
+    fn random_cursor_launch_uses_scoped_terminal_state_dir() {
+        let temp = tempdir().unwrap();
+        let config = config_with_terminals(&["ghostty"], "yazelix");
+        let plan = build_launch_materialization_plan(
+            &config,
+            &["ghostty".to_string()],
+            false,
+            false,
+            temp.path(),
+            true,
+        );
+
+        let terminal_state_dir =
+            terminal_materialization_state_dir_for_launch(&plan, temp.path(), true);
+
+        assert_ne!(terminal_state_dir, temp.path());
+        assert!(terminal_state_dir.starts_with(temp.path().join("terminal_launches")));
+    }
+
+    // Defends: named cursor launches keep using the stable generated state root, avoiding unnecessary per-window config churn.
+    #[test]
+    fn named_cursor_launch_uses_stable_terminal_state_dir() {
+        let temp = tempdir().unwrap();
+        let config = config_with_terminals(&["ghostty"], "yazelix");
+        let plan = build_launch_materialization_plan(
+            &config,
+            &["ghostty".to_string()],
+            false,
+            false,
+            temp.path(),
+            false,
+        );
+
+        let terminal_state_dir =
+            terminal_materialization_state_dir_for_launch(&plan, temp.path(), false);
+
+        assert_eq!(terminal_state_dir, temp.path());
     }
 }

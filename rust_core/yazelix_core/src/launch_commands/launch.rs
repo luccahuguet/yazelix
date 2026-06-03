@@ -162,7 +162,7 @@ pub(super) fn run_launch_flow(
 
     let mut failures = Vec::new();
     for candidate in terminal_candidates {
-        let config_path = match resolve_terminal_config_path(
+        let fallback_config_path = match resolve_terminal_config_path(
             &home_dir_from_env()?,
             &state_dir,
             &materialization.terminal_config_mode,
@@ -174,6 +174,9 @@ pub(super) fn run_launch_flow(
                 continue;
             }
         };
+        let config_path =
+            resolve_materialized_terminal_config_path(&materialization, &candidate.terminal)
+                .unwrap_or(fallback_config_path);
 
         let argv = build_launch_command_argv(&runtime_dir, &candidate, &config_path, &working_dir)?;
         if verbose {
@@ -329,6 +332,21 @@ fn yzxterm_process_boundary_env(
             Some("1".to_string()),
         ),
     ])
+}
+
+fn resolve_materialized_terminal_config_path(
+    materialization: &LaunchMaterializationData,
+    terminal: &str,
+) -> Option<PathBuf> {
+    if materialization.terminal_config_mode != "yazelix" {
+        return None;
+    }
+
+    materialization
+        .generated_terminals
+        .iter()
+        .find(|entry| entry.terminal == terminal)
+        .map(|entry| PathBuf::from(&entry.path))
 }
 
 fn launch_cursor_name_for_terminal(
@@ -514,6 +532,38 @@ mod tests {
                     Some("1".to_string())
                 ),
             ]
+        );
+    }
+
+    // Regression: launch must pass a launch-scoped materialized config path when random cursor materialization produced one, otherwise it falls back to the shared generated path and leaks cursor preset changes across windows.
+    #[test]
+    fn materialized_yazelix_config_path_wins_for_launch() {
+        let materialization = LaunchMaterializationData {
+            terminal_config_mode: "yazelix".to_string(),
+            selected_terminals: vec!["ghostty".to_string()],
+            generated_terminals: vec![crate::terminal_materialization::TerminalGeneratedConfig {
+                terminal: "ghostty".to_string(),
+                path: "/state/terminal_launches/123/configs/terminal_emulators/ghostty/config"
+                    .to_string(),
+            }],
+            ghostty_cursor_name: None,
+            ghostty_cursor_color_hex: None,
+            ghostty_cursor_family: None,
+            ghostty_cursor_divider: None,
+            ghostty_cursor_primary_color_hex: None,
+            ghostty_cursor_secondary_color_hex: None,
+            rerolled_ghostty_cursor: false,
+        };
+
+        assert_eq!(
+            resolve_materialized_terminal_config_path(&materialization, "ghostty"),
+            Some(PathBuf::from(
+                "/state/terminal_launches/123/configs/terminal_emulators/ghostty/config"
+            ))
+        );
+        assert_eq!(
+            resolve_materialized_terminal_config_path(&materialization, "wezterm"),
+            None
         );
     }
 
