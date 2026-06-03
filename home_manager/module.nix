@@ -873,11 +873,11 @@ in
         - "boids_predator": show boids with predator/prey motion
         - "boids_schools": show species-separated boids schools
         - "mandelbrot": show the Seahorse/Misiurewicz Mandelbrot zoom
-        - "magician": show the 1mposter ASCII magician GIF animation
+        - "magician": show the 1mposter ASCII magician GIF animation through Kitty graphics and host-generated PNG frames
         - "game_of_life_gliders": show the glider-swarm Game of Life style
         - "game_of_life_oscillators": show the oscillator-garden Game of Life style
         - "game_of_life_bloom": show the bloom-field Game of Life style
-        - "random": choose evenly across Game of Life, boids, and Mandelbrot families (never "static" or "logo")
+        - "random": choose evenly across Game of Life, boids, and Mandelbrot families, with magician included only when frame assets and Kitty graphics are available (never "static" or "logo")
       '';
     };
 

@@ -14,7 +14,7 @@ The screen renderer is a reusable terminal animation crate. Keeping it in an ext
 - Yazelix `.#yzs` and `.#yazelix_screen` package/app aliases forwarded from that input
 - standalone `yzs` binary from the external `yazelix_screen` Rust crate
 - external screen README, CI, flake, Cargo lock, and examples
-- boids, Mandelbrot, and Game of Life animation engines owned outside the Yazelix monorepo
+- boids, Mandelbrot, Game of Life, and explicit magician animation support owned outside the Yazelix monorepo
 
 ## Behavior
 
@@ -22,8 +22,9 @@ The screen renderer is a reusable terminal animation crate. Keeping it in an ext
 - The binary does not read `settings.jsonc` or session config snapshots.
 - The binary owns a small explicit CLI: optional style plus optional Game of Life cell style.
 - The binary enters alternate-screen/raw mode, renders frames, responds to terminal resize, exits on keypress, and restores terminal state on normal exit.
-- The binary supports the animation-engine styles available in the screen crate: `boids`, `boids_predator`, `boids_schools`, `mandelbrot`, `game_of_life_gliders`, `game_of_life_oscillators`, `game_of_life_bloom`, and `random`.
-- No explicit style means `random`.
+- The binary supports the animation-engine styles available in the screen crate: `boids`, `boids_predator`, `boids_schools`, `mandelbrot`, `magician`, `game_of_life_gliders`, `game_of_life_oscillators`, `game_of_life_bloom`, and `random`.
+- Explicit `magician` uses Kitty graphics and existing or host-generated PNG frames from the packaged source GIF; the package does not bundle ImageMagick or expanded magician frames.
+- No explicit style means `random`, which skips `magician` unless those frame assets can be resolved or generated.
 - Library examples in the external crate run without Yazelix runtime/session/config state and demonstrate one-frame rendering plus bounded style playback.
 - Yazelix users keep using `yzx screen`; standalone users can run `yzs` directly from a vanilla terminal.
 - `yazelix_core` consumes `yazelix_screen` as an external Rust dependency instead of owning duplicate source.

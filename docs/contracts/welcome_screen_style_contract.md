@@ -9,8 +9,9 @@ The renderer and style resolution are Rust-owned. The main repo owns Yazelix
 product policy and runtime integration; the `yazelix_screen` child crate owns
 terminal animation engines, automata, generation logic, shared random
 animation-family resolution, file-backed Kitty frame sequence playback, and the
-generated magician frame assets. Nu keeps only the startup-shell sequencing and
-the tiny runtime handoff used by welcome/startup callers.
+magician source GIF plus host/cache frame generation helpers. Nu keeps only the
+startup-shell sequencing and the tiny runtime handoff used by welcome/startup
+callers.
 
 The retained public shape is:
 
@@ -19,8 +20,9 @@ The retained public shape is:
   `game_of_life_gliders`, `game_of_life_oscillators`,
   `game_of_life_bloom`, and `random`
 - `yzx screen` keeps the same animated surface except `static`
-- welcome `random` splits evenly across Game of Life, boids, Mandelbrot, and
-  magician families while never choosing `static` or `logo`
+- welcome `random` splits evenly across Game of Life, boids, and Mandelbrot
+  families while never choosing `static` or `logo`; it includes `magician` only
+  when the runtime can resolve Kitty graphics support and magician frame assets
 - `yzx screen random` uses the same animation-family pool as welcome `random`
   while never choosing `static` or `logo`
 - `boids` remains an alias for `boids_predator`
@@ -59,7 +61,7 @@ Out of scope:
 | `game_of_life_gliders` | yes | yes | live | retained default-family live simulation variant |
 | `game_of_life_oscillators` | yes | yes | live | retained default-family live simulation variant |
 | `game_of_life_bloom` | yes | yes | live | retained default-family live simulation variant |
-| `random` | yes | yes | live | welcome and `yzx screen` pick from the same retained animation-family pool including `magician` |
+| `random` | yes | yes | live | welcome and `yzx screen` pick from the same retained non-image animation-family pool, with `magician` admitted only when assets and Kitty graphics are available |
 | `game_of_life` | no | no | deleted compatibility alias | do not revive without an explicit contract change |
 
 ## Contract Items
@@ -83,13 +85,14 @@ Out of scope:
 - Owner: shared random-pool policy in `yazelix_screen`, consumed by
   `front_door_render.rs`
 - Statement: welcome `random` and `yzx screen random` split evenly across the
-  same Game of Life, boids, Mandelbrot, and magician families. The Game of Life
+  same default Game of Life, boids, and Mandelbrot families. The Game of Life
   family rotates through
   `game_of_life_gliders`, `game_of_life_oscillators`, and
   `game_of_life_bloom`; the boids family rotates through `boids_predator`,
   and `boids_schools`; the Mandelbrot family resolves to
-  `mandelbrot`; the magician family resolves to `magician`. It is not a
-  bucket over `static` or `logo`
+  `mandelbrot`. The `magician` family resolves to `magician` only after the
+  runtime proves Kitty graphics support plus runtime/cached/generated magician
+  PNG frame availability. It is not a bucket over `static` or `logo`
 - Verification: automated Rust `front_door_render` tests;
   validator `yzx_repo_validator validate-contracts`
 
@@ -105,14 +108,15 @@ Out of scope:
 #### FRONT-004
 - Type: boundary
 - Status: live
-- Owner: `yazelix_screen` owns the magician source GIF, generated runtime
-  frames, and reusable Kitty frame sequence rendering; Yazelix packaging links
-  those child-owned frames into the runtime asset tree and `front_door_render.rs`
-  owns product-specific gating and error classification
+- Owner: `yazelix_screen` owns the magician source GIF, optional cached PNG
+  frame generation, and reusable Kitty frame sequence rendering; Yazelix
+  packaging links the child-owned source GIF into the runtime asset tree and
+  `front_door_render.rs` owns product-specific gating and error classification
 - Statement: `magician` renders the attributed GIF-derived PNG frame assets
-  through Kitty graphics. Missing child-owned runtime assets or unavailable
-  Kitty graphics support produce explicit errors instead of falling back to a
-  degraded ANSI block renderer
+  through Kitty graphics. Missing runtime/cached frame assets, unavailable host
+  ImageMagick for frame generation, or unavailable Kitty graphics support
+  produce explicit errors for explicit `magician`; `random` skips `magician`
+  when those conditions are not satisfied instead of selecting a broken style
 - Verification: automated Rust `front_door_render` tests; manual `yzx screen
   magician` or `yzx screen --internal-welcome magician` review in the packaged
   Ghostty/Ratty runtime

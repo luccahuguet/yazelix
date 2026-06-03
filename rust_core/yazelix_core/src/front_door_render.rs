@@ -16,15 +16,17 @@ use std::time::{Duration, Instant};
 pub use yazelix_screen::GameOfLifeCellStyle;
 use yazelix_screen::{
     BoidsAnimation, BoidsVariant, GameOfLifeAnimation, KITTY_FRAME_SEQUENCE_STYLE,
-    MAGICIAN_ATTRIBUTION, MAGICIAN_FRAME_DELAY, MAGICIAN_FRAME_DIR_NAME, MANDELBROT_STYLE,
-    MandelbrotAnimation, RawModeGuard as ScreenRawModeGuard, ScreenAnimationContext,
-    ScreenFrameProducer, build_game_of_life_screen_lines, build_live_game_of_life_seed,
-    center_frame_lines, center_text, cleanup_kitty_image, game_of_life_grid_height,
-    game_of_life_grid_width, game_of_life_spec, is_boids_style, is_game_of_life_style,
+    MAGICIAN_ATTRIBUTION, MAGICIAN_FRAME_DELAY, MAGICIAN_FRAME_DIR_NAME, MAGICIAN_GIF_NAME,
+    MANDELBROT_STYLE, MandelbrotAnimation, RawModeGuard as ScreenRawModeGuard,
+    ScreenAnimationContext, ScreenFrameProducer, build_game_of_life_screen_lines,
+    build_live_game_of_life_seed, center_frame_lines, center_text, cleanup_kitty_image,
+    default_magician_cache_frame_dir, game_of_life_grid_height, game_of_life_grid_width,
+    game_of_life_spec, generate_magician_frame_assets, imagemagick_available, is_boids_style,
+    is_game_of_life_style, magician_frame_assets_available,
     magician_frame_sequence_with_edge_insets, mandelbrot_frame_delay,
-    play_kitty_png_frame_sequence, random_animation_styles, require_magician_frame_assets,
+    play_kitty_png_frame_sequence, random_animation_styles_with_magician,
     resolve_game_of_life_body_height,
-    resolve_random_animation_style as resolve_shared_random_animation_style,
+    resolve_random_animation_style_with_magician as resolve_shared_random_animation_style,
     step_game_of_life_cells, terminal_height, terminal_width, visible_line_width,
 };
 
@@ -83,8 +85,8 @@ fn style_values_for_surface(surface: &str) -> Vec<&'static str> {
         .collect()
 }
 
-fn assert_random_animation_pool_is_allowed(allowed: &[&str]) {
-    for candidate in random_animation_styles() {
+fn assert_random_animation_pool_is_allowed(allowed: &[&str], include_magician: bool) {
+    for candidate in random_animation_styles_with_magician(include_magician) {
         if !allowed
             .iter()
             .any(|allowed_style| *allowed_style == candidate)
@@ -94,14 +96,26 @@ fn assert_random_animation_pool_is_allowed(allowed: &[&str]) {
     }
 }
 
-fn resolve_random_animation_style(allowed: &[&str], random_index: Option<usize>) -> String {
-    assert_random_animation_pool_is_allowed(allowed);
-    resolve_shared_random_animation_style(random_index).to_string()
+fn resolve_random_animation_style(
+    allowed: &[&str],
+    random_index: Option<usize>,
+    include_magician: bool,
+) -> String {
+    assert_random_animation_pool_is_allowed(allowed, include_magician);
+    resolve_shared_random_animation_style(random_index, include_magician).to_string()
 }
 
 pub fn resolve_welcome_style(
     requested: &str,
     random_index: Option<usize>,
+) -> Result<String, CoreError> {
+    resolve_welcome_style_with_magician_availability(requested, random_index, false)
+}
+
+fn resolve_welcome_style_with_magician_availability(
+    requested: &str,
+    random_index: Option<usize>,
+    include_magician: bool,
 ) -> Result<String, CoreError> {
     let normalized = requested.trim().to_ascii_lowercase();
     let allowed = style_values_for_surface("welcome");
@@ -122,12 +136,24 @@ pub fn resolve_welcome_style(
         return Ok(normalized);
     }
 
-    Ok(resolve_random_animation_style(&allowed, random_index))
+    Ok(resolve_random_animation_style(
+        &allowed,
+        random_index,
+        include_magician,
+    ))
 }
 
 pub fn resolve_screen_style(
     requested: Option<&str>,
     random_index: Option<usize>,
+) -> Result<String, CoreError> {
+    resolve_screen_style_with_magician_availability(requested, random_index, false)
+}
+
+fn resolve_screen_style_with_magician_availability(
+    requested: Option<&str>,
+    random_index: Option<usize>,
+    include_magician: bool,
 ) -> Result<String, CoreError> {
     let normalized = requested.unwrap_or("random").trim().to_ascii_lowercase();
     let allowed = style_values_for_surface("screen");
@@ -145,7 +171,11 @@ pub fn resolve_screen_style(
     }
 
     if normalized == "random" {
-        return Ok(resolve_random_animation_style(&allowed, random_index));
+        return Ok(resolve_random_animation_style(
+            &allowed,
+            random_index,
+            include_magician,
+        ));
     }
     Ok(normalized)
 }
@@ -416,21 +446,113 @@ fn ascii_magician_frame_dir(runtime_dir: &Path) -> PathBuf {
         .join(MAGICIAN_FRAME_DIR_NAME)
 }
 
+fn ascii_magician_gif_path(runtime_dir: &Path) -> PathBuf {
+    runtime_dir
+        .join(ASCII_MAGICIAN_ASSET_PARENT_DIR)
+        .join(MAGICIAN_GIF_NAME)
+}
+
 #[cfg(test)]
 fn ascii_magician_frame_path(runtime_dir: &Path, frame_index: usize) -> std::path::PathBuf {
     yazelix_screen::magician_frame_path(&ascii_magician_frame_dir(runtime_dir), frame_index)
 }
 
-fn require_ascii_magician_assets(runtime_dir: &Path) -> Result<(), CoreError> {
-    require_magician_frame_assets(&ascii_magician_frame_dir(runtime_dir)).map_err(|source| {
-        CoreError::classified(
-            ErrorClass::Runtime,
-            "missing_magician_frame_asset",
-            source.to_string(),
-            "Reinstall Yazelix so the runtime includes child-owned yazelix-screen magician frame assets.",
-            serde_json::json!({ "path": ascii_magician_frame_dir(runtime_dir) }),
-        )
-    })
+fn ascii_magician_assets_available(runtime_dir: Option<&Path>) -> bool {
+    if !kitty_graphics_supported() {
+        return false;
+    }
+
+    let Some(runtime_dir) = runtime_dir else {
+        return false;
+    };
+
+    if magician_frame_assets_available(&ascii_magician_frame_dir(runtime_dir)) {
+        return true;
+    }
+    if default_magician_cache_frame_dir()
+        .as_deref()
+        .is_some_and(magician_frame_assets_available)
+    {
+        return true;
+    }
+
+    ascii_magician_gif_path(runtime_dir).is_file()
+        && default_magician_cache_frame_dir().is_some()
+        && imagemagick_available()
+}
+
+fn missing_ascii_magician_assets_error(runtime_dir: &Path) -> CoreError {
+    let runtime_frame_dir = ascii_magician_frame_dir(runtime_dir);
+    let runtime_gif_path = ascii_magician_gif_path(runtime_dir);
+    CoreError::classified(
+        ErrorClass::Runtime,
+        "missing_magician_frame_asset",
+        format!(
+            "The magician style could not resolve PNG frames from `{}` or generate them from `{}`.",
+            runtime_frame_dir.display(),
+            runtime_gif_path.display()
+        ),
+        "Install ImageMagick `magick` on PATH, run through a packaged Yazelix runtime that includes the magician GIF, or choose a non-image welcome/screen style.",
+        serde_json::json!({
+            "frame_dir": runtime_frame_dir.display().to_string(),
+            "gif_path": runtime_gif_path.display().to_string(),
+            "cache_frame_dir": default_magician_cache_frame_dir()
+                .map(|path| path.display().to_string()),
+        }),
+    )
+}
+
+fn map_ascii_magician_generation_error(
+    runtime_dir: &Path,
+    gif_path: &Path,
+    frame_dir: &Path,
+    source: io::Error,
+) -> CoreError {
+    CoreError::classified(
+        ErrorClass::Runtime,
+        "missing_magician_frame_asset",
+        format!(
+            "Could not generate magician PNG frames from `{}` into `{}`: {source}",
+            gif_path.display(),
+            frame_dir.display()
+        ),
+        "Install ImageMagick `magick` on PATH, fix the cache directory permissions, or choose a non-image welcome/screen style.",
+        serde_json::json!({
+            "frame_dir": frame_dir.display().to_string(),
+            "gif_path": gif_path.display().to_string(),
+            "runtime_frame_dir": ascii_magician_frame_dir(runtime_dir)
+                .display()
+                .to_string(),
+        }),
+    )
+}
+
+fn ensure_ascii_magician_frame_dir(runtime_dir: &Path) -> Result<PathBuf, CoreError> {
+    let runtime_frame_dir = ascii_magician_frame_dir(runtime_dir);
+    if magician_frame_assets_available(&runtime_frame_dir) {
+        return Ok(runtime_frame_dir);
+    }
+
+    if let Some(cache_frame_dir) = default_magician_cache_frame_dir() {
+        if magician_frame_assets_available(&cache_frame_dir) {
+            return Ok(cache_frame_dir);
+        }
+
+        let gif_path = ascii_magician_gif_path(runtime_dir);
+        if gif_path.is_file() {
+            generate_magician_frame_assets(&gif_path, &cache_frame_dir).map_err(|source| {
+                map_ascii_magician_generation_error(
+                    runtime_dir,
+                    &gif_path,
+                    &cache_frame_dir,
+                    source,
+                )
+            })?;
+            return Ok(cache_frame_dir);
+        }
+    }
+
+    Err(missing_ascii_magician_assets_error(runtime_dir))
 }
 
 fn kitty_graphics_supported() -> bool {
@@ -496,11 +618,11 @@ fn map_kitty_frame_sequence_error(source: io::Error) -> CoreError {
 }
 
 fn ascii_magician_frame_sequence(
-    runtime_dir: &Path,
+    frame_dir: &Path,
     image_id: u32,
 ) -> yazelix_screen::KittyFrameSequence {
     magician_frame_sequence_with_edge_insets(
-        &ascii_magician_frame_dir(runtime_dir),
+        frame_dir,
         image_id,
         Some(terminal_control::styled_dim_no_reset(
             MAGICIAN_ATTRIBUTION,
@@ -541,10 +663,10 @@ fn play_ascii_magician_graphics_welcome(
     duration: Duration,
 ) -> Result<(), CoreError> {
     require_kitty_graphics_for_magician()?;
-    require_ascii_magician_assets(runtime_dir)?;
+    let frame_dir = ensure_ascii_magician_frame_dir(runtime_dir)?;
 
     let image_id = ascii_magician_image_id();
-    let sequence = ascii_magician_frame_sequence(runtime_dir, image_id);
+    let sequence = ascii_magician_frame_sequence(&frame_dir, image_id);
     play_kitty_png_frame_sequence_on_black_background(&sequence, Some(duration))
         .map_err(map_kitty_frame_sequence_error)?;
     for line in get_logo_welcome_frame(terminal_width()) {
@@ -555,10 +677,10 @@ fn play_ascii_magician_graphics_welcome(
 
 fn run_ascii_magician_graphics_screen(runtime_dir: &Path) -> Result<i32, CoreError> {
     require_kitty_graphics_for_magician()?;
-    require_ascii_magician_assets(runtime_dir)?;
+    let frame_dir = ensure_ascii_magician_frame_dir(runtime_dir)?;
 
     let image_id = ascii_magician_image_id();
-    let sequence = ascii_magician_frame_sequence(runtime_dir, image_id);
+    let sequence = ascii_magician_frame_sequence(&frame_dir, image_id);
     enter_screen_mode()?;
     let result = play_kitty_png_frame_sequence_on_black_background(&sequence, None)
         .map_err(map_kitty_frame_sequence_error);
@@ -877,7 +999,11 @@ fn play_welcome_style_inner(
     let _raw = raw_mode_guard()?;
     let width = terminal_width();
     let height = terminal_height();
-    let resolved_style = resolve_welcome_style(style, None)?;
+    let resolved_style = resolve_welcome_style_with_magician_availability(
+        style,
+        None,
+        ascii_magician_assets_available(runtime_dir),
+    )?;
     let playback_duration = if resolved_style == "logo" {
         Duration::from_millis(500)
     } else {
@@ -945,7 +1071,11 @@ fn run_screen_surface_inner(
     runtime_dir: Option<&Path>,
 ) -> Result<i32, CoreError> {
     let _raw = raw_mode_guard()?;
-    let resolved_style = resolve_screen_style(style, None)?;
+    let resolved_style = resolve_screen_style_with_magician_availability(
+        style,
+        None,
+        ascii_magician_assets_available(runtime_dir),
+    )?;
     if resolved_style == KITTY_FRAME_SEQUENCE_STYLE {
         let runtime_dir = runtime_dir.ok_or_else(missing_magician_runtime_dir)?;
         return run_ascii_magician_graphics_screen(runtime_dir);
@@ -1071,13 +1201,12 @@ mod tests {
     }
 
     // Test lane: default
-    // Defends: `yzx screen random` rotates through the same retained animation pool as welcome random.
+    // Defends: `yzx screen random` skips the image-backed magician family until runtime assets are available.
     #[test]
-    fn random_screen_style_rotates_across_animation_families() {
+    fn random_screen_style_rotates_across_default_animation_families() {
         let mut game_of_life_count = 0;
         let mut boids_count = 0;
         let mut mandelbrot_count = 0;
-        let mut magician_count = 0;
 
         for index in 0..yazelix_screen::random_animation_slot_count() {
             let resolved = resolve_screen_style(Some("random"), Some(index)).unwrap();
@@ -1089,8 +1218,6 @@ mod tests {
                 boids_count += 1;
             } else if resolved == MANDELBROT_STYLE {
                 mandelbrot_count += 1;
-            } else if resolved == KITTY_FRAME_SEQUENCE_STYLE {
-                magician_count += 1;
             } else {
                 panic!("unexpected random screen style: {resolved}");
             }
@@ -1099,16 +1226,14 @@ mod tests {
         assert_eq!(game_of_life_count, 6);
         assert_eq!(boids_count, 6);
         assert_eq!(mandelbrot_count, 6);
-        assert_eq!(magician_count, 6);
     }
 
-    // Defends: welcome random splits selection evenly across Game of Life, boids, Mandelbrot, and magician families while excluding static/logo.
+    // Defends: welcome random splits selection evenly across non-image animation families while excluding static/logo.
     #[test]
-    fn random_welcome_style_rotates_evenly_across_animation_families() {
+    fn random_welcome_style_rotates_evenly_across_default_animation_families() {
         let mut game_of_life_count = 0;
         let mut boids_count = 0;
         let mut mandelbrot_count = 0;
-        let mut magician_count = 0;
         let mut boids_styles = Vec::new();
 
         for index in 0..yazelix_screen::random_animation_slot_count() {
@@ -1122,8 +1247,6 @@ mod tests {
                 boids_styles.push(resolved);
             } else if resolved == MANDELBROT_STYLE {
                 mandelbrot_count += 1;
-            } else if resolved == KITTY_FRAME_SEQUENCE_STYLE {
-                magician_count += 1;
             } else {
                 panic!("unexpected random welcome style: {resolved}");
             }
@@ -1132,7 +1255,6 @@ mod tests {
         assert_eq!(game_of_life_count, 6);
         assert_eq!(boids_count, 6);
         assert_eq!(mandelbrot_count, 6);
-        assert_eq!(magician_count, 6);
         assert_eq!(
             boids_styles,
             yazelix_screen::BOIDS_RANDOM_STYLES
@@ -1174,7 +1296,7 @@ mod tests {
         }
     }
 
-    // Defends: the attributed GIF-derived magician style is explicit and participates in the shared random pool.
+    // Defends: the attributed GIF-derived magician style remains explicit for welcome and screen surfaces.
     #[test]
     fn magician_is_available_to_welcome_and_screen() {
         assert_eq!(
@@ -1185,14 +1307,22 @@ mod tests {
             resolve_welcome_style(KITTY_FRAME_SEQUENCE_STYLE, None).unwrap(),
             KITTY_FRAME_SEQUENCE_STYLE
         );
+    }
+
+    // Defends: runtime paths that can resolve magician assets may include the image-backed family in random.
+    #[test]
+    fn magician_can_participate_in_random_when_assets_are_available() {
         let mut welcome_random_included_magician = false;
         let mut screen_random_included_magician = false;
-        for index in 0..yazelix_screen::random_animation_slot_count() {
-            screen_random_included_magician |= resolve_screen_style(Some("random"), Some(index))
-                .unwrap()
-                == KITTY_FRAME_SEQUENCE_STYLE;
+        for index in 0..yazelix_screen::random_animation_slot_count_with_magician(true) {
+            screen_random_included_magician |=
+                resolve_screen_style_with_magician_availability(Some("random"), Some(index), true)
+                    .unwrap()
+                    == KITTY_FRAME_SEQUENCE_STYLE;
             welcome_random_included_magician |=
-                resolve_welcome_style("random", Some(index)).unwrap() == KITTY_FRAME_SEQUENCE_STYLE;
+                resolve_welcome_style_with_magician_availability("random", Some(index), true)
+                    .unwrap()
+                    == KITTY_FRAME_SEQUENCE_STYLE;
         }
         assert!(screen_random_included_magician);
         assert!(welcome_random_included_magician);
@@ -1271,7 +1401,8 @@ mod tests {
             )
         );
 
-        let sequence = ascii_magician_frame_sequence(runtime_dir, 123);
+        let frame_dir = ascii_magician_frame_dir(runtime_dir);
+        let sequence = ascii_magician_frame_sequence(&frame_dir, 123);
         assert_eq!(
             sequence.frame_paths.len(),
             yazelix_screen::MAGICIAN_FRAME_COUNT

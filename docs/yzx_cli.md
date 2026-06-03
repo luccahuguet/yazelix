@@ -225,7 +225,8 @@ Interactive command palette (fuzzy search)
 ### `yzx screen [STYLE]`
 Preview the animated welcome screen directly in the current terminal
 - `STYLE`: one of `logo`, `boids`, `boids_predator`, `boids_schools`, `mandelbrot`, `magician`, `game_of_life_gliders`, `game_of_life_oscillators`, `game_of_life_bloom`, or `random`
-- `random`: rotates across the retained Game of Life, boids, and Mandelbrot animation families
+- `random`: rotates across the retained Game of Life, boids, and Mandelbrot animation families; it includes `magician` only when Kitty graphics and frame assets are available
+- `magician`: uses Kitty graphics plus existing/generated PNG frames from the packaged source GIF, with host ImageMagick `magick` used only when frames must be generated
 - Runs until a key is pressed
 - Requires an interactive terminal that supports timed keypress reads via bash
 - Useful for previewing welcome styles without launching the full Yazelix UI

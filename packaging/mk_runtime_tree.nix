@@ -85,8 +85,14 @@ pkgs.runCommand name { } ''
     ln -s "$asset_entry" "$out/assets/$asset_name"
   done
   mkdir -p "$out/assets/third_party"
-  ln -s "${requireScreenAssets}/share/yazelix_screen/ascii_magician_1mposter_frames" \
-    "$out/assets/third_party/ascii_magician_1mposter_frames"
+  if [ -e "${requireScreenAssets}/share/yazelix_screen/ascii_magician_1mposter.gif" ]; then
+    ln -s "${requireScreenAssets}/share/yazelix_screen/ascii_magician_1mposter.gif" \
+      "$out/assets/third_party/ascii_magician_1mposter.gif"
+  fi
+  if [ -e "${requireScreenAssets}/share/yazelix_screen/ascii_magician_1mposter_frames" ]; then
+    ln -s "${requireScreenAssets}/share/yazelix_screen/ascii_magician_1mposter_frames" \
+      "$out/assets/third_party/ascii_magician_1mposter_frames"
+  fi
   ln -s ${src}/config_metadata "$out/config_metadata"
   mkdir -p "$out/configs"
   for config_entry in ${src}/configs/*; do
