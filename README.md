@@ -306,9 +306,7 @@ If you followed [step 3 in the installation guide](./docs/installation.md#step-3
 - **WezTerm** (explicit packaged alternate path): Rust terminal with strong graphics support and Sixel compatibility
 - **Ratty** (experimental Linux packaged path): GPU-rendered terminal with Kitty graphics support and inline 3D graphics
 - **Kitty** (explicit packaged alternate path): Fast, feature-rich, GPU-accelerated terminal with generated Kitty config and the Yazelix Zellij/Yazi Kitty graphics bridge
-- **Auto-detection**: Fallback order follows your configured terminal list
-- Configure your preference in `settings.jsonc` with `terminal.terminals = ["ghostty", "yzxterm", "wezterm", "kitty", ...]` (first item is primary)
-- **Terminal package contract**: Yazelix runtimes still choose one primary packaged terminal variant at a time; Home Manager installs can add more bundled terminal emulator packages with `programs.yazelix.extra_terminal_variants`
+- **Terminal package contract**: each package or Home Manager `programs.yazelix.terminal` value selects one terminal; Yazelix does not fall back to another terminal when that variant is missing or mispackaged
 
 [See the full Customization Guide here.](./docs/customization.md)
 
@@ -334,8 +332,6 @@ Run `yzx help` for the live command list
 - `yzx enter` - Start Yazelix in the current terminal
 - `yzx launch --path DIR` - Launch from a specific directory
 - `yzx launch --home` - Launch from the home directory
-- `yzx launch --terminal ghostty` - Force a supported terminal for this launch
-- `yzx launch --terminal yzxterm` - Force the experimental Yazelix Terminal path when available
 - `yzx launch --config ./minimal.jsonc` - Start one window from an alternate complete settings file
 - `yzx launch --with editor.command=nvim` - Override one settings field for this window only
 - `yzx launch --verbose` - Print detailed launch diagnostics

@@ -74,7 +74,6 @@ The Rust rewrite needs this baseline to preserve or improve startup behavior ins
 - `yzx dev profile --cold` profiles cold current-terminal startup from outside Yazelix.
 - `yzx dev profile --desktop` invokes the real `yzx desktop launch` leaf command.
 - `yzx dev profile --launch` invokes the real `yzx launch` leaf command.
-- `yzx dev profile --launch --terminal <name>` passes the terminal override to `yzx launch`.
 - `yzx dev profile compare <baseline-report> <candidate-report>` compares two saved JSONL reports under the local startup profile directory or any explicit report paths.
 - `yzx dev profile save-baseline <name> <report>` copies a saved report into the local startup profile baseline directory.
 - `yzx dev profile compare-baseline <name> <candidate-report>` compares a named local baseline against another saved report.

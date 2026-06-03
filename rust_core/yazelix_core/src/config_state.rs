@@ -470,7 +470,7 @@ mod tests {
 
         assert_eq!(
             state.config_hash,
-            "399130fea27113c91be839c5ec10bd4263b139f1bc56b5afd933ec7d85787759"
+            "6f6a97b55a035c54c9e1b47e7903de90c01890a0a2cf1a3f6d272a1b472b3b62"
         );
         assert!(state.needs_refresh);
     }
@@ -508,7 +508,6 @@ mod tests {
         let mut config = default_settings_jsonc();
         config["core"]["skip_welcome_screen"] = json!(false);
         config["editor"]["command"] = json!("hx");
-        config["terminal"]["terminals"] = json!(["ghostty"]);
         let config_path = write_settings_config(dir.path(), &config);
         let baseline = compute_config_state(&request_for(
             config_path.clone(),

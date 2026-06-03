@@ -1,6 +1,7 @@
 //! Install ownership, launcher provenance, and doctor install-artifact classification.
 //! Bead: yazelix-ulb2.4.1
 
+use crate::terminal_variant::{SUPPORTED_TERMINALS, terminal_desktop_entry_file_name};
 use crate::user_config_paths;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -241,12 +242,11 @@ fn detect_install_owner(
     if existing_profile.is_some() {
         return "profile".into();
     }
-    let profile_desktop = home_dir
+    let profile_apps = home_dir
         .join(".nix-profile")
         .join("share")
-        .join("applications")
-        .join("yazelix.desktop");
-    if profile_desktop.exists() {
+        .join("applications");
+    if !existing_desktop_entry_paths(&profile_apps).is_empty() {
         return "profile".into();
     }
     "manual".into()
@@ -286,10 +286,37 @@ fn is_legacy_manual_yzx_wrapper_path(path: &Path) -> bool {
     file_contents_look_like_legacy_yazelix_wrapper(path)
 }
 
-fn manual_desktop_entry_path(xdg_data_home: &Path) -> PathBuf {
-    xdg_data_home
-        .join("applications")
-        .join("com.yazelix.Yazelix.desktop")
+fn desktop_entry_file_names() -> Vec<String> {
+    let mut names = vec![
+        "com.yazelix.Yazelix.desktop".to_string(),
+        "yazelix.desktop".to_string(),
+    ];
+    names.extend(
+        SUPPORTED_TERMINALS
+            .iter()
+            .map(|terminal| terminal_desktop_entry_file_name(terminal)),
+    );
+    names.sort();
+    names.dedup();
+    names
+}
+
+fn desktop_entry_paths(apps_dir: &Path) -> Vec<PathBuf> {
+    desktop_entry_file_names()
+        .into_iter()
+        .map(|name| apps_dir.join(name))
+        .collect()
+}
+
+fn existing_desktop_entry_paths(apps_dir: &Path) -> Vec<PathBuf> {
+    desktop_entry_paths(apps_dir)
+        .into_iter()
+        .filter(|path| path.exists())
+        .collect()
+}
+
+fn existing_local_desktop_entry_paths(xdg_data_home: &Path) -> Vec<PathBuf> {
+    existing_desktop_entry_paths(&xdg_data_home.join("applications"))
 }
 
 fn is_manual_desktop_entry_path(path: &Path) -> bool {
@@ -379,12 +406,11 @@ fn has_home_manager_profile_yazelix(
     if existing_profile_yzx.is_none() || !default_profile_has_active_home_manager_path(home_dir) {
         return false;
     }
-    home_dir
+    let profile_apps = home_dir
         .join(".nix-profile")
         .join("share")
-        .join("applications")
-        .join("yazelix.desktop")
-        .exists()
+        .join("applications");
+    !existing_desktop_entry_paths(&profile_apps).is_empty()
 }
 
 fn is_yazelix_profile_entry(name: &str, entry: &JsonValue) -> bool {
@@ -523,10 +549,19 @@ fn collect_home_manager_prepare_artifacts(
             remove_target: Some(entry.remove_target.clone()),
         });
     }
-    let desktop_entry = manual_desktop_entry_path(&request.xdg_data_home);
-    if is_manual_desktop_entry_path(&desktop_entry) {
+    for desktop_entry in existing_local_desktop_entry_paths(&request.xdg_data_home)
+        .into_iter()
+        .filter(|path| is_manual_desktop_entry_path(path))
+    {
         artifacts.push(HomeManagerPrepareArtifact {
-            id: "desktop_entry".into(),
+            id: format!(
+                "desktop_entry_{}",
+                desktop_entry
+                    .file_stem()
+                    .and_then(|stem| stem.to_str())
+                    .unwrap_or("unknown")
+                    .replace('.', "_")
+            ),
             class: "cleanup".into(),
             label: "manual desktop entry".into(),
             path: path_to_string(&desktop_entry),
@@ -704,19 +739,21 @@ fn check_desktop_entry_freshness(
     profile_paths: &[PathBuf],
     desktop_launcher: &str,
 ) -> DoctorInstallResult {
-    let local_path = manual_desktop_entry_path(&request.xdg_data_home);
-    let profile_path = request
+    let local_entries = existing_local_desktop_entry_paths(&request.xdg_data_home);
+    let profile_apps = request
         .home_dir
         .join(".nix-profile")
         .join("share")
-        .join("applications")
-        .join("yazelix.desktop");
-    let local_exists = local_path.exists();
-    let profile_exists = profile_path.exists();
+        .join("applications");
+    let profile_entries = existing_desktop_entry_paths(&profile_apps);
+    let local_path = local_entries.first().cloned();
+    let profile_path = profile_entries.first().cloned();
+    let local_exists = local_path.is_some();
+    let profile_exists = profile_path.is_some();
     let desktop_path: Option<PathBuf> = if local_exists {
-        Some(local_path.clone())
+        local_path.clone()
     } else if profile_exists {
-        Some(profile_path.clone())
+        profile_path.clone()
     } else {
         None
     };
@@ -725,8 +762,8 @@ fn check_desktop_entry_freshness(
     let Some(dp) = desktop_path else {
         let details = if install_owner == "home-manager" {
             format!(
-                "Home Manager-managed desktop entries usually resolve through {}. Reapply your Home Manager configuration if it is missing.",
-                path_to_string(&profile_path)
+                "Home Manager-managed desktop entries usually resolve under {}. Reapply your Home Manager configuration if it is missing.",
+                path_to_string(&profile_apps)
             )
         } else {
             "Run `yzx desktop install` if you want application-launcher integration.".into()
@@ -739,16 +776,8 @@ fn check_desktop_entry_freshness(
         };
     };
 
-    let local_exec = if local_exists {
-        get_desktop_entry_exec(&local_path)
-    } else {
-        None
-    };
-    let profile_exec = if profile_exists {
-        get_desktop_entry_exec(&profile_path)
-    } else {
-        None
-    };
+    let local_exec = local_path.as_deref().and_then(get_desktop_entry_exec);
+    let profile_exec = profile_path.as_deref().and_then(get_desktop_entry_exec);
 
     if install_owner == "home-manager"
         && local_exists
@@ -763,21 +792,21 @@ fn check_desktop_entry_freshness(
                     .into(),
             details: Some(format!(
                 "Shadowing local entry: {}\nLocal Exec: {}\nHome Manager entry: {}\nProfile Exec: {}\nRemove the shadowing local entry with `yzx desktop uninstall`, then reapply your Home Manager configuration if the profile desktop entry is missing or stale.",
-                path_to_string(&local_path),
+                path_to_string(local_path.as_ref().expect("local desktop path")),
                 local_exec.as_deref().unwrap_or("<missing>"),
-                path_to_string(&profile_path),
+                path_to_string(profile_path.as_ref().expect("profile desktop path")),
                 profile_exec.as_deref().unwrap_or("<missing>"),
             )),
             fix_available: false,
         };
     }
 
-    let desktop_exec = if dp == local_path {
+    let desktop_exec = if Some(&dp) == local_path.as_ref() {
         local_exec.clone()
     } else {
         profile_exec.clone()
     };
-    let repair_hint = if dp == profile_path {
+    let repair_hint = if Some(&dp) == profile_path.as_ref() {
         "Repair by reapplying your Home Manager configuration."
     } else {
         "Repair with `yzx desktop install`."
@@ -815,7 +844,7 @@ fn check_desktop_entry_freshness(
             message: "Yazelix desktop entry delegates terminal launch to the desktop environment"
                 .into(),
             details: Some(format!(
-                "Desktop entry: {}\nTerminal: {}\nTerminal=true can fail silently on desktop environments that do not provide a compatible generic terminal launcher. Yazelix desktop entries should use Terminal=false and let yzx desktop launch start the configured terminal.\n{repair_hint}",
+                "Desktop entry: {}\nTerminal: {}\nTerminal=true can fail silently on desktop environments that do not provide a compatible generic terminal launcher. Yazelix desktop entries should use Terminal=false and let yzx desktop launch start the selected packaged terminal.\n{repair_hint}",
                 path_to_string(&dp),
                 terminal_value
             )),
@@ -1251,6 +1280,59 @@ mod tests {
             r.desktop_entry_freshness.message,
             "A stale user-local Yazelix desktop entry shadows the Home Manager desktop entry"
         );
+    }
+
+    // Regression: Home Manager prepare archives old generic and new variant-specific local desktop entries.
+    #[test]
+    fn prepare_artifacts_include_all_local_yazelix_desktop_entries() {
+        let tmp = TempDir::new().unwrap();
+        let home = tmp.path().join("home");
+        let xdg_data = home.join(".local/share");
+        let apps = xdg_data.join("applications");
+        let main_config = home.join(".config/yazelix/yazelix.toml");
+        std::fs::create_dir_all(&apps).unwrap();
+        std::fs::create_dir_all(main_config.parent().unwrap()).unwrap();
+        std::fs::write(&main_config, "[core]\n").unwrap();
+
+        for name in [
+            "com.yazelix.Yazelix.desktop",
+            "yazelix.desktop",
+            "com.yazelix.Yazelix.Ghostty.desktop",
+        ] {
+            std::fs::write(
+                apps.join(name),
+                "[Desktop Entry]\nName=Yazelix\nTerminal=false\nExec=\"/old/bin/yzx\" desktop launch\nX-Yazelix-Managed=true\n",
+            )
+            .unwrap();
+        }
+
+        let report = evaluate_install_ownership_report(&InstallOwnershipEvaluateRequest {
+            runtime_dir: tmp.path().join("runtime"),
+            home_dir: home.clone(),
+            user: Some("test-user".into()),
+            xdg_config_home: home.join(".config"),
+            xdg_data_home: xdg_data.clone(),
+            yazelix_state_dir: xdg_data.join("yazelix"),
+            main_config_path: main_config,
+            invoked_yzx_path: None,
+            redirected_from_stale_yzx_path: None,
+            shell_resolved_yzx_path: None,
+        });
+
+        let desktop_cleanup_paths = report
+            .prepare_artifacts
+            .iter()
+            .filter(|artifact| artifact.label == "manual desktop entry")
+            .map(|artifact| artifact.path.clone())
+            .collect::<HashSet<_>>();
+        assert!(
+            desktop_cleanup_paths
+                .contains(&path_to_string(&apps.join("com.yazelix.Yazelix.desktop")))
+        );
+        assert!(desktop_cleanup_paths.contains(&path_to_string(&apps.join("yazelix.desktop"))));
+        assert!(desktop_cleanup_paths.contains(&path_to_string(
+            &apps.join("com.yazelix.Yazelix.Ghostty.desktop")
+        )));
     }
 
     // Regression: Home Manager prepare must surface standalone default-profile Yazelix entries as explicit removal blockers.

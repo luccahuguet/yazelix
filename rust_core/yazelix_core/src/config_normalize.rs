@@ -21,6 +21,7 @@ const MOVED_CURSOR_CONFIG_FIELDS: &[&str] = &[
 ];
 const REMOVED_PERSISTENT_SESSION_FIELDS: &[&str] =
     &["zellij.persistent_sessions", "zellij.session_name"];
+const REMOVED_TERMINAL_SELECTION_FIELDS: &[&str] = &["terminal.terminals"];
 const OPTIONAL_MISSING_CONFIG_PATH_PREFIXES: &[&str] = &["helix.external"];
 const REPLACED_HELIX_RUNTIME_FIELDS: &[&str] = &["helix.runtime_path"];
 
@@ -628,6 +629,19 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
                     finding.message,
                     "Next: Remove zellij.persistent_sessions and zellij.session_name from ~/.config/yazelix/settings.jsonc.".to_string(),
                     "Next: Yazelix now starts independent windows; use raw Zellij session management outside Yazelix if you need it.".to_string(),
+                    "Next: Run `yzx doctor --verbose` to review the full config report."
+                        .to_string(),
+                ];
+            } else if REMOVED_TERMINAL_SELECTION_FIELDS.contains(&finding.path.as_str()) {
+                diagnostic.headline = format!(
+                    "Removed terminal selection config field at {}",
+                    finding.path
+                );
+                diagnostic.detail_lines = vec![
+                    finding.message,
+                    "Next: Remove terminal.terminals from ~/.config/yazelix/settings.jsonc."
+                        .to_string(),
+                    "Next: Choose a Yazelix terminal variant through the package or Home Manager option instead, such as programs.yazelix.terminal = \"ghostty\".".to_string(),
                     "Next: Run `yzx doctor --verbose` to review the full config report."
                         .to_string(),
                 ];

@@ -590,7 +590,6 @@ fn verify_profile_installed_runtime(
     }
 
     let yzx_core_arg = runtime_yzx_core.display().to_string();
-    let selected_terminal_json = format!("[\"{runtime_terminal}\"]");
     let materialization_result = run_installed_yzx(
         repo_root,
         temp_home,
@@ -599,8 +598,6 @@ fn verify_profile_installed_runtime(
             &yzx_core_arg,
             "launch-materialization.prepare",
             "--from-env",
-            "--selected-terminals-json",
-            &selected_terminal_json,
         ],
     )?;
     if !materialization_result.status.success() {

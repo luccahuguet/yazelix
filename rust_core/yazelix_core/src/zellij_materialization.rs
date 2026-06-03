@@ -7,6 +7,7 @@ use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::control_plane::{config_dir_from_env, home_dir_from_env, state_dir_from_env};
 use crate::popup_runtime_command::popup_command_argv_for_yazelix_runtime;
 use crate::runtime_component_enabled;
+use crate::terminal_variant::active_terminal_from_runtime_dir;
 use crate::user_config_paths;
 use crate::zellij_render_plan::{
     TopLevelSetting, ZellijRenderPlanData, ZellijRenderPlanRequest, compute_zellij_render_plan,
@@ -201,8 +202,13 @@ pub fn generate_zellij_materialization(
     let zellij_native_keybindings = resolve_zellij_native_keybindings(&config)?;
     let popup_program = resolve_popup_program_config(&config);
     let popup_commands = resolve_popup_commands_config(&config)?;
-    let render_plan_request =
-        build_render_plan_request(&config, &layout_dir, &resolved_default_shell)?;
+    let terminal_label = active_terminal_from_runtime_dir(&request.runtime_dir)?;
+    let render_plan_request = build_render_plan_request(
+        &config,
+        &layout_dir,
+        &resolved_default_shell,
+        &terminal_label,
+    )?;
     let render_plan = compute_zellij_render_plan(&render_plan_request)?;
     let generation_fingerprint = build_generation_fingerprint(
         &request.runtime_dir,
@@ -282,6 +288,7 @@ fn build_render_plan_request(
     config: &JsonMap<String, JsonValue>,
     layout_dir: &Path,
     resolved_default_shell: &str,
+    terminal_label: &str,
 ) -> Result<ZellijRenderPlanRequest, CoreError> {
     let mut request = config.clone();
     request.insert(
@@ -300,19 +307,7 @@ fn build_render_plan_request(
         "shell_label".to_string(),
         json!(string_config(config, "default_shell", "nu")),
     );
-    request.insert(
-        "terminal_label".to_string(),
-        json!(
-            string_list_config(config, "terminals")
-                .and_then(|values| {
-                    values
-                        .into_iter()
-                        .map(|value| value.trim().to_string())
-                        .find(|value| !value.is_empty())
-                })
-                .unwrap_or_else(|| "wezterm".to_string())
-        ),
-    );
+    request.insert("terminal_label".to_string(), json!(terminal_label));
     serde_json::from_value(JsonValue::Object(request)).map_err(|source| {
         CoreError::classified(
             ErrorClass::Config,
@@ -3070,6 +3065,7 @@ printf '%s\n' '{"schema_version":2,"plugin_block":"CHILD_PLUGIN_BLOCK"}'
             &config,
             std::path::Path::new("/tmp/yazelix/layouts"),
             "/nix/store/bin/nu",
+            "ghostty",
         )
         .unwrap();
         let plan = compute_zellij_render_plan(&request).unwrap();

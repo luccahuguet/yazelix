@@ -5,6 +5,7 @@ use crate::bridge::{CoreError, ErrorClass};
 use crate::helix_external::HelixExternalPair;
 use crate::runtime_env::RuntimePathInput;
 use crate::terminal_materialization::yzxterm_profile_from_env;
+use crate::terminal_variant::active_terminal_from_runtime_dir;
 use crate::zellij_materialization::zellij_permissions_cache_path;
 use crate::{
     ComputeConfigStateRequest, GhosttyMaterializationRequest, NormalizeConfigRequest,
@@ -322,13 +323,13 @@ pub fn runtime_env_request_from_env(
 }
 
 pub fn terminal_materialization_request_from_env(
-    terminals: Vec<String>,
     config_override: Option<&str>,
 ) -> Result<TerminalMaterializationRequest, CoreError> {
     let runtime_dir = runtime_dir_from_env()?;
     let config_dir = config_dir_from_env()?;
     let paths = resolve_active_config_paths(&runtime_dir, &config_dir, config_override)?;
     let state_dir = state_dir_from_env()?;
+    let terminal = active_terminal_from_runtime_dir(&runtime_dir)?;
 
     Ok(TerminalMaterializationRequest {
         config_path: paths.config_file,
@@ -337,7 +338,7 @@ pub fn terminal_materialization_request_from_env(
         contract_path: paths.contract_path,
         runtime_dir,
         state_dir,
-        terminals,
+        terminals: vec![terminal],
         yzxterm_profile: yzxterm_profile_from_env()?,
     })
 }

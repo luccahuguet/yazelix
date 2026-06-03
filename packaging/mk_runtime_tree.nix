@@ -37,23 +37,6 @@ let
   escapedRuntimeBinDirs = pkgs.lib.escapeShellArgs runtimeBinDirs;
   exportedRuntimeCommands = runtimeToolRegistry.exportedCommands ++ extraRuntimeCommands;
   escapedExportedRuntimeCommands = pkgs.lib.escapeShellArgs exportedRuntimeCommands;
-  defaultTerminalList =
-    if runtimeVariant == "wezterm" then
-      "      \"wezterm\",\n      \"ghostty\""
-    else if runtimeVariant == "kitty" then
-      "      \"kitty\",\n      \"ghostty\",\n      \"yzxterm\",\n      \"wezterm\""
-    else if runtimeVariant == "ratty" then
-      "      \"ratty\",\n      \"ghostty\",\n      \"wezterm\""
-    else if runtimeVariant == "yzxterm" then
-      "      \"yzxterm\",\n      \"ghostty\",\n      \"wezterm\""
-    else
-      "      \"ghostty\",\n      \"wezterm\"";
-  runtimeSettingsDefault = pkgs.writeText "settings_default.jsonc" (
-    builtins.replaceStrings
-      [ "      \"ghostty\",\n      \"wezterm\"" ]
-      [ defaultTerminalList ]
-      (builtins.readFile "${src}/settings_default.jsonc")
-  );
   yaziAssetsRoot =
     if yaziAssets == null then
       "${src}/configs/yazi"
@@ -132,7 +115,7 @@ pkgs.runCommand name { } ''
 
   ln -s ${src}/CHANGELOG.md "$out/CHANGELOG.md"
   ln -s ${src}/tombi.toml "$out/tombi.toml"
-  ln -s ${runtimeSettingsDefault} "$out/settings_default.jsonc"
+  ln -s ${src}/settings_default.jsonc "$out/settings_default.jsonc"
   ${pkgs.lib.optionalString cursorsEnabled ''
     ln -s ${src}/yazelix_ghostty_cursors_default.toml "$out/yazelix_ghostty_cursors_default.toml"
   ''}

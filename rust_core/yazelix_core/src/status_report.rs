@@ -8,6 +8,7 @@ use crate::runtime_materialization::{
 use crate::session_config_snapshot::{
     load_session_config_snapshot_from_path, session_config_snapshot_path_from_env,
 };
+use crate::terminal_variant::active_terminal_from_runtime_dir;
 use serde::Serialize;
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use std::path::Path;
@@ -20,10 +21,6 @@ pub struct StatusReportData {
 
 fn path_to_string(path: &Path) -> String {
     path.to_string_lossy().to_string()
-}
-
-fn default_terminals_value() -> JsonValue {
-    json!(["ghostty"])
 }
 
 fn logs_dir_from_state_path(state_path: &Path) -> Result<String, CoreError> {
@@ -105,10 +102,7 @@ pub fn compute_status_report(
         .cloned()
         .unwrap_or_else(|| JsonValue::String(String::new()));
 
-    let terminals = match cfg.get("terminals") {
-        Some(JsonValue::Array(items)) if !items.is_empty() => JsonValue::Array(items.clone()),
-        _ => default_terminals_value(),
-    };
+    let terminal = active_terminal_from_runtime_dir(&request.runtime_dir)?;
 
     let helix_external = cfg
         .get("helix_external")
@@ -140,7 +134,8 @@ pub fn compute_status_report(
         json!(plan.reason),
     );
     summary.insert("default_shell".to_string(), default_shell);
-    summary.insert("terminals".to_string(), terminals);
+    summary.insert("terminal".to_string(), json!(terminal.clone()));
+    summary.insert("terminals".to_string(), json!([terminal]));
     summary.insert("helix_external".to_string(), helix_external);
     summary.insert(
         "session_config_snapshot".to_string(),

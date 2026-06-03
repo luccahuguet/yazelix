@@ -105,7 +105,7 @@ pub(super) fn run_detached_launch_probe(
         env_removals,
         extra_env,
         "detached_launch_probe",
-        "Retry with a valid configured terminal or reinstall Yazelix so the detached launch helper is present.",
+        "Retry with the selected packaged terminal or reinstall Yazelix so the detached launch helper is present.",
     )
 }
 
@@ -157,7 +157,7 @@ pub(super) fn run_desktop_deferred_launch_probe(
         env_removals,
         extra_env,
         "desktop_deferred_launch_probe",
-        "Retry with a valid configured terminal or reinstall Yazelix so the deferred desktop launch helper is present.",
+        "Retry with the selected packaged terminal or reinstall Yazelix so the deferred desktop launch helper is present.",
     )
 }
 

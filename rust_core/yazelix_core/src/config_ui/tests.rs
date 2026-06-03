@@ -31,6 +31,7 @@ fn write_runtime_layout(runtime: &Path) {
         include_str!("../../../../settings_default.jsonc"),
     )
     .expect("main defaults");
+    fs::write(runtime.join("runtime_variant"), "ghostty\n").expect("runtime variant");
     fs::write(
         runtime.join(DEFAULT_CURSOR_CONFIG_FILENAME),
         include_str!("../../../../yazelix_ghostty_cursors_default.toml"),
@@ -535,19 +536,15 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
     let model = build_config_ui_model(&request).expect("model");
     let mut app = YazelixConfigUiApp::new(request, model);
 
-    select_field_path(&mut app, "terminal.terminals");
+    select_field_path(&mut app, "zellij.widget_tray");
     app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
 
     let edit = app.edit.clone().expect("edit");
     assert_eq!(edit.mode, ConfigUiEditMode::MultiChoice);
     let details = lines_text(&render_details(&app.ui, UiRowRef::Field(edit.field_index)));
-    assert!(details.contains("> [x] ghostty"));
-    assert!(details.contains("  [ ] kitty"));
+    assert!(details.contains("> [x] editor"));
+    assert!(details.contains("  [ ] workspace"));
 
-    app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
-    app.handle_key(KeyEvent::new(KeyCode::Char('l'), KeyModifiers::NONE));
-    app.handle_key(KeyEvent::new(KeyCode::Char('k'), KeyModifiers::NONE));
-    app.handle_key(KeyEvent::new(KeyCode::Char('h'), KeyModifiers::NONE));
     app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
     app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
     app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
@@ -557,7 +554,16 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
     let input = app.edit.as_ref().expect("edit").input.clone();
     assert_eq!(
         parse_string_list_values(&field, &input).expect("values"),
-        vec!["ghostty", "wezterm", "ratty"]
+        vec![
+            "editor",
+            "shell",
+            "term",
+            "workspace",
+            "cursor",
+            "codex_usage",
+            "cpu",
+            "ram"
+        ]
     );
 
     app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
@@ -565,8 +571,17 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
     assert!(app.edit.is_none());
     let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
     assert_eq!(
-        get_json_path(&value, "terminal.terminals"),
-        Some(&json!(["ghostty", "wezterm", "ratty"]))
+        get_json_path(&value, "zellij.widget_tray"),
+        Some(&json!([
+            "editor",
+            "shell",
+            "term",
+            "workspace",
+            "cursor",
+            "codex_usage",
+            "cpu",
+            "ram"
+        ]))
     );
 }
 

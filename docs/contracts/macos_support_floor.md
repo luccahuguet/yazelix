@@ -66,7 +66,7 @@ Manual smoke gate (maintainer on macOS hardware):
 1. Install the package: `nix profile add github:luccahuguet/yazelix#yazelix` on macOS
 2. Run `yzx --version-short` and confirm it reports a version
 3. Run `yzx doctor --verbose` and confirm it completes without crashing
-4. Run `yzx launch --terminal ghostty` and confirm a Ghostty window opens with Yazelix inside
+4. Run `yzx launch` from the Ghostty package variant and confirm a Ghostty window opens with Yazelix inside
 5. Note whether Ghostty shell-integration features are actually present (cursor positioning, command history, working directory tracking) or absent
 6. Optionally run `yzx desktop macos_preview install`, open `~/Applications/Yazelix Preview.app`, and report whether it launches the active installed runtime
 7. Confirm the docs label the app bundle as experimental, unsigned, unnotarized, and not maintainer-validated

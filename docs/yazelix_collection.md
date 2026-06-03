@@ -30,7 +30,7 @@ Yazelix is built on a focused terminal-workspace stack. This catalog lists the p
 - `#yzs` and `#yazelix_screen` — Standalone terminal animation package forwarded from `luccahuguet/yazelix-screen` for the Yazelix screen engines outside Zellij and outside a full Yazelix session
 - `#yazelix_cursors` — Standalone Yazelix cursor package, with generated GLSL files, example Ghostty config snippets, and the `yzc` CLI
 - `#yzc` — Flake app for the standalone Yazelix cursor CLI
-- `homeManagerModules.yazelix` — The Home Manager module for declarative installs, with `runtime_variant = "ghostty"` by default, `"yzxterm"`, `"wezterm"`, and `"kitty"` available explicitly, Linux-only `"ratty"` available experimentally, and `extra_terminal_variants` for installing additional bundled terminal emulators beside the primary runtime
+- `homeManagerModules.yazelix` — The Home Manager module for declarative installs, with `terminal = "ghostty"` by default, `"yzxterm"`, `"wezterm"`, and `"kitty"` available explicitly, and Linux-only `"ratty"` available experimentally
 
 ## First-Party Child Repositories
 
@@ -60,10 +60,10 @@ Regular Yazelix users do not need to install or wire these repositories separate
 ## Terminal Emulators
 
 - [Ghostty](https://ghostty.org/) — Default packaged terminal runtime. Yazelix uses Ghostty for the first-party cursor trail, mode-change shader experience, and Yazi image previews through Zellij.
-- [Yazelix Terminal](https://github.com/luccahuguet/yazelix-terminal) — Experimental packaged first-party runtime through `#yzxterm` and `runtime_variant = "yzxterm"`, with generated config, transparency mapping, Rio trail cursor defaults, and opt-in Ghostty-compatible shader support.
-- [WezTerm](https://wezfurlong.org/wezterm/) — Packaged alternate runtime through `#yazelix_wezterm` and `runtime_variant = "wezterm"`, useful for users who prefer WezTerm terminal behavior.
-- [Ratty](https://github.com/orhun/ratty) — Experimental Linux packaged runtime through `#yazelix_ratty` and `runtime_variant = "ratty"`, with generated Yazelix config and the Yazelix Zellij/Yazi Kitty graphics bridge. Yazelix does not claim Ratty Graphics Protocol passthrough inside Zellij.
-- [Kitty](https://sw.kovidgoyal.net/kitty/) — Packaged alternate runtime through `#yazelix_kitty` and `runtime_variant = "kitty"`, with generated Yazelix config and the Yazelix Zellij/Yazi Kitty graphics bridge. Kitty can also remain a host `PATH` terminal choice.
+- [Yazelix Terminal](https://github.com/luccahuguet/yazelix-terminal) — Experimental packaged first-party terminal through `#yzxterm` and `terminal = "yzxterm"`, with generated config, transparency mapping, Rio trail cursor defaults, and opt-in Ghostty-compatible shader support.
+- [WezTerm](https://wezfurlong.org/wezterm/) — Packaged alternate terminal through `#yazelix_wezterm` and `terminal = "wezterm"`, useful for users who prefer WezTerm terminal behavior.
+- [Ratty](https://github.com/orhun/ratty) — Experimental Linux packaged terminal through `#yazelix_ratty` and `terminal = "ratty"`, with generated Yazelix config and the Yazelix Zellij/Yazi Kitty graphics bridge. Yazelix does not claim Ratty Graphics Protocol passthrough inside Zellij.
+- [Kitty](https://sw.kovidgoyal.net/kitty/) — Packaged alternate terminal through `#yazelix_kitty` and `terminal = "kitty"`, with generated Yazelix config and the Yazelix Zellij/Yazi Kitty graphics bridge.
 - [ghostty-cursor-shaders](https://github.com/sahaj-b/ghostty-cursor-shaders) — Upstream inspiration for the Yazelix-managed Ghostty-compatible cursor shader system. Yazelix vendors/adapts the shader direction through `settings.jsonc` cursor settings, generated config, and the standalone `#yazelix_cursors` package.
 
 ## Editors And Shells

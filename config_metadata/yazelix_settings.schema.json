@@ -366,27 +366,13 @@
     },
     "terminal": {
       "type": "object",
-      "description": "Terminal emulator selection, transparency, and config mode settings",
+      "description": "Active terminal transparency and config ownership settings",
       "required": [
-        "terminals",
         "config_mode",
         "transparency"
       ],
       "additionalProperties": false,
       "properties": {
-        "terminals": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "enum": [
-              "ghostty",
-              "yzxterm",
-              "wezterm",
-              "ratty",
-              "kitty"
-            ]
-          }
-        },
         "config_mode": {
           "type": "string",
           "enum": [

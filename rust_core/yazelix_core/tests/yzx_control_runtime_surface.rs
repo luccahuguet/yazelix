@@ -263,9 +263,6 @@ fn yzx_control_status_json_reports_typed_summary() {
     let fixture = managed_config_fixture(
         r#"[shell]
 default_shell = "nu"
-
-[terminal]
-terminals = ["ghostty"]
 "#,
     );
     let output = yzx_control_command_in_fixture(&fixture)
@@ -347,11 +344,7 @@ ghostty_trail_color = "random"
 // Regression: status reports a bad active snapshot as a readable diagnostic instead of hiding the snapshot problem.
 #[test]
 fn yzx_control_status_json_reports_bad_session_snapshot_diagnostic() {
-    let fixture = managed_config_fixture(
-        r#"[terminal]
-terminals = ["ghostty"]
-"#,
-    );
+    let fixture = managed_config_fixture("");
     let missing_snapshot = fixture
         .state_dir
         .join("sessions/missing/config_snapshot.json");
@@ -392,9 +385,6 @@ fn yzx_control_inspect_json_reports_runtime_truth_without_zellij_session() {
     let fixture = managed_config_fixture(
         r#"[shell]
 default_shell = "nu"
-
-[terminal]
-terminals = ["ghostty"]
 "#,
     );
     let output = yzx_control_command_in_fixture(&fixture)
@@ -482,9 +472,6 @@ fn yzx_control_status_human_output_groups_sections_and_human_labels() {
     let fixture = managed_config_fixture(
         r#"[shell]
 default_shell = "nu"
-
-[terminal]
-terminals = ["ghostty"]
 "#,
     );
     let output = yzx_control_command_in_fixture(&fixture)
@@ -515,11 +502,7 @@ terminals = ["ghostty"]
 // Defends: the public Rust-owned `yzx status --json --versions` surface still attaches the optional tool matrix under one machine-readable report.
 #[test]
 fn yzx_control_status_json_versions_includes_tool_matrix() {
-    let fixture = managed_config_fixture(
-        r#"[terminal]
-terminals = ["ghostty"]
-"#,
-    );
+    let fixture = managed_config_fixture("");
     let fake_bin = fixture.home_dir.join("fake-bin");
     fs::create_dir_all(&fake_bin).unwrap();
     write_executable_script(
@@ -555,11 +538,7 @@ terminals = ["ghostty"]
 // Defends: the human `yzx status --versions` output keeps the grouped status surface plus the tool-version matrix without leaking ANSI escapes to redirected output.
 #[test]
 fn yzx_control_status_versions_human_output_keeps_tool_matrix() {
-    let fixture = managed_config_fixture(
-        r#"[terminal]
-terminals = ["ghostty"]
-"#,
-    );
+    let fixture = managed_config_fixture("");
     let fake_bin = fixture.home_dir.join("fake-bin");
     fs::create_dir_all(&fake_bin).unwrap();
     write_executable_script(

@@ -2,13 +2,13 @@
 
 ## Summary
 
-Desktop entry launches must invoke `yzx desktop launch` directly and let Yazelix start the configured terminal. The desktop entry must not depend on the desktop environment's generic `Terminal=true` handling.
+Desktop entry launches must invoke `yzx desktop launch` directly and let Yazelix start the selected packaged terminal. The desktop entry must not depend on the desktop environment's generic `Terminal=true` handling.
 
 ## Why
 
 Desktop environments usually run application launch commands without an attached terminal. Some environments also accept a `Terminal=true` desktop entry without starting the command through a usable terminal. In COSMIC/GLib-style launch paths, that can turn a valid Yazelix desktop file into a silent no-op even though `yzx desktop launch` works from a shell.
 
-The supported contract is that desktop entries are non-terminal desktop commands. `yzx desktop launch` owns runtime resolution, config parsing, terminal selection, generated terminal config repair, Ghostty cursor rerolls, and the detached terminal handoff to the configured Yazelix terminal.
+The supported contract is that desktop entries are non-terminal desktop commands. `yzx desktop launch` owns runtime resolution, config parsing, generated terminal config repair, Ghostty cursor rerolls, and the detached terminal handoff to the selected Yazelix terminal.
 
 ## Scope
 
@@ -30,7 +30,7 @@ The supported contract is that desktop entries are non-terminal desktop commands
 ## Non-goals
 
 - Building a custom graphical prelaunch dialog
-- Changing terminal preference or terminal fallback policy
+- Changing terminal package selection
 - Depending on desktop-environment generic terminal launcher behavior
 - Adding a second fallback launch path after the desktop fast path fails
 - Moving desktop-specific UX into config parsing or terminal config generation
@@ -61,5 +61,5 @@ The supported contract is that desktop entries are non-terminal desktop commands
 
 ## Open Questions
 
-- Should a future release add a purpose-built graphical failure dialog for desktop-launch failures that occur before the configured terminal can be spawned?
+- Should a future release add a purpose-built graphical failure dialog for desktop-launch failures that occur before the selected terminal can be spawned?
 - Should doctor eventually validate the exact rendered Home Manager desktop entry from a full Home Manager evaluation rather than only the installed profile entry contract?

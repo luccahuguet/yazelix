@@ -11,22 +11,12 @@
   programs.yazelix = {
     enable = true;
     manage_config = true; # Opt into declarative Home Manager ownership of settings.jsonc for this example
-    runtime_variant = "ghostty"; # Optional: "ghostty", "kitty", "yzxterm", "wezterm", or Linux-only "ratty"
-    extra_terminal_variants = [
-      "yzxterm"
-      "kitty"
-    ]; # Optional: install additional bundled terminal emulator packages without duplicate yzx wrappers
+    terminal = "ghostty"; # Optional: "ghostty", "kitty", "yzxterm", "wezterm", or Linux-only "ratty"
 
     # Shell entry
     default_shell = "zsh";
 
-    # Terminal preference
-    terminals = [
-      "ghostty"
-      "yzxterm"
-      "kitty"
-      "wezterm"
-    ];
+    # Terminal behavior for the selected packaged terminal
     terminal_config_mode = "yazelix"; # Optional: "yazelix" or "user"
     # Cursor presets and effects live in ~/.config/yazelix_ghostty_cursors/settings.jsonc
     transparency = "medium"; # Optional: "none".."super_high"

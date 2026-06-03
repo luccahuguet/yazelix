@@ -43,10 +43,6 @@
     "default_shell": "nu"
   },
   "terminal": {
-    "terminals": [
-      "ghostty",
-      "wezterm"
-    ],
     "config_mode": "yazelix",
     "transparency": "medium"
   },

@@ -49,7 +49,6 @@ struct MultiQuestion {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct OnboardAnswers {
-    terminal: String,
     shell: String,
     editor_command: String,
     hide_sidebar_on_file_open: bool,
@@ -222,14 +221,12 @@ fn run_interactive_onboarding() -> Result<OnboardAnswers, CoreError> {
     println!();
 
     let _raw = RawModeGuard::enable()?;
-    let terminal = ask_single(terminal_question())?;
     let shell = ask_single(shell_question())?;
     let editor_command = ask_single(editor_question())?;
     let hide_sidebar_on_file_open = ask_single(sidebar_file_open_question())? == "true";
     let widget_tray = ask_multi(widget_tray_question())?;
 
     Ok(OnboardAnswers {
-        terminal,
         shell,
         editor_command,
         hide_sidebar_on_file_open,
@@ -405,19 +402,6 @@ fn multi_question(
     }
 }
 
-fn terminal_question() -> SingleQuestion {
-    single_question(
-        "Primary terminal emulator",
-        0,
-        &[
-            ("Ghostty (recommended)", "ghostty"),
-            ("WezTerm", "wezterm"),
-            ("Ratty (Linux experimental)", "ratty"),
-            ("Kitty", "kitty"),
-        ],
-    )
-}
-
 fn shell_question() -> SingleQuestion {
     single_question(
         "Default shell inside Yazelix",
@@ -547,12 +531,6 @@ fn build_onboard_config(
     )?;
     set_settings_field(
         &mut settings,
-        "terminal",
-        "terminals",
-        JsonValue::Array(vec![JsonValue::String(answers.terminal.clone())]),
-    )?;
-    set_settings_field(
-        &mut settings,
         "zellij",
         "widget_tray",
         JsonValue::Array(
@@ -679,7 +657,6 @@ mod tests {
         .unwrap();
         let config = build_onboard_config(
             &OnboardAnswers {
-                terminal: "wezterm".into(),
                 shell: "bash".into(),
                 editor_command: "nvim".into(),
                 hide_sidebar_on_file_open: true,
@@ -714,10 +691,7 @@ mod tests {
             Some("yazi")
         );
         assert_eq!(parsed["shell"]["default_shell"].as_str(), Some("bash"));
-        assert_eq!(
-            parsed["terminal"]["terminals"].as_array().unwrap()[0].as_str(),
-            Some("wezterm")
-        );
+        assert!(parsed["terminal"].get("terminals").is_none());
         assert!(parsed.get("cursors").is_none());
     }
 
@@ -733,7 +707,6 @@ mod tests {
         .unwrap();
         let config = build_onboard_config(
             &OnboardAnswers {
-                terminal: "ghostty".into(),
                 shell: "nu".into(),
                 editor_command: String::new(),
                 hide_sidebar_on_file_open: false,

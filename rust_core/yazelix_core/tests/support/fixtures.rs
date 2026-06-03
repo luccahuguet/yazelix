@@ -61,6 +61,7 @@ pub fn write_runtime_contract_assets(repo: &Path, runtime_dir: &Path) {
     )
     .unwrap();
     fs::write(runtime_dir.join(TOML_TOOLING_CONFIG_FILENAME), "[format]\n").unwrap();
+    fs::write(runtime_dir.join("runtime_variant"), "ghostty\n").unwrap();
     fs::write(
         runtime_dir.join("runtime_components.json"),
         r#"{

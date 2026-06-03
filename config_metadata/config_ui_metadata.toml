@@ -249,17 +249,6 @@ write_support = "settings_jsonc"
 home_manager_behavior = "read_only_in_ui"
 lifecycle = "stable"
 
-[fields."terminal.terminals"]
-tab = "terminal"
-group = "emulators"
-label = "terminals"
-help = "Choose which terminal emulator configs Yazelix materializes"
-editor = "multi_select"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
-
 [fields."terminal.config_mode"]
 tab = "terminal"
 group = "ownership"

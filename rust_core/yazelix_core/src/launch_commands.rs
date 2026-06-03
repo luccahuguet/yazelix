@@ -135,7 +135,6 @@ mod tests {
     use super::*;
     use crate::control_plane::load_normalized_config_for_control;
     use crate::settings_surface::read_settings_jsonc_value;
-    use serde_json::Map as JsonMap;
     use std::collections::HashMap;
     use std::fs;
     use std::path::Path;
@@ -272,7 +271,7 @@ mod tests {
                 },
             ),
             (
-                "terminal.terminals".to_string(),
+                "zellij.widget_tray".to_string(),
                 SessionConfigOverrideField {
                     kind: SessionConfigOverrideKind::StringList,
                 },
@@ -288,7 +287,7 @@ mod tests {
             "core": { "skip_welcome_screen": false },
             "editor": {},
             "workspace": { "left_sidebar": {} },
-            "terminal": { "terminals": ["ghostty"] },
+            "terminal": {},
             "zellij": { "keybindings": { "bottom_popup": ["Alt p"] } }
         });
 
@@ -297,7 +296,7 @@ mod tests {
             "core.skip_welcome_screen=true",
             "core.welcome_duration_seconds=3.5",
             "workspace.left_sidebar.width_percent=24",
-            "terminal.terminals=[\"wezterm\", \"kitty\"]",
+            "zellij.widget_tray=[\"editor\", \"term\"]",
             "zellij.keybindings={\"bottom_popup\":[\"Alt Shift J\"],\"config\":[]}",
         ] {
             let patch = parse_session_config_patch(raw, &fields).unwrap();
@@ -309,8 +308,8 @@ mod tests {
         assert_eq!(root["core"]["welcome_duration_seconds"], 3.5);
         assert_eq!(root["workspace"]["left_sidebar"]["width_percent"], 24);
         assert_eq!(
-            root["terminal"]["terminals"],
-            serde_json::json!(["wezterm", "kitty"])
+            root["zellij"]["widget_tray"],
+            serde_json::json!(["editor", "term"])
         );
         assert_eq!(
             root["zellij"]["keybindings"],
@@ -358,7 +357,7 @@ mod tests {
                 "editor.command=nvim".to_string(),
                 "core.welcome_style=static".to_string(),
                 "zellij.pane_frames=false".to_string(),
-                "terminal.terminals=[\"wezterm\"]".to_string(),
+                "terminal.transparency=high".to_string(),
             ],
         )
         .unwrap();
@@ -374,10 +373,7 @@ mod tests {
         assert_eq!(session_value["editor"]["command"], "nvim");
         assert_eq!(session_value["core"]["welcome_style"], "static");
         assert_eq!(session_value["zellij"]["pane_frames"], false);
-        assert_eq!(
-            session_value["terminal"]["terminals"],
-            serde_json::json!(["wezterm"])
-        );
+        assert_eq!(session_value["terminal"]["transparency"], "high");
 
         let user_value = read_settings_jsonc_value(&config.path().join("settings.jsonc")).unwrap();
         assert_ne!(user_value["editor"]["command"], "nvim");
@@ -393,25 +389,15 @@ mod tests {
         assert_eq!(normalized.get("zellij_pane_frames").unwrap(), "false");
     }
 
-    // Defends: the Rust launch owner still filters duplicate or unsupported configured terminals before fallback logic runs.
+    // Defends: installed package metadata is the launch terminal source of truth.
     #[test]
-    fn normalized_configured_terminals_filters_and_dedupes() {
-        let mut config = JsonMap::new();
-        config.insert(
-            "terminals".into(),
-            serde_json::json!([
-                "ghostty", "", "warp", "yzxterm", "ratty", "ghostty", "kitty"
-            ]),
-        );
+    fn active_terminal_reads_runtime_variant_metadata() {
+        let runtime = TempDir::new().unwrap();
+        fs::write(runtime.path().join("runtime_variant"), "yzxterm\n").unwrap();
 
         assert_eq!(
-            normalized_configured_terminals(&config),
-            vec![
-                "ghostty".to_string(),
-                "yzxterm".to_string(),
-                "ratty".to_string(),
-                "kitty".to_string()
-            ]
+            crate::terminal_variant::active_terminal_from_runtime_dir(runtime.path()).unwrap(),
+            "yzxterm"
         );
     }
 
@@ -557,15 +543,16 @@ mod tests {
         assert_eq!(argv[argv.len() - 1], startup.to_string_lossy().as_ref());
     }
 
-    // Defends: missing terminal config keeps Ghostty as the default while preserving WezTerm as the first fallback.
+    // Defends: unsupported package terminal metadata fails clearly instead of falling back to another terminal.
     #[test]
-    fn normalized_configured_terminals_defaults_to_ghostty_then_wezterm() {
-        let config = JsonMap::new();
+    fn active_terminal_rejects_unknown_runtime_variant_metadata() {
+        let runtime = TempDir::new().unwrap();
+        fs::write(runtime.path().join("runtime_variant"), "warpterm\n").unwrap();
 
-        assert_eq!(
-            normalized_configured_terminals(&config),
-            vec!["ghostty".to_string(), "wezterm".to_string()]
-        );
+        let error =
+            crate::terminal_variant::active_terminal_from_runtime_dir(runtime.path()).unwrap_err();
+        assert_eq!(error.code(), "unsupported_terminal_variant");
+        assert!(error.message().contains("warpterm"));
     }
 
     // Defends: Ghostty user-mode config discovery follows upstream file-name and macOS path candidates instead of hard-coding the old config name.
@@ -651,8 +638,9 @@ mod tests {
     // Defends: desktop entry rendering keeps a quoted launcher path so spaces do not corrupt the Exec owner surface.
     #[test]
     fn render_desktop_entry_quotes_exec_path() {
-        let entry = render_desktop_entry(Path::new("/tmp/with space/yzx"));
+        let entry = render_desktop_entry(Path::new("/tmp/with space/yzx"), "ghostty");
         assert!(entry.contains("Exec=\"/tmp/with space/yzx\" desktop launch"));
+        assert!(entry.contains("Name=Yazelix - Ghostty"));
         assert!(entry.contains("Terminal=false"));
     }
 

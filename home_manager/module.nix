@@ -15,13 +15,13 @@ with lib;
 
 let
   cfg = config.programs.yazelix;
-  defaultRuntimeVariant = "ghostty";
+  defaultTerminal = "ghostty";
   runtimeToolSourceModes = [
     "bundled"
     "host"
     "off"
   ];
-  runtimeVariants = [
+  terminalVariants = [
     "ghostty"
     "kitty"
     "yzxterm"
@@ -32,74 +32,37 @@ let
     "baseline"
     "shaders"
   ];
-  terminalPackageFor =
-    runtimeVariant:
-    if runtimeVariant == "ghostty" then
-      if pkgs.stdenv.hostPlatform.isDarwin then pkgs."ghostty-bin" else pkgs.ghostty
-    else if runtimeVariant == "kitty" then
-      pkgs.kitty
-    else if runtimeVariant == "wezterm" then
-      pkgs.wezterm
-    else if runtimeVariant == "ratty" then
-      if pkgs.stdenv.hostPlatform.isLinux then
-        pkgs.ratty
-      else
-        throw "programs.yazelix.extra_terminal_variants ratty is only supported on Linux"
-    else if runtimeVariant == "yzxterm" then
-      if yazelixTerminalPackage != null then
-        yazelixTerminalPackage
-      else
-        throw "programs.yazelix.extra_terminal_variants yzxterm requires the yazelix-terminal child package"
-    else
-      throw "Unsupported Yazelix terminal variant: ${runtimeVariant}";
-  runtimeDefaultTerminals =
-    runtimeVariant:
-    extraTerminalVariants:
-    lib.unique (
-      [ runtimeVariant ]
-      ++ extraTerminalVariants
-      ++ (
-        if runtimeVariant == "wezterm" then
-          [
-            "ghostty"
-          ]
-        else if runtimeVariant == "kitty" then
-          [
-            "ghostty"
-            "yzxterm"
-            "wezterm"
-          ]
-        else if runtimeVariant == "ratty" then
-          [
-            "ghostty"
-            "wezterm"
-          ]
-        else if runtimeVariant == "yzxterm" then
-          [
-            "ghostty"
-            "wezterm"
-          ]
-        else
-          [
-            "wezterm"
-          ]
-      )
-    );
-  extraTerminalVariantPackages =
-    let
-      variants = lib.filter (variant: variant != cfg.runtime_variant) cfg.extra_terminal_variants;
-    in
-    lib.unique (map terminalPackageFor variants);
+  terminalDesktopLabel =
+    terminal:
+    {
+      ghostty = "Ghostty";
+      kitty = "Kitty";
+      yzxterm = "yzxterm";
+      wezterm = "WezTerm";
+      ratty = "Ratty";
+    }.${terminal};
+  terminalDesktopIdSuffix =
+    terminal:
+    {
+      ghostty = "Ghostty";
+      kitty = "Kitty";
+      yzxterm = "Yzxterm";
+      wezterm = "WezTerm";
+      ratty = "Ratty";
+    }.${terminal};
+  desktopEntryKey = "com.yazelix.Yazelix.${terminalDesktopIdSuffix cfg.terminal}";
+  desktopEntryName = "Yazelix - ${terminalDesktopLabel cfg.terminal}";
   componentEnabled = name: cfg.components.${name} or true;
   runtimeToolSource = name: cfg.runtime_tool_sources.${name} or "bundled";
+  yzxtermProfileActive = cfg.terminal == "yzxterm" && cfg.yzxterm_profile != "full";
   yzxtermProfileEnv =
-    lib.optionalString (cfg.yzxterm_profile != "full")
+    lib.optionalString yzxtermProfileActive
       "YAZELIX_TERMINAL_PROFILE=${cfg.yzxterm_profile}";
   yzxtermProfileExport =
-    lib.optionalString (cfg.yzxterm_profile != "full")
+    lib.optionalString yzxtermProfileActive
       "export ${yzxtermProfileEnv}";
   yzxtermDesktopExec =
-    "${lib.optionalString (cfg.yzxterm_profile != "full") "env ${yzxtermProfileEnv} "}${config.home.profileDirectory}/bin/yzx desktop launch";
+    "${lib.optionalString yzxtermProfileActive "env ${yzxtermProfileEnv} "}${config.home.profileDirectory}/bin/yzx desktop launch";
   agentUsageProgramNames = [
     "tokenusage"
   ];
@@ -116,7 +79,7 @@ let
     ) cfg.agent_usage_programs;
   packageBuilderArgs = {
     inherit pkgs;
-    runtimeVariant = cfg.runtime_variant;
+    runtimeVariant = cfg.terminal;
     runtimeToolSources = cfg.runtime_tool_sources;
     components = cfg.components;
     extraRuntimePackages = selectedAgentUsagePackages;
@@ -500,17 +463,17 @@ in
       '';
     };
 
-    runtime_variant = mkOption {
-      type = types.enum runtimeVariants;
-      default = defaultRuntimeVariant;
+    terminal = mkOption {
+      type = types.enum terminalVariants;
+      default = defaultTerminal;
       description = ''
-        Packaged terminal runtime variant.
+        Packaged Yazelix terminal variant.
 
-        - "ghostty": default packaged runtime with Yazelix cursor trails, Ghostty config effects, and Yazi image previews through Zellij
-        - "kitty": packaged Kitty runtime with generated Kitty config and the Yazelix Zellij/Yazi Kitty graphics bridge
-        - "wezterm": explicit alternate packaged runtime
+        - "ghostty": default packaged terminal with Yazelix cursor trails, Ghostty config effects, and Yazi image previews through Zellij
+        - "kitty": packaged Kitty terminal with generated Kitty config and the Yazelix Zellij/Yazi Kitty graphics bridge
+        - "wezterm": explicit alternate packaged terminal
         - "yzxterm": experimental Yazelix-owned Rio fork with Rio trail cursor defaults and opt-in shader support
-        - "ratty": experimental Linux packaged runtime with Ratty and the Yazelix Zellij/Yazi Kitty graphics bridge
+        - "ratty": experimental Linux packaged terminal with Ratty and the Yazelix Zellij/Yazi Kitty graphics bridge
       '';
     };
 
@@ -524,24 +487,6 @@ in
         - "full": Rio trail cursor defaults without custom shaders
         - "baseline": no cursor effects
         - "shaders": Rio trail cursor plus generated Yazelix cursor shaders
-      '';
-    };
-
-    extra_terminal_variants = mkOption {
-      type = types.listOf (types.enum runtimeVariants);
-      default = [ ];
-      example = [
-        "ghostty"
-      ];
-      description = ''
-        Additional bundled terminal emulator packages to install beside the primary runtime variant.
-
-        This is for users who want, for example, `runtime_variant = "yzxterm"` as the primary
-        Yazelix runtime while also keeping Ghostty available to `yzx launch --terminal ghostty`.
-
-        These packages install only the terminal emulator commands into the Home Manager profile.
-        They do not install additional Yazelix `yzx` wrappers, so they avoid profile collisions
-        with the selected primary runtime package.
       '';
     };
 
@@ -608,10 +553,6 @@ in
     # Configuration options (mirrors settings_default.jsonc structure)
     default_shell = mkMainContractOption "shell.default_shell" {
       description = "Default shell for Zellij sessions";
-    };
-
-    terminals = mkMainContractOption "terminal.terminals" {
-      description = "Ordered terminal emulator list (first is primary, rest are fallbacks)";
     };
 
     terminal_config_mode = mkMainContractOption "terminal.config_mode" {
@@ -937,14 +878,10 @@ in
   config = mkIf cfg.enable (mkMerge [
     {
       # Expose the packaged Yazelix runtime through the Home Manager profile.
-      home.packages = [ yazelixPackage ] ++ extraTerminalVariantPackages ++ cursorGeneratorPackage;
-      home.sessionVariables = mkIf (cfg.yzxterm_profile != "full") {
+      home.packages = [ yazelixPackage ] ++ cursorGeneratorPackage;
+      home.sessionVariables = mkIf yzxtermProfileActive {
         YAZELIX_TERMINAL_PROFILE = mkDefault cfg.yzxterm_profile;
       };
-
-      programs.yazelix.terminals = mkDefault (
-        runtimeDefaultTerminals cfg.runtime_variant cfg.extra_terminal_variants
-      );
 
       assertions = [
         {
@@ -984,7 +921,7 @@ in
         ${yzxtermProfileExport}
 
         $DRY_RUN_CMD ${runtimeYzxCore} runtime-materialization.repair --from-env --force --summary
-        $DRY_RUN_CMD ${runtimeYzxCore} terminal-materialization.generate --from-env --terminals-json ${lib.escapeShellArg (builtins.toJSON cfg.terminals)} >/dev/null
+        $DRY_RUN_CMD ${runtimeYzxCore} terminal-materialization.generate --from-env >/dev/null
 ${cursorGeneratorActivation}
         $DRY_RUN_CMD env YAZELIX_QUIET_MODE=true ${runtimeYzxControl} generate_shell_initializers
       '';
@@ -992,8 +929,8 @@ ${cursorGeneratorActivation}
     (mkIf pkgs.stdenv.hostPlatform.isLinux (
       lib.optionalAttrs (lib.hasAttrByPath [ "xdg" "desktopEntries" ] options) {
         # Linux desktop entry for application launchers.
-        xdg.desktopEntries.yazelix = {
-          name = "Yazelix";
+        xdg.desktopEntries.${desktopEntryKey} = {
+          name = desktopEntryName;
           comment = "Yazi + Zellij + Helix integrated terminal environment";
           exec = yzxtermDesktopExec;
           icon = "yazelix";

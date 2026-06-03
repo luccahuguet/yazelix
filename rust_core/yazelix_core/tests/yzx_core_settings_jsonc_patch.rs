@@ -159,8 +159,8 @@ fn patched_text_round_trips_through_config_normalization() {
     let patched = set_settings_jsonc_value_text(
         &config.join("settings.jsonc"),
         &raw,
-        "terminal.terminals",
-        &json!(["ghostty"]),
+        "terminal.transparency",
+        &json!("high"),
     )
     .expect("patch");
     let config_path = config.join("settings.jsonc");
@@ -176,5 +176,5 @@ fn patched_text_round_trips_through_config_normalization() {
     })
     .expect("normalize");
 
-    assert_eq!(data.normalized_config["terminals"], json!(["ghostty"]));
+    assert_eq!(data.normalized_config["transparency"], json!("high"));
 }

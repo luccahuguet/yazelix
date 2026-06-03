@@ -88,7 +88,7 @@ pub struct NativeConfigStatusRequest {
     pub state_dir: PathBuf,
     pub platform: String,
     pub terminal_config_mode: String,
-    pub selected_terminals: Vec<String>,
+    pub active_terminal: String,
     pub settings_home_manager_read_only: bool,
 }
 
@@ -374,79 +374,73 @@ fn helix_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigStatus
 }
 
 fn terminal_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigStatusEntry> {
-    let terminals = if request.selected_terminals.is_empty() {
-        vec!["ghostty".to_string(), "wezterm".to_string()]
-    } else {
-        request.selected_terminals.clone()
-    };
+    let terminal = request.active_terminal.as_str();
     let mut entries = Vec::new();
-    for terminal in terminals {
-        let managed = user_config_paths::terminal_config(&request.config_dir, &terminal);
-        let native_candidates = user_terminal_config_candidates(
-            &request.home_dir,
-            &request.xdg_config_home,
-            &terminal,
-            &request.platform,
-        )
-        .unwrap_or_default();
-        let native_existing = native_candidates.iter().find(|path| path.exists()).cloned();
-        let generated = generated_terminal_config_path(&request.state_dir, &terminal);
-        let mut input = if request.terminal_config_mode == "user" {
-            match native_existing {
-                Some(ref active) => {
-                    let mut input = entry(
-                        format!("terminal.{terminal}.input"),
-                        terminal.clone(),
-                        "Terminal native config explicitly selected by terminal.config_mode",
-                        NativeConfigStatusCode::NativeReadOnly,
-                    );
-                    input.active_path = Some(path_string(active));
-                    input
-                }
-                None => entry(
+    let managed = user_config_paths::terminal_config(&request.config_dir, terminal);
+    let native_candidates = user_terminal_config_candidates(
+        &request.home_dir,
+        &request.xdg_config_home,
+        terminal,
+        &request.platform,
+    )
+    .unwrap_or_default();
+    let native_existing = native_candidates.iter().find(|path| path.exists()).cloned();
+    let generated = generated_terminal_config_path(&request.state_dir, terminal);
+    let mut input = if request.terminal_config_mode == "user" {
+        match native_existing {
+            Some(ref active) => {
+                let mut input = entry(
                     format!("terminal.{terminal}.input"),
-                    terminal.clone(),
+                    terminal.to_string(),
                     "Terminal native config explicitly selected by terminal.config_mode",
-                    NativeConfigStatusCode::NativeRequiredMissing,
-                ),
+                    NativeConfigStatusCode::NativeReadOnly,
+                );
+                input.active_path = Some(path_string(active));
+                input
             }
-        } else if managed.as_ref().is_some_and(|path| path_present(path)) {
-            let mut input = entry(
+            None => entry(
                 format!("terminal.{terminal}.input"),
-                terminal.clone(),
-                "Optional Yazelix-managed terminal sidecar",
-                NativeConfigStatusCode::ManagedOverride,
-            );
-            input.active_path = managed.as_ref().map(|path| path_string(path));
-            input
-        } else {
-            entry(
-                format!("terminal.{terminal}.input"),
-                terminal.clone(),
-                "Generated terminal config from Yazelix settings",
-                NativeConfigStatusCode::ManagedDefault,
-            )
-        };
-        input.managed_path = managed.as_ref().map(|path| path_string(path));
-        input.native_paths = path_strings(&native_candidates);
-        input.allowed_action = match input.status.as_str() {
-            "native_read_only" => "open_read_only".to_string(),
-            "native_required_missing" => "create_native_or_use_yazelix_mode".to_string(),
-            "managed_override" => "edit_managed".to_string(),
-            _ => "edit_settings".to_string(),
-        };
-        input.read_only_reason = (input.status == "native_read_only").then(|| {
-            "terminal.config_mode = user selects the terminal's native config read-only".to_string()
-        });
-        entries.push(input);
-        if request.terminal_config_mode == "yazelix" {
-            entries.push(generated_entry(
-                format!("terminal.{terminal}.generated"),
-                terminal.clone(),
-                "Generated terminal runtime config",
-                generated,
-            ));
+                terminal.to_string(),
+                "Terminal native config explicitly selected by terminal.config_mode",
+                NativeConfigStatusCode::NativeRequiredMissing,
+            ),
         }
+    } else if managed.as_ref().is_some_and(|path| path_present(path)) {
+        let mut input = entry(
+            format!("terminal.{terminal}.input"),
+            terminal.to_string(),
+            "Optional Yazelix-managed terminal sidecar",
+            NativeConfigStatusCode::ManagedOverride,
+        );
+        input.active_path = managed.as_ref().map(|path| path_string(path));
+        input
+    } else {
+        entry(
+            format!("terminal.{terminal}.input"),
+            terminal.to_string(),
+            "Generated terminal config from Yazelix settings",
+            NativeConfigStatusCode::ManagedDefault,
+        )
+    };
+    input.managed_path = managed.as_ref().map(|path| path_string(path));
+    input.native_paths = path_strings(&native_candidates);
+    input.allowed_action = match input.status.as_str() {
+        "native_read_only" => "open_read_only".to_string(),
+        "native_required_missing" => "create_native_or_use_yazelix_mode".to_string(),
+        "managed_override" => "edit_managed".to_string(),
+        _ => "edit_settings".to_string(),
+    };
+    input.read_only_reason = (input.status == "native_read_only").then(|| {
+        "terminal.config_mode = user selects the terminal's native config read-only".to_string()
+    });
+    entries.push(input);
+    if request.terminal_config_mode == "yazelix" {
+        entries.push(generated_entry(
+            format!("terminal.{terminal}.generated"),
+            terminal.to_string(),
+            "Generated terminal runtime config",
+            generated,
+        ));
     }
     entries
 }
@@ -615,7 +609,7 @@ mod tests {
             state_dir: tmp.path().join("state"),
             platform: "linux".to_string(),
             terminal_config_mode: "yazelix".to_string(),
-            selected_terminals: vec!["ghostty".to_string()],
+            active_terminal: "ghostty".to_string(),
             settings_home_manager_read_only: false,
         }
     }
@@ -677,7 +671,7 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let mut req = request(&tmp);
         req.terminal_config_mode = "user".to_string();
-        req.selected_terminals = vec!["yzxterm".to_string()];
+        req.active_terminal = "yzxterm".to_string();
 
         let entries = classify_native_config_statuses(&req);
         let terminal = find(&entries, "terminal.yzxterm.input");

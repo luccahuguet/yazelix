@@ -8,7 +8,7 @@ Yazelix should define one shared runtime dependency contract for normal user-fac
 
 The current code already distinguishes several kinds of checks, but the boundary is implicit:
 
-- startup and launch fail fast on missing working directories, missing runtime scripts, missing generated layouts, and unavailable configured terminals
+- startup and launch fail fast on missing working directories, missing runtime scripts, missing generated layouts, and an unavailable selected packaged terminal
 - config validation runs before launch, but it is a config-contract concern rather than a runtime dependency concern
 - `yzx doctor` performs much heavier checks such as desktop-entry freshness, install-artifact staleness, version drift, Helix runtime conflicts, and plugin health
 - install smoke validates even heavier installed-runtime invariants that are useful for packaging confidence but too expensive for normal launch
@@ -46,7 +46,7 @@ Without a written contract:
 - Status: live
 - Owner: launch/startup preflight owners
 - Statement: Missing or invalid working directories, missing runtime entrypoint
-  scripts, and unavailable configured terminals for new-window launch are
+  scripts, and an unavailable selected packaged terminal for new-window launch are
   immediate preflight blockers with direct recovery guidance
 - Verification: automated
   `nushell/scripts/dev/test_yzx_workspace_commands.nu`; automated
@@ -104,9 +104,9 @@ Without a written contract:
   - required runtime scripts for the chosen entrypoint
   - required generated layout/config paths for startup where those artifacts are part of the supported runtime model
   - a valid working directory when the entrypoint accepts one
-- Config-conditioned requirements:
-  - the configured terminal must be available for `yzx launch` when launching a new terminal window
-  - terminal availability depends on whether Yazelix is managing terminals or relying on host-installed terminals
+- Package-conditioned requirements:
+  - the selected packaged terminal must be available for `yzx launch` when launching a new terminal window
+  - terminal availability follows the selected package or Home Manager `programs.yazelix.terminal` value, with no fallback to another terminal
   - entrypoints that stay in the current terminal, such as `yzx enter`, do not require a detached terminal candidate
 - Runtime-owned assets versus host tools:
   - runtime-owned scripts, generated layouts, and shipped assets should be treated as runtime contract dependencies
@@ -204,7 +204,7 @@ This matrix is intentionally concrete. It exists to stop runtime checks from dri
 
 1. When `yzx launch --path` receives a missing or nondirectory path, launch preflight fails before a deeper launch attempt with a direct recovery message.
 2. When startup or new-window launch depends on a missing runtime script, launch fails clearly as a runtime/generated-state problem instead of surfacing a generic downstream tool failure.
-3. When a new-terminal launch is requested and the configured terminal is unavailable for the current management mode, launch fails quickly with terminal-specific guidance instead of falling through into unrelated errors.
+3. When a new-terminal launch is requested and the selected packaged terminal is unavailable, launch fails quickly with terminal-specific guidance instead of falling through into unrelated errors.
 4. When startup depends on a missing managed generated layout, startup materializes it before asking Zellij to use that path, and unresolved custom layout overrides still fail clearly.
 5. When desktop entries or installed runtime links are stale, `yzx doctor` may report them, but normal launch preflight does not have to run the full install-audit surface first.
 6. When a later Core discussion asks which dependencies are true launch blockers versus richer diagnostics, the answer can be taken from this contract instead of inferred ad hoc from current implementation details.

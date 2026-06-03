@@ -11,6 +11,7 @@ use yazelix_core::control_plane::{
     terminal_materialization_request_from_env,
 };
 use yazelix_core::terminal_materialization::YzxtermProfile;
+use yazelix_core::terminal_variant::active_terminal_from_runtime_dir;
 use yazelix_core::{
     ComputeConfigStateRequest, CoreError, DoctorConfigEvaluateRequest,
     DoctorRuntimeEvaluateRequest, ErrorClass, GhosttyMaterializationRequest,
@@ -875,7 +876,6 @@ fn run_terminal_materialization_generate(mut parser: lexopt::Parser) -> Result<(
     let mut contract_path: Option<PathBuf> = None;
     let mut runtime_dir: Option<PathBuf> = None;
     let mut state_dir: Option<PathBuf> = None;
-    let mut terminals_json: Option<String> = None;
     let mut from_env = false;
 
     while let Some(arg) = parser
@@ -889,15 +889,9 @@ fn run_terminal_materialization_generate(mut parser: lexopt::Parser) -> Result<(
             Long("contract") => contract_path = Some(parser_path_value(&mut parser)?),
             Long("runtime-dir") => runtime_dir = Some(parser_path_value(&mut parser)?),
             Long("state-dir") => state_dir = Some(parser_path_value(&mut parser)?),
-            Long("terminals-json") => terminals_json = Some(parser_string_value(&mut parser)?),
             _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
         }
     }
-
-    let terminals: Vec<String> = serde_json::from_str(
-        &terminals_json.ok_or_else(|| CoreError::usage("Missing --terminals-json"))?,
-    )
-    .map_err(|error| CoreError::usage(format!("Invalid --terminals-json: {error}")))?;
 
     let explicit_args_present = config_path.is_some()
         || default_config_path.is_some()
@@ -911,8 +905,11 @@ fn run_terminal_materialization_generate(mut parser: lexopt::Parser) -> Result<(
                 "Use either --from-env or explicit terminal-materialization.generate paths, not both.",
             ));
         }
-        terminal_materialization_request_from_env(terminals, config_override_from_env().as_deref())?
+        terminal_materialization_request_from_env(config_override_from_env().as_deref())?
     } else {
+        let runtime_dir =
+            runtime_dir.ok_or_else(|| CoreError::usage("Missing --runtime-dir path"))?;
+        let terminal = active_terminal_from_runtime_dir(&runtime_dir)?;
         let config_path = config_path.ok_or_else(|| CoreError::usage("Missing --config path"))?;
         TerminalMaterializationRequest {
             cursor_config_path: config_path.clone(),
@@ -921,10 +918,9 @@ fn run_terminal_materialization_generate(mut parser: lexopt::Parser) -> Result<(
                 .ok_or_else(|| CoreError::usage("Missing --default-config path"))?,
             contract_path: contract_path
                 .ok_or_else(|| CoreError::usage("Missing --contract path"))?,
-            runtime_dir: runtime_dir
-                .ok_or_else(|| CoreError::usage("Missing --runtime-dir path"))?,
+            runtime_dir,
             state_dir: state_dir.ok_or_else(|| CoreError::usage("Missing --state-dir path"))?,
-            terminals,
+            terminals: vec![terminal],
             yzxterm_profile: YzxtermProfile::Full,
         }
     };
@@ -933,7 +929,6 @@ fn run_terminal_materialization_generate(mut parser: lexopt::Parser) -> Result<(
 }
 
 fn run_launch_materialization_prepare(mut parser: lexopt::Parser) -> Result<(), CoreError> {
-    let mut selected_terminals_json: Option<String> = None;
     let mut desktop_fast_path = false;
     let mut from_env = false;
 
@@ -944,9 +939,6 @@ fn run_launch_materialization_prepare(mut parser: lexopt::Parser) -> Result<(), 
         match arg {
             Long("from-env") => from_env = true,
             Long("desktop-fast-path") => desktop_fast_path = true,
-            Long("selected-terminals-json") => {
-                selected_terminals_json = Some(parser_string_value(&mut parser)?)
-            }
             _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
         }
     }
@@ -957,14 +949,7 @@ fn run_launch_materialization_prepare(mut parser: lexopt::Parser) -> Result<(), 
         ));
     }
 
-    let selected_terminals = match selected_terminals_json {
-        Some(raw) => serde_json::from_str::<Vec<String>>(&raw).map_err(|error| {
-            CoreError::usage(format!("Invalid --selected-terminals-json: {error}"))
-        })?,
-        None => Vec::new(),
-    };
     let request: LaunchMaterializationRequest = launch_materialization_request_from_env(
-        selected_terminals,
         desktop_fast_path,
         false,
         config_override_from_env().as_deref(),

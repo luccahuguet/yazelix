@@ -7,10 +7,7 @@ use super::process::{
     render_launch_failure, run_desktop_deferred_launch_probe, run_detached_launch_probe,
 };
 use super::resolve_requested_working_dir;
-use super::terminal::{
-    build_launch_command_argv, normalized_configured_terminals, print_empty_terminal_error,
-    resolve_terminal_config_path, terminal_display_name,
-};
+use super::terminal::{build_launch_command_argv, resolve_terminal_config_path};
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_state::compute_config_state;
 use crate::control_plane::{
@@ -29,6 +26,7 @@ use crate::runtime_env::compute_runtime_env;
 use crate::runtime_materialization::{
     RuntimeMaterializationRepairEvaluateRequest, repair_runtime_materialization,
 };
+use crate::terminal_variant::{active_terminal_from_runtime_dir, terminal_display_name};
 use std::path::{Path, PathBuf};
 
 const YAZELIX_TERMINAL_CHILD_ENV_SANITIZE: &str = "YAZELIX_TERMINAL_CHILD_ENV_SANITIZE";
@@ -39,7 +37,6 @@ struct LaunchArgs {
     config: Option<String>,
     with_overrides: Vec<String>,
     home: bool,
-    terminal: Option<String>,
     verbose: bool,
     help: bool,
 }
@@ -63,7 +60,6 @@ pub(super) fn run_launch(args: &[String]) -> Result<i32, CoreError> {
         parsed.path.as_deref(),
         config_override.as_deref(),
         parsed.home,
-        parsed.terminal.as_deref(),
         parsed.verbose,
         false,
         &[],
@@ -91,7 +87,6 @@ pub(super) fn run_launch_flow(
     requested_path: Option<&str>,
     config_override: Option<&str>,
     home: bool,
-    requested_terminal: Option<&str>,
     verbose: bool,
     desktop_fast_path: bool,
     env_removals: &[&str],
@@ -105,14 +100,9 @@ pub(super) fn run_launch_flow(
         config_state.needs_refresh,
         config_override,
     )?;
-    let configured_terminals = normalized_configured_terminals(&config_state.config);
-    if configured_terminals.is_empty() {
-        print_empty_terminal_error()?;
-        return Ok(1);
-    }
+    let active_terminal = active_terminal_from_runtime_dir(&runtime_dir)?;
 
     let requested_working_dir = resolve_requested_working_dir(requested_path, home)?;
-    let requested_terminal_text = requested_terminal.unwrap_or("").trim().to_string();
     let command_search_paths = std::env::var_os("PATH")
         .map(|raw| std::env::split_paths(&raw).collect::<Vec<_>>())
         .unwrap_or_default();
@@ -120,8 +110,8 @@ pub(super) fn run_launch_flow(
         startup: None,
         launch: Some(LaunchPreflightPayload {
             working_dir: requested_working_dir,
-            requested_terminal: requested_terminal_text.clone(),
-            terminals: configured_terminals.clone(),
+            requested_terminal: String::new(),
+            terminals: vec![active_terminal.clone()],
             command_search_paths,
         }),
     })?;
@@ -129,10 +119,6 @@ pub(super) fn run_launch_flow(
     let terminal_candidates = preflight.terminal_candidates.unwrap_or_default();
 
     let req = launch_materialization_request_from_env(
-        terminal_candidates
-            .iter()
-            .map(|candidate| candidate.terminal.clone())
-            .collect(),
         desktop_fast_path,
         desktop_fast_path && config_state.needs_refresh,
         config_override,
@@ -288,19 +274,13 @@ pub(super) fn run_launch_flow(
         .map(|(name, reason)| format!("  - {name}: {reason}"))
         .collect::<Vec<_>>()
         .join("\n");
-    let message = if requested_terminal_text.is_empty() {
-        format!("Failed to launch any configured terminal.\n{summary}")
-    } else {
-        format!(
-            "Failed to launch requested terminal '{}'.\n{}",
-            requested_terminal_text, summary
-        )
-    };
+    let message =
+        format!("Failed to launch Yazelix terminal variant '{active_terminal}'.\n{summary}");
     Err(CoreError::classified(
         ErrorClass::Runtime,
         "launch_failed",
         message,
-        "Install a supported terminal or adjust [terminal].terminals to match what is available.",
+        "Reinstall Yazelix so the selected terminal variant is packaged correctly, or install a different Yazelix terminal variant.",
         serde_json::json!({}),
     ))
 }
@@ -424,15 +404,6 @@ fn parse_launch_args(args: &[String]) -> Result<LaunchArgs, CoreError> {
                 })?;
                 parsed.with_overrides.push(value.clone());
             }
-            "--terminal" | "-t" => {
-                index += 1;
-                let value = args.get(index).ok_or_else(|| {
-                    CoreError::usage(
-                        "Missing value for yzx launch --terminal. Try `yzx launch --help`.",
-                    )
-                })?;
-                parsed.terminal = Some(value.clone());
-            }
             other if other.starts_with('-') => {
                 return Err(CoreError::usage(format!(
                     "Unknown argument for yzx launch: {other}. Try `yzx launch --help`."
@@ -457,7 +428,7 @@ fn print_launch_help() {
     println!();
     println!("Usage:");
     println!(
-        "  yzx launch [--path <dir> | --home] [--config <file>] [--with key=value] [--terminal <name>] [--verbose]"
+        "  yzx launch [--path <dir> | --home] [--config <file>] [--with key=value] [--verbose]"
     );
 }
 
@@ -482,9 +453,9 @@ mod tests {
     use super::super::config_override::resolve_config_override_path;
     use super::*;
 
-    // Defends: Rust launch arg parsing keeps the public path and terminal flag aliases after the owner cut.
+    // Defends: Rust launch arg parsing keeps public path/config/session override flags without reintroducing terminal selection.
     #[test]
-    fn parse_launch_args_accepts_aliases() {
+    fn parse_launch_args_accepts_supported_flags() {
         let expected_config = resolve_config_override_path(
             "settings.jsonc",
             &std::env::current_dir().unwrap(),
@@ -498,8 +469,6 @@ mod tests {
             "settings.jsonc".into(),
             "--with".into(),
             "editor.command=nvim".into(),
-            "-t".into(),
-            "kitty".into(),
             "--verbose".into(),
         ])
         .unwrap();
@@ -507,7 +476,6 @@ mod tests {
         assert_eq!(parsed.path.as_deref(), Some("/tmp/demo"));
         assert_eq!(parsed.config.as_deref(), Some(expected_config.as_str()));
         assert_eq!(parsed.with_overrides, vec!["editor.command=nvim"]);
-        assert_eq!(parsed.terminal.as_deref(), Some("kitty"));
         assert!(parsed.verbose);
     }
 

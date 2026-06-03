@@ -6,6 +6,7 @@ use crate::control_plane::{
     config_dir_from_env, config_override_from_env, load_normalized_config_for_control,
     runtime_dir_from_env,
 };
+use crate::terminal_variant::active_terminal_from_runtime_dir;
 use serde::Serialize;
 use serde_json::{Map as JsonMap, Value as JsonValue};
 
@@ -46,7 +47,7 @@ pub fn compute_startup_facts_from_env() -> Result<StartupFactsData, CoreError> {
         ),
         welcome_duration_seconds: float_config(&normalized, "welcome_duration_seconds", 4.0),
         show_macchina_on_welcome: bool_config(&normalized, "show_macchina_on_welcome", false),
-        terminals: string_list_config(&normalized, "terminals", &["ghostty"]),
+        terminals: vec![active_terminal_from_runtime_dir(&runtime_dir)?],
         terminal_config_mode: string_config(
             &normalized,
             "terminal_config_mode",
@@ -91,23 +92,6 @@ fn float_config(config: &JsonMap<String, JsonValue>, key: &str, default: f64) ->
         .unwrap_or(default)
 }
 
-fn string_list_config(
-    config: &JsonMap<String, JsonValue>,
-    key: &str,
-    default: &[&str],
-) -> Vec<String> {
-    match config.get(key) {
-        Some(JsonValue::Array(items)) => items
-            .iter()
-            .filter_map(|item| item.as_str())
-            .map(str::trim)
-            .filter(|item| !item.is_empty())
-            .map(ToOwned::to_owned)
-            .collect(),
-        _ => default.iter().map(|item| item.to_string()).collect(),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -124,7 +108,6 @@ mod tests {
         config.insert("game_of_life_cell_style".into(), json!("dotted"));
         config.insert("welcome_duration_seconds".into(), json!("2.5"));
         config.insert("show_macchina_on_welcome".into(), json!("false"));
-        config.insert("terminals".into(), json!(["ghostty", "", "wezterm"]));
         config.insert("terminal_config_mode".into(), json!("user"));
 
         assert_eq!(
@@ -135,10 +118,6 @@ mod tests {
         assert!(bool_config(&config, "skip_welcome_screen", false));
         assert_eq!(float_config(&config, "welcome_duration_seconds", 1.0), 2.5);
         assert!(!bool_config(&config, "show_macchina_on_welcome", true));
-        assert_eq!(
-            string_list_config(&config, "terminals", &["ghostty"]),
-            vec!["ghostty", "wezterm"]
-        );
         assert_eq!(
             string_config(
                 &config,

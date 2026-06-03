@@ -211,7 +211,7 @@ ghostty_trail_color = "random"
     assert_eq!(envelope["data"]["yazi_command"], "legacy-yazi");
 }
 
-// Defends: startup-facts.compute returns the retained welcome, session, shell, and terminal facts without Nushell-side config parsing.
+// Defends: startup-facts.compute returns retained welcome/session facts and the package-selected terminal without Nushell-side config parsing.
 #[test]
 fn startup_facts_compute_reports_retained_startup_and_session_fields() {
     let fixture = managed_config_fixture(
@@ -227,7 +227,6 @@ show_macchina_on_welcome = false
 default_shell = "bash"
 
 [terminal]
-terminals = ["wezterm", "ghostty"]
 config_mode = "user"
 "#,
     );
@@ -247,7 +246,7 @@ config_mode = "user"
     assert_eq!(envelope["data"]["show_macchina_on_welcome"], false);
     assert_eq!(
         envelope["data"]["terminals"],
-        serde_json::json!(["wezterm", "ghostty"])
+        serde_json::json!(["ghostty"])
     );
     assert_eq!(envelope["data"]["terminal_config_mode"], "user");
 }

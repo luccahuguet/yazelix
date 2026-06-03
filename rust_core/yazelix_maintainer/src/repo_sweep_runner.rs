@@ -7,7 +7,6 @@ use yazelix_core::config_normalize::{NormalizeConfigRequest, normalize_config};
 use yazelix_core::control_plane::state_dir_from_env;
 
 const DEFAULT_SHELL: &str = "nu";
-const DEFAULT_TERMINAL: &str = "ghostty";
 const NONVISUAL_SHELLS: &[&str] = &["nu", "bash", "fish", "zsh"];
 
 #[derive(Debug, Clone, Copy)]
@@ -20,7 +19,6 @@ struct SweepFeatures {
 struct SweepCombination {
     kind: &'static str,
     shell: &'static str,
-    terminal: &'static str,
     features: SweepFeatures,
 }
 
@@ -56,7 +54,6 @@ impl SweepStatus {
 struct SweepResult {
     test_id: String,
     shell: String,
-    terminal: String,
     status: SweepStatus,
     config_status: Option<SweepStatus>,
     config_message: Option<String>,
@@ -80,17 +77,11 @@ pub fn run_sweep_tests(repo_root: &Path, verbose: bool) -> Result<(), String> {
     let total = combinations.len();
     let mut results = Vec::new();
     for combo in combinations {
-        let test_id = format!("{}_{}_{}", combo.kind, combo.shell, combo.terminal);
+        let test_id = format!("{}_{}", combo.kind, combo.shell);
         let completed = results.len();
 
         if !verbose {
-            println!(
-                "  Starting {}/{}: {}+{}",
-                completed + 1,
-                total,
-                combo.shell,
-                combo.terminal
-            );
+            println!("  Starting {}/{}: {}", completed + 1, total, combo.shell);
         }
 
         let result = run_nonvisual_sweep_test(repo_root, &combo, &test_id, verbose);
@@ -99,7 +90,6 @@ pub fn run_sweep_tests(repo_root: &Path, verbose: bool) -> Result<(), String> {
             Err(error) => SweepResult {
                 test_id: test_id.clone(),
                 shell: combo.shell.to_string(),
-                terminal: combo.terminal.to_string(),
                 status: SweepStatus::Error,
                 config_status: None,
                 config_message: None,
@@ -112,12 +102,11 @@ pub fn run_sweep_tests(repo_root: &Path, verbose: bool) -> Result<(), String> {
 
         if !verbose {
             println!(
-                "  Progress: {}/{} - {} {}+{}",
+                "  Progress: {}/{} - {} {}",
                 results.len() + 1,
                 total,
                 result.status.label().to_ascii_uppercase(),
-                combo.shell,
-                combo.terminal
+                combo.shell
             );
         }
 
@@ -146,11 +135,10 @@ pub fn run_sweep_tests(repo_root: &Path, verbose: bool) -> Result<(), String> {
 
     for result in &results {
         println!(
-            "{} {}: {} + {}",
+            "{} {}: {}",
             result.status.icon(),
             result.test_id,
-            result.shell,
-            result.terminal
+            result.shell
         );
         if verbose || result.status != SweepStatus::Pass {
             if let (Some(status), Some(message)) = (result.config_status, &result.config_message) {
@@ -222,7 +210,6 @@ fn nonvisual_test_combinations() -> Vec<SweepCombination> {
         combinations.push(SweepCombination {
             kind: "cross_shell",
             shell,
-            terminal: DEFAULT_TERMINAL,
             features: standard_features(),
         });
     }
@@ -230,13 +217,11 @@ fn nonvisual_test_combinations() -> Vec<SweepCombination> {
     combinations.push(SweepCombination {
         kind: "minimal_config",
         shell: DEFAULT_SHELL,
-        terminal: DEFAULT_TERMINAL,
         features: minimal_features(),
     });
     combinations.push(SweepCombination {
         kind: "persistent_config",
         shell: DEFAULT_SHELL,
-        terminal: DEFAULT_TERMINAL,
         features: persistent_features(),
     });
 
@@ -250,13 +235,10 @@ fn run_nonvisual_sweep_test(
     verbose: bool,
 ) -> Result<SweepResult, String> {
     if verbose {
-        println!(
-            "🧪 Testing: {} + {} ({test_id})",
-            combo.shell, combo.terminal
-        );
+        println!("🧪 Testing: {} ({test_id})", combo.shell);
     }
 
-    let config_path = generate_sweep_config(combo.shell, combo.terminal, combo.features, test_id)?;
+    let config_path = generate_sweep_config(combo.shell, combo.features, test_id)?;
     let result = (|| {
         let config_result = validate_generated_config(&config_path, combo, repo_root);
         if config_result.status != SweepStatus::Pass {
@@ -331,7 +313,6 @@ fn nonvisual_result(
     SweepResult {
         test_id: test_id.to_string(),
         shell: combo.shell.to_string(),
-        terminal: combo.terminal.to_string(),
         status,
         config_status: Some(config_status),
         config_message: Some(config_message),
@@ -344,7 +325,6 @@ fn nonvisual_result(
 
 fn generate_sweep_config(
     shell: &str,
-    terminal: &str,
     features: SweepFeatures,
     test_id: &str,
 ) -> Result<PathBuf, String> {
@@ -352,31 +332,13 @@ fn generate_sweep_config(
     fs::create_dir_all(&temp_dir)
         .map_err(|error| format!("Failed to create {}: {error}", temp_dir.display()))?;
     let config_path = temp_dir.join(format!("yazelix_test_{test_id}.toml"));
-    let config_content = build_sweep_config(shell, terminal, features, test_id);
+    let config_content = build_sweep_config(shell, features, test_id);
     fs::write(&config_path, config_content)
         .map_err(|error| format!("Failed to write {}: {error}", config_path.display()))?;
     Ok(config_path)
 }
 
-fn build_sweep_config(
-    shell: &str,
-    terminal: &str,
-    features: SweepFeatures,
-    test_id: &str,
-) -> String {
-    let mut terminals = Vec::new();
-    for candidate in [terminal, "ghostty", "yzxterm", "wezterm", "ratty", "kitty"] {
-        if !terminals.contains(&candidate) {
-            terminals.push(candidate);
-        }
-    }
-
-    let terminals_rendered = terminals
-        .iter()
-        .map(|value| format!("\"{value}\""))
-        .collect::<Vec<_>>()
-        .join(", ");
-
+fn build_sweep_config(shell: &str, features: SweepFeatures, test_id: &str) -> String {
     format!(
         "[core]\n\
 debug_mode = false\n\
@@ -393,7 +355,6 @@ hide_sidebar_on_file_open = {}\n\
 default_shell = \"{}\"\n\
 \n\
 [terminal]\n\
-terminals = [{}]\n\
 config_mode = \"yazelix\"\n\
 transparency = \"none\"\n\
 \n\
@@ -402,11 +363,7 @@ disable_tips = true\n\
 rounded_corners = true\n\
 persistent_sessions = {}\n\
 session_name = \"sweep_test_{}\"\n",
-        features.hide_sidebar_on_file_open,
-        shell,
-        terminals_rendered,
-        features.persistent_sessions,
-        test_id,
+        features.hide_sidebar_on_file_open, shell, features.persistent_sessions, test_id,
     )
 }
 
@@ -455,15 +412,8 @@ fn validate_generated_config(
                 .get("default_shell")
                 .and_then(JsonValue::as_str)
                 .unwrap_or("");
-            let parsed_terminal = data
-                .normalized_config
-                .get("terminals")
-                .and_then(JsonValue::as_array)
-                .and_then(|values| values.first())
-                .and_then(JsonValue::as_str)
-                .unwrap_or("");
 
-            if parsed_shell == combo.shell && parsed_terminal == combo.terminal {
+            if parsed_shell == combo.shell {
                 StepResult::new(
                     SweepStatus::Pass,
                     "Config parsing successful".to_string(),
@@ -474,8 +424,8 @@ fn validate_generated_config(
                     SweepStatus::Fail,
                     "Config parsing mismatch".to_string(),
                     Some(format!(
-                        "Expected shell={}, terminal={}; got shell={}, terminal={}",
-                        combo.shell, combo.terminal, parsed_shell, parsed_terminal
+                        "Expected shell={}; got shell={}",
+                        combo.shell, parsed_shell
                     )),
                 )
             }
@@ -570,25 +520,20 @@ fn runtime_root(repo_root: &Path) -> PathBuf {
 mod tests {
     use super::*;
 
-    // Defends: Rust sweep config generation keeps the requested shell and terminal first while rendering the managed toggle matrix for the sweep lane.
+    // Defends: Rust sweep config generation keeps the requested shell and managed toggle matrix for the sweep lane.
     #[test]
-    fn renders_requested_shell_terminal_and_toggle_matrix() {
+    fn renders_requested_shell_and_toggle_matrix() {
         let rendered = build_sweep_config(
             "zsh",
-            "kitty",
             SweepFeatures {
                 hide_sidebar_on_file_open: true,
                 persistent_sessions: true,
             },
-            "cross_shell_zsh_kitty",
+            "cross_shell_zsh",
         );
 
         assert!(rendered.contains("default_shell = \"zsh\""));
-        assert!(
-            rendered.contains(
-                "terminals = [\"kitty\", \"ghostty\", \"yzxterm\", \"wezterm\", \"ratty\"]"
-            )
-        );
+        assert!(!rendered.contains("terminals = ["));
         assert!(rendered.contains("hide_sidebar_on_file_open = true"));
         assert!(rendered.contains("persistent_sessions = true"));
     }

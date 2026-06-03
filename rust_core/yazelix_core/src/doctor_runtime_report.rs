@@ -992,7 +992,7 @@ fn runtime_command_present(runtime_dir: &Path, command: &str) -> bool {
         || runtime_dir.join("toolbin").join(command).is_file()
 }
 
-fn first_configured_terminal(terminals: &[String]) -> String {
+fn selected_terminal(terminals: &[String]) -> String {
     terminals
         .iter()
         .map(|terminal| terminal.trim())
@@ -1029,13 +1029,13 @@ fn build_graphics_preview_strategy_finding(
     runtime_dir: &Path,
     command_search_paths: &[PathBuf],
 ) -> DoctorRuntimeDoctorFinding {
-    let terminal = first_configured_terminal(&shared.terminals);
+    let terminal = selected_terminal(&shared.terminals);
     let bridge_marker = runtime_feature_enabled(runtime_dir, ZELLIJ_KITTY_PASSTHROUGH_FEATURE);
     let zellij_present = runtime_command_present(runtime_dir, "zellij");
     let yazi_present = runtime_command_present(runtime_dir, "yazi");
     let host_yazi_present = host_runtime_yazi_available(runtime_dir, command_search_paths);
     let details = vec![
-        format!("First configured terminal: {terminal}"),
+        format!("Selected terminal: {terminal}"),
         format!(
             "Runtime Kitty passthrough marker: {}",
             if bridge_marker { "present" } else { "missing" }
@@ -1099,7 +1099,7 @@ fn build_graphics_preview_strategy_finding(
         return DoctorRuntimeDoctorFinding {
             status: "warning".into(),
             message:
-                "Graphics previews: configured terminal expects the Yazelix Kitty bridge, but the runtime is incomplete"
+                "Graphics previews: selected terminal expects the Yazelix Kitty bridge, but the runtime is incomplete"
                     .into(),
             details: Some(format!(
                 "{}\nExpected combination: Ghostty or Ratty plus runtime-owned Zellij/Yazi Kitty passthrough marker.",

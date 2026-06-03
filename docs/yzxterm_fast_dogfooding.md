@@ -40,7 +40,7 @@ the package:
 ```nix
 {
   programs.yazelix = {
-    runtime_variant = "yzxterm";
+    terminal = "yzxterm";
     yzxterm_profile = "shaders";
     package = inputs.yazelix.packages.${pkgs.stdenv.hostPlatform.system}.yzxterm_fast;
   };

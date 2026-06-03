@@ -1,14 +1,12 @@
 use crate::bridge::{CoreError, ErrorClass};
 use crate::runtime_contract::TerminalCandidate;
-use serde_json::{Map as JsonMap, Value as JsonValue};
+use crate::terminal_variant::terminal_display_name;
 use std::path::{Path, PathBuf};
 
 use super::process::find_command;
 
 pub(super) const X11_INSTANCE: &str = "yazelix";
 pub(super) const WINDOW_CLASS: &str = "com.yazelix.Yazelix";
-const SUPPORTED_TERMINALS: &[&str] = &["ghostty", "yzxterm", "wezterm", "ratty", "kitty"];
-const DEFAULT_TERMINALS: &[&str] = &["ghostty", "wezterm"];
 const NIXGL_WRAPPER_CANDIDATES: &[&[&str]] = &[
     &["libexec", "nixGL"],
     &["libexec", "nixGLDefault"],
@@ -25,50 +23,6 @@ const NIX_VULKAN_WRAPPER_CANDIDATES: &[&[&str]] = &[
 ];
 const HOST_NIXGL_COMMANDS: &[&str] = &["nixGL", "nixGLDefault", "nixGLMesa", "nixGLIntel"];
 const HOST_NIX_VULKAN_COMMANDS: &[&str] = &["nixVulkanMesa", "nixVulkanIntel"];
-
-pub(super) fn normalized_configured_terminals(config: &JsonMap<String, JsonValue>) -> Vec<String> {
-    let raw = match config.get("terminals") {
-        Some(JsonValue::Array(items)) => items
-            .iter()
-            .filter_map(JsonValue::as_str)
-            .map(str::trim)
-            .filter(|value| !value.is_empty())
-            .map(|value| value.to_ascii_lowercase())
-            .collect::<Vec<_>>(),
-        _ => DEFAULT_TERMINALS
-            .iter()
-            .map(|terminal| (*terminal).to_string())
-            .collect(),
-    };
-
-    let mut out = Vec::new();
-    for terminal in raw {
-        if !SUPPORTED_TERMINALS.contains(&terminal.as_str()) {
-            continue;
-        }
-        if !out.contains(&terminal) {
-            out.push(terminal);
-        }
-    }
-    out
-}
-
-pub(super) fn print_empty_terminal_error() -> Result<(), CoreError> {
-    let available = SUPPORTED_TERMINALS
-        .iter()
-        .filter(|terminal| find_command(terminal_command_name(terminal)).is_some())
-        .copied()
-        .collect::<Vec<_>>();
-    let available_text = if available.is_empty() {
-        "none detected".to_string()
-    } else {
-        available.join(", ")
-    };
-    eprintln!("Error: terminal.terminals must include at least one terminal");
-    eprintln!("Detected terminals: {available_text}");
-    eprintln!("Set terminal.terminals in ~/.config/yazelix/settings.jsonc");
-    Ok(())
-}
 
 pub(super) fn generated_terminal_config_path(state_dir: &Path, terminal: &str) -> PathBuf {
     let root = state_dir.join("configs").join("terminal_emulators");
@@ -185,17 +139,6 @@ pub(super) fn resolve_terminal_config_path(
     }
 }
 
-pub(super) fn terminal_display_name(terminal: &str) -> String {
-    match terminal {
-        "ghostty" => "Ghostty".to_string(),
-        "wezterm" => "WezTerm".to_string(),
-        "yzxterm" => "Yazelix Terminal".to_string(),
-        "ratty" => "Ratty".to_string(),
-        "kitty" => "Kitty".to_string(),
-        other => other.to_string(),
-    }
-}
-
 pub(super) fn get_working_dir_args(terminal: &str, working_dir: &Path) -> Vec<String> {
     let wd = working_dir.to_string_lossy().into_owned();
     match terminal {
@@ -205,13 +148,6 @@ pub(super) fn get_working_dir_args(terminal: &str, working_dir: &Path) -> Vec<St
         "ratty" => vec![],
         "kitty" => vec![format!("--directory={wd}")],
         _ => vec![],
-    }
-}
-
-pub(super) fn terminal_command_name(terminal: &str) -> &str {
-    match terminal {
-        "yzxterm" => "yazelix-terminal-desktop",
-        other => other,
     }
 }
 

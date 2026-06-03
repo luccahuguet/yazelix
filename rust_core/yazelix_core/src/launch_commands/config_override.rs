@@ -229,15 +229,7 @@ pub(super) fn load_session_config_override_fields(
             "string" => SessionConfigOverrideKind::String,
             "string_list" => SessionConfigOverrideKind::StringList,
             "string_list_map" => SessionConfigOverrideKind::StringListMap,
-            other => {
-                return Err(CoreError::classified(
-                    ErrorClass::Internal,
-                    "unsupported_config_contract_kind",
-                    format!("Yazelix config contract field {path} has unsupported kind {other}."),
-                    "Report this as a Yazelix internal error.",
-                    serde_json::json!({ "path": contract_path.display().to_string() }),
-                ));
-            }
+            _ => continue,
         };
         parsed.insert(path.clone(), SessionConfigOverrideField { kind });
     }

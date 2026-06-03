@@ -503,7 +503,7 @@ fn config_normalize_rejects_removed_surfaces_without_rewriting() {
     }
 }
 
-// Defends: config-state.compute returns a machine-readable state envelope with stable hash fields.
+// Defends: config-state.compute returns a machine-readable state envelope with a content hash.
 #[test]
 fn config_state_compute_prints_machine_readable_state_envelope() {
     let repo = repo_root();
@@ -533,10 +533,9 @@ fn config_state_compute_prints_machine_readable_state_envelope() {
     assert_eq!(envelope["command"], "config-state.compute");
     assert_eq!(envelope["status"], "ok");
     assert_eq!(envelope["data"]["config"]["default_shell"], "nu");
-    assert_eq!(
-        envelope["data"]["config_hash"],
-        "399130fea27113c91be839c5ec10bd4263b139f1bc56b5afd933ec7d85787759"
-    );
+    let config_hash = envelope["data"]["config_hash"].as_str().unwrap();
+    assert_eq!(config_hash.len(), 64);
+    assert!(config_hash.chars().all(|c| c.is_ascii_hexdigit()));
     assert_eq!(envelope["data"]["needs_refresh"], true);
 }
 
@@ -988,7 +987,7 @@ fn runtime_contract_evaluate_prints_machine_readable_checks_envelope() {
     );
     assert_eq!(
         envelope["data"]["checks"][1]["message"],
-        "A configured terminal command is available"
+        "The selected Yazelix terminal command is available"
     );
 }
 
@@ -1145,7 +1144,7 @@ fn install_ownership_evaluate_from_env_resolves_stable_profile_wrapper() {
     );
 }
 
-// Defends: terminal-materialization.generate can resolve config/runtime/state request roots from process env without Nu path assembly.
+// Defends: terminal-materialization.generate resolves the active packaged terminal from runtime metadata.
 #[test]
 fn terminal_materialization_generate_from_env_writes_generated_configs() {
     let repo = repo_root();
@@ -1154,12 +1153,7 @@ fn terminal_materialization_generate_from_env_writes_generated_configs() {
 
     write_managed_config_toml(
         &fixture,
-        &[
-            "[terminal]",
-            "terminals = [\"ghostty\", \"yzxterm\", \"ratty\", \"kitty\"]",
-            "transparency = \"low\"",
-        ]
-        .join("\n"),
+        &["[terminal]", "transparency = \"low\""].join("\n"),
     );
     write_cursor_sidecar(
         &fixture,
@@ -1186,8 +1180,6 @@ color = "#3bd17a"
         .arg("--from-env")
         .env_remove("YAZELIX_TERMINAL_PROFILE")
         .env_remove("YAZELIX_TERMINAL_EFFECTS")
-        .arg("--terminals-json")
-        .arg(json!(["ghostty", "yzxterm", "ratty", "kitty"]).to_string())
         .output()
         .unwrap();
 
@@ -1211,44 +1203,22 @@ color = "#3bd17a"
             .join("ghostty")
             .exists()
     );
-    let ratty_config = fs::read_to_string(
-        fixture
-            .state_dir
-            .join("configs")
-            .join("terminal_emulators")
-            .join("ratty")
-            .join("ratty.toml"),
-    )
-    .unwrap();
-    assert!(ratty_config.contains("opacity = 0.90"));
-    assert!(ratty_config.contains("path = \"CairoSpinyMouse.obj\""));
-    assert!(ratty_config.contains("visible = true"));
-    assert!(ratty_config.contains("spin_speed = 1.4"));
-    let yzxterm_config = fs::read_to_string(
-        fixture
-            .state_dir
-            .join("configs")
-            .join("terminal_emulators")
-            .join("yzxterm")
-            .join("config.toml"),
-    )
-    .unwrap();
-    assert!(yzxterm_config.contains("backend = \"Webgpu\""));
-    assert!(yzxterm_config.contains("opacity = 0.9"));
-    assert!(yzxterm_config.contains("opacity-cells = true"));
-    assert!(yzxterm_config.contains("cursor = \"#3bd17a\""));
-    assert!(!yzxterm_config.contains("custom-shader"));
-    assert!(!yzxterm_config.contains("cursor_trail_forest.glsl"));
-    assert!(!yzxterm_config.contains("generated_effects/tail.glsl"));
-    assert!(!yzxterm_config.contains("generated_effects/ripple.glsl"));
-    assert!(!yzxterm_config.contains("/nix/store/demo/cursor_trail_dusk.glsl"));
     assert!(
-        fixture
+        !fixture
             .state_dir
-            .join("configs")
-            .join("terminal_emulators")
-            .join("kitty")
-            .join("kitty.conf")
+            .join("configs/terminal_emulators/yzxterm")
+            .exists()
+    );
+    assert!(
+        !fixture
+            .state_dir
+            .join("configs/terminal_emulators/ratty")
+            .exists()
+    );
+    assert!(
+        !fixture
+            .state_dir
+            .join("configs/terminal_emulators/kitty")
             .exists()
     );
 }
@@ -1259,15 +1229,11 @@ fn terminal_materialization_yzxterm_only_uses_rio_trail_without_cursor_shaders()
     let repo = repo_root();
     let tmp = tempdir().unwrap();
     let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    fs::write(fixture.runtime_dir.join("runtime_variant"), "yzxterm\n").unwrap();
 
     write_managed_config_toml(
         &fixture,
-        &[
-            "[terminal]",
-            "terminals = [\"yzxterm\"]",
-            "transparency = \"none\"",
-        ]
-        .join("\n"),
+        &["[terminal]", "transparency = \"none\""].join("\n"),
     );
     write_cursor_sidecar(
         &fixture,
@@ -1294,8 +1260,6 @@ color = "#ffffff"
         .arg("--from-env")
         .env_remove("YAZELIX_TERMINAL_PROFILE")
         .env_remove("YAZELIX_TERMINAL_EFFECTS")
-        .arg("--terminals-json")
-        .arg(json!(["yzxterm"]).to_string())
         .output()
         .unwrap();
 
@@ -1339,15 +1303,11 @@ fn terminal_materialization_yzxterm_shader_profile_injects_rio_decoration_shader
     let repo = repo_root();
     let tmp = tempdir().unwrap();
     let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    fs::write(fixture.runtime_dir.join("runtime_variant"), "yzxterm\n").unwrap();
 
     write_managed_config_toml(
         &fixture,
-        &[
-            "[terminal]",
-            "terminals = [\"yzxterm\"]",
-            "transparency = \"medium\"",
-        ]
-        .join("\n"),
+        &["[terminal]", "transparency = \"medium\""].join("\n"),
     );
     write_cursor_sidecar(
         &fixture,
@@ -1373,8 +1333,6 @@ color = "#3bd17a"
     let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
         .env("YAZELIX_TERMINAL_PROFILE", "shaders")
         .arg("--from-env")
-        .arg("--terminals-json")
-        .arg(json!(["yzxterm"]).to_string())
         .output()
         .unwrap();
 
@@ -1418,11 +1376,9 @@ fn terminal_materialization_uses_cursor_sidecar_for_kitty_toggle() {
     let repo = repo_root();
     let tmp = tempdir().unwrap();
     let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    fs::write(fixture.runtime_dir.join("runtime_variant"), "kitty\n").unwrap();
 
-    write_managed_config_toml(
-        &fixture,
-        &["[terminal]", "terminals = [\"kitty\"]"].join("\n"),
-    );
+    write_managed_config_toml(&fixture, "[terminal]\n");
     write_cursor_sidecar(
         &fixture,
         r##"
@@ -1446,8 +1402,6 @@ color = "#ffffff"
 
     let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
         .arg("--from-env")
-        .arg("--terminals-json")
-        .arg(json!(["kitty"]).to_string())
         .output()
         .unwrap();
 

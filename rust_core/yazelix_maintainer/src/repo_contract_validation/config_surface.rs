@@ -371,10 +371,21 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         .get("exec")
         .and_then(JsonValue::as_str)
         .unwrap_or_default();
+    let actual_name = entry
+        .get("name")
+        .and_then(JsonValue::as_str)
+        .unwrap_or_default();
     let mut errors = Vec::new();
 
     if !is_present {
-        errors.push("Home Manager Linux desktop entry must be generated".to_string());
+        errors.push("Home Manager Linux Ghostty desktop entry must be generated".to_string());
+    }
+
+    if actual_name != "Yazelix - Ghostty" {
+        errors.push(format!(
+            "Home Manager Ghostty desktop entry name mismatch: expected Yazelix - Ghostty, got {}",
+            format_json_value(&JsonValue::String(actual_name.to_string()))
+        ));
     }
 
     if entry
@@ -383,7 +394,7 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         .unwrap_or(false)
     {
         errors.push(
-            "Home Manager desktop entry must set terminal = false so Yazelix owns the configured terminal launch"
+            "Home Manager desktop entry must set terminal = false so Yazelix owns the selected terminal launch"
                 .to_string(),
         );
     }
@@ -398,6 +409,10 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         .get("exec")
         .and_then(JsonValue::as_str)
         .unwrap_or_default();
+    let shader_name = shader_entry
+        .get("name")
+        .and_then(JsonValue::as_str)
+        .unwrap_or_default();
     let shader_session_profile = shader_entry
         .get("sessionProfile")
         .and_then(JsonValue::as_str)
@@ -406,6 +421,12 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         errors.push(format!(
             "Home Manager shader yzxterm profile desktop entry Exec mismatch: expected env YAZELIX_TERMINAL_PROFILE=shaders /tmp/profile/bin/yzx desktop launch, got {}",
             format_json_value(&JsonValue::String(shader_exec.to_string()))
+        ));
+    }
+    if shader_name != "Yazelix - yzxterm" {
+        errors.push(format!(
+            "Home Manager yzxterm desktop entry name mismatch: expected Yazelix - yzxterm, got {}",
+            format_json_value(&JsonValue::String(shader_name.to_string()))
         ));
     }
     if shader_session_profile != "shaders" {
@@ -685,14 +706,24 @@ fn build_home_manager_desktop_entry_expr(
             "      {{ config.programs.yazelix.yzxterm_profile = \"{}\"; }}",
             escape_nix_string(profile)
         ));
+        lines.push("      { config.programs.yazelix.terminal = \"yzxterm\"; }".to_string());
     }
+    let entry_key = if yzxterm_profile.is_some() {
+        "com.yazelix.Yazelix.Yzxterm"
+    } else {
+        "com.yazelix.Yazelix.Ghostty"
+    };
     lines.extend([
         "    ];".to_string(),
         "  };".to_string(),
+        format!("  entryKey = \"{}\";", entry_key),
+        "  entries = eval.config.xdg.desktopEntries;".to_string(),
+        "  entry = if builtins.hasAttr entryKey entries then builtins.getAttr entryKey entries else {};".to_string(),
         "in {".to_string(),
-        "  present = builtins.hasAttr \"yazelix\" eval.config.xdg.desktopEntries;".to_string(),
-        "  exec = eval.config.xdg.desktopEntries.yazelix.exec or \"\";".to_string(),
-        "  terminal = eval.config.xdg.desktopEntries.yazelix.terminal or false;".to_string(),
+        "  present = builtins.hasAttr entryKey entries;".to_string(),
+        "  name = entry.name or \"\";".to_string(),
+        "  exec = entry.exec or \"\";".to_string(),
+        "  terminal = entry.terminal or false;".to_string(),
         "  sessionProfile = eval.config.home.sessionVariables.YAZELIX_TERMINAL_PROFILE or \"\";"
             .to_string(),
         "}".to_string(),

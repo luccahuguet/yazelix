@@ -7,6 +7,9 @@ use crate::install_ownership_env::install_ownership_request_from_env_with_runtim
 use crate::install_ownership_report::{
     InstallOwnershipEvaluateData, evaluate_install_ownership_report,
 };
+use crate::terminal_variant::{
+    active_terminal_from_runtime_dir, terminal_desktop_entry_file_name, terminal_desktop_entry_name,
+};
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -80,8 +83,9 @@ pub(super) fn run_desktop_install(print_path: bool) -> Result<i32, CoreError> {
     let xdg_data_home = xdg_data_home(&home_dir);
     let applications_dir = xdg_data_home.join("applications");
     let icons_root = xdg_data_home.join("icons").join("hicolor");
-    let desktop_path = applications_dir.join("com.yazelix.Yazelix.desktop");
-    let desktop_entry = render_desktop_entry(&launcher_path);
+    let active_terminal = active_terminal_from_runtime_dir(&runtime_dir)?;
+    let desktop_path = applications_dir.join(terminal_desktop_entry_file_name(&active_terminal));
+    let desktop_entry = render_desktop_entry(&launcher_path, &active_terminal);
 
     fs::create_dir_all(&applications_dir).map_err(|source| {
         CoreError::io(
@@ -126,7 +130,9 @@ pub(super) fn run_desktop_uninstall(print_path: bool) -> Result<i32, CoreError> 
     let xdg_data_home = xdg_data_home(&home_dir);
     let applications_dir = xdg_data_home.join("applications");
     let icons_root = xdg_data_home.join("icons").join("hicolor");
-    let desktop_path = applications_dir.join("com.yazelix.Yazelix.desktop");
+    let runtime_dir = runtime_dir_from_env()?;
+    let active_terminal = active_terminal_from_runtime_dir(&runtime_dir)?;
+    let desktop_path = applications_dir.join(terminal_desktop_entry_file_name(&active_terminal));
 
     if desktop_path.exists() {
         fs::remove_file(&desktop_path).map_err(|source| {
@@ -244,7 +250,6 @@ pub(super) fn run_desktop_launch() -> Result<i32, CoreError> {
         Some(&home_dir_string),
         config_override_from_env().as_deref(),
         false,
-        None,
         false,
         true,
         DESKTOP_LAUNCH_CLEARED_ENV_KEYS,
@@ -287,12 +292,12 @@ fn quote_desktop_exec_arg(value: &Path) -> String {
     format!("\"{escaped}\"")
 }
 
-pub(super) fn render_desktop_entry(launcher_path: &Path) -> String {
+pub(super) fn render_desktop_entry(launcher_path: &Path, active_terminal: &str) -> String {
     [
         "[Desktop Entry]".to_string(),
         "Version=1.4".to_string(),
         "Type=Application".to_string(),
-        "Name=Yazelix".to_string(),
+        format!("Name={}", terminal_desktop_entry_name(active_terminal)),
         "Comment=Yazi + Zellij + Helix integrated terminal environment".to_string(),
         "Icon=yazelix".to_string(),
         format!("StartupWMClass={WINDOW_CLASS}"),

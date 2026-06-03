@@ -149,12 +149,9 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
                 "terminal.config_mode",
                 "yazelix",
             ),
-            selected_terminals: effective_string_list_config(
-                &active_value,
-                &default_value,
-                "terminal.terminals",
-                &["ghostty", "wezterm"],
-            ),
+            active_terminal: crate::terminal_variant::active_terminal_from_runtime_dir(
+                &request.runtime_dir,
+            )?,
             settings_home_manager_read_only: config_owner == ConfigUiPathOwner::HomeManager,
         },
     ));

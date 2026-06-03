@@ -1416,7 +1416,6 @@ fn run_dev_profile(args: &[String]) -> Result<i32, CoreError> {
     let mut desktop = false;
     let mut launch = false;
     let mut clear_cache = false;
-    let mut terminal = String::new();
     let mut verbose = false;
     let mut iter = args.iter();
     while let Some(arg) = iter.next() {
@@ -1424,7 +1423,7 @@ fn run_dev_profile(args: &[String]) -> Result<i32, CoreError> {
             "-h" | "--help" | "help" => {
                 println!("Profile launch sequence and identify bottlenecks");
                 println!(
-                    "Usage: yzx dev profile [--cold] [--desktop] [--launch] [--clear-cache] [--terminal <name>] [--verbose]"
+                    "Usage: yzx dev profile [--cold] [--desktop] [--launch] [--clear-cache] [--verbose]"
                 );
                 return Ok(0);
             }
@@ -1432,12 +1431,6 @@ fn run_dev_profile(args: &[String]) -> Result<i32, CoreError> {
             "--desktop" => desktop = true,
             "--launch" => launch = true,
             "--clear-cache" => clear_cache = true,
-            "-t" | "--terminal" => {
-                terminal = iter
-                    .next()
-                    .cloned()
-                    .ok_or_else(|| CoreError::usage(format!("Missing value after {arg}")))?;
-            }
             "--verbose" => verbose = true,
             other => return Err(CoreError::usage(format!("Unknown profile option {other}"))),
         }
@@ -1469,9 +1462,6 @@ fn run_dev_profile(args: &[String]) -> Result<i32, CoreError> {
         }
         println!("🚀 Profiling managed new-window launch...");
         let mut startup_args = vec!["launch".to_string()];
-        if !terminal.is_empty() {
-            startup_args.extend(["--terminal".to_string(), terminal]);
-        }
         if verbose {
             startup_args.push("--verbose".to_string());
         }

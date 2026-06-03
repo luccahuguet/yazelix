@@ -7,13 +7,12 @@ A Home Manager module for [Yazelix](https://github.com/luccahuguet/yazelix) that
 - **Leaves `settings.jsonc` mutable by default** so users can edit it directly
 - **Can generate `settings.jsonc`** from Home Manager options when `manage_config = true`
 - **Adds `yzx` to the Home Manager profile** through the packaged Yazelix runtime
-- **Selects the packaged terminal runtime variant** with Ghostty by default, Yazelix Terminal as the experimental Rio-derived path, WezTerm and Kitty as stable alternates, and Ratty as an experimental Linux option through `runtime_variant`
-- **Can install additional bundled terminal emulators** through `extra_terminal_variants` without installing duplicate `yzx` wrappers
+- **Selects one packaged terminal** with Ghostty by default, Yazelix Terminal as the experimental Rio-derived path, WezTerm and Kitty as stable alternates, and Ratty as an experimental Linux option through `terminal`
 - **Installs icons and, on Linux, a desktop entry** that target the managed runtime
 - **Keeps the config surface type-safe** with Home Manager validation
 
 Config ownership is configurable: set `programs.yazelix.manage_config = true` only if you want Home Manager to generate and own `~/.config/yazelix/settings.jsonc`
-When `manage_config = true`, the module defaults `programs.yazelix.terminals` to the selected `runtime_variant` first, then `extra_terminal_variants`, then normal fallbacks unless you set an explicit ordered terminal list
+Terminal selection is not stored in `settings.jsonc`; choose it with `programs.yazelix.terminal` or with the flake package output you install
 
 ## What This Module Does NOT Do
 
@@ -65,40 +64,30 @@ If you already have your own Home Manager flake, the minimal setup is:
 {
   programs.yazelix = {
     enable = true;
-    runtime_variant = "ghostty"; # Default; use "kitty", "yzxterm", "wezterm", or Linux-only "ratty" for alternate packaged terminal paths
+    terminal = "ghostty"; # Default; use "kitty", "yzxterm", "wezterm", or Linux-only "ratty" for alternate packaged terminal paths
     yzxterm_profile = "full"; # Default; use "baseline" or "shaders" for Yazelix Terminal profile selection
-    extra_terminal_variants = [ ]; # Optional: install additional terminal packages such as "yzxterm", "ghostty", or "kitty"
     # Customize other options as needed - see example.nix
     # Set manage_config = true if you want Home Manager to own settings.jsonc
   };
 }
 ```
 
-To keep Yazelix Terminal as the primary runtime while also installing Ghostty as a bundled fallback:
+To use Yazelix Terminal as the packaged terminal:
 
 ```nix
 {
   programs.yazelix = {
     enable = true;
-    runtime_variant = "yzxterm";
+    terminal = "yzxterm";
     yzxterm_profile = "shaders";
-    extra_terminal_variants = [ "ghostty" "kitty" ];
-
-    # Only needed when manage_config = true and you want an explicit order
-    terminals = [
-      "yzxterm"
-      "ghostty"
-      "kitty"
-      "wezterm"
-    ];
   };
 }
 ```
 
-`runtime_variant` controls the primary packaged Yazelix runtime. `yzxterm_profile` controls Yazelix Terminal's generated profile for activation, desktop launches, and new shell sessions: `full` keeps Rio trail cursor without custom shaders, `baseline` disables effects, and `shaders` enables the generated Yazelix cursor shader chain. `extra_terminal_variants` installs only additional terminal emulator commands into the Home Manager profile, so it does not collide with the profile-owned `yzx` wrapper
+`terminal` controls the packaged terminal Yazelix launches. There is no fallback to another packaged terminal when this option is selected; a missing or mispackaged terminal fails clearly. `yzxterm_profile` controls Yazelix Terminal's generated profile for activation, desktop launches, and new shell sessions: `full` keeps Rio trail cursor without custom shaders, `baseline` disables effects, and `shaders` enables the generated Yazelix cursor shader chain
 
 Maintainers dogfooding local Yazelix Terminal changes can temporarily point the
-module at the fast yzxterm package while keeping `runtime_variant = "yzxterm"`:
+module at the fast yzxterm package while keeping `terminal = "yzxterm"`:
 
 ```nix
 {
@@ -266,7 +255,7 @@ home-manager switch
 This creates:
 - the `yzx` command in your Home Manager profile, typically `~/.nix-profile/bin/yzx`
 - `~/.config/yazelix/settings.jsonc`, bootstrapped as a mutable file by default or Home Manager-generated when `manage_config = true`
-- on Linux, a Home Manager profile desktop entry, typically `~/.nix-profile/share/applications/yazelix.desktop`
+- on Linux, a Home Manager profile desktop entry such as `~/.nix-profile/share/applications/com.yazelix.Yazelix.Ghostty.desktop`
 
 Then open a fresh shell and run:
 
@@ -311,7 +300,7 @@ Manual validation on April 8, 2026 covered both a lived-in account and a throwaw
 - Set `programs.yazelix.manage_config = true` only if you want Home Manager to own generated Yazelix settings through a symlink into the Home Manager profile
 - The managed `yzx` command resolves through the Home Manager profile, typically `~/.nix-profile/bin/yzx`, rather than through a legacy user-local wrapper path.
 - The active runtime root resolves directly from the packaged Yazelix runtime in the Home Manager profile/store path, not through a manual-install runtime symlink.
-- On Linux, the Home Manager desktop entry comes from the Home Manager profile, typically `~/.nix-profile/share/applications/yazelix.desktop`, rather than from `yzx desktop install`.
+- On Linux, the Home Manager desktop entry comes from the Home Manager profile, typically `~/.nix-profile/share/applications/com.yazelix.Yazelix.Ghostty.desktop`, rather than from `yzx desktop install`.
 - A stale legacy `~/.local/bin/yzx` wrapper can still shadow the profile-owned command on `PATH` after migration; archive it with `yzx home_manager prepare --apply` or remove it manually so `yzx` resolves to the Home Manager profile path.
 - Old manual desktop-entry files under `~/.local/share/applications/` can linger after migration; they are not Home Manager-owned and will shadow the Home Manager profile entry until you remove them.
 - Host shell hooks are optional for the Home Manager path. Launch through `yzx` or, on Linux, the Home Manager desktop entry; do not expect `home-manager switch` to rewrite `.bashrc` or `~/.config/nushell/config.nu`.
@@ -347,6 +336,7 @@ The prepare command archives the common file-based takeover blockers and handoff
 - standalone default-profile `yazelix` entries from `nix profile list --json`
 - `~/.local/bin/yzx` when it is the legacy Yazelix manual wrapper
 - `~/.local/share/applications/com.yazelix.Yazelix.desktop`
+- `~/.local/share/applications/yazelix.desktop`
 - `~/.local/share/icons/hicolor/*/apps/yazelix.png`
 
 4. **Apply the Home Manager configuration:**
@@ -359,7 +349,7 @@ If Home Manager still reports an unexpected unmanaged-file collision outside tho
 5. **Verify the Home Manager-owned surfaces:**
    ```bash
    readlink -f ~/.nix-profile/bin/yzx
-   ls ~/.nix-profile/share/applications/yazelix.desktop
+   ls ~/.nix-profile/share/applications/com.yazelix.Yazelix.Ghostty.desktop
    yzx --version-short
    ```
 
@@ -395,7 +385,7 @@ If Home Manager still reports an unexpected unmanaged-file collision outside tho
 - Check that `~/.config/yazelix/settings.jsonc` was created
 - By default, that file should be a normal writable file, not a Home Manager store symlink
 - Check that `~/.nix-profile/bin/yzx` exists and that your Home Manager profile bin dir is on your `PATH`
-- On Linux, check that `~/.nix-profile/share/applications/yazelix.desktop` exists if you expect desktop-launcher integration through Home Manager
+- On Linux, check that `~/.nix-profile/share/applications/com.yazelix.Yazelix.Ghostty.desktop` exists if you expect desktop-launcher integration through Home Manager
 - Verify Home Manager configuration syntax
 - Run `home-manager switch` to apply changes
 

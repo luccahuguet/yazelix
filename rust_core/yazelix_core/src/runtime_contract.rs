@@ -1,11 +1,11 @@
 use crate::bridge::{CoreError, ErrorClass};
+use crate::terminal_variant::{SUPPORTED_TERMINALS, terminal_command_name, terminal_display_name};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const SUPPORTED_TERMINALS: &[&str] = &["ghostty", "yzxterm", "wezterm", "ratty", "kitty"];
 const NIXGL_WRAPPER_CANDIDATES: &[(&str, &[&str])] = &[
     ("nixGL", &["libexec", "nixGL"]),
     ("nixGLDefault", &["libexec", "nixGLDefault"]),
@@ -558,15 +558,22 @@ fn check_terminal_support(request: &TerminalSupportCheckRequest) -> RuntimeCheck
 
     let candidates = detect_terminal_candidates(&request.terminals, &request.command_search_paths);
     if candidates.is_empty() {
+        let terminal = request
+            .terminals
+            .first()
+            .map(String::as_str)
+            .unwrap_or("unknown");
         return build_runtime_check(
             "launch_terminal_support",
             "error",
             "error",
             &request.owner_surface,
-            "None of the configured terminal binaries are available in the active Yazelix runtime or PATH.".to_string(),
+            format!(
+                "Selected Yazelix terminal variant '{terminal}' is not available in the active runtime or PATH."
+            ),
             None,
             Some(
-                "Use the terminal shipped by the active Yazelix runtime, install one of the other configured terminals on PATH, or adjust [terminal].terminals to match what is available."
+                "Reinstall Yazelix so the selected terminal variant is packaged correctly, or install a different Yazelix terminal variant."
                     .to_string(),
             ),
             Some("host-dependency".to_string()),
@@ -581,7 +588,7 @@ fn check_terminal_support(request: &TerminalSupportCheckRequest) -> RuntimeCheck
         "ok",
         "info",
         &request.owner_surface,
-        "A configured terminal command is available".to_string(),
+        "The selected Yazelix terminal command is available".to_string(),
         None,
         None,
         None,
@@ -668,13 +675,6 @@ fn detect_terminal_candidates(
             terminal,
         })
         .collect()
-}
-
-fn terminal_command_name(terminal: &str) -> &str {
-    match terminal {
-        "yzxterm" => "yazelix-terminal-desktop",
-        other => other,
-    }
 }
 
 fn command_exists(command: &str, command_search_paths: &[PathBuf]) -> bool {
@@ -766,17 +766,6 @@ fn resolve_nixgl_launch_context(
     NixglLaunchContext {
         source: "none",
         command: None,
-    }
-}
-
-fn terminal_display_name(terminal: &str) -> String {
-    match terminal {
-        "ghostty" => "Ghostty".to_string(),
-        "wezterm" => "WezTerm".to_string(),
-        "yzxterm" => "Yazelix Terminal".to_string(),
-        "ratty" => "Ratty".to_string(),
-        "kitty" => "Kitty".to_string(),
-        _ => terminal.to_string(),
     }
 }
 
@@ -897,7 +886,7 @@ mod tests {
         assert_eq!(data.checks.len(), 2);
         assert_eq!(
             data.checks[0].message,
-            "A configured terminal command is available"
+            "The selected Yazelix terminal command is available"
         );
         assert_eq!(
             data.checks[0]

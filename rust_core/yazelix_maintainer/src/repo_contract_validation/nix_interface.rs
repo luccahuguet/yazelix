@@ -137,14 +137,14 @@ pub fn validate_nix_customization_api(repo_root: &Path) -> Result<ValidationRepo
     );
     require_json_bool(
         object,
-        "home_manager_extra_terminal_installs_package",
-        "Home Manager extra_terminal_variants must install additional terminal packages without replacing the Yazelix package",
+        "home_manager_terminal_option_selects_yzxterm",
+        "Home Manager programs.yazelix.terminal must select the packaged terminal variant",
         &mut report.errors,
     );
     require_json_bool(
         object,
-        "home_manager_extra_terminal_order",
-        "Home Manager extra_terminal_variants must be inserted after the primary runtime terminal in default terminal order",
+        "home_manager_terminal_option_omits_fallback_terminal_packages",
+        "Home Manager terminal selection must not install additional terminal fallback packages",
         &mut report.errors,
     );
     require_json_bool(
@@ -296,7 +296,7 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "      }".to_string(),
         "    ];".to_string(),
         "  };".to_string(),
-        "  hmExtraTerminals = flake.inputs.home-manager.lib.homeManagerConfiguration {".to_string(),
+        "  hmYzxterm = flake.inputs.home-manager.lib.homeManagerConfiguration {".to_string(),
         "    inherit pkgs;".to_string(),
         "    modules = [".to_string(),
         "      flake.homeManagerModules.yazelix".to_string(),
@@ -306,8 +306,7 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "        home.stateVersion = \"24.11\";".to_string(),
         "        programs.yazelix.enable = true;".to_string(),
         "        programs.yazelix.manage_config = true;".to_string(),
-        "        programs.yazelix.runtime_variant = \"yzxterm\";".to_string(),
-        "        programs.yazelix.extra_terminal_variants = [ \"ghostty\" \"kitty\" ];".to_string(),
+        "        programs.yazelix.terminal = \"yzxterm\";".to_string(),
         "      }".to_string(),
         "    ];".to_string(),
         "  };".to_string(),
@@ -390,8 +389,8 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "  host_default_tools_not_exported = !(builtins.elem \"mise\" steelBundledRegistry.exportedCommands) && !(builtins.elem \"tombi\" steelBundledRegistry.exportedCommands);".to_string(),
         "  host_default_tools_can_be_bundled = hostDefaultToolsBundledRegistry.manifest.mise.source == \"bundled\" && hostDefaultToolsBundledRegistry.manifest.tombi.source == \"bundled\" && builtins.elem \"mise\" hostDefaultToolsBundledRegistry.exportedCommands && builtins.elem \"tombi\" hostDefaultToolsBundledRegistry.exportedCommands;".to_string(),
         "  home_manager_has_package = builtins.length hm.config.home.packages > 0;".to_string(),
-        "  home_manager_extra_terminal_installs_package = builtins.any (pkg: (pkg.meta.mainProgram or \"\") == \"yzx\") hmExtraTerminals.config.home.packages && builtins.any (pkg: pkgs.lib.hasPrefix \"ghostty-\" (pkg.name or \"\")) hmExtraTerminals.config.home.packages && builtins.any (pkg: pkgs.lib.hasPrefix \"kitty-\" (pkg.name or \"\")) hmExtraTerminals.config.home.packages;".to_string(),
-        "  home_manager_extra_terminal_order = hmExtraTerminals.config.programs.yazelix.terminals == [ \"yzxterm\" \"ghostty\" \"kitty\" \"wezterm\" ];".to_string(),
+        "  home_manager_terminal_option_selects_yzxterm = hmYzxterm.config.programs.yazelix.terminal == \"yzxterm\" && builtins.any (pkg: (pkg.meta.mainProgram or \"\") == \"yzx\") hmYzxterm.config.home.packages;".to_string(),
+        "  home_manager_terminal_option_omits_fallback_terminal_packages = !(builtins.any (pkg: let name = pkg.name or \"\"; in pkgs.lib.hasPrefix \"ghostty-\" name || pkgs.lib.hasPrefix \"kitty-\" name || pkgs.lib.hasPrefix \"wezterm-\" name || pkgs.lib.hasPrefix \"ratty-\" name) hmYzxterm.config.home.packages);".to_string(),
         "  invalid_runtime_tool_rejected = !invalidRuntimeTool.success;".to_string(),
         "  unsupported_component_rejected = !unsupportedComponent.success;".to_string(),
         "  kgp_zellij_owns_cargo_deps = (kgpZellij.version or \"\") == \"0.44.3\" && (kgpZellij.cargoDeps.name or \"\") == \"zellij-0.44.3-vendor\";".to_string(),

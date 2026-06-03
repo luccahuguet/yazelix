@@ -21,6 +21,7 @@ use crate::runtime_materialization::{
     RuntimeMaterializationRepairEvaluateRequest, repair_runtime_materialization,
 };
 use crate::settings_surface::render_default_settings_jsonc;
+use crate::terminal_variant::active_terminal_from_runtime_dir;
 use crate::user_config_paths;
 use crate::workspace_asset_contract::{
     WorkspaceAssetEvaluateRequest, evaluate_workspace_asset_report,
@@ -326,11 +327,12 @@ fn compute_doctor_report_from_env() -> Result<DoctorReportData, CoreError> {
     );
     let config_findings = collect_config_doctor_findings(&runtime_dir, &config_dir);
     let native_config_findings = collect_native_config_status_findings(
+        &runtime_dir,
         &home_dir,
         &config_dir,
         &state_dir,
         normalized_config.as_ref(),
-    );
+    )?;
     let workspace_asset_findings =
         collect_workspace_asset_doctor_findings(&runtime_dir, &state_dir);
     let zellij_findings = collect_zellij_plugin_health_findings(normalized_config.as_ref());
@@ -410,24 +412,10 @@ fn collect_runtime_doctor_findings(
     let shared_runtime = if normalized_config.is_some() {
         match runtime_materialization_plan_request_from_env(config_override_from_env().as_deref()) {
             Ok(request) => match plan_runtime_materialization(&request) {
-                Ok(plan) => {
-                    let terminals = plan
-                        .config_state
-                        .config
-                        .get("terminals")
-                        .and_then(Value::as_array)
-                        .map(|items| {
-                            items
-                                .iter()
-                                .filter_map(Value::as_str)
-                                .map(ToString::to_string)
-                                .collect::<Vec<_>>()
-                        })
-                        .filter(|items| !items.is_empty())
-                        .unwrap_or_else(|| vec!["ghostty".to_string()]);
-                    Some(SharedRuntimePreflightInput {
+                Ok(plan) => match active_terminal_from_runtime_dir(runtime_dir) {
+                    Ok(active_terminal) => Some(SharedRuntimePreflightInput {
                         zellij_layout_path: PathBuf::from(plan.zellij_layout_path),
-                        terminals,
+                        terminals: vec![active_terminal],
                         startup_script_path: runtime_dir
                             .join("nushell")
                             .join("scripts")
@@ -441,8 +429,17 @@ fn collect_runtime_doctor_findings(
                             .map(|raw| env::split_paths(&raw).collect())
                             .unwrap_or_default(),
                         platform_name: platform_name_for_runtime_doctor(),
-                    })
-                }
+                    }),
+                    Err(error) => {
+                        extra.push(json!({
+                                "status": "error",
+                                "message": "Could not resolve the selected packaged terminal from runtime metadata",
+                                "details": error.message(),
+                                "fix_available": false
+                            }));
+                        None
+                    }
+                },
                 Err(error) => {
                     extra.push(json!({
                         "status": "error",
@@ -568,11 +565,12 @@ fn collect_config_doctor_findings(runtime_dir: &Path, config_dir: &Path) -> Vec<
 }
 
 fn collect_native_config_status_findings(
+    runtime_dir: &Path,
     home_dir: &Path,
     config_dir: &Path,
     state_dir: &Path,
     normalized_config: Option<&serde_json::Map<String, Value>>,
-) -> Vec<Value> {
+) -> Result<Vec<Value>, CoreError> {
     let settings_path = user_config_paths::main_config(config_dir);
     let entries = classify_native_config_statuses(&NativeConfigStatusRequest {
         home_dir: home_dir.to_path_buf(),
@@ -585,14 +583,10 @@ fn collect_native_config_status_findings(
             "terminal_config_mode",
             "yazelix",
         ),
-        selected_terminals: normalized_string_list_config(
-            normalized_config,
-            "terminals",
-            &["ghostty", "wezterm"],
-        ),
+        active_terminal: active_terminal_from_runtime_dir(runtime_dir)?,
         settings_home_manager_read_only: path_owned_by_home_manager(&settings_path),
     });
-    vec![native_config_status_finding(entries)]
+    Ok(vec![native_config_status_finding(entries)])
 }
 
 fn normalized_string_config(
@@ -606,31 +600,6 @@ fn normalized_string_config(
         .filter(|value| !value.trim().is_empty())
         .unwrap_or(fallback)
         .to_string()
-}
-
-fn normalized_string_list_config(
-    config: Option<&serde_json::Map<String, Value>>,
-    key: &str,
-    fallback: &[&str],
-) -> Vec<String> {
-    let values = config
-        .and_then(|config| config.get(key))
-        .and_then(Value::as_array)
-        .map(|values| {
-            values
-                .iter()
-                .filter_map(Value::as_str)
-                .map(str::trim)
-                .filter(|value| !value.is_empty())
-                .map(str::to_string)
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
-    if values.is_empty() {
-        fallback.iter().map(|value| (*value).to_string()).collect()
-    } else {
-        values
-    }
 }
 
 fn native_config_status_finding(entries: Vec<NativeConfigStatusEntry>) -> Value {
@@ -1703,14 +1672,16 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let mut config = serde_json::Map::new();
         config.insert("terminal_config_mode".to_string(), json!("user"));
-        config.insert("terminals".to_string(), json!(["ghostty"]));
+        std::fs::write(tmp.path().join("runtime_variant"), "ghostty\n").unwrap();
 
         let findings = collect_native_config_status_findings(
+            tmp.path(),
             &tmp.path().join("home"),
             &tmp.path().join("config"),
             &tmp.path().join("state"),
             Some(&config),
-        );
+        )
+        .unwrap();
 
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0]["status"], "error");
