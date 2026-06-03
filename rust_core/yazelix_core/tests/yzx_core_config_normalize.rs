@@ -1184,6 +1184,8 @@ color = "#3bd17a"
 
     let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
         .arg("--from-env")
+        .env_remove("YAZELIX_TERMINAL_PROFILE")
+        .env_remove("YAZELIX_TERMINAL_EFFECTS")
         .arg("--terminals-json")
         .arg(json!(["ghostty", "yzxterm", "ratty", "kitty"]).to_string())
         .output()
@@ -1290,6 +1292,8 @@ color = "#ffffff"
 
     let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
         .arg("--from-env")
+        .env_remove("YAZELIX_TERMINAL_PROFILE")
+        .env_remove("YAZELIX_TERMINAL_EFFECTS")
         .arg("--terminals-json")
         .arg(json!(["yzxterm"]).to_string())
         .output()
