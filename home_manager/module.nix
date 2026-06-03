@@ -6,6 +6,7 @@
   mkYazelixPackage ? null,
   nixgl ? null,
   pkgs,
+  yazelixCursorsPackage ? null,
   yazelixTerminalPackage ? null,
   ...
 }:
@@ -147,6 +148,14 @@ let
   ];
   runtimeYzxCore = "${yazelixPackage}/libexec/yzx_core";
   runtimeYzxControl = "${yazelixPackage}/libexec/yzx_control";
+  cursorGeneratorPackage =
+    if cfg.manage_cursor_config && componentEnabled "cursors" && yazelixCursorsPackage != null then
+      [ yazelixCursorsPackage ]
+    else
+      [ ];
+  cursorGeneratorActivation = lib.optionalString (cursorGeneratorPackage != [ ]) ''
+        $DRY_RUN_CMD ${yazelixCursorsPackage}/bin/yzc --config-dir ${lib.escapeShellArg "${config.xdg.configHome}/yazelix_ghostty_cursors"} generate ghostty >/dev/null
+  '';
   stateRoot = "${config.xdg.dataHome}/yazelix";
   logsPath = "${stateRoot}/logs";
   managedConfigRoot = "${config.xdg.configHome}/yazelix";
@@ -924,7 +933,7 @@ in
   config = mkIf cfg.enable (mkMerge [
     {
       # Expose the packaged Yazelix runtime through the Home Manager profile.
-      home.packages = [ yazelixPackage ] ++ extraTerminalVariantPackages;
+      home.packages = [ yazelixPackage ] ++ extraTerminalVariantPackages ++ cursorGeneratorPackage;
       home.sessionVariables = mkIf (cfg.yzxterm_profile != "full") {
         YAZELIX_TERMINAL_PROFILE = mkDefault cfg.yzxterm_profile;
       };
@@ -972,6 +981,7 @@ in
 
         $DRY_RUN_CMD ${runtimeYzxCore} runtime-materialization.repair --from-env --force --summary
         $DRY_RUN_CMD ${runtimeYzxCore} terminal-materialization.generate --from-env --terminals-json ${lib.escapeShellArg (builtins.toJSON cfg.terminals)} >/dev/null
+${cursorGeneratorActivation}
         $DRY_RUN_CMD env YAZELIX_QUIET_MODE=true ${runtimeYzxControl} generate_shell_initializers
       '';
     }

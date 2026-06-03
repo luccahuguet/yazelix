@@ -131,6 +131,8 @@
         _module.args.nixgl = nixgl;
         _module.args.fenixPkgs = fenix.packages.${pkgs.stdenv.hostPlatform.system};
         _module.args.mkYazelixPackage = mkYazelix pkgs.stdenv.hostPlatform.system;
+        _module.args.yazelixCursorsPackage =
+          yazelixCursors.packages.${pkgs.stdenv.hostPlatform.system}.yazelix_cursors;
         _module.args.yazelixTerminalPackage =
           yazelixTerminal.packages.${pkgs.stdenv.hostPlatform.system}.yazelix-terminal;
         imports = [ ./home_manager/module.nix ];
