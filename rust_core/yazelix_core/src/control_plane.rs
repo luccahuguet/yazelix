@@ -483,6 +483,19 @@ pub fn default_shell_from_config(normalized: &JsonMap<String, JsonValue>) -> Str
         .to_lowercase()
 }
 
+pub fn zellij_default_shell_from_runtime(runtime_dir: &Path, default_shell: &str) -> String {
+    if default_shell.eq_ignore_ascii_case("nu") {
+        runtime_dir
+            .join("shells")
+            .join("posix")
+            .join("yazelix_nu.sh")
+            .to_string_lossy()
+            .to_string()
+    } else {
+        default_shell.to_string()
+    }
+}
+
 pub fn runtime_env_request(
     runtime_dir: PathBuf,
     normalized: &JsonMap<String, JsonValue>,

@@ -4,7 +4,9 @@ use crate::action_registry::{
 };
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
-use crate::control_plane::{config_dir_from_env, home_dir_from_env, state_dir_from_env};
+use crate::control_plane::{
+    config_dir_from_env, home_dir_from_env, state_dir_from_env, zellij_default_shell_from_runtime,
+};
 use crate::popup_runtime_command::popup_command_argv_for_yazelix_runtime;
 use crate::runtime_component_enabled;
 use crate::terminal_variant::active_terminal_from_runtime_dir;
@@ -210,7 +212,7 @@ pub fn generate_zellij_materialization(
         .join("configs")
         .join("zellij")
         .join("layouts");
-    let resolved_default_shell = resolve_zellij_default_shell(
+    let resolved_default_shell = zellij_default_shell_from_runtime(
         &request.runtime_dir,
         string_config(&config, "default_shell", "nu"),
     );
@@ -603,19 +605,6 @@ fn normalize_config_strings(
         ));
     }
     Ok(normalized)
-}
-
-fn resolve_zellij_default_shell(runtime_dir: &Path, default_shell: &str) -> String {
-    if default_shell.eq_ignore_ascii_case("nu") {
-        runtime_dir
-            .join("shells")
-            .join("posix")
-            .join("yazelix_nu.sh")
-            .to_string_lossy()
-            .to_string()
-    } else {
-        default_shell.to_string()
-    }
 }
 
 fn resolve_base_config_source() -> Result<ZellijBaseConfigSource, CoreError> {

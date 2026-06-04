@@ -192,6 +192,28 @@ pub fn evaluate_startup_launch_preflight(
     }
 }
 
+pub fn evaluate_startup_working_dir_preflight(working_dir: PathBuf) -> Result<PathBuf, CoreError> {
+    let contract = evaluate_runtime_contract(&RuntimeContractEvaluateRequest {
+        working_dir: Some(WorkingDirCheckRequest {
+            kind: WorkingDirKind::Startup,
+            path: working_dir,
+        }),
+        ..Default::default()
+    })?;
+    let wd = find_runtime_check(&contract.checks, "startup_working_dir")?;
+    require_runtime_contract_check_ok(wd)?;
+    let resolved = wd.path.clone().ok_or_else(|| {
+        CoreError::classified(
+            ErrorClass::Internal,
+            "preflight_missing_path",
+            "Working directory check succeeded but omitted a resolved path.",
+            "Report this as a Yazelix internal error.",
+            json!({}),
+        )
+    })?;
+    Ok(PathBuf::from(resolved))
+}
+
 fn evaluate_startup_preflight_inner(
     startup: &StartupPreflightPayload,
 ) -> Result<StartupLaunchPreflightData, CoreError> {

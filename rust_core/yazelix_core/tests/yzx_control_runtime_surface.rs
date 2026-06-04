@@ -3,6 +3,7 @@
 use serde_json::Value;
 use std::fs;
 use std::io::{BufRead, BufReader};
+use std::path::Path;
 use std::process::{Command, Stdio};
 
 mod support;
@@ -25,6 +26,58 @@ fn write_default_profile_manifest(fixture: &support::fixtures::ManagedConfigFixt
     let manifest_path = fixture.home_dir.join(".nix-profile").join("manifest.json");
     fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
     fs::write(manifest_path, raw).unwrap();
+}
+
+fn copy_dir_recursive(source: &Path, target: &Path) {
+    fs::create_dir_all(target).unwrap();
+    for entry in fs::read_dir(source).unwrap() {
+        let entry = entry.unwrap();
+        let source_path = entry.path();
+        let target_path = target.join(entry.file_name());
+        if source_path.is_dir() {
+            copy_dir_recursive(&source_path, &target_path);
+        } else {
+            fs::copy(&source_path, &target_path).unwrap();
+        }
+    }
+}
+
+fn seed_startup_materialization_runtime_assets(fixture: &support::fixtures::ManagedConfigFixture) {
+    let repo = repo_root();
+    copy_dir_recursive(
+        &repo.join("configs").join("zellij"),
+        &fixture.runtime_dir.join("configs").join("zellij"),
+    );
+    copy_dir_recursive(
+        &repo.join("configs").join("yazi"),
+        &fixture.runtime_dir.join("configs").join("yazi"),
+    );
+    fs::write(
+        fixture
+            .runtime_dir
+            .join("configs/yazi/yazelix_starship.toml"),
+        "[character]\n",
+    )
+    .unwrap();
+    fs::create_dir_all(fixture.runtime_dir.join("configs/zellij/plugins")).unwrap();
+    for wasm in ["yazelix_pane_orchestrator.wasm", "yzpp.wasm"] {
+        fs::write(
+            fixture
+                .runtime_dir
+                .join("configs/zellij/plugins")
+                .join(wasm),
+            wasm,
+        )
+        .unwrap();
+    }
+    write_executable_script(
+        &fixture
+            .runtime_dir
+            .join("libexec")
+            .join("yazelix_zellij_bar_widget"),
+        "#!/bin/sh\nprintf '%s\\n' '{\"schema_version\":2,\"plugin_block\":\"pane size=1 { plugin location=\\\"file:/tmp/zjstatus.wasm\\\" }\"}'\n",
+    );
+    fs::create_dir_all(fixture.runtime_dir.join("shells").join("posix")).unwrap();
 }
 
 // Regression: workspace startup scrubs inherited GTK/GIO loader variables so host GUI apps do not load incompatible Nix modules.
@@ -255,6 +308,80 @@ default_shell = "fish"
             .exists()
     );
     assert!(fixture.state_dir.join("logs").is_dir());
+}
+
+// Regression: Rust startup handoff creates the launch snapshot and recomputes runtime env from helix.external without invoking the deleted Nu bridge.
+#[test]
+fn yzx_enter_uses_rust_startup_snapshot_env_without_nu_bridge() {
+    let fixture = managed_config_fixture(
+        r#"[helix]
+external = { binary = "/custom/helix/bin/hx", runtime_path = "/custom/helix/runtime" }
+
+[editor]
+command = ""
+"#,
+    );
+    seed_startup_materialization_runtime_assets(&fixture);
+    let fake_bin = fixture.home_dir.join("fake-bin");
+    let workspace = fixture.home_dir.join("workspace");
+    let zellij_log = fixture.home_dir.join("zellij-startup.log");
+    fs::create_dir_all(&fake_bin).unwrap();
+    fs::create_dir_all(&workspace).unwrap();
+
+    write_executable_script(
+        &fake_bin.join("zellij"),
+        &format!(
+            "#!/bin/sh\nif [ \"$1\" = \"setup\" ] && [ \"$2\" = \"--dump-config\" ]; then\n  exit 0\nfi\nprintf 'argv=%s\\n' \"$*\" > \"{}\"\nprintf 'cwd=%s\\n' \"$(pwd)\" >> \"{}\"\nfor key in YAZELIX_SESSION_CONFIG_PATH YAZELIX_STATUS_BAR_CACHE_PATH YAZELIX_MANAGED_HELIX_BINARY HELIX_RUNTIME EDITOR VISUAL; do\n  eval \"value=\\${{$key-}}\"\n  printf '%s=%s\\n' \"$key\" \"$value\" >> \"{}\"\ndone\n[ -f \"$YAZELIX_SESSION_CONFIG_PATH\" ] && printf 'snapshot_exists=1\\n' >> \"{}\"\n",
+            zellij_log.display(),
+            zellij_log.display(),
+            zellij_log.display(),
+            zellij_log.display(),
+        ),
+    );
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .env("PATH", prepend_path(&fake_bin))
+        .env("YAZELIX_MANAGED_HELIX_BINARY", "/stale/hx")
+        .env("HELIX_RUNTIME", "/stale/runtime")
+        .env("EDITOR", "/stale/editor")
+        .env("VISUAL", "/stale/editor")
+        .env("YAZELIX_STARTUP_PROFILE_SKIP_WELCOME", "true")
+        .arg("enter")
+        .arg("--path")
+        .arg(&workspace)
+        .output()
+        .unwrap();
+
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "stderr:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(output.stderr.is_empty());
+
+    let log = fs::read_to_string(zellij_log).unwrap();
+    let expected_editor = fixture
+        .runtime_dir
+        .join("shells/posix/yazelix_hx.sh")
+        .to_string_lossy()
+        .to_string();
+    assert!(log.contains("argv=--config-dir "), "{log}");
+    assert!(log.contains(" options --default-cwd "), "{log}");
+    assert!(
+        log.contains(&workspace.to_string_lossy().to_string()),
+        "{log}"
+    );
+    assert!(log.contains("snapshot_exists=1"), "{log}");
+    assert!(
+        log.contains("YAZELIX_MANAGED_HELIX_BINARY=/custom/helix/bin/hx"),
+        "{log}"
+    );
+    assert!(log.contains("HELIX_RUNTIME=/custom/helix/runtime"), "{log}");
+    assert!(log.contains(&format!("EDITOR={expected_editor}")), "{log}");
+    assert!(log.contains(&format!("VISUAL={expected_editor}")), "{log}");
+    assert!(!log.contains("start_yazelix_inner.nu"), "{log}");
+    assert!(!log.contains("/stale/"), "{log}");
 }
 
 // Defends: the public Rust-owned `yzx status --json` surface keeps the typed runtime summary instead of a wrapper-shaped blob.
