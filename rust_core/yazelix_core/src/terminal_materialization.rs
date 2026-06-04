@@ -239,7 +239,7 @@ fn generate_foot_config(transparency: &str) -> String {
         r##"# Foot configuration for Yazelix
 
 term=xterm-256color
-font={}:size=18
+font={}:size=14
 
 [cursor]
 style=block

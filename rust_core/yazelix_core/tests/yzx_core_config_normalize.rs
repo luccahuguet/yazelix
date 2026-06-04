@@ -1362,7 +1362,7 @@ color = "#ffffff"
             .join("foot.ini"),
     )
     .unwrap();
-    assert!(foot_config.contains("font=FiraCode Nerd Font:size=18"));
+    assert!(foot_config.contains("font=FiraCode Nerd Font:size=14"));
     assert!(foot_config.contains("alpha=0.90"));
     assert!(foot_config.contains("[colors-dark]"));
 }
