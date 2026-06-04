@@ -169,16 +169,16 @@ float yazelixRioTrailCursorSdf(in vec2 vu, vec4 fallbackCursor, in vec2 offsetFa
     return getSdfRectangle(vu, cursor.xy - (cursor.zw * offsetFactor), cursor.zw * 0.5);
 }
 
-float yazelixRioAuraMask(vec2 point, vec2 center, vec2 cursorSize, float active, float spread) {
+float yazelixRioAuraMask(vec2 point, vec2 center, vec2 cursorSize, float activity, float spread) {
     float radius = max(length(cursorSize) * spread * YAZELIX_TRAIL_GLOW_WIDTH_SCALE, 0.032);
     float distanceToCenter = distance(point, center);
-    return active * YAZELIX_TRAIL_GLOW_STRENGTH * (1.0 - smoothstep(radius * 0.20, radius, distanceToCenter));
+    return activity * YAZELIX_TRAIL_GLOW_STRENGTH * (1.0 - smoothstep(radius * 0.20, radius, distanceToCenter));
 }
 
-float yazelixRioAuraCoreMask(vec2 point, vec2 center, vec2 cursorSize, float active, float spread) {
+float yazelixRioAuraCoreMask(vec2 point, vec2 center, vec2 cursorSize, float activity, float spread) {
     float radius = max(length(cursorSize) * spread * YAZELIX_TRAIL_GLOW_WIDTH_SCALE, 0.032);
     float distanceToCenter = distance(point, center);
-    return active * YAZELIX_TRAIL_GLOW_STRENGTH * (1.0 - smoothstep(radius * 0.06, radius * 0.34, distanceToCenter));
+    return activity * YAZELIX_TRAIL_GLOW_STRENGTH * (1.0 - smoothstep(radius * 0.06, radius * 0.34, distanceToCenter));
 }
 
 vec4 applyYazelixTerminalRioAura(vec4 color, vec2 point, vec2 center, vec2 cursorSize, vec4 outerColor, vec4 coreColor) {
