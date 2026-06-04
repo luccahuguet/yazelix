@@ -21,7 +21,8 @@ const SEMANTIC_KEYBINDING_BOUND_PIPE_COMMANDS: &[&str] = &[
 
 const REQUIRED_ZELLIJ_SEMANTIC_ACTION_IDS: &[&str] = &[
     "open_workspace_terminal",
-    "popup",
+    "bottom_popup",
+    "top_popup",
     "menu",
     "config",
     "move_focus_left_or_tab",
