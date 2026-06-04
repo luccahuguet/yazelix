@@ -457,6 +457,7 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
     }
     for (terminal, expected_name) in [
         ("ghostty", "Yazelix - Ghostty"),
+        ("foot", "Yazelix - Foot"),
         ("rio", "Yazelix - Rio"),
         ("wezterm", "Yazelix - WezTerm"),
     ] {
@@ -767,7 +768,7 @@ fn load_home_manager_extra_terminal_launchers_contract(
     let expr = build_home_manager_desktop_entry_expr(
         repo_root,
         Some("shaders"),
-        &["ghostty", "rio", "wezterm"],
+        &["ghostty", "foot", "rio", "wezterm"],
     );
     let result = run_nix_eval(repo_root, &expr)?;
     result.as_object().cloned().ok_or_else(|| {
@@ -819,11 +820,13 @@ fn build_home_manager_desktop_entry_expr(
         "  };".to_string(),
         format!("  entryKey = \"{}\";", entry_key),
         "  ghosttyKey = \"com.yazelix.Yazelix.Ghostty\";".to_string(),
+        "  footKey = \"com.yazelix.Yazelix.Foot\";".to_string(),
         "  rioKey = \"com.yazelix.Yazelix.Rio\";".to_string(),
         "  weztermKey = \"com.yazelix.Yazelix.WezTerm\";".to_string(),
         "  entries = eval.config.xdg.desktopEntries;".to_string(),
         "  entry = if builtins.hasAttr entryKey entries then builtins.getAttr entryKey entries else {};".to_string(),
         "  ghosttyEntry = if builtins.hasAttr ghosttyKey entries then builtins.getAttr ghosttyKey entries else {};".to_string(),
+        "  footEntry = if builtins.hasAttr footKey entries then builtins.getAttr footKey entries else {};".to_string(),
         "  rioEntry = if builtins.hasAttr rioKey entries then builtins.getAttr rioKey entries else {};".to_string(),
         "  weztermEntry = if builtins.hasAttr weztermKey entries then builtins.getAttr weztermKey entries else {};".to_string(),
         "in {".to_string(),
@@ -835,6 +838,7 @@ fn build_home_manager_desktop_entry_expr(
             .to_string(),
         "  packageCount = builtins.length eval.config.home.packages;".to_string(),
         "  ghostty = { present = builtins.hasAttr ghosttyKey entries; name = ghosttyEntry.name or \"\"; exec = ghosttyEntry.exec or \"\"; terminal = ghosttyEntry.terminal or false; };".to_string(),
+        "  foot = { present = builtins.hasAttr footKey entries; name = footEntry.name or \"\"; exec = footEntry.exec or \"\"; terminal = footEntry.terminal or false; };".to_string(),
         "  rio = { present = builtins.hasAttr rioKey entries; name = rioEntry.name or \"\"; exec = rioEntry.exec or \"\"; terminal = rioEntry.terminal or false; };".to_string(),
         "  wezterm = { present = builtins.hasAttr weztermKey entries; name = weztermEntry.name or \"\"; exec = weztermEntry.exec or \"\"; terminal = weztermEntry.terminal or false; };".to_string(),
         "}".to_string(),

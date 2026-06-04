@@ -190,5 +190,20 @@ Out of scope:
   `yzxterm_launch_log_finding_warns_on_metadata_only_logs`,
   `yzxterm_launch_log_finding_is_scoped_to_yzxterm_runtime`)
 
+#### TLAUNCH-008
+- Type: behavior
+- Status: live
+- Owner: Rust terminal materialization and Rust launch preflight
+- Statement: Foot is a Linux-only packaged terminal variant. Launch uses the
+  native `foot` command with generated `foot.ini`, passes the application id,
+  window title, working directory, and startup command through Foot's native CLI
+  boundary, and does not fall back to another terminal when selected. Generated
+  Foot config maps Yazelix transparency into Foot color alpha.
+- Verification: automated Rust tests in
+  `rust_core/yazelix_core/src/launch_commands/launch.rs`
+  (`foot_launch_argv_uses_selected_config_and_working_dir`) and
+  `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`
+  (`terminal_materialization_foot_uses_foot_ini`)
+
 ## Traceability
 - Defended by: `yzx_repo_validator validate-contracts`

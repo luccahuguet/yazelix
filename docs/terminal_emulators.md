@@ -1,7 +1,9 @@
 # Terminal Emulator Comparison
 
-This document compares the terminal emulators Yazelix currently supports or
-evaluates: Ghostty, Yazelix Terminal, Rio, WezTerm, Ratty, and Kitty.
+This document compares the terminal emulators Yazelix currently scores:
+Ghostty, Yazelix Terminal, Rio, WezTerm, Ratty, and Kitty. Foot is restored as
+a Linux-only packaged terminal variant, but its detailed feature score needs a
+fresh validation pass.
 
 Data summarized from:
 
@@ -11,14 +13,17 @@ Data summarized from:
 - https://ghostty.org/docs/config/reference
 - https://github.com/raphamorim/rio
 - https://wezterm.org/features.html
+- https://codeberg.org/dnkl/foot
 - https://sw.kovidgoyal.net/kitty/protocol-extensions/
 - https://sw.kovidgoyal.net/kitty/graphics-protocol/
 - https://sw.kovidgoyal.net/kitty/keyboard-protocol/
 - https://github.com/orhun/ratty
 - Local reference clones under `/home/lucca/pjs/open_source/yazelix_related/`
 
-Alacritty and Foot are intentionally omitted from the current comparison. They
-are no longer part of the maintained Yazelix terminal set.
+Alacritty is intentionally omitted from the current comparison because it is no
+longer part of the maintained Yazelix terminal set. Foot is restored as a
+Linux-only packaged terminal variant; detailed feature scoring should be
+refreshed after live Yazelix validation.
 
 ## Scoring
 

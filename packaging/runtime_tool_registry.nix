@@ -32,6 +32,11 @@ let
         pkgs.ratty
       else
         throw "Yazelix runtimeVariant ratty is only supported on Linux"
+    else if runtimeVariant == "foot" then
+      if pkgs.stdenv.hostPlatform.isLinux then
+        pkgs.foot
+      else
+        throw "Yazelix runtimeVariant foot is only supported on Linux"
     else if runtimeVariant == "yzxterm" then
       if yazelixTerminalPackage != null then
         yazelixTerminalPackage
@@ -50,6 +55,8 @@ let
       [ "wezterm" ]
     else if runtimeVariant == "ratty" then
       [ "ratty" ]
+    else if runtimeVariant == "foot" then
+      [ "foot" ]
     else if runtimeVariant == "yzxterm" then
       [ "yazelix-terminal-desktop" ]
     else

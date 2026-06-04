@@ -1225,6 +1225,12 @@ color = "#3bd17a"
             .join("configs/terminal_emulators/kitty")
             .exists()
     );
+    assert!(
+        !fixture
+            .state_dir
+            .join("configs/terminal_emulators/foot")
+            .exists()
+    );
 }
 
 // Defends: vanilla Rio runtime metadata materializes a Rio-native config at the path launch binds through RIO_CONFIG_HOME.
@@ -1293,6 +1299,72 @@ color = "#ffffff"
     assert!(rio_config.contains("opacity = 0.90"));
     assert!(rio_config.contains("opacity-cells = true"));
     assert!(rio_config.contains("mode = \"Plain\""));
+}
+
+// Defends: Linux Foot runtime metadata materializes a Foot-native config at the active launch path.
+#[test]
+fn terminal_materialization_foot_uses_foot_ini() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    fs::write(fixture.runtime_dir.join("runtime_variant"), "foot\n").unwrap();
+
+    write_managed_config_toml(
+        &fixture,
+        &["[terminal]", "transparency = \"low\""].join("\n"),
+    );
+    write_cursor_sidecar(
+        &fixture,
+        r##"
+schema_version = 1
+enabled_cursors = ["snow"]
+
+[settings]
+trail = "snow"
+trail_effect = "none"
+mode_effect = "none"
+glow = "medium"
+duration = 1.0
+kitty_enable_cursor = false
+
+[[cursor]]
+name = "snow"
+family = "mono"
+color = "#ffffff"
+"##,
+    );
+
+    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
+        .arg("--from-env")
+        .output()
+        .unwrap();
+
+    if !output.status.success() {
+        panic!(
+            "stdout={}\nstderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    assert!(output.stderr.is_empty());
+
+    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["command"], "terminal-materialization.generate");
+    assert_eq!(envelope["status"], "ok");
+    assert_eq!(envelope["data"]["generated"][0]["terminal"], "foot");
+
+    let foot_config = fs::read_to_string(
+        fixture
+            .state_dir
+            .join("configs")
+            .join("terminal_emulators")
+            .join("foot")
+            .join("foot.ini"),
+    )
+    .unwrap();
+    assert!(foot_config.contains("font=FiraCode Nerd Font:size=18"));
+    assert!(foot_config.contains("alpha=0.90"));
+    assert!(foot_config.contains("[colors-dark]"));
 }
 
 // Regression: yzxterm-only sessions keep active cursor color without injecting cursor shaders.

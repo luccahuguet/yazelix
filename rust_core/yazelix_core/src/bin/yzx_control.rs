@@ -135,6 +135,7 @@ const STATUS_VERSION_TOOLS: &[(&str, &str)] = &[
     ("rio", "rio"),
     ("yzxterm", "yazelix-terminal-desktop"),
     ("ratty", "ratty"),
+    ("foot", "foot"),
     ("nix", "nix"),
     ("kitty", "kitty"),
     ("macchina", "macchina"),

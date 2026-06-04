@@ -407,7 +407,9 @@
           defaultRuntimeVariant = "ghostty";
           defaultRuntimePackages = agentUsagePackages system;
           agentUsageRuntimePackages = agentUsagePackages system;
-          rattyPackages = lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+          linuxTerminalPackages = lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+            runtime_foot = runtimePackage system pkgs "foot" defaultRuntimePackages;
+            yazelix_foot = yazelixPackage system pkgs "foot" defaultRuntimePackages;
             runtime_ratty = runtimePackage system pkgs "ratty" defaultRuntimePackages;
             yazelix_ratty = yazelixPackage system pkgs "ratty" defaultRuntimePackages;
           };
@@ -487,7 +489,7 @@
           yazelix_zellij_pane_orchestrator = yazelix_zellij_pane_orchestrator;
           yazelix_zellij_popup = yazelix_zellij_popup;
           yzs = yazelix_screen;
-        } // rattyPackages)
+        } // linuxTerminalPackages)
       );
 
       apps = forAllSystems (
@@ -550,6 +552,10 @@
           };
         }
         // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+          yazelix_foot = {
+            type = "app";
+            program = "${self.packages.${system}.yazelix_foot}/bin/yzx";
+          };
           yazelix_ratty = {
             type = "app";
             program = "${self.packages.${system}.yazelix_ratty}/bin/yzx";

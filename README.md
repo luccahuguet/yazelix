@@ -127,7 +127,7 @@ Configuration lives in JSONC at `~/.config/yazelix/settings.jsonc`, with `yzx co
 
 First-party child packages own focused pieces of the stack: screen rendering, Ghostty cursors, the Zellij bar, the popup plugin, the pane orchestrator wasm, and Yazi assets. The normal Yazelix package wires them together automatically
 
-Ghostty is the default packaged terminal for cursor trails and Yazi image previews, with temporary Yazelix Zellij/Yazi forks carrying the Kitty graphics passthrough until upstream support is enough to drop them. Yazelix Terminal is the experimental first-party terminal path, with generated transparency config, Rio trail cursor defaults, and opt-in Ghostty-compatible shader support. WezTerm is the stable packaged alternate, Ratty is an experimental Linux packaged alternate, and Kitty is available as a packaged runtime variant or as a host `PATH` terminal
+Ghostty is the default packaged terminal for cursor trails and Yazi image previews, with temporary Yazelix Zellij/Yazi forks carrying the Kitty graphics passthrough until upstream support is enough to drop them. Yazelix Terminal is the experimental first-party terminal path, with generated transparency config, Rio trail cursor defaults, and opt-in Ghostty-compatible shader support. WezTerm is the stable packaged alternate, Foot and Ratty are Linux packaged alternates, and Kitty is available as a packaged runtime variant or as a host `PATH` terminal
 
 Get everything running in less than 10 minutes with no extra dependencies beyond Nix
 
@@ -184,7 +184,7 @@ For the longer project story, see [Version History](./docs/history.md)
 
 ## Compatibility
 - **Platform**: Linux and macOS — see the [macOS support floor contract](docs/contracts/macos_support_floor.md) for the current guaranteed macOS surfaces
-- **Terminal**: Ghostty is the default packaged terminal with Yazelix cursor trails and Yazi image previews, Yazelix Terminal is available through the experimental first-party package path, WezTerm is available through the stable alternate package path, Ratty is available through the experimental Linux package path, and Kitty is available through a packaged runtime variant or host `PATH`
+- **Terminal**: Ghostty is the default packaged terminal with Yazelix cursor trails and Yazi image previews, Yazelix Terminal is available through the experimental first-party package path, WezTerm is available through the stable alternate package path, Foot and Ratty are available through Linux package paths, and Kitty is available through a packaged runtime variant or host `PATH`
 - **Editor**: Any editor works, with Helix and Neovim getting first-class support (reveal in the Yazi file tree, open buffer in a running instance, managed editor-pane targeting) and configuration through `editor.command` in `settings.jsonc`
 - **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer
 
@@ -305,6 +305,7 @@ If you followed [step 3 in the installation guide](./docs/installation.md#step-3
 - **Yazelix Terminal** (experimental first-party packaged path): Rio-derived Rust terminal with generated transparency config, Rio trail cursor defaults, and opt-in Ghostty-compatible shader support
 - **WezTerm** (explicit packaged alternate path): Rust terminal with strong graphics support and Sixel compatibility
 - **Ratty** (experimental Linux packaged path): GPU-rendered terminal with Kitty graphics support and inline 3D graphics
+- **Foot** (Linux packaged path): lightweight Wayland terminal with generated Yazelix config
 - **Kitty** (explicit packaged alternate path): Fast, feature-rich, GPU-accelerated terminal with generated Kitty config and the Yazelix Zellij/Yazi Kitty graphics bridge
 - **Terminal package contract**: each package or Home Manager `programs.yazelix.terminal` value selects one terminal; Yazelix does not fall back to another terminal when that variant is missing or mispackaged
 

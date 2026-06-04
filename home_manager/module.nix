@@ -27,7 +27,7 @@ let
     "rio"
     "yzxterm"
     "wezterm"
-  ] ++ lib.optional pkgs.stdenv.hostPlatform.isLinux "ratty";
+  ] ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ "foot" "ratty" ];
   yzxtermProfiles = [
     "full"
     "baseline"
@@ -41,6 +41,7 @@ let
       rio = "Rio";
       yzxterm = "yzxterm";
       wezterm = "WezTerm";
+      foot = "Foot";
       ratty = "Ratty";
     }.${terminal};
   terminalDesktopIdSuffix =
@@ -51,6 +52,7 @@ let
       rio = "Rio";
       yzxterm = "Yzxterm";
       wezterm = "WezTerm";
+      foot = "Foot";
       ratty = "Ratty";
     }.${terminal};
   desktopEntryKey = terminal: "com.yazelix.Yazelix.${terminalDesktopIdSuffix terminal}";
@@ -551,6 +553,7 @@ in
         - "rio": packaged vanilla Rio terminal with generated Rio config and the Yazelix Zellij/Yazi Kitty graphics bridge
         - "wezterm": explicit alternate packaged terminal
         - "yzxterm": experimental Yazelix-owned Rio fork with Rio trail cursor defaults and opt-in shader support
+        - "foot": Linux packaged Foot terminal with generated Foot config
         - "ratty": experimental Linux packaged terminal with Ratty and the Yazelix Zellij/Yazi Kitty graphics bridge
       '';
     };

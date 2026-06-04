@@ -6,7 +6,7 @@ Yazelix should keep owning launch and integration-critical terminal behavior whi
 
 ## Why
 
-The real customization need is not full terminal-config ownership. It is a safe way to inject themes, fonts, opacity, padding, cursor style, and similar preferences without making Yazelix startup behavior depend on ambient terminal config files. Yazelix Terminal and Ratty have generated Yazelix configs and native user-mode lookup, but no Yazelix-specific override sidecar until there is a concrete customization contract for each.
+The real customization need is not full terminal-config ownership. It is a safe way to inject themes, fonts, opacity, padding, cursor style, and similar preferences without making Yazelix startup behavior depend on ambient terminal config files. Yazelix Terminal, Foot, and Ratty have generated Yazelix configs and native user-mode lookup, but no Yazelix-specific override sidecar until there is a concrete customization contract for each.
 
 ## Scope
 

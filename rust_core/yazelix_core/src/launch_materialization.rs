@@ -379,6 +379,7 @@ fn generated_terminal_config_path(state_dir: &Path, terminal: &str) -> PathBuf {
         "wezterm" => root.join("wezterm").join(".wezterm.lua"),
         "ratty" => root.join("ratty").join("ratty.toml"),
         "kitty" => root.join("kitty").join("kitty.conf"),
+        "foot" => root.join("foot").join("foot.ini"),
         _ => root.join(terminal),
     }
 }

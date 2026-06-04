@@ -587,6 +587,53 @@ mod tests {
         );
     }
 
+    // Defends: Foot launches through its native CLI flags and the packaged Linux graphics wrapper boundary.
+    #[test]
+    fn foot_launch_argv_uses_selected_config_and_working_dir() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let runtime_dir = tmp.path().join("runtime");
+        let posix_dir = runtime_dir.join("shells").join("posix");
+        let libexec_dir = runtime_dir.join("libexec");
+        std::fs::create_dir_all(&posix_dir).unwrap();
+        std::fs::create_dir_all(&libexec_dir).unwrap();
+        let startup_script = posix_dir.join("start_yazelix.sh");
+        let nixgl = libexec_dir.join("nixGL");
+        std::fs::write(&startup_script, "#!/bin/sh\n").unwrap();
+        std::fs::write(&nixgl, "#!/bin/sh\n").unwrap();
+        let config_path = tmp
+            .path()
+            .join("state/configs/terminal_emulators/foot/foot.ini");
+        let working_dir = tmp.path().join("workspace");
+        std::fs::create_dir_all(config_path.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(&working_dir).unwrap();
+
+        let argv = build_launch_command_argv(
+            &runtime_dir,
+            &crate::runtime_contract::TerminalCandidate {
+                terminal: "foot".to_string(),
+                name: "Foot".to_string(),
+                command: "foot".to_string(),
+            },
+            &config_path,
+            &working_dir,
+        )
+        .unwrap();
+
+        assert_eq!(
+            argv,
+            vec![
+                nixgl.to_string_lossy().into_owned(),
+                "foot".to_string(),
+                format!("--config={}", config_path.to_string_lossy()),
+                "--app-id=com.yazelix.Yazelix".to_string(),
+                "--title=Yazelix - Foot".to_string(),
+                format!("--working-directory={}", working_dir.to_string_lossy()),
+                "--".to_string(),
+                startup_script.to_string_lossy().into_owned(),
+            ]
+        );
+    }
+
     // Regression: launch must pass a launch-scoped materialized config path when random cursor materialization produced one, otherwise it falls back to the shared generated path and leaks cursor preset changes across windows.
     #[test]
     fn materialized_yazelix_config_path_wins_for_launch() {

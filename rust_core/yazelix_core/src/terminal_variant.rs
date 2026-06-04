@@ -2,8 +2,9 @@ use crate::bridge::{CoreError, ErrorClass};
 use std::fs;
 use std::path::Path;
 
-pub const SUPPORTED_TERMINALS: &[&str] =
-    &["ghostty", "yzxterm", "rio", "wezterm", "ratty", "kitty"];
+pub const SUPPORTED_TERMINALS: &[&str] = &[
+    "ghostty", "yzxterm", "rio", "wezterm", "ratty", "kitty", "foot",
+];
 
 pub fn normalize_terminal_id(raw: &str) -> Option<String> {
     let trimmed = raw.trim().to_ascii_lowercase();
@@ -28,6 +29,7 @@ pub fn terminal_display_name(terminal: &str) -> String {
         "yzxterm" => "Yazelix Terminal".to_string(),
         "ratty" => "Ratty".to_string(),
         "kitty" => "Kitty".to_string(),
+        "foot" => "Foot".to_string(),
         other => other.to_string(),
     }
 }
@@ -40,6 +42,7 @@ pub fn terminal_desktop_label(terminal: &str) -> String {
         "yzxterm" => "yzxterm".to_string(),
         "ratty" => "Ratty".to_string(),
         "kitty" => "Kitty".to_string(),
+        "foot" => "Foot".to_string(),
         other => other.to_string(),
     }
 }
@@ -52,6 +55,7 @@ pub fn terminal_desktop_id_suffix(terminal: &str) -> String {
         "yzxterm" => "Yzxterm".to_string(),
         "ratty" => "Ratty".to_string(),
         "kitty" => "Kitty".to_string(),
+        "foot" => "Foot".to_string(),
         other => other.to_string(),
     }
 }

@@ -79,6 +79,7 @@ fn get_terminal_title(terminal: &str) -> String {
         "kitty" => "Kitty",
         "wezterm" => "WezTerm",
         "ratty" => "Ratty",
+        "foot" => "Foot",
         _ => terminal,
     };
     format!("Yazelix - {}", name)
@@ -229,6 +230,42 @@ white = "#ffffff"
 "##,
         build_transparency(transparency, "toml", ""),
         FONT_FIRACODE,
+    )
+}
+
+fn generate_foot_config(transparency: &str) -> String {
+    let alpha = get_opacity_value(transparency);
+    format!(
+        r##"# Foot configuration for Yazelix
+
+term=xterm-256color
+font={}:size=18
+
+[cursor]
+style=block
+
+[colors-dark]
+background=1f1f28
+foreground=dcd7ba
+alpha={}
+regular0=000000
+regular1=cd3131
+regular2=0dbc79
+regular3=e5e510
+regular4=2472c8
+regular5=bc3fbc
+regular6=11a8cd
+regular7=e5e5e5
+bright0=666666
+bright1=f14c4c
+bright2=23d18b
+bright3=f5f543
+bright4=3b8eea
+bright5=d670d6
+bright6=29b8db
+bright7=ffffff
+"##,
+        FONT_FIRACODE, alpha,
     )
 }
 
@@ -665,6 +702,24 @@ pub fn generate_terminal_materialization(
                 write_text_atomic(&path, &generate_ratty_config(transparency))?;
                 generated.push(TerminalGeneratedConfig {
                     terminal: "ratty".to_string(),
+                    path: path.to_string_lossy().into_owned(),
+                });
+            }
+            "foot" => {
+                let foot_dir = generated_dir.join("foot");
+                fs::create_dir_all(&foot_dir).map_err(|source| {
+                    CoreError::io(
+                        "create_foot_dir",
+                        "Could not create Foot output directory",
+                        "Check permissions for the Yazelix state directory.",
+                        foot_dir.to_string_lossy(),
+                        source,
+                    )
+                })?;
+                let path = foot_dir.join("foot.ini");
+                write_text_atomic(&path, &generate_foot_config(transparency))?;
+                generated.push(TerminalGeneratedConfig {
+                    terminal: "foot".to_string(),
                     path: path.to_string_lossy().into_owned(),
                 });
             }

@@ -554,6 +554,7 @@ pub fn generated_terminal_config_path(state_dir: &Path, terminal: &str) -> PathB
         "yzxterm" => root.join("yzxterm").join("config.toml"),
         "ratty" => root.join("ratty").join("ratty.toml"),
         "kitty" => root.join("kitty").join("kitty.conf"),
+        "foot" => root.join("foot").join("foot.ini"),
         other => root.join(other),
     }
 }
@@ -590,6 +591,7 @@ pub fn user_terminal_config_candidates(
             xdg_config_home.join("yazelix-terminal").join("config.toml"),
         ]),
         "ratty" => Ok(vec![xdg_config_home.join("ratty").join("ratty.toml")]),
+        "foot" => Ok(vec![xdg_config_home.join("foot").join("foot.ini")]),
         other => Err(format!("Unsupported terminal config lookup: {other}")),
     }
 }

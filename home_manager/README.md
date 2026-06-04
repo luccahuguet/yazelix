@@ -7,7 +7,7 @@ A Home Manager module for [Yazelix](https://github.com/luccahuguet/yazelix) that
 - **Leaves `settings.jsonc` mutable by default** so users can edit it directly
 - **Can generate `settings.jsonc`** from Home Manager options when `manage_config = true`
 - **Adds `yzx` to the Home Manager profile** through the packaged Yazelix runtime
-- **Selects one packaged terminal** with Ghostty by default, vanilla Rio, WezTerm, and Kitty as alternates, Yazelix Terminal as the experimental Rio-derived path, and Ratty as an experimental Linux option through `terminal`
+- **Selects one packaged terminal** with Ghostty by default, vanilla Rio, WezTerm, and Kitty as alternates, Yazelix Terminal as the experimental Rio-derived path, and Foot/Ratty as Linux options through `terminal`
 - **Installs icons and, on Linux, a desktop entry** that target the managed runtime
 - **Keeps the config surface type-safe** with Home Manager validation
 
@@ -64,7 +64,7 @@ If you already have your own Home Manager flake, the minimal setup is:
 {
   programs.yazelix = {
     enable = true;
-    terminal = "ghostty"; # Default; use "kitty", "rio", "yzxterm", "wezterm", or Linux-only "ratty" for alternate packaged terminal paths
+    terminal = "ghostty"; # Default; use "kitty", "rio", "yzxterm", "wezterm", or Linux-only "foot"/"ratty" for alternate packaged terminal paths
     yzxterm_profile = "full"; # Default; use "baseline" or "shaders" for Yazelix Terminal profile selection
     # Customize other options as needed - see example.nix
     # Set manage_config = true if you want Home Manager to own settings.jsonc

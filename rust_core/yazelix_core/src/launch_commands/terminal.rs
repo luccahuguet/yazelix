@@ -33,6 +33,7 @@ pub(super) fn generated_terminal_config_path(state_dir: &Path, terminal: &str) -
         "rio" => root.join("rio").join("config.toml"),
         "ratty" => root.join("ratty").join("ratty.toml"),
         "kitty" => root.join("kitty").join("kitty.conf"),
+        "foot" => root.join("foot").join("foot.ini"),
         other => root.join(other),
     }
 }
@@ -91,6 +92,7 @@ pub(super) fn user_terminal_config_candidates_for_platform(
         ]),
         "rio" => Ok(vec![xdg_config_home.join("rio").join("config.toml")]),
         "ratty" => Ok(vec![xdg_config_home.join("ratty").join("ratty.toml")]),
+        "foot" => Ok(vec![xdg_config_home.join("foot").join("foot.ini")]),
         other => Err(format!("Unsupported terminal config lookup: {other}")),
     }
 }
@@ -150,6 +152,7 @@ pub(super) fn get_working_dir_args(terminal: &str, working_dir: &Path) -> Vec<St
         "rio" => vec!["--working-dir".to_string(), wd],
         "ratty" => vec![],
         "kitty" => vec![format!("--directory={wd}")],
+        "foot" => vec![format!("--working-directory={wd}")],
         _ => vec![],
     }
 }
@@ -333,6 +336,18 @@ pub(super) fn build_launch_command_argv(
             kitty.extend(working_dir_args);
             kitty.push(startup_script.to_string_lossy().into_owned());
             maybe_prepend(kitty, graphics_wrapper)
+        }
+        "foot" => {
+            let mut foot = vec![
+                terminal.command.clone(),
+                format!("--config={config_string}"),
+                format!("--app-id={WINDOW_CLASS}"),
+                format!("--title={title}"),
+            ];
+            foot.extend(working_dir_args);
+            foot.push("--".to_string());
+            foot.push(startup_script.to_string_lossy().into_owned());
+            maybe_prepend(foot, graphics_wrapper)
         }
         other => {
             return Err(CoreError::usage(format!("Unknown terminal: {other}")));
