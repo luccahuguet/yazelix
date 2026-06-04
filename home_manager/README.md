@@ -101,16 +101,20 @@ When `manage_config = true`, Home Manager can also own user-defined popup surfac
         id = "btm";
         command = [ "btm" ];
         keybindings = [ "Alt Shift B" ];
+        keep_alive = true;
       }
       {
         id = "btop";
         command = [ "btop" ];
         keybindings = [ "Alt Shift Y" ];
+        keep_alive = true;
       }
     ];
   };
 }
 ```
+
+Set `keep_alive = true` for monitor TUIs whose process state should survive focused toggle hides. Leave it unset or set it to `false` for popups that should close on focused toggle
 
 Maintainers dogfooding local Yazelix Terminal changes can temporarily point the
 module at the fast yzxterm package while keeping `terminal = "yzxterm"`:

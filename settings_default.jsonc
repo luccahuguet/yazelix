@@ -101,7 +101,8 @@
         ],
         "keybindings": [
           "Alt Shift B"
-        ]
+        ],
+        "keep_alive": true
       }
     ],
     "popup_width_percent": 90,

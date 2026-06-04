@@ -106,8 +106,12 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
   `top_popup = ["yzx", "config", "ui"]` for Yazelix's ratconfig-backed config
   editor, and `menu = ["yzx", "menu"]`.
 - `zellij.custom_popups` is a list of user-defined popup specs with `id`,
-  `command`, and `keybindings`.
-- The default custom popup is `{ id = "btm", command = ["btm"], keybindings = ["Alt Shift B"] }`.
+  `command`, `keybindings`, and optional `keep_alive`.
+- The default custom popup is `{ id = "btm", command = ["btm"], keybindings = ["Alt Shift B"], keep_alive = true }`.
+- `keep_alive = true` makes focused toggle hide the popup without killing the
+  child process. Explicit close still closes the pane. Omitted `keep_alive`
+  defaults to true for the default-shaped `btm` popup and false for other
+  custom popups.
 - Popup geometry is user-configurable through `zellij.popup_width_percent` and `zellij.popup_height_percent`.
 - Popup width and height percentages must be integers in the range `1..100`.
 - The default popup width and height are both `90`.
@@ -123,8 +127,9 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - `Alt+Shift+J` opens one managed bottom popup pane when it is missing, focuses it when it exists but is unfocused, and closes it when it is focused.
 - `Alt+Shift+K` does the same for the semantic top popup slot, which defaults
   to `yzx config ui`, Yazelix's ratconfig-backed JSONC settings editor.
-- `Alt+Shift+B` does the same for the semantic btm popup slot, which defaults
-  to the bundled `btm` process viewer through `zellij.custom_popups`.
+- `Alt+Shift+B` toggles the semantic btm popup slot. It defaults to the bundled
+  `btm` process viewer through `zellij.custom_popups` and hides instead of
+  closing on focused toggle so process graphs can keep their history.
 - When `Alt+Shift+J` closes the configured popup pane, Yazelix runs `yzx sidebar
   refresh` through an `on_close` hook so lazygit-style workflows refresh the
   managed Yazi sidebar.
@@ -244,8 +249,8 @@ The `yzpp` raw pipe path still accepts generated JSON through `name "transient_p
 - contract validator: `yzx_repo_validator validate-contracts`
 - manual verification: `Alt+Shift+J` toggles the bottom managed popup,
   `Alt+Shift+K` toggles the top managed popup, `Alt+Shift+M` opens the menu,
-  `Alt+Shift+B` toggles the btm process viewer, and `Alt+Shift+C` opens the
-  config UI
+  `Alt+Shift+B` toggles the keep-alive btm process viewer, and `Alt+Shift+C`
+  opens the config UI
 
 ## Traceability
 - Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`

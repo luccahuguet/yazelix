@@ -584,6 +584,13 @@
                 "items": {
                   "type": "string"
                 }
+              },
+              "keep_alive": {
+                "type": [
+                  "boolean",
+                  "null"
+                ],
+                "description": "Hide the focused popup on toggle instead of closing its process"
               }
             }
           }

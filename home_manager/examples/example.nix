@@ -64,11 +64,13 @@
         id = "btm";
         command = [ "btm" ];
         keybindings = [ "Alt Shift B" ];
+        keep_alive = true;
       }
       # {
       #   id = "btop";
       #   command = [ "btop" ];
       #   keybindings = [ "Alt Shift Y" ];
+      #   keep_alive = true;
       # }
     ];
 

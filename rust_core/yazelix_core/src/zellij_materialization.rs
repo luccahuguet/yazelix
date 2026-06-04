@@ -29,7 +29,7 @@ const ZJSTATUS_WASM_NAME: &str = "zjstatus.wasm";
 const YZPP_PLUGIN_PREFIX: &str = YZPP_PLUGIN_ALIAS;
 const YZPP_WASM_NAME: &str = "yzpp.wasm";
 const GENERATION_METADATA_NAME: &str = ".yazelix_generation.json";
-const GENERATION_FINGERPRINT_SCHEMA_VERSION: u64 = 7;
+const GENERATION_FINGERPRINT_SCHEMA_VERSION: u64 = 8;
 const GENERATED_CONFIG_MARKERS: &[&str] = &[
     "GENERATED ZELLIJ CONFIG (YAZELIX)",
     "yazelix_pane_orchestrator",
@@ -140,6 +140,7 @@ struct CustomPopup {
     id: String,
     command: Vec<String>,
     keybindings: Vec<String>,
+    keep_alive: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -149,6 +150,8 @@ struct RawCustomPopup {
     command: Vec<String>,
     #[serde(default)]
     keybindings: Vec<String>,
+    #[serde(default)]
+    keep_alive: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -398,7 +401,7 @@ fn resolve_popup_commands_config(
                 "unknown_popup_command",
                 format!("Unsupported zellij.popup_commands entry: {name}."),
                 if name == "btm" {
-                    "Move btm to zellij.custom_popups: { \"id\": \"btm\", \"command\": [\"btm\"], \"keybindings\": [\"Alt Shift B\"] }."
+                    "Move btm to zellij.custom_popups: { \"id\": \"btm\", \"command\": [\"btm\"], \"keybindings\": [\"Alt Shift B\"], \"keep_alive\": true }."
                 } else {
                     "Use one of: bottom_popup, top_popup, menu."
                 },
@@ -425,6 +428,7 @@ fn default_custom_popups() -> Vec<CustomPopup> {
         id: "btm".to_string(),
         command: vec!["btm".to_string()],
         keybindings: vec!["Alt Shift B".to_string()],
+        keep_alive: true,
     }]
 }
 
@@ -494,11 +498,14 @@ fn resolve_custom_popups_config(
             "Use Zellij key strings such as [\"Alt Shift G\"], or [] for an unbound custom popup.",
             true,
         )?;
+        let default_keep_alive = id == "btm" && command.len() == 1 && command[0] == "btm";
+        let keep_alive = item.keep_alive.unwrap_or(default_keep_alive);
 
         popups.push(CustomPopup {
             id,
             command,
             keybindings,
+            keep_alive,
         });
     }
 
@@ -1022,6 +1029,7 @@ fn render_yzpp_plugin_block(
         &bottom_popup_program,
         popup_width_percent,
         popup_height_percent,
+        None,
         Some(&yzx_cli),
     );
     append_generated_popup_spec(
@@ -1033,6 +1041,7 @@ fn render_yzpp_plugin_block(
         popup_width_percent,
         popup_height_percent,
         None,
+        None,
     );
     append_generated_popup_spec(
         &mut lines,
@@ -1042,6 +1051,7 @@ fn render_yzpp_plugin_block(
         &menu_program,
         popup_width_percent,
         popup_height_percent,
+        None,
         None,
     );
     for custom_popup in custom_popups {
@@ -1055,6 +1065,7 @@ fn render_yzpp_plugin_block(
             &custom_popup_program,
             popup_width_percent,
             popup_height_percent,
+            custom_popup.keep_alive.then_some("hide"),
             None,
         );
     }
@@ -1097,6 +1108,7 @@ fn append_generated_popup_spec(
     popup_argv: &[String],
     popup_width_percent: i64,
     popup_height_percent: i64,
+    toggle_close_behavior: Option<&str>,
     on_close_yzx_cli: Option<&str>,
 ) {
     lines.push(format!("            {id} {{"));
@@ -1123,6 +1135,12 @@ fn append_generated_popup_spec(
         format!("                width_percent \"{popup_width_percent}\""),
         format!("                height_percent \"{popup_height_percent}\""),
     ]);
+    if let Some(toggle_close_behavior) = toggle_close_behavior {
+        lines.push(format!(
+            "                toggle_close_behavior {}",
+            json_quote(toggle_close_behavior)
+        ));
+    }
     if let Some(yzx_cli) = on_close_yzx_cli {
         lines.extend([
             "                on_close {".to_string(),
@@ -3468,6 +3486,18 @@ keybinds {
                     "id": "gitui",
                     "command": ["editor", "repo.md"],
                     "keybindings": ["Alt Shift G"],
+                    "keep_alive": true,
+                },
+                {
+                    "id": "btm",
+                    "command": ["btm"],
+                    "keybindings": ["Alt Shift B"],
+                },
+                {
+                    "id": "btop",
+                    "command": ["btop"],
+                    "keybindings": ["Alt Shift Y"],
+                    "keep_alive": null,
                 }
             ]),
         );
@@ -3476,11 +3506,26 @@ keybinds {
 
         assert_eq!(
             custom_popups,
-            vec![CustomPopup {
-                id: "gitui".to_string(),
-                command: vec!["nvim".to_string(), "repo.md".to_string()],
-                keybindings: vec!["Alt Shift G".to_string()],
-            }]
+            vec![
+                CustomPopup {
+                    id: "gitui".to_string(),
+                    command: vec!["nvim".to_string(), "repo.md".to_string()],
+                    keybindings: vec!["Alt Shift G".to_string()],
+                    keep_alive: true,
+                },
+                CustomPopup {
+                    id: "btm".to_string(),
+                    command: vec!["btm".to_string()],
+                    keybindings: vec!["Alt Shift B".to_string()],
+                    keep_alive: true,
+                },
+                CustomPopup {
+                    id: "btop".to_string(),
+                    command: vec!["btop".to_string()],
+                    keybindings: vec!["Alt Shift Y".to_string()],
+                    keep_alive: false,
+                }
+            ]
         );
     }
 
@@ -3510,6 +3555,7 @@ keybinds {
         assert!(block.contains("pane_title \"yzx_btm\""));
         assert!(block.contains("command_marker \"yzx_btm\""));
         assert!(block.contains("arg_2 \"btm\""));
+        assert!(block.contains("toggle_close_behavior \"hide\""));
         assert!(!block.contains("arg_2 \"--pane\""));
         assert!(!block.contains("\n            popup {\n"));
     }
@@ -3557,6 +3603,7 @@ keybinds {
         assert!(block.contains("pane_title \"yzx_btm\""));
         assert!(block.contains("command_marker \"yzx_btm\""));
         assert!(block.contains("arg_2 \"btm\""));
+        assert!(block.contains("toggle_close_behavior \"hide\""));
         assert!(block.contains("arg_1 \"popup_run\""));
         assert!(block.contains("arg_2 \"lazygit\""));
         assert!(block.contains("width_percent \"82\""));

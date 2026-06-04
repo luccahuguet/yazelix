@@ -251,6 +251,11 @@ let
                 default = [ ];
                 description = "Zellij key strings that toggle this popup";
               };
+              keep_alive = mkOption {
+                type = types.nullOr types.bool;
+                default = null;
+                description = "Whether focused toggle hides this popup instead of closing it. Null uses the Yazelix default for the popup id and command.";
+              };
             };
           })
         else if field.kind == "int" then
@@ -425,6 +430,8 @@ let
         ""
       else
         throw "Null Home Manager value is not renderable for ${fieldPath}"
+    else if field.kind == "custom_popup_list" then
+      map (popup: lib.filterAttrs (_name: popupValue: popupValue != null) popup) value
     else
       value;
 
@@ -821,7 +828,7 @@ in
     custom_popups = mkMainContractOption "zellij.custom_popups" {
       description = ''
         User-defined Yazelix popup surfaces.
-        Default: { id = "btm"; command = [ "btm" ]; keybindings = [ "Alt Shift B" ]; }.
+        Default: { id = "btm"; command = [ "btm" ]; keybindings = [ "Alt Shift B" ]; keep_alive = true; }.
       '';
     };
 

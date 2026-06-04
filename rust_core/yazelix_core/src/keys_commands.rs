@@ -305,7 +305,7 @@ fn root_command_rows() -> Vec<TableRow> {
         zellij_action_row("bottom_popup"),
         zellij_action_row("top_popup"),
         zellij_action_row("menu"),
-        table_row(&["Alt+Shift+B", "Toggle the default btm custom popup"]),
+        table_row(&["Alt+Shift+B", "Toggle the keep-alive btm custom popup"]),
         zellij_action_row("config"),
     ]
 }
@@ -723,7 +723,7 @@ mod tests {
         assert!(rendered.contains("Semantic remaps"));
         assert!(rendered.contains("Keybinding"));
         assert!(rendered.contains("zellij.menu"));
-        assert!(rendered.contains("Toggle the default btm custom popup"));
+        assert!(rendered.contains("Toggle the keep-alive btm custom popup"));
         assert!(rendered.contains("yazi.open_zoxide_in_editor"));
         assert!(rendered.contains("Alt+Shift+M"));
         assert!(rendered.contains("Alt+Shift+B"));
