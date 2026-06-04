@@ -343,8 +343,18 @@ fn validate_home_manager_activation_mode(
             "generated Yazi config after Home Manager activation",
             &mut errors,
         );
-        // Home Manager activation repairs generated runtime state, while terminal
-        // configs remain launch-time materialization outputs.
+        require_path_exists_abs(
+            &home_root
+                .join(".local")
+                .join("share")
+                .join("yazelix")
+                .join("configs")
+                .join("terminal_emulators")
+                .join("ghostty")
+                .join("config"),
+            "generated Ghostty terminal config after Home Manager activation",
+            &mut errors,
+        );
         Ok(errors)
     })();
     let _ = fs::remove_dir_all(&temp_root);

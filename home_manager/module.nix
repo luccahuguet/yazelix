@@ -130,6 +130,19 @@ let
         }
       );
   extraTerminalLaunchers = lib.unique cfg.extra_terminal_launchers;
+  activationTerminalVariants = [ cfg.terminal ] ++ extraTerminalLaunchers;
+  terminalMaterializationActivation = lib.concatMapStringsSep "\n" (
+    terminal:
+    let
+      terminalPackage = yazelixPackageForTerminal terminal;
+      terminalEnv =
+        ''PATH="${terminalPackage}/toolbin:${terminalPackage}/libexec:${terminalPackage}/bin:${runtimeConfigGenerationPath}:$PATH" YAZELIX_RUNTIME_DIR="${terminalPackage}"''
+        + lib.optionalString (yzxtermProfileActiveFor terminal) " YAZELIX_TERMINAL_PROFILE=${cfg.yzxterm_profile}";
+    in
+    ''
+          $DRY_RUN_CMD env ${terminalEnv} ${terminalPackage}/libexec/yzx_core terminal-materialization.generate --from-env >/dev/null
+    ''
+  ) activationTerminalVariants;
   desktopEntryFor =
     terminal: yzxPath: skipStableWrapperRedirect:
     {
@@ -1039,7 +1052,7 @@ in
         ${yzxtermProfileExport}
 
         $DRY_RUN_CMD ${runtimeYzxCore} runtime-materialization.repair --from-env --force --summary
-        $DRY_RUN_CMD ${runtimeYzxCore} terminal-materialization.generate --from-env >/dev/null
+${terminalMaterializationActivation}
 ${cursorGeneratorActivation}
         $DRY_RUN_CMD env YAZELIX_QUIET_MODE=true ${runtimeYzxControl} generate_shell_initializers
       '';

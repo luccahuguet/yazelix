@@ -32,6 +32,7 @@ pub fn validate_config_surface_contract(repo_root: &Path) -> Result<ValidationRe
         validate_yazi_keybinding_registry_defaults(repo_root)?,
         validate_home_manager_option_declaration_contract(repo_root)?,
         validate_home_manager_desktop_entry_contract(repo_root)?,
+        validate_home_manager_activation_contract(repo_root)?,
         validate_generated_state_contract(repo_root)?,
         validate_startup_snapshot_env_contract(repo_root)?,
     ] {
@@ -516,6 +517,82 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
     validate_home_manager_darwin_without_desktop_entry_option(repo_root)?;
 
     Ok(errors)
+}
+
+fn validate_home_manager_activation_contract(repo_root: &Path) -> Result<Vec<String>, String> {
+    let script = load_home_manager_activation_contract(repo_root)?;
+    let materialization_lines = script
+        .lines()
+        .filter(|line| line.contains("terminal-materialization.generate --from-env"))
+        .collect::<Vec<_>>();
+    let mut errors = Vec::new();
+
+    if materialization_lines.len() != 2 {
+        errors.push(format!(
+            "Home Manager activation with one extra terminal launcher must generate active and extra terminal configs, got {} materialization command(s)",
+            materialization_lines.len()
+        ));
+    }
+    let yzxterm_line = materialization_lines
+        .iter()
+        .find(|line| line.contains("-yazelix-yzxterm/"));
+    if yzxterm_line.is_none() {
+        errors.push(
+            "Home Manager activation must materialize the extra yzxterm launcher runtime"
+                .to_string(),
+        );
+    }
+    if !yzxterm_line
+        .map(|line| line.contains("YAZELIX_TERMINAL_PROFILE=shaders"))
+        .unwrap_or(false)
+    {
+        errors.push(
+            "Home Manager activation must pass yzxterm_profile to extra yzxterm launcher materialization"
+                .to_string(),
+        );
+    }
+    if !materialization_lines
+        .iter()
+        .all(|line| line.contains("/libexec/yzx_core"))
+    {
+        errors.push(
+            "Home Manager activation terminal materialization must run each terminal package's own yzx_core"
+                .to_string(),
+        );
+    }
+
+    Ok(errors)
+}
+
+fn load_home_manager_activation_contract(repo_root: &Path) -> Result<String, String> {
+    let expr = build_home_manager_activation_expr(repo_root);
+    let result = run_nix_eval(repo_root, &expr)?;
+    result.as_str().map(str::to_string).ok_or_else(|| {
+        "Home Manager activation evaluation did not return a JSON string".to_string()
+    })
+}
+
+fn build_home_manager_activation_expr(repo_root: &Path) -> String {
+    let module_path =
+        escape_nix_string(&repo_root.join(MODULE_RELATIVE_PATH).display().to_string());
+    let mut lines = vec![
+        "let".to_string(),
+        "  pkgs = import <nixpkgs> { system = \"x86_64-linux\"; };".to_string(),
+        "  lib = pkgs.lib.extend (_: super: { hm = { dag = { entryAfter = after: data: { inherit after data; }; }; }; });".to_string(),
+        "  eval = lib.evalModules {".to_string(),
+        "    specialArgs = { inherit pkgs; nixgl = null; yazelixCursorsPackage = null; yazelixTerminalPackage = null; mkYazelixPackage = args: pkgs.runCommand (args.name or \"yazelix\") {} ''mkdir -p $out/bin $out/libexec $out/toolbin; touch $out/bin/yzx $out/libexec/yzx_core $out/libexec/yzx_control''; };".to_string(),
+        "    modules = [".to_string(),
+        format!("      (builtins.toPath \"{}\")", module_path),
+    ];
+    lines.extend(standalone_home_manager_eval_fixture_module(true, true));
+    lines.extend([
+        "      { config.programs.yazelix.extra_terminal_launchers = [ \"yzxterm\" ]; }".to_string(),
+        "      { config.programs.yazelix.yzxterm_profile = \"shaders\"; }".to_string(),
+        "    ];".to_string(),
+        "  };".to_string(),
+        "in eval.config.home.activation.yazelixGeneratedRuntimeConfigs.data".to_string(),
+    ]);
+    lines.join("\n")
 }
 
 fn validate_generated_state_contract(repo_root: &Path) -> Result<Vec<String>, String> {

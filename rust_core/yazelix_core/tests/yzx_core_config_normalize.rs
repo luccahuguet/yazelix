@@ -1517,6 +1517,69 @@ color = "#3bd17a"
     assert!(!yzxterm_config.contains("/nix/store/demo/cursor_trail_dusk.glsl"));
 }
 
+// Regression: yzxterm shader activation must replace stale copied shader assets after a runtime update instead of reusing the old shader directory.
+#[test]
+fn terminal_materialization_yzxterm_shader_profile_replaces_stale_shader_assets() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    fs::write(fixture.runtime_dir.join("runtime_variant"), "yzxterm\n").unwrap();
+
+    write_managed_config_toml(&fixture, "[terminal]\n");
+    write_cursor_sidecar(
+        &fixture,
+        r##"
+schema_version = 1
+enabled_cursors = ["forest"]
+
+[settings]
+trail = "forest"
+trail_effect = "tail"
+mode_effect = "ripple"
+glow = "high"
+duration = 1.5
+kitty_enable_cursor = true
+
+[[cursor]]
+name = "forest"
+family = "mono"
+color = "#3bd17a"
+"##,
+    );
+    let shader_dir = fixture
+        .state_dir
+        .join("configs")
+        .join("terminal_emulators")
+        .join("ghostty")
+        .join("shaders");
+    fs::create_dir_all(&shader_dir).unwrap();
+    fs::write(shader_dir.join("stale_only.glsl"), "old runtime shader").unwrap();
+    fs::write(
+        shader_dir.join("cursor_trail_forest.glsl"),
+        "old cursor shader",
+    )
+    .unwrap();
+
+    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
+        .env("YAZELIX_TERMINAL_PROFILE", "shaders")
+        .arg("--from-env")
+        .output()
+        .unwrap();
+
+    if !output.status.success() {
+        panic!(
+            "stdout={}\nstderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    assert!(output.stderr.is_empty());
+
+    assert!(!shader_dir.join("stale_only.glsl").exists());
+    let forest_shader = fs::read_to_string(shader_dir.join("cursor_trail_forest.glsl")).unwrap();
+    assert!(!forest_shader.contains("old cursor shader"));
+}
+
 // Defends: Kitty cursor fallback is controlled by the settings cursor registry's binary kitty_enable_cursor setting.
 #[test]
 fn terminal_materialization_uses_cursor_sidecar_for_kitty_toggle() {
