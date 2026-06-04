@@ -1364,6 +1364,9 @@ color = "#ffffff"
     .unwrap();
     assert!(foot_config.contains("font=FiraCode Nerd Font:size=14"));
     assert!(foot_config.contains("alpha=0.90"));
+    assert!(foot_config.contains("[csd]"));
+    assert!(foot_config.contains("preferred=none"));
+    assert!(foot_config.contains("size=0"));
     assert!(foot_config.contains("[colors-dark]"));
 }
 

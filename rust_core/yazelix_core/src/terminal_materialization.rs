@@ -244,6 +244,11 @@ font={}:size=14
 [cursor]
 style=block
 
+[csd]
+# Compositor rules can still force server-side decorations.
+preferred=none
+size=0
+
 [colors-dark]
 background=1f1f28
 foreground=dcd7ba
