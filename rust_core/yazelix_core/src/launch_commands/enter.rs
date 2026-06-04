@@ -25,9 +25,11 @@ use crate::startup_handoff::{
     StartupHandoffArtifact, StartupHandoffCaptureRequest, capture_startup_handoff_context,
 };
 use crate::upgrade_summary::{current_release_headline, maybe_show_first_run_upgrade_summary};
+use crossterm::event::{Event, KeyEventKind};
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use serde_json::{Map as JsonMap, Value as JsonValue};
 use std::fs;
-use std::io::{self, IsTerminal, Read, Write};
+use std::io::{self, IsTerminal, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -282,11 +284,86 @@ fn print_welcome_message(lines: &[String]) -> Result<(), CoreError> {
                 source,
             )
         })?;
-        let _ = io::stdin().read(&mut [0u8]);
+        wait_for_welcome_keypress()?;
         println!();
     }
     println!("Launching Zellij...");
     Ok(())
+}
+
+struct WelcomeRawModeGuard {
+    active: bool,
+}
+
+impl WelcomeRawModeGuard {
+    fn enable() -> Result<Self, CoreError> {
+        enable_raw_mode().map_err(|source| {
+            CoreError::io(
+                "startup_welcome_raw_mode",
+                "Could not enter terminal raw mode for the Yazelix welcome prompt.",
+                "Run Yazelix in an interactive terminal that supports raw key input, or set core.skip_welcome_screen = true.",
+                ".",
+                source,
+            )
+        })?;
+        Ok(Self { active: true })
+    }
+
+    fn disable(&mut self) -> Result<(), CoreError> {
+        if !self.active {
+            return Ok(());
+        }
+        disable_raw_mode().map_err(|source| {
+            CoreError::io(
+                "startup_welcome_raw_mode_restore",
+                "Could not restore terminal mode after the Yazelix welcome prompt.",
+                "Reset the terminal, then retry the launch.",
+                ".",
+                source,
+            )
+        })?;
+        self.active = false;
+        Ok(())
+    }
+}
+
+impl Drop for WelcomeRawModeGuard {
+    fn drop(&mut self) {
+        if self.active {
+            let _ = disable_raw_mode();
+        }
+    }
+}
+
+fn wait_for_welcome_keypress() -> Result<(), CoreError> {
+    let mut raw_mode = WelcomeRawModeGuard::enable()?;
+    wait_for_welcome_keypress_from_events(|| {
+        crossterm::event::read().map_err(|source| {
+            CoreError::io(
+                "startup_welcome_key_read",
+                "Could not read the Yazelix welcome prompt key.",
+                "Retry in an interactive terminal that supports raw key input, or set core.skip_welcome_screen = true.",
+                ".",
+                source,
+            )
+        })
+    })?;
+    raw_mode.disable()
+}
+
+fn wait_for_welcome_keypress_from_events(
+    mut read_event: impl FnMut() -> Result<Event, CoreError>,
+) -> Result<(), CoreError> {
+    loop {
+        let event = read_event()?;
+        if is_welcome_keypress(&event) {
+            return Ok(());
+        }
+    }
+}
+
+fn is_welcome_keypress(event: &Event) -> bool {
+    matches!(event, Event::Key(key) if key.kind == KeyEventKind::Press)
 }
 
 fn show_first_run_upgrade_summary(
@@ -544,6 +621,53 @@ fn require_existing_file(path: &str, label: &str) -> Result<String, CoreError> {
         "Run `yzx doctor` to inspect the generated-state contract, then retry.",
         serde_json::json!({ "path": path.to_string_lossy() }),
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    // Test lane: default
+
+    use super::{is_welcome_keypress, wait_for_welcome_keypress_from_events};
+    use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers};
+    use std::collections::VecDeque;
+
+    // Defends: the welcome prompt's "any key" contract accepts a non-Enter key without waiting for a newline.
+    #[test]
+    fn welcome_prompt_continues_on_non_enter_key_press() {
+        let mut events = VecDeque::from([
+            Event::Resize(80, 24),
+            Event::Key(KeyEvent {
+                code: KeyCode::Char('x'),
+                modifiers: KeyModifiers::NONE,
+                kind: KeyEventKind::Repeat,
+                state: KeyEventState::NONE,
+            }),
+            Event::Key(KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE)),
+        ]);
+
+        wait_for_welcome_keypress_from_events(|| {
+            Ok(events
+                .pop_front()
+                .expect("welcome prompt should stop after the key press"))
+        })
+        .unwrap();
+
+        assert!(events.is_empty());
+    }
+
+    // Defends: non-key and non-press terminal events do not accidentally pass the welcome prompt.
+    #[test]
+    fn welcome_prompt_ignores_non_press_terminal_events() {
+        let repeat = Event::Key(KeyEvent {
+            code: KeyCode::Char('x'),
+            modifiers: KeyModifiers::NONE,
+            kind: KeyEventKind::Repeat,
+            state: KeyEventState::NONE,
+        });
+
+        assert!(!is_welcome_keypress(&repeat));
+        assert!(!is_welcome_keypress(&Event::Resize(80, 24)));
+    }
 }
 
 fn capture_startup_handoff(
