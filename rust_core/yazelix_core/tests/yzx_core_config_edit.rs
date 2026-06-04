@@ -45,6 +45,10 @@ fn config_set_and_unset_edit_settings_jsonc() {
     let settings_path = config.join("settings.jsonc");
     let value = read_settings_jsonc_value(&settings_path).expect("settings after set");
     assert_eq!(value["editor"]["hide_sidebar_on_file_open"], json!(true));
+    assert_eq!(
+        value["ratconfig"]["contract"]["contract_id"],
+        json!("yazelix.settings")
+    );
 
     let mut set_cursor = yzx_control_command();
     with_config_env(&mut set_cursor, &home, &runtime, &config);
@@ -65,6 +69,7 @@ fn config_set_and_unset_edit_settings_jsonc() {
 
     let value = read_settings_jsonc_value(&settings_path).expect("settings after unset");
     assert_eq!(value["editor"]["hide_sidebar_on_file_open"], json!(false));
+    assert_eq!(value["ratconfig"]["contract"]["version"].as_u64(), Some(4));
 }
 
 // Regression: live-with-pane-refresh config saves emit a versioned pane-orchestrator reload payload instead of leaving the saved value silently inactive.

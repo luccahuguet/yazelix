@@ -52,6 +52,7 @@ pub mod runtime_materialization;
 pub mod runtime_ownership_graph;
 pub mod session_config_snapshot;
 pub mod session_facts;
+pub mod settings_contract;
 pub mod settings_jsonc_patch;
 pub mod settings_surface;
 pub mod startup_facts;

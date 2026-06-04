@@ -101,21 +101,9 @@ fn unsets_existing_field_without_rewriting_document() {
     assert!(parsed["core"].get("debug_mode").is_none());
 }
 
-// Defends: unsupported structures fail clearly instead of causing an implicit pretty-print rewrite.
+// Defends: parent/path shapes that ratconfig cannot patch safely still fail clearly.
 #[test]
 fn rejects_unsafe_patch_shapes() {
-    let unsupported_value = set_settings_jsonc_value_text(
-        settings_path(),
-        "{}",
-        "cursors.cursor",
-        &json!([{ "name": "block" }]),
-    )
-    .expect_err("unsupported array shape");
-    assert_eq!(
-        unsupported_value.code(),
-        "unsupported_settings_jsonc_patch_value"
-    );
-
     let blocked_parent = set_settings_jsonc_value_text(
         settings_path(),
         r#"{ "editor": false }"#,
@@ -129,6 +117,39 @@ fn rejects_unsafe_patch_shapes() {
         set_settings_jsonc_value_text(settings_path(), "{}", "editor[0]", &json!(true))
             .expect_err("invalid path");
     assert_eq!(invalid_path.code(), "invalid_settings_path");
+}
+
+// Defends: ratconfig-owned deterministic defaults can materialize structured JSON values without a whole-file rewrite.
+#[test]
+fn inserts_structured_values_without_rewriting_document() {
+    let raw = r#"{
+  // keep root comment
+  "zellij": {}
+}
+"#;
+
+    let outcome = set_settings_jsonc_value_text(
+        settings_path(),
+        raw,
+        "zellij.custom_popups",
+        &json!([
+            {
+                "id": "btm",
+                "command": ["btm"],
+                "keybindings": ["Alt Shift B"],
+                "keep_alive": true
+            }
+        ]),
+    )
+    .expect("patch structured default");
+
+    assert_eq!(outcome.mutation, SettingsJsoncPatchMutation::Inserted);
+    assert!(outcome.text.contains("// keep root comment"));
+    let parsed = parse_jsonc_value(settings_path(), &outcome.text).expect("parse");
+    assert_eq!(
+        parsed["zellij"]["custom_popups"][0]["command"],
+        json!(["btm"])
+    );
 }
 
 // Defends: reusable JSONC patch primitives report project-agnostic errors before Yazelix maps them into CoreError.

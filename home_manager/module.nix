@@ -465,9 +465,21 @@ let
     "terminal"
     "zellij"
     "yazi"
+    "ratconfig"
   ];
 
-  settingsJsonValue = mainConfigSettingsValue;
+  settingsJsonValue = lib.recursiveUpdate mainConfigSettingsValue {
+    ratconfig.contract = {
+      schema_version = 1;
+      contract_id = "yazelix.settings";
+      version = 4;
+      applied_change_ids = [
+        "rename-editor-sidebar-to-workspace-left-sidebar"
+        "replace-native-movement-defaults"
+        "add-current-default-settings"
+      ];
+    };
+  };
 
   settingsOrderedNames =
     (builtins.filter (name: builtins.hasAttr name settingsJsonValue) settingsTopLevelOrder)

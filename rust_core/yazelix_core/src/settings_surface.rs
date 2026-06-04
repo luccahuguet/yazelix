@@ -3,9 +3,11 @@
 
 use crate::bridge::{CoreError, ErrorClass};
 use crate::native_config_status::path_owned_by_home_manager;
-use crate::settings_jsonc_patch::{
-    jsonc_parse_options, set_settings_jsonc_value_text, unset_settings_jsonc_value_text,
+use crate::settings_contract::{
+    SETTINGS_CONTRACT_STATE_PATH, SettingsContractReconcileOutcome,
+    reconcile_settings_contract_text,
 };
+use crate::settings_jsonc_patch::jsonc_parse_options;
 use crate::user_config_paths;
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use std::fs;
@@ -25,28 +27,8 @@ const SETTINGS_TOP_LEVEL_ORDER: &[&str] = &[
     "terminal",
     "zellij",
     "yazi",
+    "ratconfig",
 ];
-const LEGACY_SIDEBAR_SETTING_RENAMES: &[(&str, &str)] = &[
-    ("editor.sidebar_command", "workspace.left_sidebar.command"),
-    ("editor.sidebar_args", "workspace.left_sidebar.args"),
-    (
-        "editor.sidebar_width_percent",
-        "workspace.left_sidebar.width_percent",
-    ),
-];
-const REPLACED_DEFAULT_SETTING_VALUES: &[(&str, &[&str])] = &[
-    ("zellij.native_keybindings.move_tab_left", &["Ctrl Shift H"]),
-    (
-        "zellij.native_keybindings.move_tab_right",
-        &["Ctrl Shift L"],
-    ),
-    (
-        "zellij.native_keybindings.move_pane_down",
-        &["Ctrl Shift J"],
-    ),
-    ("zellij.native_keybindings.move_pane_up", &["Ctrl Shift K"]),
-];
-const OPTIONAL_ADDITIVE_DEFAULT_PATHS: &[&str] = &["zellij.custom_popups"];
 
 #[derive(Debug, Clone)]
 pub struct SettingsSurfacePaths {
@@ -111,7 +93,7 @@ pub fn ensure_settings_config_with_cursor_component(
     ensure_no_old_main_inputs(&paths)?;
 
     if paths.settings_config.exists() {
-        repair_settings_config_missing_defaults(&paths.settings_config, default_main_config)?;
+        reconcile_settings_config_contract(&paths.settings_config, default_main_config)?;
         if cursor_component_enabled {
             ensure_no_embedded_cursor_settings(&paths)?;
             ensure_shared_cursor_settings_config(&paths, default_cursor_config)?;
@@ -136,6 +118,9 @@ pub fn ensure_settings_config_with_cursor_component(
     }
 
     let rendered = render_default_settings_jsonc(default_main_config)?;
+    let rendered =
+        reconcile_settings_contract_text(&paths.settings_config, &rendered, default_main_config)?
+            .text;
 
     if let Some(parent) = paths.settings_config.parent() {
         fs::create_dir_all(parent).map_err(|source| {
@@ -169,300 +154,69 @@ pub fn ensure_settings_config_with_cursor_component(
     Ok(paths.settings_config)
 }
 
-#[derive(Debug, Clone)]
-struct MissingDefaultSetting {
-    path: String,
-    value: JsonValue,
-}
-
-fn repair_settings_config_missing_defaults(
+fn reconcile_settings_config_contract(
     settings_config: &Path,
     default_main_config: &Path,
 ) -> Result<(), CoreError> {
     let raw = fs::read_to_string(settings_config).map_err(|source| {
         io_err(
-            "read_settings_config_for_repair",
+            "read_settings_config_for_contract_reconciliation",
             settings_config,
-            "Could not read ~/.config/yazelix/settings.jsonc for additive repair",
+            "Could not read ~/.config/yazelix/settings.jsonc for contract reconciliation",
             source,
         )
     })?;
-    let defaults = read_settings_jsonc_value(default_main_config)?;
-    let current = parse_jsonc_value(settings_config, &raw)?;
-    let raw = repair_legacy_sidebar_settings(settings_config, raw, &current, &defaults)?;
-    let current = parse_jsonc_value(settings_config, &raw)?;
-    let raw = repair_replaced_default_settings(settings_config, raw, &current, &defaults)?;
-    let current = parse_jsonc_value(settings_config, &raw)?;
-    let mut missing = Vec::new();
-    collect_missing_default_settings(&current, &defaults, &mut Vec::new(), &mut missing);
+    let outcome = reconcile_settings_contract_text(settings_config, &raw, default_main_config)?;
 
-    if missing.is_empty() {
+    if !outcome.changed() {
         return Ok(());
     }
 
-    let missing_paths = missing
-        .iter()
-        .map(|setting| setting.path.clone())
-        .collect::<Vec<_>>();
     if path_owned_by_home_manager(settings_config) {
         return Err(CoreError::classified(
             ErrorClass::Config,
-            "home_manager_owned_settings_missing_fields",
-            "The active Yazelix settings file is missing fields and is owned by Home Manager.",
-            "Update your Home Manager module/options and run home-manager switch so the generated settings.jsonc includes the current Yazelix defaults.",
+            "home_manager_owned_settings_contract_reconciliation_required",
+            "The active Yazelix settings file needs deterministic contract reconciliation and is owned by Home Manager.",
+            "Update your Home Manager module/options and run home-manager switch so the generated settings.jsonc joins the current Yazelix settings contract.",
             json!({
                 "path": settings_config.display().to_string(),
-                "missing_fields": missing_paths,
+                "state_path": SETTINGS_CONTRACT_STATE_PATH,
+                "applied_changes": outcome.applied_change_ids,
             }),
         ));
     }
     if settings_path_is_read_only(settings_config) {
         return Err(CoreError::classified(
             ErrorClass::Config,
-            "read_only_settings_missing_fields",
+            "read_only_settings_contract_reconciliation_required",
             format!(
-                "The active Yazelix settings file is missing fields and is read-only: {}.",
+                "The active Yazelix settings file needs deterministic contract reconciliation and is read-only: {}.",
                 settings_config.display()
             ),
-            "Fix file permissions or edit the owning configuration source so settings.jsonc includes the current Yazelix defaults.",
+            "Fix file permissions or edit the owning configuration source so settings.jsonc joins the current Yazelix settings contract.",
             json!({
                 "path": settings_config.display().to_string(),
-                "missing_fields": missing_paths,
+                "state_path": SETTINGS_CONTRACT_STATE_PATH,
+                "applied_changes": outcome.applied_change_ids,
             }),
         ));
     }
 
-    let mut patched = raw;
-    for setting in missing {
-        patched = set_settings_jsonc_value_text(
-            settings_config,
-            &patched,
-            &setting.path,
-            &setting.value,
-        )?
-        .text;
-    }
-    fs::write(settings_config, patched).map_err(|source| {
+    write_reconciled_settings_contract(settings_config, &outcome)
+}
+
+fn write_reconciled_settings_contract(
+    settings_config: &Path,
+    outcome: &SettingsContractReconcileOutcome,
+) -> Result<(), CoreError> {
+    fs::write(settings_config, &outcome.text).map_err(|source| {
         io_err(
-            "write_settings_config_repair",
+            "write_settings_config_contract_reconciliation",
             settings_config,
-            "Could not write additive settings.jsonc defaults",
+            "Could not write reconciled settings.jsonc contract state",
             source,
         )
     })
-}
-
-fn repair_replaced_default_settings(
-    settings_config: &Path,
-    raw: String,
-    current: &JsonValue,
-    defaults: &JsonValue,
-) -> Result<String, CoreError> {
-    let replaced = REPLACED_DEFAULT_SETTING_VALUES
-        .iter()
-        .filter_map(|(path, old_keys)| {
-            let old_value = JsonValue::Array(
-                old_keys
-                    .iter()
-                    .map(|key| JsonValue::String((*key).to_string()))
-                    .collect(),
-            );
-            let current_value = json_value_at_path(current, path)?;
-            let default_value = json_value_at_path(defaults, path)?;
-            (current_value == &old_value && default_value != &old_value).then(|| {
-                MissingDefaultSetting {
-                    path: (*path).to_string(),
-                    value: default_value.clone(),
-                }
-            })
-        })
-        .collect::<Vec<_>>();
-    if replaced.is_empty() {
-        return Ok(raw);
-    }
-
-    let replaced_paths = replaced
-        .iter()
-        .map(|setting| setting.path.clone())
-        .collect::<Vec<_>>();
-    if path_owned_by_home_manager(settings_config) {
-        return Err(CoreError::classified(
-            ErrorClass::Config,
-            "home_manager_owned_settings_replaced_defaults",
-            "The active Yazelix settings file uses older generated defaults and is owned by Home Manager.",
-            "Update your Home Manager module/options and run home-manager switch so the generated settings.jsonc includes the current Yazelix defaults.",
-            json!({
-                "path": settings_config.display().to_string(),
-                "replaced_fields": replaced_paths,
-            }),
-        ));
-    }
-    if settings_path_is_read_only(settings_config) {
-        return Err(CoreError::classified(
-            ErrorClass::Config,
-            "read_only_settings_replaced_defaults",
-            format!(
-                "The active Yazelix settings file uses older generated defaults and is read-only: {}.",
-                settings_config.display()
-            ),
-            "Fix file permissions or edit the owning configuration source so settings.jsonc includes the current Yazelix defaults.",
-            json!({
-                "path": settings_config.display().to_string(),
-                "replaced_fields": replaced_paths,
-            }),
-        ));
-    }
-
-    let mut patched = raw;
-    for setting in replaced {
-        patched = set_settings_jsonc_value_text(
-            settings_config,
-            &patched,
-            &setting.path,
-            &setting.value,
-        )?
-        .text;
-    }
-    Ok(patched)
-}
-
-fn repair_legacy_sidebar_settings(
-    settings_config: &Path,
-    raw: String,
-    current: &JsonValue,
-    defaults: &JsonValue,
-) -> Result<String, CoreError> {
-    let legacy_values = LEGACY_SIDEBAR_SETTING_RENAMES
-        .iter()
-        .filter_map(|(old_path, new_path)| {
-            json_value_at_path(current, old_path).map(|value| (*old_path, *new_path, value.clone()))
-        })
-        .collect::<Vec<_>>();
-    if legacy_values.is_empty() {
-        return Ok(raw);
-    }
-
-    let mut conflicts = Vec::new();
-    for (old_path, new_path, old_value) in &legacy_values {
-        let Some(new_value) = json_value_at_path(current, new_path) else {
-            continue;
-        };
-        let new_is_default = json_value_at_path(defaults, new_path)
-            .map(|default_value| new_value == default_value)
-            .unwrap_or(false);
-        if new_value != old_value && !new_is_default {
-            conflicts.push(json!({
-                "old_path": old_path,
-                "new_path": new_path,
-            }));
-        }
-    }
-    if !conflicts.is_empty() {
-        return Err(CoreError::classified(
-            ErrorClass::Config,
-            "legacy_sidebar_settings_conflict",
-            "Yazelix found old sidebar settings and conflicting workspace left-sidebar settings.",
-            "Choose one value, remove the old editor.sidebar_* entries, and keep the workspace.left_sidebar.* settings.",
-            json!({
-                "path": settings_config.display().to_string(),
-                "conflicts": conflicts,
-            }),
-        ));
-    }
-
-    if path_owned_by_home_manager(settings_config) {
-        return Err(CoreError::classified(
-            ErrorClass::Config,
-            "home_manager_owned_legacy_sidebar_settings",
-            "The active Yazelix settings file uses old sidebar fields and is owned by Home Manager.",
-            "Update your Home Manager options from editor.sidebar_* to workspace.left_sidebar.* and run home-manager switch.",
-            json!({
-                "path": settings_config.display().to_string(),
-                "legacy_fields": legacy_values
-                    .iter()
-                    .map(|(old_path, _, _)| old_path)
-                    .collect::<Vec<_>>(),
-            }),
-        ));
-    }
-    if settings_path_is_read_only(settings_config) {
-        return Err(CoreError::classified(
-            ErrorClass::Config,
-            "read_only_legacy_sidebar_settings",
-            format!(
-                "The active Yazelix settings file uses old sidebar fields and is read-only: {}.",
-                settings_config.display()
-            ),
-            "Make settings.jsonc writable or update the owning configuration source from editor.sidebar_* to workspace.left_sidebar.*.",
-            json!({
-                "path": settings_config.display().to_string(),
-                "legacy_fields": legacy_values
-                    .iter()
-                    .map(|(old_path, _, _)| old_path)
-                    .collect::<Vec<_>>(),
-            }),
-        ));
-    }
-
-    let mut patched = raw;
-    for (_, new_path, old_value) in &legacy_values {
-        patched =
-            set_settings_jsonc_value_text(settings_config, &patched, new_path, old_value)?.text;
-    }
-    for (old_path, _, _) in legacy_values {
-        patched = unset_settings_jsonc_value_text(settings_config, &patched, old_path)?.text;
-    }
-    Ok(patched)
-}
-
-fn json_value_at_path<'a>(value: &'a JsonValue, path: &str) -> Option<&'a JsonValue> {
-    let mut current = value;
-    for part in path.split('.') {
-        current = current.as_object()?.get(part)?;
-    }
-    Some(current)
-}
-
-fn collect_missing_default_settings(
-    current: &JsonValue,
-    defaults: &JsonValue,
-    path: &mut Vec<String>,
-    missing: &mut Vec<MissingDefaultSetting>,
-) {
-    let Some(default_object) = defaults.as_object() else {
-        return;
-    };
-    let Some(current_object) = current.as_object() else {
-        return;
-    };
-
-    for (key, default_value) in default_object {
-        path.push(key.clone());
-        match current_object.get(key) {
-            Some(current_value) => {
-                collect_missing_default_settings(current_value, default_value, path, missing);
-            }
-            None => {
-                if default_value.is_object() {
-                    collect_missing_default_settings(
-                        &JsonValue::Object(JsonMap::new()),
-                        default_value,
-                        path,
-                        missing,
-                    );
-                } else {
-                    let missing_path = path.join(".");
-                    if !OPTIONAL_ADDITIVE_DEFAULT_PATHS.contains(&missing_path.as_str()) {
-                        missing.push(MissingDefaultSetting {
-                            path: missing_path,
-                            value: default_value.clone(),
-                        });
-                    }
-                }
-            }
-        }
-        path.pop();
-    }
 }
 
 fn settings_path_is_read_only(path: &Path) -> bool {
@@ -799,6 +553,9 @@ fn json_value_to_toml_table(value: &JsonValue, path: &Path) -> Result<toml::Tabl
     };
     let mut table = toml::Table::new();
     for (key, value) in object {
+        if key == "ratconfig" {
+            continue;
+        }
         if value.is_null() {
             continue;
         }
@@ -868,6 +625,9 @@ mod tests {
     use std::fs;
     use tempfile::tempdir;
 
+    #[cfg(unix)]
+    use std::os::unix::fs::PermissionsExt;
+
     fn write_defaults(root: &Path) -> (PathBuf, PathBuf) {
         let main = root.join("settings_default.jsonc");
         let cursor = root.join(DEFAULT_CURSOR_CONFIG_FILENAME);
@@ -925,6 +685,10 @@ mod tests {
             value["editor"]["hide_sidebar_on_file_open"].as_bool(),
             Some(true)
         );
+        assert_eq!(
+            value["ratconfig"]["contract"]["contract_id"].as_str(),
+            Some("yazelix.settings")
+        );
         assert!(value.get("cursors").is_none());
         let cursor_value = read_settings_jsonc_value(
             &config.path().join("yazelix_ghostty_cursors/settings.jsonc"),
@@ -959,6 +723,10 @@ mod tests {
         assert_eq!(
             value["editor"]["hide_sidebar_on_file_open"].as_bool(),
             Some(true)
+        );
+        assert_eq!(
+            value["ratconfig"]["contract"]["contract_id"].as_str(),
+            Some("yazelix.settings")
         );
         assert!(value.get("cursors").is_none());
     }
@@ -1052,11 +820,15 @@ mod tests {
             value["workspace"]["right_sidebar"]["command"].as_str(),
             Some("codex")
         );
+        assert_eq!(
+            value["ratconfig"]["contract"]["applied_change_ids"][0].as_str(),
+            Some("rename-editor-sidebar-to-workspace-left-sidebar")
+        );
     }
 
-    // Regression: a previous failed launch may have already added default workspace fields before old sidebar fields blocked validation.
+    // Defends: ratconfig-owned renames fail clearly when the destination already exists instead of guessing which value to keep.
     #[test]
-    fn migrates_legacy_sidebar_fields_over_default_workspace_destination() {
+    fn rejects_legacy_sidebar_rename_when_destination_exists() {
         let runtime = tempdir().unwrap();
         let config = tempdir().unwrap();
         let (main, cursor) = write_defaults(runtime.path());
@@ -1079,16 +851,12 @@ mod tests {
         )
         .unwrap();
 
-        let path = ensure_settings_config(config.path(), &main, &cursor).unwrap();
-        let value = read_settings_jsonc_value(&path).unwrap();
+        let err = ensure_settings_config(config.path(), &main, &cursor).unwrap_err();
 
-        assert_eq!(
-            value["workspace"]["left_sidebar"]["width_percent"].as_i64(),
-            Some(28)
-        );
+        assert_eq!(err.code(), "settings_contract_destination_exists");
     }
 
-    // Defends: automatic repair does not guess when old and new sidebar fields both carry custom values.
+    // Defends: automatic repair does not guess when old and new sidebar fields both carry values.
     #[test]
     fn rejects_legacy_sidebar_conflict_with_custom_workspace_destination() {
         let runtime = tempdir().unwrap();
@@ -1112,7 +880,52 @@ mod tests {
 
         let err = ensure_settings_config(config.path(), &main, &cursor).unwrap_err();
 
-        assert_eq!(err.code(), "legacy_sidebar_settings_conflict");
+        assert_eq!(err.code(), "settings_contract_destination_exists");
+    }
+
+    // Defends: Home Manager-owned settings report deterministic reconciliation work without mutating the generated file.
+    #[cfg(unix)]
+    #[test]
+    fn home_manager_owned_settings_contract_reconciliation_reports_without_writing() {
+        let runtime = tempdir().unwrap();
+        let config = tempdir().unwrap();
+        let (main, cursor) = write_defaults(runtime.path());
+        let hm_dir = config.path().join("profile-home-manager-files");
+        fs::create_dir_all(&hm_dir).unwrap();
+        let hm_settings = hm_dir.join("settings.jsonc");
+        fs::write(&hm_settings, r#"{ "editor": { "command": "hx" } }"#).unwrap();
+        std::os::unix::fs::symlink(&hm_settings, config.path().join("settings.jsonc")).unwrap();
+
+        let err = ensure_settings_config(config.path(), &main, &cursor).unwrap_err();
+        let raw = fs::read_to_string(&hm_settings).unwrap();
+
+        assert_eq!(
+            err.code(),
+            "home_manager_owned_settings_contract_reconciliation_required"
+        );
+        assert!(!raw.contains("ratconfig"));
+    }
+
+    // Defends: read-only user settings report deterministic reconciliation work without attempting a write.
+    #[cfg(unix)]
+    #[test]
+    fn read_only_settings_contract_reconciliation_reports_without_writing() {
+        let runtime = tempdir().unwrap();
+        let config = tempdir().unwrap();
+        let (main, cursor) = write_defaults(runtime.path());
+        let settings = config.path().join("settings.jsonc");
+        fs::write(&settings, r#"{ "editor": { "command": "hx" } }"#).unwrap();
+        fs::set_permissions(&settings, fs::Permissions::from_mode(0o444)).unwrap();
+
+        let err = ensure_settings_config(config.path(), &main, &cursor).unwrap_err();
+        let raw = fs::read_to_string(&settings).unwrap();
+        fs::set_permissions(&settings, fs::Permissions::from_mode(0o644)).unwrap();
+
+        assert_eq!(
+            err.code(),
+            "read_only_settings_contract_reconciliation_required"
+        );
+        assert!(!raw.contains("ratconfig"));
     }
 
     // Regression: JSONC parse errors should explain that TOML/Nix-style # comments are not valid settings comments.

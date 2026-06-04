@@ -29,7 +29,7 @@ time = { version = "0.3", features = ["formatting", "local-offset", "macros"] }
 thiserror = "2.0"
 toml = "0.9"
 yazelix_cursors = { git = "https://github.com/luccahuguet/yazelix-cursors", rev = "536d786d9db1ba0122e2715a04a211e9035e84d4" }
-yazelix_ratconfig = { package = "yazelix-ratconfig", git = "https://github.com/luccahuguet/yazelix-ratconfig", rev = "90b0609333b9c03395cff40366d1efec058a0ff1" }
+yazelix_ratconfig = { package = "yazelix-ratconfig", git = "https://github.com/luccahuguet/yazelix-ratconfig", rev = "e7e70ca23adf20f167ae07e7bc025e278ae0deda" }
 yazelix_screen = { git = "https://github.com/luccahuguet/yazelix-screen", rev = "b392d282f318aea74966db45354c3f524dee1b31" }
 
 [target.'cfg(windows)'.dependencies]

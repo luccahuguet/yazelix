@@ -169,9 +169,12 @@ impl YazelixConfigUiApp {
     ) -> Result<ConfigUiWriteOutcome, CoreError> {
         let mut apply_status = None;
         let mut apply_error = None;
+        let (text, should_write) = self.reconcile_patched_edit_target(target, &outcome)?;
+        if should_write {
+            self.validate_patched_edit_target(&target, &text)?;
+            write_settings_edit(&target.path, &text)?;
+        }
         if outcome.changed() {
-            self.validate_patched_edit_target(&target, &outcome.text)?;
-            write_settings_edit(&target.path, &outcome.text)?;
             match apply_after_field_write(&self.request, &self.model, setting_path) {
                 Ok(status) => apply_status = Some(status),
                 Err(error) => apply_error = Some(apply_error_notice(&error)),
@@ -183,6 +186,23 @@ impl YazelixConfigUiApp {
             apply_status,
             apply_error,
         })
+    }
+
+    fn reconcile_patched_edit_target(
+        &self,
+        target: &ConfigUiEditTarget,
+        outcome: &SettingsJsoncPatchOutcome,
+    ) -> Result<(String, bool), CoreError> {
+        let mut text = outcome.text.clone();
+        let mut should_write = outcome.changed();
+        if target.kind == ConfigUiEditTargetKind::Main {
+            let paths = primary_config_paths(&self.request.runtime_dir, &self.request.config_dir);
+            let reconciled =
+                reconcile_settings_contract_text(&target.path, &text, &paths.default_config_path)?;
+            should_write = should_write || reconciled.changed();
+            text = reconciled.text;
+        }
+        Ok((text, should_write))
     }
 
     fn reload_model_preserving_selection(&mut self, selected_path: &str) -> Result<(), CoreError> {

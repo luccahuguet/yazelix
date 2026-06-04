@@ -21,6 +21,7 @@ use crate::native_config_status::{
 };
 use crate::runtime_apply_mode::RuntimeApplyMode;
 use crate::runtime_component_enabled;
+use crate::settings_contract::reconcile_settings_contract_text;
 use crate::settings_jsonc_patch::{
     SettingsJsoncPatchMutation, SettingsJsoncPatchOutcome, set_settings_jsonc_value_text,
     unset_settings_jsonc_value_text,

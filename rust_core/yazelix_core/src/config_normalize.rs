@@ -346,7 +346,7 @@ fn compare_configs(
 
         let mut findings = Vec::new();
         for key in user_table.keys() {
-            if path.is_empty() && key == "cursors" {
+            if path.is_empty() && (key == "cursors" || key == "ratconfig") {
                 continue;
             }
             if !default_table.contains_key(key) {
@@ -1144,6 +1144,24 @@ mod tests {
         .unwrap();
         let fields = load_contract_fields(&contract).unwrap();
         assert_eq!(config.len(), fields.len() + 1);
+    }
+
+    // Defends: the hidden ratconfig contract state is accepted as metadata but never reaches runtime config.
+    #[test]
+    fn ignores_hidden_ratconfig_contract_state_during_normalization() {
+        let mut settings = default_settings_jsonc();
+        settings["ratconfig"] = json!({
+            "contract": {
+                "schema_version": 1,
+                "contract_id": "yazelix.settings",
+                "version": 4,
+                "applied_change_ids": ["add-current-default-settings"]
+            }
+        });
+        let data = normalize_config(&strict_request_for(write_settings_config(&settings))).unwrap();
+
+        assert!(!data.normalized_config.contains_key("ratconfig"));
+        assert!(data.diagnostic_report.blocking_diagnostics.is_empty());
     }
 
     // Defends: the shipped main settings template is a complete strict settings.jsonc surface.

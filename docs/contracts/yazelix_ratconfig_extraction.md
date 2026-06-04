@@ -4,9 +4,9 @@
 
 `yazelix-ratconfig` is a first-party Rust child repository for reusable Ratatui config editing.
 
-The child repo owns the project-agnostic config UI core: model, navigation, edit state, rendering, JSONC patch primitives, and deterministic migration primitives. Yazelix remains the first consumer and keeps only the adapter code that knows about Yazelix settings, Home Manager ownership, runtime refreshes, and generated config behavior.
+The child repo owns the project-agnostic config UI core: model, navigation, edit state, rendering, JSONC patch primitives, TOML text adapters, and deterministic contract/migration primitives. Yazelix remains the first consumer and keeps only the adapter code that knows about Yazelix settings, Home Manager ownership, runtime refreshes, and generated config behavior.
 
-JSONC is the first supported persistence adapter because `settings.jsonc` is Yazelix's canonical user config format. A TOML adapter is a future decision, not part of the initial extraction contract.
+JSONC is Yazelix's only main-settings persistence format because `settings.jsonc` is the canonical user config. Ratconfig TOML support is a reusable child-crate capability for other hosts and future sidecars; it is not a Yazelix `settings.toml` surface.
 
 ## Extraction State
 
@@ -68,6 +68,8 @@ Current modules:
 - `editor`: navigation, search, edit modes, input parsing, and control actions
 - `render`: Ratatui rendering for the generic model
 - `jsonc`: comment-preserving JSONC patch primitives
+- `toml_adapter`: deterministic TOML text adapter primitives
+- `contract`: joined deterministic config contracts
 - `migration`: deterministic config migration operations
 
 The application adapter owns file IO, validation, atomic writes, model reload, and post-save apply behavior.

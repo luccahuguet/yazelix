@@ -14,6 +14,7 @@ use crate::control_plane::{
     config_dir_from_env, config_override_from_env, runtime_dir_from_env,
     runtime_materialization_plan_request_from_env, state_dir_from_env,
 };
+use crate::settings_contract::reconcile_settings_contract_text;
 use crate::settings_jsonc_patch::{
     SettingsJsoncPatchMutation, set_settings_jsonc_value_text, unset_settings_jsonc_value_text,
 };
@@ -34,6 +35,12 @@ struct ConfigEditTarget {
     path: PathBuf,
     path_in_file: String,
     kind: ConfigEditTargetKind,
+}
+
+#[derive(Debug, Clone)]
+struct PreparedConfigEdit {
+    text: String,
+    should_write: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -236,10 +243,8 @@ fn run_config_set(setting_path: &str, raw_value: &str) -> Result<i32, CoreError>
     ensure_edit_target_writable(&target)?;
     let raw = read_config_for_edit_or_default(&paths, &target)?;
     let outcome = set_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file, &value)?;
-    if outcome.changed() {
-        validate_patched_edit_target(&paths, &target, &outcome.text)?;
-    }
-    write_config_edit(&target.path, &outcome.text, outcome.mutation)?;
+    let prepared = prepare_config_edit_text(&paths, &target, &outcome)?;
+    write_config_edit(&target.path, &prepared.text, prepared.should_write)?;
     let apply_status =
         apply_after_config_edit(setting_path, outcome.mutation, &paths.contract_path)?;
     print_edit_outcome(setting_path, outcome.mutation, apply_status.as_ref());
@@ -260,10 +265,8 @@ fn run_config_unset(setting_path: &str) -> Result<i32, CoreError> {
             unset_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file)?
         }
     };
-    if outcome.changed() {
-        validate_patched_edit_target(&paths, &target, &outcome.text)?;
-    }
-    write_config_edit(&target.path, &outcome.text, outcome.mutation)?;
+    let prepared = prepare_config_edit_text(&paths, &target, &outcome)?;
+    write_config_edit(&target.path, &prepared.text, prepared.should_write)?;
     let apply_status =
         apply_after_config_edit(setting_path, outcome.mutation, &paths.contract_path)?;
     print_edit_outcome(setting_path, outcome.mutation, apply_status.as_ref());
@@ -424,6 +427,25 @@ fn validate_patched_edit_target(
     }
 }
 
+fn prepare_config_edit_text(
+    paths: &ActiveConfigPaths,
+    target: &ConfigEditTarget,
+    outcome: &crate::settings_jsonc_patch::SettingsJsoncPatchOutcome,
+) -> Result<PreparedConfigEdit, CoreError> {
+    let mut text = outcome.text.clone();
+    let mut should_write = outcome.changed();
+    if target.kind == ConfigEditTargetKind::Main {
+        let reconciled =
+            reconcile_settings_contract_text(&target.path, &text, &paths.default_config_path)?;
+        should_write = should_write || reconciled.changed();
+        text = reconciled.text;
+    }
+    if should_write {
+        validate_patched_edit_target(paths, target, &text)?;
+    }
+    Ok(PreparedConfigEdit { text, should_write })
+}
+
 fn validate_patched_settings(paths: &ActiveConfigPaths, raw: &str) -> Result<(), CoreError> {
     let temp_dir = std::env::temp_dir().join(format!(
         "yazelix_settings_check_{}_{}",
@@ -469,12 +491,8 @@ fn monotonic_suffix() -> u128 {
         .unwrap_or(0)
 }
 
-fn write_config_edit(
-    path: &Path,
-    raw: &str,
-    mutation: SettingsJsoncPatchMutation,
-) -> Result<(), CoreError> {
-    if mutation == SettingsJsoncPatchMutation::Unchanged {
+fn write_config_edit(path: &Path, raw: &str, should_write: bool) -> Result<(), CoreError> {
+    if !should_write {
         return Ok(());
     }
     if let Some(parent) = path.parent() {

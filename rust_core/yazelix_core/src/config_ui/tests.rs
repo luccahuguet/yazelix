@@ -699,6 +699,10 @@ fn write_field_value_patches_settings_jsonc_and_reloads_model() {
         get_json_path(&value, "editor.hide_sidebar_on_file_open"),
         Some(&json!(true))
     );
+    assert_eq!(
+        get_json_path(&value, "ratconfig.contract.contract_id"),
+        Some(&json!("yazelix.settings"))
+    );
     let field = model_field(&app.model, "editor.hide_sidebar_on_file_open");
     assert_eq!(field.state, ConfigUiValueState::Explicit);
     assert_eq!(field.current_value, "true");
