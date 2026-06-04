@@ -47,40 +47,40 @@ def get_glow_profile [glow_level: string] {
             cursor_glow_width_scale: "1.0"
         }
         "low" => {
-            trail_glow_strength: "1.0"
-            cursor_glow_strength: "1.0"
-            effect_blur_factor: 0.7
-            effect_spread_factor: 1.0
-            effect_ring_thickness_factor: 1.0
+            trail_glow_strength: "0.5"
+            cursor_glow_strength: "0.5"
+            effect_blur_factor: 0.35
+            effect_spread_factor: 0.5
+            effect_ring_thickness_factor: 0.5
             trail_edge_width_scale: 1.0
             cursor_edge_width_scale: 1.0
             trail_core_offset_scale: 1.0
-            trail_glow_width_scale: "0.55"
-            cursor_glow_width_scale: "0.6"
+            trail_glow_width_scale: "0.275"
+            cursor_glow_width_scale: "0.3"
         }
         "high" => {
-            trail_glow_strength: "1.0"
-            cursor_glow_strength: "1.0"
-            effect_blur_factor: 1.45
-            effect_spread_factor: 1.0
-            effect_ring_thickness_factor: 1.0
+            trail_glow_strength: "0.5"
+            cursor_glow_strength: "0.5"
+            effect_blur_factor: 0.725
+            effect_spread_factor: 0.5
+            effect_ring_thickness_factor: 0.5
             trail_edge_width_scale: 1.0
             cursor_edge_width_scale: 1.0
             trail_core_offset_scale: 1.0
-            trail_glow_width_scale: "1.7"
-            cursor_glow_width_scale: "1.6"
+            trail_glow_width_scale: "0.85"
+            cursor_glow_width_scale: "0.8"
         }
         _ => {
-            trail_glow_strength: "1.0"
-            cursor_glow_strength: "1.0"
-            effect_blur_factor: 1.0
-            effect_spread_factor: 1.0
-            effect_ring_thickness_factor: 1.0
+            trail_glow_strength: "0.5"
+            cursor_glow_strength: "0.5"
+            effect_blur_factor: 0.5
+            effect_spread_factor: 0.5
+            effect_ring_thickness_factor: 0.5
             trail_edge_width_scale: 1.0
             cursor_edge_width_scale: 1.0
             trail_core_offset_scale: 1.0
-            trail_glow_width_scale: "1.0"
-            cursor_glow_width_scale: "1.0"
+            trail_glow_width_scale: "0.5"
+            cursor_glow_width_scale: "0.5"
         }
     }
 }

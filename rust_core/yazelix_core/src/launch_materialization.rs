@@ -3,26 +3,28 @@
 
 use crate::active_config_surface::resolve_active_config_paths;
 use crate::bridge::CoreError;
-use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
+use crate::config_normalize::{normalize_config, NormalizeConfigRequest};
 use crate::control_plane::{config_dir_from_env, runtime_dir_from_env, state_dir_from_env};
 use crate::ghostty_cursor_registry::{
     CursorRegistry, ResolvedCursorRegistryState, YazelixCursorRegistryExt,
 };
 use crate::ghostty_materialization::{
-    GhosttyMaterializationRequest, generate_ghostty_materialization,
+    generate_ghostty_materialization, GhosttyMaterializationRequest,
 };
 use crate::runtime_component_enabled;
 use crate::terminal_materialization::{
-    TerminalGeneratedConfig, TerminalMaterializationRequest, YzxtermProfile,
-    generate_terminal_materialization, yzxterm_profile_from_env,
+    generate_terminal_materialization, yzxterm_profile_from_env, TerminalGeneratedConfig,
+    TerminalMaterializationRequest, YzxtermProfile,
 };
 use crate::terminal_variant::active_terminal_from_runtime_dir;
 use serde::Serialize;
 use serde_json::{Map as JsonMap, Value as JsonValue};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const DEFAULT_TERMINAL_CONFIG_MODE: &str = "yazelix";
+static LAUNCH_SCOPED_TERMINAL_STATE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Clone)]
 pub struct LaunchMaterializationRequest {
@@ -129,6 +131,7 @@ pub fn prepare_launch_materialization(
             &plan,
             &request.state_dir,
             ghostty_random_requested,
+            request.yzxterm_profile,
         );
         let terminal_data = generate_terminal_materialization(&TerminalMaterializationRequest {
             config_path: request.config_path.clone(),
@@ -228,10 +231,11 @@ fn terminal_materialization_state_dir_for_launch(
     plan: &LaunchMaterializationPlan,
     state_dir: &Path,
     ghostty_random_requested: bool,
+    yzxterm_profile: YzxtermProfile,
 ) -> PathBuf {
     if plan.should_generate_terminal_configs
-        && ghostty_random_requested
         && plan_uses_yazelix_ghostty_cursor(plan)
+        && (ghostty_random_requested || plan_uses_yzxterm_shader_profile(plan, yzxterm_profile))
     {
         return launch_scoped_terminal_state_dir(state_dir);
     }
@@ -239,15 +243,27 @@ fn terminal_materialization_state_dir_for_launch(
     state_dir.to_path_buf()
 }
 
+fn plan_uses_yzxterm_shader_profile(
+    plan: &LaunchMaterializationPlan,
+    yzxterm_profile: YzxtermProfile,
+) -> bool {
+    yzxterm_profile == YzxtermProfile::Shaders
+        && plan
+            .selected_terminals
+            .iter()
+            .any(|terminal| terminal == "yzxterm")
+}
+
 fn launch_scoped_terminal_state_dir(state_dir: &Path) -> PathBuf {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_nanos())
         .unwrap_or(0);
+    let sequence = LAUNCH_SCOPED_TERMINAL_STATE_COUNTER.fetch_add(1, Ordering::Relaxed);
 
     state_dir
         .join("terminal_launches")
-        .join(format!("{}-{nanos}", std::process::id()))
+        .join(format!("{}-{nanos}-{sequence}", std::process::id()))
 }
 
 fn resolved_ghostty_cursor_name(state: &ResolvedCursorRegistryState) -> Option<String> {
@@ -496,8 +512,12 @@ mod tests {
         let plan =
             build_launch_materialization_plan(&config, "ghostty", false, false, temp.path(), true);
 
-        let terminal_state_dir =
-            terminal_materialization_state_dir_for_launch(&plan, temp.path(), true);
+        let terminal_state_dir = terminal_materialization_state_dir_for_launch(
+            &plan,
+            temp.path(),
+            true,
+            YzxtermProfile::Full,
+        );
 
         assert_ne!(terminal_state_dir, temp.path());
         assert!(terminal_state_dir.starts_with(temp.path().join("terminal_launches")));
@@ -511,8 +531,58 @@ mod tests {
         let plan =
             build_launch_materialization_plan(&config, "ghostty", false, false, temp.path(), false);
 
-        let terminal_state_dir =
-            terminal_materialization_state_dir_for_launch(&plan, temp.path(), false);
+        let terminal_state_dir = terminal_materialization_state_dir_for_launch(
+            &plan,
+            temp.path(),
+            false,
+            YzxtermProfile::Full,
+        );
+
+        assert_eq!(terminal_state_dir, temp.path());
+    }
+
+    // Regression: yzxterm shader profile uses launch-scoped shader/config snapshots even with a named cursor, so opening another yzxterm window cannot rewrite GLSL files used by an existing one.
+    #[test]
+    fn yzxterm_shader_profile_uses_scoped_terminal_state_dir() {
+        let temp = tempdir().unwrap();
+        let config = config_with_mode("yazelix");
+        let plan =
+            build_launch_materialization_plan(&config, "yzxterm", false, false, temp.path(), false);
+
+        let first = terminal_materialization_state_dir_for_launch(
+            &plan,
+            temp.path(),
+            false,
+            YzxtermProfile::Shaders,
+        );
+        let second = terminal_materialization_state_dir_for_launch(
+            &plan,
+            temp.path(),
+            false,
+            YzxtermProfile::Shaders,
+        );
+
+        assert_ne!(first, temp.path());
+        assert_ne!(second, temp.path());
+        assert_ne!(first, second);
+        assert!(first.starts_with(temp.path().join("terminal_launches")));
+        assert!(second.starts_with(temp.path().join("terminal_launches")));
+    }
+
+    // Defends: yzxterm profiles that do not load custom cursor shaders keep using the stable generated config root.
+    #[test]
+    fn yzxterm_without_shader_profile_uses_stable_terminal_state_dir() {
+        let temp = tempdir().unwrap();
+        let config = config_with_mode("yazelix");
+        let plan =
+            build_launch_materialization_plan(&config, "yzxterm", false, false, temp.path(), false);
+
+        let terminal_state_dir = terminal_materialization_state_dir_for_launch(
+            &plan,
+            temp.path(),
+            false,
+            YzxtermProfile::Full,
+        );
 
         assert_eq!(terminal_state_dir, temp.path());
     }

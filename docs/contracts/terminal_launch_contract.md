@@ -132,10 +132,16 @@ Out of scope:
   `custom-shader` entries, `baseline` uses the packaged no-effects profile, and
   `shaders` uses the packaged shader profile while replacing packaged shader
   references with the generated Rio decoration shader for the active cursor
-  settings. The generated config injects the current `terminal.transparency` as
-  `[window].opacity` with cell opacity enabled whenever transparency is not
-  `none`. The generated yzxterm config is Yazelix-owned state; it must not
-  become the host Rio config for plain `rio` launches.
+  settings. Shader-profile launches use a launch-scoped generated config and
+  shader directory under `terminal_launches/<launch-id>/`, while full and
+  baseline profiles use the stable generated config root. Launch-scoped shader
+  snapshots are retained as ordinary Yazelix state for the user session and may
+  be pruned by future maintenance; running terminals must not depend on a
+  mutable shared shader directory. The generated config injects the current
+  `terminal.transparency` as `[window].opacity` with cell opacity enabled
+  whenever transparency is not `none`. The generated yzxterm config is
+  Yazelix-owned state; it must not become the host Rio config for plain `rio`
+  launches.
 - Verification: automated Rust tests in
   `rust_core/yazelix_core/src/runtime_contract.rs`
   (`launch_preflight_maps_yzxterm_to_child_wrapper_command`),
@@ -143,6 +149,8 @@ Out of scope:
   (`yzxterm_launch_command_uses_child_wrapper_without_outer_graphics_wrapper`),
   `rust_core/yazelix_core/src/launch_commands/launch.rs`
   (`yzxterm_process_boundary_env_clears_host_rio_config`),
+  `rust_core/yazelix_core/src/launch_materialization.rs`
+  (`yzxterm_shader_profile_uses_scoped_terminal_state_dir`),
   and `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`
   (`terminal_materialization_generate_from_env_writes_generated_configs`,
   `terminal_materialization_yzxterm_shader_profile_injects_rio_decoration_shader`)
