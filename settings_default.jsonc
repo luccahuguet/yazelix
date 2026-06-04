@@ -192,6 +192,10 @@
       "toggle_group_marking": [
         "Ctrl Alt Shift P"
       ],
+      // Keep Backspace-as-Ctrl-H terminal encodings out of Zellij move mode.
+      "move_mode_unbind": [
+        "Ctrl h"
+      ],
       // Move locked mode away from Ctrl+g in normal/default modes for CLI prompt flows.
       "locked_mode_unbind": [
         "Ctrl g"

@@ -609,6 +609,16 @@ pub const ZELLIJ_NATIVE_KEYBINDINGS: &[ZellijNativeKeybindingSpec] = &[
         }],
     ),
     zellij_native_action(
+        "move_mode_unbind",
+        "Unbind default move-mode key",
+        &["Ctrl h"],
+        "unbind Ctrl h",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared_except \"move\" \"locked\"",
+            action_lines: &[],
+        }],
+    ),
+    zellij_native_action(
         "locked_mode_unbind",
         "Unbind default locked-mode key outside locked mode",
         &["Ctrl g"],

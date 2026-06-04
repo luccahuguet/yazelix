@@ -3117,6 +3117,7 @@ keybinds {
         assert!(rendered.contains(r#"bind "Ctrl Alt p" { TogglePaneInGroup; }"#));
         assert!(rendered.contains(r#"bind "Alt 1" { GoToTab 1; }"#));
         assert!(!rendered.contains(r#"Run "yzx" "agent""#));
+        assert!(rendered.contains(r#"unbind "Ctrl h""#));
         assert!(rendered.contains(r#"bind "Ctrl Alt s" { SwitchToMode "Scroll"; }"#));
         assert!(rendered.contains(r#"bind "Ctrl Alt s" { SwitchToMode "Normal"; }"#));
         assert!(rendered.contains(r#"unbind "Ctrl b""#));
