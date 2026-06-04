@@ -46,6 +46,7 @@ in
 rustPlatform.buildRustPackage {
   pname = "yazelix-core";
   version = "0.1.0";
+  dontStrip = pkgs.stdenv.hostPlatform.isDarwin;
 
   src = rustSource;
   cargoRoot = "rust_core";

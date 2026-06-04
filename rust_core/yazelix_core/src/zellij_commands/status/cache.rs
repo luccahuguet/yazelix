@@ -73,6 +73,7 @@ pub(in crate::zellij_commands) fn parent_pid(pid: u32) -> Option<u32> {
     fields.next()?.parse().ok()
 }
 
+#[cfg(any(test, target_os = "linux"))]
 pub(in crate::zellij_commands) fn status_bar_cache_path_from_environ_bytes(
     raw: &[u8],
 ) -> Option<PathBuf> {
@@ -82,6 +83,7 @@ pub(in crate::zellij_commands) fn status_bar_cache_path_from_environ_bytes(
     )
 }
 
+#[cfg(any(test, target_os = "linux"))]
 pub(in crate::zellij_commands) fn environ_path_value(raw: &[u8], prefix: &[u8]) -> Option<PathBuf> {
     raw.split(|byte| *byte == 0).find_map(|item| {
         let value = item.strip_prefix(prefix)?;
