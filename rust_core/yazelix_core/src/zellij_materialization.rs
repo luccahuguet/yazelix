@@ -3088,6 +3088,81 @@ printf '%s\n' '{"schema_version":2,"plugin_block":"CHILD_PLUGIN_BLOCK"}'
         assert!(!rendered.contains(r#"args "sidebar" "yazi""#));
     }
 
+    // Regression: startup layouts declare the initial tab explicitly so launch cwd stays owned by
+    // Zellij --default-cwd while new tabs remain home-scoped.
+    #[test]
+    fn startup_layouts_keep_initial_tab_distinct_from_home_scoped_new_tabs() {
+        for (name, content) in [
+            (
+                "yzx_side.kdl",
+                include_str!("../../../configs/zellij/layouts/yzx_side.kdl"),
+            ),
+            (
+                "yzx_side_closed.kdl",
+                include_str!("../../../configs/zellij/layouts/yzx_side_closed.kdl"),
+            ),
+        ] {
+            let mut default_template_line = None;
+            let mut initial_tab_line = None;
+            let mut new_tab_line = None;
+            let mut layout_depth = 0usize;
+
+            for (line_number, line) in content.lines().enumerate() {
+                let trimmed = line.trim();
+
+                if layout_depth == 1 {
+                    match trimmed {
+                        "default_tab_template {" => {
+                            assert!(
+                                default_template_line.replace(line_number).is_none(),
+                                "{name} declares default_tab_template more than once"
+                            );
+                        }
+                        "tab" => {
+                            assert!(
+                                initial_tab_line.replace(line_number).is_none(),
+                                "{name} declares more than one explicit initial tab"
+                            );
+                        }
+                        r#"new_tab_template cwd="__YAZELIX_HOME_DIR__" {"# => {
+                            assert!(
+                                new_tab_line.replace(line_number).is_none(),
+                                "{name} declares home-scoped new_tab_template more than once"
+                            );
+                        }
+                        _ => {}
+                    }
+                }
+
+                let closing_braces = trimmed.matches('}').count();
+                assert!(
+                    closing_braces <= layout_depth,
+                    "{name} closes more layout blocks than it opens before line {}",
+                    line_number + 1
+                );
+                layout_depth -= closing_braces;
+                layout_depth += trimmed.matches('{').count();
+            }
+            assert_eq!(layout_depth, 0, "{name} leaves layout blocks unclosed");
+
+            let default_template_line = default_template_line
+                .unwrap_or_else(|| panic!("{name} missing default_tab_template"));
+            let initial_tab_line =
+                initial_tab_line.unwrap_or_else(|| panic!("{name} missing explicit initial tab"));
+            let new_tab_line = new_tab_line
+                .unwrap_or_else(|| panic!("{name} missing home-scoped new_tab_template"));
+
+            assert!(
+                default_template_line < initial_tab_line,
+                "{name} initial tab must follow default_tab_template"
+            );
+            assert!(
+                initial_tab_line < new_tab_line,
+                "{name} initial tab must precede home-scoped new_tab_template"
+            );
+        }
+    }
+
     // Defends: generated layouts insert the child-owned zjstatus plugin block without inspecting its internals.
     #[test]
     fn substitutes_child_zjstatus_plugin_block() {
