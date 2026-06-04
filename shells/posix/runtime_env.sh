@@ -97,14 +97,15 @@ cleaned_path="$(prepend_existing_path_dir "$runtime_dir/bin" "$cleaned_path")"
 cleaned_path="$(prepend_existing_path_dir "$runtime_dir/toolbin" "$cleaned_path")"
 export PATH="$cleaned_path"
 
+# Nu is optional for bootstrap. Only the dedicated Nushell wrapper requires it;
+# startup itself is Rust-owned and must not fail just because Nu is unavailable.
 runtime_nu="$runtime_dir/libexec/nu"
 if [ -x "$runtime_nu" ]; then
   export YAZELIX_NU_BIN="$runtime_nu"
 elif command -v nu >/dev/null 2>&1; then
   export YAZELIX_NU_BIN="$(command -v nu)"
 else
-  echo "Error: nu not found in Yazelix runtime or PATH after loading Nix profile." >&2
-  return 1 2>/dev/null || exit 1
+  unset YAZELIX_NU_BIN
 fi
 
 runtime_yzx_core="$runtime_dir/libexec/yzx_core"

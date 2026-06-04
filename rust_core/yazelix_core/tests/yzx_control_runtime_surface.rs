@@ -110,7 +110,6 @@ fn start_yazelix_scrubs_gui_loader_env_before_control_handoff() {
         fs::read_to_string(repo.join("shells/posix/runtime_env.sh")).unwrap(),
     )
     .unwrap();
-    write_executable_script(&runtime_dir.join("libexec/nu"), "#!/bin/sh\nexit 0\n");
     write_executable_script(&runtime_dir.join("libexec/hx"), "#!/bin/sh\nexit 0\n");
 
     let capture = temp.path().join("capture_env.sh");
@@ -125,6 +124,7 @@ for key in GIO_EXTRA_MODULES GIO_MODULE_DIR GSETTINGS_SCHEMA_DIR GI_TYPELIB_PATH
 done
 printf 'YAZELIX_RUNTIME_DIR=%s\n' "$YAZELIX_RUNTIME_DIR"
 printf 'YAZELIX_MANAGED_HELIX_BINARY=%s\n' "$YAZELIX_MANAGED_HELIX_BINARY"
+printf 'YAZELIX_NU_BIN=%s\n' "${YAZELIX_NU_BIN-unset}"
 printf 'YAZELIX_ZELLIJ_KITTY_PASSTHROUGH=%s\n' "${YAZELIX_ZELLIJ_KITTY_PASSTHROUGH-unset}"
 "#,
     );
@@ -176,6 +176,7 @@ printf 'YAZELIX_ZELLIJ_KITTY_PASSTHROUGH=%s\n' "${YAZELIX_ZELLIJ_KITTY_PASSTHROU
         "YAZELIX_MANAGED_HELIX_BINARY={}",
         runtime_dir.join("libexec/hx").to_string_lossy()
     )));
+    assert!(stdout.contains("YAZELIX_NU_BIN=unset"));
     assert!(stdout.contains("YAZELIX_ZELLIJ_KITTY_PASSTHROUGH=1"));
 }
 

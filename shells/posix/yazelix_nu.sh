@@ -35,6 +35,11 @@ export YAZELIX_BOOTSTRAP_RUNTIME_DIR="$runtime_dir"
 unset YAZELIX_BOOTSTRAP_RUNTIME_DIR
 scrub_yazelix_workspace_child_gui_env
 
+if [ -z "${YAZELIX_NU_BIN:-}" ]; then
+  printf '%s\n' "Error: nu not found in Yazelix runtime or PATH after loading Nix profile." >&2
+  exit 1
+fi
+
 nu_string_literal() {
   path="$1"
   case "$path" in
