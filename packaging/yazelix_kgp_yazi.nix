@@ -29,6 +29,10 @@ baseYaziUnwrapped.overrideAttrs (old: {
     hash = cargoHash;
   };
 
+  env = (old.env or { }) // {
+    YAZI_NO_GITCL = "1";
+  };
+
   passthru = old.passthru // {
     srcs = old.passthru.srcs // {
       code_src = codeSrc;
