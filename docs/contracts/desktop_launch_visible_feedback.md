@@ -2,13 +2,13 @@
 
 ## Summary
 
-Desktop entry launches must invoke `yzx desktop launch` directly and let Yazelix start the selected packaged terminal. The desktop entry must not depend on the desktop environment's generic `Terminal=true` handling.
+Desktop entry launches must use a terminal-backed starter window and invoke `yzx desktop launch` from that visible surface. The starter window is allowed to disappear quickly after Yazelix schedules the selected packaged terminal.
 
 ## Why
 
-Desktop environments usually run application launch commands without an attached terminal. Some environments also accept a `Terminal=true` desktop entry without starting the command through a usable terminal. In COSMIC/GLib-style launch paths, that can turn a valid Yazelix desktop file into a silent no-op even though `yzx desktop launch` works from a shell.
+Desktop environments usually run application launch commands without an attached terminal. If Yazelix fails while parsing config, checking generated state, or preparing the selected terminal before the terminal process is spawned, a non-terminal desktop entry can look like a silent no-op.
 
-The supported contract is that desktop entries are non-terminal desktop commands. `yzx desktop launch` owns runtime resolution, config parsing, generated terminal config repair, Ghostty cursor rerolls, and the detached terminal handoff to the selected Yazelix terminal.
+The supported contract is that Linux desktop entries open a starter terminal window first. `yzx desktop launch` owns runtime resolution, config parsing, generated terminal config repair, Ghostty cursor rerolls, and the deferred handoff to the selected Yazelix terminal. On success, the starter window exits quickly. On failure, the starter window keeps the actionable error visible.
 
 ## Scope
 
@@ -19,47 +19,47 @@ The supported contract is that desktop entries are non-terminal desktop commands
 
 ## Behavior
 
-- Managed Yazelix desktop entries must set `Terminal=false` so desktop environments run `yzx desktop launch` directly instead of trying to provide a generic bootstrap terminal.
+- Managed Yazelix desktop entries must set `Terminal=true` so pre-terminal config and generated-state failures are visible.
 - User-local and Linux Home Manager desktop entries must share the same desktop-entry contract.
 - `yzx desktop launch` must print concise progress before invoking the fast path.
 - If the fast path succeeds, `yzx desktop launch` must schedule the managed Yazelix terminal through the deferred desktop launcher.
-- If launch is invoked from a visible terminal and fails before terminal handoff, `yzx desktop launch` must print the actionable error and pause long enough for the user to read it.
+- If launch fails before terminal handoff, `yzx desktop launch` must print the actionable error in the starter window and pause long enough for the user to read it.
 - The desktop path must preserve runtime re-anchoring and inherited-environment cleanup. It must not trust stale ambient Yazelix, Zellij, Yazi, or shell activation state.
-- Doctor must report desktop entries that still point at the expected launcher but set `Terminal=true`, because that delegates the first terminal launch to the desktop environment.
+- Doctor must report desktop entries that still point at the expected launcher but set `Terminal=false`, because that hides pre-terminal failures.
 
 ## Non-goals
 
 - Building a custom graphical prelaunch dialog
 - Changing terminal package selection
-- Depending on desktop-environment generic terminal launcher behavior
+- Keeping non-terminal desktop launchers without another visible failure surface
 - Adding a second fallback launch path after the desktop fast path fails
 - Moving desktop-specific UX into config parsing or terminal config generation
 - Solving graphical failure-dialog UX
 
 ## Acceptance Cases
 
-1. When `yzx desktop install` writes the user-local desktop entry, the entry sets `Terminal=false` and still points at the expected launcher.
-2. When Home Manager generates the Yazelix desktop entry on Linux, it also sets `Terminal=false`.
-3. When `yzx desktop launch` is invoked from a visible terminal and fails before terminal handoff, the user sees both progress and actionable failure text.
-4. When `yzx desktop launch` succeeds, the managed terminal command is spawned by Yazelix rather than by desktop-entry `Terminal=true` handling.
-5. When an installed desktop entry points at the expected launcher but sets `Terminal=true`, `yzx doctor` reports it as stale with repair guidance.
+1. When `yzx desktop install` writes the user-local desktop entry, the entry sets `Terminal=true` and still points at the expected launcher.
+2. When Home Manager generates Yazelix desktop entries on Linux, they also set `Terminal=true`.
+3. When `yzx desktop launch` fails before terminal handoff, the user sees both progress and actionable failure text.
+4. When `yzx desktop launch` succeeds, the managed terminal command is spawned by Yazelix after the starter window hands off.
+5. When an installed desktop entry points at the expected launcher but sets `Terminal=false`, `yzx doctor` reports it as stale with repair guidance.
 6. Desktop launch still clears inherited Yazelix, Zellij, and Yazi session variables before invoking the runtime fast path.
 
 ## Verification
 
 - `yzx dev rust test launch_commands::tests::render_desktop_entry_quotes_exec_path`
 - `yzx dev rust test launch_commands::tests::desktop_deferred_launch_helper_records_lifetime_status`
-- `yzx dev rust test install_ownership_report::tests::desktop_freshness_accepts_terminal_false_and_warns_on_terminal_true`
+- `yzx dev rust test install_ownership_report::tests::desktop_freshness_accepts_terminal_true_and_warns_on_terminal_false`
 - `yzx_repo_validator validate-config-surface-contract`
 - `yzx_repo_validator validate-contracts`
 
 ## Traceability
 - Defended by: `rust_core/yazelix_core/src/launch_commands.rs::render_desktop_entry_quotes_exec_path`
 - Defended by: `rust_core/yazelix_core/src/launch_commands.rs::desktop_deferred_launch_helper_records_lifetime_status`
-- Defended by: `rust_core/yazelix_core/src/install_ownership_report.rs::desktop_freshness_accepts_terminal_false_and_warns_on_terminal_true`
+- Defended by: `rust_core/yazelix_core/src/install_ownership_report.rs::desktop_freshness_accepts_terminal_true_and_warns_on_terminal_false`
 - Defended by: `yzx_repo_validator validate-contracts`
 
 ## Open Questions
 
-- Should a future release add a purpose-built graphical failure dialog for desktop-launch failures that occur before the selected terminal can be spawned?
+- Should a future release add a purpose-built graphical failure dialog for desktop-launch failures that occur before the selected terminal can be spawned, replacing the starter terminal window?
 - Should doctor eventually validate the exact rendered Home Manager desktop entry from a full Home Manager evaluation rather than only the installed profile entry contract?

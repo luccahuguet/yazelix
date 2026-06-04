@@ -389,13 +389,13 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         ));
     }
 
-    if entry
+    if !entry
         .get("terminal")
         .and_then(JsonValue::as_bool)
         .unwrap_or(false)
     {
         errors.push(
-            "Home Manager desktop entry must set terminal = false so Yazelix owns the selected terminal launch"
+            "Home Manager desktop entry must set terminal = true so pre-terminal config failures stay visible"
                 .to_string(),
         );
     }
@@ -418,6 +418,16 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         .get("sessionProfile")
         .and_then(JsonValue::as_str)
         .unwrap_or_default();
+    if !shader_entry
+        .get("terminal")
+        .and_then(JsonValue::as_bool)
+        .unwrap_or(false)
+    {
+        errors.push(
+            "Home Manager yzxterm desktop entry must set terminal = true so pre-terminal config failures stay visible"
+                .to_string(),
+        );
+    }
     if shader_exec != "env YAZELIX_TERMINAL_PROFILE=shaders /tmp/profile/bin/yzx desktop launch" {
         errors.push(format!(
             "Home Manager shader yzxterm profile desktop entry Exec mismatch: expected env YAZELIX_TERMINAL_PROFILE=shaders /tmp/profile/bin/yzx desktop launch, got {}",
@@ -489,6 +499,15 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
             errors.push(format!(
                 "Home Manager extra {terminal} desktop entry Exec must disable stable-profile redirects for intentional variant package launches, got {}",
                 format_json_value(&JsonValue::String(exec.to_string()))
+            ));
+        }
+        if !entry
+            .get("terminal")
+            .and_then(JsonValue::as_bool)
+            .unwrap_or(false)
+        {
+            errors.push(format!(
+                "Home Manager extra {terminal} desktop entry must set terminal = true so pre-terminal config failures stay visible"
             ));
         }
     }
@@ -815,9 +834,9 @@ fn build_home_manager_desktop_entry_expr(
         "  sessionProfile = eval.config.home.sessionVariables.YAZELIX_TERMINAL_PROFILE or \"\";"
             .to_string(),
         "  packageCount = builtins.length eval.config.home.packages;".to_string(),
-        "  ghostty = { present = builtins.hasAttr ghosttyKey entries; name = ghosttyEntry.name or \"\"; exec = ghosttyEntry.exec or \"\"; };".to_string(),
-        "  rio = { present = builtins.hasAttr rioKey entries; name = rioEntry.name or \"\"; exec = rioEntry.exec or \"\"; };".to_string(),
-        "  wezterm = { present = builtins.hasAttr weztermKey entries; name = weztermEntry.name or \"\"; exec = weztermEntry.exec or \"\"; };".to_string(),
+        "  ghostty = { present = builtins.hasAttr ghosttyKey entries; name = ghosttyEntry.name or \"\"; exec = ghosttyEntry.exec or \"\"; terminal = ghosttyEntry.terminal or false; };".to_string(),
+        "  rio = { present = builtins.hasAttr rioKey entries; name = rioEntry.name or \"\"; exec = rioEntry.exec or \"\"; terminal = rioEntry.terminal or false; };".to_string(),
+        "  wezterm = { present = builtins.hasAttr weztermKey entries; name = weztermEntry.name or \"\"; exec = weztermEntry.exec or \"\"; terminal = weztermEntry.terminal or false; };".to_string(),
         "}".to_string(),
     ]);
     lines.join("\n")

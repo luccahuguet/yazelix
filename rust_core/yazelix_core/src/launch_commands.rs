@@ -635,13 +635,13 @@ mod tests {
         }
     }
 
-    // Defends: desktop entry rendering keeps a quoted launcher path so spaces do not corrupt the Exec owner surface.
+    // Defends: desktop entry rendering keeps a quoted launcher path and terminal-backed starter window so spaces do not corrupt the Exec owner surface and pre-terminal failures stay visible.
     #[test]
     fn render_desktop_entry_quotes_exec_path() {
         let entry = render_desktop_entry(Path::new("/tmp/with space/yzx"), "ghostty");
         assert!(entry.contains("Exec=\"/tmp/with space/yzx\" desktop launch"));
         assert!(entry.contains("Name=Yazelix - Ghostty"));
-        assert!(entry.contains("Terminal=false"));
+        assert!(entry.contains("Terminal=true"));
     }
 
     // Regression: desktop launch schedules the real terminal only after the desktop-launch parent exits.

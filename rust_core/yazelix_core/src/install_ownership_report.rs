@@ -851,15 +851,14 @@ fn check_desktop_entry_freshness(
         };
     }
 
-    if desktop_entry_terminal_enabled(&dp) {
+    if !desktop_entry_terminal_enabled(&dp) {
         let terminal_value =
             get_desktop_entry_terminal_value(&dp).unwrap_or_else(|| "<missing>".into());
         return DoctorInstallResult {
             status: "warning".into(),
-            message: "Yazelix desktop entry delegates terminal launch to the desktop environment"
-                .into(),
+            message: "Yazelix desktop entry cannot show prelaunch failures".into(),
             details: Some(format!(
-                "Desktop entry: {}\nTerminal: {}\nTerminal=true can fail silently on desktop environments that do not provide a compatible generic terminal launcher. Yazelix desktop entries should use Terminal=false and let yzx desktop launch start the selected packaged terminal.\n{repair_hint}",
+                "Desktop entry: {}\nTerminal: {}\nTerminal=false can hide config and generated-state errors that happen before the selected terminal is spawned. Yazelix desktop entries should use Terminal=true as a starter window until a dedicated graphical prelaunch surface exists.\n{repair_hint}",
                 path_to_string(&dp),
                 terminal_value
             )),
@@ -1138,7 +1137,7 @@ mod tests {
         std::fs::write(
             &profile_desktop,
             format!(
-                "[Desktop Entry]\nName=Yazelix\nTerminal=false\nExec={} desktop launch\n",
+                "[Desktop Entry]\nName=Yazelix\nTerminal=true\nExec={} desktop launch\n",
                 profile_yzx.display()
             ),
         )
@@ -1172,9 +1171,9 @@ mod tests {
         );
     }
 
-    // Regression: COSMIC/GLib can accept a Terminal=true desktop entry without starting Yazelix, so fresh entries must be non-terminal desktop commands.
+    // Regression: pre-terminal config failures are invisible from GUI launchers unless the desktop entry opens a starter terminal window.
     #[test]
-    fn desktop_freshness_accepts_terminal_false_and_warns_on_terminal_true() {
+    fn desktop_freshness_accepts_terminal_true_and_warns_on_terminal_false() {
         let tmp = TempDir::new().unwrap();
         let home = tmp.path().join("home");
         let xdg_data = home.join(".local/share");
@@ -1192,7 +1191,7 @@ mod tests {
         let exec = format!("\"{}\" desktop launch", profile_yzx.display());
         std::fs::write(
             &desktop,
-            format!("[Desktop Entry]\nName=Yazelix\nTerminal=false\nExec={exec}\n"),
+            format!("[Desktop Entry]\nName=Yazelix\nTerminal=true\nExec={exec}\n"),
         )
         .unwrap();
 
@@ -1214,7 +1213,7 @@ mod tests {
         std::fs::write(
             &desktop,
             format!(
-                "[Desktop Entry]\nName=Yazelix\nTerminal=false\nExec=env YAZELIX_TERMINAL_PROFILE=shaders {exec}\n"
+                "[Desktop Entry]\nName=Yazelix\nTerminal=true\nExec=env YAZELIX_TERMINAL_PROFILE=shaders {exec}\n"
             ),
         )
         .unwrap();
@@ -1223,14 +1222,14 @@ mod tests {
 
         std::fs::write(
             &desktop,
-            format!("[Desktop Entry]\nName=Yazelix\nTerminal=true\nExec={exec}\n"),
+            format!("[Desktop Entry]\nName=Yazelix\nTerminal=false\nExec={exec}\n"),
         )
         .unwrap();
         let stale = evaluate_install_ownership_report(&request);
         assert_eq!(stale.desktop_entry_freshness.status, "warning");
         assert_eq!(
             stale.desktop_entry_freshness.message,
-            "Yazelix desktop entry delegates terminal launch to the desktop environment"
+            "Yazelix desktop entry cannot show prelaunch failures"
         );
     }
 
@@ -1326,13 +1325,13 @@ mod tests {
         std::fs::write(&profile_yzx, "#!/bin/sh\n").unwrap();
         std::fs::write(
             &extra_desktop,
-            "[Desktop Entry]\nName=Yazelix - Ghostty\nTerminal=false\nExec=/nix/store/extra-yazelix-ghostty/bin/yzx desktop launch\n",
+            "[Desktop Entry]\nName=Yazelix - Ghostty\nTerminal=true\nExec=/nix/store/extra-yazelix-ghostty/bin/yzx desktop launch\n",
         )
         .unwrap();
         std::fs::write(
             &active_desktop,
             format!(
-                "[Desktop Entry]\nName=Yazelix - yzxterm\nTerminal=false\nExec=env YAZELIX_TERMINAL_PROFILE=shaders {} desktop launch\n",
+                "[Desktop Entry]\nName=Yazelix - yzxterm\nTerminal=true\nExec=env YAZELIX_TERMINAL_PROFILE=shaders {} desktop launch\n",
                 profile_yzx.display()
             ),
         )

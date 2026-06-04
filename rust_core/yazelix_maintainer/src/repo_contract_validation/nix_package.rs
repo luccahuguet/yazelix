@@ -749,7 +749,7 @@ fn validate_profile_desktop_entry_contents(
         .trim()
         .to_string();
     let expected_exec = format!("Exec=\"{}\" desktop launch", yzx_path.display());
-    for required in ["Name=Yazelix", "Terminal=false", "X-Yazelix-Managed=true"] {
+    for required in ["Name=Yazelix", "Terminal=true", "X-Yazelix-Managed=true"] {
         if !raw.lines().any(|line| line.trim() == required) {
             errors.push(format!(
                 "Profile-installed desktop entry is missing `{required}`: {}",
@@ -926,7 +926,7 @@ mod tests {
         fs::write(
             &desktop,
             format!(
-                "[Desktop Entry]\nName=Yazelix\nTerminal=false\nX-Yazelix-Managed=true\nExec=\"{}\" desktop launch\n",
+                "[Desktop Entry]\nName=Yazelix\nTerminal=true\nX-Yazelix-Managed=true\nExec=\"{}\" desktop launch\n",
                 yzx.display()
             ),
         )
@@ -948,7 +948,7 @@ mod tests {
         fs::write(&yzx, "").unwrap();
         fs::write(
             &desktop,
-            "[Desktop Entry]\nName=Yazelix\nTerminal=false\nX-Yazelix-Managed=true\nExec=\"/old/bin/yzx\" desktop launch\n",
+            "[Desktop Entry]\nName=Yazelix\nTerminal=true\nX-Yazelix-Managed=true\nExec=\"/old/bin/yzx\" desktop launch\n",
         )
         .unwrap();
 
