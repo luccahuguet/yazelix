@@ -2,15 +2,15 @@ use super::config_override::{
     config_override_extra_env, prepare_session_config_override, resolve_cli_config_override,
 };
 use super::process::{command_output_with_overrides, print_completed_output};
-use crate::bridge::{CoreError, ErrorClass};
-use crate::control_plane::{config_override_from_env, home_dir_from_env, runtime_dir_from_env};
+use super::{SIDEBAR_BOOTSTRAP_CWD_ENV, create_sidebar_bootstrap_file};
+use crate::bridge::CoreError;
+use crate::control_plane::{config_override_from_env, runtime_dir_from_env};
 use crate::install_ownership_env::install_ownership_request_from_env_with_runtime_dir;
 use crate::install_ownership_report::evaluate_install_ownership_report;
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 use std::thread;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 
 pub(super) const RESTART_LAUNCH_CLEARED_ENV_KEYS: &[&str] = &[
     "IN_YAZELIX_SHELL",
@@ -56,8 +56,9 @@ pub(super) fn run_restart(args: &[String]) -> Result<i32, CoreError> {
     }
 
     let session_to_kill = current_zellij_session();
-    let restart_file =
-        create_restart_sidebar_bootstrap_file(&std::env::current_dir().map_err(|source| {
+    let restart_file = create_sidebar_bootstrap_file(
+        "restart",
+        &std::env::current_dir().map_err(|source| {
             CoreError::io(
                 "restart_cwd",
                 "Could not read the current working directory.",
@@ -65,7 +66,8 @@ pub(super) fn run_restart(args: &[String]) -> Result<i32, CoreError> {
                 ".",
                 source,
             )
-        })?)?;
+        })?,
+    )?;
 
     let is_yzxterm = std::env::var_os("YAZELIX_TERMINAL").is_some();
     if is_yzxterm {
@@ -91,7 +93,7 @@ pub(super) fn run_restart(args: &[String]) -> Result<i32, CoreError> {
         .map(PathBuf::from)
         .unwrap_or_else(|| runtime_dir.join("shells").join("posix").join("yzx_cli.sh"));
     let mut restart_extra_env = vec![(
-        "YAZELIX_BOOTSTRAP_SIDEBAR_CWD_FILE".to_string(),
+        SIDEBAR_BOOTSTRAP_CWD_ENV.to_string(),
         Some(restart_file.to_string_lossy().into_owned()),
     )];
     if parsed.skip_welcome {
@@ -239,50 +241,6 @@ fn strip_ansi(text: &str) -> String {
         out.push(ch);
     }
     out
-}
-
-fn create_restart_sidebar_bootstrap_file(target_dir: &Path) -> Result<PathBuf, CoreError> {
-    let state_dir = home_dir_from_env()?
-        .join(".local")
-        .join("share")
-        .join("yazelix")
-        .join("state")
-        .join("restart");
-    fs::create_dir_all(&state_dir).map_err(|source| {
-        CoreError::io(
-            "restart_state_dir",
-            format!(
-                "Could not create restart state directory {}.",
-                state_dir.display()
-            ),
-            "Fix the directory permissions, then retry.",
-            state_dir.display().to_string(),
-            source,
-        )
-    })?;
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|error| {
-            CoreError::classified(
-                ErrorClass::Internal,
-                "system_clock_error",
-                format!("System clock error while preparing restart bootstrap file: {error}"),
-                "Fix the system clock, then retry.",
-                serde_json::json!({}),
-            )
-        })?
-        .as_millis();
-    let path = state_dir.join(format!("sidebar_cwd_{timestamp}.tmp"));
-    fs::write(&path, target_dir.to_string_lossy().into_owned()).map_err(|source| {
-        CoreError::io(
-            "restart_sidebar_bootstrap",
-            format!("Could not write restart bootstrap file {}.", path.display()),
-            "Fix the directory permissions, then retry.",
-            path.display().to_string(),
-            source,
-        )
-    })?;
-    Ok(path)
 }
 
 fn kill_zellij_session(session_name: Option<&str>) {

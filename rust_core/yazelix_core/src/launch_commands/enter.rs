@@ -3,6 +3,7 @@ use super::config_override::{
 };
 use super::process::{command_status_with_overrides, find_command};
 use super::resolve_requested_working_dir;
+use super::sidebar_bootstrap_extra_env;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::command_metadata::{YzxExternBridgeSyncRequest, sync_yzx_extern_bridge};
 use crate::control_plane::{
@@ -46,7 +47,7 @@ pub(super) fn run_enter(args: &[String]) -> Result<i32, CoreError> {
             .or(inherited_config_override.as_deref()),
         &parsed.with_overrides,
     )?;
-    let config_extra_env = config_override_extra_env(config_override.as_deref());
+    let mut extra_env = config_override_extra_env(config_override.as_deref());
     let normalized =
         load_normalized_config_for_control(&runtime_dir, &config_dir, config_override.as_deref())?;
     let req = runtime_env_request(runtime_dir.clone(), &normalized)?;
@@ -96,6 +97,7 @@ pub(super) fn run_enter(args: &[String]) -> Result<i32, CoreError> {
     })?;
 
     run_runtime_setup(&runtime_dir, &default_shell, true)?;
+    extra_env.extend(sidebar_bootstrap_extra_env("enter", &working_dir)?);
 
     let mut argv = vec![
         nu_bin.to_string_lossy().into_owned(),
@@ -111,7 +113,7 @@ pub(super) fn run_enter(args: &[String]) -> Result<i32, CoreError> {
         Some(&runtime_env),
         &working_dir,
         &[],
-        &config_extra_env,
+        &extra_env,
         "enter_startup",
         "Retry from a valid Yazelix runtime or relaunch with `yzx launch`.",
     )?;

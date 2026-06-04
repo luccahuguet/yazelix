@@ -1,9 +1,11 @@
 // Test lane: default
 //! Rust-owned `yzx enter`, `yzx launch`, `yzx desktop`, and `yzx restart` owners.
 
-use crate::bridge::CoreError;
-use crate::control_plane::home_dir_from_env;
-use std::path::PathBuf;
+use crate::bridge::{CoreError, ErrorClass};
+use crate::control_plane::{home_dir_from_env, state_dir_from_env};
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 mod config_override;
 mod desktop;
@@ -14,6 +16,8 @@ mod restart;
 mod terminal;
 
 use desktop::*;
+
+const SIDEBAR_BOOTSTRAP_CWD_ENV: &str = "YAZELIX_BOOTSTRAP_SIDEBAR_CWD_FILE";
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct DesktopArgs {
@@ -61,6 +65,89 @@ pub fn run_yzx_desktop(args: &[String]) -> Result<i32, CoreError> {
         ))),
         None => unreachable!(),
     }
+}
+
+fn create_sidebar_bootstrap_file(owner: &str, target_dir: &Path) -> Result<PathBuf, CoreError> {
+    create_sidebar_bootstrap_file_in_state(&state_dir_from_env()?, owner, target_dir)
+}
+
+fn create_sidebar_bootstrap_file_in_state(
+    state_dir: &Path,
+    owner: &str,
+    target_dir: &Path,
+) -> Result<PathBuf, CoreError> {
+    let bootstrap_dir = state_dir.join("sidebar_bootstrap").join(owner);
+    fs::create_dir_all(&bootstrap_dir).map_err(|source| {
+        CoreError::io(
+            "sidebar_bootstrap_state_dir",
+            format!(
+                "Could not create sidebar bootstrap state directory {}.",
+                bootstrap_dir.display()
+            ),
+            "Fix the directory permissions, then retry.",
+            bootstrap_dir.display().to_string(),
+            source,
+        )
+    })?;
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|error| {
+            CoreError::classified(
+                ErrorClass::Internal,
+                "system_clock_error",
+                format!("System clock error while preparing sidebar bootstrap file: {error}"),
+                "Fix the system clock, then retry.",
+                serde_json::json!({}),
+            )
+        })?
+        .as_millis();
+    let path = bootstrap_dir.join(format!("cwd_{}_{}.tmp", std::process::id(), timestamp));
+    fs::write(&path, target_dir.to_string_lossy().into_owned()).map_err(|source| {
+        CoreError::io(
+            "sidebar_bootstrap_write",
+            format!("Could not write sidebar bootstrap file {}.", path.display()),
+            "Fix the directory permissions, then retry.",
+            path.display().to_string(),
+            source,
+        )
+    })?;
+    Ok(path)
+}
+
+fn sidebar_bootstrap_extra_env(
+    owner: &str,
+    target_dir: &Path,
+) -> Result<Vec<(String, Option<String>)>, CoreError> {
+    let inherited = std::env::var(SIDEBAR_BOOTSTRAP_CWD_ENV).ok();
+    sidebar_bootstrap_extra_env_for_state(
+        &state_dir_from_env()?,
+        owner,
+        target_dir,
+        inherited.as_deref(),
+    )
+}
+
+fn sidebar_bootstrap_extra_env_for_state(
+    state_dir: &Path,
+    owner: &str,
+    target_dir: &Path,
+    inherited: Option<&str>,
+) -> Result<Vec<(String, Option<String>)>, CoreError> {
+    if inherited_sidebar_bootstrap_file(inherited).is_some() {
+        return Ok(Vec::new());
+    }
+
+    let path = create_sidebar_bootstrap_file_in_state(state_dir, owner, target_dir)?;
+    Ok(vec![(
+        SIDEBAR_BOOTSTRAP_CWD_ENV.to_string(),
+        Some(path.to_string_lossy().into_owned()),
+    )])
+}
+
+fn inherited_sidebar_bootstrap_file(raw: Option<&str>) -> Option<PathBuf> {
+    let raw = raw.map(str::trim).filter(|value| !value.is_empty())?;
+    let path = PathBuf::from(raw);
+    path.is_file().then_some(path)
 }
 
 fn parse_desktop_args(args: &[String]) -> Result<DesktopArgs, CoreError> {
@@ -198,6 +285,45 @@ mod tests {
                 Some("/tmp/custom.jsonc".to_string())
             )]
         );
+    }
+
+    // Regression: startup sidebar yazi gets the requested session cwd through an explicit bootstrap file instead of inheriting Zellij's home-scoped pane cwd.
+    #[test]
+    fn sidebar_bootstrap_env_writes_requested_startup_cwd() {
+        let state = TempDir::new().expect("state dir");
+        let target = state.path().join("project");
+        fs::create_dir_all(&target).expect("target dir");
+
+        let env =
+            sidebar_bootstrap_extra_env_for_state(state.path(), "enter", &target, None).unwrap();
+
+        assert_eq!(env.len(), 1);
+        assert_eq!(env[0].0, SIDEBAR_BOOTSTRAP_CWD_ENV);
+        let bootstrap_file = PathBuf::from(env[0].1.as_ref().unwrap());
+        assert!(bootstrap_file.starts_with(state.path().join("sidebar_bootstrap").join("enter")));
+        assert_eq!(
+            fs::read_to_string(bootstrap_file).unwrap(),
+            target.to_string_lossy()
+        );
+    }
+
+    // Defends: restart can pass its existing one-shot sidebar cwd through launch/enter without enter replacing it with a terminal-emulator fallback cwd.
+    #[test]
+    fn sidebar_bootstrap_env_preserves_existing_restart_file() {
+        let state = TempDir::new().expect("state dir");
+        let inherited = state.path().join("restart_cwd.tmp");
+        fs::write(&inherited, "/restart/cwd").expect("restart bootstrap");
+
+        let env = sidebar_bootstrap_extra_env_for_state(
+            state.path(),
+            "enter",
+            Path::new("/terminal/cwd"),
+            Some(&inherited.to_string_lossy()),
+        )
+        .unwrap();
+
+        assert!(env.is_empty());
+        assert_eq!(fs::read_to_string(inherited).unwrap(), "/restart/cwd");
     }
 
     // Defends: restart exposes a one-shot welcome skip flag without making the config skip setting sticky.

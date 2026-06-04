@@ -25,6 +25,8 @@ layout {
          }
      }
 
+     tab
+
      new_tab_template cwd="__YAZELIX_HOME_DIR__" {
          pane size=1 borderless=true {
             __YAZELIX_ZJSTATUS_TAB_TEMPLATE__
