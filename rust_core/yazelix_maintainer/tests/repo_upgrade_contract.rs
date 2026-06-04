@@ -12,7 +12,6 @@ fn write_fixture_repo() -> (tempfile::TempDir, PathBuf) {
     let tmp = tempdir().unwrap();
     let fixture_root = tmp.path().join("repo");
     fs::create_dir_all(fixture_root.join("docs")).unwrap();
-    fs::create_dir_all(fixture_root.join("nushell/scripts/utils")).unwrap();
     fs::write(
         fixture_root.join("CHANGELOG.md"),
         r#"## Unreleased
@@ -52,8 +51,8 @@ manual_actions = []
     )
     .unwrap();
     fs::write(
-        fixture_root.join("nushell/scripts/utils/constants.nu"),
-        "export const YAZELIX_VERSION = \"v15.4\"\n",
+        fixture_root.join("release_metadata.toml"),
+        "schema_version = 1\nversion = \"v15.4\"\n",
     )
     .unwrap();
     run_git(&fixture_root, &["init", "--quiet"]);

@@ -26,7 +26,7 @@ Yazelix should keep:
 - a root `CHANGELOG.md` for concise, user-facing upgrade notes
 - `docs/upgrade_notes.toml` as the canonical structured source
 
-The structured notes must include at least the current `YAZELIX_VERSION` and an `unreleased` bucket so the live branch can describe post-release work honestly without inventing fake versions. Each entry must declare its upgrade impact, any historical migration ids it still references, and manual actions when user action is required.
+The structured notes must include at least the current root `release_metadata.toml` version and an `unreleased` bucket so the live branch can describe post-release work honestly without inventing fake versions. Each entry must declare its upgrade impact, any historical migration ids it still references, and manual actions when user action is required.
 
 `docs/upgrade_notes.toml` may also include optional major-series summaries, such as `series.v14`, when Yazelix wants a curated README fallback projection after exact release notes are exhausted or unavailable. Those summaries are not exact-version release notes and should stay high-level.
 
@@ -42,7 +42,7 @@ CI should additionally inspect the diff. Version bumps must update both release-
 
 ## Acceptance Cases
 
-1. When `YAZELIX_VERSION` changes, CI fails unless both `CHANGELOG.md` and `docs/upgrade_notes.toml` are updated in the same diff.
+1. When the root release metadata version changes, CI fails unless both `CHANGELOG.md` and `docs/upgrade_notes.toml` are updated in the same diff.
 2. When guarded config-contract files change without a version bump, CI fails unless the `unreleased` entry acknowledges the changed paths.
 3. When `unreleased` declares `upgrade_impact = "migration_available"`, validation fails because v15 no longer ships a live config-migration engine.
 4. When the changelog or structured notes drift out of lockstep, validation fails clearly with the exact missing requirement.

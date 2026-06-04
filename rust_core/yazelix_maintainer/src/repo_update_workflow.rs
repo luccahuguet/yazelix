@@ -13,7 +13,6 @@ use yazelix_core::settings_surface::read_config_table;
 const DEFAULT_HOME_MANAGER_DIR: &str = "~/.config/home-manager";
 const DEFAULT_HOME_MANAGER_INPUT: &str = "yazelix-hm";
 const DEFAULT_MAIN_CONFIG_RELATIVE_PATH: &str = "settings_default.jsonc";
-const DEFAULT_CONSTANTS_RELATIVE_PATH: &str = "nushell/scripts/utils/constants.nu";
 const UPDATE_CANARY_BASE_RELATIVE_PATH: &str = ".local/share/yazelix/update_canaries";
 
 #[derive(Debug, Clone)]
@@ -156,12 +155,10 @@ pub fn run_repo_update_workflow(
     }
 
     if options.canary_only {
-        println!("✅ Canary run completed. No lockfile or pin changes were made.");
+        println!("✅ Canary run completed. No lockfile changes were made.");
         return Ok(());
     }
 
-    println!("🔄 Syncing pinned runtime expectations...");
-    sync_runtime_pins(repo_root)?;
     let readme_sync = sync_readme_surface(repo_root, Some(&repo_root.join("README.md")), None)?;
     if !readme_sync.title_changed && !readme_sync.series_changed {
         println!("✅ README version marker and generated latest-series block already up to date");
@@ -174,13 +171,13 @@ pub fn run_repo_update_workflow(
         UpdateActivationMode::None => {
             println!("⚠️  No local activation was requested.");
             println!(
-                "✅ Inputs, canaries, runtime pins, README version marker, and vendored zjstatus are in sync in the repo checkout. Review and commit the changes if everything looks good."
+                "✅ Inputs, canaries, README version marker, and vendored zjstatus are in sync in the repo checkout. Review and commit the changes if everything looks good."
             );
         }
         UpdateActivationMode::Profile => {
             activate_updated_profile_runtime(repo_root)?;
             println!(
-                "✅ Inputs, canaries, runtime pins, README version marker, vendored zjstatus, and the local default-profile Yazelix package are in sync. Review and commit the changes if everything looks good."
+                "✅ Inputs, canaries, README version marker, vendored zjstatus, and the local default-profile Yazelix package are in sync. Review and commit the changes if everything looks good."
             );
         }
         UpdateActivationMode::HomeManager => {
@@ -190,7 +187,7 @@ pub fn run_repo_update_workflow(
                 options.home_manager_attr.trim(),
             )?;
             println!(
-                "✅ Inputs, canaries, runtime pins, README version marker, vendored zjstatus, and the Home Manager activation at {} are in sync. Review and commit the changes if everything looks good.",
+                "✅ Inputs, canaries, README version marker, vendored zjstatus, and the Home Manager activation at {} are in sync. Review and commit the changes if everything looks good.",
                 activation.switch_ref
             );
         }
@@ -295,108 +292,6 @@ fn refresh_repo_runtime_inputs(repo_root: &Path) -> Result<(), String> {
     )?;
     println!("✅ flake.lock nixpkgs input updated.");
     Ok(())
-}
-
-fn sync_runtime_pins(repo_root: &Path) -> Result<(), String> {
-    let constants_path = repo_root.join(DEFAULT_CONSTANTS_RELATIVE_PATH);
-    if !constants_path.is_file() {
-        return Err(format!(
-            "Constants file not found: {}",
-            constants_path.display()
-        ));
-    }
-
-    println!("   Resolving runtime pins from the locked nixpkgs input...");
-    let nix_version =
-        eval_locked_nixpkgs_version(repo_root, "pkgs.nixVersions.latest.version", "Nix")?;
-    let nushell_version =
-        eval_locked_nixpkgs_version(repo_root, "pkgs.nushell.version", "Nushell")?;
-    let contents = fs::read_to_string(&constants_path)
-        .map_err(|error| format!("Failed to read {}: {}", constants_path.display(), error))?;
-    let updated = update_constant_value(
-        &update_constant_value(&contents, "PINNED_NIX_VERSION", &nix_version),
-        "PINNED_NUSHELL_VERSION",
-        &nushell_version,
-    );
-    if updated == contents {
-        println!(
-            "✅ Runtime pins unchanged: nix {}, nushell {}",
-            nix_version, nushell_version
-        );
-        return Ok(());
-    }
-
-    fs::write(&constants_path, updated)
-        .map_err(|error| format!("Failed to write {}: {}", constants_path.display(), error))?;
-    println!(
-        "✅ Updated runtime pins: nix {}, nushell {}",
-        nix_version, nushell_version
-    );
-    Ok(())
-}
-
-fn update_constant_value(contents: &str, key: &str, new_value: &str) -> String {
-    let marker = format!("export const {key} = \"");
-    contents
-        .lines()
-        .map(|line| {
-            if let Some(rest) = line.strip_prefix(&marker) {
-                if rest.ends_with('"') {
-                    return format!("{marker}{new_value}\"");
-                }
-            }
-            line.to_string()
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
-        + if contents.ends_with('\n') { "\n" } else { "" }
-}
-
-fn eval_locked_nixpkgs_version(
-    repo_root: &Path,
-    attr_expr: &str,
-    label: &str,
-) -> Result<String, String> {
-    let expr = format!(
-        "let\n  flake = builtins.getFlake \"path:{}\";\n  system = builtins.currentSystem;\n  pkgs = flake.inputs.nixpkgs.legacyPackages.${{system}};\nin {}",
-        repo_root.display(),
-        attr_expr
-    );
-    let output = run_command_capture(
-        "nix",
-        [
-            "eval",
-            "--raw",
-            "--impure",
-            "--extra-experimental-features",
-            "nix-command flakes",
-            "--expr",
-            expr.as_str(),
-        ],
-        None,
-    )?;
-    if !output.status.success() {
-        return Err(format!(
-            "Failed to resolve {label} version from the locked nixpkgs input: {}",
-            String::from_utf8_lossy(&output.stderr).trim()
-        ));
-    }
-    let raw = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    extract_version(&raw).ok_or_else(|| format!("Failed to parse {label} version from: {raw}"))
-}
-
-fn extract_version(value: &str) -> Option<String> {
-    for token in value.split(|ch: char| !ch.is_ascii_digit() && ch != '.') {
-        let parts = token.split('.').collect::<Vec<_>>();
-        if parts.len() == 3
-            && parts
-                .iter()
-                .all(|part| !part.is_empty() && part.chars().all(|ch| ch.is_ascii_digit()))
-        {
-            return Some(token.to_string());
-        }
-    }
-    None
 }
 
 fn sync_vendored_zjstatus(repo_root: &Path) -> Result<(), String> {
@@ -1000,7 +895,6 @@ mod tests {
     use super::{
         UpdateActivationMode, apply_shell_layout_canary_overrides,
         resolve_requested_update_activation_mode, resolve_update_canary_selection,
-        update_constant_value,
     };
     use toml::Value as TomlValue;
 
@@ -1053,20 +947,6 @@ hide_sidebar_on_file_open = false
                 .unwrap(),
             true
         );
-    }
-
-    // Defends: runtime pin updates replace only the targeted constants and preserve surrounding file content.
-    #[test]
-    fn constant_updates_only_touch_targeted_exports() {
-        let input = "export const YAZELIX_VERSION = \"v15.4\"\nexport const PINNED_NIX_VERSION = \"1.0.0\"\nexport const PINNED_NUSHELL_VERSION = \"2.0.0\"\n";
-        let output = update_constant_value(
-            &update_constant_value(input, "PINNED_NIX_VERSION", "3.4.5"),
-            "PINNED_NUSHELL_VERSION",
-            "0.111.0",
-        );
-        assert!(output.contains("export const YAZELIX_VERSION = \"v15.4\""));
-        assert!(output.contains("export const PINNED_NIX_VERSION = \"3.4.5\""));
-        assert!(output.contains("export const PINNED_NUSHELL_VERSION = \"0.111.0\""));
     }
 
     // Defends: update canary selection accepts only the maintained allowlist and deduplicates repeated requests.

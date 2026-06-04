@@ -39,18 +39,13 @@ fn yzx_control_whats_new_renders_current_summary_and_marks_seen() {
     let runtime_dir = tmp.path().join("runtime");
     let state_dir = tmp.path().join("state");
     fs::create_dir_all(runtime_dir.join("docs")).unwrap();
-    fs::create_dir_all(runtime_dir.join("nushell/scripts/utils")).unwrap();
     fs::create_dir_all(&state_dir).unwrap();
     fs::write(runtime_dir.join("CHANGELOG.md"), "# Changelog\n").unwrap();
-    fs::write(
-        runtime_dir.join("nushell/scripts/utils/constants.nu"),
-        "export const YAZELIX_VERSION = \"v15.4\"\n",
-    )
-    .unwrap();
     fs::write(
         runtime_dir.join("runtime_identity.json"),
         r#"{
           "schema_version": 1,
+          "version": "v15.4",
           "runtime_variant": "ghostty",
           "source": {
             "revision": "0123456789abcdef0123456789abcdef01234567",

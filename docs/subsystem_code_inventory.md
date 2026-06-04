@@ -8,13 +8,12 @@ moved to Rust.
 
 ## Current Shape
 
-The tracked product/runtime Nushell surface is `138` lines across `3` `.nu`
+The tracked product/runtime Nushell surface is `132` lines across `2` `.nu`
 files:
 
 ```text
 nushell/config/config.nu
 nushell/config/stack_prompt_guard.nu
-nushell/scripts/utils/constants.nu
 ```
 
 The old product-side Nushell owner set is gone. Root help, command metadata,
@@ -29,7 +28,9 @@ transport are Rust-owned or outside the remaining Nushell floor.
 | --- | --- | --- |
 | `nushell/config/config.nu` | Retain | User shell config source; it wires generated initializers and externs into Nushell |
 | `nushell/config/stack_prompt_guard.nu` | Retain | Interactive prompt guard logic is shell-local and not a product control-plane owner |
-| `nushell/scripts/utils/constants.nu` | Retain | Tiny compatibility export for runtime version and release tooling |
+
+Release metadata is no longer part of the Nushell owner set. The repo root
+`release_metadata.toml` feeds the packaged `runtime_identity.json.version`.
 
 No public `yzx/` Nushell module remains. `yzx menu` is Rust-owned and still uses
 `fzf` as the interactive selection process.

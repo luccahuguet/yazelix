@@ -7,9 +7,8 @@ The product/runtime Nushell floor is the measured allowlist below:
 | Family | Files | LOC |
 | --- | ---: | ---: |
 | User Nushell config | `2` | `132` |
-| Version metadata | `1` | `6` |
 
-Total tracked product/runtime Nu: `138` LOC across `3` files.
+Total tracked product/runtime Nu: `132` LOC across `2` files.
 
 ## Scope
 
@@ -30,11 +29,11 @@ The remaining runtime-side Nushell files are:
 
 - `nushell/config/config.nu`
 - `nushell/config/stack_prompt_guard.nu`
-- `nushell/scripts/utils/constants.nu`
 
 `config.nu` and `stack_prompt_guard.nu` are current-shell Nushell UX files.
-`constants.nu` survives as a tiny version metadata source consumed by release
-tooling and runtime version reporting.
+Release version metadata is Rust/Nix-owned: maintainers edit root
+`release_metadata.toml`, and packaged runtimes expose the same version through
+`runtime_identity.json.version`.
 
 ### Rust Startup Owner
 

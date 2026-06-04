@@ -383,7 +383,7 @@ fn render_snapshot_line(snapshot: Option<&RuntimeSnapshotContext>) -> String {
         return "Runtime source: not reported".to_string();
     };
     if snapshot.unknown {
-        return "Runtime source: unknown; release-note comparison uses YAZELIX_VERSION only"
+        return "Runtime source: unknown; release-note comparison uses runtime identity version only"
             .to_string();
     }
     let label = snapshot
@@ -392,7 +392,7 @@ fn render_snapshot_line(snapshot: Option<&RuntimeSnapshotContext>) -> String {
         .unwrap_or("revision not reported");
     if snapshot.dirty_or_dev {
         format!(
-            "Runtime source: {label} (dirty/dev snapshot; release-note comparison uses YAZELIX_VERSION only)"
+            "Runtime source: {label} (dirty/dev snapshot; release-note comparison uses runtime identity version only)"
         )
     } else {
         format!("Runtime source: {label}")

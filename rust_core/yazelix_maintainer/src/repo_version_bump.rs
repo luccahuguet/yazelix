@@ -4,6 +4,7 @@ use crate::repo_contract_validation::sync_readme_surface;
 use std::fs;
 use std::path::{Path, PathBuf};
 use toml::Value as TomlValue;
+use yazelix_core::control_plane::read_release_metadata_version;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VersionBumpResult {
@@ -32,7 +33,7 @@ pub fn perform_version_bump(
 
     if previous_version == resolved_target_version {
         return Err(format!(
-            "YAZELIX_VERSION already matches {}",
+            "release_metadata.toml already declares {}",
             resolved_target_version
         ));
     }
@@ -53,14 +54,14 @@ pub fn perform_version_bump(
         &resolved_target_version,
         &release_date,
     )?;
-    update_version_constant(&resolved_repo_root, &resolved_target_version)?;
+    update_release_metadata_version(&resolved_repo_root, &resolved_target_version)?;
     sync_readme_surface(&resolved_repo_root, None, Some(&resolved_target_version))?;
 
     run_git(
         &resolved_repo_root,
         &[
             "add",
-            "nushell/scripts/utils/constants.nu",
+            "release_metadata.toml",
             "docs/upgrade_notes.toml",
             "CHANGELOG.md",
             "README.md",
@@ -85,7 +86,7 @@ pub fn perform_version_bump(
     let final_version = current_version(&resolved_repo_root)?;
     if final_version != resolved_target_version {
         return Err(format!(
-            "Version mismatch after bump: constants declare {}, expected {}",
+            "Version mismatch after bump: release metadata declares {}, expected {}",
             final_version, resolved_target_version
         ));
     }
@@ -175,23 +176,7 @@ fn validate_target_version(target_version: &str) -> Result<String, String> {
 }
 
 fn current_version(repo_root: &Path) -> Result<String, String> {
-    let constants_path = repo_root.join("nushell/scripts/utils/constants.nu");
-    let raw = fs::read_to_string(&constants_path)
-        .map_err(|error| format!("Failed to read {}: {}", constants_path.display(), error))?;
-    let marker = "export const YAZELIX_VERSION = \"";
-    let version = raw
-        .lines()
-        .find_map(|line| line.trim().strip_prefix(marker))
-        .and_then(|tail| tail.strip_suffix('"'))
-        .unwrap_or_default();
-    if version.is_empty() {
-        Err(format!(
-            "Failed to read YAZELIX_VERSION from {}",
-            constants_path.display()
-        ))
-    } else {
-        Ok(version.to_string())
-    }
+    read_release_metadata_version(repo_root).map_err(|error| error.message())
 }
 
 fn ensure_target_tag_absent(repo_root: &Path, target_version: &str) -> Result<(), String> {
@@ -288,19 +273,23 @@ fn ensure_releasable_unreleased_changelog(
     }
 }
 
-fn update_version_constant(repo_root: &Path, target_version: &str) -> Result<(), String> {
-    let constants_path = repo_root.join("nushell/scripts/utils/constants.nu");
-    let raw = fs::read_to_string(&constants_path)
-        .map_err(|error| format!("Failed to read {}: {}", constants_path.display(), error))?;
-    let updated = raw.replace(
-        &format!(
-            "export const YAZELIX_VERSION = \"{}\"",
-            current_version(repo_root)?
-        ),
-        &format!("export const YAZELIX_VERSION = \"{}\"", target_version),
+fn update_release_metadata_version(repo_root: &Path, target_version: &str) -> Result<(), String> {
+    let metadata_path = repo_root.join("release_metadata.toml");
+    let raw = fs::read_to_string(&metadata_path)
+        .map_err(|error| format!("Failed to read {}: {}", metadata_path.display(), error))?;
+    let mut metadata: TomlValue = toml::from_str(&raw)
+        .map_err(|error| format!("Failed to parse {}: {}", metadata_path.display(), error))?;
+    let table = metadata
+        .as_table_mut()
+        .ok_or_else(|| "release_metadata.toml must be a TOML table".to_string())?;
+    table.insert(
+        "version".to_string(),
+        TomlValue::String(target_version.to_string()),
     );
-    fs::write(&constants_path, updated)
-        .map_err(|error| format!("Failed to write {}: {}", constants_path.display(), error))
+    let rendered = toml::to_string_pretty(&metadata)
+        .map_err(|error| format!("Failed to render {}: {}", metadata_path.display(), error))?;
+    fs::write(&metadata_path, rendered)
+        .map_err(|error| format!("Failed to write {}: {}", metadata_path.display(), error))
 }
 
 fn rotate_upgrade_notes(
@@ -463,5 +452,20 @@ Older release
         assert!(rotated.contains("Post-v15.4 work in progress"));
         assert!(rotated.contains("## v15.4 - 2026-04-23"));
         assert!(rotated.contains("- Important change"));
+    }
+
+    // Defends: version bumps edit root release metadata instead of reviving the deleted Nushell constants file.
+    #[test]
+    fn update_release_metadata_rewrites_version_field() {
+        let temp = tempfile::tempdir().unwrap();
+        fs::write(
+            temp.path().join("release_metadata.toml"),
+            "schema_version = 1\nversion = \"v15.3\"\n",
+        )
+        .unwrap();
+
+        update_release_metadata_version(temp.path(), "v15.4").unwrap();
+
+        assert_eq!(current_version(temp.path()).unwrap(), "v15.4");
     }
 }

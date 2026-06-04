@@ -10,6 +10,7 @@ Upgrade impact: no user action required
 
 Highlights:
 - Added `zellij.custom_popups` for user-defined popup surfaces and moved the default `btm` process viewer popup to that surface on `Alt Shift B`
+- Moved release version ownership to root `release_metadata.toml` and packaged `runtime_identity.json.version`, deleting the old Nushell constants file
 
 ## v17.3 - 2026-06-01
 

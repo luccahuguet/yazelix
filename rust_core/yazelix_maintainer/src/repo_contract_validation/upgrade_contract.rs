@@ -5,18 +5,23 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 use toml::{Table as TomlTable, Value as TomlValue};
-use yazelix_core::control_plane::read_yazelix_version_from_runtime;
+use yazelix_core::control_plane::read_release_metadata_version;
 
 const GUARDED_FILES: &[&str] = &[
-    "nushell/scripts/utils/constants.nu",
+    "release_metadata.toml",
     "settings_default.jsonc",
-    // Historical release entries acknowledge this retired default seed.
-    "yazelix_default.toml",
     "home_manager/module.nix",
     "docs/upgrade_notes.toml",
     "CHANGELOG.md",
 ];
 const ACK_REQUIRED_FILES: &[&str] = &["settings_default.jsonc", "home_manager/module.nix"];
+const HISTORICAL_ACKNOWLEDGEMENT_FILES: &[&str] = &[
+    "yazelix_default.toml",
+    "yazelix_packs_default.toml",
+    "nushell/scripts/utils/constants.nu",
+    "nushell/scripts/utils/config_schema.nu",
+    "nushell/scripts/utils/config_migrations.nu",
+];
 const IMPACT_VALUES: &[&str] = &[
     "no_user_action",
     "migration_available",
@@ -62,7 +67,7 @@ pub fn validate_upgrade_contract(
             )
         })?;
     let current_version =
-        read_yazelix_version_from_runtime(repo_root).map_err(|error| error.message())?;
+        read_release_metadata_version(repo_root).map_err(|error| error.message())?;
 
     let current_entry = entries.get(current_version.as_str());
     let unreleased_entry = entries.get("unreleased");
@@ -234,7 +239,10 @@ fn validate_upgrade_entry(key: &str, entry: &TomlTable) -> Vec<String> {
     }
 
     for path in acknowledged {
-        if !GUARDED_FILES.contains(&path.as_str()) && !ACK_REQUIRED_FILES.contains(&path.as_str()) {
+        if !GUARDED_FILES.contains(&path.as_str())
+            && !ACK_REQUIRED_FILES.contains(&path.as_str())
+            && !HISTORICAL_ACKNOWLEDGEMENT_FILES.contains(&path.as_str())
+        {
             errors.push(format!(
                 "upgrade_notes.toml: entry `{}` acknowledges non-guarded path `{}`",
                 key, path
@@ -362,11 +370,11 @@ fn validate_upgrade_ci_rules(
     if !version_bumped
         && changed_files
             .iter()
-            .any(|path| path == "nushell/scripts/utils/constants.nu")
+            .any(|path| path == "release_metadata.toml")
         && !docs_changed
     {
         errors.push(
-            "CI: changes to nushell/scripts/utils/constants.nu must update both CHANGELOG.md and docs/upgrade_notes.toml"
+            "CI: changes to release_metadata.toml must update both CHANGELOG.md and docs/upgrade_notes.toml"
                 .to_string(),
         );
     }
@@ -521,27 +529,29 @@ fn get_previous_version(repo_root: &Path, base: &str) -> Result<Option<String>, 
             "-C",
             &repo_root.display().to_string(),
             "show",
-            &format!("{base}:nushell/scripts/utils/constants.nu"),
+            &format!("{base}:release_metadata.toml"),
         ])
         .output()
         .map_err(|error| format!("Failed to run `git show` for {}: {}", base, error))?;
     if !output.status.success() {
         return Ok(None);
     }
-    Ok(extract_version_from_constants(&String::from_utf8_lossy(
-        &output.stdout,
-    )))
+    Ok(extract_version_from_release_metadata(
+        &String::from_utf8_lossy(&output.stdout),
+    ))
 }
 
-fn extract_version_from_constants(content: &str) -> Option<String> {
-    const PREFIX: &str = "export const YAZELIX_VERSION = \"";
-    content.lines().find_map(|line| {
-        let trimmed = line.trim();
-        trimmed
-            .strip_prefix(PREFIX)
-            .and_then(|rest| rest.strip_suffix('"'))
-            .map(ToOwned::to_owned)
-    })
+fn extract_version_from_release_metadata(content: &str) -> Option<String> {
+    toml::from_str::<TomlTable>(content)
+        .ok()
+        .and_then(|metadata| {
+            metadata
+                .get("version")
+                .and_then(TomlValue::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(ToOwned::to_owned)
+        })
 }
 
 fn drop_acknowledged_guarded_changes(entry: &TomlTable) -> TomlTable {

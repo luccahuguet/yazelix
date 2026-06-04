@@ -1,12 +1,8 @@
 # Nushell Scripts Organization
 
-This directory contains the remaining irreducible Nushell metadata in Yazelix
+This directory contains the remaining irreducible Nushell support files in Yazelix
 
 ## Current Shape
-
-### `utils/`
-
-- `constants.nu` - Version constant consumed by release/version tooling and the packaged runtime version reader
 
 ### `dev/`
 
@@ -20,6 +16,9 @@ Maintainer test-suite inventory metadata
 
 Normal startup, launch, restart, desktop, popup, generated-state repair, welcome
 sequencing, and Rust-helper JSON transport are Rust-owned
+
+Release metadata lives in root `release_metadata.toml` during maintainer work and
+is packaged into `runtime_identity.json.version` for runtime version reporting
 
 Use the shipped CLI and Rust-owned public commands
 

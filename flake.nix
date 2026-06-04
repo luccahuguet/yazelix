@@ -102,12 +102,14 @@
       lib = nixpkgs.lib;
       forAllSystems = nixpkgs.lib.genAttrs systems;
       mkPkgs = system: nixpkgs.legacyPackages.${system};
+      releaseMetadata = builtins.fromTOML (builtins.readFile ./release_metadata.toml);
       inputIdentity = input: {
         revision = input.rev or null;
         short_revision = input.shortRev or null;
         last_modified_date = input.lastModifiedDate or null;
       };
       defaultRuntimeIdentity = {
+        version = releaseMetadata.version;
         source = {
           revision = self.rev or self.dirtyRev or null;
           short_revision = self.shortRev or self.dirtyShortRev or null;

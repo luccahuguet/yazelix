@@ -1,10 +1,10 @@
 [releases.unreleased]
-acknowledged_guarded_changes = ["settings_default.jsonc", "home_manager/module.nix"]
+acknowledged_guarded_changes = ["release_metadata.toml", "settings_default.jsonc", "home_manager/module.nix"]
 date = ""
 headline = "Post-v17.3 work in progress"
 manual_actions = []
 migration_ids = []
-summary = ["Added zellij.custom_popups for user-defined popup surfaces, moved the default btm process viewer popup to that surface on Alt Shift B, and made the default btm popup keep its process alive across focused toggles."]
+summary = ["Added zellij.custom_popups for user-defined popup surfaces, moved the default btm process viewer popup to that surface on Alt Shift B, and made the default btm popup keep its process alive across focused toggles.", "Moved release version ownership to root release_metadata.toml and packaged runtime_identity.json.version, deleting the old Nushell constants file."]
 upgrade_impact = "no_user_action"
 version = "unreleased"
 

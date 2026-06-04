@@ -19,6 +19,7 @@ fn yzx_version_full_prints_packaged_runtime_identity() {
         runtime_dir.join("runtime_identity.json"),
         r#"{
           "schema_version": 1,
+          "version": "v-test",
           "runtime_variant": "ghostty",
           "source": {
             "revision": "0123456789abcdef0123456789abcdef01234567",
@@ -53,6 +54,7 @@ fn yzx_version_full_prints_packaged_runtime_identity() {
         runtime_dir.to_string_lossy().as_ref()
     );
     assert_eq!(payload["runtime_identity"]["runtime_variant"], "ghostty");
+    assert_eq!(payload["runtime_identity"]["version"], "v-test");
     assert_eq!(
         payload["runtime_identity"]["source"]["revision"],
         "0123456789abcdef0123456789abcdef01234567"

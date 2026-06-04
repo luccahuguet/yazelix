@@ -16,9 +16,10 @@ use serde_json::{Map as JsonMap, Value as JsonValue};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use toml::Value as TomlValue;
 
 const DEFAULT_SHELL: &str = "nu";
-const VERSION_LINE_PREFIX: &str = "export const YAZELIX_VERSION = \"";
+const RELEASE_METADATA_FILENAME: &str = "release_metadata.toml";
 
 /// Expand `~` / `~/…` using `home` (POSIX-style).
 pub fn expand_user_path(raw: &str, home: &Path) -> PathBuf {
@@ -103,43 +104,58 @@ pub fn config_override_from_env() -> Option<String> {
 }
 
 pub fn read_yazelix_version_from_runtime(runtime_dir: &Path) -> Result<String, CoreError> {
-    let constants_path = runtime_dir
-        .join("nushell")
-        .join("scripts")
-        .join("utils")
-        .join("constants.nu");
-    let contents = std::fs::read_to_string(&constants_path).map_err(|source| {
+    let identity = read_runtime_identity_from_runtime(runtime_dir)?;
+    runtime_identity_version(&identity, runtime_dir)
+}
+
+pub fn read_release_metadata_version(repo_root: &Path) -> Result<String, CoreError> {
+    let metadata_path = repo_root.join(RELEASE_METADATA_FILENAME);
+    let contents = std::fs::read_to_string(&metadata_path).map_err(|source| {
         CoreError::io(
-            "version",
+            "release_metadata",
             format!(
-                "Failed to read Yazelix version from {}.",
-                constants_path.display()
+                "Failed to read Yazelix release metadata from {}.",
+                metadata_path.display()
             ),
-            "Restore nushell/scripts/utils/constants.nu or reinstall Yazelix.",
-            ".",
+            "Restore release_metadata.toml from the Yazelix repository.",
+            metadata_path.display().to_string(),
             source,
         )
     })?;
+    let metadata = toml::from_str::<TomlValue>(&contents).map_err(|source| {
+        CoreError::classified(
+            ErrorClass::Runtime,
+            "invalid_release_metadata",
+            format!(
+                "Yazelix release metadata is invalid TOML at {}.",
+                metadata_path.display()
+            ),
+            "Fix release_metadata.toml so it declares a string `version` field.",
+            serde_json::json!({
+                "path": metadata_path.display().to_string(),
+                "error": source.to_string(),
+            }),
+        )
+    })?;
+    let version = metadata
+        .get("version")
+        .and_then(TomlValue::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            CoreError::classified(
+                ErrorClass::Runtime,
+                "missing_release_metadata_version",
+                format!(
+                    "Yazelix release metadata is missing a string `version` field at {}.",
+                    metadata_path.display()
+                ),
+                "Fix release_metadata.toml so it declares the current Yazelix version.",
+                serde_json::json!({ "path": metadata_path.display().to_string() }),
+            )
+        })?;
 
-    for line in contents.lines() {
-        let trimmed = line.trim();
-        if let Some(rest) = trimmed.strip_prefix(VERSION_LINE_PREFIX) {
-            if let Some(value) = rest.strip_suffix('"') {
-                return Ok(value.to_string());
-            }
-        }
-    }
-
-    Err(CoreError::classified(
-        ErrorClass::Runtime,
-        "missing_version_constant",
-        format!(
-            "Could not find version constant in {}.",
-            constants_path.display()
-        ),
-        "Restore nushell/scripts/utils/constants.nu or reinstall Yazelix.",
-        serde_json::json!({"path": constants_path.display().to_string()}),
-    ))
+    Ok(version.to_string())
 }
 
 pub fn read_runtime_identity_from_runtime(runtime_dir: &Path) -> Result<JsonValue, CoreError> {
@@ -186,6 +202,30 @@ pub fn read_runtime_identity_from_runtime(runtime_dir: &Path) -> Result<JsonValu
     }
 
     Ok(identity)
+}
+
+fn runtime_identity_version(identity: &JsonValue, runtime_dir: &Path) -> Result<String, CoreError> {
+    let version = identity
+        .get("version")
+        .and_then(JsonValue::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            CoreError::classified(
+                ErrorClass::Runtime,
+                "missing_runtime_identity_version",
+                format!(
+                    "Yazelix runtime identity is missing a string `version` field at {}.",
+                    runtime_dir.join("runtime_identity.json").display()
+                ),
+                "Reinstall Yazelix from a current package so runtime_identity.json includes the packaged release version.",
+                serde_json::json!({
+                    "path": runtime_dir.join("runtime_identity.json").display().to_string(),
+                }),
+            )
+        })?;
+
+    Ok(version.to_string())
 }
 
 pub fn home_dir_from_env() -> Result<PathBuf, CoreError> {

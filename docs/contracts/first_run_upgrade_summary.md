@@ -20,11 +20,11 @@ This contract covers:
 
 ## Behavior
 
-Yazelix should read the current installed `YAZELIX_VERSION`, look up that exact release in `docs/upgrade_notes.toml`, and render a short summary from that record. The summary should be eligible to appear only once automatically per version, on the interactive startup path.
+Yazelix should read the current installed version from `runtime_identity.json.version`, look up that exact release in `docs/upgrade_notes.toml`, and render a short summary from that record. The summary should be eligible to appear only once automatically per version, on the interactive startup path.
 
 The last-seen version must be stored in Yazelix-managed state, not in the user config file. When the stored version already matches the current installed version, automatic startup display should stay quiet. When the stored version is missing or older, the startup path should show the summary and then record the current version as seen.
 
-`yzx whats_new` should render the same current-version summary on demand when the active runtime has no newer structured notes. When `docs/upgrade_notes.toml` bundled with the active runtime includes release entries newer than the installed `YAZELIX_VERSION`, or a populated `unreleased` entry, the command should instead render those known changes as "changes since installed runtime". The comparison is offline and uses only the active runtime's `YAZELIX_VERSION`, `runtime_identity.json`, and bundled `docs/upgrade_notes.toml`.
+`yzx whats_new` should render the same current-version summary on demand when the active runtime has no newer structured notes. When `docs/upgrade_notes.toml` bundled with the active runtime includes release entries newer than the installed runtime identity version, or a populated `unreleased` entry, the command should instead render those known changes as "changes since installed runtime". The comparison is offline and uses only the active runtime's `runtime_identity.json`, bundled `docs/upgrade_notes.toml`, and packaged changelog.
 
 Dirty, dev, or unknown source snapshots must be named explicitly in the output instead of pretending the source revision maps exactly to a tagged release. Non-release version strings such as `dev` must fail clearly when the command is asked to select a release-note range.
 

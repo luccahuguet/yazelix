@@ -3,7 +3,7 @@ use crate::repo_validation::ValidationReport;
 use std::fs;
 use std::path::{Path, PathBuf};
 use toml::{Table as TomlTable, Value as TomlValue};
-use yazelix_core::control_plane::read_yazelix_version_from_runtime;
+use yazelix_core::control_plane::read_release_metadata_version;
 
 const README_LATEST_SERIES_BEGIN: &str = "<!-- BEGIN GENERATED README LATEST SERIES -->";
 const README_LATEST_SERIES_END: &str = "<!-- END GENERATED README LATEST SERIES -->";
@@ -17,7 +17,7 @@ pub struct ReadmeSyncResult {
 
 pub fn validate_readme_version(repo_root: &Path) -> Result<ValidationReport, String> {
     let mut report = ValidationReport::default();
-    let version = read_yazelix_version_from_runtime(repo_root).map_err(|error| error.message())?;
+    let version = read_release_metadata_version(repo_root).map_err(|error| error.message())?;
     let readme_path = repo_root.join("README.md");
     let readme = fs::read_to_string(&readme_path)
         .map_err(|error| format!("Failed to read {}: {}", readme_path.display(), error))?;
@@ -49,7 +49,7 @@ pub fn sync_readme_surface(
 ) -> Result<ReadmeSyncResult, String> {
     let resolved_version = match version.map(str::trim).filter(|value| !value.is_empty()) {
         Some(value) => value.to_string(),
-        None => read_yazelix_version_from_runtime(repo_root).map_err(|error| error.message())?,
+        None => read_release_metadata_version(repo_root).map_err(|error| error.message())?,
     };
     let target_readme_path = readme_path
         .map(Path::to_path_buf)

@@ -17,7 +17,6 @@ materialization.
 
 - `nushell/scripts/utils/terminal_launcher.nu`
 - `nushell/scripts/core/launch_yazelix.nu`
-- `nushell/scripts/utils/constants.nu` terminal metadata used by launch
 - `shells/posix/detached_launch_probe.sh`
 - `shells/posix/desktop_deferred_launch_probe.sh`
 - terminal launch and detached-launch tests in

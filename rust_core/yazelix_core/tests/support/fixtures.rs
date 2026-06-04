@@ -44,7 +44,6 @@ pub fn repo_root() -> PathBuf {
 
 pub fn write_runtime_contract_assets(repo: &Path, runtime_dir: &Path) {
     fs::create_dir_all(runtime_dir.join("config_metadata")).unwrap();
-    fs::create_dir_all(runtime_dir.join("nushell/scripts/utils")).unwrap();
     fs::copy(
         repo.join("settings_default.jsonc"),
         runtime_dir.join("settings_default.jsonc"),
@@ -63,16 +62,20 @@ pub fn write_runtime_contract_assets(repo: &Path, runtime_dir: &Path) {
     fs::write(runtime_dir.join(TOML_TOOLING_CONFIG_FILENAME), "[format]\n").unwrap();
     fs::write(runtime_dir.join("runtime_variant"), "ghostty\n").unwrap();
     fs::write(
+        runtime_dir.join("runtime_identity.json"),
+        r#"{
+          "schema_version": 1,
+          "version": "v-test",
+          "runtime_variant": "ghostty"
+        }"#,
+    )
+    .unwrap();
+    fs::write(
         runtime_dir.join("runtime_components.json"),
         r#"{
           "cursors": { "enabled": true, "disableable": true, "notes": [] },
           "screen": { "enabled": true, "disableable": true, "notes": [] }
         }"#,
-    )
-    .unwrap();
-    fs::write(
-        runtime_dir.join("nushell/scripts/utils/constants.nu"),
-        "export const YAZELIX_VERSION = \"v-test\"\n",
     )
     .unwrap();
 }
