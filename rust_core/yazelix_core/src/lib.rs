@@ -55,6 +55,7 @@ pub mod session_facts;
 pub mod settings_contract;
 pub mod settings_jsonc_patch;
 pub mod settings_surface;
+pub(crate) mod sidebar_bootstrap;
 pub mod startup_facts;
 pub mod startup_handoff;
 pub mod status_report;

@@ -1,12 +1,13 @@
 use super::config_override::{
     config_override_extra_env, prepare_session_config_override, resolve_cli_config_override,
 };
+use super::create_sidebar_bootstrap_file;
 use super::process::{command_output_with_overrides, print_completed_output};
-use super::{SIDEBAR_BOOTSTRAP_CWD_ENV, create_sidebar_bootstrap_file};
 use crate::bridge::CoreError;
 use crate::control_plane::{config_override_from_env, runtime_dir_from_env};
 use crate::install_ownership_env::install_ownership_request_from_env_with_runtime_dir;
 use crate::install_ownership_report::evaluate_install_ownership_report;
+use crate::sidebar_bootstrap::SIDEBAR_BOOTSTRAP_CWD_ENV;
 use std::path::PathBuf;
 use std::process::Command;
 use std::thread;

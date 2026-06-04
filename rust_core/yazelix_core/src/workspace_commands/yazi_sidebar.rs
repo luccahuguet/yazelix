@@ -2,7 +2,9 @@
 
 use super::{expand_leading_tilde, load_workspace_command_config, resolve_path_like_input};
 use crate::bridge::{CoreError, ErrorClass};
+use crate::control_plane::state_dir_from_env;
 use crate::pane_orchestrator_client::run_pane_orchestrator_command;
+use crate::sidebar_bootstrap::{SIDEBAR_BOOTSTRAP_CWD_ENV, is_sidebar_bootstrap_file};
 use crate::workspace_session::{SidebarState, parse_active_sidebar_state};
 use serde_json::json;
 use std::env;
@@ -149,12 +151,21 @@ fn launch_yazi_sidebar() -> Result<i32, CoreError> {
 }
 
 fn consume_bootstrap_sidebar_cwd(home_dir: &Path) -> Option<PathBuf> {
-    let cwd_file = env::var("YAZELIX_BOOTSTRAP_SIDEBAR_CWD_FILE")
+    let cwd_file = env::var(SIDEBAR_BOOTSTRAP_CWD_ENV)
         .ok()
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())?;
     let cwd_file = PathBuf::from(cwd_file);
-    if !cwd_file.is_file() {
+    let state_dir = state_dir_from_env().ok()?;
+    consume_bootstrap_sidebar_cwd_file(home_dir, &state_dir, &cwd_file)
+}
+
+fn consume_bootstrap_sidebar_cwd_file(
+    home_dir: &Path,
+    state_dir: &Path,
+    cwd_file: &Path,
+) -> Option<PathBuf> {
+    if !is_sidebar_bootstrap_file(state_dir, cwd_file) {
         return None;
     }
 
@@ -406,4 +417,51 @@ fn find_external_command(command_name: &str) -> Option<PathBuf> {
     env::split_paths(&path_var)
         .map(|entry| entry.join(command_name))
         .find(|candidate| candidate.is_file())
+}
+
+#[cfg(test)]
+mod tests {
+    // Test lane: default
+
+    use super::*;
+    use crate::sidebar_bootstrap::sidebar_bootstrap_owner_dir;
+    use tempfile::TempDir;
+
+    // Defends: sidebar startup consumes and deletes only Yazelix-owned one-shot cwd files.
+    #[test]
+    fn consume_bootstrap_sidebar_cwd_reads_owned_file_once() {
+        let tmp = TempDir::new().expect("tmp");
+        let home = tmp.path().join("home");
+        let project = tmp.path().join("project");
+        let bootstrap_dir = sidebar_bootstrap_owner_dir(tmp.path(), "enter");
+        let bootstrap_file = bootstrap_dir.join("cwd.tmp");
+        fs::create_dir_all(&home).expect("home");
+        fs::create_dir_all(&project).expect("project");
+        fs::create_dir_all(&bootstrap_dir).expect("bootstrap dir");
+        fs::write(&bootstrap_file, project.to_string_lossy().as_ref()).expect("bootstrap file");
+
+        assert_eq!(
+            consume_bootstrap_sidebar_cwd_file(&home, tmp.path(), &bootstrap_file),
+            Some(project)
+        );
+        assert!(!bootstrap_file.exists());
+    }
+
+    // Defends: arbitrary inherited env paths are ignored without deleting user-owned files.
+    #[test]
+    fn consume_bootstrap_sidebar_cwd_ignores_unowned_file() {
+        let tmp = TempDir::new().expect("tmp");
+        let home = tmp.path().join("home");
+        let project = tmp.path().join("project");
+        let unowned_file = tmp.path().join("outside.tmp");
+        fs::create_dir_all(&home).expect("home");
+        fs::create_dir_all(&project).expect("project");
+        fs::write(&unowned_file, project.to_string_lossy().as_ref()).expect("unowned file");
+
+        assert_eq!(
+            consume_bootstrap_sidebar_cwd_file(&home, tmp.path(), &unowned_file),
+            None
+        );
+        assert!(unowned_file.exists());
+    }
 }

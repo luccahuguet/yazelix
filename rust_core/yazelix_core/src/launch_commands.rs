@@ -3,6 +3,9 @@
 
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{home_dir_from_env, state_dir_from_env};
+use crate::sidebar_bootstrap::{
+    SIDEBAR_BOOTSTRAP_CWD_ENV, is_sidebar_bootstrap_file, sidebar_bootstrap_owner_dir,
+};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -16,8 +19,6 @@ mod restart;
 mod terminal;
 
 use desktop::*;
-
-const SIDEBAR_BOOTSTRAP_CWD_ENV: &str = "YAZELIX_BOOTSTRAP_SIDEBAR_CWD_FILE";
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct DesktopArgs {
@@ -76,7 +77,7 @@ fn create_sidebar_bootstrap_file_in_state(
     owner: &str,
     target_dir: &Path,
 ) -> Result<PathBuf, CoreError> {
-    let bootstrap_dir = state_dir.join("sidebar_bootstrap").join(owner);
+    let bootstrap_dir = sidebar_bootstrap_owner_dir(state_dir, owner);
     fs::create_dir_all(&bootstrap_dir).map_err(|source| {
         CoreError::io(
             "sidebar_bootstrap_state_dir",
@@ -133,7 +134,7 @@ fn sidebar_bootstrap_extra_env_for_state(
     target_dir: &Path,
     inherited: Option<&str>,
 ) -> Result<Vec<(String, Option<String>)>, CoreError> {
-    if inherited_sidebar_bootstrap_file(inherited).is_some() {
+    if inherited_sidebar_bootstrap_file(state_dir, inherited).is_some() {
         return Ok(Vec::new());
     }
 
@@ -144,10 +145,10 @@ fn sidebar_bootstrap_extra_env_for_state(
     )])
 }
 
-fn inherited_sidebar_bootstrap_file(raw: Option<&str>) -> Option<PathBuf> {
+fn inherited_sidebar_bootstrap_file(state_dir: &Path, raw: Option<&str>) -> Option<PathBuf> {
     let raw = raw.map(str::trim).filter(|value| !value.is_empty())?;
     let path = PathBuf::from(raw);
-    path.is_file().then_some(path)
+    is_sidebar_bootstrap_file(state_dir, &path).then_some(path)
 }
 
 fn parse_desktop_args(args: &[String]) -> Result<DesktopArgs, CoreError> {
@@ -311,7 +312,12 @@ mod tests {
     #[test]
     fn sidebar_bootstrap_env_preserves_existing_restart_file() {
         let state = TempDir::new().expect("state dir");
-        let inherited = state.path().join("restart_cwd.tmp");
+        let inherited = state
+            .path()
+            .join("sidebar_bootstrap")
+            .join("restart")
+            .join("cwd.tmp");
+        fs::create_dir_all(inherited.parent().unwrap()).expect("bootstrap dir");
         fs::write(&inherited, "/restart/cwd").expect("restart bootstrap");
 
         let env = sidebar_bootstrap_extra_env_for_state(
@@ -324,6 +330,29 @@ mod tests {
 
         assert!(env.is_empty());
         assert_eq!(fs::read_to_string(inherited).unwrap(), "/restart/cwd");
+    }
+
+    // Defends: unrelated inherited env paths cannot suppress the launch-owned sidebar cwd file.
+    #[test]
+    fn sidebar_bootstrap_env_ignores_unowned_inherited_file() {
+        let state = TempDir::new().expect("state dir");
+        let target = state.path().join("project");
+        let inherited = state.path().join("outside.tmp");
+        fs::create_dir_all(&target).expect("target dir");
+        fs::write(&inherited, "/wrong/cwd").expect("unowned bootstrap");
+
+        let env = sidebar_bootstrap_extra_env_for_state(
+            state.path(),
+            "enter",
+            &target,
+            Some(&inherited.to_string_lossy()),
+        )
+        .unwrap();
+
+        assert_eq!(env.len(), 1);
+        let bootstrap_file = PathBuf::from(env[0].1.as_ref().unwrap());
+        assert!(bootstrap_file.starts_with(state.path().join("sidebar_bootstrap").join("enter")));
+        assert_eq!(fs::read_to_string(inherited).unwrap(), "/wrong/cwd");
     }
 
     // Defends: restart exposes a one-shot welcome skip flag without making the config skip setting sticky.
