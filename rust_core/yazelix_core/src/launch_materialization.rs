@@ -3,18 +3,18 @@
 
 use crate::active_config_surface::resolve_active_config_paths;
 use crate::bridge::CoreError;
-use crate::config_normalize::{normalize_config, NormalizeConfigRequest};
+use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::control_plane::{config_dir_from_env, runtime_dir_from_env, state_dir_from_env};
 use crate::ghostty_cursor_registry::{
     CursorRegistry, ResolvedCursorRegistryState, YazelixCursorRegistryExt,
 };
 use crate::ghostty_materialization::{
-    generate_ghostty_materialization, GhosttyMaterializationRequest,
+    GhosttyMaterializationRequest, generate_ghostty_materialization,
 };
 use crate::runtime_component_enabled;
 use crate::terminal_materialization::{
-    generate_terminal_materialization, yzxterm_profile_from_env, TerminalGeneratedConfig,
-    TerminalMaterializationRequest, YzxtermProfile,
+    TerminalGeneratedConfig, TerminalMaterializationRequest, YzxtermProfile,
+    generate_terminal_materialization, yzxterm_profile_from_env,
 };
 use crate::terminal_variant::active_terminal_from_runtime_dir;
 use serde::Serialize;
