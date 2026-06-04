@@ -67,11 +67,13 @@ When creating new files or directories, always use underscores to maintain consi
 5. **No duplicate implementation code** - Duplicate code is unacceptable. If a change would copy logic from another module or child repo, fix the ownership boundary or consume a shared/child-owned artifact instead.
 6. **Do not ship or rely on local-only host fixes** - Do not patch user-specific caches, local machine state, or other one-off environment artifacts as a substitute for a real Yazelix fix unless the user explicitly asks for a local recovery workaround. Temporary local probes are allowed for diagnosis or to test a hypothesis, but they must be treated as throwaway investigation steps and either reverted or replaced by a real repo fix before calling the work done.
 7. **Never automatically move, delete, or take ownership of user-managed config files outside Yazelix-owned paths** - In particular, do not automatically relocate files like `~/.config/zellij/config.kdl` into Yazelix-managed paths. If Yazelix wants to adopt an external user config, that must be an explicit user action such as an import command, not an implicit startup side effect.
+8. **No accidental Linux assumptions in shared surfaces** - Linux-only packages, paths, helpers, `/proc` reads, desktop integration, graphics wrappers, clipboard tools, or terminal variants must be explicitly platform-gated before they enter shared Rust, Nix, Home Manager, docs, or runtime code. Use clear gates such as Rust `target_os`, Nix `stdenv.hostPlatform`, or Home Manager platform conditionals, and define the Darwin/macOS or unsupported-platform behavior instead of letting Linux-specific code fail later.
 
 ### Error Handling Philosophy
 - **No silent failures** - Every error should be visible and actionable
 - **Environment independence** - Code should work regardless of host system quirks
 - **Consistent behavior** - Same input should produce same output across all user environments
+- **Explicit platform support** - If a feature is Linux-only, say so in the package/config surface and fail fast when selected elsewhere. If a feature is meant to be shared, keep it free of Linux-only assumptions or gate those assumptions out of non-Linux builds.
 
 ## GitHub Workflow
 
@@ -217,6 +219,7 @@ Use this for every extraction, cleanup, refactor, validator, generated-fixture, 
 - **Every governed Rust `#[test]` must carry a nearby `// Defends:`, `// Regression:`, or `// Invariant:` marker.**
 - **A weak test is not rescued by scoring it.** Exact palette constants, help-output trivia, command-name discovery, and implementation-string checks are not enough unless they defend a documented product contract or regression.
 - **Do not add packaging/config-sync tests by default** just because two files should match. Only keep them when they defend a maintained source-of-truth invariant in the right lane; otherwise prefer behavior tests, contract-backed validation, or cheaper dedicated validators.
+- **Platform-sensitive changes need platform-sensitive verification.** When touching Rust `cfg`, Nix `hostPlatform`, Home Manager platform logic, desktop entries, terminal packages, graphics wrappers, or host helper dependencies, run the cheapest reliable check that proves the active platform still works and the unsupported platform is gated intentionally. If a supported platform such as `aarch64-darwin` cannot be executed locally, state that gap explicitly and prefer eval or compile checks that still exercise the platform boundary.
 - When in doubt, **remove or avoid low-value tests** and spend the budget on fewer, stronger assertions.
 
 ## Yazelix Versioning
