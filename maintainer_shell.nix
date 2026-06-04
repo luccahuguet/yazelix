@@ -24,6 +24,7 @@ let
   openssl = pkgs.openssl;
   maintainerDeps =
     [ pkgs.github-cli ]
+    ++ [ pkgs.prek ]
     ++ [ pkgs.nu-lint ]
     ++ [ pkgs.cargo-nextest ]
     ++ [ pkgs.cargo-llvm-cov ]
