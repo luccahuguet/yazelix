@@ -416,11 +416,6 @@ fn collect_runtime_doctor_findings(
                     Ok(active_terminal) => Some(SharedRuntimePreflightInput {
                         zellij_layout_path: PathBuf::from(plan.zellij_layout_path),
                         terminals: vec![active_terminal],
-                        startup_script_path: runtime_dir
-                            .join("nushell")
-                            .join("scripts")
-                            .join("core")
-                            .join("start_yazelix_inner.nu"),
                         launch_script_path: runtime_dir
                             .join("shells")
                             .join("posix")

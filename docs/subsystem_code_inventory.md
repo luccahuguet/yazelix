@@ -2,40 +2,26 @@
 
 ## Summary
 
-This inventory tracks the remaining Nushell-owned surface after the v16
-Rust-forward cuts. It is not a repo-wide LOC scoreboard and it is not an
-implementation queue.
-
-The current question is narrower:
-
-1. Which surviving Nushell files are honest shell, UI, or process-bound owners?
-2. Which files still contain deterministic seams worth shrinking later?
-
-The ranked execution order belongs in Beads. This document records the current
-owner map so future refactors do not reopen the same broad Rust-port question
-without a concrete deletion target.
+This inventory tracks the remaining product/runtime Nushell floor after startup,
+welcome sequencing, helper transport, generated-state repair, and Zellij handoff
+moved to Rust.
 
 ## Current Shape
 
-The tracked Nushell surface is `1,038` lines across `9` `.nu` files:
+The tracked product/runtime Nushell surface is `138` lines across `3` `.nu`
+files:
 
 ```text
 nushell/config/config.nu
 nushell/config/stack_prompt_guard.nu
-nushell/scripts/core/start_yazelix_inner.nu
-nushell/scripts/setup/welcome.nu
 nushell/scripts/utils/constants.nu
-nushell/scripts/utils/runtime_commands.nu
-nushell/scripts/utils/runtime_defaults.nu
-nushell/scripts/utils/runtime_paths.nu
-nushell/scripts/utils/yzx_core_bridge.nu
 ```
 
-The old broad product-side Nushell owner set is gone. Root help, command
-metadata, generated externs, runtime materialization, Yazi generation, Zellij
-generation, terminal generation, Helix generation, public doctor, config edit,
-import, workspace commands, update commands, and maintainer command dispatch are
-Rust-owned or outside the remaining Nushell floor.
+The old product-side Nushell owner set is gone. Root help, command metadata,
+generated externs, runtime materialization, Yazi generation, Zellij generation,
+terminal generation, Helix generation, public doctor, config edit, import,
+workspace commands, update commands, startup, welcome sequencing, and helper
+transport are Rust-owned or outside the remaining Nushell floor.
 
 ## Remaining Owner Decisions
 
@@ -43,24 +29,17 @@ Rust-owned or outside the remaining Nushell floor.
 | --- | --- | --- |
 | `nushell/config/config.nu` | Retain | User shell config source; it wires generated initializers and externs into Nushell |
 | `nushell/config/stack_prompt_guard.nu` | Retain | Interactive prompt guard logic is shell-local and not a product control-plane owner |
-| `nushell/scripts/core/start_yazelix_inner.nu` | Retain | Owns final interactive startup handoff, welcome display sequencing, startup profiling boundaries, session snapshot env mutation, and Zellij process launch after Rust setup preflight |
-| `nushell/scripts/setup/welcome.nu` | Retain | Human-facing welcome rendering and prompt gating remain a good Nushell fit |
-| `nushell/scripts/utils/constants.nu` | Retain | Tiny compatibility export for runtime version and static metadata access |
-| `nushell/scripts/utils/runtime_commands.nu` | Retain | Shell-facing default-shell resolution and command assembly support startup handoff |
-| `nushell/scripts/utils/runtime_defaults.nu` | Retain | Tiny shared constant module for shell defaults |
-| `nushell/scripts/utils/runtime_paths.nu` | Retain | Shell/env path resolution for remaining Nushell entrypoints |
-| `nushell/scripts/utils/yzx_core_bridge.nu` | Retain, keep narrow | Shared Rust-helper path resolution, JSON envelope execution, and helper-error rendering stay here until Rust owns the human error renderer; dead Zellij wrappers and caller-owned error-surface overrides are gone |
+| `nushell/scripts/utils/constants.nu` | Retain | Tiny compatibility export for runtime version and release tooling |
 
 No public `yzx/` Nushell module remains. `yzx menu` is Rust-owned and still uses
 `fzf` as the interactive selection process.
 
 ## Resolved Follow-Up Decisions
 
-The deterministic migration candidates from the inventory audit resolved as:
-
-- `yazelix-6h1n.4.1` — `yzx_core_bridge.nu` lost its empty caller error-surface argument and unused Zellij helper exports; it remains a narrow transport and error-envelope adapter
-- `yazelix-6h1n.4.2` — Source-checkout chmod repair was deleted from startup setup; the tracked executable bits and package metadata own script executability
-- `yazelix-6h1n.4.3` — Initializer generation moved behind Rust-owned setup preflight; Rust owns selected-shell list, quiet mode, and generated extern refresh for normal launch/setup
+- `yzx enter` owns interactive startup, welcome sequencing, session snapshots,
+  runtime env recomputation, materialization, and final Zellij argv in Rust
+- The deleted Nu bridge files are not launch fallbacks and should not be
+  recreated around Rust helpers
 
 Future follow-ups should use the same delete-first bar: a migration only counts
 when the Nushell owner shrinks end-to-end or a deterministic invariant moves to
@@ -68,11 +47,9 @@ a clearer existing owner.
 
 ## Non-Goals
 
-- Rewriting all shell glue into Rust
+- Rewriting the Nushell user shell config into Rust
 - Reintroducing deleted Nushell command registries or materialization wrappers
 - Adding Rust helpers that leave the same Nushell owner in place
-- Treating interactive presentation, current-shell behavior, or Zellij/Yazi process
-  handoff as Rust targets without a concrete deletion payoff
 
 ## Verification
 

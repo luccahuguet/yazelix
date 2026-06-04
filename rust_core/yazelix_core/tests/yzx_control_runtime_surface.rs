@@ -416,7 +416,7 @@ command = ""
     assert!(log.contains("HELIX_RUNTIME=/custom/helix/runtime"), "{log}");
     assert!(log.contains(&format!("EDITOR={expected_editor}")), "{log}");
     assert!(log.contains(&format!("VISUAL={expected_editor}")), "{log}");
-    assert!(!log.contains("start_yazelix_inner.nu"), "{log}");
+    assert!(!log.contains("nushell/scripts"), "{log}");
     assert!(!log.contains("/stale/"), "{log}");
 }
 

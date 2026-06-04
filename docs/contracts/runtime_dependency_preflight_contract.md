@@ -126,7 +126,7 @@ This matrix is intentionally concrete. It exists to stop runtime checks from dri
 | Check or condition | Owner | Why |
 | --- | --- | --- |
 | Missing or nondirectory working directory for launch/startup | Launch preflight | The chosen entrypoint will fail immediately and the recovery is local and fast. |
-| Missing runtime entrypoint script such as `start_yazelix_inner.nu` or `launch_yazelix.nu` | Launch preflight | This is a hard runtime integrity blocker for the selected path, not a deep diagnostic. |
+| Missing packaged Rust startup helper or generated layout required for startup | Launch/startup preflight | This is a hard runtime integrity blocker for the selected path, not a deep diagnostic. |
 | Missing managed generated layout required for startup | Startup materialization plus bounded preflight | Startup should repair Yazelix-owned generated layouts before failing, while custom layout overrides still fail clearly if they remain unresolved. |
 | No suitable configured/requested terminal available for new-window launch | Launch preflight | Detached launch should fail clearly before attempting terminal startup. |
 | Unsupported config diagnostics before entrypoint execution | Adjacent config-surface validation | This can block entrypoints, but it belongs to config-surface ownership rather than runtime dependency checking. |
@@ -159,7 +159,7 @@ This matrix is intentionally concrete. It exists to stop runtime checks from dri
 - For normal startup/launch flows, that includes at least:
   - requested working directory exists and is a directory
   - the active runtime root resolves
-  - entrypoint runtime scripts required for startup exist
+  - packaged Rust helpers required for startup exist
   - managed generated layouts can be materialized, and the selected layout path exists before asking Zellij to use it
   - when launching a new terminal, at least one suitable configured/requested terminal candidate is available for the current terminal-management mode
 - Launch preflight should fail fast with explicit recovery guidance.
@@ -203,7 +203,7 @@ This matrix is intentionally concrete. It exists to stop runtime checks from dri
 ## Acceptance Cases
 
 1. When `yzx launch --path` receives a missing or nondirectory path, launch preflight fails before a deeper launch attempt with a direct recovery message.
-2. When startup or new-window launch depends on a missing runtime script, launch fails clearly as a runtime/generated-state problem instead of surfacing a generic downstream tool failure.
+2. When startup or new-window launch depends on a missing packaged helper or generated layout, launch fails clearly as a runtime/generated-state problem instead of surfacing a generic downstream tool failure.
 3. When a new-terminal launch is requested and the selected packaged terminal is unavailable, launch fails quickly with terminal-specific guidance instead of falling through into unrelated errors.
 4. When startup depends on a missing managed generated layout, startup materializes it before asking Zellij to use that path, and unresolved custom layout overrides still fail clearly.
 5. When desktop entries or installed runtime links are stale, `yzx doctor` may report them, but normal launch preflight does not have to run the full install-audit surface first.
@@ -216,11 +216,8 @@ This matrix is intentionally concrete. It exists to stop runtime checks from dri
   - [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md)
   - [stale_config_diagnostics.md](./stale_config_diagnostics.md)
 - manual review of the current runtime-check code paths:
-  - `nushell/scripts/core/start_yazelix.nu`
-  - `nushell/scripts/core/start_yazelix_inner.nu`
-  - `nushell/scripts/core/launch_yazelix.nu`
-  - `nushell/scripts/utils/terminal_launcher.nu`
-  - `nushell/scripts/utils/doctor_fix.nu`
+  - `rust_core/yazelix_core/src/launch_commands`
+  - `rust_core/yazelix_core/src/runtime_contract.rs`
   - `yzx_repo_validator validate-installed-runtime-contract`
   - `yzx_repo_validator validate-flake-profile-install`
 - integration tests:

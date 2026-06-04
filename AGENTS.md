@@ -28,12 +28,12 @@ Examples:
 - ❌ `home-manager/`
 - ✅ `settings_default.jsonc`
 - ❌ `yazelix-default.nix`
-- ✅ `start_yazelix_inner.nu`
+- ✅ `shell_nu.nu`
 - ❌ `start-yazelix.nu`
 
 This convention is used consistently throughout:
 - Directory names: `configs/terminal_emulators/`, `nushell/scripts/core/`
-- File names: `settings_default.jsonc`, `start_yazelix_inner.nu`, `runtime_commands.nu`
+- File names: `settings_default.jsonc`, `shell_nu.nu`, `constants.nu`
 - Script names: All Nushell scripts use underscores
 
 When creating new files or directories, always use underscores to maintain consistency with the existing codebase.

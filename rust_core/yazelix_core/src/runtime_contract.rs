@@ -968,7 +968,7 @@ mod tests {
         let temp = tempdir().unwrap();
         let work = temp.path().join("work");
         fs::create_dir_all(&work).unwrap();
-        let script = temp.path().join("start_yazelix_inner.nu");
+        let script = temp.path().join("startup_runtime_script.nu");
         fs::write(&script, "").unwrap();
 
         let data = evaluate_startup_launch_preflight(&StartupLaunchPreflightRequest {

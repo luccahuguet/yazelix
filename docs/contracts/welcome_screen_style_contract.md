@@ -9,9 +9,9 @@ The renderer and style resolution are Rust-owned. The main repo owns Yazelix
 product policy and runtime integration; the `yazelix_screen` child crate owns
 terminal animation engines, automata, generation logic, shared random
 animation-family resolution, file-backed Kitty frame sequence playback, and the
-magician source GIF plus host/cache frame generation helpers. Nu keeps only the
-startup-shell sequencing and the tiny runtime handoff used by welcome/startup
-callers.
+magician source GIF plus host/cache frame generation helpers. Rust owns startup
+welcome sequencing, skip/logging behavior, upgrade-summary display, and the
+handoff into the renderer.
 
 The retained public shape is:
 
@@ -37,8 +37,6 @@ The retained public shape is:
 - `rust_core/yazelix_core/src/front_door_commands.rs`
 - `rust_core/yazelix_core/src/upgrade_summary.rs`
 - `https://github.com/luccahuguet/yazelix-screen`
-- `nushell/scripts/setup/welcome.nu`
-- `nushell/scripts/utils/front_door_runtime.nu`
 - Rust front-door tests under `rust_core/yazelix_core`
 
 Out of scope:
@@ -133,34 +131,29 @@ Out of scope:
 #### FRONT-006
 - Type: boundary
 - Status: live
-- Owner: Nu startup-shell gating in `setup/welcome.nu` plus the tiny runtime
-  handoff in `front_door_runtime.nu`
+- Owner: Rust startup path in `launch_commands/enter.rs`
 - Statement: Welcome playback remains explicit about skip versus launch gating,
-  and the startup shell still owns the final prompt/logging boundary even
-  though rendering moved to Rust
+  and Rust owns the final prompt/logging boundary before Zellij handoff
 - Verification: automated Rust `yzx_control_front_door.rs`;
   manual startup review for current-shell and `yzx enter` flows
 
-## Remaining Nu Floor
+## Remaining Front-Door Floor
 
-The front-door cut is already landed. The only surviving Nu boundary here is:
+The front-door renderer and startup sequence are Rust-owned. The remaining
+boundary here is:
 
-- startup-shell sequencing and skip/logging behavior
-- the handoff from startup shell code into the Rust renderer
+- `yazelix_screen` owns reusable animation engines and magician frame assets
+- `front_door_render.rs` owns product-specific style resolution and rendering
+- `launch_commands/enter.rs` owns startup skip/logging/prompt sequencing
 
-The renderer/data owner does not get to come back. Any future front-door work
-should either:
-
-1. delete more of `setup/welcome.nu` and `front_door_runtime.nu`, or
-2. leave them as the tiny irreducible shell boundary
+The renderer/data owner does not get to come back in Nu.
 
 ## Stop Conditions
 
 - Do not revive the plain `game_of_life` alias
 - Do not reintroduce a second renderer or style-policy owner in Nu
 - Do not fork the random animation-family pool back into `front_door_render.rs`
-- Do not move shell-local prompt/keypress gating into a fake Rust wrapper just
-  to say the file moved
+- Do not reintroduce shell-local prompt/keypress gating as a startup fallback
 
 ## Traceability
 - Defended by: `yzx_repo_validator validate-contracts`

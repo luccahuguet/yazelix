@@ -27,7 +27,6 @@ pub struct SharedRuntimePreflightInput {
     pub zellij_layout_path: PathBuf,
     #[serde(default)]
     pub terminals: Vec<String>,
-    pub startup_script_path: PathBuf,
     pub launch_script_path: PathBuf,
     #[serde(default)]
     pub command_search_paths: Vec<PathBuf>,
@@ -866,20 +865,12 @@ fn build_contract_request(
     shared: &SharedRuntimePreflightInput,
     runtime_dir: &Path,
 ) -> RuntimeContractEvaluateRequest {
-    let runtime_script_requests: Vec<RuntimeScriptCheckRequest> = vec![
-        RuntimeScriptCheckRequest {
-            id: "startup_runtime_script".into(),
-            label: "startup script".into(),
-            owner_surface: "doctor".into(),
-            path: shared.startup_script_path.clone(),
-        },
-        RuntimeScriptCheckRequest {
-            id: "launch_runtime_script".into(),
-            label: "launch script".into(),
-            owner_surface: "doctor".into(),
-            path: shared.launch_script_path.clone(),
-        },
-    ];
+    let runtime_script_requests: Vec<RuntimeScriptCheckRequest> = vec![RuntimeScriptCheckRequest {
+        id: "launch_runtime_script".into(),
+        label: "launch script".into(),
+        owner_surface: "doctor".into(),
+        path: shared.launch_script_path.clone(),
+    }];
 
     RuntimeContractEvaluateRequest {
         working_dir: None,
@@ -1217,7 +1208,6 @@ mod tests {
         SharedRuntimePreflightInput {
             zellij_layout_path: PathBuf::from("layout.kdl"),
             terminals: vec![terminal.to_string()],
-            startup_script_path: PathBuf::from("startup.nu"),
             launch_script_path: PathBuf::from("launch.sh"),
             command_search_paths: Vec::new(),
             platform_name: "linux".to_string(),

@@ -15,7 +15,8 @@ of the protocol pressure points at once:
 
 - Rust `yzx_core` already owns typed config normalization and runtime-env
   evaluation
-- Nushell still carries a small bridge layer in `yzx_core_bridge.nu`
+- the former Nushell bridge layer was deleted after Rust took direct startup and
+  helper-transport ownership
 - packaged runtime and source-checkout helper resolution must preserve a sharp
   failure contract
 - Home Manager parity with the shipped default config is a maintained invariant,
@@ -115,29 +116,24 @@ of the protocol pressure points at once:
 
 #### CRCP-005
 - Type: ownership
-- Status: quarantine
-- Owner: Nushell bridge file `yzx_core_bridge.nu`
-- Statement: The surviving Nu bridge layer is narrow transport glue around
-  Rust-owned helper commands. It may resolve helper paths, execute helpers,
-  parse JSON envelopes, and render Yazelix-owned helper errors, but it is not
-  allowed to grow new config/runtime semantics while a bridge-collapse lane
-  remains open.
-- Verification: manual review of
-  `nushell/scripts/utils/yzx_core_bridge.nu`; manual review against
-  `docs/contracts/cross_language_runtime_ownership.md`; unverified long-term exit
-  tracked as bridge-collapse debt
+- Status: deprecated
+- Owner: Rust startup/control-plane callers
+- Statement: The former `yzx_core_bridge.nu` helper transport is deleted.
+  Startup and maintained command surfaces call Rust owners directly instead of
+  routing config/runtime semantics through Nushell JSON-envelope glue.
+- Verification: automated `rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs`
+  startup handoff tests; manual review that no runtime entrypoint invokes the
+  deleted bridge file
 - Source: `docs/contracts/cross_language_runtime_ownership.md`
-- Deletion note: collapse or delete the bridge once callers can reach the Rust
-  owner directly or a smaller caller-local adapter boundary is proven
+- Deletion note: do not recreate a Nushell helper bridge as a compatibility
+  fallback
 
 ## Pilot Findings
 
 ### Duplicate-owner and deletion findings
 
-- `yzx_core_bridge.nu` is a useful transport seam today, but it is still a real
-  bridge owner because helper discovery, JSON envelope parsing, and helper
-  failure rendering live there. It has no caller-owned error surface and no
-  Zellij process wrappers
+- `yzx_core_bridge.nu` is deleted. Helper discovery, JSON-envelope parsing, and
+  startup failure rendering no longer have a Nushell owner
 
 ### Weak traceability finding
 
@@ -159,7 +155,7 @@ of the protocol pressure points at once:
 
 ## Non-goals
 
-- changing product code or deleting any bridge during the pilot
+- reviving the deleted bridge during the pilot
 - backfilling every historical contract with IDs
 - remapping every governed test in one pass
 - choosing the final bridge-collapse implementation strategy
