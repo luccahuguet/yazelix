@@ -35,21 +35,28 @@ pub fn compute_startup_facts_from_env() -> Result<StartupFactsData, CoreError> {
     let normalized =
         load_normalized_config_for_control(&runtime_dir, &config_dir, config_override.as_deref())?;
 
+    compute_startup_facts_from_config(&runtime_dir, &normalized)
+}
+
+pub fn compute_startup_facts_from_config(
+    runtime_dir: &std::path::Path,
+    normalized: &JsonMap<String, JsonValue>,
+) -> Result<StartupFactsData, CoreError> {
     Ok(StartupFactsData {
-        default_shell: string_config(&normalized, "default_shell", DEFAULT_SHELL),
-        debug_mode: bool_config(&normalized, "debug_mode", false),
-        skip_welcome_screen: bool_config(&normalized, "skip_welcome_screen", false),
-        welcome_style: string_config(&normalized, "welcome_style", DEFAULT_WELCOME_STYLE),
+        default_shell: string_config(normalized, "default_shell", DEFAULT_SHELL),
+        debug_mode: bool_config(normalized, "debug_mode", false),
+        skip_welcome_screen: bool_config(normalized, "skip_welcome_screen", false),
+        welcome_style: string_config(normalized, "welcome_style", DEFAULT_WELCOME_STYLE),
         game_of_life_cell_style: string_config(
-            &normalized,
+            normalized,
             "game_of_life_cell_style",
             DEFAULT_GAME_OF_LIFE_CELL_STYLE,
         ),
-        welcome_duration_seconds: float_config(&normalized, "welcome_duration_seconds", 4.0),
-        show_macchina_on_welcome: bool_config(&normalized, "show_macchina_on_welcome", false),
-        terminals: vec![active_terminal_from_runtime_dir(&runtime_dir)?],
+        welcome_duration_seconds: float_config(normalized, "welcome_duration_seconds", 4.0),
+        show_macchina_on_welcome: bool_config(normalized, "show_macchina_on_welcome", false),
+        terminals: vec![active_terminal_from_runtime_dir(runtime_dir)?],
         terminal_config_mode: string_config(
-            &normalized,
+            normalized,
             "terminal_config_mode",
             DEFAULT_TERMINAL_CONFIG_MODE,
         ),

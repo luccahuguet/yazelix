@@ -12,6 +12,7 @@ use crate::control_plane::{
     runtime_dir_from_env, runtime_env_request, runtime_materialization_plan_request_from_env,
     state_dir_from_env, zellij_default_shell_from_runtime,
 };
+use crate::front_door_render::{GameOfLifeCellStyle, play_welcome_style_with_runtime_dir};
 use crate::initializer_commands::generate_shell_initializers_for_env;
 use crate::runtime_contract::evaluate_startup_working_dir_preflight;
 use crate::runtime_env::compute_runtime_env;
@@ -19,13 +20,17 @@ use crate::runtime_materialization::{RuntimeArtifact, materialize_runtime_state}
 use crate::session_config_snapshot::{
     SessionConfigSnapshotCreateRequest, write_session_config_snapshot_for_launch,
 };
+use crate::startup_facts::{StartupFactsData, compute_startup_facts_from_config};
 use crate::startup_handoff::{
     StartupHandoffArtifact, StartupHandoffCaptureRequest, capture_startup_handoff_context,
 };
+use crate::upgrade_summary::{current_release_headline, maybe_show_first_run_upgrade_summary};
 use serde_json::{Map as JsonMap, Value as JsonValue};
 use std::fs;
+use std::io::{self, IsTerminal, Read, Write};
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::process::Command;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct EnterArgs {
@@ -59,6 +64,7 @@ pub(super) fn run_enter(args: &[String]) -> Result<i32, CoreError> {
     let normalized =
         load_normalized_config_for_control(&runtime_dir, &config_dir, config_override.as_deref())?;
     let default_shell = default_shell_from_config(&normalized);
+    let startup_facts = compute_startup_facts_from_config(&runtime_dir, &normalized)?;
 
     if parsed.verbose {
         println!("🔍 start_yazelix: verbose mode enabled");
@@ -77,6 +83,7 @@ pub(super) fn run_enter(args: &[String]) -> Result<i32, CoreError> {
 
     run_runtime_setup(&runtime_dir, &default_shell, true)?;
     extra_env.extend(sidebar_bootstrap_extra_env("enter", &working_dir)?);
+    show_startup_presentation(&runtime_dir, &startup_facts, parsed.verbose)?;
 
     let startup = prepare_rust_startup(
         &runtime_dir,
@@ -165,6 +172,210 @@ fn print_enter_help() {
     println!(
         "  yzx enter [--path <dir> | --home] [--config <file>] [--with key=value] [--verbose]"
     );
+}
+
+fn show_startup_presentation(
+    runtime_dir: &Path,
+    facts: &StartupFactsData,
+    verbose: bool,
+) -> Result<(), CoreError> {
+    let state_dir = state_dir_from_env()?;
+    let log_dir = state_dir.join("logs");
+    fs::create_dir_all(&log_dir).map_err(|source| {
+        CoreError::io(
+            "startup_welcome_log_dir",
+            format!("Cannot create Yazelix log directory {}.", log_dir.display()),
+            "Fix permissions or set YAZELIX_LOGS_DIR to a writable path.",
+            log_dir.display().to_string(),
+            source,
+        )
+    })?;
+
+    let env_only = bool_env("YAZELIX_ENV_ONLY");
+    let should_skip =
+        facts.skip_welcome_screen || env_only || bool_env("YAZELIX_STARTUP_PROFILE_SKIP_WELCOME");
+    let runtime_version = read_yazelix_version_from_runtime(runtime_dir)?;
+    let welcome_message = build_welcome_message(runtime_dir, &runtime_version, facts);
+
+    if !should_skip {
+        play_welcome_art(runtime_dir, facts)?;
+        print_welcome_message(&welcome_message)?;
+    } else if env_only {
+        println!(
+            "🔧 Yazelix environment loaded! Launch the full interface in a separate terminal with 'yzx launch' or here with 'yzx enter'."
+        );
+    } else {
+        let log_path = write_welcome_log(&log_dir, &welcome_message)?;
+        println!(
+            "💡 Welcome screen skipped. Welcome info logged to: {}",
+            log_path.display()
+        );
+    }
+
+    show_first_run_upgrade_summary(runtime_dir, &state_dir, &runtime_version, verbose);
+    Ok(())
+}
+
+fn play_welcome_art(runtime_dir: &Path, facts: &StartupFactsData) -> Result<(), CoreError> {
+    let duration = Duration::from_millis((facts.welcome_duration_seconds.max(0.0) * 1000.0) as u64);
+    let cell_style = GameOfLifeCellStyle::parse(&facts.game_of_life_cell_style).map_err(|err| {
+        CoreError::classified(
+            ErrorClass::Usage,
+            "invalid_game_of_life_cell_style",
+            format!("Invalid Game of Life cell style `{}`.", err.normalized()),
+            "Use `full_block` or `dotted`.",
+            serde_json::json!({ "style": err.normalized() }),
+        )
+    })?;
+    play_welcome_style_with_runtime_dir(&facts.welcome_style, duration, cell_style, runtime_dir)?;
+    if facts.show_macchina_on_welcome {
+        let status = Command::new("macchina")
+            .args([
+                "-o",
+                "machine",
+                "-o",
+                "distribution",
+                "-o",
+                "desktop-environment",
+                "-o",
+                "processor",
+                "-o",
+                "gpu",
+                "-o",
+                "terminal",
+            ])
+            .status()
+            .map_err(|source| {
+                CoreError::io(
+                    "startup_macchina",
+                    "Could not run macchina for the Yazelix welcome screen.",
+                    "Disable core.show_macchina_on_welcome or reinstall Yazelix with macchina available.",
+                    "macchina",
+                    source,
+                )
+            })?;
+        if !status.success() {
+            return Err(CoreError::classified(
+                ErrorClass::Runtime,
+                "startup_macchina_failed",
+                format!("macchina failed during the Yazelix welcome screen with status {status}."),
+                "Disable core.show_macchina_on_welcome or fix macchina, then retry.",
+                serde_json::json!({}),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn print_welcome_message(lines: &[String]) -> Result<(), CoreError> {
+    for line in lines {
+        println!("{line}");
+    }
+    if io::stdin().is_terminal() {
+        print!("Press any key to launch Zellij and start your session... ");
+        io::stdout().flush().map_err(|source| {
+            CoreError::io(
+                "startup_welcome_flush",
+                "Could not flush the Yazelix welcome prompt.",
+                "Retry the launch.",
+                "<stdout>",
+                source,
+            )
+        })?;
+        let _ = io::stdin().read(&mut [0u8]);
+        println!();
+    }
+    println!("Launching Zellij...");
+    Ok(())
+}
+
+fn show_first_run_upgrade_summary(
+    runtime_dir: &Path,
+    state_dir: &Path,
+    runtime_version: &str,
+    verbose: bool,
+) {
+    match maybe_show_first_run_upgrade_summary(runtime_dir, state_dir, runtime_version) {
+        Ok(result) if result.shown && !result.report.output.trim().is_empty() => {
+            println!("{}", result.report.output);
+            println!();
+        }
+        Err(error) if verbose => {
+            eprintln!("⚠️ Failed to render upgrade summary: {}", error.message())
+        }
+        _ => {}
+    }
+}
+
+fn build_welcome_message(
+    runtime_dir: &Path,
+    runtime_version: &str,
+    facts: &StartupFactsData,
+) -> Vec<String> {
+    let mut lines = vec![
+        String::new(),
+        format!("🎉 Welcome to Yazelix {runtime_version}!"),
+    ];
+    let headline = current_release_headline(runtime_dir, runtime_version).unwrap_or_default();
+    if !headline.trim().is_empty() {
+        lines.push(headline);
+    }
+    lines.extend([
+        flake_last_updated_line(runtime_dir),
+        "✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide".to_string(),
+        "🆕 Creating new Zellij session".to_string(),
+        format!(
+            "🖥️  Preferred host terminal: {}",
+            facts
+                .terminals
+                .first()
+                .map(String::as_str)
+                .unwrap_or("unknown")
+        ),
+        "⚠️  First run: Yazelix pre-seeds bundled Zellij plugin permissions before launch. If Zellij still prompts, answer yes; troubleshooting covers cache-reset recovery.".to_string(),
+        "💡 Quick tips: Use Alt+Shift+H/J/K/L for the left sidebar, bottom popup, top popup, and right sidebar; use Ctrl+Y and Ctrl+Shift+Y for sidebar/editor focus".to_string(),
+    ]);
+    lines
+}
+
+fn flake_last_updated_line(runtime_dir: &Path) -> String {
+    let days = runtime_dir
+        .join("flake.nix")
+        .metadata()
+        .and_then(|metadata| metadata.modified())
+        .ok()
+        .and_then(|modified| SystemTime::now().duration_since(modified).ok())
+        .map(|duration| duration.as_secs() / 86_400);
+    match days {
+        Some(days) => format!("🕒 Flake last updated: {days} day(s) ago"),
+        None => "🕒 Flake last updated: unknown".to_string(),
+    }
+}
+
+fn write_welcome_log(log_dir: &Path, lines: &[String]) -> Result<PathBuf, CoreError> {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|source| {
+            CoreError::classified(
+                ErrorClass::Internal,
+                "startup_welcome_log_clock",
+                format!("System clock error while preparing welcome log path: {source}"),
+                "Fix the system clock, then retry.",
+                serde_json::json!({}),
+            )
+        })?
+        .as_secs();
+    let path = log_dir.join(format!("welcome_{timestamp}.log"));
+    fs::write(&path, lines.join("\n")).map_err(|source| {
+        CoreError::io(
+            "startup_welcome_log_write",
+            "Could not write Yazelix welcome log.",
+            "Fix permissions for the Yazelix log directory and retry.",
+            path.display().to_string(),
+            source,
+        )
+    })?;
+    Ok(path)
 }
 
 struct RustStartupPlan {

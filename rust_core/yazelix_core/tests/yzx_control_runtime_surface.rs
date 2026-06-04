@@ -359,6 +359,23 @@ command = ""
         String::from_utf8_lossy(&output.stderr)
     );
     assert!(output.stderr.is_empty());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("Welcome screen skipped"), "{stdout}");
+    let welcome_logs = fs::read_dir(fixture.state_dir.join("logs"))
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.starts_with("welcome_"))
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(welcome_logs.len(), 1, "{welcome_logs:?}");
+    assert!(
+        fs::read_to_string(&welcome_logs[0])
+            .unwrap()
+            .contains("Welcome to Yazelix v-test")
+    );
 
     let log = fs::read_to_string(zellij_log).unwrap();
     let expected_editor = fixture
