@@ -26,19 +26,10 @@ use std::time::Duration;
 const EDITOR_PANE_CREATE_LAYOUT_SETTLE_MS: u64 = 80;
 const OPEN_FILE_ORCHESTRATOR_RETRY_DELAYS_MS: &[u64] = &[50, 100, 200];
 const EDITOR_PANE_NAME: &str = "editor";
-const EDITOR_PANE_ENV_OVERRIDE_KEYS: &[&str] = &[
-    "PATH",
-    "YAZELIX_RUNTIME_DIR",
+const EDITOR_PANE_CONTEXT_ENV_KEYS: &[&str] = &[
     "YAZELIX_SESSION_CONFIG_PATH",
     "YAZELIX_SESSION_FACTS_PATH",
-    "IN_YAZELIX_SHELL",
     "NIX_CONFIG",
-    "ZELLIJ_DEFAULT_LAYOUT",
-    "YAZI_CONFIG_HOME",
-    "YAZELIX_MANAGED_HELIX_BINARY",
-    "EDITOR",
-    "VISUAL",
-    "HELIX_RUNTIME",
 ];
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -394,7 +385,7 @@ fn build_editor_pane_env_assignments(
         })
         .collect::<Vec<_>>();
 
-    for key in EDITOR_PANE_ENV_OVERRIDE_KEYS {
+    for key in EDITOR_PANE_CONTEXT_ENV_KEYS {
         if let Ok(value) = env::var(key) {
             let trimmed = value.trim();
             if !trimmed.is_empty() {

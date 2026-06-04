@@ -14,6 +14,7 @@ def get_zellij_config_paths [] {
 }
 
 const RUNTIME_MATERIALIZATION_MATERIALIZE_COMMAND = "runtime-materialization.materialize"
+const RUNTIME_ENV_COMPUTE_COMMAND = "runtime-env.compute"
 const STARTUP_HANDOFF_CAPTURE_COMMAND = "startup-handoff.capture"
 const SESSION_CONFIG_SNAPSHOT_WRITE_COMMAND = "session-config-snapshot.write"
 
@@ -58,6 +59,36 @@ def regenerate_runtime_configs [runtime_dir: string, --quiet] {
     }
 
     $result.plan
+}
+
+def render_env_value [value] {
+    let shape = ($value | describe)
+    if $shape == "nothing" {
+        return null
+    }
+    if ($shape | str starts-with "list") {
+        return ($value | each { |item| $item | into string } | str join (char esep))
+    }
+
+    $value | into string
+}
+
+def --env apply_configured_runtime_env [runtime_dir: string, normalized_config: record] {
+    $env.YAZELIX_RUNTIME_DIR = $runtime_dir
+    let data = (run_yzx_core_json_command
+        $runtime_dir
+        [$RUNTIME_ENV_COMPUTE_COMMAND "--from-env" "--config-json" ($normalized_config | to json -r)]
+        "Yazelix Rust runtime-env helper returned invalid JSON.")
+    let runtime_env = ($data.runtime_env? | default {})
+
+    for entry in ($runtime_env | transpose key value) {
+        let rendered = (render_env_value $entry.value)
+        if $rendered == null {
+            hide-env $entry.key
+        } else {
+            load-env { $entry.key: $rendered }
+        }
+    }
 }
 
 def --env prepare_session_config_snapshot [runtime_dir: string, applied_runtime_state: record] {
@@ -197,6 +228,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
             error make {msg: $"Failed to prepare Yazelix generated runtime state: ($err.msg)\nRun `yzx doctor` to inspect the runtime and generated-state contract, then restart Yazelix after fixing the reported problem."}
     })
     let session_config_snapshot_path = (prepare_session_config_snapshot $yazelix_dir $applied_runtime_state)
+    apply_configured_runtime_env $yazelix_dir ($applied_runtime_state.config? | default {})
 
     let merged_zellij_dir = ((get_zellij_config_paths).merged_config_dir | str replace "~" $env.HOME)
     let working_dir = if ($cwd_override | is-not-empty) {

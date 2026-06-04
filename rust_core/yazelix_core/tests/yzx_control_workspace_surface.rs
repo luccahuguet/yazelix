@@ -634,6 +634,92 @@ ya_command = "ya"
     );
 }
 
+// Regression: Yazi sidebar opens use the session-snapshot Helix external pair instead of stale inherited pane env.
+#[test]
+fn yzx_control_open_editor_uses_snapshot_helix_external_for_new_pane() {
+    let fixture = managed_config_fixture(
+        r#"[helix]
+external = { binary = "/custom/helix/bin/hx", runtime_path = "/custom/helix/runtime" }
+
+[editor]
+command = ""
+hide_sidebar_on_file_open = false
+"#,
+    );
+    let fake_bin = fixture.home_dir.join("fake-bin");
+    let target_dir = fixture.home_dir.join("workspace");
+    let target_file = target_dir.join("notes.txt");
+    let zellij_commands_log = fixture.home_dir.join("zellij-commands.log");
+    let zellij_run_log = fixture.home_dir.join("zellij-run.log");
+    let snapshot = write_session_config_snapshot(
+        &fixture,
+        &[(
+            "helix_external",
+            json!({
+                "binary": "/custom/helix/bin/hx",
+                "runtime_path": "/custom/helix/runtime"
+            }),
+        )],
+    );
+    fs::create_dir_all(&fake_bin).unwrap();
+    fs::create_dir_all(&target_dir).unwrap();
+    fs::create_dir_all(fixture.runtime_dir.join("shells").join("posix")).unwrap();
+    fs::write(&target_file, "").unwrap();
+
+    write_executable_script(
+        &fake_bin.join("zellij"),
+        &format!(
+            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    get_active_tab_session_state)\n      printf '%s\\n' '{{\"schema_version\":1,\"managed_panes\":{{}},\"layout\":{{\"sidebar_collapsed\":false}}}}'\n      exit 0\n      ;;\n    retarget_workspace)\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"skipped\"}}'\n      exit 0\n      ;;\n  esac\nfi\nif [ \"$1\" = \"run\" ]; then\n  printf '%s\\n' \"$*\" > \"{}\"\n  exit 0\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
+            zellij_commands_log.display(),
+            zellij_run_log.display(),
+        ),
+    );
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .env("PATH", prepend_path(&fake_bin))
+        .env("ZELLIJ", "1")
+        .env("YAZI_ID", "current-yazi")
+        .env("YAZELIX_SESSION_CONFIG_PATH", snapshot)
+        .env(
+            "YAZELIX_MANAGED_HELIX_BINARY",
+            fixture.runtime_dir.join("libexec").join("hx"),
+        )
+        .env("HELIX_RUNTIME", "/stale/helix/runtime")
+        .env("EDITOR", "/stale/yazelix_hx.sh")
+        .env("VISUAL", "/stale/yazelix_hx.sh")
+        .arg("zellij")
+        .arg("open-editor")
+        .arg(&target_file)
+        .output()
+        .unwrap();
+
+    assert_success(&output);
+    assert_eq!(
+        file_lines(zellij_commands_log),
+        vec!["get_active_tab_session_state", "retarget_workspace"]
+    );
+
+    let zellij_run = fs::read_to_string(zellij_run_log).unwrap();
+    let expected_wrapper = fixture
+        .runtime_dir
+        .join("shells")
+        .join("posix")
+        .join("yazelix_hx.sh")
+        .to_string_lossy()
+        .to_string();
+    assert!(
+        zellij_run.contains("YAZELIX_MANAGED_HELIX_BINARY=/custom/helix/bin/hx"),
+        "{zellij_run}"
+    );
+    assert!(
+        zellij_run.contains("HELIX_RUNTIME=/custom/helix/runtime"),
+        "{zellij_run}"
+    );
+    assert!(zellij_run.contains(&format!("EDITOR={expected_wrapper}")));
+    assert!(zellij_run.contains(&format!("VISUAL={expected_wrapper}")));
+    assert!(!zellij_run.contains("/stale/"));
+}
+
 // Regression: nested Yazi-to-Helix file opens keep the Git workspace root instead of retargeting the tab to the file parent.
 #[test]
 fn yzx_control_zellij_open_editor_keeps_repo_root_for_nested_helix_file() {
