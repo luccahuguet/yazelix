@@ -39,7 +39,7 @@ let
       ghostty = "Ghostty";
       kitty = "Kitty";
       rio = "Rio";
-      yzxterm = "yzxterm";
+      yzxterm = "Yzxterm";
       wezterm = "WezTerm";
       foot = "Foot";
       ratty = "Ratty";
@@ -56,7 +56,7 @@ let
       ratty = "Ratty";
     }.${terminal};
   desktopEntryKey = terminal: "com.yazelix.Yazelix.${terminalDesktopIdSuffix terminal}";
-  desktopEntryName = terminal: "Yazelix - ${terminalDesktopLabel terminal}";
+  desktopEntryName = terminal: "New Yazelix - ${terminalDesktopLabel terminal}";
   componentEnabled = name: cfg.components.${name} or true;
   runtimeToolSource = name: cfg.runtime_tool_sources.${name} or "bundled";
   yzxtermProfileActiveFor = terminal: terminal == "yzxterm" && cfg.yzxterm_profile != "full";

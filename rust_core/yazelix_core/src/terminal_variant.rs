@@ -26,7 +26,7 @@ pub fn terminal_display_name(terminal: &str) -> String {
         "ghostty" => "Ghostty".to_string(),
         "rio" => "Rio".to_string(),
         "wezterm" => "WezTerm".to_string(),
-        "yzxterm" => "Yazelix Terminal".to_string(),
+        "yzxterm" => "Yzxterm".to_string(),
         "ratty" => "Ratty".to_string(),
         "kitty" => "Kitty".to_string(),
         "foot" => "Foot".to_string(),
@@ -35,16 +35,7 @@ pub fn terminal_display_name(terminal: &str) -> String {
 }
 
 pub fn terminal_desktop_label(terminal: &str) -> String {
-    match terminal {
-        "ghostty" => "Ghostty".to_string(),
-        "rio" => "Rio".to_string(),
-        "wezterm" => "WezTerm".to_string(),
-        "yzxterm" => "yzxterm".to_string(),
-        "ratty" => "Ratty".to_string(),
-        "kitty" => "Kitty".to_string(),
-        "foot" => "Foot".to_string(),
-        other => other.to_string(),
-    }
+    terminal_display_name(terminal)
 }
 
 pub fn terminal_desktop_id_suffix(terminal: &str) -> String {
@@ -72,7 +63,19 @@ pub fn terminal_desktop_entry_file_name(terminal: &str) -> String {
 }
 
 pub fn terminal_desktop_entry_name(terminal: &str) -> String {
-    format!("Yazelix - {}", terminal_desktop_label(terminal))
+    format!("New Yazelix - {}", terminal_desktop_label(terminal))
+}
+
+pub fn terminal_window_title(terminal: &str, session_name: Option<&str>) -> String {
+    let base = format!("Yazelix - {}", terminal_display_name(terminal));
+    match session_name
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .filter(|name| !name.eq_ignore_ascii_case("unknown"))
+    {
+        Some(name) => format!("{base} · {name}"),
+        None => base,
+    }
 }
 
 pub fn active_terminal_from_runtime_dir(runtime_dir: &Path) -> Result<String, CoreError> {
@@ -109,4 +112,25 @@ pub fn active_terminal_from_runtime_dir(runtime_dir: &Path) -> Result<String, Co
             }),
         )
     })
+}
+
+#[cfg(test)]
+mod tests {
+    // Test lane: default
+    use super::*;
+
+    // Defends: launcher labels describe the action while window titles describe the running terminal state.
+    #[test]
+    fn desktop_entry_name_and_window_title_are_distinct() {
+        assert_eq!(
+            terminal_desktop_entry_name("ghostty"),
+            "New Yazelix - Ghostty"
+        );
+        assert_eq!(terminal_window_title("ghostty", None), "Yazelix - Ghostty");
+        assert_eq!(
+            terminal_window_title("ghostty", Some("work")),
+            "Yazelix - Ghostty · work"
+        );
+        assert_eq!(terminal_window_title("yzxterm", None), "Yazelix - Yzxterm");
+    }
 }

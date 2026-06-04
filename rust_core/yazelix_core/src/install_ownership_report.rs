@@ -1325,13 +1325,13 @@ mod tests {
         std::fs::write(&profile_yzx, "#!/bin/sh\n").unwrap();
         std::fs::write(
             &extra_desktop,
-            "[Desktop Entry]\nName=Yazelix - Ghostty\nTerminal=true\nExec=/nix/store/extra-yazelix-ghostty/bin/yzx desktop launch\n",
+            "[Desktop Entry]\nName=New Yazelix - Ghostty\nTerminal=true\nExec=/nix/store/extra-yazelix-ghostty/bin/yzx desktop launch\n",
         )
         .unwrap();
         std::fs::write(
             &active_desktop,
             format!(
-                "[Desktop Entry]\nName=Yazelix - yzxterm\nTerminal=true\nExec=env YAZELIX_TERMINAL_PROFILE=shaders {} desktop launch\n",
+                "[Desktop Entry]\nName=New Yazelix - Yzxterm\nTerminal=true\nExec=env YAZELIX_TERMINAL_PROFILE=shaders {} desktop launch\n",
                 profile_yzx.display()
             ),
         )

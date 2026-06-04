@@ -383,9 +383,9 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         errors.push("Home Manager Linux Ghostty desktop entry must be generated".to_string());
     }
 
-    if actual_name != "Yazelix - Ghostty" {
+    if actual_name != "New Yazelix - Ghostty" {
         errors.push(format!(
-            "Home Manager Ghostty desktop entry name mismatch: expected Yazelix - Ghostty, got {}",
+            "Home Manager Ghostty desktop entry name mismatch: expected New Yazelix - Ghostty, got {}",
             format_json_value(&JsonValue::String(actual_name.to_string()))
         ));
     }
@@ -435,9 +435,9 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
             format_json_value(&JsonValue::String(shader_exec.to_string()))
         ));
     }
-    if shader_name != "Yazelix - yzxterm" {
+    if shader_name != "New Yazelix - Yzxterm" {
         errors.push(format!(
-            "Home Manager yzxterm desktop entry name mismatch: expected Yazelix - yzxterm, got {}",
+            "Home Manager yzxterm desktop entry name mismatch: expected New Yazelix - Yzxterm, got {}",
             format_json_value(&JsonValue::String(shader_name.to_string()))
         ));
     }
@@ -457,10 +457,11 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         ));
     }
     for (terminal, expected_name) in [
-        ("ghostty", "Yazelix - Ghostty"),
-        ("foot", "Yazelix - Foot"),
-        ("rio", "Yazelix - Rio"),
-        ("wezterm", "Yazelix - WezTerm"),
+        ("ghostty", "New Yazelix - Ghostty"),
+        ("foot", "New Yazelix - Foot"),
+        ("yzxterm", "New Yazelix - Yzxterm"),
+        ("rio", "New Yazelix - Rio"),
+        ("wezterm", "New Yazelix - WezTerm"),
     ] {
         let entry = extra_entry
             .get(terminal)
@@ -500,6 +501,12 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         if !exec.starts_with("env YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1 ") {
             errors.push(format!(
                 "Home Manager extra {terminal} desktop entry Exec must disable stable-profile redirects for intentional variant package launches, got {}",
+                format_json_value(&JsonValue::String(exec.to_string()))
+            ));
+        }
+        if terminal == "yzxterm" && !exec.contains("YAZELIX_TERMINAL_PROFILE=shaders") {
+            errors.push(format!(
+                "Home Manager extra yzxterm desktop entry Exec must pass the configured yzxterm profile, got {}",
                 format_json_value(&JsonValue::String(exec.to_string()))
             ));
         }
@@ -813,7 +820,7 @@ fn standalone_home_manager_eval_fixture_module(
 fn load_home_manager_desktop_entry_contract(
     repo_root: &Path,
 ) -> Result<JsonMap<String, JsonValue>, String> {
-    let expr = build_home_manager_desktop_entry_expr(repo_root, None, &[]);
+    let expr = build_home_manager_desktop_entry_expr(repo_root, None, &[], None);
     let result = run_nix_eval(repo_root, &expr)?;
     result.as_object().cloned().ok_or_else(|| {
         "Home Manager desktop-entry evaluation did not return a JSON object".to_string()
@@ -824,7 +831,12 @@ fn load_home_manager_desktop_entry_contract_with_profile(
     repo_root: &Path,
     yzxterm_profile: &str,
 ) -> Result<JsonMap<String, JsonValue>, String> {
-    let expr = build_home_manager_desktop_entry_expr(repo_root, Some(yzxterm_profile), &[]);
+    let expr = build_home_manager_desktop_entry_expr(
+        repo_root,
+        Some(yzxterm_profile),
+        &[],
+        Some("yzxterm"),
+    );
     let result = run_nix_eval(repo_root, &expr)?;
     result.as_object().cloned().ok_or_else(|| {
         "Home Manager desktop-entry evaluation did not return a JSON object".to_string()
@@ -837,7 +849,8 @@ fn load_home_manager_extra_terminal_launchers_contract(
     let expr = build_home_manager_desktop_entry_expr(
         repo_root,
         Some("shaders"),
-        &["ghostty", "foot", "rio", "wezterm"],
+        &["ghostty", "yzxterm", "foot", "rio", "wezterm"],
+        Some("kitty"),
     );
     let result = run_nix_eval(repo_root, &expr)?;
     result.as_object().cloned().ok_or_else(|| {
@@ -849,6 +862,7 @@ fn build_home_manager_desktop_entry_expr(
     repo_root: &Path,
     yzxterm_profile: Option<&str>,
     extra_launchers: &[&str],
+    active_terminal: Option<&str>,
 ) -> String {
     let module_path =
         escape_nix_string(&repo_root.join(MODULE_RELATIVE_PATH).display().to_string());
@@ -867,7 +881,12 @@ fn build_home_manager_desktop_entry_expr(
             "      {{ config.programs.yazelix.yzxterm_profile = \"{}\"; }}",
             escape_nix_string(profile)
         ));
-        lines.push("      { config.programs.yazelix.terminal = \"yzxterm\"; }".to_string());
+    }
+    if let Some(terminal) = active_terminal {
+        lines.push(format!(
+            "      {{ config.programs.yazelix.terminal = \"{}\"; }}",
+            escape_nix_string(terminal)
+        ));
     }
     if !extra_launchers.is_empty() {
         let launchers = extra_launchers
@@ -879,10 +898,13 @@ fn build_home_manager_desktop_entry_expr(
             "      {{ config.programs.yazelix.extra_terminal_launchers = [ {launchers} ]; }}"
         ));
     }
-    let entry_key = if yzxterm_profile.is_some() {
-        "com.yazelix.Yazelix.Yzxterm"
-    } else {
-        "com.yazelix.Yazelix.Ghostty"
+    let entry_key = match active_terminal {
+        Some("foot") => "com.yazelix.Yazelix.Foot",
+        Some("kitty") => "com.yazelix.Yazelix.Kitty",
+        Some("rio") => "com.yazelix.Yazelix.Rio",
+        Some("wezterm") => "com.yazelix.Yazelix.WezTerm",
+        Some("yzxterm") => "com.yazelix.Yazelix.Yzxterm",
+        _ => "com.yazelix.Yazelix.Ghostty",
     };
     lines.extend([
         "    ];".to_string(),
@@ -890,12 +912,14 @@ fn build_home_manager_desktop_entry_expr(
         format!("  entryKey = \"{}\";", entry_key),
         "  ghosttyKey = \"com.yazelix.Yazelix.Ghostty\";".to_string(),
         "  footKey = \"com.yazelix.Yazelix.Foot\";".to_string(),
+        "  yzxtermKey = \"com.yazelix.Yazelix.Yzxterm\";".to_string(),
         "  rioKey = \"com.yazelix.Yazelix.Rio\";".to_string(),
         "  weztermKey = \"com.yazelix.Yazelix.WezTerm\";".to_string(),
         "  entries = eval.config.xdg.desktopEntries;".to_string(),
         "  entry = if builtins.hasAttr entryKey entries then builtins.getAttr entryKey entries else {};".to_string(),
         "  ghosttyEntry = if builtins.hasAttr ghosttyKey entries then builtins.getAttr ghosttyKey entries else {};".to_string(),
         "  footEntry = if builtins.hasAttr footKey entries then builtins.getAttr footKey entries else {};".to_string(),
+        "  yzxtermEntry = if builtins.hasAttr yzxtermKey entries then builtins.getAttr yzxtermKey entries else {};".to_string(),
         "  rioEntry = if builtins.hasAttr rioKey entries then builtins.getAttr rioKey entries else {};".to_string(),
         "  weztermEntry = if builtins.hasAttr weztermKey entries then builtins.getAttr weztermKey entries else {};".to_string(),
         "in {".to_string(),
@@ -908,6 +932,7 @@ fn build_home_manager_desktop_entry_expr(
         "  packageCount = builtins.length eval.config.home.packages;".to_string(),
         "  ghostty = { present = builtins.hasAttr ghosttyKey entries; name = ghosttyEntry.name or \"\"; exec = ghosttyEntry.exec or \"\"; terminal = ghosttyEntry.terminal or false; };".to_string(),
         "  foot = { present = builtins.hasAttr footKey entries; name = footEntry.name or \"\"; exec = footEntry.exec or \"\"; terminal = footEntry.terminal or false; };".to_string(),
+        "  yzxterm = { present = builtins.hasAttr yzxtermKey entries; name = yzxtermEntry.name or \"\"; exec = yzxtermEntry.exec or \"\"; terminal = yzxtermEntry.terminal or false; };".to_string(),
         "  rio = { present = builtins.hasAttr rioKey entries; name = rioEntry.name or \"\"; exec = rioEntry.exec or \"\"; terminal = rioEntry.terminal or false; };".to_string(),
         "  wezterm = { present = builtins.hasAttr weztermKey entries; name = weztermEntry.name or \"\"; exec = weztermEntry.exec or \"\"; terminal = weztermEntry.terminal or false; };".to_string(),
         "}".to_string(),

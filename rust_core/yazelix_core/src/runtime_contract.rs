@@ -1076,6 +1076,6 @@ mod tests {
             .unwrap();
         assert_eq!(candidate.terminal, "yzxterm");
         assert_eq!(candidate.command, "yazelix-terminal-desktop");
-        assert_eq!(candidate.name, "Yazelix Terminal");
+        assert_eq!(candidate.name, "Yzxterm");
     }
 }

@@ -11,6 +11,7 @@ use crate::terminal_cursor_materialization::{
     TerminalCursorMaterializationData, TerminalCursorMaterializationRequest, TerminalCursorState,
     cursor_shader_paths_for_state, generate_terminal_cursor_materialization,
 };
+use crate::terminal_variant::terminal_window_title;
 use crate::user_config_paths;
 use serde::Serialize;
 use std::fs;
@@ -72,17 +73,7 @@ fn get_opacity_value(transparency: &str) -> &str {
 }
 
 fn get_terminal_title(terminal: &str) -> String {
-    let name = match terminal {
-        "ghostty" => "Ghostty",
-        "yzxterm" => "Yazelix Terminal",
-        "rio" => "Rio",
-        "kitty" => "Kitty",
-        "wezterm" => "WezTerm",
-        "ratty" => "Ratty",
-        "foot" => "Foot",
-        _ => terminal,
-    };
-    format!("Yazelix - {}", name)
+    terminal_window_title(terminal, None)
 }
 
 fn get_terminal_override_path(

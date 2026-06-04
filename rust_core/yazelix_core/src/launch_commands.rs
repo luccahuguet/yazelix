@@ -576,17 +576,18 @@ mod tests {
             runtime.path(),
             &crate::runtime_contract::TerminalCandidate {
                 terminal: "yzxterm".to_string(),
-                name: "Yazelix Terminal".to_string(),
+                name: "Yzxterm".to_string(),
                 command: "yazelix-terminal-desktop".to_string(),
             },
             &config_path,
             Path::new("/tmp/project"),
+            None,
         )
         .unwrap();
 
         assert_eq!(argv[0], "yazelix-terminal-desktop");
         assert_eq!(argv[1], "--title-placeholder");
-        assert_eq!(argv[2], "Yazelix - Yazelix Terminal");
+        assert_eq!(argv[2], "Yazelix - Yzxterm");
         assert!(argv.iter().any(|arg| arg == "--yazelix"));
         assert_eq!(
             argv.windows(2)
@@ -639,6 +640,7 @@ mod tests {
             },
             &config_path,
             Path::new("/tmp"),
+            None,
         )
         .unwrap();
 
@@ -682,6 +684,7 @@ mod tests {
             },
             &config_path,
             Path::new("/tmp"),
+            None,
         )
         .unwrap();
 
@@ -795,7 +798,7 @@ mod tests {
     fn render_desktop_entry_quotes_exec_path() {
         let entry = render_desktop_entry(Path::new("/tmp/with space/yzx"), "ghostty");
         assert!(entry.contains("Exec=\"/tmp/with space/yzx\" desktop launch"));
-        assert!(entry.contains("Name=Yazelix - Ghostty"));
+        assert!(entry.contains("Name=New Yazelix - Ghostty"));
         assert!(entry.contains("Terminal=true"));
     }
 

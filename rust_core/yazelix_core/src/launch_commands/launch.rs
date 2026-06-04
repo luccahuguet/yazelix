@@ -145,6 +145,11 @@ pub(super) fn run_launch_flow(
         &config_state.config,
     )?)?;
     let runtime_env = runtime_data.runtime_env;
+    let window_title_session_name = if desktop_fast_path {
+        None
+    } else {
+        std::env::var("YAZELIX_ZELLIJ_SESSION_NAME").ok()
+    };
 
     let mut failures = Vec::new();
     for candidate in terminal_candidates {
@@ -164,7 +169,13 @@ pub(super) fn run_launch_flow(
             resolve_materialized_terminal_config_path(&materialization, &candidate.terminal)
                 .unwrap_or(fallback_config_path);
 
-        let argv = build_launch_command_argv(&runtime_dir, &candidate, &config_path, &working_dir)?;
+        let argv = build_launch_command_argv(
+            &runtime_dir,
+            &candidate,
+            &config_path,
+            &working_dir,
+            window_title_session_name.as_deref(),
+        )?;
         if verbose {
             println!("Using terminal: {}", candidate.name);
             println!("Running: {}", render_argv_for_display(&argv));
@@ -570,6 +581,7 @@ mod tests {
             },
             &config_path,
             &working_dir,
+            Some("work"),
         )
         .unwrap();
 
@@ -578,7 +590,7 @@ mod tests {
             vec![
                 "rio".to_string(),
                 "--title-placeholder".to_string(),
-                "Yazelix - Rio".to_string(),
+                "Yazelix - Rio · work".to_string(),
                 "--working-dir".to_string(),
                 working_dir.to_string_lossy().into_owned(),
                 "-e".to_string(),
@@ -616,6 +628,7 @@ mod tests {
             },
             &config_path,
             &working_dir,
+            None,
         )
         .unwrap();
 

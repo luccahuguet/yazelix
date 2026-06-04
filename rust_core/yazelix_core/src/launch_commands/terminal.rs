@@ -1,6 +1,6 @@
 use crate::bridge::{CoreError, ErrorClass};
 use crate::runtime_contract::TerminalCandidate;
-use crate::terminal_variant::terminal_display_name;
+use crate::terminal_variant::terminal_window_title;
 use std::path::{Path, PathBuf};
 
 use super::process::find_command;
@@ -219,6 +219,7 @@ pub(super) fn build_launch_command_argv(
     terminal: &TerminalCandidate,
     config_path: &Path,
     working_dir: &Path,
+    session_name: Option<&str>,
 ) -> Result<Vec<String>, CoreError> {
     let working_dir_args = get_working_dir_args(&terminal.terminal, working_dir);
     let startup_script = runtime_dir
@@ -238,7 +239,7 @@ pub(super) fn build_launch_command_argv(
         ));
     }
 
-    let title = format!("Yazelix - {}", terminal_display_name(&terminal.terminal));
+    let title = terminal_window_title(&terminal.terminal, session_name);
     let config_string = config_path.to_string_lossy().into_owned();
     let graphics_wrapper = resolve_graphics_wrapper(runtime_dir, &terminal.terminal);
 
