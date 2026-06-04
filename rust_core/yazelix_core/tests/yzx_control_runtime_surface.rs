@@ -348,6 +348,8 @@ command = ""
         .env("VISUAL", "/stale/editor")
         .env("YAZELIX_STARTUP_PROFILE_SKIP_WELCOME", "true")
         .arg("enter")
+        .arg("--with")
+        .arg("core.welcome_duration_seconds=0.25")
         .arg("--path")
         .arg(&workspace)
         .output()
@@ -379,6 +381,22 @@ command = ""
     );
 
     let log = fs::read_to_string(zellij_log).unwrap();
+    let snapshot_path = log
+        .lines()
+        .find_map(|line| line.strip_prefix("YAZELIX_SESSION_CONFIG_PATH="))
+        .unwrap();
+    let snapshot: Value = serde_json::from_str(
+        &fs::read_to_string(snapshot_path).expect("startup snapshot should be readable"),
+    )
+    .unwrap();
+    assert_eq!(
+        snapshot["normalized_config"]["helix_external"]["binary"],
+        "/custom/helix/bin/hx"
+    );
+    assert_eq!(
+        snapshot["normalized_config"]["welcome_duration_seconds"],
+        serde_json::json!(0.25)
+    );
     let expected_editor = fixture
         .runtime_dir
         .join("shells/posix/yazelix_hx.sh")
